@@ -97,6 +97,10 @@ import type { FetchEngine } from "../card/fetch.js";
 import type { CardRecord } from "../card/fetch/card-record.js";
 import { SessionStore } from "../card/auth/index.js";
 import { signinAccount } from "../card/auth/signin.js";
+import {
+  sendResetPasswordToken,
+  type AccountFlowContext,
+} from "../card/auth/account-verify-reset-flows.js";
 import { createCardActionEngineForSession } from "../card/actions/engine-for-session.js";
 import { CardActionError, type ActionResult, type AttachmentInput } from "../card/actions/types.js";
 import type { CardActionRecaptchaConfig } from "../card/actions/card-action-engine.js";
@@ -185,6 +189,12 @@ export interface WriteRouteContext {
    *  Diagnostics and the side-effects parity harness read event order
    *  through it. Absent = no observer; dispatch is unchanged either way. */
   onModEventReport?: (report: ModEventStageReport) => void;
+  /** The account-mail seat: what the *signin update's
+   *  send_reset_password_token trigger needs to build and send the reset
+   *  email (card-mod-account set/self/signin.rb:62-84). Absent = the host
+   *  sends no account mail, and the trigger answers the not-configured
+   *  error instead of silently succeeding. */
+  accountMail?: Omit<AccountFlowContext, "driver" | "fetcher" | "sessions">;
 }
 
 export interface WriteRouteResponse {
@@ -565,11 +575,55 @@ function errorStatus(code: CardActionError["code"]): number {
   return 422;
 }
 
-function errorResponse(json: boolean, error: CardActionError): WriteRouteResponse {
+/** The loud denial's text (card-mod-format set/all/html/error.rb:191-216,
+ *  en.yml format_sorry / format_please / format_to_do_that /
+ *  format_need_permission_task): anonymous requests are asked to sign in or
+ *  sign up; signed-in requests are told they need permission. The
+ *  controller-level denial carries no denied task, hence "to do that". */
+function denialText(signedIn: boolean): string {
+  return signedIn
+    ? "Sorry! You need permission to do that."
+    : "Sorry! Please sign in or sign up to do that.";
+}
+
+/** The text the HTML error surface shows: the denial text for 403s, else
+ *  the Ruby-worded message when the throw site supplied one. */
+function userFacingMessage(error: CardActionError, signedIn: boolean): string {
+  if (errorStatus(error.code) === 403) return denialText(signedIn);
+  return error.userMessage ?? error.message;
+}
+
+/** Deleting a card that does not exist: the controller fetches a NEW card
+ *  for the mark (card_class.rb uri_fetch new: {}), and deleting a new card
+ *  raises a bare Card::Error::UserError (error.rb:21, status 422), which the
+ *  errors view shows under its class name. */
+const MISSING_CARD_DELETE_MESSAGE = "USERERROR: Card::Error::UserError";
+
+/** Whether the request's session resolves to a live account: the
+ *  Auth.signed_in? test the denial text branches on. */
+async function signedInFor(ctx: WriteRouteContext, sessionToken: string | null): Promise<boolean> {
+  if (sessionToken === null) return false;
+  return (await new SessionStore({ driver: ctx.driver }).lookupSession(sessionToken)) !== null;
+}
+
+function errorResponse(json: boolean, error: CardActionError, signedIn = false): WriteRouteResponse {
   const status = errorStatus(error.code);
   return json
     ? jsonResponse(status, { error: { code: error.code, message: error.message } })
-    : htmlResponse(status, `Error (${error.code})`, `<pre>${escapeHtml(error.message)}</pre>`);
+    : htmlResponse(
+        status,
+        `Error (${error.code})`,
+        `<pre>${escapeHtml(userFacingMessage(error, signedIn))}</pre>${diagnosticComment(error, signedIn)}`,
+      );
+}
+
+/** The engine's own reason, kept beside the user-facing text as an HTML
+ *  comment when the two differ (Ruby's quiet denial carries its reason the
+ *  same way: "<!-- Sorry, you don't have permission (task) -->",
+ *  set/all/html/error.rb:185-189). */
+function diagnosticComment(error: CardActionError, signedIn: boolean): string {
+  if (userFacingMessage(error, signedIn) === error.message) return "";
+  return `<!-- ${escapeHtml(error.message).replace(/--/g, "&#45;&#45;")} -->`;
 }
 
 /** Ruby's cud_success (rest.rb:80-89): HTML redirects to the card's
@@ -652,21 +706,29 @@ async function handleSigninUpdate(
 ): Promise<WriteRouteResponse> {
   const email = parsed.subcards["+*email"]?.content ?? "";
   const password = parsed.subcards["+*password"]?.content ?? "";
-  // signin.rb:46-48 abort_unless email/password — "email missing" /
-  // "password missing" are failure aborts before any authentication.
-  if (email === "" || password === "") {
-    const message = email === "" ? "email missing" : "password missing";
-    return json
+  const fail = (message: string, shown: string): WriteRouteResponse =>
+    json
       ? jsonResponse(422, { error: { code: "signin-failure", message } })
-      : htmlResponse(422, "Error (signin-failure)", `<pre>${escapeHtml(message)}</pre>`);
+      : htmlResponse(422, "Error (signin-failure)", `<pre>${escapeHtml(shown)}</pre>`);
+  // The send_reset_password_token trigger (signin.rb:62-84): the forgot-
+  // password form posts the email with card[trigger]; the :signin event
+  // does not run.
+  if (parsed.card["trigger"] === "send_reset_password_token") {
+    return handleResetPasswordTrigger(ctx, req, json, parsed, email, fail);
+  }
+  // signin.rb:46-48 abort_unless email/password: blank fields abort before
+  // any authentication. Ruby shows the attribute and account_error_blank
+  // ("email can't be blank", the abort message without an errors key).
+  if (email === "" || password === "") {
+    const field = email === "" ? "email" : "password";
+    return fail(`${field} missing`, `${field} can't be blank`);
   }
   const sessions = new SessionStore({ driver: ctx.driver });
   const outcome = await signinAccount(ctx.driver, sessions, email, password);
   if (!outcome.ok) {
-    const message = outcome.message;
-    return json
-      ? jsonResponse(422, { error: { code: "signin-failure", message } })
-      : htmlResponse(422, "Error (signin-failure)", `<pre>${escapeHtml(message)}</pre>`);
+    // authenticate_or_abort adds the ladder message under :signin
+    // (signin.rb:50-58 errors.add :signin, ...): "SIGNIN: <message>".
+    return fail(outcome.message, `SIGNIN: ${outcome.message}`);
   }
   // *previous (signin.rb:171) -> previous_location -> "/" fresh
   // (location_history.rb:6-9); the session history stack itself is
@@ -686,6 +748,63 @@ async function handleSigninUpdate(
     headers: { Location: target, "Cache-Control": "no-store", "Set-Cookie": sessionCookieHeader(outcome.session.token) },
     body: "",
   };
+}
+
+/** The forgot-password trigger on the *signin update (card-mod-account
+ *  set/self/signin.rb:62-84, event :send_reset_password_token): look the
+ *  email up, send the reset email to an active account, and redirect to the
+ *  success view the form asked for (success[view]; signin.rb's form pins
+ *  reset_password_success). Failures are errors on :email
+ *  (signin.rb:96-102 error_on), shown as "EMAIL: <message>". */
+async function handleResetPasswordTrigger(
+  ctx: WriteRouteContext,
+  req: WriteRouteRequest,
+  json: boolean,
+  parsed: ParsedBody,
+  email: string,
+  fail: (message: string, shown: string) => WriteRouteResponse,
+): Promise<WriteRouteResponse> {
+  if (ctx.accountMail === undefined) {
+    return fail("account mail is not configured on this host", "account mail is not configured on this host");
+  }
+  const outcome = await sendResetPasswordToken(
+    {
+      ...ctx.accountMail,
+      driver: ctx.driver,
+      fetcher: ctx.fetcher,
+      sessions: new SessionStore({ driver: ctx.driver }),
+    },
+    email,
+  );
+  if (!outcome.ok) return fail(outcome.message, `EMAIL: ${outcome.message}`);
+  const view = parsed.success["view"];
+  const path = view === undefined || view === ""
+    ? `/${locationName("*signin")}`
+    : `/${locationName("*signin")}/${encodeURIComponent(view)}`;
+  if (json) return jsonResponse(200, { redirect: cardUrl(req, path) });
+  return { status: 303, headers: { Location: cardUrl(req, path), "Cache-Control": "no-store" }, body: "" };
+}
+
+/** Sign-out: DELETE /delete/*signin (card-mod-account set/self/signin.rb
+ *  event :signout, on: :delete — `Auth.signin nil`, then abort :success so
+ *  no card row is touched). The session is revoked, the cookie cleared, and
+ *  the request redirected to the *signin card (the delete's success target
+ *  is the card itself). */
+async function handleSignout(
+  ctx: WriteRouteContext,
+  req: WriteRouteRequest,
+  json: boolean,
+  parsed: ParsedBody,
+): Promise<WriteRouteResponse> {
+  const token = tokenFromRequest(req, parsed) ?? readSessionCookie(req.headers.cookie);
+  if (token !== null) await new SessionStore({ driver: ctx.driver }).revokeSession(token);
+  const target = cardUrl(req, `/${locationName("*signin")}`);
+  const headers = { "Cache-Control": "no-store", "Set-Cookie": clearedSessionCookieHeader() };
+  if (json) {
+    const body = jsonResponse(200, { redirect: target });
+    return { ...body, headers: { ...body.headers, ...headers } };
+  }
+  return { status: 303, headers: { ...headers, Location: target }, body: "" };
 }
 
 // -----------------------------------------------------------------------
@@ -775,7 +894,42 @@ function servingModEventRuntime(): Promise<ModEventRuntime> {
  *  request gets a shallow copy carrying its own onReport. */
 async function observedModEventRuntime(ctx: WriteRouteContext): Promise<ModEventRuntime> {
   const runtime = await servingModEventRuntime();
-  return ctx.onModEventReport === undefined ? runtime : { ...runtime, onReport: ctx.onModEventReport };
+  const codenameOfType = await typeCodenames(ctx.driver);
+  return {
+    ...runtime,
+    setMember: typeSetMember(codenameOfType),
+    ...(ctx.onModEventReport === undefined ? {} : { onReport: ctx.onModEventReport }),
+  };
+}
+
+/** Type-set membership for scoped event set paths: a card belongs to the
+ *  set module "type/<codename>[/...]" when its type card carries that
+ *  codename (Card::Set::Type, card-1.110.0 lib/card/set/pattern; the set
+ *  file's directory is the type's codename). Every other scoped pattern
+ *  stays not-applicable, as before this resolver existed. */
+function typeSetMember(codenameOfType: ReadonlyMap<number, string>) {
+  return (setPath: string, card: { typeId?: number | null }): boolean => {
+    const match = /^type\/([^/]+)/.exec(setPath);
+    if (match === null || card.typeId === undefined || card.typeId === null) return false;
+    return codenameOfType.get(card.typeId) === match[1];
+  };
+}
+
+/** id -> codename for every codenamed card (the codename table, read once
+ *  per driver; codenames are deck structure, not request data). */
+const typeCodenameCache = new WeakMap<object, Promise<Map<number, string>>>();
+function typeCodenames(driver: SQLDatabaseDriver): Promise<Map<number, string>> {
+  let cached = typeCodenameCache.get(driver);
+  if (cached === undefined) {
+    cached = driver
+      .query<{ id: number; codename: string }>(
+        "SELECT id, codename FROM cards WHERE codename IS NOT NULL AND codename <> '' AND trash = 0",
+        [],
+      )
+      .then((r) => new Map(r.rows.map((row) => [Number(row.id), String(row.codename)])));
+    typeCodenameCache.set(driver, cached);
+  }
+  return cached;
 }
 
 /**
@@ -822,7 +976,6 @@ export async function handleWriteRequest(
       return handleSigninUpdate(ctx, req, json, parsed);
     }
   }
-
   // The AUTH-ONLY arm (edge-signin-form-fix lane, 2026-10-03): everything
   // below this line is CARD CREATE/UPDATE/DELETE — the surface a deployment
   // flag may lawfully switch off. Sign-in is not a card write (the :signin
@@ -832,6 +985,15 @@ export async function handleWriteRequest(
   // dispatches through handleAuthOnlyRequest, which returns exactly this
   // branch and nothing else.
   if (opts?.authOnly === true) return null;
+
+  // The *signin delete is the logout action (signin.rb event :signout). It
+  // stays behind the auth-only gate: disarmed hosts pin every delete route
+  // against *signin as a gated card write.
+  if (route.verb === "delete" && route.mark !== undefined) {
+    if (DeckoName.parse(markToName(route.mark)).key === SIGNIN_KEY) {
+      return handleSignout(ctx, req, json, parsed);
+    }
+  }
 
   // authenticate (rest.rb:37-40): header/param token first, else the
   // cookie session (auth/current.rb:50-63); unresolvable = Anonymous.
@@ -896,7 +1058,11 @@ export async function handleWriteRequest(
       const markName = route.mark !== undefined ? markToName(route.mark) : undefined;
       const hashName = card["name"];
       const updateName = hashName ?? markName;
-      const existing = await lookupLiveCard(ctx.fetcher, updateName);
+      // The card is fetched by the URL mark when there is one (uri_fetch,
+      // card_class.rb:128-133: Card.fetch(mark, new: opts)); card[name] is
+      // then the rename argument. Looking up by card[name] instead would
+      // land a rename-onto-an-existing-name on the OTHER card as a no-op.
+      const existing = await lookupLiveCard(ctx.fetcher, markName ?? updateName);
       if (existing === undefined) {
         // rest.rb:14-16 — update of a NEW card routes to CREATE (the fetch
         // builds the card from the params; trashed marks fetch as new and
@@ -944,7 +1110,7 @@ export async function handleWriteRequest(
       const markName = markToName(route.mark);
       const existing = await lookupLiveCard(ctx.fetcher, markName);
       if (existing === undefined) {
-        throw new CardActionError("not-found", `no such card: ${markName}`);
+        throw new CardActionError("user-error", `no such card: ${markName}`, MISSING_CARD_DELETE_MESSAGE);
       }
       result = await engine.deleteCard({
         cardId: existing.id,
@@ -984,7 +1150,7 @@ export async function handleWriteRequest(
     }
     return successResponse(req, json, name, saved);
   } catch (error) {
-    if (error instanceof CardActionError) return errorResponse(json, error);
+    if (error instanceof CardActionError) return errorResponse(json, error, await signedInFor(ctx, sessionToken));
     throw error;
   }
 }
@@ -1026,7 +1192,7 @@ function createInputFromParams(
   const name = card["name"] ?? (route.mark !== undefined ? markToName(route.mark) : "");
   if (name === "") {
     // Ruby: Card.new(name: nil).save! -> validation error -> 422.
-    throw new CardActionError("name-illegal", "param is missing or the value is empty: name");
+    throw new CardActionError("name-illegal", "param is missing or the value is empty: name", "NAME: can't be blank");
   }
   const typeName = card["type"] ?? route.typeShortcut;
   const typeIdRaw = card["type_id"];

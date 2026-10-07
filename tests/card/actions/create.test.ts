@@ -96,14 +96,19 @@ describe("createCard — simple create (Set)", () => {
       f.storage.selectOne<Row>("SELECT type_id FROM cards WHERE id = ?", [byName.cardId]),
     ).resolves.toMatchObject({ type_id: RICH_TEXT_ID });
 
-    // unknown codename -> type_id_or_error (type.rb:104-110)
-    await expect(engine.createCard({ name: "Typed C", typeCode: "nosuch" })).rejects.toMatchObject({
-      code: "type-unknown",
-    });
-    // unknown name -> type_id_from_cardname (type.rb:100-103)
-    await expect(engine.createCard({ name: "Typed D", typeName: "Ghost Type" })).rejects.toMatchObject({
-      code: "type-unknown",
-    });
+    // An unknown codename or type name: type_id_or_error (type.rb:104-110)
+    // adds its error while attributes are assigned, and valid? clears it
+    // before validation, so Ruby saves the card with the default type (the
+    // side-effects parity harness measured a create with type
+    // "No Such Type" answering 303 with a RichText card).
+    const unknownCode = await engine.createCard({ name: "Typed C", typeCode: "nosuch" });
+    await expect(
+      f.storage.selectOne<Row>("SELECT type_id FROM cards WHERE id = ?", [unknownCode.cardId]),
+    ).resolves.toMatchObject({ type_id: RICH_TEXT_ID });
+    const unknownName = await engine.createCard({ name: "Typed D", typeName: "Ghost Type" });
+    await expect(
+      f.storage.selectOne<Row>("SELECT type_id FROM cards WHERE id = ?", [unknownName.cardId]),
+    ).resolves.toMatchObject({ type_id: RICH_TEXT_ID });
     // an explicit id that names no live card -> validate_type (type.rb:24-30)
     await expect(engine.createCard({ name: "Typed E", typeId: 4321 })).rejects.toMatchObject({
       code: "type-unknown",

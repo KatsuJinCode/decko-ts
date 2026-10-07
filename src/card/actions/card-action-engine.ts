@@ -84,7 +84,7 @@ import {
   findTrashedKeyObstacle,
   validateNameLegality,
 } from "./name-validation.js";
-import { resolveTypeId } from "./type-resolution.js";
+import { knownTypeSpec, resolveTypeId } from "./type-resolution.js";
 import { assertNotOwnAncestor } from "./junction-cycle-detection.js";
 import {
   cascadeAllFieldReadRules,
@@ -701,7 +701,7 @@ export class CardActionEngine {
 
   async createCard(input: CreateCardInput): Promise<ActionResult> {
     try {
-      return await this.createCardInner(input);
+      return await this.createCardInner(await knownTypeSpec(this.fetch, input));
     } finally {
       this.pendingSaveInput = undefined;
     }
@@ -779,13 +779,16 @@ export class CardActionEngine {
     // store on) and no dirty set; every core event at these stages is a
     // stub, so the walks fire nothing observable until those bodies
     // land — the seams are the point.
+    // The event card's type: the resolved type once known (type-scoped set
+    // modules, e.g. set/type/number.rb's :validate_number, apply by it).
+    let eventTypeId = opts.resolvedTypeId;
     const validationCard = (): ModEventCard =>
       this.eventCard({
         name,
         key: name.key,
         dbContent: input.content,
         action: "create",
-        typeId: opts.resolvedTypeId,
+        typeId: eventTypeId,
       });
     await this.dispatchEventStage("initialize", validationCard());
     await this.dispatchEventStage("prepare_to_validate", validationCard());
@@ -793,6 +796,7 @@ export class CardActionEngine {
     const typeId =
       opts.resolvedTypeId ??
       (await resolveTypeId(this.fetch, { ...input, name })); // extract_type_id! + type_id_from_code + default
+    eventTypeId = typeId;
     await assertNameAvailable(this.fetch, name, undefined); // validate_uniqueness_of_name (:19-26)
     await this.validateFileExist(input, typeId); // validate_file_exist (attachment.rb:26-34)
     // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55) is a
@@ -1103,7 +1107,7 @@ export class CardActionEngine {
 
   async updateCard(input: UpdateCardInput): Promise<ActionResult | null> {
     try {
-      return await this.updateCardInner(input);
+      return await this.updateCardInner(await knownTypeSpec(this.fetch, input));
     } finally {
       this.pendingSaveInput = undefined;
     }
@@ -1275,16 +1279,27 @@ export class CardActionEngine {
     const currentName = await this.composedNameOf(row);
     const currentKey = this.keyOf(row, currentName);
     const newName = input.name !== undefined ? DeckoName.parse(input.name) : undefined;
+    // At validate time Ruby's card already carries the ASSIGNED attributes
+    // (Card#update! assigns, then the director runs the stages): the event
+    // card shows the incoming content and type, and the content/type
+    // columns changing, so changed: conditions and type-scoped set modules
+    // see the save as Ruby does.
+    const incomingContent = input.content ?? row.db_content;
+    const incomingTypeId = preResolvedTypeId ?? row.type_id;
+    const validationChanged: string[] = [];
+    if (input.content !== undefined && input.content !== row.db_content) validationChanged.push("db_content");
+    if (incomingTypeId !== row.type_id) validationChanged.push("type_id");
     const validationCard = (): ModEventCard =>
       this.eventCard({
         name: newName ?? currentName,
         id: row.id,
         key: currentKey,
-        dbContent: row.db_content,
+        dbContent: incomingContent,
         action: "update",
         trash: false,
-        typeId: row.type_id,
+        typeId: incomingTypeId,
         nameBeforeAct: currentName?.s,
+        changedFields: validationChanged,
       });
     await this.dispatchEventStage("initialize", validationCard());
     await this.dispatchEventStage("prepare_to_validate", validationCard());

@@ -59,6 +59,20 @@ const sessions = new SessionStore({ driver });
 const attachmentStore = new LocalAttachmentStore(FILES);
 const transport = new CaptureTransport();
 const FROZEN = new Date("2026-10-07T12:00:00.000Z");
+const titleRow = await driver.query("select db_content from cards where codename = 'title' and trash = 0", []);
+const botEmail = await driver.query(
+  "select e.db_content as email from cards e join cards a on a.id = e.left_id join cards b on b.id = a.left_id " +
+  "where b.codename = 'decko_bot' and a.right_id = (select id from cards where codename = 'account') " +
+  "and e.right_id = (select id from cards where codename = 'email') and e.trash = 0", []);
+const accountMail = {
+  transport,
+  token: { secret: "parity-harness-local-secret", now: () => Math.floor(FROZEN.getTime() / 1000) },
+  origin: "http://127.0.0.1",
+  siteTitle: String(titleRow.rows[0]?.db_content ?? ""),
+  // The deck copy has no Decko Bot+*account+*email row; Ruby then sends from
+  // the account mod's seeded bot address (card-mod-account data/real.yml:205).
+  deckoBotEmail: String(botEmail.rows[0]?.email ?? "no-reply@decko.org"),
+};
 
 const TABLES = ["cards", "card_acts", "card_actions", "card_changes", "card_references",
   "card_revisions", "sessions", "users", "delayed_jobs", "auth_sessions"];
@@ -175,7 +189,7 @@ async function call(method, path, params) {
   if (cookie) headers.cookie = cookie;
   const res = await handleWriteRequest(
     {
-      driver, fetcher, now: () => FROZEN, attachmentStore, transport,
+      driver, fetcher, now: () => FROZEN, attachmentStore, accountMail,
       onModEventReport: (r) => { for (const e of r.fired) events.push([r.stage, e]); },
     },
     { method: method.toUpperCase(), pathname: path, host: "127.0.0.1", scheme: "http",
@@ -223,7 +237,7 @@ for (const s of scenarios.steps) {
     files: filesList().filter((f) => !filesBefore.includes(f.path)),
     mail: mail.map((m) => ({
       to: [].concat(m.to ?? []), from: [].concat(m.from ?? []), subject: String(m.subject ?? ""),
-      body_excerpt: String(m.text ?? m.html ?? "").slice(0, 600),
+      body_excerpt: String(m.textBody ?? m.text ?? "").slice(0, 600),
     })),
     extra, signed_in_as: await signedInAs(),
   });

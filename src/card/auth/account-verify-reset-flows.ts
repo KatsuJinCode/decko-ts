@@ -357,22 +357,27 @@ async function loadAccountByJunctionId(
   const head = await driver.query<{
     id: number;
     left_id: number;
-    junction_name: string;
+    junction_name: string | null;
     holder_name: string | null;
+    right_name: string | null;
   }>(
-    `SELECT a.id, a.left_id, a.name AS junction_name, h.name AS holder_name
-     FROM cards a JOIN cards h ON h.id = a.left_id
+    `SELECT a.id, a.left_id, a.name AS junction_name, h.name AS holder_name, r.name AS right_name
+     FROM cards a JOIN cards h ON h.id = a.left_id JOIN cards r ON r.id = a.right_id
      WHERE a.id = ? AND a.trash = 0 LIMIT 1`,
     [junctionId],
   );
   const row = head.rows[0];
-  if (row === undefined || row.junction_name === null || row.holder_name === null) {
-    return undefined;
-  }
+  if (row === undefined || row.holder_name === null) return undefined;
+  // Decks written by Ruby leave a compound row's name column NULL (the name
+  // derives from its parts), so the junction name is composed from the
+  // holder and the +*account part when the column is empty.
+  const junctionName =
+    row.junction_name ?? (row.right_name === null ? null : `${row.holder_name}+${row.right_name}`);
+  if (junctionName === null) return undefined;
   return loadAccountChildren(driver, ids, {
     id: row.id,
     leftId: row.left_id,
-    name: row.junction_name,
+    name: junctionName,
     holderName: row.holder_name,
   });
 }

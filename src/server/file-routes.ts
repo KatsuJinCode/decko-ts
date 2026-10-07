@@ -367,6 +367,7 @@ function actionError(error: unknown): Response {
       case "type-unknown":
       case "attachment-missing":
       case "protected-card":
+      case "user-error":
       case "conflict": // detect_conflict (history events.rb:19-22) - a UserError
         return jsonResponse(422, { error: error.message, code: error.code });
     }

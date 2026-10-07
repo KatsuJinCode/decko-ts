@@ -560,9 +560,27 @@ describe("the *signin update IS the login action (card-mod-account set/self/sign
 });
 
 describe("error shapes over HTTP", () => {
-  it("missing card on DELETE: 404 (Card::Error::NotFound)", async () => {
+  it("shows Ruby's denial text: anonymous asked to sign in, signed-in told they need permission", async () => {
+    const anon = await call(baseUrl, "POST", "/", { form: { "card[name]": "Denied Probe" } });
+    expect(anon.status).toBe(403);
+    expect(anon.body).toContain("<pre>Sorry! Please sign in or sign up to do that.</pre>");
+    // the engine's own reason stays in a comment beside it
+    expect(anon.body).toMatch(/<\/pre><!-- .+ -->/);
+  });
+
+  it("shows validation errors as the errors view words them", async () => {
+    const res = await call(baseUrl, "POST", "/", { form: { "card[name]": "" }, token: joeToken });
+    expect(res.status).toBe(422);
+    expect(res.body).toContain("<pre>NAME: can't be blank</pre>");
+  });
+
+  it("missing card on DELETE: 422 (Card::Error::UserError)", async () => {
+    // The controller fetches a NEW card for the mark and deleting a new card
+    // raises a bare UserError. Measured against the oracle by the
+    // side-effects parity harness: anonymous HTML, signed-in HTML and
+    // signed-in JSON deletes of a missing card all answer 422.
     const res = await call(baseUrl, "DELETE", "/Never Was.json", { token: joeToken });
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(422);
   });
 
   it("create with no name: 422 (Ruby Card.new(name: nil).save! validation)", async () => {

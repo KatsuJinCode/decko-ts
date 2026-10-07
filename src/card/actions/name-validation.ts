@@ -29,13 +29,14 @@ export const MAX_NAME_LENGTH = 255;
  *  autoname escape does not apply.) */
 export function validateNameLegality(name: DeckoName): void {
   if (name.s.length > MAX_NAME_LENGTH) {
-    throw new CardActionError("name-illegal", `name is too long (${name.s.length} characters)`);
+    throw new CardActionError("name-illegal", `name is too long (${name.s.length} characters)`,
+      `NAME: is too long (255 character maximum; length is ${name.s.length})`);
   }
   if (name.s === "") {
-    throw new CardActionError("name-illegal", "name cannot be blank");
+    throw new CardActionError("name-illegal", "name cannot be blank", "NAME: can't be blank");
   }
   if (name.parts.includes("")) {
-    throw new CardActionError("name-illegal", "name is incomplete");
+    throw new CardActionError("name-illegal", "name is incomplete", "NAME: is incomplete");
   }
   if (!name.isValid) {
     throw new CardActionError(
@@ -56,14 +57,16 @@ export async function assertNameAvailable(
 ): Promise<void> {
   const existingId = await fetcher.lexicon.id(name.key);
   if (existingId === undefined || existingId === selfId) return;
-  const result = await fetcher.driver.query<Pick<CardsRow, "id">>(
-    "SELECT id FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+  const result = await fetcher.driver.query<Pick<CardsRow, "id" | "name">>(
+    "SELECT id, name FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
     [existingId],
   );
   if (result.rows[0] !== undefined) {
     throw new CardActionError(
       "name-conflict",
       `name is already taken: ${name.s}`,
+      // core_error_name_exists names the EXISTING card (name_events.rb:25)
+      `NAME: must be unique; '${result.rows[0].name ?? name.s}' already exists.`,
     );
   }
 }

@@ -50,17 +50,25 @@ export type CardActionErrorCode =
   | "attachment-missing" // validate_file_exist (card-mod-carrierwave set/abstract/attachment.rb:26-34)
   | "protected-card" // validate_delete (mod/core/set/all/trash.rb:31-49)
   | "conflict" // detect_conflict (card-mod-history set/all/history/events.rb:19-22)
-  | "recaptcha"; // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55)
+  | "recaptcha" // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55)
+  | "user-error"; // a bare Card::Error::UserError (card-1.110.0 lib/card/error.rb:21), e.g. deleting a card that does not exist
 
 /** Error class for every action-layer rejection. `code` carries the Ruby
  *  event the rejection ports (see CardActionErrorCode). */
 export class CardActionError extends Error {
   readonly code: CardActionErrorCode;
+  /** The message as Ruby's error view shows it to the user: the
+   *  `errors.add` key, upcased, then the message (card-mod-format
+   *  set/all/html/error.rb standard_errors: "<KEY>: <message>"). Absent when
+   *  the throw site has no Ruby counterpart wording; the HTML error surface
+   *  then shows `message`. */
+  readonly userMessage?: string;
 
-  constructor(code: CardActionErrorCode, message: string) {
+  constructor(code: CardActionErrorCode, message: string, userMessage?: string) {
     super(message);
     this.name = "CardActionError";
     this.code = code;
+    if (userMessage !== undefined) this.userMessage = userMessage;
   }
 }
 

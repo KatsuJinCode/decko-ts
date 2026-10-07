@@ -23,6 +23,8 @@
 //   - error pages: Ruby renders errors inside the deck layout, the port as a
 //     bare page; only the message text is compared.
 //   - HTML entities decoded, whitespace collapsed.
+//   - mail bodies: account-token values replaced by <token> (signed with
+//     different secrets and clocks), whitespace collapsed.
 //   - file paths: "<card id>/<action id>" prefixes dropped (ids drift as soon
 //     as the engines' write histories differ).
 
@@ -32,6 +34,7 @@ const ruby = JSON.parse(readFileSync(process.argv[2], "utf8"));
 const ts = JSON.parse(readFileSync(process.argv[3], "utf8"));
 const scenarios = JSON.parse(readFileSync(new URL("./scenarios.json", import.meta.url), "utf8"));
 const modOf = Object.fromEntries(scenarios.steps.map((s) => [s.name, s.mod]));
+const methodOf = Object.fromEntries(scenarios.steps.map((s) => [s.name, s.method]));
 
 const decode = (s) => s
   .replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">")
@@ -70,7 +73,8 @@ function tsErrors(step) {
 const CARD_TABLES = ["cards", "card_acts", "card_actions", "card_changes", "card_references", "card_revisions"];
 const writes = (s) => CARD_TABLES.filter((t) => (s.delta?.[t] ?? 0) !== 0).map((t) => `${t}${s.delta[t] > 0 ? "+" : ""}${s.delta[t]}`).join(" ") || "-";
 const actions = (s) => (s.actions ?? []).map((a) => `${a.type} ${a.card} [${a.fields.join(",")}]`).join(" | ") || "-";
-const mail = (s) => (s.mail ?? []).map((m) => `${m.to.join(",")}: ${m.subject}`).join(" | ") || "-";
+const normBody = (b) => String(b ?? "").replace(/token=[A-Za-z0-9._-]+/g, "token=<token>").replace(/\s+/g, " ").trim();
+const mail = (s) => (s.mail ?? []).map((m) => `to ${[].concat(m.to).join(",")} from ${[].concat(m.from).join(",")}: ${m.subject} :: ${normBody(m.body_excerpt)}`).join(" | ") || "-";
 const files = (s) => (s.files ?? []).map((f) => f.path.replace(/^\d+\/\d+/, "")).sort().join(",") || "-";
 const session = (s) => s.signed_in_as ?? "anonymous";
 
@@ -107,7 +111,9 @@ for (let i = 0; i < n; i++) {
   }
   const re = r ? rubyErrors(r) : "";
   const te = t ? tsErrors(t) : "";
-  if (re !== te) diffs.errors = [re, te];
+  // GETs are answered from the fetch layer on the TypeScript side (no page
+  // body), so only their status is compared.
+  if (re !== te && methodOf[name] !== "get") diffs.errors = [re, te];
   const rev = r ? eventNames(r, true) : [];
   const tev = t ? eventNames(t, false) : [];
   const common = rev.filter((e) => tev.includes(e));

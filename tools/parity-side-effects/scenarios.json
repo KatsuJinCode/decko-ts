@@ -149,6 +149,18 @@
       "path": "/"
     },
     {
+      "name": "signed-in-delete-missing",
+      "mod": "core",
+      "method": "delete",
+      "path": "/Never_Was"
+    },
+    {
+      "name": "signed-in-delete-missing-json",
+      "mod": "core",
+      "method": "delete",
+      "path": "/Never_Was.json"
+    },
+    {
       "name": "signed-in-create-card",
       "mod": "core",
       "method": "post",
