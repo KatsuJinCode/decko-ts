@@ -49,6 +49,11 @@
 #       zero `http://s3.amazonaws.com//files/` carriers in both staged lanes
 #       (the close-71 live-true form). A stale form can never silently
 #       re-collapse a grade on a corpus swap.
+#   4c. The corpus was captured on the deck the engine is seeded from
+#       (tools/oracle/corpus-deck-pairing-gate.mjs): the capture provenance's
+#       deck sha equals the staged bench sha, and every captured row holds the
+#       input card's id. Needs CAPTURE_INPUT_SET and CAPTURE_PROVENANCE (and
+#       CAPTURE_DECK when the capture ran on a Decko-schema deck built from the bench).
 #   5. The artifacts directory is fresh (the driver's artifacts-reuse guard
 #      would refuse a reused dir; this script checks first and says so).
 
@@ -142,6 +147,20 @@ if [ "$HEAD_SHA" != "$FOLD_TIP" ]; then
   git -C "$REPO" merge-base --is-ancestor "$FOLD_TIP" "$HEAD_SHA" ||
     die "worktree HEAD $HEAD_SHA does not descend from FOLD_TIP $FOLD_TIP -- re-point first (see grade11-lane.md fire-me card)"
   CODE_DIFF=$(git -C "$REPO" diff --name-only "$FOLD_TIP" "$HEAD_SHA" -- src tests benchmarks)
+  # SEEDING_PAIRED_CORPUS=1 (with PAIRING_NAMES_AND_KEYS=1): the graded deck is
+  # a key-repaired, content-paired copy of the pinned bench, so the seeder's
+  # override table must name its sha. Exactly these two seeding-input files may
+  # then differ from FOLD_TIP; src/ and every other test file may not, and the
+  # diff is printed into the fire log.
+  if [ "${SEEDING_PAIRED_CORPUS:-0}" = "1" ]; then
+    [ "${PAIRING_NAMES_AND_KEYS:-0}" = "1" ] || die "SEEDING_PAIRED_CORPUS=1 needs PAIRING_NAMES_AND_KEYS=1 (the strict pairing proof)"
+    SEEDING_INPUTS="tests/card/render/raw-corpus-seeding.ts
+tests/card/render/raw-corpus-override-capture-restored-rows.json"
+    echo "GUARD3 seeding-input diff allowed (SEEDING_PAIRED_CORPUS=1):"
+    git -C "$REPO" diff "$FOLD_TIP" "$HEAD_SHA" -- tests/card/render/raw-corpus-seeding.ts | cat
+    git -C "$REPO" diff -U0 "$FOLD_TIP" "$HEAD_SHA" -- tests/card/render/raw-corpus-override-capture-restored-rows.json | cat
+    CODE_DIFF=$(printf '%s\n' "$CODE_DIFF" | grep -vxF "$SEEDING_INPUTS" || true)
+  fi
   [ -z "$CODE_DIFF" ] || die "HEAD differs from FOLD_TIP in engine code paths -- re-point is stale:
 $CODE_DIFF"
 fi
@@ -180,6 +199,41 @@ if grep -rlF 'http://s3.amazonaws.com//files/' \
   die "stale s3.amazonaws.com asset-host carriers in staged corpus -- replay the close-71 transform before firing"
 fi
 echo "CORPUS-SHAPE OK (0 stale denied-seam occurrences; 0 s3 asset-host carriers)"
+
+# Guard 4c: corpus/deck pairing -- the corpus must have been captured on the
+# deck the engine is seeded from. Grade-11 seam-clean graded a corpus captured
+# on a 21,676-card snapshot (provenance sha ab2d762b) against the 49,829-card
+# bench (6a44dfdc); 2,669 page rows were not-found placeholders or fetch-nil
+# rows for cards the bench holds, and all of them were scored as engine
+# failures. CAPTURE_INPUT_SET is the capture rig's input set
+# (disputed-set-resolved.json); CAPTURE_PROVENANCE is the capture's
+# provenance manifest (its deck sha is compared with the staged bench sha).
+# CAPTURE_DECK (optional): the Decko-schema deck the capture ran on, when it was
+# built from the bench (Ruby needs the Decko schema and derived names/keys);
+# the gate then proves the provenance names that file and that its card and
+# reference rows equal the bench's.
+CAPTURE_INPUT_SET="${CAPTURE_INPUT_SET:-}"
+CAPTURE_PROVENANCE="${CAPTURE_PROVENANCE:-}"
+CAPTURE_DECK="${CAPTURE_DECK:-}"
+CAPTURE_DECK_ARGS=()
+[ -z "$CAPTURE_DECK" ] || CAPTURE_DECK_ARGS=(--capture-deck "$CAPTURE_DECK")
+# PAIRING_NAMES_AND_KEYS=1: the staged bench was given the capture deck's
+# derived names and keys (the key-repaired graded deck), so the pairing check
+# must also hold on cards.name and cards.key, row for row.
+if [ "${PAIRING_NAMES_AND_KEYS:-0}" = "1" ]; then
+  [ -n "$CAPTURE_DECK" ] || die "PAIRING_NAMES_AND_KEYS=1 needs CAPTURE_DECK"
+  CAPTURE_DECK_ARGS+=(--names-and-keys)
+fi
+[ -n "$CAPTURE_INPUT_SET" ] || die "CAPTURE_INPUT_SET is blank -- name the capture rig's disputed-set-resolved.json so the corpus/deck pairing can be checked"
+[ -n "$CAPTURE_PROVENANCE" ] || die "CAPTURE_PROVENANCE is blank -- name the corpus's capture-provenance manifest so the capture deck sha can be compared with the graded bench"
+PAIRING_JSON="$DIGEST_DIR/corpus-deck-pairing.json"
+node "$REPO/tools/oracle/corpus-deck-pairing-gate.mjs" \
+  --corpus "$REPO/tmp/raw-ground-truth" \
+  --input-set "$CAPTURE_INPUT_SET" \
+  --provenance "$CAPTURE_PROVENANCE" \
+  "${CAPTURE_DECK_ARGS[@]}" \
+  --mode gate --json "$PAIRING_JSON" \
+  || die "corpus was not captured on the graded deck (see $PAIRING_JSON) -- re-capture on the bench deck, or seed the engine from the capture deck"
 
 # Guard 5: fresh artifacts dir.
 ARTIFACTS="$REPO/tmp/grade11/full-canvas-$FOLD_TIP-w${WORKERS}-grade11${RUN_SUFFIX}"

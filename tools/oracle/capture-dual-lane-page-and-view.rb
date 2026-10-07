@@ -389,6 +389,27 @@ def nil_card_row(entry, lane)
     "id" => entry["id"], "lane" => lane, "name" => entry["name"] }
 end
 
+# BEGIN capture_identity_error (extracted and tested by capture-identity.test.rb)
+# The input set names the card id each entry must photograph. When the deck
+# being captured does not hold that card, Card.fetch can still return a
+# not-found placeholder (id nil) or a different card, and rendering it would
+# record the placeholder's bytes as the expected output for a card the graded
+# deck does hold (grade-11 seam-clean: 2,555 page rows). Such a row is a
+# capture error, never an expectation.
+def capture_identity_error(entry, card)
+  want = entry["id"]
+  return nil if want.nil? || card.nil? || card.id == want
+
+  got = card.id.nil? ? "a not-found placeholder (id nil)" : "id #{card.id}"
+  "CAPTURE_ERROR: IdentityMismatch: input id #{want} but Card.fetch returned #{got}; " \
+    "the capture deck does not hold the input card"
+end
+
+def identity_error_row(entry, lane, message)
+  { "error" => message, "id" => entry["id"], "lane" => lane, "name" => entry["name"] }
+end
+# END capture_identity_error
+
 # ---- driver ------------------------------------------------------------------
 FileUtils.mkdir_p(PAGE_DIR)
 FileUtils.mkdir_p(VIEW_DIR)
@@ -411,6 +432,19 @@ puts "M4 clock frozen at #{CaptureFrozenClock::FROZEN_EPOCH.utc.iso8601} for eve
 started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
 shards = BY_SHARD || { FILE_LABEL => CARDS }
+# BEGIN shard_filter (evaluated by capture-identity.test.rb)
+# DUAL_LANE_SHARDS (FULL mode only): comma-separated input shard names
+# ("shard-000003.jsonl,...") this process captures, so several capture
+# processes can split the 48 shards between them. Unset = every shard.
+shard_filter = ENV["DUAL_LANE_SHARDS"].to_s.split(",").map(&:strip).reject(&:empty?)
+unless shard_filter.empty?
+  raise "DUAL_LANE_SHARDS is a FULL-mode option" unless BY_SHARD
+  unknown = shard_filter - shards.keys
+  raise "DUAL_LANE_SHARDS names unknown shards: #{unknown.join(', ')}" unless unknown.empty?
+  shards = shards.slice(*shard_filter)
+  puts "shard filter: #{shards.keys.sort.join(',')}"
+end
+# END shard_filter
 shards.keys.sort.each do |shard_name|
   slice = BY_SHARD ? shards[shard_name].sort_by { |c| [c["shard"], c["name"]] }
                    : shards[shard_name]
@@ -444,6 +478,11 @@ shards.keys.sort.each do |shard_name|
             page_errors += 1
             page_row = nil_card_row(entry, "page")
             view_row = nil_card_row(entry, "view")
+          elsif (identity_error = capture_identity_error(entry, card))
+            view_errors += 1
+            page_errors += 1
+            page_row = identity_error_row(entry, "page", identity_error)
+            view_row = identity_error_row(entry, "view", identity_error)
           else
             view_row = capture_view_lane(entry, card)
             view_errors += 1 if view_row["views"].values.any? { |v| capture_error?(v) }
