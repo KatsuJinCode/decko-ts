@@ -61,10 +61,15 @@
 // entry is the SDK registration shim the edge bundles.
 
 
+// First import: its top level evaluates before the rest of the graph
+// (bunny-edge-isolate-probe.ts; measurement only, armed by a variable).
+import { probeModuleReady } from "./bunny-edge-isolate-probe.js";
 import * as BunnySDK from "@bunny.net/edgescript-sdk";
 import process from "node:process";
 
 import { handleBunnyEngineRequest, type EdgeEnv } from "./bunny-edge-engine-handler.js";
+
+probeModuleReady();
 
 BunnySDK.net.http.serve(async (request: Request): Promise<Response> => {
   const env = process.env as EdgeEnv;

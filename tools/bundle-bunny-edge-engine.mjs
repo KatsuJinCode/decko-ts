@@ -55,6 +55,9 @@ await build({
   mainFields: ["module", "main"],
   logLevel: "info",
   metafile: true,
+  // The bundle's first statement stamps when evaluation began, before any
+  // module's top level runs; bunny-edge-isolate-probe.ts reports it.
+  banner: { js: 'globalThis.__deckoEval0=[typeof performance<"u"?performance.now():-1,Date.now()];' },
 });
 
 const stat = statSync(out);

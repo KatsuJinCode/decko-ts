@@ -50,6 +50,7 @@
 //   headers. Receipt: tmp/wrong-goal-hunt/edge-stack-carry-lane.md.
 
 import { BunnyDbDriver } from "../../src/card/drivers/bunny-db.js";
+import { probeArmed, probeHeaderValue, probeRecordBoot, probeRoute } from "./bunny-edge-isolate-probe.js";
 import { SessionStore } from "../../src/card/auth/session-store.js";
 import {
   bootEdgeServingEngines,
@@ -220,8 +221,10 @@ async function bootDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<Deck> {
 
 function getDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<Deck> {
   if (deckPromise === undefined) {
+    const boot0 = Date.now();
     deckPromise = bootDeck(config, env)
       .then((deck) => {
+        probeRecordBoot(Date.now() - boot0);
         // The actor engine registry hangs off the booted deck exactly as the
         // lineage entry's sync boot did (bunny-edge-engine-entry.ts:238):
         // built once per isolate, only reachable by cookie-carrying requests
@@ -342,6 +345,22 @@ export async function handleBunnyEngineRequest(
   env: EdgeEnv,
 ): Promise<Response> {
   const profile = startEdgeRequestProfile();
+  if (probeArmed(env)) {
+    // Measurement-only (bunny-edge-isolate-probe.ts): never armed on live.
+    const probed = await probeRoute(new URL(request.url), async () => {
+      const cfg = resolveDbConfig(env);
+      if ("error" in cfg) throw new Error(cfg.error);
+      const driver = new BunnyDbDriver({ url: cfg.url, authToken: cfg.authToken, fetchImpl: edgeDbTimingFetch() });
+      return (sql: string) => driver.query(sql, []);
+    });
+    const response = probed ?? (await routeBunnyEngineRequest(request, env, profile));
+    try {
+      response.headers.set("x-decko-isolate", probeHeaderValue());
+    } catch {
+      /* immutable headers: unlabeled */
+    }
+    return applyEdgeServerTimingHeader(profile, response);
+  }
   const response = await routeBunnyEngineRequest(request, env, profile);
   return applyEdgeServerTimingHeader(profile, response);
 }
