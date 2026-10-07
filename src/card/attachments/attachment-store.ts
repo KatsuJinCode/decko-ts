@@ -1,6 +1,6 @@
 // The attachment STORAGE seam — the port of CarrierWave::Storage::File
-// for local attachments (the only storage backend the headless engine can
-// exercise; cloud/fog and web are explicit non-goals here).
+// for local attachments, now expressed over the blob-driver interface
+// (src/blob/driver.ts) instead of reaching for node:fs directly.
 //
 // Ruby's local scheme (card-mod-carrierwave-0.20.0):
 // - identifier in db_content:  ~<card_id>/<action_id><ext>
@@ -10,15 +10,20 @@
 //   lib/carrier_wave/file_card_uploader/path.rb:33-43 store_path/retrieve_path;
 //   files_dir = Card.paths["files"], the deck's `files` directory)
 //
-// The store interface is the seam the deploy worker binds a bucket-backed
-// implementation to later (D1 holds no blobs; local FS is the engine/test
-// backend). Node-only (node:fs/promises) by design: the engine runs under
-// node here, and the worker-lane backend implements the same interface
-// against its own storage SDK — path.join keeps every Windows/Unix
-// difference inside this module.
+// That path below <files_dir> IS the blob key, unchanged — which is
+// what lets a host swap the storage backend without the cards noticing:
+// a host that mounts an R2 or Bunny bucket keys the same
+// "<card_id>/<action_id><ext>" and the db_content identifiers,
+// identifiers-to-urls and rendered HTML are all identical. The store's
+// job is therefore only to translate the engine's numeric
+// (cardId, actionId, ext, variant) call into a blob key, and to apply
+// the two naming rules Ruby's uploader classes encode. It holds no
+// storage logic of its own, so there is nothing provider-specific left
+// below it.
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import type { BlobDriver } from "../../blob/driver.js";
+import { FilesystemBlobDriver } from "../../blob/filesystem.js";
+import { contentTypeForExtension } from "../../blob/content-types.js";
 import { filenameWithVariant, localAttachmentIdentifier } from "./attachment-content.js";
 import { renditionFileNames } from "./image-renditions.js";
 
@@ -57,30 +62,42 @@ export interface AttachmentStore {
   read(cardId: number, actionId: number, ext: string, variant?: string): Promise<Uint8Array | undefined>;
 }
 
-/** Local-filesystem implementation of the Ruby files-dir scheme. */
-export class LocalAttachmentStore implements AttachmentStore {
-  private readonly filesDir: string;
+/** The attachment store over any blob driver — the one implementation
+ *  of the store, and the reason a host can change storage providers by
+ *  changing one constructor argument. */
+export class BlobAttachmentStore implements AttachmentStore {
+  private readonly blobs: BlobDriver;
 
-  /** @param filesDir the deck's files directory (Card.paths["files"]). */
-  constructor(filesDir: string) {
-    this.filesDir = filesDir;
+  constructor(blobs: BlobDriver) {
+    this.blobs = blobs;
   }
 
   async store(input: AttachmentStoreInput): Promise<StoredAttachment> {
-    await mkdir(join(this.filesDir, String(input.cardId)), { recursive: true });
     // The stored filenames: FileCardUploader shape = <action_id><ext>;
     // ImageCardUploader shape (renditionNames present) = the -original
     // file + one file per version (image_card_uploader.rb:16-27, :44-57;
     // file_card_uploader.rb:266-283). Version bytes are the original's
     // byte-copy (the mini_magick resize is the named seam,
     // image-renditions.ts versionBytes).
-    const names = input.renditionNames ?? [`${input.actionId}${input.ext}`];
+    const names = input.renditionNames ?? [filenameWithVariant(input.actionId, input.ext)];
+    let stored = 0;
     for (const name of names) {
-      await writeFile(join(this.filesDir, String(input.cardId), name), input.bytes);
+      const result = await this.blobs.put(
+        `${input.cardId}/${name}`,
+        input.bytes,
+        { contentType: contentTypeForExtension(input.ext) },
+      );
+      // The size reported is the ORIGINAL's byte count, which is what
+      // carrierwave's attachment.size means: every rendition of an
+      // upload is a byte-copy of the original in this port, and the
+      // resize is the named remainder. Taking the max (rather than the
+      // last write's result) keeps the value correct if a host ever
+      // enables a real resize that makes a rendition smaller.
+      stored = Math.max(stored, result.size);
     }
     return {
       identifier: localAttachmentIdentifier(input.cardId, input.actionId, input.ext),
-      size: input.bytes.length,
+      size: Math.max(stored, input.bytes.length),
     };
   }
 
@@ -98,20 +115,28 @@ export class LocalAttachmentStore implements AttachmentStore {
     // <action_id><ext> first, then <action_id>-original<ext> — the
     // ImageCardUploader's stored spelling for the version-less file
     // (image_card_uploader.rb:44-57; the store seam does not know the
-    // card's uploader class, so both spellings resolve). ENOENT and
-    // friends read as "no such stored file" — the route turns that into
-    // the 404 (Ruby: send_file raises, controller 404s).
+    // card's uploader class, so both spellings resolve). A key with no
+    // object behind it reads as "no such stored file" — the route turns
+    // that into the 404 (Ruby: send_file raises, controller 404s).
     const candidates =
       variant === undefined || variant === ""
         ? [filenameWithVariant(actionId, ext), filenameWithVariant(actionId, ext, "original")]
         : [filenameWithVariant(actionId, ext, variant), filenameWithVariant(actionId, ext)];
     for (const name of candidates) {
-      try {
-        return new Uint8Array(await readFile(join(this.filesDir, String(cardId), name)));
-      } catch {
-        // try the next spelling
-      }
+      const bytes = await this.blobs.getBytes(`${cardId}/${name}`);
+      if (bytes !== undefined) return bytes;
     }
     return undefined;
+  }
+}
+
+/** Local-filesystem implementation of the Ruby files-dir scheme, over
+ *  the blob-driver interface. Retained by name because it is what every
+ *  host composes today; a host that mounts a bucket instead composes
+ *  {@link BlobAttachmentStore} over that bucket's driver instead. */
+export class LocalAttachmentStore extends BlobAttachmentStore {
+  /** @param filesDir the deck's files directory (Card.paths["files"]). */
+  constructor(filesDir: string) {
+    super(new FilesystemBlobDriver(filesDir));
   }
 }

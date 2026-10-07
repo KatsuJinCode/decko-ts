@@ -42,7 +42,7 @@ const MAGIC_SIGNATURES: readonly { bytes: number[]; ext: string; type: string }[
  *  in guessed_safe (file_card_uploader.rb:252-263), but the by-extension
  *  map also feeds the identified fallback for formats without a magic
  *  signature (svg, text). */
-const EXTENSION_CONTENT_TYPES: Readonly<Record<string, string>> = {
+export const EXTENSION_CONTENT_TYPES: Readonly<Record<string, string>> = {
   ".txt": "text/plain",
   ".text": "text/plain",
   ".csv": "text/csv",
