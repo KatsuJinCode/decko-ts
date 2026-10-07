@@ -66,6 +66,33 @@ setEdgeDbDriverFactory(() => {
   return new LedgerD1Driver(new CloudflareD1Adapter(binding));
 });
 
+/** How D1 counts its per-invocation query limit (50 on the free plan) is not
+ *  documented: per binding call, or per statement inside a batch(). This
+ *  probe answers it on the real platform. Off unless DECKO_CF_PROBE=1.
+ *  Read-only: it runs `SELECT ?` and touches no table.
+ *    /_d1probe?mode=batch&n=60   one batch() of n statements
+ *    /_d1probe?mode=calls&n=60   n separate calls of one statement each */
+async function d1LimitProbe(request: Request, db: D1DatabaseLike): Promise<Response> {
+  const url = new URL(request.url);
+  const n = Math.min(500, Math.max(1, Number(url.searchParams.get("n") ?? "60")));
+  const mode = url.searchParams.get("mode") === "calls" ? "calls" : "batch";
+  let done = 0;
+  try {
+    if (mode === "batch") {
+      const rs = await db.batch(Array.from({ length: n }, (_, i) => db.prepare("SELECT ? AS v").bind(i)));
+      done = rs.length;
+    } else {
+      for (let i = 0; i < n; i++) {
+        await db.prepare("SELECT ? AS v").bind(i).all();
+        done += 1;
+      }
+    }
+    return Response.json({ mode, n, ok: true, done });
+  } catch (e) {
+    return Response.json({ mode, n, ok: false, done, error: String((e as Error)?.message ?? e).slice(0, 300) });
+  }
+}
+
 /** Placeholder credentials: the shared handler requires a database URL and
  *  token before it boots, but with the factory installed neither is used
  *  for any connection (the page cache tiers that would use them are off). */
@@ -75,6 +102,9 @@ const D1_PLACEHOLDER_TOKEN = "d1-binding";
 export default {
   async fetch(request: Request, env: CfEnv): Promise<Response> {
     binding ??= env.DB;
+    if (env.DECKO_CF_PROBE === "1" && new URL(request.url).pathname === "/_d1probe") {
+      return await d1LimitProbe(request, env.DB);
+    }
     const vars: EdgeEnv = {};
     for (const [k, v] of Object.entries(env)) if (typeof v === "string") vars[k] = v;
     vars.DECKO_DB_URL = D1_PLACEHOLDER_URL;
