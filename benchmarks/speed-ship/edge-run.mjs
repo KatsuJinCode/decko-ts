@@ -9,7 +9,7 @@
 //
 // Prints one JSON line per page: status, bytes, statements the bundle sent,
 // pipeline POSTs (= round trips, the deck boot's included on the first
-// page), and wall time. All pages share one isolate, as on the edge.
+// page), bytes of database responses (db_bytes), and wall time. All pages share one isolate, as on the edge.
 //
 // workerd is Cloudflare's runtime, not Bunny's (Deno-based); it proves the
 // bundle runs on a non-node V8 runtime with node: modules only through the
@@ -25,7 +25,7 @@ import { Miniflare, convertV4MiniflareOptions } from "miniflare";
 const [bundlePath, dbPath, outDir, ...pages] = process.argv.slice(2);
 mkdirSync(outDir, { recursive: true });
 const db = new DatabaseSync(dbPath, { readOnly: true });
-const counters = { posts: 0, stmts: 0 };
+const counters = { posts: 0, stmts: 0, bytes: 0 };
 
 function toJs(v) {
   switch (v?.type) {
@@ -72,8 +72,10 @@ const server = http.createServer((req, res) => {
         return { type: "error", error: { message: e.message, code: "SQLITE_ERROR" } };
       }
     });
+    const payload = JSON.stringify({ results });
+    counters.bytes += Buffer.byteLength(payload);
     res.writeHead(200, { "content-type": "application/json" });
-    res.end(JSON.stringify({ results }));
+    res.end(payload);
   });
 });
 await new Promise((r) => server.listen(0, "127.0.0.1", r));
@@ -103,6 +105,7 @@ try {
   for (const page of pages) {
     counters.posts = 0;
     counters.stmts = 0;
+    counters.bytes = 0;
     const url = `https://edge.test/${encodeURIComponent(page.replace(/ /g, "_")).replace(/%2B/g, "+")}`;
     const t0 = performance.now();
     let status = 0;
@@ -117,7 +120,7 @@ try {
     const wall = Math.round(performance.now() - t0);
     const file = join(outDir, `${page.replace(/[^A-Za-z0-9]+/g, "_")}.html`);
     writeFileSync(file, text);
-    console.log(JSON.stringify({ page, status, bytes: text.length, posts: counters.posts, stmts: counters.stmts, wall_ms: wall, file, head: status === 200 ? undefined : text.slice(0, 300) }));
+    console.log(JSON.stringify({ page, status, bytes: text.length, posts: counters.posts, stmts: counters.stmts, db_bytes: counters.bytes, wall_ms: wall, file, head: status === 200 ? undefined : text.slice(0, 300) }));
   }
 } finally {
   await mf.dispose();
