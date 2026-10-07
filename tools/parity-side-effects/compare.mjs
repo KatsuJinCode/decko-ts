@@ -34,14 +34,31 @@ import { readFileSync, writeFileSync } from "node:fs";
 const ruby = JSON.parse(readFileSync(process.argv[2], "utf8"));
 const ts = JSON.parse(readFileSync(process.argv[3], "utf8"));
 const scenarios = JSON.parse(readFileSync(new URL("./scenarios.json", import.meta.url), "utf8"));
-const modOf = Object.fromEntries(scenarios.steps.map((s) => [s.name, s.mod]));
+for (const [engine, trace] of [["ruby", ruby], ["ts", ts]]) {
+  if ((trace.network_blocked ?? []).length > 0) {
+    console.error(`${engine} trace recorded ${trace.network_blocked.length} blocked network attempt(s); the run is invalid`);
+    process.exit(3);
+  }
+}
+const modOf =Object.fromEntries(scenarios.steps.map((s) => [s.name, s.mod]));
 const methodOf = Object.fromEntries(scenarios.steps.map((s) => [s.name, s.method]));
 
 const decode = (s) => s
   .replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">")
   .replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
 
+// A JSON error reply, compared whole: its exact text with requested_at
+// replaced (each engine's own clock), or null when the body is not JSON.
+function jsonError(step) {
+  const b = String(step.body ?? "");
+  if (!(step.status >= 400) || !b.trimStart().startsWith("{")) return null;
+  try { JSON.parse(b); } catch { return null; }
+  return b.replace(/"requested_at": "[^"]*"/, '"requested_at": "<time>"');
+}
+
 function rubyErrors(step) {
+  const j = jsonError(step);
+  if (j !== null) return j;
   const b = String(step.body ?? "");
   if (step.status === 403) {
     const m = b.match(/Sorry![\s\S]*?<\/div>/);
@@ -57,6 +74,8 @@ function rubyErrors(step) {
 }
 
 function tsErrors(step) {
+  const j = jsonError(step);
+  if (j !== null) return j;
   const b = String(step.body ?? "");
   if (!(step.status >= 400)) return "";
   if (step.status === 403) {
@@ -74,8 +93,19 @@ function tsErrors(step) {
 const CARD_TABLES = ["cards", "card_acts", "card_actions", "card_changes", "card_references", "card_revisions"];
 const writes = (s) => CARD_TABLES.filter((t) => (s.delta?.[t] ?? 0) !== 0).map((t) => `${t}${s.delta[t] > 0 ? "+" : ""}${s.delta[t]}`).join(" ") || "-";
 const actions = (s) => (s.actions ?? []).map((a) => `${a.type} ${a.card} [${a.fields.join(",")}]`).join(" | ") || "-";
-const normBody = (b) => String(b ?? "").replace(/token=[A-Za-z0-9._-]+/g, "token=<token>").replace(/\s+/g, " ").trim();
-const mail = (s) => (s.mail ?? []).map((m) => `to ${[].concat(m.to).join(",")} from ${[].concat(m.from).join(",")}: ${m.subject} :: ${normBody(m.body_excerpt)}`).join(" | ") || "-";
+// who the rows are stamped with (set_stamper) and what was stored
+const stamps = (s) => (s.actions ?? []).map((a) => `${a.card}: by ${a.creator ?? "?"}/${a.updater ?? "?"}`).join(" | ") || "-";
+const stored = (s) => (s.actions ?? []).map((a) => `${a.card} = ${JSON.stringify(a.content ?? "")} changes ${JSON.stringify(a.values ?? [])}`).join(" | ") || "-";
+// the redirect target, host dropped
+const location = (s) => { const h = s.headers ?? {}; const l = h.Location ?? h.location ?? ""; return l.replace(/^https?:\/\/[^/]+/, "") || "-"; };
+// Mail bodies are compared exactly, after two normalisations only: CRLF line
+// endings (the Mail gem's wire encoding) become LF, and account-token values
+// become <token>.
+const normBody = (b) => String(b ?? "").replace(/\r\n/g, "\n").replace(/token=[A-Za-z0-9._%-]+/g, "token=<token>");
+const mail = (s) => (s.mail ?? []).map((m) =>
+  `to ${[].concat(m.to).join(",")} from ${m.from_header ?? [].concat(m.from).join(",")} reply-to ${[].concat(m.reply_to ?? []).join(",")}: ${m.subject}`).join(" | ") || "-";
+const mailText = (s) => (s.mail ?? []).map((m) => JSON.stringify(normBody(m.text_body ?? m.body_excerpt))).join(" | ") || "-";
+const mailHtml = (s) => (s.mail ?? []).map((m) => JSON.stringify(normBody(m.html_body))).join(" | ") || "-";
 const files = (s) => (s.files ?? []).map((f) => f.path.replace(/^\d+\/\d+/, "")).sort().join(",") || "-";
 const session = (s) => s.signed_in_as ?? "anonymous";
 // Image variants: which stored versions are real resizes (bytes differ from
@@ -93,7 +123,8 @@ const resized = (s) => {
 // for every anonymous denial; compare like for like.
 const fields = {
   status: (s) => String(s.status),
-  writes, actions, mail, files, resized, session,
+  location,
+  writes, actions, stamps, stored, mail, mailText, mailHtml, files, resized, session,
 };
 
 // ---- event order: the ordered list of distinct event names each engine

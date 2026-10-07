@@ -234,6 +234,10 @@ export interface CardActionEngineOptions {
   notifyTransport?: NotifyTransport;
   /** Log sink for integration dispatch lines. */
   notifyLogger?: (line: string) => void;
+  /** The deck origin and Decko Bot address the follower email needs (its
+   *  links and unfollow URL, and the From rule). Without them the mail
+   *  carries the template with its nests unfilled. */
+  followMail?: { origin: string; deckoBotEmail: string };
   /** The attachment storage seam (E4.4.a — card-mod-carrierwave's
    *  CarrierWave::Storage::File port). Required for saves that carry an
    *  `attachment` input; saves without one behave exactly as before. */
@@ -328,6 +332,7 @@ export class CardActionEngine {
   private readonly followerResolver: FollowerResolver | undefined;
   private readonly notifyTransport: NotifyTransport | undefined;
   private readonly notifyLogger: ((line: string) => void) | undefined;
+  private readonly followMail: { origin: string; deckoBotEmail: string } | undefined;
   /** The write-task permission state (who_can universe + actor parties),
    *  built lazily on this engine's first gated save — the render side's
    *  ensureTaskVerdicts model (one batch pair per engine, never per save). */
@@ -360,6 +365,7 @@ export class CardActionEngine {
     this.followerResolver = options.followerResolver;
     this.notifyTransport = options.notifyTransport;
     this.notifyLogger = options.notifyLogger;
+    this.followMail = options.followMail;
     this.attachmentStore = options.attachmentStore;
     this.fileStorage = options.fileStorage;
     this.modEvents = options.modEvents;
@@ -405,7 +411,10 @@ export class CardActionEngine {
     if (await this.isAnonymousSession()) return;
     const hooks = this.integrationHooks ?? [
       buildFollowNotifyHook(
-        defaultFollowNotifyDeps(this.fetch, { followers: this.followerResolver }),
+        defaultFollowNotifyDeps(this.fetch, {
+          followers: this.followerResolver,
+          ...(this.followMail === undefined ? {} : { mail: this.followMail }),
+        }),
       ),
     ];
     if (hooks.length === 0) return;
@@ -2370,9 +2379,14 @@ export class CardActionEngine {
       { typeChanged: opts.typeChanged, assignedName: opts.assignedName },
     );
     if (verdict === false) {
+      // permissions.rb:117 deny_because you_cant("#{verb} #{name}"), added
+      // to card.errors under :permission_denied (:204).
+      const shownName = card.name?.s !== undefined && card.name.s !== "" ? card.name.s : "this";
       throw new CardActionError(
         "permission-denied",
         `actor ${this.actor?.name ?? ANONYMOUS_ACTOR_NAME} may not ${task} card ${card.name?.s ?? String(card.id)}`,
+        undefined,
+        { permission_denied: `You don't have permission to ${task} ${shownName}` },
       );
     }
     // The host hook is a port-only seam — Ruby's permission chain is the

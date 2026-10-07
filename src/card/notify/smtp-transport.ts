@@ -307,6 +307,7 @@ export function buildMime(msg: MailMessage, fromHeader: string, now: Date = new 
   const headers: string[] = [
     `Date: ${rfc5322Date(now)}`,
     `From: ${fromHeader}`,
+    ...(msg.replyTo ? [`Reply-To: ${msg.replyTo}`] : []),
     `To: ${msg.to}`,
     ...(msg.cc ? [`Cc: ${msg.cc}`] : []),
     `Message-ID: ${messageIdHeader(envelopeFrom)}`,

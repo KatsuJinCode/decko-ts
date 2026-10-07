@@ -14,6 +14,31 @@
 import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import net from "node:net";
+import tls from "node:tls";
+import dns from "node:dns";
+import dgram from "node:dgram";
+
+// ---- network block: no outgoing connection of any kind. Every socket
+// connect, DNS lookup and fetch is refused before it leaves the process;
+// each refusal is recorded, reported in the trace (`network_blocked`), and
+// fails the run.
+const networkBlocked = [];
+const refuse = (what, target) => {
+  networkBlocked.push(`${what} ${target}`);
+  throw new Error(`parity harness: outgoing network blocked (${what} ${target})`);
+};
+net.Socket.prototype.connect = function (...a) {
+  const o = a[0];
+  return refuse("net.connect", typeof o === "object" ? `${o?.host ?? o?.path ?? ""}:${o?.port ?? ""}` : String(o));
+};
+tls.connect = (...a) => refuse("tls.connect", JSON.stringify(a[0] ?? ""));
+dns.lookup = (host) => refuse("dns.lookup", String(host));
+dns.promises.lookup = async (host) => refuse("dns.lookup", String(host));
+dns.resolve = (host) => refuse("dns.resolve", String(host));
+dgram.Socket.prototype.send = function () { return refuse("dgram.send", ""); };
+globalThis.fetch = async (input) => refuse("fetch", String(input?.url ?? input));
+globalThis.WebSocket = class { constructor(u) { refuse("WebSocket", String(u)); } };
 
 const here = dirname(fileURLToPath(import.meta.url));
 const dist = (p) => new URL(`../../dist/src/${p}`, import.meta.url).href;
@@ -109,11 +134,17 @@ async function newActions(since) {
   const out = [];
   for (const a of r.rows) {
     const f = await driver.query(
-      "select field from card_changes where card_action_id = ? order by id", [a.id]);
+      "select field, value from card_changes where card_action_id = ? order by id", [a.id]);
+    const stamp = (await driver.query(
+      "select creator_id, updater_id, db_content from cards where id = ?", [a.card_id])).rows[0] ?? {};
     out.push({
       card: await fullName(a.card_id),
       type: ACTION_TYPES[Number(a.action_type)] ?? String(a.action_type),
       fields: f.rows.map((x) => Number(x.field)),
+      values: f.rows.map((x) => String(x.value ?? "")),
+      creator: stamp.creator_id == null ? "" : await fullName(stamp.creator_id),
+      updater: stamp.updater_id == null ? "" : await fullName(stamp.updater_id),
+      content: String(stamp.db_content ?? "").slice(0, 200),
     });
   }
   return out;
@@ -168,6 +199,10 @@ function encode(params) {
   const bodyBytes = new Uint8Array(Buffer.concat(chunks));
   return { contentType: `multipart/form-data; boundary=${boundary}`, body: "", bodyBytes };
 }
+
+// The bare address of an RFC 5322 mailbox ("Name" <addr> -> addr), as
+// Mail::Message#from reports it on the Ruby side.
+const addressOf = (h) => { const m = h.match(/<([^>]+)>/); return (m ? m[1] : h).trim(); };
 
 let cookie = null;
 let mailConsumed = 0;
@@ -236,10 +271,17 @@ for (const s of scenarios.steps) {
     delta, actions: await newActions(since), events,
     files: filesList().filter((f) => !filesBefore.includes(f.path)),
     mail: mail.map((m) => ({
-      to: [].concat(m.to ?? []), from: [].concat(m.from ?? []), subject: String(m.subject ?? ""),
-      body_excerpt: String(m.textBody ?? m.text ?? "").slice(0, 600),
+      to: String(m.to ?? "").split(",").map((x) => x.trim()).filter(Boolean),
+      from: [addressOf(String(m.from ?? ""))], from_header: String(m.from ?? ""),
+      reply_to: m.replyTo ? [addressOf(String(m.replyTo))] : [],
+      subject: String(m.subject ?? ""),
+      text_body: String(m.textBody ?? ""), html_body: String(m.htmlBody ?? ""),
     })),
     extra, signed_in_as: await signedInAs(),
   });
 }
-console.log(JSON.stringify({ engine: "decko-ts", steps }, null, 2));
+console.log(JSON.stringify({ engine: "decko-ts", network_blocked: networkBlocked, steps }, null, 2));
+if (networkBlocked.length > 0) {
+  console.error(`NETWORK BLOCKED ${networkBlocked.length} attempt(s): ${[...new Set(networkBlocked)].join("; ")}`);
+  process.exitCode = 3;
+}

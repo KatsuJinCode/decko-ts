@@ -19,6 +19,43 @@
 
 require "json"
 require "fileutils"
+require "socket"
+
+# ---- network block: the harness makes no outgoing connection of any kind.
+# Every TCP/UDP socket open is refused before it reaches the OS, so a code
+# path that would call out (recaptcha verification, SMTP, cloud storage, a
+# remote image fetch) fails loudly instead of leaving the machine. Each
+# refusal is recorded and reported in the trace (`network_blocked`), and the
+# run is marked failed if any occurred.
+$NETWORK_BLOCKED = []
+module ParityNetworkBlock
+  def self.refuse(what, host, port)
+    $NETWORK_BLOCKED << "#{what} #{host}:#{port}"
+    raise Errno::ECONNREFUSED, "parity harness: outgoing network blocked (#{what} #{host}:#{port})"
+  end
+end
+TCPSocket.singleton_class.prepend(Module.new do
+  def new(host = nil, port = nil, *rest, **kw) = ParityNetworkBlock.refuse("TCPSocket", host, port)
+  def open(host = nil, port = nil, *rest, **kw) = ParityNetworkBlock.refuse("TCPSocket", host, port)
+end)
+Socket.singleton_class.prepend(Module.new do
+  def tcp(host = nil, port = nil, *rest, **kw, &blk) = ParityNetworkBlock.refuse("Socket.tcp", host, port)
+  def udp_server_sockets(*a, **kw, &blk) = ParityNetworkBlock.refuse("Socket.udp", a[0], a[1])
+end)
+Socket.prepend(Module.new do
+  def connect(addr) = ParityNetworkBlock.refuse("Socket#connect", addr.inspect, "")
+  def connect_nonblock(addr, **kw) = ParityNetworkBlock.refuse("Socket#connect_nonblock", addr.inspect, "")
+end)
+UDPSocket.prepend(Module.new do
+  def connect(host, port) = ParityNetworkBlock.refuse("UDPSocket#connect", host, port)
+  def send(msg, flags, host = nil, port = nil) = ParityNetworkBlock.refuse("UDPSocket#send", host, port)
+end)
+Addrinfo.singleton_class.prepend(Module.new do
+  def getaddrinfo(host, port = nil, *rest, **kw)
+    return super if host.nil? || %w[localhost 127.0.0.1 ::1].include?(host.to_s)
+    ParityNetworkBlock.refuse("getaddrinfo", host, port)
+  end
+end)
 
 APP_ROOT = ARGV[0]
 DECK_SRC = ARGV[1]
@@ -133,9 +170,12 @@ ACTION_TYPES = %w[create update delete].freeze
 
 def new_actions(since)
   $conn.select_all("select id, card_id, action_type from card_actions where id > #{since} order by id").to_a.map do |r|
-    fields = $conn.select_values("select field from card_changes where card_action_id = #{r['id']} order by id")
+    changes = $conn.select_rows("select field, value from card_changes where card_action_id = #{r['id']} order by id")
+    stamp = $conn.select_one("select creator_id, updater_id, db_content from cards where id = #{r['card_id'].to_i}") || {}
     { card: card_name(r["card_id"]), type: ACTION_TYPES[r["action_type"].to_i] || r["action_type"].to_s,
-      fields: fields.map(&:to_i) }
+      fields: changes.map { |c| c[0].to_i }, values: changes.map { |c| c[1].to_s },
+      creator: card_name(stamp["creator_id"]), updater: card_name(stamp["updater_id"]),
+      content: stamp["db_content"].to_s[0, 200] }
   end
 end
 
@@ -150,8 +190,11 @@ def drain_mail
   fresh = all[$MAIL_CONSUMED..] || []
   $MAIL_CONSUMED = all.length
   fresh.map do |m|
-    text = m.text_part ? m.text_part.body.decoded : m.body.decoded
-    { to: Array(m.to), from: Array(m.from), subject: m.subject.to_s, body_excerpt: text.to_s[0, 600] }
+    text = m.text_part ? m.text_part.body.decoded : (m.html_part ? "" : m.body.decoded)
+    html = m.html_part ? m.html_part.body.decoded : ""
+    { to: Array(m.to), from: Array(m.from), from_header: m[:from].to_s,
+      reply_to: Array(m.reply_to), subject: m.subject.to_s,
+      text_body: text.to_s.force_encoding("UTF-8"), html_body: html.to_s.force_encoding("UTF-8") }
   end
 end
 
@@ -231,6 +274,21 @@ Card::Auth.as_bot do
     )
   end
   Card.create!(name: "*all+Parity Follower+*follow", content: "*always") unless Card["*all+Parity Follower+*follow"]
+  # An administrator, for the steps that need account-manager and
+  # structure rights (skins, styles, layouts, renaming account holders).
+  unless Card["Parity Admin"]
+    Card.create!(
+      name: "Parity Admin", type_id: Card::UserID,
+      subcards: {
+        "+*account" => { subcards: {
+          "+*email" => { content: "admin.probe@example.com" },
+          "+*password" => { content: "Admin horse battery 5%" },
+          "+*status" => { content: "active" }
+        } },
+        "+*roles" => { content: %w[Administrator].to_json }
+      }
+    )
+  end
 end
 Card::Auth.current_id = Card::AnonymousID
 ActionMailer::Base.deliveries.clear
@@ -241,4 +299,9 @@ FIXTURES = File.join(File.dirname(__FILE__), "..", "fixtures")
 require File.join(File.dirname(__FILE__), "scenarios.rb")
 
 puts JSON.pretty_generate({ engine: "ruby-decko", version: Gem.loaded_specs["card"]&.version&.to_s,
-                            delaying: (Cardio.config.delaying rescue nil), steps: $steps })
+                            delaying: (Cardio.config.delaying rescue nil),
+                            network_blocked: $NETWORK_BLOCKED, steps: $steps })
+unless $NETWORK_BLOCKED.empty?
+  warn "NETWORK BLOCKED #{$NETWORK_BLOCKED.length} attempt(s): #{$NETWORK_BLOCKED.uniq.join('; ')}"
+  exit 3
+end

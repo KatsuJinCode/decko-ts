@@ -423,9 +423,10 @@ describe("armed route pins: UPDATE through the production recaptcha seat (no mod
       },
     });
     expect(res.status).toBe(422); // UserError class (error.rb:21), not a 403 code
-    expect(res.json().error).toMatchObject({
-      code: "recaptcha",
-      message: "Looks like you are not a human",
+    // card-mod-format set/all/error.rb json :errors view: {attribute => message}
+    expect(res.json()).toMatchObject({
+      error_status: 422,
+      errors: { recaptcha: "Looks like you are not a human" },
     });
     // the route's recaptcha_token param plumbed through the seat-armed
     // UPDATE engine (prepareRecaptchaSaveInput on the update path,
@@ -502,9 +503,10 @@ describe("armed route pins: DELETE through the production recaptcha seat (no mod
       form: { recaptcha_token: "tok-del-refusal" },
     });
     expect(res.status).toBe(422); // the guard's refusal, not the 303 success redirect
-    expect(res.json().error).toMatchObject({
-      code: "recaptcha",
-      message: "Looks like you are not a human",
+    // card-mod-format set/all/error.rb json :errors view: {attribute => message}
+    expect(res.json()).toMatchObject({
+      error_status: 422,
+      errors: { recaptcha: "Looks like you are not a human" },
     });
     // the route's recaptcha_token param plumbed through the seat-armed
     // DELETE engine (prepareRecaptchaSaveInput on the delete path) to the
@@ -582,10 +584,11 @@ describe("armed route pins: DELETE where the RULE denies the actor (permission o
       form: { recaptcha_token: "tok-del-rule-denied" },
     });
     expect(res.status).toBe(403); // Card::Error::PermissionDenied (error.rb:104)
-    expect(res.json().error).toMatchObject({ code: "permission-denied" });
-    // the walk's verdict message (assertCanWrite's throw,
-    // card-action-engine.ts:2150-2153) — not the guard's "not a human"
-    expect((res.json().error as { message: string }).message).toContain("may not delete card");
+    // the walk's verdict (permissions.rb:117 you_cant, under :permission_denied)
+    // — not the guard's "not a human"
+    expect(res.json()).toMatchObject({ error_status: 403 });
+    expect((res.json().errors as { permission_denied: string }).permission_denied)
+      .toContain("You don't have permission to delete");
     // THE DECISIVE HALF: the ARMED context's stub was never consulted — even
     // a human-verdict token (the stub's canned body is success:true) cannot
     // buy the delete past the rule
@@ -626,10 +629,11 @@ describe("armed route pins: UPDATE where the RULE denies the actor (permission o
       },
     });
     expect(res.status).toBe(403); // Card::Error::PermissionDenied (error.rb:104)
-    expect(res.json().error).toMatchObject({ code: "permission-denied" });
-    // the walk's verdict message (assertCanWrite's throw,
-    // card-action-engine.ts:2158-2162) — not the guard's "not a human"
-    expect((res.json().error as { message: string }).message).toContain("may not update card");
+    // the walk's verdict (permissions.rb:117 you_cant, under :permission_denied)
+    // — not the guard's "not a human"
+    expect(res.json()).toMatchObject({ error_status: 403 });
+    expect((res.json().errors as { permission_denied: string }).permission_denied)
+      .toContain("You don't have permission to update");
     // THE DECISIVE HALF: the ARMED context's stub was never consulted — even
     // a human-verdict token (the stub's canned body is success:true, action
     // "update") cannot buy the update past the rule

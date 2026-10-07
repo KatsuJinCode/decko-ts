@@ -24,6 +24,7 @@ import {
   interpolateTemplate,
   renderMail,
   type EmailTemplate,
+  type StockMailExtras,
   type FollowNotice,
   type FollowNoticeAct,
 } from "./mail.js";
@@ -97,6 +98,18 @@ export interface FollowNotifyDeps {
   /** The deck's configured from address; the template's from field
    *  wins when set (card-mod-email set/type/email_template.rb:80-88). */
   readonly defaultFrom: string;
+  /** The per-follower nest values (follow-mail-views.ts). When present the
+   *  mail is rendered as Ruby delivers it: every nest filled per format,
+   *  the html part in the email document wrapper. Absent: placeholders
+   *  fall back to their bare names (the template-only mechanism). */
+  readonly views?: (input: {
+    act: SavePathAct;
+    actCardId: number;
+    ref: FollowerRef;
+  }) => Promise<{ text: Record<string, string>; html: Record<string, string> }>;
+  /** The Decko Bot account's address: the template's "Decko Bot" from
+   *  field resolves to it (safe_from_and_reply_to!). */
+  readonly deckoBotEmail?: string;
 }
 
 const STAGE: SavePathIntegrationHook["stage"] = "integrate_with_delay";
@@ -120,6 +133,7 @@ async function notifyFollower(
   template: EmailTemplate,
   ctx: NotifyContext,
   act: FollowNoticeAct,
+  extras?: StockMailExtras,
 ): Promise<void> {
   if (ref.followerEmail === null) return; // return unless email.present?
   const notice: FollowNotice = {
@@ -127,7 +141,7 @@ async function notifyFollower(
     followedSet: ref.followedSetName,
     followOption: ref.followOption,
   };
-  const msg = renderMail({ ...template, to: ref.followerEmail }, notice, act);
+  const msg = renderMail({ ...template, to: ref.followerEmail }, notice, act, extras);
   try {
     await ctx.transport.sendMail(msg);
     ctx.logger?.(`[notify] sent follow mail to ${ref.followerEmail} (${ref.followerName})`);
@@ -179,7 +193,18 @@ async function notifyFollowersOfAct(
     // actor-independent, so the resolved actor is not consumed
     // downstream.
     deps.authAs(ref.followerId, ref.followerName);
-    await notifyFollower(ref, template, ctx, followAct);
+    const actCardId = mainAction.card?.id ?? null;
+    let extras: StockMailExtras | undefined;
+    if (deps.views !== undefined && actCardId !== null) {
+      const views = await deps.views({ act, actCardId, ref });
+      extras = {
+        text: views.text,
+        html: views.html,
+        wrapHtmlDocument: true,
+        ...(deps.deckoBotEmail !== undefined ? { botAccountEmail: deps.deckoBotEmail } : {}),
+      };
+    }
+    await notifyFollower(ref, template, ctx, followAct, extras);
   }
 }
 
@@ -203,10 +228,15 @@ export function buildFollowNotifyHook(deps: FollowNotifyDeps): SavePathIntegrati
    *  multiedit; mod/history lib/card/act.rb main_action). */
   const fireActOnce = async (act: SavePathAct, ctx: NotifyContext): Promise<void> => {
     if (act.events.length === 0) return;
-    if (act.events[0].isDeletePath === true) return; // notify_after_delete is a separate hook
+    // A delete act (notify.rb:20-31): stash_followers checks every deleted
+    // card into the act's stash at :store, before the trash flag lands, and
+    // notify_followers_after_delete mails at :integrate. The resolver reads
+    // a delete-path card from the trash for that reason. A save act keeps
+    // skipping its incidental delete actions.
+    const deleteAct = act.events[0].isDeletePath === true;
     const stash = new FollowerStash(deps.followers);
     for (const event of act.events) {
-      if (event.isDeletePath === true) continue;
+      if (event.isDeletePath === true && !deleteAct) continue;
       await stash.checkCard(event.card?.id ?? null, event);
     }
     if (stash.followers().length === 0) return;

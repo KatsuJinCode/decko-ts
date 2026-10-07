@@ -50,6 +50,7 @@ import type { FetchEngine } from "../fetch.js";
 import { DeckoName } from "../name.js";
 import type { SavePathEvent } from "./types.js";
 import { deckEmailTemplateResolver } from "./deck-resolvers.js";
+import { followMailViews } from "./follow-mail-views.js";
 import type { EmailTemplateResolver, FollowNotifyDeps, FollowerRef, FollowerResolver } from "./follow-notify.js";
 
 /** One row of Ruby's PreferenceCache SQL (rule/preference_cache.rb:8-30):
@@ -470,11 +471,15 @@ async function followerEmail(fetch: FetchEngine, followerId: number): Promise<st
 export async function resolveFollowers(
   fetch: FetchEngine,
   cardId: number | null,
-  _event: SavePathEvent,
+  event: SavePathEvent,
 ): Promise<readonly FollowerRef[]> {
   if (cardId === null) return [];
-  const card = await fetch.fetchById(cardId);
-  if (card === undefined || card.trash) return [];
+  // A deleted card's followers are those it had before the delete
+  // (stash_followers runs at :store, notify.rb:20-23): read it from the
+  // trash on the delete path only.
+  const deletePath = event?.isDeletePath === true;
+  const card = await fetch.fetchById(cardId, deletePath ? { lookInTrash: true } : {});
+  if (card === undefined || (card.trash && !deletePath)) return [];
 
   // follower_ids.rb:66-68: follower_ids = direct_follower_ids +
   // indirect_follower_ids, in that order (the dedupe set is shared).
@@ -672,9 +677,31 @@ export function defaultFollowerResolver(fetch: FetchEngine): FollowerResolver {
  */
 export function defaultFollowNotifyDeps(
   fetch: FetchEngine,
-  opts: { followers?: FollowerResolver; template?: EmailTemplateResolver } = {},
+  opts: {
+    followers?: FollowerResolver;
+    template?: EmailTemplateResolver;
+    /** The deck origin and bot address: with them the mail is rendered as
+     *  Ruby delivers it (every nest filled, the From rule applied). */
+    mail?: { origin: string; deckoBotEmail: string };
+  } = {},
 ): FollowNotifyDeps {
+  const mail = opts.mail;
   return {
+    ...(mail === undefined
+      ? {}
+      : {
+          deckoBotEmail: mail.deckoBotEmail,
+          views: ({ act, actCardId, ref }) =>
+            followMailViews(fetch, {
+              origin: mail.origin,
+              actId: act.actId,
+              actCardId,
+              actorId: act.actor.id,
+              followerName: ref.followerName,
+              followedSetName: ref.followedSetName,
+              followOption: ref.followOption,
+            }),
+        }),
     followers: opts.followers ?? defaultFollowerResolver(fetch),
     template: opts.template ?? deckEmailTemplateResolver(fetch),
     // Auth.as(left.id) runs the template as the FOLLOWER; the delivery

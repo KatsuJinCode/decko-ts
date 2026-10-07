@@ -36,6 +36,17 @@
       }
     },
     {
+      "name": "anon-update-existing-json",
+      "mod": "permissions",
+      "method": "put",
+      "path": "/Home.json",
+      "params": {
+        "card": {
+          "content": "anonymous edit"
+        }
+      }
+    },
+    {
       "name": "anon-delete-missing",
       "mod": "core",
       "method": "delete",
@@ -351,6 +362,43 @@
       "path": "/Parity_Number_Good"
     },
     {
+      "name": "rename-account-holder",
+      "mod": "account",
+      "method": "put",
+      "path": "/Parity_Probe",
+      "params": {
+        "card": {
+          "name": "Parity Probe Renamed"
+        }
+      }
+    },
+    {
+      "name": "update-file",
+      "mod": "carrierwave",
+      "method": "put",
+      "path": "/Parity_File",
+      "params": {
+        "card": {
+          "file": {
+            "upload": "parity-image.png",
+            "mime": "image/png"
+          }
+        }
+      }
+    },
+    {
+      "name": "delete-file",
+      "mod": "carrierwave",
+      "method": "delete",
+      "path": "/Parity_File"
+    },
+    {
+      "name": "delete-image",
+      "mod": "carrierwave",
+      "method": "delete",
+      "path": "/Parity_Image"
+    },
+    {
       "name": "reset-unknown-email",
       "mod": "account",
       "method": "patch",
@@ -402,6 +450,30 @@
       "params": {
         "card": {
           "name": "Parity After Signout"
+        }
+      }
+    },
+    {
+      "name": "anon-session-card-create",
+      "mod": "session",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Session Probe",
+          "type": "Session",
+          "content": "x"
+        }
+      }
+    },
+    {
+      "name": "anon-session-card-update",
+      "mod": "session",
+      "method": "put",
+      "path": "/Parity_Session_Probe",
+      "params": {
+        "card": {
+          "content": "y"
         }
       }
     },
@@ -500,6 +572,75 @@
           }
         }
       }
+    },
+    {
+      "name": "admin-signin",
+      "mod": "account",
+      "method": "patch",
+      "path": "/update/*signin",
+      "params": {
+        "card": {
+          "subcards": {
+            "+*email": {
+              "content": "admin.probe@example.com"
+            },
+            "+*password": {
+              "content": "Admin horse battery 5%"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "admin-create-skin",
+      "mod": "bootstrap",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Skin",
+          "type": "Bootswatch skin"
+        }
+      }
+    },
+    {
+      "name": "admin-update-scss",
+      "mod": "assets",
+      "method": "put",
+      "path": "/yeti_skin+*colors",
+      "params": {
+        "card": {
+          "content": "$primary: #123456;"
+        }
+      }
+    },
+    {
+      "name": "admin-update-layout",
+      "mod": "layout",
+      "method": "put",
+      "path": "/Default_Layout",
+      "params": {
+        "card": {
+          "content": "<!-- parity -->"
+        }
+      }
+    },
+    {
+      "name": "admin-rename-account-holder",
+      "mod": "account",
+      "method": "put",
+      "path": "/Parity_Follower",
+      "params": {
+        "card": {
+          "name": "Parity Follower Two"
+        }
+      }
+    },
+    {
+      "name": "admin-signout",
+      "mod": "account",
+      "method": "delete",
+      "path": "/delete/*signin"
     }
   ]
 }

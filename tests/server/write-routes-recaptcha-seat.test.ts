@@ -229,9 +229,10 @@ describe("the production recaptcha seat over the HTTP write routes (no module mo
       },
     });
     expect(res.status).toBe(422); // UserError class (error.rb:21), not a 403 code
-    expect(res.json().error).toMatchObject({
-      code: "recaptcha",
-      message: "Looks like you are not a human",
+    // card-mod-format set/all/error.rb json :errors view: {attribute => message}
+    expect(res.json()).toMatchObject({
+      error_status: 422,
+      errors: { recaptcha: "Looks like you are not a human" },
     });
     // the route's recaptcha_token param plumbed through the seat-armed
     // engine to the transport (recaptcha-4.13.2 lib/recaptcha.rb:63-77),

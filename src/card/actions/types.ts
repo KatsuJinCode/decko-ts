@@ -63,12 +63,22 @@ export class CardActionError extends Error {
    *  the throw site has no Ruby counterpart wording; the HTML error surface
    *  then shows `message`. */
   readonly userMessage?: string;
+  /** Ruby's card.errors as {attribute => message}, when the attribute is
+   *  not the lower-case form of the shown key (an error class name such as
+   *  "UserError"). The JSON errors view reports this hash. */
+  readonly errorsByAttribute?: Readonly<Record<string, string>>;
 
-  constructor(code: CardActionErrorCode, message: string, userMessage?: string) {
+  constructor(
+    code: CardActionErrorCode,
+    message: string,
+    userMessage?: string,
+    errorsByAttribute?: Readonly<Record<string, string>>,
+  ) {
     super(message);
     this.name = "CardActionError";
     this.code = code;
     if (userMessage !== undefined) this.userMessage = userMessage;
+    if (errorsByAttribute !== undefined) this.errorsByAttribute = errorsByAttribute;
   }
 }
 

@@ -612,15 +612,68 @@ async function signedInFor(ctx: WriteRouteContext, sessionToken: string | null):
   return (await new SessionStore({ driver: ctx.driver }).lookupSession(sessionToken)) !== null;
 }
 
-function errorResponse(json: boolean, error: CardActionError, signedIn = false): WriteRouteResponse {
+/** The errors hash Ruby's JSON errors view reports (card-mod-format
+ *  set/all/error.rb format :json view :errors: `{attribute => message}`,
+ *  a later message for the same attribute replacing an earlier one). The
+ *  throw site's explicit attribute map wins; otherwise the shown
+ *  "KEY: message" lines are read back (Ruby upcases the attribute symbol
+ *  for display; attributes are lower-case symbols). */
+function rubyErrorsHash(error: CardActionError, signedIn: boolean): Record<string, string> {
+  if (error.errorsByAttribute !== undefined) return { ...error.errorsByAttribute };
+  // A denial without the rule walk's wording (the host write hook, a deck
+  // without the anonymous card): still Ruby's :permission_denied key.
+  if (errorStatus(error.code) === 403) return { permission_denied: error.message };
+  // recaptcha.rb:28-31 errors.add :recaptcha, <message>
+  if (error.code === "recaptcha") return { recaptcha: error.message };
+  const shown = userFacingMessage(error, signedIn);
+  const out: Record<string, string> = {};
+  for (const line of shown.split("\n")) {
+    const m = /^([A-Z0-9_*+ ]+): ([\s\S]*)$/.exec(line.trim());
+    if (m !== null) out[m[1].toLowerCase()] = m[2];
+  }
+  if (Object.keys(out).length === 0 && shown !== "") out["error"] = shown;
+  return out;
+}
+
+/** Time#utc.to_s: "YYYY-MM-DD HH:MM:SS UTC". */
+function rubyUtcString(d: Date): string {
+  return `${d.toISOString().slice(0, 19).replace("T", " ")} UTC`;
+}
+
+/** The request's own URL (Rails request_url): scheme, host, path. */
+function requestUrl(req: WriteRouteRequest): string {
+  return `${req.scheme ?? "http"}://${req.host ?? ""}${req.pathname}`;
+}
+
+function errorResponse(
+  json: boolean,
+  error: CardActionError,
+  signedIn = false,
+  meta?: { url: string; now: Date },
+): WriteRouteResponse {
   const status = errorStatus(error.code);
-  return json
-    ? jsonResponse(status, { error: { code: error.code, message: error.message } })
-    : htmlResponse(
-        status,
-        `Error (${error.code})`,
-        `<pre>${escapeHtml(userFacingMessage(error, signedIn))}</pre>${diagnosticComment(error, signedIn)}`,
-      );
+  if (json) {
+    // card-mod-format set/all/json.rb page_details: the errors view's hash
+    // plus url and requested_at, pretty-generated.
+    const payload: Record<string, unknown> = {
+      error_status: status,
+      errors: rubyErrorsHash(error, signedIn),
+    };
+    if (meta !== undefined) {
+      payload["url"] = meta.url;
+      payload["requested_at"] = rubyUtcString(meta.now);
+    }
+    return {
+      status,
+      headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
+      body: JSON.stringify(payload, null, 2),
+    };
+  }
+  return htmlResponse(
+    status,
+    `Error (${error.code})`,
+    `<pre>${escapeHtml(userFacingMessage(error, signedIn))}</pre>${diagnosticComment(error, signedIn)}`,
+  );
 }
 
 /** The engine's own reason, kept beside the user-facing text as an HTML
@@ -630,6 +683,27 @@ function errorResponse(json: boolean, error: CardActionError, signedIn = false):
 function diagnosticComment(error: CardActionError, signedIn: boolean): string {
   if (userFacingMessage(error, signedIn) === error.message) return "";
   return `<!-- ${escapeHtml(error.message).replace(/--/g, "&#45;&#45;")} -->`;
+}
+
+/** The Decko Bot account's email (Decko Bot+*account+*email), or the
+ *  address the account mod seeds for it (card-mod-account data/real.yml,
+ *  decko_bot+account email) when the deck has no such row. Follower mail
+ *  is sent from it (safe_from_and_reply_to!). */
+async function deckoBotAccountEmail(driver: SQLDatabaseDriver): Promise<string> {
+  try {
+    const r = await driver.query<{ email: string }>(
+      "SELECT e.db_content AS email FROM cards e JOIN cards a ON a.id = e.left_id " +
+        "JOIN cards b ON b.id = a.left_id WHERE b.codename = 'decko_bot' " +
+        "AND a.right_id = (SELECT id FROM cards WHERE codename = 'account') " +
+        "AND e.right_id = (SELECT id FROM cards WHERE codename = 'email') AND e.trash = 0",
+      [],
+    );
+    const email = r.rows[0]?.email;
+    if (typeof email === "string" && email !== "") return email;
+  } catch {
+    // a deck without the account cards: the seeded address below
+  }
+  return "no-reply@decko.org";
 }
 
 /** Ruby's cud_success (rest.rb:80-89): HTML redirects to the card's
@@ -656,6 +730,7 @@ function successResponse(
   json: boolean,
   name: string,
   saved: { cardId: number; actId: number; actionId: number; verb: WriteVerb },
+  redirectPath: string = `/${locationName(name)}`,
 ): WriteRouteResponse {
   if (json) {
     return {
@@ -671,15 +746,35 @@ function successResponse(
   }
   return {
     status: 303,
-    headers: { Location: cardUrl(req, `/${locationName(name)}`), "Cache-Control": "no-store" },
+    headers: { Location: cardUrl(req, redirectPath), "Cache-Control": "no-store" },
     body: "",
     expiryName: name,
   };
 }
 
-/** The URL form of a card name (decko location grammar: spaces -> "_"). */
+/** The URL form of a card name: Ruby's path(mark:) is the name's url_key
+ *  (variants.rb), whose joint and key characters ("+", "*") stay literal;
+ *  only characters a URL path cannot carry are percent-encoded. */
 function locationName(name: string): string {
-  return encodeURIComponent(name.replace(/ /g, "_"));
+  return encodeURI(DeckoName.parse(name).urlKey).replace(/[?#]/g, (c) => encodeURIComponent(c));
+}
+
+/** Ruby's previous_location (location_history.rb:6-21): the last page in
+ *  the session's location history, "/" for a fresh history. The port's
+ *  write surface keeps no read history, so this is the fresh-history value. */
+const PREVIOUS_LOCATION = "/";
+
+/** The success target path (env/success/target.rb process_target):
+ *  success[mark] "*previous" -> previous location; an absolute path or URL
+ *  as given; another mark -> that card's path; no mark -> the request's own
+ *  card. */
+function successTargetPath(parsed: ParsedBody, ownName: string): string {
+  const mark = parsed.success["mark"] ?? parsed.success["id"];
+  if (mark === undefined) return `/${locationName(ownName)}`;
+  if (mark === "") return "";
+  if (mark === "*previous" || mark === ":previous") return PREVIOUS_LOCATION;
+  if (/^(http|\/)/.test(mark)) return mark;
+  return `/${locationName(mark)}`;
 }
 
 // -----------------------------------------------------------------------
@@ -714,7 +809,10 @@ async function handleSigninUpdate(
   const password = parsed.subcards["+*password"]?.content ?? "";
   const fail = (message: string, shown: string): WriteRouteResponse =>
     json
-      ? jsonResponse(422, { error: { code: "signin-failure", message } })
+      ? errorResponse(true, new CardActionError("user-error", message, shown), false, {
+          url: requestUrl(req),
+          now: ctx.now?.() ?? new Date(),
+        })
       : htmlResponse(422, "Error (signin-failure)", `<pre>${escapeHtml(shown)}</pre>`);
   // The send_reset_password_token trigger (signin.rb:62-84): the forgot-
   // password form posts the email with card[trigger]; the :signin event
@@ -736,10 +834,10 @@ async function handleSigninUpdate(
     // (signin.rb:50-58 errors.add :signin, ...): "SIGNIN: <message>".
     return fail(outcome.message, `SIGNIN: ${outcome.message}`);
   }
-  // *previous (signin.rb:171) -> previous_location -> "/" fresh
-  // (location_history.rb:6-9); the session history stack itself is
-  // unported (documented).
-  const target = cardUrl(req, "/");
+  // The success target (env/success/target.rb): the form's
+  // success[mark]=*previous (signin.rb:171) -> previous_location; without a
+  // success mark the target is the card itself, *signin.
+  const target = cardUrl(req, successTargetPath(parsed, "*signin"));
   if (isAjax(req, parsed)) {
     // the ajax hard redirect (response.rb:42-46)
     const body = jsonResponse(200, { redirect: target });
@@ -964,7 +1062,9 @@ export async function handleWriteRequest(
   try {
     parsed = parseBody(req);
   } catch (error) {
-    if (error instanceof CardActionError) return errorResponse(json, error);
+    if (error instanceof CardActionError) {
+      return errorResponse(json, error, false, { url: requestUrl(req), now: ctx.now?.() ?? new Date() });
+    }
     throw error;
   }
   // Rails MethodOverride (rack-method_override: POST + `_method` param
@@ -1023,6 +1123,10 @@ export async function handleWriteRequest(
     // still never fires the guard (recaptcha_keys? false, recaptcha.rb:46-48).
     modEvents: await observedModEventRuntime(ctx),
     ...(ctx.notifyTransport === undefined ? {} : { notifyTransport: ctx.notifyTransport }),
+    followMail: {
+      origin: cardUrl(req, ""),
+      deckoBotEmail: ctx.accountMail?.deckoBotEmail ?? (await deckoBotAccountEmail(ctx.driver)),
+    },
     ...(ctx.recaptcha === undefined ? {} : { recaptcha: ctx.recaptcha }),
   });
 
@@ -1117,7 +1221,9 @@ export async function handleWriteRequest(
       const markName = markToName(route.mark);
       const existing = await lookupLiveCard(ctx.fetcher, markName);
       if (existing === undefined) {
-        throw new CardActionError("user-error", `no such card: ${markName}`, MISSING_CARD_DELETE_MESSAGE);
+        throw new CardActionError("user-error", `no such card: ${markName}`, MISSING_CARD_DELETE_MESSAGE, {
+          UserError: "Card::Error::UserError",
+        });
       }
       result = await engine.deleteCard({
         cardId: existing.id,
@@ -1155,9 +1261,20 @@ export async function handleWriteRequest(
         expiryName: name,
       };
     }
-    return successResponse(req, json, name, saved);
+    // configure_successful_deletion (card-mod-session
+    // set/all/location_history.rb:12-20): a non-ajax delete redirects to the
+    // previous location; other saves to the success target.
+    const redirectPath = saved.verb === "delete" && parsed.success["mark"] === undefined
+      ? PREVIOUS_LOCATION
+      : successTargetPath(parsed, name);
+    return successResponse(req, json, name, saved, redirectPath);
   } catch (error) {
-    if (error instanceof CardActionError) return errorResponse(json, error, await signedInFor(ctx, sessionToken));
+    if (error instanceof CardActionError) {
+      return errorResponse(json, error, await signedInFor(ctx, sessionToken), {
+        url: requestUrl(req),
+        now: ctx.now?.() ?? new Date(),
+      });
+    }
     throw error;
   }
 }

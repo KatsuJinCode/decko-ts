@@ -157,7 +157,7 @@ import {
 import { CardActionEngine } from "../actions/card-action-engine.js";
 import type { FetchEngine } from "../fetch.js";
 import type { MailMessage, NotifyTransport } from "../notify/types.js";
-import { resolveFromAddress } from "../notify/mail.js";
+import { addressOf, resolveFromAddress } from "../notify/mail.js";
 import { DeckoName } from "../name.js";
 
 // ---------------------------------------------------------------------------
@@ -697,11 +697,14 @@ function renderAccountEmail(
     { subject: template.subject, text: template.text, html: template.html },
     { siteTitle: ctx.siteTitle, url: vars.url ?? "", days },
   );
+  const from =
+    ctx.deckoBotEmail !== undefined
+      ? resolveFromAddress(template.from, { deckoBotEmail: ctx.deckoBotEmail })
+      : template.from;
   return {
-    from:
-      ctx.deckoBotEmail !== undefined
-        ? resolveFromAddress(template.from, { deckoBotEmail: ctx.deckoBotEmail })
-        : template.from,
+    from,
+    // email_config.rb:65 reply_to ||= actual_email (with the From rule).
+    ...(ctx.deckoBotEmail !== undefined ? { replyTo: addressOf(from) } : {}),
     subject: rendered.subject,
     textBody: rendered.text,
     ...(rendered.html !== undefined && rendered.html.length > 0
