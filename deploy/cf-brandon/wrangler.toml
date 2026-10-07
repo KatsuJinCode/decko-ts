@@ -20,9 +20,11 @@ workers_dev = true
 # [observability]
 # enabled = true
 
+# Only this Worker's own file: deploy/dist also holds the Bunny bundle,
+# which a wider glob would upload as an extra module.
 [[rules]]
 type = "ESModule"
-globs = ["**/*.js"]
+globs = ["cf-edge-engine.bundle.js"]
 
 # database_id is filled in by the runbook's create step (cf-deploy.mjs
 # --database-name looks it up on the named account and writes it here).
