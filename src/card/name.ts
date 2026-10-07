@@ -218,6 +218,7 @@ export class DeckoName {
     DeckoName.clearParseMemo();
     DeckoName.markMemo = new Map();
     DeckoName.parseMemo = new Map();
+    DeckoName.scopedMemos = new WeakMap();
   }
 
   static endRequestScope(): void {
@@ -226,15 +227,40 @@ export class DeckoName {
     if (DeckoName.requestScopeDepth > 0) return;
     DeckoName.markMemo = undefined;
     DeckoName.parseMemo = undefined;
+    DeckoName.scopedMemos = undefined;
     DeckoName.clearParseMemo();
   }
 
   private static requestScopeDepth = 0;
 
+  /** Other request-scoped memos, one per owner object (for example one
+   *  fetcher's virtual-card lookups). Created by the outermost
+   *  beginRequestScope and dropped whole by the outermost endRequestScope,
+   *  so like the name memos nothing in them outlives the request. */
+  private static scopedMemos: WeakMap<object, Map<string, unknown>> | undefined;
+
+  /** The open request scope's memo for `owner`, or undefined outside a
+   *  request scope (then the caller must not memoize). */
+  static requestMemo<V>(owner: object): Map<string, V> | undefined {
+    const memos = DeckoName.scopedMemos;
+    if (memos === undefined) return undefined;
+    let memo = memos.get(owner);
+    if (memo === undefined) {
+      memo = new Map();
+      memos.set(owner, memo);
+    }
+    return memo as Map<string, V>;
+  }
+
   /** True when no request scope is open and no parse or mark memo exists
    *  (the request-local render's no-state-survives check). */
   static requestScopeIsClosed(): boolean {
-    return DeckoName.requestScopeDepth === 0 && DeckoName.parseMemo === undefined && DeckoName.markMemo === undefined;
+    return (
+      DeckoName.requestScopeDepth === 0 &&
+      DeckoName.parseMemo === undefined &&
+      DeckoName.markMemo === undefined &&
+      DeckoName.scopedMemos === undefined
+    );
   }
   private static parseMemo: Map<string, DeckoName> | undefined;
 

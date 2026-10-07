@@ -137,7 +137,13 @@ export function createVirtualCardLookup(
   fetcher: FetchEngine,
   universe: StructureUniverseMaps,
 ): (name: DeckoName) => Promise<VirtualCardResolution | undefined> {
-  return async (name: DeckoName): Promise<VirtualCardResolution | undefined> => {
+  // Request-scoped memo (DeckoName.requestMemo): within one request the
+  // deck does not change, so a name's resolution does not either. A missed
+  // compound name used to re-run its whole left chain on every fetch miss
+  // (a page with deep date+bw templates resolved ~48k names per render,
+  // 18k of them distinct). Outside a request scope nothing is memoized.
+  const owner = {};
+  const lookup = async (name: DeckoName): Promise<VirtualCardResolution | undefined> => {
     let leftTypeName: string | undefined;
     if (name.isCompound) {
       const leftKey = name.leftName?.key;
@@ -151,5 +157,15 @@ export function createVirtualCardLookup(
       }
     }
     return resolveVirtualCardStructure(name, universe, leftTypeName);
+  };
+  return (name: DeckoName): Promise<VirtualCardResolution | undefined> => {
+    const memo = DeckoName.requestMemo<Promise<VirtualCardResolution | undefined>>(owner);
+    if (memo === undefined) return lookup(name);
+    let hit = memo.get(name.s);
+    if (hit === undefined) {
+      hit = lookup(name);
+      memo.set(name.s, hit);
+    }
+    return hit;
   };
 }
