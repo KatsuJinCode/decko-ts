@@ -52,6 +52,8 @@ import type { SQLDatabaseDriver, SQLQueryResult } from "../../server/driver.js";
  *  that commit is not on this branch; the two MUST stay byte-equal or the
  *  boot cache and the render gate would disagree about what "unchanged"
  *  means. The composition seam is named in the receipt. */
+import { currentRequestContext } from "../request-context.js";
+
 export const BOOT_VERSION_STATEMENT =
   'SELECT "version" FROM "deck_data_version" WHERE "id" = 1';
 
@@ -94,7 +96,19 @@ export interface BootBundle {
  *  valid at one version of one connection, and keeping older epochs would mean
  *  holding deck snapshots that can never be served. A version move, or a new
  *  connection, replaces it. */
-let currentBundle: BootBundle | undefined;
+let processBundle: BootBundle | undefined;
+
+/** The slot: the running request context's own (request-context.ts), or the
+ *  process slot outside a context. */
+function slot(): BootBundle | undefined {
+  const ctx = currentRequestContext();
+  return ctx !== undefined ? (ctx.bootBundle as BootBundle | undefined) : processBundle;
+}
+function setSlot(bundle: BootBundle | undefined): void {
+  const ctx = currentRequestContext();
+  if (ctx !== undefined) ctx.bootBundle = bundle;
+  else processBundle = bundle;
+}
 
 /** The CONNECTION a driver argument names, for the bundle's identity keys.
  *  The bundle is per-CONNECTION (see bootCacheIsWarm); a delegating wrapper
@@ -125,6 +139,7 @@ function bundleIdentityDriver(driver: SQLDatabaseDriver): SQLDatabaseDriver {
  *  per-connection: round trips 5 -> 6 at every one of 32 depths, with a
  *  zero-hit probe at each. */
 export function bootCacheIsWarm(driver: SQLDatabaseDriver): boolean {
+  const currentBundle = slot();
   return currentBundle !== undefined && currentBundle.driver === bundleIdentityDriver(driver);
 }
 
@@ -138,6 +153,7 @@ export function bootBundleForVersion(
   driver: SQLDatabaseDriver,
   version: number,
 ): BootBundle | undefined {
+  const currentBundle = slot();
   if (currentBundle === undefined) return undefined;
   if (currentBundle.driver !== bundleIdentityDriver(driver)) return undefined;
   if (currentBundle.version === undefined) return undefined;
@@ -148,7 +164,7 @@ export function bootBundleForVersion(
  *  rows from storage, with the version it observed — or with `undefined`
  *  when it had none to observe, which makes the bundle provisional. */
 export function storeBootBundle(bundle: BootBundle): void {
-  currentBundle = { ...bundle, driver: bundleIdentityDriver(bundle.driver) };
+  setSlot({ ...bundle, driver: bundleIdentityDriver(bundle.driver) });
 }
 
 /** Drop the process slot. Test-only seam: the cache is module state, and a
@@ -157,11 +173,11 @@ export function storeBootBundle(bundle: BootBundle): void {
 /** True when no boot bundle is held (the request-local render's
  *  no-state-survives check reads it after a request). */
 export function bootCacheIsEmpty(): boolean {
-  return currentBundle === undefined;
+  return slot() === undefined;
 }
 
 export function resetBootCache(): void {
-  currentBundle = undefined;
+  setSlot(undefined);
 }
 
 /** ONE statement: the deck's committed-write version. Throws LOUDLY when the

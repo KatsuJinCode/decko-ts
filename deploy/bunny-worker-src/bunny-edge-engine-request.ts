@@ -39,6 +39,8 @@ import type { RenderEngine } from "../../src/card/render.js";
 import { DEFAULT_PIPELINE_TIMEOUT_MS } from "../../src/card/drivers/bunny-db.js";
 import { renderPageBytes } from "../../src/card/render/page.js";
 import { liveRenderPage } from "../../src/card/live/live-render.js";
+import { requestContextAvailable, runInRequestContext } from "../../src/card/request-context.js";
+import { getNameEnvironment } from "../../src/card/name/environment.js";
 import { bootEdgeServingEngines } from "./bunny-edge-deck-boot.js";
 import { derivedCloudAttachmentSource } from "../../src/card/render/views.js";
 import type { HistoryRenderParams } from "../../src/card/history/render-seam.js";
@@ -116,10 +118,12 @@ export function liveRenderApplies(
   return Object.keys(historyParams).length === 0;
 }
 
-/** One render at a time per isolate. The engine's sync name environment
- *  and boot bundle are process-global, and the live render boots a fresh
- *  engine per pass; renders that interleave across awaits would read each
- *  other's environment. */
+/** One render at a time per isolate, for the renders that use the
+ *  process-global engine state: the normal render (it renders on the deck's
+ *  own shared engine), and the live render on a runtime without
+ *  AsyncLocalStorage (src/card/request-context.ts). The engine's sync name
+ *  environment and boot bundle are process-global, and renders that
+ *  interleave across awaits would read each other's environment. */
 let renderLock: Promise<unknown> = Promise.resolve();
 export function withIsolateRenderLock<T>(fn: () => Promise<T>): Promise<T> {
   const run = renderLock.then(fn, fn);
@@ -535,22 +539,32 @@ async function dispatchEngineRequest(
     // wins (the action arg never falls through to params).
     const pageView = pathViewIsBareArm(url.pathname) ? queryViewFromUrl(url) : parsed.view;
     const historyParams = historyRenderParamsFromWire(parsed.params);
-    const pageHtml = liveRenderApplies(request, url, options, pageView, historyParams as Record<string, unknown>)
-      ? await withIsolateRenderLock(async () => {
-          try {
-            const live = await liveRenderPage(deck.fetcher.driver, parsed.name, (driver) => bootEdgeServingEngines(driver), {
-              requestedView: pageView,
-              historyParams,
-              signal,
-            });
-            return live.html;
-          } finally {
-            // The passes' engines installed their own name environments;
-            // hand the process-global one back to the isolate's deck.
-            deck.fetcher.installNameEnvironment?.();
-          }
+    const renderLive = async () =>
+      (
+        await liveRenderPage(deck.fetcher.driver, parsed.name, (driver) => bootEdgeServingEngines(driver), {
+          requestedView: pageView,
+          historyParams,
+          signal,
         })
-      : await withIsolateRenderLock(() => renderPageBytes(deck.render, parsed.name, pageView, historyParams));
+      ).html;
+    const pageHtml = !liveRenderApplies(request, url, options, pageView, historyParams as Record<string, unknown>)
+      ? await withIsolateRenderLock(() => renderPageBytes(deck.render, parsed.name, pageView, historyParams))
+      : requestContextAvailable()
+        ? // CONCURRENT: the live render boots its own engines over its own
+          // request store, and runs in its own request context (name
+          // environment, name memos, boot bundle), so live renders in one
+          // isolate run side by side and never take the lock. Its passes'
+          // environments stay inside the context.
+          await runInRequestContext(getNameEnvironment(), renderLive)
+        : await withIsolateRenderLock(async () => {
+            try {
+              return await renderLive();
+            } finally {
+              // The passes' engines installed their own name environments;
+              // hand the process-global one back to the isolate's deck.
+              deck.fetcher.installNameEnvironment?.();
+            }
+          });
     return html(200, applyServedEnvironmentDeltas(pageHtml));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

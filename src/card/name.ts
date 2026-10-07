@@ -33,6 +33,7 @@ import {
   UnsupportedIdentifierError,
 } from "./name/errors.js";
 import { getNameEnvironment } from "./name/environment.js";
+import { currentRequestContext, type NameScopeState } from "./request-context.js";
 
 /** Any value the Ruby name layer would call to_name on. */
 export type Nameish = DeckoName | string | number | null | undefined;
@@ -117,12 +118,7 @@ export class DeckoName {
   // key, exactly as a Rails inflections initializer precedes any name
   // resolution at deck boot.
   static {
-    onDeckInflectionsChanged(() => {
-      DeckoName.cache.clear();
-      DeckoName.parseMemo?.clear();
-      DeckoName.leftNameMemo = new WeakMap();
-      DeckoName.markMemo?.clear();
-    });
+    onDeckInflectionsChanged(() => DeckoName.clearParseMemo());
   }
 
   /** Process-wide banned characters (Cardname.banned_array, default []). */
@@ -179,7 +175,8 @@ export class DeckoName {
     // id/codename mark ("~", ":") parse to a pure function of the text (and
     // the inflection state, whose change clears this memo like `cache`).
     // Hot: compound names are re-split per call otherwise.
-    const parseMemo = DeckoName.parseMemo;
+    const scope = DeckoName.scopeState();
+    const parseMemo = scope.parseMemo as Map<string, DeckoName> | undefined;
     if (parseMemo !== undefined) {
       const memo = parseMemo.get(str);
       if (memo !== undefined) return memo;
@@ -195,17 +192,23 @@ export class DeckoName {
     // memoized while a request scope is open (failures re-run: a mark the
     // lexicon cannot resolve yet may resolve later in the request). Outside
     // a request scope nothing here is memoized.
-    if (DeckoName.markMemo !== undefined) {
-      const marked = DeckoName.markMemo.get(str);
+    const markMemo = scope.markMemo as Map<string, DeckoName> | undefined;
+    if (markMemo !== undefined) {
+      const marked = markMemo.get(str);
       if (marked !== undefined) return marked;
       const parsed = DeckoName.parseUncached(str);
-      DeckoName.markMemo.set(str, parsed);
+      markMemo.set(str, parsed);
       return parsed;
     }
     return DeckoName.parseUncached(str);
   }
 
-  private static markMemo: Map<string, DeckoName> | undefined;
+  /** The request-scope state: the running request context's own
+   *  (request-context.ts), or the process-global one outside a context. */
+  private static readonly globalScope: NameScopeState = { depth: 0 };
+  private static scopeState(): NameScopeState {
+    return currentRequestContext()?.nameScope ?? DeckoName.globalScope;
+  }
 
   /** Open / close a request scope for the parse and mark memos (see
    *  parse). Scopes nest (a page render opens one, its inner render() opens
@@ -213,36 +216,35 @@ export class DeckoName {
    *  outermost end drops every name memo, so nothing outlives the request.
    *  Outside a scope nothing new is memoized. */
   static beginRequestScope(): void {
-    DeckoName.requestScopeDepth += 1;
-    if (DeckoName.requestScopeDepth > 1) return;
+    const sc = DeckoName.scopeState();
+    sc.depth += 1;
+    if (sc.depth > 1) return;
     DeckoName.clearParseMemo();
-    DeckoName.markMemo = new Map();
-    DeckoName.parseMemo = new Map();
-    DeckoName.scopedMemos = new WeakMap();
+    sc.markMemo = new Map();
+    sc.parseMemo = new Map();
+    sc.scopedMemos = new WeakMap();
   }
 
   static endRequestScope(): void {
-    if (DeckoName.requestScopeDepth === 0) return;
-    DeckoName.requestScopeDepth -= 1;
-    if (DeckoName.requestScopeDepth > 0) return;
-    DeckoName.markMemo = undefined;
-    DeckoName.parseMemo = undefined;
-    DeckoName.scopedMemos = undefined;
+    const sc = DeckoName.scopeState();
+    if (sc.depth === 0) return;
+    sc.depth -= 1;
+    if (sc.depth > 0) return;
+    sc.markMemo = undefined;
+    sc.parseMemo = undefined;
+    sc.scopedMemos = undefined;
     DeckoName.clearParseMemo();
   }
-
-  private static requestScopeDepth = 0;
 
   /** Other request-scoped memos, one per owner object (for example one
    *  fetcher's virtual-card lookups). Created by the outermost
    *  beginRequestScope and dropped whole by the outermost endRequestScope,
    *  so like the name memos nothing in them outlives the request. */
-  private static scopedMemos: WeakMap<object, Map<string, unknown>> | undefined;
 
   /** The open request scope's memo for `owner`, or undefined outside a
    *  request scope (then the caller must not memoize). */
   static requestMemo<V>(owner: object): Map<string, V> | undefined {
-    const memos = DeckoName.scopedMemos;
+    const memos = DeckoName.scopeState().scopedMemos;
     if (memos === undefined) return undefined;
     let memo = memos.get(owner);
     if (memo === undefined) {
@@ -255,23 +257,19 @@ export class DeckoName {
   /** True when no request scope is open and no parse or mark memo exists
    *  (the request-local render's no-state-survives check). */
   static requestScopeIsClosed(): boolean {
-    return (
-      DeckoName.requestScopeDepth === 0 &&
-      DeckoName.parseMemo === undefined &&
-      DeckoName.markMemo === undefined &&
-      DeckoName.scopedMemos === undefined
-    );
+    const sc = DeckoName.scopeState();
+    return sc.depth === 0 && sc.parseMemo === undefined && sc.markMemo === undefined && sc.scopedMemos === undefined;
   }
-  private static parseMemo: Map<string, DeckoName> | undefined;
 
   /** Drop the name memos (both are pure functions of the text and the
    *  inflection tables; callers that want request-scoped state clear them
    *  at the request boundary). */
   static clearParseMemo(): void {
-    DeckoName.parseMemo?.clear();
+    const sc = DeckoName.scopeState();
+    sc.parseMemo?.clear();
     DeckoName.cache.clear();
     DeckoName.leftNameMemo = new WeakMap();
-    DeckoName.markMemo?.clear();
+    sc.markMemo?.clear();
   }
 
   private static parseUncached(str: string): DeckoName {

@@ -19,6 +19,8 @@
  */
 
 /** Card::Lexicon (card-1.110.0 lib/card/lexicon.rb) subset used by the name layer. */
+import { currentRequestContext } from "../request-context.js";
+
 export interface NameLexicon {
   /** Lexicon.name(id): registered name string, or undefined when the id is unknown. */
   name(id: number): string | undefined;
@@ -51,10 +53,15 @@ export interface NameEnvironment {
 
 let currentEnvironment: NameEnvironment | undefined;
 
+/** Inside a request context (request-context.ts) the environment is that
+ *  request's own; outside one it is the process-global environment. */
 export function setNameEnvironment(environment: NameEnvironment | undefined): void {
-  currentEnvironment = environment;
+  const ctx = currentRequestContext();
+  if (ctx !== undefined) ctx.environment = environment;
+  else currentEnvironment = environment;
 }
 
 export function getNameEnvironment(): NameEnvironment | undefined {
-  return currentEnvironment;
+  const ctx = currentRequestContext();
+  return ctx !== undefined ? ctx.environment : currentEnvironment;
 }
