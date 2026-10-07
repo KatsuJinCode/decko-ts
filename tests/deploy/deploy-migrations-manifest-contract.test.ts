@@ -88,6 +88,7 @@ describe("the canonical manifest (order the external runner already applies)", (
       "0004-demo-account-substrate.sql",
       "0005-auth-sessions.sql",
       "0006-demo-role-substrate.sql",
+      "0008-cards-serving-path-indexes.sql",
     ]);
   });
 
@@ -121,6 +122,7 @@ describe("applied-set compatibility alias (old name recorded = new name applied)
       "0004-demo-account-substrate.sql",
       "0005-auth-sessions.sql",
       "0006-demo-role-substrate.sql",
+      "0008-cards-serving-path-indexes.sql",
     ]);
   });
 
@@ -143,6 +145,7 @@ describe("applied-set compatibility alias (old name recorded = new name applied)
       "0004-demo-account-substrate.sql",
       "0005-auth-sessions.sql",
       "0006-demo-role-substrate.sql",
+      "0008-cards-serving-path-indexes.sql",
     ]);
   });
 
