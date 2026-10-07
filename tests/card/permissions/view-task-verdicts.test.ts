@@ -247,6 +247,34 @@ describe("_left inheritance of create (permissions.rb:55-71)", () => {
   });
 });
 
+describe("Session cards (card-mod-session set/type/session.rb)", () => {
+  it("lets anyone create and update a Session card; delete keeps the rule walk", async () => {
+    // *all+*create / *all+*update grant only Editor, so an ordinary card
+    // denies the anonymous viewer; ok_to_create? / ok_to_update? are `true`
+    // on the Session type.
+    const s = await createRenderTestStorage();
+    try {
+      await seedTaskDeck(s);
+      await seedCard(s, { id: 50, name: "Session", codename: "session" });
+      await seedCard(s, { id: 51, name: "*toolbar pinned", typeId: 50 });
+      const state = await taskState(s);
+      const session: PatternCardInput = { name: "*toolbar pinned", id: 51, typeId: 50, typeName: "Session" };
+      expect(await taskVerdictForCard(s.fetcher, session, "create", state)).toBe(true);
+      expect(await taskVerdictForCard(s.fetcher, session, "update", state)).toBe(true);
+      expect(await taskVerdictForCard(s.fetcher, session, "delete", state)).toBe(false);
+      expect(await allTaskVerdictsForCard(s.fetcher, session, state)).toEqual({
+        create: true,
+        update: true,
+        delete: false,
+      });
+      const plain: PatternCardInput = { name: "Widget", id: 13, typeId: 14, typeName: "Basic" };
+      expect(await taskVerdictForCard(s.fetcher, plain, "update", state)).toBe(false);
+    } finally {
+      s.close();
+    }
+  });
+});
+
 describe("junction create sides (ok_to_create_side, permissions.rb:127-137)", () => {
   it("passes when every side part exists (part_card.new_card? false)", async () => {
     const s = storage!;

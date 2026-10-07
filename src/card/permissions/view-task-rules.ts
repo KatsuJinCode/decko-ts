@@ -217,6 +217,8 @@ export async function taskVerdictForCard(
   depth = 0,
 ): Promise<boolean | undefined> {
   if (state.alwaysOk) return true; // permitted? :108-109 (Auth.always_ok?)
+  // card-mod-session set/type/session.rb ok_to_create? / ok_to_update?.
+  if (task !== "delete" && (await isSessionTyped(fetcher, card))) return true;
   const trunk = await permitVerdict(fetcher, card, task, state);
   if (trunk !== true) return trunk; // false (denied) or undefined (no rule data)
   if (task === "create") {
@@ -247,7 +249,17 @@ export async function allTaskVerdictsForCard(
   if (state.alwaysOk) {
     return { update: true, create: true, delete: true }; // permitted? :108-109
   }
-  const needed = WRITE_TASK_CODENAMES.filter((task) => state.hasTaskRules[task]);
+  // card-mod-session set/type/session.rb: a Session card's ok_to_create? and
+  // ok_to_update? are `true` for every viewer (session content is per
+  // browser session, never a shared write). Delete keeps the rule walk.
+  const session = await isSessionTyped(fetcher, card);
+  if (session) {
+    out.create = true;
+    out.update = true;
+  }
+  const needed = WRITE_TASK_CODENAMES.filter(
+    (task) => state.hasTaskRules[task] && !(session && task !== "delete"),
+  );
   if (needed.length === 0) return out;
   for (const task of needed) {
     const resolved = await applicableRule(fetcher, card, task, state, depth);
@@ -264,6 +276,13 @@ export async function allTaskVerdictsForCard(
     out.create = await createSidesAllowed(fetcher, card, state, depth); // :123-125
   }
   return out;
+}
+
+/** Whether the card is typed by the Session cardtype (codename session). */
+async function isSessionTyped(fetcher: FetchEngine, card: PatternCardInput): Promise<boolean> {
+  if (card.typeId === undefined || card.typeId === null) return false;
+  const sessionId = await fetcher.codenames.id("session");
+  return sessionId !== undefined && card.typeId === sessionId;
 }
 
 /**
