@@ -38,7 +38,14 @@ console.log(`\nDIFF RECORDS on rows Ruby cannot fetch by id: ${onUnreachable} (r
 console.log("DIFF RECORDS otherwise:", other);
 
 for (const kind of ["view_defs_full", "event_defs_full"]) {
-  const r = c.results.find((x) => x.kind === kind);
+  // Every question of this kind (type cards and instance cards), merged.
+  const parts = c.results.filter((x) => x.kind === kind);
+  const r = {
+    passed: parts.reduce((a, x) => a + x.passed, 0),
+    items: parts.reduce((a, x) => a + x.items, 0),
+    diffs: parts.flatMap((x) => x.diffs ?? []),
+    extra: parts.map((x) => ({ id: x.id, ...x.extra })),
+  };
   console.log(`\n${kind}: ${r.passed}/${r.items} ${JSON.stringify(r.extra)}`);
   const byMod = {};
   for (const d of r.diffs) {
