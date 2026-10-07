@@ -14,6 +14,13 @@ import { runBlobConformance } from "./blob-conformance.js";
 import { startMockBunnyStorage } from "./mock-bunny-storage.mjs";
 
 type Mock = Awaited<ReturnType<typeof startMockBunnyStorage>>;
+/** One recorded request, as the mock reports it. */
+interface RecordedRequest {
+  method: string;
+  path: string;
+  headers: Record<string, string>;
+  accessKeyPresent: boolean;
+}
 
 describe("BunnyStorageBlobDriver (local mock of the Storage HTTP API)", () => {
   let mock: Mock;
@@ -83,7 +90,7 @@ describe("BunnyStorageBlobDriver (local mock of the Storage HTTP API)", () => {
   it("sends the AccessKey header, not an Authorization bearer token", async () => {
     const driver = driverOver(mock);
     await driver.put("auth/probe.txt", new Uint8Array([1]));
-    const recorded = mock.requests.find((r) => r.method === "PUT")!;
+    const recorded = mock.requests.find((r: RecordedRequest) => r.method === "PUT")!;
     expect(recorded.accessKeyPresent).toBe(true);
     expect(recorded.headers.authorization).toBeUndefined();
     expect(recorded.headers.accesskey).toBe(mock.password);
@@ -92,7 +99,7 @@ describe("BunnyStorageBlobDriver (local mock of the Storage HTTP API)", () => {
   it("keys the URL by region host and zone name", async () => {
     const driver = driverOver(mock);
     await driver.put("url/shape.txt", new Uint8Array([1]));
-    const recorded = mock.requests.find((r) => r.method === "PUT")!;
+    const recorded = mock.requests.find((r: RecordedRequest) => r.method === "PUT")!;
     expect(recorded.path).toBe("/test-zone/url/shape.txt");
   });
 
