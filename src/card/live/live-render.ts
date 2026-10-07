@@ -24,6 +24,11 @@
 //   new card, the next pass blocks on its reads instead, paying at most one
 //   blocking round trip before it turns speculative again.
 //
+//   LAZY STRUCTURE REFERENCES. Every pass substitutes *structure templates
+//   but does not chase the cards their content references
+//   (RenderEngine.skipStructureRefWalks). A render that reads one of those
+//   cards records the question; the next pass prepares it.
+//
 //   COMPLETION RULE. The page is the first pass that consumed no speculative
 //   answer and asked for no unprepared card: every answer it read was
 //   storage's own, so its bytes are the bytes today's engine renders. A
@@ -50,7 +55,8 @@ export interface LiveRenderOptions {
    *  DECKO_LIVE_AUTO_THRESHOLD overrides). */
   autoThreshold?: number;
   /** In the speculation branch: a pass recording at most this many reads
-   *  makes the next pass block on them (default 11; 0 = off). */
+   *  makes the next pass block on them (the POC's 11; default here 0 = off;
+   *  env DECKO_LIVE_AUTO_TAIL overrides). */
   autoTail?: number;
   /** Blocking round trips a tail pass may pay before it turns speculative
    *  (default 1). */
@@ -83,6 +89,7 @@ async function renderPass(
   opts: LiveRenderOptions,
   collect: { seeds: Set<string>; asked: Set<string> } | undefined,
   skipSync: (() => boolean) | undefined,
+  lazy: { asked: Set<string>; eager: ReadonlySet<string> } | undefined,
 ): Promise<string> {
   // A FRESH engine per pass: a speculative pass's engine saw zero-row
   // answers and is discarded; only the store (real rows) carries over.
@@ -98,6 +105,14 @@ async function renderPass(
     render.skipDeniedRootWalks = true;
   }
   if (skipSync !== undefined) render.skipSyncRender = skipSync;
+  if (lazy !== undefined) {
+    // Lazy structure references (RenderEngine.skipStructureRefWalks): the
+    // render's questions about skipped references come back in lazy.asked;
+    // the references earlier passes asked for are walked eagerly.
+    render.skipStructureRefWalks = true;
+    render.skippedStructureRefAsked = lazy.asked;
+    render.eagerStructureRefs = lazy.eager;
+  }
   return await renderPageBytes(render, page, opts.requestedView, opts.historyParams);
 }
 
@@ -117,15 +132,23 @@ export async function liveRenderPage(
   // the fewest trips on the trial deck (About 10, Conflict Done Well 12,
   // Pattern 15), which is what a slow database hop rewards.
   const threshold = opts.autoThreshold ?? (env?.DECKO_LIVE_AUTO_THRESHOLD !== undefined ? Number(env.DECKO_LIVE_AUTO_THRESHOLD) : 0);
-  const tail = opts.autoTail ?? 11;
+  // Default 0 (no blocking tail): with lazy structure references a blocking
+  // pass pays one sequential round trip per fetch-ladder step of the walks
+  // it runs eagerly (Kimberly Winston 26 trips against 12 without it).
+  const tail = opts.autoTail ?? (env?.DECKO_LIVE_AUTO_TAIL !== undefined ? Number(env.DECKO_LIVE_AUTO_TAIL) : 0);
   const tailTrips = opts.autoTailTrips === undefined || opts.autoTailTrips < 0 ? undefined : opts.autoTailTrips;
   const seeds = new Set<string>();
   let choice: "collect" | "speculate" = "collect";
   let blockNext = false;
+  // Lazy structure references (RenderEngine.skipStructureRefWalks; on by
+  // default, DECKO_LIVE_STRUCTURE_WALKS=1 restores the eager walk).
+  const lazyRefs = env?.DECKO_LIVE_STRUCTURE_WALKS !== "1";
+  const eagerRefs = new Set<string>();
   DeckoName.beginRequestScope();
   try {
     for (let p = 1; p <= MAX_PASSES; p += 1) {
       const asked = new Set<string>();
+      const lazyAsked = new Set<string>();
       live.mode = blockNext ? "block" : "spec";
       live.blockTrips = blockNext ? tailTrips : undefined;
       const t0 = performance.now();
@@ -137,18 +160,19 @@ export async function liveRenderPage(
         // issue no reads). Collect passes keep them: the render is what
         // records their questions.
         const skipSync = choice === "speculate" ? () => live.mode === "spec" && live.pendingCount > 0 : undefined;
-        html = await renderPass(live, boot, page, opts, choice === "collect" ? { seeds, asked } : undefined, skipSync);
+        html = await renderPass(live, boot, page, opts, choice === "collect" ? { seeds, asked } : undefined, skipSync, lazyRefs ? { asked: lazyAsked, eager: eagerRefs } : undefined);
       } catch (err) {
         threw = err;
       }
       const pendingReads = live.pendingCount;
       const fresh = [...asked].filter((n) => !seeds.has(n));
-      const done = pendingReads === 0 && fresh.length === 0;
+      const lazyFresh = [...lazyAsked].map((n) => DeckoName.parse(n).key).filter((k) => !eagerRefs.has(k));
+      const done = pendingReads === 0 && fresh.length === 0 && lazyFresh.length === 0;
       passes.push({
         pass: passes.length + 1,
         kind: done ? "final" : "spec",
         cpu_ms: Math.round(performance.now() - t0),
-        recorded: fresh.length + pendingReads,
+        recorded: fresh.length + lazyFresh.length + pendingReads,
       });
       // A tail pass that ran out of blocking trips turned speculative: the
       // tail's prediction was wrong, so go back to discovery passes.
@@ -159,9 +183,10 @@ export async function liveRenderPage(
         if (threw !== undefined) throw threw;
         return { html: html as string, stats: live.stats, passes, choice };
       }
-      if (choice === "speculate" && tail > 0 && !tailSpent && fresh.length === 0 && pendingReads <= tail) blockNext = true;
+      if (choice === "speculate" && tail > 0 && !tailSpent && fresh.length + lazyFresh.length === 0 && pendingReads <= tail) blockNext = true;
       if (pendingReads > 0) await live.flushSpeculative();
       for (const n of fresh) seeds.add(n);
+      for (const k of lazyFresh) eagerRefs.add(k);
       if (p === 2 && choice === "collect" && fresh.length + pendingReads > threshold) choice = "speculate";
     }
     throw new Error(`live render did not converge in ${MAX_PASSES} passes`);

@@ -2931,7 +2931,22 @@ export class RenderEngine implements RenderEngineLike {
         if (resolved !== undefined && resolved.templateContent !== card.dbContent) {
           card.dbContent = resolved.templateContent;
         }
+        // Live render: references are not chased (skipStructureRefWalks'
+        // doc). Remember them so a render that asks for one is caught.
+        const lazyRefs = this.skipStructureRefWalks;
         for (const refName of templateReferenceNames(contentForRefs, card.name)) {
+          if (lazyRefs) {
+            let lazyKey: string;
+            try {
+              lazyKey = DeckoName.parse(refName).key;
+            } catch {
+              lazyKey = ""; // an unresolvable mark: the walk below drops it too
+            }
+            if (lazyKey !== "" && !this.eagerStructureRefs.has(lazyKey)) {
+              this.skippedStructureRefs.set(lazyKey, refName);
+              continue;
+            }
+          }
           // Mark-resolution error tolerance (mirror prefetch.ts:525-531 +
           // cardReferenceKeys:1858): a ref whose name is a codename/id
           // mark the codehash can't resolve (e.g. ":members" on a deck
@@ -3829,7 +3844,7 @@ export class RenderEngine implements RenderEngineLike {
     if (card.name.isCompound) {
       const leftKey = card.name.leftName?.key;
       if (leftKey !== undefined) {
-        const leftCard = this.renderCards.get(leftKey);
+        const leftCard = this.peekPrepared(leftKey);
         if (leftCard !== undefined) leftTypeName = leftCard.typeName;
       }
     }
@@ -3882,14 +3897,14 @@ export class RenderEngine implements RenderEngineLike {
     if (!name.isCompound) return false;
     const rightKey = name.rightName?.key;
     if (rightKey === undefined) return false;
-    const rightCard = this.renderCards.get(rightKey);
+    const rightCard = this.peekPrepared(rightKey);
     if (rightCard === undefined || rightCard.record.typeId !== ids.setting) return false;
     if (name.parts.length > 2) {
       // standard_rule? (all.rb:37-40) — the left part ("A+B" for a
       // 3-part name, "A" for a 2-part one) is Set-typed.
       const leftKey = name.leftName?.key;
       if (leftKey !== undefined) {
-        const leftCard = this.renderCards.get(leftKey);
+        const leftCard = this.peekPrepared(leftKey);
         if (leftCard !== undefined && leftCard.record.typeId === ids.set) return true;
       }
       // preference? (all.rb:42-48) — `name[0..-3]` is Set-typed, then
@@ -3902,11 +3917,11 @@ export class RenderEngine implements RenderEngineLike {
       // the User clause.
       const trunkKey = DeckoName.parse(name.parts.slice(0, -2).join("+")).key;
       if (trunkKey === "") return false;
-      const trunkCard = this.renderCards.get(trunkKey);
+      const trunkCard = this.peekPrepared(trunkKey);
       if (trunkCard === undefined || trunkCard.record.typeId !== ids.set) return false;
       const prefererKey = DeckoName.parse(name.parts[name.parts.length - 2] ?? "").key;
       if (prefererKey === "") return false;
-      const prefererCard = this.renderCards.get(prefererKey);
+      const prefererCard = this.peekPrepared(prefererKey);
       if (prefererCard === undefined) return false;
       if (ids.user !== undefined && prefererCard.record.typeId === ids.user) return true;
       return prefererCard.record.codename === "all";
@@ -3914,7 +3929,7 @@ export class RenderEngine implements RenderEngineLike {
     // Two-part standard_rule?: name.left is the whole first part.
     const twoPartLeftKey = name.leftName?.key;
     if (twoPartLeftKey === undefined) return false;
-    const twoPartLeft = this.renderCards.get(twoPartLeftKey);
+    const twoPartLeft = this.peekPrepared(twoPartLeftKey);
     return twoPartLeft?.record.typeId === ids.set;
   }
 
@@ -4001,7 +4016,7 @@ export class RenderEngine implements RenderEngineLike {
     if (name.isCompound) {
       const leftKey = name.leftName?.key;
       if (leftKey !== undefined) {
-        const leftCard = this.renderCards.get(leftKey);
+        const leftCard = this.peekPrepared(leftKey);
         if (leftCard !== undefined) {
           leftTypeName = leftCard.typeName;
         } else {
@@ -4314,6 +4329,19 @@ export class RenderEngine implements RenderEngineLike {
    *  (Ruby's known? path never calls assign_name for a stored card). The map
    *  entry is never mutated - a copy is returned, which is what Ruby's
    *  per-fetch `Card.new` gives for free and a shared map does not. */
+  /** A synchronous read of the prepared map by key (the render's helpers
+   *  that look up a card's parts, type or rule hosts). A miss on a key a
+   *  skipped structure walk left out is recorded like a fetchRenderCard
+   *  miss (skipStructureRefWalks' doc). */
+  private peekPrepared(key: string): RenderCard | undefined {
+    const card = this.renderCards.get(key);
+    if (card === undefined && this.skippedStructureRefAsked !== undefined) {
+      const name = this.skippedStructureRefs.get(key);
+      if (name !== undefined) this.skippedStructureRefAsked.add(name);
+    }
+    return card;
+  }
+
   fetchRenderCard(name: string): RenderCard | undefined {
     const requested = DeckoName.parse(name);
     const card = this.renderCards.get(requested.key);
@@ -4321,6 +4349,7 @@ export class RenderEngine implements RenderEngineLike {
       // Collect mode (live-batch): the sync render asked for a card the
       // prepare phase did not seat — record the question for the next pass.
       this.demandRecorder?.add(requested.s);
+      if (this.skippedStructureRefs.has(requested.key)) this.skippedStructureRefAsked?.add(requested.s);
       return undefined;
     }
     if (card.id !== undefined || card.record.isNew !== true) return card; // stored: results.rb:8
@@ -4710,6 +4739,31 @@ export class RenderEngine implements RenderEngineLike {
    *  and prepared by the next collect pass (the completion rule). Off
    *  everywhere else. */
   skipDeniedRootWalks = false;
+  /** LAZY STRUCTURE REFERENCES (request-local live render only): the
+   *  structure sweep (applyStructureContent) still substitutes every seated
+   *  card's *structure template, but does not fetch and seat the cards the
+   *  content references. On the normal render that walk seats every card a
+   *  seated card's content names: link targets, date cards' journal
+   *  junctions, and so on, most of which no view reads. In the live render
+   *  each level of that chase cost a discovery pass, and the misses cost
+   *  ~18k virtual-card resolutions per pass on the deepest pages.
+   *
+   *  The skipped references are remembered (skippedStructureRefs). When the
+   *  synchronous render asks for one (fetchRenderCard, or the part / rule
+   *  host reads through peekPrepared), the name is recorded in
+   *  skippedStructureRefAsked; the live render then counts the pass as not
+   *  final, and in every later pass that reference is walked eagerly
+   *  (eagerStructureRefs), seated through the same fetch ladder as on the
+   *  normal render. So a skipped walk costs a pass, never a byte. Off
+   *  everywhere else. */
+  skipStructureRefWalks = false;
+  /** Keys an earlier pass of this request asked for: their walk runs
+   *  eagerly, exactly as on the normal render. */
+  eagerStructureRefs: ReadonlySet<string> = new Set<string>();
+  /** Key -> reference name of every reference a skipped walk left out. */
+  readonly skippedStructureRefs = new Map<string, string>();
+  /** Names the synchronous render asked for among skippedStructureRefs. */
+  skippedStructureRefAsked: Set<string> | undefined;
 
   /** The layout warm-up chase, bounded + batched (see
    *  prefetch.ts#prefetchWarmupClosure): the layout's render-relevant
@@ -6860,7 +6914,7 @@ export class RenderEngine implements RenderEngineLike {
       // cql left: { type: SetID } — the left part is SET-typed (setting.rb
       // :47-51); Mod-typed lefts (the mod: X+*style junction family) are
       // not set rows and never bucket.
-      const left = this.renderCards.get(leftKey);
+      const left = this.peekPrepared(leftKey);
       if (left === undefined || left.typeCode !== "set") continue;
       // p20-help-content: the ANCHORED classes bucket by the left's RIGHT
       // part (rules_for_set_class, setting.rb:51-53:
@@ -6910,7 +6964,7 @@ export class RenderEngine implements RenderEngineLike {
     if (!card.name.isCompound) return false;
     const rightKey = card.name.rightName?.key;
     if (rightKey === undefined) return false;
-    const right = this.renderCards.get(rightKey);
+    const right = this.peekPrepared(rightKey);
     const codename = right?.record.codename;
     return codename !== undefined && PERMISSION_RIGHT_CODENAMES.has(codename);
   }
@@ -6981,7 +7035,7 @@ export class RenderEngine implements RenderEngineLike {
       // peekNameForId check below. Keep the original check; the C1 fix
       // attempt lives on in tests/card/render for future repair.
       const rightKey = card.name.rightName?.key;
-      const right = rightKey !== undefined ? this.renderCards.get(rightKey) : undefined;
+      const right = rightKey !== undefined ? this.peekPrepared(rightKey) : undefined;
       const rightTypeId = right?.record.typeId;
       if (
         rightTypeId !== undefined &&
@@ -7391,8 +7445,8 @@ export class RenderEngine implements RenderEngineLike {
     const rightKey = card.name.rightName?.key;
     const leftKey = card.name.leftName?.key;
     if (rightKey === undefined || leftKey === undefined) return false;
-    const rightRecord = this.renderCards.get(rightKey);
-    const leftRecord = this.renderCards.get(leftKey);
+    const rightRecord = this.peekPrepared(rightKey);
+    const leftRecord = this.peekPrepared(leftKey);
     if (rightRecord === undefined || leftRecord === undefined) return false;
     return (
       rightRecord.record.typeId === ids.setting &&
@@ -7410,8 +7464,8 @@ export class RenderEngine implements RenderEngineLike {
     const rightKey = name.rightName?.key;
     const leftKey = name.leftName?.key;
     if (rightKey === undefined || leftKey === undefined) return false;
-    const rightRecord = this.renderCards.get(rightKey);
-    const leftRecord = this.renderCards.get(leftKey);
+    const rightRecord = this.peekPrepared(rightKey);
+    const leftRecord = this.peekPrepared(leftKey);
     if (rightRecord === undefined || leftRecord === undefined) return false;
     return (
       rightRecord.record.typeId === ids.setting &&
