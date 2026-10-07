@@ -96,11 +96,13 @@ try {
     let status = 0;
     let text = "";
     let timing = "";
+    let tripsHeader = null;
     let err;
     try {
       const res = await dispatch(page);
       status = res.status;
       timing = res.headers.get("server-timing") ?? "";
+      tripsHeader = res.headers.get("x-decko-db-trips");
       text = await res.text();
     } catch (e) {
       err = String(e?.message ?? e).slice(0, 200);
@@ -109,7 +111,7 @@ try {
     const file = fileFor(page);
     writeFileSync(join(outDir, file), text);
     const st = parseServerTiming(timing);
-    const r = { page, status, wall_ms: wall, bytes: Buffer.byteLength(text), db_ms: st.db, stmt: st.db_stmt, render_ms: st.render, total_ms: st.total, sha256_masked: createHash("sha256").update(maskSlots(text)).digest("hex").slice(0, 16) };
+    const r = { page, status, wall_ms: wall, bytes: Buffer.byteLength(text), db_ms: st.db, stmt: st.db_stmt, trips: tripsHeader === null ? undefined : Number(tripsHeader), render_ms: st.render, total_ms: st.total, sha256_masked: createHash("sha256").update(maskSlots(text)).digest("hex").slice(0, 16) };
     if (refDir) {
       const ref = join(refDir, file);
       r.same_bytes = existsSync(ref) ? maskSlots(readFileSync(ref, "utf8")) === maskSlots(text) : null;

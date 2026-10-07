@@ -13,8 +13,11 @@ import { statSync, mkdirSync, readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { builtinModules } from "node:module";
 import { createHash } from "node:crypto";
+import { fileURLToPath } from "node:url";
 
-const here = resolve(process.cwd());
+// The repository root, from this file's location, so the build works from
+// any working directory.
+const here = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const src = resolve(here, "deploy/cf-worker-src/cf-edge-engine-entry.ts");
 const out = resolve(here, "deploy/dist/cf-edge-engine.bundle.js");
 const builtins = new Set([...builtinModules, ...builtinModules.map((n) => `node:${n}`)]);

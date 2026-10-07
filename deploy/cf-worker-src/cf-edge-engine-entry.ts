@@ -16,7 +16,8 @@
 // locally in workerd is byte for byte the code Cloudflare runs.
 
 import { handleBunnyEngineRequest, setEdgeDbDriverFactory, type EdgeEnv } from "../bunny-worker-src/bunny-edge-engine-handler.js";
-import { recordEdgeDbRoundTrip, edgeDriverQueryCounter } from "../bunny-worker-src/bunny-edge-server-timing.js";
+import { recordEdgeDbRoundTrip, edgeDriverQueryCounter, edgeDbLedgerSnapshot } from "../bunny-worker-src/bunny-edge-server-timing.js";
+import { setEdgeHostLabels } from "../bunny-worker-src/edge-host-labels.js";
 import { CloudflareD1Adapter, type D1DatabaseLike } from "../../src/server/drivers/d1.js";
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../src/server/driver.js";
 
@@ -55,6 +56,11 @@ interface CfEnv {
 // captured on the first request because Workers hands bindings to fetch(),
 // not to module scope. It is a handle, not data: nothing read is kept.
 let binding: D1DatabaseLike | undefined;
+setEdgeHostLabels({
+  runtime: "cloudflare-workers",
+  driver: "CloudflareD1Adapter (D1 binding, one batch() per round trip)",
+  binding: "DB",
+});
 setEdgeDbDriverFactory(() => {
   if (binding === undefined) throw new Error("D1 binding DB is not configured");
   return new LedgerD1Driver(new CloudflareD1Adapter(binding));
@@ -73,14 +79,22 @@ export default {
     for (const [k, v] of Object.entries(env)) if (typeof v === "string") vars[k] = v;
     vars.DECKO_DB_URL = D1_PLACEHOLDER_URL;
     vars.DECKO_DB_TOKEN = D1_PLACEHOLDER_TOKEN;
+    const before = edgeDbLedgerSnapshot();
     const response = await handleBunnyEngineRequest(request, vars);
-    if (vars.DECKO_PARTIAL_DECK !== "1") return response;
-    // While the trickle import is still running, pages outside the import's
-    // manifest can render with cards missing. Mark every answer so nothing
-    // indexes or trusts it; the switch to the full deck sets this to "0".
     const marked = new Response(response.body, response);
-    marked.headers.set("X-Decko-Deck", "partial");
-    marked.headers.set("X-Robots-Tag", "noindex");
+    // Database round trips for this request: D1 binding calls, each one
+    // batch() of a trip's statements. Server-Timing's stmt counts statements,
+    // so per-trip cost is db.dur / this. (Exact when requests do not overlap
+    // in the isolate, as the ledger's own contract says.)
+    marked.headers.set("X-Decko-Db-Trips", String(Math.max(0, edgeDbLedgerSnapshot().posts - before.posts)));
+    if (vars.DECKO_PARTIAL_DECK === "1") {
+      // While the trickle import is still running, pages outside the
+      // import's manifest can render with cards missing. Mark every answer
+      // so nothing indexes or trusts it; the switch to the full deck sets
+      // this to "0".
+      marked.headers.set("X-Decko-Deck", "partial");
+      marked.headers.set("X-Robots-Tag", "noindex");
+    }
     return marked;
   },
 };

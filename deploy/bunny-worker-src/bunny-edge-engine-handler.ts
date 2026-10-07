@@ -51,6 +51,7 @@
 
 import { BunnyDbDriver } from "../../src/card/drivers/bunny-db.js";
 import type { SQLDatabaseDriver } from "../../src/server/driver.js";
+import { edgeHostLabels } from "./edge-host-labels.js";
 import { SessionStore } from "../../src/card/auth/session-store.js";
 import {
   bootEdgeServingEngines,
@@ -284,14 +285,27 @@ async function statusResponse(
       [],
     );
     const n = Number(r.rows[0]?.n);
+    const host = edgeHostLabels();
+    if (host.binding !== undefined) {
+      // A binding-backed host (Cloudflare D1): no credential variables are
+      // involved, so report the binding instead of their names.
+      return json(200, {
+        ok: true,
+        engine: "decko-ts",
+        runtime: host.runtime,
+        view: "full render engine (SUPPORTED_VIEWS dispatch + layout shell)",
+        database: { ok: true, driver: host.driver, card_count: n, binding: host.binding },
+        version: "2.0.0",
+      });
+    }
     return json(200, {
       ok: true,
       engine: "decko-ts",
-      runtime: "bunny-edge-scripting",
+      runtime: host.runtime,
       view: "full render engine (SUPPORTED_VIEWS dispatch + layout shell)",
       database: {
         ok: true,
-        driver: "BunnyDbDriver (hrana v2 over fetch)",
+        driver: host.driver,
         card_count: n,
         // Names only, never values. credential_source says WHICH KIND of
         // variable pair supplied the endpoint (the db-repoint lane's

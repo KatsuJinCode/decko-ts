@@ -15,7 +15,11 @@
 
 import { spawn } from "node:child_process";
 import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join, resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+/** The repository root, from this file, so the tool runs from any directory. */
+const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 import { tmpdir } from "node:os";
 import { D1HttpExecutor, readCredsFile, maskSecrets } from "./executors.mjs";
 
@@ -64,11 +68,11 @@ async function main() {
     const config = join(scratch, "wrangler.toml");
     writeFileSync(
       config,
-      fillConfig(readFileSync(resolve("deploy/cf-brandon/wrangler.toml"), "utf8"), {
+      fillConfig(readFileSync(resolve(REPO, "deploy/cf-brandon/wrangler.toml"), "utf8"), {
         workerName,
         databaseName,
         databaseId: dbs[0].uuid,
-        bundlePath: resolve("deploy/dist/cf-edge-engine.bundle.js"),
+        bundlePath: resolve(REPO, "deploy/dist/cf-edge-engine.bundle.js"),
         vars,
       }),
     );

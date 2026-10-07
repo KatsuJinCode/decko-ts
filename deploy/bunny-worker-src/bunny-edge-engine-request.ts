@@ -37,6 +37,7 @@
 import type { FetchEngine } from "../../src/card/fetch.js";
 import type { RenderEngine } from "../../src/card/render.js";
 import { DEFAULT_PIPELINE_TIMEOUT_MS } from "../../src/card/drivers/bunny-db.js";
+import { edgeHostLabels } from "./edge-host-labels.js";
 import { renderPageBytes } from "../../src/card/render/page.js";
 import { liveRenderPage } from "../../src/card/live/live-render.js";
 import { requestContextAvailable, runInRequestContext } from "../../src/card/request-context.js";
@@ -421,7 +422,7 @@ async function dispatchEngineRequest(
     if (url.pathname === "/api/status") {
       return json(200, {
         ok: true,
-        runtime: "bunny-edge-scripting",
+        runtime: edgeHostLabels().runtime,
         engine: "decko-ts",
         notes: "boot pattern: warm caches survive across requests in the same isolate",
       });
