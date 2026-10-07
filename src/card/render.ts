@@ -5054,12 +5054,39 @@ export class RenderEngine implements RenderEngineLike {
    *  lines cheap but never the parsing). The round cap is paranoia —
    *  renderCards strictly grows, so the fixpoint is reached in at most
    *  deck-size rounds; the cap keeps a pathological cycle bounded. */
+  /** A seated pointer/list/search/skin host the closure walk has not done
+   *  (the host filter of enrichPointerListItemsClosure). */
+  private hasUnwalkedSeatedHost(): boolean {
+    for (const key of this.renderSeats) {
+      if (this.pointerListHostsDone.has(key)) continue;
+      const card = this.renderCards.get(key);
+      if (card === undefined) continue;
+      if (
+        card.typeCode === "pointer" ||
+        card.typeCode === "list" ||
+        card.typeCode === "search_type" ||
+        card.typeCode === "skin" ||
+        card.typeName === "Search"
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private async enrichPointerListItemsClosure(): Promise<void> {
     // renderCards only grows: no store since the last pass means no new
     // host and no un-walked card — the sweep below would re-visit every
     // deck card only to Set.has-skip each one. Consume the flag here so
     // the pass runs once after whatever stored new cards.
-    if (!this.renderCardsGrewSinceClosure) return;
+    // But map growth is not the only way a host arrives: on a warm engine a
+    // card stored by an EARLIER render (outside that render's seats) can be
+    // seated by this one without the map growing. Such an un-walked seated
+    // host must still get its item type and items (the bench-paired E4
+    // cluster: list/search hosts whose item nests lost `"type"`), so the
+    // pass also runs when any seat is an un-walked host. The check walks
+    // the seats, not the map.
+    if (!this.renderCardsGrewSinceClosure && !this.hasUnwalkedSeatedHost()) return;
     this.renderCardsGrewSinceClosure = false;
     const MAX_ROUNDS = RUBY_MAX_DEPTH;
     for (let round = 0; round < MAX_ROUNDS; round++) {
