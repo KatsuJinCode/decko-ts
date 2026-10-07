@@ -648,22 +648,22 @@ for (const question of QUESTIONS.questions) {
     }
 
     case "inflection_rows": {
-      const ruby = RUBY_WAVE2[id] as { divergent?: Array<{ id: number; name: string; captured_key: string; stock_key: string }> } | undefined;
-      const rows = ruby?.divergent ?? [];
+      const ruby = RUBY_WAVE2[id] as { divergent?: Array<{ deck_id: number | null; name: string; captured_key: string; mirror_key: string }> } | undefined;
+      const rows = (ruby?.divergent ?? []).filter((r) => r.deck_id !== null);
       const out: unknown[] = [];
       for (const r of rows) {
         const computed = DeckoName.parse(r.name).key;
         const byName = await fetcher.fetchByName(r.name);
         const byCapturedKey = await fetcher.fetchByKey(r.captured_key);
-        const byStockKey = await fetcher.fetchByKey(r.stock_key);
-        const byId = await fetcher.fetchById(r.id);
+        const byMirrorKey = await fetcher.fetchByKey(r.mirror_key);
+        const byId = await fetcher.fetchById(r.deck_id!);
         out.push({
-          id: r.id,
+          id: r.deck_id,
           name: r.name,
           computed_key: computed,
           fetch_by_name: byName?.id ?? null,
           fetch_by_captured_key: byCapturedKey?.id ?? null,
-          fetch_by_stock_key: byStockKey?.id ?? null,
+          fetch_by_mirror_key: byMirrorKey?.id ?? null,
           fetch_by_id: byId?.id ?? null,
           fetch_by_id_key: byId?.key ?? null,
         });
