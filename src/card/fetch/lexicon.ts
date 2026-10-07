@@ -61,6 +61,13 @@ export class DbLexicon {
   private durableIdNames = new Map<number, string>();
   private static readonly DURABLE_ID_NAMES_CAP = 200_000;
 
+  /** Drop both durable records (incremental live discovery: an engine kept
+   *  across passes must re-read what a fresh engine would read). */
+  forgetDurableRecords(): void {
+    this.durableIdNames.clear();
+    this.durableLexIds.clear();
+  }
+
   /**
    * The durable lex->id record - the MIRROR of durableIdNames above, for the
    * same reason and with the same contract, one direction over.

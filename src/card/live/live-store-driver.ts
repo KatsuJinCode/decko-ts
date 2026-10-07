@@ -349,6 +349,17 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
 
   /** Fetch everything a speculative pass recorded (plus the ring) in ONE
    *  round trip. */
+  /** Diagnostics: a summary of what the pending speculative trip holds. */
+  debugPending(): string[] {
+    const s = this.spec;
+    return [
+      `fullKeys:${[...s.fullKeys].slice(0, 4).join("|")}`,
+      `fullIdList:${[...s.fullIds].join(",")}`,
+      `fullIds:${s.fullIds.size} idKeys:${s.idKeys.size} idIds:${s.idIds.size} lefts:${s.lefts.size} leftKeys:${s.leftKeys.size} pairs:${s.pairs.size}`,
+      ...[...s.exact.values()].slice(0, 3).map((x) => `exact:${x.sql.replace(/\s+/g, " ").slice(0, 90)} ${JSON.stringify(x.params).slice(0, 60)}`),
+    ];
+  }
+
   async flushSpeculative(): Promise<void> {
     await this.roundTrip(this.spec.take());
   }

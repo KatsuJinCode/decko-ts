@@ -89,6 +89,19 @@ export class TemporaryCache {
     this.resetCountValue += 1;
   }
 
+  /** Drop every entry the predicate selects; returns how many were dropped
+   *  (incremental live discovery: forget provisional negatives). */
+  purge(select: (key: string, value: unknown) => boolean): number {
+    let dropped = 0;
+    for (const [key, value] of this.store) {
+      if (select(key, value)) {
+        this.store.delete(key);
+        dropped += 1;
+      }
+    }
+    return dropped;
+  }
+
   exist(key: string): boolean {
     return this.store.has(key);
   }

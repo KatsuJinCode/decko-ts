@@ -62,6 +62,13 @@ export interface LiveRenderOptions {
   /** Blocking round trips a tail pass may pay before it turns speculative
    *  (default: no limit). */
   autoTailTrips?: number;
+  /** Incremental discovery: one engine serves the discovery passes, fresh
+   *  engines render the page (env DECKO_LIVE_INCREMENTAL=1). */
+  incremental?: boolean;
+  /** Re-runs the boot's data-dependent steps on the kept discovery engine
+   *  before each of its passes (bunny-edge-deck-boot.ts
+   *  refreshEdgeServingEngines). Incremental discovery runs only with it. */
+  refreshDiscoveryEngine?: (driver: SQLDatabaseDriver, render: RenderEngine) => Promise<void>;
   /** Expand each trip's ring around every fetched row (LiveStoreDriver
    *  ringAll). */
   ringAll?: boolean;
@@ -74,7 +81,7 @@ export interface LiveRenderOptions {
 
 export interface LivePassReport {
   pass: number;
-  kind: "spec" | "final";
+  kind: "spec" | "final" | "disc";
   cpu_ms: number;
   recorded: number;
 }
@@ -96,11 +103,24 @@ async function renderPass(
   collect: { seeds: Set<string>; asked: Set<string> } | undefined,
   skipSync: (() => boolean) | undefined,
   lazy: { asked: Set<string>; eager: ReadonlySet<string> } | undefined,
+  discovery?: { engine: RenderEngine | undefined; level: number; sweepAll: boolean; onBoot: (e: RenderEngine) => void },
 ): Promise<string> {
   // A FRESH engine per pass: a speculative pass's engine saw zero-row
   // answers and is discarded; only the store (real rows) carries over.
-  resetBootCache();
-  const { render } = await boot(live);
+  // Incremental discovery instead reuses one engine across its passes,
+  // dropping its provisional state (RenderEngine.clearProvisionalState).
+  let render: RenderEngine;
+  if (discovery?.engine !== undefined) {
+    render = discovery.engine;
+    resetBootCache();
+    render.clearProvisionalState(discovery.level);
+    await opts.refreshDiscoveryEngine?.(live, render);
+  } else {
+    resetBootCache();
+    render = (await boot(live)).render;
+    discovery?.onBoot(render);
+  }
+  if (discovery !== undefined) render.sweepAllHeldCards = discovery.sweepAll;
   render.liveRequest = true;
   if (collect !== undefined) {
     render.warmupChaseOff = true;
@@ -165,6 +185,16 @@ export async function liveRenderPage(
   // default, DECKO_LIVE_STRUCTURE_WALKS=1 restores the eager walk).
   const lazyRefs = env?.DECKO_LIVE_STRUCTURE_WALKS !== "1";
   const eagerRefs = new Set<string>();
+  // Incremental discovery (off by default; DECKO_LIVE_INCREMENTAL=1): one
+  // engine serves the discovery passes until a pass asks nothing new; then
+  // fresh engines take over under the completion rule, so the page is still
+  // the first fresh pass that consumed no speculative answer.
+  const incremental =
+    opts.refreshDiscoveryEngine !== undefined && (opts.incremental ?? env?.DECKO_LIVE_INCREMENTAL === "1");
+  const incLevel = env?.DECKO_LIVE_INCREMENTAL_LEVEL !== undefined ? Number(env.DECKO_LIVE_INCREMENTAL_LEVEL) : 2;
+  const incSweepAll = env?.DECKO_LIVE_INCREMENTAL_SWEEP !== "0";
+  let discovering = incremental;
+  let discoveryEngine: RenderEngine | undefined;
   DeckoName.beginRequestScope();
   try {
     for (let p = 1; p <= MAX_PASSES; p += 1) {
@@ -182,7 +212,18 @@ export async function liveRenderPage(
         // issue no reads). Collect passes keep them: the render is what
         // records their questions.
         const skipSync = choice === "speculate" ? () => live.mode === "spec" && live.pendingCount > 0 : undefined;
-        html = await renderPass(live, boot, page, opts, choice === "collect" ? { seeds, asked } : undefined, skipSync, lazyRefs ? { asked: lazyAsked, eager: eagerRefs } : undefined);
+        html = await renderPass(
+          live,
+          boot,
+          page,
+          opts,
+          choice === "collect" ? { seeds, asked } : undefined,
+          skipSync,
+          lazyRefs ? { asked: lazyAsked, eager: eagerRefs } : undefined,
+          discovering
+            ? { engine: discoveryEngine, level: incLevel, sweepAll: incSweepAll, onBoot: (e) => (discoveryEngine = e) }
+            : undefined,
+        );
       } catch (err) {
         threw = err;
       }
@@ -192,10 +233,21 @@ export async function liveRenderPage(
       const done = pendingReads === 0 && fresh.length === 0 && lazyFresh.length === 0;
       passes.push({
         pass: passes.length + 1,
-        kind: done ? "final" : "spec",
+        kind: discovering ? "disc" : done ? "final" : "spec",
         cpu_ms: Math.round(performance.now() - t0),
         recorded: fresh.length + lazyFresh.length + pendingReads,
       });
+      if (env?.DECKO_LIVE_DEBUG === "1") {
+        if (threw !== undefined) console.error(`THREW ${String((threw as Error)?.stack ?? threw).slice(0, 600)}`);
+        console.error(`PASS ${passes.length} ${discovering ? "disc" : "fresh"} pending=${pendingReads} asked=${fresh.length} lazy=${lazyFresh.length} ${JSON.stringify(fresh.slice(0, 12))} ${JSON.stringify(lazyFresh.slice(0, 6))} ${JSON.stringify(live.debugPending?.().slice(0, 6) ?? [])}`);
+      }
+      if (discovering && done) {
+        // The discovery engine asks nothing new: its bytes are not the page.
+        // Fresh engines take over from here.
+        discovering = false;
+        discoveryEngine = undefined;
+        continue;
+      }
       // A tail pass that ran out of blocking trips turned speculative: the
       // tail's prediction was wrong, so go back to discovery passes.
       const tailSpent = blockNext && live.mode === "spec";
