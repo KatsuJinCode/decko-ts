@@ -140,6 +140,14 @@ export function edgeDbTimingFetch(): typeof fetch {
   };
 }
 
+/** Record one database round trip that did not go through fetch (a
+ *  Cloudflare D1 binding call, cf-hosting 2026-10-07): its wall time into
+ *  the ledger, as edgeDbTimingFetch does for a pipeline POST. */
+export function recordEdgeDbRoundTrip(ms: number): void {
+  ledgerDbMs += Math.max(0, ms);
+  ledgerPosts += 1;
+}
+
 /** The counter handed to the deck driver as its `queryCounter` (the driver
  *  already counts queries; this exposes the counter per request via the
  *  ledger deltas). Install ONCE per isolate — it is a singleton view over

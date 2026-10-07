@@ -60,6 +60,7 @@ import {
   type ResolvedDbConfig,
 } from "./bunny-edge-deck-config.js";
 export { DB_CREDENTIAL_VAR_NAMES, resolveDbConfig, type EdgeEnv } from "./bunny-edge-deck-config.js";
+export { setEdgeDbDriverFactory, type EdgeDbDriverFactory } from "./bunny-edge-deck-config.js";
 import { probeArmed, probeHeaderValue, probeRecordBoot, probeRoute } from "./bunny-edge-isolate-probe.js";
 import { SessionStore } from "../../src/card/auth/session-store.js";
 import {
