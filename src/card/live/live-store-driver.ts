@@ -178,6 +178,10 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
     typeof process === "undefined" || process.env?.DECKO_LIVE_RULE_SETS !== "0";
   private readonly askedLefts =
     typeof process === "undefined" || process.env?.DECKO_LIVE_ASKED_LEFTS !== "0";
+  private readonly partialOn =
+    typeof process === "undefined" || process.env?.DECKO_LIVE_PARTIAL !== "0";
+  private readonly anchorLeftsOn =
+    typeof process === "undefined" || process.env?.DECKO_LIVE_ANCHOR_LEFTS !== "0";
   private readonly ruleExpanded = new Set<number>();
   private readonly ruleSetsAsked = new Set<string>();
 
@@ -254,8 +258,17 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
         const typeRow = r.type_id != null ? (this.store.rowById(r.type_id) as { codename?: string | null } | undefined) : undefined;
         if (typeRow?.codename !== "cardtype") add(r.id, "self");
         add(r.type_id, "type");
+        // The rule walk resolves these set cards by (left, right) pair, and
+        // the store answers a pair only when it holds every junction of the
+        // left side (leftComplete). A read row's own left junctions come with
+        // it (above); its type card's and right part's would come only once
+        // the engine reads those cards, a level later. DECKO_LIVE_ANCHOR_LEFTS=0
+        // off.
+        const anchorLefts = this.anchorLeftsOn;
+        if (anchorLefts && r.type_id != null && !this.store.leftComplete.has(r.type_id)) need.lefts.add(r.type_id);
         if (r.left_id != null && r.right_id != null) {
           add(r.right_id, "right");
+          if (anchorLefts && !this.store.leftComplete.has(r.right_id)) need.lefts.add(r.right_id);
           const leftType = (this.store.rowById(r.left_id) as { type_id?: number } | undefined)?.type_id;
           if (leftType != null) {
             const k = `${leftType}:${r.right_id}`;
@@ -322,6 +335,7 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
    *  under 1 KB of content on this deck; every page's rule walk reads
    *  several of them). DECKO_LIVE_ALL_RULES=0 off. */
   private globalRulesSent = new Set<string>();
+  private firstTripDone = false;
   private globalRuleSets(): number[] {
     if (!this.ruleSetsOn || (typeof process !== "undefined" && process.env?.DECKO_LIVE_ALL_RULES === "0")) return [];
     const out: number[] = [];
@@ -430,7 +444,12 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
             this.markDemanded(s, ans);
           } else {
             need.addMissing(miss);
-            results[i] = { rows: [], rowsAffected: 0 };
+            // Speculative passes get the rows the store already holds whole
+            // instead of none (RequestStore.partialAnswer; DECKO_LIVE_PARTIAL=0
+            // off): one unproven pair or key in a batched statement no longer
+            // hides the proven ones from the rest of the pass. In block mode
+            // the statement is fetched below and the answer replaced.
+            results[i] = { rows: this.mode === "spec" && this.partialOn ? this.store.partialAnswer(s.sql, params) : [], rowsAffected: 0 };
           }
           return;
         }
@@ -516,6 +535,22 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
     if (this.askedLefts) {
       for (const x of need.fullIds) if (this.store.present.has(x) && !this.store.leftComplete.has(x)) need.lefts.add(x);
     }
+    // FIRST TRIP (DECKO_LIVE_FIRST_GLOBALS=0 off): *all and *all plus, every
+    // rule under them and the layout card their *layout rule names arrive
+    // whole now, by key, instead of once the engine has asked for *all (the
+    // second trip) and then read *all+*layout (a trip after that). Every
+    // page's layout chain starts from them.
+    let wholeLeftKeys: string[] | undefined;
+    if (!this.firstTripDone) {
+      this.firstTripDone = true;
+      if (this.ruleSetsOn && (typeof process === "undefined" || process.env?.DECKO_LIVE_FIRST_GLOBALS !== "0")) {
+        wholeLeftKeys = ["*all", "*all_plu"];
+        for (const k of wholeLeftKeys) {
+          need.fullKeys.add(k);
+          this.globalRulesSent.add(k);
+        }
+      }
+    }
     this.frontier(need);
     const st = this.store;
     const w: Widening = {
@@ -531,6 +566,7 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
       ruleSets: [...need.ruleSets.values()],
       tprSets: [...need.tprSets.values()],
       wholeLefts: this.globalRuleSets(),
+      ...(wholeLeftKeys !== undefined ? { wholeLeftKeys } : {}),
     };
     const widening = st.wideningStatements(w, this.identityRing);
     const exact = [...need.exact.entries()].filter(([k]) => !this.exact.has(k));
@@ -671,6 +707,9 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
   }
 
   close(): void {
+    if (typeof process !== "undefined" && process.env?.DECKO_LIVE_TRACE_ROWS === "1") {
+      process.stderr.write(`ROWS ${JSON.stringify({ full: [...this.store.full], present: [...this.store.present] })}\n`);
+    }
     if (typeof process !== "undefined" && process.env?.DECKO_LIVE_TRACE_RULESETS === "1") {
       process.stderr.write(
         `RULESETS ${JSON.stringify({ asked: [...this.ruleSetsAsked], demanded: [...this.demanded] })}\n`,
