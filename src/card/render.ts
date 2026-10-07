@@ -1206,16 +1206,30 @@ export class RenderEngine implements RenderEngineLike {
       // consumes (its doc), and every compound card's name parts are
       // enriched ahead of it, so the sync predicate resolves. Runs once per
       // engine (ruleTypesCold); memory-only, zero queries.
-      for (const card of this.renderCards.values()) {
-        if (!card.name.isCompound) continue;
+      // The map need not hold every part the predicate reads: a rule card
+      // reached by its stored key (`*all+*style` from a set's rules board)
+      // enters without its right part (`*style`). The sync read cannot tell
+      // "not a rule" from "parts not in the map", so a card whose parts are
+      // missing is answered by the fetching predicate, as Ruby's rule?
+      // fetches them. The cards that need it are collected first: the
+      // fetches below can enrich more cards into the map.
+      const repaired = [...this.renderCards.values()].filter((card) => card.name.isCompound);
+      for (const card of repaired) {
         const input = this.structurePatternInputForSync(card);
+        let isRule = input.isRule === true;
+        if (!isRule && !this.rulePartsInMap(card)) {
+          const leftKey = card.name.leftName?.key;
+          const leftRecord =
+            leftKey !== undefined ? this.renderCards.get(leftKey)?.record : undefined;
+          isRule = (await this.computeIsRule(card.name, leftRecord)) === true;
+        }
         card.setKeys = safeSetKeys({
           name: card.name,
           typeId: input.typeId ?? undefined,
           typeName: typeof input.typeName === "string" ? input.typeName : undefined,
           leftTypeName:
             typeof input.leftTypeName === "string" ? input.leftTypeName : undefined,
-          isRule: input.isRule === true,
+          isRule,
         });
       }
     }
@@ -3827,6 +3841,28 @@ export class RenderEngine implements RenderEngineLike {
    * SLOT classes — the link views carry no slot wrap) exposed it: the
    * capture pins `... RSTAR RULE RIGHT-Xhead ...`.
    */
+  /** Whether every part computeIsRuleSync reads is in the render map, so
+   *  its `false` is an answer rather than a gap: the right part, the left
+   *  part, and for a 3+-part name whose right part is a Setting, the
+   *  preference arm's trunk and preferer. */
+  private rulePartsInMap(card: RenderCard): boolean {
+    const name = card.name;
+    const rightKey = name.rightName?.key;
+    const leftKey = name.leftName?.key;
+    if (rightKey === undefined || leftKey === undefined) return true;
+    const rightCard = this.renderCards.get(rightKey);
+    if (rightCard === undefined || !this.renderCards.has(leftKey)) return false;
+    if (name.parts.length <= 2 || rightCard.record.typeId !== this.ruleTypeIds?.setting) {
+      return true;
+    }
+    const trunkKey = DeckoName.parse(name.parts.slice(0, -2).join("+")).key;
+    const prefererKey = DeckoName.parse(name.parts[name.parts.length - 2] ?? "").key;
+    return (
+      (trunkKey === "" || this.renderCards.has(trunkKey)) &&
+      (prefererKey === "" || this.renderCards.has(prefererKey))
+    );
+  }
+
   private computeIsRuleSync(card: RenderCard): boolean {
     const ids = this.ruleTypeIds;
     if (ids === undefined || ids.setting === undefined || ids.set === undefined) {
