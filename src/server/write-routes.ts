@@ -100,7 +100,7 @@ import { signinAccount } from "../card/auth/signin.js";
 import { createCardActionEngineForSession } from "../card/actions/engine-for-session.js";
 import { CardActionError, type ActionResult, type AttachmentInput } from "../card/actions/types.js";
 import type { CardActionRecaptchaConfig } from "../card/actions/card-action-engine.js";
-import type { ModEventRuntime } from "../card/mod-loader/mod-event-dispatch.js";
+import type { ModEventRuntime, ModEventStageReport } from "../card/mod-loader/mod-event-dispatch.js";
 import type { ModEngineHost } from "../card/mod-loader/mod-manifest.js";
 import type { AttachmentStore } from "../card/attachments/attachment-store.js";
 import { DeckoName } from "../card/name.js";
@@ -180,6 +180,11 @@ export interface WriteRouteContext {
    *  Card::Rule.toggle(rule(:captcha)) candidate walk); verify defaults
    *  to the real siteverify GET (recaptcha.rb:41-44). */
   recaptcha?: CardActionRecaptchaConfig;
+  /** Observer for every mod-event stage walk a save performs (the
+   *  dispatcher's onReport: fired and skipped event names, in walk order).
+   *  Diagnostics and the side-effects parity harness read event order
+   *  through it. Absent = no observer; dispatch is unchanged either way. */
+  onModEventReport?: (report: ModEventStageReport) => void;
 }
 
 export interface WriteRouteResponse {
@@ -765,6 +770,14 @@ function servingModEventRuntime(): Promise<ModEventRuntime> {
   return servingModEventRuntimeSeat;
 }
 
+/** The serving runtime, with the host's stage-report observer attached when
+ *  one is given. The shared runtime object is never mutated: an observed
+ *  request gets a shallow copy carrying its own onReport. */
+async function observedModEventRuntime(ctx: WriteRouteContext): Promise<ModEventRuntime> {
+  const runtime = await servingModEventRuntime();
+  return ctx.onModEventReport === undefined ? runtime : { ...runtime, onReport: ctx.onModEventReport };
+}
+
 /**
  * Dispatch one non-GET request against the write grammar. Returns the
  * response, or NULL when the request is not a write route at all (the
@@ -840,7 +853,7 @@ export async function handleWriteRequest(
     // config the engine composes at validate time (card-action-engine.ts
     // prepareRecaptchaSaveInput), so an unarmed host registers the event and
     // still never fires the guard (recaptcha_keys? false, recaptcha.rb:46-48).
-    modEvents: await servingModEventRuntime(),
+    modEvents: await observedModEventRuntime(ctx),
     ...(ctx.recaptcha === undefined ? {} : { recaptcha: ctx.recaptcha }),
   });
 
