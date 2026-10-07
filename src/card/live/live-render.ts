@@ -89,6 +89,9 @@ async function renderPass(
     render.warmupChaseOff = true;
     render.demandSeeds = [...collect.seeds];
     render.demandRecorder = collect.asked;
+    // Round 9 step 2: collect passes skip the prepare walks of a read-denied
+    // root (its hidden body's items and links are never rendered).
+    render.skipDeniedRootWalks = true;
   }
   if (skipSync !== undefined) render.skipSyncRender = skipSync;
   return await renderPageBytes(render, page, opts.requestedView, opts.historyParams);

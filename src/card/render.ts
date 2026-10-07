@@ -1557,7 +1557,8 @@ export class RenderEngine implements RenderEngineLike {
     // phase. Repeat to a fixpoint: enriched items may themselves be
     // pointer/list hosts. Termination is structural — enrichAndStore
     // skips existing keys, so renderCards only grows.
-    await this.enrichPointerListItemsClosure();
+    const deniedRootSkip = this.skipDeniedRootWalks && this.isDenied(rootCard);
+    if (!deniedRootSkip) await this.enrichPointerListItemsClosure();
     // The V6 nested-skin scan has to run again HERE, not only above. A skin
     // reached through a POINTER/LIST item is not in the render-card map when
     // the earlier scan walks it — measured cold on
@@ -1639,7 +1640,7 @@ export class RenderEngine implements RenderEngineLike {
     // enrichNestTypeOptTargets (same sync-fetch-gap class, same once-per-
     // engine-lifetime sweep) and BEFORE the verdict re-pass below, which
     // then judges the newly seated junctions.
-    await this.enrichTemplateLinkSetJunctions();
+    if (!deniedRootSkip) await this.enrichTemplateLinkSetJunctions();
     // The items enriched above land AFTER both ensureVerdicts passes
     // (the main pass and the help-rules re-pass), so their card.ids
     // have no entry in deniedVerdicts and isDenied() returns
@@ -1693,7 +1694,7 @@ export class RenderEngine implements RenderEngineLike {
       // passes; both are no-ops (skip-if-set) for cards already handled.
       // Same defect class and same fix shape as the help-rules and
       // pointer-item re-passes above.
-      await this.enrichPointerListItemsClosure();
+      if (!deniedRootSkip) await this.enrichPointerListItemsClosure();
       await this.ensureVerdicts();
     }
     // view-fail class V4: the sync render's [[wikilink]] anchors classify
@@ -1703,7 +1704,7 @@ export class RenderEngine implements RenderEngineLike {
     // group so the harvested set is the full prepared closure (help rule
     // cards, set-rule children, pointer items included). Zero statements
     // when nothing new resolves.
-    await this.enrichLinkTargetsForKnownClass(rootCard);
+    if (!deniedRootSkip) await this.enrichLinkTargetsForKnownClass(rootCard);
     // THE HEAD READ-SET (the async-view seam — the two candidate seams and
     // why the prefetch won are argued at renderView's contract note below).
     //
@@ -4701,6 +4702,14 @@ export class RenderEngine implements RenderEngineLike {
    *  payload, whatever DECKO_ONE_TRIP says. That path stores nothing between
    *  requests and reads no plan. */
   liveRequest = false;
+  /** DENIED ROOT (request-local live render, collect passes only): when the
+   *  render root is read-denied, its body renders as the denial span and
+   *  none of its pointer items, template junctions or link targets are read
+   *  by the synchronous render. The prepare-phase walks that warm them are
+   *  then skipped; anything the layout does read is asked for by the render
+   *  and prepared by the next collect pass (the completion rule). Off
+   *  everywhere else. */
+  skipDeniedRootWalks = false;
 
   /** The layout warm-up chase, bounded + batched (see
    *  prefetch.ts#prefetchWarmupClosure): the layout's render-relevant
