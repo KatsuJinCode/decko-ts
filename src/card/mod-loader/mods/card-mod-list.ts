@@ -38,8 +38,8 @@
 //   set/all/editor.rb:6-13 + 50-52, with Abstract::List's
 //   default_input_type :list override, html_views.rb:40-42)
 // - :nest_list_input (set/type/nest_list.rb:21-23, cache: :never)
-// - the type set modules (type/link_list.rb, type/nest_list.rb) register as
-//   bookkeeping entries whose view bodies folded into the :input dispatcher
+// - the type set modules (type/link_list.rb, type/nest_list.rb) register
+//   their :input overrides with the shared :input dispatcher as the body
 // - :view_list (set/abstract/01_list.rb:39-44) - PORTED by the mod-views-b
 //   lane (2026-09-28, rendered-unpinned: no oracle capture exists for it).
 //   Its five sections render :content with the item view overridden to
@@ -1377,9 +1377,17 @@ const cardModList: DeckoModManifest = {
     },
     {
       // card-mod-list-0.20.0/set/type/link_list.rb - item/title methods +
-      // the :input override (folded into the inputView dispatcher above;
-      // the loader's flat view table cannot hold per-type :input overrides)
+      // view :input, cache: :never (:27-29). Registered here so Type::LinkList
+      // owns the view as in Ruby; the body is the shared inputView
+      // dispatcher (its link_list branch). The unknown setting is inherited
+      // through Ruby's method resolution (the _view_input__unknown method of
+      // the editor module), so the config matches the abstract registration.
       setPath: "type/link_list",
+      formats: {
+        html: {
+          views: [{ view: "input", viewFn: inputView, config: { unknown: true, cache: "never" } }],
+        },
+      },
     },
     {
       // card-mod-list-0.20.0/set/type/list.rb - include_set Abstract::List
@@ -1387,8 +1395,7 @@ const cardModList: DeckoModManifest = {
     },
     {
       // card-mod-list-0.20.0/set/type/nest_list.rb - item/option methods +
-      // view :nest_list_input + the :input override (folded into the
-      // inputView dispatcher)
+      // view :nest_list_input + the :input override
       setPath: "type/nest_list",
       formats: {
         html: {
@@ -1398,6 +1405,9 @@ const cardModList: DeckoModManifest = {
               viewFn: nestListInputView,
               config: { cache: "never" },
             },
+            // nest_list.rb:24-26 view :input (the shared dispatcher's
+            // nest_list branch; settings inherited as on link_list).
+            { view: "input", viewFn: inputView, config: { unknown: true, cache: "never" } },
           ],
         },
       },
