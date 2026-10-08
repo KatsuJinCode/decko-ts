@@ -473,14 +473,12 @@ describe("card-mod-search through the mod loader (A/B)", () => {
     expect(html).toContain("one body");
   });
 
-  // Inverted on purpose: the include_set seam divergence (known
-  // divergence: see known-divergences-from-ruby.md) - with both mods
-  // loaded, the All::Item chain entry shadows the Abstract::Search flat
-  // :count registration; Ruby's include_set MRO gives the search module
-  // priority. The search-mod-only test above proves the same card renders
-  // the warm count when All::Item is not registered. The probe card IS
-  // Search-typed (deck-truth seed), so this is not a seed defect.
-  it.fails("WITH the mod: :count on a non-Search card delegates down the loader's view chain to card-mod-collection's count (set/format.rb:146-150 MRO)", async () => {
+  // The include_set seam: with both mods loaded, Ruby's include_set MRO
+  // places Abstract::Search's :count above All::Item for Search cards; the
+  // chain walker now expands a type token with its abstract includes
+  // (SET_INCLUDE_GRAPH), so the search module wins for them and a
+  // non-Search card still gets All::Item's count.
+  it("WITH the mod: :count on a non-Search card delegates down the loader's view chain to card-mod-collection's count (set/format.rb:146-150 MRO)", async () => {
     const s = storage!;
     // Both mods, collection registered FIRST: the search mod's flat
     // registration wins the :count slot, and its fn hands non-Search

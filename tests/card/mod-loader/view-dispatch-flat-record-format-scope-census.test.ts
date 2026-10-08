@@ -124,8 +124,9 @@ describe("flat-record format-scope census (composed deck)", () => {
     // nest_content, nest_image, modal_nest_image, new_image) on the
     // all-set reference_editor modules (html key - admitted, not foreign).
     // 153 -> 149 (semantics parity, 2026-10-07): the all-set carrierwave fold
-    // module and its four views moved to the Type::File/Type::Image sets.
-    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(149);
+    // module and its four views moved to the Type::File/Type::Image sets;
+    // 149 -> 151: All::Html's :type and All::Html::Views' :labeled.
+    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(151);
     expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(30);
   });
 
@@ -209,7 +210,7 @@ describe("flat-record format-scope census (composed deck)", () => {
     ]);
   });
 
-  it("the empty-setKeys fallback set spans more than one kind for exactly twenty-two views", () => {
+  it("the empty-setKeys fallback set spans more than one kind for exactly twenty-three views", () => {
     // The arm's SECOND dimension: abstract modules (Ruby: nonbase
     // registration, reachable only via include_set) mix with base and
     // nonbase modules in one chain. Unobservable from src (safeSetKeys
@@ -258,6 +259,7 @@ describe("flat-record format-scope census (composed deck)", () => {
       "raw_one_line_content",
       "stylesheet_include_tag",
       "titled_content",
+      "type",
       "url_link",
       "view_list",
     ]);
