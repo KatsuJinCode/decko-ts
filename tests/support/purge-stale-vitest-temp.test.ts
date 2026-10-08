@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, existsSync, rmSync, utimesSync, writeFileSync }
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { purgeStaleVitestTemp } from "./purge-stale-vitest-temp";
+import { purgeStaleVitestTemp } from "./purge-stale-vitest-temp.js";
 
 const roots: string[] = [];
 afterEach(() => {
