@@ -6678,8 +6678,34 @@ export class RenderEngine implements RenderEngineLike {
     if (actor.id === undefined || actor.name === undefined) return undefined;
     if ((await this.fetcher.codenames.id("enabled_roles")) === undefined) return undefined;
     const anyoneId = await this.fetcher.codenames.id("anyone");
-    const roleIds = state.parties.filter((id) => id !== anyoneId && id !== actor.id);
-    if (roleIds.length <= 1) return undefined;
+    const partyRoles = state.parties.filter((id) => id !== anyoneId && id !== actor.id);
+    if (partyRoles.length <= 1) return undefined;
+    // auth/current.rb current_roles: Anyone Signed In, then Role.role_ids in
+    // the role hash's order — set/self/role.rb generate_rolehash iterates an
+    // unsorted Card.search over the roles' +*members cards (no ORDER BY, so
+    // the store's id order).
+    const anyoneSignedInId = await this.fetcher.codenames.id("anyone_signed_in");
+    const membersId = await this.fetcher.codenames.id("members");
+    let roleIds = partyRoles;
+    if (membersId !== undefined) {
+      const memberRoles = partyRoles.filter((id) => id !== anyoneSignedInId);
+      const placeholders = memberRoles.map(() => "?").join(", ");
+      const ordered =
+        memberRoles.length === 0
+          ? []
+          : ((
+              await this.fetcher.driver.query<{ left_id: number }>(
+                `SELECT left_id FROM cards WHERE right_id = ? AND trash = 0 AND left_id IN (${placeholders}) ORDER BY id`,
+                [membersId, ...memberRoles],
+              )
+            ).rows as Array<{ left_id: number }>).map((row) => Number(row.left_id));
+      const rest = memberRoles.filter((id) => !ordered.includes(id));
+      roleIds = [
+        ...(anyoneSignedInId !== undefined && partyRoles.includes(anyoneSignedInId) ? [anyoneSignedInId] : []),
+        ...ordered,
+        ...rest,
+      ];
+    }
     const roles: string[] = [];
     for (const id of roleIds) {
       const role = await this.fetcher.fetchById(id, { skipVirtual: true });

@@ -303,6 +303,30 @@ describe("a modal-wrapped view renders outside the layout (process_layout.rb ren
   });
 });
 
+describe("a virtual +*when created field dates its left card (card-mod-date right/when_created.rb)", () => {
+  it("reads the left by name when the field has no stored left id", async () => {
+    const { whenCreatedContentFn } = await import("../../../src/card/mod-loader/mods/card-mod-date.js");
+    const { DeckoName } = await import("../../../src/card/name.js");
+    const left = { record: { id: 5, isNew: false, trash: false, createdAt: "2012-05-09 18:25:00" } };
+    const fmt = {
+      card: { name: DeckoName.parse("Some Task+*when created"), record: { leftId: undefined, isNew: true } },
+      engine: { fetchRenderCard: (n: string) => (n === "Some Task" ? left : undefined) },
+    } as unknown as Parameters<typeof whenCreatedContentFn>[0];
+    expect(whenCreatedContentFn(fmt)).toBe("Wednesday, May 09, 2012 06:25 PM UTC");
+  });
+});
+
+describe("an always-ok actor's rule counts include every rule (Card.search for an admin)", () => {
+  it("drops the read filter", async () => {
+    const { settingRuleCountsStatement } = await import("../../../src/card/render/help-popover.js");
+    const all = settingRuleCountsStatement(259, 278, "all");
+    expect(all.sql).not.toContain("read_rule_id");
+    expect(all.params).toEqual([259, 278]);
+    const anon = settingRuleCountsStatement(259, 278, new Set<number>());
+    expect(anon.sql).toContain("rules.read_rule_id IS NULL");
+  });
+});
+
 describe("the page head's edit link uses the card's url key (head.rb universal_edit_button)", () => {
   it("drops punctuation the key drops", async () => {
     const { universalEditButtonTag } = await import("../../../src/card/render/page.js");

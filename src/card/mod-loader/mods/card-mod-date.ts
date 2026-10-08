@@ -261,7 +261,9 @@ function isRealRecord(card: RenderFormat["card"]["record"]): boolean {
  *  guard returns nil for both nil and unreal lefts). */
 function leftRenderCard(fmt: RenderFormat): RenderFormat["card"] | undefined {
   const card = fmt.card;
-  if (card.record.leftId === undefined) return undefined;
+  // Card#left is name-based (left_id may be unset on a new card: the
+  // +*when created field of a task is usually virtual), so the left part
+  // of the name decides, not the stored left_id.
   // card.name is the RenderCard's DeckoName; leftName is the left part
   // for compound cards (name.ts:368-370). For a junction X+when_created
   // this is "X"; for a simple (non-junction) card leftName is undefined
