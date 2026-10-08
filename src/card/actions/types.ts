@@ -204,6 +204,13 @@ export interface UpdateCardInput extends TypeSpec {
    *  content or type change. The history pane's revert links send it
    *  (card-mod-history set/all/history/actions.rb:81-89). */
   skipValidateRenaming?: boolean;
+  /** `card[skip]` / `update!(skip: ...)`: further events this save's act
+   *  skips (lib/card/set/event/skip_and_trigger.rb). The rename form's
+   *  "do not update references to this name" box sends
+   *  `update_referer_content`: referers keep their content, their reference
+   *  rows are rebuilt from it, and rows pointing at the renamed card lose
+   *  its id (reference_events.rb:7-25). */
+  skip?: string[];
 }
 
 /** A history revert request — the history pane's "revert to this" and

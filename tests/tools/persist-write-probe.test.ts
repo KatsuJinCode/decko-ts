@@ -26,6 +26,12 @@
 //  25  rename revert subject            30 restore from history
 //  26  revert to this (undo rename)     31 revert to previous of a create
 //  27  revert to this (create content) 32 update a nested deck card
+//  33-42 renames: descendants moved, referers rewritten or kept
+//        (card[skip]=update_referer_content), compound renames creating
+//        sides, simple to compound, a refused tag-to-compound rename
+//  43-50 type changes: alone, with content, with a field, an unknown type,
+//        a cardtype with instances
+//  51-52 list content: standardized items, item references, item swaps
 //
 // It writes its JSON, runs tools/persistence/compare-persist.mjs against the
 // committed Ruby dumps, and asserts which steps diverge. Without the oracle
@@ -67,14 +73,16 @@ const FINAL_DECK = path.join(PERSIST_DIR, "ts-final-compare.sqlite3");
 // a Ruby install.
 const RUBY_STEPS =
   process.env.PERSIST_RUBY_STEPS ?? path.join(REPO, "tests/fixtures/persistence-oracle");
-// The one deliberate difference, declared with its reason and its exact row
-// delta: step 7, re-creating a junction while its left side is trashed. Ruby
-// inserts a second junction row (possible only because the oracle deck lacks
-// the production UNIQUE (left_id, right_id) index); the port revives the
-// trashed row. The comparator accepts step 7 only if its delta is exactly the
-// declared one.
+// The deliberate differences, each declared with its reason and its exact
+// row delta. Step 7, re-creating a junction while its left side is trashed:
+// Ruby inserts a second junction row (possible only because the oracle deck
+// lacks the production UNIQUE (left_id, right_id) index); the port revives
+// the trashed row. Step 48, assigning a type that does not exist: Ruby loses
+// its own "not a known type" error and writes an empty act; the port refuses
+// the save. The comparator accepts a declared step only if its delta is
+// exactly the declared one.
 const DELIBERATE = path.join(REPO, "tests/fixtures/persistence-oracle/deliberate-differences.json");
-const DELIBERATE_STEPS = [7];
+const DELIBERATE_STEPS = [7, 48];
 // Steps whose row delta still differs from the oracle without a declaration.
 const KNOWN_DIVERGENCES: number[] = [];
 const PREFIX = "PersistProbe";
@@ -84,6 +92,16 @@ const UNSAFE_HTML =
   '<a href="javascript:evil()">l</a><div class="c" style="color:red">d</div>';
 // Same string as the Ruby half's NESTED_DECK_CONTENT (step 32).
 const NESTED_DECK_CONTENT = "<p>Number cards hold numbers. (persistence probe)</p>";
+// Same string as the Ruby half's LINKER_CONTENT (step 37).
+const LINKER_CONTENT =
+  "[[PersistProbe Mv]] [[PersistProbe Mv+PersistProbe Kid]] " +
+  "{{PersistProbe Mv+PersistProbe Kid+PersistProbe Grand}} [[PersistProbe Host+PersistProbe Mv]]";
+// Same string as the Ruby half's LIST_CONTENT (step 51).
+const LIST_CONTENT =
+  "[[PersistProbe Typed]]\n\n  [[PersistProbe Typed+PersistProbe Field]]  \n~1\n:anyone\nPersistProbe Loose";
+// The op list's length; the Ruby half's step count (run-ruby-steps.sh) and
+// the committed oracle dumps must agree with it.
+const STEP_COUNT = 52;
 // The Ruby half runs as Card::Auth.as_bot, i.e. card 1 (Decko Bot). The act's
 // actor_id and every card's creator_id/updater_id come from it.
 const BOT = { id: 1, name: "Decko Bot" };
@@ -534,6 +552,99 @@ describe("persistence write probe (TS half)", () => {
         if (nested === undefined) throw new Error("deck card missing: Number+description");
         return engine.updateCard({ cardId: Number(nested.id), content: NESTED_DECK_CONTENT } as UpdateCardInput);
       });
+      // 33-42: renames that move descendants, rewrite referers, create sides.
+      const mv = `${PREFIX} Mv`;
+      await op(33, "create rename subject", "create", () =>
+        engine.createCard({ name: mv, ...rich, content: "m" } as CreateCardInput),
+      );
+      await op(34, "create rename subject's child", "create", () =>
+        engine.createCard({ name: `${mv}+${PREFIX} Kid`, ...rich, content: "k" } as CreateCardInput),
+      );
+      await op(35, "create rename subject's grandchild", "create", () =>
+        engine.createCard({
+          name: `${mv}+${PREFIX} Kid+${PREFIX} Grand`,
+          ...rich,
+          content: "g",
+        } as CreateCardInput),
+      );
+      await op(36, "create card with subject as right side", "create", () =>
+        engine.createCard({ name: `${PREFIX} Host+${mv}`, ...rich, content: "h" } as CreateCardInput),
+      );
+      await op(37, "create referer of the subject's family", "create", () =>
+        engine.createCard({ name: `${PREFIX} Linker`, ...rich, content: LINKER_CONTENT } as CreateCardInput),
+      );
+      await op(38, "rename with descendants (referers updated)", "rename", async () =>
+        engine.updateCard({ cardId: await idOf(mv), name: `${PREFIX} Moved` } as UpdateCardInput),
+      );
+      await op(39, "rename with descendants (referers kept)", "rename", async () =>
+        engine.updateCard({
+          cardId: await idOf(`${PREFIX} Moved`),
+          name: `${PREFIX} Moved Again`,
+          skip: ["update_referer_content"],
+        } as UpdateCardInput),
+      );
+      await op(40, "rename compound to new sides", "rename", async () =>
+        engine.updateCard({
+          cardId: await idOf(`${PREFIX} Moved Again+${PREFIX} Kid`),
+          name: `${PREFIX} Far+${PREFIX} Kid2`,
+        } as UpdateCardInput),
+      );
+      await op(41, "rename simple to compound", "rename", async () =>
+        engine.updateCard({
+          cardId: await idOf(`${PREFIX} Linker`),
+          name: `${PREFIX} Lnk+${PREFIX} Side`,
+        } as UpdateCardInput),
+      );
+      await op(42, "rename a tag in use to compound (refused)", "rename", async () =>
+        engine.updateCard({
+          cardId: await idOf(`${PREFIX} Kid2`),
+          name: `${PREFIX} X+${PREFIX} Y`,
+        } as UpdateCardInput),
+      );
+      // 43-50: type changes.
+      const typed = `${PREFIX} Typed`;
+      await op(43, "create type-change subject", "create", () =>
+        engine.createCard({ name: typed, ...rich, content: `<p>t [[${PREFIX} B]]</p>` } as CreateCardInput),
+      );
+      await op(44, "change type", "update", async () =>
+        engine.updateCard({ cardId: await idOf(typed), typeName: "PlainText" } as UpdateCardInput),
+      );
+      await op(45, "change type and content", "update", async () =>
+        engine.updateCard({
+          cardId: await idOf(typed),
+          typeName: "Pointer",
+          content: `[[${PREFIX} B]]`,
+        } as UpdateCardInput),
+      );
+      await op(46, "create field of type-change subject", "create", () =>
+        engine.createCard({ name: `${typed}+${PREFIX} Field`, ...rich, content: "f" } as CreateCardInput),
+      );
+      await op(47, "change type of a card with a field", "update", async () =>
+        engine.updateCard({ cardId: await idOf(typed), typeName: "RichText" } as UpdateCardInput),
+      );
+      await op(48, "change to an unknown type", "update", async () =>
+        engine.updateCard({
+          cardId: await idOf(`${PREFIX} Bare`),
+          typeName: `${PREFIX} No Such Type`,
+        } as UpdateCardInput),
+      );
+      await op(49, "create instance of probe cardtype", "create", () =>
+        engine.createCard({
+          name: `${PREFIX} Instance`,
+          typeName: `${PREFIX} Type Probe`,
+          content: "i",
+        } as CreateCardInput),
+      );
+      await op(50, "change type of a cardtype with instances", "update", async () =>
+        engine.updateCard({ cardId: await idOf(`${PREFIX} Type Probe`), typeName: "RichText" } as UpdateCardInput),
+      );
+      // 51-52: list content (standardized items, item references, item swaps).
+      await op(51, "create pointer with marks", "create", () =>
+        engine.createCard({ name: `${PREFIX} List`, typeName: "Pointer", content: LIST_CONTENT } as CreateCardInput),
+      );
+      await op(52, "rename a card a pointer lists", "rename", async () =>
+        engine.updateCard({ cardId: await idOf(typed), name: `${PREFIX} Typed2` } as UpdateCardInput),
+      );
     } finally {
       driver.close();
       // PERSIST_KEEP_TS_DECK=<path>: keep the deck as the op list left it,
@@ -545,7 +656,7 @@ describe("persistence write probe (TS half)", () => {
       for (const f of [dbPath, `${dbPath}-shm`, `${dbPath}-wal`]) rmSync(f, { force: true });
     }
     writeFileSync(OUT, JSON.stringify(out, null, 2));
-    expect(out.length).toBe(32);
+    expect(out.length).toBe(STEP_COUNT);
 
     // Compare against the Ruby oracle's dumps for the same op list
     // (tools/persistence/run-ruby-steps.sh). Each operation's own row delta

@@ -43,6 +43,7 @@ import { DeckoName } from "../name.js";
 import { NameNotFoundError, CodenameNotFoundError } from "../name/errors.js";
 import { stripTags } from "../render/nest-syntax.js";
 import type { SQLDatabaseDriver } from "../../server/driver.js";
+import { isListCard, listItemStrings } from "./list-content.js";
 
 /** all.rb:10 PARTIAL_REF_CODE. */
 const PARTIAL_REF_CODE = "P";
@@ -81,7 +82,9 @@ export async function refreshReferencesOut(
 ): Promise<void> {
   // delete_references_out (all.rb:48; reference_events.rb:63-65).
   await driver.query("DELETE FROM card_references WHERE referer_id = ?", [refererId]);
-  const rows = await createReferencesOut(lexicon, refererId, refererName, content);
+  const rows = (await isListCard(driver, refererId))
+    ? await createListReferencesOut(lexicon, refererId, refererName, content)
+    : await createReferencesOut(lexicon, refererId, refererName, content);
   // Reference.insert_in_slices (all.rb:61, reference.rb:19-23): bulk
   // insert in ref-hash order; 5000-row slices kept for fidelity.
   for (let slice = 0; slice < rows.length; slice += 5000) {
@@ -134,6 +137,29 @@ async function createReferencesOut(
   for (const chunk of scanReferenceChunks(content)) {
     if (chunk.refereeName === undefined) continue; // explicit links / comment nests
     await interpretReference(lexicon, refHash, chunk.refereeName, chunk.refType, refererName);
+  }
+  return referenceValuesArray(refHash, refererId);
+}
+
+/** A list card's references (Abstract::List#each_reference_out,
+ *  card-mod-list-0.20.0 set/abstract/01_list.rb:53-57): every item name,
+ *  absolutized against the card's own name (item_names -> clean_item_name,
+ *  card-mod-collection set/all/item.rb:15-22, :258-267), as a link ("L"). */
+async function createListReferencesOut(
+  lexicon: ReferenceLexicon,
+  refererId: number,
+  refererName: DeckoName,
+  content: string | null | undefined,
+): Promise<ReferenceRow[]> {
+  const refHash = new Map<string, { refereeId: number | undefined; refTypes: string[] }>();
+  for (const item of listItemStrings(content)) {
+    let name: string;
+    try {
+      name = DeckoName.parse(item).absoluteName(refererName).s;
+    } catch {
+      continue; // an unresolvable mark is dropped (the NotFound rescue)
+    }
+    await interpretReference(lexicon, refHash, name, "L", refererName);
   }
   return referenceValuesArray(refHash, refererId);
 }

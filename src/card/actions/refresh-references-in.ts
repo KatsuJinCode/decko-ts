@@ -24,10 +24,9 @@
 //   were written with referee_id NULL.
 // - `changed: :name, on: :save` fires on creates AND renames; the unmap
 //   arm additionally needs action == :update (a create has no stale rows
-//   of its own) plus the update_referer_content skip, which this port has
-//   no trigger for yet (no skip machinery on the TS save path), so engine
-//   call sites always pass unmapExisting: false and the arm stays
-//   available for the skip stream.
+//   of its own) plus the update_referer_content skip; the engine passes
+//   unmapExisting: true when the rename's skip list names that event
+//   (UpdateCardInput.skip, the rename form's card[skip]).
 // - Descendants do NOT run this event: rename_as_descendant
 //   (reference_events.rb:39-46) invokes method bodies directly — the
 //   commented-out "# refresh_references_in" there (lines 42-43) marks the
@@ -64,8 +63,7 @@ export async function mapReferees(
 
 /** event :refresh_references_in body (reference_events.rb:22-25). Callers
  *  gate on the `changed: :name` condition; `unmapExisting` is the
- *  `action == :update && skip_update_referers?` arm and must stay false
- *  until the save path learns to skip update_referer_content. */
+ *  `action == :update && skip_update_referers?` arm. */
 export async function refreshReferencesIn(
   driver: SQLDatabaseDriver,
   cardId: number,

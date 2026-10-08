@@ -88,6 +88,7 @@ import {
   scanReferenceChunks,
   type ReferenceLexicon,
 } from "./refresh-references-out.js";
+import { isListCard, swapListItems } from "./list-content.js";
 
 /** What the rename rewrite needs from the engine: the same driver/Lexicon
  *  pair the out-direction uses, plus the Lexicon's compound-name
@@ -204,12 +205,10 @@ async function replaceReferences(
 ): Promise<void> {
   const refererName = await composedNameOf(deps, referer);
   if (refererName === undefined) return;
-  const newContent = swapNames(
-    referer.db_content,
-    nameBeforeAct,
-    name,
-    refererName,
-  );
+  // A list card swaps its items by name (Abstract::List#swap_names).
+  const newContent = (await isListCard(deps.driver, referer.id))
+    ? swapListItems(referer.db_content, nameBeforeAct, name)
+    : swapNames(referer.db_content, nameBeforeAct, name, refererName);
   await contentQuietlySet(deps, referer, refererName, newContent);
 }
 

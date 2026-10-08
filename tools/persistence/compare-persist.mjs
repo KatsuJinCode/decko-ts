@@ -14,9 +14,9 @@
 //      card, in id order), a change "<action>/<field>", a reference
 //      "<referer>-><referee_key>/<ref_type>". Foreign keys map through the
 //      same tables, so a row pointing at the wrong card or action IS a
-//      difference. card_changes values for the left_id and right_id fields
-//      (fields 4 and 5) hold a raw card id and map the same way when the id
-//      is a probe card. The GLOBAL id order of acts and actions is compared as a
+//      difference. card_changes values for the type_id, left_id and right_id
+//      fields (fields 1, 4 and 5), and cards.type_id and read_rule_id, hold
+//      a raw card id and map the same way when the id is a probe card. The GLOBAL id order of acts and actions is compared as a
 //      separate "order" check, so an ordering difference is reported once
 //      instead of shifting every later row.
 //   3. BOOLEANS. true/false are folded to 1/0.
@@ -94,6 +94,9 @@ function clean(row) {
 function normalise(state) {
   const names = composedNames(state.cards ?? []);
   const card = (v) => (v === null || v === undefined ? null : (names.get(Number(v)) ?? `#${v}`));
+  // A column that may name a probe card or a deck card (type_id,
+  // read_rule_id): probe cards map to their name, deck cards stay raw.
+  const probeOrRaw = (v) => (v !== null && v !== undefined && names.has(Number(v)) ? card(v) : fold(v));
 
   const perCard = (rows, label) => {
     const counters = new Map();
@@ -124,7 +127,14 @@ function normalise(state) {
   };
   for (const r of state.cards ?? []) {
     const row = clean(r);
-    put("cards", card(r.id), { ...row, id: card(r.id), left_id: card(r.left_id), right_id: card(r.right_id) });
+    put("cards", card(r.id), {
+      ...row,
+      id: card(r.id),
+      left_id: card(r.left_id),
+      right_id: card(r.right_id),
+      type_id: probeOrRaw(r.type_id),
+      read_rule_id: probeOrRaw(r.read_rule_id),
+    });
   }
   for (const r of state.card_acts ?? []) {
     const row = clean(r);
@@ -143,9 +153,9 @@ function normalise(state) {
   for (const r of state.card_changes ?? []) {
     const row = clean(r);
     const k = `${actionKey(r.card_action_id)}/${r.field}`;
-    // Fields 4 and 5 (left_id, right_id) store a raw card id as text.
+    // Fields 1, 4 and 5 (type_id, left_id, right_id) store a raw card id as text.
     const value =
-      (Number(r.field) === 4 || Number(r.field) === 5) && r.value !== null && names.has(Number(r.value))
+      [1, 4, 5].includes(Number(r.field)) && r.value !== null && names.has(Number(r.value))
         ? card(r.value)
         : row.value;
     put("card_changes", k, { ...row, id: k, card_action_id: actionKey(r.card_action_id), value });

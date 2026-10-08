@@ -110,6 +110,25 @@
           }
         }
       ]
+    },
+    {
+      "step": 48,
+      "title": "Assigning a type that does not exist",
+      "reason": "Ruby looks the type name up while assigning attributes and, finding no card, adds a \"not a known type\" error (type.rb type_id_or_error). The save then runs valid?, which clears the errors before validation, so the error is lost: update! succeeds, the type is left unchanged and an act row with no action is written. The TypeScript engine refuses the save with the same message and writes nothing. The only stored difference is that empty act. Candidate for an upstream fix (the error should survive to validation).",
+      "deltaFaults": [
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Bare/act2",
+          "ruby": {
+            "id": "PersistProbe Bare/act2",
+            "card_id": "PersistProbe Bare",
+            "actor_id": 1,
+            "ip_address": null,
+            "acted_at": "T"
+          }
+        }
+      ]
     }
   ]
 }

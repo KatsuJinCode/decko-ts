@@ -961,6 +961,9 @@ export async function handleWriteRequest(
           cardId: existing.id,
           ...(existing.trash ? { lookInTrash: true } : {}),
           ...(card["skip"] === "validate_renaming" ? { skipValidateRenaming: true } : {}),
+          // card[skip] names an event the act skips (skip_and_trigger.rb);
+          // the rename form's box sends update_referer_content.
+          ...(card["skip"] !== undefined && card["skip"] !== "" ? { skip: [card["skip"]] } : {}),
           // card-hash name WINS over the URL mark (uri_fetch_opts) — a
           // card[name] on an update is the RENAME arg (name_events.rb).
           name: hashName !== undefined && hashName !== markName ? hashName : undefined,

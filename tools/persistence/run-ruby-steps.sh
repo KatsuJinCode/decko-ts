@@ -16,17 +16,34 @@ APP_DIR="${1:?oracle app dir}"
 SRC="${2:?source deck}"
 OUT="${3:?output dir}"
 STEPS="${4:-32}"
+# FIRST=<n>: start at step n instead of 1. The source deck must then be the
+# deck the earlier steps left (a KEEP_DECK copy from a run that ended at
+# step n-1); step files of earlier steps are not rewritten.
+FIRST="${FIRST:-1}"
 HERE="$(dirname "$(readlink -f "$0")")"
 SCRIPT="$HERE/persist-write-probe.rb"
 WORK="$(dirname "$OUT")"
 DECK="$WORK/ruby-run-$$.sqlite3"
 CACHE="$WORK/ruby-cache-$$"
 
-rm -rf "$OUT"; mkdir -p "$OUT" "$CACHE"
+if [ "$FIRST" = "1" ]; then rm -rf "$OUT"; fi
+mkdir -p "$OUT" "$CACHE"
 cp "$SRC" "$DECK" || { echo "COPY FAILED: $SRC"; exit 2; }
 trap 'rm -f "$DECK" "$DECK-shm" "$DECK-wal"; rm -rf "$CACHE"' EXIT
 
-for i in $(seq 1 "$STEPS"); do
+# FRESH_CACHE_STEPS="<n> <m> ...": empty the card cache before these steps.
+# Ruby's rename rewrites referer content with update_column and never
+# expires the referer's cache entry, so a later request that fetches the
+# referer from the shared cache reads its pre-rename content (a Ruby
+# defect, recorded in recovery/parity-team/persistence.md). The probe resets
+# the cache before a step that would otherwise read such a stale entry, so
+# the oracle measures Ruby's logic over the stored rows, not the defect.
+FRESH_CACHE_STEPS=" ${FRESH_CACHE_STEPS:-39} "
+
+for i in $(seq "$FIRST" "$STEPS"); do
+  case "$FRESH_CACHE_STEPS" in
+    *" $i "*) rm -rf "$CACHE"; mkdir -p "$CACHE"; echo "=== fresh card cache before step $i" ;;
+  esac
   log="$WORK/ruby-step-$$-$i.log"
   (
     cd "$APP_DIR" || exit 3

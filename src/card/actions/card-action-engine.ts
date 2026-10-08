@@ -43,11 +43,12 @@
 // Reference maintenance status: card_references population on
 // create/update (refresh_references_out), cleanup on delete
 // (clear_references), the referee-side backfill (refresh_references_in —
-// map_referees on every name-bearing save; its unmap_referees arm is
-// unused until the save path learns `skip:`), and the rename-side referer
+// map_referees on every name-bearing save; its unmap_referees arm runs on a
+// rename that skips update_referer_content), and the rename-side referer
 // rewrite (update_referer_content, update-referer-content.ts) ARE built
-// here. update_referer_references_out — the rewrite's skip twin — is
-// exported but not yet wired (no skip machinery on this save path).
+// here. update_referer_references_out — the rewrite's skip twin — runs
+// when the save's `skip` list (UpdateCardInput.skip, card[skip]) names
+// update_referer_content.
 
 import {
   ActWriter,
@@ -148,7 +149,8 @@ import {
   refreshReferencesOut,
 } from "./refresh-references-out.js";
 import { refreshReferencesIn } from "./refresh-references-in.js";
-import { updateRefererContent } from "./update-referer-content.js";
+import { updateRefererContent, updateRefererReferencesOut } from "./update-referer-content.js";
+import { LIST_RIGHT_CODENAMES, LIST_TYPE_CODENAMES, standardizeListContent } from "./list-content.js";
 import {
   runModEventStage,
   type ModEventContext,
@@ -808,6 +810,16 @@ export class CardActionEngine {
     // takes the new-card template's content. Ruby's db_content_changed? is
     // false only when no content was assigned at all; an explicit "" counts
     // as assigned. An attaching save derives its own content.
+    // Assigned content is standardized first (prepare_assignment_params,
+    // assign_attributes.rb:35-39); template content is not assigned.
+    if (input.content != null && input.attachment === undefined) {
+      input.content = await this.standardizeAssignedContent(
+        input.content,
+        typeId,
+        name.isCompound && name.leftName !== undefined ? ((await this.fetch.lexicon.id(name.leftName)) ?? null) : null,
+        name.isCompound && name.rightName !== undefined ? ((await this.fetch.lexicon.id(name.rightName)) ?? null) : null,
+      );
+    }
     if (input.content == null && input.attachment === undefined) {
       const templateContent = await this.newCardTemplateContent(name, typeId);
       if (templateContent !== undefined) input.content = templateContent;
@@ -1157,11 +1169,36 @@ export class CardActionEngine {
   // -----------------------------------------------------------------------
 
   async updateCard(input: UpdateCardInput): Promise<ActionResult | null> {
+    // card[skip] (skip_and_trigger.rb): the events this save's act skips,
+    // seen by every event of the act, nested saves included.
+    const outerSkip = this.saveSkip;
+    if (input.skip !== undefined && input.skip.length > 0) {
+      this.saveSkip = [...(outerSkip ?? []), ...input.skip];
+    }
     try {
       return await this.updateCardInner(input);
     } finally {
+      this.saveSkip = outerSkip;
       this.pendingSaveInput = undefined;
     }
+  }
+
+  /** The current save's own skip list (UpdateCardInput.skip), merged with
+   *  the runtime's engine-wide skip list wherever an event asks. */
+  private saveSkip: string[] | undefined;
+
+  /** skip_event? (skip_and_trigger.rb:68-70) for the current save. */
+  private skipsEvent(event: string): boolean {
+    return (
+      this.saveSkip?.includes(event) === true ||
+      this.modEvents?.skip?.includes(event) === true ||
+      this.modEvents?.forceSkip?.includes(event) === true
+    );
+  }
+
+  private actSkipList(): readonly string[] | undefined {
+    if (this.saveSkip === undefined) return this.modEvents?.skip;
+    return [...(this.modEvents?.skip ?? []), ...this.saveSkip];
   }
 
   private async updateCardInner(input: UpdateCardInput): Promise<ActionResult | null> {
@@ -1484,7 +1521,16 @@ export class CardActionEngine {
       }
     }
 
-    // Attribute merges.
+    // Attribute merges. Assigned content is standardized under the card's
+    // new type (prepare_assignment_params, assign_attributes.rb:35-39).
+    if (input.content !== undefined && input.attachment === undefined) {
+      input.content = await this.standardizeAssignedContent(
+        input.content,
+        resolvedTypeId ?? before.type_id,
+        before.left_id,
+        before.right_id,
+      );
+    }
     if (input.content !== undefined) after.db_content = input.content;
     // add_comment (comment.rb:4-12) at the SP position — the pending
     // content is the merged value (the requested content, else the row's
@@ -1527,6 +1573,7 @@ export class CardActionEngine {
     const lexBefore = this.lexOfRow(before);
     let lexAfter = lexBefore;
     let renameSides: ResolvedSides["created"] | undefined;
+    let reservedActionId: number | undefined;
 
     if (nameChanged && newName !== undefined) {
       if (newName.isSimple) {
@@ -1559,6 +1606,13 @@ export class CardActionEngine {
             (id): id is number => id !== undefined && id !== row.id,
           ),
         );
+        // The renamed card's own action row precedes the actions of the side
+        // cards the rename creates, as on a compound create (Ruby saves the
+        // supercard's action before the subcards it stores).
+        reservedActionId = await writer.reserveAction({
+          actionType: "update",
+          superActionId: input.superActionId ?? null,
+        });
         const sides = await this.ensureSides(writer, newName, row.id);
         after.name = null;
         after.left_id = sides.leftId;
@@ -1629,6 +1683,7 @@ export class CardActionEngine {
       // false for subcard saves riding the same act (subcards.rb — the
       // writer holds ONE act-card action per act).
       isActCard: opts.isActCard ?? true,
+      reservedActionId,
     });
     if (saved === null) return null; // no-op save: nothing persisted
     if (after.trash === 1 && before.trash === 0) {
@@ -1699,10 +1754,13 @@ export class CardActionEngine {
     // :content`), then the rename pair — update_referer_content (:7-10,
     // `on: :update, changed: :name`, skip: :allowed) and refresh_references_
     // in (:22-25, backfill + the unmap arm the skip machinery now reaches).
+    // skip_update_referers? (:34-36) = this act skips update_referer_content
+    // (the rename form's "do not update references" box, card[skip]).
     // Registered REAL bodies replace these built-ins; the rename thunks
     // keep their own nameChanged gate so the unregistered path is exactly
     // the pre-seam behavior (update-referer-content.ts, refresh-references-
     // in.ts).
+    const skipReferers = this.skipsEvent("update_referer_content");
     await this.runFinalizeEvents(
       this.eventCard({
         name: nameAfter,
@@ -1730,7 +1788,12 @@ export class CardActionEngine {
         [
           "update_referer_content",
           async () => {
-            if (nameChanged && nameAfter !== undefined && currentName !== undefined) {
+            if (
+              nameChanged &&
+              nameAfter !== undefined &&
+              currentName !== undefined &&
+              !skipReferers
+            ) {
               await updateRefererContent(
                 { driver: this.fetch.driver, lexicon: this.fetch.lexicon },
                 row.id,
@@ -1741,10 +1804,25 @@ export class CardActionEngine {
           },
         ],
         [
+          // reference_events.rb:16-19, `when: :skip_update_referers?`: the
+          // referers keep their content and rebuild their rows from it.
+          "update_referer_references_out",
+          async () => {
+            if (nameChanged && skipReferers) {
+              await updateRefererReferencesOut(
+                { driver: this.fetch.driver, lexicon: this.fetch.lexicon },
+                row.id,
+              );
+            }
+          },
+        ],
+        [
           "refresh_references_in",
           async () => {
             if (nameChanged && nameAfter !== undefined) {
-              await refreshReferencesIn(this.fetch.driver, row.id, nameAfter.key);
+              await refreshReferencesIn(this.fetch.driver, row.id, nameAfter.key, {
+                unmapExisting: skipReferers,
+              });
             }
           },
         ],
@@ -2303,7 +2381,7 @@ export class CardActionEngine {
       act: {
         action: input.action,
         actId: input.actId,
-        skip: this.modEvents?.skip,
+        skip: this.actSkipList(),
         forceSkip: this.modEvents?.forceSkip,
         trigger: this.modEvents?.trigger,
       },
@@ -2321,7 +2399,7 @@ export class CardActionEngine {
     const runtime = this.modEvents;
     if (runtime === undefined) return Promise.resolve(undefined);
     return runModEventStage(
-      runtime,
+      this.saveSkip === undefined ? runtime : { ...runtime, skip: this.actSkipList() },
       stage,
       card,
       {
@@ -2814,6 +2892,35 @@ export class CardActionEngine {
   /** prepare_db_content's HTML step (content.rb:44-49): the stored content
    *  passes through Card::Content.clean! unless the card's clean_html? is
    *  false (its type's or right part's set overrides it). */
+  /** Abstract::List#standardize_content on assigned content (list-content.ts):
+   *  a card in a list set stores its items one per line, without brackets.
+   *  Content of any other card is returned unchanged. */
+  private async standardizeAssignedContent(
+    content: string,
+    typeId: number | null,
+    leftId: number | null,
+    rightId: number | null,
+  ): Promise<string> {
+    const typeCode = typeId === null ? undefined : await this.fetch.codenames.nameForId(typeId);
+    const rightCode = rightId === null ? undefined : await this.fetch.codenames.nameForId(rightId);
+    let isList =
+      (typeCode !== undefined && LIST_TYPE_CODENAMES.has(typeCode)) ||
+      (rightCode !== undefined && LIST_RIGHT_CODENAMES.has(rightCode));
+    if (!isList && rightCode === "follow" && leftId !== null) {
+      const left = await this.fetchRowById(leftId);
+      const leftType =
+        left?.type_id === undefined || left.type_id === null
+          ? undefined
+          : await this.fetch.codenames.nameForId(left.type_id);
+      isList = leftType === "user";
+    }
+    if (!isList) return content;
+    return standardizeListContent(content, {
+      nameForId: async (id) => (await this.fetch.lexicon.name(id))?.s,
+      nameForCodename: async (code) => (await this.fetch.codenames.name(code))?.s,
+    });
+  }
+
   private async cleanForStore(
     content: string,
     typeId: number | null,

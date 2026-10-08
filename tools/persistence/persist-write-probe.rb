@@ -41,6 +41,13 @@ UNSAFE_HTML = '<p onclick="x()">hi</p><script>bad()</script><b>ok</b>' \
               '<a href="javascript:evil()">l</a><div class="c" style="color:red">d</div>'
 # The new content step 32 gives an existing, nested deck card.
 NESTED_DECK_CONTENT = "<p>Number cards hold numbers. (persistence probe)</p>"
+# Step 37's referer: links and a nest naming the rename subject, its child,
+# its grandchild and a card that has it as its right side.
+LINKER_CONTENT = "[[PersistProbe Mv]] [[PersistProbe Mv+PersistProbe Kid]] " \
+                 "{{PersistProbe Mv+PersistProbe Kid+PersistProbe Grand}} [[PersistProbe Host+PersistProbe Mv]]"
+# Step 51's pointer content: bracketed items, an id mark, a codename mark,
+# a blank line and surrounding spaces.
+LIST_CONTENT = "[[PersistProbe Typed]]\n\n  [[PersistProbe Typed+PersistProbe Field]]  \n~1\n:anyone\nPersistProbe Loose"
 
 # The probe's own cards: the simple ones by name, and everything reachable
 # from them through left_id/right_id (compound cards carry NULL name/key).
@@ -269,6 +276,87 @@ def run_op(step)
   when 32
     [:update, "update a nested deck card", lambda {
       Card.fetch("Number+description").update!(content: NESTED_DECK_CONTENT)
+    }]
+  # 33-42: renames that move descendants, rewrite referers, create sides.
+  when 33
+    [:create, "create rename subject", -> { Card.create!(name: "PersistProbe Mv", type: "RichText", content: "m") }]
+  when 34
+    [:create, "create rename subject's child", lambda {
+      Card.create!(name: "PersistProbe Mv+PersistProbe Kid", type: "RichText", content: "k")
+    }]
+  when 35
+    [:create, "create rename subject's grandchild", lambda {
+      Card.create!(name: "PersistProbe Mv+PersistProbe Kid+PersistProbe Grand", type: "RichText", content: "g")
+    }]
+  when 36
+    [:create, "create card with subject as right side", lambda {
+      Card.create!(name: "PersistProbe Host+PersistProbe Mv", type: "RichText", content: "h")
+    }]
+  when 37
+    [:create, "create referer of the subject's family", lambda {
+      Card.create!(name: "PersistProbe Linker", type: "RichText", content: LINKER_CONTENT)
+    }]
+  when 38
+    [:rename, "rename with descendants (referers updated)", lambda {
+      Card.find(id_of("PersistProbe Mv")).update!(name: "PersistProbe Moved")
+    }]
+  when 39
+    [:rename, "rename with descendants (referers kept)", lambda {
+      Card.find(id_of("PersistProbe Moved")).update!(name: "PersistProbe Moved Again",
+                                                     skip: :update_referer_content)
+    }]
+  when 40
+    [:rename, "rename compound to new sides", lambda {
+      Card.find(id_of("PersistProbe Moved Again+PersistProbe Kid"))
+          .update!(name: "PersistProbe Far+PersistProbe Kid2")
+    }]
+  when 41
+    [:rename, "rename simple to compound", lambda {
+      Card.find(id_of("PersistProbe Linker")).update!(name: "PersistProbe Lnk+PersistProbe Side")
+    }]
+  when 42
+    [:rename, "rename a tag in use to compound (refused)", lambda {
+      Card.find(id_of("PersistProbe Kid2")).update!(name: "PersistProbe X+PersistProbe Y")
+    }]
+  # 43-50: type changes.
+  when 43
+    [:create, "create type-change subject", lambda {
+      Card.create!(name: "PersistProbe Typed", type: "RichText", content: "<p>t [[PersistProbe B]]</p>")
+    }]
+  when 44
+    [:update, "change type", -> { Card.find(id_of("PersistProbe Typed")).update!(type: "PlainText") }]
+  when 45
+    [:update, "change type and content", lambda {
+      Card.find(id_of("PersistProbe Typed")).update!(type: "Pointer", content: "[[PersistProbe B]]")
+    }]
+  when 46
+    [:create, "create field of type-change subject", lambda {
+      Card.create!(name: "PersistProbe Typed+PersistProbe Field", type: "RichText", content: "f")
+    }]
+  when 47
+    [:update, "change type of a card with a field", lambda {
+      Card.find(id_of("PersistProbe Typed")).update!(type: "RichText")
+    }]
+  when 48
+    [:update, "change to an unknown type", lambda {
+      Card.find(id_of("PersistProbe Bare")).update!(type: "PersistProbe No Such Type")
+    }]
+  when 49
+    [:create, "create instance of probe cardtype", lambda {
+      Card.create!(name: "PersistProbe Instance", type: "PersistProbe Type Probe", content: "i")
+    }]
+  when 50
+    [:update, "change type of a cardtype with instances", lambda {
+      Card.find(id_of("PersistProbe Type Probe")).update!(type: "RichText")
+    }]
+  # 51-52: list content (standardized items, item references, item swaps).
+  when 51
+    [:create, "create pointer with marks", lambda {
+      Card.create!(name: "PersistProbe List", type: "Pointer", content: LIST_CONTENT)
+    }]
+  when 52
+    [:rename, "rename a card a pointer lists", lambda {
+      Card.find(id_of("PersistProbe Typed")).update!(name: "PersistProbe Typed2")
     }]
   else
     abort "unknown step #{step}"
