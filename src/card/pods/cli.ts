@@ -1,6 +1,7 @@
 // The pods command line: `decko sow` and `decko eat` for a deck file.
 //
-//   sow --deck <deck.sqlite3> (-c '<cql json>' | -n "<name>,<name>") [-f tags] [-o out.yml]
+//   sow --deck <deck.sqlite3> (-c '<cql json>' | -n "<name>,<name>" [--items [only]] | --url <path|url> |
+//       --remote <deck url> -n <name>) [-f tags] [-o out.yml | -m <mod data file to merge into>]
 //   eat --deck <deck.sqlite3> <pod.yml> [-u "<user name>"]
 //
 // sow writes the pod YAML (stdout without -o); eat prints its report as JSON.
@@ -24,7 +25,8 @@ export async function main(argv: string[]): Promise<number> {
   const deckPath = option(args, "--deck", "-d");
   if ((command !== "sow" && command !== "eat") || deckPath === undefined) {
     process.stderr.write(
-      "usage: sow --deck <deck> (-c <cql> | -n <names>) [-f <tags>] [-o <out.yml>]\n" +
+      "usage: sow --deck <deck> (-c <cql> | -n <names> [--items [only]] | --url <url> | --remote <url> -n <name>)\n" +
+        "           [-f <tags>] [-o <out.yml> | -m <data file>]\n" +
         "       eat --deck <deck> <pod.yml> [-u <user>]\n",
     );
     return 2;
@@ -35,12 +37,23 @@ export async function main(argv: string[]): Promise<number> {
       const cql = option(args, "-c", "--cql");
       const names = option(args, "-n", "--name");
       const tags = option(args, "-f", "--field_tags");
+      const url = option(args, "--url");
+      const remote = option(args, "--remote");
+      const mergeInto = option(args, "-m", "--mod-file");
+      // --items (cards and items) or --items only (items alone)
+      const itemsAt = args.indexOf("--items");
+      const items = itemsAt === -1 ? undefined : args[itemsAt + 1] === "only" ? "only" : true;
       const yaml = await sowYaml(deck.fetcher, {
         ...(cql !== undefined ? { cql: JSON.parse(cql) as Record<string, unknown> } : {}),
         ...(names !== undefined ? { names: names.split(",") } : {}),
         ...(tags !== undefined ? { fieldTags: tags.split(",") } : {}),
+        ...(url !== undefined ? { url } : {}),
+        ...(remote !== undefined ? { remote } : {}),
+        ...(items !== undefined ? { items } : {}),
+        ...(mergeInto !== undefined ? { mergeInto } : {}),
       });
-      const out = option(args, "-o", "--out");
+      // -m writes the merged data file, as Sow#dump does.
+      const out = option(args, "-o", "--out") ?? mergeInto;
       if (out !== undefined) writeFileSync(out, yaml);
       else process.stdout.write(yaml);
       return 0;

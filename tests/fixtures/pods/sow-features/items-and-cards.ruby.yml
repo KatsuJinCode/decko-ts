@@ -1,0 +1,36 @@
+---
+- :name: PersistProbe List
+  :type: :pointer
+  :content: |-
+    PersistProbe Typed2
+    PersistProbe Typed2+PersistProbe Field
+    Decko Bot
+    Anyone
+    PersistProbe Loose
+- :name:
+  - PersistProbe Form2
+  - PersistProbe Tags
+  :type: :pointer
+  :content: |-
+    PersistProbe B
+    PersistProbe Form
+- :name: PersistProbe Typed2
+  :content: PersistProbe B
+- :name:
+  - PersistProbe Typed2
+  - PersistProbe Field
+  :content: f
+- :name: Decko Bot
+  :codename: :decko_bot
+  :content: |-
+    <p>
+      This is the account that makes any automated updates &mdash; cards
+      created when someone signs up, link updates when renaming cards, etc.
+    </p>
+- :name: Anyone
+  :type: :role
+  :codename: :anyone
+- :name: PersistProbe Loose
+- :name: PersistProbe B
+- :name: PersistProbe Form
+  :content: main2
