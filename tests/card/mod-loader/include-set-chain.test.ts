@@ -21,7 +21,7 @@ describe("include_set chain expansion", () => {
   const loader = composedLoader();
 
   it("a List card reaches the list editors of Abstract::List (card-mod-list abstract/01_list/html_views)", () => {
-    for (const view of ["checkbox", "select", "multiselect", "autocomplete"]) {
+    for (const view of ["checkbox", "radio", "select", "multiselect", "autocomplete"]) {
       expect(owners(loader, "ALL ALL_PLUS TYPE-list SELF-probe", view)[0]).toBe("Abstract::List::HtmlViews");
     }
     // Abstract::List::HtmlViews defines :input above the all-set editor
