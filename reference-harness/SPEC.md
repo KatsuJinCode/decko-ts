@@ -31,6 +31,7 @@ reference-harness/
   oracle/                    the Ruby oracle: stock Decko app, deck builder, adapter, Dockerfile
   adapters/<engine>/adapter.json   how to start an engine's adapter
   runner/                    run.mjs (drive an adapter), grade.mjs (compare), normalisation
+  browser/                   browser scenarios: journeys, engine servers, runner, comparison (section 8)
 ```
 
 ## 1. Fixtures
@@ -260,3 +261,104 @@ node reference-harness/runner/run.mjs --adapter reference-harness/adapters/ruby-
 4. Run `run.mjs` with your manifest, then `grade.mjs`.
 
 Python and Go need only a JSON library, a line reader, and the engine.
+
+## 8. Browser scenarios
+
+The adapter protocol asks an engine questions directly. Browser scenarios ask
+what a user sees: a hidden browser clicks through each engine's own pages,
+served over HTTP, and the engines are compared on the result.
+
+### Journeys
+
+`browser/journeys/<fixture>.json` lists journeys as plain data:
+`{"id", "covers": [...], "steps": [...]}`. Each journey runs on a fresh copy of
+the built deck, a freshly started server and a fresh browser profile. A step
+is one object with one key:
+
+| step | meaning |
+|---|---|
+| `visit` | load a path |
+| `signin` | sign in as an actor of `deck.json`, through the sign-in form |
+| `click`, `fill`, `type`, `check`, `uncheck`, `select`, `upload` | act on a target: `{link}` or `{button}` (visible text), `{css}`, `{name}`, `{field}` (a Decko field by card name, found the way Decko's own steps find it), `{text}`; optional `within` (css). `fill` and `type` take `value`, `select` takes `option`, `upload` takes `file` (from `browser/files/`) |
+| `editor` | set an editor's content by field name, as Decko's own steps do (ace, then TinyMCE, then the plain field) |
+| `press` | press a key in the focused element |
+| `wait` | wait for `{text}` or `{css}` |
+| `window`, `close_window` | open or switch to a named second window (same cookies); close it |
+| `mail_link` | follow a link from the latest mail whose subject matches |
+| `observe` | record what the user sees, under a label |
+
+After each action the runner waits until the page has loaded and jQuery has no
+request in flight. A failing step ends the journey; the page at that moment is
+recorded as an observation.
+
+### Engine servers
+
+`browser/engines/<engine>.json` names a command that serves a deck copy on
+`127.0.0.1:$HARNESS_PORT` (environment as in section 2, plus `HARNESS_PORT`)
+and answers `GET /__harness/ready` and `GET /__harness/mail` (the mail sent
+since the last call, drained). The Ruby server is the stock oracle app behind
+Decko's own controller, with the deck origin set to the server's own address
+and a fixture secret for account tokens (a deployed deck's credentials). The
+TS server is the port's own Node host (`vm-staging-server.mjs`) in its stock
+deck profile (`DECKO_DECK_PROFILE=stock`): flat engine views with no bound mod
+loader, as the edge hosts render; no production asset rewriting; Decko's
+routes for new cards, the sign-in card's own form, ajax requests answered
+without the layout, and the mods' public files served from
+`DECKO_MOD_PUBLIC_DIR` (the oracle app's `public/`, the same files Ruby
+serves). Both sign tokens with the same fixture secret.
+
+### What is compared
+
+Per journey: completion (every step ran); every observation on four aspects
+(address: path, query and HTTP status; text; structure; form fields); the mail
+sent; and the row delta in Decko's card tables (N4, with timestamps and
+password digests masked, because a browser session cannot pin both engines'
+clocks). Observations are normalised by B1-B5 (`browser/lib/observe.mjs`):
+rendered text with whitespace collapsed and relative times and dates masked;
+the main area's element tree as tags and sorted classes, with per-render random
+classes masked; the visible form controls; the URL without its host.
+
+A journey that fails on the reference is a broken journey: reported, never
+graded.
+
+### Running
+
+Everything, one engine at a time (Ruby journeys, TS journeys, the comparison,
+then Decko's own cucumber browser scenarios on stock Ruby):
+
+```
+node reference-harness/browser/run-all.mjs --out <dir> --decko <decko git checkout>
+```
+
+Or step by step:
+
+```
+node reference-harness/browser/run-journeys.mjs --engine reference-harness/browser/engines/ruby.json \
+  --fixture reference-harness/fixtures/synthetic-v1 \
+  --journeys reference-harness/browser/journeys/synthetic-v1.json --out <rubyDir>
+node reference-harness/browser/run-journeys.mjs --engine reference-harness/browser/engines/ts.json ... --out <tsDir> [--signin direct]
+node reference-harness/browser/compare-journeys.mjs --expected <rubyDir> --actual <tsDir> --report report.json
+```
+
+`--signin direct` sends Decko's sign-in request without the form, so the rest
+of a journey still runs on an engine whose sign-in page differs. `--html 1`
+also saves every observed page's DOM under `<out>/<journey>/`. The TS server
+needs the port built into `dist/` (`tsc -p tsconfig.json`).
+
+The browser is an installed Chrome, Edge or Chromium driven through
+playwright-core (`HARNESS_CHROME`, `HARNESS_PLAYWRIGHT_CORE`), headless, with
+a throwaway profile; nothing is downloaded. Requests to hosts other than this
+machine are refused, except the public script and font CDNs a stock Decko
+layout links (jQuery, jquery-ujs, ace, select2, icon fonts), without which
+Decko's editors do not run on any engine; `HARNESS_OFFLINE=1` refuses those
+too.
+
+`browser/capybara/` holds a Capybara driver over the same browser, so Decko's
+own cucumber features run without a WebDriver binary:
+`cucumber -r <decko>/features -r reference-harness/browser/capybara/register.rb`.
+`browser/cucumber/run-features.mjs --decko <checkout> --out <dir>` runs the
+`@javascript` features of the release (`--ref`, default `v0.20.0`) on the
+installed, unpatched gems: `browser/cucumber/app` is a stock deck in the
+cucumber environment whose database, cache, files and mod public files live in
+a work directory removed on exit. It records every scenario's result in
+`<dir>/summary.json`.

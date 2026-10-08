@@ -8,3 +8,7 @@ results/
 # and are the public corpus: they are committed despite the repository-wide
 # *.sqlite3 rule.
 !fixtures/*/deck/deck.sqlite3
+browser/cucumber/.work/
+browser/cucumber/app/log/
+browser/cucumber/app/tmp/
+browser/cucumber/app/public/
