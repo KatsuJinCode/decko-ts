@@ -100,7 +100,7 @@ export function filesLeafVariant(leaf: string): string | undefined {
 }
 
 /** The text/plain 404 body the LIVE app serves for a /files/ id it cannot
- *  resolve — measured 2026-10-02: GET https://culturesmith.com/files/103/
+ *  resolve — measured 2026-10-02: GET https://the reference deck/files/103/
  *  3649-small.jpg -> 404, 19 bytes, text/plain, "Could not find 103." */
 export function filesNotFoundBody(id: string): string {
   return `Could not find ${id}.`;

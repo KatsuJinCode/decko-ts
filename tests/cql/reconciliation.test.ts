@@ -1,8 +1,8 @@
 /**
  * CQL <-> card/name stream reconciliation tests.
  *
- * Closes the documented seam between wave-1 CQL (docs/cql-port-notes.md) and
- * the landed name algebra (docs/name-port-notes.md):
+ * Closes the documented seam between wave-1 CQL  and
+ * the landed name algebra :
  * 1. name -> key goes through the REAL DeckoName.key semantics (ActiveSupport
  *    singularize inflection included), replacing the no-inflection
  *    approximation of the old defaultNameToKey.
@@ -11,7 +11,7 @@
  *    and the absolutize_extremes guard that the CQL-side approximation lacked.
  *
  * Oracle basis (live `ruby -e` against the installed gems, per the preload
- * trick in docs/name-port-notes.md — `require "active_support/all";
+ * trick
  * require "htmlentities"; require "cardname";` plus
  * cardname-0.20.0/lib/core_ext.rb, with `Cardname.params = {}` to emulate the
  * app context where `Card::Name.params` is overridden to `Card::Env.params`,
@@ -39,7 +39,7 @@
  *   "_main+_right".absolute("A+B")  => "Home Page+B"
  *
  * _N ordinals and _L*R partmaps crash the UNPATCHED cardname 0.20.0 gem
- * ($LAST_MATCH_INFO is nil in the case/when dispatch — docs/name-port-notes.md
+ * ($LAST_MATCH_INFO is nil
  * upstream bug 1), so their values were oracle-verified by probing the gem's
  * own private methods directly (no dispatch involved):
  *
@@ -151,7 +151,7 @@ describe("relative-name absolutization via DeckoName.absolute (contextual.rb#abs
 
     it("_N past the parts resolves to '' and the blank extreme falls back to the context", () => {
       // oracle: ordinal_part(4, "A+B+C") => nil (string-length clamp quirk,
-      // docs/name-port-notes.md); "" extreme -> absolutize_extremes fills the
+      // ); "" extreme -> absolutize_extremes fills the
       // context — the same chain the live _main row demonstrates.
       expect(nameCondition({ name: "_4" }, { context: "A+B+C" })).toMatchObject({ values: ["a+b+c"] });
     });

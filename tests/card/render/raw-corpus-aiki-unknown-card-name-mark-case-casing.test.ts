@@ -65,6 +65,7 @@ import { setDeploymentCloudAssetHost } from "../../../src/card/render/views.js";
 import { DeckoName } from "../../../src/card/name.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
 import type { RenderTestStorage } from "./render-test-storage.js";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -87,7 +88,7 @@ function cardNames(html: string): string[] {
   return [...html.matchAll(/data-card-name="([^"]*)"/g)].map((m) => m[1]);
 }
 
-function aikiOracleHtml(): string {
+function fieldOracleHtml(): string {
   for (const line of readFileSync(AIKI_SHARD, "utf8").split("\n")) {
     if (!line.trim()) continue;
     const o = JSON.parse(line) as { name: string; page_html: string };
@@ -96,7 +97,7 @@ function aikiOracleHtml(): string {
   throw new Error(`Aiki page not found in ${AIKI_SHARD}`);
 }
 
-describe.skipIf(!CORPUS_PRESENT)("unknown-card data-card-name carries the MARK's case (Aiki page, graded corpus boot)", () => {
+describeOrSkipLoud(!CORPUS_PRESENT, "tests/card/render/raw-corpus-aiki-unknown-card-name-mark-case-casing.test.ts", "CORPUS_PRESENT")("unknown-card data-card-name carries the MARK's case (Aiki page, graded corpus boot)", () => {
   let storage: RenderTestStorage | undefined;
   let page: string;
   let oracle: string;
@@ -105,7 +106,7 @@ describe.skipIf(!CORPUS_PRESENT)("unknown-card data-card-name carries the MARK's
     // The graded runner's config: the asset host only
     // (tools/oracle/dual-lane-direct-runner-core.ts:539-544).
     setDeploymentCloudAssetHost(
-      "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com",
+      "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com",
     );
     // The boot the grade did: every non-trashed live id seeded, the name
     // environment installed, the lexicon warmed over the whole deck
@@ -122,7 +123,7 @@ describe.skipIf(!CORPUS_PRESENT)("unknown-card data-card-name carries the MARK's
     storage.fetcher.installNameEnvironment();
     await storage.fetcher.warmLexicon([...ids]);
     page = await storage.engine.renderPage("Aiki");
-    oracle = aikiOracleHtml();
+    oracle = fieldOracleHtml();
   }, 600_000);
 
   afterAll(() => {

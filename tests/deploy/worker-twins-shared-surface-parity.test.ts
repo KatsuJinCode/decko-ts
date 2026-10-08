@@ -8,7 +8,7 @@
 // Why this file exists: the twins drifted (deploy-button lane receipt,
 // defect chain) — the button's entry shipped a blanket-500 catch while
 // deploy/worker.ts mapped missing cards 404; the audit lane
-// (tmp/wrong-goal-hunt/gherkin-gate-lane.md, ASSIGNMENT 2) classified every
+// (an internal work log, ASSIGNMENT 2) classified every
 // difference and unified the shared surface behind
 // src/server/worker-shared-surface.ts. Each pin below was RED against the
 // pre-fix twins and pins the unified behavior with its Ruby cite:

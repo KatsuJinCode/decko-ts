@@ -3,7 +3,7 @@
 // self-set codename overrides apply under denial exactly as Ruby's frame
 // chain applies them.
 //
-// MECHANISM (gem source, C:/localProjects/archive/decko-fork-study/decko/):
+// MECHANISM (gem source, REPO_ROOT/archive/decko-fork-study/decko/):
 //
 //   mod/format/set/all/html/error.rb:191-197
 //       def loud_denial
@@ -79,6 +79,7 @@ import path from "node:path";
 import { describe, it, expect } from "vitest";
 import { byteDiff, normalizeSlotIds } from "../../../src/testing/diff.js";
 import { RAW_CORPUS_DB } from "./raw-corpus-seeding.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 import {
   CORPUS_PRESENT,
   PAGE_LANE_DIR,
@@ -103,7 +104,7 @@ describe("the loud denial frame's header title renders through the title view (f
     { timeout: 3_600_000 },
     async (ctx) => {
       if (!PIN_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/focal-denial-header-title-codename-parity.test.ts", "PIN_REQUESTED");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

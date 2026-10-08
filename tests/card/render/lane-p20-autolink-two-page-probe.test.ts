@@ -8,6 +8,7 @@ import path from "node:path";
 import Database from "better-sqlite3";
 import { describe, it, expect } from "vitest";
 import { byteDiff, normalizeSlotIds } from "../../../src/testing/diff.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 import {
   RAW_CORPUS_DB,
   createRawStructureSeededStorage,
@@ -54,7 +55,7 @@ describe("lane-p20-autolink two-page probe", () => {
     { timeout: 3_600_000 },
     async (ctx) => {
       if (!REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/lane-p20-autolink-two-page-probe.test.ts", "REQUESTED");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);
@@ -106,7 +107,7 @@ describe("lane-p20-autolink two-page probe", () => {
       // Ruby's phantom is per-nest — so the lookup names the page's own
       // +musings host.
       const phantomKey =
-        "kimberly_sensei_do_not_contribute_directly_to_culturesmith_at_this_time";
+        "kimberly_sensei_do_not_contribute_directly_to_example.com_at_this_time";
       const phantomHostKey = "kimberly_richardson+musing";
       const engine = storage.engine as unknown as {
         pointerItemVerdict?: (

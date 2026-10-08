@@ -1,0 +1,57 @@
+Decko TypeScript Engine
+========================
+
+This project is a TypeScript implementation of the Decko card engine.
+
+It is a DERIVATIVE WORK of Decko and is licensed under the same terms as
+Decko itself: the GNU General Public License, version 3 or (at your option)
+any later version. The full license text is in the LICENSE file.
+
+
+Upstream project
+----------------
+
+    Decko
+    https://github.com/decko-commons/decko
+    https://decko.org
+
+    Authors (as listed in the upstream gemspecs): Ethan McCutchen,
+    Philipp Kühl, Gerry Gleason, and the Decko contributors.
+    License: GPL-3.0-or-later (declared in the upstream gemspecs; the
+    upstream LICENSE file carries the GNU GPL version 3 text).
+
+Decko is a structured wiki web platform built on the "card" concept: a
+database-backed tree of typed, nestable cards extended by mods. Its core
+gems are:
+
+    decko     the platform gem
+    card      the card engine
+    cardname  card names without all the cards
+
+This project was written against a running Ruby Decko instance used as a
+rendering oracle. The upstream versions targeted are:
+
+    card     1.110.0
+    decko    0.20.0
+
+Parts of this project are direct ports of the corresponding Ruby source.
+Those ports carry the upstream copyright and remain under the upstream
+license. Ported files and areas are documented in ARCHITECTURE.md and in the
+`docs/*-port-notes.md` series, which record the upstream file each area was
+ported from.
+
+
+Scope of the GPL grant
+----------------------
+
+Because this project contains ported GPL-3.0-or-later code, the whole
+project is GPL-3.0-or-later. It cannot be relicensed while that code
+remains, and any work derived from this project inherits the same terms.
+
+
+Third-party components
+----------------------
+
+Components under `vendor/` are redistributed under their own licenses; see
+the notices in that directory. In particular `vendor/uglifier-4.2.1-uglify-harmony/`
+carries its own provenance and license notice.

@@ -9,6 +9,7 @@
 //     --maxWorkers=2 --no-file-parallelism
 
 import { existsSync, readdirSync, readFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import Database from "better-sqlite3";
@@ -69,7 +70,7 @@ function loadOraclePageEntries(wanted: string[]): Map<string, { page_html?: stri
 
 describe("raw-corpus raise/leadview sweep", () => {
   it("renders both triage classes and records flip evidence", { timeout: 1_800_000 }, async (ctx) => {
-    if (!SWEEP_REQUESTED) { ctx.skip(); return; }
+    if (!SWEEP_REQUESTED) { skipLoud(ctx, "tests/card/render/raw-corpus-raise-leadview-sweep.test.ts", "SWEEP_REQUESTED"); return; }
     expect(existsSync(RAW_CORPUS_DB)).toBe(true);
     expect(existsSync(PAGE_LANE_DIR)).toBe(true);
 

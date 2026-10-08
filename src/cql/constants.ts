@@ -7,7 +7,7 @@
  * RECONCILIATION (schema stream): the table and column names here are copied
  * from the card-1.110.0 db/schema.rb assumptions query.rb makes. The
  * concurrently-written db/schema.sqlite.sql / src/server/schema.ts must use
- * the identical names; see docs/cql-port-notes.md ("Reconciliation with the
+ * the identical names
  * schema stream") for the checklist.
  */
 

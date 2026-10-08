@@ -17,7 +17,7 @@
 //
 // The rendered surface this feeds is the html :core's
 // `CodeRay.scan(_render_raw, :css).div` (card-mod-style
-// set/abstract/01_css.rb:35-40) - the pass-15 page triage's two SCSS pages
+// set/abstract/01_css.rb:35-40) - an earlier page triage's two SCSS pages
 // ("bootstrap: core" = 1.84MB of highlighted output, "bootstrap: functions"
 // = 122KB) whose engine renders were EMPTY: the engine had no accessor,
 // so renderRaw hit the empty stored row.

@@ -28,7 +28,7 @@
 // ruleByCodename carries content_option_view and the M10b/seatfix stored-pair
 // escape re-admits what restricted_to_type rejected).
 //
-// RELATION TO THE SEATFIX LANE (a9b7b55f, receipt tmp/wrong-goal-hunt/
+// RELATION TO THE SEATFIX LANE (a9b7b55f, receipt an internal work log
 // seatfix-lane.md): its badge-5 family (Task+*right, Task+Log Entry+*type
 // plus right) is a RECEIPTED FIT — "No 0.20 mechanism produces the
 // distribution ... the corpus is the spec". This lane's *all bytes are the
@@ -54,6 +54,7 @@ const VIEW_DIR = path.join(REPO_ROOT, "tmp", "raw-ground-truth", "expected-v2", 
 
 import { compareNormalized } from "../../../src/testing/diff.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 /** The editing accordion's _count badge byte forms, exact. */
 const BADGE_3 = 'editing <span class="_count badge bg-secondary ms-3">3</span>';
@@ -76,7 +77,7 @@ afterAll(() => {
   storage?.close();
 });
 
-describe.runIf(process.env.ALLSETFIX_GRADE10_PINS === "1" && existsSync(CORPUS) && existsSync(VIEW_DIR))(
+describeOrSkipLoud(!(process.env.ALLSETFIX_GRADE10_PINS === "1" && existsSync(CORPUS) && existsSync(VIEW_DIR)), "tests/card/render/grade10-all-set-rule-category-gate-badge-pins.test.ts", "process.env.ALLSETFIX_GRADE10_PINS === \"1\" && existsSync(CORPUS) && existsSync(VIEW_DIR)")(
   "grade-10 *all family: the ALL-pattern set card's rule-category accordion never renders the restricted pair",
   () => {
     const expected = new Map<string, string>();
@@ -103,7 +104,7 @@ describe.runIf(process.env.ALLSETFIX_GRADE10_PINS === "1" && existsSync(CORPUS) 
         "../../../src/card/render/views.js"
       );
       setDeploymentCloudAssetHost(
-        "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com",
+        "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com",
       );
 
       storage = await createRawStructureSeededStorage(new Set(everyLiveId));

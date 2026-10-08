@@ -43,6 +43,7 @@ import {
   prepareResetFlowCorpusFixture,
   type CorpusFixtureInfo,
 } from "./reset-flow-corpus-fixture.js";
+import { describeWithCorpus } from "../../support/describe-with-corpus.js";
 import { ensureStagingServerDist } from "./staging-server-dist-bootstrap.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
@@ -51,7 +52,7 @@ const OLD_PASSWORD = generatedPassword("resetendpointold");
 const NEW_PASSWORD = generatedPassword("resetendpointnew");
 const TOKEN_SECRET = generatedTokenSecret();
 
-const describeIfCorpus = CORPUS_PATH !== null ? describe : describe.skip;
+const describeIfCorpus = describeWithCorpus(CORPUS_PATH !== null, "tests/card/auth/reset-flow-endpoint.test.ts", "the committed miniature corpus (fixtures/test-corpus/) is not present");
 
 interface Fixture {
   baseUrl: string;

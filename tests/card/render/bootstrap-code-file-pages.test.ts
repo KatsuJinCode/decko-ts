@@ -1,6 +1,6 @@
-// The sass-style suite's page pins: the pass-15 page triage booked 30 pages
+// The sass-style suite's page pins: an earlier page triage booked 30 pages
 // under "sass-css-compile" (every style-type page in the corpus fails), but
-// the byte evidence (tmp/wrong-goal-hunt/sass-style-lane.md) shows the class
+// the byte evidence (an internal work log) shows the class
 // is FOUR view-level mechanisms, none of them compiled-CSS bytes:
 //
 //   A. Skin cardtype (4 pages) - type/skin.rb:3 `include_set List` puts the
@@ -26,7 +26,7 @@
 //      rendered the &nbsp; placeholder.
 //
 // Oracle bytes: fixtures/captured/sass-style-pages/oracle-main-slot-regions
-// .json - the pass-15 fail-dump expected pages' main-slot regions (slot-id
+// .json - an earlier fail-dump expected pages' main-slot regions (slot-id
 // normalized). The pins render the PAGE (renderPageBytes), extract the same
 // region, normalize slot ids, and byte-compare.
 
@@ -386,7 +386,7 @@ afterAll(() => {
   storage?.close();
 });
 
-describe("sass-style lane: the pass-15 sass-css-compile page pins", () => {
+describe("sass-style lane: an earlier sass-css-compile page pins", () => {
   for (const page of FIXTURE_DATA.pages) {
     it(`page ${page.name} reproduces the oracle ${page.regionMarker === "d0-card-header" ? "header" : "main"} region byte-exactly`, async () => {
       const html = await renderPageBytes(storage!.engine, page.name);
@@ -394,7 +394,7 @@ describe("sass-style lane: the pass-15 sass-css-compile page pins", () => {
       const actual = normalizeSlotIds(html.slice(start, end));
       // The two BootstrapCodeFile pages' oracle regions are 1.84MB / 122KB
       // of CodeRay output — pinned by sha256 over the same normalized
-      // region bytes (computed from the pass-15 page-lane oracle capture,
+      // region bytes (computed from an earlier page-lane oracle capture,
       // recapture-raw-shard-000028.jsonl page_html, verified against the
       // fixture's regionStart/regionLen extraction).
       if (page.expected === undefined) {

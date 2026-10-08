@@ -24,11 +24,19 @@
 import { DeckoName } from "../name.js";
 import { UnsupportedViewError, wrappedTitleInner } from "./format.js";
 import type { RenderFormat, ViewContext, ViewFn } from "./format.js";
-import { h } from "./slot-html.js";
+import { emitAttrs, h, newSlotId } from "./slot-html.js";
 
 /** Abstract::List member cardtypes (item_cards content iteration). */
 function isListType(fmt: RenderFormat): boolean {
   return fmt.card.typeCode === "pointer" || fmt.card.typeCode === "list";
+}
+
+/** Abstract::Items member cardtypes (card-mod-list set/type/{pointer,list,
+ *  link_list}.rb include_set Abstract::Items): their :nav_item is a
+ *  dropdown. A Link list includes Abstract::Items but not Abstract::List, so
+ *  its dropdown items come from the base chunk walk. */
+function isItemsType(fmt: RenderFormat): boolean {
+  return isListType(fmt) || fmt.card.typeCode === "link_list";
 }
 
 /** set/all/navbar_links.rb wrap_with_nav_item. */
@@ -73,7 +81,8 @@ const navbarLinksView: ViewFn = (ctx) => {
     // product both this view and :core render. Signed out: sign_up +
     // sign_in (my_card and sign_out are signed_in?-gated, denial :blank ->
     // dropped).
-    const signedInItems = ctx.fmt.engine.pageSessionAccountLinksHtml;
+    const prepared = ctx.fmt.engine.pageSessionAccountLinksHtml;
+    const signedInItems = prepared === undefined ? undefined : bindUniqueIds(prepared, ctx.fmt);
     if (signedInItems !== undefined) {
       return `<ul class="navbar-nav">${signedInItems}</ul>`;
     }
@@ -90,12 +99,21 @@ const navbarLinksView: ViewFn = (ctx) => {
       .filter((s): s is string => s !== undefined);
     return `<ul class="navbar-nav">${items.join("")}</ul>`;
   }
-  // set/all/navbar_links.rb: the content-chunk walk — reference chunks
-  // ([[target|label]] name-links nest their target with view :nav_item,
-  // render_name_link, title = the label); literal text chunks pass through
-  // verbatim (the \r\n separators between menu links are in the captured
-  // bytes).
-  const content = fmt.card.dbContent;
+  return `<ul class="navbar-nav">${chunkNavbarItems(ctx, "nav_item", "nav-link")}</ul>`;
+};
+
+/** set/all/navbar_links.rb navbar_items(view:, link_class:) — the base
+ *  content-chunk walk every card without Abstract::List's item override
+ *  takes: reference chunks ([[target|label]] name-links nest their target
+ *  with `view`, title = the label); literal text chunks pass through
+ *  verbatim (the \r\n separators between menu links are in the captured
+ *  bytes). Explicit links (link.rb `^(/|https?:|mailto:)` targets) render
+ *  link_to_resource with explicit_link_opts {class: link_class} — the given
+ *  class first, the resource type's class appended, then target=_blank for
+ *  an external link — and navbar_link_chunk li-wraps them under :nav_item
+ *  (`chunk.explicit_link? && view == :nav_item`). */
+function chunkNavbarItems(ctx: ViewContext, view: string, linkClass: string): string {
+  const content = ctx.fmt.card.dbContent;
   const out: string[] = [];
   let lastIndex = 0;
   for (const m of content.matchAll(/\[\[([^\][\n]+?)\]\]/g)) {
@@ -104,15 +122,26 @@ const navbarLinksView: ViewFn = (ctx) => {
     const split = spec.indexOf("|");
     const target = (split === -1 ? spec : spec.slice(0, split)).trim();
     const label = split === -1 ? undefined : spec.slice(split + 1).trim();
-    if (target !== "") {
-      const link = nestResolvedName(ctx, target, "nav_item", label);
+    if (/^(\/|https?:|mailto:)/.test(target)) {
+      const text = label ?? target;
+      let link: string;
+      if (/^https?:/.test(target)) {
+        link = `<a class="${linkClass} external-link" target="_blank" href="${h(target)}">${text}</a>`;
+      } else if (/^mailto:/.test(target)) {
+        link = `<a class="${linkClass} email-link" href="${h(target)}">${text}</a>`;
+      } else {
+        link = `<a class="${linkClass} internal-link" href="${h(`/${target.replace(/^\/+/, "")}`)}">${text}</a>`;
+      }
+      out.push(view === "nav_item" ? wrapNavItem(link) : link);
+    } else if (target !== "") {
+      const link = nestResolvedName(ctx, target, view, label);
       if (link !== undefined) out.push(link);
     }
     lastIndex = (m.index ?? 0) + m[0].length;
   }
   out.push(content.slice(lastIndex));
-  return `<ul class="navbar-nav">${out.join("")}</ul>`;
-};
+  return out.join("");
+}
 
 /** set/all/navbar_links.rb view :nav_item (per-set dispatch). */
 const navItemView: ViewFn = (ctx) => {
@@ -121,7 +150,7 @@ const navItemView: ViewFn = (ctx) => {
     // set/self/dropdown_divider.rb view :nav_item.
     return `<div class="dropdown-divider"></div>`;
   }
-  if (isListType(fmt)) {
+  if (isItemsType(fmt)) {
     // Abstract::Items#nav_item: wrap_with_nav_item(nav_dropdown).
     return wrapNavItem(navDropdown(ctx));
   }
@@ -135,8 +164,9 @@ const navLinkInDropdownView: ViewFn = (ctx) => {
   if (fmt.card.key === "*dropdown_divider") {
     return `<div class="dropdown-divider"></div>`;
   }
-  // base: link_to_card card, render_title, class: "dropdown-item".
-  return linkToCardWithClass(fmt, "dropdown-item", fmt.renderView("title"));
+  // base: link_to_card card, render_title, class: "dropdown-item" —
+  // render_title carries a link chunk's label (voo title) when one is set.
+  return linkToCardWithClass(fmt, "dropdown-item", linkTitleSpan(ctx));
 };
 
 /** Abstract::Items#nav_dropdown: toggle link + menu. */
@@ -156,7 +186,7 @@ function navDropdown(ctx: ViewContext): string {
  *  Unresolvable ITEM NAMES and EMPTY renders drop from the join entirely:
  *  Ruby's item walk renders ITEM CARDS (Abstract::List#list_cards —
  *  set/abstract/list.rb, the card-mod-layout module this file ports), so a
- *  raw item string that is no card reference ("https://culturesmith.com/
+ *  raw item string that is no card reference ("https://example.com/
  *  card/new|New Card", corpus card 38283 *Opportunities) never becomes a
  *  render and its join separator vanishes with it; the same for a render
  *  that resolves to no bytes (the engine's unknown-card substitution).
@@ -165,6 +195,10 @@ function navDropdown(ctx: ViewContext): string {
  *  the engine's kept empty row emitted `divider\n\n<denied>`, the graded
  *  +1 on every page whose nav carries that menu). */
 function dropdownMenuItems(ctx: ViewContext): string {
+  // A Link list (Abstract::Items without Abstract::List) keeps the base
+  // navbar_items: the chunk walk with the dropdown view and class
+  // (navbar_links.rb dropdown_menu_items).
+  if (!isListType(ctx.fmt)) return chunkNavbarItems(ctx, "nav_link_in_dropdown", "dropdown-item");
   const items = listItemsOf(ctx.fmt)
     .map((name) => nestItemName(ctx, name, "nav_link_in_dropdown"))
     .filter((s): s is string => s !== undefined && s !== "");
@@ -241,7 +275,8 @@ export const NAVBAR_VIEWS: Record<string, ViewFn> = {
  *  sign_in pair (my_card/sign_out are signed_in?-gated with denial :blank —
  *  dropped from the compact). */
 export function accountLinksCoreHtml(ctx: ViewContext): string {
-  const signedInItems = ctx.fmt.engine.pageSessionAccountLinksHtml;
+  const prepared = ctx.fmt.engine.pageSessionAccountLinksHtml;
+  const signedInItems = prepared === undefined ? undefined : bindUniqueIds(prepared, ctx.fmt);
   if (signedInItems !== undefined) {
     return `<div id="logging" class="logged-in">${signedInItems}</div>`;
   }
@@ -277,19 +312,21 @@ export function accountLinksCoreHtml(ctx: ViewContext): string {
  *  The known/wanted classes are inputs (RenderEngine.prepareSessionAccountLinks
  *  resolves them while async fetches are legal); the byte shapes here are
  *  pinned against the authenticated goldens (every capture's navbar block).
- *  Remainder (no golden pins it): the roles dropdown items
- *  (account_dropdown_roles — special_roles? when the session actor holds
- *  2+ roles) render []; the capture's bot session holds none.
+ *  An actor with a role besides Anyone Signed In gets the interactive roles
+ *  dropdown instead (`rolesDropdown`, interactiveRolesDropdownHtml), pinned
+ *  by the reference harness's member and administrator pages.
  */
 export function signedInAccountLinksInnerHtml(
   actorName: string,
   known: { actor: boolean; accountSettings: boolean; signin: boolean },
+  rolesDropdown?: InteractiveRolesDropdown,
 ): string {
-  const namePath = actorName.replace(/ /g, "_");
   const knownClass = (isKnown: boolean): string => (isKnown ? "known-card" : "wanted-card");
   const myCardLi =
     `<li class="nav-item">` +
-    myCardDropdownInnerHtml(actorName, known, []) +
+    (rolesDropdown === undefined
+      ? myCardDropdownInnerHtml(actorName, known, [])
+      : interactiveRolesDropdownHtml(actorName, known, rolesDropdown)) +
     `</li>`;
   const signOutLi =
     `<li class="nav-item"><a class="nav-link signout-link ${knownClass(known.signin)}" href="/delete/*signin">Sign out</a></li>`;
@@ -320,7 +357,112 @@ export function myCardDropdownInnerHtml(
     `<ul class="dropdown-menu dropdown-menu-right" role="menu">` +
     `<li><a class="dropdown-item ${knownClass(known.accountSettings)}" href="/${namePath}+*account_settings">Account</a></li>\n` +
     `<li><a class="dropdown-item ${knownClass(known.signin)}" href="/delete/*signin">Sign out</a></li>` +
-    roleItems.join("") +
+    roleItems.map((item) => `\n<li>${item}</li>`).join("") +
     `</ul></div>`
   );
+}
+
+/** Where a prepared chrome fragment takes the next element-id number
+ *  (role_checkbox.haml's `"pointer_checkbox-#{unique_id}"`). The fragment
+ *  is prepared before the page renders, but Ruby numbers ids in render
+ *  order through the root format's id_counter, so the number is bound when
+ *  the fragment is placed (bindUniqueIds). */
+const UNIQUE_ID_SLOT = "\u0000unique-id\u0000";
+
+/** Fill each unique-id slot of a prepared fragment from the rendering
+ *  format's id counter, in document order. */
+export function bindUniqueIds(html: string, fmt: RenderFormat): string {
+  if (!html.includes(UNIQUE_ID_SLOT)) return html;
+  return html.split(UNIQUE_ID_SLOT).reduce((out, part) => `${out}${fmt.nextIdNumber()}${part}`);
+}
+
+/** What the interactive roles dropdown needs beyond the account dropdown's
+ *  inputs, resolved by the engine's async prepare step. */
+export interface InteractiveRolesDropdown {
+  /** Auth.current_roles (auth/current.rb:28-33): Anyone Signed In, then the
+   *  roles whose +*members list the actor; `known` drives link_to_card's
+   *  known/wanted class. */
+  roles: Array<{ name: string; known: boolean }>;
+  /** The Session cardtype's id (enabled_roles.rb:3 assign_type :session). */
+  sessionTypeId: number;
+  /** safe_set_keys of the new `<actor>+*enabled roles` card. */
+  setKeys: string;
+}
+
+/** account_links.rb:60-63 interactive_roles_dropdown — the my_card arm when
+ *  can_disable_roles? (2+ current roles and the :enabled_roles codename):
+ *  `nest enabled_roles_card, view: :edit_inline, hide: %i[edit_inline_buttons
+ *  name_formgroup]`. The nest renders enabled_roles.rb's :edit_inline (wrap:
+ *  :slot) over the NEW `<actor>+*enabled roles` Session card:
+ *  - the slot div (wrap.rb): id/class/data-card-* of the new card (no id),
+ *    data-slot carrying the nest's view, nest_name, show/hide and home_view;
+ *  - the edit_inline form (card-mod-edit edit_inline: card_form :update with
+ *    the autosave slotter classes, the success[reload] hidden tag from
+ *    edit_success and enabled_roles.rb's hidden card[type_id]), the editor
+ *    fieldset and the hidden content field;
+ *  - checkbox_input: `wrap_with :div, class: "pointer-checkbox-list" {
+ *    account_dropdown }`, whose role items are the role_checkbox haml
+ *    (role_checkbox.haml), all checked because ensure_roles fills the blank
+ *    session content with every current role. */
+export function interactiveRolesDropdownHtml(
+  actorName: string,
+  known: { actor: boolean; accountSettings: boolean; signin: boolean },
+  dropdown: InteractiveRolesDropdown,
+): string {
+  const name = DeckoName.parse(`${actorName}+*enabled roles`);
+  const urlKey = name.urlKey;
+  const safeKey = name.safeKey;
+  const slotData = JSON.stringify({
+    view: "edit_inline",
+    nest_name: name.s,
+    show: ["edit_inline"],
+    hide: ["edit_inline_buttons", "name_formgroup", "type_formgroup"],
+    home_view: "edit_inline",
+  });
+  const attrs = emitAttrs({
+    id: `${safeKey}-edit_inline-view`,
+    class: `card-slot edit_inline-view ${dropdown.setKeys}`,
+    "data-card-name": urlKey,
+    "data-card-type-id": String(dropdown.sessionTypeId),
+    "data-card-type-name": "Session",
+    "data-card-link-name": urlKey,
+    "data-slot-id": newSlotId(),
+    "data-slot": slotData,
+  });
+  return (
+    `<div${attrs}>` +
+    `<form class="card-form slotter autosave" id="new_card" action="/update/${h(urlKey)}" accept-charset="UTF-8" data-remote="true" method="post">` +
+    `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
+    `<input type="hidden" name="success[reload]" id="success_reload" value="true" autocomplete="off" /> ` +
+    `<input type="hidden" name="card[type_id]" id="card_type_id" value="${dropdown.sessionTypeId}" autocomplete="off" />` +
+    `<fieldset class="card-editor editor"><div class="editor content-editor">` +
+    `<input class="d0-card-content form-control" autocomplete="off" type="hidden" name="card[content]" id="card_content" />` +
+    `<div class="pointer-checkbox-list">${roleCheckboxAccountDropdownHtml(actorName, known, dropdown)}</div>` +
+    `</div></fieldset></form></div>`
+  );
+}
+
+/** enabled_roles.rb checkbox_input's account_dropdown: the account dropdown
+ *  whose role items are the role_checkbox haml (account_dropdown_role_items
+ *  override) — the body of the +*enabled roles :edit_inline form. */
+export function roleCheckboxAccountDropdownHtml(
+  actorName: string,
+  known: { actor: boolean; accountSettings: boolean; signin: boolean },
+  dropdown: InteractiveRolesDropdown,
+): string {
+  const safeKey = DeckoName.parse(`${actorName}+*enabled roles`).safeKey;
+  const knownClass = (isKnown: boolean): string => (isKnown ? "known-card" : "wanted-card");
+  const roleItems = [
+    `<h6 class="dropdown-header">Roles</h6>`,
+    ...dropdown.roles.map(
+      (role) =>
+        `<div class='pointer-checkbox dropdown-item'>\n` +
+        `<input type="checkbox" name="pointer_checkbox-${safeKey}-${UNIQUE_ID_SLOT}" ` +
+        `id="pointer-checkbox-${DeckoName.parse(role.name).key}" value="${h(role.name)}" ` +
+        `class="pointer-checkbox-button _submit-on-change me-2" checked="checked" />\n` +
+        `<a class="${knownClass(role.known)}" href="/${h(DeckoName.parse(role.name).urlKey)}">${h(role.name)}</a>\n` +
+        `</div>\n`,
+    ),
+  ];
+  return myCardDropdownInnerHtml(actorName, known, roleItems);
 }

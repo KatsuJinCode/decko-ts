@@ -36,6 +36,7 @@ import { handleEngineRequest } from "../../deploy/bunny-worker-src/bunny-edge-en
 import { bootCorpusDeckEngines } from "../../deploy/bunny-worker-src/bunny-edge-deck-boot.js";
 import { LocalSqliteDriver } from "../../src/server/drivers/local-sqlite.js";
 import { byteDiff, normalizeSlotIds } from "../../src/testing/diff.js";
+import { skipLoud } from "../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..");
@@ -58,7 +59,7 @@ const PERSON_PAGE_NAME = "Brandon WilliamsCraig";
 const SECTION_MARKERS = {
   slotClass: "TYPE_PLUS_RIGHT-person-project_s_participating",
   typeName: 'data-card-type-name="Search"',
-  slotId: "brandon_william_craig-project_s_participating-titled-view",
+  slotId: "brandon_morgan-project_s_participating-titled-view",
 };
 
 interface PageLaneLine {
@@ -95,7 +96,7 @@ describe("person page +Project(s) Participating section on the REAL production d
     { timeout: 600_000 },
     async (ctx) => {
       if (!REALDECK_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/deploy/bunny-edge-person-participating-real-deck-replay.test.ts", "REALDECK_REQUESTED");
         return;
       }
       expect(MIRROR_PRESENT, `trial-deck mirror missing: ${MIRROR_DB}`).toBe(true);

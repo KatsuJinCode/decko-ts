@@ -45,7 +45,7 @@
   ],
   "normalization": "every query sorts by name; the TS pin sorts both arrays (name-SET parity, the cql-basic replay's contract); match is excluded (SQLite raises — the sentinel lives in cql-basic.json + the cql-mysql-match rung)",
   "oracle": {
-    "app": "C:/localProjects/decko-oracle-app-2026-10-03 (dev sqlite)",
+    "app": "REPO_ROOT/decko-oracle-app-2026-10-03 (dev sqlite)",
     "card": "1.110.0",
     "decko": "0.20.0",
     "engine": "Card.search(**query, return: \"name\") — the real CQL interpreter",

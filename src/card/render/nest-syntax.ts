@@ -15,7 +15,7 @@ import { DeckoName } from "../name.js";
 // character class reproduces Ruby's chunker for nest chunks. Other chunk
 // classes (links, URIs) are NOT chunks this renderer substitutes; their text
 // passes through verbatim, like Ruby's non-reference chunks do (deferred:
-// docs/render-port-notes.md).
+// ).
 
 /** Nest chunk regex - Ruby full_re (nest.rb): /\A\{\{([^{}]*)\}\}/ unanchored. */
 const NEST_FULL_REGEXP = /\{\{([^{}]*)\}\}/g;

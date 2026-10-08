@@ -4,7 +4,7 @@
 // follower_notification_email children (deckEmailTemplateResolver) and
 // whose mail lands in the injected CaptureTransport.
 //
-// Proven here (the wiring per docs/notify-port-notes.md "save-path
+// Proven here (the wiring
 // registration line"):
 //   - no integrationHooks configured -> saves dispatch nothing (engine
 //     behavior unchanged for every pre-existing caller);

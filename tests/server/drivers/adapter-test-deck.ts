@@ -9,14 +9,14 @@
 // ("a shared conformance suite proving every adapter identical").
 //
 // Canonicalization rules — the transcript normalizes the provider
-// differences that docs/driver-notes.md documents as deliberate, so the
+// differences that docs/decisions/0003-edge-native-driver-interfaces.md documents as deliberate, so the
 // bytes that REMAIN comparable are values, row order, and counters:
 //
 // - Values: numbers as num:<JSON>, bigints as int:<decimal>, strings as
 //   str:<JSON>, null as null, byte-like values (Buffer / Uint8Array /
 //   ArrayBuffer — the documented per-adapter wrapper types) as
 //   bytes:<lowercase hex>. The BYTES are the fixture; the JS wrapper type
-//   is not (docs/driver-notes.md, "Blob params / returns" row).
+//   is not (docs/decisions/0003-edge-native-driver-interfaces.md, "Blob params / returns" row).
 // - Error steps record the FACT of a throw, never the message: error text
 //   is provider-specific ("D1_ERROR: near ..." vs Hrana SQLITE_ERROR vs
 //   SqliteError) by design. Liveness after the error is asserted instead.
@@ -237,7 +237,7 @@ function canonicalValue(v: unknown): string {
  *    miniflare's LOCAL D1 emulation hands back for BLOB columns (verified
  *    live: constructor Array, all-number elements; the emulation's
  *    serialization drops the typed-array wrapper). Production D1 is a
- *    documented unknown (docs/driver-notes.md "What remains unproven");
+ *    documented unknown (docs/decisions/0003-edge-native-driver-interfaces.md "What remains unproven")
  *    the all-bytes guard keeps this normalization from ever eating a
  *    non-blob Array. */
 function canonicalBytes(v: unknown): Uint8Array | undefined {

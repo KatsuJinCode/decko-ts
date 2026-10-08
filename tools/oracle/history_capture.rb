@@ -4,7 +4,7 @@
 # views read (the render-time query seam's target data).
 #
 # Run (from tools/oracle/decko-oracle-app):
-#   RAILS_ENV=development bundle exec decko runner C:/localProjects/decko-ts-lane-history2/tools/oracle/history_capture.rb
+#   RAILS_ENV=development bundle exec decko runner REPO_ROOT//tools/oracle/history_capture.rb
 #
 # Determinism contract (same rules as capture.rb):
 # - the probe family is seeded ONLY when the original-name card is missing;

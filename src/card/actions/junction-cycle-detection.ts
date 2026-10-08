@@ -9,7 +9,7 @@
 // through the same edges — lib/card/name/all/descendants.rb:26-31
 // (`each_child`: "(left_id = id or right_id = id) and trash is false").
 //
-// RUBY DIVERGENCE (deliberate, see docs/actions-port-notes.md): Ruby does
+// RUBY DIVERGENCE: Ruby does
 // not reject self-ancestry at save time. The direct case (a side resolving
 // to the card's own id) is RESTRUCTURED by prepare_obstructed_side
 // (mod/core/set/all/name_events.rb:143-150 — the card's own name is cleared

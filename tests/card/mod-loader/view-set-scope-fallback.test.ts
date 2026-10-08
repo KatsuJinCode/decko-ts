@@ -231,7 +231,7 @@ describe("set-scoped view registrations must not leak to cards outside the set",
     // BYTE-PIN HISTORY (the surface-recount's one honest weakening, restored
     // strict): this pin was created at 26ef575 as
     // toBe("<code>skin css</code>") — true for the pre-port engine, whose
-    // bootswatch_skin :core answered the raw dbContent. The pass-18
+    // bootswatch_skin :core answered the raw dbContent. The an earlier pass
     // compile-engines merge ported the gem's core: html_views.rb:22
     // `view :core, template: :haml` renders core.haml — the Use as current
     // button (html_views.rb:50-54, core.haml:5), the Customize button, the
@@ -259,7 +259,7 @@ describe("set-scoped view registrations must not leak to cards outside the set",
     // (slot-html.ts:62-66 newSlotId, Ruby-faithful to wrap.rb), so raw
     // toBe across two renders is false by construction; the strict form
     // is byte-exact through the recording layer's own normalization
-    // (src/testing/diff.ts:22-38, docs/replay-harness.md "The
+    // (src/testing/diff.ts:22-38, docs/parity-method.md "The
     // normalization rule"): both sides canonicalized, every other byte
     // exact.
     expect(normalizeSlotIds(bottom)).toBe(`<code>${normalizeSlotIds(core)}</code>`);

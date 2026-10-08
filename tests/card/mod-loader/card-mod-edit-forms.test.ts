@@ -10,7 +10,7 @@
 // RichText cards ("Oracle Basics" id 605, the deck-level "Home" id 521)
 // and three actors (Decko Bot = signed-in admin, Sara = signed-in
 // non-admin, Anonymous). Raw HTTP captures of the same surfaces sit in
-// C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/captures-auth-forms/
+// CAPTURE_DIR/
 // (oracle-basics-edit-form.html / home-edit-form.html + the modal-wrapped
 // :edit bytes). The JSON fixture is the pinned oracle: pretty-printed,
 // deeply sorted keys, byte-identical re-runs.
@@ -49,6 +49,7 @@
 //   captured anonymous edit_form bytes).
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { expectViewWithoutMod } from "../../support/native-views.js";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
@@ -196,7 +197,7 @@ beforeAll(async () => {
 
   // ---- write-path slice 4 seeds: the create-rule surface the type select's
   // createable list reads. Captured from the oracle deck (probe recorded in
-  // tmp/wrong-goal-hunt/edit2-lane.md): *all+*create => "Anyone Signed In";
+  // an internal work log): *all+*create => "Anyone Signed In";
   // eight type-scoped rules => "Shark"; 28 cardtype-typed cards survive the
   // non_createable_types basket filter.
   // codename "decko_bot" (underscore) — the STORED spelling the permission
@@ -280,12 +281,8 @@ describe("card-mod-edit CORE EDIT-FORM PATH (write-path slice 3)", () => {
   it("WITHOUT the mod: :edit / :edit_form are unsupported views", async () => {
     const s = storage!;
     s.engine.viewer = { signedIn: true, actorId: 7 }; // the Editor party
-    await expect(s.engine.render("Oracle Basics", "edit")).rejects.toThrow(
-      UnsupportedViewError,
-    );
-    await expect(s.engine.render("Oracle Basics", "edit_form")).rejects.toThrow(
-      UnsupportedViewError,
-    );
+    await expectViewWithoutMod(s.engine.render("Oracle Basics", "edit"), "edit");
+    await expectViewWithoutMod(s.engine.render("Oracle Basics", "edit_form"), "edit_form");
   });
 
   it("WITH the mod: signed-in :edit_form matches the oracle bytes (both cards)", async () => {

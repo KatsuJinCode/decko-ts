@@ -20,6 +20,7 @@
 // card, the codename cards the type-code enrichment and the rule warm read.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { expectViewWithoutMod } from "../../support/native-views.js";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
@@ -148,9 +149,7 @@ describe("card-mod-list through the mod loader (A/B)", () => {
   it("WITHOUT the mod: the pointer editor views are unsupported", async () => {
     const s = storage!;
     for (const view of ["list", "input", "one_line_content"]) {
-      await expect(s.engine.render("Oracle List Probe", view)).rejects.toThrow(
-        UnsupportedViewError,
-      );
+      await expectViewWithoutMod(s.engine.render("Oracle List Probe", view), view);
     }
     await expect(
       s.engine.render("Oracle Nest List Probe", "nest_list_input"),

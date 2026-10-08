@@ -2,7 +2,8 @@
   "name": "decko-ts",
   "version": "0.1.0",
   "private": true,
-  "description": "TypeScript port of the Decko card engine, validated against Ruby Decko (card 1.110.0 / decko 0.20.0) used as a rendering oracle. On the with-mods corpus replay of 2026-09-23, 167,674 of 180,442 captured views render byte-identically (92.9%); see the README's Migration status section for the run and what the remaining gap is. Edge-native (Cloudflare D1, Bunny/libSQL). Upstream proposal: decko-commons/decko#1282.",
+  "license": "GPL-3.0-or-later",
+  "description": "TypeScript implementation of the Decko card engine. A derivative work of decko-commons/decko (card 1.110.0 / decko 0.20.0), licensed GPL-3.0-or-later; see NOTICE. Parity against the Ruby engine is byte-for-byte and is re-measured per release — see README for the current measured figure and how to reproduce it. Edge-native (Cloudflare D1, libSQL/Bunny).",
   "type": "module",
   "cloudflare": {
     "bindings": {
@@ -17,7 +18,9 @@
     "replay": "vitest run oracle-replay tests/testing",
     "db:migrations:apply": "npx wrangler d1 migrations apply DB --remote",
     "deploy": "npm run db:migrations:apply && npx wrangler deploy",
-    "bundle:bunny-worker": "node tools/bundle-bunny-worker.mjs"
+    "bundle:bunny-worker": "node tools/bundle-bunny-worker.mjs",
+    "test:cf-hosting": "vitest run tests/tools/d1-trickle tests/server/drivers/d1-bound-parameter-cap.test.ts tests/card/permissions/rule-closure-d1-compound-limit.test.ts tests/card/live/union-ctes-d1-compound-limit.test.ts",
+    "bundle:cf-edge-engine": "node tools/bundle-cf-edge-engine.mjs"
   },
   "devDependencies": {
     "@libsql/client": "^0.18.0",

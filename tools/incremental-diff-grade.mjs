@@ -128,7 +128,7 @@
 //                  one operator-approved full-canvas event; every later delta
 //                  is minutes. There is no way to synthesize a baseline from
 //                  existing grade artifacts: no real grade records per-entry
-//                  fails (verified: pass-19 stdout has zero FAIL dual-lane
+//                  fails (verified: an earlier pass stdout has zero FAIL dual-lane
 //                  lines; the enumeration aggregate is last-phase-wins).
 //   --dry-run      print the plan (source-tree status, changed files by name,
 //                  which shards would render, per-shard entry counts) WITHOUT

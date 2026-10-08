@@ -57,7 +57,7 @@ you'll need").
 4. **Script type: Standalone**, template **Default standalone**.
    Sources: quickstart.md step 2; standalone/overview.md.
    (The API equivalent is `ScriptType: 1` — enum `["DNS","CDN","Middleware"]`
-   = `[0,1,2]` in <https://bunny.net/docs/api-reference/scripting/openapi.json>,
+   = `[0,1,2]` in <https://bunny.net/docs/api-reference/scripting/openapi.json>
    `EdgeScriptTypes`. "CDN" is the standalone type; "Middleware" is NOT what
    this entry is.)
 5. **Add Script.** A pull zone is created for you and the script is reachable

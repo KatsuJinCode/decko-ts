@@ -186,7 +186,7 @@ describe("set/self/admin.rb — view :core (the task table)", () => {
     // REAL divergence, not a scoping choice: basket[:tasks] is a single
     // global basket every mod's set modules merge into, so the row renders
     // on the oracle. The row text is ORACLE-PINNED, not invented: the
-    // `mod: carrierwave` page's Tasks section in the pass-15 page-lane
+    // `mod: carrierwave` page's Tasks section in an earlier page-lane
     // yardstick carries exactly
     //   <tr><td><a class="known-card" href="/update/*admin?task=
     //    delete_upload_tmp_files">Delete upload tmp files</a></td>\n

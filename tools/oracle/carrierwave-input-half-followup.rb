@@ -5,7 +5,7 @@
 #
 # Run (from tools/oracle/decko-oracle-app of the MAIN checkout):
 #   RAILS_ENV=development bundle exec decko runner \
-#     C:/localProjects/decko-ts-lane-cwinput/tools/oracle/carrierwave-input-half-followup.rb
+#     REPO_ROOT//tools/oracle/carrierwave-input-half-followup.rb
 #
 # Read-only, same contract as carrierwave-input-half-capture.rb.
 

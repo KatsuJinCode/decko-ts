@@ -2,7 +2,7 @@
 // mod-views-a ported rendered-unpinned. The oracle bytes are
 // fixtures/captured/bar-box-format-views.json, captured inside the live
 // decko-0.20.0 demo app (tools/oracle/decko-oracle-app relative to
-// C:/localProjects/decko-ts) by
+// REPO_ROOT/decko-ts) by
 // tests/card/mod-loader/oracle-capture-bar-box-format-views.rb (commit
 // 191851c): three targets ("Oracle Basics" 605 RichText, the deck-level
 // "Home" 521 RichText, the "Decko logo" 291 Image) x three actors (Decko
@@ -21,7 +21,7 @@
 // Seed provenance: every seeded card's meta (id/name/type/content/
 // creator) comes from the fixture's targets.*.meta (recorded by the
 // capture script) or, for the Home nest closure, from read-only probes
-// 5-7 (tmp/wrong-goal-hunt/probe{5,6,7}-unpinned-views.rb, each asserting
+// 5-7 (an internal work log,6,7}-unpinned-views.rb, each asserting
 // card_actions 4928 -> 4928): Home's content nests the CODENAME ref
 // {{:getting_started|core}} -> *getting started (id 534, HTML), whose
 // content nests {{+:shark|core}} -> *getting started+Shark (id 535, HTML,

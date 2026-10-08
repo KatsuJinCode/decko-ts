@@ -31,7 +31,7 @@
 #    capture. The capture performs ZERO card writes.
 #
 # Target ids verified by probes 1-4 recorded in
-# C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/unpinned-view-captures.md.
+# WORK_DIR/unpinned-view-captures.md.
 #
 # Determinism contract (mirrors oracle-capture-edit-name-type.rb): output
 # JSON is pretty-printed with deeply sorted keys + a trailing newline; the
@@ -44,7 +44,7 @@ require "json"
 
 REPO_ROOT = File.expand_path("../../..", __dir__)
 OUT_PATH  = File.join(REPO_ROOT, "fixtures", "captured", "search-list-views.json")
-PIN_DIR   = "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/captures-unpinned-views"
+PIN_DIR   = "CAPTURE_DIR"
 
 ACTORS = %w[bot sara anonymous].freeze
 

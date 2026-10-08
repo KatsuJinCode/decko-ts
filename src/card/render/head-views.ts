@@ -39,7 +39,7 @@
 //   (:remote_style_tags — the mod-manifest walk; see REMOTE_STYLE_TAG).
 
 import { h } from "./slot-html.js";
-import { derivedCloudAttachmentSource } from "./views.js";
+import { attachmentUrl } from "./views.js";
 import { mainStylesheetRevisionDigits } from "./deployment-follow-live-config.js";
 import type { SQLStatement } from "../../server/driver.js";
 
@@ -275,7 +275,11 @@ export function cloudAttachmentUrl(
   size?: string,
 ): string | undefined {
   if (content === undefined || content === null) return undefined;
-  const source = derivedCloudAttachmentSource(content, undefined, size);
+  // Local (~<id>/...) and coded (:<codename>/...) identifiers resolve through
+  // Ruby's local_url (views.ts attachmentUrl); an svg carries no versions
+  // (image.rb:39-48 selected_version).
+  const variant = size !== undefined && /\.svg\s*$/i.test(content) ? undefined : size;
+  const source = attachmentUrl(content, variant);
   if (source === "") return undefined;
   return source;
 }

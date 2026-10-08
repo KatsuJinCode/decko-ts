@@ -9,7 +9,7 @@
 // Reported numbers populate a JSON file under benchmarks/results/depth-sweep-ts.json
 // so the M3 report has receipts. That write is OPT-IN via
 // DEPTH_SWEEP_WRITE_ARTIFACT=1: the committed receipt is authoritative
-// (docs/perf-measurement.md), and an unconditional rewrite put a fresh
+// (docs/parity-method.md), and an unconditional rewrite put a fresh
 // measured_at + wall-ms into the tree on every suite run, dirtying it and
 // forcing housekeeping commits between folds. The assertions below run on
 // every execution; only the receipt refresh is gated.
@@ -133,7 +133,7 @@ describe("M3 depth sweep: TypeScript queries-per-render at every depth 1..32", (
     // the SAME prelude batch (9 -> 10 base): card-mod-format's head
     // views read deck-level setting cards no reference closure can
     // reach. Round trips - the billed axis - are unchanged.
-    // 2026-09-30 pass-20 integration re-pin (10 -> 12 base): the p20-email
+    // 2026-09-30 an earlier pass integration re-pin (10 -> 12 base): the p20-email
     // port's junction-priming prelude batch (the email field-anchor prelude
     // statement + the +*test context junction priming — one batch) adds two
     // statements at every depth. Measured 12 at depth 1 at BOTH the email

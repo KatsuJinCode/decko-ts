@@ -12,9 +12,9 @@
 -- schema.sqlite.sql — CORE decko schema, SQLite dialect
 --
 -- Hand-converted from the production MySQL truth in
--- db/schema.mysql-reference.sql (extracted verbatim from the SourceDeck
+-- db/schema.mysql-reference.sql (extracted verbatim from the reference deck
 -- 2026-09-07 mysqldump) and cross-checked against the card-1.110.0 /
--- decko-0.20.0 core migrations. Full reasoning in docs/schema-notes.md.
+-- decko-0.20.0 core migrations. Full
 --
 -- MAPPING DECISIONS (summary; see schema-notes.md for justification):
 -- * datetime  -> TEXT, canonical form UTC "YYYY-MM-DD HH:MM:SS.mmm"

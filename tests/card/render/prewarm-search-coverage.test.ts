@@ -27,7 +27,7 @@ import {
   createRenderTestStorage,
   seedCard,
 } from "./render-test-storage.js";
-import { prewarmStaticDeck } from "../../../benchmarks/corpus-v2/prewarm-static-deck.js";
+import { prewarmStaticDeck } from "../../support/prewarm-static-deck.js";
 import type { RenderCard } from "../../../src/card/render.js";
 import type { CardRecord } from "../../../src/card/fetch/card-record.js";
 

@@ -2,7 +2,7 @@
 // compile path, the CoffeeScript compile, and the mod asset-dir walk. The
 // oracle bytes are fixtures/captured/compile-engines.json, captured inside
 // the live decko-0.20.0 oracle app (tools/oracle/decko-oracle-app relative
-// to C:/localProjects/decko-ts) by
+// to REPO_ROOT/decko-ts) by
 // tests/card/mod-loader/oracle-capture-compile-engines.rb, with the in-run
 // no-write proof card_actions 5018 -> 5018 (no_write_proof.unchanged).
 //
@@ -43,7 +43,7 @@
 //   post-compile parity adapter
 //   (src/card/mod-loader/libsass-byte-parity-adapter.ts). The divergence-
 //   class catalogue and its residuals live in
-//   docs/compile-engines-libsass-parity-notes.md and the adapter header.
+//    and the adapter header.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

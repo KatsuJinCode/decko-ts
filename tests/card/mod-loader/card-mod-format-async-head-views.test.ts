@@ -7,7 +7,7 @@
 // (Card::Rule.global_setting, nest :favicon, main_stylesheet_path).
 // Before the seam those five were the "needs an async engine handle
 // inside a view" remainder named in
-// tmp/wrong-goal-hunt/mod-views-a-lane.md's FINAL STATE.
+// an internal work log's FINAL STATE.
 //
 // The seam is a prepare-phase prefetch: RenderEngine#preloadHeadViewReads
 // batch-loads the head read-set into the render-card map, and the views

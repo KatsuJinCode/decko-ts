@@ -180,7 +180,7 @@ describe("slot set-key classes through the render engine", () => {
   it("renders a star card's slot class with the bare STAR fragment", async () => {
     const storage = await createRenderTestStorage();
     try {
-      // synthetic SourceDeck-shaped cards (type card "exi" = the deck's
+      // synthetic the reference deck-shaped cards (type card "exi" = the deck's
       // renamed Set cardtype, codename "set"); the expected class list is
       // the captured corpus:53 shape for a simple star card
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
@@ -298,7 +298,7 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
     // head views read deck-level setting cards that no reference closure
     // can reach; the standalone form (measured before the fold) cost a
     // round trip too, which is why it rides the batch.
-    // 2026-09-30 pass-20 integration re-pin (10/11/13/17 -> 12/13/15/19):
+    // 2026-09-30 an earlier pass integration re-pin (10/11/13/17 -> 12/13/15/19):
     // the p20-email port's junction-priming prelude batch (the email
     // field-anchor prelude statement + the +*test context junction priming
     // — the SAME prelude batch that moved junction-depth-closure.test.ts to

@@ -1,7 +1,7 @@
 // Oracle replay registration for the card-engine area: replays the captured
 // smoke.json card records (fixtures/captured/smoke.json) through the fetch
 // layer against a seeded SQLite deck, byte-diffing TS output against the
-// Ruby oracle. The handler contract is documented in docs/replay-harness.md
+// Ruby oracle. The handler contract is documented in docs/parity-method.md
 // ("card-engine ... must return jsonValue(cardRecord)").
 //
 // The seed reconstructs the captured deck minimally: the 10 captured cards

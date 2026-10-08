@@ -36,7 +36,7 @@
 //   the signed-OUT reader's. See the view block below.
 // - set/right/enabled_roles.rb (:edit_inline super() + checkbox input +
 //   validate_role_enabling/clear_roles_cache events) - the edit framework is
-//   unported (docs/render-port-notes.md) and the events are write-path
+//   unported  and the events are write-path
 // - set/right/head.rb :one_line_content - body is card-mod-format's
 //   raw_one_line_content (truncate/strip_tags text helpers); NOW PORTED
 //   (rightHeadOneLineContentView) using text-helpers.ts#truncate +
@@ -100,7 +100,7 @@ import {
   type ViewContext,
   type ViewFn,
 } from "../../render/format.js";
-import { myCardDropdownInnerHtml } from "../../render/navbar-views.js";
+import { bindUniqueIds, myCardDropdownInnerHtml } from "../../render/navbar-views.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
 import type { DeckoModManifest } from "../mod-manifest.js";
@@ -899,7 +899,7 @@ const inviteView = accountLinkView("signup", "invite-link", "Invite", "new");
  *  capture sessions hold no roles), so this view renders that arm; the
  *  roles arm's bytes stay gem-source-defined (account_links.rb:60-70 +
  *  enabled_roles.rb) until the roles runtime lands. */
-const myCardView: ViewFn = (ctx) => ctx.fmt.engine.pageSessionMyCardHtml ?? "";
+const myCardView: ViewFn = (ctx) => bindUniqueIds(ctx.fmt.engine.pageSessionMyCardHtml ?? "", ctx.fmt);
 
 /** right/enabled_roles.rb:26-43 — view :edit_inline (perms :none, unknown:
  *  true, cache: :never, wrap: :slot, super()) whose checkbox_input override
@@ -920,14 +920,17 @@ const myCardView: ViewFn = (ctx) => ctx.fmt.engine.pageSessionMyCardHtml ?? "";
  *  link_to_card per role, checked = the card's item_names) need the session
  *  roles runtime; the port renders the dropdown's two fixed items. */
 const enabledRolesEditInlineView: ViewFn = (ctx) => {
+  // A session actor with roles: the role-checkbox dropdown; otherwise the
+  // plain account dropdown.
   const sessionHtml =
+    ctx.fmt.engine.pageSessionRolesDropdownHtml ??
     ctx.fmt.engine.pageSessionMyCardHtml ??
     myCardDropdownInnerHtml(
       "Anonymous",
       { actor: true, accountSettings: false, signin: true },
       [],
     );
-  return `<div class="pointer-checkbox-list">${sessionHtml}</div>`;
+  return `<div class="pointer-checkbox-list">${bindUniqueIds(sessionHtml, ctx.fmt)}</div>`;
 };
 
 // ---------------------------------------------------------------------------

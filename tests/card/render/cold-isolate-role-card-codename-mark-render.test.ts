@@ -2,7 +2,7 @@
 // own content - the parity-harness lane's S3 finding (edge URLs
 // /Administrator/open, /Eagle/open, /Shark/open all 500 with
 // "codename doesn't exist: members"; receipt
-// brandonDojoTech/tmp/wrong-goal-hunt/edge-parity-harness-lane.md §6).
+// WORK_DIR/edge-parity-harness-lane.md §6).
 //
 // Mechanism (traced 2026-10-02, receipt codename-warmup-fix-lane.md): Ruby's
 // Card::Name parse of a ":codename" mark cannot fail while the codename

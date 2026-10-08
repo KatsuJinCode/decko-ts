@@ -87,7 +87,7 @@ const typeCards = [
 // shape) -> {{Detail}} -> {{History}}. Four inclusion levels deep. Junction
 // references deeper than two parts are NOT used here — the render
 // prefetcher cannot resolve them yet (engine gap, reported in
-// docs/deploy-notes.md).
+// docs/deploy-cloudflare.md).
 const contentCards = [
   { id: 10, name: "Home", typeId: 5, label: "the card GET / renders",
     dbContent: "<p>Welcome to the decko-ts synthetic demo deck on Cloudflare Workers.</p><p>{{Demo Guide}}</p>" },

@@ -6,11 +6,12 @@
 // port's job is to reproduce those bytes exactly for every card the
 // corpus seeds; this file is the gate.
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
+import { skipLoud } from "../../../support/describe-with-corpus.js";
 
 import {
   highlight,
@@ -72,7 +73,10 @@ function loadOracle(fixture: string): string {
 
 describe("code-highlighting: byte-identity vs Ruby oracle", () => {
   for (const c of CASES) {
-    it(`${c.fixture} reproduces the captured ${c.lang} output verbatim`, () => {
+    it(`${c.fixture} reproduces the captured ${c.lang} output verbatim`, (ctx) => {
+      if (!existsSync(resolve(FIXTURES, c.shard))) {
+        return skipLoud(ctx, "tests/card/render/code-highlighting/coderay-byte-identity.test.ts", `card content comes from the full corpus shard fixtures/corpus/${c.shard}, which is not redistributed`);
+      }
       const content = loadContent(c.shard, c.cardId);
       const oracle = loadOracle(c.fixture);
       const actual = highlight(content, c.lang);
@@ -86,7 +90,10 @@ describe("code-highlighting: scanner-level byte-identity", () => {
   // scanner outputs in isolation catches any regression where a future
   // change adds a stray span wrapper that survives into the assembled HTML.
   for (const c of CASES) {
-    it(`${c.fixture}: inner spans are wrapped by the CodeRay DIV template`, () => {
+    it(`${c.fixture}: inner spans are wrapped by the CodeRay DIV template`, (ctx) => {
+      if (!existsSync(resolve(FIXTURES, c.shard))) {
+        return skipLoud(ctx, "tests/card/render/code-highlighting/coderay-byte-identity.test.ts", `card content comes from the full corpus shard fixtures/corpus/${c.shard}, which is not redistributed`);
+      }
       const content = loadContent(c.shard, c.cardId);
       const oracle = loadOracle(c.fixture);
       const inner = oracle.slice("<div class=\"CodeRay\">\n  <div class=\"code\"><pre>".length, -"</pre></div>\n</div>\n".length);

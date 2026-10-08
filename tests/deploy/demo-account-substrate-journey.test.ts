@@ -3,7 +3,7 @@
 // account substrate, then census -> /setup create-owner -> signinAccount.
 //
 // WHY THIS FILE EXISTS. The first-run port (35e7b93,
-// docs/first-run-demo-profile.md) built /setup and named the blocker it could
+// docs/operations.md) built /setup and named the blocker it could
 // not code around: the shipped content chain carries no account system, so
 // setupWindowState answers `account_system_absent`, /setup 404s with "This
 // deck has no account system", and signin has no actor cards. The engine has

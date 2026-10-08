@@ -4,7 +4,7 @@
 #
 # Run (from tools/oracle/decko-oracle-app):
 #   RAILS_ENV=development bundle exec decko runner \
-#     C:/localProjects/decko-ts/tests/card/mod-loader/oracle-capture-date-overrides.rb
+#     REPO_ROOT/decko-ts/tests/card/mod-loader/oracle-capture-date-overrides.rb
 #
 # Records to fixtures/captured/date-overrides.json:
 # 1. The I18n.t('time.formats.card_dayofwk_min_tz') format string from

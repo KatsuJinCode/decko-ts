@@ -2,7 +2,7 @@
 // captured rendered-view entry in fixtures/captured/smoke.json (20 entries:
 // :open/:closed/:content/:title per card + the unknown-view sentinel) through
 // the RenderEngine against a seeded SQLite deck, byte-diffing TS output
-// against Ruby truth. Handler contract: docs/replay-harness.md
+// against Ruby truth. Handler contract: docs/parity-method.md
 // ("render-engine ... success: renderBytes(html) / raise: raisedError").
 //
 // Slot-id normalization is the harness's job (both sides, strict 20-hex);

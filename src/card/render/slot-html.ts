@@ -75,7 +75,7 @@ export function htmlEscapeKeepApostrophe(s: string): string {
 }
 
 /** wrap.rb wrap_data slot-id: `SecureRandom.hex(10)` - exactly 20 lowercase
- *  hex (the replay normalization's contract, docs/replay-harness.md). */
+ *  hex (the replay normalization's contract, docs/parity-method.md). */
 export function newSlotId(): string {
   return randomBytes(10).toString("hex");
 }

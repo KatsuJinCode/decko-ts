@@ -70,6 +70,7 @@ import path from "node:path";
 import Database from "better-sqlite3";
 import { describe, expect, it } from "vitest";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..", "..");
 const VIEW_ORACLE = path.join(
@@ -92,7 +93,7 @@ describe("card 470 AsIn Layout: the main-nest nil raise IS the oracle", () => {
     { timeout: 170_000 },
     async (ctx) => {
       if (!REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/card-470-as-in-layout-main-nest-nil-parity-pin.test.ts", "REQUESTED");
         return;
       }
       expect(existsSync(RAW_CORPUS_DB), `raw corpus copy missing: ${RAW_CORPUS_DB}`).toBe(true);

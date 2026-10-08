@@ -26,7 +26,7 @@
 //   provenance.no_write_proof, before === after).
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -40,6 +40,7 @@ import { ModLoader, modEngineHost } from "../../../src/card/mod-loader.js";
 import { defaultDeckSources } from "../../../src/card/mod-loader/default-mod-deck.js";
 import { normalizeSlotIds } from "../../../src/testing/diff.js";
 import cardModEmail from "../../../src/card/mod-loader/mods/card-mod-email.js";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(
@@ -78,7 +79,26 @@ interface Fixture {
   provenance: unknown;
 }
 
-const fixture = JSON.parse(readFileSync(FIXTURE, "utf8")) as Fixture;
+// The oracle bytes for these five templates were captured from the deck this
+// engine was ported from. That capture embeds that deck's real card names and
+// correspondent addresses, which are personal data and are NOT redistributed
+// in this fork. The suite is therefore conditional on the operator supplying
+// the capture locally (see docs/TESTING.md); without it the suite reports as
+// skipped-with-reason rather than passing silently.
+const FIXTURE_PRESENT = existsSync(FIXTURE);
+if (!FIXTURE_PRESENT) {
+  console.warn(
+    `[card-mod-email-raw-oracle] SKIPPED: ${FIXTURE} is not present. ` +
+      `These oracle bytes are captured from the reference deck and carry its ` +
+      `real card names and addresses, so they are not committed to this fork. ` +
+      `See docs/TESTING.md for how to supply them. This suite asserts real ` +
+      `render behaviour when present and guards nothing when absent.`,
+  );
+}
+
+const fixture = FIXTURE_PRESENT
+  ? (JSON.parse(readFileSync(FIXTURE, "utf8")) as Fixture)
+  : ({ cards: [], references: [], views: {}, provenance: null } as unknown as Fixture);
 
 /** The five email_template cards the deck actually ships. */
 const TEMPLATE_IDS = [21783, 21787, 21791, 21795, 33948] as const;
@@ -173,7 +193,9 @@ function linkBlock(html: string): string {
   return i === -1 ? html.slice(-160) : html.slice(i);
 }
 
-describe("U6/C8 — the deck's email templates against the raw Ruby oracle", () => {
+describeOrSkipLoud(!FIXTURE_PRESENT, "tests/card/mod-loader/card-mod-email-raw-oracle.test.ts", "FIXTURE_PRESENT")(
+  "U6/C8 — the reference deck's email templates against the raw Ruby oracle",
+  () => {
   it("the fixture carries the five email_template cards with captured :content bytes", () => {
     const templates = fixture.cards.filter((c) => TEMPLATE_IDS.includes(c.id as never));
     expect(templates).toHaveLength(5);
@@ -414,4 +436,5 @@ describe("U6/C8 — the deck's email templates against the raw Ruby oracle", () 
       "email-html-link",
     );
   });
-});
+  },
+);

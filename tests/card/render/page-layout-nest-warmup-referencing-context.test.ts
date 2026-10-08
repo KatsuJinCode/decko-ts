@@ -13,7 +13,7 @@
 // render was full. The fix carries each queued name's referencing card
 // through the worklist; this test pins the cold render byte.
 //
-// The live receipt: fresh capture tmp/wrong-goal-hunt/captures/
+// The live receipt: fresh capture an internal work log
 // live-fresh-Aikido_Oak_Cliff.html renders the full b&w_logo svg inside
 // the *footer credit nest; the pre-fix cold page rendered
 // `<svg ...>\n  \n<a ...>Decko v</a>` with the svg body gone.

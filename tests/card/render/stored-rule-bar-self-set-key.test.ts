@@ -1,5 +1,5 @@
 // Mechanism 1 of the live-wire page-render defect verdict
-// (brandonDojoTech tmp/wrong-goal-hunt/live-wire-class-tokens.md, 2026-09-28):
+// (REPO_DIR an internal work log, 2026-09-28):
 // the engine OMITS the `SELF-X<left>-X<right>` class token from STORED rule
 // cards' bar class lists. Probe evidence: `TYPE_PLUS_RIGHT-set-Xfollow_field
 // SELF-Xall-Xfollow_field` — snapshot=2, engine=0, live wire=2 (the live

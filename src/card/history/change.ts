@@ -19,7 +19,7 @@
 //     field values 0..3 for name/type_id/content/trash
 //   * card-mod-history set/all/history/events.rb:108-114 stores changes via
 //     Card::Change.create field: <name> (index lookup)
-// See docs/history-port-notes.md; the schema comments are owned by the
+// the schema comments are owned by the
 // schema stream and left untouched here.
 
 import type { SQLBoolean } from "../../server/schema.js";
@@ -124,7 +124,7 @@ export function changeValueForField(
  * changes so the finalize-stage computation sees the whole act. With explicit
  * before/after snapshots the union collapses to "differs from the pre-act
  * row" — the snapshot model cannot see an intermediate within-act value
- * (documented simplification, docs/history-port-notes.md).
+ * .
  */
 export function diffTrackedFields(
   before: CardFieldState,

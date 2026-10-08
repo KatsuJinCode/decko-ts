@@ -1,4 +1,4 @@
-// fabricated-search-rule-core-raw-one-line.test.ts -- the pass-22
+// fabricated-search-rule-core-raw-one-line.test.ts -- an earlier
 // rule-bar one-line-content red-first pin (plan §(b)).
 //
 // The class: a Search-typed RULE card's bar-right one-line content must

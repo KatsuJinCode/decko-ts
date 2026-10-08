@@ -15,7 +15,7 @@
 // machine without a PostgreSQL server. Every assertion it enables is on
 // the dialect rewrite + the driver shape, NOT on real PG behavior —
 // byte-parity vs Ruby requires the live-PG rung (see
-// docs/postgres-dialect-notes.md "Live-PG rung").
+//  "Live-PG rung").
 
 import type { PostgresConnection, PostgresResult } from "../../../src/server/drivers/postgres.js";
 

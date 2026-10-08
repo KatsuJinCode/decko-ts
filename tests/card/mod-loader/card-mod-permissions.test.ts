@@ -50,6 +50,7 @@
 //     sources pin, with the fmt/engine surface stubbed.
 
 import { describe, it, expect, afterEach } from "vitest";
+import { NATIVE_HTML_VIEWS } from "../../support/native-views.js";
 import { ModLoader } from "../../../src/card/mod-loader.js";
 import cardModPermissions, {
   isPermissionRuleCard,
@@ -365,7 +366,9 @@ describe("card-mod-permissions through the loader", () => {
     loader.reset();
     expect("pointer_core" in liveRecord).toBe(false);
     expect("one_line_content" in liveRecord).toBe(false);
-    expect("input" in liveRecord).toBe(false);
+    // :input is compiled into HTML_VIEWS (commit 9cadf48f), so reset puts
+    // the compiled entry back rather than removing the name.
+    expect("input" in liveRecord).toBe(NATIVE_HTML_VIEWS.has("input"));
     expect(loader.viewConfigFor("one_line_content")).toBeUndefined();
   });
 

@@ -2,7 +2,7 @@
 // for staged capture corpora.
 //
 // WHY THIS EXISTS (mechanism; full write-up in
-// docs/staged-corpus-provenance.md): the photographed corpus and its
+// docs/parity-method.md): the photographed corpus and its
 // byte-variants coexist as same-size copies across pass worktrees; an
 // mtime-preserving staged copy can silently replace a worktree's
 // tmp/raw-ground-truth/deck-recapture/corpus-v2.sqlite3. Nothing else
@@ -48,7 +48,7 @@
 //       node tools/verify-staged-corpus-provenance.mjs --repo <dir> [--repo <dir> ...]
 //   - a grade receipt, verifying a worktree corpus against an M6 photograph:
 //       node tools/verify-staged-corpus-provenance.mjs --repo <dir> --photograph <dir>
-//   - corpus-scale vitest seeding (see docs/staged-corpus-provenance.md):
+//   - corpus-scale vitest seeding (see docs/parity-method.md):
 //     import verifyStagedCorpus from this module and refuse on !ok before
 //     seeding.
 //
@@ -140,7 +140,7 @@ export function verifyStagedCorpus({ corpusFile, manifestPath, liveCorpusSha256 
       `STAGED-CORPUS MISMATCH: expected (photograph-bound) corpus sha256 ${bound}; ` +
         `live corpus on disk is ${live}. The staged corpus was swapped after this ` +
         `photograph was taken -- find the writer before re-capturing or grading ` +
-        `(see docs/staged-corpus-provenance.md for the swap signature and the ` +
+        `(see docs/parity-method.md for the swap signature and the ` +
         `grep-the-siblings procedure)`,
     );
   }

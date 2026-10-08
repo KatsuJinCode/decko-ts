@@ -5,7 +5,7 @@
 //
 // THE MECHANISM (measured on the trial-deck mirror 2026-10-05; the corpus
 // numbers and both measured ends are in
-// brandonDojoTech/tmp/wrong-goal-hunt/fold-closure-prefetch-lane.md):
+// WORK_DIR/fold-closure-prefetch-lane.md):
 //
 // 1. DeckoName.parse("+Organizer(s)") yields left.key === "" -- the name
 //    algebra's empty side before the plus. Probe-verified against

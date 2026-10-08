@@ -165,7 +165,7 @@ export interface ParseOptions {
    * name -> key override standing in for Cardname#key (the built-in default,
    * normalize.ts#defaultNameToKey, delegates to the landed card/name stream:
    * DeckoName.parse(name).key with full singularize inflection and mark
-   * resolution — see docs/cql-port-notes.md reconciliation). The override
+   * resolution — The override
    * remains available for callers that need a different key source.
    */
   nameToKey?: (name: string) => string;

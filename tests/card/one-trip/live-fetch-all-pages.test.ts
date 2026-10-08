@@ -44,8 +44,16 @@ import {
   mirrorAvailable,
   normalizeSlotIds,
 } from "./one-trip-fixture.js";
+
+/**
+ * These suites run against a local mirror copy of the reference deck, which
+ * is not redistributed in this fork. Without it they cannot run at all, so
+ * they skip (and say so) rather than fail on missing data.
+ */
+const hasMirror = mirrorAvailable();
 import { applyDeckDataVersionStampMigration } from "./apply-deck-data-version-stamp-migration.js";
 import { scratchDir } from "../../support/scratch-dir.mjs";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 /** An unplanned page: real article content, NO one_trip_render_plans rows
  *  (the deck carries the 45 planned pages' plans; this card is not one). */
@@ -75,7 +83,7 @@ const RENDER_PLANS_DDL =
   " params_json TEXT NOT NULL," +
   " PRIMARY KEY (page_id, seq))";
 
-describe("live fetch serves ALL pages with no plan-table lookup (retarget 1282)", () => {
+describeOrSkipLoud(!hasMirror, "tests/card/one-trip/live-fetch-all-pages.test.ts", "hasMirror")("live fetch serves ALL pages with no plan-table lookup (retarget 1282)", () => {
   let dir = "";
   const savedEnv = {
     gate: process.env.DECKO_ONE_TRIP,
@@ -196,7 +204,6 @@ describe("live fetch serves ALL pages with no plan-table lookup (retarget 1282)"
     `LIVE-1: the UNPLANNED page ${UNPLANNED_PAGE} renders through the live fetch — ` +
       "zero plan-table reads, head + 1 slice batch, bytes equal to OFF",
     async () => {
-      expect(mirrorAvailable(), "the trial-deck mirror copy must exist").toBe(true);
       dir = scratchDir("live-fetch-all-pages-");
       // The unplanned store carries the side DDL's plan table EMPTY — the
       // zero-reads assertion below observes the live posture's choice
@@ -271,7 +278,6 @@ describe("live fetch serves ALL pages with no plan-table lookup (retarget 1282)"
     `LIVE-2: the PLANNED page ${PLANNED_PAGE} rides the SAME live fetch when the ` +
       "store-plans flag is off — zero plan-table reads, bytes equal to OFF",
     async () => {
-      expect(mirrorAvailable(), "the trial-deck mirror copy must exist").toBe(true);
       // The planned-page store CARRIES the plan table with seeded rows (the
       // demo stop-gap's data) — the live posture must leave it unread.
       const inlineDbPath = await buildInlineStore([PLANNED_PAGE], true);
@@ -340,7 +346,6 @@ describe("live fetch serves ALL pages with no plan-table lookup (retarget 1282)"
     `LIVE-3: a WARM re-render of ${UNPLANNED_PAGE} on the live posture stays at the ` +
       `${LIVE_WARM_TRIP_TARGET}-trip floor with zero plan-table reads and stable bytes`,
     async () => {
-      expect(mirrorAvailable(), "the trial-deck mirror copy must exist").toBe(true);
       const inlineDbPath = await buildInlineStore([UNPLANNED_PAGE], false);
       setLivePostureEnv();
       const live = new TripCapturingDriver(

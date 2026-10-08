@@ -85,7 +85,7 @@ beforeAll(async () => {
   expect(bundle.length).toBeGreaterThan(10_000); // the engine actually came along
 
   // 2. Boot workerd via the miniflare-5-proven options path (see
-  //    tests/server/drivers/d1-miniflare.test.ts + docs/driver-notes.md:
+  //    tests/server/drivers/d1-miniflare.test.ts + docs/decisions/0003-edge-native-driver-interfaces.md:
   //    v5 rejects the raw shapes; convertV4MiniflareOptions is the door).
   mf = new Miniflare(
     convertV4MiniflareOptions({

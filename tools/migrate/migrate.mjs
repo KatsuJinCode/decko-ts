@@ -7,7 +7,7 @@
 // render through the real RenderEngine, Ruby-fixture byte comparison) run
 // through the repo's vitest runner when --engine-verify is passed — the
 // engine is TypeScript and bare-node tooling cannot import it directly
-// (documented in docs/migration-tool-notes.md).
+// .
 //
 // Progress streams to stderr; the final summary and the report path go to
 // stdout. Exit code 0 = import (+ verification when requested) succeeded;
@@ -181,7 +181,7 @@ if (opts.verify) {
   try {
     // Plain-JS module, but its src/ imports only resolve under vite/vitest;
     // under bare node the dynamic import rejects and we fall back to the
-    // vitest-runner spawn (see docs/migration-tool-notes.md).
+    // vitest-runner spawn.
     engineBridge = await import("./engine-bridge.mjs");
   } catch {
     engineBridge = undefined; // bare node cannot load the TS engine

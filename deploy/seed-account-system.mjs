@@ -3,7 +3,7 @@
 // run at all.
 //
 // WHY IT EXISTS (the blocker, in one paragraph). The first-run lane
-// (35e7b93, docs/first-run-demo-profile.md) built /setup and named what it
+// (35e7b93, docs/operations.md) built /setup and named what it
 // cannot fix by code: the deploy deck's content chain ships no account system,
 // so `setupWindowState` answers `account_system_absent`, `/setup` 404s with
 // "This deck has no account system", and signin has no actor cards to

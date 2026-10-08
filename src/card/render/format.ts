@@ -18,7 +18,7 @@
 // Landed since: the read-permission denial (view/permission.rb altered_view
 // -> src/card/permissions/), and nest MODE (format/nesting/mode.rb - see
 // RenderFormat.nestMode / withNestMode / modalNestView). Deferred
-// (docs/render-port-notes.md): view caching/stubs, edit views, mod-specific
+// : view caching/stubs, edit views, mod-specific
 // view overrides. compact nest mode: the :template arm and the compact
 // arms of mode.rb (view substitution mode.rb:71-84 + the nesting.rb:52-63
 // 200-char elision) are PORTED gem-derivative with fixture-less pins
@@ -163,7 +163,7 @@ export class Voo {
    *  `format.renderView(view, ...)` entry — the one call site whose
    *  `optional` render arg defaults to :show). The live serializer does not
    *  carry the root render's own enrollment (the capture-harness artifact:
-   *  docs/serializer-spec-conditional-data-slot-show-key.md "root drops the
+   *   "root drops the
    *  requested view"), so slotOptions drops view===viewField exactly here.
    *  Parentless does NOT mean root: the page lane's processLayoutContent
    *  runs on the root format AFTER renderView restored this.voo, so every
@@ -638,6 +638,16 @@ export interface RenderFormatOptions {
 /** Card.config.max_depth (prototype/lib/cardio/railtie.rb:17). */
 export const RUBY_MAX_DEPTH = 20;
 
+/** The UserError monitor_depth raises (card-1.110.0 format/error.rb:33-40)
+ *  with card-mod-format's `format_too_deep` locale line (en.yml:23). As a
+ *  UserError its message renders verbatim in the quiet error span. */
+export class TooDeepError extends Error {
+  constructor() {
+    super("Man, you're too deep.  (Too many levels of nests at a time)");
+    this.name = "TooDeepError";
+  }
+}
+
 /**
  * The setting codenames whose `Right::*` set modules
  * `include_set Abstract::VirtualSet` (card-mod-rules-0.20.0
@@ -975,9 +985,17 @@ export class RenderFormat {
    *  consume it - tinymce_editor_input's `id: unique_id` (the captured
    *  edit form's `id="oracle_basic-1"`). */
   uniqueId(): string {
-    const root = this.parent ?? this;
+    return `${this.card.name.safeKey}-${this.nextIdNumber()}`;
+  }
+
+  /** The next value of the format-chain root's id_counter (content.rb:
+   *  60-66 — every subformat delegates up to the root, so one request's
+   *  element ids are numbered in render order across all its formats). */
+  nextIdNumber(): number {
+    let root: RenderFormat = this;
+    while (root.parent !== undefined) root = root.parent;
     root.idCounter = (root.idCounter ?? 0) + 1;
-    return `${this.card.name.safeKey}-${root.idCounter}`;
+    return root.idCounter;
   }
 
   /** The `read` half of the view-permission gate (format/error.rb:5-8 ok?),
@@ -1078,7 +1096,7 @@ export class RenderFormat {
       // since 2026-09-28 — the ensureTaskVerdicts prepare step precomputes
       // its verdicts when the requested view needs them; an absent
       // hook leaves those views unverified-allowed, per
-      // docs/view-perms-notes.md).
+      // ).
       if (this.card.unknown !== true) {
         const denial = viewPermissionDenial(normalized, {
           renderOpts: opts,
@@ -1163,7 +1181,14 @@ export class RenderFormat {
           return denial;
         }
       }
-      this.runBeforeHook(effective, voo);
+      if (effective === "not_found" && this.formatName === "html" && this.card.unknown === true) {
+        return this.notFoundFrameHtml(voo);
+      }
+      // voo_api.rb:162-164 process_before_view: `format.before_view
+      // requested_view` - the REQUESTED view's before hook, also when an
+      // unknown card renders a substituted view (a `{{+x|content}}` miss
+      // keeps before(:content)'s d0-card-content class on its unknown slot).
+      this.runBeforeHook(normalized, voo);
       // Chain-aware dispatch: when the engine has a mod loader wired up,
       // resolve through the per-card chain (Ruby's MRO walk - set/
       // format.rb:146-150) and return the most-specific set module's
@@ -1297,6 +1322,49 @@ export class RenderFormat {
     return `<div${attrs}>${frame}</div>`;
   }
 
+  /** set/all/html/error.rb:67-73 view :not_found — `voo.hide! :menu;
+   *  voo.title = "Not Found"; frame { [not_found_errors,
+   *  sign_in_or_up_links("to create it")] }`: the standard frame (the
+   *  header's title is the voo title), not_found.haml naming the card, and
+   *  for a signed-out session the sign-in/sign-up sentence (nil, and so
+   *  dropped, when signed in). The slot keeps the requested view in its
+   *  data-slot, as every substituted view does. */
+  private notFoundFrameHtml(voo: Voo): string {
+    voo.hide("menu");
+    voo.hide("help");
+    const card = this.card;
+    const title = "Not Found";
+    const header =
+      `<div class="d0-card-header card-header">` +
+      `<h1 class="d0-card-header-title">` +
+      `<span class="card-title" title="${title}">${title}</span></h1></div>`;
+    const errors =
+      card.name.s === ""
+        ? `<h2>\nCould not find\nthat\n</h2>\n`
+        : `<h2>\nCould not find\n<em>\n${h(card.name.s)}\n</em>\n</h2>\n`;
+    const parts = [errors];
+    if (this.engine.pageSession?.signedIn !== true) {
+      parts.push(
+        `<div>Please <a class="signin-link known-card" href="/*signin/titled">sign in</a> or ` +
+          `<a class="signup-link known-card" href="/new/Sign_up">sign up</a> to create it.</div>`,
+      );
+    }
+    const body = `<div class="d0-card-body card-body card-text">${parts.join("\n")}</div>`;
+    const attrs = emitAttrs({
+      id: `${card.name.safeKey}-not_found-view`,
+      class: voo.classy(["card-slot", "not_found-view", card.setKeys]),
+      "data-card-id": card.id === undefined ? undefined : String(card.id),
+      // wrap.rb: a new compound card's slot names it by its url key.
+      "data-card-name": card.id === undefined && card.name.isCompound ? card.name.urlKey : card.name.s,
+      "data-card-type-id": card.typeId === undefined ? undefined : String(card.typeId),
+      "data-card-type-name": card.typeName,
+      "data-card-link-name": this.urlKey(),
+      "data-slot-id": newSlotId(),
+      "data-slot": slotOptionsJson(voo.slotOptions()),
+    });
+    return `<div${attrs}><div class="d0-card-frame card">${header}\n\n${body}</div></div>`;
+  }
+
   /** html/error.rb:203-222 loud_denial_message + loud_denial's
    *  `wrap_with(:div, ...)` wrapper, both session branches.
    *  Ruby picks by SESSION sign-in state, not by as_id:
@@ -1355,10 +1423,13 @@ export class RenderFormat {
           : compiledUnknownSettingForCard(this.card, requested);
     if (configured === true) return requested; // permission.rb:40 unknown_setting == "true"
     if (this.isMain && this.voo === undefined) {
-      // format/error.rb#page_view_for_unknown (page branch) - not ported
-      throw new Error(
-        `unknown-card page render not ported (view_for_unknown main branch): ${this.card.name.s}`,
-      );
+      // format/error.rb:18-25 view_for_unknown, main+root branch:
+      // root.error_status = page_status_for_unknown; page_view_for_unknown —
+      // html/error.rb:81-87 `ok?(:create) ? :new : super` (super = the base
+      // :not_found) and `ok?(:create) ? 200 : 404`.
+      const canCreate = this.engine.taskAllowed?.(this.card, "create") === true;
+      this.engine.pageErrorStatus = canCreate ? 200 : 404;
+      return canCreate ? "new" : "not_found";
     }
     // permission.rb:42 configured_view = (unknown || unknown_setting)
     const nestOpt = opts["unknown"];
@@ -1408,8 +1479,13 @@ export class RenderFormat {
         const classExtra = ["_rule-item", ...categories.map((c) => `_category-${c}`)].join(" ");
         voo.classUp("card-slot", classExtra);
       }
-      if (this.cardTypeCodename === "search_type" || this.card.typeName === "Search") {
-        // search_views.rb:36 voo.hide :one_line_content
+      if (
+        this.cardTypeCodename === "search_type" ||
+        this.cardTypeCodename === "set" ||
+        this.card.typeName === "Search"
+      ) {
+        // search_views.rb:36 voo.hide :one_line_content. Set cards carry it
+        // too: card-mod-rules set/type/set.rb includes Type::SearchType.
         voo.hide("one_line_content");
       }
     }
@@ -1619,7 +1695,7 @@ export class RenderFormat {
     //     (format/error.rb:23 `setting_view || :unknown`), whose createable
     //     gate renders "" for Anonymous - the plain-card shape (corpus
     //     10488 `Steven Goldin+Menu`, blank `{{}}` -> empty on content/open;
-    //     re-proven LIVE 2026-10-03: culturesmith.com/Steven_Goldin+Menu
+    //     re-proven LIVE 2026-10-03: example.com/Steven_Goldin+Menu
     //     ?view=content|open carry zero denial spans, stored content still
     //     embeds the blank nest).
     //   - a view WITH `unknown: true` lets alter_unknown answer nil and the
@@ -1632,7 +1708,7 @@ export class RenderFormat {
     //     (corpus 636 `Menu+*right+*default`: is_template? wraps :core in
     //     nest_mode :template, modal_nest_view substitutes :template_nest,
     //     template_nest.rb:2 `unknown: true`). Re-proven LIVE 2026-10-03:
-    //     culturesmith.com/Menu+*right+*default?view=content renders the
+    //     example.com/Menu+*right+*default?view=content renders the
     //     span exactly at the blank-nest position.
     //
     // The earlier "blank renders the nil-card empty result" branch (and its
@@ -1747,8 +1823,14 @@ export class RenderFormat {
       // threading — it is engine state (defaultNestView).
       nestQuietErrors: this.nestQuietErrors,
     });
-    if (this.depth >= this.maxDepth) {
-      throw new Error(`nest depth exceeded (${effectiveCard.name.s})`);
+    // format/error.rb:33-40 monitor_depth runs in the SUBFORMAT's ok_view
+    // (view.rb:86), before its wrap_and_render rescue: a subformat at
+    // max_depth raises the too-deep UserError out of its own render, so the
+    // RENDER THAT NESTED IT rescues it (its quiet span replaces that whole
+    // view, e.g. the core of a chain's twentieth card). Hence the throw sits
+    // outside this nest's catch below.
+    if (sub.depth >= this.maxDepth) {
+      throw new TooDeepError();
     }
     // Production render-error semantics (error.rb rescue_view quiet branch,
     // reached through format/render.rb wrap_and_render's rescue): a nested
@@ -1933,7 +2015,7 @@ export class RenderFormat {
       // VIRTUAL resolution (states.rb:44-50 virtual?: compound + applicable
       // *structure rule; fetch.ts:388-395 sets dbContent = the rule
       // template). Wiping it here rendered every structured virtual nest
-      // (the pass-15 class's BWjournal +Body titled slot) with an empty
+      // (an earlier class's BWjournal +Body titled slot) with an empty
       // body — the seven mini_bar children of Body+*right+*structure
       // vanished with the template. A genuine new-card emulation carries
       // dbContent "" so this keeps byte-identity for it too. Toggle-typed
@@ -2078,7 +2160,16 @@ export class RenderFormat {
     // no_search_results) instead of the unknown substitution. The family
     // table + the byte-level contract live in
     // src/card/fetch/virtual-search-cards.ts.
-    const virtualSearchCql = virtualSearchCqlFor(name);
+    const virtualSearchCql = virtualSearchCqlFor(
+      name,
+      engine.peekIdByCodename !== undefined && engine.peekRegisteredNameForId !== undefined
+        ? (codename) => {
+            const id = engine.peekIdByCodename?.(codename);
+            const holder = id !== undefined ? engine.peekRegisteredNameForId?.(id) : undefined;
+            return holder !== undefined ? DeckoName.parse(holder).key : undefined;
+          }
+        : undefined,
+    );
     if (virtualSearchCql !== undefined) {
       const searchTypeId = engine.peekIdByCodename?.("search_type");
       const searchTypeName =
@@ -2148,7 +2239,7 @@ export class RenderFormat {
     // 26-28) and template = the *default rule card for a nest-miss
     // (templating.rb new_card_template — no *structure rule governs here,
     // else the fetch-level virtual resolution would have produced the card
-    // and this builder would not run). The pass-15 class pins the applied
+    // and this builder would not run). The an earlier pass class pins the applied
     // form: the oracle's associative_inquiry-discussion-titled-view body is
     // `<p> </p>\n<p> </p>` — discussion+*right+*default's db_content
     // verbatim. (The Round-9 note below — "the *default CONTENT is not
@@ -2374,7 +2465,7 @@ export class RenderFormat {
    * (card_path, location.rb:6-16, prefixes the site root when `rel` is
    * not already rooted). Modeling BOTH halves here is what makes the
    * surface seam load-bearing: the same helper yields `/User` on the
-   * view-function lane and `https://culturesmith.com/User` on the served
+   * view-function lane and `https://example.com/User` on the served
    * page, which is exactly what the frozen record pins on both lanes.
    */
   cardUrl(rel: string): string {
@@ -2419,8 +2510,8 @@ export class RenderFormat {
       maxDepth: this.maxDepth,
       nestQuietErrors: this.nestQuietErrors,
     });
-    if (this.depth >= this.maxDepth) {
-      throw new Error(`nest depth exceeded (${this.maxDepth}) at ${shaped.name.s}`);
+    if (sub.depth >= this.maxDepth) {
+      throw new TooDeepError(); // monitor_depth, see nest()
     }
     return sub.renderView(view, viewOpts);
   }
@@ -2511,8 +2602,8 @@ export class RenderFormat {
     // chunks); :nest_only = [Nest] (nests only).
     // The bootstrap: core page's CodeRay bytes pin the css/scss half: the
     // oracle leaves every bare URL inside the highlighted output verbatim
-    // (0 bare-URL autolinks in the entire pass-15 page-lane oracle).
-    // MERGE-PASS-18 composition: the compile-engines chunk-list dispatch
+    // (0 bare-URL autolinks in the entire an earlier pass page-lane oracle).
+    // MERGE composition: the compile-engines chunk-list dispatch
     // kept (code-file chunk lists never run the URI autolink pass), with
     // bar-slots V4's context arg threaded through both expansion arms so
     // the wikilink resolution carries this card's name context everywhere
@@ -2932,8 +3023,8 @@ export class RenderFormat {
       // nest.rb:46 `sub.main! if view_opts[:main]`
       main: true,
     });
-    if (this.depth >= this.maxDepth) {
-      throw new Error(`nest depth exceeded (${root.card.name.s})`);
+    if (sub.depth >= this.maxDepth) {
+      throw new TooDeepError(); // monitor_depth, see nest()
     }
     return this.withNestMode("normal", () =>
       sub.renderView(this.modalNestView(view, root.card), {
@@ -3100,7 +3191,7 @@ export class RenderFormat {
    *  options+*right+*default is a junction — never simple — and keeps its
    *  rule name).
    *
-   *  Merge note (pass-18): both merge parents landed the SAME three codenames —
+   *  Merge note (an earlier pass): both merge parents landed the SAME three codenames —
    *  this Z10 table (keyed on the resolved name's codename, here) and
    *  views.ts SELF_SET_TITLE_OVERRIDES (keyed on the rendered card's
    *  codename, consulted first at the view layer) carry identical values
@@ -3241,6 +3332,10 @@ export interface RenderEngineLike {
    *  undefined = the show_paging? == false case — the :card_list view
    *  renders no nav). */
   searchResultPaging?(fmt: RenderFormat): SearchResultPaging | undefined;
+  /** The pre-executed count of a search whose cql declares
+   *  `return: "count"` (undefined for a list search or an engine without
+   *  it). The search core renders it as :search_count. */
+  searchResultCount?(fmt: RenderFormat): number | undefined;
   /** Ruby's `search_keyword` (card-mod-search
    *  set/abstract/0_search/search_params.rb:32-34: `term_param ||
    *  search_vars&.dig(:keyword)`) - BOTH arms are REQUEST params, so a
@@ -3256,7 +3351,7 @@ export interface RenderEngineLike {
   /** ok_to_<task>? for the NON-read view tasks (ok_to_update?/create?/
    *  delete?, card-mod-permissions set/all/permissions.rb:148-157) —
    *  precomputed like isDenied, same undefined-means-unverifiable contract
-   *  as canReadByRuleLookup (docs/view-perms-notes.md). Optional: engines
+   *  as canReadByRuleLookup. Optional: engines
    *  without it leave every non-read task unverified-allowed; the ported
    *  view registry carries no non-read view today, so the surface is
    *  unaffected either way. */
@@ -3291,6 +3386,11 @@ export interface RenderEngineLike {
    *  add_known_or_wanted_class). Set = the navbar renders the signed-in
    *  chrome verbatim; undefined = the signed-out pair. See navbar-views.ts. */
   readonly pageSessionAccountLinksHtml?: string;
+  /** The prepared +*enabled roles checkbox dropdown (enabled_roles.rb
+   *  checkbox_input's account_dropdown with role checkboxes) for a session
+   *  actor with roles; undefined otherwise. Its element ids are bound by
+   *  navbar-views.ts bindUniqueIds where it is placed. */
+  readonly pageSessionRolesDropdownHtml?: string;
   /** The prepared :my_card view body (account_links.rb:56-58 my_card — the
    *  account_dropdown arm, the raw btn-group; the roles arm rides the
    *  session roles the port does not carry yet). Set alongside
@@ -3484,7 +3584,7 @@ export interface RenderEngineLike {
    *  *default rule card's db_content for a nest-miss new card
    *  (default_content = template&.db_content, mod/core set/all/content.rb:
    *  26-28). The SAME rule newCardDefaultType reads the type from.
-   *  p20-nest-selection: the pass-15 class pins the applied form — the
+   *  p20-nest-selection: an earlier class pins the applied form — the
    *  oracle's +discussion titled body is `discussion+*right+*default`'s
    *  `<p> </p>` x2 verbatim. Optional; engines without it keep the
    *  new-child dbContent "". */
@@ -3559,7 +3659,7 @@ export interface RenderEngineLike {
    *  production config the page capture applies,
    *  capture-dual-lane-page-and-view.rb:343) and "" otherwise (railtie
    *  default nil + a requestless runner). `card_url` interpolates it, so
-   *  this is what decides `/User` vs `https://culturesmith.com/User` for
+   *  this is what decides `/User` vs `https://example.com/User` for
    *  the :url / :id_url / :url_link views. See RenderFormat.envOrigin
    *  and render/deck-origin.ts for the full mechanism.
    *  Optional: engines without it take the requestless fallback "". */
@@ -3577,7 +3677,7 @@ export interface RenderEngineLike {
   canConfigure?(card: RenderCard): boolean | undefined;
   /** The deck's CDN/asset host for carrierwave cloud images
    *  (A-30): the endpoint live serves file URLs from —
-   *  e.g. `https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com`.
+   *  e.g. `https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com`.
    *  The image core resolves `(bucket)/<id>/<file>.<ext>` content to
    *  `<host>/files/<id>/<file>-<variant>.<ext>`; when undefined the same
    *  /files shape renders host-relative. Deck-deployment config (Ruby's
@@ -3681,7 +3781,7 @@ export interface SettingClassWithRules {
  *  pins the opposite for a List-typed `+Articles` under Research
  *  (card-mod-format set/all/html/error.rb:10-12 `view :unknown` ->
  *  createable -> "" for the anonymous capture session): the nest emits
- *  NOTHING — the pass-15 class's 10 phantom `+Articles` open slots. */
+ *  NOTHING — an earlier class's 10 phantom `+Articles` open slots. */
 interface UnknownViewDecl {
   view: string;
   /** true renders the requested view; a string names the substituted view. */
@@ -3698,7 +3798,7 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
   //   end
   // and :8-10 `view :core, unknown: true`. This is why a NONEXISTENT
   // +discussion renders its requested titled view with the *default rule's
-  // content body (the pass-15 class's 19 Project pages; oracle slot
+  // content body (an earlier class's 19 Project pages; oracle slot
   // associative_inquiry-discussion-titled-view carries show:[titled,
   // comment_box] and body <p> </p> x2 = discussion+*right+*default's
   // db_content). The comment_box show flip itself is already open-coded in
@@ -3739,7 +3839,7 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
   // view (permission.rb:38-40) and the denial check still runs; the new
   // card's read verdict denies (BasicCs+*type+*read = "Anyone Signed In",
   // Anonymous denied) and the nest renders the 76-byte quiet denial span.
-  // LIVE-PROVEN 2026-10-03: culturesmith.com/Cardtype+*type+*guide
+  // LIVE-PROVEN 2026-10-03: example.com/Cardtype+*type+*guide
   // ?view=content|open render the span at "click its ellipses icon (...)"
   // in both the frozen capture and today's live bytes.
   { view: "board_link", config: true },
@@ -3769,6 +3869,16 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
   { view: "cardboard", config: true },
   { view: "edit", config: true },
   { view: "help", config: true },
+  // card-mod-format set/all/html/menu.rb:8 `view :menu, denial: :blank,
+  // unknown: true` (its body returns "" for an unknown card).
+  { view: "menu", config: true },
+  // card-mod-edit set/all/new.rb:4,23 — :new and :new_fields render for
+  // the new card itself.
+  { view: "new", config: true },
+  { view: "new_fields", config: true },
+  // card-mod-edit set/all/form.rb:26 `view :conflict_tracker, cache:
+  // :never, unknown: true`.
+  { view: "conflict_tracker", config: true },
   { view: "guide", config: true },
   { view: "guide_tab", config: true },
   { view: "rules_tab", config: true },
@@ -3888,7 +3998,7 @@ export function quietRenderError(
   view: string,
 ): string {
   const msg =
-    error instanceof UnsupportedViewError
+    error instanceof UnsupportedViewError || error instanceof TooDeepError
       ? error.message
       : `Error rendering: ${h(card.name.s)} (${view} view)`;
   return `<span class="render-error alert alert-danger">${msg}</span>`;
@@ -4322,7 +4432,7 @@ export function expandContentLinks(
       // html_escape): authored `&amp;` doubles to `&amp;amp;` there and a
       // raw `&` escapes once - the Montessori exemplar's exact split. An
       // h() on the label (the earlier code) double-escaped every entity
-      // in the visible anchor text (pass-15 "double-escape" class).
+      // in the visible anchor text (earlier "double-escape" class).
       // uri.rb:86-89: process_uri_chunk appends @trailing_punctuation
       // AFTER the anchor (`"#{link}#{@trailing_punctuation}"`) - the
       // source's chopped [,.)!:?] byte renders right behind `</a>` (the

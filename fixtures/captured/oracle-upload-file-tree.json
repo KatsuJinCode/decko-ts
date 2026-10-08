@@ -1,7 +1,7 @@
 {
   "provenance": {
-    "oracleAppDir": "C:/localProjects/decko-ts/tools/oracle/decko-oracle-app",
-    "deckDb": "C:\\localProjects\\decko-ts\\tools\\oracle\\decko-oracle-app\\db\\development.sqlite3",
+    "oracleAppDir": "REPO_ROOT/decko-ts/tools/oracle/decko-oracle-app",
+    "deckDb": "<repo-root>",
     "capturedAt": "2026-09-29T21:40:59.061Z",
     "captureTool": "tools/oracle/capture-oracle-upload-file-tree.mjs",
     "method": "node fs readdir/readFile walk; better-sqlite3 readonly connection for the count",

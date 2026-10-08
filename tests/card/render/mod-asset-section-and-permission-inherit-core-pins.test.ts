@@ -224,7 +224,7 @@ describe("a Mod card's Scripts section is gated on the +*script child card (type
     // this yardstick's capture (DigitalOcean CSS 1790384218 = 2026-09-26 vs
     // this capture's s3 CSS 1786554352 = 2026-08-12), not the graded
     // expected-v2 corpus it was cited as. Adjudicated and repaired
-    // 2026-10-04; see tmp/wrong-goal-hunt/shades-adjudication-lane.md.
+    // 2026-10-04; see an internal work log
     expect(
       modAssetGroups("shades", "script"),
       "the graded capture gives the section an empty body: the table carries nothing",

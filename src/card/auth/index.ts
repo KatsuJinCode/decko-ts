@@ -2,7 +2,7 @@
 // actions stream consumes exactly these; nothing here reaches into any
 // other engine module.
 //
-// Wiring seam for the coordinator (see docs/auth-port-notes.md):
+// Wiring seam for the coordinator :
 //   import { SessionStore, actorBot, actorAnonymous, type Actor,
 //            runAuthMigrations } from ".../src/card/auth/index.js";
 //   const auth = new SessionStore({ driver });

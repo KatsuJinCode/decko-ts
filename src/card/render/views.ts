@@ -116,6 +116,10 @@ import {
   guideTabView,
   historyTabView,
   inputView,
+  newButtonsView,
+  newFieldsView,
+  newTypeFormgroupView,
+  newView,
   relatedTabView,
   rulesTabView,
 } from "../mod-loader/mods/card-mod-edit.js";
@@ -289,7 +293,7 @@ function slotWrap(
  *  explicit-verbatim arm matched its pins). The self-set overrides above
  *  are Ruby's `voo.title ||=` before super() - they lose to an explicit
  *  opt exactly the same way, and apply only when no explicit title opt is
- *  present (merge of pass-17's explicit arm with rule-tooltips H16's
+ *  present (merge of an earlier pass's explicit arm with rule-tooltips H16's
  *  codename-override arm; neither side's precedence differs). */
 const titleNoLinkView: ViewFn = ({ fmt, voo }) => {
   const rawTitle = voo.opts["title"];
@@ -463,6 +467,10 @@ function menuBoardAnchor(fmt: RenderFormat, opts: { inModal: boolean }): string 
  *  / :board_link views and the menu cannot drift apart. */
 const menuView: ViewFn = (ctx) => {
   const { fmt, voo } = ctx;
+  // menu.rb:8-10 `view :menu, denial: :blank, unknown: true do return ""
+  // unless card.known?` — an unknown card renders no menu (and no
+  // :unknown substitution: the view supports unknown cards).
+  if (fmt.card.unknown === true) return "";
   const help = menuHelpAnchor(ctx);
   const edit = menuEditAnchor(fmt);
   const board = menuBoardAnchor(fmt, { inModal: false });
@@ -836,7 +844,7 @@ const coreViewBase: ViewFn = (ctx) => {
   // override are untouched (resolveContentOverride returns undefined and
   // every branch below behaves as before — the corpus suites pin those).
   //
-  // MERGE-PASS-18 (compile-engines merge): entries whose Ruby original
+  // MERGE (compile-engines merge): entries whose Ruby original
   // declares ONLY `def content` (supersedesType: false — the bootstrap
   // code files) fall through to the typeCode branches: the card KEEPS its
   // type in Ruby, so the cardtype's view :core (the scss/css CodeRay
@@ -1005,6 +1013,11 @@ const coreViewBase: ViewFn = (ctx) => {
     // keyword the results_for_keyword haml renders "", which leaves the
     // leading newline.
     if (fmt.card.record.codename === "search") return `\n${fmt.renderView("card_list")}`;
+    // search_views.rb#search_result_view: an Integer result (a cql with
+    // `return: "count"`) renders :search_count, `search_with_params.to_s`
+    // (0_search/views.rb:2-4): the bare digits.
+    const count = fmt.engine.searchResultCount?.(fmt);
+    if (count !== undefined) return String(count);
     // search_views.rb#search_result_view -> :card_list (html)
     return fmt.renderView("card_list");
   }
@@ -1246,6 +1259,7 @@ const coreViewBase: ViewFn = (ctx) => {
     return formatFileCore(fmt.card.dbContent, {
       cardName: fmt.card.name.s,
       contextNames: fmt.contextNames,
+      cardId: fmt.card.id,
     });
   }
   // card-mod-markdown-0.20.0 set/type/markdown.rb:6-13 `view :core do
@@ -1310,7 +1324,7 @@ const coreViewBase: ViewFn = (ctx) => {
   // signupCoreHtml pattern - the graded surface is the loader-less
   // engine, so the compiled-in coreView branch is the dispatch; a
   // set-scoped mod registration would be dead surface there). The 21
-  // Bootswatch-skin pages of the pass-15 sass-css-compile class are
+  // Bootswatch-skin pages of an earlier sass-css-compile class are
   // byte-pinned through it
   // (tests/card/render/bootstrap-code-file-pages.test.ts).
   if (fmt.card.typeCode === "bootswatch_skin" || fmt.card.typeName === "Bootswatch skin") {
@@ -1352,7 +1366,7 @@ const coreViewBase: ViewFn = (ctx) => {
     // Layout-typed card answers :references (chunk.rb:87
     // `%i[EscapedLiteral Nest Link]` — no Uri/HostUri/EmailUri) and its
     // highlighted JavaScript body keeps every bare host verbatim. Classic
-    // Layout (314) carried `culturesmith.uservoice.com` and
+    // Layout (314) carried `example.com.uservoice.com` and
     // `cdn.uservoice.com/javascripts/widgets/tab.js` plus three scheme
     // fragments, and the :default list anchored all of them: 5 anchors
     // where the oracle emits 1 (the `[[http://www.wagn.org|Wagn]]` Link
@@ -1374,7 +1388,7 @@ const coreViewBase: ViewFn = (ctx) => {
   // html_views.rb:2-13) overrides the Cardtype type-set's CqlSearch core
   // (card-mod-search set/abstract/search_views.rb search_result_view ->
   // :card_list) for THIS card ONLY — the other 74 Cardtype-typed pages
-  // keep the member-search card_list (the pass-15 cardtype-template class
+  // keep the member-search card_list (an earlier cardtype-template class
   // pins those byte-identical WITH the add_button anchor, so widening
   // isPointerOrListCard to cardtype would be a falsification; the mandate
   // guess "cardtype-inclusive" is refuted by set/self/mod.rb being a
@@ -2145,16 +2159,14 @@ export function formatImageCore(
     if (src === "") return "";
     return `<img alt="${h(cardName ?? "")}" src="${h(src)}" />`;
   }
-  if (trimmed.startsWith("~")) {
-    // local: ~/card_id/action_id.ext -> /files/card_id/action_id(-size).ext
-    const path = trimmed.replace(/^~/, "");
-    const sized = appendSizeVariant(path, sizeOpt ?? "medium");
-    return `<img alt="${h(cardName ?? "")}" src="${h(`/files/${sized}`)}" />`;
-  }
-  if (trimmed.startsWith(":")) {
-    // coded: :codename/mod.ext -> /files/:codename/mod(-size).ext
-    const sized = appendSizeVariant(trimmed, sizeOpt ?? "medium");
-    return `<img alt="${h(cardName ?? "")}" src="${h(`/files/${sized}`)}" />`;
+  if (trimmed.startsWith("~") || trimmed.startsWith(":")) {
+    // local: ~<card id>/<action id>.<ext> -> /files/~<card id>/<action id>(-size).<ext>
+    // coded: :<codename>/<mod>.<ext>      -> /files/:<codename>/<mod>(-size).<ext>
+    // (localStorageUrl; svg images carry no versions, image.rb:39-48).
+    const svg = rubyExtnameFromPath(trimmed).toLowerCase() === ".svg";
+    const src = localStorageUrl(trimmed, svg ? undefined : imageSizeVariant(sizeOpt), cardId);
+    if (src === "") return "";
+    return `<img alt="${h(cardName ?? "")}" src="${h(src)}" />`;
   }
   // Non-image source — return empty to match the captured oracle
   // shape for the corpus (and Ruby's behavior for any cardtype-
@@ -2179,7 +2191,7 @@ export function imageSizeVariant(sizeOpt: unknown): string {
  *  content shape): resolve to the `/files/<id>/<file>-<variant>.<ext>`
  *  path the live deck serves, prefixed by the deck's CDN host when the
  *  engine carries one (imageCdnHost — deck-deployment config, e.g.
- *  `https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com`).
+ *  `https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com`).
  *
  *  Live receipts (assumption-audit A-13/A-15/A-30; live-wire bytes):
  *   <img alt="Brandon WilliamsCraig+Image"
@@ -2206,7 +2218,7 @@ export const FOG_CLOUD_URL_HOST = "http://s3.amazonaws.com/";
  *  default FOG_CLOUD_URL_HOST above, the Ruby default the oracle bytes pin;
  *  the appended "/files/" web path is unchanged either way.
  *
- *  The live deployment (culturesmith.com) migrated its asset host to
+ *  The live deployment (example.com) migrated its asset host to
  *  DigitalOcean Spaces FR1 (2026-10; live-check-71 lane: DO-host
  *  occurrences 172/34 pages, s3.amazonaws.com occurrences 0 across all 34
  *  bodies) -- so the graded environment (canvas runner + named-entry probe)
@@ -2415,8 +2427,9 @@ function appendVariantLowercasingExt(path: string, variant: string): string {
  *   - blank or no recognized prefix -> "" (the corpus file cards: 9 empty +
  *     310 bare tokens, every one empty-rendered by the oracle)
  *   - `http(s)://...` (web) or `(...)/...` (cloud) -> the content as-is
- *   - `~/...` (local) -> `/files/<id>/<action>.<ext>`
- *   - `:<codename>/...` (coded) -> `/files/<codename>.<mod>.<ext>`
+ *   - `~<id>/...` (local) -> `/files/~<card id>/<action>.<ext>`
+ *   - `:<codename>/...` (coded) -> `/files/:<codename>/<mod>.<ext>`
+ *     (both localStorageUrl — FileCardUploader#local_url)
  *  The label/quote shape is oracle-pinned by the RAW corpus's quote-style
  *  exemplars (Werkshop Museum `Download +Documents`, David K Weinstock
  *  `Download +description+bio`, ... — the earlier `<a href="SRC">SRC</a>`
@@ -2427,11 +2440,11 @@ function appendVariantLowercasingExt(path: string, variant: string): string {
  *  mod loader). */
 export function formatFileCore(
   content: string | null | undefined,
-  nameContext?: { cardName: string; contextNames?: readonly string[] },
+  nameContext?: { cardName: string; contextNames?: readonly string[]; cardId?: number },
 ): string {
   const trimmed = (content ?? "").trim();
   if (trimmed === "") return "";
-  const source = fileSourceFromContent(trimmed);
+  const source = fileSourceFromContent(trimmed, nameContext?.cardId);
   if (source === "") return "";
   const title = nameContext === undefined
     ? ""
@@ -2448,18 +2461,79 @@ export function formatFileCore(
  *  (derivedCloudAttachmentSource) — the stored key is never emitted
  *  verbatim (set/type/file.rb:11-15 + file_card_uploader.rb:147-153 +
  *  path.rb:41-43; the corpus file-page oracle anchor pins it). */
-function fileSourceFromContent(trimmed: string): string {
+function fileSourceFromContent(trimmed: string, cardId?: number): string {
   if (/^\(/.test(trimmed)) return derivedCloudAttachmentSource(trimmed); // cloud: derived action-id URL
   if (/^https?:/.test(trimmed)) return trimmed; // web: the URL as-is
-  if (/^~/.test(trimmed)) {
-    // local: ~/card_id/action_id.ext -> /files/card_id/action_id.ext
-    return `/files/${trimmed.replace(/^~/, "")}`;
+  // local (~<card id>/...) and coded (:<codename>/...): Ruby's local_url.
+  return localStorageUrl(trimmed, undefined, cardId); // "" for an unrecognized prefix
+}
+
+/** The url of a file or image attachment stored LOCALLY or CODED, exactly as
+ *  Ruby renders it (card-mod-carrierwave-0.20.0):
+ *   - FileCardUploader#url (lib/carrier_wave/file_card_uploader.rb:184-192)
+ *     takes local_url for every storage type but cloud and web;
+ *   - local_url (file_card_uploader/path.rb:11-13) is
+ *     `"#{local_url_base}/#{file_dir}/#{full_filename(url_filename)}"` with
+ *     local_url_base = card_path(files_web_path) = "/files";
+ *   - file_dir (set/abstract/attachment/paths.rb:25-33) is the identifier's
+ *     own directory: "~<card id>" for local storage (the tilde KEPT — it is
+ *     the url mark that tells the file route the id is a card id) and the
+ *     ":"-prefixed codename parts joined by "+" for coded storage;
+ *   - url_filename (file_card_uploader.rb:166-172) is "<action id><ext>" for
+ *     local storage (action id = the identifier's [-2] [/.] segment,
+ *     set/type/file.rb:11-15) and "<mod><ext>" for coded storage, with the
+ *     extension downcased (file_card_uploader.rb:155-162); an extension-less
+ *     identifier is not valid? and renders "" (file.rb:47-50);
+ *   - full_filename (file_card_uploader.rb:283-291) puts an image version
+ *     after the basename's first dot-free part: "<base>-<version>.<rest>".
+ *  `cardId` is the attachment card's own id (file_id, paths.rb:41-43); when
+ *  absent the identifier's id segment stands in, which is the same number
+ *  for every identifier Ruby wrote. Returns "" for any other content shape. */
+export function localStorageUrl(
+  content: string,
+  sizeVariant?: string,
+  cardId?: number,
+): string {
+  const trimmed = content.trim();
+  const slash = trimmed.lastIndexOf("/");
+  if (slash <= 0) return "";
+  const ext = rubyExtnameFromPath(trimmed).toLowerCase();
+  if (ext === "") return "";
+  let dir: string;
+  let base: string;
+  if (trimmed.startsWith("~")) {
+    const idSeg = trimmed.slice(1, trimmed.indexOf("/"));
+    dir = `~${cardId ?? idSeg}`;
+    const actionId = lastContentActionIdFromDbContent(trimmed);
+    base = actionId === null ? storedBaseName(trimmed) : String(actionId);
+  } else if (trimmed.startsWith(":")) {
+    dir = trimmed.slice(0, slash);
+    // coded.rb:41-43 mod_name_match %r{^:[:\w/+]+/([^./]+)\.}
+    const mod = trimmed.match(/^:[:\w/+]+\/([^./]+)\./);
+    if (mod === null) return "";
+    base = mod[1];
+  } else {
+    return "";
   }
-  if (/^:/.test(trimmed)) {
-    // coded: :codename/mod_name.ext -> /files/codename.mod_name.ext
-    return `/files/${trimmed.replace(/^:/, "").replace(/\//g, ".")}`;
-  }
-  return ""; // unrecognized prefix: no source (handle_source blank -> "")
+  const leaf = `${base}${ext}`;
+  if (sizeVariant === undefined) return `/files/${dir}/${leaf}`;
+  const dot = leaf.indexOf(".");
+  return `/files/${dir}/${leaf.slice(0, dot)}-${sizeVariant}${leaf.slice(dot)}`;
+}
+
+/** Ruby's attachment url for any stored identifier: cloud (the derived fog
+ *  URL), web (the content as-is), local and coded (localStorageUrl).
+ *  "" when the content is no attachment identifier. */
+export function attachmentUrl(
+  content: string,
+  sizeVariant?: string,
+  cardId?: number,
+  cdnAssetHost?: string,
+): string {
+  const trimmed = content.trim();
+  if (trimmed.startsWith("(")) return derivedCloudAttachmentSource(trimmed, cdnAssetHost, sizeVariant);
+  if (/^https?:/.test(trimmed)) return trimmed;
+  return localStorageUrl(trimmed, sizeVariant, cardId);
 }
 
 // ---------------------------------------------------------------------------
@@ -2617,6 +2691,7 @@ function virtualAllRuleCard(
     settingCard,
     settingCodename:
       settingCard.record.codename ?? settingCard.name.s.slice(1),
+    engine: fmt.engine,
   });
 }
 
@@ -2887,6 +2962,7 @@ function renderSettingListItems(
         settingCard,
         settingCodename,
         deckTypeCard,
+        engine: fmt.engine,
       });
       const slotHtml = fmt.nestRecord(virtual, "bar", {
         nest_name: virtual.name.s,
@@ -3001,7 +3077,7 @@ function barSettingListItem(
   const ruleCard =
     stored !== undefined && stored.unknown !== true
       ? stored
-      : buildVirtualRuleCard({ setCard, settingCard, settingCodename: setting });
+      : buildVirtualRuleCard({ setCard, settingCard, settingCodename: setting, engine: ctx.fmt.engine });
   return ctx.fmt.nestRecord(ruleCard, "bar", {
     nest_name: ruleCard.name.s,
     show: ["bar"],
@@ -3620,7 +3696,7 @@ function settingCodenameForRule(fmt: RenderFormat, rule: RenderCard): string | u
  *     (42 slots, e.g. id 45410 "yol" content view -> items
  *     awheasxlcszvy-bar-view with data-card-id and the bar-left
  *     card-title body); the live wire pins the same shape
- *     (tmp/live-wire/Aikido_Oak_Cliff.html: the Aikido Oak Cliff+related
+ *     (an internal work log the Aikido Oak Cliff+related
  *     list renders `id="aikido_oak_cliff-gallery-bar-view"`
  *     class="card-slot bar-view ..." with the full bar — never
  *     mini_bar). The prior unconditional swap produced mini_bar for
@@ -4512,7 +4588,7 @@ function genericBarLeftHtml(ctx: ViewContext): string {
  *
  *  2026-09-29 (view-fail class V6: 45 oracle entries —
  *  every Bootswatch-skin-typed card's bar renders this media block where
- *  the engine rendered a bare title span; the pass-15 dump pins the
+ *  the engine rendered a bare title span; an earlier dump pins the
  *  bytes in phase-008/014 (cerulean..yeti skin + the customized skins,
  *  closed+open) and phase-019 (+parent 1 pointer items nest the same
  *  rows). The port previously kept this an UNREGISTERED named gap
@@ -4866,7 +4942,7 @@ const barBottomView: ViewFn = (ctx) => {
   // class tokens agree: RIGHT-Xtype_plu_right), so the pre-fix literal
   // "*type plus right" never matched and the branch below stayed dead
   // (all 29 Z13 rule bars kept rendering the Rules form with no
-  // content-view slot wrap at the pass-16 base 71eb7e1; base dump dumpKey
+  // content-view slot wrap at an earlier base 71eb7e1; base dump dumpKey
   // 000003-Cardtype_description_type_plus_right-open first diff 2842).
   const rightKey = card.name.rightName?.key;
   const isRuleCardCompositionJunction =
@@ -5117,7 +5193,7 @@ function barDivHtml(ctx: ViewContext): string {
   // single-quoted attr list EXCEPT the slot id, which Haml emits through
   // its own data handler in DOUBLE quotes (oracle: `data-card-id='17465'
   // ... data-card-name='classic skin' ... data-slot-id="RANDOMIZED"` —
-  // the customized-classic-skin item bar, pass-15 page dump). The slot id
+  // the customized-classic-skin item bar, an earlier pass page dump). The slot id
   // is therefore pulled out of the haml emitter and inlined double-quoted.
   const hamlAttrs = emitHamlAttrs({
     "data-card-id": card.id === undefined ? undefined : String(card.id),
@@ -5143,7 +5219,7 @@ function barDivHtml(ctx: ViewContext): string {
     "data-card-type-id": card.typeId === undefined ? undefined : String(card.typeId),
     "data-card-type-name": card.typeName,
   });
-  // MERGE-PASS-18 composition: the separate double-quoted slot id
+  // MERGE composition: the separate double-quoted slot id
   // (the oracle's HAML data-handler form, comment above) kept, with
   // bar-slots' 3-arg menu call (the handle_unknown card[name] query on
   // wanted bars) restored.
@@ -5325,11 +5401,12 @@ const unknownView: ViewFn = (ctx) => {
   // titled-view nest miss on a rule-less deck).
   if (fmt.engine.taskAllowed?.(fmt.card, "create") !== true) return "";
   const url = fmt.urlKey();
-  const name = fmt.card.name.s;
+  // render_title: the title view, so the name is relative to the context
+  // names (title.rb title_in_context) - `+description` for a Role page's
+  // field nest under that page's main card.
   const link =
     `<a rel="nofollow" class="unknown-link slotter" href="/${h(url)}/new_in_modal" data-remote="true">` +
-    `${icon("add_box")} <span class="card-title" title="${h(name)}">` +
-    `${wrappedTitleInner(h(name))}</span></a>`;
+    `${icon("add_box")} ${fmt.renderView("title")}</a>`;
   return slotWrapCommon(fmt, "unknown", link);
 };
 
@@ -5999,8 +6076,8 @@ const homeUrlView: ViewFn = ({ fmt }) => {
  *  (RenderFormat.envOrigin /
  *  ./deck-origin.ts). Both shapes are oracle-pinned for the SAME
  *  `{{_|url}}` mark on the SAME email-template cards:
- *  `https://culturesmith.com/User` (signup alert email) and
- *  `https://culturesmith.com/*changed_card` (follower notification email)
+ *  `https://example.com/User` (signup alert email) and
+ *  `https://example.com/*changed_card` (follower notification email)
  *  on the served page — the page capture recapture-raw-shard-000016,
  *  whose capture sets deck_origin (capture-dual-lane-page-and-view.rb:343)
  *  — against `/User` and `/*changed_card?view=history` in the
@@ -6041,7 +6118,7 @@ const cardUrlView: ViewFn = ({ fmt }) => fmt.cardUrl(fmt.urlKey());
  *     the `'edite'` fallback gives "edited".
  *  The engine has one NAME-keyed flat table and Ruby has two all-set
  *  definitions of this name; the same collision the perms registry
- *  resolves to one entry and records (docs/view-perms-notes.md). The
+ *  resolves to one entry and records. The
  *  loser is card-mod-history's anchor form, still reachable through its
  *  mod registration.
  *
@@ -6424,6 +6501,14 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   // :rules_tab/:related_tab/:history_tab/:follow_section + help.rb's
   // :guide — the ACTIVE tab's view is dispatched by name from boardTabs).
   edit_form: editFormView,
+  // card-mod-edit-0.20.0 set/all/new.rb: the create form a page renders for
+  // an absent card the viewer may create (html/error.rb:81-83
+  // page_view_for_unknown -> :new), with its dispatch closure (:new_fields,
+  // :new_type_formgroup, :new_buttons). Perms ride view-perms.ts.
+  new: newView,
+  new_fields: newFieldsView,
+  new_type_formgroup: newTypeFormgroupView,
+  new_buttons: newButtonsView,
   edit_name_row: editNameRowView,
   edit_type_row: editTypeRowView,
   content_formgroups: contentFormgroupsView,

@@ -2,7 +2,7 @@ node_modules/
 dist/
 *.log
 tools/oracle/decko-oracle-app/
-# MySQL rung of the oracle harness (docs/oracle-harness.md): portable
+# MySQL rung of the oracle harness (docs/parity-method.md): portable
 # MariaDB zip + extract, scratch server datadir, and the client-lib
 # layout the mysql2 gem builds against - large and rebuildable
 tools/oracle/downloads/

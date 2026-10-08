@@ -12,7 +12,7 @@
 //     error propagation) matches the other adapters.
 //
 // What this file does NOT prove (and what the live-PG rung in
-// docs/postgres-dialect-notes.md must cover):
+//  must cover):
 //   * real PG executes the rewritten SQL without errors;
 //   * real PG returns the expected row shapes and types;
 //   * collation, REGEXP, LASTVAL(), and id-generation semantics match
@@ -22,7 +22,7 @@
 //
 // LIVE PATH: the live-PG conformance surface is not wired in this repo —
 // the pg client is not a dependency today, and adding it is a future
-// stream's call. The live-PG rung in docs/postgres-dialect-notes.md is
+// stream's call. The live-PG rung
 // the documented path forward; the in-repo test surface is the
 // dialect-mapping battery.
 

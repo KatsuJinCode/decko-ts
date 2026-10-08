@@ -1,6 +1,6 @@
 // raw-corpus-type-plus-right-left-type-verdict.test.ts -- the RED pin for
 // the missing-pattern-side set-key fabrication unit's VERDICT arm (the
-// censustail3 worktree; receipts tmp/wrong-goal-hunt/cd-smalls-lane.md class 2
+// censustail3 worktree; receipts an internal work log class 2
 // and cql-found-by-lane.md section 3):
 //
 //   Ruby's TYPE_PLUS_RIGHT anchor (card-1.110.0
@@ -26,7 +26,7 @@
 //   The PlainText population (cql-found-by receipt section 3: the
 //   `+*type+by name` slot's chrome token read
 //   TYPE_PLUS_RIGHT-cardtype-by_name over the oracle's -set-by_name) is
-//   ALREADY GREEN at the pass-17 tip through the enrich path's virtual
+//   ALREADY GREEN at an earlier tip through the enrich path's virtual
 //   left (resolveVirtualCardStructure answers Set off the
 //   `*type+*right+*structure` rule card); this spec pins it as a
 //   regression guard so the verdict-arm fix cannot re-break it.
@@ -50,6 +50,7 @@ import {
   createRawStructureSeededStorage,
 } from "./raw-corpus-seeding.js";
 import type { RenderTestStorage } from "./render-test-storage.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -117,7 +118,7 @@ describe("raw-corpus type_plus_right left-type task verdict (cd-smalls 7 + Plain
       { timeout: 600_000 },
       async (ctx) => {
         if (!SWEEP_REQUESTED) {
-          ctx.skip();
+          skipLoud(ctx, "tests/card/render/raw-corpus-type-plus-right-left-type-verdict.test.ts", "SWEEP_REQUESTED");
           return;
         }
         expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);
@@ -147,7 +148,7 @@ describe("raw-corpus type_plus_right left-type task verdict (cd-smalls 7 + Plain
     { timeout: 600_000 },
     async (ctx) => {
       if (!SWEEP_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/raw-corpus-type-plus-right-left-type-verdict.test.ts", "SWEEP_REQUESTED");
         return;
       }
       const card = storage.engine.fetchRenderCard(VERY_ROSIE_PAGES[0].name);
@@ -166,7 +167,7 @@ describe("raw-corpus type_plus_right left-type task verdict (cd-smalls 7 + Plain
     { timeout: 600_000 },
     async (ctx) => {
       if (!SWEEP_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/raw-corpus-type-plus-right-left-type-verdict.test.ts", "SWEEP_REQUESTED");
         return;
       }
       const actual = await storage.engine.renderPage("PlainText");

@@ -8,7 +8,7 @@
 //   reached from Scanner.normalize (scanner.rb:51-63) and applied on EVERY
 //   scan at scanner.rb:137 `super self.class.normalize(code)`.
 //
-// This is the seam behind the pass-15 "layout-whitespace" page class (60
+// This is the seam behind an earlier "layout-whitespace" page class (60
 // pages). The 5 CodeRay-highlighted Layout card bodies are stored with CRLF
 // line endings; the html scanner's `/\s+/m` (scanners/html.rb:101) matches
 // the CRLF PAIR as one `:space` token, and the encoder escape table

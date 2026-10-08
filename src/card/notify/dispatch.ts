@@ -2,8 +2,7 @@
 //
 // The save path (src/card/actions/card-action-engine.ts) is owned by a
 // different stream and is read-only here. That stream owns the call
-// site — the documented registration line (see docs/notify-port-notes.md,
-// "save-path registration line") — which fires this dispatcher once per
+// site — its save-path registration line fires this dispatcher once per
 // completed applyAction():
 //
 //   await runIntegrationHooks({

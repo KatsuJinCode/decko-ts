@@ -36,6 +36,7 @@
 import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { MOD_SPECS } from "../../../src/card/mod-loader/mods/core-admin-runtime.js";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 /** The two independent Ruby captures agree on this string. */
 const CAPTURED_SUMMARY = "Edit handling";
@@ -69,14 +70,14 @@ const CORPUS_PRESENT = existsSync(
   ).pathname.replace(/^\/([A-Za-z]:)/, "$1"),
 );
 
-describe.skipIf(!REPLAY || !CORPUS_PRESENT)("mod: edit page bytes (corpus replay)", () => {
+describeOrSkipLoud(!REPLAY || !CORPUS_PRESENT, "tests/card/mod-loader/parityfix-row7-mod-edit-gemspec-summary.test.ts", "not (!REPLAY || !CORPUS_PRESENT)")("mod: edit page bytes (corpus replay)", () => {
   it("renders the captured summary paragraph, not the transcription", async () => {
     const { createRawStructureSeededStorage, RAW_CORPUS_DB } = await import(
       "../render/raw-corpus-seeding.js"
     );
     const views = await import("../../../src/card/render/views.js");
     views.setDeploymentCloudAssetHost(
-      "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com",
+      "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com",
     );
     const Database = (await import("better-sqlite3")).default;
     const idLister = new Database(RAW_CORPUS_DB, { readonly: true });

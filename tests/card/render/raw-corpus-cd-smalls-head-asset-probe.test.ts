@@ -1,7 +1,7 @@
 // raw-corpus-cd-smalls-head-asset-probe.test.ts -- the cd-smalls suite's
-// probe + RED pin for the head-asset divergence class (11 pages, pass-15
+// probe + RED pin for the head-asset divergence class (11 pages, an earlier pass
 // content-div subclass "head-asset-divergence", receipt
-// brandonDojoTech tmp/wrong-goal-hunt/cd-smalls-lane.md):
+// REPO_DIR an internal work log):
 //
 //   The oracle head carries `<link rel="alternate" type="application/x-wiki"
 //   title="Edit this page!" href="/<name url_key>/edit" />` on 11 captured
@@ -36,6 +36,7 @@ import {
   readPermissionStateFromViewerResults,
 } from "../../../src/card/permissions/index.js";
 import { resolveRuleIdsByKeys } from "../../../src/card/permissions/read-rules.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 import {
   viewTaskPermissionStatements,
   viewTaskStateFromResults,
@@ -59,7 +60,7 @@ describe("raw-corpus cd-smalls head-asset probe (universal_edit_button verdict)"
     { timeout: 1_800_000 },
     async (ctx) => {
       if (process.env.CD_SMALLS_HEAD_PROBE !== "1") {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/raw-corpus-cd-smalls-head-asset-probe.test.ts", "not (process.env.CD_SMALLS_HEAD_PROBE !== \"1\")");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

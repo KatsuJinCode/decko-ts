@@ -317,7 +317,7 @@ function isAsciiAlnum(c: string): boolean {
  * Ruby String#succ / String#next.
  *
  * Ported from observed Ruby 3.3 behavior (verified against a 50-case battery,
- * see docs/name-port-notes.md). Carry walks right-to-left over ASCII
+ * Carry walks right-to-left over ASCII
  * alphanumerics (9->0 carries, z->a carries, Z->A carries). Non-alphanumeric
  * runs between the carried position and the string head are transparent EXCEPT
  * when the carry is digit-flavored (the original last alphanumeric was a

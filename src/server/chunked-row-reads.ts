@@ -15,7 +15,7 @@
 // THE MECHANISM: transport chunking, not a semantics change. The ids ride
 // IN-list statements of IDS_PER_STATEMENT bound parameters each, and the
 // statements are grouped into driver.batch calls of STATEMENTS_PER_BATCH
-// each — one subrequest per batch (docs/driver-notes.md: "on the edge
+// each — one subrequest per batch (docs/decisions/0003-edge-native-driver-interfaces.md: "on the edge
 // drivers a batch is literally one HTTP request"). A 6,233-id read is 125
 // statements in 7 batches: seven subrequests, same rows.
 //

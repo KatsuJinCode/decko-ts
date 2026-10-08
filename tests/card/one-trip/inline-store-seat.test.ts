@@ -27,6 +27,7 @@ import { describe, expect, it } from "vitest";
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../../src/server/driver.js";
 import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
 import { seatOneTripPayloadForRender } from "../../../src/card/one-trip/render-gate.js";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 import {
   MIRROR_COPY_PATH,
   mirrorAvailable,
@@ -62,7 +63,7 @@ class AttachRejectingDriver implements SQLDatabaseDriver {
   }
 }
 
-describe.skipIf(!hasMirror)("inline materialized store: the seat skips ATTACH", () => {
+describeOrSkipLoud(!hasMirror, "tests/card/one-trip/inline-store-seat.test.ts", "hasMirror")("inline materialized store: the seat skips ATTACH", () => {
   it(
     "with DECKO_ONE_TRIP_STORE=inline the seat issues NO ATTACH and fetches " +
       "one_trip_* on the same connection",

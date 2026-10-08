@@ -30,7 +30,7 @@ import {
 import { MIRROR_COPY_PATH, mirrorAvailable } from "./one-trip-fixture.js";
 
 /** The engine's own corpus shapes, transcribed with the binds each carries
- *  in a real render (brandonDojoTech/tmp/wrong-goal-hunt/
+ *  in a real render (WORK_DIR/
  *  fold-plan-replay-work/11-fold-exactness-check-report.json, Aikido +
  *  Aikido_in_Education). Each entry is one plan statement the recorder
  *  produced for those pages. */

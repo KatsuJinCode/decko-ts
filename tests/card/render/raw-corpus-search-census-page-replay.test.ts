@@ -36,6 +36,7 @@ import {
   CENSUS_SEARCH_PAGE_SUBSET,
 } from "./raw-corpus-search-census-page-subset.js";
 import { walkDiff } from "./census-page-diff-walker.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -90,7 +91,7 @@ describe("raw-corpus search-results census replay (47 c-structural pages)", () =
     { timeout: 3_600_000 },
     async (ctx) => {
       if (!REPLAY_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/raw-corpus-search-census-page-replay.test.ts", "REPLAY_REQUESTED");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

@@ -1,5 +1,5 @@
 // Structured/missing-child typed-view regression (the structchild lane, worktree
-// decko-ts-lane-structchild). The class: a nest whose target has NO row but
+// ). The class: a nest whose target has NO row but
 // whose field template exists renders the oracle's typed new-card view; the
 // engine denied it instead. Two stacked mechanisms, both ported from Ruby:
 //

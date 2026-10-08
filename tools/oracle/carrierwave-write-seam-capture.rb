@@ -8,7 +8,7 @@
 # Run (from tools/oracle/decko-oracle-app of the MAIN checkout - the app and
 # its development deck live there):
 #   RAILS_ENV=development bundle exec decko runner \
-#     C:/localProjects/decko-ts-lane-cwwrite/tools/oracle/carrierwave-write-seam-capture.rb
+#     REPO_ROOT//tools/oracle/carrierwave-write-seam-capture.rb
 #
 # Determinism contract (same as capture.rb): seeding is create-if-missing,
 # timestamps are not captured, JSON is pretty-printed with deeply sorted keys.

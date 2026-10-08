@@ -1,6 +1,6 @@
 // raw-corpus-found-by-type-by-name-search.test.ts -- the RED pin for the
 // found_by CQL gap (the residual trio after the search-prepare port:
-// tmp/wrong-goal-hunt/search-prepare-fix.md section 3): the
+// an internal work log section 3): the
 // `<cardtype>+*type+by name` virtual searches (Sign up 12 / PlainText 22 /
 // VAP 827) execute into the SQL generator's found_by refusal
 // (src/cql/sql.ts "foundBy" case), runSearch's inner catch seats [] and the
@@ -46,6 +46,7 @@ import path from "node:path";
 import Database from "better-sqlite3";
 import { afterAll, beforeAll, describe, it, expect } from "vitest";
 import { byteDiff, normalizeSlotIds } from "../../../src/testing/diff.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 import {
   RAW_CORPUS_DB,
   createRawStructureSeededStorage,
@@ -147,7 +148,7 @@ describe("raw-corpus found_by search (the +*type+by name trio)", () => {
       { timeout: 600_000 },
       async (ctx) => {
         if (!REPLAY_REQUESTED) {
-          ctx.skip();
+          skipLoud(ctx, "tests/card/render/raw-corpus-found-by-type-by-name-search.test.ts", "REPLAY_REQUESTED");
           return;
         }
         expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

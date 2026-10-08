@@ -5,6 +5,8 @@
 // the read-only bundle can use them without importing the write surface.
 
 import { BunnyDbDriver } from "../../src/card/drivers/bunny-db.js";
+import type { SQLDatabaseDriver } from "../../src/server/driver.js";
+import { edgeHostLabels } from "./edge-host-labels.js";
 import { probeRecordBoot } from "./bunny-edge-isolate-probe.js";
 import {
   bootEdgeServingEngines,
@@ -88,8 +90,24 @@ export function resolveDbConfig(env: EdgeEnv): ResolvedDbConfig | { error: strin
  *  reads through it without waiting for a deck boot. Like the deck it is
  *  built from the first request's resolved config. Shared by both handlers;
  *  each script bundles its own copy, so each isolate has one. */
-let isolateDriver: BunnyDbDriver | undefined;
-export function getDriver(config: ResolvedDbConfig, env: EdgeEnv): BunnyDbDriver {
+let isolateDriver: SQLDatabaseDriver | undefined;
+
+/** THE DRIVER SEAM FOR OTHER HOSTS: the same handlers serve Cloudflare
+ *  Workers over a D1 binding (deploy/cf-worker-src/cf-edge-engine-entry.ts).
+ *  That entry installs a factory here once, at module load, before the
+ *  first request; the isolate driver (and so both the deck boot and the
+ *  cookieless live path) then reads through the driver it returns instead of
+ *  BunnyDbDriver. Unset (every Bunny build), nothing changes. The factory is
+ *  configuration, not request state: it holds no rows and no pages. */
+export type EdgeDbDriverFactory = (env: EdgeEnv) => SQLDatabaseDriver;
+let edgeDbDriverFactory: EdgeDbDriverFactory | undefined;
+export function setEdgeDbDriverFactory(factory: EdgeDbDriverFactory | undefined): void {
+  edgeDbDriverFactory = factory;
+  isolateDriver = undefined;
+}
+
+export function getDriver(config: ResolvedDbConfig, env: EdgeEnv): SQLDatabaseDriver {
+  if (edgeDbDriverFactory !== undefined) return (isolateDriver ??= edgeDbDriverFactory(env));
   isolateDriver ??= new BunnyDbDriver({
     url: config.url,
     authToken: config.authToken,
@@ -161,14 +179,27 @@ export async function statusResponse(
       [],
     );
     const n = Number(r.rows[0]?.n);
+    const host = edgeHostLabels();
+    if (host.binding !== undefined) {
+      // A binding-backed host (Cloudflare D1): no credential variables are
+      // involved, so report the binding instead of their names.
+      return json(200, {
+        ok: true,
+        engine: "decko-ts",
+        runtime: host.runtime,
+        view: "full render engine (SUPPORTED_VIEWS dispatch + layout shell)",
+        database: { ok: true, driver: host.driver, card_count: n, binding: host.binding },
+        version: "2.0.0",
+      });
+    }
     return json(200, {
       ok: true,
       engine: "decko-ts",
-      runtime: "bunny-edge-scripting",
+      runtime: host.runtime,
       view: "full render engine (SUPPORTED_VIEWS dispatch + layout shell)",
       database: {
         ok: true,
-        driver: "BunnyDbDriver (hrana v2 over fetch)",
+        driver: host.driver,
         card_count: n,
         // Names only, never values. credential_source says WHICH KIND of
         // variable pair supplied the endpoint (the db-repoint lane's

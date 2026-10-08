@@ -16,7 +16,7 @@
 //     card): alter_unknown substitutes :unknown (format/error.rb:23),
 //     whose createable gate renders "" for Anonymous — corpus 10488
 //     `Steven Goldin+Menu`, blank `{{}}` -> empty on content/open.
-//     RE-PROVEN LIVE 2026-10-03: culturesmith.com/Steven_Goldin+Menu
+//     RE-PROVEN LIVE 2026-10-03: example.com/Steven_Goldin+Menu
 //     ?view=content|open carry zero denial spans and the stored raw
 //     content still embeds the blank nest (fetch tmp/live-10488/ logs,
 //     live-truth-application-lane.md).
@@ -27,10 +27,10 @@
 //     template_nest.rb:2 `unknown: true`) and 38250
 //     `Cardtype+*type+*guide` (explicit `{{\_|board_link}}` nest;
 //     menu.rb:29 `view :board_link, unknown: true`). BOTH RE-PROVEN LIVE
-//     2026-10-03: culturesmith.com serves the span at the nest position
+//     2026-10-03: example.com serves the span at the nest position
 //     on ?view=content for both pages, same session as the 10488 fetch.
 //
-// This supersedes the wave-20 reading (tmp/wrong-goal-hunt/
+// This supersedes the wave-20 reading (an internal work log
 // fix-denied-nest-bare-dot-lane.md) that 636 was "the anomalous capture":
 // the live site renders the span for 636 and 38250 and nothing for 10488,
 // and one machinery (unknown-capable view + denied new-card read verdict)

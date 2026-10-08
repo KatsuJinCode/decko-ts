@@ -1,6 +1,6 @@
 # decko-ts — one-click Cloudflare Workers + D1 deploy
 
-The M2 harness (docs/port-tracker.md): a [decko-ts](../README.md) engine, a
+The M2 harness: a [decko-ts](../README.md) engine, a
 synthetic demo deck, and this directory. One Worker, one D1 database, no
 other resources. Everything in this directory is self-contained — the
 local proof runs the real workerd via miniflare with NO Cloudflare account
@@ -46,24 +46,24 @@ this `deploy/` directory.
 
 ```sh
 # 0. create the database; wrangler prints its id
-npx wrangler d1 create decko-ts-demo-db
+npx wrangler d1 create 
 
 # 1. paste that id into wrangler.toml -> [[d1_databases]] database_id
 
 # 2. apply the schema (self-contained inside deploy/)
-npx wrangler d1 execute decko-ts-demo-db --remote --file migrations/0001-schema.sql
+npx wrangler d1 execute  --remote --file migrations/0001-schema.sql
 
 # 2b. ALREADY-PROVISIONED databases only (0001 never re-runs for them):
 #     backfill the BINARY key/codename lookup indexes
-npx wrangler d1 execute decko-ts-demo-db --remote --file migrations/0002-card-text-binary-lookup-indexes.sql
+npx wrangler d1 execute  --remote --file migrations/0002-card-text-binary-lookup-indexes.sql
 
 # 3. load the synthetic demo deck
-npx wrangler d1 execute decko-ts-demo-db --remote --file seed/seed.sql
+npx wrangler d1 execute  --remote --file seed/seed.sql
 
 # 3b. planner stats — REQUIRED after seed (useless on empty tables). Without
 #     this the SQLite planner probes cards_trash_index (whole deck) for every
 #     " AND trash = 0" predicate instead of seeking the key/codename indexes.
-npx wrangler d1 execute decko-ts-demo-db --remote --command "ANALYZE"
+npx wrangler d1 execute  --remote --command "ANALYZE"
 
 # 4. deploy the Worker (wrangler bundles worker.ts + the engine)
 npx wrangler deploy
@@ -73,16 +73,16 @@ Smoke checks (replace `YOUR_SUBDOMAIN` — `npx wrangler whoami` / deploy
 output print it):
 
 ```sh
-curl -s https://decko-ts-demo.YOUR_SUBDOMAIN.workers.dev/_status
+curl -s https:///_status
 #    {"ok":true, ... "database":{"ok":true,"card_count":15}}
 
-curl -s https://decko-ts-demo.YOUR_SUBDOMAIN.workers.dev/ | grep "compound depth 4"
+curl -s https:/// | grep "compound depth 4"
 #    the Home card renders its inclusion chain 4 levels deep
 
-curl -s https://decko-ts-demo.YOUR_SUBDOMAIN.workers.dev/Home.json
+curl -s https:///Home.json
 #    the Home card record as JSON
 
-curl -s -X POST https://decko-ts-demo.YOUR_SUBDOMAIN.workers.dev/api/query \
+curl -s -X POST https:///api/query \
   -H "Content-Type: application/json" \
   -d '{"cql":{"type":"Note","sort":"name"}}'
 #    JSON rows: the nine Note cards (six plain + three junctions)
@@ -96,7 +96,7 @@ CQL result JSON), `GET /_status` (engine + database health).
 
 The one exception to "run everything from this directory": the cleanup
 script names the two resources it removes explicitly (`wrangler delete
---name decko-ts-demo`, `wrangler d1 delete decko-ts-demo-db`), so the
+--name `, `wrangler d1 delete `), so the
 deletions do not depend on which `wrangler.toml` cwd resolves. It is
 written repo-root-relative here; from inside `deploy/`, drop the `deploy/`
 prefix. It is also the only script here that talks to a real account, and
@@ -107,7 +107,7 @@ node deploy/cleanup.mjs          # prints the plan, touches nothing
 node deploy/cleanup.mjs --yes    # deletes the Worker and the D1 database
 ```
 
-Resources removed: Worker `decko-ts-demo`, D1 database `decko-ts-demo-db`.
+Resources removed: Worker ``, D1 database ``.
 That is the complete footprint — no KV, no R2, no queues, no secrets.
 
 ## Storage budget
@@ -127,7 +127,7 @@ object storage, so there are no file uploads and no assets bucket.
 wrangler does (module alias included), boots it under miniflare's real
 workerd with the migration + seed applied through the D1 binding, and
 asserts every route. The D1 adapter itself is miniflare-proven separately
-(`tests/server/drivers/d1-miniflare.test.ts`, docs/driver-notes.md).
+(`tests/server/drivers/d1-miniflare.test.ts`, docs/decisions/0003-edge-native-driver-interfaces.md).
 
 ## Regenerating generated files
 

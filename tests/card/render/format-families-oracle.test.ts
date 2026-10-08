@@ -6,7 +6,7 @@
 // oracle app booted against a DISPOSABLE copy of the corpus deck
 // (db/write-conformance-surfaces1.sqlite3); the corpus DB's sha256 is
 // unchanged across the run (819b8884… before and after — the no-write
-// proof lives in brandonDojoTech/tmp/wrong-goal-hunt/surfaces-batch1-lane.md).
+// proof lives in WORK_DIR/surfaces-batch1-lane.md).
 // The seeded cards here carry the captured rows' ids/names/codenames/
 // timestamps so the byte pins are the same state Ruby rendered.
 //

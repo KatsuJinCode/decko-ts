@@ -3,7 +3,7 @@
 // error span inside ITS wrap_item and the LIST COMPLETES with its
 // card-list wrapper intact.
 //
-// MECHANISM (gem source, C:/localProjects/archive/decko-fork-study/decko/):
+// MECHANISM (gem source, REPO_ROOT/archive/decko-fork-study/decko/):
 //
 //   mod/list/set/abstract/01_list/html_views.rb:4-13
 //       view :core do

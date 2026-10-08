@@ -29,7 +29,7 @@
 //   under the *star+*update items over the corpus dump, while the captured
 //   oracle pages distribute them across different role pages -- the
 //   capture deck's live rule state diverged from the dump's rows (evidence
-//   chain in tmp/wrong-goal-hunt/raise-leadview-lane.md). For
+//   chain in an internal work log). For
 //   Administrator / Help Desk this pin therefore asserts NO raise, NO
 //   render-error alert, and the +description lead slot BYTE-EXACT (the
 //   class's actual defect surface), and records the full-page divergence
@@ -52,6 +52,7 @@ import Database from "better-sqlite3";
 import { describe, it, expect } from "vitest";
 import { byteDiff, normalizeSlotIds } from "../../../src/testing/diff.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -131,7 +132,7 @@ describe("raw-corpus raise/leadview page exemplars", () => {
     { timeout: 1_800_000 },
     async (ctx) => {
       if (!REPLAY_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/raw-corpus-raise-leadview-pages.test.ts", "REPLAY_REQUESTED");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

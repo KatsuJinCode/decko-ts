@@ -47,7 +47,7 @@ import {
  *  carrying the freshness stamp (migration 0003) and the 45 recorded plans. */
 const DRIFT_DECK =
   process.env.DRIFTFIX_DECK ??
-  "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/one-trip-per-page-work/decks/arch-demo-45p-freshness-stamped.sqlite3";
+  "WORK_DIR/one-trip-per-page-work/decks/arch-demo-45p-freshness-stamped.sqlite3";
 
 const driftDeckAvailable = (): boolean => existsSync(DRIFT_DECK);
 

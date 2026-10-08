@@ -75,7 +75,7 @@ const COMPAT_JSON = join(REPO, "tools", "compat-report", "mod-compat-report.json
 
 // Re-measurement 2026-10-03 (tree 0287dab) — the mod-coverage-remeasure
 // lane's authoritative view census, cited (not recomputed) for the registry.
-// Source: brandonDojoTech/tmp/wrong-goal-hunt/mod-coverage-remeasure-lane.md
+// Source: WORK_DIR/mod-coverage-remeasure-lane.md
 // + deliverables/mod-coverage-authoritative-2026-09-28.md (re-measure section).
 const REMEASURE = {
   tree: "0287dab",
@@ -176,7 +176,7 @@ const NAMED_REMAINDERS = {
     // regex classes matched against the behaviorId (namedRemainderFor
     // below).
     // RE-MEASURED 2026-10-06 (r2-harness lane, base 7bc63c1c; the per-row
-    // verdict table is brandonDojoTech/tmp/wrong-goal-hunt/
+    // verdict table is WORK_DIR/
     // r2-harness-rerun-lane.md). The former reason read "the engine renders
     // the html format only". THAT PREMISE IS FALSE at this lineage:
     // deploy/worker.ts:709-734 routes GET /<card>.json, .csv and .rss into

@@ -1,4 +1,4 @@
-// The throw-on-untranslated regex guard (docs/cql-match-decision.md
+// The throw-on-untranslated regex guard (docs/decisions/0005-cql-match-semantics.md
 // "Decision" items 1-2, the fork recount's remainder S2.3.d/f):
 //
 //   1. TRANSLATE inside compileMatchPattern what MySQL/PCRE accepts and JS

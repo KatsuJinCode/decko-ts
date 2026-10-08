@@ -1,6 +1,6 @@
 {
  "_provenance": {
-  "captured_from": "the live production deck's compiled *all+*script bundle, URL /files/~50617/1768074298.js (bucket copy: brandonDojoTech tmp/wrong-goal-hunt/a27-assets/live-1768074298.js, 995,951 bytes)",
+  "captured_from": "the live production deck's compiled *all+*script bundle, URL /files/~50617/1768074298.js (bucket copy: REPO_DIR an internal work log, 995,951 bytes)",
   "oracle_pin_source": "a27-assets lane capture 2026-09-26; the assembled INPUT twin is the cwinput lane's live pin (sha256 36a3d55df942e04f..., 1,050,887 bytes — fixtures/captured/all-script-assembled-input.js)",
   "leaf_grammar": "comment_with_source (card-mod-script set/abstract/00_script.rb:20-22): each leaf is '// <file basename>\\n' + the leaf core; leaves join '\\n' (asset_group.rb render_items_and_compress within a group, asset_outputter.rb input_from_item_cards joint between groups)",
   "compression": "Uglifier.new(harmony: true).compile (00_script.rb:25-27 try_compress) under compress_assets=true (cardio railtie default; the production deck's state)",

@@ -4,7 +4,7 @@
 // the format's WORKING context list (format.ts renderView), which is what
 // RenderFormat#standardTitle relativizes the bar title against.
 //
-// GRADED-CORPUS LAW (own survey, tmp/wrong-goal-hunt/relnames-03-crosstab.log,
+// GRADED-CORPUS LAW (own survey, an internal work log,
 // the sha-verified expected-v2 view lane: 6,588 records / 3,686 surfaces):
 //   RELATIVE card-title: 60 with name_context / 0 without.
 //   ABSOLUTE card-title: 49 with name_context / 45,437 without.

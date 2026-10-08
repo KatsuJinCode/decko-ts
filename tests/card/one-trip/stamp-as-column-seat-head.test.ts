@@ -64,10 +64,11 @@ import {
 } from "./one-trip-fixture.js";
 import { applyDeckDataVersionStampMigration } from "./apply-deck-data-version-stamp-migration.js";
 import { scratchDir } from "../../support/scratch-dir.mjs";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const PAGE = "Home";
 
-const require = createRequire("C:/localProjects/decko-ts-lane-onetrip-build-2026-10-06/package.json");
+const require = createRequire(new URL("../../../package.json", import.meta.url));
 const Database = require("better-sqlite3");
 
 const RENDER_PLANS_DDL =
@@ -161,7 +162,7 @@ async function buildStampedInlineStore(dir: string): Promise<string> {
   return inlineDbPath;
 }
 
-describe("the seat head carries the freshness stamp and the gate count (stamp-as-column)", () => {
+describeOrSkipLoud(!mirrorAvailable(), "tests/card/one-trip/stamp-as-column-seat-head.test.ts", "a local copy of the deck mirror database (mirrorAvailable())")("the seat head carries the freshness stamp and the gate count (stamp-as-column)", () => {
   let dir = "";
   let inlineDbPath = "";
   const savedEnv = {

@@ -20,7 +20,7 @@
 // two setting_opts files (set/self/help.rb, set/self/guide.rb - oracle
 // state under "setting_groups"/"setting_opts_*").
 //
-// NOT yet ported (honest remainder, see docs/mod-loader-port-notes.md):
+// NOT yet ported :
 // - set/right/guide.rb - set module only defines a card-level
 //   `raw_help_text` method (card-mod-help set/right/guide.rb:3-7); no
 //   view declared; the SettingHelpText registry already serves the
@@ -237,12 +237,15 @@ const popoverView: ViewFn = (ctx) => {
  *  cache-checked resolution as helpRuleCard but for *guide rules. */
 function guideRuleCard(ctx: ViewContext): ReturnType<ViewContext["fmt"]["engine"]["fetchRenderCard"]> {
   const card = ctx.fmt.card;
-  if (card.unknown === true) return undefined;
+  // A new card has rules too (determine_guide_card's rule_card :guide runs
+  // on Card.new — the :new form's alert guide); its walk drops the *self
+  // candidate (pattern/all.rb: new cards skip the first concrete pattern).
   const input: PatternCardInput = {
     name: card.name.s,
     id: card.id,
     typeId: card.typeId,
     typeName: card.typeName,
+    ...(card.id === undefined ? { isNew: true } : {}),
   };
   if (card.name.isCompound) {
     const leftKey = card.name.leftName?.key;

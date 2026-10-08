@@ -1,7 +1,7 @@
 # decko-ts Cloudflare Workers + D1 deploy config (M2 one-click harness).
 #
 # The operator story lives in deploy/README.md; architecture and
-# compatibility notes in docs/deploy-notes.md. Summary:
+# compatibility notes in docs/deploy-cloudflare.md. Summary:
 #
 #   1. npx wrangler d1 create decko-ts-demo-db      -> copy the returned id
 #   2. paste it into database_id below
@@ -19,7 +19,7 @@ compatibility_date = "2026-09-01"
 # Deliberately NO nodejs_compat: the worker graph is Web-standard-only.
 # The one Node import in the engine graph (node:crypto in
 # src/card/render/slot-html.ts) is replaced at bundle time by the shim
-# below — reported, not edited, per stream boundaries (docs/deploy-notes.md).
+# below — reported, not edited, per stream boundaries (docs/deploy-cloudflare.md).
 
 [alias]
 "node:crypto" = "./shims/node-crypto-shim.ts"

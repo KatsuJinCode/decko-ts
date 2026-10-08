@@ -129,6 +129,10 @@ export interface ReadPermissionState {
   readonly hasCatchAllReadRule: boolean;
   /** The party ids the readable set was computed from. */
   readonly parties: number[];
+  /** Auth.current_id when Auth.signed_in? (auth/current.rb:43-47), else
+   *  undefined — what a set module's own-card permission override compares
+   *  against (e.g. Right::Follow's allowed_to_change_follow_status?). */
+  readonly signedInActorId?: number;
 }
 
 /** One party row of the ReadRuleCache join (read_rule_cache.rb SQL). */
@@ -368,6 +372,7 @@ export function readPermissionStateFromViewerResults(
     hasReadRules: (ruleCount[0]?.c ?? 0) > 0,
     hasCatchAllReadRule: (ruleCount[0]?.catchAll ?? 0) > 0,
     parties,
+    signedInActorId: signedIn ? actorId : undefined,
   };
 }
 
@@ -535,7 +540,7 @@ async function canReadByRuleLookupDepth(
   // Partial decks (per-shard replay seeds) simply lack the card's
   // applicable rule card, and fabricating a denial from missing data would
   // mis-deny cards the full deck renders — there the port still allows
-  // (documented divergence, docs/permissions-port-notes.md).
+  // .
   return state.hasReadRules && state.hasCatchAllReadRule ? false : undefined;
 }
 
@@ -679,7 +684,7 @@ export interface ResolvedRuleRow {
  * mutation routes through that method, so a save drops the universe AND
  * the content memo and the next resolution rebuilds post-save state. No
  * second invalidation path. (The performance history and measurements
- * behind this shape: docs/permissions-port-notes.md.)
+ * behind this shape: .)
  */
 interface RuleResolutionDriverCache {
   /** ckey -> rule card id: the full composed-key universe, built once per
@@ -903,6 +908,14 @@ const RULE_SUFFIX_LAST_CHARS = [
  *
  * Row ORDER is not part of the contract (the legacy statement has no
  * ORDER BY either); the check script reports whether it matched.
+ *
+ * AT MOST FIVE TERMS PER COMPOUND SELECT. Cloudflare D1 runs SQLite with
+ * the compound-SELECT limit at 5 (measured in workerd's local D1: 5 terms
+ * run, 6 answer "too many terms in compound SELECT"). The two left-arm edge
+ * sets, `dl` and `tl`, are therefore joined through one materialized union,
+ * `dtl`: one left-arm term over dl UNION tl derives exactly the rows the two
+ * separate left-arm terms did, so `resolved` keeps its row set with five
+ * terms. Pinned by tests/card/permissions/rule-closure-d1-compound-limit.test.ts.
  */
 export const RULE_KEY_RULE_CLOSURE_STATEMENT =
   `WITH RECURSIVE\n` +
@@ -938,6 +951,11 @@ export const RULE_KEY_RULE_CLOSURE_STATEMENT =
   `dr(parent, child) AS MATERIALIZED (\n` +
   `  SELECT c.id, c.right_id FROM d CROSS JOIN cards c ON c.id = d.id WHERE c.right_id IS NOT NULL\n` +
   `),\n` +
+  `dtl(parent, child) AS MATERIALIZED (\n` +
+  `  SELECT parent, child FROM dl\n` +
+  `  UNION\n` +
+  `  SELECT parent, child FROM tl\n` +
+  `),\n` +
   `resolved(id, ckey) AS (\n` +
   `  SELECT c.id, c."key" FROM anc CROSS JOIN cards c ON c.id = anc.id\n` +
   `    WHERE c."key" IS NOT NULL AND +c.trash = 0\n` +
@@ -947,13 +965,8 @@ export const RULE_KEY_RULE_CLOSURE_STATEMENT =
   `      AND (${endsInRuleSuffix(`c."key"`)})\n` +
   `  UNION\n` +
   `  SELECT j.id, l.ckey || '+' || r."key" FROM resolved l\n` +
-  `    JOIN dl ON dl.child = l.id\n` +
-  `    JOIN cards j ON j.id = dl.parent AND +j.trash = 0\n` +
-  `    JOIN cards r ON r.id = j.right_id AND r."key" IS NOT NULL\n` +
-  `  UNION\n` +
-  `  SELECT j.id, l.ckey || '+' || r."key" FROM resolved l\n` +
-  `    JOIN tl ON tl.child = l.id\n` +
-  `    JOIN cards j ON j.id = tl.parent AND +j.trash = 0\n` +
+  `    JOIN dtl ON dtl.child = l.id\n` +
+  `    JOIN cards j ON j.id = dtl.parent AND +j.trash = 0\n` +
   `    JOIN cards r ON r.id = j.right_id AND r."key" IS NOT NULL\n` +
   `  UNION\n` +
   `  SELECT j.id, l."key" || '+' || r.ckey FROM resolved r\n` +

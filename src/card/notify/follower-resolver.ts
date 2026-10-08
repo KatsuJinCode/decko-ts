@@ -644,7 +644,7 @@ async function setCardIdForPattern(
 
 /**
  * The FollowerResolver the save path uses when the host doesn't inject
- * one (docs/notify-port-notes.md, "Save-path registration line"):
+ * one :
  * resolveFollowers above plus Ruby's notify-layer exclusions from
  * set/all/notify.rb:49-55 notify_followers_of — the ACTOR never gets
  * notified about their own act (`next if follower == act.actor`,
@@ -661,7 +661,7 @@ export function defaultFollowerResolver(fetch: FetchEngine): FollowerResolver {
 
 /**
  * The full FollowNotifyDeps the save path builds when the host supplies
- * no hook of its own (docs/notify-port-notes.md, "Save-path registration
+ * no hook of its own ("Save-path registration
  * line"): the rule-algebra follower resolver above, the deck-backed
  * email-template resolver (deck-resolvers.ts — Ruby reads
  * Card[:follower_notification_email] fresh per notification), and the

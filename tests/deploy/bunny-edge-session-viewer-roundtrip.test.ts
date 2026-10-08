@@ -427,7 +427,7 @@ describe("edge read path — a signed-in viewer reads DIFFERENT bytes than an an
     // source changes, verified two ways during the edge-site-shell lane
     // (2026-10-02): (1) this exact seed universe + ActorRenderEngines +
     // engine.render("Home", "open") on the untouched
-    // C:/localProjects/decko-ts-lane-edge-union-2 worktree renders the
+    // REPO_ROOT/ worktree renders the
     // "Sorry, you don't have permission" denial, no "hello"; (2) the
     // verbatim 42b608b copy of this test file, run unmodified on a fresh
     // worktree at the same tip, fails the same assertion. The signed-in

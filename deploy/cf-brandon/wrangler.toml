@@ -1,0 +1,57 @@
+# Cloudflare Worker serving Brandon's deck from D1: the Bunny edge engine's
+# handler over a D1 binding (deploy/cf-worker-src/cf-edge-engine-entry.ts).
+# Runbook: brandonDojoTech recovery/CLOUDFLARE-HOSTING.md.
+#
+# Deploy ONLY through tools/d1-trickle/cf-deploy.mjs, which hands wrangler
+# the API token and account id from the named credentials file, so a deploy
+# can never fall back to whatever account wrangler happens to be logged in to.
+#
+# The code uploaded is deploy/dist/cf-edge-engine.bundle.js as built by
+# tools/bundle-cf-edge-engine.mjs, unchanged (no_bundle): the bytes measured
+# locally in workerd are the bytes Cloudflare runs.
+
+name = "decko-brandon-trial"
+main = "../dist/cf-edge-engine.bundle.js"
+no_bundle = true
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+# Smart Placement: run the Worker near the D1 primary it calls about ten
+# times per page, instead of near the visitor. Free on all plans; it decides
+# after steady traffic from several locations, up to 15 minutes after a
+# deploy, and leaves 1% of requests unplaced as a baseline. The cf-placement
+# response header says where a request ran (remote-XXX or local-XXX).
+# https://developers.cloudflare.com/workers/configuration/placement/
+[placement]
+mode = "smart"
+
+# No logs or traces are kept by default; turn on only to debug.
+# [observability]
+# enabled = true
+
+# Only this Worker's own file: deploy/dist also holds the Bunny bundle,
+# which a wider glob would upload as an extra module.
+[[rules]]
+type = "ESModule"
+globs = ["cf-edge-engine.bundle.js"]
+
+# database_id is filled in by the runbook's create step (cf-deploy.mjs
+# --database-name looks it up on the named account and writes it here).
+[[d1_databases]]
+binding = "DB"
+database_name = "decko-brandon-trial"
+database_id = "00000000-0000-0000-0000-000000000000"
+
+# The same serving switches as Bunny's live script 93646 after the
+# 2026-10-07 switch, with every page-cache tier off and writes off.
+[vars]
+DECKO_WRITE_PATH = "0"
+DECKO_EDGE_CACHE = "0"
+DECKO_EDGE_GLOBAL_CACHE = "0"
+DECKO_EDGE_CACHE_EPOCH = "9101"
+DECKO_EDGE_RENDER_BUDGET_MS = "45000"
+DECKO_ONE_TRIP = "1"
+DECKO_ONE_TRIP_STORE = "inline"
+# "1" while the import runs (responses marked noindex and partial); "0" once
+# the whole deck is in. The runbook flips it with cf-deploy.mjs --set.
+DECKO_PARTIAL_DECK = "1"

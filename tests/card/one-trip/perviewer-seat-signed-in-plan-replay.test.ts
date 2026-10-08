@@ -51,8 +51,16 @@ import {
   normalizeSlotIds,
   type EngineBoot,
 } from "./one-trip-fixture.js";
+
+/**
+ * These suites run against a local mirror copy of the reference deck, which
+ * is not redistributed in this fork. Without it they cannot run at all, so
+ * they skip (and say so) rather than fail on missing data.
+ */
+const hasMirror = mirrorAvailable();
 import { applyDeckDataVersionStampMigration } from "./apply-deck-data-version-stamp-migration.js";
 import { scratchDir } from "../../support/scratch-dir.mjs";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const PAGE = "Home";
 /** The signed-in viewer the pin renders as: actor 583, the deck's no-role
@@ -237,7 +245,7 @@ async function bootSignedInEngine(
   return { ...boot, capture: driver };
 }
 
-describe("per-viewer seat: a signed-in render of a planned page rides the plan", () => {
+describeOrSkipLoud(!hasMirror, "tests/card/one-trip/perviewer-seat-signed-in-plan-replay.test.ts", "hasMirror")("per-viewer seat: a signed-in render of a planned page rides the plan", () => {
   let dir = "";
   let inlineDbPath = "";
   const savedEnv = {
@@ -263,7 +271,6 @@ describe("per-viewer seat: a signed-in render of a planned page rides the plan",
     `seats ${PAGE} for actor ${ACTOR_ID} at the plan-replay trip floor, ` +
       "bytes identical to the signed-in ladder; the per-viewer residue is only the party-bound shapes",
     async () => {
-      expect(mirrorAvailable(), "the trial-deck mirror copy must exist").toBe(true);
       dir = scratchDir("perviewer-seat-pin-");
 
       // ---- the inline store + the plan, at the store-build posture -------
@@ -402,7 +409,6 @@ describe("per-viewer seat: a signed-in render of a planned page rides the plan",
     // the stamp absorbed, the gate reads the recorded version forever — no
     // move detected, no reset, no re-seat, and the map serves pre-edit rows
     // indefinitely (397-trip live residue on the next render).
-    expect(mirrorAvailable(), "the trial-deck mirror copy must exist").toBe(true);
     dir = scratchDir("perviewer-seat-stamp-guard-");
     const inlineDbPath = await buildAndSeedInlineStore(dir);
     const planEntries = await recordAndSeedPlan(inlineDbPath);

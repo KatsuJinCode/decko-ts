@@ -24,7 +24,7 @@
 // Each field value is the literal string stored on the corresponding
 // `+field` card — for the first mechanism (follow notification) the
 // subject + text_message are literal strings, no inclusions or views.
-// Inclusions are a stretch goal documented in docs/notify-port-notes.md.
+// Inclusions are a stretch goal
 
 import type { MailMessage } from "./types.js";
 

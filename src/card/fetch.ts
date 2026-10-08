@@ -1,7 +1,7 @@
 // The fetch/cache layer: TypeScript port of card-1.110.0's Card.fetch.
 //
 // Ruby module -> file map (every method cites its source; the full trail
-// with semantics lives in docs/fetch-port-notes.md):
+// with semantics
 // - lib/card/fetch.rb                 -> FetchEngine.fetch / option handling
 // - lib/card/fetch/retrieve.rb        -> src/card/fetch/retrieve.ts
 // - lib/card/fetch/store.rb           -> updateCache / newForCache below

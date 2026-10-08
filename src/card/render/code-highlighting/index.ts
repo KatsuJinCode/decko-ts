@@ -55,7 +55,7 @@ export function wrapDiv(content: string): string {
  * `/\s+/m` matches the CRLF PAIR as one token. The encoder's escape table
  * (encoders/html.rb:139) maps every control code in 0x0B-0x1F to a literal
  * space, and 0x0D (`\r`) is in that range - so an un-normalized CRLF would
- * emit `" \n"` where the oracle emits `"\n"`. This was the pass-15
+ * emit `" \n"` where the oracle emits `"\n"`. This was an earlier
  * "layout-whitespace" class (60 pages): the 5 CodeRay-highlighted Layout
  * cards whose bodies are stored with CRLF line endings each gained one
  * space per line inside the <pre> block, and no captured coderay fixture

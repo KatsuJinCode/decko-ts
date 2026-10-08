@@ -3,7 +3,7 @@
 #
 # Run (from tools/oracle/decko-oracle-app):
 #   RAILS_ENV=development bundle exec decko runner \
-#     C:/localProjects/decko-ts/tests/card/mod-loader/oracle-capture-layout-one-line.rb
+#     REPO_ROOT/decko-ts/tests/card/mod-loader/oracle-capture-layout-one-line.rb
 #
 # Records to fixtures/captured/layout-one-line.json:
 # 1. The :one_line_content view registration on the Right::Head set

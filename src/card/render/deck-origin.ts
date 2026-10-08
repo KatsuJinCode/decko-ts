@@ -22,12 +22,12 @@
 // photographs BOTH shapes of the same helper; they are not in conflict):
 //
 //   1. SERVED PAGE (page lane). `capture-dual-lane-page-and-view.rb:343`
-//      sets `Cardio.config.deck_origin = "https://culturesmith.com"` inside
+//      sets `Cardio.config.deck_origin = "https://example.com"` inside
 //      `with_capture_page_bucket` and restores it in the ensure (line 348),
 //      so every page render sees a non-empty origin. Oracle:
-//      `decko.rootUrl='https://culturesmith.com/'` on 6588/6588 page-lane
-//      rows; `<a href="https://culturesmith.com/User">` (card 21792) and
-//      `https://culturesmith.com/*changed_card?view=history` (card 21796).
+//      `decko.rootUrl='https://example.com/'` on 6588/6588 page-lane
+//      rows; `<a href="https://example.com/User">` (card 21792) and
+//      `https://example.com/*changed_card?view=history` (card 21796).
 //
 //   2. VIEW FUNCTION (view lane). `capture_view_lane` (same script, lines
 //      277-287) renders `card.format.render(view)` OUTSIDE that block, so
@@ -45,7 +45,7 @@
 // settings — the capture block sets them together.
 //
 // SOURCE: capture-dual-lane-page-and-view.rb:307-317, production-equivalent
-// setting 4 ("deck_origin https://culturesmith.com") — the same pinned
+// setting 4 ("deck_origin https://example.com") — the same pinned
 // setting page.ts cites. It is a CAPTURE-CONTRACT constant, not a guess: the
 // corpus pins the head tag's bytes on all 6588 page rows, and the page
 // lane pins `card_url` output. The view-lane half is pinned just as hard,

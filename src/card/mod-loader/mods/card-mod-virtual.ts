@@ -35,7 +35,7 @@
 //   (virtual_cache.rb:35-41), and delete/delete! as update trash: true
 //   delegating to the ActWriter write path (virtual_cache.rb:43-51).
 //
-// NOT ported (honest remainder, see docs/mod-loader-port-notes.md):
+// NOT ported :
 // - the abort pipeline itself: `abort :success` unwinds the surrounding
 //   save so the virtual card's own cards row is never written - the TS
 //   engine has no save-transaction pipeline to unwind yet (same later-wave

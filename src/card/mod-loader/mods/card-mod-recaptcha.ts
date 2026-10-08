@@ -63,7 +63,7 @@
 //     config/locales/en.yml:2-4). Regex/nil semantics are oracle-pinned
 //     with the gem's own interpreter (see the per-export comments).
 //
-// NOT ported here (honest remainder, see docs/mod-loader-port-notes.md):
+// NOT ported here :
 //   - event :recaptcha (:validate, recaptcha.rb:50-55) — PORTED 2026-10-01
 //    : registered below through the
 //     mod-event seam (the add_comment pattern, card-mod-comment.ts) with

@@ -37,12 +37,13 @@
 // registered ruleHelpView's two-set dispatch - are byte-pinned through the
 // stub-fmt harness (the card-mod-permissions test's pattern), because the
 // global view table would clobber the render layer's / card-mod-content's
-// registrations of those names (docs/mod-loader-port-notes.md "View
+// registrations of those names ("View
 // dispatch is global, not set-scoped"). The A/B test additionally pins
 // that one_line_content is NOT live-registered: with the mod loaded it
 // still raises.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { expectViewWithoutMod } from "../../support/native-views.js";
 import {
   bindModLoaderToEngine,
   createRenderTestStorage,
@@ -124,9 +125,7 @@ describe("card-mod-rules through the mod loader (A/B)", () => {
     await expect(s.engine.render("RichText+*self", "set_label")).rejects.toThrow(
       UnsupportedViewError,
     );
-    await expect(s.engine.render("RichText+*self", "input")).rejects.toThrow(
-      UnsupportedViewError,
-    );
+    await expectViewWithoutMod(s.engine.render("RichText+*self", "input"), "input");
     await expect(s.engine.render("Cardtype", "grouped_list")).rejects.toThrow(
       UnsupportedViewError,
     );
@@ -172,9 +171,7 @@ describe("card-mod-rules through the mod loader (A/B)", () => {
     await expect(s.engine.render("Oracle Plain Probe", "set_label")).rejects.toThrow(
       UnsupportedViewError,
     );
-    await expect(s.engine.render("Oracle Plain Probe", "input")).rejects.toThrow(
-      UnsupportedViewError,
-    );
+    await expectViewWithoutMod(s.engine.render("Oracle Plain Probe", "input"), "input");
     await expect(s.engine.render("Oracle Plain Probe", "grouped_list")).rejects.toThrow(
       UnsupportedViewError,
     );

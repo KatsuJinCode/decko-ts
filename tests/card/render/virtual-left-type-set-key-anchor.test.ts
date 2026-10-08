@@ -1,6 +1,6 @@
 // TYPE_PLUS_RIGHT anchor for a nest-miss child of a virtual set card - the
 // census "set-key class-list divergence" instance on page 22 (PlainText),
-// receipt brandonDojoTech/tmp/wrong-goal-hunt/page-mechanism-census.md.
+// receipt WORK_DIR/page-mechanism-census.md.
 //
 // Mechanism: the child "PlainText+*type+by_name" has NO stored row (the
 // corpus has no PlainText+*type row either), so the nest resolves through

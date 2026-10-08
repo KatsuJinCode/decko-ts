@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Import a scrubbed Culturesmith deck sqlite file into Bunny Database.
+// Import a deck sqlite file into Bunny Database.
 // Uses the HTTP /v2/pipeline endpoint (libSQL-compatible, the protocol the
 // Bunny SQL API documents at https://bunny.net/docs/database/connect/sql-api.md).
 // Schema first, then rows chunked at <=500. Reports rows written.
@@ -24,10 +24,9 @@
 //   1. BUNNY_DB_URL / BUNNY_DB_TOKEN environment variables
 //   2. --creds <path>
 //   3. (nothing — the script exits 2 with the message below)
-// It used to fall back unconditionally to Brandon's account creds file at
-// ../brandonDojoTech/library/data/creds. That default is gone on purpose: a
-// trial-account import must never be able to silently write to the production
-// account. Pass --creds explicitly if you really do mean that file.
+// Credentials are never defaulted to any particular account: a trial-account
+// import must not be able to silently write to a production account. Pass
+// --creds explicitly if you mean a particular file.
 
 import Database from 'better-sqlite3';
 import { readFileSync, existsSync } from 'node:fs';
@@ -99,8 +98,8 @@ if (!DB_URL || !TOKEN) {
 }
 console.log(`target: ${DB_URL.replace(/\/\/[^@]*@/, '//<redacted>@')}`);
 // derive HTTP endpoint from libsql:// URL
-// libsql://01M3C77TGE0WTNWB2P4BMCQSJ3-cs-deck.lite.bunnydb.net/
-//   -> https://01M3C77TGE0WTNWB2P4BMCQSJ3-cs-deck.lite.bunnydb.net/v2/pipeline
+// libsql://<account-id>-<db-name>.lite.bunnydb.net/
+//   -> https://<account-id>-<db-name>.lite.bunnydb.net/v2/pipeline
 const httpBase = DB_URL.replace(/^libsql:\/\//, 'https://').replace(/\/$/, '');
 const PIPELINE_URL = `${httpBase}/v2/pipeline`;
 

@@ -3,7 +3,7 @@
 // so the wrapper is `card-list-name` and each item is the item CARD'S NAME
 // with no slot element and no permission denial.
 //
-// MECHANISM (ruby, read at C:/localProjects/archive/decko-fork-study):
+// MECHANISM (ruby, read at REPO_ROOT/archive/decko-fork-study):
 //
 //   decko/mod/edit/set/right/input_type.rb:1-5
 //     assign_type :pointer

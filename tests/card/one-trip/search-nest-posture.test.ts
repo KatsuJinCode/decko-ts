@@ -29,6 +29,7 @@ import {
   mirrorAvailable,
 } from "./one-trip-fixture.js";
 import { scratchDir } from "../../support/scratch-dir.mjs";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 describe("search-nest posture seam", () => {
   it("defaults to write-time execution (the research verdict's recommendation)", () => {
@@ -41,7 +42,7 @@ describe("search-nest posture seam", () => {
   });
 });
 
-describe.skipIf(!mirrorAvailable())("search-nest write-time execution (trial-deck mirror)", () => {
+describeOrSkipLoud(!mirrorAvailable(), "tests/card/one-trip/search-nest-posture.test.ts", "not (!mirrorAvailable())")("search-nest write-time execution (trial-deck mirror)", () => {
   let corpusDriver: SQLDatabaseDriver;
   let sideDriver: SQLDatabaseDriver;
   let sidePath = "";

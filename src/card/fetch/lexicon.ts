@@ -126,7 +126,7 @@ export class DbLexicon {
    *  (Ruby `(name || "").to_name`; blankness is the unknown signal at every
    *  consumer - retrieve_from_cache_by_id, id_from_string validation).
    *  This port returns undefined instead of the empty name; see
-   *  docs/fetch-port-notes.md ("empty-name fallback"). */
+   *   ("empty-name fallback"). */
   async name(id: number | undefined): Promise<DeckoName | undefined> {
     if (id === undefined || id === null) return undefined; // lexicon.rb#name guard
     const lex = await this.idToLex(id);

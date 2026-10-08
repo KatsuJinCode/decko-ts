@@ -5,15 +5,15 @@
  * seed universe.
  *
  * Coverage mirrors the SQL families the generator emits (see
- * docs/cql-port-notes.md and tests/cql/sql-generation.test.ts for the
+ *  and tests/cql/sql-generation.test.ts for the
  * oracle-verified shapes these statements render to): basic field filters,
  * name/key conditions, match via the REGEXP UDF, conjunction groups, not,
  * junction/plus conditions, card_references joins, editor/act chains,
  * sort/limit/offset, and count semantics.
  *
  * The REGEXP UDF is the LOCAL-path answer (src/cql/sqlite-regexp.ts); the
- * tests also pin the DECIDED edge fallback (docs/cql-execution-notes.md
- * "The REGEXP decision", implemented 2026-09-24): a match query on a driver
+ * tests also pin the DECIDED edge fallback (see
+ * docs/decisions/0005-cql-match-semantics.md): a match query on a driver
  * WITHOUT the UDF post-filters in JS to the same set the UDF path returns,
  * limit/offset leave the SQL, counts post-filter, and a match inside a
  * subselect (unpost-filterable) refuses loudly as CqlBadQuery.
@@ -720,7 +720,7 @@ describe("REGEXP without the UDF: the JS post-filter fallback (the REGEXP decisi
 });
 
 describe("deferred keys surface honestly at execution time", () => {
-  // Re-pinned by the pass-17 integration (lane-cql-found-by): the wave-2
+  // Re-pinned by an earlier integration (lane-cql-found-by): the wave-2
   // deferral is gone — string found_by values resolve via
   // resolveFoundByConditions. The unsupported hash-value shape refuses
   // loudly at execution (execute.ts), never a silent empty.

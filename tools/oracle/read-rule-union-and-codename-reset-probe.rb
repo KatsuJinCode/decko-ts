@@ -19,18 +19,18 @@
 #     real save fires the event and reset_cache nils the memo and rebuilds.
 #
 # Run (Git Bash, from the oracle app dir):
-#   cd C:/localProjects/decko-ts/tools/oracle/decko-oracle-app
+#   cd REPO_ROOT/tools/oracle/decko-oracle-app
 #   RAILS_ENV=development \
-#   DATABASE_URL=sqlite3:C:/localProjects/decko-ts-lane-skipped/tmp/read-rule-union-and-codename-reset-ruby-probe/deck-copy.sqlite3 \
+#   DATABASE_URL=sqlite3:REPO_ROOT/tmp/read-rule-union-and-codename-reset-ruby-probe/deck-copy.sqlite3 \
 #   bundle exec decko runner \
-#     C:/localProjects/decko-ts-lane-skipped/tools/oracle/read-rule-union-and-codename-reset-probe.rb
+#     REPO_ROOT/tools/oracle/read-rule-union-and-codename-reset-probe.rb
 #
 # Output: fixtures/captured/codename-reset-and-read-rule-union-oracle.json
-# (in the decko-ts-lane-skipped repo).
+# (in this repo).
 
 require "json"
 
-REPO_ROOT = "/c/localProjects/decko-ts-lane-skipped".sub("/c/", "C:/")
+REPO_ROOT = ENV.fetch("DECKO_TS_REPO_ROOT") { File.expand_path("../..", __dir__) }
 OUT_PATH = File.join(REPO_ROOT, "fixtures", "captured",
                      "codename-reset-and-read-rule-union-oracle.json")
 SLOT_ID_RE = /data-slot-id=(["'])\h+\1/.freeze

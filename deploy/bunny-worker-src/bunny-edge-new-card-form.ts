@@ -7,7 +7,7 @@
 // the deck's own chrome links as /new/Sign_up (the *account_links navbar arm
 // and the signin form's "...or sign up!" link — live-signin-ref.html), and
 // the edge answered it 404 (the measured gap in
-// tmp/wrong-goal-hunt/manifest-completion-lane.md section 2.1). The lineage
+// an internal work log section 2.1). The lineage
 // parsePath now reports { kind: "new", typeName }; dispatchEngineRequest
 // delegates here.
 //
@@ -40,7 +40,7 @@
 // not_found frame shape). RECONSTRUCTED from the Ruby source (labeled
 // inline): the frame header title, the name formgroup, the hidden type_id,
 // the buttons block, the slot-less body region. See
-// tmp/wrong-goal-hunt/route-gaps-lane.md.
+// an internal work log
 
 import type { FetchEngine } from "../../src/card/fetch.js";
 import { DeckoName } from "../../src/card/name.js";

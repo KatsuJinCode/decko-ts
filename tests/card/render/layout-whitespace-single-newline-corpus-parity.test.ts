@@ -1,5 +1,5 @@
 // Whole-page byte parity for the three layout-whitespace pages the
-// page-mechanism census (2026-09-29, tmp/wrong-goal-hunt/
+// page-mechanism census (2026-09-29, an internal work log
 // page-mechanism-census.md) pinned as failing by EXACTLY ONE newline under
 // clean page-only conditions:
 //
@@ -51,6 +51,7 @@ import {
   type RenderTestStorage,
 } from "./render-test-storage.js";
 import { renderPageBytes } from "../../../src/card/render/page.js";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -143,7 +144,7 @@ describe("layout whitespace: committed single-newline mechanism pin", () => {
   });
 });
 
-(PAGE_PARITY_REQUESTED ? describe : describe.skip)(
+describeOrSkipLoud(!(PAGE_PARITY_REQUESTED), "tests/card/render/layout-whitespace-single-newline-corpus-parity.test.ts", "PAGE_PARITY_REQUESTED")(
   "layout whitespace: single-newline corpus parity (raw-capture replay, opt-in)",
   () => {
   it(

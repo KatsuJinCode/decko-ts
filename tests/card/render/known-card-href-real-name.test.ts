@@ -1,6 +1,6 @@
 // Known-card wikilink href carries the RESOLVED card's name - the census
 // "token-swap" singleton (page 685 mythopsychology, census receipt
-// brandonDojoTech/tmp/wrong-goal-hunt/page-mechanism-census.md: sole diff
+// WORK_DIR/page-mechanism-census.md: sole diff
 // exp "N" vs act "n" at offset 13794 - href /Narrative vs /narrative).
 //
 // Mechanism: chunk/link.rb render_name_link renders view :link on the

@@ -1,5 +1,5 @@
 // capture-and-grade.mjs -- ONE-COMMAND post-deploy recapture + grade, with
-// provenance enforcement (see docs/staged-corpus-provenance.md).
+// provenance enforcement (see docs/parity-method.md).
 //
 // WHAT THIS IS
 //   The single command the operator runs the moment a new engine build goes

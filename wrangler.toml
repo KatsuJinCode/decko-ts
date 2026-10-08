@@ -4,9 +4,8 @@
 # THIS FILE IS WHAT THE "Deploy to Cloudflare" BUTTON SHIPS (see README.md).
 # The button hands this config to Cloudflare, which reads the bindings below,
 # provisions the resources on the deployer's own account, and rewrites the
-# resource ids in its fork of this repo. The database_id below is the REAL
-# database created for this repo's demo deck (commit 810264f) — a button
-# deploy still provisions its own database and rewrites the id.
+# resource ids in its fork of this repo. The database_id below is a
+# placeholder; a button deploy provisions its own database and writes the id.
 #
 # Docs (fetched 2026-10-01, workers/platform/deploy-buttons/):
 #   "Cloudflare will read the Wrangler configuration file of your source
@@ -16,12 +15,9 @@
 #    please make sure your source repository includes default values for
 #    resource names, resource IDs and any other properties for each binding."
 #
-# The id is a well-formed v4 UUID because that is the shape every D1 id
-# carries — all four D1 templates in cloudflare/templates (d1-template,
-# saas-admin-template, d1-starter-sessions-api-template, openauth-template)
-# ship the same shape. This one is not a placeholder: it is the real
-# database created for the demo deck. Wrangler validates the format;
-# provisioning a button deploy's own database overwrites the value.
+# For a manual deploy, replace REPLACE_WITH_YOUR_D1_DATABASE_ID with the id
+# printed by `npx wrangler d1 create decko-ts`. No infrastructure id from any
+# existing deployment ships in this file.
 #
 # NO SECRETS LIVE IN THIS FILE, and the deploy needs none: the Worker reads
 # exactly one thing from `env`, the D1 binding. There is no [vars] secret, no
@@ -68,8 +64,9 @@ __DECKO_RUNTIME__ = "'workers'"
 #                  the deploy page still migrates the right one — the docs'
 #                  "Running D1 Migrations" rule, verbatim.
 #   database_name  the default name offered on the deploy page; editable there.
-#   database_id    the REAL demo database's id (created in commit 810264f);
-#                  provisioning a button deploy rewrites it.
+#   database_id    YOUR database's id. Provisioning a button deploy writes the
+#                  real value here; for a manual deploy, run
+#                  `npx wrangler d1 create decko-ts` and paste the id it prints.
 #   migrations_dir deploy/migrations/, applied by `npm run deploy`:
 #                    0001-schema.sql                            core schema
 #                    0002-card-text-binary-lookup-indexes.sql  additive,
@@ -100,7 +97,7 @@ __DECKO_RUNTIME__ = "'workers'"
 [[d1_databases]]
 binding = "DB"
 database_name = "decko-ts"
-database_id = "d07bd84d-4003-4611-b5bd-a318f6807676"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
 migrations_dir = "deploy/migrations"
 
 [vars]

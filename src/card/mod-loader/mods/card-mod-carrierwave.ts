@@ -83,6 +83,8 @@ import {
   derivedCloudAttachmentSource,
   formatFileCore,
   HTML_VIEWS,
+  imageSizeVariant,
+  localStorageUrl,
 } from "../../render/views.js";
 import { h } from "../../render/slot-html.js";
 import { lastContentActionIdFromIdentifier } from "../../attachments/attachment-content.js";
@@ -123,13 +125,14 @@ function storageTypeFromContent(content: string): "cloud" | "web" | "local" | "c
 /** contextualize_path (the path-prefix in lib/card/mod/carrierwave.rb plus
  *  the file_card_uploader URL machinery): converts a coded identifier into a
  *  web path. The carrierwave doc comments (lib/carrier_wave/file_card_uploader.rb:
- *  88-117) define:
+ *  88-117) define these STORAGE paths (where the bytes live, not the url):
  *    coded: mod_dir/file/codename(-variant).ext  (no colon on codename)
  *    local: files_dir/card_id/action_id(-variant).ext
  *    cloud: bucket/bucket_subdir/id/action_id(-variant).ext
- *  The headless port resolves the FILES_WEB_PATH (lib/card/mod/carrierwave.rb:
- *  2 `config.files_web_path = "files"`) for local uploads and the raw URL
- *  for web. The CLOUD arm is Ruby's render-time derivation
+ *  The URL of a local or coded file is local_url (file_card_uploader/path.rb:
+ *  11-13): "/files/" + the identifier's own directory (`~<card id>` or the
+ *  `:<codename>` parts) + the derived filename — views.ts localStorageUrl.
+ *  Web content is its own url. The CLOUD arm is Ruby's render-time derivation
  *  (derivedCloudAttachmentSource in views.ts): Ruby's uploader deliberately
  *  ignores the stored identifier when retrieving (lib/carrier_wave/
  *  file_card_uploader/path.rb:28-32) and rebuilds the filename from db data
@@ -138,7 +141,7 @@ function storageTypeFromContent(content: string): "cloud" | "web" | "local" | "c
  *  — so the stored key is never the rendered filename (the Michael
  *  Christensen oracle anchor: db_content `(my_bucket)/14547/61887.abr.1.doc`
  *  renders `http://s3.amazonaws.com//files/14547/1.doc`). */
-function contextualizePath(content: string): string {
+function contextualizePath(content: string, cardId?: number): string {
   const trimmed = content.trim();
   if (trimmed === "") return "";
   const type = storageTypeFromContent(trimmed);
@@ -149,14 +152,10 @@ function contextualizePath(content: string): string {
     // asset host + /files/<card-id>/<action-id><ext>.
     return derivedCloudAttachmentSource(trimmed);
   }
-  if (type === "local") {
-    // local: ~/card_id/action_id.ext -> /files/card_id/action_id.ext
-    const id = trimmed.replace(/^~/, "");
-    return `/files/${id}`;
-  }
-  if (type === "coded") {
-    // coded: :codename/mod_name.ext -> /files/codename.mod_name.ext
-    return `/files/${trimmed.replace(/^:/, "").replace(/\//g, ".")}`;
+  if (type === "local" || type === "coded") {
+    // local_url (file_card_uploader/path.rb:11-13): /files/~<card id>/<action
+    // id>.<ext> and /files/:<codename>/<mod>.<ext> (views.ts localStorageUrl).
+    return localStorageUrl(trimmed, undefined, cardId);
   }
   return "";
 }
@@ -176,13 +175,14 @@ function contextualizePath(content: string): string {
 
 function fileSource(ctx: ViewContext): string {
   const raw = (ctx.fmt.card.dbContent ?? "").trim();
-  return contextualizePath(raw);
+  return contextualizePath(raw, ctx.fmt.card.id);
 }
 
 const fileCoreView: ViewFn = (ctx) => {
   return formatFileCore(ctx.fmt.card.dbContent, {
     cardName: ctx.fmt.card.name.s,
     contextNames: ctx.fmt.contextNames,
+    cardId: ctx.fmt.card.id,
   });
 };
 
@@ -209,7 +209,13 @@ function imageSource(ctx: ViewContext): string {
     // started rendering image bodies non-empty).
     return cloudImageUrl(raw, ctx.voo?.opts.size, ctx.fmt.engine.imageCdnHost);
   }
-  return contextualizePath(raw);
+  if (type === "local" || type === "coded") {
+    // selected_version (set/type/image.rb:39-48): the requested size's
+    // version, none for an svg.
+    const svg = /\.svg$/i.test(raw);
+    return localStorageUrl(raw, svg ? undefined : imageSizeVariant(ctx.voo?.opts.size), ctx.fmt.card.id);
+  }
+  return contextualizePath(raw, ctx.fmt.card.id);
 }
 
 const imageInlineView: ViewFn = (ctx) => ctx.fmt.renderView("core");
@@ -270,7 +276,9 @@ const imageHtmlCoreView: ViewFn = (ctx) => {
     // missing source -> "<!-- invalid image for NAME; source: SOURCE -->"
     return `<!-- invalid image for ${h(ctx.fmt.card.name.s)}; source: ${h(src)} -->`;
   }
-  if (storageTypeFromContent((ctx.fmt.card.dbContent ?? "").trim()) === "cloud") {
+  // image_tag source, alt: card.name — alt first, Rails' self-closing tag,
+  // for every stored attachment (cloud, local, coded).
+  if (storageTypeFromContent((ctx.fmt.card.dbContent ?? "").trim()) !== "web") {
     return `<img alt="${h(ctx.fmt.card.name.s)}" src="${h(src)}" />`;
   }
   return `<img src="${h(src)}" alt="${h(ctx.fmt.card.name.s)}">`;

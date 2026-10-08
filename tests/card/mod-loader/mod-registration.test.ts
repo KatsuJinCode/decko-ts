@@ -58,8 +58,14 @@ function modWithView(name: string, view: string, fn: ViewFn): ModSource {
 
 describe("view registration into the live HTML_VIEWS record", () => {
   it("registers mod views where Ruby's define_method would (and unload restores)", () => {
-    const before = "help" in HTML_VIEWS;
-    expect(before).toBe(false); // baseline: the port does not ship help views
+    // :help, :help_text and :lead are compiled into HTML_VIEWS (render/views.ts
+    // imports card-mod-help's view functions): the production worker binds no
+    // mod deck, so the board/edit closure lives in the compiled record
+    // (commit 9cadf48f; :lead since the raise-leadview merge). Loading the mod
+    // re-registers them over the compiled entries; reset() puts back exactly
+    // what was there before the load.
+    const before = { help: HTML_VIEWS["help"], help_text: HTML_VIEWS["help_text"], lead: HTML_VIEWS["lead"] };
+    expect(typeof before.help).toBe("function");
 
     const loader = new ModLoader([{ manifest: cardModHelp }], HTML_VIEWS);
     liveLoader = loader;
@@ -69,14 +75,11 @@ describe("view registration into the live HTML_VIEWS record", () => {
     expect(typeof HTML_VIEWS["lead"]).toBe("function");
 
     loader.reset();
-    expect("help" in HTML_VIEWS).toBe(false);
-    expect("help_text" in HTML_VIEWS).toBe(false);
-    // MERGE-PASS-18 RE-PIN (raise-leadview merge): :lead stays after reset —
-    // it is the compiled-in HTML_VIEWS entry (render/views.ts imports
-    // card-mod-help's leadView), not a loader-registered one; reset() removes
-    // only what the loader added. The graded page-lane harness binds no
-    // loader and must still dispatch :lead (the Role lead-view page class).
-    expect("lead" in HTML_VIEWS).toBe(true);
+    expect(HTML_VIEWS["help"]).toBe(before.help);
+    expect(HTML_VIEWS["help_text"]).toBe(before.help_text);
+    // The graded page-lane harness binds no loader and must still dispatch
+    // :lead (the Role lead-view page class).
+    expect(HTML_VIEWS["lead"]).toBe(before.lead);
   });
 
   it("later mods override earlier views (module reopening) and reset restores exactly", () => {

@@ -19,6 +19,7 @@
 //   - The bare discussion card (the seed data/real.yml's "discussion")
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { expectViewWithoutMod } from "../../support/native-views.js";
 import {
   bindModLoaderToEngine,
   createRenderTestStorage,
@@ -140,9 +141,7 @@ describe("card-mod-comment through the mod loader (A/B)", () => {
     expect(await s.engine.render("Oracle Discussion Probe+discussion", "open_content")).toBe(
       await s.engine.render("Oracle Discussion Probe+discussion", "core"),
     );
-    await expect(s.engine.render("Oracle Discussion Probe+discussion", "input")).rejects.toThrow(
-      UnsupportedViewError,
-    );
+    await expectViewWithoutMod(s.engine.render("Oracle Discussion Probe+discussion", "input"), "input");
     // :comment_box left this list on the-69-wave1-refill2 (2026-10-03).
     // The live-oracle recapture refuted the unregistered surface's "" :
     // the anonymous capture carries the FULL form on stored discussions

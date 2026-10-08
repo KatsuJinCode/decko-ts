@@ -3,11 +3,11 @@
 //
 // Why this script exists (queue-repair + corpus-re-designation lane,
 // 2026-10-04): the original designation
-// (tmp/wrong-goal-hunt/denied-seam-reanchor-lane.md, "Decision: option (b)")
+// (an internal work log, "Decision: option (b)")
 // named a digest CONSTRUCTION in prose -- "sha256 over sorted 'filename
 // sha256' lines" -- which is ambiguous: with or without the trailing newline,
 // and with or without the file extension in the name. The tree it designated
-// (decko-ts-lane-seam-reanchor) was destroyed mid-run by the hygiene
+// () was destroyed mid-run by the hygiene
 // remediation, so the recorded digests can no longer be recomputed from their
 // own source and the ambiguity would otherwise be unfalsifiable. This script
 // prints EVERY plausible variant so the ambiguity is settled by measurement

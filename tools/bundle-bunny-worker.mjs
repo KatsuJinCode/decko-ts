@@ -15,7 +15,7 @@
 //
 // EXTERNAL BY DESIGN: "@bunny.net/edgescript-sdk" is left as a bare import in
 // the bundle. bunny.net's own standalone template and every docs example import
-// it that way (https://bunny.net/docs/scripting/standalone/overview.md,
+// it that way (https://bunny.net/docs/scripting/standalone/overview.md
 // fetched 2026-10-01), so the platform resolves it at run time; inlining it
 // would pin a 0.13.0 copy of the SDK into the artifact and freeze the
 // `Bunny.v1.serve(handler)` contract into the bundle. To inline it instead,

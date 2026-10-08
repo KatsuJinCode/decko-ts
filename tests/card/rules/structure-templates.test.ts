@@ -352,8 +352,28 @@ describe("RenderEngine structured content", () => {
       // lineage-reconciliation lane): +1 statement (the deck_data_version
       // stamp read folded LAST into the cold batch), +0 round trips
       // (24 -> 25).
-      expect(cold.statements).toBe(25);
-      expect(cold.roundTrips).toBe(10);
+      // Batched composition, 2026-10-06 (25 -> 28 statements, 10 -> 13
+      // round trips; measured with a statement log on this fixture):
+      //  +1  the compose type prime (prefetch.ts primeComposeTypeInputs)
+      //      asks the prelude type row's own type, id 2, which this
+      //      six-card deck does not have. Absent ids are deliberately left
+      //      unprimed (the fetch ladder's idToLex read has no trash filter,
+      //      so a primed miss could answer differently), so the ladder still
+      //      asks it later. On a real deck the type exists and the prime
+      //      replaces the ladder's reads.
+      //  +1  the wave re-pends a junction whose compound side was unresolved
+      //      (render.ts, fetch-composer V3) and probes the rule pair
+      //      (Page+*type, *structure) as its own batch; the old composed-key
+      //      universe statement answered it in the prelude.
+      //  +1  one more point read of the absent id 2 on the late path.
+      // A fourth extra trip (re-reading the prelude's type row, already
+      // composed and cached) was a redundancy and is fixed: composeAndCache
+      // marks every composed row as held for later type primes.
+      // The trade is deliberate: on the batch lane's own pin suite the same
+      // vehicles took a post-bump render from 182 to 91 round trips
+      // (commit 780f2a8f).
+      expect(cold.statements).toBe(28);
+      expect(cold.roundTrips).toBe(13);
       // Warm re-render: the structured pass is pure memory; the render pays
       // exactly the freshness stamp (one statement, one round trip — the
       // delivery-contract:79 warm-render floor).

@@ -9,7 +9,7 @@
  * `regexp(Y, X)` function is registered on the connection. This module is
  * that registration for the LOCAL path (better-sqlite3). The edge path
  * (D1/libSQL: no UDFs possible) is decided but not implemented here — see
- * docs/cql-execution-notes.md ("REGEXP on the edge").
+ *  ("REGEXP on the edge").
  *
  * SEMANTICS — case-insensitive by default, matching MySQL REGEXP (ICU in
  * MySQL 8, Henry Spencer in 5.x; both case-fold ASCII by default; the
@@ -26,7 +26,7 @@
  *      equivalents before compiling, and \p{...} switches the compile to
  *      `u` mode. Anything still untranslated fails the compile — the UDF
  *      then throws and the query errors (MySQL errors on a bad regexp
- *      too; no silent divergence — docs/cql-match-decision.md
+ *      too; no silent divergence — docs/decisions/0005-cql-match-semantics.md
  *      "Decision" items 1-2).
  *
  * ARGUMENT ORDER: SQLite evaluates `X REGEXP Y` as `regexp(Y, X)` — the
@@ -43,7 +43,7 @@ const PATTERN_CACHE_LIMIT = 512;
 const patternCache = new Map<string, RegExp | null>();
 
 /** The POSIX bracket classes MySQL's regex accepts and JS does not — the
- *  translation table (docs/cql-match-decision.md "Decision" item 1: the
+ *  translation table (docs/decisions/0005-cql-match-semantics.md "Decision" item 1: the
  *  ASCII-faithful members; MariaDB's ICU spellings beyond these were not
  *  exercised by the capture battery). Each replacement carries its own
  *  brackets (the POSIX spelling `[[:alpha:]]` is a COMPLETE class, not a
@@ -93,13 +93,13 @@ function compileOrNull(source: string, flags: string): RegExp | null {
 /** Compile one MySQL-flavored pattern to a JS RegExp. Returns null when the
  *  pattern cannot compile — the UDF and the post-filter executor TURN THAT
  *  INTO A THROWN ERROR ("invalid REGEXP pattern"), per
- *  docs/cql-match-decision.md "Decision" item 2: anything still
+ *  docs/decisions/0005-cql-match-semantics.md "Decision" item 2: anything still
  *  untranslated must throw (a query that fails is debuggable; a query that
  *  silently drops rows is corruption — the three captured silent
  *  no-matches were exactly that failure shape). Shared with the
  *  post-filter executor (executeQuery's REGEXP-on-edge fallback runs the
  *  SAME compile logic — one matching implementation, per
- *  docs/cql-execution-notes.md "The REGEXP decision"). */
+ *  docs/decisions/0005-cql-match-semantics.md). */
 export function compileMatchPattern(pattern: string): RegExp | null {
   const cached = patternCache.get(pattern);
   if (cached !== undefined) return cached;

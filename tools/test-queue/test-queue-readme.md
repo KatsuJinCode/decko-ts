@@ -43,7 +43,7 @@ it.
 ```bash
 node tools/test-queue/submit-test-job.mjs \
   --name "merge-gate" \
-  --cwd C:/localProjects/decko-ts \
+  --cwd REPO_ROOT/decko-ts \
   --cmd "npx vitest run" \
   --timeout-min 20
 ```
@@ -53,7 +53,7 @@ node tools/test-queue/submit-test-job.mjs \
 ```bash
 node tools/test-queue/submit-test-job.mjs \
   --name "env-gated probe" \
-  --cwd C:/localProjects/decko-ts \
+  --cwd REPO_ROOT/decko-ts \
   --cmd "npx vitest run tests/some-probe.test.ts" \
   --env MY_PROBE=1 --env OTHER_SETTING=abc
 ```

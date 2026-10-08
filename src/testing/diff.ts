@@ -26,7 +26,7 @@
 export const RANDOMIZED_SLOT_ATTRIBUTE = 'data-slot-id="RANDOMIZED"';
 
 /**
- * The normalization rule, mirrored from docs/oracle-harness.md:
+ * The normalization rule, mirrored from docs/parity-method.md:
  *
  *   data-slot-id=<quote><20 lowercase hex><quote>  ->  data-slot-id="RANDOMIZED"
  *

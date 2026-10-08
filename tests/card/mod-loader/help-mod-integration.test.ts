@@ -94,7 +94,7 @@ describe("card-mod-help through the mod loader (A/B)", () => {
     // helpView — set/all/help.rb:6 is a BASE-format registration in Ruby,
     // registrar.rb:79-84, visible deck-or-no-deck), so the pre-seam premise
     // "help is mod-only" no longer holds — the same move this arm's
-    // MERGE-PASS-18 :lead re-pin below records. The WITHOUT arm now pins the
+    // MERGE :lead re-pin below records. The WITHOUT arm now pins the
     // SAME oracle bytes the WITH arm pins (single source: the mod
     // registration adds nothing for help).
     const helpHtml = normalize(await s.engine.render("Oracle Help Probe", "help"));
@@ -112,7 +112,7 @@ describe("card-mod-help through the mod loader (A/B)", () => {
       await s.engine.render("Oracle Help Probe", "help_text"),
     );
     expect(helpTextHtml).toBe(FIXTURE.rendered["Oracle Help Probe#help_text"]);
-    // MERGE-PASS-18 RE-PIN (raise-leadview merge): :lead is the compiled-in
+    // MERGE RE-PIN (raise-leadview merge): :lead is the compiled-in
     // HTML_VIEWS entry (render/views.ts imports card-mod-help's leadView as
     // the single source), so the loader-less engine dispatches it — the
     // pre-merge premise "lead is mod-only" no longer holds. The WITHOUT arm

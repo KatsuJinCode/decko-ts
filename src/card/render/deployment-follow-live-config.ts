@@ -1,5 +1,5 @@
 // The deployment "follow live" configuration — the graded environment's
-// LIVE deployment values (culturesmith.com, Decko v0.19.1 era; live-check-71
+// LIVE deployment values (example.com, Decko v0.19.1 era; live-check-71
 // 2026-10-03) the engine emits when a deployment sets them, while the UNSET
 // default keeps every emission byte-identical to the frozen-corpus engine.
 // Same contract as setDeploymentCloudAssetHost (close-71-with-live): a
@@ -11,7 +11,7 @@
 //
 // 1. `serializerEra: "live"` — the live serializer's emission forms:
 //    (a) the conditional data-slot `show` key
-//        (docs/serializer-spec-conditional-data-slot-show-key.md: emit
+//        (: emit
 //        `show` iff the slot's show-candidate list minus the requested
 //        view is non-empty; when emitted, the list drops the requested
 //        view itself — live 11 carry / 26 omit, 37/37 measured agreement),
@@ -49,7 +49,7 @@ export interface DeploymentFollowLiveConfig {
   footerDeckoVersion?: string;
   recaptchaSiteKey?: string;
   /** The live deployment's decko root URL (script_variables'
-   *  decko.rootUrl -- live "https://culturesmith.com/"; the corpus
+   *  decko.rootUrl -- live "https://example.com/"; the corpus
    *  pins the capture-era "/" form). */
   deckoRootUrl?: string;
   /** The deployment's `Cardio.config.default_html_view` (the value
@@ -75,7 +75,7 @@ let config: DeploymentFollowLiveConfig | undefined;
  *  serializer era (the conditional data-slot `show` key + the live
  *  class-token order) and the head/body deployment constants — and the two
  *  have opposite blast radii on the graded corpus. The constants are a
- *  DEPLOYMENT property: the port serves culturesmith.com at Decko v0.19.1,
+ *  DEPLOYMENT property: the port serves example.com at Decko v0.19.1,
  *  so the version constants must match it. The serializer era is a CORPUS
  *  property: the ~3,624 frozen-form view-lane entries pin the capture-era
  *  emission form, and arming the era flips them RED (view187-lane.md step 4's

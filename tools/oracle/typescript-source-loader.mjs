@@ -43,7 +43,7 @@
 //   `src/card/assets/uglify-harmony-compile-engine.ts:47` do the same. A
 //   bundle was built and MEASURED to get this wrong: rolldown rewrote
 //   `import.meta.url` to the OUTPUT file's URL and RAW_CORPUS_DB came back as
-//   `C:\localProjects\tmp\raw-ground-truth\bench-corpus-raw.sqlite3` -- a path
+//   `REPO_ROOT\tmp\raw-ground-truth\bench-corpus-raw.sqlite3` -- a path
 //   that does not exist. Per-file loading keeps every module at its real path,
 //   so those derivations are untouched.
 //

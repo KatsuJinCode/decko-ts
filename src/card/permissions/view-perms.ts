@@ -48,7 +48,7 @@
 // would collide (card-mod-layout set/right/enabled_roles.rb:35 defines a
 // :none :edit_inline on that right set vs the all-set :update at
 // card-mod-edit set/all/edit_inline.rb:2) resolve to the ALL-SET entry,
-// and the losers are recorded in docs/view-perms-notes.md.
+//
 
 /** Ruby's CRUD task set (permission.rb:11 CRUD = create read update delete). */
 export type CrudTask = "read" | "create" | "update" | "delete";
@@ -59,7 +59,7 @@ export type CrudTask = "read" | "create" | "update" | "delete";
  *  - check: true, method -> denied_task calls format.send(method); ported
  *    method predicates (can_configure?, cardtype.rb:68-70) resolve through
  *    the gate input's predicateAllowed hook — the unported remainder still
- *    treats them as passing (docs/view-perms-notes.md). */
+ *    treats them as passing. */
 export type ViewPermsResolution =
   | { readonly check: false }
   | { readonly check: true; readonly predicate: false; readonly task: CrudTask }
@@ -139,7 +139,7 @@ const PERMS_NONE = new Set<string>([
 
 /**
  * Views with a non-default CRUD `perms:` directive (all-set definitions;
- * everything else in Ruby is set-scoped — see docs/view-perms-notes.md).
+ * everything else
  * card-mod-edit set/all/edit_content.rb:28 (edit), edit_name.rb:2,6
  * (edit_name, name_form), edit_type.rb:2,8 (edit_type, edit_type_form),
  * edit_inline.rb:2 (edit_inline), form.rb:20 (edit_in_form),
@@ -217,7 +217,7 @@ export function viewPerms(view: string): ViewPerms {
 
 /** True when the view resolves to a NON-read check — the engine's trigger
  *  for precomputing ok_to_<task>? verdicts (see the coordinator patch in
- *  docs/view-perms-notes.md). Views that skip (perms :none) never need
+ *). Views that skip (perms :none) never need
  *  verdicts. */
 export function viewRequiresTask(view: string): boolean {
   const resolution = resolveViewPerms(view);
@@ -278,12 +278,12 @@ export function viewDenialView(view: string): string | undefined {
  * the task symbol for CRUD tasks, FALSE for method-predicate tasks (Ruby
  * string interpolation of false is "", so those spans read "..." between
  * the parens). The corpus pins the read label 124,632 times and never any
- * other task (fixtures/corpus/* census, docs/view-perms-notes.md).
+ * other task.
  *
  * The loud branch (error.rb:191-210, the framed "Sorry" page) only fires
  * for focal renders (main? true) — a page-layer concern; the engine never
  * sets main, so it is unreachable here (documented remainder in
- * docs/permissions-port-notes.md).
+ * ).
  */
 export function quietDenial(task = "read"): string {
   return `<span class="denied"><!-- Sorry, you don't have permission (${task}) --></span>`;

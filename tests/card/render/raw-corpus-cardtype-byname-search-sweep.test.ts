@@ -1,16 +1,16 @@
 // raw-corpus-cardtype-byname-search-sweep.test.ts -- the p20-cardtype-search
 // port's evidence sweep: renders the 51 large-gap Cardtype-typed page-lane
-// failures (the pass-15 fail-dump class "Cardtype pages whose byte mass is
+// failures (an earlier fail-dump class "Cardtype pages whose byte mass is
 // the +*type+by_name member search", pinned with numeric page-lane ids in
 // raw-corpus-cardtype-byname-search-subset.json) through the engine's REAL
 // page renderer over the RAW ground-truth corpus, and records per-page
 // parity/search evidence against the oracle page-lane bytes.
 //
 // Report-only (the census contract; the graded verifier already ran
-// for pass-19 -- this spec never re-runs a grader): it records evidence --
+// for an earlier pass -- this spec never re-runs a grader): it records evidence --
 //
 //   tmp/census-ctsearch/results.jsonl   one line per page: identity,
-//       pass-15 gap, verdict, search-flip evidence, by_name slot region
+//       an earlier pass gap, verdict, search-flip evidence, by_name slot region
 //       parity, class-token census, first diff, mechanism set, regions
 //   tmp/census-ctsearch/pages/<id>-<key>.{exp,act}.html
 //       both normalized sides, for offline re-analysis
@@ -33,6 +33,7 @@ import { describe, it, expect } from "vitest";
 import { byteDiff, normalizeSlotIds } from "../../../src/testing/diff.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
 import { walkDiff } from "./census-page-diff-walker.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -66,7 +67,7 @@ interface PageLaneLine {
 
 /** The oracle bytes for one entry: the lane==="page" line with the entry's
  *  numeric id, scanned across every page-lane shard present on disk. (The
- *  pass-15 repro dump's phase tags do NOT map to page-lane shard numbers;
+ *  an earlier pass repro dump's phase tags do NOT map to page-lane shard numbers;
  *  the entries were resolved against the shards directly, and the id match
  *  is the ground truth — a miss is a data error, not a lookup guess.) */
 function loadOracleEntry(entry: SubsetEntry): PageLaneLine {
@@ -96,7 +97,7 @@ describe("raw-corpus cardtype by_name search sweep (51 large-gap Cardtype pages)
     { timeout: 3_600_000 },
     async (ctx) => {
       if (!REPLAY_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/raw-corpus-cardtype-byname-search-sweep.test.ts", "REPLAY_REQUESTED");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

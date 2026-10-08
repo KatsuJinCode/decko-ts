@@ -5,7 +5,7 @@
 // helpRules returns empty where the oracle renders the setting's help text").
 //
 // Every expected data-bs-content value below is the ORACLE attribute bytes
-// copied verbatim from the pass-15 fail dump
+// copied verbatim from an earlier fail dump
 // (decko-ts-pass15-int tmp/raw-ground-truth/enumeration/view-fail-dump-full/
 // html/<page>-closed.expected.html), so a green run pins the exemplar bytes
 // exactly. At base be76583 every assertion in the first describe

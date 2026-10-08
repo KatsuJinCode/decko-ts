@@ -32,7 +32,7 @@ require "sqlite3"
 require "coderay"
 
 GATE_DIR =
-  "C:/localProjects/decko-ts-lane-templatenest/fixtures/captured/coderay"
+  File.expand_path("../fixtures/captured/coderay", __dir__)
 # Real oracle bytes that the port does NOT reproduce, kept beside the gates
 # so the divergence has bytes on disk instead of a claim in a comment. The
 # <script>/<style> body sub-scanners (coderay scanners/javascript.rb +
@@ -41,7 +41,7 @@ GATE_DIR =
 # for an identifier-only body (every corpus fixture) and coarse for
 # anything else.
 DIVERGENCE_DIR =
-  "C:/localProjects/decko-ts-lane-templatenest/fixtures/captured/coderay-known-divergence"
+  File.expand_path("../fixtures/captured/coderay-known-divergence", __dir__)
 FileUtils.mkdir_p GATE_DIR
 FileUtils.mkdir_p DIVERGENCE_DIR
 
@@ -50,7 +50,7 @@ FileUtils.mkdir_p DIVERGENCE_DIR
 # :template` guards. Read live from the raw ground-truth sqlite (the same
 # db the page oracle rendered from) so the capture cannot drift from it.
 def corpus_22747_content
-  db = "C:/localProjects/decko-ts-lane-templatenest/tmp/raw-ground-truth/bench-corpus-raw.sqlite3"
+  db = File.expand_path("../tmp/raw-ground-truth/bench-corpus-raw.sqlite3", __dir__)
   conn = SQLite3::Database.new db, readonly: true
   content = conn.get_first_value "SELECT content FROM cards WHERE id = 22747"
   conn.close

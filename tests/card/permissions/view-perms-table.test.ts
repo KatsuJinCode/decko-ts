@@ -20,7 +20,7 @@
 // anywhere — the captured surface (closed/title/content/open only) never
 // renders a non-read-task view, so the non-read byte contract is proven
 // against the gems (the directive table's citations) and pinned here
-// synthetically, per docs/view-perms-notes.md.
+// synthetically
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

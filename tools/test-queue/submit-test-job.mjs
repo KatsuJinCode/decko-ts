@@ -9,7 +9,7 @@
 //
 // Usage:
 //   node tools/test-queue/submit-test-job.mjs --name "merge-gate" \
-//     --cwd C:/localProjects/decko-ts --cmd "npx vitest run" [--timeout-min 20] [--no-wait] \
+//     --cwd REPO_ROOT/decko-ts --cmd "npx vitest run" [--timeout-min 20] [--no-wait] \
 //     [--env KEY=VALUE ...]
 //
 // --env (repeatable) is the env-setting channel: it is persisted in the job

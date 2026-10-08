@@ -411,7 +411,7 @@ function runJob(job) {
     const logPath = path.join(LOGS, `${job.id}.log`);
     // APPEND, never truncate (instrument-reliability lane, 2026-10-01). The
     // pre-fix "w" open destroyed a previous attempt's stdout whenever the same
-    // job id ran again -- the exact loss class the pass-21 grade suffered when
+    // job id ran again -- the exact loss class an earlier grade suffered when
     // its ad-hoc launcher redirected stdout with ">" and attempt 2's launch
     // erased attempt 1's phase lines (profile-full-checker-2026-10-01.md §6).
     // Identical pending/running jobs dedupe onto one id

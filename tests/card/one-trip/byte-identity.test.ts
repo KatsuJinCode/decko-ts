@@ -43,6 +43,7 @@ import {
   normalizeSlotIds,
 } from "./one-trip-fixture.js";
 import { scratchDir } from "../../support/scratch-dir.mjs";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const hasMirror = mirrorAvailable();
 const HARNESS_REPORT_PATH = fileURLToPath(
@@ -61,7 +62,7 @@ interface PageMeasurement {
   residueClasses: Record<string, number>;
 }
 
-describe.skipIf(!hasMirror)("one-trip byte-identity acceptance (trial-deck mirror)", () => {
+describeOrSkipLoud(!hasMirror, "tests/card/one-trip/byte-identity.test.ts", "hasMirror")("one-trip byte-identity acceptance (trial-deck mirror)", () => {
   let sidePath = "";
   let corpusDriver: SQLDatabaseDriver;
   const measurements: PageMeasurement[] = [];

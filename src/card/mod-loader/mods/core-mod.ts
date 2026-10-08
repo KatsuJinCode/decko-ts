@@ -12,7 +12,7 @@
 // site these views have. The manifest IS wired into defaultDeckSources():
 // composed at pass14-int as MANIFESTS' first entry —
 // core loads at bundle index 0; the composition receipt is
-// docs/admin-compose.md. The core-mod suites load it standalone as before.
+// . The core-mod suites load it standalone as before.
 //
 // HONESTY BOUNDARY (rendered-unpinned): no Ruby-oracle capture exists for
 // any of these views. Bytes derive from the gem sources, cited inline per

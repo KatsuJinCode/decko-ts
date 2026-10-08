@@ -18,7 +18,7 @@ require "json"
 require "coderay"
 
 OUT_PATH =
-  "C:/localProjects/decko-ts-lane-templatenest/fixtures/captured/coderay/alpha-style-kind-paths.json"
+  File.expand_path("../fixtures/captured/coderay/alpha-style-kind-paths.json", __dir__)
 
 css = CodeRay::Encoders::HTML::CSS.new :alpha
 

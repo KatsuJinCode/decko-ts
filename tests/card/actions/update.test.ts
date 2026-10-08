@@ -1,7 +1,7 @@
 // Action-layer tests — SAVE/UPDATE (Card#update!): content changes, no-op
 // saves, renames (simple + junction rewire), rename guards, trash-name
 // obstacles, and cycle rejection. Ruby cites inline; trail in
-// docs/actions-port-notes.md. Synthetic fixtures only.
+// . Synthetic fixtures only.
 
 import { describe, expect, it } from "vitest";
 import { DeckoName } from "../../../src/card/name.js";

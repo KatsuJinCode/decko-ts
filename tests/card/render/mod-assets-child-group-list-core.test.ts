@@ -15,7 +15,7 @@
 // from the deck-pinned tables (core-admin-runtime.ts modChildAssetGroups).
 //
 // Expected bytes are the ORACLE page bytes transcribed verbatim
-// (page-lane shards 000039/000043; tmp/wrong-goal-hunt/
+// (page-lane shards 000039/000043; an internal work log
 // p20-help-content-lane.md): account.scss for mod: account+*style, the
 // eight tinymce script files (the gem's assets/script folder,
 // alphabetically — a folder-group mod, no manifest.yml), and the empty

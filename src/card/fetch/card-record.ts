@@ -1,7 +1,7 @@
 // The card record a fetch returns, composed exactly as Ruby composes it.
 //
 // ROW COMPOSITION MAP (the critical knowledge; every attribute cites its
-// Ruby source - see docs/fetch-port-notes.md for the full trail):
+// Ruby source -
 //
 //   attribute            Ruby source                          tables touched
 //   -------------------  -----------------------------------  ------------------

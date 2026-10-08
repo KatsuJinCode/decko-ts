@@ -58,8 +58,8 @@ describe("URI scanner: HostUri/EmailUri trailing word boundary (uri.rb prefix_re
     expect(expandContentLinks("xmlns=http://www.w3.org/2000/svg")).toContain(
       '<a target="_blank" class="external-link" href="http://www.w3.org/2000/svg"',
     );
-    expect(expandContentLinks("visit culturesmith.com today")).toContain(
-      'href="http://culturesmith.com"',
+    expect(expandContentLinks("visit example.com today")).toContain(
+      'href="http://example.com"',
     );
   });
 });

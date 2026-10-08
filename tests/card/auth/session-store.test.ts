@@ -2,7 +2,7 @@
 // CORE schema (db/schema.sqlite.sql) plus the auth layer's own migration
 // (db/migrations/001-auth-sessions.sql) applied through the real runner.
 // Each expectation cites the Ruby file:method it derives from; the full
-// trail lives in docs/auth-port-notes.md.
+//
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {

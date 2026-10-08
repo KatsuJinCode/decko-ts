@@ -1,6 +1,6 @@
 // raw-corpus-layout-nest-search-preexecute.test.ts -- the RED pin for the
 // layout-nest search pre-execution gap (the corrected root cause of the 10
-// empty census searches; tmp/wrong-goal-hunt/cache-nil-fix.md section 3):
+// empty census searches; an internal work log section 3):
 // the page renderer's prepare render pre-executes only the MAIN closure's
 // Search-type cards (render.ts#prepareSearches walks nest-syntax references;
 // relative layout nests are skipped), the layout warm-up
@@ -40,6 +40,7 @@ import { describe, it, expect } from "vitest";
 import { byteDiff, normalizeSlotIds } from "../../../src/testing/diff.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
 import { loadCensusOraclePageEntry } from "./raw-corpus-search-census-page-subset.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -76,7 +77,7 @@ describe("raw-corpus layout-nest search pre-execution (money 18253)", () => {
     { timeout: 1_800_000 },
     async (ctx) => {
       if (!REPLAY_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/raw-corpus-layout-nest-search-preexecute.test.ts", "REPLAY_REQUESTED");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

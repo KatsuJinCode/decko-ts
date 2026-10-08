@@ -11,7 +11,7 @@
 #   TWO NAMED BLANKS, filled at fire time:
 #     FRESH_CORPUS_PATH   the fresh re-capture's raw-ground-truth tree
 #                         (digests of record: corpus-recapture-lane.md,
-#                         brandonDojoTech tmp/wrong-goal-hunt/)
+#                         the work log/)
 #     FOLD_TIP            the fold-14 union tip commit sha
 #                         (tip of record: fold14exec-lane.md, same receipts dir)
 #
@@ -43,7 +43,7 @@
 #   4. Staged corpus digests (computed from the staged copy AFTER staging,
 #      the grade-10 pre-boot-gate discipline) equal the source tree's digests.
 #   4b. Zero adjudicated-stale byte-forms in the STAGED copy (seamreanchor-apply
-#       lane spec 2026-10-05, brandonDojoTech tmp/wrong-goal-hunt/
+#       lane spec 2026-10-05, the work log/
 #       seamreanchor-work/corpus-gate-guard-spec-grade-refire-stale-seam-plus-asset-host.md):
 #       denied-seam census staleOccurrences==0 AND contextGuardFailures==0, and
 #       zero `http://s3.amazonaws.com//files/` carriers in both staged lanes
@@ -184,7 +184,7 @@ cat "$DIGEST_DIR/staged-digests.txt"
 
 # Guard 4b: corpus shape gate -- zero adjudicated-stale byte-forms in the
 # STAGED copy (seamreanchor-apply lane spec 2026-10-05:
-# brandonDojoTech tmp/wrong-goal-hunt/seamreanchor-work/
+# the work log/seamreanchor-work/
 # corpus-gate-guard-spec-grade-refire-stale-seam-plus-asset-host.md).
 # Assert 1: denied-seam stale form (census is read-only).
 CENSUS_OUT=$(node "$REPO/tools/oracle/denied-seam-reanchor-page-lane-expectations.mjs" --repo "$REPO" --mode census)

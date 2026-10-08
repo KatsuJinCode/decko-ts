@@ -6,7 +6,7 @@
 // the /files/<id>/<leaf> attachment route.
 //
 // The shell this buys, measured against the live site 2026-10-02
-// (culturesmith.com/Home, browser-UA fetch, 22,975 bytes): favicon link,
+// (example.com/Home, browser-UA fetch, 22,975 bytes): favicon link,
 // Material-Icons stylesheet, compiled site CSS at the live Spaces CDN URL,
 // five remote scripts WITH integrity hashes, the main decko script,
 // decko.* script variables, the *header navbar, the *footer credit — every

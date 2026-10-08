@@ -4,7 +4,7 @@
 //
 // THE MECHANISM (measured 2026-10-05 on the L2 lane's 50-page demo deck;
 // the counts, the per-call-site ledger and both measured ends are in
-// brandonDojoTech/tmp/wrong-goal-hunt/fold-point-reads-lane.md):
+// WORK_DIR/fold-point-reads-lane.md):
 //
 // 1. Cluster 3 of the fold roadmap is `point-row-by-key` +
 //    `point-row-by-id` -- `SELECT * FROM cards WHERE key = ? AND trash = 0

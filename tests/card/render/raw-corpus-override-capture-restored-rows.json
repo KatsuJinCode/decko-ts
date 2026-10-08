@@ -17,7 +17,7 @@
         "cardName": "cerulean skin",
         "classRow": "residual-classes-dfe642b-w5.txt class [20] M8 skin:record",
         "source": "expected-v2 view-lane capture record (recapture-raw-shard-000017.jsonl)",
-        "file": "C:\\localProjects\\decko-ts-lane-litera-custom\\tmp\\raw-ground-truth\\expected-v2\\view-lane\\recapture-raw-shard-000017.jsonl",
+        "file": "<repo-root>",
         "captureId": 22774,
         "envelopeFields": {
           "name": "cerulean skin",
@@ -51,7 +51,7 @@
         "cardName": "cosmo skin",
         "classRow": "residual-classes-dfe642b-w5.txt class [20] M8 skin:record",
         "source": "expected-v2 view-lane capture record (recapture-raw-shard-000017.jsonl)",
-        "file": "C:\\localProjects\\decko-ts-lane-litera-custom\\tmp\\raw-ground-truth\\expected-v2\\view-lane\\recapture-raw-shard-000017.jsonl",
+        "file": "<repo-root>",
         "captureId": 22778,
         "envelopeFields": {
           "name": "cosmo skin",
@@ -85,7 +85,7 @@
         "cardName": "cyborg skin",
         "classRow": "residual-classes-dfe642b-w5.txt class [20] M8 skin:record",
         "source": "expected-v2 view-lane capture record (recapture-raw-shard-000017.jsonl)",
-        "file": "C:\\localProjects\\decko-ts-lane-litera-custom\\tmp\\raw-ground-truth\\expected-v2\\view-lane\\recapture-raw-shard-000017.jsonl",
+        "file": "<repo-root>",
         "captureId": 22782,
         "envelopeFields": {
           "name": "cyborg skin",
@@ -119,7 +119,7 @@
         "cardName": "darkly skin",
         "classRow": "residual-classes-dfe642b-w5.txt class [20] M8 skin:record",
         "source": "expected-v2 view-lane capture record (recapture-raw-shard-000017.jsonl)",
-        "file": "C:\\localProjects\\decko-ts-lane-litera-custom\\tmp\\raw-ground-truth\\expected-v2\\view-lane\\recapture-raw-shard-000017.jsonl",
+        "file": "<repo-root>",
         "captureId": 22786,
         "envelopeFields": {
           "name": "darkly skin",
@@ -153,7 +153,7 @@
         "cardName": "flatly skin",
         "classRow": "residual-classes-dfe642b-w5.txt class [20] M8 skin:record",
         "source": "expected-v2 view-lane capture record (recapture-raw-shard-000017.jsonl)",
-        "file": "C:\\localProjects\\decko-ts-lane-litera-custom\\tmp\\raw-ground-truth\\expected-v2\\view-lane\\recapture-raw-shard-000017.jsonl",
+        "file": "<repo-root>",
         "captureId": 22790,
         "envelopeFields": {
           "name": "flatly skin",
@@ -187,7 +187,7 @@
         "cardName": "journal skin",
         "classRow": "residual-classes-dfe642b-w5.txt class [20] M8 skin:record",
         "source": "expected-v2 view-lane capture record (recapture-raw-shard-000017.jsonl)",
-        "file": "C:\\localProjects\\decko-ts-lane-litera-custom\\tmp\\raw-ground-truth\\expected-v2\\view-lane\\recapture-raw-shard-000017.jsonl",
+        "file": "<repo-root>",
         "captureId": 22794,
         "envelopeFields": {
           "name": "journal skin",
@@ -221,7 +221,7 @@
         "cardName": "lumen skin",
         "classRow": "residual-classes-dfe642b-w5.txt class [20] M8 skin:record",
         "source": "expected-v2 view-lane capture record (recapture-raw-shard-000017.jsonl)",
-        "file": "C:\\localProjects\\decko-ts-lane-litera-custom\\tmp\\raw-ground-truth\\expected-v2\\view-lane\\recapture-raw-shard-000017.jsonl",
+        "file": "<repo-root>",
         "captureId": 22798,
         "envelopeFields": {
           "name": "lumen skin",
@@ -255,7 +255,7 @@
         "cardName": "sandstone skin",
         "classRow": "residual-classes-dfe642b-w5.txt class [20] M8 skin:record",
         "source": "expected-v2 view-lane capture record (recapture-raw-shard-000017.jsonl)",
-        "file": "C:\\localProjects\\decko-ts-lane-litera-custom\\tmp\\raw-ground-truth\\expected-v2\\view-lane\\recapture-raw-shard-000017.jsonl",
+        "file": "<repo-root>",
         "captureId": 22810,
         "envelopeFields": {
           "name": "sandstone skin",
@@ -289,7 +289,7 @@
         "cardName": "simplex skin",
         "classRow": "residual-classes-dfe642b-w5.txt class [20] M8 skin:record",
         "source": "expected-v2 view-lane capture record (recapture-raw-shard-000017.jsonl)",
-        "file": "C:\\localProjects\\decko-ts-lane-litera-custom\\tmp\\raw-ground-truth\\expected-v2\\view-lane\\recapture-raw-shard-000017.jsonl",
+        "file": "<repo-root>",
         "captureId": 22814,
         "envelopeFields": {
           "name": "simplex skin",
@@ -323,7 +323,7 @@
         "cardName": "slate skin",
         "classRow": "residual-classes-dfe642b-w5.txt class [20] M8 skin:record",
         "source": "expected-v2 view-lane capture record (recapture-raw-shard-000017.jsonl)",
-        "file": "C:\\localProjects\\decko-ts-lane-litera-custom\\tmp\\raw-ground-truth\\expected-v2\\view-lane\\recapture-raw-shard-000017.jsonl",
+        "file": "<repo-root>",
         "captureId": 22818,
         "envelopeFields": {
           "name": "slate skin",
@@ -357,7 +357,7 @@
         "cardName": "spacelab skin",
         "classRow": "residual-classes-dfe642b-w5.txt class [20] M8 skin:record",
         "source": "expected-v2 view-lane capture record (recapture-raw-shard-000017.jsonl)",
-        "file": "C:\\localProjects\\decko-ts-lane-litera-custom\\tmp\\raw-ground-truth\\expected-v2\\view-lane\\recapture-raw-shard-000017.jsonl",
+        "file": "<repo-root>",
         "captureId": 22822,
         "envelopeFields": {
           "name": "spacelab skin",
@@ -391,7 +391,7 @@
         "cardName": "superhero skin",
         "classRow": "residual-classes-dfe642b-w5.txt class [20] M8 skin:record",
         "source": "expected-v2 view-lane capture record (recapture-raw-shard-000017.jsonl)",
-        "file": "C:\\localProjects\\decko-ts-lane-litera-custom\\tmp\\raw-ground-truth\\expected-v2\\view-lane\\recapture-raw-shard-000017.jsonl",
+        "file": "<repo-root>",
         "captureId": 22826,
         "envelopeFields": {
           "name": "superhero skin",
@@ -425,7 +425,7 @@
         "cardName": "united skin",
         "classRow": "residual-classes-dfe642b-w5.txt class [20] M8 skin:record",
         "source": "expected-v2 view-lane capture record (recapture-raw-shard-000017.jsonl)",
-        "file": "C:\\localProjects\\decko-ts-lane-litera-custom\\tmp\\raw-ground-truth\\expected-v2\\view-lane\\recapture-raw-shard-000017.jsonl",
+        "file": "<repo-root>",
         "captureId": 22830,
         "envelopeFields": {
           "name": "united skin",
@@ -459,7 +459,7 @@
         "cardName": "yeti skin",
         "classRow": "residual-classes-dfe642b-w5.txt class [20] M8 skin:record",
         "source": "expected-v2 view-lane capture record (recapture-raw-shard-000017.jsonl)",
-        "file": "C:\\localProjects\\decko-ts-lane-litera-custom\\tmp\\raw-ground-truth\\expected-v2\\view-lane\\recapture-raw-shard-000017.jsonl",
+        "file": "<repo-root>",
         "captureId": 22834,
         "envelopeFields": {
           "name": "yeti skin",
@@ -493,7 +493,7 @@
         "cardName": "bootstrap: functions",
         "classRow": "M8 corpus-materialization remainder (bootstrap: core:record -248,378 / bootstrap: functions:record -10,989; m8-siblings-litera lane 2026-10-03)",
         "source": "expected-v2 view-lane capture record (recapture-raw-shard-000028.jsonl)",
-        "file": "C:\\localProjects\\decko-ts-lane-litera-custom\\tmp\\raw-ground-truth\\expected-v2\\view-lane\\recapture-raw-shard-000028.jsonl",
+        "file": "<repo-root>",
         "captureId": 33848,
         "envelopeFields": {
           "name": "bootstrap: functions",
@@ -546,7 +546,7 @@
           "informationalPreambleHeadRows": 4
         },
         "crossCapture": {
-          "file": "C:\\localProjects\\brandonDojoTech\\tmp\\wrong-goal-hunt\\p21-probe-results\\nest-tip-shard-000028\\html\\000028-bootstrap_functions-_record_.expected.html",
+          "file": "<repo-root> work log\\p21-probe-results\\nest-tip-shard-000028\\html\\000028-bootstrap_functions-_record_.expected.html",
           "contentByteEqual": true,
           "fieldsEqual": true
         }
@@ -556,7 +556,7 @@
         "cardName": "bootstrap: core",
         "classRow": "M8 corpus-materialization remainder (bootstrap: core:record -248,378 / bootstrap: functions:record -10,989; m8-siblings-litera lane 2026-10-03)",
         "source": "expected-v2 view-lane capture record (recapture-raw-shard-000028.jsonl)",
-        "file": "C:\\localProjects\\decko-ts-lane-litera-custom\\tmp\\raw-ground-truth\\expected-v2\\view-lane\\recapture-raw-shard-000028.jsonl",
+        "file": "<repo-root>",
         "captureId": 33852,
         "envelopeFields": {
           "name": "bootstrap: core",
@@ -609,7 +609,7 @@
           "informationalPreambleHeadRows": 4
         },
         "crossCapture": {
-          "file": "C:\\localProjects\\brandonDojoTech\\tmp\\wrong-goal-hunt\\p21-probe-results\\nest-tip-shard-000028\\html\\000028-bootstrap_core-_record_.expected.html",
+          "file": "<repo-root> work log\\p21-probe-results\\nest-tip-shard-000028\\html\\000028-bootstrap_core-_record_.expected.html",
           "contentByteEqual": true,
           "fieldsEqual": true
         }
@@ -618,8 +618,8 @@
         "cardId": 33872,
         "cardName": "litera skin",
         "classRow": "M8 skin:record class straggler -- the one bootswatch skin with no capture record (m8-siblings-litera lane 2026-10-03, restored from the LIVE site)",
-        "source": "LIVE culturesmith.com ?view=raw capture (2026-10-03, two byte-stable fetches)",
-        "file": "C:\\localProjects\\brandonDojoTech\\tmp\\wrong-goal-hunt\\m8-siblings-litera-live-probe\\live-raw-view-litera-skin-culturesmith-2026-10-03.html",
+        "source": "LIVE the reference deck ?view=raw capture (2026-10-03, two byte-stable fetches)",
+        "file": "<repo-root> work log\\m8-siblings-litera-live-probe\\live-raw-view-litera-skin-reference-deck-2026-10-03.html",
         "captureId": 33872,
         "envelopeFields": {
           "name": "litera skin",
@@ -645,9 +645,9 @@
           "route": "?view=raw (the ?view=record route answers 422 'view (record) not supported' for these card types, measured 2026-10-03)",
           "fetches": [
             {
-              "file": "live-raw-view-litera-skin-culturesmith-2026-10-03.html",
+              "file": "live-raw-view-litera-skin-reference-deck-2026-10-03.html",
               "fetchedAt": "2026-10-03T11:39:02Z",
-              "url": "https://culturesmith.com/litera_skin?view=raw",
+              "url": "https://the reference deck/litera_skin?view=raw",
               "status": 200,
               "sha256": "51b8c9d95ebe226d09ce0adb75a31336544dbbe7e3b52837124c4e166229e932",
               "bodyChars": 488410,
@@ -657,9 +657,9 @@
               }
             },
             {
-              "file": "live-raw-view-litera-skin-culturesmith-2026-10-03-refetch.html",
+              "file": "live-raw-view-litera-skin-reference-deck-2026-10-03-refetch.html",
               "fetchedAt": "2026-10-03T11:42:24Z",
-              "url": "https://culturesmith.com/litera_skin?view=raw",
+              "url": "https://the reference deck/litera_skin?view=raw",
               "status": 200,
               "sha256": "e621584e449ff4343b7414d5a62723608ceda382b3324672e1abca5018327042",
               "bodyChars": 488410,
@@ -674,7 +674,7 @@
           "calibration": [
             {
               "skin": "cerulean skin",
-              "file": "live-raw-view-cerulean-skin-culturesmith-2026-10-03.html",
+              "file": "live-raw-view-cerulean-skin-reference-deck-2026-10-03.html",
               "oracleContentChars": 473074,
               "liveRawBodyChars": 486625,
               "extractionBounds": {
@@ -685,7 +685,7 @@
             },
             {
               "skin": "journal skin",
-              "file": "live-raw-view-journal-skin-culturesmith-2026-10-03.html",
+              "file": "live-raw-view-journal-skin-reference-deck-2026-10-03.html",
               "oracleContentChars": 473221,
               "liveRawBodyChars": 486771,
               "extractionBounds": {
@@ -704,7 +704,7 @@
         "cardName": "lux skin",
         "classRow": "residual-classes-dfe642b-w5.txt class [20] M8 skin:record",
         "source": "expected-v2 view-lane capture record (recapture-raw-shard-000028.jsonl)",
-        "file": "C:\\localProjects\\decko-ts-lane-litera-custom\\tmp\\raw-ground-truth\\expected-v2\\view-lane\\recapture-raw-shard-000028.jsonl",
+        "file": "<repo-root>",
         "captureId": 33877,
         "envelopeFields": {
           "name": "lux skin",
@@ -732,7 +732,7 @@
           }
         },
         "crossCapture": {
-          "file": "C:\\localProjects\\brandonDojoTech\\tmp\\wrong-goal-hunt\\p21-probe-results\\nest-tip-shard-000028\\html\\000028-lux_skin-_record_.expected.html",
+          "file": "<repo-root> work log\\p21-probe-results\\nest-tip-shard-000028\\html\\000028-lux_skin-_record_.expected.html",
           "contentByteEqual": true,
           "fieldsEqual": true
         }
@@ -742,7 +742,7 @@
         "cardName": "materia skin",
         "classRow": "residual-classes-dfe642b-w5.txt class [20] M8 skin:record",
         "source": "expected-v2 view-lane capture record (recapture-raw-shard-000028.jsonl)",
-        "file": "C:\\localProjects\\decko-ts-lane-litera-custom\\tmp\\raw-ground-truth\\expected-v2\\view-lane\\recapture-raw-shard-000028.jsonl",
+        "file": "<repo-root>",
         "captureId": 33880,
         "envelopeFields": {
           "name": "materia skin",
@@ -770,7 +770,7 @@
           }
         },
         "crossCapture": {
-          "file": "C:\\localProjects\\brandonDojoTech\\tmp\\wrong-goal-hunt\\p21-probe-results\\nest-tip-shard-000028\\html\\000028-materia_skin-_record_.expected.html",
+          "file": "<repo-root> work log\\p21-probe-results\\nest-tip-shard-000028\\html\\000028-materia_skin-_record_.expected.html",
           "contentByteEqual": true,
           "fieldsEqual": true
         }
@@ -780,7 +780,7 @@
         "cardName": "minty skin",
         "classRow": "residual-classes-dfe642b-w5.txt class [20] M8 skin:record",
         "source": "expected-v2 view-lane capture record (recapture-raw-shard-000028.jsonl)",
-        "file": "C:\\localProjects\\decko-ts-lane-litera-custom\\tmp\\raw-ground-truth\\expected-v2\\view-lane\\recapture-raw-shard-000028.jsonl",
+        "file": "<repo-root>",
         "captureId": 33883,
         "envelopeFields": {
           "name": "minty skin",
@@ -808,7 +808,7 @@
           }
         },
         "crossCapture": {
-          "file": "C:\\localProjects\\brandonDojoTech\\tmp\\wrong-goal-hunt\\p21-probe-results\\nest-tip-shard-000028\\html\\000028-minty_skin-_record_.expected.html",
+          "file": "<repo-root> work log\\p21-probe-results\\nest-tip-shard-000028\\html\\000028-minty_skin-_record_.expected.html",
           "contentByteEqual": true,
           "fieldsEqual": true
         }
@@ -818,7 +818,7 @@
         "cardName": "pulse skin",
         "classRow": "residual-classes-dfe642b-w5.txt class [20] M8 skin:record",
         "source": "expected-v2 view-lane capture record (recapture-raw-shard-000028.jsonl)",
-        "file": "C:\\localProjects\\decko-ts-lane-litera-custom\\tmp\\raw-ground-truth\\expected-v2\\view-lane\\recapture-raw-shard-000028.jsonl",
+        "file": "<repo-root>",
         "captureId": 33886,
         "envelopeFields": {
           "name": "pulse skin",
@@ -846,7 +846,7 @@
           }
         },
         "crossCapture": {
-          "file": "C:\\localProjects\\brandonDojoTech\\tmp\\wrong-goal-hunt\\p21-probe-results\\nest-tip-shard-000028\\html\\000028-pulse_skin-_record_.expected.html",
+          "file": "<repo-root> work log\\p21-probe-results\\nest-tip-shard-000028\\html\\000028-pulse_skin-_record_.expected.html",
           "contentByteEqual": true,
           "fieldsEqual": true
         }
@@ -856,7 +856,7 @@
         "cardName": "sketchy skin",
         "classRow": "residual-classes-dfe642b-w5.txt class [20] M8 skin:record",
         "source": "expected-v2 view-lane capture record (recapture-raw-shard-000028.jsonl)",
-        "file": "C:\\localProjects\\decko-ts-lane-litera-custom\\tmp\\raw-ground-truth\\expected-v2\\view-lane\\recapture-raw-shard-000028.jsonl",
+        "file": "<repo-root>",
         "captureId": 33893,
         "envelopeFields": {
           "name": "sketchy skin",
@@ -884,7 +884,7 @@
           }
         },
         "crossCapture": {
-          "file": "C:\\localProjects\\brandonDojoTech\\tmp\\wrong-goal-hunt\\p21-probe-results\\nest-tip-shard-000028\\html\\000028-sketchy_skin-_record_.expected.html",
+          "file": "<repo-root> work log\\p21-probe-results\\nest-tip-shard-000028\\html\\000028-sketchy_skin-_record_.expected.html",
           "contentByteEqual": true,
           "fieldsEqual": true
         }
@@ -894,7 +894,7 @@
         "cardName": "solar skin",
         "classRow": "residual-classes-dfe642b-w5.txt class [20] M8 skin:record",
         "source": "expected-v2 view-lane capture record (recapture-raw-shard-000028.jsonl)",
-        "file": "C:\\localProjects\\decko-ts-lane-litera-custom\\tmp\\raw-ground-truth\\expected-v2\\view-lane\\recapture-raw-shard-000028.jsonl",
+        "file": "<repo-root>",
         "captureId": 33898,
         "envelopeFields": {
           "name": "solar skin",
@@ -922,7 +922,7 @@
           }
         },
         "crossCapture": {
-          "file": "C:\\localProjects\\brandonDojoTech\\tmp\\wrong-goal-hunt\\p21-probe-results\\nest-tip-shard-000028\\html\\000028-solar_skin-_record_.expected.html",
+          "file": "<repo-root> work log\\p21-probe-results\\nest-tip-shard-000028\\html\\000028-solar_skin-_record_.expected.html",
           "contentByteEqual": true,
           "fieldsEqual": true
         }
@@ -932,7 +932,7 @@
         "cardName": "journal skin customized",
         "classRow": "harness-corpus-repair lane 2026-10-02 (landed at dfe642b)",
         "source": "p21 oracle record capture (2026-09-30)",
-        "file": "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/p21-probe-results/nest-tip-shard-000028/html/000028-journal_skin_customized-_record_.expected.html",
+        "file": "WORK_DIR/p21-probe-results/nest-tip-shard-000028/html/000028-journal_skin_customized-_record_.expected.html",
         "captureId": 34179,
         "envelopeFields": {
           "name": "journal skin customized",
@@ -954,8 +954,8 @@
         "cardId": 34530,
         "cardName": "litera skin customized",
         "classRow": "M8 skin:record class sibling -- litera skin customized, no capture record, restored from the LIVE site (litera-custom-skin lane 2026-10-03)",
-        "source": "LIVE culturesmith.com ?view=raw capture (2026-10-04T04:39/04:40Z, two byte-stable fetches)",
-        "file": "C:\\localProjects\\brandonDojoTech\\tmp\\wrong-goal-hunt\\litera-custom-live-probe\\live-raw-view-litera-skin-customized-culturesmith-2026-10-04.html",
+        "source": "LIVE the reference deck ?view=raw capture (2026-10-04T04:39/04:40Z, two byte-stable fetches)",
+        "file": "<repo-root> work log\\litera-custom-live-probe\\live-raw-view-litera-skin-customized-reference-deck-2026-10-04.html",
         "captureId": 34530,
         "envelopeFields": {
           "name": "litera skin customized",
@@ -978,13 +978,13 @@
           "mHeadContainingRows": 0
         },
         "liveCapture": {
-          "captureDir": "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/litera-custom-live-probe",
-          "route": "?view=raw (served page title verified 'litera skin customized - Culturesmith')",
+          "captureDir": "WORK_DIR/litera-custom-live-probe",
+          "route": "?view=raw (served page title verified 'litera skin customized - the reference deck')",
           "fetches": [
             {
-              "file": "live-raw-view-litera-skin-customized-culturesmith-2026-10-04.html",
+              "file": "live-raw-view-litera-skin-customized-reference-deck-2026-10-04.html",
               "fetchedAt": "2026-10-04T04:39:58.838Z",
-              "url": "https://culturesmith.com/litera_skin_customized?view=raw",
+              "url": "https://the reference deck/litera_skin_customized?view=raw",
               "status": 200,
               "sha256": "c2366910a2d4f65a137e50117e58dffc7482231a581280b154a4e9bf6dc3424f",
               "bodyChars": 488421,
@@ -994,9 +994,9 @@
               }
             },
             {
-              "file": "live-raw-view-litera-skin-customized-culturesmith-2026-10-04-refetch.html",
+              "file": "live-raw-view-litera-skin-customized-reference-deck-2026-10-04-refetch.html",
               "fetchedAt": "2026-10-04T04:40:00.977Z",
-              "url": "https://culturesmith.com/litera_skin_customized?view=raw",
+              "url": "https://the reference deck/litera_skin_customized?view=raw",
               "status": 200,
               "sha256": "bbe43a9803b516d53baf11f470b58d02c7021e110a6dda80104ebfc06cd5fee4",
               "bodyChars": 488421,
@@ -1012,8 +1012,8 @@
             {
               "skin": "cerulean skin",
               "cardClass": "plain bootswatch skin",
-              "file": "live-raw-view-cerulean-skin-culturesmith-2026-10-03.html",
-              "dir": "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/m8-siblings-litera-live-probe",
+              "file": "live-raw-view-cerulean-skin-reference-deck-2026-10-03.html",
+              "dir": "WORK_DIR/m8-siblings-litera-live-probe",
               "oracleSource": "expected-v2 view-lane shard record",
               "oracleContentChars": 473074,
               "liveRawBodyChars": 486625,
@@ -1026,8 +1026,8 @@
             {
               "skin": "journal skin",
               "cardClass": "plain bootswatch skin",
-              "file": "live-raw-view-journal-skin-culturesmith-2026-10-03.html",
-              "dir": "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/m8-siblings-litera-live-probe",
+              "file": "live-raw-view-journal-skin-reference-deck-2026-10-03.html",
+              "dir": "WORK_DIR/m8-siblings-litera-live-probe",
               "oracleSource": "expected-v2 view-lane shard record",
               "oracleContentChars": 473221,
               "liveRawBodyChars": 486771,
@@ -1040,7 +1040,7 @@
             {
               "skin": "journal skin customized",
               "cardClass": "customized bootswatch skin",
-              "file": "live-raw-view-journal-skin-customized-culturesmith-2026-10-04.html",
+              "file": "live-raw-view-journal-skin-customized-reference-deck-2026-10-04.html",
               "oracle": "p21-journal-skin-customized",
               "oracleSource": "p21 oracle record capture 2026-09-30 (envelope id 34179)",
               "oracleContentChars": 473221,

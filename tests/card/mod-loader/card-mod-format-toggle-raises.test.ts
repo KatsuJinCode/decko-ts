@@ -41,6 +41,7 @@
 //     pin, don't guess.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { expectViewWithoutMod } from "../../support/native-views.js";
 import {
   bindModLoaderToEngine,
   createRenderTestStorage,
@@ -91,11 +92,9 @@ afterAll(() => {
 });
 
 describe("card-mod-format set/type/toggle — :input + :labeled_editor raise parity", () => {
-  it("WITHOUT the mod: both views raise UnsupportedViewError", async () => {
+  it("WITHOUT the mod: :labeled_editor raises; the compiled :input renders", async () => {
     const s = storage!;
-    await expect(
-      s.engine.render("Oracle Toggle Probe", "input"),
-    ).rejects.toThrow(UnsupportedViewError);
+    await expectViewWithoutMod(s.engine.render("Oracle Toggle Probe", "input"), "input");
     await expect(
       s.engine.render("Oracle Toggle Probe", "labeled_editor"),
     ).rejects.toThrow(UnsupportedViewError);
@@ -125,7 +124,7 @@ describe("card-mod-format set/type/toggle — :input + :labeled_editor raise par
     // set/type/toggle.rb:19-21 — `toggle + toggle_label`. `toggle`
     // raises first (leftmost operand); `toggle_label` would emit
     // `<label for="content_X">X</label>` (live-probed, see
-    // tmp/wrong-goal-hunt/format-views-port.md row "labeled_editor"),
+    // an internal work log row "labeled_editor"),
     // but the view as written never reaches it. The parity raise is
     // the same shape as :input's.
     await expect(

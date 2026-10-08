@@ -91,7 +91,7 @@
 //     RawRow), so the ContentFns receive the stored timestamp instead of
 //     "" and the formatted bytes flow end-to-end.
 //
-// NOT ported (honest remainder, see docs/mod-loader-port-notes.md):
+// NOT ported :
 //   - basket[:list_input_options] << "calendar" (calendar.rb:1) and
 //     basket[:script_calls]["setDatepickerConfig"] = :datepicker_config
 //     (calendar.rb:2 - the file's other basket op, even commented out in

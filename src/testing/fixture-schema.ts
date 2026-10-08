@@ -25,7 +25,7 @@ export const CAPTURE_ERROR_PREFIX = "CAPTURE_ERROR:";
 /**
  * One entry of smoke.json `cards`, keyed by card name. Field set is exactly
  * what capture.rb#card_attributes records; `id` is DB-local and treated as
- * informational by the replay (docs/oracle-harness.md, "id stability").
+ * informational by the replay (docs/parity-method.md, "id stability").
  */
 export interface CapturedCardRecord {
   codename: string | null;

@@ -27,7 +27,7 @@ import {
 } from "./classify-read-rules.mjs";
 
 const DB_PATH =
-  "C:/localProjects/decko-ts/benchmarks/corpus-v2/bench-corpus-v2.sqlite3";
+  process.env.DECKO_CORPUS_DB ?? new URL("../../benchmarks/corpus-v2/bench-corpus-v2.sqlite3", import.meta.url).pathname;
 const SAMPLE_N = 20;
 
 // Deterministic PRNG (mulberry32) for the spot-check sample selection.

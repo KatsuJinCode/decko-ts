@@ -1,6 +1,6 @@
 // Action-layer tests — DELETE (Card#delete! = trash flip): action typing,
 // the protected-card guard, the child cascade, and idempotency. Ruby cites
-// inline; trail in docs/actions-port-notes.md. Synthetic fixtures only.
+// inline; Synthetic fixtures only.
 
 import { describe, expect, it } from "vitest";
 import { CardActionError } from "../../../src/card/actions/index.js";

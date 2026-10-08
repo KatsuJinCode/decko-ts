@@ -4,7 +4,7 @@
 # prints the matched card names or the raised error.
 #
 # Run (from tools/oracle/decko-oracle-app):
-#   RAILS_ENV=development bundle exec decko runner C:/localProjects/decko-ts/tools/oracle/api_probe.rb
+#   RAILS_ENV=development bundle exec decko runner REPO_ROOT/decko-ts/tools/oracle/api_probe.rb
 def q(label, query)
   result = Card.search(**query, return: "name")
   puts "#{label}: #{result.inspect}"

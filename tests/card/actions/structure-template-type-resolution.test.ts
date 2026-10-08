@@ -25,7 +25,7 @@
 // templateTypeId (src/card/actions/type-resolution.ts) walks only the
 // *default leg before this port — these arms pin the structure leg in the
 // same shape the syncenv-cold-fidelity probes pin the default leg
-// (docs/sync-env-cold-write-contract.md section 3's N1 arm).
+// .
 //
 // Arms:
 //   S1  name-scoped *structure rule on the *right set: the side resolves
@@ -34,7 +34,7 @@
 //       the walk does NOT continue: the answer falls to the default leg /
 //       defaultTypeId tail.
 //   S3  no *structure rule anywhere: the default-leg behavior is unchanged
-//       (docs/sync-env-cold-write-contract.md).
+//.
 //   S4  dup typing (dup_structure :63): a `Phrase+*type+*structure` rule is
 //       reached ONLY because the dup is typed Phrase by the *default rule —
 //       without the dup's type the *type candidate cannot apply.

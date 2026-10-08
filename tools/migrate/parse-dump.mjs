@@ -1,8 +1,8 @@
 // parse-dump.mjs — streaming, quote-aware mysqldump INSERT parser.
 //
 // M4 migration tool (port-tracker stream 14, decko-commons/decko#1282).
-// Generalizes the parser proven on the 1.2 GB SourceDeck production dump
-// (workspace scripts/source-deck-migration/cards-read-rule-probe.py).
+// Generalizes the parser proven on the 1.2 GB the reference deck production dump
+// (a private production dump (not distributed)).
 //
 // THE KEY LESSON FROM THAT MIGRATION (and the design constraint here): the
 // production dump is 1.2 GB and carries multi-row INSERT statements as
@@ -40,7 +40,7 @@
 // JS numbers; 0x-hex, x'..' and b'..' literals -> Uint8Array; _binary /
 // _charset introducers are consumed and the following literal kept as-is.
 //
-// Memory bounds (full argument in docs/migration-tool-notes.md): peak
+// Memory bounds: peak
 // parser buffer <= chunkBytes + one unprocessed suffix, compacted whenever
 // the consumed prefix passes COMPACT_LIMIT; the pending-row queue is
 // drained by the consumer between feeds. Nothing accumulates rows across

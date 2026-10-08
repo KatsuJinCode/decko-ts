@@ -5,7 +5,7 @@
 // :core).
 //
 // The first port approximated the state machine for the corpus's
-// random-letter content (:tag runs only). The pass-15 page triage showed
+// random-letter content (:tag runs only). The an earlier pass page triage showed
 // the approximation collapses on REAL stylesheet bytes - the deck's
 // "bootstrap: core" card renders ~380KB of vendored Bootstrap SCSS
 // through this scanner and the approximation's regex set diverged from

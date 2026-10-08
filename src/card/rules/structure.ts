@@ -337,7 +337,7 @@ export function resolveStructuredContent(
  * `structured_content || standard_content` where standard_content is
  * `db_content || ""` (content/all.rb:17-19 — the new_card? default_content
  * branch applies to cards not in the database; the *default template path
- * is a documented remainder, see docs/structure-templates-parity-notes.md).
+ * is a documented remainder
  *
  * `setModuleOverride` is the set-module CODE content override (the port of
  * Ruby's singleton-class `def content` hook — set-override-fidelity lane

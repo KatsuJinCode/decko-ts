@@ -7,7 +7,7 @@
 // mod set files define their own for the cards their set matches, and set
 // modules are included so the set-specific method wins. The port's verdict
 // walk computed only the generic hash path, so every card below denied where
-// Ruby's override grants (the pass-15 over-deny family: Anonymous+*account,
+// Ruby's override grants (an earlier over-deny family: Anonymous+*account,
 // Anonymous+*account+*email, FrAi+*right+*head, GBA+*right+*head, the
 // +*self+*head virtual rule-card bars in the rules-editor navs, and 12 more
 // of the triage's permission_denied_mismatch pages).

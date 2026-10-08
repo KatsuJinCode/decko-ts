@@ -1,7 +1,7 @@
 // The read-permission layer: rule resolution for an actor (the Anonymous
 // corpus viewer by default, signed-in session actors via ReadViewer) plus
-// the denial markup contract. See docs/permissions-port-notes.md and
-// docs/permission-actors-notes.md for the port trails.
+// the denial markup contract.
+//  for the port trails.
 
 export {
   ANONYMOUS_VIEWER,

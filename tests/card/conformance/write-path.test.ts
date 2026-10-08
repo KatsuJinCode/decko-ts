@@ -3,7 +3,7 @@
 // against the TS action engine, and compares the resulting row shapes.
 //
 // Scope (per the file boundaries and per-row normalization notes in
-// docs/write-conformance-notes.md):
+// docs/parity-method.md):
 //   - The fixture is the SOURCE OF TRUTH for shape: card_actions /
 //     card_changes row counts and field/value triples must match
 //     (modulo documented normalizations below).

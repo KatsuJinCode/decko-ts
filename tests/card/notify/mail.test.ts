@@ -37,7 +37,7 @@
 // capture forced a correction: Ruby does NOT substitute — it walks
 // inclusions and renders the placeholder name as a literal when the
 // key does not resolve to a card. The hand-derived byte-parity claim
-// (see M5 docs/notify-port-notes.md §3) was wrong about the
+//  was wrong about the
 // contextual_content behavior in the dev-DB scenario; the captured
 // fixture (fixtures/captured/follow-notification.json) is now the
 // byte-parity ground truth.

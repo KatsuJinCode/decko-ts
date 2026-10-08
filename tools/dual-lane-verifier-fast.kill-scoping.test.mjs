@@ -1,7 +1,7 @@
 // dual-lane-verifier-fast.kill-scoping.test.mjs -- kill-path coverage.
 //
 // CONTRACT BEING GUARDED (see
-// docs/dual-lane-verifier-fast-operating-contracts.md): a deadline kill
+// docs/parity-method.md): a deadline kill
 // touches ONLY the breaching phase's own recorded pid subtree
 // (killPhaseTree) -- never a sibling phase's tree, no matter how the
 // phases overlap at 2 workers. killOwnTree, whose kill roots are every

@@ -8,7 +8,7 @@
 // c-structural in its second-pass mechanism analysis
 // (tmp/census/mechanism-analysis.json, analyze-census-pages.mjs, pageMechSets
 // where mechs includes "c-structural"). These are the pages the search-parity
-// receipts (tmp/wrong-goal-hunt/search-parity.md, search-parity-2.md) named
+// receipts (an internal work log, search-parity-2.md) named
 // the "David Williams / John Abbe class": pages whose oracle HTML lists
 // search-result-item bars where the engine rendered search-no-results -- the
 // `plus: {refer_to}` CQL class whose resolution needs (1) the CQL-name

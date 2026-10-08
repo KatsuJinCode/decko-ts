@@ -45,6 +45,7 @@
 //     *structure setting) - same end state via right/structure.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { expectViewWithoutMod } from "../../support/native-views.js";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -175,9 +176,7 @@ describe("card-mod-content through the mod loader (A/B)", () => {
     // barMiddleView returns ""), so without the mod it renders "" instead
     // of throwing. The mod port overrides it with the CodeContent shape;
     // the override is the proof of the WITH-the-mod test below.
-    await expect(s.engine.render("Oracle Code Probe", "input")).rejects.toThrow(
-      UnsupportedViewError,
-    );
+    await expectViewWithoutMod(s.engine.render("Oracle Code Probe", "input"), "input");
     await expect(s.engine.render("Oracle Template Probe", "file_size")).rejects.toThrow(
       UnsupportedViewError,
     );

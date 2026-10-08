@@ -1,5 +1,5 @@
 // The mod set-module ok_to_read? overrides -- the READ-verdict layer the
-// generic stored-read-rule path misses (the pass-15 over-deny family).
+// generic stored-read-rule path misses (an earlier over-deny family).
 //
 // Ruby resolves a read verdict through Card#ok_to_read?, and ok_to_read? is
 // not one method: THIRTEEN mod set files define their own ok_to_read? for the

@@ -7,6 +7,7 @@
 // speed-ship lane landed) and DECKO_LEX_TRACE=1 (read per call), both off by
 // default.
 import { describe, it, expect, afterEach, vi } from "vitest";
+import { itOrSkipLoud } from "../../support/describe-with-corpus.js";
 import {
   createRenderTestStorage,
   seedCard,
@@ -34,7 +35,7 @@ const tagged = (spy: { mock: { calls: unknown[][] } }, tag: string): number =>
   spy.mock.calls.filter((args: unknown[]) => args[0] === tag).length;
 
 describe("diagnostic logging is gated behind env flags", () => {
-  it.runIf(process.env.DECKO_ENGINE_NEST_TRACE !== "1")(
+  itOrSkipLoud(!(process.env.DECKO_ENGINE_NEST_TRACE !== "1"), "tests/card/render/debug-logging-gated.test.ts", "process.env.DECKO_ENGINE_NEST_TRACE !== \"1\"")(
     "a render prints no ENGINE-NEST / LEX-DEBUG lines by default",
     async () => {
       storage = await deck();

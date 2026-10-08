@@ -17,10 +17,11 @@
 import Database from "better-sqlite3";
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { describeWithCorpus } from "../../support/describe-with-corpus.js";
 import type { RenderTestStorage } from "./render-test-storage.js";
 
 const REPLAY_REQUESTED = process.env.WARM_STRUCTURE_REF_SEAT_REPLAY === "1";
-const describeIfCorpus = REPLAY_REQUESTED ? describe : describe.skip;
+const describeIfCorpus = describeWithCorpus(REPLAY_REQUESTED, "tests/card/render/warm-engine-structure-ref-seat-corpus.test.ts", "corpus replay was not requested (set DECKO_TS_CORPUS_REPLAY=1)");
 
 describeIfCorpus("warm engine: structure-template nests of stored cards are seated", () => {
   let storage: RenderTestStorage | undefined;

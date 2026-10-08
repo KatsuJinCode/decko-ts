@@ -26,10 +26,10 @@
 // seam that already hosts the signup/toggle/markdown/image/file/bootswatch
 // per-cardtype cores.
 //
-// POPULATION: 28 pages (the 27 mech=mod-body-empty rows of the pass-15
+// POPULATION: 28 pages (the 27 mech=mod-body-empty rows of an earlier
 // c-structural class plus the mixed `mod: history` row) — see
 // mod-cardtype-core-section-list-subset.ts and the triage table in the
-// receipt (C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/mm-cstructural-lane.md).
+// receipt (WORK_DIR/mm-cstructural-lane.md).
 //
 // TWO GATED BLOCKS:
 //   1. THE EXEMPLARS (hard assert): `mod: account` and `mod: content` must
@@ -75,6 +75,7 @@ import { describe, it, expect } from "vitest";
 import { byteDiff, normalizeSlotIds } from "../../../src/testing/diff.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
 import { MOD_CARDTYPE_PAGE_SUBSET } from "./mod-cardtype-core-section-list-subset.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -173,7 +174,7 @@ describe("Mod cardtype core: the type/mod.rb section list (28 c-structural pages
     { timeout: 3_600_000 },
     async (ctx) => {
       if (!REPLAY_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/mod-cardtype-core-section-list-corpus-replay.test.ts", "REPLAY_REQUESTED");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);
@@ -212,7 +213,7 @@ describe("Mod cardtype core: the type/mod.rb section list (28 c-structural pages
     { timeout: 3_600_000 },
     async (ctx) => {
       if (!REPLAY_REQUESTED) {
-        ctx.skip();
+        skipLoud(ctx, "tests/card/render/mod-cardtype-core-section-list-corpus-replay.test.ts", "REPLAY_REQUESTED");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

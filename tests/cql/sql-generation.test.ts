@@ -478,7 +478,7 @@ describe("statement shorthand", () => {
   });
 });
 
-// Re-pinned by the pass-17 integration (lane-cql-found-by): found_by
+// Re-pinned by an earlier integration (lane-cql-found-by): found_by
 // resolves at execution now; the generator case is the loud backstop for
 // shapes resolveFoundByConditions did not translate.
 describe("found_by (generator backstop)", () => {

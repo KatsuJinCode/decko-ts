@@ -51,6 +51,7 @@ import Database from "better-sqlite3";
 import { describe, it, expect } from "vitest";
 import { byteDiff, normalizeSlotIds } from "../../../src/testing/diff.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -89,7 +90,7 @@ function readShard(shard: string): ShardLine[] {
     .map((l) => JSON.parse(l) as ShardLine));
 }
 
-describe.runIf(PINS_REQUESTED && CORPUS_PRESENT && SHARDS_PRESENT)(
+describeOrSkipLoud(!(PINS_REQUESTED && CORPUS_PRESENT && SHARDS_PRESENT), "tests/card/render/raw-corpus-rule-defaults-prototype-pins.test.ts", "PINS_REQUESTED && CORPUS_PRESENT && SHARDS_PRESENT")(
   "rule-defaults prototype pins (view-lane R2/R3/R4 oracle bytes)",
   () => {
     it("renders all eleven closed signatures byte-exact against the oracle", async () => {

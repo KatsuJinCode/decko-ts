@@ -419,11 +419,11 @@ describe("attribution — a name mismatch refuses, in both directions", () => {
     });
     expect(config.workerName).toBe("decko-ts");
     expect(config.databases.map((d) => d.databaseName)).toEqual(["decko-ts"]);
-    // the committed root config IS bound to a real database id — commit
-    // 810264f replaced the TBD placeholder with the provisioned id, so the
-    // id-invariant check (not the name match) applies to a teardown of it
-    expect(config.databases[0]!.databaseId).toBe("d07bd84d-4003-4611-b5bd-a318f6807676");
-    expect(config.databases[0]!.databaseIdIsPlaceholder).toBe(false);
+    // The committed root config ships a placeholder id: a button deploy
+    // writes its own database's id, and a manual deploy pastes the id
+    // `wrangler d1 create` prints. No real infrastructure id is committed.
+    expect(config.databases[0]!.databaseId).toBe("REPLACE_WITH_YOUR_D1_DATABASE_ID");
+    expect(config.databases[0]!.databaseIdIsPlaceholder).toBe(true);
   });
 });
 

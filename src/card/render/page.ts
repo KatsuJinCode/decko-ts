@@ -35,7 +35,7 @@
 // Production-vs-capture environment deltas this module pins (the five
 // production-equivalent settings): default_html_view = :content on the
 // page path only (the bare view path keeps the development default
-// :titled), deck_origin https://culturesmith.com, and carrierwave cloud
+// :titled), deck_origin https://example.com, and carrierwave cloud
 // attachments resolving to the absolute bucket URL. The captured page
 // JSONL bytes are the contract; every template below is diff-pinned
 // against them.
@@ -244,7 +244,11 @@ async function renderPageBytesWithPageConfigInner(
 ): Promise<string> {
   // process_layout.rb: main! (the root format is the main format) then
   // page_layout — the *layout rule walk happens BEFORE the main render.
-  const record = await engine.fetcher.fetchByName(cardName);
+  const found = await engine.fetcher.fetchByName(cardName);
+  // RenderEngine#renderAbsentCards: the controller's Card.fetch new: {}.
+  const record = found === undefined && engine.renderAbsentCards
+    ? await engine.fetcher.fetchByName(cardName, { new: {} })
+    : found;
   if (record === undefined || record.name === undefined) {
     throw new Error(`card not found: ${cardName}`);
   }
@@ -362,7 +366,7 @@ async function renderPageBytesWithPageConfigInner(
   // pair junction OR-tuple of 20120122+BW+RVW) leaves the read-permission
   // state unresolved and every prepared card unjudged. The sync gate's
   // unjudged-allowed contract would then render the read-denied MAIN body in
-  // full where Ruby emits the denial frame (the pass-15 triage's 130
+  // full where Ruby emits the denial frame (an earlier triage's 130
   // denial-wrapper-leak pages) — denial, not byte noise. Resolve the state
   // from the standalone three-statement batch and judge the prepared map
   // BEFORE any sync render. No-op when the prepare landed (memoized state +
@@ -651,6 +655,14 @@ function scanWarmDepsUncached(
     // Pointer/List renders a dropdown whose items are links
     // (nav_link_in_dropdown): existence + title only.
     if (isItems) for (const item of items()) leaves.push({ name: item, context });
+    // A Link list is a dropdown too (Abstract::Items), whose items come from
+    // its [[target|label]] chunks; explicit URL targets need no card.
+    if (card.typeCode === "link_list") {
+      for (const m of card.dbContent.matchAll(/\[\[([^\][\n]+?)\]\]/g)) {
+        const target = (m[1] ?? "").split("|")[0]?.trim() ?? "";
+        if (target !== "" && !/^(\/|https?:|mailto:)/.test(target)) leaves.push({ name: target, context });
+      }
+    }
     return { refs, leaves };
   }
 
@@ -867,7 +879,7 @@ export async function headContent(
   const read = await headReadSet(engine, "style");
   return [
     pageTitleTagBytes(read, name.s),
-    META_TAGS,
+    (await noindex(engine, rootCard)) ? `${META_TAGS}\n<meta content='noindex' name='robots'>` : META_TAGS,
     "", // pinned blank (mod basket head view; "" on every captured page)
     faviconTagBytes(read),
     stylesheetTagsBytes(read),
@@ -876,6 +888,27 @@ export async function headContent(
     await scriptVariablesTag(engine),
     await scriptCallsTag(engine),
   ].join("\n");
+}
+
+/** card-mod-format set/all/html/head.rb:16-18 `noindex?`: `unknown? ||
+ *  :noindex.card.include_item?(name)` — the :meta_tags template adds the
+ *  robots noindex meta for an absent card and for any card the *noindex
+ *  list names. */
+async function noindex(engine: RenderEngine, rootCard: RenderCard): Promise<boolean> {
+  if (rootCard.unknown === true) return true;
+  const list = await globalSettingContent(engine, "noindex");
+  if (list === undefined || list.trim() === "") return false;
+  const key = rootCard.name.key;
+  return list
+    .split(/\n+/)
+    .map((item) => item.replace(/^\s*\[\[|\]\]\s*$/g, "").trim())
+    .some((item) => {
+      try {
+        return item !== "" && DeckoName.parse(item).key === key;
+      } catch {
+        return false;
+      }
+    });
 }
 
 /** card-mod-format set/all/html/head.rb:46-51 view :universal_edit_button
@@ -998,14 +1031,14 @@ async function scriptVariablesTag(engine: RenderEngine): Promise<string> {
   // same headContent for an unseated root whose content nests the head
   // card's :core). The page lane runs it under runWithPageConfig
   // (renderPageBytes, page.ts:130-142) with the capture's
-  // deck_origin = "https://culturesmith.com" (capture-dual-lane-page-and-view
+  // deck_origin = "https://example.com" (capture-dual-lane-page-and-view
   // .rb:343); the VIEW lane runs it with the railtie default
   // (card/lib/cardio/railtie.rb:28 config.deck_origin = nil) and no
   // controller (card/lib/card/env.rb:17), so origin is "" and card_url("")
   // is the bare "/". engine.envOriginConfig() is that per-surface value
   // (render.ts:1770-1772, render/deck-origin.ts:73-75) — reading it here
   // is what the constant could not do. Oracle: 6588/6588 page rows carry
-  // 'https://culturesmith.com/', cards 34754 / 34758 views carry '/'.
+  // 'https://example.com/', cards 34754 / 34758 views carry '/'.
   const rootUrl = deckoRootUrl() ?? `${engine.envOriginConfig()}/`;
   return (
     `<script>\n//<![CDATA[\n` +

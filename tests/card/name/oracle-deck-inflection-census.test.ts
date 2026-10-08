@@ -47,12 +47,13 @@ import { existsSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import Database from "better-sqlite3";
 import { RAW_CORPUS_DB_PATH } from "../../../src/testing/test-corpus-paths.js";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 // Both decks resolve from the path contracts, never from an absolute machine
 // path. The prior literals named two locations that no longer carry anything:
-// `C:/localProjects/decko-ts-lane-m4verify/tmp/raw-ground-truth/` (a per-lane
+// `REPO_ROOT//tmp/raw-ground-truth/` (a per-lane
 // worktree that has left this machine) and
-// `C:/localProjects/decko-ts/benchmarks/corpus-v2/bench-corpus-v2.sqlite3`
+// `REPO_ROOT/decko-ts/benchmarks/corpus-v2/bench-corpus-v2.sqlite3`
 // (gone with the root checkout's private data — MISSING on 2026-10-06).
 //
 // The sanitized corpus deck gets NO default, deliberately. There is no
@@ -77,7 +78,7 @@ const DECKS: Array<{ label: string; path: string | undefined }> = [
 const present = DECKS.filter((d): d is { label: string; path: string } =>
   d.path !== undefined && existsSync(d.path));
 
-describe.skipIf(present.length === 0)(
+describeOrSkipLoud(present.length === 0, "tests/card/name/oracle-deck-inflection-census.test.ts", "not (present.length === 0)")(
   "U4b — the decks' key column cannot support the inflection census",
   () => {
     for (const deck of present) {

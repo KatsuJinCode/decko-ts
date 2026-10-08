@@ -3,7 +3,7 @@
 // q2 byte-parity sweep).
 //
 // Mechanism (traced 2026-09-28, receipt
-// brandonDojoTech/tmp/wrong-goal-hunt/default-layout-codename.md):
+// WORK_DIR/default-layout-codename.md):
 // Ruby's Card::Name parse of a ":codename" mark cannot fail while the
 // codename exists: name.rb:65-82 resolves Codename.id! (the codehash - a
 // process memo the temporary cache reset never touches, codename.rb:118-127)

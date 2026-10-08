@@ -1,5 +1,5 @@
 // The one seam every storage provider plugs into. The adapter contract
-// follows the provider-adapter requirement in docs/core/architecture.md:
+// follows the provider-adapter requirement in docs/README.md:
 // declare transaction/isolation, rollback, search, collation, generated-ID,
 // time and resource-limit behavior, and reject unsupported operations
 // explicitly rather than silently weakening semantics. Upstream proposal:

@@ -32,7 +32,7 @@ export const FOCAL_DENIAL_EXEMPLARS: Array<{ name: string; id: number }> = [
  *  must not start denying them. */
 export const READABLE_CONTROLS: Array<{ name: string; id: number }> = [
   { name: "Brandon WilliamsCraig", id: 393 },
-  { name: "Culturesmith", id: 637 },
+  { name: "the reference deck", id: 637 },
   { name: "Martial Nonviolence", id: 577 },
 ];
 

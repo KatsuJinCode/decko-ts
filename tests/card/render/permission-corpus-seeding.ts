@@ -4,7 +4,7 @@
 // card_references party grants, and the codename cards the party math
 // resolves) and the transitive side/type closure junction composition
 // needs. This is the seed enrichment the corpus replay flip
-// (permissionPending -> JUDGED) requires; see docs/permissions-port-notes.md.
+// (permissionPending -> JUDGED) requires
 
 import { fileURLToPath } from "node:url";
 import path from "node:path";

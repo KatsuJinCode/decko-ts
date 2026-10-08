@@ -44,7 +44,7 @@
 //   own address; when the template carries display text that differs from the
 //   actual address, the header becomes `"#{conf_text}" <#{actual_email}>`.
 //   Live templates say from "Decko Bot" (not deliverable), so the config
-//   From (DECKO_SMTP_FROM, default no-reply@culturesmith.com) is what makes
+//   From (DECKO_SMTP_FROM, default no-reply@example.com) is what makes
 //   them deliverable, with "Decko Bot" preserved as the display name.
 //
 // MIME layer: minimal RFC 5322/2045 renderer — Date/From/To/Cc/Message-ID/
@@ -60,7 +60,7 @@
 //   DECKO_SMTP_PORT=587                       # default
 //   DECKO_SMTP_USER=<mailbox address the SMTP token belongs to>
 //   DECKO_SMTP_PASS=<SMTP token>              # activation gate: unset = NOOP
-//   DECKO_SMTP_FROM=no-reply@culturesmith.com # default
+//   DECKO_SMTP_FROM=no-reply@example.com # default
 //
 // The transport connects lazily per sendMail(); failures surface as errors
 // (4xx SmtpTransientError / 5xx SmtpPermanentError) that the dispatcher logs
@@ -90,7 +90,7 @@ export interface SmtpTransportOptions {
   /** Ruby :enable_starttls. Default "auto" (Ruby's fallback); "always" throws
    *  when the server does not advertise STARTTLS rather than send plaintext. */
   readonly starttls?: "always" | "auto" | false;
-  /** Default From address (DECKO_SMTP_FROM). Default "no-reply@culturesmith.com".
+  /** Default From address (DECKO_SMTP_FROM). Default "no-reply@example.com".
    *  Overridable per environment; wins over a template's own address per
    *  safe_from_and_reply_to! semantics. */
   readonly from?: string;

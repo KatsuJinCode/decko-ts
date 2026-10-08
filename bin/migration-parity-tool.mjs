@@ -3,7 +3,7 @@
 //
 //   "We port your Decko site to TypeScript and tell you how many pages are not byte-identical."
 //
-// Plan: deliverables/migration-parity-tool-PLAN.md   Docs: docs/migration-parity-tool-cli.md
+// Plan: deliverables/migration-parity-tool-PLAN.md   Docs:
 //
 // Status (honest): this scaffold validates inputs, prints or runs the EXISTING proven stage
 // commands, and fails with a named missing-inputs list. It does not yet run end-to-end against

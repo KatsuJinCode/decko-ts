@@ -49,7 +49,7 @@ require "json"
 
 REPO_ROOT = File.expand_path("../../..", __dir__)
 OUT_PATH  = File.join(REPO_ROOT, "fixtures", "captured", "edit-name-type.json")
-PIN_DIR   = "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/captures-auth-forms"
+PIN_DIR   = "CAPTURE_DIR"
 
 TARGETS = [
   { name: "Oracle Basics", label: "basic_note" },

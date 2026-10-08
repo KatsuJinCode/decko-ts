@@ -1,7 +1,7 @@
 // vm-staging-server.mjs — Node HTTP staging copy of the decko-ts
-// engine, served from /opt/decko-bunny-render on Brandon's portal VM
-// (170.9.231.182) so the owner can click through real pages in a browser
-// while parity work continues. Read-only browse PLUS the write-path
+// engine, served from a configurable asset directory so a developer can click
+// through real pages in a browser while parity work continues.
+// Read-only browse PLUS the write-path
 // slice-1 sign-in surface (2026-09-27): no editing, no search. Every
 // anonymous GET byte is unchanged — the sign-in endpoints are additive.
 //
@@ -177,7 +177,7 @@ import {
 // Write-path slice-1: session-backed sign-in. The auth store lives in the
 // same sqlite file (auth_sessions table, runAuthMigrations at boot) and the
 // per-request token picks the render engine whose viewer is that account
-// (RenderEngine.viewer, the seam docs/permission-actors-notes.md wires —
+// (RenderEngine.viewer, the seam  wires —
 // the server resolves the actor once per request and sets the viewer at
 // engine construction, before any render).
 import {
@@ -280,7 +280,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 // fallback keeps the honest `X-Decko-Asset-Note` header so a missing deploy
 // is observable, not silent.
 //
-// Default location: /opt/decko-bunny-render/oracle-assets/ on the VM, which
+// Default location: the committed captured-assets fixture dir, which
 // is the bunny-render service's working directory. Override with
 // `COMPILED_ASSETS_DIR=/path` for local testing. Files inside the repo
 // stay out of this path; deployment scp's the compile outputs here.
@@ -663,7 +663,7 @@ function accountFlowErrorResponse(outcome, accountMark) {
   // Render polish (2026-09-29): the failure pages carry the deck's Default
   // Layout chrome the way live does — the bare h1/pre stubs this arm used
   // to emit read as a different site. Oracle bytes:
-  // tmp/wrong-goal-hunt/captures-reset-polish/ (live decko-0.20.0 oracle
+  // an internal work log (live decko-0.20.0 oracle
   // app, captured 2026-09-29).
   if (outcome.kind === "token_invalid") {
     return renderAccountFlowDenialPage();
@@ -690,7 +690,7 @@ function accountFlowErrorResponse(outcome, accountMark) {
 // ---------------------------------------------------------------------------
 // Account-flow PAGE chrome (render polish, 2026-09-29). The reset/verify
 // surfaces serve the deck's Default Layout wrapper with the oracle main-slot
-// bytes. Captures: tmp/wrong-goal-hunt/captures-reset-polish/.
+// bytes. Captures: an internal work log
 // ---------------------------------------------------------------------------
 
 /** Rails' html_escape (the h() the alert bodies go through): also folds
@@ -1616,8 +1616,8 @@ async function ensureBootValues() {
 //
 // The deck stores cards with names that may differ in case from the URL
 // slug (e.g. /Basic -> "basic", /help -> "Help"). The page title in the
-// oracle reads "<card.name> - <*title>": "basic - Culturesmith" on
-// /Basic (oracle:39120-Basic.html:4) and "Help - Culturesmith" on /help
+// oracle reads "<card.name> - <*title>": "basic - the reference deck" on
+// /Basic (oracle:39120-Basic.html:4) and "Help - the reference deck" on /help
 // (oracle:3531-help.html:4). Use cards.name verbatim from the corpus so
 // the title matches the oracle per page.
 //
@@ -1941,7 +1941,7 @@ async function renderFooterContent() {
 //     only head delta between the two error shapes).
 //   titleText — the full "<name> - <site title>" string. Error pages for
 //     names with no stored card row carry the URL display form
-//     ("Community Building - Culturesmith"), which resolveCardStoredName
+//     ("Community Building - the reference deck"), which resolveCardStoredName
 //     cannot produce (it returns the raw slug on a miss).
 async function wrapWithLayout(cardName, viewHtml, layout, pageOpts = {}) {
   const boot = await ensureBootValues();
@@ -2131,13 +2131,13 @@ async function substituteHeaderTokens(headerHtml, boot) {
 // built from the live captures, not reconstructed from Decko source:
 //
 //   not_found  — for a requested name with no card row. Live receipt:
-//   tmp/wrong-goal-hunt/captures/live_Community_Building.html (2026-09-26,
+//   an internal work log (2026-09-26,
 //   13,715B): Default Layout chrome + main slot
 //   `<div id="<key>-not_found-view" class="card-slot not_found-view ALL
 //   TYPE-basic_c" …>` with h1 "Not Found" and "Could not find <Name>.
 //   Please sign in or sign up to create it.", plus
 //   `<meta content='noindex' name='robots'>` in the head and the title
-//   "<Name> - Culturesmith" in the URL display form (underscores become
+//   "<Name> - the reference deck" in the URL display form (underscores become
 //   spaces). Decko mechanism: format/error.rb page_view_for_unknown →
 //   :not_found with root.error_status = 404 (prototype/lib/card/format/
 //   error.rb:49-55), so the response status stays 404.
@@ -2299,7 +2299,7 @@ async function renderDeckoErrorPage(cardName, kind) {
     } else {
       // Existing-card render failures keep the stored-name title the same
       // way the good pages do (live's /Introduction error page titles
-      // "Introduction - Culturesmith").
+      // "Introduction - the reference deck").
       viewHtml = buildServerErrorSlotHtml();
       pageOpts = {};
     }
@@ -2575,7 +2575,7 @@ async function status() {
 //
 // For the two main asset cards (45514 / 50617), if a SassC/Uglifier-
 // compiled file exists under COMPILED_ASSETS_DIR (e.g.
-// /opt/decko-bunny-render/oracle-assets/all-style.css), serve those
+// <assets>/all-style.css), serve those
 // compiled bytes with `X-Decko-Asset-Note: compiled-bytes`. If the
 // compiled file is absent, fall back to serving the deck's SCSS source
 // for the active skin (card 38274) at the main-CSS URL and the

@@ -178,7 +178,7 @@ export function scanJavaScriptInto(enc: HtmlTokenEncoder, input: string): void {
       // WHOLE alternation: the first transcription anchored only the
       // class alternative, so when the class failed the unanchored
       // `\.(?!\d)` alternative matched the FIRST dot anywhere in the rest
-      // of the input (the `culturesmith.uservoice.com` dot) and advanced
+      // of the input (the `example.com.uservoice.com` dot) and advanced
       // one byte - derailing the whole scan (the Classic_Layout probe's
       // dotted body, bisect jobs 9-15).
       const op = /^(?:[-+*=<>?:;,!&^|(\[{~%]+|\.(?!\d))/.exec(rest());

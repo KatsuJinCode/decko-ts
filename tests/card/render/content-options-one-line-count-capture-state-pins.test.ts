@@ -36,7 +36,7 @@
 //    this deck renders `overridden`, which is what the engine renders.  The
 //    oracle's `11 items` embeds capture-time content the corpus no longer
 //    carries: the r22 receipt reached the same verdict independently
-//    (tmp/wrong-goal-hunt/p22-rulebar-content-lane.md:137-158).
+//    (an internal work log).
 //
 // 3. THE ARM IS CORPUS-PINNED 667 TIMES OVER.  Census this lane over every
 //    stored List/Pointer bar in all 48 page-lane shards whose bar-right
@@ -58,8 +58,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import Database from "better-sqlite3";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
-const ARCHIVE = "C:/localProjects/archive/decko-fork-study/decko";
+// A checkout of the upstream Ruby Decko source, supplied locally.
+const ARCHIVE = process.env.DECKO_RUBY_SOURCE ?? "C:/localProjects/archive/decko-fork-study/decko";
 
 /** The archive trees carry CRLF on some files; the shape assertions below
  *  are written against LF. */
@@ -99,7 +101,7 @@ const SOURCES: Array<{ file: string; match: RegExp }> = [
   { file: "mod/list/set/all/supports_content_options.rb", match: /%w\[radio checkbox select multiselect list autocomplete\]/ },
 ];
 
-describe.runIf(existsSync(ARCHIVE))("MEMBER 2: the input-type catalogs in the Ruby sources", () => {
+describeOrSkipLoud(!(existsSync(ARCHIVE)), "tests/card/render/content-options-one-line-count-capture-state-pins.test.ts", "existsSync(ARCHIVE)")("MEMBER 2: the input-type catalogs in the Ruby sources", () => {
   it("none of them is 11, so '11 items' is not derivable from them", () => {
     const sizes: Record<string, number> = {};
     for (const { file, match } of SOURCES) {
@@ -136,13 +138,13 @@ describe.runIf(existsSync(ARCHIVE))("MEMBER 2: the input-type catalogs in the Ru
   });
 });
 
-describe.runIf(existsSync(CORPUS))("MEMBER 2: corpus row 11745 carries ONE item", () => {
+describeOrSkipLoud(!(existsSync(CORPUS)), "tests/card/render/content-options-one-line-count-capture-state-pins.test.ts", "existsSync(CORPUS)")("MEMBER 2: corpus row 11745 carries ONE item", () => {
   // vitest executes a describe body even when runIf is false (probe-proven
   // 2026-10-03: the body runs to collect names for the skip report), so the
   // corpus open MUST be lazy. It was collection-time (`const db = new
   // Database(...)` directly in this body), which failed the whole file
   // deterministically on every machine lineage once the corpus home worktree
-  // (decko-ts-lane-fama-remainder) was deleted by the 2026-10-03 worktree
+  // () was deleted by the 2026-10-03 worktree
   // cleanup — the runIf guard could not protect a collection-time open.
   // Lazy open restores the guard's own intent: corpus absent -> suite skips.
   let db: InstanceType<typeof Database> | undefined;

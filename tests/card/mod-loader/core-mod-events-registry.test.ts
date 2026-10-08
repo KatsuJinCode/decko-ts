@@ -20,7 +20,7 @@
 //
 // 3. THE REMAINDER, named: the other 30 declarations pin with stub bodies;
 //    per-event reasons are in the manifest source (core-mod.ts file notes)
-//    and summarized in the receipt (docs/admin-surface.md).
+//    and summarized in the receipt.
 
 import { describe, it, expect } from "vitest";
 import coreMod, {
@@ -43,7 +43,7 @@ function declaredEvents(): Array<{ setPath: string } & ModEventRegistration> {
   return out;
 }
 
-/** The recount's 31 names (tmp/wrong-goal-hunt/mod-coverage-recount-raw.json
+/** The recount's 31 names (an internal work log
  *  core.ruby.events), in the recount's order. */
 const RECOUNT_31 = [
   "admin_tasks",

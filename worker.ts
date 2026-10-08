@@ -1,5 +1,5 @@
 // Cloudflare Workers entry — the one-click Cloudflare demo (M2 in
-// docs/port-tracker.md). The same engine code runs on Node (see tests/ for
+// ). The same engine code runs on Node (see tests/ for
 // the LocalSqliteDriver wiring) and on Workers via this file.
 //
 // First-time deploy recipe (one-time setup, ~2 min):
@@ -12,7 +12,7 @@
 //
 // Runtime seam (src/server/drivers/d1.ts): the engine never imports vendor
 // SDKs. The D1 binding from `env` is duck-typed as D1DatabaseLike; see
-// docs/driver-notes.md for the verified shapes (meta.last_row_id, batch
+// docs/decisions/0003-edge-native-driver-interfaces.md for the verified shapes (meta.last_row_id, batch
 // semantics, bigint-bind rejection).
 //
 // TWIN SURFACE: this entry and deploy/worker.ts answer the same read

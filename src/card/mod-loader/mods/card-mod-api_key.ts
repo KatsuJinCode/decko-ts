@@ -38,7 +38,7 @@
 //   - set/right/account.rb's html view (:api_key) - nests the +*api_key
 //     child card with view :core (field_nest :api_key)
 //
-// NOT ported here (honest remainder, see docs/mod-loader-port-notes.md):
+// NOT ported here :
 //   - lib/card/auth/api_key.rb + lib/card_controller/api_key.rb: the
 //     Card::Auth::ApiKey mixin and the CardController::ApiKey mixin. The
 //     lib/ files add methods to Card::Auth and CardController (NOT set

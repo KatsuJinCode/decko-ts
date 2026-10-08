@@ -1,6 +1,6 @@
 // External-link anchor attribute order - the census "target attribute
 // placement" mechanism (3 pages: John Abbe, Sign up, Archetypal Psychology;
-// receipt brandonDojoTech/tmp/wrong-goal-hunt/page-mechanism-census.md).
+// receipt WORK_DIR/page-mechanism-census.md).
 //
 // Mechanism: Ruby renders every external resource link through
 // card-mod-format set/all/links.rb#link_to_resource (html block, :128-132)
@@ -63,7 +63,7 @@ async function seedExternalLinkDeck(): Promise<RenderTestStorage> {
     name: "External Link Probe",
     typeId: 3,
     dbContent:
-      "This resource is provided by Culturesmith.com and supported by " +
+      "This resource is provided by example.com and supported by " +
       "the non-profit [[http://abcglobal.net|Association Building Community]].",
   });
   await storage.fetcher.codenames.ensureLoaded();
@@ -82,7 +82,7 @@ describe("external-link anchors render target first (links.rb opts insertion ord
     // The autolink path (bare URL) - already correct before this port; the
     // assertion pins that the wikilink fix does not touch it.
     expect(page).toContain(
-      '<a target="_blank" class="external-link" href="http://Culturesmith.com">Culturesmith.com</a>',
+      '<a target="_blank" class="external-link" href="http://example.com">example.com</a>',
     );
   });
 });

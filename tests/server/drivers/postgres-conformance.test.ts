@@ -9,7 +9,7 @@
 // The SHARED CONFORMANCE SUITE itself (round-trip types, batch
 // semantics, error propagation, schema usability after failures) is not
 // runnable in this repo today: it needs the `pg` client, which is not a
-// dependency. docs/postgres-dialect-notes.md "Live-PG rung" is the spec
+// dependency.  "Live-PG rung" is the spec
 // for that surface — what must pass for the driver to claim parity,
 // what the corpus replay path looks like, and how the live server is
 // set up.

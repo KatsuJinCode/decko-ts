@@ -1,5 +1,5 @@
 // Search read-permission regression — the three defects the tenth-item trace
-// (brandonDojoTech tmp/wrong-goal-hunt/tenth-item-trace.md) confirmed against
+// (REPO_DIR an internal work log) confirmed against
 // the corpus and live:
 //
 //   bug 1  PERMISSIONLESS SEARCH: runSearch passed no read filter, so LIMIT

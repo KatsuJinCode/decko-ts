@@ -8,7 +8,7 @@
  * Order#order_directives.
  *
  * Divergences from the Ruby SQL text (all documented in
- * docs/cql-port-notes.md):
+ * ):
  * - every user value becomes a `?` placeholder (Ruby inlines quoted
  *   literals); params are ordered by first appearance in the SQL text
  * - whitespace is canonical (single spaces; Ruby emits e.g. "LIMIT  10 ",
@@ -35,7 +35,7 @@ export interface SqlOptions {
   alwaysOk?: boolean;
   readRuleIds?: number[];
   /**
-   * REGEXP-on-edge mode (docs/cql-execution-notes.md "The REGEXP decision",
+   * REGEXP-on-edge mode ("The REGEXP decision"
    * the decided JS-side post-filter): REGEXP-shaped `match` conditions are
    * OMITTED from the generated SQL and re-applied by the executor in JS
    * (execute.ts) with the same compile logic as sqlite-regexp.ts. The

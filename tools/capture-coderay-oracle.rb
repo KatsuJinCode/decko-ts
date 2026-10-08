@@ -9,7 +9,7 @@
 require "json"
 require "coderay"
 
-OUT_DIR = "C:/localProjects/decko-ts/fixtures/captured/coderay"
+OUT_DIR = File.expand_path("../fixtures/captured/coderay", __dir__)
 
 CASES = [
   {
@@ -51,7 +51,7 @@ CASES = [
 ]
 
 def load_content(shard, card_id)
-  path = "C:/localProjects/decko-ts/fixtures/corpus/shard-#{shard}.jsonl"
+  path = File.expand_path("../fixtures/corpus/shard-#{shard}.jsonl", __dir__)
   File.foreach(path) do |line|
     d = JSON.parse(line)
     if d["id"] == card_id

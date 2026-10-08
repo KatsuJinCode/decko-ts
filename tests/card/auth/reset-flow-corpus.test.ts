@@ -48,6 +48,7 @@ import {
   sendResetPasswordToken,
   type AccountFlowContext,
 } from "../../../src/card/auth/account-verify-reset-flows.js";
+import { describeWithCorpus } from "../../support/describe-with-corpus.js";
 import {
   CORPUS_PATH,
   prepareResetFlowCorpusFixture,
@@ -62,7 +63,7 @@ const OLD_PASSWORD = generatedPassword("resetlaneold");
 const NEW_PASSWORD = generatedPassword("resetlanenew");
 const ORIGIN = "http://corpus-flow.test";
 
-const describeIfCorpus = CORPUS_PATH !== null ? describe : describe.skip;
+const describeIfCorpus = describeWithCorpus(CORPUS_PATH !== null, "tests/card/auth/reset-flow-corpus.test.ts", "the committed miniature corpus (fixtures/test-corpus/) is not present");
 
 interface CorpusFixture {
   driver: LocalSqliteDriver;

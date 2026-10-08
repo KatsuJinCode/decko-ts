@@ -1,6 +1,6 @@
 // dual-lane-verifier-fast.instrument-reliability.test.mjs -- unit coverage
 // for the runner's instrument-reliability contracts (see
-// docs/dual-lane-verifier-fast-operating-contracts.md): the weight-aware
+// docs/parity-method.md): the weight-aware
 // deadline exists so a pairing whose recorded duration sits at the flat
 // deadline's edge cannot fail the whole run on any slowdown.
 //

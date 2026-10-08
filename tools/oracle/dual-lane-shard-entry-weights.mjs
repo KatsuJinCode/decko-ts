@@ -7,7 +7,7 @@
 //   buildShardWeights(). That is a STATED ASSUMPTION, not a measurement:
 //   tools/dual-lane-verifier-fast.mjs:216-223 splits each recorded phase's
 //   seconds EVENLY across that phase's two shards because the profiler could
-//   not split them. The W=8 probe (tmp/wrong-goal-hunt/w8-scaling-probe-lane.md)
+//   not split them. The W=8 probe (an internal work log)
 //   measured the consequence: Pearson r = -0.21 between those weights and the
 //   actual per-shard entry counts across all 48 shards -- the weight signal is
 //   weakly ANTI-correlated with the work. Shard 4 carries the canvas's most
@@ -52,7 +52,7 @@
 //
 // NEVER THROWS
 //   A shard it cannot read or parse is simply absent from the returned map.
-//   The caller falls back to the recorded pass-19 weight for that shard, which
+//   The caller falls back to the recorded weight for that shard, which
 //   is the honest treatment of "no measurement" the driver already used.
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";

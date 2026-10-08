@@ -3,7 +3,7 @@
 # capture.rb first so the seeded cards exist.
 #
 # Run (from tools/oracle/decko-oracle-app):
-#   RAILS_ENV=development bundle exec decko runner C:/localProjects/decko-ts/tools/oracle/cql_capture.rb
+#   RAILS_ENV=development bundle exec decko runner REPO_ROOT/decko-ts/tools/oracle/cql_capture.rb
 #
 # Operator coverage note: `match` is excluded everywhere - card 1.110 routes it
 # through ConnectionAdapters#match, implemented only for MySQL (REGEXP) and

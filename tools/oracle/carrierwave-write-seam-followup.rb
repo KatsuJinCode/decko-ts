@@ -7,7 +7,7 @@
 #
 # Run (from tools/oracle/decko-oracle-app of the MAIN checkout):
 #   RAILS_ENV=development bundle exec decko runner \
-#     C:/localProjects/decko-ts-lane-cwwrite/tools/oracle/carrierwave-write-seam-followup.rb
+#     REPO_ROOT//tools/oracle/carrierwave-write-seam-followup.rb
 
 require "json"
 

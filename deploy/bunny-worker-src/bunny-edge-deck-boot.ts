@@ -8,7 +8,7 @@
 // duties the engine cannot do for itself, the ones the entry previously
 // skipped and the screenshot lane's person-page parity defect fell out of:
 //
-//   1. THE DECK INFLECTION TABLE. The Culturesmith deck stores card keys
+//   1. THE DECK INFLECTION TABLE. The the reference deck stores card keys
 //      under three uncountable words (s / this / anonymous — see
 //      src/card/name/oracle-deck-inflections.ts for the recovered table and
 //      its provenance). Origins serving this deck MUST apply the table
@@ -38,7 +38,7 @@
 //      {{+Project(s) Participating|titled}} nest renders the missing-child
 //      arm, and the whole section vanishes from every person page (the
 //      screenshot lane's 171px person-page parity defect,
-//      tmp/wrong-goal-hunt/p2-person-section-lane.md).
+//      an internal work log).
 //
 // The wiring mirrors deploy/worker.ts primeCqlNameResolver and
 // vm-staging-server.mjs primeEngine (the two hosts that already carry it).

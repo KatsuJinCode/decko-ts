@@ -23,6 +23,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
 import { runDriverConformance } from "../../server/drivers/conformance.js";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 import {
   BunnyDbDriver,
   BunnyDbError,
@@ -43,7 +44,7 @@ const hasBunnyCreds = (): boolean =>
   readEnv(ENV_URL) !== undefined && readEnv(ENV_TOKEN) !== undefined;
 
 describe("BunnyDbDriver (cross-driver conformance + behavior)", () => {
-  describe.skipIf(!hasBunnyCreds())("with live Bunny Database credentials", () => {
+  describeOrSkipLoud(!hasBunnyCreds(), "tests/card/drivers/bunny-db.test.ts", "not (!hasBunnyCreds())")("with live Bunny Database credentials", () => {
     let bunny: BunnyDbDriver;
     let local: LocalSqliteDriver;
 
