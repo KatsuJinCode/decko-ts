@@ -148,6 +148,7 @@ import { encryptPassword, passwordErrors, planAccountFields } from "../auth/acco
 import { runObserverEvents } from "../notify/observer.js";
 import type { AttachmentStore } from "../attachments/attachment-store.js";
 import type { ScssCompiler } from "../assets/scss-compiler.js";
+import type { CoffeeCompiler } from "../assets/coffee-compiler.js";
 import { VirtualRecordCache } from "../mod-loader/mods/card-mod-virtual.js";
 import {
   assertStyleCompilerFor,
@@ -270,6 +271,12 @@ export interface CardActionEngineOptions {
    *  reproduces the oracle's bytes (assets/scss-compiler.ts). Absent = a
    *  save that needs a compile is refused with a named error. */
   scssCompiler?: ScssCompiler;
+  /** The CoffeeScript seam for the script asset events (the JavaScript /
+   *  CoffeeScript asset inputs and the site script, style-asset-events.ts).
+   *  The npm coffeescript@1.12.2 package reproduces the oracle's bytes
+   *  (assets/coffee-compiler.ts). Absent = a save that needs a compile is
+   *  refused with a named error. */
+  coffeeCompiler?: CoffeeCompiler;
   /** The deck's file_storage config (Cardio.config.file_storage port;
    *  undefined = the :local default, the oracle deck's
    *  config_file_storage_default). Shapes validate_file_exist's web? arm:
@@ -378,6 +385,7 @@ export class CardActionEngine {
   private writeTaskState: ViewTaskState | undefined;
   private readonly attachmentStore: AttachmentStore | undefined;
   private readonly scssCompiler: ScssCompiler | undefined;
+  private readonly coffeeCompiler: CoffeeCompiler | undefined;
   /** Card::Cache[Virtual] for the card_virtuals rows this engine writes. */
   private readonly virtualCache = new VirtualRecordCache();
   /** The deck's file_storage config port (CardActionEngineOptions.
@@ -410,6 +418,7 @@ export class CardActionEngine {
     this.followMail = options.followMail;
     this.attachmentStore = options.attachmentStore;
     this.scssCompiler = options.scssCompiler;
+    this.coffeeCompiler = options.coffeeCompiler;
     this.fileStorage = options.fileStorage;
     this.modEvents = options.modEvents;
     this.recaptchaConfig = options.recaptcha;
@@ -2414,6 +2423,7 @@ export class CardActionEngine {
       expire: (cardId, name) => this.expireAfterWrite({ cardId, nameAfter: name, verb: "update" }),
       attachmentStore: this.attachmentStore,
       compile: this.scssCompiler,
+      compileCoffee: this.coffeeCompiler,
       virtuals: this.virtualCache,
     };
   }
@@ -2655,6 +2665,21 @@ export class CardActionEngine {
     // FINALIZE (card_references write path) — the SEAM with takeover:
     // clear_references (reference_events.rb:27-31) through the registered
     // body when the name is registered; the built-in otherwise.
+    // FINALIZE (event :asset_input_changed_on_delete, card-mod-assets
+    // asset_inputter.rb:20-23, before: :clear_references): a deleted
+    // inputter's referers re-derive — dependent inputters re-store their
+    // asset inputs, outputters rebuild their files, now without the trashed
+    // card. Runs for every card this act deleted, before the references are
+    // cleared (the referers still point here).
+    const deletedCards: SavedCard[] = [
+      { cardId: row.id, actionId: saved.actionId, verb: "delete" as const },
+      ...subactions.map((s) => ({
+        cardId: s.cardId,
+        actionId: s.actionId,
+        verb: "delete" as const,
+      })),
+    ];
+    await runStyleAssetEvents(this.styleAssetContext(actingId), deletedCards);
     await this.runFinalizeEvents(deletedCard(), [
       [
         "clear_references",

@@ -60,6 +60,7 @@ const { CaptureTransport } = await import(dist("card/notify/transport.js"));
 const { DeckoName } = await import(dist("card/name.js"));
 const { pageViewCookie, readVisitorSession, VISITOR_COOKIE_NAME } = await import(dist("card/session/visitor-session.js"));
 const { libsassProcessCompiler } = await import(dist("server/libsass-process.js"));
+const { coffeeNpmCompiler } = await import(dist("server/coffee-npm-compiler.js"));
 
 const SASSC = process.env.PARITY_SASSC ??
   join(here, "..", "libsass", "build", process.platform === "win32" ? "sassc-stdin.exe" : "sassc-stdin");
@@ -68,6 +69,7 @@ if (!existsSync(SASSC)) {
   process.exit(2);
 }
 const scssCompiler = libsassProcessCompiler(SASSC);
+const coffeeCompiler = coffeeNpmCompiler();
 
 const START = process.argv[2];
 const WORK = process.argv[3];
@@ -301,7 +303,7 @@ async function call(method, path, params) {
   if (c) headers.cookie = c;
   const res = await handleWriteRequest(
     {
-      driver, fetcher, now: requestClock, attachmentStore, scssCompiler, accountMail, notifyTransport: transport,
+      driver, fetcher, now: requestClock, attachmentStore, scssCompiler, coffeeCompiler, accountMail, notifyTransport: transport,
       onModEventReport: (r) => { for (const e of r.fired) events.push([r.stage, e]); },
     },
     { method: method.toUpperCase(), pathname: path, host: "127.0.0.1", scheme: "http",

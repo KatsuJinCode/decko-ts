@@ -46,6 +46,7 @@ import { DeckoName } from "../name.js";
 import { rawItemStrings } from "../render/pointer-list.js";
 import { bootstrapCoreScss, bootstrapFunctionsScss } from "../render/bootstrap-code-files.js";
 import { bootswatchThemeFile, modStyleFileContent, modStyleFiles } from "./style-sources.js";
+import type { CoffeeCompiler } from "./coffee-compiler.js";
 import type { ScssCompiler } from "./scss-compiler.js";
 
 /** A card as the asset events read it. */
@@ -67,6 +68,8 @@ export interface StyleAssetDeps {
   cardByCodename(codename: string): Promise<StyleCard | undefined>;
   /** The SassC seam. */
   compile: ScssCompiler | undefined;
+  /** The CoffeeScript seam (the script asset types, site-script.ts). */
+  compileCoffee?: CoffeeCompiler | undefined;
   /** Pre-act contents of the cards updated in the current act, by key. */
   staleContent?: ReadonlyMap<string, string>;
   /** Env relative_url_root ("" for a deck served at the site root). */
@@ -89,7 +92,9 @@ export const STYLE_INPUTTER_TYPES: ReadonlySet<string> = new Set(["bootswatch_sk
 /** The list types whose items recurse (Abstract::Items). */
 const RECURSABLE_TYPES: ReadonlySet<string> = new Set(["pointer", "list", "link_list", "nest_list", "skin"]);
 
-function contentOf(deps: StyleAssetDeps, card: StyleCard): string {
+/** The card's content as the events read it: the pre-act copy of a card
+ *  updated in the current act, else the stored content. */
+export function contentOf(deps: StyleAssetDeps, card: StyleCard): string {
   return deps.staleContent?.get(card.key) ?? card.dbContent;
 }
 

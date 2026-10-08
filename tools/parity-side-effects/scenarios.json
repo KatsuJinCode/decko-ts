@@ -1000,6 +1000,47 @@
       }
     },
     {
+      "name": "admin-create-script-card",
+      "mod": "script",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Probe Script",
+          "type": "JavaScript",
+          "content": "window.parityProbeCount = 1;\n"
+        }
+      }
+    },
+    {
+      "name": "admin-edit-site-script",
+      "mod": "script",
+      "method": "put",
+      "path": "/*all+*script",
+      "params": {
+        "card": {
+          "content": "mod: format+*script\nmod: list+*script\nmod: search+*script\nmod: rules+*script\nmod: edit+*script\nmod: account+*script\nmod: carrierwave+*script\nmod: ace editor+*script\nmod: bar and box+*script\nmod: bootstrap+*script\nmod: follow+*script\nmod: tabs+*script\nmod: layout+*script\nmod: recaptcha+*script\nmod: tinymce editor+*script\nParity Probe Script"
+        }
+      }
+    },
+    {
+      "name": "admin-edit-script-card",
+      "mod": "script",
+      "method": "put",
+      "path": "/Parity_Probe_Script",
+      "params": {
+        "card": {
+          "content": "window.parityProbeCount = 2;\n"
+        }
+      }
+    },
+    {
+      "name": "admin-delete-script-card",
+      "mod": "script",
+      "method": "delete",
+      "path": "/Parity_Probe_Script"
+    },
+    {
       "name": "admin-update-layout",
       "mod": "layout",
       "method": "put",
