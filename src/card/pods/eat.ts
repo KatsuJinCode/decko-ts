@@ -21,7 +21,9 @@
 
 import type { FetchEngine } from "../fetch.js";
 import type { CardActionEngine } from "../actions/card-action-engine.js";
-import type { SubcardInput } from "../actions/types.js";
+import type { AttachmentInput, SubcardInput } from "../actions/types.js";
+import { existsSync, readFileSync } from "node:fs";
+import { basename, join } from "node:path";
 import type { CardsRow } from "../../server/schema.js";
 import { DeckoName } from "../name.js";
 import { loadYaml, YamlMap, YamlSymbol, type YamlValue } from "./pod-yaml.js";
@@ -34,6 +36,9 @@ export interface PodActor {
 export interface EatOptions {
   /** `decko eat --user`: the account items without :user act as. Decko Bot otherwise. */
   defaultActor: PodActor;
+  /** The mod's data/files directory: an item's :file / :image value names a
+   *  file there, uploaded with the card (Eat::Edibles#handle_attachments). */
+  filesDir?: string;
 }
 
 export interface EatReport {
@@ -114,9 +119,7 @@ async function ensure(
   staleNames: Map<string, number>,
 ): Promise<Outcome> {
   const a = attrs(item);
-  for (const key of ["file", "image", "storage_type", "mod"]) {
-    if (a.has(key)) throw new EatError(`pod attachments are not supported (:${key})`);
-  }
+  const attachment = podAttachment(a, opts.filesDir);
   const mode = conflictMode(a.get("conflict"));
   const actor = await resolveActor(fetch, a.get("user"), opts.defaultActor);
   const now = clockFor(a.get("time"));
@@ -129,7 +132,7 @@ async function ensure(
   const typeSpec = typeSpecOf(a.get("type"));
   const content = a.has("content") ? toContent(a.get("content")) : undefined;
   const subcards = await fieldSubcards(fetch, a.get("fields"));
-  const wanted: Wanted = { name, codename, typeSpec, content, subcards };
+  const wanted: Wanted = { name, codename, typeSpec, content, subcards, attachment };
 
   // fetch_for_ensure: the card named by the codename (else the name), and,
   // when both are given and the name belongs to a different live card, that
@@ -174,6 +177,23 @@ interface Wanted {
   typeSpec: { typeCode?: string; typeName?: string };
   content: string | undefined;
   subcards: Record<string, SubcardInput>;
+  attachment: AttachmentInput | undefined;
+}
+
+/** handle_attachments + mod_file: the :file / :image value opened from the
+ *  mod's data/files directory. Coded storage (storage_type: :coded, the
+ *  file kept in the mod itself) is refused. */
+function podAttachment(a: Map<string, YamlValue>, filesDir: string | undefined): AttachmentInput | undefined {
+  const storage = asString(a.get("storage_type"));
+  if (storage === "coded" || a.has("mod")) throw new EatError("coded file storage (storage_type: :coded) is not supported");
+  const key = ["file", "image"].find((k) => a.has(k));
+  if (key === undefined) return undefined;
+  const filename = String(asString(a.get(key)) ?? "");
+  const path = filesDir === undefined ? undefined : join(filesDir, filename);
+  if (path === undefined || !existsSync(path)) {
+    throw new EatError(`${filename} not found. Should be in data/files.`);
+  }
+  return { bytes: readFileSync(path), originalFilename: basename(filename) };
 }
 
 /** Card.new(opts).save!: new cards are pristine and always need saving. */
@@ -189,6 +209,7 @@ async function createWanted(
     ...wanted.typeSpec,
     ...(wanted.codename !== undefined ? { codename: wanted.codename } : {}),
     ...(Object.keys(wanted.subcards).length > 0 ? { subcards: wanted.subcards } : {}),
+    ...(wanted.attachment !== undefined ? { attachment: wanted.attachment } : {}),
   });
   return "created";
 }
@@ -215,14 +236,19 @@ async function saveIfNeeded(
   }
   const codenameChanging = wanted.codename !== undefined && wanted.codename !== (row.codename ?? undefined);
   const fieldsNeedSave = await subcardsNeedSave(fetch, current?.name, wanted.subcards);
-  if (!nameChanging && !contentChanging && !typeChanging && !codenameChanging && !fieldsNeedSave) return "unchanged";
-  if (nameChanging || contentChanging || typeChanging || fieldsNeedSave) {
+  // An assigned upload is always a change (the mount marks the card dirty).
+  const attaching = wanted.attachment !== undefined;
+  if (!nameChanging && !contentChanging && !typeChanging && !codenameChanging && !fieldsNeedSave && !attaching) {
+    return "unchanged";
+  }
+  if (nameChanging || contentChanging || typeChanging || fieldsNeedSave || attaching) {
     await engine.updateCard({
       cardId: row.id,
       ...(nameChanging && name !== undefined ? { name: name.s } : {}),
       ...(contentChanging && wanted.content !== undefined ? { content: wanted.content } : {}),
       ...(typeChanging && typeId !== undefined ? { typeId } : {}),
       ...(fieldsNeedSave ? { subcards: wanted.subcards } : {}),
+      ...(attaching ? { attachment: wanted.attachment } : {}),
     });
   }
   // The codename column is stored with the save (codename is not a history

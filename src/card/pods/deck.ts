@@ -7,6 +7,7 @@
 import { LocalSqliteDriver } from "../../server/drivers/local-sqlite.js";
 import { FetchEngine } from "../fetch.js";
 import { CardActionEngine } from "../actions/card-action-engine.js";
+import { LocalAttachmentStore } from "../attachments/attachment-store.js";
 import { applyDeckInflections } from "../name/inflect.js";
 import { ORACLE_DECK_INFLECTIONS } from "../name/oracle-deck-inflections.js";
 import { DeckoName } from "../name.js";
@@ -27,7 +28,12 @@ export interface BootedDeck {
   close(): void;
 }
 
-export async function bootDeck(dbPath: string, opts: { readonly?: boolean } = {}): Promise<BootedDeck> {
+/** `filesDir`: the deck's files directory (Card.paths["files"]), where saves
+ *  that upload a file store it. */
+export async function bootDeck(
+  dbPath: string,
+  opts: { readonly?: boolean; filesDir?: string } = {},
+): Promise<BootedDeck> {
   applyDeckInflections(ORACLE_DECK_INFLECTIONS);
   const driver = new LocalSqliteDriver({ path: dbPath, readonly: opts.readonly ?? false });
   registerSqliteRegexpFunction(driver);
@@ -70,7 +76,12 @@ export async function bootDeck(dbPath: string, opts: { readonly?: boolean } = {}
     driver,
     fetcher,
     engineFor: (actor, now) =>
-      new CardActionEngine(fetcher, { actor, ipAddress: null, now: now ?? (() => new Date()) }),
+      new CardActionEngine(fetcher, {
+        actor,
+        ipAddress: null,
+        now: now ?? (() => new Date()),
+        ...(opts.filesDir !== undefined ? { attachmentStore: new LocalAttachmentStore(opts.filesDir) } : {}),
+      }),
     close: () => driver.close(),
   };
 }

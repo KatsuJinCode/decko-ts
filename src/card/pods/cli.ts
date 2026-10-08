@@ -2,7 +2,7 @@
 //
 //   sow --deck <deck.sqlite3> (-c '<cql json>' | -n "<name>,<name>" [--items [only]] | --url <path|url> |
 //       --remote <deck url> -n <name>) [-f tags] [-o out.yml | -m <mod data file to merge into>]
-//   eat --deck <deck.sqlite3> <pod.yml> [-u "<user name>"]
+//   eat --deck <deck.sqlite3> <pod.yml> [-u "<user name>"] [--files <mod data/files>] [--store <deck files dir>]
 //
 // sow writes the pod YAML (stdout without -o); eat prints its report as JSON.
 // Run through tools/pods/decko-ts-pods.mjs, which bundles this file.
@@ -61,12 +61,16 @@ export async function main(argv: string[]): Promise<number> {
       deck.close();
     }
   }
-  const podPath = args.find((a, i) => !a.startsWith("-") && !["--deck", "-d", "-u", "--user"].includes(args[i - 1] ?? ""));
+  const podPath = args.find((a, i) => !a.startsWith("-") && !["--deck", "-d", "-u", "--user", "--files", "--store"].includes(args[i - 1] ?? ""));
   if (podPath === undefined) {
     process.stderr.write("eat: no pod file given\n");
     return 2;
   }
-  const deck = await bootDeck(deckPath);
+  // --files: the mod's data/files directory pod attachments are read from;
+  // --store: the deck's files directory uploads are stored in.
+  const filesDir = option(args, "--files");
+  const storeDir = option(args, "--store");
+  const deck = await bootDeck(deckPath, storeDir !== undefined ? { filesDir: storeDir } : {});
   try {
     let actor = { id: 1, name: "Decko Bot" };
     const user = option(args, "-u", "--user");
@@ -77,6 +81,7 @@ export async function main(argv: string[]): Promise<number> {
     }
     const report = await eatYaml(deck.fetcher, (a, now) => deck.engineFor(a, now), readFileSync(podPath, "utf8"), {
       defaultActor: actor,
+      ...(filesDir !== undefined ? { filesDir } : {}),
     });
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
     return report.errors.length === 0 ? 0 : 1;

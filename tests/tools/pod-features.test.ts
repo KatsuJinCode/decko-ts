@@ -12,7 +12,8 @@
 // the skip a failure).
 
 import { spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -83,7 +84,66 @@ const SOW_CASES: { file: string; opts: SowOptions }[] = [
   },
 ];
 
+/** The stored files under a deck files directory: "<card>/<file>" and the
+ *  SHA-1 of every file but the image versions (the encoder's bytes, measured
+ *  by the side-effects report). */
+function storedFiles(root: string): { file: string; sha1: string | null }[] {
+  const out: { file: string; sha1: string | null }[] = [];
+  for (const dir of readdirSync(root).sort()) {
+    for (const name of readdirSync(path.join(root, dir)).sort()) {
+      const version = /-(icon|small|medium|large)\./.test(name);
+      out.push({
+        file: `${dir}/${name}`,
+        sha1: version ? null : createHash("sha1").update(readFileSync(path.join(root, dir, name))).digest("hex"),
+      });
+    }
+  }
+  return out;
+}
+
 describe("pod features (TS engine against the Ruby oracle)", () => {
+  // 3. Attachments: a pod whose items name files in the mod's data/files
+  //    (tests/fixtures/pods/files), eaten into a fresh copy of the oracle
+  //    deck: the same rows and the same stored files as Ruby's decko eat.
+  it.runIf(RUN)("pod attachments store Ruby's rows and files", async () => {
+    mkdirSync(WORK, { recursive: true });
+    const store = path.join(WORK, "attachment-store");
+    rmSync(store, { recursive: true, force: true });
+    const target = path.join(WORK, "attachments.sqlite3");
+    copyFileSync(BASE, target);
+    try {
+      const deck = await bootDeck(target, { filesDir: store });
+      try {
+        const report = await eatYaml(
+          deck.fetcher,
+          (actor, now) => deck.engineFor(actor, now),
+          readFileSync(path.join(FIXTURES, "attachments.yml"), "utf8"),
+          { defaultActor: BOT, filesDir: path.join(FIXTURES, "files") },
+        );
+        expect(report.errors).toEqual([]);
+      } finally {
+        deck.close();
+      }
+      const run = spawnSync(
+        process.execPath,
+        [
+          path.join(REPO, "tools/persistence/compare-decks.mjs"),
+          BASE,
+          path.join(FIXTURES, "attachments.ruby-delta.json"),
+          target,
+          path.join(WORK, "report.json"),
+        ],
+        { windowsHide: true, encoding: "utf8" },
+      );
+      expect(run.status, run.stderr).toBe(0);
+      const ruby = JSON.parse(readFileSync(path.join(FIXTURES, "attachments.ruby-files.json"), "utf8"));
+      expect(storedFiles(store)).toEqual(ruby);
+    } finally {
+      for (const f of [target, `${target}-shm`, `${target}-wal`]) rmSync(f, { force: true });
+      rmSync(store, { recursive: true, force: true });
+    }
+  }, 300000);
+
   it.runIf(RUN_SOW)("sow's --items, --url and -m pods equal Ruby's byte for byte", async () => {
     mkdirSync(WORK, { recursive: true });
     const copy = path.join(WORK, "probe-deck.sqlite3");

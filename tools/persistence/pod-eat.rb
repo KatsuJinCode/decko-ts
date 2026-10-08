@@ -15,7 +15,48 @@ require "json"
 pod = ARGV[0] or abort "usage: pod-eat.rb <pod.yml> <report.json>"
 report_path = ARGV[1] or abort "usage: pod-eat.rb <pod.yml> <report.json>"
 
-report = Thread.new do
+# Attachments (Eat::Edibles#handle_attachments): POD_FILES_DIR stands in for
+# the mod's data/files directory; each :file / :image value is opened from
+# it. Stored uploads go to PERSIST_FILES_DIR (never the app's own files or
+# public trees, never a cloud bucket), with hard links for the public links
+# as in persist-write-probe.rb.
+POD_FILES_DIR = ENV["POD_FILES_DIR"]
+if (store = ENV["PERSIST_FILES_DIR"])
+  require "fileutils"
+  FileUtils.mkdir_p(File.join(store, "files"))
+  FileUtils.mkdir_p(File.join(store, "public", "files"))
+  Cardio.config.file_buckets = {}
+  Cardio.config.file_default_storage = :local
+  Cardio.paths["files"] = File.join(store, "files")
+  Cardio.paths["public"] = File.join(store, "public")
+  File.singleton_class.prepend(Module.new do
+    def symlink(src, dest) = File.link(src, dest)
+    def symlink?(path) = File.exist?(path)
+  end)
+end
+
+def handle_attachments edible
+  return edible unless POD_FILES_DIR
+
+  Card.uploaders.each_key do |key|
+    next unless edible.key?(key)
+
+    path = File.join(POD_FILES_DIR, edible[key])
+    raise StandardError, "#{edible[key]} not found. Should be in data/files." unless File.exist?(path)
+
+    edible[key] = File.open(path, "rb")
+  end
+  edible
+end
+
+# An upload runs its integrate_with_delay job inline, entering the app
+# executor the runner's main thread holds, so pods with attachments are eaten
+# on the main thread (see persist-write-probe.rb run_on_op_thread).
+def on_eat_thread(&block)
+  POD_FILES_DIR ? block.call : Thread.new(&block).value
+end
+
+report = on_eat_thread do
   eat = Cardio::Mod::Eat.new(podtype: :real)
   items = YAML.load_file(pod, permitted_classes: [Symbol])
   out = { "items" => items.size, "created" => 0, "updated" => 0, "unchanged" => 0,
@@ -33,7 +74,7 @@ report = Thread.new do
   Card::Mailer.perform_deliveries = false
   Card::Auth.as_bot do
     items.each do |edible|
-      edible = edible.dup
+      edible = handle_attachments(edible.dup)
       mark = edible[:codename]&.to_sym || edible[:name]
       existed = !Card.fetch(mark).nil? rescue false
       acts_before = Card::Act.count
@@ -52,7 +93,7 @@ report = Thread.new do
     end
   end
   out
-end.value
+end
 File.binwrite(report_path, JSON.pretty_generate(report))
 warn "[pod] ate #{report['items']} items: created=#{report['created']} updated=#{report['updated']} " \
      "unchanged=#{report['unchanged']} skipped=#{report['skippedNotPristine'].size} errors=#{report['errors'].size}"

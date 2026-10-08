@@ -1,0 +1,7 @@
+---
+- :name: PodAttach Text
+  :type: :file
+  :file: pod-probe.txt
+- :name: PodAttach Picture
+  :type: :image
+  :image: pod-probe.png
