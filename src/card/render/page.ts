@@ -651,6 +651,14 @@ function scanWarmDepsUncached(
     // Pointer/List renders a dropdown whose items are links
     // (nav_link_in_dropdown): existence + title only.
     if (isItems) for (const item of items()) leaves.push({ name: item, context });
+    // A Link list is a dropdown too (Abstract::Items), whose items come from
+    // its [[target|label]] chunks; explicit URL targets need no card.
+    if (card.typeCode === "link_list") {
+      for (const m of card.dbContent.matchAll(/\[\[([^\][\n]+?)\]\]/g)) {
+        const target = (m[1] ?? "").split("|")[0]?.trim() ?? "";
+        if (target !== "" && !/^(\/|https?:|mailto:)/.test(target)) leaves.push({ name: target, context });
+      }
+    }
     return { refs, leaves };
   }
 

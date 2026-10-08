@@ -22,7 +22,9 @@
 // decko_logo image-original.svg is sha256 312389d4825c90b0b9fe27969b333b831
 // 69e4328504115d21f2db7f04172f230, byte-identical to the file the oracle deck
 // reads at card-mod-carrierwave-0.20.0/data/files/decko_logo/, verified
-// 2026-09-28). A mod with no vendored files, a non-coded content shape, a
+// 2026-09-28). The same bytes are vendored under logo/, the codename a stock
+// `decko setup` deck's *logo card carries (":logo/carrierwave.svg"; the gem
+// ships logo/image-original.svg with the identical sha256). A mod with no vendored files, a non-coded content shape, a
 // non-svg extension, or a missing file yields undefined — the caller then
 // takes its existing image_tag URL branch (Ruby would raise "can't find mod"
 // for an unresolvable coded dir; the fallback keeps the render safe, a

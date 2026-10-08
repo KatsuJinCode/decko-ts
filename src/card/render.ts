@@ -65,7 +65,13 @@ import {
 import { renderPageBytes, headContent, UnknownLayoutError } from "./render/page.js";
 import { deckDefaultHtmlView, envOriginForSurface, pageDefaultHtmlView } from "./render/deck-origin.js";
 import { deploymentDefaultHtmlViewNest } from "./render/deployment-follow-live-config.js";
-import { myCardDropdownInnerHtml, signedInAccountLinksInnerHtml } from "./render/navbar-views.js";
+import {
+  interactiveRolesDropdownHtml,
+  myCardDropdownInnerHtml,
+  signedInAccountLinksInnerHtml,
+  type InteractiveRolesDropdown,
+} from "./render/navbar-views.js";
+import { safeSetKeysForCard } from "./set-patterns/card-patterns.js";
 import type { ViewOverride } from "./rules/apply.js";
 import {
   HTML_VIEWS,
@@ -6494,23 +6500,89 @@ export class RenderEngine implements RenderEngineLike {
     const signinReal =
       signinId !== undefined &&
       (await this.fetcher.fetchById(signinId, { skipVirtual: true })) !== undefined;
-    this.sessionAccountLinks = signedInAccountLinksInnerHtml(actorName, {
+    const known = {
       actor: true,
       accountSettings: accountSettingsReal || accountSettingsVirtual,
       signin: signinReal,
-    });
-    // The :my_card view body (account_links.rb:56-58 my_card — the
-    // account_dropdown arm; can_disable_roles? reads the session actor's
-    // ROLES, which the port's page session does not carry — the dropdown
-    // arm is the shape every authenticated golden capture shows, and the
-    // roles arm (interactive_roles_dropdown nesting :edit_inline over
-    // +*enabled_roles) is the named remainder).
-    this.sessionMyCardHtml = myCardDropdownInnerHtml(actorName, {
-      actor: true,
-      accountSettings: accountSettingsReal || accountSettingsVirtual,
-      signin: signinReal,
-    }, []);
+    };
+    // account_links.rb:56-58 my_card: `can_disable_roles? ?
+    // interactive_roles_dropdown : account_dropdown`.
+    const rolesDropdown = await this.interactiveRolesDropdownFor(session.actorId, actor.typeId ?? undefined);
+    this.sessionAccountLinks = signedInAccountLinksInnerHtml(actorName, known, rolesDropdown);
+    this.sessionMyCardHtml =
+      rolesDropdown === undefined
+        ? myCardDropdownInnerHtml(actorName, known, [])
+        : interactiveRolesDropdownHtml(actorName, known, rolesDropdown);
     this.sessionAccountLinksActorId = session.actorId;
+  }
+
+  /** The interactive roles dropdown's inputs, or undefined when Ruby's
+   *  can_disable_roles? is false (account_links.rb:70-73: more than one
+   *  current role and the :enabled_roles codename exists).
+   *  Auth.current_roles (card-1.110.0 auth/current.rb:28-33) is Anyone Signed
+   *  In followed by Set::Self::Role.role_ids(actor) — the roles whose
+   *  `<role>+*members` list contains the actor (card-mod-account
+   *  set/self/role.rb generate_rolehash: every `left: {type: Role}, right:
+   *  *members` card, in the search's unordered (row) order). */
+  private async interactiveRolesDropdownFor(
+    actorId: number,
+    actorTypeId: number | undefined,
+  ): Promise<InteractiveRolesDropdown | undefined> {
+    const codes = this.fetcher.codenames;
+    const [enabledRolesId, membersId, roleTypeId, anyoneSignedInId, sessionTypeId] = await Promise.all([
+      codes.id("enabled_roles"),
+      codes.id("members"),
+      codes.id("role"),
+      codes.id("anyone_signed_in"),
+      codes.id("session"),
+    ]);
+    if (
+      enabledRolesId === undefined ||
+      membersId === undefined ||
+      roleTypeId === undefined ||
+      anyoneSignedInId === undefined ||
+      sessionTypeId === undefined
+    ) {
+      return undefined;
+    }
+    const rows = (
+      await this.fetcher.driver.query<{ left_id: number; db_content: string | null }>(
+        `SELECT m.left_id, m.db_content FROM cards m JOIN cards r ON r.id = m.left_id ` +
+          `WHERE m.right_id = ? AND m.trash = 0 AND r.trash = 0 AND r.type_id = ? ORDER BY m.id`,
+        [membersId, roleTypeId],
+      )
+    ).rows;
+    const roleIds: number[] = [];
+    for (const row of rows) {
+      for (const raw of String(row.db_content ?? "").split(/\n+/)) {
+        const item = raw.replace(/^\s*\[\[|\]\]\s*$/g, "").trim();
+        if (item === "") continue;
+        const memberId = item.startsWith("~")
+          ? Number(item.slice(1))
+          : (await this.fetcher.fetchByName(item))?.id;
+        if (memberId === actorId) {
+          roleIds.push(Number(row.left_id));
+          break;
+        }
+      }
+    }
+    if (roleIds.length === 0) return undefined; // current_roles.size == 1
+    const roles: Array<{ name: string; known: boolean }> = [];
+    for (const id of [anyoneSignedInId, ...roleIds]) {
+      const rec = await this.fetcher.fetchById(id, { skipVirtual: true });
+      if (rec?.name === undefined || rec.name === null) continue;
+      roles.push({ name: rec.name.s, known: rec.trash !== true });
+    }
+    const actor = await this.fetcher.fetchById(actorId, { skipVirtual: true });
+    const actorType = actorTypeId === undefined ? undefined : await this.fetcher.fetchById(actorTypeId);
+    const setKeys = safeSetKeysForCard({
+      name: DeckoName.parse(`${actor?.name?.s ?? ""}+*enabled roles`),
+      isNew: true,
+      typeId: sessionTypeId,
+      typeName: "Session",
+      leftTypeName: actorType?.name?.s ?? null,
+    });
+    return { roles, sessionTypeId, setKeys };
   }
 
   /** RenderEngineLike.updateVerdictForCard — ok?(:update) on demand for the
