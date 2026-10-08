@@ -30,6 +30,8 @@ export interface RenderAnswer {
 export interface HarnessSession {
   render(card: string, opts?: { actor?: string; view?: string }): Promise<RenderAnswer>;
   ask(body: Record<string, unknown>): Promise<{ ok: boolean; result?: unknown; error?: unknown }>;
+  /** A write request; it changes this session's private deck copy only. */
+  write(body: Record<string, unknown>): Promise<{ saved?: boolean; errors?: unknown[] }>;
   close(): Promise<void>;
 }
 
@@ -80,6 +82,11 @@ export async function openHarnessSession(): Promise<HarnessSession> {
         return { ok: true, html: normalizeHtml(answer.result.html) };
       },
       ask: (body) => session.request({ op: "ask", ...body }),
+      async write(body) {
+        const answer = await session.request({ op: "write", ...body });
+        if (!answer.ok) throw new Error(`write failed: ${JSON.stringify(answer.error)}`);
+        return answer.result;
+      },
       async close() {
         try {
           await session.close();
