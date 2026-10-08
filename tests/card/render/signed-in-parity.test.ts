@@ -13,7 +13,7 @@ import {
 import { RenderEngine } from "../../../src/card/render.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
 import { DECKOBOT_CODENAME } from "../../../src/card/auth/actor.js";
-import { enabledRolesDropdownHtml, signedInAccountLinksInnerHtml } from "../../../src/card/render/navbar-views.js";
+import { enabledRolesDropdownHtml, fillUniqueIds, signedInAccountLinksInnerHtml } from "../../../src/card/render/navbar-views.js";
 
 const normalizeSlotIds = (html: string): string =>
   html.replace(/data-slot-id=(["'])[0-9a-fA-F]+\1/g, 'data-slot-id="RANDOMIZED"');
@@ -132,6 +132,11 @@ describe("the interactive roles dropdown (account_links.rb :my_card, can_disable
     `<input type="checkbox" name="pointer_checkbox-pat_member-Xenabled_role-2" id="pointer-checkbox-advisory" value="Advisory" class="pointer-checkbox-button _submit-on-change me-2" checked="checked" />\n` +
     `<a class="known-card" href="/Advisory">Advisory</a>\n</div>\n</li></ul></div></div></div></fieldset></form></div>`;
 
+  const counter = () => {
+    let n = 0;
+    return { uniqueId: () => `x-${++n}` } as unknown as Parameters<typeof fillUniqueIds>[1];
+  };
+
   const input = {
     actorName: "Pat Member",
     actorTypeKey: "person",
@@ -141,12 +146,25 @@ describe("the interactive roles dropdown (account_links.rb :my_card, can_disable
   };
 
   it("nests +*enabled_roles in :edit_inline with one checked box per current role", () => {
-    expect(normalizeSlotIds(enabledRolesDropdownHtml(input, KNOWN))).toBe(EXPECTED);
+    expect(normalizeSlotIds(fillUniqueIds(enabledRolesDropdownHtml(input, KNOWN), counter()))).toBe(EXPECTED);
+  });
+
+  it("draws the checkbox ids from the page counter, after ids the body used", () => {
+    const fmt = counter();
+    fmt.uniqueId();
+    fmt.uniqueId();
+    const html = fillUniqueIds(enabledRolesDropdownHtml(input, KNOWN), fmt);
+    expect(html).toContain('name="pointer_checkbox-pat_member-Xenabled_role-3"');
+    expect(html).toContain('name="pointer_checkbox-pat_member-Xenabled_role-4"');
+  });
+
+  it("leaves the content blank on the first render of a cache lifetime", () => {
+    expect(enabledRolesDropdownHtml(input, KNOWN, false)).toContain('type="hidden" name="card[content]"');
   });
 
   it("the navbar's my_card item carries it", () => {
     const links = signedInAccountLinksInnerHtml("Pat Member", KNOWN, enabledRolesDropdownHtml(input, KNOWN));
-    expect(normalizeSlotIds(links)).toBe(
+    expect(normalizeSlotIds(fillUniqueIds(links, counter()))).toBe(
       `<li class="nav-item">${EXPECTED}</li>\n` +
         `<li class="nav-item"><a class="nav-link signout-link known-card" href="/delete/*signin">Sign out</a></li>`,
     );
@@ -239,6 +257,49 @@ describe("a Sign up card's approval links (card-mod-account signup/views.rb veri
     const html = await engine.render("Pat Applicant", "core");
     expect(html).toContain("signed up on July  7, 2015 07:16:02</div>");
     expect(html).not.toContain("approve_with_verification");
+  });
+});
+
+describe("a modal-wrapped view renders outside the layout (process_layout.rb render_outside_of_layout)", () => {
+  let storage: RenderTestStorage | undefined;
+
+  beforeAll(async () => {
+    storage = await createRenderTestStorage();
+    const s = storage;
+    await seedCard(s, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
+    await seedCard(s, { id: 900, name: "*all", typeId: 2 });
+    await seedCard(s, { id: 901, name: "*layout", typeId: 2 });
+    await seedCard(s, { id: 910, leftId: 900, rightId: 901, typeId: 2, dbContent: "Probe Layout" });
+    await seedCard(s, {
+      id: 911,
+      name: "Probe Layout",
+      typeId: 2,
+      dbContent: "<body>{{_main|titled}}</body>",
+    });
+    await seedCard(s, { id: 914, name: "Probe Page", typeId: 2, dbContent: "<p>the body</p>" });
+    await s.fetcher.codenames.ensureLoaded();
+    s.fetcher.installNameEnvironment();
+  });
+
+  afterAll(() => {
+    storage?.close?.();
+  });
+
+  it("renders the readable card's page, then the denied board before </body>, and answers 403", async () => {
+    const { renderPageWithStatus } = await import("../../../src/card/render/page.js");
+    const engine = new RenderEngine(new FetchEngine(storage!.counting));
+    const { html, status } = await renderPageWithStatus(engine, "Probe Page", "board");
+    expect(status).toBe(403);
+    const main = html.indexOf('id="probe_page-titled-view"');
+    const denial = html.indexOf('id="probe_page-denial-view"');
+    expect(main).toBeGreaterThan(-1);
+    expect(denial).toBeGreaterThan(main);
+    expect(html.indexOf("</body>")).toBeGreaterThan(denial);
+    expect(html).toContain("<p>the body</p>");
+    expect(html).toContain("to update this.</div>");
+    // the body's main slot was rendered without main_render_args
+    expect(html).not.toMatch(/probe_page-titled-view"[^>]*main_view/);
+    expect(html).toContain('<div class="d0-card-body d0-card-content ');
   });
 });
 

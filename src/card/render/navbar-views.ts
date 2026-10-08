@@ -75,7 +75,7 @@ const navbarLinksView: ViewFn = (ctx) => {
     // dropped).
     const signedInItems = ctx.fmt.engine.pageSessionAccountLinksHtml;
     if (signedInItems !== undefined) {
-      return `<ul class="navbar-nav">${signedInItems}</ul>`;
+      return `<ul class="navbar-nav">${fillUniqueIds(signedInItems, fmt)}</ul>`;
     }
     const links = [
       `<a class="nav-link signup-link known-card" href="/new/Sign_up">Sign up</a>`,
@@ -243,7 +243,7 @@ export const NAVBAR_VIEWS: Record<string, ViewFn> = {
 export function accountLinksCoreHtml(ctx: ViewContext): string {
   const signedInItems = ctx.fmt.engine.pageSessionAccountLinksHtml;
   if (signedInItems !== undefined) {
-    return `<div id="logging" class="logged-in">${signedInItems}</div>`;
+    return `<div id="logging" class="logged-in">${fillUniqueIds(signedInItems, ctx.fmt)}</div>`;
   }
   const links = [
     `<li class="nav-item"><a class="nav-link signup-link known-card" href="/new/Sign_up">Sign up</a></li>`,
@@ -352,10 +352,29 @@ export interface SessionRolesInput {
  *  per current role after a "Roles" dropdown header (account_dropdown.rb
  *  account_dropdown_roles). ensure_roles fills the session card's blank
  *  content with every current role, so every box renders checked. The
- *  content input renders before checkbox_input runs, so only the first
- *  render in a process shows it blank; the filled card stays cached and
- *  every later render carries the roles, which is the shape rendered here.
+ *  content input renders before checkbox_input runs, so the first render
+ *  in a cache lifetime shows it blank (contentFilled false); the filled card
+ *  stays cached and every later render carries the roles.
  *  The checkbox names count up per role (unique_id). */
+/** Stands for the next value of the page's element-id counter (content.rb
+ *  unique_id: the root format's id_counter, shared by every format of the
+ *  request) in prepared session HTML; fillUniqueIds draws the values at
+ *  render time, so the numbers continue from whatever the page body used. */
+export const UNIQUE_ID_TOKEN = "\u0000unique-id\u0000";
+
+/** Replace each UNIQUE_ID_TOKEN with the next id-counter value of the
+ *  format's root (RenderFormat#uniqueId, which counts at the root). */
+export function fillUniqueIds(html: string, fmt: RenderFormat): string {
+  if (!html.includes(UNIQUE_ID_TOKEN)) return html;
+  const parts = html.split(UNIQUE_ID_TOKEN);
+  let out = parts[0] ?? "";
+  for (let i = 1; i < parts.length; i++) {
+    const id = fmt.uniqueId();
+    out += id.slice(id.lastIndexOf("-") + 1) + parts[i];
+  }
+  return out;
+}
+
 /** set/right/enabled_roles.rb checkbox_input's account_dropdown: the
  *  btn-group with a "Roles" header and one role_checkbox per current role
  *  (role_checkbox.haml), every box checked (ensure_roles). */
@@ -366,11 +385,11 @@ export function rolesAccountDropdownHtml(
   const safeKey = DeckoName.parse(`${input.actorName}+*enabled roles`).safeKey;
   const roleItems = [
     `<h6 class="dropdown-header">Roles</h6>`,
-    ...input.roles.map((role, i) => {
+    ...input.roles.map((role) => {
       const roleName = DeckoName.parse(role);
       return (
         `<div class='pointer-checkbox dropdown-item'>\n` +
-        `<input type="checkbox" name="pointer_checkbox-${safeKey}-${i + 1}" id="pointer-checkbox-${h(roleName.key)}" ` +
+        `<input type="checkbox" name="pointer_checkbox-${safeKey}-${UNIQUE_ID_TOKEN}" id="pointer-checkbox-${h(roleName.key)}" ` +
         `value="${h(role)}" class="pointer-checkbox-button _submit-on-change me-2" checked="checked" />\n` +
         `<a class="known-card" href="/${h(roleName.urlKey)}">${h(role)}</a>\n` +
         `</div>\n`
@@ -383,6 +402,7 @@ export function rolesAccountDropdownHtml(
 export function enabledRolesDropdownHtml(
   input: SessionRolesInput,
   known: { actor: boolean; accountSettings: boolean; signin: boolean },
+  contentFilled = true,
 ): string {
   const name = DeckoName.parse(`${input.actorName}+*enabled roles`);
   const urlKey = name.urlKey;
@@ -405,7 +425,7 @@ export function enabledRolesDropdownHtml(
     `<input type="hidden" name="success[reload]" id="success_reload" value="true" autocomplete="off" /> ` +
     `<input type="hidden" name="card[type_id]" id="card_type_id" value="${input.sessionTypeId}" autocomplete="off" />` +
     `<fieldset class="card-editor editor"><div class="editor content-editor">` +
-    `<input class="d0-card-content form-control" autocomplete="off" type="hidden" value="${h(input.roles.join("\n"))}" name="card[content]" id="card_content" />` +
+    `<input class="d0-card-content form-control" autocomplete="off" type="hidden"${contentFilled ? ` value="${h(input.roles.join("\n"))}"` : ""} name="card[content]" id="card_content" />` +
     `<div class="pointer-checkbox-list">${dropdown}</div>` +
     `</div></fieldset></form></div>`
   );

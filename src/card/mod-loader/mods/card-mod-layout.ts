@@ -100,7 +100,7 @@ import {
   type ViewContext,
   type ViewFn,
 } from "../../render/format.js";
-import { myCardDropdownInnerHtml } from "../../render/navbar-views.js";
+import { fillUniqueIds, myCardDropdownInnerHtml } from "../../render/navbar-views.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
 import type { DeckoModManifest } from "../mod-manifest.js";
@@ -891,7 +891,7 @@ const inviteView = accountLinkView("signup", "invite-link", "Invite", "new");
  *  interactive_roles_dropdown nest of +*enabled_roles in :edit_inline.
  *  Signed-out or unprepared sessions render "" (the denial :blank shape).
  */
-const myCardView: ViewFn = (ctx) => ctx.fmt.engine.pageSessionMyCardHtml ?? "";
+const myCardView: ViewFn = (ctx) => fillUniqueIds(ctx.fmt.engine.pageSessionMyCardHtml ?? "", ctx.fmt);
 
 /** right/enabled_roles.rb:26-43 — view :edit_inline (perms :none, unknown:
  *  true, cache: :never, wrap: :slot, super()) whose checkbox_input override
@@ -910,7 +910,7 @@ const enabledRolesEditInlineView: ViewFn = (ctx) => {
       { actor: true, accountSettings: false, signin: true },
       [],
     );
-  return `<div class="pointer-checkbox-list">${sessionHtml}</div>`;
+  return `<div class="pointer-checkbox-list">${fillUniqueIds(sessionHtml, ctx.fmt)}</div>`;
 };
 
 // ---------------------------------------------------------------------------

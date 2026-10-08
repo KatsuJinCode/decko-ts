@@ -118,7 +118,9 @@ if (process.env.CAPTURE_FROZEN_CLOCK) {
 // account, as Ruby's Auth.signin gives both). Unset leaves the engine as it
 // boots. When set, every render must leave the engine's resolved read state
 // with alwaysOk === false (the actor is neither Decko Bot nor an
-// Administrator), or the run fails; the first resolved state is printed.
+// Administrator), or the run fails, unless GRADE_VIEWER_ALLOW_ALWAYS_OK=1
+// says the administrator grade is intended; the first resolved state is
+// printed.
 interface GradeViewer { readonly signedIn: boolean; readonly actorId?: number }
 interface GradeViewerEngine {
   viewer: GradeViewer;
@@ -137,7 +139,11 @@ function assertGradeViewerState(engine: GradeViewerEngine, viewer: GradeViewer |
   if (viewer === undefined) return;
   const state = engine.readPermission;
   if (state === undefined) return; // resolved lazily; checked on the next render
-  if (state.alwaysOk) throw new Error("GRADE_VIEWER resolved to an always-ok actor; refusing to grade");
+  // GRADE_VIEWER_ALLOW_ALWAYS_OK=1 grades an administrator on purpose (the
+  // capture side signs in the same always-ok actor).
+  if (state.alwaysOk && process.env.GRADE_VIEWER_ALLOW_ALWAYS_OK !== "1") {
+    throw new Error("GRADE_VIEWER resolved to an always-ok actor; refusing to grade");
+  }
   if (!gradeViewerStatePrinted) {
     gradeViewerStatePrinted = true;
     const line =

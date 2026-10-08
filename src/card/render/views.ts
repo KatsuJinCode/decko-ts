@@ -85,7 +85,8 @@ import { buildVirtualRuleCard, ruleTypeIdForSetting } from "./virtual-rule-card.
 import { NAVBAR_VIEWS, accountLinksCoreHtml } from "./navbar-views.js";
 import { scanNests } from "./nest-syntax.js";
 import { kramdownToStashedHtml } from "./kramdown.js";
-import { resolveContentOverride, resolveContentOverrideEntry } from "./content-overrides.js";
+import { registerBuiltInContentOverride, resolveContentOverride, resolveContentOverrideEntry } from "./content-overrides.js";
+import { whenCreatedContentFn, whenLastEditedContentFn } from "../mod-loader/mods/card-mod-date.js";
 import { signupCoreHtml } from "../mod-loader/mods/card-mod-account.js";
 import { bootswatchSkinCoreHtml } from "../mod-loader/mods/card-mod-bootstrap.js";
 import { templateNestView } from "../mod-loader/mods/card-mod-edit.js";
@@ -134,6 +135,23 @@ import { leadView as helpLeadView } from "../mod-loader/mods/card-mod-help.js";
 import { roleConfigsView, modCardCoreHtml } from "../mod-loader/mods/core-mod.js";
 // card-mod-format set/all/demo.rb :demo (body in ./demo-view.ts; flat entry below).
 import { demoView } from "./demo-view.js";
+
+// card-mod-date set/right/when_created.rb and when_last_edited.rb: the
+// `def content` of the +*when created / +*when last edited fields (the left
+// card's timestamps). Anonymous never reads them on the culture deck; a
+// signed-in reader's task pages render them. The right anchors are the
+// setting cards' keys; the sets assign the Phrase type, so the override is
+// the core's final bytes.
+registerBuiltInContentOverride({
+  setPath: "right/*when_created",
+  modName: "date",
+  fn: whenCreatedContentFn,
+});
+registerBuiltInContentOverride({
+  setPath: "right/*when_last_edited",
+  modName: "date",
+  fn: whenLastEditedContentFn,
+});
 
 // ---------------------------------------------------------------------------
 // shared emitters
@@ -1605,50 +1623,54 @@ const commentBoxBaseView: ViewFn = ({ fmt }) => {
   // readRuleClass '*self' is the corpus's stored marker for that shape
   // (9789: '*self' + the 9813 *update->Anyone row; 770 of the 779
   // discussion rows are '*all plus').
-  if (fmt.engine.taskAllowed?.(card, "update") !== true) return "";
-  if (card.id === undefined) {
-    // The create branch: card-mod-comment.ts commentBoxBody's create shape
-    // (board-stage3 engage_tab oracle), un-recaptched there.
-    return (
-      `<div class="comment-box nodblclick">` +
-      `<form class="card-form slotter" id="new_card" action="/card/create"` +
-      ` accept-charset="UTF-8" data-remote="true" method="post">` +
-      `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
-      `<input type="hidden" name="card[name]" id="card_name" value="${h(card.name.s)}" autocomplete="off" />` +
-      `<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">
-</textarea>` +
-      `<div class="comment-buttons"><label>My Name is:</label> <input type="text" name="comment_author"></div>` +
-      `</form></div>`
-    );
-  }
+  // perms :update — and an update of a new card is a create (format/
+  // error.rb ok?): the create branch renders for an actor who may create
+  // the absent +discussion card.
+  const isNew = card.id === undefined;
+  const allowed = isNew
+    ? (fmt.engine.unknownCardCreatable?.(card) ?? fmt.engine.taskAllowed?.(card, "create") === true)
+    : fmt.engine.taskAllowed?.(card, "update") === true;
+  if (!allowed) return "";
   // A signed-in session gets neither the reCAPTCHA (card-mod-recaptcha
   // set/all/recaptcha.rb recaptcha_on?: `!Auth.signed_in?`) nor the author
   // field (comment.rb comment_author_label: `return if Auth.signed_in?`).
   const signedIn = fmt.engine.pageSession?.signedIn === true;
+  const action = isNew ? "create" : "update";
   const siteKey = recaptchaSiteKey() ?? RECAPTCHA_SITE_KEY;
   const recaptcha = signedIn
     ? ""
     : `<script src="https://www.google.com/recaptcha/api.js?render=${siteKey}"></` + `script>
 ` +
       `<input type="hidden" name="recaptcha_token" id="recaptcha_token" value=""` +
-      ` data-site-key="${siteKey}" data-action="update" class="_recaptcha-token" autocomplete="off" />`;
+      ` data-site-key="${siteKey}" data-action="${action}" class="_recaptcha-token" autocomplete="off" />`;
   const authorLabel = signedIn
     ? ""
     : `<label>My Name is:</label>` +
       ` <input class=" form-control" type="text" value="Anonymous" name="card[comment_author]" id="card_comment_author" />
 `;
-  const form =
-    `<form class="card-form slotter autosave" id="edit_card_${card.id}"${signedIn ? "" : ` data-recaptcha="on"`}` +
-    ` action="/update/${h(fmt.urlKey())}" accept-charset="UTF-8" data-remote="true" method="post">` +
-    `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
-    `<input type="hidden" name="_method" value="patch" autocomplete="off" />` +
-    recaptcha +
+  // card_form: the create form posts to /card/create as "new_card" without
+  // autosave; the update form patches /update/<url key>.
+  const formOpen = isNew
+    ? `<form class="card-form slotter" id="new_card"${signedIn ? "" : ` data-recaptcha="on"`}` +
+      ` action="/card/create" accept-charset="UTF-8" data-remote="true" method="post">` +
+      `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />`
+    : `<form class="card-form slotter autosave" id="edit_card_${card.id}"${signedIn ? "" : ` data-recaptcha="on"`}` +
+      ` action="/update/${h(fmt.urlKey())}" accept-charset="UTF-8" data-remote="true" method="post">` +
+      `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
+      `<input type="hidden" name="_method" value="patch" autocomplete="off" />`;
+  // [hidden_comment_fields, comment_box, comment_buttons] joined "\n";
+  // hidden_comment_fields (the card[name] tag) exists only for a new card.
+  const parts = [
+    ...(isNew
+      ? [`<input type="hidden" name="card[name]" id="card_name" value="${h(card.name.s)}" autocomplete="off" />`]
+      : []),
     `<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">
-</textarea>
-` +
+</textarea>`,
     `<div class="comment-buttons">` +
-    authorLabel +
-    `<button name="button" type="submit" data-disable-with="Commenting" class="btn btn-outline-primary">Comment</button></div>`;
+      authorLabel +
+      `<button name="button" type="submit" data-disable-with="Commenting" class="btn btn-outline-primary">Comment</button></div>`,
+  ];
+  const form = formOpen + recaptcha + parts.join("\n");
   return `<div class="comment-box nodblclick">${form}</form></div>`;
 };
 
@@ -5331,7 +5353,15 @@ function unknownCardCreatable(fmt: RenderFormat): boolean {
  *  card is unknown, so Card::Path#handle_unknown (lib/card/path.rb:89-96)
  *  adds `card[name]` whenever the url key loses name information. */
 function unknownLinkQuery(fmt: RenderFormat): string {
-  return wantedHrefQuerySuffix(fmt.card.name.s);
+  // path: (voo.type ? { card: { type: voo.type } } : {}), plus card[name]
+  // from handle_unknown; Hash#to_param sorts the keys (name before type)
+  // and the href escapes the joining ampersand.
+  const params: string[] = [];
+  const nameSuffix = wantedHrefQuerySuffix(fmt.card.name.s);
+  if (nameSuffix !== "") params.push(nameSuffix.slice(1));
+  const type = fmt.voo?.opts["type"];
+  if (typeof type === "string" && type !== "") params.push(`card%5Btype%5D=${cgiEscape(type)}`);
+  return params.length === 0 ? "" : `?${params.join("&amp;")}`;
 }
 
 /** unknown_link's href. A blank name has no mark, so Card::Path renders

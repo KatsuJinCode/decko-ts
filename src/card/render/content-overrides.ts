@@ -275,6 +275,13 @@ export function listItemContentOverride(card: RenderCard): string | undefined {
     : undefined;
 }
 
+/** Add an override to the built-in registry the loader-less engine reads,
+ *  for mod-owned `def content` hooks that module order keeps from being
+ *  declared here (an import of the mod from this file closes a cycle). */
+export function registerBuiltInContentOverride(entry: RegisteredContentOverride): void {
+  BUILT_IN_DEFAULT_REGISTRY.register(entry);
+}
+
 let defaultRegistry: ContentOverrideRegistry | undefined = BUILT_IN_DEFAULT_REGISTRY;
 
 /** Bind a registry as the render-path default (call after the mod loader's

@@ -612,6 +612,17 @@ export class RenderEngine implements RenderEngineLike {
   private sessionMyCardHtml: string | undefined;
   /** RenderEngineLike.pageSessionRolesDropdownHtml. */
   private sessionRolesDropdownHtml: string | undefined;
+  /** The session +*enabled_roles card's content: set/right/enabled_roles.rb
+   *  ensure_roles fills it during the first render that shows the roles
+   *  dropdown, after that render's content input (blank) is out; the card
+   *  stays cached, so later renders carry the roles. Actor ids whose card an
+   *  earlier render filled. */
+  private enabledRolesContentFilled = new Set<number>();
+  /** The actor whose roles dropdown the current render showed (filled at
+   *  the end of the render). */
+  private enabledRolesPendingActor: number | undefined;
+  private sessionAccountLinksFilled = false;
+  private sessionAccountLinksHasRoles = false;
 
   /** The render-time history seam bundle (src/card/history/render-seam.ts):
    *  set by prepareHistoryRender during a render whose view is one of
@@ -6552,6 +6563,10 @@ export class RenderEngine implements RenderEngineLike {
     } finally {
       this.unknownCreateMisses.clear();
       this.unknownCreateRenderDepth -= 1;
+      if (this.enabledRolesPendingActor !== undefined) {
+        this.enabledRolesContentFilled.add(this.enabledRolesPendingActor);
+        this.enabledRolesPendingActor = undefined;
+      }
     }
   }
 
@@ -6593,8 +6608,10 @@ export class RenderEngine implements RenderEngineLike {
     if (session?.signedIn !== true || session.actorId === undefined) return;
     if (
       this.sessionAccountLinks !== undefined &&
-      this.sessionAccountLinksActorId === session.actorId
+      this.sessionAccountLinksActorId === session.actorId &&
+      this.sessionAccountLinksFilled === this.enabledRolesContentFilled.has(session.actorId)
     ) {
+      if (this.sessionAccountLinksHasRoles) this.enabledRolesPendingActor = session.actorId;
       return;
     }
     const actor = await this.fetcher.fetchById(session.actorId, { skipVirtual: true });
@@ -6633,10 +6650,14 @@ export class RenderEngine implements RenderEngineLike {
     // The :my_card view body (account_links.rb view :my_card):
     // `can_disable_roles? ? interactive_roles_dropdown : account_dropdown`.
     const rolesInput = await this.sessionRolesInput(actor);
+    const filled = this.enabledRolesContentFilled.has(session.actorId);
+    this.sessionAccountLinksFilled = filled;
+    this.sessionAccountLinksHasRoles = rolesInput !== undefined;
+    if (rolesInput !== undefined) this.enabledRolesPendingActor = session.actorId;
     this.sessionMyCardHtml =
       rolesInput === undefined
         ? myCardDropdownInnerHtml(actorName, known, [])
-        : enabledRolesDropdownHtml(rolesInput, known);
+        : enabledRolesDropdownHtml(rolesInput, known, filled);
     this.sessionRolesDropdownHtml =
       rolesInput === undefined
         ? myCardDropdownInnerHtml(actorName, known, [])

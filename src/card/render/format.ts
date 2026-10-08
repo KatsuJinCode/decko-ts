@@ -1004,6 +1004,12 @@ export class RenderFormat {
 
   private idCounter: number | undefined;
 
+  /** html/views.rb @content_body: set on a format by its :titled and
+   *  :labeled views and read by wrap_body. The engine sets it where a later
+   *  render on the same Ruby format observes it (process_layout.rb
+   *  render_outside_of_layout: the denial frame after a titled page body). */
+  contentBody = false;
+
   // -------------------------------------------------------------------------
   // render.rb#render!
   // -------------------------------------------------------------------------
@@ -1123,7 +1129,7 @@ export class RenderFormat {
           // 1,377-char loud frame plus one extra closing </div> on every
           // +discussion page where the Ruby oracle renders nothing.
           if (this.isMain && viewDenialView(normalized) === undefined) {
-            return this.mainLoudDenialHtml(voo);
+            return this.mainLoudDenialHtml(voo, this.deniedTaskLabel(normalized));
           }
           return denial;
         }
@@ -1158,7 +1164,7 @@ export class RenderFormat {
         if (denial !== undefined) {
           this.noteFocalDenial(voo);
           if (this.isMain && viewDenialView(normalized) === undefined) {
-            return this.mainLoudDenialHtml(voo);
+            return this.mainLoudDenialHtml(voo, this.deniedTaskLabel(normalized));
           }
           return denial;
         }
@@ -1244,7 +1250,15 @@ export class RenderFormat {
     return SELF_SET_TITLE_OVERRIDES.get(this.card.record.codename ?? "");
   }
 
-  private mainLoudDenialHtml(voo: Voo): string {
+  /** permission.rb denied_task as the loud denial words it (`crud?(task)
+   *  && task`; an update of a new card is a create, format/error.rb ok?). */
+  private deniedTaskLabel(view: string): string {
+    const resolution = resolveViewPerms(view);
+    if (!resolution.check || resolution.predicate) return "";
+    return resolution.task === "update" && this.card.id === undefined ? "create" : resolution.task;
+  }
+
+  private mainLoudDenialHtml(voo: Voo, deniedTask = "read"): string {
     voo.hide("menu");
     voo.hide("help");
     const card = this.card;
@@ -1284,14 +1298,18 @@ export class RenderFormat {
       `<div class="d0-card-header card-header">` +
       `<h1 class="d0-card-header-title">` +
       `${this.renderView("title")}</h1></div>`;
-    const message = this.loudDenialMessageHtml();
-    const body = `<div class="d0-card-body card-body card-text"><h1>Sorry!</h1>\n${message}</div>`;
+    const message = this.loudDenialMessageHtml(deniedTask);
+    // wrap.rb wrap_body: the body carries d0-card-content and the set keys
+    // once a :titled or :labeled render set @content_body on this format.
+    const bodyClasses = this.contentBody ? `d0-card-body d0-card-content ${card.setKeys}` : "d0-card-body";
+    const body = `<div class="${bodyClasses} card-body card-text"><h1>Sorry!</h1>\n${message}</div>`;
     const frame = `<div class="d0-card-frame card">${header}\n\n${body}</div>`;
     const attrs = emitAttrs({
       id: `${card.name.safeKey}-denial-view`,
       class: voo.classy(["card-slot", "denial-view", card.setKeys]),
       "data-card-id": card.id === undefined ? undefined : String(card.id),
-      "data-card-name": card.name.s,
+      // wrap.rb slot_cardname: a new compound card is named by its url key
+      "data-card-name": card.id === undefined && card.name.isCompound ? card.name.urlKey : card.name.s,
       "data-card-type-id": card.typeId === undefined ? undefined : String(card.typeId),
       "data-card-type-name": card.typeName,
       "data-card-link-name": this.urlKey(),
@@ -1315,13 +1333,13 @@ export class RenderFormat {
    *  untouched). The authenticated goldens all render the signed-in branch
    *  because the capture session stays the bot (Auth.current never leaves
    *  the runner session — capture-authenticated-pages.rb:143-153). */
-  private loudDenialMessageHtml(): string {
+  private loudDenialMessageHtml(deniedTask: string): string {
     if (this.engine.pageSession?.signedIn === true) {
-      return `<div>You need permission to read this.</div>`;
+      return `<div>You need permission to ${deniedTask} this.</div>`;
     }
     return (
       `<div><div>Please <a class="signin-link known-card" href="/*signin/titled">sign in</a> or ` +
-      `<a class="signup-link known-card" href="/new/Sign_up">sign up</a> to read this.</div></div>`
+      `<a class="signup-link known-card" href="/new/Sign_up">sign up</a> to ${deniedTask} this.</div></div>`
     );
   }
 
@@ -2144,8 +2162,10 @@ export class RenderFormat {
       nestTypeOpt !== undefined ? engine.fetchRenderCard(nestTypeOpt) : undefined;
     const defaulted =
       explicitType !== undefined && explicitType.id !== undefined
-        ? { typeId: explicitType.id, typeName: explicitType.typeName }
-        : engine.newCardDefaultType?.(name);
+        ? { typeId: explicitType.id, typeName: explicitType.name.s } // the type CARD's name
+        : // the *type plus right template candidate anchors on the LEFT
+          // part's type (class_methods.rb left_type), as the set keys do
+          engine.newCardDefaultType?.(name, this.leftTypeNameFor(name));
     // content/all.rb:17-19 standard_content for a NEW card:
     // `db_content || (new_card? ? default_content : "")` with
     // default_content = template&.db_content (mod/core set/all/content.rb:
@@ -3766,6 +3786,10 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
   // reader's bar menu over an absent +discussion renders nothing, where the
   // substituted :unknown view would render its create link.
   { view: "menu", config: true },
+  // card-mod-comment set/all/comment.rb `view :comment_box, denial: :blank,
+  // unknown: true, perms: :update`: an absent +discussion renders its create
+  // form for an actor who may create it.
+  { view: "comment_box", config: true },
   // card-mod-edit set/all/formgroup.rb:13 `view :read_formgroup, template:
   // :haml, unknown: true, wrap: :slot` — the p20-email-views read_form
   // field nests target virtual field cards (welcome email+*to et al.);
