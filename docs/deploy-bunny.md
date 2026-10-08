@@ -208,6 +208,16 @@ and separately tested but is not wired into the write path.
 
 ## Deploying
 
+**With one command.** `deploy/provisioning/` automates the steps below for
+the full engine bundle: open `one-key-provisioning-page.html`, make your
+choices, download the payload, and run `provision-bunny-deck.mjs` with one
+Bunny API key. It creates the database, builds the schema, seeds your deck,
+creates and publishes the script, and checks `/_status`. Run it without a mode
+flag first to see the plan; nothing is contacted. See
+`deploy/provisioning/README-one-key-provisioning.md`.
+
+**By hand:**
+
 1. Build both bundles and their request payloads with
    `tools/bundle-bunny-edge-engine.mjs`, checking the reported sizes against
    the script size limit and reading the retained `node:` built-in list.

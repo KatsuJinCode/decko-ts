@@ -1,0 +1,59 @@
+provision-bunny-deck — run the payload the one-key provisioning page bakes
+(companion: one-key-provisioning-page.html in this directory; for hosts
+with no deploy-button flow, Bunny first)
+
+MODES (mutually exclusive)
+  (no mode flag)   PLAN — validate the payload, print every step with its
+                   exact API calls. Executes nothing, contacts nothing.
+  --verify         READ-ONLY: check the payload's script + database exist,
+                   match, and /_status answers ok. Needs the API key.
+  --execute        THE REAL RUN: creates database group + database + full-
+                   access token + edge script + linked pull zone, builds
+                   the schema (deploy/migrations, demo content excluded),
+                   seeds the deck, adds the data-version triggers and
+                   stamp row, sets secrets + variables,
+                   flips SmartCache off (caching on), publishes, polls
+                   /_status, writes the recovery result sidecar.
+                   REQUIRES --i-understand-this-writes-to-my-bunny-account
+                   (without it the run exits 2 before any network call).
+  --teardown       DELETE what the execute created (ids from the result
+                   sidecar). REQUIRES --yes AND --name <script-name>
+                   matching the payload exactly.
+
+REQUIRED (all modes)
+  --payload <path>    the generated payload JSON (schema
+                      decko-one-key-provisioning-payload/1)
+
+API KEY (never stored, never printed; needed by --execute/--verify/--teardown)
+  --creds <path>      KEY=VALUE file with BUNNY_API_KEY=...  (preferred)
+  BUNNY_API_KEY       environment variable
+  --api-key <key>     inline (shell history exposure — avoid)
+
+OPTIONS
+  --source <path>     deck sqlite file (REQUIRED for --execute; the browser
+                      cannot pass a server path — the payload records the
+                      file's name + sha256 + size for identity instead)
+  --bundle <path>     use a prebuilt bundle artifact instead of building from
+                      this tree: deploy/dist/bunny-edge-engine.code.json
+                      ({"Code":...}) or a raw bundle .js. Recorded (path +
+                      sha256) in the result sidecar.
+  --allow-write-path  required to arm payload.edge.write_path (the edge write
+                      surface). The one-key path provisions a READ-ONLY deck.
+  --protect <names>   comma-separated resource names to refuse in any mode,
+                      added to DECKO_PROTECTED_RESOURCE_NAMES
+  --help              this text
+
+WILL REFUSE (exit 2, "--"-marked reason)
+  - any payload naming a protected resource (DECKO_PROTECTED_RESOURCE_NAMES,
+    --protect), and --teardown of one
+  - a database slug over 16 characters (Bunny's create endpoint answers
+    HTTP 500 past that, measured 2026-10-02)
+  - --execute without the confirmation flag; --teardown without --yes and
+    the exact name; write_path payload without --allow-write-path
+  - --execute when a script/database of the same name already exists
+
+RECOVERY ARTIFACT
+  <payload>.result.json (written by --execute next to the payload) records
+  script/zone/database/group ids, the hostname, and the bundle + source
+  sha256. Payload + result together re-provision this deck with a fresh API
+  key and no other input. Neither file holds a secret.

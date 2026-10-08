@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decko one-key provisioning — Bunny</title>
+<!--
+  one-key-provisioning-page.html — the page half of decko-ts's one-key
+  provisioning (issue #1282 promise: providers without a button flow, Bunny
+  first). Single file, inline CSS + JS, no build step, no network calls: open
+  it in a browser, make your choices, download the generated provisioning
+  payload, then run the shown command in a terminal and paste ONE key — the
+  Bunny ACCOUNT API key. The key is deliberately NOT a field on this page:
+  it is pasted at run time (--creds file / BUNNY_API_KEY env), so no secret
+  ever touches the browser or the payload.
+
+  The payload this page bakes (schema decko-one-key-provisioning-payload/1)
+  doubles as the deck's permanent recovery artifact: it records every
+  choice + the deck file's identity (name, sha256, size), and holds no
+  secrets. The runner (provision-bunny-deck.mjs, same directory) is the
+  authority that re-validates it before anything runs.
+
+  Validation here mirrors the runner's validatePayload. The runner wins any
+  disagreement — it re-validates before every run.
+-->
+<style>
+  :root {
+    --ink: #1d2733; --paper: #f6f7f9; --card: #ffffff; --line: #d7dce3;
+    --accent: #0b6bcb; --ok: #157a3e; --bad: #b3261e; --warn: #8a5a00;
+    --mono: ui-monospace, Consolas, "Cascadia Mono", monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 2rem; font: 15px/1.5 system-ui, sans-serif; color: var(--ink); background: var(--paper); }
+  main { max-width: 62rem; margin: 0 auto; }
+  h1 { font-size: 1.35rem; margin: 0 0 .25rem; }
+  .sub { color: #55606e; margin: 0 0 1.5rem; }
+  .steps { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .steps span { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: .3rem .7rem; font-size: .85rem; }
+  fieldset { background: var(--card); border: 1px solid var(--line); border-radius: 8px; margin: 0 0 1.25rem; padding: 1rem 1.25rem; }
+  legend { font-weight: 600; padding: 0 .4rem; }
+  label { display: block; font-weight: 600; margin: .7rem 0 .15rem; font-size: .9rem; }
+  label:first-child { margin-top: 0; }
+  input[type=text], input[type=number], select { width: 100%; padding: .4rem .55rem; border: 1px solid var(--line); border-radius: 5px; font: inherit; background: #fff; }
+  input[type=number] { max-width: 9rem; }
+  .row { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .row > div { flex: 1 1 14rem; }
+  .hint { color: #55606e; font-size: .82rem; margin-top: .15rem; }
+  .count { font-size: .8rem; float: right; font-weight: 400; }
+  .count.bad { color: var(--bad); font-weight: 700; }
+  .count.good { color: var(--ok); font-weight: 700; }
+  .checkbox { font-weight: 400; display: flex; gap: .5rem; align-items: center; }
+  .warnbox { border-left: 3px solid var(--warn); background: #fff8e6; padding: .5rem .8rem; margin-top: .5rem; font-size: .85rem; }
+  .note { border-left: 3px solid var(--accent); background: #eef5fd; padding: .6rem .9rem; font-size: .88rem; margin: .75rem 0; }
+  output, pre { font-family: var(--mono); font-size: .82rem; }
+  pre { background: #10222f; color: #d9e6f2; padding: 1rem; border-radius: 8px; overflow: auto; max-height: 26rem; margin: .5rem 0 0; white-space: pre; }
+  .verdict { border-radius: 6px; padding: .6rem .9rem; margin-top: .75rem; font-size: .9rem; }
+  .verdict.ok { background: #e8f5ec; color: var(--ok); border: 1px solid #bfe3cb; }
+  .verdict.bad { background: #fdecea; color: var(--bad); border: 1px solid #f3c1bd; }
+  .verdict ul { margin: .3rem 0 0 1.1rem; padding: 0; }
+  .runline { display: flex; gap: .5rem; align-items: stretch; margin-top: .5rem; }
+  .runline code { flex: 1; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: .5rem .7rem; font-family: var(--mono); font-size: .8rem; overflow-x: auto; white-space: nowrap; }
+  button { font: inherit; border: 1px solid var(--line); background: var(--card); border-radius: 6px; padding: .4rem .9rem; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .btnrow { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: .9rem; }
+  .fileinfo { font-size: .85rem; color: #3c4654; margin-top: .3rem; }
+  .fileinfo .pending { color: var(--warn); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Decko one-key provisioning — Bunny</h1>
+  <p class="sub">Make your choices here, download the payload, run one command, paste one API key. Your deck goes live on Bunny Edge Scripting + Bunny Database.</p>
+  <div class="steps">
+    <span><strong>1.</strong> choose below</span>
+    <span><strong>2.</strong> download payload JSON</span>
+    <span><strong>3.</strong> run the command, paste your Bunny account API key</span>
+    <span><strong>4.</strong> keep payload + result file — your permanent recovery artifact</span>
+  </div>
+
+  <div class="note">No secret belongs on this page. The one key you paste later is your
+  <strong>Bunny account API key</strong> (dash.bunny.net → Account Settings → API Keys), given to the
+  runner through a creds file or an environment variable — never through the browser.</div>
+
+  <fieldset>
+    <legend>Provider</legend>
+    <label class="checkbox"><input type="radio" name="provider" value="bunny" checked> Bunny (Edge Scripting + Bunny Database) — supported by this page and runner</label>
+    <label class="checkbox"><input type="radio" name="provider" value="cloudflare" disabled> Cloudflare — the existing one-click path is <code>scripts/deploy/one-click-deck/one-click-deck.mjs</code>; a page for it is not part of this deliverable</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Deck</legend>
+    <label for="deck-file">Deck sqlite file (identity only — the file itself is read by the runner, not the browser)</label>
+    <input type="file" id="deck-file">
+    <div class="fileinfo" id="file-info">No file chosen yet — the payload needs its name, size, and SHA-256.</div>
+    <label for="deck-sha">SHA-256 of the deck file <span class="hint">(auto-filled when the browser can hash it; otherwise paste the output of <code>certutil -hashfile &lt;file&gt; SHA256</code> / <code>sha256sum</code>)</span></label>
+    <input type="text" id="deck-sha" placeholder="64 hex chars" spellcheck="false" autocomplete="off">
+    <div class="row">
+      <div>
+        <label for="deck-limit">Seed row cap per table</label>
+        <input type="number" id="deck-limit" value="200" min="0" step="1">
+        <div class="hint">Trial-sized start: 200 rows/table. 0 = the whole deck (costs more writes; Bunny DB caps at 1 GB).</div>
+      </div>
+      <div>
+        <label for="deck-tables">Tables to seed</label>
+        <input type="text" id="deck-tables" value="cards,card_references" spellcheck="false">
+        <div class="hint">Comma-separated. Empty = every table.</div>
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Resource names (all lowercase, digits, dashes — created NEW on your account)</legend>
+    <div class="row">
+      <div>
+        <label for="nm-script">Edge script name</label>
+        <input type="text" id="nm-script" value="my-decko" spellcheck="false" autocomplete="off">
+      </div>
+      <div>
+        <label for="nm-zone">Linked pull zone name</label>
+        <input type="text" id="nm-zone" value="my-decko" spellcheck="false" autocomplete="off">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label for="nm-group">Database group name</label>
+        <input type="text" id="nm-group" value="my-decko-group" spellcheck="false" autocomplete="off">
+      </div>
+      <div>
+        <label for="nm-db">Database slug <span class="count" id="db-count"></span></label>
+        <input type="text" id="nm-db" value="my-decko" maxlength="16" spellcheck="false" autocomplete="off">
+        <div class="hint">Hard limit 16 characters — Bunny's create endpoint answers HTTP 500 past it (measured 2026-10-02).</div>
+      </div>
+    </div>
+    <div class="warnbox">The runner only ever creates new resources: it refuses a script or database name that already exists on your account, and any name listed in <code>DECKO_PROTECTED_RESOURCE_NAMES</code> where it runs.</div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Database placement</legend>
+    <div class="row">
+      <div>
+        <label for="rg-storage">Storage region</label>
+        <select id="rg-storage">
+          <option value="eu-west-1" selected>eu-west-1 (Europe — most reliable create, measured)</option>
+          <option value="us-east-1">us-east-1 (US East — creation intermittently answered HTTP 500 on 2026-10-02)</option>
+          <option value="ap-south-1">ap-south-1</option>
+          <option value="eu-central-1">eu-central-1</option>
+        </select>
+      </div>
+      <div>
+        <label for="rg-primary">Primary region (serving)</label>
+        <select id="rg-primary">
+          <option value="AMS" selected>AMS — Amsterdam</option>
+          <option value="NY">NY — New York</option>
+          <option value="LA">LA — Los Angeles</option>
+          <option value="MI">MI — Miami</option>
+          <option value="SG">SG — Singapore</option>
+          <option value="SYD">SYD — Sydney</option>
+          <option value="UK">UK — London</option>
+          <option value="DE">DE — Frankfurt</option>
+          <option value="JP">JP — Tokyo</option>
+        </select>
+      </div>
+      <div>
+        <label for="rg-replicas">Replica regions <span class="hint">(comma-separated, optional)</span></label>
+        <input type="text" id="rg-replicas" value="" spellcheck="false" placeholder="e.g. NY, LAX-code style codes">
+        <div class="hint">Empty = single-primary, cheapest and most predictable at small scale.</div>
+      </div>
+    </div>
+    <label for="rg-auth">Database token the runner generates</label>
+    <select id="rg-auth">
+      <option value="full-access" selected>full-access (the import writes; the edge script reads — one token, simple at small scale)</option>
+      <option value="read-only">read-only (only correct when seeding happens another way)</option>
+    </select>
+  </fieldset>
+
+  <fieldset>
+    <legend>Edge behavior</legend>
+    <label class="checkbox"><input type="checkbox" id="eg-cache" checked> Edge caching (repeat views served from Bunny's POP without re-rendering)</label>
+    <div class="row">
+      <div>
+        <label for="eg-ttl">Cache TTL, seconds</label>
+        <input type="number" id="eg-ttl" value="300" min="1" max="2592000">
+        <div class="hint">300 s is the code default; 86400 (24 h) suits a deck that changes rarely. Content syncs purge both cache layers.</div>
+      </div>
+      <div>
+        <label for="eg-epoch">Cache epoch</label>
+        <input type="number" id="eg-epoch" value="0" min="0" step="1">
+        <div class="hint">Leave 0 for a fresh deck; content-sync bumps it to orphan old cache entries.</div>
+      </div>
+      <div>
+        <label for="eg-budget">Render budget, ms</label>
+        <input type="number" id="eg-budget" value="20000" min="1000" max="30000">
+        <div class="hint">Cold render deadline; Bunny's CPU cap is 30 s/request.</div>
+      </div>
+    </div>
+    <label class="checkbox"><input type="checkbox" id="eg-write"> Arm the write surface (sign-in / card edits over HTTP)</label>
+    <div class="warnbox" id="write-warn" hidden>Arming writes exposes an HTTP write path on a public URL. The one-key path provisions a read-only deck; the runner refuses this unless you also pass <code>--allow-write-path</code>. Leave unchecked unless you have read <code>deploy/bunny-worker-src/bunny-edge-signin-session-surface.ts</code> and know why.</div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Generated payload</legend>
+    <div class="verdict bad" id="verdict" hidden></div>
+    <pre id="payload-out"></pre>
+    <div class="btnrow">
+      <button class="primary" id="btn-download" disabled>Download payload JSON</button>
+      <button id="btn-copy-payload">Copy payload</button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>The one command</legend>
+    <div class="runline"><code id="run-plan"></code><button id="btn-copy-plan">Copy</button></div>
+    <div class="hint">Dry run: validates the payload and prints every step. Contacts nothing.</div>
+    <div class="runline"><code id="run-exec"></code><button id="btn-copy-exec">Copy</button></div>
+    <div class="hint">The real run: prompts for nothing else — put your API key in a creds file
+    (<code>BUNNY_API_KEY=…</code>) and pass it with <code>--creds</code>, or export <code>BUNNY_API_KEY</code>.
+    Without the written-confirmation flag the run exits before any network call.</div>
+    <div class="runline"><code id="run-verify"></code><button id="btn-copy-verify">Copy</button></div>
+    <div class="hint">Any time later: read-only check that this payload's deck is live.</div>
+  </fieldset>
+
+  <script>
+  "use strict";
+
+  // ---- schema constants (mirror provision-bunny-deck.mjs; the runner wins) --
+  const SCHEMA_NAME = "decko-one-key-provisioning-payload";
+  const SCHEMA_VERSION = 1;
+  const DB_SLUG_MAX = 16;
+  const NAME_RE = /^[a-z0-9][a-z0-9-]{1,39}$/;
+  const REGION_CODE_RE = /^[A-Z]{2,4}$/;
+
+  const $ = (id) => document.getElementById(id);
+  const fields = {
+    deckFile: $("deck-file"), deckSha: $("deck-sha"), deckLimit: $("deck-limit"),
+    deckTables: $("deck-tables"), script: $("nm-script"), zone: $("nm-zone"),
+    group: $("nm-group"), db: $("nm-db"), storage: $("rg-storage"),
+    primary: $("rg-primary"), replicas: $("rg-replicas"), auth: $("rg-auth"),
+    cache: $("eg-cache"), ttl: $("eg-ttl"), epoch: $("eg-epoch"),
+    budget: $("eg-budget"), write: $("eg-write"),
+  };
+
+  function payloadObject(nowIso) {
+    return {
+      schema: SCHEMA_NAME,
+      schema_version: SCHEMA_VERSION,
+      created: nowIso,
+      provider: "bunny",
+      deck: {
+        source_name: fields.deckFile.dataset.name ?? "",
+        source_sha256: (fields.deckSha.value || "").trim().toLowerCase(),
+        source_bytes: Number(fields.deckFile.dataset.bytes ?? -1),
+        limit: Number(fields.deckLimit.value),
+        tables: fields.deckTables.value.trim() === "" ? null : fields.deckTables.value.trim(),
+      },
+      bunny: {
+        script_name: fields.script.value.trim(),
+        pull_zone_name: fields.zone.value.trim(),
+        db_group_name: fields.group.value.trim(),
+        db_name: fields.db.value.trim(),
+        storage_region: fields.storage.value,
+        primary_region: fields.primary.value,
+        replica_regions: fields.replicas.value.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean),
+        db_token_authorization: fields.auth.value,
+      },
+      edge: {
+        cache_enabled: fields.cache.checked,
+        cache_ttl_seconds: Number(fields.ttl.value),
+        cache_epoch: Number(fields.epoch.value),
+        render_budget_ms: Number(fields.budget.value),
+        write_path: fields.write.checked,
+      },
+    };
+  }
+
+  // The runner's validatePayload, mirrored. Returns {payload, errors, refusals}.
+  function validateInPage(p) {
+    const errors = [];
+    const refusals = [];
+    if (p.schema !== SCHEMA_NAME) errors.push(`schema must be "${SCHEMA_NAME}"`);
+    if (p.schema_version !== SCHEMA_VERSION) errors.push(`schema_version must be ${SCHEMA_VERSION}`);
+    if (!p.deck.source_name) errors.push("pick the deck sqlite file (deck.source_name is required)");
+    if (!/^[0-9a-f]{64}$/.test(p.deck.source_sha256)) errors.push("deck.source_sha256 must be 64 hex chars (hash the file or paste certutil output)");
+    if (!Number.isInteger(p.deck.source_bytes) || p.deck.source_bytes < 0) errors.push("deck.source_bytes missing — pick the deck file");
+    if (!Number.isInteger(p.deck.limit) || p.deck.limit < 0) errors.push("deck.limit must be a non-negative integer (0 = whole deck)");
+    for (const [label, v] of [["script name", p.bunny.script_name], ["pull zone name", p.bunny.pull_zone_name], ["database group", p.bunny.db_group_name], ["database slug", p.bunny.db_name]]) {
+      if (!NAME_RE.test(v)) errors.push(`${label} must be 2-40 chars: lowercase letters, digits, dashes, starting alphanumeric`);
+    }
+    if (p.bunny.db_name.length > DB_SLUG_MAX) errors.push(`database slug is ${p.bunny.db_name.length} chars; the limit is ${DB_SLUG_MAX} (Bunny 500s past it)`);
+    if (!REGION_CODE_RE.test(p.bunny.primary_region)) errors.push("primary region must be a region code like AMS or NY");
+    if (!p.bunny.replica_regions.every((r) => REGION_CODE_RE.test(r))) errors.push("replica regions must be comma-separated region codes like NY, LA");
+    if (!["full-access", "read-only"].includes(p.bunny.db_token_authorization)) errors.push("token authorization must be full-access or read-only");
+    if (!Number.isInteger(p.edge.cache_ttl_seconds) || p.edge.cache_ttl_seconds < 1 || p.edge.cache_ttl_seconds > 2592000) errors.push("cache TTL must be 1..2592000 seconds");
+    if (!Number.isInteger(p.edge.cache_epoch) || p.edge.cache_epoch < 0) errors.push("cache epoch must be a non-negative integer");
+    if (!Number.isInteger(p.edge.render_budget_ms) || p.edge.render_budget_ms < 1000 || p.edge.render_budget_ms > 30000) errors.push("render budget must be 1000..30000 ms (Bunny CPU cap 30 s)");
+    return { errors, refusals };
+  }
+
+  function render() {
+    const p = payloadObject(new Date().toISOString());
+    const { errors, refusals } = validateInPage(p);
+    const problems = [...refusals, ...errors];
+    const out = $("payload-out");
+    const verdict = $("verdict");
+    out.textContent = JSON.stringify(p, null, 2);
+    if (problems.length === 0) {
+      verdict.hidden = false;
+      verdict.className = "verdict ok";
+      verdict.textContent = "Valid payload — schema " + SCHEMA_NAME + "/" + SCHEMA_VERSION + ". Download it, then run the command below.";
+      $("btn-download").disabled = false;
+    } else {
+      verdict.hidden = false;
+      verdict.className = "verdict bad";
+      verdict.innerHTML = "Not valid yet:" + "<ul>" + problems.map((e) => "<li>" + e.replace(/&/g, "&amp;").replace(/</g, "&lt;") + "</li>").join("") + "</ul>";
+      $("btn-download").disabled = true;
+    }
+    const runBase = "node deploy/provisioning/provision-bunny-deck.mjs --payload my-decko-payload.json";
+    const sourceOpt = " --source C:\\path\\to\\" + (p.deck.source_name || "deck.sqlite3");
+    $("run-plan").textContent = runBase + sourceOpt;
+    $("run-exec").textContent = runBase + sourceOpt + " --creds bunny-creds.txt --execute --i-understand-this-writes-to-my-bunny-account";
+    $("run-verify").textContent = runBase + " --creds bunny-creds.txt --verify";
+  }
+
+  // ---- deck file identity (name + size + sha256 via crypto.subtle) ----------
+  fields.deckFile.addEventListener("change", async () => {
+    const f = fields.deckFile.files[0];
+    const info = $("file-info");
+    if (!f) return;
+    fields.deckFile.dataset.name = f.name;
+    fields.deckFile.dataset.bytes = String(f.size);
+    if (f.name.endsWith(".sqlite3") === false && f.name.endsWith(".db") === false) {
+      info.innerHTML = '<span class="pending">' + f.name + " does not end in .sqlite3 — make sure this is the deck sqlite.</span>";
+    } else {
+      info.textContent = f.name + " — " + f.size.toLocaleString() + " bytes";
+    }
+    if (crypto?.subtle) {
+      try {
+        const digest = await crypto.subtle.digest("SHA-256", await f.arrayBuffer());
+        fields.deckSha.value = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+      } catch {
+        info.innerHTML += ' <span class="pending">Could not hash in-browser — paste the sha256 manually below.</span>';
+      }
+    }
+    render();
+  });
+
+  // db slug live counter
+  function dbCount() {
+    const v = fields.db.value;
+    const el = $("db-count");
+    el.textContent = v.length + "/" + DB_SLUG_MAX;
+    el.className = "count " + (v.length > DB_SLUG_MAX ? "bad" : "good");
+  }
+  fields.db.addEventListener("input", () => { dbCount(); render(); });
+
+  fields.write.addEventListener("change", () => {
+    $("write-warn").hidden = !fields.write.checked;
+    render();
+  });
+
+  for (const el of [fields.deckSha, fields.deckLimit, fields.deckTables, fields.script,
+    fields.zone, fields.group, fields.storage, fields.primary, fields.replicas,
+    fields.auth, fields.cache, fields.ttl, fields.epoch, fields.budget]) {
+    el.addEventListener("input", render);
+    el.addEventListener("change", render);
+  }
+
+  // ---- buttons --------------------------------------------------------------
+  function download() {
+    const p = payloadObject(new Date().toISOString());
+    const name = (p.bunny.script_name || "decko") + "-payload.json";
+    const blob = new Blob([JSON.stringify(p, null, 2) + "\n"], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+  async function copyText(text, button) {
+    try {
+      await navigator.clipboard.writeText(text);
+      const old = button.textContent;
+      button.textContent = "Copied";
+      setTimeout(() => { button.textContent = old; }, 1200);
+    } catch {
+      button.textContent = "Ctrl+C";
+    }
+  }
+  $("btn-download").addEventListener("click", download);
+  $("btn-copy-payload").addEventListener("click", (e) => copyText($("payload-out").textContent, e.target));
+  $("btn-copy-plan").addEventListener("click", (e) => copyText($("run-plan").textContent, e.target));
+  $("btn-copy-exec").addEventListener("click", (e) => copyText($("run-exec").textContent, e.target));
+  $("btn-copy-verify").addEventListener("click", (e) => copyText($("run-verify").textContent, e.target));
+
+  dbCount();
+  render();
+  </script>
+</main>
+</body>
+</html>
