@@ -201,7 +201,13 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // the same dump probe: exactly 329 at 4a2a035f (this pin's own
       // cause-commit), exactly 338 at the current tip — the diff is
       // precisely those nine rows.
-      ["html", 338],
+      // 338 -> 341 (semantics parity, 2026-10-07): carrierwave registers
+      // :source/:core/:inline/:one_line_content on their Ruby type sets
+      // instead of one all-set fold module. 341 -> 344: :board/:cardboard
+      // move to All::Editing (no count change) and the html :type
+      // (All::Html, Type::Cardtype) and :labeled (All::Html::Views) arms
+      // are registered on the modules Ruby defines them in.
+      ["html", 344],
 
       ["js", 2],
       ["json", 3],

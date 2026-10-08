@@ -72,6 +72,8 @@ import {
   SETTING_GROUPS,
   isTemplatedNestsName,
   templateLinkSetNameFromParts,
+  flatViewRefused,
+  visibleSettingCodenames,
   visibleSettingsForGroup,
 } from "./render/views.js";
 import { RULE_TYPE_IDS_FOR_PRELOAD } from "./render/virtual-rule-card.js";
@@ -2227,7 +2229,9 @@ export class RenderEngine implements RenderEngineLike {
     // Base format view (the compiled-in HTML_VIEWS + any flat
     // registrations a mod added without registering under a set module
     // — none today, but the seam covers the case). Byte-identical to
-    // the pre-chain dispatch path when no loader is registered.
+    // the pre-chain dispatch path when no loader is registered. A flat view
+    // Ruby defines only on some sets resolves only for cards in them.
+    if (flatViewRefused(view, card.setKeys)) return undefined;
     return this.views[view];
   }
 
@@ -4698,6 +4702,19 @@ export class RenderEngine implements RenderEngineLike {
    *  fetchRenderCard. This hook fetches + enriches + memoizes the card
    *  so the next fetchRenderCard call sees it. Returns undefined for a
    *  fetch miss (the caller falls back to an empty slot). */
+  /** card-mod-rules set/type/set.rb:73-75 visible_setting_codenames for a
+   *  set card by name: the card, its pattern (right) card and its anchor
+   *  (left) card are prepared first, because the prototype type the
+   *  restriction reads comes from them. Undefined for a card that does not
+   *  exist or is not Set-typed (Ruby raises NoMethodError there). */
+  async visibleSettingCodenamesFor(name: string): Promise<ReadonlyArray<string> | undefined> {
+    const card = await this.prepareItemForRender(name);
+    if (card === undefined) return undefined;
+    if (card.name.leftName !== undefined) await this.prepareItemForRender(card.name.leftName.s);
+    if (card.name.rightName !== undefined) await this.prepareItemForRender(card.name.rightName.s);
+    return visibleSettingCodenames(this, card);
+  }
+
   async prepareItemForRender(name: string): Promise<RenderCard | undefined> {
     const cached = this.fetchRenderCard(name);
     if (cached !== undefined) return cached;

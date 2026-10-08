@@ -52,7 +52,12 @@ import {
   type SetModuleKind,
   type ViewChainEntry,
 } from "./mod-loader/mod-registrar.js";
-import { safeKeyToModuleShortname, safeKeyToModuleShortnameCandidates } from "./render/set-keys-to-modules.js";
+import {
+  codenameModuleShortnames,
+  safeKeyToModuleShortname,
+  safeKeyToModuleShortnameCandidates,
+} from "./render/set-keys-to-modules.js";
+import { SET_INCLUDE_GRAPH } from "./mod-loader/set-include-graph.js";
 import {
   ContentOverrideRegistry,
   setDefaultContentOverrideRegistry,
@@ -810,6 +815,13 @@ export class ModLoader {
             }
           }
         }
+        // INCLUDE_SET: the abstract set modules Ruby mixes into this
+        // token's set module (include_set, transitively), in Ruby's
+        // method-resolution order, sit directly under the module itself and
+        // above every less specific token. The table is read off the loaded
+        // Ruby deck (set-include-graph.ts); a view the concrete module does
+        // not define still resolves through its abstracts.
+        for (const entry of this.includedAbstractEntries(token, view, out)) out.push(entry);
       }
     }
     // Format inheritance: when the named format produces no chain
@@ -869,6 +881,32 @@ export class ModLoader {
     }
     baseScoped.reverse();
     out.push(...baseScoped);
+    return out;
+  }
+
+  /** The abstract-set chain entries for one anchored token: every module
+   *  the token's set module (and its nested modules) includes, per
+   *  SET_INCLUDE_GRAPH, html includes first and then base ones, each
+   *  contributing its registration of the view once. */
+  private includedAbstractEntries(token: string, view: string, already: readonly ViewChainEntry[]): ViewChainEntry[] {
+    const out: ViewChainEntry[] = [];
+    const seen = new Set(already.map((e) => e.setModule));
+    for (const candidate of [...safeKeyToModuleShortnameCandidates(token), ...codenameModuleShortnames(token)]) {
+      const owners = Object.keys(SET_INCLUDE_GRAPH).filter(
+        (key) => key === candidate || key.startsWith(`${candidate}::`),
+      );
+      if (owners.length === 0) continue;
+      for (const owner of owners) {
+        const includes = SET_INCLUDE_GRAPH[owner]!;
+        for (const abstract of [...(includes.html ?? []), ...(includes.base ?? [])]) {
+          if (seen.has(abstract)) continue;
+          seen.add(abstract);
+          const viewFn = this.viewChains.viewFor(abstract, view);
+          if (viewFn !== undefined) out.push({ setModule: abstract, view, viewFn });
+        }
+      }
+      break;
+    }
     return out;
   }
 

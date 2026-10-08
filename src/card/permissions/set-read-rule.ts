@@ -71,6 +71,7 @@ import { DeckoName } from "../name.js";
 import { ruleClassName, ruleNamesForCard } from "../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../set-patterns/types.js";
 import { resolveRuleIdsByKeys } from "./read-rules.js";
+import { isPreferenceName, quickTypeName } from "../actions/rule-content-walk.js";
 
 /** permissions.rb:56 — the "_left" (or [[_left]]) rule content that makes a
  *  compound card read through its left card. */
@@ -598,11 +599,13 @@ async function patternCardInput(
   if (parsed.isCompound && parsed.leftName !== undefined) {
     const leftId =
       card.leftId ?? (await deps.fetch.lexicon.id(parsed.leftName)) ?? null;
-    if (leftId !== null) {
-      const leftRow = await fetchCardsRow(deps.driver, leftId);
-      if (leftRow !== undefined) {
-        leftTypeName = (await cardName(deps, leftRow.type_id)) ?? null;
-      }
+    const leftRow = leftId !== null ? await fetchCardsRow(deps.driver, leftId) : undefined;
+    if (leftRow !== undefined && leftRow.trash === 0) {
+      leftTypeName = (await cardName(deps, leftRow.type_id)) ?? null;
+    } else {
+      // quick_type's new-card arm (class_methods.rb:59-71): a missing or
+      // trashed left answers the type a new card of that name would get.
+      leftTypeName = (await quickTypeName(deps.fetch, parsed.leftName)) ?? null;
     }
   }
   return {
@@ -612,7 +615,9 @@ async function patternCardInput(
     typeId: card.typeId,
     typeName: card.typeId !== null ? ((await cardName(deps, card.typeId)) ?? null) : null,
     leftTypeName,
-    isRule: parsed.isCompound ? await isStandardRuleName(deps, parsed) : false,
+    isRule: parsed.isCompound
+      ? (await isStandardRuleName(deps, parsed)) || (await isPreferenceName(deps.fetch, parsed))
+      : false,
   };
 }
 

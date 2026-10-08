@@ -47,6 +47,8 @@
 import type { FetchEngine } from "../fetch.js";
 import type { DeckoName } from "../name.js";
 import type { PatternCardInput } from "../set-patterns/types.js";
+import { resolveTypeId } from "./type-resolution.js";
+import { CardActionError } from "./types.js";
 import {
   ruleNamesForCard,
   settingCardNameForCode,
@@ -114,7 +116,8 @@ export async function ruleWalkPatternInput(
   let isRule = false;
   if (base.name.isCompound) {
     leftTypeName = await leftTypeNameOf(fetch, base.name);
-    isRule = await isStandardRuleName(fetch, base.name);
+    // rule? (rule/all.rb:32-34): standard_rule? || preference?
+    isRule = (await isStandardRuleName(fetch, base.name)) || (await isPreferenceName(fetch, base.name));
   }
   return {
     name: base.name.s,
@@ -147,18 +150,41 @@ async function typeNameOfId(
 }
 
 /** quick_type's live left-type fetch (class_methods.rb:59-71): the left
- *  card's type name; an unknown left card omits the field (the registry's
- *  RichText fallback then applies, the oracle-pinned default). */
+ *  card's type name. quick_type fetches the left with `new: {}`, so a left
+ *  that does not exist (or is trashed) is a NEW card and answers the type a
+ *  new card of that name would get (type.rb:58-66 ensure_type_id: the
+ *  type-assignment walk, then the new-card template chain ending at
+ *  *all+*default). Only a blank left name answers the literal "RichText". */
 async function leftTypeNameOf(
   fetch: FetchEngine,
   name: DeckoName,
 ): Promise<string | undefined> {
-  const left = name.leftName;
-  if (left === undefined) return undefined;
+  return quickTypeName(fetch, name.leftName);
+}
+
+/** class_methods.rb#quick_type over a name: the type name of the card with
+ *  that name, or of the new card a fetch with `new: {}` would build for it.
+ *  Shared by every pattern-input builder that needs a compound card's left
+ *  type (the *type plus right anchor). */
+export async function quickTypeName(
+  fetch: FetchEngine,
+  left: DeckoName | undefined,
+): Promise<string | undefined> {
+  if (left === undefined || left.s === "") return "RichText";
   const record = await fetch.fetch(left.s);
-  const leftTypeId = record?.typeId;
-  if (leftTypeId === undefined || leftTypeId === null) return undefined;
-  return typeNameOfId(fetch, leftTypeId);
+  if (record !== undefined) {
+    const leftTypeId = record.typeId;
+    if (leftTypeId === undefined || leftTypeId === null) return undefined;
+    return typeNameOfId(fetch, leftTypeId);
+  }
+  let newTypeId: number;
+  try {
+    newTypeId = await resolveTypeId(fetch, { name: left });
+  } catch (err) {
+    if (err instanceof CardActionError) return undefined;
+    throw err;
+  }
+  return typeNameOfId(fetch, newTypeId);
 }
 
 /** standard_rule? (rule/all.rb:37-40): `Card.fetch_type_id(name.right) ==
@@ -167,7 +193,7 @@ async function leftTypeNameOf(
  *  deck's codename registry; either codename missing -> false (the
  *  rule-less-seed divergence, the same allow contract set-read-rule.ts
  *  documents). */
-async function isStandardRuleName(
+export async function isStandardRuleName(
   fetch: FetchEngine,
   name: DeckoName,
 ): Promise<boolean> {
@@ -189,4 +215,31 @@ async function isStandardRuleName(
     leftRecord.typeId === setId &&
     rightRecord.typeId === settingId
   );
+}
+
+/** preference? (rule/all.rb:42-54): a per-user setting card,
+ *  SET+USER+SETTING. True when the name has more than two parts, its right
+ *  part is a Setting, the name without its last two parts is a Set, and the
+ *  second-to-last part (the preferer) is User-typed or is the *all card.
+ *  Ruby's valid_preferer? raises when the preferer card does not exist
+ *  (`self[-2]` is nil); the engine answers false there. */
+export async function isPreferenceName(fetch: FetchEngine, name: DeckoName): Promise<boolean> {
+  const parts = name.parts;
+  if (parts.length <= 2) return false;
+  const [setId, settingId, userId] = await Promise.all([
+    fetch.codenames.id("set"),
+    fetch.codenames.id("setting"),
+    fetch.codenames.id("user"),
+  ]);
+  if (setId === undefined || settingId === undefined) return false;
+  const right = name.rightName;
+  if (right === undefined) return false;
+  const rightRecord = await fetch.fetch(right.s);
+  if (rightRecord?.typeId !== settingId) return false;
+  const trunk = parts.slice(0, -2).join("+");
+  const trunkRecord = await fetch.fetch(trunk);
+  if (trunkRecord?.typeId !== setId) return false;
+  const preferer = await fetch.fetch(parts[parts.length - 2] ?? "");
+  if (preferer === undefined) return false;
+  return (userId !== undefined && preferer.typeId === userId) || preferer.codename === "all";
 }

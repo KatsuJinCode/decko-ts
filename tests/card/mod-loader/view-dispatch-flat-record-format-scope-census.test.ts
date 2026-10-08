@@ -123,7 +123,10 @@ describe("flat-record format-scope census (composed deck)", () => {
     // the six census chrome views (nest_editor, modal_nest_editor,
     // nest_content, nest_image, modal_nest_image, new_image) on the
     // all-set reference_editor modules (html key - admitted, not foreign).
-    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(153);
+    // 153 -> 149 (semantics parity, 2026-10-07): the all-set carrierwave fold
+    // module and its four views moved to the Type::File/Type::Image sets;
+    // 149 -> 151: All::Html's :type and All::Html::Views' :labeled.
+    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(151);
     expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(30);
   });
 
@@ -238,7 +241,6 @@ describe("flat-record format-scope census (composed deck)", () => {
     expect(kindSpanning).toEqual([
       "bar_middle",
       "content_formgroups",
-      "core",
       "count",
       "customize_button",
       "edit",
@@ -257,6 +259,7 @@ describe("flat-record format-scope census (composed deck)", () => {
       "raw_one_line_content",
       "stylesheet_include_tag",
       "titled_content",
+      "type",
       "url_link",
       "view_list",
     ]);
