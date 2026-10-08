@@ -45,6 +45,7 @@ import { isNewCard } from "../fetch/card-record.js";
 import { cgiEscape, emitAttrs, emitHamlAttrs, h, newSlotId, slotOptionsJson, slotOptionsWithNameContext } from "./slot-html.js";
 import { registerSetTypeAssignment } from "../set-patterns/set-type-assignment.js";
 import { safeSetKeys } from "./set-keys.js";
+import { pluralize } from "../name/inflect.js";
 
 import {
   UnsupportedViewError,
@@ -3134,6 +3135,14 @@ registerSetTypeAssignment("Right::Right", "set"); // card-mod-rules set/right/ri
 registerSetTypeAssignment("Right::Self", "set"); // set/right/self.rb:3
 registerSetTypeAssignment("Right::Type", "set"); // set/right/type.rb:3
 registerSetTypeAssignment("Right::TypePlusRight", "set"); // set/right/type_plus_right.rb:3
+// Type-plus-right assignments: their module key names the LEFT card's type
+// (trait.rb:60-66 trait_module_key_parts), so they hit only when the
+// new-card walk knows the left's type (newCardDefaultType's leftTypeName).
+// An absent Role's +*members field is List-typed and an absent Bootswatch
+// skin's +*stylesheets is Skin-typed in the oracle (the administrator's
+// Anyone and cerulean skin pages, whose create links show those fields).
+registerSetTypeAssignment("TypePlusRight::Role::Members", "list"); // card-mod-account set/type_plus_right/role/members.rb:3
+registerSetTypeAssignment("TypePlusRight::BootswatchSkin::Stylesheets", "skin"); // card-mod-bootstrap set/type/bootswatch_skin.rb:36 card_accessor type: :skin
 
 // ---------------------------------------------------------------------------
 // visible settings: the restricted_to_type gate (setting_categories.rb)
@@ -4040,6 +4049,22 @@ function renderUnknownPointerListItem(
       : pointerListItemBodyForUnknown(slotCardname(phantom));
     return pointerListItemSlot(phantom, body, slotTypeName);
   }
+  // A host-typed compound phantom whose item type carries a *structure rule
+  // is VIRTUAL, hence known (states.rb:52-57 virtual?, :65 known?): its :bar
+  // renders as :bar (bar.rb's `unknown: :mini_bar` substitution needs an
+  // unknown card) and its :link is a known-card anchor with no create query
+  // (base.rb link_view `opts[:known] = card.known?`). Name-level questions
+  // keep the default type (RenderCard#hostTyped). Oracle: the Tracked Item
+  // items of Social Media Distribution+Tactics render bar-view, and the
+  // Project items of Bicycle Maintenance+Project link known-card.
+  if (
+    hostItemType !== undefined &&
+    phantom.name.isCompound &&
+    fmt.engine.phantomVirtualStructure?.(phantom.name, hostItemType.typeName, hostItemType.typeId) !== undefined
+  ) {
+    phantom.unknown = false;
+    phantom.hostTyped = true;
+  }
   // READABLE arm: this nest's own walk says the phantom reads, so the
   // substituted :mini_bar body must not re-decide through the
   // DECK-GLOBAL deniedVerdictsByKey (miniBarView below). `mytho-psychology`
@@ -4060,7 +4085,11 @@ function renderUnknownPointerListItem(
     phantom,
     itemView,
     {
-      nest_name: name,
+      // item.rb nest_item: `options[:nest_name] = Card::Name[cardish].s`,
+      // the item card's resolved name. An id mark naming a trashed card
+      // ("~861" on CB_role+*members) resolves through the lexicon, which
+      // keeps trashed names, so the slot names "ANON-350cb08c081a".
+      nest_name: phantom.name.s,
       show: [itemView],
       home_view: itemView === "closed" ? "open" : itemView,
       ...(slotTypeName !== undefined ? { type: slotTypeName } : {}),
@@ -4332,7 +4361,10 @@ function linkAnchorBody(ctx: ViewContext, extraClass: string): string {
   // +conversation wanted anchor — graded entry
   // dual-lane-page:message-000004:page (expected 19129 / actual 18913;
   // -216 = anchor + query, pinned byte-exact by the lane pin suite).
-  const href = `/${h(fmt.urlKey())}${known ? "" : wantedHrefQuerySuffix(fmt.card.name.s)}`;
+  // base.rb specify_type_in_link!: a wanted link whose voo names a type
+  // (the list's item type folded into the item nest) adds card[type];
+  // Hash#to_param sorts it after card[name].
+  const href = `/${h(fmt.urlKey())}${known ? "" : unknownLinkQuery(fmt)}`;
   return `<a class="${cls}" href="${href}">${inner}</a>`;
 }
 const linkView: ViewFn = (ctx) => linkAnchorBody(ctx, "");
@@ -4586,10 +4618,15 @@ function bootswatchSkinBarLeftHtml(ctx: ViewContext): string {
   const { fmt } = ctx;
   const name = fmt.card.name.s;
   const imageChild = fmt.engine.fetchRenderCard(`${name}+Image`);
-  const mediaLeftInner =
-    imageChild !== undefined
-      ? fmt.nestRecord(imageChild, "boxed", { size: "medium" })
-      : `<div title="${h(name)}" class="image-box medium"></div>`;
+  // An absent +Image is nested as the new card the fetch builds (Image-typed
+  // through the skin's field rules): :boxed is `unknown: true`, and its core
+  // is the unknown view, which offers the create link to a viewer who may
+  // create the image and renders nothing otherwise (the empty box).
+  const mediaLeftInner = fmt.nestRecord(
+    imageChild ?? fmt.unknownChildCard(`${name}+Image`),
+    "boxed",
+    { size: "medium" },
+  );
   return (
     `<div class='media align-items-center'>\n` +
     `<div class='media-left'>\n` +
@@ -5227,10 +5264,15 @@ function barDivHtml(ctx: ViewContext): string {
   // returns VIRTUAL cards (states.rb:52-57: compound with an applicable
   // *structure rule) — an id-less compound under a structure rule is known
   // (media+GBA+YouTube Browser's <video>+GBA YTlinkControl bars).
+  // A host-typed item phantom answers by name: the cached card a name-only
+  // fetch returns keeps the default type (RenderCard#hostTyped), so its
+  // structure is the default type's (Social Media Distribution+Tactics:
+  // the Tracked Item items render bar-view with a wanted-card page link).
+  const nameType = card.hostTyped === true ? phantomIdentity(fmt, card.name.s, undefined) : card;
   const virtualKnown =
     card.id === undefined &&
     card.name.isCompound &&
-    fmt.engine.phantomVirtualStructure?.(card.name, card.typeName, card.typeId) !== undefined;
+    fmt.engine.phantomVirtualStructure?.(card.name, nameType?.typeName, nameType?.typeId) !== undefined;
   const menu = itemBarMenuHtml(
     url,
     card.id === undefined,
@@ -5986,6 +6028,33 @@ const flatAddButtonView: ViewFn = ({ fmt }) => {
   );
 };
 
+/** card-mod-format set/type/cardtype.rb:61-75 `view :configure_button,
+ *  cache: :never, denial: :blank, perms: :can_configure? do configure_link
+ *  "btn btn-secondary" end`. The perms predicate and the blank denial are
+ *  view-perms.ts's; this body renders only for a viewer who may update the
+ *  type's `+*type+*structure` (an administrator on every Cardtype page).
+ *  configure_link: voo.title = t(:format_configure_card, cardname:
+ *  safe_name.pluralize) ("Configure %{cardname}", safe_name = h(card.name)
+ *  in html, title.rb:28-30), and link_to_card with path { view: :board,
+ *  board: { tab: :rules_tab }, set: "<name>+*type" } (Hash#to_param: keys
+ *  sorted, CGI-escaped) and the classes "configure-type-link ms-3 btn
+ *  btn-secondary" followed by add_known_or_wanted_class's known-card. */
+export const configureButtonView: ViewFn = ({ fmt }) => {
+  // The view lives on Type::Cardtype only; any other card has no such view.
+  if (fmt.card.typeCode !== "cardtype" && fmt.card.typeName !== "Cardtype") {
+    throw new UnsupportedViewError("configure_button", fmt.card.name.s);
+  }
+  const safeName = h(fmt.card.name.s);
+  const title = `Configure ${pluralize(safeName)}`;
+  const query = `board%5Btab%5D=rules_tab&amp;set=${cgiEscape(`${safeName}+*type`)}`;
+  const known = fmt.card.unknown !== true;
+  return (
+    `<a class="configure-type-link ms-3 btn btn-secondary ${known ? "known-card" : "wanted-card"}" ` +
+    `href="/${h(fmt.urlKey())}/board?${query}">` +
+    `<span class="card-title" title="${h(title)}">${wrappedTitleInner(title)}</span></a>`
+  );
+};
+
 /** set/type/cardtype.rb view :add_link. */
 const flatAddLinkView: ViewFn = ({ fmt }) =>
   `<a class="cardtype-add-link" href="/${fmt.card.key ?? ""}/new">add</a>`;
@@ -6363,6 +6432,7 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   name: flatNameView,
   linkname: flatLinknameView,
   add_button: flatAddButtonView,
+  configure_button: configureButtonView,
   add_link: flatAddLinkView,
   add_url: flatAddUrlView,
   home_path: homePathView,

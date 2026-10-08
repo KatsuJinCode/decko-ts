@@ -402,6 +402,8 @@ describe("signed-in shapes rendered through the engine", () => {
     await seedCard(s, { id: 62, name: "Template Host", typeId: 2, dbContent: "{{_user+Menu|core}}" });
     await seedCard(s, { id: 63, name: "Alerts Host", typeId: 2, dbContent: "{{*alerts|core}}" });
     await seedCard(s, { id: 64, name: "Menu Host", typeId: 2, dbContent: "[{{Topic+Absent Part|menu}}]" });
+    await seedCard(s, { id: 65, name: "Project", typeId: 3 });
+    await seedCard(s, { id: 66, name: "Typed Link Host", typeId: 2, dbContent: "{{Absent Thing|link;type:Project}}" });
     s.fetcher.installNameEnvironment();
     await s.fetcher.codenames.ensureLoaded();
   });
@@ -434,6 +436,11 @@ describe("signed-in shapes rendered through the engine", () => {
   it("_user names the signed-in session's account (Card::Name.session)", async () => {
     const html = await signedIn().render("Template Host", "core");
     expect(html).toContain("member menu");
+  });
+
+  it("a wanted :link names the nest's type in its path (base.rb specify_type_in_link!)", async () => {
+    const html = await signedIn().render("Typed Link Host", "core");
+    expect(html).toContain('<a class="wanted-card" href="/Absent_Thing?card%5Btype%5D=Project">');
   });
 
   it("an absent card's bar menu renders nothing (menu.rb: return \"\" unless card.known?)", async () => {

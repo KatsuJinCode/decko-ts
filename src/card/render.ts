@@ -2712,7 +2712,7 @@ export class RenderEngine implements RenderEngineLike {
     // (warmed by warmLexicon). A registration whose type card does not
     // resolve (`assignment[..]&.card_id` nil, type.rb:72) falls through to
     // the template walk, exactly like Ruby's ||.
-    const assignedName = findAssignedTypeName({ name: name.s, isNew: true });
+    const assignedName = findAssignedTypeName({ name: name.s, isNew: true, leftTypeName });
     if (assignedName !== undefined) {
       const env = getNameEnvironment();
       const assignedId =

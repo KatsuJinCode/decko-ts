@@ -233,7 +233,7 @@ import { h } from "../../render/slot-html.js";
 // 2026-10-01::link/:nav_link share the flat
 // HTML_VIEWS bodies (the urlView doctrine at :300-304 of this file) — one
 // fn per view, so the two registrations cannot drift again.
-import { linkView, navLinkView } from "../../render/views.js";
+import { configureButtonView, linkView, navLinkView } from "../../render/views.js";
 import { popoverLink } from "./card-mod-bootstrap.js";
 import type {
   DeckoModManifest,
@@ -822,14 +822,10 @@ interface RenderFormatBase {
  *  :68-70) resolves through the engine's canConfigure hook and the denial
  *  (:blank) renders "" — the anonymous surface's bytes, live pins ZERO
  *  configure strings on live_News_Item.html. This body only renders when
- *  the predicate ALLOWS (admin-like viewers); like the add_* stubs above
- *  it is the headless dispatch form of the rails configure_link (the real
- *  body needs rails link_to_view + the board path), byte shape modelled
- *  on the add_button stub. */
-function cardtypeConfigureButtonView({ fmt }: ViewContext): string {
-  const url = cardtypeUrlKey(fmt as unknown as RenderFormatBase);
-  return `<a class="btn btn-secondary cardtype-configure-button slotter" data-slotter-mode="modal" href="/${url}/configure" data-remote="true">configure</a>`;
-}
+ *  the predicate ALLOWS (admin-like viewers). The body is the render
+ *  layer's configureButtonView (configure_link "btn btn-secondary"), shared
+ *  so the loader and loader-less registrations cannot drift. */
+const cardtypeConfigureButtonView: ViewFn = configureButtonView;
 
 /** set/type/cardtype.rb:53-55 (card-mod-format-0.20.0) view :configure_link,
  *  cache: :never, perms: :can_configure? - the configure_button body's
