@@ -10,9 +10,13 @@
 //   actions    the card actions written, in id order: card name, action
 //              type, and the card_changes field list
 //   mail       captured outgoing mail: recipients and subject
-//   files      stored file names (card and action ids normalised away)
+//   files      stored file names (card and action ids normalised away) and,
+//              for files other than images, the sha256 of their bytes
 //   images     image variants: dimensions, format, and pixels within the
 //              perceptual thresholds below
+//   virtuals   card_virtuals rows (card-mod-virtual: the `+*asset input`
+//              content of skins and stylesheets) created, changed or
+//              deleted: the card, the content length and sha256
 //   session    who the request sequence is signed in as afterwards
 // Event order is scored separately (see below): the TypeScript engine runs
 // most event bodies as engine code rather than named mod events, so a
@@ -28,7 +32,10 @@
 //   - mail bodies: account-token values replaced by <token> (signed with
 //     different secrets and clocks), whitespace collapsed.
 //   - file paths: "<card id>/<action id>" prefixes dropped (ids drift as soon
-//     as the engines' write histories differ).
+//     as the engines' write histories differ; a history-less card's file is
+//     named by the clock's epoch seconds instead of an action id).
+//   - card_virtuals: a row whose only change is its updated_at (Virtual#update
+//     touching an unchanged row) is a timestamp and is not reported.
 
 import { readFileSync, writeFileSync } from "node:fs";
 
@@ -96,7 +103,7 @@ function tsErrors(step) {
   return m ? decode(m[1]) : decode(b.replace(/<[^>]+>/g, " ")).slice(0, 160);
 }
 
-const CARD_TABLES = ["cards", "card_acts", "card_actions", "card_changes", "card_references", "card_revisions"];
+const CARD_TABLES = ["cards", "card_acts", "card_actions", "card_changes", "card_references", "card_revisions", "card_virtuals"];
 const writes = (s) => CARD_TABLES.filter((t) => (s.delta?.[t] ?? 0) !== 0).map((t) => `${t}${s.delta[t] > 0 ? "+" : ""}${s.delta[t]}`).join(" ") || "-";
 const actions = (s) => (s.actions ?? []).map((a) => `${a.type} ${a.card} [${a.fields.join(",")}]`).join(" | ") || "-";
 // who the rows are stamped with (set_stamper) and what was stored
@@ -117,7 +124,10 @@ const mail = (s) => (s.mail ?? []).map((m) =>
   `to ${[].concat(m.to).join(",")} from ${m.from_header ?? [].concat(m.from).join(",")} reply-to ${[].concat(m.reply_to ?? []).join(",")}: ${m.subject}`).join(" | ") || "-";
 const mailText = (s) => (s.mail ?? []).map((m) => JSON.stringify(normBody(m.text_body ?? m.body_excerpt))).join(" | ") || "-";
 const mailHtml = (s) => (s.mail ?? []).map((m) => JSON.stringify(normBody(m.html_body))).join(" | ") || "-";
-const files = (s) => (s.files ?? []).map((f) => f.path.replace(/^\d+\/\d+/, "")).sort().join(",") || "-";
+const files = (s) => (s.files ?? [])
+  .map((f) => `${f.path.replace(/^\d+\/\d+/, "")}${f.sha256 ? ` sha256:${f.sha256}` : ""}`).sort().join(",") || "-";
+const virtuals = (s) => (s.virtuals ?? [])
+  .map((v) => `${v.change} ${v.card} ${v.length} ${v.sha256.slice(0, 16)}`).join(" | ") || "-";
 const session = (s) => s.signed_in_as ?? "anonymous";
 // Session-type card contents kept in the visitor's session, by card key.
 const sessionCards = (s) => JSON.stringify(Object.fromEntries(Object.entries(s.session_cards ?? {}).sort()));
@@ -186,7 +196,7 @@ function imagesVerdict(r, t, step) {
 const fields = {
   status: (s) => String(s.status),
   location,
-  writes, actions, stamps, stored, mail, mailText, mailHtml, files, session, sessionCards,
+  writes, actions, stamps, stored, mail, mailText, mailHtml, files, virtuals, session, sessionCards,
 };
 
 // ---- event order: the ordered list of distinct event names each engine

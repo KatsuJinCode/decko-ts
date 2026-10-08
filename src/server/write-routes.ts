@@ -111,6 +111,7 @@ import type { CardActionRecaptchaConfig } from "../card/actions/card-action-engi
 import type { ModEventRuntime, ModEventStageReport } from "../card/mod-loader/mod-event-dispatch.js";
 import type { ModEngineHost } from "../card/mod-loader/mod-manifest.js";
 import type { AttachmentStore } from "../card/attachments/attachment-store.js";
+import type { ScssCompiler } from "../card/assets/scss-compiler.js";
 import { DeckoName } from "../card/name.js";
 import { parseMultipartForm, type MultipartFilePart } from "./multipart-form.js";
 import { decodeUriComponentSafe } from "./decode-uri-component-safe.js";
@@ -183,6 +184,11 @@ export interface WriteRouteContext {
    *  upload surface stores bytes through it. Absent = attachment saves
    *  fail with the engine's programming-error rejection. */
   attachmentStore?: AttachmentStore;
+  /** The SassC seam the style asset events compile with (skin and CSS
+   *  asset inputs, the site stylesheet): LibSass on Node hosts
+   *  (libsass-process.ts). Absent = saves that need a compile are refused
+   *  with a named error. */
+  scssCompiler?: ScssCompiler;
   /** The deck's file_storage config (Cardio.config.file_storage port;
    *  undefined = the :local default) — validate_file_exist's web? arm and
    *  the storage-type resolution ride it. */
@@ -1248,6 +1254,7 @@ async function dispatchWriteRequest(
     ipAddress: ctx.ipAddress ?? req.headers["x-forwarded-for"] ?? "127.0.0.1",
     now: ctx.now,
     attachmentStore: ctx.attachmentStore,
+    ...(ctx.scssCompiler === undefined ? {} : { scssCompiler: ctx.scssCompiler }),
     fileStorage: ctx.fileStorage,
     // the deck's event runtime rides EVERY save (the deck-boot seam,
     // servingModEventRuntime above - Ruby's boot composes all mods once and

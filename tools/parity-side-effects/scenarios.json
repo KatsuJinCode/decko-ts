@@ -619,7 +619,8 @@
           "mail",
           "mailText",
           "mailHtml",
-          "files"
+          "files",
+          "virtuals"
         ]
       }
     },
@@ -973,6 +974,28 @@
       "params": {
         "card": {
           "content": "$primary: #123456;"
+        }
+      }
+    },
+    {
+      "name": "admin-update-current-skin-colors",
+      "mod": "assets",
+      "method": "put",
+      "path": "/Parity_Skin+*colors",
+      "params": {
+        "card": {
+          "content": "$primary: #345678;"
+        }
+      }
+    },
+    {
+      "name": "admin-update-current-skin-colors-again",
+      "mod": "assets",
+      "method": "put",
+      "path": "/Parity_Skin+*colors",
+      "params": {
+        "card": {
+          "content": "$primary: #876543;"
         }
       }
     },

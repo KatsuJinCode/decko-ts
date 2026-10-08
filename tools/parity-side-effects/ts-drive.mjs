@@ -4,6 +4,10 @@
 //
 //   node ts-drive.mjs <start-deck.sqlite3> <work_dir> > ts.json
 //
+// SCSS compiles (the skin asset inputs and the site stylesheet) run through
+// LibSass, the compiler the Ruby oracle uses, built by
+// tools/libsass/build-native.mjs; PARITY_SASSC overrides the program path.
+//
 // Writes go through the serving write surface (handleWriteRequest), the
 // same entry point the HTTP hosts call. Reads (GET) have no in-process
 // equivalent of the host's render surface here, so a GET is answered from
@@ -11,7 +15,8 @@
 // goes to a capture transport; nothing is delivered. Files land in
 // <work_dir>/files.
 
-import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import net from "node:net";
@@ -54,6 +59,15 @@ const { LocalAttachmentStore } = await import(dist("card/attachments/attachment-
 const { CaptureTransport } = await import(dist("card/notify/transport.js"));
 const { DeckoName } = await import(dist("card/name.js"));
 const { pageViewCookie, readVisitorSession, VISITOR_COOKIE_NAME } = await import(dist("card/session/visitor-session.js"));
+const { libsassProcessCompiler } = await import(dist("server/libsass-process.js"));
+
+const SASSC = process.env.PARITY_SASSC ??
+  join(here, "..", "libsass", "build", process.platform === "win32" ? "sassc-stdin.exe" : "sassc-stdin");
+if (!existsSync(SASSC)) {
+  console.error(`LibSass program not found at ${SASSC}; build it with tools/libsass/build-native.mjs`);
+  process.exit(2);
+}
+const scssCompiler = libsassProcessCompiler(SASSC);
 
 const START = process.argv[2];
 const WORK = process.argv[3];
@@ -85,6 +99,12 @@ const sessions = new SessionStore({ driver });
 const attachmentStore = new LocalAttachmentStore(FILES);
 const transport = new CaptureTransport();
 const FROZEN = new Date("2026-10-07T12:00:00.000Z");
+// The request clock: the frozen start plus one second per step, so that
+// files named by the clock (a history-less card's file is <epoch seconds>
+// .<ext>, as the site stylesheet is) are new files in each step, as they are
+// on the Ruby side, whose clock runs. Account tokens keep the frozen time.
+let stepSeconds = 0;
+const requestClock = () => new Date(FROZEN.getTime() + stepSeconds * 1000);
 const titleRow = await driver.query("select db_content from cards where codename = 'title' and trash = 0", []);
 const botEmail = await driver.query(
   "select e.db_content as email from cards e join cards a on a.id = e.left_id join cards b on b.id = a.left_id " +
@@ -101,7 +121,33 @@ const accountMail = {
 };
 
 const TABLES = ["cards", "card_acts", "card_actions", "card_changes", "card_references",
-  "card_revisions", "sessions", "users", "delayed_jobs", "auth_sessions"];
+  "card_revisions", "card_virtuals", "sessions", "users", "delayed_jobs", "auth_sessions"];
+
+// The card_virtuals rows by id (see ruby/drive.rb virtuals_snapshot): the
+// asset-input card's name, the content's length and sha256.
+const sha256 = (data) => createHash("sha256").update(data).digest("hex");
+async function virtualsSnapshot() {
+  const r = await driver.query("select id, left_id, right_id, content from card_virtuals", []);
+  const out = new Map();
+  for (const row of r.rows) {
+    const content = String(row.content ?? "");
+    out.set(Number(row.id), {
+      card: `${await fullName(row.left_id)}+${await fullName(row.right_id)}`,
+      length: content.length, sha256: sha256(content),
+    });
+  }
+  return out;
+}
+function virtualsDelta(before, after) {
+  const changed = [];
+  for (const [id, row] of after) {
+    const prev = before.get(id);
+    if (prev && prev.sha256 === row.sha256) continue;
+    changed.push({ ...row, change: prev ? "updated" : "created" });
+  }
+  for (const [id, row] of before) if (!after.has(id)) changed.push({ ...row, change: "deleted" });
+  return changed.sort((a, b) => (a.card === b.card ? a.change.localeCompare(b.change) : a.card < b.card ? -1 : 1));
+}
 
 async function counts() {
   const out = {};
@@ -159,9 +205,12 @@ function filesList() {
       if (e.isDirectory()) walk(p);
       else {
         const entry = { path: relative(FILES, p).replace(/\\/g, "/"), size: statSync(p).size };
-        // small image files carry their bytes for the pixel comparison
-        if (/\.(png|jpe?g|webp|gif)$/i.test(e.name) && entry.size <= 1048576) {
-          entry.b64 = readFileSync(p).toString("base64");
+        // small image files carry their bytes for the pixel comparison;
+        // other files the sha256 of their bytes
+        if (/\.(png|jpe?g|webp|gif)$/i.test(e.name)) {
+          if (entry.size <= 1048576) entry.b64 = readFileSync(p).toString("base64");
+        } else {
+          entry.sha256 = sha256(readFileSync(p));
         }
         out.push(entry);
       }
@@ -252,7 +301,7 @@ async function call(method, path, params) {
   if (c) headers.cookie = c;
   const res = await handleWriteRequest(
     {
-      driver, fetcher, now: () => FROZEN, attachmentStore, accountMail, notifyTransport: transport,
+      driver, fetcher, now: requestClock, attachmentStore, scssCompiler, accountMail, notifyTransport: transport,
       onModEventReport: (r) => { for (const e of r.fired) events.push([r.stage, e]); },
     },
     { method: method.toUpperCase(), pathname: path, host: "127.0.0.1", scheme: "http",
@@ -312,9 +361,11 @@ function rememberRevId(res) {
 const scenarios = JSON.parse(readFileSync(join(here, "scenarios.json"), "utf8"));
 const steps = [];
 for (const s of scenarios.steps) {
+  stepSeconds++;
   const before = await counts();
   const since = await maxActionId();
   const filesBefore = filesList().map((f) => f.path);
+  const virtualsBefore = await virtualsSnapshot();
   events = [];
   let res = { status: null, headers: {}, body: "" };
   let extra = null;
@@ -335,6 +386,7 @@ for (const s of scenarios.steps) {
     step: s.name, status: res.status, headers: res.headers ?? {}, body: String(res.body ?? ""),
     delta, actions: await newActions(since), events,
     files: filesList().filter((f) => !filesBefore.includes(f.path)),
+    virtuals: virtualsDelta(virtualsBefore, await virtualsSnapshot()),
     mail: mail.map((m) => ({
       to: String(m.to ?? "").split(",").map((x) => x.trim()).filter(Boolean),
       from: [addressOf(String(m.from ?? ""))], from_header: String(m.from ?? ""),

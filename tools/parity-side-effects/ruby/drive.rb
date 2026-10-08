@@ -108,6 +108,21 @@ unless ENV["PARITY_NATIVE_LINKS"] == "1"
   end)
 end
 
+# Text-mode files on Windows turn "\n" into "\r\n" when written. The asset
+# outputter stages the site stylesheet in a Tempfile (asset_outputter.rb
+# handle_file), so on Windows the stored stylesheet gains a carriage return
+# per line, which Ruby Decko's POSIX hosts never write. By default Tempfiles
+# are binary here, as on POSIX; PARITY_NATIVE_TEXT=1 keeps the Windows
+# behaviour.
+unless ENV["PARITY_NATIVE_TEXT"] == "1"
+  require "tempfile"
+  Tempfile.singleton_class.prepend(Module.new do
+    def new(*args, **kw, &blk)
+      super.tap(&:binmode)
+    end
+  end)
+end
+
 # ---- recaptcha off: with keys configured, the :recaptcha validation event
 # calls Google's siteverify endpoint for every anonymous save. The harness
 # makes no network calls, and the TypeScript side runs with the guard
@@ -170,7 +185,7 @@ ObjectSpace.each_object(Module).select { |m| MODULE_NAME.bind(m).call.to_s.start
 end
 
 TABLES = %w[cards card_acts card_actions card_changes card_references
-            card_revisions sessions users delayed_jobs].freeze
+            card_revisions card_virtuals sessions users delayed_jobs].freeze
 
 def counts
   TABLES.each_with_object({}) do |t, h|
@@ -216,13 +231,43 @@ end
 # Small image files carry their bytes (base64) so the comparison can decode
 # both engines' renditions with one decoder.
 IMAGE_EXT = /\.(png|jpe?g|webp|gif)\z/i
+# Other files carry the sha256 of their bytes (the stored stylesheet, text
+# uploads), compared exactly.
+require "digest"
 def files_list
   Dir.glob(File.join(FILES_DIR, "**", "*")).select { |f| File.file?(f) }
      .map do |f|
        entry = { path: f.sub("#{FILES_DIR}/", ""), size: File.size(f) }
-       entry[:b64] = [File.binread(f)].pack("m0") if f.match?(IMAGE_EXT) && File.size(f) <= 1_048_576
+       if f.match?(IMAGE_EXT)
+         entry[:b64] = [File.binread(f)].pack("m0") if File.size(f) <= 1_048_576
+       else
+         entry[:sha256] = Digest::SHA256.file(f).hexdigest
+       end
        entry
      end.sort_by { |h| h[:path] }
+end
+
+# The card_virtuals rows (card-mod-virtual's store for `+*asset input`
+# content), by id: the asset-input card's name and the content's length and
+# sha256. A step reports the rows it created or whose content it changed,
+# and the rows it deleted; a touch (updated_at only) is a timestamp and is
+# not reported.
+def virtuals_snapshot
+  $conn.select_all("select id, left_id, right_id, content from card_virtuals").to_a.to_h do |r|
+    [r["id"], { card: "#{card_name(r['left_id'])}+#{card_name(r['right_id'])}",
+                length: r["content"].to_s.length, sha256: Digest::SHA256.hexdigest(r["content"].to_s) }]
+  end
+end
+
+def virtuals_delta(before, after)
+  changed = after.filter_map do |id, row|
+    prev = before[id]
+    next if prev && prev[:sha256] == row[:sha256]
+
+    row.merge(change: prev ? "updated" : "created")
+  end
+  deleted = before.reject { |id, _| after.key?(id) }.map { |_, row| row.merge(change: "deleted") }
+  (changed + deleted).sort_by { |r| [r[:card], r[:change]] }
 end
 
 $MAIL_CONSUMED = 0
@@ -269,6 +314,7 @@ def step(name)
   before = counts
   since = max_id("card_actions")
   files_before = files_list
+  virtuals_before = virtuals_snapshot
   $EVENTS.clear
   $SWALLOWED.clear
   $TRACE = true
@@ -289,7 +335,8 @@ def step(name)
   $steps << {
     step: name, status: $status, headers: $headers, body: $body, delta: delta,
     actions: new_actions(since), events: $EVENTS.dup,
-    files: files_list - files_before, mail: drain_mail, extra: extra, swallowed: $SWALLOWED.dup,
+    files: files_list - files_before, virtuals: virtuals_delta(virtuals_before, virtuals_snapshot),
+    mail: drain_mail, extra: extra, swallowed: $SWALLOWED.dup,
     signed_in_as: session_user, session_cards: session_cards
   }
 end

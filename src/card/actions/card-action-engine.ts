@@ -147,6 +147,15 @@ import { canResize, imageDecodes, imageVersionBytes } from "../attachments/image
 import { encryptPassword, passwordErrors, planAccountFields } from "../auth/account-fields.js";
 import { runObserverEvents } from "../notify/observer.js";
 import type { AttachmentStore } from "../attachments/attachment-store.js";
+import type { ScssCompiler } from "../assets/scss-compiler.js";
+import { VirtualRecordCache } from "../mod-loader/mods/card-mod-virtual.js";
+import {
+  assertStyleCompilerFor,
+  runStyleAssetEvents,
+  saveRecentlyEditedSettings,
+  type SavedCard,
+  type StyleAssetEventContext,
+} from "./style-asset-events.js";
 import { changeValueForField, trackedFieldIndex } from "../history/change.js";
 import {
   clearReferencesOnDelete,
@@ -256,6 +265,11 @@ export interface CardActionEngineOptions {
    *  CarrierWave::Storage::File port). Required for saves that carry an
    *  `attachment` input; saves without one behave exactly as before. */
   attachmentStore?: AttachmentStore;
+  /** The SassC seam for the style asset events (the skin and CSS asset
+   *  inputs and the site stylesheet, style-asset-events.ts). Only LibSass
+   *  reproduces the oracle's bytes (assets/scss-compiler.ts). Absent = a
+   *  save that needs a compile is refused with a named error. */
+  scssCompiler?: ScssCompiler;
   /** The deck's file_storage config (Cardio.config.file_storage port;
    *  undefined = the :local default, the oracle deck's
    *  config_file_storage_default). Shapes validate_file_exist's web? arm:
@@ -363,6 +377,9 @@ export class CardActionEngine {
    *  ensureTaskVerdicts model (one batch pair per engine, never per save). */
   private writeTaskState: ViewTaskState | undefined;
   private readonly attachmentStore: AttachmentStore | undefined;
+  private readonly scssCompiler: ScssCompiler | undefined;
+  /** Card::Cache[Virtual] for the card_virtuals rows this engine writes. */
+  private readonly virtualCache = new VirtualRecordCache();
   /** The deck's file_storage config port (CardActionEngineOptions.
    *  fileStorage; undefined = :local). */
   private readonly fileStorage: string | undefined;
@@ -392,6 +409,7 @@ export class CardActionEngine {
     this.notifyLogger = options.notifyLogger;
     this.followMail = options.followMail;
     this.attachmentStore = options.attachmentStore;
+    this.scssCompiler = options.scssCompiler;
     this.fileStorage = options.fileStorage;
     this.modEvents = options.modEvents;
     this.recaptchaConfig = options.recaptcha;
@@ -1131,6 +1149,7 @@ export class CardActionEngine {
     input = await this.applyAccountFieldEvents(input, typeId);
     await this.checkSkinFieldPermissions(name, typeId);
     input = await this.applySkinCreateEvents(input, typeId);
+    await assertStyleCompilerFor(this.styleAssetContext(actingId), name, typeId);
     const writer = this.newWriter(actingId);
     const result = await this.createInWriter(writer, input, {
       isActCard: true,
@@ -1143,10 +1162,14 @@ export class CardActionEngine {
     if (subResults.length > 0) {
       finalResult = { ...result, subactions: [...result.subactions, ...subResults] };
     }
+    // FINALIZE: the style asset events (asset inputs, the site stylesheet).
+    const savedCards = this.savedCardsOf(finalResult);
+    await runStyleAssetEvents(this.styleAssetContext(actingId), savedCards);
     // II (director.rb:26): the integrate seam runs BEFORE the notify hooks
     // (Ruby's notify_followers is itself an integration event,
     // card-mod-follow set/all/notify.rb:13-16).
     await this.bumpAncestorTimestamps(CardActionEngine.savedCardIds(finalResult));
+    await saveRecentlyEditedSettings(this.styleAssetContext(actingId), savedCards);
     await this.dispatchEventStage(
       "integrate",
       this.eventCard({
@@ -1646,6 +1669,11 @@ export class CardActionEngine {
       );
       return this.saveDraftInWriter(this.newWriter(actingId), row, input);
     }
+    await assertStyleCompilerFor(
+      this.styleAssetContext(actingId),
+      (input.name !== undefined ? DeckoName.parse(input.name) : await this.composedNameOf(row)) ?? DeckoName.parse(""),
+      resolvedTypeId ?? row.type_id,
+    );
     const writer = this.newWriter(actingId);
     let result = await this.updateInWriter(writer, row, input, resolvedTypeId);
     // subcards.rb:1-16: the subcards ride this save's act — the multiedit
@@ -1689,11 +1717,15 @@ export class CardActionEngine {
       // events, no follower notifications. The cache expiry already ran.
       return result;
     }
+    // FINALIZE: the style asset events (asset inputs, the site stylesheet).
+    const savedCards = this.savedCardsOf(result, row);
+    await runStyleAssetEvents(this.styleAssetContext(actingId), savedCards);
     await this.bumpAncestorTimestamps(
       CardActionEngine.savedCardIds(result).filter(
         (id) => !(result?.actCardActionOmitted === true && id === row.id),
       ),
     );
+    await saveRecentlyEditedSettings(this.styleAssetContext(actingId), savedCards);
     await this.dispatchEventStage(
       "integrate",
       this.eventCard({
@@ -2353,6 +2385,37 @@ export class CardActionEngine {
       }
     }
     expireRuleResolutionCache(driver);
+  }
+
+  /** The cards an act saved, for the style asset events: the act card's own
+   *  action (unless its save was a no-op) and the subcard actions, in order.
+   *  `before` is the act card's row as it stood before the save. */
+  private savedCardsOf(result: ActionResult | null, before?: CardsRow): SavedCard[] {
+    if (result === null) return [];
+    const out: SavedCard[] = [];
+    if (result.actCardActionOmitted !== true) {
+      out.push({
+        cardId: result.cardId,
+        actionId: result.actionId,
+        verb: result.verb,
+        ...(before !== undefined && before.id === result.cardId ? { contentBefore: before.db_content } : {}),
+      });
+    }
+    for (const sub of result.subactions) out.push({ cardId: sub.cardId, actionId: sub.actionId, verb: sub.verb });
+    return out;
+  }
+
+  /** What the style asset events borrow from this engine. */
+  private styleAssetContext(actingId: number | undefined): StyleAssetEventContext {
+    return {
+      fetch: this.fetch,
+      clock: this.clock,
+      newWriter: () => this.newWriter(actingId),
+      expire: (cardId, name) => this.expireAfterWrite({ cardId, nameAfter: name, verb: "update" }),
+      attachmentStore: this.attachmentStore,
+      compile: this.scssCompiler,
+      virtuals: this.virtualCache,
+    };
   }
 
   /** The cards a result saved: the act card and every subcard action. */

@@ -54,6 +54,7 @@ import type { RenderFormat } from "./format.js";
  *  imported — so this module emits no node: specifier into any bundle. */
 interface NodeSyncFs {
   readFileSync(path: string | URL, encoding: string): string;
+  existsSync?(path: string | URL): boolean;
 }
 
 /** The Node fs module when running on Node, undefined otherwise. The probe
@@ -108,12 +109,18 @@ function nodeFsOrNull(): NodeSyncFs | undefined {
 // either. On a runtime with no absolute import.meta.url the `new URL` here
 // throws — but only inside the two consumers, which on such a runtime have
 // already been refused by the fs probe below.
+//
+// The module runs from src/ (tests) and from dist/src/ (the transpiled
+// harness drives), one directory deeper; the deeper candidate is used only
+// when the src-relative directory does not exist.
 let bootstrapScssDir: URL | undefined;
 function bootstrapScssDirectory(): URL {
-  bootstrapScssDir ??= new URL(
-    "fixtures/vendor/bootstrap-scss/",
-    new URL("../../..", import.meta.url),
-  );
+  if (bootstrapScssDir !== undefined) return bootstrapScssDir;
+  const fromSrc = new URL("fixtures/vendor/bootstrap-scss/", new URL("../../..", import.meta.url));
+  const fromDist = new URL("fixtures/vendor/bootstrap-scss/", new URL("../../../..", import.meta.url));
+  const fs = nodeFsOrNull();
+  bootstrapScssDir =
+    fs?.existsSync !== undefined && !fs.existsSync(fromSrc) && fs.existsSync(fromDist) ? fromDist : fromSrc;
   return bootstrapScssDir;
 }
 
@@ -180,12 +187,22 @@ function loadStylesheets(files: readonly string[]): string {
     .join("\n");
 }
 
+/** set/self/bootstrap_core.rb `def content`, outside any render. */
+export function bootstrapCoreScss(): string {
+  return loadStylesheets(BOOTSTRAP_CORE_FILES);
+}
+
+/** set/self/bootstrap_functions.rb `def content`, outside any render. */
+export function bootstrapFunctionsScss(): string {
+  return loadStylesheets(["_functions.scss"]);
+}
+
 /** set/self/bootstrap_core.rb `def content`. */
 export function bootstrapCoreContent(_fmt: RenderFormat): string {
-  return loadStylesheets(BOOTSTRAP_CORE_FILES);
+  return bootstrapCoreScss();
 }
 
 /** set/self/bootstrap_functions.rb `def content`. */
 export function bootstrapFunctionsContent(_fmt: RenderFormat): string {
-  return loadStylesheets(["_functions.scss"]);
+  return bootstrapFunctionsScss();
 }

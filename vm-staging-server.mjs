@@ -168,6 +168,7 @@ import { recaptchaConfigFromHostEnv } from "./dist/src/server/staging-server-rec
 // Card.paths["files"] port (card-mod-carrierwave paths.rb:14-17) — and
 // serve through the local fallback in handleAssetFile below.
 import { LocalAttachmentStore } from "./dist/src/card/attachments/attachment-store.js";
+import { libsassProcessCompiler } from "./dist/src/server/libsass-process.js";
 import { expireRenderCachesAfterSave } from "./dist/src/server/post-save-cache-expiry.js";
 import {
   structureRuleUniverseStatement,
@@ -457,6 +458,14 @@ const authDriver = new LocalSqliteDriver({ path: dbPath, readonly: false });
 const DECKO_FILES_DIR =
   process.env.DECKO_FILES_DIR ?? path.join(path.dirname(dbPath), "files");
 const attachmentStore = new LocalAttachmentStore(DECKO_FILES_DIR);
+// The SCSS compiler the style asset events use (skin and CSS asset inputs,
+// the site stylesheet): DECKO_SASSC names the LibSass program built by
+// tools/libsass/build-native.mjs. Unset = saves that rebuild a stylesheet
+// are refused with a named error.
+const scssCompiler =
+  process.env.DECKO_SASSC !== undefined && process.env.DECKO_SASSC !== ""
+    ? libsassProcessCompiler(process.env.DECKO_SASSC)
+    : undefined;
 // staging-seat-wiring lane: the recaptcha guard's host config, read ONCE at
 // boot from the environment (DECKO_RECAPTCHA_SITE_KEY / _SECRET_KEY, plus
 // optional _MINIMUM_SCORE / _VERIFY_URL — see the env-config module header).
@@ -3018,6 +3027,7 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
       driver,
       fetcher,
       attachmentStore,
+      ...(scssCompiler === undefined ? {} : { scssCompiler }),
       // staging-seat-wiring lane: the recaptcha seat, composed only when the
       // boot-time env read produced a config — the conditional spread keeps
       // the unarmed context byte-identical (the seat's own discipline,
