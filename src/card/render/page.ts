@@ -170,12 +170,14 @@ export async function renderPageBytes(
     // (Stub decks in the edge request tests carry a partial fetcher.)
     const releaseCaches =
       typeof engine.fetcher?.holdTemporaryCaches === "function" ? engine.fetcher.holdTemporaryCaches() : () => {};
+    const render = () =>
+      engine.runWithPageConfig(() => renderPageBytesWithPageConfig(engine, cardName, requestedView, historyParams));
     try {
-      return await engine.renderWithUnknownCreateVerdicts(() =>
-        engine.runWithPageConfig(() =>
-          renderPageBytesWithPageConfig(engine, cardName, requestedView, historyParams),
-        ),
-      );
+      // (The stub engines of the edge request tests carry no unknown-card
+      // create-verdict pass; the real engine always does.)
+      return typeof engine.renderWithUnknownCreateVerdicts === "function"
+        ? await engine.renderWithUnknownCreateVerdicts(render)
+        : await render();
     } finally {
       releaseCaches();
     }

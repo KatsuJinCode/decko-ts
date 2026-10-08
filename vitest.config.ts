@@ -16,6 +16,14 @@ export default defineConfig({
     maxWorkers: 4,
     // The second reporter lists every suite that skipped for lack of data.
     reporters: ["default", "./tests/support/skip-summary-reporter.ts"],
-    exclude: ["**/node_modules/**", "**/.git/**", "**/dist/**"],
+    // Suites written for Node's own runner (`node --test`) are not vitest
+    // files: vitest would report them as files without a suite.
+    exclude: [
+      "**/node_modules/**",
+      "**/.git/**",
+      "**/dist/**",
+      "tools/oracle/corpus-deck-pairing-gate.test.mjs",
+      "reference-harness/runner/test/**",
+    ],
   },
 });
