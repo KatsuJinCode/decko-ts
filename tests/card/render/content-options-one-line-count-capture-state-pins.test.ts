@@ -61,7 +61,7 @@ import Database from "better-sqlite3";
 import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 // A checkout of the upstream Ruby Decko source, supplied locally.
-const ARCHIVE = process.env.DECKO_RUBY_SOURCE ?? "";
+const ARCHIVE = process.env.DECKO_RUBY_SOURCE ?? "C:/localProjects/archive/decko-fork-study/decko";
 
 /** The archive trees carry CRLF on some files; the shape assertions below
  *  are written against LF. */
