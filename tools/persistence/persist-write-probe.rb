@@ -358,6 +358,32 @@ def run_op(step)
     [:rename, "rename a card a pointer lists", lambda {
       Card.find(id_of("PersistProbe Typed")).update!(name: "PersistProbe Typed2")
     }]
+  # 53-56: form saves with subcards.
+  when 53
+    [:create, "create with subcards", lambda {
+      Card.create!(name: "PersistProbe Form", type: "RichText", content: "main",
+                   subcards: { "+PersistProbe Sub" => { content: "s" },
+                               "PersistProbe Other" => { type: "PlainText", content: "o" } })
+    }]
+  when 54
+    [:update, "update subcards only (one changed, one new)", lambda {
+      Card.find(id_of("PersistProbe Form")).update!(
+        subcards: { "+PersistProbe Sub" => { content: "s2" },
+                    "+PersistProbe New Sub" => { content: "n" } }
+      )
+    }]
+  when 55
+    [:update, "update main with an unchanged subcard", lambda {
+      Card.find(id_of("PersistProbe Form")).update!(
+        content: "main2", subcards: { "+PersistProbe Sub" => { content: "s2" } }
+      )
+    }]
+  when 56
+    [:create, "create with a list subcard", lambda {
+      Card.create!(name: "PersistProbe Form2", type: "RichText", content: "f2",
+                   subcards: { "+PersistProbe Tags" => { type: "Pointer",
+                                                         content: "[[PersistProbe B]]\n[[PersistProbe Form]]" } })
+    }]
   else
     abort "unknown step #{step}"
   end

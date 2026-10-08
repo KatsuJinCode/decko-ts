@@ -795,7 +795,7 @@ const WRITE_PATH_HOST: ModEngineHost = {
 };
 
 let servingModEventRuntimeSeat: Promise<ModEventRuntime> | undefined;
-function servingModEventRuntime(): Promise<ModEventRuntime> {
+export function servingModEventRuntime(): Promise<ModEventRuntime> {
   servingModEventRuntimeSeat ??= (async () => {
     const [{ defaultDeckEventRuntime }] = await Promise.all([
       import("../card/mod-loader/default-mod-deck.js"),

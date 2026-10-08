@@ -32,6 +32,7 @@
 //  43-50 type changes: alone, with content, with a field, an unknown type,
 //        a cardtype with instances
 //  51-52 list content: standardized items, item references, item swaps
+//  53-56 form saves with subcards (create, update, unchanged, list subcard)
 //
 // It writes its JSON, runs tools/persistence/compare-persist.mjs against the
 // committed Ruby dumps, and asserts which steps diverge. Without the oracle
@@ -57,6 +58,7 @@ import {
   structureRuleTypesFromResults,
 } from "../../src/card/rules/structure.js";
 import { createVirtualCardLookup } from "../../src/card/fetch/virtual-cards.js";
+import { servingModEventRuntime } from "../../src/server/write-routes.js";
 
 const SRC =
   process.env.PERSIST_SRC_DECK ??
@@ -101,7 +103,7 @@ const LIST_CONTENT =
   "[[PersistProbe Typed]]\n\n  [[PersistProbe Typed+PersistProbe Field]]  \n~1\n:anyone\nPersistProbe Loose";
 // The op list's length; the Ruby half's step count (run-ruby-steps.sh) and
 // the committed oracle dumps must agree with it.
-const STEP_COUNT = 52;
+const STEP_COUNT = 56;
 // The Ruby half runs as Card::Auth.as_bot, i.e. card 1 (Decko Bot). The act's
 // actor_id and every card's creator_id/updater_id come from it.
 const BOT = { id: 1, name: "Decko Bot" };
@@ -247,10 +249,13 @@ async function bootEngine(dbPath: string): Promise<{
     contents: structureUniverseFromResults(universe),
     ruleTypeIds: structureRuleTypesFromResults(universe),
   });
+  // The engine as the write routes build it: the deck's mod event runtime
+  // rides every save (account, permission and reference events included).
   const engine = new CardActionEngine(fetcher, {
     actor: BOT,
     ipAddress: IP,
     now: () => new Date("2026-09-19T12:00:00.000Z"),
+    modEvents: await servingModEventRuntime(),
   });
   return { driver, engine };
 }
@@ -644,6 +649,45 @@ describe("persistence write probe (TS half)", () => {
       );
       await op(52, "rename a card a pointer lists", "rename", async () =>
         engine.updateCard({ cardId: await idOf(typed), name: `${PREFIX} Typed2` } as UpdateCardInput),
+      );
+      // 53-56: form saves with subcards.
+      const form = `${PREFIX} Form`;
+      await op(53, "create with subcards", "create", () =>
+        engine.createCard({
+          name: form,
+          ...rich,
+          content: "main",
+          subcards: {
+            [`+${PREFIX} Sub`]: { content: "s" },
+            [`${PREFIX} Other`]: { typeName: "PlainText", content: "o" },
+          },
+        } as CreateCardInput),
+      );
+      await op(54, "update subcards only (one changed, one new)", "update", async () =>
+        engine.updateCard({
+          cardId: await idOf(form),
+          subcards: {
+            [`+${PREFIX} Sub`]: { content: "s2" },
+            [`+${PREFIX} New Sub`]: { content: "n" },
+          },
+        } as UpdateCardInput),
+      );
+      await op(55, "update main with an unchanged subcard", "update", async () =>
+        engine.updateCard({
+          cardId: await idOf(form),
+          content: "main2",
+          subcards: { [`+${PREFIX} Sub`]: { content: "s2" } },
+        } as UpdateCardInput),
+      );
+      await op(56, "create with a list subcard", "create", () =>
+        engine.createCard({
+          name: `${PREFIX} Form2`,
+          ...rich,
+          content: "f2",
+          subcards: {
+            [`+${PREFIX} Tags`]: { typeName: "Pointer", content: `[[${PREFIX} B]]\n[[${PREFIX} Form]]` },
+          },
+        } as CreateCardInput),
       );
     } finally {
       driver.close();

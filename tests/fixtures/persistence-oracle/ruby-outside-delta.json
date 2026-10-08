@@ -7,7 +7,7 @@
       "removed": []
     },
     "card_actions": {
-      "probeRows": 58,
+      "probeRows": 69,
       "changed": {},
       "added": [
         "{\"action_type\":1,\"card_act_id\":116089,\"card_id\":36,\"comment\":null,\"draft\":0,\"super_action_id\":null}"
@@ -15,7 +15,7 @@
       "removed": []
     },
     "card_acts": {
-      "probeRows": 48,
+      "probeRows": 52,
       "changed": {},
       "added": [
         "{\"acted_at\":\"T\",\"actor_id\":1,\"card_id\":36,\"ip_address\":null}"
@@ -23,7 +23,7 @@
       "removed": []
     },
     "card_changes": {
-      "probeRows": 103,
+      "probeRows": 117,
       "changed": {},
       "added": [
         "{\"card_action_id\":11492,\"field\":2,\"value\":\"drafted text\"}",
@@ -38,7 +38,7 @@
       "removed": []
     },
     "card_references": {
-      "probeRows": 19,
+      "probeRows": 21,
       "changed": {},
       "added": [],
       "removed": []
@@ -56,7 +56,7 @@
       "removed": []
     },
     "cards": {
-      "probeRows": 28,
+      "probeRows": 37,
       "changed": {
         "35": "{\"codename\":\"number\",\"created_at\":\"T\",\"creator_id\":1,\"current_revision_id\":null,\"db_content\":\"{{+:description|content}}\\n{{_|add_button}}{{_|configure_button}}\\n{{+:type+:by_name|content}}\\n\",\"id\":35,\"key\":\"number\",\"left_id\":null,\"name\":\"Number\",\"read_rule_class\":\"*all\",\"read_rule_id\":10,\"references_expired\":null,\"right_id\":null,\"trash\":0,\"type_id\":3,\"updated_at\":\"T\",\"updater_id\":1}",
         "36": "{\"codename\":null,\"created_at\":\"T\",\"creator_id\":1,\"current_revision_id\":null,\"db_content\":\"<p>Number cards hold numbers. (persistence probe)</p>\",\"id\":36,\"key\":null,\"left_id\":35,\"name\":null,\"read_rule_class\":\"*all plus\",\"read_rule_id\":10,\"references_expired\":null,\"right_id\":12,\"trash\":0,\"type_id\":2,\"updated_at\":\"T\",\"updater_id\":1}"
