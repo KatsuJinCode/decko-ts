@@ -57,7 +57,7 @@ import {
   safeKeyToModuleShortname,
   safeKeyToModuleShortnameCandidates,
 } from "./render/set-keys-to-modules.js";
-import { SET_INCLUDE_GRAPH } from "./mod-loader/set-include-graph.js";
+import { SET_INCLUDES } from "./mod-loader/concrete-set-includes.js";
 import {
   ContentOverrideRegistry,
   setDefaultContentOverrideRegistry,
@@ -1005,7 +1005,7 @@ export class ModLoader {
 
   /** The abstract-set chain entries for one anchored token: every module
    *  the token's set module (and its nested modules) includes, per
-   *  SET_INCLUDE_GRAPH, html includes first and then base ones, each
+   *  SET_INCLUDES, html includes first and then base ones, each
    *  contributing its registration of the view once. */
   private includedAbstractEntries(
     token: string,
@@ -1019,7 +1019,7 @@ export class ModLoader {
       const owners = includeGraphOwners(candidate);
       if (owners.length === 0) continue;
       for (const owner of owners) {
-        const includes = SET_INCLUDE_GRAPH[owner]!;
+        const includes = SET_INCLUDES[owner]!;
         // HtmlFormat mixes in the html includes and inherits Card::Format's;
         // a format outside the html lineage (email_text) sees only the base
         // ones (format.rb format_ancestry).
@@ -1245,14 +1245,14 @@ function byFileName<T extends { code: string }>(a: T, b: T): number {
  *  cards); the memo is simply restarted when it fills. */
 const CHAIN_MEMO_LIMIT = 50_000;
 
-/** SET_INCLUDE_GRAPH owners by module prefix: "Type::Set" -> the graph keys
+/** SET_INCLUDES owners by module prefix: "Type::Set" -> the graph keys
  *  equal to it or nested under it (Type::Set, Type::Set::HtmlViews, ...), in
  *  the graph's key order. Built once; the graph is a generated constant. */
 let includeGraphOwnerIndex: Map<string, string[]> | undefined;
 function includeGraphOwners(candidate: string): readonly string[] {
   if (includeGraphOwnerIndex === undefined) {
     const index = new Map<string, string[]>();
-    for (const key of Object.keys(SET_INCLUDE_GRAPH)) {
+    for (const key of Object.keys(SET_INCLUDES)) {
       const parts = key.split("::");
       for (let i = 1; i <= parts.length; i++) {
         const prefix = parts.slice(0, i).join("::");

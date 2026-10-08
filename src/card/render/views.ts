@@ -46,7 +46,7 @@ import { cgiEscape, emitAttrs, emitHamlAttrs, h, newSlotId, slotOptionsJson, slo
 import { registerSetTypeAssignment } from "../set-patterns/set-type-assignment.js";
 import { safeSetKeys } from "./set-keys.js";
 import { codenameModuleShortnames, safeKeyToModuleShortnameCandidates } from "./set-keys-to-modules.js";
-import { SET_INCLUDE_GRAPH } from "../mod-loader/set-include-graph.js";
+import { SET_INCLUDES } from "../mod-loader/concrete-set-includes.js";
 
 import {
   UnsupportedViewError,
@@ -6173,7 +6173,7 @@ const resetPasswordDaysView: ViewFn = verifyDaysView;
  *  Views NOT in this registry raise the unsupported-view UserError. */
 /** The Ruby set modules that define the views the flat table carries for
  *  every card. Ruby defines each only on these sets (an abstract module
- *  counts for every set that includes it, per SET_INCLUDE_GRAPH); on any
+ *  counts for every set that includes it, per SET_INCLUDES); on any
  *  other card the view does not exist and render.rb#view_method raises the
  *  unsupported-view error. RenderEngine#computeResolvedView consults this
  *  before falling back to the flat table. Views marked selfGated already
@@ -6210,7 +6210,7 @@ function cardInRubySets(setKeys: string, sets: readonly string[]): boolean {
     if (token === "") continue;
     for (const candidate of [...safeKeyToModuleShortnameCandidates(token), ...codenameModuleShortnames(token)]) {
       if (sets.includes(candidate)) return true;
-      for (const [owner, includes] of Object.entries(SET_INCLUDE_GRAPH)) {
+      for (const [owner, includes] of Object.entries(SET_INCLUDES)) {
         if (owner !== candidate && !owner.startsWith(`${candidate}::`)) continue;
         if (sets.some((set) => includes.html?.includes(set) === true || includes.base?.includes(set) === true)) {
           return true;

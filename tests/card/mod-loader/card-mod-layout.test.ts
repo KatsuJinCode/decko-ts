@@ -82,6 +82,7 @@ const RULE = `${PROBE}+*head`;
 const HTML_PROBE = "Layout Html Probe";
 const HEAD = "*head";
 const NAV_PROBE = "Layout Nav Probe";
+const HTML_MENU_PROBE = "Layout Html Menu Probe";
 const LINK_TARGET = "Layout Link Target";
 const NEST_TARGET = "Layout Nest Target";
 const NAV_PROBE_CONTENT =
@@ -215,6 +216,7 @@ beforeAll(async () => {
   // the probes and the navbar chunk targets
   await seedCard(s, { id: 41, name: HTML_PROBE, typeId: 20, dbContent: "<h1>layout html probe</h1>" });
   await seedCard(s, { id: 42, name: NAV_PROBE, dbContent: NAV_PROBE_CONTENT });
+  await seedCard(s, { id: 43, name: HTML_MENU_PROBE, typeId: 20, dbContent: `[[${LINK_TARGET}]]\n\n[[${NEST_TARGET}]]` });
   await seedCard(s, { id: 51, name: LINK_TARGET, dbContent: "link target body" });
   await seedCard(s, { id: 52, name: NEST_TARGET, dbContent: "nest target body" });
   await seedCard(s, { id: 1169, name: PROBE, dbContent: "probe card body" });
@@ -685,6 +687,28 @@ describe("card-mod-layout through the mod loader (A/B)", () => {
     const htmlCore = await s.engine.render(HTML_PROBE, "core");
     expect(htmlCore.startsWith(CODE_RAY_DIV_OPEN)).toBe(false);
     expect(htmlCore).toContain("<h1>layout html probe</h1>");
+  });
+
+  it("WITH the mod: Type::Html owns :navbar_links (set/type/html.rb:3-9) and no :core", async () => {
+    // The deprecated Html-typed menu override: every content line names an
+    // item card, nested with view :link (item.rb item_links), each in an
+    // li.nav-item, joined with a newline; the blank line names no card.
+    const s = storage!;
+    const html = await s.engine.render(HTML_MENU_PROBE, "navbar_links");
+    expect(html.startsWith('<ul class="navbar-nav"><li class="nav-item"><a ')).toBe(true);
+    expect(html.endsWith("</a></li></ul>")).toBe(true);
+    expect(html.split('<li class="nav-item">').length - 1).toBe(2);
+    expect(html).toContain('</li>\n<li class="nav-item">');
+    expect(html).toContain(`>${LINK_TARGET}</span></a>`);
+    expect(html).toContain(`>${NEST_TARGET}</span></a>`);
+    expect(loader!.viewChain("ALL TYPE-html", "navbar_links", "html")[0]?.setModule).toBe("Type::Html");
+    expect(loader!.viewChain("ALL TYPE-html", "core", "html").map((e) => e.setModule)).not.toContain("Type::Html");
+    // A non-Html card keeps the all-pattern navbar walk.
+    expect(loader!.viewChain("ALL", "navbar_links", "html")[0]?.setModule).toBe("All::NavbarLinks");
+  });
+
+  it("WITH the mod: Layout-typed cards include Type::Html (set/type/layout_type.rb:5)", () => {
+    expect(loader!.viewChain("ALL TYPE-layout_type", "navbar_links", "html")[0]?.setModule).toBe("Type::Html");
   });
 
   it("WITH the mod: :core on every other card is UNCHANGED (the composed override falls through)", async () => {
