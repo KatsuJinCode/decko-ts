@@ -4699,6 +4699,11 @@ export class RenderEngine implements RenderEngineLike {
    *  restriction reads comes from them. Undefined for a card that does not
    *  exist or is not Set-typed (Ruby raises NoMethodError there). */
   async visibleSettingCodenamesFor(name: string): Promise<ReadonlyArray<string> | undefined> {
+    // The prototype type reads the *structure / *default universes
+    // (newCardDefaultType); load them here when no render has yet, so the
+    // answer does not depend on call order.
+    await this.parseStructureContents(undefined, 0);
+    await this.preloadDefaultTypeNames();
     const card = await this.prepareItemForRender(name);
     if (card === undefined) return undefined;
     if (card.name.leftName !== undefined) await this.prepareItemForRender(card.name.leftName.s);

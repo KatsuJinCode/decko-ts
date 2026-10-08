@@ -46,6 +46,7 @@ import {
   seedCard,
   type RenderTestStorage,
 } from "./render-test-storage.js";
+import { DeckoName } from "../../../src/card/name.js";
 
 let storage: RenderTestStorage | undefined;
 
@@ -179,5 +180,9 @@ describe("visible_setting_codenames (card-mod-rules set/type/set.rb:73-75)", () 
     );
     expect(await s.engine.visibleSettingCodenamesFor("*home+*self")).toEqual(all);
     expect(await s.engine.visibleSettingCodenamesFor("Message")).toBeUndefined();
+    // the call loads the *default universe itself, so the new-card type
+    // walk works afterwards whatever ran first (Search: the set's
+    // Search-typed *structure rule is the template)
+    expect(s.engine.newCardDefaultType(DeckoName.parse("A Message+Conversation"), "Message")?.typeName).toBe("Search");
   });
 });
