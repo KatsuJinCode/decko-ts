@@ -162,6 +162,7 @@ import {
   NO_HISTORY_RIGHT_CODENAMES,
   encryptPassword,
   generateSalt,
+  passwordErrors,
 } from "./account-fields.js";
 import {
   runModEventStage,
@@ -534,6 +535,9 @@ export class CardActionEngine {
           writer,
           {
             name: fullName,
+            // the subcard's own subcards ride along so its validation sees
+            // them (require_field); they are saved below, after it
+            ...(sub.subcards !== undefined ? { subcards: sub.subcards } : {}),
             content: sub.content,
             typeId: sub.typeId,
             typeCode: sub.typeCode,
@@ -802,10 +806,16 @@ export class CardActionEngine {
     const placeholder = newCardRecord(name, { typeId });
     await this.assertCanWrite(placeholder, "create");
     const writer = this.newWriter(actingId);
-    const result = await this.createInWriter(writer, input, {
-      isActCard: true,
-      resolvedTypeId: typeId,
-    });
+    let result: ActionResult;
+    try {
+      result = await this.createInWriter(writer, input, {
+        isActCard: true,
+        resolvedTypeId: typeId,
+      });
+    } catch (error) {
+      await this.dropUnfilledActions(writer);
+      throw error;
+    }
     // subcards.rb:1-16: the subcards ride this save's act (director/
     // store.rb:37-58) — the "create Book card with plusses" submission.
     let finalResult = result;
@@ -1120,7 +1130,25 @@ export class CardActionEngine {
     const rightCode =
       name.isSimple || sides.rightId === null ? undefined : await this.fetch.codenames.nameForId(sides.rightId);
     if (rightCode === "password" && input.content != null && input.attachment === undefined) {
+      // validate_password_length / validate_password_chars (:validate) run on
+      // the assigned password, before encrypt_password (:store).
+      const problems = passwordErrors(input.content);
+      if (problems.length > 0) {
+        throw new CardActionError("validation-failed", `Validation failed: ${problems.join(", ")}`);
+      }
       input.content = encryptPassword(input.content, await this.accountSalt(sides.leftId));
+    }
+    // require_field :email (set/right/account.rb:8): an account is created
+    // only with its +*email, named in this save's subcards or already stored.
+    if (rightCode === "account") {
+      const named = Object.keys(input.subcards ?? {}).some(
+        (k) => k.split("+").map((p) => p.trim().toLowerCase()).pop() === "*email",
+      );
+      const stored =
+        !named && (await this.fetch.lexicon.id(DeckoName.parse(`${name.s}+*email`))) !== undefined;
+      if (!named && !stored) {
+        throw new CardActionError("field-required", "Validation failed: Email required");
+      }
     }
     const created = await writer.createCard({
       name: name.isSimple ? name.s : null,
@@ -1613,12 +1641,21 @@ export class CardActionEngine {
     // content changes; +*password and +*salt saves keep no history.
     const updateRightCode =
       before.right_id === null ? undefined : await this.fetch.codenames.nameForId(before.right_id);
+    // validate_password_present (:prepare_to_validate, on: :update): a blank
+    // password aborts the save as a success, storing nothing.
+    if (updateRightCode === "password" && input.content !== undefined && input.content.trim() === "") {
+      return null;
+    }
     if (
       updateRightCode === "password" &&
       input.content !== undefined &&
       input.attachment === undefined &&
       input.content !== (before.db_content ?? undefined)
     ) {
+      const problems = passwordErrors(input.content);
+      if (problems.length > 0) {
+        throw new CardActionError("validation-failed", `Validation failed: ${problems.join(", ")}`);
+      }
       input.content = encryptPassword(input.content, await this.accountSalt(before.left_id));
     }
     if (input.content !== undefined) after.db_content = input.content;
@@ -1754,6 +1791,19 @@ export class CardActionEngine {
       ...(after.type_id !== before.type_id ? ["type_id"] : []),
       ...(after.trash !== before.trash ? ["trash"] : []),
     ];
+    // history? false: +*password, +*salt (account-fields.ts) and
+    // *recent settings (card-mod-rules set/self/recent_settings.rb). Their
+    // saves keep no action and no change rows, including the change rows a
+    // first update would backfill for the create action.
+    const noHistory =
+      (updateRightCode !== undefined && NO_HISTORY_RIGHT_CODENAMES.has(updateRightCode)) ||
+      row.codename === "recent_settings";
+    const changesBefore = noHistory
+      ? Number(
+          (await this.fetch.driver.query<{ m: number | null }>("SELECT MAX(id) AS m FROM card_changes", [])).rows[0]
+            ?.m ?? 0,
+        )
+      : 0;
     const saved = await writer.updateCard({
       cardId: row.id,
       before,
@@ -1776,7 +1826,8 @@ export class CardActionEngine {
       reservedActionId,
     });
     if (saved === null) return null; // no-op save: nothing persisted
-    if (updateRightCode !== undefined && NO_HISTORY_RIGHT_CODENAMES.has(updateRightCode)) {
+    if (noHistory) {
+      await this.fetch.driver.query("DELETE FROM card_changes WHERE id > ?", [changesBefore]);
       await this.dropHistory(saved.actionId, saved.actId);
     }
     if (after.trash === 1 && before.trash === 0) {
@@ -3131,6 +3182,20 @@ export class CardActionEngine {
       const recentName = (await this.fetch.lexicon.name(recentId)) ?? DeckoName.parse("*recent settings");
       await refreshReferencesOut(driver, this.fetch.lexicon, recentId, recentName, content);
     }
+  }
+
+  /** A create that fails after reserving action rows (a compound card's own
+   *  action, its sides') leaves no row behind: the reserved actions that no
+   *  save filled, and the act when it holds nothing else, are removed. */
+  private async dropUnfilledActions(writer: ActWriter): Promise<void> {
+    const actId = writer.currentActId();
+    if (actId === null) return;
+    const driver = this.fetch.driver;
+    await driver.query("DELETE FROM card_actions WHERE card_act_id = ? AND card_id IS NULL", [actId]);
+    const left = (
+      await driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM card_actions WHERE card_act_id = ?", [actId])
+    ).rows[0];
+    if (Number(left?.n ?? 0) === 0) await driver.query("DELETE FROM card_acts WHERE id = ?", [actId]);
   }
 
   /** Salts generated for accounts created in this engine's acts, by account

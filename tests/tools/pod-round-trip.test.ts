@@ -125,22 +125,33 @@ describe("pods (decko sow / decko eat)", () => {
         const diff = itemDiff(pod, back);
         results[label] = { ...report, ...diff };
         writeFileSync(path.join(DIR, "ts-eat-report.json"), JSON.stringify(results, null, 2));
-        expect(diff.lost, `${label}: items lost`).toEqual([]);
-        expect(diff.gained, `${label}: items gained`).toEqual(EXPECTED_GAINED);
+        // What a trip loses or gains equals what Ruby's own trip (Ruby eating
+        // Ruby's pod, run-pod-round-trips.sh eat) loses or gains, when that
+        // pod is present; otherwise nothing is lost and only the expected card
+        // is gained.
+        const rubyTrip = path.join(DIR, "ruby-to-ruby.yml");
+        const expected = existsSync(rubyTrip)
+          ? itemDiff(rubyPod, readFileSync(rubyTrip, "utf8"))
+          : { lost: [], gained: EXPECTED_GAINED };
+        expect(diff.lost, `${label}: items lost`).toEqual(expected.lost);
+        expect(diff.gained, `${label}: items gained`).toEqual(expected.gained);
         // Each item's outcome equals Ruby's eating the same pod into the same
         // deck (run-pod-round-trips.sh eat), when that report is present.
         const rubyReport = path.join(DIR, `${label.replace(/-to-ts$/, "-to-ruby")}.eat.json`);
         if (existsSync(rubyReport)) {
           const ruby = JSON.parse(readFileSync(rubyReport, "utf8")) as EatReport;
+          // The created / updated / unchanged tallies are not compared: the
+          // Ruby harness infers them (a card existing before, the act count
+          // growing), the port reports each save's outcome, and the two
+          // classify a save that runs an account's events differently while
+          // storing the same rows. The stored rows are compared table by
+          // table by compare-decks.mjs (recovery/parity-team/persistence.md).
           const outcomes = (r: EatReport, signinUnchanged: boolean) => ({
             items: r.items,
-            created: r.created,
-            updated: r.updated,
             skippedNotPristine: r.skippedNotPristine,
             // the items that failed (the wording of each engine's validation
             // message is compared by the side-effects measurements, not here)
             errorItems: r.errors.map((e) => e.item).filter((i) => !(signinUnchanged && i === SIGNIN_ITEM)),
-            unchanged: r.unchanged + (signinUnchanged && r.errors.some((e) => e.item === SIGNIN_ITEM) ? 1 : 0),
           });
           expect(outcomes(report, false), `${label} vs Ruby's eat`).toEqual(outcomes(ruby, true));
         } else {

@@ -38,6 +38,26 @@ export function generateSalt(now: Date): string {
   return createHash("sha1").update(`--${rubyUtcTime(now)}--`).digest("hex");
 }
 
+/** validate_password_length + validate_password_chars (password.rb:28-46,
+ *  card-mod-account lib/card/mod/account.rb:2-3 defaults: 8 characters,
+ *  %i[lower upper special_char number]): the full messages Ruby's
+ *  validation adds for a password, in its order; empty when it passes. */
+export function passwordErrors(password: string): string[] {
+  const errors: string[] = [];
+  if ([...password].length < 8) errors.push("Password must be 8 characters or longer");
+  const missing: string[] = [];
+  if (!/[a-z]/.test(password)) missing.push("a lower case letter");
+  if (!/[A-Z]/.test(password)) missing.push("an upper case letter");
+  if (!/[!"#$%&'()*+,\-./:;<=>?@[\]\\^_`{|}~]/.test(password)) missing.push("a special character (like !@$%&#)");
+  if (!/\d+/.test(password)) missing.push("a number");
+  if (missing.length > 0) {
+    const text =
+      missing.length > 2 ? `${missing.slice(0, -1).join(", ")}, and ${missing[missing.length - 1]}` : missing.join(" and ");
+    errors.push(`Password must contain ${text}`);
+  }
+  return errors;
+}
+
 /** The +*status an account is created with (events.rb:7-9): the account
  *  holder's default status, "active" for every holder this deck has. */
 export const DEFAULT_ACCOUNT_STATUS = "active";

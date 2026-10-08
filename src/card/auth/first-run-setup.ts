@@ -753,17 +753,19 @@ export async function createOwnerAccount(
     // The account's create runs set_default_salt and set_default_status in
     // the engine (account-fields.ts): its +*salt and +*status ("active")
     // are stored with it.
-    const junction = await engine.createCard({ name: `${ownerName}+*account` });
-    const junctionId = junction.cardId;
-    const emailCard = await engine.createCard({
-      name: `${ownerName}+*account+*email`,
-      content: email,
+    // The account is created with its +*email as a subcard, as the setup
+    // form posts it (require_field :email, set/right/account.rb:8).
+    const junction = await engine.createCard({
+      name: `${ownerName}+*account`,
+      subcards: { "+*email": { content: email } },
     });
+    const junctionId = junction.cardId;
     const fieldId = async (field: string): Promise<number> => {
       const id = await deps.fetcher.lexicon.id(DeckoName.parse(`${ownerName}+*account+${field}`));
       if (id === undefined) throw new CardActionError("not-found", `missing ${ownerName}+*account+${field}`);
       return id;
     };
+    const emailCard = { cardId: await fieldId("*email") };
     const saltCard = { cardId: await fieldId("*salt") };
     const statusCard = { cardId: await fieldId("*status") };
     // encrypt_password (right/password.rb:19-26) runs in the engine, over

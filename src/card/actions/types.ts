@@ -52,6 +52,7 @@ export type CardActionErrorCode =
   | "conflict" // detect_conflict (card-mod-history set/all/history/events.rb:19-22)
   | "revert-unsupported" // a revert shape the port does not carry out (named in the message)
   | "field-required" // require_field :email (card-mod-account set/right/account.rb:8)
+  | "validation-failed" // another :validate event's errors (e.g. card-mod-account password.rb:28-46)
   | "recaptcha"; // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55)
 
 /** Error class for every action-layer rejection. `code` carries the Ruby
