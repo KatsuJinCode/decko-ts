@@ -461,13 +461,15 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     ).toBe("plain body");
   });
 
-  it("WITH the mod: Toggle-typed :one_line_content renders the :core bytes — yes and no (type/toggle.rb:31-35)", async () => {
+  it("WITH the mod: Toggle-typed :one_line_content wraps the :core bytes — yes and no (html/views.rb:29-32 over toggle.rb:31-35's method)", async () => {
+    // toggle.rb overrides the one_line_content METHOD (render_core); the
+    // view is All::Html::Views', which wraps it in the text-muted div.
     const s = storage!;
     expect(await s.engine.render("Oracle Toggle Yes", "one_line_content")).toBe(
-      "yes",
+      '<div class="text-muted">yes</div>',
     );
     expect(await s.engine.render("Oracle Toggle No", "one_line_content")).toBe(
-      "no",
+      '<div class="text-muted">no</div>',
     );
   });
 

@@ -531,24 +531,6 @@ const typeHtmlOneLineContentView: ViewFn = ({ fmt, voo }) => {
   return truncate(stripTags(fmt.renderRaw()), length, "...");
 };
 
-/** set/type/toggle.rb:31-35 (html block): `def one_line_content;
- *  short_content end` + `def short_content; render_core end` — the toggle
- *  HELPERS that override the All::Content helper family, so a Toggle-typed
- *  card's :one_line_content renders the :core bytes (the "yes"/"no"
- *  formatToggleCore mapping the engine's coreView toggle branch carries).
- *  Ruby's surface is a helper override: All::Content's view
- *  (content.rb:9-13) runs `with_nest_mode :compact { one_line_content }`
- *  and the helper lookup hits Type::Toggle's override first; the
- *  chain-scoped registration answers the same bytes through the TS chain
- *  walk (Type::Toggle first, renderView("core") re-walks for Toggle
- *  cards). :short_content is ALREADY covered views-side — shortContentView's
- *  toggle arm renders the core bytes inside the text-muted wrap.
- *  CORPUS-PRESENT-UNRENDERED: the
- *  sha-verified dump copy (6A44DFDC...) carries 8 Toggle-typed cards, none
- *  compound/rule-shaped (so the rule-bar one-line surface never reaches
- *  them), and zero captured one_line_content bytes — pins are gem-derived
- *  from toggle.rb:31-35 + the capture-pinned coreView toggle branch. */
-const typeToggleOneLineContentView: ViewFn = ({ fmt }) => fmt.renderView("core");
 
 /** set/all/base.rb:35-37 view :link, perms: :none: `link_view`
  *  (base.rb:43-47 `link_to_card card.name, _render_title, opts`) and
@@ -2017,9 +1999,11 @@ const setModules: ModSetModuleFile[] = [
     // shape, which supersedes this gem's case/to_i form under mod load
     // order; en.yml:21-22 resolves format_toggle_yes/no to "yes"/"no").
     //
-    // Ported:one_line_content (2026-10-01,
-    // typeToggleOneLineContentView above): toggle.rb:31-35's helper
-    // override funnels the All::Content view to render_core. :short_content
+    // :one_line_content is NOT a view of this file: toggle.rb:31-35
+    // overrides the one_line_content / short_content METHODS, and the
+    // view stays All::Html::Views' (html/views.rb:29-32), whose
+    // text-muted wrap of truncate(strip_tags(render_core)) is the same
+    // bytes for the "yes"/"no"/"?" core. :short_content
     // is covered views-side (shortContentView's toggle arm). The i18n
     // concern in the old note applied to :core only, and the en locale
     // resolves it to plain "yes"/"no" (config/locales/en.yml:21-22).
@@ -2029,7 +2013,6 @@ const setModules: ModSetModuleFile[] = [
         views: [
           { view: "input", viewFn: toggleInputView },
           { view: "labeled_editor", viewFn: toggleLabeledEditorView },
-          { view: "one_line_content", viewFn: typeToggleOneLineContentView, config: {} },
         ],
       },
     },
