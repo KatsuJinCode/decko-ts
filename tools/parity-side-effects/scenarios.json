@@ -177,6 +177,17 @@
         "card": {
           "name": "Parity Follower Renamed"
         }
+      },
+      "deliberate": {
+        "why": "Ruby crashes (NoMethodError: valid_preferer? on a nil card while re-keying the account's follow preferences) and answers 500. The port gives the error validate_account_holder_name_change was written to give; neither engine writes anything.",
+        "ruby": {
+          "status": "500",
+          "errors": "undefined method `type_id' for nil"
+        },
+        "ts": {
+          "status": "422",
+          "errors": "NAME: cannot rename Account Holder"
+        }
       }
     },
     {
@@ -421,20 +432,6 @@
       }
     },
     {
-      "name": "restore-file-revision",
-      "mod": "carrierwave",
-      "method": "put",
-      "path": "/Parity_Cached_File",
-      "params": {
-        "revert_actions": [
-          "$create_action:Parity Cached File"
-        ],
-        "card": {
-          "skip": "validate_renaming"
-        }
-      }
-    },
-    {
       "name": "upload-image",
       "mod": "carrierwave",
       "method": "post",
@@ -593,6 +590,40 @@
       }
     },
     {
+      "name": "anon-update-skin-colors",
+      "mod": "assets",
+      "method": "put",
+      "path": "/darkly_skin+*colors",
+      "params": {
+        "card": {
+          "content": "$primary: #654321;"
+        }
+      },
+      "deliberate": {
+        "why": "Security hole in Ruby: ok_to_update? on a Bootswatch skin's +*colors is `left.parent? && super`, so for a skin without a parent the permission check never runs and anyone, anonymous visitors included, can change the site's colours. The port keeps checking the rules and refuses.",
+        "ruby": {
+          "status": "303",
+          "errors": ""
+        },
+        "ts": {
+          "status": "403",
+          "errors": "Sorry! Please sign in or sign up to do that."
+        },
+        "absentIn": "ts",
+        "consequences": [
+          "location",
+          "writes",
+          "actions",
+          "stamps",
+          "stored",
+          "mail",
+          "mailText",
+          "mailHtml",
+          "files"
+        ]
+      }
+    },
+    {
       "name": "anon-approve-signup",
       "mod": "account",
       "method": "put",
@@ -600,17 +631,6 @@
       "params": {
         "card": {
           "trigger": "approve_without_verification"
-        }
-      }
-    },
-    {
-      "name": "anon-update-skin-colors",
-      "mod": "assets",
-      "method": "put",
-      "path": "/yeti_skin+*colors",
-      "params": {
-        "card": {
-          "content": "$primary: #654321;"
         }
       }
     },
@@ -771,6 +791,43 @@
       }
     },
     {
+      "name": "restore-file-revision",
+      "mod": "carrierwave",
+      "method": "put",
+      "path": "/Parity_Cached_File",
+      "params": {
+        "revert_actions": [
+          "$create_action:Parity Cached File"
+        ],
+        "card": {
+          "skip": "validate_renaming"
+        }
+      },
+      "deliberate": {
+        "why": "Ruby crashes: the history mod calls revision(action, before_action) positionally and card-mod-carrierwave's override takes a keyword (ArgumentError), so restoring an old version of any File or Image card answers 500. The port restores the version, which is what the revert was written to do.",
+        "ruby": {
+          "status": "500",
+          "errors": "wrong number of arguments (given 2, expected 1)"
+        },
+        "ts": {
+          "status": "303",
+          "errors": ""
+        },
+        "absentIn": "ruby",
+        "consequences": [
+          "location",
+          "writes",
+          "actions",
+          "stamps",
+          "stored",
+          "mail",
+          "mailText",
+          "mailHtml",
+          "files"
+        ]
+      }
+    },
+    {
       "name": "admin-create-signup",
       "mod": "account",
       "method": "post",
@@ -829,7 +886,7 @@
       "path": "/Help_Desk+*members",
       "params": {
         "card": {
-          "content": "[[Parity Follower]]"
+          "content": "$id:Parity Follower"
         }
       }
     },
@@ -860,6 +917,17 @@
             }
           }
         }
+      },
+      "deliberate": {
+        "why": "Ruby crashes: validate_theme_template calls theme_card on a parent that is not a skin (NoMethodError) and answers 500. The port gives the error the event was written to give (bootstrap_not_valid_theme); neither engine writes anything.",
+        "ruby": {
+          "status": "500",
+          "errors": "undefined method `theme_card' for #<Card> Did you mean? type_card"
+        },
+        "ts": {
+          "status": "422",
+          "errors": "ABORT: not a valid theme Parity Probe Card"
+        }
       }
     },
     {
@@ -871,7 +939,7 @@
         "card": {
           "name": "Parity Old Skin",
           "type": "Skin",
-          "content": "[[bootstrap default skin]]\n[[Parity Probe Card]]"
+          "content": "bootstrap default skin\nParity Probe Card"
         }
       }
     },
@@ -938,6 +1006,17 @@
       "params": {
         "card": {
           "name": "Parity Follower Two"
+        }
+      },
+      "deliberate": {
+        "why": "Ruby crashes (NoMethodError: valid_preferer? on a nil card while re-keying the account's follow preferences) and answers 500. The port gives the error validate_account_holder_name_change was written to give; neither engine writes anything.",
+        "ruby": {
+          "status": "500",
+          "errors": "undefined method `type_id' for nil"
+        },
+        "ts": {
+          "status": "422",
+          "errors": "NAME: cannot rename Account Holder"
         }
       }
     },
@@ -1010,7 +1089,16 @@
       "name": "admin-close-own-account",
       "mod": "account",
       "method": "delete",
-      "path": "/Parity_Admin+*account"
+      "path": "/Parity_Admin+*account",
+      "deliberate": {
+        "why": "Ruby's signout_upon_delete names a constant that does not exist (Card::Set::Right::Self::Signin); the integrate stage swallows the NameError and the closed account stays signed in. The port signs the account out, as the event intends (a crash, and a closed account that can keep writing).",
+        "ruby": {
+          "session": "ANON-<hex>"
+        },
+        "ts": {
+          "session": "anonymous"
+        }
+      }
     },
     {
       "name": "after-admin-close-write",
@@ -1021,6 +1109,31 @@
         "card": {
           "name": "Parity After Admin Close"
         }
+      },
+      "deliberate": {
+        "why": "Follows from the previous step: in Ruby the closed account is still signed in and can create cards; in the port the visitor is anonymous and is refused.",
+        "ruby": {
+          "status": "303",
+          "errors": "",
+          "session": "ANON-<hex>"
+        },
+        "ts": {
+          "status": "403",
+          "errors": "Sorry! Please sign in or sign up to do that.",
+          "session": "anonymous"
+        },
+        "absentIn": "ts",
+        "consequences": [
+          "location",
+          "writes",
+          "actions",
+          "stamps",
+          "stored",
+          "mail",
+          "mailText",
+          "mailHtml",
+          "files"
+        ]
       }
     }
   ]

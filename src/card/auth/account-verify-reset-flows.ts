@@ -723,8 +723,10 @@ function renderAccountEmail(
       : template.from;
   return {
     from,
-    // email_config.rb:65 reply_to ||= actual_email (with the From rule).
-    ...(ctx.deckoBotEmail !== undefined ? { replyTo: addressOf(from) } : {}),
+    // email_config.rb:65 reply_to ||= actual_email (with the From rule); a
+    // template with no From (the stock welcome email) leaves both to the
+    // mailer default, with no Reply-To.
+    ...(ctx.deckoBotEmail !== undefined && template.from !== "" ? { replyTo: addressOf(from) } : {}),
     subject: rendered.subject,
     textBody: rendered.text,
     ...(rendered.html !== undefined && rendered.html.length > 0

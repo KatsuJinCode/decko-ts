@@ -173,7 +173,9 @@ function filesList() {
 
 // ---- request encoding: the nested params hash -> Rails bracket keys.
 function flatten(value, prefix, out) {
-  if (value !== null && typeof value === "object" && !("upload" in value)) {
+  if (Array.isArray(value)) {
+    for (const v of value) flatten(v, `${prefix}[]`, out);
+  } else if (value !== null && typeof value === "object" && !("upload" in value)) {
     for (const [k, v] of Object.entries(value)) flatten(v, prefix ? `${prefix}[${k}]` : k, out);
   } else {
     out.push([prefix, value]);
@@ -283,6 +285,12 @@ async function resolvePlaceholders(value) {
   if (value === "$rev_id") {
     if (lastRevId === null) throw new Error("no rev_id in the previous response");
     return lastRevId;
+  }
+  const idMark = typeof value === "string" ? /^\$id:(.+)$/.exec(value) : null;
+  if (idMark) {
+    const r = await driver.query("select id from cards where key = ? and trash = 0", [DeckoName.parse(idMark[1]).key]);
+    if (r.rows[0]?.id == null) throw new Error(`no card ${idMark[1]}`);
+    return `~${r.rows[0].id}`;
   }
   const m = typeof value === "string" ? /^\$create_action:(.+)$/.exec(value) : null;
   if (m) {

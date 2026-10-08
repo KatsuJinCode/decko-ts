@@ -17,7 +17,7 @@
 // against its own storage SDK — path.join keeps every Windows/Unix
 // difference inside this module.
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { filenameWithVariant, localAttachmentIdentifier } from "./attachment-content.js";
 import { renditionFileNames } from "./image-renditions.js";
@@ -41,6 +41,11 @@ export interface AttachmentStoreInput {
    *  (image-resize.ts). A rendition without an entry stores the
    *  original's bytes. */
   renditionBytes?: Readonly<Record<string, Uint8Array>>;
+  /** "tmp": the upload cache of a two-step upload for a card that does not
+   *  exist yet (card-mod-carrierwave 00_upload_cache.rb tmp_upload_dir,
+   *  files_base_dir("tmp")/files/<cache card id>), kept apart from the
+   *  deck's files. Absent = the files area. */
+  area?: "files" | "tmp";
 }
 
 /** What a store returns per successful write. */
@@ -58,20 +63,47 @@ export interface AttachmentStore {
   /** The bytes of one action's file. `variant` resolves the rendition
    *  spelling <action_id>-<variant><ext> (the img src the image views
    *  emit); undefined = no such file. */
-  read(cardId: number, actionId: number, ext: string, variant?: string): Promise<Uint8Array | undefined>;
+  read(cardId: number, actionId: number, ext: string, variant?: string, area?: "files" | "tmp"): Promise<Uint8Array | undefined>;
+  /** Remove one action's file and its renditions (delete_files_for_action,
+   *  00_upload_cache.rb / attachment.rb). Optional: a store without it
+   *  keeps the files. */
+  remove?(cardId: number, actionId: number, ext: string, area?: "files" | "tmp"): Promise<void>;
 }
 
 /** Local-filesystem implementation of the Ruby files-dir scheme. */
 export class LocalAttachmentStore implements AttachmentStore {
   private readonly filesDir: string;
+  private readonly tmpDir: string;
 
-  /** @param filesDir the deck's files directory (Card.paths["files"]). */
-  constructor(filesDir: string) {
+  /** @param filesDir the deck's files directory (Card.paths["files"]).
+   *  @param tmpDir the upload cache directory; defaults to tmp/files beside
+   *  the files directory. */
+  constructor(filesDir: string, tmpDir?: string) {
     this.filesDir = filesDir;
+    this.tmpDir = tmpDir ?? join(filesDir, "..", "tmp", "files");
+  }
+
+  private root(area: "files" | "tmp" | undefined): string {
+    return area === "tmp" ? this.tmpDir : this.filesDir;
+  }
+
+  async remove(cardId: number, actionId: number, ext: string, area?: "files" | "tmp"): Promise<void> {
+    const dir = join(this.root(area), String(cardId));
+    const prefix = String(actionId);
+    let names: string[] = [];
+    try {
+      names = await readdir(dir);
+    } catch {
+      return;
+    }
+    for (const n of names) {
+      if (n === prefix + ext || (n.startsWith(prefix + "-") && n.endsWith(ext))) await rm(join(dir, n), { force: true });
+    }
   }
 
   async store(input: AttachmentStoreInput): Promise<StoredAttachment> {
-    await mkdir(join(this.filesDir, String(input.cardId)), { recursive: true });
+    const root = this.root(input.area);
+    await mkdir(join(root, String(input.cardId)), { recursive: true });
     // The stored filenames: FileCardUploader shape = <action_id><ext>;
     // ImageCardUploader shape (renditionNames present) = the -original
     // file + one file per version (image_card_uploader.rb:16-27, :44-57;
@@ -79,7 +111,7 @@ export class LocalAttachmentStore implements AttachmentStore {
     // renditions (image-resize.ts) when supplied, else the original's.
     const names = input.renditionNames ?? [`${input.actionId}${input.ext}`];
     for (const name of names) {
-      await writeFile(join(this.filesDir, String(input.cardId), name), input.renditionBytes?.[name] ?? input.bytes);
+      await writeFile(join(root, String(input.cardId), name), input.renditionBytes?.[name] ?? input.bytes);
     }
     return {
       identifier: localAttachmentIdentifier(input.cardId, input.actionId, input.ext),
@@ -92,6 +124,7 @@ export class LocalAttachmentStore implements AttachmentStore {
     actionId: number,
     ext: string,
     variant?: string,
+    area?: "files" | "tmp",
   ): Promise<Uint8Array | undefined> {
     // Path resolution per the uploader classes. A VARIANT request resolves
     // the version file <action_id>-<variant><ext> (Versions#full_filename)
@@ -110,7 +143,7 @@ export class LocalAttachmentStore implements AttachmentStore {
         : [filenameWithVariant(actionId, ext, variant), filenameWithVariant(actionId, ext)];
     for (const name of candidates) {
       try {
-        return new Uint8Array(await readFile(join(this.filesDir, String(cardId), name)));
+        return new Uint8Array(await readFile(join(this.root(area), String(cardId), name)));
       } catch {
         // try the next spelling
       }

@@ -689,6 +689,7 @@ function escapeHtml(value: string): string {
  *  header). */
 function errorStatus(code: CardActionError["code"]): number {
   if (code === "not-found") return 404;
+  if (code === "server-error") return 500;
   if (code === "anonymous-actor" || code === "permission-denied") return 403;
   return 422;
 }
@@ -1283,12 +1284,42 @@ async function dispatchWriteRequest(
         declaredContentType: attachmentInput.contentType,
       };
 
+  let signOutAfterDelete: { sessions: SessionStore; token: string } | undefined;
   try {
     let result: ActionResult | null;
     let name: string;
+    if (route.verb === "create" && parsed.attachmentUpload !== undefined && attachment !== undefined) {
+      // The first step of a two-step upload for a new card
+      // (00_upload_cache.rb prepare_attachment): the file is cached and the
+      // response sends the uploader to the cache card's preview_editor view
+      // for that draft (success target: upload_cache_card, rev_id).
+      const typeName = parsed.card["type"] ?? route.typeShortcut ?? "";
+      const typeRaw = parsed.card["type_id"];
+      const typeId = typeRaw !== undefined && /^\d+$/.test(typeRaw)
+        ? Number(typeRaw)
+        : (await ctx.fetcher.fetchByKey(DeckoName.parse(typeName).key))?.id;
+      if (typeId === undefined) throw new CardActionError("not-found", `no such cardtype: ${typeName}`);
+      const mount = parsed.cardFiles["image"] !== undefined ? "image" : "file";
+      const cached = await engine.recordPreliminaryUpload({ typeId, mount, attachment });
+      const target = cached.cacheCardName ?? `*new ${mount}`;
+      return successResponse(
+        req,
+        json,
+        target,
+        { cardId: 0, actId: 0, actionId: cached.actionId, verb: "create" },
+        `/${locationName(target)}/preview_editor?rev_id=${cached.actionId}`,
+      );
+    }
     if (route.verb === "create") {
+      const cachedUpload = parsed.card["action_id_of_cached_upload"] !== undefined
+        ? await engine.cachedUploadAttachment(parsed.card["action_id_of_cached_upload"], {
+            mount: (await ctx.fetcher.fetchByKey(DeckoName.parse(parsed.card["type"] ?? "").key))?.codename === "image"
+              ? "image"
+              : "file",
+          })
+        : undefined;
       const input = {
-        ...createInputFromParams(route, parsed, attachment),
+        ...createInputFromParams(route, parsed, cachedUpload?.attachment ?? attachment),
         comment: parsed.comment,
         commentAuthor: parsed.commentAuthor,
         recaptchaToken: parsed.recaptchaToken,
@@ -1310,6 +1341,7 @@ async function dispatchWriteRequest(
       }
       result = await engine.createCard(input);
       name = result.name?.s ?? input.name;
+      await cachedUpload?.release();
       await requestSignupVerification(ctx, name, input.subcards);
     } else if (route.verb === "update") {
       const card = parsed.card;
@@ -1352,6 +1384,20 @@ async function dispatchWriteRequest(
       ) {
         name = existing.name?.s ?? updateName;
         result = await approveSignup(ctx, engine, existing.id, name, trigger === "approve_with_verification");
+      } else if (
+        existing !== undefined &&
+        trigger === "use_as_current_skin" &&
+        (await typeCodenameOf(ctx.fetcher, existing.typeId)) === "bootswatch_skin"
+      ) {
+        // use_as_current_skin (card-mod-bootstrap set/type/bootswatch_skin.rb
+        // :180-184, :finalize, trigger: :required): the skin's own save
+        // changes nothing (its act stays empty) and the event saves the
+        // *all+*style rule with the skin's name, inside that act.
+        name = existing.name?.s ?? updateName;
+        await engine.assertMayUpdate(existing.id);
+        const style = await lookupLiveCard(ctx.fetcher, "*all+*style");
+        if (style === undefined) throw new CardActionError("not-found", "no *all+*style rule card");
+        result = await engine.updateCard({ cardId: style.id, content: name, withinOtherAct: true });
       } else if (existing === undefined) {
         // rest.rb:14-16 — update of a NEW card routes to CREATE (the fetch
         // builds the card from the params; trashed marks fetch as new and
@@ -1366,8 +1412,32 @@ async function dispatchWriteRequest(
         });
         name = created.name?.s ?? updateName;
         result = created;
+      } else if (parsed.attachmentUpload !== undefined && attachment !== undefined) {
+        // The first step of a two-step upload for an existing card: a draft
+        // action holds the new file; the card itself is unchanged.
+        name = existing.name?.s ?? updateName;
+        const mount = parsed.cardFiles["image"] !== undefined ? "image" : "file";
+        const cached = await engine.recordPreliminaryUpload({
+          cardId: existing.id,
+          typeId: existing.typeId ?? 0,
+          mount,
+          attachment,
+        });
+        return successResponse(
+          req,
+          json,
+          name,
+          { cardId: existing.id, actId: 0, actionId: cached.actionId, verb: "update" },
+          `/${locationName(name)}/preview_editor?rev_id=${cached.actionId}`,
+        );
       } else {
         const typeIdRaw = card["type_id"];
+        const cachedUpload = card["action_id_of_cached_upload"] !== undefined
+          ? await engine.cachedUploadAttachment(card["action_id_of_cached_upload"], {
+              cardId: existing.id,
+              mount: (await typeCodenameOf(ctx.fetcher, existing.typeId)) === "image" ? "image" : "file",
+            })
+          : undefined;
         result = await engine.updateCard({
           cardId: existing.id,
           ...(existing.trash ? { lookInTrash: true } : {}),
@@ -1379,7 +1449,7 @@ async function dispatchWriteRequest(
           typeName: card["type"],
           typeId:
             typeIdRaw !== undefined && /^\d+$/.test(typeIdRaw) ? Number(typeIdRaw) : undefined,
-          attachment,
+          attachment: cachedUpload?.attachment ?? attachment,
           comment: parsed.comment,
           commentAuthor: parsed.commentAuthor,
           recaptchaToken: parsed.recaptchaToken,
@@ -1392,6 +1462,7 @@ async function dispatchWriteRequest(
           // the autosave POST (assets/script/autosave.js.coffee:20).
           draft: parsed.draft === "true",
         });
+        await cachedUpload?.release();
         name = result?.name?.s ?? updateName;
       }
     } else {
@@ -1404,6 +1475,24 @@ async function dispatchWriteRequest(
         throw new CardActionError("user-error", `no such card: ${markName}`, MISSING_CARD_DELETE_MESSAGE, {
           UserError: "Card::Error::UserError",
         });
+      }
+      // signout_upon_delete (card-mod-account set/right/account/events.rb
+      // :49-51, :integrate, when: current_account?): closing your own
+      // account signs you out. Ruby's event names a constant that does not
+      // exist (Card::Set::Right::Self::Signin), the integrate stage swallows
+      // the NameError, and the closed account stays signed in; the port signs
+      // out as the event intends (a deliberate difference).
+      const accountCodenameId = await ctx.fetcher.codenames.id("account");
+      if (
+        sessionToken !== null &&
+        accountCodenameId !== undefined &&
+        existing.rightId === accountCodenameId &&
+        existing.leftId !== null &&
+        existing.leftId !== undefined
+      ) {
+        const sessions = new SessionStore({ driver: ctx.driver });
+        const actor = await sessions.lookupSession(sessionToken);
+        if (actor !== null && actor.id === existing.leftId) signOutAfterDelete = { sessions, token: sessionToken };
       }
       result = await engine.deleteCard({
         cardId: existing.id,
@@ -1450,7 +1539,14 @@ async function dispatchWriteRequest(
     const redirectPath = saved.verb === "delete" && parsed.success["mark"] === undefined
       ? previousLocation(visit)
       : successTargetPath(parsed, name, visit);
-    return successResponse(req, json, name, saved, redirectPath);
+    const response = successResponse(req, json, name, saved, redirectPath);
+    if (signOutAfterDelete !== undefined) {
+      await signOutAfterDelete.sessions.revokeSession(signOutAfterDelete.token);
+      delete visit.history;
+      visit.cards = {};
+      return { ...response, headers: { ...response.headers, "Set-Cookie": clearedSessionCookieHeader() } };
+    }
+    return response;
   } catch (error) {
     if (error instanceof CardActionError) {
       // An error page renders the request's card (show_page), and a known

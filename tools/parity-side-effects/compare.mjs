@@ -70,7 +70,8 @@ function rubyErrors(step) {
   // A server error (the development exception page): the exception's
   // message only, as the port shows it.
   const ex = text.match(/Exception caught \S+ in \S+ (.*?) Extracted source/);
-  if (step.status >= 500 && ex) return ex[1].trim();
+  // (a Ruby object's address, which varies per run, is dropped)
+  if (step.status >= 500 && ex) return ex[1].trim().replace(/#<Card:0x[0-9a-f]+>/g, "#<Card>");
   const m = text.match(/Problems(?: with .*?)?\s((?:[A-Z_*+ ]+:.*?)+?)\s*b&w_logo/) ??
             text.match(/Problems(?: with .*?)?\s(.*?)\s*b&w_logo/);
   if (m) return m[1].trim();
@@ -120,8 +121,9 @@ const files = (s) => (s.files ?? []).map((f) => f.path.replace(/^\d+\/\d+/, ""))
 const session = (s) => s.signed_in_as ?? "anonymous";
 // Session-type card contents kept in the visitor's session, by card key.
 const sessionCards = (s) => JSON.stringify(Object.fromEntries(Object.entries(s.session_cards ?? {}).sort()));
-// A closed account's holder is renamed ANON-<12 random hex digits>.
-const anon = (x) => x.replace(/ANON-[0-9a-f]{12}/g, "ANON-<hex>");
+// A closed account's holder is renamed ANON-<12 random hex digits> (in URLs,
+// its url key ANON_<hex>).
+const anon = (x) => x.replace(/ANON([-_])[0-9a-f]{12}/g, "ANON$1<hex>");
 // Image variants. Byte identity with ImageMagick is not attainable (another
 // encoder and filter implementation), so each variant is compared on:
 //   dimensions  exact
@@ -207,13 +209,20 @@ const eventNames = (s, isRuby) => {
 // exactly its pinned value; any other difference, or a pinned field on which
 // the engines now agree, is a MISMATCH.
 const deliberateOf = Object.fromEntries(scenarios.steps.filter((s) => s.deliberate).map((s) => [s.name, s.deliberate]));
+//   "consequences": [field...], "absentIn": "ruby" | "ts"
+// names the fields that differ only because one engine refused or crashed:
+// each may differ when the engine named by absentIn shows nothing ("-") there.
 function deliberateVerdict(name, diffs) {
   const pin = deliberateOf[name];
   if (pin === undefined) return null;
   const pinned = new Set([...Object.keys(pin.ruby ?? {}), ...Object.keys(pin.ts ?? {})]);
+  const consequences = new Set(pin.consequences ?? []);
   const broken = [];
   for (const [k, [a, b]] of Object.entries(diffs)) {
-    if (!pinned.has(k)) broken.push(`${k} differs but is not pinned`);
+    if (consequences.has(k)) {
+      const absent = pin.absentIn === "ruby" ? a : b;
+      if (absent !== "-") broken.push(`${k}: ${pin.absentIn} shows ${JSON.stringify(absent)}, expected nothing`);
+    } else if (!pinned.has(k)) broken.push(`${k} differs but is not pinned`);
     else {
       if (pin.ruby?.[k] !== undefined && pin.ruby[k] !== a) broken.push(`${k}: ruby shows ${JSON.stringify(a)}, pinned ${JSON.stringify(pin.ruby[k])}`);
       if (pin.ts?.[k] !== undefined && pin.ts[k] !== b) broken.push(`${k}: ts shows ${JSON.stringify(b)}, pinned ${JSON.stringify(pin.ts[k])}`);

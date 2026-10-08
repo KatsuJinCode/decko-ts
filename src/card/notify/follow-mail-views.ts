@@ -91,6 +91,20 @@ function cgiEscape(s: string): string {
   return out;
 }
 
+/** to_text (card-mod-format set/all/text.rb): Rails strip_tags (comments
+ *  and tags removed, text kept), then HTML entities decoded. */
+function htmlToText(html: string): string {
+  return html
+    .replace(/<!--[\s\S]*?-->/g, "")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&");
+}
+
 export async function followMailViews(
   fetch: FetchEngine,
   input: FollowMailViewInput,
@@ -173,6 +187,10 @@ export async function followMailViews(
       let value = await changeValue(action, field);
       if (value === undefined) continue;
       if (action.type === "delete") value = (await previousValue(action, field)) ?? "";
+      // The text part renders through the text format (card-mod-format
+      // set/all/text.rb to_text): tags and comments stripped, entities
+      // decoded.
+      if (!html && field === "content") value = htmlToText(value);
       const item = `  ${label} ${field}: ${value}`;
       out += html ? `<li>${item}</li>\n` : `${item}\n`;
     }
@@ -201,7 +219,15 @@ export async function followMailViews(
     return `\nThis update included the following changes:\n${list}`;
   };
 
-  const actCardName = await nameOf(input.actCardId);
+  // A delete that also renamed the act card (a closed account's holder,
+  // renamed ANON-... in its own delete action) is announced under the name
+  // the card had before the act: the act card Ruby notifies about is the
+  // object the request loaded, which never saw the rename.
+  const mainRename = main !== undefined && main.cardId === input.actCardId && main.type === "delete"
+    ? await changeValue(main, "name")
+    : undefined;
+  const actCardName = (mainRename !== undefined ? await previousValue(main!, "name") : undefined) ??
+    await nameOf(input.actCardId);
   const userName = await nameOf(input.actorId);
   const url = cardUrl(actCardName);
 

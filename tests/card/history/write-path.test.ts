@@ -294,7 +294,7 @@ describe("updateCard (db_content only)", () => {
     ]);
   });
 
-  it("returns null and writes nothing for a no-op save (events.rb:34-37)", async () => {
+  it("returns null and writes no action for a no-op save, only an empty act (events.rb:34-37, :48-50)", async () => {
     const f = freshFixture();
     const cardId = await createSimple(f.storage, f.writer, "Hello World", "v1");
     const before = stateOf(f.storage, cardId);
@@ -302,7 +302,8 @@ describe("updateCard (db_content only)", () => {
     const result = await f.request().updateCard({ cardId, before, after: { ...before } });
     expect(result).toBeNull();
     expect(actions(f.storage, cardId)).toHaveLength(1);
-    expect(acts(f.storage)).toHaveLength(1);
+    // finalize_act saves the act card's act even with no action in it.
+    expect(acts(f.storage)).toHaveLength(2);
     expect((cardRow(f.storage, cardId) as Record<string, unknown>).updated_at).toBe(
       "2026-09-19 12:00:00.000",
     );

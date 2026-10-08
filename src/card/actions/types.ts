@@ -51,6 +51,7 @@ export type CardActionErrorCode =
   | "protected-card" // validate_delete (mod/core/set/all/trash.rb:31-49)
   | "conflict" // detect_conflict (card-mod-history set/all/history/events.rb:19-22)
   | "revert-unsupported" // a revert shape the port does not carry out (named in the message)
+  | "server-error" // a Card::Error raised by a save event (status 500), e.g. a layout without a main nest
   | "recaptcha" // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55)
   | "user-error"; // a bare Card::Error::UserError (card-1.110.0 lib/card/error.rb:21), e.g. deleting a card that does not exist
 
@@ -110,6 +111,11 @@ export interface AttachmentInput {
   /** The multipart part's declared content type (the LAST arm of
    *  SanitizedFile#content_type's detection order, :240-250). */
   declaredContentType?: string | null;
+  /** The bytes come from an earlier preliminary upload (a two-step
+   *  upload's action_id_of_cached_upload), not from a file in this request:
+   *  the request params carry no uploaded-file object, so Ruby's delayed
+   *  integrate stage (the follower notice) is not dropped. */
+  fromCachedUpload?: boolean;
 }
 
 /** One subcard in a multi-card save (Card::Subcards — card/lib/card/
@@ -222,6 +228,11 @@ export interface UpdateCardInput extends TypeSpec {
    *  send_welcome_email): run after the save's rows are written and before
    *  the delayed follower notice. */
   triggeredIntegrate?: () => Promise<void>;
+  /** The save is an event another card's save triggered (for example
+   *  use_as_current_skin updating *all+*style): it rides that card's act,
+   *  whose card is the one observers and followers hear about, so this save
+   *  sends no notices of its own. */
+  withinOtherAct?: boolean;
   /** Fetch the card with `look_in_trash` (card-1.110.0 lib/card/fetch.rb
    *  :49-51, retrieve.rb:31): the update may reach a trashed row. Without
    *  it a trashed card is "no such card", as Card[id] filters trash. */

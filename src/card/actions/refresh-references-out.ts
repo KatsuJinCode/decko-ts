@@ -151,7 +151,8 @@ async function createReferencesOut(
 
 /** Whether the card's sets include card-mod-list's Abstract::List with the
  *  default item parsing, so its references are its item names: the List
- *  and Pointer types (set/type/list.rb, pointer.rb), +*status
+ *  and Pointer types (set/type/list.rb, pointer.rb), the Skin type
+ *  (card-mod-style set/type/skin.rb), +*status
  *  (card-mod-account set/right/status.rb), +*followers (card-mod-follow
  *  set/right/followers.rb) and a User's +*follow
  *  (set/type_plus_right/user/follow.rb). */
@@ -163,12 +164,12 @@ export async function isListCard(driver: SQLDatabaseDriver, cardId: number): Pro
   if (card === undefined) return false;
   const codes = new Map<string, number>();
   for (const r of (await driver.query<{ id: number; codename: string }>(
-    "SELECT id, codename FROM cards WHERE codename IN ('list', 'pointer', 'status', 'followers', 'follow', 'user')",
+    "SELECT id, codename FROM cards WHERE codename IN ('list', 'pointer', 'skin', 'status', 'followers', 'follow', 'user')",
     [],
   )).rows) codes.set(r.codename, Number(r.id));
   const typeId = card.type_id === null ? undefined : Number(card.type_id);
   const rightId = card.right_id === null ? undefined : Number(card.right_id);
-  if (typeId !== undefined && (typeId === codes.get("list") || typeId === codes.get("pointer"))) return true;
+  if (typeId !== undefined && (typeId === codes.get("list") || typeId === codes.get("pointer") || typeId === codes.get("skin"))) return true;
   if (rightId === undefined) return false;
   if (rightId === codes.get("status") || rightId === codes.get("followers")) return true;
   if (rightId === codes.get("follow") && card.left_id !== null) {

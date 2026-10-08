@@ -7,6 +7,7 @@
 #   "$rev_id"               the rev_id the previous step's response named (the
 #                           cached-upload action of a two-step upload)
 #   "$create_action:<name>" the id of the first action recorded on that card
+#   "$id:<name>"            the card's id mark, "~<id>"
 
 SCENARIOS = JSON.parse(File.read(File.join(File.dirname(__FILE__), "..", "scenarios.json")))
 
@@ -16,6 +17,10 @@ def resolve_placeholder(value)
   case value
   when "$rev_id"
     $LAST_REV_ID or raise "no rev_id in the previous response"
+  when /\A\$id:(.+)\z/
+    card = Card.fetch(Regexp.last_match(1), skip_modules: true)
+    raise "no card #{Regexp.last_match(1)}" unless card&.id
+    "~#{card.id}"
   when /\A\$create_action:(.+)\z/
     card = Card.fetch(Regexp.last_match(1), look_in_trash: true, skip_modules: true)
     raise "no card #{Regexp.last_match(1)}" unless card&.id

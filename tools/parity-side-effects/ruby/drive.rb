@@ -186,9 +186,16 @@ def max_id(table)
   $conn.select_value("select coalesce(max(id),0) from #{table}").to_i
 end
 
+# A card's name as its rows store it: a simple card's name column, a
+# compound's parts joined. Read from the table, not the card cache, which
+# can still hold a name the act has since changed (a closed account's
+# holder renamed within the act).
 def card_name(id)
   return nil if id.nil?
-  Card.fetch(id.to_i, skip_modules: true, look_in_trash: true)&.name.to_s
+  row = $conn.select_one("select name, left_id, right_id from cards where id = #{id.to_i}")
+  return "?#{id}" unless row
+  return row["name"].to_s if row["name"].present?
+  "#{card_name(row['left_id'])}+#{card_name(row['right_id'])}"
 rescue StandardError => e
   "?#{id} #{e.class}"
 end
