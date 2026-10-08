@@ -51,6 +51,7 @@ export type CardActionErrorCode =
   | "protected-card" // validate_delete (mod/core/set/all/trash.rb:31-49)
   | "conflict" // detect_conflict (card-mod-history set/all/history/events.rb:19-22)
   | "revert-unsupported" // a revert shape the port does not carry out (named in the message)
+  | "field-required" // require_field :email (card-mod-account set/right/account.rb:8)
   | "recaptcha"; // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55)
 
 /** Error class for every action-layer rejection. `code` carries the Ruby
@@ -103,6 +104,16 @@ export interface AttachmentInput {
 export interface SubcardInput extends TypeSpec {
   content?: string | null;
   attachment?: AttachmentInput;
+  /** The subcard's own subcards, keyed relative to the subcard ("+*email"
+   *  under "+*account"): the sign-up form's nested card[subcards] hash. */
+  subcards?: Record<string, SubcardInput>;
+  /** A new name for an existing subcard: the subcard is renamed in this act
+   *  (a subcard hash with `name:`, subcards.rb). */
+  name?: Nameish;
+  /** `trash: true` on an existing subcard trashes it in this act, as a
+   *  delete action chained to the supercard's action (a history revert's
+   *  subcard revisions, card-mod-history revision.rb merge_revert_action!). */
+  trash?: boolean;
 }
 
 /** Card.create! arguments (Card.create! opts — director/card_class.rb:5-9:

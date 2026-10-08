@@ -20,15 +20,19 @@
 //   with "\n".
 //
 // The list sets (sets that include Abstract::List): type Pointer, type
-// List, type Mod; right *status and *followers; type-plus-right User+*follow.
-// Self sets of individual codenamed cards (*recent settings, the mod
-// card) are not covered.
+// List, type Mod; right *status and *followers; type-plus-right User+*follow;
+// the self sets of *recent settings and the Mod card (references only:
+// assigned content of those two cards is not standardized).
 
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import { DeckoName } from "../name.js";
 
 /** Type codenames whose cards include Abstract::List. */
 export const LIST_TYPE_CODENAMES: ReadonlySet<string> = new Set(["pointer", "list", "mod"]);
+/** Codenamed cards whose own (self) sets include Abstract::List:
+ *  *recent settings (card-mod-rules set/self/recent_settings.rb) and the
+ *  Mod card (card-1.110.0 mod/core set/self/mod.rb). */
+export const LIST_SELF_CODENAMES: ReadonlySet<string> = new Set(["recent_settings", "mod"]);
 /** Right codenames whose cards include Abstract::List. */
 export const LIST_RIGHT_CODENAMES: ReadonlySet<string> = new Set(["status", "followers"]);
 
@@ -71,8 +75,13 @@ async function standardizeItem(item: string, resolve: ListItemResolver): Promise
  *  type (the set rules above). */
 export async function isListCard(driver: SQLDatabaseDriver, cardId: number): Promise<boolean> {
   const row = (
-    await driver.query<{ type_code: string | null; right_code: string | null; left_type_code: string | null }>(
-      `SELECT t.codename AS type_code, r.codename AS right_code, lt.codename AS left_type_code
+    await driver.query<{
+      own_code: string | null;
+      type_code: string | null;
+      right_code: string | null;
+      left_type_code: string | null;
+    }>(
+      `SELECT c.codename AS own_code, t.codename AS type_code, r.codename AS right_code, lt.codename AS left_type_code
        FROM cards c
        LEFT JOIN cards t ON t.id = c.type_id
        LEFT JOIN cards r ON r.id = c.right_id
@@ -83,6 +92,7 @@ export async function isListCard(driver: SQLDatabaseDriver, cardId: number): Pro
     )
   ).rows[0];
   if (row === undefined) return false;
+  if (row.own_code !== null && LIST_SELF_CODENAMES.has(row.own_code)) return true;
   if (row.type_code !== null && LIST_TYPE_CODENAMES.has(row.type_code)) return true;
   if (row.right_code !== null && LIST_RIGHT_CODENAMES.has(row.right_code)) return true;
   return row.right_code === "follow" && row.left_type_code === "user";
@@ -111,6 +121,29 @@ export function swapListItems(
     .map((item) => item.trim())
     .filter((item) => item !== "")
     .join("\n");
+}
+
+/** Abstract::IdList (card-mod-list-0.20.0 set/abstract/id_list.rb:3-10):
+ *  each item is stored as "~<id>" of the card it names; an item naming no
+ *  card is dropped. Used by Role+*members (card-mod-account
+ *  set/type_plus_right/role/members.rb). */
+export async function standardizeIdListContent(
+  content: string,
+  idFor: (item: string) => Promise<number | undefined>,
+): Promise<string> {
+  const out: string[] = [];
+  for (const item of listItemStrings(content)) {
+    const mark = ID_MARK.exec(item);
+    const id = mark !== null ? Number(mark[1]) : await idFor(item);
+    if (id !== undefined) out.push(`~${id}`);
+  }
+  return out.join("\n");
+}
+
+/** The id an "~<id>" item names, else undefined. */
+export function idMarkOf(item: string): number | undefined {
+  const mark = ID_MARK.exec(item);
+  return mark === null ? undefined : Number(mark[1]);
 }
 
 /** Abstract::List#standardize_content for a string value. */

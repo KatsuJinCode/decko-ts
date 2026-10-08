@@ -43,7 +43,7 @@ import { DeckoName } from "../name.js";
 import { NameNotFoundError, CodenameNotFoundError } from "../name/errors.js";
 import { stripTags } from "../render/nest-syntax.js";
 import type { SQLDatabaseDriver } from "../../server/driver.js";
-import { isListCard, listItemStrings } from "./list-content.js";
+import { idMarkOf, isListCard, listItemStrings } from "./list-content.js";
 
 /** all.rb:10 PARTIAL_REF_CODE. */
 const PARTIAL_REF_CODE = "P";
@@ -59,7 +59,7 @@ export interface ReferenceLexicon {
  *  written, stays NULL exactly as Ruby's insert omits it). */
 export interface ReferenceRow {
   refererId: number;
-  refereeKey: string;
+  refereeKey: string | null;
   refereeId: number | null;
   refType: string;
 }
@@ -152,7 +152,15 @@ async function createListReferencesOut(
   content: string | null | undefined,
 ): Promise<ReferenceRow[]> {
   const refHash = new Map<string, { refereeId: number | undefined; refTypes: string[] }>();
+  const idRows: ReferenceRow[] = [];
   for (const item of listItemStrings(content)) {
+    // An "~<id>" item (an id list's storage): Ruby's name for it has no key,
+    // so the row carries the id and a NULL referee_key.
+    const markedId = idMarkOf(item);
+    if (markedId !== undefined) {
+      idRows.push({ refererId, refereeKey: null, refereeId: markedId, refType: "L" });
+      continue;
+    }
     let name: string;
     try {
       name = DeckoName.parse(item).absoluteName(refererName).s;
@@ -161,7 +169,7 @@ async function createListReferencesOut(
     }
     await interpretReference(lexicon, refHash, name, "L", refererName);
   }
-  return referenceValuesArray(refHash, refererId);
+  return [...idRows, ...referenceValuesArray(refHash, refererId)];
 }
 
 /** all.rb:80-86 interpret_reference + :88-96 with_normalized_referee. */

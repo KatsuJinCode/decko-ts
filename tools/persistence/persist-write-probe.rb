@@ -35,6 +35,7 @@ STEP = Integer(ARGV[1] || "0")
 abort "step index must be >= 1" if STEP < 1
 
 PREFIX = "PersistProbe"
+
 # Markup Card::Content.clean! must rewrite: an event handler attribute, a
 # script element, a javascript: link, and allowed markup that must survive.
 UNSAFE_HTML = '<p onclick="x()">hi</p><script>bad()</script><b>ok</b>' \
@@ -384,6 +385,57 @@ def run_op(step)
                    subcards: { "+PersistProbe Tags" => { type: "Pointer",
                                                          content: "[[PersistProbe B]]\n[[PersistProbe Form]]" } })
     }]
+  # 57-60: account and role cards.
+  when 57
+    [:create, "create user with account", lambda {
+      Card.create!(name: "PersistProbe User", type: "User",
+                   subcards: { "+*account" => { subcards: { "+*email" => { content: "persist-probe@example.com" },
+                                                           "+*password" => { content: "Probe-pass-123" } } } })
+    }]
+  when 58
+    [:update, "change account password", lambda {
+      Card.fetch("PersistProbe User+*account+*password").update!(content: "Probe-pass-456")
+    }]
+  when 59
+    [:create, "create role", -> { Card.create!(name: "PersistProbe Role", type: "Role") }]
+  when 60
+    [:create, "add user to role", lambda {
+      Card.create!(name: "PersistProbe Role+*members", content: "[[PersistProbe User]]")
+    }]
+  # 61-64: rules that change read permissions.
+  when 61
+    [:create, "create *self read rule", lambda {
+      Card.create!(name: "PersistProbe Form+*self+*read", content: "[[PersistProbe Role]]")
+    }]
+  when 62
+    [:create, "create *type read rule", lambda {
+      Card.create!(name: "PersistProbe Type Probe+*type+*read", content: "[[Anyone Signed In]]")
+    }]
+  when 63
+    [:update, "change a read rule's content", lambda {
+      Card.fetch("PersistProbe Form+*self+*read").update!(content: "[[Administrator]]")
+    }]
+  when 64
+    [:delete, "delete a read rule", -> { Card.fetch("PersistProbe Form+*self+*read").delete! }]
+  # 65-67: reverts whose act renames or trashes another card.
+  when 65
+    [:update, "update with a subcard rename", lambda {
+      Card.find(id_of("PersistProbe Form")).update!(
+        content: "main3", subcards: { "PersistProbe Other" => { name: "PersistProbe Other Renamed" } }
+      )
+    }]
+  when 67
+    [:revert, "revert to previous (act renamed another card)", lambda {
+      # The act of step 65 (the card's action before step 66's).
+      ids = Card::Action.where(card_id: id_of("PersistProbe Form")).order(:id).pluck(:id)
+      act = act_of_action(ids[-2])
+      revert_request("PersistProbe Form", "revert_to" => "previous", "revert_act" => act.to_s)
+    }]
+  when 66
+    [:revert, "revert to previous of a create act with subcards (trashes them)", lambda {
+      act = act_of_action(nth_action_id("PersistProbe Form", 1))
+      revert_request("PersistProbe Form", "revert_to" => "previous", "revert_act" => act.to_s)
+    }]
   else
     abort "unknown step #{step}"
   end
@@ -433,5 +485,9 @@ FileUtils.mkdir_p(OUTDIR)
 File.write(
   File.join(OUTDIR, format("step-%02d.json", STEP)),
   JSON.pretty_generate({ "step" => STEP, "label" => label, "detail" => detail, "state" => state,
+                         # The account fields whose content is random or
+                         # derived from it (compare-persist.mjs normalises them).
+                         "codename_ids" => { "salt" => Card::Codename.id(:salt),
+                                             "password" => Card::Codename.id(:password) },
                          **(render ? { "render" => render } : {}) })
 )

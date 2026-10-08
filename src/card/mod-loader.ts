@@ -57,7 +57,11 @@ import {
   ContentOverrideRegistry,
   setDefaultContentOverrideRegistry,
 } from "./render/content-overrides.js";
-import { registerSetTypeAssignment, resetSetTypeAssignments } from "./set-patterns/set-type-assignment.js";
+import {
+  registerGemTypeAssignments,
+  registerSetTypeAssignment,
+  resetSetTypeAssignments,
+} from "./set-patterns/set-type-assignment.js";
 /** The registered format names whose Ruby class descends from HtmlFormat
  *  (AbstractFormat#format_ancestry, registration.rb:60-65) and therefore
  *  reopens the html method table when they carry no own registration:
@@ -294,6 +298,10 @@ export class ModLoader {
         registeredPatternCodes.push(file.code);
       }
     }
+
+    // The gems' assign_type lines for every loaded mod, after the reset
+    // above; the phase-2 walk's manifest entries below override them.
+    for (const mod of ordered) registerGemTypeAssignments(normalizeModName(mod.manifest.name));
 
     // ---- phase 2: SetLoader (loader.rb:18) -------------------------------
     // each_file: pattern groups OUTER (grouped_codes), mods, then the

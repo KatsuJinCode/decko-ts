@@ -34,7 +34,14 @@
 import { DatabaseSync } from "node:sqlite";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
-const [baseFile, rubyFile, tsFile, reportFile, saveRubyDelta] = process.argv.slice(2);
+// --deliberate=<deliberate-differences.json>: rows a declared difference
+// leaves in the Ruby deck alone (each difference's outsideRows, as
+// {table, row} with row the canonical added-row string this script prints)
+// are set aside, exactly once each; a declared row Ruby did not write is a
+// mismatch, so the declaration cannot go stale.
+const flagArgs = process.argv.slice(2).filter((a) => a.startsWith("--"));
+const deliberateFile = flagArgs.find((a) => a.startsWith("--deliberate="))?.slice("--deliberate=".length);
+const [baseFile, rubyFile, tsFile, reportFile, saveRubyDelta] = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 for (const f of [baseFile, rubyFile, tsFile]) {
   if (!f || !existsSync(f)) {
     console.error(`MISSING INPUT: ${f}`);
@@ -205,7 +212,22 @@ const rubyDelta = rubyIsDelta ? JSON.parse(readFileSync(rubyFile, "utf8")) : dec
 if (saveRubyDelta) writeFileSync(saveRubyDelta, JSON.stringify(rubyDelta, null, 2) + "\n");
 const tsDelta = deckDelta(ts);
 
-const report = { tables: [], portOnlyTables: [], outsideMismatches: 0 };
+const report = { tables: [], portOnlyTables: [], outsideMismatches: 0, deliberateRows: 0 };
+if (deliberateFile) {
+  for (const d of JSON.parse(readFileSync(deliberateFile, "utf8")).differences ?? []) {
+    for (const { table, row } of d.outsideRows ?? []) {
+      const added = rubyDelta.tables[table]?.added ?? [];
+      const at = added.indexOf(row);
+      if (at < 0) {
+        report.tables.push({ table, error: `declared row absent from the Ruby deck (step ${d.step}): ${row}` });
+        report.outsideMismatches += 1;
+      } else {
+        added.splice(at, 1);
+        report.deliberateRows += 1;
+      }
+    }
+  }
+}
 const tables = [...new Set([...Object.keys(rubyDelta.tables), ...Object.keys(tsDelta.tables)])].sort();
 for (const table of tables) {
   const r = rubyDelta.tables[table];

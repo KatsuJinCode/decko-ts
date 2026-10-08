@@ -43,6 +43,7 @@
 
 import { readFileSync, readdirSync, existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { createHash } from "node:crypto";
 
 const [rubyDir, tsFile, reportFile, expectFile] = process.argv.slice(2);
 if (!rubyDir || !tsFile) {
@@ -90,10 +91,39 @@ function clean(row) {
   return out;
 }
 
+// 4. ACCOUNT SECRETS. A +*salt card's content is random (a digest of the
+//    clock); it becomes "<salt>". A +*password card's content is
+//    Auth.encrypt(password, salt) = SHA1("<salt>--<password>--") over its own
+//    account's salt; it becomes "<digest of P>" when it is that digest of one
+//    of the probe's plaintexts P, and "<digest of an unknown password>"
+//    otherwise. A wrong digest therefore still differs. Both dumps record
+//    the deck's salt and password codename ids (codename_ids).
+const PROBE_PASSWORDS = ["Probe-pass-123", "Probe-pass-456"];
+function accountSecrets(state, ids) {
+  if (!ids || !state?.cards) return state;
+  const saltOf = new Map();
+  for (const c of state.cards) {
+    if (Number(c.right_id) === Number(ids.salt)) saltOf.set(Number(c.left_id), c.db_content ?? "");
+  }
+  const cards = state.cards.map((c) => {
+    if (Number(c.right_id) === Number(ids.salt)) return { ...c, db_content: "<salt>" };
+    if (Number(c.right_id) !== Number(ids.password)) return c;
+    const salt = saltOf.get(Number(c.left_id)) ?? "";
+    const plain = PROBE_PASSWORDS.find(
+      (p) => createHash("sha1").update(`${salt}--${p}--`).digest("hex") === c.db_content,
+    );
+    return { ...c, db_content: plain === undefined ? "<digest of an unknown password>" : `<digest of ${plain}>` };
+  });
+  return { ...state, cards };
+}
+
 /** state -> { table: Map(key -> row) , order: { acts: [...], actions: [...] } } */
 function normalise(state) {
   const names = composedNames(state.cards ?? []);
   const card = (v) => (v === null || v === undefined ? null : (names.get(Number(v)) ?? `#${v}`));
+  // An id list stores items as "~<id>": a probe card id there maps to its name.
+  const idMarks = (v) =>
+    typeof v === "string" ? v.replace(/~(\d+)/g, (m, id) => (names.has(Number(id)) ? `~${card(id)}` : m)) : v;
   // A column that may name a probe card or a deck card (type_id,
   // read_rule_id): probe cards map to their name, deck cards stay raw.
   const probeOrRaw = (v) => (v !== null && v !== undefined && names.has(Number(v)) ? card(v) : fold(v));
@@ -134,6 +164,7 @@ function normalise(state) {
       right_id: card(r.right_id),
       type_id: probeOrRaw(r.type_id),
       read_rule_id: probeOrRaw(r.read_rule_id),
+      db_content: idMarks(row.db_content),
     });
   }
   for (const r of state.card_acts ?? []) {
@@ -157,7 +188,9 @@ function normalise(state) {
     const value =
       [1, 4, 5].includes(Number(r.field)) && r.value !== null && names.has(Number(r.value))
         ? card(r.value)
-        : row.value;
+        : Number(r.field) === 2
+          ? idMarks(row.value)
+          : row.value;
     put("card_changes", k, { ...row, id: k, card_action_id: actionKey(r.card_action_id), value });
   }
   for (const r of state.card_references ?? []) {
@@ -279,8 +312,8 @@ for (const ts of tsSteps) {
     entry.stateFaults.push({ kind: "missing-ruby-step" });
     entry.deltaFaults.push({ kind: "missing-ruby-step" });
   } else {
-    const a = normalise(ruby.state);
-    const b = normalise(ts.state);
+    const a = normalise(accountSecrets(ruby.state, ruby.codename_ids));
+    const b = normalise(accountSecrets(ts.state, ts.codename_ids));
     entry.stateFaults = diffState(a, b);
     entry.deltaFaults = diffState(delta(prevRuby, a), delta(prevTs, b));
     prevRuby = a;

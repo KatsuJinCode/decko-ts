@@ -33,6 +33,8 @@
 //        a cardtype with instances
 //  51-52 list content: standardized items, item references, item swaps
 //  53-56 form saves with subcards (create, update, unchanged, list subcard)
+//  57-60 account and role cards; 61-64 read rules created, changed, deleted
+//  65-67 reverts whose act renames or trashes another card
 //
 // It writes its JSON, runs tools/persistence/compare-persist.mjs against the
 // committed Ruby dumps, and asserts which steps diverge. Without the oracle
@@ -81,10 +83,12 @@ const RUBY_STEPS =
 // lacks the production UNIQUE (left_id, right_id) index); the port revives
 // the trashed row. Step 48, assigning a type that does not exist: Ruby loses
 // its own "not a known type" error and writes an empty act; the port refuses
-// the save. The comparator accepts a declared step only if its delta is
-// exactly the declared one.
+// the save. Step 67, reverting an act that renamed another card: Ruby
+// raises after storing the reverted rows without history; the port refuses
+// before writing. The comparator accepts a declared step only if its delta
+// is exactly the declared one.
 const DELIBERATE = path.join(REPO, "tests/fixtures/persistence-oracle/deliberate-differences.json");
-const DELIBERATE_STEPS = [7, 48];
+const DELIBERATE_STEPS = [7, 48, 67];
 // Steps whose row delta still differs from the oracle without a declaration.
 const KNOWN_DIVERGENCES: number[] = [];
 const PREFIX = "PersistProbe";
@@ -103,7 +107,7 @@ const LIST_CONTENT =
   "[[PersistProbe Typed]]\n\n  [[PersistProbe Typed+PersistProbe Field]]  \n~1\n:anyone\nPersistProbe Loose";
 // The op list's length; the Ruby half's step count (run-ruby-steps.sh) and
 // the committed oracle dumps must agree with it.
-const STEP_COUNT = 56;
+const STEP_COUNT = 67;
 // The Ruby half runs as Card::Auth.as_bot, i.e. card 1 (Decko Bot). The act's
 // actor_id and every card's creator_id/updater_id come from it.
 const BOT = { id: 1, name: "Decko Bot" };
@@ -275,6 +279,11 @@ describe("persistence write probe (TS half)", () => {
     applyDeckInflections(ORACLE_DECK_INFLECTIONS);
     const { driver, engine } = await bootEngine(dbPath);
     const out: Row[] = [];
+    // The account fields whose content is random or derived from it
+    // (compare-persist.mjs normalises them), as the Ruby half records them.
+    const codenameId = async (code: string): Promise<number> =>
+      Number((await driver.query<{ id: number }>("SELECT id FROM cards WHERE codename = ?", [code])).rows[0]?.id);
+    const codenameIds = { salt: await codenameId("salt"), password: await codenameId("password") };
 
     const names = async (): Promise<Map<string, number>> => nameMap(driver);
     const idOf = async (name: string): Promise<number> => {
@@ -324,7 +333,7 @@ describe("persistence write probe (TS half)", () => {
         kind === "revert" && detail.ok === true && typeof detail.value === "number"
           ? await renderAfter(detail.value)
           : undefined;
-      out.push({ step, label, detail, state, ...(render !== undefined ? { render } : {}) });
+      out.push({ step, label, detail, state, codename_ids: codenameIds, ...(render !== undefined ? { render } : {}) });
       warn(
         `[persist] ${step} ${label} ok=${String(detail.ok)} ` +
           `cards=${(state.cards as Row[]).length} ` +
@@ -689,6 +698,76 @@ describe("persistence write probe (TS half)", () => {
           },
         } as CreateCardInput),
       );
+      // 57-60: account and role cards.
+      const user = `${PREFIX} User`;
+      await op(57, "create user with account", "create", () =>
+        engine.createCard({
+          name: user,
+          typeName: "User",
+          subcards: {
+            "+*account": {
+              subcards: {
+                "+*email": { content: "persist-probe@example.com" },
+                "+*password": { content: "Probe-pass-123" },
+              },
+            },
+          },
+        } as CreateCardInput),
+      );
+      await op(58, "change account password", "update", async () =>
+        engine.updateCard({
+          cardId: await idOf(`${user}+*account+*password`),
+          content: "Probe-pass-456",
+        } as UpdateCardInput),
+      );
+      await op(59, "create role", "create", () =>
+        engine.createCard({ name: `${PREFIX} Role`, typeName: "Role" } as CreateCardInput),
+      );
+      await op(60, "add user to role", "create", () =>
+        engine.createCard({ name: `${PREFIX} Role+*members`, content: `[[${user}]]` } as CreateCardInput),
+      );
+      // 61-64: rules that change read permissions.
+      await op(61, "create *self read rule", "create", () =>
+        engine.createCard({ name: `${form}+*self+*read`, content: `[[${PREFIX} Role]]` } as CreateCardInput),
+      );
+      await op(62, "create *type read rule", "create", () =>
+        engine.createCard({
+          name: `${PREFIX} Type Probe+*type+*read`,
+          content: "[[Anyone Signed In]]",
+        } as CreateCardInput),
+      );
+      await op(63, "change a read rule's content", "update", async () =>
+        engine.updateCard({
+          cardId: await idOf(`${form}+*self+*read`),
+          content: "[[Administrator]]",
+        } as UpdateCardInput),
+      );
+      await op(64, "delete a read rule", "delete", async () =>
+        engine.deleteCard({ cardId: await idOf(`${form}+*self+*read`) }),
+      );
+      // 65-67: reverts whose act renames or trashes another card.
+      await op(65, "update with a subcard rename", "update", async () =>
+        engine.updateCard({
+          cardId: await idOf(form),
+          content: "main3",
+          subcards: { [`${PREFIX} Other`]: { name: `${PREFIX} Other Renamed` } },
+        } as UpdateCardInput),
+      );
+      await op(66, "revert to previous of a create act with subcards (trashes them)", "revert", async () =>
+        engine.revertActions({
+          cardId: await idOf(form),
+          revertToPrevious: true,
+          actId: await actOf((await actionIdsOf(form))[0]),
+        }),
+      );
+      // The act of step 65: the card's action before step 66's.
+      await op(67, "revert to previous (act renamed another card)", "revert", async () =>
+        engine.revertActions({
+          cardId: await idOf(form),
+          revertToPrevious: true,
+          actId: await actOf((await actionIdsOf(form)).at(-2)!),
+        }),
+      );
     } finally {
       driver.close();
       // PERSIST_KEEP_TS_DECK=<path>: keep the deck as the op list left it,
@@ -724,15 +803,16 @@ describe("persistence write probe (TS half)", () => {
       .map((s) => Number(s.step));
     expect(deliberate).toEqual(DELIBERATE_STEPS);
 
-    // The rendered result of every revert step equals Ruby's, byte for byte.
+    // The rendered result of every revert step Ruby completed equals Ruby's,
+    // byte for byte.
     const renders = spawnSync(
       process.execPath,
       [path.join(REPO, "tools/persistence/compare-renders.mjs"), RUBY_STEPS, OUT],
       { windowsHide: true, encoding: "utf8" },
     );
     const renderSummary = JSON.parse(renders.stdout) as { compared: number; same: number };
-    expect(renderSummary.compared, renders.stderr).toBe(5);
-    expect(renderSummary.same, renders.stderr).toBe(5);
+    expect(renderSummary.compared, renders.stderr).toBe(6);
+    expect(renderSummary.same, renders.stderr).toBe(6);
 
     // Every row either engine wrote OUTSIDE the probe's own records, in every
     // table of the deck, matches the Ruby oracle's (its delta committed as
@@ -747,6 +827,7 @@ describe("persistence write probe (TS half)", () => {
           path.join(REPO, "tests/fixtures/persistence-oracle/ruby-outside-delta.json"),
           FINAL_DECK,
           path.join(PERSIST_DIR, "compare-decks-report.json"),
+          `--deliberate=${DELIBERATE}`,
         ],
         { windowsHide: true, encoding: "utf8" },
       );

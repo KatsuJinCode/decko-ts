@@ -7,7 +7,7 @@
       "removed": []
     },
     "card_actions": {
-      "probeRows": 69,
+      "probeRows": 87,
       "changed": {},
       "added": [
         "{\"action_type\":1,\"card_act_id\":116089,\"card_id\":36,\"comment\":null,\"draft\":0,\"super_action_id\":null}"
@@ -15,7 +15,7 @@
       "removed": []
     },
     "card_acts": {
-      "probeRows": 52,
+      "probeRows": 62,
       "changed": {},
       "added": [
         "{\"acted_at\":\"T\",\"actor_id\":1,\"card_id\":36,\"ip_address\":null}"
@@ -23,11 +23,15 @@
       "removed": []
     },
     "card_changes": {
-      "probeRows": 117,
+      "probeRows": 143,
       "changed": {},
       "added": [
         "{\"card_action_id\":11492,\"field\":2,\"value\":\"drafted text\"}",
         "{\"card_action_id\":11512,\"field\":2,\"value\":\"<p>Number cards hold numbers. (persistence probe)</p>\"}",
+        "{\"card_action_id\":11568,\"field\":2,\"value\":\"main2\"}",
+        "{\"card_action_id\":11568,\"field\":3,\"value\":\"f\"}",
+        "{\"card_action_id\":11569,\"field\":0,\"value\":\"PersistProbe Other\"}",
+        "{\"card_action_id\":11569,\"field\":3,\"value\":\"f\"}",
         "{\"card_action_id\":41,\"field\":0,\"value\":null}",
         "{\"card_action_id\":41,\"field\":1,\"value\":\"2\"}",
         "{\"card_action_id\":41,\"field\":2,\"value\":\"<p>Can contain only numerical values.</p>\"}",
@@ -38,10 +42,28 @@
       "removed": []
     },
     "card_references": {
-      "probeRows": 21,
+      "probeRows": 30,
       "changed": {},
-      "added": [],
-      "removed": []
+      "added": [
+        "{\"is_present\":null,\"ref_type\":\"L\",\"referee_id\":149,\"referee_key\":\"*input_type\",\"referer_id\":483}",
+        "{\"is_present\":null,\"ref_type\":\"L\",\"referee_id\":28,\"referee_key\":\"*structure\",\"referer_id\":483}",
+        "{\"is_present\":null,\"ref_type\":\"L\",\"referee_id\":302,\"referee_key\":\"*script\",\"referer_id\":483}",
+        "{\"is_present\":null,\"ref_type\":\"L\",\"referee_id\":455,\"referee_key\":\"*follow\",\"referer_id\":483}",
+        "{\"is_present\":null,\"ref_type\":\"L\",\"referee_id\":494,\"referee_key\":\"*layout\",\"referer_id\":483}",
+        "{\"is_present\":null,\"ref_type\":\"L\",\"referee_id\":514,\"referee_key\":\"*captcha\",\"referer_id\":483}",
+        "{\"is_present\":null,\"ref_type\":\"L\",\"referee_id\":66,\"referee_key\":\"*create\",\"referer_id\":483}",
+        "{\"is_present\":null,\"ref_type\":\"L\",\"referee_id\":9,\"referee_key\":\"*read\",\"referer_id\":483}"
+      ],
+      "removed": [
+        "5000",
+        "5001",
+        "5002",
+        "5003",
+        "5004",
+        "5005",
+        "5006",
+        "5007"
+      ]
     },
     "card_revisions": {
       "probeRows": 0,
@@ -56,10 +78,11 @@
       "removed": []
     },
     "cards": {
-      "probeRows": 37,
+      "probeRows": 49,
       "changed": {
         "35": "{\"codename\":\"number\",\"created_at\":\"T\",\"creator_id\":1,\"current_revision_id\":null,\"db_content\":\"{{+:description|content}}\\n{{_|add_button}}{{_|configure_button}}\\n{{+:type+:by_name|content}}\\n\",\"id\":35,\"key\":\"number\",\"left_id\":null,\"name\":\"Number\",\"read_rule_class\":\"*all\",\"read_rule_id\":10,\"references_expired\":null,\"right_id\":null,\"trash\":0,\"type_id\":3,\"updated_at\":\"T\",\"updater_id\":1}",
-        "36": "{\"codename\":null,\"created_at\":\"T\",\"creator_id\":1,\"current_revision_id\":null,\"db_content\":\"<p>Number cards hold numbers. (persistence probe)</p>\",\"id\":36,\"key\":null,\"left_id\":35,\"name\":null,\"read_rule_class\":\"*all plus\",\"read_rule_id\":10,\"references_expired\":null,\"right_id\":12,\"trash\":0,\"type_id\":2,\"updated_at\":\"T\",\"updater_id\":1}"
+        "36": "{\"codename\":null,\"created_at\":\"T\",\"creator_id\":1,\"current_revision_id\":null,\"db_content\":\"<p>Number cards hold numbers. (persistence probe)</p>\",\"id\":36,\"key\":null,\"left_id\":35,\"name\":null,\"read_rule_class\":\"*all plus\",\"read_rule_id\":10,\"references_expired\":null,\"right_id\":12,\"trash\":0,\"type_id\":2,\"updated_at\":\"T\",\"updater_id\":1}",
+        "483": "{\"codename\":\"recent_settings\",\"created_at\":\"T\",\"creator_id\":1,\"current_revision_id\":null,\"db_content\":\"*read\\n*follow\\n*script\\n*structure\\n*layout\\n*captcha\\n*input type\\n*create\",\"id\":483,\"key\":\"*recent_setting\",\"left_id\":null,\"name\":\"*recent settings\",\"read_rule_class\":\"*self\",\"read_rule_id\":486,\"references_expired\":null,\"right_id\":null,\"trash\":0,\"type_id\":2,\"updated_at\":\"T\",\"updater_id\":1}"
       },
       "added": [],
       "removed": []

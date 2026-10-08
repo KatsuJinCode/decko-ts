@@ -218,9 +218,9 @@ import type { SQLDatabaseDriver } from "../../server/driver.js";
 import type { FetchEngine } from "../fetch.js";
 import { CardActionEngine } from "../actions/card-action-engine.js";
 import { CardActionError } from "../actions/types.js";
+import { DeckoName } from "../name.js";
 import { actorAnonymous, actorBot } from "./actor.js";
 import {
-  encryptAccountPassword,
   resolveAccountCodenameIds,
   rubyStrip,
   sha1Hex,
@@ -727,7 +727,9 @@ export async function createOwnerAccount(
   // (5) the subtree. Six engine creates under the bot actor (Auth.as_bot,
   // user.rb:52 — the bot is the administrator whose permissions cannot be
   // disabled, auth/permissions.rb:9).
-  const engine = new CardActionEngine(deps.fetcher, { actor: bot });
+  // The engine's clock is the flow's, so the +*salt the engine generates for
+  // the new account (set_default_salt) is the salt derived above.
+  const engine = new CardActionEngine(deps.fetcher, { actor: bot, now: () => now });
   // The holder's name: the submitted card[name] when the form carries one
   // (user.rb:14), else the email-derived unique name.
   const ownerName = input.cardName ?? (await ownerCardNameFor(deps.fetcher, email));
@@ -748,26 +750,27 @@ export async function createOwnerAccount(
   try {
     const owner = await engine.createCard({ name: ownerName, typeId: userTypeId });
     const ownerId = owner.cardId;
+    // The account's create runs set_default_salt and set_default_status in
+    // the engine (account-fields.ts): its +*salt and +*status ("active")
+    // are stored with it.
     const junction = await engine.createCard({ name: `${ownerName}+*account` });
     const junctionId = junction.cardId;
     const emailCard = await engine.createCard({
       name: `${ownerName}+*account+*email`,
       content: email,
     });
-    const saltCard = await engine.createCard({
-      name: `${ownerName}+*account+*salt`,
-      content: salt,
-    });
-    const statusCard = await engine.createCard({
-      name: `${ownerName}+*account+*status`,
-      content: "active",
-    });
-    // encrypt_password (right/password.rb:19-26) digests against the account's
-    // OWN salt — the one just written, never a fresh one.
-    const digest = await encryptAccountPassword(input.password, salt);
+    const fieldId = async (field: string): Promise<number> => {
+      const id = await deps.fetcher.lexicon.id(DeckoName.parse(`${ownerName}+*account+${field}`));
+      if (id === undefined) throw new CardActionError("not-found", `missing ${ownerName}+*account+${field}`);
+      return id;
+    };
+    const saltCard = { cardId: await fieldId("*salt") };
+    const statusCard = { cardId: await fieldId("*status") };
+    // encrypt_password (right/password.rb:19-26) runs in the engine, over
+    // the account's OWN salt — the one just stored, never a fresh one.
     const passwordCard = await engine.createCard({
       name: `${ownerName}+*account+*password`,
-      content: digest,
+      content: input.password,
     });
     // setup_first_user (user.rb:59-64, :finalize, when: :setup? — this whole
     // function runs only when the setup window is open, the port's
