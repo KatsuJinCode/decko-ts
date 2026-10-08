@@ -49,9 +49,11 @@
 // results.rb:28-30 returns before known? is evaluated.
 
 import { DeckoName } from "../name.js";
+import { getNameEnvironment } from "../name/environment.js";
+import { findAssignedTypeName } from "../set-patterns/set-type-assignment.js";
 import { ruleNamesForCard } from "../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../set-patterns/types.js";
-import { STRUCTURE_SETTING_NAME } from "../rules/structure.js";
+import { DEFAULT_SETTING_NAME, STRUCTURE_SETTING_NAME } from "../rules/structure.js";
 import type { FetchEngine } from "../fetch.js";
 
 /** What a successful virtual resolution contributes to the placeholder
@@ -126,16 +128,41 @@ export function resolveVirtualCardStructure(
   return undefined;
 }
 
+/** The *default-universe maps the missing-left type walk reads: the *default
+ *  rules (composed rule key -> the rule card's own type_id — the new-card
+ *  type a name inherits, type.rb:76-78 type_id_from_template) and the
+ *  type-id -> type-name map over both template universes' referenced type
+ *  ids. Both load alongside the structure universe
+ *  (defaultRuleUniverseStatement + templateTypeNameStatement, the same cold
+ *  batch), so the walk answers from maps and the installed name environment
+ *  ONLY — no fetch — and therefore cannot re-enter the fetch hook it sits
+ *  inside (a fetch here would recurse: the walk's own rule-candidate fetches
+ *  would consult the hook for row-less candidates whose left is missing
+ *  again). */
+export interface NewCardTypeMaps {
+  defaultTypeIds: Map<string, number>;
+  typeNamesById: Map<number, string>;
+}
+
 /**
  * The FetchEngine.virtualCardLookup hook over a loaded universe: resolves
  * the left card's type name through the fetcher (cache-first; the left of a
  * virtual name is usually a seeded real card — and when it is itself
  * virtual, the fetch hook recursion answers it, the chain strictly
  * shrinking) and runs the walk above.
- */
+ *
+ * A left that does not resolve at all takes the NEW-CARD type of its name
+ * (quick_type fetches the left with `new: {}`,
+ * set_pattern/class_methods.rb:59-71; the port of that chain for the
+ * render-side rule walk is rule-content-walk.ts quickTypeName): the
+ * type-assignment walk, then the *default template with the dup_structure
+ * leg, over the maps above when the caller supplied them. Untyped (no maps,
+ * or the walk finds nothing) keeps the old shape: no leftTypeName, the
+ * candidate anchor falls back to RichText. */
 export function createVirtualCardLookup(
   fetcher: FetchEngine,
   universe: StructureUniverseMaps,
+  newCardTypes?: NewCardTypeMaps,
 ): (name: DeckoName) => Promise<VirtualCardResolution | undefined> {
   // Request-scoped memo (DeckoName.requestMemo): within one request the
   // deck does not change, so a name's resolution does not either. A missed
@@ -143,6 +170,85 @@ export function createVirtualCardLookup(
   // (a page with deep date+bw templates resolved ~48k names per render,
   // 18k of them distinct). Outside a request scope nothing is memoized.
   const owner = {};
+  // A missing left's new-card type is deck-static for the lookup's
+  // lifetime (the universes are boot-time), so one walk per distinct left
+  // key serves every request; "" memoizes "resolved: none".
+  const missingLeftTypeMemo = new Map<string, string>();
+  const missingLeftTypeName = (left: DeckoName): string | undefined => {
+    if (newCardTypes === undefined) return undefined;
+    const key = left.key;
+    if (missingLeftTypeMemo.has(key)) return missingLeftTypeMemo.get(key) || undefined;
+    const resolved = walkNewCardTypeName(left);
+    missingLeftTypeMemo.set(key, resolved ?? "");
+    return resolved;
+  };
+  /** quick_type's new-card chain for a name with no row, over the loaded
+   *  maps: type.rb:58-66 ensure_type_id — the ASSIGNMENT walk first
+   *  (findAssignedTypeName, the sync registry + name-environment walk; a
+   *  simple name short-circuits inside), then type_id_from_template over
+   *  the *default universe with the dup_structure leg read from the
+   *  structure universe this lookup already carries (templating.rb:52-59).
+   *  Map-only: every answer comes from a Map or the name environment, so
+   *  the walk cannot fetch, and what it cannot answer stays untyped. */
+  const walkNewCardTypeName = (left: DeckoName): string | undefined => {
+    if (newCardTypes === undefined) return undefined;
+    const assignedName = findAssignedTypeName({ name: left.s, isNew: true });
+    if (assignedName !== undefined) {
+      const env = getNameEnvironment();
+      const assignedId =
+        env?.codename?.id(assignedName) ?? env?.lexicon?.id(DeckoName.parse(assignedName).key);
+      const assignedType = assignedId === undefined ? undefined : newCardTypes.typeNamesById.get(assignedId);
+      if (assignedType !== undefined) return assignedType;
+    }
+    if (newCardTypes.defaultTypeIds.size === 0) return undefined;
+    let candidates: string[];
+    try {
+      candidates = ruleNamesForCard({ name: left, isNew: true }, DEFAULT_SETTING_NAME);
+    } catch {
+      return undefined;
+    }
+    for (const candidate of candidates) {
+      let key: string;
+      try {
+        key = DeckoName.parse(candidate).key;
+      } catch (err) {
+        if (err instanceof Error && err.name !== "CodenameNotFoundError" && err.name !== "NameNotFoundError") {
+          throw err;
+        }
+        continue; // unresolved mark: no *default rule candidate
+      }
+      const typeId = newCardTypes.defaultTypeIds.get(key);
+      if (typeId === undefined) continue;
+      // dup_structure (templating.rb:61-65): the *default-typed dup's own
+      // *structure rule card, when it exists and is not "_self", BECOMES
+      // the template and contributes ITS type_id — the same leg
+      // RenderEngine#newCardDefaultType runs over this universe.
+      const structureCandidates = ruleNamesForCard(
+        { name: left, id: undefined, typeId, isNew: true },
+        STRUCTURE_SETTING_NAME,
+      );
+      for (const structureCandidate of structureCandidates) {
+        let structureKey: string;
+        try {
+          structureKey = DeckoName.parse(structureCandidate).key;
+        } catch (err) {
+          if (err instanceof Error && err.name !== "CodenameNotFoundError" && err.name !== "NameNotFoundError") {
+            throw err;
+          }
+          continue;
+        }
+        const structureTypeId = universe.ruleTypeIds.get(structureKey);
+        if (structureTypeId === undefined) continue;
+        const structureContent = universe.contents.get(structureKey);
+        if (structureContent !== undefined && structureContent !== null && structureContent.trim() === "_self") {
+          return newCardTypes.typeNamesById.get(typeId);
+        }
+        return newCardTypes.typeNamesById.get(structureTypeId) ?? newCardTypes.typeNamesById.get(typeId);
+      }
+      return newCardTypes.typeNamesById.get(typeId);
+    }
+    return undefined;
+  };
   const lookup = async (name: DeckoName): Promise<VirtualCardResolution | undefined> => {
     let leftTypeName: string | undefined;
     if (name.isCompound) {
@@ -153,6 +259,11 @@ export function createVirtualCardLookup(
           // type.rb:34-36 type_name: quick_fetch(type_id)&.name — cache-first
           const typeCard = await fetcher.fetchById(left.typeId);
           leftTypeName = typeCard?.name?.s;
+        } else if (left === undefined) {
+          // No row for the left: quick_type's `new: {}` fetch — the left is
+          // a NEW card, typed by the new-card chain over the loaded maps
+          // (no fetch: see walkNewCardTypeName).
+          leftTypeName = missingLeftTypeName(name.leftName!);
         }
       }
     }
