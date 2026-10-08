@@ -669,6 +669,26 @@ export async function sendAccountVerificationToken(
   return { ok: true, sentTo: account.email, token, verifyUrl: url };
 }
 
+/**
+ * activate_account's `trigger_event! :send_welcome_email` (card-mod-account
+ * set/right/account/events.rb:40-43) for the account the mark names: the
+ * welcome_email template delivered to the account's email. Used by an
+ * administrator's approval of a pending sign-up
+ * (approve_without_verification, set/type/signup.rb:28-35).
+ */
+export async function sendAccountWelcomeEmail(
+  ctx: AccountFlowContext,
+  accountMark: string,
+): Promise<boolean> {
+  const ids = await resolveAccountCodenameIds(ctx.driver);
+  if (ids === null) return false;
+  const account = await accountForMark(ctx.driver, ids, accountMark);
+  if (account?.email === undefined || account.email === "") return false;
+  const mail = renderAccountEmail(ctx, WELCOME_EMAIL_TEMPLATE, {});
+  await ctx.transport.sendMail({ ...mail, to: account.email });
+  return true;
+}
+
 /** The email_document wrapper (card-mod-email set/all/email_html.rb:2-14
  *  wrapper :email_document) — the html_message part renders THROUGH the
  *  EmailHtmlFormat#show wrapper (format :email_html def show ->

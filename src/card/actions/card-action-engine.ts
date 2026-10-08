@@ -104,6 +104,7 @@ import {
   type ViewTaskState,
   type WriteTask,
 } from "../permissions/view-task-rules.js";
+import { updatePermissionOverride } from "../permissions/read-override.js";
 import type { PatternCardInput } from "../set-patterns/types.js";
 import {
   ruleContentForCard,
@@ -1529,6 +1530,10 @@ export class CardActionEngine {
         typeId: row.type_id,
       }),
     );
+    // Events the request triggered for the :integrate stage (trigger:
+    // :required, e.g. send_verification_email / send_welcome_email) run
+    // with that stage, before the delayed follower notice.
+    if (input.triggeredIntegrate !== undefined) await input.triggeredIntegrate();
     await this.dispatchSavePathIntegrations(result, {
       actCardActionOmitted: result?.actCardActionOmitted === true,
       delayedStageDropped: input.attachment !== undefined,
@@ -2637,17 +2642,57 @@ export class CardActionEngine {
    *  whose verdict runs for the Anonymous card (writeViewer); the sync
    *  gate has already rejected only the fragment-seed case (no anonymous
    *  codename card) across all three write tasks. */
+  /** ok?(:update) on an existing card for this engine's actor, as the
+   *  validate stage judges it: throws the permission-denied error when the
+   *  actor may not update it. */
+  async assertMayUpdate(cardId: number): Promise<void> {
+    const row = await this.fetchRowById(cardId);
+    if (row === undefined || row.trash === 1) {
+      throw new CardActionError("not-found", `no such card: ${cardId}`);
+    }
+    await this.assertCanWrite(await composeCardRecord(row, this.fetch.lexicon), "update");
+  }
+
+  /** `Card.new(type_id: <type>).ok? :create` for this engine's actor: may
+   *  the actor create a (nameless) card of that type? */
+  async mayCreateCardOfType(typeId: number): Promise<boolean> {
+    const pattern: PatternCardInput = {
+      name: "",
+      isNew: true,
+      typeId,
+      typeName: await this.typeNameOf(typeId),
+    };
+    const verdict = await saveTaskVerdictForCard(this.fetch, pattern, "create", await this.writePermissionState());
+    return verdict === true;
+  }
+
   private async assertCanWrite(
     card: CardRecord,
     task: WriteTask,
     opts: { typeChanged?: boolean; assignedTypeId?: number; assignedName?: string } = {},
   ): Promise<void> {
     const pattern = await this.patternInputFor(card, opts.assignedTypeId, opts.assignedName);
-    const verdict = await saveTaskVerdictForCard(
+    const state = await this.writePermissionState();
+    // The account mods' ok_to_update? overrides (account_holder.rb:59,
+    // right/account.rb:33, account_field.rb:16, right/status.rb:16-22):
+    // `(own_account? && !type_id_changed? [&& !name_changed?]) || super`,
+    // and the own-status lock. They shadow Set::All#ok_to_update? for a
+    // save that changes neither type nor name; always_ok? still wins first.
+    const override =
+      task === "update" && !state.alwaysOk && opts.typeChanged !== true && opts.assignedName === undefined && card.name !== undefined
+        ? await updatePermissionOverride(card.name, {
+            viewerKey: this.actor !== null && !(await this.isAnonymousSession())
+              ? DeckoName.parse(this.actor.name).key
+              : undefined,
+            fetchByKey: (key) => this.fetch.fetchByKey(key),
+            fetchById: (cardId) => this.fetch.fetchById(cardId),
+          })
+        : undefined;
+    const verdict = override ?? await saveTaskVerdictForCard(
       this.fetch,
       pattern,
       task,
-      await this.writePermissionState(),
+      state,
       // assignedName rides the pattern input's name for the RULE walk and
       // opts for the RENAME clause (the sides the assigned name creates —
       // saveTaskVerdictForCard's update branch; name_events.rb:67-72,

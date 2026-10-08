@@ -66,7 +66,11 @@ function rubyErrors(step) {
     return m ? decode(m[0].replace(/<[^>]+>/g, " ")) : "(denied)";
   }
   if (!(step.status >= 400)) return "";
-  const text = decode(b.replace(/<script[\s\S]*?<\/script>/g, "").replace(/<[^>]+>/g, " "));
+  const text = decode(b.replace(/<script[\s\S]*?<\/script>/g, "").replace(/<style[\s\S]*?<\/style>/g, "").replace(/<[^>]+>/g, " "));
+  // A server error (the development exception page): the exception's
+  // message only, as the port shows it.
+  const ex = text.match(/Exception caught \S+ in \S+ (.*?) Extracted source/);
+  if (step.status >= 500 && ex) return ex[1].trim();
   const m = text.match(/Problems(?: with .*?)?\s((?:[A-Z_*+ ]+:.*?)+?)\s*b&w_logo/) ??
             text.match(/Problems(?: with .*?)?\s(.*?)\s*b&w_logo/);
   if (m) return m[1].trim();
@@ -97,8 +101,13 @@ const actions = (s) => (s.actions ?? []).map((a) => `${a.type} ${a.card} [${a.fi
 // who the rows are stamped with (set_stamper) and what was stored
 const stamps = (s) => (s.actions ?? []).map((a) => `${a.card}: by ${a.creator ?? "?"}/${a.updater ?? "?"}`).join(" | ") || "-";
 const stored = (s) => (s.actions ?? []).map((a) => `${a.card} = ${JSON.stringify(a.content ?? "")} changes ${JSON.stringify(a.values ?? [])}`).join(" | ") || "-";
-// the redirect target, host dropped
-const location = (s) => { const h = s.headers ?? {}; const l = h.Location ?? h.location ?? ""; return l.replace(/^https?:\/\/[^/]+/, "") || "-"; };
+// the redirect target, host dropped; a rev_id (the action id of a cached
+// upload) normalised, as ids drift with the engines' write histories
+const location = (s) => {
+  const h = s.headers ?? {};
+  const l = h.Location ?? h.location ?? "";
+  return l.replace(/^https?:\/\/[^/]+/, "").replace(/rev_id=\d+/, "rev_id=<id>") || "-";
+};
 // Mail bodies are compared exactly, after two normalisations only: CRLF line
 // endings (the Mail gem's wire encoding) become LF, and account-token values
 // become <token>.
@@ -109,6 +118,10 @@ const mailText = (s) => (s.mail ?? []).map((m) => JSON.stringify(normBody(m.text
 const mailHtml = (s) => (s.mail ?? []).map((m) => JSON.stringify(normBody(m.html_body))).join(" | ") || "-";
 const files = (s) => (s.files ?? []).map((f) => f.path.replace(/^\d+\/\d+/, "")).sort().join(",") || "-";
 const session = (s) => s.signed_in_as ?? "anonymous";
+// Session-type card contents kept in the visitor's session, by card key.
+const sessionCards = (s) => JSON.stringify(Object.fromEntries(Object.entries(s.session_cards ?? {}).sort()));
+// A closed account's holder is renamed ANON-<12 random hex digits>.
+const anon = (x) => x.replace(/ANON-[0-9a-f]{12}/g, "ANON-<hex>");
 // Image variants. Byte identity with ImageMagick is not attainable (another
 // encoder and filter implementation), so each variant is compared on:
 //   dimensions  exact
@@ -171,7 +184,7 @@ function imagesVerdict(r, t, step) {
 const fields = {
   status: (s) => String(s.status),
   location,
-  writes, actions, stamps, stored, mail, mailText, mailHtml, files, session,
+  writes, actions, stamps, stored, mail, mailText, mailHtml, files, session, sessionCards,
 };
 
 // ---- event order: the ordered list of distinct event names each engine
@@ -186,6 +199,30 @@ const eventNames = (s, isRuby) => {
   return seen;
 };
 
+// ---- deliberate differences. A step may carry
+//   "deliberate": { "why": "...", "ruby": {field: value}, "ts": {field: value} }
+// naming the fields where the port deliberately does not copy Ruby (a
+// security hole or a crash, per the parity brief). Such a step passes as
+// DELIBERATE only when every differing field is pinned and each engine shows
+// exactly its pinned value; any other difference, or a pinned field on which
+// the engines now agree, is a MISMATCH.
+const deliberateOf = Object.fromEntries(scenarios.steps.filter((s) => s.deliberate).map((s) => [s.name, s.deliberate]));
+function deliberateVerdict(name, diffs) {
+  const pin = deliberateOf[name];
+  if (pin === undefined) return null;
+  const pinned = new Set([...Object.keys(pin.ruby ?? {}), ...Object.keys(pin.ts ?? {})]);
+  const broken = [];
+  for (const [k, [a, b]] of Object.entries(diffs)) {
+    if (!pinned.has(k)) broken.push(`${k} differs but is not pinned`);
+    else {
+      if (pin.ruby?.[k] !== undefined && pin.ruby[k] !== a) broken.push(`${k}: ruby shows ${JSON.stringify(a)}, pinned ${JSON.stringify(pin.ruby[k])}`);
+      if (pin.ts?.[k] !== undefined && pin.ts[k] !== b) broken.push(`${k}: ts shows ${JSON.stringify(b)}, pinned ${JSON.stringify(pin.ts[k])}`);
+    }
+  }
+  for (const k of pinned) if (!(k in diffs)) broken.push(`${k}: pinned difference no longer differs`);
+  return broken;
+}
+
 const rows = [];
 const n = Math.max(ruby.steps.length, ts.steps.length);
 for (let i = 0; i < n; i++) {
@@ -194,8 +231,8 @@ for (let i = 0; i < n; i++) {
   const name = r?.step ?? t?.step;
   const diffs = {};
   for (const [k, f] of Object.entries(fields)) {
-    const a = r ? f(r) : "(missing)";
-    const b = t ? f(t) : "(missing)";
+    const a = r ? anon(f(r)) : "(missing)";
+    const b = t ? anon(f(t)) : "(missing)";
     if (a !== b) diffs[k] = [a, b];
   }
   if (r && t) {
@@ -211,8 +248,12 @@ for (let i = 0; i < n; i++) {
   const tev = t ? eventNames(t, false) : [];
   const common = rev.filter((e) => tev.includes(e));
   const tsOrder = tev.filter((e) => common.includes(e));
+  const broken = deliberateVerdict(name, diffs);
+  const verdict = broken === null ? (Object.keys(diffs).length === 0 ? "PASS" : "MISMATCH")
+    : broken.length === 0 ? "DELIBERATE" : "MISMATCH";
   rows.push({
-    step: name, mod: modOf[name] ?? "?", verdict: Object.keys(diffs).length === 0 ? "PASS" : "MISMATCH", diffs,
+    step: name, mod: modOf[name] ?? "?", verdict, diffs,
+    ...(broken === null ? {} : { deliberate: { why: deliberateOf[name].why, broken } }),
     events: {
       ruby: rev, ts: tev, exact: JSON.stringify(rev) === JSON.stringify(tev),
       coverage: rev.length === 0 ? null : common.length / rev.length,
@@ -224,12 +265,14 @@ for (let i = 0; i < n; i++) {
 }
 
 const pass = rows.filter((r) => r.verdict === "PASS").length;
+const deliberate = rows.filter((r) => r.verdict === "DELIBERATE").length;
 const evExact = rows.filter((r) => r.events.exact).length;
 const byMod = {};
 for (const r of rows) {
-  byMod[r.mod] ??= { pass: 0, total: 0 };
+  byMod[r.mod] ??= { pass: 0, deliberate: 0, total: 0 };
   byMod[r.mod].total++;
   if (r.verdict === "PASS") byMod[r.mod].pass++;
+  if (r.verdict === "DELIBERATE") byMod[r.mod].deliberate++;
 }
 
 for (const r of rows) {
@@ -238,14 +281,15 @@ for (const r of rows) {
     console.log(`            ${k.padEnd(8)} ruby: ${a}`);
     console.log(`            ${"".padEnd(8)}   ts: ${b}`);
   }
+  for (const x of r.deliberate?.broken ?? []) console.log(`            pin      ${x}`);
 }
-console.log(`\nSIDE EFFECTS PASS ${pass} / ${rows.length}`);
-for (const [m, v] of Object.entries(byMod)) console.log(`  ${m.padEnd(12)} ${v.pass}/${v.total}`);
+console.log(`\nSIDE EFFECTS PASS ${pass} / ${rows.length}; deliberate differences pinned ${deliberate}; mismatches ${rows.length - pass - deliberate}`);
+for (const [m, v] of Object.entries(byMod)) console.log(`  ${m.padEnd(12)} ${v.pass}/${v.total}${v.deliberate ? ` (+${v.deliberate} deliberate)` : ""}`);
 console.log(`EVENT ORDER exact ${evExact} / ${rows.length}`);
 for (const [step, m] of Object.entries(imageMetrics)) {
   console.log(`IMAGES ${step}: ${Object.entries(m).map(([n, v]) => `${n} PSNR ${v.psnr} alpha ${v.alphaAgree}`).join("; ")}`);
 }
 
 if (process.argv[4]) {
-  writeFileSync(process.argv[4], JSON.stringify({ pass, total: rows.length, byMod, evExact, imageMetrics, rows }, null, 2));
+  writeFileSync(process.argv[4], JSON.stringify({ pass, deliberate, total: rows.length, byMod, evExact, imageMetrics, rows }, null, 2));
 }

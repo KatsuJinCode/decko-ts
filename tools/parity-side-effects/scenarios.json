@@ -154,6 +154,32 @@
       }
     },
     {
+      "name": "probe-update-own-account",
+      "mod": "account",
+      "method": "put",
+      "path": "/Parity_Probe+*account",
+      "params": {
+        "card": {
+          "subcards": {
+            "+*email": {
+              "content": "parity.probe@example.com"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "probe-rename-other-account",
+      "mod": "account",
+      "method": "put",
+      "path": "/Parity_Follower",
+      "params": {
+        "card": {
+          "name": "Parity Follower Renamed"
+        }
+      }
+    },
+    {
       "name": "signed-in-read-home",
       "mod": "session",
       "method": "get",
@@ -340,6 +366,75 @@
       }
     },
     {
+      "name": "upload-cache-new-file",
+      "mod": "carrierwave",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "type": "File",
+          "file": {
+            "upload": "parity-upload.txt",
+            "mime": "text/plain"
+          }
+        },
+        "attachment_upload": "card[file]"
+      }
+    },
+    {
+      "name": "create-from-cached-upload",
+      "mod": "carrierwave",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Cached File",
+          "type": "File",
+          "action_id_of_cached_upload": "$rev_id"
+        }
+      }
+    },
+    {
+      "name": "upload-cache-existing-file",
+      "mod": "carrierwave",
+      "method": "put",
+      "path": "/Parity_Cached_File",
+      "params": {
+        "card": {
+          "file": {
+            "upload": "parity-image.png",
+            "mime": "image/png"
+          }
+        },
+        "attachment_upload": "card[file]"
+      }
+    },
+    {
+      "name": "update-from-cached-upload",
+      "mod": "carrierwave",
+      "method": "put",
+      "path": "/Parity_Cached_File",
+      "params": {
+        "card": {
+          "action_id_of_cached_upload": "$rev_id"
+        }
+      }
+    },
+    {
+      "name": "restore-file-revision",
+      "mod": "carrierwave",
+      "method": "put",
+      "path": "/Parity_Cached_File",
+      "params": {
+        "revert_actions": [
+          "$create_action:Parity Cached File"
+        ],
+        "card": {
+          "skip": "validate_renaming"
+        }
+      }
+    },
+    {
       "name": "upload-image",
       "mod": "carrierwave",
       "method": "post",
@@ -386,6 +481,18 @@
           }
         }
       }
+    },
+    {
+      "name": "read-probe-page",
+      "mod": "session",
+      "method": "get",
+      "path": "/Parity_Probe_Card"
+    },
+    {
+      "name": "read-image-page",
+      "mod": "session",
+      "method": "get",
+      "path": "/Parity_Image"
     },
     {
       "name": "signed-in-delete-card",
@@ -486,6 +593,28 @@
       }
     },
     {
+      "name": "anon-approve-signup",
+      "mod": "account",
+      "method": "put",
+      "path": "/Parity_Pending",
+      "params": {
+        "card": {
+          "trigger": "approve_without_verification"
+        }
+      }
+    },
+    {
+      "name": "anon-update-skin-colors",
+      "mod": "assets",
+      "method": "put",
+      "path": "/yeti_skin+*colors",
+      "params": {
+        "card": {
+          "content": "$primary: #654321;"
+        }
+      }
+    },
+    {
       "name": "anon-session-card-create",
       "mod": "session",
       "method": "post",
@@ -508,6 +637,24 @@
           "content": "y"
         }
       }
+    },
+    {
+      "name": "anon-session-card-read",
+      "mod": "session",
+      "method": "get",
+      "path": "/Parity_Session_Probe"
+    },
+    {
+      "name": "anon-session-card-delete",
+      "mod": "session",
+      "method": "delete",
+      "path": "/Parity_Session_Probe"
+    },
+    {
+      "name": "anon-session-card-read-after-delete",
+      "mod": "session",
+      "method": "get",
+      "path": "/Parity_Session_Probe"
     },
     {
       "name": "signup",
@@ -648,6 +795,45 @@
       }
     },
     {
+      "name": "admin-approve-with-verification",
+      "mod": "account",
+      "method": "put",
+      "path": "/Parity_Pending",
+      "params": {
+        "card": {
+          "trigger": "approve_with_verification"
+        }
+      }
+    },
+    {
+      "name": "admin-approve-without-verification",
+      "mod": "account",
+      "method": "put",
+      "path": "/Parity_Pending",
+      "params": {
+        "card": {
+          "trigger": "approve_without_verification"
+        }
+      }
+    },
+    {
+      "name": "admin-deny-signup",
+      "mod": "account",
+      "method": "delete",
+      "path": "/Parity_Joiner"
+    },
+    {
+      "name": "admin-update-role-members",
+      "mod": "account",
+      "method": "put",
+      "path": "/Help_Desk+*members",
+      "params": {
+        "card": {
+          "content": "[[Parity Follower]]"
+        }
+      }
+    },
+    {
       "name": "admin-create-skin",
       "mod": "bootstrap",
       "method": "post",
@@ -656,6 +842,58 @@
         "card": {
           "name": "Parity Skin",
           "type": "Bootswatch skin"
+        }
+      }
+    },
+    {
+      "name": "admin-create-skin-bad-parent",
+      "mod": "bootstrap",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Child Skin",
+          "type": "Bootswatch skin",
+          "subcards": {
+            "+parent": {
+              "content": "[[Parity Probe Card]]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "admin-create-old-skin",
+      "mod": "bootstrap",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Old Skin",
+          "type": "Skin",
+          "content": "[[bootstrap default skin]]\n[[Parity Probe Card]]"
+        }
+      }
+    },
+    {
+      "name": "admin-skin-type-change",
+      "mod": "bootstrap",
+      "method": "put",
+      "path": "/Parity_Old_Skin",
+      "params": {
+        "card": {
+          "type": "Bootswatch skin"
+        }
+      }
+    },
+    {
+      "name": "admin-use-skin",
+      "mod": "bootstrap",
+      "method": "put",
+      "path": "/Parity_Skin",
+      "params": {
+        "card": {
+          "trigger": "use_as_current_skin"
         }
       }
     },
@@ -672,6 +910,17 @@
     },
     {
       "name": "admin-update-layout",
+      "mod": "layout",
+      "method": "put",
+      "path": "/Default_Layout",
+      "params": {
+        "card": {
+          "content": "<!-- parity -->{{_main}}"
+        }
+      }
+    },
+    {
+      "name": "admin-update-layout-no-main",
       "mod": "layout",
       "method": "put",
       "path": "/Default_Layout",
@@ -697,6 +946,82 @@
       "mod": "account",
       "method": "delete",
       "path": "/delete/*signin"
+    },
+    {
+      "name": "leaver-signin",
+      "mod": "account",
+      "method": "patch",
+      "path": "/update/*signin",
+      "params": {
+        "card": {
+          "subcards": {
+            "+*email": {
+              "content": "leaver.probe@example.com"
+            },
+            "+*password": {
+              "content": "Leaver horse battery 8("
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "leaver-close-account",
+      "mod": "account",
+      "method": "delete",
+      "path": "/Parity_Leaver+*account"
+    },
+    {
+      "name": "after-close-write",
+      "mod": "permissions",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity After Close"
+        }
+      }
+    },
+    {
+      "name": "admin-signin-again",
+      "mod": "account",
+      "method": "patch",
+      "path": "/update/*signin",
+      "params": {
+        "card": {
+          "subcards": {
+            "+*email": {
+              "content": "admin.probe@example.com"
+            },
+            "+*password": {
+              "content": "Admin horse battery 5%"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "admin-close-account",
+      "mod": "account",
+      "method": "delete",
+      "path": "/Parity_Leaver+*account"
+    },
+    {
+      "name": "admin-close-own-account",
+      "mod": "account",
+      "method": "delete",
+      "path": "/Parity_Admin+*account"
+    },
+    {
+      "name": "after-admin-close-write",
+      "mod": "permissions",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity After Admin Close"
+        }
+      }
     }
   ]
 }

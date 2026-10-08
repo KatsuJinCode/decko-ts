@@ -100,6 +100,7 @@ import { SessionStore } from "../card/auth/index.js";
 import { signinAccount } from "../card/auth/signin.js";
 import {
   sendAccountVerificationToken,
+  sendAccountWelcomeEmail,
   sendResetPasswordToken,
   type AccountFlowContext,
 } from "../card/auth/account-verify-reset-flows.js";
@@ -112,6 +113,15 @@ import type { AttachmentStore } from "../card/attachments/attachment-store.js";
 import { DeckoName } from "../card/name.js";
 import { parseMultipartForm, type MultipartFilePart } from "./multipart-form.js";
 import { decodeUriComponentSafe } from "./decode-uri-component-safe.js";
+import {
+  discardLocationsFor,
+  previousLocation,
+  readVisitorSession,
+  saveLocation,
+  storeSessionCardContent,
+  visitorSessionCookie,
+  type VisitorSession,
+} from "../card/session/visitor-session.js";
 
 /** One inbound write request, normalized off the node request. Header keys
  *  are lower-cased (node's convention). The body is the RAW bytes read by
@@ -217,6 +227,11 @@ export interface WriteRouteResponse {
    *  HTML one. Error responses leave it unset (no commit, no expire —
    *  phases.rb:19-21). */
   expiryName?: string;
+  /** The visitor-session cookie (card/session/visitor-session.ts) to set
+   *  alongside any Set-Cookie header: the location history and Session-card
+   *  content Ruby keeps in its Rails session. Present only when the request
+   *  changed that state. */
+  visitorCookie?: string;
 }
 
 /** Whether the host exposes the write path at all. The staging server
@@ -797,7 +812,7 @@ function successResponse(
   }
   return {
     status: 303,
-    headers: { Location: cardUrl(req, redirectPath), "Cache-Control": "no-store" },
+    headers: { Location: absoluteTarget(req, redirectPath), "Cache-Control": "no-store" },
     body: "",
     expiryName: name,
   };
@@ -810,20 +825,22 @@ function locationName(name: string): string {
   return encodeURI(DeckoName.parse(name).urlKey).replace(/[?#]/g, (c) => encodeURIComponent(c));
 }
 
-/** Ruby's previous_location (location_history.rb:6-21): the last page in
- *  the session's location history, "/" for a fresh history. The port's
- *  write surface keeps no read history, so this is the fresh-history value. */
-const PREVIOUS_LOCATION = "/";
+/** A redirect target as Ruby's hard_redirect sends it (response.rb:41,
+ *  card_url): a full URL as given (the location history stores request
+ *  URLs), a path prefixed with the deck origin. */
+function absoluteTarget(req: WriteRouteRequest, target: string): string {
+  return /^https?:\/\//.test(target) ? target : cardUrl(req, target);
+}
 
 /** The success target path (env/success/target.rb process_target):
- *  success[mark] "*previous" -> previous location; an absolute path or URL
- *  as given; another mark -> that card's path; no mark -> the request's own
- *  card. */
-function successTargetPath(parsed: ParsedBody, ownName: string): string {
+ *  success[mark] "*previous" -> previous location (the visitor's location
+ *  history, location_history.rb:19-21); an absolute path or URL as given;
+ *  another mark -> that card's path; no mark -> the request's own card. */
+function successTargetPath(parsed: ParsedBody, ownName: string, visit: VisitorSession): string {
   const mark = parsed.success["mark"] ?? parsed.success["id"];
   if (mark === undefined) return `/${locationName(ownName)}`;
   if (mark === "") return "";
-  if (mark === "*previous" || mark === ":previous") return PREVIOUS_LOCATION;
+  if (mark === "*previous" || mark === ":previous") return previousLocation(visit);
   if (/^(http|\/)/.test(mark)) return mark;
   return `/${locationName(mark)}`;
 }
@@ -855,6 +872,7 @@ async function handleSigninUpdate(
   req: WriteRouteRequest,
   json: boolean,
   parsed: ParsedBody,
+  visit: VisitorSession,
 ): Promise<WriteRouteResponse> {
   const email = parsed.subcards["+*email"]?.content ?? "";
   const password = parsed.subcards["+*password"]?.content ?? "";
@@ -888,7 +906,7 @@ async function handleSigninUpdate(
   // The success target (env/success/target.rb): the form's
   // success[mark]=*previous (signin.rb:171) -> previous_location; without a
   // success mark the target is the card itself, *signin.
-  const target = cardUrl(req, successTargetPath(parsed, "*signin"));
+  const target = absoluteTarget(req, successTargetPath(parsed, "*signin", visit));
   if (isAjax(req, parsed)) {
     // the ajax hard redirect (response.rb:42-46)
     const body = jsonResponse(200, { redirect: target });
@@ -944,15 +962,20 @@ async function handleResetPasswordTrigger(
  *  event :signout, on: :delete — `Auth.signin nil`, then abort :success so
  *  no card row is touched). The session is revoked, the cookie cleared, and
  *  the request redirected to the *signin card (the delete's success target
- *  is the card itself). */
+ *  is the card itself). Env.reset_session (signin.rb:21) drops the rest of
+ *  the visitor's session too: the location history and Session-card
+ *  content. */
 async function handleSignout(
   ctx: WriteRouteContext,
   req: WriteRouteRequest,
   json: boolean,
   parsed: ParsedBody,
+  visit: VisitorSession,
 ): Promise<WriteRouteResponse> {
   const token = tokenFromRequest(req, parsed) ?? readSessionCookie(req.headers.cookie);
   if (token !== null) await new SessionStore({ driver: ctx.driver }).revokeSession(token);
+  delete visit.history;
+  visit.cards = {};
   const target = cardUrl(req, `/${locationName("*signin")}`);
   const headers = { "Cache-Control": "no-store", "Set-Cookie": clearedSessionCookieHeader() };
   if (json) {
@@ -1104,6 +1127,23 @@ export async function handleWriteRequest(
   req: WriteRouteRequest,
   opts?: { authOnly?: boolean },
 ): Promise<WriteRouteResponse | null> {
+  // The visitor's session state (location history, Session-card content):
+  // read from its cookie, changed by the request, stored back only when it
+  // changed.
+  const visit = readVisitorSession(req.headers.cookie);
+  const before = visitorSessionCookie(visit);
+  const res = await dispatchWriteRequest(ctx, req, opts, visit);
+  if (res === null) return null;
+  if (visitorSessionCookie(visit) === before) return res;
+  return { ...res, visitorCookie: visitorSessionCookie(visit, { secure: req.scheme === "https" }) };
+}
+
+async function dispatchWriteRequest(
+  ctx: WriteRouteContext,
+  req: WriteRouteRequest,
+  opts: { authOnly?: boolean } | undefined,
+  visit: VisitorSession,
+): Promise<WriteRouteResponse | null> {
   // Response format: the .json suffix on the mark, or the Accept header
   // (routes.rb ":(.:format)" grammar; rest.rb responds per format).
   const json =
@@ -1130,7 +1170,7 @@ export async function handleWriteRequest(
   // the login action") — before any card machinery runs.
   if (route.verb === "update" && route.mark !== undefined) {
     if (DeckoName.parse(markToName(route.mark)).key === SIGNIN_KEY) {
-      return handleSigninUpdate(ctx, req, json, parsed);
+      return handleSigninUpdate(ctx, req, json, parsed, visit);
     }
   }
   // The AUTH-ONLY arm (edge-signin-form-fix lane, 2026-10-03): everything
@@ -1148,7 +1188,7 @@ export async function handleWriteRequest(
   // against *signin as a gated card write.
   if (route.verb === "delete" && route.mark !== undefined) {
     if (DeckoName.parse(markToName(route.mark)).key === SIGNIN_KEY) {
-      return handleSignout(ctx, req, json, parsed);
+      return handleSignout(ctx, req, json, parsed, visit);
     }
   }
 
@@ -1211,15 +1251,15 @@ export async function handleWriteRequest(
         // card-mod-session set/type/session.rb: ok_to_create? is true for
         // everyone, and store_in_session keeps the content in the visitor's
         // session and aborts with success (abort :success at
-        // :prepare_to_store), so nothing reaches the card tables. The port
-        // has no per-visitor session store for anonymous visitors, so the
-        // content itself is not kept (documented in the parity report).
+        // :prepare_to_store), so nothing reaches the card tables. The
+        // content is kept in the visitor session under the card's key.
+        storeSessionCardContent(visit, input.name, input.content);
         return successResponse(
           req,
           json,
           input.name,
           { cardId: 0, actId: 0, actionId: 0, verb: "create" },
-          successTargetPath(parsed, input.name),
+          successTargetPath(parsed, input.name, visit),
         );
       }
       result = await engine.createCard(input);
@@ -1241,7 +1281,15 @@ export async function handleWriteRequest(
       // then the rename argument. Looking up by card[name] instead would
       // land a rename-onto-an-existing-name on the OTHER card as a no-op.
       const existing = await lookupLiveCard(ctx.fetcher, markName ?? updateName);
-      if (existing === undefined) {
+      const trigger = card["trigger"];
+      if (
+        existing !== undefined &&
+        (trigger === "approve_with_verification" || trigger === "approve_without_verification") &&
+        (await typeCodenameOf(ctx.fetcher, existing.typeId)) === "signup"
+      ) {
+        name = existing.name?.s ?? updateName;
+        result = await approveSignup(ctx, engine, existing.id, name, trigger === "approve_with_verification");
+      } else if (existing === undefined) {
         // rest.rb:14-16 — update of a NEW card routes to CREATE (the fetch
         // builds the card from the params; trashed marks fetch as new and
         // the create path revives). The name rides the request's own
@@ -1328,15 +1376,26 @@ export async function handleWriteRequest(
         expiryName: name,
       };
     }
-    // configure_successful_deletion (card-mod-session
-    // set/all/location_history.rb:12-20): a non-ajax delete redirects to the
-    // previous location; other saves to the success target.
+    // discard_deleted_locations (card-mod-session
+    // set/all/location_history.rb:1-4): a deleted card leaves the visitor's
+    // location history, and configure_successful_deletion (:12-20) sends a
+    // non-ajax delete to the previous location; other saves go to the
+    // success target.
+    if (saved.verb === "delete") discardLocationsFor(visit, name);
     const redirectPath = saved.verb === "delete" && parsed.success["mark"] === undefined
-      ? PREVIOUS_LOCATION
-      : successTargetPath(parsed, name);
+      ? previousLocation(visit)
+      : successTargetPath(parsed, name, visit);
     return successResponse(req, json, name, saved, redirectPath);
   } catch (error) {
     if (error instanceof CardActionError) {
+      // An error page renders the request's card (show_page), and a known
+      // card's page view joins the location history like any other
+      // (event :save_current_location, before: :show_page): the request URL
+      // is saved for HTML, non-ajax requests on an existing card.
+      if (!json && !isAjax(req, parsed) && route.mark !== undefined) {
+        const shown = await lookupLiveCard(ctx.fetcher, markToName(route.mark));
+        if (shown !== undefined && shown.codename !== "signin") saveLocation(visit, requestUrl(req));
+      }
       return errorResponse(json, error, await signedInFor(ctx, sessionToken), {
         url: requestUrl(req),
         now: ctx.now?.() ?? new Date(),
@@ -1434,6 +1493,68 @@ async function requestSignupVerification(
     },
     `${name}+*account`,
   );
+}
+
+/** The codename of a card's type card ("" when it has none). */
+async function typeCodenameOf(fetcher: FetchEngine, typeId: number | null | undefined): Promise<string> {
+  if (typeId === null || typeId === undefined) return "";
+  return (await fetcher.fetchById(typeId))?.codename ?? "";
+}
+
+/** An administrator's approval of a pending sign-up (card-mod-account
+ *  set/type/signup.rb:24-35, the "Send verification email" and "Approve
+ *  without verification" links of the sign-up's verification_links view).
+ *
+ *  Both are update saves of the Sign up card carrying card[trigger]. The
+ *  validate stage judges ok?(:update) first; a denied approval then reaches
+ *  the event's abort(:failure), which reports the card's permission error
+ *  as a plain user error (422, "PERMISSION_DENIED: ..."), not as the 403
+ *  denial page. `approvable` requires can_approve? (the actor may create a
+ *  User), else aborts "illegal approval".
+ *
+ *  with verification: request_verification sets +*account+*status to
+ *  "unverified" and triggers send_verification_email;
+ *  without: activate_accounted makes the card a User, and activate_account
+ *  sets the status "active" and triggers send_welcome_email. */
+async function approveSignup(
+  ctx: WriteRouteContext,
+  engine: Awaited<ReturnType<typeof createCardActionEngineForSession>>,
+  cardId: number,
+  name: string,
+  withVerification: boolean,
+): Promise<ActionResult | null> {
+  try {
+    await engine.assertMayUpdate(cardId);
+  } catch (error) {
+    if (error instanceof CardActionError && error.code === "permission-denied") {
+      const message = error.errorsByAttribute?.["permission_denied"] ?? `You don't have permission to update ${name}`;
+      throw new CardActionError("user-error", error.message, `PERMISSION_DENIED: ${message}`, {
+        permission_denied: message,
+      });
+    }
+    throw error;
+  }
+  // Card.default_accounted_type_id: the User cardtype.
+  const accountedTypeId = await ctx.fetcher.codenames.id("user");
+  if (accountedTypeId === undefined || !(await engine.mayCreateCardOfType(accountedTypeId))) {
+    throw new CardActionError("user-error", "illegal approval", "ABORT: illegal approval");
+  }
+  const accountMail = ctx.accountMail;
+  const flow = accountMail === undefined
+    ? undefined
+    : { ...accountMail, driver: ctx.driver, fetcher: ctx.fetcher, sessions: new SessionStore({ driver: ctx.driver }) };
+  return engine.updateCard({
+    cardId,
+    ...(withVerification ? {} : { typeId: accountedTypeId }),
+    subcards: {
+      "+*account": { subcards: { "+*status": { content: withVerification ? "unverified" : "active" } } },
+    },
+    triggeredIntegrate: async () => {
+      if (flow === undefined) return;
+      if (withVerification) await sendAccountVerificationToken(flow, `${name}+*account`);
+      else await sendAccountWelcomeEmail(flow, `${name}+*account`);
+    },
+  });
 }
 
 /** The request's subcard tree as the engine's subcard input

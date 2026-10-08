@@ -327,6 +327,15 @@ export class ActWriter {
       // finalize_action else-branch (events.rb:34-37): with no changed
       // fields and no pre-existing changes the action row is never saved,
       // and ActiveRecord skips the cards-row UPDATE entirely (no-op save).
+      // finalize_act (events.rb:48-50, when: act_card?) still runs:
+      // `Director.act.update! card_id: id` saves the act, so the act card's
+      // no-op save leaves an act row with no actions (the oracle deck holds
+      // such acts; remove_empty_act? is defined but never wired).
+      if (this.actId === null && this.isActCardOp(input.cardId, input.isActCard)) {
+        const stmts: SQLStatement[] = [];
+        const actIdSelect = this.pushInsertAct(stmts, input.cardId, sqlDateTime(this.clock()));
+        await this.runBatch(stmts, { actIdSelect });
+      }
       return null;
     }
     if (changed.includes("name")) {

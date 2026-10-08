@@ -216,6 +216,11 @@ export interface UpdateCardInput extends TypeSpec {
    *  (card-mod-recaptcha set/all/recaptcha.rb:41-44, 57-66). Same shape as
    *  the create-side field. */
   recaptchaToken?: string;
+  /** Work the request triggered for this save's :integrate stage
+   *  (`trigger: :required` events such as send_verification_email and
+   *  send_welcome_email): run after the save's rows are written and before
+   *  the delayed follower notice. */
+  triggeredIntegrate?: () => Promise<void>;
 }
 
 /** Card#delete! arguments (trash.rb:11-21 — an update save with trash:

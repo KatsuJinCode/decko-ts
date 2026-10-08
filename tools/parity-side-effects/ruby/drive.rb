@@ -245,6 +245,19 @@ rescue StandardError
   nil
 end
 
+# The Session-type card contents the visitor's session holds afterwards
+# (card-mod-session set/type/session.rb session_key "_card_<key>").
+def session_cards
+  sess = SESS.request&.session
+  return {} unless sess
+
+  sess.to_hash.select { |k, _| k.to_s.start_with?("_card_") }
+      .to_h { |k, v| [k.to_s.delete_prefix("_card_"), v] }
+      .reject { |_, v| v.nil? }
+rescue StandardError
+  {}
+end
+
 def step(name)
   before = counts
   since = max_id("card_actions")
@@ -270,7 +283,7 @@ def step(name)
     step: name, status: $status, headers: $headers, body: $body, delta: delta,
     actions: new_actions(since), events: $EVENTS.dup,
     files: files_list - files_before, mail: drain_mail, extra: extra, swallowed: $SWALLOWED.dup,
-    signed_in_as: session_user
+    signed_in_as: session_user, session_cards: session_cards
   }
 end
 
@@ -310,7 +323,9 @@ Card::Auth.as_bot do
   end
   Card.create!(name: "*all+Parity Follower+*follow", content: "*always") unless Card["*all+Parity Follower+*follow"]
   # An administrator, for the steps that need account-manager and
-  # structure rights (skins, styles, layouts, renaming account holders).
+  # structure rights (skins, styles, layouts, approvals, account deletion).
+  # A user's +*roles card is a virtual search in this deck; membership is
+  # the role's +*members list, so the account is added there.
   unless Card["Parity Admin"]
     Card.create!(
       name: "Parity Admin", type_id: Card::UserID,
@@ -319,9 +334,36 @@ Card::Auth.as_bot do
           "+*email" => { content: "admin.probe@example.com" },
           "+*password" => { content: "Admin horse battery 5%" },
           "+*status" => { content: "active" }
-        } },
-        "+*roles" => { content: %w[Administrator].to_json }
+        } }
       }
+    )
+  end
+  members = Card.fetch("Administrator", :members, new: {})
+  unless members.item_names.include?("Parity Admin")
+    members.add_item "Parity Admin"
+    members.save!
+  end
+  # A pending sign-up (status "pending", as an anonymous sign-up leaves it
+  # when the deck requires approval) for the administrator to approve, and an
+  # ordinary account for the administrator to delete.
+  unless Card["Parity Pending"]
+    Card.create!(
+      name: "Parity Pending", type_id: Card::SignupID,
+      subcards: { "+*account" => { subcards: {
+        "+*email" => { content: "pending.probe@example.com" },
+        "+*password" => { content: "Pending horse battery 7*" },
+        "+*status" => { content: "pending" }
+      } } }
+    )
+  end
+  unless Card["Parity Leaver"]
+    Card.create!(
+      name: "Parity Leaver", type_id: Card::UserID,
+      subcards: { "+*account" => { subcards: {
+        "+*email" => { content: "leaver.probe@example.com" },
+        "+*password" => { content: "Leaver horse battery 8(" },
+        "+*status" => { content: "active" }
+      } } }
     )
   end
 end

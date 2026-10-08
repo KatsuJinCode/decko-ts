@@ -53,6 +53,7 @@ const { SessionStore } = await import(dist("card/auth/session-store.js"));
 const { LocalAttachmentStore } = await import(dist("card/attachments/attachment-store.js"));
 const { CaptureTransport } = await import(dist("card/notify/transport.js"));
 const { DeckoName } = await import(dist("card/name.js"));
+const { pageViewCookie, readVisitorSession, VISITOR_COOKIE_NAME } = await import(dist("card/session/visitor-session.js"));
 
 const START = process.argv[2];
 const WORK = process.argv[3];
@@ -211,24 +212,42 @@ function encode(params) {
 // Mail::Message#from reports it on the Ruby side.
 const addressOf = (h) => { const m = h.match(/<([^>]+)>/); return (m ? m[1] : h).trim(); };
 
-let cookie = null;
+// The cookie jar: the sign-in cookie and the visitor-session cookie.
+const jar = new Map();
+const cookieHeader = () => [...jar.entries()].map(([k, v]) => `${k}=${v}`).join("; ") || undefined;
+function storeCookie(setCookie) {
+  if (typeof setCookie !== "string") return;
+  const pair = setCookie.split(";")[0];
+  const eq = pair.indexOf("=");
+  const name = pair.slice(0, eq).trim();
+  const value = pair.slice(eq + 1).trim();
+  if (value === "" || /Max-Age=0/i.test(setCookie)) jar.delete(name);
+  else jar.set(name, value);
+}
+let lastRevId = null;
 let mailConsumed = 0;
 let events = [];
 
+// A GET is answered from the fetch layer (no render surface in process):
+// 200 when the card resolves, 404 when it does not. A page view of a known
+// card joins the visitor's location history through the port's page-view
+// hook, as the host's page route records it.
 async function read(path) {
+  const json = /\.json$/i.test(path);
   const mark = decodeURIComponent(path.replace(/^\//, "")).replace(/\.json$/i, "").replace(/_/g, " ");
-  if (mark === "") return { status: 200, headers: {}, body: "" };
-  const rec = await fetcher.fetchByKey(DeckoName.parse(mark).key);
-  return rec === undefined || rec.trash
-    ? { status: 404, headers: {}, body: "" }
-    : { status: 200, headers: {}, body: "" };
+  const rec = mark === "" ? { trash: false, codename: "home" } : await fetcher.fetchByKey(DeckoName.parse(mark).key);
+  const known = rec !== undefined && !rec.trash;
+  storeCookie(pageViewCookie(cookieHeader(), `http://127.0.0.1${path.replace(/ /g, "%20")}`,
+    { known, html: !json, ajax: false, codename: rec?.codename ?? null }));
+  return { status: known ? 200 : 404, headers: {}, body: "" };
 }
 
 async function call(method, path, params) {
   if (method === "get") return read(path);
   const enc = encode(params);
   const headers = { host: "127.0.0.1", "content-type": enc.contentType };
-  if (cookie) headers.cookie = cookie;
+  const c = cookieHeader();
+  if (c) headers.cookie = c;
   const res = await handleWriteRequest(
     {
       driver, fetcher, now: () => FROZEN, attachmentStore, accountMail, notifyTransport: transport,
@@ -237,19 +256,49 @@ async function call(method, path, params) {
     { method: method.toUpperCase(), pathname: path, host: "127.0.0.1", scheme: "http",
       headers, body: enc.body, bodyBytes: enc.bodyBytes });
   if (res === null) return { status: 404, headers: {}, body: "(no write route)" };
-  const sc = res.headers?.["Set-Cookie"];
-  if (typeof sc === "string") {
-    const token = readSessionCookie(sc.split(";")[0]);
-    cookie = token ? sc.split(";")[0] : null;
-  }
+  storeCookie(res.headers?.["Set-Cookie"]);
+  storeCookie(res.visitorCookie);
   return res;
 }
 
 async function signedInAs() {
-  const token = cookie ? readSessionCookie(cookie) : null;
+  const token = jar.has("decko_ts_session") ? readSessionCookie(cookieHeader()) : null;
   if (!token) return null;
   const actor = await sessions.lookupSession(token);
   return actor?.name ?? null;
+}
+
+const sessionCards = () => readVisitorSession(cookieHeader()).cards;
+
+// Placeholders (see ruby/scenarios.rb): "$rev_id" is the rev_id the
+// previous response named; "$create_action:<name>" the first action id
+// recorded on that card.
+async function resolvePlaceholders(value) {
+  if (Array.isArray(value)) return Promise.all(value.map(resolvePlaceholders));
+  if (value !== null && typeof value === "object" && !("upload" in value)) {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) out[k] = await resolvePlaceholders(v);
+    return out;
+  }
+  if (value === "$rev_id") {
+    if (lastRevId === null) throw new Error("no rev_id in the previous response");
+    return lastRevId;
+  }
+  const m = typeof value === "string" ? /^\$create_action:(.+)$/.exec(value) : null;
+  if (m) {
+    const r = await driver.query(
+      "select min(a.id) as id from card_actions a join cards c on c.id = a.card_id where c.key = ?",
+      [DeckoName.parse(m[1]).key]);
+    if (r.rows[0]?.id == null) throw new Error(`no card ${m[1]}`);
+    return String(r.rows[0].id);
+  }
+  return value;
+}
+
+function rememberRevId(res) {
+  const loc = String(res.headers?.Location ?? res.headers?.location ?? "");
+  const m = /rev_id=(\d+)/.exec(loc) ?? /rev_id(?:%5D|\]|")?[=:]\s*"?(\d+)/.exec(String(res.body ?? ""));
+  lastRevId = m ? m[1] : null;
 }
 
 const scenarios = JSON.parse(readFileSync(join(here, "scenarios.json"), "utf8"));
@@ -262,7 +311,8 @@ for (const s of scenarios.steps) {
   let res = { status: null, headers: {}, body: "" };
   let extra = null;
   try {
-    res = await call(s.method, s.path, s.params);
+    res = await call(s.method, s.path, s.params ? await resolvePlaceholders(s.params) : undefined);
+    rememberRevId(res);
   } catch (e) {
     extra = { raised: e?.constructor?.name, error: String(e?.message ?? e).slice(0, 300),
       stack: String(e?.stack ?? "").split("\n").slice(1, 6).join(" | ") };
@@ -284,7 +334,7 @@ for (const s of scenarios.steps) {
       subject: String(m.subject ?? ""),
       text_body: String(m.textBody ?? ""), html_body: String(m.htmlBody ?? ""),
     })),
-    extra, signed_in_as: await signedInAs(),
+    extra, signed_in_as: await signedInAs(), session_cards: sessionCards(),
   });
 }
 console.log(JSON.stringify({ engine: "decko-ts", network_blocked: networkBlocked, steps }, null, 2));
