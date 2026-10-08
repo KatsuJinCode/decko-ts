@@ -638,6 +638,16 @@ export interface RenderFormatOptions {
 /** Card.config.max_depth (prototype/lib/cardio/railtie.rb:17). */
 export const RUBY_MAX_DEPTH = 20;
 
+/** The UserError monitor_depth raises (card-1.110.0 format/error.rb:33-40)
+ *  with card-mod-format's `format_too_deep` locale line (en.yml:23). As a
+ *  UserError its message renders verbatim in the quiet error span. */
+export class TooDeepError extends Error {
+  constructor() {
+    super("Man, you're too deep.  (Too many levels of nests at a time)");
+    this.name = "TooDeepError";
+  }
+}
+
 /**
  * The setting codenames whose `Right::*` set modules
  * `include_set Abstract::VirtualSet` (card-mod-rules-0.20.0
@@ -1747,8 +1757,14 @@ export class RenderFormat {
       // threading — it is engine state (defaultNestView).
       nestQuietErrors: this.nestQuietErrors,
     });
-    if (this.depth >= this.maxDepth) {
-      throw new Error(`nest depth exceeded (${effectiveCard.name.s})`);
+    // format/error.rb:33-40 monitor_depth runs in the SUBFORMAT's ok_view
+    // (view.rb:86), before its wrap_and_render rescue: a subformat at
+    // max_depth raises the too-deep UserError out of its own render, so the
+    // RENDER THAT NESTED IT rescues it (its quiet span replaces that whole
+    // view, e.g. the core of a chain's twentieth card). Hence the throw sits
+    // outside this nest's catch below.
+    if (sub.depth >= this.maxDepth) {
+      throw new TooDeepError();
     }
     // Production render-error semantics (error.rb rescue_view quiet branch,
     // reached through format/render.rb wrap_and_render's rescue): a nested
@@ -2419,8 +2435,8 @@ export class RenderFormat {
       maxDepth: this.maxDepth,
       nestQuietErrors: this.nestQuietErrors,
     });
-    if (this.depth >= this.maxDepth) {
-      throw new Error(`nest depth exceeded (${this.maxDepth}) at ${shaped.name.s}`);
+    if (sub.depth >= this.maxDepth) {
+      throw new TooDeepError(); // monitor_depth, see nest()
     }
     return sub.renderView(view, viewOpts);
   }
@@ -2932,8 +2948,8 @@ export class RenderFormat {
       // nest.rb:46 `sub.main! if view_opts[:main]`
       main: true,
     });
-    if (this.depth >= this.maxDepth) {
-      throw new Error(`nest depth exceeded (${root.card.name.s})`);
+    if (sub.depth >= this.maxDepth) {
+      throw new TooDeepError(); // monitor_depth, see nest()
     }
     return this.withNestMode("normal", () =>
       sub.renderView(this.modalNestView(view, root.card), {
@@ -3888,7 +3904,7 @@ export function quietRenderError(
   view: string,
 ): string {
   const msg =
-    error instanceof UnsupportedViewError
+    error instanceof UnsupportedViewError || error instanceof TooDeepError
       ? error.message
       : `Error rendering: ${h(card.name.s)} (${view} view)`;
   return `<span class="render-error alert alert-danger">${msg}</span>`;
