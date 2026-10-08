@@ -210,7 +210,7 @@ describe("flat-record format-scope census (composed deck)", () => {
     ]);
   });
 
-  it("the empty-setKeys fallback set spans more than one kind for exactly twenty-three views", () => {
+  it("the empty-setKeys fallback set spans more than one kind for exactly twenty-five views", () => {
     // The arm's SECOND dimension: abstract modules (Ruby: nonbase
     // registration, reachable only via include_set) mix with base and
     // nonbase modules in one chain. Unobservable from src (safeSetKeys
@@ -227,7 +227,10 @@ describe("flat-record format-scope census (composed deck)", () => {
     // the edit mod's all-set rows of the same names); +content_formgroups
     // at the mod-completion-100 lane (the signup :content_formgroups
     // registration joining the edit mod's all-set row - the walk arms the
-    // lane ported into the edit mod's contentFormgroupsView).
+    // lane ported into the edit mod's contentFormgroupsView); +nav_item
+    // +nav_link_in_dropdown at the edge view-registry lane (Abstract::Items'
+    // dropdown :nav_item and Self::DropdownDivider's two views joining
+    // card-mod-layout's all-set rows).
     const byView = new Map<string, CensusEntry[]>();
     for (const e of entries) {
       const list = byView.get(e.view) ?? [];
@@ -250,6 +253,8 @@ describe("flat-record format-scope census (composed deck)", () => {
       "help_text",
       "input",
       "javascript_include_tag",
+      "nav_item",
+      "nav_link_in_dropdown",
       "new",
       "new_buttons",
       "not_found",

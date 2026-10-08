@@ -72,6 +72,7 @@ import {
   SETTING_GROUPS,
   isTemplatedNestsName,
   templateLinkSetNameFromParts,
+  baseTableEntry,
   flatViewRefused,
   visibleSettingCodenames,
   visibleSettingsForGroup,
@@ -2223,7 +2224,11 @@ export class RenderEngine implements RenderEngineLike {
     // the pre-chain dispatch path when no loader is registered. A flat view
     // Ruby defines only on some sets resolves only for cards in them.
     if (flatViewRefused(view, card.setKeys)) return undefined;
-    return this.views[view];
+    // With a deck bound, the base layer is the compiled-in table as it
+    // stood before the deck registered into the shared record: the record
+    // also carries the abstract sets' views for the loader-less dispatch,
+    // and those reach only the sets that include them (the chain above).
+    return loader !== undefined ? baseTableEntry(view) : this.views[view];
   }
 
   /** ONE statement: the deck's committed-write stamp read (the render

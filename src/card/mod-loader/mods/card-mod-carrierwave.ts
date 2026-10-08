@@ -77,11 +77,11 @@
 
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import { allHtmlViewsOneLineContentView } from "./card-mod-format.js";
-import { codedSvgFileBytes } from "../../render/coded-attachment-files.js";
 import {
   cloudImageUrl,
   derivedCloudAttachmentSource,
   formatFileCore,
+  formatImageCore,
   HTML_VIEWS,
 } from "../../render/views.js";
 import { h } from "../../render/slot-html.js";
@@ -207,7 +207,10 @@ function imageSource(ctx: ViewContext): string {
     // "(my_bucket)/..." src live never emits (and left the raw-bucket
     // regression the unexplained-defects trace flagged once the engine
     // started rendering image bodies non-empty).
-    return cloudImageUrl(raw, ctx.voo?.opts.size, ctx.fmt.engine.imageCdnHost);
+    // determine_image_size (set/type/image.rb:44-57): voo.size, then the
+    // main card's :large, then the default :medium.
+    const size = ctx.voo?.opts.size ?? (ctx.fmt.isMain ? "large" : undefined);
+    return cloudImageUrl(raw, size, ctx.fmt.engine.imageCdnHost);
   }
   return contextualizePath(raw);
 }
@@ -242,39 +245,22 @@ const imageOneLineContentView: ViewFn = (ctx) => {
 // image html-format views (set/type/image/html_views.rb).
 // ---------------------------------------------------------------------------
 
-/** set/type/image/html_views.rb:5-11 view :core.
- *  set/type/file.rb:34-45 handle_source: blank src short-circuits to ""
- *  (the content-view wrapper renders an empty body, e.g. corpus:79 *logo
- *  with dbContent that does not match any storage prefix).
- *  SVG SHORT-CIRCUIT FIRST (html_views.rb:5-11 `return
- *  card.attachment.read.html_safe if svg?`): a coded svg attachment renders
- *  its RAW FILE BYTES, not an <img> URL — the same seam the flat registry's
- *  formatImageCore takes (see coded-attachment-files.ts; the vendored bytes
- *  are the decko project's own asset, sha256-verified against the oracle
- *  deck's file, not against any capture).
- *  CLOUD content renders the live deck's image_tag byte shape —
- *  `<img alt="NAME" src="..." />` (alt first: Rails image_tag inserts
- *  :src into an options hash already carrying :alt; live + oracle
- *  receipts in views.ts cloudImageUrl). Web/local keep the headless
- *  shapes their existing pins carry. */
-const imageHtmlCoreView: ViewFn = (ctx) => {
-  const svgBytes = codedSvgFileBytes(ctx.fmt.card.dbContent);
-  if (svgBytes !== undefined) return svgBytes;
-  const src = imageSource(ctx);
-  if (src === "") {
-    // Ruby's handle_source: blank -> "" (no comment, no leak).
-    return "";
-  }
-  if (src === "missing") {
-    // with_valid_source / invalid_image (html_views.rb:13-23 + 31-34):
-    // missing source -> "<!-- invalid image for NAME; source: SOURCE -->"
-    return `<!-- invalid image for ${h(ctx.fmt.card.name.s)}; source: ${h(src)} -->`;
-  }
-  if (storageTypeFromContent((ctx.fmt.card.dbContent ?? "").trim()) === "cloud") {
-    return `<img alt="${h(ctx.fmt.card.name.s)}" src="${h(src)}" />`;
-  }
-  return `<img src="${h(src)}" alt="${h(ctx.fmt.card.name.s)}">`;
-};
+/** set/type/image/html_views.rb:5-11 view :core: the svg short-circuit
+ *  (`return card.attachment.read.html_safe if svg?`), then
+ *  `handle_source { |source| image_tag source, alt: card.name }` with
+ *  determine_image_size (set/type/image.rb:44-57: voo.size, the main card's
+ *  :large, else :medium). The body is the base table's image core
+ *  (views.ts formatImageCore), the one the captured pages pin for every
+ *  storage shape: one implementation, so the chain and the base table
+ *  cannot render an image differently. */
+const imageHtmlCoreView: ViewFn = (ctx) =>
+  formatImageCore(
+    ctx.fmt.card.dbContent,
+    ctx.fmt.card.id,
+    ctx.fmt.card.name.s,
+    ctx.voo?.opts.size ?? (ctx.fmt.isMain ? "large" : "medium"),
+    ctx.fmt.engine.imageCdnHost,
+  );
 
 /** set/type/image/html_views.rb:25-29 view :full_width. Same blank-src
  *  short-circuit as :core (file.rb:34-45 handle_source). */

@@ -25,6 +25,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
   bindModLoaderToEngine,
   createRenderTestStorage,
+  renderThroughRecord,
   seedCard,
   type RenderTestStorage,
 } from "../render/render-test-storage.js";
@@ -261,7 +262,7 @@ describe("card-mod-account through the mod loader (A/B)", () => {
       "<h2>Account Closed</h2>\n" +
       "<p>The sign-in account once associated with this card has been removed, " +
       "the card has been anonymized, and its data fields have been deleted.</p>";
-    expect(await s.engine.render("Oracle Closed Probe", "closed_account")).toBe(expected);
+    expect(await renderThroughRecord(s, "Oracle Closed Probe", "closed_account")).toBe(expected);
   });
 
   it("WITH the mod: :raw on User+email returns the card's dbContent (type_plus_right/user/email.rb:7-9)", async () => {

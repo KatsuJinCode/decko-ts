@@ -6235,6 +6235,19 @@ export function flatViewRefused(view: string, setKeys: string): boolean {
   return scope !== undefined && scope.selfGated !== true && !cardInRubySets(setKeys, scope.sets);
 }
 
+/** The base table's own bodies, for a set module whose Ruby view the base
+ *  table already serves through a type-gated branch (the Bootswatch skin
+ *  family): the chain registration and the base entry then share one body.
+ *  Function declarations, so a mod module can bind them however the import
+ *  graph orders evaluation. */
+export function baseTableView(view: string): ViewFn {
+  return function sharedBaseView(ctx: ViewContext): string {
+    const fn = BASE_TABLE_VIEWS[view];
+    if (fn === undefined) throw new UnsupportedViewError(view, ctx.fmt.card.name.s);
+    return fn(ctx);
+  };
+}
+
 export const HTML_VIEWS: Record<string, ViewFn> = {
   title: titleView,
   title_link: titleLinkView,
@@ -6485,3 +6498,15 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   // each fn; see src/card/render/navbar-views.ts.
   ...NAVBAR_VIEWS,
 };
+
+/** HTML_VIEWS as compiled, before any mod deck registers into it. */
+const BASE_TABLE_VIEWS: Readonly<Record<string, ViewFn>> = { ...HTML_VIEWS };
+
+/** The compiled base table's entry for a view: the base layer under a bound
+ *  mod deck's chain. The shared HTML_VIEWS record also carries the deck's
+ *  all-set and abstract-set registrations for the loader-less dispatch; an
+ *  abstract module's views reach only the sets that include it, which the
+ *  chain resolves, so a chain-bound engine falls back here instead. */
+export function baseTableEntry(view: string): ViewFn | undefined {
+  return BASE_TABLE_VIEWS[view];
+}

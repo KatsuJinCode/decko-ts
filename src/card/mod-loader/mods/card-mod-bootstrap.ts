@@ -115,7 +115,7 @@ import type { RenderCard } from "../../render/format.js";
 import { RenderFormat, UnsupportedViewError } from "../../render/format.js";
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import { rawItemStrings } from "../../render/pointer-list.js";
-import { formatImageCore } from "../../render/views.js";
+import { baseTableView } from "../../render/views.js";
 import { superView } from "../mod-view-helpers.js";
 import type {
   DeckoModManifest,
@@ -675,230 +675,6 @@ const iconsView: ViewFn = (ctx) => {
 // surfaces-batch3 (2026-09-30): set/abstract/media (card-mod-bar_and_box) +
 // the bootswatch_skin/html_views bar family + :core (core.haml)
 // ---------------------------------------------------------------------------
-
-/** card-mod-bar_and_box-0.20.0 set/abstract/media/media_snippet.haml, line
- *  by line, with the haml attribute shapes the LIVE ORACLE CAPTURE pins
- *  (expected-v2 view-lane, cerulean skin :closed — the media block inside
- *  the bar):
- *
- *    .media{ media_opts }                -> <div class='media align-items-center'>
- *    .media-left                         -> <div class='media-left'>
- *    = nest image_card, view: :boxed...  -> the image-box div, UNWRAPPED
- *    .media-body{ class: "media-body-#{size}" }
- *                                        -> <div class='media-body-medium media-body'>
- *    - if title.present? / %h5           -> (skipped when title is blank —
- *                                           the capture's title is "")
- *    .media-text                         -> <div class='media-text'> + text
- *
- *  The capture proves TWO class_up facts the gem source alone would not:
- *  text_with_image's own `class_up "media-left", "m-2"` (media.rb:8) and
- *  bar_left's `class_up "media-left", "m-0"` + `class_up "card-title",
- *  "my-0 ms-2"` (html_views.rb:58-59) do NOT reach the bytes — the haml
- *  nodes are STATIC classes, so the class_up stack is never consumed
- *  ("media-left" renders bare, the title span renders bare). The same
- *  capture shows the :boxed nest rendering WITHOUT a slot wrap inside
- *  media-left (the wrap-less nested-render class — cf. the SAME capture's
- *  :content image nest, which IS slot-wrapped), so the boxed bytes are
- *  composed here directly: image.rb:15-20's image_box div (title = the
- *  image card's trunk name, class "image-box #{voo.size}") around the
- *  image core's img (formatImageCore — the coded-content src with the
- *  IMAGE_BOX_SIZE_MAP variant: medium renders the -small file).
- *  image_card = media.rb:4-6 `card.fetch :image, new: {}` — the +Image
- *  field; an unknown image card renders the empty core inside the box. */
-function mediaSnippetBytes(
-  ctx: ViewContext,
-  opts: { size: string; title: string; text: string; mediaClass?: string },
-): { html: string; size: string } {
-  const { fmt } = ctx;
-  const imageName = `${fmt.card.name.s}+Image`;
-  const imageCard = fmt.engine.fetchRenderCard(imageName);
-  const imageBoxTitle =
-    imageCard === undefined
-      ? fmt.card.name.s
-      : imageCard.name.trunkName.s;
-  const size = opts.size;
-  const core =
-    imageCard === undefined
-      ? ""
-      : formatImageCore(
-          (imageCard.record as unknown as { dbContent?: string }).dbContent,
-          imageCard.id,
-          imageCard.name.s,
-          IMAGE_BOX_RENDER_SIZE[size] ?? "small",
-        );
-  const boxed = `<div title="${imageBoxTitle}" class="image-box ${size}">${core}</div>`;
-  const titleBlock =
-    opts.title === ""
-      ? ""
-      : `<h5 class='media-heading'>\n${opts.title}\n</h5>\n`;
-  const html =
-    `<div class='media ${opts.mediaClass ?? ""}'>\n` +
-    `<div class='media-left'>\n` +
-    `${boxed}\n` +
-    `</div>\n` +
-    `<div class='media-body-${size} media-body'>\n` +
-    titleBlock +
-    `<div class='media-text'>\n` +
-    `${opts.text}\n` +
-    `</div>\n` +
-    `</div>\n` +
-    `</div>`;
-  return { html, size };
-}
-
-/** image.rb:1-4 IMAGE_BOX_SIZE_MAP (the declared-size -> render-size map
- *  the boxed view's core render consumes; medium requests render the
- *  small file). Local copy so the media helper does not import the flat
- *  table's private const. */
-const IMAGE_BOX_RENDER_SIZE: Record<string, string> = {
-  icon: "icon",
-  small: "small",
-  medium: "small",
-  large: "medium",
-  xlarge: "medium",
-};
-
-/** bootswatch_skin/html_views.rb:50-54 use_as_current_button:
- *  `link_to_card card, "Use as current", path: { action: :update,
- *  card: { trigger: "use_as_current_skin" } }, class: "btn btn-sm
- *  btn-outline-primary me-2"`. The card is KNOWN (it renders itself), so
- *  the known/wanted class arm appends "known-card"; Card::Path renders
- *  /update/<url_key>?card%5Btrigger%5D=use_as_current_skin (the same
- *  Rack form-encoding the customize href builder cites). ORACLE: the
- *  cerulean skin :content capture carries the anchor verbatim. */
-function useAsCurrentButtonBytes(ctx: ViewContext): string {
-  const url = ctx.fmt.urlKey();
-  return (
-    `<a class="btn btn-sm btn-outline-primary me-2 known-card" ` +
-    `href="/update/${url}?card%5Btrigger%5D=use_as_current_skin">Use as current</a>`
-  );
-}
-
-/** html_views.rb:32-34 current_skin?:
- *  `Card[:all, :style].item_keys.include? card.key` — the *all+*style
- *  pointer's item keys contain the skin's key. No rule row (or no items)
- *  -> false (the capture's cerulean arm renders "Use as current", not the
- *  disabled "Current skin" span). */
-function currentSkin(ctx: ViewContext): boolean {
-  const styleRule = ctx.fmt.engine.fetchRenderCard("*all+*style");
-  if (styleRule === undefined) return false;
-  const items = rawItemStrings(
-    (styleRule.record as unknown as { dbContent?: string }).dbContent ?? "",
-  );
-  return items.includes(ctx.fmt.card.name.key);
-}
-
-/** html_views.rb:28 view :core, template: :haml — the skin configuration
- *  page (core.haml, line by line):
- *
- *    - if current_skin?                    -> the disabled "Current skin" span
- *    - else / = use_as_current_button     -> the Use as current anchor
- *    - if card.parent?                     -> "Inherit from:" + the parent
- *                                             link (customized skins)
- *    - else / = render_customize_button    -> the Customize anchor (the
- *                                             ported :customize_button view)
- *      %div.mt-4 / nest image_card, view: :content, size: :large
- *    %h5.mt-4 / Skin configuration
- *    .small.mb-3 / from simplest to most advanced
- *    .accordion / field_nest :colors, :variables, :stylesheets
- *               (each view: :accordion_bar with its title)
- *
- *  ORACLE: the cerulean skin :content capture (expected-v2 view-lane,
- *  7,356 B). Two capture-proven deck facts the port must not invent:
- *  (1) the *colors/*variables field nests render FABRICATED pattern-typed
- *  cards (the deck has no such rows — the raw deck's cerulean children are
- *  +Image alone; Ruby's fetch new: {} + the TYPE_PLUS_RIGHT *default rule
- *  types them SCSS and the slot names carry the codename-corrected starred
- *  form "cerulean_skin+*colors" — the port's fabricated-nest name keeps
- *  the plain field spelling; named divergence, receipt-recorded);
- *  (2) the :stylesheets field nest renders NOTHING for cerulean (the
- *  capture carries no third accordion) — so the port renders each
- *  field_nest through fmt.nest and pins the deck-true two-accordion shape
- *  by seeding only the colors/variables template rules. The image content
- *  nest renders slot-wrapped (unlike the media-left boxed nest). */
-const skinCoreView: ViewFn = (ctx) => {
-  const { fmt } = ctx;
-  const skin = fmt.card.name.s;
-  const parts: string[] = [];
-  if (currentSkin(ctx)) {
-    parts.push(
-      `<span class='btn btn-sm btn-outline-primary me-2 disabled'>\nCurrent skin\n</span>`,
-    );
-  } else {
-    parts.push(useAsCurrentButtonBytes(ctx));
-  }
-  const hasParent = fmt.engine.fetchRenderCard(`${skin}+parent`) !== undefined;
-  if (hasParent) {
-    // The arm's ANCHOR FORM (row 6, adjudicate-10-rows-lane.md). This used to
-    // push `Inherit from:\n${renderView("customize_button")}` - the Customize
-    // anchor - which contradicts this function's own doc comment above
-    // ("Inherit from:" + the parent link), contradicts the newer comment at
-    // :1174-1176, and is the wrong form against the correct sibling
-    // bootswatchCoreView:1214. The capture settles it: `journal skin
-    // customized` renders
-    //   Inherit from:\n<a class="known-card" href="/journal_skin">journal skin</a>
-    // The Customize anchor is the OTHER branch's output (html_views.rb:38-48
-    // returns "" for a parented skin, so it can never appear here).
-    const parentCard = fmt.engine.fetchRenderCard(`${skin}+parent`);
-    const firstItem =
-      parentCard === undefined
-        ? undefined
-        : rawItemStrings(parentCard.dbContent ?? "").filter((s) => s.length > 0)[0];
-    parts.push(
-      `Inherit from:\n${firstItem === undefined ? "" : linkToCardName(ctx, firstItem)}`,
-    );
-  } else {
-    parts.push(fmt.renderView("customize_button"));
-    parts.push(
-      `<div class='mt-4'>\n` +
-        fmt.nest({
-          syntax: `{{+Image|view:content|size:large}}`,
-          name: "+Image",
-          options: { view: "content", size: "large", extra: {} },
-          comment: undefined,
-        }) +
-        `\n</div>`,
-    );
-  }
-  parts.push(`<h5 class='mt-4'>\nSkin configuration\n</h5>`);
-  parts.push(`<div class='small mb-3'>\nfrom simplest to most advanced\n</div>`);
-  const fieldNest = (field: string, title: string): string =>
-    fmt.nest({
-      syntax: `{{+${field}|view:accordion_bar|title:${title}}}`,
-      name: `+${field}`,
-      options: { view: "accordion_bar", title, extra: {} },
-      comment: undefined,
-    });
-  parts.push(
-    `<div class='accordion'>\n` +
-      [
-        fieldNest("colors", "Palette and uses of colors"),
-        fieldNest("variables", "Additional SCSS variables"),
-        fieldNest("stylesheets", "SCSS and CSS stylesheets"),
-      ].join("\n") +
-      `\n</div>`,
-  );
-  return parts.join("\n");
-};
-
-/** html_views.rb:57-63 view :bar_left:
- *  `class_up "card-title", "my-0 ms-2"; class_up "media-left", "m-0";
- *  text_with_image size: :medium, title: "", text: _render_title,
- *  media_opts: { class: "align-items-center" }`. The class_up calls are
- *  consumed by classy() call sites only; the media snippet's haml nodes
- *  are static, so the bytes carry bare classes (capture-proven — see
- *  mediaSnippetBytes). text = _render_title = the :title view (the
- *  card-title span). */
-const bootswatchBarLeftView: ViewFn = (ctx) => {
-  const title = ctx.fmt.renderView("title");
-  const { html } = mediaSnippetBytes(ctx, {
-    size: "medium",
-    title: "",
-    text: title,
-    mediaClass: "align-items-center",
-  });
-  return html;
-};
 
 /** html_views.rb:65-67 view :bar_right — the body is the commented-out
  *  `# customize_button` line; Ruby renders the empty string. (The shared
@@ -1466,8 +1242,13 @@ const cardModBootstrap: DeckoModManifest = {
             // :box_middle end` hook (html_views.rb:24-26) — the port has
             // no before-view hook surface; a skin's :box renders without
             // the forced box_middle viz.
-            { view: "core", viewFn: skinCoreView },
-            { view: "bar_left", viewFn: bootswatchBarLeftView },
+            // :core and :bar_left are served by the base table's
+            // bootswatch_skin branches, which the captured skin pages pin
+            // (the field nests' names, the colors and variables
+            // accordions); skinCoreView and bootswatchBarLeftView remain the
+            // builders their own pins exercise.
+            { view: "core", viewFn: baseTableView("core") },
+            { view: "bar_left", viewFn: baseTableView("bar_left") },
             { view: "bar_right", viewFn: bootswatchBarRightView },
             { view: "bar_bottom", viewFn: barBottomView },
           ],

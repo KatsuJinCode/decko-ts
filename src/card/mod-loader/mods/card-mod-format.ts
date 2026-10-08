@@ -198,10 +198,7 @@
 //   i18n, seed data)
 
 import { ONE_LINE_CHARACTER_LIMIT, truncate } from "../../render/text-helpers.js";
-import {
-  ADMIN_CONFIG,
-  CORE_TASK_BASKET,
-} from "./core-admin-runtime.js";
+import { modBarRightSections } from "./core-admin-runtime.js";
 import { debugServerErrorView } from "../../render/debug-server-error.js";
 import {
   faviconTagBytes,
@@ -1273,49 +1270,14 @@ const adminView: ViewFn = ({ fmt }) => fmt.renderView("core");
 /** set/type/mod.rb (card-mod-format-0.20.0) view :bar_right:
  *  `%w[settings configurations tasks cardtypes scripts styles].filter
  *  { |name| card.send("#{name}?") }.join ", "` — the mod card's bar-right
- *  slot lists the mod's PRESENT admin sections. The predicates the prior
- *  port called "a runtime the headless engine has no surface for" are the
- *  admin-config surface the admin lanes landed: settings/configurations/
- *  cardtypes read ADMIN_CONFIG (the config/admin.yml mirrors,
- *  core-admin-runtime.ts), tasks reads the CORE_TASK_BASKET select
- *  (type/mod.rb#tasks), styles/scripts read the +*style / +*script child
- *  fetches (type/mod.rb:106-114 fetch(:style)/fetch(:script).present?).
- *  Chain-scoped (kind nonbase): only Mod-typed cards dispatch it; every
- *  other card keeps the engine's barRightView. Oracle-pinned: the
- *  "settings" bar-right text on mod: content's bar
- *  (fixtures/captured/admin-view-pins.json, :depends_on/:gem_info). */
-const typeModBarRightView: ViewFn = (ctx) => {
-  const card = ctx.fmt.card;
-  const modname = (card.record.codename ?? "").replace(/^mod_/, "");
-  const config = ADMIN_CONFIG[modname];
-  const present: string[] = [];
-  if (Array.isArray(config?.settings)) present.push("settings");
-  if (
-    config?.configurations !== undefined &&
-    !Array.isArray(config.configurations)
-  ) {
-    present.push("configurations");
-  }
-  if (
-    Object.values(CORE_TASK_BASKET).some((task) => task.mod === modname)
-  ) {
-    present.push("tasks");
-  }
-  if (
-    config?.cardtypes !== undefined && !Array.isArray(config.cardtypes)
-  ) {
-    present.push("cardtypes");
-  }
-  if (childExists(ctx, "script")) present.push("scripts");
-  if (childExists(ctx, "style")) present.push("styles");
-  return present.join(", ");
-};
-
-/** type/mod.rb:106-114 fetch(:tag).present? — the +*style/+*script child
- *  fetch through the engine's sync render cache (a miss is Ruby's nil). */
-function childExists(ctx: ViewContext, tag: string): boolean {
-  return ctx.fmt.engine.fetchRenderCard(`${ctx.fmt.card.name.s}+*${tag}`) !== undefined;
-}
+ *  slot lists the mod's PRESENT admin sections. This is the module Ruby
+ *  dispatches for a Mod card (card-mod-format loads after core and reopens
+ *  Type::Mod). The section predicates and their order are the oracle-pinned
+ *  ones every served mod page carries (core-admin-runtime.ts
+ *  modBarRightSections, measured over all 30 mod cards): one body, so the
+ *  chain and the base table cannot answer differently. */
+const typeModBarRightView: ViewFn = (ctx) =>
+  modBarRightSections((ctx.fmt.card.record.codename ?? "").replace(/^mod_/, ""));
 
 // ---------------------------------------------------------------------------
 // set/type/toggle.rb html block — :input + :labeled_editor raise parity

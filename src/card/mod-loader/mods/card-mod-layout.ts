@@ -100,7 +100,13 @@ import {
   type ViewContext,
   type ViewFn,
 } from "../../render/format.js";
-import { myCardDropdownInnerHtml } from "../../render/navbar-views.js";
+import {
+  abstractItemsNavItemView,
+  dropdownDividerView,
+  myCardDropdownInnerHtml,
+  navbarItemsOverridden,
+  navbarLinksForMethodOverride,
+} from "../../render/navbar-views.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
 import type { DeckoModManifest } from "../mod-manifest.js";
@@ -664,7 +670,9 @@ function navbarItems(ctx: ViewContext, view: string, linkClass: string): string 
  *  class: "navbar-nav" do navbar_items end` - the block content is the
  *  substituted content string (see navbarItems). */
 const navbarLinksView: ViewFn = (ctx) =>
-  `<ul class="navbar-nav">${navbarItems(ctx, "nav_item", "nav-link")}</ul>`;
+  navbarItemsOverridden(ctx.fmt)
+    ? navbarLinksForMethodOverride(ctx)
+    : `<ul class="navbar-nav">${navbarItems(ctx, "nav_item", "nav-link")}</ul>`;
 
 // ---------------------------------------------------------------------------
 // the set-scoped head family (right/head.rb, self/head.rb, type/html.rb)
@@ -970,6 +978,29 @@ const cardModLayout: DeckoModManifest = {
             { view: "navbar_links", viewFn: navbarLinksView, config: { perms: "none" } },
             { view: "nav_item", viewFn: navItemView },
             { view: "nav_link_in_dropdown", viewFn: navLinkInDropdownView },
+          ],
+        },
+      },
+    },
+    {
+      // card-mod-layout-0.20.0/set/abstract/items.rb:1-5 view :nav_item
+      // (wrap_with_nav_item nav_dropdown): Pointer and List cards reach it
+      // through include_set Abstract::List -> Abstract::Items.
+      setPath: "abstract/items",
+      formats: {
+        html: {
+          views: [{ view: "nav_item", viewFn: abstractItemsNavItemView }],
+        },
+      },
+    },
+    {
+      // card-mod-layout-0.20.0/set/self/dropdown_divider.rb:3-11.
+      setPath: "self/dropdown_divider",
+      formats: {
+        html: {
+          views: [
+            { view: "nav_item", viewFn: dropdownDividerView },
+            { view: "nav_link_in_dropdown", viewFn: dropdownDividerView },
           ],
         },
       },

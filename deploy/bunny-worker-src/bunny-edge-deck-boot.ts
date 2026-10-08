@@ -50,6 +50,8 @@
 
 import { FetchEngine } from "../../src/card/fetch.js";
 import { RenderEngine } from "../../src/card/render.js";
+import { getDefaultModLoader } from "../../src/card/mod-loader.js";
+import { defaultDeckLoader } from "../../src/card/mod-loader/default-mod-deck.js";
 import type { SQLDatabaseDriver } from "../../src/server/driver.js";
 import { applyDeckInflections } from "../../src/card/name/inflect.js";
 import { ORACLE_DECK_INFLECTIONS } from "../../src/card/name/oracle-deck-inflections.js";
@@ -103,6 +105,12 @@ export async function bootCorpusDeckEngines(
   const fetcher = opts.maxTemporaryCacheKeys === undefined
     ? new FetchEngine(driver)
     : new FetchEngine(driver, { maxTemporaryCacheKeys: opts.maxTemporaryCacheKeys });
+  // THE VIEW REGISTRY: the composed mod deck, booted once per isolate (the
+  // Ruby boot's Cardio::Mod::Dirs load), before the render engine is built,
+  // so the engine binds it and resolves every view through the per-set
+  // chain the save path and the semantics census use, falling back to the
+  // compiled base table. load() is a few milliseconds of table building.
+  if (getDefaultModLoader() === undefined) defaultDeckLoader();
   const render = new RenderEngine(fetcher);
 
   // The sync name environment: the FetchEngine constructor installs the

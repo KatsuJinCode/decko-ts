@@ -48,6 +48,7 @@ import { fileURLToPath } from "node:url";
 import {
   bindModLoaderToEngine,
   createRenderTestStorage,
+  renderThroughRecord,
   seedCard,
   type RenderTestStorage,
 } from "../render/render-test-storage.js";
@@ -218,7 +219,7 @@ describe("card-mod-bootstrap through the mod loader", () => {
 
     it("renders the div.progress > div.progress-bar structure for numeric content", async () => {
       const s = storage!;
-      const html = await s.engine.render("Progress Numeric", "progress_bar");
+      const html = await renderThroughRecord(s, "Progress Numeric", "progress_bar");
       // progress_bar.rb:12 wrap_with :div, class: "progress" -> div.progress
       // progress_bar.rb:25-28 div.progress-bar with role/style/aria-*
       expect(html).toContain('<div class="progress">');
@@ -241,21 +242,21 @@ describe("card-mod-bootstrap through the mod loader", () => {
       // (anything over 100% does not exceed the bar). This test pins the
       // literal ruby semantics: width: 150% on the input "150".
       const s = storage!;
-      const html = await s.engine.render("Progress OutOfRange", "progress_bar");
+      const html = await renderThroughRecord(s, "Progress OutOfRange", "progress_bar");
       expect(html).toContain('style="width: 150%"');
       expect(html).toContain('aria-valuenow="150"');
     });
 
     it("renders the zero case (progress_bar.rb accepts value: 0)", async () => {
       const s = storage!;
-      const html = await s.engine.render("Progress Zero", "progress_bar");
+      const html = await renderThroughRecord(s, "Progress Zero", "progress_bar");
       expect(html).toContain('style="width: 0%"');
       expect(html).toContain('aria-valuenow="0"');
     });
 
     it("renders the decimal case (Number() accepts 12.5 -> 12.5)", async () => {
       const s = storage!;
-      const html = await s.engine.render("Progress Decimal", "progress_bar");
+      const html = await renderThroughRecord(s, "Progress Decimal", "progress_bar");
       expect(html).toContain('style="width: 12.5%"');
       // Math.round(12.5) === 13; the label is the rounded percent.
       expect(html).toContain('<span class="progress-value">13%</span>');
@@ -265,7 +266,7 @@ describe("card-mod-bootstrap through the mod loader", () => {
       // progress_bar.rb:7-8 else branch: "Only card with numeric content
       // can be shown as progress bar."
       const s = storage!;
-      const html = await s.engine.render("Progress NonNumeric", "progress_bar");
+      const html = await renderThroughRecord(s, "Progress NonNumeric", "progress_bar");
       expect(html).toBe(
         "Only card with numeric content can be shown as progress bar.",
       );
@@ -273,7 +274,7 @@ describe("card-mod-bootstrap through the mod loader", () => {
 
     it("renders the bootstrap error message for empty content", async () => {
       const s = storage!;
-      const html = await s.engine.render("Progress Empty", "progress_bar");
+      const html = await renderThroughRecord(s, "Progress Empty", "progress_bar");
       expect(html).toBe(
         "Only card with numeric content can be shown as progress bar.",
       );
@@ -281,7 +282,7 @@ describe("card-mod-bootstrap through the mod loader", () => {
 
     it("does NOT include a div.progress wrapper for the error branch", async () => {
       const s = storage!;
-      const html = await s.engine.render("Progress NonNumeric", "progress_bar");
+      const html = await renderThroughRecord(s, "Progress NonNumeric", "progress_bar");
       expect(html).not.toContain('<div class="progress">');
       expect(html).not.toContain("progress-bar");
     });

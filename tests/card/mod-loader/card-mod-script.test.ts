@@ -46,6 +46,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
   bindModLoaderToEngine,
   createRenderTestStorage,
+  renderThroughRecord,
   seedCard,
   type RenderTestStorage,
 } from "../render/render-test-storage.js";
@@ -212,7 +213,10 @@ describe("card-mod-script through the mod loader (A/B)", () => {
     bindModLoaderToEngine(storage!, loader!);
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
-    const html = await s.engine.render("Oracle Head Probe", "script_variables");
+    // The *style rule's :stylesheet_path is TypePlusRight::Set::Style's
+    // (card-mod-style), outside this script-only loader's chain; the
+    // record dispatch reaches the deck's registration.
+    const html = await renderThroughRecord(s, "Oracle Head Probe", "script_variables");
     // Oracle-pinned byte shape (capture quoted in the file header): the
     // Rails javascript_tag CDATA wrapper, the four variables in hash order,
     // each line "k=v;\n" (the trailing newline makes the blank line before

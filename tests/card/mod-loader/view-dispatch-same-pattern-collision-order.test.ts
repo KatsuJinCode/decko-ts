@@ -151,13 +151,14 @@ describe("one_line_content same-token order (format + carrierwave mods)", () => 
   it("image-typed cards dispatch the Type::Image icon core (image.rb:18-20)", async () => {
     // set/type/image.rb:17-20 `format do view :one_line_content do
     // _render_core size: :icon end` — the img tag the icon-size core
-    // renders for a web-URL source (web URLs stay raw, imageSource).
+    // renders for a web-URL source (web URLs stay raw; Rails image_tag
+    // puts alt before src, the captured shape).
     const html = await storage!.engine.render(
       "Dispatch Order Image Probe",
       "one_line_content",
     );
     expect(html).toBe(
-      '<img src="https://example.com/dispatch-probe.png" alt="Dispatch Order Image Probe">',
+      '<img alt="Dispatch Order Image Probe" src="https://example.com/dispatch-probe.png" />',
     );
   });
 

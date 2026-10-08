@@ -535,10 +535,12 @@ export class SetModuleViewTable {
       // marker so super() walks past re-openings.
       first.viewFn = viewFn;
       inner.set(view, viewFn);
+      this.byModuleViewFormat.set(`${setModule}\u0000${view}\u0000${format}`, viewFn);
       return;
     }
     inner.set(view, viewFn);
     this.order.push({ setModule, view, viewFn, kind, format });
+    this.byModuleViewFormat.set(`${setModule}\u0000${view}\u0000${format}`, viewFn);
   }
 
   /** The view fn a set module registered for the view under ONE format
@@ -546,14 +548,12 @@ export class SetModuleViewTable {
    *  matching registration wins - Ruby reopening). Undefined when the
    *  module never declared the view in that format. */
   viewForFormat(setModule: string, view: string, format: string): ViewFn | undefined {
-    for (let i = this.order.length - 1; i >= 0; i--) {
-      const e = this.order[i]!;
-      if (e.setModule === setModule && e.view === view && e.format === format) {
-        return e.viewFn;
-      }
-    }
-    return undefined;
+    return this.byModuleViewFormat.get(`${setModule}\u0000${view}\u0000${format}`);
   }
+
+  /** (setModule, view, format) -> view fn, kept in step with `order` by
+   *  register(): one registration per triple (a reopening updates it). */
+  private readonly byModuleViewFormat = new Map<string, ViewFn>();
 
   /** The view fn a set module registered for the given view name
    *  (undefined if none - the chain walker's "next module" probe). */
@@ -625,6 +625,7 @@ export class SetModuleViewTable {
   /** Drop every per-set-module registration. Loader-side reset hook. */
   clear(): void {
     this.byModule.clear();
+    this.byModuleViewFormat.clear();
     this.order.length = 0;
   }
 

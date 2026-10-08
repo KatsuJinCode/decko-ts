@@ -25,6 +25,7 @@ import { fileURLToPath } from "node:url";
 import {
   bindModLoaderToEngine,
   createRenderTestStorage,
+  renderThroughRecord,
   seedCard,
   type RenderTestStorage,
 } from "../render/render-test-storage.js";
@@ -353,9 +354,9 @@ describe("card-mod-list through the mod loader (A/B)", () => {
 
   it("WITH the mod: :input on the type-specific lists renders their editors (oracle bytes)", async () => {
     const s = storage!;
-    const nest = normalize(await s.engine.render("Oracle Nest List Probe", "input"));
+    const nest = normalize(await renderThroughRecord(s, "Oracle Nest List Probe", "input"));
     expect(nest).toBe(FIXTURE.rendered["Oracle Nest List Probe#input"]);
-    const link = normalize(await s.engine.render("Oracle Link List Probe", "input"));
+    const link = normalize(await renderThroughRecord(s, "Oracle Link List Probe", "input"));
     expect(link).toBe(FIXTURE.rendered["Oracle Link List Probe#input"]);
   });
 
@@ -420,10 +421,10 @@ describe("card-mod-list through the mod loader (A/B)", () => {
     // core, text-muted wrap) and card-mod-edit's base editors on non-family
     // cards; neither base surface is ported, so the mod fails loudly
     // instead of emitting wrong bytes (see the mod header)
-    await expect(s.engine.render("Oracle Probe Child", "one_line_content")).rejects.toThrow(
+    await expect(renderThroughRecord(s, "Oracle Probe Child", "one_line_content")).rejects.toThrow(
       /base-format view \(card-mod-format\/card-mod-edit\) is not ported/,
     );
-    await expect(s.engine.render("Oracle Probe Child", "input")).rejects.toThrow(
+    await expect(renderThroughRecord(s, "Oracle Probe Child", "input")).rejects.toThrow(
       /base-format view \(card-mod-format\/card-mod-edit\) is not ported/,
     );
   });
