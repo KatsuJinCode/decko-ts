@@ -3155,14 +3155,14 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
       notifyTransport: mailTransport,
       renderSlot:
         cookieActor !== null
-          ? async (name) => {
+          ? async (name, view) => {
               // Ruby's order: the save expires the saved card's cache
               // (cache/all.rb) BEFORE the soft redirect re-renders it —
               // without this the slot render reads the pre-save warm maps.
               fetcher.expireName(name);
               const actorEngine = engineForActor(cookieActor.id);
               actorEngine.expireRenderCard(name);
-              return actorEngine.render(name, "titled");
+              return actorEngine.render(name, view ?? "titled");
             }
           : undefined,
     },
@@ -3418,6 +3418,32 @@ const server = http.createServer(async (req, res) => {
        (pathname === "/*signin" && url.searchParams.get("view") === "edit"))
     ) {
       response = await renderForgotPasswordPage();
+    } else if (
+      STOCK_DECK &&
+      writePathEnabled() &&
+      req.method === "GET" &&
+      req.headers["x-requested-with"] === "XMLHttpRequest" &&
+      /^\/(card\/)?(create|update|delete)\/[^/]+$/.test(pathname) &&
+      !/^\/(card\/)?delete\/\*signin$/i.test(pathname)
+    ) {
+      // Decko's routes take create, update and delete over GET as well
+      // (engine_routes.rb "(card)/<action>(/:mark)"), and its own links use
+      // them through ajax: the follow buttons (GET /update/<card>+*follow?...)
+      // and the edit form's Delete. Served here for same-origin ajax only:
+      // the X-Requested-With header cannot be set by another site without
+      // CORS, so a plain cross-site link or image cannot change a card. The
+      // parameters ride the query string, as Ruby reads them.
+      const verb = /\/(create|update|delete)\//.exec(pathname)[1];
+      const writeReq = Object.assign(Object.create(req), {
+        method: verb === "delete" ? "DELETE" : "POST",
+        headers: req.headers,
+        url: req.url,
+      });
+      response = (await dispatchWriteRequest(writeReq, pathname, "")) ?? jsonResponse(404, { error: "no write route" });
+      expireRenderCachesAfterSave(
+        { fetcher, renderEngine: render, signedInEngines: signedInEngines.values() },
+        response,
+      );
     } else if (STOCK_DECK && req.method === "GET" && /^\/(card\/)?delete\/\*signin$/i.test(pathname)) {
       // The navbar's "Sign out" link is GET /delete/*signin: Decko's routes
       // take delete over GET (engine_routes.rb "(card)/delete(/:mark)"), and
