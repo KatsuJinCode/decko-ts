@@ -1,0 +1,169 @@
+{
+  "tables": {
+    "ar_internal_metadata": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "card_actions": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [
+        "{\"action_type\":0,\"card_act_id\":116060,\"card_id\":\"PodConflict Other 1\",\"comment\":null,\"draft\":0,\"super_action_id\":null}",
+        "{\"action_type\":0,\"card_act_id\":116061,\"card_id\":\"PodConflict Plain\",\"comment\":null,\"draft\":0,\"super_action_id\":null}",
+        "{\"action_type\":0,\"card_act_id\":116064,\"card_id\":\"PodConflict Plain 1\",\"comment\":null,\"draft\":0,\"super_action_id\":null}",
+        "{\"action_type\":1,\"card_act_id\":116062,\"card_id\":3285,\"comment\":null,\"draft\":0,\"super_action_id\":null}",
+        "{\"action_type\":1,\"card_act_id\":116063,\"card_id\":\"PodConflict Plain\",\"comment\":null,\"draft\":0,\"super_action_id\":null}",
+        "{\"action_type\":1,\"card_act_id\":116065,\"card_id\":\"PodConflict Other 1\",\"comment\":null,\"draft\":0,\"super_action_id\":null}",
+        "{\"action_type\":1,\"card_act_id\":116066,\"card_id\":\"PodConflict Plain\",\"comment\":null,\"draft\":0,\"super_action_id\":null}"
+      ],
+      "removed": []
+    },
+    "card_acts": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [
+        "{\"acted_at\":\"T\",\"actor_id\":1,\"card_id\":\"PodConflict Other 1\",\"ip_address\":null}",
+        "{\"acted_at\":\"T\",\"actor_id\":1,\"card_id\":\"PodConflict Other 1\",\"ip_address\":null}",
+        "{\"acted_at\":\"T\",\"actor_id\":1,\"card_id\":\"PodConflict Plain 1\",\"ip_address\":null}",
+        "{\"acted_at\":\"T\",\"actor_id\":1,\"card_id\":\"PodConflict Plain\",\"ip_address\":null}",
+        "{\"acted_at\":\"T\",\"actor_id\":1,\"card_id\":\"PodConflict Plain\",\"ip_address\":null}",
+        "{\"acted_at\":\"T\",\"actor_id\":1,\"card_id\":\"PodConflict Plain\",\"ip_address\":null}",
+        "{\"acted_at\":\"T\",\"actor_id\":1,\"card_id\":3285,\"ip_address\":null}"
+      ],
+      "removed": []
+    },
+    "card_changes": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [
+        "{\"card_action_id\":11479,\"field\":0,\"value\":\"PodConflict Other\"}",
+        "{\"card_action_id\":11479,\"field\":1,\"value\":\"2\"}",
+        "{\"card_action_id\":11479,\"field\":2,\"value\":\"other\"}",
+        "{\"card_action_id\":11479,\"field\":3,\"value\":\"f\"}",
+        "{\"card_action_id\":11479,\"field\":4,\"value\":null}",
+        "{\"card_action_id\":11479,\"field\":5,\"value\":null}",
+        "{\"card_action_id\":11480,\"field\":0,\"value\":\"PodConflict Plain\"}",
+        "{\"card_action_id\":11480,\"field\":1,\"value\":\"2\"}",
+        "{\"card_action_id\":11480,\"field\":2,\"value\":\"plain\"}",
+        "{\"card_action_id\":11480,\"field\":3,\"value\":\"f\"}",
+        "{\"card_action_id\":11480,\"field\":4,\"value\":null}",
+        "{\"card_action_id\":11480,\"field\":5,\"value\":null}",
+        "{\"card_action_id\":11481,\"field\":2,\"value\":\"overridden although edited by another account\"}",
+        "{\"card_action_id\":11482,\"field\":2,\"value\":\"the pristine card with the name takes the codename\"}",
+        "{\"card_action_id\":11484,\"field\":0,\"value\":\"PodConflict Other 1\"}",
+        "{\"card_action_id\":11485,\"field\":2,\"value\":\"the codename card keeps its own name\"}"
+      ],
+      "removed": []
+    },
+    "card_references": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "card_revisions": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "card_virtuals": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "cards": {
+      "probeRows": 0,
+      "changed": {
+        "3285": "{\"codename\":null,\"created_at\":\"T\",\"creator_id\":1,\"current_revision_id\":null,\"db_content\":\"overridden although edited by another account\",\"id\":3285,\"key\":\"oracle_recipe_card\",\"left_id\":null,\"name\":\"Oracle Recipe Card\",\"read_rule_class\":\"*all\",\"read_rule_id\":10,\"references_expired\":null,\"right_id\":null,\"trash\":0,\"type_id\":2,\"updated_at\":\"T\",\"updater_id\":1}"
+      },
+      "added": [
+        "{\"codename\":\"pod_probe_one\",\"created_at\":\"T\",\"creator_id\":1,\"current_revision_id\":null,\"db_content\":\"the codename card keeps its own name\",\"key\":\"pod_conflict_plain\",\"left_id\":null,\"name\":\"PodConflict Plain\",\"read_rule_class\":\"*all\",\"read_rule_id\":10,\"references_expired\":null,\"right_id\":null,\"trash\":0,\"type_id\":2,\"updated_at\":\"T\",\"updater_id\":1}",
+        "{\"codename\":\"pod_probe_two\",\"created_at\":\"T\",\"creator_id\":1,\"current_revision_id\":null,\"db_content\":\"a new card under an alternative name\",\"key\":\"pod_conflict_plain_1\",\"left_id\":null,\"name\":\"PodConflict Plain 1\",\"read_rule_class\":\"*all\",\"read_rule_id\":10,\"references_expired\":null,\"right_id\":null,\"trash\":0,\"type_id\":2,\"updated_at\":\"T\",\"updater_id\":1}",
+        "{\"codename\":null,\"created_at\":\"T\",\"creator_id\":1,\"current_revision_id\":null,\"db_content\":\"other\",\"key\":\"pod_conflict_other_1\",\"left_id\":null,\"name\":\"PodConflict Other 1\",\"read_rule_class\":\"*all\",\"read_rule_id\":10,\"references_expired\":null,\"right_id\":null,\"trash\":0,\"type_id\":2,\"updated_at\":\"T\",\"updater_id\":1}"
+      ],
+      "removed": []
+    },
+    "delayed_jobs": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_assistant_decisions": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_assistant_interactions": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_assistant_learner_levels": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_assistant_threads": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_audit_log": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_feature_events": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_lib_settings": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_proposals": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "schema_migrations": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "sessions": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "transform_migrations": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "users": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    }
+  }
+}
