@@ -25,23 +25,23 @@ Wall-clock times are recorded in the run files but not compared: the engines ran
 
 ## Results
 
-| Fixture | Cards | Ruby 0.20.0 gem: queries | Ruby main: queries | Ruby main + nest prefetch: queries | TypeScript: round trips | TypeScript: statements |
-|---|---:|---:|---:|---:|---:|---:|
-| chain d1 | 1 | 4 | 4 | 4 | 4 | 19 |
-| chain d2 | 2 | 5 | 5 | 5 | 5 | 20 |
-| chain d4 | 4 | 7 | 7 | 7 | 7 | 22 |
-| chain d8 | 8 | 11 | 11 | 11 | 11 | 26 |
-| chain d10 | 10 | 13 | 13 | 13 | 13 | 28 |
-| chain d16 | 16 | 19 | 19 | 19 | 19 | 34 |
-| chain d20 | 20 | 23 | 23 | 23 | 23 | 38 |
-| fan f1 | 2 | 5 | 5 | 5 | 5 | 20 |
-| fan f4 | 5 | 8 | 8 | 5 | 5 | 20 |
-| fan f16 | 17 | 20 | 20 | 5 | 5 | 20 |
-| fan f50 | 51 | 54 | 54 | 5 | 5 | 21 |
-| fan f100 | 101 | 104 | 104 | 5 | 5 | 22 |
-| fan f200 | 201 | 204 | 204 | 5 | 5 | 24 |
-| tree d4xf4 | 341 | 344 | 344 | 9 | 8 | 30 |
-| tree d3xf10 | 1,111 | 1,114 | 1,114 | 10 | 7 | 46 |
+| Fixture | Cards | Ruby 0.20.0 gem: queries | Ruby main: queries | Ruby main + nest prefetch: queries | Ruby main + machinery batching: queries | Ruby main + both: queries | TypeScript: round trips | TypeScript: statements |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| chain d1 | 1 | 4 | 4 | 4 | 3 | 3 | 4 | 19 |
+| chain d2 | 2 | 5 | 5 | 5 | 4 | 4 | 5 | 20 |
+| chain d4 | 4 | 7 | 7 | 7 | 6 | 6 | 7 | 22 |
+| chain d8 | 8 | 11 | 11 | 11 | 10 | 10 | 11 | 26 |
+| chain d10 | 10 | 13 | 13 | 13 | 12 | 12 | 13 | 28 |
+| chain d16 | 16 | 19 | 19 | 19 | 18 | 18 | 19 | 34 |
+| chain d20 | 20 | 23 | 23 | 23 | 22 | 22 | 23 | 38 |
+| fan f1 | 2 | 5 | 5 | 5 | 4 | 4 | 5 | 20 |
+| fan f4 | 5 | 8 | 8 | 5 | 7 | 4 | 5 | 20 |
+| fan f16 | 17 | 20 | 20 | 5 | 19 | 4 | 5 | 20 |
+| fan f50 | 51 | 54 | 54 | 5 | 53 | 4 | 5 | 21 |
+| fan f100 | 101 | 104 | 104 | 5 | 103 | 4 | 5 | 22 |
+| fan f200 | 201 | 204 | 204 | 5 | 203 | 4 | 5 | 24 |
+| tree d4xf4 | 341 | 344 | 344 | 9 | 343 | 8 | 8 | 30 |
+| tree d3xf10 | 1,111 | 1,114 | 1,114 | 10 | 1,113 | 9 | 7 | 46 |
 
 Past Ruby's `max_depth` of 20 both engines refuse the render (chains of 50, 100 and 200 cards); those rows are in the run files.
 
@@ -84,5 +84,7 @@ A warm render (the same card again on the same engine) costs one round trip: a s
 - **Ruby 0.20.0 gem**: card 1.110.0, decko 0.20.0, Ruby 3.3.12, Rails 7.2.4, sqlite3; cold renders after `Card::Cache.reset`, median of 7; recorded 2026-10-03T12:36:27Z. Run file `benchmarks/results/runs/deep-nesting-ruby-99b28d9273a8af00.json` (SHA-256 `99b28d9273a8af00f413263be9575efa63693b4a38c5c45beb4dd1d412e9fd62`).
 - **Ruby main**: card 1.110.0, decko 0.20.0, Ruby 3.3.12, Rails 7.2.4, sqlite3; cold renders after `Card::Cache.reset`, median of 5; recorded 2026-10-08T07:11:27Z. Run file `benchmarks/results/runs/deep-nesting-ruby-a746a48527c9f965.json` (SHA-256 `a746a48527c9f9658ba76b25e7cdd4270142670bf743653ea567ce700da9377c`).
 - **Ruby main + nest prefetch**: card 1.110.0, decko 0.20.0, Ruby 3.3.12, Rails 7.2.4, sqlite3; cold renders after `Card::Cache.reset`, median of 5; recorded 2026-10-08T07:17:19Z. Run file `benchmarks/results/runs/deep-nesting-ruby-e5453da57df10047.json` (SHA-256 `e5453da57df100478640c4885d4ab14cdfd0327173c3bd8b9ce26d90f788af55`).
+- **Ruby main + machinery batching**: card 1.110.0, decko 0.20.0, Ruby 3.3.12, Rails 7.2.4, sqlite3; cold renders after `Card::Cache.reset`, median of 5; recorded 2026-10-08T19:50:49Z. Run file `benchmarks/results/runs/deep-nesting-ruby-8fea063b7dd3a36d.json` (SHA-256 `8fea063b7dd3a36d0b44b78cced80808098d34f4b89b471031153624d188e967`).
+- **Ruby main + both**: card 1.110.0, decko 0.20.0, Ruby 3.3.12, Rails 7.2.4, sqlite3; cold renders after `Card::Cache.reset`, median of 5; recorded 2026-10-08T19:59:29Z. Run file `benchmarks/results/runs/deep-nesting-ruby-c8e61043de553fdb.json` (SHA-256 `c8e61043de553fdbcffe7141d316ea938a1fa7ab001e3c5f4d98766e5fd48d70`).
 
 To reproduce the TypeScript run: `DECKO_BENCH_RUN_DIR=<dir> npx vitest run tests/card/render/deep-nesting-trip-attribution.test.ts`. The Ruby runs use `benchmarks/run_ruby_deep_nesting_bench.rb`, or a copy of it with switches for the batched-loading settings, on a throwaway copy of a stock deck; each run file records its configuration.
