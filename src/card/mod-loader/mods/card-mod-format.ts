@@ -215,7 +215,7 @@ import {
 import { RenderFormat, wrappedTitleInner } from "../../render/format.js";
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import { UnsupportedViewError } from "../../render/format.js";
-// a work item merge 5 resolution (read-both-sides, union): the two lanes each
+// an earlier pass merge 5 resolution (read-both-sides, union): the two lanes each
 // added a DIFFERENT import on the same line-region. cardtype-tpl (HEAD)
 // added `h` for its add_button producers; roleviews added `DECK_ORIGIN`
 // for its ten mod view registrations. Both symbols are used in this file
@@ -452,7 +452,7 @@ const urlLinkView: ViewFn = ({ fmt }) => {
  *  untouched). Then html link_to (links.rb:101-106): href = the cleaned
  *  resource (path.rb:35-36 String bypass), text = raw(text || opts[:href])
  *  (links.rb:103) — the anchor BODY is the href verbatim (raw-marked, no
- *  second escape — the a work item split: only the attribute value crosses the
+ *  second escape — an earlier split: only the attribute value crosses the
  *  escape boundary, h() here = Rails tag_helper html_escape).
  *
  *  Per Ruby, these three views declare NO options (uri.rb's bare `view
@@ -783,7 +783,7 @@ function cardtypeAddLinkView({ fmt }: ViewContext): string {
  *  This is the whole remaining divergence on the 12 Cardtype pages whose
  *  `+*type+by_name` member search is empty on BOTH sides (Tracked Item,
  *  event, Proto Item, URI, Group, Log Entry, Task, Mirror List,
- *  Mirrored List, Notification template — the a work item cardtype-template
+ *  Mirrored List, Notification template — an earlier cardtype-template
  *  class); on the other 51 the same anchor is one region among the
  *  search-driven ones. */
 function cardtypeAddButtonView({ fmt }: ViewContext): string {

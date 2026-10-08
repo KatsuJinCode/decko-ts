@@ -1,7 +1,7 @@
 /**
  * CQL execution: parse -> generateSql -> driver -> typed results.
  *
- * The closed loop over the wave-1 generator (docs/cql-port-notes.md): a CQL
+ * The closed loop over the wave-1 generator: a CQL
  * statement becomes parameterized SQLite SQL, runs through the storage
  * driver seam (src/server/driver.ts SQLDatabaseDriver — LocalSqliteDriver
  * locally, D1/libSQL adapters at the edge), and comes back as typed rows.
@@ -14,12 +14,12 @@
  * Name RECONSTRUCTION for compound cards (name is NULL in storage; Ruby
  * rebuilds "left+right" from left_id/right_id recursively in Card#name /
  * Run#alter_result) needs the card/name stream and is deferred — documented
- * in docs/cql-execution-notes.md ("Deferred to later waves").
+ *
  *
  * REGEXP: match queries need the UDF from ./sqlite-regexp.js on local
  * drivers (registerSqliteRegexpFunction). The edge drivers cannot register
- * functions; the decided strategy (JS-side post-filter,
- * docs/cql-execution-notes.md "The REGEXP decision") is implemented in
+ * functions; the decided strategy (JS-side post-filter, see
+ * docs/decisions/0005-cql-match-semantics.md) is implemented in
  * executeQuery: the first UDF-missing failure flips the driver to
  * match-free SQL + JS row filtering (SqlOptions.matchPostFilter).
  */
@@ -203,8 +203,9 @@ export function collectCardNameValues(value: unknown, out: Set<string> = new Set
  * Local drivers: register the REGEXP UDF once per connection before
  * matching (registerSqliteRegexpFunction). Edge drivers (D1/libSQL) cannot
  * host the UDF; the first "no such function: REGEXP" failure flips the
- * driver to the DECIDED post-filter path (docs/cql-execution-notes.md
- * "The REGEXP decision"): the match conditions are stripped from the SQL
+ * driver to the DECIDED post-filter path (see
+ * docs/decisions/0005-cql-match-semantics.md): the match conditions are
+ * stripped from the SQL
  * (SqlOptions.matchPostFilter), the superset is fetched capped at
  * POSTFILTER_ROW_CAP, rows are filtered in JS with the same compile logic
  * as sqlite-regexp.ts, and the statement's limit/offset apply AFTER the
@@ -263,7 +264,7 @@ function isMissingRegexpError(error: unknown): boolean {
 
 function nestedMatchRefusal(): CqlBadQuery {
   return new CqlBadQuery(
-    "match inside a subselect requires the REGEXP UDF (unavailable on this driver) — not supported by the JS post-filter; see docs/cql-execution-notes.md",
+    "match inside a subselect requires the REGEXP UDF (unavailable on this driver) — not supported by the JS post-filter; see docs/decisions/0005-cql-match-semantics.md",
   );
 }
 

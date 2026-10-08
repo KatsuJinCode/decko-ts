@@ -42,7 +42,7 @@ export interface BetterSqlite3Statement {
  *  better-sqlite3 Database#function (scalar SQL function registration),
  *  added by the CQL execution stream: the REGEXP UDF for CQL match queries
  *  needs the underlying handle, which the driver deliberately does not
- *  expose (see docs/cql-execution-notes.md). Runtime-verified on
+ *  expose. Runtime-verified on
  *  better-sqlite3 13.0.3 / SQLite 3.53.4, Windows, node 24. */
 export interface BetterSqlite3Database {
   prepare(sql: string): BetterSqlite3Statement;
@@ -127,7 +127,7 @@ export class LocalSqliteDriver implements SQLDatabaseDriver {
   /** Register a scalar SQL function on the underlying handle — the narrow,
    *  additive extension the CQL execution stream needs for its REGEXP UDF
    *  (registerSqliteRegexpFunction in src/cql/sqlite-regexp.ts; rationale
-   *  and edge-driver contrast in docs/cql-execution-notes.md). Nothing
+   *  Nothing
    *  about existing behavior changes; callers that never register a
    *  function are unaffected. Must be called before the first statement
    *  referencing the function is prepared. */

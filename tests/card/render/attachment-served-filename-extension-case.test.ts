@@ -1,5 +1,5 @@
 // attachment-served-filename-extension-case.test.ts -- the cd-smalls suite's
-// RED pin for the attachment-filename-case class (7 pages, a work item content-div
+// RED pin for the attachment-filename-case class (7 pages, an earlier pass content-div
 // subclass "attachment-filename-case", receipt REPO_DIR
 // an internal work log):
 //

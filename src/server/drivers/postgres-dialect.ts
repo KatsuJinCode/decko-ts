@@ -11,7 +11,7 @@
 //
 // AUDIENCE: tested with vitest unit cases (no live server needed for the
 // pure mapping). The live-PG rung — what must be exercised against a real
-// PostgreSQL instance — is documented in docs/postgres-dialect-notes.md.
+// PostgreSQL instance — is
 //
 // SCOPE — what this mapper does (and does not):
 //
@@ -30,7 +30,7 @@
 //     `PRAGMA foreign_keys = ...` -> dropped (PG has session-level GUCs;
 //     parity with production requires no FKs anyway).
 //
-// OUT OF SCOPE (documented in docs/postgres-dialect-notes.md):
+// OUT OF SCOPE :
 //   * json1 functions (json_extract, json_array_length, ...). The decko-ts
 //     engine does not currently emit them; if a wave introduces them, the
 //     mapping lives here.

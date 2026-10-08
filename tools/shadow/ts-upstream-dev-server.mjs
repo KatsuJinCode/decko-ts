@@ -4,7 +4,7 @@
 // Decko-like URL surface so the shadow-router has a TS upstream to
 // compare against the Ruby oracle. NOT a production server: it boots
 // an in-memory SQLite database, seeds the SAME 10 cards the smoke
-// fixture records (docs/oracle-harness.md), and serves HTML renders.
+// fixture records (docs/parity-method.md), and serves HTML renders.
 //
 // Why in-process .mjs and not a built TS bundle:
 //   - the StreamResult for M5 is "live proof against real upstreams",
@@ -97,7 +97,7 @@ function splitSqlStatements(ddl) {
 
 /** Type + codename cards the render engine needs to make sense of the
  *  smoke-fixture seeds. The IDs mirror what the oracle SQLite DB
- *  carries (docs/oracle-harness.md; the engine reads ids only to walk
+ *  carries (docs/parity-method.md; the engine reads ids only to walk
  *  the codename codehash, so any consistent id range works). */
 const CODENAME_SEED = [
   // (id, name, codename, type_id)

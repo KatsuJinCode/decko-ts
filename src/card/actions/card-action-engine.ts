@@ -3,7 +3,7 @@
 // machinery. One applyAction call = one Ruby save request = one act.
 //
 // Ruby trail (every behavior cites its source; full notes in
-// docs/actions-port-notes.md):
+// ):
 // - Card.create!/update!/delete! enter the Director pipeline
 //   (lib/card/director/card_class.rb:5-13, lib/card/director/all.rb:46-61,
 //   mod/core/set/all/trash.rb:11-21) — one act per request
@@ -222,7 +222,7 @@ export interface CardActionEngineOptions {
    *  (email_template.rb:6's rescue Net::SMTPError shape). */
   integrationHooks?: SavePathIntegrationHook[];
   /** The follower lookup the DEFAULT follow-notify hook uses when
-   *  integrationHooks is omitted (docs/notify-port-notes.md, "save-path
+   *  integrationHooks is omitted ("save-path
    *  registration line"): defaultFollowerResolver(fetch) — Ruby's
    *  follow-rule algebra (card-mod-follow set/all/follow/follower_ids.rb
    *  + set/all/follow/followed_by.rb). Injecting an override here keeps
@@ -386,7 +386,7 @@ export class CardActionEngine {
    * Hook failures are logged inside runIntegrationHooks, never raised —
    * mail must not break the save that triggered it.
    *
-   * Hook list (docs/notify-port-notes.md, "Save-path registration
+   * Hook list ("Save-path registration
    * line"): the host's integrationHooks when provided; otherwise the
    * built-in follow-notify hook — Ruby registers
    * notify_followers_after_save unconditionally (card-mod-follow
@@ -547,7 +547,7 @@ export class CardActionEngine {
   //
   // DISCLOSED (code-read, not oracle-captured — no CarrierWave capture
   // exists; the oracle harness performs read-side captures only, see
-  // docs/actions-port-notes.md): the change row of an update save carries
+  // ): the change row of an update save carries
   // the FINAL identifier here; Ruby's intermediate dance around the column
   // write cannot be byte-verified without an oracle capture. The FINAL
   // observable state (column + identifier parse + stored path + comment)
@@ -885,7 +885,7 @@ export class CardActionEngine {
       // :create action — from_trash makes new_card? true (states.rb:6-8,
       // trash.rb:61-62 sets @from_trash). The ActWriter models the row
       // reuse as :update, so the action row is corrected to the create
-      // code (0) here; docs/actions-port-notes.md ("revival action type").
+      // code (0) here;  ("revival action type").
       await this.fetch.driver.query(
         "UPDATE card_actions SET action_type = ? WHERE id = ?",
         [actionTypeCode("create"), saved.actionId],
@@ -2630,7 +2630,7 @@ export class CardActionEngine {
    *  renamed card re-expires and updates its Lexicon entry — its composed
    *  name changed virtually while its row stayed untouched. No row writes
    *  happen here (that is the post-2020 junction-truth answer; see
-   *  docs/actions-port-notes.md). */
+   *). */
   private async refreshDescendantCaches(rootId: number): Promise<void> {
     const visited = new Set<number>([rootId]);
     let frontier = [rootId];

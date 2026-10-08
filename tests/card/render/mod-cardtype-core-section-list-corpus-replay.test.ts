@@ -26,7 +26,7 @@
 // seam that already hosts the signup/toggle/markdown/image/file/bootswatch
 // per-cardtype cores.
 //
-// POPULATION: 28 pages (the 27 mech=mod-body-empty rows of the a work item
+// POPULATION: 28 pages (the 27 mech=mod-body-empty rows of an earlier
 // c-structural class plus the mixed `mod: history` row) — see
 // mod-cardtype-core-section-list-subset.ts and the triage table in the
 // receipt (WORK_DIR/mm-cstructural-lane.md).

@@ -2,7 +2,7 @@
 //
 // Cross-stream contract (the save path is read-only for this stream; the
 // SavePathIntegrationHook interface is the seam the actions stream wires
-// in. See docs/notify-port-notes.md, "save-path hook interface"):
+// in. "save-path hook interface"):
 //
 //   - Each save creates one act with N actions (the act's primary card's
 //     action plus its subcard actions). The hook is invoked once per

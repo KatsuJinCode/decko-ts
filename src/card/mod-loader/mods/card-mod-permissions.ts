@@ -36,7 +36,7 @@
 // Why :core is not registered: the mod's :core (permission.rb:14-20) is an
 // OVERRIDE of the engine's highest-traffic view, scoped in Ruby to the four
 // permission-right sets. The TS view table is global (one name, one fn -
-// docs/mod-loader-port-notes.md "View dispatch is global, not set-scoped");
+//  "View dispatch is global, not set-scoped")
 // registering this override would replace :core for EVERY card, and a viewFn
 // cannot delegate to the displaced base view (the loader's undo record is
 // not reachable from the viewFn). The body is ported and exported as

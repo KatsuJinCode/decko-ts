@@ -9,7 +9,7 @@
 // WHY A SEPARATE ENTRY POINT RATHER THAN A FLAG ON THE EXISTING DRIVER
 //   tools/dual-lane-verifier-fast.mjs is the production harness: its child
 //   shape, kill scoping, staged-spec integrity refusal, and artifact resume
-//   keys are load-bearing for the completed a work item/a work item grades. This lane
+//   keys are load-bearing for the completed earlier grades. This lane
 //   was told not to modify existing production harness entry points, and the
 //   direct runner needs different scheduling anyway (a weighted queue handed
 //   to a fixed worker pool, instead of a fixed phase list dispatched 2 at a

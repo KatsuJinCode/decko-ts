@@ -2,12 +2,12 @@
 // pinned for the escape-family sweep
 // (raw-corpus-escape-family-page-sweep.test.ts).
 //
-// PROVENANCE. The 82 rows are exactly the entries the a work item page-fail
+// PROVENANCE. The 82 rows are exactly the entries an earlier page-fail
 // triage (WORK_DIR/pass15-page-fail-classes.md,
 // 2026-09-29) booked under the four escape/encoding primary classes at the
 // graded tip 017b182: byte-family:double-escape (58),
 // byte-family:quote-style (9), byte-family:attr-target-placement (11),
-// byte-family:html-entity-escape (4). Per-entry evidence: the a work item
+// byte-family:html-entity-escape (4). Per-entry evidence: an earlier
 // fail-dump JSONLs (decko-ts-pass15-int tmp/fail-dump/); each row carries
 // the oracle page-lane shard file its id lives in
 // (tmp/raw-ground-truth/expected-v2/page-lane/).

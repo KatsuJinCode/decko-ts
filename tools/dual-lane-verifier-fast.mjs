@@ -55,7 +55,7 @@
 //
 // The full contracts (kill scoping, deadline weighting, pairing, staged-spec
 // integrity, per-shard weight assumptions) are documented in
-// docs/dual-lane-verifier-fast-operating-contracts.md.
+// docs/parity-method.md.
 //
 // PHASES
 //   A phase = one child invocation grading a small group of shards
@@ -96,7 +96,7 @@
 //                         Effective deadline per phase =
 //                         max(deadline-min, 1.5 x the phase's recorded
 //                         duration weight) -- see
-//                         docs/dual-lane-verifier-fast-operating-contracts.md.
+//                         docs/parity-method.md.
 //                         Unknown shards contribute weight 0,
 //                         i.e. fall back to this floor.
 //   --flat-deadline       the deadline is --deadline-min alone, no weight
@@ -532,7 +532,7 @@ function phaseDone(idx) {
   return true;
 }
 
-// ---------- brace-matched aggregate extraction (a work item scanner, proven) ----------
+// ---------- brace-matched aggregate extraction (earlier scanner, proven) ----------
 
 function extractAfter(label, text, from) {
   const i = text.indexOf(label, from);
@@ -764,7 +764,7 @@ function spawnPhase(idx) {
 
     const t0 = Date.now();
     // Weight-aware deadline (instrument-reliability lane): max(--deadline-min,
-    // 1.5 x the phase's recorded a work item weight); --flat-deadline = the old
+    // 1.5 x the phase's recorded weight); --flat-deadline = the old
     // flat behavior. Both the weight and the effective deadline go on the
     // START line so every run records which rule set its deadline.
     const weightS = phaseWeightSec(group, shardWeights);

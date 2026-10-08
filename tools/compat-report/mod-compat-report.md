@@ -706,5 +706,5 @@ post-load live table). Status thresholds:
 - **missing**: zero coverage.
 - **ignored**: legacy-labeled per upstream (decko-commons#1282 thread) or data/transform-only with no set/ tree.
 
-See `docs/mod-compat-notes.md` for caveats, false positives, and the
+See `docs/decisions/0004-mods-compiled-into-the-view-registry.md` for caveats, false positives, and the
 boundary cases that move a mod between categories.

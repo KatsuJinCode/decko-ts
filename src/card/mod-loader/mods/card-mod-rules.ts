@@ -57,7 +57,7 @@
 //   :help_text and the "find the registration path Ruby uses" note)).
 //
 // PORTED HERE (exported functions, NOT registered - the registered-view
-// table is global, one name one fn (docs/mod-loader-port-notes.md "View
+// table is global, one name one fn ("View
 // dispatch is global, not set-scoped"), and these are overrides of views
 // the core table or another mod already registers; registering would
 // replace them for EVERY card. The bodies + tests pin the bytes so the

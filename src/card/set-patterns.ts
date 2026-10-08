@@ -40,7 +40,7 @@
  * rule lookup keys for anchored patterns and pattern ids need a lexicon +
  * codename registry.
  *
- * Deferred (see docs/set-patterns-port-notes.md): pattern MODULE loading
+ * Deferred: pattern MODULE loading
  * (mod system, wave 3), the storage rule-lookup walk (next stream),
  * prototype instantiation (Card layer), permission checks (rules stream).
  */

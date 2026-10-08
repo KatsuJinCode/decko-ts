@@ -1,5 +1,5 @@
 // raw-corpus-cd-smalls-head-asset-probe.test.ts -- the cd-smalls suite's
-// probe + RED pin for the head-asset divergence class (11 pages, a work item
+// probe + RED pin for the head-asset divergence class (11 pages, an earlier pass
 // content-div subclass "head-asset-divergence", receipt
 // REPO_DIR an internal work log):
 //

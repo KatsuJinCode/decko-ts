@@ -1,6 +1,6 @@
 // raw-corpus-searchfix-prototype-probe.test.ts -- the p22 search-regression-fix
 // port's mechanism probe. Boots the engine over the raw ground-truth corpus,
-// renders the Search page FIRST (no isolated renders before it -- the a work item
+// renders the Search page FIRST (no isolated renders before it -- an earlier
 // first-render-wins lesson, job-1790820154566 / job-1790822005721), THEN
 // introspects, for the six *content options rule bars on that page, which leg
 // of ruleSetPrototypeTypeCode fails when the `_category-recent` class is

@@ -13,7 +13,7 @@
 //
 // Same fixtures, same queries, same expected outputs; only each provider's
 // documented bind wrapper differs (see adapter-test-deck.ts header for the
-// canonicalization rules and docs/driver-notes.md for the provider
+// canonicalization rules and docs/decisions/0003-edge-native-driver-interfaces.md for the provider
 // differences being normalized).
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -128,7 +128,7 @@ beforeAll(async () => {
     {
       label: "local-sqlite (better-sqlite3 file)",
       driver: localDriver,
-      // better-sqlite3 binds BLOBs as Buffer (docs/driver-notes.md).
+      // better-sqlite3 binds BLOBs as Buffer (docs/decisions/0003-edge-native-driver-interfaces.md).
       bindBlob: (hex) => Buffer.from(hex, "hex"),
     },
     {
@@ -140,7 +140,7 @@ beforeAll(async () => {
     {
       label: "cloudflare-d1 (miniflare local D1)",
       driver: d1,
-      // D1 binds ArrayBuffer/Uint8Array as BLOB (docs/driver-notes.md);
+      // D1 binds ArrayBuffer/Uint8Array as BLOB (docs/decisions/0003-edge-native-driver-interfaces.md)
       // the copy avoids Buffer's pooled backing store.
       bindBlob: (hex) => new Uint8Array(Buffer.from(hex, "hex")),
     },

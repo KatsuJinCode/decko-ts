@@ -19,7 +19,7 @@
 //     card_id.card&.account?`, current.rb:58-63; a dead id signs in as
 //     Anonymous). The port returns null for the same situation; the
 //     `account?` set-membership half of that check needs the rule layer
-//     (wave 3) and is deferred, see docs/auth-port-notes.md.
+//     (wave 3) and is deferred
 //   * Expiry mirrors the JWT `exp` claim: `payload = { user_id:, exp: }`
 //     (token.rb:11), rejected after the timestamp (token.rb:17-23, the jwt
 //     gem's claim validation surfacing as an error string).

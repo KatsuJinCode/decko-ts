@@ -2,7 +2,7 @@
 //
 // Z10 SETTING DISPLAY TITLES: settings with an I18n display title render it
 // in the card-title span (Card::Setting#title, the setting_title.<codename>
-// locale keys) — the a work item dump pins `Search Results` for *search
+// locale keys) — an earlier dump pins `Search Results` for *search
 // (phase-001/html/000003-_search-title.expected.html verbatim), `Sign In`
 // for *signin and `Recent Changes` for *recent, where the engine rendered
 // the raw star names. Every OTHER captured setting-codename card renders

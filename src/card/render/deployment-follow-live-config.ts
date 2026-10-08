@@ -11,7 +11,7 @@
 //
 // 1. `serializerEra: "live"` — the live serializer's emission forms:
 //    (a) the conditional data-slot `show` key
-//        (docs/serializer-spec-conditional-data-slot-show-key.md: emit
+//        (: emit
 //        `show` iff the slot's show-candidate list minus the requested
 //        view is non-empty; when emitted, the list drops the requested
 //        view itself — live 11 carry / 26 omit, 37/37 measured agreement),

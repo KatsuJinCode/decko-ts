@@ -564,7 +564,7 @@ class CqlParser {
       const roleId = this.opts.resolveCodename?.("role");
       if (roleId === undefined || roleId === null) {
         throw new CqlBadQuery(
-          "member requires codename resolution (Card::RoleID); provide ParseOptions.resolveCodename (deferred, see docs/cql-port-notes.md)",
+          "member requires codename resolution (Card::RoleID); provide ParseOptions.resolveCodename (deferred)",
         );
       }
       this.interpret(q, {
@@ -870,7 +870,7 @@ class CqlParser {
     if (sortField === "count") {
       // Sorting#sort_by_count dispatches to sort_by_count_<item>; only
       // sort_by_count_referred_to exists (experimental; double-nested
-      // subselect shape) — deferred, see docs/cql-port-notes.md
+      // subselect shape) — deferred
       throw new CqlBadQuery(
         `sorting by #count/${item} not yet implemented (deferred; Ruby Sorting#sort_by_count_${item})`,
       );
@@ -878,7 +878,7 @@ class CqlParser {
     const joinField = SORT_BY_ITEM_JOIN_MAP[item];
     if (!joinField) {
       // Guard, not a deferral: every join item with a ported path is in the
-      // map above (docs/cql-port-notes.md "sort": item-join ported; the
+      // map above ("sort": item-join ported; the
       // documented deferral is the #count sort, raised before this line).
       throw new CqlBadQuery(`sorting by #join/${item} not yet implemented`);
     }

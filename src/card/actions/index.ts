@@ -1,5 +1,5 @@
 // The write-path action layer (Set / Save / Update / Delete). See
-// docs/actions-port-notes.md for the Ruby grounding.
+//  for the Ruby grounding.
 
 export { CardActionEngine, type CardActionEngineOptions } from "./card-action-engine.js";
 export {

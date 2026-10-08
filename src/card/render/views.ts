@@ -287,7 +287,7 @@ function slotWrap(
  *  explicit-verbatim arm matched its pins). The self-set overrides above
  *  are Ruby's `voo.title ||=` before super() - they lose to an explicit
  *  opt exactly the same way, and apply only when no explicit title opt is
- *  present (merge of a work item's explicit arm with rule-tooltips H16's
+ *  present (merge of an earlier pass's explicit arm with rule-tooltips H16's
  *  codename-override arm; neither side's precedence differs). */
 const titleNoLinkView: ViewFn = ({ fmt, voo }) => {
   const rawTitle = voo.opts["title"];
@@ -834,7 +834,7 @@ const coreViewBase: ViewFn = (ctx) => {
   // override are untouched (resolveContentOverride returns undefined and
   // every branch below behaves as before — the corpus suites pin those).
   //
-  // MERGE-a work item (compile-engines merge): entries whose Ruby original
+  // MERGE (compile-engines merge): entries whose Ruby original
   // declares ONLY `def content` (supersedesType: false — the bootstrap
   // code files) fall through to the typeCode branches: the card KEEPS its
   // type in Ruby, so the cardtype's view :core (the scss/css CodeRay
@@ -1308,7 +1308,7 @@ const coreViewBase: ViewFn = (ctx) => {
   // signupCoreHtml pattern - the graded surface is the loader-less
   // engine, so the compiled-in coreView branch is the dispatch; a
   // set-scoped mod registration would be dead surface there). The 21
-  // Bootswatch-skin pages of the a work item sass-css-compile class are
+  // Bootswatch-skin pages of an earlier sass-css-compile class are
   // byte-pinned through it
   // (tests/card/render/bootstrap-code-file-pages.test.ts).
   if (fmt.card.typeCode === "bootswatch_skin" || fmt.card.typeName === "Bootswatch skin") {
@@ -1372,7 +1372,7 @@ const coreViewBase: ViewFn = (ctx) => {
   // html_views.rb:2-13) overrides the Cardtype type-set's CqlSearch core
   // (card-mod-search set/abstract/search_views.rb search_result_view ->
   // :card_list) for THIS card ONLY — the other 74 Cardtype-typed pages
-  // keep the member-search card_list (the a work item cardtype-template class
+  // keep the member-search card_list (an earlier cardtype-template class
   // pins those byte-identical WITH the add_button anchor, so widening
   // isPointerOrListCard to cardtype would be a falsification; the mandate
   // guess "cardtype-inclusive" is refuted by set/self/mod.rb being a
@@ -4496,7 +4496,7 @@ function genericBarLeftHtml(ctx: ViewContext): string {
  *
  *  2026-09-29 (view-fail class V6: 45 oracle entries —
  *  every Bootswatch-skin-typed card's bar renders this media block where
- *  the engine rendered a bare title span; the a work item dump pins the
+ *  the engine rendered a bare title span; an earlier dump pins the
  *  bytes in phase-008/014 (cerulean..yeti skin + the customized skins,
  *  closed+open) and phase-019 (+parent 1 pointer items nest the same
  *  rows). The port previously kept this an UNREGISTERED named gap
@@ -4850,7 +4850,7 @@ const barBottomView: ViewFn = (ctx) => {
   // class tokens agree: RIGHT-Xtype_plu_right), so the pre-fix literal
   // "*type plus right" never matched and the branch below stayed dead
   // (all 29 Z13 rule bars kept rendering the Rules form with no
-  // content-view slot wrap at the a work item base 71eb7e1; base dump dumpKey
+  // content-view slot wrap at an earlier base 71eb7e1; base dump dumpKey
   // 000003-Cardtype_description_type_plus_right-open first diff 2842).
   const rightKey = card.name.rightName?.key;
   const isRuleCardCompositionJunction =
@@ -5101,7 +5101,7 @@ function barDivHtml(ctx: ViewContext): string {
   // single-quoted attr list EXCEPT the slot id, which Haml emits through
   // its own data handler in DOUBLE quotes (oracle: `data-card-id='17465'
   // ... data-card-name='classic skin' ... data-slot-id="RANDOMIZED"` —
-  // the customized-classic-skin item bar, a work item page dump). The slot id
+  // the customized-classic-skin item bar, an earlier pass page dump). The slot id
   // is therefore pulled out of the haml emitter and inlined double-quoted.
   const hamlAttrs = emitHamlAttrs({
     "data-card-id": card.id === undefined ? undefined : String(card.id),
@@ -5127,7 +5127,7 @@ function barDivHtml(ctx: ViewContext): string {
     "data-card-type-id": card.typeId === undefined ? undefined : String(card.typeId),
     "data-card-type-name": card.typeName,
   });
-  // MERGE-a work item composition: the separate double-quoted slot id
+  // MERGE composition: the separate double-quoted slot id
   // (the oracle's HAML data-handler form, comment above) kept, with
   // bar-slots' 3-arg menu call (the handle_unknown card[name] query on
   // wanted bars) restored.
@@ -6025,7 +6025,7 @@ const cardUrlView: ViewFn = ({ fmt }) => fmt.cardUrl(fmt.urlKey());
  *     the `'edite'` fallback gives "edited".
  *  The engine has one NAME-keyed flat table and Ruby has two all-set
  *  definitions of this name; the same collision the perms registry
- *  resolves to one entry and records (docs/view-perms-notes.md). The
+ *  resolves to one entry and records. The
  *  loser is card-mod-history's anchor form, still reachable through its
  *  mod registration.
  *

@@ -164,7 +164,7 @@ describe("read permission: the Anonymous viewer (the corpus actor)", () => {
     // empty); every real deck bootstraps *all+*read (card/auth/setup.rb:44),
     // so the port treats the rule-less seed as "no permission data" and
     // renders. This is what keeps every existing rule-less render test
-    // meaningful. See docs/permissions-port-notes.md.
+    // meaningful.
     const html = await s.engine.render("Readable Thing", "content");
     expect(html).toContain("readable body");
     expect(html).not.toContain('class="denied"');

@@ -85,7 +85,7 @@ describe("member without codename resolution [ReferenceAttributes#member]", () =
 });
 
 describe("found_by [FoundBy]", () => {
-  // Re-pinned by the a work item integration (lane-cql-found-by): found_by now
+  // Re-pinned by an earlier integration (lane-cql-found-by): found_by now
   // RESOLVES at execution (execute.ts resolveFoundByConditions), so the
   // generator's old wave-2 deferral is gone. generateSql's found_by case is
   // the loud backstop for shapes the resolver did not translate — hash

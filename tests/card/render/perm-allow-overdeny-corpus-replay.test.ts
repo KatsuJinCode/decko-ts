@@ -1,4 +1,4 @@
-// perm-allow over-deny corpus replay -- the a work item triage's OPPOSITE
+// perm-allow over-deny corpus replay -- an earlier triage's OPPOSITE
 // permission class: pages where the engine DENIES a card Ruby's mod
 // set-module ok_to_read? overrides grant (an internal work log
 // pass15-page-fail-classes.md, sig permission_denied_mismatch + the four

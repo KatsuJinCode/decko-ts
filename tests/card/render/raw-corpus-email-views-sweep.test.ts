@@ -1,5 +1,5 @@
 // raw-corpus-email-views-sweep.test.ts -- THIS SUITE's sweep runner (not a
-// pin): renders every page of the a work item email-views class (the
+// pin): renders every page of an earlier email-views class (the
 // roleviews leftovers 1-4: the EmailTemplate `:core =
 // render_read_form` family, the Abstract::TestContext / email_text
 // message pages, and Shark) over the full-deck corpus seed and reports,
@@ -34,7 +34,7 @@ const OUT_DIR = path.join(REPO_ROOT, "tmp", "email-views-sweep");
 
 const SWEEP_REQUESTED = process.env.EMAIL_SWEEP === "1";
 
-/** The a work item email-views class population (see header). */
+/** The an earlier pass email-views class population (see header). */
 const CLASS_EMAIL_VIEWS = [
   "follower notification email", "follower notification email+*html message",
   "follower notification email+*text message", "password reset email",

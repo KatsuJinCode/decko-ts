@@ -49,7 +49,7 @@ export interface SetKeysInput {
    * enrichment (src/card/render.ts enrichAndStore) must supply it; until
    * it does, undefined means the RULE pattern does not apply and rule
    * cards' slot classes miss the bare RULE key (the exact patch is in
-   * docs/set-keys-parity-notes.md).
+   * ).
    */
   isRule?: boolean;
   /**

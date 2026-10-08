@@ -49,7 +49,7 @@
 // first) resolve synchronously from the enriched render-card map: zero
 // queries. These two statements ride the cold render's existing
 // additionalStatements batch (appended, not a second batch), which
-// restores the strict one-batch cold render (docs/help-popover-parity-notes.md).
+// restores the strict one-batch cold render.
 
 import { DeckoName } from "../name.js";
 import { h } from "./slot-html.js";

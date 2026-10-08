@@ -28,7 +28,7 @@
 // NAME OVERRIDES WITHOUT A CONFIG: --worker-name <name> / --db-name <name>
 // attribute against names alone, for deploys with no committed wrangler config
 // — the frozen demo pair (Worker decko-ts-demo + D1 decko-ts-demo-db, named
-// only in deploy/cleanup.mjs and docs/one-click-cf-deploy-inventory.md) is
+// only in deploy/cleanup.mjs and docs/deploy-cloudflare.md) is
 // exactly that case. Without --config no config file is read at all, so the
 // overrides cannot silently mix with whatever another config declares. With an
 // explicit --config the overrides must AGREE with it; a disagreement is the
@@ -314,7 +314,7 @@ export function readWranglerDeployConfig(configPath) {
  * The config-free attribution source: --worker-name / --db-name, for deploys
  * that have no committed wrangler config to point --config at. The frozen demo
  * pair (Worker decko-ts-demo + D1 decko-ts-demo-db, named only in
- * deploy/cleanup.mjs and docs/one-click-cf-deploy-inventory.md) is exactly
+ * deploy/cleanup.mjs and docs/deploy-cloudflare.md) is exactly
  * this case.
  *
  * The shape is the SAME DeployConfig the file reader returns, flagged

@@ -2,7 +2,7 @@
 # fixtures/captured/cql-mysql-match.json.
 #
 # Run (from tools/oracle/decko-oracle-app, with the scratch MariaDB server
-# up - see docs/oracle-harness.md "MySQL rung"):
+# up - see docs/parity-method.md "MySQL rung"):
 #   RAILS_ENV=development ORACLE_DB=mysql2 \
 #     RUBY_DLL_PATH=REPO_ROOT/decko-ts/tools/oracle/mysql-client-scratch/lib \
 #     bundle exec decko runner REPO_ROOT/decko-ts/tools/oracle/cql_match_capture.rb

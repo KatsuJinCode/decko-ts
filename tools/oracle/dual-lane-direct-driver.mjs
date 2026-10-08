@@ -10,7 +10,7 @@
 //   per phase.
 //
 // THE PROBLEM IT IS BUILT AGAINST (grade-hours-autopsy-lane.md)
-//   The completed a work item grade records 8,258.2 s of render compute over
+//   The completed an earlier pass grade records 8,258.2 s of render compute over
 //   16,862 entries -- 137.6 worker-minutes -- turned into 4,146.9 s of wall
 //   clock (69.1 min) at 99.6% worker utilisation, i.e. wall = compute / 2
 //   exactly. The schedule was never the problem; the worker count was. The
@@ -368,7 +368,7 @@ export function refineWeightedQueues(queues, weights, options = {}) {
  *
  * Primary: MEASURED entry counts, counted out of the staged expected-v2 tree
  * with the runner's own counting rules (dual-lane-shard-entry-weights.mjs).
- * The W=8 probe measured the recorded a work item weights to be weakly
+ * The W=8 probe measured the recorded weights to be weakly
  * ANTI-correlated with actual per-shard entries (r = -0.21 over 48 shards), so
  * LPT was balancing on a signal that pointed the wrong way.
  *
@@ -482,7 +482,7 @@ function applyFailureCostSignal(signal) {
   }
 
   // Start from the entry weights so any shard that fell back to the recorded
-  // a work item seconds KEEPS that weight: the failure layer scales measured entry
+  // an earlier pass seconds KEEPS that weight: the failure layer scales measured entry
   // counts, and it has nothing to say about a shard it could not count.
   const weights = new Map(signal.weights);
   for (const [shard, weight] of costed.weights) weights.set(shard, weight);

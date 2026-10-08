@@ -298,7 +298,7 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
     // head views read deck-level setting cards that no reference closure
     // can reach; the standalone form (measured before the fold) cost a
     // round trip too, which is why it rides the batch.
-    // 2026-09-30 a work item integration re-pin (10/11/13/17 -> 12/13/15/19):
+    // 2026-09-30 an earlier pass integration re-pin (10/11/13/17 -> 12/13/15/19):
     // the p20-email port's junction-priming prelude batch (the email
     // field-anchor prelude statement + the +*test context junction priming
     // — the SAME prelude batch that moved junction-depth-closure.test.ts to

@@ -1,4 +1,4 @@
-// perm-leak-denial-corpus-replay.test.ts -- the a work item triage's
+// perm-leak-denial-corpus-replay.test.ts -- an earlier triage's
 // permission-verdict class, denial-wrapper-leak subset: pages where the
 // engine RENDERS a read-denied card's main body where the oracle wraps the
 // main slot in the denial frame (130 pages at tip 017b182; the triage is

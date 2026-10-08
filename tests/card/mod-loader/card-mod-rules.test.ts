@@ -37,7 +37,7 @@
 // registered ruleHelpView's two-set dispatch - are byte-pinned through the
 // stub-fmt harness (the card-mod-permissions test's pattern), because the
 // global view table would clobber the render layer's / card-mod-content's
-// registrations of those names (docs/mod-loader-port-notes.md "View
+// registrations of those names ("View
 // dispatch is global, not set-scoped"). The A/B test additionally pins
 // that one_line_content is NOT live-registered: with the mod loaded it
 // still raises.

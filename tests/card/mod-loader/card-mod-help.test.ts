@@ -219,7 +219,7 @@ describe("card-mod-help through the mod loader (A/B)", () => {
     // set/all/guide.rb are BASE-format registrations in Ruby,
     // registrar.rb:79-84, visible deck-or-no-deck), so the pre-seam premise
     // "help/guide are mod-only" no longer holds — the same move the
-    // MERGE-a work item :lead re-pin below records. The bare probe seeds no
+    // MERGE :lead re-pin below records. The bare probe seeds no
     // *help/*guide rule, so :help renders the rule-less empty-slot shape
     // the oracle pins (helpView: "" body inside the slot wrap) and :guide
     // renders the guide-text wrap around its empty body.
@@ -238,7 +238,7 @@ describe("card-mod-help through the mod loader (A/B)", () => {
     expect(helpText).toContain("class='d-none'");
     expect(helpText).toContain("rule_edit");
     expect(helpText).not.toContain("help_text-view");
-    // MERGE-a work item RE-PIN (raise-leadview merge, caught at the tip gate's
+    // MERGE RE-PIN (raise-leadview merge, caught at the tip gate's
     // test-name-level diff): :lead is the compiled-in HTML_VIEWS entry
     // (render/views.ts imports card-mod-help's leadView as the single
     // source), so the loader-less engine dispatches it — help.rb:27-30's

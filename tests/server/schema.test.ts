@@ -6,7 +6,7 @@
 //
 // Ground truth: db/schema.mysql-reference.sql (verbatim production MySQL)
 // and the card-1.110.0 / decko-0.20.0 core migrations. Mapping decisions:
-// docs/schema-notes.md.
+// .
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync, rmSync, mkdtempSync } from "node:fs";

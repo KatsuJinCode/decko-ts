@@ -1,5 +1,5 @@
 // raw-corpus-roleviews-sweep.test.ts -- THIS SUITE's sweep runner (not a
-// pin): renders every page of the a work item `engine-gap: unsupported-view`
+// pin): renders every page of an earlier `engine-gap: unsupported-view`
 // class (pass15-page-fail-classes.md, tip 017b182) over the full-deck corpus
 // seed and reports, per page: does the engine still emit any
 // `view (X) not supported` render-error alert, which X, and is the page
@@ -29,7 +29,7 @@ const OUT_DIR = path.join(REPO_ROOT, "tmp", "roleviews-sweep");
 
 const SWEEP_REQUESTED = process.env.ROLEVIEWS_SWEEP === "1";
 
-/** The a work item `engine-gap: unsupported-view` population, verbatim from
+/** The an earlier pass `engine-gap: unsupported-view` population, verbatim from
  *  pass15-page-fail-classification.json (34 pages). */
 const CLASS_UNSUPPORTED = [
   "Administrator", "AiBerk", "Anyone", "Anyone Signed In", "CB_role",

@@ -345,7 +345,7 @@ const setModules: ModSetModuleFile[] = [
           // perms: :none + cache: :never from the source (view_opts.rb:
           // 17, render.rb:51). The TS render path consults the mod's
           // view-config table for these flags (format.ts integration
-          // patch note in docs/mod-loader-port-notes.md); until that
+          // patch note until that
           // patch lands, the registration shape is the closest mirror.
           {
             view: "last_action",

@@ -1,4 +1,4 @@
-// raw-corpus-p21-cql-item-typing-sweep.test.ts -- the a work item CQL item-typing
+// raw-corpus-p21-cql-item-typing-sweep.test.ts -- an earlier CQL item-typing
 // port's instrument (lane-p21-cqltype, base 46b6976). The class (p20-phantom-
 // verdict-triage.md Family A, the phantom-TYPE arm): phantom list items must
 // be TYPED from the winning `*content options` Search card's CQL `type` key

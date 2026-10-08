@@ -74,7 +74,7 @@ describe("Gherkin port: card create/read/update/delete (conflict.feature + struc
     // engine: actor A saves A's content, actor B saves B's content, both
     // succeed (the engine records each as a separate act). The
     // CONFLICT-detection layer is downstream of this port (see
-    // docs/actions-port-notes.md); what the engine proves is that both
+    // ); what the engine proves is that both
     // acts persisted independently.
     world = await freshWorld();
     await givenExtendedDeck(world);

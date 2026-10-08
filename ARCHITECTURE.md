@@ -126,7 +126,9 @@ Ruby Decko's behaviour lives mostly in mods (`card-mod-*` gems). Each ported
 mod is a module under `src/card/mod-loader/mods/` that registers, for its
 sets, the views, events and settings the Ruby mod defines. The loader applies
 them in Ruby's load order so that later mods override earlier ones in the
-same way. Limits of compatibility are recorded in `docs/mod-compat-notes.md`.
+same way. A generator compares each mod's declared views, set modules, events
+and settings against what the registry implements, and reports a per-mod
+verdict; see `tools/compat-report/`.
 
 ---
 
@@ -153,7 +155,7 @@ files directory is read without conversion.
 
 Parity is tested by byte comparison against output captured from a running
 Ruby Decko. There are no snapshot tests: nothing records the engine's own
-output and compares it to itself. See [docs/TESTING.md](docs/TESTING.md) for
+output and compares it to itself. See docs/TESTING.md for
 what runs on a clean clone and what needs data that is not redistributed.
 
 ---
@@ -162,6 +164,8 @@ what runs on a clean clone and what needs data that is not redistributed.
 
 This is a derivative work of [decko-commons/decko](https://github.com/decko-commons/decko),
 licensed GPL-3.0-or-later, targeting `card` 1.110.0 and `decko` 0.20.0. Its
-authors are credited in [NOTICE](NOTICE). Per-area records of what was ported
-from which upstream file, and what is deliberately different, are in
-`docs/*-port-notes.md`.
+authors are credited in [NOTICE](NOTICE). The record of what was ported from
+which upstream file, and what is deliberately different, lives in the source
+comments: every module under `src/` names the Ruby file its area was ported
+from. See [docs/README.md](docs/README.md) for the decisions that shape the engine
+and how its parity is measured.

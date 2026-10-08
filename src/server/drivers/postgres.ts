@@ -2,7 +2,7 @@
 // connection. Part of the storage-driver foundation (upstream proposal
 // decko-commons/decko#1282).
 //
-// Architecture (rationale, also in docs/postgres-dialect-notes.md):
+// Architecture :
 //
 //   engine emits SQLite-flavored SQL + ? placeholders
 //      ↓
@@ -23,13 +23,13 @@
 // minimum PG surface structurally.
 //
 // HONEST BAR (this driver is NOT yet proven parity without a live
-// PostgreSQL server — see docs/postgres-dialect-notes.md "Live-PG rung"):
+// PostgreSQL server —
 //   * the dialect mapping is unit-tested with pure inputs (vitest cases
 //     in tests/server/drivers/postgres-dialect.test.ts);
 //   * the driver contract is exercised against a fake connection (vitest
 //     cases in tests/server/drivers/postgres.test.ts);
 //   * byte-parity vs Ruby (MySQL/oracle) is NOT proven — there is no
-//     decko-MySQL oracle rung at the moment (docs/oracle-harness.md
+//     decko-MySQL oracle rung at the moment (docs/parity-method.md
 //     "Known oracle-on-SQLite limitation"), and PostgreSQL is a different
 //     SQL dialect from MySQL on top of that. Running this driver against
 //     a live PostgreSQL server and replaying the corpus is the live-PG

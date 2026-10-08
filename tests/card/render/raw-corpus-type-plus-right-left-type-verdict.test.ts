@@ -26,7 +26,7 @@
 //   The PlainText population (cql-found-by receipt section 3: the
 //   `+*type+by name` slot's chrome token read
 //   TYPE_PLUS_RIGHT-cardtype-by_name over the oracle's -set-by_name) is
-//   ALREADY GREEN at the a work item tip through the enrich path's virtual
+//   ALREADY GREEN at an earlier tip through the enrich path's virtual
 //   left (resolveVirtualCardStructure answers Set off the
 //   `*type+*right+*structure` rule card); this spec pins it as a
 //   regression guard so the verdict-arm fix cannot re-break it.

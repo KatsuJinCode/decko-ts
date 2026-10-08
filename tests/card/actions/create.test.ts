@@ -1,6 +1,6 @@
 // Action-layer tests — SET (Card.create!): row-level conformance against
 // the ActWriter contract and the Ruby save semantics. Every expectation
-// cites its Ruby file:method; the trail lives in docs/actions-port-notes.md.
+// cites its Ruby file:method; the
 // Synthetic fixtures only (DATA RULE).
 
 import { describe, expect, it } from "vitest";
@@ -41,7 +41,7 @@ describe("createCard — simple create (Set)", () => {
 
     // cards row (set_stamper — card-mod-account set/all/account.rb:20-23;
     // manage_trash forces trash false — trash.rb:23-27; current_revision_id
-    // has no runtime writer — docs/history-port-notes.md section 1.4)
+    // has no runtime writer —  section 1.4)
     const card = await cardRow(f, result.cardId);
     expect(card).toMatchObject({
       name: "Hello Page",

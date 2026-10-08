@@ -406,7 +406,7 @@ describe("card-mod-tinymce_editor through the mod loader (A/B)", () => {
   it("WITH the mod: both views carry Ruby's unknown: true config (nest_image.rb:41,45)", () => {
     // view_opts.rb:49-57 stores the `unknown:` setting per view; the
     // render-path consultation is the coordinator seam
-    // (docs/mod-loader-port-notes.md) - the config table is what the
+    //  - the config table is what the
     // loader wrote and introspection can prove today
     expect(loader!.viewConfigFor("change_create_to_update")?.unknown).toBe(true);
     expect(loader!.viewConfigFor("open_nest_editor")?.unknown).toBe(true);

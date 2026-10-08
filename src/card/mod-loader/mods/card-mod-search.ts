@@ -65,7 +65,7 @@
 // registered, deliberately and with the same reasoning
 // card-mod-permissions.ts's header gives for its :core override: both are
 // overrides of a base view name, and the TS view table is global (one name,
-// one fn - docs/mod-loader-port-notes.md "View dispatch is global, not
+// one fn -  "View dispatch is global, not
 // set-scoped"). Registering them would replace the base :bar / :title for
 // EVERY card.
 //   - bar  (search_views.rb:35-37) - `voo.hide :one_line_content; super()` -
@@ -554,7 +554,7 @@ const oneLineContentView: ViewFn = ({ fmt }) => {
   // Ruby scopes this view to Search cards (Abstract::SearchViews); the base
   // one_line_content other cards get (card-mod-format set/all/base.rb:97,
   // with_nest_mode(:compact)) is deferred in this engine (compact nest mode,
-  // docs/render-port-notes.md) - not supported here.
+  // ) - not supported here.
   if (!searchTypeCard(fmt)) {
     throw new UnsupportedViewError("one_line_content", fmt.card.name.s);
   }

@@ -66,7 +66,7 @@ const IMPLEMENTED_PATTERNS = [
 // signal would over-report ported status (a mod that just calls
 // `view :core do ...end` would appear "ported" because :core is in
 // HTML_VIEWS, even though nothing mod-specific is implemented). See
-// docs/mod-compat-notes.md.
+// docs/decisions/0004-mods-compiled-into-the-view-registry.md.
 const UNIVERSAL_HTML_VIEWS = new Set([
   "core",
   "content",
@@ -558,7 +558,7 @@ function inventoryModPins(gemName) {
 // config-only or backend-only lib/ are flagged. Mods with non-trivial set/
 // trees are NOT in this set, even if their lib/ is a thin config wrapper,
 // because the set/ tree represents unported code that should show up as
-// missing/partial in the report. See docs/mod-compat-notes.md for the
+// missing/partial in the report. See docs/decisions/0004-mods-compiled-into-the-view-registry.md for the
 // evidence trail and the upstream-thread citations.
 const LEGACY_MODS = new Set([
   // delayed_job: backend-only (lib/card/mod/delayed_job.rb + a single
@@ -683,7 +683,7 @@ function classify(inv, surface, pins) {
     evidence += `; mod-loader pins: manifest=${hasManifest ? "yes" : "no"}, test=${pins.testCount} it(), byte-pins=${bytePins}`;
   }
 
-  // Status thresholds (see docs/mod-compat-notes.md for the rubric).
+  // Status thresholds (see docs/decisions/0004-mods-compiled-into-the-view-registry.md for the rubric).
   // ported:    either (a) ≥50% of MOD-SPECIFIC html views covered AND ≥50%
   //            of patterns implemented AND pattern-backed set modules (the
   //            classic view+set rubric); OR (b) the mod has a ported
@@ -877,7 +877,7 @@ function renderMd(report) {
   lines.push("- **missing**: zero coverage.");
   lines.push("- **ignored**: legacy-labeled per upstream (decko-commons#1282 thread) or data/transform-only with no set/ tree.");
   lines.push("");
-  lines.push("See `docs/mod-compat-notes.md` for caveats, false positives, and the");
+  lines.push("See `docs/decisions/0004-mods-compiled-into-the-view-registry.md` for caveats, false positives, and the");
   lines.push("boundary cases that move a mod between categories.");
   lines.push("");
   return lines.join("\n");

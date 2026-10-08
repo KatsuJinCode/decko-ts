@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # boot-mysql-server.sh - start the oracle harness MySQL-rung server
-# (docs/oracle-harness.md "MySQL rung") and wait until it answers.
+# (docs/parity-method.md "MySQL rung") and wait until it answers.
 #
 # Portable MariaDB 11.4.5 in userspace: loopback-only 127.0.0.1:33061,
 # dedicated datadir, no Windows service. Idempotent: exits 0 if the
@@ -8,7 +8,7 @@
 # -u root shutdown (or let it die with the shell that spawned it).
 #
 # The server install, client lib, and config are UNTRACKED machine
-# assets (see docs/oracle-harness.md); this script refuses with a clear
+# assets (see docs/parity-method.md); this script refuses with a clear
 # message when they are absent instead of failing deep inside the boot.
 set -euo pipefail
 
@@ -21,7 +21,7 @@ for required in "$MARIADB" "$INI" "$CLIENT_LIB"; do
   if [ ! -e "$required" ]; then
     echo "oracle harness asset not present: $required" >&2
     echo "this script drives untracked machine-local assets set up per" >&2
-    echo "docs/oracle-harness.md; it cannot run from a bare checkout" >&2
+    echo "docs/parity-method.md; it cannot run from a bare checkout" >&2
     exit 2
   fi
 done

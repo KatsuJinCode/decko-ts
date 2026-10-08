@@ -123,11 +123,11 @@ than quietly degrade.
 ## The full grade
 
 The parity figures in the README come from grading the engine against a full
-capture of one production deck: every page and every recorded view, rendered
-by the engine and compared byte for byte with Ruby's output. The harness is
-in `tools/oracle/` (see [oracle-harness.md](oracle-harness.md)); the corpus
-is not redistributed, so the grade can only be re-run where that corpus is
-available.
+capture of a real deck: every page and every recorded view, rendered by the
+engine and compared byte for byte with Ruby's output. How that measurement is
+made, and what a figure from it does and does not cover, is in
+[parity-method.md](parity-method.md); the corpus is not redistributed, so the
+grade can only be re-run where that corpus is available.
 
 `npm run replay` runs the replay suites against whatever corpus is supplied.
 Whenever you quote a parity figure, give the date it was measured, the corpus

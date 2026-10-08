@@ -8,7 +8,7 @@
 // feed sizes.
 //
 // Ground truth: the production dump grammar (mysqldump 10.13, MySQL 8.0 —
-// verified patterns documented in docs/migration-tool-notes.md) and
+// verified patterns
 // MySQL's string-literal escape rules.
 
 import { describe, it, expect } from "vitest";

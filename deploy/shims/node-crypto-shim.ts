@@ -6,12 +6,12 @@
 // WHY THIS EXISTS (the honest compatibility note): the render engine's slot
 // emitter (src/card/render/slot-html.ts, newSlotId) imports randomBytes from
 // node:crypto. That is the ONLY Node API on the whole worker module graph
-// (audited 2026-09-20; see docs/deploy-notes.md). Workers have no node:crypto
+// (audited 2026-09-20; see docs/deploy-cloudflare.md). Workers have no node:crypto
 // unless the nodejs_compat flag is on, and the deploy target here is
 // deliberately Web-standard-only. Instead of editing src/ (not this stream's
 // territory), the bundler replaces the "node:crypto" module with this shim.
 //
-// Contract pinned by the replay harness (docs/replay-harness.md):
+// Contract pinned by the replay harness (docs/parity-method.md):
 // randomBytes(10).toString("hex") is exactly 20 lowercase hex chars — the
 // SecureRandom.hex(10) slot-id shape.
 

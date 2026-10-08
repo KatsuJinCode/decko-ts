@@ -1,5 +1,5 @@
 // raw-corpus-escape-family-page-sweep.test.ts -- the escape-family suite's
-// sweep: renders the a work item triage's 82 escape/encoding pages (the four
+// sweep: renders an earlier triage's 82 escape/encoding pages (the four
 // primary classes pinned in raw-corpus-escape-family-pages.ts) through the
 // engine's REAL page renderer over the RAW ground-truth corpus, and compares
 // byte-for-byte against the oracle's captured page HTML.

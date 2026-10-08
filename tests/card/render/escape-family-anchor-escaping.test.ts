@@ -1,4 +1,4 @@
-// Escape-family suite: the two over-escaping sites the a work item triage's
+// Escape-family suite: the two over-escaping sites an earlier triage's
 // "double-escape" class resolves to (58 page-lane fails at 017b182; the
 // class also contains pointer-item-shape and help-content pages a pure
 // escaping fix cannot flip -- see the receipt).

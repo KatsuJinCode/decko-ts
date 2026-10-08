@@ -12,7 +12,7 @@ The Ruby side runs against the **oracle app**, a gitignored, disposable
 decko application that is NOT part of this repository, plus untracked
 machine-local assets (the userspace MariaDB install, the client lib,
 the server config). Setup and layout are documented in
-`docs/oracle-harness.md`.
+`docs/parity-method.md`.
 
 Consequences for a reader without that setup:
 

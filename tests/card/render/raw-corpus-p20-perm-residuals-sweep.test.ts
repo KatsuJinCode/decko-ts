@@ -1,4 +1,4 @@
-// raw-corpus-p20-perm-residuals-sweep.test.ts -- the a work item permission-
+// raw-corpus-p20-perm-residuals-sweep.test.ts -- an earlier permission-
 // residuals port's sweep runner (lane-p20-perm, base b2f4700). Its
 // class is the 11 non-perm-sweep pages routed to it by four earlier port
 // receipts, plus a grows-as-pages-flip hard-assert block:

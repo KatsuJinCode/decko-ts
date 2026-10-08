@@ -176,7 +176,7 @@ export const NO_METHOD_ERROR_CLASS_NAME = "NoMethodError";
  *  ("38-12-31" → 2038, "39-01-01" → 2039, "68-05-05" → 2068,
  *  "69-1-1" → 1969). Month 0/13+ and impossible calendar days raise in
  *  Ruby ("2019-13-01", "2021-02-29", "2019-05-0" → invalid date); the
- *  UTC round-trip check below rejects the same. The a work item corpus holds
+ *  UTC round-trip check below rejects the same. The an earlier pass corpus holds
  *  1,117 such date cards (shapes 99-99-99 / 9999-9-99 / 9999-9-9; the two
  *  page-lane exemplars 20190319 "19-03-19" and 20220323 "22-03-23").
  *  Conversely Ruby REJECTS bare-year digit strings JS accepts ("2016",

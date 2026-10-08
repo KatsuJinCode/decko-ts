@@ -655,7 +655,7 @@ export interface CreateOwnerDeps extends SetupWindowDeps {
  *      actor (Auth.as_bot, user.rb:52).
  *
  * The engine call is the SAME machinery the write path uses — the port of
- * docs/gherkin-port-notes.md:191-198's "action layer for new-account
+ * :191-198's "action layer for new-account
  * creation", which that document names as the missing half of setup.feature.
  */
 export async function createOwnerAccount(

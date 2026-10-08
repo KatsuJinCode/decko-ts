@@ -1,16 +1,16 @@
 // raw-corpus-cardtype-byname-search-sweep.test.ts -- the p20-cardtype-search
 // port's evidence sweep: renders the 51 large-gap Cardtype-typed page-lane
-// failures (the a work item fail-dump class "Cardtype pages whose byte mass is
+// failures (an earlier fail-dump class "Cardtype pages whose byte mass is
 // the +*type+by_name member search", pinned with numeric page-lane ids in
 // raw-corpus-cardtype-byname-search-subset.json) through the engine's REAL
 // page renderer over the RAW ground-truth corpus, and records per-page
 // parity/search evidence against the oracle page-lane bytes.
 //
 // Report-only (the census contract; the graded verifier already ran
-// for a work item -- this spec never re-runs a grader): it records evidence --
+// for an earlier pass -- this spec never re-runs a grader): it records evidence --
 //
 //   tmp/census-ctsearch/results.jsonl   one line per page: identity,
-//       a work item gap, verdict, search-flip evidence, by_name slot region
+//       an earlier pass gap, verdict, search-flip evidence, by_name slot region
 //       parity, class-token census, first diff, mechanism set, regions
 //   tmp/census-ctsearch/pages/<id>-<key>.{exp,act}.html
 //       both normalized sides, for offline re-analysis
@@ -67,7 +67,7 @@ interface PageLaneLine {
 
 /** The oracle bytes for one entry: the lane==="page" line with the entry's
  *  numeric id, scanned across every page-lane shard present on disk. (The
- *  a work item repro dump's phase tags do NOT map to page-lane shard numbers;
+ *  an earlier pass repro dump's phase tags do NOT map to page-lane shard numbers;
  *  the entries were resolved against the shards directly, and the id match
  *  is the ground truth — a miss is a data error, not a lookup guess.) */
 function loadOracleEntry(entry: SubsetEntry): PageLaneLine {

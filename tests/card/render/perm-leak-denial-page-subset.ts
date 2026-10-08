@@ -1,6 +1,6 @@
 // GENERATED from pass15-page-fail-classification.json (primary=permission-verdict,
 // mech=denial-wrapper-leak) — the 130 main-slot denial-wrapper leak pages the
-// a work item triage booked. Population list only; yardstick bytes load from
+// an earlier pass triage booked. Population list only; yardstick bytes load from
 // tmp/raw-ground-truth/expected-v2/page-lane at replay time.
 
 export interface LeakPageEntry {

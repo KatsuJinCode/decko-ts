@@ -9,7 +9,7 @@
 // worker options. The package exports convertV4MiniflareOptions(), which
 // converts classic v4 options into the v5 shape; feeding that converter's
 // output to the constructor boots workerd cleanly on Windows, including D1.
-// Documented in docs/driver-notes.md.
+// Documented in docs/decisions/0003-edge-native-driver-interfaces.md.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { Miniflare, convertV4MiniflareOptions } from "miniflare";

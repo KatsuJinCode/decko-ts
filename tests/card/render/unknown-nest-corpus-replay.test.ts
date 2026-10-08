@@ -21,7 +21,7 @@
 //   1120 bxhxfeqsnktaziadgdhcr  four absent-target nests
 //
 // These entries are the shard-0 nestGap class the replay driver used to
-// count as `nest target not found` failures (docs/unknown-nest-notes.md).
+// count as `nest target not found` failures.
 // Before this fix the TS engine threw `nest target not found` from
 // src/card/render/format.ts where Ruby rendered empty strings.
 //

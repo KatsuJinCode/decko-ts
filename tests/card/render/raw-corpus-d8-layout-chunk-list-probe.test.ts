@@ -172,7 +172,7 @@ describe("D8 Classic Layout (314) CodeRay body runs the :references chunk list",
           // saying so beats pretending otherwise: the recording layer
           // rewrote every `data-slot-id="<20 lowercase hex>"` to the
           // literal `data-slot-id="RANDOMIZED"` (src/testing/diff.ts:15-30,
-          // mirrored from docs/oracle-harness.md). The oracle bytes carry
+          // mirrored from docs/parity-method.md). The oracle bytes carry
           // the 10-char placeholder where the port emits 20 hex chars, so
           // the raw lengths differ by 10 per slot and the raw first
           // difference is always inside the token. normalizeSlotIds IS

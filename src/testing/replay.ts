@@ -6,7 +6,7 @@
 //
 // This module references the engine streams by INTERFACE ONLY: handlers are
 // plain functions registered here, no imports of src/card, src/cql, or any
-// other engine area. See docs/replay-harness.md for the adoption contract.
+// other engine area. See docs/parity-method.md for the adoption contract.
 
 import {
   canonicalJson,
@@ -258,7 +258,7 @@ function actualBytes(entry: ReplayCheck, outcome: HandlerOutcome): string {
     return outcome.bytes;
   }
   if (entry.area === "card-engine" && outcome.value !== null && typeof outcome.value === "object") {
-    // Card ids are DB-local and informational (docs/oracle-harness.md);
+    // Card ids are DB-local and informational (docs/parity-method.md)
     // stripped from BOTH sides before comparison.
     return canonicalJson(cardRecordWithoutId(outcome.value as CapturedCardRecord));
   }

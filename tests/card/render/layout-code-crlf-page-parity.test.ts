@@ -1,4 +1,4 @@
-// Page-level regression for the a work item "whitespace-only (families)" class:
+// Page-level regression for an earlier "whitespace-only (families)" class:
 // the 5 CodeRay-highlighted Layout cards whose stored bodies use CRLF line
 // endings. The engine used to emit one extra space per CRLF inside the
 // highlighted <pre> block (`</span>` + " " + "\n" where the oracle has

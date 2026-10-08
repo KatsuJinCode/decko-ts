@@ -3,7 +3,7 @@
 // with a stub engine supplying the verdict maps — the exact contract the
 // real RenderEngine implements via isDenied + the isTaskDenied hook (the
 // render.ts wiring is the coordinator patch documented in
-// docs/view-perms-notes.md).
+// ).
 //
 // Byte contracts proven here:
 // - a denied read view is REPLACED by the quiet span (no slot wrapper) —

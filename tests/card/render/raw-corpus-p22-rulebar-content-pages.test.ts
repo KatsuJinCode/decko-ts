@@ -1,4 +1,4 @@
-// raw-corpus-p22-rulebar-content-pages.test.ts -- the a work item rule-bar
+// raw-corpus-p22-rulebar-content-pages.test.ts -- an earlier rule-bar
 // one-line-content port's evidence probe. Renders the three pages the plan
 // names here (plan §(b)) through the engine's REAL page
 // renderer over the RAW ground-truth corpus and records the bar-right
@@ -149,7 +149,7 @@ describe("raw-corpus p22 rule-bar one-line content pages (3 named pages)", () =>
 
       // NOTE (probe r3/postfix lesson, job-1790820154566-11c4aa44 and
       // job-1790822005721-8c8b5410): any ISOLATED card render placed
-      // BEFORE the page renders poisons them -- the a work item census's
+      // BEFORE the page renders poisons them -- an earlier census's
       // "first-render-wins renderCards" mechanism is live on this seat
       // (both pages' 17743 bars rendered the mini-bar shape with no
       // one-line after an isolated :core/:bar render). The pages are

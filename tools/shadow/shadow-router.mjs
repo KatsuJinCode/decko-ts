@@ -177,7 +177,7 @@ const HOP_BY_HOP = new Set([
 
 /** Send one request to an upstream base URL. Returns
  *  `{ status, headers, body: Buffer }`. The whole body is buffered —
- *  this skeleton does not stream; see docs/shadow-router-notes.md for
+ *  this skeleton does not stream
  *  the production-streaming decision. */
 export function forwardOnce({ baseUrl, method, urlPath, headers, body }) {
   return new Promise((resolve, reject) => {

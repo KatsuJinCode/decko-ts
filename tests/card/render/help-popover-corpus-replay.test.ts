@@ -3,7 +3,7 @@
 // data-bs-content (where the port hardcoded the &amp;nbsp; placeholder) and
 // requires byte-identical HTML.
 //
-// Ruby mechanism (full citation trail in docs/help-popover-parity-notes.md):
+// Ruby mechanism :
 // menu.rb view :help_link -> render_help_text (card-mod-help set/all/help.rb
 // help_text/wrap_help_text/help_rule_card) -> bootstrap helper.rb popover_opts
 // (blank -> &nbsp;, ERB::Util attribute escaping) - with the two help-text

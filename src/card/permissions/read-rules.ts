@@ -535,7 +535,7 @@ async function canReadByRuleLookupDepth(
   // Partial decks (per-shard replay seeds) simply lack the card's
   // applicable rule card, and fabricating a denial from missing data would
   // mis-deny cards the full deck renders — there the port still allows
-  // (documented divergence, docs/permissions-port-notes.md).
+  // .
   return state.hasReadRules && state.hasCatchAllReadRule ? false : undefined;
 }
 
@@ -679,7 +679,7 @@ export interface ResolvedRuleRow {
  * mutation routes through that method, so a save drops the universe AND
  * the content memo and the next resolution rebuilds post-save state. No
  * second invalidation path. (The performance history and measurements
- * behind this shape: docs/permissions-port-notes.md.)
+ * behind this shape: .)
  */
 interface RuleResolutionDriverCache {
   /** ckey -> rule card id: the full composed-key universe, built once per

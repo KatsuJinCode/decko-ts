@@ -362,7 +362,7 @@ async function renderPageBytesWithPageConfigInner(
   // pair junction OR-tuple of 20120122+BW+RVW) leaves the read-permission
   // state unresolved and every prepared card unjudged. The sync gate's
   // unjudged-allowed contract would then render the read-denied MAIN body in
-  // full where Ruby emits the denial frame (the a work item triage's 130
+  // full where Ruby emits the denial frame (an earlier triage's 130
   // denial-wrapper-leak pages) — denial, not byte noise. Resolve the state
   // from the standalone three-statement batch and judge the prepared map
   // BEFORE any sync render. No-op when the prepare landed (memoized state +

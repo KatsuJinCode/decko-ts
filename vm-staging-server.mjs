@@ -177,7 +177,7 @@ import {
 // Write-path slice-1: session-backed sign-in. The auth store lives in the
 // same sqlite file (auth_sessions table, runAuthMigrations at boot) and the
 // per-request token picks the render engine whose viewer is that account
-// (RenderEngine.viewer, the seam docs/permission-actors-notes.md wires —
+// (RenderEngine.viewer, the seam  wires —
 // the server resolves the actor once per request and sets the viewer at
 // engine construction, before any render).
 import {

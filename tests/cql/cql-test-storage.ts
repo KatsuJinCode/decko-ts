@@ -22,7 +22,7 @@ export interface CqlTestStorage {
 
 /** Fresh in-memory database + FetchEngine, schema loaded, REGEXP UDF
  *  registered (the local-driver bootstrap the execution contract requires,
- *  docs/cql-execution-notes.md). */
+ *). */
 export async function createCqlTestStorage(): Promise<CqlTestStorage> {
   const driver = new LocalSqliteDriver({ path: ":memory:" });
   const ddl = readFileSync(`${REPO_ROOT}db/schema.sqlite.sql`, "utf8");

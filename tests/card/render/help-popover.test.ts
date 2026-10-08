@@ -3,8 +3,7 @@
 // bytes carry real help text where the port hardcoded the &nbsp;
 // placeholder).
 //
-// Ruby chain under test (see docs/help-popover-parity-notes.md for the full
-// citation trail):
+// Ruby chain under test (citation trail):
 //   menu.rb help_link -> bootstrap helper.rb popover_opts (blank ->
 //   "&nbsp;", attribute escaping) -> card-mod-help all/help.rb help_text
 //   (rule-card branch + wrap_help_text d-none span) -> card-mod-rules
@@ -186,7 +185,7 @@ describe("menu help popover (help.rb + popover_opts + board_rules_editor port)",
       // The pre-V4 engine rendered wanted-card here through map luck (the
       // prepared closure never chased "Set", so the nest path seated a
       // phantom); the V4 prepare-phase link-target warm pass seats the real
-      // card (a work item bar-slots merge obligation). Absence stays wanted:
+      // card (earlier bar-slots merge obligation). Absence stays wanted:
       // link-known-class-and-pointer-paging.test.ts pins the "Nobody At
       // All" shape.
       expect(helpContentOf(html)).toBe(

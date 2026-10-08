@@ -1,13 +1,13 @@
 /**
  * The p20-nest-selection port's page population: the 34 pages of the
- * a work item c-structural class whose mechanism is the nest-selection
+ * an earlier pass c-structural class whose mechanism is the nest-selection
  * disagreement (mm-cstructural receipt §4 #2 missing-slot / #3
  * phantom-slot — WORK_DIR/mm-cstructural-lane.md).
  *
  * 19 Project pages missing the `+discussion` titled-view slot; 2 BWjournal
  * pages missing seven mini_bar slots each; 10 Research pages with a phantom
  * `+Articles` open nest; 3 outliers (2 HTML `*head` pages, 1 Pointer Notes
- * page). Every entry was verified against the a work item triage
+ * page). Every entry was verified against an earlier triage
  * ( tmp/cstruct-index/triage.json) — the slot
  * ids named here are the exact card-slot ids the two sides disagreed on.
  */

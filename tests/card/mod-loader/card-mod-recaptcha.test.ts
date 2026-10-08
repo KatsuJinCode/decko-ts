@@ -15,7 +15,7 @@
 //     pinning the exact nest calls field_nest makes (nesting.rb:27-31:
 //     field child name, the capitalize title variant, NO view option).
 //     Rationale (honest): view dispatch is GLOBAL, not set-scoped
-//     (docs/mod-loader-port-notes.md:363-371) - loading this manifest into
+//      - loading this manifest into
 //     the live HTML_VIEWS record would also route the CHILD cards' :core
 //     renders through the mod's override (Ruby scopes it to
 //     Self::RecaptchaSettings), so a live A/B of the composed bytes would

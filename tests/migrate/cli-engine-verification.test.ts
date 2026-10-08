@@ -1,6 +1,6 @@
 // cli-engine-verification.test.ts — the vitest-runner entry the migrate CLI
 // uses for engine-level verification under bare node (the engine is
-// TypeScript; bare node cannot import it — see docs/migration-tool-notes.md).
+// TypeScript; bare node cannot import it —
 //
 // Invoked by tools/migrate/migrate.mjs with:
 //   DECKO_MIGRATE_REPORT  path of the migration report JSON to merge into

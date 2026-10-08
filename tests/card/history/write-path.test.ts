@@ -2,7 +2,7 @@
 // REAL storage — in-memory better-sqlite3 loaded with db/schema.sqlite.sql,
 // rows SELECTed back and compared against expectations derived from the
 // Ruby truth. Each expectation cites the Ruby file:method it derives from;
-// the full trail lives in docs/history-port-notes.md.
+// the full
 //
 // Request model: one ActWriter = one save request = one act (Ruby:
 // Director.run_act binds the act for the request, director/all.rb:114-119;

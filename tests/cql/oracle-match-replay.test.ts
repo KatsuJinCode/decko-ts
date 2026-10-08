@@ -10,7 +10,7 @@
 // MariaDB 11.4.5 server (utf8mb4_general_ci), where card 1.110's CQL `match`
 // compiles to `name REGEXP ? OR db_content REGEXP ?` and actually executes
 // (on SQLite the oracle can only record the raise — see the match_sentinel
-// in cql-basic.json). docs/oracle-harness.md "MySQL rung" has the full
+// in cql-basic.json). docs/parity-method.md "MySQL rung" has the full
 // mechanism chain with citations.
 //
 // KNOWN DIVERGENCES (pinned, not swept aside): the JS RegExp behind the UDF
@@ -96,7 +96,7 @@ export const MATCHPROBE_DECK_CARDS: CqlSeedCard[] = [
 // capture deck's own rows):
 // - *all+*read matched raw_posix_alpha's [[:alpha:]]+ through CONTENT
 //   (its name column is NULL) -> db_content non-null ("Anyone", the real
-//   rule value per docs/oracle-harness.md).
+//   rule value per docs/parity-method.md).
 // - *all+*default did NOT match it (absent from Ruby's result despite the
 //   lowest ids) -> its db_content is NULL in the capture deck. NULL stays.
 const STANDARD_CONTENT_PATCH: Record<number, string> = {

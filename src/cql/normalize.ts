@@ -5,7 +5,7 @@
  * function). Name-key generation and relative-name absolutization delegate to
  * the landed card/name stream (`src/card/name.ts`, DeckoName), which carries
  * the full ActiveSupport inflections and the contextual layer; see the
- * reconciliation section in docs/cql-port-notes.md.
+ * reconciliation section
  */
 
 import { DeckoName } from "../card/name.js";

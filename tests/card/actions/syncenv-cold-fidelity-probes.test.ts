@@ -12,7 +12,7 @@
 // (templating.rb:52-53 -> rule/all.rb:13-15) instead of hard-coding the
 // global *all+*default card.
 //
-// What each arm measures (contract doc: docs/sync-env-cold-write-contract.md):
+// What each arm measures :
 //   T1  global *default template deck, COLD, Editor-locked chain type:
 //       the *default chain resolves *all+*default (type-resolution.ts
 //       defaultTypeId tail) through the ASYNC driver-backed registries
@@ -41,7 +41,7 @@
 //
 // P1 and N1 pin the Ruby verdicts; before the fix they pinned the
 // contract's DIVERGENCE side (the measured over-allow), and
-// docs/sync-env-cold-write-contract.md section 3 records both states.
+//  section 3 records both states.
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {

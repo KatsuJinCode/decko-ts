@@ -1,7 +1,7 @@
 // help-content-rule-page-flip-replay.test.ts -- the help-content suite's
 // fresh-process flip measurement over the escape-family population (the 35+
 // `mod: X+*style|script` rule pages + *on create|delete|update + *style rule
-// pages the escape-family receipt routed here). For every a work item fail-dump
+// pages the escape-family receipt routed here). For every an earlier pass fail-dump
 // exemplar of the family (tmp/raw-ground-truth/enumeration/view-fail-dump-
 // full/html/<shard>-<name slug>-closed.expected.html) this spec renders the
 // page from the raw corpus DB with the same seeding the official dump protocol

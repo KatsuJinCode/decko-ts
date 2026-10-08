@@ -18,7 +18,7 @@
 // Landed since: the read-permission denial (view/permission.rb altered_view
 // -> src/card/permissions/), and nest MODE (format/nesting/mode.rb - see
 // RenderFormat.nestMode / withNestMode / modalNestView). Deferred
-// (docs/render-port-notes.md): view caching/stubs, edit views, mod-specific
+// : view caching/stubs, edit views, mod-specific
 // view overrides. compact nest mode: the :template arm and the compact
 // arms of mode.rb (view substitution mode.rb:71-84 + the nesting.rb:52-63
 // 200-char elision) are PORTED gem-derivative with fixture-less pins
@@ -163,7 +163,7 @@ export class Voo {
    *  `format.renderView(view, ...)` entry — the one call site whose
    *  `optional` render arg defaults to :show). The live serializer does not
    *  carry the root render's own enrollment (the capture-harness artifact:
-   *  docs/serializer-spec-conditional-data-slot-show-key.md "root drops the
+   *   "root drops the
    *  requested view"), so slotOptions drops view===viewField exactly here.
    *  Parentless does NOT mean root: the page lane's processLayoutContent
    *  runs on the root format AFTER renderView restored this.voo, so every
@@ -1078,7 +1078,7 @@ export class RenderFormat {
       // since 2026-09-28 — the ensureTaskVerdicts prepare step precomputes
       // its verdicts when the requested view needs them; an absent
       // hook leaves those views unverified-allowed, per
-      // docs/view-perms-notes.md).
+      // ).
       if (this.card.unknown !== true) {
         const denial = viewPermissionDenial(normalized, {
           renderOpts: opts,
@@ -1933,7 +1933,7 @@ export class RenderFormat {
       // VIRTUAL resolution (states.rb:44-50 virtual?: compound + applicable
       // *structure rule; fetch.ts:388-395 sets dbContent = the rule
       // template). Wiping it here rendered every structured virtual nest
-      // (the a work item class's BWjournal +Body titled slot) with an empty
+      // (an earlier class's BWjournal +Body titled slot) with an empty
       // body — the seven mini_bar children of Body+*right+*structure
       // vanished with the template. A genuine new-card emulation carries
       // dbContent "" so this keeps byte-identity for it too. Toggle-typed
@@ -2148,7 +2148,7 @@ export class RenderFormat {
     // 26-28) and template = the *default rule card for a nest-miss
     // (templating.rb new_card_template — no *structure rule governs here,
     // else the fetch-level virtual resolution would have produced the card
-    // and this builder would not run). The a work item class pins the applied
+    // and this builder would not run). The an earlier pass class pins the applied
     // form: the oracle's associative_inquiry-discussion-titled-view body is
     // `<p> </p>\n<p> </p>` — discussion+*right+*default's db_content
     // verbatim. (The Round-9 note below — "the *default CONTENT is not
@@ -2511,8 +2511,8 @@ export class RenderFormat {
     // chunks); :nest_only = [Nest] (nests only).
     // The bootstrap: core page's CodeRay bytes pin the css/scss half: the
     // oracle leaves every bare URL inside the highlighted output verbatim
-    // (0 bare-URL autolinks in the entire a work item page-lane oracle).
-    // MERGE-a work item composition: the compile-engines chunk-list dispatch
+    // (0 bare-URL autolinks in the entire an earlier pass page-lane oracle).
+    // MERGE composition: the compile-engines chunk-list dispatch
     // kept (code-file chunk lists never run the URI autolink pass), with
     // bar-slots V4's context arg threaded through both expansion arms so
     // the wikilink resolution carries this card's name context everywhere
@@ -3100,7 +3100,7 @@ export class RenderFormat {
    *  options+*right+*default is a junction — never simple — and keeps its
    *  rule name).
    *
-   *  Merge note (a work item): both merge parents landed the SAME three codenames —
+   *  Merge note (an earlier pass): both merge parents landed the SAME three codenames —
    *  this Z10 table (keyed on the resolved name's codename, here) and
    *  views.ts SELF_SET_TITLE_OVERRIDES (keyed on the rendered card's
    *  codename, consulted first at the view layer) carry identical values
@@ -3256,7 +3256,7 @@ export interface RenderEngineLike {
   /** ok_to_<task>? for the NON-read view tasks (ok_to_update?/create?/
    *  delete?, card-mod-permissions set/all/permissions.rb:148-157) —
    *  precomputed like isDenied, same undefined-means-unverifiable contract
-   *  as canReadByRuleLookup (docs/view-perms-notes.md). Optional: engines
+   *  as canReadByRuleLookup. Optional: engines
    *  without it leave every non-read task unverified-allowed; the ported
    *  view registry carries no non-read view today, so the surface is
    *  unaffected either way. */
@@ -3484,7 +3484,7 @@ export interface RenderEngineLike {
    *  *default rule card's db_content for a nest-miss new card
    *  (default_content = template&.db_content, mod/core set/all/content.rb:
    *  26-28). The SAME rule newCardDefaultType reads the type from.
-   *  p20-nest-selection: the a work item class pins the applied form — the
+   *  p20-nest-selection: an earlier class pins the applied form — the
    *  oracle's +discussion titled body is `discussion+*right+*default`'s
    *  `<p> </p>` x2 verbatim. Optional; engines without it keep the
    *  new-child dbContent "". */
@@ -3681,7 +3681,7 @@ export interface SettingClassWithRules {
  *  pins the opposite for a List-typed `+Articles` under Research
  *  (card-mod-format set/all/html/error.rb:10-12 `view :unknown` ->
  *  createable -> "" for the anonymous capture session): the nest emits
- *  NOTHING — the a work item class's 10 phantom `+Articles` open slots. */
+ *  NOTHING — an earlier class's 10 phantom `+Articles` open slots. */
 interface UnknownViewDecl {
   view: string;
   /** true renders the requested view; a string names the substituted view. */
@@ -3698,7 +3698,7 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
   //   end
   // and :8-10 `view :core, unknown: true`. This is why a NONEXISTENT
   // +discussion renders its requested titled view with the *default rule's
-  // content body (the a work item class's 19 Project pages; oracle slot
+  // content body (an earlier class's 19 Project pages; oracle slot
   // associative_inquiry-discussion-titled-view carries show:[titled,
   // comment_box] and body <p> </p> x2 = discussion+*right+*default's
   // db_content). The comment_box show flip itself is already open-coded in
@@ -4322,7 +4322,7 @@ export function expandContentLinks(
       // html_escape): authored `&amp;` doubles to `&amp;amp;` there and a
       // raw `&` escapes once - the Montessori exemplar's exact split. An
       // h() on the label (the earlier code) double-escaped every entity
-      // in the visible anchor text (a work item "double-escape" class).
+      // in the visible anchor text (earlier "double-escape" class).
       // uri.rb:86-89: process_uri_chunk appends @trailing_punctuation
       // AFTER the anchor (`"#{link}#{@trailing_punctuation}"`) - the
       // source's chopped [,.)!:?] byte renders right behind `</a>` (the

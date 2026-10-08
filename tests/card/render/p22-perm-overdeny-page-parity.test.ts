@@ -1,7 +1,7 @@
 // Page-parity pins for the two named perm residuals:
 //
 //   1. "Anonymous+*account" — the standing over-deny the perm-allow replay
-//      hard-assert block fails on alone since a work item (recorded signature
+//      hard-assert block fails on alone since an earlier pass (recorded signature
 //      exp 17603 / act 14299, first diff at 8200 = the nested
 //      Anonymous+*account+*email labeled slot the oracle renders allowed
 //      with its mailto content).

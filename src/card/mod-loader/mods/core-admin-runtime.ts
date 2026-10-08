@@ -701,7 +701,7 @@ export type ModAssetGroup = readonly [title: string, items: readonly string[]];
  *  - a headless engine has no gem filesystem, so the groups are
  *    transcribed from the DECK'S OWN RENDERED TRUTH — the `<h3>Styles</h3>`
  *    / `<h3>Scripts</h3>` sections of the 28 `mod: *` page rows in the
- *    a work item page-lane yardstick — the same oracle-pinned-table pattern as
+ *    an earlier pass page-lane yardstick — the same oracle-pinned-table pattern as
  *    MOD_BAR_RIGHT_ASSETS below, and the same "expectation = the oracle
  *    bytes, never the reverse" rule the bootswatch lane applied.
  *  - CROSS-CHECK: every group is reproduced by the installed gem trees'
@@ -722,7 +722,7 @@ export type ModAssetGroup = readonly [title: string, items: readonly string[]];
  *  undefined on every lookup: measured on the `mod: defaults` page, the
  *  nested `mod: ace editor` / `api key` / `bar and box` bars rendered an
  *  EMPTY bar-right where the oracle shows `configurations, scripts` /
- *  `styles` / `scripts, styles` (a work item dump, 3 of the 26 bar-right rows
+ *  `styles` / `scripts, styles` (earlier dump, 3 of the 26 bar-right rows
  *  on that one page), and their own pages dropped the Styles/Scripts
  *  sections. The other 29 mods are unaffected — no other gem stem contains
  *  an underscore or a space. */

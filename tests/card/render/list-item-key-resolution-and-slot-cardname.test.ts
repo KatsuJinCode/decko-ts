@@ -44,7 +44,7 @@
 // known slots carry spaced names (name.s), 3,145 known slots carry
 // space-free names (trivially both forms). The original BUG 2 render
 // used {{+management|open}} — a shape that only rendered a slot while
-// the round-10-era flat `open: true` unknown-view row stood; a work item's
+// the round-10-era flat `open: true` unknown-view row stood; an earlier pass's
 // per-card-set resolution retired that row on +Articles oracle evidence
 // and the open shape emits NOTHING ever since (Ruby-faithful). The pin
 // below drives the url_key form through the CLOSED shape — the live
@@ -229,7 +229,7 @@ describe("list-item key resolution + unsaved-compound slot_cardname (name-form t
       // {{+management|open}} — a shape that only rendered a slot while
       // the round-10-era flat `open: true` unknown-view row stood
       // (card-mod-comment's RIGHT-discussion-scoped declaration
-      // globalized). a work item's per-card-set resolution (9a0d5c1) retired
+      // globalized). an earlier pass's per-card-set resolution (9a0d5c1) retired
       // that row on +Articles oracle evidence, and the open shape emits
       // NOTHING ever since — Ruby-faithfully (see the next test). This
       // pin's red at 46b6976/bf2ac46 (attributed by p21-left-climb,
@@ -274,7 +274,7 @@ describe("list-item key resolution + unsaved-compound slot_cardname (name-form t
     "the open view of an unknown field nest substitutes :unknown and emits nothing for a create-denied session",
     async () => {
       // The +Articles oracle class that grounded the flat open:true
-      // retirement (a work item 9a0d5c1), read through the vendored core:
+      // retirement (earlier 9a0d5c1), read through the vendored core:
       // view/permission.rb:36-44 alter_unknown — no unknown-setting row
       // for :open outside RIGHT-discussion — substitutes :unknown
       // (format/error.rb:18-25 setting_view || :unknown), and

@@ -173,7 +173,7 @@ describe("R17 byte-formatting lane pins", () => {
     // links.rb add_resource_opts insertion order (target, class, href) -
     // the frozen oracle corpus carries 798 external anchors, all
     // target-first, zero target-last (census-tail full-corpus scan,
-    // 2026-09-29; the earlier merge-a work item pin predates the frozen
+    // 2026-09-29; the earlier merge pin predates the frozen
     // expected-v2 bytes and pinned the reverse order).
     expect(html).toContain(
       '<a target="_blank" class="external-link" href="https://decko.org">the decko site</a>',

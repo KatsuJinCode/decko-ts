@@ -2,7 +2,7 @@
 // from the production MySQL schema (db/schema.mysql-reference.sql) and
 // hand-converted to SQLite in db/schema.sqlite.sql. Field names, order, and
 // nullability mirror the MySQL CREATE TABLE statements exactly. Full mapping
-// rationale lives in docs/schema-notes.md.
+// rationale
 //
 // Conventions:
 // * Field names are snake_case, matching the SQL column names and the Ruby

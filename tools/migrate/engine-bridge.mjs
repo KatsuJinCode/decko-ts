@@ -13,7 +13,7 @@
 //     succeeds (Node 24 type stripping) but render.ts's own "./format.js"
 //     specifier cannot resolve (node does not rewrite) — the dynamic
 //     import REJECTS, migrate.mjs catches it, and engine checks fall back
-//     to the vitest-runner spawn. By design; see docs/migration-tool-notes.md.
+//     to the vitest-runner spawn. By design
 //
 // Exports:
 //   - engineChecks({...})   — the verify.mjs `engineChecks` hook:

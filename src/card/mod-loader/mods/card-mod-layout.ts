@@ -36,7 +36,7 @@
 //   the signed-OUT reader's. See the view block below.
 // - set/right/enabled_roles.rb (:edit_inline super() + checkbox input +
 //   validate_role_enabling/clear_roles_cache events) - the edit framework is
-//   unported (docs/render-port-notes.md) and the events are write-path
+//   unported  and the events are write-path
 // - set/right/head.rb :one_line_content - body is card-mod-format's
 //   raw_one_line_content (truncate/strip_tags text helpers); NOW PORTED
 //   (rightHeadOneLineContentView) using text-helpers.ts#truncate +

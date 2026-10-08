@@ -2,7 +2,7 @@
 // cardtype's bar_left renders the media+icon layout — card-mod-bootstrap
 // set/type/bootswatch_skin/html_views.rb:57-63 (text_with_image →
 // media_snippet.haml) — where the engine used to render a bare title span.
-// The expected bytes are the a work item dump's oracle region for `cerulean
+// The expected bytes are an earlier dump's oracle region for `cerulean
 // skin :closed` (phase-008/html/000017-cerulean_skin-closed.expected.html,
 // first-diff offset 848) verbatim: the media block with the +Image child's
 // :boxed nest (coded content → /files/:codename+:image/bootstrap-small.png,
@@ -85,7 +85,7 @@ describe("bootswatch_skin bar_left: the media+icon layout", () => {
   it("renders the dumped oracle bar-left bytes for a skin with an +Image child", async () => {
     const html = await storage!.engine.render("cerulean skin", "closed");
     const region = barLeftRegion(html);
-    // The a work item dump's oracle bytes (phase-008 cerulean skin closed),
+    // The an earlier pass dump's oracle bytes (phase-008 cerulean skin closed),
     // from `<div class='bar-left col-9'>` through the media block close.
     expect(region).toBe(
       `<div class='bar-left col-9'>\n` +

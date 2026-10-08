@@ -4,7 +4,7 @@
 //   const engine = new RenderEngine(fetchEngine);
 //   const html = await engine.render("Home", "open");
 //
-// Render pipeline (see docs/render-port-notes.md for the full trail):
+// Render pipeline :
 //   1. fetch the root through the FetchEngine ladder (cache -> db)
 //   2. prefetch the inclusion closure (src/card/render/prefetch.ts - one
 //      batched round trip for any depth; per-level fallback only on CTE
@@ -20,7 +20,7 @@
 // - Search cores dispatch by type NAME ("Search", set/all/type.rb#type_name);
 //   Ruby dispatches by set module (type_code :search_type). The codename
 //   registry lookup would cost a (cacheable) query on the render path; the
-//   divergence is recorded in docs/render-port-notes.md.
+//   divergence is
 
 import { DeckoName } from "./name.js";
 import { getNameEnvironment } from "./name/environment.js";
@@ -689,7 +689,7 @@ export class RenderEngine implements RenderEngineLike {
    *  a warm render of the same set card only re-does identical work —
    *  the dead renderCards map scan, the left_id SQL query, the child
    *  re-enrichment and the full setting-group loop that made warm
-   *  set-card renders ~2x the a work item warm medians. Keyed by card id
+   *  set-card renders ~2x an earlier warm medians. Keyed by card id
    *  (R16's corrected test: stored children carry
    *  record.leftId === setCard.id, not a name-key match), so the first
    *  render of each set card always runs the full preload and every
@@ -746,7 +746,7 @@ export class RenderEngine implements RenderEngineLike {
   private defaultTypeNameById: Map<number, string> | undefined;
   /** ok_to_<task>? state for the non-read view tasks — loaded once per
    *  engine, on the first render whose ROOT view demands a non-read task
-   *  (docs/view-perms-notes.md). Cleared on resetCaches(). */
+   *. Cleared on resetCaches. */
   private taskState: ViewTaskState | undefined;
   /** auth/permissions.rb:18-26 Auth.createable_types — the sorted cardtype
    *  names the viewer's create verdict admits ([] until precomputed by
@@ -1347,11 +1347,11 @@ export class RenderEngine implements RenderEngineLike {
     // Pass #2: cards enrichAndStore'd during search preparation (their
     // records joined after pass #1). Idempotent — processed keys skip.
     await this.applyStructureContent();
-    // a work item misses (refs surfaced by search-enriched cards) seat here too —
+    // an earlier pass misses (refs surfaced by search-enriched cards) seat here too —
     // the universe + type names are loaded by now.
     await this.seatUnknownRefReadVerdicts();
     // The blank-key seat is idempotent (has("") guard); re-called for the
-    // same reason the a work item ref seat is.
+    // same reason an earlier ref seat is.
     await this.seatBlankKeyReadVerdict();
     // Pass #2 populateTypeCodes: cards enriched during runSearch also
     // need their typeCode patched (their enrichAndStore ran AFTER the
@@ -2862,7 +2862,7 @@ export class RenderEngine implements RenderEngineLike {
    * 17-19 standard_content's new_card branch: `db_content ||
    * (new_card? ? default_content : "")`, default_content = template&.
    * db_content — the SAME winning rule card newCardDefaultType reads the
-   * type from). p20-nest-selection: the a work item class's 19 Project pages
+   * type from). p20-nest-selection: an earlier class's 19 Project pages
    * pin the applied form — the oracle's +discussion titled body is
    * `discussion+*right+*default`'s `<p> </p>\r\n<p> </p>` verbatim.
    * Returns undefined when the universe is not loaded or no candidate
@@ -4200,7 +4200,7 @@ export class RenderEngine implements RenderEngineLike {
    * prepare errors and continues (nested-raise semantics), but the sync
    * render's gate reads only the precomputed verdicts — an unresolved state
    * leaves every card unjudged, and `isDenied`'s unjudged-allowed contract
-   * then renders read-denied bodies in full (Ruby denies them; the a work item
+   * then renders read-denied bodies in full (Ruby denies them; an earlier
    * triage booked 130 such pages). The standalone permission batch is three
    * small statements — it succeeds where the folded closure batch died.
    * No-op on a healthy prepare: ensureReadPermission returns the memoized
@@ -4714,7 +4714,7 @@ export class RenderEngine implements RenderEngineLike {
    *  format.ts) classify known/wanted off the prepared map, and Ruby asks a
    *  LIVE fetch per anchor. A fresh-process render of a card whose content
    *  (or static help popover) links cards no {{nest}} reference reaches
-   *  emitted wanted-card for existing cards — 15 a work item dump entries
+   *  emitted wanted-card for existing cards — 15 an earlier pass dump entries
    *  (10x the *content options popover's [[List]]/[[Pointer]]/[[Search]],
    *  5x card-body links like Anthony Gonzales's [[Bluevolution]]).
    *
@@ -5473,7 +5473,7 @@ export class RenderEngine implements RenderEngineLike {
       // Skin-typed cards join for the same reason: card-mod-style
       // set/type/skin.rb:3 `include_set List` puts Type::Skin on
       // Abstract::List, so a Skin host's items run the identical
-      // nest_item walk (the a work item Skin pages' phantom items need their
+      // nest_item walk (an earlier Skin pages' phantom items need their
       // read verdicts precomputed exactly like list hosts').
       // Iterate the map directly (no intermediate array): the prewarmed
       // map holds the whole deck, and this filter runs every render.
@@ -6407,7 +6407,7 @@ export class RenderEngine implements RenderEngineLike {
     return this.deniedVerdictsByKey.get(card.key) === true;
   }
 
-  /** ok_to_<task>? for the non-read view tasks (docs/view-perms-notes.md). */
+  /** ok_to_<task>? for the non-read view tasks. */
   taskAllowed(card: RenderCard, task: Exclude<CrudTask, "read">): boolean | undefined {
     if (this.readPermission?.alwaysOk) return true;
     return this.taskVerdicts.get(card.key)?.[task];
@@ -6650,7 +6650,7 @@ export class RenderEngine implements RenderEngineLike {
         // same pattern input the structure walk uses (leftTypeName for the
         // type_plus_right anchor — class_methods.rb:58-72 left_type; the
         // bare 4-field input anchored every compound card's candidate on
-        // the registry's RichText fallback). MERGE-a work item: censustail3's
+        // the registry's RichText fallback). MERGE: censustail3's
         // input kept under perm-allow2's applyUpdateOverride layer below.
         this.structurePatternInputForSync(card),
         this.taskState,

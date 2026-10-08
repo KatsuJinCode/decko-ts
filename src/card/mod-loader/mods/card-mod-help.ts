@@ -20,7 +20,7 @@
 // two setting_opts files (set/self/help.rb, set/self/guide.rb - oracle
 // state under "setting_groups"/"setting_opts_*").
 //
-// NOT yet ported (honest remainder, see docs/mod-loader-port-notes.md):
+// NOT yet ported :
 // - set/right/guide.rb - set module only defines a card-level
 //   `raw_help_text` method (card-mod-help set/right/guide.rb:3-7); no
 //   view declared; the SettingHelpText registry already serves the

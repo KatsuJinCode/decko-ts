@@ -3,7 +3,7 @@
 // and its type_id_from_code walk (:68-76) for the engine's create path.
 //
 // Ruby chain (every test cites its file:line; full trail in
-// docs/set-patterns-port-notes.md):
+// ):
 //
 //   1. Card.create! -> Director.run -> super.initialize -> handle_type
 //      (mod/core/set/all/initialize.rb:51-55) -> ensure_type_id

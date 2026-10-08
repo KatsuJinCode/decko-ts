@@ -3,7 +3,7 @@
 // A THIN edge shell around the same engine the Node tests drive (see
 // tests/deploy/deploy-worker-miniflare.test.ts for the workerd proof): the
 // D1 adapter from src/server/drivers/d1.ts (miniflare-proven, see
-// docs/driver-notes.md), FetchEngine, RenderEngine, and the CQL executor.
+// docs/decisions/0003-edge-native-driver-interfaces.md), FetchEngine, RenderEngine, and the CQL executor.
 // Web-standard Request/Response only — no Node APIs on this path. The one
 // Node import inside the engine graph (node:crypto in
 // src/card/render/slot-html.ts) is routed around at bundle time by the
@@ -28,7 +28,7 @@
 // traffic for assets). Card pages link them via PAGE_HEAD_TAGS below.
 //
 // Deploy recipe: deploy/README.md. Architecture + compatibility notes:
-// docs/deploy-notes.md.
+// docs/deploy-cloudflare.md.
 
 import { CloudflareD1Adapter, type D1DatabaseLike } from "../src/server/drivers/d1.js";
 import type { SQLQueryResult } from "../src/server/driver.js";
@@ -197,7 +197,7 @@ function routeTag(pathname: string, method: string): MetricsRoute {
 // non-trashed card. For a demo deck (16 rows) that is one cheap query; at
 // corpus scale (47k cards) it would be megabytes of isolate memory. A
 // production entry would swap in a real sync-lexicon strategy — documented
-// in docs/deploy-notes.md, deliberately not improvised here.
+// in docs/deploy-cloudflare.md, deliberately not improvised here.
 
 interface IdRow {
   id: number;

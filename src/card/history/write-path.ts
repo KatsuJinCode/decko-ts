@@ -210,7 +210,7 @@ export class ActWriter {
     const ts = sqlDateTime(this.clock());
     const trash: SQLBoolean = 0; // event :manage_trash forces trash false on create
     // (mod/core/set/all/trash.rb:23-27); revival from trash reuses the old
-    // row via a different path and is deferred (docs/history-port-notes.md).
+    // row via a different path and is deferred.
 
     const cardId = await this.insertReturningId(
       `INSERT INTO cards

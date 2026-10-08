@@ -13,7 +13,7 @@
 // match_sentinel is the one entry WITHOUT an oracle result set: the capture
 // itself failed ("CAPTURE_ERROR: RuntimeError: %{func} not implemented" —
 // Ruby's CQL match is MySQL/PG-only; SQLite has no REGEXP,
-// docs/oracle-harness.md). Byte-comparison is impossible BY CAPTURE, so the
+// docs/parity-method.md). Byte-comparison is impossible BY CAPTURE, so the
 // replay pins the error sentinel (a re-capture that records a real result
 // set fails loudly here and upgrades the comparison), then RUNS the query
 // through the engine with the REGEXP UDF (src/cql/sqlite-regexp.ts) and

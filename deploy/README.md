@@ -1,6 +1,6 @@
 # decko-ts — one-click Cloudflare Workers + D1 deploy
 
-The M2 harness (docs/port-tracker.md): a [decko-ts](../README.md) engine, a
+The M2 harness: a [decko-ts](../README.md) engine, a
 synthetic demo deck, and this directory. One Worker, one D1 database, no
 other resources. Everything in this directory is self-contained — the
 local proof runs the real workerd via miniflare with NO Cloudflare account
@@ -127,7 +127,7 @@ object storage, so there are no file uploads and no assets bucket.
 wrangler does (module alias included), boots it under miniflare's real
 workerd with the migration + seed applied through the D1 binding, and
 asserts every route. The D1 adapter itself is miniflare-proven separately
-(`tests/server/drivers/d1-miniflare.test.ts`, docs/driver-notes.md).
+(`tests/server/drivers/d1-miniflare.test.ts`, docs/decisions/0003-edge-native-driver-interfaces.md).
 
 ## Regenerating generated files
 

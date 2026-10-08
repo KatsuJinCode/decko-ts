@@ -60,7 +60,7 @@
 // bootstraps *all+*read (card/auth/setup.rb:44). The port instead stores
 // NULLs for that synthetic-seed case, the same documented divergence the
 // read side makes (read-rules.ts canReadByRuleLookup -> undefined,
-// docs/permissions-port-notes.md); the write-permission gate remains the
+// ); the write-permission gate remains the
 // engine's canWrite seam (the :check_permissions validate event,
 // permissions.rb:22-25, is a later stream).
 

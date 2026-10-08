@@ -3,7 +3,7 @@
 // comma-joined in the oracle-pinned order tasks < settings <
 // configurations < cardtypes < scripts < styles — where the engine used to
 // render an empty bar-right for every mod card. The expected strings are
-// the a work item dump's oracle bar-right rows verbatim (phase-019 + phase-043
+// an earlier dump's oracle bar-right rows verbatim (phase-019 + phase-043
 // dumps, e.g. 000039-mod_account-closed, 000039-mod_core-closed,
 // 000039-mod_carrierwave-closed, 000039-mod_recaptcha-closed,
 // 000043-mod_shades-closed, 000039-mod_defaults-closed).
@@ -65,7 +65,7 @@ async function modBarRight(mod: string): Promise<string> {
 
 describe("mod bar_right: the type/mod.rb section list", () => {
   it("renders the dumped oracle section strings", async () => {
-    // Each expected string is the a work item dump's oracle bar-right row.
+    // Each expected string is an earlier dump's oracle bar-right row.
     expect(await modBarRight("core")).toBe("tasks, cardtypes");
     expect(await modBarRight("account")).toBe("cardtypes, scripts, styles");
     expect(await modBarRight("defaults")).toBe("configurations");

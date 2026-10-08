@@ -7,7 +7,7 @@
 // @cloudflare/workers-types. The shapes below were verified against the
 // miniflare 5 local D1 emulation (workerd on Windows; meta.changes,
 // meta.last_row_id, batch() semantics, bigint-bind rejection) — see
-// docs/driver-notes.md for the verified details.
+// docs/decisions/0003-edge-native-driver-interfaces.md for the verified details.
 //
 // In Workers the constructor argument is the `D1Database` binding from
 // `env`; in tests it is the object returned by miniflare's

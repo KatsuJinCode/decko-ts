@@ -52,7 +52,7 @@
 //
 // NEVER THROWS
 //   A shard it cannot read or parse is simply absent from the returned map.
-//   The caller falls back to the recorded a work item weight for that shard, which
+//   The caller falls back to the recorded weight for that shard, which
 //   is the honest treatment of "no measurement" the driver already used.
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";

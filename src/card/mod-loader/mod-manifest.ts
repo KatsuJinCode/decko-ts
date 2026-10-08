@@ -74,7 +74,7 @@ export interface ModViewConfig {
    * perms: :none skips the read check entirely (permission.rb#skip_check?;
    * the TS permissions layer consults this via the mod-loader view-config
    * registry - see the format.ts integration patch note in
-   * docs/mod-loader-port-notes.md).
+   * ).
    */
   perms?: string;
 

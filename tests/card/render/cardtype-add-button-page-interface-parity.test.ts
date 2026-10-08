@@ -1,9 +1,9 @@
-// cardtype-add-button-page-interface-parity.test.ts — the a work item
+// cardtype-add-button-page-interface-parity.test.ts — an earlier
 // cardtype-template page class, byte-for-byte against the raw-oracle
 // page-lane yardstick.
 //
 // WHAT THIS CLASS IS. Of the 63 Cardtype-typed page failures in the
-// a work item grade, 12 differ from the oracle ONLY in the cardtype page
+// an earlier pass grade, 12 differ from the oracle ONLY in the cardtype page
 // template's add affordance (the set/type/cardtype.rb :add_button
 // anchor), 118–154 bytes apart on 14–16 KB pages. The other 51 also
 // diverge in their embedded `+*type+by_name` member search (the oracle
@@ -19,10 +19,10 @@
 //   Mirror List, Mirrored List, Notification template   -> add_button
 //   JavaScript, LWblog                                  -> see below
 //
-// JavaScript and LWblog carried their OWN divergences in the a work item dump
+// JavaScript and LWblog carried their OWN divergences in an earlier dump
 // (the external-link target="_blank" attribute ORDER, and an unescaped
 // apostrophe in +description content). Both of those families were fixed
-// by other ports between the a work item graded tip and this base tip
+// by other ports between an earlier graded tip and this base tip
 // 27ddc7f, so at this base ALL 12 are byte-identical and every entry is
 // gated at the byte-identical level. The add-button-region level is kept
 // in the type (and the mechanism it exists for is documented on the
@@ -64,7 +64,7 @@ const REPLAY_REQUESTED = process.env.CARDTYPE_ADD_BUTTON_REPLAY === "1";
 const CORPUS_PRESENT = existsSync(RAW_CORPUS_DB);
 const SHARDS_PRESENT = existsSync(PAGE_LANE_DIR);
 
-/** The 12 a work item cardtype-template pages, each with the assertion level
+/** The 12 an earlier pass cardtype-template pages, each with the assertion level
  *  its remaining divergence class allows.
  *
  *  "byte-identical" — the add_button fix is the page's ONLY divergence,
@@ -145,7 +145,7 @@ function addButtonRegions(html: string, cardName: string): { pinned: number; pla
 
 describe("cardtype page template interface: the :add_button anchor is oracle-pinned", () => {
   it(
-    "renders the a work item cardtype-template pages with the oracle add_button bytes",
+    "renders an earlier cardtype-template pages with the oracle add_button bytes",
     { timeout: 3_600_000 },
     async (ctx) => {
       if (!REPLAY_REQUESTED) {

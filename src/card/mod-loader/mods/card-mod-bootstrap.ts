@@ -1436,7 +1436,7 @@ const cardModBootstrap: DeckoModManifest = {
       // :core view is template :haml (core.haml) - the HAML depends on
       // accordion_bar + field_nest + nest :content, a structured-content
       // surface not in this port. :bar_left IS PORTED (bar-slots lane
-      // 2026-09-29, byte-shaped to the a work item V6 dump) but registered in
+      // 2026-09-29, byte-shaped to an earlier V6 dump) but registered in
       // the BASE views table (views.ts barLeftView) - the corpus grading
       // pipeline never binds a ModLoader, so only base-table
       // registrations dispatch on the graded surface. :customize_button
@@ -1532,7 +1532,7 @@ const cardModBootstrap: DeckoModManifest = {
       // current mod loader registers views globally (not scoped to a
       // set-pattern), so a registration would clobber the baseline
       // bar_middle for unrelated cards. The view-override dispatch is a
-      // follow-up (docs/mod-loader-port-notes.md); the passive
+      // follow-up; the passive
       // set-module bookkeeping below preserves the registrar's
       // source_location walk.
       setPath: "type_plus_right/bootswatch_skin/colors",

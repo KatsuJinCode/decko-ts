@@ -40,7 +40,7 @@
 // JS numbers; 0x-hex, x'..' and b'..' literals -> Uint8Array; _binary /
 // _charset introducers are consumed and the following literal kept as-is.
 //
-// Memory bounds (full argument in docs/migration-tool-notes.md): peak
+// Memory bounds: peak
 // parser buffer <= chunkBytes + one unprocessed suffix, compacted whenever
 // the consumed prefix passes COMPACT_LIMIT; the pending-row queue is
 // drained by the consumer between feeds. Nothing accumulates rows across

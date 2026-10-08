@@ -47,7 +47,7 @@
 //     grades. Limit S1 (page-surface-only) is CLOSED as of this build;
 //     remaining limits are named in the report's `limitations` array.
 //
-// Docs: docs/migration-parity-tool-cli.md (shadow section). Plan:
+// Docs:  (shadow section). Plan:
 // deliverables/migration-parity-tool-PLAN.md (stage table, honest gaps).
 
 import { spawn, spawnSync } from "node:child_process";

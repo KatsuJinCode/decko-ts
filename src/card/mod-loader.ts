@@ -1002,7 +1002,7 @@ export type ModViewConfigTableEntry = ReturnType<ModViewConfigTable["configFor"]
 
 // The render layer (format.ts) keeps its html view configs as private
 // consts; until the coordinator's patch makes it consult mod configs
-// (docs/mod-loader-port-notes.md section 4), these accessors expose the
+//, these accessors expose the
 // loaded mod view configs through one process-wide default instance so the
 // eventual patch is three lookup lines.
 

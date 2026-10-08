@@ -20,7 +20,7 @@
 //
 // 3. THE REMAINDER, named: the other 30 declarations pin with stub bodies;
 //    per-event reasons are in the manifest source (core-mod.ts file notes)
-//    and summarized in the receipt (docs/admin-surface.md).
+//    and summarized in the receipt.
 
 import { describe, it, expect } from "vitest";
 import coreMod, {

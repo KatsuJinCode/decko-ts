@@ -192,7 +192,7 @@ export async function createRawStructureSeededStorage(
   // recovered from the production-stored keys, applied before any corpus
   // name is parsed so engine key computation matches the keys the oracle
   // deck stored/rendered (participant_s, at_this_time, brandon_s ...).
-  // Without this the 105-row key/inflection family diverges (merge-a work item
+  // Without this the 105-row key/inflection family diverges (merge
   // finding A / view-lane class 3). Table + rationale:
   // src/card/name/oracle-deck-inflections.ts (the deck-data census copy this
   // replaces lived at tmp/raw-ground-truth/scripts/oracle-deck-inflection-config.ts).

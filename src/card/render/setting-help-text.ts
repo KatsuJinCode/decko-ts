@@ -29,7 +29,7 @@
 //
 // COVERAGE: the settings the captured corpus deck exercises whose gems carry
 // a help_text/raw_help_text (fixtures/corpus-v2/recapture menu bytes + the
-// a work item view-fail dump). Settings whose registration carries no
+// an earlier pass view-fail dump). Settings whose registration carries no
 // `help_text:` (e.g. *default - card-mod-content set/self/default.rb has only
 // short_help_text; *guide self - card-mod-help set/self/guide.rb) are
 // correctly ABSENT: their cards fall through to the rule-card branch and
@@ -115,7 +115,7 @@ export const SETTING_HELP_TEXT: ReadonlyMap<string, SettingHelpEntry> = new Map(
   // card-mod-layout-0.20.0 set/self/head.rb (setting_opts help_text)
   ["head", { self: "head tag content", right: "head tag content" }],
   // --- 2026-09-29 extensions, sourced verbatim from the
-  // --- installed gems the same way; the a work item view-fail H4 class showed the
+  // --- installed gems the same way; an earlier view-fail H4 class showed the
   // --- captured corpus exercising these settings' menus too.
 
   // card-mod-style-0.20.0 set/self/style.rb:3-5 (setting_opts help_text -

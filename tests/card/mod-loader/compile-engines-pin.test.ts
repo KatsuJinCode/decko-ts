@@ -43,7 +43,7 @@
 //   post-compile parity adapter
 //   (src/card/mod-loader/libsass-byte-parity-adapter.ts). The divergence-
 //   class catalogue and its residuals live in
-//   docs/compile-engines-libsass-parity-notes.md and the adapter header.
+//    and the adapter header.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

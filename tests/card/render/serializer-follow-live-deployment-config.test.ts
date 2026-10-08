@@ -9,7 +9,7 @@
 //      always-enroll form 3,693 corpus slots pin); the head constants are
 //      untouched (no SRI, corpus attachment digits, card-gem version).
 //   2. LIVE (serializerEra: "live"): the conditional show-key rule
-//      (docs/serializer-spec-conditional-data-slot-show-key.md) — a plain
+//       — a plain
 //      closed root whose show list names only the requested view OMITS the
 //      key; a discussion open whose list also carries comment_box emits
 //      show minus the requested view (["comment_box"]).
