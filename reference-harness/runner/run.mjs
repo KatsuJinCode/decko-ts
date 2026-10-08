@@ -16,7 +16,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, write
 import os from "node:os";
 import path from "node:path";
 import { AdapterSession, loadAdapterManifest } from "./adapter-process.mjs";
-import { delta, snapshot, splitDelta } from "./deck-state.mjs";
+import { rawDelta, snapshot, splitDelta } from "./deck-state.mjs";
 import { verifyFixture } from "./manifest.mjs";
 
 export const RESULTS_FORMAT = 2;
@@ -133,7 +133,7 @@ try {
       run.ms_per_op = ops.length ? Math.round((Date.now() - t0) / ops.length) : 0;
       // Reads must not write: every row of every table the session changed,
       // raw, is recorded, and the grader fails the run on any.
-      run.session_writes = delta(startState, snapshot(stage.db));
+      run.session_writes = rawDelta(startState, snapshot(stage.db));
     });
     run.finished = new Date().toISOString();
     run.complete = run.ops_run === ops.length;
@@ -156,7 +156,7 @@ try {
         for (const step of scenario.steps) {
           const before = snapshot(stage.db);
           const answer = await session.request(step);
-          const { rows, other } = splitDelta(delta(before, snapshot(stage.db)));
+          const { rows, other } = splitDelta(rawDelta(before, snapshot(stage.db)));
           results.push({
             ...(answer.ok ? { result: answer.result } : { error: answer.error }),
             // Raw row delta in Decko's card tables (graded as persistence),

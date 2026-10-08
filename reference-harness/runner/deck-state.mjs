@@ -1,8 +1,10 @@
 // Reads a deck's persisted state straight from its SQLite file (Decko's own
 // schema is the persistence contract) and computes row deltas between two
-// snapshots. Deltas are raw: ids, timestamps and every other column exactly as
-// stored. The grader compares them as they are (reference-harness/SPEC.md,
-// "Normalisation"). Uses node:sqlite, so the runner needs nothing beyond Node.
+// snapshots. The runner records raw deltas (rawDelta): ids, timestamps and
+// every other column exactly as stored, which the grader compares as they are
+// (reference-harness/SPEC.md, "Normalisation"). `delta` is the symbolic form
+// for comparisons that cannot pin ids and clocks. Uses node:sqlite, so the
+// runner needs nothing beyond Node.
 
 import { DatabaseSync } from "node:sqlite";
 
@@ -60,7 +62,7 @@ function columnNames(db, table) {
  * text), so a timestamp rewritten in another text form is a change.
  * `tables` limits the delta to those tables (default: every table).
  */
-export function delta(before, after, tables) {
+export function rawDelta(before, after, tables) {
   const names = tables ?? [...new Set([...Object.keys(before), ...Object.keys(after)])].sort();
   const result = {};
   for (const table of names) {
@@ -93,17 +95,6 @@ function sameValue(x, y) {
   return false;
 }
 
-/** True when a recorded delta (or a legacy per-table count summary) holds any
- *  inserted, updated or deleted row. */
-export function hasWrites(recorded) {
-  if (recorded === null || recorded === undefined) return false;
-  if (typeof recorded !== "object") return true;
-  return Object.values(recorded).some((d) => {
-    if (d === null || typeof d !== "object") return Boolean(d);
-    return ["inserted", "updated", "deleted"].some((k) => (Array.isArray(d[k]) ? d[k].length > 0 : Number(d[k] ?? 0) > 0));
-  });
-}
-
 /** Splits a full delta into the card tables (graded as persistence) and the
  *  rest (recorded, reported, not graded for writes). */
 export function splitDelta(full) {
@@ -111,4 +102,104 @@ export function splitDelta(full) {
   const other = {};
   for (const [table, d] of Object.entries(full)) (CARD_TABLES.includes(table) ? rows : other)[table] = d;
   return { rows, other };
+}
+
+// ---- symbolic delta ---------------------------------------------------------
+// For comparisons that cannot pin both engines to the same ids and clock (the
+// browser scenarios, where each engine serves its own requests in real time).
+// The reference grader does not use it: it compares raw deltas.
+
+/** Columns holding a row id of another table, by table. */
+const FOREIGN = {
+  cards: { left_id: "cards", right_id: "cards", type_id: "cards", creator_id: "cards", updater_id: "cards",
+    read_rule_id: "cards", current_revision_id: "card_actions" },
+  card_acts: { card_id: "cards", actor_id: "cards" },
+  card_actions: { card_id: "cards", card_act_id: "card_acts", super_action_id: "card_actions" },
+  card_changes: { card_action_id: "card_actions" },
+  card_references: { referer_id: "cards", referee_id: "cards" },
+  card_virtuals: { left_id: "cards", right_id: "cards" },
+};
+const TIME_COLUMNS = new Set(["created_at", "updated_at", "acted_at"]);
+
+/** A card table of a snapshot, keyed by numeric id. */
+const byNumericId = (table) => new Map([...(table ?? new Map()).values()].map((row) => [Number(row.id), row]));
+
+/** A card's full name from the snapshot, composed through left/right ids. */
+function composedName(cards, id, seen = new Set()) {
+  const row = cards.get(id);
+  if (!row || seen.has(id)) return undefined;
+  seen.add(id);
+  if (row.left_id === null || row.left_id === undefined) return row.name ?? undefined;
+  const l = composedName(cards, Number(row.left_id), seen);
+  const r = composedName(cards, Number(row.right_id), seen);
+  return l === undefined || r === undefined ? undefined : `${l}+${r}`;
+}
+
+function canonicalTime(value) {
+  if (value === null || value === undefined) return value;
+  const s = String(value);
+  const iso = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}/.test(s) ? new Date(s.replace(" ", "T") + (/[zZ]|[+-]\d\d:?\d\d$/.test(s) ? "" : "Z")) : null;
+  return iso && !Number.isNaN(iso.getTime()) ? iso.toISOString() : s;
+}
+
+/**
+ * The card-table delta between two snapshots with rows the step created
+ * given symbolic ids (a card by its name, other rows by table and creation
+ * order), every column pointing at them rewritten the same way, and
+ * timestamps compared as instants.
+ */
+export function delta(beforeSnapshot, afterSnapshot) {
+  const before = Object.fromEntries(CARD_TABLES.map((t) => [t, byNumericId(beforeSnapshot[t])]));
+  const after = Object.fromEntries(CARD_TABLES.map((t) => [t, byNumericId(afterSnapshot[t])]));
+  const symbols = {};
+  for (const table of CARD_TABLES) {
+    const fresh = [...after[table].keys()].filter((id) => !before[table].has(id)).sort((a, b) => a - b);
+    const map = new Map();
+    fresh.forEach((id, i) => {
+      if (table === "cards") {
+        const name = composedName(after.cards, id);
+        map.set(id, `new card ${name ?? `#${i + 1}`}`);
+      } else {
+        map.set(id, `new ${table} #${i + 1}`);
+      }
+    });
+    symbols[table] = map;
+  }
+  const norm = (table, row) => {
+    const out = {};
+    for (const [col, value] of Object.entries(row)) {
+      if (col === "id") {
+        out.id = symbols[table].get(Number(value)) ?? value;
+        continue;
+      }
+      const target = FOREIGN[table]?.[col];
+      if (target && value !== null && value !== undefined) out[col] = symbols[target].get(Number(value)) ?? value;
+      else if (TIME_COLUMNS.has(col)) out[col] = canonicalTime(value);
+      else out[col] = value;
+    }
+    return out;
+  };
+  const result = {};
+  for (const table of CARD_TABLES) {
+    const inserted = [];
+    const deleted = [];
+    const updated = [];
+    for (const [id, row] of after[table]) {
+      const old = before[table].get(id);
+      if (!old) {
+        inserted.push(norm(table, row));
+        continue;
+      }
+      const changes = {};
+      const was = norm(table, old);
+      const now = norm(table, row);
+      for (const col of Object.keys(row)) {
+        if (String(was[col]) !== String(now[col])) changes[col] = [was[col], now[col]];
+      }
+      if (Object.keys(changes).length > 0) updated.push({ id, changes });
+    }
+    for (const [id, row] of before[table]) if (!after[table].has(id)) deleted.push(norm(table, row));
+    if (inserted.length || deleted.length || updated.length) result[table] = { inserted, updated, deleted };
+  }
+  return result;
 }
