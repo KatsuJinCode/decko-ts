@@ -5401,11 +5401,12 @@ const unknownView: ViewFn = (ctx) => {
   // titled-view nest miss on a rule-less deck).
   if (fmt.engine.taskAllowed?.(fmt.card, "create") !== true) return "";
   const url = fmt.urlKey();
-  const name = fmt.card.name.s;
+  // render_title: the title view, so the name is relative to the context
+  // names (title.rb title_in_context) - `+description` for a Role page's
+  // field nest under that page's main card.
   const link =
     `<a rel="nofollow" class="unknown-link slotter" href="/${h(url)}/new_in_modal" data-remote="true">` +
-    `${icon("add_box")} <span class="card-title" title="${h(name)}">` +
-    `${wrappedTitleInner(h(name))}</span></a>`;
+    `${icon("add_box")} ${fmt.renderView("title")}</a>`;
   return slotWrapCommon(fmt, "unknown", link);
 };
 

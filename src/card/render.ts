@@ -1408,6 +1408,9 @@ export class RenderEngine implements RenderEngineLike {
     // cardtype-structure pages: precomputed before the sync render so the
     // view gate resolves it query-free.
     await this.ensureConfigureVerdict(record);
+    // The create verdicts of the root's unknown nest targets (the :unknown
+    // view's createable gate).
+    await this.seatUnknownNestCreateVerdicts(record);
     // db-roundtrip-elimination lane (W2b + W3b): prime the derived state
     // the SYNC render resolves by name at view time - every prepared
     // record's TYPE card (the enrichAndStore type reads) and the rule
@@ -6759,6 +6762,58 @@ export class RenderEngine implements RenderEngineLike {
    * pattern precedence = resolveStructuredContent's winner). Memoized per
    * host key; engines whose viewer is always-ok skip the query.
    */
+  /**
+   * An unknown nest target renders :unknown, whose body is
+   * `createable { ... }` (card-mod-format set/all/html/error.rb:15-21): the
+   * add link shows when the viewer may create the new card. The sync view
+   * reads the create verdict from taskVerdicts, which the prepare phase
+   * fills only for prepared cards, so a nest miss on the render root (a
+   * Role card's `{{+:description|lead}}` with no description yet) rendered
+   * nothing for a viewer Ruby lets create it (`*all plus+*create = _left`).
+   * This seats the verdict for each of the root's references that resolves
+   * to no card, typed by the *default template chain like Card.new. Only
+   * signed-in viewers are asked: on a stock deck *all+*create excludes
+   * Anonymous, and leaving anonymous renders untouched keeps their query
+   * counts as they were.
+   */
+  private async seatUnknownNestCreateVerdicts(record: CardRecord): Promise<void> {
+    if (this.readPermission === undefined || this.readPermission.alwaysOk) return;
+    if (this.readPermission.signedInActorId === undefined) return;
+    const rootKey = record.key ?? (record.name ? DeckoName.parse(record.name).key : undefined);
+    const root = rootKey !== undefined ? this.renderCards.get(rootKey) : undefined;
+    if (root === undefined || root.dbContent === undefined || root.dbContent === "") return;
+    const misses: DeckoName[] = [];
+    for (const ref of referencedNames(root.dbContent)) {
+      const pipe = ref.name.indexOf("|");
+      const base = pipe === -1 ? ref.name : ref.name.slice(0, pipe);
+      let name: DeckoName;
+      try {
+        name = DeckoName.parse(DeckoName.parse(base).absolute(root.name));
+      } catch {
+        continue;
+      }
+      if (name.key === "" || this.renderCards.has(name.key) || this.taskVerdicts.has(name.key)) continue;
+      if (virtualSearchCqlFor(name, this.codenameHolderKey) !== undefined) continue;
+      misses.push(name);
+    }
+    if (misses.length === 0) return;
+    if (this.taskState === undefined) {
+      const results = await this.fetcher.driver.batch(viewTaskPermissionStatements());
+      this.taskState = viewTaskStateFromResults(results, this.readPermission);
+    }
+    for (const name of misses) {
+      const defaulted = this.newCardDefaultType(name);
+      const input = {
+        name,
+        isNew: true,
+        ...(defaulted?.typeId !== undefined ? { typeId: defaulted.typeId } : {}),
+        ...(defaulted?.typeName !== undefined ? { typeName: defaulted.typeName } : {}),
+      };
+      const create = await taskVerdictForCard(this.fetcher, input, "create", this.taskState);
+      this.taskVerdicts.set(name.key, { update: undefined, delete: undefined, create });
+    }
+  }
+
   private async ensureConfigureVerdict(record: CardRecord): Promise<void> {
     if (this.readPermission === undefined) return;
     if (this.readPermission.alwaysOk) return;

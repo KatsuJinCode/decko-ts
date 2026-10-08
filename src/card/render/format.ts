@@ -1184,7 +1184,11 @@ export class RenderFormat {
       if (effective === "not_found" && this.formatName === "html" && this.card.unknown === true) {
         return this.notFoundFrameHtml(voo);
       }
-      this.runBeforeHook(effective, voo);
+      // voo_api.rb:162-164 process_before_view: `format.before_view
+      // requested_view` - the REQUESTED view's before hook, also when an
+      // unknown card renders a substituted view (a `{{+x|content}}` miss
+      // keeps before(:content)'s d0-card-content class on its unknown slot).
+      this.runBeforeHook(normalized, voo);
       // Chain-aware dispatch: when the engine has a mod loader wired up,
       // resolve through the per-card chain (Ruby's MRO walk - set/
       // format.rb:146-150) and return the most-specific set module's
