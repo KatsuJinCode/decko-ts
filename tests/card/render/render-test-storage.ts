@@ -13,7 +13,12 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
-import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../../src/server/driver.js";
+import type {
+  SQLDatabaseDriver,
+  SQLQueryResult,
+  SQLStatement,
+  SQLTransactionGuarantee,
+} from "../../../src/server/driver.js";
 import type { CardsRow } from "../../../src/server/schema.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
 import { RenderEngine } from "../../../src/card/render.js";
@@ -94,6 +99,20 @@ export class CountingRenderDriver implements SQLDatabaseDriver {
   readonly statements: string[] = [];
 
   constructor(private readonly inner: SQLDatabaseDriver) {}
+
+  /** The wrapped driver's guarantee: saves through this wrapper are as
+   *  atomic as saves through the driver it counts. */
+  get transactionGuarantee(): SQLTransactionGuarantee | undefined {
+    return this.inner.transactionGuarantee;
+  }
+
+  /** Present exactly when the wrapped driver's is. Statements inside the
+   *  unit of work still pass through query()/batch() and are counted. */
+  get transaction(): (<R>(work: () => Promise<R>) => Promise<R>) | undefined {
+    const inner = this.inner;
+    if (inner.transaction === undefined) return undefined;
+    return <R>(work: () => Promise<R>) => inner.transaction!(work);
+  }
 
   async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
     this.counts = { statements: this.counts.statements + 1, roundTrips: this.counts.roundTrips + 1 };
