@@ -116,6 +116,10 @@ import {
   guideTabView,
   historyTabView,
   inputView,
+  newButtonsView,
+  newFieldsView,
+  newTypeFormgroupView,
+  newView,
   relatedTabView,
   rulesTabView,
 } from "../mod-loader/mods/card-mod-edit.js";
@@ -463,6 +467,10 @@ function menuBoardAnchor(fmt: RenderFormat, opts: { inModal: boolean }): string 
  *  / :board_link views and the menu cannot drift apart. */
 const menuView: ViewFn = (ctx) => {
   const { fmt, voo } = ctx;
+  // menu.rb:8-10 `view :menu, denial: :blank, unknown: true do return ""
+  // unless card.known?` — an unknown card renders no menu (and no
+  // :unknown substitution: the view supports unknown cards).
+  if (fmt.card.unknown === true) return "";
   const help = menuHelpAnchor(ctx);
   const edit = menuEditAnchor(fmt);
   const board = menuBoardAnchor(fmt, { inModal: false });
@@ -6485,6 +6493,14 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   // :rules_tab/:related_tab/:history_tab/:follow_section + help.rb's
   // :guide — the ACTIVE tab's view is dispatched by name from boardTabs).
   edit_form: editFormView,
+  // card-mod-edit-0.20.0 set/all/new.rb: the create form a page renders for
+  // an absent card the viewer may create (html/error.rb:81-83
+  // page_view_for_unknown -> :new), with its dispatch closure (:new_fields,
+  // :new_type_formgroup, :new_buttons). Perms ride view-perms.ts.
+  new: newView,
+  new_fields: newFieldsView,
+  new_type_formgroup: newTypeFormgroupView,
+  new_buttons: newButtonsView,
   edit_name_row: editNameRowView,
   edit_type_row: editTypeRowView,
   content_formgroups: contentFormgroupsView,

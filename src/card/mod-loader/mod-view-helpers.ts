@@ -10,6 +10,7 @@
 // attribute order).
 
 import { emitAttrs, h, newSlotId, slotOptionsWithNameContext } from "../render/slot-html.js";
+import { isNewCard } from "../fetch/card-record.js";
 import { getDefaultModLoader } from "../mod-loader.js";
 import type { ViewContext, ViewFn } from "../render/format.js";
 import type { ViewChainEntry } from "./mod-registrar.js";
@@ -50,7 +51,9 @@ export function modSlotWrap(
     id: slotId(card, view),
     class: classes,
     "data-card-id": card.id === undefined ? undefined : String(card.id),
-    "data-card-name": card.name.s,
+    // wrap.rb: a new compound card's slot names it by its url key (the
+    // same rule as views.ts slotCardname).
+    "data-card-name": isNewCard(card.record) && card.name.isCompound ? card.name.urlKey : card.name.s,
     "data-card-type-id": card.typeId === undefined ? undefined : String(card.typeId),
     "data-card-type-name": card.typeName,
     "data-card-link-name": fmt.urlKey(),

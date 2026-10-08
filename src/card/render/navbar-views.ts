@@ -81,7 +81,8 @@ const navbarLinksView: ViewFn = (ctx) => {
     // product both this view and :core render. Signed out: sign_up +
     // sign_in (my_card and sign_out are signed_in?-gated, denial :blank ->
     // dropped).
-    const signedInItems = ctx.fmt.engine.pageSessionAccountLinksHtml;
+    const prepared = ctx.fmt.engine.pageSessionAccountLinksHtml;
+    const signedInItems = prepared === undefined ? undefined : bindUniqueIds(prepared, ctx.fmt);
     if (signedInItems !== undefined) {
       return `<ul class="navbar-nav">${signedInItems}</ul>`;
     }
@@ -274,7 +275,8 @@ export const NAVBAR_VIEWS: Record<string, ViewFn> = {
  *  sign_in pair (my_card/sign_out are signed_in?-gated with denial :blank —
  *  dropped from the compact). */
 export function accountLinksCoreHtml(ctx: ViewContext): string {
-  const signedInItems = ctx.fmt.engine.pageSessionAccountLinksHtml;
+  const prepared = ctx.fmt.engine.pageSessionAccountLinksHtml;
+  const signedInItems = prepared === undefined ? undefined : bindUniqueIds(prepared, ctx.fmt);
   if (signedInItems !== undefined) {
     return `<div id="logging" class="logged-in">${signedInItems}</div>`;
   }
@@ -360,6 +362,20 @@ export function myCardDropdownInnerHtml(
   );
 }
 
+/** Where a prepared chrome fragment takes the next element-id number
+ *  (role_checkbox.haml's `"pointer_checkbox-#{unique_id}"`). The fragment
+ *  is prepared before the page renders, but Ruby numbers ids in render
+ *  order through the root format's id_counter, so the number is bound when
+ *  the fragment is placed (bindUniqueIds). */
+const UNIQUE_ID_SLOT = "\u0000unique-id\u0000";
+
+/** Fill each unique-id slot of a prepared fragment from the rendering
+ *  format's id counter, in document order. */
+export function bindUniqueIds(html: string, fmt: RenderFormat): string {
+  if (!html.includes(UNIQUE_ID_SLOT)) return html;
+  return html.split(UNIQUE_ID_SLOT).reduce((out, part) => `${out}${fmt.nextIdNumber()}${part}`);
+}
+
 /** What the interactive roles dropdown needs beyond the account dropdown's
  *  inputs, resolved by the engine's async prepare step. */
 export interface InteractiveRolesDropdown {
@@ -396,19 +412,6 @@ export function interactiveRolesDropdownHtml(
   const name = DeckoName.parse(`${actorName}+*enabled roles`);
   const urlKey = name.urlKey;
   const safeKey = name.safeKey;
-  const knownClass = (isKnown: boolean): string => (isKnown ? "known-card" : "wanted-card");
-  const roleItems = [
-    `<h6 class="dropdown-header">Roles</h6>`,
-    ...dropdown.roles.map(
-      (role, index) =>
-        `<div class='pointer-checkbox dropdown-item'>\n` +
-        `<input type="checkbox" name="pointer_checkbox-${safeKey}-${index + 1}" ` +
-        `id="pointer-checkbox-${DeckoName.parse(role.name).key}" value="${h(role.name)}" ` +
-        `class="pointer-checkbox-button _submit-on-change me-2" checked="checked" />\n` +
-        `<a class="${knownClass(role.known)}" href="/${h(DeckoName.parse(role.name).urlKey)}">${h(role.name)}</a>\n` +
-        `</div>\n`,
-    ),
-  ];
   const slotData = JSON.stringify({
     view: "edit_inline",
     nest_name: name.s,
@@ -434,7 +437,32 @@ export function interactiveRolesDropdownHtml(
     `<input type="hidden" name="card[type_id]" id="card_type_id" value="${dropdown.sessionTypeId}" autocomplete="off" />` +
     `<fieldset class="card-editor editor"><div class="editor content-editor">` +
     `<input class="d0-card-content form-control" autocomplete="off" type="hidden" name="card[content]" id="card_content" />` +
-    `<div class="pointer-checkbox-list">${myCardDropdownInnerHtml(actorName, known, roleItems)}</div>` +
+    `<div class="pointer-checkbox-list">${roleCheckboxAccountDropdownHtml(actorName, known, dropdown)}</div>` +
     `</div></fieldset></form></div>`
   );
+}
+
+/** enabled_roles.rb checkbox_input's account_dropdown: the account dropdown
+ *  whose role items are the role_checkbox haml (account_dropdown_role_items
+ *  override) — the body of the +*enabled roles :edit_inline form. */
+export function roleCheckboxAccountDropdownHtml(
+  actorName: string,
+  known: { actor: boolean; accountSettings: boolean; signin: boolean },
+  dropdown: InteractiveRolesDropdown,
+): string {
+  const safeKey = DeckoName.parse(`${actorName}+*enabled roles`).safeKey;
+  const knownClass = (isKnown: boolean): string => (isKnown ? "known-card" : "wanted-card");
+  const roleItems = [
+    `<h6 class="dropdown-header">Roles</h6>`,
+    ...dropdown.roles.map(
+      (role) =>
+        `<div class='pointer-checkbox dropdown-item'>\n` +
+        `<input type="checkbox" name="pointer_checkbox-${safeKey}-${UNIQUE_ID_SLOT}" ` +
+        `id="pointer-checkbox-${DeckoName.parse(role.name).key}" value="${h(role.name)}" ` +
+        `class="pointer-checkbox-button _submit-on-change me-2" checked="checked" />\n` +
+        `<a class="${knownClass(role.known)}" href="/${h(DeckoName.parse(role.name).urlKey)}">${h(role.name)}</a>\n` +
+        `</div>\n`,
+    ),
+  ];
+  return myCardDropdownInnerHtml(actorName, known, roleItems);
 }

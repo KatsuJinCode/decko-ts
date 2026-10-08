@@ -119,6 +119,8 @@ async function engineFor(actor: string | undefined): Promise<RenderEngine> {
   let engine = engines.get(key);
   if (engine === undefined) {
     engine = new RenderEngine(fetcher);
+    // A render request names any card, present or not, as a request does.
+    engine.renderAbsentCards = true;
     const viewer = await viewerFor(actor);
     engine.viewer = viewer;
     engine.pageSession = viewer.signedIn ? viewer : undefined;

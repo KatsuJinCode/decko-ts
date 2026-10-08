@@ -68,6 +68,7 @@ import { deploymentDefaultHtmlViewNest } from "./render/deployment-follow-live-c
 import {
   interactiveRolesDropdownHtml,
   myCardDropdownInnerHtml,
+  roleCheckboxAccountDropdownHtml,
   signedInAccountLinksInnerHtml,
   type InteractiveRolesDropdown,
 } from "./render/navbar-views.js";
@@ -603,6 +604,15 @@ export class RenderEngine implements RenderEngineLike {
    *  read-verdict viewer (Auth.as_id). Undefined = signed-out chrome (the
    *  corpus surface, byte-identical to the pre-session render). */
   pageSession: ReadViewer | undefined;
+  /** Render a card that does not exist as Ruby does (Card.fetch name, new:
+   *  {} — the controller's load_card), instead of throwing "card not
+   *  found". A view renders through view_for_unknown (format/error.rb:
+   *  18-25): the view's unknown setting or :unknown; a page's main card
+   *  renders :new when the viewer may create it and :not_found otherwise
+   *  (set/all/html/error.rb:81-87), and pageErrorStatus reports the 404.
+   *  Off by default: the hosts map the thrown error to their own not-found
+   *  response. */
+  renderAbsentCards = false;
   /** The prepared signed-in *account_links navbar items (see
    *  RenderEngineLike.pageSessionAccountLinksHtml). Filled once per
    *  session actor by prepareSessionAccountLinks; survives across pages of
@@ -612,6 +622,9 @@ export class RenderEngine implements RenderEngineLike {
   /** The prepared :my_card view body (the account_dropdown arm) — see
    *  RenderEngineLike.pageSessionMyCardHtml. */
   private sessionMyCardHtml: string | undefined;
+  /** The prepared +*enabled roles checkbox dropdown — see
+   *  RenderEngineLike.pageSessionRolesDropdownHtml. */
+  private sessionRolesDropdownHtml: string | undefined;
 
   /** The render-time history seam bundle (src/card/history/render-seam.ts):
    *  set by prepareHistoryRender during a render whose view is one of
@@ -998,8 +1011,11 @@ export class RenderEngine implements RenderEngineLike {
           : readBootContentVersion(this.fetcher.driver)
         : undefined;
     this.bootProbeIssued = true;
-    const [record] = await Promise.all([this.fetcher.fetchByName(cardName), bootProbe]);
+    const [found] = await Promise.all([this.fetcher.fetchByName(cardName), bootProbe]);
     if (bootProbe !== undefined) this.bootProbeVersion = await bootProbe;
+    const record = found === undefined && this.renderAbsentCards
+      ? await this.fetcher.fetchByName(cardName, { new: {} })
+      : found;
     if (record === undefined || record.name === undefined) {
       throw new Error(`card not found: ${cardName}`);
     }
@@ -1578,10 +1594,14 @@ export class RenderEngine implements RenderEngineLike {
       await this.ensureVerdicts();
     }
 
-    const rootCard = this.renderCards.get(name.key);
-    if (rootCard === undefined) {
+    const preparedRoot = this.renderCards.get(name.key);
+    if (preparedRoot === undefined) {
       throw new Error(`render card not prepared: ${name.s}`);
     }
+    const rootCard =
+      record.isNew === true && preparedRoot.id === undefined && this.renderAbsentCards
+        ? await this.seatAbsentRoot(preparedRoot)
+        : preparedRoot;
     // Pointer / List cardtypes: pre-enrich every item their content
     // references (the prefetch closure walk does NOT chase plain-text
     // references — only nest-syntax ones — so the items are absent
@@ -2339,6 +2359,7 @@ export class RenderEngine implements RenderEngineLike {
     this.sessionAccountLinks = undefined;
     this.sessionAccountLinksActorId = undefined;
     this.sessionMyCardHtml = undefined;
+    this.sessionRolesDropdownHtml = undefined;
     this.searchResults.clear();
     this.searchFailures.clear();
     this.searchResultPagingMap.clear();
@@ -6445,6 +6466,11 @@ export class RenderEngine implements RenderEngineLike {
 
   /** RenderEngineLike.pageSessionMyCardHtml — the prepared :my_card view
    *  body (the account_dropdown arm; see the prepare note below). */
+  /** RenderEngineLike.pageSessionRolesDropdownHtml. */
+  get pageSessionRolesDropdownHtml(): string | undefined {
+    return this.sessionRolesDropdownHtml;
+  }
+
   get pageSessionMyCardHtml(): string | undefined {
     return this.sessionMyCardHtml;
   }
@@ -6479,6 +6505,7 @@ export class RenderEngine implements RenderEngineLike {
       this.sessionAccountLinks = undefined;
       this.sessionAccountLinksActorId = undefined;
       this.sessionMyCardHtml = undefined;
+      this.sessionRolesDropdownHtml = undefined;
       return;
     }
     const actorName: string = actor.name.s;
@@ -6513,7 +6540,75 @@ export class RenderEngine implements RenderEngineLike {
       rolesDropdown === undefined
         ? myCardDropdownInnerHtml(actorName, known, [])
         : interactiveRolesDropdownHtml(actorName, known, rolesDropdown);
+    this.sessionRolesDropdownHtml =
+      rolesDropdown === undefined ? undefined : roleCheckboxAccountDropdownHtml(actorName, known, rolesDropdown);
     this.sessionAccountLinksActorId = session.actorId;
+  }
+
+  /** Seat the render root for an ABSENT card (renderAbsentCards): the
+   *  controller's Card.fetch name, new: {} gives a new card typed by the
+   *  type assignment or *default template (type.rb:58-66 ensure_type_id —
+   *  newCardDefaultType, the same walk a nest miss takes), and unknown?
+   *  (states.rb), so its views route through view_for_unknown. Its four
+   *  task verdicts are judged here, while awaiting is legal: a page's main
+   *  card renders :new or :not_found by ok?(:create) (html/error.rb:81-87),
+   *  and the :unknown view's create link reads the same verdict. */
+  private async seatAbsentRoot(card: RenderCard): Promise<RenderCard> {
+    const name = card.name;
+    let leftTypeName: string | undefined;
+    if (name.isCompound && name.leftName !== undefined) {
+      const left = await this.fetcher.fetchByName(name.leftName.s);
+      if (left?.typeId !== undefined && left.typeId !== null) {
+        leftTypeName = (await this.fetcher.fetchById(left.typeId))?.name?.s;
+      }
+    }
+    const typed =
+      card.typeId !== undefined
+        ? { typeId: card.typeId, typeName: card.typeName ?? "" }
+        : this.newCardDefaultType(name, leftTypeName);
+    const typeId = typed?.typeId;
+    const seated: RenderCard = {
+      ...card,
+      record: { ...card.record, typeId },
+      typeId,
+      typeName: typed?.typeName,
+      typeCode: typeId === undefined ? undefined : this.fetcher.codenames.peekNameForId(typeId),
+      setKeys: safeSetKeys({ name, typeId, typeName: typed?.typeName, leftTypeName, isNew: true }),
+      unknown: true,
+    };
+    this.renderCards.set(card.key, seated);
+    if (this.readPermission !== undefined) {
+      if (this.taskState === undefined) {
+        const results = await this.fetcher.driver.batch(viewTaskPermissionStatements());
+        this.taskState = viewTaskStateFromResults(results, this.readPermission);
+      }
+      const verdicts = await allTaskVerdictsForCard(
+        this.fetcher,
+        this.structurePatternInputForSync(seated),
+        this.taskState,
+      );
+      this.taskVerdicts.set(seated.key, verdicts);
+      // The :new page view's type field lists Auth.createable_types (the
+      // same prepare gate a requested :new view takes).
+      if (verdicts.create === true || this.readPermission.alwaysOk) {
+        await this.ensureCreateableTypes();
+        // ... and its alert guide (guide.rb determine_guide_card: the new
+        // card's *guide rule, first candidate that exists).
+        // prepend_guide_edit_link reads the guide card's ok?(:update).
+        for (const candidate of ruleNamesForCard(this.structurePatternInputForSync(seated), "*guide")) {
+          const guide = await this.prepareItemForRender(candidate);
+          if (guide?.id === undefined || this.taskVerdicts.has(guide.key)) continue;
+          const guideVerdicts = await allTaskVerdictsForCard(
+            this.fetcher,
+            this.structurePatternInputForSync(guide),
+            this.taskState,
+          );
+          this.taskVerdicts.set(guide.key, await this.applyUpdateOverride(guide, guideVerdicts));
+        }
+        await this.ensureVerdicts();
+      }
+    }
+    return seated;
   }
 
   /** The interactive roles dropdown's inputs, or undefined when Ruby's

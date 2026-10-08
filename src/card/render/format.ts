@@ -985,9 +985,17 @@ export class RenderFormat {
    *  consume it - tinymce_editor_input's `id: unique_id` (the captured
    *  edit form's `id="oracle_basic-1"`). */
   uniqueId(): string {
-    const root = this.parent ?? this;
+    return `${this.card.name.safeKey}-${this.nextIdNumber()}`;
+  }
+
+  /** The next value of the format-chain root's id_counter (content.rb:
+   *  60-66 — every subformat delegates up to the root, so one request's
+   *  element ids are numbered in render order across all its formats). */
+  nextIdNumber(): number {
+    let root: RenderFormat = this;
+    while (root.parent !== undefined) root = root.parent;
     root.idCounter = (root.idCounter ?? 0) + 1;
-    return `${this.card.name.safeKey}-${root.idCounter}`;
+    return root.idCounter;
   }
 
   /** The `read` half of the view-permission gate (format/error.rb:5-8 ok?),
@@ -1173,6 +1181,9 @@ export class RenderFormat {
           return denial;
         }
       }
+      if (effective === "not_found" && this.formatName === "html" && this.card.unknown === true) {
+        return this.notFoundFrameHtml(voo);
+      }
       this.runBeforeHook(effective, voo);
       // Chain-aware dispatch: when the engine has a mod loader wired up,
       // resolve through the per-card chain (Ruby's MRO walk - set/
@@ -1307,6 +1318,49 @@ export class RenderFormat {
     return `<div${attrs}>${frame}</div>`;
   }
 
+  /** set/all/html/error.rb:67-73 view :not_found — `voo.hide! :menu;
+   *  voo.title = "Not Found"; frame { [not_found_errors,
+   *  sign_in_or_up_links("to create it")] }`: the standard frame (the
+   *  header's title is the voo title), not_found.haml naming the card, and
+   *  for a signed-out session the sign-in/sign-up sentence (nil, and so
+   *  dropped, when signed in). The slot keeps the requested view in its
+   *  data-slot, as every substituted view does. */
+  private notFoundFrameHtml(voo: Voo): string {
+    voo.hide("menu");
+    voo.hide("help");
+    const card = this.card;
+    const title = "Not Found";
+    const header =
+      `<div class="d0-card-header card-header">` +
+      `<h1 class="d0-card-header-title">` +
+      `<span class="card-title" title="${title}">${title}</span></h1></div>`;
+    const errors =
+      card.name.s === ""
+        ? `<h2>\nCould not find\nthat\n</h2>\n`
+        : `<h2>\nCould not find\n<em>\n${h(card.name.s)}\n</em>\n</h2>\n`;
+    const parts = [errors];
+    if (this.engine.pageSession?.signedIn !== true) {
+      parts.push(
+        `<div>Please <a class="signin-link known-card" href="/*signin/titled">sign in</a> or ` +
+          `<a class="signup-link known-card" href="/new/Sign_up">sign up</a> to create it.</div>`,
+      );
+    }
+    const body = `<div class="d0-card-body card-body card-text">${parts.join("\n")}</div>`;
+    const attrs = emitAttrs({
+      id: `${card.name.safeKey}-not_found-view`,
+      class: voo.classy(["card-slot", "not_found-view", card.setKeys]),
+      "data-card-id": card.id === undefined ? undefined : String(card.id),
+      // wrap.rb: a new compound card's slot names it by its url key.
+      "data-card-name": card.id === undefined && card.name.isCompound ? card.name.urlKey : card.name.s,
+      "data-card-type-id": card.typeId === undefined ? undefined : String(card.typeId),
+      "data-card-type-name": card.typeName,
+      "data-card-link-name": this.urlKey(),
+      "data-slot-id": newSlotId(),
+      "data-slot": slotOptionsJson(voo.slotOptions()),
+    });
+    return `<div${attrs}><div class="d0-card-frame card">${header}\n\n${body}</div></div>`;
+  }
+
   /** html/error.rb:203-222 loud_denial_message + loud_denial's
    *  `wrap_with(:div, ...)` wrapper, both session branches.
    *  Ruby picks by SESSION sign-in state, not by as_id:
@@ -1365,10 +1419,13 @@ export class RenderFormat {
           : compiledUnknownSettingForCard(this.card, requested);
     if (configured === true) return requested; // permission.rb:40 unknown_setting == "true"
     if (this.isMain && this.voo === undefined) {
-      // format/error.rb#page_view_for_unknown (page branch) - not ported
-      throw new Error(
-        `unknown-card page render not ported (view_for_unknown main branch): ${this.card.name.s}`,
-      );
+      // format/error.rb:18-25 view_for_unknown, main+root branch:
+      // root.error_status = page_status_for_unknown; page_view_for_unknown —
+      // html/error.rb:81-87 `ok?(:create) ? :new : super` (super = the base
+      // :not_found) and `ok?(:create) ? 200 : 404`.
+      const canCreate = this.engine.taskAllowed?.(this.card, "create") === true;
+      this.engine.pageErrorStatus = canCreate ? 200 : 404;
+      return canCreate ? "new" : "not_found";
     }
     // permission.rb:42 configured_view = (unknown || unknown_setting)
     const nestOpt = opts["unknown"];
@@ -3307,6 +3364,11 @@ export interface RenderEngineLike {
    *  add_known_or_wanted_class). Set = the navbar renders the signed-in
    *  chrome verbatim; undefined = the signed-out pair. See navbar-views.ts. */
   readonly pageSessionAccountLinksHtml?: string;
+  /** The prepared +*enabled roles checkbox dropdown (enabled_roles.rb
+   *  checkbox_input's account_dropdown with role checkboxes) for a session
+   *  actor with roles; undefined otherwise. Its element ids are bound by
+   *  navbar-views.ts bindUniqueIds where it is placed. */
+  readonly pageSessionRolesDropdownHtml?: string;
   /** The prepared :my_card view body (account_links.rb:56-58 my_card — the
    *  account_dropdown arm, the raw btn-group; the roles arm rides the
    *  session roles the port does not carry yet). Set alongside
@@ -3785,6 +3847,16 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
   { view: "cardboard", config: true },
   { view: "edit", config: true },
   { view: "help", config: true },
+  // card-mod-format set/all/html/menu.rb:8 `view :menu, denial: :blank,
+  // unknown: true` (its body returns "" for an unknown card).
+  { view: "menu", config: true },
+  // card-mod-edit set/all/new.rb:4,23 — :new and :new_fields render for
+  // the new card itself.
+  { view: "new", config: true },
+  { view: "new_fields", config: true },
+  // card-mod-edit set/all/form.rb:26 `view :conflict_tracker, cache:
+  // :never, unknown: true`.
+  { view: "conflict_tracker", config: true },
   { view: "guide", config: true },
   { view: "guide_tab", config: true },
   { view: "rules_tab", config: true },

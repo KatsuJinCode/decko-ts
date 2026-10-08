@@ -196,6 +196,7 @@ import type { PatternCardInput } from "../../set-patterns/types.js";
 import { parseNestOptions } from "../../render/nest-syntax.js";
 import { timeAgoInWords } from "./card-mod-history.js";
 import { ruleSidesStatement } from "./rule-card-warm.js";
+import { cardWallClockNow } from "../../wall-clock.js";
 import type {
   DeckoModManifest,
   ModEngineHost,
@@ -743,7 +744,10 @@ export const inputView: ViewFn = (ctx) => {
  *  byte-identical to the pinned edit-form captures. */
 function contentField(ctx: ViewContext): string {
   const { fmt, voo } = ctx;
-  const conflict = voo.show("conflict_tracker")
+  // :conflict_tracker answers nil for a card that is not real (`return
+  // unless card&.real?`), and output() compacts the nil away — no
+  // separator line on a new card's form.
+  const conflict = voo.show("conflict_tracker") && fmt.card.id !== undefined
     ? fmt.renderView("conflict_tracker")
     : undefined;
   return output([conflict, fmt.renderView("input")]);
@@ -1083,9 +1087,11 @@ export function framedView(
   // inner edit_type_form slot's data-slot must carry the accumulated viz
   // (the captured hide:[help] on the inner slot)
   const body = bodyFn();
+  // header.rb:22 default_header: `main? ? :h1 : :h2`.
+  const tag = fmt.isMain ? "h1" : "h2";
   const header =
     `<div class="${voo.classy("d0-card-header")}">` +
-    `<h2 class="${voo.classy("d0-card-header-title")}">${fmt.renderView("title")}</h2>\n` +
+    `<${tag} class="${voo.classy("d0-card-header-title")}">${fmt.renderView("title")}</${tag}>\n` +
     `${fmt.renderView("menu")}</div>`;
   const frameHelp = voo.show("help") ? fmt.renderView("help") : undefined; // nil: hidden
   const panel =
@@ -1312,7 +1318,7 @@ function typeField(
   if (fmt.card.id !== undefined && !createableSet.has(current)) {
     createableSet.add(current);
   }
-  const select2Id = `${fmt.uniqueId()}-${Math.floor(Date.now() / 1000)}`;
+  const select2Id = `${fmt.uniqueId()}-${Math.floor(cardWallClockNow().getTime() / 1000)}`; // Time.now through the engine wall clock
   let out = "";
   for (const [group, types] of Object.entries(CARDTYPE_GROUPS)) {
     const items =
@@ -1447,8 +1453,13 @@ const editTypeView: ViewFn = (ctx) =>
  *  (:176-182): NOT main? -> path(view: voo&.home_view || :unknown) - the
  *  captured href carries /<mark>/unknown (home_view unset on the
  *  standalone render). */
-const newButtonsView: ViewFn = ({ fmt, voo }) => {
-  const href = `/${fmt.urlKey()}/${String(voo.opts["home_view"] ?? "unknown")}`;
+export const newButtonsView: ViewFn = ({ fmt, voo }) => {
+  // cancel_create_path: main? -> path_to_previous (form_elements.rb:83-85,
+  // path mark: "*previous"), the create form a page offers for an absent
+  // card.
+  const href = fmt.isMain
+    ? "/*previous"
+    : `/${fmt.urlKey()}/${String(voo.opts["home_view"] ?? "unknown")}`;
   return buttonFormGroup(
     { fmt, voo },
     output([
@@ -1501,12 +1512,14 @@ function hiddenFieldTag(name: string, value: string): string {
  *  uses). Unreadable/missing rule -> undefined. */
 function guideRuleCard(ctx: ViewContext): ReturnType<ViewContext["fmt"]["engine"]["fetchRenderCard"]> {
   const card = ctx.fmt.card;
-  if (card.unknown === true) return undefined;
+  // A new card has rules too (rule_card :guide on Card.new — the :new
+  // form's alert guide); its walk drops the *self candidate.
   const input: PatternCardInput = {
     name: card.name.s,
     id: card.id,
     typeId: card.typeId,
     typeName: card.typeName,
+    ...(card.id === undefined ? { isNew: true } : {}),
   };
   if (card.name.isCompound) {
     const leftKey = card.name.leftName?.key;
@@ -1683,7 +1696,8 @@ function newViewName(ctx: ViewContext): string | undefined {
  *  prompt -> _render_new_type_formgroup; else hidden_field_tag
  *  "card[type_id]", card.type_id. */
 function newViewType(ctx: ViewContext): string {
-  if (newTypePrompt(ctx)) return ctx.fmt.renderView("new_type_formgroup");
+  // `_render_new_type_formgroup`: the underscore skips the unknown check.
+  if (newTypePrompt(ctx)) return ctx.fmt.renderView("new_type_formgroup", { skip_perms: true });
   return hiddenFieldTag("card[type_id]", String(ctx.fmt.card.typeId ?? ""));
 }
 
@@ -1726,11 +1740,14 @@ function createCardForm(
   successTags: string,
   body: string,
 ): string {
+  // form_for on a NEW record (the absent card a page offers to create):
+  // Rails names the form "new_card" and sends a plain post, no _method.
+  const persisted = ctx.fmt.card.id !== undefined;
   return (
-    `<form class="card-form slotter" id="edit_card_${ctx.fmt.card.id}"${formAttrs}` +
+    `<form class="card-form slotter" id="${persisted ? `edit_card_${ctx.fmt.card.id}` : "new_card"}"${formAttrs}` +
     ` action="/card/create" accept-charset="UTF-8" data-remote="true" method="post">` +
     `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
-    `<input type="hidden" name="_method" value="patch" autocomplete="off" />` +
+    (persisted ? `<input type="hidden" name="_method" value="patch" autocomplete="off" />` : "") +
     successTags +
     body +
     `</form>`
@@ -1761,17 +1778,20 @@ function createFormWithAlertGuide(ctx: ViewContext): string {
  *  standalone arm: show:[new_fields] only, the body's visible? writes
  *  excluded). The port freezes the wrap first and splices the body in. */
 const NEW_FIELDS_SENTINEL = "\u0000new_fields-body\u0000";
-const newFieldsView: ViewFn = (ctx) => {
+export const newFieldsView: ViewFn = (ctx) => {
   const open = modSlotWrap(ctx, "new_fields", NEW_FIELDS_SENTINEL, "w-100");
   const body = output([
     undefined, // new_view_hidden (new.rb:99, the nil override stub)
     newViewName(ctx),
     newViewType(ctx),
     ctx.fmt.renderView("content_formgroups"),
+    // `_render(voo.buttons_view || :new_buttons)` — the underscore skips
+    // the permission and unknown checks, so a new card renders its buttons.
     ctx.fmt.renderView(
       ctx.voo.opts["buttons_view"] === undefined
         ? "new_buttons"
         : String(ctx.voo.opts["buttons_view"]),
+      { skip_perms: true },
     ),
   ]);
   return open.split(NEW_FIELDS_SENTINEL).join(body);
@@ -1784,7 +1804,7 @@ const newFieldsView: ViewFn = (ctx) => {
  *  (label + editor wrap + the assign hidden). The captured class order
  *  "type-field _live-type-field slotter form-control" - the caller's class
  *  string verbatim, the bootstrap FIELD_HELPERS " form-control" appended. */
-const newTypeFormgroupView: ViewFn = (ctx) =>
+export const newTypeFormgroupView: ViewFn = (ctx) =>
   typeFormgroup(ctx, {
     href: `/${ctx.fmt.urlKey()}/new_fields`,
     cls: "type-field _live-type-field slotter",
@@ -1862,7 +1882,7 @@ export function createCardBodyShell(
   });
 }
 
-const newView: ViewFn = (ctx) => {
+export const newView: ViewFn = (ctx) => {
   withCreateContext(ctx);
   const form = createCardForm(
     ctx,
@@ -2440,7 +2460,7 @@ export const rulesTabView: ViewFn = ({ fmt, voo }) => {
       ),
     )
     .join("\n");
-  const select2Id = `${fmt.uniqueId()}-${Math.floor(Date.now() / 1000)}`;
+  const select2Id = `${fmt.uniqueId()}-${Math.floor(cardWallClockNow().getTime() / 1000)}`; // Time.now through the engine wall clock
   const inner =
     `<form role="filter" data-slot-selector=".card-slot._fixed-slot"` +
     ` class="nodblclick slotter" action="/?view=filtered_accordion_rule_list"` +
