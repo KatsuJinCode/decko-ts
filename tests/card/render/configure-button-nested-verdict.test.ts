@@ -63,7 +63,10 @@ async function deck(updateParty: "Anyone" | "Administrator"): Promise<RenderTest
     dbContent: `[[${updateParty}]]`,
   });
   await seedReference(s, 20, updateParty === "Anyone" ? 18 : 19, updateParty.toLowerCase());
-  await seedCard(s, { id: 22, name: "Cardtype", typeId: 2 });
+  // Ruby's deck gives the Cardtype cardtype card codename "cardtype"
+  // (bench-corpus cards.id 5), so a Cardtype-typed card's TYPE anchor is in
+  // Type::Cardtype — the codename-keyed set modules need it seeded.
+  await seedCard(s, { id: 22, name: "Cardtype", codename: "cardtype", typeId: 2 });
   await seedCard(s, { id: 30, name: "Widget", typeId: 22, dbContent: "{{_|configure_button}}" });
   await seedCard(s, { id: 40, name: "Host", typeId: 2, dbContent: "before {{Widget|core}} after" });
 

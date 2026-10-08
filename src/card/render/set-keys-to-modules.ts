@@ -162,6 +162,81 @@ export function rubySelfToken(token: string): string | null {
   return `SELF-${codename}`;
 }
 
+/** The anchor parts' codenames for an anchored (non-SELF) token, as
+ *  Pattern::Base#anchor_codenames builds them (set/pattern/base.rb:39-43:
+ *  `anchor_parts.map { |part| part.cardname&.codename || break }`), resolved
+ *  through the installed name environment (key -> id -> codename):
+ *  - `{ codenames }` when every part has a codename: the module key is
+ *    their camelized join, and the set files live at
+ *    `<pattern>/<codename>/...`;
+ *  - `null` when some part's card exists without a codename: Ruby builds no
+ *    module key, so no anchored module applies;
+ *  - `undefined` when the environment cannot answer (no environment, or a
+ *    part the sync lexicon has not seen): the caller falls back to the
+ *    name-derived spelling and must not memoize the answer. */
+export function anchorCodenames(token: string): { codenames: string[] } | null | undefined {
+  const dashIdx = token.indexOf("-");
+  if (dashIdx === -1 || token.startsWith("SELF-")) return undefined;
+  const env = getNameEnvironment();
+  if (env?.lexicon === undefined || env.codename === undefined) return undefined;
+  const codenames: string[] = [];
+  let missing = false;
+  for (const frag of token.slice(dashIdx + 1).split("-")) {
+    if (frag === "") return undefined;
+    const key = frag.startsWith("X") && frag.length > 1 ? `*${frag.slice(1)}` : frag;
+    const id = env.lexicon.id(key);
+    if (id === undefined) return undefined;
+    const codename = env.codename.nameForId(id);
+    if (codename === undefined || codename === "") missing = true;
+    else codenames.push(codename);
+  }
+  return missing ? null : { codenames };
+}
+
+/** The set-module shortname Ruby's module key names for a pattern code and
+ *  its anchor codenames ("type", ["search_type"] -> "Type::SearchType";
+ *  "type_plus_right", ["cardtype", "account"] ->
+ *  "TypePlusRight::Cardtype::Account"). */
+export function moduleShortnameForCodenames(code: string, codenames: readonly string[]): string {
+  return `${camelizeCode(code.toLowerCase())}::${codenames.map(camelizeCode).join("::")}`;
+}
+
+/** The set modules a set-key token names, as Ruby keys them
+ *  (set/pattern/base.rb module_key over anchor_codenames): for an anchored
+ *  token, the camelized codenames of the anchor parts, so a Person-typed
+ *  card whose type codename is user belongs to Type::User, and a part whose
+ *  card has no codename ("email"; "Roles", whose codename role is not the
+ *  roles of *roles) gives no module at all. `paths` is the set-file path the
+ *  nested modules sit under ("type_plus_right/cardtype/account"). A SELF
+ *  token is expected already rewritten to its codename (rubySelfToken).
+ *
+ *  When the name environment cannot answer (none installed, or an anchor
+ *  part the sync lexicon has not seen) the name-derived spellings stand in,
+ *  and `definitive` is false: the answer must not be memoized. */
+export function anchoredModuleCandidates(token: string): {
+  candidates: string[];
+  paths: string[] | undefined;
+  definitive: boolean;
+} {
+  const named = safeKeyToModuleShortnameCandidates(token);
+  if (token.startsWith("SELF-") || !token.includes("-")) {
+    return { candidates: named, paths: undefined, definitive: true };
+  }
+  const resolved = anchorCodenames(token);
+  if (resolved === null) return { candidates: [], paths: [], definitive: true };
+  if (resolved !== undefined) {
+    const code = token.slice(0, token.indexOf("-")).toLowerCase();
+    return {
+      candidates: [moduleShortnameForCodenames(code, resolved.codenames)],
+      paths: [`${code}/${resolved.codenames.join("/")}`],
+      definitive: true,
+    };
+  }
+  const out = [...named];
+  for (const c of codenameModuleShortnames(token)) if (!out.includes(c)) out.push(c);
+  return { candidates: out, paths: undefined, definitive: false };
+}
+
 /** Ruby's module key for an anchored token: Pattern::Base#module_key
  *  (set/pattern/base.rb:21-29) camelizes the anchor parts' CODENAMES, not
  *  their name keys, so a Search-typed card (token "TYPE-search", type

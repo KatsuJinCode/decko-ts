@@ -299,15 +299,12 @@ describe("card-mod-account through the mod loader (A/B)", () => {
     const type = [...basket.nonbase.values()].flat().map((m) => m.shortname);
     expect(type).toContain("Type::Role");
     expect(type).toContain("Type::Signup");
-    // The gem file is set/type/signup/views.rb, but the port registers the
-    // parent under the set-key spelling "type/sign_up" (the card's set-key
-    // token is TYPE-sign_up; camelize("sign_up") -> "SignUp" — the dispatch
-    // NEEDS Type::SignUp, the comment on the manifest entry documents the
-    // divergence). The child registration must nest under the SAME spelling
-    // for the viewChain nested expansion (setPath prefix
-    // "type/sign_up/") to ever reach it — "Type::Signup::Views" was the
-    // gem-directory spelling no token and no prefix walk can resolve.
-    expect(type).toContain("Type::SignUp::Views");
+    // set/type/signup/views.rb, nested under Type::Signup: the chain walker
+    // reaches it through the type card's codename (signup), as Ruby keys
+    // the module, not through the card's name key (sign_up).
+    expect(type).toContain("Type::Signup::Views");
+    expect(type).not.toContain("Type::SignUp");
+    expect(type).not.toContain("Type::SignUp::Views");
     expect(type).toContain("Type::User");
     // type_plus_right nonbase
     expect(type).toContain("TypePlusRight::Cardtype::Account");
