@@ -154,9 +154,10 @@ import {
   BOARD_SLOT_SELECTOR,
 } from "./card-mod-edit.js";
 import { DEFAULT_TOKEN_EXPIRY_SECONDS } from "../../auth/token.js";
-import type {
-  DeckoModManifest,
-  ModSetModuleFile,
+import {
+  engineOwnedEvent,
+  type DeckoModManifest,
+  type ModSetModuleFile,
 } from "../mod-manifest.js";
 
 // ---------------------------------------------------------------------------
@@ -1065,7 +1066,16 @@ const signinEditView: ViewFn = (ctx) => {
 
 const setModules: ModSetModuleFile[] = [
   // pattern: all (loader.rb#parts_from_path: "all/foo" -> "All::Foo")
-  { setPath: "all/account" },
+  {
+    setPath: "all/account",
+    // set_stamper: the act writer stamps creator_id/updater_id with the
+    // acting account (history/write-path.ts). generate_token has no stage
+    // (a helper the token flows call; auth/token.ts).
+    events: [
+      engineOwnedEvent({ event: "generate_token" }),
+      engineOwnedEvent({ event: "set_stamper", at: "prepare_to_validate" }),
+    ],
+  },
   { setPath: "all/password_input" },
   // pattern: abstract
   { setPath: "abstract/account_field" },
@@ -1078,6 +1088,15 @@ const setModules: ModSetModuleFile[] = [
     // over the verbatim item walks (the pill composition the oracle pins;
     // the board constants ride the edit mod's exports).
     setPath: "abstract/account_holder",
+    // card-action-engine.ts assertMayRenameAccountHolder.
+    events: [
+      engineOwnedEvent({
+        event: "validate_account_holder_name_change",
+        at: "validate",
+        on: ["update"],
+        changed: ["name"],
+      }),
+    ],
     formats: {
       html: {
         views: [
@@ -1208,7 +1227,20 @@ const setModules: ModSetModuleFile[] = [
       },
     },
   },
-  { setPath: "type/signup" },
+  {
+    setPath: "type/signup",
+    // The sign-up events run in the engine (card-action-engine.ts
+    // applyAccountFieldEvents, auth/account-fields.ts): the required
+    // account field, the approval status, and the verification request
+    // (write-routes.ts requestSignupVerification). The admin approval
+    // triggers (approve_with_verification, approve_without_verification)
+    // are not ported, so they are not declared.
+    events: [
+      engineOwnedEvent({ event: "type__signup__requires_field__account", at: "validate", on: ["create"] }),
+      engineOwnedEvent({ event: "auto_approve_with_verification", at: "validate", on: ["create"], when: "can_approve?" }),
+      engineOwnedEvent({ event: "act_as_current_for_integrate_stage", at: "integrate", on: ["create"] }),
+    ],
+  },
   {
     // The SAME set as the gem's set/type/signup.rb + set/type/signup/
     // views.rb (the type predates the safe-key spelling: the gem dir is
@@ -1278,6 +1310,12 @@ const setModules: ModSetModuleFile[] = [
     // route/bootstrap hand it to the sync gate). The oracle:
     // account-walk-views.rb setup_voo_and_form_chain + needs_setup_predicate.
     setPath: "type/user",
+    // The first-user setup runs in auth/first-run-setup.ts.
+    events: [
+      engineOwnedEvent({ event: "check_setup", at: "validate", on: ["create"], trigger: "required" }),
+      engineOwnedEvent({ event: "setup_first_user", at: "finalize", on: ["create"], when: "setup?" }),
+      engineOwnedEvent({ event: "signin_after_setup", at: "integrate", on: ["create"], when: "setup?" }),
+    ],
     formats: {
       html: {
         views: [{ view: "setup", viewFn: setupView, config: { cache: "never", unknown: true, perms: "needs_setup" } }],

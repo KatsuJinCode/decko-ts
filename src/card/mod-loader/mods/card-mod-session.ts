@@ -91,7 +91,7 @@
 //   seed; its :type is even commented out in the gem) - seed files are the
 //   test stream's job; the test below seeds the same Session cardtype card
 
-import type { DeckoModManifest } from "../mod-manifest.js";
+import { engineOwnedEvent, type DeckoModManifest } from "../mod-manifest.js";
 
 // ---------------------------------------------------------------------------
 // lib/card/mod/session.rb - the Railtie config value
@@ -136,6 +136,10 @@ const cardModSession: DeckoModManifest = {
       // before :core hook (:59-63). Registered as Type::Session (nonbase
       // bucket).
       setPath: "type/session",
+      // store_in_session: the write route answers a Session create without
+      // writing (write-routes.ts isSessionTypeCreate); the content is not
+      // kept, the port having no per-visitor session store.
+      events: [engineOwnedEvent({ event: "store_in_session", at: "prepare_to_store", on: ["save"] })],
     },
   ],
 };

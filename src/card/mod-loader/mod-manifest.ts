@@ -225,6 +225,15 @@ export type ModEventFn = (
   ctx: ModEventContext,
 ) => void | Promise<void>;
 
+/** A Ruby event whose behaviour the engine implements in its own code
+ *  (the comment at each use names where). Declared at its set so the
+ *  set's event list is Ruby's; the body is empty, and a registered stub
+ *  never replaces engine code (card-action-engine.ts
+ *  EVENT_TAKEOVER_BUILTINS lists the only names that do). */
+export function engineOwnedEvent(decl: Omit<ModEventRegistration, "fn">): ModEventRegistration {
+  return { ...decl, fn: () => undefined };
+}
+
 /** One `event :name, <opts> do ... end` declaration inside a set file
  *  (lib/card/set/event.rb). The loader injects setPath + modName at
  *  registration (they come from the file the event sits in); the registry

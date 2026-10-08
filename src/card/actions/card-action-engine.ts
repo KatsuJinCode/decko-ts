@@ -847,6 +847,63 @@ export class CardActionEngine {
     return { ...input, subcards: { ...input.subcards, "+*account": { ...account, subcards } } };
   }
 
+  /** account_holder.rb:1-5: `return unless account? &&
+   *  !Auth.as_card.account_manager?; errors.add :name, "cannot rename
+   *  Account Holder"`. account_manager? = own_account? ||
+   *  parties.member?(HelpDeskID) (:79-81); the bot is always_ok. */
+  private async assertMayRenameAccountHolder(cardId: number): Promise<void> {
+    const accountId = await this.fetch.codenames.id("account");
+    if (accountId === undefined) return;
+    const r = await this.fetch.driver.query<{ id: number }>(
+      "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+      [cardId, accountId],
+    );
+    if (r.rows.length === 0) return; // not an account holder
+    const state = await this.writePermissionState();
+    if (state.alwaysOk) return;
+    if (this.actor !== null && this.actor.id === cardId) return; // own account
+    const helpDesk = await this.fetch.codenames.id("help_desk");
+    if (helpDesk !== undefined && state.viewerParties.includes(helpDesk)) return;
+    throw new CardActionError(
+      "user-error",
+      "cannot rename Account Holder",
+      "NAME: cannot rename Account Holder",
+    );
+  }
+
+  /** card-mod-bootstrap set/type/bootswatch_skin/events.rb copy_theme: a
+   *  new Bootswatch skin adds its +*variables and +*colors fields (SCSS),
+   *  and each is permission-checked as its own create; a denied field
+   *  rejects the whole save (shown as "+*VARIABLES: permission_denied
+   *  You don't have permission to create <skin>+*variables"). +*colors
+   *  checks only when the skin has a real parent skin
+   *  (type_plus_right/bootswatch_skin/colors.rb ok_to_create?:
+   *  `left.parent? && super`); a new skin has none. The fields' own
+   *  creation on an allowed save is not ported. */
+  private async checkSkinFieldPermissions(name: DeckoName, typeId: number): Promise<void> {
+    const skinTypeId = await this.fetch.codenames.id("bootswatch_skin");
+    if (skinTypeId === undefined || typeId !== skinTypeId) return;
+    const scssId = await this.fetch.codenames.id("scss");
+    if (scssId === undefined) return;
+    const fieldName = `${name.s}+*variables`;
+    const probe = newCardRecord(DeckoName.parse(fieldName), { typeId: scssId });
+    const verdict = await saveTaskVerdictForCard(
+      this.fetch,
+      await this.patternInputFor(probe, scssId),
+      "create",
+      await this.writePermissionState(),
+    );
+    if (verdict !== true) {
+      const message = `You don't have permission to create ${fieldName}`;
+      throw new CardActionError(
+        "user-error",
+        `skin field denied: ${message}`,
+        `+*VARIABLES: permission_denied ${message}`,
+        { "+*variables": `permission_denied ${message}` },
+      );
+    }
+  }
+
   /** card-mod-account set/right/password.rb on a save that writes a
    *  +*password card's content itself (a password change, or a password
    *  field created outside a sign-up): validate_password_present (an
@@ -931,6 +988,7 @@ export class CardActionEngine {
     // +*account subtree before anything is written: Ruby validates every
     // subcard in the validate stage, so a rejected sign-up stores nothing.
     input = await this.applyAccountFieldEvents(input, typeId);
+    await this.checkSkinFieldPermissions(name, typeId);
     const writer = this.newWriter(actingId);
     const result = await this.createInWriter(writer, input, {
       isActCard: true,
@@ -1342,6 +1400,14 @@ export class CardActionEngine {
     // revival-from-trash is the CREATE path's job.
     if (row === undefined || row.trash === 1) {
       throw new CardActionError("not-found", `no such card: ${input.cardId}`);
+    }
+    // validate_account_holder_name_change (card-mod-account
+    // set/abstract/account_holder.rb:1-5): renaming a card that has an
+    // account needs an account manager — the account itself, or a Help
+    // Desk member (account_manager?).
+    if (input.name !== undefined) {
+      const current = (await this.fetch.fetchById(row.id))?.name?.key;
+      if (DeckoName.parse(input.name).key !== current) await this.assertMayRenameAccountHolder(row.id);
     }
     // A +*password card's content is validated and stored encrypted.
     if (input.content !== undefined && input.content !== null && input.passwordEncrypted !== true) {

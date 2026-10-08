@@ -1207,6 +1207,21 @@ export async function handleWriteRequest(
         commentAuthor: parsed.commentAuthor,
         recaptchaToken: parsed.recaptchaToken,
       };
+      if (await isSessionTypeCreate(ctx.fetcher, input)) {
+        // card-mod-session set/type/session.rb: ok_to_create? is true for
+        // everyone, and store_in_session keeps the content in the visitor's
+        // session and aborts with success (abort :success at
+        // :prepare_to_store), so nothing reaches the card tables. The port
+        // has no per-visitor session store for anonymous visitors, so the
+        // content itself is not kept (documented in the parity report).
+        return successResponse(
+          req,
+          json,
+          input.name,
+          { cardId: 0, actId: 0, actionId: 0, verb: "create" },
+          successTargetPath(parsed, input.name),
+        );
+      }
       result = await engine.createCard(input);
       name = result.name?.s ?? input.name;
       await requestSignupVerification(ctx, name, input.subcards);
@@ -1382,6 +1397,19 @@ function createInputFromParams(
     attachment,
     ...(Object.keys(subcards).length > 0 ? { subcards } : {}),
   };
+}
+
+/** Whether the create names the Session cardtype (by name or id). */
+async function isSessionTypeCreate(
+  fetcher: FetchEngine,
+  input: { typeName?: string; typeId?: number },
+): Promise<boolean> {
+  const type = input.typeId !== undefined
+    ? await fetcher.fetchById(input.typeId)
+    : input.typeName !== undefined
+      ? await fetcher.fetchByName(input.typeName)
+      : undefined;
+  return type !== undefined && !type.trash && type.codename === "session";
 }
 
 /** request_verification (card-mod-account set/type/signup.rb): a sign-up
