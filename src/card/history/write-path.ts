@@ -161,6 +161,37 @@ export interface CreatedCard extends SavedAction {
   cardId: number;
 }
 
+/**
+ * The id a new card row takes, as an SQL expression: NULL (the table's
+ * AUTOINCREMENT id, max(sqlite_sequence, MAX(cards.id)) + 1) unless history
+ * rows (card_acts.card_id, card_actions.card_id) already name that id or a
+ * later one, in which case the first id past every id they name.
+ *
+ * Such orphan history appears when a deck's card rows were deleted or
+ * copied without the table's id counter. Taking the AUTOINCREMENT id there
+ * would give the new card a deleted card's actions: Ruby on the same
+ * SQLite data does exactly that (Card::Action.where(card_id:) counts the
+ * orphan rows, so first_create? is false and the new card's history starts
+ * with the deleted card's create action — card-1.110.0
+ * mod/history/set/all/history.rb:38-44, history/events.rb:25-35,
+ * history/actions.rb:21-23). On
+ * Decko's MySQL production database the AUTO_INCREMENT counter is past
+ * every id ever used, so a new card never meets old history there; this
+ * keeps that outcome on copies that lost the counter. Index lookups only
+ * (cards primary key, card_acts_card_id_index, card_actions_card_id_index),
+ * and part of the INSERT, so no extra round trip.
+ */
+const NEW_CARD_ID_SQL = `(
+  SELECT CASE WHEN history_max >= next_id THEN history_max + 1 END
+  FROM (
+    SELECT
+      MAX(COALESCE((SELECT MAX(card_id) FROM card_acts), 0),
+          COALESCE((SELECT MAX(card_id) FROM card_actions), 0)) AS history_max,
+      MAX(COALESCE((SELECT MAX(id) FROM cards), 0),
+          COALESCE((SELECT seq FROM sqlite_sequence WHERE name = 'cards'), 0)) + 1 AS next_id
+  )
+)`;
+
 /** TRACKED_FIELDS in storage order — the order Ruby's
  *  store_card_changes_for_create_action iterates
  *  (events.rb:108-115, `fields ||= Card::Change::TRACKED_FIELDS`). */
@@ -222,12 +253,15 @@ export class ActWriter {
     // (mod/core/set/all/trash.rb:23-27); revival from trash reuses the old
     // row via a different path and is deferred.
 
+    // The id is the AUTOINCREMENT one (NULL below) unless history rows
+    // already name that id or a later one: then it is the first id past
+    // every id the history names. See NEW_CARD_ID_SQL.
     const cardId = await this.insertReturningId(
       `INSERT INTO cards
-         (name, key, codename, left_id, right_id, current_revision_id,
+         (id, name, key, codename, left_id, right_id, current_revision_id,
           created_at, updated_at, creator_id, updater_id,
           read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
-       VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)`,
+       VALUES (${NEW_CARD_ID_SQL}, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)`,
       [
         input.name,
         input.key,

@@ -107,6 +107,26 @@ the baton is kept. If it is not, the alternative is the compensating journal
 D1 uses, which needs an atomic Hrana `batch` request (steps with conditions)
 in place of the pipeline.
 
+**New card ids and orphan history (a deliberate difference from Ruby).** A
+deck can hold history rows (`card_acts.card_id`, `card_actions.card_id`)
+naming a card id that has no card row: card rows deleted, or a copy made
+without the cards table's id counter. When such an id is the one the next
+create would take, Ruby on the same SQLite data creates the card with it and
+the deleted card's actions become the new card's history: its create action
+is the old one (`create_action` is `actions.first`), and `first_create?` is
+false, so the new action also stores change rows (card-1.110.0
+`mod/history/set/all/history.rb:38-44`, `history/events.rb:25-35`,
+`history/actions.rb:21-23`). On Decko's MySQL production database the
+AUTO_INCREMENT counter is past every id ever used, so a new card never meets
+old history there. This port keeps that outcome on copies that lost the
+counter: a new card takes the AUTOINCREMENT id unless history rows name that
+id or a later one, and then the first id past every id they name
+(`NEW_CARD_ID_SQL` in `src/card/history/write-path.ts`; part of the INSERT,
+index lookups only). Before, the create was refused (`expected exactly 1
+action row`); with atomic saves that refusal wrote nothing, and before atomic
+saves it left the card row behind. Pinned on every backend in
+`tests/card/actions/atomic-saves.test.ts` (the two orphan-history cases).
+
 ## Consequences
 
 A rejected save changes nothing, on every backend, and retrying it is safe.

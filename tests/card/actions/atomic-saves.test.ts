@@ -457,5 +457,80 @@ for (const [label, make] of Object.entries(BACKENDS)) {
       const row = await deck.backend.driver.query<{ db_content: string }>("SELECT db_content FROM cards WHERE id = 50", []);
       expect(row.rows[0].db_content).toBe("kept");
     }, SCENARIO_TIMEOUT);
+
+    // Orphan history: card_acts / card_actions / card_changes rows that name
+    // a card id no card row has, at the id the next create would take (a
+    // deck whose card rows were deleted, or copied without the id counter).
+    // These two run last: the orphan rows stay in the deck.
+
+    it("orphan history at the next id: a create that fails writes nothing and leaves the orphan rows as they were", async () => {
+      const orphanId = await seedOrphanHistory(deck);
+      const before = await deck.snapshot();
+      // The cards row is written first; the act row write fails after it.
+      deck.injector.failOn(/INSERT INTO card_acts/i);
+      await expect(deck.engine().createCard({ name: "Beside Orphan", content: "x" })).rejects.toBeInstanceOf(
+        InjectedFailure,
+      );
+      deck.injector.disarm();
+      expectUnchanged(deck, before, await deck.snapshot());
+      const orphan = await deck.backend.driver.query("SELECT id FROM card_actions WHERE card_id = ?", [orphanId]);
+      expect(orphan.rows).toHaveLength(1);
+    }, SCENARIO_TIMEOUT);
+
+    it("orphan history at the next id: a create takes the first id past it and starts a history of its own", async () => {
+      const raw = deck.backend.driver;
+      const orphanMax = await seedOrphanHistory(deck);
+      expect(await nextAutoincrementId(deck)).toBe(orphanMax);
+      const orphanRows = async () =>
+        (await raw.query("SELECT * FROM card_actions WHERE card_id = ? ORDER BY id", [orphanMax])).rows;
+      const orphanBefore = await orphanRows();
+      const { cardId } = await deck.engine().createCard({ name: "Past Orphan", content: "fresh" });
+      expect(cardId).toBe(orphanMax + 1);
+      // Its own history only: one create action, its act, no change rows
+      // (Ruby's first_create?), nothing borrowed from the orphan.
+      const actions = await raw.query<{ id: number; action_type: number }>(
+        "SELECT id, action_type FROM card_actions WHERE card_id = ? ORDER BY id",
+        [cardId],
+      );
+      expect(actions.rows.map((r) => Number(r.action_type))).toEqual([0]);
+      const changes = await raw.query("SELECT id FROM card_changes WHERE card_action_id = ?", [actions.rows[0].id]);
+      expect(changes.rows).toEqual([]);
+      const acts = await raw.query("SELECT id FROM card_acts WHERE card_id = ?", [cardId]);
+      expect(acts.rows).toHaveLength(1);
+      expect(await orphanRows()).toEqual(orphanBefore);
+      // The next create continues past the new card.
+      const next = await deck.engine().createCard({ name: "After Orphan", content: "next" });
+      expect(next.cardId).toBe(cardId + 1);
+    }, SCENARIO_TIMEOUT);
   });
+}
+
+/** The id the cards table's AUTOINCREMENT would give the next row. */
+async function nextAutoincrementId(deck: Deck): Promise<number> {
+  const r = await deck.backend.driver.query<{ m: number | null; s: number | null }>(
+    "SELECT (SELECT MAX(id) FROM cards) AS m, (SELECT seq FROM sqlite_sequence WHERE name = 'cards') AS s",
+    [],
+  );
+  return Math.max(Number(r.rows[0].m ?? 0), Number(r.rows[0].s ?? 0)) + 1;
+}
+
+/** An act, a create action and a change row for the id the next create
+ *  would take, with no card row. Returns that id. */
+async function seedOrphanHistory(deck: Deck): Promise<number> {
+  const raw = deck.backend.driver;
+  const orphanId = await nextAutoincrementId(deck);
+  const act = await raw.query(
+    "INSERT INTO card_acts (card_id, actor_id, acted_at, ip_address) VALUES (?, ?, ?, ?)",
+    [orphanId, JOE.id, "2020-01-01 00:00:00", IP],
+  );
+  const actId = Number(act.lastInsertRowId ?? (await raw.query<{ id: number }>("SELECT MAX(id) AS id FROM card_acts", [])).rows[0].id);
+  const action = await raw.query(
+    "INSERT INTO card_actions (card_id, card_act_id, action_type, draft) VALUES (?, ?, 0, 0)",
+    [orphanId, actId],
+  );
+  const actionId = Number(
+    action.lastInsertRowId ?? (await raw.query<{ id: number }>("SELECT MAX(id) AS id FROM card_actions", [])).rows[0].id,
+  );
+  await raw.query("INSERT INTO card_changes (card_action_id, field, value) VALUES (?, 0, ?)", [actionId, "Deleted Card"]);
+  return orphanId;
 }
