@@ -165,6 +165,41 @@ export interface VirtualRuleCardInputs {
    *  the map's raw-deck literal - the documented degradation, the same
    *  shape as the settingCard.typeId fallback below. */
   readonly deckTypeCard?: RenderCard;
+  /** The engine's new-card type resolution (the *default template chain,
+   *  templating.rb new_card_template -> type_id_from_template) and codename
+   *  lookup. Used for a setting the corpus map does not cover: on a stock
+   *  deck `*all+*structure` is typed by `*structure+*right+*default`
+   *  (Nest list), not by the setting card's own type. */
+  readonly engine?: VirtualRuleTypeEngine;
+}
+
+interface VirtualRuleTypeEngine {
+  newCardDefaultType?(name: DeckoName): { typeId: number; typeName: string } | undefined;
+  peekCodenameById?(id: number): string | undefined;
+  peekIdByCodename?(codename: string): number | undefined;
+  peekRegisteredNameForId?(id: number): string | undefined;
+}
+
+/** The codename of the type card a map entry names (RichText's codename is
+ *  `basic`; the map's typeCode spells the class fragment). */
+function mapEntryCodename(entry: { typeCode: string }): string {
+  return entry.typeCode === "rich_text" ? "basic" : entry.typeCode;
+}
+
+/** A map entry re-resolved on a deck whose type card for that codename has
+ *  another id; undefined when the mapped id is right for this deck or the
+ *  engine cannot tell. */
+function relocateRuleType(
+  entry: { typeId: number; typeName: string; typeCode: string },
+  engine: VirtualRuleTypeEngine | undefined,
+): { typeId: number; typeName: string; typeCode: string } | undefined {
+  if (engine?.peekCodenameById === undefined || engine.peekIdByCodename === undefined) return undefined;
+  const codename = mapEntryCodename(entry);
+  if (engine.peekCodenameById(entry.typeId) === codename) return undefined;
+  const typeId = engine.peekIdByCodename(codename);
+  if (typeId === undefined) return undefined;
+  const typeName = engine.peekRegisteredNameForId?.(typeId) ?? entry.typeName;
+  return { typeId, typeName, typeCode: entry.typeCode };
 }
 
 /** Build the in-memory virtual rule card Ruby constructs on the fly for
@@ -206,7 +241,7 @@ export interface VirtualRuleCardInputs {
  *  these values; the pre-fix `Setting`/278 stamp made every virtual
  *  rule bar mis-type. */
 export function buildVirtualRuleCard(inputs: VirtualRuleCardInputs): RenderCard {
-  const { setCard, settingCard, settingCodename, deckTypeCard } = inputs;
+  const { setCard, settingCard, settingCodename, deckTypeCard, engine } = inputs;
   // set.name.s + "+" + the SETTING CARD'S OWN NAME. Ruby's
   // setting_list_item joins the set name with the setting card's stored
   // name (which carries the leading "*" and the STORED DISPLAY form),
@@ -235,8 +270,24 @@ export function buildVirtualRuleCard(inputs: VirtualRuleCardInputs): RenderCard 
   // _view), fall back to the SETTING card's type — the divergence
   // doesn't surface for those because their *all+X virtual rule bars
   // don't appear in the captured corpus.
-  const ruleType = ruleTypeForSetting(settingCodename);
-  const typeId = ruleType?.typeId ?? settingCard.typeId;
+  const mapped = ruleTypeForSetting(settingCodename);
+  // The map's ids are those of the deck it was measured on. On another deck
+  // the type card holding the same codename has another id: when the
+  // mapped id does not hold the expected codename here, the map entry is
+  // re-resolved through the deck's codename table.
+  const relocated = mapped !== undefined ? relocateRuleType(mapped, engine) : undefined;
+  const ruleType = relocated ?? mapped;
+  // Unmapped settings: the template chain, as Ruby's ensure_type_id does.
+  const templated = mapped === undefined ? engine?.newCardDefaultType?.(name) : undefined;
+  const templateType =
+    templated !== undefined
+      ? {
+          typeId: templated.typeId,
+          typeName: templated.typeName,
+          typeCode: engine?.peekCodenameById?.(templated.typeId),
+        }
+      : undefined;
+  const typeId = ruleType?.typeId ?? templateType?.typeId ?? settingCard.typeId;
   // Ruby prints the DECK's type card at the template-resolved id:
   // type_name (card.type_name) and the codename-derived type code are
   // lookups on THAT card, so the served deck's type names are what the
@@ -245,8 +296,13 @@ export function buildVirtualRuleCard(inputs: VirtualRuleCardInputs): RenderCard 
   // fixtures/corpus-v2/recapture/recapture-shard-000000.jsonl
   // *captcha+*right agree). The map literals are the RAW-deck names and
   // are only the fallback for a deck that does not carry the type card.
-  const typeName = deckTypeCard?.name.s ?? ruleType?.typeName ?? settingCard.typeName;
-  const typeCode = deckTypeCard?.typeCode ?? ruleType?.typeCode ?? settingCard.typeCode;
+  // (A relocated type already carries this deck's own name; the caller's
+  // deckTypeCard was looked up at the map's id, another card here.)
+  const deckType = relocated === undefined ? deckTypeCard : undefined;
+  const typeName =
+    deckType?.name.s ?? ruleType?.typeName ?? templateType?.typeName ?? settingCard.typeName;
+  const typeCode =
+    deckType?.typeCode ?? ruleType?.typeCode ?? templateType?.typeCode ?? settingCard.typeCode;
   // left/right id wiring: the rule card's record points at the set
   // (left_id) and the setting (right_id). Records use the underlying
   // CardRecord shape so the engine's left-id lookup is consistent with
