@@ -30,12 +30,14 @@ REPO_ROOT = File.expand_path("../..", __dir__)
 OUT_PATH  = File.join(REPO_ROOT, "fixtures", "captured", "view-registry-directives-oracle.json")
 
 # Decko stamps every rendered slot with a random DOM id (wrap.rb ->
-# SecureRandom.hex(10)); normalized at the recording layer per the
-# capture.rb convention (attribute presence preserved).
+# SecureRandom.hex(10)); stored as written, masked at compare time (the
+# capture.rb convention).
 SLOT_ID_RE = /data-slot-id=(["'])\h+\1/.freeze
 
+# Slot ids are stored exactly as Ruby wrote them (value and quote style);
+# graders mask the random value at compare time (reference-harness N1).
 def normalize(html)
-  html.gsub(SLOT_ID_RE, 'data-slot-id="RANDOMIZED"')
+  html
 end
 
 def deep_sort(obj)
@@ -185,7 +187,7 @@ payload = {
     "underscore_form" => "lib/card/format/method_delegation.rb:5-9,48-55",
     "menu_denial_blank" => "card-mod-format-0.20.0 set/all/html/menu.rb:8",
   },
-  "normalizations" => ["data-slot-id 20-hex -> RANDOMIZED (capture.rb convention)"],
+  "normalizations" => [],
   "no_write_proof" => {
     "card_actions_unchanged" => true,
     "card_actions" => actions_before,
