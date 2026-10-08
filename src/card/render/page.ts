@@ -381,6 +381,11 @@ async function renderPageBytesWithPageConfigInner(
   // this page BEFORE the main body dispatch reads their content. See
   // RenderEngine.applyLateSeatStructureContent's doc.
   await engine.applyLateSeatStructureContent();
+  // The configure_button verdicts for cards seated since the prepare render
+  // (search result items, late structure nests): Ruby judges can_configure?
+  // on every card the view renders for, not only the page's main card. A
+  // no-op when no newly seated card nests the view.
+  await engine.ensureConfigureVerdict();
 
   // The root format: main! context (h1 header, focal gates) + production
   // quiet-error semantics for nested views. The default nest view needs no
@@ -483,6 +488,11 @@ async function renderPageBytesWithPageConfigInner(
   // them before the layout dispatch reads their content. See
   // RenderEngine.applyLateSeatStructureContent's doc.
   await engine.applyLateSeatStructureContent();
+  // The configure_button verdicts for cards seated since the prepare render
+  // (search result items, late structure nests): Ruby judges can_configure?
+  // on every card the view renders for, not only the page's main card. A
+  // no-op when no newly seated card nests the view.
+  await engine.ensureConfigureVerdict();
   const interior = engine.skipSyncRender?.() === true
     ? ""
     : layout.kind === "card"

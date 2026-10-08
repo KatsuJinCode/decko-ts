@@ -750,12 +750,17 @@ export class RenderEngine implements RenderEngineLike {
   /** card key -> allowed verdicts per write task (the ensureVerdicts
    *  model; undefined entries mean unverifiable). Cleared on resetCaches(). */
   private taskVerdicts = new Map<string, Record<WriteTask, boolean | undefined>>();
-  /** Host card key -> the can_configure? verdict for the Cardtype page
-   *  render (update-ok on `<card>+*type+*structure`, cardtype.rb:68-70).
+  /** Card key -> the can_configure? verdict for each seated card that
+   *  nests configure_button (update-ok on `<card>+*type+*structure`,
+   *  cardtype.rb:57-59).
    *  Precomputed in the prepare phase (ensureConfigureVerdict) so the
    *  synchronous configure_button permission gate resolves the predicate
    *  without queries. Cleared on resetCaches(). */
   private configureVerdicts = new Map<string, boolean | undefined>();
+  /** Card keys ensureConfigureVerdict has checked and found not to nest
+   *  configure_button, so repeated warms skip the structure resolution.
+   *  Cleared on resetCaches(). */
+  private configureChecked = new Set<string>();
   /** Host card key -> the resolved item type for the card's rendered item
    *  slots ({typeName, typeId}), or undefined once resolved-and-nil. The
    *  port of Ruby's item-type chain (card-mod-collection set/all/item.rb
@@ -2355,6 +2360,7 @@ export class RenderEngine implements RenderEngineLike {
     this.taskVerdicts.clear();
     this.createableTypesCache = undefined;
     this.configureVerdicts.clear();
+    this.configureChecked.clear();
     this.itemTypeNameByHostKey.clear();
     this.pointerItemVerdicts.clear();
     this.pointerItemGlobalVerdictDone.clear();
@@ -6559,41 +6565,62 @@ export class RenderEngine implements RenderEngineLike {
   }
 
   /**
-   * Precompute the can_configure? verdict for the render ROOT when its
-   * structured content actually nests configure_button (the
-   * `Cardtype+*type+*structure` rule 17770 / `Cardtype+*self+*structure`
-   * 38252 pages). The verdict is taskVerdictForCard("update") on the
-   * WINNING *structure rule card — Ruby fetches exactly that card
-   * (`Card.fetch(card, :type, :structure)`, the first *structure rule in
-   * pattern precedence = resolveStructuredContent's winner). Memoized per
-   * host key; engines whose viewer is always-ok skip the query.
+   * Precompute the can_configure? verdict for every card this render seats
+   * whose content reaches configure_button: the page's main card and every
+   * nested card (a cardtype listed on the Cardtype page, a cardtype nested
+   * in a tag structure). Ruby evaluates the view's `perms: :can_configure?`
+   * on each card the view renders for, so the verdict is per card:
+   * `Card.fetch(card, :type, :structure, new: {}).ok? :update`
+   * (card-mod-format set/type/cardtype.rb:57-59), the update verdict on
+   * `<card>+*type+*structure`. A card qualifies when its own content or
+   * its winning *structure rule's template nests configure_button (the
+   * `Cardtype+*type+*structure` rule and the cardtype cards that store
+   * the same template). Memoized per card key and per rule name; the rule
+   * universe is cached per driver, so after the first verdict each one is
+   * a lookup. Engines whose viewer is always-ok skip all of it.
    */
-  private async ensureConfigureVerdict(record: CardRecord): Promise<void> {
+  async ensureConfigureVerdict(record?: CardRecord): Promise<void> {
     if (this.readPermission === undefined) return;
     if (this.readPermission.alwaysOk) return;
     const universe = this.structureContents;
-    if (universe === undefined || universe.size === 0) return;
-    const hostKey = record.key ?? (record.name ? DeckoName.parse(record.name).key : undefined);
-    if (hostKey === undefined || this.configureVerdicts.has(hostKey)) return;
-    const prepared = this.renderCards.get(hostKey);
-    if (prepared === undefined) return;
-    const resolved = resolveStructuredContent(
-      this.structurePatternInputForSync(prepared),
-      universe,
-    );
-    if (resolved === undefined) return;
-    if (!resolved.templateContent.includes("configure_button")) return;
+    const rootKey =
+      record === undefined
+        ? undefined
+        : (record.key ?? (record.name ? DeckoName.parse(record.name).key : undefined));
+    const hosts: RenderCard[] = [];
+    const consider = (card: RenderCard | undefined): void => {
+      if (card === undefined || this.configureVerdicts.has(card.key)) return;
+      if (this.configureChecked.has(card.key) || hosts.includes(card)) return;
+      let nests = card.dbContent.includes("configure_button");
+      if (!nests && universe !== undefined && universe.size > 0) {
+        const resolved = resolveStructuredContent(this.structurePatternInputForSync(card), universe);
+        nests = resolved !== undefined && resolved.templateContent.includes("configure_button");
+      }
+      if (nests) hosts.push(card);
+      else this.configureChecked.add(card.key);
+    };
+    if (rootKey !== undefined) consider(this.renderCards.get(rootKey));
+    // SWEEP-SURFACE (renderSeats): the cards this render nests.
+    for (const card of this.renderCards.values()) {
+      if (this.renderSeats.has(card.key)) consider(card);
+    }
+    if (hosts.length === 0) return;
     if (this.taskState === undefined) {
       const results = await this.fetcher.driver.batch(viewTaskPermissionStatements());
       this.taskState = viewTaskStateFromResults(results, this.readPermission);
     }
-    const verdict = await taskVerdictForCard(
-      this.fetcher,
-      { name: resolved.ruleName },
-      "update",
-      this.taskState,
-    );
-    this.configureVerdicts.set(hostKey, verdict);
+    const byRule = new Map<string, boolean | undefined>();
+    for (const card of hosts) {
+      const ruleName = `${card.name.s}+*type+*structure`;
+      const ruleKey = DeckoName.parse(ruleName).key;
+      if (!byRule.has(ruleKey)) {
+        byRule.set(
+          ruleKey,
+          await taskVerdictForCard(this.fetcher, { name: ruleName }, "update", this.taskState),
+        );
+      }
+      this.configureVerdicts.set(card.key, byRule.get(ruleKey));
+    }
   }
 
   /** Prepares the non-read task verdicts when the requested view needs
