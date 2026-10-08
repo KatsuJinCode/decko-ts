@@ -165,9 +165,10 @@ describe("Gherkin port: attach.feature / File Upload", () => {
     expect(large.length).toBe(PNG_BYTES.length);
     // The core view emits the version URL (determine_image_size's default
     // arm: default_size :medium, image.rb:52-53 — the variant suffix is
-    // the fact; formatImageCore's local arm appends it).
+    // the fact; formatImageCore's local arm appends it). The url is
+    // local_url: /files/~<card id>/... (file_card_uploader/path.rb:11-13).
     await whenGoToCard(aw.world, "a test image", "core");
-    expect(aw.world.lastHtml).toContain(`/files/${card!.id}/${actionId}-medium.png`);
+    expect(aw.world.lastHtml).toContain(`/files/~${card!.id}/${actionId}-medium.png`);
 
     // upstream: edit + upload image2.jpg + Save and Close + "image of size
     // 'large' and type 'jpg'" — the update stores the NEW action's

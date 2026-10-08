@@ -125,13 +125,14 @@ function storageTypeFromContent(content: string): "cloud" | "web" | "local" | "c
 /** contextualize_path (the path-prefix in lib/card/mod/carrierwave.rb plus
  *  the file_card_uploader URL machinery): converts a coded identifier into a
  *  web path. The carrierwave doc comments (lib/carrier_wave/file_card_uploader.rb:
- *  88-117) define:
+ *  88-117) define these STORAGE paths (where the bytes live, not the url):
  *    coded: mod_dir/file/codename(-variant).ext  (no colon on codename)
  *    local: files_dir/card_id/action_id(-variant).ext
  *    cloud: bucket/bucket_subdir/id/action_id(-variant).ext
- *  The headless port resolves the FILES_WEB_PATH (lib/card/mod/carrierwave.rb:
- *  2 `config.files_web_path = "files"`) for local uploads and the raw URL
- *  for web. The CLOUD arm is Ruby's render-time derivation
+ *  The URL of a local or coded file is local_url (file_card_uploader/path.rb:
+ *  11-13): "/files/" + the identifier's own directory (`~<card id>` or the
+ *  `:<codename>` parts) + the derived filename — views.ts localStorageUrl.
+ *  Web content is its own url. The CLOUD arm is Ruby's render-time derivation
  *  (derivedCloudAttachmentSource in views.ts): Ruby's uploader deliberately
  *  ignores the stored identifier when retrieving (lib/carrier_wave/
  *  file_card_uploader/path.rb:28-32) and rebuilds the filename from db data
@@ -181,6 +182,7 @@ const fileCoreView: ViewFn = (ctx) => {
   return formatFileCore(ctx.fmt.card.dbContent, {
     cardName: ctx.fmt.card.name.s,
     contextNames: ctx.fmt.contextNames,
+    cardId: ctx.fmt.card.id,
   });
 };
 

@@ -1246,6 +1246,7 @@ const coreViewBase: ViewFn = (ctx) => {
     return formatFileCore(fmt.card.dbContent, {
       cardName: fmt.card.name.s,
       contextNames: fmt.contextNames,
+      cardId: fmt.card.id,
     });
   }
   // card-mod-markdown-0.20.0 set/type/markdown.rb:6-13 `view :core do
@@ -2413,8 +2414,9 @@ function appendVariantLowercasingExt(path: string, variant: string): string {
  *   - blank or no recognized prefix -> "" (the corpus file cards: 9 empty +
  *     310 bare tokens, every one empty-rendered by the oracle)
  *   - `http(s)://...` (web) or `(...)/...` (cloud) -> the content as-is
- *   - `~/...` (local) -> `/files/<id>/<action>.<ext>`
- *   - `:<codename>/...` (coded) -> `/files/<codename>.<mod>.<ext>`
+ *   - `~<id>/...` (local) -> `/files/~<card id>/<action>.<ext>`
+ *   - `:<codename>/...` (coded) -> `/files/:<codename>/<mod>.<ext>`
+ *     (both localStorageUrl — FileCardUploader#local_url)
  *  The label/quote shape is oracle-pinned by the RAW corpus's quote-style
  *  exemplars (Werkshop Museum `Download +Documents`, David K Weinstock
  *  `Download +description+bio`, ... — the earlier `<a href="SRC">SRC</a>`
@@ -2425,11 +2427,11 @@ function appendVariantLowercasingExt(path: string, variant: string): string {
  *  mod loader). */
 export function formatFileCore(
   content: string | null | undefined,
-  nameContext?: { cardName: string; contextNames?: readonly string[] },
+  nameContext?: { cardName: string; contextNames?: readonly string[]; cardId?: number },
 ): string {
   const trimmed = (content ?? "").trim();
   if (trimmed === "") return "";
-  const source = fileSourceFromContent(trimmed);
+  const source = fileSourceFromContent(trimmed, nameContext?.cardId);
   if (source === "") return "";
   const title = nameContext === undefined
     ? ""
@@ -2446,11 +2448,11 @@ export function formatFileCore(
  *  (derivedCloudAttachmentSource) — the stored key is never emitted
  *  verbatim (set/type/file.rb:11-15 + file_card_uploader.rb:147-153 +
  *  path.rb:41-43; the corpus file-page oracle anchor pins it). */
-function fileSourceFromContent(trimmed: string): string {
+function fileSourceFromContent(trimmed: string, cardId?: number): string {
   if (/^\(/.test(trimmed)) return derivedCloudAttachmentSource(trimmed); // cloud: derived action-id URL
   if (/^https?:/.test(trimmed)) return trimmed; // web: the URL as-is
   // local (~<card id>/...) and coded (:<codename>/...): Ruby's local_url.
-  return localStorageUrl(trimmed); // "" for an unrecognized prefix
+  return localStorageUrl(trimmed, undefined, cardId); // "" for an unrecognized prefix
 }
 
 /** The url of a file or image attachment stored LOCALLY or CODED, exactly as

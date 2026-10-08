@@ -313,7 +313,7 @@ describe("attachment-filename-case — emission downcases the extension", () => 
 
   it("local identifier with uppercase ext emits /files path with lowercase ext", () => {
     expect(formatImageCore("~6100/5026.PNG", 6100, "upcased local")).toBe(
-      '<img alt="upcased local" src="/files/6100/5026-medium.png" />',
+      '<img alt="upcased local" src="/files/~6100/5026-medium.png" />',
     );
   });
 
