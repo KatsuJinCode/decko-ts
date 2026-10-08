@@ -1,0 +1,1499 @@
+{
+ "benchmark": "deep-nesting-fixtures-ruby",
+ "date": "2026-10-08T07:11:27Z",
+ "engine": "ruby-decko",
+ "environment": {
+  "card_gem": "1.110.0",
+  "cpu": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+  "db_engine": "sqlite3",
+  "db_size_bytes": 3321856,
+  "decko_gem": "0.20.0",
+  "live_cards_in_db_after_cleanup": 3544,
+  "live_cards_in_db_before_seed": 904,
+  "os": "x64-mingw-ucrt",
+  "rails": "7.2.4",
+  "ram_bytes": null,
+  "ruby": "3.3.12"
+ },
+ "config": {
+  "prefetch_nests": false,
+  "query_latency_ms": 0,
+  "background_cards": 400,
+  "render_n": 5,
+  "warmup": 1,
+  "prefix": "BenchDN",
+  "depths": [
+   1,
+   2,
+   4,
+   8,
+   10,
+   16,
+   20,
+   50,
+   100,
+   200
+  ],
+  "fanouts": [
+   1,
+   4,
+   16,
+   50,
+   100,
+   200
+  ],
+  "trees": [
+   "d4xf4",
+   "d3xf10"
+  ],
+  "nest_syntax": "{{name|open}}",
+  "ts_counterpart": "benchmarks/results/deep-nesting-fixtures-ts.json",
+  "note": "fixture names shared with the TS sweep (BenchDN prefix); content filler differs (random a-z vs deterministic) - query axes are unaffected"
+ },
+ "seed_seconds": 78.5,
+ "cleanup_seconds": 0,
+ "bench_cards_deleted": 0,
+ "bench_cards_remaining_live": 2640,
+ "shapes": [
+  {
+   "shape": "chain",
+   "nest_style": "open",
+   "view": "open",
+   "depth": 1,
+   "root": "BenchDN_chain_open_d01_n01",
+   "renders": [
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 7.127,
+     "html_bytes": 3013
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 7.776,
+     "html_bytes": 3013
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 5.223,
+     "html_bytes": 3013
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 6.325,
+     "html_bytes": 3013
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 11.193,
+     "html_bytes": 3013
+    }
+   ],
+   "summary": {
+    "queries_median": 0,
+    "queries_min": 0,
+    "queries_max": 0,
+    "wall_ms_median": 7.127,
+    "wall_ms_min": 5.223,
+    "wall_ms_max": 11.193
+   },
+   "cold_renders": [
+    {
+     "query_count": 4,
+     "query_count_all": 4,
+     "wall_ms": 21.245,
+     "html_bytes": 3013
+    },
+    {
+     "query_count": 4,
+     "query_count_all": 4,
+     "wall_ms": 19.079,
+     "html_bytes": 3013
+    },
+    {
+     "query_count": 4,
+     "query_count_all": 4,
+     "wall_ms": 21.003,
+     "html_bytes": 3013
+    },
+    {
+     "query_count": 4,
+     "query_count_all": 4,
+     "wall_ms": 21.71,
+     "html_bytes": 3013
+    },
+    {
+     "query_count": 4,
+     "query_count_all": 4,
+     "wall_ms": 26.447,
+     "html_bytes": 3013
+    }
+   ],
+   "cold_summary": {
+    "queries_median": 4,
+    "queries_min": 4,
+    "queries_max": 4,
+    "wall_ms_median": 21.245,
+    "wall_ms_min": 19.079,
+    "wall_ms_max": 26.447
+   }
+  },
+  {
+   "shape": "chain",
+   "nest_style": "open",
+   "view": "open",
+   "depth": 2,
+   "root": "BenchDN_chain_open_d02_n01",
+   "renders": [
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 14.126,
+     "html_bytes": 5984
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 17.665,
+     "html_bytes": 5984
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 18.779,
+     "html_bytes": 5984
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 18.093,
+     "html_bytes": 5984
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 11.835,
+     "html_bytes": 5984
+    }
+   ],
+   "summary": {
+    "queries_median": 0,
+    "queries_min": 0,
+    "queries_max": 0,
+    "wall_ms_median": 17.665,
+    "wall_ms_min": 11.835,
+    "wall_ms_max": 18.779
+   },
+   "cold_renders": [
+    {
+     "query_count": 5,
+     "query_count_all": 5,
+     "wall_ms": 36.842,
+     "html_bytes": 5984
+    },
+    {
+     "query_count": 5,
+     "query_count_all": 5,
+     "wall_ms": 44.514,
+     "html_bytes": 5984
+    },
+    {
+     "query_count": 5,
+     "query_count_all": 5,
+     "wall_ms": 52.568,
+     "html_bytes": 5984
+    },
+    {
+     "query_count": 5,
+     "query_count_all": 5,
+     "wall_ms": 50.894,
+     "html_bytes": 5984
+    },
+    {
+     "query_count": 5,
+     "query_count_all": 5,
+     "wall_ms": 44.07,
+     "html_bytes": 5984
+    }
+   ],
+   "cold_summary": {
+    "queries_median": 5,
+    "queries_min": 5,
+    "queries_max": 5,
+    "wall_ms_median": 44.514,
+    "wall_ms_min": 36.842,
+    "wall_ms_max": 52.568
+   }
+  },
+  {
+   "shape": "chain",
+   "nest_style": "open",
+   "view": "open",
+   "depth": 4,
+   "root": "BenchDN_chain_open_d04_n01",
+   "renders": [
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 34.936,
+     "html_bytes": 11926
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 39.117,
+     "html_bytes": 11926
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 51.671,
+     "html_bytes": 11926
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 46.955,
+     "html_bytes": 11926
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 52.437,
+     "html_bytes": 11926
+    }
+   ],
+   "summary": {
+    "queries_median": 0,
+    "queries_min": 0,
+    "queries_max": 0,
+    "wall_ms_median": 46.955,
+    "wall_ms_min": 34.936,
+    "wall_ms_max": 52.437
+   },
+   "cold_renders": [
+    {
+     "query_count": 7,
+     "query_count_all": 7,
+     "wall_ms": 78.863,
+     "html_bytes": 11926
+    },
+    {
+     "query_count": 7,
+     "query_count_all": 7,
+     "wall_ms": 67.721,
+     "html_bytes": 11926
+    },
+    {
+     "query_count": 7,
+     "query_count_all": 7,
+     "wall_ms": 64.927,
+     "html_bytes": 11926
+    },
+    {
+     "query_count": 7,
+     "query_count_all": 7,
+     "wall_ms": 74.391,
+     "html_bytes": 11926
+    },
+    {
+     "query_count": 7,
+     "query_count_all": 7,
+     "wall_ms": 64.721,
+     "html_bytes": 11926
+    }
+   ],
+   "cold_summary": {
+    "queries_median": 7,
+    "queries_min": 7,
+    "queries_max": 7,
+    "wall_ms_median": 67.721,
+    "wall_ms_min": 64.721,
+    "wall_ms_max": 78.863
+   }
+  },
+  {
+   "shape": "chain",
+   "nest_style": "open",
+   "view": "open",
+   "depth": 8,
+   "root": "BenchDN_chain_open_d08_n01",
+   "renders": [
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 60.183,
+     "html_bytes": 23810
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 57.007,
+     "html_bytes": 23810
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 53.448,
+     "html_bytes": 23810
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 62.014,
+     "html_bytes": 23810
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 67.392,
+     "html_bytes": 23810
+    }
+   ],
+   "summary": {
+    "queries_median": 0,
+    "queries_min": 0,
+    "queries_max": 0,
+    "wall_ms_median": 60.183,
+    "wall_ms_min": 53.448,
+    "wall_ms_max": 67.392
+   },
+   "cold_renders": [
+    {
+     "query_count": 11,
+     "query_count_all": 11,
+     "wall_ms": 90.268,
+     "html_bytes": 23810
+    },
+    {
+     "query_count": 11,
+     "query_count_all": 11,
+     "wall_ms": 100.852,
+     "html_bytes": 23810
+    },
+    {
+     "query_count": 11,
+     "query_count_all": 11,
+     "wall_ms": 94.583,
+     "html_bytes": 23810
+    },
+    {
+     "query_count": 11,
+     "query_count_all": 11,
+     "wall_ms": 91.052,
+     "html_bytes": 23810
+    },
+    {
+     "query_count": 11,
+     "query_count_all": 11,
+     "wall_ms": 97.47,
+     "html_bytes": 23810
+    }
+   ],
+   "cold_summary": {
+    "queries_median": 11,
+    "queries_min": 11,
+    "queries_max": 11,
+    "wall_ms_median": 94.583,
+    "wall_ms_min": 90.268,
+    "wall_ms_max": 100.852
+   }
+  },
+  {
+   "shape": "chain",
+   "nest_style": "open",
+   "view": "open",
+   "depth": 10,
+   "root": "BenchDN_chain_open_d10_n01",
+   "renders": [
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 68.954,
+     "html_bytes": 29752
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 68.936,
+     "html_bytes": 29752
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 62.271,
+     "html_bytes": 29752
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 73.047,
+     "html_bytes": 29752
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 77.092,
+     "html_bytes": 29752
+    }
+   ],
+   "summary": {
+    "queries_median": 0,
+    "queries_min": 0,
+    "queries_max": 0,
+    "wall_ms_median": 68.954,
+    "wall_ms_min": 62.271,
+    "wall_ms_max": 77.092
+   },
+   "cold_renders": [
+    {
+     "query_count": 13,
+     "query_count_all": 13,
+     "wall_ms": 137.641,
+     "html_bytes": 29752
+    },
+    {
+     "query_count": 13,
+     "query_count_all": 13,
+     "wall_ms": 162.545,
+     "html_bytes": 29752
+    },
+    {
+     "query_count": 13,
+     "query_count_all": 13,
+     "wall_ms": 111.472,
+     "html_bytes": 29752
+    },
+    {
+     "query_count": 13,
+     "query_count_all": 13,
+     "wall_ms": 186.767,
+     "html_bytes": 29752
+    },
+    {
+     "query_count": 13,
+     "query_count_all": 13,
+     "wall_ms": 122.549,
+     "html_bytes": 29752
+    }
+   ],
+   "cold_summary": {
+    "queries_median": 13,
+    "queries_min": 13,
+    "queries_max": 13,
+    "wall_ms_median": 137.641,
+    "wall_ms_min": 111.472,
+    "wall_ms_max": 186.767
+   }
+  },
+  {
+   "shape": "chain",
+   "nest_style": "open",
+   "view": "open",
+   "depth": 16,
+   "root": "BenchDN_chain_open_d16_n01",
+   "renders": [
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 97.948,
+     "html_bytes": 47578
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 96.826,
+     "html_bytes": 47578
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 97.71,
+     "html_bytes": 47578
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 100.169,
+     "html_bytes": 47578
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 151.095,
+     "html_bytes": 47578
+    }
+   ],
+   "summary": {
+    "queries_median": 0,
+    "queries_min": 0,
+    "queries_max": 0,
+    "wall_ms_median": 97.948,
+    "wall_ms_min": 96.826,
+    "wall_ms_max": 151.095
+   },
+   "cold_renders": [
+    {
+     "query_count": 19,
+     "query_count_all": 19,
+     "wall_ms": 215.088,
+     "html_bytes": 47578
+    },
+    {
+     "query_count": 19,
+     "query_count_all": 19,
+     "wall_ms": 200.188,
+     "html_bytes": 47578
+    },
+    {
+     "query_count": 19,
+     "query_count_all": 19,
+     "wall_ms": 167.311,
+     "html_bytes": 47578
+    },
+    {
+     "query_count": 19,
+     "query_count_all": 19,
+     "wall_ms": 215.398,
+     "html_bytes": 47578
+    },
+    {
+     "query_count": 19,
+     "query_count_all": 19,
+     "wall_ms": 250.035,
+     "html_bytes": 47578
+    }
+   ],
+   "cold_summary": {
+    "queries_median": 19,
+    "queries_min": 19,
+    "queries_max": 19,
+    "wall_ms_median": 215.088,
+    "wall_ms_min": 167.311,
+    "wall_ms_max": 250.035
+   }
+  },
+  {
+   "shape": "chain",
+   "nest_style": "open",
+   "view": "open",
+   "depth": 20,
+   "root": "BenchDN_chain_open_d20_n01",
+   "renders": [
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 228.446,
+     "html_bytes": 59462
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 120.656,
+     "html_bytes": 59462
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 150.767,
+     "html_bytes": 59462
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 149.933,
+     "html_bytes": 59462
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 152.77,
+     "html_bytes": 59462
+    }
+   ],
+   "summary": {
+    "queries_median": 0,
+    "queries_min": 0,
+    "queries_max": 0,
+    "wall_ms_median": 150.767,
+    "wall_ms_min": 120.656,
+    "wall_ms_max": 228.446
+   },
+   "cold_renders": [
+    {
+     "query_count": 23,
+     "query_count_all": 23,
+     "wall_ms": 230.138,
+     "html_bytes": 59462
+    },
+    {
+     "query_count": 23,
+     "query_count_all": 23,
+     "wall_ms": 250.321,
+     "html_bytes": 59462
+    },
+    {
+     "query_count": 23,
+     "query_count_all": 23,
+     "wall_ms": 202.726,
+     "html_bytes": 59462
+    },
+    {
+     "query_count": 23,
+     "query_count_all": 23,
+     "wall_ms": 207.029,
+     "html_bytes": 59462
+    },
+    {
+     "query_count": 23,
+     "query_count_all": 23,
+     "wall_ms": 253.635,
+     "html_bytes": 59462
+    }
+   ],
+   "cold_summary": {
+    "queries_median": 23,
+    "queries_min": 23,
+    "queries_max": 23,
+    "wall_ms_median": 230.138,
+    "wall_ms_min": 202.726,
+    "wall_ms_max": 253.635
+   }
+  },
+  {
+   "shape": "chain",
+   "nest_style": "open",
+   "view": "open",
+   "depth": 50,
+   "root": "BenchDN_chain_open_d50_n01",
+   "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+   "cold_renders_partial": [
+    {
+     "query_count": 24,
+     "query_count_all": 24,
+     "wall_ms": 210.98,
+     "html_bytes": 0,
+     "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)"
+    },
+    {
+     "query_count": 24,
+     "query_count_all": 24,
+     "wall_ms": 152.669,
+     "html_bytes": 0,
+     "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)"
+    },
+    {
+     "query_count": 24,
+     "query_count_all": 24,
+     "wall_ms": 146.639,
+     "html_bytes": 0,
+     "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)"
+    },
+    {
+     "query_count": 24,
+     "query_count_all": 24,
+     "wall_ms": 165.629,
+     "html_bytes": 0,
+     "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)"
+    },
+    {
+     "query_count": 24,
+     "query_count_all": 24,
+     "wall_ms": 230.282,
+     "html_bytes": 0,
+     "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)"
+    }
+   ]
+  },
+  {
+   "shape": "chain",
+   "nest_style": "open",
+   "view": "open",
+   "depth": 100,
+   "root": "BenchDN_chain_open_d100_n01",
+   "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+   "cold_renders_partial": [
+    {
+     "query_count": 24,
+     "query_count_all": 24,
+     "wall_ms": 218.755,
+     "html_bytes": 0,
+     "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)"
+    },
+    {
+     "query_count": 24,
+     "query_count_all": 24,
+     "wall_ms": 195.491,
+     "html_bytes": 0,
+     "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)"
+    },
+    {
+     "query_count": 24,
+     "query_count_all": 24,
+     "wall_ms": 224.973,
+     "html_bytes": 0,
+     "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)"
+    },
+    {
+     "query_count": 24,
+     "query_count_all": 24,
+     "wall_ms": 263.014,
+     "html_bytes": 0,
+     "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)"
+    },
+    {
+     "query_count": 24,
+     "query_count_all": 24,
+     "wall_ms": 214.437,
+     "html_bytes": 0,
+     "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)"
+    }
+   ]
+  },
+  {
+   "shape": "chain",
+   "nest_style": "open",
+   "view": "open",
+   "depth": 200,
+   "root": "BenchDN_chain_open_d200_n01",
+   "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)",
+   "cold_renders_partial": [
+    {
+     "query_count": 24,
+     "query_count_all": 24,
+     "wall_ms": 225.474,
+     "html_bytes": 0,
+     "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)"
+    },
+    {
+     "query_count": 24,
+     "query_count_all": 24,
+     "wall_ms": 289.023,
+     "html_bytes": 0,
+     "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)"
+    },
+    {
+     "query_count": 24,
+     "query_count_all": 24,
+     "wall_ms": 232.141,
+     "html_bytes": 0,
+     "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)"
+    },
+    {
+     "query_count": 24,
+     "query_count_all": 24,
+     "wall_ms": 231.069,
+     "html_bytes": 0,
+     "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)"
+    },
+    {
+     "query_count": 24,
+     "query_count_all": 24,
+     "wall_ms": 183.432,
+     "html_bytes": 0,
+     "render_error": "Card::Error::UserError: Man, you're too deep.  (Too many levels of nests at a time)"
+    }
+   ]
+  },
+  {
+   "shape": "fan",
+   "nest_style": "open",
+   "view": "open",
+   "fanout": 1,
+   "root": "BenchDN_fan_f01_root",
+   "renders": [
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 9.946,
+     "html_bytes": 5748
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 19.272,
+     "html_bytes": 5748
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 14.816,
+     "html_bytes": 5748
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 13.403,
+     "html_bytes": 5748
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 16.154,
+     "html_bytes": 5748
+    }
+   ],
+   "summary": {
+    "queries_median": 0,
+    "queries_min": 0,
+    "queries_max": 0,
+    "wall_ms_median": 14.816,
+    "wall_ms_min": 9.946,
+    "wall_ms_max": 19.272
+   },
+   "cold_renders": [
+    {
+     "query_count": 5,
+     "query_count_all": 5,
+     "wall_ms": 29.255,
+     "html_bytes": 5748
+    },
+    {
+     "query_count": 5,
+     "query_count_all": 5,
+     "wall_ms": 29.429,
+     "html_bytes": 5748
+    },
+    {
+     "query_count": 5,
+     "query_count_all": 5,
+     "wall_ms": 36.291,
+     "html_bytes": 5748
+    },
+    {
+     "query_count": 5,
+     "query_count_all": 5,
+     "wall_ms": 49.384,
+     "html_bytes": 5748
+    },
+    {
+     "query_count": 5,
+     "query_count_all": 5,
+     "wall_ms": 40.334,
+     "html_bytes": 5748
+    }
+   ],
+   "cold_summary": {
+    "queries_median": 5,
+    "queries_min": 5,
+    "queries_max": 5,
+    "wall_ms_median": 36.291,
+    "wall_ms_min": 29.255,
+    "wall_ms_max": 49.384
+   }
+  },
+  {
+   "shape": "fan",
+   "nest_style": "open",
+   "view": "open",
+   "fanout": 4,
+   "root": "BenchDN_fan_f04_root",
+   "renders": [
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 45.584,
+     "html_bytes": 14892
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 32.937,
+     "html_bytes": 14892
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 29.9,
+     "html_bytes": 14892
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 42.114,
+     "html_bytes": 14892
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 50.656,
+     "html_bytes": 14892
+    }
+   ],
+   "summary": {
+    "queries_median": 0,
+    "queries_min": 0,
+    "queries_max": 0,
+    "wall_ms_median": 42.114,
+    "wall_ms_min": 29.9,
+    "wall_ms_max": 50.656
+   },
+   "cold_renders": [
+    {
+     "query_count": 8,
+     "query_count_all": 8,
+     "wall_ms": 77.761,
+     "html_bytes": 14892
+    },
+    {
+     "query_count": 8,
+     "query_count_all": 8,
+     "wall_ms": 82.648,
+     "html_bytes": 14892
+    },
+    {
+     "query_count": 8,
+     "query_count_all": 8,
+     "wall_ms": 90.601,
+     "html_bytes": 14892
+    },
+    {
+     "query_count": 8,
+     "query_count_all": 8,
+     "wall_ms": 90.91,
+     "html_bytes": 14892
+    },
+    {
+     "query_count": 8,
+     "query_count_all": 8,
+     "wall_ms": 81.008,
+     "html_bytes": 14892
+    }
+   ],
+   "cold_summary": {
+    "queries_median": 8,
+    "queries_min": 8,
+    "queries_max": 8,
+    "wall_ms_median": 82.648,
+    "wall_ms_min": 77.761,
+    "wall_ms_max": 90.91
+   }
+  },
+  {
+   "shape": "fan",
+   "nest_style": "open",
+   "view": "open",
+   "fanout": 16,
+   "root": "BenchDN_fan_f16_root",
+   "renders": [
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 131.848,
+     "html_bytes": 51468
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 119.203,
+     "html_bytes": 51468
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 128.582,
+     "html_bytes": 51468
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 110.796,
+     "html_bytes": 51468
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 137.221,
+     "html_bytes": 51468
+    }
+   ],
+   "summary": {
+    "queries_median": 0,
+    "queries_min": 0,
+    "queries_max": 0,
+    "wall_ms_median": 128.582,
+    "wall_ms_min": 110.796,
+    "wall_ms_max": 137.221
+   },
+   "cold_renders": [
+    {
+     "query_count": 20,
+     "query_count_all": 20,
+     "wall_ms": 210.647,
+     "html_bytes": 51468
+    },
+    {
+     "query_count": 20,
+     "query_count_all": 20,
+     "wall_ms": 216.894,
+     "html_bytes": 51468
+    },
+    {
+     "query_count": 20,
+     "query_count_all": 20,
+     "wall_ms": 224.452,
+     "html_bytes": 51468
+    },
+    {
+     "query_count": 20,
+     "query_count_all": 20,
+     "wall_ms": 208.022,
+     "html_bytes": 51468
+    },
+    {
+     "query_count": 20,
+     "query_count_all": 20,
+     "wall_ms": 241.042,
+     "html_bytes": 51468
+    }
+   ],
+   "cold_summary": {
+    "queries_median": 20,
+    "queries_min": 20,
+    "queries_max": 20,
+    "wall_ms_median": 216.894,
+    "wall_ms_min": 208.022,
+    "wall_ms_max": 241.042
+   }
+  },
+  {
+   "shape": "fan",
+   "nest_style": "open",
+   "view": "open",
+   "fanout": 50,
+   "root": "BenchDN_fan_f50_root",
+   "renders": [
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 446.037,
+     "html_bytes": 155100
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 365.752,
+     "html_bytes": 155100
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 356.264,
+     "html_bytes": 155100
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 375.339,
+     "html_bytes": 155100
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 439.462,
+     "html_bytes": 155100
+    }
+   ],
+   "summary": {
+    "queries_median": 0,
+    "queries_min": 0,
+    "queries_max": 0,
+    "wall_ms_median": 375.339,
+    "wall_ms_min": 356.264,
+    "wall_ms_max": 446.037
+   },
+   "cold_renders": [
+    {
+     "query_count": 54,
+     "query_count_all": 54,
+     "wall_ms": 666.122,
+     "html_bytes": 155100
+    },
+    {
+     "query_count": 54,
+     "query_count_all": 54,
+     "wall_ms": 642.187,
+     "html_bytes": 155100
+    },
+    {
+     "query_count": 54,
+     "query_count_all": 54,
+     "wall_ms": 646.178,
+     "html_bytes": 155100
+    },
+    {
+     "query_count": 54,
+     "query_count_all": 54,
+     "wall_ms": 557.959,
+     "html_bytes": 155100
+    },
+    {
+     "query_count": 54,
+     "query_count_all": 54,
+     "wall_ms": 626.004,
+     "html_bytes": 155100
+    }
+   ],
+   "cold_summary": {
+    "queries_median": 54,
+    "queries_min": 54,
+    "queries_max": 54,
+    "wall_ms_median": 642.187,
+    "wall_ms_min": 557.959,
+    "wall_ms_max": 666.122
+   }
+  },
+  {
+   "shape": "fan",
+   "nest_style": "open",
+   "view": "open",
+   "fanout": 100,
+   "root": "BenchDN_fan_f100_root",
+   "renders": [
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 854.757,
+     "html_bytes": 309417
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 841.481,
+     "html_bytes": 309417
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 867.501,
+     "html_bytes": 309417
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 899.221,
+     "html_bytes": 309417
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 805.821,
+     "html_bytes": 309417
+    }
+   ],
+   "summary": {
+    "queries_median": 0,
+    "queries_min": 0,
+    "queries_max": 0,
+    "wall_ms_median": 854.757,
+    "wall_ms_min": 805.821,
+    "wall_ms_max": 899.221
+   },
+   "cold_renders": [
+    {
+     "query_count": 104,
+     "query_count_all": 104,
+     "wall_ms": 1493.4,
+     "html_bytes": 309417
+    },
+    {
+     "query_count": 104,
+     "query_count_all": 104,
+     "wall_ms": 1506.521,
+     "html_bytes": 309417
+    },
+    {
+     "query_count": 104,
+     "query_count_all": 104,
+     "wall_ms": 1397.518,
+     "html_bytes": 309417
+    },
+    {
+     "query_count": 104,
+     "query_count_all": 104,
+     "wall_ms": 1193.19,
+     "html_bytes": 309417
+    },
+    {
+     "query_count": 104,
+     "query_count_all": 104,
+     "wall_ms": 1367.986,
+     "html_bytes": 309417
+    }
+   ],
+   "cold_summary": {
+    "queries_median": 104,
+    "queries_min": 104,
+    "queries_max": 104,
+    "wall_ms_median": 1397.518,
+    "wall_ms_min": 1193.19,
+    "wall_ms_max": 1506.521
+   }
+  },
+  {
+   "shape": "fan",
+   "nest_style": "open",
+   "view": "open",
+   "fanout": 200,
+   "root": "BenchDN_fan_f200_root",
+   "renders": [
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 1440.247,
+     "html_bytes": 618017
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 1570.749,
+     "html_bytes": 618017
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 1491.774,
+     "html_bytes": 618017
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 1412.257,
+     "html_bytes": 618017
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 1476.496,
+     "html_bytes": 618017
+    }
+   ],
+   "summary": {
+    "queries_median": 0,
+    "queries_min": 0,
+    "queries_max": 0,
+    "wall_ms_median": 1476.496,
+    "wall_ms_min": 1412.257,
+    "wall_ms_max": 1570.749
+   },
+   "cold_renders": [
+    {
+     "query_count": 204,
+     "query_count_all": 204,
+     "wall_ms": 2478.429,
+     "html_bytes": 618017
+    },
+    {
+     "query_count": 204,
+     "query_count_all": 204,
+     "wall_ms": 2550.381,
+     "html_bytes": 618017
+    },
+    {
+     "query_count": 204,
+     "query_count_all": 204,
+     "wall_ms": 2640.556,
+     "html_bytes": 618017
+    },
+    {
+     "query_count": 204,
+     "query_count_all": 204,
+     "wall_ms": 2381.822,
+     "html_bytes": 618017
+    },
+    {
+     "query_count": 204,
+     "query_count_all": 204,
+     "wall_ms": 2650.176,
+     "html_bytes": 618017
+    }
+   ],
+   "cold_summary": {
+    "queries_median": 204,
+    "queries_min": 204,
+    "queries_max": 204,
+    "wall_ms_median": 2550.381,
+    "wall_ms_min": 2381.822,
+    "wall_ms_max": 2650.176
+   }
+  },
+  {
+   "shape": "tree",
+   "nest_style": "open",
+   "view": "open",
+   "tree_dims": "d4xf4",
+   "root": "BenchDN_tree_d04_f04_root",
+   "renders": [
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 2950.925,
+     "html_bytes": 1092781
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 2911.169,
+     "html_bytes": 1092781
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 2581.394,
+     "html_bytes": 1092781
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 2566.092,
+     "html_bytes": 1092781
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 2570.471,
+     "html_bytes": 1092781
+    }
+   ],
+   "summary": {
+    "queries_median": 0,
+    "queries_min": 0,
+    "queries_max": 0,
+    "wall_ms_median": 2581.394,
+    "wall_ms_min": 2566.092,
+    "wall_ms_max": 2950.925
+   },
+   "cold_renders": [
+    {
+     "query_count": 344,
+     "query_count_all": 344,
+     "wall_ms": 3958.958,
+     "html_bytes": 1092781
+    },
+    {
+     "query_count": 344,
+     "query_count_all": 344,
+     "wall_ms": 4296.567,
+     "html_bytes": 1092781
+    },
+    {
+     "query_count": 344,
+     "query_count_all": 344,
+     "wall_ms": 4195.108,
+     "html_bytes": 1092781
+    },
+    {
+     "query_count": 344,
+     "query_count_all": 344,
+     "wall_ms": 4106.745,
+     "html_bytes": 1092781
+    },
+    {
+     "query_count": 344,
+     "query_count_all": 344,
+     "wall_ms": 4352.468,
+     "html_bytes": 1092781
+    }
+   ],
+   "cold_summary": {
+    "queries_median": 344,
+    "queries_min": 344,
+    "queries_max": 344,
+    "wall_ms_median": 4195.108,
+    "wall_ms_min": 3958.958,
+    "wall_ms_max": 4352.468
+   }
+  },
+  {
+   "shape": "tree",
+   "nest_style": "open",
+   "view": "open",
+   "tree_dims": "d3xf10",
+   "root": "BenchDN_tree_d03_f10_root",
+   "renders": [
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 8557.064,
+     "html_bytes": 3595955
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 9157.632,
+     "html_bytes": 3595955
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 9615.106,
+     "html_bytes": 3595955
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 10393.242,
+     "html_bytes": 3595955
+    },
+    {
+     "query_count": 0,
+     "query_count_all": 0,
+     "wall_ms": 9364.841,
+     "html_bytes": 3595955
+    }
+   ],
+   "summary": {
+    "queries_median": 0,
+    "queries_min": 0,
+    "queries_max": 0,
+    "wall_ms_median": 9364.841,
+    "wall_ms_min": 8557.064,
+    "wall_ms_max": 10393.242
+   },
+   "cold_renders": [
+    {
+     "query_count": 1114,
+     "query_count_all": 1114,
+     "wall_ms": 16092.529,
+     "html_bytes": 3595955
+    },
+    {
+     "query_count": 1114,
+     "query_count_all": 1114,
+     "wall_ms": 14415.101,
+     "html_bytes": 3595955
+    },
+    {
+     "query_count": 1114,
+     "query_count_all": 1114,
+     "wall_ms": 15132.23,
+     "html_bytes": 3595955
+    },
+    {
+     "query_count": 1114,
+     "query_count_all": 1114,
+     "wall_ms": 14029.743,
+     "html_bytes": 3595955
+    },
+    {
+     "query_count": 1114,
+     "query_count_all": 1114,
+     "wall_ms": 13770.464,
+     "html_bytes": 3595955
+    }
+   ],
+   "cold_summary": {
+    "queries_median": 1114,
+    "queries_min": 1114,
+    "queries_max": 1114,
+    "wall_ms_median": 14415.101,
+    "wall_ms_min": 13770.464,
+    "wall_ms_max": 16092.529
+   }
+  }
+ ]
+}
