@@ -230,7 +230,8 @@ describe("flat-record format-scope census (composed deck)", () => {
     // lane ported into the edit mod's contentFormgroupsView); +nav_item
     // +nav_link_in_dropdown at the edge view-registry lane (Abstract::Items'
     // dropdown :nav_item and Self::DropdownDivider's two views joining
-    // card-mod-layout's all-set rows).
+    // card-mod-layout's all-set rows); +navbar_links at the semantics lane
+    // (card-mod-layout's Type::Html override joining the all-set row).
     const byView = new Map<string, CensusEntry[]>();
     for (const e of entries) {
       const list = byView.get(e.view) ?? [];
@@ -255,6 +256,7 @@ describe("flat-record format-scope census (composed deck)", () => {
       "javascript_include_tag",
       "nav_item",
       "nav_link_in_dropdown",
+      "navbar_links",
       "new",
       "new_buttons",
       "not_found",
