@@ -121,6 +121,8 @@ export interface WorkersWriteRequest {
   /** The URL pathname, percent-ENCODED as received, trailing slashes already
    *  stripped by the caller (write-routes.ts:115). */
   readonly pathname: string;
+  /** The URL query string ("?..." or ""), write-routes.ts WriteRouteRequest.search. */
+  readonly search?: string;
   readonly host: string | undefined;
   readonly headers: Record<string, string | undefined>;
   readonly body: string;
@@ -236,6 +238,7 @@ export async function readWorkersRequest(request: Request): Promise<WorkersWrite
   return {
     method,
     pathname: url.pathname.replace(/\/+$/, ""),
+    search: url.search,
     host: url.host,
     headers,
     body,
@@ -406,6 +409,7 @@ async function mountWrite(
     {
       method: req.method,
       pathname: req.pathname,
+      search: req.search,
       host: req.host,
       headers: req.headers,
       body: req.body,
@@ -501,6 +505,7 @@ export async function handleWorkersWriteSurface(
       {
         method: req.method,
         pathname: req.pathname,
+        search: req.search,
         host: req.host,
         scheme: req.scheme,
         headers: req.headers,

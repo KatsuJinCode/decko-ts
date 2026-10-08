@@ -72,6 +72,7 @@ export async function makeWriteRouteServer(
       const writeResponse = await handleWriteRequest(context, {
         method: req.method ?? "GET",
         pathname,
+        search: url.search,
         host: req.headers.host,
         headers: req.headers as Record<string, string | undefined>,
         body,

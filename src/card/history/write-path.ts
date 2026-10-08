@@ -494,10 +494,11 @@ export class ActWriter {
     return { actId: this.requireActId(actId), actionId: requireId(actionId) };
   }
 
-  /** Deletes this writer's actor's draft actions (and their changes) for one
-   *  card — clear_drafts (lib/card/content/all.rb:33-35,
-   *  `drafts.created_by(Card::Auth.current_id).each(&:delete)`, with
-   *  card_changes dependent: :delete_all, action.rb:30-33). */
+  /** Deletes this writer's actor's draft actions for one card — clear_drafts
+   *  (lib/card/content/all.rb:38-40,
+   *  `drafts.created_by(Card::Auth.current_id).each(&:delete)`). Their
+   *  change rows stay: #delete skips the dependent: :delete_all callback
+   *  (see pushClearOwnDrafts). */
   async clearOwnDrafts(cardId: number): Promise<void> {
     const stmts: SQLStatement[] = [];
     this.pushClearOwnDrafts(stmts, cardId);
@@ -607,17 +608,16 @@ export class ActWriter {
     });
   }
 
-  /** clear_drafts for this writer's actor, set-based: the changes first
-   *  (dependent: :delete_all), then the draft action rows themselves. */
+  /** clear_drafts for this writer's actor, set-based: the draft action rows
+   *  only. Ruby deletes them with `drafts.created_by(...).each(&:delete)`
+   *  (card-1.110.0 lib/card/content/all.rb:38-40); ActiveRecord's #delete
+   *  skips callbacks, so the `dependent: :delete_all` on card_changes
+   *  (card-mod-history lib/card/action.rb:30-33, a destroy callback) never
+   *  runs and the draft's change row stays behind, as the oracle shows. */
   private pushClearOwnDrafts(stmts: SQLStatement[], cardId: number): void {
     const draftPredicate = `card_actions.card_id = ?
       AND card_actions.draft = 1
       AND card_actions.card_act_id IN (SELECT id FROM card_acts WHERE actor_id = ?)`;
-    stmts.push({
-      sql: `DELETE FROM card_changes WHERE card_action_id IN
-              (SELECT id FROM card_actions WHERE ${draftPredicate})`,
-      params: [cardId, this.actorId],
-    });
     stmts.push({
       sql: `DELETE FROM card_actions WHERE ${draftPredicate}`,
       params: [cardId, this.actorId],
