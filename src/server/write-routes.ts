@@ -100,6 +100,7 @@ import { SessionStore } from "../card/auth/index.js";
 import { signinAccount } from "../card/auth/signin.js";
 import { createCardActionEngineForSession } from "../card/actions/engine-for-session.js";
 import { CardActionError, type ActionResult, type AttachmentInput } from "../card/actions/types.js";
+import type { NotifyTransport } from "../card/notify/types.js";
 import type { CardActionRecaptchaConfig } from "../card/actions/card-action-engine.js";
 import type { ModEventRuntime } from "../card/mod-loader/mod-event-dispatch.js";
 import type { ModEngineHost } from "../card/mod-loader/mod-manifest.js";
@@ -187,6 +188,11 @@ export interface WriteRouteContext {
    *  Card::Rule.toggle(rule(:captcha)) candidate walk); verify defaults
    *  to the real siteverify GET (recaptcha.rb:41-44). */
   recaptcha?: CardActionRecaptchaConfig;
+  /** The mail transport the saves' notifications go through (follower
+   *  mail, card-mod-follow's :notify_followers integration event), passed
+   *  to every write engine this module builds. Absent = the engine's
+   *  default transport. */
+  notifyTransport?: NotifyTransport;
 }
 
 export interface WriteRouteResponse {
@@ -882,6 +888,7 @@ export async function handleWriteRequest(
     // still never fires the guard (recaptcha_keys? false, recaptcha.rb:46-48).
     modEvents: await servingModEventRuntime(),
     ...(ctx.recaptcha === undefined ? {} : { recaptcha: ctx.recaptcha }),
+    ...(ctx.notifyTransport === undefined ? {} : { notifyTransport: ctx.notifyTransport }),
   });
 
   // CardMount's mount argument: the card[<mount>] file part is the

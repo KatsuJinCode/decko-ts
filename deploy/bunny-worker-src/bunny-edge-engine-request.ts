@@ -49,6 +49,7 @@ import type { HistoryRenderParams } from "../../src/card/history/render-seam.js"
 import {
   decodeName,
   mapRenderError,
+  publicDbContent,
   queryViewFromUrl,
 } from "../../src/server/worker-shared-surface.js";
 import { escapeHtml, layoutPage, parsePath } from "./bunny-edge-lineage-worker-surface.js";
@@ -494,7 +495,7 @@ async function dispatchEngineRequest(
           key: record.name.key,
           type_id: record.typeId ?? null,
           codename: record.codename ?? null,
-          db_content_preview: (record.dbContent ?? "").slice(0, 200),
+          db_content_preview: publicDbContent(record).slice(0, 200),
         });
       } catch (error) {
         return json(500, {

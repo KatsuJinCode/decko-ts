@@ -88,6 +88,24 @@ import { DECK_ORIGIN } from "./deck-origin.js";
  *  cloud.rb + file_card_uploader.rb:88-117). */
 const CLOUD_URL_PREFIX = "http://s3.amazonaws.com//files/";
 
+/** The views stock Decko 0.20 declares with a modal or board wrapper, which a
+ *  page renders outside its layout (process_layout.rb
+ *  explicit_modal_wrapper?): card-mod-edit edit_content.rb :edit,
+ *  editing.rb :board, new.rb :new_in_modal; card-mod-layout modal.rb :modal;
+ *  card-mod-rules rule/editor.rb :rule_edit, rule/board_rules_editor.rb
+ *  :modal_rule, type/set filtered_rule_lists.rb :modal_nest_rules;
+ *  card-mod-format html/error.rb :debug_server_error. */
+const OUTSIDE_LAYOUT_VIEWS: ReadonlySet<string> = new Set([
+  "edit",
+  "board",
+  "new_in_modal",
+  "modal",
+  "rule_edit",
+  "modal_rule",
+  "modal_nest_rules",
+  "debug_server_error",
+]);
+
 /** Card::Error::UserError raised by wrapper.rb#raise_wrap_error for a layout
  *  name that fetches to neither a card layout nor a built-in code layout.
  *  The class name matters: the replay handlers map it to the sentinel's
@@ -245,14 +263,43 @@ async function renderPageBytesWithPageConfigInner(
   // process_layout.rb: main! (the root format is the main format) then
   // page_layout — the *layout rule walk happens BEFORE the main render.
   const found = await engine.fetcher.fetchByName(cardName);
-  // RenderEngine#renderAbsentCards: the controller's Card.fetch new: {}.
-  const record = found === undefined && engine.renderAbsentCards
-    ? await engine.fetcher.fetchByName(cardName, { new: {} })
+  // RenderEngine#renderAbsentCards: the controller's Card.fetch with the
+  // request's new-card arguments (new: {} when it carries none).
+  // A new card an earlier request cached under this name is absent too: the
+  // request's own new-card arguments build it.
+  const record = (found === undefined || found.isNew === true) && engine.renderAbsentCards
+    ? await engine.fetcher.fetchByName(cardName, { new: historyParams?.newCard ?? {} })
     : found;
   if (record === undefined || record.name === undefined) {
     throw new Error(`card not found: ${cardName}`);
   }
   const layout = await resolvePageLayout(engine, record);
+
+  // process_layout.rb show_with_page_layout: a requested view with an
+  // explicit modal or board wrapper (explicit_modal_wrapper?) renders
+  // outside the layout — the page renders with its usual main view, and the
+  // requested view follows as a modal just before </body>
+  // (render_outside_of_layout + body_with_modal).
+  if (
+    requestedView !== undefined &&
+    OUTSIDE_LAYOUT_VIEWS.has(requestedView) &&
+    layout.layoutName.toLowerCase() !== "modal"
+  ) {
+    const body = await renderPageBytesWithPageConfigInner(engine, cardName, undefined, historyParams);
+    // render!(view, args) with the main args: prepare the view's closure,
+    // then render it on a main format (focal: a denial is the loud one).
+    await engine.render(record.name.s, requestedView, historyParams);
+    const modalRoot = engine.fetchRenderCard(record.name.s);
+    const modal =
+      modalRoot === undefined
+        ? ""
+        : new RenderFormat(modalRoot, engine, { main: true, nestQuietErrors: true }).renderView(
+            requestedView,
+            { main: true, main_view: true },
+            null,
+          );
+    return body.includes("</body>") ? body.replace("</body>", () => `${modal}</body>`) : body + modal;
+  }
 
   // The requested ?view= wins over the layout chunk (rest.rb view_from_params
   // -> format.page -> show(view)); otherwise the layout's {{_main|view}}

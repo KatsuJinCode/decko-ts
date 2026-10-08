@@ -44,6 +44,7 @@ import type {
 } from "./mod-event-dispatch.js";
 import { ModLoader, type ModSource } from "../mod-loader.js";
 import { setDefaultModLoader, getDefaultModLoader } from "../mod-loader.js";
+import { restoreSetTypeAssignments, snapshotSetTypeAssignments } from "../set-patterns/set-type-assignment.js";
 import {
   setDefaultContentOverrideRegistry,
 } from "../render/content-overrides.js";
@@ -195,6 +196,29 @@ export function defaultDeckLoader(): ModLoader {
   return loader;
 }
 
+/** The composed deck, loaded once for its event space only: bound to no
+ *  process-wide default, so rendering is unaffected. */
+let eventOnlyLoader: ModLoader | undefined;
+function eventOnlyDeckLoader(): ModLoader {
+  if (eventOnlyLoader === undefined) {
+    // A private views record: a loader registers its mods' views into the
+    // record it is given, and the default is the render path's shared
+    // HTML_VIEWS.
+    const loader = new ModLoader(defaultDeckSources(), {});
+    loader.resolveOrder({ gemMods: portedBundleOrder() });
+    // Loading also resets the process-wide set-type assignments to the
+    // mods' own; the host's registrations stay in force.
+    const assignments = snapshotSetTypeAssignments();
+    try {
+      loader.load();
+    } finally {
+      restoreSetTypeAssignments(assignments);
+    }
+    eventOnlyLoader = loader;
+  }
+  return eventOnlyLoader;
+}
+
 // -------------------------------------------------------------------------
 // the deck-boot MOD EVENT RUNTIME seam (E-16 compose residual)
 // -------------------------------------------------------------------------
@@ -233,7 +257,10 @@ export function defaultDeckEventPredicates(): ModEventPredicateTable {
  *  fetchRenderCard - a composition without one fails loudly per the
  *  dispatcher's HOST_REQUIRED contract). */
 export function defaultDeckEventRuntime(host?: ModEngineHost): ModEventRuntime {
-  const loader = getDefaultModLoader() ?? defaultDeckLoader();
+  // A host that renders without a bound mod loader (the edge, a stock-deck
+  // node host) keeps rendering that way after its first save: the events
+  // come from a loader of their own, never bound as the process default.
+  const loader = getDefaultModLoader() ?? eventOnlyDeckLoader();
   return {
     registry: loader.eventRegistry(),
     predicates: defaultDeckEventPredicates(),

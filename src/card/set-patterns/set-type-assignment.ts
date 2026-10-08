@@ -78,6 +78,17 @@ export function registerSetTypeAssignment(
   ASSIGNMENTS.set(moduleKey, typeName);
 }
 
+/** A copy of the registry, for a caller that loads mods without making them
+ *  the process's deck (restoreSetTypeAssignments puts it back). */
+export function snapshotSetTypeAssignments(): ReadonlyMap<string, Nameish> {
+  return new Map(ASSIGNMENTS);
+}
+
+export function restoreSetTypeAssignments(snapshot: ReadonlyMap<string, Nameish>): void {
+  ASSIGNMENTS.clear();
+  for (const [key, type] of snapshot) ASSIGNMENTS.set(key, type);
+}
+
 /** The assignment a single module key maps to, or undefined. */
 export function getSetTypeAssignment(moduleKey: string): Nameish | undefined {
   return ASSIGNMENTS.get(moduleKey);

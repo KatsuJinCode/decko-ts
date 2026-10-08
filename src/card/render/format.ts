@@ -1176,7 +1176,12 @@ export class RenderFormat {
         if (denial !== undefined) {
           this.noteFocalDenial(voo);
           if (this.isMain && viewDenialView(normalized) === undefined) {
-            return this.mainLoudDenialHtml(voo);
+            // The task the loud message names (permission.rb denied_task):
+            // the view's perms task, update read as create on a new card.
+            const perms = resolveViewPerms(normalized);
+            let deniedTask: CrudTask = perms.check && !perms.predicate ? perms.task : "read";
+            if (deniedTask === "update" && this.card.id === undefined) deniedTask = "create";
+            return this.mainLoudDenialHtml(voo, deniedTask);
           }
           return denial;
         }
@@ -1265,7 +1270,7 @@ export class RenderFormat {
     return SELF_SET_TITLE_OVERRIDES.get(this.card.record.codename ?? "");
   }
 
-  private mainLoudDenialHtml(voo: Voo): string {
+  private mainLoudDenialHtml(voo: Voo, deniedTask: CrudTask = "read"): string {
     voo.hide("menu");
     voo.hide("help");
     const card = this.card;
@@ -1305,7 +1310,7 @@ export class RenderFormat {
       `<div class="d0-card-header card-header">` +
       `<h1 class="d0-card-header-title">` +
       `${this.renderView("title")}</h1></div>`;
-    const message = this.loudDenialMessageHtml();
+    const message = this.loudDenialMessageHtml(deniedTask);
     const body = `<div class="d0-card-body card-body card-text"><h1>Sorry!</h1>\n${message}</div>`;
     const frame = `<div class="d0-card-frame card">${header}\n\n${body}</div>`;
     const attrs = emitAttrs({
@@ -1379,13 +1384,13 @@ export class RenderFormat {
    *  untouched). The authenticated goldens all render the signed-in branch
    *  because the capture session stays the bot (Auth.current never leaves
    *  the runner session — capture-authenticated-pages.rb:143-153). */
-  private loudDenialMessageHtml(): string {
+  private loudDenialMessageHtml(deniedTask: CrudTask = "read"): string {
     if (this.engine.pageSession?.signedIn === true) {
-      return `<div>You need permission to read this.</div>`;
+      return `<div>You need permission to ${deniedTask} this.</div>`;
     }
     return (
       `<div><div>Please <a class="signin-link known-card" href="/*signin/titled">sign in</a> or ` +
-      `<a class="signup-link known-card" href="/new/Sign_up">sign up</a> to read this.</div></div>`
+      `<a class="signup-link known-card" href="/new/Sign_up">sign up</a> to ${deniedTask} this.</div></div>`
     );
   }
 
@@ -3386,6 +3391,10 @@ export interface RenderEngineLike {
    *  add_known_or_wanted_class). Set = the navbar renders the signed-in
    *  chrome verbatim; undefined = the signed-out pair. See navbar-views.ts. */
   readonly pageSessionAccountLinksHtml?: string;
+  /** The current request's new-card arguments (Ruby's params[:type] and
+   *  card hash for a card that does not exist yet); undefined when the
+   *  request carries none. */
+  readonly requestNewCard?: { typeId?: number };
   /** The prepared +*enabled roles checkbox dropdown (enabled_roles.rb
    *  checkbox_input's account_dropdown with role checkboxes) for a session
    *  actor with roles; undefined otherwise. Its element ids are bound by
