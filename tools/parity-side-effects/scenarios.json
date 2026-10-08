@@ -356,6 +356,38 @@
       }
     },
     {
+      "name": "upload-large-image",
+      "mod": "carrierwave",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Photo",
+          "type": "Image",
+          "image": {
+            "upload": "parity-photo.png",
+            "mime": "image/png"
+          }
+        }
+      }
+    },
+    {
+      "name": "upload-corrupt-image",
+      "mod": "carrierwave",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Broken Image",
+          "type": "Image",
+          "image": {
+            "upload": "parity-corrupt.png",
+            "mime": "image/png"
+          }
+        }
+      }
+    },
+    {
       "name": "signed-in-delete-card",
       "mod": "core",
       "method": "delete",

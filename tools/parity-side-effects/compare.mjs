@@ -11,7 +11,8 @@
 //              type, and the card_changes field list
 //   mail       captured outgoing mail: recipients and subject
 //   files      stored file names (card and action ids normalised away)
-//   resized    which image variants are real resizes of the original
+//   images     image variants: dimensions, format, and pixels within the
+//              perceptual thresholds below
 //   session    who the request sequence is signed in as afterwards
 // Event order is scored separately (see below): the TypeScript engine runs
 // most event bodies as engine code rather than named mod events, so a
@@ -108,23 +109,69 @@ const mailText = (s) => (s.mail ?? []).map((m) => JSON.stringify(normBody(m.text
 const mailHtml = (s) => (s.mail ?? []).map((m) => JSON.stringify(normBody(m.html_body))).join(" | ") || "-";
 const files = (s) => (s.files ?? []).map((f) => f.path.replace(/^\d+\/\d+/, "")).sort().join(",") || "-";
 const session = (s) => s.signed_in_as ?? "anonymous";
-// Image variants: which stored versions are real resizes (bytes differ from
-// the -original file). Byte equality across engines is not expected (two
-// encoders); whether a variant was resized at all is.
-const resized = (s) => {
-  const list = s.files ?? [];
-  const original = list.find((f) => /-original\.[a-z]+$/.test(f.path));
-  if (original === undefined) return "-";
-  return list.filter((f) => f !== original && f.size !== original.size)
-    .map((f) => f.path.replace(/^\d+\/\d+/, "")).sort().join(",") || "(none)";
-};
+// Image variants. Byte identity with ImageMagick is not attainable (another
+// encoder and filter implementation), so each variant is compared on:
+//   dimensions  exact
+//   format      exact (the file signature: PNG, JPEG, WebP, GIF)
+//   pixels      PSNR of the two images composited over white must be at
+//               least IMAGE_PSNR_MIN dB, and their opaque/transparent
+//               masks must agree on at least IMAGE_ALPHA_AGREE of pixels.
+// The thresholds and the measurements behind them are in the report.
+const IMAGE_PSNR_MIN = 35;
+const IMAGE_ALPHA_AGREE = 0.98;
+const photon = await import("@cf-wasm/photon");
+const signature = (b) =>
+  b[0] === 0x89 && b[1] === 0x50 ? "png" : b[0] === 0xff && b[1] === 0xd8 ? "jpeg"
+    : b[0] === 0x52 && b[8] === 0x57 ? "webp" : b[0] === 0x47 && b[1] === 0x49 ? "gif" : "other";
+function decodeImage(b64) {
+  const bytes = new Uint8Array(Buffer.from(b64, "base64"));
+  const img = photon.PhotonImage.new_from_byteslice(bytes);
+  const out = { format: signature(bytes), w: img.get_width(), h: img.get_height(), px: img.get_raw_pixels() };
+  img.free();
+  return out;
+}
+function imageDistance(a, b) {
+  let se = 0, agree = 0;
+  const n = a.w * a.h;
+  for (let i = 0; i < n; i++) {
+    const aa = a.px[i * 4 + 3] / 255, ba = b.px[i * 4 + 3] / 255;
+    for (let c = 0; c < 3; c++) {
+      const d = (a.px[i * 4 + c] * aa + 255 * (1 - aa)) - (b.px[i * 4 + c] * ba + 255 * (1 - ba));
+      se += d * d;
+    }
+    if ((aa > 0.5) === (ba > 0.5)) agree++;
+  }
+  const mse = se / (n * 3);
+  return { psnr: mse === 0 ? Infinity : 10 * Math.log10((255 * 255) / mse), alphaAgree: agree / n };
+}
+const variants = (s) => Object.fromEntries((s.files ?? [])
+  .filter((f) => f.b64 !== undefined && /-(icon|small|medium|large)\.[a-z]+$/.test(f.path))
+  .map((f) => [f.path.replace(/^\d+\/\d+/, ""), decodeImage(f.b64)]));
+const imageMetrics = {};
+function imagesVerdict(r, t, step) {
+  const rv = variants(r), tv = variants(t);
+  const names = [...new Set([...Object.keys(rv), ...Object.keys(tv)])].sort();
+  if (names.length === 0) return ["-", "-"];
+  const rs = [], ts = [];
+  for (const n of names) {
+    const a = rv[n], b = tv[n];
+    rs.push(a ? `${n} ${a.format} ${a.w}x${a.h}` : `${n} missing`);
+    if (!a || !b) { ts.push(b ? `${n} ${b.format} ${b.w}x${b.h}` : `${n} missing`); continue; }
+    if (a.format !== b.format || a.w !== b.w || a.h !== b.h) { ts.push(`${n} ${b.format} ${b.w}x${b.h}`); continue; }
+    const m = imageDistance(a, b);
+    (imageMetrics[step] ??= {})[n] = { psnr: Number(m.psnr.toFixed(2)), alphaAgree: Number(m.alphaAgree.toFixed(4)) };
+    const ok = m.psnr >= IMAGE_PSNR_MIN && m.alphaAgree >= IMAGE_ALPHA_AGREE;
+    ts.push(ok ? `${n} ${b.format} ${b.w}x${b.h}` : `${n} ${b.format} ${b.w}x${b.h} PSNR ${m.psnr.toFixed(1)} alpha ${m.alphaAgree.toFixed(3)}`);
+  }
+  return [rs.join(", "), ts.join(", ")];
+}
 
 // Ruby errors on denial read "Sorry! Please sign in or sign up to do that."
 // for every anonymous denial; compare like for like.
 const fields = {
   status: (s) => String(s.status),
   location,
-  writes, actions, stamps, stored, mail, mailText, mailHtml, files, resized, session,
+  writes, actions, stamps, stored, mail, mailText, mailHtml, files, session,
 };
 
 // ---- event order: the ordered list of distinct event names each engine
@@ -150,6 +197,10 @@ for (let i = 0; i < n; i++) {
     const a = r ? f(r) : "(missing)";
     const b = t ? f(t) : "(missing)";
     if (a !== b) diffs[k] = [a, b];
+  }
+  if (r && t) {
+    const [ri, ti] = imagesVerdict(r, t, name);
+    if (ri !== ti) diffs.images = [ri, ti];
   }
   const re = r ? rubyErrors(r) : "";
   const te = t ? tsErrors(t) : "";
@@ -191,7 +242,10 @@ for (const r of rows) {
 console.log(`\nSIDE EFFECTS PASS ${pass} / ${rows.length}`);
 for (const [m, v] of Object.entries(byMod)) console.log(`  ${m.padEnd(12)} ${v.pass}/${v.total}`);
 console.log(`EVENT ORDER exact ${evExact} / ${rows.length}`);
+for (const [step, m] of Object.entries(imageMetrics)) {
+  console.log(`IMAGES ${step}: ${Object.entries(m).map(([n, v]) => `${n} PSNR ${v.psnr} alpha ${v.alphaAgree}`).join("; ")}`);
+}
 
 if (process.argv[4]) {
-  writeFileSync(process.argv[4], JSON.stringify({ pass, total: rows.length, byMod, evExact, rows }, null, 2));
+  writeFileSync(process.argv[4], JSON.stringify({ pass, total: rows.length, byMod, evExact, imageMetrics, rows }, null, 2));
 }

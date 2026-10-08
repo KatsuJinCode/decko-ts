@@ -37,6 +37,10 @@ export interface AttachmentStoreInput {
    *  the plain FileCardUploader shape: exactly one file
    *  <action_id><ext>. */
   renditionNames?: readonly string[];
+  /** The processed bytes of each rendition, by stored file name
+   *  (image-resize.ts). A rendition without an entry stores the
+   *  original's bytes. */
+  renditionBytes?: Readonly<Record<string, Uint8Array>>;
 }
 
 /** What a store returns per successful write. */
@@ -71,12 +75,11 @@ export class LocalAttachmentStore implements AttachmentStore {
     // The stored filenames: FileCardUploader shape = <action_id><ext>;
     // ImageCardUploader shape (renditionNames present) = the -original
     // file + one file per version (image_card_uploader.rb:16-27, :44-57;
-    // file_card_uploader.rb:266-283). Version bytes are the original's
-    // byte-copy (the mini_magick resize is the named seam,
-    // image-renditions.ts versionBytes).
+    // file_card_uploader.rb:266-283). Version bytes are the processed
+    // renditions (image-resize.ts) when supplied, else the original's.
     const names = input.renditionNames ?? [`${input.actionId}${input.ext}`];
     for (const name of names) {
-      await writeFile(join(this.filesDir, String(input.cardId), name), input.bytes);
+      await writeFile(join(this.filesDir, String(input.cardId), name), input.renditionBytes?.[name] ?? input.bytes);
     }
     return {
       identifier: localAttachmentIdentifier(input.cardId, input.actionId, input.ext),

@@ -131,7 +131,9 @@ import {
   createVersionsFor,
   mountUsesImageUploader,
   renditionFileNames,
+  IMAGE_VERSION_NAMES,
 } from "../attachments/image-renditions.js";
+import { canResize, imageDecodes, imageVersionBytes } from "../attachments/image-resize.js";
 import type { AttachmentStore } from "../attachments/attachment-store.js";
 import { changeValueForField, trackedFieldIndex } from "../history/change.js";
 import {
@@ -408,11 +410,11 @@ export class CardActionEngine {
    */
   private async dispatchSavePathIntegrations(
     result: ActionResult | null,
-    opts: { actCardActionOmitted?: boolean } = {},
+    opts: { actCardActionOmitted?: boolean; delayedStageDropped?: boolean } = {},
   ): Promise<void> {
     if (result === null) return;
     if (await this.isAnonymousSession()) return;
-    const hooks = this.integrationHooks ?? [
+    const allHooks = this.integrationHooks ?? [
       buildFollowNotifyHook(
         defaultFollowNotifyDeps(this.fetch, {
           followers: this.followerResolver,
@@ -420,6 +422,17 @@ export class CardActionEngine {
         }),
       ),
     ];
+    // A save whose request carries an uploaded file never runs the
+    // integrate_with_delay stage in Ruby: the stage is queued through
+    // ActiveJob with the request params, the uploaded file object cannot be
+    // serialized ("Unsupported argument type: ActionDispatch::Http::
+    // UploadedFile", activejob serializers.rb:34), and the integrate stage
+    // swallows the error (set/event.rb rescuing_if_integration). The
+    // follower notice after an upload is therefore never sent; the delete
+    // notice (:integrate) is unaffected.
+    const hooks = opts.delayedStageDropped === true
+      ? allHooks.filter((h) => h.stage !== "integrate_with_delay")
+      : allHooks;
     if (hooks.length === 0) return;
     // Unreachable (isAnonymousSession returned false); narrows for the
     // actor read.
@@ -597,12 +610,23 @@ export class CardActionEngine {
       codename !== undefined && codename !== "" && mountUsesImageUploader(codename) && createVersionsFor(ext)
         ? renditionFileNames(actionId, ext)
         : undefined;
+    // The version files (image_card_uploader.rb:16-27): resized renditions
+    // keyed by their stored names.
+    let renditionBytes: Record<string, Uint8Array> | undefined;
+    if (renditionNames !== undefined) {
+      const versions = await imageVersionBytes(attachment.bytes, ext);
+      if (versions !== undefined) {
+        renditionBytes = {};
+        for (const v of IMAGE_VERSION_NAMES) renditionBytes[`${actionId}-${v}${ext}`] = versions[v];
+      }
+    }
     const stored = await this.attachmentStore.store({
       cardId,
       actionId,
       ext,
       bytes: attachment.bytes,
       renditionNames,
+      ...(renditionBytes !== undefined ? { renditionBytes } : {}),
     });
     const identifier = localAttachmentIdentifier(cardId, actionId, ext);
 
@@ -697,10 +721,24 @@ export class CardActionEngine {
       }
       return;
     }
+    const humanized = mount.charAt(0).toUpperCase() + mount.slice(1);
+    const missing = (): CardActionError =>
+      new CardActionError(
+        "attachment-missing",
+        `Validation failed: ${humanized} is missing`,
+        `${mount.toUpperCase()}: is missing`,
+      );
     if (input.attachment === undefined) {
       // the attachment arm: errors.add attachment_name, "is missing"
-      const humanized = mount.charAt(0).toUpperCase() + mount.slice(1);
-      throw new CardActionError("attachment-missing", `Validation failed: ${humanized} is missing`);
+      throw missing();
+    }
+    // An image upload whose bytes cannot be processed: the version
+    // processing fails, CarrierWave leaves the mount without a file, and
+    // the same arm reports it missing (oracle: a PNG signature over
+    // non-image bytes answers 422 "IMAGE: is missing", nothing written).
+    if (mountUsesImageUploader(mount)) {
+      const ext = detectAttachmentExtension(input.attachment.originalFilename, input.attachment.bytes);
+      if (canResize(ext) && !(await imageDecodes(input.attachment.bytes))) throw missing();
     }
   }
 
@@ -771,7 +809,9 @@ export class CardActionEngine {
         typeId,
       }),
     );
-    await this.dispatchSavePathIntegrations(finalResult);
+    await this.dispatchSavePathIntegrations(finalResult, {
+      delayedStageDropped: input.attachment !== undefined,
+    });
     return finalResult;
   }
 
@@ -1261,6 +1301,7 @@ export class CardActionEngine {
     );
     await this.dispatchSavePathIntegrations(result, {
       actCardActionOmitted: result?.actCardActionOmitted === true,
+      delayedStageDropped: input.attachment !== undefined,
     });
     return result;
   }

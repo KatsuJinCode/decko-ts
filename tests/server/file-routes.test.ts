@@ -24,6 +24,7 @@ import { readFileSync, rmSync, mkdtempSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { deflateSync } from "node:zlib";
 import { LocalSqliteDriver } from "../../src/server/drivers/local-sqlite.js";
 import type { SQLDatabaseDriver } from "../../src/server/driver.js";
 import { FetchEngine } from "../../src/card/fetch.js";
@@ -301,13 +302,52 @@ function syntheticBytes(prefix: string, length: number): Uint8Array {
 }
 
 const PDF_BYTES = syntheticBytes("%PDF-1.4\nsynthetic decko-ts fixture\n", 700);
-// The PNG magic must be REAL bytes — TextEncoder would UTF-8-encode \x89
-// into C2 89 and the magic-byte sniff would never fire.
-const PNG_MAGIC = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-const PNG_PAYLOAD = syntheticBytes("", 500);
-const PNG_BYTES = new Uint8Array(PNG_MAGIC.length + PNG_PAYLOAD.length);
-PNG_BYTES.set(PNG_MAGIC);
-PNG_BYTES.set(PNG_PAYLOAD, PNG_MAGIC.length);
+// A real 64x48 RGB PNG (a deterministic gradient): an image card's upload
+// is decoded and resized into its versions, so the bytes must be an image
+// (a PNG signature over other bytes is refused, as the oracle refuses it).
+function crc32(buf: Uint8Array): number {
+  let c = ~0;
+  for (const b of buf) {
+    c ^= b;
+    for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+  }
+  return ~c >>> 0;
+}
+function pngChunk(type: string, data: Uint8Array): Buffer {
+  const len = Buffer.alloc(4);
+  len.writeUInt32BE(data.length);
+  const td = Buffer.concat([Buffer.from(type, "ascii"), data]);
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(td));
+  return Buffer.concat([len, td, crc]);
+}
+function gradientPng(w: number, h: number): Uint8Array {
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(w, 0);
+  ihdr.writeUInt32BE(h, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 2;
+  const raw = Buffer.alloc((w * 3 + 1) * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const at = y * (w * 3 + 1) + 1 + x * 3;
+      raw[at] = (x * 4) & 255;
+      raw[at + 1] = (y * 5) & 255;
+      raw[at + 2] = 128;
+    }
+  }
+  return new Uint8Array(Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    pngChunk("IHDR", ihdr),
+    pngChunk("IDAT", deflateSync(raw)),
+    pngChunk("IEND", new Uint8Array(0)),
+  ]));
+}
+const PNG_BYTES = gradientPng(64, 48);
+const pngSize = (b: Uint8Array): [number, number] => {
+  const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  return [v.getUint32(16), v.getUint32(20)];
+};
 const TXT_BYTES = new TextEncoder().encode("plain synthetic notes\nline two\n");
 
 interface UploadBody {
@@ -488,7 +528,7 @@ describe("GET /files serving (current + deprecated routes)", () => {
     expect(response.headers.get("Content-Type")).toBe("application/pdf");
   });
 
-  it("serves an image card's upload with magic-byte content type, and image variants are named-remainder pass-through (original bytes at every variant spelling)", async () => {
+  it("serves an image card's upload with magic-byte content type: the original at its two spellings, each version resized to ImageCardUploader's geometry", async () => {
     const upload = (await handleAttachmentRoute(
       uploadRequest("Banner Art", "image", "banner.png", PNG_BYTES),
       makeDeps(),
@@ -496,24 +536,40 @@ describe("GET /files serving (current + deprecated routes)", () => {
     expect(upload.status).toBe(200);
     const { id, action_id } = (await upload.json()) as UploadBody;
 
-    for (const spelling of [
-      `${action_id}.png`, // un-suffixed original
-      `${action_id}-icon.png`,
-      `${action_id}-small.png`,
-      `${action_id}-medium.png`,
-      `${action_id}-large.png`,
-      `${action_id}-original.png`, // the -original spelling of the SAME file
-    ]) {
+    // the original: byte-identical at the un-suffixed and -original spellings
+    // version geometry (image_card_uploader.rb:16-27) for a 64x48 upload:
+    // large/medium resize_to_limit (no enlargement), small resize_to_fit
+    // 75x75 from medium (enlarged to 75x56), icon resize_and_pad 16x16.
+    const expected: [string, [number, number] | "original"][] = [
+      [`${action_id}.png`, "original"],
+      [`${action_id}-original.png`, "original"],
+      [`${action_id}-icon.png`, [16, 16]],
+      [`${action_id}-small.png`, [75, 56]],
+      [`${action_id}-medium.png`, [64, 48]],
+      [`${action_id}-large.png`, [64, 48]],
+    ];
+    for (const [spelling, want] of expected) {
       const response = (await handleAttachmentRoute(
         new Request(`http://test.test/files/~${id}/${spelling}`),
         makeDeps(),
       )) as Response;
       expect(response.status, `variant spelling ${spelling}`).toBe(200);
-      expectBytesEqual(await bodyBytes(response), PNG_BYTES);
+      const bytes = await bodyBytes(response);
+      if (want === "original") expectBytesEqual(bytes, PNG_BYTES);
+      else expect(pngSize(bytes), `variant spelling ${spelling}`).toEqual(want);
       expect(response.headers.get("Content-Type"), `variant spelling ${spelling}`).toBe(
         "image/png",
       );
     }
+  });
+
+  it("refuses an image upload whose bytes are not an image (the oracle's 422 IMAGE: is missing)", async () => {
+    const fake = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, ...syntheticBytes("", 64)]);
+    const upload = (await handleAttachmentRoute(
+      uploadRequest("Not Art", "image", "fake.png", fake),
+      makeDeps(),
+    )) as Response;
+    expect(upload.status).toBe(422);
   });
 
   it("detects content type for extensionless uploads (magic bytes) and text uploads (by-path)", async () => {

@@ -156,7 +156,14 @@ function filesList() {
     for (const e of readdirSync(d, { withFileTypes: true })) {
       const p = join(d, e.name);
       if (e.isDirectory()) walk(p);
-      else out.push({ path: relative(FILES, p).replace(/\\/g, "/"), size: statSync(p).size });
+      else {
+        const entry = { path: relative(FILES, p).replace(/\\/g, "/"), size: statSync(p).size };
+        // small image files carry their bytes for the pixel comparison
+        if (/\.(png|jpe?g|webp|gif)$/i.test(e.name) && entry.size <= 1048576) {
+          entry.b64 = readFileSync(p).toString("base64");
+        }
+        out.push(entry);
+      }
     }
   };
   walk(FILES);

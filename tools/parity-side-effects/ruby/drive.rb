@@ -88,6 +88,25 @@ require "rack/test"
 Cardio.config.file_buckets = {}
 Cardio.config.file_default_storage = :local
 Cardio.paths["files"] = FILES_DIR
+# Public links (card-mod-carrierwave attachment/local.rb create_public_links)
+# go under the work directory too, never into the app's own public/ tree.
+PUBLIC_DIR = File.join(WORK_DIR, "public")
+FileUtils.rm_rf(PUBLIC_DIR)
+FileUtils.mkdir_p(File.join(PUBLIC_DIR, "files"))
+Cardio.paths["public"] = PUBLIC_DIR
+
+# Windows grants File.symlink only with a special privilege, so the public
+# link step raises there and the integrate stage swallows it (the rest of
+# that stage never runs). Ruby Decko targets POSIX hosts, where the link
+# succeeds, so by default the link step succeeds here too, using hard links
+# (same volume, no privilege). PARITY_NATIVE_LINKS=1 keeps the Windows
+# behaviour, to reproduce it.
+unless ENV["PARITY_NATIVE_LINKS"] == "1"
+  File.singleton_class.prepend(Module.new do
+    def symlink(src, dest) = File.link(src, dest)
+    def symlink?(path) = File.exist?(path)
+  end)
+end
 
 # ---- recaptcha off: with keys configured, the :recaptcha validation event
 # calls Google's siteverify endpoint for every anonymous save. The harness
@@ -123,6 +142,7 @@ $conn = ActiveRecord::Base.connection
 # by Card::Set::Event#define_simple_method) logs [card name, event] when it
 # runs. The wrapper is prepended to each set module that defines events.
 $EVENTS = []
+$SWALLOWED = []
 $TRACE = false
 MODULE_NAME = Module.instance_method(:name)
 ObjectSpace.each_object(Module).select { |m| MODULE_NAME.bind(m).call.to_s.start_with?("Card::Set::") }.each do |mod|
@@ -135,6 +155,13 @@ ObjectSpace.each_object(Module).select { |m| MODULE_NAME.bind(m).call.to_s.start
       ev = mn.to_s.sub(/_without_callbacks\z/, "")
       define_method(mn) do |*a, **k, &b|
         $EVENTS << [name.to_s, ev] if $TRACE
+        # The integrate stages swallow exceptions (result.rb
+        # notable_exception_raised logs and continues); record what was
+        # swallowed so a missing side effect can be traced to its cause.
+        if $TRACE && ev == "notable_exception_raised" && (err = Card::Error.current)
+          $SWALLOWED << { card: name.to_s, error: err.class.name, message: err.message.to_s[0, 300],
+                          backtrace: Array(err.backtrace).grep_v(%r{/(actionpack|activesupport|rack)-}).first(8) }
+        end
         super(*a, **k, &b)
       end
     end
@@ -179,9 +206,16 @@ def new_actions(since)
   end
 end
 
+# Small image files carry their bytes (base64) so the comparison can decode
+# both engines' renditions with one decoder.
+IMAGE_EXT = /\.(png|jpe?g|webp|gif)\z/i
 def files_list
   Dir.glob(File.join(FILES_DIR, "**", "*")).select { |f| File.file?(f) }
-     .map { |f| { path: f.sub("#{FILES_DIR}/", ""), size: File.size(f) } }.sort_by { |h| h[:path] }
+     .map do |f|
+       entry = { path: f.sub("#{FILES_DIR}/", ""), size: File.size(f) }
+       entry[:b64] = [File.binread(f)].pack("m0") if f.match?(IMAGE_EXT) && File.size(f) <= 1_048_576
+       entry
+     end.sort_by { |h| h[:path] }
 end
 
 $MAIL_CONSUMED = 0
@@ -216,6 +250,7 @@ def step(name)
   since = max_id("card_actions")
   files_before = files_list
   $EVENTS.clear
+  $SWALLOWED.clear
   $TRACE = true
   $status = nil
   $headers = {}
@@ -234,7 +269,7 @@ def step(name)
   $steps << {
     step: name, status: $status, headers: $headers, body: $body, delta: delta,
     actions: new_actions(since), events: $EVENTS.dup,
-    files: files_list - files_before, mail: drain_mail, extra: extra,
+    files: files_list - files_before, mail: drain_mail, extra: extra, swallowed: $SWALLOWED.dup,
     signed_in_as: session_user
   }
 end
