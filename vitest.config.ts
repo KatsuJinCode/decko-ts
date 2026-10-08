@@ -1,4 +1,7 @@
 import { defineConfig } from "vitest/config";
+import { purgeStaleVitestTemp } from "./tests/support/purge-stale-vitest-temp";
+
+purgeStaleVitestTemp();
 
 // Test files run in forked workers, at most four at a time, so a hung test
 // cannot keep the run alive and peak memory stays bounded. `dist/` is
