@@ -18,6 +18,7 @@
 //   save is one of them is not stored at all.
 
 import { createHash } from "node:crypto";
+import { hashPassword, type PasswordHashPolicy } from "../auth/password-hash.js";
 
 /** Right codenames whose saves keep no history (history? false). */
 export const NO_HISTORY_RIGHT_CODENAMES: ReadonlySet<string> = new Set(["password", "salt"]);
@@ -26,6 +27,17 @@ export const NO_HISTORY_RIGHT_CODENAMES: ReadonlySet<string> = new Set(["passwor
  *  Ruby's string interpolation of nil. */
 export function encryptPassword(password: string, salt: string | null | undefined): string {
   return createHash("sha1").update(`${salt ?? ""}--${password}--`).digest("hex");
+}
+
+/** What encrypt_password stores, under the deck's password policy: a PBKDF2
+ *  hash by default, Ruby's digest (encryptPassword) in legacy-sha1 mode
+ *  (docs/SECURITY.md, "Passwords"; auth/password-hash.ts). */
+export function storedPasswordValue(
+  password: string,
+  salt: string | null | undefined,
+  policy?: PasswordHashPolicy,
+): Promise<string> {
+  return hashPassword(password, salt ?? "", policy);
 }
 
 /** Time.zone.now.to_s under the default UTC zone: "YYYY-MM-DD HH:MM:SS UTC". */

@@ -18,6 +18,10 @@
 import { handleBunnyEngineRequest, setEdgeDbDriverFactory, type EdgeEnv } from "../bunny-worker-src/bunny-edge-engine-handler.js";
 import { recordEdgeDbRoundTrip, edgeDriverQueryCounter, edgeDbLedgerSnapshot } from "../bunny-worker-src/bunny-edge-server-timing.js";
 import { setEdgeHostLabels } from "../bunny-worker-src/edge-host-labels.js";
+import {
+  CLOUDFLARE_WORKERS_PBKDF2_MAX_ITERATIONS,
+  setPbkdf2IterationLimit,
+} from "../../src/card/auth/password-hash.js";
 import { CloudflareD1Adapter, type D1DatabaseLike } from "../../src/server/drivers/d1.js";
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../src/server/driver.js";
 
@@ -56,6 +60,11 @@ interface CfEnv {
 // captured on the first request because Workers hands bindings to fetch(),
 // not to module scope. It is a handle, not data: nothing read is kept.
 let binding: D1DatabaseLike | undefined;
+// Cloudflare's production runtime refuses PBKDF2 above 100,000 iterations
+// (cloudflare/workerd issue 1346), so new password hashes use that count here
+// (docs/SECURITY.md, "Passwords").
+setPbkdf2IterationLimit({ iterations: CLOUDFLARE_WORKERS_PBKDF2_MAX_ITERATIONS, runtime: "Cloudflare Workers" });
+
 setEdgeHostLabels({
   runtime: "cloudflare-workers",
   driver: "CloudflareD1Adapter (D1 binding, one batch() per round trip)",

@@ -151,7 +151,6 @@ import {
 import {
   resolveAccountCodenameIds,
   rubyStrip,
-  encryptAccountPassword,
   type AccountCodenameIds,
 } from "./signin.js";
 import { CardActionEngine } from "../actions/card-action-engine.js";
@@ -983,9 +982,9 @@ export type PasswordWrite =
  * The +account edit form submit: the +*password child's save through
  * right/password.rb's validate/store events (citations in the module
  * header). The write target is the +*account+*password child card; the
- * digest replaces the content exactly as encrypt_password would
- * (`Auth.encrypt content, left&.salt` — the EXISTING salt, never
- * regenerated).
+ * engine stores the value encrypt_password stores (Ruby: `Auth.encrypt
+ * content, left&.salt`, the EXISTING salt, never regenerated; the port: a
+ * PBKDF2 hash unless the deck keeps legacy-sha1, docs/SECURITY.md).
  *
  * Runs under `actor` (the signed-in member after a successful confirm;
  * Ruby's own_account? permission path). Validation failure returns the
@@ -1052,10 +1051,6 @@ export async function applyNewAccountPassword(
       message: `no +*password card under ${account.name}`,
     };
   }
-  // encrypt_password (:19-26): content = Auth.encrypt(content, left&.salt)
-  // — the account's EXISTING salt ("" when absent, the nil-interpolation
-  // parity signin.ts documents).
-  const digest = await encryptAccountPassword(newPassword, account.salt ?? "");
   // THE PERMISSION OVERRIDE (set/abstract/account_field.rb:15-17, "allow
   // account owner to update account field content"): ok_to_update? =
   // own_account? && !name_changed? && !type_id_changed?. The engine's
@@ -1080,5 +1075,13 @@ export async function applyNewAccountPassword(
       message: error instanceof Error ? error.message : String(error),
     };
   }
+  // The value encrypt_password stored (a PBKDF2 hash under the default
+  // policy, Ruby's digest over the account's salt in legacy-sha1 mode;
+  // docs/SECURITY.md, "Passwords"), read back rather than recomputed.
+  const stored = await deps.driver.query<{ db_content: string | null }>(
+    "SELECT db_content FROM cards WHERE id = ?",
+    [account.childIds.password],
+  );
+  const digest = stored.rows[0]?.db_content ?? undefined;
   return { ok: true, noOp: false, passwordCardId: account.childIds.password, digest };
 }

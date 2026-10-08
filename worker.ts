@@ -23,6 +23,10 @@
 
 import { CloudflareD1Adapter, type D1DatabaseLike } from "./src/server/drivers/d1.js";
 import { FetchEngine } from "./src/card/fetch.js";
+import {
+  CLOUDFLARE_WORKERS_PBKDF2_MAX_ITERATIONS,
+  setPbkdf2IterationLimit,
+} from "./src/card/auth/password-hash.js";
 import { RenderEngine } from "./src/card/render.js";
 import {
   handleWorkersWriteSurface,
@@ -64,6 +68,11 @@ interface Deck {
 // (the #1282 promise: warm re-render issues zero queries). A FAILED boot is
 // never cached: the next request retries (a transient D1 hiccup on first
 // hit must not poison the isolate — the deploy entry's proven pattern).
+// Cloudflare's production runtime refuses PBKDF2 above 100,000 iterations
+// (cloudflare/workerd issue 1346), so new password hashes use that count here
+// (docs/SECURITY.md, "Passwords").
+setPbkdf2IterationLimit({ iterations: CLOUDFLARE_WORKERS_PBKDF2_MAX_ITERATIONS, runtime: "Cloudflare Workers" });
+
 const decks = new Map<string, Promise<Deck>>();
 
 async function bootDeck(env: Env): Promise<Deck> {

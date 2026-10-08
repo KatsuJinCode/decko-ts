@@ -43,7 +43,7 @@
 
 import { readFileSync, readdirSync, existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { createHash } from "node:crypto";
+import { createHash, pbkdf2Sync } from "node:crypto";
 
 const [rubyDir, tsFile, reportFile, expectFile] = process.argv.slice(2);
 if (!rubyDir || !tsFile) {
@@ -96,8 +96,11 @@ function clean(row) {
 //    Auth.encrypt(password, salt) = SHA1("<salt>--<password>--") over its own
 //    account's salt; it becomes "<digest of P>" when it is that digest of one
 //    of the probe's plaintexts P, and "<digest of an unknown password>"
-//    otherwise. A wrong digest therefore still differs. Both dumps record
-//    the deck's salt and password codename ids (codename_ids).
+//    otherwise. A wrong digest therefore still differs. The port's PBKDF2
+//    hashes (random salt) become "<pbkdf2 digest of P>" the same way, so a
+//    PBKDF2 hash still differs from Ruby's digest: the difference is
+//    declared, not normalised away. Both dumps record the deck's salt and
+//    password codename ids (codename_ids).
 const PROBE_PASSWORDS = ["Probe-pass-123", "Probe-pass-456"];
 function accountSecrets(state, ids) {
   if (!ids || !state?.cards) return state;
@@ -108,6 +111,20 @@ function accountSecrets(state, ids) {
   const cards = state.cards.map((c) => {
     if (Number(c.right_id) === Number(ids.salt)) return { ...c, db_content: "<salt>" };
     if (Number(c.right_id) !== Number(ids.password)) return c;
+    // The port's PBKDF2 format (docs/SECURITY.md, "Passwords"): its salt is
+    // random, so it becomes "<pbkdf2 digest of P>" when it verifies P.
+    const pbkdf2 = /^pbkdf2_sha256\$(\d+)\$([A-Za-z0-9+/=]+)\$([A-Za-z0-9+/=]+)$/.exec(c.db_content ?? "");
+    if (pbkdf2 !== null) {
+      const plain = PROBE_PASSWORDS.find(
+        (p) =>
+          pbkdf2Sync(p, Buffer.from(pbkdf2[2], "base64"), Number(pbkdf2[1]), 32, "sha256").toString("base64") ===
+          pbkdf2[3],
+      );
+      return {
+        ...c,
+        db_content: plain === undefined ? "<pbkdf2 digest of an unknown password>" : `<pbkdf2 digest of ${plain}>`,
+      };
+    }
     const salt = saltOf.get(Number(c.left_id)) ?? "";
     const plain = PROBE_PASSWORDS.find(
       (p) => createHash("sha1").update(`${salt}--${p}--`).digest("hex") === c.db_content,

@@ -22,6 +22,11 @@
 //     `account.password` / `account.salt` are card_accessors over the
 //     +*account junction's children (set/right/account.rb:5-8), i.e. the
 //     cards named <Holder>+*account+*password and ...+*salt.
+//   * SECURITY DIVERGENCE (docs/SECURITY.md, "Passwords"): the port still
+//     verifies Ruby's digests, but stores new passwords as PBKDF2 and
+//     replaces a legacy digest at the next successful sign-in, unless the
+//     deck sets DECKO_PASSWORD_HASH=legacy-sha1 (password-hash.ts).
+//     Comparisons run in constant time.
 //   * The salt may be ABSENT — set/right/password.rb:21-26 (encrypt_password
 //     event) carries "turns out we have a lot of existing accounts without a
 //     salt"; Ruby's "#{salt}--..." interpolation renders nil as "", so a
@@ -56,6 +61,7 @@
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import type { Actor } from "./actor.js";
 import { SessionStore, type SessionCreation } from "./session-store.js";
+import { checkPassword, hashPassword, passwordHashPolicy } from "./password-hash.js";
 
 /** Ruby String#strip's exact character set (ASCII whitespace + NUL). */
 const RUBY_STRIP_RE = /^[ \t\r\n\f\v\0]+|[ \t\r\n\f\v\0]+$/g;
@@ -89,19 +95,18 @@ export function encryptAccountPassword(password: string, salt: string): Promise<
 }
 
 /**
- * Port of Card::Auth.password_valid? (auth.rb:27-29): EXACT string equality
- * between the stored digest and the fresh encryption. Ruby uses `==`, not a
- * constant-time compare — this is a storage-format verifier over a 40-char
- * digest, and the port keeps Ruby semantics verbatim (the constant-time
- * machinery in session-token.ts guards the SESSION token compare, a
- * different threat surface).
+ * Port of Card::Auth.password_valid? (auth.rb:27-29), extended to the port's
+ * PBKDF2 format (password-hash.ts): true when the password matches the
+ * stored value, either Ruby's salted SHA-1 digest or a PBKDF2 hash. Ruby
+ * compares with `==`; the port compares in constant time (docs/SECURITY.md,
+ * a security divergence with no visible difference in results).
  */
 export async function verifyAccountPassword(
   storedDigest: string,
   password: string,
   salt: string,
 ): Promise<boolean> {
-  return (await encryptAccountPassword(password, salt)) === storedDigest;
+  return (await checkPassword(storedDigest, password, salt)).ok;
 }
 
 /** The +*account field codenames the flow reads (right/account.rb:5-8). */
@@ -183,6 +188,27 @@ async function accountFieldContent(
   return row.db_content ?? "";
 }
 
+/** Replace the stored password value in place. +*password saves keep no
+ *  history in Ruby (set/right/password.rb:13-15), and this is not a user
+ *  edit, so only the column changes. Errors are swallowed: a deployment
+ *  whose database refuses the write still signs the user in. */
+async function upgradeStoredPassword(
+  driver: SQLDatabaseDriver,
+  ids: AccountCodenameIds,
+  junctionId: number,
+  value: string,
+): Promise<void> {
+  try {
+    await driver.query("UPDATE cards SET db_content = ? WHERE left_id = ? AND right_id = ? AND trash = 0", [
+      value,
+      junctionId,
+      ids.password,
+    ]);
+  } catch {
+    // The legacy digest stays; the next sign-in tries again.
+  }
+}
+
 /** One sign-in failure, shaped as the Ruby error ladder
  *  (signin.rb:53-56, :77-84) with the exact en.yml strings. */
 export type SigninFailureReason =
@@ -192,7 +218,8 @@ export type SigninFailureReason =
   | "not_active"
   | "wrong_password"
   | "account_system_absent"
-  | "account_card_unresolvable";
+  | "account_card_unresolvable"
+  | "password_hash_unsupported";
 
 export interface SigninFailure {
   ok: false;
@@ -212,6 +239,8 @@ const SIGNIN_MESSAGES: Record<SigninFailureReason, string> = {
   wrong_password: "Wrong password", // account_error_wrong_password
   account_system_absent: "This deck has no account system.",
   account_card_unresolvable: "The account card for this session could not be resolved.",
+  password_hash_unsupported:
+    "This server cannot check this account's password: its stored hash needs more PBKDF2 iterations than this runtime allows. Reset the password to sign in here.",
 };
 
 function failure(reason: SigninFailureReason): SigninFailure {
@@ -275,8 +304,17 @@ export async function authenticateAccount(
   // false).
   const storedDigest = (await accountFieldContent(driver, ids, junction.id, "password")) ?? "";
   const salt = (await accountFieldContent(driver, ids, junction.id, "salt")) ?? "";
-  if (!(await verifyAccountPassword(storedDigest, rubyStrip(password), salt))) {
-    return failure("wrong_password");
+  const policy = passwordHashPolicy();
+  const check = await checkPassword(storedDigest, rubyStrip(password), salt, policy);
+  if (check.unsupported !== undefined) return failure("password_hash_unsupported");
+  if (!check.ok) return failure("wrong_password");
+  // Upgrade on sign-in (docs/SECURITY.md, "Passwords"): a legacy SHA-1
+  // digest, or a PBKDF2 hash with fewer iterations than configured, is
+  // replaced now that the plaintext is known to be right (the stripped
+  // password that just verified). Port-only and best-effort: a failed
+  // upgrade never fails the sign-in.
+  if (check.needsUpgrade) {
+    await upgradeStoredPassword(driver, ids, junction.id, await hashPassword(rubyStrip(password), salt, policy));
   }
 
   // The session actor is the holder (signin.rb:48 Auth.signin
