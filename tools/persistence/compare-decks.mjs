@@ -102,6 +102,9 @@ function cardNames(db) {
 /** The probe's own rows: compare-persist.mjs's PROBE_SQL set and the rows
  *  hanging off it. */
 function probeKeys(db) {
+  // COMPARE_ALL=1: no row is set aside as the probe's; every delta row is
+  // compared (used for the pod round trips, whose writes are all under test).
+  if (process.env.COMPARE_ALL === "1") return {};
   const ids = db
     .prepare(
       `WITH RECURSIVE probe(id) AS (
