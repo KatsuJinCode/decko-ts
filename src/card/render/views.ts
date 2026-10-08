@@ -45,7 +45,7 @@ import { isNewCard } from "../fetch/card-record.js";
 import { cgiEscape, emitAttrs, emitHamlAttrs, h, newSlotId, slotOptionsJson, slotOptionsWithNameContext } from "./slot-html.js";
 import { registerSetTypeAssignment } from "../set-patterns/set-type-assignment.js";
 import { safeSetKeys } from "./set-keys.js";
-import { codenameModuleShortnames, safeKeyToModuleShortnameCandidates } from "./set-keys-to-modules.js";
+import { codenameModuleShortnames, rubySelfToken, safeKeyToModuleShortnameCandidates } from "./set-keys-to-modules.js";
 import { SET_INCLUDES } from "../mod-loader/concrete-set-includes.js";
 
 import {
@@ -6206,9 +6206,15 @@ const FLAT_VIEW_RUBY_SETS: Readonly<Record<string, { sets: readonly string[]; se
 
 /** Whether a card with these safe set keys is in one of the Ruby sets. */
 function cardInRubySets(setKeys: string, sets: readonly string[]): boolean {
-  for (const token of setKeys.split(/\s+/)) {
-    if (token === "") continue;
-    for (const candidate of [...safeKeyToModuleShortnameCandidates(token), ...codenameModuleShortnames(token)]) {
+  for (const setKeyToken of setKeys.split(/\s+/)) {
+    if (setKeyToken === "") continue;
+    // SELF tokens resolve by the anchor's codename, as the chain walker's do
+    // (rubySelfToken); a codename-less anchor is in no self set.
+    const token = rubySelfToken(setKeyToken);
+    if (token === null) continue;
+    const named = safeKeyToModuleShortnameCandidates(token);
+    const candidates = token.startsWith("SELF-") ? named : [...named, ...codenameModuleShortnames(token)];
+    for (const candidate of candidates) {
       if (sets.includes(candidate)) return true;
       for (const [owner, includes] of Object.entries(SET_INCLUDES)) {
         if (owner !== candidate && !owner.startsWith(`${candidate}::`)) continue;

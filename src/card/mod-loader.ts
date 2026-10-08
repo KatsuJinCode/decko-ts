@@ -54,6 +54,7 @@ import {
 } from "./mod-loader/mod-registrar.js";
 import {
   codenameModuleShortnames,
+  rubySelfToken,
   safeKeyToModuleShortname,
   safeKeyToModuleShortnameCandidates,
 } from "./render/set-keys-to-modules.js";
@@ -749,15 +750,24 @@ export class ModLoader {
    *  is memoized per load generation: every card shares the ALL, TYPE-*,
    *  RIGHT-* tokens, and the walk below would otherwise rerun per card. */
   private tokenEntries(
-    token: string,
+    setKeyToken: string,
     view: string,
     format: string,
   ): { own: ViewChainEntry[]; abstracts: ViewChainEntry[] } {
-    const memoKey = `${format}\u0000${view}\u0000${token}`;
+    const memoKey = `${format}\u0000${view}\u0000${setKeyToken}`;
     const memoized = this.tokenMemo.get(memoKey);
     if (memoized !== undefined) return memoized;
     const own: ViewChainEntry[] = [];
     const abstracts: ViewChainEntry[] = [];
+    // SELF tokens resolve by the anchor card's codename, as Ruby keys self
+    // modules (rubySelfToken); a codename-less anchor has no self module.
+    const selfToken = rubySelfToken(setKeyToken);
+    if (selfToken === null) {
+      const none = { own, abstracts };
+      this.tokenMemo.set(memoKey, none);
+      return none;
+    }
+    const token = selfToken;
       const dashIdx = token.indexOf("-");
       if (dashIdx === -1) {
         // Anchorless: expand to every registered module with this
@@ -836,7 +846,7 @@ export class ModLoader {
         // never string guessing). Unregistered tokens fall through to the
         // next set-key token, Ruby's MRO walk unchanged.
         let matched = false;
-        for (const shortname of safeKeyToModuleShortnameCandidates(token)) {
+        for (const shortname of moduleCandidates(token)) {
           const viewFn = this.anchoredViewFor(shortname, view, format);
           if (viewFn !== undefined) {
             own.push({ setModule: shortname, view, viewFn });
@@ -1015,7 +1025,7 @@ export class ModLoader {
   ): ViewChainEntry[] {
     const out: ViewChainEntry[] = [];
     const seen = new Set(already.map((e) => e.setModule));
-    for (const candidate of [...safeKeyToModuleShortnameCandidates(token), ...codenameModuleShortnames(token)]) {
+    for (const candidate of moduleCandidates(token)) {
       const owners = includeGraphOwners(candidate);
       if (owners.length === 0) continue;
       for (const owner of owners) {
@@ -1249,6 +1259,20 @@ const CHAIN_MEMO_LIMIT = 50_000;
  *  equal to it or nested under it (Type::Set, Type::Set::HtmlViews, ...), in
  *  the graph's key order. Built once; the graph is a generated constant. */
 let includeGraphOwnerIndex: Map<string, string[]> | undefined;
+/** The set-module shortnames an anchored token may name: the name-derived
+ *  spellings, then the anchor parts' codenames (Ruby's module key,
+ *  set/pattern/base.rb module_key; a Person-typed card whose type codename is
+ *  user belongs to Type::User). A SELF token arrives already rewritten to its
+ *  codename (rubySelfToken), so its anchor is not looked up again. Lookup
+ *  decides: each candidate is tried against the registered table. */
+function moduleCandidates(token: string): string[] {
+  const named = safeKeyToModuleShortnameCandidates(token);
+  if (token.startsWith("SELF-")) return named;
+  const out = [...named];
+  for (const c of codenameModuleShortnames(token)) if (!out.includes(c)) out.push(c);
+  return out;
+}
+
 function includeGraphOwners(candidate: string): readonly string[] {
   if (includeGraphOwnerIndex === undefined) {
     const index = new Map<string, string[]>();

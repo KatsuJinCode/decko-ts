@@ -139,6 +139,29 @@ export function safeKeyToModuleShortnameCandidates(safeKey: string): string[] {
   return [...out];
 }
 
+/** A SELF token as Ruby keys its set module. Pattern::Base#module_key
+ *  (set/pattern/base.rb:21-25, anchor_codenames :39-43) uses the anchor
+ *  card's CODENAME and builds no key at all when the card has none, so
+ *  Card::Set::Self::Search belongs to the card whose codename is search
+ *  ("*search"), never to a card named "Search". Returns the token rewritten
+ *  to the anchor's codename ("SELF-Xsearch" -> "SELF-search"), null when
+ *  the anchor card has no codename (no self module applies), or the token
+ *  unchanged when it is not a simple SELF token or the installed name
+ *  environment cannot resolve its anchor. */
+export function rubySelfToken(token: string): string | null {
+  if (!token.startsWith("SELF-")) return token;
+  const anchor = token.slice("SELF-".length);
+  if (anchor === "" || anchor.includes("-")) return token;
+  const env = getNameEnvironment();
+  if (env?.lexicon === undefined || env.codename === undefined) return token;
+  const key = anchor.startsWith("X") && anchor.length > 1 ? `*${anchor.slice(1)}` : anchor;
+  const id = env.lexicon.id(key);
+  if (id === undefined) return token;
+  const codename = env.codename.nameForId(id);
+  if (codename === undefined || codename === "") return null;
+  return `SELF-${codename}`;
+}
+
 /** Ruby's module key for an anchored token: Pattern::Base#module_key
  *  (set/pattern/base.rb:21-29) camelizes the anchor parts' CODENAMES, not
  *  their name keys, so a Search-typed card (token "TYPE-search", type

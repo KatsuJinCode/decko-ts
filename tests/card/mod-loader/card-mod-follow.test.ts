@@ -168,9 +168,7 @@ beforeAll(async () => {
   // one step wider than real.yml's Anyone Signed In default — the exact
   // configuration where the suite isolates view DISPATCH rather than the
   // permission matrix (account_holder.rb:31-37: every actor passes the
-  // Anyone arm). Scoped to this file: the confirm_update_all arm's
-  // documented it.fails is dispatch-level (the codename-key chain walk),
-  // which a rule grant cannot flip.
+  // Anyone arm).
   await seedCard(s, { id: 310, name: "*update", codename: "update", typeId: 14 });
   await seedCard(s, { id: 311, name: "Anyone", codename: "anyone" });
   await seedCard(s, {
@@ -203,10 +201,11 @@ describe("card-mod-follow through the mod loader (A/B)", () => {
     );
   });
 
-  // Inverted on purpose: the codename-key chain-walk divergence
-  // (known divergence: see known-divergences-from-ruby.md). The byte
-  // assertions stay live under it.fails.
-  it.fails("WITH the mod: :confirm_update_all renders the literal alert markup (self/follow_defaults.rb:24-30)", async () => {
+  // The SELF token of *follow defaults carries the singularized name key
+  // (SELF-Xfollow_default); the chain walker keys self modules by the
+  // anchor's codename (follow_defaults), as Ruby's Pattern::Base#module_key
+  // does, so Self::FollowDefaults applies.
+  it("WITH the mod: :confirm_update_all renders the literal alert markup (self/follow_defaults.rb:24-30)", async () => {
     const s = storage!;
     loader = new ModLoader([{ manifest: cardModFollow }]);
     loader.load();
