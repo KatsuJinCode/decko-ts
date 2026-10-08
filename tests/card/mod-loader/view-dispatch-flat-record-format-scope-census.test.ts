@@ -123,7 +123,9 @@ describe("flat-record format-scope census (composed deck)", () => {
     // the six census chrome views (nest_editor, modal_nest_editor,
     // nest_content, nest_image, modal_nest_image, new_image) on the
     // all-set reference_editor modules (html key - admitted, not foreign).
-    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(153);
+    // 153 -> 149 (semantics parity, 2026-10-07): the all-set carrierwave fold
+    // module and its four views moved to the Type::File/Type::Image sets.
+    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(149);
     expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(30);
   });
 
@@ -207,7 +209,7 @@ describe("flat-record format-scope census (composed deck)", () => {
     ]);
   });
 
-  it("the empty-setKeys fallback set spans more than one kind for exactly twenty-three views", () => {
+  it("the empty-setKeys fallback set spans more than one kind for exactly twenty-two views", () => {
     // The arm's SECOND dimension: abstract modules (Ruby: nonbase
     // registration, reachable only via include_set) mix with base and
     // nonbase modules in one chain. Unobservable from src (safeSetKeys
@@ -238,7 +240,6 @@ describe("flat-record format-scope census (composed deck)", () => {
     expect(kindSpanning).toEqual([
       "bar_middle",
       "content_formgroups",
-      "core",
       "count",
       "customize_button",
       "edit",
