@@ -1579,10 +1579,31 @@ export function templateLinkSetNameFromParts(
  *  The CREATE case (new discussion child, no stored row) keeps the
  *  board-stage3 engage_tab shape the mod-layer builder pins (no recaptcha
  *  wrap on that capture) — rendered-unpinned on the live surface. The
- *  signed-in branch (comment.rb:74-77 nil author label) is not the
- *  captured corpus surface (the capture viewer is always Anonymous) and is
- *  recorded, not ported, here. */
+ *  signed-in branch (comment.rb:74-77 nil author label; comment_buttons'
+ *  array compact) IS ported below — commentAuthorLabelHtml — because the
+ *  chain dispatch shares this body (card-mod-comment.ts commentBoxView)
+ *  and the signed-in board arms pin it; the captured corpus is
+ *  anonymous-only, so those bytes stay capture-exact. */
 const RECAPTCHA_SITE_KEY = "6Lc3c-EoAAAAALnzfnHIWb5Rqy-rNui8l8qsguYG";
+
+/** comment.rb:74-77 comment_author_label: NIL when Auth.signed_in?
+ *  (comment_buttons' array rides output()'s compact — content.rb:70-72 —
+ *  so the signed-in arms render no author label or field), else the label
+ *  + the comment_author text field. The base-table form carries both arms
+ *  now: the captured corpus is anonymous-only, so the anonymous bytes stay
+ *  capture-exact, and the signed-in arm (no label, button only) is the
+ *  body shape the edit-views board arms pin for the signed-in stand-ins
+ *  (the engage_tab create case; card-mod-comment.ts commentAuthorLabel is
+ *  the same branch on the mod builder). */
+function commentAuthorLabelHtml(
+  fmt: RenderFormat,
+  anonymousLabelHtml: string,
+): string {
+  const signedIn =
+    fmt.engine.viewer?.signedIn === true || fmt.engine.pageSession?.signedIn === true;
+  if (signedIn) return "";
+  return anonymousLabelHtml;
+}
 
 const commentBoxBaseView: ViewFn = ({ fmt }) => {
   const card = fmt.card;
@@ -1607,22 +1628,52 @@ const commentBoxBaseView: ViewFn = ({ fmt }) => {
   // readRuleClass '*self' is the corpus's stored marker for that shape
   // (9789: '*self' + the 9813 *update->Anyone row; 770 of the 779
   // discussion rows are '*all plus').
-  if (fmt.engine.taskAllowed?.(card, "update") !== true) return "";
   if (card.id === undefined) {
+    // Ruby's perms :update on a NEW card consults the CREATE permission
+    // (the board fixture's arms are the oracle: sara - whose only grant is
+    // the *all+*create rule "Anyone Signed In" - renders the form;
+    // anonymous, excluded by that rule, renders the blank). The gate reads
+    // the create verdict the discussion warm computed for seated phantoms
+    // (render.ts ensureDiscussionUpdateVerdicts); a phantom seated AFTER
+    // that warm - the engage_tab's nested child - has no verdict yet and
+    // stays blank, the graded corpus byte for every anonymous capture
+    // (the deck's *all+*create rule is "Anyone Signed In"; rendering the
+    // form to a signed-out visitor on an uncomputed verdict was tried and
+    // flipped the r200 pool page Earth House Center away from the graded
+    // reference). Pinning the seat-time computation is the recorded
+    // remainder.
+    if (fmt.engine.taskAllowed?.(card, "create") !== true) return "";
     // The create branch: card-mod-comment.ts commentBoxBody's create shape
-    // (board-stage3 engage_tab oracle), un-recaptched there.
+    // (board-stage3 engage_tab oracle), un-recaptched there. The author
+    // label follows comment.rb:74-77 (nil when signed in), and the view's
+    // own parts ride output()'s "\n" join (form.rb:198: the utf8 enqueuer
+    // is concatenated, only the array joins).
     return (
       `<div class="comment-box nodblclick">` +
       `<form class="card-form slotter" id="new_card" action="/card/create"` +
       ` accept-charset="UTF-8" data-remote="true" method="post">` +
       `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
       `<input type="hidden" name="card[name]" id="card_name" value="${h(card.name.s)}" autocomplete="off" />` +
+      `\n` +
       `<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">
 </textarea>` +
-      `<div class="comment-buttons"><label>My Name is:</label> <input type="text" name="comment_author"></div>` +
+      `\n` +
+      `<div class="comment-buttons">` +
+      commentAuthorLabelHtml(fmt, `<label>My Name is:</label> <input type="text" name="comment_author">`) +
+      `<button name="button" type="submit" data-disable-with="Commenting" class="btn btn-outline-primary">Comment</button></div>` +
       `</form></div>`
     );
   }
+  // comment.rb:46-48 `perms: :update` — the view's own gate for a STORED
+  // card: the form renders only when the viewer may update it. The gate
+  // encodes the capture-verified rule LOCATION (the doc block above): the
+  // corpus's update-case captures have the *update rule on the card's own
+  // *self set (9789) or nowhere (21110/32453/43122, the blanks), and the
+  // generic task-verdict walk's no-rule fallback is allow - the recorded
+  // task-verdict remainder. The warmed verdicts are explicit for every
+  // seated stored discussion card, so the strict contract denies exactly
+  // the captured blanks.
+  if (fmt.engine.taskAllowed?.(card, "update") !== true) return "";
   const siteKey = recaptchaSiteKey() ?? RECAPTCHA_SITE_KEY;
   const form =
     `<form class="card-form slotter autosave" id="edit_card_${card.id}" data-recaptcha="on"` +
@@ -1636,9 +1687,13 @@ const commentBoxBaseView: ViewFn = ({ fmt }) => {
     `<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">
 </textarea>
 ` +
-    `<div class="comment-buttons"><label>My Name is:</label>` +
-    ` <input class=" form-control" type="text" value="Anonymous" name="card[comment_author]" id="card_comment_author" />
-` +
+    `<div class="comment-buttons">` +
+    commentAuthorLabelHtml(
+      fmt,
+      `<label>My Name is:</label>` +
+        ` <input class=" form-control" type="text" value="Anonymous" name="card[comment_author]" id="card_comment_author" />
+`,
+    ) +
     `<button name="button" type="submit" data-disable-with="Commenting" class="btn btn-outline-primary">Comment</button></div>`;
   return `<div class="comment-box nodblclick">${form}</form></div>`;
 };
