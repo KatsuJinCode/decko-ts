@@ -1,0 +1,146 @@
+{
+  "tables": {
+    "ar_internal_metadata": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "card_actions": {
+      "probeRows": 32,
+      "changed": {},
+      "added": [
+        "{\"action_type\":1,\"card_act_id\":116089,\"card_id\":36,\"comment\":null,\"draft\":0,\"super_action_id\":null}"
+      ],
+      "removed": []
+    },
+    "card_acts": {
+      "probeRows": 29,
+      "changed": {},
+      "added": [
+        "{\"acted_at\":\"T\",\"actor_id\":1,\"card_id\":36,\"ip_address\":null}"
+      ],
+      "removed": []
+    },
+    "card_changes": {
+      "probeRows": 60,
+      "changed": {},
+      "added": [
+        "{\"card_action_id\":11492,\"field\":2,\"value\":\"drafted text\"}",
+        "{\"card_action_id\":11512,\"field\":2,\"value\":\"<p>Number cards hold numbers. (persistence probe)</p>\"}",
+        "{\"card_action_id\":41,\"field\":0,\"value\":null}",
+        "{\"card_action_id\":41,\"field\":1,\"value\":\"2\"}",
+        "{\"card_action_id\":41,\"field\":2,\"value\":\"<p>Can contain only numerical values.</p>\"}",
+        "{\"card_action_id\":41,\"field\":3,\"value\":\"f\"}",
+        "{\"card_action_id\":41,\"field\":4,\"value\":\"35\"}",
+        "{\"card_action_id\":41,\"field\":5,\"value\":\"12\"}"
+      ],
+      "removed": []
+    },
+    "card_references": {
+      "probeRows": 6,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "card_revisions": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "card_virtuals": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "cards": {
+      "probeRows": 11,
+      "changed": {
+        "35": "{\"codename\":\"number\",\"created_at\":\"T\",\"creator_id\":1,\"current_revision_id\":null,\"db_content\":\"{{+:description|content}}\\n{{_|add_button}}{{_|configure_button}}\\n{{+:type+:by_name|content}}\\n\",\"id\":35,\"key\":\"number\",\"left_id\":null,\"name\":\"Number\",\"read_rule_class\":\"*all\",\"read_rule_id\":10,\"references_expired\":null,\"right_id\":null,\"trash\":0,\"type_id\":3,\"updated_at\":\"T\",\"updater_id\":1}",
+        "36": "{\"codename\":null,\"created_at\":\"T\",\"creator_id\":1,\"current_revision_id\":null,\"db_content\":\"<p>Number cards hold numbers. (persistence probe)</p>\",\"id\":36,\"key\":null,\"left_id\":35,\"name\":null,\"read_rule_class\":\"*all plus\",\"read_rule_id\":10,\"references_expired\":null,\"right_id\":12,\"trash\":0,\"type_id\":2,\"updated_at\":\"T\",\"updater_id\":1}"
+      },
+      "added": [],
+      "removed": []
+    },
+    "delayed_jobs": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_assistant_decisions": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_assistant_interactions": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_assistant_learner_levels": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_assistant_threads": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_audit_log": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_feature_events": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_lib_settings": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_proposals": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "schema_migrations": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "sessions": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "transform_migrations": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "users": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    }
+  }
+}

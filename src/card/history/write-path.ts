@@ -95,6 +95,8 @@ export interface CreateCardInput {
    *  create saves too (card-mod-carrierwave set/abstract/attachment.rb
    *  :20-24; the update path already carried comment). Defaults to NULL. */
   comment?: string | null;
+  /** An action row reserved for this save (ActWriter.reserveAction). */
+  reservedActionId?: number;
 }
 
 export interface UpdateCardInput {
@@ -140,6 +142,14 @@ export interface UpdateCardInput {
    *  Without this the no-op detection below silently drops the attachment
    *  save. */
   dirtyFields?: readonly TrackedField[];
+  /** The complete changed-field set, replacing the tracked-field diff. A
+   *  revival from trash needs it: pull_from_trash! (trash.rb:57-62) reuses
+   *  only the trashed row's id on what is otherwise a NEW record, so Ruby's
+   *  dirty tracking compares the assigned values against a blank record,
+   *  not against the trashed row. */
+  changedFields?: readonly TrackedField[];
+  /** An action row reserved for this save (ActWriter.reserveAction). */
+  reservedActionId?: number;
 }
 
 export interface SavedAction {
@@ -238,14 +248,21 @@ export class ActWriter {
 
     const stmts: SQLStatement[] = [];
     const actIdSelect = this.pushClearDraftsAndAct(stmts, cardId, ts);
-    const actionIdSelect = this.pushInsertAction(stmts, {
+    const actionRow = {
       cardId,
       superActionId: input.superActionId ?? null,
       actionType: actionTypeCode("create"),
-      draft: 0,
       comment: input.comment ?? null,
-    });
-    const { actId, actionId } = await this.runBatch(stmts, { actIdSelect, actionIdSelect });
+    };
+    let actionIdSelect: number | undefined;
+    if (input.reservedActionId !== undefined) {
+      this.pushFillReservedAction(stmts, input.reservedActionId, actionRow);
+    } else {
+      actionIdSelect = this.pushInsertAction(stmts, { ...actionRow, draft: 0 });
+    }
+    const batch = await this.runBatch(stmts, { actIdSelect, actionIdSelect });
+    const actId = batch.actId;
+    const actionId = input.reservedActionId ?? batch.actionId;
 
     // finalize_action: first_create? (set/all/history.rb:38-40 —
     // "@current_action.action_type == :create && action_count == 1") skips
@@ -271,7 +288,10 @@ export class ActWriter {
   // -----------------------------------------------------------------------
 
   async updateCard(input: UpdateCardInput): Promise<SavedAction | null> {
-    let changed = diffTrackedFields(input.before, input.after);
+    let changed =
+      input.changedFields !== undefined
+        ? ALL_TRACKED_WRITE_ORDER.filter((f) => input.changedFields!.includes(f))
+        : diffTrackedFields(input.before, input.after);
     if (changed.length === 0 && input.dirtyFields !== undefined) {
       // Caller-asserted dirty fields (the mounted-attachment assignment —
       // see UpdateCardInput.dirtyFields): a real save even when the computed
@@ -282,6 +302,15 @@ export class ActWriter {
       // finalize_action else-branch (events.rb:34-37): with no changed
       // fields and no pre-existing changes the action row is never saved,
       // and ActiveRecord skips the cards-row UPDATE entirely (no-op save).
+      // finalize_act (events.rb:48-50, when: act_card?) still runs:
+      // `Director.act.update! card_id: id` saves the act, so the act card's
+      // no-op save leaves an act row with no actions (the oracle deck holds
+      // such acts; remove_empty_act? is defined but never wired).
+      if (this.actId === null && this.isActCardOp(input.cardId, input.isActCard)) {
+        const stmts: SQLStatement[] = [];
+        const actIdSelect = this.pushInsertAct(stmts, input.cardId, sqlDateTime(this.clock()));
+        await this.runBatch(stmts, { actIdSelect });
+      }
       return null;
     }
     if (changed.includes("name")) {
@@ -332,13 +361,18 @@ export class ActWriter {
     const stmts: SQLStatement[] = [];
     const actIdSelect = this.pushClearDraftsAndAct(stmts, input.cardId, ts);
     const updateCardsIndex = this.pushUpdateCardsRow(stmts, input, changed, ts);
-    const actionIdSelect = this.pushInsertAction(stmts, {
+    const actionRow = {
       cardId: input.cardId,
       superActionId: input.superActionId ?? null,
       actionType: actionTypeCode(actionType),
-      draft: 0,
       comment: input.comment ?? null,
-    });
+    };
+    let actionIdSelect: number | undefined;
+    if (input.reservedActionId !== undefined) {
+      this.pushFillReservedAction(stmts, input.reservedActionId, actionRow);
+    } else {
+      actionIdSelect = this.pushInsertAction(stmts, { ...actionRow, draft: 0 });
+    }
     if (backfill !== null) {
       // store_card_changes_for_create_action (events.rb:95-100): the create
       // action gets one change per TRACKED_FIELDS entry, valued with the
@@ -380,7 +414,10 @@ export class ActWriter {
       actionIdSelect,
     });
 
-    const saved = { actId: this.requireActId(actId), actionId: requireId(actionId) };
+    const saved = {
+      actId: this.requireActId(actId),
+      actionId: input.reservedActionId ?? requireId(actionId),
+    };
     const updateResult = results[updateCardsIndex];
     if (updateResult.rowsAffected !== 1) {
       throw new Error(
@@ -440,14 +477,54 @@ export class ActWriter {
     return { actId: this.requireActId(actId), actionId: requireId(actionId) };
   }
 
-  /** Deletes this writer's actor's draft actions (and their changes) for one
-   *  card — clear_drafts (lib/card/content/all.rb:33-35,
-   *  `drafts.created_by(Card::Auth.current_id).each(&:delete)`, with
-   *  card_changes dependent: :delete_all, action.rb:30-33). */
+  /** Deletes this writer's actor's draft actions for one card — clear_drafts
+   *  (lib/card/content/all.rb:38-40,
+   *  `drafts.created_by(Card::Auth.current_id).each(&:delete)`). Their
+   *  change rows stay: #delete skips the dependent: :delete_all callback
+   *  (see pushClearOwnDrafts). */
   async clearOwnDrafts(cardId: number): Promise<void> {
     const stmts: SQLStatement[] = [];
     this.pushClearOwnDrafts(stmts, cardId);
     await this.driver.batch(stmts);
+  }
+
+  /** Insert an action row before its card is stored, card_id NULL, and
+   *  return its id. Ruby builds the supercard's action at :initialize and
+   *  saves it ahead of the subcards stored during the supercard's :store
+   *  stage, setting card_id only at :finalize (`@current_action.update!
+   *  card_id: id`, events.rb:26-27), so a junction's action precedes the
+   *  actions of the side cards its create makes. Pass the returned id as
+   *  `reservedActionId` to the createCard/updateCard call that stores the
+   *  card: that call fills the row instead of inserting one. */
+  async reserveAction(input: {
+    actionType: "create" | "update";
+    superActionId?: number | null;
+  }): Promise<number> {
+    const stmts: SQLStatement[] = [];
+    const actIdSelect =
+      this.actId === null ? this.pushInsertAct(stmts, null, sqlDateTime(this.clock())) : undefined;
+    const actionIdSelect = this.pushInsertAction(stmts, {
+      cardId: null,
+      superActionId: input.superActionId ?? null,
+      actionType: actionTypeCode(input.actionType),
+      draft: 0,
+      comment: null,
+    });
+    const { actionId } = await this.runBatch(stmts, { actIdSelect, actionIdSelect });
+    return requireId(actionId);
+  }
+
+  /** Fill a reserved action row (see reserveAction) — the statement that
+   *  replaces pushInsertAction for a save whose action was reserved. */
+  private pushFillReservedAction(
+    stmts: SQLStatement[],
+    reservedId: number,
+    input: { cardId: number; superActionId: number | null; actionType: number; comment: string | null },
+  ): void {
+    stmts.push({
+      sql: "UPDATE card_actions SET card_id = ?, super_action_id = ?, action_type = ?, comment = ? WHERE id = ?",
+      params: [input.cardId, input.superActionId, input.actionType, input.comment, reservedId],
+    });
   }
 
   /** The act row's id once at least one action has been persisted. */
@@ -499,7 +576,7 @@ export class ActWriter {
   private pushInsertAction(
     stmts: SQLStatement[],
     input: {
-      cardId: number;
+      cardId: number | null;
       superActionId: number | null;
       actionType: number;
       draft: SQLBoolean;
@@ -553,17 +630,16 @@ export class ActWriter {
     });
   }
 
-  /** clear_drafts for this writer's actor, set-based: the changes first
-   *  (dependent: :delete_all), then the draft action rows themselves. */
+  /** clear_drafts for this writer's actor, set-based: the draft action rows
+   *  only. Ruby deletes them with `drafts.created_by(...).each(&:delete)`
+   *  (card-1.110.0 lib/card/content/all.rb:38-40); ActiveRecord's #delete
+   *  skips callbacks, so the `dependent: :delete_all` on card_changes
+   *  (card-mod-history lib/card/action.rb:30-33, a destroy callback) never
+   *  runs and the draft's change row stays behind, as the oracle shows. */
   private pushClearOwnDrafts(stmts: SQLStatement[], cardId: number): void {
     const draftPredicate = `card_actions.card_id = ?
       AND card_actions.draft = 1
       AND card_actions.card_act_id IN (SELECT id FROM card_acts WHERE actor_id = ?)`;
-    stmts.push({
-      sql: `DELETE FROM card_changes WHERE card_action_id IN
-              (SELECT id FROM card_actions WHERE ${draftPredicate})`,
-      params: [cardId, this.actorId],
-    });
     stmts.push({
       sql: `DELETE FROM card_actions WHERE ${draftPredicate}`,
       params: [cardId, this.actorId],
