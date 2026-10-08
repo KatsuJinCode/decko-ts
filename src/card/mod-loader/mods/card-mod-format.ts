@@ -127,7 +127,8 @@
 //   set/all/html/wrap.rb (the wrap pipeline is the slot machinery),
 //   set/all/html/show.rb (page-view rails), set/all/html/error.rb's
 //   :not_found frame). :debug_server_error is registered on
-//   all/html/error (render/debug-server-error.ts).
+//   all/html/error and raises Ruby's NameError for the BetterErrors
+//   constant a stock deck never loads (render/debug-server-error.ts).
 // - set/all/title.rb :title_link :title_no_link html block +
 //   helpers: rails (link_to_card + the card-title span rendering);
 //   :title in the html block has a `show_view?(:title_link, :hide)`
@@ -1632,9 +1633,10 @@ const setModules: ModSetModuleFile[] = [
     },
   },
   {
-    // set/all/html/error.rb:4-8 view :debug_server_error, the error page
-    // shown for a server error when the *debugger card is on (the
-    // BetterErrors page; render/debug-server-error.ts). The file's other
+    // set/all/html/error.rb:4-8 view :debug_server_error, picked for a
+    // server error when the session's *debugger card is on. Its body names
+    // BetterErrors, which a stock deck never loads, so it raises NameError
+    // as Ruby does (render/debug-server-error.ts). The file's other
     // html views (:unknown, :mini_unknown, :compact_missing, :conflict,
     // :errors) are served by the base table.
     setPath: "all/html/error",
