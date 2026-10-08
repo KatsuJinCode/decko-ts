@@ -323,7 +323,13 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       const begin: HranaPipelineRequest[] = [{ type: "execute", stmt: toHranaStmt("BEGIN IMMEDIATE", []) }];
       const opened = await this.streamPipeline(begin, { url: this.pipelineUrl });
       if (opened.baton === undefined) {
-        throw new BunnyDbError("BunnyDb returned no baton for an open stream (protocol violation)");
+        // Bunny documents baton sessions but asks customers who need them to
+        // ask for them; a database without them closes every stream, and a
+        // save cannot be made atomic there. Refuse rather than write
+        // statement by statement.
+        throw new BunnyDbError(
+          "BunnyDb did not keep the stream open (no baton returned): interactive sessions are not available on this database, and an atomic save needs one (docs/decisions/0007-atomic-saves-and-transaction-contract.md)",
+        );
       }
       this.stream = { baton: opened.baton, url: opened.url };
       try {

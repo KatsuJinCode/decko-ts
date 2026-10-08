@@ -104,6 +104,26 @@ describe("transactions: Hrana stream wire shape", () => {
     }
   });
 
+  it("refuses the unit of work when the server closes the stream instead of returning a baton", async () => {
+    const { server, dispose } = await hranaServer();
+    try {
+      const driver = new BunnyDbDriver({ url: server.url, timeoutMs: 0 });
+      // A database without interactive sessions answers BEGIN and closes.
+      server.enqueueRawResponse(
+        JSON.stringify({ baton: null, results: [{ type: "ok", response: { type: "execute", result: { cols: [], rows: [], affected_row_count: 0 } } }] }),
+      );
+      let ran = false;
+      await expect(
+        driver.transaction(async () => {
+          ran = true;
+        }),
+      ).rejects.toThrow(/no baton returned/);
+      expect(ran).toBe(false);
+    } finally {
+      await dispose();
+    }
+  });
+
   it("keeps a second writer out while a stream holds the write lock", async () => {
     const { server, dispose } = await hranaServer();
     try {

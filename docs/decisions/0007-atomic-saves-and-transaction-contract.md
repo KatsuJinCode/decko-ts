@@ -96,6 +96,17 @@ whoever takes PostgreSQL on, which means running the shared conformance,
 transaction and failure-injection suites against a real server and an
 existing Decko PostgreSQL schema.
 
+**Bunny Database sessions.** Bunny's SQL API documentation describes baton
+sessions but asks customers who need them to contact Bunny, so they may not be
+enabled on every database. Where they are not, the server closes each stream,
+`BunnyDbDriver.transaction()` fails with an error saying so, and saves on that
+database are refused rather than written statement by statement. Before the
+Bunny write path (`DECKO_WRITE_PATH`, off by default) is turned on, a
+transaction should be run once against a scratch Bunny database to confirm
+the baton is kept. If it is not, the alternative is the compensating journal
+D1 uses, which needs an atomic Hrana `batch` request (steps with conditions)
+in place of the pipeline.
+
 ## Consequences
 
 A rejected save changes nothing, on every backend, and retrying it is safe.
