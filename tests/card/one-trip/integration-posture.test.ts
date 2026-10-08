@@ -22,7 +22,6 @@
 import { copyFileSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
 import { buildOneTripClosure } from "../../../src/card/one-trip/closure-builder.js";
@@ -36,12 +35,11 @@ import {
 } from "./one-trip-fixture.js";
 import { applyDeckDataVersionStampMigration } from "./apply-deck-data-version-stamp-migration.js";
 import { scratchDir } from "../../support/scratch-dir.mjs";
+import { testReportPath } from "../../support/report-output.js";
 import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const hasMirror = mirrorAvailable();
-const REPORT_PATH = fileURLToPath(
-  new URL("../../../benchmarks/one-trip-render/integration-posture-report.json", import.meta.url),
-);
+const REPORT_PATH = testReportPath("benchmarks/one-trip-render/integration-posture-report.json");
 
 interface PostureMeasurement {
   name: string;

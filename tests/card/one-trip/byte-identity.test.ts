@@ -17,11 +17,10 @@
 //
 // The corpus tests skip when the mirror copy is absent (fresh clones).
 
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
 import type { SQLDatabaseDriver } from "../../../src/server/driver.js";
@@ -43,12 +42,11 @@ import {
   normalizeSlotIds,
 } from "./one-trip-fixture.js";
 import { scratchDir } from "../../support/scratch-dir.mjs";
+import { testReportPath } from "../../support/report-output.js";
 import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const hasMirror = mirrorAvailable();
-const HARNESS_REPORT_PATH = fileURLToPath(
-  new URL("../../../benchmarks/one-trip-render/one-trip-harness-report.json", import.meta.url),
-);
+const HARNESS_REPORT_PATH = testReportPath("benchmarks/one-trip-render/one-trip-harness-report.json");
 
 interface PageMeasurement {
   name: string;
@@ -79,7 +77,6 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/byte-identity.test.ts", "has
   afterAll(() => {
     if (sidePath !== "") try { rmSync(sidePath, { force: true }); } catch { /* Windows file lock: the driver holds the handle; the OS temp dir cleans up */ };
     if (measurements.length > 0) {
-      if (!existsSync(join(HARNESS_REPORT_PATH, ".."))) mkdirSync(join(HARNESS_REPORT_PATH, ".."), { recursive: true });
       writeFileSync(HARNESS_REPORT_PATH, JSON.stringify({ pages: measurements }, null, 2));
     }
   });

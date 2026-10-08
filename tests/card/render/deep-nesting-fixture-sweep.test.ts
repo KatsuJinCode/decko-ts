@@ -31,10 +31,13 @@
 //
 // Reported numbers populate benchmarks/results/deep-nesting-fixtures-ts.json
 // per the METHODOLOGY iron rule (full environment block or it is not a
-// benchmark result).
+// benchmark result). A test run writes its copy outside the checkout
+// (tests/support/report-output.ts); refresh the committed copy with
+// DECKO_TEST_REPORT_DIR set to the repository root.
 
 import { describe, expect, it } from "vitest";
-import { writeFileSync, mkdirSync } from "node:fs";
+import { writeFileSync } from "node:fs";
+import { testReportPath } from "../../support/report-output.js";
 import { execSync } from "node:child_process";
 import { cpus, totalmem, hostname, platform } from "node:os";
 import {
@@ -428,8 +431,7 @@ describe("Deep-nesting fixture sweep (#1282 scaling proof: TS engine vs fixture 
         // metadata only - never fail the measurement for it
       }
 
-      mkdirSync("benchmarks/results", { recursive: true });
-      const outPath = "benchmarks/results/deep-nesting-fixtures-ts.json";
+      const outPath = testReportPath("benchmarks/results/deep-nesting-fixtures-ts.json");
       writeFileSync(
         outPath,
         JSON.stringify(
