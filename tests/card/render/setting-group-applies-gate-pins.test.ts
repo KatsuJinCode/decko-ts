@@ -186,3 +186,22 @@ describe("visible_setting_codenames (card-mod-rules set/type/set.rb:73-75)", () 
     expect(s.engine.newCardDefaultType(DeckoName.parse("A Message+Conversation"), "Message")?.typeName).toBe("Search");
   });
 });
+
+describe("anchorless set prototypes (06_rule.rb, 04_star.rb prototype_args)", () => {
+  it("the *rule set's prototype is the stored *all+*create card, so its List type admits the restricted pair", async () => {
+    const s = await seedDeck();
+    await seedCard(s, { id: 60, name: "*all", codename: "all", typeId: 5 });
+    await seedCard(s, { id: 61, name: "*create", codename: "create", typeId: 2 });
+    await seedCard(s, { id: 62, leftId: 60, rightId: 61, typeId: 3 }); // *all+*create, List
+    await seedCard(s, { id: 63, name: "*rule", codename: "rule", typeId: 5 });
+    await seedCard(s, { id: 64, name: "*star", codename: "star", typeId: 5 });
+    await s.fetcher.codenames.ensureLoaded();
+    await s.engine.prepareItemForRender("*all+*create");
+    const rule = await s.engine.visibleSettingCodenamesFor("*rule");
+    expect(rule).toContain("content_options");
+    expect(rule).toContain("content_option_view");
+    // *star's prototype is a new "*dummy" card: no list type, no pair
+    const star = await s.engine.visibleSettingCodenamesFor("*star");
+    expect(star).not.toContain("content_options");
+  });
+});

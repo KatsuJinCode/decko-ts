@@ -3386,6 +3386,20 @@ function setPrototypeTypeInfo(
         templateDerived: true,
       };
     }
+    // 06_rule.rb prototype_args {name: "*all+*create"}: Card.fetch with
+    // new: returns the stored card when it exists, so its own type is the
+    // prototype type; a deck without it falls to the template chain.
+    case "rule": {
+      const real = engine.fetchRenderCard?.("*all+*create");
+      if (real !== undefined && real.typeId !== undefined) {
+        return { code: engine.peekCodenameById?.(real.typeId), templateDerived: false };
+      }
+      return { code: templateTypeCode("*all+*create"), templateDerived: true };
+    }
+    // 04_star.rb prototype_args {name: "*dummy"}: a new simple card typed
+    // by the template chain.
+    case "star":
+      return { code: templateTypeCode("*dummy"), templateDerived: true };
     default:
       return { code: undefined, templateDerived: false };
   }
