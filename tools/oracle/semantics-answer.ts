@@ -297,7 +297,11 @@ async function cqlNames(query: Record<string, unknown>): Promise<string[] | stri
 // set; snapshot their names before the mod deck registers into the same record.
 const engineFlatViews = new Set(Object.keys(HTML_VIEWS));
 const loader = defaultDeckLoader();
-const tsViewNames = Object.keys(loader.viewsTable()).sort();
+// Every view name the engine can dispatch: the flat table plus every view a
+// set module registered only in the chain table.
+const tsViewNames = [
+  ...new Set([...Object.keys(loader.viewsTable()), ...[...loader.viewChainTable().entries()].map((e) => e.view)]),
+].sort();
 
 // The engine's new-card type walk needs the *default and *structure
 // universes loaded; one render loads them (the same first-render path).
