@@ -1253,7 +1253,7 @@
     {
       "name": "Recent Notes",
       "type": "Search",
-      "content": "{\"type\":\"RichText\",\"name\":[\"match\",\"Note\"],\"sort\":\"name\",\"limit\":10}"
+      "content": "{\"type\":\"RichText\",\"complete\":\"Note\",\"sort\":\"name\",\"limit\":10}"
     },
     {
       "name": "Topic Summaries",
@@ -1283,7 +1283,7 @@
     {
       "name": "Chain Cards",
       "type": "Search",
-      "content": "{\"name\":[\"match\",\"^Chain\"],\"sort\":\"name\",\"dir\":\"desc\",\"limit\":5}"
+      "content": "{\"complete\":\"Chain\",\"sort\":\"name\",\"dir\":\"desc\",\"limit\":5}"
     },
     {
       "name": "Typed Notes",
@@ -1293,7 +1293,7 @@
     {
       "name": "Not Topics",
       "type": "Search",
-      "content": "{\"type\":[\"not in\",[\"Topic\",\"Memo\",\"Brief\"]],\"name\":[\"match\",\"0\"],\"sort\":\"name\",\"limit\":20}"
+      "content": "{\"not\":{\"type\":[\"in\",\"Topic\",\"Memo\",\"Brief\",\"RichText\",\"Pointer\"]},\"sort\":\"name\",\"limit\":20}"
     },
     {
       "name": "Tags In Use",
@@ -1303,7 +1303,7 @@
     {
       "name": "Count Of Notes",
       "type": "Search",
-      "content": "{\"type\":\"RichText\",\"name\":[\"match\",\"^Note\"],\"return\":\"count\"}"
+      "content": "{\"type\":\"RichText\",\"complete\":\"Note\",\"return\":\"count\"}"
     },
     {
       "name": "Search Page",
@@ -1456,9 +1456,12 @@
       "content": "{{Report 1}}\n{{Report 2|core}}\n[[Report 3]]"
     },
     {
+      "name": "email stylesheet",
+      "type": "SCSS"
+    },
+    {
       "name": "*all+Mira Member+*follow",
-      "type": "Pointer",
-      "content": "[[*always]]"
+      "content": "*always"
     }
   ]
 }

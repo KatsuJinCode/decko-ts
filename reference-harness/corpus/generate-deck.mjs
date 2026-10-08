@@ -185,6 +185,10 @@ for (let i = 1; i <= 4; i++) {
 add({ name: "Report Index", type: "RichText", content: "{{Report 1}}\n{{Report 2|core}}\n[[Report 3]]" });
 
 // ---- followers (side effects) ---------------------------------------------------------
+// `decko setup` leaves "email stylesheet" RichText although its seed data
+// declares SCSS (card-mod-email data/real.yml); every notification email
+// renders it compiled, so the deck restores the declared type.
+add({ name: "email stylesheet", type: "SCSS" });
 add({ name: "*all+Mira Member+*follow", content: "*always" });
 
 const deck = {

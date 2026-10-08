@@ -1702,6 +1702,12 @@
 {"id":"core:member:Report Index","op":"render","actor":"member","card":"Report Index","view":"core"}
 {"id":"page:admin:Report Index","op":"render","actor":"admin","card":"Report Index"}
 {"id":"core:admin:Report Index","op":"render","actor":"admin","card":"Report Index","view":"core"}
+{"id":"page:anonymous:email stylesheet","op":"render","actor":"anonymous","card":"email stylesheet"}
+{"id":"core:anonymous:email stylesheet","op":"render","actor":"anonymous","card":"email stylesheet","view":"core"}
+{"id":"page:member:email stylesheet","op":"render","actor":"member","card":"email stylesheet"}
+{"id":"core:member:email stylesheet","op":"render","actor":"member","card":"email stylesheet","view":"core"}
+{"id":"page:admin:email stylesheet","op":"render","actor":"admin","card":"email stylesheet"}
+{"id":"core:admin:email stylesheet","op":"render","actor":"admin","card":"email stylesheet","view":"core"}
 {"id":"page:anonymous:*all+Mira Member+*follow","op":"render","actor":"anonymous","card":"*all+Mira Member+*follow"}
 {"id":"core:anonymous:*all+Mira Member+*follow","op":"render","actor":"anonymous","card":"*all+Mira Member+*follow","view":"core"}
 {"id":"page:member:*all+Mira Member+*follow","op":"render","actor":"member","card":"*all+Mira Member+*follow"}

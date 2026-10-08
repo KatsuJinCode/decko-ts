@@ -14,6 +14,11 @@ HarnessEnv.freeze_clock!(SPEC["clock"])
 HarnessEnv.apply_environment!(SPEC["environment"])
 # The deck build compiled the asset outputs; a render never rewrites them.
 Cardio.config.asset_refresh = :never
+# Every request here stands for one that came through Decko's controller.
+# Outside a controller Decko silences follower notifications
+# (card-mod-follow set/all/notify.rb silence_notifications?); this restores
+# what a served request does.
+Card::Set::All::Notify.force_notifications = true
 
 OUT = $stdout.dup
 OUT.sync = true
@@ -175,7 +180,7 @@ $stdin.each_line do |line|
   begin
     raise ArgumentError, "unknown op #{req['op']}" unless handler
 
-    result = HarnessEnv.on_big_stack do
+    result = HarnessEnv.on_stack do
       HarnessEnv.begin_request!(actor_id(req["actor"]))
       send(handler, req)
     end

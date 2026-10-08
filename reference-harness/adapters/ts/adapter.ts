@@ -44,11 +44,17 @@ import { readPermissionOverride, updatePermissionOverride } from "../../../src/c
 import { executeCount, executeQuery, parseOptionsWithLexicon } from "../../../src/cql/execute.js";
 import { CaptureTransport } from "../../../src/card/notify/transport.js";
 import { authenticateAccount } from "../../../src/card/auth/signin.js";
+import { applyDeckInflections } from "../../../src/card/name/inflect.js";
+import { ORACLE_DECK_INFLECTIONS } from "../../../src/card/name/oracle-deck-inflections.js";
 
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 type Req = Record<string, any>;
 
 const spec = JSON.parse(readFileSync(process.env.HARNESS_DECK_JSON!, "utf8"));
+// The engine ships stock Decko's inflection rules (card 1.110.0
+// config/initializers/inflections.rb) under this name; every stock deck uses
+// them, so they are installed before any name is parsed.
+applyDeckInflections(ORACLE_DECK_INFLECTIONS);
 const clock = new Date(spec.clock);
 setCaptureWallClock(clock);
 setDeckEnvironment({

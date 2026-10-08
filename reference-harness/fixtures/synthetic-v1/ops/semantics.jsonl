@@ -2270,6 +2270,14 @@
 {"id":"perm:anonymous:Report Index","op":"ask","actor":"anonymous","q":"permissions","card":"Report Index"}
 {"id":"perm:member:Report Index","op":"ask","actor":"member","q":"permissions","card":"Report Index"}
 {"id":"perm:admin:Report Index","op":"ask","actor":"admin","q":"permissions","card":"Report Index"}
+{"id":"card:email stylesheet","op":"ask","actor":"admin","q":"card","card":"email stylesheet"}
+{"id":"sets:email stylesheet","op":"ask","actor":"admin","q":"set_names","card":"email stylesheet"}
+{"id":"rule:read:email stylesheet","op":"ask","actor":"admin","q":"rule","card":"email stylesheet","setting":"read"}
+{"id":"rule:update:email stylesheet","op":"ask","actor":"admin","q":"rule","card":"email stylesheet","setting":"update"}
+{"id":"rule:create:email stylesheet","op":"ask","actor":"admin","q":"rule","card":"email stylesheet","setting":"create"}
+{"id":"perm:anonymous:email stylesheet","op":"ask","actor":"anonymous","q":"permissions","card":"email stylesheet"}
+{"id":"perm:member:email stylesheet","op":"ask","actor":"member","q":"permissions","card":"email stylesheet"}
+{"id":"perm:admin:email stylesheet","op":"ask","actor":"admin","q":"permissions","card":"email stylesheet"}
 {"id":"card:*all+Mira Member+*follow","op":"ask","actor":"admin","q":"card","card":"*all+Mira Member+*follow"}
 {"id":"sets:*all+Mira Member+*follow","op":"ask","actor":"admin","q":"set_names","card":"*all+Mira Member+*follow"}
 {"id":"rule:read:*all+Mira Member+*follow","op":"ask","actor":"admin","q":"rule","card":"*all+Mira Member+*follow","setting":"read"}
@@ -2321,9 +2329,9 @@
 {"id":"search:anonymous:All Topics","op":"ask","actor":"anonymous","q":"search","query":{"type":"Topic","sort":"name"}}
 {"id":"search:member:All Topics","op":"ask","actor":"member","q":"search","query":{"type":"Topic","sort":"name"}}
 {"id":"search:admin:All Topics","op":"ask","actor":"admin","q":"search","query":{"type":"Topic","sort":"name"}}
-{"id":"search:anonymous:Recent Notes","op":"ask","actor":"anonymous","q":"search","query":{"type":"RichText","name":["match","Note"],"sort":"name","limit":10}}
-{"id":"search:member:Recent Notes","op":"ask","actor":"member","q":"search","query":{"type":"RichText","name":["match","Note"],"sort":"name","limit":10}}
-{"id":"search:admin:Recent Notes","op":"ask","actor":"admin","q":"search","query":{"type":"RichText","name":["match","Note"],"sort":"name","limit":10}}
+{"id":"search:anonymous:Recent Notes","op":"ask","actor":"anonymous","q":"search","query":{"type":"RichText","complete":"Note","sort":"name","limit":10}}
+{"id":"search:member:Recent Notes","op":"ask","actor":"member","q":"search","query":{"type":"RichText","complete":"Note","sort":"name","limit":10}}
+{"id":"search:admin:Recent Notes","op":"ask","actor":"admin","q":"search","query":{"type":"RichText","complete":"Note","sort":"name","limit":10}}
 {"id":"search:anonymous:Topic Summaries","op":"ask","actor":"anonymous","q":"search","query":{"right":"summary","sort":"name","limit":15}}
 {"id":"search:member:Topic Summaries","op":"ask","actor":"member","q":"search","query":{"right":"summary","sort":"name","limit":15}}
 {"id":"search:admin:Topic Summaries","op":"ask","actor":"admin","q":"search","query":{"right":"summary","sort":"name","limit":15}}
@@ -2339,21 +2347,21 @@
 {"id":"search:anonymous:Tagged 01","op":"ask","actor":"anonymous","q":"search","query":{"right_plus":["tags",{"refer_to":"Tag 01"}],"sort":"name"}}
 {"id":"search:member:Tagged 01","op":"ask","actor":"member","q":"search","query":{"right_plus":["tags",{"refer_to":"Tag 01"}],"sort":"name"}}
 {"id":"search:admin:Tagged 01","op":"ask","actor":"admin","q":"search","query":{"right_plus":["tags",{"refer_to":"Tag 01"}],"sort":"name"}}
-{"id":"search:anonymous:Chain Cards","op":"ask","actor":"anonymous","q":"search","query":{"name":["match","^Chain"],"sort":"name","dir":"desc","limit":5}}
-{"id":"search:member:Chain Cards","op":"ask","actor":"member","q":"search","query":{"name":["match","^Chain"],"sort":"name","dir":"desc","limit":5}}
-{"id":"search:admin:Chain Cards","op":"ask","actor":"admin","q":"search","query":{"name":["match","^Chain"],"sort":"name","dir":"desc","limit":5}}
+{"id":"search:anonymous:Chain Cards","op":"ask","actor":"anonymous","q":"search","query":{"complete":"Chain","sort":"name","dir":"desc","limit":5}}
+{"id":"search:member:Chain Cards","op":"ask","actor":"member","q":"search","query":{"complete":"Chain","sort":"name","dir":"desc","limit":5}}
+{"id":"search:admin:Chain Cards","op":"ask","actor":"admin","q":"search","query":{"complete":"Chain","sort":"name","dir":"desc","limit":5}}
 {"id":"search:anonymous:Typed Notes","op":"ask","actor":"anonymous","q":"search","query":{"type":"Note","sort":"name"}}
 {"id":"search:member:Typed Notes","op":"ask","actor":"member","q":"search","query":{"type":"Note","sort":"name"}}
 {"id":"search:admin:Typed Notes","op":"ask","actor":"admin","q":"search","query":{"type":"Note","sort":"name"}}
-{"id":"search:anonymous:Not Topics","op":"ask","actor":"anonymous","q":"search","query":{"type":["not in",["Topic","Memo","Brief"]],"name":["match","0"],"sort":"name","limit":20}}
-{"id":"search:member:Not Topics","op":"ask","actor":"member","q":"search","query":{"type":["not in",["Topic","Memo","Brief"]],"name":["match","0"],"sort":"name","limit":20}}
-{"id":"search:admin:Not Topics","op":"ask","actor":"admin","q":"search","query":{"type":["not in",["Topic","Memo","Brief"]],"name":["match","0"],"sort":"name","limit":20}}
+{"id":"search:anonymous:Not Topics","op":"ask","actor":"anonymous","q":"search","query":{"not":{"type":["in","Topic","Memo","Brief","RichText","Pointer"]},"sort":"name","limit":20}}
+{"id":"search:member:Not Topics","op":"ask","actor":"member","q":"search","query":{"not":{"type":["in","Topic","Memo","Brief","RichText","Pointer"]},"sort":"name","limit":20}}
+{"id":"search:admin:Not Topics","op":"ask","actor":"admin","q":"search","query":{"not":{"type":["in","Topic","Memo","Brief","RichText","Pointer"]},"sort":"name","limit":20}}
 {"id":"search:anonymous:Tags In Use","op":"ask","actor":"anonymous","q":"search","query":{"referred_to_by":{"right":"tags"},"sort":"name"}}
 {"id":"search:member:Tags In Use","op":"ask","actor":"member","q":"search","query":{"referred_to_by":{"right":"tags"},"sort":"name"}}
 {"id":"search:admin:Tags In Use","op":"ask","actor":"admin","q":"search","query":{"referred_to_by":{"right":"tags"},"sort":"name"}}
-{"id":"search:anonymous:Count Of Notes","op":"ask","actor":"anonymous","q":"search","query":{"type":"RichText","name":["match","^Note"],"return":"count"}}
-{"id":"search:member:Count Of Notes","op":"ask","actor":"member","q":"search","query":{"type":"RichText","name":["match","^Note"],"return":"count"}}
-{"id":"search:admin:Count Of Notes","op":"ask","actor":"admin","q":"search","query":{"type":"RichText","name":["match","^Note"],"return":"count"}}
+{"id":"search:anonymous:Count Of Notes","op":"ask","actor":"anonymous","q":"search","query":{"type":"RichText","complete":"Note","return":"count"}}
+{"id":"search:member:Count Of Notes","op":"ask","actor":"member","q":"search","query":{"type":"RichText","complete":"Note","return":"count"}}
+{"id":"search:admin:Count Of Notes","op":"ask","actor":"admin","q":"search","query":{"type":"RichText","complete":"Note","return":"count"}}
 {"id":"name:Topic 001","op":"ask","actor":"anonymous","q":"name","name":"Topic 001"}
 {"id":"name:topic_001","op":"ask","actor":"anonymous","q":"name","name":"topic_001"}
 {"id":"name:Topic 001+summary","op":"ask","actor":"anonymous","q":"name","name":"Topic 001+summary"}

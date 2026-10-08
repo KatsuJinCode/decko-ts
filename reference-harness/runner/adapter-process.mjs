@@ -2,7 +2,7 @@
 // protocol (one JSON object per line on stdin/stdout), and closes it.
 // See reference-harness/SPEC.md, "Adapter protocol".
 
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { createInterface } from "node:readline";
@@ -111,7 +111,18 @@ export class AdapterSession {
     this.child.stdin.write(JSON.stringify({ op: "quit" }) + "\n");
     this.child.stdin.end();
     const done = await Promise.race([this.exited, sleep(60_000).then(() => null)]);
-    if (done === null) this.child.kill();
+    if (done === null) this.kill();
+  }
+
+  /** Ends the adapter and every process it started (on Windows a launcher
+   *  script does not exec, so the engine runs as a grandchild). */
+  kill() {
+    if (!this.child || this.child.exitCode !== null) return;
+    if (process.platform === "win32") {
+      spawnSync("taskkill", ["/pid", String(this.child.pid), "/t", "/f"], { windowsHide: true, stdio: "ignore" });
+    } else {
+      this.child.kill("SIGKILL");
+    }
   }
 }
 

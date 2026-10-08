@@ -62,7 +62,7 @@ async function withSession(root, fn) {
     return await fn(session, stage, hello);
   } finally {
     await session.close();
-    rmSync(stage.work, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
+    removeQuietly(stage.work);
   }
 }
 
@@ -121,8 +121,23 @@ try {
   }
 } finally {
   meta.finished = new Date().toISOString();
-  writeFileSync(path.join(outDir, "run-meta.json"), JSON.stringify(meta, null, 2) + "\n");
-  rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
+  // A run of some kinds keeps what an earlier run recorded about the others.
+  const metaPath = path.join(outDir, "run-meta.json");
+  const earlier = existsSync(metaPath) ? JSON.parse(readFileSync(metaPath, "utf8")) : {};
+  const runs = { ...(earlier.runs ?? {}) };
+  for (const kind of kinds) runs[kind] = { started: meta.started, finished: meta.finished };
+  writeFileSync(metaPath, JSON.stringify({ ...earlier, ...meta, kinds: Object.keys(runs), runs }, null, 2) + "\n");
+  removeQuietly(root);
+}
+
+/** Removes a scratch directory; a failure is reported, never allowed to hide
+ *  the error that ended the run. */
+function removeQuietly(dir) {
+  try {
+    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
+  } catch (error) {
+    log(`could not remove ${dir}: ${error.message}`);
+  }
 }
 
 function parseArgs(argv) {

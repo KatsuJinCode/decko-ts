@@ -35,6 +35,11 @@ module HarnessEnv
         Cardio.config.send("#{key}=", nil)
       end
       configure_files!
+      # Mail goes to the in-memory :test store, never the network. Set here
+      # because Decko's development environment turns deliveries off after
+      # the application config is read.
+      ActionMailer::Base.delivery_method = :test
+      ActionMailer::Base.perform_deliveries = true
     end
 
     # Uploaded files live on local disk under DECKO_FILES_DIR (the deck's
