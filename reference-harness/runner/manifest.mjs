@@ -13,7 +13,7 @@
 //
 //   node reference-harness/runner/manifest.mjs fixture <fixtureDir>            write MANIFEST.json
 //   node reference-harness/runner/manifest.mjs check <fixtureDir>              verify it (exit 1 on mismatch)
-//   node reference-harness/runner/manifest.mjs expected <fixtureDir> <expectedDir> [--variant <name>] [--patches <patches.json>]
+//   node reference-harness/runner/manifest.mjs expected <fixtureDir> <expectedDir> [--variant <name>] [--patches <patches.json>] [--provenance <provenance.json>]
 //
 // See reference-harness/SPEC.md, "Fixture identity" and "The Ruby oracle".
 
@@ -95,7 +95,7 @@ export function resultFiles(dir) {
   return readdirSync(dir).filter((f) => /^(render|semantics|scenarios)\.jsonl(\.gz)?$/.test(f) || f === "run-meta.json").sort();
 }
 
-function writeFixtureManifest(fixtureDir) {
+export function writeFixtureManifest(fixtureDir) {
   const { files, digest } = computeFixtureIdentity(fixtureDir);
   const manifest = { format: FIXTURE_MANIFEST_FORMAT, fixture: path.basename(fixtureDir), digest, files };
   writeFileSync(path.join(fixtureDir, "MANIFEST.json"), JSON.stringify(manifest, null, 2) + "\n");
@@ -107,7 +107,7 @@ function writeFixtureManifest(fixtureDir) {
  * oracle contract. A patched variant must list its patches; the stock
  * oracle must list none.
  */
-export function writeExpectedManifest(fixtureDir, expectedDir, { variant = "stock", patches = [], contractPath } = {}) {
+export function writeExpectedManifest(fixtureDir, expectedDir, { variant = "stock", patches = [], contractPath, provenance } = {}) {
   if (variant === "stock" && patches.length > 0) throw new Error("the stock oracle carries no patches; name a variant");
   if (variant !== "stock" && patches.length === 0) throw new Error(`variant "${variant}" must list the patches it applies`);
   const fixture = verifyFixture(fixtureDir);
@@ -128,6 +128,7 @@ export function writeExpectedManifest(fixtureDir, expectedDir, { variant = "stoc
     engine: meta.engine,
     runs: meta.runs,
     files,
+    ...(provenance ? { provenance } : {}),
   };
   writeFileSync(path.join(expectedDir, "MANIFEST.json"), JSON.stringify(manifest, null, 2) + "\n");
   return manifest;
@@ -151,7 +152,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     process.exit(problems.length ? 1 : 0);
   } else if (command === "expected") {
     const patches = opts.patches ? JSON.parse(readFileSync(opts.patches, "utf8")) : [];
-    const m = writeExpectedManifest(path.resolve(positional[0]), path.resolve(positional[1]), { variant: opts.variant ?? "stock", patches });
+    const provenance = opts.provenance ? JSON.parse(readFileSync(opts.provenance, "utf8")) : undefined;
+    const m = writeExpectedManifest(path.resolve(positional[0]), path.resolve(positional[1]), { variant: opts.variant ?? "stock", patches, provenance });
     console.log(`${m.fixture} expected (${m.oracle.variant}): ${Object.keys(m.files).length} files`);
   } else {
     console.error("usage: manifest.mjs fixture <fixtureDir> | check <fixtureDir> | expected <fixtureDir> <expectedDir> [--variant <name> --patches <file>]");

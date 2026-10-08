@@ -94,15 +94,21 @@ export class AdapterSession {
     waiter.resolve(msg);
   }
 
-  /** Sends one request; resolves with {ok, result} or {ok:false, error}. */
+  /** Sends one request; resolves with {ok, result} or {ok:false, error}. A
+   *  request that times out is answered with a HarnessTimeout error; an
+   *  adapter that has exited rejects, which ends the run as incomplete. */
   request(body) {
+    if (this.child.exitCode !== null || this.child.signalCode !== null) {
+      return Promise.reject(new Error(`adapter has exited (code ${this.child.exitCode}):\n${this.stderrTail.join("\n")}`));
+    }
     const id = this.nextId++;
     const msg = { id, ...body };
     const answer = new Promise((resolve, reject) => this.pending.set(id, { resolve, reject }));
     this.child.stdin.write(JSON.stringify(msg) + "\n");
-    return withTimeout(answer, this.timeoutMs, `request ${id} (${body.op}) timed out`).catch((error) => {
+    return withTimeout(answer, this.timeoutMs, TIMED_OUT).catch((error) => {
       this.pending.delete(id);
-      return { id, ok: false, error: { class: "HarnessTimeout", message: String(error.message ?? error) } };
+      if (error.message !== TIMED_OUT) throw error;
+      return { id, ok: false, error: { class: "HarnessTimeout", message: `request ${id} (${body.op}) timed out` } };
     });
   }
 
@@ -125,6 +131,8 @@ export class AdapterSession {
     }
   }
 }
+
+const TIMED_OUT = "harness request timed out";
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms).unref());
