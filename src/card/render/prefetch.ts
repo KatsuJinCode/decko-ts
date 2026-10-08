@@ -625,6 +625,10 @@ async function composeAndCache(
     await ctx.cacheRecord(record);
     composedRecords.push(record);
     stats.cards += 1;
+    // The row is now composed and cached, so a later type prime in this
+    // prefetch must not read it again (a card that is both a prelude row and
+    // the type of a later row cost one extra round trip).
+    stats.typePrimeMemo.add(row.id);
   }
   return composedRecords;
 }

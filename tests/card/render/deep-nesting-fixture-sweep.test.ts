@@ -320,9 +320,16 @@ describe("Deep-nesting fixture sweep (#1282 scaling proof: TS engine vs fixture 
       //    to one key, so each round is one round trip; the walk itself
       //    renders cached rows only and throws the guard at nest depth 21
       //    (format.ts:859). Depth 50, 100, and 200 all pay exactly this.
+      //    Late-seat structure sweep, 2026-10-06 (commit 504a74db, 45 -> 53):
+      //    applyLateSeatStructureContent runs one more applyStructureContent
+      //    pass right before the sync dispatch, so cards seated by the render
+      //    tail's late paths get their structure processed (before it, they
+      //    rendered without it). On a past-cap chain that pass also runs to
+      //    its 8-round loop cap, so the bound is 45 + 8 = 53. It stays
+      //    depth-independent, which is the claim this invariant protects.
       for (const depth of DEEP_REJECTED_CHAIN_DEPTHS) {
         const row = byRoot.get(chainName(depth, 1))!;
-        expect(row.cold.roundTrips).toBe(45);
+        expect(row.cold.roundTrips).toBe(53);
         expect(depth).toBeGreaterThan(RUBY_MAX_DEPTH);
         // fold-9 superset note (2026-10-03): this suite was written on the
         // main@7c5cd26 lineage, where the too-deep rejection propagated out
@@ -402,7 +409,10 @@ describe("Deep-nesting fixture sweep (#1282 scaling proof: TS engine vs fixture 
           expect(row.warm.roundTrips).toBe(1);
           expect(row.warm.statements).toBe(1);
         } else {
-          expect(row.warm.roundTrips).toBeLessThanOrEqual(43);
+          // The cold bound (invariant 2): since the late-seat structure sweep
+          // the warm re-render of an unclosed past-cap chain repays up to
+          // 51 of its 53 round trips.
+          expect(row.warm.roundTrips).toBeLessThanOrEqual(53);
         }
       }
 
