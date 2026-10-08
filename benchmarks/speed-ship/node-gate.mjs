@@ -86,7 +86,7 @@ writeFileSync(resolve(dir, "node_modules/@bunny.net/edgescript-sdk/package.json"
 writeFileSync(resolve(dir, "node_modules/@bunny.net/edgescript-sdk/index.mjs"), "export const net={http:{serve(h){globalThis.__served=h;}}};");
 copyFileSync(resolve(bundle), resolve(dir, "bundle.mjs"));
 await import(pathToFileURL(resolve(dir, "bundle.mjs")).href);
-const SLOT = /data-slot-id="[0-9a-f]+"/g;
+const SLOT = /data-slot-id=(["'])[0-9a-f]+\1/g;
 for (const p of slice) {
   counters.posts = 0; counters.stmts = 0; counters.bytes = 0;
   const c0 = process.cpuUsage();
@@ -97,7 +97,7 @@ for (const p of slice) {
   const cu = process.cpuUsage(c0);
   writeFileSync(resolve(dir, fname(p)), text);
   let same = false;
-  try { same = r.status === 200 && text.replace(SLOT, "X") === readFileSync(resolve(REF, fname(p)), "utf8").replace(SLOT, "X"); } catch {}
+  try { same = r.status === 200 && text.replace(SLOT, "data-slot-id=$1X$1") === readFileSync(resolve(REF, fname(p)), "utf8").replace(SLOT, "data-slot-id=$1X$1"); } catch {}
   appendFileSync(resFile, JSON.stringify({ page: p, status: r.status, same, bytes: text.length, posts: counters.posts, stmts: counters.stmts, db_bytes: counters.bytes, wall_ms: wall, cpu_ms: Math.round((cu.user + cu.system) / 1000) }) + "\n");
 }
 server.close();

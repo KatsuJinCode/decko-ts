@@ -1,7 +1,8 @@
 """Speed-ship byte-identity and trip gate.
 
 Every render is one fresh hidden node process over the local trial-deck
-mirror. Byte identity masks only data-slot-id. The reference is the
+mirror. Byte identity masks only the data-slot-id value (its quote style is
+compared, as Ruby writes it). The reference is the
 integration tip's normal render (the baseline mode of a bundle built at the
 tip), rendered once per page into --ref-dir.
 
@@ -16,7 +17,7 @@ import argparse, hashlib, json, os, random, re, subprocess, sys, urllib.parse
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
 NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-SLOT = re.compile(rb'data-slot-id="[0-9a-f]+"')
+SLOT = re.compile(rb'data-slot-id=(["\'])[0-9a-f]+\1')
 POOL = r"C:\localProjects\brandonDojoTech\recovery\page-sample-pool.txt"
 
 # WRITEUP rounds 5-8: the 8 gate pages, the 4 holdout pages, rounds 7-8's 12.
@@ -66,7 +67,7 @@ def fname(page):
 
 def norm(path):
     with open(path, "rb") as f:
-        return SLOT.sub(b'data-slot-id="X"', f.read())
+        return SLOT.sub(rb'data-slot-id=\1X\1', f.read())
 
 
 def render(bundle, page, mode, latency, out, extra="", db=None, timeout=110):

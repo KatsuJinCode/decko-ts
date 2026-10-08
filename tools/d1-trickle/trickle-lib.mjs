@@ -242,7 +242,7 @@ export function manifest(plan, unitsDone) {
  *  between two renders of the same data: data-slot-id="..." and the same
  *  attribute HTML-escaped inside another attribute (popover content). */
 export function maskSlots(s) {
-  return s.replace(/data-slot-id="[^"]*"/g, 'data-slot-id=""').replace(/data-slot-id=&quot;[0-9a-f]*&quot;/g, "data-slot-id=&quot;&quot;");
+  return s.replace(/data-slot-id=(?:"[^"]*"|'[^']*')/g, 'data-slot-id=""').replace(/data-slot-id=&quot;[0-9a-f]*&quot;/g, "data-slot-id=&quot;&quot;");
 }
 
 // ---------------------------------------------------------------------------

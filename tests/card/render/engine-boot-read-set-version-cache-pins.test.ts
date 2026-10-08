@@ -291,7 +291,7 @@ function classifyBootReads(deck: BootDeck): BootReadSet {
  *  identical, an internal work log). Everything
  *  else in the bytes is compared verbatim. */
 function slotNormalized(html: string): string {
-  return html.replace(/data-slot-id="[0-9a-f]{20}"/g, 'data-slot-id="<nonce>"');
+  return html.replace(/data-slot-id=(["'])[0-9a-f]{20}\1/g, 'data-slot-id="<nonce>"');
 }
 
 const ORIGINAL_BODY = "THE ORIGINAL BODY";
