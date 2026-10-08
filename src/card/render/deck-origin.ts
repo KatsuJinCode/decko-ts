@@ -71,5 +71,38 @@ export const NO_REQUEST_ORIGIN = "";
 /** `Card::Env.origin` for a render surface; `false` is the view-function
  *  surface. Every `card_url` consumer reads the value through this. */
 export function envOriginForSurface(pageSurface: boolean): string {
+  if (deckEnvironment?.origin !== undefined) return deckEnvironment.origin;
   return pageSurface ? DECK_ORIGIN : NO_REQUEST_ORIGIN;
+}
+
+/** A deck's own process configuration, for hosts that serve a deck other
+ *  than the graded one (the reference harness's synthetic decks, a fresh
+ *  install). Unset keeps the graded deployment's two-surface model above.
+ *   - `origin`: `Cardio.config.deck_origin`, without a trailing slash. Ruby
+ *     reads it on every surface (`Env.origin = deck_origin || request
+ *     origin`), so when set it answers for page and view renders alike.
+ *   - `defaultHtmlView`: `Cardio.config.default_html_view` for the page
+ *     surface (the view surface already reads the deployment config,
+ *     render.ts#defaultHtmlViewConfig). */
+export interface DeckEnvironment {
+  readonly origin?: string;
+  readonly defaultHtmlView?: string;
+}
+
+let deckEnvironment: DeckEnvironment | undefined;
+
+export function setDeckEnvironment(env: DeckEnvironment | undefined): void {
+  deckEnvironment = env;
+}
+
+/** `default_html_view` while a page render is active: the deck's own
+ *  setting when one is installed, else the graded deployment's `:content`. */
+export function pageDefaultHtmlView(): string {
+  return deckEnvironment?.defaultHtmlView ?? "content";
+}
+
+/** The deck's own `default_html_view`, if installed: Ruby has one setting
+ *  for both surfaces, so the view surface reads it too. */
+export function deckDefaultHtmlView(): string | undefined {
+  return deckEnvironment?.defaultHtmlView;
 }

@@ -239,7 +239,8 @@ describe("createCard — auto-created side cards get the assigned type", () => {
       right_id: null,
       // defaultTypeId -> *all+*default rule card's type_id = 2 (RichText)
       type_id: 2,
-      db_content: null,
+      // set_content stores `standard_db_content || ""` (content.rb:1-5)
+      db_content: "",
     });
     expect(result.subactions).toHaveLength(1);
     expect(result.subactions[0]).toMatchObject({ cardId: banana!.id });

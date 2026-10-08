@@ -1,0 +1,5 @@
+app/log/
+app/tmp/
+app/db/
+app/files/
+app/public/

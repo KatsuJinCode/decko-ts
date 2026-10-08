@@ -62,4 +62,18 @@ describe("oracle deck inflection table (deployed deck boot data)", () => {
     expect(DeckoName.parse("Participants").key).toBe("participant");
     expect(DeckoName.parse("musings").key).toBe("musing");
   });
+
+  it("carries the card gem's irregular grave/graveyard (Ruby keys pinned)", () => {
+    // card-1.110.0 config/initializers/inflections.rb `inflect.irregular
+    // "grave", "graveyard"`; expected keys are cardname 0.20.0's output with
+    // that initializer loaded. "Graveyards" stays whole: singularizing twice
+    // gives graveyard -> grave, an unstable key, which cardname refuses.
+    applyDeckInflections(ORACLE_DECK_INFLECTIONS);
+    expect(DeckoName.parse("Graveyard").key).toBe("grave");
+    expect(DeckoName.parse("Graveyards").key).toBe("graveyards");
+    expect(DeckoName.parse("Grave").key).toBe("grave");
+    expect(DeckoName.parse("Graves").key).toBe("grafe");
+    expect(DeckoName.parse("Glass").key).toBe("glass");
+    expect(DeckoName.parse("Classes").key).toBe("class");
+  });
 });

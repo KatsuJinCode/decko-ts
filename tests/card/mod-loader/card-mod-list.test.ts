@@ -186,10 +186,10 @@ describe("card-mod-list through the mod loader (A/B)", () => {
       "one_line_content",
       "list",
       // abstract/01_list/html_views.rb:56-58's editor loop - all five of
-      // the loop's views the port registers: :checkbox/:select/
-      // :multiselect/:autocomplete as views in their own right; :radio
-      // rides the :input dispatch (listFamilyInputHtml).
+      // the loop's views, each registered as a view in its own right
+      // (:radio too; the :input dispatch reaches the same bodies).
       "checkbox",
+      "radio",
       "select",
       "multiselect",
       "autocomplete",

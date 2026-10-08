@@ -3135,36 +3135,14 @@ const setModules: ModSetModuleFile[] = [
   // pattern: all (loader.rb#parts_from_path: "all/foo" -> "All::Foo")
   {
     // set/all/board.rb + the all/board/* subdir (5 files + 1 haml):
-    // BOARD_TABS hash, BOARD_TAB_NAMES, format :html wrapper :board +
-    // :board/:cardboard views + the breadcrumb/board_menu/
+    // BOARD_TABS hash, BOARD_TAB_NAMES, format :html wrapper :board, the
+    // breadcrumb/board_menu/
     // switch_to_edit_link/board_link_opts/board_slot_selector helpers,
     // default_board_tab (which calls show_guide_tab? - delegates to
     // tab_visibility.rb's show_*_tab?). All depend on wrap_with_modal
     // + haml :board + tabs helper. NOT ported: rails-runtime.
     setPath: "all/board",
-    formats: {
-      html: {
-        views: [
-          // board.rb:3-11 view :board, perms: :update, unknown: true,
-          // cache: :never, wrap: :board (PORTED, board lane - the wrapper
-          // bytes + the board grid + the tab sidebar are emitted in the
-          // view fn; the wrap config is a declarative record)
-          {
-            view: "board",
-            viewFn: boardView,
-            config: { perms: "update", unknown: true, cache: "never" },
-          },
-          // board.rb:13 view :cardboard, :board - the alias (board's BODY
-          // without the wrapper or the perms directive; the captured
-          // anonymous arm renders)
-          {
-            view: "cardboard",
-            viewFn: cardboardView,
-            config: { unknown: true, cache: "never" },
-          },
-        ],
-      },
-    },
+    // :board and :cardboard live in set/all/editing.rb (registered there).
   },
   {
     // set/all/board/board_pills.rb: BOARD_PILL_* constants + board_pills,
@@ -3379,6 +3357,23 @@ const setModules: ModSetModuleFile[] = [
     formats: {
       html: {
         views: [
+          // editing.rb:3-11 view :board, perms: :update, unknown: true,
+          // cache: :never, wrap: :board (PORTED, board lane - the wrapper
+          // bytes + the board grid + the tab sidebar are emitted in the
+          // view fn; the wrap config is a declarative record)
+          {
+            view: "board",
+            viewFn: boardView,
+            config: { perms: "update", unknown: true, cache: "never" },
+          },
+          // editing.rb:13 view :cardboard, :board - the alias (board's BODY
+          // without the wrapper or the perms directive; the captured
+          // anonymous arm renders)
+          {
+            view: "cardboard",
+            viewFn: cardboardView,
+            config: { unknown: true, cache: "never" },
+          },
           { view: "edit_buttons", viewFn: editButtonsView },
           { view: "just_deleted", viewFn: justDeletedView, config: { unknown: true } },
           { view: "edit_nests", viewFn: editNestsView, config: { cache: "never" } },

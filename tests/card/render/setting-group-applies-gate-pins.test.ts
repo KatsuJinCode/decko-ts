@@ -159,3 +159,25 @@ describe("setting-group applies gate (census M2, Message editing-group shape)", 
     },
   );
 });
+
+describe("visible_setting_codenames (card-mod-rules set/type/set.rb:73-75)", () => {
+  it("lists every applicable setting for a Set card, and nothing for a non-Set card", async () => {
+    const s = await seedDeck();
+    await seedCard(s, { id: 10, name: "Pointer", codename: "pointer", typeId: 2 });
+    await seedCard(s, { id: 50, name: "*home", codename: "home", typeId: 10 });
+    await seedCard(s, { id: 52, name: "*self", codename: "self", typeId: 2 });
+    await seedCard(s, { id: 51, leftId: 50, rightId: 52, typeId: 5 });
+    const all = [
+      "structure", "default", "autoname", "create", "read", "update", "delete", "captcha",
+      "head", "layout", "style", "script", "help", "input_type", "guide",
+      "content_options", "content_option_view", "on_create", "on_update", "on_delete",
+      "thanks", "follow_fields", "follow",
+    ];
+    await s.fetcher.codenames.ensureLoaded();
+    expect(await s.engine.visibleSettingCodenamesFor("Message+Conversation+*type plus right")).toEqual(
+      all.filter((c) => c !== "content_options" && c !== "content_option_view"),
+    );
+    expect(await s.engine.visibleSettingCodenamesFor("*home+*self")).toEqual(all);
+    expect(await s.engine.visibleSettingCodenamesFor("Message")).toBeUndefined();
+  });
+});

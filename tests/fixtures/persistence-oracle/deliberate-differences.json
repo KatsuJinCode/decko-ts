@@ -1,0 +1,115 @@
+{
+  "about": "Declared, reasoned differences between the TypeScript engine and the Ruby oracle. tools/persistence/compare-persist.mjs counts a step as deliberate only when its row delta is exactly the list below; any other change to that step is a mismatch.",
+  "differences": [
+    {
+      "step": 7,
+      "title": "Re-creating a compound card while one of its parts is trashed",
+      "reason": "Ruby looks for a trashed junction to revive before it has resolved the revived part's id, finds none, and inserts a second cards row for the same (left_id, right_id) pair. That insert only succeeds on the oracle deck, which lacks the production schema's UNIQUE (left_id, right_id) index; on the production schema the same Ruby save fails. The TypeScript engine revives the existing trashed junction row instead (recording the revival's name, type, content, trash and part changes), which keeps one row per name and is valid on the production schema.",
+      "deltaFaults": [
+        {
+          "table": "cards",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B~2",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B",
+            "name": null,
+            "key": null,
+            "codename": null,
+            "left_id": "PersistProbe Renamed",
+            "right_id": "PersistProbe B",
+            "trash": 0,
+            "type_id": 2,
+            "db_content": "beta",
+            "creator_id": 1,
+            "updater_id": 1,
+            "read_rule_class": "*all plus",
+            "read_rule_id": 10,
+            "current_revision_id": null,
+            "references_expired": null,
+            "created_at": "T",
+            "updated_at": "T"
+          }
+        },
+        {
+          "table": "cards",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B",
+          "ts": {
+            "id": "PersistProbe Renamed+PersistProbe B",
+            "name": null,
+            "key": null,
+            "codename": null,
+            "left_id": "PersistProbe Renamed",
+            "right_id": "PersistProbe B",
+            "trash": 0,
+            "type_id": 2,
+            "db_content": "beta",
+            "creator_id": 1,
+            "updater_id": 1,
+            "read_rule_class": "*all plus",
+            "read_rule_id": 10,
+            "current_revision_id": null,
+            "references_expired": null,
+            "created_at": "T",
+            "updated_at": "T"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/02/1",
+          "ts": {
+            "id": "PersistProbe Renamed+PersistProbe B/02/1",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/02",
+            "field": 1,
+            "value": "2"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/02/2",
+          "ts": {
+            "id": "PersistProbe Renamed+PersistProbe B/02/2",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/02",
+            "field": 2,
+            "value": "beta"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/02/3",
+          "ts": {
+            "id": "PersistProbe Renamed+PersistProbe B/02/3",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/02",
+            "field": 3,
+            "value": "f"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/02/4",
+          "ts": {
+            "id": "PersistProbe Renamed+PersistProbe B/02/4",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/02",
+            "field": 4,
+            "value": "PersistProbe Renamed"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/02/5",
+          "ts": {
+            "id": "PersistProbe Renamed+PersistProbe B/02/5",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/02",
+            "field": 5,
+            "value": "PersistProbe B"
+          }
+        }
+      ]
+    }
+  ]
+}

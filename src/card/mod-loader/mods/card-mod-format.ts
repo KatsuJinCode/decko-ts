@@ -230,10 +230,11 @@ import { UnsupportedViewError } from "../../render/format.js";
 // :url_link anchor escapes its href the way Rails' content_tag does
 // (links.rb:101-106).
 import { h } from "../../render/slot-html.js";
+import { DeckoName } from "../../name.js";
 // 2026-10-01::link/:nav_link share the flat
 // HTML_VIEWS bodies (the urlView doctrine at :300-304 of this file) — one
 // fn per view, so the two registrations cannot drift again.
-import { linkView, navLinkView } from "../../render/views.js";
+import { HTML_VIEWS, linkView, navLinkView } from "../../render/views.js";
 import { popoverLink } from "./card-mod-bootstrap.js";
 import type {
   DeckoModManifest,
@@ -657,6 +658,23 @@ const blankView: ViewFn = () => "";
  *  labeled_content}"`. */
 const labeledView: ViewFn = ({ fmt }) =>
   `${fmt.card.name.s}: ${fmt.renderView("labeled_content")}`;
+
+/** set/all/html.rb:5-7 and set/type/cardtype.rb:2-4 view :type, unknown:
+ *  true: `link_to_card card.type_card, nil, class: "cardtype"` - the html
+ *  format's type link (the base format's plain type name, base.rb:57, is
+ *  shadowed in html by the html module). */
+const htmlTypeView: ViewFn = ({ fmt }) => {
+  const type = fmt.card.typeName ?? "";
+  return `<a class="cardtype known-card" href="/${h(DeckoName.parse(type).urlKey)}">${type}</a>`;
+};
+
+/** set/all/html/views.rb:67-72 view :labeled, unknown: :labeled, cache:
+ *  :yes - the html format's wrapped row (title + labeled content + menu),
+ *  which shadows base.rb's "name: content" arm in html. The body is the
+ *  shared engine view (render/views.ts labeledView), captured before any
+ *  mod registration writes the live table. */
+const ENGINE_LABELED: ViewFn | undefined = HTML_VIEWS["labeled"];
+const htmlLabeledView: ViewFn = (ctx) => (ENGINE_LABELED === undefined ? "" : ENGINE_LABELED(ctx));
 
 // ---------------------------------------------------------------------------
 // error views (set/all/error.rb)
@@ -1687,6 +1705,11 @@ const setModules: ModSetModuleFile[] = [
     // view) + base block (sanitize_html). Not ported: rails
     // (link_to_card, wrap_with, delegate classy, Rails::Html::FullSanitizer).
     setPath: "all/html",
+    formats: {
+      html: {
+        views: [{ view: "type", viewFn: htmlTypeView, config: { unknown: true } }],
+      },
+    },
   },
   {
     // set/all/html/frame.rb:1-51 html format block (view :flash + the
@@ -1730,6 +1753,7 @@ const setModules: ModSetModuleFile[] = [
           { view: "short_content", viewFn: shortContentView },
           { view: "one_line_content", viewFn: allHtmlViewsOneLineContentView, config: { unknown: "mini_unknown" } },
           { view: "raw_one_line_content", viewFn: allHtmlViewsRawOneLineContentView, config: { unknown: "mini_unknown" } },
+          { view: "labeled", viewFn: htmlLabeledView, config: { unknown: "labeled", cache: "yes" } },
         ],
       },
     },
@@ -1900,6 +1924,7 @@ const setModules: ModSetModuleFile[] = [
     formats: {
       html: {
         views: [
+          { view: "type", viewFn: htmlTypeView, config: { unknown: true } },
           { view: "add_link", viewFn: cardtypeAddLinkView },
           { view: "add_button", viewFn: cardtypeAddButtonView },
           { view: "add_url", viewFn: cardtypeAddUrlView },

@@ -392,6 +392,16 @@ const multiselectView: ViewFn = (ctx) => {
 
 /** view :autocomplete (html_views.rb:56-58's loop + :60-62
  *  autocomplete_input) - the fifth editor view of the loop. */
+/** view :radio (html_views.rb:56-58's loop + :68-70 radio_input) - the
+ *  loop's third editor view, with the same Abstract::List membership gate
+ *  as :checkbox. */
+const radioView: ViewFn = (ctx) => {
+  if (!listFamilyCard(ctx.fmt)) {
+    throw new UnsupportedViewError("radio", ctx.fmt.card.name.s);
+  }
+  return radioInputHtml(ctx);
+};
+
 const autocompleteView: ViewFn = (ctx) => {
   if (!listFamilyCard(ctx.fmt)) {
     throw new UnsupportedViewError("autocomplete", ctx.fmt.card.name.s);
@@ -477,6 +487,8 @@ function optionsHashForInput(ctx: ViewContext, editor: string): string[] {
 function radioInputHtml(ctx: ViewContext): string {
   const card = ctx.fmt.card;
   const optionNames = optionsHashForInput(ctx, "radio");
+  // radio_input.haml: an empty options hash renders "no options" in the list
+  if (optionNames.length === 0) return "<ul class='pointer-radio-list'>\nno options\n</ul>\n";
   const firstName = itemNames(card, undefined)[0];
   const inputName = `pointer_radio_button-${card.key}`;
   const rows = optionNames
@@ -1230,6 +1242,11 @@ const cardModList: DeckoModManifest = {
               viewFn: checkboxView,
               // source: view :checkbox (html_views.rb:50-52's loop, :60-62) -
               // no settings declared, so the loader defaults apply.
+            },
+            {
+              view: "radio",
+              viewFn: radioView,
+              // source: view :radio (html_views.rb:56-58's loop, :68-70)
             },
             {
               view: "select",
