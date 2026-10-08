@@ -9,8 +9,8 @@
 //   end
 //
 // BetterErrors is never loaded in a stock deck. The gem reaches a deck only
-// through card-mod-monkey, a development-group dependency; the bundle a deck
-// is built from (decko plus card-mod-defaults) does not contain it. The
+// through card-mod-monkey, a development-group dependency; the bundle a
+// generated deck's Gemfile builds does not contain it. The
 // constant is resolved before any argument is evaluated, so on every card,
 // with or without a current server error, the view body raises
 //
