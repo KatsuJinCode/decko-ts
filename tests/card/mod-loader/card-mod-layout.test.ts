@@ -34,6 +34,7 @@
 // "Oracle Layout Probe+*self+*guide" (which the mod's prepareEngine warms).
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { expectViewWithoutMod } from "../../support/native-views.js";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
@@ -271,7 +272,7 @@ describe("card-mod-layout through the mod loader (A/B)", () => {
     await expect(s.engine.render(RULE, "head_content")).rejects.toThrow(
       UnsupportedViewError,
     );
-    await expect(s.engine.render(HEAD, "input")).rejects.toThrow(UnsupportedViewError);
+    await expectViewWithoutMod(s.engine.render(HEAD, "input"), "input");
   });
 
   it("the navbar family renders from the flat page-lane table (set/all universality)", async () => {
@@ -700,7 +701,7 @@ describe("card-mod-layout through the mod loader (A/B)", () => {
 
   it("WITH the mod: :input outside the Self::Head set raises the unsupported-view error", async () => {
     const s = storage!;
-    await expect(s.engine.render(PROBE, "input")).rejects.toThrow(UnsupportedViewError);
+    await expectViewWithoutMod(s.engine.render(PROBE, "input"), "input");
   });
 
   it("WITH the mod: :bar_bottom is empty on *head and UNCHANGED elsewhere (self/head.rb:23-25)", async () => {

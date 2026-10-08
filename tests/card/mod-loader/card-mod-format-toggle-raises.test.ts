@@ -41,6 +41,7 @@
 //     pin, don't guess.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { expectViewWithoutMod } from "../../support/native-views.js";
 import {
   bindModLoaderToEngine,
   createRenderTestStorage,
@@ -91,11 +92,9 @@ afterAll(() => {
 });
 
 describe("card-mod-format set/type/toggle — :input + :labeled_editor raise parity", () => {
-  it("WITHOUT the mod: both views raise UnsupportedViewError", async () => {
+  it("WITHOUT the mod: :labeled_editor raises; the compiled :input renders", async () => {
     const s = storage!;
-    await expect(
-      s.engine.render("Oracle Toggle Probe", "input"),
-    ).rejects.toThrow(UnsupportedViewError);
+    await expectViewWithoutMod(s.engine.render("Oracle Toggle Probe", "input"), "input");
     await expect(
       s.engine.render("Oracle Toggle Probe", "labeled_editor"),
     ).rejects.toThrow(UnsupportedViewError);

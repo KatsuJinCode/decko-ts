@@ -49,6 +49,7 @@
 // verdict algebra.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { expectViewWithoutMod } from "../../support/native-views.js";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
@@ -484,9 +485,7 @@ describe("card-mod-edit EDIT-VIEWS lane", () => {
       // the raise-leadview :lead/:configs flats (c52669f) and this suite
       // made for bar_setting_list (e45fc71).
       if (view === "read_formgroup") continue;
-      await expect(s.engine.render("Oracle Basics", view)).rejects.toThrow(
-        UnsupportedViewError,
-      );
+      await expectViewWithoutMod(s.engine.render("Oracle Basics", view), view);
     }
     // p20-email-views seam arm: the flat read_formgroup renders WITHOUT the
     // mod — the slot-wrapped form-group whose content slot carries the

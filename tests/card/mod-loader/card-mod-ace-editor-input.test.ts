@@ -33,6 +33,7 @@
 // surface) are not ported here.
 
 import { describe, expect, it, beforeAll, afterAll } from "vitest";
+import { expectViewWithoutMod } from "../../support/native-views.js";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
@@ -151,9 +152,7 @@ describe("E10 view :input — the ace arm at the tip", () => {
       await seedCard(fresh, { id: 101, name: "Solo Html", typeId: 51, dbContent: "<p>x</p>" });
       fresh.fetcher.installNameEnvironment();
       await fresh.fetcher.codenames.ensureLoaded();
-      await expect(fresh.engine.render("Solo Html", "input")).rejects.toThrow(
-        UnsupportedViewError,
-      );
+      await expectViewWithoutMod(fresh.engine.render("Solo Html", "input"), "input");
     } finally {
       fresh.close();
     }

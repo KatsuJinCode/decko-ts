@@ -49,6 +49,7 @@
 //   captured anonymous edit_form bytes).
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { expectViewWithoutMod } from "../../support/native-views.js";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
@@ -280,12 +281,8 @@ describe("card-mod-edit CORE EDIT-FORM PATH (write-path slice 3)", () => {
   it("WITHOUT the mod: :edit / :edit_form are unsupported views", async () => {
     const s = storage!;
     s.engine.viewer = { signedIn: true, actorId: 7 }; // the Editor party
-    await expect(s.engine.render("Oracle Basics", "edit")).rejects.toThrow(
-      UnsupportedViewError,
-    );
-    await expect(s.engine.render("Oracle Basics", "edit_form")).rejects.toThrow(
-      UnsupportedViewError,
-    );
+    await expectViewWithoutMod(s.engine.render("Oracle Basics", "edit"), "edit");
+    await expectViewWithoutMod(s.engine.render("Oracle Basics", "edit_form"), "edit_form");
   });
 
   it("WITH the mod: signed-in :edit_form matches the oracle bytes (both cards)", async () => {

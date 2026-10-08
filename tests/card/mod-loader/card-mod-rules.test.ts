@@ -43,6 +43,7 @@
 // still raises.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { expectViewWithoutMod } from "../../support/native-views.js";
 import {
   bindModLoaderToEngine,
   createRenderTestStorage,
@@ -124,9 +125,7 @@ describe("card-mod-rules through the mod loader (A/B)", () => {
     await expect(s.engine.render("RichText+*self", "set_label")).rejects.toThrow(
       UnsupportedViewError,
     );
-    await expect(s.engine.render("RichText+*self", "input")).rejects.toThrow(
-      UnsupportedViewError,
-    );
+    await expectViewWithoutMod(s.engine.render("RichText+*self", "input"), "input");
     await expect(s.engine.render("Cardtype", "grouped_list")).rejects.toThrow(
       UnsupportedViewError,
     );
@@ -172,9 +171,7 @@ describe("card-mod-rules through the mod loader (A/B)", () => {
     await expect(s.engine.render("Oracle Plain Probe", "set_label")).rejects.toThrow(
       UnsupportedViewError,
     );
-    await expect(s.engine.render("Oracle Plain Probe", "input")).rejects.toThrow(
-      UnsupportedViewError,
-    );
+    await expectViewWithoutMod(s.engine.render("Oracle Plain Probe", "input"), "input");
     await expect(s.engine.render("Oracle Plain Probe", "grouped_list")).rejects.toThrow(
       UnsupportedViewError,
     );
