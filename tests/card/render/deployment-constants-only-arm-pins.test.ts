@@ -68,7 +68,7 @@ const FROZEN_RAILS =
 
 // The frozen capture-era main-stylesheet attachment (the corpus's own digits).
 const FROZEN_CSS =
-  "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com/files/45514/1786554352.css";
+  "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/45514/1786554352.css";
 
 afterEach(() => {
   setDeploymentFollowLiveConfig(undefined);
@@ -109,7 +109,7 @@ describe("deployment constants-only arm: the preset arms the constants", () => {
     expect(LIVE_DEPLOYMENT_CONSTANTS.recaptchaSiteKey).toBe(
       "6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW",
     );
-    expect(LIVE_DEPLOYMENT_CONSTANTS.deckoRootUrl).toBe("https://example.com/");
+    expect(LIVE_DEPLOYMENT_CONSTANTS.deckoRootUrl).toBe("https://culturesmith.com/");
     expect(LIVE_DEPLOYMENT_CONSTANTS.defaultHtmlViewNest).toBe("content");
     // the 4-entry SRI map, one per remote CDN script src
     expect(Object.keys(LIVE_DEPLOYMENT_CONSTANTS.scriptIntegrityBySrc ?? {})).toEqual([
@@ -131,14 +131,14 @@ describe("deployment constants-only arm: the preset arms the constants", () => {
   it("the compiled-CSS revision rewrites the stylesheet only, never the .js asset", () => {
     setDeploymentFollowLiveConfig(LIVE_DEPLOYMENT_CONSTANTS);
     expect(applyDeploymentCssRevision(FROZEN_CSS)).toBe(
-      "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com/files/45514/1790384218.css",
+      "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/45514/1790384218.css",
     );
     expect(
       applyDeploymentCssRevision(
-        "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com/files/50617/1768074298.js",
+        "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/50617/1768074298.js",
       ),
     ).toBe(
-      "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com/files/50617/1768074298.js",
+      "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/50617/1768074298.js",
     );
   });
 
@@ -146,7 +146,7 @@ describe("deployment constants-only arm: the preset arms the constants", () => {
     setDeploymentFollowLiveConfig(LIVE_DEPLOYMENT_CONSTANTS);
     expect(footerDeckoVersion()).toBe("0.19.1");
     expect(recaptchaSiteKey()).toBe("6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW");
-    expect(deckoRootUrl()).toBe("https://example.com/");
+    expect(deckoRootUrl()).toBe("https://culturesmith.com/");
     expect(deploymentDefaultHtmlViewNest()).toBe("content");
   });
 });

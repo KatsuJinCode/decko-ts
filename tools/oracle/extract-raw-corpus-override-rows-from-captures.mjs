@@ -4,7 +4,7 @@
 // every entry of the M8 skin:record class, extended by the m8-siblings-litera
 // lane 2026-10-03 to the two bootstrap SCSS source siblings and to litera
 // skin -- the one bootswatch skin with no capture record -- via a LIVE
-// ?view=raw capture of the reference deck under the same gates, and by the
+// ?view=raw capture of culturesmith.com under the same gates, and by the
 // litera-custom-skin lane 2026-10-03 to litera skin customized 34530 via the
 // same LIVE ?view=raw route, class-calibrated on journal skin customized
 // 34179 whose oracle envelope the live raw view reproduces byte-exact).
@@ -84,12 +84,12 @@ const { RAW_CORPUS_DB } = await import(
 );
 
 const EXPECTED_CAPTURE_DEFAULT =
-  "WORK_DIR/p21-probe-results/" +
+  "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/p21-probe-results/" +
   "nest-tip-shard-000028/html/000028-journal_skin_customized-_record_.expected.html";
 const REPO_ROOT = path.resolve(HERE, "..", "..");
 const VIEW_LANE_DIR = path.join(REPO_ROOT, "tmp", "raw-ground-truth", "expected-v2", "view-lane");
 const P21_HTML_DIR =
-  "WORK_DIR/p21-probe-results/nest-tip-shard-000028/html";
+  "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/p21-probe-results/nest-tip-shard-000028/html";
 
 // The M8 skin:record class, residual-classes-dfe642b-w5.txt lines 104-123
 // (class [20], header line 103). Shard membership as captured there; the
@@ -153,26 +153,26 @@ const SHARED_SOURCE_FAMILY = [22736, 34179, 34530, 38274];
 // '</div><script>' in the raw-view body) must reproduce both calibration
 // contents byte-exact or this arm THROWS -- never emits on a broken rule.
 const LIVE_RAW_VIEW_DIR =
-  "WORK_DIR/m8-siblings-litera-live-probe";
+  "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/m8-siblings-litera-live-probe";
 const LIVE_LITERA_FETCHES = [
   {
-    file: "live-raw-view-litera-skin-reference-deck-2026-10-03.html",
+    file: "live-raw-view-litera-skin-culturesmith-2026-10-03.html",
     fetchedAt: "2026-10-03T11:39:02Z",
-    url: "https://the reference deck/litera_skin?view=raw",
+    url: "https://culturesmith.com/litera_skin?view=raw",
     status: 200,
     sha256: "51b8c9d95ebe226d09ce0adb75a31336544dbbe7e3b52837124c4e166229e932",
   },
   {
-    file: "live-raw-view-litera-skin-reference-deck-2026-10-03-refetch.html",
+    file: "live-raw-view-litera-skin-culturesmith-2026-10-03-refetch.html",
     fetchedAt: "2026-10-03T11:42:24Z",
-    url: "https://the reference deck/litera_skin?view=raw",
+    url: "https://culturesmith.com/litera_skin?view=raw",
     status: 200,
     sha256: "e621584e449ff4343b7414d5a62723608ceda382b3324672e1abca5018327042",
   },
 ];
 const LIVE_CALIBRATION_SKINS = [
-  { name: "cerulean skin", file: "live-raw-view-cerulean-skin-reference-deck-2026-10-03.html" },
-  { name: "journal skin", file: "live-raw-view-journal-skin-reference-deck-2026-10-03.html" },
+  { name: "cerulean skin", file: "live-raw-view-cerulean-skin-culturesmith-2026-10-03.html" },
+  { name: "journal skin", file: "live-raw-view-journal-skin-culturesmith-2026-10-03.html" },
 ];
 const LIVE_RAW_WRAPPER_START = '<div id="main">';
 const LIVE_RAW_WRAPPER_END = "</div><script>";
@@ -703,7 +703,7 @@ for (const { name: siblingName, shard: siblingShard } of M8_BOOTSTRAP_SIBLINGS) 
     classRow:
       "M8 skin:record class straggler -- the one bootswatch skin with no capture record " +
       "(m8-siblings-litera lane 2026-10-03, restored from the LIVE site)",
-    source: "LIVE the reference deck ?view=raw capture (2026-10-03, two byte-stable fetches)",
+    source: "LIVE culturesmith.com ?view=raw capture (2026-10-03, two byte-stable fetches)",
     file: path.join(LIVE_RAW_VIEW_DIR, LIVE_LITERA_FETCHES[0].file),
     captureId: 33872,
     envelopeFields: {
@@ -760,7 +760,7 @@ for (const { name: siblingName, shard: siblingShard } of M8_BOOTSTRAP_SIBLINGS) 
 // for the plain name (the m8 lane swept: only adjacent junction cards 34533 /
 // 45366 were captured). The LIVE site serves the card's stored bytes through
 // the same ?view=raw route (titles verified "litera skin customized -
-// the reference deck", so the right card was served). Class calibration: the same
+// Culturesmith", so the right card was served). Class calibration: the same
 // wrapper rule on journal skin customized's live raw view reproduces 34179's
 // ORACLE envelope content byte-exact (single occurrence) -- pins
 // live-stored==oracle-stored for the customized class, complementing the
@@ -772,19 +772,19 @@ for (const { name: siblingName, shard: siblingShard } of M8_BOOTSTRAP_SIBLINGS) 
 // journal base vs journal customized vs 34179's oracle envelope).
 {
   const LIVE_CUSTOMIZED_DIR =
-    "WORK_DIR/litera-custom-live-probe";
+    "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/litera-custom-live-probe";
   const LIVE_LITERA_CUSTOMIZED_FETCHES = [
     {
-      file: "live-raw-view-litera-skin-customized-reference-deck-2026-10-04.html",
+      file: "live-raw-view-litera-skin-customized-culturesmith-2026-10-04.html",
       fetchedAt: "2026-10-04T04:39:58.838Z",
-      url: "https://the reference deck/litera_skin_customized?view=raw",
+      url: "https://culturesmith.com/litera_skin_customized?view=raw",
       status: 200,
       sha256: "c2366910a2d4f65a137e50117e58dffc7482231a581280b154a4e9bf6dc3424f",
     },
     {
-      file: "live-raw-view-litera-skin-customized-reference-deck-2026-10-04-refetch.html",
+      file: "live-raw-view-litera-skin-customized-culturesmith-2026-10-04-refetch.html",
       fetchedAt: "2026-10-04T04:40:00.977Z",
-      url: "https://the reference deck/litera_skin_customized?view=raw",
+      url: "https://culturesmith.com/litera_skin_customized?view=raw",
       status: 200,
       sha256: "bbe43a9803b516d53baf11f470b58d02c7021e110a6dda80104ebfc06cd5fee4",
     },
@@ -793,7 +793,7 @@ for (const { name: siblingName, shard: siblingShard } of M8_BOOTSTRAP_SIBLINGS) 
   // calibration (customized class, this lane's recorded fetch vs 34179's
   // oracle envelope; canonical p21 file, independent of --capture).
   const P21_JOURNAL_CUSTOMIZED_CANONICAL =
-    "WORK_DIR/p21-probe-results/" +
+    "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/p21-probe-results/" +
     "nest-tip-shard-000028/html/000028-journal_skin_customized-_record_.expected.html";
   const oracleEnvelope34179 = JSON.parse(readFileSync(P21_JOURNAL_CUSTOMIZED_CANONICAL, "utf8"));
   // the rule-calibration oracle envelopes (plain class) -- the shard-record
@@ -837,7 +837,7 @@ for (const { name: siblingName, shard: siblingShard } of M8_BOOTSTRAP_SIBLINGS) 
   }
   {
     const liveBody = readFileSync(
-      path.join(LIVE_CUSTOMIZED_DIR, "live-raw-view-journal-skin-customized-reference-deck-2026-10-04.html"),
+      path.join(LIVE_CUSTOMIZED_DIR, "live-raw-view-journal-skin-customized-culturesmith-2026-10-04.html"),
       "utf8",
     );
     const ex = extractLiveRawContent(liveBody);
@@ -845,7 +845,7 @@ for (const { name: siblingName, shard: siblingShard } of M8_BOOTSTRAP_SIBLINGS) 
     calibrationEvidence.push({
       skin: "journal skin customized",
       cardClass: "customized bootswatch skin",
-      file: "live-raw-view-journal-skin-customized-reference-deck-2026-10-04.html",
+      file: "live-raw-view-journal-skin-customized-culturesmith-2026-10-04.html",
       oracle: "p21-journal-skin-customized",
       oracleSource: "p21 oracle record capture 2026-09-30 (envelope id 34179)",
       oracleContentChars: oracleEnvelope34179.content.length,
@@ -940,7 +940,7 @@ for (const { name: siblingName, shard: siblingShard } of M8_BOOTSTRAP_SIBLINGS) 
     classRow:
       "M8 skin:record class sibling -- litera skin customized, no capture record, " +
       "restored from the LIVE site (litera-custom-skin lane 2026-10-03)",
-    source: "LIVE the reference deck ?view=raw capture (2026-10-04T04:39/04:40Z, two byte-stable fetches)",
+    source: "LIVE culturesmith.com ?view=raw capture (2026-10-04T04:39/04:40Z, two byte-stable fetches)",
     file: path.join(LIVE_CUSTOMIZED_DIR, LIVE_LITERA_CUSTOMIZED_FETCHES[0].file),
     captureId: 34530,
     envelopeFields: {
@@ -965,7 +965,7 @@ for (const { name: siblingName, shard: siblingShard } of M8_BOOTSTRAP_SIBLINGS) 
     },
     liveCapture: {
       captureDir: LIVE_CUSTOMIZED_DIR,
-      route: "?view=raw (served page title verified 'litera skin customized - the reference deck')",
+      route: "?view=raw (served page title verified 'litera skin customized - Culturesmith')",
       fetches: perFetch.map((p) => ({
         file: p.file,
         fetchedAt: p.fetchedAt,
@@ -1062,7 +1062,7 @@ provenance.push({
 let shardRecords = [];
 try {
   const parentShard =
-    "REPO_ROOT//tmp/raw-ground-truth/expected-v2/" +
+    "C:/localProjects/decko-ts-lane-negdelta-zero/tmp/raw-ground-truth/expected-v2/" +
     "page-lane/recapture-raw-shard-000039.jsonl";
   shardRecords = readFileSync(parentShard, "utf8")
     .split("\n")

@@ -19,7 +19,7 @@ require "json"
 require "./config/environment"
 require "haml"
 
-OUT = ARGV[0] || "REPO_ROOT//tmp/haml-slice/oracle-probe-cards.json"
+OUT = ARGV[0] || "C:/localProjects/decko-ts-lane-hamlslice/tmp/haml-slice/oracle-probe-cards.json"
 result = { "haml_version" => Haml::VERSION, "card_version" => Card::VersionID }
 actions_before = Card::Act.count
 result["actions_before"] = actions_before

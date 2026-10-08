@@ -285,7 +285,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 // `COMPILED_ASSETS_DIR=/path` for local testing. Files inside the repo
 // stay out of this path; deployment scp's the compile outputs here.
 const COMPILED_ASSETS_DIR =
-  process.env.COMPILED_ASSETS_DIR ?? "fixtures/captured/assets";
+  process.env.COMPILED_ASSETS_DIR ?? "/opt/decko-bunny-render/oracle-assets";
 
 // URL → compiled filename. Both asset cards have one canonical URL on the
 // page (the layout shell links /files/~45514/1790384218.css and
@@ -1576,7 +1576,7 @@ async function safeRenderSetting(name, preferredView, fallbackView) {
 // bytes name the .cdn. host form
 // (culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com —
 // audit A-1), which is what SPACES_HOST now builds.
-const SITE_TITLE_DEFAULT = "the reference deck";
+const SITE_TITLE_DEFAULT = "Culturesmith";
 let siteTitleLoaded = null;
 async function ensureBootValues() {
   if (siteTitleLoaded !== null) return siteTitleLoaded;

@@ -59,9 +59,9 @@ import Database from "better-sqlite3";
 import process from "node:process";
 
 const CORPUS_PATH =
-  "REPO_ROOT/decko-ts/benchmarks/corpus-v2/bench-corpus-v2.sqlite3";
+  "C:/localProjects/decko-ts/benchmarks/corpus-v2/bench-corpus-v2.sqlite3";
 const DEFAULT_ANON_PATH =
-  "REPO_ROOT/decko-ts/benchmarks/corpus-v2-anonymized/anon-corpus-v2.sqlite3";
+  "C:/localProjects/decko-ts/benchmarks/corpus-v2-anonymized/anon-corpus-v2.sqlite3";
 
 // --- Privacy discipline: never print original corpus content. ----------
 const VOCAB_MIN_LEN = 4;

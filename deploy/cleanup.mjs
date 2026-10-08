@@ -2,17 +2,17 @@
 // Cloudflare account. Zero leftovers is the contract: this deploy owns
 // exactly ONE Worker and ONE D1 database, listed below, and nothing else.
 //
-//   Worker:        
-//   D1 database:   
+//   Worker:        decko-ts-demo
+//   D1 database:   decko-ts-demo-db
 //
 // WITHOUT --yes (default): print the plan and the exact commands, touch
 // nothing. WITH --yes: execute them via npx wrangler, in this order
 // (worker first, then the database; each deletion is independent).
 //
-//   npx wrangler delete 
+//   npx wrangler delete decko-ts-demo
 //       (name is a POSITIONAL: `wrangler delete [name]` in wrangler 4.135.0
 //       declares no --name flag; wrangler asks for confirmation interactively)
-//   npx wrangler d1 delete  --skip-confirmation
+//   npx wrangler d1 delete decko-ts-demo-db --skip-confirmation
 //       (verified flag; deletes the database AND its automatic backup)
 //
 // Requires wrangler auth (check with: npx wrangler whoami). Cleanup is the
@@ -22,8 +22,8 @@
 
 import { spawnSync } from "node:child_process";
 
-const WORKER_NAME = "";
-const DATABASE_NAME = "";
+const WORKER_NAME = "decko-ts-demo";
+const DATABASE_NAME = "decko-ts-demo-db";
 
 const PLAN = [
   {

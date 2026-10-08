@@ -106,7 +106,7 @@ export const LIVE_DEPLOYMENT_CONSTANTS: Omit<DeploymentFollowLiveConfig, "serial
   mainStylesheetRevisionDigits: "1790384218",
   footerDeckoVersion: "0.19.1",
   recaptchaSiteKey: "6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW",
-  deckoRootUrl: "https://example.com/",
+  deckoRootUrl: "https://culturesmith.com/",
   defaultHtmlViewNest: "content",
 };
 

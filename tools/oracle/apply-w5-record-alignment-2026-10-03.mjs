@@ -61,7 +61,7 @@
 // USAGE (from the worktree root)
 //   node tools/oracle/apply-w5-record-alignment-2026-10-03.mjs \
 //     --repo <worktree-root> \
-//     --anchor WORK_DIR/w5-record-alignment-dispositions-2026-10-03.json \
+//     --anchor C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/w5-record-alignment-dispositions-2026-10-03.json \
 //     --mode emit-anchor|validate-only|apply|inverse
 
 import { createHash } from "node:crypto";
@@ -76,7 +76,7 @@ function argValue(flag) {
 }
 const REPO = path.resolve(argValue("--repo") ?? process.cwd());
 const ANCHOR = argValue("--anchor") ??
-  "WORK_DIR/w5-record-alignment-dispositions-2026-10-03.json";
+  "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/w5-record-alignment-dispositions-2026-10-03.json";
 const MODE = argValue("--mode") ?? "validate-only";
 if (!["emit-anchor", "validate-only", "apply", "inverse"].includes(MODE)) {
   console.error("REFUSAL: --mode must be emit-anchor | validate-only | apply | inverse");

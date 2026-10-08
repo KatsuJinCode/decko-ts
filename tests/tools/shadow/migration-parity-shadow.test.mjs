@@ -100,7 +100,7 @@ describe('normalizeNoiseHtml — the two documented noise regions', () => {
     expect(out).not.toContain(hexOf(20, 'a'));
   });
 
-  it('normalizes single-quoted slot ids too (live-check-71 a work item finding)', () => {
+  it('normalizes single-quoted slot ids too (live-check-71 pass-2 finding)', () => {
     const single = "data-slot-id='" + hexOf(20, 'b') + "'";
     const out = normalizeNoiseHtml('<span ' + single + '>');
     expect(out).toContain('data-slot-id=' + DQ + 'RANDOMIZED' + DQ);
@@ -375,7 +375,7 @@ describe('loadShadowPolicy — schema discipline', () => {
 
 describe('route sampling — percentage-or-name through shouldShadow (reused)', () => {
   it('parseTargetsFile: name-only lines default to view=page; comments and blanks skipped', () => {
-    const routes = parseTargetsFile('# c\n\nHome\nFieldwork\t\n');
+    const routes = parseTargetsFile('# c\n\nHome\nAikido\t\n');
     expect(routes).toEqual([
       { name: 'Home', view: 'page' },
       { name: 'Aikido', view: 'page' },
@@ -387,7 +387,7 @@ describe('route sampling — percentage-or-name through shouldShadow (reused)', 
   });
 
   it('view routes: the corpus canvas fixture views are ACCEPTED (S1 closed)', () => {
-    const routes = parseTargetsFile('Home\topen\nFieldwork\tclosed\nAbout\tcontent\nEagle\ttitle');
+    const routes = parseTargetsFile('Home\topen\nAikido\tclosed\nAbout\tcontent\nEagle\ttitle');
     expect(routes.map(routeKey)).toEqual([
       'Home|open',
       'Aikido|closed',
@@ -894,13 +894,13 @@ describe('CLI end-to-end with the stub instrument (execute runs)', () => {
 // is keyed off the same ?view= query the real instrument's renderCardView
 // branch dispatches on. The REAL branch is proven against a real fixture deck
 // with both real instruments spawned by runShadow — the manual e2e recorded in
-// an internal work log (clean run 5/5, divergent run
+// tmp/wrong-goal-hunt/shadow-viewlane-lane.md (clean run 5/5, divergent run
 // 4x ENGINE-GAP against a sha-verified reference, ports torn down).
 
 describe('view-lane end-to-end with the stub instrument (execute runs)', () => {
   it('a mixed-lane sample runs clean end-to-end: view routes byte-identical, lanes + corpus URL forms recorded, exit 0', () => {
     const targets = scratch('view-targets-clean');
-    writeFileSync(join(targets, 'views.tsv'), 'Home\topen\nFieldwork\tcontent\nEagle\t\n');
+    writeFileSync(join(targets, 'views.tsv'), 'Home\topen\nAikido\tcontent\nEagle\t\n');
     const { r, out } = executeShadow(
       'e2e-view-clean',
       ['--targets', join(targets, 'views.tsv')],
@@ -966,7 +966,7 @@ describe('view-lane end-to-end with the stub instrument (execute runs)', () => {
 
   it('gate semantics are identical on view samples: N-consecutive streak in the same out dir, signature-scoped across lanes', () => {
     const targets = scratch('view-targets-gate');
-    writeFileSync(join(targets, 'views.tsv'), 'Home\topen\nFieldwork\tcontent\n');
+    writeFileSync(join(targets, 'views.tsv'), 'Home\topen\nAikido\tcontent\n');
     const pageTargets = scratch('page-targets-gate');
     writeFileSync(join(pageTargets, 'pages.tsv'), 'Home\n');
     const env = { SHADOW_STUB_BODY: '<html>same</html>', SHADOW_STUB_VIEW_BODY: '<div class="open-view">same</div>' };

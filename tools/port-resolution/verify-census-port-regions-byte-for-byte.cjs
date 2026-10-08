@@ -7,7 +7,7 @@
 const { execFileSync } = require("child_process");
 const fs = require("fs");
 
-const DONOR_REPO = "REPO_ROOT/decko-ts-restored";
+const DONOR_REPO = "C:/localProjects/decko-ts-restored";
 const ADMIN = "src/card/mod-loader/mods/core-admin-runtime.ts";
 const MOD = "src/card/mod-loader/mods/core-mod.ts";
 const VIEWS = "src/card/render/views.ts";

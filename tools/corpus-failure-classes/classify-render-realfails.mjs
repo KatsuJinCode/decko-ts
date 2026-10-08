@@ -9,7 +9,7 @@
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const REPO = 'REPO_ROOT/decko-ts';
+const REPO = 'C:/localProjects/decko-ts';
 const RESULTS_DIR = join(REPO, 'benchmarks/results/corpus-v2');
 // Inputs overridable for re-classification of later replay runs:
 //   node classify-render-realfails.mjs [aggregateJson [outJson]]

@@ -2,10 +2,10 @@
 // lane's person-page parity defect pinned through the REAL production boot.
 //
 // DEFECT (2026-10-03, lane-p2-person-section): on the deployed edge
-// (edge.culturesmith.com), the person page /Brandon_WilliamsCraig is
+// (decko-edge-wm2um.bunny.run), the person page /Brandon_WilliamsCraig is
 // missing the whole "+Project(s) Participating" section live renders (the
 // 171px height delta; deliverables/screenshot-proof/crop-person-bottom-
-// {live,edge}.png in REPO_DIR). The junction row is TRASHED in the
+// {live,edge}.png in brandonDojoTech). The junction row is TRASHED in the
 // deck (corpus row 419: trash=1, RichText, empty), and the section is a
 // VIRTUAL card: the depth-3 structure rule
 //   ((Person + Project(s) Participating) + *type plus right) + *structure
@@ -213,7 +213,7 @@ describe("bunny edge boot renders the person page's virtual +Project(s) Particip
       await driver.query(
         `INSERT INTO card_references (referer_id, referee_key, referee_id, ref_type, is_present)
          VALUES (?, ?, ?, ?, NULL)`,
-        [690, "brandon_morgan", 393, "L"],
+        [690, "brandon_william_craig", 393, "L"],
       );
 
       // The REAL production boot (the entry's bootDeck delegates here);
@@ -237,7 +237,7 @@ describe("bunny edge boot renders the person page's virtual +Project(s) Particip
       // page-lane, name "Brandon WilliamsCraig").
       expect(html).toContain("TYPE_PLUS_RIGHT-person-project_s_participating");
       expect(html).toContain('data-card-type-name="Search"');
-      expect(html).toContain("brandon_morgan-project_s_participating-titled-view");
+      expect(html).toContain("brandon_william_craig-project_s_participating-titled-view");
       // ... and the search finds the referring project (the CQL runs with
       // the junction's own name context, _left -> the person).
       expect(html).toContain("mythopsychology");

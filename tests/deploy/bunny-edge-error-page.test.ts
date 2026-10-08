@@ -109,7 +109,7 @@ async function seedShellHeadDeck(storage: RenderTestStorage): Promise<void> {
   await seedCard(storage, { id: 22749, name: "*footer", codename: "footer", typeId: 50, dbContent: `<footer class="footer mt-auto py-3"><a href="/:latest">Decko v</a></footer>` });
 }
 
-const SPACES = "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com";
+const SPACES = "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com";
 
 describe("bunny edge — full-chrome not_found page (staging builder shape)", () => {
   it("GET a missing card serves Decko's not_found page in the Default-Layout chrome, status 404", async () => {

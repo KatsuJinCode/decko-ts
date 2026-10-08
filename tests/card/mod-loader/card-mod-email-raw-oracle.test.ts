@@ -261,7 +261,7 @@ describeOrSkipLoud(!FIXTURE_PRESENT, "tests/card/mod-loader/card-mod-email-raw-o
   //     on card 21792.
   //   - served page (expected-v2/page-lane/recapture-raw-shard-000016.jsonl,
   //     SELF-signup_alert_email-Xhtml_message chunk): deck_origin set for
-  //     that lane only (:343, restored :348) → `href="https://example.com/
+  //     that lane only (:343, restored :348) → `href="https://culturesmith.com/
   //     User"`.
   // The port now resolves the origin per surface, so BOTH pins below hold
   // and neither is an adjudication.
@@ -277,18 +277,18 @@ describeOrSkipLoud(!FIXTURE_PRESENT, "tests/card/mod-loader/card-mod-email-raw-o
   it("base :url renders the origin-absolute card_url on the PAGE lane (the page oracle)", async () => {
     expect(
       await storage!.engine.runWithPageConfig(() => storage!.engine.render("verification email", "url")),
-    ).toBe("https://example.com/verification_email");
+    ).toBe("https://culturesmith.com/verification_email");
     expect(
       await storage!.engine.runWithPageConfig(() =>
         storage!.engine.render("verification email+*html message", "url"),
       ),
-    ).toBe("https://example.com/verification_email+*html_message");
+    ).toBe("https://culturesmith.com/verification_email+*html_message");
   });
 
   it("base :id_url renders the view-lane card_url (origin absent)", async () => {
     // Ruby: card_url("~#{card.id}") (base.rb:29) through card_path →
     // `/~21783` (origin absent) or
-    // `https://example.com/~21783` (origin present) —
+    // `https://culturesmith.com/~21783` (origin present) —
     // env/location.rb:6-21, serializable.rb:20-22. No corpus bytes reach
     // :id_url on either lane; the pins are gem-derived (the fixture-less
     // convention, small-engine-items 2026-10-01) and exist to pin
@@ -299,7 +299,7 @@ describeOrSkipLoud(!FIXTURE_PRESENT, "tests/card/mod-loader/card-mod-email-raw-o
   it("base :id_url renders the origin-absolute card_url on the PAGE lane", async () => {
     expect(
       await storage!.engine.runWithPageConfig(() => storage!.engine.render("verification email", "id_url")),
-    ).toBe("https://example.com/~21783");
+    ).toBe("https://culturesmith.com/~21783");
   });
 
   // ---------------------------------------------------------------------
@@ -399,7 +399,7 @@ describeOrSkipLoud(!FIXTURE_PRESENT, "tests/card/mod-loader/card-mod-email-raw-o
     //     unconditional origin — the view-lane oracle carries
     //     `/*changed_card?view=history` (env/location.rb:19-21 over an
     //     origin-absent `Env.origin`, serializable.rb:20-22) while the port
-    //     emitted `https://example.com/*changed_card?view=history`.
+    //     emitted `https://culturesmith.com/*changed_card?view=history`.
     //     With card_url surface-scoped, the view lane emits the oracle's
     //     bytes and the page lane keeps the absolute form
     //     (page-lane shard 000016 pins it), so the pin is UNWRAPPED here.

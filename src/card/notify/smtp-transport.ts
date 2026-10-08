@@ -103,7 +103,7 @@ export interface SmtpTransportOptions {
 const DEFAULT_HOST = "smtp.protonmail.ch";
 const DEFAULT_PORT = 587;
 const DEFAULT_HELO = "localhost.localdomain";
-const DEFAULT_FROM = "no-reply@example.com";
+const DEFAULT_FROM = "no-reply@culturesmith.com";
 const DEFAULT_TIMEOUT_MS = 5000;
 const DEFAULT_STARTTLS: "always" | "auto" | false = "auto";
 

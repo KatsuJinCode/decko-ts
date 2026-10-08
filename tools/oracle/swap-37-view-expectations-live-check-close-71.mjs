@@ -47,7 +47,7 @@ if (!["apply", "inverse"].includes(MODE)) {
 const STAGING = path.join(REPO, "tmp", "raw-ground-truth", "expected-v2");
 const VIEW_DIR = path.join(STAGING, "view-lane");
 const CAPTURES = argValue("--captures") ??
-  "WORK_DIR/live-check-71-captures-2026-10-03";
+  "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/live-check-71-captures-2026-10-03";
 const OUT_DIR = path.join(REPO, "fixtures", "corpus-v2", "asset-host-follow-live-close-71");
 const HOST_FORWARD_MANIFEST = path.join(OUT_DIR, "asset-host-transform-manifest.json");
 const SWAP_MANIFEST = path.join(OUT_DIR, "swap-manifest-37-view-expectations-2026-10-03.json");

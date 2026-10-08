@@ -11,7 +11,7 @@
 require "json"
 require "haml"
 
-OUT = ARGV[0] || "REPO_ROOT//tmp/haml-slice/haml-semantics.json"
+OUT = ARGV[0] || "C:/localProjects/decko-ts-lane-hamlslice/tmp/haml-slice/haml-semantics.json"
 
 def list_group items
   Array(items).map { |i| "<li class=\"list-group-item\">#{i}</li>" }.join("\n")

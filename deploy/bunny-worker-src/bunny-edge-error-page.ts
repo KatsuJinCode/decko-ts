@@ -100,7 +100,7 @@ const MAIN_JS_URL = `${SPACES_ASSET_HOST}/files/50617/1768074298.js`;
 /** Boot-value defaults (vm-staging-server.mjs:792-800): the *title read
  *  overrides the site title; the logo/favicon URLs stay the recorded live
  *  URLs (the *favicon/*logo rows only confirm them). */
-const SITE_TITLE_DEFAULT = "Decko";
+const SITE_TITLE_DEFAULT = "Culturesmith";
 
 /** The footer version pin (vm-staging-server.mjs:1081-1092): the live pages
  *  print "Decko v0.19.1" — a LIVE-byte receipt; the corpus's *version card
@@ -663,7 +663,7 @@ async function wrapWithLayout(
     `<script src="${escapeHtml(jsUrl)}"></script>\n` +
     `<script>\n` +
     `//<![CDATA[\n` +
-    `decko.rootUrl='https://the reference deck/';\n` +
+    `decko.rootUrl='https://culturesmith.com/';\n` +
     `decko.doubleClick='signed_in';\n` +
     `decko.cssPath='${escapeHtml(cssUrl)}';\n` +
     `decko.signed_in=false;\n` +

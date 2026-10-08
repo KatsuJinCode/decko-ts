@@ -28,7 +28,7 @@
  *  RenderEngine#imageCdnHost (set by the entry's bootDeck), so only the
  *  capture-env forms remain to rewrite. */
 export const SPACES_ASSET_HOST =
-  "https://reference-deck-production-storage.fra1.cdn.digitaloceanspaces.com";
+  "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com";
 
 /** The capture fog form the engine's page bytes carry (page.ts
  *  CLOUD_URL_PREFIX; head-views.ts FOG_CLOUD_URL_HOST + "/files/"). */

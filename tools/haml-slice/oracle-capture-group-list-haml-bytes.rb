@@ -20,7 +20,7 @@
 require "json"
 require "./config/environment"
 
-OUT = ARGV[0] || "REPO_ROOT//tmp/haml-slice/group-list-oracle.json"
+OUT = ARGV[0] || "C:/localProjects/decko-ts-lane-hamlslice/tmp/haml-slice/group-list-oracle.json"
 GL = "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-assets-0.20.0/set/abstract/mod_assets/group_list.haml"
 GL_SRC = File.read(GL)
 

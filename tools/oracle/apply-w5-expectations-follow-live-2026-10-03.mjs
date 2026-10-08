@@ -1,8 +1,8 @@
 // apply-w5-expectations-follow-live-2026-10-03.mjs -- W5 LIVE-ALIGNMENT LANE's
 // REVERSIBLE, MANIFEST-BOUND corpus expectation swap: the 13 LIVE-DIFFERS
 // entries (6 views + 7 pages, verdicts in
-// WORK_DIR/w5-live-alignment-verdicts-2026-10-03.json)
-// get today's live bytes (fetched 2026-10-04T00:39:51Z, the reference deck,
+// brandonDojoTech/tmp/wrong-goal-hunt/w5-live-alignment-verdicts-2026-10-03.json)
+// get today's live bytes (fetched 2026-10-04T00:39:51Z, culturesmith.com,
 // raw captures stored verbatim — the recapture lane's own pattern, whose 77
 // swaps stored live bytes INCLUDING per-response noise) as their corpus
 // expectation.
@@ -46,7 +46,7 @@
 // USAGE (from the worktree root)
 //   node tools/oracle/apply-w5-expectations-follow-live-2026-10-03.mjs \
 //     --repo <worktree-root> \
-//     --captures WORK_DIR/w5-live-alignment-captures-2026-10-03 \
+//     --captures C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/w5-live-alignment-captures-2026-10-03 \
 //     --mode validate-only|apply|inverse
 
 import { createHash } from "node:crypto";
@@ -61,7 +61,7 @@ function argValue(flag) {
 }
 const REPO = path.resolve(argValue("--repo") ?? process.cwd());
 const CAPTURES = argValue("--captures") ??
-  "WORK_DIR/w5-live-alignment-captures-2026-10-03";
+  "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/w5-live-alignment-captures-2026-10-03";
 const MODE = argValue("--mode") ?? "validate-only";
 if (!["validate-only", "apply", "inverse"].includes(MODE)) {
   console.error("REFUSAL: --mode must be validate-only | apply | inverse");
@@ -72,7 +72,7 @@ const STAGING = path.join(REPO, "tmp", "raw-ground-truth", "expected-v2");
 const OUT_DIR = path.join(REPO, "fixtures", "corpus-v2", "w5-live-alignment-2026-10-03");
 const FORWARD_MANIFEST = path.join(OUT_DIR, "w5-live-alignment-swap-manifest.json");
 const INVERSE_MANIFEST = path.join(OUT_DIR, "w5-live-alignment-swap-inverse-manifest.json");
-const VERDICTS = "WORK_DIR/w5-live-alignment-verdicts-2026-10-03.json";
+const VERDICTS = "C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/w5-live-alignment-verdicts-2026-10-03.json";
 
 const sha256 = (s) => createHash("sha256").update(s).digest("hex");
 const fail = (msg) => {
@@ -259,7 +259,7 @@ if (MODE === "apply") {
   const forward = {
     lane: "w5-live-alignment-2026-10-03",
     appliedAt: new Date().toISOString(),
-    source: "the reference deck live GETs 2026-10-04T00:39:51Z (capture-log.jsonl per entry)",
+    source: "culturesmith.com live GETs 2026-10-04T00:39:51Z (capture-log.jsonl per entry)",
     pattern: "recapture-lane whole-body expectation swap (raw live bytes verbatim, incl. documented per-response noise); byte-level literal splice, CRLF discipline preserved",
     staging: STAGING,
     shardBefore, shardAfter,

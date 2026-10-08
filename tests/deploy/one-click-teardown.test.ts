@@ -419,12 +419,10 @@ describe("attribution — a name mismatch refuses, in both directions", () => {
     });
     expect(config.workerName).toBe("decko-ts");
     expect(config.databases.map((d) => d.databaseName)).toEqual(["decko-ts"]);
-    // The committed root config ships the placeholder, so a deployer fills
-    // the real id in. The teardown path must work on whichever it finds, so
-    // this asserts the id is present and well-formed rather than equal to a
-    // particular value — a committed real id would leak the deployer's
-    // infrastructure into the repository.
-    expect(config.databases[0]!.databaseId).toMatch(/^[0-9a-f-]{36}$/);
+    // The committed root config ships a placeholder id: a button deploy
+    // writes its own database's id, and a manual deploy pastes the id
+    // `wrangler d1 create` prints. No real infrastructure id is committed.
+    expect(config.databases[0]!.databaseId).toBe("REPLACE_WITH_YOUR_D1_DATABASE_ID");
     expect(config.databases[0]!.databaseIdIsPlaceholder).toBe(true);
   });
 });
@@ -438,8 +436,8 @@ describe("name overrides — attribution without a config file", () => {
   // The frozen demo pair (deploy/cleanup.mjs's names, no committed wrangler
   // config), as the account would report it. Shapes are the same recorded
   // shapes the fixtures transcribe; identifiers are synthetic.
-  const FROZEN_WORKER = "";
-  const FROZEN_DB = "";
+  const FROZEN_WORKER = "decko-ts-demo";
+  const FROZEN_DB = "decko-ts-demo-db";
   const frozenResponses = () => ({
     service: { success: true, result: { id: FROZEN_WORKER, created_on: "2026-08-01T09:00:00.000000Z" } },
     deployments: {

@@ -59,7 +59,7 @@
 /** The pinned deck origin for the SERVED-PAGE surface, WITHOUT a trailing
  *  slash (page.ts appends one for rootUrl; the :url view appends the
  *  "/<linkname>" separator). */
-export const DECK_ORIGIN = "https://example.com";
+export const DECK_ORIGIN = "https://culturesmith.com";
 
 /** `Card::Env.origin` for the VIEW-FUNCTION surface: the empty string —
  *  `deck_origin` nil (cardio/railtie.rb:28) with no request (`protocol`

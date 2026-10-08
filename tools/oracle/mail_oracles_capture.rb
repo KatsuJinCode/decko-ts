@@ -26,10 +26,10 @@
 #
 # Run (from the oracle app):
 #   RAILS_ENV=development bundle exec decko runner \
-#     REPO_ROOT//tools/oracle/mail_oracles_capture.rb
+#     C:/localProjects/decko-ts-lane-row8-parity/tools/oracle/mail_oracles_capture.rb
 #
 # Output: fixtures/captured/six-oracle-mails.json (repo root of the
-#  worktree).
+# decko-ts-lane-row8-parity worktree).
 #
 # Determinism contract:
 #   - delivery_method :test on BOTH ActionMailer::Base AND Card::Mailer
@@ -59,7 +59,7 @@
 require "json"
 require "yaml"
 
-REPO_ROOT = "REPO_ROOT/"
+REPO_ROOT = "C:/localProjects/decko-ts-lane-row8-parity"
 OUT_PATH  = File.join(REPO_ROOT, "fixtures", "captured", "six-oracle-mails.json")
 FOLLOW_GEM = "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-follow-0.20.0"
 ACCOUNT_GEM = "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-account-0.20.0"
@@ -532,7 +532,7 @@ payload = {
     "ruby" => RUBY_VERSION,
     "card" => "1.110.0",
     "decko" => "0.20.0",
-    "app" => "REPO_ROOT/decko-oracle-app-2026-10-03 (dev sqlite)",
+    "app" => "C:/localProjects/decko-oracle-app-2026-10-03 (dev sqlite)",
     "delivery" => "ActionMailer test delivery (Card::Mailer + ActionMailer::Base both :test); no SMTP, no network"
   },
   "mailer_defaults" => {
