@@ -127,6 +127,13 @@ export interface RenderCard {
    *  only; undefined = no per-nest verdict for this phantom, and every
    *  consumer keeps the deck-global read. */
   pointerItemReadVerdict?: boolean;
+  /** A pointer/list item phantom whose type came from its host's item type
+   *  (item.rb new_unknown_item_args `Card.fetch name, new: { type: ... }`).
+   *  Fetch renews a DUP of the cached default-typed card for the typed
+   *  instance (card fetch/results.rb #renew), so name-level questions
+   *  (`Card.known?(name)`, links.rb add_known_or_wanted_class) still see the
+   *  default type, while the instance's own `known?` sees the item type. */
+  hostTyped?: boolean;
 }
 
 /** One view render's options object (the voo). Visibility is the ordered
@@ -2088,6 +2095,13 @@ export class RenderFormat {
     return this.buildUnknownNestCard(targetName, this.engine);
   }
 
+  unknownChildCard(targetName: string): RenderCard {
+    // A view that nests a field CARD of its own card (`nest image_card,
+    // ...`) gets the same new card the nest fetch would build, typed with
+    // this card's type as the field's left type.
+    return this.buildUnknownNestCard(targetName, this.engine, this.card.typeName, undefined);
+  }
+
   private buildUnknownNestCard(
     targetName: string,
     engine: RenderEngineLike,
@@ -3758,6 +3772,12 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
   { view: "titled", config: true, setTokens: ["RIGHT-discussion"] },
   { view: "titled_content", config: true, setTokens: ["RIGHT-discussion"] },
   { view: "core", config: true, setTokens: ["RIGHT-discussion"] },
+  // card-mod-bar_and_box-0.20.0 set/type/image.rb:6-12: `view :boxed,
+  // unknown: true` and `view :boxed_link, unknown: true`. An absent image
+  // renders its box, and the box's core is the unknown view (a skin's
+  // missing +Image offers its create link inside the box).
+  { view: "boxed", config: true, setTokens: ["TYPE-image"] },
+  { view: "boxed_link", config: true, setTokens: ["TYPE-image"] },
   // all-set rows
   { view: "mini_bar", config: true },
   { view: "mini_unknown", config: true },

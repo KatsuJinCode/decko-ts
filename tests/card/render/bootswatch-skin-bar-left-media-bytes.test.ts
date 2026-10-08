@@ -52,7 +52,14 @@ async function seedDeck(): Promise<void> {
     dbContent: ":cerulean_skin+:image/bootstrap.png",
   });
   // A skin WITHOUT an +Image child (the journal-skin-customized shape,
-  // phase-014: the empty image-box bytes).
+  // phase-014: the empty image-box bytes). The corpus's Image+*right+*default
+  // rule (id 217, Image-typed) types the absent +Image as an Image, whose
+  // :boxed is `unknown: true`: the box renders, with the unknown view (empty
+  // for this anonymous viewer) inside.
+  await seedCard(s, { id: 260, name: "*right", codename: "right", typeId: 1 });
+  await seedCard(s, { id: 318, name: "*default", codename: "default", typeId: 2 });
+  await seedCard(s, { id: 216, leftId: 19, rightId: 260 });
+  await seedCard(s, { id: 217, leftId: 216, rightId: 318, typeId: 19 });
   await seedCard(s, { id: 22860, name: "bare skin", typeId: 33929, dbContent: "" });
 }
 

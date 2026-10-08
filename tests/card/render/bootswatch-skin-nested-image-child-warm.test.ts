@@ -96,6 +96,12 @@ async function seedDeck(): Promise<void> {
     typeId: 19,
     dbContent: ":journal_skin+:image/bootstrap.png",
   });
+  // The corpus's Image+*right+*default rule (id 217, Image-typed) types the
+  // bare skin's absent +Image as an Image, whose :boxed is `unknown: true`.
+  await seedCard(s, { id: 260, name: "*right", codename: "right", typeId: 1 });
+  await seedCard(s, { id: 318, name: "*default", codename: "default", typeId: 2 });
+  await seedCard(s, { id: 216, leftId: 19, rightId: 260 });
+  await seedCard(s, { id: 217, leftId: 216, rightId: 318, typeId: 19 });
   await seedCard(s, { id: 22900, name: "bare skin", typeId: 33929, dbContent: "" });
   await seedCard(s, { id: 34179, name: HOST, typeId: 34843, dbContent: SKIN });
 }
