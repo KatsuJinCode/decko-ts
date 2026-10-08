@@ -357,7 +357,11 @@ describe("U6/C8 — the deck's email templates against the raw Ruby oracle", () 
     //     `card_url` is now surface-scoped, so on THIS tree it renders
     //     `/User` too. The `{{_|url}}` arm no longer differs; only the
     //     capture arm above keeps this pin red.
-    [21792, "capture: fixture omits the User context-item card (2693) so the seam answers no-context (byte 567, {{_|name}} arm)", false],
+    // UNWRAPPED (2026-10-08): first_card is fetch_item_card, Card.fetch
+    // with new: {} (card-mod-collection set/all/item.rb:69-73, :241-243), so
+    // the missing item still yields a card, the new `User`, and
+    // {{_|name}} / {{_|url}} render `User` and `/User` as the oracle's.
+    [21792, "the test context's first item is the new card first_card fetches when the deck lacks it", true],
     // RE-ADJUDICATED ON RENDER (c8-pins-closure, 2026-10-01): the seam
     // WORKS (see the mechanism note above) — the fold-era blocker text
     // (":url / :list_of_changes / :subedits through the test context") is

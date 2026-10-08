@@ -125,8 +125,8 @@ import { h } from "../../render/slot-html.js";
 // set/self/signin.rb:119-125 view :core — the sign-in form. The emitter
 // lives in the render layer (signin-core-form-view.ts) because it is consumed
 // by TWO registrations: this manifest entry (the loader-bound path) and the
-// render layer's flat coreView self/signin branch (the headless pattern —
-// the edge engines run mod-less, so only the flat branch dispatches there).
+// render layer's flat coreView self/signin branch (the loader-less
+// dispatch), so the two paths render the same form.
 import { signinCoreHtml } from "../../render/signin-core-form-view.js";
 import { modSlotWrap, superView } from "../mod-view-helpers.js";
 import { setModuleShortname } from "../mod-registrar.js";
@@ -148,6 +148,7 @@ import {
   output,
 } from "../../follow/follow-form-shapes.js";
 import { isNewCard } from "../../fetch/card-record.js";
+import { resetPasswordUrlView, verifyUrlView } from "../../render/views.js";
 import { DeckoName } from "../../name.js";
 import {
   BOARD_PILL_UL_CLASSES,
@@ -1098,8 +1099,8 @@ const setModules: ModSetModuleFile[] = [
     // Ported: token_days + its two deprecated aliases, the html
     // block's token_expiry (the literal HTML string), and — surfaces-batch3
     // — the html block's :core (the email+password field nests).
-    // :verify_url/:reset_password_url stay unported on the async-view
-    // boundary (see accountCoreView's note).
+    // :verify_url/:reset_password_url render their page arm (the denied
+    // blank); the token URL itself is built on the send path.
     setPath: "right/account/views",
     formats: {
       html: {
@@ -1108,6 +1109,12 @@ const setModules: ModSetModuleFile[] = [
           // dispatch to the edit mod's walk
           { view: "content_formgroups", viewFn: accountBeforeContentFormgroupsView },
           { view: "core", viewFn: accountCoreView },
+          // views.rb:2-8 :verify_url / :reset_password_url: the page arm
+          // (the token URL is built by the send path, see views.ts). Called
+          // through a closure: views.ts reaches this module through an
+          // import cycle, so its bindings are read at render time.
+          { view: "verify_url", viewFn: (ctx) => verifyUrlView(ctx), config: { cache: "never", denial: "blank" } },
+          { view: "reset_password_url", viewFn: (ctx) => resetPasswordUrlView(ctx), config: { denial: "blank" } },
           { view: "token_days", viewFn: tokenDaysView },
           { view: "verify_days", viewFn: verifyDaysView },
           { view: "reset_password_days", viewFn: resetPasswordDaysView },

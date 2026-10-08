@@ -85,6 +85,7 @@ import { codedSvgFileBytes } from "./coded-attachment-files.js";
 import { dateError, parseRubyDateContent } from "./errors.js";
 import { buildVirtualRuleCard, ruleTypeIdForSetting } from "./virtual-rule-card.js";
 import { NAVBAR_VIEWS, accountLinksCoreHtml } from "./navbar-views.js";
+import { DEFAULT_TOKEN_EXPIRY_SECONDS } from "../auth/token.js";
 import { scanNests } from "./nest-syntax.js";
 import { kramdownToStashedHtml } from "./kramdown.js";
 import { resolveContentOverride, resolveContentOverrideEntry } from "./content-overrides.js";
@@ -1742,12 +1743,10 @@ export const templateLinkView: ViewFn = (ctx) => {
  *  holds "User" (id 2693); follower notification email's (left 21795)
  *  holds "*changed card" (id 33822, codename changed_card);
  *  verification/password reset (21783/21787) hold "Decko Bot+*account" —
- *  a card the deck does not carry, so their fetch answers nil and Ruby's
- *  `card.with_context nil` sets NOTHING (the `if context_card` guard,
- *  contextual_content.rb:8) — which is exactly why the verification +
- *  password-reset message pages were already byte-exact at the roleviews
- *  tip. A missing junction, an empty junction, or a missing item card all
- *  answer undefined the same way. */
+ *  a card the deck does not carry, which first_card answers with a NEW card
+ *  of that name (see the return below). A missing or empty junction answers
+ *  undefined, and `card.with_context nil` sets nothing (the `if
+ *  context_card` guard, contextual_content.rb:8). */
 function testContextCardFor(ctx: ViewContext): ViewContext["fmt"]["card"] | undefined {
   const card = ctx.fmt.card;
   if (!card.name.isCompound) return undefined; // card.left would raise on a simple card
@@ -1760,7 +1759,15 @@ function testContextCardFor(ctx: ViewContext): ViewContext["fmt"]["card"] | unde
     .map((line) => line.trim())
     .find((line) => line !== "");
   if (firstItem === undefined) return undefined;
-  return ctx.fmt.engine.fetchRenderCard(firstItem);
+  // first_card is fetch_item_card (card-mod-collection set/all/item.rb:69-73,
+  // :241-243): Card.fetch(name, new: {}), so an item the deck does not carry
+  // still yields a card, the NEW one. The verification and password-reset
+  // junctions name "Decko Bot+*account", which this deck lacks: the context
+  // is that new +*account card, and the templates' {{_|verify_url}} family
+  // render against it. A new card is unknown, so each of those nests takes
+  // the :unknown substitution, whose createable gate renders "" for an
+  // anonymous viewer: the blank marks the captured message pages carry.
+  return ctx.fmt.engine.fetchRenderCard(firstItem) ?? ctx.fmt.newCardFor(firstItem);
 }
 
 /** set/abstract/test_context.rb:8-14 (the format :html view :core wrapper
@@ -6139,8 +6146,8 @@ const unfollowUrlView: ViewFn = () => "";
  *  (the `token_url` port); it substitutes the URL into
  *  the message text itself and does not render through this view, so
  *  registering the blank arm here does not touch a delivered email. */
-const verifyUrlView: ViewFn = () => "";
-const resetPasswordUrlView: ViewFn = () => "";
+export const verifyUrlView: ViewFn = () => "";
+export const resetPasswordUrlView: ViewFn = () => "";
 
 /** card-mod-account set/right/account/views.rb:18-20 — the DEPRECATED
  *  aliases `view :verify_days, :token_days` /
@@ -6151,21 +6158,16 @@ const resetPasswordUrlView: ViewFn = () => "";
  *  `config.token_expiry = 2.days`; DEFAULT_TOKEN_EXPIRY_SECONDS in
  *  src/card/auth/token.ts).
  *
- *  DISCLOSED DERIVATION GAP: the captured page-lane bytes render BOTH
- *  marks BLANK — verification email's html message
- *  `Link will remain valid for  days.` and password reset email's
- *  `(Link will remain valid for  days.)`. A literal read of the gem does
- *  not produce blank: the alias carries no `denial` directive, so a
- *  denied `:read` would substitute the DEFAULT denial view (the denied
- *  span, the shape `last_action_verb` pins on the same pages), and the
- *  message card's read rule (`*all plus` = "Anyone" in the corpus dump)
- *  passes the check anyway. This port therefore pins the CAPTURED bytes —
- *  the page-lane contract — and names the branch as un-derived rather
- *  than inventing one. The delivered-email path is unaffected: the
- *  account-verify/reset flows substitute their own sentence and days
- *  (account-verify-reset-flows.ts), never this view. */
-const verifyDaysView: ViewFn = () => "";
-const resetPasswordDaysView: ViewFn = () => "";
+ *  The captured message pages render both marks blank (verification
+ *  email's `Link will remain valid for  days.`, password reset email's
+ *  `(Link will remain valid for  days.)`): the templates nest them on
+ *  `_`, the test context's new "Decko Bot+*account" card (see
+ *  testContextCardFor), and a new card takes the :unknown substitution,
+ *  whose createable gate renders "" for an anonymous viewer, so this body
+ *  is never reached there. The delivered-email path substitutes its own
+ *  sentence and days (account-verify-reset-flows.ts). */
+const verifyDaysView: ViewFn = () => String(DEFAULT_TOKEN_EXPIRY_SECONDS / 86400);
+const resetPasswordDaysView: ViewFn = verifyDaysView;
 
 /** The html-format view registry (Set::Format.view_method_name dispatch).
  *  Views NOT in this registry raise the unsupported-view UserError. */
@@ -6177,12 +6179,11 @@ const resetPasswordDaysView: ViewFn = () => "";
  *  before falling back to the flat table. Views marked selfGated already
  *  raise inside their own body (and cover fabricated nest cards that carry
  *  only a type name), so the resolver leaves them to that check; the table
- *  still records their scope for the registry census. Not listed: the
- *  +*account token and url views (verify_url, reset_password_url,
- *  verify_days, reset_password_days), which the email templates nest on
- *  `_`; Ruby resolves `_` there to Abstract::TestContext's +*account card,
- *  which this port does not build, so those views stay unscoped until it
- *  does. */
+ *  still records their scope for the registry census. The +*account token
+ *  and url views (set/right/account/views.rb) are nested by the email
+ *  templates on `_`, which Abstract::TestContext resolves to the
+ *  junction's +*account card (a new card when the deck lacks it, see
+ *  testContextCardFor), so they are scoped like any other. */
 const FLAT_VIEW_RUBY_SETS: Readonly<Record<string, { sets: readonly string[]; selfGated?: boolean }>> = {
   add_button: { sets: ["Type::Cardtype"] }, // card-mod-format set/type/cardtype.rb
   add_link: { sets: ["Type::Cardtype"] },
@@ -6197,6 +6198,10 @@ const FLAT_VIEW_RUBY_SETS: Readonly<Record<string, { sets: readonly string[]; se
   search_box: { sets: ["Self::Search"], selfGated: true }, // card-mod-search set/self/search.rb
   bar_setting_list: { sets: ["Type::Set"], selfGated: true }, // card-mod-rules type/set/html_views
   template_link: { sets: ["Type::Set"], selfGated: true },
+  verify_url: { sets: ["Right::Account"] }, // card-mod-account set/right/account/views.rb
+  reset_password_url: { sets: ["Right::Account"] },
+  verify_days: { sets: ["Right::Account"] },
+  reset_password_days: { sets: ["Right::Account"] },
 };
 
 /** Whether a card with these safe set keys is in one of the Ruby sets. */

@@ -2045,6 +2045,13 @@ export class RenderFormat {
    *  body is empty despite the rule's "<p> </p>" template bytes).
    *  The engine records the miss so the closure stays warm without
    *  re-prefetching (fetch.rb has no cache for unknown cards either). */
+  /** Card.fetch(name, new: {}) for a name the deck does not carry: the new,
+   *  unknown card a nest miss renders (buildUnknownNestCard), for callers
+   *  outside the nest path (Abstract::Items#first_card's fetch_item_card). */
+  newCardFor(targetName: string): RenderCard {
+    return this.buildUnknownNestCard(targetName, this.engine);
+  }
+
   private buildUnknownNestCard(
     targetName: string,
     engine: RenderEngineLike,

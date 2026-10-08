@@ -30,6 +30,12 @@ describe("flat views scoped to their Ruby sets", () => {
     expect(flatViewDefinedFor("add_button", "ALL TYPE-cardtype SELF-recipe")).toBe(true);
     expect(flatViewDefinedFor("add_button", "ALL TYPE-rich_text SELF-pancake")).toBe(false);
     expect(flatViewDefinedFor("verify_url", "ALL ALL_PLUS RIGHT-Xaccount SELF-jane-Xaccount")).toBe(true);
+    // the +*account token views exist only on Right::Account (the email
+    // templates reach them through the test context's +*account card)
+    for (const view of ["verify_url", "reset_password_url", "verify_days", "reset_password_days"]) {
+      expect(flatViewDefinedFor(view, "ALL ALL_PLUS RIGHT-Xaccount SELF-jane-Xaccount")).toBe(true);
+      expect(flatViewDefinedFor(view, "ALL TYPE-rich_text SELF-pancake")).toBe(false);
+    }
     // Type::SearchType includes Abstract::Search::Views (include_set)
     expect(flatViewDefinedFor("card_list", "ALL TYPE-search_type SELF-recent")).toBe(true);
     expect(flatViewDefinedFor("card_list", "ALL TYPE-rich_text SELF-pancake")).toBe(false);
