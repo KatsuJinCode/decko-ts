@@ -1,0 +1,3833 @@
+{
+  "steps": [
+    {
+      "step": 1,
+      "label": "create simple",
+      "rubyOk": true,
+      "rubyError": null,
+      "tsOk": true,
+      "tsError": null,
+      "stateFaults": [
+        {
+          "table": "card_acts",
+          "kind": "field",
+          "key": "PersistProbe A/act1",
+          "column": "ip_address",
+          "ruby": null,
+          "ts": "2400:52e0:1a01::912:1"
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/0",
+          "ruby": {
+            "id": "PersistProbe A/01/0",
+            "card_action_id": "PersistProbe A/01",
+            "field": 0,
+            "value": "PersistProbe A"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/1",
+          "ruby": {
+            "id": "PersistProbe A/01/1",
+            "card_action_id": "PersistProbe A/01",
+            "field": 1,
+            "value": "3"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/2",
+          "ruby": {
+            "id": "PersistProbe A/01/2",
+            "card_action_id": "PersistProbe A/01",
+            "field": 2,
+            "value": "alpha"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/3",
+          "ruby": {
+            "id": "PersistProbe A/01/3",
+            "card_action_id": "PersistProbe A/01",
+            "field": 3,
+            "value": "0"
+          }
+        }
+      ],
+      "deltaFaults": [
+        {
+          "table": "card_acts",
+          "kind": "field",
+          "key": "PersistProbe A/act1",
+          "column": "ip_address",
+          "ruby": null,
+          "ts": "2400:52e0:1a01::912:1"
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/0",
+          "ruby": {
+            "id": "PersistProbe A/01/0",
+            "card_action_id": "PersistProbe A/01",
+            "field": 0,
+            "value": "PersistProbe A"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/1",
+          "ruby": {
+            "id": "PersistProbe A/01/1",
+            "card_action_id": "PersistProbe A/01",
+            "field": 1,
+            "value": "3"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/2",
+          "ruby": {
+            "id": "PersistProbe A/01/2",
+            "card_action_id": "PersistProbe A/01",
+            "field": 2,
+            "value": "alpha"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/3",
+          "ruby": {
+            "id": "PersistProbe A/01/3",
+            "card_action_id": "PersistProbe A/01",
+            "field": 3,
+            "value": "0"
+          }
+        }
+      ],
+      "deliberate": null,
+      "unexpectedDeltaFaults": [
+        {
+          "table": "card_acts",
+          "kind": "field",
+          "key": "PersistProbe A/act1",
+          "column": "ip_address",
+          "ruby": null,
+          "ts": "2400:52e0:1a01::912:1"
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/0",
+          "ruby": {
+            "id": "PersistProbe A/01/0",
+            "card_action_id": "PersistProbe A/01",
+            "field": 0,
+            "value": "PersistProbe A"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/1",
+          "ruby": {
+            "id": "PersistProbe A/01/1",
+            "card_action_id": "PersistProbe A/01",
+            "field": 1,
+            "value": "3"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/2",
+          "ruby": {
+            "id": "PersistProbe A/01/2",
+            "card_action_id": "PersistProbe A/01",
+            "field": 2,
+            "value": "alpha"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/3",
+          "ruby": {
+            "id": "PersistProbe A/01/3",
+            "card_action_id": "PersistProbe A/01",
+            "field": 3,
+            "value": "0"
+          }
+        }
+      ]
+    },
+    {
+      "step": 2,
+      "label": "create compound",
+      "rubyOk": true,
+      "rubyError": null,
+      "tsOk": true,
+      "tsError": null,
+      "stateFaults": [
+        {
+          "table": "card_acts",
+          "kind": "field",
+          "key": "PersistProbe A/act1",
+          "column": "ip_address",
+          "ruby": null,
+          "ts": "2400:52e0:1a01::912:1"
+        },
+        {
+          "table": "card_acts",
+          "kind": "field",
+          "key": "PersistProbe A+PersistProbe B/act1",
+          "column": "ip_address",
+          "ruby": null,
+          "ts": "2400:52e0:1a01::912:1"
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/0",
+          "ruby": {
+            "id": "PersistProbe A/01/0",
+            "card_action_id": "PersistProbe A/01",
+            "field": 0,
+            "value": "PersistProbe A"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/1",
+          "ruby": {
+            "id": "PersistProbe A/01/1",
+            "card_action_id": "PersistProbe A/01",
+            "field": 1,
+            "value": "3"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/2",
+          "ruby": {
+            "id": "PersistProbe A/01/2",
+            "card_action_id": "PersistProbe A/01",
+            "field": 2,
+            "value": "alpha"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/3",
+          "ruby": {
+            "id": "PersistProbe A/01/3",
+            "card_action_id": "PersistProbe A/01",
+            "field": 3,
+            "value": "0"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/1",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/1",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 1,
+            "value": "3"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/2",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/2",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 2,
+            "value": "beta"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/3",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/3",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 3,
+            "value": "0"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/4",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/4",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 4,
+            "value": "PersistProbe A"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/5",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/5",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 5,
+            "value": "PersistProbe B"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/0",
+          "ruby": {
+            "id": "PersistProbe B/01/0",
+            "card_action_id": "PersistProbe B/01",
+            "field": 0,
+            "value": "PersistProbe B"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/1",
+          "ruby": {
+            "id": "PersistProbe B/01/1",
+            "card_action_id": "PersistProbe B/01",
+            "field": 1,
+            "value": "22281"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/2",
+          "ruby": {
+            "id": "PersistProbe B/01/2",
+            "card_action_id": "PersistProbe B/01",
+            "field": 2,
+            "value": ""
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/3",
+          "ruby": {
+            "id": "PersistProbe B/01/3",
+            "card_action_id": "PersistProbe B/01",
+            "field": 3,
+            "value": "0"
+          }
+        }
+      ],
+      "deltaFaults": [
+        {
+          "table": "card_acts",
+          "kind": "field",
+          "key": "PersistProbe A+PersistProbe B/act1",
+          "column": "ip_address",
+          "ruby": null,
+          "ts": "2400:52e0:1a01::912:1"
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/1",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/1",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 1,
+            "value": "3"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/2",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/2",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 2,
+            "value": "beta"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/3",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/3",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 3,
+            "value": "0"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/4",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/4",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 4,
+            "value": "PersistProbe A"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/5",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/5",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 5,
+            "value": "PersistProbe B"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/0",
+          "ruby": {
+            "id": "PersistProbe B/01/0",
+            "card_action_id": "PersistProbe B/01",
+            "field": 0,
+            "value": "PersistProbe B"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/1",
+          "ruby": {
+            "id": "PersistProbe B/01/1",
+            "card_action_id": "PersistProbe B/01",
+            "field": 1,
+            "value": "22281"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/2",
+          "ruby": {
+            "id": "PersistProbe B/01/2",
+            "card_action_id": "PersistProbe B/01",
+            "field": 2,
+            "value": ""
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/3",
+          "ruby": {
+            "id": "PersistProbe B/01/3",
+            "card_action_id": "PersistProbe B/01",
+            "field": 3,
+            "value": "0"
+          }
+        }
+      ],
+      "deliberate": null,
+      "unexpectedDeltaFaults": [
+        {
+          "table": "card_acts",
+          "kind": "field",
+          "key": "PersistProbe A+PersistProbe B/act1",
+          "column": "ip_address",
+          "ruby": null,
+          "ts": "2400:52e0:1a01::912:1"
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/1",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/1",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 1,
+            "value": "3"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/2",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/2",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 2,
+            "value": "beta"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/3",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/3",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 3,
+            "value": "0"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/4",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/4",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 4,
+            "value": "PersistProbe A"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/5",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/5",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 5,
+            "value": "PersistProbe B"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/0",
+          "ruby": {
+            "id": "PersistProbe B/01/0",
+            "card_action_id": "PersistProbe B/01",
+            "field": 0,
+            "value": "PersistProbe B"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/1",
+          "ruby": {
+            "id": "PersistProbe B/01/1",
+            "card_action_id": "PersistProbe B/01",
+            "field": 1,
+            "value": "22281"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/2",
+          "ruby": {
+            "id": "PersistProbe B/01/2",
+            "card_action_id": "PersistProbe B/01",
+            "field": 2,
+            "value": ""
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/3",
+          "ruby": {
+            "id": "PersistProbe B/01/3",
+            "card_action_id": "PersistProbe B/01",
+            "field": 3,
+            "value": "0"
+          }
+        }
+      ]
+    },
+    {
+      "step": 3,
+      "label": "update content",
+      "rubyOk": true,
+      "rubyError": null,
+      "tsOk": true,
+      "tsError": null,
+      "stateFaults": [
+        {
+          "table": "card_acts",
+          "kind": "field",
+          "key": "PersistProbe A/act1",
+          "column": "ip_address",
+          "ruby": null,
+          "ts": "2400:52e0:1a01::912:1"
+        },
+        {
+          "table": "card_acts",
+          "kind": "field",
+          "key": "PersistProbe A+PersistProbe B/act1",
+          "column": "ip_address",
+          "ruby": null,
+          "ts": "2400:52e0:1a01::912:1"
+        },
+        {
+          "table": "card_acts",
+          "kind": "field",
+          "key": "PersistProbe A/act2",
+          "column": "ip_address",
+          "ruby": null,
+          "ts": "2400:52e0:1a01::912:1"
+        },
+        {
+          "table": "card_changes",
+          "kind": "field",
+          "key": "PersistProbe A/01/3",
+          "column": "value",
+          "ruby": "0",
+          "ts": "f"
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/1",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/1",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 1,
+            "value": "3"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/2",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/2",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 2,
+            "value": "beta"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/3",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/3",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 3,
+            "value": "0"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/4",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/4",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 4,
+            "value": "PersistProbe A"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/5",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/5",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 5,
+            "value": "PersistProbe B"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/0",
+          "ruby": {
+            "id": "PersistProbe B/01/0",
+            "card_action_id": "PersistProbe B/01",
+            "field": 0,
+            "value": "PersistProbe B"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/1",
+          "ruby": {
+            "id": "PersistProbe B/01/1",
+            "card_action_id": "PersistProbe B/01",
+            "field": 1,
+            "value": "22281"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/2",
+          "ruby": {
+            "id": "PersistProbe B/01/2",
+            "card_action_id": "PersistProbe B/01",
+            "field": 2,
+            "value": ""
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/3",
+          "ruby": {
+            "id": "PersistProbe B/01/3",
+            "card_action_id": "PersistProbe B/01",
+            "field": 3,
+            "value": "0"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/4",
+          "ts": {
+            "id": "PersistProbe A/01/4",
+            "card_action_id": "PersistProbe A/01",
+            "field": 4,
+            "value": null
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/5",
+          "ts": {
+            "id": "PersistProbe A/01/5",
+            "card_action_id": "PersistProbe A/01",
+            "field": 5,
+            "value": null
+          }
+        }
+      ],
+      "deltaFaults": [
+        {
+          "table": "card_acts",
+          "kind": "field",
+          "key": "PersistProbe A/act2",
+          "column": "ip_address",
+          "ruby": null,
+          "ts": "2400:52e0:1a01::912:1"
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/0",
+          "ts": {
+            "id": "PersistProbe A/01/0",
+            "card_action_id": "PersistProbe A/01",
+            "field": 0,
+            "value": "PersistProbe A"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/1",
+          "ts": {
+            "id": "PersistProbe A/01/1",
+            "card_action_id": "PersistProbe A/01",
+            "field": 1,
+            "value": "3"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/2",
+          "ts": {
+            "id": "PersistProbe A/01/2",
+            "card_action_id": "PersistProbe A/01",
+            "field": 2,
+            "value": "alpha"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/3",
+          "ts": {
+            "id": "PersistProbe A/01/3",
+            "card_action_id": "PersistProbe A/01",
+            "field": 3,
+            "value": "f"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/4",
+          "ts": {
+            "id": "PersistProbe A/01/4",
+            "card_action_id": "PersistProbe A/01",
+            "field": 4,
+            "value": null
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/5",
+          "ts": {
+            "id": "PersistProbe A/01/5",
+            "card_action_id": "PersistProbe A/01",
+            "field": 5,
+            "value": null
+          }
+        }
+      ],
+      "deliberate": null,
+      "unexpectedDeltaFaults": [
+        {
+          "table": "card_acts",
+          "kind": "field",
+          "key": "PersistProbe A/act2",
+          "column": "ip_address",
+          "ruby": null,
+          "ts": "2400:52e0:1a01::912:1"
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/0",
+          "ts": {
+            "id": "PersistProbe A/01/0",
+            "card_action_id": "PersistProbe A/01",
+            "field": 0,
+            "value": "PersistProbe A"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/1",
+          "ts": {
+            "id": "PersistProbe A/01/1",
+            "card_action_id": "PersistProbe A/01",
+            "field": 1,
+            "value": "3"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/2",
+          "ts": {
+            "id": "PersistProbe A/01/2",
+            "card_action_id": "PersistProbe A/01",
+            "field": 2,
+            "value": "alpha"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/3",
+          "ts": {
+            "id": "PersistProbe A/01/3",
+            "card_action_id": "PersistProbe A/01",
+            "field": 3,
+            "value": "f"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/4",
+          "ts": {
+            "id": "PersistProbe A/01/4",
+            "card_action_id": "PersistProbe A/01",
+            "field": 4,
+            "value": null
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/5",
+          "ts": {
+            "id": "PersistProbe A/01/5",
+            "card_action_id": "PersistProbe A/01",
+            "field": 5,
+            "value": null
+          }
+        }
+      ]
+    },
+    {
+      "step": 4,
+      "label": "update with link",
+      "rubyOk": true,
+      "rubyError": null,
+      "tsOk": true,
+      "tsError": null,
+      "stateFaults": [
+        {
+          "table": "card_acts",
+          "kind": "field",
+          "key": "PersistProbe A/act1",
+          "column": "ip_address",
+          "ruby": null,
+          "ts": "2400:52e0:1a01::912:1"
+        },
+        {
+          "table": "card_acts",
+          "kind": "field",
+          "key": "PersistProbe A+PersistProbe B/act1",
+          "column": "ip_address",
+          "ruby": null,
+          "ts": "2400:52e0:1a01::912:1"
+        },
+        {
+          "table": "card_acts",
+          "kind": "field",
+          "key": "PersistProbe A/act2",
+          "column": "ip_address",
+          "ruby": null,
+          "ts": "2400:52e0:1a01::912:1"
+        },
+        {
+          "table": "card_acts",
+          "kind": "field",
+          "key": "PersistProbe A/act3",
+          "column": "ip_address",
+          "ruby": null,
+          "ts": "2400:52e0:1a01::912:1"
+        },
+        {
+          "table": "card_changes",
+          "kind": "field",
+          "key": "PersistProbe A/01/3",
+          "column": "value",
+          "ruby": "0",
+          "ts": "f"
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/1",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/1",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 1,
+            "value": "3"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/2",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/2",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 2,
+            "value": "beta"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/3",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/3",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 3,
+            "value": "0"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/4",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/4",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 4,
+            "value": "PersistProbe A"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/5",
+          "ruby": {
+            "id": "PersistProbe A+PersistProbe B/01/5",
+            "card_action_id": "PersistProbe A+PersistProbe B/01",
+            "field": 5,
+            "value": "PersistProbe B"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/0",
+          "ruby": {
+            "id": "PersistProbe B/01/0",
+            "card_action_id": "PersistProbe B/01",
+            "field": 0,
+            "value": "PersistProbe B"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/1",
+          "ruby": {
+            "id": "PersistProbe B/01/1",
+            "card_action_id": "PersistProbe B/01",
+            "field": 1,
+            "value": "22281"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/2",
+          "ruby": {
+            "id": "PersistProbe B/01/2",
+            "card_action_id": "PersistProbe B/01",
+            "field": 2,
+            "value": ""
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/3",
+          "ruby": {
+            "id": "PersistProbe B/01/3",
+            "card_action_id": "PersistProbe B/01",
+            "field": 3,
+            "value": "0"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/4",
+          "ts": {
+            "id": "PersistProbe A/01/4",
+            "card_action_id": "PersistProbe A/01",
+            "field": 4,
+            "value": null
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/5",
+          "ts": {
+            "id": "PersistProbe A/01/5",
+            "card_action_id": "PersistProbe A/01",
+            "field": 5,
+            "value": null
+          }
+        }
+      ],
+      "deltaFaults": [
+        {
+          "table": "card_acts",
+          "kind": "field",
+          "key": "PersistProbe A/act3",
+          "column": "ip_address",
+          "ruby": null,
+          "ts": "2400:52e0:1a01::912:1"
+        }
+      ],
+      "deliberate": null,
+      "unexpectedDeltaFaults": [
+        {
+          "table": "card_acts",
+          "kind": "field",
+          "key": "PersistProbe A/act3",
+          "column": "ip_address",
+          "ruby": null,
+          "ts": "2400:52e0:1a01::912:1"
+        }
+      ]
+    },
+    {
+      "step": 5,
+      "label": "rename",
+      "rubyOk": true,
+      "rubyError": null,
+      "tsOk": true,
+      "tsError": null,
+      "stateFaults": [
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "type_id",
+          "ruby": 3,
+          "ts": 22281
+        },
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "db_content",
+          "ruby": "alpha beta [[PersistProbe B]]",
+          "ts": ""
+        },
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "read_rule_class",
+          "ruby": "*all",
+          "ts": "*type"
+        },
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "read_rule_id",
+          "ruby": 6568,
+          "ts": 22283
+        },
+        {
+          "table": "cards",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B",
+            "name": null,
+            "key": null,
+            "codename": null,
+            "left_id": "PersistProbe Renamed",
+            "right_id": "PersistProbe B",
+            "trash": 0,
+            "type_id": 3,
+            "db_content": "beta",
+            "creator_id": 53076,
+            "updater_id": 53076,
+            "read_rule_class": "*all plus",
+            "read_rule_id": 6568,
+            "current_revision_id": null,
+            "references_expired": null,
+            "created_at": "T",
+            "updated_at": "T"
+          }
+        },
+        {
+          "table": "cards",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A",
+          "ts": {
+            "id": "PersistProbe A",
+            "name": "PersistProbe A",
+            "key": "persist_probe_a",
+            "codename": null,
+            "left_id": null,
+            "right_id": null,
+            "trash": 0,
+            "type_id": 3,
+            "db_content": "alpha beta [[PersistProbe B]]",
+            "creator_id": 53076,
+            "updater_id": 53076,
+            "read_rule_class": "*all",
+            "read_rule_id": 6568,
+            "current_revision_id": null,
+            "references_expired": null,
+            "created_at": "T",
+            "updated_at": "T"
+          }
+        },
+        {
+          "table": "cards",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A+PersistProbe B",
+          "ts": {
+            "id": "PersistProbe A+PersistProbe B",
+            "name": null,
+            "key": null,
+            "codename": null,
+            "left_id": "PersistProbe A",
+            "right_id": "PersistProbe B",
+            "trash": 0,
+            "type_id": 3,
+            "db_content": "beta",
+            "creator_id": 53076,
+            "updater_id": 53076,
+            "read_rule_class": "*all plus",
+            "read_rule_id": 6568,
+            "current_revision_id": null,
+            "references_expired": null,
+            "created_at": "T",
+            "updated_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "field",
+          "key": "PersistProbe Renamed/act1",
+          "column": "ip_address",
+          "ruby": null,
+          "ts": "2400:52e0:1a01::912:1"
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/act1",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/act1",
+            "card_id": "PersistProbe Renamed+PersistProbe B",
+            "actor_id": 53076,
+            "ip_address": null,
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/act2",
+          "ruby": {
+            "id": "PersistProbe Renamed/act2",
+            "card_id": "PersistProbe Renamed",
+            "actor_id": 53076,
+            "ip_address": null,
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/act3",
+          "ruby": {
+            "id": "PersistProbe Renamed/act3",
+            "card_id": "PersistProbe Renamed",
+            "actor_id": 53076,
+            "ip_address": null,
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/act4",
+          "ruby": {
+            "id": "PersistProbe Renamed/act4",
+            "card_id": "PersistProbe Renamed",
+            "actor_id": 53076,
+            "ip_address": null,
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/act1",
+          "ts": {
+            "id": "PersistProbe A/act1",
+            "card_id": "PersistProbe A",
+            "actor_id": 53076,
+            "ip_address": "2400:52e0:1a01::912:1",
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A+PersistProbe B/act1",
+          "ts": {
+            "id": "PersistProbe A+PersistProbe B/act1",
+            "card_id": "PersistProbe A+PersistProbe B",
+            "actor_id": 53076,
+            "ip_address": "2400:52e0:1a01::912:1",
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/act2",
+          "ts": {
+            "id": "PersistProbe A/act2",
+            "card_id": "PersistProbe A",
+            "actor_id": 53076,
+            "ip_address": "2400:52e0:1a01::912:1",
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/act3",
+          "ts": {
+            "id": "PersistProbe A/act3",
+            "card_id": "PersistProbe A",
+            "actor_id": 53076,
+            "ip_address": "2400:52e0:1a01::912:1",
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01",
+            "card_id": "PersistProbe Renamed+PersistProbe B",
+            "card_act_id": "PersistProbe Renamed+PersistProbe B/act1",
+            "super_action_id": null,
+            "action_type": 0,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "field",
+          "key": "PersistProbe B/01",
+          "column": "card_act_id",
+          "ruby": "PersistProbe Renamed+PersistProbe B/act1",
+          "ts": "PersistProbe A+PersistProbe B/act1"
+        },
+        {
+          "table": "card_actions",
+          "kind": "field",
+          "key": "PersistProbe B/01",
+          "column": "super_action_id",
+          "ruby": "PersistProbe Renamed+PersistProbe B/01",
+          "ts": "PersistProbe A+PersistProbe B/01"
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/11",
+          "ruby": {
+            "id": "PersistProbe Renamed/11",
+            "card_id": "PersistProbe Renamed",
+            "card_act_id": "PersistProbe Renamed/act2",
+            "super_action_id": null,
+            "action_type": 1,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/12",
+          "ruby": {
+            "id": "PersistProbe Renamed/12",
+            "card_id": "PersistProbe Renamed",
+            "card_act_id": "PersistProbe Renamed/act3",
+            "super_action_id": null,
+            "action_type": 1,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/13",
+          "ruby": {
+            "id": "PersistProbe Renamed/13",
+            "card_id": "PersistProbe Renamed",
+            "card_act_id": "PersistProbe Renamed/act4",
+            "super_action_id": null,
+            "action_type": 1,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01",
+          "ts": {
+            "id": "PersistProbe A/01",
+            "card_id": "PersistProbe A",
+            "card_act_id": "PersistProbe A/act1",
+            "super_action_id": null,
+            "action_type": 0,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01",
+          "ts": {
+            "id": "PersistProbe A+PersistProbe B/01",
+            "card_id": "PersistProbe A+PersistProbe B",
+            "card_act_id": "PersistProbe A+PersistProbe B/act1",
+            "super_action_id": null,
+            "action_type": 0,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/11",
+          "ts": {
+            "id": "PersistProbe A/11",
+            "card_id": "PersistProbe A",
+            "card_act_id": "PersistProbe A/act2",
+            "super_action_id": null,
+            "action_type": 1,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/12",
+          "ts": {
+            "id": "PersistProbe A/12",
+            "card_id": "PersistProbe A",
+            "card_act_id": "PersistProbe A/act3",
+            "super_action_id": null,
+            "action_type": 1,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/01/0",
+          "ruby": {
+            "id": "PersistProbe Renamed/01/0",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 0,
+            "value": "PersistProbe A"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/01/1",
+          "ruby": {
+            "id": "PersistProbe Renamed/01/1",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 1,
+            "value": "3"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/01/2",
+          "ruby": {
+            "id": "PersistProbe Renamed/01/2",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 2,
+            "value": "alpha"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/01/3",
+          "ruby": {
+            "id": "PersistProbe Renamed/01/3",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 3,
+            "value": "0"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01/1",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01/1",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/01",
+            "field": 1,
+            "value": "3"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01/2",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01/2",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/01",
+            "field": 2,
+            "value": "beta"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01/3",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01/3",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/01",
+            "field": 3,
+            "value": "0"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01/4",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01/4",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/01",
+            "field": 4,
+            "value": "PersistProbe Renamed"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01/5",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01/5",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/01",
+            "field": 5,
+            "value": "PersistProbe B"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/0",
+          "ruby": {
+            "id": "PersistProbe B/01/0",
+            "card_action_id": "PersistProbe B/01",
+            "field": 0,
+            "value": "PersistProbe B"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/1",
+          "ruby": {
+            "id": "PersistProbe B/01/1",
+            "card_action_id": "PersistProbe B/01",
+            "field": 1,
+            "value": "22281"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/2",
+          "ruby": {
+            "id": "PersistProbe B/01/2",
+            "card_action_id": "PersistProbe B/01",
+            "field": 2,
+            "value": ""
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/3",
+          "ruby": {
+            "id": "PersistProbe B/01/3",
+            "card_action_id": "PersistProbe B/01",
+            "field": 3,
+            "value": "0"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/11/2",
+          "ruby": {
+            "id": "PersistProbe Renamed/11/2",
+            "card_action_id": "PersistProbe Renamed/11",
+            "field": 2,
+            "value": "alpha beta"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/12/2",
+          "ruby": {
+            "id": "PersistProbe Renamed/12/2",
+            "card_action_id": "PersistProbe Renamed/12",
+            "field": 2,
+            "value": "alpha beta [[PersistProbe B]]"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/13/0",
+          "ruby": {
+            "id": "PersistProbe Renamed/13/0",
+            "card_action_id": "PersistProbe Renamed/13",
+            "field": 0,
+            "value": "PersistProbe Renamed"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/0",
+          "ts": {
+            "id": "PersistProbe A/01/0",
+            "card_action_id": "PersistProbe A/01",
+            "field": 0,
+            "value": "PersistProbe A"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/1",
+          "ts": {
+            "id": "PersistProbe A/01/1",
+            "card_action_id": "PersistProbe A/01",
+            "field": 1,
+            "value": "3"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/2",
+          "ts": {
+            "id": "PersistProbe A/01/2",
+            "card_action_id": "PersistProbe A/01",
+            "field": 2,
+            "value": "alpha"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/3",
+          "ts": {
+            "id": "PersistProbe A/01/3",
+            "card_action_id": "PersistProbe A/01",
+            "field": 3,
+            "value": "f"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/4",
+          "ts": {
+            "id": "PersistProbe A/01/4",
+            "card_action_id": "PersistProbe A/01",
+            "field": 4,
+            "value": null
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/5",
+          "ts": {
+            "id": "PersistProbe A/01/5",
+            "card_action_id": "PersistProbe A/01",
+            "field": 5,
+            "value": null
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/11/2",
+          "ts": {
+            "id": "PersistProbe A/11/2",
+            "card_action_id": "PersistProbe A/11",
+            "field": 2,
+            "value": "alpha beta"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/12/2",
+          "ts": {
+            "id": "PersistProbe A/12/2",
+            "card_action_id": "PersistProbe A/12",
+            "field": 2,
+            "value": "alpha beta [[PersistProbe B]]"
+          }
+        },
+        {
+          "table": "card_references",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed->persist_probe_b/L",
+          "ruby": {
+            "id": "PersistProbe Renamed->persist_probe_b/L",
+            "referer_id": "PersistProbe Renamed",
+            "referee_key": "persist_probe_b",
+            "referee_id": "PersistProbe B",
+            "ref_type": "L",
+            "is_present": null
+          }
+        },
+        {
+          "table": "card_references",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A->persist_probe_b/L",
+          "ts": {
+            "id": "PersistProbe A->persist_probe_b/L",
+            "referer_id": "PersistProbe A",
+            "referee_key": "persist_probe_b",
+            "referee_id": "PersistProbe B",
+            "ref_type": "L",
+            "is_present": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "order",
+          "ruby": [
+            "PersistProbe Renamed/01",
+            "PersistProbe B/01"
+          ],
+          "ts": [
+            "PersistProbe B/01",
+            "PersistProbe Renamed/01"
+          ]
+        }
+      ],
+      "deltaFaults": [
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "type_id",
+          "ruby": 3,
+          "ts": 22281
+        },
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "db_content",
+          "ruby": "alpha beta [[PersistProbe B]]",
+          "ts": ""
+        },
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "read_rule_class",
+          "ruby": "*all",
+          "ts": "*type"
+        },
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "read_rule_id",
+          "ruby": 6568,
+          "ts": 22283
+        },
+        {
+          "table": "cards",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B",
+            "name": null,
+            "key": null,
+            "codename": null,
+            "left_id": "PersistProbe Renamed",
+            "right_id": "PersistProbe B",
+            "trash": 0,
+            "type_id": 3,
+            "db_content": "beta",
+            "creator_id": 53076,
+            "updater_id": 53076,
+            "read_rule_class": "*all plus",
+            "read_rule_id": 6568,
+            "current_revision_id": null,
+            "references_expired": null,
+            "created_at": "T",
+            "updated_at": "T"
+          }
+        },
+        {
+          "table": "cards",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "cards",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "field",
+          "key": "PersistProbe Renamed/act1",
+          "column": "ip_address",
+          "ruby": null,
+          "ts": "2400:52e0:1a01::912:1"
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/act1",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/act1",
+            "card_id": "PersistProbe Renamed+PersistProbe B",
+            "actor_id": 53076,
+            "ip_address": null,
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/act2",
+          "ruby": {
+            "id": "PersistProbe Renamed/act2",
+            "card_id": "PersistProbe Renamed",
+            "actor_id": 53076,
+            "ip_address": null,
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/act3",
+          "ruby": {
+            "id": "PersistProbe Renamed/act3",
+            "card_id": "PersistProbe Renamed",
+            "actor_id": 53076,
+            "ip_address": null,
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/act4",
+          "ruby": {
+            "id": "PersistProbe Renamed/act4",
+            "card_id": "PersistProbe Renamed",
+            "actor_id": 53076,
+            "ip_address": null,
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/act1",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/act1",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/act2",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/act3",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01",
+            "card_id": "PersistProbe Renamed+PersistProbe B",
+            "card_act_id": "PersistProbe Renamed+PersistProbe B/act1",
+            "super_action_id": null,
+            "action_type": 0,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01",
+          "ruby": {
+            "id": "PersistProbe B/01",
+            "card_id": "PersistProbe B",
+            "card_act_id": "PersistProbe Renamed+PersistProbe B/act1",
+            "super_action_id": "PersistProbe Renamed+PersistProbe B/01",
+            "action_type": 0,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/11",
+          "ruby": {
+            "id": "PersistProbe Renamed/11",
+            "card_id": "PersistProbe Renamed",
+            "card_act_id": "PersistProbe Renamed/act2",
+            "super_action_id": null,
+            "action_type": 1,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/12",
+          "ruby": {
+            "id": "PersistProbe Renamed/12",
+            "card_id": "PersistProbe Renamed",
+            "card_act_id": "PersistProbe Renamed/act3",
+            "super_action_id": null,
+            "action_type": 1,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/13",
+          "ruby": {
+            "id": "PersistProbe Renamed/13",
+            "card_id": "PersistProbe Renamed",
+            "card_act_id": "PersistProbe Renamed/act4",
+            "super_action_id": null,
+            "action_type": 1,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/11",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/12",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/01/0",
+          "ruby": {
+            "id": "PersistProbe Renamed/01/0",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 0,
+            "value": "PersistProbe A"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/01/1",
+          "ruby": {
+            "id": "PersistProbe Renamed/01/1",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 1,
+            "value": "3"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/01/2",
+          "ruby": {
+            "id": "PersistProbe Renamed/01/2",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 2,
+            "value": "alpha"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/01/3",
+          "ruby": {
+            "id": "PersistProbe Renamed/01/3",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 3,
+            "value": "0"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01/1",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01/1",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/01",
+            "field": 1,
+            "value": "3"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01/2",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01/2",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/01",
+            "field": 2,
+            "value": "beta"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01/3",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01/3",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/01",
+            "field": 3,
+            "value": "0"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01/4",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01/4",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/01",
+            "field": 4,
+            "value": "PersistProbe Renamed"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01/5",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01/5",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/01",
+            "field": 5,
+            "value": "PersistProbe B"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/11/2",
+          "ruby": {
+            "id": "PersistProbe Renamed/11/2",
+            "card_action_id": "PersistProbe Renamed/11",
+            "field": 2,
+            "value": "alpha beta"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/12/2",
+          "ruby": {
+            "id": "PersistProbe Renamed/12/2",
+            "card_action_id": "PersistProbe Renamed/12",
+            "field": 2,
+            "value": "alpha beta [[PersistProbe B]]"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/13/0",
+          "ruby": {
+            "id": "PersistProbe Renamed/13/0",
+            "card_action_id": "PersistProbe Renamed/13",
+            "field": 0,
+            "value": "PersistProbe Renamed"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/0",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/1",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/2",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/3",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/1",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/2",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/3",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/4",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/5",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/11/2",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/12/2",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_references",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed->persist_probe_b/L",
+          "ruby": {
+            "id": "PersistProbe Renamed->persist_probe_b/L",
+            "referer_id": "PersistProbe Renamed",
+            "referee_key": "persist_probe_b",
+            "referee_id": "PersistProbe B",
+            "ref_type": "L",
+            "is_present": null
+          }
+        },
+        {
+          "table": "card_references",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A->persist_probe_b/L",
+          "ruby": {
+            "__removed": true
+          }
+        }
+      ],
+      "deliberate": null,
+      "unexpectedDeltaFaults": [
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "type_id",
+          "ruby": 3,
+          "ts": 22281
+        },
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "db_content",
+          "ruby": "alpha beta [[PersistProbe B]]",
+          "ts": ""
+        },
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "read_rule_class",
+          "ruby": "*all",
+          "ts": "*type"
+        },
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "read_rule_id",
+          "ruby": 6568,
+          "ts": 22283
+        },
+        {
+          "table": "cards",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B",
+            "name": null,
+            "key": null,
+            "codename": null,
+            "left_id": "PersistProbe Renamed",
+            "right_id": "PersistProbe B",
+            "trash": 0,
+            "type_id": 3,
+            "db_content": "beta",
+            "creator_id": 53076,
+            "updater_id": 53076,
+            "read_rule_class": "*all plus",
+            "read_rule_id": 6568,
+            "current_revision_id": null,
+            "references_expired": null,
+            "created_at": "T",
+            "updated_at": "T"
+          }
+        },
+        {
+          "table": "cards",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "cards",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "field",
+          "key": "PersistProbe Renamed/act1",
+          "column": "ip_address",
+          "ruby": null,
+          "ts": "2400:52e0:1a01::912:1"
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/act1",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/act1",
+            "card_id": "PersistProbe Renamed+PersistProbe B",
+            "actor_id": 53076,
+            "ip_address": null,
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/act2",
+          "ruby": {
+            "id": "PersistProbe Renamed/act2",
+            "card_id": "PersistProbe Renamed",
+            "actor_id": 53076,
+            "ip_address": null,
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/act3",
+          "ruby": {
+            "id": "PersistProbe Renamed/act3",
+            "card_id": "PersistProbe Renamed",
+            "actor_id": 53076,
+            "ip_address": null,
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/act4",
+          "ruby": {
+            "id": "PersistProbe Renamed/act4",
+            "card_id": "PersistProbe Renamed",
+            "actor_id": 53076,
+            "ip_address": null,
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/act1",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/act1",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/act2",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/act3",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01",
+            "card_id": "PersistProbe Renamed+PersistProbe B",
+            "card_act_id": "PersistProbe Renamed+PersistProbe B/act1",
+            "super_action_id": null,
+            "action_type": 0,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01",
+          "ruby": {
+            "id": "PersistProbe B/01",
+            "card_id": "PersistProbe B",
+            "card_act_id": "PersistProbe Renamed+PersistProbe B/act1",
+            "super_action_id": "PersistProbe Renamed+PersistProbe B/01",
+            "action_type": 0,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/11",
+          "ruby": {
+            "id": "PersistProbe Renamed/11",
+            "card_id": "PersistProbe Renamed",
+            "card_act_id": "PersistProbe Renamed/act2",
+            "super_action_id": null,
+            "action_type": 1,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/12",
+          "ruby": {
+            "id": "PersistProbe Renamed/12",
+            "card_id": "PersistProbe Renamed",
+            "card_act_id": "PersistProbe Renamed/act3",
+            "super_action_id": null,
+            "action_type": 1,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/13",
+          "ruby": {
+            "id": "PersistProbe Renamed/13",
+            "card_id": "PersistProbe Renamed",
+            "card_act_id": "PersistProbe Renamed/act4",
+            "super_action_id": null,
+            "action_type": 1,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/11",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/12",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/01/0",
+          "ruby": {
+            "id": "PersistProbe Renamed/01/0",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 0,
+            "value": "PersistProbe A"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/01/1",
+          "ruby": {
+            "id": "PersistProbe Renamed/01/1",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 1,
+            "value": "3"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/01/2",
+          "ruby": {
+            "id": "PersistProbe Renamed/01/2",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 2,
+            "value": "alpha"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/01/3",
+          "ruby": {
+            "id": "PersistProbe Renamed/01/3",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 3,
+            "value": "0"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01/1",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01/1",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/01",
+            "field": 1,
+            "value": "3"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01/2",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01/2",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/01",
+            "field": 2,
+            "value": "beta"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01/3",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01/3",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/01",
+            "field": 3,
+            "value": "0"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01/4",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01/4",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/01",
+            "field": 4,
+            "value": "PersistProbe Renamed"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01/5",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01/5",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/01",
+            "field": 5,
+            "value": "PersistProbe B"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/11/2",
+          "ruby": {
+            "id": "PersistProbe Renamed/11/2",
+            "card_action_id": "PersistProbe Renamed/11",
+            "field": 2,
+            "value": "alpha beta"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/12/2",
+          "ruby": {
+            "id": "PersistProbe Renamed/12/2",
+            "card_action_id": "PersistProbe Renamed/12",
+            "field": 2,
+            "value": "alpha beta [[PersistProbe B]]"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/13/0",
+          "ruby": {
+            "id": "PersistProbe Renamed/13/0",
+            "card_action_id": "PersistProbe Renamed/13",
+            "field": 0,
+            "value": "PersistProbe Renamed"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/0",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/1",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/2",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/01/3",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/1",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/2",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/3",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/4",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01/5",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/11/2",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A/12/2",
+          "ruby": {
+            "__removed": true
+          }
+        },
+        {
+          "table": "card_references",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed->persist_probe_b/L",
+          "ruby": {
+            "id": "PersistProbe Renamed->persist_probe_b/L",
+            "referer_id": "PersistProbe Renamed",
+            "referee_key": "persist_probe_b",
+            "referee_id": "PersistProbe B",
+            "ref_type": "L",
+            "is_present": null
+          }
+        },
+        {
+          "table": "card_references",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe A->persist_probe_b/L",
+          "ruby": {
+            "__removed": true
+          }
+        }
+      ]
+    },
+    {
+      "step": 6,
+      "label": "trash (delete!)",
+      "rubyOk": true,
+      "rubyError": null,
+      "tsOk": true,
+      "tsError": null,
+      "stateFaults": [
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "type_id",
+          "ruby": 3,
+          "ts": 22281
+        },
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "db_content",
+          "ruby": "alpha beta [[PersistProbe B]]",
+          "ts": ""
+        },
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "read_rule_class",
+          "ruby": "*all",
+          "ts": "*type"
+        },
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "read_rule_id",
+          "ruby": 6568,
+          "ts": 22283
+        },
+        {
+          "table": "cards",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B",
+            "name": null,
+            "key": null,
+            "codename": null,
+            "left_id": "PersistProbe Renamed",
+            "right_id": "PersistProbe B",
+            "trash": 1,
+            "type_id": 3,
+            "db_content": "beta",
+            "creator_id": 53076,
+            "updater_id": 53076,
+            "read_rule_class": "*all plus",
+            "read_rule_id": 6568,
+            "current_revision_id": null,
+            "references_expired": null,
+            "created_at": "T",
+            "updated_at": "T"
+          }
+        },
+        {
+          "table": "cards",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A",
+          "ts": {
+            "id": "PersistProbe A",
+            "name": "PersistProbe A",
+            "key": "persist_probe_a",
+            "codename": null,
+            "left_id": null,
+            "right_id": null,
+            "trash": 0,
+            "type_id": 3,
+            "db_content": "alpha beta [[PersistProbe B]]",
+            "creator_id": 53076,
+            "updater_id": 53076,
+            "read_rule_class": "*all",
+            "read_rule_id": 6568,
+            "current_revision_id": null,
+            "references_expired": null,
+            "created_at": "T",
+            "updated_at": "T"
+          }
+        },
+        {
+          "table": "cards",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A+PersistProbe B",
+          "ts": {
+            "id": "PersistProbe A+PersistProbe B",
+            "name": null,
+            "key": null,
+            "codename": null,
+            "left_id": "PersistProbe A",
+            "right_id": "PersistProbe B",
+            "trash": 0,
+            "type_id": 3,
+            "db_content": "beta",
+            "creator_id": 53076,
+            "updater_id": 53076,
+            "read_rule_class": "*all plus",
+            "read_rule_id": 6568,
+            "current_revision_id": null,
+            "references_expired": null,
+            "created_at": "T",
+            "updated_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "field",
+          "key": "PersistProbe Renamed/act1",
+          "column": "ip_address",
+          "ruby": null,
+          "ts": "2400:52e0:1a01::912:1"
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/act1",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/act1",
+            "card_id": "PersistProbe Renamed+PersistProbe B",
+            "actor_id": 53076,
+            "ip_address": null,
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "field",
+          "key": "PersistProbe Renamed/act2",
+          "column": "ip_address",
+          "ruby": null,
+          "ts": "2400:52e0:1a01::996:1"
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/act3",
+          "ruby": {
+            "id": "PersistProbe Renamed/act3",
+            "card_id": "PersistProbe Renamed",
+            "actor_id": 53076,
+            "ip_address": null,
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/act4",
+          "ruby": {
+            "id": "PersistProbe Renamed/act4",
+            "card_id": "PersistProbe Renamed",
+            "actor_id": 53076,
+            "ip_address": null,
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/act5",
+          "ruby": {
+            "id": "PersistProbe Renamed/act5",
+            "card_id": "PersistProbe Renamed",
+            "actor_id": 53076,
+            "ip_address": null,
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/act1",
+          "ts": {
+            "id": "PersistProbe A/act1",
+            "card_id": "PersistProbe A",
+            "actor_id": 53076,
+            "ip_address": "2400:52e0:1a01::912:1",
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A+PersistProbe B/act1",
+          "ts": {
+            "id": "PersistProbe A+PersistProbe B/act1",
+            "card_id": "PersistProbe A+PersistProbe B",
+            "actor_id": 53076,
+            "ip_address": "2400:52e0:1a01::912:1",
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/act2",
+          "ts": {
+            "id": "PersistProbe A/act2",
+            "card_id": "PersistProbe A",
+            "actor_id": 53076,
+            "ip_address": "2400:52e0:1a01::912:1",
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/act3",
+          "ts": {
+            "id": "PersistProbe A/act3",
+            "card_id": "PersistProbe A",
+            "actor_id": 53076,
+            "ip_address": "2400:52e0:1a01::912:1",
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01",
+            "card_id": "PersistProbe Renamed+PersistProbe B",
+            "card_act_id": "PersistProbe Renamed+PersistProbe B/act1",
+            "super_action_id": null,
+            "action_type": 0,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "field",
+          "key": "PersistProbe B/01",
+          "column": "card_act_id",
+          "ruby": "PersistProbe Renamed+PersistProbe B/act1",
+          "ts": "PersistProbe A+PersistProbe B/act1"
+        },
+        {
+          "table": "card_actions",
+          "kind": "field",
+          "key": "PersistProbe B/01",
+          "column": "super_action_id",
+          "ruby": "PersistProbe Renamed+PersistProbe B/01",
+          "ts": "PersistProbe A+PersistProbe B/01"
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/11",
+          "ruby": {
+            "id": "PersistProbe Renamed/11",
+            "card_id": "PersistProbe Renamed",
+            "card_act_id": "PersistProbe Renamed/act2",
+            "super_action_id": null,
+            "action_type": 1,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/12",
+          "ruby": {
+            "id": "PersistProbe Renamed/12",
+            "card_id": "PersistProbe Renamed",
+            "card_act_id": "PersistProbe Renamed/act3",
+            "super_action_id": null,
+            "action_type": 1,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/13",
+          "ruby": {
+            "id": "PersistProbe Renamed/13",
+            "card_id": "PersistProbe Renamed",
+            "card_act_id": "PersistProbe Renamed/act4",
+            "super_action_id": null,
+            "action_type": 1,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "field",
+          "key": "PersistProbe Renamed/21",
+          "column": "card_act_id",
+          "ruby": "PersistProbe Renamed/act5",
+          "ts": "PersistProbe Renamed/act2"
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/21",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/21",
+            "card_id": "PersistProbe Renamed+PersistProbe B",
+            "card_act_id": "PersistProbe Renamed/act5",
+            "super_action_id": "PersistProbe Renamed/21",
+            "action_type": 2,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01",
+          "ts": {
+            "id": "PersistProbe A/01",
+            "card_id": "PersistProbe A",
+            "card_act_id": "PersistProbe A/act1",
+            "super_action_id": null,
+            "action_type": 0,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A+PersistProbe B/01",
+          "ts": {
+            "id": "PersistProbe A+PersistProbe B/01",
+            "card_id": "PersistProbe A+PersistProbe B",
+            "card_act_id": "PersistProbe A+PersistProbe B/act1",
+            "super_action_id": null,
+            "action_type": 0,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/11",
+          "ts": {
+            "id": "PersistProbe A/11",
+            "card_id": "PersistProbe A",
+            "card_act_id": "PersistProbe A/act2",
+            "super_action_id": null,
+            "action_type": 1,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/12",
+          "ts": {
+            "id": "PersistProbe A/12",
+            "card_id": "PersistProbe A",
+            "card_act_id": "PersistProbe A/act3",
+            "super_action_id": null,
+            "action_type": 1,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "field",
+          "key": "PersistProbe Renamed/01/0",
+          "column": "value",
+          "ruby": "PersistProbe A",
+          "ts": "PersistProbe Renamed"
+        },
+        {
+          "table": "card_changes",
+          "kind": "field",
+          "key": "PersistProbe Renamed/01/1",
+          "column": "value",
+          "ruby": "3",
+          "ts": "22281"
+        },
+        {
+          "table": "card_changes",
+          "kind": "field",
+          "key": "PersistProbe Renamed/01/2",
+          "column": "value",
+          "ruby": "alpha",
+          "ts": ""
+        },
+        {
+          "table": "card_changes",
+          "kind": "field",
+          "key": "PersistProbe Renamed/01/3",
+          "column": "value",
+          "ruby": "0",
+          "ts": "f"
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01/1",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01/1",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/01",
+            "field": 1,
+            "value": "3"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01/2",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01/2",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/01",
+            "field": 2,
+            "value": "beta"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01/3",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01/3",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/01",
+            "field": 3,
+            "value": "0"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01/4",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01/4",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/01",
+            "field": 4,
+            "value": "PersistProbe Renamed"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/01/5",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/01/5",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/01",
+            "field": 5,
+            "value": "PersistProbe B"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/0",
+          "ruby": {
+            "id": "PersistProbe B/01/0",
+            "card_action_id": "PersistProbe B/01",
+            "field": 0,
+            "value": "PersistProbe B"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/1",
+          "ruby": {
+            "id": "PersistProbe B/01/1",
+            "card_action_id": "PersistProbe B/01",
+            "field": 1,
+            "value": "22281"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/2",
+          "ruby": {
+            "id": "PersistProbe B/01/2",
+            "card_action_id": "PersistProbe B/01",
+            "field": 2,
+            "value": ""
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe B/01/3",
+          "ruby": {
+            "id": "PersistProbe B/01/3",
+            "card_action_id": "PersistProbe B/01",
+            "field": 3,
+            "value": "0"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/11/2",
+          "ruby": {
+            "id": "PersistProbe Renamed/11/2",
+            "card_action_id": "PersistProbe Renamed/11",
+            "field": 2,
+            "value": "alpha beta"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/12/2",
+          "ruby": {
+            "id": "PersistProbe Renamed/12/2",
+            "card_action_id": "PersistProbe Renamed/12",
+            "field": 2,
+            "value": "alpha beta [[PersistProbe B]]"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/13/0",
+          "ruby": {
+            "id": "PersistProbe Renamed/13/0",
+            "card_action_id": "PersistProbe Renamed/13",
+            "field": 0,
+            "value": "PersistProbe Renamed"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "field",
+          "key": "PersistProbe Renamed/21/3",
+          "column": "value",
+          "ruby": "1",
+          "ts": "t"
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/21/3",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/21/3",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/21",
+            "field": 3,
+            "value": "1"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/0",
+          "ts": {
+            "id": "PersistProbe A/01/0",
+            "card_action_id": "PersistProbe A/01",
+            "field": 0,
+            "value": "PersistProbe A"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/1",
+          "ts": {
+            "id": "PersistProbe A/01/1",
+            "card_action_id": "PersistProbe A/01",
+            "field": 1,
+            "value": "3"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/2",
+          "ts": {
+            "id": "PersistProbe A/01/2",
+            "card_action_id": "PersistProbe A/01",
+            "field": 2,
+            "value": "alpha"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/3",
+          "ts": {
+            "id": "PersistProbe A/01/3",
+            "card_action_id": "PersistProbe A/01",
+            "field": 3,
+            "value": "f"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/4",
+          "ts": {
+            "id": "PersistProbe A/01/4",
+            "card_action_id": "PersistProbe A/01",
+            "field": 4,
+            "value": null
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/01/5",
+          "ts": {
+            "id": "PersistProbe A/01/5",
+            "card_action_id": "PersistProbe A/01",
+            "field": 5,
+            "value": null
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/11/2",
+          "ts": {
+            "id": "PersistProbe A/11/2",
+            "card_action_id": "PersistProbe A/11",
+            "field": 2,
+            "value": "alpha beta"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A/12/2",
+          "ts": {
+            "id": "PersistProbe A/12/2",
+            "card_action_id": "PersistProbe A/12",
+            "field": 2,
+            "value": "alpha beta [[PersistProbe B]]"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe Renamed/01/4",
+          "ts": {
+            "id": "PersistProbe Renamed/01/4",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 4,
+            "value": null
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe Renamed/01/5",
+          "ts": {
+            "id": "PersistProbe Renamed/01/5",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 5,
+            "value": null
+          }
+        },
+        {
+          "table": "card_references",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe A->persist_probe_b/L",
+          "ts": {
+            "id": "PersistProbe A->persist_probe_b/L",
+            "referer_id": "PersistProbe A",
+            "referee_key": "persist_probe_b",
+            "referee_id": "PersistProbe B",
+            "ref_type": "L",
+            "is_present": null
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "order",
+          "ruby": [
+            "PersistProbe Renamed/01",
+            "PersistProbe B/01",
+            "PersistProbe Renamed/21"
+          ],
+          "ts": [
+            "PersistProbe B/01",
+            "PersistProbe Renamed/01",
+            "PersistProbe Renamed/21"
+          ]
+        }
+      ],
+      "deltaFaults": [
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "type_id",
+          "ruby": 3,
+          "ts": 22281
+        },
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "db_content",
+          "ruby": "alpha beta [[PersistProbe B]]",
+          "ts": ""
+        },
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "read_rule_class",
+          "ruby": "*all",
+          "ts": "*type"
+        },
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "read_rule_id",
+          "ruby": 6568,
+          "ts": 22283
+        },
+        {
+          "table": "cards",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B",
+            "name": null,
+            "key": null,
+            "codename": null,
+            "left_id": "PersistProbe Renamed",
+            "right_id": "PersistProbe B",
+            "trash": 1,
+            "type_id": 3,
+            "db_content": "beta",
+            "creator_id": 53076,
+            "updater_id": 53076,
+            "read_rule_class": "*all plus",
+            "read_rule_id": 6568,
+            "current_revision_id": null,
+            "references_expired": null,
+            "created_at": "T",
+            "updated_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/act5",
+          "ruby": {
+            "id": "PersistProbe Renamed/act5",
+            "card_id": "PersistProbe Renamed",
+            "actor_id": 53076,
+            "ip_address": null,
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe Renamed/act2",
+          "ts": {
+            "id": "PersistProbe Renamed/act2",
+            "card_id": "PersistProbe Renamed",
+            "actor_id": 53076,
+            "ip_address": "2400:52e0:1a01::996:1",
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "field",
+          "key": "PersistProbe Renamed/21",
+          "column": "card_act_id",
+          "ruby": "PersistProbe Renamed/act5",
+          "ts": "PersistProbe Renamed/act2"
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/21",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/21",
+            "card_id": "PersistProbe Renamed+PersistProbe B",
+            "card_act_id": "PersistProbe Renamed/act5",
+            "super_action_id": "PersistProbe Renamed/21",
+            "action_type": 2,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "field",
+          "key": "PersistProbe Renamed/21/3",
+          "column": "value",
+          "ruby": "1",
+          "ts": "t"
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/21/3",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/21/3",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/21",
+            "field": 3,
+            "value": "1"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe Renamed/01/0",
+          "ts": {
+            "id": "PersistProbe Renamed/01/0",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 0,
+            "value": "PersistProbe Renamed"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe Renamed/01/1",
+          "ts": {
+            "id": "PersistProbe Renamed/01/1",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 1,
+            "value": "22281"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe Renamed/01/2",
+          "ts": {
+            "id": "PersistProbe Renamed/01/2",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 2,
+            "value": ""
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe Renamed/01/3",
+          "ts": {
+            "id": "PersistProbe Renamed/01/3",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 3,
+            "value": "f"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe Renamed/01/4",
+          "ts": {
+            "id": "PersistProbe Renamed/01/4",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 4,
+            "value": null
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe Renamed/01/5",
+          "ts": {
+            "id": "PersistProbe Renamed/01/5",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 5,
+            "value": null
+          }
+        },
+        {
+          "table": "card_references",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed->persist_probe_b/L",
+          "ruby": {
+            "__removed": true
+          }
+        }
+      ],
+      "deliberate": null,
+      "unexpectedDeltaFaults": [
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "type_id",
+          "ruby": 3,
+          "ts": 22281
+        },
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "db_content",
+          "ruby": "alpha beta [[PersistProbe B]]",
+          "ts": ""
+        },
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "read_rule_class",
+          "ruby": "*all",
+          "ts": "*type"
+        },
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "read_rule_id",
+          "ruby": 6568,
+          "ts": 22283
+        },
+        {
+          "table": "cards",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B",
+            "name": null,
+            "key": null,
+            "codename": null,
+            "left_id": "PersistProbe Renamed",
+            "right_id": "PersistProbe B",
+            "trash": 1,
+            "type_id": 3,
+            "db_content": "beta",
+            "creator_id": 53076,
+            "updater_id": 53076,
+            "read_rule_class": "*all plus",
+            "read_rule_id": 6568,
+            "current_revision_id": null,
+            "references_expired": null,
+            "created_at": "T",
+            "updated_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed/act5",
+          "ruby": {
+            "id": "PersistProbe Renamed/act5",
+            "card_id": "PersistProbe Renamed",
+            "actor_id": 53076,
+            "ip_address": null,
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_acts",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe Renamed/act2",
+          "ts": {
+            "id": "PersistProbe Renamed/act2",
+            "card_id": "PersistProbe Renamed",
+            "actor_id": 53076,
+            "ip_address": "2400:52e0:1a01::996:1",
+            "acted_at": "T"
+          }
+        },
+        {
+          "table": "card_actions",
+          "kind": "field",
+          "key": "PersistProbe Renamed/21",
+          "column": "card_act_id",
+          "ruby": "PersistProbe Renamed/act5",
+          "ts": "PersistProbe Renamed/act2"
+        },
+        {
+          "table": "card_actions",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/21",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/21",
+            "card_id": "PersistProbe Renamed+PersistProbe B",
+            "card_act_id": "PersistProbe Renamed/act5",
+            "super_action_id": "PersistProbe Renamed/21",
+            "action_type": 2,
+            "draft": 0,
+            "comment": null
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "field",
+          "key": "PersistProbe Renamed/21/3",
+          "column": "value",
+          "ruby": "1",
+          "ts": "t"
+        },
+        {
+          "table": "card_changes",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed+PersistProbe B/21/3",
+          "ruby": {
+            "id": "PersistProbe Renamed+PersistProbe B/21/3",
+            "card_action_id": "PersistProbe Renamed+PersistProbe B/21",
+            "field": 3,
+            "value": "1"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe Renamed/01/0",
+          "ts": {
+            "id": "PersistProbe Renamed/01/0",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 0,
+            "value": "PersistProbe Renamed"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe Renamed/01/1",
+          "ts": {
+            "id": "PersistProbe Renamed/01/1",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 1,
+            "value": "22281"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe Renamed/01/2",
+          "ts": {
+            "id": "PersistProbe Renamed/01/2",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 2,
+            "value": ""
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe Renamed/01/3",
+          "ts": {
+            "id": "PersistProbe Renamed/01/3",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 3,
+            "value": "f"
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe Renamed/01/4",
+          "ts": {
+            "id": "PersistProbe Renamed/01/4",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 4,
+            "value": null
+          }
+        },
+        {
+          "table": "card_changes",
+          "kind": "extra-in-ts",
+          "key": "PersistProbe Renamed/01/5",
+          "ts": {
+            "id": "PersistProbe Renamed/01/5",
+            "card_action_id": "PersistProbe Renamed/01",
+            "field": 5,
+            "value": null
+          }
+        },
+        {
+          "table": "card_references",
+          "kind": "missing-in-ts",
+          "key": "PersistProbe Renamed->persist_probe_b/L",
+          "ruby": {
+            "__removed": true
+          }
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "steps": 6,
+    "stateMatching": 0,
+    "deltaMatching": 0,
+    "deltaDeliberate": 0
+  },
+  "passRate": {
+    "state": "0/6",
+    "delta": "0/6",
+    "deltaDeliberate": 0,
+    "deltaUnexpected": 6
+  }
+}
