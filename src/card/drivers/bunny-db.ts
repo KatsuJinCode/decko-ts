@@ -62,7 +62,8 @@
 //     Both are fixed below and are on BY DEFAULT: DEFAULT_PIPELINE_TIMEOUT_MS
 //     bounds every hop, and one bounded retry absorbs a transient hop.
 
-import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../server/driver.js";
+import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement, SQLTransactionGuarantee } from "../../server/driver.js";
+import { TransactionGate } from "../../server/driver.js";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -290,8 +291,150 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
     this.counter = queryCounter ?? DEFAULT_NOOP_COUNTER;
   }
 
+  /** A real libSQL transaction on one Hrana stream; see transaction(). */
+  readonly transactionGuarantee: SQLTransactionGuarantee = {
+    mechanism: "native",
+    atomicOnFailure: true,
+    crashRecovery: "database",
+    readersIsolated: true,
+    serializedWriters: "database",
+    atomicBatch: false,
+    idsReusedAfterRollback: true,
+  };
+
+  private readonly gate = new TransactionGate();
+  /** The open transaction's stream (latest baton, URL to send it to). */
+  private stream: { baton: string; url: string } | undefined;
+  private streamTail: Promise<void> = Promise.resolve();
+
+  /**
+   * Runs `work` inside one libSQL transaction on a Hrana stream: a pipeline
+   * that does not end with "close" keeps its server connection open and
+   * returns a baton, which the next pipeline sends to continue on it
+   * (Hrana's HTTP stream protocol, as @libsql/hrana-client implements it;
+   * BEGIN IMMEDIATE is what @libsql/client sends for a write transaction).
+   * Every statement issued through this driver while `work` runs goes to
+   * the stream, one request at a time. Requests on the stream are never
+   * retried: a baton is single-use, and a lost stream has already rolled
+   * the transaction back. Stand-alone queries keep their retry.
+   */
+  async transaction<R>(work: () => Promise<R>): Promise<R> {
+    return this.gate.run(async () => {
+      const begin: HranaPipelineRequest[] = [{ type: "execute", stmt: toHranaStmt("BEGIN IMMEDIATE", []) }];
+      const opened = await this.streamPipeline(begin, { url: this.pipelineUrl });
+      if (opened.baton === undefined) {
+        throw new BunnyDbError("BunnyDb returned no baton for an open stream (protocol violation)");
+      }
+      this.stream = { baton: opened.baton, url: opened.url };
+      try {
+        opened.results.forEach((entry, i) => decodeStreamResult(entry, i, begin[i]));
+      } catch (error) {
+        await this.endStream(undefined).catch(() => undefined);
+        throw error;
+      }
+      let result: R;
+      try {
+        result = await work();
+      } catch (error) {
+        await this.endStream("ROLLBACK").catch(() => undefined);
+        throw error;
+      }
+      try {
+        await this.endStream("COMMIT");
+      } catch (error) {
+        if (this.stream !== undefined) await this.endStream("ROLLBACK").catch(() => undefined);
+        throw error;
+      }
+      return result;
+    });
+  }
+
+  private async endStream(verb: "COMMIT" | "ROLLBACK" | undefined): Promise<void> {
+    await this.streamTail;
+    const stream = this.stream;
+    if (stream === undefined) return;
+    const requests: HranaPipelineRequest[] =
+      verb === undefined ? [{ type: "close" }] : [{ type: "execute", stmt: toHranaStmt(verb, []) }, { type: "close" }];
+    try {
+      const ended = await this.streamPipeline(requests, stream);
+      ended.results.forEach((entry, i) => decodeStreamResult(entry, i, requests[i]));
+    } finally {
+      this.stream = undefined;
+    }
+  }
+
+  /** Runs execute requests on the open stream, queued behind any request
+   *  already in flight on it. */
+  private sendOnStream(requests: HranaPipelineRequest[]): Promise<unknown[]> {
+    const run = this.streamTail.then(async () => {
+      const stream = this.stream;
+      if (stream === undefined) throw new BunnyDbError("BunnyDb transaction stream is closed");
+      const response = await this.streamPipeline(requests, stream);
+      if (response.baton === undefined) {
+        this.stream = undefined;
+        throw new BunnyDbError("BunnyDb closed the transaction's stream (no baton returned)");
+      }
+      this.stream = { baton: response.baton, url: response.url };
+      // Decoded after the baton is kept, so a failed statement can still be
+      // rolled back on its stream.
+      return response.results.map((entry, i) => decodeStreamResult(entry, i, requests[i]));
+    });
+    this.streamTail = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
+
+  /** One POST on a stream: no retry, the baton in the body, the base_url
+   *  the server names (if any) kept for the next request. */
+  private async streamPipeline(
+    requests: HranaPipelineRequest[],
+    target: { url: string; baton?: string },
+  ): Promise<{ results: unknown[]; baton?: string; url: string }> {
+    const headers: Record<string, string> = { "content-type": "application/json", "accept-encoding": "gzip, identity" };
+    if (this.authToken !== undefined) headers.authorization = `Bearer ${this.authToken}`;
+    let response: Response;
+    try {
+      response = await this.fetchImpl(target.url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(target.baton === undefined ? { requests } : { baton: target.baton, requests }),
+        signal: this.timeoutMs !== undefined ? AbortSignal.timeout(this.timeoutMs) : undefined,
+      });
+    } catch (cause) {
+      throw new BunnyDbError(`BunnyDb pipeline transport failed: ${describeTransportError(cause)}`, { transport: true });
+    }
+    if (!response.ok) {
+      const bodySnippet = (await response.text().catch(() => "")).slice(0, 500);
+      throw new BunnyDbError(
+        `BunnyDb pipeline request failed: HTTP ${response.status} ${response.statusText}${bodySnippet ? `: ${bodySnippet}` : ""}`,
+        { status: response.status },
+      );
+    }
+    const decoded = (await readPipelineJson(response)) as PipelineResponseBody;
+    if (decoded === null || typeof decoded !== "object" || !Array.isArray(decoded.results)) {
+      throw new BunnyDbError("BunnyDb pipeline response has no results array (protocol violation)");
+    }
+    if (decoded.results.length !== requests.length) {
+      throw new BunnyDbError(
+        `BunnyDb pipeline response count mismatch: sent ${requests.length} requests, got ${decoded.results.length} results`,
+      );
+    }
+    const baton = typeof decoded.baton === "string" ? decoded.baton : undefined;
+    const url =
+      typeof decoded.base_url === "string" && decoded.base_url !== ""
+        ? `${decoded.base_url.replace(/\/+$/, "")}/v2/pipeline`
+        : target.url;
+    return { results: decoded.results, baton, url };
+  }
+
   async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
     this.counter.recordQuery(sql);
+    if (this.stream !== undefined) {
+      const onStream = await this.sendOnStream([{ type: "execute", stmt: toHranaStmt(sql, params) }]);
+      return execResultToQueryResult<T>(onStream[0] as BunnyDbExecResult);
+    }
     const results = await this.pipeline([
       { type: "execute", stmt: toHranaStmt(sql, params) },
       { type: "close" },
@@ -310,6 +453,9 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       type: "execute",
       stmt: toHranaStmt(s.sql, s.params),
     }));
+    if (this.stream !== undefined) {
+      return (await this.sendOnStream(requests)).map((r) => execResultToQueryResult<unknown>(r as BunnyDbExecResult));
+    }
     requests.push({ type: "close" });
     const results = await this.pipeline(requests);
     // pipeline() results align 1:1 with requests; the trailing "close"
@@ -520,7 +666,8 @@ function bytesToBase64(bytes: Uint8Array): string {
 // ---------------------------------------------------------------------------
 
 interface PipelineResponseBody {
-  baton?: string;
+  baton?: string | null;
+  base_url?: string | null;
   results?: unknown[];
 }
 

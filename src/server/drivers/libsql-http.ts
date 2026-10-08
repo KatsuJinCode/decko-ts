@@ -32,11 +32,24 @@
 // batch() is a real multi-execute pipeline: every statement goes into the
 // SAME POST body (one HTTP round trip), followed by one "close". Unlike
 // LocalSqliteDriver.batch and D1 batch, a Hrana pipeline is NOT
-// transactional — each execute commits on the server as it runs. If atomic
-// batch behavior is needed, wrap the statements in explicit BEGIN/COMMIT
-// executes at the engine layer.
+// transactional — each execute commits on the server as it runs — so
+// `transactionGuarantee.atomicBatch` is false. Inside transaction() a batch
+// is part of the transaction.
+//
+// transaction() is a real libSQL transaction on one Hrana STREAM. A
+// pipeline that ends without "close" keeps its stream (one server-side
+// connection) open, and the response carries a `baton` (and optionally a
+// `base_url`) that the next pipeline must send to continue on that stream
+// (Hrana spec, "HTTP" section; the reference client @libsql/hrana-client
+// http/stream.js does exactly this, and @libsql/client starts its "write"
+// transactions with BEGIN IMMEDIATE). So transaction() sends BEGIN IMMEDIATE
+// without close, runs every statement issued meanwhile on the stream with
+// the latest baton, and ends with COMMIT (or ROLLBACK) plus close. A stream
+// the server drops (idle expiry, restart) takes its uncommitted transaction
+// with it, which is a rollback.
 
-import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../driver.js";
+import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement, SQLTransactionGuarantee } from "../driver.js";
+import { TransactionGate } from "../driver.js";
 
 export interface LibSqlHttpOptions {
   /** Base URL of the libSQL server, e.g. "https://db.example.turso.io" or
@@ -91,11 +104,23 @@ export class LibSqlHttpAdapter implements SQLDatabaseDriver {
     this.fetchImpl = options.fetchImpl ?? fetch.bind(globalThis);
   }
 
+  readonly transactionGuarantee: SQLTransactionGuarantee = {
+    mechanism: "native",
+    atomicOnFailure: true,
+    crashRecovery: "database",
+    readersIsolated: true,
+    serializedWriters: "database",
+    atomicBatch: false,
+    idsReusedAfterRollback: true,
+  };
+
+  private readonly gate = new TransactionGate();
+  /** The open transaction's stream: the latest baton and the URL to send
+   *  it to. Undefined outside transaction(). */
+  private stream: { baton: string; url: string } | undefined;
+
   async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
-    const results = await this.pipeline([
-      { type: "execute" as const, stmt: toHranaStmt(sql, params) },
-      { type: "close" as const },
-    ]);
+    const results = await this.send([{ type: "execute" as const, stmt: toHranaStmt(sql, params) }]);
     const first = results[0] as HranaExecResult;
     return execResultToQueryResult<T>(first);
   }
@@ -106,27 +131,114 @@ export class LibSqlHttpAdapter implements SQLDatabaseDriver {
       type: "execute" as const,
       stmt: toHranaStmt(s.sql, s.params),
     }));
-    requests.push({ type: "close" as const });
     // ONE POST carries every statement: the "one round trip" contract.
-    const results = await this.pipeline(requests);
-    // pipeline() results align 1:1 with requests; the trailing close entry
-    // decodes to null, so take exactly the execute entries.
+    const results = await this.send(requests);
     return results
       .slice(0, statements.length)
       .map((r) => execResultToQueryResult(r as HranaExecResult));
   }
 
-  /** Send one pipeline POST and decode every response entry. Returns the
-   *  execute results in request order; "close" entries produce nothing. */
-  private async pipeline(requests: HranaPipelineRequest[]): Promise<unknown[]> {
+  async transaction<R>(work: () => Promise<R>): Promise<R> {
+    return this.gate.run(async () => {
+      const begin: HranaPipelineRequest[] = [{ type: "execute", stmt: toHranaStmt("BEGIN IMMEDIATE", []) }];
+      const opened = await this.pipeline(begin, { url: this.pipelineUrl(this.baseUrl) });
+      if (opened.baton === undefined) {
+        throw new LibSqlHttpError("libsql server returned no baton for an open stream (protocol violation)");
+      }
+      this.stream = { baton: opened.baton, url: opened.url };
+      try {
+        opened.results.forEach((entry, i) => decodeStreamResult(entry, i, begin[i]));
+      } catch (error) {
+        // BEGIN failed (the database is busy, for one): close the stream.
+        await this.endStream(undefined).catch(() => undefined);
+        throw error;
+      }
+      let result: R;
+      try {
+        result = await work();
+      } catch (error) {
+        await this.endStream("ROLLBACK").catch(() => undefined);
+        throw error;
+      }
+      try {
+        await this.endStream("COMMIT");
+      } catch (error) {
+        // A failed COMMIT leaves the transaction open on the stream; end it.
+        if (this.stream !== undefined) await this.endStream("ROLLBACK").catch(() => undefined);
+        throw error;
+      }
+      return result;
+    });
+  }
+
+  /** Sends COMMIT or ROLLBACK and closes the stream. The stream is
+   *  forgotten whatever happens: a server that fails the request has
+   *  dropped or will expire it, taking any open transaction with it. */
+  private async endStream(verb: "COMMIT" | "ROLLBACK" | undefined): Promise<void> {
+    await this.streamTail;
+    const stream = this.stream;
+    if (stream === undefined) return;
+    const requests: HranaPipelineRequest[] =
+      verb === undefined ? [{ type: "close" }] : [{ type: "execute", stmt: toHranaStmt(verb, []) }, { type: "close" }];
+    try {
+      const ended = await this.pipeline(requests, stream);
+      ended.results.forEach((entry, i) => decodeStreamResult(entry, i, requests[i]));
+    } finally {
+      this.stream = undefined;
+    }
+  }
+
+  /** Runs the requests on the open transaction's stream, or, outside a
+   *  transaction, as a stand-alone pipeline closed at the end. */
+  private async send(requests: HranaPipelineRequest[]): Promise<unknown[]> {
+    if (this.stream === undefined) return this.sendNow(requests);
+    // A stream takes one request at a time (each needs the baton the last
+    // one returned), so concurrent callers queue.
+    const run = this.streamTail.then(() => this.sendNow(requests));
+    this.streamTail = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
+
+  private streamTail: Promise<void> = Promise.resolve();
+
+  private async sendNow(requests: HranaPipelineRequest[]): Promise<unknown[]> {
+    const stream = this.stream;
+    const all: HranaPipelineRequest[] = stream === undefined ? [...requests, { type: "close" }] : requests;
+    const response = await this.pipeline(all, stream === undefined ? { url: this.pipelineUrl(this.baseUrl) } : stream);
+    if (stream !== undefined) {
+      if (response.baton === undefined) {
+        this.stream = undefined;
+        throw new LibSqlHttpError("libsql server closed the transaction's stream (no baton returned)");
+      }
+      this.stream = { baton: response.baton, url: response.url };
+    }
+    // Decoding throws on the first failed statement — after the baton is
+    // kept, so the transaction can still be rolled back on its stream.
+    return response.results.map((entry, i) => decodeStreamResult(entry, i, all[i]));
+  }
+
+  private pipelineUrl(base: string): string {
+    return `${base.replace(/\/+$/, "")}/v2/pipeline`;
+  }
+
+  /** Send one pipeline POST. Returns the raw result entries (decoded by
+   *  the caller), the baton the server issued for a stream left open, and
+   *  the URL the next request on that stream goes to. */
+  private async pipeline(
+    requests: HranaPipelineRequest[],
+    target: { url: string; baton?: string },
+  ): Promise<{ results: unknown[]; baton?: string; url: string }> {
     const headers: Record<string, string> = { "content-type": "application/json" };
     if (this.authToken !== undefined) {
       headers.authorization = `Bearer ${this.authToken}`;
     }
-    const response = await this.fetchImpl(`${this.baseUrl}/v2/pipeline`, {
+    const response = await this.fetchImpl(target.url, {
       method: "POST",
       headers,
-      body: JSON.stringify({ requests }),
+      body: JSON.stringify(target.baton === undefined ? { requests } : { baton: target.baton, requests }),
       signal: this.timeoutMs !== undefined ? AbortSignal.timeout(this.timeoutMs) : undefined,
     });
     if (!response.ok) {
@@ -145,7 +257,9 @@ export class LibSqlHttpAdapter implements SQLDatabaseDriver {
         `libsql pipeline response count mismatch: sent ${requests.length} requests, got ${body.results.length} results`,
       );
     }
-    return body.results.map((entry, i) => decodeStreamResult(entry, i, requests[i]));
+    const baton = typeof body.baton === "string" ? body.baton : undefined;
+    const url = typeof body.base_url === "string" && body.base_url !== "" ? this.pipelineUrl(body.base_url) : target.url;
+    return { results: body.results, baton, url };
   }
 }
 
@@ -221,7 +335,8 @@ function bytesToBase64(bytes: Uint8Array): string {
 // ---------------------------------------------------------------------------
 
 interface PipelineResponseBody {
-  baton?: string;
+  baton?: string | null;
+  base_url?: string | null;
   results?: unknown[];
 }
 

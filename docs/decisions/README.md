@@ -12,6 +12,7 @@ the cases where the answer is "this is a bounded gap, not a solved problem".
 | [0004](0004-mods-compiled-into-the-view-registry.md) | Mods are compiled into the view registry rather than loaded at runtime. |
 | [0005](0005-cql-match-semantics.md) | CQL `match`: one implementation, and fail loudly rather than return the wrong rows. |
 | [0006](0006-gpl-derivative-work.md) | Licensing: a GPL-3.0-or-later derivative work. |
+| [0007](0007-atomic-saves-and-transaction-contract.md) | Every save is atomic; the SQL transaction contract per adapter; implemented versus verified adapters; PostgreSQL removed. |
 
 Numbering is stable. A superseded record is left in place with its status
 changed rather than deleted, so the reasoning stays readable.

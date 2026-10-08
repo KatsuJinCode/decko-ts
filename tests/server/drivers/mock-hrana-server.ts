@@ -37,8 +37,23 @@ export interface MockHranaServer {
   close(): Promise<void>;
 }
 
-export async function startMockHranaServer(): Promise<MockHranaServer> {
-  const db = new Database(":memory:");
+export interface MockHranaServerOptions {
+  /** A database FILE: stand-alone pipelines run on one shared connection
+   *  and every Hrana stream (a pipeline left open, continued by its baton)
+   *  gets its own connection to the same file, so transactions on streams
+   *  behave as SQLite transactions on separate connections do (WAL mode,
+   *  no busy wait: a second writer gets SQLITE_BUSY at once). Without a
+   *  path the server keeps the original single in-memory connection, and
+   *  streams share it. */
+  path?: string;
+}
+
+export async function startMockHranaServer(options: MockHranaServerOptions = {}): Promise<MockHranaServer> {
+  const db = new Database(options.path ?? ":memory:", { timeout: 0 });
+  if (options.path !== undefined) db.pragma("journal_mode = WAL");
+  /** Open streams by their current baton. */
+  const streams = new Map<string, Database>();
+  let batonCounter = 0;
   const requests: CapturedRequest[] = [];
   const violations: string[] = [];
   const rawResponses: string[] = [];
@@ -69,8 +84,33 @@ export async function startMockHranaServer(): Promise<MockHranaServer> {
         res.end(JSON.stringify({ error: "mock hrana server only handles POST /v2/pipeline" }));
         return;
       }
+      const baton = (body as { baton?: unknown } | undefined)?.baton;
+      const entries = (body as { requests?: unknown } | undefined)?.requests;
+      const closes = Array.isArray(entries) && entries.length > 0 && (entries[entries.length - 1] as { type?: unknown })?.type === "close";
+      let conn: Database = db;
+      if (typeof baton === "string") {
+        const open = streams.get(baton);
+        if (open === undefined) {
+          res.writeHead(400, { "content-type": "application/json" });
+          res.end(JSON.stringify({ error: "unknown or already used baton" }));
+          return;
+        }
+        streams.delete(baton);
+        conn = open;
+      } else if (!closes && options.path !== undefined) {
+        conn = new Database(options.path, { timeout: 0 });
+      }
+      const result = handlePipeline(conn, body, violations) as { results: unknown[] };
+      let nextBaton: string | null = null;
+      if (closes) {
+        if (conn !== db) conn.close();
+      } else {
+        batonCounter += 1;
+        nextBaton = `baton-${batonCounter}`;
+        streams.set(nextBaton, conn);
+      }
       res.writeHead(200, { "content-type": "application/json" });
-      res.end(JSON.stringify(handlePipeline(db, body, violations)));
+      res.end(JSON.stringify({ baton: nextBaton, base_url: nextBaton === null ? null : `http://127.0.0.1:${(server.address() as AddressInfo).port}`, ...result }));
     });
   });
 
@@ -86,6 +126,8 @@ export async function startMockHranaServer(): Promise<MockHranaServer> {
       rawResponses.push(body);
     },
     async close(): Promise<void> {
+      for (const conn of streams.values()) if (conn !== db) conn.close();
+      streams.clear();
       db.close();
       server.closeAllConnections();
       await new Promise<void>((resolve, reject) => {
