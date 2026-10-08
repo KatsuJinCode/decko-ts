@@ -116,7 +116,11 @@ the deleted card's actions become the new card's history: its create action
 is the old one (`create_action` is `actions.first`), and `first_create?` is
 false, so the new action also stores change rows (card-1.110.0
 `mod/history/set/all/history.rb:38-44`, `history/events.rb:25-35`,
-`history/actions.rb:21-23`). On Decko's MySQL production database the
+`history/actions.rb:21-23`). Run on the local Ruby oracle against a copy of
+its deck (`tools/persistence/orphan-history-probe.rb`): the new card took the
+orphan's id, its `create_action` was the orphan action, and its own create
+action stored four change rows (name, type, content, trash), where a plain
+create stores none. On Decko's MySQL production database the
 AUTO_INCREMENT counter is past every id ever used, so a new card never meets
 old history there. This port keeps that outcome on copies that lost the
 counter: a new card takes the AUTOINCREMENT id unless history rows name that
