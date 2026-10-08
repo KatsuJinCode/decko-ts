@@ -74,6 +74,10 @@ describe("stock-deck pages against the recorded Ruby renders", () => {
     ["member", "Note 001"],
     ["admin", "Note 001"],
     ["admin", "Topic 001"],
+    // a rule card's menu help counts the setting's rules; an administrator
+    // (always_ok?) counts them all
+    ["admin", "Note+*type+*create"],
+    ["admin", "Topic+*type+*structure"],
   ])("page for %s: %s is byte-identical to Ruby", async (actor, card) => {
     const answer = await session.render(card, { actor });
     expect(answer.error).toBeUndefined();
