@@ -78,6 +78,8 @@ import {
 // one import graph edge fewer to drift.
 export { handleAuthOnlyRequest };
 import { handleFirstRunRequest, SETUP_PATH } from "./first-run-routes.js";
+import { originPolicyFromEnv, type OriginPolicy } from "./request-origin.js";
+import { configurePasswordHashing, passwordHashPolicyFromEnv } from "../card/auth/password-hash.js";
 import { expireRenderCachesAfterSave } from "./post-save-cache-expiry.js";
 
 /** The subset of the Workers `env` this surface reads. The D1 binding is the
@@ -91,6 +93,16 @@ export interface WriteSurfaceFlags {
   /** "1" turns on sign-in and card create/update/delete. Anything else,
    *  including absent, is off. */
   readonly DECKO_WRITE_PATH?: string;
+  /** Password storage (auth/password-hash.ts): "pbkdf2" (default) or
+   *  "legacy-sha1" for a deck Ruby Decko also serves. */
+  readonly DECKO_PASSWORD_HASH?: string;
+  /** PBKDF2 iterations for new password hashes (default 600,000, or the
+   *  runtime's limit: 100,000 on Cloudflare Workers). */
+  readonly DECKO_PASSWORD_PBKDF2_ITERATIONS?: string;
+  /** "off" disables the same-origin check on writes and sign-in. */
+  readonly DECKO_ORIGIN_CHECK?: string;
+  /** Comma-separated extra origins allowed to post to this deck. */
+  readonly DECKO_TRUSTED_ORIGINS?: string;
 }
 
 export interface WorkersWriteEnv extends WriteSurfaceFlags {
@@ -345,13 +357,15 @@ async function mountFirstRun(
   ctx: WorkersWriteContext,
   driver: SQLDatabaseDriver,
   req: WorkersWriteRequest,
+  originPolicy: OriginPolicy,
 ): Promise<WorkersWriteResponse> {
   const result = await handleFirstRunRequest(
-    { driver, fetcher: ctx.fetcher },
+    { driver, fetcher: ctx.fetcher, originPolicy },
     {
       method: req.method,
       pathname: req.pathname,
       host: req.host,
+      scheme: req.scheme,
       headers: req.headers,
       body: req.body,
     },
@@ -379,12 +393,14 @@ async function mountWrite(
   ctx: WorkersWriteContext,
   driver: SQLDatabaseDriver,
   req: WorkersWriteRequest,
+  originPolicy: OriginPolicy,
 ): Promise<WorkersWriteResponse> {
   const result: WriteRouteResponse | null = await handleWriteRequest(
     {
       driver,
       fetcher: ctx.fetcher,
       ipAddress: req.ipAddress,
+      originPolicy,
       // The ajax soft redirect (response.rb:54-62) re-renders the SAVED card
       // through the host's render engine. Ruby's order is expiry first, then
       // the re-render (cache/all.rb) — without it the slot render would read
@@ -404,6 +420,7 @@ async function mountWrite(
       pathname: req.pathname,
       search: req.search,
       host: req.host,
+      scheme: req.scheme,
       headers: req.headers,
       body: req.body,
       bodyBytes: req.bodyBytes,
@@ -466,7 +483,7 @@ export async function handleWorkersWriteSurface(
   // accepts GET and POST only, so a HEAD falls through to the read surface
   // and keeps answering exactly what it answers today.
   if (firstRun && (req.method === "GET" || req.method === "POST") && req.pathname === SETUP_PATH) {
-    return mountFirstRun(ctx, resolveDriver(ctx, env), req);
+    return mountFirstRun(ctx, resolveDriver(ctx, env), req, applySecuritySettings(env));
   }
 
   // The sign-in form, when the write gate is armed (sign-in mints a session
@@ -476,6 +493,7 @@ export async function handleWorkersWriteSurface(
   }
 
   if (readMethod) return null;
+  const originPolicy = applySecuritySettings(env);
   if (!write) {
     // AUTH IS NOT A CARD WRITE (edge-signin-form-fix lane, 2026-10-03):
     // with the write path off, the login action still dispatches —
@@ -489,6 +507,7 @@ export async function handleWorkersWriteSurface(
         driver: resolveDriver(ctx, env),
         fetcher: ctx.fetcher,
         ipAddress: req.ipAddress,
+        originPolicy,
       },
       {
         method: req.method,
@@ -504,7 +523,17 @@ export async function handleWorkersWriteSurface(
     if (auth !== null) return auth;
     return writePathOffResponse();
   }
-  return mountWrite(ctx, resolveDriver(ctx, env), req);
+  return mountWrite(ctx, resolveDriver(ctx, env), req, originPolicy);
+}
+
+/** The security settings from this host's settings bag (docs/SECURITY.md):
+ *  the password policy is set for the engine modules this request reaches,
+ *  and the origin policy is returned for the write and setup dispatch. Read
+ *  per state-changing request, never on reads, so a misconfigured value
+ *  fails the write loudly and leaves the read surface untouched. */
+export function applySecuritySettings(env: WriteSurfaceFlags): OriginPolicy {
+  configurePasswordHashing(passwordHashPolicyFromEnv(env));
+  return originPolicyFromEnv(env);
 }
 
 /** The D1 adapter for the write path. CloudflareD1Adapter is a stateless

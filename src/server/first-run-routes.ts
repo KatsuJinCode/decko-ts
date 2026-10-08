@@ -101,6 +101,7 @@
 //   and signable the moment the redirect lands — that is the assertion the
 //   tests make.
 
+import { checkRequestOrigin, CROSS_ORIGIN_MESSAGE, defaultOriginPolicy, type OriginPolicy } from "./request-origin.js";
 import type { SQLDatabaseDriver } from "./driver.js";
 import type { FetchEngine } from "../card/fetch.js";
 import {
@@ -131,6 +132,9 @@ export interface FirstRunRouteRequest {
   /** The Host header, for the absolute Location (Ruby's card_url,
    *  Env::Location — env/serializable.rb:19-21). */
   readonly host: string | undefined;
+  /** The scheme the client used (absent: http), so an https deck never
+   *  redirects to http. */
+  readonly scheme?: "http" | "https";
   readonly headers: Record<string, string | undefined>;
   readonly body: string;
 }
@@ -153,6 +157,9 @@ export interface FirstRunRouteContext {
   readonly fetcher: FetchEngine;
   /** Injected clock, forwarded to the salt generator. */
   readonly now?: () => Date;
+  /** Same-origin policy for the setup POST (request-origin.ts). Absent:
+   *  from process.env, else enabled. */
+  readonly originPolicy?: OriginPolicy;
 }
 
 /**
@@ -181,6 +188,13 @@ export async function handleFirstRunRequest(
 
   if (req.method === "GET") {
     return htmlResponse(200, "Set up this deck", renderSetupFormHtml(null, null));
+  }
+
+  // Same-origin check (docs/SECURITY.md, "Cross-site requests"): the setup
+  // POST creates the owner account, so another site must not submit it.
+  const origin = checkRequestOrigin({ headers: req.headers, host: req.host }, ctx.originPolicy ?? defaultOriginPolicy());
+  if (!origin.ok) {
+    return htmlResponse(403, "Set up this deck", renderSetupFormHtml(null, `${CROSS_ORIGIN_MESSAGE} (${origin.reason})`));
   }
 
   const submitted = parseSetupForm(req.body, req.headers["content-type"] ?? "");
@@ -274,12 +288,11 @@ function notFoundResponse(reason: SetupWindowReason): FirstRunRouteResponse {
 }
 
 /** card_url (Env::Location): the deck origin, or the request's own
- *  host. hard_redirect absolutizes through it (response.rb:41). The scheme is
- *  the plain http the write path's cardUrl uses (write-routes.ts:568-571);
- *  matching it keeps the two surfaces from disagreeing about URL shape. */
+ *  scheme and host. hard_redirect absolutizes through it (response.rb:41),
+ *  exactly as the write path's cardUrl does. */
 function absoluteUrl(req: FirstRunRouteRequest, path: string): string {
   if (req.host === undefined || req.host === "") return path;
-  return `http://${req.host}${path}`;
+  return `${req.scheme ?? "http"}://${req.host}${path}`;
 }
 
 function escapeHtml(value: string): string {

@@ -798,6 +798,30 @@ describe("the /setup route", () => {
     render.close();
   });
 
+  // Security divergence (docs/SECURITY.md, "Cross-site requests"): the setup
+  // POST creates the owner account, so a page on another site cannot submit it.
+  it("refuses a setup POST from another site with 403 and creates no account", async () => {
+    armDemoProfile();
+    const { driver, render } = await fixture();
+    const post = (headers: Record<string, string>) =>
+      handleFirstRunRequest(
+        { driver, fetcher: render.fetcher },
+        {
+          method: "POST",
+          pathname: SETUP_PATH,
+          host: "deck.example",
+          headers: { "content-type": "application/x-www-form-urlencoded", ...headers },
+          body: "email=owner%40example.com&password=Abcdef1%21",
+        },
+      );
+    const refused = await post({ origin: "https://attacker.example" });
+    expect(refused?.status).toBe(403);
+    expect(refused?.body).toContain("came from another site");
+    expect((await setupWindowState({ driver })).open).toBe(true);
+    expect((await post({ origin: "http://deck.example" }))?.status).toBe(303);
+    render.close();
+  });
+
   it("returns null for a method it does not serve and for any other path", async () => {
     armDemoProfile();
     const { driver, render } = await fixture();

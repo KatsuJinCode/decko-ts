@@ -54,7 +54,13 @@
 // to Anonymous (auth/current.rb:58-63); Anonymous writes are denied per the
 // rules (PermissionDenied, HTTP 403, exactly like Ruby).
 //
-// CSRF — none, deliberately: live decko arms no forgery protection.
+// CSRF — a SECURITY DIVERGENCE (docs/SECURITY.md, "Cross-site requests"):
+// every write route and the sign-in action pass the same-origin check in
+// request-origin.ts (Sec-Fetch-Site, then Origin, then Referer; requests
+// carrying none of them are not from a browser page and pass), which
+// refuses a cross-site form with 403 and changes no page bytes (no token).
+// DECKO_ORIGIN_CHECK=off restores Ruby's behaviour. What Ruby does, for the
+// record: live decko arms no forgery protection.
 // decko-0.20.0 / card-1.110.0 contain no `protect_from_forgery` call
 // anywhere (the ONLY forgery reference in the whole generation is
 // decko-0.20.0/config/environments/cucumber.rb:27, which DISABLES
@@ -66,9 +72,8 @@
 // captured page). Rails' origin check (valid_request_origin?) lives inside
 // verify_authenticity_token (request_forgery_protection.rb), so it is
 // equally unarmed: a cross-origin form post is not a live failure either.
-// This reverses the earlier TS posture (HMAC csrfTokenFor + 422), which
-// modeled "the Rails default" instead of the live app; the save-path pins
-// that enforced it were updated to the live shapes.
+// The port's origin check needs no token, so same-origin token-less posts
+// (every captured shape) still go straight through to the action gates.
 //
 // Error shapes — card-1.110.0 lib/card/error.rb status codes:
 //   Card::Error::PermissionDenied -> 403 (view :denial, error.rb:104);
@@ -107,6 +112,12 @@ import type { AttachmentStore } from "../card/attachments/attachment-store.js";
 import { DeckoName } from "../card/name.js";
 import { parseMultipartForm, type MultipartFilePart } from "./multipart-form.js";
 import { decodeUriComponentSafe } from "./decode-uri-component-safe.js";
+import {
+  checkRequestOrigin,
+  CROSS_ORIGIN_MESSAGE,
+  defaultOriginPolicy,
+  type OriginPolicy,
+} from "./request-origin.js";
 
 /** One inbound write request, normalized off the node request. Header keys
  *  are lower-cased (node's convention). The body is the RAW bytes read by
@@ -187,6 +198,9 @@ export interface WriteRouteContext {
    *  Card::Rule.toggle(rule(:captcha)) candidate walk); verify defaults
    *  to the real siteverify GET (recaptcha.rb:41-44). */
   recaptcha?: CardActionRecaptchaConfig;
+  /** The same-origin policy for writes and sign-in (request-origin.ts).
+   *  Absent: from process.env, else enabled with no extra origins. */
+  originPolicy?: OriginPolicy;
 }
 
 export interface WriteRouteResponse {
@@ -600,6 +614,16 @@ function errorStatus(code: CardActionError["code"]): number {
   return 422;
 }
 
+/** A write or sign-in refused by the same-origin check: 403, the class Ruby
+ *  uses for a forbidden action (error.rb:103-105). The reason is logged by
+ *  hosts that log responses; the visitor sees a plain explanation. */
+function crossOriginResponse(json: boolean, reason: string): WriteRouteResponse {
+  const message = `${CROSS_ORIGIN_MESSAGE} (${reason})`;
+  return json
+    ? jsonResponse(403, { error: { code: "cross-origin", message } })
+    : htmlResponse(403, "Error (cross-origin)", `<pre>${escapeHtml(message)}</pre>`);
+}
+
 function errorResponse(json: boolean, error: CardActionError): WriteRouteResponse {
   const status = errorStatus(error.code);
   return json
@@ -620,7 +644,8 @@ function errorResponse(json: boolean, error: CardActionError): WriteRouteRespons
  *  headers are absolute (captured: "http://localhost:3011/..."). */
 function cardUrl(req: WriteRouteRequest, path: string): string {
   if (req.host === undefined || req.host === "") return path; // no Host: relative (documented degenerate case)
-  return `http://${req.host}${path}`;
+  // The client's own scheme, so an https deck never redirects to http.
+  return `${req.scheme ?? "http"}://${req.host}${path}`;
 }
 
 /** Ruby's cud_success for the PLAIN-form flavor (response.rb:25-33): the
@@ -841,6 +866,14 @@ export async function handleWriteRequest(
 
   const route = matchRoute(method, req.pathname);
   if (route === null) return null;
+
+  // Same-origin check (request-origin.ts; docs/SECURITY.md): every write
+  // route and the sign-in action. A security divergence: Ruby checks nothing.
+  const originVerdict = checkRequestOrigin(
+    { headers: req.headers, host: req.host },
+    ctx.originPolicy ?? defaultOriginPolicy(),
+  );
+  if (!originVerdict.ok) return crossOriginResponse(json, originVerdict.reason);
 
   // The *signin update IS the login action (signin.rb:6 "/update/:signin is
   // the login action") — before any card machinery runs.
