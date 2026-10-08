@@ -122,6 +122,10 @@ import { sqliteRegexpUdf } from "./dist/src/cql/sqlite-regexp.js";
 // for every request when the flag is unset, so the unarmed staging server
 // behaves exactly as it did before this module existed.
 import { firstRunEnabled, handleFirstRunRequest, SETUP_PATH } from "./dist/src/server/first-run-routes.js";
+// The same-origin check every state-changing request passes (docs/SECURITY.md,
+// "Cross-site requests"): DECKO_ORIGIN_CHECK / DECKO_TRUSTED_ORIGINS, read at boot.
+import { checkRequestOrigin, CROSS_ORIGIN_MESSAGE, defaultOriginPolicy } from "./dist/src/server/request-origin.js";
+const ORIGIN_POLICY = defaultOriginPolicy();
 // The boot-seed capability (R-3b lane): Cardio::Seed.load + card:eat's
 // account-system surface, so a FRESH (empty) deck boots bootstrapped —
 // Anonymous/DeckoBot resolvable and the role/account cards present. Ruby
@@ -3131,6 +3135,21 @@ const server = http.createServer(async (req, res) => {
   // page default.
   const requestedView =
     url.searchParams.get("view")?.trim() || url.searchParams.get("v")?.trim() || undefined;
+
+  // Every state-changing request (sign-in and sign-out, the account forms,
+  // first-run setup, card writes) must come from this deck's own pages.
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    const verdict = checkRequestOrigin({ headers: req.headers, host: req.headers.host }, ORIGIN_POLICY);
+    if (!verdict.ok) {
+      req.resume();
+      const refused = jsonResponse(403, {
+        error: { code: "cross-origin", message: `${CROSS_ORIGIN_MESSAGE} (${verdict.reason})` },
+      });
+      res.writeHead(refused.status, refused.headers).end(refused.body);
+      console.log(`[vm-staging] ${req.method} ${pathname} -> 403 cross-origin (${Date.now() - startedAt}ms)`);
+      return;
+    }
+  }
 
   // Slice-1: resolve the session cookie ONCE per request, before any
   // render. A request with no cookie takes the exact pre-slice path (the

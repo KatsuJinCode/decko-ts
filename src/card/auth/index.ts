@@ -55,6 +55,24 @@ export {
   tokensEqual,
 } from "./session-token.js";
 export {
+  checkPassword,
+  CLOUDFLARE_WORKERS_PBKDF2_MAX_ITERATIONS,
+  configurePasswordHashing,
+  hashPassword,
+  isLegacyDigest,
+  isPbkdf2Hash,
+  legacyDigest,
+  MIN_PBKDF2_ITERATIONS,
+  OWASP_PBKDF2_SHA256_ITERATIONS,
+  passwordHashPolicy,
+  passwordHashPolicyFromEnv,
+  setPbkdf2IterationLimit,
+  type PasswordCheck,
+  type PasswordHashEnv,
+  type PasswordHashMode,
+  type PasswordHashPolicy,
+} from "./password-hash.js";
+export {
   authenticateAccount,
   encryptAccountPassword,
   resolveAccountCodenameIds,

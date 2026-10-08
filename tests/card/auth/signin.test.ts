@@ -14,7 +14,7 @@ import {
   generatedEmail,
   generatedPassword,
 } from "../../../src/testing/generated-credentials.js";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   authenticateAccount,
   encryptAccountPassword,
@@ -25,6 +25,12 @@ import {
   signinAccount,
   signoutAccount,
 } from "../../../src/card/auth/index.js";
+import {
+  checkPassword,
+  configurePasswordHashing,
+  isLegacyDigest,
+  isPbkdf2Hash,
+} from "../../../src/card/auth/password-hash.js";
 import {
   createAuthTestStorage,
   fakeClock,
@@ -387,6 +393,71 @@ describe("signinAccount / signoutAccount (the :signin and :signout events over t
       expect(outcome.ok).toBe(false);
       const rows = storage.selectAll("SELECT * FROM auth_sessions");
       expect(rows).toEqual([]);
+    } finally {
+      storage.close();
+    }
+  });
+});
+
+// Security divergence (docs/SECURITY.md, "Passwords"): a legacy SHA-1
+// digest is replaced by a PBKDF2 hash at the next successful sign-in, unless
+// the deck keeps legacy-sha1 for Ruby running beside it.
+describe("password upgrade at sign-in", () => {
+  afterEach(() => configurePasswordHashing(undefined));
+  const storedPassword = (storage: AuthTestStorage): string =>
+    storage.selectOne<{ db_content: string }>("SELECT db_content FROM cards WHERE id = 9103")!.db_content;
+
+  it("replaces a legacy digest with a PBKDF2 hash, and both sign in", async () => {
+    configurePasswordHashing({ mode: "pbkdf2", iterations: 100_000 });
+    const storage = await buildStorage();
+    try {
+      expect(storedPassword(storage)).toBe(DIGEST);
+      const first = await authenticateAccount(storage.driver, EMAIL, PASSWORD);
+      expect(first.ok).toBe(true);
+      const upgraded = storedPassword(storage);
+      expect(isPbkdf2Hash(upgraded)).toBe(true);
+      expect((await checkPassword(upgraded, PASSWORD, SALT)).ok).toBe(true);
+      // The upgraded hash signs in, and is not upgraded again.
+      expect((await authenticateAccount(storage.driver, EMAIL, PASSWORD)).ok).toBe(true);
+      expect(storedPassword(storage)).toBe(upgraded);
+      // A wrong password still fails, and changes nothing.
+      expect(await authenticateAccount(storage.driver, EMAIL, "wrong")).toMatchObject({ reason: "wrong_password" });
+      expect(storedPassword(storage)).toBe(upgraded);
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("does not upgrade on a failed sign-in", async () => {
+    configurePasswordHashing({ mode: "pbkdf2", iterations: 100_000 });
+    const storage = await buildStorage();
+    try {
+      await authenticateAccount(storage.driver, EMAIL, "wrong");
+      expect(storedPassword(storage)).toBe(DIGEST);
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("keeps the legacy digest in legacy-sha1 mode, so Ruby can still verify it", async () => {
+    configurePasswordHashing({ mode: "legacy-sha1", iterations: 100_000 });
+    const storage = await buildStorage();
+    try {
+      expect((await authenticateAccount(storage.driver, EMAIL, PASSWORD)).ok).toBe(true);
+      expect(storedPassword(storage)).toBe(DIGEST);
+      expect(isLegacyDigest(storedPassword(storage))).toBe(true);
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("signs in an account whose stored value is already PBKDF2", async () => {
+    configurePasswordHashing({ mode: "pbkdf2", iterations: 100_000 });
+    const { hashPassword } = await import("../../../src/card/auth/password-hash.js");
+    const storage = await buildStorage({ storedDigest: await hashPassword(PASSWORD, SALT) });
+    try {
+      expect((await authenticateAccount(storage.driver, EMAIL, PASSWORD)).ok).toBe(true);
+      expect((await authenticateAccount(storage.driver, EMAIL, "wrong")).ok).toBe(false);
     } finally {
       storage.close();
     }

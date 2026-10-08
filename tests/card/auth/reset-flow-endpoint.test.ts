@@ -245,6 +245,36 @@ describeIfCorpus("reset-flow staging endpoints (booted server, disposable corpus
     expect(after.messages.length).toBe((before as { messages: unknown[] }).messages.length);
   });
 
+  // Security divergence (docs/SECURITY.md, "Cross-site requests"): the
+  // staging host refuses every state-changing request from another site.
+  it("refuses the reset, password and sign-in forms when posted from another site, and sends nothing", async () => {
+    // Drain the capture so only this test's mail would show.
+    await (await fetch(`${fixture.baseUrl}/_mail-log`)).json();
+    const forgot = await fetch(`${fixture.baseUrl}/update/*signin`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", Origin: "https://attacker.example" },
+      body: forgotPasswordFormBody(fixture.email),
+    });
+    expect(forgot.status).toBe(403);
+    const password = await fetch(`${fixture.baseUrl}/_account-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Origin: "https://attacker.example" },
+      body: JSON.stringify({ password: "Whatever1!" }),
+    });
+    expect(password.status).toBe(403);
+    const signin = await fetch(`${fixture.baseUrl}/_signin`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Sec-Fetch-Site": "cross-site" },
+      body: JSON.stringify({ identifier: fixture.email, password: OLD_PASSWORD }),
+    });
+    expect(signin.status).toBe(403);
+    expect(signin.headers.get("set-cookie")).toBeNull();
+    const drainedAfter = (await (await fetch(`${fixture.baseUrl}/_mail-log`)).json()) as {
+      messages: unknown[];
+    };
+    expect(drainedAfter.messages).toEqual([]);
+  });
+
   it("guards the link route: garbage token 403, missing token falls through, password write needs the session", async () => {
     // garbage token -> the authenticator arm, 403, no re-send.
     const garbage = await fetch(

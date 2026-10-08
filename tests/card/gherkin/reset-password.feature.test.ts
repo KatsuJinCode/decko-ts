@@ -33,6 +33,7 @@ import {
   whenSignOut,
 } from "./gherkin-account-steps.js";
 import type { AccountFlowWorld } from "./gherkin-account-steps.js";
+import { isPbkdf2Hash } from "../../../src/card/auth/password-hash.js";
 
 describe("Gherkin port: reset_password.feature / Resetting password", () => {
   let flow: AccountFlowWorld;
@@ -74,7 +75,8 @@ describe("Gherkin port: reset_password.feature / Resetting password", () => {
     const write = await whenApplyNewPassword(flow, confirm.holder, "Joe_pass_reset1!");
     if (!write.ok) throw new Error(`password write failed: ${write.reason}`);
     expect(write.ok).toBe(true);
-    expect(write.digest).toMatch(/^[0-9a-f]{40}$/);
+    // The port stores a PBKDF2 hash (docs/SECURITY.md, "Passwords").
+    expect(isPbkdf2Hash(write.digest ?? "")).toBe(true);
 
     // upstream: When I go to the homepage / And I follow "Sign out" /
     // Then I should not see "Joe User"

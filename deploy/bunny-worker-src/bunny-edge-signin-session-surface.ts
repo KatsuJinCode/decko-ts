@@ -72,6 +72,7 @@ import type { SQLDatabaseDriver } from "../../src/server/driver.js";
 import type { FetchEngine } from "../../src/card/fetch.js";
 import type { RenderEngine } from "../../src/card/render.js";
 import {
+  applySecuritySettings,
   handleWorkersWriteSurface,
   handleAuthOnlyRequest,
   readWorkersRequest,
@@ -120,12 +121,17 @@ export function bunnyEdgeFirstRunArmed(env: BunnyEdgeEnv): boolean {
   return env[BUNNY_EDGE_FIRST_RUN_GATE] === "1";
 }
 
-/** The two gates, shaped for the shared surface's env parameter. No D1
- *  binding: this host supplies its driver on the context instead. */
+/** The two gates and the security settings (docs/SECURITY.md), shaped for
+ *  the shared surface's env parameter. No D1 binding: this host supplies its
+ *  driver on the context instead. */
 export function bunnyEdgeWriteFlags(env: BunnyEdgeEnv): WriteSurfaceFlags {
   return {
     DECKO_WRITE_PATH: env[BUNNY_EDGE_WRITE_GATE],
     DECKO_FIRST_RUN: env[BUNNY_EDGE_FIRST_RUN_GATE],
+    DECKO_PASSWORD_HASH: env["DECKO_PASSWORD_HASH"],
+    DECKO_PASSWORD_PBKDF2_ITERATIONS: env["DECKO_PASSWORD_PBKDF2_ITERATIONS"],
+    DECKO_ORIGIN_CHECK: env["DECKO_ORIGIN_CHECK"],
+    DECKO_TRUSTED_ORIGINS: env["DECKO_TRUSTED_ORIGINS"],
   };
 }
 
@@ -182,11 +188,17 @@ export async function mountBunnyEdgeWriteSurface(
   // only the driver, and the caller boots the deck for every non-read verb
   // before this mount runs.
   if (flags.DECKO_WRITE_PATH !== "1" && flags.DECKO_FIRST_RUN !== "1") {
+    if (inbound.method === "GET" || inbound.method === "HEAD") return null;
+    // The sign-in action reads this host's security settings exactly as the
+    // armed surface does (docs/SECURITY.md): the origin check and the
+    // password policy for an upgrade at sign-in.
+    const originPolicy = applySecuritySettings(flags);
     const auth = await handleAuthOnlyRequest(
       {
         driver: deck.driver ?? deck.fetcher.driver,
         fetcher: deck.fetcher,
         ipAddress: inbound.ipAddress,
+        originPolicy,
       },
       {
         method: inbound.method,

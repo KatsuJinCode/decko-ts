@@ -6,7 +6,8 @@
 // Plus the write-permission walks through the HTTP layer: the three
 // ok_to_* denials, the ok_to_update? type-change clause, the cookie-session
 // transport, the *signin subcard-update login, and the LIVE response
-// shapes (303 hard redirect with absolute Location; no forgery protection).
+// shapes (303 hard redirect with absolute Location; no forgery token, with
+// the port's origin check refusing cross-site posts).
 //
 // Ruby truth under test (see the module header citations in
 // src/server/write-routes.ts): engine_routes.rb grammar, rest.rb
@@ -518,13 +519,20 @@ describe("no forgery protection (the live decko CSRF posture)", () => {
     expect(record.json().dbContent).not.toBe("anonymous form");
   });
 
-  it("cross-origin form post: not a live failure (origin check lives inside the never-armed verify_authenticity_token)", async () => {
+  it("cross-origin form post: refused with 403 (a security divergence; Ruby saves it)", async () => {
+    // Ruby's origin check lives inside the never-armed
+    // verify_authenticity_token, so live decko saves this post. The port
+    // refuses it before any card machinery runs (docs/SECURITY.md,
+    // "Cross-site requests"); tests/server/write-routes-origin.test.ts
+    // covers the rule in full.
+    const before = (await call(baseUrl, "GET", "/Widget.json", {})).json().dbContent;
     const res = await call(baseUrl, "POST", "/Widget", {
       form: { "card[content]": "cross origin", _method: "patch" },
       token: joeToken,
       origin: "https://evil.example",
     });
-    expect(res.status).toBe(303);
+    expect(res.status).toBe(403);
+    expect((await call(baseUrl, "GET", "/Widget.json", {})).json().dbContent).toBe(before);
   });
 });
 

@@ -1,17 +1,24 @@
 // Card::Content.clean! (card-1.110.0 lib/card/content/clean.rb). The first
 // expectation is the Ruby oracle's stored content for the same input
-// (persistence probe step 20, RichText and PlainText alike).
+// (persistence probe step 20, RichText and PlainText alike), except for the
+// declared security difference: the port drops the javascript: link target
+// Ruby keeps (docs/SECURITY.md; content-clean-security.test.ts).
 
 import { describe, expect, it } from "vitest";
-import { cleanContent } from "../../../src/card/actions/content-clean.js";
+import { cleanContent, rubyCleanContent } from "../../../src/card/actions/content-clean.js";
 
 describe("cleanContent", () => {
   it("matches the oracle on event handlers, script, links and inline styles", () => {
     const input =
       '<p onclick="x()">hi</p><script>bad()</script><b>ok</b>' +
       '<a href="javascript:evil()">l</a><div class="c" style="color:red">d</div>';
-    expect(cleanContent(input)).toBe(
+    // The Ruby oracle's stored content.
+    expect(rubyCleanContent(input)).toBe(
       '<p>hi</p> bad() <b>ok</b><a href="javascript:evil()">l</a><div style="color:red">d</div>',
+    );
+    // The port's: the same, without the script-capable link target.
+    expect(cleanContent(input)).toBe(
+      '<p>hi</p> bad() <b>ok</b><a>l</a><div style="color:red">d</div>',
     );
   });
 

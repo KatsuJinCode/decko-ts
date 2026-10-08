@@ -38,6 +38,7 @@ import {
   sha1Hex,
   signinAccount,
 } from "../../../src/card/auth/index.js";
+import { checkPassword, isPbkdf2Hash } from "../../../src/card/auth/password-hash.js";
 import {
   handleFirstRunRequest,
   parseSetupForm,
@@ -563,13 +564,15 @@ describe("createOwnerAccount — the happy path", () => {
     //     owner is born signable, which is the whole point of the journey.
     expect(await selectField(driver, outcome.accountId, IDS.status)).toBe("active");
 
-    // (f) the password digest is Ruby's own scheme and NO new crypto: the
-    //     SAME sha1Hex(`${salt}--${password}--`) signin.ts:87-89 exports
-    //     (Card::Auth.encrypt, auth.rb:36-39), salted with the salt just
-    //     written — right/password.rb:19-26 digests against `left&.salt`.
-    expect(await selectField(driver, outcome.accountId, IDS.password)).toBe(
-      await sha1Hex(`${outcome.salt}--Abcdef1!--`),
-    );
+    // (f) the password is stored the way encrypt_password stores it under
+    //     the deck's policy (docs/SECURITY.md, "Passwords"): a PBKDF2 hash by
+    //     default; Ruby's salted digest (Card::Auth.encrypt, auth.rb:36-39,
+    //     over the salt just written) in legacy-sha1 mode, pinned in
+    //     tests/card/auth/password-hash.test.ts.
+    const storedPassword = (await selectField(driver, outcome.accountId, IDS.password)) ?? "";
+    expect(isPbkdf2Hash(storedPassword)).toBe(true);
+    expect((await checkPassword(storedPassword, "Abcdef1!", outcome.salt)).ok).toBe(true);
+    expect(storedPassword).not.toBe(await sha1Hex(`${outcome.salt}--Abcdef1!--`));
 
     // (g) THE ACCEPTANCE CRITERION OF THE FIX: the brand-new owner signs in
     //     through the EXISTING signin flow, unchanged. Before this fix a new
@@ -792,6 +795,30 @@ describe("the /setup route", () => {
     // And the journey's end state is real: the owner signs in.
     const sessions = new SessionStore({ driver });
     expect((await signinAccount(driver, sessions, "owner@example.com", "Abcdef1!")).ok).toBe(true);
+    render.close();
+  });
+
+  // Security divergence (docs/SECURITY.md, "Cross-site requests"): the setup
+  // POST creates the owner account, so a page on another site cannot submit it.
+  it("refuses a setup POST from another site with 403 and creates no account", async () => {
+    armDemoProfile();
+    const { driver, render } = await fixture();
+    const post = (headers: Record<string, string>) =>
+      handleFirstRunRequest(
+        { driver, fetcher: render.fetcher },
+        {
+          method: "POST",
+          pathname: SETUP_PATH,
+          host: "deck.example",
+          headers: { "content-type": "application/x-www-form-urlencoded", ...headers },
+          body: "email=owner%40example.com&password=Abcdef1%21",
+        },
+      );
+    const refused = await post({ origin: "https://attacker.example" });
+    expect(refused?.status).toBe(403);
+    expect(refused?.body).toContain("came from another site");
+    expect((await setupWindowState({ driver })).open).toBe(true);
+    expect((await post({ origin: "http://deck.example" }))?.status).toBe(303);
     render.close();
   });
 

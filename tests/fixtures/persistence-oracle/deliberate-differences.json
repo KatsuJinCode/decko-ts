@@ -112,6 +112,67 @@
       ]
     },
     {
+      "step": 20,
+      "title": "Stored HTML: a javascript: link target is dropped (update with unsafe HTML)",
+      "reason": "Security difference (docs/SECURITY.md, Stored HTML). Ruby's cleaner keeps the javascript: link target in the probe's unsafe HTML; the port's cleaner drops script-capable URL targets and keeps the link text, so the stored content and its change row read <a>l</a> where Ruby's read <a href=\"javascript:evil()\">l</a>. Everything else in the content is byte-identical.",
+      "deltaFaults": [
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Renamed",
+          "column": "db_content",
+          "ruby": "<p>hi</p> bad() <b>ok</b><a href=\"javascript:evil()\">l</a><div style=\"color:red\">d</div>",
+          "ts": "<p>hi</p> bad() <b>ok</b><a>l</a><div style=\"color:red\">d</div>"
+        },
+        {
+          "table": "card_changes",
+          "kind": "field",
+          "key": "PersistProbe Renamed/17/2",
+          "column": "value",
+          "ruby": "<p>hi</p> bad() <b>ok</b><a href=\"javascript:evil()\">l</a><div style=\"color:red\">d</div>",
+          "ts": "<p>hi</p> bad() <b>ok</b><a>l</a><div style=\"color:red\">d</div>"
+        }
+      ]
+    },
+    {
+      "step": 22,
+      "title": "Stored HTML: a javascript: link target is dropped (PlainText create with HTML)",
+      "reason": "Security difference (docs/SECURITY.md, Stored HTML). Ruby's cleaner keeps the javascript: link target in the probe's unsafe HTML; the port's cleaner drops script-capable URL targets and keeps the link text, so the stored content and its change row read <a>l</a> where Ruby's read <a href=\"javascript:evil()\">l</a>. Everything else in the content is byte-identical.",
+      "deltaFaults": [
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Plain",
+          "column": "db_content",
+          "ruby": "<p>hi</p> bad() <b>ok</b><a href=\"javascript:evil()\">l</a><div style=\"color:red\">d</div>",
+          "ts": "<p>hi</p> bad() <b>ok</b><a>l</a><div style=\"color:red\">d</div>"
+        }
+      ]
+    },
+    {
+      "step": 31,
+      "title": "Stored HTML: the reverted content is the step 22 content, without the javascript: target",
+      "reason": "Security difference (docs/SECURITY.md, Stored HTML). Ruby's cleaner keeps the javascript: link target in the probe's unsafe HTML; the port's cleaner drops script-capable URL targets and keeps the link text, so the stored content and its change row read <a>l</a> where Ruby's read <a href=\"javascript:evil()\">l</a>. Everything else in the content is byte-identical.",
+      "deltaFaults": [
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe Plain",
+          "column": "db_content",
+          "ruby": "<p>hi</p> bad() <b>ok</b><a href=\"javascript:evil()\">l</a><div style=\"color:red\">d</div>",
+          "ts": "<p>hi</p> bad() <b>ok</b><a>l</a><div style=\"color:red\">d</div>"
+        },
+        {
+          "table": "card_changes",
+          "kind": "field",
+          "key": "PersistProbe Plain/01/2",
+          "column": "value",
+          "ruby": "<p>hi</p> bad() <b>ok</b><a href=\"javascript:evil()\">l</a><div style=\"color:red\">d</div>",
+          "ts": "<p>hi</p> bad() <b>ok</b><a>l</a><div style=\"color:red\">d</div>"
+        }
+      ]
+    },
+    {
       "step": 48,
       "title": "Assigning a type that does not exist",
       "reason": "Ruby looks the type name up while assigning attributes and, finding no card, adds a \"not a known type\" error (type.rb type_id_or_error). The save then runs valid?, which clears the errors before validation, so the error is lost: update! succeeds, the type is left unchanged and an act row with no action is written. The TypeScript engine refuses the save with the same message and writes nothing. The only stored difference is that empty act. Candidate for an upstream fix (the error should survive to validation).",
@@ -127,6 +188,38 @@
             "ip_address": null,
             "acted_at": "T"
           }
+        }
+      ]
+    },
+    {
+      "step": 57,
+      "title": "Passwords: a new account's password is stored as PBKDF2, not salted SHA-1",
+      "reason": "Security difference (docs/SECURITY.md, Passwords). Ruby stores SHA1(\"<salt>--<password>--\"); under its default policy the port stores the newly set password as PBKDF2-HMAC-SHA256 (pbkdf2_sha256$<iterations>$<salt>$<hash>, random salt), which the comparator normalises to \"<pbkdf2 digest of P>\" when it verifies P. Nothing else in the step differs. With DECKO_PASSWORD_HASH=legacy-sha1, the setting for a deck Ruby also serves, the port stores Ruby's digest and the probe expects no difference here.",
+      "passwordPolicy": "pbkdf2",
+      "deltaFaults": [
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe User+#205+#216",
+          "column": "db_content",
+          "ruby": "<digest of Probe-pass-123>",
+          "ts": "<pbkdf2 digest of Probe-pass-123>"
+        }
+      ]
+    },
+    {
+      "step": 58,
+      "title": "Passwords: a changed password is stored as PBKDF2, not salted SHA-1",
+      "reason": "Security difference (docs/SECURITY.md, Passwords). Ruby stores SHA1(\"<salt>--<password>--\"); under its default policy the port stores the newly set password as PBKDF2-HMAC-SHA256 (pbkdf2_sha256$<iterations>$<salt>$<hash>, random salt), which the comparator normalises to \"<pbkdf2 digest of P>\" when it verifies P. Nothing else in the step differs. With DECKO_PASSWORD_HASH=legacy-sha1, the setting for a deck Ruby also serves, the port stores Ruby's digest and the probe expects no difference here.",
+      "passwordPolicy": "pbkdf2",
+      "deltaFaults": [
+        {
+          "table": "cards",
+          "kind": "field",
+          "key": "PersistProbe User+#205+#216",
+          "column": "db_content",
+          "ruby": "<digest of Probe-pass-456>",
+          "ts": "<pbkdf2 digest of Probe-pass-456>"
         }
       ]
     },

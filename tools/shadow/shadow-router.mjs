@@ -1,16 +1,30 @@
 // shadow-router.mjs — T5 of #1282: a parallel-routing HTTP proxy that
-// forwards every client request to BOTH a Ruby upstream and a TypeScript
-// upstream, returns the Ruby response to the client (shadow mode never
-// affects users), and writes a JSONL comparison record to a log file.
+// forwards client requests to a Ruby upstream and, for comparison, to a
+// TypeScript upstream, returns the Ruby response to the client (shadow mode
+// never affects users), and writes a JSONL comparison record to a log file.
+//
+// Writes are never duplicated. The Ruby and TypeScript upstreams of a
+// parallel migration share the same deck, so replaying a write against the
+// TypeScript upstream would run it twice (database rows, mail, uploads). By
+// default only GET and HEAD are shadowed; every other method goes to Ruby
+// alone and is logged as "write-not-shadowed". A policy may opt in to
+// `"writes": "isolated"`, which replays writes against a separate upstream
+// serving a copy of the deck with external effects off
+// (tools/shadow/isolated-write-upstream.mjs); the router checks that
+// upstream's isolation declaration before the first write and refuses to
+// replay against it otherwise, and it refuses an isolated upstream that is
+// the Ruby or the TypeScript read upstream.
 //
 // Mechanism:
 //   1. Read the incoming body ONCE into a Buffer (POST-replay caveat: a
 //      request stream is single-pass; both upstreams must see the same
 //      bytes, so the body must be buffered before any forwarding).
 //   2. Always forward to RUBY_UPSTREAM (primary, awaited).
-//   3. If `shouldShadow(policy, method, url)` says so, also forward to
-//      TS_UPSTREAM (shadow). The shadow result feeds only the log; an
-//      error from the shadow upstream must NOT poison the user response.
+//   3. If `shouldShadow(policy, method, url)` says so (reads only), also
+//      forward to TS_UPSTREAM; if `shouldShadowWrite` says so (isolated
+//      mode only), forward the write to the verified isolated upstream. The
+//      shadow result feeds only the log; an error from a shadow upstream
+//      must NOT poison the user response.
 //   4. Compare status, content-type, and body bytes. Append one JSONL
 //      record per request to SHADOW_LOG (timestamp, method, path,
 //      rubyStatus, tsStatus, rubyBytes, tsBytes, verdict same/diff/
@@ -26,7 +40,10 @@
 // CLI:
 //   RUBY_UPSTREAM=http://ruby:3000 TS_UPSTREAM=http://ts:3000 \
 //     node tools/shadow/shadow-router.mjs
-//   (listens on SHADOW_PORT, default ephemeral).
+//   (listens on SHADOW_PORT, default ephemeral). With a policy whose
+//   "writes" is "isolated", the isolated upstream comes from the policy's
+//   "isolatedUpstream" (or ISOLATED_UPSTREAM) and must pass the isolation
+//   check at startup.
 
 import {
   createServer,
@@ -46,15 +63,39 @@ const VALID_MODES = new Set([
   "shadow-blocklist",
 ]);
 
+/** The methods shadowed against the TypeScript read upstream: the safe,
+ *  read-only ones (RFC 9110 section 9.2.1). */
+const READ_METHODS = new Set(["GET", "HEAD"]);
+
+const VALID_WRITE_MODES = new Set(["skip", "isolated"]);
+
+/** Is this a read-only method, safe to send to a second upstream that shares
+ *  the deck? */
+export function isReadMethod(method) {
+  return READ_METHODS.has(String(method).toUpperCase());
+}
+
 /** Parse + validate a route-policy JSON file. Throws on schema errors.
  *
  *  Schema:
  *    {
+ *      "description"?: string,
  *      "mode": "shadow-everything" | "shadow-allowlist" | "shadow-blocklist",
  *      "allowlist"?: [string, ...],     // required iff mode = shadow-allowlist
  *      "blocklist"?: [string, ...],     // required iff mode = shadow-blocklist
- *      "sampleRate": number             // 0..100, integer or float
+ *      "sampleRate": number,            // 0..100, integer or float
+ *      "writes"?: "skip" | "isolated",  // default "skip"
+ *      "isolatedUpstream"?: string      // required iff writes = isolated
  *    }
+ *
+ *  The mode and sample rate choose which paths are compared. Only GET and
+ *  HEAD are ever sent to the TypeScript read upstream. "writes": "skip"
+ *  sends every other method to Ruby alone; "writes": "isolated" also
+ *  replays it against isolatedUpstream, which must be a separate server
+ *  over a copy of the deck with external effects off. Any other value of
+ *  "writes" is rejected; an absent or misspelt key means "skip", the safe
+ *  default. Other keys are left to tools that extend the policy file
+ *  (bin/migration-parity-shadow.mjs).
  *
  *  Each pattern is a simple glob: * matches any run, ? matches one char,
  *  everything else literal. Patterns are anchored at both ends so they
@@ -70,6 +111,28 @@ export function loadPolicy(filePath) {
   }
   if (typeof cfg !== "object" || cfg === null || Array.isArray(cfg)) {
     throw new Error(`policy ${filePath}: top-level must be an object`);
+  }
+  const writes = cfg.writes ?? "skip";
+  if (!VALID_WRITE_MODES.has(writes)) {
+    throw new Error(
+      `policy ${filePath}: writes must be "skip" or "isolated", got ${JSON.stringify(cfg.writes)}`,
+    );
+  }
+  if (writes === "isolated") {
+    let ok = false;
+    try {
+      ok = /^https?:$/.test(new URL(cfg.isolatedUpstream).protocol);
+    } catch {
+      ok = false;
+    }
+    if (!ok) {
+      throw new Error(
+        `policy ${filePath}: writes "isolated" requires isolatedUpstream, the http(s) URL ` +
+          `of a server over a copy of the deck (tools/shadow/isolated-write-upstream.mjs)`,
+      );
+    }
+  } else if (cfg.isolatedUpstream !== undefined) {
+    throw new Error(`policy ${filePath}: isolatedUpstream is only meaningful with writes "isolated"`);
   }
   if (!VALID_MODES.has(cfg.mode)) {
     throw new Error(
@@ -104,6 +167,8 @@ export function loadPolicy(filePath) {
     allowlist: (cfg.allowlist ?? []).map(compileGlob),
     blocklist: (cfg.blocklist ?? []).map(compileGlob),
     sampleRate,
+    writes,
+    isolatedUpstream: writes === "isolated" ? cfg.isolatedUpstream : undefined,
   };
 }
 
@@ -133,15 +198,30 @@ export function fnv1a(str) {
   return h >>> 0;
 }
 
-/** Decide whether a given request should be shadowed. The decision is the
- *  composition of (mode filter) AND (sample-rate). At sampleRate 100 every
- *  in-scope request is shadowed; at 0 none are. At any rate in between,
- *  the shadowed set is `{ req : fnv1a(method+" "+path) % 10000 < rate*100 }`
- *  — a fixed bucket per request — which gives a monotonic subset relation
- *  across rates: a request shadowed at rate r is also shadowed at every
- *  rate r' > r, never the reverse.
+/** Decide whether a given request should be shadowed against the
+ *  TypeScript read upstream. Only GET and HEAD ever are. For those, the
+ *  decision is the composition of (mode filter) AND (sample-rate). At
+ *  sampleRate 100 every in-scope request is shadowed; at 0 none are. At any
+ *  rate in between, the shadowed set is
+ *  `{ req : fnv1a(method+" "+path) % 10000 < rate*100 }` — a fixed bucket per
+ *  request — which gives a monotonic subset relation across rates: a
+ *  request shadowed at rate r is also shadowed at every rate r' > r, never
+ *  the reverse.
  */
 export function shouldShadow(policy, method, path) {
+  if (!isReadMethod(method)) return false;
+  return inScopeAndSampled(policy, method, path);
+}
+
+/** Decide whether a mutating request should be replayed against the
+ *  isolated upstream: only in "writes": "isolated" mode, under the same
+ *  path filter and sampling as reads. */
+export function shouldShadowWrite(policy, method, path) {
+  if (isReadMethod(method) || policy.writes !== "isolated") return false;
+  return inScopeAndSampled(policy, method, path);
+}
+
+function inScopeAndSampled(policy, method, path) {
   let inScope;
   if (policy.mode === "shadow-everything") {
     inScope = true;
@@ -238,6 +318,47 @@ export function forwardOnce({ baseUrl, method, urlPath, headers, body }) {
   });
 }
 
+/** Ask an isolated-write upstream for its isolation declaration
+ *  (GET /_shadow/isolation, tools/shadow/isolated-write-upstream.mjs) and
+ *  accept it only if it says it serves a copy of the deck with external
+ *  effects off. Resolves to { ok, reason?, declaration? }; never throws. */
+export async function verifyIsolatedUpstream(baseUrl) {
+  try {
+    const res = await forwardOnce({
+      baseUrl,
+      method: "GET",
+      urlPath: "/_shadow/isolation",
+      headers: { accept: "application/json" },
+      body: null,
+    });
+    if (res.status !== 200) return { ok: false, reason: `isolation check answered ${res.status}` };
+    let declaration;
+    try {
+      declaration = JSON.parse(res.body.toString("utf8"));
+    } catch {
+      return { ok: false, reason: "isolation check did not answer JSON" };
+    }
+    if (declaration?.isolated !== true || declaration?.database !== "copy" || declaration?.externalEffects !== "off") {
+      return { ok: false, reason: "upstream does not declare a copied deck with external effects off", declaration };
+    }
+    return { ok: true, declaration };
+  } catch (err) {
+    return { ok: false, reason: `isolation check failed: ${err.message}` };
+  }
+}
+
+function sameOrigin(a, b) {
+  try {
+    const x = new URL(a);
+    const y = new URL(b);
+    const port = (u) => u.port || (u.protocol === "https:" ? "443" : "80");
+    const host = (u) => (u.hostname === "localhost" ? "127.0.0.1" : u.hostname);
+    return x.protocol === y.protocol && host(x) === host(y) && port(x) === port(y);
+  } catch {
+    return false;
+  }
+}
+
 // ===========================================================================
 // Response comparison
 // ===========================================================================
@@ -298,7 +419,22 @@ export function appendLogEntry(logPath, entry) {
  *  upstream — both forwards are awaited in parallel, but the client
  *  only sees Ruby's bytes once both have settled (so we don't write
  *  twice to the same socket if the shadow fails). */
-export function createProxyServer({ rubyUrl, tsUrl, policy, logPath }) {
+export function createProxyServer({ rubyUrl, tsUrl, policy, logPath, isolatedUrl }) {
+  const isolatedTarget = policy.writes === "isolated" ? (isolatedUrl ?? policy.isolatedUpstream) : undefined;
+  if (policy.writes === "isolated") {
+    if (!isolatedTarget) {
+      throw new Error('shadow-router: writes "isolated" needs an isolated upstream URL');
+    }
+    if (sameOrigin(isolatedTarget, rubyUrl) || sameOrigin(isolatedTarget, tsUrl)) {
+      throw new Error(
+        "shadow-router: the isolated upstream must be a separate server over a copy of the deck, " +
+          "not the Ruby or the TypeScript upstream",
+      );
+    }
+  }
+  // Checked once, before the first write is replayed.
+  let isolation = null;
+  const isolationVerdict = () => (isolation ??= verifyIsolatedUpstream(isolatedTarget));
   return createServer(async (req, res) => {
     let body = Buffer.alloc(0);
     try {
@@ -316,15 +452,34 @@ export function createProxyServer({ rubyUrl, tsUrl, policy, logPath }) {
         body,
       });
 
-      // (3) Shadow-forward to TS only if policy says so. Failures are
-      //     captured, never thrown — they show up in the log as
-      //     verdict=ts-error and the client still gets Ruby's response.
+      // (3) Shadow-forward only if policy says so: reads to the TS read
+      //     upstream, writes (isolated mode only) to the verified isolated
+      //     upstream. Failures are captured, never thrown — they show up in
+      //     the log as verdict=ts-error and the client still gets Ruby's
+      //     response.
       let tsResult = null;
       let tsError = null;
+      let writeVerdict = null;
+      let shadowTarget = null;
       if (shouldShadow(policy, req.method, req.url)) {
+        shadowTarget = tsUrl;
+      } else if (!isReadMethod(req.method)) {
+        if (!shouldShadowWrite(policy, req.method, req.url)) {
+          writeVerdict = policy.writes === "isolated" ? "skipped" : "write-not-shadowed";
+        } else {
+          const verdict = await isolationVerdict();
+          if (verdict.ok) {
+            shadowTarget = isolatedTarget;
+          } else {
+            writeVerdict = "isolation-unverified";
+            tsError = new Error(verdict.reason);
+          }
+        }
+      }
+      if (shadowTarget !== null) {
         try {
           tsResult = await forwardOnce({
-            baseUrl: tsUrl,
+            baseUrl: shadowTarget,
             method: req.method,
             urlPath: req.url,
             headers: req.headers,
@@ -350,7 +505,11 @@ export function createProxyServer({ rubyUrl, tsUrl, policy, logPath }) {
         firstDiffOffset: null,
         contentTypeMatch: null,
       };
-      if (tsError) {
+      if (shadowTarget !== null && shadowTarget === isolatedTarget) entry.shadow = "isolated";
+      if (writeVerdict !== null) {
+        entry.verdict = writeVerdict;
+        if (tsError) entry.tsError = tsError.message;
+      } else if (tsError) {
         entry.verdict = "ts-error";
         entry.tsError = tsError.message;
       } else if (tsResult) {
@@ -418,10 +577,11 @@ function envConfig() {
       process.env.SHADOW_POLICY ?? "tools/shadow/routes.shadow.json",
     logPath: process.env.SHADOW_LOG ?? "tools/shadow/shadow.log.jsonl",
     port: Number(process.env.SHADOW_PORT ?? 0),
+    isolatedUrl: process.env.ISOLATED_UPSTREAM,
   };
 }
 
-function main() {
+async function main() {
   const cfg = envConfig();
   if (!cfg.rubyUrl) {
     process.stderr.write("RUBY_UPSTREAM env var required\n");
@@ -437,12 +597,21 @@ function main() {
     tsUrl: cfg.tsUrl,
     policy,
     logPath: cfg.logPath,
+    isolatedUrl: cfg.isolatedUrl,
   });
+  if (policy.writes === "isolated") {
+    const target = cfg.isolatedUrl ?? policy.isolatedUpstream;
+    const verdict = await verifyIsolatedUpstream(target);
+    if (!verdict.ok) {
+      process.stderr.write(`shadow-router: refusing to start: ${target}: ${verdict.reason}\n`);
+      process.exit(2);
+    }
+  }
   server.listen(cfg.port, () => {
     const addr = server.address();
     process.stderr.write(
       `shadow-router: ruby=${cfg.rubyUrl} ts=${cfg.tsUrl} ` +
-        `policy=${cfg.policyPath} log=${cfg.logPath} ` +
+        `writes=${policy.writes} policy=${cfg.policyPath} log=${cfg.logPath} ` +
         `listening on http://${addr.address}:${addr.port}\n`,
     );
   });
@@ -455,5 +624,8 @@ const isMain =
   process.argv[1] !== undefined &&
   import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
-  main();
+  main().catch((err) => {
+    process.stderr.write(`shadow-router: ${err?.stack ?? err}\n`);
+    process.exit(1);
+  });
 }

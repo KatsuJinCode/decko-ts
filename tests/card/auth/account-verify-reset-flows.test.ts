@@ -15,7 +15,7 @@
 // real auth migration runner, real SessionStore, CaptureTransport for the
 // mail (the mocked transport; envelope + token link bytes asserted).
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   generatedEmail,
   generatedPassword,
@@ -41,6 +41,7 @@ import {
   sendResetPasswordToken,
   type AccountFlowContext,
 } from "../../../src/card/auth/account-verify-reset-flows.js";
+import { checkPassword, configurePasswordHashing, isPbkdf2Hash } from "../../../src/card/auth/password-hash.js";
 import {
   createAuthTestStorage,
   insertAccountCard,
@@ -614,7 +615,14 @@ describe("confirmAccountVerification (events.rb:19-24 + activate_account)", () =
 // --- SET THE NEW PASSWORD (right/password.rb events) ---------------------------
 
 describe("applyNewAccountPassword (validate/store events)", () => {
-  it("writes the salted digest with the EXISTING salt and old password stops verifying", async () => {
+  afterEach(() => configurePasswordHashing(undefined));
+
+  it("in legacy-sha1 mode writes Ruby's salted digest with the EXISTING salt", async () => {
+    // encrypt_password (right/password.rb:19-26): Auth.encrypt(content,
+    // left&.salt) — the account's EXISTING salt, NOT regenerated. The port
+    // stores exactly that when the deck keeps Ruby's format
+    // (docs/SECURITY.md, "Passwords").
+    configurePasswordHashing({ mode: "legacy-sha1", iterations: 100_000 });
     const f = await buildFixture();
     const write = await applyNewAccountPassword(
       { driver: f.storage.driver, fetcher: f.ctx.fetcher, actor: JANE },
@@ -623,13 +631,31 @@ describe("applyNewAccountPassword (validate/store events)", () => {
     );
     expect(write.ok).toBe(true);
     if (!write.ok || write.noOp) return;
-    // encrypt_password (right/password.rb:19-26): Auth.encrypt(content,
-    // left&.salt) — the account's EXISTING salt, NOT regenerated.
     expect(write.digest).toBe(await sha1Hex(`${SALT}--${NEW_PASSWORD}--`));
+    const row = f.storage.selectOne<{ db_content: string }>("SELECT db_content FROM cards WHERE id = 9103");
+    expect(row?.db_content).toBe(await sha1Hex(`${SALT}--${NEW_PASSWORD}--`));
+    expect((await authenticateAccount(f.storage.driver, JANE_EMAIL, NEW_PASSWORD)).ok).toBe(true);
+  });
+
+  it("stores a PBKDF2 hash by default (security divergence) and old password stops verifying", async () => {
+    configurePasswordHashing({ mode: "pbkdf2", iterations: 100_000 });
+    const f = await buildFixture();
+    const write = await applyNewAccountPassword(
+      { driver: f.storage.driver, fetcher: f.ctx.fetcher, actor: JANE },
+      `${JANE.name}+*account`,
+      NEW_PASSWORD,
+    );
+    expect(write.ok).toBe(true);
+    if (!write.ok || write.noOp) return;
+    // docs/SECURITY.md, "Passwords": a newly set password is stored as
+    // PBKDF2, never as Ruby's salted SHA-1.
     const row = f.storage.selectOne<{ db_content: string }>(
       "SELECT db_content FROM cards WHERE id = 9103",
     );
-    expect(row?.db_content).toBe(await sha1Hex(`${SALT}--${NEW_PASSWORD}--`));
+    expect(write.digest).toBe(row?.db_content);
+    expect(isPbkdf2Hash(row?.db_content ?? "")).toBe(true);
+    expect(row?.db_content).not.toBe(await sha1Hex(`${SALT}--${NEW_PASSWORD}--`));
+    expect((await checkPassword(row?.db_content ?? "", NEW_PASSWORD, SALT)).ok).toBe(true);
     // the salt card is untouched.
     const salt = f.storage.selectOne<{ db_content: string }>(
       "SELECT db_content FROM cards WHERE id = 9104",

@@ -76,14 +76,25 @@ const DIGEST = createHash("sha1").update(`${SALT}--${PASSWORD}--`).digest("hex")
 
 /** Split a .sql file into single statements: strip `--` line comments (the
  *  core schema puts them INSIDE its DDL, so they must go before SQLite sees
- *  the text), then split on `;`. No string literal in either migration file
- *  contains a `;`, so this is exact for these two files. */
+ *  the text), then split on `;`, keeping a CREATE TRIGGER's `BEGIN ... END`
+ *  body (whose statements end in `;`) in one piece. No string literal in
+ *  either migration file contains a `;`, so this is exact for these two
+ *  files. */
 function sqlStatements(file: string): string[] {
-  return readFileSync(path.join(REPO_ROOT, file), "utf8")
-    .replace(/--[^\n]*/g, "")
-    .split(";")
-    .map((s) => s.trim())
-    .filter((s) => s !== "");
+  const statements: string[] = [];
+  let pending = "";
+  for (const piece of readFileSync(path.join(REPO_ROOT, file), "utf8").replace(/--[^\n]*/g, "").split(";")) {
+    pending = pending === "" ? piece : `${pending};${piece}`;
+    const statement = pending.trim();
+    if (statement === "") {
+      pending = "";
+      continue;
+    }
+    if (/^CREATE\s+TRIGGER\b/i.test(statement) && !/\bEND$/i.test(statement)) continue;
+    statements.push(statement);
+    pending = "";
+  }
+  return statements;
 }
 
 /** Apply a migration file THROUGH the real driver. Doing the DDL over the
@@ -441,6 +452,70 @@ describe("Bunny edge sign-in + sessions over the real BunnyDbDriver", () => {
       (await driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM auth_sessions", [])).rows[0]?.n,
     );
     expect(after).toBe(before);
+  });
+
+  // Security settings (docs/SECURITY.md) come from this host's env bag on the
+  // sign-in-only arm too, not only when the write path is armed.
+  describe("UNARMED: the sign-in action honours the edge's security settings", () => {
+    const sessionCount = async (): Promise<number> =>
+      Number((await driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM auth_sessions", [])).rows[0]?.n);
+    const storedPassword = async (): Promise<string> =>
+      String((await driver.query<{ db_content: string }>("SELECT db_content FROM cards WHERE id = 9103", [])).rows[0]?.db_content);
+
+    it("a cross-site sign-in POST is refused with 403 and mints no session", async () => {
+      const before = await sessionCount();
+      const response = await mountBunnyEdgeWriteSurface(
+        { fetcher, render, driver },
+        signinFormRequest(EMAIL, PASSWORD, `https://edge.example${SIGNIN_PATH}`, { origin: "https://attacker.example" }),
+        { DECKO_FIRST_RUN: "0" },
+      );
+      expect(response!.status).toBe(403);
+      expect(response!.headers.get("set-cookie")).toBeNull();
+      expect(await sessionCount()).toBe(before);
+    });
+
+    it("DECKO_ORIGIN_CHECK=off in the edge env lets it through", async () => {
+      const response = await mountBunnyEdgeWriteSurface(
+        { fetcher, render, driver },
+        signinFormRequest(EMAIL, PASSWORD, `https://edge.example${SIGNIN_PATH}`, { origin: "https://attacker.example" }),
+        { DECKO_FIRST_RUN: "0", DECKO_ORIGIN_CHECK: "off" },
+      );
+      expect(response!.status).toBe(303);
+      await new SessionStore({ driver }).revokeSession(cookieToken(response!.headers.get("set-cookie")));
+    });
+
+    it("DECKO_PASSWORD_HASH=legacy-sha1 in the edge env keeps Ruby's digest at sign-in", async () => {
+      await driver.query("UPDATE cards SET db_content = ? WHERE id = 9103", [DIGEST]);
+      const response = await mountBunnyEdgeWriteSurface(
+        { fetcher, render, driver },
+        signinFormRequest(EMAIL, PASSWORD, `https://edge.example${SIGNIN_PATH}`),
+        { DECKO_FIRST_RUN: "0", DECKO_PASSWORD_HASH: "legacy-sha1" },
+      );
+      expect(response!.status).toBe(303);
+      expect(await storedPassword()).toBe(DIGEST);
+      await new SessionStore({ driver }).revokeSession(cookieToken(response!.headers.get("set-cookie")));
+    });
+
+    it("by default the edge replaces the legacy digest with PBKDF2 at sign-in, and it still signs in", async () => {
+      await driver.query("UPDATE cards SET db_content = ? WHERE id = 9103", [DIGEST]);
+      const env = { DECKO_FIRST_RUN: "0", DECKO_PASSWORD_PBKDF2_ITERATIONS: "100000" };
+      const first = await mountBunnyEdgeWriteSurface(
+        { fetcher, render, driver },
+        signinFormRequest(EMAIL, PASSWORD, `https://edge.example${SIGNIN_PATH}`),
+        env,
+      );
+      expect(first!.status).toBe(303);
+      expect(await storedPassword()).toMatch(/^pbkdf2_sha256\$100000\$/);
+      const second = await mountBunnyEdgeWriteSurface(
+        { fetcher, render, driver },
+        signinFormRequest(EMAIL, PASSWORD, `https://edge.example${SIGNIN_PATH}`),
+        env,
+      );
+      expect(second!.status).toBe(303);
+      const sessions = new SessionStore({ driver });
+      await sessions.revokeSession(cookieToken(first!.headers.get("set-cookie")));
+      await sessions.revokeSession(cookieToken(second!.headers.get("set-cookie")));
+    });
   });
 });
 

@@ -160,10 +160,11 @@ import {
 import {
   DEFAULT_ACCOUNT_STATUS,
   NO_HISTORY_RIGHT_CODENAMES,
-  encryptPassword,
+  storedPasswordValue,
   generateSalt,
   passwordErrors,
 } from "./account-fields.js";
+import type { PasswordHashPolicy } from "../auth/password-hash.js";
 import {
   runModEventStage,
   type ModEventContext,
@@ -258,6 +259,9 @@ export interface CardActionEngineOptions {
   notifyTransport?: NotifyTransport;
   /** Log sink for integration dispatch lines. */
   notifyLogger?: (line: string) => void;
+  /** How +*password saves are stored (auth/password-hash.ts). Default: the
+   *  deck policy in force when the save runs (passwordHashPolicy()). */
+  passwordHashing?: PasswordHashPolicy;
   /** The attachment storage seam (E4.4.a — card-mod-carrierwave's
    *  CarrierWave::Storage::File port). Required for saves that carry an
    *  `attachment` input; saves without one behave exactly as before. */
@@ -352,6 +356,7 @@ export class CardActionEngine {
   private readonly followerResolver: FollowerResolver | undefined;
   private readonly notifyTransport: NotifyTransport | undefined;
   private readonly notifyLogger: ((line: string) => void) | undefined;
+  private readonly passwordHashing: PasswordHashPolicy | undefined;
   /** The write-task permission state (who_can universe + actor parties),
    *  built lazily on this engine's first gated save — the render side's
    *  ensureTaskVerdicts model (one batch pair per engine, never per save). */
@@ -384,6 +389,7 @@ export class CardActionEngine {
     this.followerResolver = options.followerResolver;
     this.notifyTransport = options.notifyTransport;
     this.notifyLogger = options.notifyLogger;
+    this.passwordHashing = options.passwordHashing;
     this.attachmentStore = options.attachmentStore;
     this.fileStorage = options.fileStorage;
     this.modEvents = options.modEvents;
@@ -1136,7 +1142,7 @@ export class CardActionEngine {
       if (problems.length > 0) {
         throw new CardActionError("validation-failed", `Validation failed: ${problems.join(", ")}`);
       }
-      input.content = encryptPassword(input.content, await this.accountSalt(sides.leftId));
+      input.content = await storedPasswordValue(input.content, await this.accountSalt(sides.leftId), this.passwordHashing);
     }
     // require_field :email (set/right/account.rb:8): an account is created
     // only with its +*email, named in this save's subcards or already stored.
@@ -1656,7 +1662,7 @@ export class CardActionEngine {
       if (problems.length > 0) {
         throw new CardActionError("validation-failed", `Validation failed: ${problems.join(", ")}`);
       }
-      input.content = encryptPassword(input.content, await this.accountSalt(before.left_id));
+      input.content = await storedPasswordValue(input.content, await this.accountSalt(before.left_id), this.passwordHashing);
     }
     if (input.content !== undefined) after.db_content = input.content;
     // add_comment (comment.rb:4-12) at the SP position — the pending

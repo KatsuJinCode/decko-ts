@@ -90,10 +90,21 @@ const RUBY_STEPS =
 // its own "not a known type" error and writes an empty act; the port refuses
 // the save. Step 67, reverting an act that renamed another card: Ruby
 // raises after storing the reverted rows without history; the port refuses
-// before writing. The comparator accepts a declared step only if its delta
-// is exactly the declared one.
-const DELIBERATE = path.join(REPO, "tests/fixtures/persistence-oracle/deliberate-differences.json");
-const DELIBERATE_STEPS = [7, 48, 67];
+// before writing. Steps 20, 22 and 31, stored HTML: Ruby's cleaner keeps a
+// javascript: link target, the port's drops it (a security difference,
+// docs/SECURITY.md). Steps 57 and 58, password storage: under the default
+// policy the port stores PBKDF2 where Ruby stores salted SHA-1 (also a
+// security difference); run with DECKO_PASSWORD_HASH=legacy-sha1, the
+// setting for a deck Ruby also serves, the probe expects Ruby's exact rows
+// there. The comparator accepts a declared step only if its delta is exactly
+// the declared one.
+const DECLARATIONS = path.join(REPO, "tests/fixtures/persistence-oracle/deliberate-differences.json");
+const LEGACY_PASSWORDS = process.env.DECKO_PASSWORD_HASH === "legacy-sha1";
+const PASSWORD_STEPS = [57, 58];
+const DELIBERATE_STEPS = [7, 20, 22, 31, 48, 67, ...(LEGACY_PASSWORDS ? [] : PASSWORD_STEPS)].sort((a, b) => a - b);
+// The declarations in force for this run: without the password steps in
+// legacy-sha1 mode (a declaration that no longer applies would be stale).
+const DELIBERATE = LEGACY_PASSWORDS ? path.join(PERSIST_DIR, "deliberate-differences-legacy-passwords.json") : DECLARATIONS;
 // Steps whose row delta still differs from the oracle without a declaration.
 const KNOWN_DIVERGENCES: number[] = [];
 const PREFIX = "PersistProbe";
@@ -843,6 +854,13 @@ describe("persistence write probe (TS half)", () => {
     // must match, except the divergences recovery/parity-team/persistence.md
     // records; a newly matching step fails here too, so the list is kept
     // honest in both directions.
+    if (LEGACY_PASSWORDS) {
+      const all = JSON.parse(readFileSync(DECLARATIONS, "utf8")) as { differences: Array<{ step: number }> };
+      writeFileSync(
+        DELIBERATE,
+        JSON.stringify({ ...all, differences: all.differences.filter((d) => !PASSWORD_STEPS.includes(d.step)) }),
+      );
+    }
     const report = path.join(PERSIST_DIR, "compare-report.json");
     const run = spawnSync(
       process.execPath,

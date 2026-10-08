@@ -59,6 +59,7 @@ import {
 } from "../../src/card/auth/index.js";
 import { splitSqlStatements } from "../card/render/render-test-storage.js";
 import { scratchDir } from "../support/scratch-dir.mjs";
+import { isPbkdf2Hash } from "../../src/card/auth/password-hash.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
@@ -247,12 +248,13 @@ describe("the deploy demo deck's first-run journey (0001 -> 0004)", () => {
       [created.fieldCardIds.status],
     );
     expect(storedStatus.rows[0]?.db_content).toBe("active");
-    // The stored password is the SHA-1 digest, never the plaintext.
+    // The stored password is a PBKDF2 hash (docs/SECURITY.md, "Passwords"),
+    // never the plaintext.
     const storedPassword = await d.driver.query<{ db_content: string | null }>(
       "SELECT db_content FROM cards WHERE id = ?",
       [created.fieldCardIds.password],
     );
-    expect(storedPassword.rows[0]?.db_content).toMatch(/^[0-9a-f]{40}$/);
+    expect(isPbkdf2Hash(storedPassword.rows[0]?.db_content ?? "")).toBe(true);
     expect(storedPassword.rows[0]?.db_content).not.toBe(OWNER_PASSWORD);
 
     // 3. the window CLOSES. This is the step the port's documented deviation
