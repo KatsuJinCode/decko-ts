@@ -72,6 +72,7 @@ import {
   SETTING_GROUPS,
   isTemplatedNestsName,
   templateLinkSetNameFromParts,
+  flatViewRefused,
   visibleSettingCodenames,
   visibleSettingsForGroup,
 } from "./render/views.js";
@@ -2219,7 +2220,9 @@ export class RenderEngine implements RenderEngineLike {
     // Base format view (the compiled-in HTML_VIEWS + any flat
     // registrations a mod added without registering under a set module
     // — none today, but the seam covers the case). Byte-identical to
-    // the pre-chain dispatch path when no loader is registered.
+    // the pre-chain dispatch path when no loader is registered. A flat view
+    // Ruby defines only on some sets resolves only for cards in them.
+    if (flatViewRefused(view, card.setKeys)) return undefined;
     return this.views[view];
   }
 

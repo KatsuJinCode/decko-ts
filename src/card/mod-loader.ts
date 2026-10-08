@@ -52,7 +52,11 @@ import {
   type SetModuleKind,
   type ViewChainEntry,
 } from "./mod-loader/mod-registrar.js";
-import { safeKeyToModuleShortname, safeKeyToModuleShortnameCandidates } from "./render/set-keys-to-modules.js";
+import {
+  codenameModuleShortnames,
+  safeKeyToModuleShortname,
+  safeKeyToModuleShortnameCandidates,
+} from "./render/set-keys-to-modules.js";
 import { SET_INCLUDE_GRAPH } from "./mod-loader/set-include-graph.js";
 import {
   ContentOverrideRegistry,
@@ -887,7 +891,7 @@ export class ModLoader {
   private includedAbstractEntries(token: string, view: string, already: readonly ViewChainEntry[]): ViewChainEntry[] {
     const out: ViewChainEntry[] = [];
     const seen = new Set(already.map((e) => e.setModule));
-    for (const candidate of safeKeyToModuleShortnameCandidates(token)) {
+    for (const candidate of [...safeKeyToModuleShortnameCandidates(token), ...codenameModuleShortnames(token)]) {
       const owners = Object.keys(SET_INCLUDE_GRAPH).filter(
         (key) => key === candidate || key.startsWith(`${candidate}::`),
       );

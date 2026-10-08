@@ -54,7 +54,7 @@ import {
 import { parseOptionsWithLexicon, executeQuery, executeCount } from "../../src/cql/execute.js";
 import { isPreferenceName, isStandardRuleName, ruleWalkPatternInput } from "../../src/card/actions/rule-content-walk.js";
 import { defaultDeckLoader } from "../../src/card/mod-loader/default-mod-deck.js";
-import { HTML_VIEWS } from "../../src/card/render/views.js";
+import { HTML_VIEWS, flatViewDefinedFor } from "../../src/card/render/views.js";
 import { readPermissionOverride, updatePermissionOverride } from "../../src/card/permissions/read-override.js";
 import { resolveTypeId } from "../../src/card/actions/type-resolution.js";
 
@@ -634,7 +634,7 @@ for (const question of QUESTIONS.questions) {
         for (const v of tsViewNames) {
           const chain = loader.viewChain(setKeys, v, "html");
           if (chain.length > 0) views.push({ view: v, owner: chain[0]!.setModule });
-          else if (engineFlatViews.has(v)) views.push({ view: v, owner: "ENGINE" });
+          else if (engineFlatViews.has(v) && flatViewDefinedFor(v, setKeys)) views.push({ view: v, owner: "ENGINE" });
         }
         out.push({ set: sname, set_keys: setKeys, views });
       }
