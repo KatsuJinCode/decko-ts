@@ -1,4 +1,6 @@
 {
+  "description": "Compare every page read (GET and HEAD) with the TypeScript upstream. Writes go to Ruby only: the two upstreams share the deck, so a replayed write would run twice. To compare writes too, run tools/shadow/isolated-write-upstream.mjs over a copy of the deck and set \"writes\": \"isolated\" with its URL as \"isolatedUpstream\".",
   "mode": "shadow-everything",
+  "writes": "skip",
   "sampleRate": 100
 }

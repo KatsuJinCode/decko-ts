@@ -14,7 +14,28 @@ export interface ShadowPolicy {
   blocklist: RegExp[];
   /** 0..100; percent-bucket sampling (monotonic subset across rates). */
   sampleRate: number;
+  /** "skip" (default): non-GET/HEAD requests go to Ruby only. "isolated":
+   *  they are also replayed against isolatedUpstream, a separate server over
+   *  a copy of the deck with external effects off. */
+  writes?: "skip" | "isolated";
+  isolatedUpstream?: string;
 }
+
+export interface IsolationVerdict {
+  ok: boolean;
+  reason?: string;
+  declaration?: unknown;
+}
+
+export declare function isReadMethod(method: string): boolean;
+
+export declare function shouldShadowWrite(
+  policy: ShadowPolicy,
+  method: string,
+  path: string,
+): boolean;
+
+export declare function verifyIsolatedUpstream(baseUrl: string): Promise<IsolationVerdict>;
 
 /** One buffered upstream response (the skeleton does not stream). */
 export interface ShadowResponse {
@@ -68,4 +89,6 @@ export declare function createProxyServer(opts: {
   tsUrl: string;
   policy: ShadowPolicy;
   logPath?: string;
+  /** Overrides policy.isolatedUpstream in "writes": "isolated" mode. */
+  isolatedUrl?: string;
 }): Server;

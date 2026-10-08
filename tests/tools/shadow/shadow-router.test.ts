@@ -213,6 +213,10 @@ describe("loadPolicy", () => {
     );
     expect(p.mode).toBe("shadow-everything");
     expect(p.sampleRate).toBe(100);
+    // The shipped policy never replays writes.
+    expect(p.writes).toBe("skip");
+    expect(shouldShadow(p, "POST", "/update/Example")).toBe(false);
+    expect(shouldShadow(p, "GET", "/Example")).toBe(true);
   });
 
   it("rejects an unknown mode", () => {
@@ -500,7 +504,7 @@ describe("proxy end-to-end", () => {
     expect(String(last.path)).toBe("/cards/42?x=1");
   });
 
-  it("replays the POST body to BOTH upstreams (same bytes)", async () => {
+  it("sends a POST to Ruby only, so the write runs once (replay is the isolated mode's job)", async () => {
     ruby.setBody("ok-ruby");
     ts.setBody("ok-ts");
     ruby.resetReceived();
@@ -511,11 +515,12 @@ describe("proxy end-to-end", () => {
     expect(resp.body.toString()).toBe("ok-ruby");
 
     const rubyBodies = ruby.receivedBodies();
-    expect(rubyBodies.length).toBeGreaterThanOrEqual(1);
-    expect(rubyBodies[rubyBodies.length - 1].toString()).toBe("post-body-data-12345");
-    const tsBodies = ts.receivedBodies();
-    expect(tsBodies.length).toBeGreaterThanOrEqual(1);
-    expect(tsBodies[tsBodies.length - 1].toString()).toBe("post-body-data-12345");
+    expect(rubyBodies.length).toBe(1);
+    expect(rubyBodies[0].toString()).toBe("post-body-data-12345");
+    expect(ts.receivedBodies().length).toBe(0);
+    await settle();
+    const entries = readLog();
+    expect(entries[entries.length - 1].verdict).toBe("write-not-shadowed");
   });
 
   it("records skipped verdict when policy says no-shadow", async () => {
