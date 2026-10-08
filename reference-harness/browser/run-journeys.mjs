@@ -28,7 +28,9 @@ function parseArgs(argv) {
   return args;
 }
 
-const STEP_TIMEOUT = 15_000;
+// A step's wait for its target, its navigation or the page to settle. A cold
+// Ruby deck on a loaded machine can take well over 15 s for one page.
+const STEP_TIMEOUT = Number(process.env.HARNESS_STEP_TIMEOUT ?? 30_000);
 
 /** Waits until the page has finished loading and jQuery has no request in flight. */
 async function settle(page) {
