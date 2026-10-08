@@ -529,9 +529,9 @@ const userEmailRawView: ViewFn = ({ fmt }: ViewContext) => {
  *  signup expected bytes carry exactly ONE lines-div, the signup_line).
  *  The port computes sent_line through the engine's prepared read verdict
  *  (engine.isDenied on the fetched +account+email card; an unfetchable
- *  card is unreadable) and leaves the three link lines unported (their
- *  gates need the signed-in approve/delete task verdicts; the corpus
- *  never exercises them signed-in). The missing-account branch emits the
+ *  card is unreadable) and the link line through the engine's prepared
+ *  approve/delete verdicts (verificationLinkLine; a signed-in member who
+ *  may create Person cards sees the two approval links). The missing-account branch emits the
  *  en.yml:18 literal "ERROR: signup card missing account".
  *
  *  DISPATCH (both routes call THIS function): the verifier/probe render
@@ -591,9 +591,33 @@ function signupAccountLines(ctx: ViewContext): string[] {  const { fmt } = ctx;
     email !== undefined && email.unknown !== true && !engine.isDenied(email)
       ? `A verification email has been sent to ${h(email.dbContent)}`
       : undefined;
-  // verification_link_line: empty verification_links -> nil (all three
-  // link gates are signed-out false; see the signupCoreView doc).
-  return sent === undefined ? [] : [sent];
+  const linkLine = verificationLinkLine(ctx);
+  return [sent, linkLine].filter((line): line is string => line !== undefined);
+}
+
+/** views.rb verification_link_line: the non-empty verification_links
+ *  joined " " — approve with a token ("Resend" when the account status is
+ *  "unverified", else "Send") and without one, both gated on can_approve?,
+ *  then "Deny and delete" gated on ok?(:delete). The gates are the engine's
+ *  prepared verdicts (signupApprovalVerdict); unprepared means no links. */
+function verificationLinkLine(ctx: ViewContext): string | undefined {
+  const { fmt } = ctx;
+  const verdict = fmt.engine.signupApprovalVerdict?.(fmt.card);
+  if (verdict === undefined) return undefined;
+  const url = h(fmt.urlKey());
+  const links: string[] = [];
+  if (verdict.approve) {
+    const status = fmt.engine.fetchRenderCard(`${fmt.card.name.s}+*account+*status`);
+    const action = status !== undefined && status.unknown !== true && status.dbContent.trim() === "unverified"
+      ? "Resend"
+      : "Send";
+    links.push(
+      `<a class="known-card" href="/update/${url}?card%5Btrigger%5D=approve_with_verification">${action} verification email</a>`,
+      `<a class="known-card" href="/update/${url}?card%5Btrigger%5D=approve_without_verification">Approve without verification</a>`,
+    );
+  }
+  if (verdict.delete) links.push(`<a class="known-card" href="/delete/${url}">Deny and delete</a>`);
+  return links.length === 0 ? undefined : links.join(" ");
 }
 
 /** en locale card_date_seconds: '%B %e, %Y %H:%M:%S' (%e = space-padded

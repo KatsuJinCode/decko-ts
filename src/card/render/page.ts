@@ -63,6 +63,7 @@ import { scriptIntegrityFor } from "./deployment-follow-live-config.js";
 import type { RenderEngine } from "../render.js";
 import type { HistoryRenderParams } from "../history/render-seam.js";
 import { DECK_ORIGIN } from "./deck-origin.js";
+import { h } from "./slot-html.js";
 
 // The production `Cardio.config.deck_origin` the capture pinned (runbook
 // production-equivalent setting 4; Env.origin with no request) now lives in
@@ -170,8 +171,10 @@ export async function renderPageBytes(
     const releaseCaches =
       typeof engine.fetcher?.holdTemporaryCaches === "function" ? engine.fetcher.holdTemporaryCaches() : () => {};
     try {
-      return await engine.runWithPageConfig(() =>
-        renderPageBytesWithPageConfig(engine, cardName, requestedView, historyParams),
+      return await engine.renderWithUnknownCreateVerdicts(() =>
+        engine.runWithPageConfig(() =>
+          renderPageBytesWithPageConfig(engine, cardName, requestedView, historyParams),
+        ),
       );
     } finally {
       releaseCaches();
@@ -885,21 +888,23 @@ export async function headContent(
  *  anonymous captures pin); the allowed branch renders
  *  `tag "link", rel: "alternate", type: "application/x-wiki", title:
  *  "Edit this page!", href: path(view: :edit)` — Rails' tag builder emits
- *  the self-closing form and `path(view: :edit)` is the "/<NAME>/edit"
- *  name-path form (golden-pinned: `<link rel="alternate"
+ *  the self-closing form and `path(view: :edit)` is the "/<url_key>/edit"
+ *  path form (golden-pinned: `<link rel="alternate"
  *  type="application/x-wiki" title="Edit this page!" href="/Home/edit" />`).
  *  `return if card.new?` (head.rb:47): an id-less page root renders "". */
-async function universalEditButtonTag(
+export async function universalEditButtonTag(
   engine: RenderEngine,
   rootCard: RenderCard,
 ): Promise<string> {
   if (rootCard.id === undefined) return ""; // head.rb:47 return if card.new?
   const updateOk = await engine.updateVerdictForCard?.(rootCard);
   if (updateOk === false) return ""; // perms :update denial -> :blank
-  const namePath = rootCard.name.s.replace(/ /g, "_");
+  // path(view: :edit): Card::Path marks a known card by its url_key
+  // (lib/card/path.rb interpret_mark), so punctuation the key drops is
+  // dropped from the href too ("Organizer(s)" -> "Organizer_s").
   return (
     `<link rel="alternate" type="application/x-wiki" title="Edit this page!" ` +
-    `href="/${namePath}/edit" />`
+    `href="/${h(rootCard.name.urlKey)}/edit" />`
   );
 }
 

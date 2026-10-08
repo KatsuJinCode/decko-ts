@@ -318,7 +318,10 @@ function templateLinkSetName(ctx: ViewContext, nestName: DeckoName): DeckoName {
 export const templateNestView: ViewFn = (ctx) => {
   const { fmt, voo } = ctx;
   const nestName = voo.opts["nest_name"];
-  if (nestName === undefined || nestName === null || nestName === "") return "";
+  // `return "" unless voo.nest_name`: only nil returns early (an empty
+  // string is truthy in Ruby, so the blank reference {{}} reaches the
+  // syntax arm below).
+  if (nestName === undefined || nestName === null) return "";
   const name = DeckoName.parse(String(nestName));
   // field_only? (fields.rb:33-35): relative name containing only the
   // rightmost part.
@@ -333,12 +336,10 @@ export const templateNestView: ViewFn = (ctx) => {
       }),
     );
   }
+  // "{{#{voo.nest_syntax}}}": a nil or empty syntax interpolates as "",
+  // so the blank reference renders "{{}}".
   const syntax = voo.opts["nest_syntax"];
-  // syntax is set whenever nest_name is set (format/nest.rb#prepare +
-  // nestRecord both populate both); absent syntax -> empty body
-  // (Ruby's "".to_s when nest_syntax is nil produces "" - same shape).
-  if (typeof syntax !== "string" || syntax === "") return "";
-  return `{{${syntax}}}`;
+  return `{{${typeof syntax === "string" ? syntax : ""}}}`;
 };
 
 /** all/editing.rb:46-48 :just_deleted, unknown: true: `wrap { "#{render_

@@ -24,7 +24,7 @@
 import { DeckoName } from "../name.js";
 import { UnsupportedViewError, wrappedTitleInner } from "./format.js";
 import type { RenderFormat, ViewContext, ViewFn } from "./format.js";
-import { h } from "./slot-html.js";
+import { h, newSlotId } from "./slot-html.js";
 
 /** Abstract::List member cardtypes (item_cards content iteration). */
 function isListType(fmt: RenderFormat): boolean {
@@ -258,8 +258,10 @@ export function accountLinksCoreHtml(ctx: ViewContext): string {
  *  signed_in?-gated perms; signed in: my_card + sign_out, the sign_up/
  *  sign_in denials render :blank and drop from the compact) joined "\n":
  *
- *  - my_card (account_dropdown.rb:7-12 account_dropdown — can_disable_roles?
- *    is false for the capture session, whose actor holds no roles):
+ *  - my_card (account_links.rb view :my_card): account_dropdown.rb:7-12
+ *    account_dropdown when the actor holds one current role, otherwise the
+ *    +*enabled_roles :edit_inline slot (enabledRolesDropdownHtml; the caller
+ *    passes it as myCardHtml). The dropdown arm:
  *    split_dropdown_button(link_to_mycard) { account_dropdown_items }
  *    (dropdown.rb:14-22) = the btn-group div joining [main, toggle, list]
  *    with "\n"; the toggle is split_dropdown_button_toggle's reverse_merge
@@ -277,19 +279,16 @@ export function accountLinksCoreHtml(ctx: ViewContext): string {
  *  The known/wanted classes are inputs (RenderEngine.prepareSessionAccountLinks
  *  resolves them while async fetches are legal); the byte shapes here are
  *  pinned against the authenticated goldens (every capture's navbar block).
- *  Remainder (no golden pins it): the roles dropdown items
- *  (account_dropdown_roles — special_roles? when the session actor holds
- *  2+ roles) render []; the capture's bot session holds none.
  */
 export function signedInAccountLinksInnerHtml(
   actorName: string,
   known: { actor: boolean; accountSettings: boolean; signin: boolean },
+  myCardHtml?: string,
 ): string {
-  const namePath = actorName.replace(/ /g, "_");
   const knownClass = (isKnown: boolean): string => (isKnown ? "known-card" : "wanted-card");
   const myCardLi =
     `<li class="nav-item">` +
-    myCardDropdownInnerHtml(actorName, known, []) +
+    (myCardHtml ?? myCardDropdownInnerHtml(actorName, known, [])) +
     `</li>`;
   const signOutLi =
     `<li class="nav-item"><a class="nav-link signout-link ${knownClass(known.signin)}" href="/delete/*signin">Sign out</a></li>`;
@@ -300,12 +299,10 @@ export function signedInAccountLinksInnerHtml(
  *  navbar <li>) — split_dropdown_button(link_to_mycard) { items }: the
  *  btn-group div joining [main, toggle, list] with "\n"; the list is
  *  dropdown_list's `<ul class="dropdown-menu dropdown-menu-right"
- *  role="menu">` with the items li-wrapped and ""-joined. `roleItems`
- *  carries the roles-dropdown entries (account_dropdown.rb:26-35) — the
- *  port's session machinery carries no roles runtime yet, so callers pass
- *  [] (the capture sessions hold none either; special_roles? gates the
- *  block on 2+ roles). The :my_card and
- *  :edit_inline views compose through this. */
+ *  role="menu">` with the items li-wrapped and "\n"-joined. `roleItems`
+ *  carries the roles-dropdown entries (account_dropdown.rb:26-35, each
+ *  li-wrapped here; special_roles? gates them on 2+ current roles). The
+ *  :my_card and :edit_inline views compose through this. */
 export function myCardDropdownInnerHtml(
   actorName: string,
   known: { actor: boolean; accountSettings: boolean; signin: boolean },
@@ -313,14 +310,103 @@ export function myCardDropdownInnerHtml(
 ): string {
   const namePath = actorName.replace(/ /g, "_");
   const knownClass = (isKnown: boolean): string => (isKnown ? "known-card" : "wanted-card");
+  const items = [
+    `<li><a class="dropdown-item ${knownClass(known.accountSettings)}" href="/${namePath}+*account_settings">Account</a></li>`,
+    `<li><a class="dropdown-item ${knownClass(known.signin)}" href="/delete/*signin">Sign out</a></li>`,
+    ...roleItems.map((item) => `<li>${item}</li>`),
+  ];
   return (
     `<div class="btn-group">` +
     `<a id="my-card-link" class="nav-link my-card ${knownClass(known.actor)}" href="/${namePath}">${h(actorName)}</a>\n` +
     `<a href="#" class="dropdown-toggle dropdown-toggle-split nav-link" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span class="visually-hidden">Toggle Dropdown</span></a>\n` +
     `<ul class="dropdown-menu dropdown-menu-right" role="menu">` +
-    `<li><a class="dropdown-item ${knownClass(known.accountSettings)}" href="/${namePath}+*account_settings">Account</a></li>\n` +
-    `<li><a class="dropdown-item ${knownClass(known.signin)}" href="/delete/*signin">Sign out</a></li>` +
-    roleItems.join("") +
+    items.join("\n") +
     `</ul></div>`
+  );
+}
+
+/** The session facts the interactive roles dropdown needs, resolved by the
+ *  engine's async prepare step. */
+export interface SessionRolesInput {
+  readonly actorName: string;
+  /** The actor card's type key (the TYPE_PLUS_RIGHT set anchor). */
+  readonly actorTypeKey: string;
+  readonly sessionTypeId: number;
+  readonly sessionTypeName: string;
+  /** Auth.current_roles: Anyone Signed In, then the role member cards'
+   *  roles. */
+  readonly roles: readonly string[];
+}
+
+/** card-mod-layout set/self/account_links.rb view :my_card, its
+ *  interactive_roles_dropdown arm (can_disable_roles?: the actor holds more
+ *  than one current role and the *enabled_roles codename exists): the nest
+ *  of `Auth.current.fetch :enabled_roles, new: { type_id: SessionID }` with
+ *  view :edit_inline, hiding edit_inline_buttons and name_formgroup.
+ *
+ *  set/right/enabled_roles.rb: :edit_inline is perms :none, wrap :slot;
+ *  the form posts to /update/<name> (the card is new, so the form id is
+ *  "new_card"), carries success[reload] (edit_success) and the Session
+ *  type id (hidden_form_tags), and its checkbox_input wraps the
+ *  account_dropdown in div.pointer-checkbox-list, with one role_checkbox
+ *  per current role after a "Roles" dropdown header (account_dropdown.rb
+ *  account_dropdown_roles). ensure_roles fills the session card's blank
+ *  content with every current role, so every box renders checked. The
+ *  content input renders before checkbox_input runs, so only the first
+ *  render in a process shows it blank; the filled card stays cached and
+ *  every later render carries the roles, which is the shape rendered here.
+ *  The checkbox names count up per role (unique_id). */
+/** set/right/enabled_roles.rb checkbox_input's account_dropdown: the
+ *  btn-group with a "Roles" header and one role_checkbox per current role
+ *  (role_checkbox.haml), every box checked (ensure_roles). */
+export function rolesAccountDropdownHtml(
+  input: SessionRolesInput,
+  known: { actor: boolean; accountSettings: boolean; signin: boolean },
+): string {
+  const safeKey = DeckoName.parse(`${input.actorName}+*enabled roles`).safeKey;
+  const roleItems = [
+    `<h6 class="dropdown-header">Roles</h6>`,
+    ...input.roles.map((role, i) => {
+      const roleName = DeckoName.parse(role);
+      return (
+        `<div class='pointer-checkbox dropdown-item'>\n` +
+        `<input type="checkbox" name="pointer_checkbox-${safeKey}-${i + 1}" id="pointer-checkbox-${h(roleName.key)}" ` +
+        `value="${h(role)}" class="pointer-checkbox-button _submit-on-change me-2" checked="checked" />\n` +
+        `<a class="known-card" href="/${h(roleName.urlKey)}">${h(role)}</a>\n` +
+        `</div>\n`
+      );
+    }),
+  ];
+  return myCardDropdownInnerHtml(input.actorName, known, roleItems);
+}
+
+export function enabledRolesDropdownHtml(
+  input: SessionRolesInput,
+  known: { actor: boolean; accountSettings: boolean; signin: boolean },
+): string {
+  const name = DeckoName.parse(`${input.actorName}+*enabled roles`);
+  const urlKey = name.urlKey;
+  const safeKey = name.safeKey;
+  const dropdown = rolesAccountDropdownHtml(input, known);
+  const slot = JSON.stringify({
+    view: "edit_inline",
+    nest_name: name.s,
+    show: ["edit_inline"],
+    hide: ["edit_inline_buttons", "name_formgroup", "type_formgroup"],
+    home_view: "edit_inline",
+  });
+  const rightKey = "Xenabled_role";
+  return (
+    `<div id="${safeKey}-edit_inline-view" class="card-slot edit_inline-view ALL ALL_PLUS TYPE-${DeckoName.parse(input.sessionTypeName).key} RSTAR RIGHT-${rightKey} TYPE_PLUS_RIGHT-${input.actorTypeKey}-${rightKey}" ` +
+    `data-card-name="${h(urlKey)}" data-card-type-id="${input.sessionTypeId}" data-card-type-name="${h(input.sessionTypeName)}" ` +
+    `data-card-link-name="${h(urlKey)}" data-slot-id="${newSlotId()}" data-slot="${h(slot)}">` +
+    `<form class="card-form slotter autosave" id="new_card" action="/update/${h(urlKey)}" accept-charset="UTF-8" data-remote="true" method="post">` +
+    `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
+    `<input type="hidden" name="success[reload]" id="success_reload" value="true" autocomplete="off" /> ` +
+    `<input type="hidden" name="card[type_id]" id="card_type_id" value="${input.sessionTypeId}" autocomplete="off" />` +
+    `<fieldset class="card-editor editor"><div class="editor content-editor">` +
+    `<input class="d0-card-content form-control" autocomplete="off" type="hidden" value="${h(input.roles.join("\n"))}" name="card[content]" id="card_content" />` +
+    `<div class="pointer-checkbox-list">${dropdown}</div>` +
+    `</div></fieldset></form></div>`
   );
 }

@@ -1098,7 +1098,12 @@ function settingListItem(
   const ruleCard =
     stored !== undefined && stored.unknown !== true
       ? stored
-      : buildVirtualRuleCard({ setCard, settingCard, settingCodename: setting });
+      : buildVirtualRuleCard({
+          setCard,
+          settingCard,
+          settingCodename: setting,
+          newCardDefaultType: (n) => ctx.fmt.engine.newCardDefaultType?.(n),
+        });
   // the nest's show/home_view pair: nest.rb#prepare_view_and_opts! pins
   // `home_view ||= view` for every non-closed/edit view - the capture's
   // nested slots all carry show:[view] + home_view (the TS nestRecord does
@@ -2459,7 +2464,12 @@ function quickEditSettingListItem(ctx: ViewContext, setting: string): string {
   let ruleCard =
     stored !== undefined && stored.unknown !== true
       ? stored
-      : buildVirtualRuleCard({ setCard, settingCard, settingCodename: setting });
+      : buildVirtualRuleCard({
+          setCard,
+          settingCard,
+          settingCodename: setting,
+          newCardDefaultType: (n) => ctx.fmt.engine.newCardDefaultType?.(n),
+        });
   if (stored === undefined || stored.unknown === true) {
     // Ruby's `card.fetch setting, new: {}` composes the codename LITERAL -
     // the new card's name carries the underscore form the captured

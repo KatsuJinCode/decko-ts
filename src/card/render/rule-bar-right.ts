@@ -12,7 +12,8 @@
 //                       "#{card.type_name} : #{raw.present? ? raw :
 //                       '<em>empty</em>'}"
 //   - right::*structure card-mod-content set/right/structure.rb:14-16:
-//                       "#{_render_type} : #{_render_raw}"
+//                       "#{_render_type} : #{_render_raw}" (_render_type is
+//                       the cardtype LINK, set/all/html.rb view :type)
 //   - otherwise         the *all base (card-mod-format set/all/base.rb:97-99):
 //                       with_nest_mode(:compact) { truncate render_core }
 //                       — truncate resolves to card-mod-format content.rb's
@@ -32,9 +33,18 @@ import { isPermissionRightSetting, isPointerOrListCard, rawItemStrings } from ".
 import { ONE_LINE_CHARACTER_LIMIT, truncate } from "./text-helpers.js";
 import { listItemContentOverride } from "./content-overrides.js";
 
-/** The :type view's text — the type card's name (render_type). */
+/** card.type_name as text (set/right/default.rb one_line_content). */
 function typeText(card: RenderCard): string {
   return h(card.typeName ?? "");
+}
+
+/** card-mod-format set/all/html.rb view :type (what set/right/structure.rb
+ *  renders as _render_type): link_to_card card.type_card, nil, class:
+ *  "cardtype" — the type card exists, so the link is known. */
+function typeLink(card: RenderCard): string {
+  const typeName = card.typeName ?? "";
+  if (typeName === "") return "";
+  return `<a class="cardtype known-card" href="/${h(DeckoName.parse(typeName).urlKey)}">${h(typeName)}</a>`;
 }
 
 /** The one-line inner content for a list/pointer-typed rule card.
@@ -134,7 +144,7 @@ function ruleOneLineContent(
     return `${typeText(card)} : ${raw === "" ? "<em>empty</em>" : raw}`;
   }
   if (rightSetting === "*structure") {
-    return `${typeText(card)} : ${card.dbContent}`;
+    return `${typeLink(card)} : ${card.dbContent}`;
   }
   if (rightSetting === "*head") {
     // card-mod-layout-0.20.0 set/right/head.rb:11-13 — the right/*head set

@@ -1163,7 +1163,11 @@ export class RenderFormat {
           return denial;
         }
       }
-      this.runBeforeHook(effective, voo);
+      // voo_api.rb process_before_view: `format.before_view requested_view`
+      // — the hook belongs to the REQUESTED view even when an unknown card
+      // dispatches a substituted one (an unknown nest in :content keeps
+      // before(:content)'s d0-card-content class on its :unknown slot).
+      this.runBeforeHook(normalized, voo);
       // Chain-aware dispatch: when the engine has a mod loader wired up,
       // resolve through the per-card chain (Ruby's MRO walk - set/
       // format.rb:146-150) and return the most-specific set module's
@@ -3261,6 +3265,16 @@ export interface RenderEngineLike {
    *  view registry carries no non-read view today, so the surface is
    *  unaffected either way. */
   taskAllowed?(card: RenderCard, task: Exclude<CrudTask, "read">): boolean | undefined;
+  /** The createable gate of the :unknown / :mini_unknown views (card-mod-
+   *  format set/all/html/error.rb `card.ok?(:create) ? yield : ""`): true
+   *  only on a computed allow. Engines that compute missing verdicts after
+   *  the render (RenderEngine) record the miss here. Optional: engines
+   *  without it fall back to taskAllowed(card, "create") === true. */
+  unknownCardCreatable?(card: RenderCard): boolean;
+  /** A Sign up card's approval-link gates (card-mod-account
+   *  set/type/signup/views.rb verification_links): can_approve? and the
+   *  card's ok?(:delete). Undefined when not prepared (no links). */
+  signupApprovalVerdict?(card: RenderCard): { approve: boolean; delete: boolean } | undefined;
   /** auth/permissions.rb:18-26 Auth.createable_types — the cardtype card
    *  names the viewer's create verdict admits (bot-scope cardtype search
    *  minus the non_createable_types basket codenames, then the per-type
@@ -3291,12 +3305,16 @@ export interface RenderEngineLike {
    *  add_known_or_wanted_class). Set = the navbar renders the signed-in
    *  chrome verbatim; undefined = the signed-out pair. See navbar-views.ts. */
   readonly pageSessionAccountLinksHtml?: string;
-  /** The prepared :my_card view body (account_links.rb:56-58 my_card — the
-   *  account_dropdown arm, the raw btn-group; the roles arm rides the
-   *  session roles the port does not carry yet). Set alongside
+  /** The prepared :my_card view body (account_links.rb view :my_card:
+   *  the raw account_dropdown btn-group, or, when can_disable_roles?, the
+   *  +*enabled_roles :edit_inline slot). Set alongside
    *  pageSessionAccountLinksHtml; undefined = the signed-out blank (the
    *  view's denial :blank). */
   readonly pageSessionMyCardHtml?: string;
+  /** The prepared account_dropdown with the session's role checkboxes
+   *  (set/right/enabled_roles.rb checkbox_input), or the plain dropdown
+   *  when the actor holds a single role; undefined when signed out. */
+  readonly pageSessionRolesDropdownHtml?: string;
   /** ok?(:update) for an arbitrary card, computed on demand (the page head's
    *  universal_edit_button perms: :update gate — card-mod-format
    *  set/all/html/head.rb:46). Optional: engines without it render the
@@ -3743,6 +3761,11 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
   // ?view=content|open render the span at "click its ellipses icon (...)"
   // in both the frozen capture and today's live bytes.
   { view: "board_link", config: true },
+  // card-mod-format set/all/html/menu.rb `view :menu, denial: :blank,
+  // unknown: true` (whose body answers "" for an unknown card). A signed-in
+  // reader's bar menu over an absent +discussion renders nothing, where the
+  // substituted :unknown view would render its create link.
+  { view: "menu", config: true },
   // card-mod-edit set/all/formgroup.rb:13 `view :read_formgroup, template:
   // :haml, unknown: true, wrap: :slot` — the p20-email-views read_form
   // field nests target virtual field cards (welcome email+*to et al.);

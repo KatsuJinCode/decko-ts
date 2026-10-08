@@ -23,7 +23,7 @@
 //   divergence is recorded in docs/render-port-notes.md.
 
 import { DeckoName } from "./name.js";
-import { getNameEnvironment } from "./name/environment.js";
+import { getNameEnvironment, setNameEnvironment } from "./name/environment.js";
 import { findAssignedTypeName } from "./set-patterns/set-type-assignment.js";
 import { CodenameNotFoundError, NameNotFoundError } from "./name/errors.js";
 import { FetchEngine } from "./fetch.js";
@@ -65,7 +65,13 @@ import {
 import { renderPageBytes, headContent, UnknownLayoutError } from "./render/page.js";
 import { envOriginForSurface } from "./render/deck-origin.js";
 import { deploymentDefaultHtmlViewNest } from "./render/deployment-follow-live-config.js";
-import { myCardDropdownInnerHtml, signedInAccountLinksInnerHtml } from "./render/navbar-views.js";
+import {
+  enabledRolesDropdownHtml,
+  myCardDropdownInnerHtml,
+  rolesAccountDropdownHtml,
+  signedInAccountLinksInnerHtml,
+  type SessionRolesInput,
+} from "./render/navbar-views.js";
 import type { ViewOverride } from "./rules/apply.js";
 import {
   HTML_VIEWS,
@@ -604,6 +610,8 @@ export class RenderEngine implements RenderEngineLike {
   /** The prepared :my_card view body (the account_dropdown arm) — see
    *  RenderEngineLike.pageSessionMyCardHtml. */
   private sessionMyCardHtml: string | undefined;
+  /** RenderEngineLike.pageSessionRolesDropdownHtml. */
+  private sessionRolesDropdownHtml: string | undefined;
 
   /** The render-time history seam bundle (src/card/history/render-seam.ts):
    *  set by prepareHistoryRender during a render whose view is one of
@@ -756,6 +764,18 @@ export class RenderEngine implements RenderEngineLike {
   /** card key -> allowed verdicts per write task (the ensureVerdicts
    *  model; undefined entries mean unverifiable). Cleared on resetCaches(). */
   private taskVerdicts = new Map<string, Record<WriteTask, boolean | undefined>>();
+  /** Unknown (fetch-miss) cards whose create verdict a render asked for
+   *  before any prepare step computed it — the createable gate of the
+   *  :unknown / :mini_unknown views (card-mod-format set/all/html/error.rb
+   *  `card.ok?(:create) ? yield : ""`) on nest targets no prepare walk
+   *  collects (pointer items rendered by the navbar views, for one). The
+   *  render entry points compute these after the render and render again
+   *  (renderWithUnknownCreateVerdicts), so the second pass reads Ruby's
+   *  verdict; warm renders find them memoized in taskVerdicts. */
+  private unknownCreateMisses = new Map<string, RenderCard>();
+  /** Nesting depth of renderWithUnknownCreateVerdicts: only the outermost
+   *  entry point settles misses and re-renders. */
+  private unknownCreateRenderDepth = 0;
   /** Host card key -> the can_configure? verdict for the Cardtype page
    *  render (update-ok on `<card>+*type+*structure`, cardtype.rb:68-70).
    *  Precomputed in the prepare phase (ensureConfigureVerdict) so the
@@ -867,7 +887,7 @@ export class RenderEngine implements RenderEngineLike {
     // inside a page render it joins the page's scope.
     DeckoName.beginRequestScope();
     try {
-      return await this.renderHeld(cardName, view, params);
+      return await this.renderWithUnknownCreateVerdicts(() => this.renderHeld(cardName, view, params));
     } finally {
       DeckoName.endRequestScope();
       releaseCaches();
@@ -1633,6 +1653,8 @@ export class RenderEngine implements RenderEngineLike {
       await this.prepareItemForRender("Anonymous");
       await this.prepareItemForRender(`${rootCard.name.s}+*account`);
       await this.prepareItemForRender(`${rootCard.name.s}+*account+*email`);
+      await this.prepareItemForRender(`${rootCard.name.s}+*account+*status`);
+      await this.prepareSignupApprovalVerdicts(rootCard);
       // The enriched children landed AFTER both ensureVerdicts passes, so
       // deniedVerdicts has no entry for their ids and isDenied() would
       // return gate-open false for the +*email child — the verification
@@ -2329,6 +2351,7 @@ export class RenderEngine implements RenderEngineLike {
     this.sessionAccountLinks = undefined;
     this.sessionAccountLinksActorId = undefined;
     this.sessionMyCardHtml = undefined;
+    this.sessionRolesDropdownHtml = undefined;
     this.searchResults.clear();
     this.searchFailures.clear();
     this.searchResultPagingMap.clear();
@@ -2353,6 +2376,7 @@ export class RenderEngine implements RenderEngineLike {
     this.defaultTypeNameById = undefined;
     this.taskState = undefined;
     this.taskVerdicts.clear();
+    this.signupApprovalVerdicts.clear();
     this.createableTypesCache = undefined;
     this.configureVerdicts.clear();
     this.itemTypeNameByHostKey.clear();
@@ -6413,6 +6437,124 @@ export class RenderEngine implements RenderEngineLike {
     return this.taskVerdicts.get(card.key)?.[task];
   }
 
+  /** card-mod-account set/type/signup/views.rb verification_links' gates
+   *  for a Sign up card, keyed by the card's key: can_approve? (signup.rb:
+   *  `Card.new(type_id: Card.default_accounted_type_id).ok? :create`, the
+   *  default accounted type being the :user cardtype) and the card's own
+   *  ok?(:delete). Prepared for the page's root Sign up card. */
+  private signupApprovalVerdicts = new Map<string, { approve: boolean; delete: boolean }>();
+
+  signupApprovalVerdict(card: RenderCard): { approve: boolean; delete: boolean } | undefined {
+    if (this.readPermission?.alwaysOk) return { approve: true, delete: true };
+    return this.signupApprovalVerdicts.get(card.key);
+  }
+
+  private async prepareSignupApprovalVerdicts(card: RenderCard): Promise<void> {
+    if (this.signupApprovalVerdicts.has(card.key) || card.id === undefined) return;
+    const state = this.readPermission ?? (await this.ensureReadPermission());
+    if (this.taskState === undefined) {
+      const results = await this.fetcher.driver.batch(viewTaskPermissionStatements());
+      this.taskState = viewTaskStateFromResults(results, state);
+    }
+    const userTypeId = await this.fetcher.codenames.id("user");
+    let approve = false;
+    if (userTypeId !== undefined) {
+      const userType = await this.fetcher.fetchById(userTypeId, { skipVirtual: true });
+      approve =
+        (await taskVerdictForCard(
+          this.fetcher,
+          { name: "", isNew: true, typeId: userTypeId, typeName: userType?.name?.s },
+          "create",
+          this.taskState,
+        )) === true;
+    }
+    const own = await allTaskVerdictsForCard(this.fetcher, this.structurePatternInputForSync(card), this.taskState);
+    this.signupApprovalVerdicts.set(card.key, { approve, delete: own.delete === true });
+  }
+
+  /** The createable gate of the :unknown / :mini_unknown views
+   *  (card-mod-format set/all/html/error.rb `card.ok?(:create) ? yield :
+   *  ""`): true only on a computed allow. A fetch-miss card whose verdict no
+   *  prepare step computed is recorded, and the render entry point computes
+   *  it and renders again (renderWithUnknownCreateVerdicts). */
+  unknownCardCreatable(card: RenderCard): boolean {
+    const verdict = this.taskAllowed(card, "create");
+    if (
+      verdict === undefined &&
+      card.id === undefined &&
+      this.readPermission !== undefined &&
+      !this.unknownCreateMisses.has(card.key)
+    ) {
+      this.unknownCreateMisses.set(card.key, card);
+    }
+    return verdict === true;
+  }
+
+  /** Card::Name.session (Card::Auth.current.name), which resolves `_user`
+   *  in names (cardname contextual.rb user_part): the page session's
+   *  account name when signed in, "Anonymous" otherwise. Installed into
+   *  the name environment before each render entry point. */
+  private nameSessionActor: { id: number; name: string } | undefined;
+
+  private async ensureNameSession(): Promise<void> {
+    const env = getNameEnvironment();
+    if (env === undefined) return;
+    let name = "Anonymous";
+    const session = this.pageSession;
+    if (session?.signedIn === true && session.actorId !== undefined) {
+      if (this.nameSessionActor?.id !== session.actorId) {
+        const actor = await this.fetcher.fetchById(session.actorId, { skipVirtual: true });
+        const actorName = actor?.name?.s;
+        this.nameSessionActor =
+          actorName === undefined || actorName === "" ? undefined : { id: session.actorId, name: actorName };
+      }
+      if (this.nameSessionActor !== undefined) name = this.nameSessionActor.name;
+    }
+    if (env.session !== name) setNameEnvironment({ ...env, session: name });
+  }
+
+  /** Run one render entry point; when it asked for create verdicts of
+   *  unknown cards that no prepare step computed, compute them (the same
+   *  ok_to_create? walk the write path uses, on the card's would-be type)
+   *  and render again. Nested entry points defer to the outermost. A
+   *  verdict is memoized under the card's key, so the loop ends: a second
+   *  pass can only miss on cards the first pass never reached. */
+  async renderWithUnknownCreateVerdicts(run: () => Promise<string>): Promise<string> {
+    if (this.unknownCreateRenderDepth > 0) return run();
+    this.unknownCreateRenderDepth += 1;
+    try {
+      await this.ensureNameSession();
+      let html = await run();
+      for (let pass = 0; pass < 4 && this.unknownCreateMisses.size > 0; pass++) {
+        const misses = [...this.unknownCreateMisses.values()];
+        this.unknownCreateMisses.clear();
+        if (this.readPermission === undefined) break;
+        if (this.taskState === undefined) {
+          const results = await this.fetcher.driver.batch(viewTaskPermissionStatements());
+          this.taskState = viewTaskStateFromResults(results, this.readPermission);
+        }
+        for (const card of misses) {
+          if (this.taskVerdicts.get(card.key)?.create !== undefined) continue;
+          const create = await taskVerdictForCard(
+            this.fetcher,
+            { ...this.structurePatternInputForSync(card), isNew: true },
+            "create",
+            this.taskState,
+          );
+          const existing = this.taskVerdicts.get(card.key) ?? { update: undefined, create: undefined, delete: undefined };
+          // An unresolvable verdict settles as denied for the createable
+          // gate (Ruby's who_can -> [] -> among? on an empty rule).
+          this.taskVerdicts.set(card.key, { ...existing, create: create ?? false });
+        }
+        html = await run();
+      }
+      return html;
+    } finally {
+      this.unknownCreateMisses.clear();
+      this.unknownCreateRenderDepth -= 1;
+    }
+  }
+
   /** RenderEngineLike.pageSessionAccountLinksHtml — the prepared signed-in
    *  *account_links navbar items (undefined until a page render prepared
    *  them for a signed-in chrome session). */
@@ -6424,6 +6566,11 @@ export class RenderEngine implements RenderEngineLike {
    *  body (the account_dropdown arm; see the prepare note below). */
   get pageSessionMyCardHtml(): string | undefined {
     return this.sessionMyCardHtml;
+  }
+
+  /** RenderEngineLike.pageSessionRolesDropdownHtml. */
+  get pageSessionRolesDropdownHtml(): string | undefined {
+    return this.sessionRolesDropdownHtml;
   }
 
   /** Prepare the signed-in account-links chrome for the page session — the
@@ -6456,6 +6603,7 @@ export class RenderEngine implements RenderEngineLike {
       this.sessionAccountLinks = undefined;
       this.sessionAccountLinksActorId = undefined;
       this.sessionMyCardHtml = undefined;
+      this.sessionRolesDropdownHtml = undefined;
       return;
     }
     const actorName: string = actor.name.s;
@@ -6477,23 +6625,59 @@ export class RenderEngine implements RenderEngineLike {
     const signinReal =
       signinId !== undefined &&
       (await this.fetcher.fetchById(signinId, { skipVirtual: true })) !== undefined;
-    this.sessionAccountLinks = signedInAccountLinksInnerHtml(actorName, {
+    const known = {
       actor: true,
       accountSettings: accountSettingsReal || accountSettingsVirtual,
       signin: signinReal,
-    });
-    // The :my_card view body (account_links.rb:56-58 my_card — the
-    // account_dropdown arm; can_disable_roles? reads the session actor's
-    // ROLES, which the port's page session does not carry — the dropdown
-    // arm is the shape every authenticated golden capture shows, and the
-    // roles arm (interactive_roles_dropdown nesting :edit_inline over
-    // +*enabled_roles) is the named remainder).
-    this.sessionMyCardHtml = myCardDropdownInnerHtml(actorName, {
-      actor: true,
-      accountSettings: accountSettingsReal || accountSettingsVirtual,
-      signin: signinReal,
-    }, []);
+    };
+    // The :my_card view body (account_links.rb view :my_card):
+    // `can_disable_roles? ? interactive_roles_dropdown : account_dropdown`.
+    const rolesInput = await this.sessionRolesInput(actor);
+    this.sessionMyCardHtml =
+      rolesInput === undefined
+        ? myCardDropdownInnerHtml(actorName, known, [])
+        : enabledRolesDropdownHtml(rolesInput, known);
+    this.sessionRolesDropdownHtml =
+      rolesInput === undefined
+        ? myCardDropdownInnerHtml(actorName, known, [])
+        : rolesAccountDropdownHtml(rolesInput, known);
+    this.sessionAccountLinks = signedInAccountLinksInnerHtml(actorName, known, this.sessionMyCardHtml);
     this.sessionAccountLinksActorId = session.actorId;
+  }
+
+  /** account_links.rb can_disable_roles? and the facts its roles dropdown
+   *  renders: undefined unless the actor holds more than one current role
+   *  (Auth.current_roles = Anyone Signed In + the role member cards' roles,
+   *  auth/current.rb current_roles) and the *enabled_roles codename
+   *  exists. The roles are the resolved read state's parties without
+   *  Anyone and the actor itself (read-rules.ts builds them as Anyone,
+   *  Anyone Signed In, the member roles, the actor). */
+  private async sessionRolesInput(actor: CardRecord): Promise<SessionRolesInput | undefined> {
+    const state = this.readPermission ?? (await this.ensureReadPermission());
+    if (actor.id === undefined || actor.name === undefined) return undefined;
+    if ((await this.fetcher.codenames.id("enabled_roles")) === undefined) return undefined;
+    const anyoneId = await this.fetcher.codenames.id("anyone");
+    const roleIds = state.parties.filter((id) => id !== anyoneId && id !== actor.id);
+    if (roleIds.length <= 1) return undefined;
+    const roles: string[] = [];
+    for (const id of roleIds) {
+      const role = await this.fetcher.fetchById(id, { skipVirtual: true });
+      if (role?.name === undefined || role.name === null) return undefined;
+      roles.push(role.name.s);
+    }
+    const sessionTypeId = await this.fetcher.codenames.id("session");
+    if (sessionTypeId === undefined) return undefined;
+    const sessionType = await this.fetcher.fetchById(sessionTypeId, { skipVirtual: true });
+    const actorType =
+      actor.typeId === undefined ? undefined : await this.fetcher.fetchById(actor.typeId, { skipVirtual: true });
+    if (sessionType?.name == null || actorType?.name == null) return undefined;
+    return {
+      actorName: actor.name.s,
+      actorTypeKey: actorType.name.key,
+      sessionTypeId,
+      sessionTypeName: sessionType.name.s,
+      roles,
+    };
   }
 
   /** RenderEngineLike.updateVerdictForCard — ok?(:update) on demand for the
