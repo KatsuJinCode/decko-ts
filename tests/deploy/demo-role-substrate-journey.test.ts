@@ -51,24 +51,17 @@
 //   6. IDEMPOTENCE: applying 0006 twice inserts nothing the second time, and
 //      the whole journey still runs against the twice-applied database.
 //
-// THE DIVERGENCE THIS FILE RECORDS, because a reader of the passing test
-// deserves to know what shape the grant takes. Ruby's grant is the IdList
-// POINTER form: card-mod-list-0.20.0/set/abstract/id_list.rb:3-5 stores items
-// as `~<id>`, and :33-47 overrides create_references_out to write one
+// THE GRANT'S SHAPE. Ruby's grant is the IdList form:
+// card-mod-list-0.20.0/set/abstract/id_list.rb:3-5 stores items as `~<id>`,
+// and :33-47 overrides create_references_out to write one
 // `{referer_id, referee_id, referee_key: nil, ref_type: "L"}` row per item.
-// This port has NO IdList write path — the `add_item` / `drop_item` events are
-// registered as declarations only (src/card/mod-loader/mods/card-mod-list.ts:
-// :1024-1031, "Env.params / add_item / drop_item have no TS surface"), and
-// `set/type_plus_right/role/members` is a registration-only manifest entry with
-// no views (src/card/mod-loader/mods/card-mod-account.ts:776-780). What DOES
-// run is the port's reference path, which builds the same `ref_type: "L"`
-// row from a `[[Link]]` chunk in the content
-// (refresh-references-out.ts:13-16 ref_type codes, :121-139 createReferencesOut,
-// :251-293 the chunk walk, :301-310 linkRefereeName). So the grant below uses
-// LINK content where Ruby uses POINTER content. Same reference row, same
-// rolehash, different literal — and the checkbox UI that would drive it
-// (card-mod-account set/type/role.rb:26-32 `add_item`/`drop_item` against
-// `+*disabled roles`) is inert for the same missing write path.
+// The engine does the same for Role+*members by its set, whatever the card's
+// own type (list-content.ts standardizeIdListContent and isListCard): the
+// `[[Link]]` content below is stored as `~<id>` and its reference row is the
+// id-list row. The checkbox UI that would drive it (card-mod-account
+// set/type/role.rb:26-32 `add_item`/`drop_item` against `+*disabled roles`)
+// is not ported; the `add_item` / `drop_item` events are declarations only
+// (src/card/mod-loader/mods/card-mod-list.ts).
 //
 // NOT IN tests/standing-net.json — recorded in the receipt, same as the
 // 0004 journey.

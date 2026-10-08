@@ -71,8 +71,11 @@ async function standardizeItem(item: string, resolve: ListItemResolver): Promise
 }
 
 /** Whether a stored card is in a list set, read from its row: its type's
- *  codename, its right part's codename, and for +*follow its left part's
- *  type (the set rules above). */
+ *  codename, its right part's codename, and for +*follow and +*members its
+ *  left part's type (the set rules above). Role+*members is an id list
+ *  (Abstract::IdList, card-mod-account set/type_plus_right/role/members.rb)
+ *  by its set, whatever its own type: a deck with no *type plus right rule
+ *  types it Basic, and its references must still come from its items. */
 export async function isListCard(driver: SQLDatabaseDriver, cardId: number): Promise<boolean> {
   const row = (
     await driver.query<{
@@ -95,6 +98,7 @@ export async function isListCard(driver: SQLDatabaseDriver, cardId: number): Pro
   if (row.own_code !== null && LIST_SELF_CODENAMES.has(row.own_code)) return true;
   if (row.type_code !== null && LIST_TYPE_CODENAMES.has(row.type_code)) return true;
   if (row.right_code !== null && LIST_RIGHT_CODENAMES.has(row.right_code)) return true;
+  if (row.right_code === "members" && row.left_type_code === "role") return true;
   return row.right_code === "follow" && row.left_type_code === "user";
 }
 
