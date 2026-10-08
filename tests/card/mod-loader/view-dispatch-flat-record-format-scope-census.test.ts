@@ -126,8 +126,12 @@ describe("flat-record format-scope census (composed deck)", () => {
     // 153 -> 149 (semantics parity, 2026-10-07): the all-set carrierwave fold
     // module and its four views moved to the Type::File/Type::Image sets;
     // 149 -> 151: All::Html's :type and All::Html::Views' :labeled.
-    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(151);
-    expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(30);
+    // 151 -> 152: All::Html::Error's :debug_server_error, registered by the
+    // same branch and measured on the integrated tree (2026-10-08).
+    // Abstract 30 -> 33, the same branch: Abstract::Items' :nav_item,
+    // Abstract::List's :radio and Abstract::Script's :javascript_include_tag.
+    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(152);
+    expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(33);
   });
 
   it("the foreign-key flat rows are exactly the eight measured rows", () => {

@@ -7,18 +7,19 @@
 //
 // The pin runs on the raw ground-truth deck, where the semantics probe found
 // the case (ABCglobal administration+associations, card 2833, and its
-// +*self+*read / +*update rules 8556 / 8557). The deck is machine-local; a
-// missing copy fails the test loudly rather than skipping it.
+// +*self+*read / +*update rules 8556 / 8557). The deck is machine-local, so
+// a checkout without it skips the suite loudly (docs/TESTING.md).
 
 import { existsSync } from "node:fs";
 import Database from "better-sqlite3";
-import { describe, expect, it } from "vitest";
+import { expect, it } from "vitest";
+import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "../render/raw-corpus-seeding.js";
 import { findRule } from "../../../src/card/rules/lookup.js";
 import { ruleWalkPatternInput } from "../../../src/card/actions/rule-content-walk.js";
 import { DeckoName } from "../../../src/card/name.js";
 
-describe("legacy compound rows and their *self rules (raw ground-truth deck)", () => {
+describeOrSkipLoud(!existsSync(RAW_CORPUS_DB), "tests/card/rules/legacy-self-rule.test.ts", "RAW_CORPUS_DB present")("legacy compound rows and their *self rules (raw ground-truth deck)", () => {
   it("finds the *self rules of a side-less compound row by ids", { timeout: 300_000 }, async () => {
     expect(existsSync(RAW_CORPUS_DB), `raw corpus copy missing: ${RAW_CORPUS_DB}`).toBe(true);
     const raw = new Database(RAW_CORPUS_DB, { readonly: true });

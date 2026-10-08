@@ -5719,7 +5719,8 @@ const creatorCreditView: ViewFn = (ctx) => {
   const { fmt } = ctx;
   const record = fmt.card.record;
   const creatorId = record.creatorId;
-  const name = creatorId === undefined ? undefined : lexiconNameForId(creatorId);
+  const name =
+    creatorId === undefined ? undefined : (fmt.engine.peekNameForId?.(creatorId) ?? lexiconNameForId(creatorId));
   const body =
     name === undefined || record.createdAt === undefined
       ? ""

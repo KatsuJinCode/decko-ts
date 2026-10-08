@@ -207,7 +207,12 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // move to All::Editing (no count change) and the html :type
       // (All::Html, Type::Cardtype) and :labeled (All::Html::Views) arms
       // are registered on the modules Ruby defines them in.
-      ["html", 344],
+      // 344 -> 354 (integration of the semantics branch with the speed,
+      // persistence and Cloudflare lines, 2026-10-08): measured on the
+      // merged tree. The semantics pin above was taken on a base that
+      // lacked the registrations the other lines had added meanwhile;
+      // still no new format key and no css/scss row.
+      ["html", 354],
 
       ["js", 2],
       ["json", 3],

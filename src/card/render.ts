@@ -6561,6 +6561,14 @@ export class RenderEngine implements RenderEngineLike {
     return this.taskVerdicts.get(card.key)?.update;
   }
 
+  /** RenderEngineLike#peekNameForId: names from this engine's own fetch
+   *  caches (the history prepare primes the card's creator), so a view
+   *  never reads another engine's lexicon through the process-wide name
+   *  environment. */
+  peekNameForId(id: number): string | undefined {
+    return this.fetcher.peekNameForId(id);
+  }
+
   /**
    * RenderEngineLike#canConfigure — the cardtype.rb:68-70 can_configure?
    * predicate (`Card.fetch(card, :type, :structure, new: {}).ok? :update`):
@@ -6978,6 +6986,9 @@ export class RenderEngine implements RenderEngineLike {
     for (const action of actions) if (action.card_id !== null) involvedCardIds.add(Number(action.card_id));
     for (const act of rawActs) if (act.card_id !== null) involvedCardIds.add(Number(act.card_id));
     for (const act of rawActs) involvedCardIds.add(Number(act.actor_id));
+    // The card's creator: the board's :creator_credit (history_board.rb:2-8)
+    // names it, and nothing else on these views may have read it.
+    if (rootCard.record.creatorId !== undefined) involvedCardIds.add(Number(rootCard.record.creatorId));
     const cardById = new Map<number, RenderCard>();
     const cardInfoById = new Map<number, HistoryActionCardInfo>();
     for (const id of involvedCardIds) {

@@ -3196,6 +3196,10 @@ export interface RenderEngineLike {
    *  (the board sidebar's show_follow?/show_discussion? gates read it;
    *  tab_visibility.rb:11-58). */
   readonly viewer?: { signedIn?: boolean; actorId?: number };
+  /** The engine's own synchronous name for a card id (render.ts
+   *  RenderEngine#peekNameForId). Optional: views fall back to the
+   *  process-wide name environment. */
+  peekNameForId?(id: number): string | undefined;
   /** Ruby's `root.error_status` for the page (render.ts
    *  RenderEngine#pageErrorStatus). Optional: engines without it ignore
    *  the status. */

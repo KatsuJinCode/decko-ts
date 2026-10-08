@@ -809,6 +809,15 @@ export class FetchEngine {
     await this.codenames.ensureLoaded();
   }
 
+  /** This engine's synchronous name for an id: the same chain the
+   *  name-environment adapter above answers from, but always this engine's
+   *  own caches. The process-wide name environment belongs to whichever
+   *  engine installed it first, so a view rendering for a second engine in
+   *  the same process reads its names here. */
+  peekNameForId(id: number): string | undefined {
+    return this.peekLexiconName(id) ?? this.lexicon.peekDurableName(id) ?? this.codenames.peekRegisteredName(id);
+  }
+
   private peekLexiconName(id: number): string | undefined {
     const lex = this.peekLex(id);
     if (lex === undefined) return undefined;
