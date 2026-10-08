@@ -1475,8 +1475,13 @@ export class RenderFormat {
         const classExtra = ["_rule-item", ...categories.map((c) => `_category-${c}`)].join(" ");
         voo.classUp("card-slot", classExtra);
       }
-      if (this.cardTypeCodename === "search_type" || this.card.typeName === "Search") {
-        // search_views.rb:36 voo.hide :one_line_content
+      if (
+        this.cardTypeCodename === "search_type" ||
+        this.cardTypeCodename === "set" ||
+        this.card.typeName === "Search"
+      ) {
+        // search_views.rb:36 voo.hide :one_line_content. Set cards carry it
+        // too: card-mod-rules set/type/set.rb includes Type::SearchType.
         voo.hide("one_line_content");
       }
     }
@@ -3323,6 +3328,10 @@ export interface RenderEngineLike {
    *  undefined = the show_paging? == false case — the :card_list view
    *  renders no nav). */
   searchResultPaging?(fmt: RenderFormat): SearchResultPaging | undefined;
+  /** The pre-executed count of a search whose cql declares
+   *  `return: "count"` (undefined for a list search or an engine without
+   *  it). The search core renders it as :search_count. */
+  searchResultCount?(fmt: RenderFormat): number | undefined;
   /** Ruby's `search_keyword` (card-mod-search
    *  set/abstract/0_search/search_params.rb:32-34: `term_param ||
    *  search_vars&.dig(:keyword)`) - BOTH arms are REQUEST params, so a

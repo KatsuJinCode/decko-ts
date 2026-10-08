@@ -1013,6 +1013,11 @@ const coreViewBase: ViewFn = (ctx) => {
     // keyword the results_for_keyword haml renders "", which leaves the
     // leading newline.
     if (fmt.card.record.codename === "search") return `\n${fmt.renderView("card_list")}`;
+    // search_views.rb#search_result_view: an Integer result (a cql with
+    // `return: "count"`) renders :search_count, `search_with_params.to_s`
+    // (0_search/views.rb:2-4): the bare digits.
+    const count = fmt.engine.searchResultCount?.(fmt);
+    if (count !== undefined) return String(count);
     // search_views.rb#search_result_view -> :card_list (html)
     return fmt.renderView("card_list");
   }

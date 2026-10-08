@@ -42,6 +42,7 @@ import { ruleNamesForCard } from "./set-patterns/rule-names.js";
 import { applyViewOverride, resolveViewOverride } from "./rules/apply.js";
 import { resolveVirtualCardStructure } from "./fetch/virtual-cards.js";
 import { virtualSearchCqlFor } from "./fetch/virtual-search-cards.js";
+import { statementAfterFirstQuery } from "../cql/consumed-conjunctions.js";
 import {
   structureRuleUniverseStatement,
   structureUniverseFromResults,
@@ -554,6 +555,11 @@ export class RenderEngine implements RenderEngineLike {
    *  runSearch alongside the items; read by the :card_list view's
    *   searchResultPaging seam. Cleared on resetCaches(). */
   private searchResultPagingMap = new Map<string, SearchResultPaging>();
+  /** Seated counts by search card key, for a search whose cql declares
+   *  `return: "count"`: Ruby's search_with_params answers an Integer and
+   *  search_result_view (search_views.rb:6-13) renders :search_count
+   *  instead of :card_list. Seated in runSearch; cleared on resetCaches(). */
+  private searchCountResults = new Map<string, number>();
   /** Resolved options cards by host key (the options-card parse boundary's
    *  rule walk). `has(key) === true` means resolved; the value is the
    *  resolved options card, or undefined when the walk stopped without one
@@ -2364,6 +2370,7 @@ export class RenderEngine implements RenderEngineLike {
     this.searchResults.clear();
     this.searchFailures.clear();
     this.searchResultPagingMap.clear();
+    this.searchCountResults.clear();
     this.pageHeadBytes.clear();
     this.optionsCardCache.clear();
     this.setHostChainCache.clear();
@@ -6953,6 +6960,12 @@ export class RenderEngine implements RenderEngineLike {
     return this.searchResultPagingMap.get(fmt.card.key);
   }
 
+  /** RenderEngineLike#searchResultCount — the seated count of a rendered
+   *  search whose cql returns a count (undefined for a list search). */
+  searchResultCount(fmt: RenderFormat): number | undefined {
+    return this.searchCountResults.get(fmt.card.key);
+  }
+
   /** RenderEngineLike#historyRenderReader — the render-time history seam
    *  accessor the card-mod-history views read (undefined unless THIS
    *  render's view is one of HISTORY_SEAM_VIEWS; see render-seam.ts). */
@@ -8496,7 +8509,12 @@ export class RenderEngine implements RenderEngineLike {
         statement as Record<string, unknown>,
         queryOptions,
       );
-      rows = "rows" in result ? result.rows : [];
+      if ("rows" in result) {
+        rows = result.rows;
+      } else {
+        rows = [];
+        this.searchCountResults.set(card.key, result.count);
+      }
       rows = await this.canonicalizeDanglingSideRows(rows);
     // Transport chunking (the batching pattern from src/card/render/prefetch.ts
     // generalized to the search read path): every result row used to cost its own
@@ -8530,9 +8548,12 @@ export class RenderEngine implements RenderEngineLike {
       // ignores limit/offset the way Ruby's 0_search.rb:35-39 count args
       // (offset 0, limit 0) do.
       if (limit >= 1 && rows.length >= limit) {
+        // Ruby builds this count from the card's cached cql hash after the
+        // item search consumed its leading conjunctions
+        // (src/cql/consumed-conjunctions.ts).
         const count = await executeCount(
           this.fetcher.driver,
-          statement as Record<string, unknown>,
+          statementAfterFirstQuery(statement as Record<string, unknown>),
           queryOptions,
         );
         if (count > limit) paging = { limit, offset: 0, count };
