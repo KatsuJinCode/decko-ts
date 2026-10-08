@@ -143,13 +143,14 @@ describe("card-mod-account through the mod loader (A/B)", () => {
     // :verify_days / :reset_password_days are NOT in this negative list,
     // for the reason the :open_content note below records - raising here
     // was the engine's gap, not Ruby's behaviour. Both are DEPRECATED
-    // aliases of :token_days (right/account/views.rb:18-20) that the four
-    // notification templates render loader-lessly, so the flat HTML_VIEWS
-    // table carries the page-path body: the blank the captured page bytes
-    // pin (`Link will remain valid for  days.`). :token_days and
-    // :token_expiry stay in this list - no flat entry was added for them.
-    expect(await s.engine.render("Oracle Token Probe+account", "verify_days")).toBe("");
-    expect(await s.engine.render("Oracle Token Probe+account", "reset_password_days")).toBe("");
+    // aliases of :token_days (right/account/views.rb:18-20), and the flat
+    // HTML_VIEWS table carries them for +*account cards with the aliased
+    // body, the token days. (The message pages' blank marks come from the
+    // test context's NEW +*account card taking the :unknown substitution,
+    // not from this body.) :token_days and :token_expiry stay in this list
+    // - no flat entry was added for them.
+    expect(await s.engine.render("Oracle Token Probe+account", "verify_days")).toBe("2");
+    expect(await s.engine.render("Oracle Token Probe+account", "reset_password_days")).toBe("2");
     await expect(s.engine.render("Oracle Token Probe+account", "token_expiry")).rejects.toThrow(
       UnsupportedViewError,
     );
