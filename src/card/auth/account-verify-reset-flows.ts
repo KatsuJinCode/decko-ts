@@ -1070,7 +1070,9 @@ export async function applyNewAccountPassword(
   const writeActor = ownAccount ? await actorBot(deps.driver) : deps.actor;
   const engine = new CardActionEngine(deps.fetcher, { actor: writeActor });
   try {
-    await engine.updateCard({ cardId: account.childIds.password, content: digest });
+    // The engine's encrypt_password (account-fields.ts) stores the digest
+    // over the account's stored salt: the plaintext is what is assigned.
+    await engine.updateCard({ cardId: account.childIds.password, content: newPassword });
   } catch (error) {
     return {
       ok: false,

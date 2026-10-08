@@ -1,0 +1,3165 @@
+---
+- :name: Decko Bot
+  :codename: :decko_bot
+  :content: |-
+    <p>
+      This is the account that makes any automated updates &mdash; cards
+      created when someone signs up, link updates when renaming cards, etc.
+    </p>
+- :name: RichText
+  :type: :cardtype
+  :codename: :basic
+- :name: Cardtype
+  :type: :cardtype
+  :codename: :cardtype
+- :name: List
+  :type: :cardtype
+  :codename: :list
+- :name: Set
+  :type: :cardtype
+  :codename: :set
+- :name: Setting
+  :type: :cardtype
+  :codename: :setting
+- :name: "*all"
+  :type: :set
+  :codename: :all
+  :content: "{}"
+- :name: "*default"
+  :type: :setting
+  :codename: :default
+- :name: "*read"
+  :type: :setting
+  :codename: :read
+- :name:
+  - :all
+  - :read
+  :type: :list
+  :content: Anyone
+- :name:
+  - :all
+  - :default
+- :name: description
+  :codename: :description
+- :name: "*admin"
+  :codename: :admin
+- :name:
+  - :cardtype
+  - :description
+  :content: |-
+    <p>
+      Every card has a type, which shapes the kind of information it holds.
+      [[http://decko.org/card_types|more]]
+    </p>
+- :name: Mod
+  :type: :cardtype
+  :codename: :mod
+- :name: "*version"
+  :codename: :version
+- :name: "*autoname"
+  :type: :setting
+  :codename: :autoname
+- :name: User
+  :type: :cardtype
+  :codename: :user
+- :name:
+  - :user
+  - :description
+  :content: |-
+    {{_l|name}} cards can support accounts, profile pages, and more.
+    [[http://decko.org/Users|more]]
+- :name: "*all plus"
+  :type: :set
+  :codename: :all_plus
+  :content: '{"compound":true}'
+- :name: "*type"
+  :codename: :type
+- :name: "*star"
+  :type: :set
+  :codename: :star
+  :content: '{"complete":"*"}'
+- :name: "*rstar"
+  :type: :set
+  :codename: :rstar
+  :content: '{"right":{"complete":"*"}}'
+- :name: "*rule"
+  :type: :set
+  :codename: :rule
+- :name: "*type plus right"
+  :codename: :type_plus_right
+- :name: "*right"
+  :codename: :right
+- :name: "*self"
+  :codename: :self
+- :name: "*structure"
+  :type: :setting
+  :codename: :structure
+- :name:
+  - :cardtype
+  - :type
+  :type: :set
+- :name:
+  - :cardtype
+  - :type
+  - :structure
+  :content: |
+    {{+:description|content}}
+    {{_|add_button}}{{_|configure_button}}
+    {{+:type+:by_name|content}}
+- :name:
+  - :cardtype
+  - :self
+  :type: :set
+- :name:
+  - :cardtype
+  - :self
+  - :structure
+  :content: |-
+    {{+description|content}}
+    {{_|add_button}}{{_|configure_button}}\n
+    {{_|grouped_list}}\n"
+- :name: JSON
+  :type: :cardtype
+  :codename: :json
+- :name:
+  - :basic
+  - :description
+  :content: "<p>Basic cards are for rich text, and are the default type for new cards.</p>"
+- :name: Number
+  :type: :cardtype
+  :codename: :number
+- :name:
+  - :number
+  - :description
+  :content: "<p>Number cards hold numbers. (persistence probe)</p>"
+- :name: PlainText
+  :type: :cardtype
+  :codename: :plain_text
+- :name:
+  - :plain_text
+  - :description
+  :content: "<p>PlainText cards are for unstyled text.</p>"
+- :name: HTML
+  :type: :cardtype
+  :codename: :html
+- :name:
+  - :html
+  - :description
+  :content: "<p>These cards allow unrestricted HTML. [[http://decko.org/wagn/HTML|more]]</p>"
+- :name: Toggle
+  :type: :cardtype
+  :codename: :toggle
+- :name:
+  - :toggle
+  - :description
+  :content: "<p>Toggles simply indicate yes or no. [[http://decko.org/wagn/Toggle|more]].</p>"
+- :name: Phrase
+  :type: :cardtype
+  :codename: :phrase
+- :name:
+  - :phrase
+  - :description
+  :content: "<p>Phrase cards are for short unstyled text.</p>"
+- :name: URI
+  :type: :cardtype
+  :codename: :uri
+- :name: "*head"
+  :type: :setting
+  :codename: :head
+- :name:
+  - :head
+  - :self
+  :type: :set
+- :name:
+  - :head
+  - :self
+  - :read
+  :type: :list
+  :content: Anyone
+- :name:
+  - :all
+  - :head
+  :type: :html
+  :content: "{{:head|core}}"
+- :name: "*title"
+  :type: :phrase
+  :codename: :title
+  :content: My Deck
+- :name: "*credit"
+  :type: :html
+  :codename: :credit
+  :content: |
+    {{+:image|core}}
+    <a href="http://decko.org">Decko v{{:version|core}}</a>
+- :name:
+  - :credit
+  - :self
+  :type: :set
+- :name:
+  - :credit
+  - :self
+  - :read
+  :type: :list
+  :content: Anyone
+- :name: "*noindex"
+  :type: :list
+  :codename: :noindex
+- :name:
+  - :list
+  - :description
+  :content: "<p>Lists list one or more other cards. [[http://decko.org/:list|more]]</p>"
+- :name: Pointer
+  :type: :cardtype
+  :codename: :pointer
+- :name:
+  - :pointer
+  - :description
+  :content: "<p>Pointers point another card. [[http://decko.org/:pointer|more]]</p>"
+- :name: Nest list
+  :type: :cardtype
+  :codename: :nest_list
+- :name: Link list
+  :type: :cardtype
+  :codename: :link_list
+- :name: "*content options"
+  :type: :setting
+  :codename: :content_options
+- :name: "*content option view"
+  :type: :setting
+  :codename: :content_option_view
+- :name:
+  - :structure
+  - :right
+  :type: :set
+- :name:
+  - :structure
+  - :right
+  - :default
+  :type: :nest_list
+- :name:
+  - :all
+  - :content_option_view
+  :type: :phrase
+  :content: smart_label
+- :name: Markdown
+  :type: :cardtype
+  :codename: :markdown
+- :name: "*create"
+  :type: :setting
+  :codename: :create
+- :name: "*update"
+  :type: :setting
+  :codename: :update
+- :name: "*delete"
+  :type: :setting
+  :codename: :delete
+- :name:
+  - :all
+  - :create
+  :type: :list
+  :content: Anyone Signed In
+- :name:
+  - :all
+  - :update
+  :type: :list
+  :content: Anyone Signed In
+- :name:
+  - :all
+  - :delete
+  :type: :list
+  :content: Anyone Signed In
+- :name:
+  - :all_plus
+  - :read
+  :type: :list
+  :content: _left
+- :name:
+  - :all_plus
+  - :create
+  :type: :list
+  :content: _left
+- :name:
+  - :all_plus
+  - :update
+  :type: :list
+  :content: _left
+- :name:
+  - :all_plus
+  - :delete
+  :type: :list
+  :content: _left
+- :name:
+  - :star
+  - :create
+  :type: :list
+  :content: Administrator
+- :name:
+  - :star
+  - :update
+  :type: :list
+  :content: Administrator
+- :name:
+  - :star
+  - :delete
+  :type: :list
+  :content: Administrator
+- :name:
+  - :rstar
+  - :create
+  :type: :list
+  :content: Shark
+- :name:
+  - :rstar
+  - :update
+  :type: :list
+  :content: Shark
+- :name:
+  - :rstar
+  - :delete
+  :type: :list
+  :content: Shark
+- :name:
+  - :html
+  - :type
+  :type: :set
+- :name:
+  - :html
+  - :type
+  - :create
+  :type: :list
+  :content: Shark
+- :name:
+  - :html
+  - :type
+  - :update
+  :type: :list
+  :content: Shark
+- :name:
+  - :html
+  - :type
+  - :delete
+  :type: :list
+  :content: Shark
+- :name:
+  - :cardtype
+  - :type
+  - :create
+  :type: :list
+  :content: Shark
+- :name:
+  - :cardtype
+  - :type
+  - :update
+  :type: :list
+  :content: Shark
+- :name:
+  - :cardtype
+  - :type
+  - :delete
+  :type: :list
+  :content: Shark
+- :name: "*guide"
+  :type: :setting
+  :codename: :guide
+- :name: "*help"
+  :type: :setting
+  :codename: :help
+- :name:
+  - :help
+  - :right
+  :type: :set
+- :name:
+  - :help
+  - :right
+  - :create
+  :type: :list
+  :content: help_desk
+- :name:
+  - :help
+  - :right
+  - :update
+  :type: :list
+  :content: help_desk
+- :name:
+  - :help
+  - :right
+  - :delete
+  :type: :list
+  :content: help_desk
+- :name:
+  - :all
+  - :guide
+  :type: :markdown
+  :content: "#### Editing Guide\n\nThis default guide will appear in the full editor
+    view of any card \nwithout more specific guidance.  You can use it to put forward
+    principles of style, \nrules of conduct, or any other help text you think may
+    be of use to persons editing \ncontent.\n\nGuide content can be edited in [[*guide|*guide
+    rules]].\n"
+- :name:
+  - :cardtype
+  - :type
+  - :guide
+  :type: :markdown
+  :content: "Every Decko card has one and only one __type__.\n\n[[RichText]], [[List]],
+    [[Image]], [[Search]], [[JavaScript]], [[User]]... All of these are types. \nTo
+    see a given card's type, click its ellipses icon ({{\\_|board_link}})\nto go to
+    the card dashboard (or \"cardboard\").\n\nTypes are defined with [[Cardtype]]
+    cards. For example, the Cardtype card named [[Image]] defines the image\ntype.
+    You can create a new type by creating a [[/new/Cardtype|new Cardtype]] card.\n\nTypes
+    are a core tool for organizing cards. To decide whether you need\na new type for
+    a group of cards, consider whether you want to:\n\n1. ...think up a name for each
+    card?\n2. ...create a patterned structure for the group?\n\nAs a rule of thumb,
+    if the answer to both is yes, you probably want a new type. There are exceptions,
+    of\ncourse: [[\\*autoname|autonaming]], casual [[\\*structure|structures]], etc.\n\nBy
+    convention, Cardtype names are usually singular, capitalized nouns. \n\nTo configure
+    the structure for a Cardtype,  click the \"Configure\" button on a Cardtype cards
+    or edit\nthe type's structure rule in the cardboard of _either_ the Cardtype card
+    _or_ of any of the cards of that type.\n\nA Cardtype card cannot be deleted as
+    long as there are instances of that type."
+- :name:
+  - :structure
+  - :right
+  - :guide
+  :type: :markdown
+  :content: "[[*structure]] rules govern the type and content of cards in a given
+    set. The content of\nevery card in the set is a copy of the structure rule's content.\n\nYou
+    can create powerful card structures using [[http://decko.org/contextual_names|contextual
+    names]].\nSuppose a structure rule for City cards nests a card named \"+Country\".
+    This establishes a pattern in\nwhich every City has a Country field.  For example,
+    the City card \"Moscow\" would nest a field card\nnamed \"Moscow+Country\" with
+    the content \"Russia\". and the card \"Berlin+Country\" could contain \"Germany.\n\nNests
+    are easy to create and manage using the nest editor, which can be opened using
+    the curly bracket\nicon (\\{{}}). This tool will help you create and configure
+    nested fields, both through nest syntax \noptions (which only apply to the fields
+    when presented within the structure) and through rules \n(which apply in any context)."
+- :name: Search
+  :type: :cardtype
+  :codename: :search_type
+- :name:
+  - :search_type
+  - :description
+  :content: "<p>\n  Searches return a list of cards using \n  [[http://decko.org/CQL|CQL,
+    the Card Query Language]]. \n  See the [[http://decko.org/CQL_syntax|syntax documentation]].\n</p>"
+- :name: "*search"
+  :type: :search_type
+  :codename: :search
+  :content: '{"match":"$keyword", "sort":"relevance"}'
+- :name: "*recent"
+  :type: :search_type
+  :codename: :recent
+- :name:
+  - :recent
+  - :self
+  :type: :set
+- :name:
+  - :recent
+  - :self
+  - :read
+  :type: :list
+  :content: Anyone
+- :name: "*count"
+  :codename: :count
+- :name: by name
+  :codename: :by_name
+- :name: by create
+  :codename: :by_create
+- :name: by update
+  :codename: :by_update
+- :name: "*last edited"
+  :codename: :last_edited
+- :name: "*creator"
+  :codename: :creator
+- :name: "*created"
+  :codename: :created
+- :name:
+  - :created
+  - :right
+  :type: :set
+- :name:
+  - :created
+  - :right
+  - :help
+  :content: Cards created by <em>{{_left|name}}</em>.
+- :name: "*edited"
+  :codename: :edited
+- :name:
+  - :edited
+  - :right
+  :type: :set
+- :name:
+  - :edited
+  - :right
+  - :help
+  :content: Cards edited by <em>{{_left|name}}</em>.
+- :name: "*editors"
+  :codename: :editors
+- :name:
+  - :editors
+  - :right
+  :type: :set
+- :name:
+  - :editors
+  - :right
+  - :help
+  :content: Users who have edited <em>{{_left|name}}</em>.
+- :name: "*children"
+  :codename: :children
+- :name:
+  - :children
+  - :right
+  :type: :set
+- :name:
+  - :children
+  - :right
+  - :help
+  :content: "<p>\n  Cards formed by \"mating\" <em>{{_left|name}}</em> with another
+    card. \n  eg\\: \"{{_left|name}}<strong>+</strong>mate\".\n</p>"
+- :name: "*mates"
+  :codename: :mates
+- :name:
+  - :mates
+  - :right
+  :type: :set
+- :name:
+  - :mates
+  - :right
+  - :help
+  :content: "<p>\n  If there is a card named \"X+<em>{{_left|name}}</em>\", \n  then
+    X is a mate of <em>{{_left|name}}</em>.\n</p>"
+- :name: "*nested by"
+  :codename: :nested_by
+- :name:
+  - :nested_by
+  - :right
+  :type: :set
+- :name:
+  - :nested_by
+  - :right
+  - :help
+  :content: "<p>Cards that refer to <em>{{_left|name}}</em>.</p>"
+- :name: "*linked to by"
+  :codename: :linked_to_by
+- :name:
+  - :linked_to_by
+  - :right
+  :type: :set
+- :name:
+  - :linked_to_by
+  - :right
+  - :help
+  :content: "<p>Cards that link to <em>{{_left|name}}</em>.</p>"
+- :name: "*nests"
+  :codename: :nests
+- :name:
+  - :nests
+  - :right
+  :type: :set
+- :name:
+  - :nests
+  - :right
+  - :help
+  :content: "<p>Cards nested within <em>{{_left|name}}</em></p>"
+- :name: "*links to"
+  :codename: :links_to
+- :name:
+  - :links_to
+  - :right
+  :type: :set
+- :name:
+  - :links_to
+  - :right
+  - :help
+  :content: "<p>Cards that <em>{{_left|name}}</em> links to.</p>"
+- :name: "*referred to by"
+  :codename: :referred_to_by
+- :name:
+  - :referred_to_by
+  - :right
+  :type: :set
+- :name:
+  - :referred_to_by
+  - :right
+  - :help
+  :content: "<p>Cards referred to by <em>{{_left|name}}</em>.</p>"
+- :name: "*refers to"
+  :codename: :refers_to
+- :name:
+  - :refers_to
+  - :right
+  :type: :set
+- :name:
+  - :refers_to
+  - :right
+  - :help
+  :content: "<p>Cards that <em>{{_left|name}}</em> refers to.</p>"
+- :name:
+  - :setting
+  - :description
+  :content: "Settings affect how cards look and behave. \n[[http://www.decko.org/Setting|Learn
+    more about settings.]]"
+- :name:
+  - :setting
+  - :self
+  :type: :set
+- :name:
+  - :setting
+  - :self
+  - :update
+  :type: :list
+  :content: Administrator
+- :name:
+  - :set
+  - :description
+  :content: |-
+    Sets define a group of cards to which settings can apply.
+    [[http://www.decko.org/Set|Learn more about sets.]]
+- :name:
+  - :set
+  - :self
+  :type: :set
+- :name:
+  - :set
+  - :self
+  - :structure
+  :type: :nest_list
+  :content: |-
+    <p>{{+description}}</p>
+    <h1>{{_self|name}} Cards</h1>
+    <blockquote>
+    <p>{{+:type+:by_name}}</p>
+    </blockquote>
+- :name: "*input type"
+  :type: :setting
+  :codename: :input_type
+- :name:
+  - :input_type
+  - :right
+  :type: :set
+- :name:
+  - :input_type
+  - :right
+  - :content_options
+  :type: :pointer
+  :content: overridden
+- :name:
+  - :input_type
+  - :right
+  - :input_type
+  :type: :pointer
+  :content: radio
+- :name: Email template
+  :type: :cardtype
+  :codename: :email_template
+- :name:
+  - :email_template
+  - :description
+  :content: |-
+    Design custom emails to be triggered by card actions.
+    [[http://decko.org/actions|more]]
+- :name: "*to"
+  :codename: :to
+- :name:
+  - :to
+  - :right
+  :type: :set
+- :name:
+  - :to
+  - :right
+  - :content_options
+  :type: :search_type
+  :content: ' { "right_plus":{"codename":"account"} } '
+- :name: "*from"
+  :codename: :from
+- :name:
+  - :from
+  - :right
+  :type: :set
+- :name:
+  - :from
+  - :right
+  - :content_options
+  :type: :search_type
+  :content: ' { "right_plus":{"codename":"account"} } '
+- :name: "*cc"
+  :codename: :cc
+- :name:
+  - :cc
+  - :right
+  :type: :set
+- :name:
+  - :cc
+  - :right
+  - :content_options
+  :type: :search_type
+  :content: ' { "right_plus":{"codename":"account"} } '
+- :name: "*bcc"
+  :codename: :bcc
+- :name:
+  - :bcc
+  - :right
+  :type: :set
+- :name:
+  - :bcc
+  - :right
+  - :content_options
+  :type: :search_type
+  :content: ' { "right_plus":{"codename":"account"} } '
+- :name: "*subject"
+  :codename: :subject
+- :name: "*attach"
+  :codename: :attach
+- :name:
+  - :attach
+  - :right
+  :type: :set
+- :name:
+  - :attach
+  - :right
+  - :content_options
+  :type: :search_type
+  :content: |-
+    {"type": "File",
+     "sort": "update"
+    }
+- :name: "*html message"
+  :codename: :html_message
+- :name: "*text message"
+  :codename: :text_message
+- :name: email stylesheet
+  :type: :scss
+  :codename: :email_stylesheet
+- :name: "*on create"
+  :type: :setting
+  :codename: :on_create
+- :name: "*on update"
+  :type: :setting
+  :codename: :on_update
+- :name: "*on delete"
+  :type: :setting
+  :codename: :on_delete
+- :name: Role
+  :type: :cardtype
+  :codename: :role
+- :name:
+  - :role
+  - :description
+  :content: "Each [[user]] can be given roles to organize site permissions. \n[[http://decko.org/Role|Learn
+    more about roles]]."
+- :name: "*members"
+  :codename: :members
+- :name: Anyone
+  :type: :role
+  :codename: :anyone
+- :name:
+  - :anyone
+  - :description
+  :content: Everyone has this role, whether signed in or not. [[http://decko.org/account|more]]
+- :name: Anyone Signed In
+  :type: :role
+  :codename: :anyone_signed_in
+- :name:
+  - :anyone_signed_in
+  - :description
+  :content: Anyone who is signed in has this role. [[http://decko.org/account|more]]
+- :name: Administrator
+  :type: :role
+  :codename: :administrator
+- :name:
+  - :administrator
+  - :description
+  :content: |-
+    [[_left+:members|Administrators]] can create, read, update and delete any card.
+    [[http://decko.org/permissions|more]]
+- :name:
+  - :administrator
+  - :members
+  :type: :list
+- :name:
+  - :administrator
+  - :members
+  - :self
+  :type: :set
+- :name:
+  - :administrator
+  - :members
+  - :self
+  - :update
+  :type: :list
+  :content: Administrator
+- :name: Eagle
+  :type: :role
+  :codename: :eagle
+- :name:
+  - :eagle
+  - :description
+  :content: "[[Eagle+:members|Eagle users]] can add and edit content."
+- :name: Shark
+  :type: :role
+  :codename: :shark
+- :name:
+  - :shark
+  - :description
+  :content: "[[_left+:members|Shark users]] can configure the deck and create structures."
+- :name:
+  - :shark
+  - :members
+  :type: :list
+- :name:
+  - :shark
+  - :members
+  - :self
+  :type: :set
+- :name:
+  - :shark
+  - :members
+  - :self
+  - :update
+  :type: :list
+  :content: Administrator
+- :name: Help Desk
+  :type: :role
+  :codename: :help_desk
+- :name:
+  - :help_desk
+  - :description
+  :content: "[[_left+*members|Help Desk users]] can manage accounts and edit help
+    text."
+- :name:
+  - :help_desk
+  - :members
+  :type: :list
+- :name:
+  - :help_desk
+  - :members
+  - :self
+  :type: :set
+- :name:
+  - :help_desk
+  - :members
+  - :self
+  - :update
+  :type: :list
+  :content: Administrator
+- :name: Anonymous
+  :codename: :anonymous
+  :content: "<p>Edits made by people who are not signed in are credited to Anonymous.
+    [[http://decko.org/account|Learn more about accounts]].</p>"
+- :name:
+  - :role
+  - :members
+- :name:
+  - :role
+  - :members
+  - :type_plus_right
+  :type: :set
+- :name:
+  - :role
+  - :members
+  - :type_plus_right
+  - :update
+  :type: :list
+  :content: Help Desk
+- :name: "*account"
+  :codename: :account
+  :content: |-
+    <div>When someone signs up, they create a [[Sign up]] card...</div>
+    <blockquote>
+    <div>{{Sign up|closed;title: Sign ups}}</div>
+    </blockquote>
+    <div>...that can be changed into a [[User]] card:</div>
+    <blockquote>
+    <div>{{User|title: Users; closed}}</div>
+    </blockquote>
+    <div>Some important [[http://decko.org/permissions|permissions]]:</div>
+    <div>
+    <ul>
+    <li>When [[Anyone]] can [[*create|create]] a [[Sign up]] card, links to sign up will appear.</li>
+    <li>When [[Anyone]] can [[*create|create]] a [[User]] card, each [[Sign up]] can be auto-approved with a verification email.</li>
+    <li>If permission to [[*create|create]] a [[User]] is restricted, someone with that permission must approve each [[Sign up]] by hand.</li>
+    </ul>
+    </div>
+    <h5>Related links</h5>
+    <ul>
+    <li><em>[[http://decko.org/account | Accounts docs]]</em></li>
+    <li><em>[[Cards with accounts]]</em></li>
+    <li><em>[[:account+:right+:by_name|Account cards]]</em></li>
+    </ul>
+- :name:
+  - :account
+  - :right
+  :type: :set
+- :name:
+  - :account
+  - :right
+  - :create
+  :type: :list
+  :content: Administrator
+- :name:
+  - :account
+  - :right
+  - :read
+  :type: :list
+  :content: Help Desk
+- :name:
+  - :account
+  - :right
+  - :update
+  :type: :list
+  :content: Help Desk
+- :name:
+  - :account
+  - :right
+  - :delete
+  :type: :list
+  :content: Help Desk
+- :name: "*email"
+  :codename: :email
+- :name:
+  - :email
+  - :right
+  :type: :set
+- :name:
+  - :email
+  - :right
+  - :read
+  :type: :list
+  :content: Help Desk
+- :name:
+  - :email
+  - :right
+  - :update
+  :type: :list
+  :content: Help Desk
+- :name:
+  - :email
+  - :right
+  - :delete
+  :type: :list
+  :content: Help Desk
+- :name: "*password"
+  :codename: :password
+- :name:
+  - :password
+  - :right
+  :type: :set
+- :name:
+  - :password
+  - :right
+  - :read
+  :type: :list
+  :content: Help Desk
+- :name:
+  - :password
+  - :right
+  - :update
+  :type: :list
+  :content: Help Desk
+- :name:
+  - :password
+  - :right
+  - :delete
+  :type: :list
+  :content: Help Desk
+- :name: "*salt"
+  :codename: :salt
+- :name:
+  - :salt
+  - :right
+  :type: :set
+- :name:
+  - :salt
+  - :right
+  - :read
+  :type: :list
+  :content: Help Desk
+- :name: "*status"
+  :codename: :status
+- :name:
+  - :status
+  - :right
+  :type: :set
+- :name:
+  - :status
+  - :right
+  - :read
+  :type: :list
+  :content: Help Desk
+- :name:
+  - :status
+  - :right
+  - :update
+  :type: :list
+  :content: Help Desk
+- :name:
+  - :status
+  - :right
+  - :delete
+  :type: :list
+  :content: Help Desk
+- :name: "*account settings"
+  :codename: :account_settings
+- :name:
+  - :account_settings
+  - :right
+  :type: :set
+- :name:
+  - :account_settings
+  - :right
+  - :structure
+  :type: :nest_list
+  :content: |-
+    {{_left+:account|content}}
+    {{_left+:roles|title: Roles}}
+    {{_left+:follow|title: Notification choices}}
+- :name: Sign up
+  :type: :cardtype
+  :codename: :signup
+- :name:
+  - :signup
+  - :description
+  :content: "[[Sign up]] cards represent not-yet-approved accounts. \nWhen approved,
+    they become [[User]] cards. [[http://decko.org/account|more]]"
+- :name:
+  - :signup
+  - :self
+  :type: :set
+- :name:
+  - :signup
+  - :self
+  - :structure
+  :type: :nest_list
+  :content: |-
+    <p>{{+:description|content}}</p>
+    <h2>{{_self|name}} Cards</h2>
+    <blockquote><p>{{+:type+:by_name|content}}</p></blockquote>
+- :name:
+  - :signup
+  - :type
+  :type: :set
+- :name:
+  - :signup
+  - :type
+  - :create
+  :type: :list
+  :content: Anyone
+- :name:
+  - :signup
+  - :type
+  - :on_create
+  :type: :list
+  :content: signup alert email
+- :name:
+  - :signup
+  - :account
+- :name:
+  - :signup
+  - :account
+  - :type_plus_right
+  :type: :set
+- :name:
+  - :signup
+  - :account
+  - :type_plus_right
+  - :create
+  :type: :list
+  :content: _left
+- :name:
+  - :signup
+  - :account
+  - :salt
+  :type: :phrase
+  :content: ab8b67d5fdbefa0b9d3630ac7097ad5076dd09fc
+- :name:
+  - :signup
+  - :account
+  - :status
+  :type: :phrase
+  :content: active
+- :name:
+  - :user
+  - :account
+- :name:
+  - :user
+  - :account
+  - :salt
+  :type: :phrase
+  :content: ab8b67d5fdbefa0b9d3630ac7097ad5076dd09fc
+- :name:
+  - :user
+  - :account
+  - :status
+  :type: :phrase
+  :content: active
+- :name:
+  - :user
+  - :account
+  - :type_plus_right
+  :type: :set
+- :name:
+  - :user
+  - :account
+  - :type_plus_right
+  - :create
+  :type: :list
+  :content: _left
+- :name:
+  - :decko_bot
+  - :account
+- :name:
+  - :decko_bot
+  - :account
+  - :email
+  :type: :phrase
+  :content: no-reply@decko.org
+- :name:
+  - :decko_bot
+  - :account
+  - :salt
+  :type: :phrase
+  :content: ab8b67d5fdbefa0b9d3630ac7097ad5076dd09fc
+- :name:
+  - :decko_bot
+  - :account
+  - :status
+  :type: :phrase
+  :content: active
+- :name: welcome email
+  :type: :email_template
+  :codename: :welcome_email
+- :name: verification email
+  :type: :email_template
+  :codename: :verification_email
+- :name:
+  - :verification_email
+  - :from
+  :type: :list
+  :content: Decko Bot
+- :name:
+  - :verification_email
+  - :subject
+  :type: :phrase
+  :content: verification link for {{:title|core}}
+- :name:
+  - :verification_email
+  - :html_message
+  :content: |-
+    <div style="text-align:center">
+      <h1>Thank you for signing up with {{:title|core}}!</h1>
+      <p>
+        Please <a href="{{_|verify_url}}">follow this link</a>
+        to verify this email address and activate your account.
+      </p>
+      <p><em>Link will remain valid for {{_|verify_days}} days.</em></p>
+    </div>
+- :name:
+  - :verification_email
+  - :text_message
+  :type: :plain_text
+  :content: |
+    Thank you for signing up with {{:title|core}}!
+
+    Please follow the link below to verify this email address and activate your account.
+
+    {{_|verify_url}}
+    (Link will remain valid for {{_|verify_days}} days.)
+- :name: password reset email
+  :type: :email_template
+  :codename: :password_reset_email
+- :name:
+  - :password_reset_email
+  - :from
+  :type: :list
+  :content: Decko Bot
+- :name:
+  - :password_reset_email
+  - :subject
+  :type: :phrase
+  :content: reset password for {{:title|core}}
+- :name:
+  - :password_reset_email
+  - :text_message
+  :type: :plain_text
+  :content: "** Password reset for {{:title|core}} **\n\nSomeone – you, we hope –
+    asked to reset your password.  Please follow this link...\n\n  {{_|reset_password_url}}\n
+    \ \n...to update your account details.\n\n\n(Link will remain valid for {{_|reset_password_days}}
+    days.)\n\n"
+- :name:
+  - :password_reset_email
+  - :html_message
+  :content: "<div style=\"text-align:center\">\n <h1>Password reset for {{:title|core}}</h1>\n
+    \ \n  <p>Someone – you, we hope – asked to reset your password.</p>\n  \n  <p>Please
+    <a href=\"{{_|reset_password_url}}\">follow this link</a> to update your account
+    details.</p>\n  \n  <p><em>Link will remain valid for {{_|reset_password_days}}
+    days.</em></p>\n</div>\n\n"
+- :name: signup alert email
+  :type: :email_template
+  :codename: :signup_alert_email
+- :name:
+  - :signup_alert_email
+  - :from
+  :type: :list
+  :content: _user
+- :name:
+  - :signup_alert_email
+  - :subject
+  :type: :phrase
+  :content: "{{_|name}} signed up for {{:title|core}}"
+- :name:
+  - :signup_alert_email
+  - :text_message
+  :type: :plain_text
+  :content: |
+    {{_|name}} has signed up on {{:title|core}}.
+
+    See {{_|name}}'s card: {{_|url}}
+
+    -- the machines running {{:title|core}}
+- :name:
+  - :signup_alert_email
+  - :html_message
+  :content: |
+    <p>
+      {{_|name}}
+      has <a href="{{_|url}}">signed up</a>
+      on {{:title|core}}.
+    </p>
+
+    <p><em>-- the machines running {{:title|core}}</em></p>
+- :name: "*signin"
+  :codename: :signin
+- :name:
+  - :signin
+  - :self
+  :type: :set
+- :name:
+  - :signin
+  - :self
+  - :update
+  :type: :list
+  :content: Anyone
+- :name: "*roles"
+  :codename: :roles
+- :name:
+  - :roles
+  - :right
+  :type: :set
+- :name:
+  - :roles
+  - :right
+  - :input_type
+  :type: :pointer
+  :content: checkbox
+- :name:
+  - :roles
+  - :right
+  - :content_options
+  :type: :search_type
+  :content: '{"type":"role", "not":{"codename":["in","anyone","anyone_signed_in"]}}'
+- :name: "*enabled roles"
+  :codename: :enabled_roles
+- :name: "*account links"
+  :codename: :account_links
+- :name: Cards with accounts
+  :type: :search_type
+  :codename: :cards_with_account
+  :content: '{"right_plus": ":account"}'
+- :name: "*thanks"
+  :type: :setting
+  :codename: :thanks
+- :name:
+  - :signup
+  - :type
+  - :thanks
+  :type: :phrase
+  :content: signup_success
+- :name: Signup Success
+  :codename: :signup_success
+  :content: "<div>\n  Thank you for signing up with {{:title|core}}. \n  You should
+    receive a response in your email.\n</div>"
+- :name: File
+  :type: :cardtype
+  :codename: :file
+- :name:
+  - :file
+  - :description
+  :content: |-
+    <p>
+      Upload images to these cards and include them anywhere.
+      [[http://decko.org/Image|more]]
+    </p>
+- :name: Image
+  :type: :cardtype
+  :codename: :image
+- :name:
+  - :image
+  - :description
+  :content: |-
+    <p>
+      File cards are for uploading and downloading files.
+      [[http://decko.org/File|more]]
+    </p>
+- :name:
+  - :image
+  - :right
+  :type: :set
+- :name:
+  - :image
+  - :right
+  - :default
+  :type: :image
+- :name: "*logo"
+  :type: :image
+  :codename: :logo
+  :content: ":logo/carrierwave.svg"
+- :name:
+  - :logo
+  - :self
+  :type: :set
+- :name:
+  - :logo
+  - :self
+  - :read
+  :type: :list
+  :content: Anyone
+- :name: Decko logo
+  :type: :image
+  :codename: :decko_logo
+  :content: ":decko_logo/carrierwave.svg"
+- :name:
+  - :decko_logo
+  - :self
+  :type: :set
+- :name:
+  - :decko_logo
+  - :self
+  - :read
+  :type: :list
+  :content: Anyone
+- :name: "*favicon"
+  :type: :image
+  :codename: :favicon
+  :content: ":favicon/carrierwave.png"
+- :name: "*new file"
+  :type: :file
+  :codename: :new_file
+- :name: "*new image"
+  :type: :image
+  :codename: :new_image
+- :name:
+  - :credit
+  - :image
+  :type: :html
+  :content: |-
+    <svg style="width:18px; height:14px;" viewBox="0 0 242 220" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+      <!-- Generator: Sketch 46.2 (44496) - http://www.bohemiancoding.com/sketch -->
+      <title>b&amp;w_logo</title>
+      <desc>Created with Sketch.</desc>
+      <defs>
+          <rect id="path-1" x="35.3297422" y="10.484836" width="157.279595" height="190.607432" rx="12.491335"></rect>
+          <filter x="-12.1%" y="-10.5%" width="125.4%" height="121.0%" filterUnits="objectBoundingBox" id="filter-2">
+              <feMorphology radius="1" operator="dilate" in="SourceAlpha" result="shadowSpreadOuter1"></feMorphology>
+              <feOffset dx="1" dy="0" in="shadowSpreadOuter1" result="shadowOffsetOuter1"></feOffset>
+              <feGaussianBlur stdDeviation="5.5" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+              <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.1 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+          </filter>
+          <rect id="path-3" x="51.9878879" y="19.404077" width="123.9533" height="171.161486" rx="9.6888466"></rect>
+          <filter x="-15.3%" y="-11.7%" width="132.3%" height="123.4%" filterUnits="objectBoundingBox" id="filter-4">
+              <feMorphology radius="1" operator="dilate" in="SourceAlpha" result="shadowSpreadOuter1"></feMorphology>
+              <feOffset dx="1" dy="0" in="shadowSpreadOuter1" result="shadowOffsetOuter1"></feOffset>
+              <feGaussianBlur stdDeviation="5.5" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+              <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.1 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+          </filter>
+          <path d="M70.1050368,35.6666109 L159.089911,35.6666109 L159.089911,35.6666109 C163.678051,35.6666109 167.397473,39.386033 167.397473,43.9741728 L167.397473,87.717145 L167.397473,166.808436 L167.397473,166.808436 C167.397473,171.396576 163.678051,175.115998 159.089911,175.115998 L70.1050368,175.115998 L70.1050368,175.115998 C65.516897,175.115998 61.7974749,171.396576 61.7974749,166.808436 L61.7974749,43.9741728 L61.7974749,43.9741728 C61.7974749,39.386033 65.516897,35.6666109 70.1050368,35.6666109 Z" id="path-5"></path>
+          <filter x="-18.0%" y="-14.3%" width="137.9%" height="128.7%" filterUnits="objectBoundingBox" id="filter-6">
+              <feMorphology radius="1" operator="dilate" in="SourceAlpha" result="shadowSpreadOuter1"></feMorphology>
+              <feOffset dx="1" dy="0" in="shadowSpreadOuter1" result="shadowOffsetOuter1"></feOffset>
+              <feGaussianBlur stdDeviation="5.5" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+              <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.1 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+          </filter>
+          <rect id="path-7" x="70.7637805" y="49.8525134" width="92.149175" height="107.18743" rx="7.8659801"></rect>
+          <filter x="-20.6%" y="-18.7%" width="143.4%" height="137.3%" filterUnits="objectBoundingBox" id="filter-8">
+              <feMorphology radius="1" operator="dilate" in="SourceAlpha" result="shadowSpreadOuter1"></feMorphology>
+              <feOffset dx="1" dy="0" in="shadowSpreadOuter1" result="shadowOffsetOuter1"></feOffset>
+              <feGaussianBlur stdDeviation="5.5" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+              <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.102553216 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+          </filter>
+      </defs>
+      <g id="Page-3" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+          <g id="b&amp;w_logo" fill-rule="nonzero">
+              <g id="Decko-Logo-" transform="translate(7.000000, 4.000000)">
+                  <g id="g5642">
+                      <g id="svg-card-1" transform="translate(113.969540, 105.788552) scale(-1, 1) rotate(105.855860) translate(-113.969540, -105.788552) ">
+                          <use fill="black" fill-opacity="1" filter="url(#filter-2)" xlink:href="#path-1"></use>
+                          <use fill="#4D4D4D" fill-rule="evenodd" xlink:href="#path-1"></use>
+                      </g>
+                      <g id="svg-card-2" opacity="0.879999995" transform="translate(113.964538, 104.984820) scale(-1, 1) rotate(117.480003) translate(-113.964538, -104.984820) ">
+                          <use fill="black" fill-opacity="1" filter="url(#filter-4)" xlink:href="#path-3"></use>
+                          <use fill="#FFFFFF" fill-rule="evenodd" xlink:href="#path-3"></use>
+                      </g>
+                      <g id="svg-card-3" transform="translate(114.597474, 105.391304) scale(-1, 1) rotate(133.539993) translate(-114.597474, -105.391304) ">
+                          <use fill="black" fill-opacity="1" filter="url(#filter-6)" xlink:href="#path-5"></use>
+                          <use fill="#4C4C4C" fill-rule="evenodd" xlink:href="#path-5"></use>
+                      </g>
+                      <g id="svg-card-4" opacity="0.879999995" transform="translate(116.838368, 103.446228) scale(-1, 1) rotate(142.690002) translate(-116.838368, -103.446228) ">
+                          <use fill="black" fill-opacity="1" filter="url(#filter-8)" xlink:href="#path-7"></use>
+                          <use fill="#FFFFFF" fill-rule="evenodd" xlink:href="#path-7"></use>
+                      </g>
+                  </g>
+              </g>
+          </g>
+      </g>
+    </svg>
+- :name: "*asset input"
+  :codename: :asset_input
+- :name: "*asset output"
+  :codename: :asset_output
+- :name: 'group: local'
+  :codename: :group_local
+- :name: 'group: remote'
+  :codename: :group_remote
+- :name: "*script"
+  :type: :setting
+  :codename: :script
+- :name:
+  - :script
+  - :right
+  :type: :set
+- :name:
+  - :script
+  - :right
+  - :content_options
+  :type: :search_type
+  :content: ' {"type":["in", "JavaScript", "CoffeeScript"] }'
+- :name:
+  - :script
+  - :right
+  - :input_type
+  :type: :pointer
+  :content: list
+- :name:
+  - :all
+  - :script
+  :type: :list
+  :content: |-
+    mod: format+*script
+    mod: list+*script
+    mod: search+*script
+    mod: rules+*script
+    mod: edit+*script
+    mod: account+*script
+    mod: carrierwave+*script
+    mod: ace editor+*script
+    mod: bar and box+*script
+    mod: bootstrap+*script
+    mod: follow+*script
+    mod: tabs+*script
+    mod: layout+*script
+    mod: recaptcha+*script
+    mod: tinymce editor+*script
+- :name:
+  - :all
+  - :script
+  - :asset_output
+  :type: :file
+  :content: ":all+:script+:asset_output/defaults.js"
+- :name: JavaScript
+  :type: :cardtype
+  :codename: :java_script
+- :name:
+  - :java_script
+  - :description
+  :content: |-
+    <p>
+      Create custom JavaScript for [[*script]] rules.
+      [[http://decko.org/JavaScript|more]]
+    </p>
+- :name:
+  - :java_script
+  - :type
+  :type: :set
+- :name:
+  - :java_script
+  - :type
+  - :create
+  :type: :list
+  :content: Shark
+- :name:
+  - :java_script
+  - :type
+  - :update
+  :type: :list
+  :content: Shark
+- :name:
+  - :java_script
+  - :type
+  - :delete
+  :type: :list
+  :content: Shark
+- :name: CoffeeScript
+  :type: :cardtype
+  :codename: :coffee_script
+- :name:
+  - :coffee_script
+  - :description
+  :content: |-
+    <p>
+      Generate JavaScript for [[*script]] rules.
+      [[http://decko.org/CoffeeScript|more]]
+    </p>
+- :name:
+  - :coffee_script
+  - :type
+  :type: :set
+- :name:
+  - :coffee_script
+  - :type
+  - :create
+  :type: :list
+  :content: Shark
+- :name:
+  - :coffee_script
+  - :type
+  - :update
+  :type: :list
+  :content: Shark
+- :name:
+  - :coffee_script
+  - :type
+  - :delete
+  :type: :list
+  :content: Shark
+- :name: Local script folder group
+  :type: :cardtype
+  :codename: :local_script_folder_group
+- :name: Local script manifest group
+  :type: :cardtype
+  :codename: :local_script_manifest_group
+- :name: "*Ace"
+  :type: :json
+  :codename: :ace
+  :content: |
+    {
+      "default": {
+      "showGutter": true,
+      "theme": "ace/theme/github",
+      "printMargin": false,
+      "tabSize": 2,
+      "useSoftTabs": true,
+      "maxLines": 30
+      }
+    }
+- :name: "*api key"
+  :codename: :api_key
+- :name:
+  - :api_key
+  - :right
+  :type: :set
+- :name:
+  - :api_key
+  - :right
+  - :read
+  :type: :list
+  :content: Help Desk
+- :name:
+  - :api_key
+  - :right
+  - :update
+  :type: :list
+  :content: Help Desk
+- :name:
+  - :api_key
+  - :right
+  - :delete
+  :type: :list
+  :content: Help Desk
+- :name: 'style: mods'
+  :type: :list
+  :codename: :style_mods
+  :content: |-
+    mod: format+*style
+    mod: list+*style
+    mod: permissions+*style
+    mod: help+*style
+    mod: search+*style
+    mod: rules+*style
+    mod: edit+*style
+    mod: account+*style
+    mod: history+*style
+    mod: carrierwave+*style
+    mod: api key+*style
+    mod: style+*style
+    mod: bar and box+*style
+    mod: bootstrap+*style
+    mod: comment+*style
+    mod: follow+*style
+    mod: layout+*style
+    mod: tinymce editor+*style
+- :name: Local style folder group
+  :type: :cardtype
+  :codename: :local_style_folder_group
+- :name: Local style manifest group
+  :type: :cardtype
+  :codename: :local_style_manifest_group
+- :name: CSS
+  :type: :cardtype
+  :codename: :css
+- :name:
+  - :css
+  - :description
+  :content: "<p>Customize styles for [[Skins]]. [[http://decko.org/CSS|more]]</p>"
+- :name:
+  - :css
+  - :type
+  :type: :set
+- :name:
+  - :css
+  - :type
+  - :create
+  :type: :list
+  :content: Shark
+- :name:
+  - :css
+  - :type
+  - :update
+  :type: :list
+  :content: Shark
+- :name:
+  - :css
+  - :type
+  - :delete
+  :type: :list
+  :content: Shark
+- :name: SCSS
+  :type: :cardtype
+  :codename: :scss
+- :name:
+  - :scss
+  - :description
+  :content: "<p>Customize styles for [[Skins]]. [[http://decko.org/SCSS|more]]</p>"
+- :name:
+  - :scss
+  - :type
+  :type: :set
+- :name:
+  - :scss
+  - :type
+  - :create
+  :type: :list
+  :content: Shark
+- :name:
+  - :scss
+  - :type
+  - :update
+  :type: :list
+  :content: Shark
+- :name:
+  - :scss
+  - :type
+  - :delete
+  :type: :list
+  :content: Shark
+- :name: Skin
+  :type: :cardtype
+  :codename: :skin
+- :name:
+  - :skin
+  - :description
+  :content: |-
+    <p>
+      A [[skin]] determines a page's look and feel.
+      [[http://decko.org/Skins|more]]
+    </p>
+- :name:
+  - :skin
+  - :type
+  :type: :set
+- :name:
+  - :skin
+  - :type
+  - :create
+  :type: :list
+  :content: Shark
+- :name:
+  - :skin
+  - :type
+  - :update
+  :type: :list
+  :content: Shark
+- :name:
+  - :skin
+  - :type
+  - :delete
+  :type: :list
+  :content: Shark
+- :name: "*style"
+  :type: :setting
+  :codename: :style
+- :name:
+  - :style
+  - :right
+  :type: :set
+- :name:
+  - :style
+  - :right
+  - :input_type
+  :type: :pointer
+  :content: radio
+- :name:
+  - :style
+  - :right
+  - :content_options
+  :type: :search_type
+  :content: '{"type": "bootswatch_skin", "sort": "name"}'
+- :name:
+  - :style
+  - :right
+  - :content_option_view
+  :type: :phrase
+  :content: Image
+- :name: "*bootswatch"
+  :codename: :bootswatch
+- :name: "*variables"
+  :codename: :variables
+- :name: "*stylesheets"
+  :codename: :stylesheets
+- :name: "*colors"
+  :codename: :colors
+- :name: parent
+  :codename: :parent
+- :name: Bootswatch skin
+  :type: :cardtype
+  :codename: :bootswatch_skin
+- :name: 'bootstrap: functions'
+  :type: :scss
+  :codename: :bootstrap_functions
+- :name: 'bootstrap: core'
+  :type: :scss
+  :codename: :bootstrap_core
+- :name: cerulean skin
+  :type: :bootswatch_skin
+  :codename: :cerulean_skin
+- :name:
+  - :cerulean_skin
+  - :colors
+  :type: :scss
+- :name:
+  - :cerulean_skin
+  - :variables
+  :type: :scss
+- :name:
+  - :cerulean_skin
+  - :image
+  :type: :image
+  :content: ":cerulean_skin+:image/bootstrap.png"
+- :name: cosmo skin
+  :type: :bootswatch_skin
+  :codename: :cosmo_skin
+- :name:
+  - :cosmo_skin
+  - :colors
+  :type: :scss
+- :name:
+  - :cosmo_skin
+  - :variables
+  :type: :scss
+- :name:
+  - :cosmo_skin
+  - :image
+  :type: :image
+  :content: ":cosmo_skin+:image/bootstrap.png"
+- :name: cyborg skin
+  :type: :bootswatch_skin
+  :codename: :cyborg_skin
+- :name:
+  - :cyborg_skin
+  - :colors
+  :type: :scss
+- :name:
+  - :cyborg_skin
+  - :variables
+  :type: :scss
+- :name:
+  - :cyborg_skin
+  - :image
+  :type: :image
+  :content: ":cyborg_skin+:image/bootstrap.png"
+- :name: darkly skin
+  :type: :bootswatch_skin
+  :codename: :darkly_skin
+- :name:
+  - :darkly_skin
+  - :colors
+  :type: :scss
+- :name:
+  - :darkly_skin
+  - :variables
+  :type: :scss
+- :name:
+  - :darkly_skin
+  - :image
+  :type: :image
+  :content: ":darkly_skin+:image/bootstrap.png"
+- :name: flatly skin
+  :type: :bootswatch_skin
+  :codename: :flatly_skin
+- :name:
+  - :flatly_skin
+  - :colors
+  :type: :scss
+- :name:
+  - :flatly_skin
+  - :variables
+  :type: :scss
+- :name:
+  - :flatly_skin
+  - :image
+  :type: :image
+  :content: ":flatly_skin+:image/bootstrap.png"
+- :name: journal skin
+  :type: :bootswatch_skin
+  :codename: :journal_skin
+- :name:
+  - :journal_skin
+  - :colors
+  :type: :scss
+- :name:
+  - :journal_skin
+  - :variables
+  :type: :scss
+- :name:
+  - :journal_skin
+  - :image
+  :type: :image
+  :content: ":journal_skin+:image/bootstrap.png"
+- :name: lumen skin
+  :type: :bootswatch_skin
+  :codename: :lumen_skin
+- :name:
+  - :lumen_skin
+  - :colors
+  :type: :scss
+- :name:
+  - :lumen_skin
+  - :variables
+  :type: :scss
+- :name:
+  - :lumen_skin
+  - :image
+  :type: :image
+  :content: ":lumen_skin+:image/bootstrap.png"
+- :name: sandstone skin
+  :type: :bootswatch_skin
+  :codename: :sandstone_skin
+- :name:
+  - :sandstone_skin
+  - :colors
+  :type: :scss
+- :name:
+  - :sandstone_skin
+  - :variables
+  :type: :scss
+- :name:
+  - :sandstone_skin
+  - :image
+  :type: :image
+  :content: ":sandstone_skin+:image/bootstrap.png"
+- :name: simplex skin
+  :type: :bootswatch_skin
+  :codename: :simplex_skin
+- :name:
+  - :simplex_skin
+  - :colors
+  :type: :scss
+- :name:
+  - :simplex_skin
+  - :variables
+  :type: :scss
+- :name:
+  - :simplex_skin
+  - :image
+  :type: :image
+  :content: ":simplex_skin+:image/bootstrap.png"
+- :name: slate skin
+  :type: :bootswatch_skin
+  :codename: :slate_skin
+- :name:
+  - :slate_skin
+  - :colors
+  :type: :scss
+- :name:
+  - :slate_skin
+  - :variables
+  :type: :scss
+- :name:
+  - :slate_skin
+  - :image
+  :type: :image
+  :content: ":slate_skin+:image/bootstrap.png"
+- :name: spacelab skin
+  :type: :bootswatch_skin
+  :codename: :spacelab_skin
+- :name:
+  - :spacelab_skin
+  - :colors
+  :type: :scss
+- :name:
+  - :spacelab_skin
+  - :variables
+  :type: :scss
+- :name:
+  - :spacelab_skin
+  - :image
+  :type: :image
+  :content: ":spacelab_skin+:image/bootstrap.png"
+- :name: superhero skin
+  :type: :bootswatch_skin
+  :codename: :superhero_skin
+- :name:
+  - :superhero_skin
+  - :colors
+  :type: :scss
+- :name:
+  - :superhero_skin
+  - :variables
+  :type: :scss
+- :name:
+  - :superhero_skin
+  - :image
+  :type: :image
+  :content: ":superhero_skin+:image/bootstrap.png"
+- :name: united skin
+  :type: :bootswatch_skin
+  :codename: :united_skin
+- :name:
+  - :united_skin
+  - :colors
+  :type: :scss
+- :name:
+  - :united_skin
+  - :variables
+  :type: :scss
+- :name:
+  - :united_skin
+  - :image
+  :type: :image
+  :content: ":united_skin+:image/bootstrap.png"
+- :name: yeti skin
+  :type: :bootswatch_skin
+  :codename: :yeti_skin
+- :name:
+  - :yeti_skin
+  - :colors
+  :type: :scss
+- :name:
+  - :yeti_skin
+  - :variables
+  :type: :scss
+- :name:
+  - :yeti_skin
+  - :image
+  :type: :image
+  :content: ":yeti_skin+:image/bootstrap.png"
+- :name: litera skin
+  :type: :bootswatch_skin
+  :codename: :litera_skin
+- :name:
+  - :litera_skin
+  - :colors
+  :type: :scss
+- :name:
+  - :litera_skin
+  - :variables
+  :type: :scss
+- :name:
+  - :litera_skin
+  - :image
+  :type: :image
+  :content: ":litera_skin+:image/bootstrap.png"
+- :name: lux skin
+  :type: :bootswatch_skin
+  :codename: :lux_skin
+- :name:
+  - :lux_skin
+  - :colors
+  :type: :scss
+- :name:
+  - :lux_skin
+  - :variables
+  :type: :scss
+- :name:
+  - :lux_skin
+  - :image
+  :type: :image
+  :content: ":lux_skin+:image/bootstrap.png"
+- :name: materia skin
+  :type: :bootswatch_skin
+  :codename: :materia_skin
+- :name:
+  - :materia_skin
+  - :colors
+  :type: :scss
+- :name:
+  - :materia_skin
+  - :variables
+  :type: :scss
+- :name:
+  - :materia_skin
+  - :image
+  :type: :image
+  :content: ":materia_skin+:image/bootstrap.png"
+- :name: minty skin
+  :type: :bootswatch_skin
+  :codename: :minty_skin
+- :name:
+  - :minty_skin
+  - :colors
+  :type: :scss
+- :name:
+  - :minty_skin
+  - :variables
+  :type: :scss
+- :name:
+  - :minty_skin
+  - :image
+  :type: :image
+  :content: ":minty_skin+:image/bootstrap.png"
+- :name: pulse skin
+  :type: :bootswatch_skin
+  :codename: :pulse_skin
+- :name:
+  - :pulse_skin
+  - :colors
+  :type: :scss
+- :name:
+  - :pulse_skin
+  - :variables
+  :type: :scss
+- :name:
+  - :pulse_skin
+  - :image
+  :type: :image
+  :content: ":pulse_skin+:image/bootstrap.png"
+- :name: solar skin
+  :type: :bootswatch_skin
+  :codename: :solar_skin
+- :name:
+  - :solar_skin
+  - :colors
+  :type: :scss
+- :name:
+  - :solar_skin
+  - :variables
+  :type: :scss
+- :name:
+  - :solar_skin
+  - :image
+  :type: :image
+  :content: ":solar_skin+:image/bootstrap.png"
+- :name: sketchy skin
+  :type: :bootswatch_skin
+  :codename: :sketchy_skin
+- :name:
+  - :sketchy_skin
+  - :colors
+  :type: :scss
+- :name:
+  - :sketchy_skin
+  - :variables
+  :type: :scss
+- :name:
+  - :sketchy_skin
+  - :image
+  :type: :image
+  :content: ":sketchy_skin+:image/bootstrap.png"
+- :name:
+  - :all
+  - :style
+  :type: :list
+  :content: yeti skin
+- :name:
+  - :all
+  - :style
+  - :asset_output
+  :type: :file
+  :content: ":all+:style+:asset_output/defaults.css"
+- :name: discussion
+  :codename: :discussion
+- :name: Date
+  :type: :cardtype
+  :codename: :date
+- :name:
+  - :date
+  - :description
+  :content: "<p>Date cards contain a date.</p>"
+- :name: "*when created"
+  :codename: :when_created
+- :name: "*when last edited"
+  :codename: :when_last_edited
+- :name: "*now"
+  :codename: :now
+- :name: Notification template
+  :type: :cardtype
+  :codename: :notification_template
+- :name: "*follow"
+  :type: :setting
+  :codename: :follow
+- :name:
+  - :follow
+  - :right
+  :type: :set
+- :name:
+  - :follow
+  - :right
+  - :input_type
+  :type: :pointer
+  :content: radio
+- :name:
+  - :follow
+  - :right
+  - :help
+  :content: Get notified about changes.
+- :name: "*following"
+  :type: :list
+  :codename: :following
+- :name:
+  - :following
+  - :right
+  :type: :set
+- :name:
+  - :following
+  - :right
+  - :create
+  :type: :list
+  :content: _left
+- :name:
+  - :following
+  - :right
+  - :update
+  :type: :list
+  :content: _left
+- :name: "*followers"
+  :codename: :followers
+- :name: "*follow fields"
+  :type: :setting
+  :codename: :follow_fields
+- :name: "*always"
+  :codename: :always
+- :name: "*never"
+  :codename: :never
+- :name: "*follow defaults"
+  :type: :list
+  :codename: :follow_defaults
+- :name: follow suggestions
+  :type: :list
+  :codename: :follow_suggestions
+- :name:
+  - :all
+  - :follow_fields
+  :type: :list
+  :content: "*nests"
+- :name: "*contextual class"
+  :codename: :contextual_class
+- :name:
+  - :contextual_class
+  - :right
+  :type: :set
+- :name:
+  - :contextual_class
+  - :right
+  - :input_type
+  :type: :pointer
+  :content: radio
+- :name:
+  - :contextual_class
+  - :right
+  - :content_options
+  :type: :list
+  :content: |-
+    success
+    info
+    warning
+    danger
+- :name: "*message"
+  :codename: :message
+- :name: "*disappear"
+  :codename: :disappear
+- :name: follower notification email
+  :type: :email_template
+  :codename: :follower_notification_email
+- :name:
+  - :follower_notification_email
+  - :from
+  :type: :phrase
+  :content: Decko Bot
+- :name:
+  - :follower_notification_email
+  - :subject
+  :type: :phrase
+  :content: '{{_user|name}} {{_|last_action_verb}} "{{_|name}}"'
+- :name:
+  - :follower_notification_email
+  - :html_message
+  :type: :plain_text
+  :content: "<p>\n  {{_|link}} was just <a href=\"{{_|url}}?view=history\">{{_|last_action_verb}}</a>
+    \n  by {{_user|link}}\n</p>\n<blockquote>{{_|list_of_changes}}</blockquote>\n<p>{{_|subedits}}</p>\n\n<p>\n
+    \ You received this email because you're following <strong>{{_|followed}}</strong>.\n</p>\n\n<p>\n
+    \ <em>\n    <a href=\"{{_|unfollow_url}}\">Unfollow</a> to stop receiving these
+    emails.\n  </em>\n</p>"
+- :name:
+  - :follower_notification_email
+  - :text_message
+  :type: :plain_text
+  :content: |-
+    "{{_|name}}" was just {{_|last_action_verb}} by {{_user|name}}.
+
+    {{_|list_of_changes}}
+
+    {{_|subedits}}
+
+    See the card: {{_|url}}
+
+    You received this email because you're following "{{_|followed}}".
+
+    Use this link to unfollow {{_|unfollow_url}}
+- :name: Session
+  :type: :cardtype
+  :codename: :session
+- :name:
+  - :session
+  - :description
+  :content: "Session cards are for non-permanent content. They are not stored in the
+    database \nand can have different values for different users."
+- :name: "*recent settings"
+  :codename: :recent_settings
+  :content: |-
+    *follow
+    *script
+    *structure
+    *layout
+    *captcha
+    *read
+    *input type
+    *create
+- :name:
+  - :recent_settings
+  - :self
+  :type: :set
+- :name:
+  - :recent_settings
+  - :self
+  - :update
+  :type: :list
+  :content: Anyone
+- :name:
+  - :recent_settings
+  - :self
+  - :read
+  :type: :list
+  :content: Anyone
+- :name:
+  - :recent_settings
+  - :self
+  - :content_options
+  :type: :search_type
+  :content: '{"type":"setting"}'
+- :name: Layout
+  :type: :cardtype
+  :codename: :layout_type
+- :name:
+  - :layout_type
+  - :description
+  :content: Organize webpages. [[http://decko.org/Layout|more]]
+- :name:
+  - :layout_type
+  - :type
+  :type: :set
+- :name:
+  - :layout_type
+  - :type
+  - :create
+  :type: :list
+  :content: Shark
+- :name:
+  - :layout_type
+  - :type
+  - :update
+  :type: :list
+  :content: Shark
+- :name:
+  - :layout_type
+  - :type
+  - :delete
+  :type: :list
+  :content: Shark
+- :name: "*layout"
+  :type: :setting
+  :codename: :layout
+- :name:
+  - :layout
+  - :right
+  :type: :set
+- :name:
+  - :layout
+  - :right
+  - :input_type
+  :type: :pointer
+  :content: select
+- :name:
+  - :all
+  - :layout
+  :type: :pointer
+  :content: Default Layout
+- :name: "*main menu"
+  :type: :link_list
+  :codename: :main_menu
+  :content: |-
+    [[:getting_started_links|Getting started]]
+    [[:recent|Recent Changes]]
+- :name: "*header"
+  :type: :html
+  :codename: :header
+  :content: |
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-3 nodblclick">
+      <div class="container">
+        <div class="d0-nav-container">
+          <div class="d-flex">
+            <a class="nav-logo navbar-brand" href="{{:home|home_path}}">
+              {{:logo|core;size:small}}
+            </a>
+            <a class="navbar-brand" href="{{:home|home_path}}">{{:title|core}}</a>
+          </div>
+          <button class="navbar-toggler" type="button" aria-label="Toggle navigation"
+                  aria-controls="d0-navbar" aria-expanded="false"
+                  data-bs-toggle="collapse" data-bs-target="#d0-navbar">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="d0-navbar">
+            <ul class="navbar-nav mr-auto main-nav ms-2">{{:main_menu|navbar_links}}</ul>
+            <div class="navbar-nav search-box-nav mx-2">{{:search|search_box}}</div>
+            {{:account_links|navbar_links}}
+          </div>
+        </div>
+      </div>
+    </nav>
+- :name:
+  - :header
+  - :self
+  :type: :set
+- :name:
+  - :header
+  - :self
+  - :read
+  :type: :list
+  :content: Anyone
+- :name:
+  - :main_menu
+  - :self
+  :type: :set
+- :name:
+  - :main_menu
+  - :self
+  - :read
+  :type: :list
+  :content: Anyone
+- :name: "*footer"
+  :type: :html
+  :codename: :footer
+  :content: |-
+    <div class="d-flex justify-content-center align-items-center">
+      {{:credit|core}}
+    </div>
+- :name: Menu
+  :codename: :sidebar_menu
+  :content: "<p>[[/?view=new|Add a card]]</p>"
+- :name: "*sidebar"
+  :codename: :sidebar
+  :content: |-
+    <div>[[/ | {{:logo|content_panel}}]]</div>
+    <div>{{:sidebar_menu|titled}}</div>
+- :name:
+  - :sidebar
+  - :right
+  :type: :set
+- :name:
+  - :sidebar
+  - :right
+  - :read
+  :type: :list
+  :content: Anyone
+- :name: Default Layout
+  :type: :layout_type
+  :codename: :default_layout
+  :content: |-
+    <body class="d-flex flex-column h-100">
+      <header>{{:header|core}}</header>
+      <article class="container flex-shrink-0" role="main">{{_main|titled}}</article>
+      <footer class="footer mt-auto py-3">{{:footer|content}}</footer>
+    </body>
+- :name: Full Width Layout
+  :type: :layout_type
+  :codename: :full_layout
+  :content: |-
+    <body class="fluid d-flex flex-column h-100">
+      <header>{{:header|core}}</header>
+      <article class="container flex-shrink-0" role="main">{{_main|titled}}</article>
+      <footer class="footer mt-auto py-3">{{:footer|core}}</footer>
+    </body>
+- :name: Home Layout
+  :type: :layout_type
+  :codename: :home_layout
+  :content: |-
+    <body class="d-flex flex-column h-100">
+      <header>{{:header|core}}</header>
+      <article class="container flex-shrink-0" role="main">{{_main|content}}</article>
+      <footer class="footer mt-auto py-3">{{:footer|content}}</footer>
+    </body>
+- :name: Right Thin Sidebar Layout
+  :type: :layout_type
+  :codename: :right_thin_sidebar_layout
+  :content: |-
+    <body class="right-sidebar thin-sidebar d-flex flex-column h-100">
+      <header>{{:header|core}}</header>
+      <article class="container flex-shrink-0" role="main">{{_main|titled}}</article>
+      <aside>{{:sidebar|content}}</aside>
+      <footer class="footer mt-auto py-3">{{:footer|core}}</footer>
+    </body>
+- :name: Left Sidebar Layout
+  :type: :layout_type
+  :codename: :left_sidebar_layout
+  :content: |-
+    <body class="left-sidebar">
+      <header>{{:header|core}}</header>
+      <article>{{_main|titled}}</article>
+      <aside>{{:sidebar|core}}</aside>
+      <footer>{{:footer|core}}</footer>
+    </body>
+- :name: "*captcha"
+  :type: :setting
+  :codename: :captcha
+- :name:
+  - :all
+  - :captcha
+  :type: :toggle
+  :content: '1'
+- :name:
+  - :signup
+  - :type
+  - :captcha
+  :type: :toggle
+  :content: '1'
+- :name: "*recaptcha settings"
+  :codename: :recaptcha_settings
+- :name: site key
+  :codename: :site_key
+- :name: secret key
+  :codename: :secret_key
+- :name: "*tinyMCE"
+  :type: :json
+  :codename: :tiny_mce
+  :content: |-
+    {
+      "theme": "silver",
+      "menubar": "edit view insert format table",
+      "plugins": "autoresize code lists hr link autolink table",
+      "toolbar1": "formatselect | bold italic strikethrough forecolor backcolor | deckolink nest |   | numlist bullist outdent indent  | removeformat",
+      "width":"100%",
+      "auto_resize":true,
+      "autoresize_max_height": 500,
+      "relative_urls":false,
+      "extended_valid_elements":"a[name|href|target|title|onclick],img[class|src|border=0|alt|title|hspace|vspace|width|height|align|onmouseover|onmouseout|name],hr[class|width|size|noshade],font[face|size|color|style],span[class|align|style]"
+     }
+- :name: Home
+  :codename: :default_home
+  :content: |
+    <div>{{:getting_started|core}}</div>
+    <div>{{## Feel free to get rid of this and start fresh! }}</div>
+- :name:
+  - :default_home
+  - :self
+  :type: :set
+- :name:
+  - :default_home
+  - :self
+  - :layout
+  :type: :pointer
+  :content: Home Layout
+- :name: "*home"
+  :type: :pointer
+  :codename: :home
+  :content: Home
+- :name: Dashboard
+  :codename: :dashboard
+- :name:
+  - :role
+  - :type
+  :type: :set
+- :name:
+  - :role
+  - :type
+  - :structure
+  :type: :nest_list
+  :content: |-
+    {{+:description|lead}}
+    {{+:dashboard|content}}
+    {{+:members|titled;title: Members}}
+- :name: "*getting started links"
+  :type: :link_list
+  :codename: :getting_started_links
+  :content: |-
+    [[/new/Cardtype | Add type]]
+    [[:all+:style | Configure skin]]
+    [[Administrator| Basic configuration]]
+    [[/:main_menu/edit | Change this menu]]
+    [[https://decko.org/Features | Learn more]]
+- :name:
+  - :administrator
+  - :dashboard
+  :type: :markdown
+  :content: "{{_L|configs}}\n"
+- :name:
+  - :shark
+  - :dashboard
+  :content: |
+    {{_L|configs}}
+
+    <h3>Rules</h3>
+    <div>Cards are configured by creating <em>rules</em>.  </div>
+    <div> </div>
+    <h5>Webpage rules</h5>
+    <div>
+    <blockquote>{{:all|bar_setting_list; filter:webpage}}</blockquote>
+    <h5>Permission rules</h5>
+    <blockquote>{{:all|bar_setting_list; filter:permission}}</blockquote>
+    </div>
+    <div><em>[[http://decko.org/rules | More about rules.]]</em></div>
+    <div> </div>
+    <div>
+    <h3>Views</h3>
+    <p>You can try out different views below</p>
+    <p>{{:getting_started|demo}}</p>
+    </div>
+- :name:
+  - :help_desk
+  - :dashboard
+  :content: |
+    {{_L|configs}}
+    <h3>Accounts</h3>
+    <p>{{:account|content}}</p>
+    <h3>Help Texts</h3>
+    <p>{{:help|bar}}</p>
+    <h3>Emails </h3>
+    <p>Here are the current [[:email_template|Email templates]] for your site.</p>
+    <p>{{:email_template+:type+:by_update|content}} </p>
+- :name:
+  - :eagle
+  - :dashboard
+  :content: "<h3>Your contributions</h3>\r\n<p>{{_user+*created|bar; title: created
+    cards}} {{_user+*edited|bar; title: edited cards}}</p>"
+- :name:
+  - :anyone_signed_in
+  - :dashboard
+  :content: |-
+    <h3>Your contributions</h3>
+    <p>
+      {{_user+:created|bar; title: created cards}}
+      {{_user+:edited|bar; title: edited cards}}
+    </p>
+- :name: "*getting started"
+  :type: :html
+  :codename: :getting_started
+  :content: |-
+    <div class="container text-center">
+      <div class="d-flex justify-content-center align-items-center p-3 my-3 rounded box-shadow">
+        {{+:shark|core}}
+        <h1>Welcome, Card Shark!</h1>
+      </div>
+      <div class="jumbotron">
+        <h3>Things to sink your teeth into:</h3>
+        <div class="d-flex justify-content-center">
+          <div class="m-4">
+            <p class="lead">Structure</p>
+            <p><a href="new/cardtype" class="btn btn-primary">Add new Cardtype</a></p>
+          </div>
+          <div class="m-4">
+            <p class="lead">Style</p>
+            <p>
+              <a href=":all+:style" class= "btn btn-primary">Configure Skin Card</a>
+            </p>
+          </div>
+        </div>
+      </div>
+      <p class="lead"><a href="Administrator">and more...</a></p>
+    </div>
+- :name:
+  - :getting_started
+  - :shark
+  :type: :html
+  :content: |-
+    <svg width="146px" height="124px" viewBox="0 0 246 224" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+        <!-- Generator: Sketch 46.2 (44496) - http://www.bohemiancoding.com/sketch -->
+        <title>decko_cards_logo_shark</title>
+        <desc>Created with Sketch.</desc>
+        <defs>
+            <rect id="path-1" x="35.3347256" y="6.48271356" width="157.279999" height="190.610001" rx="12.491335"></rect>
+            <filter x="-12.1%" y="-10.5%" width="125.4%" height="121.0%" filterUnits="objectBoundingBox" id="filter-2">
+                <feMorphology radius="1" operator="dilate" in="SourceAlpha" result="shadowSpreadOuter1"></feMorphology>
+                <feOffset dx="1" dy="0" in="shadowSpreadOuter1" result="shadowOffsetOuter1"></feOffset>
+                <feGaussianBlur stdDeviation="5.5" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+                <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.1 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+            </filter>
+            <rect id="path-3" x="51.9854941" y="15.404077" width="123.949997" height="171.156925" rx="9.6888466"></rect>
+            <filter x="-15.3%" y="-11.7%" width="132.3%" height="123.4%" filterUnits="objectBoundingBox" id="filter-4">
+                <feMorphology radius="1" operator="dilate" in="SourceAlpha" result="shadowSpreadOuter1"></feMorphology>
+                <feOffset dx="1" dy="0" in="shadowSpreadOuter1" result="shadowOffsetOuter1"></feOffset>
+                <feGaussianBlur stdDeviation="5.5" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+                <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.1 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+            </filter>
+            <path d="M70.1050368,31.6666109 L159.089911,31.6666109 L159.089911,31.6666109 C163.678051,31.6666109 167.397473,35.386033 167.397473,39.9741728 L167.397473,83.717145 L167.397473,162.808436 L167.397473,162.808436 C167.397473,167.396576 163.678051,171.115998 159.089911,171.115998 L70.1050368,171.115998 L70.1050368,171.115998 C65.516897,171.115998 61.7974749,167.396576 61.7974749,162.808436 L61.7974749,39.9741728 L61.7974749,39.9741728 C61.7974749,35.386033 65.516897,31.6666109 70.1050368,31.6666109 Z" id="path-5"></path>
+            <filter x="-18.0%" y="-14.3%" width="137.9%" height="128.7%" filterUnits="objectBoundingBox" id="filter-6">
+                <feMorphology radius="1" operator="dilate" in="SourceAlpha" result="shadowSpreadOuter1"></feMorphology>
+                <feOffset dx="1" dy="0" in="shadowSpreadOuter1" result="shadowOffsetOuter1"></feOffset>
+                <feGaussianBlur stdDeviation="5.5" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+                <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.1 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+            </filter>
+            <rect id="path-7" x="70.7637805" y="45.8525134" width="92.149175" height="107.18743" rx="7.8659801"></rect>
+            <filter x="-17.4%" y="-15.9%" width="136.9%" height="131.7%" filterUnits="objectBoundingBox" id="filter-8">
+                <feOffset dx="1" dy="0" in="SourceAlpha" result="shadowOffsetOuter1"></feOffset>
+                <feGaussianBlur stdDeviation="5.5" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+                <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.102553216 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+            </filter>
+        </defs>
+        <g id="decko_logo_container" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+            <g id="decko_cards_logo_shark" fill-rule="nonzero">
+                <g id="decko_logo_groups" transform="translate(9.000000, 9.000000)">
+                    <g id="svg-card-1" transform="translate(113.974725, 101.787714) scale(-1, 1) rotate(105.855860) translate(-113.974725, -101.787714) ">
+                        <use fill="black" fill-opacity="1" filter="url(#filter-2)" xlink:href="#path-1"></use>
+                        <use fill="#4D4D4D" fill-rule="evenodd" xlink:href="#path-1"></use>
+                    </g>
+                    <g id="svg-card-2" transform="translate(113.960493, 100.982539) scale(-1, 1) rotate(117.480003) translate(-113.960493, -100.982539) ">
+                        <use fill="black" fill-opacity="1" filter="url(#filter-4)" xlink:href="#path-3"></use>
+                        <use fill="#FFFFFF" fill-rule="evenodd" xlink:href="#path-3"></use>
+                    </g>
+                    <g id="svg-card-3" transform="translate(114.597474, 101.391304) scale(-1, 1) rotate(133.539993) translate(-114.597474, -101.391304) ">
+                        <use fill="black" fill-opacity="1" filter="url(#filter-6)" xlink:href="#path-5"></use>
+                        <use fill="#4C4C4C" fill-rule="evenodd" xlink:href="#path-5"></use>
+                    </g>
+                    <g id="svg-card-4" transform="translate(116.838368, 99.446228) scale(-1, 1) rotate(142.690002) translate(-116.838368, -99.446228) ">
+                        <use fill="black" fill-opacity="1" filter="url(#filter-8)" xlink:href="#path-7"></use>
+                        <use fill="#FFFFFF" fill-rule="evenodd" xlink:href="#path-7"></use>
+                    </g>
+                    <g id="svg-card-shark" transform="translate(115.500000, 96.500000) scale(-1, 1) rotate(20.000000) translate(-115.500000, -96.500000) translate(81.000000, 78.000000)" fill="#4C4C4C">
+                        <path d="M67.0472651,23 C67.0153814,23 66.9834976,22.9983754 66.9516139,22.995119 C66.398962,22.9430806 65.9942736,22.4551901 66.0466001,21.9059107 C66.1577867,20.7435153 66.3319205,19.6331724 66.5003338,18.5590045 C67.0178351,15.2641366 67.4699283,12.3839793 65.9239724,9.29849924 C61.6817773,11.3687669 59.0779225,14.4070825 57.9758856,18.5630696 C57.8352689,19.0968972 57.2842504,19.4168745 56.7487673,19.2741681 C56.2124639,19.1334979 55.8919857,18.5870633 56.0334226,18.0532287 C57.3717346,13.00563 60.6140778,9.41762341 65.9460485,7.08552522 C66.4120436,6.88142282 66.9499876,7.05381269 67.2107782,7.48355647 C69.6429457,11.4927721 69.0812994,15.0750817 68.4853155,18.8671836 C68.3218096,19.9120724 68.1517629,20.9927459 68.0462968,22.09537 C67.9972372,22.6125325 67.559859,23 67.0472651,23 Z" id="Shape"></path>
+                        <path d="M66.3499095,37 C66.2150134,37 66.0776707,36.9723588 65.9460485,36.9150261 C60.6140778,34.5820352 57.3717346,30.9943221 56.0334226,25.9465573 C55.8919857,25.4127122 56.2124639,24.8662597 56.7487673,24.7255777 C57.2842504,24.586116 57.835276,24.9032518 57.9758856,25.4366996 C59.0779225,29.5928235 61.6817773,32.6312391 65.9239724,34.7019792 C67.4699283,31.6163977 67.0178351,28.7361455 66.5003338,25.4411693 C66.3319205,24.366966 66.1577867,23.2565795 66.0466001,22.094153 C65.9942736,21.5448554 66.398962,21.0569489 66.9516139,21.0049088 C67.4969118,20.9504282 67.9939704,21.3557943 68.0462968,21.9046874 C68.1517629,23.0073477 68.3218025,24.0880498 68.4853155,25.13298 C69.0812994,28.9252067 69.6429457,32.5076342 67.2107782,36.5169817 C67.0235627,36.825171 66.6932769,37 66.3499095,37 Z" id="Shape"></path>
+                        <path d="M8.71393266,26 C8.03573086,26 7.36932221,25.9409174 6.71469985,25.822354 C2.44275669,25.0482009 0.382226956,21.9906998 0.29656896,21.8607251 C-0.00677539835,21.4011249 -0.0806471066,20.8539174 0.0898872471,20.3205669 C0.738222219,18.2894327 5.27185662,16.3304134 13.4110255,13.4261148 C21.659425,10.482705 40.1861121,8.90017224 57.4169109,16.6091114 C57.9065046,16.8279091 58.1320485,17.4170859 57.9206495,17.9251751 C57.7108276,18.4320415 57.1442218,18.6683649 56.6514878,18.4475267 C40.0454446,11.018096 21.7026551,12.5851436 14.0397167,15.3199441 C11.2373365,16.3198269 2.84354533,19.3149891 1.9720251,20.8433308 C2.34531241,21.3367525 3.99797761,23.2973999 7.04711568,23.8499043 C10.4404627,24.4639299 14.3202632,23.1580545 18.5843489,19.9673153 C19.0181446,19.6433918 19.6208977,19.7444437 19.9320996,20.1934504 C20.2440831,20.6420517 20.1466388,21.2678939 19.7144132,21.5914051 C15.7953319,24.5229983 12.1049279,26 8.71393266,26 Z" id="Shape"></path>
+                        <path d="M32.988313,32 C32.4812784,32 32.0498974,31.6071849 32.0040235,31.0858704 C32.001608,31.0556906 32,31.0259093 32,30.996128 C32,30.4825721 32.3871152,30.0452844 32.9013964,29.9987832 C40.2284495,29.340008 47.8098274,27.1152538 57.7219509,24.0440825 C58.2418636,23.8821433 58.7971876,24.1803261 58.9565417,24.7097976 C58.9863214,24.8072914 59,24.9060023 59,25.0030833 C59,25.4322068 58.7255575,25.8295133 58.299815,25.9612655 C48.2725962,29.0683323 40.5938391,31.3195935 33.0768517,31.9959143 C33.0470649,31.99837 33.0172852,32 32.988313,32 Z" id="Shape"></path>
+                        <path d="M24.0505049,32 C24.012578,32 23.975421,31.9975807 23.9374941,31.9927492 C18.9573086,31.3809479 14.0645792,29.2956488 9.39555488,25.7944994 C8.96905983,25.4748954 8.87230442,24.8562371 9.17959588,24.4120969 C9.48611746,23.9679567 10.0813587,23.8667904 10.5070772,24.1872032 C14.9113765,27.489255 19.504547,29.4536398 24.1604158,30.0259451 C24.6821198,30.0900277 25.0552092,30.5821313 24.9932809,31.1254194 C24.9360124,31.6292115 24.5257659,32 24.0505049,32 Z" id="Shape"></path>
+                        <path d="M41.0231141,37 C40.99367,37 40.9650243,36.9988436 40.9355802,36.9965309 C32.1863383,36.2413765 22.9787514,34.3404009 21.0243938,25.9643817 C20.9050344,25.4542672 21.2352653,24.9472386 21.7620519,24.83204 C22.2856517,24.7160682 22.8116468,25.0362377 22.9310062,25.5467354 C24.0673297,30.412837 28.1717952,33.2092156 36.3966387,34.5415127 C31.961144,31.7081576 29.3208586,28.6910159 28.2028292,25.2304182 C28.0420911,24.7310942 28.328562,24.200172 28.8442055,24.0441379 C29.3598489,23.8861742 29.9081163,24.1658847 30.0696528,24.6648255 C31.3189762,28.5318959 35.0486453,31.9820863 41.4727114,35.2130599 C41.8872965,35.4214998 42.0918015,35.884607 41.9605006,36.3184356 C41.8379545,36.7252982 41.4536119,37 41.0231141,37 Z" id="Shape"></path>
+                        <path d="M14.933219,19 C14.5214304,19 14.1438327,18.7466171 14.0321522,18.3623442 C13.8984379,17.903872 14.1939788,17.432105 14.6923781,17.3089159 L15.8244156,17.0292853 C16.3167364,16.9071466 16.8341269,17.1780259 16.9678478,17.6375424 C17.1015621,18.0960084 16.8060212,18.5677754 16.3076219,18.6909707 L15.1755844,18.9706012 C15.0950522,18.9905526 15.0137578,19 14.933219,19 Z" id="Shape"></path>
+                        <path d="M22.9472518,14 C22.8717975,14 22.7955706,13.9908917 22.7193438,13.9710926 C22.2119351,13.8419874 21.9024058,13.3144611 22.0279144,12.7928848 C23.6048033,6.23966486 27.9042946,1.9466294 34.8078126,0.0333814925 C35.155069,-0.0620618345 35.5231103,0.0508102139 35.760262,0.325260745 C35.9981795,0.600112096 36.0651694,0.989411129 35.9335073,1.33198709 C34.5598856,4.89710737 33.5188889,8.70578747 35.1866427,12.4031919 C35.4068521,12.8907123 35.2012673,13.4697163 34.7269707,13.6958543 C34.2542124,13.922787 33.6913684,13.7105118 33.471159,13.2229845 C31.8087996,9.53865506 32.363945,5.91888517 33.4981108,2.49237229 C28.3008395,4.41433455 25.1416675,7.95213003 23.8650575,13.2602123 C23.7580295,13.7033731 23.3722734,14 22.9472518,14 Z" id="Shape"></path>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </svg>
+- :name: 'mod: core'
+  :type: :mod
+  :codename: :mod_core
+- :name: 'mod: collection'
+  :type: :mod
+  :codename: :mod_collection
+- :name: 'mod: content'
+  :type: :mod
+  :codename: :mod_content
+- :name: 'mod: format'
+  :type: :mod
+  :codename: :mod_format
+- :name:
+  - :mod_format
+  - :script
+  :type: :list
+- :name:
+  - :mod_format
+  - :style
+  :type: :list
+- :name: 'mod: list'
+  :type: :mod
+  :codename: :mod_list
+- :name:
+  - :mod_list
+  - :script
+  :type: :list
+- :name:
+  - :mod_list
+  - :style
+  :type: :list
+- :name: 'mod: markdown'
+  :type: :mod
+  :codename: :mod_markdown
+- :name: 'mod: permissions'
+  :type: :mod
+  :codename: :mod_permissions
+- :name:
+  - :mod_permissions
+  - :style
+  :type: :list
+- :name: 'mod: help'
+  :type: :mod
+  :codename: :mod_help
+- :name:
+  - :mod_help
+  - :style
+  :type: :list
+- :name: 'mod: search'
+  :type: :mod
+  :codename: :mod_search
+- :name:
+  - :mod_search
+  - :script
+  :type: :list
+- :name:
+  - :mod_search
+  - :style
+  :type: :list
+- :name: 'mod: rules'
+  :type: :mod
+  :codename: :mod_rules
+- :name:
+  - :mod_rules
+  - :script
+  :type: :list
+- :name:
+  - :mod_rules
+  - :style
+  :type: :list
+- :name: 'mod: edit'
+  :type: :mod
+  :codename: :mod_edit
+- :name:
+  - :mod_edit
+  - :script
+  :type: :list
+- :name:
+  - :mod_edit
+  - :style
+  :type: :list
+- :name: 'mod: email'
+  :type: :mod
+  :codename: :mod_email
+- :name: 'mod: integrate'
+  :type: :mod
+  :codename: :mod_integrate
+- :name: 'mod: account'
+  :type: :mod
+  :codename: :mod_account
+- :name:
+  - :mod_account
+  - :script
+  :type: :list
+- :name:
+  - :mod_account
+  - :style
+  :type: :list
+- :name: 'mod: history'
+  :type: :mod
+  :codename: :mod_history
+- :name:
+  - :mod_history
+  - :style
+  :type: :list
+- :name: 'mod: carrierwave'
+  :type: :mod
+  :codename: :mod_carrierwave
+- :name:
+  - :mod_carrierwave
+  - :script
+  :type: :list
+- :name:
+  - :mod_carrierwave
+  - :style
+  :type: :list
+- :name: 'mod: virtual'
+  :type: :mod
+  :codename: :mod_virtual
+- :name: 'mod: assets'
+  :type: :mod
+  :codename: :mod_assets
+- :name: 'mod: script'
+  :type: :mod
+  :codename: :mod_script
+- :name: 'mod: ace editor'
+  :type: :mod
+  :codename: :mod_ace_editor
+- :name:
+  - :mod_ace_editor
+  - :script
+  :type: :list
+- :name: 'mod: api key'
+  :type: :mod
+  :codename: :mod_api_key
+- :name:
+  - :mod_api_key
+  - :style
+  :type: :list
+- :name: 'mod: style'
+  :type: :mod
+  :codename: :mod_style
+- :name:
+  - :mod_style
+  - :style
+  :type: :list
+- :name: 'mod: bar and box'
+  :type: :mod
+  :codename: :mod_bar_and_box
+- :name:
+  - :mod_bar_and_box
+  - :script
+  :type: :list
+- :name:
+  - :mod_bar_and_box
+  - :style
+  :type: :list
+- :name: 'mod: bootstrap'
+  :type: :mod
+  :codename: :mod_bootstrap
+- :name:
+  - :mod_bootstrap
+  - :script
+  :type: :list
+- :name:
+  - :mod_bootstrap
+  - :style
+  :type: :list
+- :name: 'mod: comment'
+  :type: :mod
+  :codename: :mod_comment
+- :name:
+  - :mod_comment
+  - :style
+  :type: :list
+- :name: 'mod: date'
+  :type: :mod
+  :codename: :mod_date
+- :name: 'mod: delayed job'
+  :type: :mod
+  :codename: :mod_delayed_job
+- :name: 'mod: follow'
+  :type: :mod
+  :codename: :mod_follow
+- :name:
+  - :mod_follow
+  - :script
+  :type: :list
+- :name:
+  - :mod_follow
+  - :style
+  :type: :list
+- :name: 'mod: session'
+  :type: :mod
+  :codename: :mod_session
+- :name: 'mod: tabs'
+  :type: :mod
+  :codename: :mod_tabs
+- :name:
+  - :mod_tabs
+  - :script
+  :type: :list
+- :name: 'mod: layout'
+  :type: :mod
+  :codename: :mod_layout
+- :name:
+  - :mod_layout
+  - :script
+  :type: :list
+- :name:
+  - :mod_layout
+  - :style
+  :type: :list
+- :name: 'mod: recaptcha'
+  :type: :mod
+  :codename: :mod_recaptcha
+- :name:
+  - :mod_recaptcha
+  - :script
+  :type: :list
+- :name: 'mod: tinymce editor'
+  :type: :mod
+  :codename: :mod_tinymce_editor
+- :name:
+  - :mod_tinymce_editor
+  - :script
+  :type: :list
+- :name:
+  - :mod_tinymce_editor
+  - :style
+  :type: :list
+- :name: 'mod: defaults'
+  :type: :mod
+  :codename: :mod_defaults
+- :name: 'mod: monkey'
+  :type: :mod
+  :codename: :mod_monkey
+- :name: 'mod: platypus'
+  :type: :mod
+  :codename: :mod_platypus
+- :name: Sara
+  :type: :user
+- :name: account
+- :name: John
+  :type: :user
+- :name:
+  - ''
+  - :account
+- :name:
+  - ''
+  - :salt
+  :type: :phrase
+  :content: 9ca83170480f093385b1ce657331fedf74553dcf
+- :name:
+  - ''
+  - :status
+  :type: :phrase
+  :content: unverified
+- :name: Probe Signup Y
+  :type: :signup
+- :name:
+  - Probe Signup Y
+  - :account
+- :name:
+  - Probe Signup Y
+  - :account
+  - :email
+  :type: :phrase
+  :content: probe.y@example.com
+- :name:
+  - Probe Signup Y
+  - :account
+  - :salt
+  :type: :phrase
+  :content: 8c2108ad2caefefe83ddedf240b012fd078a4309
+- :name:
+  - Probe Signup Y
+  - :account
+  - :status
+  :type: :phrase
+  :content: unverified
+- :name: Rose Oracle
+  :type: :user
+- :name:
+  - Rose Oracle
+  - :account
+- :name:
+  - Rose Oracle
+  - :account
+  - :salt
+  :type: :phrase
+  :content: a6c34cf3a240fabde370cc67f4aeadfe2986460c
+- :name:
+  - Rose Oracle
+  - :account
+  - :status
+  :type: :phrase
+  :content: active
+- :name: Basic
+- :name:
+  - Basic
+  - :type
+  :type: :set
+- :name:
+  - Basic
+  - :type
+  - Sara
+- :name:
+  - Basic
+  - :type
+  - Sara
+  - :follow
+  :type: :list
+  :content: "*always"
+- :name: Oracle Follow Card
+  :type: Basic
+  :content: row8 update v2
+- :name: Oracle Recipe Card
+  :content: row8 update v2
+- :name: ingredient
+- :name:
+  - Oracle Recipe Card
+  - ingredient
+  :content: row8 ingredient v2
+- :name:
+  - Oracle Recipe Card
+  - ingredient
+  - Sara
+- :name:
+  - Oracle Recipe Card
+  - ingredient
+  - Sara
+  - :follow
+  :type: :list
+  :content: "*always"
+- :name:
+  - ''
+  - :account
+- :name:
+  - ''
+  - :account
+  - :email
+  :type: :phrase
+  :content: probe.z@example.com
+- :name:
+  - ''
+  - :account
+  - :salt
+  :type: :phrase
+  :content: 265773b2eecf18becd371fb9988e451207094067
+- :name:
+  - ''
+  - :account
+  - :status
+  :type: :phrase
+  :content: unverified
+- :name: email
+- :name:
+  - :signin
+  - email
+  :content: rose.oracle@example.com
+- :name: Probe Signup Z
+  :type: :signup
+- :name:
+  - ''
+  - :account
+- :name:
+  - ''
+  - :salt
+  :type: :phrase
+  :content: 9ca83170480f093385b1ce657331fedf74553dcf
+- :name:
+  - ''
+  - :status
+  :type: :phrase
+  :content: unverified
+- :name:
+  - Sara
+  - :account
+- :name:
+  - Sara
+  - :account
+  - :salt
+  :type: :phrase
+  :content: f0b0fe5173e582fc9ed50c40e60aea1e190cda5a
+- :name:
+  - Sara
+  - :account
+  - :status
+  :type: :phrase
+  :content: active
+- :name:
+  - John
+  - :account
+- :name:
+  - John
+  - :account
+  - :salt
+  :type: :phrase
+  :content: f0b0fe5173e582fc9ed50c40e60aea1e190cda5a
+- :name:
+  - John
+  - :account
+  - :status
+  :type: :phrase
+  :content: active
+- :name:
+  - Oracle Recipe Card
+  - ingredient
+  - :self
+  :type: :set
+- :name:
+  - Oracle Recipe Card
+  - ingredient
+  - :self
+  - Sara
+- :name:
+  - Oracle Recipe Card
+  - ingredient
+  - :self
+  - Sara
+  - :follow
+  :type: :list
+  :content: "*always"
+- :name:
+  - John
+  - :account
+  - :email
+  :type: :phrase
+  :content: john@example.com
+- :name: Jane Oracle Signup
+  :type: :user
+- :name:
+  - Jane Oracle Signup
+  - :account
+- :name:
+  - Jane Oracle Signup
+  - :account
+  - :email
+  :type: :phrase
+  :content: jane.oracle@example.com
+- :name:
+  - Jane Oracle Signup
+  - :account
+  - :salt
+  :type: :phrase
+  :content: 28d6938c2d7f8352965b4bc7726d0f445df27df5
+- :name:
+  - Jane Oracle Signup
+  - :account
+  - :status
+  :type: :phrase
+  :content: active
+- :name: Search Oracle Kind
+  :type: :cardtype
+- :name: Search Oracle Alpha
+  :type: Search Oracle Kind
+  :content: alpha body text
+- :name: Search Oracle Beta
+  :type: Search Oracle Kind
+  :content: beta body
+- :name: Search Oracle Gamma
+  :type: Search Oracle Kind
+  :content: alpha body gamma
+- :name: Search Oracle Junction
+  :type: Basic
+- :name: child_one
+- :name:
+  - Search Oracle Junction
+  - child_one
+  :type: Search Oracle Kind
+  :content: first child
+- :name: child_two
+- :name:
+  - Search Oracle Junction
+  - child_two
+  :type: Search Oracle Kind
+  :content: second child
+- :name: Search Oracle Author
+  :type: :user
+- :name: Probe Kind Z
+  :type: :cardtype
+- :name: Search Oracle Made
+  :type: Basic
+  :content: made body
+- :name: PersistProbe Renamed
+  :content: <p>hi</p> bad() <b>ok</b><a href="javascript:evil()">l</a><div style="color:red">d</div>
+- :name: PersistProbe B
+- :name:
+  - PersistProbe Renamed
+  - PersistProbe B
+  :content: beta
+- :name: PersistProbe Type Probe
+  :type: :cardtype
+- :name: PersistProbe Child
+- :name:
+  - PersistProbe Parent
+  - PersistProbe Child
+  :content: c
+- :name: PersistProbe Bare
+- :name: PersistProbe Rev
+  :content: two

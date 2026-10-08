@@ -78,6 +78,94 @@ export function registerSetTypeAssignment(
   ASSIGNMENTS.set(moduleKey, typeName);
 }
 
+/** Every `assign_type` line of the deck's gems, by mod (the gem name
+ *  without its "card-mod-" prefix; "core" for card-1.110.0 mod/core),
+ *  each [module key, type] exactly as the set file declares it. The mod
+ *  loader's load() resets the registry and re-registers these for the
+ *  mods it loads (registerGemTypeAssignments); the loader-less render path
+ *  registers them all at import (render/views.ts). Without them the write
+ *  path typed new rule and set cards RichText: a "<set>+*read" rule is a
+ *  List in Ruby. */
+export const GEM_TYPE_ASSIGNMENTS: Readonly<Record<string, readonly (readonly [string, string])[]>> = {
+  core: [["Right::Autoname", "phrase"]], // mod/core set/right/autoname.rb:1
+  account: [
+    ["Right::Email", "phrase"], // set/right/email.rb:5
+    ["Right::Password", "phrase"], // set/right/password.rb:3
+    ["Right::Roles", "search_type"], // set/right/roles.rb:1
+    ["Right::Salt", "phrase"], // set/right/salt.rb:3
+    ["Right::Status", "phrase"], // set/right/status.rb:4
+    ["TypePlusRight::Role::Members", "list"], // set/type_plus_right/role/members.rb:3
+  ],
+  date: [
+    ["Right::WhenCreated", "phrase"], // set/right/when_created.rb:1
+    ["Right::WhenLastEdited", "phrase"], // set/right/when_last_edited.rb:1
+  ],
+  edit: [
+    ["Right::InputType", "pointer"], // set/right/input_type.rb:1
+    ["Right::Thanks", "phrase"], // set/right/thanks.rb:1
+  ],
+  email: [
+    ["Right::Bcc", "list"], // set/right/bcc.rb:3
+    ["Right::Cc", "list"], // set/right/cc.rb:3
+    ["Right::From", "list"], // set/right/from.rb:3
+    ["Right::Subject", "phrase"], // set/right/subject.rb:3
+    ["Right::TextMessage", "plain_text"], // set/right/text_message.rb:3
+    ["Right::To", "list"], // set/right/to.rb:3
+  ],
+  follow: [
+    ["Right::ContextualClass", "list"], // set/right/contextual_class.rb:1
+    ["Right::Disappear", "toggle"], // set/right/disappear.rb:1
+    ["Right::Follow", "list"], // set/right/follow.rb:5
+    ["Right::Following", "list"], // set/right/following.rb:1
+    ["Right::FollowFields", "list"], // set/right/follow_fields.rb:1
+    ["Right::Message", "phrase"], // set/right/message.rb:1
+  ],
+  format: [["Right::Head", "html"]], // set/right/head.rb:1
+  integrate: [
+    ["Right::OnCreate", "list"], // set/right/on_create.rb:1
+    ["Right::OnDelete", "list"], // set/right/on_delete.rb:1
+    ["Right::OnUpdate", "list"], // set/right/on_update.rb:1
+  ],
+  layout: [
+    ["Right::EnabledRoles", "session"], // set/right/enabled_roles.rb:3
+    ["Right::Layout", "pointer"], // set/right/layout.rb:1
+  ],
+  list: [
+    ["Right::ContentOptions", "list"], // set/right/content_options.rb:1
+    ["Right::ContentOptionView", "phrase"], // set/right/content_option_view.rb:1
+  ],
+  permissions: [
+    ["Right::Create", "list"], // set/right/create.rb:3
+    ["Right::Delete", "list"], // set/right/delete.rb:3
+    ["Right::Read", "list"], // set/right/read.rb:3
+    ["Right::Update", "list"], // set/right/update.rb:3
+  ],
+  recaptcha: [["Right::Captcha", "toggle"]], // set/right/captcha.rb:1
+  rules: [
+    ["Right::Right", "set"], // set/right/right.rb:3
+    ["Right::Self", "set"], // set/right/self.rb:3
+    ["Right::Type", "set"], // set/right/type.rb:3
+    ["Right::TypePlusRight", "set"], // set/right/type_plus_right.rb:3
+    ["TypePlusRight::Set::Setting", "list"], // set/type_plus_right/set/setting.rb:1
+  ],
+  script: [["Right::Script", "list"]], // set/right/script.rb:1
+  search: [["Right::Count", "search_type"]], // set/right/count.rb:1
+  style: [["TypePlusRight::Set::Style", "pointer"]], // set/type_plus_right/set/style.rb:3
+};
+
+/** Register one mod's gem assign_type lines (GEM_TYPE_ASSIGNMENTS); a key
+ *  the mod's manifest already registered keeps the manifest's value. */
+export function registerGemTypeAssignments(modName: string): void {
+  for (const [moduleKey, typeName] of GEM_TYPE_ASSIGNMENTS[modName] ?? []) {
+    if (!ASSIGNMENTS.has(moduleKey)) ASSIGNMENTS.set(moduleKey, typeName);
+  }
+}
+
+/** Register every mod's gem assign_type lines (the loader-less paths). */
+export function registerAllGemTypeAssignments(): void {
+  for (const modName of Object.keys(GEM_TYPE_ASSIGNMENTS)) registerGemTypeAssignments(modName);
+}
+
 /** The assignment a single module key maps to, or undefined. */
 export function getSetTypeAssignment(moduleKey: string): Nameish | undefined {
   return ASSIGNMENTS.get(moduleKey);

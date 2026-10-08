@@ -91,6 +91,10 @@ export async function resolveTypeId(
     const assignedId = await resolveAssignedTypeIdForCard(fetcher, {
       name: spec.name,
       isNew: true, // ensureSides creates a NEW card; ensure_type_id is a new-arg flow
+      // *type plus right's anchor reads the left part's type name
+      // (08_type_plus_right.rb left_type): Role+*members is a List because
+      // its left part is a Role.
+      leftTypeName: await leftTypeNameOf(fetcher, spec.name),
     });
     if (assignedId !== undefined) return assignedId;
     // type_id_from_template (type.rb:76-78 `name && template&.type_id`):
@@ -106,6 +110,16 @@ export async function resolveTypeId(
     if (templateId !== undefined) return templateId;
   }
   return defaultTypeId(fetcher);
+}
+
+/** The type name of a compound name's left part, when that card exists. */
+async function leftTypeNameOf(fetcher: FetchEngine, name: Nameish): Promise<Nameish | null> {
+  const parsed = DeckoName.parse(name);
+  if (!parsed.isCompound || parsed.leftName === undefined) return null;
+  const left = await fetcher.fetchByName(parsed.leftName.key, { skipModules: true });
+  const leftTypeId = left?.typeId;
+  if (leftTypeId === undefined) return null;
+  return (await fetcher.fetchById(leftTypeId, { skipModules: true }))?.name ?? null;
 }
 
 /** type_id_from_template for a NEW card (type.rb:76-78 `name &&

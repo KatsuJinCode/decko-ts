@@ -94,7 +94,8 @@
 
 import type { SQLDatabaseDriver } from "./driver.js";
 import type { FetchEngine } from "../card/fetch.js";
-import type { CardRecord } from "../card/fetch/card-record.js";
+import { composeCardRecord, type CardRecord } from "../card/fetch/card-record.js";
+import type { CardsRow } from "./schema.js";
 import { SessionStore } from "../card/auth/index.js";
 import { signinAccount } from "../card/auth/signin.js";
 import { createCardActionEngineForSession } from "../card/actions/engine-for-session.js";
@@ -128,6 +129,12 @@ export interface WriteRouteRequest {
    *  (fold-10 union: the scheme-downgrade lane's field the edge-signin-form-fix
    *  pick consumes — the deploy lineage landed it in b0f8252.) */
   scheme?: "http" | "https";
+  /** The URL query string as received ("?a=1&b=2", or "" / absent). Rails
+   *  merges query parameters into params beneath the body parameters
+   *  (request.parameters: query first, body wins); the history pane's revert
+   *  links carry their parameters here (revert_actions[], revert_to,
+   *  revert_act, look_in_trash — card-mod-history actions.rb:81-89). */
+  search?: string;
   headers: Record<string, string | undefined>;
   body: string;
   /** The RAW body bytes — required for multipart/form-data (binary file
@@ -285,6 +292,15 @@ interface ParsedBody {
    *  (card-mod-recaptcha set/all/recaptcha.rb:41-44, 57-66; the grecaptcha
    *  v3 token the recaptcha_token hidden field posts, recaptcha.rb:75-83). */
   recaptchaToken?: string;
+  /** params[:look_in_trash] — Card.uri_fetch's trash switch
+   *  (card-1.110.0 lib/card/fetch/card_class.rb:118-122). */
+  lookInTrash?: boolean;
+  /** params[:revert_actions] / params[:revert_to] / params[:revert_act] —
+   *  the :rollback_actions event's inputs (card-mod-history
+   *  set/all/history/revision.rb actions_to_revert, process_revert_actions). */
+  revertActions?: string[];
+  revertTo?: string;
+  revertAct?: string;
 }
 
 /** The urlencoded/json key grammar every content type shares (the
@@ -319,6 +335,30 @@ function applyParam(
   else if (key === "comment_author") parsed.commentAuthor = value;
   else if (key === "draft") parsed.draft = value;
   else if (key === "recaptcha_token") parsed.recaptchaToken = value;
+  else if (key === "look_in_trash") parsed.lookInTrash = value !== "" && value !== "false";
+  else if (key === "revert_actions[]" || key === "revert_actions") {
+    (parsed.revertActions ??= []).push(value);
+  } else if (key === "revert_to") parsed.revertTo = value;
+  else if (key === "revert_act") parsed.revertAct = value;
+}
+
+/** The query-string parameters, applied before the body's so a body
+ *  parameter of the same name wins (Rails request.parameters merges
+ *  query_parameters, then request_parameters). */
+function applyQuery(parsed: ParsedBody, search: string | undefined): ParsedBody {
+  if (search === undefined || search === "" || search === "?") return parsed;
+  const fromQuery = emptyParsedBody();
+  for (const [key, value] of new URLSearchParams(search).entries()) {
+    applyParam(fromQuery, key, value);
+  }
+  return {
+    ...fromQuery,
+    ...Object.fromEntries(Object.entries(parsed).filter(([, v]) => v !== undefined)),
+    card: { ...fromQuery.card, ...parsed.card },
+    subcards: { ...fromQuery.subcards, ...parsed.subcards },
+    success: { ...fromQuery.success, ...parsed.success },
+    cardFiles: parsed.cardFiles,
+  } as ParsedBody;
 }
 
 function emptyParsedBody(): ParsedBody {
@@ -755,7 +795,7 @@ const WRITE_PATH_HOST: ModEngineHost = {
 };
 
 let servingModEventRuntimeSeat: Promise<ModEventRuntime> | undefined;
-function servingModEventRuntime(): Promise<ModEventRuntime> {
+export function servingModEventRuntime(): Promise<ModEventRuntime> {
   servingModEventRuntimeSeat ??= (async () => {
     const [{ defaultDeckEventRuntime }] = await Promise.all([
       import("../card/mod-loader/default-mod-deck.js"),
@@ -789,7 +829,7 @@ export async function handleWriteRequest(
     (req.headers["accept"] ?? "").includes("application/json");
   let parsed: ParsedBody;
   try {
-    parsed = parseBody(req);
+    parsed = applyQuery(parseBody(req), req.search);
   } catch (error) {
     if (error instanceof CardActionError) return errorResponse(json, error);
     throw error;
@@ -883,8 +923,25 @@ export async function handleWriteRequest(
       const markName = route.mark !== undefined ? markToName(route.mark) : undefined;
       const hashName = card["name"];
       const updateName = hashName ?? markName;
-      const existing = await lookupLiveCard(ctx.fetcher, updateName);
-      if (existing === undefined) {
+      const reverting =
+        (parsed.revertActions !== undefined && parsed.revertActions.length > 0) ||
+        (parsed.revertAct !== undefined && parsed.revertAct !== "");
+      // look_in_trash (uri_fetch): a trashed card is fetched as itself, not
+      // as a new card. The history pane's revert requests send it.
+      const trashedTarget =
+        parsed.lookInTrash === true ? await lookupTrashedCard(ctx.fetcher, updateName) : undefined;
+      const existing = (await lookupLiveCard(ctx.fetcher, updateName)) ?? trashedTarget;
+      if (existing !== undefined && reverting) {
+        // :rollback_actions (card-mod-history set/all/history/events.rb:40-46)
+        // replaces the update with the revisions the request names.
+        result = await engine.revertActions({
+          cardId: existing.id,
+          actionIds: parsed.revertActions,
+          actId: parsed.revertAct,
+          revertToPrevious: parsed.revertTo === "previous",
+        });
+        name = result?.name?.s ?? updateName;
+      } else if (existing === undefined) {
         // rest.rb:14-16 — update of a NEW card routes to CREATE (the fetch
         // builds the card from the params; trashed marks fetch as new and
         // the create path revives). The name rides the request's own
@@ -902,6 +959,11 @@ export async function handleWriteRequest(
         const typeIdRaw = card["type_id"];
         result = await engine.updateCard({
           cardId: existing.id,
+          ...(existing.trash ? { lookInTrash: true } : {}),
+          ...(card["skip"] === "validate_renaming" ? { skipValidateRenaming: true } : {}),
+          // card[skip] names an event the act skips (skip_and_trigger.rb);
+          // the rename form's box sends update_referer_content.
+          ...(card["skip"] !== undefined && card["skip"] !== "" ? { skip: [card["skip"]] } : {}),
           // card-hash name WINS over the URL mark (uri_fetch_opts) — a
           // card[name] on an update is the RENAME arg (name_events.rb).
           name: hashName !== undefined && hashName !== markName ? hashName : undefined,
@@ -1024,6 +1086,51 @@ function createInputFromParams(
     typeId: typeIdRaw !== undefined && /^\d+$/.test(typeIdRaw) ? Number(typeIdRaw) : undefined,
     attachment,
   };
+}
+
+/** A trashed card by name — a look_in_trash fetch (retrieve.rb:31). Simple
+ *  names match the stored key; a compound name matches the trashed junction
+ *  of its two (live or trashed) parts. */
+async function lookupTrashedCard(
+  fetcher: FetchEngine,
+  name: string,
+): Promise<(CardRecord & { id: number }) | undefined> {
+  const parsedName = DeckoName.parse(name);
+  const driver = fetcher.driver;
+  const pick = async (sql: string, params: unknown[]): Promise<number | undefined> => {
+    const { rows } = await driver.query<{ id: number }>(sql, params);
+    return rows[0] === undefined ? undefined : Number(rows[0].id);
+  };
+  const idOfKey = (key: string): Promise<number | undefined> =>
+    pick("SELECT id FROM cards WHERE key = ? ORDER BY trash, id LIMIT 1", [key]);
+  let id: number | undefined;
+  if (parsedName.isSimple) {
+    id = await pick("SELECT id FROM cards WHERE key = ? AND trash = 1 ORDER BY id DESC LIMIT 1", [
+      parsedName.key,
+    ]);
+  } else if (parsedName.leftName !== undefined && parsedName.rightName !== undefined) {
+    const resolve = async (part: DeckoName): Promise<number | undefined> =>
+      part.isSimple ? idOfKey(part.key) : (await lookupTrashedOrLive(fetcher, part.s))?.id;
+    const left = await resolve(parsedName.leftName);
+    const right = await resolve(parsedName.rightName);
+    if (left !== undefined && right !== undefined) {
+      id = await pick(
+        "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 1 ORDER BY id DESC LIMIT 1",
+        [left, right],
+      );
+    }
+  }
+  if (id === undefined) return undefined;
+  const { rows } = await driver.query<CardsRow>("SELECT * FROM cards WHERE id = ?", [id]);
+  if (rows[0] === undefined) return undefined;
+  return { ...(await composeCardRecord(rows[0], fetcher.lexicon)), id } as CardRecord & { id: number };
+}
+
+async function lookupTrashedOrLive(
+  fetcher: FetchEngine,
+  name: string,
+): Promise<(CardRecord & { id: number }) | undefined> {
+  return (await lookupLiveCard(fetcher, name)) ?? lookupTrashedCard(fetcher, name);
 }
 
 async function lookupLiveCard(

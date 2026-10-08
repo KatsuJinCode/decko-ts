@@ -64,13 +64,16 @@ describe("updateCard — content saves", () => {
     ]);
   });
 
-  it("no-op saves persist nothing (idempotency — events.rb:34-37)", async () => {
+  it("no-op saves write no action and leave only an empty act (events.rb:34-37, :48-50)", async () => {
     const f = await fresh();
     const engine = actionEngine(f.storage);
     const result = await engine.updateCard({ cardId: f.joeCard.id, content: "v1" }); // unchanged
     expect(result).toBeNull();
     expect(await f.storage.count("card_actions")).toBe(0);
-    expect(await f.storage.count("card_acts")).toBe(0);
+    // finalize_act still saves the act for the act card (the Ruby oracle's
+    // persistence probe shows the empty act row).
+    const acts = await f.storage.selectAll<Record<string, unknown>>("SELECT card_id FROM card_acts");
+    expect(acts).toEqual([{ card_id: f.joeCard.id }]);
     const card = await cardRow(f, f.joeCard.id);
     expect(card.updated_at).toBe(FIXED_TS); // stamps untouched (AR skips no-op saves)
   });

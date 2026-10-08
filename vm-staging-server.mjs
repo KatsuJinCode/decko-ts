@@ -3040,6 +3040,7 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
     {
       method: req.method,
       pathname,
+      search: new URL(req.url ?? "/", "http://localhost").search,
       host: req.headers.host,
       headers: req.headers,
       body,

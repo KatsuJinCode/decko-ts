@@ -50,6 +50,9 @@ export type CardActionErrorCode =
   | "attachment-missing" // validate_file_exist (card-mod-carrierwave set/abstract/attachment.rb:26-34)
   | "protected-card" // validate_delete (mod/core/set/all/trash.rb:31-49)
   | "conflict" // detect_conflict (card-mod-history set/all/history/events.rb:19-22)
+  | "revert-unsupported" // a revert shape the port does not carry out (named in the message)
+  | "field-required" // require_field :email (card-mod-account set/right/account.rb:8)
+  | "validation-failed" // another :validate event's errors (e.g. card-mod-account password.rb:28-46)
   | "recaptcha"; // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55)
 
 /** Error class for every action-layer rejection. `code` carries the Ruby
@@ -102,6 +105,16 @@ export interface AttachmentInput {
 export interface SubcardInput extends TypeSpec {
   content?: string | null;
   attachment?: AttachmentInput;
+  /** The subcard's own subcards, keyed relative to the subcard ("+*email"
+   *  under "+*account"): the sign-up form's nested card[subcards] hash. */
+  subcards?: Record<string, SubcardInput>;
+  /** A new name for an existing subcard: the subcard is renamed in this act
+   *  (a subcard hash with `name:`, subcards.rb). */
+  name?: Nameish;
+  /** `trash: true` on an existing subcard trashes it in this act, as a
+   *  delete action chained to the supercard's action (a history revert's
+   *  subcard revisions, card-mod-history revision.rb merge_revert_action!). */
+  trash?: boolean;
 }
 
 /** Card.create! arguments (Card.create! opts — director/card_class.rb:5-9:
@@ -182,6 +195,53 @@ export interface UpdateCardInput extends TypeSpec {
    *  (card-mod-recaptcha set/all/recaptcha.rb:41-44, 57-66). Same shape as
    *  the create-side field. */
   recaptchaToken?: string;
+  /** Fetch the card with `look_in_trash` (card-1.110.0 lib/card/fetch.rb
+   *  :49-51, retrieve.rb:31): the update may reach a trashed row. Without
+   *  it a trashed card is "no such card", as Card[id] filters trash. */
+  lookInTrash?: boolean;
+  /** An explicit trash assignment. `false` pulls a trashed card back as an
+   *  ordinary :update save (Card#update!(trash: false)); requires
+   *  lookInTrash. `true` is accepted only with withinRollback; trashing is
+   *  otherwise deleteCard. */
+  trash?: boolean;
+  /** The save is the :rollback_actions event's nested `update!`
+   *  (card-mod-history set/all/history/events.rb:40-46). It runs inside the
+   *  outer update's director, whose action was already identified as
+   *  :update (card-1.110.0 lib/card/director/all.rb:19-28), so even a
+   *  revision that trashes the card records an :update action and runs no
+   *  `on: :delete` events (no delete_children cascade). */
+  withinRollback?: boolean;
+  /** `card[skip]=validate_renaming`: the save skips the validate_renaming
+   *  event (mod/core/set/all/name_events.rb:55-61), so a rename may carry a
+   *  content or type change. The history pane's revert links send it
+   *  (card-mod-history set/all/history/actions.rb:81-89). */
+  skipValidateRenaming?: boolean;
+  /** `card[skip]` / `update!(skip: ...)`: further events this save's act
+   *  skips (lib/card/set/event/skip_and_trigger.rb). The rename form's
+   *  "do not update references to this name" box sends
+   *  `update_referer_content`: referers keep their content, their reference
+   *  rows are rebuilt from it, and rows pointing at the renamed card lose
+   *  its id (reference_events.rb:7-25). */
+  skip?: string[];
+}
+
+/** A history revert request — the history pane's "revert to this" and
+ *  "revert to previous" links (card-mod-history set/all/history/actions.rb
+ *  :81-89, lib/card/act/act_renderer/relative_act_renderer.rb:50-54,
+ *  absolute_act_renderer.rb:17-19). The :rollback_actions event
+ *  (set/all/history/events.rb:40-46) reverts the named actions' cards to
+ *  their revisions (revision.rb). */
+export interface RevertActionsInput {
+  /** The card the request updates (the URL mark, fetched look_in_trash). */
+  cardId: number;
+  /** params[:revert_actions] — explicit action ids ("revert to this"). */
+  actionIds?: (number | string)[];
+  /** params[:revert_act] — every action of one act ("revert to previous").
+   *  Takes precedence over actionIds (revision.rb actions_to_revert). */
+  actId?: number | string;
+  /** params[:revert_to] == "previous": revert each action to the revision
+   *  BEFORE it (revision_before_action). */
+  revertToPrevious?: boolean;
 }
 
 /** Card#delete! arguments (trash.rb:11-21 — an update save with trash:

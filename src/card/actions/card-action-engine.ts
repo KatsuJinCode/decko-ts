@@ -43,11 +43,12 @@
 // Reference maintenance status: card_references population on
 // create/update (refresh_references_out), cleanup on delete
 // (clear_references), the referee-side backfill (refresh_references_in —
-// map_referees on every name-bearing save; its unmap_referees arm is
-// unused until the save path learns `skip:`), and the rename-side referer
+// map_referees on every name-bearing save; its unmap_referees arm runs on a
+// rename that skips update_referer_content), and the rename-side referer
 // rewrite (update_referer_content, update-referer-content.ts) ARE built
-// here. update_referer_references_out — the rewrite's skip twin — is
-// exported but not yet wired (no skip machinery on this save path).
+// here. update_referer_references_out — the rewrite's skip twin — runs
+// when the save's `skip` list (UpdateCardInput.skip, card[skip]) names
+// update_referer_content.
 
 import {
   ActWriter,
@@ -55,6 +56,7 @@ import {
   type CardFieldState,
 } from "../history/write-path.js";
 import { actionTypeCode } from "../history/action.js";
+import { sqlDateTime } from "../history/act.js";
 import { DeckoName } from "../name.js";
 import type { CardsRow } from "../../server/schema.js";
 import type { FetchEngine } from "../fetch.js";
@@ -75,9 +77,11 @@ import {
   type CardActionSummary,
   type CreateCardInput,
   type DeleteCardInput,
+  type RevertActionsInput,
   type SubcardInput,
   type UpdateCardInput,
 } from "./types.js";
+import { actionsToRevert, revisionOf, type Revision } from "./revert-actions.js";
 import {
   assertNameAvailable,
   findTrashedCardByLex,
@@ -85,6 +89,12 @@ import {
   validateNameLegality,
 } from "./name-validation.js";
 import { resolveTypeId } from "./type-resolution.js";
+import { findRule } from "../rules/lookup.js";
+import {
+  cleanContent,
+  NO_CLEAN_RIGHT_CODENAMES,
+  NO_CLEAN_TYPE_CODENAMES,
+} from "./content-clean.js";
 import { assertNotOwnAncestor } from "./junction-cycle-detection.js";
 import {
   cascadeAllFieldReadRules,
@@ -139,7 +149,21 @@ import {
   refreshReferencesOut,
 } from "./refresh-references-out.js";
 import { refreshReferencesIn } from "./refresh-references-in.js";
-import { updateRefererContent } from "./update-referer-content.js";
+import { updateRefererContent, updateRefererReferencesOut } from "./update-referer-content.js";
+import {
+  LIST_RIGHT_CODENAMES,
+  LIST_TYPE_CODENAMES,
+  listItemStrings,
+  standardizeIdListContent,
+  standardizeListContent,
+} from "./list-content.js";
+import {
+  DEFAULT_ACCOUNT_STATUS,
+  NO_HISTORY_RIGHT_CODENAMES,
+  encryptPassword,
+  generateSalt,
+  passwordErrors,
+} from "./account-fields.js";
 import {
   runModEventStage,
   type ModEventContext,
@@ -453,13 +477,20 @@ export class CardActionEngine {
   ): Promise<(CardActionSummary & { actId: number })[]> {
     const saved: (CardActionSummary & { actId: number })[] = [];
     if (subcards === undefined) return saved;
-    for (const [key, sub] of Object.entries(subcards)) {
+    const trashedHere: (CardActionSummary & { actId: number })[] = [];
+    for (const [key, sub] of await this.subcardStoreOrder(mainName, subcards)) {
       const fullName = key.startsWith("+") ? `${mainName?.s ?? ""}${key}` : key;
       const existing = await this.fetch.fetchByName(fullName);
       const existingRow =
         existing?.id !== undefined && existing.id !== null
           ? await this.fetchRowById(existing.id)
           : undefined;
+      if (existingRow !== undefined && existingRow.trash === 0 && sub.trash === true) {
+        const trashed = await this.trashInWriter(writer, existingRow, superActionId);
+        saved.push(...trashed);
+        trashedHere.push(...trashed);
+        continue;
+      }
       if (existingRow !== undefined && existingRow.trash === 0) {
         const updated = await this.updateInWriter(
           writer,
@@ -470,6 +501,7 @@ export class CardActionEngine {
             // input's "no change" spelling — the scenarios never clear a
             // plus via nil; Ruby's explicit-nil clear is not a pinned arm).
             content: sub.content ?? undefined,
+            ...(sub.name !== undefined ? { name: sub.name } : {}),
             typeId: sub.typeId,
             typeCode: sub.typeCode,
             typeName: sub.typeName,
@@ -488,11 +520,24 @@ export class CardActionEngine {
             name: updated.name,
           });
         }
+        if (sub.subcards !== undefined) {
+          saved.push(
+            ...(await this.saveSubcardsInWriter(
+              writer,
+              DeckoName.parse(fullName),
+              sub.subcards,
+              updated?.actionId ?? superActionId,
+            )),
+          );
+        }
       } else {
         const created = await this.createInWriter(
           writer,
           {
             name: fullName,
+            // the subcard's own subcards ride along so its validation sees
+            // them (require_field); they are saved below, after it
+            ...(sub.subcards !== undefined ? { subcards: sub.subcards } : {}),
             content: sub.content,
             typeId: sub.typeId,
             typeCode: sub.typeCode,
@@ -509,6 +554,33 @@ export class CardActionEngine {
           verb: created.verb,
           name: created.name,
         });
+        // A subcard's own subcards (the sign-up form's
+        // card[subcards][+*account][subcards][+*email]) save after it,
+        // within the same act, chained to its action.
+        if (sub.subcards !== undefined) {
+          saved.push(
+            ...(await this.saveSubcardsInWriter(
+              writer,
+              DeckoName.parse(fullName),
+              sub.subcards,
+              created.actionId,
+            )),
+          );
+        }
+        await this.ensureAccountDefaults(
+          writer,
+          DeckoName.parse(fullName),
+          created.cardId,
+          created.actionId,
+          saved,
+        );
+      }
+    }
+    // delete_children for the subcards trashed here, after the act's own
+    // subcards (a child the act already trashed is not trashed again).
+    for (const trashed of trashedHere) {
+      for (const child of await this.deleteChildren(writer, trashed.cardId, trashed.actionId)) {
+        saved.push({ ...child, actId: trashed.actId });
       }
     }
     return saved;
@@ -723,6 +795,7 @@ export class CardActionEngine {
     // Card[AnonymousID] there either) keeps the legacy signed-in-only
     // rejection. Update and delete ride the same acting-id pattern
     // (actingIdForWrite) — Ruby's chain rules all three tasks identically.
+    this.assertAccountsHaveEmail(input.subcards);
     const actingId = await this.actingIdForWrite();
     if (actingId === undefined) this.assertWritable();
     // extract_type_id! runs at Card.new time (type.rb:87-96), BEFORE the
@@ -733,20 +806,28 @@ export class CardActionEngine {
     const placeholder = newCardRecord(name, { typeId });
     await this.assertCanWrite(placeholder, "create");
     const writer = this.newWriter(actingId);
-    const result = await this.createInWriter(writer, input, {
-      isActCard: true,
-      resolvedTypeId: typeId,
-    });
+    let result: ActionResult;
+    try {
+      result = await this.createInWriter(writer, input, {
+        isActCard: true,
+        resolvedTypeId: typeId,
+      });
+    } catch (error) {
+      await this.dropUnfilledActions(writer);
+      throw error;
+    }
     // subcards.rb:1-16: the subcards ride this save's act (director/
     // store.rb:37-58) — the "create Book card with plusses" submission.
     let finalResult = result;
     const subResults = await this.saveSubcardsInWriter(writer, name, input.subcards, result.actionId);
+    await this.ensureAccountDefaults(writer, name, result.cardId, result.actionId, subResults);
     if (subResults.length > 0) {
       finalResult = { ...result, subactions: [...result.subactions, ...subResults] };
     }
     // II (director.rb:26): the integrate seam runs BEFORE the notify hooks
     // (Ruby's notify_followers is itself an integration event,
     // card-mod-follow set/all/notify.rb:13-16).
+    await this.bumpAncestorTimestamps(CardActionEngine.savedCardIds(finalResult));
     await this.dispatchEventStage(
       "integrate",
       this.eventCard({
@@ -759,6 +840,7 @@ export class CardActionEngine {
         typeId,
       }),
     );
+    await this.saveRecentlyEditedSettings(finalResult);
     await this.dispatchSavePathIntegrations(finalResult);
     return finalResult;
   }
@@ -793,6 +875,25 @@ export class CardActionEngine {
     const typeId =
       opts.resolvedTypeId ??
       (await resolveTypeId(this.fetch, { ...input, name })); // extract_type_id! + type_id_from_code + default
+    // set_default_content (content.rb:12-15, :prepare_to_validate, on:
+    // :create, when: use_default_content?): a create that assigns no content
+    // takes the new-card template's content. Ruby's db_content_changed? is
+    // false only when no content was assigned at all; an explicit "" counts
+    // as assigned. An attaching save derives its own content.
+    // Assigned content is standardized first (prepare_assignment_params,
+    // assign_attributes.rb:35-39); template content is not assigned.
+    if (input.content != null && input.attachment === undefined) {
+      input.content = await this.standardizeAssignedContent(
+        input.content,
+        typeId,
+        name.isCompound && name.leftName !== undefined ? ((await this.fetch.lexicon.id(name.leftName)) ?? null) : null,
+        name.isCompound && name.rightName !== undefined ? ((await this.fetch.lexicon.id(name.rightName)) ?? null) : null,
+      );
+    }
+    if (input.content == null && input.attachment === undefined) {
+      const templateContent = await this.newCardTemplateContent(name, typeId);
+      if (templateContent !== undefined) input.content = templateContent;
+    }
     await assertNameAvailable(this.fetch, name, undefined); // validate_uniqueness_of_name (:19-26)
     await this.validateFileExist(input, typeId); // validate_file_exist (attachment.rb:26-34)
     // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55) is a
@@ -807,6 +908,12 @@ export class CardActionEngine {
     );
     await this.dispatchEventStage("validate", validationCard());
 
+    // A compound card's own action row is saved before the side subcards
+    // its create makes (ActWriter.reserveAction has the Ruby mechanism), so
+    // it is reserved here and filled by the row write below.
+    const reservedActionId = name.isCompound
+      ? await writer.reserveAction({ actionType: "create", superActionId: input.superActionId ?? null })
+      : undefined;
     // prepare_left_and_right (name_events.rb:68-73): compound names resolve
     // their sides; missing sides become subcard creates in this act
     // (prepare_new_side :118-125).
@@ -815,6 +922,13 @@ export class CardActionEngine {
     // manage_trash -> pull_from_trash! (trash.rb:23-25, :57-62): a matching
     // trashed row is revived (its id reused) instead of a fresh INSERT.
     const lex = this.lexOf(name, sides.leftId, sides.rightId);
+    // Known divergence: when a side is created or revived in this act, Ruby's
+    // manage_trash (prepare_to_store) runs before prepare_left_and_right
+    // assigns the side id (:store), so its lex query cannot find the trashed
+    // junction and Ruby INSERTs a second (left_id, right_id) row. On a schema
+    // with the production UNIQUE (left_id, right_id) index that insert fails
+    // the save; on a deck without it a duplicate junction row is left behind.
+    // The port revives the trashed row instead.
     const trashed =
       lex === undefined ? undefined : await findTrashedCardByLex(this.fetch.driver, lex);
     // SP (director.rb:20): manage_trash/set_autoname's stage.
@@ -825,6 +939,15 @@ export class CardActionEngine {
       input.content = c;
     });
     await this.dispatchEventStage("prepare_to_store", validationCard());
+    // set_content (:store, content.rb:1-5): prepare_db_content cleans the
+    // stored HTML before the row write.
+    if (input.content != null && input.attachment === undefined) {
+      input.content = await this.cleanForStore(
+        input.content,
+        typeId,
+        name.isSimple ? null : sides.rightId,
+      );
+    }
 
     if (trashed !== undefined) {
       const before = cardFieldStateFromRow(trashed);
@@ -834,7 +957,9 @@ export class CardActionEngine {
       const after: CardFieldState = {
         name: name.isSimple ? name.s : null,
         type_id: typeId,
-        db_content: input.content ?? null,
+        // set_content (content.rb:1-5): prepare_db_content stores
+        // `standard_db_content || ""` — a save never writes NULL content.
+        db_content: input.content ?? "",
         trash: 0,
         left_id: name.isSimple ? null : sides.leftId,
         right_id: name.isSimple ? null : sides.rightId,
@@ -863,6 +988,15 @@ export class CardActionEngine {
         cardId: trashed.id,
         before,
         after,
+        // The revived record is new apart from its id (trash.rb:57-62), so
+        // every assigned field counts as changed against a blank record:
+        // the oracle records name, type_id, db_content and trash changes for
+        // a revived simple card even where the trashed row held the same
+        // values.
+        changedFields: (Object.keys(after) as (keyof CardFieldState)[]).filter(
+          (f) => after[f] !== null,
+        ),
+        reservedActionId,
         key: name.isSimple ? name.key : null,
         // set_read_rule store event (permissions.rb:1-5): a revival is a
         // :create save, so the derivation runs (new_card? is true via
@@ -991,13 +1125,40 @@ export class CardActionEngine {
         ],
       }),
     );
+    // Account fields (account-fields.ts): encrypt_password at :store, over
+    // the account's salt (a salt generated earlier in this act counts).
+    const rightCode =
+      name.isSimple || sides.rightId === null ? undefined : await this.fetch.codenames.nameForId(sides.rightId);
+    if (rightCode === "password" && input.content != null && input.attachment === undefined) {
+      // validate_password_length / validate_password_chars (:validate) run on
+      // the assigned password, before encrypt_password (:store).
+      const problems = passwordErrors(input.content);
+      if (problems.length > 0) {
+        throw new CardActionError("validation-failed", `Validation failed: ${problems.join(", ")}`);
+      }
+      input.content = encryptPassword(input.content, await this.accountSalt(sides.leftId));
+    }
+    // require_field :email (set/right/account.rb:8): an account is created
+    // only with its +*email, named in this save's subcards or already stored.
+    if (rightCode === "account") {
+      const named = Object.keys(input.subcards ?? {}).some(
+        (k) => k.split("+").map((p) => p.trim().toLowerCase()).pop() === "*email",
+      );
+      const stored =
+        !named && (await this.fetch.lexicon.id(DeckoName.parse(`${name.s}+*email`))) !== undefined;
+      if (!named && !stored) {
+        throw new CardActionError("field-required", "Validation failed: Email required");
+      }
+    }
     const created = await writer.createCard({
       name: name.isSimple ? name.s : null,
       key: name.isSimple ? name.key : null,
       type_id: typeId,
       // assign_set_specific_attributes (attachment.rb:90-97): an attaching
       // save RESETS content — the identifier replaces any content argument.
-      db_content: input.attachment !== undefined ? null : (input.content ?? null),
+      // set_content (content.rb:1-5): `standard_db_content || ""` — a
+      // content-less create stores "", never NULL.
+      db_content: input.attachment !== undefined ? null : (input.content ?? ""),
       left_id: name.isSimple ? null : sides.leftId,
       right_id: name.isSimple ? null : sides.rightId,
       codename: input.codename ?? null,
@@ -1016,7 +1177,18 @@ export class CardActionEngine {
       }),
       superActionId: input.superActionId ?? null,
       isActCard: opts.isActCard,
+      reservedActionId,
     });
+    if (rightCode !== undefined && NO_HISTORY_RIGHT_CODENAMES.has(rightCode)) {
+      await this.dropHistory(created.actionId, created.actId);
+    }
+    // set_default_salt (account/events.rb:3-5): the account's salt is
+    // generated now, so a password saved later in this act encrypts over it;
+    // the salt card itself is stored after the request's own fields
+    // (ensureAccountDefaults).
+    if (rightCode === "account") {
+      this.pendingSalts.set(created.cardId, generateSalt(this.clock()));
+    }
     // :store_attachment! + :correct_identifier (the finalizer's block
     // comment): bytes land at files/<card>/<action><ext> and the column
     // carries the final identifier — BEFORE the cache expiry so the
@@ -1102,11 +1274,36 @@ export class CardActionEngine {
   // -----------------------------------------------------------------------
 
   async updateCard(input: UpdateCardInput): Promise<ActionResult | null> {
+    // card[skip] (skip_and_trigger.rb): the events this save's act skips,
+    // seen by every event of the act, nested saves included.
+    const outerSkip = this.saveSkip;
+    if (input.skip !== undefined && input.skip.length > 0) {
+      this.saveSkip = [...(outerSkip ?? []), ...input.skip];
+    }
     try {
       return await this.updateCardInner(input);
     } finally {
+      this.saveSkip = outerSkip;
       this.pendingSaveInput = undefined;
     }
+  }
+
+  /** The current save's own skip list (UpdateCardInput.skip), merged with
+   *  the runtime's engine-wide skip list wherever an event asks. */
+  private saveSkip: string[] | undefined;
+
+  /** skip_event? (skip_and_trigger.rb:68-70) for the current save. */
+  private skipsEvent(event: string): boolean {
+    return (
+      this.saveSkip?.includes(event) === true ||
+      this.modEvents?.skip?.includes(event) === true ||
+      this.modEvents?.forceSkip?.includes(event) === true
+    );
+  }
+
+  private actSkipList(): readonly string[] | undefined {
+    if (this.saveSkip === undefined) return this.modEvents?.skip;
+    return [...(this.modEvents?.skip ?? []), ...this.saveSkip];
   }
 
   private async updateCardInner(input: UpdateCardInput): Promise<ActionResult | null> {
@@ -1123,9 +1320,17 @@ export class CardActionEngine {
     const row = await this.fetchRowById(input.cardId);
     // Card[id] of a missing or trashed card fetches nil (retrieval adds
     // trash = 0 — fetch/retrieval_from_db_query) and update! on nil fails;
-    // revival-from-trash is the CREATE path's job.
-    if (row === undefined || row.trash === 1) {
+    // revival-from-trash by name is the CREATE path's job. A look_in_trash
+    // fetch (retrieve.rb:31) reaches the trashed row: the history pane's
+    // revert requests update a trashed card that way.
+    if (row === undefined || (row.trash === 1 && input.lookInTrash !== true)) {
       throw new CardActionError("not-found", `no such card: ${input.cardId}`);
+    }
+    if (input.trash === true && input.withinRollback !== true) {
+      throw new CardActionError(
+        "revert-unsupported",
+        "an update cannot trash a card; trashing is deleteCard",
+      );
     }
     // extract_type_id! precedence (type.rb:81-92) — resolved BEFORE the ok?
     // gate, because Ruby evaluates permissions in the validate stage with
@@ -1229,7 +1434,21 @@ export class CardActionEngine {
       result = { ...result, subactions: [...result.subactions, ...subResults] };
     }
     // II (director.rb:26): the integrate seam before the notify hooks (see
-    // the create path's note).
+    // the create path's note). A no-op save commits nothing, so ActiveRecord
+    // runs no after_commit integration phase for it (phases.rb:3) and its
+    // nesters are not touched.
+    if (input.withinRollback === true) {
+      // :rollback_actions ends with `abort :success`: the director is
+      // aborted, so the integration phase never runs for the request
+      // (phases.rb:13-15, :48-50) — no ancestor timestamps, no integrate
+      // events, no follower notifications. The cache expiry already ran.
+      return result;
+    }
+    await this.bumpAncestorTimestamps(
+      CardActionEngine.savedCardIds(result).filter(
+        (id) => !(result?.actCardActionOmitted === true && id === row.id),
+      ),
+    );
     await this.dispatchEventStage(
       "integrate",
       this.eventCard({
@@ -1241,6 +1460,7 @@ export class CardActionEngine {
         typeId: row.type_id,
       }),
     );
+    await this.saveRecentlyEditedSettings(result);
     await this.dispatchSavePathIntegrations(result, {
       actCardActionOmitted: result?.actCardActionOmitted === true,
     });
@@ -1367,8 +1587,9 @@ export class CardActionEngine {
     if (nameChanged && newName !== undefined) {
       // validate_renaming (name_events.rb:55-61) — skipped when the change
       // is only a new variant of the same key (`name_before_act == name`
-      // is key equality, cardname.rb#==).
-      if (newName.key !== currentKey) {
+      // is key equality, cardname.rb#==), and when the request carries
+      // card[skip]=validate_renaming (the history revert links do).
+      if (newName.key !== currentKey && input.skipValidateRenaming !== true) {
         if (input.content !== undefined && input.content !== (before.db_content ?? undefined)) {
           throw new CardActionError(
             "rename-conflict",
@@ -1406,7 +1627,37 @@ export class CardActionEngine {
       }
     }
 
-    // Attribute merges.
+    // Attribute merges. Assigned content is standardized under the card's
+    // new type (prepare_assignment_params, assign_attributes.rb:35-39).
+    if (input.content !== undefined && input.attachment === undefined) {
+      input.content = await this.standardizeAssignedContent(
+        input.content,
+        resolvedTypeId ?? before.type_id,
+        before.left_id,
+        before.right_id,
+      );
+    }
+    // Account fields (account-fields.ts): encrypt_password runs when the
+    // content changes; +*password and +*salt saves keep no history.
+    const updateRightCode =
+      before.right_id === null ? undefined : await this.fetch.codenames.nameForId(before.right_id);
+    // validate_password_present (:prepare_to_validate, on: :update): a blank
+    // password aborts the save as a success, storing nothing.
+    if (updateRightCode === "password" && input.content !== undefined && input.content.trim() === "") {
+      return null;
+    }
+    if (
+      updateRightCode === "password" &&
+      input.content !== undefined &&
+      input.attachment === undefined &&
+      input.content !== (before.db_content ?? undefined)
+    ) {
+      const problems = passwordErrors(input.content);
+      if (problems.length > 0) {
+        throw new CardActionError("validation-failed", `Validation failed: ${problems.join(", ")}`);
+      }
+      input.content = encryptPassword(input.content, await this.accountSalt(before.left_id));
+    }
     if (input.content !== undefined) after.db_content = input.content;
     // add_comment (comment.rb:4-12) at the SP position — the pending
     // content is the merged value (the requested content, else the row's
@@ -1439,9 +1690,17 @@ export class CardActionEngine {
     if (resolvedTypeId !== undefined && resolvedTypeId !== before.type_id) {
       after.type_id = resolvedTypeId;
     }
+    // Card#update!(trash: false) on a trashed row: an ordinary :update save
+    // whose only difference may be the trash flag (identify_action gives
+    // :update — the trash change is not to true). Trashing is deleteCard.
+    if (input.trash === false) after.trash = 0;
+    // withinRollback: the rollback's nested update! may trash the card and
+    // still records an :update action (corrected after the write below).
+    if (input.trash === true && input.withinRollback === true) after.trash = 1;
     const lexBefore = this.lexOfRow(before);
     let lexAfter = lexBefore;
     let renameSides: ResolvedSides["created"] | undefined;
+    let reservedActionId: number | undefined;
 
     if (nameChanged && newName !== undefined) {
       if (newName.isSimple) {
@@ -1474,6 +1733,13 @@ export class CardActionEngine {
             (id): id is number => id !== undefined && id !== row.id,
           ),
         );
+        // The renamed card's own action row precedes the actions of the side
+        // cards the rename creates, as on a compound create (Ruby saves the
+        // supercard's action before the subcards it stores).
+        reservedActionId = await writer.reserveAction({
+          actionType: "update",
+          superActionId: input.superActionId ?? null,
+        });
         const sides = await this.ensureSides(writer, newName, row.id);
         after.name = null;
         after.left_id = sides.leftId;
@@ -1483,6 +1749,15 @@ export class CardActionEngine {
         // card's action (patched below, once this action's id exists).
         renameSides = sides.created;
       }
+    }
+
+    // set_content (:store, content.rb:1-5) runs on every save:
+    // prepare_db_content re-cleans the stored HTML even when the content
+    // itself was not assigned (a rename or type change of a card whose
+    // stored content predates cleaning stores the cleaned form).
+    if (input.attachment === undefined && after.db_content !== null) {
+      after.db_content = await this.cleanForStore(after.db_content, after.type_id, after.right_id);
+      if (input.content !== undefined) input.content = after.db_content;
     }
 
     // set_read_rule store event (permissions.rb:1-5, changed: %i[type_id
@@ -1514,7 +1789,21 @@ export class CardActionEngine {
       ...(after.right_id !== before.right_id && !nameChanged ? ["right_id"] : []),
       ...(after.db_content !== before.db_content ? ["db_content"] : []),
       ...(after.type_id !== before.type_id ? ["type_id"] : []),
+      ...(after.trash !== before.trash ? ["trash"] : []),
     ];
+    // history? false: +*password, +*salt (account-fields.ts) and
+    // *recent settings (card-mod-rules set/self/recent_settings.rb). Their
+    // saves keep no action and no change rows, including the change rows a
+    // first update would backfill for the create action.
+    const noHistory =
+      (updateRightCode !== undefined && NO_HISTORY_RIGHT_CODENAMES.has(updateRightCode)) ||
+      row.codename === "recent_settings";
+    const changesBefore = noHistory
+      ? Number(
+          (await this.fetch.driver.query<{ m: number | null }>("SELECT MAX(id) AS m FROM card_changes", [])).rows[0]
+            ?.m ?? 0,
+        )
+      : 0;
     const saved = await writer.updateCard({
       cardId: row.id,
       before,
@@ -1534,8 +1823,22 @@ export class CardActionEngine {
       // false for subcard saves riding the same act (subcards.rb — the
       // writer holds ONE act-card action per act).
       isActCard: opts.isActCard ?? true,
+      reservedActionId,
     });
     if (saved === null) return null; // no-op save: nothing persisted
+    if (noHistory) {
+      await this.fetch.driver.query("DELETE FROM card_changes WHERE id > ?", [changesBefore]);
+      await this.dropHistory(saved.actionId, saved.actId);
+    }
+    if (after.trash === 1 && before.trash === 0) {
+      // Only the rollback's nested update! reaches here (guarded above): the
+      // ActWriter identifies a trash flip as :delete, but the outer
+      // director's action is :update (lib/card/director/all.rb:19-28).
+      await this.fetch.driver.query("UPDATE card_actions SET action_type = ? WHERE id = ?", [
+        actionTypeCode("update"),
+        saved.actionId,
+      ]);
+    }
     // SP (director.rb:20) + SS (director.rb:21): the storage-phase seams
     // run for PERSISTED saves only — a no-op save produced no action for
     // events to belong to (disclosed divergence: Ruby's director would
@@ -1595,10 +1898,13 @@ export class CardActionEngine {
     // :content`), then the rename pair — update_referer_content (:7-10,
     // `on: :update, changed: :name`, skip: :allowed) and refresh_references_
     // in (:22-25, backfill + the unmap arm the skip machinery now reaches).
+    // skip_update_referers? (:34-36) = this act skips update_referer_content
+    // (the rename form's "do not update references" box, card[skip]).
     // Registered REAL bodies replace these built-ins; the rename thunks
     // keep their own nameChanged gate so the unregistered path is exactly
     // the pre-seam behavior (update-referer-content.ts, refresh-references-
     // in.ts).
+    const skipReferers = this.skipsEvent("update_referer_content");
     await this.runFinalizeEvents(
       this.eventCard({
         name: nameAfter,
@@ -1626,7 +1932,12 @@ export class CardActionEngine {
         [
           "update_referer_content",
           async () => {
-            if (nameChanged && nameAfter !== undefined && currentName !== undefined) {
+            if (
+              nameChanged &&
+              nameAfter !== undefined &&
+              currentName !== undefined &&
+              !skipReferers
+            ) {
               await updateRefererContent(
                 { driver: this.fetch.driver, lexicon: this.fetch.lexicon },
                 row.id,
@@ -1637,10 +1948,25 @@ export class CardActionEngine {
           },
         ],
         [
+          // reference_events.rb:16-19, `when: :skip_update_referers?`: the
+          // referers keep their content and rebuild their rows from it.
+          "update_referer_references_out",
+          async () => {
+            if (nameChanged && skipReferers) {
+              await updateRefererReferencesOut(
+                { driver: this.fetch.driver, lexicon: this.fetch.lexicon },
+                row.id,
+              );
+            }
+          },
+        ],
+        [
           "refresh_references_in",
           async () => {
             if (nameChanged && nameAfter !== undefined) {
-              await refreshReferencesIn(this.fetch.driver, row.id, nameAfter.key);
+              await refreshReferencesIn(this.fetch.driver, row.id, nameAfter.key, {
+                unmapExisting: skipReferers,
+              });
             }
           },
         ],
@@ -1793,6 +2119,166 @@ export class CardActionEngine {
     }
   }
 
+  /** event :update_ancestor_timestamps (card-mod-history-0.20.0
+   *  set/all/history/events.rb:1-7, :integrate stage, every committed save):
+   *  every card that nests a saved card — directly, or through nesters of
+   *  nesters (history_ancestor_ids, set/all/history.rb:20-26, at most five
+   *  levels below the saved card) — gets updater_id = the acting account and
+   *  updated_at = now, then its cache entry expires. Nesters come from
+   *  card_references rows with ref_type "I" (nesting_ids, history.rb:98-102);
+   *  a nester's own nesters are followed only while it is live (`id.card&.`,
+   *  a trash-filtering fetch). Runs after the finalize stage, so it sees the
+   *  references the save itself just wrote or cleared. */
+  private async bumpAncestorTimestamps(cardIds: readonly number[]): Promise<void> {
+    const driver = this.fetch.driver;
+    const nestersOf = async (id: number): Promise<number[]> =>
+      (
+        await driver.query<{ referer_id: number }>(
+          `SELECT DISTINCT referer_id FROM card_references
+           WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT NULL`,
+          [id],
+        )
+      ).rows.map((r) => Number(r.referer_id));
+    const isLive = async (id: number): Promise<boolean> => {
+      const row = await this.fetchRowById(id);
+      return row !== undefined && row.trash === 0;
+    };
+    const ancestors = async (id: number, level: number): Promise<number[]> => {
+      if (level > 5) return [];
+      const direct = await nestersOf(id);
+      const out = [...direct];
+      for (const parent of direct) {
+        if (await isLive(parent)) out.push(...(await ancestors(parent, level + 1)));
+      }
+      return out;
+    };
+    const ids = new Set<number>();
+    for (const cardId of cardIds) for (const a of await ancestors(cardId, 0)) ids.add(a);
+    if (ids.size === 0) return;
+    const list = [...ids];
+    const actingId = (await this.actingIdForWrite()) ?? this.actor?.id ?? null;
+    await driver.query(
+      `UPDATE cards SET updater_id = ?, updated_at = ? WHERE id IN (${list.map(() => "?").join(", ")})`,
+      [actingId, sqlDateTime(this.clock()), ...list],
+    );
+    for (const id of list) {
+      const row = await this.fetchRowById(id);
+      const name = row !== undefined ? await this.composedNameOf(row) : undefined;
+      if (name !== undefined) {
+        const record = newCardRecord(name);
+        record.id = id;
+        this.fetch.expireCard(record);
+      }
+    }
+    expireRuleResolutionCache(driver);
+  }
+
+  /** The cards a result saved: the act card and every subcard action. */
+  private static savedCardIds(result: ActionResult | null): number[] {
+    if (result === null) return [];
+    return [...new Set([result.cardId, ...result.subactions.map((s) => s.cardId)])];
+  }
+
+  // -----------------------------------------------------------------------
+  // Revert — the history pane's "revert to this" / "revert to previous" /
+  // restore requests (card-mod-history set/all/history/events.rb:40-46
+  // :rollback_actions, revision.rb process_revert_actions). The request is an
+  // update of the card fetched look_in_trash with card[skip]=
+  // validate_renaming; when it names actions, :rollback_actions replaces it
+  // with `update! update_args` (the revisions) and aborts the outer save with
+  // :success, so the stored result is ONE ordinary save of the reverted
+  // attributes. Other cards' actions in the request become subcards of that
+  // save (update_args[:subcards][action.card.name]).
+  // -----------------------------------------------------------------------
+
+  async revertActions(input: RevertActionsInput): Promise<ActionResult | null> {
+    const driver = this.fetch.driver;
+    const row = await this.fetchRowById(input.cardId);
+    if (row === undefined) {
+      throw new CardActionError("not-found", `no such card: ${input.cardId}`);
+    }
+    const actions = await actionsToRevert(driver, {
+      actId: input.actId,
+      actionIds: input.actionIds,
+    });
+    if (actions.length === 0) {
+      // rollback_request? is false: the outer update runs as sent (only the
+      // skip flag assigned), a no-op save.
+      return this.updateCard({ cardId: row.id, lookInTrash: true, skipValidateRenaming: true });
+    }
+    let own: Revision = {};
+    const others = new Map<number, { row: CardsRow; rev: Revision }>();
+    for (const action of actions) {
+      const actionCard = action.card_id === row.id ? row : await this.fetchRowById(action.card_id);
+      if (actionCard === undefined) continue;
+      const rev = await revisionOf(driver, actionCard, action, input.revertToPrevious === true);
+      if (action.card_id === row.id) own = { ...own, ...rev };
+      else others.set(action.card_id, { row: actionCard, rev: { ...(others.get(action.card_id)?.rev ?? {}), ...rev } });
+    }
+    const subcards: Record<string, SubcardInput> = {};
+    for (const { row: other, rev } of others.values()) {
+      const otherName = await this.composedNameOf(other);
+      // A revision that trashes the other card (revision_before_action of
+      // its create: { trash: true }) becomes a trashing subcard, a :delete
+      // action under this card's action, as in Ruby. An already trashed
+      // card stays as it is.
+      if (rev.trash === true && otherName !== undefined) {
+        if (other.trash === 0) subcards[otherName.s] = { trash: true };
+        continue;
+      }
+      // Renaming another card back: Ruby's request raises "stage finalize
+      // was skipped" after storing the reverted rows without history (a
+      // Ruby defect, recorded in the persistence report); the port refuses
+      // it before writing anything.
+      const unsupported =
+        otherName === undefined ||
+        other.trash === 1 ||
+        (rev.name !== undefined && rev.name !== other.name) ||
+        (rev.left_id !== undefined && rev.left_id !== other.left_id) ||
+        (rev.right_id !== undefined && rev.right_id !== other.right_id);
+      if (unsupported) {
+        throw new CardActionError(
+          "revert-unsupported",
+          `reverting another card's rename or trash state in the same request is not supported (card ${other.id})`,
+        );
+      }
+      subcards[otherName.s] = {
+        content: rev.db_content ?? "",
+        ...(typeof rev.type_id === "number" ? { typeId: rev.type_id } : {}),
+      };
+    }
+    const hasSubcards = Object.keys(subcards).length > 0;
+    // The card's own revision. A revision with trash: true (reverting a
+    // create "to previous") trashes the card through the same nested
+    // update!: an :update action, no delete events (withinRollback).
+    const isCompound = row.left_id !== null;
+    if (isCompound && (own.left_id !== undefined && own.left_id !== row.left_id ||
+      own.right_id !== undefined && own.right_id !== row.right_id)) {
+      throw new CardActionError(
+        "revert-unsupported",
+        `reverting a compound card's parts is not supported (card ${row.id})`,
+      );
+    }
+    const result = await this.updateCard({
+      cardId: row.id,
+      lookInTrash: true,
+      skipValidateRenaming: true,
+      withinRollback: true,
+      ...(!isCompound && own.name !== undefined && own.name !== row.name ? { name: own.name } : {}),
+      ...(own.db_content !== undefined && own.db_content !== null ? { content: own.db_content } : {}),
+      ...(typeof own.type_id === "number" && own.type_id !== row.type_id ? { typeId: own.type_id } : {}),
+      ...(own.trash === false && row.trash === 1 ? { trash: false } : {}),
+      ...(own.trash === true && row.trash === 0 ? { trash: true } : {}),
+      ...(hasSubcards ? { subcards } : {}),
+    });
+    // :rollback_actions then runs clear_drafts (this actor's drafts of the
+    // card); a save that changed something already cleared them.
+    if (result === null) {
+      await this.newWriter(await this.actingIdForWrite()).clearOwnDrafts(row.id);
+    }
+    return result;
+  }
+
   // -----------------------------------------------------------------------
   // Delete — Card#delete! (trash.rb:11-21): an update save with trash:
   // true. Codenamed (system) cards are undeletable (validate_delete
@@ -1937,9 +2423,92 @@ export class CardActionEngine {
     };
     // II (director.rb:26): the integrate seam before the notify hooks (see
     // the create path's note).
+    await this.bumpAncestorTimestamps(CardActionEngine.savedCardIds(result));
     await this.dispatchEventStage("integrate", deletedCard());
     await this.dispatchSavePathIntegrations(result);
     return result;
+  }
+
+  /** The order an act stores its subcards in: as given, except that a
+   *  trashing subcard whose left or right part is itself trashed by the act
+   *  is stored right after that part. Ruby's delete_children (on the part's
+   *  delete) takes the child into the part's own subcards, so it is stored
+   *  in the part's store stage, after the part. */
+  private async subcardStoreOrder(
+    mainName: DeckoName | undefined,
+    subcards: Record<string, SubcardInput>,
+  ): Promise<[string, SubcardInput][]> {
+    const entries = Object.entries(subcards);
+    if (!entries.some(([, sub]) => sub.trash === true)) return entries;
+    const rows = new Map<string, CardsRow | undefined>();
+    for (const [key] of entries) {
+      const fullName = key.startsWith("+") ? `${mainName?.s ?? ""}${key}` : key;
+      const id = await this.fetch.lexicon.id(DeckoName.parse(fullName));
+      rows.set(key, id === undefined ? undefined : await this.fetchRowById(id));
+    }
+    const trashIds = new Map<number, string>();
+    for (const [key, sub] of entries) {
+      const row = rows.get(key);
+      if (sub.trash === true && row !== undefined) trashIds.set(row.id, key);
+    }
+    const parentKey = (key: string): string | undefined => {
+      const row = rows.get(key);
+      if (row === undefined || subcards[key]?.trash !== true) return undefined;
+      for (const side of [row.left_id, row.right_id]) {
+        const owner = side === null ? undefined : trashIds.get(side);
+        if (owner !== undefined && owner !== key) return owner;
+      }
+      return undefined;
+    };
+    const out: [string, SubcardInput][] = [];
+    const placed = new Set<string>();
+    const place = (key: string): void => {
+      if (placed.has(key)) return;
+      placed.add(key);
+      out.push([key, subcards[key]]);
+      for (const [child] of entries) if (parentKey(child) === key) place(child);
+    };
+    for (const [key] of entries) if (parentKey(key) === undefined) place(key);
+    for (const [key] of entries) place(key);
+    return out;
+  }
+
+  /** A subcard trashed within the caller's act (SubcardInput.trash): a
+   *  delete action chained to the supercard's action, its references
+   *  cleared, and its set's read rules re-derived when it is a rule. Its
+   *  live children are trashed by saveSubcardsInWriter once the act's own
+   *  subcards are saved, so a child that is itself a subcard of the act
+   *  keeps the supercard's action as its super action, as Ruby's director
+   *  reuses a subcard already in the act. */
+  private async trashInWriter(
+    writer: ActWriter,
+    row: CardsRow,
+    superActionId: number | null,
+  ): Promise<(CardActionSummary & { actId: number })[]> {
+    const saved = await writer.trashCard({
+      cardId: row.id,
+      before: cardFieldStateFromRow(row),
+      superActionId,
+    });
+    if (saved === null) return [];
+    const name = await this.composedNameOf(row);
+    await this.expireAfterWrite({ cardId: row.id, nameAfter: name, verb: "delete" });
+    await this.runFinalizeEvents(
+      this.eventCard({
+        name,
+        id: row.id,
+        key: name?.key ?? row.key ?? undefined,
+        dbContent: row.db_content,
+        action: "delete",
+        actId: saved.actId,
+        trash: true,
+        typeId: row.type_id,
+        changedFields: ["trash"],
+      }),
+      [["clear_references", () => clearReferencesOnDelete(this.fetch.driver, row.id)]],
+    );
+    await cascadeReadRuleAfterRuleSave(this.readRuleDeps(), row, true);
+    return [{ cardId: row.id, actionId: saved.actionId, actId: saved.actId, verb: "delete", name }];
   }
 
   /** Breadth-first trash cascade: every live card whose left_id or right_id
@@ -2049,7 +2618,7 @@ export class CardActionEngine {
       act: {
         action: input.action,
         actId: input.actId,
-        skip: this.modEvents?.skip,
+        skip: this.actSkipList(),
         forceSkip: this.modEvents?.forceSkip,
         trigger: this.modEvents?.trigger,
       },
@@ -2067,7 +2636,7 @@ export class CardActionEngine {
     const runtime = this.modEvents;
     if (runtime === undefined) return Promise.resolve(undefined);
     return runModEventStage(
-      runtime,
+      this.saveSkip === undefined ? runtime : { ...runtime, skip: this.actSkipList() },
       stage,
       card,
       {
@@ -2530,6 +3099,251 @@ export class CardActionEngine {
    *  (:144-150) clears the row and recreates the side as a FRESH subcard —
    *  never the renaming row. The create path passes no selfId: a new card
    *  has no id and cannot obstruct itself. */
+  /** The content set_default_content assigns to a new card, or undefined
+   *  when use_default_content? is false (content.rb:25-32: default_content
+   *  = template&.db_content, used only when present?). The template of a
+   *  new card is new_card_template (card-mod-content set/all/templating.rb:
+   *  52-58): the card's *default rule card, unless a structure rule applies
+   *  (dup_structure, :60-64), in which case the structure wins. A structure
+   *  whose content is "_self" counts as none (structure_rule_card, :44-48).
+   *
+   *  dup_structure sets the copy's type_id to the default rule's type, but
+   *  `dup` carries the card's set patterns, already computed from its own
+   *  type when its set modules were included, so the structure lookup runs
+   *  on the card's own type. The deck shows the effect: every Cardtype card
+   *  stores a copy of Cardtype+*type+*structure although *all+*default is
+   *  RichText-typed. */
+  private async newCardTemplateContent(name: DeckoName, typeId: number): Promise<string | undefined> {
+    const pattern = await ruleWalkPatternInput(this.fetch, { name, isNew: true, typeId });
+    const defaultRule = await findRule(this.fetch, pattern, "*default");
+    const structureRule = await findRule(this.fetch, pattern, "*structure");
+    const structure =
+      structureRule !== undefined && (structureRule.rule.dbContent ?? "").trim() !== "_self"
+        ? structureRule.rule
+        : undefined;
+    const content = (structure ?? defaultRule?.rule)?.dbContent;
+    // present? — nil, "" and whitespace-only are all blank.
+    return typeof content === "string" && content.trim() !== "" ? content : undefined;
+  }
+
+  /** prepare_db_content's HTML step (content.rb:44-49): the stored content
+   *  passes through Card::Content.clean! unless the card's clean_html? is
+   *  false (its type's or right part's set overrides it). */
+  /** event :save_recently_edited_settings (card-mod-rules set/rule/rules.rb
+   *  :1-6, :integrate, on: :save, changed: %i[type content]): every rule
+   *  card saved in the act moves its setting to the front of
+   *  *recent settings (`insert_item 0, name.right`, collection
+   *  item_assignment.rb:47-52), saved as a subcard. *recent settings keeps
+   *  no history (set/self/recent_settings.rb history? false), so the save is
+   *  its cards row (content and stamps) and its rebuilt references. */
+  private async saveRecentlyEditedSettings(result: ActionResult | null): Promise<void> {
+    if (result === null) return;
+    const driver = this.fetch.driver;
+    const recentId = await this.fetch.codenames.id("recent_settings");
+    if (recentId === undefined) return;
+    const setTypeId = await this.fetch.codenames.id("set");
+    const settingTypeId = await this.fetch.codenames.id("setting");
+    const actions = [
+      { cardId: result.cardId, actionId: result.actionId, verb: result.verb },
+      ...result.subactions.map((s) => ({ cardId: s.cardId, actionId: s.actionId, verb: s.verb })),
+    ];
+    for (const action of actions) {
+      if (action.verb === "delete") continue;
+      const row = await this.fetchRowById(action.cardId);
+      if (row === undefined || row.trash === 1 || row.left_id === null || row.right_id === null) continue;
+      const left = await this.fetchRowById(row.left_id);
+      const right = await this.fetchRowById(row.right_id);
+      if (left === undefined || left.type_id !== setTypeId || right?.type_id !== settingTypeId || left.trash === 1) continue;
+      if (action.verb === "update") {
+        const changed = (
+          await driver.query<{ n: number }>(
+            "SELECT COUNT(*) AS n FROM card_changes WHERE card_action_id = ? AND field IN (1, 2)",
+            [action.actionId],
+          )
+        ).rows[0];
+        if (Number(changed?.n ?? 0) === 0) continue;
+      }
+      const recent = await this.fetchRowById(recentId);
+      if (recent === undefined || recent.trash === 1) continue;
+      const settingName = (await this.fetch.lexicon.name(row.right_id))?.s;
+      if (settingName === undefined) continue;
+      const settingKey = DeckoName.parse(settingName).key;
+      const items = listItemStrings(recent.db_content).filter(
+        (item) => DeckoName.parse(item).key !== settingKey,
+      );
+      const content = [settingName, ...items].join("\n");
+      if (content === (recent.db_content ?? "")) continue;
+      await driver.query("UPDATE cards SET db_content = ?, updated_at = ?, updater_id = ? WHERE id = ?", [
+        content,
+        sqlDateTime(this.clock()),
+        this.actor?.id ?? null,
+        recentId,
+      ]);
+      const recentName = (await this.fetch.lexicon.name(recentId)) ?? DeckoName.parse("*recent settings");
+      await refreshReferencesOut(driver, this.fetch.lexicon, recentId, recentName, content);
+    }
+  }
+
+  /** A create that fails after reserving action rows (a compound card's own
+   *  action, its sides') leaves no row behind: the reserved actions that no
+   *  save filled, and the act when it holds nothing else, are removed. */
+  private async dropUnfilledActions(writer: ActWriter): Promise<void> {
+    const actId = writer.currentActId();
+    if (actId === null) return;
+    const driver = this.fetch.driver;
+    await driver.query("DELETE FROM card_actions WHERE card_act_id = ? AND card_id IS NULL", [actId]);
+    const left = (
+      await driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM card_actions WHERE card_act_id = ?", [actId])
+    ).rows[0];
+    if (Number(left?.n ?? 0) === 0) await driver.query("DELETE FROM card_acts WHERE id = ?", [actId]);
+  }
+
+  /** Salts generated for accounts created in this engine's acts, by account
+   *  card id, until their +*salt card is stored (account-fields.ts). */
+  private readonly pendingSalts = new Map<number, string>();
+
+  /** `left&.salt` for a +*password save: the account's stored +*salt, or the
+   *  salt generated for an account created earlier in this act. */
+  private async accountSalt(accountId: number | null): Promise<string | undefined> {
+    if (accountId === null) return undefined;
+    const pending = this.pendingSalts.get(accountId);
+    if (pending !== undefined) return pending;
+    const saltId = await this.fetch.codenames.id("salt");
+    if (saltId === undefined) return undefined;
+    const row = (
+      await this.fetch.driver.query<{ db_content: string | null }>(
+        "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0",
+        [accountId, saltId],
+      )
+    ).rows[0];
+    return row?.db_content ?? undefined;
+  }
+
+  /** history? false (account-fields.ts): the save keeps its cards row but no
+   *  action, no changes, and no act when the act holds nothing else. */
+  private async dropHistory(actionId: number, actId: number): Promise<void> {
+    const driver = this.fetch.driver;
+    await driver.query("DELETE FROM card_changes WHERE card_action_id = ?", [actionId]);
+    await driver.query("DELETE FROM card_actions WHERE id = ?", [actionId]);
+    const left = (
+      await driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM card_actions WHERE card_act_id = ?", [actId])
+    ).rows[0];
+    if (Number(left?.n ?? 0) === 0) {
+      await driver.query("DELETE FROM card_acts WHERE id = ?", [actId]);
+    }
+  }
+
+  /** set_default_salt + set_default_status (account/events.rb:3-9): after
+   *  the request's own fields, a created account gets its +*salt (the salt
+   *  generated when the account was stored) and its +*status, unless the
+   *  request named them. */
+  private async ensureAccountDefaults(
+    writer: ActWriter,
+    accountName: DeckoName,
+    accountId: number,
+    accountActionId: number,
+    saved: (CardActionSummary & { actId: number })[],
+  ): Promise<void> {
+    const salt = this.pendingSalts.get(accountId);
+    if (salt === undefined) return;
+    const fields: [string, string][] = [
+      ["*salt", salt],
+      ["*status", DEFAULT_ACCOUNT_STATUS],
+    ];
+    for (const [field, content] of fields) {
+      const fieldName = DeckoName.parse(`${accountName.s}+${field}`);
+      const existing = await this.fetch.lexicon.id(fieldName);
+      const live = existing === undefined ? undefined : await this.fetchRowById(existing);
+      if (live !== undefined && live.trash === 0) continue;
+      const created = await this.createInWriter(
+        writer,
+        { name: fieldName.s, content, superActionId: accountActionId },
+        { isActCard: false },
+      );
+      if (field !== "*salt") {
+        saved.push({
+          cardId: created.cardId,
+          actionId: created.actionId,
+          actId: created.actId,
+          verb: created.verb,
+          name: created.name,
+        });
+      }
+    }
+    this.pendingSalts.delete(accountId);
+  }
+
+  /** require_field :email (set/right/account.rb:8): an account created
+   *  through subcards of a new card must name its +*email. Checked before
+   *  anything is written, as Ruby's validation stage runs before the store
+   *  stage. Only relative keys ("+*account") are certain to name a new
+   *  account; an absolute key may name an existing one. */
+  private assertAccountsHaveEmail(subcards: Record<string, SubcardInput> | undefined): void {
+    if (subcards === undefined) return;
+    for (const [key, sub] of Object.entries(subcards)) {
+      const parts = key.split("+").map((p) => p.trim().toLowerCase());
+      if (key.trim().startsWith("+") && parts[parts.length - 1] === "*account") {
+        const named = Object.keys(sub.subcards ?? {}).some(
+          (k) => k.split("+").map((p) => p.trim().toLowerCase()).pop() === "*email",
+        );
+        if (!named) throw new CardActionError("field-required", `${key} email required`);
+      }
+      this.assertAccountsHaveEmail(sub.subcards);
+    }
+  }
+
+  /** Abstract::List#standardize_content on assigned content (list-content.ts):
+   *  a card in a list set stores its items one per line, without brackets.
+   *  Content of any other card is returned unchanged. */
+  private async standardizeAssignedContent(
+    content: string,
+    typeId: number | null,
+    leftId: number | null,
+    rightId: number | null,
+  ): Promise<string> {
+    const typeCode = typeId === null ? undefined : await this.fetch.codenames.nameForId(typeId);
+    const rightCode = rightId === null ? undefined : await this.fetch.codenames.nameForId(rightId);
+    let isList =
+      (typeCode !== undefined && LIST_TYPE_CODENAMES.has(typeCode)) ||
+      (rightCode !== undefined && LIST_RIGHT_CODENAMES.has(rightCode));
+    const leftType = async (): Promise<string | undefined> => {
+      if (leftId === null) return undefined;
+      const left = await this.fetchRowById(leftId);
+      return left?.type_id === undefined || left.type_id === null
+        ? undefined
+        : this.fetch.codenames.nameForId(left.type_id);
+    };
+    // Role+*members is an id list (Abstract::IdList): items stored as ~<id>.
+    if (rightCode === "members" && (await leftType()) === "role") {
+      return standardizeIdListContent(content, async (item) => {
+        try {
+          return await this.fetch.lexicon.id(DeckoName.parse(item));
+        } catch {
+          return undefined;
+        }
+      });
+    }
+    if (!isList && rightCode === "follow") isList = (await leftType()) === "user";
+    if (!isList) return content;
+    return standardizeListContent(content, {
+      nameForId: async (id) => (await this.fetch.lexicon.name(id))?.s,
+      nameForCodename: async (code) => (await this.fetch.codenames.name(code))?.s,
+    });
+  }
+
+  private async cleanForStore(
+    content: string,
+    typeId: number | null,
+    rightId: number | null,
+  ): Promise<string> {
+    if (content === "") return content;
+    const typeCode = typeId === null ? undefined : await this.fetch.codenames.nameForId(typeId);
+    if (typeCode !== undefined && NO_CLEAN_TYPE_CODENAMES.has(typeCode)) return content;
+    const rightCode = rightId === null ? undefined : await this.fetch.codenames.nameForId(rightId);
+    if (rightCode !== undefined && NO_CLEAN_RIGHT_CODENAMES.has(rightCode)) return content;
+    return cleanContent(content);
+  }
+
   private async ensureSides(
     writer: ActWriter,
     name: DeckoName,
@@ -2544,6 +3358,16 @@ export class CardActionEngine {
       const known = idsByKey.get(key);
       if (known !== undefined) return known;
       let id = await this.fetch.lexicon.id(sideName);
+      // prepare_new_side (name_events.rb:136-141) creates the side when
+      // `!Card[side_id]&.real?`. The Lexicon keeps a trashed card's entry
+      // (trash is not a name change, so update_lexicon never runs), and
+      // Card[id] filters trash, so a side whose lexicon id is a trashed row
+      // is MISSING: it becomes a side subcard, whose own manage_trash then
+      // pulls that row back from the trash.
+      if (id !== undefined && id !== selfId) {
+        const sideRow = await this.fetchRowById(id);
+        if (sideRow === undefined || sideRow.trash === 1) id = undefined;
+      }
       if (selfId !== undefined && id === selfId) {
         id = await this.recreateObstructedSide(writer, sideName, selfId, created);
       } else if (id === undefined) {

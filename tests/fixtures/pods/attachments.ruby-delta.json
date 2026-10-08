@@ -1,0 +1,139 @@
+{
+  "tables": {
+    "ar_internal_metadata": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "card_actions": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [
+        "{\"action_type\":0,\"card_act_id\":116060,\"card_id\":\"PodAttach Text\",\"comment\":\"pod-probe.txt\",\"draft\":0,\"super_action_id\":null}",
+        "{\"action_type\":0,\"card_act_id\":116061,\"card_id\":\"PodAttach Picture\",\"comment\":\"pod-probe.png\",\"draft\":0,\"super_action_id\":null}"
+      ],
+      "removed": []
+    },
+    "card_acts": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [
+        "{\"acted_at\":\"T\",\"actor_id\":1,\"card_id\":\"PodAttach Picture\",\"ip_address\":null}",
+        "{\"acted_at\":\"T\",\"actor_id\":1,\"card_id\":\"PodAttach Text\",\"ip_address\":null}"
+      ],
+      "removed": []
+    },
+    "card_changes": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "card_references": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "card_revisions": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "card_virtuals": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "cards": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [
+        "{\"codename\":null,\"created_at\":\"T\",\"creator_id\":1,\"current_revision_id\":null,\"db_content\":\"~3377/11479.txt\",\"key\":\"pod_attach_text\",\"left_id\":null,\"name\":\"PodAttach Text\",\"read_rule_class\":\"*all\",\"read_rule_id\":10,\"references_expired\":null,\"right_id\":null,\"trash\":0,\"type_id\":282,\"updated_at\":\"T\",\"updater_id\":1}",
+        "{\"codename\":null,\"created_at\":\"T\",\"creator_id\":1,\"current_revision_id\":null,\"db_content\":\"~3378/11480.png\",\"key\":\"pod_attach_picture\",\"left_id\":null,\"name\":\"PodAttach Picture\",\"read_rule_class\":\"*all\",\"read_rule_id\":10,\"references_expired\":null,\"right_id\":null,\"trash\":0,\"type_id\":284,\"updated_at\":\"T\",\"updater_id\":1}"
+      ],
+      "removed": []
+    },
+    "delayed_jobs": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_assistant_decisions": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_assistant_interactions": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_assistant_learner_levels": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_assistant_threads": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_audit_log": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_feature_events": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_lib_settings": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "library_proposals": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "schema_migrations": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "sessions": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "transform_migrations": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    },
+    "users": {
+      "probeRows": 0,
+      "changed": {},
+      "added": [],
+      "removed": []
+    }
+  }
+}

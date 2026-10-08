@@ -43,7 +43,10 @@ import { footerDeckoVersion, recaptchaSiteKey, serializerFollowsLive } from "./d
 import type { UpdaterCardInfo } from "../history/updater-seam.js";
 import { isNewCard } from "../fetch/card-record.js";
 import { cgiEscape, emitAttrs, emitHamlAttrs, h, newSlotId, slotOptionsJson, slotOptionsWithNameContext } from "./slot-html.js";
-import { registerSetTypeAssignment } from "../set-patterns/set-type-assignment.js";
+import {
+  registerAllGemTypeAssignments,
+  registerSetTypeAssignment,
+} from "../set-patterns/set-type-assignment.js";
 import { safeSetKeys } from "./set-keys.js";
 
 import {
@@ -3093,6 +3096,9 @@ registerSetTypeAssignment("Right::Right", "set"); // card-mod-rules set/right/ri
 registerSetTypeAssignment("Right::Self", "set"); // set/right/self.rb:3
 registerSetTypeAssignment("Right::Type", "set"); // set/right/type.rb:3
 registerSetTypeAssignment("Right::TypePlusRight", "set"); // set/right/type_plus_right.rb:3
+// The remaining assign_type lines of the deck's gems (set-type-assignment.ts
+// GEM_TYPE_ASSIGNMENTS): the loader-less paths register them all here.
+registerAllGemTypeAssignments();
 
 // ---------------------------------------------------------------------------
 // visible settings: the restricted_to_type gate (setting_categories.rb)

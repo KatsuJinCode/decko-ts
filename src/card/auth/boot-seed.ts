@@ -315,8 +315,17 @@ export async function bootstrapFreshDeck(deps: BootSeedDeps): Promise<BootSeedRe
     await ensureSeedCard(engine, seed, deps.driver, bot, modCardsCreated, modCardsUpdated);
   }
 
-  // the shipped bot account (real.yml :203-206)
-  await ensureNamed(engine, DECKOBOT_ACCOUNT.junctionName, undefined, undefined, modCardsCreated, modCardsUpdated);
+  // the shipped bot account (real.yml :203-206). An account is created with
+  // its +*email (require_field :email, set/right/account.rb:8), so a missing
+  // junction is created with the email as its subcard.
+  const botAccount = await engine.fetch.fetchByName(DECKOBOT_ACCOUNT.junctionName);
+  if (botAccount === undefined || botAccount.id === undefined) {
+    await engine.createCard({
+      name: DECKOBOT_ACCOUNT.junctionName,
+      subcards: { "+*email": { content: DECKOBOT_ACCOUNT.email } },
+    });
+    modCardsCreated.push(DECKOBOT_ACCOUNT.junctionName, DECKOBOT_ACCOUNT.emailChildName);
+  }
   await ensureNamed(engine, DECKOBOT_ACCOUNT.emailChildName, DECKOBOT_ACCOUNT.email, undefined, modCardsCreated, modCardsUpdated);
 
   return { ok: true, coreRowsInserted, modCardsCreated, modCardsUpdated };
