@@ -85,6 +85,11 @@ import {
   validateNameLegality,
 } from "./name-validation.js";
 import { knownTypeSpec, resolveTypeId } from "./type-resolution.js";
+import {
+  cleanContent,
+  NO_CLEAN_RIGHT_CODENAMES,
+  NO_CLEAN_TYPE_CODENAMES,
+} from "./content-clean.js";
 import { assertNotOwnAncestor } from "./junction-cycle-detection.js";
 import {
   cascadeAllFieldReadRules,
@@ -1098,6 +1103,15 @@ export class CardActionEngine {
       input.content = c;
     });
     await this.dispatchEventStage("prepare_to_store", validationCard());
+    // set_content (:store, content.rb:1-5): prepare_db_content cleans the
+    // stored HTML before the row write.
+    if (input.content != null && input.attachment === undefined) {
+      input.content = await this.cleanForStore(
+        input.content,
+        typeId,
+        name.isSimple ? null : sides.rightId,
+      );
+    }
 
     if (trashed !== undefined) {
       const before = cardFieldStateFromRow(trashed);
@@ -1788,6 +1802,15 @@ export class CardActionEngine {
         // card's action (patched below, once this action's id exists).
         renameSides = sides.created;
       }
+    }
+
+    // set_content (:store, content.rb:1-5) runs on every save:
+    // prepare_db_content re-cleans the stored HTML even when the content
+    // itself was not assigned (a rename or type change of a card whose
+    // stored content predates cleaning stores the cleaned form).
+    if (input.attachment === undefined && after.db_content !== null) {
+      after.db_content = await this.cleanForStore(after.db_content, after.type_id, after.right_id);
+      if (input.content !== undefined) input.content = after.db_content;
     }
 
     // set_read_rule store event (permissions.rb:1-5, changed: %i[type_id
@@ -2880,6 +2903,22 @@ export class CardActionEngine {
    *  (:144-150) clears the row and recreates the side as a FRESH subcard —
    *  never the renaming row. The create path passes no selfId: a new card
    *  has no id and cannot obstruct itself. */
+  /** prepare_db_content's HTML step (content.rb:44-49): the stored content
+   *  passes through Card::Content.clean! unless the card's clean_html? is
+   *  false (its type's or right part's set overrides it). */
+  private async cleanForStore(
+    content: string,
+    typeId: number | null,
+    rightId: number | null,
+  ): Promise<string> {
+    if (content === "") return content;
+    const typeCode = typeId === null ? undefined : await this.fetch.codenames.nameForId(typeId);
+    if (typeCode !== undefined && NO_CLEAN_TYPE_CODENAMES.has(typeCode)) return content;
+    const rightCode = rightId === null ? undefined : await this.fetch.codenames.nameForId(rightId);
+    if (rightCode !== undefined && NO_CLEAN_RIGHT_CODENAMES.has(rightCode)) return content;
+    return cleanContent(content);
+  }
+
   private async ensureSides(
     writer: ActWriter,
     name: DeckoName,
