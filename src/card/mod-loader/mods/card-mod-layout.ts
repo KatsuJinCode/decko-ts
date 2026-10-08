@@ -64,8 +64,6 @@
 //   (src/card/render/code-highlighting/index.ts routes typeCode
 //   "layout_type" through the html scanner); its update_layout_registry
 //   event is a write-path side effect with no TS consumer
-// - set/type/html.rb :navbar_links override - deprecated "*main menu" html
-//   card support; its body calls item_links, a method from another mod
 // - set/right/layout.rb - assign_type :pointer only (no registrations)
 // - assets/ (coffee/scss), config/locales, data/ - separate surfaces
 // - lib/card/layout*.rb - the Card::Layout class family (render/code layout
@@ -100,7 +98,14 @@ import {
   type ViewContext,
   type ViewFn,
 } from "../../render/format.js";
-import { myCardDropdownInnerHtml } from "../../render/navbar-views.js";
+import {
+  abstractItemsNavItemView,
+  dropdownDividerView,
+  myCardDropdownInnerHtml,
+  navbarItemsOverridden,
+  navbarLinksForMethodOverride,
+} from "../../render/navbar-views.js";
+import { rawItemStrings } from "../../render/pointer-list.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
 import type { DeckoModManifest } from "../mod-manifest.js";
@@ -664,7 +669,27 @@ function navbarItems(ctx: ViewContext, view: string, linkClass: string): string 
  *  class: "navbar-nav" do navbar_items end` - the block content is the
  *  substituted content string (see navbarItems). */
 const navbarLinksView: ViewFn = (ctx) =>
-  `<ul class="navbar-nav">${navbarItems(ctx, "nav_item", "nav-link")}</ul>`;
+  navbarItemsOverridden(ctx.fmt)
+    ? navbarLinksForMethodOverride(ctx)
+    : `<ul class="navbar-nav">${navbarItems(ctx, "nav_item", "nav-link")}</ul>`;
+
+/** set/type/html.rb:3-9 view :navbar_links, perms: :none (deprecated; for
+ *  old Html-typed "*main menu" cards): `wrap_with :ul, class: "navbar-nav"`
+ *  around `item_links` (card-mod-collection set/all/item.rb:128-132: every
+ *  item card nested with view :link), each wrapped in an `li.nav-item`,
+ *  joined with "\n". The items are the content lines (item.rb
+ *  raw_item_strings: split on newlines, [[ ]] stripped); blank lines name
+ *  no card and are skipped. */
+const htmlNavbarLinksView: ViewFn = (ctx) => {
+  const links = rawItemStrings(ctx.fmt.card.dbContent)
+    .filter((item) => item !== "")
+    .map((item) => {
+      const parsed = DeckoName.parse(item);
+      const name = parsed.isAbsolute ? parsed.s : parsed.absoluteName(ctx.fmt.card.name).s;
+      return ctx.fmt.nest({ name, syntax: name, options: { view: "link", extra: {} }, comment: undefined });
+    });
+  return `<ul class="navbar-nav">${links.map((link) => `<li class="nav-item">${link}</li>`).join("\n")}</ul>`;
+};
 
 // ---------------------------------------------------------------------------
 // the set-scoped head family (right/head.rb, self/head.rb, type/html.rb)
@@ -975,6 +1000,29 @@ const cardModLayout: DeckoModManifest = {
       },
     },
     {
+      // card-mod-layout-0.20.0/set/abstract/items.rb:1-5 view :nav_item
+      // (wrap_with_nav_item nav_dropdown): Pointer and List cards reach it
+      // through include_set Abstract::List -> Abstract::Items.
+      setPath: "abstract/items",
+      formats: {
+        html: {
+          views: [{ view: "nav_item", viewFn: abstractItemsNavItemView }],
+        },
+      },
+    },
+    {
+      // card-mod-layout-0.20.0/set/self/dropdown_divider.rb:3-11.
+      setPath: "self/dropdown_divider",
+      formats: {
+        html: {
+          views: [
+            { view: "nav_item", viewFn: dropdownDividerView },
+            { view: "nav_link_in_dropdown", viewFn: dropdownDividerView },
+          ],
+        },
+      },
+    },
+    {
       // card-mod-layout-0.20.0/set/all/overlay.rb (the :overlay WRAPPER
       // itself - overlay.rb:6-13 - needs the frame/wrap_body machinery and
       // is not ported; the four standalone views are)
@@ -1090,30 +1138,16 @@ const cardModLayout: DeckoModManifest = {
       },
     },
     {
-      // card-mod-layout-0.20.0/set/type/html.rb (its :core override rides
-      // the composed layoutCoreView above - registered once, on the
-      // right/head entry, so the flat table is replaced exactly once; the
-      // predicate covers both sets. The :navbar_links override is not
-      // portable: its body calls item_links, a method from another mod)
-      //
-      // 2026-09-29: layoutCoreView is REGISTERED on this
-      // module too. CORRECTED by the edit-forms lane 2026-09-29 against the
-      // actual gem bytes: set/type/html.rb defines NO view :core — its only
-      // definitions are the base-format chunk_list (:14-16) and the html
-      // format's input_type (:20-22) + one_line_content (:24-26). The
-      // seed-sweep "also type/html.rb:13-17" claim misread the file (the
-      // :core it cites lives at set/right/head.rb:16-18 only). The
-      // registration STAYS — the Type::Html module exists in Ruby and the
-      // chainFor narrowing (26ef575) keys the Html-typed
-      // card's own TYPE token to it — but the composed fn now answers the
-      // BASE core for Html-typed cards (the Ruby dispatch shape: no
-      // Type::Html core override, so the base format core renders), which
-      // is also the byte shape the live site serves for its Html-typed
-      // chrome cards.
+      // card-mod-layout-0.20.0/set/type/html.rb: the deprecated
+      // :navbar_links override for html-typed menu cards, and nothing else
+      // (no :core: an Html-typed card's core is the base format's, as in
+      // Ruby, where All::Base owns it). Layout-typed cards reach this module
+      // too (set/type/layout_type.rb:5 include_set Type::Html; see
+      // concrete-set-includes.ts).
       setPath: "type/html",
       formats: {
         html: {
-          views: [{ view: "core", viewFn: layoutCoreView }],
+          views: [{ view: "navbar_links", viewFn: htmlNavbarLinksView, config: { perms: "none" } }],
         },
       },
     },

@@ -32,6 +32,8 @@ import {
 import { DeckoName } from "../../../src/card/name.js";
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
 import {
+  isPreferenceName,
+  isStandardRuleName,
   ruleContentForCard,
   ruleWalkPatternInput,
 } from "../../../src/card/actions/rule-content-walk.js";
@@ -286,6 +288,98 @@ describe("ruleContentForCard - the rule(:captcha) candidate walk (rule/all.rb:5-
       const pattern = await ruleWalkPatternInput(storage.engine, createInput("Any", null));
       const content = await ruleContentForCard(storage.engine, pattern, "captcha");
       expect(content).toBe("");
+    } finally {
+      storage.close();
+    }
+  });
+});
+
+describe("isPreferenceName / rule? - per-user setting cards (rule/all.rb:32-54)", () => {
+  // SET+PREFERER+SETTING: the right part a Setting, the name without its
+  // last two parts a Set, and the preferer User-typed or the *all card.
+  const USER_TYPE_ID = 71;
+  async function seedPreferenceDeck(storage: ActionsTestStorage): Promise<void> {
+    await seedCaptchaDeck(storage);
+    await seedCard(storage, { id: USER_TYPE_ID, name: "User", codename: "user", typeId: CARDTYPE_ID });
+    await seedCard(storage, { id: 72, name: "Jane Doe", typeId: USER_TYPE_ID });
+    await seedCard(storage, { id: 73, name: "*follow", codename: "follow", typeId: SETTING_TYPE_ID });
+    await seedCard(storage, { id: HOME_ID, name: "Home", typeId: RICH_TEXT_ID });
+    await seedCard(storage, { leftId: HOME_ID, rightId: SELF_CARD_ID, typeId: SET_TYPE_ID }); // Home+*self
+  }
+
+  it("a User preferer or the *all preferer makes a preference, and rule? follows", async () => {
+    const storage = await createActionsTestStorage();
+    try {
+      await seedPreferenceDeck(storage);
+      const userPref = DeckoName.parse("Home+*self+Jane Doe+*follow");
+      expect(await isPreferenceName(storage.engine, userPref)).toBe(true);
+      expect(await isStandardRuleName(storage.engine, userPref)).toBe(false);
+      expect((await ruleWalkPatternInput(storage.engine, createInput(userPref.s, null))).isRule).toBe(true);
+      expect(await isPreferenceName(storage.engine, DeckoName.parse("Home+*self+*all+*follow"))).toBe(true);
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("a non-User preferer, a non-Set trunk or a two-part name is not a preference", async () => {
+    const storage = await createActionsTestStorage();
+    try {
+      await seedPreferenceDeck(storage);
+      await seedCard(storage, { id: 74, name: "Pudding Two", typeId: RICH_TEXT_ID });
+      expect(await isPreferenceName(storage.engine, DeckoName.parse("Home+*self+Pudding Two+*follow"))).toBe(false);
+      expect(await isPreferenceName(storage.engine, DeckoName.parse("Home+Jane Doe+*follow"))).toBe(false);
+      expect(await isPreferenceName(storage.engine, DeckoName.parse("Home+*self+*follow"))).toBe(false);
+      const plain = await ruleWalkPatternInput(storage.engine, createInput("Home+*self+Pudding Two+*follow", null));
+      expect(plain.isRule).toBe(false);
+    } finally {
+      storage.close();
+    }
+  });
+});
+
+describe("ruleWalkPatternInput - the left type of a compound whose left is missing (quick_type)", () => {
+  // class_methods.rb#quick_type: `Card.fetch name, new: {}` - a missing or
+  // trashed left is a NEW card, typed by the new-card chain (here the
+  // deck's *all+*default rule); only a blank left answers "RichText".
+  const BASIC_CS_ID = 70;
+  async function seedDefaultTypedDeck(storage: ActionsTestStorage): Promise<void> {
+    await seedStandardDeck(storage);
+    await seedCard(storage, { id: BASIC_CS_ID, name: "BasicCs", typeId: CARDTYPE_ID });
+    await storage.engine.driver.query(
+      "UPDATE cards SET type_id = ? WHERE left_id = 7 AND right_id = 8",
+      [BASIC_CS_ID],
+    );
+    await seedCard(storage, { id: 120, name: "Gone Left", typeId: RICH_TEXT_ID, trash: true });
+  }
+
+  it("an absent left answers the new-card type from *all+*default", async () => {
+    const storage = await createActionsTestStorage();
+    try {
+      await seedDefaultTypedDeck(storage);
+      const pattern = await ruleWalkPatternInput(storage.engine, createInput("Never Existed+watermark", null));
+      expect(pattern.leftTypeName).toBe("BasicCs");
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("a trashed left answers the new-card type, not its stored type", async () => {
+    const storage = await createActionsTestStorage();
+    try {
+      await seedDefaultTypedDeck(storage);
+      const pattern = await ruleWalkPatternInput(storage.engine, createInput("Gone Left+watermark", null));
+      expect(pattern.leftTypeName).toBe("BasicCs");
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("an existing left answers its own type", async () => {
+    const storage = await createActionsTestStorage();
+    try {
+      await seedDefaultTypedDeck(storage);
+      const pattern = await ruleWalkPatternInput(storage.engine, createInput("Pudding+watermark", null));
+      expect(pattern.leftTypeName).toBe("RichText");
     } finally {
       storage.close();
     }

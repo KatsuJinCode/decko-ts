@@ -72,6 +72,7 @@ function makeCtx(dbContent: string, opts: { typeName?: string; typeCode?: string
   };
   const fmt = {
     card,
+    engine: { imageCdnHost: undefined },
     renderView: ((view: string, viewOpts: Record<string, unknown> = {}) => {
       if (view === "core") {
         if (card.typeCode === "image") return imageHtmlCoreView({ fmt: fmt as unknown as RenderFormat, voo: new Voo(undefined, "core", viewOpts) });
@@ -173,13 +174,13 @@ describe("file :core (set/type/file.rb:24-28 + core.haml:1)", () => {
 });
 
 describe("image :core (set/type/image/html_views.rb:5-11)", () => {
-  it("emits <img src=URL alt=NAME> for a web image", () => {
+  it("emits <img alt=NAME src=URL /> for a web image (Rails image_tag order, the captured shape)", () => {
     const html = imageHtmlCoreView(makeCtx("https://example.com/img.png", { name: "MyImage" }));
-    expect(html).toBe('<img src="https://example.com/img.png" alt="MyImage">');
+    expect(html).toBe('<img alt="MyImage" src="https://example.com/img.png" />');
   });
-  it("emits <img src=/files/... alt=NAME> for a local image", () => {
+  it("emits <img alt=NAME src=/files/...-medium /> for a local image (default_size :medium)", () => {
     const html = imageHtmlCoreView(makeCtx("~12/act_99.jpg", { name: "LocalImg" }));
-    expect(html).toBe('<img src="/files/12/act_99.jpg" alt="LocalImg">');
+    expect(html).toBe('<img alt="LocalImg" src="/files/12/act_99-medium.jpg" />');
   });
   it("returns empty string for blank src (set/type/file.rb:34-45 handle_source short-circuit)", () => {
     // set/type/file.rb:34-45 handle_source short-circuits blank src to ""
@@ -231,7 +232,7 @@ describe("image :preview (set/type/image/html_views.rb:36-43)", () => {
       makeCtx("https://example.com/img.png", { name: "MyImg", typeCode: "image" }),
     );
     expect(html).toBe(
-      '<div class="attachment-preview" id="MyImg-preview"><img src="https://example.com/img.png" alt="MyImg"></div>',
+      '<div class="attachment-preview" id="MyImg-preview"><img alt="MyImg" src="https://example.com/img.png" /></div>',
     );
   });
   it("returns empty when the underlying :core is empty (blank-src short-circuit, corpus:79 *logo shape)", () => {
@@ -255,7 +256,7 @@ describe("image :content_changes (set/type/image/html_views.rb:49-51)", () => {
     // render_deleted_chunk (lines 63 + 76) is a separate surface - the
     // headless port emits the structural pair only.
     expect(html).toBe(
-      '<img src="https://example.com/img.png" alt="DiffImg"><img src="https://example.com/img.png" alt="DiffImg">',
+      '<img alt="DiffImg" src="https://example.com/img.png" /><img alt="DiffImg" src="https://example.com/img.png" />',
     );
   });
 });
@@ -274,7 +275,7 @@ describe("imageOneLineContentView type guard (set/type/image.rb:18-20 scoping)",
     const out = imageOneLineContentView(
       makeCtx("~12/act_99.jpg", { name: "LocalImg", typeCode: "image", typeName: "Image" }),
     );
-    expect(out).toBe('<img src="/files/12/act_99.jpg" alt="LocalImg">');
+    expect(out).toBe('<img alt="LocalImg" src="/files/12/act_99-icon.jpg" />');
   });
   it("a FILE-typed card falls through to the All-set html wrap arm (views.rb:29-32): strip_tags(core) truncated, text-muted wrap", () => {
     const out = imageOneLineContentView(
@@ -336,8 +337,8 @@ describe("card-mod-carrierwave through the mod loader", () => {
     expect(shortnames).toContain("Type::File");
     // set/type/image.rb -> Type::Image
     expect(shortnames).toContain("Type::Image");
-    // set/type/image/html_views.rb -> Type::Image::Html
-    expect(shortnames).toContain("Type::Image::Html");
+    // set/type/image/html_views.rb -> Type::Image::HtmlViews
+    expect(shortnames).toContain("Type::Image::HtmlViews");
     // set/self/favicon.rb -> Self::Favicon
     expect(shortnames).toContain("Self::Favicon");
     // set/self/search.rb -> Self::Search

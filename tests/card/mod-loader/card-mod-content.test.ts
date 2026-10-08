@@ -52,6 +52,7 @@ import { fileURLToPath } from "node:url";
 import {
   bindModLoaderToEngine,
   createRenderTestStorage,
+  renderThroughRecord,
   seedCard,
   type RenderTestStorage,
 } from "../render/render-test-storage.js";
@@ -195,7 +196,7 @@ describe("card-mod-content through the mod loader (A/B)", () => {
     bindModLoaderToEngine(storage!, loader!);
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
-    expect(await s.engine.render("Oracle Code Probe", "input")).toBe(
+    expect(await renderThroughRecord(s, "Oracle Code Probe", "input")).toBe(
       "Content can't be edited.",
     );
   });
@@ -205,7 +206,7 @@ describe("card-mod-content through the mod loader (A/B)", () => {
     const expected =
       `<i class="notranslate material-icons text-muted pe-2">warning</i>` +
       `<span class="text-muted">file</span>`;
-    expect(await s.engine.render("Oracle Code Probe", "bar_middle")).toBe(
+    expect(await renderThroughRecord(s, "Oracle Code Probe", "bar_middle")).toBe(
       expected,
     );
   });
@@ -213,7 +214,7 @@ describe("card-mod-content through the mod loader (A/B)", () => {
   it("WITH the mod: :file_size renders the name + human-size template (abstract/02_code_file.rb:29-31)", async () => {
     const s = storage!;
     // 5 ASCII bytes -> "5 Bytes" (number_to_human_size's <1KB branch).
-    expect(await s.engine.render("Oracle Template Probe", "file_size")).toBe(
+    expect(await renderThroughRecord(s, "Oracle Template Probe", "file_size")).toBe(
       "Oracle Template Probe: 5 Bytes",
     );
   });
@@ -226,7 +227,7 @@ describe("card-mod-content through the mod loader (A/B)", () => {
       name: "Oracle Empty Probe",
       typeId: 2,
     });
-    expect(await s.engine.render("Oracle Empty Probe", "file_size")).toBe(
+    expect(await renderThroughRecord(s, "Oracle Empty Probe", "file_size")).toBe(
       "Oracle Empty Probe: 0 Bytes",
     );
   });
@@ -424,7 +425,7 @@ describe("card-mod-content through the mod loader (A/B)", () => {
     // views.input IS ReadOnly's body - every card that resolves :input
     // through the abstract chain renders ReadOnly's literal.
     const s = storage!;
-    const html = await s.engine.render("Oracle Code Probe", "input");
+    const html = await renderThroughRecord(s, "Oracle Code Probe", "input");
     // The chain terminal (Abstract::ReadOnly's literal): the bytes
     // the format module's view_method returns after every abstract
     // reopening of :input - same end state Ruby reaches at the

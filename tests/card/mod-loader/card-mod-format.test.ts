@@ -461,13 +461,15 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     ).toBe("plain body");
   });
 
-  it("WITH the mod: Toggle-typed :one_line_content renders the :core bytes — yes and no (type/toggle.rb:31-35)", async () => {
+  it("WITH the mod: Toggle-typed :one_line_content wraps the :core bytes — yes and no (html/views.rb:29-32 over toggle.rb:31-35's method)", async () => {
+    // toggle.rb overrides the one_line_content METHOD (render_core); the
+    // view is All::Html::Views', which wraps it in the text-muted div.
     const s = storage!;
     expect(await s.engine.render("Oracle Toggle Yes", "one_line_content")).toBe(
-      "yes",
+      '<div class="text-muted">yes</div>',
     );
     expect(await s.engine.render("Oracle Toggle No", "one_line_content")).toBe(
-      "no",
+      '<div class="text-muted">no</div>',
     );
   });
 
@@ -519,13 +521,14 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     expect(await s.engine.render("Oracle Format Probe", "id")).toBe("200");
   });
 
-  it("WITH the mod: :type renders the type name (base.rb:57)", async () => {
+  it("WITH the mod: :type renders the html type link (html.rb:5-7 shadows base.rb:57)", async () => {
     const s = storage!;
-    // The headless engine's codename registry does not seed a
-    // RichText -> type-name mapping here, so typeName comes back
-    // undefined and the port returns "". The Ruby source returns
-    // "Basic" (the default type's name) - documented divergence.
-    expect(await s.engine.render("Oracle Format Probe", "type")).toBe("");
+    // In the html format All::Html's :type (link_to_card type_card, class
+    // cardtype) shadows the base format's plain type name. This seed maps
+    // no type name, so the link is empty; Ruby links "Basic" here.
+    expect(await s.engine.render("Oracle Format Probe", "type")).toBe(
+      '<a class="cardtype known-card" href="/"></a>',
+    );
   });
 
   it("WITH the mod: :created_at reads the card record's date (base.rb:61)", async () => {
@@ -647,13 +650,15 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     expect(html.endsWith("</div>")).toBe(true);
   });
 
-  it("WITH the mod: :labeled renders name + ': ' + labeled_content (base.rb:125-127)", async () => {
+  it("WITH the mod: :labeled renders the html row (html/views.rb:67-72 shadows base.rb:125-127)", async () => {
     const s = storage!;
-    // labeled_content runs the core view (process_content); the core
-    // emits the raw content unchanged when no nests are present.
-    expect(
-      await s.engine.render("Oracle Format Probe", "labeled"),
-    ).toBe("Oracle Format Probe: Hello world");
+    // The html format's :labeled wraps the title and the labeled content in
+    // a row slot; base.rb's "name: content" arm is shadowed in html.
+    const html = await s.engine.render("Oracle Format Probe", "labeled");
+    expect(html).toContain('class="card-slot labeled-view');
+    expect(html).toContain("<div class='label col-4 text-end'>");
+    expect(html).toContain("Hello world");
+    expect(html).not.toBe("Oracle Format Probe: Hello world");
   });
 
   it("WITH the mod: :compact_missing renders the html text-muted title span (html/error.rb:33-35)", async () => {

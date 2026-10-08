@@ -20,7 +20,8 @@
 
 import { DeckoName, type Nameish } from "../name.js";
 import type { FetchEngine } from "../fetch.js";
-import type { CardRecord } from "../fetch/card-record.js";
+import { composeCardRecord, type CardRecord } from "../fetch/card-record.js";
+import type { CardsRow } from "../../server/schema.js";
 import { ruleNamesForCard } from "../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../set-patterns/types.js";
 
@@ -57,7 +58,13 @@ export async function findRule(
   const candidates = ruleNamesForCard(card, settingCode);
   for (let i = 0; i < candidates.length; i++) {
     const candidate = candidates[i];
-    const record = await fetcher.fetchByName(candidate);
+    // The *self candidate of a legacy row is looked up by ids first, as
+    // Ruby's rule cache does: a by-name miss would cache a new-card
+    // placeholder under the candidate's key, which Ruby's id-keyed lookup
+    // never creates.
+    const record =
+      (i === 0 ? await legacySelfRule(fetcher, card, candidate, settingCode) : undefined) ??
+      (await fetcher.fetchByName(candidate));
     if (record !== undefined && record.name !== undefined) {
       return {
         rule: record,
@@ -68,6 +75,69 @@ export async function findRule(
     }
   }
   return undefined;
+}
+
+/**
+ * The *self rule of a legacy compound row, found the way Ruby's rule cache
+ * finds it. Ruby keys every rule by ids (cache.rb lookup_key:
+ * "#{sets.left_id}+self+#{setting}", the anchor being the card's own id), so
+ * a card's *self rule is found whatever its name. The name walk above
+ * resolves "<card>+*self+<setting>" through the lexicon, which composes a
+ * compound name only through side ids; a legacy row that stores its compound
+ * name with no side ids cannot be composed, and its *self rule is missed.
+ * Only such rows take this path (one indexed statement), so ordinary cards
+ * keep the name walk and its caching unchanged.
+ */
+async function legacySelfRule(
+  fetcher: FetchEngine,
+  card: PatternCardInput,
+  candidate: string,
+  settingCode: Nameish,
+): Promise<CardRecord | undefined> {
+  const id = card.id;
+  if (id === undefined || id === null) return undefined;
+  const name = DeckoName.parse(card.name);
+  if (!name.isCompound) return undefined;
+  const setting = DeckoName.parse(settingCode);
+  if (DeckoName.parse(candidate).key !== DeckoName.parse(`${name.s}+*self+${setting.s}`).key) return undefined;
+  // An ordinary compound card (side ids present) keeps the name walk's
+  // answer; that is the common case and costs no statement. A side-less row
+  // is checked in the statement below, which also covers a row that fetch
+  // by id cannot return because a by-name miss cached a placeholder under
+  // its key.
+  const row = await fetcher.fetchById(id);
+  if (row !== undefined && row.leftId !== undefined && row.leftId !== null && row.rightId !== undefined && row.rightId !== null) {
+    return undefined;
+  }
+  await fetcher.codenames.ensureLoaded();
+  const selfId = fetcher.codenames.peekId("self");
+  const setTypeId = fetcher.codenames.peekId("set");
+  const settingTypeId = fetcher.codenames.peekId("setting");
+  const settingCard = await fetcher.fetchByName(setting.s);
+  if (selfId === undefined || setTypeId === undefined || settingTypeId === undefined || settingCard?.id === undefined) {
+    return undefined;
+  }
+  if (settingCard.typeId !== settingTypeId) return undefined;
+  // The row itself, composed here rather than fetched by id: fetch by id
+  // reads the cache by key first, where an earlier by-name miss of this
+  // name may have cached a new-card placeholder.
+  const result = await fetcher.driver.query<CardsRow>(
+    `SELECT r.* FROM cards s JOIN cards r ON r.left_id = s.id
+      WHERE s.left_id = ? AND s.right_id = ? AND s.type_id = ? AND s.trash = 0
+        AND r.right_id = ? AND r.trash = 0
+        AND EXISTS (SELECT 1 FROM cards c WHERE c.id = s.left_id AND c.left_id IS NULL AND c.trash = 0)
+        AND (? != 'follow' OR r.db_content != '')
+      LIMIT 1`,
+    [id, selfId, setTypeId, settingCard.id, settingCard.codename ?? ""],
+  );
+  const ruleRow = result.rows[0];
+  if (ruleRow === undefined) return undefined;
+  const rule = await composeCardRecord(ruleRow, fetcher.lexicon);
+  if (rule.name !== undefined) return rule;
+  // The rule's own name composes through the same legacy left the lexicon
+  // cannot name; it is the candidate the walk asked for.
+  const ruleName = DeckoName.parse(candidate);
+  return { ...rule, name: ruleName, key: ruleName.key };
 }
 
 /**

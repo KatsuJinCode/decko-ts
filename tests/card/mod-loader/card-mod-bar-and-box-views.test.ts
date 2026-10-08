@@ -56,6 +56,19 @@ beforeAll(async () => {
     rightId: 402,
     dbContent: "child body",
   });
+  // :boxed / :boxed_link live on Type::Image (card-mod-bar_and_box
+  // set/type/image.rb), so their probes are Image-typed: a simple name and
+  // a compound whose left is the box card.
+  await seedCard(s, { id: 403, name: "Image", codename: "image" });
+  await seedCard(s, { id: 404, name: "Box Image", typeId: 403, dbContent: "https://example.com/box.png" });
+  await seedCard(s, {
+    id: 405,
+    name: "Box Image+child",
+    leftId: 404,
+    rightId: 402,
+    typeId: 403,
+    dbContent: "https://example.com/child.png",
+  });
 }, 60_000);
 
 afterAll(() => {
@@ -87,9 +100,16 @@ describe("card-mod-bar_and_box — the thirteen missing views (rendered-unpinned
   it("every declared name dispatches instead of raising the unsupported-view error", async () => {
     const s = storage!;
     for (const view of BOX_AND_BAR_VIEWS) {
-      const out = await s.engine.render("Box Probe", view);
+      const probe = view === "boxed" || view === "boxed_link" ? "Box Image" : "Box Probe";
+      const out = await s.engine.render(probe, view);
       expect(typeof out, `${view} must render a string`).toBe("string");
     }
+  });
+
+  it("boxed and boxed_link are unsupported outside Type::Image (render.rb#view_method)", async () => {
+    const s = storage!;
+    await expect(s.engine.render("Box Probe", "boxed")).rejects.toThrow(/not supported/);
+    await expect(s.engine.render("Box Probe", "boxed_link")).rejects.toThrow(/not supported/);
   });
 
   it("bar_body is the bare bar_body.haml row — no slot wrapper, and no prepare_bar of its own", async () => {
@@ -256,28 +276,26 @@ describe("card-mod-bar_and_box — the thirteen missing views (rendered-unpinned
 
   it("boxed wraps the core in the image-box div with the DEFAULTED size", async () => {
     const s = storage!;
-    const html = await s.engine.render("Box Probe", "boxed");
+    const html = await s.engine.render("Box Image", "boxed");
     // image.rb:15-20 image_box: `voo.size ||= :medium` then
     // `wrap_with :div, title: image_box_title, class: "image-box #{voo.size}"`
     // image_box_title (image.rb:30) falls back to image_box_card_name.
-    expect(html.startsWith("<div title=\"Box Probe\" class=\"image-box medium\">")).toBe(true);
-    expect(html).toContain("probe body");
+    expect(html.startsWith("<div title=\"Box Image\" class=\"image-box medium\">")).toBe(true);
   });
 
   it("boxed on a COMPOUND name titles the box with the LEFT name", async () => {
     const s = storage!;
-    const html = await s.engine.render("Box Probe+child", "boxed");
+    const html = await s.engine.render("Box Image+child", "boxed");
     // image.rb:8 image_box_card_name: compound -> card.name.left
-    expect(html.startsWith("<div title=\"Box Probe\" class=\"image-box medium\">")).toBe(true);
+    expect(html.startsWith("<div title=\"Box Image\" class=\"image-box medium\">")).toBe(true);
   });
 
   it("boxed_link links the core to the box's own card name", async () => {
     const s = storage!;
-    const html = await s.engine.render("Box Probe", "boxed_link");
+    const html = await s.engine.render("Box Image", "boxed_link");
     // image.rb:10-12 + :33-35 image_box_link_target — the BOX card's name,
     // not the rendered card's, and for a simple name that is a self-link.
-    expect(html).toContain('href="/Box_Probe"');
-    expect(html).toContain("probe body");
+    expect(html).toContain('href="/Box_Image"');
   });
 });
 

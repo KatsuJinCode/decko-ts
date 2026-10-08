@@ -123,7 +123,10 @@ describe("flat-record format-scope census (composed deck)", () => {
     // the six census chrome views (nest_editor, modal_nest_editor,
     // nest_content, nest_image, modal_nest_image, new_image) on the
     // all-set reference_editor modules (html key - admitted, not foreign).
-    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(153);
+    // 153 -> 149 (semantics parity, 2026-10-07): the all-set carrierwave fold
+    // module and its four views moved to the Type::File/Type::Image sets;
+    // 149 -> 151: All::Html's :type and All::Html::Views' :labeled.
+    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(151);
     expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(30);
   });
 
@@ -207,7 +210,7 @@ describe("flat-record format-scope census (composed deck)", () => {
     ]);
   });
 
-  it("the empty-setKeys fallback set spans more than one kind for exactly twenty-three views", () => {
+  it("the empty-setKeys fallback set spans more than one kind for exactly twenty-five views", () => {
     // The arm's SECOND dimension: abstract modules (Ruby: nonbase
     // registration, reachable only via include_set) mix with base and
     // nonbase modules in one chain. Unobservable from src (safeSetKeys
@@ -224,7 +227,11 @@ describe("flat-record format-scope census (composed deck)", () => {
     // the edit mod's all-set rows of the same names); +content_formgroups
     // at the mod-completion-100 lane (the signup :content_formgroups
     // registration joining the edit mod's all-set row - the walk arms the
-    // lane ported into the edit mod's contentFormgroupsView).
+    // lane ported into the edit mod's contentFormgroupsView); +nav_item
+    // +nav_link_in_dropdown at the edge view-registry lane (Abstract::Items'
+    // dropdown :nav_item and Self::DropdownDivider's two views joining
+    // card-mod-layout's all-set rows); +navbar_links at the semantics lane
+    // (card-mod-layout's Type::Html override joining the all-set row).
     const byView = new Map<string, CensusEntry[]>();
     for (const e of entries) {
       const list = byView.get(e.view) ?? [];
@@ -238,7 +245,6 @@ describe("flat-record format-scope census (composed deck)", () => {
     expect(kindSpanning).toEqual([
       "bar_middle",
       "content_formgroups",
-      "core",
       "count",
       "customize_button",
       "edit",
@@ -248,6 +254,9 @@ describe("flat-record format-scope census (composed deck)", () => {
       "help_text",
       "input",
       "javascript_include_tag",
+      "nav_item",
+      "nav_link_in_dropdown",
+      "navbar_links",
       "new",
       "new_buttons",
       "not_found",
@@ -257,6 +266,7 @@ describe("flat-record format-scope census (composed deck)", () => {
       "raw_one_line_content",
       "stylesheet_include_tag",
       "titled_content",
+      "type",
       "url_link",
       "view_list",
     ]);

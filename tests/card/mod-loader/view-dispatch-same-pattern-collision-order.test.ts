@@ -16,7 +16,7 @@
 //   compact_missing {All::Error, All::EmailHtml, All::EmailText}
 //   unknown         {All::Error, All::EmailHtml, All::EmailText}
 //   last_action     {All::EmailText, All::History::Views}
-//   one_line_content {All::Html::Views, All::ZzCarrierwavePolymorphic}
+//   one_line_content {All::Html::Views} (+ Type::Image on image cards)
 //
 // Adjudication against the gems (which module Ruby wins with):
 //   compact_missing/unknown  html       -> All::Error        (error.rb:1-8,
@@ -43,14 +43,9 @@
 //                                set/type/image.rb:17-20 `format do view
 //                                :one_line_content { _render_core size:
 //                                :icon }` — a NONBASE set, visible only on
-//                                Image cards). The all-scoped
-//                                All::ZzCarrierwavePolymorphic registration
-//                                is a TS port device (registered to win the
-//                                flat table) — its fn carries the Type::Image
-//                                guard and delegates non-image cards down
-//                                the chain (superView), so the later-wins
-//                                order CANNOT promote unguarded image bytes
-//                                onto every card.
+//                                Image cards). The carrierwave manifest
+//                                registers it on Type::Image, so the
+//                                all-set chain never carries image bytes.
 
 import { describe, expect, it, beforeAll, afterAll } from "vitest";
 import {
@@ -80,7 +75,7 @@ function normalize(html: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// one_line_content: {All::Html::Views, All::ZzCarrierwavePolymorphic}
+// one_line_content: All::Html::Views, and Type::Image on image cards
 // (oracle mod order: format before carrierwave — default-mod-deck.ts)
 // ---------------------------------------------------------------------------
 
@@ -129,23 +124,23 @@ describe("one_line_content same-token order (format + carrierwave mods)", () => 
     storage?.close();
   });
 
-  it("later-registered module heads the ALL-token one_line_content chain", () => {
-    // Ruby: html/views.rb (format mod) loads before the carrierwave mod;
-    // the later include wins, so the chain head is the DEVICE — whose fn
-    // carries the Type::Image guard and delegates non-image cards.
+  it("the ALL-token one_line_content chain is the format mod's alone; the image view sits on Type::Image", () => {
+    // Ruby: carrierwave defines :one_line_content only on Type::Image
+    // (set/type/image.rb:17-20), so the all-set chain is html/views.rb's
+    // and an image card reaches the image view through its type token.
     const modules = loader!.viewChain("ALL", "one_line_content", "html").map(
       (e) => e.setModule,
     );
-    expect(modules).toEqual([
-      "All::ZzCarrierwavePolymorphic",
+    expect(modules).toEqual(["All::Html::Views"]);
+    expect(loader!.viewChain("ALL TYPE-image", "one_line_content", "html").map((e) => e.setModule)).toEqual([
+      "Type::Image",
       "All::Html::Views",
     ]);
   });
 
-  it("the chain-head device delegates non-image cards to the wrap arm (guard)", async () => {
-    // html/views.rb:29-32 wrap arm bytes (the fmtoneline oracle pin) —
-    // must hold with the device AT THE CHAIN HEAD (regression guard: this
-    // is the promotion this suite exists to prevent).
+  it("non-image cards render the all-set wrap arm", async () => {
+    // html/views.rb:29-32 wrap arm bytes (the fmtoneline oracle pin) — no
+    // image bytes may reach a non-image card.
     const html = await storage!.engine.render(
       "Dispatch Order Plain Probe",
       "one_line_content",
@@ -156,13 +151,14 @@ describe("one_line_content same-token order (format + carrierwave mods)", () => 
   it("image-typed cards dispatch the Type::Image icon core (image.rb:18-20)", async () => {
     // set/type/image.rb:17-20 `format do view :one_line_content do
     // _render_core size: :icon end` — the img tag the icon-size core
-    // renders for a web-URL source (web URLs stay raw, imageSource).
+    // renders for a web-URL source (web URLs stay raw; Rails image_tag
+    // puts alt before src, the captured shape).
     const html = await storage!.engine.render(
       "Dispatch Order Image Probe",
       "one_line_content",
     );
     expect(html).toBe(
-      '<img src="https://example.com/dispatch-probe.png" alt="Dispatch Order Image Probe">',
+      '<img alt="Dispatch Order Image Probe" src="https://example.com/dispatch-probe.png" />',
     );
   });
 

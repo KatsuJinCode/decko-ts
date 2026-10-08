@@ -226,6 +226,23 @@ const searchBoxView: ViewFn = ({ fmt }) => {
   );
 };
 
+/** The pieces the mod deck's chain registers on their Ruby sets
+ *  (card-mod-layout):
+ *  - navbarLinksForMethodOverride: the all-set :navbar_links view as it
+ *    renders for the two sets that override the navbar_items METHOD
+ *    (set/self/account_links.rb, set/abstract/list.rb). The view itself
+ *    stays All::NavbarLinks in Ruby; only the method differs, so the
+ *    all-set view fn calls this for those cards;
+ *  - abstractItemsNavItemView: set/abstract/items.rb view :nav_item;
+ *  - dropdownDividerView: set/self/dropdown_divider.rb :nav_item and
+ *    :nav_link_in_dropdown. */
+export function navbarItemsOverridden(fmt: RenderFormat): boolean {
+  return fmt.card.key === "*account_link" || isListType(fmt);
+}
+export const navbarLinksForMethodOverride: ViewFn = (ctx) => navbarLinksView(ctx);
+export const abstractItemsNavItemView: ViewFn = (ctx) => wrapNavItem(navDropdown(ctx));
+export const dropdownDividerView: ViewFn = () => `<div class="dropdown-divider"></div>`;
+
 export const NAVBAR_VIEWS: Record<string, ViewFn> = {
   navbar_links: navbarLinksView,
   nav_item: navItemView,

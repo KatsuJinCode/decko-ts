@@ -46,6 +46,7 @@ import {
   seedCard,
   type RenderTestStorage,
 } from "./render-test-storage.js";
+import { DeckoName } from "../../../src/card/name.js";
 
 let storage: RenderTestStorage | undefined;
 
@@ -158,4 +159,49 @@ describe("setting-group applies gate (census M2, Message editing-group shape)", 
       );
     },
   );
+});
+
+describe("visible_setting_codenames (card-mod-rules set/type/set.rb:73-75)", () => {
+  it("lists every applicable setting for a Set card, and nothing for a non-Set card", async () => {
+    const s = await seedDeck();
+    await seedCard(s, { id: 10, name: "Pointer", codename: "pointer", typeId: 2 });
+    await seedCard(s, { id: 50, name: "*home", codename: "home", typeId: 10 });
+    await seedCard(s, { id: 52, name: "*self", codename: "self", typeId: 2 });
+    await seedCard(s, { id: 51, leftId: 50, rightId: 52, typeId: 5 });
+    const all = [
+      "structure", "default", "autoname", "create", "read", "update", "delete", "captcha",
+      "head", "layout", "style", "script", "help", "input_type", "guide",
+      "content_options", "content_option_view", "on_create", "on_update", "on_delete",
+      "thanks", "follow_fields", "follow",
+    ];
+    await s.fetcher.codenames.ensureLoaded();
+    expect(await s.engine.visibleSettingCodenamesFor("Message+Conversation+*type plus right")).toEqual(
+      all.filter((c) => c !== "content_options" && c !== "content_option_view"),
+    );
+    expect(await s.engine.visibleSettingCodenamesFor("*home+*self")).toEqual(all);
+    expect(await s.engine.visibleSettingCodenamesFor("Message")).toBeUndefined();
+    // the call loads the *default universe itself, so the new-card type
+    // walk works afterwards whatever ran first (Search: the set's
+    // Search-typed *structure rule is the template)
+    expect(s.engine.newCardDefaultType(DeckoName.parse("A Message+Conversation"), "Message")?.typeName).toBe("Search");
+  });
+});
+
+describe("anchorless set prototypes (06_rule.rb, 04_star.rb prototype_args)", () => {
+  it("the *rule set's prototype is the stored *all+*create card, so its List type admits the restricted pair", async () => {
+    const s = await seedDeck();
+    await seedCard(s, { id: 60, name: "*all", codename: "all", typeId: 5 });
+    await seedCard(s, { id: 61, name: "*create", codename: "create", typeId: 2 });
+    await seedCard(s, { id: 62, leftId: 60, rightId: 61, typeId: 3 }); // *all+*create, List
+    await seedCard(s, { id: 63, name: "*rule", codename: "rule", typeId: 5 });
+    await seedCard(s, { id: 64, name: "*star", codename: "star", typeId: 5 });
+    await s.fetcher.codenames.ensureLoaded();
+    await s.engine.prepareItemForRender("*all+*create");
+    const rule = await s.engine.visibleSettingCodenamesFor("*rule");
+    expect(rule).toContain("content_options");
+    expect(rule).toContain("content_option_view");
+    // *star's prototype is a new "*dummy" card: no list type, no pair
+    const star = await s.engine.visibleSettingCodenamesFor("*star");
+    expect(star).not.toContain("content_options");
+  });
 });

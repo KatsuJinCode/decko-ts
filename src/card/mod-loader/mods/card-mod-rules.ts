@@ -76,8 +76,7 @@
 // - set/type/set/html_views.rb:21-23 :one_line_content ->
 //   setOneLineContentView (the bare "")
 // - set/type/setting.rb:63-65 :one_line_content is render_rule_help - the
-//   exact bytes the registered rule_help viewFn's Setting branch produces,
-//   so it is tested through that function (no separate export)
+//   registered rule_help viewFn's Setting branch, registered on Type::Setting
 //
 // NOT ported (honest remainder, one-word reasons; the 2026-09-29
 // rules-views lane ported the setting-list family, the pill links, the
@@ -262,10 +261,9 @@ const inputView: ViewFn = (ctx) => {
 /** set/type/set/html_views.rb:21-23 view :one_line_content, wrap: {}:
  *  the bare empty string. `wrap: {}` is an EMPTY wrap hash - no wrapper
  *  applies (voo_api.rb:167-177 iterates the wrap list; {} contributes
- *  none), so the view returns "" unwrapped. EXPORTED, not registered: the
- *  name :one_line_content is registered by card-mod-content (its
- *  right/default + right/structure bodies) and the render layer composes
- *  the rule-card variant; a third global registration would clobber both. */
+ *  none), so the view returns "" unwrapped. Registered on
+ *  Type::Set::HtmlViews (a set-scoped registration reaches only Set cards,
+ *  so it shadows no other card's :one_line_content). */
 export function setOneLineContentView(ctx: ViewContext): string {
   assertSetCard(ctx, "one_line_content");
   return "";
@@ -2781,13 +2779,15 @@ const setModules: ModSetModuleFile[] = [
     // layer's before-hook seam is format.ts runBeforeHook, which ports no
     // set :open hook), :core (ALREADY COVERED - views.ts setRulesCoreHtml
     // pins the exact bytes), :set_label (PORTED), :input (PORTED),
-    // :one_line_content (EXPORTED setOneLineContentView).
+    // :one_line_content (setOneLineContentView).
     setPath: "type/set/html_views",
     formats: {
       html: {
         views: [
           { view: "set_label", viewFn: setLabelView },
           { view: "input", viewFn: inputView },
+          // html_views.rb:21-23 view :one_line_content, wrap: {}
+          { view: "one_line_content", viewFn: setOneLineContentView },
         ],
       },
     },
@@ -2902,7 +2902,11 @@ const setModules: ModSetModuleFile[] = [
     setPath: "type/setting",
     formats: {
       html: {
-        views: [{ view: "rule_help", viewFn: ruleHelpView }],
+        views: [
+          { view: "rule_help", viewFn: ruleHelpView },
+          // setting.rb:63-65 view :one_line_content: render_rule_help
+          { view: "one_line_content", viewFn: (ctx) => ctx.fmt.renderView("rule_help") },
+        ],
       },
     },
   },

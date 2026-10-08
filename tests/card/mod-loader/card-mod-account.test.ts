@@ -25,6 +25,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
   bindModLoaderToEngine,
   createRenderTestStorage,
+  renderThroughRecord,
   seedCard,
   type RenderTestStorage,
 } from "../render/render-test-storage.js";
@@ -142,13 +143,14 @@ describe("card-mod-account through the mod loader (A/B)", () => {
     // :verify_days / :reset_password_days are NOT in this negative list,
     // for the reason the :open_content note below records - raising here
     // was the engine's gap, not Ruby's behaviour. Both are DEPRECATED
-    // aliases of :token_days (right/account/views.rb:18-20) that the four
-    // notification templates render loader-lessly, so the flat HTML_VIEWS
-    // table carries the page-path body: the blank the captured page bytes
-    // pin (`Link will remain valid for  days.`). :token_days and
-    // :token_expiry stay in this list - no flat entry was added for them.
-    expect(await s.engine.render("Oracle Token Probe+account", "verify_days")).toBe("");
-    expect(await s.engine.render("Oracle Token Probe+account", "reset_password_days")).toBe("");
+    // aliases of :token_days (right/account/views.rb:18-20), and the flat
+    // HTML_VIEWS table carries them for +*account cards with the aliased
+    // body, the token days. (The message pages' blank marks come from the
+    // test context's NEW +*account card taking the :unknown substitution,
+    // not from this body.) :token_days and :token_expiry stay in this list
+    // - no flat entry was added for them.
+    expect(await s.engine.render("Oracle Token Probe+account", "verify_days")).toBe("2");
+    expect(await s.engine.render("Oracle Token Probe+account", "reset_password_days")).toBe("2");
     await expect(s.engine.render("Oracle Token Probe+account", "token_expiry")).rejects.toThrow(
       UnsupportedViewError,
     );
@@ -261,7 +263,7 @@ describe("card-mod-account through the mod loader (A/B)", () => {
       "<h2>Account Closed</h2>\n" +
       "<p>The sign-in account once associated with this card has been removed, " +
       "the card has been anonymized, and its data fields have been deleted.</p>";
-    expect(await s.engine.render("Oracle Closed Probe", "closed_account")).toBe(expected);
+    expect(await renderThroughRecord(s, "Oracle Closed Probe", "closed_account")).toBe(expected);
   });
 
   it("WITH the mod: :raw on User+email returns the card's dbContent (type_plus_right/user/email.rb:7-9)", async () => {

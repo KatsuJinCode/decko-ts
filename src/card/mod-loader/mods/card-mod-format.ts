@@ -126,10 +126,8 @@
 //   :view_list via all/demo). STILL UNPORTED from this group:
 //   set/all/html/wrap.rb (the wrap pipeline is the slot machinery),
 //   set/all/html/show.rb (page-view rails), set/all/html/error.rb's
-//   :not_found frame). :debug_server_error stays the NAMED REMAINDER -
-//   the BetterErrors dev-tool page: the better_errors gem is NOT in the
-//   frozen gem set, so the view raises NameError in the installed-gems
-//   environment (the harness's named-remainder state).
+//   :not_found frame). :debug_server_error is registered on
+//   all/html/error (render/debug-server-error.ts).
 // - set/all/title.rb :title_link :title_no_link html block +
 //   helpers: rails (link_to_card + the card-title span rendering);
 //   :title in the html block has a `show_view?(:title_link, :hide)`
@@ -200,10 +198,8 @@
 //   i18n, seed data)
 
 import { ONE_LINE_CHARACTER_LIMIT, truncate } from "../../render/text-helpers.js";
-import {
-  ADMIN_CONFIG,
-  CORE_TASK_BASKET,
-} from "./core-admin-runtime.js";
+import { modBarRightSections } from "./core-admin-runtime.js";
+import { debugServerErrorView } from "../../render/debug-server-error.js";
 import {
   faviconTagBytes,
   HEAD_VIEWS,
@@ -230,10 +226,11 @@ import { UnsupportedViewError } from "../../render/format.js";
 // :url_link anchor escapes its href the way Rails' content_tag does
 // (links.rb:101-106).
 import { h } from "../../render/slot-html.js";
+import { DeckoName } from "../../name.js";
 // 2026-10-01::link/:nav_link share the flat
 // HTML_VIEWS bodies (the urlView doctrine at :300-304 of this file) — one
 // fn per view, so the two registrations cannot drift again.
-import { linkView, navLinkView } from "../../render/views.js";
+import { HTML_VIEWS, linkView, navLinkView } from "../../render/views.js";
 import { popoverLink } from "./card-mod-bootstrap.js";
 import type {
   DeckoModManifest,
@@ -534,24 +531,6 @@ const typeHtmlOneLineContentView: ViewFn = ({ fmt, voo }) => {
   return truncate(stripTags(fmt.renderRaw()), length, "...");
 };
 
-/** set/type/toggle.rb:31-35 (html block): `def one_line_content;
- *  short_content end` + `def short_content; render_core end` — the toggle
- *  HELPERS that override the All::Content helper family, so a Toggle-typed
- *  card's :one_line_content renders the :core bytes (the "yes"/"no"
- *  formatToggleCore mapping the engine's coreView toggle branch carries).
- *  Ruby's surface is a helper override: All::Content's view
- *  (content.rb:9-13) runs `with_nest_mode :compact { one_line_content }`
- *  and the helper lookup hits Type::Toggle's override first; the
- *  chain-scoped registration answers the same bytes through the TS chain
- *  walk (Type::Toggle first, renderView("core") re-walks for Toggle
- *  cards). :short_content is ALREADY covered views-side — shortContentView's
- *  toggle arm renders the core bytes inside the text-muted wrap.
- *  CORPUS-PRESENT-UNRENDERED: the
- *  sha-verified dump copy (6A44DFDC...) carries 8 Toggle-typed cards, none
- *  compound/rule-shaped (so the rule-bar one-line surface never reaches
- *  them), and zero captured one_line_content bytes — pins are gem-derived
- *  from toggle.rb:31-35 + the capture-pinned coreView toggle branch. */
-const typeToggleOneLineContentView: ViewFn = ({ fmt }) => fmt.renderView("core");
 
 /** set/all/base.rb:35-37 view :link, perms: :none: `link_view`
  *  (base.rb:43-47 `link_to_card card.name, _render_title, opts`) and
@@ -657,6 +636,23 @@ const blankView: ViewFn = () => "";
  *  labeled_content}"`. */
 const labeledView: ViewFn = ({ fmt }) =>
   `${fmt.card.name.s}: ${fmt.renderView("labeled_content")}`;
+
+/** set/all/html.rb:5-7 and set/type/cardtype.rb:2-4 view :type, unknown:
+ *  true: `link_to_card card.type_card, nil, class: "cardtype"` - the html
+ *  format's type link (the base format's plain type name, base.rb:57, is
+ *  shadowed in html by the html module). */
+const htmlTypeView: ViewFn = ({ fmt }) => {
+  const type = fmt.card.typeName ?? "";
+  return `<a class="cardtype known-card" href="/${h(DeckoName.parse(type).urlKey)}">${type}</a>`;
+};
+
+/** set/all/html/views.rb:67-72 view :labeled, unknown: :labeled, cache:
+ *  :yes - the html format's wrapped row (title + labeled content + menu),
+ *  which shadows base.rb's "name: content" arm in html. The body is the
+ *  shared engine view (render/views.ts labeledView), captured before any
+ *  mod registration writes the live table. */
+const ENGINE_LABELED: ViewFn | undefined = HTML_VIEWS["labeled"];
+const htmlLabeledView: ViewFn = (ctx) => (ENGINE_LABELED === undefined ? "" : ENGINE_LABELED(ctx));
 
 // ---------------------------------------------------------------------------
 // error views (set/all/error.rb)
@@ -1256,49 +1252,14 @@ const adminView: ViewFn = ({ fmt }) => fmt.renderView("core");
 /** set/type/mod.rb (card-mod-format-0.20.0) view :bar_right:
  *  `%w[settings configurations tasks cardtypes scripts styles].filter
  *  { |name| card.send("#{name}?") }.join ", "` — the mod card's bar-right
- *  slot lists the mod's PRESENT admin sections. The predicates the prior
- *  port called "a runtime the headless engine has no surface for" are the
- *  admin-config surface the admin lanes landed: settings/configurations/
- *  cardtypes read ADMIN_CONFIG (the config/admin.yml mirrors,
- *  core-admin-runtime.ts), tasks reads the CORE_TASK_BASKET select
- *  (type/mod.rb#tasks), styles/scripts read the +*style / +*script child
- *  fetches (type/mod.rb:106-114 fetch(:style)/fetch(:script).present?).
- *  Chain-scoped (kind nonbase): only Mod-typed cards dispatch it; every
- *  other card keeps the engine's barRightView. Oracle-pinned: the
- *  "settings" bar-right text on mod: content's bar
- *  (fixtures/captured/admin-view-pins.json, :depends_on/:gem_info). */
-const typeModBarRightView: ViewFn = (ctx) => {
-  const card = ctx.fmt.card;
-  const modname = (card.record.codename ?? "").replace(/^mod_/, "");
-  const config = ADMIN_CONFIG[modname];
-  const present: string[] = [];
-  if (Array.isArray(config?.settings)) present.push("settings");
-  if (
-    config?.configurations !== undefined &&
-    !Array.isArray(config.configurations)
-  ) {
-    present.push("configurations");
-  }
-  if (
-    Object.values(CORE_TASK_BASKET).some((task) => task.mod === modname)
-  ) {
-    present.push("tasks");
-  }
-  if (
-    config?.cardtypes !== undefined && !Array.isArray(config.cardtypes)
-  ) {
-    present.push("cardtypes");
-  }
-  if (childExists(ctx, "script")) present.push("scripts");
-  if (childExists(ctx, "style")) present.push("styles");
-  return present.join(", ");
-};
-
-/** type/mod.rb:106-114 fetch(:tag).present? — the +*style/+*script child
- *  fetch through the engine's sync render cache (a miss is Ruby's nil). */
-function childExists(ctx: ViewContext, tag: string): boolean {
-  return ctx.fmt.engine.fetchRenderCard(`${ctx.fmt.card.name.s}+*${tag}`) !== undefined;
-}
+ *  slot lists the mod's PRESENT admin sections. This is the module Ruby
+ *  dispatches for a Mod card (card-mod-format loads after core and reopens
+ *  Type::Mod). The section predicates and their order are the oracle-pinned
+ *  ones every served mod page carries (core-admin-runtime.ts
+ *  modBarRightSections, measured over all 30 mod cards): one body, so the
+ *  chain and the base table cannot answer differently. */
+const typeModBarRightView: ViewFn = (ctx) =>
+  modBarRightSections((ctx.fmt.card.record.codename ?? "").replace(/^mod_/, ""));
 
 // ---------------------------------------------------------------------------
 // set/type/toggle.rb html block — :input + :labeled_editor raise parity
@@ -1671,6 +1632,21 @@ const setModules: ModSetModuleFile[] = [
     },
   },
   {
+    // set/all/html/error.rb:4-8 view :debug_server_error, the error page
+    // shown for a server error when the *debugger card is on (the
+    // BetterErrors page; render/debug-server-error.ts). The file's other
+    // html views (:unknown, :mini_unknown, :compact_missing, :conflict,
+    // :errors) are served by the base table.
+    setPath: "all/html/error",
+    formats: {
+      html: {
+        views: [
+          { view: "debug_server_error", viewFn: debugServerErrorView, config: { wrap: "modal" } },
+        ],
+      },
+    },
+  },
+  {
     // set/all/file.rb:1-9 file format block (views :core/:style).
     // Not ported: format-specific.
     setPath: "all/file",
@@ -1687,6 +1663,11 @@ const setModules: ModSetModuleFile[] = [
     // view) + base block (sanitize_html). Not ported: rails
     // (link_to_card, wrap_with, delegate classy, Rails::Html::FullSanitizer).
     setPath: "all/html",
+    formats: {
+      html: {
+        views: [{ view: "type", viewFn: htmlTypeView, config: { unknown: true } }],
+      },
+    },
   },
   {
     // set/all/html/frame.rb:1-51 html format block (view :flash + the
@@ -1730,6 +1711,7 @@ const setModules: ModSetModuleFile[] = [
           { view: "short_content", viewFn: shortContentView },
           { view: "one_line_content", viewFn: allHtmlViewsOneLineContentView, config: { unknown: "mini_unknown" } },
           { view: "raw_one_line_content", viewFn: allHtmlViewsRawOneLineContentView, config: { unknown: "mini_unknown" } },
+          { view: "labeled", viewFn: htmlLabeledView, config: { unknown: "labeled", cache: "yes" } },
         ],
       },
     },
@@ -1900,6 +1882,7 @@ const setModules: ModSetModuleFile[] = [
     formats: {
       html: {
         views: [
+          { view: "type", viewFn: htmlTypeView, config: { unknown: true } },
           { view: "add_link", viewFn: cardtypeAddLinkView },
           { view: "add_button", viewFn: cardtypeAddButtonView },
           { view: "add_url", viewFn: cardtypeAddUrlView },
@@ -2016,9 +1999,11 @@ const setModules: ModSetModuleFile[] = [
     // shape, which supersedes this gem's case/to_i form under mod load
     // order; en.yml:21-22 resolves format_toggle_yes/no to "yes"/"no").
     //
-    // Ported:one_line_content (2026-10-01,
-    // typeToggleOneLineContentView above): toggle.rb:31-35's helper
-    // override funnels the All::Content view to render_core. :short_content
+    // :one_line_content is NOT a view of this file: toggle.rb:31-35
+    // overrides the one_line_content / short_content METHODS, and the
+    // view stays All::Html::Views' (html/views.rb:29-32), whose
+    // text-muted wrap of truncate(strip_tags(render_core)) is the same
+    // bytes for the "yes"/"no"/"?" core. :short_content
     // is covered views-side (shortContentView's toggle arm). The i18n
     // concern in the old note applied to :core only, and the en locale
     // resolves it to plain "yes"/"no" (config/locales/en.yml:21-22).
@@ -2028,7 +2013,6 @@ const setModules: ModSetModuleFile[] = [
         views: [
           { view: "input", viewFn: toggleInputView },
           { view: "labeled_editor", viewFn: toggleLabeledEditorView },
-          { view: "one_line_content", viewFn: typeToggleOneLineContentView, config: {} },
         ],
       },
     },

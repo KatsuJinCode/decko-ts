@@ -125,8 +125,8 @@ import { h } from "../../render/slot-html.js";
 // set/self/signin.rb:119-125 view :core — the sign-in form. The emitter
 // lives in the render layer (signin-core-form-view.ts) because it is consumed
 // by TWO registrations: this manifest entry (the loader-bound path) and the
-// render layer's flat coreView self/signin branch (the headless pattern —
-// the edge engines run mod-less, so only the flat branch dispatches there).
+// render layer's flat coreView self/signin branch (the loader-less
+// dispatch), so the two paths render the same form.
 import { signinCoreHtml } from "../../render/signin-core-form-view.js";
 import { modSlotWrap, superView } from "../mod-view-helpers.js";
 import { setModuleShortname } from "../mod-registrar.js";
@@ -148,6 +148,7 @@ import {
   output,
 } from "../../follow/follow-form-shapes.js";
 import { isNewCard } from "../../fetch/card-record.js";
+import { resetPasswordUrlView, verifyUrlView } from "../../render/views.js";
 import { DeckoName } from "../../name.js";
 import {
   BOARD_PILL_UL_CLASSES,
@@ -1098,8 +1099,8 @@ const setModules: ModSetModuleFile[] = [
     // Ported: token_days + its two deprecated aliases, the html
     // block's token_expiry (the literal HTML string), and — surfaces-batch3
     // — the html block's :core (the email+password field nests).
-    // :verify_url/:reset_password_url stay unported on the async-view
-    // boundary (see accountCoreView's note).
+    // :verify_url/:reset_password_url render their page arm (the denied
+    // blank); the token URL itself is built on the send path.
     setPath: "right/account/views",
     formats: {
       html: {
@@ -1108,6 +1109,12 @@ const setModules: ModSetModuleFile[] = [
           // dispatch to the edit mod's walk
           { view: "content_formgroups", viewFn: accountBeforeContentFormgroupsView },
           { view: "core", viewFn: accountCoreView },
+          // views.rb:2-8 :verify_url / :reset_password_url: the page arm
+          // (the token URL is built by the send path, see views.ts). Called
+          // through a closure: views.ts reaches this module through an
+          // import cycle, so its bindings are read at render time.
+          { view: "verify_url", viewFn: (ctx) => verifyUrlView(ctx), config: { cache: "never", denial: "blank" } },
+          { view: "reset_password_url", viewFn: (ctx) => resetPasswordUrlView(ctx), config: { denial: "blank" } },
           { view: "token_days", viewFn: tokenDaysView },
           { view: "verify_days", viewFn: verifyDaysView },
           { view: "reset_password_days", viewFn: resetPasswordDaysView },
@@ -1215,16 +1222,11 @@ const setModules: ModSetModuleFile[] = [
     // "signup", the card set-key token is "sign_up"). The chain walker
     // resolves the card's set-key token TYPE-sign_up through set-keys-to-
     // modules.ts camelize("sign_up") -> "SignUp", so the view must
-    // register under the TWO-segment shortname "Type::SignUp" (setPath
-    // "type/sign_up") — "Type::Signup" and "Type::SignUp::Views" are
-    // shortnames no token ever resolves to. Ported (R17): :core
-    // (core.haml: the invite-links div + signup_line + processed raw
-    // body; see signupCoreView). Not ported: rails (:new,
-    // :content_formgroups, :new_buttons - card_form, multi_card_editor).
+    // register under the "Type::SignUp" spelling (setPath "type/sign_up");
+    // the views themselves, :core included, live on the nested
+    // views module below, where Ruby defines them (a token whose own
+    // module lacks the view expands to the modules nested under it).
     setPath: "type/sign_up",
-    formats: {
-      html: { views: [{ view: "core", viewFn: (ctx) => signupCoreHtml(ctx) }] },
-    },
   },
   {
     // set/type/signup/views.rb — the NESTED child file (Ruby's SetTemplate
@@ -1258,6 +1260,11 @@ const setModules: ModSetModuleFile[] = [
           { view: "new", viewFn: signupNewView, config: { cache: "never" } },
           { view: "new_buttons", viewFn: signupNewButtonsView, config: { cache: "never" } },
           { view: "content_formgroups", viewFn: signupContentFormgroupsView },
+          // views.rb:27-29 view :core, template: :haml, cache: :never
+          // (core.haml: the invite-links div + signup_line + processed raw
+          // body; see signupCoreView). Ruby defines it in this nested file,
+          // so Type::Signup::Views owns it.
+          { view: "core", viewFn: (ctx) => signupCoreHtml(ctx) },
         ],
       },
     },

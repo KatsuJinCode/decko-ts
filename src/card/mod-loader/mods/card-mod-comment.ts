@@ -201,7 +201,14 @@ function commentBoxBody(ctx: ViewContext): string {
   return `<div class="comment-box nodblclick">${form}${body}</form></div>`;
 }
 
-const commentBoxView: ViewFn = (ctx) => commentBoxBody(ctx);
+/** The served :comment_box: the base table's body (views.ts
+ *  commentBoxBaseView), which carries the view's own update gate as the
+ *  captured pages pin it and the recaptcha-wrapped update form. One body
+ *  for both dispatch paths, so the chain and the base table cannot drift;
+ *  commentBoxBody stays the create-form builder the board capture pins. */
+const BASE_COMMENT_BOX: ViewFn | undefined = HTML_VIEWS["comment_box"];
+const commentBoxView: ViewFn = (ctx) =>
+  BASE_COMMENT_BOX !== undefined ? BASE_COMMENT_BOX(ctx) : commentBoxBody(ctx);
 
 // ---------------------------------------------------------------------------
 // set/right/discussion.rb:1-6 view :open, :open_content, :titled,

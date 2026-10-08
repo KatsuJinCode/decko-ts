@@ -156,43 +156,24 @@ describe("card-mod-comment through the mod loader (A/B)", () => {
     );
   });
 
-  it("WITH the mod: :comment_box renders the Rails card_form bytes (all/comment.rb:46-53)", async () => {
+  it("WITH the mod: :comment_box renders the served comment form (all/comment.rb:46-53)", async () => {
     const s = storage!;
     loader = new ModLoader([{ manifest: cardModComment }]);
     loader.load();
     bindModLoaderToEngine(storage!, loader!);
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
+    // The mod's :comment_box serves the base table's body, the shape the
+    // live recapture pins for the anonymous viewer (recapture-raw-shard-
+    // 000005 Klickstein_continues: card_form's UPDATE branch with the
+    // recaptcha wrap, the form-control author field). The probe carries no
+    // *update rule, and this deck's no-rule update verdict allows it.
     const html = await s.engine.render("Oracle Comment Probe", "comment_box");
-    // The Ruby card_form shape (card-mod-edit set/all/form.rb:193-224 +
-    // comment.rb:46-53), byte-verified against the live deck by the
-    // board-stage3 engage_tab oracle capture (the CREATE branch is
-    // pinned there; this probe walks the UPDATE branch of the same
-    // machinery: autosave class (form.rb:221, :update-only), the
-    // _method patch spoof (the PERSISTED-record form_for quirk),
-    // /update/<mark> (path(action: :update)), and the Rails textarea
-    // (rows, " form-control", newline-wrapped empty value). The author
-    // label renders - this engine is anonymous (comment.rb:74-77 nils it
-    // only for signed-in actors).
     expect(html).toContain('<div class="comment-box nodblclick">');
-    expect(html).toContain(
-      '<form class="card-form slotter autosave" id="edit_card_210" action="/update/Oracle_Comment_Probe" accept-charset="UTF-8" data-remote="true" method="post">',
-    );
-    expect(html).toContain(
-      '<input type="hidden" name="_method" value="patch" autocomplete="off" />',
-    );
-    expect(html).toContain(
-      '<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">',
-    );
-    expect(html).toContain('<div class="comment-buttons">');
-    expect(html).toContain('<label>My Name is:</label>');
-    expect(html).toContain('<input type="text" name="comment_author">');
-    expect(html).toContain(
-      '<button name="button" type="submit" data-disable-with="Commenting" class="btn btn-outline-primary">Comment</button>',
-    );
-    expect(html).toContain('</form>');
-    expect(html).toContain('</div>');
-    // The hidden name field is NOT rendered for an existing card.
+    expect(html).toContain('id="edit_card_210" data-recaptcha="on" action="/update/Oracle_Comment_Probe"');
+    expect(html).toContain('<input type="hidden" name="_method" value="patch" autocomplete="off" />');
+    expect(html).toContain('<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">');
+    expect(html).toContain('<button name="button" type="submit" data-disable-with="Commenting" class="btn btn-outline-primary">Comment</button>');
     expect(html).not.toContain('<input type="hidden" name="card[name]"');
   });
 

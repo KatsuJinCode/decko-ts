@@ -52,7 +52,13 @@ import {
   type SetModuleKind,
   type ViewChainEntry,
 } from "./mod-loader/mod-registrar.js";
-import { safeKeyToModuleShortname, safeKeyToModuleShortnameCandidates } from "./render/set-keys-to-modules.js";
+import {
+  codenameModuleShortnames,
+  rubySelfToken,
+  safeKeyToModuleShortname,
+  safeKeyToModuleShortnameCandidates,
+} from "./render/set-keys-to-modules.js";
+import { SET_INCLUDES } from "./mod-loader/concrete-set-includes.js";
 import {
   ContentOverrideRegistry,
   setDefaultContentOverrideRegistry,
@@ -81,6 +87,11 @@ import {
  *  (EmailTextFormat < TextFormat < Format) does NOT descend; its chain
  *  misses reach the base record, never the html chain. */
 const HTML_DESCENDED_FORMATS = new Set(["rss", "email_html"]);
+
+/** Whether a format's class descends from HtmlFormat (or is it). */
+function htmlLineage(format: string): boolean {
+  return format === "html" || HTML_DESCENDED_FORMATS.has(format);
+}
 import {
   ModEventRegistry,
   setDefaultModEventRegistry,
@@ -583,6 +594,19 @@ export class ModLoader {
    * byte-identical to the pre-chain dispatcher.
    */
   viewChain(setKeys: string, view: string, format: string = "html"): ViewChainEntry[] {
+    // Memoized per load generation: a card's chain for a view is asked by
+    // the dispatcher, the unknown-setting walk and super() alike.
+    this.syncChainMemo();
+    const memoKey = `${format}\u0000${view}\u0000${setKeys}`;
+    const memoized = this.chainMemo.get(memoKey);
+    if (memoized !== undefined) return memoized;
+    const chain = this.computeViewChain(setKeys, view, format);
+    if (this.chainMemo.size >= CHAIN_MEMO_LIMIT) this.chainMemo.clear();
+    this.chainMemo.set(memoKey, chain);
+    return chain;
+  }
+
+  private computeViewChain(setKeys: string, view: string, format: string): ViewChainEntry[] {
     const tokens = setKeys.split(/\s+/).filter((s) => s !== "");
     // Empty setKeys = "no concrete pattern applies" (the Abstract
     // pseudo-pattern case). Fall back to load-order registration so
@@ -629,9 +653,129 @@ export class ModLoader {
       }
       return out;
     }
+    this.syncChainMemo();
     const mostSpecificFirst = tokens.slice().reverse();
     const out: ViewChainEntry[] = [];
+    const present = new Set<string>();
     for (const token of mostSpecificFirst) {
+      const { own, abstracts } = this.tokenEntries(token, view, format);
+      for (const entry of own) {
+        out.push(entry);
+        present.add(entry.setModule);
+      }
+      // include_set entries already contributed by a more specific token
+      // stay where they first appeared (Ruby includes a module once).
+      for (const entry of abstracts) {
+        if (present.has(entry.setModule)) continue;
+        out.push(entry);
+        present.add(entry.setModule);
+      }
+    }
+    // Format inheritance: when the named format produces no chain
+    // entries, fall back to the html chain — but ONLY for the formats
+    // whose Ruby class descends from HtmlFormat (the
+    // HTML_DESCENDED_FORMATS gate below): rss (RssFormat < HtmlFormat,
+    // rss_format.rb:6) and email_html (EmailHtmlFormat < HtmlFormat,
+    // email_html_format.rb:6). Ruby's AbstractFormat#format blocks
+    // reopen the html parent class only through that ancestry
+    // (include_set_format_modules, format.rb:57-63, walks
+    // format_ancestry). css/js do NOT descend — CssFormat/JsFormat
+    // subclass Format directly (css_format.rb:6, js_format.rb:6) — so a
+    // css/js chain miss skips this arm and lands on the BASE tail below
+    // (the survey fix, 2026-10-01; the
+    // census probe pins that no css/js chain request exists to observe
+    // the change). EmailTextFormat < TextFormat < Format
+    // (email_text_format.rb) likewise never sees the html method table,
+    // so an email_text chain miss must reach the BASE (flat) record, not
+    // the html chain — falling back there would let the html chain's own
+    // :core re-enter itself (the text-message card's html :core
+    // dispatches email_text's :core). email_html DOES descend and keeps
+    // the fallback.
+    if (
+      out.length === 0 &&
+      format !== "html" &&
+      HTML_DESCENDED_FORMATS.has(format)
+    ) {
+      // the recursion carries the html level AND (through its own base
+      // tail, below) the base level - Ruby's MRO for an html-descended
+      // format (RssFormat/EmailHtmlFormat < HtmlFormat < Format) is
+      // [own] ++ [html] ++ [base]
+      return this.viewChain(setKeys, view, "html");
+    }
+    // BASE-FORMAT TAIL: the bare
+    // `format do` block files its module on Card::Format ITSELF
+    // (register_all_set_format keyed on the base format class,
+    // card-1.110.0 lib/card/set/format.rb:142-144;
+    // process_base_format_modules, registrar.rb:79-84, mixes it into the
+    // class EVERY format inherits). Those views answer in every format,
+    // AFTER the format's own registrations (EmailTextFormat -> TextFormat
+    // -> Format: the own-format module sits closer in the MRO than the
+    // base-class module), and later-registered-wins applies within the
+    // base pass exactly as within the format pass. The manifest's
+    // documented "base" key (mod-manifest.ts:286-288) marks them; a module
+    // that declared the view under BOTH the requested format and base
+    // contributes BOTH entries (Ruby compiles separate format-class
+    // modules per block - the HtmlFormat module included closer than the
+    // Card::Format one - and super() walks exactly that pair). The
+    // html-descended recursion above already carries this tail, so it
+    // does not run twice.
+    let baseScoped = this.baseTailMemo.get(view);
+    if (baseScoped === undefined) {
+      baseScoped = [];
+      for (const shortname of this.memoShortnamesForCode("all")) {
+        const baseFn = this.viewChains.viewForFormat(shortname, view, "base");
+        if (baseFn !== undefined) {
+          baseScoped.push({ setModule: shortname, view, viewFn: baseFn });
+        }
+      }
+      baseScoped.reverse();
+      this.baseTailMemo.set(view, baseScoped);
+    }
+    out.push(...baseScoped);
+    return out;
+  }
+
+  /** A set module's registration of a view as one format sees it: the
+   *  format's own block, then (for the html lineage) the html block, then
+   *  the base block every format inherits (format.rb format_ancestry; Ruby
+   *  files each format block under its own format class, set/format.rb
+   *  120-144). An email_text render therefore never dispatches a module's
+   *  html :core, and an html render never a json-only view. */
+  private anchoredViewFor(shortname: string, view: string, format: string): ViewFn | undefined {
+    return (
+      this.viewChains.viewForFormat(shortname, view, format) ??
+      (format !== "html" && HTML_DESCENDED_FORMATS.has(format)
+        ? this.viewChains.viewForFormat(shortname, view, "html")
+        : undefined) ??
+      (format !== "base" ? this.viewChains.viewForFormat(shortname, view, "base") : undefined)
+    );
+  }
+
+  /** One set-key token's contribution to a view chain: its own set
+   *  module entries (the anchorless expansion, or the anchored module and
+   *  its nested modules) and the abstract modules it includes. Depends only
+   *  on the token, the view, the format and the loaded registrations, so it
+   *  is memoized per load generation: every card shares the ALL, TYPE-*,
+   *  RIGHT-* tokens, and the walk below would otherwise rerun per card. */
+  private tokenEntries(
+    setKeyToken: string,
+    view: string,
+    format: string,
+  ): { own: ViewChainEntry[]; abstracts: ViewChainEntry[] } {
+    const memoKey = `${format}\u0000${view}\u0000${setKeyToken}`;
+    const memoized = this.tokenMemo.get(memoKey);
+    if (memoized !== undefined) return memoized;
+    const own: ViewChainEntry[] = [];
+    const abstracts: ViewChainEntry[] = [];
+    // SELF tokens resolve by the anchor card's codename, as Ruby keys self
+    // modules (rubySelfToken); a codename-less anchor has no self module.
+    const selfToken = rubySelfToken(setKeyToken);
+    if (selfToken === null) {
+      const none = { own, abstracts };
+      this.tokenMemo.set(memoKey, none);
+      return none;
+    }
+    const token = selfToken;
       const dashIdx = token.indexOf("-");
       if (dashIdx === -1) {
         // Anchorless: expand to every registered module with this
@@ -692,7 +836,7 @@ export class ModLoader {
         // non-html anchored registration trips the census probe and
         // reopens the adjudication.
         const code = token.toLowerCase();
-        const matches = this.setModuleShortnamesForCode(code);
+        const matches = this.memoShortnamesForCode(code);
         const scoped: ViewChainEntry[] = [];
         for (const shortname of matches) {
           const viewFn = this.viewChains.viewForFormat(shortname, view, format);
@@ -701,7 +845,7 @@ export class ModLoader {
           }
         }
         scoped.reverse();
-        out.push(...scoped);
+        own.push(...scoped);
       } else {
         // Anchored: resolve to the first REGISTERED shortname among the
         // token's candidates (exact conversion first, then the star-marker
@@ -710,10 +854,10 @@ export class ModLoader {
         // never string guessing). Unregistered tokens fall through to the
         // next set-key token, Ruby's MRO walk unchanged.
         let matched = false;
-        for (const shortname of safeKeyToModuleShortnameCandidates(token)) {
-          const viewFn = this.viewChains.viewFor(shortname, view);
+        for (const shortname of moduleCandidates(token)) {
+          const viewFn = this.anchoredViewFor(shortname, view, format);
           if (viewFn !== undefined) {
-            out.push({ setModule: shortname, view, viewFn });
+            own.push({ setModule: shortname, view, viewFn });
             matched = true;
             break;
           }
@@ -806,77 +950,107 @@ export class ModLoader {
                   return forms;
                 })();
           for (const anchor of anchors) {
-            for (const mod of this.basket.allNonbase()) {
-              const setPath = this.basket.setPathFor(mod.shortname);
-              if (setPath === undefined) continue;
-              if (setPath === `${code}/${anchor}` || setPath.startsWith(`${code}/${anchor}/`)) {
-                const viewFn = this.viewChains.viewFor(mod.shortname, view);
-                if (viewFn !== undefined) {
-                  out.push({ setModule: mod.shortname, view, viewFn });
-                }
+            for (const shortname of this.nonbaseUnderPath(`${code}/${anchor}`)) {
+              const viewFn = this.anchoredViewFor(shortname, view, format);
+              if (viewFn !== undefined) {
+                own.push({ setModule: shortname, view, viewFn });
               }
             }
           }
         }
+        // INCLUDE_SET: the abstract set modules Ruby mixes into this
+        // token's set module (include_set, transitively), in Ruby's
+        // method-resolution order, sit directly under the module itself and
+        // above every less specific token. The table is read off the loaded
+        // Ruby deck (set-include-graph.ts); a view the concrete module does
+        // not define still resolves through its abstracts.
+        abstracts.push(...this.includedAbstractEntries(token, view, format, own));
       }
+    const result = { own, abstracts };
+    this.tokenMemo.set(memoKey, result);
+    return result;
+  }
+
+  private chainMemo = new Map<string, ViewChainEntry[]>();
+  private baseTailMemo = new Map<string, ViewChainEntry[]>();
+  private tokenMemo = new Map<string, { own: ViewChainEntry[]; abstracts: ViewChainEntry[] }>();
+  private codeMemo = new Map<string, string[]>();
+  private pathIndex: Map<string, string[]> | undefined;
+  private memoGeneration = -1;
+
+  /** Drop the chain memos when a load or reset changed the registrations. */
+  private syncChainMemo(): void {
+    if (this.memoGeneration === this.generation) return;
+    this.chainMemo.clear();
+    this.baseTailMemo.clear();
+    this.tokenMemo.clear();
+    this.codeMemo.clear();
+    this.pathIndex = undefined;
+    this.memoGeneration = this.generation;
+  }
+
+  /** setModuleShortnamesForCode, memoized per load generation. */
+  private memoShortnamesForCode(code: string): string[] {
+    this.syncChainMemo();
+    let list = this.codeMemo.get(code);
+    if (list === undefined) {
+      list = this.setModuleShortnamesForCode(code);
+      this.codeMemo.set(code, list);
     }
-    // Format inheritance: when the named format produces no chain
-    // entries, fall back to the html chain — but ONLY for the formats
-    // whose Ruby class descends from HtmlFormat (the
-    // HTML_DESCENDED_FORMATS gate below): rss (RssFormat < HtmlFormat,
-    // rss_format.rb:6) and email_html (EmailHtmlFormat < HtmlFormat,
-    // email_html_format.rb:6). Ruby's AbstractFormat#format blocks
-    // reopen the html parent class only through that ancestry
-    // (include_set_format_modules, format.rb:57-63, walks
-    // format_ancestry). css/js do NOT descend — CssFormat/JsFormat
-    // subclass Format directly (css_format.rb:6, js_format.rb:6) — so a
-    // css/js chain miss skips this arm and lands on the BASE tail below
-    // (the survey fix, 2026-10-01; the
-    // census probe pins that no css/js chain request exists to observe
-    // the change). EmailTextFormat < TextFormat < Format
-    // (email_text_format.rb) likewise never sees the html method table,
-    // so an email_text chain miss must reach the BASE (flat) record, not
-    // the html chain — falling back there would let the html chain's own
-    // :core re-enter itself (the text-message card's html :core
-    // dispatches email_text's :core). email_html DOES descend and keeps
-    // the fallback.
-    if (
-      out.length === 0 &&
-      format !== "html" &&
-      HTML_DESCENDED_FORMATS.has(format)
-    ) {
-      // the recursion carries the html level AND (through its own base
-      // tail, below) the base level - Ruby's MRO for an html-descended
-      // format (RssFormat/EmailHtmlFormat < HtmlFormat < Format) is
-      // [own] ++ [html] ++ [base]
-      return this.viewChain(setKeys, view, "html");
-    }
-    // BASE-FORMAT TAIL: the bare
-    // `format do` block files its module on Card::Format ITSELF
-    // (register_all_set_format keyed on the base format class,
-    // card-1.110.0 lib/card/set/format.rb:142-144;
-    // process_base_format_modules, registrar.rb:79-84, mixes it into the
-    // class EVERY format inherits). Those views answer in every format,
-    // AFTER the format's own registrations (EmailTextFormat -> TextFormat
-    // -> Format: the own-format module sits closer in the MRO than the
-    // base-class module), and later-registered-wins applies within the
-    // base pass exactly as within the format pass. The manifest's
-    // documented "base" key (mod-manifest.ts:286-288) marks them; a module
-    // that declared the view under BOTH the requested format and base
-    // contributes BOTH entries (Ruby compiles separate format-class
-    // modules per block - the HtmlFormat module included closer than the
-    // Card::Format one - and super() walks exactly that pair). The
-    // html-descended recursion above already carries this tail, so it
-    // does not run twice.
-    const baseScoped: ViewChainEntry[] = [];
-    for (const shortname of this.setModuleShortnamesForCode("all")) {
-      const baseFn = this.viewChains.viewForFormat(shortname, view, "base");
-      if (baseFn !== undefined) {
-        baseScoped.push({ setModule: shortname, view, viewFn: baseFn });
+    return list;
+  }
+
+  /** The registered nonbase modules whose setPath is `path` or sits under
+   *  it, in load order (the nested-module expansion of an anchored token). */
+  private nonbaseUnderPath(path: string): readonly string[] {
+    if (this.pathIndex === undefined) {
+      const index = new Map<string, string[]>();
+      for (const mod of this.basket.allNonbase()) {
+        const setPath = this.basket.setPathFor(mod.shortname);
+        if (setPath === undefined) continue;
+        const parts = setPath.split("/");
+        for (let i = 1; i <= parts.length; i++) {
+          const prefix = parts.slice(0, i).join("/");
+          let list = index.get(prefix);
+          if (list === undefined) index.set(prefix, (list = []));
+          list.push(mod.shortname);
+        }
       }
+      this.pathIndex = index;
     }
-    baseScoped.reverse();
-    out.push(...baseScoped);
+    return this.pathIndex.get(path) ?? [];
+  }
+
+  /** The abstract-set chain entries for one anchored token: every module
+   *  the token's set module (and its nested modules) includes, per
+   *  SET_INCLUDES, html includes first and then base ones, each
+   *  contributing its registration of the view once. */
+  private includedAbstractEntries(
+    token: string,
+    view: string,
+    format: string,
+    already: readonly ViewChainEntry[],
+  ): ViewChainEntry[] {
+    const out: ViewChainEntry[] = [];
+    const seen = new Set(already.map((e) => e.setModule));
+    for (const candidate of moduleCandidates(token)) {
+      const owners = includeGraphOwners(candidate);
+      if (owners.length === 0) continue;
+      for (const owner of owners) {
+        const includes = SET_INCLUDES[owner]!;
+        // HtmlFormat mixes in the html includes and inherits Card::Format's;
+        // a format outside the html lineage (email_text) sees only the base
+        // ones (format.rb format_ancestry).
+        const lists = htmlLineage(format) ? [...(includes.html ?? []), ...(includes.base ?? [])] : [...(includes.base ?? [])];
+        for (const abstract of lists) {
+          if (seen.has(abstract)) continue;
+          seen.add(abstract);
+          const viewFn = this.anchoredViewFor(abstract, view, format);
+          if (viewFn !== undefined) out.push({ setModule: abstract, view, viewFn });
+        }
+      }
+      break;
+    }
     return out;
   }
 
@@ -1083,4 +1257,43 @@ function bySetPath(a: { setPath: string }, b: { setPath: string }): number {
 
 function byFileName<T extends { code: string }>(a: T, b: T): number {
   return a.code < b.code ? -1 : a.code > b.code ? 1 : 0;
+}
+
+/** Bound on memoized whole-card chains (a long-lived isolate renders many
+ *  cards); the memo is simply restarted when it fills. */
+const CHAIN_MEMO_LIMIT = 50_000;
+
+/** SET_INCLUDES owners by module prefix: "Type::Set" -> the graph keys
+ *  equal to it or nested under it (Type::Set, Type::Set::HtmlViews, ...), in
+ *  the graph's key order. Built once; the graph is a generated constant. */
+let includeGraphOwnerIndex: Map<string, string[]> | undefined;
+/** The set-module shortnames an anchored token may name: the name-derived
+ *  spellings, then the anchor parts' codenames (Ruby's module key,
+ *  set/pattern/base.rb module_key; a Person-typed card whose type codename is
+ *  user belongs to Type::User). A SELF token arrives already rewritten to its
+ *  codename (rubySelfToken), so its anchor is not looked up again. Lookup
+ *  decides: each candidate is tried against the registered table. */
+function moduleCandidates(token: string): string[] {
+  const named = safeKeyToModuleShortnameCandidates(token);
+  if (token.startsWith("SELF-")) return named;
+  const out = [...named];
+  for (const c of codenameModuleShortnames(token)) if (!out.includes(c)) out.push(c);
+  return out;
+}
+
+function includeGraphOwners(candidate: string): readonly string[] {
+  if (includeGraphOwnerIndex === undefined) {
+    const index = new Map<string, string[]>();
+    for (const key of Object.keys(SET_INCLUDES)) {
+      const parts = key.split("::");
+      for (let i = 1; i <= parts.length; i++) {
+        const prefix = parts.slice(0, i).join("::");
+        let list = index.get(prefix);
+        if (list === undefined) index.set(prefix, (list = []));
+        list.push(key);
+      }
+    }
+    includeGraphOwnerIndex = index;
+  }
+  return includeGraphOwnerIndex.get(candidate) ?? [];
 }

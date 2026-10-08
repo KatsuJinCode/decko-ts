@@ -26,6 +26,7 @@ import { fileURLToPath } from "node:url";
 import {
   bindModLoaderToEngine,
   createRenderTestStorage,
+  renderThroughRecord,
   seedCard,
   type RenderTestStorage,
 } from "../render/render-test-storage.js";
@@ -186,10 +187,10 @@ describe("card-mod-list through the mod loader (A/B)", () => {
       "one_line_content",
       "list",
       // abstract/01_list/html_views.rb:56-58's editor loop - all five of
-      // the loop's views the port registers: :checkbox/:select/
-      // :multiselect/:autocomplete as views in their own right; :radio
-      // rides the :input dispatch (listFamilyInputHtml).
+      // the loop's views, each registered as a view in its own right
+      // (:radio too; the :input dispatch reaches the same bodies).
       "checkbox",
+      "radio",
       "select",
       "multiselect",
       "autocomplete",
@@ -352,9 +353,9 @@ describe("card-mod-list through the mod loader (A/B)", () => {
 
   it("WITH the mod: :input on the type-specific lists renders their editors (oracle bytes)", async () => {
     const s = storage!;
-    const nest = normalize(await s.engine.render("Oracle Nest List Probe", "input"));
+    const nest = normalize(await renderThroughRecord(s, "Oracle Nest List Probe", "input"));
     expect(nest).toBe(FIXTURE.rendered["Oracle Nest List Probe#input"]);
-    const link = normalize(await s.engine.render("Oracle Link List Probe", "input"));
+    const link = normalize(await renderThroughRecord(s, "Oracle Link List Probe", "input"));
     expect(link).toBe(FIXTURE.rendered["Oracle Link List Probe#input"]);
   });
 
@@ -419,10 +420,10 @@ describe("card-mod-list through the mod loader (A/B)", () => {
     // core, text-muted wrap) and card-mod-edit's base editors on non-family
     // cards; neither base surface is ported, so the mod fails loudly
     // instead of emitting wrong bytes (see the mod header)
-    await expect(s.engine.render("Oracle Probe Child", "one_line_content")).rejects.toThrow(
+    await expect(renderThroughRecord(s, "Oracle Probe Child", "one_line_content")).rejects.toThrow(
       /base-format view \(card-mod-format\/card-mod-edit\) is not ported/,
     );
-    await expect(s.engine.render("Oracle Probe Child", "input")).rejects.toThrow(
+    await expect(renderThroughRecord(s, "Oracle Probe Child", "input")).rejects.toThrow(
       /base-format view \(card-mod-format\/card-mod-edit\) is not ported/,
     );
   });

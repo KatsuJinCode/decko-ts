@@ -634,10 +634,28 @@ const cardModScript: DeckoModManifest = {
   group: "gem-defaults",
   setModules: [
     // card-mod-script-0.20.0/set/abstract/00_script.rb - Abstract::Script:
-    // the html :javascript_include_tag script-family layer rides the merged
-    // registration on all/head_javascript below; the html :core override
-    // (CodeRay) and the js-format :compressed/:core views are not ported.
-    passiveSetModule("abstract/00_script"),
+    // view :javascript_include_tag (:78-80). It shares the merged body
+    // registered on all/head_javascript below (that body dispatches the
+    // script-family branch itself), so the bytes are the same and
+    // Abstract::Script owns the view for the cards that include it, as in
+    // Ruby. The settings Ruby resolves for it are the all-layer's (the
+    // _view_* setting methods are inherited through method resolution).
+    // The html :core override (CodeRay) and the js-format :compressed/:core
+    // views are not ported.
+    {
+      setPath: "abstract/00_script",
+      formats: {
+        html: {
+          views: [
+            {
+              view: "javascript_include_tag",
+              viewFn: javascriptIncludeTagView,
+              config: { unknown: true, cache: "never", perms: "none" },
+            },
+          ],
+        },
+      },
+    },
     // set/abstract/01_asset_script.rb - Abstract::AssetScript (AssetFile
     // include + compress? from @minimize): no view/setting surface.
     passiveSetModule("abstract/01_asset_script"),
@@ -697,8 +715,23 @@ const cardModScript: DeckoModManifest = {
       },
     },
     // set/right/script.rb - Right::Script: assign_type :list, ok_to_read?,
-    // the javascript_include_tag list layer (merged above), raw_help_text.
-    passiveSetModule("right/script"),
+    // raw_help_text, and view :javascript_include_tag (:8-12, the list
+    // layer of the merged body above, registered here so Right::Script
+    // owns it).
+    {
+      setPath: "right/script",
+      formats: {
+        html: {
+          views: [
+            {
+              view: "javascript_include_tag",
+              viewFn: javascriptIncludeTagView,
+              config: { unknown: true, cache: "never", perms: "none" },
+            },
+          ],
+        },
+      },
+    },
     // set/self/script.rb - Self::Script: setting_opts (setting.rb group/position).
     {
       setPath: "self/script",

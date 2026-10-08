@@ -191,6 +191,26 @@ export function bindModLoaderToEngine(
   setDefaultModLoader(loader);
 }
 
+/** Render one view through the loader-less dispatch: the shared view
+ *  record, which carries a loaded mod's all-set and abstract-set
+ *  registrations. For probe cards that stand in for a card of an including
+ *  set without being in one: a chain-bound engine gives an abstract
+ *  module's views only to the sets that include it (include_set, resolved
+ *  by ModLoader#viewChain), and falls back to the compiled base table. */
+export async function renderThroughRecord(
+  storage: RenderTestStorage,
+  name: string,
+  view: string,
+): Promise<string> {
+  const bound = storage.engine.modLoader;
+  storage.engine.modLoader = undefined;
+  try {
+    return await storage.engine.render(name, view);
+  } finally {
+    storage.engine.modLoader = bound;
+  }
+}
+
 const DEFAULT_TYPE_ID = 2;
 
 export interface SeedOptions {
