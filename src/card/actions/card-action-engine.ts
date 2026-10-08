@@ -142,7 +142,8 @@ import {
   mountUsesImageUploader,
   renditionFileNames,
 } from "../attachments/image-renditions.js";
-import type { AttachmentStore } from "../attachments/attachment-store.js";
+import type { AttachmentStore, AttachmentStoreInput } from "../attachments/attachment-store.js";
+import { supportsTransactions } from "../../server/driver.js";
 import { changeValueForField, trackedFieldIndex } from "../history/change.js";
 import {
   clearReferencesOnDelete,
@@ -394,6 +395,94 @@ export class CardActionEngine {
     this.fileStorage = options.fileStorage;
     this.modEvents = options.modEvents;
     this.recaptchaConfig = options.recaptcha;
+  }
+
+  /** How many saves are running on this engine right now: 1 inside a
+   *  top-level save, more while a save runs another (revert -> update). */
+  private saveDepth = 0;
+  /** The integration phase of the save in progress, run once it commits. */
+  private afterCommitSteps: (() => Promise<void>)[] = [];
+  /** Files the save in progress stored, removed again if it rolls back. */
+  private filesStoredThisSave: AttachmentStoreInput[] = [];
+
+  /**
+   * One save, all or nothing (Ruby: with_transaction_returning_status, card
+   * mod/core/set/all/result.rb:63-72, wraps the validation and storage
+   * phases in one database transaction). Everything the save writes — the
+   * card rows, its subcards, its acts, actions and changes, its references
+   * and virtual-card rows — goes through the driver inside transaction(), so
+   * a failure at any point leaves the database as it was. The integration
+   * phase (ancestor timestamps, integrate-stage events, recently edited
+   * settings, follower mail) runs only after the commit, as Ruby's
+   * after_commit :integration_phase does (director/phases.rb:4); a failed
+   * save sends no mail. Files a failed save stored are deleted again, and
+   * the shared fetch caches, which saw the uncommitted rows, are reset.
+   *
+   * A save started while another runs on this engine (a revert's nested
+   * update) joins the running one.
+   */
+  private async atomicSave<R>(work: () => Promise<R>): Promise<R> {
+    if (this.saveDepth > 0) {
+      this.saveDepth += 1;
+      try {
+        return await work();
+      } finally {
+        this.saveDepth -= 1;
+      }
+    }
+    const driver = this.fetch.driver;
+    if (!supportsTransactions(driver)) {
+      throw new Error(
+        "the SQL driver offers no transaction(), and a save must be atomic: refusing to write (src/server/driver.ts)",
+      );
+    }
+    this.saveDepth = 1;
+    this.afterCommitSteps = [];
+    this.filesStoredThisSave = [];
+    let result: R;
+    try {
+      result = await driver.transaction(work);
+    } catch (error) {
+      this.afterCommitSteps = [];
+      await this.forgetRolledBackSave();
+      throw error;
+    } finally {
+      this.saveDepth = 0;
+    }
+    const steps = this.afterCommitSteps;
+    this.afterCommitSteps = [];
+    this.filesStoredThisSave = [];
+    for (const step of steps) await step();
+    return result;
+  }
+
+  /** Queue an integration-phase step for after the running save commits
+   *  (run at once when no save is running). */
+  private async afterCommit(step: () => Promise<void>): Promise<void> {
+    if (this.saveDepth > 0) this.afterCommitSteps.push(step);
+    else await step();
+  }
+
+  /** Undo what a rolled-back save left outside the database. */
+  private async forgetRolledBackSave(): Promise<void> {
+    const files = this.filesStoredThisSave;
+    this.filesStoredThisSave = [];
+    if (this.attachmentStore?.discard !== undefined) {
+      for (const file of files) {
+        try {
+          await this.attachmentStore.discard(file);
+        } catch {
+          // A file left behind is unreferenced (no row names it); the
+          // rollback itself has already succeeded.
+        }
+      }
+    }
+    // The save expired and re-read cards as it wrote them; those cached
+    // rows, names and verdicts describe a state that no longer exists.
+    this.pendingSalts.clear();
+    this.writeTaskState = undefined;
+    this.fetch.resetCaches();
+    await this.fetch.reprimeBootState();
   }
 
   /** The shared entry: dispatches one request to its handler. */
@@ -663,13 +752,17 @@ export class CardActionEngine {
       codename !== undefined && codename !== "" && mountUsesImageUploader(codename) && createVersionsFor(ext)
         ? renditionFileNames(actionId, ext)
         : undefined;
-    const stored = await this.attachmentStore.store({
+    const storeInput: AttachmentStoreInput = {
       cardId,
       actionId,
       ext,
       bytes: attachment.bytes,
       renditionNames,
-    });
+    };
+    // Recorded before the write, so a store that fails half-way is cleaned
+    // up with the rest of a rolled-back save.
+    this.filesStoredThisSave.push(storeInput);
+    const stored = await this.attachmentStore.store(storeInput);
     const identifier = localAttachmentIdentifier(cardId, actionId, ext);
 
     // :correct_identifier (attachment.rb:13-17): update_column :db_content —
@@ -779,7 +872,7 @@ export class CardActionEngine {
 
   async createCard(input: CreateCardInput): Promise<ActionResult> {
     try {
-      return await this.createCardInner(input);
+      return await this.atomicSave(() => this.createCardInner(input));
     } finally {
       this.pendingSaveInput = undefined;
     }
@@ -830,24 +923,28 @@ export class CardActionEngine {
     if (subResults.length > 0) {
       finalResult = { ...result, subactions: [...result.subactions, ...subResults] };
     }
-    // II (director.rb:26): the integrate seam runs BEFORE the notify hooks
+    // II (director.rb:26): the integration phase runs after the save's
+    // transaction commits (after_commit :integration_phase, director/
+    // phases.rb:4), and the integrate seam runs BEFORE the notify hooks
     // (Ruby's notify_followers is itself an integration event,
     // card-mod-follow set/all/notify.rb:13-16).
-    await this.bumpAncestorTimestamps(CardActionEngine.savedCardIds(finalResult));
-    await this.dispatchEventStage(
-      "integrate",
-      this.eventCard({
-        name,
-        id: result?.cardId,
-        key: name.key,
-        action: "create",
-        actId: result?.actId,
-        trash: false,
-        typeId,
-      }),
-    );
-    await this.saveRecentlyEditedSettings(finalResult);
-    await this.dispatchSavePathIntegrations(finalResult);
+    await this.afterCommit(async () => {
+      await this.bumpAncestorTimestamps(CardActionEngine.savedCardIds(finalResult));
+      await this.dispatchEventStage(
+        "integrate",
+        this.eventCard({
+          name,
+          id: result?.cardId,
+          key: name.key,
+          action: "create",
+          actId: result?.actId,
+          trash: false,
+          typeId,
+        }),
+      );
+      await this.saveRecentlyEditedSettings(finalResult);
+      await this.dispatchSavePathIntegrations(finalResult);
+    });
     return finalResult;
   }
 
@@ -1287,7 +1384,7 @@ export class CardActionEngine {
       this.saveSkip = [...(outerSkip ?? []), ...input.skip];
     }
     try {
-      return await this.updateCardInner(input);
+      return await this.atomicSave(() => this.updateCardInner(input));
     } finally {
       this.saveSkip = outerSkip;
       this.pendingSaveInput = undefined;
@@ -1450,25 +1547,29 @@ export class CardActionEngine {
       // events, no follower notifications. The cache expiry already ran.
       return result;
     }
-    await this.bumpAncestorTimestamps(
-      CardActionEngine.savedCardIds(result).filter(
-        (id) => !(result?.actCardActionOmitted === true && id === row.id),
-      ),
-    );
-    await this.dispatchEventStage(
-      "integrate",
-      this.eventCard({
-        name: result?.name,
-        id: result?.cardId ?? row.id,
-        action: "update",
-        actId: result?.actId,
-        trash: false,
-        typeId: row.type_id,
-      }),
-    );
-    await this.saveRecentlyEditedSettings(result);
-    await this.dispatchSavePathIntegrations(result, {
-      actCardActionOmitted: result?.actCardActionOmitted === true,
+    // The integration phase, after the transaction commits (phases.rb:4).
+    const committed = result;
+    await this.afterCommit(async () => {
+      await this.bumpAncestorTimestamps(
+        CardActionEngine.savedCardIds(committed).filter(
+          (id) => !(committed?.actCardActionOmitted === true && id === row.id),
+        ),
+      );
+      await this.dispatchEventStage(
+        "integrate",
+        this.eventCard({
+          name: committed?.name,
+          id: committed?.cardId ?? row.id,
+          action: "update",
+          actId: committed?.actId,
+          trash: false,
+          typeId: row.type_id,
+        }),
+      );
+      await this.saveRecentlyEditedSettings(committed);
+      await this.dispatchSavePathIntegrations(committed, {
+        actCardActionOmitted: committed?.actCardActionOmitted === true,
+      });
     });
     return result;
   }
@@ -2198,6 +2299,10 @@ export class CardActionEngine {
   // -----------------------------------------------------------------------
 
   async revertActions(input: RevertActionsInput): Promise<ActionResult | null> {
+    return this.atomicSave(() => this.revertActionsInner(input));
+  }
+
+  private async revertActionsInner(input: RevertActionsInput): Promise<ActionResult | null> {
     const driver = this.fetch.driver;
     const row = await this.fetchRowById(input.cardId);
     if (row === undefined) {
@@ -2295,7 +2400,7 @@ export class CardActionEngine {
 
   async deleteCard(input: DeleteCardInput): Promise<ActionResult | null> {
     try {
-      return await this.deleteCardInner(input);
+      return await this.atomicSave(() => this.deleteCardInner(input));
     } finally {
       this.pendingSaveInput = undefined;
     }
@@ -2428,10 +2533,12 @@ export class CardActionEngine {
       subactions,
     };
     // II (director.rb:26): the integrate seam before the notify hooks (see
-    // the create path's note).
-    await this.bumpAncestorTimestamps(CardActionEngine.savedCardIds(result));
-    await this.dispatchEventStage("integrate", deletedCard());
-    await this.dispatchSavePathIntegrations(result);
+    // the create path's note), after the transaction commits.
+    await this.afterCommit(async () => {
+      await this.bumpAncestorTimestamps(CardActionEngine.savedCardIds(result));
+      await this.dispatchEventStage("integrate", deletedCard());
+      await this.dispatchSavePathIntegrations(result);
+    });
     return result;
   }
 

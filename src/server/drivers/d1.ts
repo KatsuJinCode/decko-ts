@@ -13,8 +13,9 @@
 // `env`; in tests it is the object returned by miniflare's
 // `getD1Database()`. Both satisfy D1DatabaseLike structurally.
 
-import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../driver.js";
-import { rowIdOrOmit } from "../driver.js";
+import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement, SQLTransactionGuarantee } from "../driver.js";
+import { rowIdOrOmit, TransactionGate } from "../driver.js";
+import { UndoJournal, type UndoJournalOptions } from "./undo-journal.js";
 
 /** Bind values D1 accepts. Note: JS numbers bind with REAL storage class
  *  (D1 has no integer binding for JS numbers), ArrayBuffer/Uint8Array bind
@@ -165,11 +166,43 @@ export function balanceOrChains(sql: string): string {
   });
 }
 
+export interface CloudflareD1AdapterOptions {
+  /** Options for the compensating transaction (src/server/drivers/
+   *  undo-journal.ts): which tables it journals, the lock lease and wait. */
+  journal?: UndoJournalOptions;
+}
+
 export class CloudflareD1Adapter implements SQLDatabaseDriver {
   private readonly db: D1DatabaseLike;
+  private readonly gate = new TransactionGate();
+  private readonly journal: UndoJournal;
 
-  constructor(db: D1DatabaseLike) {
+  /** D1 has no interactive transaction (BEGIN is refused; only a batch is
+   *  atomic, and a batch cannot read its own writes and branch). A save
+   *  reads between writes, so transaction() is compensating: the undo
+   *  journal records each write's prior row and a failure restores them in
+   *  one atomic batch. A database lock row serializes transactions across
+   *  isolates. */
+  readonly transactionGuarantee: SQLTransactionGuarantee = {
+    mechanism: "compensating",
+    atomicOnFailure: true,
+    crashRecovery: "next-transaction",
+    readersIsolated: false,
+    serializedWriters: "database",
+    atomicBatch: true,
+    idsReusedAfterRollback: false,
+  };
+
+  constructor(db: D1DatabaseLike, options: CloudflareD1AdapterOptions = {}) {
     this.db = db;
+    this.journal = new UndoJournal(
+      { query: (sql, params) => this.query(sql, params), batch: (statements) => this.batch(statements) },
+      options.journal,
+    );
+  }
+
+  async transaction<R>(work: () => Promise<R>): Promise<R> {
+    return this.gate.run(() => this.journal.run(work));
   }
 
   /** The prepared statement, with the values inlined when there are more
@@ -184,17 +217,46 @@ export class CloudflareD1Adapter implements SQLDatabaseDriver {
   }
 
   async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
+    if (isWriteStatement(sql)) {
+      const [result] = await this.batch([{ sql, params }]);
+      return result as SQLQueryResult<T>;
+    }
     const result = await this.prepareBound(sql, params).all();
     assertSuccess("query", sql, result);
     return this.toQueryResult<T>(result);
   }
 
+  /** Each write statement is followed in the same batch by
+   *  `SELECT changes()`: D1's meta.changes is sqlite3_total_changes(),
+   *  which also counts rows that TRIGGERS wrote (the deck_data_version
+   *  stamp, the undo journal), so an UPDATE of one card reported 2 or more
+   *  rows. changes() counts only the statement's own rows, which is what
+   *  rowsAffected means on every other adapter. Same round trip. */
   async batch(statements: SQLStatement[]): Promise<SQLQueryResult[]> {
-    const prepared = statements.map((s) => this.prepareBound(s.sql, (s.params ?? []) as unknown[]));
+    const prepared: D1PreparedStatementLike[] = [];
+    const changesAt: (number | undefined)[] = [];
+    for (const s of statements) {
+      prepared.push(this.prepareBound(s.sql, (s.params ?? []) as unknown[]));
+      if (isWriteStatement(s.sql)) {
+        changesAt.push(prepared.length);
+        prepared.push(this.db.prepare("SELECT changes() AS decko_changes"));
+      } else {
+        changesAt.push(undefined);
+      }
+    }
     const results = await this.db.batch(prepared);
-    return results.map((result, i) => {
+    let at = 0;
+    return statements.map((_, i) => {
+      const result = results[at];
       assertSuccess("batch", `statement ${i}`, result);
-      return this.toQueryResult<unknown>(result);
+      const mapped = this.toQueryResult<unknown>(result);
+      const changesIndex = changesAt[i];
+      at += changesIndex === undefined ? 1 : 2;
+      if (changesIndex !== undefined) {
+        const row = results[changesIndex]?.results?.[0] as { decko_changes?: unknown } | undefined;
+        mapped.rowsAffected = Number(row?.decko_changes ?? mapped.rowsAffected);
+      }
+      return mapped;
     });
   }
 
@@ -207,6 +269,12 @@ export class CloudflareD1Adapter implements SQLDatabaseDriver {
       rowsWritten: metaNumberOrOmit(result.meta?.rows_written),
     };
   }
+}
+
+/** A statement that starts with INSERT, UPDATE, DELETE or REPLACE (the
+ *  engine writes no other way). */
+function isWriteStatement(sql: string): boolean {
+  return /^\s*(?:INSERT|UPDATE|DELETE|REPLACE)\b/i.test(sql);
 }
 
 /** D1 reports errors by rejecting; a present-but-false `success` flag is

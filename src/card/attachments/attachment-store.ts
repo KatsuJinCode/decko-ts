@@ -60,6 +60,10 @@ export interface AttachmentStore {
    *  spelling <action_id>-<variant><ext> (the img src the image views
    *  emit); undefined = no such file. */
   read(cardId: number, actionId: number, ext: string, variant?: string): Promise<Uint8Array | undefined>;
+  /** Delete exactly the files store(input) writes, when a save that
+   *  stored them rolled back. Idempotent; a missing file is not an error.
+   *  Optional: a store without it leaves such files unreferenced. */
+  discard?(input: AttachmentStoreInput): Promise<void>;
 }
 
 /** The attachment store over any blob driver — the one implementation
@@ -99,6 +103,11 @@ export class BlobAttachmentStore implements AttachmentStore {
       identifier: localAttachmentIdentifier(input.cardId, input.actionId, input.ext),
       size: Math.max(stored, input.bytes.length),
     };
+  }
+
+  async discard(input: AttachmentStoreInput): Promise<void> {
+    const names = input.renditionNames ?? [filenameWithVariant(input.actionId, input.ext)];
+    for (const name of names) await this.blobs.delete(`${input.cardId}/${name}`);
   }
 
   async read(

@@ -23,12 +23,21 @@ import {
   setPbkdf2IterationLimit,
 } from "../../src/card/auth/password-hash.js";
 import { CloudflareD1Adapter, type D1DatabaseLike } from "../../src/server/drivers/d1.js";
-import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../src/server/driver.js";
+import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement, SQLTransactionGuarantee } from "../../src/server/driver.js";
 
 /** CloudflareD1Adapter with each binding call timed into the edge ledger
  *  (one call = one round trip) and each statement counted. */
 class LedgerD1Driver implements SQLDatabaseDriver {
   constructor(private readonly inner: SQLDatabaseDriver) {}
+
+  get transactionGuarantee(): SQLTransactionGuarantee | undefined {
+    return this.inner.transactionGuarantee;
+  }
+
+  async transaction<R>(work: () => Promise<R>): Promise<R> {
+    if (this.inner.transaction === undefined) throw new Error("the wrapped D1 driver has no transaction()");
+    return this.inner.transaction(work);
+  }
 
   async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
     const t0 = Date.now();

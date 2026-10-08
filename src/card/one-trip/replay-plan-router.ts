@@ -33,6 +33,7 @@ import type {
   SQLDatabaseDriver,
   SQLQueryResult,
   SQLStatement,
+  SQLTransactionGuarantee,
 } from "../../server/driver.js";
 import { isFreshnessStampRead, type RenderPlanEntry } from "./render-plan.js";
 import {
@@ -123,6 +124,22 @@ export class ReplayPlanRouter implements SQLDatabaseDriver {
   /** Whether a plan is currently armed (test/pin observability). */
   get armed(): boolean {
     return this.planResults !== undefined;
+  }
+
+  /** The wrapped driver's guarantee; undefined when it has no transactions. */
+  get transactionGuarantee(): SQLTransactionGuarantee | undefined {
+    return this.base.transactionGuarantee;
+  }
+
+  /** Present exactly when the wrapped driver's is. A unit of work reads the
+   *  live database, never an armed plan's rows: the plan is dropped first. */
+  get transaction(): (<R>(work: () => Promise<R>) => Promise<R>) | undefined {
+    const base = this.base;
+    if (base.transaction === undefined) return undefined;
+    return <R>(work: () => Promise<R>) => {
+      this.disarmRenderPlan();
+      return base.transaction!(work);
+    };
   }
 
   async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {

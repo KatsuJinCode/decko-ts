@@ -12,7 +12,13 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
-import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../../src/server/driver.js";
+import type {
+  SQLDatabaseDriver,
+  SQLQueryResult,
+  SQLStatement,
+  SQLTransactionGuarantee,
+} from "../../../src/server/driver.js";
+import { TransactionGate } from "../../../src/server/driver.js";
 
 interface TestStatement {
   readonly reader: boolean;
@@ -23,6 +29,7 @@ interface TestDatabase {
   prepare(sql: string): TestStatement;
   exec(sql: string): void;
   transaction<Args extends unknown[], R>(fn: (...args: Args) => R): (...args: Args) => R;
+  readonly inTransaction: boolean;
   close(): void;
 }
 
@@ -64,6 +71,36 @@ export class AuthTestDriver implements SQLDatabaseDriver {
       }),
     );
     return runBatch();
+  }
+
+  /** SQLite's own transaction on the one in-memory connection, the same
+   *  mechanism as LocalSqliteDriver; a batch inside it nests as a
+   *  savepoint. */
+  readonly transactionGuarantee: SQLTransactionGuarantee = {
+    mechanism: "native",
+    atomicOnFailure: true,
+    crashRecovery: "database",
+    readersIsolated: true,
+    serializedWriters: "database",
+    atomicBatch: true,
+    idsReusedAfterRollback: true,
+  };
+
+  private readonly gate = new TransactionGate();
+
+  async transaction<R>(work: () => Promise<R>): Promise<R> {
+    return this.gate.run(async () => {
+      this.db.exec("BEGIN IMMEDIATE");
+      let result: R;
+      try {
+        result = await work();
+        this.db.exec("COMMIT");
+      } catch (error) {
+        if (this.db.inTransaction) this.db.exec("ROLLBACK");
+        throw error;
+      }
+      return result;
+    });
   }
 
   close(): void {

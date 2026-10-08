@@ -25,8 +25,11 @@ SDK.
 
 **SQL.** `query` and `batch`, plus a result shape carrying rows, rows affected
 and an optional last-inserted identifier. Adapters exist for D1, libSQL over
-HTTP and local SQLite. The interface is small and frozen; other code in the
-engine is written against it.
+HTTP and local SQLite. The interface is small; other code in the engine is
+written against it. `transaction` and a stated `transactionGuarantee` were
+added later for atomic saves: see
+[0007](0007-atomic-saves-and-transaction-contract.md), which also lists which
+adapters are implemented and what each was verified against.
 
 **Blob storage.** Put, get, streamed bytes, head, delete and list, over
 POSIX-style keys validated in one place — so path traversal is impossible by
@@ -54,10 +57,10 @@ provider branch into render code.
 
 Some provider capabilities genuinely differ and cannot be abstracted away.
 libSQL's HTTP batch is not transactional — the protocol executes each statement
-with autocommit — while the local and D1 batches are. Where the engine ever
-needs atomic multi-statement writes over that provider, atomicity belongs at
-the engine layer as explicit statements, and the difference is a documented
-decision rather than an accident.
+with autocommit — while the local and D1 batches are. Atomic multi-statement
+writes go through `transaction()` instead, which every write-capable adapter
+implements and which states its own guarantee
+([0007](0007-atomic-saves-and-transaction-contract.md)).
 
 Where a provider refuses something the engine would otherwise do — a parameter
 type, a statement shape, a function — the refusal is surfaced as an error, not

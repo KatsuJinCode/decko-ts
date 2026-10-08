@@ -7,8 +7,8 @@
 // the calling thread, so this driver is only appropriate for local
 // development, tests and CLI tooling — never for an edge deployment.
 
-import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../driver.js";
-import { rowIdOrOmit } from "../driver.js";
+import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement, SQLTransactionGuarantee } from "../driver.js";
+import { rowIdOrOmit, TransactionGate } from "../driver.js";
 import Database from "better-sqlite3";
 
 /**
@@ -53,6 +53,8 @@ export interface BetterSqlite3Database {
     fn: (...args: unknown[]) => unknown,
   ): unknown;
   function(name: string, fn: (...args: unknown[]) => unknown): unknown;
+  /** True while a transaction is open on the connection. */
+  readonly inTransaction: boolean;
   close(): void;
 }
 export interface LocalSqliteDriverOptions {
@@ -119,9 +121,53 @@ export class LocalSqliteDriver implements SQLDatabaseDriver {
     if (statements.length === 0) return [];
     // A single synchronous SQLite transaction: every statement in the batch
     // commits together or, on any error, rolls back and the error is
-    // rethrown. Statement results are collected in order.
+    // rethrown. Statement results are collected in order. Inside
+    // transaction() better-sqlite3 nests this as a SAVEPOINT, so the batch
+    // stays part of the enclosing unit of work.
     const runBatch = this.db.transaction(() => statements.map((s) => this.executeOne(s)));
     return runBatch();
+  }
+
+  /** SQLite's own transaction on this driver's one connection. BEGIN
+   *  IMMEDIATE takes the database write lock up front, so another
+   *  connection (another process, or another driver over the same file)
+   *  waits or gets SQLITE_BUSY instead of interleaving. */
+  readonly transactionGuarantee: SQLTransactionGuarantee = {
+    mechanism: "native",
+    atomicOnFailure: true,
+    crashRecovery: "database",
+    readersIsolated: true,
+    serializedWriters: "database",
+    atomicBatch: true,
+    idsReusedAfterRollback: true,
+  };
+
+  private readonly gate = new TransactionGate();
+
+  async transaction<R>(work: () => Promise<R>): Promise<R> {
+    return this.gate.run(async () => {
+      this.prepareCached("BEGIN IMMEDIATE").run();
+      let result: R;
+      try {
+        result = await work();
+      } catch (error) {
+        this.rollbackQuietly();
+        throw error;
+      }
+      try {
+        this.prepareCached("COMMIT").run();
+      } catch (error) {
+        this.rollbackQuietly();
+        throw error;
+      }
+      return result;
+    });
+  }
+
+  /** ROLLBACK unless SQLite already ended the transaction itself (some
+   *  errors, such as SQLITE_FULL, roll back automatically). */
+  private rollbackQuietly(): void {
+    if (this.db.inTransaction) this.prepareCached("ROLLBACK").run();
   }
 
   /** Register a scalar SQL function on the underlying handle — the narrow,

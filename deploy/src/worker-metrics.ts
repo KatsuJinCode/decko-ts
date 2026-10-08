@@ -47,7 +47,7 @@
 // fixed to { available: false, reason: "..." } so callers always see a
 // real shape they can pin in a test.
 
-import type { SQLQueryResult, SQLStatement } from "../../src/server/driver.js";
+import type { SQLQueryResult, SQLStatement, SQLTransactionGuarantee } from "../../src/server/driver.js";
 import { CloudflareD1Adapter, type D1DatabaseLike } from "../../src/server/drivers/d1.js";
 
 // ---------------------------------------------------------------------------
@@ -453,6 +453,8 @@ export class MetricsRecorder {
 export interface MetricDriver {
   query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>>;
   batch(statements: SQLStatement[]): Promise<SQLQueryResult[]>;
+  transaction<R>(work: () => Promise<R>): Promise<R>;
+  readonly transactionGuarantee: SQLTransactionGuarantee;
   /** If the wrapped driver is itself a CloudflareD1Adapter, expose the
    *  underlying binding via this for tests + status routes. */
   readonly underlying: CloudflareD1Adapter;
@@ -471,6 +473,10 @@ export function wrapDriverWithMetrics(
   const readNow = now ?? (() => performance.now());
   return {
     underlying: driver,
+    transactionGuarantee: driver.transactionGuarantee,
+    // The unit of work's statements still pass through this wrapper's
+    // query/batch (the engine holds the wrapper), so they are observed.
+    transaction: <R>(work: () => Promise<R>) => driver.transaction(work),
     async query<T>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
       const start = readNow();
       let result: SQLQueryResult<T>;
