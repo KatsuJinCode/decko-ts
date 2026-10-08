@@ -24,6 +24,8 @@
 // Anchorless patterns (star/rstar/rule) carry just the code
 // (set-patterns/instance.ts: anchorless = !respond_to?(:anchor_name)).
 
+import { getNameEnvironment } from "../name/environment.js";
+
 /** Camelize the underscore-joined pattern code: "all" -> "All",
  *  "type_plus_right" -> "TypePlusRight". Mirrors Rails camelize on the
  *  underscore-separated form (mod-order.ts:46-51). */
@@ -135,6 +137,35 @@ export function safeKeyToModuleShortnameCandidates(safeKey: string): string[] {
     }
   }
   return [...out];
+}
+
+/** Ruby's module key for an anchored token: Pattern::Base#module_key
+ *  (set/pattern/base.rb:21-29) camelizes the anchor parts' CODENAMES, not
+ *  their name keys, so a Search-typed card (token "TYPE-search", type
+ *  codename search_type) belongs to Card::Set::Type::SearchType. Each
+ *  anchor fragment is resolved through the installed name environment
+ *  (key -> id -> codename); a fragment with no codename keeps its key. Empty
+ *  when no fragment resolves to a codename different from its key. */
+export function codenameModuleShortnames(safeKey: string): string[] {
+  const dashIdx = safeKey.indexOf("-");
+  if (dashIdx === -1) return [];
+  const env = getNameEnvironment();
+  if (env?.lexicon === undefined || env.codename === undefined) return [];
+  const code = safeKey.slice(0, dashIdx).toLowerCase();
+  let changed = false;
+  const parts = safeKey
+    .slice(dashIdx + 1)
+    .split("-")
+    .map((frag) => {
+      const key = frag.startsWith("X") && frag.length > 1 ? `*${frag.slice(1)}` : frag;
+      const id = env.lexicon!.id(key);
+      const codename = id === undefined ? undefined : env.codename!.nameForId(id);
+      if (codename === undefined || codename === "") return frag.replace(/^X/, "");
+      if (codename !== frag) changed = true;
+      return codename;
+    });
+  if (!changed) return [];
+  return [`${camelizeCode(code)}::${parts.map(camelizeCode).join("::")}`];
 }
 
 export function safeKeyToModuleShortname(safeKey: string): string {

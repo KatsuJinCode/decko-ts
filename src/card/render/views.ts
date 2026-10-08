@@ -48,6 +48,8 @@ import {
   registerSetTypeAssignment,
 } from "../set-patterns/set-type-assignment.js";
 import { safeSetKeys } from "./set-keys.js";
+import { codenameModuleShortnames, safeKeyToModuleShortnameCandidates } from "./set-keys-to-modules.js";
+import { SET_INCLUDE_GRAPH } from "../mod-loader/set-include-graph.js";
 
 import {
   UnsupportedViewError,
@@ -3153,6 +3155,20 @@ export function visibleSettingsForGroup(
   });
 }
 
+/** card-mod-rules set/type/set.rb:73-75 visible_setting_codenames: every
+ *  registered setting, group by group in Card::Setting.groups order, that
+ *  applies to the set's prototype type. Defined on Set-typed cards only:
+ *  undefined for any other card (Ruby raises NoMethodError there). */
+export function visibleSettingCodenames(
+  engine: RenderEngineLike,
+  setCard: RenderCard,
+): ReadonlyArray<string> | undefined {
+  const typeId = setCard.record.typeId;
+  if (typeId === undefined || typeId === null) return undefined;
+  if (engine.peekCodenameById?.(typeId) !== "set") return undefined;
+  return Object.keys(GROUP_TO_SETTINGS).flatMap((group) => visibleSettingsForGroup(engine, setCard, group));
+}
+
 /** Settings that declared `restricted_to_type:` in their setting_opts
  *  (the only two across the loaded mods — grep over card-1.110.0/mod +
  *  card-mod-* 2026-09-26). Values are the permitted type CODES
@@ -6145,6 +6161,67 @@ const resetPasswordDaysView: ViewFn = () => "";
 
 /** The html-format view registry (Set::Format.view_method_name dispatch).
  *  Views NOT in this registry raise the unsupported-view UserError. */
+/** The Ruby set modules that define the views the flat table carries for
+ *  every card. Ruby defines each only on these sets (an abstract module
+ *  counts for every set that includes it, per SET_INCLUDE_GRAPH); on any
+ *  other card the view does not exist and render.rb#view_method raises the
+ *  unsupported-view error. RenderEngine#computeResolvedView consults this
+ *  before falling back to the flat table. Views marked selfGated already
+ *  raise inside their own body (and cover fabricated nest cards that carry
+ *  only a type name), so the resolver leaves them to that check; the table
+ *  still records their scope for the registry census. Not listed: the
+ *  +*account token and url views (verify_url, reset_password_url,
+ *  verify_days, reset_password_days), which the email templates nest on
+ *  `_`; Ruby resolves `_` there to Abstract::TestContext's +*account card,
+ *  which this port does not build, so those views stay unscoped until it
+ *  does. */
+const FLAT_VIEW_RUBY_SETS: Readonly<Record<string, { sets: readonly string[]; selfGated?: boolean }>> = {
+  add_button: { sets: ["Type::Cardtype"] }, // card-mod-format set/type/cardtype.rb
+  add_link: { sets: ["Type::Cardtype"] },
+  add_url: { sets: ["Type::Cardtype"] },
+  boxed: { sets: ["Type::Image"] }, // card-mod-bar_and_box set/type/image.rb
+  boxed_link: { sets: ["Type::Image"] },
+  configs: { sets: ["Type::Role"] }, // card-mod-account set/type/role.rb
+  card_list: { sets: ["Abstract::Search::Views"] }, // card-mod-search set/abstract/0_search/views.rb
+  no_search_results: { sets: ["Abstract::Search::Views"] },
+  home_path: { sets: ["Self::Home"], selfGated: true }, // card-mod-format set/self/home.rb
+  home_url: { sets: ["Self::Home"], selfGated: true },
+  search_box: { sets: ["Self::Search"], selfGated: true }, // card-mod-search set/self/search.rb
+  bar_setting_list: { sets: ["Type::Set"], selfGated: true }, // card-mod-rules type/set/html_views
+  template_link: { sets: ["Type::Set"], selfGated: true },
+};
+
+/** Whether a card with these safe set keys is in one of the Ruby sets. */
+function cardInRubySets(setKeys: string, sets: readonly string[]): boolean {
+  for (const token of setKeys.split(/\s+/)) {
+    if (token === "") continue;
+    for (const candidate of [...safeKeyToModuleShortnameCandidates(token), ...codenameModuleShortnames(token)]) {
+      if (sets.includes(candidate)) return true;
+      for (const [owner, includes] of Object.entries(SET_INCLUDE_GRAPH)) {
+        if (owner !== candidate && !owner.startsWith(`${candidate}::`)) continue;
+        if (sets.some((set) => includes.html?.includes(set) === true || includes.base?.includes(set) === true)) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+/** Whether Ruby defines this flat-table view for a card with these set
+ *  keys. Views outside FLAT_VIEW_RUBY_SETS apply to every card. */
+export function flatViewDefinedFor(view: string, setKeys: string): boolean {
+  const scope = FLAT_VIEW_RUBY_SETS[view];
+  return scope === undefined || cardInRubySets(setKeys, scope.sets);
+}
+
+/** Whether the resolver must refuse this flat view for this card (scoped
+ *  and not self-gated, and the card is outside every defining set). */
+export function flatViewRefused(view: string, setKeys: string): boolean {
+  const scope = FLAT_VIEW_RUBY_SETS[view];
+  return scope !== undefined && scope.selfGated !== true && !cardInRubySets(setKeys, scope.sets);
+}
+
 export const HTML_VIEWS: Record<string, ViewFn> = {
   title: titleView,
   title_link: titleLinkView,

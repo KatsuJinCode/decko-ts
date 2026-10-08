@@ -1,0 +1,12 @@
+source "http://rubygems.org"
+
+# The reference oracle is stock Decko at the versions pinned in Gemfile.lock
+# (decko 0.20.0, card 1.110.0). No local patches: what this app renders is what
+# an unmodified Decko install renders.
+gem "decko"
+gem "card-mod-defaults"
+gem "sqlite3", ">= 1.4"
+gem "thin"
+
+# Windows: TZInfo needs the bundled zone data (no /usr/share/zoneinfo).
+gem "tzinfo-data"

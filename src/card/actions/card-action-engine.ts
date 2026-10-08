@@ -116,6 +116,7 @@ import {
 } from "../permissions/view-task-rules.js";
 import type { PatternCardInput } from "../set-patterns/types.js";
 import {
+  quickTypeName,
   ruleContentForCard,
   ruleWalkPatternInput,
 } from "./rule-content-walk.js";
@@ -3031,18 +3032,13 @@ export class CardActionEngine {
     const typeName = typeId !== undefined && typeId !== null ? await this.typeNameOf(typeId) : undefined;
     const assigned = assignedName !== undefined ? DeckoName.parse(assignedName) : undefined;
     let leftTypeName: string | undefined;
-    if (assigned !== undefined && assigned.isCompound) {
-      // a rename: the type_plus_right candidates read the ASSIGNED left
-      // part's type (fetched by name; a missing part falls to the
-      // registry's quick_type default, as Ruby's quick_type new-card arm
-      // does)
-      const leftKey = assigned.leftName?.key;
-      if (leftKey !== undefined && leftKey !== "") {
-        const leftCard = await this.fetch.fetchByName(leftKey);
-        if (leftCard !== undefined && leftCard.typeId !== null && leftCard.typeId !== undefined) {
-          leftTypeName = await this.typeNameOf(leftCard.typeId);
-        }
-      }
+    // quick_type(name.left_name) (class_methods.rb:59-71): the left part is
+    // fetched BY NAME with `new: {}`, so a missing or trashed left answers
+    // the type a new card of that name would get. For a rename the name is
+    // the ASSIGNED one.
+    const patternName = assigned ?? card.name;
+    if (patternName !== undefined && patternName.isCompound) {
+      leftTypeName = await quickTypeName(this.fetch, patternName.leftName);
     } else if (card.leftId !== undefined && card.leftId !== null) {
       const leftRow = await this.fetchRowById(card.leftId);
       if (leftRow !== undefined && leftRow.type_id !== null && leftRow.type_id !== undefined) {

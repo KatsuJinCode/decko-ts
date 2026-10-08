@@ -336,8 +336,8 @@ describe("card-mod-carrierwave through the mod loader", () => {
     expect(shortnames).toContain("Type::File");
     // set/type/image.rb -> Type::Image
     expect(shortnames).toContain("Type::Image");
-    // set/type/image/html_views.rb -> Type::Image::Html
-    expect(shortnames).toContain("Type::Image::Html");
+    // set/type/image/html_views.rb -> Type::Image::HtmlViews
+    expect(shortnames).toContain("Type::Image::HtmlViews");
     // set/self/favicon.rb -> Self::Favicon
     expect(shortnames).toContain("Self::Favicon");
     // set/self/search.rb -> Self::Search
