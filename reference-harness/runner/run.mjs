@@ -8,21 +8,28 @@
 //
 // Run with the Ruby oracle's adapter and --out <fixtureDir>/expected to
 // (re)capture the reference outputs; run with any other adapter and grade the
-// results with grade.mjs.
+// results with grade.mjs. A run with --filter or --limit is recorded as a
+// partial selection, which the grader does not accept as a grade.
 
+import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, appendFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { AdapterSession, loadAdapterManifest } from "./adapter-process.mjs";
-import { delta, snapshot } from "./deck-state.mjs";
+import { delta, snapshot, splitDelta } from "./deck-state.mjs";
+import { verifyFixture } from "./manifest.mjs";
+
+export const RESULTS_FORMAT = 2;
 
 const args = parseArgs(process.argv.slice(2));
 const manifest = loadAdapterManifest(args.adapter);
 const fixture = path.resolve(args.fixture);
 const outDir = path.resolve(args.out);
-const kinds = new Set((args.kinds ?? "render,semantics,scenarios").split(","));
+const kinds = (args.kinds ?? "render,semantics,scenarios").split(",");
+for (const k of kinds) if (!["render", "semantics", "scenarios"].includes(k)) throw new Error(`unknown kind ${k}`);
 const filter = args.filter ? new RegExp(args.filter) : null;
 const limit = args.limit ? Number(args.limit) : Infinity;
+const selection = filter || Number.isFinite(limit) ? { filter: args.filter ?? null, limit: Number.isFinite(limit) ? limit : null } : null;
 const deckJson = path.join(fixture, "deck.json");
 const deckDb = path.join(fixture, "deck", "deck.sqlite3");
 const deckFiles = path.join(fixture, "deck", "files");
@@ -32,6 +39,13 @@ mkdirSync(outDir, { recursive: true });
 const log = (line) => process.stderr.write(`[run] ${line}\n`);
 const readLines = (file) =>
   readFileSync(file, "utf8").split("\n").filter((l) => l.trim() !== "").map((l) => JSON.parse(l));
+
+// The fixture identity the results are pinned to. A fixture that does not
+// match its manifest still runs (a new fixture is built this way), but the
+// disagreement is recorded and the grader refuses the results.
+const fixtureCheck = verifyFixture(fixture);
+for (const p of fixtureCheck.problems) log(`fixture: ${p}`);
+const checkout = gitCheckout(manifest.dir);
 
 /** A private copy of the deck and its files for one adapter session. */
 function stageDeck(root) {
@@ -66,68 +80,123 @@ async function withSession(root, fn) {
   }
 }
 
+// ---- run metadata: written before each kind starts (as incomplete) and after
+// it ends, so an interrupted run never leaves a record that claims completion.
+const metaPath = path.join(outDir, "run-meta.json");
+const earlier = existsSync(metaPath) ? safeJson(readFileSync(metaPath, "utf8")) : null;
+// A run of some kinds keeps the records of the others only when they are in
+// this results format and on this fixture; anything else starts afresh.
+const keep = earlier && earlier.results_format === RESULTS_FORMAT && earlier.fixture === path.basename(fixture) ? earlier.runs ?? {} : {};
+const meta = { results_format: RESULTS_FORMAT, fixture: path.basename(fixture), runs: { ...keep } };
+const saveMeta = () => writeFileSync(metaPath, JSON.stringify(meta, null, 2) + "\n");
+
+function beginKind(kind, opsTotal, extra = {}) {
+  const run = {
+    started: new Date().toISOString(),
+    finished: null,
+    complete: false,
+    selection,
+    ops_total: opsTotal,
+    ops_run: 0,
+    adapter: manifest.name,
+    adapter_checkout: checkout,
+    engine: null,
+    fixture_digest: fixtureCheck.digest,
+    fixture_problems: fixtureCheck.problems,
+    ...extra,
+  };
+  meta.runs[kind] = run;
+  saveMeta();
+  return run;
+}
+
 const root = mkdtempSync(path.join(os.tmpdir(), "decko-harness-"));
-const meta = { adapter: manifest.name, fixture: path.basename(fixture), started: new Date().toISOString(), kinds: [...kinds] };
 try {
-  // ---- read sessions: rendering and semantics share one deck copy ----------
+  // ---- read sessions: rendering and semantics, one deck copy each ----------
   for (const kind of ["render", "semantics"]) {
-    if (!kinds.has(kind)) continue;
-    const ops = readLines(path.join(fixture, "ops", `${kind}.jsonl`)).filter((o) => !filter || filter.test(o.id)).slice(0, limit);
+    if (!kinds.includes(kind)) continue;
+    const all = readLines(path.join(fixture, "ops", `${kind}.jsonl`));
+    const ops = all.filter((o) => !filter || filter.test(o.id)).slice(0, limit);
+    const run = beginKind(kind, all.length);
     const outFile = path.join(outDir, `${kind}.jsonl`);
     writeFileSync(outFile, "");
     await withSession(root, async (session, stage, hello) => {
-      meta.engine = hello;
+      run.engine = hello;
       const startState = snapshot(stage.db);
       const t0 = Date.now();
-      let n = 0;
       for (const op of ops) {
         const { id, ...body } = op;
         const answer = await session.request(body);
         appendFileSync(outFile, JSON.stringify({ id, ...(answer.ok ? { result: answer.result } : { error: answer.error }) }) + "\n");
-        if (++n % 100 === 0) log(`${kind} ${n}/${ops.length} ${((Date.now() - t0) / n).toFixed(0)} ms/op`);
+        if (++run.ops_run % 100 === 0) log(`${kind} ${run.ops_run}/${ops.length} ${((Date.now() - t0) / run.ops_run).toFixed(0)} ms/op`);
       }
-      meta[`${kind}_ms_per_op`] = ops.length ? Math.round((Date.now() - t0) / ops.length) : 0;
-      // Reads must not write: any row a read session changed is reported.
-      const wrote = delta(startState, snapshot(stage.db));
-      meta[`${kind}_session_row_changes`] = Object.fromEntries(
-        Object.entries(wrote).map(([t, d]) => [t, { inserted: d.inserted.length, updated: d.updated.length, deleted: d.deleted.length }]),
-      );
-      log(`${kind} done: ${ops.length} ops`);
+      run.ms_per_op = ops.length ? Math.round((Date.now() - t0) / ops.length) : 0;
+      // Reads must not write: every row of every table the session changed,
+      // raw, is recorded, and the grader fails the run on any.
+      run.session_writes = delta(startState, snapshot(stage.db));
     });
+    run.finished = new Date().toISOString();
+    run.complete = run.ops_run === ops.length;
+    saveMeta();
+    log(`${kind} done: ${run.ops_run} ops`);
   }
 
   // ---- write scenarios: a fresh deck copy and adapter session each --------
-  if (kinds.has("scenarios")) {
-    const { scenarios } = JSON.parse(readFileSync(path.join(fixture, "ops", "scenarios.json"), "utf8"));
+  if (kinds.includes("scenarios")) {
+    const { scenarios: all } = JSON.parse(readFileSync(path.join(fixture, "ops", "scenarios.json"), "utf8"));
+    const scenarios = all.filter((s) => !filter || filter.test(s.id)).slice(0, limit);
+    const run = beginKind("scenarios", all.length, { steps_total: all.reduce((n, s) => n + s.steps.length, 0), steps_run: 0 });
     const outFile = path.join(outDir, "scenarios.jsonl");
     writeFileSync(outFile, "");
-    for (const scenario of scenarios.filter((s) => !filter || filter.test(s.id)).slice(0, limit)) {
-      const steps = await withSession(root, async (session, stage) => {
+    for (const scenario of scenarios) {
+      const steps = await withSession(root, async (session, stage, hello) => {
+        run.engine ??= hello;
+        if (JSON.stringify(run.engine) !== JSON.stringify(hello)) run.engine_changed = true;
         const results = [];
         for (const step of scenario.steps) {
           const before = snapshot(stage.db);
           const answer = await session.request(step);
-          const after = snapshot(stage.db);
+          const { rows, other } = splitDelta(delta(before, snapshot(stage.db)));
           results.push({
             ...(answer.ok ? { result: answer.result } : { error: answer.error }),
-            rows: delta(before, after),
+            // Raw row delta in Decko's card tables (graded as persistence),
+            // and any other table the step changed (graded for reads).
+            rows,
+            ...(Object.keys(other).length ? { other_tables: other } : {}),
           });
+          run.steps_run++;
         }
         return results;
       });
       appendFileSync(outFile, JSON.stringify({ id: scenario.id, steps }) + "\n");
+      run.ops_run++;
       log(`scenario ${scenario.id}: ${steps.length} steps`);
     }
+    run.finished = new Date().toISOString();
+    run.complete = run.ops_run === scenarios.length;
+    saveMeta();
   }
 } finally {
-  meta.finished = new Date().toISOString();
-  // A run of some kinds keeps what an earlier run recorded about the others.
-  const metaPath = path.join(outDir, "run-meta.json");
-  const earlier = existsSync(metaPath) ? JSON.parse(readFileSync(metaPath, "utf8")) : {};
-  const runs = { ...(earlier.runs ?? {}) };
-  for (const kind of kinds) runs[kind] = { started: meta.started, finished: meta.finished };
-  writeFileSync(metaPath, JSON.stringify({ ...earlier, ...meta, kinds: Object.keys(runs), runs }, null, 2) + "\n");
+  saveMeta();
   removeQuietly(root);
+}
+
+/** The adapter's source checkout: commit and whether it has uncommitted
+ *  changes, so a result names the code that produced it. Null outside git. */
+function gitCheckout(dir) {
+  const git = (...a) => spawnSync("git", ["-C", dir, ...a], { encoding: "utf8", windowsHide: true });
+  const head = git("rev-parse", "HEAD");
+  if (head.status !== 0) return null;
+  const status = git("status", "--porcelain", "--untracked-files=no");
+  return { commit: head.stdout.trim(), dirty: status.status === 0 ? status.stdout.trim() !== "" : null };
+}
+
+function safeJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
 }
 
 /** Removes a scratch directory; a failure is reported, never allowed to hide
