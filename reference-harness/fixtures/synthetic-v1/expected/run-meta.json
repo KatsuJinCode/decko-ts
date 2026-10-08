@@ -1,7 +1,7 @@
 {
   "adapter": "decko-ruby",
   "fixture": "synthetic-v1",
-  "started": "2026-10-08T05:56:53.761Z",
+  "started": "2026-10-08T06:26:34.264Z",
   "kinds": [
     "render",
     "semantics",
@@ -20,7 +20,7 @@
   "render_session_row_changes": {},
   "semantics_ms_per_op": 89,
   "semantics_session_row_changes": {},
-  "finished": "2026-10-08T06:11:31.478Z",
+  "finished": "2026-10-08T06:31:08.595Z",
   "runs": {
     "render": {
       "started": "2026-10-08T05:56:53.761Z",
@@ -31,8 +31,8 @@
       "finished": "2026-10-08T06:11:31.478Z"
     },
     "scenarios": {
-      "started": "2026-10-08T05:56:53.761Z",
-      "finished": "2026-10-08T06:11:31.478Z"
+      "started": "2026-10-08T06:26:34.264Z",
+      "finished": "2026-10-08T06:31:08.595Z"
     }
   }
 }

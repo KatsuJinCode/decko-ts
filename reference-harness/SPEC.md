@@ -180,6 +180,11 @@ render or question after a write a rendering or semantics item. An item whose
 oracle answer was an adapter error is reported as an oracle error and not
 graded.
 
+Any results file may be stored gzipped (`render.jsonl.gz`); the fixture's
+large reference renders are. `node runner/causes.mjs report.json [kind]`
+groups a report's failures by the shape of their first difference, so one
+root cause reads as one line.
+
 The runner needs Node 22.5 or later and nothing else (`node:sqlite`).
 
 ## 4. Normalisation

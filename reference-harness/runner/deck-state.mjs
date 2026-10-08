@@ -105,9 +105,13 @@ export function delta(before, after) {
         inserted.push(norm(table, row));
         continue;
       }
+      // Compared after normalisation: a timestamp rewritten to the same
+      // instant in another text form is not a change.
       const changes = {};
+      const was = norm(table, old);
+      const now = norm(table, row);
       for (const col of Object.keys(row)) {
-        if (String(old[col]) !== String(row[col])) changes[col] = [norm(table, old)[col], norm(table, row)[col]];
+        if (String(was[col]) !== String(now[col])) changes[col] = [was[col], now[col]];
       }
       if (Object.keys(changes).length > 0) updated.push({ id, changes });
     }

@@ -9,6 +9,7 @@
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { gunzipSync } from "node:zlib";
 import { normalizeHtml, normalizeWriteResult, stable } from "./normalize.mjs";
 
 const args = Object.fromEntries(
@@ -18,8 +19,16 @@ const fixture = path.resolve(args.fixture);
 const actualDir = path.resolve(args.actual);
 const expectedDir = path.join(fixture, "expected");
 
+// A results file may be stored gzipped (<name>.jsonl.gz), as the large
+// reference outputs are.
+const readText = (file) =>
+  existsSync(file)
+    ? readFileSync(file, "utf8")
+    : existsSync(file + ".gz")
+      ? gunzipSync(readFileSync(file + ".gz")).toString("utf8")
+      : "";
 const readLines = (file) =>
-  existsSync(file) ? readFileSync(file, "utf8").split("\n").filter((l) => l.trim() !== "").map((l) => JSON.parse(l)) : [];
+  readText(file).split("\n").filter((l) => l.trim() !== "").map((l) => JSON.parse(l));
 const byId = (rows) => new Map(rows.map((r) => [r.id, r]));
 
 const KINDS = ["rendering", "semantics", "persistence", "side_effects"];
