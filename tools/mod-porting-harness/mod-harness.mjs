@@ -394,7 +394,7 @@ const WAVE1 = {
         view: "debug_server_error",
         source: "set/all/html/error.rb:4-8",
         oracle: "live Ruby under decko runner (tools/oracle/debug-server-error-probe.rb): better_errors is not bundled, the body raises NameError 'uninitialized constant Card::Set::All::Html::Error::BetterErrors', a nest renders the quiet error span",
-        status: "ported: raises the same NameError (tests/card/render/debug-server-error.test.ts)",
+        status: "ported as a deliberate difference: renders the production :server_error block instead of Ruby's crash or a BetterErrors page (tests/card/render/debug-server-error.test.ts)",
       },
     ],
     "card-mod-tinymce_editor": [

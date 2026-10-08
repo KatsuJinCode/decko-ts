@@ -144,30 +144,6 @@ export function mainNestWithoutMainError(): Error {
 /** Re-export for tests: the literal class name the harness expects. */
 export const NO_METHOD_ERROR_CLASS_NAME = "NoMethodError";
 
-// ----------------------------------------------------------------------------
-// NameError — a constant the view body names that the deck never loaded
-// ----------------------------------------------------------------------------
-
-/** Ruby `NameError` for an undefined constant. Ruby's message names the
- *  constant under the lexical scope it was looked up in
- *  ("uninitialized constant Card::Set::All::Html::Error::BetterErrors"). */
-class RubyNameError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "NameError";
-  }
-}
-Object.defineProperty(RubyNameError, "name", { value: "NameError" });
-
-/** `raise NameError` for a constant missing from the bundle: `scope` is the
- *  set module the reference sits in, `constant` the missing name. */
-export function uninitializedConstantError(scope: string, constant: string): Error {
-  return new RubyNameError(`uninitialized constant ${scope}::${constant}`);
-}
-
-/** Re-export for tests: the literal class name the harness expects. */
-export const NAME_ERROR_CLASS_NAME = "NameError";
-
 /** Test whether `content` is a valid date by the Ruby Date.parse contract.
  *  JS `new Date(str)` is stricter than Ruby's Date.parse (ISO 8601 and a
  *  few common formats vs. Ruby's many aliases) — for the captured deck

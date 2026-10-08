@@ -682,11 +682,11 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     expect(await s.engine.render("Oracle Format Probe", "unknown")).toBe("");
   });
 
-  it("WITH the mod: :server_error renders the locale token (error.rb:10-12)", async () => {
+  it("WITH the mod: the html :server_error is the haml Wild Card block (html/error.rb:2 over error.rb:10-12)", async () => {
+    // The base block's t(:format_server_error) is overridden in the html
+    // format by `view :server_error, template: :haml`.
     const s = storage!;
-    expect(
-      await s.engine.render("Oracle Format Probe", "server_error"),
-    ).toBe("format.server_error");
+    expect(await s.engine.render("Oracle Format Probe", "server_error")).toContain("<h1>Wild Card!</h1>");
   });
 
   it("WITH the mod: :denial renders the locale token (error.rb:14-16)", async () => {

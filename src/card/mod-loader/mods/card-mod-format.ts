@@ -126,9 +126,9 @@
 //   :view_list via all/demo). STILL UNPORTED from this group:
 //   set/all/html/wrap.rb (the wrap pipeline is the slot machinery),
 //   set/all/html/show.rb (page-view rails), set/all/html/error.rb's
-//   :not_found frame). :debug_server_error is registered on
-//   all/html/error and raises Ruby's NameError for the BetterErrors
-//   constant a stock deck never loads (render/debug-server-error.ts).
+//   :not_found frame). :server_error and :debug_server_error are
+//   registered on all/html/error; the debug view deliberately renders
+//   :server_error (render/debug-server-error.ts).
 // - set/all/title.rb :title_link :title_no_link html block +
 //   helpers: rails (link_to_card + the card-title span rendering);
 //   :title in the html block has a `show_view?(:title_link, :hide)`
@@ -200,7 +200,7 @@
 
 import { ONE_LINE_CHARACTER_LIMIT, truncate } from "../../render/text-helpers.js";
 import { modBarRightSections } from "./core-admin-runtime.js";
-import { debugServerErrorView } from "../../render/debug-server-error.js";
+import { debugServerErrorView, serverErrorHtmlView } from "../../render/debug-server-error.js";
 import {
   faviconTagBytes,
   HEAD_VIEWS,
@@ -1633,17 +1633,22 @@ const setModules: ModSetModuleFile[] = [
     },
   },
   {
-    // set/all/html/error.rb:4-8 view :debug_server_error, picked for a
-    // server error when the session's *debugger card is on. Its body names
-    // BetterErrors, which a stock deck never loads, so it raises NameError
-    // as Ruby does (render/debug-server-error.ts). The file's other
-    // html views (:unknown, :mini_unknown, :compact_missing, :conflict,
-    // :errors) are served by the base table.
+    // set/all/html/error.rb:2 view :server_error (the haml "Wild Card!"
+    // block a production visitor sees; perms :none comes from the base
+    // block's setting, which the html format inherits) and :4-8
+    // :debug_server_error, picked for a server error when the session's
+    // *debugger card is on. Ruby's body raises NameError in a stock deck
+    // (BetterErrors is never loaded) and would otherwise show internals; the
+    // port deliberately renders :server_error in its place, with no modal
+    // wrap, so the two give the same bytes (render/debug-server-error.ts).
+    // The file's other html views (:unknown, :mini_unknown,
+    // :compact_missing, :conflict, :errors) are served by the base table.
     setPath: "all/html/error",
     formats: {
       html: {
         views: [
-          { view: "debug_server_error", viewFn: debugServerErrorView, config: { wrap: "modal" } },
+          { view: "server_error", viewFn: serverErrorHtmlView, config: { perms: "none" } },
+          { view: "debug_server_error", viewFn: debugServerErrorView, config: { perms: "none" } },
         ],
       },
     },

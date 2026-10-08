@@ -51,6 +51,7 @@
 import type { FetchEngine } from "../../src/card/fetch.js";
 import { DeckoName } from "../../src/card/name.js";
 import { newSlotId } from "../../src/card/render/slot-html.js";
+import { SERVER_ERROR_HTML } from "../../src/card/render/debug-server-error.js";
 import { escapeHtml } from "./bunny-edge-lineage-worker-surface.js";
 import { SPACES_ASSET_HOST } from "./bunny-edge-page-shell.js";
 
@@ -540,17 +541,10 @@ function buildNotFoundSlotHtml(displayName: string, nameKey: string, urlKey: str
 /** The main-slot bytes for the server-error page — Decko's deck error block,
  *  byte-verbatim from live_Introduction.html. No card-slot wrap, no name
  *  interpolation inside the block; the requested name shows only in the
- *  <title> (vm-staging-server.mjs:1428-1442). */
+ *  <title> (vm-staging-server.mjs:1428-1442). The bytes are the engine's
+ *  html :server_error view, shared so the page and the view cannot drift. */
 function buildServerErrorSlotHtml(): string {
-  return (
-    `<div class='border border-danger text-center p-3'>\n` +
-    `<h1>Wild Card!</h1>\n` +
-    `<h2 class='alert-danger'>500 Server Error</h2>\n` +
-    `<h4 class='p-3'>\n` +
-    `Yuck, sorry about that.\n` +
-    `</h4>\n` +
-    `</div>\n`
-  );
+  return SERVER_ERROR_HTML;
 }
 
 /** URL display form for a name with no stored card row: Decko's URL

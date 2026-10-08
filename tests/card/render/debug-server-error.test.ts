@@ -1,56 +1,66 @@
-// card-mod-format set/all/html/error.rb view :debug_server_error: registered
-// on All::Html::Error, and raising what stock Ruby raises. The view body
-// names BetterErrors, which a stock deck's bundle never loads, so Ruby
-// raises NameError on every card (tools/oracle/debug-server-error-probe.rb:
-// the oracle app logs "uninitialized constant
-// Card::Set::All::Html::Error::BetterErrors" and renders the quiet span for
-// a nest, with or without a current server error).
+// card-mod-format set/all/html/error.rb: the html :server_error view and
+// :debug_server_error, both registered on All::Html::Error.
+//
+// DELIBERATE DIFFERENCE pinned here. Stock Ruby cannot render
+// :debug_server_error: its body names BetterErrors, which a deck built from
+// its generated Gemfile never loads, so it raises "NameError: uninitialized
+// constant Card::Set::All::Html::Error::BetterErrors" on every card
+// (tools/oracle/debug-server-error-probe.rb). The port copies neither the
+// crash nor the BetterErrors page (source, locals, backtrace, console): it
+// renders :server_error, the "Wild Card!" block a production visitor sees.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck.js";
-import { debugServerErrorView } from "../../../src/card/render/debug-server-error.js";
-import { RenderFormat, type ViewContext } from "../../../src/card/render/format.js";
+import { SERVER_ERROR_HTML } from "../../../src/card/render/debug-server-error.js";
+import { RenderFormat } from "../../../src/card/render/format.js";
 import { bindModLoaderToEngine, createRenderTestStorage, seedCard, type RenderTestStorage } from "./render-test-storage.js";
 
-it("debug_server_error is All::Html::Error's, on every card", () => {
-  const chain = defaultDeckLoader().viewChain("ALL TYPE-rich_text SELF-pancake", "debug_server_error");
-  expect(chain[0]?.setModule).toBe("All::Html::Error");
+/** set/all/html/server_error.haml as the live site serves it. */
+const WILD_CARD =
+  "<div class='border border-danger text-center p-3'>\n" +
+  "<h1>Wild Card!</h1>\n" +
+  "<h2 class='alert-danger'>500 Server Error</h2>\n" +
+  "<h4 class='p-3'>\n" +
+  "Yuck, sorry about that.\n" +
+  "</h4>\n" +
+  "</div>\n";
+
+it("server_error and debug_server_error are All::Html::Error's, on every card", () => {
+  const loader = defaultDeckLoader();
+  for (const view of ["server_error", "debug_server_error"]) {
+    expect(loader.viewChain("ALL TYPE-rich_text SELF-pancake", view)[0]?.setModule).toBe("All::Html::Error");
+  }
+  expect(SERVER_ERROR_HTML).toBe(WILD_CARD);
 });
 
-describe("debug_server_error raises Ruby's NameError", () => {
-  it("names the missing BetterErrors constant under the view's set module", () => {
-    let raised: unknown;
-    try {
-      debugServerErrorView({} as ViewContext);
-    } catch (e) {
-      raised = e;
-    }
-    expect(raised).toBeInstanceOf(Error);
-    expect((raised as Error).constructor.name).toBe("NameError");
-    expect((raised as Error).message).toBe("uninitialized constant Card::Set::All::Html::Error::BetterErrors");
+describe("debug_server_error renders the production server_error view", () => {
+  let storage: RenderTestStorage;
+  beforeAll(async () => {
+    storage = await createRenderTestStorage();
+    await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
+    await seedCard(storage, { id: 600, name: "Home", typeId: 2, dbContent: "home text" });
+    await seedCard(storage, { id: 601, name: "host", typeId: 2, dbContent: "[{{Home|debug_server_error}}]" });
+    storage.fetcher.installNameEnvironment();
+    bindModLoaderToEngine(storage, defaultDeckLoader());
+  });
+  afterAll(() => storage.close());
+
+  it("the focal render gives the Wild Card block, not a raise", async () => {
+    expect(await storage.engine.render("Home", "server_error")).toBe(WILD_CARD);
+    expect(await storage.engine.render("Home", "debug_server_error")).toBe(WILD_CARD);
   });
 
-  describe("through the render engine", () => {
-    let storage: RenderTestStorage;
-    beforeAll(async () => {
-      storage = await createRenderTestStorage();
-      await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
-      await seedCard(storage, { id: 600, name: "Home", typeId: 2, dbContent: "home text" });
-      await seedCard(storage, { id: 601, name: "host", typeId: 2, dbContent: "{{Home|debug_server_error}}" });
-      storage.fetcher.installNameEnvironment();
-      bindModLoaderToEngine(storage, defaultDeckLoader());
-    });
-    afterAll(() => storage.close());
+  it("a nest gives the same block, not the render-error span", async () => {
+    await storage.engine.prepareItemForRender("Home");
+    const card = await storage.engine.prepareItemForRender("host");
+    const html = new RenderFormat(card!, storage.engine, { main: true, nestQuietErrors: true }).renderView("core");
+    expect(html).toBe(`[${WILD_CARD}]`);
+  });
 
-    it("a nest renders the quiet error span under production rescue, as the oracle app does", async () => {
-      // The page lane's root format: nested raises take the quiet branch
-      // (format/error.rb rescue_view), the focal render stays loud.
-      await storage.engine.prepareItemForRender("Home");
-      const card = await storage.engine.prepareItemForRender("host");
-      const html = new RenderFormat(card!, storage.engine, { main: true, nestQuietErrors: true }).renderView("core");
-      expect(html).toContain(
-        '<span class="render-error alert alert-danger">Error rendering: Home (debug_server_error view)</span>',
-      );
-    });
+  it("reveals nothing about the card, the error or the code", async () => {
+    const html = await storage.engine.render("Home", "debug_server_error");
+    for (const internal of ["Home", "BetterErrors", "NameError", "backtrace", "frame", ".ts", "<script", "<pre"]) {
+      expect(html).not.toContain(internal);
+    }
   });
 });
