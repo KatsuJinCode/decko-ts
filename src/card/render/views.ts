@@ -91,7 +91,8 @@ import { NAVBAR_VIEWS, accountLinksCoreHtml } from "./navbar-views.js";
 import { DEFAULT_TOKEN_EXPIRY_SECONDS } from "../auth/token.js";
 import { scanNests } from "./nest-syntax.js";
 import { kramdownToStashedHtml } from "./kramdown.js";
-import { resolveContentOverride, resolveContentOverrideEntry } from "./content-overrides.js";
+import { registerBuiltInContentOverride, resolveContentOverride, resolveContentOverrideEntry } from "./content-overrides.js";
+import { whenCreatedContentFn, whenLastEditedContentFn } from "../mod-loader/mods/card-mod-date.js";
 import { signupCoreHtml } from "../mod-loader/mods/card-mod-account.js";
 import { bootswatchSkinCoreHtml } from "../mod-loader/mods/card-mod-bootstrap.js";
 import { templateNestView } from "../mod-loader/mods/card-mod-edit.js";
@@ -140,6 +141,23 @@ import { leadView as helpLeadView } from "../mod-loader/mods/card-mod-help.js";
 import { roleConfigsView, modCardCoreHtml } from "../mod-loader/mods/core-mod.js";
 // card-mod-format set/all/demo.rb :demo (body in ./demo-view.ts; flat entry below).
 import { demoView } from "./demo-view.js";
+
+// card-mod-date set/right/when_created.rb and when_last_edited.rb: the
+// `def content` of the +*when created / +*when last edited fields (the left
+// card's timestamps). Anonymous never reads them on the culture deck; a
+// signed-in reader's task pages render them. The right anchors are the
+// setting cards' keys; the sets assign the Phrase type, so the override is
+// the core's final bytes.
+registerBuiltInContentOverride({
+  setPath: "right/*when_created",
+  modName: "date",
+  fn: whenCreatedContentFn,
+});
+registerBuiltInContentOverride({
+  setPath: "right/*when_last_edited",
+  modName: "date",
+  fn: whenLastEditedContentFn,
+});
 
 // ---------------------------------------------------------------------------
 // shared emitters
@@ -457,8 +475,8 @@ function menuBoardAnchor(fmt: RenderFormat, opts: { inModal: boolean }): string 
   );
 }
 
-/** menu.rb view :menu (denial/unknown branches deferred - known cards only
- *  in the captured deck). menu_link_classes: "nodblclick" + " _show-on-hover"
+/** menu.rb view :menu (denial: :blank, unknown: true; an unknown card
+ *  renders ""). menu_link_classes: "nodblclick" + " _show-on-hover"
  *  (show_view?(:hover_link) default show).
  *
  *  The three menu_items members (:54-56: help_link, menu_edit_link's
@@ -467,6 +485,7 @@ function menuBoardAnchor(fmt: RenderFormat, opts: { inModal: boolean }): string 
  *  / :board_link views and the menu cannot drift apart. */
 const menuView: ViewFn = (ctx) => {
   const { fmt, voo } = ctx;
+  if (fmt.card.unknown === true) return ""; // menu.rb: return "" unless card.known?
   const help = menuHelpAnchor(ctx);
   const edit = menuEditAnchor(fmt);
   const board = menuBoardAnchor(fmt, { inModal: false });
@@ -1581,10 +1600,10 @@ export function templateLinkSetNameFromParts(
  *
  *  The CREATE case (new discussion child, no stored row) keeps the
  *  board-stage3 engage_tab shape the mod-layer builder pins (no recaptcha
- *  wrap on that capture) — rendered-unpinned on the live surface. The
- *  signed-in branch (comment.rb:74-77 nil author label) is not the
- *  captured corpus surface (the capture viewer is always Anonymous) and is
- *  recorded, not ported, here. */
+ *  wrap on that capture) — rendered-unpinned on the live surface. A
+ *  signed-in session renders the update form without the reCAPTCHA and
+ *  without the author label (comment.rb comment_author_label), as the
+ *  signed-in capture pins. */
 const RECAPTCHA_SITE_KEY = "6Lc3c-EoAAAAALnzfnHIWb5Rqy-rNui8l8qsguYG";
 
 const commentBoxBaseView: ViewFn = ({ fmt }) => {
@@ -1610,39 +1629,54 @@ const commentBoxBaseView: ViewFn = ({ fmt }) => {
   // readRuleClass '*self' is the corpus's stored marker for that shape
   // (9789: '*self' + the 9813 *update->Anyone row; 770 of the 779
   // discussion rows are '*all plus').
-  if (fmt.engine.taskAllowed?.(card, "update") !== true) return "";
-  if (card.id === undefined) {
-    // The create branch: card-mod-comment.ts commentBoxBody's create shape
-    // (board-stage3 engage_tab oracle), un-recaptched there.
-    return (
-      `<div class="comment-box nodblclick">` +
-      `<form class="card-form slotter" id="new_card" action="/card/create"` +
-      ` accept-charset="UTF-8" data-remote="true" method="post">` +
-      `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
-      `<input type="hidden" name="card[name]" id="card_name" value="${h(card.name.s)}" autocomplete="off" />` +
-      `<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">
-</textarea>` +
-      `<div class="comment-buttons"><label>My Name is:</label> <input type="text" name="comment_author"></div>` +
-      `</form></div>`
-    );
-  }
+  // perms :update — and an update of a new card is a create (format/
+  // error.rb ok?): the create branch renders for an actor who may create
+  // the absent +discussion card.
+  const isNew = card.id === undefined;
+  const allowed = isNew
+    ? (fmt.engine.unknownCardCreatable?.(card) ?? fmt.engine.taskAllowed?.(card, "create") === true)
+    : fmt.engine.taskAllowed?.(card, "update") === true;
+  if (!allowed) return "";
+  // A signed-in session gets neither the reCAPTCHA (card-mod-recaptcha
+  // set/all/recaptcha.rb recaptcha_on?: `!Auth.signed_in?`) nor the author
+  // field (comment.rb comment_author_label: `return if Auth.signed_in?`).
+  const signedIn = fmt.engine.pageSession?.signedIn === true;
+  const action = isNew ? "create" : "update";
   const siteKey = recaptchaSiteKey() ?? RECAPTCHA_SITE_KEY;
-  const form =
-    `<form class="card-form slotter autosave" id="edit_card_${card.id}" data-recaptcha="on"` +
-    ` action="/update/${h(fmt.urlKey())}" accept-charset="UTF-8" data-remote="true" method="post">` +
-    `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
-    `<input type="hidden" name="_method" value="patch" autocomplete="off" />` +
-    `<script src="https://www.google.com/recaptcha/api.js?render=${siteKey}"></` + `script>
+  const recaptcha = signedIn
+    ? ""
+    : `<script src="https://www.google.com/recaptcha/api.js?render=${siteKey}"></` + `script>
 ` +
-    `<input type="hidden" name="recaptcha_token" id="recaptcha_token" value=""` +
-    ` data-site-key="${siteKey}" data-action="update" class="_recaptcha-token" autocomplete="off" />` +
+      `<input type="hidden" name="recaptcha_token" id="recaptcha_token" value=""` +
+      ` data-site-key="${siteKey}" data-action="${action}" class="_recaptcha-token" autocomplete="off" />`;
+  const authorLabel = signedIn
+    ? ""
+    : `<label>My Name is:</label>` +
+      ` <input class=" form-control" type="text" value="Anonymous" name="card[comment_author]" id="card_comment_author" />
+`;
+  // card_form: the create form posts to /card/create as "new_card" without
+  // autosave; the update form patches /update/<url key>.
+  const formOpen = isNew
+    ? `<form class="card-form slotter" id="new_card"${signedIn ? "" : ` data-recaptcha="on"`}` +
+      ` action="/card/create" accept-charset="UTF-8" data-remote="true" method="post">` +
+      `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />`
+    : `<form class="card-form slotter autosave" id="edit_card_${card.id}"${signedIn ? "" : ` data-recaptcha="on"`}` +
+      ` action="/update/${h(fmt.urlKey())}" accept-charset="UTF-8" data-remote="true" method="post">` +
+      `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
+      `<input type="hidden" name="_method" value="patch" autocomplete="off" />`;
+  // [hidden_comment_fields, comment_box, comment_buttons] joined "\n";
+  // hidden_comment_fields (the card[name] tag) exists only for a new card.
+  const parts = [
+    ...(isNew
+      ? [`<input type="hidden" name="card[name]" id="card_name" value="${h(card.name.s)}" autocomplete="off" />`]
+      : []),
     `<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">
-</textarea>
-` +
-    `<div class="comment-buttons"><label>My Name is:</label>` +
-    ` <input class=" form-control" type="text" value="Anonymous" name="card[comment_author]" id="card_comment_author" />
-` +
-    `<button name="button" type="submit" data-disable-with="Commenting" class="btn btn-outline-primary">Comment</button></div>`;
+</textarea>`,
+    `<div class="comment-buttons">` +
+      authorLabel +
+      `<button name="button" type="submit" data-disable-with="Commenting" class="btn btn-outline-primary">Comment</button></div>`,
+  ];
+  const form = formOpen + recaptcha + parts.join("\n");
   return `<div class="comment-box nodblclick">${form}</form></div>`;
 };
 
@@ -2627,6 +2661,7 @@ function virtualAllRuleCard(
     settingCard,
     settingCodename:
       settingCard.record.codename ?? settingCard.name.s.slice(1),
+    newCardDefaultType: (n) => fmt.engine.newCardDefaultType?.(n),
   });
 }
 
@@ -2897,6 +2932,7 @@ function renderSettingListItems(
         settingCard,
         settingCodename,
         deckTypeCard,
+        newCardDefaultType: (n) => fmt.engine.newCardDefaultType?.(n),
       });
       const slotHtml = fmt.nestRecord(virtual, "bar", {
         nest_name: virtual.name.s,
@@ -3011,7 +3047,12 @@ function barSettingListItem(
   const ruleCard =
     stored !== undefined && stored.unknown !== true
       ? stored
-      : buildVirtualRuleCard({ setCard, settingCard, settingCodename: setting });
+      : buildVirtualRuleCard({
+          setCard,
+          settingCard,
+          settingCodename: setting,
+          newCardDefaultType: (n) => ctx.fmt.engine.newCardDefaultType?.(n),
+        });
   return ctx.fmt.nestRecord(ruleCard, "bar", {
     nest_name: ruleCard.name.s,
     show: ["bar"],
@@ -5343,6 +5384,37 @@ const itemBarView: ViewFn = (ctx) => {
  *  "" (the wrap lives INSIDE createable, so no slot either). The first
  *  port hardcoded "" off a fixtures-carry-no-link claim that this capture
  *  falsifies; expectation = the oracle bytes, never the reverse. */
+/** html/error.rb createable: `card.ok?(:create)` on the fetch-miss card. */
+function unknownCardCreatable(fmt: RenderFormat): boolean {
+  return (
+    fmt.engine.unknownCardCreatable?.(fmt.card) ??
+    fmt.engine.taskAllowed?.(fmt.card, "create") === true
+  );
+}
+
+/** unknown_link's path (html/error.rb: link_to_view :new_in_modal): the
+ *  card is unknown, so Card::Path#handle_unknown (lib/card/path.rb:89-96)
+ *  adds `card[name]` whenever the url key loses name information. */
+function unknownLinkQuery(fmt: RenderFormat): string {
+  // path: (voo.type ? { card: { type: voo.type } } : {}), plus card[name]
+  // from handle_unknown; Hash#to_param sorts the keys (name before type)
+  // and the href escapes the joining ampersand.
+  const params: string[] = [];
+  const nameSuffix = wantedHrefQuerySuffix(fmt.card.name.s);
+  if (nameSuffix !== "") params.push(nameSuffix.slice(1));
+  const type = fmt.voo?.opts["type"];
+  if (typeof type === "string" && type !== "") params.push(`card%5Btype%5D=${cgiEscape(type)}`);
+  return params.length === 0 ? "" : `?${params.join("&amp;")}`;
+}
+
+/** unknown_link's href. A blank name has no mark, so Card::Path renders
+ *  the root path with the view as a query ("/?view=new_in_modal"). */
+function unknownLinkHref(fmt: RenderFormat): string {
+  const url = fmt.urlKey();
+  if (url === "") return "/?view=new_in_modal";
+  return `/${h(url)}/new_in_modal${unknownLinkQuery(fmt)}`;
+}
+
 const unknownView: ViewFn = (ctx) => {
   const { fmt } = ctx;
   // createable is a POSITIVE check (card.ok?(:create)): only a verdict of
@@ -5350,13 +5422,12 @@ const unknownView: ViewFn = (ctx) => {
   // all, where Ruby's who_can -> [] -> among? denies) renders "" - the
   // corpus pins exactly that (expected-v2 entry 640: `<p></p>` for a
   // titled-view nest miss on a rule-less deck).
-  if (fmt.engine.taskAllowed?.(fmt.card, "create") !== true) return "";
-  const url = fmt.urlKey();
-  const name = fmt.card.name.s;
+  if (!unknownCardCreatable(fmt)) return "";
+  // "#{unknown_icon} #{render_title}": the :title view, which titles the
+  // card in its name context ("+Associates" under its left).
   const link =
-    `<a rel="nofollow" class="unknown-link slotter" href="/${h(url)}/new_in_modal" data-remote="true">` +
-    `${icon("add_box")} <span class="card-title" title="${h(name)}">` +
-    `${wrappedTitleInner(h(name))}</span></a>`;
+    `<a rel="nofollow" class="unknown-link slotter" href="${unknownLinkHref(fmt)}" data-remote="true">` +
+    `${icon("add_box")} ${fmt.renderView("title")}</a>`;
   return slotWrapCommon(fmt, "unknown", link);
 };
 
@@ -5373,10 +5444,9 @@ const blankView: ViewFn = () => "";
 const miniUnknownView: ViewFn = (ctx) => {
   const { fmt } = ctx;
   // same positive createable check as :unknown (see there).
-  if (fmt.engine.taskAllowed?.(fmt.card, "create") !== true) return "";
-  const url = fmt.urlKey();
+  if (!unknownCardCreatable(fmt)) return "";
   return (
-    `<a rel="nofollow" class="unknown-link slotter" href="/${h(url)}/new_in_modal" data-remote="true">` +
+    `<a rel="nofollow" class="unknown-link slotter" href="${unknownLinkHref(fmt)}" data-remote="true">` +
     `${icon("add_box")}</a>`
   );
 };

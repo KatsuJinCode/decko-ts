@@ -56,7 +56,7 @@
 //   :462) reads. A direct-runner child is therefore a drop-in for the old
 //   stdout contract as well as for the artifact contract.
 
-import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync, appendFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import Database from "better-sqlite3";
@@ -91,7 +91,69 @@ import {
 // the card wall clock to the capture minute — the capture-environment model
 // (deck_origin precedent). Affects ONLY the card-content override path
 // (set-module-content-overrides.ts's clock seam), never Date.now() timing.
-setCaptureWallClock(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT);
+//
+// CAPTURE_FROZEN_CLOCK names the instant the graded corpus was photographed
+// under (an ISO-8601 instant with an explicit zone, e.g. the corpus of
+// record's rig M4 epoch "2026-09-19T12:00:00Z", recorded in its provenance as
+// invocation.frozenClock). The default is the 2026-09-28 capture's minute,
+// which is right only for that older corpus.
+export function captureClockFromEnv(raw: string | undefined): Date {
+  if (raw === undefined || raw === "") return CAPTURE_WALL_CLOCK_CAPTURE_INSTANT;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/.test(raw)) {
+    throw new Error(`CAPTURE_FROZEN_CLOCK must be an ISO-8601 instant with a zone, got ${JSON.stringify(raw)}`);
+  }
+  const instant = new Date(raw);
+  if (Number.isNaN(instant.getTime())) throw new Error(`CAPTURE_FROZEN_CLOCK is not a valid instant: ${raw}`);
+  return instant;
+}
+const GRADE_CAPTURE_CLOCK = captureClockFromEnv(process.env.CAPTURE_FROZEN_CLOCK);
+setCaptureWallClock(GRADE_CAPTURE_CLOCK);
+if (process.env.CAPTURE_FROZEN_CLOCK) {
+  process.stderr.write(`CAPTURE-CLOCK ${GRADE_CAPTURE_CLOCK.toISOString()} (CAPTURE_FROZEN_CLOCK)\n`);
+}
+
+// GRADE_VIEWER selects the actor the engine renders for, for the permissioned
+// grade: "anonymous" (the engine's default viewer, stated explicitly) or
+// "signed-in:<account card id>" (read verdicts and page chrome for that
+// account, as Ruby's Auth.signin gives both). Unset leaves the engine as it
+// boots. When set, every render must leave the engine's resolved read state
+// with alwaysOk === false (the actor is neither Decko Bot nor an
+// Administrator), or the run fails, unless GRADE_VIEWER_ALLOW_ALWAYS_OK=1
+// says the administrator grade is intended; the first resolved state is
+// printed.
+interface GradeViewer { readonly signedIn: boolean; readonly actorId?: number }
+interface GradeViewerEngine {
+  viewer: GradeViewer;
+  pageSession: GradeViewer | undefined;
+  readPermission?: { alwaysOk: boolean; parties: number[]; readableRuleIds: Set<number> };
+}
+export function gradeViewerFromEnv(raw: string | undefined): GradeViewer | undefined {
+  if (raw === undefined || raw === "") return undefined;
+  if (raw === "anonymous") return { signedIn: false };
+  const m = /^signed-in:(\d+)$/.exec(raw);
+  if (m === null) throw new Error(`GRADE_VIEWER must be "anonymous" or "signed-in:<id>", got ${JSON.stringify(raw)}`);
+  return { signedIn: true, actorId: Number(m[1]) };
+}
+let gradeViewerStatePrinted = false;
+function assertGradeViewerState(engine: GradeViewerEngine, viewer: GradeViewer | undefined): void {
+  if (viewer === undefined) return;
+  const state = engine.readPermission;
+  if (state === undefined) return; // resolved lazily; checked on the next render
+  // GRADE_VIEWER_ALLOW_ALWAYS_OK=1 grades an administrator on purpose (the
+  // capture side signs in the same always-ok actor).
+  if (state.alwaysOk && process.env.GRADE_VIEWER_ALLOW_ALWAYS_OK !== "1") {
+    throw new Error("GRADE_VIEWER resolved to an always-ok actor; refusing to grade");
+  }
+  if (!gradeViewerStatePrinted) {
+    gradeViewerStatePrinted = true;
+    const line =
+      `GRADE-VIEWER-STATE viewer=${JSON.stringify(viewer)} alwaysOk=${state.alwaysOk} ` +
+      `parties=${JSON.stringify(state.parties)} readableRuleIds=${state.readableRuleIds.size}`;
+    console.log(line);
+    // The driver relays only progress lines, so the state also goes to a file.
+    if (process.env.GRADE_VIEWER_LOG) appendFileSync(process.env.GRADE_VIEWER_LOG, line + "\n");
+  }
+}
 
 const SHARD_RE = /^recapture-raw-shard-\d{6}\.jsonl$/;
 /** Bucket for a result whose entry had no recorded shard. The entry arrays
@@ -491,7 +553,10 @@ export async function runDirectGrade(opts: DirectRunOptions): Promise<DirectRunR
   runRenderT0 = 0;
   runProgress = { shards: 0, view: null, page: null };
   const REPO_ROOT = path.resolve(opts.repoRoot);
-  const EXPECTED_V2_DIR = path.join(REPO_ROOT, "tmp", "raw-ground-truth", "expected-v2");
+  // GRADE_EXPECTED_V2_DIR grades against another capture tree of the same
+  // layout (the permissioned captures); unset keeps the instrument tree.
+  const EXPECTED_V2_DIR =
+    process.env.GRADE_EXPECTED_V2_DIR ?? path.join(REPO_ROOT, "tmp", "raw-ground-truth", "expected-v2");
   const VIEW_LANE_DIR = path.join(EXPECTED_V2_DIR, "view-lane");
   const PAGE_LANE_DIR = path.join(EXPECTED_V2_DIR, "page-lane");
   const OUT_DIR = path.join(REPO_ROOT, "tmp", "raw-ground-truth", "enumeration");
@@ -714,6 +779,13 @@ export async function runDirectGrade(opts: DirectRunOptions): Promise<DirectRunR
   ).map((r) => r.id);
   idLister.close();
   const storage = await createRawStructureSeededStorage(new Set(everyLiveId));
+  const gradeViewer = gradeViewerFromEnv(process.env.GRADE_VIEWER);
+  const viewerEngine = storage.engine as unknown as GradeViewerEngine;
+  if (gradeViewer !== undefined) {
+    viewerEngine.viewer = gradeViewer;
+    viewerEngine.pageSession = gradeViewer.signedIn ? gradeViewer : undefined;
+    console.log(`GRADE-VIEWER ${JSON.stringify(gradeViewer)}`);
+  }
   const viewRegistry = new HandlerRegistry();
   const pageRegistry = new HandlerRegistry();
 
@@ -830,6 +902,7 @@ export async function runDirectGrade(opts: DirectRunOptions): Promise<DirectRunR
     const renderHandler = async ({ cardName, view }: { cardName: string; view: string }) => {
       try {
         const html = await storage.engine.render(cardName, view);
+        assertGradeViewerState(viewerEngine, gradeViewer);
         return renderBytes(html);
       } catch (error) {
         if (error instanceof UnsupportedViewError) {
@@ -847,6 +920,7 @@ export async function runDirectGrade(opts: DirectRunOptions): Promise<DirectRunR
     pageRegistry.register("render-engine", async ({ cardName }: { cardName: string }) => {
       try {
         const html = await storage.engine.renderPage(cardName);
+        assertGradeViewerState(viewerEngine, gradeViewer);
         return renderBytes(html);
       } catch (error) {
         if (

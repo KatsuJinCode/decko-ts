@@ -915,9 +915,9 @@ function virtualSkinFieldCard(
  *  3. no row + stylesheets -> the field is a plain unknown card (the Skin
  *     type carries no virtual? method, type_plus_right/bootswatch_skin/
  *     stylesheets.rb is include_set Abstract::SkinField only), and the
- *     nest renders "" - Ruby's unknown nest view for a card the Anonymous
- *     viewer cannot create (the same quiet-empty the unknown view renders;
- *     the oracle pins the ABSENT accordion for every theme skin). */
+ *     nest renders its :unknown view - the create link for an actor who may
+ *     create it, and "" for one who cannot (the anonymous oracle pins the
+ *     absent accordion for every theme skin). */
 function skinFieldNest(
   ctx: ViewContext,
   field: "colors" | "variables" | "stylesheets",
@@ -930,7 +930,16 @@ function skinFieldNest(
   if (real !== undefined) {
     return fmt.nestRecord(real, "accordion_bar", opts);
   }
-  if (field === "stylesheets") return "";
+  if (field === "stylesheets") {
+    // a plain fetch-miss nest: its :unknown view renders the create link
+    // for an actor who may create the field, nothing for one who may not
+    return fmt.nest({
+      name: `${name}+*${field}`,
+      syntax: `${name}+*${field}`,
+      options: { view: "accordion_bar", title, extra: {} },
+      comment: undefined,
+    });
+  }
   return fmt.nestRecord(virtualSkinFieldCard(ctx, field), "accordion_bar", opts);
 }
 

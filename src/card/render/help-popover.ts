@@ -271,8 +271,9 @@ export class HelpRulesResolver implements HelpRulesApi {
       settingRuleCountsStatement(
         setTypeId,
         settingTypeId,
+        // an always-ok actor (Decko Bot, an Administrator) reads every rule
         host.readPermission?.alwaysOk
-          ? new Set<number>()
+          ? "all"
           : host.readPermission?.readableRuleIds ?? new Set<number>(),
       ),
     ]);
@@ -697,12 +698,13 @@ function helpRuleSidesStatement(setTypeId: number, settingTypeId: number): SQLSt
  *  counts every live rule card matching the structural joins - on the
  *  corpus that produces 140 *default rules vs Ruby's 49 (corpus:87/88/91
  *  /105/155/201/205/217/242/248/253/257 + 251 on *input_type). */
-function settingRuleCountsStatement(
+export function settingRuleCountsStatement(
   setTypeId: number,
   settingTypeId: number,
-  readableRuleIds: ReadonlySet<number>,
+  readableRuleIds: ReadonlySet<number> | "all",
 ): SQLStatement {
-  const readableIds = Array.from(readableRuleIds);
+  const all = readableRuleIds === "all";
+  const readableIds = all ? [] : Array.from(readableRuleIds);
   const hasFilter = readableIds.length > 0;
   const readableParams: number[] = hasFilter ? readableIds : [];
   const sql =
@@ -716,7 +718,9 @@ function settingRuleCountsStatement(
       ? "  AND (rules.read_rule_id IS NULL OR rules.read_rule_id IN (" +
         readableParams.map(() => "?").join(",") +
         "))\n"
-      : "  AND rules.read_rule_id IS NULL\n") +
+      : all
+        ? ""
+        : "  AND rules.read_rule_id IS NULL\n") +
     "GROUP BY settings.id";
   return { sql, params: [setTypeId, settingTypeId, ...readableParams] };
 }

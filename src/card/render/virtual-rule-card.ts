@@ -47,9 +47,11 @@ import { safeSetKeys } from "./set-keys.js";
  *  (R16 update: the re-measure above REPLACED that fallback story for
  *  default/content_options/content_option_view — their virtual bars DO
  *  surface corpus-wide (60-2,397 samples) and now carry corpus-pinned
- *  entries. Only *structure still falls back: it is denied at RIGHT
- *  precedence for the Anonymous viewer (*structure+*right+*read =
- *  "Anyone Signed In", rule 22417), so its bar never renders.)
+ *  entries. *structure has no entry: its type is deck-specific (the
+ *  *structure+*right+*default template, "Nest list" on the culture deck),
+ *  so buildVirtualRuleCard resolves it through the engine's new-card type
+ *  walk. Anonymous never sees that bar (*structure+*right+*read = "Anyone
+ *  Signed In"); signed-in actors do.)
  *
  *  CLUSTER 2 (tiny-render-type-plus-right-rule-card): fixing the
  *  type_id/type_name divergence above closes this family. The bar-right
@@ -165,6 +167,12 @@ export interface VirtualRuleCardInputs {
    *  the map's raw-deck literal - the documented degradation, the same
    *  shape as the settingCard.typeId fallback below. */
   readonly deckTypeCard?: RenderCard;
+  /** The engine's new-card type walk (RenderEngineLike.newCardDefaultType:
+   *  type.rb ensure_type_id, type_id_from_code || type_id_from_template),
+   *  consulted for settings the corpus-pinned map does not cover: the
+   *  virtual *structure rule takes its type from the deck's
+   *  *structure+*right+*default template (a deck-specific cardtype). */
+  readonly newCardDefaultType?: (name: DeckoName) => { typeId: number; typeName: string } | undefined;
 }
 
 /** Build the in-memory virtual rule card Ruby constructs on the fly for
@@ -236,7 +244,8 @@ export function buildVirtualRuleCard(inputs: VirtualRuleCardInputs): RenderCard 
   // doesn't surface for those because their *all+X virtual rule bars
   // don't appear in the captured corpus.
   const ruleType = ruleTypeForSetting(settingCodename);
-  const typeId = ruleType?.typeId ?? settingCard.typeId;
+  const templateType = ruleType === undefined ? inputs.newCardDefaultType?.(name) : undefined;
+  const typeId = ruleType?.typeId ?? templateType?.typeId ?? settingCard.typeId;
   // Ruby prints the DECK's type card at the template-resolved id:
   // type_name (card.type_name) and the codename-derived type code are
   // lookups on THAT card, so the served deck's type names are what the
@@ -245,8 +254,11 @@ export function buildVirtualRuleCard(inputs: VirtualRuleCardInputs): RenderCard 
   // fixtures/corpus-v2/recapture/recapture-shard-000000.jsonl
   // *captcha+*right agree). The map literals are the RAW-deck names and
   // are only the fallback for a deck that does not carry the type card.
-  const typeName = deckTypeCard?.name.s ?? ruleType?.typeName ?? settingCard.typeName;
-  const typeCode = deckTypeCard?.typeCode ?? ruleType?.typeCode ?? settingCard.typeCode;
+  const typeName = deckTypeCard?.name.s ?? ruleType?.typeName ?? templateType?.typeName ?? settingCard.typeName;
+  const typeCode =
+    deckTypeCard?.typeCode ??
+    ruleType?.typeCode ??
+    (templateType !== undefined ? undefined : settingCard.typeCode);
   // left/right id wiring: the rule card's record points at the set
   // (left_id) and the setting (right_id). Records use the underlying
   // CardRecord shape so the engine's left-id lookup is consistent with

@@ -213,6 +213,24 @@ BUILT_IN_DEFAULT_REGISTRY.register({
   fn: bootstrapFunctionsContent,
   supersedesType: false,
 });
+// card-mod-layout set/self/alerts.rb and set/self/foot.rb: `def content`
+// answers a deprecation comment for the two retired layout cards, whatever
+// their stored content. Anonymous never reads them on the culture deck
+// (BasicCs+*type+*read is "Anyone Signed In"); a signed-in reader's layout
+// renders the comment. Anchors are the cards' keys ("*alerts" keys to
+// "*alert").
+BUILT_IN_DEFAULT_REGISTRY.register({
+  setPath: "self/*alert",
+  modName: "layout",
+  fn: () => "<!-- *alerts is deprecated. please remove from layout -->",
+  supersedesType: false,
+});
+BUILT_IN_DEFAULT_REGISTRY.register({
+  setPath: "self/*foot",
+  modName: "layout",
+  fn: () => "<!-- *foot is deprecated. please remove from layout -->",
+  supersedesType: false,
+});
 BUILT_IN_DEFAULT_REGISTRY.register({
   // card-mod-list-0.20.0 set/self/input_type/right/content_options.rb:3-5 —
   // `def content; basket[:list_input_options].to_pointer_content; end` on
@@ -255,6 +273,13 @@ export function listItemContentOverride(card: RenderCard): string | undefined {
   return cardBelongsToSet(card, "self/*input_type+*right+*content_option")
     ? listInputOptionsContent()
     : undefined;
+}
+
+/** Add an override to the built-in registry the loader-less engine reads,
+ *  for mod-owned `def content` hooks that module order keeps from being
+ *  declared here (an import of the mod from this file closes a cycle). */
+export function registerBuiltInContentOverride(entry: RegisteredContentOverride): void {
+  BUILT_IN_DEFAULT_REGISTRY.register(entry);
 }
 
 let defaultRegistry: ContentOverrideRegistry | undefined = BUILT_IN_DEFAULT_REGISTRY;

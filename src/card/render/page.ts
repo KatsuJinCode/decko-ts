@@ -63,6 +63,7 @@ import { scriptIntegrityFor } from "./deployment-follow-live-config.js";
 import type { RenderEngine } from "../render.js";
 import type { HistoryRenderParams } from "../history/render-seam.js";
 import { DECK_ORIGIN } from "./deck-origin.js";
+import { h } from "./slot-html.js";
 
 // The production `Cardio.config.deck_origin` the capture pinned (runbook
 // production-equivalent setting 4; Env.origin with no request) now lives in
@@ -170,8 +171,10 @@ export async function renderPageBytes(
     const releaseCaches =
       typeof engine.fetcher?.holdTemporaryCaches === "function" ? engine.fetcher.holdTemporaryCaches() : () => {};
     try {
-      return await engine.runWithPageConfig(() =>
-        renderPageBytesWithPageConfig(engine, cardName, requestedView, historyParams),
+      return await engine.renderWithUnknownCreateVerdicts(() =>
+        engine.runWithPageConfig(() =>
+          renderPageBytesWithPageConfig(engine, cardName, requestedView, historyParams),
+        ),
       );
     } finally {
       releaseCaches();
@@ -225,6 +228,9 @@ async function renderPageBytesWithPageConfig(
   // render's scan surface).
   engine.beginPagePrepare();
   try {
+    if (requestedView !== undefined && MODAL_WRAPPED_VIEWS.has(requestedView)) {
+      return await renderOutsideOfLayout(engine, cardName, requestedView, historyParams);
+    }
     return await renderPageBytesWithPageConfigInner(
       engine,
       cardName,
@@ -236,15 +242,84 @@ async function renderPageBytesWithPageConfig(
   }
 }
 
+/** Views whose definition wraps them in a modal or board (card-mod-layout
+ *  set/all/process_layout.rb explicit_modal_wrapper?: `view_setting :wrap`
+ *  names :modal or :board): card-mod-edit editing.rb :board, edit_content.rb
+ *  :edit, new.rb :new_in_modal; card-mod-layout modal.rb :modal; card-mod-
+ *  rules board_rules_editor.rb :modal_rule, editor.rb :rule_edit,
+ *  filtered_rule_lists.rb :modal_nest_rules; card-mod-format html/error.rb
+ *  :debug_server_error. */
+const MODAL_WRAPPED_VIEWS: ReadonlySet<string> = new Set([
+  "board",
+  "edit",
+  "new_in_modal",
+  "modal",
+  "modal_rule",
+  "rule_edit",
+  "modal_nest_rules",
+  "debug_server_error",
+]);
+
+/** process_layout.rb render_outside_of_layout: a requested view that wraps
+ *  itself in a modal or board renders OUTSIDE the page layout — the page is
+ *  the layout with its own main view (`render_with_layout nil, ...`), and
+ *  the requested view, rendered on the main format with the main args
+ *  (main_render_args: main and main_view), goes in before `</body>`
+ *  (body_with_modal). A denied view therefore renders the readable card's
+ *  page followed by the loud denial, and the page answers 403 (the denial is
+ *  focal and its voo the root). */
+async function renderOutsideOfLayout(
+  engine: RenderEngine,
+  cardName: string,
+  view: string,
+  historyParams?: HistoryRenderParams,
+): Promise<string> {
+  const body = await renderPageBytesWithPageConfigInner(engine, cardName, undefined, historyParams, true);
+  const status = engine.pageErrorStatus;
+  let record = await engine.fetcher.fetchByName(cardName);
+  if (record !== undefined && record.id === undefined && cardName.includes("_")) {
+    record = (await engine.fetcher.fetchByName(cardName.replace(/_/g, " "))) ?? record;
+  }
+  if (record === undefined || record.name === undefined) {
+    throw new Error(`card not found: ${cardName}`);
+  }
+  try {
+    await engine.render(record.name.s, view, historyParams);
+  } catch {
+    // the prepare render's own failure surfaces through the main render below
+  }
+  const rootCard = engine.fetchRenderCard(record.name.s);
+  if (rootCard === undefined) throw new Error(`render card not prepared: ${record.name.s}`);
+  engine.pageErrorStatus = status;
+  const modalFormat = new RenderFormat(rootCard, engine, { main: true, nestQuietErrors: true });
+  // The body's main view ran on the same Ruby format; a titled or labeled
+  // main view left @content_body set for the denial frame's body.
+  const layout = await resolvePageLayout(engine, record);
+  const bodyView = layout.mainViewRaw ?? engine.defaultHtmlViewConfig();
+  modalFormat.contentBody = bodyView === "titled" || bodyView === "labeled";
+  const modal = modalFormat.renderView(view, { main: true, main_view: true }, null);
+  return body.includes("</body>") ? body.replace("</body>", `${modal}</body>`) : body + modal;
+}
+
 async function renderPageBytesWithPageConfigInner(
   engine: RenderEngine,
   cardName: string,
   requestedView?: string,
   historyParams?: HistoryRenderParams,
+  // render_outside_of_layout renders the body with `render_with_layout nil,
+  // layout, {}`: no main_render_args, so the main slot carries no main_view
+  outsideOfLayout = false,
 ): Promise<string> {
   // process_layout.rb: main! (the root format is the main format) then
   // page_layout — the *layout rule walk happens BEFORE the main render.
-  const record = await engine.fetcher.fetchByName(cardName);
+  let record = await engine.fetcher.fetchByName(cardName);
+  // fetch/card_class.rb controller fetch: a mark that names no stored card
+  // makes a new card named `Name[mark].tr("_", " ")` — the url form
+  // "A+Time_Tracking" titles its new card "A+Time Tracking".
+  if (record !== undefined && record.id === undefined && cardName.includes("_")) {
+    const spaced = await engine.fetcher.fetchByName(cardName.replace(/_/g, " "));
+    if (spaced !== undefined && spaced.name !== undefined) record = spaced;
+  }
   if (record === undefined || record.name === undefined) {
     throw new Error(`card not found: ${cardName}`);
   }
@@ -440,7 +515,7 @@ async function renderPageBytesWithPageConfigInner(
       ...(layout.mainNestSyntax !== undefined ? { nest_syntax: layout.mainNestSyntax } : {}),
       main: true,
       home_view: mainView,
-      main_view: true,
+      ...(outsideOfLayout ? {} : { main_view: true }),
       layout: layout.layoutName,
     },
     // show_with_page_layout's render! carries NO optional render opt — the
@@ -895,21 +970,23 @@ export async function headContent(
  *  anonymous captures pin); the allowed branch renders
  *  `tag "link", rel: "alternate", type: "application/x-wiki", title:
  *  "Edit this page!", href: path(view: :edit)` — Rails' tag builder emits
- *  the self-closing form and `path(view: :edit)` is the "/<NAME>/edit"
- *  name-path form (golden-pinned: `<link rel="alternate"
+ *  the self-closing form and `path(view: :edit)` is the "/<url_key>/edit"
+ *  path form (golden-pinned: `<link rel="alternate"
  *  type="application/x-wiki" title="Edit this page!" href="/Home/edit" />`).
  *  `return if card.new?` (head.rb:47): an id-less page root renders "". */
-async function universalEditButtonTag(
+export async function universalEditButtonTag(
   engine: RenderEngine,
   rootCard: RenderCard,
 ): Promise<string> {
   if (rootCard.id === undefined) return ""; // head.rb:47 return if card.new?
   const updateOk = await engine.updateVerdictForCard?.(rootCard);
   if (updateOk === false) return ""; // perms :update denial -> :blank
-  const namePath = rootCard.name.s.replace(/ /g, "_");
+  // path(view: :edit): Card::Path marks a known card by its url_key
+  // (lib/card/path.rb interpret_mark), so punctuation the key drops is
+  // dropped from the href too ("Organizer(s)" -> "Organizer_s").
   return (
     `<link rel="alternate" type="application/x-wiki" title="Edit this page!" ` +
-    `href="/${namePath}/edit" />`
+    `href="/${h(rootCard.name.urlKey)}/edit" />`
   );
 }
 

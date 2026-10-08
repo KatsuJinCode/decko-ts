@@ -101,6 +101,7 @@ import {
 import {
   abstractItemsNavItemView,
   dropdownDividerView,
+  fillUniqueIds,
   myCardDropdownInnerHtml,
   navbarItemsOverridden,
   navbarLinksForMethodOverride,
@@ -909,22 +910,14 @@ const inviteView = accountLinkView("signup", "invite-link", "Invite", "new");
  *  denial :blank) — `can_disable_roles? ? interactive_roles_dropdown :
  *  account_dropdown`.
  *
- *  The account_dropdown arm composes from the PREPARED session state
- *  (pageSessionMyCardHtml — the same golden-backed btn-group the navbar
- *  renders, account_dropdown.rb:7-12 via navbar-views.ts). Signed-out or
- *  unprepared sessions render "" (the denial :blank shape — the same
- *  drop-from-the-compact the navbar's compact performs).
- *
- *  NAMED REMAINDER (the ladder's degraded-labeled rung): the
- *  can_disable_roles? gate (Auth.current_roles.size > 1 && Codename
- *  .exist?(:enabled_roles)) and its interactive_roles_dropdown arm (the
- *  nest of +*enabled_roles, view: :edit_inline) need the session ROLES
- *  runtime, which the port's page session does not carry — every
- *  authenticated golden capture shows the account_dropdown arm (the
- *  capture sessions hold no roles), so this view renders that arm; the
- *  roles arm's bytes stay gem-source-defined (account_links.rb:60-70 +
- *  enabled_roles.rb) until the roles runtime lands. */
-const myCardView: ViewFn = (ctx) => ctx.fmt.engine.pageSessionMyCardHtml ?? "";
+ *  Both arms compose from the PREPARED session state (pageSessionMyCardHtml,
+ *  RenderEngine.prepareSessionAccountLinks): the account_dropdown btn-group
+ *  (account_dropdown.rb:7-12 via navbar-views.ts), or, when the actor holds
+ *  more than one current role and the *enabled_roles codename exists, the
+ *  interactive_roles_dropdown nest of +*enabled_roles in :edit_inline.
+ *  Signed-out or unprepared sessions render "" (the denial :blank shape).
+ */
+const myCardView: ViewFn = (ctx) => fillUniqueIds(ctx.fmt.engine.pageSessionMyCardHtml ?? "", ctx.fmt);
 
 /** right/enabled_roles.rb:26-43 — view :edit_inline (perms :none, unknown:
  *  true, cache: :never, wrap: :slot, super()) whose checkbox_input override
@@ -932,27 +925,18 @@ const myCardView: ViewFn = (ctx) => ctx.fmt.engine.pageSessionMyCardHtml ?? "";
  *  after card.ensure_roles fills empty content.
  *
  *  The port composes the account_dropdown from the prepared session state
- *  (the SAME golden-backed shape the :my_card view renders; a signed-out
- *  engine composes the Anonymous-actor shape — Auth.current for anonymous
- *  IS the Anonymous card, rendered-unpinned). ensure_roles is a WRITE
- *  (content fill on first read) — the render path cannot write; the port
- *  renders the card's current content (an empty enabled_roles card renders
- *  an empty checkbox list), named remainder.
- *
- *  NAMED REMAINDER: the role checkboxes (account_dropdown_role_items —
- *  Auth.current_roles mapped through the role_checkbox haml
- *  `.pointer-checkbox.dropdown-item` div: a `_submit-on-change` checkbox +
- *  link_to_card per role, checked = the card's item_names) need the session
- *  roles runtime; the port renders the dropdown's two fixed items. */
+ *  (pageSessionRolesDropdownHtml: the role checkboxes, every one checked,
+ *  because ensure_roles fills the session card's blank content with every
+ *  current role); a signed-out engine composes the Anonymous-actor shape. */
 const enabledRolesEditInlineView: ViewFn = (ctx) => {
   const sessionHtml =
-    ctx.fmt.engine.pageSessionMyCardHtml ??
+    ctx.fmt.engine.pageSessionRolesDropdownHtml ??
     myCardDropdownInnerHtml(
       "Anonymous",
       { actor: true, accountSettings: false, signin: true },
       [],
     );
-  return `<div class="pointer-checkbox-list">${sessionHtml}</div>`;
+  return `<div class="pointer-checkbox-list">${fillUniqueIds(sessionHtml, ctx.fmt)}</div>`;
 };
 
 // ---------------------------------------------------------------------------
