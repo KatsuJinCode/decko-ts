@@ -5119,12 +5119,10 @@ function barDivHtml(ctx: ViewContext): string {
   const { fmt, voo } = ctx;
   const card = fmt.card;
   const url = fmt.urlKey();
-  // Haml's data-attribute serialization: the data-* attrs ride the
-  // single-quoted attr list EXCEPT the slot id, which Haml emits through
-  // its own data handler in DOUBLE quotes (oracle: `data-card-id='17465'
-  // ... data-card-name='classic skin' ... data-slot-id="RANDOMIZED"` —
-  // the customized-classic-skin item bar, an earlier pass page dump). The slot id
-  // is therefore pulled out of the haml emitter and inlined double-quoted.
+  // bar.haml passes wrap_data (slot id included) as one Haml `data:` hash,
+  // so every data-* attribute, the slot id too, is emitted sorted and
+  // single-quoted: `data-card-type-name='Topic' data-slot-id='<20 hex>'`
+  // (stock Ruby output, reference-harness synthetic-v1 expected renders).
   const hamlAttrs = emitHamlAttrs({
     "data-card-id": card.id === undefined ? undefined : String(card.id),
     "data-card-link-name": url,
@@ -5148,12 +5146,8 @@ function barDivHtml(ctx: ViewContext): string {
     "data-card-name": h(slotCardname(card)),
     "data-card-type-id": card.typeId === undefined ? undefined : String(card.typeId),
     "data-card-type-name": card.typeName,
+    "data-slot-id": newSlotId(),
   });
-  // MERGE composition: the separate double-quoted slot id
-  // (the oracle's HAML data-handler form, comment above) kept, with
-  // bar-slots' 3-arg menu call (the handle_unknown card[name] query on
-  // wanted bars) restored.
-  const dataSlotId = ` data-slot-id="${newSlotId()}"`;
   // bar.rb:66-73 bar_menu_items splits the two known-ness signals, and
   // the capture pins them DIVERGING on one menu: the full-page link's
   // class rides add_known_or_wanted_class (links.rb:139-143) ->
@@ -5222,7 +5216,7 @@ function barDivHtml(ctx: ViewContext): string {
         !(card.name.left ?? "").startsWith("*")),
   );
   return (
-    `<div class='${serializerFollowsLive() ? `nodblclick d-flex _card-link ${voo.classy("bar")}` : `${voo.classy("bar")} nodblclick d-flex _card-link`}'${hamlAttrs}${dataSlotId}>\n` +
+    `<div class='${serializerFollowsLive() ? `nodblclick d-flex _card-link ${voo.classy("bar")}` : `${voo.classy("bar")} nodblclick d-flex _card-link`}'${hamlAttrs}>\n` +
     `${barBodyHtml(ctx)}\n` +
     `${menu}\n\n` +
     `</div>\n`
