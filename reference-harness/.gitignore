@@ -1,0 +1,10 @@
+oracle/app/log/
+oracle/app/tmp/
+oracle/app/db/
+oracle/app/files/
+oracle/app/public/
+results/
+# The synthetic reference decks are generated, contain no real-site content,
+# and are the public corpus: they are committed despite the repository-wide
+# *.sqlite3 rule.
+!fixtures/*/deck/deck.sqlite3

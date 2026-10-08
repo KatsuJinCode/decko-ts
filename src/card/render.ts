@@ -63,7 +63,7 @@ import {
   type ViewFn,
 } from "./render/format.js";
 import { renderPageBytes, headContent, UnknownLayoutError } from "./render/page.js";
-import { envOriginForSurface } from "./render/deck-origin.js";
+import { deckDefaultHtmlView, envOriginForSurface, pageDefaultHtmlView } from "./render/deck-origin.js";
 import { deploymentDefaultHtmlViewNest } from "./render/deployment-follow-live-config.js";
 import {
   enabledRolesDropdownHtml,
@@ -2511,8 +2511,8 @@ export class RenderEngine implements RenderEngineLike {
    * prove (capture receipt #5, blog.html latest_news-content-view).
    */
   defaultHtmlViewConfig(): string {
-    if (this.pageConfigActive) return "content";
-    return deploymentDefaultHtmlViewNest() ?? "titled";
+    if (this.pageConfigActive) return pageDefaultHtmlView();
+    return deploymentDefaultHtmlViewNest() ?? deckDefaultHtmlView() ?? "titled";
   }
 
   /**
