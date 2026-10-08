@@ -63,6 +63,11 @@ HarnessEnv.on_stack do
   end
 end
 
+# Compile the script and style asset outputs now, so they are part of the
+# deck every engine reads, rather than written by the first render.
+Card::Cache.reset_all
+Card::Auth.as_bot { Card::Assets.refresh(force: true) }
+
 Card::Cache.reset_all
 ActiveRecord::Base.connection.execute("PRAGMA wal_checkpoint(TRUNCATE)") rescue nil
 total = Card.where(trash: false).count

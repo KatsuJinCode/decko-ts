@@ -151,17 +151,17 @@ add({ name: "Loop B", type: "RichText", content: "<p>B</p>{{Loop A}}" });
 // ---- searches -----------------------------------------------------------------------
 const SEARCHES = {
   "All Topics": { type: "Topic", sort: "name" },
-  "Recent Notes": { type: "RichText", name: ["match", "Note"], sort: "name", limit: 10 },
+  "Recent Notes": { type: "RichText", complete: "Note", sort: "name", limit: 10 },
   "Topic Summaries": { right: "summary", sort: "name", limit: 15 },
   "Memo List": { type: "Memo", sort: "name" },
   "Brief List": { type: "Brief", sort: "name" },
   "Links To Topic 001": { link_to: "Topic 001" },
   "Tagged 01": { right_plus: ["tags", { refer_to: "Tag 01" }], sort: "name" },
-  "Chain Cards": { name: ["match", "^Chain"], sort: "name", dir: "desc", limit: 5 },
+  "Chain Cards": { complete: "Chain", sort: "name", dir: "desc", limit: 5 },
   "Typed Notes": { type: "Note", sort: "name" },
-  "Not Topics": { type: ["not in", ["Topic", "Memo", "Brief"]], name: ["match", "0"], sort: "name", limit: 20 },
+  "Not Topics": { not: { type: ["in", "Topic", "Memo", "Brief", "RichText", "Pointer"] }, sort: "name", limit: 20 },
   "Tags In Use": { referred_to_by: { right: "tags" }, sort: "name" },
-  "Count Of Notes": { type: "RichText", name: ["match", "^Note"], return: "count" },
+  "Count Of Notes": { type: "RichText", complete: "Note", return: "count" },
 };
 for (const [name, query] of Object.entries(SEARCHES)) add({ name, type: "Search", content: JSON.stringify(query) });
 add({ name: "Search Page", type: "RichText", content: "{{All Topics|open}}\n{{Memo List|content}}\n{{Brief List|content}}\n{{Count Of Notes|core}}" });
@@ -185,7 +185,7 @@ for (let i = 1; i <= 4; i++) {
 add({ name: "Report Index", type: "RichText", content: "{{Report 1}}\n{{Report 2|core}}\n[[Report 3]]" });
 
 // ---- followers (side effects) ---------------------------------------------------------
-add({ name: "*all+Mira Member+*follow", type: "Pointer", content: "[[*always]]" });
+add({ name: "*all+Mira Member+*follow", content: "*always" });
 
 const deck = {
   format: "decko-reference-deck/1",

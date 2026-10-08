@@ -75,8 +75,9 @@ try {
     const ops = readLines(path.join(fixture, "ops", `${kind}.jsonl`)).filter((o) => !filter || filter.test(o.id)).slice(0, limit);
     const outFile = path.join(outDir, `${kind}.jsonl`);
     writeFileSync(outFile, "");
-    await withSession(root, async (session, _stage, hello) => {
+    await withSession(root, async (session, stage, hello) => {
       meta.engine = hello;
+      const startState = snapshot(stage.db);
       const t0 = Date.now();
       let n = 0;
       for (const op of ops) {
@@ -86,6 +87,11 @@ try {
         if (++n % 100 === 0) log(`${kind} ${n}/${ops.length} ${((Date.now() - t0) / n).toFixed(0)} ms/op`);
       }
       meta[`${kind}_ms_per_op`] = ops.length ? Math.round((Date.now() - t0) / ops.length) : 0;
+      // Reads must not write: any row a read session changed is reported.
+      const wrote = delta(startState, snapshot(stage.db));
+      meta[`${kind}_session_row_changes`] = Object.fromEntries(
+        Object.entries(wrote).map(([t, d]) => [t, { inserted: d.inserted.length, updated: d.updated.length, deleted: d.deleted.length }]),
+      );
       log(`${kind} done: ${ops.length} ops`);
     });
   }

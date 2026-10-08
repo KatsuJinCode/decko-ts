@@ -12,6 +12,8 @@ PROTOCOL = 1
 SPEC = JSON.parse(File.read(ENV.fetch("HARNESS_DECK_JSON")))
 HarnessEnv.freeze_clock!(SPEC["clock"])
 HarnessEnv.apply_environment!(SPEC["environment"])
+# The deck build compiled the asset outputs; a render never rewrites them.
+Cardio.config.asset_refresh = :never
 
 OUT = $stdout.dup
 OUT.sync = true
