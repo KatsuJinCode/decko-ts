@@ -341,8 +341,21 @@ async function renameCreatedSidesVerdict(
  *  actor's parties (among?, account_holder.rb:31-36). An applicable rule
  *  with NO item ids denies (who_can -> [] -> any? -> false). */
 function amongParties(state: ViewTaskState, task: WriteTask, ruleId: number): boolean {
-  const parties = state.ruleParties[task].get(ruleId) ?? new Set<number>();
-  return state.viewerParties.some((party) => parties.has(party));
+  // The applicable rule can belong to another task's map than `task`: the
+  // _left walk for a junction's :create judges the LEFT card's :update rule
+  // (permissions.rb:69), so the returned rule id is an update rule while the
+  // verdict is a create verdict. A rule card hangs off exactly one setting,
+  // so its party row lives in exactly one map; search them all and deny when
+  // none holds the id. A rule found with an empty party set still denies
+  // (who_can -> [] -> among? -> false).
+  const own = state.ruleParties[task].get(ruleId);
+  if (own !== undefined) return state.viewerParties.some((party) => own.has(party));
+  for (const [otherTask, map] of Object.entries(state.ruleParties)) {
+    if (otherTask === task) continue;
+    const parties = (map as Map<number, Set<number>>).get(ruleId);
+    if (parties !== undefined) return state.viewerParties.some((party) => parties.has(party));
+  }
+  return false;
 }
 
 /** permit(action) for one task: resolve the card's applicable rule card
