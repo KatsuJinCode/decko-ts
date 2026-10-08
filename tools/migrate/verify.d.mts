@@ -1,7 +1,19 @@
 // Type declarations for verify.mjs (plain-JS tool module).
 
 import type { SQLDatabaseDriver } from "../../src/server/driver.js";
-import type { LocalSqliteToolDriver, ImportStats } from "./import.mjs";
+import type { LocalSqliteToolDriver, ImportStats, TargetSchema } from "./import.mjs";
+import type { DeckFilesCopy, DeckFilesReport } from "./files.mjs";
+
+/** What the engine needs beyond the dump's rows before it serves the deck. */
+export interface TargetReadiness {
+  stampRow: boolean;
+  freshnessTriggers: { present: number; expected: number };
+  sessionTable: boolean;
+  importComplete: boolean;
+  ok: boolean;
+}
+
+export function checkTargetReadiness(driver: SQLDatabaseDriver, schema: TargetSchema): Promise<TargetReadiness>;
 
 export const OUT_OF_SCOPE: string[];
 
@@ -24,6 +36,9 @@ export interface MigrationReport {
     keyRepair: { derived: number; nullSimpleKeys: number };
     errors: { table: string; rowId: unknown; message: string }[];
     skippedTables: Record<string, number>;
+    dumpSha256: string | null;
+    resumedFromRow: number;
+    engineMigrations: string[];
   };
   cards: { sourceCount: number; targetCount: number; parity: boolean } | null;
   tables: Record<
@@ -42,9 +57,19 @@ export interface MigrationReport {
     }
   >;
   junction: { sampled: number; resolved: number; unresolvedIds: number[] };
-  engine: { status: string; [key: string]: unknown };
+  engine: {
+    status: string;
+    spotRender?: { sampled: number; rendered: number; renderErrors: number; contentContainedHits: number };
+    [key: string]: unknown;
+  };
+  readiness: TargetReadiness;
+  files: DeckFilesReport;
   outOfScope: string[];
+  /** Count and checksum parity on every dump table. */
   allParity: boolean;
+  /** The whole verdict: parity, every sampled junction resolved, readiness,
+   *  files, engine checks without errors, and no row errors. */
+  ok: boolean;
   warnings: string[];
   verifyElapsedMs: number;
 }
@@ -68,6 +93,12 @@ export interface VerifyOptions {
   spotCount?: number;
   /** RNG seed for reproducible sampling. */
   seed?: number;
+  /** The Ruby deck's files directory, when files were migrated. */
+  filesSourceDir?: string;
+  /** Where the files were copied (the port's DECKO_FILES_DIR). */
+  filesTargetDir?: string;
+  /** copyDeckFiles()'s result, carried into the report. */
+  filesCopy?: DeckFilesCopy;
   /** Where to write the JSON report. */
   reportPath?: string;
 }

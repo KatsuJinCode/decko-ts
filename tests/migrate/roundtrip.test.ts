@@ -134,10 +134,13 @@ describe("dump -> import -> decko-ts engine", () => {
     const trashed = await fetcher.fetchById(8, { lookInTrash: true });
     expect(trashed?.trash).toBe(true);
     expect(trashed?.name?.s).toBe("Trashed Draft");
-    // broken junction: fetch composes name undefined (data-faithful)
+    // broken junction: the missing left side reads as the empty name, so
+    // the composed name is "+deep_page". Ruby does the same:
+    // Lexicon.lex_to_name joins `name side_id`, and Lexicon.name answers ""
+    // for an id with no row (card 1.110.0 lib/card/lexicon.rb:11-15, :43-47).
     const broken = await fetcher.fetchById(7);
     expect(broken?.dbContent).toBe("orphan content");
-    expect(broken?.name).toBeUndefined();
+    expect(broken?.name?.s).toBe("+deep_page");
   });
 
   it("render engine renders migrated cards", async () => {

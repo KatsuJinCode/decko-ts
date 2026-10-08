@@ -37,9 +37,42 @@
 import { basename } from "node:path";
 import { writeFileSync } from "node:fs";
 import {
+  ENGINE_OWNED_TABLES,
   checksumTargetTable,
   parseTargetSchema,
 } from "./import.mjs";
+import { verifyDeckFiles } from "./files.mjs";
+
+/** What the engine needs beyond the dump's rows before it will serve the
+ *  deck: the data-version stamp row (the render path refuses a deck without
+ *  it), the triggers that keep it current, and the session table sign-in
+ *  writes. */
+export async function checkTargetReadiness(driver, schema) {
+  const exists = async (type, name) =>
+    Number(
+      (await driver.query("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = ? AND name = ?", [type, name]))
+        .rows[0]?.n ?? 0,
+    ) > 0;
+  let stampRow = false;
+  if (await exists("table", "deck_data_version")) {
+    const row = (await driver.query('SELECT "version" FROM "deck_data_version" WHERE "id" = 1', [])).rows[0];
+    stampRow = typeof row?.version === "number";
+  }
+  const triggerNames = schema.createTriggers
+    .map((statement) => /^CREATE\s+TRIGGER\s+(?:IF\s+NOT\s+EXISTS\s+)?"([^"]+)"/i.exec(statement)?.[1])
+    .filter((name) => name !== undefined);
+  let triggersPresent = 0;
+  for (const name of triggerNames) if (await exists("trigger", name)) triggersPresent += 1;
+  const sessionTable = await exists("table", "auth_sessions");
+  const interrupted = await exists("table", "decko_import_progress");
+  return {
+    stampRow,
+    freshnessTriggers: { present: triggersPresent, expected: triggerNames.length },
+    sessionTable,
+    importComplete: !interrupted,
+    ok: stampRow && triggersPresent === triggerNames.length && sessionTable && !interrupted,
+  };
+}
 
 /** Sampling RNG (deterministic given seed) so reports are reproducible. */
 function mulberry32(seed) {
@@ -134,7 +167,7 @@ export async function verifyMigration(opts) {
 
   // 1+2. per-table parity
   const tables = {};
-  for (const table of Object.keys(schema.tableColumns)) {
+  for (const table of Object.keys(schema.tableColumns).filter((t) => !ENGINE_OWNED_TABLES.includes(t))) {
     const source = importStats.checksums[table] ?? null;
     const target = await checksumTargetTable(
       driver,
@@ -177,7 +210,16 @@ export async function verifyMigration(opts) {
     }
   }
 
+  const readiness = await checkTargetReadiness(driver, schema);
+  const files = await verifyDeckFiles({
+    driver,
+    sourceDir: opts.filesSourceDir,
+    targetDir: opts.filesTargetDir,
+    copy: opts.filesCopy,
+  });
+
   const cards = tables["cards"] ?? null;
+  const allParity = Object.values(tables).every((t) => t.countParity && t.checksumParity !== false);
   const report = {
     tool: "decko-ts migrate (M4)",
     timestamp: new Date().toISOString(),
@@ -185,6 +227,9 @@ export async function verifyMigration(opts) {
     import: {
       elapsedMs: importStats.elapsedMs,
       rowsEmitted: importStats.rowsEmitted,
+      dumpSha256: importStats.dump?.sha256 ?? null,
+      resumedFromRow: importStats.resumedFromRow ?? 0,
+      engineMigrations: importStats.engineMigrations ?? [],
       keyRepair: importStats.keyRepair,
       errors: importStats.errors,
       skippedTables: importStats.skippedTables,
@@ -196,8 +241,18 @@ export async function verifyMigration(opts) {
     tables,
     junction,
     engine,
+    readiness,
+    files,
     outOfScope: OUT_OF_SCOPE,
-    allParity: Object.values(tables).every((t) => t.countParity && t.checksumParity !== false),
+    allParity,
+    ok:
+      allParity &&
+      junction.resolved === junction.sampled &&
+      readiness.ok &&
+      files.status === "ok" &&
+      engine.status !== "error" &&
+      (engine.status !== "ok" || engine.spotRender === undefined || engine.spotRender.renderErrors === 0) &&
+      importStats.errors.length === 0,
     warnings: importStats.warnings,
     verifyElapsedMs: Date.now() - started,
   };
@@ -209,8 +264,8 @@ export async function verifyMigration(opts) {
 
 /** Everything the tool deliberately does NOT migrate (the honest list). */
 export const OUT_OF_SCOPE = [
-  "attachments/files: uploaded files live on disk/object storage, never inside a mysqldump - re-attach them separately",
-  "user credentials/accounts: there is no users table in modern decko (user data became cards in the 2014 transform migration); account cards import as data but password/login behavior belongs to the decko-ts account layer (future wave)",
+  "attachments/files: uploads live on disk, never inside a mysqldump - pass --files <the deck's files directory> and they are copied and checked file by file; files in a cloud bucket or at a web address stay where they are",
+  "user credentials/accounts: there is no users table in modern decko (user data became cards in the 2014 transform migration); account cards import as data, their salted SHA-1 password digests verify on sign-in, and signed-in sessions start fresh",
   "rails sessions: the sessions table imports as-is if present but is inert in decko-ts (no Rails session store)",
   "background jobs: delayed_jobs rows import as-is but are stale queue state, not source of truth",
   "site-custom tables: any table outside the 12 core tables is skipped and reported in skippedTables",

@@ -243,6 +243,10 @@ refused with a reason, never deleted.
   scripts that record Ruby behavior into `fixtures/captured/`.
 - `tools/migrate/` — the generalized dump importer (Ruby deck dump →
   decko-ts storage), proven on a 1.2 GB production dump.
+  `node tools/migrate/migrate.mjs --dump deck.sql --out deck.sqlite --files <the Ruby deck's files directory> --verify --strict`
+  imports, copies the uploads, and fails unless every table matches the dump,
+  the engine can serve the deck and every file a card names is in place;
+  `--resume` continues an interrupted run from its last committed batch.
 - `tools/corpus-anonymizer/` + `benchmarks/` — the corpus program:
   structure-preserving content-free benchmark deck (47k cards / 180k views),
   the anonymized 2x-scale artifact builder, replay + perf harnesses.
