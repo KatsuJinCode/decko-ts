@@ -1,9 +1,11 @@
 // Vitest's forks pool writes transformed modules to <os temp>/<21-char id>/ssr and
-// removes the folder only when a run closes cleanly. Runs that are killed (a
-// timeout, a crashed worker, an interrupted shell) leave it behind, and repeated
-// test runs fill the temp drive. Each run therefore removes the folders that
-// earlier runs left: a folder whose only child is ssr/ and that nothing has
-// written to for STALE_MS. Live runs write continuously, so they are never stale.
+// removes the folder only when a run closes cleanly. Test scratch directories
+// (mkdtemp "decko-<name>-XXXXXX", see scratch-dir.mjs) are removed by an exit hook
+// that a killed process never runs. Runs that are killed (a timeout, a crashed
+// worker, an interrupted shell) leave both behind, and repeated test runs fill the
+// temp drive. Each run therefore removes what earlier runs left: a Vitest folder
+// whose only child is ssr/, or a decko scratch directory, that nothing has written
+// to for STALE_MS. Live runs write continuously, so they are never stale.
 
 import { readdirSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -11,6 +13,7 @@ import { join } from "node:path";
 
 const STALE_MS = 2 * 60 * 60 * 1000;
 const RUN_DIR = /^[A-Za-z0-9_-]{21}$/;
+const SCRATCH_DIR = /^decko-[a-z0-9-]+-[A-Za-z0-9]{6}$/;
 
 function newestWrite(dir: string): number {
   let newest = statSync(dir).mtimeMs;
@@ -30,11 +33,15 @@ export function purgeStaleVitestTemp(now = Date.now(), root = tmpdir()): number 
     return 0;
   }
   for (const entry of entries) {
-    if (!entry.isDirectory() || !RUN_DIR.test(entry.name)) continue;
+    if (!entry.isDirectory()) continue;
+    const vitestRun = RUN_DIR.test(entry.name);
+    if (!vitestRun && !SCRATCH_DIR.test(entry.name)) continue;
     const dir = join(root, entry.name);
     try {
-      const children = readdirSync(dir);
-      if (children.length !== 1 || children[0] !== "ssr") continue;
+      if (vitestRun) {
+        const children = readdirSync(dir);
+        if (children.length !== 1 || children[0] !== "ssr") continue;
+      }
       if (now - newestWrite(dir) < STALE_MS) continue;
       rmSync(dir, { recursive: true, force: true });
       removed++;

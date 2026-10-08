@@ -35,4 +35,20 @@ describe("purgeStaleVitestTemp", () => {
     expect(existsSync(fresh)).toBe(true);
     expect(existsSync(other)).toBe(true);
   });
+
+  it("removes stale decko scratch directories but not other decko folders", () => {
+    const root = mkdtempSync(join(tmpdir(), "purge-test-"));
+    roots.push(root);
+    const age = (p: string, ms: number) => { const t = (Date.now() - ms) / 1000; utimesSync(p, t, t); };
+    const stale = join(root, "decko-stream-Ab12Cd");
+    const fresh = join(root, "decko-nocache-Zz99Yy");
+    const review = join(root, "decko-review-2f432c959eb941c1ae59724b43da685f");
+    for (const d of [stale, fresh, review]) { mkdirSync(d); writeFileSync(join(d, "f"), "x"); age(join(d, "f"), 3 * 3600_000); age(d, 3 * 3600_000); }
+    age(join(fresh, "f"), 60_000);
+
+    expect(purgeStaleVitestTemp(Date.now(), root)).toBe(1);
+    expect(existsSync(stale)).toBe(false);
+    expect(existsSync(fresh)).toBe(true);
+    expect(existsSync(review)).toBe(true);
+  });
 });
