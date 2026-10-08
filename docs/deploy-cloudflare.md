@@ -22,6 +22,18 @@ account, the Worker name, and the D1 database name — and then:
 
 A button deploy needs the source repository to be public.
 
+**Rehearsing the button without an account.** Only steps 1 and 3 and the
+upload in step 5 need Cloudflare. `node tools/deploy/rehearse-deploy-button.mjs`
+runs everything else with the real wrangler on this machine: it copies the
+files the deploy reads, writes a database id into the copy, builds the bundle
+with `wrangler deploy --dry-run`, applies `deploy/migrations/` to a fresh local
+D1 (twice, to show the second run applies nothing), serves the Worker with
+`wrangler dev`, and checks the routes listed in the README. Every wrangler
+process runs with an empty configuration home, no API token and the
+`tools/deploy/no-external-network.mjs` preload, which refuses any connection
+off the machine and lists the attempts in the result. It prints a JSON result
+and exits 0 only when every step passed.
+
 **A button deploy is read-only.** You can browse and fetch card records;
 every write verb answers `403` and the engine is never called. Two opt-in
 variables turn the write surface on; see [operations.md](operations.md).

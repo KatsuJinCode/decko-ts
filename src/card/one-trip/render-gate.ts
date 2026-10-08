@@ -38,11 +38,12 @@ import {
 } from "./one-trip-fetch.js";
 import { replayRenderPlanWithIndex } from "./render-plan.js";
 import { seatPageBundle } from "./page-bundle-adapter.js";
+import { debugFlag, envValue } from "../debug-flags.js";
 
 /** The config gate. Default OFF: no env var, no payload, zero new trips,
  *  zero new statements — the deployed default this lane promised. */
 export function oneTripWantsPayload(): boolean {
-  return process.env.DECKO_ONE_TRIP === "1";
+  return debugFlag("DECKO_ONE_TRIP");
 }
 
 /** Where the derived store lives. Required when the gate is ON; the store
@@ -58,7 +59,7 @@ export function oneTripWantsPayload(): boolean {
  *  tables UNQUALIFIED on the same connection, in bounded chunks assembled
  *  byte-equal to the single-row document (one-trip-fetch.ts). */
 function oneTripStorePath(): string | undefined {
-  return process.env.DECKO_ONE_TRIP_STORE;
+  return envValue("DECKO_ONE_TRIP_STORE");
 }
 
 /** Per-driver ATTACH memo: the store attaches once per connection (the

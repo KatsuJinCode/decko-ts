@@ -49,6 +49,7 @@
 
 import type { SQLStatement } from "../../server/driver.js";
 import type { RenderPlanEntry } from "./render-plan.js";
+import { envValue } from "../debug-flags.js";
 
 /** The tag column each merged statement carries: the index of the source
  *  entry inside the plan. Namespaced (`__fold_`) so it cannot collide with a
@@ -79,7 +80,7 @@ export const FOLD_CHUNK_GROUPS = 512;
  *  happens when DECKO_ONE_TRIP=1). Set DECKO_REPLAY_FOLD=0 to restore the
  *  ladder exactly. */
 export function replayFoldWantsMerge(): boolean {
-  return process.env.DECKO_REPLAY_FOLD !== "0";
+  return envValue("DECKO_REPLAY_FOLD") !== "0";
 }
 
 // ---------------------------------------------------------------------------

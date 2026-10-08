@@ -26,6 +26,7 @@ import { permissionGateCountJsonArm } from "../permissions/read-rules.js";
 import type { PageBundle, OneTripRuleCandidate } from "./types.js";
 import type { RenderPlan, RenderPlanEntry } from "./render-plan.js";
 import { isPipelineAbleRenderStatement } from "./render-plan.js";
+import { envValue } from "../debug-flags.js";
 
 /** The ATTACH name the derived store rides under. Seam note: the fetch
  *  statement references the store through `${DERIVED_STORE_ATTACH}.` — an
@@ -62,7 +63,7 @@ export function isInlineStoreSpec(storeSpec: string): boolean {
  *  read once per head build (the same per-seat cadence as the other DECKO_*
  *  gates). */
 export function oneTripWantsStoredPlans(): boolean {
-  return process.env.DECKO_ONE_TRIP_PLANS !== "0";
+  return envValue("DECKO_ONE_TRIP_PLANS") !== "0";
 }
 
 /** Escape a filesystem path for SQL single-quoting (ATTACH's filename is a

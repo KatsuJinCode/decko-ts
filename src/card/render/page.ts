@@ -63,6 +63,7 @@ import { scriptIntegrityFor } from "./deployment-follow-live-config.js";
 import type { RenderEngine } from "../render.js";
 import type { HistoryRenderParams } from "../history/render-seam.js";
 import { DECK_ORIGIN } from "./deck-origin.js";
+import { debugFlag } from "../debug-flags.js";
 
 // The production `Cardio.config.deck_origin` the capture pinned (runbook
 // production-equivalent setting 4; Env.origin with no request) now lives in
@@ -688,7 +689,7 @@ function nestWarmMode(view: string | undefined): WarmupMode {
 /** [[link]] targets are existence-only (LEAF): prepared, never scanned for
  *  their own references, unless a nest, pointer item or navbar reaches them.
  *  DECKO_WARMUP_LINKS_SPINE=1 restores the old transitive chase. */
-const LINKS_ARE_LEAVES = process.env.DECKO_WARMUP_LINKS_SPINE !== "1";
+const LINKS_ARE_LEAVES = !debugFlag("DECKO_WARMUP_LINKS_SPINE");
 
 /** Re-prime the lexicon entries the layout body's `:codename` marks resolve
  *  through. The temporary cache's max_keys reset (cache.ts TemporaryCache —

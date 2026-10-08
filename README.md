@@ -64,7 +64,7 @@ Four cards, already there, that you can read:
 | URL | what it is |
 | --- | --- |
 | `/` | the `Home` card |
-| `/Hello+World` | a card with body text |
+| `/Hello_World` | a card with body text (`_` stands for a space in a card URL; `+` joins two names into a compound card) |
 | `/About` | a card that includes `Hello World` one level down |
 | `/api/status` | JSON describing the running engine |
 | `/api/card/About` | the same card as a JSON record |
@@ -133,8 +133,8 @@ rename the database.
 
 ```bash
 curl https://<worker>.<subdomain>.workers.dev/                # Home card HTML
-curl https://<worker>.<subdomain>.workers.dev/Hello+World     # the leaf card
-curl https://<worker>.<subdomain>.workers.dev/Hello+World/content
+curl https://<worker>.<subdomain>.workers.dev/Hello_World     # the leaf card
+curl https://<worker>.<subdomain>.workers.dev/Hello_World/content
 curl https://<worker>.<subdomain>.workers.dev/api/status      # JSON engine metadata
 curl https://<worker>.<subdomain>.workers.dev/api/card/About  # JSON card metadata
 ```
