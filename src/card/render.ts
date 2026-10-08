@@ -41,6 +41,7 @@ import { findRule } from "./rules/lookup.js";
 import { ruleNamesForCard } from "./set-patterns/rule-names.js";
 import { applyViewOverride, resolveViewOverride } from "./rules/apply.js";
 import { resolveVirtualCardStructure } from "./fetch/virtual-cards.js";
+import { virtualSearchCqlFor } from "./fetch/virtual-search-cards.js";
 import {
   structureRuleUniverseStatement,
   structureUniverseFromResults,
@@ -5087,6 +5088,23 @@ export class RenderEngine implements RenderEngineLike {
         if (refKey === undefined) continue;
         const refCard = this.renderCards.get(refKey);
         if (refCard !== undefined && !visited.has(refCard.key)) queue.push(refCard);
+        if (refCard === undefined) {
+          // No row and no structure: a VirtualSearch family card is still
+          // known, and its results are what the nest renders.
+          let resolved: string;
+          try {
+            const pipe = ref.name.indexOf("|");
+            const parsed = DeckoName.parse(pipe === -1 ? ref.name : ref.name.slice(0, pipe));
+            resolved = (parsed.isAbsolute ? parsed : parsed.absoluteName(card.name)).s;
+          } catch {
+            continue;
+          }
+          const items = await this.prepareVirtualFamilySearch(resolved);
+          if (items !== undefined) {
+            queue.push(...items);
+            executed++;
+          }
+        }
       }
       if (card.typeCode !== SEARCH_TYPE_CODE) continue;
       if (this.searchResults.has(card.key) || this.searchFailures.has(card.key)) continue;
@@ -8244,19 +8262,31 @@ export class RenderEngine implements RenderEngineLike {
       // readable search the render will read executes before the bytes
       // complete - on every lane, not just the page lane.
       for (const ref of referencedNames(card.dbContent)) {
-        if (!ref.relative) continue;
+        // Other references were walked through cardReferenceKeys above; they
+        // are resolved here only for the VirtualSearch family check below.
+        const relative = ref.relative;
         const pipe = ref.name.indexOf("|");
         const base = pipe === -1 ? ref.name : ref.name.slice(0, pipe);
         let resolvedName: string;
         try {
           resolvedName = DeckoName.parse(base).absolute(card.name);
         } catch (err) {
+          if (!relative) continue;
           if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) continue;
           throw err;
         }
         if (resolvedName === undefined || resolvedName === "") continue;
         const refKey = DeckoName.parse(resolvedName).key;
         let refCard = this.renderCards.get(refKey);
+        if (!relative) {
+          if (refCard === undefined) {
+            const items = await this.prepareVirtualFamilySearch(resolvedName);
+            for (const item of items ?? []) {
+              if (!visited.has(item.key)) queue.push(item.record);
+            }
+          }
+          continue;
+        }
         if (refCard === undefined) {
           // The contextually-resolved reference never joined the prepared
           // map - the VIRTUAL-card class: children+*referred_to_by is a
@@ -8272,6 +8302,14 @@ export class RenderEngine implements RenderEngineLike {
           // (the Anyone Signed In Anonymous+*created bar regressed to
           // data-card-name "anonymous+*created" on exactly that).
           refCard = await this.prepareItemForRender(resolvedName);
+        }
+        if (refCard === undefined) {
+          // No row and no structure: a VirtualSearch family card is still
+          // known, and its results are what the nest renders.
+          const items = await this.prepareVirtualFamilySearch(resolvedName);
+          for (const item of items ?? []) {
+            if (!visited.has(item.key)) queue.push(item.record);
+          }
         }
         if (refCard !== undefined && !visited.has(refCard.key)) queue.push(refCard.record);
       }
@@ -8323,6 +8361,40 @@ export class RenderEngine implements RenderEngineLike {
    *  the stream contract — emits the exact CAPTURE_ERROR sentinel bytes
    *  the capture recorded. */
   /** The search statement's own limit — see searchCqlLimit below. */
+  /** Resolves a codename to the key of the card holding it in this deck
+   *  (the VirtualSearch family's Right-pattern match). */
+  private codenameHolderKey = (codename: string): string | undefined => {
+    const id = this.peekIdByCodename(codename);
+    const holder = id !== undefined ? this.peekRegisteredNameForId(id) : undefined;
+    return holder !== undefined ? DeckoName.parse(holder).key : undefined;
+  };
+
+  /**
+   * Executes the search of a VirtualSearch family card that has no row
+   * (`Topic+*type+by name`, `X+*refers to`, ...) and seats its results under
+   * the name's key, where the sync nest dispatch's virtual card
+   * (format.ts buildUnknownNestCard) reads them. Ruby runs this search
+   * inside the card_list view (virtual_search.rb's cql_content over the
+   * search views); the port hoists it into the prepare phase like every
+   * other closure search. Returns the result items, or undefined when the
+   * name is not a family member or is already seated.
+   */
+  private async prepareVirtualFamilySearch(resolvedName: string): Promise<RenderCard[] | undefined> {
+    let name: DeckoName;
+    try {
+      name = DeckoName.parse(resolvedName);
+    } catch {
+      return undefined;
+    }
+    const cql = virtualSearchCqlFor(name, this.codenameHolderKey);
+    if (cql === undefined) return undefined;
+    const key = name.key;
+    if (this.searchResults.has(key) || this.searchFailures.has(key)) return undefined;
+    const items = await this.runSearch({ name, key, dbContent: cql } as RenderCard);
+    this.searchResults.set(key, items);
+    return items;
+  }
+
   private async runSearch(card: RenderCard): Promise<RenderCard[]> {
     const rawContent = card.dbContent;
     if (rawContent === "") {

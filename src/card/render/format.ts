@@ -2151,7 +2151,16 @@ export class RenderFormat {
     // no_search_results) instead of the unknown substitution. The family
     // table + the byte-level contract live in
     // src/card/fetch/virtual-search-cards.ts.
-    const virtualSearchCql = virtualSearchCqlFor(name);
+    const virtualSearchCql = virtualSearchCqlFor(
+      name,
+      engine.peekIdByCodename !== undefined && engine.peekRegisteredNameForId !== undefined
+        ? (codename) => {
+            const id = engine.peekIdByCodename?.(codename);
+            const holder = id !== undefined ? engine.peekRegisteredNameForId?.(id) : undefined;
+            return holder !== undefined ? DeckoName.parse(holder).key : undefined;
+          }
+        : undefined,
+    );
     if (virtualSearchCql !== undefined) {
       const searchTypeId = engine.peekIdByCodename?.("search_type");
       const searchTypeName =

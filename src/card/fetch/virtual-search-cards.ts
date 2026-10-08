@@ -42,13 +42,14 @@
 //   referred_to_by   {refer_to: "_left", sort_by: "name"}
 //   refers_to        {referred_to_by: "_left", sort_by: "name"}
 //
-// Membership is keyed on the right part's KEY in this engine's spelling
-// (DeckoName.key keeps the leading "*", src/card/name.ts:68 NOT_OK_FOR_KEY).
-// Ruby's Right-pattern applicability keys on the right card's CODENAME
-// (pattern/base.rb:21-29); in the corpus deck the two coincide — each family
-// setting is the starred codename card seeded from card-mod-search
-// data/real.yml (e.g. `- :name: "*referred to by" / :codename: referred_to_by`,
-// real.yml:101-106), so the starred name key is the codename card's own key.
+// Membership follows Ruby's Right-pattern applicability, which keys on the
+// right card's CODENAME (pattern/base.rb:21-29), not on its name. The stock
+// seed names most family cards with a leading "*" (`*referred to by`), but
+// the three sort cards are plain (`by name`, `by create`, `by update`,
+// card-mod-search data/real.yml:27-32), and a deck may rename any of them
+// (one production deck's count card is `*count 1`). When the engine can
+// resolve codenames, the right part matches the card that currently holds
+// each codename; without a resolver the stock seed's keys are used.
 //
 // The serialized CQL is the virtual card's db_content: the engine's search
 // dispatch (render.ts#runSearch over the card's content) reads it exactly
@@ -65,41 +66,67 @@
 import { DeckoName } from "../name.js";
 
 /**
- * right-part key (this engine's starred key spelling) -> the CQL the
- * virtual card's content carries, serialized in the gem file's own hash
- * order (the order is cosmetic for the engine's CQL parser but kept for
- * byte-honesty with the Ruby literal).
+ * family codename -> the CQL the virtual card's content carries, serialized
+ * in the gem file's own hash order (the order is cosmetic for the engine's
+ * CQL parser but kept for byte-honesty with the Ruby literal).
+ */
+export const VIRTUAL_SEARCH_CQL_BY_CODENAME: ReadonlyMap<string, string> =
+  new Map([
+    ["by_create", '{"found_by":"_left","sort_by":"create"}'],
+    ["by_name", '{"found_by":"_left","sort_by":"name"}'],
+    ["by_update", '{"found_by":"_left","sort_by":"update"}'],
+    ["children", '{"part":"_left","sort_by":"name"}'],
+    ["count", '{"found_by":"_left","return":"count"}'],
+    ["created", '{"created_by":"_left","sort_by":"create","dir":"desc"}'],
+    ["creator", '{"creator_of":"_left"}'],
+    ["edited", '{"edited_by":"_left","sort_by":"name"}'],
+    ["editors", '{"editor_of":"_left","sort_by":"name"}'],
+    ["last_edited", '{"last_edited_by":"_left"}'],
+    ["linked_to_by", '{"link_to":"_left","sort_by":"name"}'],
+    ["links_to", '{"linked_to_by":"_left","sort_by":"name"}'],
+    ["nested_by", '{"nest":"_left","sort_by":"name"}'],
+    ["nests", '{"nested_by":"_left","sort_by":"name"}'],
+    ["referred_to_by", '{"refer_to":"_left","sort_by":"name"}'],
+    ["refers_to", '{"referred_to_by":"_left","sort_by":"name"}'],
+  ]);
+
+/** The three family cards the stock seed names without a leading "*". */
+const UNSTARRED_STOCK_CODENAMES = new Set(["by_create", "by_name", "by_update"]);
+
+/**
+ * right-part key of the stock seed's family card -> its CQL: the fallback
+ * table for engines that cannot resolve codenames.
  */
 export const VIRTUAL_SEARCH_CQL_BY_RIGHT_KEY: ReadonlyMap<string, string> =
-  new Map([
-    ["*by_create", '{"found_by":"_left","sort_by":"create"}'],
-    ["*by_name", '{"found_by":"_left","sort_by":"name"}'],
-    ["*by_update", '{"found_by":"_left","sort_by":"update"}'],
-    ["*children", '{"part":"_left","sort_by":"name"}'],
-    ["*count", '{"found_by":"_left","return":"count"}'],
-    ["*created", '{"created_by":"_left","sort_by":"create","dir":"desc"}'],
-    ["*creator", '{"creator_of":"_left"}'],
-    ["*edited", '{"edited_by":"_left","sort_by":"name"}'],
-    ["*editors", '{"editor_of":"_left","sort_by":"name"}'],
-    ["*last_edited", '{"last_edited_by":"_left"}'],
-    ["*linked_to_by", '{"link_to":"_left","sort_by":"name"}'],
-    ["*links_to", '{"linked_to_by":"_left","sort_by":"name"}'],
-    ["*nested_by", '{"nest":"_left","sort_by":"name"}'],
-    ["*nests", '{"nested_by":"_left","sort_by":"name"}'],
-    ["*referred_to_by", '{"refer_to":"_left","sort_by":"name"}'],
-    ["*refers_to", '{"referred_to_by":"_left","sort_by":"name"}'],
-  ]);
+  new Map(
+    [...VIRTUAL_SEARCH_CQL_BY_CODENAME].map(([codename, cql]) => [
+      UNSTARRED_STOCK_CODENAMES.has(codename) ? codename : `*${codename}`,
+      cql,
+    ]),
+  );
+
+/** Resolves a codename to the key of the card that holds it in this deck,
+ *  or undefined when no card does. */
+export type CodenameKeyResolver = (codename: string) => string | undefined;
 
 /**
  * The VirtualSearch family's virtual? decision for one name
  * (virtual_search.rb:11-12): a COMPOUND name whose right part is a family
- * right answers the cql_content serialization; everything else answers
+ * card answers the cql_content serialization; everything else answers
  * undefined (the base states.rb walk — src/card/fetch/virtual-cards.ts —
- * stays the authority).
+ * stays the authority). With a resolver the right part is matched by
+ * codename, as Ruby's Right pattern does; without one, by the stock keys.
  */
-export function virtualSearchCqlFor(name: DeckoName): string | undefined {
+export function virtualSearchCqlFor(
+  name: DeckoName,
+  codenameKey?: CodenameKeyResolver,
+): string | undefined {
   if (!name.isCompound) return undefined; // virtual_search virtual? needs the Right set
   const rightKey = name.rightName?.key;
   if (rightKey === undefined) return undefined;
-  return VIRTUAL_SEARCH_CQL_BY_RIGHT_KEY.get(rightKey);
+  if (codenameKey === undefined) return VIRTUAL_SEARCH_CQL_BY_RIGHT_KEY.get(rightKey);
+  for (const [codename, cql] of VIRTUAL_SEARCH_CQL_BY_CODENAME) {
+    if (codenameKey(codename) === rightKey) return cql;
+  }
+  return undefined;
 }
