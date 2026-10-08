@@ -90,10 +90,12 @@ const RUBY_STEPS =
 // its own "not a known type" error and writes an empty act; the port refuses
 // the save. Step 67, reverting an act that renamed another card: Ruby
 // raises after storing the reverted rows without history; the port refuses
-// before writing. The comparator accepts a declared step only if its delta
-// is exactly the declared one.
+// before writing. Steps 20, 22 and 31, stored HTML: Ruby's cleaner keeps a
+// javascript: link target, the port's drops it (a security difference,
+// docs/SECURITY.md). The comparator accepts a declared step only if its
+// delta is exactly the declared one.
 const DELIBERATE = path.join(REPO, "tests/fixtures/persistence-oracle/deliberate-differences.json");
-const DELIBERATE_STEPS = [7, 48, 67];
+const DELIBERATE_STEPS = [7, 20, 22, 31, 48, 67];
 // Steps whose row delta still differs from the oracle without a declaration.
 const KNOWN_DIVERGENCES: number[] = [];
 const PREFIX = "PersistProbe";
