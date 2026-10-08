@@ -405,26 +405,12 @@ function fileChooserActionText(ctx: ViewContext, mount: "file" | "image" = "file
  *  `<i class="notranslate material-icons">cloud_upload</i>`. The
  *  attachment_type_id hidden field carries the type card's DB-LOCAL id. */
 function fileChooserBytes(ctx: ViewContext, mount: "file" | "image" = "file"): string {
-  const card = ctx.fmt.card as {
-    typeId?: number;
-    id?: number;
-    record?: { isNew?: boolean };
-  };
+  const card = ctx.fmt.card as { typeId?: number };
   const typeId = card.typeId ?? "";
   const urlKey = ctx.fmt.urlKey();
-  // The image preview's new-card guard (image/html_views.rb:37
-  // `return if card.new_card? && !card.preliminary_upload?` — the
-  // preliminary-upload arm is the unported JS two-step flow's param):
-  // a NEW image card's `= preview` line is the bare empty line, never
-  // the wrapped (invalid-image) core.
-  const isNew = card.record?.isNew === true || card.id === undefined;
-  const previewLine =
-    mount === "image"
-      ? (isNew ? "\n" : `${imageHtmlPreviewView(ctx)}\n`)
-      : "\n";
   return (
     "<div class='choose-file'>\n" +
-    previewLine +
+    previewLine(ctx, mount) +
     "<span class='btn btn-secondary fileinput-button'>\n" +
     '<i class="notranslate material-icons">cloud_upload</i>\n' +
     `<span>${fileChooserActionText(ctx, mount)}</span>\n` +
@@ -441,13 +427,31 @@ function fileChooserBytes(ctx: ViewContext, mount: "file" | "image" = "file"): s
   );
 }
 
-/** set/type/file.rb:119-125 format :html view :input. */
+/** The `= preview` line of the file chooser and preview editor templates:
+ *  file.rb:140-142 `def preview; ""; end`, which the image html format
+ *  overrides (image/html_views.rb:36-43) with the wrapped medium core, except
+ *  on a new card (`return if card.new_card? && !card.preliminary_upload?`;
+ *  the preliminary-upload arm is the unported two-step upload's param). */
+function previewLine(ctx: ViewContext, mount: "file" | "image"): string {
+  if (mount !== "image") return "\n";
+  const card = ctx.fmt.card as { id?: number; record?: { isNew?: boolean } };
+  const isNew = card.record?.isNew === true || card.id === undefined;
+  return isNew ? "\n" : `${imageHtmlPreviewView(ctx)}\n`;
+}
+
+/** set/type/file.rb:119-125 format :html view :input. Image cards reach it
+ *  too: image/html_views.rb:2 `include File::HtmlFormat` puts the file
+ *  module's views under the image html format, so Type::File owns :input
+ *  for both, and the image card's own methods (attachment name :image,
+ *  `preview`) shape the chooser (imageInputView). */
 const fileInputView: ViewFn = (ctx) => {
+  if (ctx.fmt.card.typeCode === "image") return imageInputView(ctx);
   if (noUpload(ctx)) return textFieldContentBytes(ctx);
   return fileChooserBytes(ctx);
 };
 
-/** view :input for IMAGE cards. Ruby's route: image/html_views.rb:2
+/** :input's bytes for IMAGE cards (reached through fileInputView). Ruby's
+ *  route: image/html_views.rb:2
  *  `format :html do include File::HtmlFormat` — the image html format
  *  includes the file module's views, so image cards render the SAME
  *  file_chooser with attachment_name :image (action text "Add/Replace
@@ -495,7 +499,7 @@ const filePreviewEditorView: ViewFn = (ctx) => {
     "<div class='chosen-file'>\n" +
     `<input name='${h(cachedUploadCardName(ctx))}' type='hidden' value='${actionId ?? ""}'>\n` +
     "<div class='d-flex'>\n" +
-    "\n" +
+    previewLine(ctx, ctx.fmt.card.typeCode === "image" ? "image" : "file") +
     "<div class='d-flex flex-column justify-content-between ml-2 w-100'>\n" +
     "<div>\n" +
     "<p class='name'>\n" +
@@ -639,12 +643,10 @@ const cardModCarrierwave: DeckoModManifest = {
             // html_views.rb:5-11 view :core
             { view: "core", viewFn: polymorphicCoreView },
             { view: "full_width", viewFn: imageHtmlFullWidthView },
-            { view: "preview", viewFn: imageHtmlPreviewView },
             { view: "content_changes", viewFn: imageHtmlContentChangesView },
-            // image/html_views.rb:2 `include File::HtmlFormat` — the image
-            // html format inherits the file module's :input/:preview_editor;
-            // the chooser renders with the image mount (see imageInputView).
-            { view: "input", viewFn: imageInputView },
+            // image/html_views.rb:2 `include File::HtmlFormat`: :input and
+            // :preview_editor come from Type::File (concrete-set-includes.ts),
+            // and `preview` is a format method there, not a view.
           ],
         },
       },
