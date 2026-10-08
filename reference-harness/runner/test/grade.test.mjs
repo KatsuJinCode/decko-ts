@@ -188,6 +188,23 @@ describe("fixture identity (finding 12)", () => {
     assert.equal(grade(dir).verdict, "invalid");
   });
 
+  it("expected outputs captured on another fixture digest are not a grade", () => {
+    const t = scratch();
+    try {
+      const c = makeCapturedFixture(t.dir);
+      const actual = path.join(t.dir, "actual");
+      assert.equal(runFake(c.fixture, actual).status, 0);
+      const m = readJson(path.join(c.expected, "MANIFEST.json"));
+      m.fixture_digest = "f".repeat(64);
+      writeJson(path.join(c.expected, "MANIFEST.json"), m);
+      const report = gradeRun({ fixture: c.fixture, actual });
+      assert.equal(report.verdict, "invalid");
+      assert.ok(report.problems.some((p) => p.includes("expected: captured on fixture digest")));
+    } finally {
+      t.cleanup();
+    }
+  });
+
   it("expected outputs changed after their manifest are not a grade", () => {
     const t = scratch();
     try {
@@ -255,6 +272,14 @@ describe("incomplete runs (finding 12)", () => {
     assert.equal(report.verdict, "partial");
     assert.equal(report.summary.rendering.graded, 2); // one render, one render step
     assert.equal(gradeCli(["--fixture", fixture, "--actual", dir, "--allow-partial"]).status, 2);
+  });
+
+  it("a filtered run is not a grade even when its filter selects every operation", () => {
+    const dir = path.join(tmp.dir, "filter-all");
+    assert.equal(runFake(fixture, dir, { extraArgs: ["--filter", "."] }).status, 0);
+    const report = grade(dir);
+    assert.equal(report.verdict, "invalid");
+    assert.ok(report.problems.some((p) => p.includes("run with a selection")));
   });
 
   it("a run of only some kinds is not a grade", () => {
