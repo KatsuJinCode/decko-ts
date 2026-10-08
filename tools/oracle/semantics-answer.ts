@@ -597,9 +597,12 @@ for (const question of QUESTIONS.questions) {
           continue;
         }
         const name = DeckoName.parse(await nameForRecord(c));
+        // Ruby's Card#left fetches the left NAME (lib/card/name/all/parts.rb:
+        // Card.fetch name.left), so a trashed left row yields the virtual
+        // card of that name (a set card such as "Gallery+*type"), not nil.
         let left: string | null = null;
-        if (c.leftId !== undefined && c.leftId !== null) {
-          const l = await fetcher.fetchById(c.leftId);
+        if (name.isCompound && name.leftName !== undefined) {
+          const l = await fetcher.fetchByName(name.leftName.s);
           left = l === undefined ? null : await nameForRecord(l);
         }
         const entry: Record<string, unknown> = { id: c.id, name: name.s, left };
