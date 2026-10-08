@@ -1222,16 +1222,11 @@ const setModules: ModSetModuleFile[] = [
     // "signup", the card set-key token is "sign_up"). The chain walker
     // resolves the card's set-key token TYPE-sign_up through set-keys-to-
     // modules.ts camelize("sign_up") -> "SignUp", so the view must
-    // register under the TWO-segment shortname "Type::SignUp" (setPath
-    // "type/sign_up") — "Type::Signup" and "Type::SignUp::Views" are
-    // shortnames no token ever resolves to. Ported (R17): :core
-    // (core.haml: the invite-links div + signup_line + processed raw
-    // body; see signupCoreView). Not ported: rails (:new,
-    // :content_formgroups, :new_buttons - card_form, multi_card_editor).
+    // register under the "Type::SignUp" spelling (setPath "type/sign_up");
+    // the views themselves, :core included, live on the nested
+    // views module below, where Ruby defines them (a token whose own
+    // module lacks the view expands to the modules nested under it).
     setPath: "type/sign_up",
-    formats: {
-      html: { views: [{ view: "core", viewFn: (ctx) => signupCoreHtml(ctx) }] },
-    },
   },
   {
     // set/type/signup/views.rb — the NESTED child file (Ruby's SetTemplate
@@ -1265,6 +1260,11 @@ const setModules: ModSetModuleFile[] = [
           { view: "new", viewFn: signupNewView, config: { cache: "never" } },
           { view: "new_buttons", viewFn: signupNewButtonsView, config: { cache: "never" } },
           { view: "content_formgroups", viewFn: signupContentFormgroupsView },
+          // views.rb:27-29 view :core, template: :haml, cache: :never
+          // (core.haml: the invite-links div + signup_line + processed raw
+          // body; see signupCoreView). Ruby defines it in this nested file,
+          // so Type::Signup::Views owns it.
+          { view: "core", viewFn: (ctx) => signupCoreHtml(ctx) },
         ],
       },
     },
