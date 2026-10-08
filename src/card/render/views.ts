@@ -4364,8 +4364,28 @@ function linkAnchorBody(ctx: ViewContext, extraClass: string): string {
   // base.rb specify_type_in_link!: a wanted link whose voo names a type
   // (the list's item type folded into the item nest) adds card[type];
   // Hash#to_param sorts it after card[name].
-  const href = `/${h(fmt.urlKey())}${known ? "" : unknownLinkQuery(fmt)}`;
+  // A known host-typed item takes no card[type] (specify_type_in_link!
+  // returns for a known card), but Card::Path#known_name? asks Card.known?
+  // by name, which sees the default type: a name the url key loses still
+  // carries card[name] (Christian Johnson - Caliber Home Loans+Project's
+  // virtual Project item).
+  const query = !known
+    ? unknownLinkQuery(fmt)
+    : fmt.card.hostTyped === true && !hostTypedNameKnown(fmt, fmt.card)
+      ? wantedHrefQuerySuffix(fmt.card.name.s)
+      : "";
+  const href = `/${h(fmt.urlKey())}${query}`;
   return `<a class="${cls}" href="${href}">${inner}</a>`;
+}
+
+/** `Card.known?(name)` for a host-typed item phantom (RenderCard#hostTyped):
+ *  the name-only fetch returns the cached card, which keeps the DEFAULT type
+ *  (fetch/results.rb renews a dup for the typed instance), so the card is
+ *  known by name only when the default type's structure makes it virtual. */
+function hostTypedNameKnown(fmt: RenderFormat, card: RenderCard): boolean {
+  if (!card.name.isCompound) return false;
+  const nameType = phantomIdentity(fmt, card.name.s, undefined);
+  return fmt.engine.phantomVirtualStructure?.(card.name, nameType?.typeName, nameType?.typeId) !== undefined;
 }
 const linkView: ViewFn = (ctx) => linkAnchorBody(ctx, "");
 const navLinkView: ViewFn = (ctx) => linkAnchorBody(ctx, "nav-link ");
@@ -5264,15 +5284,15 @@ function barDivHtml(ctx: ViewContext): string {
   // returns VIRTUAL cards (states.rb:52-57: compound with an applicable
   // *structure rule) — an id-less compound under a structure rule is known
   // (media+GBA+YouTube Browser's <video>+GBA YTlinkControl bars).
-  // A host-typed item phantom answers by name: the cached card a name-only
-  // fetch returns keeps the default type (RenderCard#hostTyped), so its
-  // structure is the default type's (Social Media Distribution+Tactics:
-  // the Tracked Item items render bar-view with a wanted-card page link).
-  const nameType = card.hostTyped === true ? phantomIdentity(fmt, card.name.s, undefined) : card;
+  // A host-typed item phantom answers by name (hostTypedNameKnown): Social
+  // Media Distribution+Tactics' Tracked Item items render bar-view with a
+  // wanted-card page link.
   const virtualKnown =
     card.id === undefined &&
     card.name.isCompound &&
-    fmt.engine.phantomVirtualStructure?.(card.name, nameType?.typeName, nameType?.typeId) !== undefined;
+    (card.hostTyped === true
+      ? hostTypedNameKnown(fmt, card)
+      : fmt.engine.phantomVirtualStructure?.(card.name, card.typeName, card.typeId) !== undefined);
   const menu = itemBarMenuHtml(
     url,
     card.id === undefined,

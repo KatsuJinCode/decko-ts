@@ -135,7 +135,14 @@ function stripItem(item: string): string {
 export function resolvePointerItemName(item: string, hostName: DeckoName): string {
   try {
     const parsed = DeckoName.parse(item);
-    if (parsed.isAbsolute) return item;
+    // item.rb clean_item_name absolutizes every line; an absolute name only
+    // changes there when a blank extreme takes the context
+    // (contextual.rb absolutize_extremes): "Williamscraig Family+" under
+    // "Christian Johnson - Caliber Home Loans+Project" names
+    // "Williamscraig Family+Christian Johnson - Caliber Home Loans+Project".
+    const parts = parsed.parts;
+    const blankExtreme = parts.length > 1 && (parts[0] === "" || parts[parts.length - 1] === "");
+    if (parsed.isAbsolute && !blankExtreme) return item;
     return parsed.absoluteName(hostName).s;
   } catch {
     return item;

@@ -76,6 +76,10 @@ describe("signed-in shapes: typed list items, trashed members, field types, imag
     await seedCard(s, { id: 55, name: "Link Host", typeId: 2, dbContent: "{{Plan+Tasks|core|link}}" });
     await seedCard(s, { id: 56, name: "Bar Host", typeId: 2, dbContent: "{{Plan+Tasks|core|bar}}" });
     await seedCard(s, { id: 57, name: "Alpha", typeId: 2 });
+    // An item line with a blank right part takes the list's name there.
+    await seedCard(s, { id: 58, name: "Plan - B", typeId: 2 });
+    await seedCard(s, { id: 59, leftId: 58, rightId: 50, typeId: 6, dbContent: "Alpha+\n" });
+    await seedCard(s, { id: 67, name: "Blank Host", typeId: 2, dbContent: "{{Plan - B+Tasks|core|link}}" });
     // A role whose member list names a trashed card by id.
     await seedCard(s, { id: 60, name: "Crew", typeId: 9 });
     await seedCard(s, { id: 61, name: "Gone Member", typeId: 2, trash: true });
@@ -107,6 +111,16 @@ describe("signed-in shapes: typed list items, trashed members, field types, imag
     const html = await signedIn().render("Link Host", "core");
     expect(html).toContain('<a class="wanted-card" href="/Gamma?card%5Btype%5D=Project">');
     expect(html).toContain('<a class="known-card" href="/Alpha+Beta">');
+  });
+
+  it("a blank item extreme takes the list's name, and a known item keeps card[name] when Card.known?(name) is false", async () => {
+    // item.rb clean_item_name -> contextual.rb absolutize_extremes; the
+    // virtual Project item is known (no card[type]), but Card::Path asks
+    // Card.known? by name, which sees the default type.
+    const html = await signedIn().render("Blank Host", "core");
+    expect(html).toContain(
+      '<a class="known-card" href="/Alpha+Plan_B+Tasks?card%5Bname%5D=Alpha%2BPlan+-+B%2BTasks">',
+    );
   });
 
   it("a virtual compound item renders its bar, and its page link answers by name (wanted)", async () => {
