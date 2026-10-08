@@ -36,6 +36,54 @@ abort "step index must be >= 1" if STEP < 1
 
 PREFIX = "PersistProbe"
 
+# Uploads (steps 68-70) go to a run-scoped directory the driver owns
+# (PERSIST_FILES_DIR), never into the app's own files or public trees, and
+# never to a cloud bucket. Windows grants File.symlink only with a special
+# privilege, so the public-link step uses hard links, as on the POSIX hosts
+# Decko targets (the same arrangement as the side-effects harness).
+FILES_DIR = ENV["PERSIST_FILES_DIR"]
+if FILES_DIR
+  require "fileutils"
+  FileUtils.mkdir_p(File.join(FILES_DIR, "files"))
+  FileUtils.mkdir_p(File.join(FILES_DIR, "public", "files"))
+  Cardio.config.file_buckets = {}
+  Cardio.config.file_default_storage = :local
+  Cardio.paths["files"] = File.join(FILES_DIR, "files")
+  Cardio.paths["public"] = File.join(FILES_DIR, "public")
+  File.singleton_class.prepend(Module.new do
+    def symlink(src, dest) = File.link(src, dest)
+    def symlink?(path) = File.exist?(path)
+  end)
+end
+UPLOAD_TEXT = "persistence probe file\n"
+UPLOAD_TEXT_2 = "persistence probe file, second version\n"
+# A 1x1 PNG.
+UPLOAD_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+
+def upload_file(name, bytes)
+  dir = File.join(FILES_DIR || abort("uploads need PERSIST_FILES_DIR"), "uploads")
+  FileUtils.mkdir_p(dir)
+  path = File.join(dir, name)
+  File.binwrite(path, bytes)
+  File.open(path, "rb")
+end
+
+# The stored files of the probe's cards: card id, file name, and the SHA-1
+# of each file's bytes (image versions are listed by name only: their bytes
+# are the image encoder's, compared by the side-effects measurement).
+def probe_files(ids)
+  return [] unless FILES_DIR
+
+  require "digest"
+  ids.flat_map do |id|
+    Dir.glob(File.join(FILES_DIR, "files", id.to_s, "*")).sort.map do |path|
+      name = File.basename(path)
+      version = name =~ /-(icon|small|medium|large|original)\./
+      { "card_id" => id, "file" => name,
+        "sha1" => version && !name.include?("-original.") ? nil : Digest::SHA1.file(path).hexdigest }
+    end
+  end
+end
 # Markup Card::Content.clean! must rewrite: an event handler attribute, a
 # script element, a javascript: link, and allowed markup that must survive.
 UNSAFE_HTML = '<p onclick="x()">hi</p><script>bad()</script><b>ok</b>' \
@@ -111,6 +159,7 @@ def probe_state
       SELECT id, left_id, right_id, left_key, content FROM card_virtuals
       WHERE left_id IN (#{list}) ORDER BY id
     SQL
+    "files" => probe_files(keep)
   }
 end
 
@@ -436,8 +485,35 @@ def run_op(step)
       act = act_of_action(nth_action_id("PersistProbe Form", 1))
       revert_request("PersistProbe Form", "revert_to" => "previous", "revert_act" => act.to_s)
     }]
+  # 68-70: file and image uploads.
+  when 68
+    [:create, "create file card with an upload", lambda {
+      Card.create!(name: "PersistProbe File", type: "File", file: upload_file("probe.txt", UPLOAD_TEXT))
+    }]
+  when 69
+    [:update, "replace a file card's upload", lambda {
+      Card.find(id_of("PersistProbe File")).update!(file: upload_file("probe-2.txt", UPLOAD_TEXT_2))
+    }]
+  when 70
+    [:create, "create image card with an upload", lambda {
+      Card.create!(name: "PersistProbe Image", type: "Image",
+                   image: upload_file("probe.png", UPLOAD_PNG_BASE64.unpack1("m")))
+    }]
   else
     abort "unknown step #{step}"
+  end
+end
+
+# PERSIST_WATCHDOG=<seconds>: a step still running after that long prints
+# every thread's backtrace and exits, so a hang is diagnosed, not waited on.
+if (watchdog = ENV["PERSIST_WATCHDOG"])
+  Thread.new do
+    sleep Integer(watchdog)
+    Thread.list.each do |t|
+      warn "[persist] thread #{t.inspect}"
+      (t.backtrace || []).first(60).each { |line| warn "[persist] | #{line}" }
+    end
+    exit! 3
   end
 end
 
@@ -446,7 +522,21 @@ kind, label, fn = run_op(STEP)
 # by the executable, and Decko's compound-name save recurses past it. A Thread
 # takes RUBY_THREAD_VM_STACK_SIZE / RUBY_THREAD_MACHINE_STACK_SIZE (the driver
 # sets both), which is what removes the SystemStackError.
-detail = Thread.new do
+#
+# An upload (steps 68-70) runs its integrate_with_delay job inline, and the
+# job enters the app executor, which the runner's main thread holds (a
+# monitor, reentrant only for its own thread): on the op thread that
+# deadlocks. Those saves have simple names and need no large stack, so they
+# run on the main thread.
+MAIN_THREAD_STEPS = [68, 69, 70].freeze
+
+def run_on_op_thread(&block)
+  return block.call if MAIN_THREAD_STEPS.include?(STEP)
+
+  ActiveSupport::Dependencies.interlock.permit_concurrent_loads { Thread.new(&block).value }
+end
+
+detail = run_on_op_thread do
   begin
     value = Card::Auth.as_bot { fn.call }
     { "ok" => true, "kind" => kind, "value" => value.respond_to?(:id) ? value.id : value }
@@ -454,7 +544,7 @@ detail = Thread.new do
     warn "[persist] step #{STEP} #{label}: #{e.class}: #{e.message}"
     { "ok" => false, "kind" => kind, "error" => "#{e.class}: #{e.message}" }
   end
-end.value
+end
 
 # The rendered result of a revert: the reverted card's core view, fetched as
 # the request's soft redirect re-fetches it (fresh from the database, trash
@@ -462,7 +552,7 @@ end.value
 # type; a trashed card has no core view to render).
 render = nil
 if kind == :revert && detail["ok"] && detail["value"].is_a?(Integer)
-  render = Thread.new do
+  render = run_on_op_thread do
     Card::Auth.as_bot do
       Card::Cache.reset_all
       card = Card.fetch(detail["value"], look_in_trash: true)
@@ -471,7 +561,7 @@ if kind == :revert && detail["ok"] && detail["value"].is_a?(Integer)
     rescue StandardError => e
       { "error" => "#{e.class}: #{e.message}" }
     end
-  end.value
+  end
 end
 
 state = probe_state

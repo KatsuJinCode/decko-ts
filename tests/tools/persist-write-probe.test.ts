@@ -35,6 +35,7 @@
 //  53-56 form saves with subcards (create, update, unchanged, list subcard)
 //  57-60 account and role cards; 61-64 read rules created, changed, deleted
 //  65-67 reverts whose act renames or trashes another card
+//  68-70 file and image uploads
 //
 // It writes its JSON, runs tools/persistence/compare-persist.mjs against the
 // committed Ruby dumps, and asserts which steps diverge. Without the oracle
@@ -42,7 +43,8 @@
 // fails with the path it wanted.
 
 import { spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -61,6 +63,7 @@ import {
 } from "../../src/card/rules/structure.js";
 import { createVirtualCardLookup } from "../../src/card/fetch/virtual-cards.js";
 import { servingModEventRuntime } from "../../src/server/write-routes.js";
+import { LocalAttachmentStore } from "../../src/card/attachments/attachment-store.js";
 
 const SRC =
   process.env.PERSIST_SRC_DECK ??
@@ -71,6 +74,8 @@ const SRC =
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const PERSIST_DIR = path.join(REPO, "tmp/persist");
 const OUT = process.env.PERSIST_TS_OUT ?? path.join(PERSIST_DIR, "ts-state.json");
+// Uploaded files (steps 68-70), removed with the deck copy.
+const FILES_DIR = path.join(PERSIST_DIR, "ts-files");
 // The TS deck as the op list left it, kept only for the whole-deck comparison.
 const FINAL_DECK = path.join(PERSIST_DIR, "ts-final-compare.sqlite3");
 // The Ruby oracle's per-step dumps, committed so the comparison runs without
@@ -105,9 +110,14 @@ const LINKER_CONTENT =
 // Same string as the Ruby half's LIST_CONTENT (step 51).
 const LIST_CONTENT =
   "[[PersistProbe Typed]]\n\n  [[PersistProbe Typed+PersistProbe Field]]  \n~1\n:anyone\nPersistProbe Loose";
+// Same bytes as the Ruby half's uploads (steps 68-70).
+const UPLOAD_TEXT = "persistence probe file\n";
+const UPLOAD_TEXT_2 = "persistence probe file, second version\n";
+const UPLOAD_PNG_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 // The op list's length; the Ruby half's step count (run-ruby-steps.sh) and
 // the committed oracle dumps must agree with it.
-const STEP_COUNT = 67;
+const STEP_COUNT = 70;
 // The Ruby half runs as Card::Auth.as_bot, i.e. card 1 (Decko Bot). The act's
 // actor_id and every card's creator_id/updater_id come from it.
 const BOT = { id: 1, name: "Decko Bot" };
@@ -151,6 +161,27 @@ async function nameMap(driver: LocalSqliteDriver): Promise<Map<string, number>> 
   for (const id of byId.keys()) {
     const name = composed(id);
     if (name !== undefined && name.startsWith(PREFIX)) out.set(name, id);
+  }
+  return out;
+}
+
+/** The stored files of the probe's cards, as the Ruby half lists them:
+ *  card id, file name, and the SHA-1 of the bytes (image versions by name
+ *  only; their bytes are the image encoder's, measured by the side-effects
+ *  team). */
+function probeFiles(ids: number[]): Row[] {
+  const out: Row[] = [];
+  for (const id of [...ids].sort((a, b) => a - b)) {
+    const dir = path.join(FILES_DIR, String(id));
+    if (!existsSync(dir)) continue;
+    for (const name of readdirSync(dir).sort()) {
+      const version = /-(icon|small|medium|large|original)\./.test(name);
+      const sha1 =
+        version && !name.includes("-original.")
+          ? null
+          : createHash("sha1").update(readFileSync(path.join(dir, name))).digest("hex");
+      out.push({ card_id: id, file: name, sha1 });
+    }
   }
   return out;
 }
@@ -205,6 +236,7 @@ async function probeState(driver: LocalSqliteDriver): Promise<Row> {
       `SELECT id, left_id, right_id, left_key, content FROM card_virtuals
        WHERE left_id IN (${inList}) ORDER BY id`,
     ),
+    files: probeFiles(ids),
   };
 }
 
@@ -260,6 +292,7 @@ async function bootEngine(dbPath: string): Promise<{
     ipAddress: IP,
     now: () => new Date("2026-09-19T12:00:00.000Z"),
     modEvents: await servingModEventRuntime(),
+    attachmentStore: new LocalAttachmentStore(FILES_DIR),
   });
   return { driver, engine };
 }
@@ -276,6 +309,7 @@ describe("persistence write probe (TS half)", () => {
     mkdirSync(dir, { recursive: true });
     const dbPath = path.join(dir, "ts.sqlite3");
     copyFileSync(SRC, dbPath);
+    rmSync(FILES_DIR, { recursive: true, force: true });
     applyDeckInflections(ORACLE_DECK_INFLECTIONS);
     const { driver, engine } = await bootEngine(dbPath);
     const out: Row[] = [];
@@ -768,6 +802,28 @@ describe("persistence write probe (TS half)", () => {
           actId: await actOf((await actionIdsOf(form)).at(-2)!),
         }),
       );
+      // 68-70: file and image uploads.
+      const upload = (name: string, bytes: Uint8Array) => ({ bytes, originalFilename: name });
+      await op(68, "create file card with an upload", "create", () =>
+        engine.createCard({
+          name: `${PREFIX} File`,
+          typeName: "File",
+          attachment: upload("probe.txt", Buffer.from(UPLOAD_TEXT)),
+        } as CreateCardInput),
+      );
+      await op(69, "replace a file card's upload", "update", async () =>
+        engine.updateCard({
+          cardId: await idOf(`${PREFIX} File`),
+          attachment: upload("probe-2.txt", Buffer.from(UPLOAD_TEXT_2)),
+        } as UpdateCardInput),
+      );
+      await op(70, "create image card with an upload", "create", () =>
+        engine.createCard({
+          name: `${PREFIX} Image`,
+          typeName: "Image",
+          attachment: upload("probe.png", Buffer.from(UPLOAD_PNG_BASE64, "base64")),
+        } as CreateCardInput),
+      );
     } finally {
       driver.close();
       // PERSIST_KEEP_TS_DECK=<path>: keep the deck as the op list left it,
@@ -777,6 +833,7 @@ describe("persistence write probe (TS half)", () => {
       if (keep !== undefined && keep !== "") copyFileSync(dbPath, keep);
       copyFileSync(dbPath, FINAL_DECK);
       for (const f of [dbPath, `${dbPath}-shm`, `${dbPath}-wal`]) rmSync(f, { force: true });
+      rmSync(FILES_DIR, { recursive: true, force: true });
     }
     writeFileSync(OUT, JSON.stringify(out, null, 2));
     expect(out.length).toBe(STEP_COUNT);

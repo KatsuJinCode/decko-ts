@@ -122,8 +122,15 @@ function normalise(state) {
   const names = composedNames(state.cards ?? []);
   const card = (v) => (v === null || v === undefined ? null : (names.get(Number(v)) ?? `#${v}`));
   // An id list stores items as "~<id>": a probe card id there maps to its name.
+  // An attachment identifier "~<card>/<action><ext>" maps both ids.
   const idMarks = (v) =>
-    typeof v === "string" ? v.replace(/~(\d+)/g, (m, id) => (names.has(Number(id)) ? `~${card(id)}` : m)) : v;
+    typeof v === "string"
+      ? v
+          .replace(/~(\d+)\/(\d+)/g, (m, id, action) =>
+            names.has(Number(id)) ? `~${card(id)}/${actionKey(action)}` : m,
+          )
+          .replace(/~(\d+)(?![\d/])/g, (m, id) => (names.has(Number(id)) ? `~${card(id)}` : m))
+      : v;
   // A column that may name a probe card or a deck card (type_id,
   // read_rule_id): probe cards map to their name, deck cards stay raw.
   const probeOrRaw = (v) => (v !== null && v !== undefined && names.has(Number(v)) ? card(v) : fold(v));
@@ -203,6 +210,13 @@ function normalise(state) {
       referee_id: card(r.referee_id),
     });
   }
+  // 5. STORED FILES. A file name starts with its action id ("<action><ext>",
+  //    "<action>-<version><ext>"), which maps like any action id.
+  for (const r of state.files ?? []) {
+    const file = String(r.file).replace(/^(\d+)/, (m, action) => actionKey(action));
+    const k = `${card(r.card_id)}/${file}`;
+    put("files", k, { id: k, sha1: r.sha1 ?? null });
+  }
   for (const r of state.card_virtuals ?? []) {
     const row = clean(r);
     const k = `${card(r.left_id)}+${card(r.right_id)}`;
@@ -217,7 +231,7 @@ function normalise(state) {
   return { tables, order };
 }
 
-const TABLES = ["cards", "card_acts", "card_actions", "card_changes", "card_references", "card_virtuals"];
+const TABLES = ["cards", "card_acts", "card_actions", "card_changes", "card_references", "card_virtuals", "files"];
 
 function diffState(a, b) {
   const faults = [];

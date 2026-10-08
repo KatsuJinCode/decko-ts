@@ -29,7 +29,10 @@ CACHE="$WORK/ruby-cache-$$"
 if [ "$FIRST" = "1" ]; then rm -rf "$OUT"; fi
 mkdir -p "$OUT" "$CACHE"
 cp "$SRC" "$DECK" || { echo "COPY FAILED: $SRC"; exit 2; }
-trap 'rm -f "$DECK" "$DECK-shm" "$DECK-wal"; rm -rf "$CACHE"' EXIT
+# Uploaded files (persist-write-probe.rb FILES_DIR): run-scoped unless the
+# caller names a directory to keep (KEEP_FILES=<dir>, which it then owns).
+export PERSIST_FILES_DIR="${KEEP_FILES:-$WORK/ruby-files-$$}"
+trap 'rm -f "$DECK" "$DECK-shm" "$DECK-wal"; rm -rf "$CACHE"; [ -z "${KEEP_FILES:-}" ] && rm -rf "$PERSIST_FILES_DIR"' EXIT
 
 # FRESH_CACHE_STEPS="<n> <m> ...": empty the card cache before these steps.
 # Ruby's rename rewrites referer content with update_column and never
