@@ -86,6 +86,10 @@ export interface CreateCardInput {
   /** card_actions.super_action_id passthrough for subcard actions
    *  (events.rb:88-92: the supercard's current action). */
   superActionId?: number | null;
+  /** false: the card's set has history? false (card-mod-history
+   *  set/all/history.rb actionable?), so the row is inserted with no act
+   *  or action (password and salt fields). */
+  history?: boolean;
   /** A card_actions row reserved for this create by reserveCreateAction:
    *  the create fills it instead of inserting a new one. */
   reservedActionId?: number;
@@ -239,6 +243,10 @@ export class ActWriter {
       ],
     );
 
+    if (input.history === false) {
+      // no action, no act row of its own; actionId 0 marks "none recorded"
+      return { cardId, actId: this.actId ?? 0, actionId: 0 };
+    }
     const stmts: SQLStatement[] = [];
     let actIdSelect: number | undefined;
     let actionIdSelect: number | undefined;

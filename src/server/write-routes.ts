@@ -99,11 +99,12 @@ import type { CardRecord } from "../card/fetch/card-record.js";
 import { SessionStore } from "../card/auth/index.js";
 import { signinAccount } from "../card/auth/signin.js";
 import {
+  sendAccountVerificationToken,
   sendResetPasswordToken,
   type AccountFlowContext,
 } from "../card/auth/account-verify-reset-flows.js";
 import { createCardActionEngineForSession } from "../card/actions/engine-for-session.js";
-import { CardActionError, type ActionResult, type AttachmentInput } from "../card/actions/types.js";
+import { CardActionError, type ActionResult, type AttachmentInput, type SubcardInput } from "../card/actions/types.js";
 import type { CardActionRecaptchaConfig } from "../card/actions/card-action-engine.js";
 import type { ModEventRuntime, ModEventStageReport } from "../card/mod-loader/mod-event-dispatch.js";
 import type { ModEngineHost } from "../card/mod-loader/mod-manifest.js";
@@ -276,11 +277,14 @@ interface ParsedBody {
    *  cardFiles, never this map (a text part under a mount name lands here
    *  as a string — card_mount.rb:41-42's blank early-return shape). */
   card: Record<string, string>;
-  /** params[:card][:subcards]["+*email"] etc. — the subcard-hash grammar
-   *  the captured sign-in form posts (card[subcards][+*email][content]).
-   *  Only the *signin update consumes these (the :signin event); general
-   *  subcard saves remain unported. */
+  /** params[:card][:subcards]["+*email"] etc. — the first level of the
+   *  subcard hash as flat fields: the captured sign-in form's grammar
+   *  (card[subcards][+*email][content]), read by the :signin event. */
   subcards: Record<string, Record<string, string>>;
+  /** params[:card][:subcards] at every depth (subcards.rb:1-16): each
+   *  entry's own fields and its nested subcards, in parameter order — a
+   *  sign-up posts card[subcards][+*account][subcards][+*email][content]. */
+  subcardTree: Record<string, ParsedSubcard>;
   /** params[:success] — the success hash (success[redirect], success[mark]). */
   success: Record<string, string>;
   /** The multipart FILE parts under the card hash, by mount name — the
@@ -317,10 +321,13 @@ function applyParam(
 ): void {
   // the subcard shape FIRST — the plain card-hash match below is greedy
   // and would swallow card[subcards][+*email][content] whole.
-  const subMatch = /^card\[subcards\]\[([^\]]+)\]\[([^\]]+)\]$/.exec(key);
-  if (subMatch !== null) {
-    const slot = (parsed.subcards[subMatch[1]] ??= {});
-    slot[subMatch[2]] = value;
+  if (key.startsWith("card[subcards][")) {
+    const segments = [...key.slice("card".length).matchAll(/\[([^\]]*)\]/g)].map((m) => m[1]).slice(1);
+    addSubcardParam(parsed.subcardTree, segments, value);
+    if (segments.length === 2) {
+      const slot = (parsed.subcards[segments[0]] ??= {});
+      slot[segments[1]] = value;
+    }
     return;
   }
   const cardMatch = /^card\[(.+)\]$/.exec(key);
@@ -342,8 +349,48 @@ function applyParam(
   else if (key === "recaptcha_token") parsed.recaptchaToken = value;
 }
 
+/** One subcard of the request's card hash: its fields and nested subcards. */
+interface ParsedSubcard {
+  fields: Record<string, string>;
+  subcards: Record<string, ParsedSubcard>;
+}
+
+/** Place card[subcards][K1]([subcards][K2])*[field] = value in the tree. */
+function addSubcardParam(tree: Record<string, ParsedSubcard>, segments: string[], value: string): void {
+  let level = tree;
+  let i = 0;
+  while (i < segments.length) {
+    const node = (level[segments[i]] ??= { fields: {}, subcards: {} });
+    const rest = segments.length - i - 1;
+    if (rest === 1) {
+      node.fields[segments[i + 1]] = value;
+      return;
+    }
+    if (rest < 3 || segments[i + 1] !== "subcards") return; // not the subcard grammar
+    level = node.subcards;
+    i += 2;
+  }
+}
+
+/** A JSON card hash's subcards object, at every depth. */
+function subcardTreeFromJson(raw: unknown): Record<string, ParsedSubcard> {
+  const out: Record<string, ParsedSubcard> = {};
+  if (typeof raw !== "object" || raw === null) return out;
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value !== "object" || value === null) continue;
+    const node: ParsedSubcard = { fields: {}, subcards: {} };
+    for (const [field, v] of Object.entries(value as Record<string, unknown>)) {
+      if (field === "subcards") node.subcards = subcardTreeFromJson(v);
+      else if (typeof v === "string") node.fields[field] = v;
+      else if (typeof v === "number") node.fields[field] = String(v);
+    }
+    out[key] = node;
+  }
+  return out;
+}
+
 function emptyParsedBody(): ParsedBody {
-  return { card: {}, subcards: {}, success: {}, cardFiles: {} };
+  return { card: {}, subcards: {}, subcardTree: {}, success: {}, cardFiles: {} };
 }
 
 function parseBody(req: WriteRouteRequest): ParsedBody {
@@ -415,9 +462,13 @@ function parseBody(req: WriteRouteRequest): ParsedBody {
     for (const [key, value] of Object.entries(rawSuccess)) {
       if (typeof value === "string") success[key] = value;
     }
+    const subcardTree = subcardTreeFromJson(rawCard["subcards"]);
+    const subcards: Record<string, Record<string, string>> = {};
+    for (const [k, node] of Object.entries(subcardTree)) subcards[k] = { ...node.fields };
     return {
       card,
-      subcards: {},
+      subcards,
+      subcardTree,
       success,
       cardFiles: {},
       token: typeof obj["token"] === "string" ? obj["token"] : undefined,
@@ -1158,6 +1209,7 @@ export async function handleWriteRequest(
       };
       result = await engine.createCard(input);
       name = result.name?.s ?? input.name;
+      await requestSignupVerification(ctx, name, input.subcards);
     } else if (route.verb === "update") {
       const card = parsed.card;
       if (route.mark === undefined && card["name"] === undefined) {
@@ -1311,8 +1363,10 @@ function createInputFromParams(
   typeName?: string;
   typeId?: number;
   attachment?: AttachmentInput;
+  subcards?: Record<string, SubcardInput>;
 } {
   const card = parsed.card;
+  const subcards = subcardInputs(parsed.subcardTree);
   const name = card["name"] ?? (route.mark !== undefined ? markToName(route.mark) : "");
   if (name === "") {
     // Ruby: Card.new(name: nil).save! -> validation error -> 422.
@@ -1326,7 +1380,49 @@ function createInputFromParams(
     typeName,
     typeId: typeIdRaw !== undefined && /^\d+$/.test(typeIdRaw) ? Number(typeIdRaw) : undefined,
     attachment,
+    ...(Object.keys(subcards).length > 0 ? { subcards } : {}),
   };
+}
+
+/** request_verification (card-mod-account set/type/signup.rb): a sign-up
+ *  its creator can approve starts "unverified", and the account's
+ *  send_verification_email event mails the verification link at
+ *  :integrate. The engine wrote the status; this sends the mail through
+ *  the host's account-mail seat. */
+async function requestSignupVerification(
+  ctx: WriteRouteContext,
+  name: string,
+  subcards: Record<string, SubcardInput> | undefined,
+): Promise<void> {
+  if (ctx.accountMail === undefined || subcards?.["+*account"] === undefined) return;
+  const status = await lookupLiveCard(ctx.fetcher, `${name}+*account+*status`);
+  if (status?.dbContent !== "unverified") return;
+  await sendAccountVerificationToken(
+    {
+      ...ctx.accountMail,
+      driver: ctx.driver,
+      fetcher: ctx.fetcher,
+      sessions: new SessionStore({ driver: ctx.driver }),
+    },
+    `${name}+*account`,
+  );
+}
+
+/** The request's subcard tree as the engine's subcard input
+ *  (subcards.rb:1-16): content, type and nested subcards per entry. */
+function subcardInputs(tree: Record<string, ParsedSubcard>): Record<string, SubcardInput> {
+  const out: Record<string, SubcardInput> = {};
+  for (const [key, node] of Object.entries(tree)) {
+    const typeIdRaw = node.fields["type_id"];
+    const nested = subcardInputs(node.subcards);
+    out[key] = {
+      ...(node.fields["content"] !== undefined ? { content: node.fields["content"] } : {}),
+      ...(node.fields["type"] !== undefined ? { typeName: node.fields["type"] } : {}),
+      ...(typeIdRaw !== undefined && /^\d+$/.test(typeIdRaw) ? { typeId: Number(typeIdRaw) } : {}),
+      ...(Object.keys(nested).length > 0 ? { subcards: nested } : {}),
+    };
+  }
+  return out;
 }
 
 async function lookupLiveCard(

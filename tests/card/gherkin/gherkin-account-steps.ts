@@ -317,26 +317,29 @@ export async function whenSubmitSignup(
 ): Promise<void> {
   const { world } = flow;
   // The signed-out submitter (signup.feature:18 "And I am signed out") —
-  // the same engine-rebuild the signed-in step uses. The HOLDER create is
-  // the form's engine write (a simple card keeps its name); the +*account
-  // subtree is the auth layer's read-shape (see givenUserWithAccount's
-  // row-shape note).
+  // the same engine-rebuild the signed-in step uses. The form posts the
+  // holder with its +*account subtree; the engine runs the account field
+  // events (email, password, salt, status) in the one create.
   const engine = new CardActionEngine(world.storage.fetcher, {
     actor: { id: -1, name: "*anonymous" },
     ipAddress: "127.0.0.1",
   });
-  await engine.createCard({ name: form.name, typeCode: "signup" });
-  const s = world.storage;
-  const holder = await s.fetcher.fetchByName(form.name);
-  if (holder === undefined) throw new Error(`signup create lost: ${form.name}`);
-  const junctionId = await insertNamedCompound(s, { name: `${form.name}+*account`, leftId: holder.id, rightId: ACCOUNT_IDS.account });
-  await insertNamedCompound(s, { name: `${form.name}+*account+*email`, leftId: junctionId, rightId: ACCOUNT_IDS.email, dbContent: form.email });
-  const salt = await sha1Hex(SALT_TS);
-  await insertNamedCompound(s, { name: `${form.name}+*account+*salt`, leftId: junctionId, rightId: ACCOUNT_IDS.salt, dbContent: salt });
-  // request_verification (signup.rb:48-52): status = "unverified".
-  await insertNamedCompound(s, { name: `${form.name}+*account+*status`, leftId: junctionId, rightId: ACCOUNT_IDS.status, dbContent: "unverified" });
-  const digest = await sha1Hex(`${salt}--${form.password}--`);
-  await insertNamedCompound(s, { name: `${form.name}+*account+*password`, leftId: junctionId, rightId: ACCOUNT_IDS.password, dbContent: digest });
+  await engine.createCard({
+    name: form.name,
+    typeCode: "signup",
+    subcards: {
+      "+*account": {
+        subcards: { "+*email": { content: form.email }, "+*password": { content: form.password } },
+      },
+    },
+  });
+  // auto_approve_with_verification (signup.rb:31-33): the Background's
+  // User+*type+*create = [[Anyone]] lets the submitter approve, so the
+  // account starts "unverified" (request_verification, :48-52).
+  const status = await world.storage.fetcher.fetchByName(`${form.name}+*account+*status`);
+  if (status?.dbContent !== "unverified") {
+    throw new Error(`signup status is ${status?.dbContent ?? "missing"}, expected unverified`);
+  }
   // trigger_event! :send_verification_email (signup.rb:52).
   const send = await sendAccountVerificationToken(flow.ctx, `${form.name}+*account`);
   if (!send.ok) throw new Error(`verification email failed: ${send.reason}: ${send.message}`);

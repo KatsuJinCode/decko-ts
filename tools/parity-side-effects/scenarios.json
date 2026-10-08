@@ -624,6 +624,30 @@
       }
     },
     {
+      "name": "admin-create-signup",
+      "mod": "account",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Invitee",
+          "type": "Sign up",
+          "subcards": {
+            "+*account": {
+              "subcards": {
+                "+*email": {
+                  "content": "Invitee.Probe@Example.com"
+                },
+                "+*password": {
+                  "content": "Invitee horse battery 6&"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "name": "admin-create-skin",
       "mod": "bootstrap",
       "method": "post",

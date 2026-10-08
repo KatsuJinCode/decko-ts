@@ -78,10 +78,12 @@ export async function refreshReferencesOut(
   refererId: number,
   refererName: DeckoName,
   content: string | null | undefined,
+  opts: { asList?: boolean } = {},
 ): Promise<void> {
   // delete_references_out (all.rb:48; reference_events.rb:63-65).
   await driver.query("DELETE FROM card_references WHERE referer_id = ?", [refererId]);
-  const rows = await createReferencesOut(lexicon, refererId, refererName, content);
+  const asList = opts.asList ?? (await isListCard(driver, refererId));
+  const rows = await createReferencesOut(lexicon, refererId, refererName, content, asList);
   // Reference.insert_in_slices (all.rb:61, reference.rb:19-23): bulk
   // insert in ref-hash order; 5000-row slices kept for fidelity.
   for (let slice = 0; slice < rows.length; slice += 5000) {
@@ -125,17 +127,64 @@ async function createReferencesOut(
   refererId: number,
   refererName: DeckoName,
   content: string | null | undefined,
+  asList = false,
 ): Promise<ReferenceRow[]> {
   if (content === null || content === undefined || content === "") {
     return []; // no content: delete-only (Content.parse of nil yields no chunks)
   }
   // all.rb:55 ref_hash — insertion-ordered: { key -> [id, types...] }.
   const refHash = new Map<string, { refereeId: number | undefined; refTypes: string[] }>();
+  if (asList) {
+    // card-mod-list Abstract::List each_reference_out: every item name is
+    // a link reference (chunk_class Link, CODE "L").
+    for (const item of listItemStrings(content)) {
+      await interpretReference(lexicon, refHash, item, "L", refererName);
+    }
+    return referenceValuesArray(refHash, refererId);
+  }
   for (const chunk of scanReferenceChunks(content)) {
     if (chunk.refereeName === undefined) continue; // explicit links / comment nests
     await interpretReference(lexicon, refHash, chunk.refereeName, chunk.refType, refererName);
   }
   return referenceValuesArray(refHash, refererId);
+}
+
+/** Whether the card's sets include card-mod-list's Abstract::List with the
+ *  default item parsing, so its references are its item names: the List
+ *  and Pointer types (set/type/list.rb, pointer.rb), +*status
+ *  (card-mod-account set/right/status.rb), +*followers (card-mod-follow
+ *  set/right/followers.rb) and a User's +*follow
+ *  (set/type_plus_right/user/follow.rb). */
+export async function isListCard(driver: SQLDatabaseDriver, cardId: number): Promise<boolean> {
+  const card = (await driver.query<{ type_id: number | null; left_id: number | null; right_id: number | null }>(
+    "SELECT type_id, left_id, right_id FROM cards WHERE id = ?",
+    [cardId],
+  )).rows[0];
+  if (card === undefined) return false;
+  const codes = new Map<string, number>();
+  for (const r of (await driver.query<{ id: number; codename: string }>(
+    "SELECT id, codename FROM cards WHERE codename IN ('list', 'pointer', 'status', 'followers', 'follow', 'user')",
+    [],
+  )).rows) codes.set(r.codename, Number(r.id));
+  const typeId = card.type_id === null ? undefined : Number(card.type_id);
+  const rightId = card.right_id === null ? undefined : Number(card.right_id);
+  if (typeId !== undefined && (typeId === codes.get("list") || typeId === codes.get("pointer"))) return true;
+  if (rightId === undefined) return false;
+  if (rightId === codes.get("status") || rightId === codes.get("followers")) return true;
+  if (rightId === codes.get("follow") && card.left_id !== null) {
+    const left = (await driver.query<{ type_id: number | null }>(
+      "SELECT type_id FROM cards WHERE id = ?",
+      [card.left_id],
+    )).rows[0];
+    return left !== undefined && left.type_id !== null && Number(left.type_id) === codes.get("user");
+  }
+  return false;
+}
+
+/** card-mod-collection set/all/item.rb raw_item_strings + strip_item: one
+ *  item per non-empty line, [[ and ]] removed, whitespace trimmed. */
+export function listItemStrings(content: string): string[] {
+  return content.split(/\n+/).map((i) => i.replace(/\[\[|\]\]/g, "").trim()).filter((i) => i !== "");
 }
 
 /** all.rb:80-86 interpret_reference + :88-96 with_normalized_referee. */

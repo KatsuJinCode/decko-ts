@@ -134,6 +134,8 @@ import {
   IMAGE_VERSION_NAMES,
 } from "../attachments/image-renditions.js";
 import { canResize, imageDecodes, imageVersionBytes } from "../attachments/image-resize.js";
+import { encryptPassword, passwordErrors, planAccountFields } from "../auth/account-fields.js";
+import { runObserverEvents } from "../notify/observer.js";
 import type { AttachmentStore } from "../attachments/attachment-store.js";
 import { changeValueForField, trackedFieldIndex } from "../history/change.js";
 import {
@@ -413,6 +415,24 @@ export class CardActionEngine {
     opts: { actCardActionOmitted?: boolean; delayedStageDropped?: boolean } = {},
   ): Promise<void> {
     if (result === null) return;
+    // observer_<action> (card-mod-integrate observer.rb): the act card's
+    // *on <action> email rule, for every actor. A delivery that raises
+    // leaves an error on the card, and Ruby then runs none of its later
+    // integrate stages — the follower notice included.
+    let observerFailed = false;
+    if (this.followMail !== undefined && result.name !== undefined) {
+      const row = await this.fetchRowById(result.cardId);
+      const outcome = await runObserverEvents(this.fetch, {
+        card: { id: result.cardId, name: result.name.s, typeId: row?.type_id },
+        action: result.verb,
+        transport: this.notifyTransport ?? defaultTransport,
+        origin: this.followMail.origin,
+        deckoBotEmail: this.followMail.deckoBotEmail,
+        actorName: this.actor?.name ?? ANONYMOUS_ACTOR_NAME,
+        ...(this.notifyLogger !== undefined ? { logger: this.notifyLogger } : {}),
+      });
+      observerFailed = outcome.failed;
+    }
     if (await this.isAnonymousSession()) return;
     const allHooks = this.integrationHooks ?? [
       buildFollowNotifyHook(
@@ -430,7 +450,7 @@ export class CardActionEngine {
     // swallows the error (set/event.rb rescuing_if_integration). The
     // follower notice after an upload is therefore never sent; the delete
     // notice (:integrate) is unaffected.
-    const hooks = opts.delayedStageDropped === true
+    const hooks = opts.delayedStageDropped === true || observerFailed
       ? allHooks.filter((h) => h.stage !== "integrate_with_delay")
       : allHooks;
     if (hooks.length === 0) return;
@@ -513,6 +533,14 @@ export class CardActionEngine {
             name: updated.name,
           });
         }
+        if (sub.subcards !== undefined) {
+          saved.push(...(await this.saveSubcardsInWriter(
+            writer,
+            DeckoName.parse(fullName),
+            sub.subcards,
+            updated?.actionId ?? superActionId,
+          )));
+        }
       } else {
         const created = await this.createInWriter(
           writer,
@@ -524,16 +552,30 @@ export class CardActionEngine {
             typeName: sub.typeName,
             attachment: sub.attachment,
             superActionId,
+            ...(sub.history === false ? { history: false } : {}),
+            ...(sub.passwordEncrypted === true ? { passwordEncrypted: true } : {}),
           },
           { isActCard: false },
         );
-        saved.push({
-          cardId: created.cardId,
-          actionId: created.actionId,
-          actId: created.actId,
-          verb: created.verb,
-          name: created.name,
-        });
+        // a history-less card records no action (actionId 0): it is not a
+        // subaction of the act
+        if (sub.history !== false) {
+          saved.push({
+            cardId: created.cardId,
+            actionId: created.actionId,
+            actId: created.actId,
+            verb: created.verb,
+            name: created.name,
+          });
+        }
+        if (sub.subcards !== undefined) {
+          saved.push(...(await this.saveSubcardsInWriter(
+            writer,
+            DeckoName.parse(fullName),
+            sub.subcards,
+            sub.history === false ? superActionId : created.actionId,
+          )));
+        }
       }
     }
     return saved;
@@ -757,6 +799,109 @@ export class CardActionEngine {
     }
   }
 
+  /** The account events on a create (card-mod-account): Sign up requires
+   *  a +*account subcard (require_field :account); a +*account subcard's
+   *  fields are validated (email format and uniqueness, password rules),
+   *  normalized (downcased email, encrypted password) and completed (salt,
+   *  default status), and password and salt are written without actions.
+   *  Errors are raised in Ruby's shown form, before any write. */
+  private async applyAccountFieldEvents(input: CreateCardInput, typeId: number): Promise<CreateCardInput> {
+    const signupId = await this.fetch.codenames.id("signup");
+    const holderIsSignup = signupId !== undefined && typeId === signupId;
+    const account = input.subcards?.["+*account"];
+    if (account === undefined) {
+      if (holderIsSignup) {
+        throw new CardActionError("user-error", "sign up without an account", "ACCOUNT: required");
+      }
+      return input;
+    }
+    const fields: Record<string, { content?: string | null }> = {};
+    for (const [k, v] of Object.entries(account.subcards ?? {})) fields[k] = { content: v.content };
+    const emailId = await this.fetch.codenames.id("email");
+    const plan = await planAccountFields({
+      fields,
+      holderIsSignup,
+      canApprove: holderIsSignup && (await this.canCreateDefaultAccountedType()),
+      emailTaken: async (email) => {
+        if (emailId === undefined) return false;
+        const r = await this.fetch.driver.query<{ id: number }>(
+          "SELECT id FROM cards WHERE right_id = ? AND db_content = ? AND trash = 0 LIMIT 1",
+          [emailId, email],
+        );
+        return r.rows.length > 0;
+      },
+      now: this.clock(),
+    });
+    if (plan.errors.length > 0) {
+      throw new CardActionError("user-error", `account fields rejected: ${plan.errors.join("; ")}`, plan.errors.join("\n"));
+    }
+    const subcards: Record<string, SubcardInput> = {};
+    for (const w of plan.writes) {
+      subcards[w.key] = {
+        ...(account.subcards?.[w.key] ?? {}),
+        content: w.content,
+        ...(w.history ? {} : { history: false }),
+        ...(w.key === "+*password" ? { passwordEncrypted: true } : {}),
+      };
+    }
+    return { ...input, subcards: { ...input.subcards, "+*account": { ...account, subcards } } };
+  }
+
+  /** card-mod-account set/right/password.rb on a save that writes a
+   *  +*password card's content itself (a password change, or a password
+   *  field created outside a sign-up): validate_password_present (an
+   *  update to blank changes nothing), validate_password_length /
+   *  validate_password_chars on the raw value (shown as "PASSWORD: ..."),
+   *  and encrypt_password with the account's stored salt (Auth.encrypt
+   *  with a nil salt when there is none). Undefined when the card is not a
+   *  password field; `skip` for the blank update. */
+  private async passwordFieldContent(
+    rightId: number | undefined,
+    leftId: number | null | undefined,
+    content: string | null | undefined,
+    verb: "create" | "update",
+  ): Promise<{ content: string } | { skip: true } | undefined> {
+    const passwordId = await this.fetch.codenames.id("password");
+    if (passwordId === undefined || rightId !== passwordId) return undefined;
+    const raw = content ?? "";
+    if (verb === "update" && raw.trim() === "") return { skip: true };
+    const problems = passwordErrors(raw);
+    if (problems.length > 0) {
+      throw new CardActionError(
+        "user-error",
+        "password field rejected",
+        problems.map((m) => `PASSWORD: ${m}`).join("\n"),
+      );
+    }
+    let salt = "";
+    const saltId = await this.fetch.codenames.id("salt");
+    if (leftId !== null && leftId !== undefined && saltId !== undefined) {
+      const r = await this.fetch.driver.query<{ db_content: string | null }>(
+        "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        [leftId, saltId],
+      );
+      salt = r.rows[0]?.db_content ?? "";
+    }
+    return { content: await encryptPassword(raw, salt) };
+  }
+
+  /** Sign up's can_approve? (set/type/signup.rb): the actor may create a
+   *  card of the default accounted type (User). */
+  private async canCreateDefaultAccountedType(): Promise<boolean> {
+    const userTypeId = await this.fetch.codenames.id("user");
+    if (userTypeId === undefined) return false;
+    // Ruby's Card.new(type_id:) has no name; a simple placeholder name
+    // walks the same rule candidates (its *self set holds no rule).
+    const probe = newCardRecord(DeckoName.parse("can approve probe"), { typeId: userTypeId });
+    const verdict = await saveTaskVerdictForCard(
+      this.fetch,
+      await this.patternInputFor(probe, userTypeId),
+      "create",
+      await this.writePermissionState(),
+    );
+    return verdict === true;
+  }
+
   private async createCardInner(input: CreateCardInput): Promise<ActionResult> {
     const name = DeckoName.parse(input.name ?? "");    // The anonymous-create arm: Ruby's create permission chain has NO
     // signed-in clause. An anonymous session's Auth.as_id IS the Anonymous
@@ -782,6 +927,10 @@ export class CardActionEngine {
     const typeId = await resolveTypeId(this.fetch, { ...input, name });
     const placeholder = newCardRecord(name, { typeId });
     await this.assertCanWrite(placeholder, "create");
+    // The account field events (auth/account-fields.ts) run over the whole
+    // +*account subtree before anything is written: Ruby validates every
+    // subcard in the validate stage, so a rejected sign-up stores nothing.
+    input = await this.applyAccountFieldEvents(input, typeId);
     const writer = this.newWriter(actingId);
     const result = await this.createInWriter(writer, input, {
       isActCard: true,
@@ -826,6 +975,14 @@ export class CardActionEngine {
     opts: { isActCard: boolean; resolvedTypeId?: number },
   ): Promise<ActionResult> {
     const name = DeckoName.parse(input.name ?? "");
+    // A +*password card's content is validated and stored encrypted (the
+    // sign-up plan's password arrives encrypted already).
+    if (input.passwordEncrypted !== true && name.isCompound && name.rightName !== undefined) {
+      const rightId = await this.fetch.lexicon.id(name.rightName);
+      const leftId = name.leftName !== undefined ? await this.fetch.lexicon.id(name.leftName) : undefined;
+      const pw = await this.passwordFieldContent(rightId, leftId, input.content, "create");
+      if (pw !== undefined && "content" in pw) input = { ...input, content: pw.content };
+    }
     // The execution seam's validation-phase stages (director.rb:12-16
     // VI/VP/VV). A new card has no id yet (director.rb:47 "has id" from
     // store on) and no dirty set; every core event at these stages is a
@@ -1072,6 +1229,7 @@ export class CardActionEngine {
         isNew: true,
       }),
       ...(sides.reservedActionId !== undefined ? { reservedActionId: sides.reservedActionId } : {}),
+      ...(input.history === false ? { history: false } : {}),
       superActionId: input.superActionId ?? null,
       isActCard: opts.isActCard,
     });
@@ -1184,6 +1342,12 @@ export class CardActionEngine {
     // revival-from-trash is the CREATE path's job.
     if (row === undefined || row.trash === 1) {
       throw new CardActionError("not-found", `no such card: ${input.cardId}`);
+    }
+    // A +*password card's content is validated and stored encrypted.
+    if (input.content !== undefined && input.content !== null && input.passwordEncrypted !== true) {
+      const pw = await this.passwordFieldContent(row.right_id ?? undefined, row.left_id, input.content, "update");
+      if (pw !== undefined && "skip" in pw) return null;
+      if (pw !== undefined) input = { ...input, content: pw.content };
     }
     // extract_type_id! precedence (type.rb:81-92) — resolved BEFORE the ok?
     // gate, because Ruby evaluates permissions in the validate stage with
@@ -2824,6 +2988,7 @@ export class CardActionEngine {
       input.contentAfter ?? null,
     );
   }
+
 
   /** Post-save cache maintenance: Card#expire after every save
    *  (phases.rb:56-57 -> cache/all.rb:17-24 — both key versions via

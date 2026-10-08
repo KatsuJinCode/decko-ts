@@ -120,6 +120,15 @@ export interface AttachmentInput {
 export interface SubcardInput extends TypeSpec {
   content?: string | null;
   attachment?: AttachmentInput;
+  /** This subcard's own subcards (card[subcards][+*account][subcards]...),
+   *  named relative to it. */
+  subcards?: Record<string, SubcardInput>;
+  /** false: the card's set says history? false (password, salt) — the row
+   *  is written without an action. */
+  history?: boolean;
+  /** The content is already an encrypted password (the account field
+   *  plan encrypted it with the salt it generated). */
+  passwordEncrypted?: boolean;
 }
 
 /** Card.create! arguments (Card.create! opts — director/card_class.rb:5-9:
@@ -134,6 +143,11 @@ export interface CreateCardInput extends TypeSpec {
    *  RELATIVE names ("+author" -> "<this card>+author", the form's
    *  subfield shape) or absolute names. */
   subcards?: Record<string, SubcardInput>;
+  /** false: history? false for this card (card-mod-account password.rb,
+   *  salt.rb): the row is written with no act or action. */
+  history?: boolean;
+  /** The content is already an encrypted password (see SubcardInput). */
+  passwordEncrypted?: boolean;
   /** cards.codename passthrough (ActWriter column). Codename writes carry
    *  their own events in Ruby (mod/core/set/all/codename.rb) — the caller
    *  is responsible for legitimacy; the cache reset runs here. */
@@ -159,6 +173,8 @@ export interface CreateCardInput extends TypeSpec {
  *  persists nothing (no-op save — history events.rb:34-37). */
 export interface UpdateCardInput extends TypeSpec {
   cardId: number;
+  /** The content is already an encrypted password (see SubcardInput). */
+  passwordEncrypted?: boolean;
   /** A new name — the Save/Update rename path (name_events.rb events on
    *  `changed: :name`). Compound names rewire left_id/right_id; simple
    *  names rewrite the cards.name/key columns. */

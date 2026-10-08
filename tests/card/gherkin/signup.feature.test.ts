@@ -52,6 +52,11 @@ describe("Gherkin port: signup.feature / Signing up (without approval)", () => {
       actor: JOE_ADMIN,
       ipAddress: "127.0.0.1",
     });
+    // the rule's set card is a Set (a seeded deck carries User+*type as one;
+    // the permission walk reads rules only under Set cards)
+    if ((await flow.world.storage.fetcher.fetchByName("User+*type")) === undefined) {
+      await flow.world.engine.createCard({ name: "User+*type", typeCode: "set" });
+    }
     await flow.world.engine.createCard({
       name: "User+*type+*create",
       typeCode: "pointer",

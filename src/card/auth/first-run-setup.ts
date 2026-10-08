@@ -768,6 +768,7 @@ export async function createOwnerAccount(
     const passwordCard = await engine.createCard({
       name: `${ownerName}+*account+*password`,
       content: digest,
+      passwordEncrypted: true,
     });
     // setup_first_user (user.rb:59-64, :finalize, when: :setup? — this whole
     // function runs only when the setup window is open, the port's

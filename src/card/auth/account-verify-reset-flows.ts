@@ -833,16 +833,30 @@ async function accountForMark(
   ids: AccountCodenameIds,
   mark: string,
 ): Promise<AccountRecord | undefined> {
-  const name = mark.replace(/_/g, " ");
-  const key = DeckoName.parse(name).key;
-  const result = await driver.query<{ id: number }>(
-    `SELECT id FROM cards
-     WHERE trash = 0 AND (key = ? OR name = ?) ORDER BY id LIMIT 1`,
-    [key, name],
+  const id = await liveCardIdForName(driver, DeckoName.parse(mark.replace(/_/g, " ")));
+  if (id === undefined) return undefined;
+  return loadAccountByJunctionId(driver, ids, id);
+}
+
+/** A live card's id by name. Compound rows store no name or key (their
+ *  identity is left_id + right_id, lib/card/name/all.rb:20-21), so a
+ *  compound name resolves through its parts. */
+async function liveCardIdForName(driver: SQLDatabaseDriver, name: DeckoName): Promise<number | undefined> {
+  if (name.isSimple) {
+    const r = await driver.query<{ id: number }>(
+      "SELECT id FROM cards WHERE trash = 0 AND (key = ? OR name = ?) ORDER BY id LIMIT 1",
+      [name.key, name.s],
+    );
+    return r.rows[0]?.id;
+  }
+  const left = name.leftName === undefined ? undefined : await liveCardIdForName(driver, name.leftName);
+  const right = name.rightName === undefined ? undefined : await liveCardIdForName(driver, name.rightName);
+  if (left === undefined || right === undefined) return undefined;
+  const r = await driver.query<{ id: number }>(
+    "SELECT id FROM cards WHERE trash = 0 AND left_id = ? AND right_id = ? ORDER BY id LIMIT 1",
+    [left, right],
   );
-  const row = result.rows[0];
-  if (row === undefined) return undefined;
-  return loadAccountByJunctionId(driver, ids, row.id);
+  return r.rows[0]?.id;
 }
 
 /** Ruby Hash#to_s = inspect: `{"user_id"=>583, "exp"=>1234, ...}` — the
@@ -1078,7 +1092,7 @@ export async function applyNewAccountPassword(
   const writeActor = ownAccount ? await actorBot(deps.driver) : deps.actor;
   const engine = new CardActionEngine(deps.fetcher, { actor: writeActor });
   try {
-    await engine.updateCard({ cardId: account.childIds.password, content: digest });
+    await engine.updateCard({ cardId: account.childIds.password, content: digest, passwordEncrypted: true });
   } catch (error) {
     return {
       ok: false,
