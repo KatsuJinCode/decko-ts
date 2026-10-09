@@ -3218,9 +3218,22 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
               const slotCard = actorEngine.fetchRenderCard(name);
               if (slotCard === undefined) return actorEngine.render(name, view ?? "titled");
               const { RenderFormat } = await import("./dist/src/card/render/format.js");
+              // The ajax response re-render runs on the request's MAIN
+              // format with the MAIN-NEST opts - the recorded session's
+              // saved slot carries the data-slot JSON {view, nest_name
+              // "_main", nest_syntax "_main|titled", main:true, home_view},
+              // whose main:true is what pins the h1 card-header. The
+              // previous bare {main, main_view} opts left the nest keys out
+              // and the slot rendered h2.
+              const slotView = view ?? "titled";
               return new RenderFormat(slotCard, actorEngine, { main: true, nestQuietErrors: true }).renderView(
-                view ?? "titled",
-                { main: true, main_view: true },
+                slotView,
+                {
+                  nest_name: "_main",
+                  nest_syntax: `_main|${slotView}`,
+                  main: true,
+                  home_view: slotView,
+                },
                 null,
               );
             }
