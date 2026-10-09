@@ -43,6 +43,7 @@ import { footerDeckoVersion, recaptchaSiteKey, serializerFollowsLive } from "./d
 import type { UpdaterCardInfo } from "../history/updater-seam.js";
 import { isNewCard } from "../fetch/card-record.js";
 import { cgiEscape, emitAttrs, emitHamlAttrs, h, newSlotId, slotOptionsJson, slotOptionsWithNameContext } from "./slot-html.js";
+import { hamlSlotInHash } from "./haml-slot-style.js";
 import {
   registerAllGemTypeAssignments,
   registerSetTypeAssignment,
@@ -5378,6 +5379,8 @@ function barDivHtml(ctx: ViewContext): string {
   // so every data-* attribute, the slot id too, is emitted sorted and
   // single-quoted: `data-card-type-name='Topic' data-slot-id='<20 hex>'`
   // (stock Ruby output, reference-harness synthetic-v1 expected renders).
+  const slotId = newSlotId();
+  const hamlInHash = hamlSlotInHash();
   const hamlAttrs = emitHamlAttrs({
     "data-card-id": card.id === undefined ? undefined : String(card.id),
     "data-card-link-name": url,
@@ -5401,7 +5404,7 @@ function barDivHtml(ctx: ViewContext): string {
     "data-card-name": h(slotCardname(card)),
     "data-card-type-id": card.typeId === undefined ? undefined : String(card.typeId),
     "data-card-type-name": card.typeName,
-    "data-slot-id": newSlotId(),
+    ...(hamlInHash ? { "data-slot-id": slotId } : {}),
   });
   // bar.rb:66-73 bar_menu_items splits the two known-ness signals, and
   // the capture pins them DIVERGING on one menu: the full-page link's
@@ -5476,7 +5479,7 @@ function barDivHtml(ctx: ViewContext): string {
         !(card.name.left ?? "").startsWith("*")),
   );
   return (
-    `<div class='${serializerFollowsLive() ? `nodblclick d-flex _card-link ${voo.classy("bar")}` : `${voo.classy("bar")} nodblclick d-flex _card-link`}'${hamlAttrs}>\n` +
+    `<div class='${serializerFollowsLive() ? `nodblclick d-flex _card-link ${voo.classy("bar")}` : `${voo.classy("bar")} nodblclick d-flex _card-link`}'${hamlAttrs}${hamlInHash ? "" : ` data-slot-id="${slotId}"`}>\n` +
     `${barBodyHtml(ctx)}\n` +
     `${menu}\n\n` +
     `</div>\n`
@@ -5877,13 +5880,15 @@ const boxView: ViewFn = (ctx) => {
   // html_safe? hatch and escapes again (slot-html.ts#emitHamlAttrs cites
   // haml-5.2.2 lib/haml/attribute_builder.rb:51-59 + helpers.rb:609-614).
   // Same two-level rule barDivHtml follows, one shared emitter.
+  const slotId = newSlotId();
+  const hamlInHash = hamlSlotInHash();
   const dataAttrs = emitHamlAttrs({
     "data-card-id": card.id === undefined ? undefined : String(card.id),
     "data-card-name": h(slotCardname(card)),
     "data-card-type-id": card.typeId === undefined ? undefined : String(card.typeId),
     "data-card-type-name": card.typeName,
     "data-card-link-name": card.name.urlKey,
-    "data-slot-id": newSlotId(),
+    ...(hamlInHash ? { "data-slot-id": slotId } : {}),
   });
   let out = `<div class='${voo.classy("box", card.setKeys)} card _card-link nodblclick'${dataAttrs}>\n`;
   if (voo.show("box_top")) {

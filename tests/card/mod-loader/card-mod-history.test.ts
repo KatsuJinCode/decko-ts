@@ -869,8 +869,9 @@ describe("card-mod-history last-action readers (last.rb)", () => {
     const at = new Date(Date.parse("2027-01-01T00:00:00.000Z"));
     // a card whose actions were removed: revised_at = Time.zone.now
     d.storage.exec("DELETE FROM card_actions WHERE card_id = ?", [d.mainId]);
+    // ActiveRecord's sqlite text form: second precision, no millis.
     expect(await revisedAt(d.storage.driver, d.mainId, () => at)).toBe(
-      "2027-01-01 00:00:00.000",
+      "2027-01-01 00:00:00",
     );
   });
 });
