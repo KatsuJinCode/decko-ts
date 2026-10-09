@@ -28,11 +28,38 @@ export class LocalSqliteToolDriver implements SQLDatabaseDriver {
   constructor(path: string, opts?: { readonly?: boolean });
   query<T = Record<string, unknown>>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>>;
   batch(statements: SQLStatement[]): Promise<SQLQueryResult[]>;
+  executeOne(sql: string, params: unknown[]): SQLQueryResult;
   /** Streaming full-table read (tool-side extension, not in the shared
    *  contract). */
   iterate(sql: string, params?: unknown[]): Generator<Record<string, unknown>, void, void>;
   close(): void;
 }
+
+/** Tables the engine owns; never imported from a dump. */
+export const ENGINE_OWNED_TABLES: string[];
+
+/** The checkpoint table an import keeps while it runs. */
+export const IMPORT_PROGRESS_TABLE: string;
+
+export interface DumpIdentity {
+  bytes: number;
+  sha256: string;
+}
+
+/** Size and SHA-256 of a dump file (streamed). */
+export function dumpIdentity(dumpPath: string): Promise<DumpIdentity>;
+
+export interface ImportProgress {
+  rowsDone: number;
+  phase: string;
+  dumpBytes: number;
+  dumpSha256: string;
+  errors: ImportRowError[];
+  startedAt: string;
+}
+
+/** The interrupted import's checkpoint, or undefined when there is none. */
+export function readImportProgress(driver: SQLDatabaseDriver): Promise<ImportProgress | undefined>;
 
 export interface TableChecksum {
   /** Sum of per-row FNV-1a hashes mod 2^32 (order-independent). */
@@ -62,6 +89,12 @@ export interface ImportStats {
   bytesRead: number;
   rowsEmitted: number;
   elapsedMs: number;
+  /** Size and SHA-256 of the dump. */
+  dump: DumpIdentity;
+  /** Dump rows an interrupted run had committed before this run resumed it. */
+  resumedFromRow: number;
+  /** Engine migration files (db/migrations) this run applied. */
+  engineMigrations: string[];
 }
 
 export interface ImportOptions {
@@ -83,6 +116,13 @@ export interface ImportOptions {
   maxErrors?: number;
   /** Allow import into a DB that already has cards rows (default false). */
   append?: boolean;
+  /** Continue an interrupted import from its last committed batch. */
+  resume?: boolean;
+  /** Called after each committed batch with the dump rows handled so far. */
+  onCheckpoint?: (rowsDone: number) => void;
+  /** The engine's own migrations (default: the migrations directory beside
+   *  the DDL, db/migrations). */
+  engineMigrationsDir?: string;
 }
 
 /** Stream the dump into the target DB: CREATE TABLEs, batched INSERTs,

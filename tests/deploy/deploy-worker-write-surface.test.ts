@@ -33,7 +33,7 @@
 //   supported" and say nothing about process.env mirroring [vars] — so the
 //   host assigns explicitly and this test measures whether it takes.)
 
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { build } from "vite";
@@ -119,10 +119,12 @@ async function bootWorker(vars: Record<string, string>): Promise<{
   const binding = await mf.getD1Database("DB");
   const adapter = new CloudflareD1Adapter(binding);
 
-  // 3. The real chain, in order: 0001 schema, 0002 indexes, 0003 demo cards,
-  //    0004 account substrate, 0005 auth_sessions. Read from the directory so
-  //    a new migration cannot silently skip this test.
-  for (const file of ["0001-schema.sql", "0002-card-text-binary-lookup-indexes.sql", "0003-demo-seed.sql", "0004-demo-account-substrate.sql", "0005-auth-sessions.sql"]) {
+  // 3. The real chain: every file in deploy/migrations, in filename order,
+  //    which is the order wrangler d1 migrations apply uses. Read from the
+  //    directory so a new migration cannot silently skip this test.
+  const chain = readdirSync(MIGRATION_DIR).filter((f) => f.endsWith(".sql")).sort();
+  expect(chain.length).toBeGreaterThanOrEqual(8);
+  for (const file of chain) {
     const sql = readFileSync(`${MIGRATION_DIR}/${file}`, "utf8");
     await adapter.batch(splitSqlStatements(sql).map((s) => ({ sql: s, params: [] })));
   }
@@ -289,7 +291,11 @@ describe("worker.ts write surface — the two [vars] gates, on workerd", () => {
       // (/_signout is the EDGE entry's route, not worker.ts — its revocation
       // pin lives on the edge surface suite,
       // bunny-edge-signin-session-roundtrip.test.ts.)
-    });
+      // The timeout matches the armed case's beforeAll: the fixture owner is
+      // minted from this process through the Miniflare D1 proxy, one HTTP round
+      // trip per statement, which takes about 30 s on its own. The sign-in the
+      // test asserts runs inside workerd and takes well under a second.
+    }, 180_000);
 
     it("still answers the auth failure ladder while DISARMED", async () => {
       const res = await booted.fetch(

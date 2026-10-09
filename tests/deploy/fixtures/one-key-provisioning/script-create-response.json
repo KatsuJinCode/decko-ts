@@ -1,0 +1,12 @@
+{
+  "Id": 900001,
+  "Name": "okp-smoke",
+  "ScriptType": 1,
+  "DefaultHostname": "okp-smoke-synthetic.bunny.run",
+  "LinkedPullZones": [
+    { "Id": 900002, "PullZoneName": "okp-smoke", "EnableSmartCache": true }
+  ],
+  "EdgeScriptVariables": [],
+  "TotalRequestsServed": 0,
+  "TotalCpuUsed": 0
+}

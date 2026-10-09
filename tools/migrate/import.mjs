@@ -20,13 +20,19 @@
 // batched (default 1000 statements per transaction) and flushed, so peak
 // memory is O(batch + parser buffer) regardless of dump size.
 //
+// Resumability: each committed batch advances a checkpoint row in the same
+// transaction (IMPORT_PROGRESS_TABLE), so an interrupted import resumes from
+// its last committed batch; see importDump.
+//
 // Index strategy: db/schema.sqlite.sql declares tables + indexes in one
 // file. This importer executes the CREATE TABLE statements first, imports
 // everything, then applies the CREATE INDEX statements — bulk load without
 // per-row index maintenance is the standard order-of-magnitude win on
 // multi-million-row tables (card_references: 6.3M production rows).
 
-import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { createReadStream, existsSync, readFileSync, readdirSync } from "node:fs";
+import { dirname, join } from "node:path";
 import Database from "better-sqlite3";
 import { dumpRows } from "./parse-dump.mjs";
 
@@ -156,20 +162,32 @@ export class LocalSqliteToolDriver {
   }
 
   async query(sql, params = []) {
+    return this.executeOne(sql, params);
+  }
+
+  /** One transaction; each statement's own result, in order. A reading
+   *  statement returns its rows: the render engine folds SELECTs into
+   *  batches (the deck_data_version stamp rides the cold batch), so a
+   *  batch that ran readers without returning rows breaks rendering. */
+  async batch(statements) {
+    const run = this.db.transaction(() =>
+      statements.map((s) => this.executeOne(s.sql, s.params ?? [])),
+    );
+    return run();
+  }
+
+  executeOne(sql, params) {
     const stmt = this.db.prepare(sql);
     if (stmt.reader) {
       return { rows: stmt.all(...params), rowsAffected: 0 };
     }
     const info = stmt.run(...params);
-    return { rows: [], rowsAffected: Number(info.changes) };
-  }
-
-  async batch(statements) {
-    const run = this.db.transaction(() =>
-      statements.map((s) => this.db.prepare(s.sql).run(...s.params)),
-    );
-    run();
-    return statements.map(() => ({ rows: [], rowsAffected: 1 }));
+    const lastRowId = info.lastInsertRowid;
+    return {
+      rows: [],
+      rowsAffected: Number(info.changes),
+      ...(lastRowId !== undefined && BigInt(lastRowId) > 0n ? { lastInsertRowId: lastRowId } : {}),
+    };
   }
 
   /** Streaming full-table read for verification (better-sqlite3 iterator;
@@ -238,6 +256,89 @@ export class Checksum {
   }
 }
 
+/** Tables the engine owns. A Ruby dump never carries them; the importer
+ *  creates and fills them itself, and the verifier checks them for
+ *  readiness, not parity. */
+export const ENGINE_OWNED_TABLES = ["deck_data_version"];
+
+/** The checkpoint table an import keeps while it runs. It is created at the
+ *  start, advanced in the same transaction as every committed batch, and
+ *  dropped when the import completes, so a database that still has it holds
+ *  an interrupted import. */
+export const IMPORT_PROGRESS_TABLE = "decko_import_progress";
+
+/** Size and SHA-256 of the dump, streamed. A resume refuses a dump whose
+ *  identity differs from the one the interrupted import started with. */
+export async function dumpIdentity(dumpPath) {
+  const hash = createHash("sha256");
+  let bytes = 0;
+  for await (const chunk of createReadStream(dumpPath)) {
+    hash.update(chunk);
+    bytes += chunk.length;
+  }
+  return { bytes, sha256: hash.digest("hex") };
+}
+
+/** The interrupted import's checkpoint, or undefined when there is none. */
+export async function readImportProgress(driver) {
+  const table = await driver.query(
+    "SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = ?",
+    [IMPORT_PROGRESS_TABLE],
+  );
+  if (Number(table.rows[0]?.n ?? 0) === 0) return undefined;
+  const row = (await driver.query(`SELECT * FROM "${IMPORT_PROGRESS_TABLE}" WHERE id = 1`, [])).rows[0];
+  if (row === undefined) return undefined;
+  return {
+    rowsDone: Number(row.rows_done),
+    phase: row.phase,
+    dumpBytes: Number(row.dump_bytes),
+    dumpSha256: row.dump_sha256,
+    errors: JSON.parse(row.errors ?? "[]"),
+    startedAt: row.started_at,
+  };
+}
+
+async function schemaObjectExists(driver, type, name) {
+  const result = await driver.query(
+    "SELECT COUNT(*) AS n FROM sqlite_master WHERE type = ? AND name = ?",
+    [type, name],
+  );
+  return Number(result.rows[0]?.n ?? 0) > 0;
+}
+
+/** Run a CREATE statement unless the object it names already exists, so the
+ *  post-load phase can be repeated by a resumed import. */
+async function createUnlessExists(driver, statement) {
+  const match = /^CREATE\s+(?:UNIQUE\s+)?(TABLE|INDEX|TRIGGER)\s+(?:IF\s+NOT\s+EXISTS\s+)?"([^"]+)"/i.exec(statement);
+  if (match !== null && (await schemaObjectExists(driver, match[1].toLowerCase(), match[2]))) return false;
+  await driver.query(statement, []);
+  return true;
+}
+
+/** Apply the engine's own migrations (db/migrations/*.sql: the session
+ *  table), with the same bookkeeping src/card/auth/migrations.ts keeps, so a
+ *  host that runs those migrations at boot finds them applied. */
+async function applyEngineMigrations(driver, migrationsDir) {
+  if (migrationsDir === undefined || !existsSync(migrationsDir)) return [];
+  await driver.query(
+    `CREATE TABLE IF NOT EXISTS "auth_migrations" ("version" TEXT NOT NULL PRIMARY KEY, "applied_at" TEXT NOT NULL)`,
+    [],
+  );
+  const applied = [];
+  for (const file of readdirSync(migrationsDir).filter((f) => f.endsWith(".sql")).sort()) {
+    const done = await driver.query("SELECT version FROM auth_migrations WHERE version = ?", [file]);
+    if (done.rows.length > 0) continue;
+    const statements = splitSqlStatements(readFileSync(join(migrationsDir, file), "utf8"));
+    const appliedAt = new Date().toISOString().replace("T", " ").replace("Z", "").slice(0, 23);
+    await driver.batch([
+      ...statements.map((sql) => ({ sql, params: [] })),
+      { sql: "INSERT INTO auth_migrations (version, applied_at) VALUES (?, ?)", params: [file, appliedAt] },
+    ]);
+    applied.push(file);
+  }
+  return applied;
+}
+
 /** Shape of the importDump() return value (report input for the verifier):
  *  - counts: table -> source row count
  *  - checksums: table -> { sum, count, minId, maxId } (order-independent)
@@ -246,12 +347,23 @@ export class Checksum {
  *  - keyRepair: { derived, nullSimpleKeys }
  *  - errors: [{ table, rowId, message }] (message truncated, content-free)
  *  - bytesRead, rowsEmitted, elapsedMs
+ *  - dump: { bytes, sha256 }
+ *  - resumedFromRow: rows an earlier, interrupted run had committed (0 for
+ *    a run that started fresh)
+ *  - engineMigrations: engine migration files applied by this run
  */
 
 /**
  * Stream the dump into the target database. Creates the schema (tables
  * only), imports table by table as rows arrive, applies indexes at the
  * end, and returns the source-side stats the verifier checks against.
+ *
+ * Resumable. Every committed batch advances a checkpoint (the count of dump
+ * rows handled) in the same transaction, so a crash at any point leaves the
+ * database at a batch boundary with a checkpoint that says exactly where.
+ * `resume: true` continues such an import: the dump is read from the start
+ * again (its checksums cover every row), rows before the checkpoint are not
+ * inserted again, and the post-load phase skips what already exists.
  */
 export async function importDump(opts) {
   const {
@@ -263,6 +375,7 @@ export async function importDump(opts) {
   const started = Date.now();
   const schema = parseTargetSchema(ddlPath);
   const tableSet = opts.tables ? new Set(opts.tables) : undefined;
+  const identity = await dumpIdentity(dumpPath);
 
   const stats = {
     counts: {},
@@ -274,19 +387,34 @@ export async function importDump(opts) {
     bytesRead: 0,
     rowsEmitted: 0,
     elapsedMs: 0,
+    dump: identity,
+    resumedFromRow: 0,
+    engineMigrations: [],
   };
 
   for (const pragma of IMPORT_PRAGMAS) await driver.query(pragma, []);
   for (const pragma of schema.pragmas) await driver.query(pragma, []);
 
-  // Fresh-target guard: a migration into a populated deck would silently
-  // mix decks (or explode on id collisions). Refuse unless --append.
-  if (!opts.append) {
-    const existing = await driver.query(
-      "SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'cards'",
-      [],
+  const progress = await readImportProgress(driver);
+  if (progress !== undefined && !opts.resume) {
+    throw new Error(
+      `this database holds an interrupted import (${progress.rowsDone} dump rows committed); ` +
+        "resume it (resume:true, or --resume on the command line) or start again with a new target",
     );
-    if ((existing.rows[0]?.n ?? 0) > 0) {
+  }
+  if (opts.resume) {
+    if (progress === undefined) {
+      throw new Error("nothing to resume: this database holds no interrupted import");
+    }
+    if (progress.dumpBytes !== identity.bytes || progress.dumpSha256 !== identity.sha256) {
+      throw new Error("cannot resume: the dump is not the one this import started from (size or SHA-256 differ)");
+    }
+    stats.resumedFromRow = progress.rowsDone;
+    stats.errors = progress.errors;
+  } else if (!opts.append) {
+    // Fresh-target guard: a migration into a populated deck would silently
+    // mix decks (or explode on id collisions). Refuse unless append.
+    if (await schemaObjectExists(driver, "table", "cards")) {
       const count = await driver.query("SELECT COUNT(*) AS n FROM cards", []);
       if ((count.rows[0]?.n ?? 0) > 0) {
         throw new Error(
@@ -296,36 +424,75 @@ export async function importDump(opts) {
     }
   }
 
-  for (const statement of schema.createTables) await driver.query(statement, []);
+  for (const statement of schema.createTables) await createUnlessExists(driver, statement);
+  if (progress === undefined) {
+    await driver.query(
+      `CREATE TABLE "${IMPORT_PROGRESS_TABLE}" (
+        "id" INTEGER PRIMARY KEY CHECK ("id" = 1),
+        "rows_done" INTEGER NOT NULL,
+        "phase" TEXT NOT NULL,
+        "dump_bytes" INTEGER NOT NULL,
+        "dump_sha256" TEXT NOT NULL,
+        "errors" TEXT NOT NULL,
+        "started_at" TEXT NOT NULL
+      )`,
+      [],
+    );
+    await driver.query(
+      `INSERT INTO "${IMPORT_PROGRESS_TABLE}" (id, rows_done, phase, dump_bytes, dump_sha256, errors, started_at) VALUES (1, 0, 'load', ?, ?, '[]', ?)`,
+      [identity.bytes, identity.sha256, new Date().toISOString()],
+    );
+  }
+  const skipRows = progress?.rowsDone ?? 0;
+  const loadDone = progress !== undefined && progress.phase !== "load";
 
   let batch = [];
+  let rowsSeen = 0;
+  const checkpointStatement = () => ({
+    sql: `UPDATE "${IMPORT_PROGRESS_TABLE}" SET rows_done = ?, errors = ? WHERE id = 1`,
+    params: [rowsSeen, JSON.stringify(stats.errors)],
+  });
 
   const flush = async () => {
-    if (batch.length === 0) return;
+    if (batch.length === 0 && rowsSeen <= skipRows) return;
     try {
-      await driver.batch(batch);
+      // The rows and the checkpoint commit together or not at all.
+      await driver.batch([...batch, checkpointStatement()]);
     } catch (err) {
       // Isolate the failure: run the batch statement-by-statement so one
-      // bad row does not lose the chunk (and is reported with its id).
-      for (const s of batch) {
-        try {
-          await driver.query(s.sql, s.params);
-        } catch (rowErr) {
-          if (stats.errors.length >= (opts.maxErrors ?? 0)) {
-            rowErr.__failingTable = s.__table;
-            rowErr.__failingParamCount = s.params.length;
-            rowErr.__failingSql = s.sql;
-            throw rowErr;
+      // bad row does not lose the chunk (and is reported with its id). The
+      // retry runs inside one savepoint with the checkpoint, so it too
+      // commits whole or not at all.
+      await driver.query("SAVEPOINT import_batch", []);
+      try {
+        for (const s of batch) {
+          try {
+            await driver.query(s.sql, s.params);
+          } catch (rowErr) {
+            if (stats.errors.length >= (opts.maxErrors ?? 0)) {
+              rowErr.__failingTable = s.__table;
+              rowErr.__failingParamCount = s.params.length;
+              rowErr.__failingSql = s.sql;
+              throw rowErr;
+            }
+            stats.errors.push({
+              table: s.__table,
+              rowId: s.params[s.__idIdx] ?? null,
+              message: String(rowErr?.message ?? rowErr).slice(0, 300),
+            });
           }
-          stats.errors.push({
-            table: s.__table,
-            rowId: s.params[s.__idIdx] ?? null,
-            message: String(rowErr?.message ?? rowErr).slice(0, 300),
-          });
         }
+        const cp = checkpointStatement();
+        await driver.query(cp.sql, cp.params);
+        await driver.query("RELEASE import_batch", []);
+      } catch (fatal) {
+        await driver.query("ROLLBACK TO import_batch", []);
+        await driver.query("RELEASE import_batch", []);
+        throw fatal;
       }
     }
     batch = [];
+    opts.onCheckpoint?.(rowsSeen);
   };
 
   const makeInsert = (table, columns) => {
@@ -343,12 +510,17 @@ export async function importDump(opts) {
       opts.onProgress?.(bytes, rows);
     },
   })) {
+    if (opts.signal?.aborted) throw new Error("import interrupted");
+    rowsSeen += 1;
+    // Rows an interrupted run already committed: counted and checksummed
+    // (the verifier compares the whole dump), not inserted again.
+    const alreadyCommitted = rowsSeen <= skipRows;
     const table = row.table;
     if (tableSet !== undefined && !tableSet.has(table)) continue;
-    const targetColumns = schema.tableColumns[table];
+    const targetColumns = ENGINE_OWNED_TABLES.includes(table) ? undefined : schema.tableColumns[table];
     if (targetColumns === undefined) {
       stats.skippedTables[table] = (stats.skippedTables[table] ?? 0) + 1;
-      if (!stats.warnings.some((w) => w === `skipped table \`${table}\``)) {
+      if (!stats.warnings.some((w) => w.startsWith(`skipped table \`${table}\``))) {
         stats.warnings.push(
           `skipped table \`${table}\`: not part of the decko-ts core schema (row count in skippedTables)`,
         );
@@ -425,6 +597,7 @@ export async function importDump(opts) {
     }
     stats.counts[table] += 1;
     stats.checksums[table].addRow(values, columns.indexOf("id"));
+    if (alreadyCommitted) continue;
 
     const sql = makeInsert(table, columns);
     // Per-row debug hook, off by default: set DECKO_MIGRATE_DEBUG=1 to
@@ -437,18 +610,27 @@ export async function importDump(opts) {
     batch.push({ sql, params: values, __table: table, __idIdx: columns.indexOf("id") });
     if (batch.length >= batchSize) await flush();
   }
-  await flush();
+  if (!loadDone) await flush();
+  await driver.query(`UPDATE "${IMPORT_PROGRESS_TABLE}" SET phase = 'post-load' WHERE id = 1`, []);
 
   // Indexes after the bulk load (see module doc).
-  for (const statement of schema.createIndexes) await driver.query(statement, []);
+  for (const statement of schema.createIndexes) await createUnlessExists(driver, statement);
   // Planner statistics, after the rows are in and after the indexes exist.
   // ANALYZE writes only sqlite_stat1, never a corpus row.
   await driver.query("ANALYZE", []);
   // [ENGINE-FRESHNESS] stamp triggers + row LAST — after the bulk load, so
   // the per-row trigger fire never happens during import (see
   // parseTargetSchema's note).
-  for (const statement of schema.createTriggers) await driver.query(statement, []);
-  for (const statement of schema.postLoadStatements) await driver.query(statement, []);
+  for (const statement of schema.createTriggers) await createUnlessExists(driver, statement);
+  for (const statement of schema.postLoadStatements) {
+    await driver.query(statement.replace(/^INSERT INTO/i, "INSERT OR IGNORE INTO"), []);
+  }
+  stats.engineMigrations = await applyEngineMigrations(
+    driver,
+    opts.engineMigrationsDir ?? join(dirname(ddlPath), "migrations"),
+  );
+  // Complete: the checkpoint has nothing left to say.
+  await driver.query(`DROP TABLE "${IMPORT_PROGRESS_TABLE}"`, []);
   // Leave the database in a sane durability state.
   await driver.query("PRAGMA synchronous = NORMAL", []);
   await driver.query("PRAGMA wal_checkpoint(TRUNCATE)", []);

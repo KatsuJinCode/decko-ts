@@ -84,6 +84,32 @@ beforeAll(async () => {
   ).toBeNull();
   expect(bundle.length).toBeGreaterThan(10_000); // the engine actually came along
 
+  // Bundle hygiene, part two: no unguarded `process`. This Worker runs
+  // without nodejs_compat, so workerd has no `process` global and a bare
+  // `process.env` read throws ReferenceError: at boot when it sits at module
+  // top level, or mid-render on the routes that reach it. Engine settings
+  // are read through src/card/debug-flags.ts (envValue / debugFlag); any
+  // other module may mention `process` only on a line that also tests
+  // `typeof process`. The boot below catches only the references the
+  // exercised routes reach; this check covers every module in the bundle.
+  const chunk = outputs[0]?.output.find((c) => c.type === "chunk") as
+    | (Chunk & { modules?: Record<string, { code: string | null }> })
+    | undefined;
+  const unguarded: string[] = [];
+  for (const [id, mod] of Object.entries(chunk?.modules ?? {})) {
+    if (id.replace(/\\/g, "/").endsWith("/src/card/debug-flags.ts")) continue;
+    const code = (mod.code ?? "")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
+    for (const line of code.split("\n")) {
+      if (/(?<![.\w$])process(?![\w$])/.test(line) && !line.includes("typeof process")) {
+        unguarded.push(`${id.replace(/\\/g, "/").replace(/^.*?\/(src|deploy)\//, "$1/")}: ${line.trim()}`);
+      }
+    }
+  }
+  expect(unguarded, "unguarded `process` references in the Worker bundle").toEqual([]);
+  expect(Object.keys(chunk?.modules ?? {}).length).toBeGreaterThan(50);
+
   // 2. Boot workerd via the miniflare-5-proven options path (see
   //    tests/server/drivers/d1-miniflare.test.ts + docs/decisions/0003-edge-native-driver-interfaces.md:
   //    v5 rejects the raw shapes; convertV4MiniflareOptions is the door).

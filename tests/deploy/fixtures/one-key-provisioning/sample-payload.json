@@ -1,0 +1,30 @@
+{
+  "schema": "decko-one-key-provisioning-payload",
+  "schema_version": 1,
+  "created": "2026-10-03T00:00:00.000Z",
+  "provider": "bunny",
+  "deck": {
+    "source_name": "bench-corpus-raw.sqlite3",
+    "source_sha256": "6a44dfdc00000000000000000000000000000000000000000000000000000944",
+    "source_bytes": 217251840,
+    "limit": 60,
+    "tables": "cards,card_references"
+  },
+  "bunny": {
+    "script_name": "okp-smoke",
+    "pull_zone_name": "okp-smoke",
+    "db_group_name": "okp-smoke-group",
+    "db_name": "okp-smoke",
+    "storage_region": "eu-west-1",
+    "primary_region": "AMS",
+    "replica_regions": [],
+    "db_token_authorization": "full-access"
+  },
+  "edge": {
+    "cache_enabled": true,
+    "cache_ttl_seconds": 300,
+    "cache_epoch": 0,
+    "render_budget_ms": 20000,
+    "write_path": false
+  }
+}

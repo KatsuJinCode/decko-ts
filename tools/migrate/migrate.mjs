@@ -2,16 +2,18 @@
 //
 //   node tools/migrate/migrate.mjs --dump <file.sql> --out <deck.sqlite> [--verify] [--engine-verify]
 //
-// Pipeline: streaming parse (parse-dump.mjs) -> batched import (import.mjs)
-// -> verification + JSON report (verify.mjs). Engine-level checks (spot
-// render through the real RenderEngine, Ruby-fixture byte comparison) run
-// through the repo's vitest runner when --engine-verify is passed — the
-// engine is TypeScript and bare-node tooling cannot import it directly
-// .
+// Pipeline: streaming parse (parse-dump.mjs) -> batched, checkpointed import
+// (import.mjs) -> uploaded files (files.mjs, with --files) -> verification +
+// JSON report (verify.mjs). An interrupted import continues with --resume.
+// Engine-level checks (spot render through the real RenderEngine,
+// Ruby-fixture byte comparison) run through the repo's vitest runner when
+// --engine-verify is passed: the engine is TypeScript and bare-node tooling
+// cannot import it directly.
 //
 // Progress streams to stderr; the final summary and the report path go to
 // stdout. Exit code 0 = import (+ verification when requested) succeeded;
-// 1 = failure (parse/import/verify error or parity failure with --strict).
+// 1 = failure (parse/import/verify error, or with --strict any failed
+// verification: parity, engine readiness, files or engine checks).
 
 import { spawnSync } from "node:child_process";
 import { existsSync, rmSync, readFileSync, writeFileSync } from "node:fs";
@@ -19,6 +21,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { LocalSqliteToolDriver, importDump } from "./import.mjs";
 import { verifyMigration } from "./verify.mjs";
+import { copyDeckFiles } from "./files.mjs";
 
 const TOOL_ROOT = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(TOOL_ROOT, "..", "..");
@@ -29,7 +32,7 @@ function usage(exitCode = 0) {
     "Usage: node tools/migrate/migrate.mjs --dump <mysqldump.sql> --out <deck.sqlite> [options]",
     "",
     "Required:",
-    "  --dump <file>       Ruby Decko mysqldump to migrate (read once, streaming)",
+    "  --dump <file>       Ruby Decko mysqldump to migrate (hashed, then parsed streaming)",
     "  --out <file>        Target SQLite database path (must not exist without --append)",
     "",
     "Options:",
@@ -41,10 +44,13 @@ function usage(exitCode = 0) {
     "  --tables <a,b,c>    Import only these tables (default: all core tables)",
     "  --batch <n>         Rows per transaction (default 1000)",
     "  --append            Import into an existing database instead of refusing",
+    "  --resume            Continue an interrupted import into --out from its last committed batch",
+    "  --files <dir>       The Ruby deck's files directory (uploads); copied and checked file by file",
+    "  --files-out <dir>   Where the files go (default: files/ beside --out, the Node host's default)",
     "  --max-errors <n>    Keep going past per-row insert failures, up to n (default 0)",
     "  --ddl <file>        Alternate target DDL (default db/schema.sqlite.sql)",
     "  --tolerant          Tolerate a truncated dump tail instead of failing",
-    "  --strict            Exit nonzero when parity checks fail (with --verify)",
+    "  --strict            Exit nonzero unless verification passes: parity, readiness, files, engine",
     "  --quiet             No per-chunk progress output",
     "",
     "The JSON report is content-free (ids, counts, hashes - never card names or content).",
@@ -64,6 +70,9 @@ function parseArgs(argv) {
     tables: undefined,
     batch: 1000,
     append: false,
+    resume: false,
+    files: undefined,
+    filesOut: undefined,
     maxErrors: 0,
     ddl: DEFAULT_DDL,
     tolerant: false,
@@ -88,6 +97,9 @@ function parseArgs(argv) {
       case "--tables": opts.tables = val().split(",").map((s) => s.trim()); break;
       case "--batch": opts.batch = Number(val()); break;
       case "--append": opts.append = true; break;
+      case "--resume": opts.resume = true; break;
+      case "--files": opts.files = path.resolve(val()); break;
+      case "--files-out": opts.filesOut = path.resolve(val()); break;
       case "--max-errors": opts.maxErrors = Number(val()); break;
       case "--ddl": opts.ddl = path.resolve(val()); break;
       case "--tolerant": opts.tolerant = true; break;
@@ -112,20 +124,38 @@ if (!existsSync(opts.ddl)) {
   console.error(`target DDL not found: ${opts.ddl}`);
   process.exit(1);
 }
-if (existsSync(opts.out) && !opts.append) {
-  console.error(`target already exists: ${opts.out} (pass --append to import into it anyway)`);
+if (existsSync(opts.out) && !opts.append && !opts.resume) {
+  console.error(
+    `target already exists: ${opts.out} (pass --resume to continue an interrupted import into it, or --append to import into it anyway)`,
+  );
+  process.exit(1);
+}
+if (opts.resume && !existsSync(opts.out)) {
+  console.error(`nothing to resume: ${opts.out} does not exist`);
+  process.exit(1);
+}
+if (opts.files !== undefined && !existsSync(opts.files)) {
+  console.error(`files directory not found: ${opts.files}`);
   process.exit(1);
 }
 
 const reportPath = opts.report ?? `${opts.out}.migrate-report.json`;
+// The port's Node host reads uploads from DECKO_FILES_DIR, which defaults to
+// "files" beside the database.
+const filesOut = opts.filesOut ?? path.join(path.dirname(path.resolve(opts.out)), "files");
 
 // The migration tool preserves whatever trash state rows carry (trash=1
 // rows import as-is; the fetch layer reads them deliberately).
 console.log(`migrate: ${opts.dump}`);
-console.log(`    -> ${opts.out}`);
+console.log(`    -> ${opts.out}${opts.resume ? " (resuming)" : ""}`);
 
 const driver = new LocalSqliteToolDriver(opts.out);
 const t0 = Date.now();
+
+// Fault injection for the resumability test: end the process abruptly,
+// with no cleanup, after this many committed batches.
+const crashAfter = Number(process.env.DECKO_MIGRATE_FAULT_AFTER_CHECKPOINTS ?? "0");
+let checkpoints = 0;
 
 let stats;
 try {
@@ -137,6 +167,12 @@ try {
     batchSize: opts.batch,
     maxErrors: opts.maxErrors,
     append: opts.append,
+    resume: opts.resume,
+    onCheckpoint: (rowsDone) => {
+      checkpoints += 1;
+      if (!opts.quiet) process.stderr.write(`\r  checkpoint: ${rowsDone} dump rows committed`);
+      if (crashAfter > 0 && checkpoints >= crashAfter) process.kill(process.pid, "SIGKILL");
+    },
     onProgress: (bytes, rows) => {
       if (opts.quiet) return;
       const secs = (Date.now() - t0) / 1000;
@@ -150,13 +186,15 @@ try {
 } catch (err) {
   driver.close();
   console.error(`\nimport failed: ${err?.message ?? err}`);
+  console.error("  the database keeps every committed batch; rerun with --resume to continue");
   process.exit(1);
 }
 
 if (!opts.quiet) process.stderr.write("\n");
 console.log(
   `imported ${stats.rowsEmitted} rows in ${(stats.elapsedMs / 1000).toFixed(1)}s ` +
-    `(${(stats.bytesRead / 1048576).toFixed(0)} MB)`,
+    `(${(stats.bytesRead / 1048576).toFixed(0)} MB)` +
+    (stats.resumedFromRow > 0 ? `, resumed after ${stats.resumedFromRow} committed rows` : ""),
 );
 for (const [table, count] of Object.entries(stats.counts)) {
   console.log(`  ${table}: ${count}`);
@@ -173,6 +211,15 @@ if (stats.errors.length > 0) {
   console.log(`  row errors: ${stats.errors.length} (see report)`);
 }
 
+let filesCopy;
+if (opts.files !== undefined) {
+  filesCopy = copyDeckFiles({ sourceDir: opts.files, targetDir: filesOut });
+  console.log(
+    `files: ${filesCopy.files} (${(filesCopy.bytes / 1048576).toFixed(1)} MB) -> ${filesOut}; ` +
+      `${filesCopy.copied} copied, ${filesCopy.alreadyPresent} already present, ${filesCopy.mismatched.length} mismatched`,
+  );
+}
+
 let report;
 if (opts.verify) {
   // Engine checks: try the direct bridge (works under vitest); otherwise
@@ -187,36 +234,34 @@ if (opts.verify) {
     engineBridge = undefined; // bare node cannot load the TS engine
   }
 
-  let engineChecks;
-  if (engineBridge !== undefined) {
-    engineChecks = engineBridge.engineChecks;
-  } else if (opts.engineVerify) {
-    await runEngineVerificationSpawn(opts, reportPath);
-    // The spawned run merges its results into the report file; the inline
-    // verify below runs first and writes the base report.
-  }
-
   report = await verifyMigration({
     dumpPath: opts.dump,
     driver,
     ddlPath: opts.ddl,
     importStats: stats,
-    engineChecks,
+    engineChecks: engineBridge?.engineChecks,
     spotCount: opts.spot,
+    filesSourceDir: opts.files,
+    filesTargetDir: opts.files === undefined ? undefined : filesOut,
+    filesCopy,
     reportPath,
   });
 
   if (engineBridge === undefined && opts.engineVerify) {
-    // Merge the spawned engine results into the freshly written report.
+    // The spawned run reads the report verify just wrote and leaves its
+    // results beside it; merge them in and re-derive the verdict.
+    await runEngineVerificationSpawn(opts, reportPath);
     try {
       const spawned = JSON.parse(readFileSync(`${reportPath}.engine.json`, "utf8"));
       report.engine = spawned;
-      const merged = { ...report, engine: spawned };
-      writeFileSync(reportPath, JSON.stringify(merged, null, 2), "utf8");
+      report.ok =
+        report.ok && spawned.status === "ok" && (spawned.spotRender?.renderErrors ?? 0) === 0;
       rmSync(`${reportPath}.engine.json`, { force: true });
     } catch {
-      // spawn failed or wrote nothing: engine stays "skipped" with reason
+      report.engine = { status: "error", reason: "the engine verification run produced no result" };
+      report.ok = false;
     }
+    writeFileSync(reportPath, JSON.stringify(report, null, 2), "utf8");
   }
 
   console.log("\nverification:");
@@ -230,6 +275,17 @@ if (opts.verify) {
     console.log(`  PARITY FAILURES: ${failedTables.join(", ")}`);
   }
   console.log(`  junction walk: ${report.junction.resolved}/${report.junction.sampled} resolved`);
+  const r = report.readiness;
+  console.log(
+    `  engine readiness: stamp row ${r.stampRow ? "present" : "MISSING"}, freshness triggers ` +
+      `${r.freshnessTriggers.present}/${r.freshnessTriggers.expected}, session table ${r.sessionTable ? "present" : "MISSING"}`,
+  );
+  const f = report.files;
+  console.log(
+    `  files: ${f.status}; referenced ${f.referenced.current} current + ${f.referenced.history} in history, ` +
+      `present ${f.present.current} + ${f.present.history}, lost ${f.lost}` +
+      (f.status === "not-migrated" ? " (pass --files <the Ruby deck's files directory>)" : ""),
+  );
   console.log(`  engine checks: ${report.engine.status}`);
   if (report.engine.status === "ok") {
     const sr = report.engine.spotRender;
@@ -243,6 +299,7 @@ if (opts.verify) {
         `, rendered compared ${fx.renderedCompared} (${fx.renderedMismatched} mismatched)`,
     );
   }
+  console.log(`  verdict: ${report.ok ? "ok" : "NOT OK"}`);
   console.log(`  report: ${reportPath}`);
 }
 
@@ -250,10 +307,7 @@ driver.close();
 
 let exitCode = 0;
 if (stats.errors.length > 0) exitCode = 1;
-if (opts.verify && report !== undefined) {
-  if (!report.allParity && opts.strict) exitCode = 1;
-  if (report.engine.status === "error" && opts.strict) exitCode = 1;
-}
+if (opts.verify && report !== undefined && !report.ok && opts.strict) exitCode = 1;
 process.exit(exitCode);
 
 // ---------------------------------------------------------------------------

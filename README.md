@@ -64,7 +64,7 @@ Four cards, already there, that you can read:
 | URL | what it is |
 | --- | --- |
 | `/` | the `Home` card |
-| `/Hello+World` | a card with body text |
+| `/Hello_World` | a card with body text (`_` stands for a space in a card URL; `+` joins two names into a compound card) |
 | `/About` | a card that includes `Hello World` one level down |
 | `/api/status` | JSON describing the running engine |
 | `/api/card/About` | the same card as a JSON record |
@@ -133,8 +133,8 @@ rename the database.
 
 ```bash
 curl https://<worker>.<subdomain>.workers.dev/                # Home card HTML
-curl https://<worker>.<subdomain>.workers.dev/Hello+World     # the leaf card
-curl https://<worker>.<subdomain>.workers.dev/Hello+World/content
+curl https://<worker>.<subdomain>.workers.dev/Hello_World     # the leaf card
+curl https://<worker>.<subdomain>.workers.dev/Hello_World/content
 curl https://<worker>.<subdomain>.workers.dev/api/status      # JSON engine metadata
 curl https://<worker>.<subdomain>.workers.dev/api/card/About  # JSON card metadata
 ```
@@ -243,6 +243,10 @@ refused with a reason, never deleted.
   scripts that record Ruby behavior into `fixtures/captured/`.
 - `tools/migrate/` — the generalized dump importer (Ruby deck dump →
   decko-ts storage), proven on a 1.2 GB production dump.
+  `node tools/migrate/migrate.mjs --dump deck.sql --out deck.sqlite --files <the Ruby deck's files directory> --verify --strict`
+  imports, copies the uploads, and fails unless every table matches the dump,
+  the engine can serve the deck and every file a card names is in place;
+  `--resume` continues an interrupted run from its last committed batch.
 - `tools/corpus-anonymizer/` + `benchmarks/` — the corpus program:
   structure-preserving content-free benchmark deck (47k cards / 180k views),
   the anonymized 2x-scale artifact builder, replay + perf harnesses.
