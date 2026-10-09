@@ -863,7 +863,10 @@ async function deckoBotAccountEmail(driver: SQLDatabaseDriver): Promise<string> 
  *  headers are absolute (captured: "http://localhost:3011/..."). */
 function cardUrl(req: WriteRouteRequest, path: string): string {
   if (req.host === undefined || req.host === "") return path; // no Host: relative (documented degenerate case)
-  return `http://${req.host}${path}`;
+  // The client's own scheme, so an https deck never redirects to http
+  // (the edge-signin-form-fix graft; the deploy lineage's scheme-aware
+  // card_url).
+  return `${req.scheme ?? "http"}://${req.host}${path}`;
 }
 
 /** Ruby's cud_success for the PLAIN-form flavor (response.rb:25-33): the
