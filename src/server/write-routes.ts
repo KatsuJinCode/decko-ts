@@ -207,6 +207,12 @@ export interface WriteRouteContext {
    *  to every write engine this module builds. Absent = the engine's
    *  default transport. */
   notifyTransport?: NotifyTransport;
+  /** The deck origin and bot address the follower notification's nest
+   *  views render with (Cardio.config.deck_origin port + the Decko Bot
+   *  account's email for safe_from_and_reply_to!, email_config.rb:52-79).
+   *  Absent = the notification template renders without its nest values
+   *  (every `{{_|...}}` nest falls back to its bare name). */
+  followMail?: { origin: string; deckoBotEmail: string };
 }
 
 export interface WriteRouteResponse {
@@ -926,6 +932,7 @@ export async function handleWriteRequest(
     modEvents: await servingModEventRuntime(),
     ...(ctx.recaptcha === undefined ? {} : { recaptcha: ctx.recaptcha }),
     ...(ctx.notifyTransport === undefined ? {} : { notifyTransport: ctx.notifyTransport }),
+    ...(ctx.followMail === undefined ? {} : { followMail: ctx.followMail }),
   });
 
   // CardMount's mount argument: the card[<mount>] file part is the

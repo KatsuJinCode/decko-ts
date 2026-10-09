@@ -271,9 +271,11 @@ const SPACES_HOST = "https://culturesmith-production-storage.fra1.cdn.digitaloce
 
 // DECKO_DECK_PROFILE=stock serves any deck the way stock Decko serves it,
 // for a fresh deck rather than the production deck this host was tuned on:
-//   - pages render through the engine's own views with no default mod
-//     loader, as the edge hosts and the reference harness's adapter render
-//     (saves still walk the deck's event runtime, write-routes.ts);
+//   - pages render through the engine's own views over the deck's mod boot
+//     (defaultDeckLoader — stock Decko composes every gem mod at boot,
+//     dirs.rb:54-62, and serves the mods' set-scoped views: the file
+//     chooser, the pointer input arms, the rename editor; the browser
+//     journeys measure against exactly that serving);
 //   - no production served-environment deltas (asset CDN host, stylesheet
 //     revision, script integrity, footer version pin);
 //   - /*signin is the *signin card's own page (its ported sign-in form), not
@@ -286,7 +288,10 @@ const STOCK_DECK = process.env.DECKO_DECK_PROFILE === "stock";
 // A deck serves its mods' public files at /mod/<mod>/... (decko setup links
 // public/mod/<mod> to each mod's public directory): TinyMCE loads its theme
 // from there, ace its modes. DECKO_MOD_PUBLIC_DIR names the directory that
-// holds mod/; unset, /mod/ paths are not served.
+// holds the mods; a member is either the mod's public directory itself (the
+// link layout) or the mod's checkout directory with the public files under
+// public/ (the decko repo layout, mod/<mod>/public). Unset, /mod/ paths are
+// not served.
 const MOD_PUBLIC_DIR = process.env.DECKO_MOD_PUBLIC_DIR || undefined;
 const MOD_PUBLIC_TYPES = {
   ".js": "text/javascript; charset=utf-8",
@@ -308,23 +313,30 @@ async function serveModPublicFile(pathname) {
   } catch {
     return htmlResponse(400, "<h1>Bad request</h1>", "Bad request");
   }
-  const file = path.resolve(root, rel);
-  if (file !== root && !file.startsWith(root + path.sep)) {
-    return htmlResponse(404, "<h1>Not found</h1>", "Not found");
+  // /mod/<mod>/... resolves against each layout: <mod>/... (the link layout,
+  // where the member IS the public dir) and <mod>/public/... (the decko repo
+  // layout). First existing candidate wins; every candidate passes the same
+  // traversal guard.
+  const segs = rel.split("/").filter((s) => s !== "" && s !== "." && s !== "..");
+  const candidates =
+    segs.length === 0 ? [] : [path.resolve(root, ...segs), path.resolve(root, segs[0], "public", ...segs.slice(1))];
+  for (const file of candidates) {
+    if (file !== root && !file.startsWith(root + path.sep)) continue;
+    try {
+      const bytes = await fs.readFile(file);
+      return {
+        status: 200,
+        headers: {
+          "Content-Type": MOD_PUBLIC_TYPES[path.extname(file).toLowerCase()] ?? "application/octet-stream",
+          "Cache-Control": "no-store",
+        },
+        body: bytes,
+      };
+    } catch {
+      // try the next layout
+    }
   }
-  try {
-    const bytes = await fs.readFile(file);
-    return {
-      status: 200,
-      headers: {
-        "Content-Type": MOD_PUBLIC_TYPES[path.extname(file).toLowerCase()] ?? "application/octet-stream",
-        "Cache-Control": "no-store",
-      },
-      body: bytes,
-    };
-  } catch {
-    return htmlResponse(404, "<h1>Not found</h1>", "Not found");
-  }
+  return htmlResponse(404, "<h1>Not found</h1>", "Not found");
 }
 // (r18: DEFAULT_IMAGE_SIZE retired with the origin image passes — image
 // size variants resolve inside the engine's image views via the nest's
@@ -1130,8 +1142,9 @@ const fetcher = new FetchEngine(driver, { sharedStore, database: "decko" });
 // Deck boot BEFORE any engine construction: RenderEngine's constructor binds
 // getDefaultModLoader() (render.ts:539), so the loader must be in place
 // before the first engine exists — the same order Ruby boots in (mods load,
-// then controllers render).
-if (!STOCK_DECK) defaultDeckLoader();
+// then controllers render). Every profile boots the mods: stock Decko
+// composes them (dirs.rb:54-62), and the mod views ARE its serving.
+defaultDeckLoader();
 const render = new RenderEngine(fetcher);
 // The Auth::Token signing secret (TOKEN_CONFIG above), same host-deployment
 // config shape as imageCdnHost on the next lines.
@@ -3141,6 +3154,8 @@ const ACCOUNT_POST_PATHS = new Set(["/_reset-request", "/_account-password"]);
  *  uploads2 lane: the RAW bytes ride along as bodyBytes — the multipart
  *  upload grammar parses the byte stream (Rack's rack.input), which a
  *  utf8 string round-trip would corrupt for binary payloads. */
+let followMailContext;
+
 async function dispatchWriteRequest(req, pathname, preReadBody) {
   let body = preReadBody;
   let bodyBytes;
@@ -3158,11 +3173,21 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
   }
   const cookieToken = readSessionCookie(req.headers.cookie);
   const cookieActor = cookieToken !== null ? await sessions.lookupSession(cookieToken) : null;
+  // The follower-notification nest views render against the deck origin
+  // (Cardio.config.deck_origin, DECKO_ORIGIN above) and resolve the
+  // template's "Decko Bot" from-name through the bot account's +*email
+  // (safe_from_and_reply_to!, email_config.rb:52-79). Read once; a missing
+  // field reads as the empty string, the deck's own state.
+  if (followMailContext === undefined) {
+    const botEmail = await fetcher.fetchByName("Decko Bot+*email").catch(() => undefined);
+    followMailContext = { origin: DECKO_ORIGIN, deckoBotEmail: botEmail?.dbContent ?? "" };
+  }
   return handleWriteRequest(
     {
       driver,
       fetcher,
       attachmentStore,
+      followMail: followMailContext,
       ...(scssCompiler === undefined ? {} : { scssCompiler }),
       coffeeCompiler,
       // staging-seat-wiring lane: the recaptcha seat, composed only when the
@@ -3183,7 +3208,20 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
               fetcher.expireName(name);
               const actorEngine = engineForActor(cookieActor.id);
               actorEngine.expireRenderCard(name);
-              return actorEngine.render(name, view ?? "titled");
+              // The ajax response re-render runs on the request's MAIN
+              // format (the response's card is the ajax request's main
+              // card, so the slot's header renders h1 — the recorded
+              // session pins h1 in the saved slot). The bare render lane
+              // is not main; the modal arm's main-format shape is what
+              // Ruby answers with.
+              const slotCard = actorEngine.fetchRenderCard(name);
+              if (slotCard === undefined) return actorEngine.render(name, view ?? "titled");
+              const { RenderFormat } = await import("./dist/src/card/render/format.js");
+              return new RenderFormat(slotCard, actorEngine, { main: true, nestQuietErrors: true }).renderView(
+                view ?? "titled",
+                { main: true, main_view: true },
+                null,
+              );
             }
           : undefined,
     },
