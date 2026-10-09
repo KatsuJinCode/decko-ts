@@ -21,6 +21,7 @@
 // storage logic of its own, so there is nothing provider-specific left
 // below it.
 
+import { resolve } from "node:path";
 import type { BlobDriver } from "../../blob/driver.js";
 import { FilesystemBlobDriver } from "../../blob/filesystem.js";
 import { contentTypeForExtension } from "../../blob/content-types.js";
@@ -84,17 +85,24 @@ export interface AttachmentStore {
  *  changing one constructor argument. */
 export class BlobAttachmentStore implements AttachmentStore {
   private readonly blobs: BlobDriver;
+  /** The cache area's own driver ("tmp"): carrierwave's
+   *  files_base_dir("tmp") is a directory APART from the deck's files, so
+   *  the two-step upload's cache never lands inside them. Bucket drivers
+   *  leave this unset and the cache keys under tmp/ in the one namespace. */
+  private readonly tmpBlobs?: BlobDriver;
 
-  constructor(blobs: BlobDriver) {
+  constructor(blobs: BlobDriver, tmpBlobs?: BlobDriver) {
     this.blobs = blobs;
+    this.tmpBlobs = tmpBlobs;
   }
 
-  /** The blob key for one stored file: <cardId>/<name> in the files area;
-   *  the two-step upload's cache area ("tmp", carrierwave's
-   *  files_base_dir("tmp")) is keyed apart so a cache upload for a card
-   *  that does not exist yet never lands inside the deck's files. */
-  private key(cardId: number, name: string, area?: "files" | "tmp"): string {
-    return area === "tmp" ? `tmp/${cardId}/${name}` : `${cardId}/${name}`;
+  private blobsFor(area?: "files" | "tmp"): BlobDriver {
+    return (area === "tmp" && this.tmpBlobs !== undefined ? this.tmpBlobs : this.blobs);
+  }
+
+  /** The blob key for one stored file: <cardId>/<name>. */
+  private key(cardId: number, name: string): string {
+    return `${cardId}/${name}`;
   }
 
   async store(input: AttachmentStoreInput): Promise<StoredAttachment> {
@@ -111,8 +119,8 @@ export class BlobAttachmentStore implements AttachmentStore {
       // (image-resize.ts imageVersionBytes); the -original spelling and any
       // name the resizer did not produce store the original bytes.
       const bytes = input.renditionBytes?.[name] ?? input.bytes;
-      const result = await this.blobs.put(
-        this.key(input.cardId, name, input.area),
+      const result = await this.blobsFor(input.area).put(
+        this.key(input.cardId, name),
         bytes,
         { contentType: contentTypeForExtension(input.ext) },
       );
@@ -132,7 +140,7 @@ export class BlobAttachmentStore implements AttachmentStore {
 
   async discard(input: AttachmentStoreInput): Promise<void> {
     const names = input.renditionNames ?? [filenameWithVariant(input.actionId, input.ext)];
-    for (const name of names) await this.blobs.delete(this.key(input.cardId, name, input.area));
+    for (const name of names) await this.blobsFor(input.area).delete(this.key(input.cardId, name));
   }
 
   async read(
@@ -158,7 +166,7 @@ export class BlobAttachmentStore implements AttachmentStore {
         ? [filenameWithVariant(actionId, ext), filenameWithVariant(actionId, ext, "original")]
         : [filenameWithVariant(actionId, ext, variant), filenameWithVariant(actionId, ext)];
     for (const name of candidates) {
-      const bytes = await this.blobs.getBytes(this.key(cardId, name, area));
+      const bytes = await this.blobsFor(area).getBytes(this.key(cardId, name));
       if (bytes !== undefined) return bytes;
     }
     return undefined;
@@ -170,8 +178,12 @@ export class BlobAttachmentStore implements AttachmentStore {
  *  host composes today; a host that mounts a bucket instead composes
  *  {@link BlobAttachmentStore} over that bucket's driver instead. */
 export class LocalAttachmentStore extends BlobAttachmentStore {
-  /** @param filesDir the deck's files directory (Card.paths["files"]). */
+  /** @param filesDir the deck's files directory (Card.paths["files"]). The
+   *  two-step upload's cache area roots at its PARENT — carrierwave's
+   *  files_base_dir("tmp") is a sibling of files/, never inside it
+   *  (card-mod-carrierwave 00_upload_cache.rb tmp_upload_dir). */
   constructor(filesDir: string) {
-    super(new FilesystemBlobDriver(filesDir));
+    const resolved = resolve(filesDir);
+    super(new FilesystemBlobDriver(resolved), new FilesystemBlobDriver(resolve(resolved, "..", "tmp")));
   }
 }
