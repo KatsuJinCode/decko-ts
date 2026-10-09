@@ -696,6 +696,21 @@ export class CardActionEngine {
             verb: updated.verb,
             name: updated.name,
           });
+        } else {
+          // A POSTED subcard whose tracked fields all match still writes its
+          // row: the director's set_stamper assigns updater_id/updated_at at
+          // instantiation, so the controller-path save stamps the row with
+          // no action and no change rows (events.rb:34-37 skips only the
+          // action). The browser-journeys lane's oracle probe pins it: the
+          // account form's password change moves the whole +*account
+          // family's updater to the acting member (rows 618/619/620 — the
+          // mark, the posted +*password, and the no-change +*email — one
+          // act; the model-level update! without the posted no-change
+          // subcard writes only the password row).
+          await this.fetch.driver.query(
+            "UPDATE cards SET updated_at = ?, updater_id = ? WHERE id = ?",
+            [sqlDateTime(this.clock()), (await this.actingIdForWrite()) ?? this.actor?.id ?? null, existingRow.id],
+          );
         }
         if (sub.subcards !== undefined) {
           saved.push(
@@ -2394,7 +2409,17 @@ export class CardActionEngine {
       isActCard: opts.isActCard ?? true,
       reservedActionId,
     });
-    if (saved === null) return null; // no-op save: nothing persisted
+    if (saved === null) {
+      // The mark itself was POSTED (it is the update target): the director's
+      // set_stamper assigned its updater_id/updated_at at instantiation, so
+      // a no-op mark save still stamps its row (no action, no change rows) —
+      // the same director-layer touch the subcard path below applies.
+      await this.fetch.driver.query(
+        "UPDATE cards SET updated_at = ?, updater_id = ? WHERE id = ?",
+        [sqlDateTime(this.clock()), (await this.actingIdForWrite()) ?? this.actor?.id ?? null, row.id],
+      );
+      return null; // no-op save: no action rows persisted
+    }
     if (noHistory) {
       await this.fetch.driver.query("DELETE FROM card_changes WHERE id > ?", [changesBefore]);
       await this.dropHistory(saved.actionId, saved.actId);

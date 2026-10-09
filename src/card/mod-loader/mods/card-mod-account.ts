@@ -239,10 +239,14 @@ const tokenExpiryView: ViewFn = () =>
  *  :content_formgroups hook (views.rb:60-62) is the edit-form machinery's
  *  (E1's) surface. */
 const accountCoreView: ViewFn = (ctx) => {
+  // account_field_nest(:email)/(:password): field :email names the SETTING
+  // card - Card::Name#field stars codenamed fields (nesting.rb docstring),
+  // so the nests are +*email/+*password (the labeled rows' values are the
+  // real rows' cores: the email text and the password raw's "encrypted").
   const fieldNest = (field: string, title: string): string =>
     ctx.fmt.nest({
-      syntax: `{{+${field}|view:labeled|title:${title}}}`,
-      name: `+${field}`,
+      syntax: `{{+*${field}|view:labeled|title:${title}}}`,
+      name: `+*${field}`,
       options: { view: "labeled", title, extra: {} },
       comment: undefined,
     });
