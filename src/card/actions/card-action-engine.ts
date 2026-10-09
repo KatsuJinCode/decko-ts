@@ -135,6 +135,7 @@ import {
   type SavePathIntegrationHook,
 } from "../notify/index.js";
 import {
+  codedAttachmentIdentifier,
   detectAttachmentExtension,
   lastContentActionIdFromIdentifier,
   localAttachmentIdentifier,
@@ -169,6 +170,7 @@ import { refreshReferencesIn } from "./refresh-references-in.js";
 import { updateRefererContent, updateRefererReferencesOut } from "./update-referer-content.js";
 import {
   LIST_RIGHT_CODENAMES,
+  LIST_SELF_CODENAMES,
   LIST_TYPE_CODENAMES,
   listItemStrings,
   standardizeIdListContent,
@@ -287,6 +289,11 @@ export interface CardActionEngineOptions {
    *  CarrierWave::Storage::File port). Required for saves that carry an
    *  `attachment` input; saves without one behave exactly as before. */
   attachmentStore?: AttachmentStore;
+  /** The store for CODED attachments (storage_type :coded): the mod's
+   *  data/files directory, keyed by codename parts instead of card id
+   *  (set/abstract/attachment/coded.rb coded_dir). Absent = a coded save
+   *  falls back to the attachmentStore. */
+  codedAttachmentStore?: AttachmentStore;
   /** The SassC seam for the style asset events (the skin and CSS asset
    *  inputs and the site stylesheet, style-asset-events.ts). Only LibSass
    *  reproduces the oracle's bytes (assets/scss-compiler.ts). Absent = a
@@ -406,6 +413,7 @@ export class CardActionEngine {
    *  ensureTaskVerdicts model (one batch pair per engine, never per save). */
   private writeTaskState: ViewTaskState | undefined;
   private readonly attachmentStore: AttachmentStore | undefined;
+  private readonly codedAttachmentStore: AttachmentStore | undefined;
   private readonly scssCompiler: ScssCompiler | undefined;
   private readonly coffeeCompiler: CoffeeCompiler | undefined;
   /** Card::Cache[Virtual] for the card_virtuals rows this engine writes. */
@@ -440,6 +448,7 @@ export class CardActionEngine {
     this.passwordHashing = options.passwordHashing;
     this.followMail = options.followMail;
     this.attachmentStore = options.attachmentStore;
+    this.codedAttachmentStore = options.codedAttachmentStore;
     this.scssCompiler = options.scssCompiler;
     this.coffeeCompiler = options.coffeeCompiler;
     this.fileStorage = options.fileStorage;
@@ -517,10 +526,15 @@ export class CardActionEngine {
   private async forgetRolledBackSave(): Promise<void> {
     const files = this.filesStoredThisSave;
     this.filesStoredThisSave = [];
-    if (this.attachmentStore?.discard !== undefined) {
+    if (this.attachmentStore?.discard !== undefined || this.codedAttachmentStore?.discard !== undefined) {
       for (const file of files) {
         try {
-          await this.attachmentStore.discard(file);
+          // Coded files discard from the coded store (its own root).
+          const store =
+            file.coded !== undefined && this.codedAttachmentStore !== undefined
+              ? this.codedAttachmentStore
+              : this.attachmentStore;
+          await store?.discard?.(file);
         } catch {
           // A file left behind is unreferenced (no row names it); the
           // rollback itself has already succeeded.
@@ -830,10 +844,20 @@ export class CardActionEngine {
     const cardRow = await this.fetchRowById(cardId);
     const typeRow = cardRow !== undefined ? await this.fetchRowById(cardRow.type_id) : undefined;
     const codename = typeRow?.codename ?? undefined;
+    const mount = codename !== undefined ? ATTACHMENT_MOUNTS[codename] : undefined;
+    // Coded storage (attachment.coded): the files live under the mod's
+    // data/files/<codename parts> and are named by the mount
+    // ("image-original.svg", "file.txt") — coded.rb coded_dir +
+    // FileCardUploader#filename — and the identifier is the coded one.
+    const coded = attachment.coded;
     const renditionNames =
-      codename !== undefined && codename !== "" && mountUsesImageUploader(codename) && createVersionsFor(ext)
-        ? renditionFileNames(actionId, ext)
-        : undefined;
+      coded === undefined
+        ? codename !== undefined && codename !== "" && mountUsesImageUploader(codename) && createVersionsFor(ext)
+          ? renditionFileNames(actionId, ext)
+          : undefined
+        : mountUsesImageUploader(codename ?? "") && createVersionsFor(ext)
+          ? [`${mount}-original${ext}`, ...IMAGE_VERSION_NAMES.map((v) => `${mount}-${v}${ext}`)]
+          : undefined;
     // The version files (image_card_uploader.rb:16-27): resized renditions
     // keyed by their stored names.
     let renditionBytes: Record<string, Uint8Array> | undefined;
@@ -841,7 +865,7 @@ export class CardActionEngine {
       const versions = await imageVersionBytes(attachment.bytes, ext);
       if (versions !== undefined) {
         renditionBytes = {};
-        for (const v of IMAGE_VERSION_NAMES) renditionBytes[`${actionId}-${v}${ext}`] = versions[v];
+        for (const v of IMAGE_VERSION_NAMES) renditionBytes[`${mount}-${v}${ext}`] = versions[v];
       }
     }
     const storeInput: AttachmentStoreInput = {
@@ -850,15 +874,33 @@ export class CardActionEngine {
       ext,
       bytes: attachment.bytes,
       renditionNames,
+      ...(coded !== undefined && coded.mod !== undefined
+        ? {
+            coded: {
+              mod: coded.mod,
+              dirParts: await this.attachmentCodenameParts(cardRow),
+              mountName: mount ?? "file",
+            },
+          }
+        : {}),
+      // Recorded before the write, so a store that fails half-way is cleaned
+      // up with the rest of a rolled-back save.
     };
-    // Recorded before the write, so a store that fails half-way is cleaned
-    // up with the rest of a rolled-back save.
     this.filesStoredThisSave.push(storeInput);
-    const stored = await this.attachmentStore.store({
+    // Coded files live under the mod's data/files (their own store root).
+    const store = coded !== undefined && this.codedAttachmentStore !== undefined ? this.codedAttachmentStore : this.attachmentStore;
+    const stored = await store.store({
       ...storeInput,
       ...(renditionBytes !== undefined ? { renditionBytes } : {}),
     });
-    const identifier = localAttachmentIdentifier(cardId, actionId, ext);
+    const identifier =
+      coded !== undefined && coded.mod !== undefined
+        ? codedAttachmentIdentifier(
+            (storeInput.coded as { dirParts: readonly string[] }).dirParts,
+            coded.mod,
+            ext,
+          )
+        : localAttachmentIdentifier(cardId, actionId, ext);
 
     // :correct_identifier (attachment.rb:13-17): update_column :db_content —
     // the raw column write, no history event, no timestamp bump.
@@ -970,6 +1012,66 @@ export class CardActionEngine {
       const ext = detectAttachmentExtension(input.attachment.originalFilename, input.attachment.bytes);
       if (canResize(ext) && !(await imageDecodes(input.attachment.bytes))) throw missing();
     }
+  }
+
+  /**
+   * event :validate_coded_storage_type, :validate, on: :save, when: :coded?
+   * (card-mod-carrierwave set/abstract/attachment/coded.rb:7-10):
+   *
+   *   storage_type_error :mod_argument_needed_to_save unless mod
+   *   storage_type_error :codename_needed_for_storage unless coded_ok?
+   *
+   * A coded save is one whose attachment carries the coded marker (the port
+   * has no storage_type column; the marker is the assigned attribute). The
+   * two errors accumulate, so a save with neither a mod nor full codename
+   * coverage reports both, joined as ActiveRecord's RecordInvalid joins full
+   * messages (locale en.yml: "mod argument needed to save card as coded",
+   * "codename needed for storage type coded"; attribute Storage type).
+   * coded_ok? (:22-24): no blank among the name parts' codenames.
+   */
+  private async validateCodedStorageType(
+    attachment: AttachmentInput | undefined,
+    name: DeckoName,
+  ): Promise<void> {
+    const coded = attachment?.coded;
+    if (coded === undefined) return;
+    const problems: string[] = [];
+    if (coded.mod === undefined || coded.mod === "") {
+      problems.push("Storage type mod argument needed to save card as coded");
+    }
+    const parts = await Promise.all(
+      name.partNames.map(async (part) => {
+        const id = await this.fetch.lexicon.id(part);
+        return id === undefined ? undefined : (await this.fetchRowById(id))?.codename ?? undefined;
+      }),
+    );
+    if (parts.some((p) => p === undefined || p === "")) {
+      problems.push("Storage type codename needed for storage type coded");
+    }
+    if (problems.length > 0) {
+      throw new CardActionError(
+        "validation-failed",
+        `Validation failed: ${problems.join(", ")}`,
+        `STORAGE TYPE: ${problems.map((p) => p.replace(/^Storage type /, "")).join(", ")}`,
+      );
+    }
+  }
+
+  /** The card name's codename parts, in order (coded.rb codename_parts:
+   *  `name.parts.map { |p| p.codename&.to_s }`) — the coded file directory
+   *  under the mod's data/files. */
+  private async attachmentCodenameParts(cardRow: CardsRow | undefined): Promise<readonly string[]> {
+    if (cardRow === undefined) return [];
+    const name = (await this.fetch.fetchById(cardRow.id))?.name;
+    const parts: string[] = [];
+    if (name !== undefined) {
+      for (const part of name.partNames) {
+        const id = await this.fetch.lexicon.id(part);
+        const code = id === undefined ? undefined : (await this.fetchRowById(id))?.codename ?? undefined;
+        if (code !== undefined && code !== "") parts.push(code);
+      }
+    }
+    return parts;
   }
 
   // -----------------------------------------------------------------------
@@ -1406,6 +1508,10 @@ export class CardActionEngine {
         typeId,
         name.isCompound && name.leftName !== undefined ? ((await this.fetch.lexicon.id(name.leftName)) ?? null) : null,
         name.isCompound && name.rightName !== undefined ? ((await this.fetch.lexicon.id(name.rightName)) ?? null) : null,
+        // The saved card's own codename (the self-set list cards): a create
+        // carries one only when assigned; an existing name is refused below,
+        // so the update path supplies the row's codename instead.
+        (input as { codename?: string }).codename,
       );
     }
     if (input.content == null && input.attachment === undefined) {
@@ -1414,6 +1520,7 @@ export class CardActionEngine {
     }
     await assertNameAvailable(this.fetch, name, undefined); // validate_uniqueness_of_name (:19-26)
     await this.validateFileExist(input, typeId); // validate_file_exist (attachment.rb:26-34)
+    await this.validateCodedStorageType(input.attachment, name); // validate_coded_storage_type (coded.rb:7-10)
     // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55) is a
     // :validate-stage event — its guard snapshot must exist before this
     // walk (prepareRecaptchaSaveInput no-ops without the mod/config). The
@@ -2125,6 +2232,9 @@ export class CardActionEngine {
       }),
     );
     await this.dispatchEventStage("validate", validationCard());
+    // validate_coded_storage_type (coded.rb:7-10) is on: :save — the update
+    // path runs it under the card's assigned name, like the create path.
+    await this.validateCodedStorageType(input.attachment, newName ?? currentName ?? DeckoName.parse(""));
     return { currentName, currentKey, newName, nameChanged };
   }
 
@@ -2201,6 +2311,7 @@ export class CardActionEngine {
         resolvedTypeId ?? before.type_id,
         before.left_id,
         before.right_id,
+        row.codename ?? undefined,
       );
     }
     // Account fields (account-fields.ts): encrypt_password runs when the
@@ -4147,18 +4258,23 @@ export class CardActionEngine {
 
   /** Abstract::List#standardize_content on assigned content (list-content.ts):
    *  a card in a list set stores its items one per line, without brackets.
-   *  Content of any other card is returned unchanged. */
+   *  The self sets of *recent settings and the Mod card are list sets too
+   *  (LIST_SELF_CODENAMES), so assigned content of those two cards
+   *  standardizes the same way. Content of any other card is returned
+   *  unchanged. */
   private async standardizeAssignedContent(
     content: string,
     typeId: number | null,
     leftId: number | null,
     rightId: number | null,
+    ownCode?: string | null,
   ): Promise<string> {
     const typeCode = typeId === null ? undefined : await this.fetch.codenames.nameForId(typeId);
     const rightCode = rightId === null ? undefined : await this.fetch.codenames.nameForId(rightId);
     let isList =
       (typeCode !== undefined && LIST_TYPE_CODENAMES.has(typeCode)) ||
-      (rightCode !== undefined && LIST_RIGHT_CODENAMES.has(rightCode));
+      (rightCode !== undefined && LIST_RIGHT_CODENAMES.has(rightCode)) ||
+      (ownCode !== undefined && ownCode !== null && ownCode !== "" && LIST_SELF_CODENAMES.has(ownCode));
     const leftType = async (): Promise<string | undefined> => {
       if (leftId === null) return undefined;
       const left = await this.fetchRowById(leftId);

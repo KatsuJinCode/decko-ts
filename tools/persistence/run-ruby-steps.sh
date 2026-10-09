@@ -21,7 +21,9 @@ STEPS="${4:-32}"
 # step n-1); step files of earlier steps are not rewritten.
 FIRST="${FIRST:-1}"
 HERE="$(dirname "$(readlink -f "$0")")"
-SCRIPT="$HERE/persist-write-probe.rb"
+# PROBE_SCRIPT=<file name in tools/persistence>: the op list to run (the
+# leftover probe runs PROBE_SCRIPT=leftover-probe.rb).
+SCRIPT="$HERE/${PROBE_SCRIPT:-persist-write-probe.rb}"
 WORK="$(dirname "$OUT")"
 DECK="$WORK/ruby-run-$$.sqlite3"
 CACHE="$WORK/ruby-cache-$$"

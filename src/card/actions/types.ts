@@ -118,6 +118,16 @@ export interface AttachmentInput {
    *  the request params carry no uploaded-file object, so Ruby's delayed
    *  integrate stage (the follower notice) is not dropped. */
   fromCachedUpload?: boolean;
+  /** Coded file storage (storage_type: :coded — card-mod-carrierwave
+   *  set/abstract/attachment/coded.rb): the file is kept in the named
+   *  mod's data/files directory, not the deck's, and the card's content
+   *  becomes the coded identifier `:<codename parts>/<mod><ext>`. Presence
+   *  marks the save as coded; `mod` is the mod the file belongs to, absent
+   *  when the save carries none (Ruby's validate_coded_storage_type then
+   *  refuses: "mod argument needed to save card as coded"). `decko eat`
+   *  sets it for a pod item with storage_type :coded
+   *  (Eat::Edibles#handle_attachments). */
+  coded?: { mod?: string };
 }
 
 /** One subcard in a multi-card save (Card::Subcards — card/lib/card/
