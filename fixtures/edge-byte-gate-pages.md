@@ -22,13 +22,25 @@ integration release record, "How every merge is gated").
 
 The original 40 names contained no page whose body renders a CQL search
 result list (`search-result-item` bars over a virtual search nest), so the
-entire search rendering shape — result set, ordering, item bars — shipped
-un-gated. The 2026-10-08 all-actor scoreboard grade tripped over exactly that
-blind spot: an apparent 58-page search regression that turned out to be a
-grading-corpus mispairing, undetectable by the byte gate because none of its
-pages exercised the shape. `Christianity` closes the gap: its page body nests
-`_self+*referred_to_by` (a VirtualSearch family card) and renders the
-referring cards as a result list, and it resolves on the mirror deck.
+entire search rendering shape shipped un-gated. The 2026-10-08 all-actor
+scoreboard grade tripped over exactly that blind spot: an apparent 58-page
+search regression that turned out to be a grading-corpus mispairing,
+undetectable by the byte gate because none of its pages exercised the shape.
+`Christianity` closes the gap: its page body nests `_self+*referred_to_by`
+(a VirtualSearch family card), and it resolves on the mirror deck.
+
+Substrate note (measured 2026-10-09): the mirror deck — the edge gate's
+data — carries 19,482 live cards, and three of the four cards the search
+returns on the full corpus (`christianism+articles`, `christianism+tags`,
+`Richard Rohr - Bias from the Bottom+tags`) are not in that set, while
+`Christianity`'s own content carries no self-link. The edge lane therefore
+gates this page's search nest plumbing and its no-results block, not the
+item bars. The result-list shape stays gated corpus-side: the in-process
+engine on the full paired corpus renders the 4-item list byte-identical to
+the Ruby capture (search-regression paired batch, 2026-10-09, 9/9), and the
+graded corpus runs judge it across every page lane. Extending the mirror
+trip set with the missing cards would let the edge lane gate the full shape
+and is the named follow-up.
 
 ## Provenance
 
