@@ -4317,13 +4317,6 @@ interface UriMatch {
    *  (uri.rb:86-89 `"#{link}#{@trailing_punctuation}"`). "" when the
    *  match did not end in punctuation. */
   trailing: string;
-  /** uri.rb:58-78 interpret's `rescue ::URI::Error` arm: URI.parse on the
-   *  chunk failed, so @process_chunk never assigned and the chunk renders
-   *  its verbatim @text (no anchor, no re-emitted trailing punctuation).
-   *  The span is still CONSUMED by the parser (record_chunk ran before
-   *  interpret), so `text` carries the raw span bytes and nothing inside
-   *  it is re-scanned. */
-  parseFailed?: boolean;
 }
 
 /** The next URI-class match at/after `from`, or undefined. Ruby's parser
@@ -4417,30 +4410,18 @@ function findUriMatch(text: string, from: number): UriMatch | undefined {
       pos = end;
       continue;
     }
-    // uri.rb:72 `@uri = ::URI.parse(chunk)` inside interpret, whose
-    // `rescue ::URI::Error` (:74-77) leaves @process_chunk nil: a chunk
-    // the URI library refuses renders its verbatim @text, never an
-    // anchor. URI.parse's acceptance boundary (probed against the
-    // 3.3.0 gem's RFC3986 parser): the bytes `[]{}<>"^|` and backtick
-    // and a `%` not followed by two hex digits reject both the mailto
-    // opaque form and hier paths (`mailto:brandon@culturesmith.com]`
-    // errors; parens, commas, dots pass) - so the Pacifica Depth
-    // Psychology oracle's bracketed Outlook citation
-    // `[mailto:brandon@culturesmith.com]` stays plain text while the
-    // bare-mailto and bare-host forms around it anchor. The full
-    // regexp's opaque/query classes admit `]`, so the gate must run on
-    // the chunk AFTER the full extent, exactly where Ruby's parse runs.
-    if (/[\[\]{}<>"^|`\\]|%(?![0-9A-Fa-f]{2})/.test(chunk)) {
-      return {
-        start: bestStart,
-        end,
-        href: "",
-        text: prepend + choppedRaw,
-        resourceType: "",
-        trailing: "",
-        parseFailed: true,
-      };
-    }
+    // REVERTED (2026-10-09): the uri.rb:72-77 `rescue ::URI::Error` port —
+    // a URI.parse-invalid chunk (brackets/braces/angle quotes and bad
+    // percent escapes, boundary probed against the 3.3.0 gem's RFC3986
+    // parser) rendered as verbatim @text — reproduced the Pacifica Depth
+    // Psychology oracle's plain-text `[mailto:brandon@culturesmith.com]`
+    // but destabilized the +*referred_to_by search-result family (44
+    // pages per actor: the Archetypal referer list rendered a different
+    // result SET with the gate present and the capture's own set with it
+    // disabled, isolate bisect probes probe-iso2/iso4), through an
+    // interaction this lane could not trace inside its box. The item is
+    // pinned deliberate: the engine anchors the bracketed Outlook mailto
+    // where the oracle keeps it plain, exactly the pre-gate bytes.
     // links.rb:65-72 resource_type runs on the RESOURCE (@link_text):
     // a colonless chunk ("file", "mailto" — the scheme colon was chopped
     // as trailing punctuation) matches NO rule, so no class attribute.
@@ -4559,15 +4540,6 @@ export function expandContentLinks(
     }
     if (uri !== undefined && uri.start <= wikiStart) {
       out += text.slice(pos, uri.start);
-      if (uri.parseFailed) {
-        // uri.rb interpret's rescue arm: the chunk renders verbatim @text
-        // (the raw span, punctuation-chopped like @text was) and the span
-        // is consumed - no anchor, no re-emitted trailing punctuation,
-        // no re-scan of the host/email candidates inside it.
-        out += uri.text;
-        pos = uri.end;
-        continue;
-      }
       // links.rb add_resource_opts (:154-157): target first for
       // external-link, then the resource_type class — a nil resource_type
       // (colonless resource) emits NO class attribute (content.rb
