@@ -9,7 +9,10 @@
 #
 # options-json selects Sow's other sources and outputs instead of the CQL
 # (pass "" as the CQL): {"name": "A,B", "items": "only"|true} (`-n` with
-# `--items`), {"url": "<path or url>"} (`--url`), and {"merge_into": "<file>"},
+# `--items`), {"url": "<path or url>"} (`--url`), {"remote": "<deck url>"}
+# (`--remote`, with the :name — RemoteSource joins
+# `<remote>/<name.url_key>/pod.yml` and opens it), and
+# {"merge_into": "<file>"},
 # which merges the new data into that existing data file as `decko sow -m`
 # merges into a mod's data/<podtype>.yml (Sow#output_hash; the file stands in
 # for the mod's, so no mod directory is written). The result goes to <out.yml>.
@@ -27,7 +30,8 @@ yaml = Thread.new do
     Card::Cache.reset_all
     items = options["items"] == "only" ? :only : options["items"]
     sow = Cardio::Mod::Sow.new(cql: cql.empty? ? nil : cql, podtype: :real, field_tags: field_tags,
-                               name: options["name"], items: items, url: options["url"])
+                               name: options["name"], items: items, url: options["url"],
+                               remote: options["remote"])
     if (target = options["merge_into"])
       sow.define_singleton_method(:filename) { target }
       sow.send(:output_hash).to_yaml
