@@ -92,8 +92,16 @@ describe("configure_button judges can_configure? on every card it renders for", 
   it("the same nest renders the button when the viewer can update its +*type+*structure", async () => {
     storage = await deck("Anyone");
     const html = await storage.engine.render("Host", "core");
-    expect(html).toContain('cardtype-configure-button');
-    expect(html).toContain('href="/widget/configure"');
+    // Ruby's markup (card-mod-format set/type/cardtype.rb:61-63 + 65-75):
+    // configure_button renders the configure_link anchor with
+    // css_classes("configure-type-link ms-3", "btn btn-secondary") and
+    // link_to_card's known/wanted class — the rules-board href, the
+    // "Configure Widgets" title span. The registration's first port
+    // modelled an engine-era approximation ("cardtype-configure-button",
+    // a /configure path) that no oracle capture or gem source carries.
+    expect(html).toContain('class="configure-type-link ms-3 btn btn-secondary known-card"');
+    expect(html).toContain('href="/Widget/board?board%5Btab%5D=rules_tab&amp;set=Widget%2B%2Atype"');
+    expect(html).toContain('>Configure Widgets</span>');
   });
 
   it("the page's main card is judged the same way", async () => {
