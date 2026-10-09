@@ -1,49 +1,66 @@
-// card-mod-format set/all/html/error.rb view :debug_server_error: the error
-// page shown for a server error when the *debugger card is on, registered on
-// All::Html::Error and rendered from the current server error.
+// card-mod-format set/all/html/error.rb: the html :server_error view and
+// :debug_server_error, both registered on All::Html::Error.
+//
+// DELIBERATE DIFFERENCE pinned here. Stock Ruby cannot render
+// :debug_server_error: its body names BetterErrors, which a deck built from
+// its generated Gemfile never loads, so it raises "NameError: uninitialized
+// constant Card::Set::All::Html::Error::BetterErrors" on every card
+// (tools/oracle/debug-server-error-probe.rb). The port copies neither the
+// crash nor the BetterErrors page (source, locals, backtrace, console): it
+// renders :server_error, the "Wild Card!" block a production visitor sees.
 
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck.js";
-import { debugErrorPageHtml, debugFrames, debugServerErrorView, withCurrentServerError } from "../../../src/card/render/debug-server-error.js";
-import type { ViewContext } from "../../../src/card/render/format.js";
+import { SERVER_ERROR_HTML } from "../../../src/card/render/debug-server-error.js";
+import { RenderFormat } from "../../../src/card/render/format.js";
+import { bindModLoaderToEngine, createRenderTestStorage, seedCard, type RenderTestStorage } from "./render-test-storage.js";
 
-it("debug_server_error is All::Html::Error's, on every card", () => {
-  const chain = defaultDeckLoader().viewChain("ALL TYPE-rich_text SELF-pancake", "debug_server_error");
-  expect(chain[0]?.setModule).toBe("All::Html::Error");
+/** set/all/html/server_error.haml as the live site serves it. */
+const WILD_CARD =
+  "<div class='border border-danger text-center p-3'>\n" +
+  "<h1>Wild Card!</h1>\n" +
+  "<h2 class='alert-danger'>500 Server Error</h2>\n" +
+  "<h4 class='p-3'>\n" +
+  "Yuck, sorry about that.\n" +
+  "</h4>\n" +
+  "</div>\n";
+
+it("server_error and debug_server_error are All::Html::Error's, on every card", () => {
+  const loader = defaultDeckLoader();
+  for (const view of ["server_error", "debug_server_error"]) {
+    expect(loader.viewChain("ALL TYPE-rich_text SELF-pancake", view)[0]?.setModule).toBe("All::Html::Error");
+  }
+  expect(SERVER_ERROR_HTML).toBe(WILD_CARD);
 });
 
-describe("debug_server_error", () => {
-  const ctx = {} as ViewContext;
+describe("debug_server_error renders the production server_error view", () => {
+  let storage: RenderTestStorage;
+  beforeAll(async () => {
+    storage = await createRenderTestStorage();
+    await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
+    await seedCard(storage, { id: 600, name: "Home", typeId: 2, dbContent: "home text" });
+    await seedCard(storage, { id: 601, name: "host", typeId: 2, dbContent: "[{{Home|debug_server_error}}]" });
+    storage.fetcher.installNameEnvironment();
+    bindModLoaderToEngine(storage, defaultDeckLoader());
+  });
+  afterAll(() => storage.close());
 
-  it("raises when there is no current server error, as Ruby's ErrorPage does on nil", () => {
-    expect(() => debugServerErrorView(ctx)).toThrow(/no current server error/);
+  it("the focal render gives the Wild Card block, not a raise", async () => {
+    expect(await storage.engine.render("Home", "server_error")).toBe(WILD_CARD);
+    expect(await storage.engine.render("Home", "debug_server_error")).toBe(WILD_CARD);
   });
 
-  it("renders the BetterErrors page for the current error", () => {
-    const error = new TypeError("bad <input>\n\n\nsecond line");
-    const html = withCurrentServerError(error, "/Some_Card?view=core", () => debugServerErrorView(ctx));
-    expect(html).toContain("<strong>TypeError</strong>");
-    expect(html).toContain("at /Some_Card?view=core");
-    expect(html).toContain("<p>bad &lt;input&gt;\nsecond line</p>");
-    expect(html).toContain('<nav class="tabs">');
-    expect(html).toContain("<style>");
-    expect(html).not.toContain('"#{id}"');
-    expect(() => debugServerErrorView(ctx)).toThrow(); // the scope ended
+  it("a nest gives the same block, not the render-error span", async () => {
+    await storage.engine.prepareItemForRender("Home");
+    const card = await storage.engine.prepareItemForRender("host");
+    const html = new RenderFormat(card!, storage.engine, { main: true, nestQuietErrors: true }).renderView("core");
+    expect(html).toBe(`[${WILD_CARD}]`);
   });
 
-  it("classifies frames the way StackFrame does", () => {
-    const error = new Error("x");
-    error.stack = [
-      "Error: x",
-      "    at RenderFormat.renderView (C:/repo/src/card/render/format.ts:120:5)",
-      "    at Object.run (C:/repo/node_modules/vitest/dist/index.js:9:1)",
-      "    at node:internal/process/task_queues:95:5",
-    ].join("\n");
-    expect(debugFrames(error)).toEqual([
-      { context: "application", className: "RenderFormat", methodName: "#renderView", prettyPath: "src/card/render/format.ts", line: "120" },
-      { context: "gem", className: "Object", methodName: "#run", prettyPath: "vitest dist/index.js", line: "9" },
-      { context: "dunno", className: "", methodName: "", prettyPath: "node:internal/process/task_queues", line: "95" },
-    ]);
-    expect(debugErrorPageHtml(error, "/x", "abcd")).toContain('var OID = "abcd";');
+  it("reveals nothing about the card, the error or the code", async () => {
+    const html = await storage.engine.render("Home", "debug_server_error");
+    for (const internal of ["Home", "BetterErrors", "NameError", "backtrace", "frame", ".ts", "<script", "<pre"]) {
+      expect(html).not.toContain(internal);
+    }
   });
 });

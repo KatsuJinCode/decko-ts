@@ -48,7 +48,7 @@ import {
   registerSetTypeAssignment,
 } from "../set-patterns/set-type-assignment.js";
 import { safeSetKeys } from "./set-keys.js";
-import { codenameModuleShortnames, rubySelfToken, safeKeyToModuleShortnameCandidates } from "./set-keys-to-modules.js";
+import { anchoredModuleCandidates, rubySelfToken } from "./set-keys-to-modules.js";
 import { SET_INCLUDES } from "../mod-loader/concrete-set-includes.js";
 import { pluralize } from "../name/inflect.js";
 
@@ -1614,11 +1614,32 @@ export function templateLinkSetNameFromParts(
  *
  *  The CREATE case (new discussion child, no stored row) keeps the
  *  board-stage3 engage_tab shape the mod-layer builder pins (no recaptcha
- *  wrap on that capture) — rendered-unpinned on the live surface. A
- *  signed-in session renders the update form without the reCAPTCHA and
- *  without the author label (comment.rb comment_author_label), as the
- *  signed-in capture pins. */
+ *  wrap on that capture) — rendered-unpinned on the live surface. The
+ *  signed-in branch (comment.rb:74-77 nil author label; comment_buttons'
+ *  array compact) IS ported below — commentAuthorLabelHtml — because the
+ *  chain dispatch shares this body (card-mod-comment.ts commentBoxView)
+ *  and the signed-in board arms pin it; the captured corpus is
+ *  anonymous-only, so those bytes stay capture-exact. */
 const RECAPTCHA_SITE_KEY = "6Lc3c-EoAAAAALnzfnHIWb5Rqy-rNui8l8qsguYG";
+
+/** comment.rb:74-77 comment_author_label: NIL when Auth.signed_in?
+ *  (comment_buttons' array rides output()'s compact — content.rb:70-72 —
+ *  so the signed-in arms render no author label or field), else the label
+ *  + the comment_author text field. The base-table form carries both arms
+ *  now: the captured corpus is anonymous-only, so the anonymous bytes stay
+ *  capture-exact, and the signed-in arm (no label, button only) is the
+ *  body shape the edit-views board arms pin for the signed-in stand-ins
+ *  (the engage_tab create case; card-mod-comment.ts commentAuthorLabel is
+ *  the same branch on the mod builder). */
+function commentAuthorLabelHtml(
+  fmt: RenderFormat,
+  anonymousLabelHtml: string,
+): string {
+  const signedIn =
+    fmt.engine.viewer?.signedIn === true || fmt.engine.pageSession?.signedIn === true;
+  if (signedIn) return "";
+  return anonymousLabelHtml;
+}
 
 const commentBoxBaseView: ViewFn = ({ fmt }) => {
   const card = fmt.card;
@@ -1643,54 +1664,73 @@ const commentBoxBaseView: ViewFn = ({ fmt }) => {
   // readRuleClass '*self' is the corpus's stored marker for that shape
   // (9789: '*self' + the 9813 *update->Anyone row; 770 of the 779
   // discussion rows are '*all plus').
-  // perms :update — and an update of a new card is a create (format/
-  // error.rb ok?): the create branch renders for an actor who may create
-  // the absent +discussion card.
-  const isNew = card.id === undefined;
-  const allowed = isNew
-    ? (fmt.engine.unknownCardCreatable?.(card) ?? fmt.engine.taskAllowed?.(card, "create") === true)
-    : fmt.engine.taskAllowed?.(card, "update") === true;
-  if (!allowed) return "";
-  // A signed-in session gets neither the reCAPTCHA (card-mod-recaptcha
-  // set/all/recaptcha.rb recaptcha_on?: `!Auth.signed_in?`) nor the author
-  // field (comment.rb comment_author_label: `return if Auth.signed_in?`).
-  const signedIn = fmt.engine.pageSession?.signedIn === true;
-  const action = isNew ? "create" : "update";
-  const siteKey = recaptchaSiteKey() ?? RECAPTCHA_SITE_KEY;
-  const recaptcha = signedIn
-    ? ""
-    : `<script src="https://www.google.com/recaptcha/api.js?render=${siteKey}"></` + `script>
-` +
-      `<input type="hidden" name="recaptcha_token" id="recaptcha_token" value=""` +
-      ` data-site-key="${siteKey}" data-action="${action}" class="_recaptcha-token" autocomplete="off" />`;
-  const authorLabel = signedIn
-    ? ""
-    : `<label>My Name is:</label>` +
-      ` <input class=" form-control" type="text" value="Anonymous" name="card[comment_author]" id="card_comment_author" />
-`;
-  // card_form: the create form posts to /card/create as "new_card" without
-  // autosave; the update form patches /update/<url key>.
-  const formOpen = isNew
-    ? `<form class="card-form slotter" id="new_card"${signedIn ? "" : ` data-recaptcha="on"`}` +
-      ` action="/card/create" accept-charset="UTF-8" data-remote="true" method="post">` +
-      `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />`
-    : `<form class="card-form slotter autosave" id="edit_card_${card.id}"${signedIn ? "" : ` data-recaptcha="on"`}` +
-      ` action="/update/${h(fmt.urlKey())}" accept-charset="UTF-8" data-remote="true" method="post">` +
+  if (card.id === undefined) {
+    // Ruby's perms :update on a NEW card consults the CREATE permission
+    // (the board fixture's arms are the oracle: sara - whose only grant is
+    // the *all+*create rule "Anyone Signed In" - renders the form;
+    // anonymous, excluded by that rule, renders the blank). The gate reads
+    // the create verdict the discussion warm computed for seated phantoms
+    // (render.ts ensureDiscussionUpdateVerdicts); a phantom seated AFTER
+    // that warm - the engage_tab's nested child - has no verdict yet and
+    // stays blank, the graded corpus byte for every anonymous capture
+    // (the deck's *all+*create rule is "Anyone Signed In"; rendering the
+    // form to a signed-out visitor on an uncomputed verdict was tried and
+    // flipped the r200 pool page Earth House Center away from the graded
+    // reference). Pinning the seat-time computation is the recorded
+    // remainder.
+    if (fmt.engine.taskAllowed?.(card, "create") !== true) return "";
+    // The create branch: card-mod-comment.ts commentBoxBody's create shape
+    // (board-stage3 engage_tab oracle), un-recaptched there. The author
+    // label follows comment.rb:74-77 (nil when signed in), and the view's
+    // own parts ride output()'s "\n" join (form.rb:198: the utf8 enqueuer
+    // is concatenated, only the array joins).
+    return (
+      `<div class="comment-box nodblclick">` +
+      `<form class="card-form slotter" id="new_card" action="/card/create"` +
+      ` accept-charset="UTF-8" data-remote="true" method="post">` +
       `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
-      `<input type="hidden" name="_method" value="patch" autocomplete="off" />`;
-  // [hidden_comment_fields, comment_box, comment_buttons] joined "\n";
-  // hidden_comment_fields (the card[name] tag) exists only for a new card.
-  const parts = [
-    ...(isNew
-      ? [`<input type="hidden" name="card[name]" id="card_name" value="${h(card.name.s)}" autocomplete="off" />`]
-      : []),
+      `<input type="hidden" name="card[name]" id="card_name" value="${h(card.name.s)}" autocomplete="off" />` +
+      `\n` +
+      `<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">
+</textarea>` +
+      `\n` +
+      `<div class="comment-buttons">` +
+      commentAuthorLabelHtml(fmt, `<label>My Name is:</label> <input type="text" name="comment_author">`) +
+      `<button name="button" type="submit" data-disable-with="Commenting" class="btn btn-outline-primary">Comment</button></div>` +
+      `</form></div>`
+    );
+  }
+  // comment.rb:46-48 `perms: :update` — the view's own gate for a STORED
+  // card: the form renders only when the viewer may update it. The gate
+  // encodes the capture-verified rule LOCATION (the doc block above): the
+  // corpus's update-case captures have the *update rule on the card's own
+  // *self set (9789) or nowhere (21110/32453/43122, the blanks), and the
+  // generic task-verdict walk's no-rule fallback is allow - the recorded
+  // task-verdict remainder. The warmed verdicts are explicit for every
+  // seated stored discussion card, so the strict contract denies exactly
+  // the captured blanks.
+  if (fmt.engine.taskAllowed?.(card, "update") !== true) return "";
+  const siteKey = recaptchaSiteKey() ?? RECAPTCHA_SITE_KEY;
+  const form =
+    `<form class="card-form slotter autosave" id="edit_card_${card.id}" data-recaptcha="on"` +
+    ` action="/update/${h(fmt.urlKey())}" accept-charset="UTF-8" data-remote="true" method="post">` +
+    `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
+    `<input type="hidden" name="_method" value="patch" autocomplete="off" />` +
+    `<script src="https://www.google.com/recaptcha/api.js?render=${siteKey}"></` + `script>
+` +
+    `<input type="hidden" name="recaptcha_token" id="recaptcha_token" value=""` +
+    ` data-site-key="${siteKey}" data-action="update" class="_recaptcha-token" autocomplete="off" />` +
     `<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">
-</textarea>`,
+</textarea>
+` +
     `<div class="comment-buttons">` +
-      authorLabel +
-      `<button name="button" type="submit" data-disable-with="Commenting" class="btn btn-outline-primary">Comment</button></div>`,
-  ];
-  const form = formOpen + recaptcha + parts.join("\n");
+    commentAuthorLabelHtml(
+      fmt,
+      `<label>My Name is:</label>` +
+        ` <input class=" form-control" type="text" value="Anonymous" name="card[comment_author]" id="card_comment_author" />
+`,
+    ) +
+    `<button name="button" type="submit" data-disable-with="Commenting" class="btn btn-outline-primary">Comment</button></div>`;
   return `<div class="comment-box nodblclick">${form}</form></div>`;
 };
 
@@ -6454,9 +6494,9 @@ function cardInRubySets(setKeys: string, sets: readonly string[]): boolean {
     // (rubySelfToken); a codename-less anchor is in no self set.
     const token = rubySelfToken(setKeyToken);
     if (token === null) continue;
-    const named = safeKeyToModuleShortnameCandidates(token);
-    const candidates = token.startsWith("SELF-") ? named : [...named, ...codenameModuleShortnames(token)];
-    for (const candidate of candidates) {
+    // Anchored tokens name the module of their anchor codenames, as the
+    // chain walker's do (anchoredModuleCandidates).
+    for (const candidate of anchoredModuleCandidates(token).candidates) {
       if (sets.includes(candidate)) return true;
       for (const [owner, includes] of Object.entries(SET_INCLUDES)) {
         if (owner !== candidate && !owner.startsWith(`${candidate}::`)) continue;

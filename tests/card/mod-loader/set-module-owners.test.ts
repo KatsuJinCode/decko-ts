@@ -21,14 +21,12 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createRenderTestStorage, seedCard, type RenderTestStorage } from "../render/render-test-storage.js";
 import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck.js";
+import { anchoredModuleCandidates } from "../../../src/card/render/set-keys-to-modules.js";
 
 const loader = defaultDeckLoader();
 const owner = (keys: string, view: string) => loader.viewChain(keys, view, "html")[0]?.setModule;
 
 describe("owners that need no name environment", () => {
-  it("signup :core belongs to the nested views module", () => {
-    expect(owner("ALL TYPE-sign_up", "core")).toBe("Type::SignUp::Views");
-  });
   it("link and nest lists own their :input override", () => {
     expect(owner("ALL TYPE-link_list", "input")).toBe("Type::LinkList");
     expect(owner("ALL TYPE-nest_list", "input")).toBe("Type::NestList");
@@ -57,8 +55,11 @@ describe("owners keyed by codename", () => {
     await seedCard(s, { id: 31, name: "*search", codename: "search" });
     await seedCard(s, { id: 40, name: "Person", codename: "user", typeId: 5 });
     await seedCard(s, { id: 50, name: "Plain Page" });
+    await seedCard(s, { id: 60, name: "Sign up", codename: "signup", typeId: 5 });
+    await seedCard(s, { id: 61, name: "account" });
+    await seedCard(s, { id: 62, name: "*account", codename: "account" });
     s.fetcher.installNameEnvironment();
-    await s.fetcher.warmLexicon([2, 5, 30, 31, 40, 50]);
+    await s.fetcher.warmLexicon([2, 5, 30, 31, 40, 50, 61, 62]);
   });
   afterAll(() => s?.close());
 
@@ -71,5 +72,28 @@ describe("owners keyed by codename", () => {
   });
   it("a self anchor with no codename has no self module", () => {
     expect(loader.viewChain("ALL SELF-plain_page", "core", "html").some((e) => e.setModule.startsWith("Self::"))).toBe(false);
+  });
+  it("a right anchor with no codename has no right module; its codename twin has", () => {
+    // "account" (no codename) and "*account" (codename account): Ruby keys
+    // Right::Account to the codename, so a card ending in +account is in no
+    // right module, while one ending in +*account is in Right::Account.
+    const right = (keys: string) =>
+      loader.viewChain(keys, "token_expiry", "html").filter((e) => e.setModule.startsWith("Right::Account"));
+    expect(right("ALL ALL_PLUS RIGHT-account")).toEqual([]);
+    expect(right("ALL ALL_PLUS RIGHT-Xaccount").map((e) => e.setModule)).toEqual(["Right::Account::Views"]);
+    expect(anchoredModuleCandidates("RIGHT-account")).toEqual({ candidates: [], paths: [], definitive: true });
+  });
+  it("signup :core belongs to Type::Signup's nested views module, keyed by the codename", () => {
+    expect(owner("ALL TYPE-sign_up", "core")).toBe("Type::Signup::Views");
+    expect(anchoredModuleCandidates("TYPE-sign_up")).toEqual({
+      candidates: ["Type::Signup"],
+      paths: ["type/signup"],
+      definitive: true,
+    });
+  });
+  it("an anchor the name environment cannot resolve is answered by spelling, unmemoized", () => {
+    const answer = anchoredModuleCandidates("TYPE-never_seen_type");
+    expect(answer.definitive).toBe(false);
+    expect(answer.candidates).toContain("Type::NeverSeenType");
   });
 });

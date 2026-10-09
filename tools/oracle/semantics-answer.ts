@@ -134,22 +134,21 @@ const anonymousId = anonymousIdFromResults(firstBatch as never);
 const anonymous = await permissionStateFor({ signedIn: false, actorId: anonymousId });
 const anonymousKey = anonymousId === undefined ? undefined : (await fetcher.fetchById(anonymousId))?.key;
 
-async function nameOfRecord(id: number): Promise<string | undefined> {
-  const rec = await fetcher.fetchById(id);
-  return rec === undefined ? undefined : nameForRecord(rec);
-}
-
-/** A record's full name, rebuilt from left_id/right_id (compound rows store
- *  name NULL; Ruby's Card#name does the same walk). Always a plain string. */
+/** A record's full name, rebuilt from left_id/right_id the way Ruby's
+ *  Card#name does: `left_id ? Lexicon.lex_to_name([left_id, right_id]) :
+ *  super.to_name` (card-1.110.0 lib/card/name/all.rb:12-14). The sides are
+ *  named by the lexicon, not by fetching the side cards: a side that fetch
+ *  by id cannot return (a key whose by-name miss cached a placeholder) still
+ *  has its lexicon name. Always a plain string. */
 async function nameForRecord(rec: CardRecord): Promise<string> {
   const rawName = rec.name as unknown;
   if (rawName !== undefined && rawName !== null && rec.leftId === undefined) {
     return rawName instanceof DeckoName ? rawName.s : String(rawName);
   }
   if (rec.leftId !== undefined && rec.rightId !== undefined) {
-    const left = await nameOfRecord(rec.leftId);
-    const right = await nameOfRecord(rec.rightId);
-    if (left !== undefined && right !== undefined) return `${left}+${right}`;
+    const left = await fetcher.lexicon.name(rec.leftId);
+    const right = await fetcher.lexicon.name(rec.rightId);
+    if (left !== undefined && right !== undefined) return `${left.s}+${right.s}`;
   }
   if (rawName instanceof DeckoName) return rawName.s;
   if (rawName !== undefined && rawName !== null) return String(rawName);

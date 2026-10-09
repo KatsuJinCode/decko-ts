@@ -679,10 +679,9 @@ const signupNewView: ViewFn = (ctx) => {
   // t(:account_sign_up); the invitation? arm ("Invite") is the disclosed
   // remainder documented on SIGNUP_INVITE_TITLE above
   ctx.voo.opts["title"] = "Sign up";
-  // the registration's set module: the nested child file's shortname (the
-  // gem dir is "signup", the card set-key token is "sign_up" - the parent
-  // entry's documented spelling)
-  return superView(ctx, setModuleShortname("type/sign_up/views"), "new");
+  // the registration's set module: the nested child file's shortname,
+  // Type::Signup::Views (keyed by the type's codename, signup)
+  return superView(ctx, setModuleShortname("type/signup/views"), "new");
 };
 
 /** views.rb:15-18 view :new_buttons, cache: :never:
@@ -1239,25 +1238,22 @@ const setModules: ModSetModuleFile[] = [
       },
     },
   },
-  { setPath: "type/signup" },
   {
-    // The SAME set as the gem's set/type/signup.rb + set/type/signup/
-    // views.rb (the type predates the safe-key spelling: the gem dir is
-    // "signup", the card set-key token is "sign_up"). The chain walker
-    // resolves the card's set-key token TYPE-sign_up through set-keys-to-
-    // modules.ts camelize("sign_up") -> "SignUp", so the view must
-    // register under the "Type::SignUp" spelling (setPath "type/sign_up");
-    // the views themselves, :core included, live on the nested
-    // views module below, where Ruby defines them (a token whose own
-    // module lacks the view expands to the modules nested under it).
-    setPath: "type/sign_up",
+    // set/type/signup.rb + set/type/signup/views.rb, Type::Signup. Ruby keys
+    // the module by the type card's codename (signup), not by its name
+    // ("Sign up", set-key token TYPE-sign_up); the chain walker resolves the
+    // token through that codename (set-keys-to-modules.ts
+    // anchoredModuleCandidates). The views themselves, :core included, live
+    // on the nested views module below, where Ruby defines them (a token
+    // whose own module lacks the view expands to the modules nested under
+    // it).
+    setPath: "type/signup",
   },
   {
     // set/type/signup/views.rb — the NESTED child file (Ruby's SetTemplate
-    // nests its contents INTO Type::Signup, set_template.rb:11-19). The
-    // port registers it under the SAME sign_up spelling as the parent so
-    // the viewChain nested expansion (mod-loader.ts:501-526, the
-    // `${code}/${anchor}/` prefix walk) can reach it. Registration-only
+    // nests its contents INTO Type::Signup, set_template.rb:11-19), reached
+    // through the nested expansion under the codename path "type/signup".
+    // Registration-only
     // entry (the basket completeness pin "every set module from the gem
     // tree is in the basket"); its views are the signup FORM family and
     // stay the honest rails remainder named on the parent entry: view :new
@@ -1277,7 +1273,7 @@ const setModules: ModSetModuleFile[] = [
     // lives on the edit mod's contentFormgroupsView (the explicit
     // edit_structure arm the lane ported there). The oracle:
     // account-walk-views.rb signup_content_formgroups_walk.
-    setPath: "type/sign_up/views",
+    setPath: "type/signup/views",
     formats: {
       html: {
         views: [

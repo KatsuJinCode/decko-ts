@@ -55,6 +55,9 @@ import {
   structureRuleUniverseStatement,
   structureUniverseFromResults,
   structureRuleTypesFromResults,
+  defaultRuleUniverseStatement,
+  templateTypeNameStatement,
+  templateTypeNamesFromResults,
 } from "../../../src/card/rules/structure.js";
 import { createVirtualCardLookup } from "../../../src/card/fetch/virtual-cards.js";
 import { applyDeckInflections } from "../../../src/card/name/inflect.js";
@@ -849,14 +852,28 @@ export async function createRawStructureSeededStorage(
   // src/card/fetch/virtual-cards.ts): same as the structure-corpus-seeding
   // module. The universe statement answers from the seeded engine deck's
   // stored key columns (seedCard keeps them), one query at factory time.
+  // The *default universe and the template type names ride the SAME batch
+  // (+2 statements, +0 round trips): the lookup types a fetch-miss left as
+  // Ruby's quick_type does — a NEW card typed by the new-card chain — and
+  // that walk reads these maps only, so it cannot re-enter the hook.
   {
-    const result = await storage.fetcher.driver.batch([structureRuleUniverseStatement()]);
+    const result = await storage.fetcher.driver.batch([
+      structureRuleUniverseStatement(),
+      defaultRuleUniverseStatement(),
+      templateTypeNameStatement(),
+    ]);
     const universe = structureUniverseFromResults(result[0]);
     const ruleTypes = structureRuleTypesFromResults(result[0]);
-    storage.fetcher.virtualCardLookup = createVirtualCardLookup(storage.fetcher, {
-      contents: universe,
-      ruleTypeIds: ruleTypes,
-    });
+    const defaultTypeIds = structureRuleTypesFromResults(result[1]);
+    const typeNamesById = templateTypeNamesFromResults(result[2]);
+    storage.fetcher.virtualCardLookup = createVirtualCardLookup(
+      storage.fetcher,
+      {
+        contents: universe,
+        ruleTypeIds: ruleTypes,
+      },
+      { defaultTypeIds, typeNamesById },
+    );
   }
 
   corpus.close();

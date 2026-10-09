@@ -15,7 +15,9 @@ one-line pointer here instead of its own rationale.
 
 Sites that once carried this marker and now run unmarked: card-mod-follow's
 `:confirm_update_all` (SELF tokens resolve by the anchor's codename when the
-deck's name environment is warm, set-keys-to-modules.ts rubySelfToken; the
+deck's name environment is warm, set-keys-to-modules.ts rubySelfToken, and
+anchored TYPE, RIGHT and TYPE_PLUS_RIGHT tokens by their parts' codenames,
+anchoredModuleCandidates; the
 layout test's marker stays, since its probe asks for the account link views
 on a card outside the Self set); and, since the viewChain nested-set-file expansion landed, card-mod-bootstrap's `:one_line_content`
 and card-mod-rules' `:set_label` / `:grouped_list`-family views.

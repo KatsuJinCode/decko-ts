@@ -71,8 +71,10 @@ beforeAll(async () => {
   await seedReference(s, 17, 18, "anyone");
   // the *home card (self/home set anchor) - :home_url/:home_path dispatch
   await seedCard(s, { id: 21, name: "*home", codename: "home", typeId: 14 });
-  // a Cardtype-typed type card + a probe card of that type (:configure_link)
-  await seedCard(s, { id: 22, name: "Cardtype", typeId: 2 });
+  // a Cardtype-typed type card + a probe card of that type (:configure_link);
+  // Ruby's Cardtype card carries codename "cardtype" (bench-corpus id 5),
+  // which the codename-keyed Type::Cardtype scope needs seeded
+  await seedCard(s, { id: 22, name: "Cardtype", codename: "cardtype", typeId: 2 });
   await seedCard(s, { id: 23, name: "Cardtype Probe Type", typeId: 22 });
   // a Toggle-typed probe (:short_content's toggle arm reads the type core)
   await seedCard(s, { id: 24, name: "Toggle", typeId: 2 });

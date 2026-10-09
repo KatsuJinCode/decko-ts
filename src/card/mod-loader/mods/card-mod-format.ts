@@ -126,8 +126,9 @@
 //   :view_list via all/demo). STILL UNPORTED from this group:
 //   set/all/html/wrap.rb (the wrap pipeline is the slot machinery),
 //   set/all/html/show.rb (page-view rails), set/all/html/error.rb's
-//   :not_found frame). :debug_server_error is registered on
-//   all/html/error (render/debug-server-error.ts).
+//   :not_found frame). :server_error and :debug_server_error are
+//   registered on all/html/error; the debug view deliberately renders
+//   :server_error (render/debug-server-error.ts).
 // - set/all/title.rb :title_link :title_no_link html block +
 //   helpers: rails (link_to_card + the card-title span rendering);
 //   :title in the html block has a `show_view?(:title_link, :hide)`
@@ -199,7 +200,7 @@
 
 import { ONE_LINE_CHARACTER_LIMIT, truncate } from "../../render/text-helpers.js";
 import { modBarRightSections } from "./core-admin-runtime.js";
-import { debugServerErrorView } from "../../render/debug-server-error.js";
+import { debugServerErrorView, serverErrorHtmlView } from "../../render/debug-server-error.js";
 import {
   faviconTagBytes,
   HEAD_VIEWS,
@@ -230,7 +231,7 @@ import { DeckoName } from "../../name.js";
 // 2026-10-01::link/:nav_link share the flat
 // HTML_VIEWS bodies (the urlView doctrine at :300-304 of this file) — one
 // fn per view, so the two registrations cannot drift again.
-import { HTML_VIEWS, configureButtonView, linkView, navLinkView } from "../../render/views.js";
+import { HTML_VIEWS, linkView, navLinkView } from "../../render/views.js";
 import { popoverLink } from "./card-mod-bootstrap.js";
 import type {
   DeckoModManifest,
@@ -809,19 +810,26 @@ interface RenderFormatBase {
 /** set/type/cardtype.rb:61-63 (card-mod-format-0.20.0)
  *  `view :configure_button, cache: :never, denial: :blank,
  *  perms: :can_configure? do configure_link "btn btn-secondary" end`.
- *  The registration closes the UnsupportedViewError crash on EVERY
- *  Cardtype-typed page (75 cards; the `Cardtype+*type+*structure` rule
- *  17770 nests `{{_|configure_button}}`, and `Cardtype+*self+*structure`
- *  38252 repeats it for the Cardtype card itself — news-item-crash-trace).
- *  Permission/degradation parity lives in view-perms.ts: the predicate
- *  (can_configure? = update-ok on <card>+*type+*structure, cardtype.rb
- *  :68-70) resolves through the engine's canConfigure hook and the denial
- *  (:blank) renders "" — the anonymous surface's bytes, live pins ZERO
- *  configure strings on live_News_Item.html. This body only renders when
- *  the predicate ALLOWS (admin-like viewers). The body is the render
- *  layer's configureButtonView (configure_link "btn btn-secondary"), shared
- *  so the loader and loader-less registrations cannot drift. */
-const cardtypeConfigureButtonView: ViewFn = configureButtonView;
+ *  Ruby's configure_button body IS the configure_link helper called with
+ *  "btn btn-secondary" (cardtype.rb:65-75: the anchor is link_to_card to
+ *  the rules board, class css_classes("configure-type-link ms-3",
+ *  css_class), the text the _render_title "Configure <Plural>" span) —
+ *  the ruling that retired this registration's engine-era approximation
+ *  ("cardtype-configure-button" + a /configure path, modelled on the
+ *  add_button stub, never oracle-shaped). The registration closes the
+ *  UnsupportedViewError crash on EVERY Cardtype-typed page (75 cards; the
+ *  `Cardtype+*type+*structure` rule 17770 nests `{{_|configure_button}}`,
+ *  and `Cardtype+*self+*structure` 38252 repeats it for the Cardtype card
+ *  itself — news-item-crash-trace). Permission/degradation parity lives
+ *  in view-perms.ts: the predicate (can_configure? = update-ok on
+ *  <card>+*type+*structure, cardtype.rb:57-59) resolves through the
+ *  engine's canConfigure hook and the denial (:blank) renders "" — the
+ *  anonymous surface's bytes, live pins ZERO configure strings on
+ *  live_News_Item.html. This body only renders when the predicate ALLOWS
+ *  (admin-like viewers). */
+function cardtypeConfigureButtonView({ fmt }: ViewContext): string {
+  return cardtypeConfigureAnchor(fmt as unknown as RenderFormatBase, "btn btn-secondary");
+}
 
 /** set/type/cardtype.rb:53-55 (card-mod-format-0.20.0) view :configure_link,
  *  cache: :never, perms: :can_configure? - the configure_button body's
@@ -845,9 +853,20 @@ const cardtypeConfigureButtonView: ViewFn = configureButtonView;
  *  (lib/card/path.rb:36-39) builds "<mark>/board?<query>" (mark = the
  *  url_key, view deleted into the path base), the query to_param-encodes
  *  (board[tab]=rules_tab, set=Configure+Probe%2B*2Atype-style CGI.escape
- *  bytes) and the attribute emitter escapes & -> &amp;. */
+ *  bytes) and the attribute emitter escapes & -> &amp;. The class list is
+ *  css_classes("configure-type-link ms-3", css_class) (:74) with
+ *  link_to_card's known/wanted class appended (links.rb:141-144) - the
+ *  configure_button passes "btn btn-secondary" through the same builder
+ *  (cardtypeConfigureAnchor), so the two views cannot drift. */
 function cardtypeConfigureLinkView({ fmt }: ViewContext): string {
-  const card = fmt.card;
+  return cardtypeConfigureAnchor(fmt as unknown as RenderFormatBase, undefined);
+}
+
+/** cardtype.rb:65-75's anchor: the rules-board link_to_card both
+ *  :configure_link (no extra class) and :configure_button ("btn
+ *  btn-secondary", cardtype.rb:62) render through. */
+function cardtypeConfigureAnchor(fmt: RenderFormatBase, cssClass: string | undefined): string {
+  const card = fmt.card as unknown as { typeName?: string; name: { s: string }; unknown?: boolean };
   if (card.typeName !== "Cardtype") {
     throw new UnsupportedViewError("configure_link", card.name.s);
   }
@@ -869,13 +888,16 @@ function cardtypeConfigureLinkView({ fmt }: ViewContext): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
   const href =
-    `/${fmt.urlKey()}/board` +
+    `/${(fmt as unknown as { urlKey: () => string }).urlKey()}/board` +
     `?board%5Btab%5D=rules_tab` +
     `&amp;set=${encodeURIComponent(`${safeName}+*type`)
       .replace(/%20/g, "+")
       .replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)}`;
+  const classes = `configure-type-link ms-3${cssClass ? ` ${cssClass}` : ""} ${
+    card.unknown === true ? "wanted-card" : "known-card"
+  }`;
   return (
-    `<a class="configure-type-link ms-3 ${card.unknown === true ? "wanted-card" : "known-card"}"` +
+    `<a class="${classes}"` +
     ` href="${href}">` +
     `<span class="card-title" title="${escapedTitle}">${escapedTitle}</span></a>`
   );
@@ -1628,16 +1650,22 @@ const setModules: ModSetModuleFile[] = [
     },
   },
   {
-    // set/all/html/error.rb:4-8 view :debug_server_error, the error page
-    // shown for a server error when the *debugger card is on (the
-    // BetterErrors page; render/debug-server-error.ts). The file's other
-    // html views (:unknown, :mini_unknown, :compact_missing, :conflict,
-    // :errors) are served by the base table.
+    // set/all/html/error.rb:2 view :server_error (the haml "Wild Card!"
+    // block a production visitor sees; perms :none comes from the base
+    // block's setting, which the html format inherits) and :4-8
+    // :debug_server_error, picked for a server error when the session's
+    // *debugger card is on. Ruby's body raises NameError in a stock deck
+    // (BetterErrors is never loaded) and would otherwise show internals; the
+    // port deliberately renders :server_error in its place, with no modal
+    // wrap, so the two give the same bytes (render/debug-server-error.ts).
+    // The file's other html views (:unknown, :mini_unknown,
+    // :compact_missing, :conflict, :errors) are served by the base table.
     setPath: "all/html/error",
     formats: {
       html: {
         views: [
-          { view: "debug_server_error", viewFn: debugServerErrorView, config: { wrap: "modal" } },
+          { view: "server_error", viewFn: serverErrorHtmlView, config: { perms: "none" } },
+          { view: "debug_server_error", viewFn: debugServerErrorView, config: { perms: "none" } },
         ],
       },
     },

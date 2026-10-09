@@ -63,7 +63,10 @@ async function deck(updateParty: "Anyone" | "Administrator"): Promise<RenderTest
     dbContent: `[[${updateParty}]]`,
   });
   await seedReference(s, 20, updateParty === "Anyone" ? 18 : 19, updateParty.toLowerCase());
-  await seedCard(s, { id: 22, name: "Cardtype", typeId: 2 });
+  // Ruby's deck gives the Cardtype cardtype card codename "cardtype"
+  // (bench-corpus cards.id 5), so a Cardtype-typed card's TYPE anchor is in
+  // Type::Cardtype — the codename-keyed set modules need it seeded.
+  await seedCard(s, { id: 22, name: "Cardtype", codename: "cardtype", typeId: 2 });
   await seedCard(s, { id: 30, name: "Widget", typeId: 22, dbContent: "{{_|configure_button}}" });
   await seedCard(s, { id: 40, name: "Host", typeId: 2, dbContent: "before {{Widget|core}} after" });
 
@@ -89,13 +92,16 @@ describe("configure_button judges can_configure? on every card it renders for", 
   it("the same nest renders the button when the viewer can update its +*type+*structure", async () => {
     storage = await deck("Anyone");
     const html = await storage.engine.render("Host", "core");
-    // The button's body is Ruby's configure_link helper with the button
-    // class (card-mod-format set/type/cardtype.rb:61-75): the rules-board
-    // anchor "configure-type-link ms-3" plus "btn btn-secondary", titled
-    // "Configure %{cardname}" over the pluralized name.
-    expect(html).toContain('configure-type-link ms-3 btn btn-secondary');
-    expect(html).toContain('title="Configure Widgets"');
+    // Ruby's markup (card-mod-format set/type/cardtype.rb:61-63 + 65-75):
+    // configure_button renders the configure_link anchor with
+    // css_classes("configure-type-link ms-3", "btn btn-secondary") and
+    // link_to_card's known/wanted class — the rules-board href, the
+    // "Configure Widgets" title span. The registration's first port
+    // modelled an engine-era approximation ("cardtype-configure-button",
+    // a /configure path) that no oracle capture or gem source carries.
+    expect(html).toContain('class="configure-type-link ms-3 btn btn-secondary known-card"');
     expect(html).toContain('href="/Widget/board?board%5Btab%5D=rules_tab&amp;set=Widget%2B%2Atype"');
+    expect(html).toContain('>Configure Widgets</span>');
   });
 
   it("the page's main card is judged the same way", async () => {

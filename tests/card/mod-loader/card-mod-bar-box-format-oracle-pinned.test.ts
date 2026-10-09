@@ -140,7 +140,7 @@ beforeAll(async () => {
   // (render.ts populateTypeCodes -> peekNameForId), and html.rb:10's
   // `type_code != :basic` raw-nil guard reads exactly this.
   await seedCard(s, { id: 2, name: "RichText", codename: "basic", typeId: 3, typeName: "Cardtype" });
-  await seedCard(s, { id: 3, name: "Cardtype", typeId: 3, typeName: "Cardtype" });
+  await seedCard(s, { id: 3, name: "Cardtype", codename: "cardtype", typeId: 3, typeName: "Cardtype" });
   await seedCard(s, { id: 10, name: "*all", codename: "all", typeId: 13 });
   await seedCard(s, { id: 11, name: "*self", codename: "self", typeId: 14 });
   await seedCard(s, { id: 12, name: "*update", codename: "update", typeId: 14 });
@@ -181,7 +181,10 @@ beforeAll(async () => {
     dbContent: FIXTURE.targets.decko_logo.meta.db_content,
     creatorId: 1,
   });
-  await seedCard(s, { id: 284, name: "Image", typeId: 3, typeName: "Cardtype" });
+  // Ruby's Image cardtype card carries codename "image" (bench-corpus id
+  // 19) — the codename-keyed Type::Image scope of :boxed / :boxed_link
+  // needs it seeded
+  await seedCard(s, { id: 284, name: "Image", codename: "image", typeId: 3, typeName: "Cardtype" });
 
   // the Home nest closure (probe5/probe6 facts, pinned by probe7):
   // {{:getting_started|core}} -> *getting started (codename card), whose

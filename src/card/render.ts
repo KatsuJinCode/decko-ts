@@ -7088,8 +7088,29 @@ export class RenderEngine implements RenderEngineLike {
     }
     for (const card of this.renderCards.values()) {
       if (!this.renderSeats.has(card.key)) continue;
-      if (card.id === undefined || this.taskVerdicts.has(card.key)) continue;
+      if (this.taskVerdicts.has(card.key)) continue;
       if (card.name.rightName?.key !== "discussion") continue;
+      if (card.id === undefined) {
+        // A PHANTOM +discussion (the engage_tab's not-yet-existing child):
+        // Ruby's perms :update on a new card consults the CREATE
+        // permission (the board fixture's arms are the oracle: sara -
+        // whose only grant is the *all+*create rule "Anyone Signed In" -
+        // renders the comment form; anonymous, excluded by that rule,
+        // renders the blank). Only the create field is stored: every
+        // other consumer of this map keeps its undefined for a card with
+        // no row.
+        const verdicts = await allTaskVerdictsForCard(
+          this.fetcher,
+          this.structurePatternInputForSync(card),
+          this.taskState,
+        );
+        this.taskVerdicts.set(card.key, {
+          update: undefined,
+          create: verdicts.create,
+          delete: undefined,
+        });
+        continue;
+      }
       this.taskVerdicts.set(
         card.key,
         await this.applyUpdateOverride(

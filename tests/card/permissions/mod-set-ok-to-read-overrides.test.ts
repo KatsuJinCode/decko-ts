@@ -85,7 +85,7 @@ import {
   type RenderTestStorage,
 } from "../render/render-test-storage.js";
 import { quietDenial } from "../../../src/card/permissions/index.js";
-import { updatePermissionOverride } from "../../../src/card/permissions/read-override.js";
+import { readPermissionOverride, updatePermissionOverride } from "../../../src/card/permissions/read-override.js";
 
 const SET_TYPE_ID = 2;
 const BASIC_TYPE_ID = 4;
@@ -500,6 +500,27 @@ describe("update-task overrides (the universal_edit_button family)", () => {
     // Jane Person+*email: the left ("Jane Person") has no right_id, so
     // account_card is nil and Ruby runs super (generic permit(:update)).
     expect(await updateOverride("Jane Person+*email")).toBeUndefined();
+  });
+
+  it("defers, without raising, for an account field whose +*account card does not resolve (deliberate)", async () => {
+    // Ruby's Abstract::AccountField#account_card reads `left.right_id`; when
+    // the "<holder>+*account" left does not resolve, left is nil and ok?
+    // raises NoMethodError (the semantics census's four account fields of
+    // one user). The port does not copy the crash: it gives the answer Ruby
+    // intends for a field with no account card, super (the generic
+    // permission check), for update and for read alike.
+    expect(await updateOverride("Ghost Holder+*account+*email")).toBeUndefined();
+    expect(await updateOverride("Ghost Holder+*account+*status")).toBeUndefined();
+    const s = storage!;
+    const anon = await s.fetcher.fetchById(6);
+    expect(
+      await readPermissionOverride(DeckoName.parse("Ghost Holder+*account+*password"), {
+        viewerKey: anon?.key,
+        fetchByKey: (key) => s.fetcher.fetchByKey(key),
+        fetchById: (id) => s.fetcher.fetchById(id),
+        leftReadVerdict: async () => undefined,
+      }),
+    ).toBeUndefined();
   });
 
   it("DENIES changing one's own account status (right::status own-status lock)", async () => {

@@ -390,6 +390,12 @@ const WAVE1 = {
         oracle: "static-ruby x4 scenarios (demo-view.rb; the codename list parsed from the REAL frozen admin.yml files under the real interpreter)",
         status: "ported, verify GREEN (harness capture + probe)",
       },
+      {
+        view: "debug_server_error",
+        source: "set/all/html/error.rb:4-8",
+        oracle: "live Ruby under decko runner (tools/oracle/debug-server-error-probe.rb): better_errors is not bundled, the body raises NameError 'uninitialized constant Card::Set::All::Html::Error::BetterErrors', a nest renders the quiet error span",
+        status: "ported as a deliberate difference: renders the production :server_error block instead of Ruby's crash or a BetterErrors page (tests/card/render/debug-server-error.test.ts)",
+      },
     ],
     "card-mod-tinymce_editor": [
       {
@@ -431,14 +437,6 @@ const WAVE1 = {
     ],
   },
   namedRemainderViews: {
-    "card-mod-format": [
-      {
-        view: "debug_server_error",
-        source: "set/all/html/error.rb:4-8",
-        reason:
-          "the BetterErrors dev-tool error page; the better_errors gem is NOT in the frozen gem set - the view raises NameError in the installed-gems environment, its behavior belongs to an external dev dependency",
-      },
-    ],
     // mod-completion-100 (2026-10-03): the tinymce 6 + account 2 named
     // remainders are PORTED (the portedViews rows above) - the census gap
     // closes at 22 ported + the 1 impossibility-evidenced remainder.
