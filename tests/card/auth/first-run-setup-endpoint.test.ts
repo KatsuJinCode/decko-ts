@@ -162,6 +162,7 @@ describe("first-run /setup through the booted staging server (fresh-deck one-cli
     // RED at base: the write branch answered 403
     // (`actor *anonymous may not create card setup`) before this request
     // could reach the first-run surface.
+    console.log('PROBE-SETUP:', post.status, (await post.text()).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 260));
     expect(post.status).toBe(303);
     expect(post.headers.get("location")).toBe(`${firstRun?.baseUrl}/_signin`);
 

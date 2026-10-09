@@ -240,6 +240,8 @@ import type {
 import { modSlotWrap } from "../mod-view-helpers.js";
 import { cardFormShell } from "../mod-form-substrate.js";
 import { allAdminConfigCodenamesOfCategory } from "./core-mod.js";
+import { CardActionError } from "../../actions/types.js";
+import { jsonValidationMessage, numberValidationMessage } from "./format-validations.js";
 
 // ---------------------------------------------------------------------------
 // helpers (Ruby source cited per block)
@@ -1952,10 +1954,23 @@ const setModules: ModSetModuleFile[] = [
     // CodeRay DIV template (render/views.ts:1192-1209 +
     // render/code-highlighting/, byte-pinned by
     // fixtures/captured/coderay/json-tinymce-corpus-53.html — corpus card
-    // 53 *TinyMCE). Not ported: event :validate_json + the parse_content/
-    // item_* helpers (save-path events, no event surface) + input_type/
-    // ace_mode (form-input machinery).
+    // 53 *TinyMCE). Event :validate_json IS ported (json.rb:3-11; the
+    // json 3.0.2 parser messages, format-validations.ts). Not ported: the
+    // parse_content/item_* helpers + input_type/ace_mode (form-input
+    // machinery).
     setPath: "type/json",
+    events: [
+      {
+        event: "validate_json",
+        at: "validate",
+        on: ["save"],
+        changed: ["content"],
+        fn: (card) => {
+          const message = jsonValidationMessage(card.dbContent ?? "");
+          if (message !== null) throw new CardActionError("user-error", message, message);
+        },
+      },
+    ],
   },
   {
     // set/type/mod.rb:1-16 html format block (view :admin, :bar_right +
@@ -1981,8 +1996,20 @@ const setModules: ModSetModuleFile[] = [
   },
   {
     // set/type/number.rb:1-10 html block (input_type) + event
-    // :validate_number. Not ported: rails + events.
+    // :validate_number (number.rb:7-9, ported: String#number? is Kernel#
+    // Float acceptance, format-validations.ts). Not ported: input_type.
     setPath: "type/number",
+    events: [
+      {
+        event: "validate_number",
+        at: "validate",
+        on: ["save"],
+        fn: (card) => {
+          const message = numberValidationMessage(card.dbContent ?? "");
+          if (message !== null) throw new CardActionError("user-error", message, message);
+        },
+      },
+    ],
   },
   {
     // set/type/phrase.rb:1-6 html block (input_type). Not ported:

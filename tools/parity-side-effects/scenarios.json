@@ -1,0 +1,1204 @@
+{
+  "comment": "The operation sequence both drives run, in order, on copies of the same start deck. params is the nested Rails params hash; each drive encodes it the same way (bracketed form keys, or multipart when a step uploads). upload values name a file under fixtures/.",
+  "steps": [
+    {
+      "name": "get-home",
+      "mod": "core",
+      "method": "get",
+      "path": "/"
+    },
+    {
+      "name": "get-missing",
+      "mod": "core",
+      "method": "get",
+      "path": "/No_Such_Card"
+    },
+    {
+      "name": "anon-create-card",
+      "mod": "permissions",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Probe Card"
+        }
+      }
+    },
+    {
+      "name": "anon-update-card",
+      "mod": "permissions",
+      "method": "put",
+      "path": "/Parity_Probe_Card",
+      "params": {
+        "card": {
+          "content": "x"
+        }
+      }
+    },
+    {
+      "name": "anon-update-existing-json",
+      "mod": "permissions",
+      "method": "put",
+      "path": "/Home.json",
+      "params": {
+        "card": {
+          "content": "anonymous edit"
+        }
+      }
+    },
+    {
+      "name": "anon-delete-missing",
+      "mod": "core",
+      "method": "delete",
+      "path": "/Parity_Probe_Card"
+    },
+    {
+      "name": "anon-create-type",
+      "mod": "permissions",
+      "method": "post",
+      "path": "/type/Phrase",
+      "params": {
+        "card": {
+          "name": "Parity Phrase"
+        }
+      }
+    },
+    {
+      "name": "signin-blank-email",
+      "mod": "account",
+      "method": "patch",
+      "path": "/update/*signin",
+      "params": {
+        "card": {
+          "subcards": {
+            "+*email": {
+              "content": ""
+            },
+            "+*password": {
+              "content": "Correct horse battery 1!"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "signin-blank-password",
+      "mod": "account",
+      "method": "patch",
+      "path": "/update/*signin",
+      "params": {
+        "card": {
+          "subcards": {
+            "+*email": {
+              "content": "parity.probe@example.com"
+            },
+            "+*password": {
+              "content": ""
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "signin-unknown",
+      "mod": "account",
+      "method": "patch",
+      "path": "/update/*signin",
+      "params": {
+        "card": {
+          "subcards": {
+            "+*email": {
+              "content": "nobody@example.com"
+            },
+            "+*password": {
+              "content": "Correct horse battery 1!"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "signin-wrong-password",
+      "mod": "account",
+      "method": "patch",
+      "path": "/update/*signin",
+      "params": {
+        "card": {
+          "subcards": {
+            "+*email": {
+              "content": "parity.probe@example.com"
+            },
+            "+*password": {
+              "content": "Wrong horse battery 2@"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "signin-success",
+      "mod": "account",
+      "method": "patch",
+      "path": "/update/*signin",
+      "params": {
+        "card": {
+          "subcards": {
+            "+*email": {
+              "content": "parity.probe@example.com"
+            },
+            "+*password": {
+              "content": "Correct horse battery 1!"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "probe-update-own-account",
+      "mod": "account",
+      "method": "put",
+      "path": "/Parity_Probe+*account",
+      "params": {
+        "card": {
+          "subcards": {
+            "+*email": {
+              "content": "parity.probe@example.com"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "probe-rename-other-account",
+      "mod": "account",
+      "method": "put",
+      "path": "/Parity_Follower",
+      "params": {
+        "card": {
+          "name": "Parity Follower Renamed"
+        }
+      },
+      "deliberate": {
+        "why": "Ruby crashes (NoMethodError: valid_preferer? on a nil card while re-keying the account's follow preferences) and answers 500. The port gives the error validate_account_holder_name_change was written to give; neither engine writes anything.",
+        "ruby": {
+          "status": "500",
+          "errors": "undefined method `type_id' for nil"
+        },
+        "ts": {
+          "status": "422",
+          "errors": "NAME: cannot rename Account Holder"
+        }
+      }
+    },
+    {
+      "name": "signed-in-read-home",
+      "mod": "session",
+      "method": "get",
+      "path": "/"
+    },
+    {
+      "name": "signed-in-delete-missing",
+      "mod": "core",
+      "method": "delete",
+      "path": "/Never_Was"
+    },
+    {
+      "name": "signed-in-delete-missing-json",
+      "mod": "core",
+      "method": "delete",
+      "path": "/Never_Was.json"
+    },
+    {
+      "name": "signed-in-create-card",
+      "mod": "core",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Probe Card",
+          "content": "created while signed in"
+        }
+      }
+    },
+    {
+      "name": "create-duplicate-name",
+      "mod": "core",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Probe Card",
+          "content": "again"
+        }
+      }
+    },
+    {
+      "name": "create-blank-name",
+      "mod": "core",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "",
+          "content": "nameless"
+        }
+      }
+    },
+    {
+      "name": "create-illegal-name",
+      "mod": "core",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity/Slash",
+          "content": "x"
+        }
+      }
+    },
+    {
+      "name": "create-unknown-type",
+      "mod": "core",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Typeless",
+          "type": "No Such Type"
+        }
+      }
+    },
+    {
+      "name": "create-number-invalid",
+      "mod": "format",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Number Bad",
+          "type": "Number",
+          "content": "abc"
+        }
+      }
+    },
+    {
+      "name": "create-number-valid",
+      "mod": "format",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Number Good",
+          "type": "Number",
+          "content": "42"
+        }
+      }
+    },
+    {
+      "name": "create-json-invalid",
+      "mod": "format",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Json Bad",
+          "type": "JSON",
+          "content": "{bad"
+        }
+      }
+    },
+    {
+      "name": "create-json-valid",
+      "mod": "format",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Json Good",
+          "type": "JSON",
+          "content": "{\"a\": 1}"
+        }
+      }
+    },
+    {
+      "name": "create-compound",
+      "mod": "core",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Probe Card+Parity Field",
+          "content": "field value"
+        }
+      }
+    },
+    {
+      "name": "signed-in-update-card",
+      "mod": "core",
+      "method": "put",
+      "path": "/Parity_Probe_Card",
+      "params": {
+        "card": {
+          "content": "updated while signed in"
+        }
+      }
+    },
+    {
+      "name": "rename-to-existing",
+      "mod": "core",
+      "method": "put",
+      "path": "/Parity_Number_Good",
+      "params": {
+        "card": {
+          "name": "Parity Json Good"
+        }
+      }
+    },
+    {
+      "name": "signed-in-read-json",
+      "mod": "core",
+      "method": "get",
+      "path": "/Parity_Probe_Card.json"
+    },
+    {
+      "name": "upload-file",
+      "mod": "carrierwave",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity File",
+          "type": "File",
+          "file": {
+            "upload": "parity-upload.txt",
+            "mime": "text/plain"
+          }
+        }
+      }
+    },
+    {
+      "name": "upload-cache-new-file",
+      "mod": "carrierwave",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "type": "File",
+          "file": {
+            "upload": "parity-upload.txt",
+            "mime": "text/plain"
+          }
+        },
+        "attachment_upload": "card[file]"
+      }
+    },
+    {
+      "name": "create-from-cached-upload",
+      "mod": "carrierwave",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Cached File",
+          "type": "File",
+          "action_id_of_cached_upload": "$rev_id"
+        }
+      }
+    },
+    {
+      "name": "upload-cache-existing-file",
+      "mod": "carrierwave",
+      "method": "put",
+      "path": "/Parity_Cached_File",
+      "params": {
+        "card": {
+          "file": {
+            "upload": "parity-image.png",
+            "mime": "image/png"
+          }
+        },
+        "attachment_upload": "card[file]"
+      }
+    },
+    {
+      "name": "update-from-cached-upload",
+      "mod": "carrierwave",
+      "method": "put",
+      "path": "/Parity_Cached_File",
+      "params": {
+        "card": {
+          "action_id_of_cached_upload": "$rev_id"
+        }
+      }
+    },
+    {
+      "name": "upload-image",
+      "mod": "carrierwave",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Image",
+          "type": "Image",
+          "image": {
+            "upload": "parity-image.png",
+            "mime": "image/png"
+          }
+        }
+      }
+    },
+    {
+      "name": "upload-large-image",
+      "mod": "carrierwave",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Photo",
+          "type": "Image",
+          "image": {
+            "upload": "parity-photo.png",
+            "mime": "image/png"
+          }
+        }
+      }
+    },
+    {
+      "name": "upload-corrupt-image",
+      "mod": "carrierwave",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Broken Image",
+          "type": "Image",
+          "image": {
+            "upload": "parity-corrupt.png",
+            "mime": "image/png"
+          }
+        }
+      }
+    },
+    {
+      "name": "read-probe-page",
+      "mod": "session",
+      "method": "get",
+      "path": "/Parity_Probe_Card"
+    },
+    {
+      "name": "read-image-page",
+      "mod": "session",
+      "method": "get",
+      "path": "/Parity_Image"
+    },
+    {
+      "name": "signed-in-delete-card",
+      "mod": "core",
+      "method": "delete",
+      "path": "/Parity_Number_Good"
+    },
+    {
+      "name": "rename-account-holder",
+      "mod": "account",
+      "method": "put",
+      "path": "/Parity_Probe",
+      "params": {
+        "card": {
+          "name": "Parity Probe Renamed"
+        }
+      }
+    },
+    {
+      "name": "update-file",
+      "mod": "carrierwave",
+      "method": "put",
+      "path": "/Parity_File",
+      "params": {
+        "card": {
+          "file": {
+            "upload": "parity-image.png",
+            "mime": "image/png"
+          }
+        }
+      }
+    },
+    {
+      "name": "delete-file",
+      "mod": "carrierwave",
+      "method": "delete",
+      "path": "/Parity_File"
+    },
+    {
+      "name": "delete-image",
+      "mod": "carrierwave",
+      "method": "delete",
+      "path": "/Parity_Image"
+    },
+    {
+      "name": "reset-unknown-email",
+      "mod": "account",
+      "method": "patch",
+      "path": "/update/*signin",
+      "params": {
+        "card": {
+          "trigger": "send_reset_password_token",
+          "subcards": {
+            "+*email": {
+              "content": "nobody@example.com"
+            }
+          }
+        },
+        "success": {
+          "view": "reset_password_success"
+        }
+      }
+    },
+    {
+      "name": "reset-known-email",
+      "mod": "account",
+      "method": "patch",
+      "path": "/update/*signin",
+      "params": {
+        "card": {
+          "trigger": "send_reset_password_token",
+          "subcards": {
+            "+*email": {
+              "content": "parity.probe@example.com"
+            }
+          }
+        },
+        "success": {
+          "view": "reset_password_success"
+        }
+      }
+    },
+    {
+      "name": "signout",
+      "mod": "account",
+      "method": "delete",
+      "path": "/delete/*signin"
+    },
+    {
+      "name": "after-signout-write",
+      "mod": "permissions",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity After Signout"
+        }
+      }
+    },
+    {
+      "name": "anon-update-skin-colors",
+      "mod": "assets",
+      "method": "put",
+      "path": "/darkly_skin+*colors",
+      "params": {
+        "card": {
+          "content": "$primary: #654321;"
+        }
+      },
+      "deliberate": {
+        "why": "Security hole in Ruby: ok_to_update? on a Bootswatch skin's +*colors is `left.parent? && super`, so for a skin without a parent the permission check never runs and anyone, anonymous visitors included, can change the site's colours. The port keeps checking the rules and refuses.",
+        "ruby": {
+          "status": "303",
+          "errors": ""
+        },
+        "ts": {
+          "status": "403",
+          "errors": "Sorry! Please sign in or sign up to do that."
+        },
+        "absentIn": "ts",
+        "consequences": [
+          "location",
+          "writes",
+          "actions",
+          "stamps",
+          "stored",
+          "mail",
+          "mailText",
+          "mailHtml",
+          "files",
+          "virtuals"
+        ]
+      }
+    },
+    {
+      "name": "anon-approve-signup",
+      "mod": "account",
+      "method": "put",
+      "path": "/Parity_Pending",
+      "params": {
+        "card": {
+          "trigger": "approve_without_verification"
+        }
+      }
+    },
+    {
+      "name": "anon-session-card-create",
+      "mod": "session",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Session Probe",
+          "type": "Session",
+          "content": "x"
+        }
+      }
+    },
+    {
+      "name": "anon-session-card-update",
+      "mod": "session",
+      "method": "put",
+      "path": "/Parity_Session_Probe",
+      "params": {
+        "card": {
+          "content": "y"
+        }
+      }
+    },
+    {
+      "name": "anon-session-card-read",
+      "mod": "session",
+      "method": "get",
+      "path": "/Parity_Session_Probe"
+    },
+    {
+      "name": "anon-session-card-delete",
+      "mod": "session",
+      "method": "delete",
+      "path": "/Parity_Session_Probe"
+    },
+    {
+      "name": "anon-session-card-read-after-delete",
+      "mod": "session",
+      "method": "get",
+      "path": "/Parity_Session_Probe"
+    },
+    {
+      "name": "signup",
+      "mod": "account",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Joiner",
+          "type": "Sign up",
+          "subcards": {
+            "+*account": {
+              "subcards": {
+                "+*email": {
+                  "content": "joiner.probe@example.com"
+                },
+                "+*password": {
+                  "content": "Joiner horse battery 4$"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "signup-duplicate-email",
+      "mod": "account",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Joiner Two",
+          "type": "Sign up",
+          "subcards": {
+            "+*account": {
+              "subcards": {
+                "+*email": {
+                  "content": "joiner.probe@example.com"
+                },
+                "+*password": {
+                  "content": "Joiner horse battery 4$"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "signup-bad-email",
+      "mod": "account",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Joiner Three",
+          "type": "Sign up",
+          "subcards": {
+            "+*account": {
+              "subcards": {
+                "+*email": {
+                  "content": "not-an-email"
+                },
+                "+*password": {
+                  "content": "Joiner horse battery 4$"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "signup-short-password",
+      "mod": "account",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Joiner Four",
+          "type": "Sign up",
+          "subcards": {
+            "+*account": {
+              "subcards": {
+                "+*email": {
+                  "content": "joiner4.probe@example.com"
+                },
+                "+*password": {
+                  "content": "ab"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "admin-signin",
+      "mod": "account",
+      "method": "patch",
+      "path": "/update/*signin",
+      "params": {
+        "card": {
+          "subcards": {
+            "+*email": {
+              "content": "admin.probe@example.com"
+            },
+            "+*password": {
+              "content": "Admin horse battery 5%"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "restore-file-revision",
+      "mod": "carrierwave",
+      "method": "put",
+      "path": "/Parity_Cached_File",
+      "params": {
+        "revert_actions": [
+          "$create_action:Parity Cached File"
+        ],
+        "card": {
+          "skip": "validate_renaming"
+        }
+      },
+      "deliberate": {
+        "why": "Ruby crashes: the history mod calls revision(action, before_action) positionally and card-mod-carrierwave's override takes a keyword (ArgumentError), so restoring an old version of any File or Image card answers 500. The port restores the version, which is what the revert was written to do.",
+        "ruby": {
+          "status": "500",
+          "errors": "wrong number of arguments (given 2, expected 1)"
+        },
+        "ts": {
+          "status": "303",
+          "errors": ""
+        },
+        "absentIn": "ruby",
+        "consequences": [
+          "location",
+          "writes",
+          "actions",
+          "stamps",
+          "stored",
+          "mail",
+          "mailText",
+          "mailHtml",
+          "files"
+        ]
+      }
+    },
+    {
+      "name": "admin-create-signup",
+      "mod": "account",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Invitee",
+          "type": "Sign up",
+          "subcards": {
+            "+*account": {
+              "subcards": {
+                "+*email": {
+                  "content": "Invitee.Probe@Example.com"
+                },
+                "+*password": {
+                  "content": "Invitee horse battery 6&"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "admin-approve-with-verification",
+      "mod": "account",
+      "method": "put",
+      "path": "/Parity_Pending",
+      "params": {
+        "card": {
+          "trigger": "approve_with_verification"
+        }
+      }
+    },
+    {
+      "name": "admin-approve-without-verification",
+      "mod": "account",
+      "method": "put",
+      "path": "/Parity_Pending",
+      "params": {
+        "card": {
+          "trigger": "approve_without_verification"
+        }
+      }
+    },
+    {
+      "name": "admin-deny-signup",
+      "mod": "account",
+      "method": "delete",
+      "path": "/Parity_Joiner"
+    },
+    {
+      "name": "admin-update-role-members",
+      "mod": "account",
+      "method": "put",
+      "path": "/Help_Desk+*members",
+      "params": {
+        "card": {
+          "content": "$id:Parity Follower"
+        }
+      }
+    },
+    {
+      "name": "admin-create-skin",
+      "mod": "bootstrap",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Skin",
+          "type": "Bootswatch skin"
+        }
+      }
+    },
+    {
+      "name": "admin-create-skin-bad-parent",
+      "mod": "bootstrap",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Child Skin",
+          "type": "Bootswatch skin",
+          "subcards": {
+            "+parent": {
+              "content": "[[Parity Probe Card]]"
+            }
+          }
+        }
+      },
+      "deliberate": {
+        "why": "Ruby crashes: validate_theme_template calls theme_card on a parent that is not a skin (NoMethodError) and answers 500. The port gives the error the event was written to give (bootstrap_not_valid_theme); neither engine writes anything.",
+        "ruby": {
+          "status": "500",
+          "errors": "undefined method `theme_card' for #<Card> Did you mean? type_card"
+        },
+        "ts": {
+          "status": "422",
+          "errors": "ABORT: not a valid theme Parity Probe Card"
+        }
+      }
+    },
+    {
+      "name": "admin-create-old-skin",
+      "mod": "bootstrap",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Old Skin",
+          "type": "Skin",
+          "content": "bootstrap default skin\nParity Probe Card"
+        }
+      }
+    },
+    {
+      "name": "admin-skin-type-change",
+      "mod": "bootstrap",
+      "method": "put",
+      "path": "/Parity_Old_Skin",
+      "params": {
+        "card": {
+          "type": "Bootswatch skin"
+        }
+      }
+    },
+    {
+      "name": "admin-use-skin",
+      "mod": "bootstrap",
+      "method": "put",
+      "path": "/Parity_Skin",
+      "params": {
+        "card": {
+          "trigger": "use_as_current_skin"
+        }
+      }
+    },
+    {
+      "name": "admin-update-scss",
+      "mod": "assets",
+      "method": "put",
+      "path": "/yeti_skin+*colors",
+      "params": {
+        "card": {
+          "content": "$primary: #123456;"
+        }
+      }
+    },
+    {
+      "name": "admin-update-current-skin-colors",
+      "mod": "assets",
+      "method": "put",
+      "path": "/Parity_Skin+*colors",
+      "params": {
+        "card": {
+          "content": "$primary: #345678;"
+        }
+      }
+    },
+    {
+      "name": "admin-update-current-skin-colors-again",
+      "mod": "assets",
+      "method": "put",
+      "path": "/Parity_Skin+*colors",
+      "params": {
+        "card": {
+          "content": "$primary: #876543;"
+        }
+      }
+    },
+    {
+      "name": "admin-create-script-card",
+      "mod": "script",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity Probe Script",
+          "type": "JavaScript",
+          "content": "window.parityProbeCount = 1;\n"
+        }
+      }
+    },
+    {
+      "name": "admin-edit-site-script",
+      "mod": "script",
+      "method": "put",
+      "path": "/*all+*script",
+      "params": {
+        "card": {
+          "content": "mod: format+*script\nmod: list+*script\nmod: search+*script\nmod: rules+*script\nmod: edit+*script\nmod: account+*script\nmod: carrierwave+*script\nmod: ace editor+*script\nmod: bar and box+*script\nmod: bootstrap+*script\nmod: follow+*script\nmod: tabs+*script\nmod: layout+*script\nmod: recaptcha+*script\nmod: tinymce editor+*script\nParity Probe Script"
+        }
+      }
+    },
+    {
+      "name": "admin-edit-script-card",
+      "mod": "script",
+      "method": "put",
+      "path": "/Parity_Probe_Script",
+      "params": {
+        "card": {
+          "content": "window.parityProbeCount = 2;\n"
+        }
+      }
+    },
+    {
+      "name": "admin-delete-script-card",
+      "mod": "script",
+      "method": "delete",
+      "path": "/Parity_Probe_Script"
+    },
+    {
+      "name": "admin-update-layout",
+      "mod": "layout",
+      "method": "put",
+      "path": "/Default_Layout",
+      "params": {
+        "card": {
+          "content": "<!-- parity -->{{_main}}"
+        }
+      }
+    },
+    {
+      "name": "admin-update-layout-no-main",
+      "mod": "layout",
+      "method": "put",
+      "path": "/Default_Layout",
+      "params": {
+        "card": {
+          "content": "<!-- parity -->"
+        }
+      }
+    },
+    {
+      "name": "admin-rename-account-holder",
+      "mod": "account",
+      "method": "put",
+      "path": "/Parity_Follower",
+      "params": {
+        "card": {
+          "name": "Parity Follower Two"
+        }
+      },
+      "deliberate": {
+        "why": "Ruby crashes (NoMethodError: valid_preferer? on a nil card while re-keying the account's follow preferences) and answers 500. The port gives the error validate_account_holder_name_change was written to give; neither engine writes anything.",
+        "ruby": {
+          "status": "500",
+          "errors": "undefined method `type_id' for nil"
+        },
+        "ts": {
+          "status": "422",
+          "errors": "NAME: cannot rename Account Holder"
+        }
+      }
+    },
+    {
+      "name": "admin-signout",
+      "mod": "account",
+      "method": "delete",
+      "path": "/delete/*signin"
+    },
+    {
+      "name": "leaver-signin",
+      "mod": "account",
+      "method": "patch",
+      "path": "/update/*signin",
+      "params": {
+        "card": {
+          "subcards": {
+            "+*email": {
+              "content": "leaver.probe@example.com"
+            },
+            "+*password": {
+              "content": "Leaver horse battery 8("
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "leaver-close-account",
+      "mod": "account",
+      "method": "delete",
+      "path": "/Parity_Leaver+*account"
+    },
+    {
+      "name": "after-close-write",
+      "mod": "permissions",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity After Close"
+        }
+      }
+    },
+    {
+      "name": "admin-signin-again",
+      "mod": "account",
+      "method": "patch",
+      "path": "/update/*signin",
+      "params": {
+        "card": {
+          "subcards": {
+            "+*email": {
+              "content": "admin.probe@example.com"
+            },
+            "+*password": {
+              "content": "Admin horse battery 5%"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "admin-close-account",
+      "mod": "account",
+      "method": "delete",
+      "path": "/Parity_Leaver+*account"
+    },
+    {
+      "name": "admin-close-own-account",
+      "mod": "account",
+      "method": "delete",
+      "path": "/Parity_Admin+*account",
+      "deliberate": {
+        "why": "Ruby's signout_upon_delete names a constant that does not exist (Card::Set::Right::Self::Signin); the integrate stage swallows the NameError and the closed account stays signed in. The port signs the account out, as the event intends (a crash, and a closed account that can keep writing).",
+        "ruby": {
+          "session": "ANON-<hex>"
+        },
+        "ts": {
+          "session": "anonymous"
+        }
+      }
+    },
+    {
+      "name": "after-admin-close-write",
+      "mod": "permissions",
+      "method": "post",
+      "path": "/",
+      "params": {
+        "card": {
+          "name": "Parity After Admin Close"
+        }
+      },
+      "deliberate": {
+        "why": "Follows from the previous step: in Ruby the closed account is still signed in and can create cards; in the port the visitor is anonymous and is refused.",
+        "ruby": {
+          "status": "303",
+          "errors": "",
+          "session": "ANON-<hex>"
+        },
+        "ts": {
+          "status": "403",
+          "errors": "Sorry! Please sign in or sign up to do that.",
+          "session": "anonymous"
+        },
+        "absentIn": "ts",
+        "consequences": [
+          "location",
+          "writes",
+          "actions",
+          "stamps",
+          "stored",
+          "mail",
+          "mailText",
+          "mailHtml",
+          "files"
+        ]
+      }
+    }
+  ]
+}

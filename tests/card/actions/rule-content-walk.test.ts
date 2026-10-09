@@ -506,12 +506,21 @@ describe("prepareRecaptchaSaveInput - the engine resolves rule(:captcha) through
         modEvents: runtime,
       });
       // the signup-shaped create: a NEW card of the Sign up type (the walk's
-      // *type candidate reads the resolved type)
+      // *type candidate reads the resolved type), with the account Sign up
+      // requires (require_field :account)
       const result = await engine.createCard({
         name: "Jane Doe",
         typeCode: "signup",
         content: "body",
         recaptchaToken: "tok",
+        subcards: {
+          "+*account": {
+            subcards: {
+              "+*email": { content: "jane.doe@example.com" },
+              "+*password": { content: "Jane horse battery 7!" },
+            },
+          },
+        },
       });
       expect(result.cardId).toBeGreaterThan(0);
       expect(stub.calls).toHaveLength(0); // the signed-in arm refused first (recaptcha.rb:20)

@@ -210,6 +210,10 @@ export interface WriteRouteContext {
 }
 
 export interface WriteRouteResponse {
+  /** The visitor-session cookie a request that arrived without one receives
+   *  (the visitor session the write routes mint), appended after any
+   *  session cookie by the host. */
+  visitorCookie?: string;
   status: number;
   headers: Record<string, string>;
   body: string;

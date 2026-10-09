@@ -169,6 +169,9 @@ export interface MailMessage {
   readonly to: string;
   /** Sender (RFC 822 From:). */
   readonly from: string;
+  /** Reply-To (safe_from_and_reply_to! sets it to the actual sending
+   *  address, email_config.rb:65). */
+  readonly replyTo?: string;
   /** Optional Cc / Bcc. */
   readonly cc?: string;
   readonly bcc?: string;

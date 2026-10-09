@@ -88,7 +88,7 @@ import {
   findTrashedKeyObstacle,
   validateNameLegality,
 } from "./name-validation.js";
-import { resolveTypeId } from "./type-resolution.js";
+import { knownTypeSpec, resolveTypeId } from "./type-resolution.js";
 import { findRule } from "../rules/lookup.js";
 import {
   cleanContent,
@@ -114,6 +114,7 @@ import {
   type ViewTaskState,
   type WriteTask,
 } from "../permissions/view-task-rules.js";
+import { updatePermissionOverride } from "../permissions/read-override.js";
 import type { PatternCardInput } from "../set-patterns/types.js";
 import {
   quickTypeName,
@@ -137,14 +138,28 @@ import {
   detectAttachmentExtension,
   lastContentActionIdFromIdentifier,
   localAttachmentIdentifier,
+  parseLocalAttachmentIdentifier,
 } from "../attachments/attachment-content.js";
 import {
   createVersionsFor,
   mountUsesImageUploader,
   renditionFileNames,
+  IMAGE_VERSION_NAMES,
 } from "../attachments/image-renditions.js";
 import type { AttachmentStore, AttachmentStoreInput } from "../attachments/attachment-store.js";
 import { supportsTransactions } from "../../server/driver.js";
+import { canResize, imageDecodes, imageVersionBytes } from "../attachments/image-resize.js";
+import { encryptPassword, planAccountFields } from "../auth/account-fields.js";
+import { runObserverEvents } from "../notify/observer.js";
+import type { ScssCompiler } from "../assets/scss-compiler.js";
+import type { CoffeeCompiler } from "../assets/coffee-compiler.js";
+import { VirtualRecordCache } from "../mod-loader/mods/card-mod-virtual.js";
+import {
+  assertStyleCompilerFor,
+  runStyleAssetEvents,
+  type SavedCard,
+  type StyleAssetEventContext,
+} from "./style-asset-events.js";
 import { changeValueForField, trackedFieldIndex } from "../history/change.js";
 import {
   clearReferencesOnDelete,
@@ -264,10 +279,25 @@ export interface CardActionEngineOptions {
   /** How +*password saves are stored (auth/password-hash.ts). Default: the
    *  deck policy in force when the save runs (passwordHashPolicy()). */
   passwordHashing?: PasswordHashPolicy;
+  /** The deck origin and Decko Bot address the follower email needs (its
+   *  links and unfollow URL, and the From rule). Without them the mail
+   *  carries the template with its nests unfilled. */
+  followMail?: { origin: string; deckoBotEmail: string };
   /** The attachment storage seam (E4.4.a — card-mod-carrierwave's
    *  CarrierWave::Storage::File port). Required for saves that carry an
    *  `attachment` input; saves without one behave exactly as before. */
   attachmentStore?: AttachmentStore;
+  /** The SassC seam for the style asset events (the skin and CSS asset
+   *  inputs and the site stylesheet, style-asset-events.ts). Only LibSass
+   *  reproduces the oracle's bytes (assets/scss-compiler.ts). Absent = a
+   *  save that needs a compile is refused with a named error. */
+  scssCompiler?: ScssCompiler;
+  /** The CoffeeScript seam for the script asset events (the JavaScript /
+   *  CoffeeScript asset inputs and the site script, style-asset-events.ts).
+   *  The npm coffeescript@1.12.2 package reproduces the oracle's bytes
+   *  (assets/coffee-compiler.ts). Absent = a save that needs a compile is
+   *  refused with a named error. */
+  coffeeCompiler?: CoffeeCompiler;
   /** The deck's file_storage config (Cardio.config.file_storage port;
    *  undefined = the :local default, the oracle deck's
    *  config_file_storage_default). Shapes validate_file_exist's web? arm:
@@ -343,11 +373,22 @@ interface ResolvedSides {
   rightId: number | null;
   /** Subcard creates this resolution performed (same act). */
   created: (CardActionSummary & { actId: number })[];
+  /** The compound's own action row, reserved before its first missing
+   *  side was created (ActWriter.reserveCreateAction). */
+  reservedActionId?: number;
 }
 
 /** Engine for one actor; one applyAction = one act. Construct per request
  *  (Ruby: Director.run_act binds the act per request, director/all.rb:114)
  *  or reuse — every call starts its own act, exactly like a new submission. */
+/** anonymize! (card-mod-account set/abstract/account_holder.rb:83-85):
+ *  "ANON-" + SecureRandom.hex(6), twelve random hex digits. */
+function anonymousAccountName(): string {
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
+  return `ANON-${[...bytes].map((b) => b.toString(16).padStart(2, "0")).join("")}`;
+}
+
 export class CardActionEngine {
   readonly fetch: FetchEngine;
   readonly actor: Actor | null;
@@ -359,11 +400,16 @@ export class CardActionEngine {
   private readonly notifyTransport: NotifyTransport | undefined;
   private readonly notifyLogger: ((line: string) => void) | undefined;
   private readonly passwordHashing: PasswordHashPolicy | undefined;
+  private readonly followMail: { origin: string; deckoBotEmail: string } | undefined;
   /** The write-task permission state (who_can universe + actor parties),
    *  built lazily on this engine's first gated save — the render side's
    *  ensureTaskVerdicts model (one batch pair per engine, never per save). */
   private writeTaskState: ViewTaskState | undefined;
   private readonly attachmentStore: AttachmentStore | undefined;
+  private readonly scssCompiler: ScssCompiler | undefined;
+  private readonly coffeeCompiler: CoffeeCompiler | undefined;
+  /** Card::Cache[Virtual] for the card_virtuals rows this engine writes. */
+  private readonly virtualCache = new VirtualRecordCache();
   /** The deck's file_storage config port (CardActionEngineOptions.
    *  fileStorage; undefined = :local). */
   private readonly fileStorage: string | undefined;
@@ -392,7 +438,10 @@ export class CardActionEngine {
     this.notifyTransport = options.notifyTransport;
     this.notifyLogger = options.notifyLogger;
     this.passwordHashing = options.passwordHashing;
+    this.followMail = options.followMail;
     this.attachmentStore = options.attachmentStore;
+    this.scssCompiler = options.scssCompiler;
+    this.coffeeCompiler = options.coffeeCompiler;
     this.fileStorage = options.fileStorage;
     this.modEvents = options.modEvents;
     this.recaptchaConfig = options.recaptcha;
@@ -519,15 +568,47 @@ export class CardActionEngine {
    */
   private async dispatchSavePathIntegrations(
     result: ActionResult | null,
-    opts: { actCardActionOmitted?: boolean } = {},
+    opts: { actCardActionOmitted?: boolean; delayedStageDropped?: boolean } = {},
   ): Promise<void> {
     if (result === null) return;
+    // observer_<action> (card-mod-integrate observer.rb): the act card's
+    // *on <action> email rule, for every actor. A delivery that raises
+    // leaves an error on the card, and Ruby then runs none of its later
+    // integrate stages — the follower notice included.
+    let observerFailed = false;
+    if (this.followMail !== undefined && result.name !== undefined) {
+      const row = await this.fetchRowById(result.cardId);
+      const outcome = await runObserverEvents(this.fetch, {
+        card: { id: result.cardId, name: result.name.s, typeId: row?.type_id },
+        action: result.verb,
+        transport: this.notifyTransport ?? defaultTransport,
+        origin: this.followMail.origin,
+        deckoBotEmail: this.followMail.deckoBotEmail,
+        actorName: this.actor?.name ?? ANONYMOUS_ACTOR_NAME,
+        ...(this.notifyLogger !== undefined ? { logger: this.notifyLogger } : {}),
+      });
+      observerFailed = outcome.failed;
+    }
     if (await this.isAnonymousSession()) return;
-    const hooks = this.integrationHooks ?? [
+    const allHooks = this.integrationHooks ?? [
       buildFollowNotifyHook(
-        defaultFollowNotifyDeps(this.fetch, { followers: this.followerResolver }),
+        defaultFollowNotifyDeps(this.fetch, {
+          followers: this.followerResolver,
+          ...(this.followMail === undefined ? {} : { mail: this.followMail }),
+        }),
       ),
     ];
+    // A save whose request carries an uploaded file never runs the
+    // integrate_with_delay stage in Ruby: the stage is queued through
+    // ActiveJob with the request params, the uploaded file object cannot be
+    // serialized ("Unsupported argument type: ActionDispatch::Http::
+    // UploadedFile", activejob serializers.rb:34), and the integrate stage
+    // swallows the error (set/event.rb rescuing_if_integration). The
+    // follower notice after an upload is therefore never sent; the delete
+    // notice (:integrate) is unaffected.
+    const hooks = opts.delayedStageDropped === true || observerFailed
+      ? allHooks.filter((h) => h.stage !== "integrate_with_delay")
+      : allHooks;
     if (hooks.length === 0) return;
     // Unreachable (isAnonymousSession returned false); narrows for the
     // actor read.
@@ -640,26 +721,33 @@ export class CardActionEngine {
             typeName: sub.typeName,
             attachment: sub.attachment,
             superActionId,
+            ...(sub.history === false ? { history: false } : {}),
+            ...(sub.passwordEncrypted === true ? { passwordEncrypted: true } : {}),
           },
           { isActCard: false },
         );
-        saved.push({
-          cardId: created.cardId,
-          actionId: created.actionId,
-          actId: created.actId,
-          verb: created.verb,
-          name: created.name,
-        });
+        // a history-less card records no action (actionId 0): it is not a
+        // subaction of the act
+        if (sub.history !== false) {
+          saved.push({
+            cardId: created.cardId,
+            actionId: created.actionId,
+            actId: created.actId,
+            verb: created.verb,
+            name: created.name,
+          });
+        }
         // A subcard's own subcards (the sign-up form's
         // card[subcards][+*account][subcards][+*email]) save after it,
-        // within the same act, chained to its action.
+        // within the same act, chained to its action; a history-less
+        // subcard's own subcards chain to the act itself.
         if (sub.subcards !== undefined) {
           saved.push(
             ...(await this.saveSubcardsInWriter(
               writer,
               DeckoName.parse(fullName),
               sub.subcards,
-              created.actionId,
+              sub.history === false ? superActionId : created.actionId,
             )),
           );
         }
@@ -670,13 +758,6 @@ export class CardActionEngine {
           created.actionId,
           saved,
         );
-      }
-    }
-    // delete_children for the subcards trashed here, after the act's own
-    // subcards (a child the act already trashed is not trashed again).
-    for (const trashed of trashedHere) {
-      for (const child of await this.deleteChildren(writer, trashed.cardId, trashed.actionId)) {
-        saved.push({ ...child, actId: trashed.actId });
       }
     }
     return saved;
@@ -753,6 +834,16 @@ export class CardActionEngine {
       codename !== undefined && codename !== "" && mountUsesImageUploader(codename) && createVersionsFor(ext)
         ? renditionFileNames(actionId, ext)
         : undefined;
+    // The version files (image_card_uploader.rb:16-27): resized renditions
+    // keyed by their stored names.
+    let renditionBytes: Record<string, Uint8Array> | undefined;
+    if (renditionNames !== undefined) {
+      const versions = await imageVersionBytes(attachment.bytes, ext);
+      if (versions !== undefined) {
+        renditionBytes = {};
+        for (const v of IMAGE_VERSION_NAMES) renditionBytes[`${actionId}-${v}${ext}`] = versions[v];
+      }
+    }
     const storeInput: AttachmentStoreInput = {
       cardId,
       actionId,
@@ -763,7 +854,10 @@ export class CardActionEngine {
     // Recorded before the write, so a store that fails half-way is cleaned
     // up with the rest of a rolled-back save.
     this.filesStoredThisSave.push(storeInput);
-    const stored = await this.attachmentStore.store(storeInput);
+    const stored = await this.attachmentStore.store({
+      ...storeInput,
+      ...(renditionBytes !== undefined ? { renditionBytes } : {}),
+    });
     const identifier = localAttachmentIdentifier(cardId, actionId, ext);
 
     // :correct_identifier (attachment.rb:13-17): update_column :db_content —
@@ -857,10 +951,24 @@ export class CardActionEngine {
       }
       return;
     }
+    const humanized = mount.charAt(0).toUpperCase() + mount.slice(1);
+    const missing = (): CardActionError =>
+      new CardActionError(
+        "attachment-missing",
+        `Validation failed: ${humanized} is missing`,
+        `${mount.toUpperCase()}: is missing`,
+      );
     if (input.attachment === undefined) {
       // the attachment arm: errors.add attachment_name, "is missing"
-      const humanized = mount.charAt(0).toUpperCase() + mount.slice(1);
-      throw new CardActionError("attachment-missing", `Validation failed: ${humanized} is missing`);
+      throw missing();
+    }
+    // An image upload whose bytes cannot be processed: the version
+    // processing fails, CarrierWave leaves the mount without a file, and
+    // the same arm reports it missing (oracle: a PNG signature over
+    // non-image bytes answers 422 "IMAGE: is missing", nothing written).
+    if (mountUsesImageUploader(mount)) {
+      const ext = detectAttachmentExtension(input.attachment.originalFilename, input.attachment.bytes);
+      if (canResize(ext) && !(await imageDecodes(input.attachment.bytes))) throw missing();
     }
   }
 
@@ -873,10 +981,293 @@ export class CardActionEngine {
 
   async createCard(input: CreateCardInput): Promise<ActionResult> {
     try {
-      return await this.atomicSave(() => this.createCardInner(input));
+      return await this.atomicSave(async () => this.createCardInner(await knownTypeSpec(this.fetch, input)));
     } finally {
       this.pendingSaveInput = undefined;
     }
+  }
+
+  /** The account events on a create (card-mod-account): Sign up requires
+   *  a +*account subcard (require_field :account); a +*account subcard's
+   *  fields are validated (email format and uniqueness, password rules),
+   *  normalized (downcased email, encrypted password) and completed (salt,
+   *  default status), and password and salt are written without actions.
+   *  Errors are raised in Ruby's shown form, before any write. */
+  private async applyAccountFieldEvents(input: CreateCardInput, typeId: number): Promise<CreateCardInput> {
+    const signupId = await this.fetch.codenames.id("signup");
+    const holderIsSignup = signupId !== undefined && typeId === signupId;
+    const account = input.subcards?.["+*account"];
+    if (account === undefined) {
+      if (holderIsSignup) {
+        throw new CardActionError("user-error", "sign up without an account", "ACCOUNT: required");
+      }
+      return input;
+    }
+    const fields: Record<string, { content?: string | null }> = {};
+    for (const [k, v] of Object.entries(account.subcards ?? {})) fields[k] = { content: v.content };
+    const emailId = await this.fetch.codenames.id("email");
+    const plan = await planAccountFields({
+      fields,
+      holderIsSignup,
+      canApprove: holderIsSignup && (await this.canCreateDefaultAccountedType()),
+      emailTaken: async (email) => {
+        if (emailId === undefined) return false;
+        const r = await this.fetch.driver.query<{ id: number }>(
+          "SELECT id FROM cards WHERE right_id = ? AND db_content = ? AND trash = 0 LIMIT 1",
+          [emailId, email],
+        );
+        return r.rows.length > 0;
+      },
+      now: this.clock(),
+    });
+    if (plan.errors.length > 0) {
+      throw new CardActionError("user-error", `account fields rejected: ${plan.errors.join("; ")}`, plan.errors.join("\n"));
+    }
+    const subcards: Record<string, SubcardInput> = {};
+    for (const w of plan.writes) {
+      subcards[w.key] = {
+        ...(account.subcards?.[w.key] ?? {}),
+        content: w.content,
+        ...(w.history ? {} : { history: false }),
+        ...(w.key === "+*password" ? { passwordEncrypted: true } : {}),
+      };
+    }
+    return { ...input, subcards: { ...input.subcards, "+*account": { ...account, subcards } } };
+  }
+
+  /** account_holder.rb:1-5: `return unless account? &&
+   *  !Auth.as_card.account_manager?; errors.add :name, "cannot rename
+   *  Account Holder"`. account_manager? = own_account? ||
+   *  parties.member?(HelpDeskID) (:79-81); the bot is always_ok. */
+  private async assertMayRenameAccountHolder(cardId: number): Promise<void> {
+    const accountId = await this.fetch.codenames.id("account");
+    if (accountId === undefined) return;
+    const r = await this.fetch.driver.query<{ id: number }>(
+      "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+      [cardId, accountId],
+    );
+    if (r.rows.length === 0) return; // not an account holder
+    // account_manager? (account_holder.rb:71-73) has no always_ok? arm: an
+    // administrator who is not in Help Desk may not rename another account.
+    const state = await this.writePermissionState();
+    if (this.actor !== null && this.actor.id === cardId) return; // own account
+    const helpDesk = await this.fetch.codenames.id("help_desk");
+    if (helpDesk !== undefined && state.viewerParties.includes(helpDesk)) return;
+    throw new CardActionError(
+      "user-error",
+      "cannot rename Account Holder",
+      "NAME: cannot rename Account Holder",
+    );
+  }
+
+  /** card-mod-bootstrap set/type/bootswatch_skin/events.rb copy_theme: a
+   *  new Bootswatch skin adds its +*variables and +*colors fields (SCSS),
+   *  and each is permission-checked as its own create; a denied field
+   *  rejects the whole save (shown as "+*VARIABLES: permission_denied
+   *  You don't have permission to create <skin>+*variables"). +*colors
+   *  checks only when the skin has a real parent skin
+   *  (type_plus_right/bootswatch_skin/colors.rb ok_to_create?:
+   *  `left.parent? && super`); a new skin has none. The fields' own
+   *  creation on an allowed save is not ported. */
+  private async checkSkinFieldPermissions(name: DeckoName, typeId: number): Promise<void> {
+    const skinTypeId = await this.fetch.codenames.id("bootswatch_skin");
+    if (skinTypeId === undefined || typeId !== skinTypeId) return;
+    const scssId = await this.fetch.codenames.id("scss");
+    if (scssId === undefined) return;
+    const fieldName = `${name.s}+*variables`;
+    const probe = newCardRecord(DeckoName.parse(fieldName), { typeId: scssId });
+    const verdict = await saveTaskVerdictForCard(
+      this.fetch,
+      await this.patternInputFor(probe, scssId),
+      "create",
+      await this.writePermissionState(),
+    );
+    if (verdict !== true) {
+      const message = `You don't have permission to create ${fieldName}`;
+      throw new CardActionError(
+        "user-error",
+        `skin field denied: ${message}`,
+        `+*VARIABLES: permission_denied ${message}`,
+        { "+*variables": `permission_denied ${message}` },
+      );
+    }
+  }
+
+  /** update_layout_registry (card-mod-layout set/type/layout_type.rb:7-10,
+   *  :finalize, on: :update) re-registers the layout and raises
+   *  `Card::Error, "no main nest found in layout \"<name>\""` when neither
+   *  its content nor the cards it nests (five levels deep,
+   *  lib/card/layout/card_layout.rb:20-40) holds a {{_main}} nest. The
+   *  raise rolls the act back and answers 500; the port refuses before
+   *  writing. */
+  private async assertLayoutHasMainNest(
+    row: CardsRow,
+    content: string | null | undefined,
+    assignedTypeId: number | undefined,
+  ): Promise<void> {
+    const layoutTypeId = await this.fetch.codenames.id("layout_type");
+    if (layoutTypeId === undefined || (assignedTypeId ?? row.type_id) !== layoutTypeId) return;
+    const nests = (text: string): string[] =>
+      [...text.matchAll(/\{\{([^}|]*)/g)].map((m) => m[1].trim()).filter((n) => n !== "");
+    const hasMain = async (text: string, depth: number): Promise<boolean> => {
+      const names = nests(text);
+      if (names.some((n) => n === "_main")) return true;
+      if (depth > 5) return false;
+      for (const n of names) {
+        if (n.startsWith("_")) continue;
+        const nested = await this.fetch.fetchByKey(DeckoName.parse(n).key);
+        if (nested !== undefined && !nested.trash && (await hasMain(nested.dbContent ?? "", depth + 1))) return true;
+      }
+      return false;
+    };
+    if (await hasMain(content ?? row.db_content ?? "", 0)) return;
+    const name = (await this.composedNameOf(row))?.s ?? String(row.id);
+    const message = `no main nest found in layout "${name}"`;
+    throw new CardActionError("server-error", message, message);
+  }
+
+  /** initialize_because_of_type_change (card-mod-bootstrap
+   *  set/type/bootswatch_skin/events.rb:1-8, :prepare_to_store, on:
+   *  :update, changed: :type): a card that becomes a Bootswatch skin gets
+   *  its +*colors and +*variables fields, and its old item list (less
+   *  "bootstrap default skin") becomes its +*stylesheets field — a Skin
+   *  list whose items must be CSS or SCSS cards (validate_item_type,
+   *  shown as "+*STYLESHEETS: <item> has an invalid type: <type>. Allowed
+   *  types: CSS and SCSS."). */
+  private async applySkinTypeChange(
+    row: CardsRow,
+    input: UpdateCardInput,
+    assignedTypeId: number | undefined,
+  ): Promise<UpdateCardInput> {
+    const skinTypeId = await this.fetch.codenames.id("bootswatch_skin");
+    if (skinTypeId === undefined || assignedTypeId !== skinTypeId) return input;
+    const cssId = await this.fetch.codenames.id("css");
+    const scssId = await this.fetch.codenames.id("scss");
+    const skinListId = await this.fetch.codenames.id("skin");
+    if (scssId === undefined) return input;
+    const items = (row.db_content ?? "")
+      .split(/\n+/)
+      .map((i) => i.replace(/\[\[|\]\]/g, "").trim())
+      .filter((i) => i !== "" && DeckoName.parse(i).key !== DeckoName.parse("bootstrap default skin").key);
+    const typeNames = await Promise.all(
+      [cssId, scssId].map(async (id) => (id === undefined ? undefined : await this.typeNameOf(id))),
+    );
+    const allowed = typeNames.filter((n): n is string => n !== undefined).join(" and ");
+    const problems: string[] = [];
+    for (const item of items) {
+      const card = await this.fetch.fetchByKey(DeckoName.parse(item).key);
+      const typeId = card?.typeId ?? undefined;
+      if (typeId === cssId || typeId === scssId) continue;
+      const typeName = typeId === undefined || typeId === null ? "?" : await this.typeNameOf(typeId);
+      problems.push(`+*STYLESHEETS: ${card?.name?.s ?? item} has an invalid type: ${typeName}. Allowed types: ${allowed}.`);
+    }
+    if (problems.length > 0) {
+      throw new CardActionError("user-error", "skin stylesheets rejected", problems.join("\n"));
+    }
+    const subcards: Record<string, SubcardInput> = { ...input.subcards };
+    subcards["+*colors"] ??= { typeId: scssId };
+    subcards["+*variables"] ??= { typeId: scssId };
+    if (items.length > 0) {
+      subcards["+*stylesheets"] ??= {
+        ...(skinListId === undefined ? {} : { typeId: skinListId }),
+        content: items.join("\n"),
+      };
+    }
+    return { ...input, subcards };
+  }
+
+  /** A new Bootswatch skin's create events (card-mod-bootstrap
+   *  set/type/bootswatch_skin/events.rb):
+   *  - validate_theme_template (:validate): a skin whose +parent names a
+   *    card that is not itself a Bootswatch skin is refused with "not a
+   *    valid theme <name>" (en.yml bootstrap_not_valid_theme). Ruby never
+   *    reaches the message: theme_card calls theme_card on the non-skin
+   *    parent and raises NoMethodError (a 500). The port gives the error
+   *    the event was written to give — a deliberate difference.
+   *  - copy_theme (:prepare_to_store): the skin gets its +*colors and
+   *    +*variables fields, typed SCSS, in the same act. */
+  private async applySkinCreateEvents(input: CreateCardInput, typeId: number): Promise<CreateCardInput> {
+    const skinTypeId = await this.fetch.codenames.id("bootswatch_skin");
+    if (skinTypeId === undefined || typeId !== skinTypeId) return input;
+    const parentId = await this.fetch.codenames.id("parent");
+    const parentCard = parentId === undefined ? undefined : await this.fetch.fetchById(parentId);
+    const parentKey = parentCard?.name?.key ?? DeckoName.parse("parent").key;
+    const parentEntry = Object.entries(input.subcards ?? {}).find(
+      ([k]) => DeckoName.parse(k.replace(/^\+/, "")).key === parentKey,
+    )?.[1];
+    const firstItem = (parentEntry?.content ?? "")
+      .split(/\n+/)
+      .map((i) => i.replace(/\[\[|\]\]/g, "").trim())
+      .find((i) => i !== "");
+    if (firstItem !== undefined) {
+      const parent = await this.fetch.fetchByKey(DeckoName.parse(firstItem).key);
+      if (parent !== undefined && !parent.trash && parent.typeId !== skinTypeId) {
+        const message = `not a valid theme ${parent.name?.s ?? firstItem}`;
+        throw new CardActionError("user-error", message, `ABORT: ${message}`, { abort: message });
+      }
+    }
+    const scssId = await this.fetch.codenames.id("scss");
+    if (scssId === undefined) return input;
+    const subcards: Record<string, SubcardInput> = { ...input.subcards };
+    for (const field of ["+*colors", "+*variables"]) {
+      if (subcards[field] === undefined) subcards[field] = { typeId: scssId };
+    }
+    return { ...input, subcards };
+  }
+
+  /** card-mod-account set/right/password.rb on a save that writes a
+   *  +*password card's content itself (a password change, or a password
+   *  field created outside a sign-up): validate_password_present (an
+   *  update to blank changes nothing), validate_password_length /
+   *  validate_password_chars on the raw value (shown as "PASSWORD: ..."),
+   *  and encrypt_password with the account's stored salt (Auth.encrypt
+   *  with a nil salt when there is none). Undefined when the card is not a
+   *  password field; `skip` for the blank update. */
+  private async passwordFieldContent(
+    rightId: number | undefined,
+    leftId: number | null | undefined,
+    content: string | null | undefined,
+    verb: "create" | "update",
+  ): Promise<{ content: string } | { skip: true } | undefined> {
+    const passwordId = await this.fetch.codenames.id("password");
+    if (passwordId === undefined || rightId !== passwordId) return undefined;
+    const raw = content ?? "";
+    if (verb === "update" && raw.trim() === "") return { skip: true };
+    const problems = passwordErrors(raw);
+    if (problems.length > 0) {
+      throw new CardActionError(
+        "user-error",
+        "password field rejected",
+        problems.map((m) => `PASSWORD: ${m}`).join("\n"),
+      );
+    }
+    let salt = "";
+    const saltId = await this.fetch.codenames.id("salt");
+    if (leftId !== null && leftId !== undefined && saltId !== undefined) {
+      const r = await this.fetch.driver.query<{ db_content: string | null }>(
+        "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+        [leftId, saltId],
+      );
+      salt = r.rows[0]?.db_content ?? "";
+    }
+    return { content: await encryptPassword(raw, salt) };
+  }
+
+  /** Sign up's can_approve? (set/type/signup.rb): the actor may create a
+   *  card of the default accounted type (User). */
+  private async canCreateDefaultAccountedType(): Promise<boolean> {
+    const userTypeId = await this.fetch.codenames.id("user");
+    if (userTypeId === undefined) return false;
+    // Ruby's Card.new(type_id:) has no name; a simple placeholder name
+    // walks the same rule candidates (its *self set holds no rule).
+    const probe = newCardRecord(DeckoName.parse("can approve probe"), { typeId: userTypeId });
+    const verdict = await saveTaskVerdictForCard(
+      this.fetch,
+      await this.patternInputFor(probe, userTypeId),
+      "create",
+      await this.writePermissionState(),
+    );
+    return verdict === true;
   }
 
   private async createCardInner(input: CreateCardInput): Promise<ActionResult> {
@@ -905,6 +1296,13 @@ export class CardActionEngine {
     const typeId = await resolveTypeId(this.fetch, { ...input, name });
     const placeholder = newCardRecord(name, { typeId });
     await this.assertCanWrite(placeholder, "create");
+    // The account field events (auth/account-fields.ts) run over the whole
+    // +*account subtree before anything is written: Ruby validates every
+    // subcard in the validate stage, so a rejected sign-up stores nothing.
+    input = await this.applyAccountFieldEvents(input, typeId);
+    await this.checkSkinFieldPermissions(name, typeId);
+    input = await this.applySkinCreateEvents(input, typeId);
+    await assertStyleCompilerFor(this.styleAssetContext(actingId), name, typeId);
     const writer = this.newWriter(actingId);
     let result: ActionResult;
     try {
@@ -930,6 +1328,9 @@ export class CardActionEngine {
     // (Ruby's notify_followers is itself an integration event,
     // card-mod-follow set/all/notify.rb:13-16).
     await this.afterCommit(async () => {
+      // FINALIZE: the style asset events (asset inputs, the site stylesheet).
+      const savedCards = this.savedCardsOf(finalResult);
+      await runStyleAssetEvents(this.styleAssetContext(actingId), savedCards);
       await this.bumpAncestorTimestamps(CardActionEngine.savedCardIds(finalResult));
       await this.dispatchEventStage(
         "integrate",
@@ -944,7 +1345,9 @@ export class CardActionEngine {
         }),
       );
       await this.saveRecentlyEditedSettings(finalResult);
-      await this.dispatchSavePathIntegrations(finalResult);
+      await this.dispatchSavePathIntegrations(finalResult, {
+        delayedStageDropped: input.attachment !== undefined && input.attachment.fromCachedUpload !== true,
+      });
     });
     return finalResult;
   }
@@ -960,18 +1363,29 @@ export class CardActionEngine {
     opts: { isActCard: boolean; resolvedTypeId?: number },
   ): Promise<ActionResult> {
     const name = DeckoName.parse(input.name ?? "");
+    // A +*password card's content is validated and stored encrypted (the
+    // sign-up plan's password arrives encrypted already).
+    if (input.passwordEncrypted !== true && name.isCompound && name.rightName !== undefined) {
+      const rightId = await this.fetch.lexicon.id(name.rightName);
+      const leftId = name.leftName !== undefined ? await this.fetch.lexicon.id(name.leftName) : undefined;
+      const pw = await this.passwordFieldContent(rightId, leftId, input.content, "create");
+      if (pw !== undefined && "content" in pw) input = { ...input, content: pw.content };
+    }
     // The execution seam's validation-phase stages (director.rb:12-16
     // VI/VP/VV). A new card has no id yet (director.rb:47 "has id" from
     // store on) and no dirty set; every core event at these stages is a
     // stub, so the walks fire nothing observable until those bodies
     // land — the seams are the point.
+    // The event card's type: the resolved type once known (type-scoped set
+    // modules, e.g. set/type/number.rb's :validate_number, apply by it).
+    let eventTypeId = opts.resolvedTypeId;
     const validationCard = (): ModEventCard =>
       this.eventCard({
         name,
         key: name.key,
         dbContent: input.content,
         action: "create",
-        typeId: opts.resolvedTypeId,
+        typeId: eventTypeId,
       });
     await this.dispatchEventStage("initialize", validationCard());
     await this.dispatchEventStage("prepare_to_validate", validationCard());
@@ -1020,8 +1434,9 @@ export class CardActionEngine {
       : undefined;
     // prepare_left_and_right (name_events.rb:68-73): compound names resolve
     // their sides; missing sides become subcard creates in this act
-    // (prepare_new_side :118-125).
-    const sides = await this.ensureSides(writer, name);
+    // (prepare_new_side :118-125). The compound's own action is recorded
+    // before the sides' actions, as Ruby orders them.
+    const sides = await this.ensureSides(writer, name, undefined, { reserveOwnAction: true });
 
     // manage_trash -> pull_from_trash! (trash.rb:23-25, :57-62): a matching
     // trashed row is revived (its id reused) instead of a fresh INSERT.
@@ -1233,9 +1648,10 @@ export class CardActionEngine {
     // the account's salt (a salt generated earlier in this act counts).
     const rightCode =
       name.isSimple || sides.rightId === null ? undefined : await this.fetch.codenames.nameForId(sides.rightId);
-    if (rightCode === "password" && input.content != null && input.attachment === undefined) {
+    if (rightCode === "password" && input.content != null && input.attachment === undefined && input.passwordEncrypted !== true) {
       // validate_password_length / validate_password_chars (:validate) run on
-      // the assigned password, before encrypt_password (:store).
+      // the assigned password, before encrypt_password (:store) — skipped
+      // when the caller already stored the digest (passwordEncrypted).
       const problems = passwordErrors(input.content);
       if (problems.length > 0) {
         throw new CardActionError("validation-failed", `Validation failed: ${problems.join(", ")}`);
@@ -1279,6 +1695,8 @@ export class CardActionEngine {
         rightId: sides.rightId,
         isNew: true,
       }),
+      ...(sides.reservedActionId !== undefined ? { reservedActionId: sides.reservedActionId } : {}),
+      ...(input.history === false ? { history: false } : {}),
       superActionId: input.superActionId ?? null,
       isActCard: opts.isActCard,
       reservedActionId,
@@ -1385,7 +1803,7 @@ export class CardActionEngine {
       this.saveSkip = [...(outerSkip ?? []), ...input.skip];
     }
     try {
-      return await this.atomicSave(() => this.updateCardInner(input));
+      return await this.atomicSave(async () => this.updateCardInner(await knownTypeSpec(this.fetch, input)));
     } finally {
       this.saveSkip = outerSkip;
       this.pendingSaveInput = undefined;
@@ -1429,6 +1847,20 @@ export class CardActionEngine {
     // revert requests update a trashed card that way.
     if (row === undefined || (row.trash === 1 && input.lookInTrash !== true)) {
       throw new CardActionError("not-found", `no such card: ${input.cardId}`);
+    }
+    // validate_account_holder_name_change (card-mod-account
+    // set/abstract/account_holder.rb:1-5): renaming a card that has an
+    // account needs an account manager — the account itself, or a Help
+    // Desk member (account_manager?).
+    if (input.name !== undefined) {
+      const current = (await this.fetch.fetchById(row.id))?.name?.key;
+      if (DeckoName.parse(input.name).key !== current) await this.assertMayRenameAccountHolder(row.id);
+    }
+    // A +*password card's content is validated and stored encrypted.
+    if (input.content !== undefined && input.content !== null && input.passwordEncrypted !== true) {
+      const pw = await this.passwordFieldContent(row.right_id ?? undefined, row.left_id, input.content, "update");
+      if (pw !== undefined && "skip" in pw) return null;
+      if (pw !== undefined) input = { ...input, content: pw.content };
     }
     if (input.trash === true && input.withinRollback !== true) {
       throw new CardActionError(
@@ -1481,6 +1913,8 @@ export class CardActionEngine {
     // a :validate-stage event, so it runs after ok_to_update? and BEFORE
     // anything persists - a stale-revision save is refused whole.
     await this.assertNoEditConflict(row.id, input.lastActionIdBeforeEdit);
+    await this.assertLayoutHasMainNest(row, input.content, resolvedTypeId);
+    if (typeChanged) input = await this.applySkinTypeChange(row, input, resolvedTypeId);
     // save_draft (mod/core/set/all/content.rb:8-15) is a :store-stage event
     // on :update when :draft? - `save_content_draft content; abort :success`.
     // The abort rolls the cards row save back, so the draft's ONLY durable
@@ -1505,6 +1939,11 @@ export class CardActionEngine {
       );
       return this.saveDraftInWriter(this.newWriter(actingId), row, input);
     }
+    await assertStyleCompilerFor(
+      this.styleAssetContext(actingId),
+      (input.name !== undefined ? DeckoName.parse(input.name) : await this.composedNameOf(row)) ?? DeckoName.parse(""),
+      resolvedTypeId ?? row.type_id,
+    );
     const writer = this.newWriter(actingId);
     let result = await this.updateInWriter(writer, row, input, resolvedTypeId);
     // subcards.rb:1-16: the subcards ride this save's act — the multiedit
@@ -1551,6 +1990,9 @@ export class CardActionEngine {
     // The integration phase, after the transaction commits (phases.rb:4).
     const committed = result;
     await this.afterCommit(async () => {
+      // FINALIZE: the style asset events (asset inputs, the site stylesheet).
+      const savedCards = this.savedCardsOf(committed, row);
+      await runStyleAssetEvents(this.styleAssetContext(actingId), savedCards);
       await this.bumpAncestorTimestamps(
         CardActionEngine.savedCardIds(committed).filter(
           (id) => !(committed?.actCardActionOmitted === true && id === row.id),
@@ -1568,8 +2010,13 @@ export class CardActionEngine {
         }),
       );
       await this.saveRecentlyEditedSettings(committed);
+      // Events the request triggered for the :integrate stage (trigger:
+      // :required, e.g. send_verification_email / send_welcome_email) run
+      // with that stage, before the delayed follower notice.
+      if (input.triggeredIntegrate !== undefined) await input.triggeredIntegrate();
       await this.dispatchSavePathIntegrations(committed, {
         actCardActionOmitted: committed?.actCardActionOmitted === true,
+        delayedStageDropped: input.attachment !== undefined && input.attachment.fromCachedUpload !== true,
       });
     });
     return result;
@@ -1603,16 +2050,27 @@ export class CardActionEngine {
     const currentName = await this.composedNameOf(row);
     const currentKey = this.keyOf(row, currentName);
     const newName = input.name !== undefined ? DeckoName.parse(input.name) : undefined;
+    // At validate time Ruby's card already carries the ASSIGNED attributes
+    // (Card#update! assigns, then the director runs the stages): the event
+    // card shows the incoming content and type, and the content/type
+    // columns changing, so changed: conditions and type-scoped set modules
+    // see the save as Ruby does.
+    const incomingContent = input.content ?? row.db_content;
+    const incomingTypeId = preResolvedTypeId ?? row.type_id;
+    const validationChanged: string[] = [];
+    if (input.content !== undefined && input.content !== row.db_content) validationChanged.push("db_content");
+    if (incomingTypeId !== row.type_id) validationChanged.push("type_id");
     const validationCard = (): ModEventCard =>
       this.eventCard({
         name: newName ?? currentName,
         id: row.id,
         key: currentKey,
-        dbContent: row.db_content,
+        dbContent: incomingContent,
         action: "update",
         trash: false,
-        typeId: row.type_id,
+        typeId: incomingTypeId,
         nameBeforeAct: currentName?.s,
+        changedFields: validationChanged,
       });
     await this.dispatchEventStage("initialize", validationCard());
     await this.dispatchEventStage("prepare_to_validate", validationCard());
@@ -1758,6 +2216,7 @@ export class CardActionEngine {
       updateRightCode === "password" &&
       input.content !== undefined &&
       input.attachment === undefined &&
+      input.passwordEncrypted !== true &&
       input.content !== (before.db_content ?? undefined)
     ) {
       const problems = passwordErrors(input.content);
@@ -2281,6 +2740,96 @@ export class CardActionEngine {
     expireRuleResolutionCache(driver);
   }
 
+  /** close_account (card-mod-account set/abstract/account_holder.rb:75-79,
+   *  :83-89) inside the account's delete: the holder is renamed (anonymize!)
+   *  and its fields other than +*account are deleted (closure_deletions),
+   *  each as part of the same act. */
+  private async closeAccount(
+    writer: ActWriter,
+    holderId: number,
+    accountCardId: number,
+    anonName: string,
+    accountActionId: number,
+  ): Promise<CardActionSummary[]> {
+    const holder = await this.fetchRowById(holderId);
+    if (holder === undefined || holder.trash === 1) return [];
+    const summaries: CardActionSummary[] = [];
+    const nameBefore = await this.composedNameOf(holder);
+    const renamed = await writer.updateCard({
+      cardId: holder.id,
+      before: cardFieldStateFromRow(holder),
+      after: { ...cardFieldStateFromRow(holder), name: anonName },
+      key: DeckoName.parse(anonName).key,
+      superActionId: accountActionId,
+    });
+    await this.expireAfterWrite({
+      cardId: holder.id,
+      nameBefore,
+      nameAfter: DeckoName.parse(anonName),
+      verb: "update",
+    });
+    if (renamed !== null) {
+      summaries.push({ cardId: holder.id, actionId: renamed.actionId, verb: "update", name: DeckoName.parse(anonName) });
+    }
+    const accountId = await this.fetch.codenames.id("account");
+    for (const field of await this.childRows(holder.id)) {
+      if (field.left_id !== holder.id || field.right_id === accountId || field.id === accountCardId) continue;
+      const saved = await writer.trashCard({
+        cardId: field.id,
+        before: cardFieldStateFromRow(field),
+        superActionId: accountActionId,
+        history: await this.fieldHasHistory(field),
+      });
+      if (saved === null) continue;
+      if (saved.actionId !== 0) {
+        summaries.push({ cardId: field.id, actionId: saved.actionId, verb: "delete", name: await this.composedNameOf(field) });
+      }
+      summaries.push(...(await this.deleteChildren(writer, field.id, saved.actionId)));
+    }
+    return summaries;
+  }
+
+  /** history? (card-mod-history set/all/history.rb): false for the account
+   *  mod's password and salt fields, which record no actions. */
+  private async fieldHasHistory(row: CardsRow): Promise<boolean> {
+    if (row.right_id === null) return true;
+    const passwordId = await this.fetch.codenames.id("password");
+    const saltId = await this.fetch.codenames.id("salt");
+    return row.right_id !== passwordId && row.right_id !== saltId;
+  }
+
+  /** The cards an act saved, for the style asset events: the act card's own
+   *  action (unless its save was a no-op) and the subcard actions, in order.
+   *  `before` is the act card's row as it stood before the save. */
+  private savedCardsOf(result: ActionResult | null, before?: CardsRow): SavedCard[] {
+    if (result === null) return [];
+    const out: SavedCard[] = [];
+    if (result.actCardActionOmitted !== true) {
+      out.push({
+        cardId: result.cardId,
+        actionId: result.actionId,
+        verb: result.verb,
+        ...(before !== undefined && before.id === result.cardId ? { contentBefore: before.db_content } : {}),
+      });
+    }
+    for (const sub of result.subactions) out.push({ cardId: sub.cardId, actionId: sub.actionId, verb: sub.verb });
+    return out;
+  }
+
+  /** What the style asset events borrow from this engine. */
+  private styleAssetContext(actingId: number | undefined): StyleAssetEventContext {
+    return {
+      fetch: this.fetch,
+      clock: this.clock,
+      newWriter: () => this.newWriter(actingId),
+      expire: (cardId, name) => this.expireAfterWrite({ cardId, nameAfter: name, verb: "update" }),
+      attachmentStore: this.attachmentStore,
+      compile: this.scssCompiler,
+      compileCoffee: this.coffeeCompiler,
+      virtuals: this.virtualCache,
+    };
+  }
+
   /** The cards a result saved: the act card and every subcard action. */
   private static savedCardIds(result: ActionResult | null): number[] {
     if (result === null) return [];
@@ -2477,12 +3026,30 @@ export class CardActionEngine {
       }),
     );
     const writer = this.newWriter(actingId);
+    // delete_account (card-mod-account set/right/account/events.rb:45-47):
+    // deleting an account closes it — close_account (account_holder.rb:75-79)
+    // renames the holder "ANON-<12 hex digits>" and deletes the holder's
+    // other fields. Deleting the holder itself deletes its +*account, so the
+    // holder's own delete action carries the rename too.
+    const accountId = await this.fetch.codenames.id("account");
+    const deletesAccount = accountId !== undefined && row.right_id === accountId && row.left_id !== null;
+    const holderAccount = accountId === undefined || row.left_id !== null
+      ? undefined
+      : (await this.childRows(row.id)).find((c) => c.right_id === accountId && c.left_id === row.id);
+    const anonName = deletesAccount || holderAccount !== undefined ? anonymousAccountName() : undefined;
     const saved = await writer.trashCard({
       cardId: row.id,
       before: cardFieldStateFromRow(row),
+      ...(holderAccount !== undefined && anonName !== undefined
+        ? { after: { ...cardFieldStateFromRow(row), name: anonName, trash: 1 }, key: DeckoName.parse(anonName).key }
+        : {}),
       superActionId: input.superActionId ?? null,
     });
     if (saved === null) return null;
+    let closure: CardActionSummary[] = [];
+    if (deletesAccount && anonName !== undefined && row.left_id !== null) {
+      closure = await this.closeAccount(writer, row.left_id, row.id, anonName, saved.actionId);
+    }
     // SP + SS (director.rb:20-21): persisted deletes only (see the update
     // path's disclosure — events pin to persisted saves).
     const deletedCard = (): ModEventCard =>
@@ -2503,15 +3070,33 @@ export class CardActionEngine {
     // delete_children cascade. Ruby's subcard deletes run with
     // `validate: false` (director/store.rb:70-73), so child validate_delete
     // guards (codenames) do NOT re-fire down the tree — ported as-is.
-    const subactions = await this.deleteChildren(writer, row.id, saved.actionId);
+    const subactions = [...closure, ...(await this.deleteChildren(writer, row.id, saved.actionId))];
     await this.expireAfterWrite({
       cardId: row.id,
       nameAfter: currentName,
       verb: "delete",
     });
+    if (holderAccount !== undefined && anonName !== undefined) {
+      await this.expireAfterWrite({ cardId: row.id, nameAfter: DeckoName.parse(anonName), verb: "update" });
+    }
     // FINALIZE (card_references write path) — the SEAM with takeover:
     // clear_references (reference_events.rb:27-31) through the registered
     // body when the name is registered; the built-in otherwise.
+    // FINALIZE (event :asset_input_changed_on_delete, card-mod-assets
+    // asset_inputter.rb:20-23, before: :clear_references): a deleted
+    // inputter's referers re-derive — dependent inputters re-store their
+    // asset inputs, outputters rebuild their files, now without the trashed
+    // card. Runs for every card this act deleted, before the references are
+    // cleared (the referers still point here).
+    const deletedCards: SavedCard[] = [
+      { cardId: row.id, actionId: saved.actionId, verb: "delete" as const },
+      ...subactions.map((s) => ({
+        cardId: s.cardId,
+        actionId: s.actionId,
+        verb: "delete" as const,
+      })),
+    ];
+    await runStyleAssetEvents(this.styleAssetContext(actingId), deletedCards);
     await this.runFinalizeEvents(deletedCard(), [
       [
         "clear_references",
@@ -2530,7 +3115,11 @@ export class CardActionEngine {
       actionId: saved.actionId,
       actId: saved.actId,
       verb: "delete" as const,
-      name: currentName,
+      // A closed account's +*account card is named after its renamed
+      // holder by the time the act's notices go out.
+      name: deletesAccount && anonName !== undefined && currentName?.rightName !== undefined
+        ? DeckoName.parse(`${anonName}+${currentName.rightName.s}`)
+        : currentName,
       subactions,
     };
     // II (director.rb:26): the integrate seam before the notify hooks (see
@@ -2646,10 +3235,12 @@ export class CardActionEngine {
         for (const child of await this.childRows(parentId)) {
           if (visited.has(child.id)) continue;
           visited.add(child.id);
+          const history = await this.fieldHasHistory(child);
           const saved = await writer.trashCard({
             cardId: child.id,
             before: cardFieldStateFromRow(child),
             superActionId: parentActionId,
+            history,
           });
           if (saved === null) continue; // unreachable: trash always flips
           // FINALIZE — the child's own delete save, its clear_references
@@ -2672,12 +3263,14 @@ export class CardActionEngine {
               ],
             ],
           );
-          summaries.push({
-            cardId: child.id,
-            actionId: saved.actionId,
-            verb: "delete",
-            name: await this.composedNameOf(child),
-          });
+          if (history) {
+            summaries.push({
+              cardId: child.id,
+              actionId: saved.actionId,
+              verb: "delete",
+              name: await this.composedNameOf(child),
+            });
+          }
           next.push({ parentId: child.id, parentActionId: saved.actionId });
         }
       }
@@ -3020,17 +3613,163 @@ export class CardActionEngine {
    *  whose verdict runs for the Anonymous card (writeViewer); the sync
    *  gate has already rejected only the fragment-seed case (no anonymous
    *  codename card) across all three write tasks. */
+  /** ok?(:update) on an existing card for this engine's actor, as the
+   *  validate stage judges it: throws the permission-denied error when the
+   *  actor may not update it. */
+  async assertMayUpdate(cardId: number): Promise<void> {
+    const row = await this.fetchRowById(cardId);
+    if (row === undefined || row.trash === 1) {
+      throw new CardActionError("not-found", `no such card: ${cardId}`);
+    }
+    await this.assertCanWrite(await composeCardRecord(row, this.fetch.lexicon), "update");
+  }
+
+  /** `Card.new(type_id: <type>).ok? :create` for this engine's actor: may
+   *  the actor create a (nameless) card of that type? */
+  async mayCreateCardOfType(typeId: number): Promise<boolean> {
+    const pattern: PatternCardInput = {
+      name: "",
+      isNew: true,
+      typeId,
+      typeName: await this.typeNameOf(typeId),
+    };
+    const verdict = await saveTaskVerdictForCard(this.fetch, pattern, "create", await this.writePermissionState());
+    return verdict === true;
+  }
+
+  /** The first step of a two-step upload (card-mod-carrierwave
+   *  set/abstract/attachment/00_upload_cache.rb prepare_attachment, when
+   *  params[:attachment_upload]): the file is stored and one draft action
+   *  records it, and nothing else is written.
+   *  - for an existing card: an update draft on the card itself, the file
+   *    stored with the card's files;
+   *  - for a new card: a create draft filed on the upload-cache card
+   *    (*new file / *new image), the file kept in the upload cache.
+   *  Ruby runs this at :prepare_to_validate, before the permission check,
+   *  so anyone could store files that way; the port checks first (update
+   *  permission on the card, or create permission for the new card's type)
+   *  and refuses otherwise. */
+  async recordPreliminaryUpload(input: {
+    cardId?: number;
+    typeId: number;
+    mount: "file" | "image";
+    attachment: AttachmentInput;
+  }): Promise<{ actionId: number; cacheCardName: string | undefined }> {
+    if (this.attachmentStore === undefined) {
+      throw new Error("a preliminary upload requires the engine's attachmentStore option");
+    }
+    const actingId = await this.actingIdForWrite();
+    if (actingId === undefined) this.assertWritable();
+    let cardId: number;
+    let cacheCardName: string | undefined;
+    if (input.cardId !== undefined) {
+      await this.assertMayUpdate(input.cardId);
+      cardId = input.cardId;
+    } else {
+      if (!(await this.mayCreateCardOfType(input.typeId))) {
+        throw new CardActionError(
+          "permission-denied",
+          `actor ${this.actor?.name ?? ANONYMOUS_ACTOR_NAME} may not create a card of type ${input.typeId}`,
+        );
+      }
+      const cacheId = await this.fetch.codenames.id(`new_${input.mount}`);
+      if (cacheId === undefined) throw new CardActionError("not-found", `no *new ${input.mount} card`);
+      cardId = cacheId;
+      cacheCardName = (await this.fetch.fetchById(cacheId))?.name?.s;
+    }
+    const ext = detectAttachmentExtension(input.attachment.originalFilename, input.attachment.bytes);
+    const writer = this.newWriter(actingId);
+    const saved = await writer.recordUploadDraft({
+      cardId,
+      actionType: input.cardId === undefined ? "create" : "update",
+      comment: input.attachment.originalFilename,
+      changes: (actionId) =>
+        input.cardId === undefined
+          ? [["name", ""], ["type_id", input.typeId], ["db_content", localAttachmentIdentifier(cardId, actionId, ext)]]
+          : [["db_content", localAttachmentIdentifier(cardId, actionId, ext)]],
+    });
+    await this.attachmentStore.store({
+      cardId,
+      actionId: saved.actionId,
+      ext,
+      bytes: input.attachment.bytes,
+      ...(input.cardId === undefined ? { area: "tmp" as const } : {}),
+    });
+    return { actionId: saved.actionId, cacheCardName };
+  }
+
+  /** The second step (assign_attachment_on_create / _on_update,
+   *  00_upload_cache.rb:27-43): the cached draft action's file becomes the
+   *  save's attachment, and once the save has run the draft action and its
+   *  file are removed (delete_cached_upload_file_on_*; the action's change
+   *  rows stay, as Action#delete leaves them). Undefined when the action
+   *  is not a cached upload for this card. */
+  async cachedUploadAttachment(
+    actionId: number | string,
+    opts: { cardId?: number; mount: "file" | "image" },
+  ): Promise<{ attachment: AttachmentInput; release: () => Promise<void> } | undefined> {
+    const id = Number(actionId);
+    if (!Number.isInteger(id) || this.attachmentStore === undefined) return undefined;
+    const cacheCardId = opts.cardId ?? (await this.fetch.codenames.id(`new_${opts.mount}`));
+    const action = (
+      await this.fetch.driver.query<{ card_id: number | null; comment: string | null }>(
+        "SELECT card_id, comment FROM card_actions WHERE id = ? AND draft = 1",
+        [id],
+      )
+    ).rows[0];
+    if (action === undefined || cacheCardId === undefined || Number(action.card_id) !== cacheCardId) return undefined;
+    const change = (
+      await this.fetch.driver.query<{ value: string | null }>(
+        "SELECT value FROM card_changes WHERE card_action_id = ? AND field = ? ORDER BY id DESC LIMIT 1",
+        [id, trackedFieldIndex("db_content")],
+      )
+    ).rows[0];
+    const parsed = parseLocalAttachmentIdentifier(change?.value ?? null);
+    if (parsed === undefined) return undefined;
+    const area = opts.cardId === undefined ? ("tmp" as const) : ("files" as const);
+    const bytes = await this.attachmentStore.read(parsed.cardId, parsed.actionId, parsed.ext, undefined, area);
+    if (bytes === undefined) return undefined;
+    const store = this.attachmentStore;
+    return {
+      attachment: {
+        bytes,
+        originalFilename: action.comment ?? `${parsed.actionId}${parsed.ext}`,
+        fromCachedUpload: true,
+      },
+      release: async () => {
+        await this.fetch.driver.query("DELETE FROM card_actions WHERE id = ?", [id]);
+        await store.remove?.(parsed.cardId, parsed.actionId, parsed.ext, area);
+      },
+    };
+  }
+
   private async assertCanWrite(
     card: CardRecord,
     task: WriteTask,
     opts: { typeChanged?: boolean; assignedTypeId?: number; assignedName?: string } = {},
   ): Promise<void> {
     const pattern = await this.patternInputFor(card, opts.assignedTypeId, opts.assignedName);
-    const verdict = await saveTaskVerdictForCard(
+    const state = await this.writePermissionState();
+    // The account mods' ok_to_update? overrides (account_holder.rb:59,
+    // right/account.rb:33, account_field.rb:16, right/status.rb:16-22):
+    // `(own_account? && !type_id_changed? [&& !name_changed?]) || super`,
+    // and the own-status lock. They shadow Set::All#ok_to_update? for a
+    // save that changes neither type nor name; always_ok? still wins first.
+    const override =
+      task === "update" && !state.alwaysOk && opts.typeChanged !== true && opts.assignedName === undefined && card.name !== undefined
+        ? await updatePermissionOverride(card.name, {
+            viewerKey: this.actor !== null && !(await this.isAnonymousSession())
+              ? DeckoName.parse(this.actor.name).key
+              : undefined,
+            fetchByKey: (key) => this.fetch.fetchByKey(key),
+            fetchById: (cardId) => this.fetch.fetchById(cardId),
+          })
+        : undefined;
+    const verdict = override ?? await saveTaskVerdictForCard(
       this.fetch,
       pattern,
       task,
-      await this.writePermissionState(),
+      state,
       // assignedName rides the pattern input's name for the RULE walk and
       // opts for the RENAME clause (the sides the assigned name creates —
       // saveTaskVerdictForCard's update branch; name_events.rb:67-72,
@@ -3038,9 +3777,14 @@ export class CardActionEngine {
       { typeChanged: opts.typeChanged, assignedName: opts.assignedName },
     );
     if (verdict === false) {
+      // permissions.rb:117 deny_because you_cant("#{verb} #{name}"), added
+      // to card.errors under :permission_denied (:204).
+      const shownName = card.name?.s !== undefined && card.name.s !== "" ? card.name.s : "this";
       throw new CardActionError(
         "permission-denied",
         `actor ${this.actor?.name ?? ANONYMOUS_ACTOR_NAME} may not ${task} card ${card.name?.s ?? String(card.id)}`,
+        undefined,
+        { permission_denied: `You don't have permission to ${task} ${shownName}` },
       );
     }
     // The host hook is a port-only seam — Ruby's permission chain is the
@@ -3440,6 +4184,9 @@ export class CardActionEngine {
     });
   }
 
+  /** prepare_db_content's HTML step (content.rb:44-49): the stored content
+   *  passes through Card::Content.clean! unless the card's clean_html? is
+   *  false (its type's or right part's set overrides it). */
   private async cleanForStore(
     content: string,
     typeId: number | null,
@@ -3457,10 +4204,12 @@ export class CardActionEngine {
     writer: ActWriter,
     name: DeckoName,
     selfId?: number,
+    opts: { reserveOwnAction?: boolean } = {},
   ): Promise<ResolvedSides> {
     const created: (CardActionSummary & { actId: number })[] = [];
     if (!name.isCompound) return { leftId: null, rightId: null, created };
     const idsByKey = new Map<string, number>();
+    let reservedActionId: number | undefined;
     const resolveSide = async (sideName: DeckoName | undefined): Promise<number | null> => {
       if (sideName === undefined) return null;
       const key = sideName.key;
@@ -3480,6 +4229,9 @@ export class CardActionEngine {
       if (selfId !== undefined && id === selfId) {
         id = await this.recreateObstructedSide(writer, sideName, selfId, created);
       } else if (id === undefined) {
+        if (opts.reserveOwnAction === true && reservedActionId === undefined) {
+          reservedActionId = await writer.reserveCreateAction();
+        }
         const sub = await this.createInWriter(writer, { name: sideName.s }, { isActCard: false });
         id = sub.cardId;
         created.push(sub);
@@ -3489,7 +4241,7 @@ export class CardActionEngine {
     };
     const leftId = await resolveSide(name.leftName);
     const rightId = await resolveSide(name.rightName);
-    return { leftId, rightId, created };
+    return { leftId, rightId, created, ...(reservedActionId !== undefined ? { reservedActionId } : {}) };
   }
 
   /** prepare_obstructed_side (name_events.rb:144-150) + clear_name
@@ -3677,6 +4429,7 @@ export class CardActionEngine {
       input.contentAfter ?? null,
     );
   }
+
 
   /** Post-save cache maintenance: Card#expire after every save
    *  (phases.rb:56-57 -> cache/all.rb:17-24 — both key versions via

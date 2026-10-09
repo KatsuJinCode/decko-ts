@@ -86,6 +86,10 @@ export interface CreateCardInput {
   /** card_actions.super_action_id passthrough for subcard actions
    *  (events.rb:88-92: the supercard's current action). */
   superActionId?: number | null;
+  /** false: the card's set has history? false (card-mod-history
+   *  set/all/history.rb actionable?), so the row is inserted with no act
+   *  or action (password and salt fields). */
+  history?: boolean;
   /** Explicitly mark this create as the act's primary card. Defaults to
    *  "the first operation on the writer" (the common request shape); see
    *  ActWriter docs. */
@@ -109,6 +113,9 @@ export interface UpdateCardInput {
   /** Required when `name` changes: the new cards.key value (name= also
    *  writes key=, lib/card/name/all.rb:20-23). Ignored otherwise. */
   key?: string | null;
+  /** false: history? false for this card (password, salt): the row is
+   *  saved without act, action or change rows. */
+  history?: boolean;
   /** card_actions.super_action_id passthrough (events.rb:88-92). */
   superActionId?: number | null;
   /** card_actions.comment is NOT written by the core history machinery; the
@@ -280,6 +287,10 @@ export class ActWriter {
       ],
     );
 
+    if (input.history === false) {
+      // no action, no act row of its own; actionId 0 marks "none recorded"
+      return { cardId, actId: this.actId ?? 0, actionId: 0 };
+    }
     const stmts: SQLStatement[] = [];
     const actIdSelect = this.pushClearDraftsAndAct(stmts, cardId, ts);
     const actionRow = {
@@ -314,6 +325,28 @@ export class ActWriter {
 
     await this.finalizeActCard(cardId, this.isActCardOp(cardId, input.isActCard));
     return { cardId, actId: this.requireActId(actId), actionId: requireId(actionId) };
+  }
+
+  /** Reserve this act's next action row for a create whose card row cannot
+   *  be inserted yet. A compound card's missing sides are inserted before it
+   *  (the junction row needs their ids), but Ruby records the compound's
+   *  own action first and the sides' actions after it, as subactions
+   *  (director/store.rb: the supercard's action is assigned before its
+   *  subcards store). The reserved row carries the act and the create type;
+   *  createCard({ reservedActionId }) fills in the card. */
+  async reserveCreateAction(): Promise<number> {
+    const ts = sqlDateTime(this.clock());
+    const stmts: SQLStatement[] = [];
+    const actIdSelect = this.actId === null ? this.pushInsertAct(stmts, null, ts) : undefined;
+    const actionIdSelect = this.pushInsertAction(stmts, {
+      cardId: null,
+      superActionId: null,
+      actionType: actionTypeCode("create"),
+      draft: 0,
+      comment: null,
+    });
+    const { actionId } = await this.runBatch(stmts, { actIdSelect, actionIdSelect });
+    return requireId(actionId);
   }
 
   // -----------------------------------------------------------------------
@@ -367,6 +400,14 @@ export class ActWriter {
       isNewCard: false,
     });
     const ts = sqlDateTime(this.clock());
+    if (input.history === false) {
+      // history? false (password, salt): the row is saved with no act,
+      // action or change rows of its own.
+      const stmts: SQLStatement[] = [];
+      this.pushUpdateCardsRow(stmts, input, changed, ts);
+      await this.driver.batch(stmts);
+      return { actId: this.actId ?? 0, actionId: 0 };
+    }
 
     // Pre-reads (single-writer assumption as in ActiveRecord; the values are
     // re-derivable, not authoritative, so no locking is attempted).
@@ -462,6 +503,47 @@ export class ActWriter {
     return saved;
   }
 
+  /** prepare_attachment (card-mod-carrierwave
+   *  set/abstract/attachment/00_upload_cache.rb:8-25): the first step of a
+   *  two-step upload records one DRAFT action (action_type create for a new
+   *  card, filed on the upload-cache card; update for an existing card),
+   *  with the original filename as its comment and the change rows that
+   *  store_card_changes writes, then aborts — the cards row is untouched.
+   *  `changes` receives the new action id (the stored file's identifier
+   *  carries it). */
+  async recordUploadDraft(input: {
+    cardId: number;
+    actionType: "create" | "update";
+    comment: string | null;
+    changes: (actionId: number) => [keyof CardFieldState, string | number | null][];
+  }): Promise<SavedAction> {
+    const ts = sqlDateTime(this.clock());
+    const stmts: SQLStatement[] = [];
+    const actIdSelect = this.actId === null ? this.pushInsertAct(stmts, input.cardId, ts) : undefined;
+    const actionIdSelect = this.pushInsertAction(stmts, {
+      cardId: input.cardId,
+      superActionId: null,
+      actionType: actionTypeCode(input.actionType),
+      draft: 1,
+      comment: input.comment,
+    });
+    const { actId, actionId } = await this.runBatch(stmts, { actIdSelect, actionIdSelect });
+    const saved = { actId: this.requireActId(actId), actionId: requireId(actionId) };
+    const changeStmts: SQLStatement[] = [];
+    for (const [field, value] of input.changes(saved.actionId)) {
+      this.pushInsertChange(changeStmts, { kind: "id", id: saved.actionId }, field, value);
+    }
+    if (changeStmts.length > 0) await this.driver.batch(changeStmts);
+    return saved;
+  }
+
+  /** Action#delete (ActiveRecord #delete: no callbacks, so the action's
+   *  change rows stay) — the cached upload's draft action once its file has
+   *  been assigned (00_upload_cache.rb delete_cached_upload_file_on_*). */
+  async deleteActionRow(actionId: number): Promise<void> {
+    await this.driver.batch([{ sql: "DELETE FROM card_actions WHERE id = ?", params: [actionId] }]);
+  }
+
   /** `card.delete!` = an update save with trash: true
    *  (mod/core/set/all/trash.rb:11-21, :70-72); identify_action turns the
    *  trash flip into a :delete action. Already-trashed cards come back as a
@@ -472,11 +554,16 @@ export class ActWriter {
   async trashCard(input: {
     cardId: number;
     before: CardFieldState;
+    history?: boolean;
+    /** The state after the delete when it changes more than trash (a
+     *  closed account's holder is renamed in its own delete action). */
+    after?: CardFieldState;
+    key?: string | null;
     superActionId?: number | null;
     ancestorCardIds?: number[];
   }): Promise<SavedAction | null> {
     const after: CardFieldState =
-      input.before.trash === 1 ? input.before : { ...input.before, trash: 1 };
+      input.after ?? (input.before.trash === 1 ? input.before : { ...input.before, trash: 1 });
     return this.updateCard({ ...input, after });
   }
 

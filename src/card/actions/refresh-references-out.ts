@@ -44,6 +44,7 @@ import { NameNotFoundError, CodenameNotFoundError } from "../name/errors.js";
 import { stripTags } from "../render/nest-syntax.js";
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import { idMarkOf, isListCard, listItemStrings } from "./list-content.js";
+export { listItemStrings };
 
 /** all.rb:10 PARTIAL_REF_CODE. */
 const PARTIAL_REF_CODE = "P";
@@ -79,6 +80,7 @@ export async function refreshReferencesOut(
   refererId: number,
   refererName: DeckoName,
   content: string | null | undefined,
+  opts: { asList?: boolean } = {},
 ): Promise<void> {
   // delete_references_out (all.rb:48; reference_events.rb:63-65).
   await driver.query("DELETE FROM card_references WHERE referer_id = ?", [refererId]);
@@ -128,12 +130,21 @@ async function createReferencesOut(
   refererId: number,
   refererName: DeckoName,
   content: string | null | undefined,
+  asList = false,
 ): Promise<ReferenceRow[]> {
   if (content === null || content === undefined || content === "") {
     return []; // no content: delete-only (Content.parse of nil yields no chunks)
   }
   // all.rb:55 ref_hash — insertion-ordered: { key -> [id, types...] }.
   const refHash = new Map<string, { refereeId: number | undefined; refTypes: string[] }>();
+  if (asList) {
+    // card-mod-list Abstract::List each_reference_out: every item name is
+    // a link reference (chunk_class Link, CODE "L").
+    for (const item of listItemStrings(content)) {
+      await interpretReference(lexicon, refHash, item, "L", refererName);
+    }
+    return referenceValuesArray(refHash, refererId);
+  }
   for (const chunk of scanReferenceChunks(content)) {
     if (chunk.refereeName === undefined) continue; // explicit links / comment nests
     await interpretReference(lexicon, refHash, chunk.refereeName, chunk.refType, refererName);

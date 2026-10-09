@@ -61,6 +61,13 @@ for (const target of TARGETS) {
     external: [...builtins, ...EXTERNAL_RUNTIME_IMPORTS],
     conditions: ["deno", "bunny", "import", "default"],
     mainFields: ["module", "main"],
+    // @cf-wasm/photon (the image-version resizer on the write path) has no
+    // deno/bunny export condition, and its default entry imports the .wasm
+    // file as a workerd module binding, which neither esbuild nor the Bunny
+    // runtime provides. Its node entry carries the same WebAssembly module
+    // inline (base64) and compiles it with WebAssembly.Module, which the
+    // Deno-based edge runtime supports.
+    alias: { "@cf-wasm/photon": "@cf-wasm/photon/node" },
     logLevel: "info",
     metafile: true,
     // The bundle's first statement stamps when evaluation began, before any

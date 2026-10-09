@@ -160,6 +160,10 @@ export interface WorkersWriteResponse {
   readonly status: number;
   readonly headers: Record<string, string>;
   readonly body: string;
+  /** Further Set-Cookie values (the visitor-session cookie,
+   *  write-routes.ts WriteRouteResponse.visitorCookie), appended after any
+   *  Set-Cookie header. */
+  readonly extraCookies?: readonly string[];
 }
 
 /** The staging-slice sign-in form path, the same `/_*` name
@@ -274,6 +278,9 @@ export function toWebResponse(
     } else {
       headers.set(name, value);
     }
+  }
+  for (const cookie of result.extraCookies ?? []) {
+    headers.append("Set-Cookie", hardenSessionCookie(cookie, request.secure));
   }
   if (!headers.has("Content-Type") && result.body !== "") {
     headers.set("Content-Type", "text/html; charset=utf-8");
@@ -433,7 +440,12 @@ async function mountWrite(
     return plainText(405, "Method not allowed", "That is not a card write route on this deck.");
   }
   expireAfterSave(ctx, result.expiryName);
-  return { status: result.status, headers: result.headers, body: result.body };
+  return {
+    status: result.status,
+    headers: result.headers,
+    body: result.body,
+    ...(result.visitorCookie === undefined ? {} : { extraCookies: [result.visitorCookie] }),
+  };
 }
 
 /** Ruby's expiry rides every committed save (card-1.110.0

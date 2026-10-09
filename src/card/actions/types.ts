@@ -53,17 +53,36 @@ export type CardActionErrorCode =
   | "revert-unsupported" // a revert shape the port does not carry out (named in the message)
   | "field-required" // require_field :email (card-mod-account set/right/account.rb:8)
   | "validation-failed" // another :validate event's errors (e.g. card-mod-account password.rb:28-46)
-  | "recaptcha"; // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55)
+  | "server-error" // a Card::Error raised by a save event (status 500), e.g. a layout without a main nest
+  | "recaptcha" // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55)
+  | "user-error"; // a bare Card::Error::UserError (card-1.110.0 lib/card/error.rb:21), e.g. deleting a card that does not exist
 
 /** Error class for every action-layer rejection. `code` carries the Ruby
  *  event the rejection ports (see CardActionErrorCode). */
 export class CardActionError extends Error {
   readonly code: CardActionErrorCode;
+  /** The message as Ruby's error view shows it to the user: the
+   *  `errors.add` key, upcased, then the message (card-mod-format
+   *  set/all/html/error.rb standard_errors: "<KEY>: <message>"). Absent when
+   *  the throw site has no Ruby counterpart wording; the HTML error surface
+   *  then shows `message`. */
+  readonly userMessage?: string;
+  /** Ruby's card.errors as {attribute => message}, when the attribute is
+   *  not the lower-case form of the shown key (an error class name such as
+   *  "UserError"). The JSON errors view reports this hash. */
+  readonly errorsByAttribute?: Readonly<Record<string, string>>;
 
-  constructor(code: CardActionErrorCode, message: string) {
+  constructor(
+    code: CardActionErrorCode,
+    message: string,
+    userMessage?: string,
+    errorsByAttribute?: Readonly<Record<string, string>>,
+  ) {
     super(message);
     this.name = "CardActionError";
     this.code = code;
+    if (userMessage !== undefined) this.userMessage = userMessage;
+    if (errorsByAttribute !== undefined) this.errorsByAttribute = errorsByAttribute;
   }
 }
 
@@ -94,6 +113,11 @@ export interface AttachmentInput {
   /** The multipart part's declared content type (the LAST arm of
    *  SanitizedFile#content_type's detection order, :240-250). */
   declaredContentType?: string | null;
+  /** The bytes come from an earlier preliminary upload (a two-step
+   *  upload's action_id_of_cached_upload), not from a file in this request:
+   *  the request params carry no uploaded-file object, so Ruby's delayed
+   *  integrate stage (the follower notice) is not dropped. */
+  fromCachedUpload?: boolean;
 }
 
 /** One subcard in a multi-card save (Card::Subcards — card/lib/card/
@@ -115,7 +139,14 @@ export interface SubcardInput extends TypeSpec {
    *  delete action chained to the supercard's action (a history revert's
    *  subcard revisions, card-mod-history revision.rb merge_revert_action!). */
   trash?: boolean;
-}
+  /** This subcard's own subcards (card[subcards][+*account][subcards]...),
+   *  named relative to it. */
+  /** false: the card's set says history? false (password, salt) — the row
+   *  is written without an action. */
+  history?: boolean;
+  /** The content is already an encrypted password (the account field
+   *  plan encrypted it with the salt it generated). */
+  passwordEncrypted?: boolean;}
 
 /** Card.create! arguments (Card.create! opts — director/card_class.rb:5-9:
  *  `card = new opts; card.save!`). Name is the mark; everything else is
@@ -129,6 +160,11 @@ export interface CreateCardInput extends TypeSpec {
    *  RELATIVE names ("+author" -> "<this card>+author", the form's
    *  subfield shape) or absolute names. */
   subcards?: Record<string, SubcardInput>;
+  /** false: history? false for this card (card-mod-account password.rb,
+   *  salt.rb): the row is written with no act or action. */
+  history?: boolean;
+  /** The content is already an encrypted password (see SubcardInput). */
+  passwordEncrypted?: boolean;
   /** cards.codename passthrough (ActWriter column). Codename writes carry
    *  their own events in Ruby (mod/core/set/all/codename.rb) — the caller
    *  is responsible for legitimacy; the cache reset runs here. */
@@ -154,6 +190,8 @@ export interface CreateCardInput extends TypeSpec {
  *  persists nothing (no-op save — history events.rb:34-37). */
 export interface UpdateCardInput extends TypeSpec {
   cardId: number;
+  /** The content is already an encrypted password (see SubcardInput). */
+  passwordEncrypted?: boolean;
   /** A new name — the Save/Update rename path (name_events.rb events on
    *  `changed: :name`). Compound names rewire left_id/right_id; simple
    *  names rewrite the cards.name/key columns. */
@@ -195,6 +233,16 @@ export interface UpdateCardInput extends TypeSpec {
    *  (card-mod-recaptcha set/all/recaptcha.rb:41-44, 57-66). Same shape as
    *  the create-side field. */
   recaptchaToken?: string;
+  /** Work the request triggered for this save's :integrate stage
+   *  (`trigger: :required` events such as send_verification_email and
+   *  send_welcome_email): run after the save's rows are written and before
+   *  the delayed follower notice. */
+  triggeredIntegrate?: () => Promise<void>;
+  /** The save is an event another card's save triggered (for example
+   *  use_as_current_skin updating *all+*style): it rides that card's act,
+   *  whose card is the one observers and followers hear about, so this save
+   *  sends no notices of its own. */
+  withinOtherAct?: boolean;
   /** Fetch the card with `look_in_trash` (card-1.110.0 lib/card/fetch.rb
    *  :49-51, retrieve.rb:31): the update may reach a trashed row. Without
    *  it a trashed card is "no such card", as Card[id] filters trash. */

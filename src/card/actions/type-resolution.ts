@@ -54,6 +54,32 @@ import type { PatternCardInput } from "../set-patterns/types.js";
  *  the *default rule as fallback) whose natural tail IS the global
  *  *all+*default rule card — Card.default_type_id (type.rb:3-5) is that
  *  most-general row, kept as the tail fetch. */
+/** The type args a save actually keeps. Ruby's extract_type_id! runs while
+ *  the card's attributes are assigned (Card.new / assign_attributes ->
+ *  normalize_type_attributes, type.rb:82-85): an unknown :type / :type_code
+ *  adds "<val> is not a known type." (type_id_or_error, :104-110) and
+ *  assigns no type_id. ActiveRecord's valid? then CLEARS errors before the
+ *  validation stages run, so that error never reaches the user: the create
+ *  proceeds with the default type and an update keeps the current one
+ *  (measured against the oracle: a create with type "No Such Type"
+ *  answers 303 and stores a RichText card). An explicit unknown type_id is
+ *  different: it is assigned, and validate_type rejects it at :validate. */
+export async function knownTypeSpec<T extends TypeSpec>(fetcher: FetchEngine, spec: T): Promise<T> {
+  if (spec.typeId !== undefined && spec.typeId !== 0) return spec;
+  if (spec.typeCode !== undefined && (await fetcher.codenames.id(spec.typeCode)) === undefined) {
+    const { typeCode: _dropped, ...rest } = spec;
+    return knownTypeSpec(fetcher, rest as T);
+  }
+  if (spec.typeCode === undefined && spec.typeName !== undefined) {
+    const id = await fetcher.lexicon.id(DeckoName.parse(spec.typeName as Nameish).key);
+    if (id === undefined) {
+      const { typeName: _dropped, ...rest } = spec;
+      return rest as T;
+    }
+  }
+  return spec;
+}
+
 export async function resolveTypeId(
   fetcher: FetchEngine,
   spec: TypeSpec & { name?: Nameish },

@@ -447,9 +447,7 @@ async function applicableRule(
   state: ViewTaskState,
   depth = 0,
 ): Promise<{ ruleId: number; task: WriteTask } | undefined> {
-  const resolvedTask: { task: WriteTask } = { task };
-  const ruleId = await applicableRuleId(fetcher, card, task, state, depth, resolvedTask);
-  return ruleId === undefined ? undefined : { ruleId, task: resolvedTask.task };
+  return applicableRuleId(fetcher, card, task, state, depth);
 }
 
 /** Card::Query-free port of permissions.rb:55-71 permission_rule_id: the
@@ -478,9 +476,7 @@ async function applicableRuleId(
   task: WriteTask,
   state: ViewTaskState,
   depth = 0,
-  resolvedTask?: { task: WriteTask },
-): Promise<number | undefined> {
-  if (resolvedTask !== undefined) resolvedTask.task = task;
+): Promise<{ ruleId: number; task: WriteTask } | undefined> {
   if (!state.hasTaskRules[task]) return undefined;
   const candidates = ruleNamesForCard(card, TASK_SETTING_NAME[task]).map(
     (name) => DeckoName.parse(name).key,
@@ -500,11 +496,14 @@ async function applicableRuleId(
   // match over the stored content.
   const name = DeckoName.parse(card.name);
   const value = state.ruleContent[task].get(firstResolved) ?? "";
+  // The verdict reads the resolved rule's parties under the task it was
+  // resolved FOR: a real left's :create inherits through its :update rule
+  // (:69), so that rule's parties live in the update map.
   if (depth >= 16 || !LEFT_RULE_VALUE.test(value) || !name.isCompound) {
-    return firstResolved;
+    return { ruleId: firstResolved, task };
   }
   const leftName = name.leftName;
-  if (leftName === undefined || leftName.key === "") return firstResolved;
+  if (leftName === undefined || leftName.key === "") return { ruleId: firstResolved, task };
   const left = await fetcher.fetchByName(leftName.key, { skipVirtual: true });
   // The real left's type anchor (the *type candidate) — CardRecord carries
   // the id, the anchor NAME comes from the type card (the same shape
@@ -529,7 +528,6 @@ async function applicableRuleId(
     inheritedTask,
     state,
     depth + 1,
-    resolvedTask,
   );
 }
 

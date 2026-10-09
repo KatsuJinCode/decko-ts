@@ -189,9 +189,10 @@ import type {
   CardRecord,
 } from "../../fetch/card-record.js";
 import { followRuleNameFor, followSetCardName } from "../../follow/follow-rule-walk.js";
-import type {
-  DeckoModManifest,
-  ModSetModuleFile,
+import {
+  engineOwnedEvent,
+  type DeckoModManifest,
+  type ModSetModuleFile,
 } from "../mod-manifest.js";
 import { followOptionDescription } from "../../follow/follow-options.js";
 import {
@@ -1119,7 +1120,17 @@ const cardModFollow: DeckoModManifest = {
       formats: { html: { views: [] } },
     },
     passiveSetModule("all/follow/followed_by"),
-    passiveSetModule("all/follow/follower_ids"),
+    {
+      ...passiveSetModule("all/follow/follower_ids"),
+      // Ruby caches follower ids and the preference index and expires them
+      // on these saves; the port resolves followers from the rules on every
+      // notification (notify/follower-resolver.ts), so there is no cache to
+      // expire and the observable effect (fresh followers) is the same.
+      events: [
+        engineOwnedEvent({ event: "cache_expired_for_type_change", at: "store", on: ["update"], changed: ["type_id", "name"] }),
+        engineOwnedEvent({ event: "expire_preferences_cache", at: "finalize", when: "expire_preferences?" }),
+      ],
+    },
     passiveSetModule("all/follow/follow_link"),
     {
       // card-mod-follow-0.20.0/set/all/follow/follow_link_views.rb -
@@ -1149,6 +1160,25 @@ const cardModFollow: DeckoModManifest = {
       // write-path (Card::Director, ActiveJob, ActionMailer).
       setPath: "all/notify",
       formats: { html: { views: [] } },
+      // The notify events run in the engine (notify/follow-notify.ts, the
+      // save path's follow hook; the delete arm reads the trashed card;
+      // notify/follower-stash.ts): one mail per follower about the act,
+      // at integrate_with_delay for saves and integrate for deletes.
+      // Notifications reach only the host's transport, so a save outside a
+      // request (no transport) sends nothing, which is the effect of
+      // silence_notifications.
+      events: [
+        engineOwnedEvent({ event: "silence_notifications", at: "initialize", when: "silence_notifications?" }),
+        engineOwnedEvent({
+          event: "notify_followers_after_save",
+          at: "integrate_with_delay",
+          on: ["save"],
+          priority: 20,
+          when: "notable_change?",
+        }),
+        engineOwnedEvent({ event: "stash_followers", at: "store", on: ["delete"], when: "notable_change?" }),
+        engineOwnedEvent({ event: "notify_followers_after_delete", at: "integrate", on: ["delete"], when: "notable_change?" }),
+      ],
     },
     {
       // card-mod-follow-0.20.0/set/all/notify/base_views.rb - the BASE
@@ -1416,6 +1446,9 @@ const cardModFollow: DeckoModManifest = {
       // rule-walk methods.
       setPath: "type/set",
       formats: { html: { views: [] } },
+      // set.rb:1 expires the follower caches for a new set; the port keeps
+      // none (see all/follow/follower_ids above).
+      events: [engineOwnedEvent({ event: "cache_expired_for_new_set", at: "store", on: ["create"] })],
     },
     {
       // card-mod-follow-0.20.0/set/type/user.rb - the User cardtype's

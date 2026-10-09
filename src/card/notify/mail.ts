@@ -151,6 +151,12 @@ const EMAIL_DOCUMENT_HEAD =
   '<!DOCTYPE html>\n<html>\n  <head>\n    <meta http-equiv="Content-type" content="text/html;charset=UTF-8"/>\n    <style></style>\n  </head>\n  <body class="d0-email-body">\n    ';
 const EMAIL_DOCUMENT_TAIL = "\n  </body>\n</html>\n";
 
+/** The bare address of a From value ("Name" <addr> -> addr). */
+export function addressOf(from: string): string {
+  const m = /<([^>]*)>\s*$/.exec(from);
+  return (m !== null ? m[1] : from).trim();
+}
+
 /** safe_from_and_reply_to! (email_config.rb:52-79), over the ALREADY
  *  address-resolved field content: `configured_from_name_and_email`
  *  splits "Name <email>"; `actual_email` = Mailer.default[:from]
@@ -237,9 +243,13 @@ export function renderMail(
       ? resolveFromAddress(template.from, { deckoBotEmail: extras.botAccountEmail })
       : template.from;
 
+  // email_config.rb:65: reply_to ||= actual_email, the bare address the
+  // From rule settled on.
+  const replyTo = extras?.botAccountEmail !== undefined ? addressOf(from) : undefined;
   return {
     to: template.to,
     from,
+    ...(replyTo !== undefined ? { replyTo } : {}),
     subject,
     textBody,
     ...(wrappedHtml !== undefined && wrappedHtml.length > 0 ? { htmlBody: wrappedHtml } : {}),

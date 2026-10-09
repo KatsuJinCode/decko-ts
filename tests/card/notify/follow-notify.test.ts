@@ -158,7 +158,7 @@ describe("notify/follow-notify (first-mechanism port)", () => {
     ).toBe(false);
   });
 
-  it("does not fire on the delete path (a separate hook owns it)", async () => {
+  it("fires on the delete path (notify_followers_after_delete, notify.rb:25-27)", async () => {
     const followers: FollowerRef[] = [
       { followerId: 11, followerName: "John", followerEmail: "john@example.com", followedSetName: "John Following", followOption: "always" },
     ];
@@ -170,7 +170,7 @@ describe("notify/follow-notify (first-mechanism port)", () => {
     });
 
     await hook.fire(makeEvent({ isDeletePath: true }), { transport });
-    expect(transport.count()).toBe(0);
+    expect(transport.count()).toBe(1);
   });
 
   it("skips when the follower list is empty (no-op save)", async () => {

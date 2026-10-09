@@ -30,13 +30,10 @@
 // (render/views.ts formatImageCore appendSizeVariant, the port of
 // set/type/image.rb selected_version).
 //
-// NAMED SEAM (the resize): Ruby's versions are mini_magick RESIZES
-// (resize_and_pad 16x16, resize_to_fit 75x75, resize_to_limit 200/500).
-// This engine carries no image processor: every version file is a
-// byte-identical copy of the original (versionBytes). The scenario (and
-// every view) asserts the rendition file NAMES and their resolution, never
-// pixel dimensions; a processor lands behind this seam without touching
-// the callers.
+// The resize: Ruby's versions are mini_magick RESIZES (resize_and_pad
+// 16x16, resize_to_fit 75x75, resize_to_limit 200/500), ported in
+// image-resize.ts. Formats it cannot re-encode keep a byte copy of the
+// original per version (versionBytes).
 
 /** The image version names, in ImageCardUploader declaration order
  *  (image_card_uploader.rb:16-27). `original` is not a version — it is
@@ -72,9 +69,8 @@ export function renditionFileNames(actionId: number, ext: string): string[] {
   ];
 }
 
-/** The bytes stored for one rendition. THE NAMED SEAM: identity copy of
- *  the original until an image processor is ported (see the module
- *  header) — Ruby's mini_magick resize is the remainder. */
+/** The bytes stored for one rendition of a format the processor
+ *  (image-resize.ts) cannot re-encode: an identity copy of the original. */
 export function versionBytes(original: Uint8Array): Uint8Array {
   return original;
 }

@@ -215,6 +215,7 @@
 //   account_system_absent reason reports exactly that.
 
 import type { SQLDatabaseDriver } from "../../server/driver.js";
+import { storedPasswordValue } from "../actions/account-fields.js";
 import type { FetchEngine } from "../fetch.js";
 import { CardActionEngine } from "../actions/card-action-engine.js";
 import { CardActionError } from "../actions/types.js";
@@ -770,9 +771,14 @@ export async function createOwnerAccount(
     const statusCard = { cardId: await fieldId("*status") };
     // encrypt_password (right/password.rb:19-26) runs in the engine, over
     // the account's OWN salt — the one just stored, never a fresh one.
+    // The digest over the account's own salt (right/password.rb:19-26),
+    // in the policy the deck runs (the setup salt is the generated one);
+    // the engine stores it as-is (passwordEncrypted).
+    const digest = await storedPasswordValue(input.password, salt);
     const passwordCard = await engine.createCard({
       name: `${ownerName}+*account+*password`,
-      content: input.password,
+      content: digest,
+      passwordEncrypted: true,
     });
     // setup_first_user (user.rb:59-64, :finalize, when: :setup? — this whole
     // function runs only when the setup window is open, the port's

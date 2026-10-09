@@ -32,6 +32,7 @@
     "vitest": "^5.0.1"
   },
   "dependencies": {
+    "@cf-wasm/photon": "0.4.0",
     "coffeescript": "^1.12.2",
     "sass": "1.105.0"
   }

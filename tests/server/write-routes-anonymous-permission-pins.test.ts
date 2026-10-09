@@ -400,9 +400,9 @@ describe("anonymous writes over the HTTP write routes (request -> route -> engin
     });
     expect(res.status).toBe(403); // Card::Error::PermissionDenied (error.rb:104)
     expect(res.headers["content-type"]).toContain("application/json");
-    expect(res.json().error).toMatchObject({
-      code: "permission-denied",
-      message: expect.stringContaining("may not update card"),
+    expect(res.json()).toMatchObject({
+      error_status: 403,
+      errors: { permission_denied: expect.stringContaining("You don't have permission to update") },
     });
     // nothing landed: content and stamper are byte-identical, no act row
     const after = await fullStorage!.counting.query<{ db_content: string | null; updater_id: number }>(
@@ -438,7 +438,7 @@ describe("anonymous writes over the HTTP write routes (request -> route -> engin
       json: { card: { content: "nope" } },
     });
     expect(res.status).toBe(403);
-    expect(res.json().error).toMatchObject({ code: "anonymous-actor" });
+    expect(res.json()).toMatchObject({ error_status: 403, errors: { permission_denied: expect.any(String) } });
     const record = await call(fragmentBaseUrl, "GET", "/Fresh_Anon.json", {});
     expect(record.status).toBe(404); // nothing written
   });
@@ -481,7 +481,9 @@ describe("granted anonymous update/delete over the routes (the denied arms (b)/(
     // (the 8 trashed updater_id=15 rows) proven over the ROUTE.
     const res = await call(grantedBaseUrl, "DELETE", "/Open_Wiki");
     expect(res.status).toBe(303); // the plain-form hard redirect (response.rb:31,41)
-    expect(res.headers["location"]).toBe(`${grantedBaseUrl}/Open_Wiki`);
+    // configure_successful_deletion (card-mod-session location_history.rb:12-20):
+    // a plain-form delete redirects to the previous location, "/" fresh.
+    expect(res.headers["location"]).toBe(`${grantedBaseUrl}/`);
     const card = await grantedStorage!.counting.query<{ trash: number; updater_id: number }>(
       `SELECT trash, updater_id FROM cards WHERE id = ?`,
       [OPEN_WIKI_ID],
@@ -521,9 +523,10 @@ describe("the captcha guard surfacing at the route (the injectable verify seam)"
       },
     });
     expect(res.status).toBe(422);
-    expect(res.json().error).toMatchObject({
-      code: "recaptcha",
-      message: "Looks like you are not a human",
+    // card-mod-format set/all/error.rb json :errors view: {attribute => message}
+    expect(res.json()).toMatchObject({
+      error_status: 422,
+      errors: { recaptcha: "Looks like you are not a human" },
     });
     // the route's recaptcha_token param plumbed through to the transport
     // (write-routes.ts:297 parsed.recaptchaToken -> :755 create input ->

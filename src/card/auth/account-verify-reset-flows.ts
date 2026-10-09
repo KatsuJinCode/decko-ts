@@ -140,6 +140,8 @@
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import type { Actor } from "./actor.js";
 import { actorBot } from "./actor.js";
+import { encryptAccountPassword } from "./signin.js";
+import { storedPasswordValue } from "../actions/account-fields.js";
 import { SessionStore, type SessionCreation } from "./session-store.js";
 import {
   decodeAuthToken,
@@ -156,7 +158,7 @@ import {
 import { CardActionEngine } from "../actions/card-action-engine.js";
 import type { FetchEngine } from "../fetch.js";
 import type { MailMessage, NotifyTransport } from "../notify/types.js";
-import { resolveFromAddress } from "../notify/mail.js";
+import { addressOf, resolveFromAddress } from "../notify/mail.js";
 import { DeckoName } from "../name.js";
 
 // ---------------------------------------------------------------------------
@@ -356,22 +358,27 @@ async function loadAccountByJunctionId(
   const head = await driver.query<{
     id: number;
     left_id: number;
-    junction_name: string;
+    junction_name: string | null;
     holder_name: string | null;
+    right_name: string | null;
   }>(
-    `SELECT a.id, a.left_id, a.name AS junction_name, h.name AS holder_name
-     FROM cards a JOIN cards h ON h.id = a.left_id
+    `SELECT a.id, a.left_id, a.name AS junction_name, h.name AS holder_name, r.name AS right_name
+     FROM cards a JOIN cards h ON h.id = a.left_id JOIN cards r ON r.id = a.right_id
      WHERE a.id = ? AND a.trash = 0 LIMIT 1`,
     [junctionId],
   );
   const row = head.rows[0];
-  if (row === undefined || row.junction_name === null || row.holder_name === null) {
-    return undefined;
-  }
+  if (row === undefined || row.holder_name === null) return undefined;
+  // Decks written by Ruby leave a compound row's name column NULL (the name
+  // derives from its parts), so the junction name is composed from the
+  // holder and the +*account part when the column is empty.
+  const junctionName =
+    row.junction_name ?? (row.right_name === null ? null : `${row.holder_name}+${row.right_name}`);
+  if (junctionName === null) return undefined;
   return loadAccountChildren(driver, ids, {
     id: row.id,
     leftId: row.left_id,
-    name: row.junction_name,
+    name: junctionName,
     holderName: row.holder_name,
   });
 }
@@ -663,6 +670,26 @@ export async function sendAccountVerificationToken(
   return { ok: true, sentTo: account.email, token, verifyUrl: url };
 }
 
+/**
+ * activate_account's `trigger_event! :send_welcome_email` (card-mod-account
+ * set/right/account/events.rb:40-43) for the account the mark names: the
+ * welcome_email template delivered to the account's email. Used by an
+ * administrator's approval of a pending sign-up
+ * (approve_without_verification, set/type/signup.rb:28-35).
+ */
+export async function sendAccountWelcomeEmail(
+  ctx: AccountFlowContext,
+  accountMark: string,
+): Promise<boolean> {
+  const ids = await resolveAccountCodenameIds(ctx.driver);
+  if (ids === null) return false;
+  const account = await accountForMark(ctx.driver, ids, accountMark);
+  if (account?.email === undefined || account.email === "") return false;
+  const mail = renderAccountEmail(ctx, WELCOME_EMAIL_TEMPLATE, {});
+  await ctx.transport.sendMail({ ...mail, to: account.email });
+  return true;
+}
+
 /** The email_document wrapper (card-mod-email set/all/email_html.rb:2-14
  *  wrapper :email_document) — the html_message part renders THROUGH the
  *  EmailHtmlFormat#show wrapper (format :email_html def show ->
@@ -691,11 +718,16 @@ function renderAccountEmail(
     { subject: template.subject, text: template.text, html: template.html },
     { siteTitle: ctx.siteTitle, url: vars.url ?? "", days },
   );
+  const from =
+    ctx.deckoBotEmail !== undefined
+      ? resolveFromAddress(template.from, { deckoBotEmail: ctx.deckoBotEmail })
+      : template.from;
   return {
-    from:
-      ctx.deckoBotEmail !== undefined
-        ? resolveFromAddress(template.from, { deckoBotEmail: ctx.deckoBotEmail })
-        : template.from,
+    from,
+    // email_config.rb:65 reply_to ||= actual_email (with the From rule); a
+    // template with no From (the stock welcome email) leaves both to the
+    // mailer default, with no Reply-To.
+    ...(ctx.deckoBotEmail !== undefined && template.from !== "" ? { replyTo: addressOf(from) } : {}),
     subject: rendered.subject,
     textBody: rendered.text,
     ...(rendered.html !== undefined && rendered.html.length > 0
@@ -824,16 +856,30 @@ async function accountForMark(
   ids: AccountCodenameIds,
   mark: string,
 ): Promise<AccountRecord | undefined> {
-  const name = mark.replace(/_/g, " ");
-  const key = DeckoName.parse(name).key;
-  const result = await driver.query<{ id: number }>(
-    `SELECT id FROM cards
-     WHERE trash = 0 AND (key = ? OR name = ?) ORDER BY id LIMIT 1`,
-    [key, name],
+  const id = await liveCardIdForName(driver, DeckoName.parse(mark.replace(/_/g, " ")));
+  if (id === undefined) return undefined;
+  return loadAccountByJunctionId(driver, ids, id);
+}
+
+/** A live card's id by name. Compound rows store no name or key (their
+ *  identity is left_id + right_id, lib/card/name/all.rb:20-21), so a
+ *  compound name resolves through its parts. */
+async function liveCardIdForName(driver: SQLDatabaseDriver, name: DeckoName): Promise<number | undefined> {
+  if (name.isSimple) {
+    const r = await driver.query<{ id: number }>(
+      "SELECT id FROM cards WHERE trash = 0 AND (key = ? OR name = ?) ORDER BY id LIMIT 1",
+      [name.key, name.s],
+    );
+    return r.rows[0]?.id;
+  }
+  const left = name.leftName === undefined ? undefined : await liveCardIdForName(driver, name.leftName);
+  const right = name.rightName === undefined ? undefined : await liveCardIdForName(driver, name.rightName);
+  if (left === undefined || right === undefined) return undefined;
+  const r = await driver.query<{ id: number }>(
+    "SELECT id FROM cards WHERE trash = 0 AND left_id = ? AND right_id = ? ORDER BY id LIMIT 1",
+    [left, right],
   );
-  const row = result.rows[0];
-  if (row === undefined) return undefined;
-  return loadAccountByJunctionId(driver, ids, row.id);
+  return r.rows[0]?.id;
 }
 
 /** Ruby Hash#to_s = inspect: `{"user_id"=>583, "exp"=>1234, ...}` — the
@@ -1065,9 +1111,18 @@ export async function applyNewAccountPassword(
   const writeActor = ownAccount ? await actorBot(deps.driver) : deps.actor;
   const engine = new CardActionEngine(deps.fetcher, { actor: writeActor });
   try {
-    // The engine's encrypt_password (account-fields.ts) stores the digest
-    // over the account's stored salt: the plaintext is what is assigned.
-    await engine.updateCard({ cardId: account.childIds.password, content: newPassword });
+    // encrypt_password runs HERE over the account's existing salt (the
+    // commented gem note: the salt is not regenerated); the engine stores
+    // the digest as-is (passwordEncrypted).
+    const saltRow = (
+      await deps.driver.query<{ db_content: string | null }>(
+        "SELECT db_content FROM cards WHERE id = ?",
+        [account.childIds.salt],
+      )
+    ).rows[0];
+    const salt = saltRow?.db_content ?? "";
+    const digest = await storedPasswordValue(newPassword, salt);
+    await engine.updateCard({ cardId: account.childIds.password, content: digest, passwordEncrypted: true });
   } catch (error) {
     return {
       ok: false,

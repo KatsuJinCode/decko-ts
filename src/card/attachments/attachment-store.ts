@@ -42,6 +42,15 @@ export interface AttachmentStoreInput {
    *  the plain FileCardUploader shape: exactly one file
    *  <action_id><ext>. */
   renditionNames?: readonly string[];
+  /** The processed bytes of each rendition, by stored file name
+   *  (image-resize.ts). A rendition without an entry stores the
+   *  original's bytes. */
+  renditionBytes?: Readonly<Record<string, Uint8Array>>;
+  /** "tmp": the upload cache of a two-step upload for a card that does not
+   *  exist yet (card-mod-carrierwave 00_upload_cache.rb tmp_upload_dir,
+   *  files_base_dir("tmp")/files/<cache card id>), kept apart from the
+   *  deck's files. Absent = the files area. */
+  area?: "files" | "tmp";
 }
 
 /** What a store returns per successful write. */
@@ -59,7 +68,11 @@ export interface AttachmentStore {
   /** The bytes of one action's file. `variant` resolves the rendition
    *  spelling <action_id>-<variant><ext> (the img src the image views
    *  emit); undefined = no such file. */
-  read(cardId: number, actionId: number, ext: string, variant?: string): Promise<Uint8Array | undefined>;
+  read(cardId: number, actionId: number, ext: string, variant?: string, area?: "files" | "tmp"): Promise<Uint8Array | undefined>;
+  /** Remove one action's file and its renditions (delete_files_for_action,
+   *  00_upload_cache.rb / attachment.rb). Optional: a store without it
+   *  keeps the files. */
+  remove?(cardId: number, actionId: number, ext: string, area?: "files" | "tmp"): Promise<void>;
   /** Delete exactly the files store(input) writes, when a save that
    *  stored them rolled back. Idempotent; a missing file is not an error.
    *  Optional: a store without it leaves such files unreferenced. */
@@ -115,6 +128,7 @@ export class BlobAttachmentStore implements AttachmentStore {
     actionId: number,
     ext: string,
     variant?: string,
+    area?: "files" | "tmp",
   ): Promise<Uint8Array | undefined> {
     // Path resolution per the uploader classes. A VARIANT request resolves
     // the version file <action_id>-<variant><ext> (Versions#full_filename)

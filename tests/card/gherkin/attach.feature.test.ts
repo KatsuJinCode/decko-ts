@@ -15,7 +15,8 @@
 // engine-observable facts behind them are the stored identifier, the
 // on-disk bytes, and the rendered :core view.
 
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
+import { deflateSync } from "node:zlib";
 import {
   closeAttachmentWorld,
   freshAttachmentWorld,
@@ -32,20 +33,70 @@ import { seedCard } from "./gherkin-storage.js";
 import { lastContentActionIdFromIdentifier } from "../../../src/card/attachments/attachment-content.js";
 
 /** The fixtures' upload payloads. "file.txt" is the 9-byte text the
- *  upstream asserts as "file.txt 9 Bytes"; the png/jpg bytes are
- *  synthetic (extension-driven behavior only — the store's extension
- *  handling never reads the bytes' magic). */
+ *  upstream asserts as "file.txt 9 Bytes"; the png and jpg are real
+ *  64x48 images (an image card's upload is decoded and resized into its
+ *  versions; bytes that are not an image are refused as the oracle
+ *  refuses them). */
 const FILE_TXT = new Uint8Array(9).fill(0x61); // "aaaaaaaaa" — 9 Bytes
+function crc32(buf: Uint8Array): number {
+  let c = ~0;
+  for (const b of buf) {
+    c ^= b;
+    for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+  }
+  return ~c >>> 0;
+}
+function pngChunk(type: string, data: Uint8Array): Buffer {
+  const len = Buffer.alloc(4);
+  len.writeUInt32BE(data.length);
+  const td = Buffer.concat([Buffer.from(type, "ascii"), data]);
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(td));
+  return Buffer.concat([len, td, crc]);
+}
 const PNG_BYTES = (() => {
-  const b = new Uint8Array(512).fill(0x41, 16);
-  b.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
-  return b;
+  const w = 64, h = 48;
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(w, 0);
+  ihdr.writeUInt32BE(h, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 2;
+  const raw = Buffer.alloc((w * 3 + 1) * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const at = y * (w * 3 + 1) + 1 + x * 3;
+      raw[at] = (x * 4) & 255;
+      raw[at + 1] = (y * 5) & 255;
+      raw[at + 2] = 128;
+    }
+  }
+  return new Uint8Array(Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    pngChunk("IHDR", ihdr),
+    pngChunk("IDAT", deflateSync(raw)),
+    pngChunk("IEND", new Uint8Array(0)),
+  ]));
 })();
-const JPG_BYTES = (() => {
-  const b = new Uint8Array(700).fill(0x42, 16);
-  b.set([0xff, 0xd8, 0xff], 0);
-  return b;
-})();
+let JPG_BYTES = new Uint8Array(0);
+/** A version file's pixel size (PNG IHDR or JPEG SOF0/SOF2). */
+function imageSize(b: Uint8Array): [number, number] {
+  const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  if (b[0] === 0x89) return [v.getUint32(16), v.getUint32(20)];
+  let i = 2;
+  while (i < b.length) {
+    const marker = b[i + 1];
+    const len = v.getUint16(i + 2);
+    if (marker === 0xc0 || marker === 0xc2) return [v.getUint16(i + 7), v.getUint16(i + 5)];
+    i += 2 + len;
+  }
+  return [0, 0];
+}
+beforeAll(async () => {
+  const photon = await import("@cf-wasm/photon");
+  const img = photon.PhotonImage.new_from_byteslice(PNG_BYTES);
+  JPG_BYTES = new Uint8Array(img.get_bytes_jpeg(90));
+  img.free();
+});
 
 describe("Gherkin port: attach.feature / File Upload", () => {
   let aw: AttachmentWorld;
@@ -161,8 +212,11 @@ describe("Gherkin port: attach.feature / File Upload", () => {
     ]);
     // The rendered src resolves: the 'large' variant serves bytes (the img
     // src the card page emits — the resolution arm of the step above).
+    // (a 64x48 upload: large is resize_to_limit 500, no enlargement; icon
+    // is resize_and_pad 16x16)
     const large = await storedVariantBytes(aw, identifier, "large");
-    expect(large.length).toBe(PNG_BYTES.length);
+    expect(imageSize(large)).toEqual([64, 48]);
+    expect(imageSize(await storedVariantBytes(aw, identifier, "icon"))).toEqual([16, 16]);
     // The core view emits the version URL (determine_image_size's default
     // arm: default_size :medium, image.rb:52-53 — the variant suffix is
     // the fact; formatImageCore's local arm appends it). The url is
@@ -202,7 +256,8 @@ describe("Gherkin port: attach.feature / File Upload", () => {
       `${card!.id}/${updateActionId}-small.jpg`,
     ]);
     const largeJpg = await storedVariantBytes(aw, row!.db_content!, "large");
-    expect(largeJpg.length).toBe(JPG_BYTES.length);
+    expect([largeJpg[0], largeJpg[1]]).toEqual([0xff, 0xd8]); // still a JPEG
+    expect(imageSize(largeJpg)).toEqual([64, 48]);
   });
 
   // ---------------------------------------------------------------------
