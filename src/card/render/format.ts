@@ -1189,12 +1189,7 @@ export class RenderFormat {
         if (denial !== undefined) {
           this.noteFocalDenial(voo);
           if (this.isMain && viewDenialView(normalized) === undefined) {
-            // The task the loud message names (permission.rb denied_task):
-            // the view's perms task, update read as create on a new card.
-            const perms = resolveViewPerms(normalized);
-            let deniedTask: CrudTask = perms.check && !perms.predicate ? perms.task : "read";
-            if (deniedTask === "update" && this.card.id === undefined) deniedTask = "create";
-            return this.mainLoudDenialHtml(voo, deniedTask);
+            return this.mainLoudDenialHtml(voo, this.deniedTaskLabel(normalized));
           }
           return denial;
         }
@@ -1283,7 +1278,15 @@ export class RenderFormat {
     return SELF_SET_TITLE_OVERRIDES.get(this.card.record.codename ?? "");
   }
 
-  private mainLoudDenialHtml(voo: Voo, deniedTask: CrudTask = "read"): string {
+  /** permission.rb denied_task as the loud denial words it (`crud?(task)
+   *  && task`; an update of a new card is a create, format/error.rb ok?). */
+  private deniedTaskLabel(view: string): string {
+    const resolution = resolveViewPerms(view);
+    if (!resolution.check || resolution.predicate) return "";
+    return resolution.task === "update" && this.card.id === undefined ? "create" : resolution.task;
+  }
+
+  private mainLoudDenialHtml(voo: Voo, deniedTask = "read"): string {
     voo.hide("menu");
     voo.hide("help");
     const card = this.card;
@@ -1324,7 +1327,10 @@ export class RenderFormat {
       `<h1 class="d0-card-header-title">` +
       `${this.renderView("title")}</h1></div>`;
     const message = this.loudDenialMessageHtml(deniedTask);
-    const body = `<div class="d0-card-body card-body card-text"><h1>Sorry!</h1>\n${message}</div>`;
+    // wrap.rb wrap_body: the body carries d0-card-content and the set keys
+    // once a :titled or :labeled render set @content_body on this format.
+    const bodyClasses = this.contentBody ? `d0-card-body d0-card-content ${card.setKeys}` : "d0-card-body";
+    const body = `<div class="${bodyClasses} card-body card-text"><h1>Sorry!</h1>\n${message}</div>`;
     const frame = `<div class="d0-card-frame card">${header}\n\n${body}</div>`;
     const attrs = emitAttrs({
       id: `${card.name.safeKey}-denial-view`,
@@ -1398,7 +1404,7 @@ export class RenderFormat {
    *  untouched). The authenticated goldens all render the signed-in branch
    *  because the capture session stays the bot (Auth.current never leaves
    *  the runner session — capture-authenticated-pages.rb:143-153). */
-  private loudDenialMessageHtml(deniedTask: CrudTask = "read"): string {
+  private loudDenialMessageHtml(deniedTask: string): string {
     if (this.engine.pageSession?.signedIn === true) {
       return `<div>You need permission to ${deniedTask} this.</div>`;
     }

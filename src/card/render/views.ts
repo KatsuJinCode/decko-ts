@@ -1765,9 +1765,15 @@ const coreView: ViewFn = (ctx) => {
   // card-mod-account set/right/password.rb: `view :raw { t :account_encrypted }`
   // and `view :core, wrap: :em { render_raw }` — a password card never shows
   // its stored digest. Same headless reason as *signin above: the mod-less
-  // engines have no Right::Password registration.
+  // engines have no Right::Password registration. When the mod IS loaded its
+  // registration wins the chain (its own views render); the fallback below is
+  // the mod-less arm only.
   if (ctx.fmt.card.name.rightName?.key === "*password") {
-    return "<em>encrypted</em>";
+    try {
+      return ctx.fmt.renderView("content", {}, "hide");
+    } catch {
+      return "<em>encrypted</em>";
+    }
   }
   const base = isTemplatedNestsCard(ctx.fmt.card)
     ? ctx.fmt.withNestMode("template", () => coreViewBase(ctx))
