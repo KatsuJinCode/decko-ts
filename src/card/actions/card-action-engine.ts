@@ -4229,9 +4229,9 @@ export class CardActionEngine {
       if (selfId !== undefined && id === selfId) {
         id = await this.recreateObstructedSide(writer, sideName, selfId, created);
       } else if (id === undefined) {
-        if (opts.reserveOwnAction === true && reservedActionId === undefined) {
-          reservedActionId = await writer.reserveCreateAction();
-        }
+        // The compound's own action is already reserved by the caller (the
+        // writer's reserveAction pre-pass); a side's create records its own
+        // action here, as a subaction of the act.
         const sub = await this.createInWriter(writer, { name: sideName.s }, { isActCard: false });
         id = sub.cardId;
         created.push(sub);

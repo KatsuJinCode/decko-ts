@@ -99,9 +99,13 @@ export class BlobAttachmentStore implements AttachmentStore {
     const names = input.renditionNames ?? [filenameWithVariant(input.actionId, input.ext)];
     let stored = 0;
     for (const name of names) {
+      // The versions are real resizes when the caller supplies their bytes
+      // (image-resize.ts imageVersionBytes); the -original spelling and any
+      // name the resizer did not produce store the original bytes.
+      const bytes = input.renditionBytes?.[name] ?? input.bytes;
       const result = await this.blobs.put(
         `${input.cardId}/${name}`,
-        input.bytes,
+        bytes,
         { contentType: contentTypeForExtension(input.ext) },
       );
       // The size reported is the ORIGINAL's byte count, which is what
