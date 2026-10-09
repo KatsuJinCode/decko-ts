@@ -58,6 +58,7 @@ import {
   safeKeyToModuleShortname,
 } from "./render/set-keys-to-modules.js";
 import { SET_INCLUDES } from "./mod-loader/concrete-set-includes.js";
+import { getNameEnvironment } from "./name/environment.js";
 import {
   ContentOverrideRegistry,
   setDefaultContentOverrideRegistry,
@@ -856,7 +857,7 @@ export class ModLoader {
         // never string guessing). Unregistered tokens fall through to the
         // next set-key token, Ruby's MRO walk unchanged.
         let matched = false;
-        const resolution = moduleCandidates(token);
+        const resolution = anchoredModuleCandidates(token);
         definitive = resolution.definitive;
         for (const shortname of resolution.candidates) {
           const viewFn = this.anchoredViewFor(shortname, view, format);
@@ -989,6 +990,18 @@ export class ModLoader {
 
   /** Drop the chain memos when a load or reset changed the registrations. */
   private syncChainMemo(): void {
+    // Anchored and SELF tokens resolve through the deck's codenames, so the
+    // token and chain memos hold for one deck's name environment: a
+    // different lexicon or codename registry (another deck, a fresh engine
+    // pair) starts them over. The base tail and the path index depend on
+    // the registrations alone.
+    const env = getNameEnvironment();
+    if (env?.lexicon !== this.memoLexicon || env?.codename !== this.memoCodenames) {
+      this.chainMemo.clear();
+      this.tokenMemo.clear();
+      this.memoLexicon = env?.lexicon;
+      this.memoCodenames = env?.codename;
+    }
     if (this.memoGeneration === this.generation) return;
     this.chainMemo.clear();
     this.baseTailMemo.clear();
@@ -997,6 +1010,9 @@ export class ModLoader {
     this.pathIndex = undefined;
     this.memoGeneration = this.generation;
   }
+
+  private memoLexicon: unknown;
+  private memoCodenames: unknown;
 
   /** setModuleShortnamesForCode, memoized per load generation. */
   private memoShortnamesForCode(code: string): string[] {
@@ -1042,7 +1058,7 @@ export class ModLoader {
   ): ViewChainEntry[] {
     const out: ViewChainEntry[] = [];
     const seen = new Set(already.map((e) => e.setModule));
-    for (const candidate of moduleCandidates(token).candidates) {
+    for (const candidate of anchoredModuleCandidates(token).candidates) {
       const owners = includeGraphOwners(candidate);
       if (owners.length === 0) continue;
       for (const owner of owners) {
@@ -1276,8 +1292,6 @@ const CHAIN_MEMO_LIMIT = 50_000;
  *  equal to it or nested under it (Type::Set, Type::Set::HtmlViews, ...), in
  *  the graph's key order. Built once; the graph is a generated constant. */
 let includeGraphOwnerIndex: Map<string, string[]> | undefined;
-/** The set modules an anchored token names (set-keys-to-modules.ts). */
-const moduleCandidates = anchoredModuleCandidates;
 
 function includeGraphOwners(candidate: string): readonly string[] {
   if (includeGraphOwnerIndex === undefined) {
