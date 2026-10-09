@@ -957,7 +957,11 @@ function fieldEditorInMultiCard(
   // parent form's prefix + [subcards][<field relative to the form card>].
   const relative = fieldName.from(fmt.card.name);
   const prefix = `card[subcards][${relative}]`;
-  const title = options["title"] !== undefined ? String(options["title"]) : fieldName.s;
+  // wrap_editor_in_multi_card's formgroup title is render_title - the field
+  // card's name as the nest shows it, RELATIVE to the form card (the Ruby
+  // observations pin "+summary", never "Topic 002+summary" - the nest's
+  // title_in_context renders the junction's last part with the plus).
+  const title = options["title"] !== undefined ? String(options["title"]) : relative;
   // wrap_editor_in_multi_card (:113-119): formgroup render_title ... -
   // formgroup (formgroup.rb:20-43): div.form-group.card-editor (the field's
   // junction classes prepend - the captured RIGHT-summary bytes), the
