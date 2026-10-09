@@ -106,10 +106,21 @@
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import type {
   DeckoModManifest,
+  ModEventFn,
+  ModEventRegistration,
   ModSetModuleFile,
 } from "../mod-manifest.js";
 import { superView } from "../mod-view-helpers.js";
 import { numberToHumanSize } from "./rails-number-to-human-size.js";
+
+/** The set-module event declarations (the mod-events lane, 2026-10-08):
+ *  stub-bodied, with the per-event reason on the declaration. Same shape
+ *  as core-mod.ts's local helper. */
+function event(
+  decl: Omit<ModEventRegistration, "fn"> & { fn?: ModEventFn },
+): ModEventRegistration {
+  return { fn: () => undefined, ...decl };
+}
 
 // ---------------------------------------------------------------------------
 // view bodies (Ruby source cited per block)
@@ -334,11 +345,38 @@ const setModules: ModSetModuleFile[] = [
     // set/right/structure.rb:1-77 - include_set Abstract::TemplatedNests,
     // item_names (not ported), format :rss do block raw_feed_items (not
     // ported), format :html do block: :one_line_content (port - the
-    // type : raw template), visible_cardtype_groups (not ported), 3
-    // events (not ported: Auth.as_bot + Card::Cache.reset_ + update_*),
-    // update_structurees_references?/structuree_names/update_structurees/
-    // structuree_query (not ported: set_card.fetch_query + Card.where).
+    // type : raw template), visible_cardtype_groups (not ported).
+    //
+    // Events (mod-events lane 2026-10-08) — three STUBS with named
+    // reasons (structure.rb:25-46):
+    // - update_structurees_references (:integrate, when:
+    //   update_structurees_references?) re-runs update_references_out on
+    //   every structuree the set query selects (Auth.as_bot); the
+    //   engine's reference refresh runs for the SAVED card only
+    //   (actions/refresh-references-out.ts) — the structuree cascade has
+    //   no engine surface.
+    // - reset_cache_to_use_new_structure (before:
+    //   update_structurees_references) resets Card::Cache shared+temp;
+    //   the port has no shared card cache (reads hit the DB per call) —
+    //   architecture-moot.
+    // - update_structurees_type (:finalize, changed: :type_id, when the
+    //   proc assigns_type?) cascades a type change to structurees via
+    //   update_structurees — same missing cascade surface.
     setPath: "right/structure",
+    events: [
+      event({
+        event: "update_structurees_references",
+        at: "integrate",
+        when: "update_structurees_references?",
+      }),
+      // Ruby: `event :reset_cache_to_use_new_structure, before:
+      // :update_structurees_references` — no stage of its own; hangs on
+      // the update_structurees_references chain (:integrate), before it.
+      // Recorded at the resolved stage; the before relation rides this
+      // comment (the check_setup precedent).
+      event({ event: "reset_cache_to_use_new_structure", at: "integrate" }),
+      event({ event: "update_structurees_type", at: "finalize", changed: ["type_id"] }),
+    ],
     formats: {
       html: {
         views: [

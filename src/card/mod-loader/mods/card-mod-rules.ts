@@ -139,8 +139,20 @@ import type { PatternCardInput } from "../../set-patterns/types.js";
 import type {
   DeckoModManifest,
   ModEngineHost,
+  ModEventFn,
+  ModEventRegistration,
   ModSetModuleFile,
 } from "../mod-manifest.js";
+import { engineOwnedEvent } from "../mod-manifest.js";
+
+/** The set-module event declarations (the mod-events lane, 2026-10-08):
+ *  stub-bodied unless the engine owns the behavior (then engineOwnedEvent).
+ *  Same shape as core-mod.ts's local helper. */
+function event(
+  decl: Omit<ModEventRegistration, "fn"> & { fn?: ModEventFn },
+): ModEventRegistration {
+  return { fn: () => undefined, ...decl };
+}
 
 // ---------------------------------------------------------------------------
 // set guards (the set-module inclusion Ruby gives these views)
@@ -2622,7 +2634,20 @@ const setModules: ModSetModuleFile[] = [
     // The naming half already lives engine-side:
     // src/card/set-patterns/rule-names.ts ruleSetCardName (rules.rb:12-18)
     // and ruleSettingCardName (rules.rb:36-38).
+    //
+    // Event (mod-events lane 2026-10-08) — ENGINE-OWNED: the save path
+    // moves the saved rule's setting to the top of the *recent settings
+    // list (card-action-engine.ts saveRecentlyEditedSettings, citing
+    // rules.rb:1-6; run on the create/update paths at :1347/:2012).
     setPath: "rule/rules",
+    events: [
+      engineOwnedEvent({
+        event: "save_recently_edited_settings",
+        at: "integrate",
+        on: ["save"],
+        changed: ["type", "content"],
+      }),
+    ],
   },
   {
     // set/rule/html_views.rb:2-12 - the rule-set :core override

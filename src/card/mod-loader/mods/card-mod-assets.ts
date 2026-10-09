@@ -58,7 +58,20 @@ import { localAttachmentUrl } from "../../attachments/asset-output-write.js";
 import { superView } from "../mod-view-helpers.js";
 import type {
   DeckoModManifest,
+  ModEventFn,
+  ModEventRegistration,
 } from "../mod-manifest.js";
+import { engineOwnedEvent } from "../mod-manifest.js";
+
+/** The set-module event declarations (the mod-events lane, 2026-10-08):
+ *  stub-bodied unless the engine owns the behavior (then engineOwnedEvent).
+ *  Same shape as core-mod.ts's local helper; the per-event owner or stub
+ *  reason rides the declaration's comment. */
+function event(
+  decl: Omit<ModEventRegistration, "fn"> & { fn?: ModEventFn },
+): ModEventRegistration {
+  return { fn: () => undefined, ...decl };
+}
 
 // ---------------------------------------------------------------------------
 // The asset OUTPUT url + the right/asset_output :not_found gate
@@ -275,8 +288,17 @@ const cardModAssets: DeckoModManifest = {
       // so every `X+*asset output` card dispatches the gate instead of the
       // bare engine :not_found. NOT ported from the same file:
       // followable?/ok_to_read?/history? (the read-permission and history
-      // surfaces are engine-level) and the remove_codename delete event.
+      // surfaces are engine-level).
+      // Event (mod-events lane 2026-10-08) — STUB, named remainder:
+      // asset_output.rb:13-17 `event :remove_codename, :prepare_to_validate,
+      // on: :delete, when: :codename?` loads the attachment then strips the
+      // codename so the to-be-deleted card releases it; the engine's delete
+      // path has no codename-mutation hook (the port's codename registry is
+      // read-only at delete).
       setPath: "right/asset_output",
+      events: [
+        event({ event: "remove_codename", at: "prepare_to_validate", on: ["delete"], when: "codename?" }),
+      ],
       formats: {
         html: {
           views: [{ view: "not_found", viewFn: assetOutputNotFoundView }],
@@ -294,7 +316,49 @@ const cardModAssets: DeckoModManifest = {
       // the :not_found gate's outputter check reads (leftIsAssetOutputter).
       // Bookkeeping entry for the abstract file itself (basket parity, the
       // pattern other mods' abstract surfaces use).
+      //
+      // Events (mod-events lane 2026-10-08) — ENGINE-OWNED: the write
+      // path's asset-event runner (src/card/actions/style-asset-events.ts)
+      // executes both at their stages: update_asset_output_file via
+      // attachments/asset-output-write.ts storeAssetOutput (the lock +
+      // assembled-content write, asset_outputter.rb:20-30), and
+      // validate_asset_inputs via asset-input-assembly.ts's validate twin
+      // (asset_outputter.rb:10-18's find_invalid_input guard).
       setPath: "abstract/asset_outputter",
+      events: [
+        engineOwnedEvent({ event: "update_asset_output_file", at: "finalize", on: ["save"] }),
+        engineOwnedEvent({ event: "validate_asset_inputs", at: "validate", on: ["save"], skip: "allowed" }),
+      ],
+    },
+    {
+      // set/abstract/asset_inputter.rb — the input side of the asset
+      // pipeline (card_accessor :asset_input + the two change events).
+      // Events ENGINE-OWNED: style-asset-events.ts runs both
+      // (asset_inputter.rb:24-27 at finalize on save — the inputter's
+      // +*asset input virtual content re-store; :20-23 on delete, before
+      // clear_references — the referers walk that re-stores dependents
+      // before the references die). Ruby's `before: :clear_references`
+      // hangs the event on clear_references' chain (itself a :finalize
+      // on: :delete event); the surface records the resolved stage and
+      // the engine's delete path owns the position (the check_setup
+      // precedent).
+      setPath: "abstract/asset_inputter",
+      events: [
+        engineOwnedEvent({
+          event: "asset_input_changed",
+          at: "finalize",
+          on: ["save"],
+          when: "asset_inputter?",
+          changed: ["content"],
+          skip: "allowed",
+        }),
+        engineOwnedEvent({
+          event: "asset_input_changed_on_delete",
+          at: "finalize",
+          on: ["delete"],
+          when: "asset_inputter?",
+        }),
+      ],
     },
     {
       setPath: "type_plus_right/set/style",

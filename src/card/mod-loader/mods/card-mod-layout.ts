@@ -110,8 +110,17 @@ import { rawItemStrings } from "../../render/pointer-list.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
 import type { DeckoModManifest } from "../mod-manifest.js";
-import type { ModEngineHost } from "../mod-manifest.js";
+import type { ModEngineHost, ModEventFn, ModEventRegistration } from "../mod-manifest.js";
 import { warmRuleCards } from "./rule-card-warm.js";
+
+/** The set-module event declarations (the mod-events lane, 2026-10-08):
+ *  stub-bodied, with the per-event reason on the declaration. Same shape
+ *  as core-mod.ts's local helper. */
+function event(
+  decl: Omit<ModEventRegistration, "fn"> & { fn?: ModEventFn },
+): ModEventRegistration {
+  return { fn: () => undefined, ...decl };
+}
 
 // The base implementations captured BEFORE any registration replaces the
 // table entry (see the set-scoped dispatch note in the header).
@@ -1079,7 +1088,26 @@ const cardModLayout: DeckoModManifest = {
       // card-mod-layout-0.20.0/set/right/enabled_roles.rb — the
       // :edit_inline view (the R21 port; the role
       // checkboxes are the named remainder on the view).
+      //
+      // Events (mod-events lane 2026-10-08) — two STUBS with named
+      // reasons (enabled_roles.rb:21-33):
+      // - validate_role_enabling (:validate, on: :save) errors when the
+      //   saved list enables roles the acting account does not hold
+      //   (item_names - Auth.current_roles); the port's session model
+      //   has no +*enabled_roles card save path (the visitor-session
+      //   carries its role state outside the card write path).
+      // - clear_roles_cache (:prepare_to_store, before:
+      //   store_in_session) drops Auth.current's role caches after a
+      //   roles change; same missing save path (and store_in_session,
+      //   the session mod's event, is itself an unwired stub).
       setPath: "right/enabled_roles",
+      events: [
+        event({ event: "validate_role_enabling", at: "validate", on: ["save"] }),
+        // Ruby: `event :clear_roles_cache, :prepare_to_store, before:
+        // :store_in_session` — the stage is explicit; the before relation
+        // rides this comment (the surface has no before field).
+        event({ event: "clear_roles_cache", at: "prepare_to_store" }),
+      ],
       formats: {
         html: {
           views: [
@@ -1136,6 +1164,20 @@ const cardModLayout: DeckoModManifest = {
           views: [{ view: "navbar_links", viewFn: htmlNavbarLinksView, config: { perms: "none" } }],
         },
       },
+    },
+    {
+      // card-mod-layout-0.20.0/set/type/layout_type.rb — the Layout
+      // cardtype set (:core view renders CodeRay-highlighted raw through
+      // the base html machinery; the port's :core falls through to the
+      // shared html coreView, whose template mode covers the reachable
+      // bytes). Event (mod-events lane 2026-10-08) — STUB, named
+      // remainder (layout_type.rb:7-10): re-registers the layout in
+      // Card::Layout's named-layout registry on update; the engine
+      // resolves layout cards fresh at render (no registry to update).
+      setPath: "type/layout_type",
+      events: [
+        event({ event: "update_layout_registry", at: "finalize", on: ["update"] }),
+      ],
     },
   ],
   prepareEngine: prepareGuideRules,
