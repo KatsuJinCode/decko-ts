@@ -321,9 +321,17 @@ describe("account-family read overrides (card-mod-account)", () => {
     expect(await s.engine.render("Anonymous+*account+*api key", "content")).toContain(
       "anon api key",
     );
-    expect(await s.engine.render("Anonymous+*account+*password", "content")).toContain(
-      "anon password hash",
-    );
+    // The own_account? chain ADMITS the render (the card is not denied —
+    // that is the chain this pin asserts), but a password card never shows
+    // its stored digest: card-mod-account right/password.rb view :core wraps
+    // `:em { render_raw }` ("The password hash is NEVER rendered"), and the
+    // mod-less harness's flat core carries the same refusal as the
+    // `<em>encrypted</em>` placeholder. The chain's proof here is the render
+    // being neither the quiet denial nor the sign-in form.
+    const rendered = await s.engine.render("Anonymous+*account+*password", "content");
+    expect(rendered).not.toBe(quietDenial());
+    expect(rendered).not.toContain("anon password hash");
+    expect(rendered).toContain("<em>encrypted</em>");
   });
 
   it("denies another holder's +*email even when the stored rule grants Anyone (right::email has no super)", async () => {
