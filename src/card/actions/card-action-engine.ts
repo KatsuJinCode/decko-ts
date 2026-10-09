@@ -883,13 +883,17 @@ export class CardActionEngine {
             ]
           : undefined;
     // The version files (image_card_uploader.rb:16-27): resized renditions
-    // keyed by their stored names.
+    // keyed by their stored names — the SAME names renditionNames lists,
+    // per storage class (the store looks bytes up by name): local keys are
+    // action-id-keyed (Versions#full_filename), coded keys mount-keyed.
     let renditionBytes: Record<string, Uint8Array> | undefined;
     if (renditionNames !== undefined) {
       const versions = await imageVersionBytes(attachment.bytes, ext);
       if (versions !== undefined) {
         renditionBytes = {};
-        for (const v of IMAGE_VERSION_NAMES) renditionBytes[`${mount}-${v}${ext}`] = versions[v];
+        for (const v of IMAGE_VERSION_NAMES) {
+          renditionBytes[coded === undefined ? `${actionId}-${v}${ext}` : `${mount}-${v}${ext}`] = versions[v];
+        }
       }
     }
     const storeInput: AttachmentStoreInput = {
