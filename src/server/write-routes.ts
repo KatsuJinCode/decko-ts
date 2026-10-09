@@ -106,6 +106,8 @@ import { signinAccount } from "../card/auth/signin.js";
 import { createCardActionEngineForSession } from "../card/actions/engine-for-session.js";
 import { CardActionError, type ActionResult, type AttachmentInput } from "../card/actions/types.js";
 import type { NotifyTransport } from "../card/notify/types.js";
+import type { ScssCompiler } from "../card/assets/scss-compiler.js";
+import type { CoffeeCompiler } from "../card/assets/coffee-compiler.js";
 import type { CardActionRecaptchaConfig } from "../card/actions/card-action-engine.js";
 import type { ModEventRuntime } from "../card/mod-loader/mod-event-dispatch.js";
 import type { ModEngineHost } from "../card/mod-loader/mod-manifest.js";
@@ -179,6 +181,18 @@ export interface WriteRouteContext {
    *  upload surface stores bytes through it. Absent = attachment saves
    *  fail with the engine's programming-error rejection. */
   attachmentStore?: AttachmentStore;
+  /** The SassC seam the style asset events compile with (skin and CSS
+   *  asset inputs, the site stylesheet): LibSass on Node hosts
+   *  (libsass-process.ts), the WebAssembly module on edge hosts
+   *  (libsass-wasm.ts). Absent = saves that need a compile are refused
+   *  with a named error. */
+  scssCompiler?: ScssCompiler;
+  /** The CoffeeScript seam the script asset events compile with (JavaScript
+   *  / CoffeeScript asset inputs, the site script): the npm coffeescript
+   *  package (coffee-npm-compiler.ts) — the same compiler bytes on Node and
+   *  edge hosts. Absent = saves that need a compile are refused with a
+   *  named error. */
+  coffeeCompiler?: CoffeeCompiler;
   /** The deck's file_storage config (Cardio.config.file_storage port;
    *  undefined = the :local default) — validate_file_exist's web? arm and
    *  the storage-type resolution ride it. */
@@ -912,6 +926,8 @@ export async function handleWriteRequest(
     ipAddress: ctx.ipAddress ?? req.headers["x-forwarded-for"] ?? "127.0.0.1",
     now: ctx.now,
     attachmentStore: ctx.attachmentStore,
+    ...(ctx.scssCompiler === undefined ? {} : { scssCompiler: ctx.scssCompiler }),
+    ...(ctx.coffeeCompiler === undefined ? {} : { coffeeCompiler: ctx.coffeeCompiler }),
     fileStorage: ctx.fileStorage,
     // the deck's event runtime rides EVERY save (the deck-boot seam,
     // servingModEventRuntime above - Ruby's boot composes all mods once and

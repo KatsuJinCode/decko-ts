@@ -49,6 +49,7 @@
 // fixed module INIT on workerd; the probe fixes module LOAD.
 
 import type { RenderFormat } from "./format.js";
+import { edgeAssetSources } from "../../../vendor/edge-bootstrap-scss-snapshot.js";
 
 /** Structural slice of "node:fs" the reads use. Declared locally — never
  *  imported — so this module emits no node: specifier into any bundle. */
@@ -171,19 +172,25 @@ const BOOTSTRAP_CORE_FILES: readonly string[] = [
   "utilities/_api.scss",
 ];
 
-/** OverrideCodeFile#content: the files joined with "\n". Throws on a
- *  runtime with no filesystem — the deploy target never renders these
- *  cards, and a silent empty-string substitute would fake Ruby's bytes. */
+/** OverrideCodeFile#content: the files joined with "\n". On a Node host the
+ *  files come from the vendored tree; on an edge runtime, from the generated
+ *  snapshot of the same tree (vendor/edge-asset-source-snapshot.js) — the
+ *  skin assembly reads these cards on the write path. A file in neither
+ *  place is an error, never a silent empty-string substitute. */
 function loadStylesheets(files: readonly string[]): string {
   const fs = nodeFsOrNull();
-  if (fs === undefined) {
-    throw new Error(
-      "bootstrap code-file content needs a Node filesystem (vendored fixtures/vendor/bootstrap-scss/); this runtime has none",
-    );
+  if (fs !== undefined) {
+    const base = bootstrapScssDirectory();
+    return files.map((f) => fs.readFileSync(new URL(f, base), "utf8")).join("\n");
   }
-  const base = bootstrapScssDirectory();
   return files
-    .map((f) => fs.readFileSync(new URL(f, base), "utf8"))
+    .map((f) => {
+      const embedded = edgeAssetSources[`bootstrap-scss/${f}`];
+      if (embedded === undefined) {
+        throw new Error(`vendored bootstrap scss not found in the edge snapshot: bootstrap-scss/${f}`);
+      }
+      return embedded;
+    })
     .join("\n");
 }
 
