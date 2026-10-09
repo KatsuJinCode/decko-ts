@@ -89,6 +89,14 @@ export class BlobAttachmentStore implements AttachmentStore {
     this.blobs = blobs;
   }
 
+  /** The blob key for one stored file: <cardId>/<name> in the files area;
+   *  the two-step upload's cache area ("tmp", carrierwave's
+   *  files_base_dir("tmp")) is keyed apart so a cache upload for a card
+   *  that does not exist yet never lands inside the deck's files. */
+  private key(cardId: number, name: string, area?: "files" | "tmp"): string {
+    return area === "tmp" ? `tmp/${cardId}/${name}` : `${cardId}/${name}`;
+  }
+
   async store(input: AttachmentStoreInput): Promise<StoredAttachment> {
     // The stored filenames: FileCardUploader shape = <action_id><ext>;
     // ImageCardUploader shape (renditionNames present) = the -original
@@ -104,7 +112,7 @@ export class BlobAttachmentStore implements AttachmentStore {
       // name the resizer did not produce store the original bytes.
       const bytes = input.renditionBytes?.[name] ?? input.bytes;
       const result = await this.blobs.put(
-        `${input.cardId}/${name}`,
+        this.key(input.cardId, name, input.area),
         bytes,
         { contentType: contentTypeForExtension(input.ext) },
       );
@@ -124,7 +132,7 @@ export class BlobAttachmentStore implements AttachmentStore {
 
   async discard(input: AttachmentStoreInput): Promise<void> {
     const names = input.renditionNames ?? [filenameWithVariant(input.actionId, input.ext)];
-    for (const name of names) await this.blobs.delete(`${input.cardId}/${name}`);
+    for (const name of names) await this.blobs.delete(this.key(input.cardId, name, input.area));
   }
 
   async read(
@@ -150,7 +158,7 @@ export class BlobAttachmentStore implements AttachmentStore {
         ? [filenameWithVariant(actionId, ext), filenameWithVariant(actionId, ext, "original")]
         : [filenameWithVariant(actionId, ext, variant), filenameWithVariant(actionId, ext)];
     for (const name of candidates) {
-      const bytes = await this.blobs.getBytes(`${cardId}/${name}`);
+      const bytes = await this.blobs.getBytes(this.key(cardId, name, area));
       if (bytes !== undefined) return bytes;
     }
     return undefined;

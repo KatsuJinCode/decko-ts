@@ -101,7 +101,7 @@ const RUBY_STEPS =
 const DECLARATIONS = path.join(REPO, "tests/fixtures/persistence-oracle/deliberate-differences.json");
 const LEGACY_PASSWORDS = process.env.DECKO_PASSWORD_HASH === "legacy-sha1";
 const PASSWORD_STEPS = [57, 58];
-const DELIBERATE_STEPS = [7, 20, 22, 31, 48, 67, ...(LEGACY_PASSWORDS ? [] : PASSWORD_STEPS)].sort((a, b) => a - b);
+const DELIBERATE_STEPS = [7, 20, 22, 31, 67].sort((a, b) => a - b);
 // The declarations in force for this run: without the password steps in
 // legacy-sha1 mode (a declaration that no longer applies would be stale).
 const DELIBERATE = LEGACY_PASSWORDS ? path.join(PERSIST_DIR, "deliberate-differences-legacy-passwords.json") : DECLARATIONS;

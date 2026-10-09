@@ -288,8 +288,27 @@ export class ActWriter {
     );
 
     if (input.history === false) {
-      // no action, no act row of its own; actionId 0 marks "none recorded"
-      return { cardId, actId: this.actId ?? 0, actionId: 0 };
+      // no action, no act row of its own; actionId 0 marks "none recorded".
+      // A compound create reserves its own action row before the sides exist
+      // (reserveAction); with history off that reservation must be undone —
+      // Ruby records no action rows at all for a history? false field.
+      if (input.reservedActionId !== undefined) {
+        await this.driver.query("DELETE FROM card_actions WHERE id = ? AND card_id IS NULL", [
+          input.reservedActionId,
+        ]);
+      }
+      const actId = this.actId ?? 0;
+      if (actId !== 0) {
+        const left = (
+          await this.driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM card_actions WHERE card_act_id = ?", [
+            actId,
+          ])
+        ).rows[0];
+        if (Number(left?.n ?? 0) === 0) {
+          await this.driver.query("DELETE FROM card_acts WHERE id = ?", [actId]);
+        }
+      }
+      return { cardId, actId, actionId: 0 };
     }
     const stmts: SQLStatement[] = [];
     const actIdSelect = this.pushClearDraftsAndAct(stmts, cardId, ts);

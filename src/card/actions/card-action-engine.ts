@@ -568,7 +568,7 @@ export class CardActionEngine {
    */
   private async dispatchSavePathIntegrations(
     result: ActionResult | null,
-    opts: { actCardActionOmitted?: boolean; delayedStageDropped?: boolean } = {},
+    opts: { actCardActionOmitted?: boolean; delayedStageDropped?: boolean; withinOtherAct?: boolean } = {},
   ): Promise<void> {
     if (result === null) return;
     // observer_<action> (card-mod-integrate observer.rb): the act card's
@@ -624,7 +624,7 @@ export class CardActionEngine {
       ? result.subactions.map((sub) =>
           savePathEventFromAction({ ...sub, actId: result.actId, subactions: [] }, actor, result.actId, false),
         )
-      : expandActionResultToSavePathEvents(result, actor, false);
+      : expandActionResultToSavePathEvents(result, actor, opts.withinOtherAct === true);
     await runIntegrationHooks({
       actId: result.actId,
       actor,
@@ -1347,6 +1347,7 @@ export class CardActionEngine {
       await this.saveRecentlyEditedSettings(finalResult);
       await this.dispatchSavePathIntegrations(finalResult, {
         delayedStageDropped: input.attachment !== undefined && input.attachment.fromCachedUpload !== true,
+        withinOtherAct: (input as { withinOtherAct?: boolean }).withinOtherAct === true,
       });
     });
     return finalResult;
@@ -1369,7 +1370,7 @@ export class CardActionEngine {
       const rightId = await this.fetch.lexicon.id(name.rightName);
       const leftId = name.leftName !== undefined ? await this.fetch.lexicon.id(name.leftName) : undefined;
       const pw = await this.passwordFieldContent(rightId, leftId, input.content, "create");
-      if (pw !== undefined && "content" in pw) input = { ...input, content: pw.content };
+      if (pw !== undefined && "content" in pw) input = { ...input, content: pw.content, passwordEncrypted: true };
     }
     // The execution seam's validation-phase stages (director.rb:12-16
     // VI/VP/VV). A new card has no id yet (director.rb:47 "has id" from
@@ -1860,7 +1861,7 @@ export class CardActionEngine {
     if (input.content !== undefined && input.content !== null && input.passwordEncrypted !== true) {
       const pw = await this.passwordFieldContent(row.right_id ?? undefined, row.left_id, input.content, "update");
       if (pw !== undefined && "skip" in pw) return null;
-      if (pw !== undefined) input = { ...input, content: pw.content };
+      if (pw !== undefined) input = { ...input, content: pw.content, passwordEncrypted: true };
     }
     if (input.trash === true && input.withinRollback !== true) {
       throw new CardActionError(
@@ -2017,6 +2018,7 @@ export class CardActionEngine {
       await this.dispatchSavePathIntegrations(committed, {
         actCardActionOmitted: committed?.actCardActionOmitted === true,
         delayedStageDropped: input.attachment !== undefined && input.attachment.fromCachedUpload !== true,
+        withinOtherAct: input.withinOtherAct === true,
       });
     });
     return result;
