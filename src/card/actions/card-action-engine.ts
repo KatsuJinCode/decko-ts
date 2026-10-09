@@ -1428,8 +1428,12 @@ export class CardActionEngine {
 
     // A compound card's own action row is saved before the side subcards
     // its create makes (ActWriter.reserveAction has the Ruby mechanism), so
-    // it is reserved here and filled by the row write below.
-    const reservedActionId = name.isCompound
+    // it is reserved here and filled by the row write below. A history-less
+    // create records no action at all (write-path returns before the fill),
+    // so reserving for one would strand an orphaned cardless action row —
+    // Ruby records nothing for a no-history create (the account plan's
+    // +*salt / +*password writes).
+    const reservedActionId = name.isCompound && input.history !== false
       ? await writer.reserveAction({ actionType: "create", superActionId: input.superActionId ?? null })
       : undefined;
     // prepare_left_and_right (name_events.rb:68-73): compound names resolve
