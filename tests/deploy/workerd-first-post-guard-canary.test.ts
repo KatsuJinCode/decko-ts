@@ -71,6 +71,9 @@ async function buildEngineBundle(): Promise<string> {
     entryPoints: [ENTRY],
     outfile,
     bundle: true,
+    // Resolution is cwd-dependent for the aliased @cf-wasm/photon entry;
+    // pin it to the repo so the gate runs from any working directory.
+    absWorkingDir: REPO_ROOT,
     format: "esm",
     platform: "neutral",
     target: "es2022",
