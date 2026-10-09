@@ -189,9 +189,13 @@ function escapeHtml(text: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/** Same contract as src/server/worker-shared-surface.ts#decodeName: the URI
+ *  mark decodes underscores to spaces BEFORE the fetch — card_class.rb:126-131
+ *  uri_fetch_opts `opts[:name] ||= Name[params[:mark]]&.tr "_", " "`. Same
+ *  key either way; the decode is what an absent-card render displays. */
 function decodeName(raw: string): string | undefined {
   try {
-    return decodeURIComponent(raw);
+    return decodeURIComponent(raw).replace(/_/g, " ");
   } catch {
     return undefined;
   }

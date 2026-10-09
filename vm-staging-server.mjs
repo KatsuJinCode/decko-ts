@@ -1411,10 +1411,14 @@ function jsonResponse(status, body) {
 
 /** decodeURIComponent that 400s on malformed input instead of throwing.
  *  '+' is DECKO'S JOINT (Card::Name.joint, prototype/lib/cardname.rb) and
- *  must survive into the name — see deploy/worker.ts#decodeName. */
+ *  must survive into the name — see deploy/worker.ts#decodeName.
+ *  Underscores decode to spaces BEFORE the fetch — card_class.rb:126-131
+ *  uri_fetch_opts `opts[:name] ||= Name[params[:mark]]&.tr "_", " "`: same
+ *  key either way; the decode is what an absent-card render displays
+ *  (src/server/worker-shared-surface.ts#decodeName carries the full note). */
 function decodeName(raw) {
   try {
-    return decodeURIComponent(raw);
+    return decodeURIComponent(raw).replace(/_/g, " ");
   } catch {
     return undefined;
   }

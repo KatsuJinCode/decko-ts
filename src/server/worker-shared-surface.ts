@@ -77,10 +77,21 @@ export function mapRenderError(message: string): RenderErrorPage {
  * addresses junctions as /A+B and multi-word simple names as /A%20B (or
  * the underscore alias form). Caught by the targeted Cloudflare test
  * 2026-09-23; reconciled to the engine-canonical key 2026-09-24.
+ *
+ * The underscore decode is card_class.rb:126-131 uri_fetch_opts:
+ * `opts[:name] ||= Name[params[:mark]]&.tr "_", " "`. An underscored mark and
+ * the same name with spaces fold to the SAME key, so the fetch result is
+ * unchanged; the decode is what an ABSENT-card render displays (the
+ * placeholder is Card.new(name: mark), fetch/store.rb:21-28). Without it, an
+ * orphan-junction page (left_id/right_id NULL rows fetched virtual) rendered
+ * the underscored mark — and, through the key-seated render placeholder, the
+ * canonical key string — in the masthead and <title> where the oracle renders
+ * the requested name ("dream_team+association" vs "Dream Team+Associations",
+ * the acceptance's compound-masthead rows).
  */
 export function decodeName(raw: string): string | undefined {
   try {
-    return decodeURIComponent(raw);
+    return decodeURIComponent(raw).replace(/_/g, " ");
   } catch {
     return undefined;
   }
