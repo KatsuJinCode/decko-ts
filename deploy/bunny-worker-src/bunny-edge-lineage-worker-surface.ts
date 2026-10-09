@@ -42,7 +42,7 @@
 // layoutPage are verbatim 12bd5236:worker.ts (lines 144-151, 153-166,
 // 168-178); parsePath is the union shape documented above.
 
-import { decodeName } from "../../src/server/worker-shared-surface.js";
+import { decodeName, decodeViewSegment } from "../../src/server/worker-shared-surface.js";
 
 function parsePath(
   pathname: string,
@@ -98,7 +98,10 @@ function parsePath(
   }
   if (segments.length === 2) {
     const name = decodeName(segments[0]!);
-    const view = decodeName(segments[1]!);
+    // The view is a snake_case identifier matched literally — the fold is
+    // uri_fetch_opts' for NAMES; a folded view misses the registered-view
+    // table (action_summary -> "action summary" answered the 422).
+    const view = decodeViewSegment(segments[1]!);
     if (name === undefined || view === undefined || name === "" || view === "") {
       return { kind: "notFound" };
     }
@@ -110,7 +113,7 @@ function parsePath(
   if (segments.length === 3 && segments[1] === "view") {
     // The /:mark/view/:view arm (root worker + the CF harness route).
     const name = decodeName(segments[0]!);
-    const view = decodeName(segments[2]!);
+    const view = decodeViewSegment(segments[2]!);
     if (name === undefined || view === undefined || name === "" || view === "") {
       return { kind: "notFound" };
     }
