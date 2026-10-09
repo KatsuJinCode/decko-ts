@@ -256,6 +256,34 @@ const accountCoreView: ViewFn = (ctx) => {
  *  the literal string. The password hash is NEVER rendered. */
 const passwordRawView: ViewFn = () => "encrypted";
 
+/** all/password_input.rb:2-4 password_input + password_input.haml, through
+ *  right/password.rb:86-88's `def input_type; :password end` (the editor
+ *  dispatch reaches password_field's editor the same way editor.rb's
+ *  input_method routes every set-module input). The bytes are the
+ *  live-oracle probe receipt: class "d0-card-content _pw-input form-control"
+ *  (the caller's class string, then the bootstrap FIELD_HELPERS " form-control"
+ *  append), placeholder "Password", autocomplete "off" (autocomplete?:
+ *  right/password.rb:90-95 - the *signin+*account parent HACK arm answers
+ *  "on", every other card "off"), type password, then the haml's
+ *  toggle-password span with the hide_password icon through icon_lookup to
+ *  visibility_off. The name/id ride the form prefix (form.rb:147-160). */
+const passwordInputView: ViewFn = (ctx) => {
+  const { fmt, voo } = ctx;
+  const namePrefix =
+    typeof voo.opts["form_name_prefix"] === "string"
+      ? (voo.opts["form_name_prefix"] as string)
+      : "card";
+  const idPrefix = namePrefix === "card" ? "card" : namePrefix.replace(/\]/g, "").replace(/[\[+]/g, "_");
+  const autocomplete =
+    fmt.parent?.card.name.s === "*signin+*account" ? "on" : "off";
+  return (
+    `<input class="d0-card-content _pw-input form-control" placeholder="Password" autocomplete="${autocomplete}" type="password" name="${namePrefix}[content]" id="${idPrefix}_content" />\n` +
+    `<span class='_toggle-password visibility-icon _pw-text-area'>\n` +
+    `<i class="_toggle-pw-visibility notranslate material-icons">visibility_off</i>\n` +
+    `</span>`
+  );
+};
+
 /** set/right/password.rb:81-83 (html block) view :core, wrap: :em —
  *  `render_raw` wrapped in the em tag. The port emits the wrap in-body
  *  (byte-identical to Ruby's wrap: :em for the html format; the loader's
@@ -1218,6 +1246,15 @@ const setModules: ModSetModuleFile[] = [
         views: [
           { view: "raw", viewFn: passwordRawView },
           { view: "core", viewFn: passwordCoreView },
+          // right/password.rb:86-88 def input_type: :password + the
+          // all/password_input set module's password_input (the haml
+          // password_field + the toggle-password span) - the editor the
+          // account form's +*password field renders. The bytes are the
+          // live-oracle probe receipt (tmp/int/probe-password-input.rb):
+          // class "d0-card-content _pw-input form-control", placeholder
+          // "Password", autocomplete "off", type password, and the
+          // visibility_off icon span.
+          { view: "input", viewFn: passwordInputView },
         ],
       },
     },

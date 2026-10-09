@@ -1009,9 +1009,12 @@ function fieldEditorInMultiCard(
     fieldCard.id === undefined
       ? `<input type="hidden" name="${prefix}[type_id]" id="${prefix.replace(/\]/g, "").replace(/[\[+]/g, "_")}_type_id" autocomplete="off" />`
       : "";
-  const tagSafe = fieldName.tag ?? fieldName.s;
+  // the row's junction class token is the TAG's SAFE KEY (star -> X: the
+  // bridge addresses `.RIGHT-Xpassword input.d0-card-content`; Ruby's
+  // RIGHT-Xemail row on the +*account page pins the same mapping)
+  const tagSafe = DeckoName.parse(fieldName.tag ?? fieldName.s).safeKey;
   return (
-    `<div class="RIGHT-${tagSafe.replace(/[+* ]/g, "_").toLowerCase()} card-editor form-group" data-card-name="${h(fieldName.s)}">\n` +
+    `<div class="RIGHT-${tagSafe} card-editor form-group" data-card-name="${h(fieldName.s)}">\n` +
     `<label for="${prefix}_content"><span class="card-title"><span>${h(title)}</span></span></label>\n` +
     `<div class="editor content-editor">${contentFieldHtml}</div>\n` +
     hiddenTypeId +
