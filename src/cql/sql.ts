@@ -424,24 +424,26 @@ interface OrderDirective {
  *  embed two DIFFERENT unspecified tiers, and both are reproducible:
  *
  *  - Permission-filtered scans (always_ok false): the statement carries
- *    `read_rule_id IN (...)`, and the capture deck's plan drove that filter
- *    through the read_rule_id index — one loop per list value, rows in
- *    rowid order — feeding a stable sort. Captured ties therefore resolve
- *    (read_rule_id asc, id asc): the *search page (`{"match":"$keyword",
- *    "sort":"relevance"}` → `ORDER BY updated_at desc`) renders its
- *    2026-09-06 15:26:37 tie cohort as 393,1001,1708,2456,26026 then the
- *    7786-rule row 1334, and the 01:14:36 cohort as 3523,3526 then
- *    12221(12223) then 1823(40702) — for both signed-in members. Queries
- *    whose tied rows all share one read_rule_id reduce to plain id order,
- *    which is exactly what the older captures embed (the Image member
- *    search's NULL-key cohort in id order 217,431,...,712).
+ *    `read_rule_id IN (...)`, and the capture deck's plan rode whichever
+ *    index the sort allowed. A KEY primary (sort name/alpha) rode the key
+ *    index itself — the ORDER BY is satisfied without a sorter, so tied
+ *    rows stay in rowid order: `c0.id asc` (the Image member search's
+ *    NULL-key cohort renders in id order 217,431,...,712). Any other
+ *    primary (updated_at has no satisfying plan with the filter in
+ *    flight) drove the read_rule_id index — one loop per list value,
+ *    rows in rowid order — feeding a stable sort: `c0.read_rule_id asc,
+ *    c0.id asc`. That is the *search page (`{"match":"$keyword",
+ *    "sort":"relevance"}` → `ORDER BY updated_at desc`): its 2026-09-06
+ *    15:26:37 tie cohort renders 393,1001,1708,2456,26026 then the
+ *    7786-rule row 1334, and the 01:14:36 cohort 3523,3526 then
+ *    12221(12223) then 1823(40702) — for both signed-in members.
  *  - Always-ok scans (the Administrator captures): no permission
- *    condition, and the captured ties resolve id DESCENDING under a
- *    descending primary — the updated_at-desc *search head-20 runs
- *    26026,2456,1708,1334,1265,1001,393 and 12221,3526,3523,1823, and
- *    both date-card tie pairs render higher id first. Ascending primaries
- *    keep id ASC (the `ORDER BY key asc` capture heads). The tier is
- *    pinned to the primary directive's own direction.
+ *    condition, and the captured ties follow the primary's direction —
+ *    the updated_at index ride backward emits id DESC under a descending
+ *    primary (the Administrator *search head-20 runs
+ *    26026,2456,1708,1334,1265,1001,393), forward rides emit id ASC (the
+ *    `ORDER BY key asc` capture heads). The tier is pinned to the primary
+ *    directive's own direction.
  *
  *  The ported decks break ties by THEIR physical order instead: the corpus
  *  scrub carries name/key as NULL for 40,090 of 49,829 rows
@@ -485,9 +487,15 @@ function orderDirectivesOf(query: QueryNode, ctx: GenContext): OrderDirective[] 
     return directives;
   }
   if (ctx.options.alwaysOk === false) {
-    // Filtered scan: the read_rule_id index loop, then rowid within it.
-    directives.push({ field: `${query.tableAlias}.read_rule_id`, dir: "asc" });
-    directives.push({ field: idField, dir: "asc" });
+    if (directives[0].field === `${query.tableAlias}.key`) {
+      // Key primary: the key index satisfies the ORDER BY outright — the
+      // filter rides along rowid-order, so the tier stays plain id asc.
+      directives.push({ field: idField, dir: "asc" });
+    } else {
+      // Any other primary: the read_rule_id index loop, then rowid within it.
+      directives.push({ field: `${query.tableAlias}.read_rule_id`, dir: "asc" });
+      directives.push({ field: idField, dir: "asc" });
+    }
   } else {
     // Always-ok scan: the unspecified tier follows the primary's direction.
     directives.push({ field: idField, dir: directives[0].dir || "asc" });

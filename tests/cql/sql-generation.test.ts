@@ -183,6 +183,12 @@ describe("sorting", () => {
     );
   });
 
+  it("filtered key primary keeps the key-index tier: id asc alone [captured: Image member search NULL-key cohort]", () => {
+    expect(sql({ sort: "name" }, { alwaysOk: false, readRuleIds: [6568, 7786] }).sql).toBe(
+      "SELECT c0.*, c0.key, c0.id FROM cards c0 WHERE c0.trash is false AND c0.read_rule_id IN (?,?) ORDER BY c0.key asc, c0.id asc",
+    );
+  });
+
   it("explicit sort_dir [oracle: ... ORDER BY c0.key desc]", () => {
     expect(sql({ return: "name", sort: "name", sort_dir: "desc" }).sql).toBe(
       "SELECT c0.name, c0.left_id, c0.right_id, c0.key, c0.id FROM cards c0 WHERE c0.trash is false ORDER BY c0.key desc, c0.id desc",
