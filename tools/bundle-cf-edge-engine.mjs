@@ -34,6 +34,12 @@ await build({
   external: [...builtins],
   conditions: ["deno", "bunny", "import", "default"],
   mainFields: ["module", "main"],
+  // @cf-wasm/photon (the image-version resizer on the write path) has no
+  // deno/bunny export condition, and its default entry imports the .wasm
+  // file as a workerd module binding, which esbuild cannot load. Its node
+  // entry carries the same WebAssembly module inline (base64) and compiles
+  // it with WebAssembly.Module, which the workerd runtime supports.
+  alias: { "@cf-wasm/photon": "@cf-wasm/photon/node" },
   logLevel: "warning",
 });
 const bytes = statSync(out).size;
