@@ -286,7 +286,10 @@ export function buildVirtualRuleCard(inputs: VirtualRuleCardInputs): RenderCard 
   const relocated = mapped !== undefined ? relocateRuleType(mapped, engine) : undefined;
   const ruleType = relocated ?? mapped;
   // Unmapped settings: the template chain, as Ruby's ensure_type_id does.
-  const templated = mapped === undefined ? engine?.newCardDefaultType?.(name) : undefined;
+  const templated =
+    mapped === undefined
+      ? (engine?.newCardDefaultType?.(name) ?? inputs.newCardDefaultType?.(name))
+      : undefined;
   const templateType =
     templated !== undefined
       ? {

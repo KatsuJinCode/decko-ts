@@ -6765,6 +6765,23 @@ export class RenderEngine implements RenderEngineLike {
     }
   }
 
+  /** Card::Env.reset's session half: a host whose sessions are per request
+   *  (the reference harness's recorder resets the environment before every
+   *  recorded request) clears the prepared chrome and the ensure_roles fill
+   *  state, so the next render is the session's FIRST render — the roles
+   *  dropdown's content input blank, the account links re-prepared. The
+   *  pageSession itself stays; the caller re-signs in through it. */
+  resetRequestSession(): void {
+    this.sessionAccountLinks = undefined;
+    this.sessionAccountLinksActorId = undefined;
+    this.sessionMyCardHtml = undefined;
+    this.sessionRolesDropdownHtml = undefined;
+    this.enabledRolesContentFilled.clear();
+    this.enabledRolesPendingActor = undefined;
+    this.sessionAccountLinksFilled = false;
+    this.sessionAccountLinksHasRoles = false;
+  }
+
   /** RenderEngineLike.pageSessionAccountLinksHtml — the prepared signed-in
    *  *account_links navbar items (undefined until a page render prepared
    *  them for a signed-in chrome session). */

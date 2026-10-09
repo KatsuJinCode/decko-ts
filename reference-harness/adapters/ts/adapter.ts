@@ -156,6 +156,12 @@ async function patternInput(name: string): Promise<PatternCardInput> {
 // ---- render -------------------------------------------------------------------
 async function opRender(req: Req): Promise<Json> {
   const engine = await engineFor(req.actor);
+  // The recorder resets Card::Env before every request (harness_env.rb
+  // begin_request!), so each recorded render ran on a fresh session: the
+  // +*enabled_roles card the roles dropdown fills is blank again, and the
+  // edit_inline form's content input renders blank. The engine cache here
+  // is a boot-cost cache, not a session; each render re-signs in.
+  engine.resetRequestSession();
   const html = req.view ? await engine.render(req.card, req.view) : await engine.renderPage(req.card);
   return { html };
 }
