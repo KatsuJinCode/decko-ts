@@ -23,6 +23,7 @@ export default defineConfig({
       "**/.git/**",
       "**/dist/**",
       "tools/oracle/corpus-deck-pairing-gate.test.mjs",
+      "tools/oracle/capture-stores-raw-slot-ids.test.mjs",
       "reference-harness/runner/test/**",
     ],
   },

@@ -9,7 +9,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -18,6 +18,12 @@ const ROOTS = ["tools", "benchmarks"];
 const SKIP_DIRS = new Set(["node_modules", ".git", "tmp", "decko-oracle-app"]);
 
 function rubyFiles(dir, out = []) {
+  // A release export excludes whole roots (the private benchmarks); a root
+  // that is absent is skipped loudly, and an empty scan is still an error.
+  if (!existsSync(dir)) {
+    console.warn(`scan root absent (skipped): ${path.relative(REPO, dir)}`);
+    return out;
+  }
   for (const name of readdirSync(dir)) {
     if (SKIP_DIRS.has(name)) continue;
     const p = path.join(dir, name);

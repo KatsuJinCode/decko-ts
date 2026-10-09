@@ -573,7 +573,9 @@ export function pointerListItemBodyForUnknown(
   // shared template, not off a captured denied bar).
   const safeLinkName = DeckoName.parse(name).urlKey;
   // The slot id rides the same Haml `data:` hash, so it is single-quoted
-  // like the other four (stock Ruby's bar divs).
+  // like the other four (stock Ruby's bar.haml passes wrap_data — slot id
+  // included — as one hash); in the separate style it is a double-quoted
+  // attribute after the hash, like the live bar emitters.
   const slotId = newSlotId();
   const hamlInHash = hamlSlotInHash();
   const dataAttrs = emitHamlAttrs({
@@ -581,6 +583,7 @@ export function pointerListItemBodyForUnknown(
     "data-card-name": h(name),
     "data-card-type-id": typeId,
     "data-card-type-name": typeName,
+    ...(hamlInHash ? { "data-slot-id": slotId } : {}),
   });
   return (
     `<div class='${serializerFollowsLive() ? `nodblclick d-flex _card-link bar ${h(setKeys)} with-bar-menu` : `bar ${h(setKeys)} with-bar-menu nodblclick d-flex _card-link`}'${dataAttrs}${hamlInHash ? "" : ` data-slot-id="${slotId}"`}>\n` +

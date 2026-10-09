@@ -47,7 +47,7 @@ const DECK =
 const STAMP_MIGRATION = join(process.cwd(), "deploy", "migrations", "0003-deck-data-version-stamp.sql");
 const HAVE_DECK = existsSync(DECK);
 
-const SLOT = /data-slot-id="[0-9a-f]+"/g;
+const SLOT = /data-slot-id=(["'])[0-9a-f]+\1/g;
 const norm = (html: string) => html.replace(SLOT, "");
 const pagePath = (name: string) => `/${encodeURIComponent(name.replace(/ /g, "_"))}`;
 

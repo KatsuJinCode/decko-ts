@@ -1,5 +1,10 @@
 node_modules/
 dist/
+# The vendored Ruby-mod asset trees are tracked byte-for-byte (the asset
+# suites digest them against Ruby-recorded pins), so their dist/ leaves are
+# un-ignored below the bare rule above.
+!fixtures/vendor/**/dist/
+!fixtures/vendor/**/dist/**
 *.log
 tools/oracle/decko-oracle-app/
 # MySQL rung of the oracle harness (docs/parity-method.md): portable

@@ -108,7 +108,7 @@ function itemNames(region: string): string[] {
  *  compares byte-exact. */
 function foldSlotIds(s: string): string {
   return s
-    .replace(/data-slot-id="[0-9a-f]{20}"/g, "data-slot-id=SLOTID")
+        .replace(/data-slot-id=(["'])[0-9a-f]{20}\1/g, "data-slot-id=SLOTID")
     .replace(/data-slot-id='[0-9a-f]{20}'/g, "data-slot-id=SLOTID");
 }
 
