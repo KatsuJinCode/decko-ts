@@ -22,6 +22,7 @@ import {
 } from "../../../src/card/rules/structure.js";
 import { setCaptureWallClock } from "../../../src/card/wall-clock.js";
 import { setDeckEnvironment } from "../../../src/card/render/deck-origin.js";
+import { servingModEventRuntime } from "../../../src/server/write-routes.js";
 import { findRule } from "../../../src/card/rules/lookup.js";
 import { patternsForCard } from "../../../src/card/set-patterns/card-patterns.js";
 import { settingCardNameForCode } from "../../../src/card/set-patterns/rule-names.js";
@@ -51,6 +52,12 @@ type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 type Req = Record<string, any>;
 
 const spec = JSON.parse(readFileSync(process.env.HARNESS_DECK_JSON!, "utf8"));
+// The synthetic deck is Ruby-built: every account's stored password is
+// Ruby's salted SHA-1 (the legacy scheme Ruby itself writes), so the
+// adapter pins that storage policy — under the port's modern default a
+// sign-in would upgrade the row to PBKDF2 and write a row Ruby never
+// writes. Set before any account machinery loads.
+process.env.DECKO_PASSWORD_HASH = "legacy-sha1";
 // The engine ships stock Decko's inflection rules (card 1.110.0
 // config/initializers/inflections.rb) under this name; every stock deck uses
 // them, so they are installed before any name is parsed.
@@ -274,7 +281,17 @@ async function opWrite(req: Req): Promise<Json> {
   const actor =
     req.actor === undefined || req.actor === "anonymous" ? null : { id: actorRec!.id, name: await nameOf(actorRec!) };
   const transport = new CaptureTransport("harness");
-  const engine = new CardActionEngine(fetcher, { actor, ipAddress: null, now: () => clock, notifyTransport: transport });
+  // The deck's own event composition rides every save (the serving write
+  // path's deck-boot seam): a scenario's validation events (the Number
+  // cardtype's validate_number), follower notifications and the other
+  // mod-declared events fire here exactly as they do on a real deck.
+  const engine = new CardActionEngine(fetcher, {
+    actor,
+    ipAddress: null,
+    now: () => clock,
+    notifyTransport: transport,
+    modEvents: await servingModEventRuntime(),
+  });
   const fields = (req.fields ?? {}) as Record<string, unknown>;
   const input: Record<string, unknown> = {};
   if (fields.type !== undefined) input.typeName = fields.type;
@@ -310,10 +327,39 @@ async function opWrite(req: Req): Promise<Json> {
     }
   } catch (error) {
     saved = false;
-    const e = error as Error & { code?: string; field?: string; errors?: Array<{ field?: string; message?: string }> };
-    errors = Array.isArray(e.errors)
-      ? e.errors.map((x) => ({ field: String(x.field ?? ""), message: String(x.message ?? "") }))
-      : [{ field: e.code ?? e.field ?? "exception", message: e.code !== undefined ? e.message : `${e.constructor?.name ?? "Error"}: ${e.message}` }];
+    // The errors view's shape (card-mod-format set/all/error.rb format :json
+    // view :errors): {attribute => message}. The engine's denial wording is
+    // internal; Ruby words a refusal "You don't have permission to <task>
+    // <card>" and keys it :permission_denied; the guard keys :recaptcha; a
+    // duplicate name keys :name. A refused save still answers with the
+    // card when it exists (Ruby's payload carries it on updates/deletes).
+    const e = error as Error & {
+      code?: string;
+      field?: string;
+      errorsByAttribute?: Record<string, string>;
+    };
+    const task = req.action === "delete" ? "delete" : String(req.action ?? "update");
+    if (e.errorsByAttribute !== undefined && Object.keys(e.errorsByAttribute).length > 0) {
+      errors = Object.entries(e.errorsByAttribute).map(([field, message]) => ({ field, message }));
+    } else if (e.code === "permission-denied" || e.code === "anonymous-actor") {
+      errors = [{ field: "permission_denied", message: `You don't have permission to ${task} ${req.card}` }];
+    } else if (e.code === "recaptcha") {
+      errors = [{ field: "recaptcha", message: e.message }];
+    } else if (e.code === "name-conflict" || e.code === "name-illegal") {
+      errors = [{ field: "name", message: e.message }];
+    } else if (Array.isArray((e as { errors?: unknown[] }).errors)) {
+      const list = (e as { errors: Array<{ field?: string; message?: string }> }).errors;
+      errors = list.map((x) => ({ field: String(x.field ?? ""), message: String(x.message ?? "") }));
+    } else if (e.code !== undefined) {
+      errors = [{ field: e.code, message: e.message }];
+    } else {
+      errors = [{ field: "exception", message: `${e.constructor?.name ?? "Error"}: ${e.message}` }];
+    }
+    const denied = await liveRecord(req.card).catch(() => undefined);
+    card =
+      denied === undefined
+        ? null
+        : { name: await nameOf(denied), id: denied.id };
   }
   await boot();
   const mail = transport.captured().map((m) => ({
