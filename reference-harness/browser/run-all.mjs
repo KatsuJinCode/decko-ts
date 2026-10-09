@@ -38,6 +38,12 @@ function step(title, script, scriptArgs) {
 const fixture = path.join(harness, "fixtures", "synthetic-v1");
 const journeys = path.join(here, "journeys", "synthetic-v1.json");
 const filter = args.filter ? ["--filter", args.filter] : [];
+// The mods' public files (TinyMCE's theme, ace's modes) come from the same
+// decko checkout the cucumber features do: its mod/*/public directories are
+// what the oracle app's public/mod links point at (ruby-server.sh checks
+// them). The TS engine serves them from the same place, so both engines put
+// byte-identical editor assets in the page.
+if (args.decko) process.env.DECKO_MOD_PUBLIC_DIR ??= args.decko;
 for (const engine of ["ruby", "ts"]) {
   step(`journeys on ${engine}`, path.join(here, "run-journeys.mjs"), [
     "--engine", path.join(here, "engines", `${engine}.json`),

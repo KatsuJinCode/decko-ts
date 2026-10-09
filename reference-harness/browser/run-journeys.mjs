@@ -224,9 +224,13 @@ async function runStep(ctx, step) {
   await settle(page);
 }
 
-// Values a save draws at random: password digests and salts.
+// Values a save draws at random: password digests and salts (Ruby's hex
+// digest, bcrypt, and the port's PBKDF2 envelope).
 function maskRows(rows) {
-  const mask = (v) => (typeof v === "string" && (/^[0-9a-f]{32,}$/i.test(v) || /^\$2[aby]\$/.test(v)) ? "<digest>" : v);
+  const mask = (v) =>
+    (typeof v === "string" && (/^[0-9a-f]{32,}$/i.test(v) || /^\$2[aby]\$/.test(v) || /^pbkdf2_sha256\$/.test(v))
+      ? "<digest>"
+      : v);
   const TIME = new Set(["created_at", "updated_at", "acted_at"]);
   const fix = (row) => Object.fromEntries(Object.entries(row).map(([k, v]) => [k, TIME.has(k) ? "<time>" : mask(v)]));
   const out = {};

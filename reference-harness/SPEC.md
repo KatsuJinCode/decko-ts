@@ -205,6 +205,10 @@ Applied to both sides before comparison, and nothing else:
    instants. Rows that existed before the step keep their ids, because both
    engines start from the same deck file.
 5. **N5.** JSON object key order never counts; array order always does.
+6. **N6.** `127.0.0.1:<port>` becomes `127.0.0.1:PORT`: each engine server
+   answers on a fresh per-journey port, so an absolute URL the deck itself
+   builds (a mail body's card link) carries a port that is random per run on
+   both engines. The host and scheme stay exact.
 
 Everything else is compared exactly: every byte of HTML, every row column,
 every error message.

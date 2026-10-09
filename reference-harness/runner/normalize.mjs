@@ -27,11 +27,14 @@ export function normalizeWriteResult(result) {
   return out;
 }
 
-/** Stable JSON: object keys sorted, so key order never counts. */
+/** Stable JSON: object keys sorted, so key order never counts; leaf strings
+ *  get the string-level rules (SPEC.md "Normalisation" N6: the per-journey
+ *  server port, which both engines draw at random). */
 export function stable(value) {
   if (Array.isArray(value)) return value.map(stable);
   if (value !== null && typeof value === "object") {
     return Object.fromEntries(Object.keys(value).sort().map((k) => [k, stable(value[k])]));
   }
+  if (typeof value === "string") return value.replace(/127\.0\.0\.1:\d+/g, "127.0.0.1:PORT");
   return value;
 }
