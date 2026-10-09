@@ -158,56 +158,130 @@ because the runner reads the deck file between steps.
 Every answer must come from the engine's own entry points. An adapter routes
 requests and shapes results; it must not compute an answer itself.
 
-## 3. Runner
+## 3. Runner and grading
 
 ```
 node runner/run.mjs --adapter adapters/<engine>/adapter.json \
      --fixture fixtures/<name> --out <resultsDir> [--kinds render,semantics,scenarios] [--filter <regex>] [--limit <n>]
-node runner/grade.mjs --fixture fixtures/<name> --actual <resultsDir> [--report report.json]
+node runner/grade.mjs --fixture fixtures/<name> --actual <resultsDir> \
+     [--expected <expectedDir>] [--report report.json] [--allow-partial]
 ```
 
-`run.mjs` copies the built deck per session, runs the operations, and writes
-`render.jsonl`, `semantics.jsonl` and `scenarios.jsonl` plus `run-meta.json`.
-For every scenario step it snapshots Decko's card tables before and after and
-records the normalised row delta. For read sessions it records any row the
-session changed (`*_session_row_changes` in `run-meta.json`): reads must not
-write.
+### What a run records
 
-`grade.mjs` compares an engine's results with `expected/` item by item and
-prints a pass rate per kind and per group (page or view and actor; question
-type; write action). Scenario steps are graded on every kind they exercise: a
-write's answer is a side-effect item, its row delta a persistence item, a
-render or question after a write a rendering or semantics item. An item whose
-oracle answer was an adapter error is reported as an oracle error and not
-graded.
+`run.mjs` copies the built deck per session, runs the operations, and writes
+`render.jsonl`, `semantics.jsonl` and `scenarios.jsonl` plus `run-meta.json`
+(results format 2).
+
+`run-meta.json` holds one record per kind under `runs`, written when the kind
+starts (`complete: false`) and again when it ends, so an interrupted run never
+claims completion. Each record names: `started`, `finished`, `complete`,
+`selection` (the `--filter`/`--limit` used, or null), `ops_total` (the
+fixture's count) and `ops_run`, the adapter's name, its ready line
+(`engine`), its source checkout (`adapter_checkout`: commit and whether it had
+uncommitted changes), and the fixture digest the run used with any
+disagreement between the fixture and its manifest (`fixture_problems`). A read
+kind also records `session_writes`: every row of every table the session
+changed, raw. A run that ends because the adapter exited is incomplete.
+
+For every scenario step the runner snapshots the deck before and after and
+records the raw row delta: `rows` for Decko's card tables (`cards`,
+`card_acts`, `card_actions`, `card_changes`, `card_references`,
+`card_virtuals`), and `other_tables` for any other table the step changed.
+Raw means ids, timestamps and every other column exactly as stored.
+
+### What the grader refuses
+
+`grade.mjs` first checks that the results are a grade at all. Any of these
+makes the verdict **not a grade** (exit 2), and no pass rate is printed:
+
+1. `run-meta.json` missing, unreadable, in another results format, or naming
+   another fixture; a kind's record missing a field listed above.
+2. A kind not run, not complete, run with a selection, or with a different
+   operation count from the fixture's.
+3. An operation with no result line, a result line twice, a result id the
+   fixture does not have, or a scenario with fewer steps than the fixture's.
+4. The fixture tree not matching its `MANIFEST.json`; results recorded on
+   another fixture digest, or on a fixture that did not match its manifest.
+5. The expected outputs without a `MANIFEST.json`, captured on another
+   fixture digest, holding a file that differs from or is missing from their
+   manifest, or naming an oracle variant inconsistent with their directory
+   (section 5).
+6. Kinds answered by different adapters, engine versions or commits.
+
+`--allow-partial` grades a filtered or partial run on what it holds, for
+development; its verdict is `partial` and it still exits 2. A run from a
+checkout with uncommitted changes, or from outside git, is graded with a
+warning that it is not a release grade.
+
+### What the grader compares
+
+Each item is compared with the expected outputs after normalisation
+(section 4) and passes only if equal. Results are tallied per kind and per
+group (page or view and actor; question type; write action). Scenario steps
+are graded on every kind they exercise: a write's answer is a side-effect
+item, its `rows` a persistence item, a render or question after a write a
+rendering or semantics item. An item whose oracle answer was an adapter error
+is reported as an oracle error and not graded.
+
+**Reads write only what the oracle's reads wrote.** Each read session's
+`session_writes`, and each non-write scenario step's `rows` and
+`other_tables` (renders, questions, sign-ins), must equal the oracle's for the
+same session or step, which on `synthetic-v1` is nothing. These are reported
+as their own line, `read writes`, and any failure fails the grade even when
+every answer matches. Changes a write step makes outside the card tables are
+listed in the report (`other_table_writes`) and not graded.
+
+Exit status: 0 every item passes; 1 a valid grade with failures; 2 not a
+grade.
 
 Any results file may be stored gzipped (`render.jsonl.gz`); the fixture's
 large reference renders are. `node runner/causes.mjs report.json [kind]`
 groups a report's failures by the shape of their first difference, so one
-root cause reads as one line.
+root cause reads as one line. Persistence and read-write failures also list
+every differing value (`differences`).
 
-The runner needs Node 22.5 or later and nothing else (`node:sqlite`).
+The runner and grader need Node 22.5 or later and nothing else
+(`node:sqlite`). Their tests, including a negative control for every refusal
+above, run with `node --test "reference-harness/runner/test/*.test.mjs"`.
 
 ## 4. Normalisation
 
-Applied to both sides before comparison, and nothing else:
+Two kinds of rule, applied to both sides before comparison, and nothing else:
 
-1. **N1.** `data-slot-id="<hex>"` becomes `data-slot-id="SLOT"`: slot ids are
-   random per render in every engine.
-2. **N2.** `0x` followed by 8 to 16 hex digits becomes `0xADDR`: a
-   host-language object address printed into an error message.
-3. **N3.** In a write result, the new card is compared by name (its id is a
-   row id, compared by persistence), and mail text loses trailing spaces per
-   line, CRLF line ends and surrounding blank lines.
-4. **N4.** In a row delta, rows the step created get symbolic ids (a card by
-   its full name, any other row by table and creation order) and every column
-   pointing at them is rewritten the same way; timestamps are compared as
-   instants. Rows that existed before the step keep their ids, because both
-   engines start from the same deck file.
-5. **N5.** JSON object key order never counts; array order always does.
+- A **mask** erases a value. It is allowed only for a field shown to vary
+  between two complete runs of the same oracle on the same fixture, and only
+  in that field's exact shape.
+- A **canonical form** compares the same value in another encoding and
+  erases nothing.
 
-Everything else is compared exactly: every byte of HTML, every row column,
-every error message.
+1. **N1 (mask).** In rendered HTML, a `data-slot-id` attribute in attribute
+   position holding exactly 20 lowercase hex digits has its value replaced by
+   `SLOT`; the quote character is kept. Ruby Decko draws slot ids at random
+   per render.
+2. **N2 (canonical form).** JSON object key order never counts; array order
+   always does.
+
+Everything else is compared exactly: every byte of HTML, every field of a
+write answer (the new card's id and every byte of mail text included), every
+column of every row (ids and timestamps as stored).
+
+**Evidence.** `node runner/compare-runs.mjs <runA> <runB>` compares two runs
+item by item, raw, and reports every difference no mask explains and, per
+mask, how many of the values it matched actually differed. For `synthetic-v1`
+two complete stock-oracle runs differ in 1,351 of 4,156 items, all in slot
+ids: 9,061 of 9,061 slot ids differ, and nothing else does. The result is in
+the expected outputs' manifest (`provenance.nondeterminism`), and a test
+checks that it covers exactly the masks `normalize.mjs` applies. A new mask
+needs the same evidence on the fixture that needs it.
+
+Rules the first version applied and no longer does, because no oracle run
+varies in them: hexadecimal object addresses (never present in any recorded
+output), dropping a write answer's card id and trimming mail whitespace (no
+verdict depended on them), and rewriting new rows' ids symbolically and
+comparing timestamps as instants (the oracle's ids and timestamp text are
+identical between runs; an engine that stores another text form, or assigns
+other ids, differs from Ruby).
 
 ## 5. The Ruby oracle
 
@@ -225,6 +299,36 @@ Renders run with `Rails.env` reporting production, as a served page does
 (inline render errors without debug detail); asset outputs are never
 recompiled during a session.
 
+### The oracle contract
+
+`oracle/contract.json` lists every way the oracle's process differs from a
+stock deck served through Decko's controller, each with where it is set and a
+class: `determinism` (pins a value that would vary between runs),
+`configuration` (a value a deck operator sets), `request` (makes the runner
+behave as one served request), `capture` (records mail instead of sending
+it), `platform` (a host workaround that reaches no recorded byte), `fixture`
+(a fixture data choice applied through Decko's own write path), and `patch`
+(changes what Decko does). The stock oracle has no `patch` entry.
+
+### Stock and patched expectations
+
+`fixtures/<name>/expected/` holds the stock oracle's outputs, always. An
+oracle that changes what Decko does (a gem patch, a changed mod
+configuration, a monkey patch) is a **patched variant**: its outputs go in
+`fixtures/<name>/expected-patched/<variant>/`, with every patch listed, and
+are graded only by naming that directory (`--expected`). The grader labels
+such a grade `PATCHED ORACLE "<variant>"` and records the variant in the
+report; a stock grade is always available beside it.
+
+Each expected directory has a `MANIFEST.json`
+(`node runner/manifest.mjs expected <fixtureDir> <expectedDir> [--variant <name> --patches <file>]`):
+the fixture digest it was captured on; the oracle's variant, patches and
+contract (with its sha256); the engine's ready line and the per-kind run
+records; the sha256 of every stored file and of its uncompressed content; and
+its provenance (when and how it was captured, the hashes of any files it
+supersedes, and the nondeterminism evidence of section 4). The grader
+refuses expected outputs whose files do not match it.
+
 Run natively (Ruby 3.3 with `bundle install` in `oracle/app`) through
 `adapters/ruby/adapter.json`, or in Docker:
 
@@ -234,6 +338,8 @@ docker run --rm -v "$PWD/reference-harness/fixtures/synthetic-v1:/fixture" \
   decko-reference-oracle:0.20.0 bash /oracle/build-deck.sh /fixture
 node reference-harness/runner/run.mjs --adapter reference-harness/adapters/ruby-docker/adapter.json \
   --fixture reference-harness/fixtures/synthetic-v1 --out reference-harness/fixtures/synthetic-v1/expected
+node reference-harness/runner/manifest.mjs expected reference-harness/fixtures/synthetic-v1 \
+  reference-harness/fixtures/synthetic-v1/expected
 ```
 
 ## 6. Versioning
@@ -243,12 +349,18 @@ node reference-harness/runner/run.mjs --adapter reference-harness/adapters/ruby-
   protocol.
 - **Deck format** (`"format": "decko-reference-deck/1"`): bumped when
   deck.json's meaning changes.
+- **Results format** (`"results_format": 2` in `run-meta.json`): bumped when
+  what the runner records changes. The grader reads one format.
 - **Fixture**: a fixture is immutable once its expected outputs are
-  published. A changed generator or operation list makes a new fixture name
-  (`synthetic-v2`), so a pass rate always names exactly what it was measured
-  on.
-- **Oracle**: expected outputs record the oracle's versions in
-  `expected/run-meta.json`. Capturing against another Decko release makes a
+  published. Its `MANIFEST.json`
+  (`node runner/manifest.mjs fixture <fixtureDir>`, checked with `check`)
+  lists the sha256 of every input file (deck.json, the built deck and its
+  files, the upload sources, the operation lists) and one digest over them;
+  results and expected outputs record that digest. A changed generator or
+  operation list makes a new fixture name (`synthetic-v2`), so a pass rate
+  always names exactly what it was measured on.
+- **Oracle**: expected outputs record the oracle's versions, variant and
+  contract in their manifest. Capturing against another Decko release makes a
   new fixture name.
 
 ## 7. Writing an adapter for another engine
