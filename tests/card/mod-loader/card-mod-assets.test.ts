@@ -69,12 +69,17 @@ describe("card-mod-assets mod loader", () => {
     // assertions updated to the new premise (the 5-entry manifest), the way
     // the repair commit corrected stale premises toward the ported
     // truth.
-    it("registers the five set modules: group_remote + the cwwrite-seam asset-output surfaces", () => {
+    // (2026-10-08, mod-events lane: the manifest grew to six — the
+    // abstract/asset_inputter set module joined, carrying the two asset
+    // input events' declarations; the gem tree has the file, so the
+    // basket now mirrors the gem exactly.)
+    it("registers the six set modules: group_remote + the cwwrite-seam asset-output surfaces + asset_inputter", () => {
       expect(cardModAssets.setModules).toBeDefined();
-      expect(cardModAssets.setModules?.length).toBe(5);
+      expect(cardModAssets.setModules?.length).toBe(6);
       expect(cardModAssets.setModules?.map((m) => m.setPath)).toEqual([
         "right/asset_output",
         "abstract/asset_outputter",
+        "abstract/asset_inputter",
         "type_plus_right/set/style",
         "type_plus_right/set/script",
         "right/group_remote",

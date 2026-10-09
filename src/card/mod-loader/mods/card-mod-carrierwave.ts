@@ -29,6 +29,18 @@
 // code (polymorphicSourceView / polymorphicCoreView), because the file and
 // image sets share one body each in this port.
 //
+// EVENTS (mod-events lane 2026-10-08): all Ruby event declarations are in
+// the manifest — the five abstract/attachment save events, the six
+// upload-cache lifecycle events, the two storage-type events, the
+// cloud/coded/local events, and the ten card_mount dynamic events
+// (card_mount.rb's `event :store_#{column}_event` templates, declared per
+// column as store_file_event/store_image_event etc.). Engine-owned where
+// the attachment save path implements the behavior (card-action-engine.ts
+// cites the events per step); stubs carry per-event reasons at their
+// declarations below. The earlier "NOT ported ... requires carrierwave
+// runtime" claims for the set/abstract/attachment files predate the E4.4.a
+// attachment runtime and are superseded by the per-event dispositions.
+//
 // NOT ported (honest remainder, see blockers below):
 // - lib/carrier_wave/* - the carrierwave mount adapter + uploaders; needs
 //   the carrierwave gem runtime (file I/O, fog, mini_magick, S3 buckets)
@@ -88,8 +100,23 @@ import {
 } from "../../render/views.js";
 import { h } from "../../render/slot-html.js";
 import { lastContentActionIdFromIdentifier } from "../../attachments/attachment-content.js";
-import type { DeckoModManifest } from "../mod-manifest.js";
+import type {
+  DeckoModManifest,
+  ModEventFn,
+  ModEventRegistration,
+} from "../mod-manifest.js";
+import { engineOwnedEvent } from "../mod-manifest.js";
 import { numberToHumanSize } from "./rails-number-to-human-size.js";
+
+/** The set-module event declarations (the mod-events lane, 2026-10-08):
+ *  stub-bodied unless the engine owns the behavior (then engineOwnedEvent).
+ *  Same shape as core-mod.ts's local helper; the per-event owner or stub
+ *  reason rides the declaration's comment. */
+function event(
+  decl: Omit<ModEventRegistration, "fn"> & { fn?: ModEventFn },
+): ModEventRegistration {
+  return { fn: () => undefined, ...decl };
+}
 
 // ---------------------------------------------------------------------------
 // helpers - the URL/path resolution Ruby's carrierwave FileCardUploader.url
@@ -587,10 +614,50 @@ const cardModCarrierwave: DeckoModManifest = {
     // The set module itself is registered in the basket for bookkeeping
     // parity with Ruby (set/abstract/loader.rb:185 + registrar.rb:21-29).
     {
-      // cwwrite-seam port: set/type/file.rb format :html views :input
-      // (:119-125) + :preview_editor (:127-129, unknown: true, cache:
-      // :never). Oracle-pinned bytes; the editor context rides render opts.
-      setPath: "type/file",
+    // set/type/file.rb format :html views :input
+    // (:119-125) + :preview_editor (:127-129, unknown: true, cache:
+    // :never). Oracle-pinned bytes; the editor context rides render opts.
+    //
+    // Events (mod-events lane 2026-10-08): the five card_mount dynamic
+    // events for the :file column (lib/carrier_wave/card_mount.rb:32-53 —
+    // Abstract::Attachment's included-hook extends CarrierWave::CardMount
+    // onto Type::File, attachment.rb:11-13, and the mount defines these on
+    // the host set). The recount's literal `event :name` regex mines the
+    // source TEMPLATE `event :store_#{column}_event` as the truncated
+    // "store_"; the concrete events Ruby loads are these two per-column
+    // pairs + trio, declared here under their real names.
+    setPath: "type/file",
+    events: [
+      // card_mount.rb:32-34 `event :store_#{column}_event, :finalize,
+      // when: :store_#{column}_event?` — engine: the save path's
+      // :store_attachment! step (card-action-engine.ts:774, 1714-1723,
+      // the AttachmentStore.store call).
+      engineOwnedEvent({ event: "store_file_event", at: "finalize", when: "store_file_event?" }),
+      // card_mount.rb:37-39 `event :remove_#{column}_event, :finalize,
+      // on: :delete, when: :no_history?` — STUB, named remainder: the
+      // delete path has no stored-file cleanup yet (no attachment arm on
+      // deleteCard; the files of a deleted card's actions stay on disk,
+      // matching the action rows a restore would need). Ruby runs it only
+      // for no-history cards.
+      event({ event: "remove_file_event", at: "finalize", on: ["delete"], when: "no_history?" }),
+      // card_mount.rb:41-43 `event :mark_remove_#{column}_false_event,
+      // :finalize, on: :update` — STUB: CarrierWave's mounter dirty-state
+      // reset (mark_remove_#{column}_false); the port's attachment input
+      // has no remove flag to reset (the AR mounter state machine has no
+      // TS counterpart).
+      event({ event: "mark_remove_file_false_event", at: "finalize", on: ["update"] }),
+      // card_mount.rb:45-48 `event :reset_previous_changes_for_#{column}_event,
+      // :finalize, when: :no_history?` — STUB: ActiveRecord
+      // dirty-tracking glue (reset_previous_changes_for_#{column}); the
+      // port's save path has no AR changes accumulator to reset.
+      event({ event: "reset_previous_changes_for_file_event", at: "finalize", when: "no_history?" }),
+      // card_mount.rb:50-53 `event :remove_previously_stored_#{column}_event,
+      // :finalize, on: :update, when: :no_history?` — STUB: fires only on
+      // no-history attachment saves; File/Image cards keep history (the
+      // engine's NO_HISTORY set lists right codenames, never the mount
+      // types), so the gate is false in both systems' common case.
+      event({ event: "remove_previously_stored_file_event", at: "finalize", on: ["update"], when: "no_history?" }),
+    ],
       formats: {
         html: {
           views: [
@@ -612,16 +679,27 @@ const cardModCarrierwave: DeckoModManifest = {
 
     // set/type/image.rb - the image type's format block. NOT ported:
     // `attachment :image, uploader: CarrierWave::ImageCardUploader`
-    // (line 1), `create_versions?` + `svg?` (lines 5-11), and the
-    // carrierwave mount plumbing (24 events total across the type/image +
-    // abstract/attachment modules). Same shape as type/file: registered
-    // for bookkeeping, the polymorphic views dispatch on typeCode.
+    // (line 1), `create_versions?` + `svg?` (lines 5-11). Same shape as
+    // type/file: registered for bookkeeping, the polymorphic views
+    // dispatch on typeCode.
+    //
+    // Events (mod-events lane 2026-10-08): the five card_mount dynamic
+    // events for the :image column (card_mount.rb:32-53; see the type/file
+    // block for the per-event disposition — identical bodies, one column
+    // apart).
     {
       // set/type/image.rb format block: :source (unknown: :blank, 26-28),
       // :inline (74-76) and :one_line_content (17-20), filed on the base
       // Format of the Type::Image set in Ruby; dispatched on the html chain
       // here.
       setPath: "type/image",
+      events: [
+        engineOwnedEvent({ event: "store_image_event", at: "finalize", when: "store_image_event?" }),
+        event({ event: "remove_image_event", at: "finalize", on: ["delete"], when: "no_history?" }),
+        event({ event: "mark_remove_image_false_event", at: "finalize", on: ["update"] }),
+        event({ event: "reset_previous_changes_for_image_event", at: "finalize", when: "no_history?" }),
+        event({ event: "remove_previously_stored_image_event", at: "finalize", on: ["update"], when: "no_history?" }),
+      ],
       formats: {
         html: {
           views: [
@@ -736,6 +814,153 @@ const cardModCarrierwave: DeckoModManifest = {
           linkText: "Delete upload tmp files",
           description: "Delete upload tmp files!",
         },
+      ],
+    },
+
+    // ------------------------------------------------------------------
+    // The abstract/attachment set files (mod-events lane 2026-10-08).
+    // The events' BEHAVIOR lives in the engine's attachment save path
+    // (src/card/actions/card-action-engine.ts — the E4.4.a runtime, whose
+    // per-step comments cite these very events) and the local-only
+    // AttachmentStore; stubs below carry per-event reasons.
+    // ------------------------------------------------------------------
+
+    {
+      // set/abstract/attachment.rb — the five attachment save events.
+      // Abstract::Attachment is included by exactly Type::File and
+      // Type::Image (attachment :file / attachment :image).
+      setPath: "abstract/attachment",
+      events: [
+        // attachment.rb:9-11 `event :select_file_revision, after:
+        // :select_action` — STUB, named remainder: runtime retrieval of a
+        // selected action's stored bytes (retrieve_from_store!); the port
+        // reads CURRENT bytes through the store seam and has no
+        // action-scoped retrieval surface.
+        event({ event: "select_file_revision", after: "select_action" }),
+        // attachment.rb:15-18 `event :correct_identifier, :finalize,
+        // on: :save, when: :incorrect_identifier?` — engine: the save
+        // path's raw db_content column write (card-action-engine.ts:863,
+        // citing attachment.rb:15-17; index.ts:11-12 names the pair).
+        engineOwnedEvent({ event: "correct_identifier", at: "finalize", on: ["save"], when: "incorrect_identifier?" }),
+        // attachment.rb:20-24 `event :save_original_filename,
+        // :prepare_to_store, on: :save, when: :file_ready_to_save?` —
+        // engine: the action row's comment carries the upload's original
+        // filename (card-action-engine.ts:1685-1687).
+        engineOwnedEvent({ event: "save_original_filename", at: "prepare_to_store", on: ["save"], when: "file_ready_to_save?" }),
+        // attachment.rb:26-34 `event :validate_file_exist, :validate,
+        // on: :create, skip: :allowed` — engine:
+        // card-action-engine.ts validateFileExist (:910-971, "url is
+        // missing" / "is missing" arms; called at :1416).
+        engineOwnedEvent({ event: "validate_file_exist", at: "validate", on: ["create"], skip: "allowed" }),
+        // attachment.rb:36-38 `event :write_identifier, after:
+        // :save_original_filename, when: :write_identifier?` — engine:
+        // the db_content identifier write at prepare_to_store
+        // (card-action-engine.ts:2244-2251) + the finalizer pair
+        // (:1714-1723).
+        engineOwnedEvent({ event: "write_identifier", after: "save_original_filename", when: "write_identifier?" }),
+      ],
+    },
+    {
+      // set/abstract/attachment/00_upload_cache.rb — the draft-upload
+      // cache lifecycle. Engine: the preliminary-upload flow
+      // (card-action-engine.ts:3659+ — the abort + cachedUploadAttachment
+      // walk citing these events) and the fromCachedUpload flag.
+      setPath: "abstract/attachment/00_upload_cache",
+      events: [
+        // 00_upload_cache.rb:8-25 `event :prepare_attachment,
+        // :prepare_to_validate, on: :save, when: :preliminary_upload?` —
+        // engine: the preliminary-upload abort arm
+        // (card-action-engine.ts:3659, "a preliminary upload requires the
+        // engine's attachmentStore option"; the cached-draft flow).
+        engineOwnedEvent({ event: "prepare_attachment", at: "prepare_to_validate", on: ["save"], when: "preliminary_upload?" }),
+        // :27-34 `event :assign_attachment_on_create, :initialize,
+        // after: :assign_action, on: :create, when:
+        // :save_preliminary_upload?` — engine: cachedUploadAttachment
+        // (card-action-engine.ts:3702-3707 cites this event pair).
+        engineOwnedEvent({ event: "assign_attachment_on_create", at: "initialize", after: "assign_action", on: ["create"], when: "save_preliminary_upload?" }),
+        // :36-43 assign_attachment_on_update — engine: same walk.
+        engineOwnedEvent({ event: "assign_attachment_on_update", at: "initialize", after: "assign_action", on: ["update"], when: "save_preliminary_upload?" }),
+        // :51-58 delete_cached_upload_file_on_create — engine: the flow
+        // deletes the cached draft's files + action (:3704-3705).
+        engineOwnedEvent({ event: "delete_cached_upload_file_on_create", at: "integrate", on: ["create"], when: "save_preliminary_upload?" }),
+        // :62-64 `event :clear_draft_files, :integrate_with_delay,
+        // priority: 100, on: :create` — STUB with an architecture reason:
+        // the sweep deletes stray tmp files of canceled creates
+        // (Card.delete_tmp_files_of_cached_uploads); the port holds cached
+        // uploads in memory (bytes ride the save input), so the stray-tmp
+        // state the sweep plugs cannot arise. The admin basket task that
+        // calls the same sweep stays (self/admin above).
+        event({ event: "clear_draft_files", at: "integrate_with_delay", priority: 100, on: ["create"] }),
+        // :66-72 delete_cached_upload_file_on_update — engine: same walk.
+        engineOwnedEvent({ event: "delete_cached_upload_file_on_update", at: "integrate", on: ["update"], when: "save_preliminary_upload?" }),
+      ],
+    },
+    {
+      // set/abstract/attachment/01_storage_type.rb — storage-type moves.
+      // The port is single-backend (local files dir; web URLs ride the
+      // attachment input's typed arms) — the storage-type TRANSITION
+      // machinery has no backend to target.
+      setPath: "abstract/attachment/01_storage_type",
+      events: [
+        // 01_storage_type.rb:3-6 `event :update_storage, :store,
+        // on: :update, when: :storage_changed?` — STUB, named remainder:
+        // re-stores the file under the NEW storage type's backend
+        // (send "#{attachment_name}=", current.attachment.file); the port
+        // has exactly one backend, so a storage change has no move to
+        // perform.
+        event({ event: "update_storage", at: "store", on: ["update"], when: "storage_changed?" }),
+        // :8-10 `event :validate_storage_type, :validate, on: :save` —
+        // STUB: errors.add :storage_type for a content-derived storage
+        // type outside CarrierWave::STORAGE_TYPES; the port never derives
+        // a storage type from content (the identifier grammar it parses,
+        // attachment-content.ts, is the local one).
+        event({ event: "validate_storage_type", at: "validate", on: ["save"] }),
+      ],
+    },
+    {
+      // set/abstract/attachment/cloud.rb — S3/fog buckets. No cloud
+      // runtime in the port (the gem's own fog dependency stays Ruby-side).
+      setPath: "abstract/attachment/cloud",
+      events: [
+        // cloud.rb:3-6 `event :change_bucket_if_read_only, :initialize,
+        // on: :update, when: :change_bucket_if_read_only?` — STUB: resets
+        // the storage type for read-only-bucket cloud decks; no cloud
+        // backend exists.
+        event({ event: "change_bucket_if_read_only", at: "initialize", on: ["update"], when: "change_bucket_if_read_only?" }),
+      ],
+    },
+    {
+      // set/abstract/attachment/coded.rb — mod-file coded storage
+      // (identifiers like ":mod/path/file.ext" resolved against
+      // Cardio::Mod.dirs). The port's local backend is deck-files only.
+      setPath: "abstract/attachment/coded",
+      events: [
+        // coded.rb:3-5 `event :uncode_attachment_storage, :initialize,
+        // on: :update, when: :uncode?` — STUB: transitions a coded-stored
+        // attachment to the configured storage; no coded backend to
+        // transition from.
+        event({ event: "uncode_attachment_storage", at: "initialize", on: ["update"], when: "uncode?" }),
+        // coded.rb:7-10 `event :validate_coded_storage_type, :validate,
+        // on: :save, when: :coded?` — STUB: the mod/codename argument
+        // validation for coded saves; unreachable without coded storage.
+        event({ event: "validate_coded_storage_type", at: "validate", on: ["save"], when: "coded?" }),
+      ],
+    },
+    {
+      // set/abstract/attachment/local.rb — public symlink management.
+      // The port serves files through its own routes
+      // (src/server/file-routes.ts); there is no public symlink dir to
+      // maintain (and no read-rule-driven symlink flip).
+      setPath: "abstract/attachment/local",
+      events: [
+        // local.rb:1-3 update_public_link_on_create — STUB (symlinks).
+        event({ event: "update_public_link_on_create", at: "integrate", on: ["create"], when: "local?" }),
+        // local.rb:5-7 remove_public_link_on_delete — STUB (symlinks).
+        event({ event: "remove_public_link_on_delete", at: "integrate", on: ["delete"], when: "local?" }),
+        // local.rb:9-17 update_public_link (after: :update_read_rule) —
+        // STUB (symlinks; the read-rule hook fires after the permission
+        // refresh event the permissions mod declares).
+        event({ event: "update_public_link", after: "update_read_rule", when: "local?" }),
       ],
     },
 

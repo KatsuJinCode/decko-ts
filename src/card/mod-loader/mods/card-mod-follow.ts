@@ -192,9 +192,20 @@ import { followRuleNameFor, followSetCardName } from "../../follow/follow-rule-w
 import {
   engineOwnedEvent,
   type DeckoModManifest,
+  type ModEventFn,
+  type ModEventRegistration,
   type ModSetModuleFile,
 } from "../mod-manifest.js";
 import { followOptionDescription } from "../../follow/follow-options.js";
+
+/** The set-module event declarations (the mod-events lane, 2026-10-08):
+ *  stub-bodied, with the per-event reason on the declaration. Same shape
+ *  as core-mod.ts's local helper. */
+function event(
+  decl: Omit<ModEventRegistration, "fn"> & { fn?: ModEventFn },
+): ModEventRegistration {
+  return { fn: () => undefined, ...decl };
+}
 import {
   buttonTag,
   cardFormOpen,
@@ -1271,6 +1282,15 @@ const cardModFollow: DeckoModManifest = {
       // both the Self set and the Right set define it; here the
       // method lives on the Right side and is not view-portable.
       setPath: "right/follow",
+      // cache_expired_for_new_preference (mod-events lane 2026-10-08) —
+      // STUB with an architecture reason (right/follow.rb:7-9): the body
+      // is Card.follow_caches_expired (clears the FOLLOWER_IDS +
+      // preference caches); the port's follower resolution
+      // (notify/follower-resolver.ts) queries the reference + preference
+      // rows FRESH per call — there is no cache to expire.
+      events: [
+        event({ event: "cache_expired_for_new_preference", at: "integrate", when: "preference?" }),
+      ],
       formats: {
         html: {
           views: [
@@ -1326,9 +1346,13 @@ const cardModFollow: DeckoModManifest = {
     },
     {
       // card-mod-follow-0.20.0/set/right/follow_fields.rb - assign_type
-      // :list + event :follow_fields_changed. NOT ported: write-path
-      // event + the assignment, no views.
+      // :list + event :follow_fields_changed.
+      // Event (mod-events lane 2026-10-08) — STUB, same architecture
+      // reason as right/follow's cache_expired_for_new_preference
+      // (follow_fields.rb:3-5: the body is Card.follow_caches_expired;
+      // the port resolves followers fresh per call).
       setPath: "right/follow_fields",
+      events: [event({ event: "follow_fields_changed", at: "integrate" })],
       formats: { html: { views: [] } },
     },
     passiveSetModule("right/message"),
@@ -1384,6 +1408,15 @@ const cardModFollow: DeckoModManifest = {
       // FollowDefaults constant; the capture is cited in the honest
       // remainder above. The port's raise is Ruby-true.
       setPath: "self/follow_defaults",
+      // update_follow_rules (mod-events lane 2026-10-08) — STUB, named
+      // remainder (self/follow_defaults.rb:17-30, the card's own header
+      // says DEPRECATED): the triggered body rewrites every user's follow
+      // rule for the listed sets (Auth.as_bot bulk Card.search + per-user
+      // rule saves); the port has no bulk-rule-rewrite surface and the
+      // mechanism is deprecated upstream.
+      events: [
+        event({ event: "update_follow_rules", at: "finalize", on: ["save"], trigger: "required" }),
+      ],
       formats: {
         html: {
           views: [

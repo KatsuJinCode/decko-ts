@@ -158,8 +158,22 @@ import { DEFAULT_TOKEN_EXPIRY_SECONDS } from "../../auth/token.js";
 import {
   engineOwnedEvent,
   type DeckoModManifest,
+  type ModEventRegistration,
+  type ModEventFn,
   type ModSetModuleFile,
 } from "../mod-manifest.js";
+
+/** The set-module event declarations below (the mod-events lane,
+ *  2026-10-08): a stub-bodied declaration unless the engine has no
+ *  counterpart (then `engineOwnedEvent` - the behavior lives in engine
+ *  code, the declaration only records Ruby's set membership + metadata).
+ *  Same shape as core-mod.ts's local helper; the per-event owner or
+ *  stub reason rides the declaration's comment. */
+function event(
+  decl: Omit<ModEventRegistration, "fn"> & { fn?: ModEventFn },
+): ModEventRegistration {
+  return { fn: () => undefined, ...decl };
+}
 
 // ---------------------------------------------------------------------------
 // view bodies (Ruby source cited per block)
@@ -1132,7 +1146,93 @@ const setModules: ModSetModuleFile[] = [
   },
   // pattern: right
   { setPath: "right/account" },
-  { setPath: "right/account/events" },
+  {
+    // set/right/account/events.rb — the whole verification/reset chain.
+    // Engine ownership: the flows the events implement run in
+    // src/card/auth/account-verify-reset-flows.ts (the request/confirm
+    // ladders, the template renders, the SMTP delivery) and
+    // src/card/auth/account-fields.ts (the create-time field events);
+    // src/card/actions/card-action-engine.ts:3029-3051 runs delete_account's
+    // close_account walk. The three send_*_email events come from the
+    // gem's dynamic `%i[password_reset_email verification_email
+    // welcome_email].each { event :"send_#{email}" }` loop (events.rb:33-35)
+    // — the recount regex only sees literal `event :name` declarations, so
+    // they sit outside the 30-name denominator; they are declared anyway
+    // (Ruby has them; the dispatch seam triggers them, engine
+    // card-action-engine.ts input.triggeredIntegrate).
+    setPath: "right/account/events",
+    events: [
+      // events.rb:3-5 — engine: account-fields.ts planAccountFields
+      // (generateSalt on create).
+      engineOwnedEvent({
+        event: "set_default_salt",
+        at: "prepare_to_validate",
+        on: ["create"],
+      }),
+      // events.rb:7-9 — engine: account-fields.ts planAccountFields
+      // (default status "active"/"unverified"/"unapproved").
+      engineOwnedEvent({
+        event: "set_default_status",
+        at: "prepare_to_validate",
+        on: ["create"],
+      }),
+      // events.rb:15-17, trigger: :required — engine:
+      // account-verify-reset-flows.ts (the confirm arm: token decode ->
+      // reset_password_success/failure).
+      engineOwnedEvent({
+        event: "reset_password",
+        at: "prepare_to_validate",
+        on: ["update"],
+        trigger: "required",
+      }),
+      // events.rb:19-24, trigger: :required — engine:
+      // account-verify-reset-flows.ts (verify_and_activate ladder,
+      // activatable's no-subcards guard).
+      engineOwnedEvent({
+        event: "verify_and_activate",
+        at: "prepare_to_validate",
+        on: ["update"],
+        trigger: "required",
+      }),
+      // events.rb:26-28, when: :password_redirect? — STUB, named
+      // remainder: the body is a redirect channel (success << {id:,
+      // view: "edit"}) and the engine's save path has no success/redirect
+      // composition surface to mutate (grep over src/card/actions finds
+      // none); the redirect after a password save is route-layer work.
+      event({
+        event: "password_redirect",
+        at: "finalize",
+        on: ["update"],
+        when: "password_redirect?",
+      }),
+      // events.rb:33-35 (the dynamic three), trigger: :required — engine:
+      // account-verify-reset-flows.ts renders + delivers each template.
+      engineOwnedEvent({ event: "send_password_reset_email", at: "integrate", trigger: "required" }),
+      engineOwnedEvent({ event: "send_verification_email", at: "integrate", trigger: "required" }),
+      engineOwnedEvent({ event: "send_welcome_email", at: "integrate", trigger: "required" }),
+      // events.rb:40-43 (no stage) — engine: account-verify-reset-flows.ts
+      // runs activate_account inside verify_and_activate_success (status ->
+      // "active" + trigger_event! :send_welcome_email).
+      engineOwnedEvent({ event: "activate_account" }),
+      // events.rb:45-47 — engine: card-action-engine.ts:3029-3051
+      // (deleteAccount's close_account: anonymize + closure deletions).
+      engineOwnedEvent({
+        event: "delete_account",
+        at: "prepare_to_validate",
+        on: ["delete"],
+      }),
+      // events.rb:49-51, when: :current_account? — STUB, named remainder:
+      // signing the session out when the deleted account IS the acting
+      // session's account has no engine surface (the visitor-session
+      // lifecycle is route-layer; no delete-path hook exists).
+      event({
+        event: "signout_upon_delete",
+        at: "integrate",
+        on: ["delete"],
+        when: "current_account?",
+      }),
+    ],
+  },
   {
     // set/right/account/views.rb:1-47 base block (verify_url,
     // reset_password_url, token_expiry, token_days + verify_days/
@@ -1170,8 +1270,23 @@ const setModules: ModSetModuleFile[] = [
     // set/right/email.rb:5 `assign_type :phrase` (advanced_api.rb:5-8 —
     // the trait's cards are Phrase-typed; the +*account page's phantom
     // +*password field slot pins type-id 52 Phrase).
+    // Events (mod-events lane 2026-10-08): the three email validations run
+    // inside src/card/auth/account-fields.ts planAccountFields —
+    // normalizeEmail is downcase_email (:29-32) then validate_email's strip
+    // (:7-9); emailIsValid is validate_email's grammar (:10-13);
+    // planAccountFields' emailTaken probe is validate_unique_email's
+    // Auth.as_bot cql search (:16-27).
     setPath: "right/email",
     assignsType: "phrase",
+    events: [
+      engineOwnedEvent({ event: "validate_email", at: "validate", on: ["save"] }),
+      engineOwnedEvent({
+        event: "validate_unique_email",
+        after: "validate_email",
+        on: ["save"],
+      }),
+      engineOwnedEvent({ event: "downcase_email", at: "prepare_to_validate", on: ["save"] }),
+    ],
   },
   {
     // set/right/password.rb:53-55 view :raw (base, returns t :account_
@@ -1180,10 +1295,33 @@ const setModules: ModSetModuleFile[] = [
     // surfaces-batch3: BOTH views ported (the visible half of every
     // password field — a labeled render shows the "encrypted" stand-in,
     // never the hash). Still unported: the input_type/autocomplete?
-    // helpers (edit-form machinery) + the password validation events.
+    // helpers (edit-form machinery).
+    // Events (mod-events lane 2026-10-08): the four password events run in
+    // account-fields.ts passwordErrors (validate_password_length :30-35 +
+    // validate_password_chars :37-47 — PASSWORD_REGEX and the requirement
+    // labels are that module's constants) and encryptPassword
+    // (encrypt_password :21-26, Auth.encrypt); validate_password_present
+    // (:49-51, blank update aborts) is card-action-engine.ts:1220-1223
+    // (a blank +*password update changes nothing) and first-run-setup.ts
+    // :472-478 (the setup form's password_blank arm).
     // Ruby :3 `assign_type :phrase` (merged from the tip's batch side).
     setPath: "right/password",
     assignsType: "phrase",
+    events: [
+      engineOwnedEvent({
+        event: "encrypt_password",
+        at: "store",
+        on: ["save"],
+        changed: ["content"],
+      }),
+      engineOwnedEvent({ event: "validate_password_length", at: "validate", on: ["save"] }),
+      engineOwnedEvent({ event: "validate_password_chars", at: "validate", on: ["save"] }),
+      engineOwnedEvent({
+        event: "validate_password_present",
+        at: "prepare_to_validate",
+        on: ["update"],
+      }),
+    ],
     formats: {
       html: {
         views: [
@@ -1220,7 +1358,32 @@ const setModules: ModSetModuleFile[] = [
     // the edge cached the heading-only page), open_content (the
     // _render_core delegation - delegates to :core via
     // ctx.fmt.renderView("core")) and one_line_content (the empty body).
+    // Events (mod-events lane 2026-10-08): the four signin events run in
+    // src/card/auth/signin.ts — authenticate_or_abort + the error ladder
+    // (:42-84) is the signin event's body (signin.rb:10-12); signin_success
+    // (:15-17, abort after success, no row write) and signout (:19-23,
+    // Auth.signin Anonymous + Env.reset_session + abort) are the same
+    // module's flow; send_reset_password_token (:27-31) is
+    // account-verify-reset-flows.ts sendResetPasswordToken (the request
+    // arm: blank/unknown/inactive email ladders).
     setPath: "self/signin",
+    events: [
+      // signin.rb:27-31 `event :send_reset_password_token, before:
+      // :signin, on: :update, trigger: :required` — Ruby's before: keeps
+      // @stage nil and hangs the event on signin's callback chain (the
+      // signin event is :validate), so the surface records the resolved
+      // stage; declared FIRST so the same-stage walk order keeps it ahead
+      // of signin (the check_setup precedent, type/user below).
+      engineOwnedEvent({
+        event: "send_reset_password_token",
+        at: "validate",
+        on: ["update"],
+        trigger: "required",
+      }),
+      engineOwnedEvent({ event: "signin", at: "validate", on: ["update"] }),
+      engineOwnedEvent({ event: "signin_success", after: "signin" }),
+      engineOwnedEvent({ event: "signout", at: "validate", on: ["delete"] }),
+    ],
     formats: {
       html: {
         views: [
@@ -1267,6 +1430,41 @@ const setModules: ModSetModuleFile[] = [
     // whose own module lacks the view expands to the modules nested under
     // it).
     setPath: "type/signup",
+    // Events (mod-events lane 2026-10-08; signup.rb:20-38). Engine
+    // ownership: the approval ladder is account-verify-reset-flows.ts —
+    // auto_approve_with_verification (:20-22, when: :can_approve?) runs on
+    // the CREATE path (request_verification: +*status "unverified" +
+    // trigger send_verification_email, flows.ts:630-645); the two UPDATE
+    // approvals (:24-34, trigger: :required) ride the same
+    // request_verification / activate_accounted+activate_account machinery
+    // through the flow module (flows.ts:674-678, 992); can_approve? itself
+    // is card-action-engine.ts:1256-1263 canCreateDefaultAccountedType.
+    events: [
+      engineOwnedEvent({
+        event: "auto_approve_with_verification",
+        at: "validate",
+        on: ["create"],
+        when: "can_approve?",
+      }),
+      engineOwnedEvent({
+        event: "approve_with_verification",
+        at: "validate",
+        on: ["update"],
+        trigger: "required",
+      }),
+      engineOwnedEvent({
+        event: "approve_without_verification",
+        at: "validate",
+        on: ["update"],
+        trigger: "required",
+      }),
+      // signup.rb:36-38 — STUB, named remainder: Ruby switches the acting
+      // session to the freshly created id for the integrate stage
+      // (Auth.current_id = id, "needs justification!" per the gem). The
+      // port's save path has no mid-act actor switch; the engine's actor
+      // model is fixed per engine instance (card-action-engine.ts Actor).
+      event({ event: "act_as_current_for_integrate_stage", at: "integrate", on: ["create"] }),
+    ],
   },
   {
     // set/type/signup/views.rb — the NESTED child file (Ruby's SetTemplate
@@ -1341,7 +1539,18 @@ const setModules: ModSetModuleFile[] = [
   {
     // set/type_plus_right/role/members.rb:1-7 include_set Abstract::IdList,
     // assign_type :list, event :update_role_cache. No views.
+    // Event (mod-events lane 2026-10-08) — STUB with an engine-architecture
+    // reason, not an omission: Ruby's body refreshes a CACHE
+    // (Self::Role.update_rolehash(left.id, item_ids), members.rb:5-7) that
+    // read-time permission checks consult. The port derives the role lists
+    // from the reference rows FRESH at every read
+    // (permissions/read-rules.ts:245-265 — role_ids_from_role_member_cards
+    // reads the same rows generate_rolehash would) — there is no cache to
+    // refresh, so the event has no behavior to run. The declaration records
+    // Ruby's set membership + metadata (plain stub - NOT engineOwnedEvent:
+    // no engine code implements it; the architecture makes it moot).
     setPath: "type_plus_right/role/members",
+    events: [event({ event: "update_role_cache", at: "finalize" })],
   },
   {
     // set/type_plus_right/user/email.rb:1-17 def virtual? + view :raw
