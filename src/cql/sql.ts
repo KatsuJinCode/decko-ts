@@ -473,7 +473,24 @@ interface OrderDirective {
  *  head-30 equal), so joined statements carry the bare Ruby ORDER BY. */
 function orderDirectivesOf(query: QueryNode, ctx: GenContext): OrderDirective[] {
   const sortMod = query.mods.sortBy ?? query.mods.sort;
-  if (!sortMod || sortMod.length === 0) return [];
+  if (!sortMod || sortMod.length === 0) {
+    // SORTLESS JOINED REFERENCE STATEMENTS (the +*members family): Ruby's
+    // statement carries no ORDER BY and the captured row order is the
+    // reference-join emission — a plan-sensitive tier that flipped between
+    // engine builds whose prepare-phase query sequences differ (the Help
+    // Desk +*members listing: verification email (21783) and password reset
+    // email (21787) tie on everything the statement orders by, and the two
+    // orders alternated deterministically with the build). Pinning the
+    // superquery's id asc makes the tier deterministic; the Help Desk
+    // capture is id-ascending, and the sorted joined shapes keep their bare
+    // Ruby ORDER BY untouched (the somatic NULL-key tier above is a SORTED
+    // statement — this arm never fires for it).
+    const joins = renderedJoins(query);
+    if (joins.length > 0) {
+      return [{ field: `${query.tableAlias}.id`, dir: "asc" }];
+    }
+    return [];
+  }
   const directives = sortMod.map((token, index) => {
     const field = orderField(query, token);
     return { field, dir: orderDir(query, token, index) };
