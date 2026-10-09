@@ -418,11 +418,18 @@ const autocompleteView: ViewFn = (ctx) => {
 /** hidden_content_field (card-mod-format set/all/content.rb:57-59:
  *  `hidden_field :content, class: "d0-card-content"`); the byte shape
  *  (form-control class merge, autocomplete="off", the attribute order,
- *  the raw multi-line value) is capture-pinned. */
+ *  the raw multi-line value) is capture-pinned. The input NAME rides the
+ *  form prefix (form.rb:147-160 form_prefix — "card" for the form's own
+ *  card, "card[subcards][+related]" for a structured-form field card,
+ *  card-mod-edit multiCardEdit). */
 function hiddenContentField(ctx: ViewContext): string {
+  const prefix = typeof ctx.voo.opts["form_name_prefix"] === "string"
+    ? (ctx.voo.opts["form_name_prefix"] as string)
+    : "card";
+  const idPrefix = prefix === "card" ? "card" : prefix.replace(/\]/g, "").replace(/[\[+]/g, "_");
   return (
     `<input class="d0-card-content form-control" autocomplete="off" type="hidden" ` +
-    `value="${h(ctx.fmt.card.dbContent)}" name="card[content]" id="card_content" />`
+    `value="${h(ctx.fmt.card.dbContent)}" name="${prefix}[content]" id="${idPrefix}_content" />`
   );
 }
 
@@ -453,26 +460,37 @@ function listFamilyInputHtml(ctx: ViewContext): string {
   );
 }
 
-/** options_hash (card-mod-layout set/abstract/items/options_api.rb:3-19):
- *  the *content_options rule card's item names plus the editing card's own
- *  selected items, uniq'd in order (item.rb:10-14 union) - the walk both
- *  the radio and the checkbox editor bodies share. A missing
- *  *content_options rule throws (the options fallback walk needs the
- *  search surface). */
-function optionsHashForInput(ctx: ViewContext, editor: string): string[] {
-  const optionsRule = ruleCard(ctx, "*content_options");
-  if (optionsRule === undefined) {
+/** options_hash (card-mod-layout set/abstract/items/options_api.rb:4-6)
+ *  through the engine's prepared walk (render.ts optionsCardPairs: the
+ *  options_card chain resolves there and its search member seats in the
+ *  async prepare phase — the sync editor views only read the pairs). */
+function editorOptionPairs(ctx: ViewContext, editor: string): Array<[string, string]> {
+  const pairs = ctx.fmt.engine.optionsCardPairs?.(ctx.fmt.card);
+  if (pairs === undefined) {
     throw new Error(
       editor +
-        " input without a *content_options rule is not ported (the " +
-        "options fallback walk needs the search surface)",
+        " input: the engine does not carry the options walk (optionsCardPairs)",
     );
   }
-  const optionNames = filteredItems(rawItemStrings(optionsRule.dbContent), 0, 0);
-  for (const selected of itemNames(ctx.fmt.card, undefined)) {
-    if (!optionNames.includes(selected)) optionNames.push(selected); // item.rb:10-14 union
+  return pairs;
+}
+
+/** option_label (options_api.rb:70-77 + option_label_text :79-85): the
+ *  label wraps the option card nested at the content_option_view rule's
+ *  view or :smart_label when the option card EXISTS; a missing option
+ *  renders the plain name. The content_option_view rule arm is unported
+ *  (a deck rule the fixture never carries) and throws loudly. */
+function optionLabelText(ctx: ViewContext, option: string): string {
+  const optionCard = ctx.fmt.engine.fetchRenderCard(option);
+  if (optionCard === undefined || optionCard.unknown === true) return h(option);
+  const viewRule = ruleCard(ctx, "*content_option_view");
+  if (viewRule !== undefined && viewRule.dbContent !== "smart_label") {
+    throw new Error(
+      `option label view rule ${viewRule.dbContent} is not ported - only ` +
+        `:smart_label (options_api.rb:77)`,
+    );
   }
-  return optionNames;
+  return ctx.fmt.nestRecord(optionCard, "smart_label", {});
 }
 
 /** The radio editor (html_views.rb:68-70 + radio_input.haml). options_hash
@@ -481,31 +499,23 @@ function optionsHashForInput(ctx: ViewContext, editor: string): string[] {
  *  bytes are ActionView 7.2; input_name is "pointer_radio_button-#{card.key}"
  *  (radio_input.haml); option_label (options_api.rb:73-77) wraps the label
  *  as form-check-label; the label TEXT nests the option card at
- *  :smart_label when it exists (options_api.rb:79-83) - unported, so an
- *  existing option card fails loudly while a missing one renders the plain
- *  name (the captured surface). */
+ *  :smart_label when it exists (options_api.rb:79-83). */
 function radioInputHtml(ctx: ViewContext): string {
   const card = ctx.fmt.card;
-  const optionNames = optionsHashForInput(ctx, "radio");
+  const pairs = editorOptionPairs(ctx, "radio");
   // radio_input.haml: an empty options hash renders "no options" in the list
-  if (optionNames.length === 0) return "<ul class='pointer-radio-list'>\nno options\n</ul>\n";
+  if (pairs.length === 0) return "<ul class='pointer-radio-list'>\nno options\n</ul>\n";
   const firstName = itemNames(card, undefined)[0];
   const inputName = `pointer_radio_button-${card.key}`;
-  const rows = optionNames
-    .map((option) => {
+  const rows = pairs
+    .map(([, option]) => {
       const key = DeckoName.parse(option).key;
       const checked = option === firstName ? ` checked="checked"` : "";
-      if (ctx.fmt.engine.fetchRenderCard(option) !== undefined) {
-        throw new Error(
-          `radio option labels for EXISTING cards nest :smart_label ` +
-            `(card-mod-layout options_api.rb:79-83) - not ported (${option})`,
-        );
-      }
       return (
         `<li class='pointer-radio radio form-check'>\n` +
         `<input type="radio" name="${inputName}" id="pointer-radio-${key}" value="${h(option)}" ` +
         `class="pointer-radio-button form-check-input "${checked} />\n` +
-        `<label class="form-check-label" for="pointer-radio-${key}">${h(option)}</label>\n` +
+        `<label class="form-check-label" for="pointer-radio-${key}">${optionLabelText(ctx, option)}</label>\n` +
         `</li>\n`
       );
     })
@@ -553,33 +563,22 @@ function radioInputHtml(ctx: ViewContext): string {
  *  options_hash / option_label: the SAME two helpers the radio editor above
  *  walks (card-mod-layout set/abstract/items/options_api.rb:3-19
  *  options_hash, :73-77 option_label, :79-85 option_label_text) - the walk
- *  itself lives once in optionsHashForInput, shared with radioInputHtml.
- *
- *  Unported remainder, LOUD (the radio editor's own bound): an option whose
- *  card EXISTS takes the `nest option_card, view: option_view` arm
- *  (options_api.rb:79-85, option_view = card.rule(:content_option_view) ||
- *  :smart_label). This throws instead of rendering a guess. */
+ *  lives in the engine (render.ts optionsCardPairs, seated in the prepare
+ *  phase) and the label nest in optionLabelText, shared with radioInputHtml. */
 function checkboxInputHtml(ctx: ViewContext): string {
   const card = ctx.fmt.card;
-  const optionNames = optionsHashForInput(ctx, "checkbox");
+  const pairs = editorOptionPairs(ctx, "checkbox");
   const selected = itemNames(card, undefined);
-  const groupName = `pointer_checkbox-${ctx.fmt.uniqueId()}`;
-  const rows = optionNames
-    .map((option) => {
+  const rows = pairs
+    .map(([, option]) => {
       const key = DeckoName.parse(option).key;
       const id = `pointer-checkbox-${key}`;
       const checked = selected.includes(option) ? ` checked="checked"` : "";
-      if (ctx.fmt.engine.fetchRenderCard(option) !== undefined) {
-        throw new Error(
-          `checkbox option labels for EXISTING cards nest :smart_label ` +
-            `(card-mod-layout options_api.rb:79-85) - not ported (${option})`,
-        );
-      }
       return (
         `<div class='pointer-checkbox'>\n` +
-        `<input type="checkbox" name="${groupName}" id="${id}" value="${h(option)}" ` +
-        `class="pointer-checkbox-button"${checked} />\n` +
-        `<label class="form-check-label" for="${id}">${h(option)}</label>\n` +
+        `<input type="checkbox" name="pointer_checkbox-${ctx.fmt.uniqueId()}" id="${id}" value="${h(option)}" ` +
+        `class="pointer-checkbox-button "${checked}>\n` +
+        `<label class="form-check-label" for="${id}">${optionLabelText(ctx, option)}</label>\n` +
         `</div>\n`
       );
     })
@@ -600,10 +599,10 @@ function checkboxInputHtml(ctx: ViewContext): string {
  *  option_hash_from_names = option_names.each_with_object({}) { |name,
  *  hash| hash[name] = name } - label == value == the option NAME;
  *  option_names = (standard_option_names + item_names).uniq (:10-15). The
- *  json_options? arm (a JSON-typed options card) and the options_card
- *  fallback walk (rule_card || right_type_options || Card[:all],
- *  options_api.rb:56-58) stay unported - a missing *content_options rule
- *  throws, the same boundary the checkbox editor declares.
+ *  chain (rule_card(:content_options) || right_type_options || Card[:all],
+ *  options_api.rb:47-49) walks in the engine (render.ts optionsCardSource,
+ *  seated in the prepare phase); the JSON-typed options card arm rides the
+ *  same pairs (optionsCardPairs' json arm).
  *
  *  options_for_select (form_options_helper.rb:358-379): per element,
  *  html_attributes[:selected] ||= option_value_selected?(value, selected)
@@ -651,26 +650,21 @@ function rubyItemNames(content: string): string[] {
 }
 
 /** The options-card item walk the two editors share (options_api.rb:3-17):
- *  the *content_options rule's items then the card's own, uniq'd in order. */
-function listEditorOptionNames(ctx: ViewContext, editor: string): {
+ *  the engine's options_hash pairs (label, name) plus the card's own items
+ *  for the selected set. The *content_options-rule-only throw of the
+ *  previous version is gone: the chain (rule_card(:content_options) ||
+ *  right_type_options || Card[:all], options_api.rb:47-49) walks in the
+ *  engine (render.ts optionsCardSource, seated in the prepare phase). */
+function editorOptionNames(ctx: ViewContext, editor: string): {
   optionNames: string[];
   selectedItems: string[];
 } {
   const card = ctx.fmt.card;
-  const optionsRule = ruleCard(ctx, "*content_options");
-  if (optionsRule === undefined) {
-    throw new Error(
-      `${editor} input without a *content_options rule is not ported (the ` +
-        `options fallback walk needs the search surface)`,
-    );
-  }
-  const optionNames = filteredItems(rubyItemNames(optionsRule.dbContent), 0, 0);
+  const pairs = editorOptionPairs(ctx, editor);
+  const optionNames = pairs.map(([, name]) => name);
   const selectedItems = rubyItemNames(card.dbContent).map(
     (item) => DeckoName.parse(item).absoluteName(card.name).s,
   );
-  for (const item of selectedItems) {
-    if (!optionNames.includes(item)) optionNames.push(item); // options_api.rb:10-15 union
-  }
   return { optionNames, selectedItems };
 }
 
@@ -681,10 +675,15 @@ function listEditorOptionNames(ctx: ViewContext, editor: string): {
  *  card.first_name` (item_names.first; nil for an empty card selects
  *  nothing). */
 function selectInputHtml(ctx: ViewContext): string {
-  const { optionNames, selectedItems } = listEditorOptionNames(ctx, "select");
+  const { optionNames, selectedItems } = editorOptionNames(ctx, "select");
+  // select_input_options (html_views.rb:109-112): the blank arm is the
+  // FIRST pair and Hash#merge lets an option with the same key overwrite
+  // its value in place.
   const pairs: Array<[string, string]> = [["-- Select --", ""]];
   for (const name of optionNames) {
-    pairs.push([name, name]); // option_hash_from_names, options_api.rb:9-12
+    const existing = pairs.findIndex(([label]) => label === name);
+    if (existing === -1) pairs.push([name, name]); // option_hash_from_names, options_api.rb:9-12
+    else pairs[existing][1] = name;
   }
   const firstName = selectedItems.length > 0 ? selectedItems[0] : undefined;
   const options = optionsForSelect(
@@ -706,7 +705,7 @@ function selectInputHtml(ctx: ViewContext): string {
  *  class: "pointer-multiselect form-control"` - every own item whose value
  *  the option list carries emits selected="selected". */
 function multiselectInputHtml(ctx: ViewContext): string {
-  const { optionNames, selectedItems } = listEditorOptionNames(ctx, "multiselect");
+  const { optionNames, selectedItems } = editorOptionNames(ctx, "multiselect");
   const pairs = optionNames.map((name) => [name, name] as [string, string]);
   const options = optionsForSelect(pairs, selectedItems);
   const groupName = `pointer_multiselect-${ctx.fmt.uniqueId()}`;

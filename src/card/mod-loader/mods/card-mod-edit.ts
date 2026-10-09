@@ -193,7 +193,7 @@ import { createFormShell } from "../mod-form-substrate.js";
 import { readFormgroupBody, templateLinkSetNameFromParts } from "../../render/views.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
-import { parseNestOptions } from "../../render/nest-syntax.js";
+import { parseNestOptions, scanNests } from "../../render/nest-syntax.js";
 import { timeAgoInWords } from "./card-mod-history.js";
 import { ruleSidesStatement } from "./rule-card-warm.js";
 import { cardWallClockNow } from "../../wall-clock.js";
@@ -674,6 +674,16 @@ function inputDefinedByCard(
 export const inputView: ViewFn = (ctx) => {
   const { fmt, voo } = ctx;
   const content = h(fmt.card.dbContent ?? "");
+  // form.rb:147-160 form_prefix: the Rails builder's name prefix — "card"
+  // for the form's own card (simple_form?), "card[subcards][+summary]" for a
+  // field card rendered inside a multi-card edit form
+  // (edit_in_form_prefix: "#{parent.form_prefix}[subcards][#{card.name.from
+  // form_context.card.name}]", form.rb:160). The structured-form field
+  // editors carry it through the nest opts (card-mod-edit multiCardEdit).
+  const namePrefix = typeof voo.opts["form_name_prefix"] === "string"
+    ? (voo.opts["form_name_prefix"] as string)
+    : "card";
+  const idPrefix = namePrefix === "card" ? "card" : namePrefix.replace(/\]/g, "").replace(/[\[+]/g, "_");
   const vooInputType = voo.opts["input_type"];
   const typeArm =
     vooInputType !== undefined && typeof vooInputType === "string"
@@ -688,26 +698,26 @@ export const inputView: ViewFn = (ctx) => {
   const method = inputType ?? "rich_text"; // default_input_type (:38-40)
   if (method === "ace_editor") {
     const mode = typeArm?.aceMode ?? "html"; // ace_editor.rb:18-20 default
-    return `<textarea rows="5" class="d0-card-content ace-editor-textarea form-control" data-ace-mode="${mode}" name="card[content]" id="card_content">\n${content}</textarea>`;
+    return `<textarea rows="5" class="d0-card-content ace-editor-textarea form-control" data-ace-mode="${mode}" name="${namePrefix}[content]" id="${idPrefix}_content">\n${content}</textarea>`;
   }
   if (method === "rich_text" || method === "tinymce_editor") {
     // rich_text_input (:42-44) -> the configured editor (tinymce on the
     // oracle deck); "tinymce_editor" (rule value "tinymce editor") lands
     // on the same tinymce_editor_input bytes (tinymce_editor.rb:9-13)
     const id = fmt.uniqueId();
-    return `<textarea rows="3" class="tinymce-textarea d0-card-content form-control" id="${id}" name="card[content]">\n${content}</textarea>`;
+    return `<textarea rows="3" class="tinymce-textarea d0-card-content form-control" id="${id}" name="${namePrefix}[content]">\n${content}</textarea>`;
   }
   if (method === "text_field") {
     // editor.rb:51-53 text_field_input: class classy("d0-card-content") +
     // bootstrap form-control + placeholder "" (placeholder_text :59-62);
     // the opt's hash position is before Rails' generated attrs
     // (text_field_tag: caller options first, type/value/name/id appended)
-    return `<input class="d0-card-content form-control" placeholder="" type="text" value="${content}" name="card[content]" id="card_content" />`;
+    return `<input class="d0-card-content form-control" placeholder="" type="text" value="${content}" name="${namePrefix}[content]" id="${idPrefix}_content" />`;
   }
   if (method === "text_area") {
     // editor.rb:46-49 text_area_input: rows 5, class d0-card-content,
     // data-card-type-code (the codename)
-    return `<textarea rows="5" class="d0-card-content form-control" data-card-type-code="${fmt.card.typeCode ?? ""}" name="card[content]" id="card_content">\n${content}</textarea>`;
+    return `<textarea rows="5" class="d0-card-content form-control" data-card-type-code="${fmt.card.typeCode ?? ""}" name="${namePrefix}[content]" id="${idPrefix}_content">\n${content}</textarea>`;
   }
   if (method === "hidden") {
     // editor.rb:55-57 via input_method(:55): input_type "hidden" builds the
@@ -717,14 +727,14 @@ export const inputView: ViewFn = (ctx) => {
     // bootstrap form-control append, then hidden_field_tag's
     // autocomplete="off" + type="hidden" (caller opts first, generated
     // attrs after - the captured conflict_tracker order)
-    return `<input class="d0-card-content form-control" autocomplete="off" type="hidden" value="${content}" name="card[content]" id="card_content" />`;
+    return `<input class="d0-card-content form-control" autocomplete="off" type="hidden" value="${content}" name="${namePrefix}[content]" id="${idPrefix}_content" />`;
   }
   // try() missed - input_defined_by_card (:18-30), else the default arm
   const definedByCard = inputDefinedByCard(ctx, inputType);
   if (definedByCard !== undefined) return definedByCard;
   // rich_text default: the tinymce arm (the captured edit-form bytes)
   const id = fmt.uniqueId();
-  return `<textarea rows="3" class="tinymce-textarea d0-card-content form-control" id="${id}" name="card[content]">\n${content}</textarea>`;
+  return `<textarea rows="3" class="tinymce-textarea d0-card-content form-control" id="${id}" name="${namePrefix}[content]">\n${content}</textarea>`;
 };
 
 /** all/form.rb:79-85 content_field: `with_nest_mode :normal { output
@@ -802,15 +812,45 @@ function editSlot(ctx: ViewContext): string {
 /** form.rb:76-80 multi_card_editor?: `voo.structure || voo.edit_structure ||
  *  card.structure || edit_fields?` — edit_fields? (:83-84) reads edit_fields
  *  = voo.edit_structure (chunk.rb:38-39), so the voo arms subsume it.
- *  card.structure (the *structure rule read) is nil on every surface the
- *  engine reaches (the structure-rule editors stay the disclosed
- *  remainder). */
+ *  card.structure (templating.rb:69-71) answers the *structure rule card
+ *  unless its content is "_self". */
 function multiCardEditor(ctx: ViewContext): boolean {
   const { voo } = ctx;
   return (
     voo.opts["structure"] !== undefined ||
-    voo.opts["edit_structure"] !== undefined
+    voo.opts["edit_structure"] !== undefined ||
+    cardStructure(ctx) !== undefined
   );
+}
+
+/** templating.rb:60-66 structure_rule_card + :69-71 Card#structure, through
+ *  the engine's sync structure universe (render.ts structureRuleForSync —
+ *  the same resolveStructuredContent walk the core-view substitution runs;
+ *  the "_self" arm answers undefined there). The rule card itself is in no
+ *  render closure on a new/edit page, so a fetchRenderCard walk misses it. */
+function cardStructure(
+  ctx: ViewContext,
+): { ruleName: string; content: string } | undefined {
+  const card = ctx.fmt.card;
+  // NO unknown? guard: a NEW card is unknown? (states.rb#unknown? =
+  // !real?) and its structure template is exactly what /new/:type renders
+  // (templating.rb:14-19 new_card_template - the /new/Topic form's own
+  // structured fields). The type pattern's anchor is card.type_name
+  // (03_type.rb#anchor_name); a new card's record may carry only the
+  // typeId, so compose the name the engine's id map holds
+  // (quick_fetch(type_id)&.name).
+  const typeName =
+    card.typeName ??
+    (card.typeId !== undefined
+      ? ctx.fmt.engine.peekNameForId?.(card.typeId)
+      : undefined);
+  return ctx.fmt.engine.structureRuleForSync?.({
+    name: card.name.s,
+    id: card.id,
+    typeId: card.typeId,
+    typeName,
+    isNew: card.record.isNew === true,
+  });
 }
 
 /** form.rb:115-122 multi_card_edit: `field_configs = edit_field_configs
@@ -819,42 +859,119 @@ function multiCardEditor(ctx: ViewContext): boolean {
  *  "\n"`. The EXPLICIT arm (chunk.rb:57-61 explicit_edit_fields_config +
  *  :81-100 normalized_edit_field_config) walks voo.edit_structure's tuples:
  *  the mark normalizes to card.name.field(cardish) unless absolute/compound,
- *  the title defaults to the mark's name. The IMPLICIT arm (the content's
- *  nest-chunk walk) is the engine's disclosed chunk-enumerator gap — the
- *  configs answer [] and the structure_link bytes render (the same basis
- *  editNestsView pins). */
+ *  the title defaults to the mark's name. The IMPLICIT arm (chunk.rb:63-70
+ *  implicit_edit_fields_config: the STRUCTURE card's own nest chunks in
+ *  content order) is the browser-journeys lane's port: the walk reads the
+ *  structure rule card's content nests (nest-syntax scanNests), each config
+ *  [nest_name, chunk options]. */
 function multiCardEdit(ctx: ViewContext, fieldsOnly: boolean): string {
   const { fmt, voo } = ctx;
   const editStructure = voo.opts["edit_structure"] as
     | Array<[string, Record<string, unknown>]>
     | undefined;
-  const fieldConfigs: Array<[string, Record<string, unknown>]> = (
-    editStructure ?? []
-  ).map(([cardish, options]) => {
-    const opts = { ...(options ?? {}) };
-    const fieldMark = normalizedEditFieldMark(fmt, cardish, opts);
-    if (opts["title"] === undefined) opts["title"] = fieldMark;
-    return [fieldMark, opts] as [string, Record<string, unknown>];
-  });
+  let fieldConfigs: Array<[string, Record<string, unknown>]>;
+  if (editStructure !== undefined) {
+    fieldConfigs = editStructure.map(([cardish, options]) => {
+      const opts = { ...(options ?? {}) };
+      const fieldMark = normalizedEditFieldMark(fmt, cardish, opts);
+      if (opts["title"] === undefined) opts["title"] = fieldMark;
+      return [fieldMark, opts] as [string, Record<string, unknown>];
+    });
+  } else {
+    const structure = cardStructure(ctx);
+    fieldConfigs =
+      structure === undefined
+        ? []
+        : implicitFieldConfigs(fmt, structure.content);
+  }
   if (fieldConfigs.length === 0) return structureLink();
   void fieldsOnly;
-  // Ruby's `nest name, options || {}` carries the title opt only - the VIEW
-  // resolves through the nest machinery (implicit_nest_view under the
-  // ambient nest mode; setup's with_nest_mode :edit chain renders the field
-  // cards' edit_in_form, a normal-mode walk renders their default view)
+  // Ruby's `nest name, options || {}` renders each field under the form's
+  // nest_mode :edit (all/new.rb with_create_context): mode.rb:66-68
+  // view_in_edit_mode turns the nest into the field card's :edit_in_form
+  // (a nest whose requested view hides in edit mode renders blank,
+  // mode.rb:73-77), which editor_in_multi_card (form.rb:105-112) wraps in
+  // the field formgroup.
   return fieldConfigs
-    .map(([name, options]) => {
-      const { title, ...rest } = options;
-      const __n = fmt.nest({
-        syntax: `{{${name}|title:${String(title ?? "")}}}`,
-        name,
-        options: { title: String(title ?? ""), ...rest, extra: {} },
-        comment: undefined,
-      });
-      console.log("NEST-DEBUG", name, JSON.stringify(__n.slice(0, 90)), ctx.fmt.nestMode);
-      return __n;
-    })
+    .map(([name, options]) => fieldEditorInMultiCard(ctx, name, options))
     .join("\n");
+}
+
+/** chunk.rb:63-70 implicit_edit_fields_config: the structure card's nest
+ *  chunks (each_nested_chunk fields: false, uniq: true, virtual: true),
+ *  each [chunk.options[:nest_name], chunk.options]. `##` comment nests
+ *  vanish (nest.rb#interpret) and never reach the configs. */
+function implicitFieldConfigs(
+  fmt: ViewContext["fmt"],
+  structureContent: string,
+): Array<[string, Record<string, unknown>]> {
+  const configs: Array<[string, Record<string, unknown>]> = [];
+  const seen = new Set<string>([fmt.card.key]);
+  for (const piece of scanNests(structureContent)) {
+    if (piece.kind !== "nest" || piece.nest === undefined) continue;
+    const nest = piece.nest;
+    if (nest.comment !== undefined) continue; // '#' visible / '##' vanishing comments
+    const target = DeckoName.parse(nest.name).absoluteName(fmt.card.name);
+    if (seen.has(target.key)) continue; // uniq_chunks
+    seen.add(target.key);
+    configs.push([nest.name, { ...nest.options } as Record<string, unknown>]);
+  }
+  return configs;
+}
+
+/** The perms:none views (mode.rb:73-74 hide_view_in_edit_mode? arm 1: a
+ *  nest whose requested view carries `perms: :none` renders :blank in edit
+ *  mode). The corpus's graded surface reaches exactly :link
+ *  (mod/format set/all/base.rb:35 `view :link, compact: true, perms:
+ *  :none`) — the Topic structure rule's `{{+tags|link}}` field. */
+const EDIT_HIDDEN_VIEWS = new Set(["link"]);
+
+/** form.rb:105-119 editor_in_multi_card + wrap_editor_in_multi_card, as the
+ *  field nest's edit-mode render: the formgroup
+ *  `formgroup render_title, input: "content", help: true, class:
+ *  classy("card-editor")` around `[content_field,
+ *  form.hidden_field(:type_id) if card.new_card?]`. The nest's requested
+ *  view rides first: a view hidden in edit mode (mode.rb:73-77) renders
+ *  :blank — nothing. */
+function fieldEditorInMultiCard(
+  ctx: ViewContext,
+  name: string,
+  options: Record<string, unknown>,
+): string {
+  const { fmt } = ctx;
+  const requestedView = options["view"];
+  if (typeof requestedView === "string" && EDIT_HIDDEN_VIEWS.has(requestedView)) {
+    return "";
+  }
+  const fieldName = DeckoName.parse(name).absoluteName(fmt.card.name);
+  const fieldCard = fmt.engine.fetchRenderCard(fieldName.key);
+  if (fieldCard === undefined) {
+    throw new Error(`structured-form field not resolvable: ${fieldName.s}`);
+  }
+  // edit_in_form_prefix (form.rb:160): the subcard's input names ride the
+  // parent form's prefix + [subcards][<field relative to the form card>].
+  const relative = fieldName.from(fmt.card.name);
+  const prefix = `card[subcards][${relative}]`;
+  const title = options["title"] !== undefined ? String(options["title"]) : fieldName.s;
+  // wrap_editor_in_multi_card (:113-119): formgroup render_title ... -
+  // formgroup (formgroup.rb:20-43): div.form-group.card-editor (the field's
+  // junction classes prepend - the captured RIGHT-summary bytes), the
+  // data-card attrs, label + editor div.
+  const contentFieldHtml = fmt.nestRecord(fieldCard, "input", {
+    form_name_prefix: prefix,
+  });
+  const hiddenTypeId =
+    fieldCard.id === undefined
+      ? `<input type="hidden" name="${prefix}[type_id]" id="${prefix.replace(/\]/g, "").replace(/[\[+]/g, "_")}_type_id" autocomplete="off" />`
+      : "";
+  const tagSafe = fieldName.tag ?? fieldName.s;
+  return (
+    `<div class="RIGHT-${tagSafe.replace(/[+* ]/g, "_").toLowerCase()} card-editor form-group" data-card-name="${h(fieldName.s)}">\n` +
+    `<label for="${prefix}_content"><span class="card-title"><span>${h(title)}</span></span></label>\n` +
+    `<div class="editor content-editor">${contentFieldHtml}</div>\n` +
+    hiddenTypeId +
+    `</div>`
+  );
 }
 
 /** chunk.rb:91-100 normalized_edit_field_mark: the mark is the cardish when

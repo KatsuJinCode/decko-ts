@@ -71,18 +71,24 @@ export class CardActionError extends Error {
    *  not the lower-case form of the shown key (an error class name such as
    *  "UserError"). The JSON errors view reports this hash. */
   readonly errorsByAttribute?: Readonly<Record<string, string>>;
+  /** The saved card's name — the errors view's heading source
+   *  (error.rb:56-62 voo.title = t(:format_problems_name, cardname:
+   *  card.name)). Absent when the throw site has no card context. */
+  readonly cardName?: string;
 
   constructor(
     code: CardActionErrorCode,
     message: string,
     userMessage?: string,
     errorsByAttribute?: Readonly<Record<string, string>>,
+    cardName?: string,
   ) {
     super(message);
     this.name = "CardActionError";
     this.code = code;
     if (userMessage !== undefined) this.userMessage = userMessage;
     if (errorsByAttribute !== undefined) this.errorsByAttribute = errorsByAttribute;
+    if (cardName !== undefined) this.cardName = cardName;
   }
 }
 

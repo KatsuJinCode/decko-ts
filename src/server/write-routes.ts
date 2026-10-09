@@ -104,7 +104,12 @@ import type { CardsRow } from "./schema.js";
 import { SessionStore } from "../card/auth/index.js";
 import { signinAccount } from "../card/auth/signin.js";
 import { createCardActionEngineForSession } from "../card/actions/engine-for-session.js";
-import { CardActionError, type ActionResult, type AttachmentInput } from "../card/actions/types.js";
+import {
+  CardActionError,
+  type ActionResult,
+  type AttachmentInput,
+  type SubcardInput,
+} from "../card/actions/types.js";
 import type { NotifyTransport } from "../card/notify/types.js";
 import type { CardActionRecaptchaConfig } from "../card/actions/card-action-engine.js";
 import type { ModEventRuntime } from "../card/mod-loader/mod-event-dispatch.js";
@@ -644,7 +649,36 @@ function errorResponse(json: boolean, error: CardActionError): WriteRouteRespons
   const status = errorStatus(error.code);
   return json
     ? jsonResponse(status, { error: { code: error.code, message: error.message } })
-    : htmlResponse(status, `Error (${error.code})`, `<pre>${escapeHtml(error.message)}</pre>`);
+    : htmlResponse(status, `Error (${error.code})`, cardErrorAlertHtml(error));
+}
+
+/** The errors view's alert bytes (card-mod-format set/all/html/error.rb:54-66
+ *  view :errors + :120-127 standard_errors + layout/set/all/alert.rb:7-25):
+ *  `alert "warning", true` = the dismissible bootstrap warning alert with
+ *  the card-error-msg class_up, the btn-close button, the
+ *  "Problems with <card name>" h4 heading (t :format_problems_name) and one
+ *  `<p><strong>KEY:</strong> message</p>` per error (:132-133
+ *  standard_error_message). The ajax save's 422 body lands in the form's
+ *  card-notice (the slotter JS), so these bytes are the whole observable
+ *  difference. */
+function cardErrorAlertHtml(error: CardActionError): string {
+  const shown = error.userMessage ?? error.message;
+  // standard_error_message splits the shown key from the message at the
+  // first ": " (the throw sites compose "<KEY>: <message>").
+  const sep = shown.indexOf(": ");
+  const key = sep > 0 ? shown.slice(0, sep) : undefined;
+  const message = sep > 0 ? shown.slice(sep + 2) : shown;
+  const heading =
+    error.cardName !== undefined ? `Problems with ${escapeHtml(error.cardName)}` : undefined;
+  return (
+    `<div class="alert alert-warning alert-dismissible card-error-msg" role="alert">` +
+    `<button type="button" data-bs-dismiss="alert" class="btn-close" aria-label="Close"></button>` +
+    (heading !== undefined ? `<h4 class="alert-heading error">${heading}</h4>` : "") +
+    (key !== undefined
+      ? `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(message)}</p>`
+      : `<p>${escapeHtml(message)}</p>`) +
+    `</div>`
+  );
 }
 
 /** Ruby's cud_success (rest.rb:80-89): HTML redirects to the card's
@@ -693,6 +727,20 @@ function successResponse(
   };
 }
 
+/** The errors view's alert bytes for the *signin failure
+ *  (set/self/signin.rb's authenticate_or_abort errors.add :signin — the
+ *  recorded page shows the attribute key upcased, "SIGNIN:", ahead of the
+ *  message): the same standard_errors shape cardErrorAlertHtml emits. */
+function signinErrorAlertHtml(message: string): string {
+  return (
+    `<div class="alert alert-warning alert-dismissible card-error-msg" role="alert">` +
+    `<button type="button" data-bs-dismiss="alert" class="btn-close" aria-label="Close"></button>` +
+    `<h4 class="alert-heading error">Problems with *signin</h4>` +
+    `<p><strong>SIGNIN:</strong> ${escapeHtml(message)}</p>` +
+    `</div>`
+  );
+}
+
 /** The URL form of a card name (decko location grammar: spaces -> "_"). */
 function locationName(name: string): string {
   return encodeURIComponent(name.replace(/ /g, "_"));
@@ -734,7 +782,7 @@ async function handleSigninUpdate(
     const message = email === "" ? "email missing" : "password missing";
     return json
       ? jsonResponse(422, { error: { code: "signin-failure", message } })
-      : htmlResponse(422, "Error (signin-failure)", `<pre>${escapeHtml(message)}</pre>`);
+      : htmlResponse(422, "Error (signin-failure)", signinErrorAlertHtml(message));
   }
   const sessions = new SessionStore({ driver: ctx.driver });
   const outcome = await signinAccount(ctx.driver, sessions, email, password);
@@ -742,7 +790,7 @@ async function handleSigninUpdate(
     const message = outcome.message;
     return json
       ? jsonResponse(422, { error: { code: "signin-failure", message } })
-      : htmlResponse(422, "Error (signin-failure)", `<pre>${escapeHtml(message)}</pre>`);
+      : htmlResponse(422, "Error (signin-failure)", signinErrorAlertHtml(message));
   }
   // *previous (signin.rb:171) -> previous_location -> "/" fresh
   // (location_history.rb:6-9); the session history stack itself is
@@ -974,14 +1022,22 @@ export async function handleWriteRequest(
       const markName = route.mark !== undefined ? markToName(route.mark) : undefined;
       const hashName = card["name"];
       const updateName = hashName ?? markName;
+      // THE CARD IS THE MARK (rest.rb's update action fetches the card the
+      // URL names); a card-hash name is the RENAME argument (name_events.rb),
+      // not the fetch key. Resolving by the hash name first turned every
+      // rename into an update-of-a-new-card CREATE (the rename form posts
+      // card[name]="Phrase One" against /update/Phrase_1 and the engine
+      // created Phrase One instead of renaming Phrase 1). The mark resolves
+      // the card; the hash name resolves only when the request names no mark.
+      const resolveName = markName ?? hashName;
       const reverting =
         (parsed.revertActions !== undefined && parsed.revertActions.length > 0) ||
         (parsed.revertAct !== undefined && parsed.revertAct !== "");
       // look_in_trash (uri_fetch): a trashed card is fetched as itself, not
       // as a new card. The history pane's revert requests send it.
       const trashedTarget =
-        parsed.lookInTrash === true ? await lookupTrashedCard(ctx.fetcher, updateName) : undefined;
-      const existing = (await lookupLiveCard(ctx.fetcher, updateName)) ?? trashedTarget;
+        parsed.lookInTrash === true ? await lookupTrashedCard(ctx.fetcher, resolveName) : undefined;
+      const existing = (await lookupLiveCard(ctx.fetcher, resolveName)) ?? trashedTarget;
       if (existing !== undefined && reverting) {
         // :rollback_actions (card-mod-history set/all/history/events.rb:40-46)
         // replaces the update with the revisions the request names.
@@ -1031,6 +1087,10 @@ export async function handleWriteRequest(
           // value detect_conflict validates (card-mod-history
           // set/all/history/events.rb:19-22, when: :edit_conflict?).
           lastActionIdBeforeEdit: card["last_action_id_before_edit"],
+          // the structured form's field subcards
+          // (card[subcards][+summary][content], subcards.rb) save in this
+          // act: missing subcards created, existing ones updated.
+          subcards: subcardInputsFromParams(parsed),
           // Env.params["draft"] == "true" (mod/core/set/all/content.rb:20-22):
           // the autosave POST (assets/script/autosave.js.coffee:20).
           draft: parsed.draft === "true",
@@ -1137,6 +1197,7 @@ function createInputFromParams(
   typeName?: string;
   typeId?: number;
   attachment?: AttachmentInput;
+  subcards?: Record<string, SubcardInput>;
 } {
   const card = parsed.card;
   const name = card["name"] ?? (route.mark !== undefined ? markToName(route.mark) : "");
@@ -1152,7 +1213,26 @@ function createInputFromParams(
     typeName,
     typeId: typeIdRaw !== undefined && /^\d+$/.test(typeIdRaw) ? Number(typeIdRaw) : undefined,
     attachment,
+    subcards: subcardInputsFromParams(parsed),
   };
+}
+
+/** params[:card][:subcards] as the action engine's SubcardInput map
+ *  (subcards.rb): the structured-form and account fields the edit surface
+ *  posts beside the main card (card[subcards][+summary][content] etc.).
+ *  Only the keys the forms actually post are carried: content and type. */
+function subcardInputsFromParams(parsed: ParsedBody): Record<string, SubcardInput> | undefined {
+  const entries = Object.entries(parsed.subcards);
+  if (entries.length === 0) return undefined;
+  return Object.fromEntries(
+    entries.map(([slot, sub]) => [
+      slot,
+      {
+        ...(sub.content !== undefined ? { content: sub.content } : {}),
+        ...(sub.type !== undefined && sub.type !== "" ? { typeName: sub.type } : {}),
+      } satisfies SubcardInput,
+    ]),
+  );
 }
 
 /** A trashed card by name — a look_in_trash fetch (retrieve.rb:31). Simple
