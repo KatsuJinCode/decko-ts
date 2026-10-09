@@ -314,14 +314,11 @@ async function renderPageBytesWithPageConfigInner(
 ): Promise<string> {
   // process_layout.rb: main! (the root format is the main format) then
   // page_layout — the *layout rule walk happens BEFORE the main render.
-  let record = await engine.fetcher.fetchByName(cardName);
-  // fetch/card_class.rb controller fetch: a mark that names no stored card
-  // makes a new card named `Name[mark].tr("_", " ")` — the url form
-  // "A+Time_Tracking" titles its new card "A+Time Tracking".
-  if (record !== undefined && record.id === undefined && cardName.includes("_")) {
-    const spaced = await engine.fetcher.fetchByName(cardName.replace(/_/g, " "));
-    if (spaced !== undefined && spaced.name !== undefined) record = spaced;
-  }
+  const found = await engine.fetcher.fetchByName(cardName);
+  // RenderEngine#renderAbsentCards: the controller's Card.fetch new: {}.
+  const record = found === undefined && engine.renderAbsentCards
+    ? await engine.fetcher.fetchByName(cardName, { new: {} })
+    : found;
   if (record === undefined || record.name === undefined) {
     throw new Error(`card not found: ${cardName}`);
   }
@@ -738,6 +735,14 @@ function scanWarmDepsUncached(
     // Pointer/List renders a dropdown whose items are links
     // (nav_link_in_dropdown): existence + title only.
     if (isItems) for (const item of items()) leaves.push({ name: item, context });
+    // A Link list is a dropdown too (Abstract::Items), whose items come from
+    // its [[target|label]] chunks; explicit URL targets need no card.
+    if (card.typeCode === "link_list") {
+      for (const m of card.dbContent.matchAll(/\[\[([^\][\n]+?)\]\]/g)) {
+        const target = (m[1] ?? "").split("|")[0]?.trim() ?? "";
+        if (target !== "" && !/^(\/|https?:|mailto:)/.test(target)) leaves.push({ name: target, context });
+      }
+    }
     return { refs, leaves };
   }
 
@@ -954,7 +959,7 @@ export async function headContent(
   const read = await headReadSet(engine, "style");
   return [
     pageTitleTagBytes(read, name.s),
-    META_TAGS,
+    (await noindex(engine, rootCard)) ? `${META_TAGS}\n<meta content='noindex' name='robots'>` : META_TAGS,
     "", // pinned blank (mod basket head view; "" on every captured page)
     faviconTagBytes(read),
     stylesheetTagsBytes(read),
@@ -963,6 +968,27 @@ export async function headContent(
     await scriptVariablesTag(engine),
     await scriptCallsTag(engine),
   ].join("\n");
+}
+
+/** card-mod-format set/all/html/head.rb:16-18 `noindex?`: `unknown? ||
+ *  :noindex.card.include_item?(name)` — the :meta_tags template adds the
+ *  robots noindex meta for an absent card and for any card the *noindex
+ *  list names. */
+async function noindex(engine: RenderEngine, rootCard: RenderCard): Promise<boolean> {
+  if (rootCard.unknown === true) return true;
+  const list = await globalSettingContent(engine, "noindex");
+  if (list === undefined || list.trim() === "") return false;
+  const key = rootCard.name.key;
+  return list
+    .split(/\n+/)
+    .map((item) => item.replace(/^\s*\[\[|\]\]\s*$/g, "").trim())
+    .some((item) => {
+      try {
+        return item !== "" && DeckoName.parse(item).key === key;
+      } catch {
+        return false;
+      }
+    });
 }
 
 /** card-mod-format set/all/html/head.rb:46-51 view :universal_edit_button

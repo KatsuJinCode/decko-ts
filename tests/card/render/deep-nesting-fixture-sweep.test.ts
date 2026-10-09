@@ -347,15 +347,17 @@ describe("Deep-nesting fixture sweep (#1282 scaling proof: TS engine vs fixture 
         // "(core view)" label (observed bytes: d50 probe, this fold). The
         // bounded-cost claim (43 round trips, depth-independent) is
         // unchanged and asserted above.
-        const capCard = chainName(depth, RUBY_MAX_DEPTH + 1);
+        // Ruby's rejection is monitor_depth's UserError (format/error.rb:
+        // 33-40, format_too_deep): the subformat at max_depth raises out of
+        // its own render and the core of the RUBY_MAX_DEPTH-th card rescues
+        // it, so the span carries the locale line verbatim (the reference
+        // harness pins the position: synthetic-v1 core:*:Chain 01).
         if (row.cold.renderError !== null) {
           // main-lineage form: the rejection propagated out of render()
-          expect(row.cold.renderError).toMatch(/^Error: nest depth exceeded/);
+          expect(row.cold.renderError).toMatch(/too deep/);
         } else {
-          // this line's form: the quiet span IS the rejection, embedded at
-          // the exact cap position
           expect(row.cold.quietErrorSpan).toBe(
-            `<span class="render-error alert alert-danger">Error rendering: ${capCard} (core view)</span>`,
+            `<span class="render-error alert alert-danger">Man, you're too deep.  (Too many levels of nests at a time)</span>`,
           );
         }
       }

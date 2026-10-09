@@ -237,12 +237,15 @@ const popoverView: ViewFn = (ctx) => {
  *  cache-checked resolution as helpRuleCard but for *guide rules. */
 function guideRuleCard(ctx: ViewContext): ReturnType<ViewContext["fmt"]["engine"]["fetchRenderCard"]> {
   const card = ctx.fmt.card;
-  if (card.unknown === true) return undefined;
+  // A new card has rules too (determine_guide_card's rule_card :guide runs
+  // on Card.new — the :new form's alert guide); its walk drops the *self
+  // candidate (pattern/all.rb: new cards skip the first concrete pattern).
   const input: PatternCardInput = {
     name: card.name.s,
     id: card.id,
     typeId: card.typeId,
     typeName: card.typeName,
+    ...(card.id === undefined ? { isNew: true } : {}),
   };
   if (card.name.isCompound) {
     const leftKey = card.name.leftName?.key;

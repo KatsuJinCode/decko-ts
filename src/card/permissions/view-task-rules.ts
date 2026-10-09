@@ -150,6 +150,8 @@ export interface ViewTaskState {
    *  .match?). Absent/empty for rules whose row the batch somehow missed
    *  -- those never inherit. */
   readonly ruleContent: Record<WriteTask, Map<number, string>>;
+  /** The signed-in actor's id (ReadPermissionState#signedInActorId). */
+  readonly signedInActorId?: number;
 }
 
 /** Parse the batch results (statements in viewTaskPermissionStatements
@@ -194,7 +196,52 @@ export function viewTaskStateFromResults(
     hasTaskRules,
     ruleParties,
     ruleContent,
+    signedInActorId: readState?.signedInActorId,
   };
+}
+
+/**
+ * card-mod-follow-0.20.0 set/right/follow.rb:27-54 — a follow preference
+ * (`<set>+<user>+*follow`) overrides `permit` so that create, update and
+ * delete are allowed when `allowed_to_change_follow_status?`: the viewer is
+ * signed in and is the preference's rule_user (card-mod-rules
+ * set/rstar/rule_user.rb: `preference? ? self[-2] : nil`). always_ok? is
+ * answered before this. preference? (card-1.110.0 rule/all.rb:42-53): more
+ * than two parts, the right side Setting-typed, everything but the last two
+ * parts a Set-typed card, and the preferer (part -2) a User card or *all.
+ * Answers true for the override, undefined to fall through to the rules.
+ */
+async function followPreferencePermit(
+  fetcher: FetchEngine,
+  card: PatternCardInput,
+  state: ViewTaskState,
+): Promise<true | undefined> {
+  const actorId = state.signedInActorId;
+  if (actorId === undefined) return undefined;
+  const name = card.name instanceof DeckoName ? card.name : DeckoName.parse(String(card.name));
+  const parts = name.parts;
+  if (parts.length <= 2) return undefined;
+  // Right::Follow: the right part is the :follow codename card — compared by
+  // key first (memoized lookups) so other cards cost no reads here.
+  const followId = await fetcher.codenames.id("follow");
+  if (followId === undefined) return undefined;
+  const followName = await fetcher.lexicon.name(followId);
+  if (followName === undefined || DeckoName.parse(parts[parts.length - 1]!).key !== followName.key) return undefined;
+  const right = await fetcher.fetchById(followId);
+  if (right === undefined) return undefined;
+  const [settingTypeId, setTypeId, userTypeId] = await Promise.all([
+    fetcher.codenames.id("setting"),
+    fetcher.codenames.id("set"),
+    fetcher.codenames.id("user"),
+  ]);
+  if (right.typeId !== settingTypeId) return undefined;
+  const setName = DeckoName.parse(parts.slice(0, -2).join("+"));
+  const set = await fetcher.fetchByName(setName.s);
+  if (set === undefined || set.typeId !== setTypeId) return undefined;
+  const preferer = await fetcher.fetchByName(parts[parts.length - 2]!);
+  if (preferer === undefined || preferer.trash) return undefined;
+  if (preferer.typeId !== userTypeId && preferer.codename !== "all") return undefined; // valid_preferer?
+  return preferer.id === actorId ? true : undefined;
 }
 
 function isWriteTask(task: string): task is WriteTask {
@@ -217,6 +264,7 @@ export async function taskVerdictForCard(
   depth = 0,
 ): Promise<boolean | undefined> {
   if (state.alwaysOk) return true; // permitted? :108-109 (Auth.always_ok?)
+  if ((await followPreferencePermit(fetcher, card, state)) === true) return true; // right/follow.rb permit
   // card-mod-session set/type/session.rb ok_to_create? / ok_to_update?.
   if (task !== "delete" && (await isSessionTyped(fetcher, card))) return true;
   const trunk = await permitVerdict(fetcher, card, task, state);
@@ -248,6 +296,9 @@ export async function allTaskVerdictsForCard(
   };
   if (state.alwaysOk) {
     return { update: true, create: true, delete: true }; // permitted? :108-109
+  }
+  if ((await followPreferencePermit(fetcher, card, state)) === true) {
+    return { update: true, create: true, delete: true }; // right/follow.rb permit
   }
   // card-mod-session set/type/session.rb: a Session card's ok_to_create? and
   // ok_to_update? are `true` for every viewer (session content is per
@@ -320,6 +371,7 @@ export async function saveTaskVerdictForCard(
   opts: { typeChanged?: boolean; assignedName?: string } = {},
 ): Promise<boolean | undefined> {
   if (state.alwaysOk) return true; // permitted? :108-109 (Auth.always_ok?)
+  if ((await followPreferencePermit(fetcher, card, state)) === true) return true; // right/follow.rb permit
   if (task !== "update") {
     return taskVerdictForCard(fetcher, card, task, state); // :120-126 / :155-157
   }

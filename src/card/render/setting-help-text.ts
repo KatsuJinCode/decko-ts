@@ -97,6 +97,17 @@ export const SETTING_HELP_TEXT: ReadonlyMap<string, SettingHelpEntry> = new Map(
     self: "Anti-spam setting.  Requires non-signed-in users to complete a [[http://decko.org/captcha|captcha]] before adding or editing cards (where permitted).",
     right: "Anti-spam setting.  Requires non-signed-in users to complete a [[http://decko.org/captcha|captcha]] before adding or editing cards (where permitted).",
   }],
+  // card-mod-recaptcha-0.20.0 set/self/recaptcha_settings.rb:2-8 (a
+  // format-level `def raw_help_text` on the Self set; the same string the
+  // mod module exports as RECAPTCHA_SETTINGS_HELP_TEXT)
+  ["recaptcha_settings", {
+    self:
+      "Register your domain at Google's " +
+      "[[http://google.com/recaptcha|reCAPTCHA service]] " +
+      "and enter your site key and secret key below.<br>" +
+      "If you want to turn captchas off then change all " +
+      "[[*captcha|captcha rules]] to 'no'.",
+  }],
   // card-mod-content-0.20.0 set/self/structure.rb (setting_opts help_text)
   ["structure", {
     self: "Controls cards' content / structure. [[http://decko.org/formatting|more]]",

@@ -42,9 +42,9 @@ describe("VirtualSearch family table (card-mod-search-0.20.0 set/right/*.rb)", (
     // ("too slow on large databases") and must NOT appear.
     expect([...VIRTUAL_SEARCH_CQL_BY_RIGHT_KEY.entries()].sort()).toEqual(
       [
-        ["*by_create", '{"found_by":"_left","sort_by":"create"}'],
-        ["*by_name", '{"found_by":"_left","sort_by":"name"}'],
-        ["*by_update", '{"found_by":"_left","sort_by":"update"}'],
+        ["by_create", '{"found_by":"_left","sort_by":"create"}'],
+        ["by_name", '{"found_by":"_left","sort_by":"name"}'],
+        ["by_update", '{"found_by":"_left","sort_by":"update"}'],
         ["*children", '{"part":"_left","sort_by":"name"}'],
         ["*count", '{"found_by":"_left","return":"count"}'],
         ["*created", '{"created_by":"_left","sort_by":"create","dir":"desc"}'],

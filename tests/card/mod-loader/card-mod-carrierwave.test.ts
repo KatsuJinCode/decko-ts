@@ -125,8 +125,8 @@ describe("storageTypeFromContent (set/abstract/attachment/01_storage_type.rb:102
 });
 
 describe("contextualizePath (file_card_uploader.rb doc lines 88-117)", () => {
-  it("converts local ~/card_id/action.ext -> /files/card_id/action.ext", () => {
-    expect(contextualizePath("~42/action_99.txt")).toBe("/files/42/action_99.txt");
+  it("converts local ~card_id/action.ext -> /files/~card_id/action.ext (local_url keeps the tilde mark)", () => {
+    expect(contextualizePath("~42/action_99.txt")).toBe("/files/~42/action_99.txt");
   });
   it("returns web URLs raw", () => {
     expect(contextualizePath("https://example.com/path/to/file.pdf")).toBe(
@@ -145,8 +145,8 @@ describe("contextualizePath (file_card_uploader.rb doc lines 88-117)", () => {
       "http://s3.amazonaws.com//files/1/2.png",
     );
   });
-  it("converts coded :codename/mod.ext -> /files/codename.mod.ext", () => {
-    expect(contextualizePath(":logo/decko_logo.svg")).toBe("/files/logo.decko_logo.svg");
+  it("converts coded :codename/mod.ext -> /files/:codename/mod.ext (local_url over the coded file_dir)", () => {
+    expect(contextualizePath(":logo/decko_logo.svg")).toBe("/files/:logo/decko_logo.svg");
   });
   it("returns empty for unknown content", () => {
     expect(contextualizePath("")).toBe("");
@@ -161,8 +161,10 @@ describe("file :core (set/type/file.rb:24-28 + core.haml:1)", () => {
     // "Download " + the context-relativized name (out of context: the
     // full card name). Raw-oracle pin: the quote-style exemplars
     // (Werkshop Museum / David K Weinstock pages).
+    // local_url names the CARD's own id (paths.rb file_id) — this context's
+    // card is id 1.
     const html = fileCoreView(makeCtx("~7/act_42.png"));
-    expect(html).toBe("<a href='/files/7/act_42.png'>Download TestCard</a>\n");
+    expect(html).toBe("<a href='/files/~1/act_42.png'>Download TestCard</a>\n");
   });
   it("emits the download anchor for a web file", () => {
     const html = fileCoreView(makeCtx("https://example.com/file.pdf"));
@@ -179,8 +181,10 @@ describe("image :core (set/type/image/html_views.rb:5-11)", () => {
     expect(html).toBe('<img alt="MyImage" src="https://example.com/img.png" />');
   });
   it("emits <img alt=NAME src=/files/...-medium /> for a local image (default_size :medium)", () => {
+    // image_tag source, alt: card.name (alt first, self-closing); the
+    // default :medium version; local_url over the card's own id (1).
     const html = imageHtmlCoreView(makeCtx("~12/act_99.jpg", { name: "LocalImg" }));
-    expect(html).toBe('<img alt="LocalImg" src="/files/12/act_99-medium.jpg" />');
+    expect(html).toBe('<img alt="LocalImg" src="/files/~1/act_99-medium.jpg" />');
   });
   it("returns empty string for blank src (set/type/file.rb:34-45 handle_source short-circuit)", () => {
     // set/type/file.rb:34-45 handle_source short-circuits blank src to ""
@@ -275,7 +279,7 @@ describe("imageOneLineContentView type guard (set/type/image.rb:18-20 scoping)",
     const out = imageOneLineContentView(
       makeCtx("~12/act_99.jpg", { name: "LocalImg", typeCode: "image", typeName: "Image" }),
     );
-    expect(out).toBe('<img alt="LocalImg" src="/files/12/act_99-icon.jpg" />');
+    expect(out).toBe('<img alt="LocalImg" src="/files/~1/act_99-icon.jpg" />');
   });
   it("a FILE-typed card falls through to the All-set html wrap arm (views.rb:29-32): strip_tags(core) truncated, text-muted wrap", () => {
     const out = imageOneLineContentView(
@@ -387,7 +391,7 @@ describe("card-mod-carrierwave through the mod loader", () => {
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
     const html = await s.engine.render("LocalFileRender", "source");
-    expect(html).toBe("/files/42/action_99.txt");
+    expect(html).toBe("/files/~500/action_99.txt");
   });
 
   it("renders a file card's :core through polymorphicCoreView (download anchor)", async () => {
@@ -404,7 +408,7 @@ describe("card-mod-carrierwave through the mod loader", () => {
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
     const html = await s.engine.render("LocalFileCoreRender", "core");
-    expect(html).toBe("<a href='/files/7/act_42.png'>Download LocalFileCoreRender</a>\n");
+    expect(html).toBe("<a href='/files/~501/act_42.png'>Download LocalFileCoreRender</a>\n");
   });
 
   // -----------------------------------------------------------------------

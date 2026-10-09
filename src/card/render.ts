@@ -41,6 +41,8 @@ import { findRule } from "./rules/lookup.js";
 import { ruleNamesForCard } from "./set-patterns/rule-names.js";
 import { applyViewOverride, resolveViewOverride } from "./rules/apply.js";
 import { resolveVirtualCardStructure } from "./fetch/virtual-cards.js";
+import { virtualSearchCqlFor } from "./fetch/virtual-search-cards.js";
+import { statementAfterFirstQuery } from "../cql/consumed-conjunctions.js";
 import {
   structureRuleUniverseStatement,
   structureUniverseFromResults,
@@ -553,6 +555,11 @@ export class RenderEngine implements RenderEngineLike {
    *  runSearch alongside the items; read by the :card_list view's
    *   searchResultPaging seam. Cleared on resetCaches(). */
   private searchResultPagingMap = new Map<string, SearchResultPaging>();
+  /** Seated counts by search card key, for a search whose cql declares
+   *  `return: "count"`: Ruby's search_with_params answers an Integer and
+   *  search_result_view (search_views.rb:6-13) renders :search_count
+   *  instead of :card_list. Seated in runSearch; cleared on resetCaches(). */
+  private searchCountResults = new Map<string, number>();
   /** Resolved options cards by host key (the options-card parse boundary's
    *  rule walk). `has(key) === true` means resolved; the value is the
    *  resolved options card, or undefined when the walk stopped without one
@@ -604,6 +611,15 @@ export class RenderEngine implements RenderEngineLike {
    *  read-verdict viewer (Auth.as_id). Undefined = signed-out chrome (the
    *  corpus surface, byte-identical to the pre-session render). */
   pageSession: ReadViewer | undefined;
+  /** Render a card that does not exist as Ruby does (Card.fetch name, new:
+   *  {} — the controller's load_card), instead of throwing "card not
+   *  found". A view renders through view_for_unknown (format/error.rb:
+   *  18-25): the view's unknown setting or :unknown; a page's main card
+   *  renders :new when the viewer may create it and :not_found otherwise
+   *  (set/all/html/error.rb:81-87), and pageErrorStatus reports the 404.
+   *  Off by default: the hosts map the thrown error to their own not-found
+   *  response. */
+  renderAbsentCards = false;
   /** The prepared signed-in *account_links navbar items (see
    *  RenderEngineLike.pageSessionAccountLinksHtml). Filled once per
    *  session actor by prepareSessionAccountLinks; survives across pages of
@@ -1029,8 +1045,11 @@ export class RenderEngine implements RenderEngineLike {
           : readBootContentVersion(this.fetcher.driver)
         : undefined;
     this.bootProbeIssued = true;
-    const [record] = await Promise.all([this.fetcher.fetchByName(cardName), bootProbe]);
+    const [found] = await Promise.all([this.fetcher.fetchByName(cardName), bootProbe]);
     if (bootProbe !== undefined) this.bootProbeVersion = await bootProbe;
+    const record = found === undefined && this.renderAbsentCards
+      ? await this.fetcher.fetchByName(cardName, { new: {} })
+      : found;
     if (record === undefined || record.name === undefined) {
       throw new Error(`card not found: ${cardName}`);
     }
@@ -1416,6 +1435,9 @@ export class RenderEngine implements RenderEngineLike {
     // cardtype-structure pages: precomputed before the sync render so the
     // view gate resolves it query-free.
     await this.ensureConfigureVerdict(record);
+    // The create verdicts of the root's unknown nest targets (the :unknown
+    // view's createable gate).
+    await this.seatUnknownNestCreateVerdicts(record);
     // db-roundtrip-elimination lane (W2b + W3b): prime the derived state
     // the SYNC render resolves by name at view time - every prepared
     // record's TYPE card (the enrichAndStore type reads) and the rule
@@ -1609,10 +1631,14 @@ export class RenderEngine implements RenderEngineLike {
       await this.ensureVerdicts();
     }
 
-    const rootCard = this.renderCards.get(name.key);
-    if (rootCard === undefined) {
+    const preparedRoot = this.renderCards.get(name.key);
+    if (preparedRoot === undefined) {
       throw new Error(`render card not prepared: ${name.s}`);
     }
+    const rootCard =
+      record.isNew === true && preparedRoot.id === undefined && this.renderAbsentCards
+        ? await this.seatAbsentRoot(preparedRoot)
+        : preparedRoot;
     // Pointer / List cardtypes: pre-enrich every item their content
     // references (the prefetch closure walk does NOT chase plain-text
     // references — only nest-syntax ones — so the items are absent
@@ -2380,6 +2406,7 @@ export class RenderEngine implements RenderEngineLike {
     this.searchResults.clear();
     this.searchFailures.clear();
     this.searchResultPagingMap.clear();
+    this.searchCountResults.clear();
     this.pageHeadBytes.clear();
     this.optionsCardCache.clear();
     this.setHostChainCache.clear();
@@ -3866,6 +3893,124 @@ export class RenderEngine implements RenderEngineLike {
    *  same undefined-means-unverifiable contract isDenied applies. Runs
    *  AFTER preloadDefaultTypeNames (newCardDefaultType needs the *default
    *  universe's type names) — never inline at miss time. */
+  /** Seat the render root for an ABSENT card (renderAbsentCards): the
+   *  controller's Card.fetch name, new: {} gives a new card typed by the
+   *  type assignment or *default template (type.rb:58-66 ensure_type_id —
+   *  newCardDefaultType, the same walk a nest miss takes), and unknown?
+   *  (states.rb), so its views route through view_for_unknown. Its four
+   *  task verdicts are judged here, while awaiting is legal: a page's main
+   *  card renders :new or :not_found by ok?(:create) (html/error.rb:81-87),
+   *  and the :unknown view's create link reads the same verdict. */
+  private async seatAbsentRoot(card: RenderCard): Promise<RenderCard> {
+    const name = card.name;
+    let leftTypeName: string | undefined;
+    if (name.isCompound && name.leftName !== undefined) {
+      const left = await this.fetcher.fetchByName(name.leftName.s);
+      if (left?.typeId !== undefined && left.typeId !== null) {
+        leftTypeName = (await this.fetcher.fetchById(left.typeId))?.name?.s;
+      }
+    }
+    const typed =
+      card.typeId !== undefined
+        ? { typeId: card.typeId, typeName: card.typeName ?? "" }
+        : this.newCardDefaultType(name, leftTypeName);
+    const typeId = typed?.typeId;
+    const seated: RenderCard = {
+      ...card,
+      record: { ...card.record, typeId },
+      typeId,
+      typeName: typed?.typeName,
+      typeCode: typeId === undefined ? undefined : this.fetcher.codenames.peekNameForId(typeId),
+      setKeys: safeSetKeys({ name, typeId, typeName: typed?.typeName, leftTypeName, isNew: true }),
+      unknown: true,
+    };
+    this.renderCards.set(card.key, seated);
+    if (this.readPermission !== undefined) {
+      if (this.taskState === undefined) {
+        const results = await this.fetcher.driver.batch(viewTaskPermissionStatements());
+        this.taskState = viewTaskStateFromResults(results, this.readPermission);
+      }
+      const verdicts = await allTaskVerdictsForCard(
+        this.fetcher,
+        this.structurePatternInputForSync(seated),
+        this.taskState,
+      );
+      this.taskVerdicts.set(seated.key, verdicts);
+      // The :new page view's type field lists Auth.createable_types (the
+      // same prepare gate a requested :new view takes).
+      if (verdicts.create === true || this.readPermission.alwaysOk) {
+        await this.ensureCreateableTypes();
+        // ... and its alert guide (guide.rb determine_guide_card: the new
+        // card's *guide rule, first candidate that exists).
+        // prepend_guide_edit_link reads the guide card's ok?(:update).
+        for (const candidate of ruleNamesForCard(this.structurePatternInputForSync(seated), "*guide")) {
+          const guide = await this.prepareItemForRender(candidate);
+          if (guide?.id === undefined || this.taskVerdicts.has(guide.key)) continue;
+          const guideVerdicts = await allTaskVerdictsForCard(
+            this.fetcher,
+            this.structurePatternInputForSync(guide),
+            this.taskState,
+          );
+          this.taskVerdicts.set(guide.key, await this.applyUpdateOverride(guide, guideVerdicts));
+        }
+        await this.ensureVerdicts();
+      }
+    }
+    return seated;
+  }
+
+  /**
+   * An unknown nest target renders :unknown, whose body is
+   * `createable { ... }` (card-mod-format set/all/html/error.rb:15-21): the
+   * add link shows when the viewer may create the new card. The sync view
+   * reads the create verdict from taskVerdicts, which the prepare phase
+   * fills only for prepared cards, so a nest miss on the render root (a
+   * Role card's `{{+:description|lead}}` with no description yet) rendered
+   * nothing for a viewer Ruby lets create it (`*all plus+*create = _left`).
+   * This seats the verdict for each of the root's references that resolves
+   * to no card, typed by the *default template chain like Card.new. Only
+   * signed-in viewers are asked: on a stock deck *all+*create excludes
+   * Anonymous, and leaving anonymous renders untouched keeps their query
+   * counts as they were.
+   */
+  private async seatUnknownNestCreateVerdicts(record: CardRecord): Promise<void> {
+    if (this.readPermission === undefined || this.readPermission.alwaysOk) return;
+    if (this.readPermission.signedInActorId === undefined) return;
+    const rootKey = record.key ?? (record.name ? DeckoName.parse(record.name).key : undefined);
+    const root = rootKey !== undefined ? this.renderCards.get(rootKey) : undefined;
+    if (root === undefined || root.dbContent === undefined || root.dbContent === "") return;
+    const misses: DeckoName[] = [];
+    for (const ref of referencedNames(root.dbContent)) {
+      const pipe = ref.name.indexOf("|");
+      const base = pipe === -1 ? ref.name : ref.name.slice(0, pipe);
+      let name: DeckoName;
+      try {
+        name = DeckoName.parse(DeckoName.parse(base).absolute(root.name));
+      } catch {
+        continue;
+      }
+      if (name.key === "" || this.renderCards.has(name.key) || this.taskVerdicts.has(name.key)) continue;
+      if (virtualSearchCqlFor(name, this.codenameHolderKey) !== undefined) continue;
+      misses.push(name);
+    }
+    if (misses.length === 0) return;
+    if (this.taskState === undefined) {
+      const results = await this.fetcher.driver.batch(viewTaskPermissionStatements());
+      this.taskState = viewTaskStateFromResults(results, this.readPermission);
+    }
+    for (const name of misses) {
+      const defaulted = this.newCardDefaultType(name);
+      const input = {
+        name,
+        isNew: true,
+        ...(defaulted?.typeId !== undefined ? { typeId: defaulted.typeId } : {}),
+        ...(defaulted?.typeName !== undefined ? { typeName: defaulted.typeName } : {}),
+      };
+      const create = await taskVerdictForCard(this.fetcher, input, "create", this.taskState);
+      this.taskVerdicts.set(name.key, { update: undefined, delete: undefined, create });
+    }
+  }
+
   private async seatUnknownRefReadVerdicts(): Promise<void> {
     if (this.readPermission === undefined) return; // state not folded yet
     for (const refKey of this.structureRefMisses) {
@@ -5111,6 +5256,23 @@ export class RenderEngine implements RenderEngineLike {
         if (refKey === undefined) continue;
         const refCard = this.renderCards.get(refKey);
         if (refCard !== undefined && !visited.has(refCard.key)) queue.push(refCard);
+        if (refCard === undefined) {
+          // No row and no structure: a VirtualSearch family card is still
+          // known, and its results are what the nest renders.
+          let resolved: string;
+          try {
+            const pipe = ref.name.indexOf("|");
+            const parsed = DeckoName.parse(pipe === -1 ? ref.name : ref.name.slice(0, pipe));
+            resolved = (parsed.isAbsolute ? parsed : parsed.absoluteName(card.name)).s;
+          } catch {
+            continue;
+          }
+          const items = await this.prepareVirtualFamilySearch(resolved);
+          if (items !== undefined) {
+            queue.push(...items);
+            executed++;
+          }
+        }
       }
       if (card.typeCode !== SEARCH_TYPE_CODE) continue;
       if (this.searchResults.has(card.key) || this.searchFailures.has(card.key)) continue;
@@ -7044,6 +7206,12 @@ export class RenderEngine implements RenderEngineLike {
     return this.searchResultPagingMap.get(fmt.card.key);
   }
 
+  /** RenderEngineLike#searchResultCount — the seated count of a rendered
+   *  search whose cql returns a count (undefined for a list search). */
+  searchResultCount(fmt: RenderFormat): number | undefined {
+    return this.searchCountResults.get(fmt.card.key);
+  }
+
   /** RenderEngineLike#historyRenderReader — the render-time history seam
    *  accessor the card-mod-history views read (undefined unless THIS
    *  render's view is one of HISTORY_SEAM_VIEWS; see render-seam.ts). */
@@ -8356,19 +8524,31 @@ export class RenderEngine implements RenderEngineLike {
       // readable search the render will read executes before the bytes
       // complete - on every lane, not just the page lane.
       for (const ref of referencedNames(card.dbContent)) {
-        if (!ref.relative) continue;
+        // Other references were walked through cardReferenceKeys above; they
+        // are resolved here only for the VirtualSearch family check below.
+        const relative = ref.relative;
         const pipe = ref.name.indexOf("|");
         const base = pipe === -1 ? ref.name : ref.name.slice(0, pipe);
         let resolvedName: string;
         try {
           resolvedName = DeckoName.parse(base).absolute(card.name);
         } catch (err) {
+          if (!relative) continue;
           if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) continue;
           throw err;
         }
         if (resolvedName === undefined || resolvedName === "") continue;
         const refKey = DeckoName.parse(resolvedName).key;
         let refCard = this.renderCards.get(refKey);
+        if (!relative) {
+          if (refCard === undefined) {
+            const items = await this.prepareVirtualFamilySearch(resolvedName);
+            for (const item of items ?? []) {
+              if (!visited.has(item.key)) queue.push(item.record);
+            }
+          }
+          continue;
+        }
         if (refCard === undefined) {
           // The contextually-resolved reference never joined the prepared
           // map - the VIRTUAL-card class: children+*referred_to_by is a
@@ -8384,6 +8564,14 @@ export class RenderEngine implements RenderEngineLike {
           // (the Anyone Signed In Anonymous+*created bar regressed to
           // data-card-name "anonymous+*created" on exactly that).
           refCard = await this.prepareItemForRender(resolvedName);
+        }
+        if (refCard === undefined) {
+          // No row and no structure: a VirtualSearch family card is still
+          // known, and its results are what the nest renders.
+          const items = await this.prepareVirtualFamilySearch(resolvedName);
+          for (const item of items ?? []) {
+            if (!visited.has(item.key)) queue.push(item.record);
+          }
         }
         if (refCard !== undefined && !visited.has(refCard.key)) queue.push(refCard.record);
       }
@@ -8435,6 +8623,40 @@ export class RenderEngine implements RenderEngineLike {
    *  the stream contract — emits the exact CAPTURE_ERROR sentinel bytes
    *  the capture recorded. */
   /** The search statement's own limit — see searchCqlLimit below. */
+  /** Resolves a codename to the key of the card holding it in this deck
+   *  (the VirtualSearch family's Right-pattern match). */
+  private codenameHolderKey = (codename: string): string | undefined => {
+    const id = this.peekIdByCodename(codename);
+    const holder = id !== undefined ? this.peekRegisteredNameForId(id) : undefined;
+    return holder !== undefined ? DeckoName.parse(holder).key : undefined;
+  };
+
+  /**
+   * Executes the search of a VirtualSearch family card that has no row
+   * (`Topic+*type+by name`, `X+*refers to`, ...) and seats its results under
+   * the name's key, where the sync nest dispatch's virtual card
+   * (format.ts buildUnknownNestCard) reads them. Ruby runs this search
+   * inside the card_list view (virtual_search.rb's cql_content over the
+   * search views); the port hoists it into the prepare phase like every
+   * other closure search. Returns the result items, or undefined when the
+   * name is not a family member or is already seated.
+   */
+  private async prepareVirtualFamilySearch(resolvedName: string): Promise<RenderCard[] | undefined> {
+    let name: DeckoName;
+    try {
+      name = DeckoName.parse(resolvedName);
+    } catch {
+      return undefined;
+    }
+    const cql = virtualSearchCqlFor(name, this.codenameHolderKey);
+    if (cql === undefined) return undefined;
+    const key = name.key;
+    if (this.searchResults.has(key) || this.searchFailures.has(key)) return undefined;
+    const items = await this.runSearch({ name, key, dbContent: cql } as RenderCard);
+    this.searchResults.set(key, items);
+    return items;
+  }
+
   private async runSearch(card: RenderCard): Promise<RenderCard[]> {
     const rawContent = card.dbContent;
     if (rawContent === "") {
@@ -8536,7 +8758,12 @@ export class RenderEngine implements RenderEngineLike {
         statement as Record<string, unknown>,
         queryOptions,
       );
-      rows = "rows" in result ? result.rows : [];
+      if ("rows" in result) {
+        rows = result.rows;
+      } else {
+        rows = [];
+        this.searchCountResults.set(card.key, result.count);
+      }
       rows = await this.canonicalizeDanglingSideRows(rows);
     // Transport chunking (the batching pattern from src/card/render/prefetch.ts
     // generalized to the search read path): every result row used to cost its own
@@ -8570,9 +8797,12 @@ export class RenderEngine implements RenderEngineLike {
       // ignores limit/offset the way Ruby's 0_search.rb:35-39 count args
       // (offset 0, limit 0) do.
       if (limit >= 1 && rows.length >= limit) {
+        // Ruby builds this count from the card's cached cql hash after the
+        // item search consumed its leading conjunctions
+        // (src/cql/consumed-conjunctions.ts).
         const count = await executeCount(
           this.fetcher.driver,
-          statement as Record<string, unknown>,
+          statementAfterFirstQuery(statement as Record<string, unknown>),
           queryOptions,
         );
         if (count > limit) paging = { limit, offset: 0, count };

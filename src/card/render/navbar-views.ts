@@ -31,6 +31,14 @@ function isListType(fmt: RenderFormat): boolean {
   return fmt.card.typeCode === "pointer" || fmt.card.typeCode === "list";
 }
 
+/** Abstract::Items member cardtypes (card-mod-list set/type/{pointer,list,
+ *  link_list}.rb include_set Abstract::Items): their :nav_item is a
+ *  dropdown. A Link list includes Abstract::Items but not Abstract::List, so
+ *  its dropdown items come from the base chunk walk. */
+function isItemsType(fmt: RenderFormat): boolean {
+  return isListType(fmt) || fmt.card.typeCode === "link_list";
+}
+
 /** set/all/navbar_links.rb wrap_with_nav_item. */
 function wrapNavItem(inner: string): string {
   return `<li class="nav-item">${inner}</li>`;
@@ -73,9 +81,9 @@ const navbarLinksView: ViewFn = (ctx) => {
     // product both this view and :core render. Signed out: sign_up +
     // sign_in (my_card and sign_out are signed_in?-gated, denial :blank ->
     // dropped).
-    const signedInItems = ctx.fmt.engine.pageSessionAccountLinksHtml;
-    if (signedInItems !== undefined) {
-      return `<ul class="navbar-nav">${fillUniqueIds(signedInItems, fmt)}</ul>`;
+    const prepared = ctx.fmt.engine.pageSessionAccountLinksHtml;
+    if (prepared !== undefined) {
+      return `<ul class="navbar-nav">${fillUniqueIds(prepared, fmt)}</ul>`;
     }
     const links = [
       `<a class="nav-link signup-link known-card" href="/new/Sign_up">Sign up</a>`,
@@ -90,12 +98,21 @@ const navbarLinksView: ViewFn = (ctx) => {
       .filter((s): s is string => s !== undefined);
     return `<ul class="navbar-nav">${items.join("")}</ul>`;
   }
-  // set/all/navbar_links.rb: the content-chunk walk — reference chunks
-  // ([[target|label]] name-links nest their target with view :nav_item,
-  // render_name_link, title = the label); literal text chunks pass through
-  // verbatim (the \r\n separators between menu links are in the captured
-  // bytes).
-  const content = fmt.card.dbContent;
+  return `<ul class="navbar-nav">${chunkNavbarItems(ctx, "nav_item", "nav-link")}</ul>`;
+};
+
+/** set/all/navbar_links.rb navbar_items(view:, link_class:) — the base
+ *  content-chunk walk every card without Abstract::List's item override
+ *  takes: reference chunks ([[target|label]] name-links nest their target
+ *  with `view`, title = the label); literal text chunks pass through
+ *  verbatim (the \r\n separators between menu links are in the captured
+ *  bytes). Explicit links (link.rb `^(/|https?:|mailto:)` targets) render
+ *  link_to_resource with explicit_link_opts {class: link_class} — the given
+ *  class first, the resource type's class appended, then target=_blank for
+ *  an external link — and navbar_link_chunk li-wraps them under :nav_item
+ *  (`chunk.explicit_link? && view == :nav_item`). */
+function chunkNavbarItems(ctx: ViewContext, view: string, linkClass: string): string {
+  const content = ctx.fmt.card.dbContent;
   const out: string[] = [];
   let lastIndex = 0;
   for (const m of content.matchAll(/\[\[([^\][\n]+?)\]\]/g)) {
@@ -104,15 +121,26 @@ const navbarLinksView: ViewFn = (ctx) => {
     const split = spec.indexOf("|");
     const target = (split === -1 ? spec : spec.slice(0, split)).trim();
     const label = split === -1 ? undefined : spec.slice(split + 1).trim();
-    if (target !== "") {
-      const link = nestResolvedName(ctx, target, "nav_item", label);
+    if (/^(\/|https?:|mailto:)/.test(target)) {
+      const text = label ?? target;
+      let link: string;
+      if (/^https?:/.test(target)) {
+        link = `<a class="${linkClass} external-link" target="_blank" href="${h(target)}">${text}</a>`;
+      } else if (/^mailto:/.test(target)) {
+        link = `<a class="${linkClass} email-link" href="${h(target)}">${text}</a>`;
+      } else {
+        link = `<a class="${linkClass} internal-link" href="${h(`/${target.replace(/^\/+/, "")}`)}">${text}</a>`;
+      }
+      out.push(view === "nav_item" ? wrapNavItem(link) : link);
+    } else if (target !== "") {
+      const link = nestResolvedName(ctx, target, view, label);
       if (link !== undefined) out.push(link);
     }
     lastIndex = (m.index ?? 0) + m[0].length;
   }
   out.push(content.slice(lastIndex));
-  return `<ul class="navbar-nav">${out.join("")}</ul>`;
-};
+  return out.join("");
+}
 
 /** set/all/navbar_links.rb view :nav_item (per-set dispatch). */
 const navItemView: ViewFn = (ctx) => {
@@ -121,7 +149,7 @@ const navItemView: ViewFn = (ctx) => {
     // set/self/dropdown_divider.rb view :nav_item.
     return `<div class="dropdown-divider"></div>`;
   }
-  if (isListType(fmt)) {
+  if (isItemsType(fmt)) {
     // Abstract::Items#nav_item: wrap_with_nav_item(nav_dropdown).
     return wrapNavItem(navDropdown(ctx));
   }
@@ -135,8 +163,9 @@ const navLinkInDropdownView: ViewFn = (ctx) => {
   if (fmt.card.key === "*dropdown_divider") {
     return `<div class="dropdown-divider"></div>`;
   }
-  // base: link_to_card card, render_title, class: "dropdown-item".
-  return linkToCardWithClass(fmt, "dropdown-item", fmt.renderView("title"));
+  // base: link_to_card card, render_title, class: "dropdown-item" —
+  // render_title carries a link chunk's label (voo title) when one is set.
+  return linkToCardWithClass(fmt, "dropdown-item", linkTitleSpan(ctx));
 };
 
 /** Abstract::Items#nav_dropdown: toggle link + menu. */
@@ -165,6 +194,10 @@ function navDropdown(ctx: ViewContext): string {
  *  the engine's kept empty row emitted `divider\n\n<denied>`, the graded
  *  +1 on every page whose nav carries that menu). */
 function dropdownMenuItems(ctx: ViewContext): string {
+  // A Link list (Abstract::Items without Abstract::List) keeps the base
+  // navbar_items: the chunk walk with the dropdown view and class
+  // (navbar_links.rb dropdown_menu_items).
+  if (!isListType(ctx.fmt)) return chunkNavbarItems(ctx, "nav_link_in_dropdown", "dropdown-item");
   const items = listItemsOf(ctx.fmt)
     .map((name) => nestItemName(ctx, name, "nav_link_in_dropdown"))
     .filter((s): s is string => s !== undefined && s !== "");
@@ -258,9 +291,9 @@ export const NAVBAR_VIEWS: Record<string, ViewFn> = {
  *  sign_in pair (my_card/sign_out are signed_in?-gated with denial :blank —
  *  dropped from the compact). */
 export function accountLinksCoreHtml(ctx: ViewContext): string {
-  const signedInItems = ctx.fmt.engine.pageSessionAccountLinksHtml;
-  if (signedInItems !== undefined) {
-    return `<div id="logging" class="logged-in">${fillUniqueIds(signedInItems, ctx.fmt)}</div>`;
+  const prepared = ctx.fmt.engine.pageSessionAccountLinksHtml;
+  if (prepared !== undefined) {
+    return `<div id="logging" class="logged-in">${fillUniqueIds(prepared, ctx.fmt)}</div>`;
   }
   const links = [
     `<li class="nav-item"><a class="nav-link signup-link known-card" href="/new/Sign_up">Sign up</a></li>`,

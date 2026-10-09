@@ -54,8 +54,10 @@ describe("formatFileCore — the file cardtype html :core body (core.haml)", () 
     ["https://example.com/attach.png", "https://example.com/attach.png"],
     ["http://example.com/attach.pdf", "http://example.com/attach.pdf"],
     ["(bucket)/808/42.png", "http://s3.amazonaws.com//files/808/42.png"],
-    ["~808/42.png", "/files/808/42.png"],
-    [":logo/carey.png", "/files/logo.carey.png"],
+    // local and coded: FileCardUploader#local_url keeps the identifier's
+    // own directory mark (~<id> / :<codename>) after /files/.
+    ["~808/42.png", "/files/~808/42.png"],
+    [":logo/carey.png", "/files/:logo/carey.png"],
   ])("source content '%s' renders the download anchor", (input, source) => {
     // core.haml: %a{ href: source } = t :carrierwave_download,
     // title: title_in_context(voo.title) — HAML attr_wrapper apostrophe,

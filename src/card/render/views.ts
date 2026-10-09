@@ -122,6 +122,10 @@ import {
   guideTabView,
   historyTabView,
   inputView,
+  newButtonsView,
+  newFieldsView,
+  newTypeFormgroupView,
+  newView,
   relatedTabView,
   rulesTabView,
 } from "../mod-loader/mods/card-mod-edit.js";
@@ -486,7 +490,10 @@ function menuBoardAnchor(fmt: RenderFormat, opts: { inModal: boolean }): string 
  *  / :board_link views and the menu cannot drift apart. */
 const menuView: ViewFn = (ctx) => {
   const { fmt, voo } = ctx;
-  if (fmt.card.unknown === true) return ""; // menu.rb: return "" unless card.known?
+  // menu.rb:8-10 `view :menu, denial: :blank, unknown: true do return ""
+  // unless card.known?` — an unknown card renders no menu (and no
+  // :unknown substitution: the view supports unknown cards).
+  if (fmt.card.unknown === true) return "";
   const help = menuHelpAnchor(ctx);
   const edit = menuEditAnchor(fmt);
   const board = menuBoardAnchor(fmt, { inModal: false });
@@ -1029,6 +1036,11 @@ const coreViewBase: ViewFn = (ctx) => {
     // keyword the results_for_keyword haml renders "", which leaves the
     // leading newline.
     if (fmt.card.record.codename === "search") return `\n${fmt.renderView("card_list")}`;
+    // search_views.rb#search_result_view: an Integer result (a cql with
+    // `return: "count"`) renders :search_count, `search_with_params.to_s`
+    // (0_search/views.rb:2-4): the bare digits.
+    const count = fmt.engine.searchResultCount?.(fmt);
+    if (count !== undefined) return String(count);
     // search_views.rb#search_result_view -> :card_list (html)
     return fmt.renderView("card_list");
   }
@@ -1270,6 +1282,7 @@ const coreViewBase: ViewFn = (ctx) => {
     return formatFileCore(fmt.card.dbContent, {
       cardName: fmt.card.name.s,
       contextNames: fmt.contextNames,
+      cardId: fmt.card.id,
     });
   }
   // card-mod-markdown-0.20.0 set/type/markdown.rb:6-13 `view :core do
@@ -2190,16 +2203,14 @@ export function formatImageCore(
     if (src === "") return "";
     return `<img alt="${h(cardName ?? "")}" src="${h(src)}" />`;
   }
-  if (trimmed.startsWith("~")) {
-    // local: ~/card_id/action_id.ext -> /files/card_id/action_id(-size).ext
-    const path = trimmed.replace(/^~/, "");
-    const sized = appendSizeVariant(path, sizeOpt ?? "medium");
-    return `<img alt="${h(cardName ?? "")}" src="${h(`/files/${sized}`)}" />`;
-  }
-  if (trimmed.startsWith(":")) {
-    // coded: :codename/mod.ext -> /files/:codename/mod(-size).ext
-    const sized = appendSizeVariant(trimmed, sizeOpt ?? "medium");
-    return `<img alt="${h(cardName ?? "")}" src="${h(`/files/${sized}`)}" />`;
+  if (trimmed.startsWith("~") || trimmed.startsWith(":")) {
+    // local: ~<card id>/<action id>.<ext> -> /files/~<card id>/<action id>(-size).<ext>
+    // coded: :<codename>/<mod>.<ext>      -> /files/:<codename>/<mod>(-size).<ext>
+    // (localStorageUrl; svg images carry no versions, image.rb:39-48).
+    const svg = rubyExtnameFromPath(trimmed).toLowerCase() === ".svg";
+    const src = localStorageUrl(trimmed, svg ? undefined : imageSizeVariant(sizeOpt), cardId);
+    if (src === "") return "";
+    return `<img alt="${h(cardName ?? "")}" src="${h(src)}" />`;
   }
   // Non-image source — return empty to match the captured oracle
   // shape for the corpus (and Ruby's behavior for any cardtype-
@@ -2460,8 +2471,9 @@ function appendVariantLowercasingExt(path: string, variant: string): string {
  *   - blank or no recognized prefix -> "" (the corpus file cards: 9 empty +
  *     310 bare tokens, every one empty-rendered by the oracle)
  *   - `http(s)://...` (web) or `(...)/...` (cloud) -> the content as-is
- *   - `~/...` (local) -> `/files/<id>/<action>.<ext>`
- *   - `:<codename>/...` (coded) -> `/files/<codename>.<mod>.<ext>`
+ *   - `~<id>/...` (local) -> `/files/~<card id>/<action>.<ext>`
+ *   - `:<codename>/...` (coded) -> `/files/:<codename>/<mod>.<ext>`
+ *     (both localStorageUrl — FileCardUploader#local_url)
  *  The label/quote shape is oracle-pinned by the RAW corpus's quote-style
  *  exemplars (Werkshop Museum `Download +Documents`, David K Weinstock
  *  `Download +description+bio`, ... — the earlier `<a href="SRC">SRC</a>`
@@ -2472,11 +2484,11 @@ function appendVariantLowercasingExt(path: string, variant: string): string {
  *  mod loader). */
 export function formatFileCore(
   content: string | null | undefined,
-  nameContext?: { cardName: string; contextNames?: readonly string[] },
+  nameContext?: { cardName: string; contextNames?: readonly string[]; cardId?: number },
 ): string {
   const trimmed = (content ?? "").trim();
   if (trimmed === "") return "";
-  const source = fileSourceFromContent(trimmed);
+  const source = fileSourceFromContent(trimmed, nameContext?.cardId);
   if (source === "") return "";
   const title = nameContext === undefined
     ? ""
@@ -2493,18 +2505,79 @@ export function formatFileCore(
  *  (derivedCloudAttachmentSource) — the stored key is never emitted
  *  verbatim (set/type/file.rb:11-15 + file_card_uploader.rb:147-153 +
  *  path.rb:41-43; the corpus file-page oracle anchor pins it). */
-function fileSourceFromContent(trimmed: string): string {
+function fileSourceFromContent(trimmed: string, cardId?: number): string {
   if (/^\(/.test(trimmed)) return derivedCloudAttachmentSource(trimmed); // cloud: derived action-id URL
   if (/^https?:/.test(trimmed)) return trimmed; // web: the URL as-is
-  if (/^~/.test(trimmed)) {
-    // local: ~/card_id/action_id.ext -> /files/card_id/action_id.ext
-    return `/files/${trimmed.replace(/^~/, "")}`;
+  // local (~<card id>/...) and coded (:<codename>/...): Ruby's local_url.
+  return localStorageUrl(trimmed, undefined, cardId); // "" for an unrecognized prefix
+}
+
+/** The url of a file or image attachment stored LOCALLY or CODED, exactly as
+ *  Ruby renders it (card-mod-carrierwave-0.20.0):
+ *   - FileCardUploader#url (lib/carrier_wave/file_card_uploader.rb:184-192)
+ *     takes local_url for every storage type but cloud and web;
+ *   - local_url (file_card_uploader/path.rb:11-13) is
+ *     `"#{local_url_base}/#{file_dir}/#{full_filename(url_filename)}"` with
+ *     local_url_base = card_path(files_web_path) = "/files";
+ *   - file_dir (set/abstract/attachment/paths.rb:25-33) is the identifier's
+ *     own directory: "~<card id>" for local storage (the tilde KEPT — it is
+ *     the url mark that tells the file route the id is a card id) and the
+ *     ":"-prefixed codename parts joined by "+" for coded storage;
+ *   - url_filename (file_card_uploader.rb:166-172) is "<action id><ext>" for
+ *     local storage (action id = the identifier's [-2] [/.] segment,
+ *     set/type/file.rb:11-15) and "<mod><ext>" for coded storage, with the
+ *     extension downcased (file_card_uploader.rb:155-162); an extension-less
+ *     identifier is not valid? and renders "" (file.rb:47-50);
+ *   - full_filename (file_card_uploader.rb:283-291) puts an image version
+ *     after the basename's first dot-free part: "<base>-<version>.<rest>".
+ *  `cardId` is the attachment card's own id (file_id, paths.rb:41-43); when
+ *  absent the identifier's id segment stands in, which is the same number
+ *  for every identifier Ruby wrote. Returns "" for any other content shape. */
+export function localStorageUrl(
+  content: string,
+  sizeVariant?: string,
+  cardId?: number,
+): string {
+  const trimmed = content.trim();
+  const slash = trimmed.lastIndexOf("/");
+  if (slash <= 0) return "";
+  const ext = rubyExtnameFromPath(trimmed).toLowerCase();
+  if (ext === "") return "";
+  let dir: string;
+  let base: string;
+  if (trimmed.startsWith("~")) {
+    const idSeg = trimmed.slice(1, trimmed.indexOf("/"));
+    dir = `~${cardId ?? idSeg}`;
+    const actionId = lastContentActionIdFromDbContent(trimmed);
+    base = actionId === null ? storedBaseName(trimmed) : String(actionId);
+  } else if (trimmed.startsWith(":")) {
+    dir = trimmed.slice(0, slash);
+    // coded.rb:41-43 mod_name_match %r{^:[:\w/+]+/([^./]+)\.}
+    const mod = trimmed.match(/^:[:\w/+]+\/([^./]+)\./);
+    if (mod === null) return "";
+    base = mod[1];
+  } else {
+    return "";
   }
-  if (/^:/.test(trimmed)) {
-    // coded: :codename/mod_name.ext -> /files/codename.mod_name.ext
-    return `/files/${trimmed.replace(/^:/, "").replace(/\//g, ".")}`;
-  }
-  return ""; // unrecognized prefix: no source (handle_source blank -> "")
+  const leaf = `${base}${ext}`;
+  if (sizeVariant === undefined) return `/files/${dir}/${leaf}`;
+  const dot = leaf.indexOf(".");
+  return `/files/${dir}/${leaf.slice(0, dot)}-${sizeVariant}${leaf.slice(dot)}`;
+}
+
+/** Ruby's attachment url for any stored identifier: cloud (the derived fog
+ *  URL), web (the content as-is), local and coded (localStorageUrl).
+ *  "" when the content is no attachment identifier. */
+export function attachmentUrl(
+  content: string,
+  sizeVariant?: string,
+  cardId?: number,
+  cdnAssetHost?: string,
+): string {
+  const trimmed = content.trim();
+  if (trimmed.startsWith("(")) return derivedCloudAttachmentSource(trimmed, cdnAssetHost, sizeVariant);
+  if (/^https?:/.test(trimmed)) return trimmed;
+  return localStorageUrl(trimmed, sizeVariant, cardId);
 }
 
 // ---------------------------------------------------------------------------
@@ -6632,6 +6705,14 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   // :rules_tab/:related_tab/:history_tab/:follow_section + help.rb's
   // :guide — the ACTIVE tab's view is dispatched by name from boardTabs).
   edit_form: editFormView,
+  // card-mod-edit-0.20.0 set/all/new.rb: the create form a page renders for
+  // an absent card the viewer may create (html/error.rb:81-83
+  // page_view_for_unknown -> :new), with its dispatch closure (:new_fields,
+  // :new_type_formgroup, :new_buttons). Perms ride view-perms.ts.
+  new: newView,
+  new_fields: newFieldsView,
+  new_type_formgroup: newTypeFormgroupView,
+  new_buttons: newButtonsView,
   edit_name_row: editNameRowView,
   edit_type_row: editTypeRowView,
   content_formgroups: contentFormgroupsView,

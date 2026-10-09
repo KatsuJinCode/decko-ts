@@ -129,6 +129,10 @@ export interface ReadPermissionState {
   readonly hasCatchAllReadRule: boolean;
   /** The party ids the readable set was computed from. */
   readonly parties: number[];
+  /** Auth.current_id when Auth.signed_in? (auth/current.rb:43-47), else
+   *  undefined — what a set module's own-card permission override compares
+   *  against (e.g. Right::Follow's allowed_to_change_follow_status?). */
+  readonly signedInActorId?: number;
 }
 
 /** One party row of the ReadRuleCache join (read_rule_cache.rb SQL). */
@@ -368,6 +372,7 @@ export function readPermissionStateFromViewerResults(
     hasReadRules: (ruleCount[0]?.c ?? 0) > 0,
     hasCatchAllReadRule: (ruleCount[0]?.catchAll ?? 0) > 0,
     parties,
+    signedInActorId: signedIn ? actorId : undefined,
   };
 }
 

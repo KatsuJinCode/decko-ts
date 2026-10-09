@@ -275,6 +275,7 @@ export class HelpRulesResolver implements HelpRulesApi {
         host.readPermission?.alwaysOk
           ? "all"
           : host.readPermission?.readableRuleIds ?? new Set<number>(),
+        host.readPermission?.alwaysOk === true,
       ),
     ]);
     const counts = results[1];
@@ -702,11 +703,12 @@ export function settingRuleCountsStatement(
   setTypeId: number,
   settingTypeId: number,
   readableRuleIds: ReadonlySet<number> | "all",
+  alwaysOk = false,
 ): SQLStatement {
   const all = readableRuleIds === "all";
   const readableIds = all ? [] : Array.from(readableRuleIds);
   const hasFilter = readableIds.length > 0;
-  const readableParams: number[] = hasFilter ? readableIds : [];
+  const readableParams: number[] = hasFilter && !alwaysOk ? readableIds : [];
   const sql =
     "SELECT settings.id AS sid, COUNT(*) AS c\n" +
     "FROM cards rules\n" +
@@ -714,7 +716,11 @@ export function settingRuleCountsStatement(
     "  JOIN cards settings ON rules.right_id = settings.id\n" +
     "WHERE sets.type_id = ? AND settings.type_id = ?\n" +
     "  AND rules.trash = 0 AND sets.trash = 0 AND settings.trash = 0\n" +
-    (hasFilter
+    // Card.search adds no read restriction for Auth.always_ok? (an
+    // administrator counts every rule).
+    (alwaysOk
+      ? ""
+      : hasFilter
       ? "  AND (rules.read_rule_id IS NULL OR rules.read_rule_id IN (" +
         readableParams.map(() => "?").join(",") +
         "))\n"

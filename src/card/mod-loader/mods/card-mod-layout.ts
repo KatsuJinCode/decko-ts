@@ -929,6 +929,8 @@ const myCardView: ViewFn = (ctx) => fillUniqueIds(ctx.fmt.engine.pageSessionMyCa
  *  because ensure_roles fills the session card's blank content with every
  *  current role); a signed-out engine composes the Anonymous-actor shape. */
 const enabledRolesEditInlineView: ViewFn = (ctx) => {
+  // A session actor with roles: the role-checkbox dropdown; otherwise the
+  // plain account dropdown.
   const sessionHtml =
     ctx.fmt.engine.pageSessionRolesDropdownHtml ??
     myCardDropdownInnerHtml(
