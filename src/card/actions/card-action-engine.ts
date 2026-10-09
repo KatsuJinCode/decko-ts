@@ -2660,10 +2660,21 @@ export class CardActionEngine {
     // RULE card whose name is changing re-derives its set's members and
     // every card pointing at it. The gate reads the SAVED row (the sides may
     // have been rewired by this rename).
+    //
+    // A RENAME carries the pre-write binding as a lookup overlay (see
+    // RuleLookupOverlay in set-read-rule.ts): Ruby's row write lands after
+    // the finalize cascade, so its re-derivation still resolves the rule
+    // under the OLD tag — the stored read_rule columns keep naming the
+    // renamed card (oracle: leftover probe step 3, tools/persistence/
+    // rule-rename-lookup-trace.rb).
     if (nameChanged) {
       const savedRow = await this.fetchRowById(row.id);
       if (savedRow !== undefined) {
-        await cascadeReadRuleAfterRuleSave(this.readRuleDeps(), savedRow, true);
+        const overlay =
+          currentName !== undefined && currentName.key !== nameAfter?.key
+            ? new Map([[currentName.key, savedRow.id]])
+            : undefined;
+        await cascadeReadRuleAfterRuleSave(this.readRuleDeps(), savedRow, true, overlay);
       }
     }
     if (nameChanged) await this.refreshDescendantCaches(row.id);
@@ -2988,7 +2999,21 @@ export class CardActionEngine {
       else others.set(action.card_id, { row: actionCard, rev: { ...(others.get(action.card_id)?.rev ?? {}), ...rev } });
     }
     const subcards: Record<string, SubcardInput> = {};
+    // The REVIVAL arm (the oracle's step 9): a revision whose trash comes
+    // back false on an already trashed card — reverting an act that cascade-
+    // deleted it. Ruby's nested save applies the revision as a subcard: the
+    // save adopts the trashed row (pull_from_trash!, trash.rb:57-68), writes
+    // trash back, and its reserved subaction is REMOVED at finalize as a
+    // no-change save (finalize_action's empty arm, history events.rb:34-37 —
+    // traced live: INSERT card_actions + DELETE of that row, UPDATE cards
+    // SET trash; tools/persistence/revert-trace.rb) — the row flips with NO
+    // action and NO change rows. The port writes the row directly.
+    const revivals: { row: CardsRow; rev: Revision }[] = [];
     for (const { row: other, rev } of others.values()) {
+      if (rev.trash === false && other.trash === 1) {
+        revivals.push({ row: other, rev });
+        continue;
+      }
       const otherName = await this.composedNameOf(other);
       // A revision that trashes the other card (revision_before_action of
       // its create: { trash: true }) becomes a trashing subcard, a :delete
@@ -3018,6 +3043,28 @@ export class CardActionEngine {
         content: rev.db_content ?? "",
         ...(typeof rev.type_id === "number" ? { typeId: rev.type_id } : {}),
       };
+    }
+    for (const { row: other, rev } of revivals) {
+      // The revival is exact only when the revision restores the row's own
+      // values (a delete action ever only changed trash, so the revision
+      // before it repeats the pre-delete row). A differing field would make
+      // Ruby's save store an action; that shape has no oracle evidence and
+      // stays refused.
+      const exact =
+        (rev.db_content ?? null) === (other.db_content ?? null) &&
+        (rev.type_id ?? null) === other.type_id &&
+        (rev.left_id ?? null) === other.left_id &&
+        (rev.right_id ?? null) === other.right_id;
+      if (!exact) {
+        throw new CardActionError(
+          "revert-unsupported",
+          `reverting another card's trash state with further changes is not supported (card ${other.id})`,
+        );
+      }
+      await driver.query(
+        "UPDATE cards SET trash = 0, updated_at = ? WHERE id = ?",
+        [sqlDateTime(this.clock()), other.id],
+      );
     }
     const hasSubcards = Object.keys(subcards).length > 0;
     // The card's own revision. A revision with trash: true (reverting a
@@ -3322,7 +3369,20 @@ export class CardActionEngine {
       [["clear_references", () => clearReferencesOnDelete(this.fetch.driver, row.id)]],
     );
     await cascadeReadRuleAfterRuleSave(this.readRuleDeps(), row, true);
-    return [{ cardId: row.id, actionId: saved.actionId, actId: saved.actId, verb: "delete", name }];
+    // delete_children (trash.rb:46-57) fires on EVERY :delete save — a
+    // subcard trashed by a save runs the same cascade as deleteCard itself:
+    // each live child gets its own delete action chained to THIS delete
+    // action (super_action = @supercard.current_action), recursively. A
+    // child that is itself a subcard of the act is already trashed (or is
+    // being trashed by its own arm) when the walk reaches it, so it keeps
+    // its own super action — the oracle's revert cascade stores the act's
+    // subcard deletes under the main action and only the cards OUTSIDE the
+    // act under their cascade parents (leftover probe step 12).
+    const children = await this.deleteChildren(writer, row.id, saved.actionId);
+    return [
+      { cardId: row.id, actionId: saved.actionId, actId: saved.actId, verb: "delete", name },
+      ...children,
+    ];
   }
 
   /** Breadth-first trash cascade: every live card whose left_id or right_id
@@ -3334,8 +3394,8 @@ export class CardActionEngine {
     writer: ActWriter,
     rootId: number,
     rootActionId: number,
-  ): Promise<CardActionSummary[]> {
-    const summaries: CardActionSummary[] = [];
+  ): Promise<(CardActionSummary & { actId: number })[]> {
+    const summaries: (CardActionSummary & { actId: number })[] = [];
     const visited = new Set<number>([rootId]);
     let frontier: { parentId: number; parentActionId: number }[] = [
       { parentId: rootId, parentActionId: rootActionId },
@@ -3378,6 +3438,7 @@ export class CardActionEngine {
             summaries.push({
               cardId: child.id,
               actionId: saved.actionId,
+              actId: saved.actId,
               verb: "delete",
               name: await this.composedNameOf(child),
             });
