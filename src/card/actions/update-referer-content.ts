@@ -40,8 +40,10 @@
 //     "{{}}". Both are Ruby data-corruption warts, not behaviors the
 //     parity corpus asserts; the divergences are recorded here and in the
 //     task report. QueryReference chunks (CQL, chunk/query_reference.rb
-//     :86-89) are outside this port's chunk model, same as in the
-//     out-direction, and stay untouched too.
+//     :86-89) ARE ported: swap_name (:86-89) replaces the name reference
+//     and rebuilds the chunk as the quoted swapped name, no absolutizing —
+//     `"#{@name}"` — which is what the harness's rename-referenced-tag step
+//     records on a saved search's "refer_to" target.
 // - content_quietly= (reference_events.rb:52-58): assign the content; if
 //   the db_content column actually changed (the loop guard, :54), write the
 //   column DIRECTLY (`update_column` — no validations, no callbacks, no
@@ -249,23 +251,32 @@ export function swapNames(
   let cursor = 0;
   for (const chunk of scanReferenceChunks(source)) {
     result += source.slice(cursor, chunk.start);
-    result += swapChunkText(chunk, oldName, newName, refererName);
+    result += swapChunkText(source.slice(chunk.start, chunk.end), chunk, oldName, newName, refererName);
     cursor = chunk.end;
   }
   return result + source.slice(cursor);
 }
 
-/** Link#swap_name (link.rb:35-40) / Nest#swap_name (nest.rb:77-81) for one
- *  chunk; returns the chunk's ORIGINAL text when the port leaves it
- *  untouched. */
+/** Link#swap_name (link.rb:35-40) / Nest#swap_name (nest.rb:77-81) /
+ *  QueryReference#swap_name (query_reference.rb:86-89) for one chunk;
+ *  `original` is the chunk's exact source span, returned untouched when the
+ *  port leaves the chunk alone (the Ruby rebuilds there corrupt it — module
+ *  header). */
 function swapChunkText(
+  original: string,
   chunk: ReturnType<typeof scanReferenceChunks>[number],
   oldName: DeckoName,
   newName: DeckoName,
   refererName: DeckoName,
 ): string {
-  const original = (chunk.refType === "L" ? "[[" : "{{") + chunk.inner + (chunk.refType === "L" ? "]]" : "}}");
   try {
+    if (chunk.refType === "Q") {
+      // QueryReference#swap_name (query_reference.rb:86-89): the parsed name
+      // swaps (replace_name_reference, reference.rb:30-35 — key comparison,
+      // NO absolutizing) and the chunk rebuilds as the quoted swapped name.
+      const swapped = DeckoName.parse(chunk.inner).swap(oldName, newName);
+      return `"${swapped.s}"`;
+    }
     if (chunk.refType === "L") {
       // link.rb:35-40. The target|text split follows interpret
       // (link.rb:89-97) via the same divider_index (link.rb:99-109).

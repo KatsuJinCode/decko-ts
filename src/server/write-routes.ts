@@ -767,8 +767,9 @@ async function signedInFor(ctx: WriteRouteContext, sessionToken: string | null):
  *  a later message for the same attribute replacing an earlier one). The
  *  throw site's explicit attribute map wins; otherwise the shown
  *  "KEY: message" lines are read back (Ruby upcases the attribute symbol
- *  for display; attributes are lower-case symbols). */
-function rubyErrorsHash(error: CardActionError, signedIn: boolean): Record<string, string> {
+ *  for display; attributes are lower-case symbols). Exported for the
+ *  harness adapter's error payload mapping (same shape, same reading). */
+export function rubyErrorsHash(error: CardActionError, signedIn: boolean): Record<string, string> {
   if (error.errorsByAttribute !== undefined) return { ...error.errorsByAttribute };
   // A denial without the rule walk's wording (the host write hook, a deck
   // without the anonymous card): still Ruby's :permission_denied key.
@@ -838,8 +839,10 @@ function diagnosticComment(error: CardActionError, signedIn: boolean): string {
 /** The Decko Bot account's email (Decko Bot+*account+*email), or the
  *  address the account mod seeds for it (card-mod-account data/real.yml,
  *  decko_bot+account email) when the deck has no such row. Follower mail
- *  is sent from it (safe_from_and_reply_to!). */
-async function deckoBotAccountEmail(driver: SQLDatabaseDriver): Promise<string> {
+ *  is sent from it (safe_from_and_reply_to!). Exported for the harness
+ *  adapter, whose direct CardActionEngine construction needs the same
+ *  followMail wiring the serving engine gets below. */
+export async function deckoBotAccountEmail(driver: SQLDatabaseDriver): Promise<string> {
   try {
     const r = await driver.query<{ email: string }>(
       "SELECT e.db_content AS email FROM cards e JOIN cards a ON a.id = e.left_id " +
@@ -1152,10 +1155,17 @@ export function servingModEventRuntime(): Promise<ModEventRuntime> {
   return servingModEventRuntimeSeat;
 }
 
-/** The serving runtime, with the host's stage-report observer attached when
- *  one is given. The shared runtime object is never mutated: an observed
- *  request gets a shallow copy carrying its own onReport. */
-async function observedModEventRuntime(ctx: WriteRouteContext): Promise<ModEventRuntime> {
+/** The serving runtime, with the type-set resolver and the host's
+ *  stage-report observer attached. The shared runtime object is never
+ *  mutated: an observed request gets a shallow copy carrying its own
+ *  setMember/onReport. Exported (driver-scoped) so the harness adapter's
+ *  direct engine construction composes the SAME runtime the serving write
+ *  path builds — without the resolver, every type-scoped deck event (the
+ *  Number cardtype's validate_number among them) skips "set-not-applicable"
+ *  (mod-event-dispatch.ts set_condition_applies). */
+export async function observedModEventRuntime(
+  ctx: Pick<WriteRouteContext, "driver" | "onModEventReport">,
+): Promise<ModEventRuntime> {
   const runtime = await servingModEventRuntime();
   const codenameOfType = await typeCodenames(ctx.driver);
   return {

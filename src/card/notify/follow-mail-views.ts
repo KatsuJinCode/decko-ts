@@ -212,10 +212,18 @@ export async function followMailViews(
       const before = newName !== undefined ? await previousValue(action, "name") : undefined;
       const name = before ?? (await nameOf(action.cardId));
       const body = `${name} ${action.type}d\n${await listOfChanges(action, html)}`;
-      items += html ? `<li>${body}</li>\n` : `\n${body}\n`;
+      // Text items: wrap_subedit_item (base_views.rb:113-115) contributes the
+      // LEADING newline only in the delivered bytes — the body already ends
+      // with its list's newline (wrap_list_item, :109-111), and the harness's
+      // Ruby capture pins exactly one blank line between items and after the
+      // header (the trailing wrapper newline never survives to the mail).
+      items += html ? `<li>${body}</li>\n` : `\n${body}`;
     }
     if (items === "") return "";
-    const list = html ? `<ul>${items}</ul>\n` : `\n${items}\n`;
+    // Text list tail: the Ruby capture pins the section ending with a blank
+    // line of its own before the template's next line ("Tag 02\n" + "\n\n"),
+    // alongside the one-blank-line header and item separations.
+    const list = html ? `<ul>${items}</ul>\n` : `${items}\n\n`;
     return `\nThis update included the following changes:\n${list}`;
   };
 

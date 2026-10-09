@@ -22,7 +22,12 @@ import {
 } from "../../../src/card/rules/structure.js";
 import { setCaptureWallClock } from "../../../src/card/wall-clock.js";
 import { setDeckEnvironment } from "../../../src/card/render/deck-origin.js";
-import { servingModEventRuntime } from "../../../src/server/write-routes.js";
+import {
+  deckoBotAccountEmail,
+  observedModEventRuntime,
+  rubyErrorsHash,
+} from "../../../src/server/write-routes.js";
+import { CardActionError } from "../../../src/card/actions/types.js";
 import { findRule } from "../../../src/card/rules/lookup.js";
 import { patternsForCard } from "../../../src/card/set-patterns/card-patterns.js";
 import { settingCardNameForCode } from "../../../src/card/set-patterns/rule-names.js";
@@ -281,16 +286,23 @@ async function opWrite(req: Req): Promise<Json> {
   const actor =
     req.actor === undefined || req.actor === "anonymous" ? null : { id: actorRec!.id, name: await nameOf(actorRec!) };
   const transport = new CaptureTransport("harness");
-  // The deck's own event composition rides every save (the serving write
-  // path's deck-boot seam): a scenario's validation events (the Number
-  // cardtype's validate_number), follower notifications and the other
-  // mod-declared events fire here exactly as they do on a real deck.
+  // The deck's own event composition rides every save, composed exactly as
+  // the serving write path composes it (observedModEventRuntime: the deck's
+  // declarations PLUS the type-set resolver — without it every type-scoped
+  // event, the Number cardtype's validate_number among them, skips
+  // "set-not-applicable"). followMail carries the deck origin and the Decko
+  // Bot address the follower emails render their links, unfollow URL and
+  // From rule from; absent, every nest renders as its bare "_" placeholder.
   const engine = new CardActionEngine(fetcher, {
     actor,
     ipAddress: null,
     now: () => clock,
     notifyTransport: transport,
-    modEvents: await servingModEventRuntime(),
+    modEvents: await observedModEventRuntime({ driver }),
+    followMail: {
+      origin: spec.environment?.origin ?? "http://deck.example",
+      deckoBotEmail: await deckoBotAccountEmail(driver),
+    },
   });
   const fields = (req.fields ?? {}) as Record<string, unknown>;
   const input: Record<string, unknown> = {};
@@ -322,7 +334,9 @@ async function opWrite(req: Req): Promise<Json> {
       (result as { cardId?: number })?.cardId ?? (result as { card?: { id?: number } })?.card?.id ?? undefined;
     if (id !== undefined) {
       await boot();
-      const rec = await fetcher.fetchById(id);
+      // A delete's payload card is the TRASHED card (Ruby's payload carries
+      // it; the row only carries the trash flag) — fetch past the trash.
+      const rec = await fetcher.fetchById(id, { lookInTrash: true });
       card = rec === undefined ? null : { name: await nameOf(rec), id };
     }
   } catch (error) {
@@ -331,8 +345,11 @@ async function opWrite(req: Req): Promise<Json> {
     // view :errors): {attribute => message}. The engine's denial wording is
     // internal; Ruby words a refusal "You don't have permission to <task>
     // <card>" and keys it :permission_denied; the guard keys :recaptcha; a
-    // duplicate name keys :name. A refused save still answers with the
-    // card when it exists (Ruby's payload carries it on updates/deletes).
+    // duplicate name keys :name with the core_error_name_exists text. A
+    // refused save still answers with the card when it exists on
+    // updates/deletes (Ruby's payload carries it there) — a refused CREATE
+    // carries NO card: the name the request targeted either exists untouched
+    // or never existed, and Ruby's payload is empty either way.
     const e = error as Error & {
       code?: string;
       field?: string;
@@ -345,8 +362,18 @@ async function opWrite(req: Req): Promise<Json> {
       errors = [{ field: "permission_denied", message: `You don't have permission to ${task} ${req.card}` }];
     } else if (e.code === "recaptcha") {
       errors = [{ field: "recaptcha", message: e.message }];
-    } else if (e.code === "name-conflict" || e.code === "name-illegal") {
-      errors = [{ field: "name", message: e.message }];
+    } else if (e instanceof CardActionError) {
+      // The JSON errors view's own reading (write-routes rubyErrorsHash):
+      // the shown "KEY: message" lines read back as {attribute => message}
+      // ("NAME: must be unique; ..." -> {name: "must be unique; ..."},
+      // "CONTENT: 'x' is not numeric" -> {content: "'x' is not numeric"}).
+      const hash = rubyErrorsHash(e, true);
+      const entries = Object.entries(hash);
+      if (entries.length > 0) {
+        errors = entries.map(([field, message]) => ({ field, message }));
+      } else {
+        errors = [{ field: String(e.code), message: e.message }];
+      }
     } else if (Array.isArray((e as { errors?: unknown[] }).errors)) {
       const list = (e as { errors: Array<{ field?: string; message?: string }> }).errors;
       errors = list.map((x) => ({ field: String(x.field ?? ""), message: String(x.message ?? "") }));
@@ -355,7 +382,7 @@ async function opWrite(req: Req): Promise<Json> {
     } else {
       errors = [{ field: "exception", message: `${e.constructor?.name ?? "Error"}: ${e.message}` }];
     }
-    const denied = await liveRecord(req.card).catch(() => undefined);
+    const denied = req.action === "create" ? undefined : await liveRecord(req.card).catch(() => undefined);
     card =
       denied === undefined
         ? null

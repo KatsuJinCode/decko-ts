@@ -651,6 +651,7 @@ export class CardActionEngine {
     mainName: DeckoName | undefined,
     subcards: Record<string, SubcardInput> | undefined,
     superActionId: number | null,
+    finalizeQueue?: (() => Promise<void>)[],
   ): Promise<(CardActionSummary & { actId: number })[]> {
     const saved: (CardActionSummary & { actId: number })[] = [];
     if (subcards === undefined) return saved;
@@ -686,7 +687,7 @@ export class CardActionEngine {
             superActionId,
           },
           undefined,
-          { isActCard: false },
+          { isActCard: false, ...(finalizeQueue !== undefined ? { finalizeQueue } : {}) },
         );
         if (updated !== null) {
           saved.push({
@@ -704,6 +705,7 @@ export class CardActionEngine {
               DeckoName.parse(fullName),
               sub.subcards,
               updated?.actionId ?? superActionId,
+              finalizeQueue,
             )),
           );
         }
@@ -724,7 +726,7 @@ export class CardActionEngine {
             ...(sub.history === false ? { history: false } : {}),
             ...(sub.passwordEncrypted === true ? { passwordEncrypted: true } : {}),
           },
-          { isActCard: false },
+          { isActCard: false, ...(finalizeQueue !== undefined ? { finalizeQueue } : {}) },
         );
         // a history-less card records no action (actionId 0): it is not a
         // subaction of the act
@@ -748,6 +750,7 @@ export class CardActionEngine {
               DeckoName.parse(fullName),
               sub.subcards,
               sub.history === false ? superActionId : created.actionId,
+              finalizeQueue,
             )),
           );
         }
@@ -1304,11 +1307,17 @@ export class CardActionEngine {
     input = await this.applySkinCreateEvents(input, typeId);
     await assertStyleCompilerFor(this.styleAssetContext(actingId), name, typeId);
     const writer = this.newWriter(actingId);
+    // Ruby runs every card's finalize events after the whole act's store
+    // phase, so the act card's reference janitors see the subcards' rows:
+    // the stores below enqueue their finalize thunks and they all run after
+    // (act card first, then the subcards in save order).
+    const finalizeQueue: (() => Promise<void>)[] = [];
     let result: ActionResult;
     try {
       result = await this.createInWriter(writer, input, {
         isActCard: true,
         resolvedTypeId: typeId,
+        finalizeQueue,
       });
     } catch (error) {
       await this.dropUnfilledActions(writer);
@@ -1317,11 +1326,13 @@ export class CardActionEngine {
     // subcards.rb:1-16: the subcards ride this save's act (director/
     // store.rb:37-58) — the "create Book card with plusses" submission.
     let finalResult = result;
-    const subResults = await this.saveSubcardsInWriter(writer, name, input.subcards, result.actionId);
+    const subResults = await this.saveSubcardsInWriter(writer, name, input.subcards, result.actionId, finalizeQueue);
     await this.ensureAccountDefaults(writer, name, result.cardId, result.actionId, subResults);
     if (subResults.length > 0) {
       finalResult = { ...result, subactions: [...result.subactions, ...subResults] };
     }
+    // FINALIZE (the deferred thunks, act card first — see finalizeQueue).
+    for (const finalize of finalizeQueue) await finalize();
     // II (director.rb:26): the integration phase runs after the save's
     // transaction commits (after_commit :integration_phase, director/
     // phases.rb:4), and the integrate seam runs BEFORE the notify hooks
@@ -1357,11 +1368,17 @@ export class CardActionEngine {
    *  subcards join the caller's act (Ruby: subcards save within the
    *  supercard's Director run, director/store.rb:37-58). `resolvedTypeId`
    *  rides in when the caller already paid resolveTypeId (the gated act
-   *  card); side subcards resolve their own. */
+   *  card). `finalizeQueue` defers this card's finalize events (its
+   *  runFinalizeEvents stage walk + reference janitors) to the caller: Ruby
+   *  runs every card's finalize AFTER the whole act's store phase, so the
+   *  act card's refresh_references_out sees its subcards' rows (and their
+   *  Lexicon entries) — an inline finalize parses the template content
+   *  before the subcards exist and emits partial "P" rows Ruby never
+   *  writes. Absent (every other caller): finalize runs inline, unchanged. */
   private async createInWriter(
     writer: ActWriter,
     input: CreateCardInput,
-    opts: { isActCard: boolean; resolvedTypeId?: number },
+    opts: { isActCard: boolean; resolvedTypeId?: number; finalizeQueue?: (() => Promise<void>)[] },
   ): Promise<ActionResult> {
     const name = DeckoName.parse(input.name ?? "");
     // A +*password card's content is validated and stored encrypted (the
@@ -1745,40 +1762,46 @@ export class CardActionEngine {
     // only when content was actually set (a nil db_content on a new row is
     // "unchanged" in Ruby's `changed: :content`); refresh_references_in is
     // a :create save, so only the map_referees arm runs either way.
-    await this.runFinalizeEvents(
-      this.eventCard({
-        name,
-        id: created.cardId,
-        key: name.key,
-        dbContent: attachmentIdentifier ?? (input.content ?? null),
-        action: "create",
-        trash: false,
-        typeId,
-        actId: created.actId,
-        changedFields: [
-          "name",
-          "type_id",
-          ...(input.attachment !== undefined || input.content != null ? ["db_content"] : []),
-          ...(input.codename != null ? ["codename"] : []),
-        ],
-      }),
-      [
+    // Deferred when the caller queued it (the act-card path): see the
+    // opts.finalizeQueue note above.
+    const runCreateFinalize = async (): Promise<void> => {
+      await this.runFinalizeEvents(
+        this.eventCard({
+          name,
+          id: created.cardId,
+          key: name.key,
+          dbContent: attachmentIdentifier ?? (input.content ?? null),
+          action: "create",
+          trash: false,
+          typeId,
+          actId: created.actId,
+          changedFields: [
+            "name",
+            "type_id",
+            ...(input.attachment !== undefined || input.content != null ? ["db_content"] : []),
+            ...(input.codename != null ? ["codename"] : []),
+          ],
+        }),
         [
-          "refresh_references_out",
-          () =>
-            this.maybeRefreshReferencesOut({
-              cardId: created.cardId,
-              name,
-              contentBefore: null,
-              contentAfter: attachmentIdentifier ?? input.content ?? null,
-            }),
+          [
+            "refresh_references_out",
+            () =>
+              this.maybeRefreshReferencesOut({
+                cardId: created.cardId,
+                name,
+                contentBefore: null,
+                contentAfter: attachmentIdentifier ?? input.content ?? null,
+              }),
+          ],
+          [
+            "refresh_references_in",
+            () => refreshReferencesIn(this.fetch.driver, created.cardId, name.key),
+          ],
         ],
-        [
-          "refresh_references_in",
-          () => refreshReferencesIn(this.fetch.driver, created.cardId, name.key),
-        ],
-      ],
-    );
+      );
+    };
+    if (opts.finalizeQueue !== undefined) opts.finalizeQueue.push(runCreateFinalize);
+    else await runCreateFinalize();
     return {
       cardId: created.cardId,
       actionId: created.actionId,
@@ -1946,7 +1969,10 @@ export class CardActionEngine {
       resolvedTypeId ?? row.type_id,
     );
     const writer = this.newWriter(actingId);
-    let result = await this.updateInWriter(writer, row, input, resolvedTypeId);
+    // The act card's finalize defers past the subcard saves (Ruby's finalize
+    // phase runs after the whole act's store — see the create path).
+    const finalizeQueue: (() => Promise<void>)[] = [];
+    let result = await this.updateInWriter(writer, row, input, resolvedTypeId, { finalizeQueue });
     // subcards.rb:1-16: the subcards ride this save's act — the multiedit
     // shape (the plusses in the main card's form submission). Ruby saves
     // them within the supercard's Director run (director/store.rb:37-58);
@@ -1956,6 +1982,7 @@ export class CardActionEngine {
       await this.composedNameOf(row),
       input.subcards,
       result?.actionId ?? null,
+      finalizeQueue,
     );
     if (result === null && subResults.length > 0) {
       // The act card's own save was a no-op but its subcards changed: the
@@ -1977,6 +2004,10 @@ export class CardActionEngine {
     } else if (result !== null && subResults.length > 0) {
       result = { ...result, subactions: [...result.subactions, ...subResults] };
     }
+    // FINALIZE (the deferred thunks, act card first — see finalizeQueue).
+    // This is the position the act card's finalize events ran in when they
+    // were inline; only their ORDER relative to the subcard stores changed.
+    for (const finalize of finalizeQueue) await finalize();
     // II (director.rb:26): the integrate seam before the notify hooks (see
     // the create path's note). A no-op save commits nothing, so ActiveRecord
     // runs no after_commit integration phase for it (phases.rb:3) and its
@@ -2135,7 +2166,7 @@ export class CardActionEngine {
     row: CardsRow,
     input: UpdateCardInput,
     preResolvedTypeId?: number,
-    opts: { isActCard?: boolean } = {},
+    opts: { isActCard?: boolean; finalizeQueue?: (() => Promise<void>)[] } = {},
   ): Promise<ActionResult | null> {
     const before = cardFieldStateFromRow(row);
     const after: CardFieldState = { ...before };
@@ -2474,73 +2505,88 @@ export class CardActionEngine {
     // the pre-seam behavior (update-referer-content.ts, refresh-references-
     // in.ts).
     const skipReferers = this.skipsEvent("update_referer_content");
-    await this.runFinalizeEvents(
-      this.eventCard({
-        name: nameAfter,
-        id: row.id,
-        key: nameChanged && newName !== undefined ? newName.key : currentKey,
-        dbContent: attachmentIdentifier ?? after.db_content,
-        action: "update",
-        actId: saved.actId,
-        trash: false,
-        typeId: after.type_id,
-        nameBeforeAct: currentName?.s,
-        changedFields: updateChangedFields,
-      }),
-      [
+    // The finalize block, as a closure so the act-card caller can defer it
+    // past the act's subcard saves (Ruby's finalize phase runs after the
+    // whole act's store — see createInWriter's opts.finalizeQueue note).
+    const refsContentAfter = attachmentIdentifier ??
+      (await this.structureReferencesContent(row, after.db_content));
+    const runUpdateFinalize = async (): Promise<void> => {
+      await this.runFinalizeEvents(
+        this.eventCard({
+          name: nameAfter,
+          id: row.id,
+          key: nameChanged && newName !== undefined ? newName.key : currentKey,
+          // Ruby's refresh_references_out body parses `card.content`
+          // (structured_content || standard_content) — a structured card's
+          // rows rebuild from the RULE's template, never from the just-saved
+          // column value (structureReferencesContent's note). The registered
+          // core-mod body reads THIS record's dbContent, so it carries the
+          // structure-resolved value too.
+          dbContent: attachmentIdentifier ?? refsContentAfter,
+          action: "update",
+          actId: saved.actId,
+          trash: false,
+          typeId: after.type_id,
+          nameBeforeAct: currentName?.s,
+          changedFields: updateChangedFields,
+        }),
         [
-          "refresh_references_out",
-          () =>
-            this.maybeRefreshReferencesOut({
-              cardId: row.id,
-              name: nameAfter,
-              contentBefore: before.db_content,
-              contentAfter: attachmentIdentifier ?? after.db_content,
-            }),
+          [
+            "refresh_references_out",
+            () =>
+              this.maybeRefreshReferencesOut({
+                cardId: row.id,
+                name: nameAfter,
+                contentBefore: before.db_content,
+                contentAfter: refsContentAfter,
+              }),
+          ],
+          [
+            "update_referer_content",
+            async () => {
+              if (
+                nameChanged &&
+                nameAfter !== undefined &&
+                currentName !== undefined &&
+                !skipReferers
+              ) {
+                await updateRefererContent(
+                  { driver: this.fetch.driver, lexicon: this.fetch.lexicon },
+                  row.id,
+                  currentName,
+                  nameAfter,
+                );
+              }
+            },
+          ],
+          [
+            // reference_events.rb:16-19, `when: :skip_update_referers?`: the
+            // referers keep their content and rebuild their rows from it.
+            "update_referer_references_out",
+            async () => {
+              if (nameChanged && skipReferers) {
+                await updateRefererReferencesOut(
+                  { driver: this.fetch.driver, lexicon: this.fetch.lexicon },
+                  row.id,
+                );
+              }
+            },
+          ],
+          [
+            "refresh_references_in",
+            async () => {
+              if (nameChanged && nameAfter !== undefined) {
+                await refreshReferencesIn(this.fetch.driver, row.id, nameAfter.key, {
+                  unmapExisting: skipReferers,
+                });
+              }
+            },
+          ],
         ],
-        [
-          "update_referer_content",
-          async () => {
-            if (
-              nameChanged &&
-              nameAfter !== undefined &&
-              currentName !== undefined &&
-              !skipReferers
-            ) {
-              await updateRefererContent(
-                { driver: this.fetch.driver, lexicon: this.fetch.lexicon },
-                row.id,
-                currentName,
-                nameAfter,
-              );
-            }
-          },
-        ],
-        [
-          // reference_events.rb:16-19, `when: :skip_update_referers?`: the
-          // referers keep their content and rebuild their rows from it.
-          "update_referer_references_out",
-          async () => {
-            if (nameChanged && skipReferers) {
-              await updateRefererReferencesOut(
-                { driver: this.fetch.driver, lexicon: this.fetch.lexicon },
-                row.id,
-              );
-            }
-          },
-        ],
-        [
-          "refresh_references_in",
-          async () => {
-            if (nameChanged && nameAfter !== undefined) {
-              await refreshReferencesIn(this.fetch.driver, row.id, nameAfter.key, {
-                unmapExisting: skipReferers,
-              });
-            }
-          },
-        ],
-      ],
-    );
+      );
+    };
+    if (opts.finalizeQueue !== undefined) opts.finalizeQueue.push(runUpdateFinalize);
+    else await runUpdateFinalize();
     // STORE tail (event :set_field_read_rules, permissions.rb:7-9 — after
     // :set_read_rule, on: :update, changed: :type_id): a type-changing save
     // re-derives every field card.
@@ -4430,6 +4476,35 @@ export class CardActionEngine {
       input.name,
       input.contentAfter ?? null,
     );
+  }
+
+  /** Ruby Card#content (content/all.rb:5-7): `structured_content ||
+   *  standard_content` — a card governed by a *structure rule
+   *  (templating.rb:30-34, a "_self" rule card counts as none) reads the
+   *  rule card's content whatever its own db_content column carries. The
+   *  reference janitors parse this content (all.rb:124-128 content_object
+   *  over `content`), so a structured card's save rebuilds its
+   *  card_references rows from the TEMPLATE, not from the freshly saved
+   *  column value (the harness's update-topic-as-member step records
+   *  exactly that: db_content becomes the submitted text while the rows
+   *  come back as the template's three inclusions). */
+  private async structureReferencesContent(
+    row: CardsRow,
+    dbContent: string | null | undefined,
+  ): Promise<string | null | undefined> {
+    const name = await this.composedNameOf(row);
+    if (name === undefined) return dbContent;
+    const pattern = await ruleWalkPatternInput(this.fetch, {
+      name,
+      id: row.id,
+      isNew: false,
+      typeId: row.type_id,
+    });
+    const structureRule = await findRule(this.fetch, pattern, "*structure");
+    if (structureRule === undefined || (structureRule.rule.dbContent ?? "").trim() === "_self") {
+      return dbContent;
+    }
+    return structureRule.rule.dbContent ?? dbContent;
   }
 
 
