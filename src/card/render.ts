@@ -6657,28 +6657,53 @@ export class RenderEngine implements RenderEngineLike {
     }
   }
 
-  /** findRule with Ruby's pattern-applies semantics for an UNRESOLVED-type
-   *  prototype input: a NEW card whose type the template chain has not
-   *  resolved carries NO Type / TypePlusRight pattern (set_pattern
-   *  application anchors those on card.type_id), so its rule-cache walk
-   *  emits no "<type>+<setting>" / "<type>+<anchor>+*type plus
-   *  right+<setting>" lookup keys. The name-walk's candidates for an
-   *  untyped input compose those forms with the registry's RichText
-   *  default, and on the RVW+*right set prototype the composed
-   *  RichText+RVW+*type plus right+*structure (rule 10722) then answered
-   *  "existing" where the oracle pins the opposite: the capture's slot
-   *  census (22 bars on the RVW+*right page) carries hide:["bar_nav"]
-   *  exactly on structure/autoname/help/input_type/on_create/on_update/
-   *  on_delete/thanks/follow — the settings whose every candidate misses
-   *  once the type-anchored forms are out — and the sibling TPR *read
-   *  rule (10745, same set card) is never the verdict either (the found
-   *  *read answer is the anchorless *all plus+*read). Typed inputs keep
-   *  the plain walk: their type-anchored candidates are Ruby's own. */
+  /** findRule with Ruby's cache-walk semantics for NEW-card prototypes.
+   *
+   *  TYPE-ANCHORED CANDIDATES NEED A TYPE: a NEW card whose type the
+   *  template chain has not resolved carries no Type / TypePlusRight
+   *  pattern (set_pattern application anchors those on card.type_id), so
+   *  its rule-cache walk emits no "<type>+<setting>" /
+   *  "<type>+<anchor>+*type plus right+<setting>" lookup keys. The
+   *  name-walk's candidates for an untyped input compose those forms with
+   *  the registry's RichText default; on the RVW+*right set prototype that
+   *  composition answered "existing" where the oracle pins the opposite
+   *  (the capture's slot census: hide:["bar_nav"] exactly on
+   *  structure/autoname/help/input_type/on_create/on_update/on_delete/
+   *  thanks/follow). Skip while the input's type is unresolved.
+   *
+   *  TPR CANDIDATES ANCHOR ON left_type, NOT THE CARD'S OWN TYPE:
+   *  pattern/class_methods.rb:59-73 left_type = `card.superleft&.type_name
+   *  || quick_type(card.name.left_name)`, where quick_type types a NEW
+   *  left card through ITS OWN *default walk — for the set prototype
+   *  *dummy+RVW (typed RichText via *all plus+*default) the TPR anchor is
+   *  quick_type("*dummy") = the *all+*default rule's type ("Basic Cs"),
+   *  so Ruby's lookup key reads "BasicCs+RVW+type_plus_right+<setting>" —
+   *  an anchor naming NO card (@anchor_id nil, pattern/base.rb:75-80
+   *  `elsif @anchor_id`) — and the key never forms: the
+   *  RichText+RVW+*type plus right+*structure rule (10722) stays
+   *  unreachable and the prototype's existing-rule verdict for *structure
+   *  is nil. The name walk instead composes the TPR candidate from the
+   *  input's own type name (RichText), whose anchor card DOES exist — the
+   *  one-hit divergence. Probe the quick-type-anchored form and skip the
+   *  input-type-anchored one for plain (supercard-less) compounds;
+   *  supercard-shaped inputs keep leftTypeName (class_methods.rb:61's
+   *  superleft arm, the Search+large image pin). */
   private async findPrototypeRule(
     protoInput: PatternCardInput,
     setting: string,
   ): Promise<{ rule: CardRecord } | undefined> {
     const candidates = ruleNamesForCard(protoInput, setting);
+    const protoName =
+      protoInput.name instanceof DeckoName
+        ? protoInput.name
+        : DeckoName.parse(String(protoInput.name));
+    const quickLeftTypeName =
+      protoInput.typeId !== undefined &&
+      protoInput.isNew === true &&
+      protoInput.leftTypeName === undefined &&
+      protoName.isCompound
+        ? await this.quickTypeName(protoName.leftName)
+        : undefined;
     for (const candidate of candidates) {
       if (
         protoInput.typeId === undefined &&
@@ -6686,6 +6711,51 @@ export class RenderEngine implements RenderEngineLike {
       ) {
         continue;
       }
+      const tprMatch = /^(.*)\+\*type plus right\+/.exec(candidate);
+      let probe = candidate;
+      if (
+        tprMatch !== null &&
+        quickLeftTypeName !== undefined &&
+        protoInput.typeName !== undefined &&
+        tprMatch[1].startsWith(`${protoInput.typeName}+`)
+      ) {
+        // rewrite the anchor's left type to Ruby's quick_type(left_name)
+        probe = `${quickLeftTypeName}${candidate.slice(String(protoInput.typeName).length)}`;
+      } else if (tprMatch !== null && quickLeftTypeName === undefined) {
+        continue;
+      }
+      let record: CardRecord | undefined;
+      try {
+        record = await this.fetcher.fetchByName(probe);
+      } catch (err) {
+        if (
+          err instanceof CodenameNotFoundError ||
+          err instanceof NameNotFoundError
+        ) {
+          continue;
+        }
+        throw err;
+      }
+      if (record !== undefined && record.name !== undefined) {
+        return { rule: record };
+      }
+    }
+    return undefined;
+  }
+
+  /** class_methods.rb:64-72 quick_type: the type name of a NEW card named
+   *  `name`, resolved through its own *default walk (untyped input; the
+   *  *self candidate drops for new cards and the compound-only *all plus
+   *  candidates need a type), first existing rule's own type. Undefined
+   *  when no *default rule applies or the type card cannot be named. */
+  private async quickTypeName(name: DeckoName | undefined): Promise<string | undefined> {
+    if (name === undefined) return undefined;
+    const candidates = ruleNamesForCard(
+      { name, id: undefined, typeId: undefined, typeName: undefined, isNew: true },
+      "*default",
+    );
+    for (const candidate of candidates) {
+      if (/\+(\*type|\*type plus right)\+/.test(candidate)) continue;
       let record: CardRecord | undefined;
       try {
         record = await this.fetcher.fetchByName(candidate);
@@ -6698,8 +6768,10 @@ export class RenderEngine implements RenderEngineLike {
         }
         throw err;
       }
-      if (record !== undefined && record.name !== undefined) {
-        return { rule: record };
+      if (record !== undefined && record.typeId !== undefined) {
+        const typeCard = await this.fetcher.fetchById(record.typeId);
+        const typeName = typeCard?.name?.s;
+        if (typeName !== undefined) return typeName;
       }
     }
     return undefined;
