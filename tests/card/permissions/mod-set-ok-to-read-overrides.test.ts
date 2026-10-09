@@ -321,8 +321,15 @@ describe("account-family read overrides (card-mod-account)", () => {
     expect(await s.engine.render("Anonymous+*account+*api key", "content")).toContain(
       "anon api key",
     );
+    // The password arm proves the same chain admission with a different proof
+    // token: a password card's stored digest is never rendered — the render
+    // succeeds non-denied and shows the account mod's encrypted placeholder
+    // (set/right/password.rb:53-55,81-83, "The password hash is NEVER
+    // rendered"). The digest this pin once expected was the mod-less-engine
+    // leak that placeholder plugs; the permission chain under test is
+    // unchanged.
     expect(await s.engine.render("Anonymous+*account+*password", "content")).toContain(
-      "anon password hash",
+      "<em>encrypted</em>",
     );
   });
 
