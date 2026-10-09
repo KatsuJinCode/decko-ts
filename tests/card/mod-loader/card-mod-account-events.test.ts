@@ -43,7 +43,7 @@ function declaredEvents(): Array<{ setPath: string; modName: string } & Record<s
   return out;
 }
 
-/** The recount's 30 names (tmp/wrong-goal-hunt instrument output over the
+/** The recount's 30 names (the events recount instrument over the
  *  pinned gems, mod-events lane re-run 2026-10-08). */
 const RECOUNT_30 = [
   "act_as_current_for_integrate_stage",
