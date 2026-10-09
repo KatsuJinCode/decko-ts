@@ -194,6 +194,7 @@ import { readFormgroupBody, templateLinkSetNameFromParts } from "../../render/vi
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
 import { parseNestOptions, scanNests } from "../../render/nest-syntax.js";
+import { safeSetKeys } from "../../render/set-keys.js";
 import { timeAgoInWords } from "./card-mod-history.js";
 import { ruleSidesStatement } from "./rule-card-warm.js";
 import { cardWallClockNow } from "../../wall-clock.js";
@@ -945,14 +946,49 @@ function fieldEditorInMultiCard(
   }
   const fieldName = DeckoName.parse(name).absoluteName(fmt.card.name);
   // nest (chunk rendering) fetches the field card with `new: {}` — a miss
-  // builds the NEW field card (never a raise); the format's own unknown
-  // record is what the prepared-map miss hands back.
-  const fieldCard = fmt.engine.fetchRenderCard(fieldName.key) ?? {
-    ...(fmt.engine.fetchRenderCard(fieldName.tag ?? fieldName.s) ?? {}),
-    name: fieldName,
-    key: fieldName.key,
-    unknown: true,
-  } as ViewContext["fmt"]["card"];
+  // builds the NEW field card (never a raise); its type defaults to the
+  // tag card's type when the tag exists, and a full fabricated record
+  // otherwise (nestRecord reads target.record.isNew - an empty object
+  // here was the +*account edit form's 500).
+  const known = fmt.engine.fetchRenderCard(fieldName.key);
+  const tagCard = known ?? fmt.engine.fetchRenderCard(fieldName.tag ?? fieldName.s);
+  const fieldCard = known ??
+    ({
+      ...(tagCard ?? {}),
+      name: fieldName,
+      key: fieldName.key,
+      unknown: true,
+      record: {
+        id: undefined,
+        codename: undefined,
+        leftId: undefined,
+        rightId: tagCard?.id,
+        typeId: tagCard?.typeId,
+        dbContent: undefined,
+        trash: false,
+        creatorId: undefined,
+        updaterId: undefined,
+        createdAt: undefined,
+        updatedAt: undefined,
+        currentRevisionId: undefined,
+        readRuleClass: undefined,
+        readRuleId: undefined,
+        referencesExpired: undefined,
+        name: fieldName,
+        key: fieldName.key,
+        isNew: true,
+        fromTrash: false,
+        uncacheable: false,
+      },
+      id: undefined,
+      dbContent: "",
+      typeName: tagCard?.typeName,
+      typeId: tagCard?.typeId,
+      typeCode: tagCard?.typeCode,
+      setKeys:
+        tagCard?.setKeys ??
+        safeSetKeys({ name: fieldName, typeId: tagCard?.typeId, typeName: tagCard?.typeName, leftTypeName: undefined }),
+    } as ViewContext["fmt"]["card"]);
   // edit_in_form_prefix (form.rb:160): the subcard's input names ride the
   // parent form's prefix + [subcards][<field relative to the form card>].
   const relative = fieldName.from(fmt.card.name);
