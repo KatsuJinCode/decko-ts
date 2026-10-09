@@ -7,7 +7,9 @@ import {
   normalizeAccordionGroupIds,
   normalizeCloudflareChallengeBlocks,
   normalizeForReplay,
+  maskSlotIdValues,
   normalizeSlotIds,
+  referenceErasedSlotQuotes,
 } from "../../src/testing/diff.js";
 
 const HEX20 = "abcdef0123456789abcd"; // exactly 20 lowercase hex chars
@@ -305,5 +307,32 @@ ${CF_BLOCK}</body>`;
   it("leaves pages without the block untouched (the frozen corpus shape)", () => {
     const html = "<footer>Decko v0.20.0</footer><script>decko.rootUrl='/';</script></body>";
     expect(normalizeCloudflareChallengeBlocks(html)).toBe(html);
+  });
+});
+
+describe("slot-id quote style against a reference stored as Ruby wrote it", () => {
+  const OTHER = "0123456789abcdef0123";
+  const bar = (q: string, id: string) => `<div class='bar' data-card-type-name='Topic' data-slot-id=${q}${id}${q}>`;
+
+  it("masks the value and keeps the quote", () => {
+    expect(maskSlotIdValues(bar("'", HEX20))).toBe("<div class='bar' data-card-type-name='Topic' data-slot-id='RANDOMIZED'>");
+    expect(maskSlotIdValues(bar('"', HEX20))).toBe(`<div class='bar' data-card-type-name='Topic' data-slot-id="RANDOMIZED">`);
+  });
+
+  it("a raw reference passes the same quote style with another id", () => {
+    expect(referenceErasedSlotQuotes(bar("'", HEX20))).toBe(false);
+    expect(compareNormalized(bar("'", HEX20), bar("'", OTHER)).equal).toBe(true);
+  });
+
+  it("a raw reference fails a quote-style difference", () => {
+    expect(compareNormalized(bar("'", HEX20), bar('"', OTHER)).equal).toBe(false);
+    expect(compareNormalized(bar('"', HEX20), bar("'", OTHER)).equal).toBe(false);
+  });
+
+  it("a reference whose capture erased quote style is compared as before", () => {
+    const erased = `<div class='bar' data-card-type-name='Topic' ${RANDOMIZED_SLOT_ATTRIBUTE}>`;
+    expect(referenceErasedSlotQuotes(erased)).toBe(true);
+    expect(compareNormalized(erased, bar("'", OTHER)).equal).toBe(true);
+    expect(compareNormalized(erased, bar('"', OTHER)).equal).toBe(true);
   });
 });

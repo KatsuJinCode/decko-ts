@@ -79,7 +79,7 @@ SLOT_ID_RE = /data-slot-id=(["'])\h+\1/.freeze
 CARD_ID_RE = /data-card-id=(["'])\d+\1/.freeze
 
 def normalize(html)
-  html.gsub(SLOT_ID_RE, 'data-slot-id="RANDOMIZED"')
+  html # slot ids stored as Ruby wrote them; masked at compare time
       .gsub(CARD_ID_RE, 'data-card-id="RANDOMIZED"')
 end
 

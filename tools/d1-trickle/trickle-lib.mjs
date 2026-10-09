@@ -239,10 +239,12 @@ export function manifest(plan, unitsDone) {
 }
 
 /** Mask the per-render random slot ids, the only bytes allowed to differ
- *  between two renders of the same data: data-slot-id="..." and the same
- *  attribute HTML-escaped inside another attribute (popover content). */
+ *  between two renders of the same data: the value of data-slot-id (its
+ *  quote style kept: Ruby single-quotes a Haml bar's, double-quotes a
+ *  content_tag wrap's) and the same attribute HTML-escaped inside another
+ *  attribute (popover content). */
 export function maskSlots(s) {
-  return s.replace(/data-slot-id="[^"]*"/g, 'data-slot-id=""').replace(/data-slot-id=&quot;[0-9a-f]*&quot;/g, "data-slot-id=&quot;&quot;");
+  return s.replace(/data-slot-id=(["'])[^"']*\1/g, "data-slot-id=$1$1").replace(/data-slot-id=&quot;[0-9a-f]*&quot;/g, "data-slot-id=&quot;&quot;");
 }
 
 // ---------------------------------------------------------------------------

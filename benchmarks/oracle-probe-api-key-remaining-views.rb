@@ -63,7 +63,7 @@ def deep_sort(obj)
 end
 
 def normalize(html)
-  html.gsub(/data-slot-id=(["'])\h+\1/, 'data-slot-id="RANDOMIZED"')
+  html # slot ids stored as Ruby wrote them; masked at compare time
       .gsub(/data-card-id=(["'])\d+\1/, 'data-card-id="RANDOMIZED"')
 end
 

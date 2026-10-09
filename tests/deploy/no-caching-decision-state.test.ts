@@ -36,7 +36,7 @@ const MIRROR = join(process.cwd(), "benchmarks", "one-trip-render", "deck-analyz
 const GATE_PAGES = join(process.cwd(), "tmp", "gate", "pages.txt");
 const HAVE_MIRROR = existsSync(MIRROR);
 
-const SLOT = /data-slot-id="[0-9a-f]+"/g;
+const SLOT = /data-slot-id=(["'])[0-9a-f]+\1/g;
 const norm = (html: string) => html.replace(SLOT, "");
 const url = (path: string) => `https://edge.test${path}`;
 
