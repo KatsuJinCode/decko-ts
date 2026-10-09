@@ -944,10 +944,15 @@ function fieldEditorInMultiCard(
     return "";
   }
   const fieldName = DeckoName.parse(name).absoluteName(fmt.card.name);
-  const fieldCard = fmt.engine.fetchRenderCard(fieldName.key);
-  if (fieldCard === undefined) {
-    throw new Error(`structured-form field not resolvable: ${fieldName.s}`);
-  }
+  // nest (chunk rendering) fetches the field card with `new: {}` — a miss
+  // builds the NEW field card (never a raise); the format's own unknown
+  // record is what the prepared-map miss hands back.
+  const fieldCard = fmt.engine.fetchRenderCard(fieldName.key) ?? {
+    ...(fmt.engine.fetchRenderCard(fieldName.tag ?? fieldName.s) ?? {}),
+    name: fieldName,
+    key: fieldName.key,
+    unknown: true,
+  } as ViewContext["fmt"]["card"];
   // edit_in_form_prefix (form.rb:160): the subcard's input names ride the
   // parent form's prefix + [subcards][<field relative to the form card>].
   const relative = fieldName.from(fmt.card.name);
