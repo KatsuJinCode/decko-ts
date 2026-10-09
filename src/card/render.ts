@@ -6643,8 +6643,7 @@ export class RenderEngine implements RenderEngineLike {
         if (!this.existingRuleCards.has(name.key)) {
           const protoInput = await this.prototypePatternInput(setCard);
           if (protoInput !== undefined) {
-            const rule = await findRule(
-              this.fetcher,
+            const rule = await this.findPrototypeRule(
               protoInput,
               settingCard.name?.s ?? `*${settingCodename}`,
             );
@@ -6656,6 +6655,54 @@ export class RenderEngine implements RenderEngineLike {
         }
       }
     }
+  }
+
+  /** findRule with Ruby's pattern-applies semantics for an UNRESOLVED-type
+   *  prototype input: a NEW card whose type the template chain has not
+   *  resolved carries NO Type / TypePlusRight pattern (set_pattern
+   *  application anchors those on card.type_id), so its rule-cache walk
+   *  emits no "<type>+<setting>" / "<type>+<anchor>+*type plus
+   *  right+<setting>" lookup keys. The name-walk's candidates for an
+   *  untyped input compose those forms with the registry's RichText
+   *  default, and on the RVW+*right set prototype the composed
+   *  RichText+RVW+*type plus right+*structure (rule 10722) then answered
+   *  "existing" where the oracle pins the opposite: the capture's slot
+   *  census (22 bars on the RVW+*right page) carries hide:["bar_nav"]
+   *  exactly on structure/autoname/help/input_type/on_create/on_update/
+   *  on_delete/thanks/follow — the settings whose every candidate misses
+   *  once the type-anchored forms are out — and the sibling TPR *read
+   *  rule (10745, same set card) is never the verdict either (the found
+   *  *read answer is the anchorless *all plus+*read). Typed inputs keep
+   *  the plain walk: their type-anchored candidates are Ruby's own. */
+  private async findPrototypeRule(
+    protoInput: PatternCardInput,
+    setting: string,
+  ): Promise<{ rule: CardRecord } | undefined> {
+    const candidates = ruleNamesForCard(protoInput, setting);
+    for (const candidate of candidates) {
+      if (
+        protoInput.typeId === undefined &&
+        /\+(\*type|\*type plus right)\+/.test(candidate)
+      ) {
+        continue;
+      }
+      let record: CardRecord | undefined;
+      try {
+        record = await this.fetcher.fetchByName(candidate);
+      } catch (err) {
+        if (
+          err instanceof CodenameNotFoundError ||
+          err instanceof NameNotFoundError
+        ) {
+          continue;
+        }
+        throw err;
+      }
+      if (record !== undefined && record.name !== undefined) {
+        return { rule: record };
+      }
+    }
+    return undefined;
   }
 
   /** The read-permission verdict for a prepared card (ok_to_read?'s set
@@ -7748,7 +7795,9 @@ export class RenderEngine implements RenderEngineLike {
       // "Sign up+*type+*on create" (21799, "signup alert email"), where
       // the map-order walk put Sign up first.
       rules.sort((a, b) => {
-        const byContent = a.dbContent < b.dbContent ? -1 : a.dbContent > b.dbContent ? 1 : 0;
+        const ca = a.dbContent ?? "";
+        const cb = b.dbContent ?? "";
+        const byContent = ca < cb ? -1 : ca > cb ? 1 : 0;
         if (byContent !== 0) return byContent;
         return a.name.s < b.name.s ? -1 : a.name.s > b.name.s ? 1 : 0;
       });
