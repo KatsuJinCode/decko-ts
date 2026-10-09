@@ -212,7 +212,11 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // merged tree. The semantics pin above was taken on a base that
       // lacked the registrations the other lines had added meanwhile;
       // still no new format key and no css/scss row.
-      ["html", 354],
+      // 354 -> 355 (semantics-part3 integration, 2026-10-08): All::Html::
+      // Error's production :server_error (4b7b1338's error-page ruling,
+      // debug_server_error's renderer twin), measured on the merged tree;
+      // still no new format key and no css/scss row.
+      ["html", 355],
 
       ["js", 2],
       ["json", 3],

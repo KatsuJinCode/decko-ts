@@ -128,9 +128,12 @@ describe("flat-record format-scope census (composed deck)", () => {
     // 149 -> 151: All::Html's :type and All::Html::Views' :labeled.
     // 151 -> 152: All::Html::Error's :debug_server_error, registered by the
     // same branch and measured on the integrated tree (2026-10-08).
+    // 152 -> 153: All::Html::Error's production :server_error — the
+    // semantics-part3 lane's error-page ruling (4b7b1338), measured on the
+    // merged tree (2026-10-08).
     // Abstract 30 -> 33, the same branch: Abstract::Items' :nav_item,
     // Abstract::List's :radio and Abstract::Script's :javascript_include_tag.
-    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(152);
+    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(153);
     expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(33);
   });
 

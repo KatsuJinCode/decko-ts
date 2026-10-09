@@ -1711,15 +1711,27 @@ const commentBoxBaseView: ViewFn = ({ fmt }) => {
   // the captured blanks.
   if (fmt.engine.taskAllowed?.(card, "update") !== true) return "";
   const siteKey = recaptchaSiteKey() ?? RECAPTCHA_SITE_KEY;
+  // card-mod-recaptcha set/all/recaptcha.rb recaptcha_on?: `!Auth.signed_in?`
+  // — the wrap (the form's data-recaptcha attribute, the api script and the
+  // token hidden) renders only for a signed-out session. The anonymous arm
+  // stays the recapture's byte-for-byte (shard-000005); the signed-in arm is
+  // the comment.rb shape the signed-in parity pins (no wrap, no author
+  // field — commentAuthorLabelHtml's nil arm below).
+  const signedIn =
+    fmt.engine.viewer?.signedIn === true || fmt.engine.pageSession?.signedIn === true;
+  const recaptchaAttr = signedIn ? "" : ` data-recaptcha="on"`;
+  const recaptchaHidden = signedIn
+    ? ""
+    : `<script src="https://www.google.com/recaptcha/api.js?render=${siteKey}"></` + `script>
+` +
+      `<input type="hidden" name="recaptcha_token" id="recaptcha_token" value=""` +
+      ` data-site-key="${siteKey}" data-action="update" class="_recaptcha-token" autocomplete="off" />`;
   const form =
-    `<form class="card-form slotter autosave" id="edit_card_${card.id}" data-recaptcha="on"` +
+    `<form class="card-form slotter autosave" id="edit_card_${card.id}"${recaptchaAttr}` +
     ` action="/update/${h(fmt.urlKey())}" accept-charset="UTF-8" data-remote="true" method="post">` +
     `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
     `<input type="hidden" name="_method" value="patch" autocomplete="off" />` +
-    `<script src="https://www.google.com/recaptcha/api.js?render=${siteKey}"></` + `script>
-` +
-    `<input type="hidden" name="recaptcha_token" id="recaptcha_token" value=""` +
-    ` data-site-key="${siteKey}" data-action="update" class="_recaptcha-token" autocomplete="off" />` +
+    recaptchaHidden +
     `<textarea rows="3" class=" form-control" name="card[comment]" id="card_comment">
 </textarea>
 ` +
