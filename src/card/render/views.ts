@@ -2735,7 +2735,7 @@ function virtualAllRuleCard(
     settingCard,
     settingCodename:
       settingCard.record.codename ?? settingCard.name.s.slice(1),
-    newCardDefaultType: (n) => fmt.engine.newCardDefaultType?.(n),
+    engine: fmt.engine,
   });
 }
 
@@ -3006,7 +3006,7 @@ function renderSettingListItems(
         settingCard,
         settingCodename,
         deckTypeCard,
-        newCardDefaultType: (n) => fmt.engine.newCardDefaultType?.(n),
+        engine: fmt.engine,
       });
       const slotHtml = fmt.nestRecord(virtual, "bar", {
         nest_name: virtual.name.s,
@@ -3125,7 +3125,7 @@ function barSettingListItem(
           setCard,
           settingCard,
           settingCodename: setting,
-          newCardDefaultType: (n) => ctx.fmt.engine.newCardDefaultType?.(n),
+          engine: ctx.fmt.engine,
         });
   return ctx.fmt.nestRecord(ruleCard, "bar", {
     nest_name: ruleCard.name.s,

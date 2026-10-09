@@ -1100,7 +1100,7 @@ function settingListItem(
           setCard,
           settingCard,
           settingCodename: setting,
-          newCardDefaultType: (n) => ctx.fmt.engine.newCardDefaultType?.(n),
+          engine: ctx.fmt.engine,
         });
   // the nest's show/home_view pair: nest.rb#prepare_view_and_opts! pins
   // `home_view ||= view` for every non-closed/edit view - the capture's
@@ -2466,7 +2466,7 @@ function quickEditSettingListItem(ctx: ViewContext, setting: string): string {
           setCard,
           settingCard,
           settingCodename: setting,
-          newCardDefaultType: (n) => ctx.fmt.engine.newCardDefaultType?.(n),
+          engine: ctx.fmt.engine,
         });
   if (stored === undefined || stored.unknown === true) {
     // Ruby's `card.fetch setting, new: {}` composes the codename LITERAL -
