@@ -37,7 +37,7 @@ function declaredEvents(): Array<{ setPath: string; modName: string } & Record<s
   const out: Array<{ setPath: string; modName: string } & Record<string, unknown>> = [];
   for (const file of cardModAccount.setModules ?? []) {
     for (const event of file.events ?? []) {
-      out.push({ setPath: file.setPath, modName: "account", ...(event as Record<string, unknown>) });
+      out.push({ setPath: file.setPath, modName: "account", ...(event as unknown as Record<string, unknown>) });
     }
   }
   return out;

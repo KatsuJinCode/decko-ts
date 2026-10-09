@@ -27,7 +27,7 @@ function declaredEvents(): Array<{ setPath: string } & Record<string, unknown>> 
   const out: Array<{ setPath: string } & Record<string, unknown>> = [];
   for (const file of cardModCarrierwave.setModules ?? []) {
     for (const event of file.events ?? []) {
-      out.push({ setPath: file.setPath, ...(event as Record<string, unknown>) });
+      out.push({ setPath: file.setPath, ...(event as unknown as Record<string, unknown>) });
     }
   }
   return out;
