@@ -122,6 +122,7 @@ import {
   guideTabView,
   historyTabView,
   inputView,
+  nameFormgroupView,
   newButtonsView,
   newFieldsView,
   newTypeFormgroupView,
@@ -1760,6 +1761,13 @@ const coreView: ViewFn = (ctx) => {
   // cannot drift.
   if (ctx.fmt.card.record.codename === "signin") {
     return signinCoreHtml(ctx);
+  }
+  // card-mod-account set/right/password.rb: `view :raw { t :account_encrypted }`
+  // and `view :core, wrap: :em { render_raw }` — a password card never shows
+  // its stored digest. Same headless reason as *signin above: the mod-less
+  // engines have no Right::Password registration.
+  if (ctx.fmt.card.name.rightName?.key === "*password") {
+    return "<em>encrypted</em>";
   }
   const base = isTemplatedNestsCard(ctx.fmt.card)
     ? ctx.fmt.withNestMode("template", () => coreViewBase(ctx))
@@ -6765,6 +6773,9 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   new_fields: newFieldsView,
   new_type_formgroup: newTypeFormgroupView,
   new_buttons: newButtonsView,
+  // form.rb:9-13 :name_formgroup - the unnamed new card's name prompt
+  // (new.rb:111-114 new_name_formgroup).
+  name_formgroup: nameFormgroupView,
   edit_name_row: editNameRowView,
   edit_type_row: editTypeRowView,
   content_formgroups: contentFormgroupsView,

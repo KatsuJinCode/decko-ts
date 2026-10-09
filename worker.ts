@@ -46,6 +46,7 @@ import {
   historyViewParams,
   installDeckNameEnvironment,
   mapRenderError,
+  publicDbContent,
   queryViewFromUrl,
 } from "./src/server/worker-shared-surface.js";
 
@@ -320,7 +321,7 @@ export default {
             key: record.name.key,
             type_id: record.typeId ?? null,
             codename: record.codename ?? null,
-            db_content_preview: (record.dbContent ?? "").slice(0, 200),
+            db_content_preview: publicDbContent(record).slice(0, 200),
           });
         } catch (error) {
           return json(500, {

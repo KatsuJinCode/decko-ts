@@ -1226,7 +1226,7 @@ const nameFormView: ViewFn = ({ fmt, voo }) =>
  *  add_default_name_and_id appends name/id); the bootstrap FIELD_HELPERS
  *  wrapper appends " form-control" to the EMPTY class - the leading-space
  *  class=" form-control" in the captured bytes. */
-const nameFormgroupView: ViewFn = ({ fmt }) => {
+export const nameFormgroupView: ViewFn = ({ fmt }) => {
   const card = fmt.card;
   const attrs = emitAttrs({
     class: "form-group",
@@ -1612,7 +1612,8 @@ function alertGuide(ctx: ViewContext): string {
  *  unnamed-card surface's remainder (the engine renders no unnamed
  *  cards). */
 function withCreateContext(ctx: ViewContext): void {
-  newNamePrompt(ctx);
+  // voo.title ||= new_view_title if new_name_prompt?
+  if (newNamePrompt(ctx) && ctx.voo.opts["title"] === undefined) ctx.voo.opts["title"] = newViewTitle(ctx);
   ctx.voo.showViz("help");
 }
 
@@ -1628,8 +1629,11 @@ function newNamePrompt(ctx: ViewContext): boolean {
  *  false on the engine surface: every card the engine renders is named, so
  *  Ruby's own first conjunct (name.blank?) answers false without reading
  *  the autoname rule; the unnamed-card arm is the disclosed remainder. */
-function needsName(_ctx: ViewContext): boolean {
-  return false;
+function needsName(ctx: ViewContext): boolean {
+  // A card the request names is never blank; the unnamed new card (Decko's
+  // new/:type route) is. autoname? (a *autoname rule on the type) is not
+  // consulted: an autonamed type's form still prompts for a name here.
+  return ctx.fmt.card.name.s === "";
 }
 
 /** new.rb:136-140 new_type_prompt?:
@@ -1640,7 +1644,8 @@ function needsName(_ctx: ViewContext): boolean {
  *  type opt would ride voo.opts["type"], read here). */
 function newTypePrompt(ctx: ViewContext): boolean {
   const { fmt, voo } = ctx;
-  const preset = voo.opts["type"] !== undefined; // params[:type] unported
+  // new_type_preset?: params[:type] (the request's new-card type) || voo.type
+  const preset = voo.opts["type"] !== undefined || fmt.engine.requestNewCard?.typeId !== undefined;
   const context = fmt.isMain || isSimpleCard(fmt) || isTemplateCard(fmt);
   const permitted = newTypePermitted(ctx);
   return visibleWrite(voo, "new_type_formgroup", !preset && context && permitted);
@@ -1684,7 +1689,8 @@ function newTypePermitted(ctx: ViewContext): boolean {
 function newViewName(ctx: ViewContext): string | undefined {
   if (newNamePrompt(ctx)) {
     return output([
-      ctx.fmt.renderView("name_formgroup"),
+      // _render_name_formgroup: the underscore skips the unknown check.
+      ctx.fmt.renderView("name_formgroup", { skip_perms: true }),
       hiddenFieldTag("name_prompt", "true"),
     ]);
   }

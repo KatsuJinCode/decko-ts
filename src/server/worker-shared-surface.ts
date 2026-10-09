@@ -225,3 +225,14 @@ export async function installDeckNameEnvironment(
     }
   }
 }
+
+/**
+ * A card's stored content as the JSON surfaces may show it. A password
+ * card's content is its digest, which Decko never shows to anyone, owner and
+ * administrators included: card-mod-account set/right/password.rb renders
+ * its content as "encrypted" (view :raw).
+ */
+export function publicDbContent(record: { name?: DeckoName; dbContent?: string }): string {
+  if (record.name?.rightName?.key === "*password") return "encrypted";
+  return record.dbContent ?? "";
+}

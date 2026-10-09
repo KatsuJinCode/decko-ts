@@ -105,6 +105,7 @@ import { SessionStore } from "../card/auth/index.js";
 import { signinAccount } from "../card/auth/signin.js";
 import { createCardActionEngineForSession } from "../card/actions/engine-for-session.js";
 import { CardActionError, type ActionResult, type AttachmentInput } from "../card/actions/types.js";
+import type { NotifyTransport } from "../card/notify/types.js";
 import type { CardActionRecaptchaConfig } from "../card/actions/card-action-engine.js";
 import type { ModEventRuntime } from "../card/mod-loader/mod-event-dispatch.js";
 import type { ModEngineHost } from "../card/mod-loader/mod-manifest.js";
@@ -172,7 +173,7 @@ export interface WriteRouteContext {
    *  re-renders through `show`). Absent -> ajax saves fall back to the
    *  hard redirect (documented TS deviation for host surfaces with no
    *  renderer; the staging server always provides it). */
-  renderSlot?: (name: string) => Promise<string>;
+  renderSlot?: (name: string, view?: string) => Promise<string>;
   /** The attachment storage seam (E4.4.a's LocalAttachmentStore), passed
    *  through to every write engine this module builds — the multipart
    *  upload surface stores bytes through it. Absent = attachment saves
@@ -201,6 +202,11 @@ export interface WriteRouteContext {
   /** The same-origin policy for writes and sign-in (request-origin.ts).
    *  Absent: from process.env, else enabled with no extra origins. */
   originPolicy?: OriginPolicy;
+  /** The mail transport the saves' notifications go through (follower
+   *  mail, card-mod-follow's :notify_followers integration event), passed
+   *  to every write engine this module builds. Absent = the engine's
+   *  default transport. */
+  notifyTransport?: NotifyTransport;
 }
 
 export interface WriteRouteResponse {
@@ -915,6 +921,7 @@ export async function handleWriteRequest(
     // still never fires the guard (recaptcha_keys? false, recaptcha.rb:46-48).
     modEvents: await servingModEventRuntime(),
     ...(ctx.recaptcha === undefined ? {} : { recaptcha: ctx.recaptcha }),
+    ...(ctx.notifyTransport === undefined ? {} : { notifyTransport: ctx.notifyTransport }),
   });
 
   // CardMount's mount argument: the card[<mount>] file part is the
@@ -1050,8 +1057,24 @@ export async function handleWriteRequest(
     // defaults to "soft" — re-render the saved card through `show` and
     // answer 200 + the rendered slot (the captured XHR save: 200 + the
     // titled slot). JSON requests keep the API shape.
+    // The success target (Card::Env::Success): success[mark] names another
+    // card ("_self", the default, is the saved card), success[view] the view.
+    const successMark = parsed.success["mark"];
+    const successName =
+      successMark !== undefined && successMark !== "" && !successMark.startsWith("_") ? successMark : name;
+    // redirect_cud_success: success[redirect] other than "soft" is the hard
+    // redirect, which an ajax request receives as {redirect: url} so the
+    // page itself navigates (response.rb hard_redirect) — the new-card
+    // form's data-main-success path.
+    const redirect = parsed.success["redirect"];
+    if (!json && isAjax(req, parsed) && redirect !== undefined && redirect !== "" && redirect !== "soft") {
+      return {
+        ...jsonResponse(200, { redirect: cardUrl(req, `/${locationName(successName)}`) }),
+        expiryName: name,
+      };
+    }
     if (!json && isAjax(req, parsed) && ctx.renderSlot !== undefined) {
-      const slotHtml = await ctx.renderSlot(name);
+      const slotHtml = await ctx.renderSlot(successName, parsed.success["view"] || undefined);
       return {
         status: 200,
         headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },

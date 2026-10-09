@@ -51,6 +51,7 @@
 
 import type { HistoryActionRow, HistoryActRow, HistoryChangeRow } from "../mod-loader/mods/card-mod-history.js";
 import type { RenderCard } from "../render/format.js";
+import type { NewCardOptions } from "../fetch.js";
 
 /** The params Ruby reads from Card::Env.params at render time
  *  (act_listing.rb:9-12 act_from_context "act_id", actions.rb:34-40
@@ -74,6 +75,13 @@ export interface HistoryRenderParams {
    *  { viewOpts: { hide: ['modal_header'] } })). Undefined for every
    *  existing caller (the engine passes {} onward, byte-identical). */
   viewOpts?: Record<string, unknown>;
+
+  /** The new-card arguments a request carries for a card that does not
+   *  exist (Ruby's controller: Card.uri_fetch builds the card with
+   *  `new: card_params`, the type from params[:type] or card[type],
+   *  card_class.rb:104-133). Read only when the engine renders absent cards
+   *  (RenderEngine#renderAbsentCards); undefined is the `new: {}` idiom. */
+  newCard?: NewCardOptions;
 }
 
 /** One action's card as the views need it (name algebra + type + the

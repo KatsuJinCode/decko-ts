@@ -26,7 +26,7 @@ import { DeckoName } from "./name.js";
 import { getNameEnvironment, setNameEnvironment } from "./name/environment.js";
 import { findAssignedTypeName } from "./set-patterns/set-type-assignment.js";
 import { CodenameNotFoundError, NameNotFoundError } from "./name/errors.js";
-import { FetchEngine } from "./fetch.js";
+import { FetchEngine, type NewCardOptions } from "./fetch.js";
 import {
   invalidateSeatedPagePayloads,
   oneTripWantsPayload,
@@ -184,6 +184,11 @@ import type {
  *  so a caller may ask for it directly). A :titled / :open / :content
  *  render never touches the seam. */
 const UPDATER_SEAM_VIEWS = new Set(["box", "box_bottom", "updated_by"]);
+
+/** Views that render edit forms, whose content formgroups carry each real
+ *  card's conflict tracker (card-mod-edit all/form.rb:27-31 view
+ *  :conflict_tracker: `card.last_action_id`). */
+const FORM_VIEW_PATTERN = /edit|board|bridge|form|overlay|modal/;
 
 /** The views whose bodies read the render root's SELF-SET card through the
  *  rule walk (card-mod-edit editing.rb:50-52 edit_rules nests
@@ -649,6 +654,12 @@ export class RenderEngine implements RenderEngineLike {
    *  ViewFns read it through RenderEngineLike#historyRenderReader. */
   private historyReader: HistoryRenderReader | undefined;
 
+  /** The current request's new-card arguments (HistoryRenderParams#newCard):
+   *  Ruby's params[:type] and card hash, read by the new-card views'
+   *  new_type_preset? (card-mod-edit new.rb:142-144). Set at every render()
+   *  entry. RenderEngineLike#requestNewCard. */
+  requestNewCard: NewCardOptions | undefined;
+
   /** The render-time ACT-SEARCH seam bundle (src/card/history/updater-seam.ts):
    *  set by prepareUpdaterRender during a render whose view is one of
    *  UPDATER_SEAM_VIEWS, cleared at every render() entry. The sync
@@ -1047,19 +1058,24 @@ export class RenderEngine implements RenderEngineLike {
     this.bootProbeIssued = true;
     const [found] = await Promise.all([this.fetcher.fetchByName(cardName), bootProbe]);
     if (bootProbe !== undefined) this.bootProbeVersion = await bootProbe;
-    const record = found === undefined && this.renderAbsentCards
-      ? await this.fetcher.fetchByName(cardName, { new: {} })
+    const record = (found === undefined || found.isNew === true) && this.renderAbsentCards
+      ? await this.fetcher.fetchByName(cardName, { new: params.newCard ?? {} })
       : found;
     if (record === undefined || record.name === undefined) {
       throw new Error(`card not found: ${cardName}`);
     }
     const name = record.name;
+    // An absent card is built from this request's arguments: a render card
+    // an earlier request seated under the same name (another type, say) is
+    // not this one.
+    if (record.isNew === true && this.renderAbsentCards) this.renderCards.delete(name.key);
     // The render-time history seam state is per-render: a render whose view
     // is not one of the history views must not see a previous render's
     // bundle (render-seam.ts documents the seam boundary). Same for the
     // act-search (updater) seam.
     this.historyReader = undefined;
     this.updaterReader = undefined;
+    this.requestNewCard = params.newCard;
 
     // Read-permission preparation (see src/card/permissions/). On a cold
     // render the state resolution rides the prefetch batch (one round trip
@@ -2060,6 +2076,7 @@ export class RenderEngine implements RenderEngineLike {
       await this.ensureCoreAdminRuntime();
     }
     await this.applyLateSeatStructureContent();
+    if (FORM_VIEW_PATTERN.test(view)) await this.seatLastActionIds();
     // db-roundtrip-elimination lane (W2b + W3b): prime the derived state
     // Ruby render(view, opts): the render's view opts ride the voo (the
     // form-substrate-2 modal hidden-header arm reaches the wrap
@@ -5020,6 +5037,35 @@ export class RenderEngine implements RenderEngineLike {
       if (card.typeCode === "mod") return true;
     }
     return false;
+  }
+
+  /** Seats each prepared real card's last action id for the conflict
+   *  tracker of an edit form. Ruby reads `card.last_action_id`, the card's
+   *  latest non-draft action (card-mod-history history.rb), not the cards
+   *  row's current_revision_id column, which decks Decko 0.20 creates leave
+   *  empty; a tracker rendered empty makes every save a conflict
+   *  (events.rb:66 detect_conflict). Cards whose row carries the column keep
+   *  it. One statement over the render's prepared cards. */
+  private async seatLastActionIds(): Promise<void> {
+    const missing = new Map<number, RenderCard[]>();
+    for (const card of this.renderCards.values()) {
+      if (card.id === undefined || card.record.currentRevisionId !== undefined) continue;
+      const list = missing.get(card.id) ?? [];
+      list.push(card);
+      missing.set(card.id, list);
+    }
+    if (missing.size === 0) return;
+    const ids = [...missing.keys()];
+    const { rows } = await this.fetcher.driver.query<{ card_id: number; last_id: number }>(
+      `SELECT card_id, MAX(id) AS last_id FROM card_actions WHERE card_id IN (${ids.map(() => "?").join(", ")})` +
+        ` AND (draft IS NULL OR draft = 0) GROUP BY card_id`,
+      ids,
+    );
+    for (const row of rows) {
+      for (const card of missing.get(Number(row.card_id)) ?? []) {
+        card.record.currentRevisionId = Number(row.last_id);
+      }
+    }
   }
 
   /** The core mod's admin runtime (mod-core's prepareAdminRuntime: the

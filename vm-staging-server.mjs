@@ -135,7 +135,7 @@ const ORIGIN_POLICY = defaultOriginPolicy();
 import { bootstrapFreshDeck } from "./dist/src/card/auth/boot-seed.js";
 import { createVirtualCardLookup } from "./dist/src/card/fetch/virtual-cards.js";
 import { newSlotId } from "./dist/src/card/render/slot-html.js";
-import { renderPageBytes } from "./dist/src/card/render/page.js";
+import { renderPageBytes, renderPageWithStatus } from "./dist/src/card/render/page.js";
 // The compiled *all+*script bundle (tinymce-assets lane): the OUTPUT side of
 // Ruby's script-asset pipeline — per-leaf comment_with_source +
 // Uglifier(harmony) compression, oracle-verified byte parity (see
@@ -266,6 +266,64 @@ const sharedStore = {
 // non-cdn host form was derived from a 2026-09-25 200-OK curl receipt, not
 // from the live page bytes — the live bytes never name that host.
 const SPACES_HOST = "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com";
+
+// DECKO_DECK_PROFILE=stock serves any deck the way stock Decko serves it,
+// for a fresh deck rather than the production deck this host was tuned on:
+//   - pages render through the engine's own views with no default mod
+//     loader, as the edge hosts and the reference harness's adapter render
+//     (saves still walk the deck's event runtime, write-routes.ts);
+//   - no production served-environment deltas (asset CDN host, stylesheet
+//     revision, script integrity, footer version pin);
+//   - /*signin is the *signin card's own page (its ported sign-in form), not
+//     the staging stand-in form;
+//   - a page for a card that does not exist renders as Ruby renders it (the
+//     new-card form when the viewer may create it, else Not Found).
+// Unset, every byte this host serves is unchanged.
+const STOCK_DECK = process.env.DECKO_DECK_PROFILE === "stock";
+
+// A deck serves its mods' public files at /mod/<mod>/... (decko setup links
+// public/mod/<mod> to each mod's public directory): TinyMCE loads its theme
+// from there, ace its modes. DECKO_MOD_PUBLIC_DIR names the directory that
+// holds mod/; unset, /mod/ paths are not served.
+const MOD_PUBLIC_DIR = process.env.DECKO_MOD_PUBLIC_DIR || undefined;
+const MOD_PUBLIC_TYPES = {
+  ".js": "text/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".json": "application/json",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".gif": "image/gif",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".ttf": "font/ttf",
+};
+
+async function serveModPublicFile(pathname) {
+  const root = path.resolve(MOD_PUBLIC_DIR, "mod");
+  let rel;
+  try {
+    rel = decodeURIComponent(pathname.slice("/mod/".length));
+  } catch {
+    return htmlResponse(400, "<h1>Bad request</h1>", "Bad request");
+  }
+  const file = path.resolve(root, rel);
+  if (file !== root && !file.startsWith(root + path.sep)) {
+    return htmlResponse(404, "<h1>Not found</h1>", "Not found");
+  }
+  try {
+    const bytes = await fs.readFile(file);
+    return {
+      status: 200,
+      headers: {
+        "Content-Type": MOD_PUBLIC_TYPES[path.extname(file).toLowerCase()] ?? "application/octet-stream",
+        "Cache-Control": "no-store",
+      },
+      body: bytes,
+    };
+  } catch {
+    return htmlResponse(404, "<h1>Not found</h1>", "Not found");
+  }
+}
 // (r18: DEFAULT_IMAGE_SIZE retired with the origin image passes — image
 // size variants resolve inside the engine's image views via the nest's
 // size option / imageCdnHost.)
@@ -1058,7 +1116,7 @@ const fetcher = new FetchEngine(driver, { sharedStore, database: "decko" });
 // getDefaultModLoader() (render.ts:539), so the loader must be in place
 // before the first engine exists — the same order Ruby boots in (mods load,
 // then controllers render).
-defaultDeckLoader();
+if (!STOCK_DECK) defaultDeckLoader();
 const render = new RenderEngine(fetcher);
 // The Auth::Token signing secret (TOKEN_CONFIG above), same host-deployment
 // config shape as imageCdnHost on the next lines.
@@ -1068,7 +1126,8 @@ render.tokenConfig = TOKEN_CONFIG;
 // undefined = host-relative /files URLs). The live deck serves carrierwave
 // cloud attachments from the .cdn. Spaces subdomain — SPACES_HOST above
 // (live Home.html receipt: src="…cdn…/files/27689/135167-large.jpg").
-render.imageCdnHost = SPACES_HOST;
+render.imageCdnHost = STOCK_DECK ? undefined : SPACES_HOST;
+if (STOCK_DECK) render.renderAbsentCards = true;
 
 // Sync name-environment adapters (mark strings like "~9", ":search_type"
 // resolve through engine.peekLexiconId etc., which read warm caches only;
@@ -2397,6 +2456,8 @@ const SERVED_SCRIPT_INTEGRITY = [
   },
 ];
 function applyServedEnvironmentDeltas(engineHtml) {
+  // A stock deck is served exactly as the engine renders it.
+  if (STOCK_DECK) return engineHtml;
   let body = engineHtml;
   // 1. Asset host: capture fog form -> the served .cdn. Spaces host. The
   //    engine's CLOUD_URL_PREFIX already carries the "files/" web path, so
@@ -2422,8 +2483,58 @@ function applyServedEnvironmentDeltas(engineHtml) {
 // read rules (render.ts viewer seam; permission state memoizes per engine,
 // which is why actors get their own instance instead of a shared mutable
 // viewer field).
-async function renderCardPage(cardName, renderEngine = render, requestedView) {
+/** Decko's new-card routes (decko-0.20.0 config/engine_routes.rb):
+ *  `get "new/:type"` (view new, no mark) and the legacy
+ *  `get "card/:view(/:mark)"` with view new. The card's name, type and
+ *  content come from the query as Ruby's controller reads them (card[name],
+ *  card[type] or type, card[content]; card_class.rb:104-133). Returns
+ *  { name, newCard } for these routes, null for every other path. */
+function parseNewCardRoute(segs, query) {
+  let typeName;
+  let mark;
+  if (segs.length === 2 && segs[0] === "new" && segs[1] !== "") {
+    typeName = decodeName(segs[1]);
+  } else if (segs[0] === "card" && segs[1] === "new" && segs.length <= 3) {
+    mark = segs[2] ? decodeName(segs[2]) : undefined;
+  } else {
+    return null;
+  }
+  return { name: query.get("card[name]") ?? mark ?? "", mark, typeName };
+}
+
+/** The new-card arguments of a request (uri_fetch_opts, card_class.rb:128-133):
+ *  the card hash from the query, the type from card[type] or the type
+ *  param (or the /new/:type segment), the name from card[name] or else the
+ *  mark with underscores read as spaces. They build the card only when it
+ *  does not exist. */
+async function newCardRenderParams(mark, query, routeType) {
+  const newCard = {};
+  const name = query.get("card[name]") ?? (mark ? mark.replace(/_/g, " ") : undefined);
+  if (name !== undefined) newCard.name = name;
+  // The type by name, as extract_type_id resolves it (type.rb:96-107).
+  const typeName = query.get("card[type]") || query.get("type") || routeType;
+  if (typeName) {
+    const typeCard = await fetcher.fetchByName(typeName);
+    if (typeCard?.id !== undefined) newCard.typeId = typeCard.id;
+  }
+  const content = query.get("card[content]");
+  if (content !== null) newCard.content = content;
+  return { newCard };
+}
+
+async function renderCardPage(cardName, renderEngine = render, requestedView, renderParams, pageOpts = {}) {
   try {
+    if (pageOpts.bare) {
+      // show_without_page_layout: view ||= home_view || default_page_view.
+      const view = requestedView ?? renderEngine.defaultHtmlViewConfig();
+      renderEngine.pageErrorStatus = undefined;
+      const html = await renderEngine.render(cardName, view, renderParams);
+      return {
+        status: renderEngine.pageErrorStatus ?? 200,
+        headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+        body: html,
+      };
+    }
     // r18: the ENGINE assembles the page — the show_with_page_layout port
     // (per-card *layout rule, main! render, layout-body processing through
     // the engine's own nest pipeline, html_page head). The round-9/10
@@ -2437,10 +2548,15 @@ async function renderCardPage(cardName, renderEngine = render, requestedView) {
     // the requested view is the root show view). An unported view raises
     // the engine's UnsupportedViewError — Ruby's unsupported-view UserError
     // (format/render.rb:60-64) — handled below.
-    const engineHtml = await renderPageBytes(renderEngine, cardName, requestedView);
+    // A stock deck answers with the page's own status (Ruby's
+    // root.error_status: 404 for an unknown card, 403 for a denial), and the
+    // request's new-card params reach an absent card's form.
+    const { html: engineHtml, status } = STOCK_DECK
+      ? await renderPageWithStatus(renderEngine, cardName, requestedView, renderParams)
+      : { html: await renderPageBytes(renderEngine, cardName, requestedView), status: 200 };
     const body = applyServedEnvironmentDeltas(engineHtml);
     return {
-      status: 200,
+      status,
       headers: {
         "Content-Type": "text/html; charset=utf-8",
         "Cache-Control": "no-store",
@@ -2543,7 +2659,11 @@ async function cardRecordJson(cardName, renderEngine = render) {  const record =
     updated_at: record.updatedAt ?? null,
     creator_id: record.creatorId ?? null,
     updater_id: record.updaterId ?? null,
-    db_content: record.dbContent ?? null,
+    // A password card's content is its digest, which Decko never shows
+    // (card-mod-account set/right/password.rb `view :raw` answers
+    // "encrypted"), not even to the account's owner or an administrator.
+    db_content:
+      record.name?.rightName?.key === "*password" ? "encrypted" : (record.dbContent ?? null),
   });
 }
 
@@ -2607,9 +2727,15 @@ function engineForActor(actorId) {
   let engine = signedInEngines.get(actorId);
   if (engine === undefined) {
     engine = new RenderEngine(fetcher);
-    engine.imageCdnHost = SPACES_HOST;
+    engine.imageCdnHost = render.imageCdnHost;
+    engine.renderAbsentCards = render.renderAbsentCards;
     engine.tokenConfig = TOKEN_CONFIG;
     engine.viewer = { signedIn: true, actorId };
+    // The page chrome's session (Ruby Auth.current): the navbar's account
+    // links, "my card" and roles dropdown render for this account. Without
+    // it a signed-in page showed the signed-out navbar's empty account
+    // list. Set before the first render, as the edge host does.
+    engine.pageSession = engine.viewer;
     if (signedInEngines.size >= MAX_SIGNED_IN_ENGINES) {
       signedInEngines.delete(signedInEngines.keys().next().value);
     }
@@ -2767,7 +2893,7 @@ async function renderSigninPage() {
 // The sign-in routes. /​*signin is LIVE's route shape (the nav's Sign in
 // link points there, byte-matched to the live captures); /_signin is the
 // staging-slice alias named alongside the POST endpoints.
-const SIGNIN_PAGE_PATHS = new Set(["/_signin", "/*signin", "/*signin/titled"]);
+const SIGNIN_PAGE_PATHS = new Set(STOCK_DECK ? ["/_signin"] : ["/_signin", "/*signin", "/*signin/titled"]);
 
 // The forgot-password form's submit route: Ruby's own card_form :update
 // target for *signin (set/self/signin.rb format :html edit view).
@@ -3028,16 +3154,19 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
       // write-routes.ts:154-168). The config passes through UNCHANGED; the
       // engine's rule walk and siteverify GET stay the defaults.
       ...(recaptchaConfig === undefined ? {} : { recaptcha: recaptchaConfig }),
+      // Follower notifications go through the same transport as the account
+      // mail (capture when DECKO_MAIL_CAPTURE=1, otherwise none).
+      notifyTransport: mailTransport,
       renderSlot:
         cookieActor !== null
-          ? async (name) => {
+          ? async (name, view) => {
               // Ruby's order: the save expires the saved card's cache
               // (cache/all.rb) BEFORE the soft redirect re-renders it —
               // without this the slot render reads the pre-save warm maps.
               fetcher.expireName(name);
               const actorEngine = engineForActor(cookieActor.id);
               actorEngine.expireRenderCard(name);
-              return actorEngine.render(name, "titled");
+              return actorEngine.render(name, view ?? "titled");
             }
           : undefined,
     },
@@ -3135,6 +3264,12 @@ const server = http.createServer(async (req, res) => {
   // page default.
   const requestedView =
     url.searchParams.get("view")?.trim() || url.searchParams.get("v")?.trim() || undefined;
+  // html/show.rb show_layout?: an ajax request renders the view alone, with
+  // no page layout, unless it asks for one (params[:layout]). Decko's own
+  // scripts load modals, slots and save results this way.
+  const pageOpts = {
+    bare: STOCK_DECK && req.headers["x-requested-with"] === "XMLHttpRequest" && !url.searchParams.has("layout"),
+  };
 
   // Every state-changing request (sign-in and sign-out, the account forms,
   // first-run setup, card writes) must come from this deck's own pages.
@@ -3302,12 +3437,53 @@ const server = http.createServer(async (req, res) => {
        (pathname === "/*signin" && url.searchParams.get("view") === "edit"))
     ) {
       response = await renderForgotPasswordPage();
+    } else if (
+      STOCK_DECK &&
+      writePathEnabled() &&
+      req.method === "GET" &&
+      req.headers["x-requested-with"] === "XMLHttpRequest" &&
+      /^\/(card\/)?(create|update|delete)\/[^/]+$/.test(pathname) &&
+      !/^\/(card\/)?delete\/\*signin$/i.test(pathname)
+    ) {
+      // Decko's routes take create, update and delete over GET as well
+      // (engine_routes.rb "(card)/<action>(/:mark)"), and its own links use
+      // them through ajax: the follow buttons (GET /update/<card>+*follow?...)
+      // and the edit form's Delete. Served here for same-origin ajax only:
+      // the X-Requested-With header cannot be set by another site without
+      // CORS, so a plain cross-site link or image cannot change a card. The
+      // parameters ride the query string, as Ruby reads them.
+      const verb = /\/(create|update|delete)\//.exec(pathname)[1];
+      const writeReq = Object.assign(Object.create(req), {
+        method: verb === "delete" ? "DELETE" : "POST",
+        headers: req.headers,
+        url: req.url,
+      });
+      response = (await dispatchWriteRequest(writeReq, pathname, "")) ?? jsonResponse(404, { error: "no write route" });
+      expireRenderCachesAfterSave(
+        { fetcher, renderEngine: render, signedInEngines: signedInEngines.values() },
+        response,
+      );
+    } else if (STOCK_DECK && req.method === "GET" && /^\/(card\/)?delete\/\*signin$/i.test(pathname)) {
+      // The navbar's "Sign out" link is GET /delete/*signin: Decko's routes
+      // take delete over GET (engine_routes.rb "(card)/delete(/:mark)"), and
+      // the *signin card's :signout event ends the session
+      // (set/self/signin.rb), then the page shows *signin.
+      const token = readSessionCookie(req.headers.cookie);
+      await signoutAccount(sessions, token);
+      response = {
+        status: 302,
+        headers: { Location: "/*signin", "Set-Cookie": clearedSessionCookieHeader(), "Cache-Control": "no-store" },
+        body: "",
+      };
     } else if (req.method === "GET" && pathname === "/_mail-log") {
       response = handleMailLog();
     } else if (pathname === "/_status") {
       response = await status();
     } else if (pathname === "/") {
-      response = await renderCardPage(HOME_CARD_NAME, render, requestedView);
+      // The home page renders for the session's account like any other page.
+      response = await renderCardPage(HOME_CARD_NAME, requestEngine, requestedView, undefined, pageOpts);
+    } else if (STOCK_DECK && MOD_PUBLIC_DIR !== undefined && pathname.startsWith("/mod/")) {
+      response = await serveModPublicFile(pathname);
     } else if (pathname.startsWith("/files/")) {
       const assetResp = await handleAssetFile(pathname);
       if (assetResp !== null) {
@@ -3359,7 +3535,13 @@ const server = http.createServer(async (req, res) => {
       } else if (shadowViewLane && requestedView !== null && requestedView !== "") {
         response = await renderCardView(name, requestedView, requestEngine);
       } else {
-        response = await renderCardPage(name, requestEngine, requestedView);
+        response = await renderCardPage(
+          name,
+          requestEngine,
+          requestedView,
+          STOCK_DECK ? await newCardRenderParams(name, url.searchParams) : undefined,
+          pageOpts,
+        );
       }
     } else {
       // Multi-segment GET grammar — decko-0.20.0 config/engine_routes.rb,
@@ -3387,7 +3569,13 @@ const server = http.createServer(async (req, res) => {
       const stripFormat = (s) => s.replace(/\.[A-Za-z0-9]+$/, "");
       let routeName;
       let routeView;
-      if (segs.length === 2 && segs[0] !== "" && segs[1] !== "") {
+      let renderParams;
+      const newCardRoute = STOCK_DECK ? parseNewCardRoute(segs, url.searchParams) : null;
+      if (newCardRoute !== null) {
+        routeName = newCardRoute.name;
+        routeView = "new";
+        renderParams = await newCardRenderParams(newCardRoute.mark, url.searchParams, newCardRoute.typeName);
+      } else if (segs.length === 2 && segs[0] !== "" && segs[1] !== "") {
         routeName = segs[0];
         routeView = stripFormat(segs[1]);
       } else if (segs.length === 3 && segs[1] === "view" && segs[0] !== "" && segs[2] !== "") {
@@ -3402,12 +3590,14 @@ const server = http.createServer(async (req, res) => {
         routeName = segs[2];
         routeView = segs[1];
       }
-      if (routeName !== undefined && routeView !== undefined) {
+      if (newCardRoute !== null) {
+        response = await renderCardPage(routeName, requestEngine, routeView, renderParams, pageOpts);
+      } else if (routeName !== undefined && routeView !== undefined) {
         const name = decodeName(routeName);
         if (name === undefined || name === "") {
           response = jsonResponse(400, { error: "empty card name" });
         } else {
-          response = await renderCardPage(name, requestEngine, routeView);
+          response = await renderCardPage(name, requestEngine, routeView, undefined, pageOpts);
         }
       } else {
         response = htmlResponse(
