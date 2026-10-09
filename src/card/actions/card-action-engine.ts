@@ -212,7 +212,9 @@ import { expireRuleResolutionCache } from "../permissions/read-rules.js";
  *  and `attachment :image` (set/type/image.rb:1, Image cards codename
  *  `image`). validate_file_exist's attachment_name and the multipart
  *  route's card[<mount>] param names derive from these declarations. */
-const ATTACHMENT_MOUNTS: Readonly<Record<string, string>> = {
+/** The mount name per attachment-capable type codename (set/type/image.rb:1
+ *  `attachment :image`, set/type/file.rb:1 `attachment :file`). */
+export const ATTACHMENT_MOUNTS: Readonly<Record<string, string>> = {
   file: "file",
   image: "image",
 };
@@ -774,6 +776,21 @@ export class CardActionEngine {
         );
       }
     }
+    // delete_children (trash.rb:46-57) fires on EVERY :delete save — also on
+    // a subcard trashed within a bigger save. The cascade runs once the act's
+    // OWN trash arms have all processed, and skips the cards those arms
+    // trashed (Ruby's director reuses a subcard already in the act: the card
+    // keeps the supercard's action as its super action) while still walking
+    // THROUGH them — their descendants cascade under the in-act card's own
+    // delete action, exactly the oracle's revert cascade (leftover probe
+    // step 12: the act's subcard deletes under the main action, the cards
+    // outside the act under their cascade parents).
+    if (trashedHere.length > 0) {
+      const inAct = new Set<number>(trashedHere.map((t) => t.cardId));
+      for (const t of trashedHere) {
+        saved.push(...(await this.deleteChildren(writer, t.cardId, t.actionId, inAct)));
+      }
+    }
     return saved;
   }
 
@@ -850,13 +867,20 @@ export class CardActionEngine {
     // ("image-original.svg", "file.txt") — coded.rb coded_dir +
     // FileCardUploader#filename — and the identifier is the coded one.
     const coded = attachment.coded;
+    // full_filename (image_card_uploader.rb:44-57): the base file of an
+    // IMAGE-mount upload carries -original whatever its extension (versions
+    // alone depend on create_versions?); a FILE mount stores the plain
+    // "<mount><ext>" (file_card_uploader.rb filename).
     const renditionNames =
       coded === undefined
         ? codename !== undefined && codename !== "" && mountUsesImageUploader(codename) && createVersionsFor(ext)
           ? renditionFileNames(actionId, ext)
           : undefined
-        : mountUsesImageUploader(codename ?? "") && createVersionsFor(ext)
-          ? [`${mount}-original${ext}`, ...IMAGE_VERSION_NAMES.map((v) => `${mount}-${v}${ext}`)]
+        : mountUsesImageUploader(codename ?? "")
+          ? [
+              `${mount}-original${ext}`,
+              ...(createVersionsFor(ext) ? IMAGE_VERSION_NAMES.map((v) => `${mount}-${v}${ext}`) : []),
+            ]
           : undefined;
     // The version files (image_card_uploader.rb:16-27): resized renditions
     // keyed by their stored names.
@@ -3369,20 +3393,14 @@ export class CardActionEngine {
       [["clear_references", () => clearReferencesOnDelete(this.fetch.driver, row.id)]],
     );
     await cascadeReadRuleAfterRuleSave(this.readRuleDeps(), row, true);
-    // delete_children (trash.rb:46-57) fires on EVERY :delete save — a
-    // subcard trashed by a save runs the same cascade as deleteCard itself:
-    // each live child gets its own delete action chained to THIS delete
-    // action (super_action = @supercard.current_action), recursively. A
-    // child that is itself a subcard of the act is already trashed (or is
-    // being trashed by its own arm) when the walk reaches it, so it keeps
-    // its own super action — the oracle's revert cascade stores the act's
-    // subcard deletes under the main action and only the cards OUTSIDE the
-    // act under their cascade parents (leftover probe step 12).
-    const children = await this.deleteChildren(writer, row.id, saved.actionId);
-    return [
-      { cardId: row.id, actionId: saved.actionId, actId: saved.actId, verb: "delete", name },
-      ...children,
-    ];
+    // The delete_children cascade does NOT run here: a subcard trashed by a
+    // multi-subcard save must leave the cards that are THEMSELVES that
+    // save's trash subcards under the supercard's action (Ruby's director
+    // reuses a subcard already in the act), and trashing them early would
+    // turn their own arms into pull-from-trash revivals. The caller runs
+    // the cascade once the act's own subcard arms have all processed (see
+    // saveSubcardsInWriter).
+    return [{ cardId: row.id, actionId: saved.actionId, actId: saved.actId, verb: "delete", name }];
   }
 
   /** Breadth-first trash cascade: every live card whose left_id or right_id
@@ -3394,6 +3412,7 @@ export class CardActionEngine {
     writer: ActWriter,
     rootId: number,
     rootActionId: number,
+    skip?: Set<number>,
   ): Promise<(CardActionSummary & { actId: number })[]> {
     const summaries: (CardActionSummary & { actId: number })[] = [];
     const visited = new Set<number>([rootId]);
@@ -3405,6 +3424,13 @@ export class CardActionEngine {
       for (const { parentId, parentActionId } of frontier) {
         for (const child of await this.childRows(parentId)) {
           if (visited.has(child.id)) continue;
+          // A card the act itself trashes (one of the save's own trash
+          // subcards) keeps its own super-action linkage: skip registering
+          // it here — its own trash arm walks its subtree.
+          if (skip?.has(child.id)) {
+            visited.add(child.id);
+            continue;
+          }
           visited.add(child.id);
           const history = await this.fieldHasHistory(child);
           const saved = await writer.trashCard({

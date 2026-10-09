@@ -42,7 +42,8 @@ cp "$OUT/coded-storage.eat.json" "$FIXTURES/coded-storage.ruby-eat.json"
 # The stored coded files: <POD_MOD_DIR>/data/files tree, name + sha1 (image
 # versions by name only, their bytes are the encoder's).
 node -e '
-const { readdirSync, readFileSync, createHash } = require("node:fs");
+const { readdirSync, readFileSync } = require("node:fs");
+const { createHash } = require("node:crypto");
 const { join } = require("node:path");
 const root = join(process.argv[1], "mod", "data", "files");
 const out = [];

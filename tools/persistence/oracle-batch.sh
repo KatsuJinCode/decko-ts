@@ -42,7 +42,15 @@ fi
 
 echo "=== [3/7] Ruby: image versions oracle (image-version-probe.rb)"
 IMG_OUT="$ORACLE_FIXTURES/image-versions.ruby.json"
-if bash "$HERE/run-ruby.sh" "$APP" "$DECK" "$HERE/image-version-probe.rb" \
+PERSIST_FILES_DIR="$SCRATCH/image-files"
+mkdir -p "$PERSIST_FILES_DIR"
+# The probe creates a card: it runs against a COPY of the deck, never the
+# shared oracle deck itself (run-ruby.sh takes a deck file, not a source to
+# copy -- the copy is made here).
+IMG_DECK="$SCRATCH/image-deck.sqlite3"
+cp "$DECK" "$IMG_DECK" || exit 2
+if PERSIST_FILES_DIR="C:/localProjects/decko-ts-persist-left/tmp/persist-left/oracle-batch/image-files" \
+   bash "$HERE/run-ruby.sh" "$APP" "$IMG_DECK" "$HERE/image-version-probe.rb" \
      "$REPO/tools/parity-side-effects/fixtures/parity-photo.png" "$IMG_OUT" \
      > "$SCRATCH/image.log" 2>&1; then
   echo "    ok: $IMG_OUT ($(node -e "console.log(JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')).files.map(f=>f.file).join(', '))" "$IMG_OUT" 2>/dev/null))"

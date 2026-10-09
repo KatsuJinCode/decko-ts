@@ -82,6 +82,11 @@ describe("image version bytes (real resizes, both engines)", () => {
 
       // The versions: dimensions exact, pixels perceptually equal, bytes
       // the port's encoder's (their own sha1s recorded in the report).
+      const rubyVersion = (name: string): RubyFile | undefined => {
+        const found = [...rubyFiles.keys()].find((n) => n.endsWith(`-${name}.png`));
+        return found === undefined ? undefined : rubyFiles.get(found);
+      };
+
       const { PhotonImage } = await import("@cf-wasm/photon");
       const psnrOverWhite = (a: Uint8Array, b: Uint8Array): { psnr: number; alphaAgree: number } => {
         const ia = PhotonImage.new_from_byteslice(a);
@@ -112,8 +117,8 @@ describe("image version bytes (real resizes, both engines)", () => {
       const sha1Of = (bytes: Uint8Array): string => createHash("sha1").update(bytes).digest("hex");
       const measurement: Record<string, { sha1: string; psnr: number | string; alphaAgree: number }> = {};
       for (const name of ["icon", "small", "medium", "large"] as const) {
-        const rubyEntry = rubyFiles.get(`1-${name}.png`);
-        expect(rubyEntry, `ruby stored 1-${name}.png`).toBeDefined();
+        const rubyEntry = rubyVersion(name);
+        expect(rubyEntry, `ruby stored a 1-${name}.png-shaped file`).toBeDefined();
         const bytes = vs[name];
         // Dimensions exact (MiniMagick#width/height vs the resizer's).
         const img = PhotonImage.new_from_byteslice(bytes);

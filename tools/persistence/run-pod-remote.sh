@@ -31,14 +31,16 @@ PORT=$(( (RANDOM % 20000) + 40000 ))
 node -e '
 const http = require("node:http");
 const fs = require("node:fs");
-const pod = fs.readFileSync(process.argv[2]);
-const log = fs.createWriteStream(process.argv[4]);
+// node -e argv: [node, podPath, port, logPath] -- the first user argument
+// sits at index 1.
+const pod = fs.readFileSync(process.argv[1]);
+const log = fs.createWriteStream(process.argv[3]);
 const server = http.createServer((req, res) => {
   log.write(req.url + "\n");
   res.writeHead(200, { "content-type": "text/yaml" });
   res.end(pod);
 });
-server.listen(Number(process.argv[3]), "127.0.0.1");
+server.listen(Number(process.argv[2]), "127.0.0.1");
 ' "$FIXTURES/sow-features/items-only.ruby.yml" "$PORT" "$LOG" &
 SERVER_PID=$!
 trap 'kill $SERVER_PID 2>/dev/null; rm -f "$DECK" "$DECK-shm" "$DECK-wal"' EXIT

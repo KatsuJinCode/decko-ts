@@ -21,6 +21,7 @@
 
 import type { FetchEngine } from "../fetch.js";
 import type { CardActionEngine } from "../actions/card-action-engine.js";
+import { ATTACHMENT_MOUNTS } from "../actions/card-action-engine.js";
 import type { AttachmentInput, SubcardInput } from "../actions/types.js";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
@@ -231,7 +232,9 @@ async function createWanted(
   name: DeckoName | undefined,
 ): Promise<Outcome> {
   if (name === undefined) throw new EatError(`no card has codename :${wanted.codename} and the pod gives no name`);
-  if (wanted.codedStorage) throw await codedStorageError(engine, undefined, name);
+  if (wanted.codedStorage) {
+    throw await codedStorageError(engine, undefined, name, wanted.typeSpec);
+  }
   await engine.createCard({
     name: name.s,
     ...(wanted.content !== undefined ? { content: wanted.content } : {}),
@@ -335,14 +338,31 @@ async function ensureAdvanced(
 
 /** validate_coded_storage_type (coded.rb:7-10) for an attachment-less coded
  *  item, raised exactly when the save would run. Ruby's RecordInvalid
- *  message joins the full messages (attribute Storage type) — the same
- *  wording the engine's own validation raises for a coded attachment. */
+ *  message joins the full messages in validation order — on a CREATE,
+ *  validate_file_exist (attachment.rb:26-34, on: :create) adds
+ *  "<Image|File> is missing" first, then the two storage-type errors
+ *  (attribute Storage type) — the same wording the engine's own validation
+ *  raises for a coded attachment. */
 async function codedStorageError(
   engine: CardActionEngine,
   row: CardsRow | undefined,
   name: DeckoName | undefined,
+  typeSpec?: { typeCode?: string; typeName?: string },
 ): Promise<EatError> {
   const problems: string[] = [];
+  // validate_file_exist (on: :create only): a new card whose type mounts an
+  // attachment and whose item carries no :file/:image.
+  if (row === undefined) {
+    let typeCode = typeSpec?.typeCode;
+    if (typeCode === undefined && typeSpec?.typeName !== undefined) {
+      const id = await engine.fetch.lexicon.id(DeckoName.parse(typeSpec.typeName));
+      typeCode = id === undefined ? undefined : (await engine.fetch.fetchById(id))?.codename ?? undefined;
+    }
+    const mount = typeCode !== undefined ? ATTACHMENT_MOUNTS[typeCode] : undefined;
+    if (mount !== undefined) {
+      problems.push(`${mount.charAt(0).toUpperCase()}${mount.slice(1)} is missing`);
+    }
+  }
   // mod (coded.rb:17-24): mod_from_content of the existing card — a new
   // card, or one whose content names no mod, has none.
   const content = row?.db_content ?? "";

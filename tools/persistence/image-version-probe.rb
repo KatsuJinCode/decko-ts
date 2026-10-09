@@ -35,25 +35,24 @@ File.singleton_class.prepend(Module.new do
   def symlink?(path) = File.exist?(path)
 end)
 
-report = ActiveSupport::Dependencies.interlock.permit_concurrent_loads do
-  Thread.new do
-    Card::Auth.as_bot do
-      card = Card.create!(name: "PersistProbe VImage", type: "Image", image: File.open(image_path, "rb"))
-      dir = File.join(FILES_DIR, "files", card.id.to_s)
-      { "card_id" => card.id,
-        "files" => Dir.glob(File.join(dir, "*")).sort.map do |path|
-          entry = { "file" => File.basename(path),
-                    "sha1" => Digest::SHA1.file(path).hexdigest }
-          if (version = path.match(/-(icon|small|medium|large)\./))
-            image = MiniMagick::Image.open(path)
-            entry["width"] = image.width
-            entry["height"] = image.height
-            entry["b64"] = Base64.strict_encode64(File.binread(path))
-          end
-          entry
-        end }
-    end
-  end.value
+# Runs on the MAIN thread, exactly like persist-write-probe.rb's upload
+# steps: their inline job enters the app executor the runner holds, which
+# deadlocked on a worker thread.
+report = Card::Auth.as_bot do
+  card = Card.create!(name: "PersistProbe VImage", type: "Image", image: File.open(image_path, "rb"))
+  dir = File.join(FILES_DIR, "files", card.id.to_s)
+  { "card_id" => card.id,
+    "files" => Dir.glob(File.join(dir, "*")).sort.map do |path|
+      entry = { "file" => File.basename(path),
+                "sha1" => Digest::SHA1.file(path).hexdigest }
+      if (version = path.match(/-(icon|small|medium|large)\./))
+        image = MiniMagick::Image.open(path)
+        entry["width"] = image.width
+        entry["height"] = image.height
+        entry["b64"] = Base64.strict_encode64(File.binread(path))
+      end
+      entry
+    end }
 end
 File.binwrite(out_path, JSON.pretty_generate(report))
 warn "[persist] image versions: #{report['files'].map { |f| f['file'] }.join(', ')}"

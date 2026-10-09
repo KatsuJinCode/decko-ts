@@ -109,7 +109,10 @@ export class BlobAttachmentStore implements AttachmentStore {
     // directory, and its identifier is the coded one (file_card_uploader.rb
     // :171-177 url_filename for a coded card: "<mod><ext>").
     const coded = input.coded;
-    const prefix = coded === undefined ? "" : `${coded.dirParts.join("/")}/`;
+    // The key: local storage keys by card id (<card_id>/<action_id><ext>,
+    // file_card_uploader.rb store path); CODED storage keys by the codename
+    // parts under the mod's data/files (coded.rb coded_dir), no card id.
+    const prefix = coded === undefined ? `${input.cardId}/` : `${coded.dirParts.join("/")}/`;
     const names = input.renditionNames ?? [coded === undefined ? filenameWithVariant(input.actionId, input.ext) : `${coded.mountName}${input.ext}`];
     let stored = 0;
     for (const name of names) {
@@ -141,7 +144,7 @@ export class BlobAttachmentStore implements AttachmentStore {
 
   async discard(input: AttachmentStoreInput): Promise<void> {
     const coded = input.coded;
-    const prefix = coded === undefined ? "" : `${coded.dirParts.join("/")}/`;
+    const prefix = coded === undefined ? `${input.cardId}/` : `${coded.dirParts.join("/")}/`;
     const names = input.renditionNames ?? [coded === undefined ? filenameWithVariant(input.actionId, input.ext) : `${coded.mountName}${input.ext}`];
     for (const name of names) await this.blobs.delete(`${prefix}${name}`);
   }
