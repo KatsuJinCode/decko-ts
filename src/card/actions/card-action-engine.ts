@@ -957,6 +957,8 @@ export class CardActionEngine {
         "attachment-missing",
         `Validation failed: ${humanized} is missing`,
         `${mount.toUpperCase()}: is missing`,
+        undefined,
+        typeof input.name === "string" ? input.name : undefined,
       );
     if (input.attachment === undefined) {
       // the attachment arm: errors.add attachment_name, "is missing"

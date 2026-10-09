@@ -662,10 +662,13 @@ function errorResponse(json: boolean, error: CardActionError): WriteRouteRespons
  *  card-notice (the slotter JS), so these bytes are the whole observable
  *  difference. */
 function cardErrorAlertHtml(error: CardActionError): string {
-  const shown = error.userMessage ?? error.message;
   // standard_error_message splits the shown key from the message at the
-  // first ": " (the throw sites compose "<KEY>: <message>").
-  const sep = shown.indexOf(": ");
+  // first ": " — but ONLY for the throw sites that compose "<KEY>:
+  // <message>" deliberately (userMessage). A bare message renders whole
+  // (splitting an arbitrary message at its first colon would eat half of
+  // it into the strong tag).
+  const shown = error.userMessage ?? error.message;
+  const sep = error.userMessage !== undefined ? shown.indexOf(": ") : -1;
   const key = sep > 0 ? shown.slice(0, sep) : undefined;
   const message = sep > 0 ? shown.slice(sep + 2) : shown;
   const heading =

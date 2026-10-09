@@ -8924,10 +8924,14 @@ export class RenderEngine implements RenderEngineLike {
         );
       }
     }
-    // selected (options_api.rb:19): the host card's own items.
-    const selected = rawItemStrings(card.dbContent).map((item) =>
-      DeckoName.parse(item).absoluteName(card.name).s,
-    );
+    // selected (options_api.rb:19): the host card's own items. An empty
+    // content yields NO items (Ruby's split discards them - rawItemStrings
+    // keeps the trailing empty, the shared helper's JS-split model), so the
+    // union never grows a phantom empty option.
+    const selected = rawItemStrings(card.dbContent)
+      .map((item) => item.replace(/\[\[|\]\]/g, "").trim())
+      .filter((item) => item !== "")
+      .map((item) => DeckoName.parse(item).absoluteName(card.name).s);
     const names: string[] = [];
     for (const name of [...standard, ...selected]) {
       if (!names.includes(name)) names.push(name); // options_api.rb:20 uniq

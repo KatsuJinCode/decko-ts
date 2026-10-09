@@ -188,74 +188,76 @@ afterAll(() => {
 
 /** The exact bytes :input produces for the seeded probe: the hidden content
  *  field (html_views.rb:32-34 `_render_hidden_content_field + super()`) then
- *  the checkbox editor - two options, "Option One" selected. unique_id
- *  (content.rb:60-70's chain-shared counter, ported as
- *  RenderFormat#uniqueId) is the render-scoped counter, so the group name
- *  is masked the way the capture scripts mask the random slot ids. */
-function expectedInputBytes(groupId: string): string {
+ *  the checkbox editor - two options, "Option One" selected. The group name
+ *  is unique_id PER OPTION (content.rb:69's "#{safe_key}-#{n}", called once
+ *  inside the options loop - the Ruby DOM capture pins
+ *  pointer_checkbox-topic_004-tag-3..-12, one call per option), so the
+ *  helpers below build the exact counter sequence. */
+function expectedInputBytes(safeKey: string): string {
   return (
     `<input class="d0-card-content form-control" autocomplete="off" type="hidden" ` +
     `value="Option One" name="card[content]" id="card_content" />` +
-    expectedCheckboxEditorBytes(groupId)
+    expectedCheckboxEditorBytes(safeKey)
   );
 }
 
 /** The checkbox editor alone - what view :checkbox renders
- *  (`view(:checkbox) { send "checkbox_input" }`, no hidden field). */
-function expectedCheckboxEditorBytes(groupId: string): string {
+ *  (`view(:checkbox) { send "checkbox_input" }`, no hidden field). The
+ *  class attribute carries the empty interpolation's trailing space
+ *  (haml `class: "pointer-checkbox-button #{'_submit-on-change' if
+ *  submit_on_change}"` with submit_on_change nil - the Ruby DOM capture:
+ *  `class="pointer-checkbox-button " checked="checked"`), and the input
+ *  is not self-closed (check_box_tag's `tag :input`). */
+function expectedCheckboxEditorBytes(safeKey: string): string {
   return (
     `<div class='pointer-checkbox-list'>\n` +
     `<div class='pointer-checkbox'>\n` +
-    `<input type="checkbox" name="pointer_checkbox-${groupId}" id="pointer-checkbox-option_one" ` +
-    `value="Option One" class="pointer-checkbox-button" checked="checked" />\n` +
+    `<input type="checkbox" name="pointer_checkbox-${safeKey}-1" id="pointer-checkbox-option_one" ` +
+    `value="Option One" class="pointer-checkbox-button " checked="checked">\n` +
     `<label class="form-check-label" for="pointer-checkbox-option_one">Option One</label>\n` +
     `</div>\n` +
     `<div class='pointer-checkbox'>\n` +
-    `<input type="checkbox" name="pointer_checkbox-${groupId}" id="pointer-checkbox-option_two" ` +
-    `value="Option Two" class="pointer-checkbox-button" />\n` +
+    `<input type="checkbox" name="pointer_checkbox-${safeKey}-2" id="pointer-checkbox-option_two" ` +
+    `value="Option Two" class="pointer-checkbox-button ">\n` +
     `<label class="form-check-label" for="pointer-checkbox-option_two">Option Two</label>\n` +
     `</div>\n` +
     `</div>\n`
   );
 }
 
-/** The unique_id counter value in the rendered group name. */
-function groupIdOf(html: string): string {
-  const match = /name="pointer_checkbox-([^"]+)"/.exec(html);
-  if (match === null) throw new Error(`no checkbox group name in: ${html}`);
-  return match[1] as string;
-}
+/** The seeded probe's format-root safe key (content.rb:69). */
+const PROBE_SAFE_KEY = "oracle_checkbox_probe";
 
 describe("card-mod-list: the :checkbox editor (html_views.rb:50-52, :60-62)", () => {
   it("an *input_type rule naming checkbox dispatches the checkbox editor off :input", async () => {
     const html = await storage!.engine.render("Oracle Checkbox Probe", "input");
-    expect(html).toBe(expectedInputBytes(groupIdOf(html)));
+    expect(html).toBe(expectedInputBytes(PROBE_SAFE_KEY));
   });
 
   it(":checkbox is a registered view of the set module (html_views.rb:50-52's loop) and is the editor WITHOUT the hidden content field", async () => {
     const viaView = await storage!.engine.render("Oracle Checkbox Probe", "checkbox");
-    // the two renders carry their own unique_id counter value; compare the
-    // shapes with the group name masked.
-    const mask = (s: string): string => s.replace(/pointer_checkbox-[^"]+/g, "pointer_checkbox-UID");
-    expect(mask(viaView)).toBe(mask(expectedCheckboxEditorBytes("UID")));
+    // each render runs its own format root, so the per-option unique_id
+    // counter restarts at 1
+    expect(viaView).toBe(expectedCheckboxEditorBytes(PROBE_SAFE_KEY));
     // and :input is exactly the hidden field + that editor
     const viaInput = await storage!.engine.render("Oracle Checkbox Probe", "input");
-    expect(mask(viaInput.replace(/<input class="d0-card-content[^>]*\/>/, ""))).toBe(
-      mask(viaView),
-    );
+    expect(viaInput.replace(/<input class="d0-card-content[^>]*\/>/, "")).toBe(viaView);
   });
 
-  it("every checkbox shares ONE group name per render (check_box_tag's name is unique_id, not per option)", async () => {
+  it("every checkbox carries its OWN unique_id group name (check_box_tag's name is unique_id, called once per option in the haml loop)", async () => {
+    // The Ruby DOM capture pins the sequence: checkbox names
+    // pointer_checkbox-topic_004-tag-3 .. -12 - one counter increment per
+    // option, named "<card safe key>-<n>". The old one-group-per-render pin
+    // contradicted the capture and is superseded by it.
     const html = await storage!.engine.render("Oracle Checkbox Probe", "checkbox");
-    const names = [...html.matchAll(/name="(pointer_checkbox-[^"]+)"/g)].map((m) => m[1]);
-    expect(names).toHaveLength(2);
-    expect(new Set(names).size).toBe(1);
+    const names = [...html.matchAll(/name="pointer_checkbox-([^"]+)"/g)].map((m) => m[1]);
+    expect(names).toEqual([`${PROBE_SAFE_KEY}-1`, `${PROBE_SAFE_KEY}-2`]);
   });
 
   it("the selected item is the checked one and the ids are the option names' keys", async () => {
     const html = await storage!.engine.render("Oracle Checkbox Probe", "checkbox");
-    expect(html).toContain('id="pointer-checkbox-option_one" value="Option One" class="pointer-checkbox-button" checked="checked"');
-    expect(html).toContain('id="pointer-checkbox-option_two" value="Option Two" class="pointer-checkbox-button" />');
+    expect(html).toContain('id="pointer-checkbox-option_one" value="Option One" class="pointer-checkbox-button " checked="checked">');
+    expect(html).toContain('id="pointer-checkbox-option_two" value="Option Two" class="pointer-checkbox-button ">');
   });
 
   it("options_hash unions the card's own selected items into the option list (options_api.rb:3-19)", async () => {
@@ -263,27 +265,33 @@ describe("card-mod-list: the :checkbox editor (html_views.rb:50-52, :60-62)", ()
     // not list; it is still checked, and it comes AFTER the options card's
     // items (option_names = (standard_option_names + selected).uniq).
     const html = await storage!.engine.render("Oracle Checkbox Union Probe", "checkbox");
-    const order = [...html.matchAll(/value="([^"]+)" class="pointer-checkbox-button/g)].map(
+    const order = [...html.matchAll(/value="([^"]+)" class="pointer-checkbox-button /g)].map(
       (m) => m[1],
     );
     expect(order).toEqual(["Option One", "Option Three"]);
-    expect(html).toContain('value="Option Three" class="pointer-checkbox-button" checked="checked"');
+    expect(html).toContain('value="Option Three" class="pointer-checkbox-button " checked="checked">');
   });
 
-  it("an option whose card EXISTS raises rather than rendering a guessed :smart_label nest (options_api.rb:79-85)", async () => {
-    // the radio editor's boundary, carried to the checkbox arm: the nest
-    // arm needs the content-option view dispatch, which is not ported.
+  it("an option whose card EXISTS takes the nest :smart_label arm (options_api.rb:79-85), which this minimal-loader engine reports as an unsupported view", async () => {
+    // option_label_text's nest arm is the REAL path now (the options walk
+    // landed; the browser journeys render it - the pointer-input trio
+    // passes end to end against the Ruby oracle). This suite loads only
+    // cardModList, so the :smart_label dispatch itself is unsupported
+    // (format/render.rb:60-64's UserError shape) - the pin is that the
+    // label REACHES the smart_label nest, not the old loud boundary.
     await expect(storage!.engine.render("Oracle Checkbox Real Option", "checkbox")).rejects.toThrow(
-      /checkbox option labels for EXISTING cards nest :smart_label/,
+      /view \(smart_label\) not supported/,
     );
   });
 
-  it("a checkbox probe with no *content_options rule raises (the options fallback walk is unported)", async () => {
+  it("a checkbox probe with no *content_options rule falls back to the *all card's items plus its own (options_api.rb:47-49)", async () => {
     // the orphan probe is seeded in beforeAll (id 143; it has an
-    // *input_type rule naming checkbox and NO *content_options rule)
-    await expect(
-      storage!.engine.render("Oracle Checkbox Orphan", "checkbox"),
-    ).rejects.toThrow(/checkbox input without a \*content_options rule is not ported/);
+    // *input_type rule naming checkbox and NO *content_options rule). The
+    // chain's last arm is Card[:all]; the seed deck's *all has no items, so
+    // the union arm supplies the card's own selected "Option One" alone.
+    const html = await storage!.engine.render("Oracle Checkbox Orphan", "checkbox");
+    expect(html).toContain('value="Option One" class="pointer-checkbox-button " checked="checked">');
+    expect(html).not.toContain('value="Option Two"');
   });
 
   it("the sibling list types still refuse :checkbox (the view lives on Abstract::List only)", async () => {

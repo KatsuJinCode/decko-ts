@@ -198,11 +198,14 @@ describe("E8 - the stale-revision detector on the save path (detect_conflict)", 
       annToken,
     );
     expect(conflicted.status).toBe(422);
-    // the FORM flavor answers the shared validation-error page carrying the
-    // oracle's message (write-routes errorResponse -> htmlResponse
-    // "Error (conflict)" + the escaped message in a <pre>)
+    // the FORM flavor answers the shared validation-error surface carrying
+    // the oracle's message (write-routes errorResponse -> htmlResponse
+    // "Error (conflict)" + the errors view's alert body: card-mod-format
+    // set/all/html/error.rb standard_errors' dismissible warning alert,
+    // which the ajax slotter places in the form's card-notice)
     expect(conflicted.body).toContain("Error (conflict)");
-    expect(conflicted.body).toContain("<pre>changes not based on latest revision</pre>");
+    expect(conflicted.body).toContain("card-error-msg");
+    expect(conflicted.body).toContain("changes not based on latest revision");
     // events.rb:19-22 aborts the save before persistence (the oracle's
     // conflict_probe: actions 4881 -> 4881, no_write_proof true).
     expect(await actionRows()).toEqual(before);
@@ -230,7 +233,7 @@ describe("E8 - the stale-revision detector on the save path (detect_conflict)", 
       redirect: "manual",
     });
     expect(res.status).toBe(422);
-    expect(await res.text()).toContain("<pre>changes not based on latest revision</pre>");
+    expect(await res.text()).toContain("changes not based on latest revision");
     expect(await actionRows()).toEqual(before);
   });
 
