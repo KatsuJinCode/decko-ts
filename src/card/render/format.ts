@@ -4368,49 +4368,71 @@ function findUriMatch(text: string, from: number): UriMatch | undefined {
       pos = end;
       continue;
     }
-    // uri.rb interpret, gem order: &nbsp; strip, trailing-punctuation chop
-    // (the chopped char renders after the anchor - uri.rb:86-89), single
-    // trailing-dot strip (uri.rb:69 - a REAL removal, never re-emitted).
-    let chunk = text.slice(bestStart, end);
-    chunk = chunk.replace(/(?:&nbsp;)+/g, "");
+    // uri.rb interpret, gem order, with the TWO distinct post-interpret
+    // strings: chunk (match[0], prepend included) becomes @link_text —
+    // &nbsp; strip, ONE trailing-punctuation chop, then the single
+    // trailing-dot strip (uri.rb:69, a REAL removal) — while @text (the
+    // raw span, prepend excluded) takes ONLY the punctuation chop. The
+    // anchor's href is @link_text but its TEXT is process_text, which is
+    // @link_text for the Uri class yet the chopped @text for Host/EmailUri
+    // — so the White Fragility oracle's bare-host span
+    // `robindiangelo.com/resources.)` renders the DOT inside the anchor
+    // text (`...resources.</a>)`) while the href drops it. The earlier
+    // single-chunk form dropped the dot from both.
+    const rawSpan = text.slice(bestStart, end);
+    let chunk = prepend + rawSpan;
     const lastChar = chunk.slice(-1);
     let trailing = "";
+    let choppedRaw = rawSpan;
     if (URI_TRAILING_PUNCTUATION.has(lastChar)) {
       trailing = lastChar;
       chunk = chunk.slice(0, -1);
+      choppedRaw = choppedRaw.slice(0, -1);
     }
+    chunk = chunk.replace(/(?:&nbsp;)+/g, "");
     chunk = chunk.replace(/\.$/, "");
     if (chunk === "") {
       pos = end;
       continue;
     }
+    // links.rb:65-72 resource_type runs on the RESOURCE (@link_text):
+    // a colonless chunk ("file", "mailto" — the scheme colon was chopped
+    // as trailing punctuation) matches NO rule, so no class attribute.
+    // The previous `chunk.slice(0, chunk.indexOf(":"))` turned -1 into a
+    // last-char chop and emitted the engine-only `fil-link`/`mailt-link`
+    // classes (Half Price Books, JP Morgan Chase, Big Thought, Brian
+    // Moeschler captures).
+    const schemeResourceType =
+      /^https?:/.test(chunk)
+        ? "external-link"
+        : /^mailto:/.test(chunk)
+          ? "email-link"
+          : /^([a-zA-Z][\-+.a-zA-Z\d]*):/.test(chunk)
+            ? `${(/^([a-zA-Z][\-+.a-zA-Z\d]*):/.exec(chunk) as RegExpExecArray)[1]}-link`
+            : "";
     return bestKind === "scheme"
       ? {
           start: bestStart,
           end,
           href: chunk,
           text: chunk,
-          resourceType: /^https?:/.test(chunk)
-            ? "external-link"
-            : /^mailto:/.test(chunk)
-              ? "email-link"
-              : `${chunk.slice(0, chunk.indexOf(":"))}-link`,
+          resourceType: schemeResourceType,
           trailing,
         }
       : bestKind === "host"
         ? {
             start: bestStart,
             end,
-            href: `http://${chunk}`,
-            text: chunk,
+            href: chunk,
+            text: choppedRaw,
             resourceType: "external-link",
             trailing,
           }
         : {
             start: bestStart,
             end,
-            href: `mailto:${chunk}`,
-            text: chunk,
+            href: chunk,
+            text: choppedRaw,
             resourceType: "email-link",
             trailing,
           };
@@ -4491,7 +4513,12 @@ export function expandContentLinks(
     }
     if (uri !== undefined && uri.start <= wikiStart) {
       out += text.slice(pos, uri.start);
+      // links.rb add_resource_opts (:154-157): target first for
+      // external-link, then the resource_type class — a nil resource_type
+      // (colonless resource) emits NO class attribute (content.rb
+      // add_class with nil is a no-op).
       const target = uri.resourceType === "external-link" ? ` target="_blank"` : "";
+      const cls = uri.resourceType === "" ? "" : ` class="${uri.resourceType}"`;
       // links.rb html link_to: `text = raw(text || opts[:href])` - the
       // label is raw-marked and content_tag renders it VERBATIM (uri.rb
       // process_text keeps the stored bytes, authored entities included).
@@ -4506,7 +4533,7 @@ export function expandContentLinks(
       // `williamscraig.com</a>.` oracle bytes) - and the SECOND trailing
       // dot from uri.rb:69's `sub!(/\.$/,'')` is a REAL removal, so it is
       // not re-emitted here.
-      out += `<a${target} class="${uri.resourceType}" href="${h(uri.href)}">${uri.text}</a>${uri.trailing}`;
+      out += `<a${target}${cls} href="${h(uri.href)}">${uri.text}</a>${uri.trailing}`;
       pos = uri.end;
       continue;
     }
