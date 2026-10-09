@@ -57,7 +57,7 @@ export const demoViewSelect = (ctx: ViewContext): string => {
   // same gate the comment box's wrap already applies).
   const signedIn =
     ctx.fmt.engine?.viewer?.signedIn === true || ctx.fmt.engine?.pageSession?.signedIn === true;
-  const recaptchaAttrs = signedIn ? [] : [["data-recaptcha", "on"]] as const;
+  const recaptchaAttrs: Array<[string, string]> = signedIn ? [] : [["data-recaptcha", "on"]];
   const recaptchaToken = signedIn
     ? ""
     : `<script src="https://www.google.com/recaptcha/api.js?render=${siteKey}"></script>\n` +
@@ -66,7 +66,7 @@ export const demoViewSelect = (ctx: ViewContext): string => {
   return cardFormShell(ctx, {
     formClass: "card-form slotter",
     id: `edit_card_${fmt.card.id}`,
-    htmlAttrs: recaptchaAttrs as Array<readonly [string, string]>,
+    htmlAttrs: recaptchaAttrs,
     action: `/${fmt.urlKey()}`,
     methodSpoof: "patch",
     success: { view: "demo" },

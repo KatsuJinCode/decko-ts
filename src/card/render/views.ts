@@ -489,10 +489,19 @@ function menuEditAnchor(fmt: RenderFormat): string {
  *  board_link(in_modal: false) -> NO slotter-mode attribute). */
 function menuBoardAnchor(fmt: RenderFormat, opts: { inModal: boolean }): string {
   const url = fmt.urlKey();
+  // Card::Path#handle_unknown (path.rb:89-96) fires for UNKNOWN marks that
+  // are not name_standardish? (path.rb:107-109): the query stashes
+  // `card[name]=<mark>`. Oracle: the Cardtype+*type+*guide content nests
+  // `{\_|board_link}` — the escaped-blank reference `\_` — and the capture
+  // renders `/_/board?card%5Bname%5D=%5C_`: url_key strips the backslash
+  // ("_") so the standardish test fails and the query carries the raw mark
+  // bytes. Known cards keep the bare url_key path.
+  const unknownQuery =
+    fmt.card.unknown === true ? wantedHrefQuerySuffix(fmt.card.name.s) : "";
   const slotterMode = opts.inModal ? ` data-slotter-mode="modal-replace"` : "";
   return (
     `<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom"${slotterMode}` +
-    ` href="/${h(url)}/board" data-remote="true">${icon("space_dashboard")} </a>`
+    ` href="/${h(url)}/board${unknownQuery}" data-remote="true">${icon("space_dashboard")} </a>`
   );
 }
 

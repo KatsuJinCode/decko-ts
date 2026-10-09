@@ -7740,6 +7740,18 @@ export class RenderEngine implements RenderEngineLike {
       const leftKey = klass.patternCardName.toLowerCase();
       const rules = settingBuckets.get(leftKey);
       if (rules === undefined || rules.length === 0) continue;
+      // setting.rb:38 rules_for_set_class's `sort_by: %w[content name]`:
+      // within one set class the rows order by db_content bytes, then
+      // name. Oracle: the *on create *type class renders
+      // "#<Card[set:259]Tracked Item+*type+*on create" (rule 21805,
+      // content "_left+email config", "_"<"s") ahead of
+      // "Sign up+*type+*on create" (21799, "signup alert email"), where
+      // the map-order walk put Sign up first.
+      rules.sort((a, b) => {
+        const byContent = a.dbContent < b.dbContent ? -1 : a.dbContent > b.dbContent ? 1 : 0;
+        if (byContent !== 0) return byContent;
+        return a.name.s < b.name.s ? -1 : a.name.s > b.name.s ? 1 : 0;
+      });
       out.push({
         klass,
         rules,

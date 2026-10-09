@@ -44,6 +44,7 @@ import {
 } from "./nest-syntax.js";
 import { safeSetKeys } from "./set-keys.js";
 import type { SearchResultPaging } from "./search-paging.js";
+import { nowCardContent } from "./now-content-bytes.js";
 import { cgiEscape, h, htmlEscapeKeepApostrophe, emitAttrs, newSlotId, slotOptionsJson } from "./slot-html.js";
 import { viewPermissionDenial, quietDenial, renderOptSkipPerms, resolveViewPerms, viewDenialView, type CrudTask } from "../permissions/view-perms.js";
 import type { ReadViewer } from "../permissions/read-rules.js";
@@ -2943,7 +2944,21 @@ export class RenderFormat {
    *  passes through unchanged (the corpus suites pin those bytes). */
   renderRaw(): string {
     const override = resolveContentOverride(this);
-    const raw = override !== undefined ? override : this.card.dbContent;
+    // card-mod-date set/self/now.rb:1-3 — the *now card's `def content`
+    // override. The loader-less render boot carries no content-override
+    // registry (the mod-loader composition is not loaded there), so the
+    // Self::Now chain is consulted directly: the *now card is
+    // codename-anchored ("now" — set/pattern Self matching via
+    // anchor_codenames) and truly virtual (dbContent ""), the one
+    // SELF_MODULE_CHAINS row the graded corpus pins (see
+    // now-content-bytes.ts for the byte derivation and the unwired
+    // remainder).
+    const selfNow =
+      override === undefined &&
+      (this.card.record.codename === "now" || this.card.key === "*now")
+        ? nowCardContent()
+        : undefined;
+    const raw = override !== undefined ? override : (selfNow ?? this.card.dbContent);
     // Ruby reaches the same bytes through the :raw VIEW, and a view render
     // is `with_wrapper { @rendered = yield; wrap_with_wrapper }`
     // (render.rb:96-97 -> wrapper.rb:15). So every `_render_raw` /
@@ -4302,6 +4317,13 @@ interface UriMatch {
    *  (uri.rb:86-89 `"#{link}#{@trailing_punctuation}"`). "" when the
    *  match did not end in punctuation. */
   trailing: string;
+  /** uri.rb:58-78 interpret's `rescue ::URI::Error` arm: URI.parse on the
+   *  chunk failed, so @process_chunk never assigned and the chunk renders
+   *  its verbatim @text (no anchor, no re-emitted trailing punctuation).
+   *  The span is still CONSUMED by the parser (record_chunk ran before
+   *  interpret), so `text` carries the raw span bytes and nothing inside
+   *  it is re-scanned. */
+  parseFailed?: boolean;
 }
 
 /** The next URI-class match at/after `from`, or undefined. Ruby's parser
@@ -4394,6 +4416,30 @@ function findUriMatch(text: string, from: number): UriMatch | undefined {
     if (chunk === "") {
       pos = end;
       continue;
+    }
+    // uri.rb:72 `@uri = ::URI.parse(chunk)` inside interpret, whose
+    // `rescue ::URI::Error` (:74-77) leaves @process_chunk nil: a chunk
+    // the URI library refuses renders its verbatim @text, never an
+    // anchor. URI.parse's acceptance boundary (probed against the
+    // 3.3.0 gem's RFC3986 parser): the bytes `[]{}<>"^|` and backtick
+    // and a `%` not followed by two hex digits reject both the mailto
+    // opaque form and hier paths (`mailto:brandon@culturesmith.com]`
+    // errors; parens, commas, dots pass) - so the Pacifica Depth
+    // Psychology oracle's bracketed Outlook citation
+    // `[mailto:brandon@culturesmith.com]` stays plain text while the
+    // bare-mailto and bare-host forms around it anchor. The full
+    // regexp's opaque/query classes admit `]`, so the gate must run on
+    // the chunk AFTER the full extent, exactly where Ruby's parse runs.
+    if (/[\[\]{}<>"^|`\\]|%(?![0-9A-Fa-f]{2})/.test(chunk)) {
+      return {
+        start: bestStart,
+        end,
+        href: "",
+        text: prepend + choppedRaw,
+        resourceType: "",
+        trailing: "",
+        parseFailed: true,
+      };
     }
     // links.rb:65-72 resource_type runs on the RESOURCE (@link_text):
     // a colonless chunk ("file", "mailto" — the scheme colon was chopped
@@ -4513,6 +4559,15 @@ export function expandContentLinks(
     }
     if (uri !== undefined && uri.start <= wikiStart) {
       out += text.slice(pos, uri.start);
+      if (uri.parseFailed) {
+        // uri.rb interpret's rescue arm: the chunk renders verbatim @text
+        // (the raw span, punctuation-chopped like @text was) and the span
+        // is consumed - no anchor, no re-emitted trailing punctuation,
+        // no re-scan of the host/email candidates inside it.
+        out += uri.text;
+        pos = uri.end;
+        continue;
+      }
       // links.rb add_resource_opts (:154-157): target first for
       // external-link, then the resource_type class — a nil resource_type
       // (colonless resource) emits NO class attribute (content.rb
@@ -4881,9 +4936,22 @@ export function expandWikiLinks(
     // (`title="+musings"><span>+</span>musings`): wrapped_title splits
     // whatever title_in_context produced, so the split follows the
     // relativization, not the authored text.
+    //
+    // The attribute escape is QUOTE-ONLY: a link's title opt is always
+    // set (chunk/link.rb:31-33), so title_in_context's keep_safe arm
+    // (context_names.rb:49-55 `keep_safe ? newtitle.html_safe : newtitle`)
+    // hands wrapped_title an html_safe string, the html format's `h super`
+    // (title.rb:31-35) is ERB::Util's no-op on html_safe input, and only
+    // actionview tag_helper.rb tag_option :322's unconditional quote gsub
+    // touches the bytes. Oracle: the US Census Employment wanted-link span
+    // renders `title="<a href=&quot;/20191213+BW+Time_Tracking+1400?view=
+    // bar&quot;>20191213+BW+Time Tracking+1400</a>"` with RAW brackets
+    // (the previous htmlEscapeKeepApostrophe emitted `&lt;a href=...`
+    // there, and the Dungeons and Dragons +SCa rule-link span the same
+    // `&lt;/a&gt;` where the capture has `</a>`).
     return (
       `<a class="${known ? "known-card" : "wanted-card"}" href="${h(href)}">` +
-      `<span class="card-title" title="${htmlEscapeKeepApostrophe(titleText)}">` +
+      `<span class="card-title" title="${titleText.replace(/"/g, "&quot;")}">` +
       `${wrappedTitleInner(titleText)}</span>` +
       `</a>`
     );
