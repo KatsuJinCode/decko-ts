@@ -216,7 +216,10 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // Error's production :server_error (4b7b1338's error-page ruling,
       // debug_server_error's renderer twin), measured on the merged tree;
       // still no new format key and no css/scss row.
-      ["html", 355],
+      // 355 -> 356 (browser-journeys lane, 2026-10-09): Right::Password's
+      // :input — the account form's password editor (the live-oracle probe
+      // receipt probe-password-input.rb); still no new format key.
+      ["html", 356],
 
       ["js", 2],
       ["json", 3],

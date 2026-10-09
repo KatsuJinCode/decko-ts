@@ -2413,11 +2413,16 @@ export class CardActionEngine {
       // The mark itself was POSTED (it is the update target): the director's
       // set_stamper assigned its updater_id/updated_at at instantiation, so
       // a no-op mark save still stamps its row (no action, no change rows) —
-      // the same director-layer touch the subcard path below applies.
-      await this.fetch.driver.query(
-        "UPDATE cards SET updated_at = ?, updater_id = ? WHERE id = ?",
-        [sqlDateTime(this.clock()), (await this.actingIdForWrite()) ?? this.actor?.id ?? null, row.id],
-      );
+      // the same director-layer touch the subcard path below applies. The
+      // stamp rides only saves that POSTED subcards (the director
+      // instantiated them): a plain no-op content save instantiates nothing
+      // and writes nothing (the writer-layer pins hold).
+      if (input.subcards !== undefined) {
+        await this.fetch.driver.query(
+          "UPDATE cards SET updated_at = ?, updater_id = ? WHERE id = ?",
+          [sqlDateTime(this.clock()), (await this.actingIdForWrite()) ?? this.actor?.id ?? null, row.id],
+        );
+      }
       return null; // no-op save: no action rows persisted
     }
     if (noHistory) {
