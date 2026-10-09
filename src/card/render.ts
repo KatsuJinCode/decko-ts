@@ -1674,7 +1674,29 @@ export class RenderEngine implements RenderEngineLike {
     // sync editor views read seated items, so the chain's search member
     // seats here, on the one view whose root renders an editor (the
     // journeys' ?view=edit surface). No-op for every other root.
-    if (view === "edit") await this.ensurePointerEditorOptions(rootCard);
+    if (view === "edit") {
+      await this.ensurePointerEditorOptions(rootCard);
+      // A junction root's OWN field rows sit in no reference closure (a
+      // subcard is reachable only through its left_id), so the edit form's
+      // field editors would fetch-miss them into fabricated new cards - the
+      // +*account page's +*email/+*password rows carry their real types
+      // (Phrase) and read rules only after this warm. One batch, junction
+      // roots only.
+      if (rootCard.id !== undefined && rootCard.name.isCompound && !rootCard.unknown) {
+        const children = (await this.fetcher.driver.query<CardsRow>(
+          "SELECT * FROM cards WHERE left_id = ? AND trash = false",
+          [rootCard.id],
+        )).rows;
+        for (const row of children) {
+          const tag = row.right_id !== undefined && row.right_id !== null
+            ? this.peekNameForId(row.right_id)
+            : undefined;
+          if (tag === undefined) continue;
+          await this.prepareItemForRender(`${rootCard.name.s}+${tag}`);
+        }
+        await this.ensureVerdicts();
+      }
+    }
     // The V6 nested-skin scan has to run again HERE, not only above. A skin
     // reached through a POINTER/LIST item is not in the render-card map when
     // the earlier scan walks it — measured cold on

@@ -901,7 +901,11 @@ export const accountProbeSurface = {
   } {
     return {
       title: "Forgot Password",
-      editStructure: [{ name: "+email", title: "email", view: "titled", skipPerms: true }],
+      // signin_field :198-202 field :email -> the SETTING card *email
+      // (Card::Name#field stars codenamed fields: home.field_nest :self =>
+      // 'Home+*self', nesting.rb docstring; the recorded reset form's input
+      // name is card[subcards][+*email][content])
+      editStructure: [{ name: "+*email", title: "email", view: "titled", skipPerms: true }],
       hide: ["help"],
     };
   },
@@ -923,12 +927,33 @@ export const accountProbeSurface = {
  *  read grants (the established basis). */
 function accountFormgroups(ctx: ViewContext): string {
   const { fmt } = ctx;
-  const accountCard = fmt.engine.fetchRenderCard(`${fmt.card.name.s}+*account`);
-  if (accountCard === undefined || accountCard.unknown === true) {
+  // card.account (account_holder.rb:143): Card.fetch [name, :account] with
+  // new: {} semantics - a signup card has no +*account row yet, and Ruby's
+  // fetch builds the NEW +*account card (its type the *account card's own,
+  // RichText) rather than answering nil. The fabricated record overrides
+  // the *account template's id/record (the new card has no row) while
+  // keeping the template's type and set keys.
+  const existing = fmt.engine.fetchRenderCard(`${fmt.card.name.s}+*account`);
+  const accountCard =
+    existing !== undefined && existing.unknown !== true
+      ? existing
+      : (() => {
+          const template = fmt.engine.fetchRenderCard("*account");
+          if (template === undefined) return undefined;
+          const name = DeckoName.parse(`${fmt.card.name.s}+*account`);
+          return {
+            ...template,
+            name,
+            key: name.key,
+            id: undefined,
+            unknown: true,
+            record: { ...template.record, id: undefined, name, key: name.key, isNew: true },
+          } as ViewContext["fmt"]["card"];
+        })();
+  if (accountCard === undefined) {
     return "";
   }
   const sub = new RenderFormat(accountCard, fmt.engine, { parent: fmt, maxDepth: fmt.maxDepth, nestQuietErrors: fmt.nestQuietErrors });
-  console.log("AF-DEBUG", JSON.stringify({ card: accountCard.name.s, known: accountCard.unknown }));
   return sub.renderView("content_formgroups", { structure: "true" });
 }
 
@@ -960,13 +985,17 @@ const signupContentFormgroupsView: ViewFn = (ctx) => {
  *                            [:password, { title: "password" }]]
  *    end
  *  The tuple's relative marks normalize through the edit mod's walk
- *  (card.name.field over the +*account card -> "<card>+*account+email").
+ *  (card.name.field over the +*account card): :email names the SETTING
+ *  card, so field stars it - Card::Name#field's own docstring
+ *  (home.field_nest :self => nest for 'Home+*self') and the recorded form's
+ *  input names (card[subcards][+*email][content]) both pin
+ *  "<card>+*account+*email", NOT "<card>+*account+email".
  *  The dispatch rides superView to the edit mod's contentFormgroupsView
  *  (the multi-card walk the mod-completion-100 lane ported there). */
 const accountBeforeContentFormgroupsView: ViewFn = (ctx) => {
   ctx.voo.opts["edit_structure"] = [
-    ["+email", { title: "email" }],
-    ["+password", { title: "password" }],
+    ["+*email", { title: "email" }],
+    ["+*password", { title: "password" }],
   ];
   return superView(ctx, setModuleShortname("right/account/views"), "content_formgroups");
 };
