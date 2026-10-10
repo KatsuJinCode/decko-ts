@@ -428,6 +428,10 @@ export interface ModEngineHost {
   /** Cache-first render-card resolution (the sync render-path surface). */
   fetchRenderCard(name: string): unknown;
 
+  /** Fetch one card by NAME (the fetch ladder's by-name arm; the warms
+   *  that seat named setting cards through cacheFetchedRecord). */
+  fetchByName?(name: string): Promise<unknown | undefined>;
+
   /** Read-permission verdict for a prepared card (ok_to_read? set membership). */
   isDenied(card: unknown): boolean;
 

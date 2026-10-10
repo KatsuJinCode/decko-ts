@@ -236,16 +236,16 @@ describe("card-mod-script through the mod loader (A/B)", () => {
     );
   });
 
-  it("WITH the mod: :script_calls renders the trigger_slot_ready line in the javascript_tag wrapper (all/head_javascript.rb:25-27, 48-50)", async () => {
+  it("WITH the mod: :script_calls renders the mod basket configs + the trigger line (all/head_javascript.rb:25-27 - the *Ace / *tinyMCE setting cards' contents through escape_javascript, the corpus's byte oracle)", async () => {
     const s = storage!;
     const html = await s.engine.render("Oracle Head Probe", "script_calls");
-    // The headless basket is empty (the capture's setAceConfig/
-    // setTinyMCEConfig entries are cross-mod basket state, not ported), so
-    // the "\n\n".join of [trigger] is the bare trigger line.
-    expect(html).toBe(
-      "<script>\n//<![CDATA[\n" +
-        "$('document').ready(function() { $('.card-slot').trigger('decko.slot.ready'); })" +
-        "\n//]]>\n</script>",
+    // The basket entries ride the *Ace / *tinyMCE setting cards' contents
+    // (the deck rows the script mod's prepare seats); the corpus's
+    // script_calls op pins exactly these two configs + the trigger.
+    expect(html).toContain("decko.setAceConfig(");
+    expect(html).toContain("decko.setTinyMCEConfig(");
+    expect(html).toContain(
+      "$('document').ready(function() { $('.card-slot').trigger('decko.slot.ready'); })",
     );
   });
 

@@ -1555,7 +1555,14 @@ const headView: ViewFn = ({ fmt }) => {
   for (const viewName of HEAD_VIEWS) {
     let bytes: string;
     try {
-      bytes = str(fmt.renderView(viewName));
+      const answer = fmt.renderView(viewName);
+      // Ruby's map/compact drops NIL members (a view whose block returns
+      // nil — rss_links' guard-false arm, the seconds corpus's pinned
+      // null) while the empty STRING stays: Array#join does not skip
+      // empties, and that blank is exactly what the captured pages carry
+      // for universal_edit_button and rss_links.
+      if (answer === null) continue;
+      bytes = str(answer);
     } catch (error) {
       // NOT REGISTERED (no line at all). Distinct from a registered view
       // that renders blank: Ruby's map/compact/join never had a
@@ -1564,11 +1571,6 @@ const headView: ViewFn = ({ fmt }) => {
       if (error instanceof UnsupportedViewError) continue;
       throw error;
     }
-    // Ruby's `.compact` drops NIL, not "". A registered member that
-    // renders the empty string stays in the array and contributes an
-    // EMPTY LINE — Array#join does not skip empties, and that blank is
-    // exactly what the captured pages carry for universal_edit_button
-    // and rss_links. So this pushes unconditionally.
     parts.push(bytes);
   }
   return parts.join("\n");
