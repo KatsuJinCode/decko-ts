@@ -1775,6 +1775,99 @@ export class RenderEngine implements RenderEngineLike {
       }
       await this.ensureVerdicts();
     }
+    // A NEW compound-eligible root's structured-form fields (the /new/:type
+    // page: multi_card_edit nests `${root}+${tag}` for the type structure
+    // template's own nests, all/mod/form.rb:115-122 via the implicit
+    // field-config walk). The field cards have no rows, so nothing seats
+    // them: each field editor rendered the quiet read-denial span where
+    // Ruby's form renders the editor. The seat carries the field's
+    // type_id_from_template shape (type.rb:78-80): the field's *default
+    // rule card — related+*right+*default is Pointer-typed,
+    // summary+*right+*default RichText "No summary yet." — supplies BOTH
+    // the type and the editor's initial content (new_card_template returns
+    // the default card itself). One prepare round, then the verdict pass.
+    if (rootCard.id === undefined && rootCard.unknown) {
+      const structure = this.structureRuleForSync({
+        name: name.s,
+        id: record.id,
+        typeId: record.typeId,
+        typeName: rootCard.typeName ?? (record.typeId !== undefined ? this.peekNameForId(record.typeId) : undefined),
+        isNew: true,
+      });
+      if (structure !== undefined && structure.content.includes("{{")) {
+        const seen = new Set<string>([name.key]);
+        let warmed = false;
+        for (const piece of scanNests(structure.content)) {
+          if (piece.kind !== "nest" || piece.nest === undefined) continue;
+          if (piece.nest.comment !== undefined) continue;
+          const target = DeckoName.parse(piece.nest.name).absoluteName(name);
+          if (seen.has(target.key)) continue;
+          seen.add(target.key);
+          if (this.fetchRenderCard(target.key) !== undefined) continue;
+          // The field's *default rule: first existing candidate decides
+          // (rule/all.rb first-hit), exactly newCardDefaultType's walk —
+          // read here for the CONTENT as well as the type.
+          const leftTypeName =
+            rootCard.typeName ?? (record.typeId !== undefined ? this.peekNameForId(record.typeId) : undefined);
+          const seated = await (async (): Promise<RenderCard | undefined> => {
+            const found = await this.fetcher.fetchByName(target.s).catch(() => undefined);
+            if (found !== undefined && found.id !== undefined) return undefined; // a real row: the ordinary warm
+            const defaulted = await this.newCardDefaultType(target, leftTypeName);
+            const absent = await this.fetcher.fetchByName(target.s, {
+              new: defaulted !== undefined ? { typeId: defaulted.typeId } : {},
+            });
+            if (absent === undefined) return undefined;
+            return this.seatAbsentRoot({
+              name: target,
+              key: target.key,
+              typeId: absent.typeId ?? defaulted?.typeId,
+              typeName: defaulted?.typeName,
+              record: absent,
+              unknown: true,
+            } as RenderCard);
+          })();
+          if (seated === undefined) continue;
+          for (const candidate of ruleNamesForCard(
+            {
+              name: target.s,
+              id: undefined,
+              typeId: undefined,
+              typeName: undefined,
+              leftTypeName,
+              isNew: true,
+            },
+            "*default",
+          )) {
+            const ruleKey = DeckoName.parse(candidate).key;
+            const ruleRow = this.fetcher.driver
+              .query<{ id: number; type_id: number; db_content: string | null }>(
+                "SELECT c.id, c.type_id, c.db_content FROM cards c WHERE c.key = ? AND c.trash = 0",
+                [ruleKey],
+              )
+              .then((r) => (r.rows as Array<{ id: number; type_id: number; db_content: string | null }>)[0])
+              .catch(() => undefined);
+            const row = (await ruleRow) as
+              | { id: number; type_id: number; db_content: string | null }
+              | undefined;
+            if (row === undefined) continue;
+            const updated = this.fetchRenderCard(target.key);
+            if (updated === undefined) break;
+            const withTemplate: RenderCard = {
+              ...updated,
+              typeId: row.type_id,
+              typeName: this.peekNameForId(row.type_id),
+              typeCode: this.peekCodenameById?.(row.type_id),
+              dbContent: row.db_content ?? "",
+              record: { ...updated.record, typeId: row.type_id, dbContent: row.db_content ?? "" },
+            };
+            this.renderCards.set(target.key, withTemplate);
+            break;
+          }
+          warmed = true;
+        }
+        if (warmed) await this.ensureVerdicts();
+      }
+    }
     // The V6 nested-skin scan has to run again HERE, not only above. A skin
     // reached through a POINTER/LIST item is not in the render-card map when
     // the earlier scan walks it — measured cold on

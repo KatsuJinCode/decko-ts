@@ -844,7 +844,7 @@ function scanWarmDepsUncached(
   const context = card.name.s;
   const isItems = card.typeCode === "pointer" || card.typeCode === "list";
   const items = (): string[] =>
-    card.dbContent
+    (card.dbContent ?? "")
       .split(/\n+/)
       .map((s) => s.replace(/\[\[|\]\]/g, "").trim())
       .filter((s) => s !== "");
@@ -858,7 +858,7 @@ function scanWarmDepsUncached(
     // A Link list is a dropdown too (Abstract::Items), whose items come from
     // its [[target|label]] chunks; explicit URL targets need no card.
     if (card.typeCode === "link_list") {
-      for (const m of card.dbContent.matchAll(/\[\[([^\][\n]+?)\]\]/g)) {
+      for (const m of (card.dbContent ?? "").matchAll(/\[\[([^\][\n]+?)\]\]/g)) {
         const target = (m[1] ?? "").split("|")[0]?.trim() ?? "";
         if (target !== "" && !/^(\/|https?:|mailto:)/.test(target)) leaves.push({ name: target, context });
       }
@@ -866,7 +866,7 @@ function scanWarmDepsUncached(
     return { refs, leaves };
   }
 
-  for (const piece of scanNests(card.dbContent)) {
+  for (const piece of scanNests(card.dbContent ?? "")) {
     const nest = piece.nest;
     if (nest === undefined || nest.comment !== undefined) continue;
     refs.push({ name: nest.name, context, mode: nestWarmMode(nest.options.view) });
@@ -874,7 +874,7 @@ function scanWarmDepsUncached(
   // A card rendered through :navbar_links nests each [[link]] target with
   // view :nav_item; anywhere else a [[link]] is an existence-only anchor
   // (renderLinkChunk's known/wanted class), so its target is a leaf.
-  for (const m of card.dbContent.matchAll(/\[\[([^\][\n]+?)\]\]/g)) {
+  for (const m of (card.dbContent ?? "").matchAll(/\[\[([^\][\n]+?)\]\]/g)) {
     const target = (m[1] ?? "").split("|")[0]?.trim() ?? "";
     if (target === "") continue;
     if (!LINKS_ARE_LEAVES) refs.push({ name: target, context });

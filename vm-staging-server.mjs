@@ -2741,7 +2741,7 @@ async function renderCardPage(cardName, renderEngine = render, requestedView, re
     // UnknownLayoutError (engine page lane: a layout name that fetches to
     // neither a card layout nor a built-in code layout) lands here too —
     // live serves the same Wild Card 500 shape for those pages.
-    console.error(`[vm-staging] render 500 on ${cardName}: ${message}`);
+    console.error(`[vm-staging] render 500 on ${cardName}: ${message}\n${error instanceof Error ? error.stack : ""}`);
     return renderDeckoErrorPage(cardName, "server_error");
   }
 }
