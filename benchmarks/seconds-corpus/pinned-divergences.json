@@ -3717,39 +3717,6 @@
    "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
-   "op": "view:anonymous:Brief 01:denial",
-   "family": "composed-mod-view-gap",
-   "group": "view / anonymous",
-   "evidence": {
-    "firstDiffAt": 9,
-    "expected": "{\"html\":\"<span class=\\\"denied\\\"><!-- Sorry, you don't have permission () --></span>\"}",
-    "actual": "{\"html\":\"format.denial\"}"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "view:admin:Nonexistent Card:not_found",
-   "family": "composed-mod-view-gap",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 490,
-    "expected": "rd-frame card\\\"><div class=\\\"d0-card-header card-header\\\"><h2 class=\\\"d0-card-header-title\\\"><span class=\\\"card-title\\\" title=\\\"Not Found\\\">Not Found</span></h2",
-    "actual": "rd-frame card\\\"><div class=\\\"d0-card-header card-header\\\"><h1 class=\\\"d0-card-header-title\\\"><span class=\\\"card-title\\\" title=\\\"Not Found\\\">Not Found</span></h1"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "view:admin:Nonexistent Card:bad_address",
-   "family": "composed-mod-view-gap",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 9,
-    "expected": "{\"html\":\"404: Bad Address\"}",
-    "actual": "{\"html\":\"format.bad_address\"}"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
    "op": "view:admin:Nonexistent Card:errors",
    "family": "composed-mod-view-gap",
    "group": "view / admin",

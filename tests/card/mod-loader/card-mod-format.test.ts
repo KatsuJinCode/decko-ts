@@ -689,10 +689,15 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     expect(await s.engine.render("Oracle Format Probe", "server_error")).toContain("<h1>Wild Card!</h1>");
   });
 
-  it("WITH the mod: :denial renders the locale token (error.rb:14-16)", async () => {
+  it("WITH the mod: html :denial is the quiet span (html/error.rb:75-77, the corpus's view-lane bytes)", async () => {
+    // The base block's locale token is overridden in the html format by
+    // `focal? ? loud_denial : quiet_denial`; the headless render is
+    // non-focal, @denied_task is unset on an explicit view render, so the
+    // parens are empty (synthetic-v2 oracle: view:anonymous:Brief 01:denial,
+    // the seconds corpus's composed-mod view-gap family, 2026-10-09).
     const s = storage!;
     expect(await s.engine.render("Oracle Format Probe", "denial")).toBe(
-      "format.denial",
+      '<span class="denied"><!-- Sorry, you don\'t have permission () --></span>',
     );
   });
 
@@ -703,11 +708,15 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     );
   });
 
-  it("WITH the mod: :bad_address renders the locale token (error.rb:23-26)", async () => {
+  it("WITH the mod: html :bad_address is the 404 text (html/error.rb's arm, the corpus's view-lane bytes)", async () => {
+    // The base block's locale token is overridden in the html format by
+    // `root.error_status = 404` + the rendered "404: Bad Address"
+    // (synthetic-v2 oracle: view:admin:Nonexistent Card:bad_address,
+    // the seconds corpus's composed-mod view-gap family, 2026-10-09).
     const s = storage!;
     expect(
       await s.engine.render("Oracle Format Probe", "bad_address"),
-    ).toBe("format.bad_address");
+    ).toBe("404: Bad Address");
   });
 
   it("WITH the mod: :errors renders the 'Problem:' prefix (error.rb:28-30)", async () => {

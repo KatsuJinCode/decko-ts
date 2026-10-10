@@ -227,6 +227,7 @@ import { UnsupportedViewError } from "../../render/format.js";
 // :url_link anchor escapes its href the way Rails' content_tag does
 // (links.rb:101-106).
 import { h } from "../../render/slot-html.js";
+import { quietDenial } from "../../permissions/view-perms.js";
 import { DeckoName } from "../../name.js";
 // 2026-10-01::link/:nav_link share the flat
 // HTML_VIEWS bodies (the urlView doctrine at :300-304 of this file) — one
@@ -715,6 +716,17 @@ const serverErrorView: ViewFn = () => "format.server_error";
  *  tracking); the locale token renders as the bare key. */
 const denialView: ViewFn = () => "format.denial";
 
+/** html/error.rb:75-77 view :denial — `focal? ? loud_denial : quiet_denial`:
+ *  the html arm the corpus's view-lane :denial render carries
+ *  (`<span class="denied"><!-- Sorry, you don't have permission () --></span>`,
+ *  @denied_task unset on an explicit view render, so the parens are empty).
+ *  The focal arm is the loud frame the substituted denial path already
+ *  renders on main formats (RenderFormat#mainLoudDenialHtml, the dual-lane
+ *  denial pages' golden). The base token arm above stays what the
+ *  non-html formats serve. */
+const denialHtmlView: ViewFn = ({ fmt, voo }) =>
+  fmt.isMain ? fmt.mainLoudDenialHtml(voo!) : quietDenial("");
+
 /** set/all/error.rb:18-21 view :not_found, perms: :none:
  *  `t(:format_not_found_named, cardname: ...)`. The cardname picks
  *  safe_name when the card's name is present, or the no-name locale
@@ -727,6 +739,14 @@ const notFoundView: ViewFn = () => "format.not_found_named";
  *  engine has no root.error_status surface; the locale token renders
  *  as the bare key. */
 const badAddressView: ViewFn = () => "format.bad_address";
+
+/** html/error.rb's :bad_address arm — `root.error_status = 404` and the
+ *  rendered text "404: Bad Address" (the corpus's view-lane bytes). The
+ *  engine's page-status surface is the port's root.error_status. */
+const badAddressHtmlView: ViewFn = ({ fmt }) => {
+  fmt.engine.pageErrorStatus = 404;
+  return "404: Bad Address";
+};
 
 /** set/type/cardtype.rb (card-mod-cardtype set/type/cardtype.rb)
  *  views :add_link, :add_button, :add_url — ported to the headless
@@ -1666,9 +1686,9 @@ const setModules: ModSetModuleFile[] = [
           // one_line_content/labeled_content on unknown cards).
           { view: "mini_unknown", viewFn: miniUnknownView, config: { perms: "none" } },
           { view: "server_error", viewFn: serverErrorView, config: { perms: "none" } },
-          { view: "denial", viewFn: denialView, config: { perms: "none" } },
+          { view: "denial", viewFn: denialHtmlView, config: { perms: "none" } },
           { view: "not_found", viewFn: notFoundView, config: { perms: "none" } },
-          { view: "bad_address", viewFn: badAddressView, config: { perms: "none" } },
+          { view: "bad_address", viewFn: badAddressHtmlView, config: { perms: "none" } },
           { view: "errors", viewFn: errorsView },
         ],
       },
