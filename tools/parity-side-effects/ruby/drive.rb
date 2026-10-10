@@ -94,6 +94,24 @@ PUBLIC_DIR = File.join(WORK_DIR, "public")
 FileUtils.rm_rf(PUBLIC_DIR)
 FileUtils.mkdir_p(File.join(PUBLIC_DIR, "files"))
 Cardio.paths["public"] = PUBLIC_DIR
+# The uploader's cache and the asset outputter's staging resolve
+# Cardio.paths["tmp"] (carrier_wave/file_card_uploader/path.rb cache_dir,
+# asset_outputter.rb handle_file). An app whose own tmp/ directory does not
+# exist resolves it to nil, and every upload, skin and asset step fails on
+# "no implicit conversion of nil into String", so provide it under the work
+# directory — the same arrangement reference-harness/oracle/lib/harness_env.rb
+# configure_files! makes for the builder and the adapter.
+TMP_DIR = File.join(WORK_DIR, "tmp")
+FileUtils.rm_rf(TMP_DIR)
+FileUtils.mkdir_p([TMP_DIR, File.join(TMP_DIR, "files")])
+Cardio.paths["tmp"] = TMP_DIR
+# Account tokens (verification, password reset) are signed with the app
+# credentials' secret_key_base (card/auth/token.rb SECRET_KEY). The reference
+# app carries no credentials, and an empty HMAC key aborts every token send
+# ("HMAC key cannot be empty"), so sign with the same harness secret the
+# TypeScript drive uses (ts-drive.mjs accountMail.token.secret). Comparison
+# normalises token values either way.
+Card::Auth::Token.const_set(:SECRET_KEY, "parity-harness-local-secret")
 
 # Windows grants File.symlink only with a special privilege, so the public
 # link step raises there and the integrate stage swallows it (the rest of

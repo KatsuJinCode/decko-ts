@@ -57,14 +57,29 @@
 // synthetic fixture (invented names, example.test addresses, a frozen clock),
 // or is an id and a timestamp the captures pin.
 //
-// NOT HERE, ON PURPOSE. The production-deck figures published beside these
-// ones -- 70 of 70 write operations and 90 of 90 scenario steps on a copy of
-// a 49,829-card deck -- are measured against a deck this repository does not
-// carry, and no fixture in it holds the oracle's answers for that battery.
-// Asserting them here would mean asserting a number with nothing behind it.
+// THE DEEPER BATTERY, PARTLY PUBLIC ON A SYNTHETIC DECK. The write-probe
+// half of the figures this file once declared out of scope -- 70 of 70 write
+// operations leaving Ruby's rows -- is exercised here on the committed
+// synthetic write-battery fixture
+// (reference-harness/fixtures/write-battery-v1): the write probe
+// (tests/tools/persist-write-probe.test.ts) runs its 70 operations against
+// that deck and diffs every operation's row delta against the Ruby oracle
+// dumps recorded on it (65 of 70 deltas match; 5 are the declared deliberate
+// differences). The third describe below asserts the committed recording
+// those published counts rest on. The scenario battery's 90-step trace is
+// recorded on the same deck and committed beside it, with an OPEN FINDING:
+// on the synthetic deck 3 of the production grade's 7 declared Ruby crashes
+// do not reproduce, and the underlying divergence surfaces instead (the port
+// refuses to rename another user's account holder; Ruby 0.20's vacuous
+// validation allows it) -- see tests/tools/side-effects-scenario-battery.test.ts
+// in the working tree, which documents it. The private-deck run
+// (PERSIST_SRC_DECK pointing at the production oracle deck, its
+// tests/fixtures/persistence-oracle dumps) remains the stronger evidence --
+// measured on a 49,829-card deck this repository does not carry.
 
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -691,3 +706,88 @@ describeOrSkipLoud(!HAVE_GRADE, "tests/exercise/parity-2.test.ts", "HAVE_GRADE")
     }, 120_000);
   },
 );
+
+// ---------------------------------------------------------------------------
+// the write-battery recording the published 70/70 + 90/90 counts rest on
+// ---------------------------------------------------------------------------
+
+interface BatteryManifest {
+  files: Record<string, string>;
+  provenance?: Record<string, unknown>;
+}
+
+/** The committed synthetic write-battery fixture: the deck the write probe's
+ *  70 operations and the scenario battery's 90 steps run against, and the
+ *  Ruby oracle's recordings beside it. The two suites that exercise the
+ *  claims live in tests/tools/ (persist-write-probe.test.ts and
+ *  side-effects-scenario-battery.test.ts); this case pins the committed
+ *  recording those published counts rest on: its shape, its integrity, and
+ *  the differences it declares. */
+describe("the committed write-battery recording behind the published write counts", () => {
+  const BATTERY_FIXTURE = join(REPO, "reference-harness", "fixtures", "write-battery-v1");
+  const BATTERY_MANIFEST = join(BATTERY_FIXTURE, "MANIFEST.json");
+  const PERSIST_STEPS = join(BATTERY_FIXTURE, "expected", "persist-steps");
+
+  it("holds one committed synthetic deck with a 70-step Ruby probe recording and a 90-step Ruby scenario trace on it, integrity-gated by its manifest, with the 5 probe differences declared and the scenario finding recorded", () => {
+    // Integrity: the fixture's own manifest pins the sha256 of the deck and
+    // of both recordings, exactly as the reference-harness fixtures do.
+    expect(existsSync(BATTERY_MANIFEST), "the fixture has a MANIFEST.json").toBe(true);
+    const manifest = JSON.parse(readFileSync(BATTERY_MANIFEST, "utf8")) as BatteryManifest;
+    const pinned = Object.keys(manifest.files);
+    for (const required of [
+      "deck.json",
+      "deck/deck.sqlite3",
+      "expected/persist-steps/deliberate-differences.json",
+      "expected/persist-steps/ruby-outside-delta.json",
+      "expected/side-effects-ruby.json",
+    ]) {
+      expect(pinned, `${required} is pinned by the manifest`).toContain(required);
+    }
+    expect(pinned.filter((rel) => /^expected\/persist-steps\/step-\d+\.json$/.test(rel)).length).toBe(70);
+    const drifted = pinned.filter((rel) => {
+      const file = join(BATTERY_FIXTURE, rel);
+      return !existsSync(file) || createHash("sha256").update(readFileSync(file)).digest("hex") !== manifest.files[rel];
+    });
+    expect(drifted, "every pinned file hashes to its manifest value").toEqual([]);
+
+    // The write probe's Ruby truth: one recorded state per operation, and
+    // the deliberate differences each deck's recordings declare (the engine
+    // differences of tests/fixtures/persistence-oracle, re-pinned with this
+    // deck's own raw ids).
+    const steps = readdirSync(PERSIST_STEPS).filter((f) => /^step-\d+\.json$/.test(f));
+    expect(steps.length).toBe(70);
+    const declarations = JSON.parse(
+      readFileSync(join(PERSIST_STEPS, "deliberate-differences.json"), "utf8"),
+    ) as { differences: { step: number; reason: string }[] };
+    expect(declarations.differences.map((d) => d.step).sort((a, b) => a - b)).toEqual([7, 20, 22, 31, 67]);
+    expect(declarations.differences.every((d) => d.reason.length > 40)).toBe(true);
+
+    // The scenario battery's Ruby truth: 90 steps on the same deck, no
+    // blocked network attempt, recorded under the drive the production grade
+    // used. The recorded trace carries an open finding (37 steps whose
+    // verdicts differ, one root cause — see
+    // tests/tools/side-effects-scenario-battery.test.ts); the recording is
+    // the evidence that finding is graded against.
+    const ruby = JSON.parse(readFileSync(join(BATTERY_FIXTURE, "expected", "side-effects-ruby.json"), "utf8")) as {
+      engine: string;
+      network_blocked: string[];
+      steps: unknown[];
+    };
+    expect({ engine: ruby.engine, blocked: ruby.network_blocked, steps: ruby.steps.length }).toEqual({
+      engine: "ruby-decko",
+      blocked: [],
+      steps: 90,
+    });
+    const battery = JSON.parse(readFileSync(join(REPO, "tools", "parity-side-effects", "scenarios.json"), "utf8")) as {
+      steps: { name: string; deliberate?: unknown }[];
+    };
+    const pins = battery.steps.filter((s) => s.deliberate).map((s) => s.name);
+    expect(pins.length).toBe(7);
+
+    // The provenance: how the recordings were made, in the manifest itself.
+    const provenance = manifest.provenance as Record<string, string> | undefined;
+    expect(provenance?.deck_builder ?? "").toMatch(/build-deck\.sh/);
+    expect(provenance?.scenario_recording ?? "").toMatch(/drive\.rb/);
+    expect(provenance?.probe_recording ?? "").toMatch(/run-ruby-steps\.sh/);
+  });
+});

@@ -38,9 +38,14 @@
 //  68-70 file and image uploads
 //
 // It writes its JSON, runs tools/persistence/compare-persist.mjs against the
-// committed Ruby dumps, and asserts which steps diverge. Without the oracle
-// deck it skips and says so on stderr; with PERSIST_PARITY=1 a missing deck
-// fails with the path it wanted.
+// committed Ruby dumps, and asserts which steps diverge. The default run is
+// public: the deck is the committed synthetic write-battery fixture
+// (reference-harness/fixtures/write-battery-v1, built from a stock seed by
+// the oracle builder), and the committed Ruby dumps beside it were recorded
+// on that same deck. PERSIST_SRC_DECK selects a private deck for the deeper
+// run instead; PERSIST_RUBY_STEPS then has to name the dumps recorded on it
+// (the tests/fixtures/persistence-oracle dumps are the ones for the private
+// oracle deck). A missing deck file fails with the path it wanted.
 
 import { spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -65,13 +70,17 @@ import { createVirtualCardLookup } from "../../src/card/fetch/virtual-cards.js";
 import { servingModEventRuntime } from "../../src/server/write-routes.js";
 import { LocalAttachmentStore } from "../../src/card/attachments/attachment-store.js";
 
-const SRC =
-  process.env.PERSIST_SRC_DECK ??
-  "C:/localProjects/decko-oracle-app-parity-fix/db/development.sqlite3";
 // Anchored to the repository, not the process cwd: the runner may be started
 // from anywhere, and a cwd-relative path writes the deck copy into whatever
 // directory that happens to be.
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+// The default deck is the committed synthetic fixture; PERSIST_SRC_DECK
+// selects a private deck for the deeper run.
+const FIXTURE_DIR = path.join(REPO, "reference-harness", "fixtures", "write-battery-v1");
+const SYNTHETIC_DECK = path.join(FIXTURE_DIR, "deck", "deck.sqlite3");
+const USING_SYNTHETIC_DECK = process.env.PERSIST_SRC_DECK === undefined;
+const SRC =
+  process.env.PERSIST_SRC_DECK ?? SYNTHETIC_DECK;
 const PERSIST_DIR = path.join(REPO, "tmp/persist");
 const OUT = process.env.PERSIST_TS_OUT ?? path.join(PERSIST_DIR, "ts-state.json");
 // Uploaded files (steps 68-70), removed with the deck copy.
@@ -79,9 +88,13 @@ const FILES_DIR = path.join(PERSIST_DIR, "ts-files");
 // The TS deck as the op list left it, kept only for the whole-deck comparison.
 const FINAL_DECK = path.join(PERSIST_DIR, "ts-final-compare.sqlite3");
 // The Ruby oracle's per-step dumps, committed so the comparison runs without
-// a Ruby install.
+// a Ruby install: the synthetic fixture's own dumps beside that fixture by
+// default, the private oracle deck's dumps when a private deck is selected.
 const RUBY_STEPS =
-  process.env.PERSIST_RUBY_STEPS ?? path.join(REPO, "tests/fixtures/persistence-oracle");
+  process.env.PERSIST_RUBY_STEPS ??
+  (USING_SYNTHETIC_DECK
+    ? path.join(FIXTURE_DIR, "expected", "persist-steps")
+    : path.join(REPO, "tests/fixtures/persistence-oracle"));
 // The deliberate differences, each declared with its reason and its exact
 // row delta. Step 7, re-creating a junction while its left side is trashed:
 // Ruby inserts a second junction row (possible only because the oracle deck
@@ -98,7 +111,20 @@ const RUBY_STEPS =
 // setting for a deck Ruby also serves, the probe expects Ruby's exact rows
 // there. The comparator accepts a declared step only if its delta is exactly
 // the declared one.
-const DECLARATIONS = path.join(REPO, "tests/fixtures/persistence-oracle/deliberate-differences.json");
+// The declarations in force for this run: each deck's own file (the steps
+// 7/20/22/31/67 differences are engine behaviour, but the 67 declaration
+// also pins the raw outside rows Ruby's half-applied revert leaves, and
+// those ids are per deck).
+const DECLARATIONS = USING_SYNTHETIC_DECK
+  ? path.join(FIXTURE_DIR, "expected", "persist-steps", "deliberate-differences.json")
+  : path.join(REPO, "tests/fixtures/persistence-oracle/deliberate-differences.json");
+// The fixture deck is Ruby-built: every account on it stores Ruby's salted
+// SHA-1 digest, so the default run stores passwords the way Ruby does (the
+// deck Ruby also serves is run with legacy-sha1). An explicit
+// DECKO_PASSWORD_HASH keeps its operator-set value.
+if (USING_SYNTHETIC_DECK && process.env.DECKO_PASSWORD_HASH === undefined) {
+  process.env.DECKO_PASSWORD_HASH = "legacy-sha1";
+}
 const LEGACY_PASSWORDS = process.env.DECKO_PASSWORD_HASH === "legacy-sha1";
 const PASSWORD_STEPS = [57, 58];
 const DELIBERATE_STEPS = [7, 20, 22, 31, 67].sort((a, b) => a - b);
@@ -308,8 +334,10 @@ async function bootEngine(dbPath: string): Promise<{
   return { driver, engine };
 }
 
-// The oracle deck is a local artifact. Without it the probe skips, and says
-// so on stderr; with PERSIST_PARITY=1 a missing deck is a failure instead.
+// The deck is committed: the default run never skips. A deck that names
+// itself via PERSIST_SRC_DECK is a local artifact; when it is missing the
+// probe skips and says so on stderr, and PERSIST_PARITY=1 makes that a
+// failure with the path it wanted.
 const HAVE_DECK = existsSync(SRC);
 const RUN = HAVE_DECK || process.env.PERSIST_PARITY === "1";
 if (!RUN) warn(`[persist] SKIPPED: oracle deck not found at ${SRC} (set PERSIST_SRC_DECK)`);
@@ -899,7 +927,7 @@ describe("persistence write probe (TS half)", () => {
         [
           path.join(REPO, "tools/persistence/compare-decks.mjs"),
           SRC,
-          path.join(REPO, "tests/fixtures/persistence-oracle/ruby-outside-delta.json"),
+          path.join(RUBY_STEPS, "ruby-outside-delta.json"),
           FINAL_DECK,
           path.join(PERSIST_DIR, "compare-decks-report.json"),
           `--deliberate=${DELIBERATE}`,

@@ -50,6 +50,14 @@ if FILES_DIR
   Cardio.config.file_default_storage = :local
   Cardio.paths["files"] = File.join(FILES_DIR, "files")
   Cardio.paths["public"] = File.join(FILES_DIR, "public")
+  # The uploader's cache resolves Cardio.paths["tmp"]
+  # (carrier_wave/file_card_uploader/path.rb cache_dir): an app whose own
+  # tmp/ directory does not exist resolves it to nil and the upload steps
+  # fail on "no implicit conversion of nil into String", so provide it in
+  # the run-scoped directory (harness_env.rb configure_files! makes the
+  # same arrangement for the builder and the adapter).
+  FileUtils.mkdir_p(File.join(FILES_DIR, "tmp", "files"))
+  Cardio.paths["tmp"] = File.join(FILES_DIR, "tmp")
   File.singleton_class.prepend(Module.new do
     def symlink(src, dest) = File.link(src, dest)
     def symlink?(path) = File.exist?(path)
