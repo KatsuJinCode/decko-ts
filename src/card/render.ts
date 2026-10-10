@@ -306,6 +306,21 @@ const CREATEABLE_TYPES_VIEWS = new Set([
   "new_fields",
   "new_type_formgroup",
   "simple_new",
+  // The rule-form surfaces whose bodies render the rule card's own
+  // type_formgroup (rules.rb's form builder): rules.rb:51-66 rule_form/
+  // rule_edit form + the setting-list quick-edit form (quick_edit.rb) and
+  // the nest-rules board forms (nest_rules.rb) - the corpus's rule-form ops
+  // reach the type select through these roots and the type select's option
+  // list is Auth.createable_types (edit_type.rb:52-62 raw_type_options).
+  "rule_edit",
+  "rule_form",
+  "overlay_rule",
+  "modal_rule",
+  "nest_rules",
+  "modal_nest_rules",
+  "quick_edit_setting_list",
+  "quick_edit",
+  "edit_rules",
 ]);
 /** The codename of the Set cardtype (Type::Set includes Type::SearchType,
  *  card-mod-rules set/type/set.rb — set-typed cards answer item_type_id

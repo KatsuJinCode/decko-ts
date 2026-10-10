@@ -1537,9 +1537,24 @@ const CARDTYPE_GROUP_MAP: ReadonlySet<string> = new Set(
  *  board_type_formgroup (:24-31) passes href/class _live-type-field/
  *  data-remote before add_class appends type-field (the captured order:
  *  name, id, href, class, data-remote, data-select2-id). */
-function typeField(
+/** MODULE-EXPORTED for the rules mod's rule-form type editors
+ *  (card-mod-rules.ts quickEditorBody + rulesTypeFormgroup): those render
+ *  the same edit_type.rb type_field with the set-module
+ *  visible_cardtype_groups overrides. */
+export function typeField(
   ctx: ViewContext,
-  opts: { href?: string; cls?: string },
+  opts: {
+    href?: string;
+    cls?: string;
+    /** The set-module override of All::CardtypeGroups::GROUP (the
+     *  visible_cardtype_groups overrides: Right::Default, Right::Structure,
+     *  Right::ContentOptions). Omitted = the base GROUP table. */
+    groups?: Readonly<Record<string, readonly string[]>>;
+    /** select_tag caller-opts order: href before class (the rule-form
+     *  editors' captured order). Default: class before href when a cls
+     *  opt is present, href-only otherwise. */
+    hrefFirst?: boolean;
+  },
 ): string {
   const { fmt } = ctx;
   const createable = fmt.createableTypes();
@@ -1555,19 +1570,34 @@ function typeField(
     createableSet.add(current);
   }
   const select2Id = `${fmt.uniqueId()}-${Math.floor(cardWallClockNow().getTime() / 1000)}`; // Time.now through the engine wall clock
-  let out = "";
-  for (const [group, types] of Object.entries(CARDTYPE_GROUPS)) {
+  // edit_type.rb:86-102 grouped_types: the groups table (the caller's
+  // override or the base GROUP) walked in order; standard groups
+  // materialize ONLY when a member passes raw_type_options (the hash
+  // assignment inside the loop), Custom is ASSIGNED unconditionally
+  // (:96-98) and renders as an EMPTY optgroup in the base table.
+  // type_field_options (:68-80): ONE materialized group answers the SIMPLE
+  // arm (options_for_select flat, no optgroup - the rules-cap capture's
+  // single-option rule editors); two or more answer the MULTI arm
+  // (grouped_options_for_select, one <optgroup label> per group, options
+  // joined "\n" INSIDE, no separator BETWEEN groups).
+  const groups = opts.groups ?? CARDTYPE_GROUPS;
+  const materialized: Array<[string, readonly string[]]> = [];
+  for (const [group, types] of Object.entries(groups)) {
     const items =
       group === "Custom"
         ? createable.filter((t) => !CARDTYPE_GROUP_MAP.has(t))
         : types.filter((t) => createableSet.has(t));
-    if (group !== "Custom" && items.length === 0) continue;
-    out += `<optgroup label="${group}">${items
-      .map(
-        (t) =>
-          `<option${t === current ? ` selected="selected"` : ""} value="${t}">${t}</option>`,
-      )
-      .join("\n")}</optgroup>`;
+    if (group === "Custom" || items.length > 0) materialized.push([group, items]);
+  }
+  const optionHtml = (t: string): string =>
+    `<option${t === current ? ` selected="selected"` : ""} value="${t}">${t}</option>`;
+  let out: string;
+  if (materialized.length === 1) {
+    out = materialized[0]![1].map(optionHtml).join("\n");
+  } else {
+    out = materialized
+      .map(([group, items]) => `<optgroup label="${group}">${items.map(optionHtml).join("\n")}</optgroup>`)
+      .join("");
   }
   const href = opts.href === undefined ? "" : ` href="${opts.href}"`;
   const live = opts.href === undefined ? "" : ` data-remote="true"`;
@@ -1587,11 +1617,16 @@ function typeField(
       : opts.href !== undefined
         ? `_live-type-field type-field`
         : `type-field`;
+  // select_tag's caller-opts order: class-first is the DEFAULT (the
+  // :new_type_formgroup variant's captured order with a cls+href caller);
+  // hrefFirst gives the helper-chain order (the rule-form editors'
+  // captured order: name, id, href, class, data-remote, data-select2-id).
   const head =
-    opts.cls !== undefined
-      ? `<select name="card[type]" id="card_type" class="${classBase} form-control"${href}`
-      : `<select name="card[type]" id="card_type"${href}` +
-        ` class="${classBase} form-control"`;
+    opts.hrefFirst === true
+      ? `<select name="card[type]" id="card_type"${href} class="${classBase} form-control"`
+      : opts.cls !== undefined
+        ? `<select name="card[type]" id="card_type" class="${classBase} form-control"${href}`
+        : `<select name="card[type]" id="card_type"${href} class="${classBase} form-control"`;
   return (
     head +
     live +
@@ -1615,9 +1650,18 @@ function typeField(
  *  the helper's add_class - the captured order "type-field _live-type-
  *  field slotter form-control"; the bootstrap FIELD_HELPERS wrapper always
  *  appends " form-control"). */
-function typeFormgroup(
+/** MODULE-EXPORTED for the rules mod's rule editors (card-mod-rules.ts
+ *  rulesTypeFormgroup): the wrap_type_formgroup shape with the caller's
+ *  href/class/groups opts. */
+export function typeFormgroup(
   ctx: ViewContext,
-  opts: { href?: string; cls?: string },
+  opts: {
+    href?: string;
+    cls?: string;
+    /** the set-module visible_cardtype_groups override (see typeField). */
+    groups?: Readonly<Record<string, readonly string[]>>;
+    hrefFirst?: boolean;
+  },
 ): string {
   const { fmt } = ctx;
   const card = fmt.card;

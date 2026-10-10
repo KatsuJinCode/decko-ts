@@ -133,6 +133,7 @@ import { PATTERN_TABLE, findPattern } from "../../set-patterns/registry.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import { labelForParsedSet, parseSetName } from "../../set-patterns/set-name.js";
 import { cardFormShell, submitButton } from "../mod-form-substrate.js";
+import { typeField, typeFormgroup } from "./card-mod-edit.js";
 import { cardWallClockNow } from "../../wall-clock.js";
 import { getDefaultModLoader } from "../../mod-loader.js";
 import { modSlotWrap } from "../mod-view-helpers.js";
@@ -777,12 +778,14 @@ const ruleHelpTextView: ViewFn = (ctx) => {
  *  `normalize()` regex `(data-select2-id="[^"]*-)\d+(")` -> $1TIME$2
  *  produce a stable byte-comparison surface). */
 function select2TimestampSeconds(): number {
-  // The token-runtime freeze lane's discipline (see fixtures/captured/
-  // rules-views.json's normalizations block): the engine emits a stable
-  // timestamp seed, the test normalizes the resulting seconds suffix to
-  // TIME. ANY non-empty integer the regex can replace works; the seed 0
-  // keeps the captured fixture's slot-id analogy (RANDOMIZED).
-  return 0;
+  // Ruby's stamp is `Time.now.to_i` (set_select.rb's set_select_tag), which
+  // under the oracle harness's frozen clock (harness_env.rb freeze_clock!)
+  // is the capture clock's seconds - 1789819200 in the seconds corpus. The
+  // port answers through the engine wall-clock seam, which IS that frozen
+  // clock: test-stable (the rules-views test normalizes the seconds suffix
+  // to TIME) and corpus-exact (the increment-2 seed 0 predates the corpus
+  // rows and byte-mismatched every select2 id the rules mod emitted).
+  return Math.floor(cardWallClockNow().getTime() / 1000);
 }
 
 /** set/all/set_select.rb:49-57 set_list: `Card.search(left_id: id,
@@ -834,21 +837,25 @@ const cardSelectView: ViewFn = (ctx) => {
     ...rightNames.map((name) => cardSelectOptionBytes(name, ctx.fmt.engine)),
   ].join("\n");
   // select2 data-select2-id: `<safe_key>-<card_id>-<seconds>` (Time.now
-  // stamp). The seconds are non-deterministic in Ruby; the test freezes
-  // the value to a stable token the normalize() regex rewrites to TIME.
+  // stamp - the frozen capture clock's seconds; see select2TimestampSeconds).
   const select2Id =
     `${card.name.safeKey}-${card.id ?? 0}-${select2TimestampSeconds()}`;
-  return (
+  // set_select.rb:20 view :card_select, wrap: :slot - the corpus op pins the
+  // slot wrap around the filter form (wrap.rb wrap_classes: "card-slot
+  // card_select-view" + the set keys, the standard slot data attrs).
+  return modSlotWrap(
+    ctx,
+    "card_select",
     `<form role="filter" data-slot-selector=".card-slot._fixed-slot" class="nodblclick slotter"` +
-    ` action="/?view=filtered_accordion_rule_list" accept-charset="UTF-8" data-remote="true" method="get">` +
-    `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
-    `<select name="mark" id="mark" class="_submit-on-select form-control _close-rule-overlay-on-select"` +
-    ` data-minimum-results-for-search="Infinity" data-placeholder="Select set"` +
-    ` data-select2-id="${select2Id}">` +
-    options +
-    `</select>` +
-    `<div class="card-slot _fixed-slot"></div>` +
-    `</form>`
+      ` action="/?view=filtered_accordion_rule_list" accept-charset="UTF-8" data-remote="true" method="get">` +
+      `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
+      `<select name="mark" id="mark" class="_submit-on-select form-control _close-rule-overlay-on-select"` +
+      ` data-minimum-results-for-search="Infinity" data-placeholder="Select set"` +
+      ` data-select2-id="${select2Id}">` +
+      options +
+      `</select>` +
+      `<div class="card-slot _fixed-slot"></div>` +
+      `</form>`,
   );
 };
 
@@ -1671,19 +1678,49 @@ function quickForm(ctx: ViewContext): string {
   });
 }
 
+/** The set-module visible_cardtype_groups overrides the rule editors' type
+ *  fields render (edit_type.rb:86-102 grouped_types reads the format's
+ *  override; the base table lives in card-mod-edit.ts):
+ *
+ *  - Right::Default (card-mod-content set/right/default.rb:34-38):
+ *    GROUP.slice("Text","Data","Upload") + Organize
+ *    [List, Pointer, Link list, Nest list] (no Search).
+ *  - Right::Structure (card-mod-content set/right/structure.rb:18-22):
+ *    GROUP.slice("Text") + Organize [Search, Nest list]. */
+const RIGHT_DEFAULT_CARDTYPE_GROUPS: Readonly<Record<string, readonly string[]>> = {
+  Text: ["RichText", "PlainText", "Markdown", "Phrase", "HTML"],
+  Data: ["Number", "Toggle", "Date", "URI"],
+  Upload: ["File", "Image"],
+  Organize: ["List", "Pointer", "Link list", "Nest list"],
+};
+const RIGHT_STRUCTURE_CARDTYPE_GROUPS: Readonly<Record<string, readonly string[]>> = {
+  Text: ["RichText", "PlainText", "Markdown", "Phrase", "HTML"],
+  Organize: ["Search", "Nest list"],
+};
+
 /** The quick_editor method dispatch (see quickForm's citations): the
  *  Right-module overrides for *default/*help rule cards, the Rule set's
  *  rule_content_formgroup otherwise. */
 function quickEditorBody(ctx: ViewContext, setting: string | undefined): string {
   const { fmt } = ctx;
   if (setting === "default") {
-    // card-mod-content set/right/default.rb:16-24
+    // card-mod-content set/right/default.rb:16-24 quick_editor:
+    // `wrap_type_formgroup { type_field class: "type-field rule-type-field
+    // _submit-on-select" } + wrap_content_formgroup { text_field :content,
+    // class: "d0-card-content _submit-after-typing" }` - the type_field
+    // option list is edit_type.rb's grouped table under Right::Default's
+    // visible_cardtype_groups override (default.rb:34-38: GROUP.slice
+    // "Text","Data","Upload" + Organize [List, Pointer, Link list,
+    // Nest list] - no Search).
     const typeGroup =
       `<div class="form-group type-formgroup"${formgroupCardAttrs(fmt)}>` +
       `<label for="card_type">Type</label>\n` +
       `<div class="editor type-editor">` +
-      `<select name="card[type]" id="card_type" class="type-field rule-type-field _submit-on-select form-control" data-select2-id="${typeFieldSelect2Id(ctx)}">` +
-      `<option selected="selected" value="${h(fmt.card.typeName ?? "")}">${h(fmt.card.typeName ?? "")}</option></select>\n` +
+      typeField(ctx, {
+        cls: "type-field rule-type-field _submit-on-select",
+        groups: RIGHT_DEFAULT_CARDTYPE_GROUPS,
+      }) +
+      `\n` +
       `<input type="hidden" name="assign" id="assign" value="true" autocomplete="off" /></div></div>`;
     const contentGroup =
       `<div class="form-group card-editor"${formgroupCardAttrs(fmt)}>` +
@@ -1718,18 +1755,6 @@ function formgroupCardAttrs(fmt: ViewContext["fmt"]): string {
     attrs.push(`data-card-link-name="${h(fmt.urlKey())}"`);
   }
   return attrs.length === 0 ? "" : ` ${attrs.join(" ")}`;
-}
-
-/** type_field's select2 id: `<safe_key>-<n>-<Time.now.to_i>` - the
- *  unique_id CONSUMES the shared format-chain counter (edit_type.rb:47
- *  calls unique_id; content.rb:60-70), so the NEXT unique_id consumer in
- *  the same render continues from n+1 (the captured rule_form_card_editor
- *  on *all+*default: the type field's select2 id is Xall-Xdefault-1-TIME
- *  and the content textarea's id is Xall-Xdefault-2). The seconds suffix
- *  is frozen to 0 and the test normalizes it to TIME (the card_select
- *  precedent). */
-function typeFieldSelect2Id(ctx: ViewContext): string {
-  return `${ctx.fmt.uniqueId()}-0`;
 }
 
 /** quick_editor.rb:31-38 undo_button:
@@ -2305,17 +2330,21 @@ const ruleFormCardEditorView: ViewFn = (ctx) => {
  *  5018 -> 5018, rendered on the *all+*default rule card whose *default
  *  setting_opts carries rule_type_editable: true - card-mod-content
  *  set/self/default.rb:1): the wrap_type_formgroup + type_field shape
- *  (editor.rb:96-104). The href reads success[:id] - edit_rule_success
- *  (rule_form.rb:69-71) carries ONLY :mark/:view, so the :id read is nil
- *  on EVERY surface and the captured query is the constant
- *  "assign=true&mark=" after the path-segment view
- *  (path(mark: nil, view: :rule_form_card_editor, assign: true) on the
- *  format's own card). select_tag attr order: name, id, then the opts
+ *  (editor.rb:96-104) through the shared edit_type port (typeFormgroup).
+ *  The href reads success[:id] - edit_rule_success (rule_form.rb:69-71)
+ *  carries ONLY :mark/:view, so the :id read is nil on EVERY surface and
+ *  the captured query is the constant "assign=true&mark=" after the
+ *  path-segment view. select_tag attr order: name, id, then the opts
  *  hash - href, class (bootstrap appends " form-control"), data-remote,
  *  and type_field's merged data-select2-id LAST (edit_type.rb:46-47);
- *  the option list is simple_type_field_options' single selected current
- *  type; wrap_type_formgroup appends the assign hidden field
- *  (edit_type.rb:64-68, output-joined "\n"). */
+ *  the option list is edit_type.rb type_field_options under the rule
+ *  card's right-set visible_cardtype_groups override (Right::Default for
+ *  *default rules, Right::Structure for *structure rules,
+ *  Right::ContentOptions for *content_options rules, the base table
+ *  otherwise) - the corpus's rule-form ops render the multi-group
+ *  optgroup lists there (2026-10-10), the rules-cap capture's
+ *  single-option select is the same code's simple arm at its capture
+ *  deck's createable state. */
 function rulesTypeFormgroup(ctx: ViewContext): string | undefined {
   const setting = ruleSettingCodename(ctx);
   const registry = setting === undefined
@@ -2323,15 +2352,25 @@ function rulesTypeFormgroup(ctx: ViewContext): string | undefined {
     : getDefaultModLoader()?.settingsRegistry().findByCodename(setting);
   if (registry === undefined || !registry.ruleTypeEditable) return undefined;
   const href = `/${ctx.fmt.urlKey()}/rule_form_card_editor?assign=true&mark=`;
-  const typeName = ctx.fmt.card.typeName ?? "";
-  return (
-    `<div class="form-group type-formgroup"${formgroupCardAttrs(ctx.fmt)}>` +
-    `<label for="card_type">Type</label>\n` +
-    `<div class="editor type-editor">` +
-    `<select name="card[type]" id="card_type" href="${h(href)}" class="type-field rule-type-field _live-type-field form-control" data-remote="true" data-select2-id="${typeFieldSelect2Id(ctx)}">` +
-    `<option selected="selected" value="${h(typeName)}">${h(typeName)}</option></select>\n` +
-    `<input type="hidden" name="assign" id="assign" value="true" autocomplete="off" /></div></div>`
-  );
+  return typeFormgroup(ctx, {
+    href,
+    cls: "type-field rule-type-field _live-type-field",
+    groups: ruleTypeGroups(setting),
+    hrefFirst: true,
+  });
+}
+
+/** The rule editor's visible_cardtype_groups override by the rule card's
+ *  right codename (the set-module overrides; see
+ *  RIGHT_DEFAULT_CARDTYPE_GROUPS above and card-mod-content
+ *  set/right/content_options.rb:22-24). Undefined = the base GROUP table. */
+function ruleTypeGroups(
+  setting: string | undefined,
+): Readonly<Record<string, readonly string[]>> | undefined {
+  if (setting === "default") return RIGHT_DEFAULT_CARDTYPE_GROUPS;
+  if (setting === "structure") return RIGHT_STRUCTURE_CARDTYPE_GROUPS;
+  if (setting === "content_options") return { Organize: ["List", "Pointer", "Search"] };
+  return undefined;
 }
 
 /** editor.rb:17-22 view :rule_edit, cache: :never, unknown: true, wrap:
