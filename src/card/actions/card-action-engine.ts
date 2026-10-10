@@ -731,6 +731,21 @@ export class CardActionEngine {
           );
         }
       } else {
+        // A posted NEW subcard with no content and no type arguments is a
+        // no-op save: "" is the stored default (prepare_db_content's
+        // `standard_db_content || ""`), so the subcard's director aborts
+        // unchanged — no action row, no INSERT, no mail section. The
+        // structured form's pointer fields post exactly this shape (the
+        // +related field's hidden blank content field); Ruby's create
+        // leaves the structure nest a reference only.
+        const blankNoop =
+          (sub.content === undefined || sub.content === "") &&
+          sub.typeId === undefined &&
+          sub.typeCode === undefined &&
+          sub.typeName === undefined &&
+          sub.attachment === undefined &&
+          (sub.subcards === undefined || Object.keys(sub.subcards).length === 0);
+        if (blankNoop) continue;
         const created = await this.createInWriter(
           writer,
           {

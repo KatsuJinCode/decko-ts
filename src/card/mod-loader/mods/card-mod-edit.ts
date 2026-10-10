@@ -541,6 +541,11 @@ const TYPE_FORMAT_INPUT_TYPE: Readonly<
   phrase: { method: "text_field" },
   uri: { method: "text_field" },
   plain_text: { method: "text_area" },
+  // card-mod-list set/abstract/01_list/html_views.rb:40-42 default_input_type
+  // :list — the abstract is included in both the Pointer and the List type
+  // sets, so both type codes answer the list editor.
+  pointer: { method: "list" },
+  list: { method: "list" },
 };
 
 /** all/editor.rb:9-11 input_type_from_rule:
@@ -702,6 +707,38 @@ export const inputView: ViewFn = (ctx) => {
   const inputType =
     typeArm?.method ?? inputTypeFromRule(inputTypeRuleContent(ctx));
   const method = inputType ?? "rich_text"; // default_input_type (:38-40)
+  if (method === "pointer" || method === "list") {
+    // card-mod-list set/abstract/01_list/html_views.rb:32-57 view :input =
+    // `_render_hidden_content_field + super()` — the hidden content field
+    // (content.rb:57-59 hidden_field :content, class d0-card-content) then
+    // list_input: ul.pointer-list-editor.pointer-list-ul with one
+    // pointer-li per items_for_input item (item_names; EMPTY lists render
+    // one blank row — items_for_input's `items.empty? ? [""] : items`) and
+    // the _pointer-item-add button. The item inputs are text_field_tag
+    // "pointer_item" (class pointer-item-text form-control, the options
+    // card for the autocomplete, placeholder ""), the handle/remove/add
+    // icons the material-icons set.
+    const items = content === "" ? [""] : content.split("\n").filter((s) => s !== "");
+    const itemRows = (items.length > 0 ? items : [""])
+      .map(
+        (item) =>
+          `<li class="pointer-li mb-1">\n` +
+          `  <span class="input-group">\n` +
+          `    <span class="input-group-text handle"><i class="material-icons notranslate">reorder</i></span>\n` +
+          `    <input class="pointer-item-text form-control" data-options-card="" placeholder="" type="text" value="${h(item)}" name="pointer_item" id="pointer_item" />\n` +
+          `    <button class="pointer-item-delete btn btn-secondary" type="button"><i class="material-icons notranslate">remove</i></button>\n` +
+          `  </span>\n` +
+          `</li>`,
+      )
+      .join("\n");
+    return (
+      `<input class="d0-card-content form-control" autocomplete="off" type="hidden" value="${content}" name="${namePrefix}[content]" id="${idPrefix}_content" />\n` +
+      `<ul class="pointer-list-editor pointer-list-ul">\n${itemRows}\n</ul>\n` +
+      `<span class="input-group">\n` +
+      `  <button class="_pointer-item-add btn btn-secondary" type="submit"><i class="material-icons notranslate">add</i>add another</button>\n` +
+      `</span>`
+    );
+  }
   if (method === "ace_editor") {
     const mode = typeArm?.aceMode ?? "html"; // ace_editor.rb:18-20 default
     return `<textarea rows="5" class="d0-card-content ace-editor-textarea form-control" data-ace-mode="${mode}" name="${namePrefix}[content]" id="${idPrefix}_content">\n${content}</textarea>`;

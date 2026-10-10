@@ -1773,6 +1773,87 @@ export class RenderEngine implements RenderEngineLike {
       // help-rules re-passes above).
       await this.ensureVerdicts();
     }
+    // A NEW compound-eligible root's structured-form fields (the /new/:type
+    // page: multi_card_edit nests `${root}+${tag}` for the type structure
+    // template's own nests, all/mod/form.rb:115-122 via the implicit
+    // field-config walk). The field cards have no rows, so nothing seats
+    // them: each field editor rendered the quiet read-denial span where
+    // Ruby's form renders the editor. The seat carries the field's
+    // type_id_from_template shape (type.rb:78-80): the field's *default
+    // rule card — related+*right+*default is Pointer-typed,
+    // summary+*right+*default RichText "No summary yet." — supplies BOTH
+    // the type and the editor's initial content (new_card_template returns
+    // the default card itself). One prepare round, then the verdict pass.
+    if (rootCard.id === undefined && rootCard.unknown) {
+      const structure = this.structureRuleForSync({
+        name: name.s,
+        id: record.id,
+        typeId: record.typeId,
+        typeName: rootCard.typeName ?? (record.typeId !== undefined ? this.peekNameForId(record.typeId) : undefined),
+        isNew: true,
+      });
+      if (structure !== undefined && structure.content.includes("{{")) {
+        const seen = new Set<string>([name.key]);
+        let warmed = false;
+        for (const piece of scanNests(structure.content)) {
+          if (piece.kind !== "nest" || piece.nest === undefined) continue;
+          if (piece.nest.comment !== undefined) continue;
+          const target = DeckoName.parse(piece.nest.name).absoluteName(name);
+          if (seen.has(target.key)) continue;
+          seen.add(target.key);
+          if (this.fetchRenderCard(target.key) !== undefined) continue;
+          const leftTypeName =
+            rootCard.typeName ?? (record.typeId !== undefined ? this.peekNameForId(record.typeId) : undefined);
+          const defaulted = await this.newCardDefaultType(target, leftTypeName);
+          const absent = await this.fetcher.fetchByName(target.s, {
+            new: defaulted !== undefined ? { typeId: defaulted.typeId } : {},
+          });
+          if (absent === undefined) continue;
+          const seated = await this.seatAbsentRoot({
+            name: target,
+            key: target.key,
+            typeId: absent.typeId ?? defaulted?.typeId,
+            typeName: defaulted?.typeName,
+            record: absent,
+            unknown: true,
+          } as RenderCard);
+          for (const candidate of ruleNamesForCard(
+            {
+              name: target.s,
+              id: undefined,
+              typeId: undefined,
+              typeName: undefined,
+              leftTypeName,
+              isNew: true,
+            },
+            "*default",
+          )) {
+            const ruleKey = DeckoName.parse(candidate).key;
+            const ruleRow = (await this.fetcher.driver
+              .query<{ id: number; type_id: number; db_content: string | null }>(
+                "SELECT c.id, c.type_id, c.db_content FROM cards c WHERE c.key = ? AND c.trash = 0",
+                [ruleKey],
+              )
+              .catch(() => ({ rows: [] as Array<{ id: number; type_id: number; db_content: string | null }> })))
+              .rows[0];
+            if (ruleRow === undefined) continue;
+            const updated = this.fetchRenderCard(target.key);
+            if (updated === undefined) break;
+            this.renderCards.set(target.key, {
+              ...updated,
+              typeId: ruleRow.type_id,
+              typeName: this.peekNameForId(ruleRow.type_id),
+              typeCode: this.peekCodenameById?.(ruleRow.type_id),
+              dbContent: ruleRow.db_content ?? "",
+              record: { ...updated.record, typeId: ruleRow.type_id, dbContent: ruleRow.db_content ?? "" },
+            });
+            break;
+          }
+          warmed = true;
+        }
+        if (warmed) await this.ensureVerdicts();
+      }
+    }
     // R17 (unknown-nest typing): an explicit `| type:X ` nest opt names the
     // NEW card's type when the target is missing (nest/fetch.rb:47-48
     // new_card_args) — but buildUnknownNestCard resolves the type card
