@@ -291,6 +291,35 @@ comparator's N1-N6 above. The two vocabularies coexist:
    Ruby hashes strings with a per-process seed; the digits are process noise.
    The literal contexts (`files`, `depends_on`, view names) hold no digits
    and never match.
+4. **N4 (canonical form over a capture-clock value).** In rendered HTML, a
+   relative-time span — a Rails `time_ago_in_words` phrase
+   (`date_helper.rb:95-165`, within its table's bounds: minutes 1-44, hours
+   1-24, days 1-30, months 1-12, years 1+, singular and plural, with the
+   `about`/`over`/`almost` qualifiers) — is replaced by the single
+   placeholder `N4#elapsed`. The oracle's words are a pure function of the
+   fixture clock the harness freezes (`oracle/lib/harness_env.rb`
+   `freeze_clock!`, `travel_to` the fixture clock for the whole process), so
+   a card built moments before the capture reads "less than a minute"
+   forever; an engine's live clock reads "20 days" for the same stored
+   timestamp, and no two engine runs agree either. The span's presence,
+   position and every surrounding byte still count: anchors are compared
+   exactly, so a real content change beside a span, a tail present on one
+   side only, or a different sentence shape still fails. Absolute dates
+   (`2026-09-19`) are NOT spans and stay exact — a date view is an encoding
+   the engine must get right, not clock noise.
+5. **N5 (canonical form over capture-host content).** In rendered HTML,
+   inside a render-error span's `title` attribute that begins with the Ruby
+   debug page marker (`&lt;h3&gt;Error message (visible to admin only)
+   &lt;/h3&gt;`), absolute paths (drive-letter, forward or back slashes) and
+   hexadecimal heap addresses become `N5#path` / `N5#addr`. The oracle's
+   quiet spans embed the capture host's backtrace frames — the Ruby install,
+   gem home and harness checkout of the machine that recorded the capture —
+   which are that machine's filesystem, not the oracle's semantics; a frame
+   path token ends at its `:line:` separator, so the frame's line and method
+   stay compared exactly. Every byte outside such a title, and the error
+   message inside it, still count. The engine must never emit a debug page:
+   an engine span without the debug region still differs structurally, and
+   N5 does not hide that.
 
 Everything else is compared exactly: every byte of HTML, every field of a
 write answer (the new card's id and every byte of mail text included), every
@@ -308,7 +337,20 @@ N3: two stock-oracle processes run over every op of that fixture that
 carries the token (30 of 2,557, 84 tokens; the capture commands are in
 `benchmarks/seconds-corpus/collapse-id-nondeterminism-evidence.md`) differ
 in 84 of 84 collapse ids and 442 of 442 slot ids, and in nothing else
-(0 unexplained).
+(0 unexplained). N4 and N5 are canonical forms over values that do NOT vary
+between two runs of the oracle on one machine — the frozen clock and the
+capture host's filesystem are constant within a capture — so their evidence
+shape is different: the committed capture bytes themselves carry the
+volatility (the oracle's frozen-clock spans, the capture host's absolute
+paths in the debug pages), and the measurement is over oracle-vs-engine
+pairs on the fixture. For `synthetic-v2`: 22 of 2,557 oracle ops carry a
+relative-time span ("less than a minute" ×179, "2 days" ×1); the four ops
+whose only divergence was the span grade identical after N4 and no
+identical op breaks; 8 ops carry the debug page (554 path tokens, 2 heap
+addresses) and N5 closes no op — the six pinned debug rows are structural
+(the engine does not raise where the oracle raises). Full procedure,
+commands and counts in
+`benchmarks/seconds-corpus/capture-clock-and-debug-span-canonicalization-evidence.md`.
 
 Rules the first version applied and no longer does, because no oracle run
 varies in them: hexadecimal object addresses (never present in any recorded

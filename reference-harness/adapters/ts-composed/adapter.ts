@@ -91,13 +91,42 @@ console.log = (...args: unknown[]) => process.stderr.write(args.map(String).join
 console.info = console.log;
 console.warn = console.log;
 
-const driver = new LocalSqliteDriver({ path: process.env.HARNESS_DECK!, readonly: false });
-// The render engine's freshness stamp is a port-only table.
-await driver.query(
-  `CREATE TABLE IF NOT EXISTS "deck_data_version" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1), "version" INTEGER NOT NULL DEFAULT 0)`,
-  [],
-);
-await driver.query(`INSERT OR IGNORE INTO "deck_data_version" ("id", "version") VALUES (1, 0)`, []);
+// The deck opens READ-ONLY: a read session (render, semantics, ask) performs
+// no write, and the corpus grade enforces "reads write only what the oracle's
+// reads wrote" - the read-only handle enforces it at the file level. The
+// port-only freshness-stamp table (deck_data_version) is created on a
+// short-lived writable handle when the staged copy lacks it, and the session
+// returns to read-only; write operations (and sign-in, whose legacy-password
+// upgrade writes) reopen the deck writable for the rest of the session.
+const HARNESS_DB = process.env.HARNESS_DECK!;
+let driver = new LocalSqliteDriver({ path: HARNESS_DB, readonly: true });
+let writable = false;
+{
+  const stamp = await driver.query<{ name: string }>(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'deck_data_version'",
+    [],
+  );
+  if (stamp.rows.length === 0) {
+    const writer = new LocalSqliteDriver({ path: HARNESS_DB, readonly: false });
+    // The render engine's freshness stamp is a port-only table.
+    await writer.query(
+      `CREATE TABLE IF NOT EXISTS "deck_data_version" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1), "version" INTEGER NOT NULL DEFAULT 0)`,
+      [],
+    );
+    await writer.query(`INSERT OR IGNORE INTO "deck_data_version" ("id", "version") VALUES (1, 0)`, []);
+    await writer.close?.();
+  }
+}
+
+/** Reopen the deck writable. The staged copy is the session's private
+ *  scratch; the cost is one close/open plus a boot, paid once per session. */
+async function ensureWritableDriver(): Promise<void> {
+  if (writable) return;
+  await driver.close?.();
+  driver = new LocalSqliteDriver({ path: HARNESS_DB, readonly: false });
+  writable = true;
+  await boot();
+}
 
 // ---- engine state, rebuilt after every write ---------------------------------
 let fetcher: FetchEngine;
@@ -293,6 +322,7 @@ async function opAsk(req: Req): Promise<Json> {
 
 // ---- write -----------------------------------------------------------------------
 async function opWrite(req: Req): Promise<Json> {
+  await ensureWritableDriver();
   const actorRec = await actorRecord(req.actor);
   const actor =
     req.actor === undefined || req.actor === "anonymous" ? null : { id: actorRec!.id, name: await nameOf(actorRec!) };
@@ -349,6 +379,9 @@ async function opWrite(req: Req): Promise<Json> {
 
 // ---- sign in -----------------------------------------------------------------------
 async function opSignin(req: Req): Promise<Json> {
+  // The sign-in path may upgrade a legacy password digest in place (an
+  // UPDATE), so it needs the writable handle like an explicit write.
+  await ensureWritableDriver();
   const result = await authenticateAccount(driver, String(req.email ?? ""), String(req.password ?? ""));
   if (result.ok) return { signed_in: true, actor: result.account.holder.name };
   return { signed_in: false, actor: "Anonymous" };

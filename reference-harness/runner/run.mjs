@@ -15,6 +15,7 @@ import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, appendFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { AdapterSession, loadAdapterManifest } from "./adapter-process.mjs";
 import { rawDelta, snapshot, splitDelta } from "./deck-state.mjs";
 import { verifyFixture } from "./manifest.mjs";
@@ -51,6 +52,13 @@ const checkout = gitCheckout(manifest.dir);
 function stageDeck(root) {
   const work = mkdtempSync(path.join(root, "session-"));
   cpSync(deckDb, path.join(work, "deck.sqlite3"));
+  // The fixture deck's journal mode is WAL (the Ruby build leaves it in the
+  // file header), and every sqlite handle on a WAL database - even a
+  // read-only one - leaves -shm/-wal sidecars beside the file it opens,
+  // which a fixture-manifest check correctly reads as corruption. A staged
+  // copy is private scratch: convert it to the rollback journal so neither
+  // the engine's handles nor the state snapshots can leave residue.
+  convertToRollbackJournal(path.join(work, "deck.sqlite3"));
   if (existsSync(deckFiles)) cpSync(deckFiles, path.join(work, "files"), { recursive: true });
   else mkdirSync(path.join(work, "files"));
   mkdirSync(path.join(work, "adapter"));
@@ -66,6 +74,18 @@ function stageDeck(root) {
       HARNESS_WORK: slash(path.join(work, "adapter")),
     },
   };
+}
+
+/** Checkpoint the copy's WAL into the main file (the copy carries no -wal,
+ *  so the state is already checkpointed) and switch the header to the
+ *  rollback journal. One short-lived connection on the private copy. */
+function convertToRollbackJournal(dbPath) {
+  const db = new DatabaseSync(dbPath);
+  try {
+    db.exec("PRAGMA journal_mode = DELETE");
+  } finally {
+    db.close();
+  }
 }
 
 async function withSession(root, fn) {
