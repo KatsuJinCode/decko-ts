@@ -1613,22 +1613,22 @@
    "family": "composed-mod-view-gap",
    "group": "page / member",
    "evidence": {
-    "firstDiffAt": 10863,
-    "expected": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" value=\\\"Anyone Signed In\\nMember\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer",
-    "actual": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><div class=\\\"btn-g"
+    "firstDiffAt": 10121,
+    "expected": "{\\\"html\\\":\\\"value=\\\"Anyone Signed In\nMember\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"point\\\"}",
+    "actual": "{\\\"html\\\":\\\"name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><div class=\\\"bt\\\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-09 wave-2 refresh (commit pending) vs stock-oracle capture of synthetic-v2: the page body renders to the my_card interactive-roles nest and every byte matches except the edit_inline hidden content field's value - the ensure_roles read-fill (card-mod-layout set/right/enabled_roles.rb: checkbox_input calls card.ensure_roles, which fills the blank session card's content with Auth.current_roles before the pointer-checkbox list renders; the earlier navbar render of the same card object had already mutated it when the page body's render reads the field). The port's enabled-roles registration misses the view-chain walk (the registrar's named singularization divergence - the card token RIGHT-Xenabled_role vs Right::EnabledRoles), so the generic edit_inline substrate serves the region and the fill never applies. Owner: the registrar chain-walk lane (the divergence class is documented in mod-registrar.ts's header) + the ensure_roles read-fill."
   },
   {
    "op": "page:admin:*account links",
    "family": "composed-mod-view-gap",
    "group": "page / admin",
    "evidence": {
-    "firstDiffAt": 10963,
-    "expected": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" value=\\\"Anyone Signed In\\nAdministrator\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"",
-    "actual": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><div class=\\\"btn-g"
+    "firstDiffAt": 10213,
+    "expected": "{\\\"html\\\":\\\"value=\\\"Anyone Signed In\nAdministrator\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class\\\"}",
+    "actual": "{\\\"html\\\":\\\"name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><div class=\\\"bt\\\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-09 wave-2 refresh (commit pending) vs stock-oracle capture of synthetic-v2: the page body renders to the my_card interactive-roles nest and every byte matches except the edit_inline hidden content field's value - the ensure_roles read-fill (card-mod-layout set/right/enabled_roles.rb: checkbox_input calls card.ensure_roles, which fills the blank session card's content with Auth.current_roles before the pointer-checkbox list renders; the earlier navbar render of the same card object had already mutated it when the page body's render reads the field). The port's enabled-roles registration misses the view-chain walk (the registrar's named singularization divergence - the card token RIGHT-Xenabled_role vs Right::EnabledRoles), so the generic edit_inline substrate serves the region and the fill never applies. Owner: the registrar chain-walk lane (the divergence class is documented in mod-registrar.ts's header) + the ensure_roles read-fill."
   },
   {
    "op": "page:anonymous:*guide",
