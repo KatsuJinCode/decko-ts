@@ -46,10 +46,12 @@
 // engine's behavior changes.
 //
 // BUILD ARTIFACTS (not committed, like node_modules): ts-drive.mjs runs the
-// engine from dist/ (npx tsc -p tsconfig.json) and compiles the skin SCSS the
-// way the Ruby oracle does (the LibSass program tools/libsass/build-native.mjs
-// builds). A missing artifact fails this suite with the command that builds
-// it; nothing is skipped.
+// engine from dist/ (built here with tsc from the committed sources) and
+// compiles the skin SCSS the way the Ruby oracle does (the LibSass program
+// tools/libsass/build-native.mjs builds, from the vendored MIT-licensed
+// LibSass 3.6.4 source in tools/libsass/libsass — a C++11 compiler must be
+// on PATH). Both are built by this suite on first use, so a clean checkout
+// runs everything; a failed build fails loudly with the error.
 //
 // DATA RULE. Zero real content: the deck, the scenarios and the recorded
 // trace hold synthetic names, example.com addresses and generated fixtures
@@ -130,16 +132,31 @@ function verifyManifestFiles(rels: string[]): string[] {
 }
 
 describe("side-effects scenario battery (90 steps, committed synthetic deck)", () => {
+  // The committed inputs (deck, Ruby trace) must exist — their absence is a
+  // broken checkout. The build artifacts are NOT committed (like
+  // node_modules) and are built here on first use, so the suite runs on a
+  // clean checkout: the engine from the committed TypeScript sources
+  // (typescript is a devDependency), and the LibSass compiler from the
+  // vendored MIT-licensed LibSass 3.6.4 source (tools/libsass/libsass),
+  // which needs a C++11 compiler on PATH (g++/gcc, per build-native.mjs).
   const missing: string[] = [];
   if (!existsSync(DECK)) missing.push(`${DECK} (committed fixture deck)`);
   if (!existsSync(RUBY_TRACE)) missing.push(`${RUBY_TRACE} (committed Ruby trace)`);
-  if (!existsSync(DIST_ENGINE)) {
-    missing.push(`${DIST_ENGINE} — build it with: npx tsc -p tsconfig.json`);
+  if (missing.length === 0 && !existsSync(DIST_ENGINE)) {
+    const tsc = spawnSync(process.execPath, [join(REPO, "node_modules", "typescript", "bin", "tsc"), "-p", "tsconfig.json"], {
+      cwd: REPO, encoding: "utf8", timeout: 900_000, windowsHide: true,
+    });
+    if (!existsSync(DIST_ENGINE)) {
+      throw new Error(`the engine build failed (tsc exit ${tsc.status}): ${(tsc.stderr || tsc.stdout || "").slice(-600)}`);
+    }
   }
-  if (!existsSync(SASSC)) {
-    missing.push(
-      `${SASSC} — build it with: node tools/libsass/build-native.mjs <libsass-3.6.4 source dir>`,
-    );
+  if (missing.length === 0 && !existsSync(SASSC)) {
+    const build = spawnSync(process.execPath, [join(REPO, "tools", "libsass", "build-native.mjs"), join(REPO, "tools", "libsass", "libsass")], {
+      cwd: REPO, encoding: "utf8", timeout: 1_200_000, windowsHide: true,
+    });
+    if (!existsSync(SASSC)) {
+      throw new Error(`the LibSass build failed (exit ${build.status}; it needs a C++11 compiler on PATH): ${(build.stderr || build.stdout || "").slice(-600)}`);
+    }
   }
 
   it("drives the TypeScript engine through the 90 steps and compares it with the recorded Ruby trace: 49 steps pass, the 4 steps whose production pins still hold are declared, and the 37 steps of the declared account-holder-rename divergence (docs/SECURITY.md 5) are pinned step by step", () => {
