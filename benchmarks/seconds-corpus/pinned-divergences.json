@@ -333,26 +333,6 @@
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
     },
     {
-      "op": "view:admin:Topic 001:boxed",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "expected": "",
-        "actual": ""
-      },
-      "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/; 2026-10-10 re-adjudication: the engine answers 'adapter error UnsupportedViewError: view (boxed) not supported for Topic 001' - the recorded first difference is the pre-error evidence"
-    },
-    {
-      "op": "view:admin:Topic 001:boxed_link",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "expected": "",
-        "actual": ""
-      },
-      "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/; 2026-10-10 re-adjudication: the engine answers 'adapter error UnsupportedViewError: view (boxed_link) not supported for Topic 001' - the recorded first difference is the pre-error evidence"
-    },
-    {
       "op": "view:admin:Ada Admin:tabs_static",
       "family": "composed-mod-view-gap",
       "group": "view / admin",
@@ -384,16 +364,6 @@
         "actual": "{\"html\":\"<table><tr><th>lookup key</th><th>material</th><th>font_awesome</th><th>bootstrap</th></tr><tr><td>plus</td><td>add</td><td>plu"
       },
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:All Topics:progress_bar",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "expected": "",
-        "actual": ""
-      },
-      "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/; 2026-10-10 re-adjudication: the engine answers 'adapter error UnsupportedViewError: view (progress_bar) not supported for All Topics' - the recorded first difference is the pre-error evidence"
     },
     {
       "op": "view:admin:Topic 001:board",
@@ -616,16 +586,6 @@
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
     },
     {
-      "op": "view:admin:Topic:grouped_list",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "expected": "",
-        "actual": ""
-      },
-      "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/; 2026-10-10 re-adjudication: the engine answers 'adapter error UnsupportedViewError: view (grouped_list) not supported for Topic' - the recorded first difference is the pre-error evidence"
-    },
-    {
       "op": "view:admin:Nonexistent Card:errors",
       "family": "composed-mod-view-gap",
       "group": "view / admin",
@@ -791,16 +751,6 @@
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/). Under N6 the div's residual is the frame count: 59 Ruby frames (oracle backtrace) vs 8 V8 frames (engine stack)."
     },
     {
-      "op": "view:admin:*admin:admin",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "expected": "",
-        "actual": ""
-      },
-      "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/; 2026-10-10 re-adjudication: the engine answers 'adapter error UnsupportedViewError: view (admin) not supported for *admin' - the recorded first difference is the pre-error evidence"
-    },
-    {
       "op": "view:admin:mod: help:configurations",
       "family": "composed-mod-view-gap",
       "group": "view / admin",
@@ -832,16 +782,6 @@
         "actual": "{\"html\":\"\"}"
       },
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:mod: help:roles",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "expected": "",
-        "actual": ""
-      },
-      "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/; 2026-10-10 re-adjudication: the engine answers 'adapter error UnsupportedViewError: view (roles) not supported for mod: help' - the recorded first difference is the pre-error evidence"
     },
     {
       "op": "view:admin:All Topics:search_count",
@@ -899,16 +839,6 @@
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
     },
     {
-      "op": "view:admin:Topic 001+tags:checkbox_list",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "expected": "",
-        "actual": ""
-      },
-      "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/; 2026-10-10 re-adjudication: the engine answers 'adapter error UnsupportedViewError: view (checkbox_list) not supported for Topic 001+Tag' - the recorded first difference is the pre-error evidence"
-    },
-    {
       "op": "view:admin:Topic 001+tags:autocomplete",
       "family": "composed-mod-view-gap",
       "group": "view / admin",
@@ -940,16 +870,6 @@
         "actual": "{\"html\":\"<div class='autocomplete-item autocomplete-item-add'>\\n  <div class='autocomplete-icon'>\\n    <i class=\\\"notranslate material-icons\\\">add</i>\\n  </di"
       },
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:Topic 001+tags:pointer_core",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "expected": "",
-        "actual": ""
-      },
-      "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/; 2026-10-10 re-adjudication: the engine answers 'adapter error UnsupportedViewError: view (pointer_core) not supported for Topic 001+Tag' - the recorded first difference is the pre-error evidence"
     },
     {
       "op": "view:admin:Home:javascript_tags",
@@ -985,16 +905,6 @@
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
     },
     {
-      "op": "view:admin:style: mods:stylesheet_include_tag",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "expected": "",
-        "actual": ""
-      },
-      "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/; 2026-10-10 re-adjudication: the engine answers 'adapter error UnsupportedViewError: view (stylesheet_include_tag) not supported for style: mods' - the recorded first difference is the pre-error evidence"
-    },
-    {
       "op": "view:admin:style: mods:remote_style_tags",
       "family": "composed-mod-view-gap",
       "group": "view / admin",
@@ -1026,16 +936,6 @@
         "actual": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;/div&gt;\\n    \\\">*all+*script</span> (asset_output_url view)</span>\"}"
       },
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/). Under N6 the div's residual is the frame count: 53 Ruby frames (oracle backtrace) vs 8 V8 frames (engine stack)."
-    },
-    {
-      "op": "view:admin:Report 1:file_size",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "expected": "",
-        "actual": ""
-      },
-      "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/; 2026-10-10 re-adjudication: the engine answers 'adapter error UnsupportedViewError: view (file_size) not supported for Report 1' - the recorded first difference is the pre-error evidence"
     },
     {
       "op": "view:admin:*favicon:full_width",
@@ -1080,16 +980,6 @@
         "actual": "/x-wiki\\\" title=\\\"Edit this page!\\\" href=\\\"/Home/edit\\\" />\\n\\n\\n<!-- MAIN DECKO JAVASCRIPT -->\\n<script src=\\\"/files/~307/1789819200.js\\\"></script>\\n<script>\\n//<![CDATA[\\ndecko.ro"
       },
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:*head:head_content",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "expected": "",
-        "actual": ""
-      },
-      "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/; 2026-10-10 re-adjudication: the engine answers 'adapter error UnsupportedViewError: view (head_content) not supported for *head' - the recorded first difference is the pre-error evidence"
     },
     {
       "op": "view:admin:Home:rss_links",

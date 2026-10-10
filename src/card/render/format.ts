@@ -1242,13 +1242,20 @@ export class RenderFormat {
       // both). The cache lives on the engine (closureWarm-style) so a
       // warm render path is zero-cost.
       const viewFn = this.engine.resolveView(this.card, effective, this.formatName);
-      if (viewFn === undefined) {
-        // render.rb#view_method + error.rb#unsupported_view_error_message
-        // (Ruby substitutes first, so an unsupported REQUESTED view on an
-        // unknown card reports the substituted view - same shape here)
-        throw new UnsupportedViewError(effective, this.card.name.s);
-      }
       try {
+        if (viewFn === undefined) {
+          // render.rb#view_method + error.rb#unsupported_view_error_message
+          // (Ruby substitutes first, so an unsupported REQUESTED view on an
+          // unknown card reports the substituted view - same shape here).
+          // The raise sits INSIDE the wrap_and_render rescue scope: Ruby's
+          // view_method runs under final_render (render.rb:36-41), called
+          // from wrap_and_render's begin (render.rb:96-100), so an
+          // unsupported view on the root render IS rescued - the quiet span
+          // is the render's value (the corpus's boxed/progress_bar/
+          // pointer_core/... rows, oracle bytes "view (X) not supported
+          // for Y").
+          throw new UnsupportedViewError(effective, this.card.name.s);
+        }
         return viewFn({ fmt: this, voo });
       } catch (error) {
         // THE ROOT'S OWN wrap_and_render rescue (format/render.rb:115-119),
