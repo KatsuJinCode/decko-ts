@@ -84,15 +84,31 @@ function camelizedSegments(setPath: string): string[] {
  *  TWO FURTHER NAMED DIVERGENCES (both measured, both pinned as it.fails
  *  whose marks come off when the divergence closes):
  *
- *  1. CODENAME-KEY CHAIN WALK. Ruby's module lookup does NOT compare safe
- *     keys: Pattern::Base#module_key (set/pattern/base.rb:21-29 +
- *     set/pattern/class_methods.rb:45-50) builds the key from the anchor
- *     parts' CODENAMES, camelized. The TS walker converts safe_set_keys
- *     NAME keys (singularized, X-marked). Measured misses:
- *     `SELF-Xfollow_default` vs registered `Self::FollowDefaults`
- *     (follow :confirm_update_all), `SELF-Xaccount_link` vs
- *     `Self::AccountLinks` (layout four account links), `RIGHT-follower`
- *     vs `Right::Followers`.
+ *  1. CODENAME-KEY CHAIN WALK — CLOSED for codename-bearing anchors.
+ *     Ruby's module lookup does NOT compare safe keys: Pattern::Base#
+ *     module_key (set/pattern/base.rb:21-29 + set/pattern/class_methods.rb:
+ *     45-50) builds the key from the anchor parts' CODENAMES, camelized.
+ *     The walker used to convert safe_set_keys NAME keys (singularized,
+ *     X-marked) and missed every plural-module anchor: the card token
+ *     `RIGHT-Xenabled_role` (card `*enabled roles`, deck key `*enabled_role`)
+ *     never spelled the registered `Right::EnabledRoles`. The codename
+ *     resolution landed on this line (f725ec91 anchoredModuleCandidates +
+ *     9144e6ec chain memos): rubySelfToken rewrites SELF tokens to the
+ *     anchor's codename and anchoredModuleCandidates resolves each anchor
+ *     part key -> id -> codename through the installed name environment,
+ *     so the token now resolves `Right::EnabledRoles` (probed live on the
+ *     composed deck, 2026-10-10: candidates ["Right::EnabledRoles"],
+ *     definitive, and viewChain("... RIGHT-Xenabled_role ...", :edit_inline)
+ *     answers Right::EnabledRoles first — the same probe rewrites
+ *     SELF-Xfollow_default -> Self::FollowDefaults and
+ *     SELF-Xaccount_link -> Self::AccountLinks). RESIDUAL: an anchor part
+ *     whose key the installed environment cannot resolve (no card, or no
+ *     codename) keeps the name-spelling fallback — definitive=false, never
+ *     memoized (e.g. `RIGHT-follower` spells Right::Follower; the deck's
+ *     anchor card is `*followers`/key `*follower`, so only the X-marked
+ *     spelling reaches the codename). Ruby's own rule is the same shape:
+ *     anchor_codenames breaks on the first codename-less part and builds
+ *     no module key at all.
  *
  *  2. INCLUDE_SET SEAM (base-bucket shadowing of flat abstract
  *     registrations). computeResolvedView gives chain[0] priority over
