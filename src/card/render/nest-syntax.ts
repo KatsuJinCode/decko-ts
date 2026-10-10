@@ -149,11 +149,15 @@ export interface ContentPiece {
 }
 
 export function scanNests(content: string | undefined): ContentPiece[] {
+  // A fabricated NEW card's content is undefined until its first save
+  // (prepare_db_content's `standard_db_content || ""` stores the empty
+  // string only at write time) — the scans answer no nests for it, exactly
+  // like the empty string.
+  if (content === undefined || content === null) return [];
   // Request-scoped memo (DeckoName.requestMemo), shared by every pass of a
   // live render: the pieces are a function of the content text alone. A
   // memoized result is deep-frozen, so no caller can change what a later
   // caller reads (a write would throw, never pass silently).
-  if (content === undefined || content === null) return [];
   const memo = DeckoName.requestMemo<ContentPiece[]>(SCAN_NESTS_MEMO);
   if (memo === undefined) return scanNestsUncached(content);
   const hit = memo.get(content);

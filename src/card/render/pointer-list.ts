@@ -60,6 +60,7 @@ import { serializerFollowsLive } from "./deployment-follow-live-config.js";
 import { DeckoName } from "../name.js";
 import { isNewCard, type CardRecord } from "../fetch/card-record.js";
 import { newSlotId, emitAttrs, emitHamlAttrs, h } from "./slot-html.js";
+import { hamlSlotInHash } from "./haml-slot-style.js";
 
 /** The view name passed to nest for each item inside the card-list
  *  wrapper (card-mod-format set/all/html.rb#default_item_view = :bar).
@@ -571,15 +572,21 @@ export function pointerListItemBodyForUnknown(
   // the two-level `&amp;#39;` form this makes possible is read off the
   // shared template, not off a captured denied bar).
   const safeLinkName = DeckoName.parse(name).urlKey;
-  const dataAttrs =
-    emitHamlAttrs({
-      "data-card-link-name": safeLinkName,
-      "data-card-name": h(name),
-      "data-card-type-id": typeId,
-      "data-card-type-name": typeName,
-    }) + ` data-slot-id="${newSlotId()}"`;
+  // The slot id rides the same Haml `data:` hash, so it is single-quoted
+  // like the other four (stock Ruby's bar.haml passes wrap_data — slot id
+  // included — as one hash); in the separate style it is a double-quoted
+  // attribute after the hash, like the live bar emitters.
+  const slotId = newSlotId();
+  const hamlInHash = hamlSlotInHash();
+  const dataAttrs = emitHamlAttrs({
+    "data-card-link-name": safeLinkName,
+    "data-card-name": h(name),
+    "data-card-type-id": typeId,
+    "data-card-type-name": typeName,
+    ...(hamlInHash ? { "data-slot-id": slotId } : {}),
+  });
   return (
-    `<div class='${serializerFollowsLive() ? `nodblclick d-flex _card-link bar ${h(setKeys)} with-bar-menu` : `bar ${h(setKeys)} with-bar-menu nodblclick d-flex _card-link`}'${dataAttrs}>\n` +
+    `<div class='${serializerFollowsLive() ? `nodblclick d-flex _card-link bar ${h(setKeys)} with-bar-menu` : `bar ${h(setKeys)} with-bar-menu nodblclick d-flex _card-link`}'${dataAttrs}${hamlInHash ? "" : ` data-slot-id="${slotId}"`}>\n` +
     `<span class="denied"><!-- Sorry, you don't have permission (read) --></span>\n` +
     `<span class="denied"><!-- Sorry, you don't have permission (read) --></span>\n` +
     `</div>\n`

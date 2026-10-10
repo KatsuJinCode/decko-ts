@@ -162,10 +162,12 @@ import {
   sessionCookieHeader,
   clearedSessionCookieHeader,
 } from "./dist/src/server/write-routes.js";
-// The session location history (card/lib/card/env/location_history.rb +
-// mod/session set/all/location_history.rb): full-page reads push their URL,
-// `*previous` resolves to the last entry, a delete discards the card's.
-import { SessionLocationHistory } from "./dist/src/server/session-location-history.js";
+// The visitor session's cookie-carried location history (card-mod-session
+// set/all/location_history.rb): pageViewCookie is the save_current_location
+// host seam — a full-page read of a known card stores its own URL, and the
+// write path's `*previous` / configure_successful_deletion redirects resolve
+// to the last entry.
+import { emptyVisitorSession, pageViewCookie, visitorSessionCookie } from "./dist/src/card/session/visitor-session.js";
 // The recaptcha seat's host-config source (staging-seat-wiring lane): reads
 // the DECKO_RECAPTCHA_* environment keys into the WriteRouteContext.recaptcha
 // seat (write-routes.ts). Undefined until ops sets the keys — INERT by
@@ -610,8 +612,6 @@ if (firstRunEnabled() && writePathEnabled()) {
   }
 }
 const sessions = new SessionStore({ driver: authDriver });
-// One history per visitor session, server-side like Ruby's session store.
-const locationHistory = new SessionLocationHistory();
 
 // ---------------------------------------------------------------------------
 // Account email-token flows boot (lane-reset-flows)
@@ -1500,10 +1500,14 @@ function jsonResponse(status, body) {
 
 /** decodeURIComponent that 400s on malformed input instead of throwing.
  *  '+' is DECKO'S JOINT (Card::Name.joint, prototype/lib/cardname.rb) and
- *  must survive into the name — see deploy/worker.ts#decodeName. */
+ *  must survive into the name — see deploy/worker.ts#decodeName.
+ *  Underscores decode to spaces BEFORE the fetch — card_class.rb:126-131
+ *  uri_fetch_opts `opts[:name] ||= Name[params[:mark]]&.tr "_", " "`: same
+ *  key either way; the decode is what an absent-card render displays
+ *  (src/server/worker-shared-surface.ts#decodeName carries the full note). */
 function decodeName(raw) {
   try {
-    return decodeURIComponent(raw);
+    return decodeURIComponent(raw).replace(/_/g, " ");
   } catch {
     return undefined;
   }
@@ -2737,7 +2741,7 @@ async function renderCardPage(cardName, renderEngine = render, requestedView, re
     // UnknownLayoutError (engine page lane: a layout name that fetches to
     // neither a card layout nor a built-in code layout) lands here too —
     // live serves the same Wild Card 500 shape for those pages.
-    console.error(`[vm-staging] render 500 on ${cardName}: ${message}`);
+    console.error(`[vm-staging] render 500 on ${cardName}: ${message}\n${error instanceof Error ? error.stack : ""}`);
     return renderDeckoErrorPage(cardName, "server_error");
   }
 }
@@ -3302,10 +3306,6 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
       fetcher,
       attachmentStore,
       followMail: followMailContext,
-      // The `*previous` success-mark resolution (mark.rb:12-14): the edit
-      // modal's Delete link carries success[mark]=*previous, and the delete's
-      // hard-redirect JSON answers the session's previous location.
-      ...(cookieToken !== null ? { previousLocation: () => locationHistory.previous(cookieToken) } : {}),
       ...(scssCompiler === undefined ? {} : { scssCompiler }),
       coffeeCompiler,
       // staging-seat-wiring lane: the recaptcha seat, composed only when the
@@ -3400,9 +3400,23 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
               const actorEngine = engineForActor(cookieActor.id);
               actorEngine.expireRenderCard(name);
               const { RenderFormat } = await import("./dist/src/card/render/format.js");
-              const previewCard = await actorEngine
-                .render(name, "preview_editor")
-                .then(() => actorEngine.fetchRenderCard(name));
+              // The seat render runs the view WITHOUT the round-trip opts —
+              // they ride only the final renderView below. A view whose
+              // posture raises on the missing param (preview_editor's
+              // gsub-on-nil, the raise-posture lane's stock shape) must not
+              // fail the flow here: Ruby renders preview_editor exactly
+              // once, WITH the request params present. The seating itself
+              // happens in the render's prepare phase, before the view body
+              // runs, so the card is seated even when the view raises; the
+              // same catch-and-reread pattern the renderSlot hook above
+              // uses. The final renderView keeps the posture: a genuinely
+              // param-less render raises to the caller unchanged.
+              try {
+                await actorEngine.render(name, "preview_editor");
+              } catch {
+                // the seat's view error is the final renderView's to raise (or not)
+              }
+              const previewCard = actorEngine.fetchRenderCard(name);
               if (previewCard === undefined) {
                 throw new Error(`preview_editor render could not seat the card: ${name}`);
               }
@@ -3591,29 +3605,7 @@ const server = http.createServer(async (req, res) => {
       const writeResponse = await dispatchWriteRequest(req, pathname);
       if (writeResponse !== null) {
         res.writeHead(writeResponse.status, writeResponse.headers).end(writeResponse.body);
-        // event :discard_deleted_locations (:finalize, on: :delete —
-        // mod/session set/all/location_history.rb): a successful delete drops
-        // the deleted card's own entries from the session's location history
-        // (the *previous resolution read the history BEFORE this, so the
-        // delete's redirect still answers the page the delete was fired
-        // from). The url key is the location Cardname form: the path's first
-        // segment, underscore-encoded.
-        if (
-          writeResponse.expiryName !== undefined &&
-          (req.method === "DELETE" || /^\/(card\/)?delete(\/|$)/.test(pathname))
-        ) {
-          const cookieToken2 = readSessionCookie(req.headers.cookie);
-          if (cookieToken2 !== null) {
-            locationHistory.discardCard(cookieToken2, writeResponse.expiryName.replace(/\s+/g, "_"));
-          }
-        }
         // Ruby expires the saved card's cache on every save (card-1.110.0
-        // director/phases.rb:54 after_commit -> cache/all.rb:17-24 expire).
-        // The write engine runs on its own per-request fetcher, so the
-        // boot-time render engine's cache must be expired explicitly —
-        // otherwise the next page render serves the pre-save row (observed
-        // live: session-replay2 lane step-05 read stale content after a
-        // successful save). The gate keys on the successful-mutation
         // point's expiryName (successResponse stamps it on EVERY success
         // flavor — including lane-edit-divergences' ajax 200 slot, which
         // carries no Location) — NOT on the Location header, which only the
@@ -3762,12 +3754,20 @@ const server = http.createServer(async (req, res) => {
       // The navbar's "Sign out" link is GET /delete/*signin: Decko's routes
       // take delete over GET (engine_routes.rb "(card)/delete(/:mark)"), and
       // the *signin card's :signout event ends the session
-      // (set/self/signin.rb), then the page shows *signin.
+      // (set/self/signin.rb), then the page shows *signin. Env.reset_session
+      // (signin.rb:21) drops the REST of the visitor's session with it — the
+      // location history and Session-card content — exactly what the write
+      // path's DELETE arm does through its visitor-session wrapper; this GET
+      // arm owns the reset itself.
       const token = readSessionCookie(req.headers.cookie);
       await signoutAccount(sessions, token);
       response = {
         status: 302,
-        headers: { Location: "/*signin", "Set-Cookie": clearedSessionCookieHeader(), "Cache-Control": "no-store" },
+        headers: {
+          Location: "/*signin",
+          "Set-Cookie": [clearedSessionCookieHeader(), visitorSessionCookie(emptyVisitorSession())],
+          "Cache-Control": "no-store",
+        },
         body: "",
       };
     } else if (req.method === "GET" && pathname === "/_mail-log") {
@@ -3908,10 +3908,15 @@ const server = http.createServer(async (req, res) => {
     // event :save_current_location (mod/session set/all/location_history.rb):
     // a full-page read of a KNOWN card pushes its own URL onto the session's
     // location history (save_location?, location_history.rb:47-51:
-    // non-ajax, html, known, not the *signin codename — the html leg is the
-    // request's Accept negotiation). The `*previous` success mark resolves
-    // to the LAST entry, so a delete fired from an edit page answers its
-    // hard-redirect JSON with that page's own address.
+    // event :save_current_location (mod/session set/all/location_history.rb):
+    // a full-page read of a KNOWN card pushes its own URL onto the visitor
+    // session's cookie-carried location history (pageViewCookie — the
+    // write-routes visitor-session module's host seam; save_location?,
+    // location_history.rb:47-51: non-ajax, html, known, not the *signin
+    // codename). The `*previous` success mark and the delete's
+    // configure_successful_deletion redirect resolve to the LAST entry, so a
+    // delete fired from an edit page answers its hard-redirect JSON with
+    // that page's own address.
     if (
       req.method === "GET" &&
       servedCardName !== undefined &&
@@ -3921,14 +3926,22 @@ const server = http.createServer(async (req, res) => {
       String(req.headers.accept ?? "").includes("text/html") &&
       !SIGNIN_PAGE_PATHS.has(pathname)
     ) {
-      const historyToken = readSessionCookie(req.headers.cookie);
-      if (historyToken !== null) {
-        const knownRecord = await requestEngine.fetcher.fetchByName(servedCardName).catch(() => undefined);
-        if (knownRecord?.id !== undefined) {
-          locationHistory.push(
-            historyToken,
-            `http://${req.headers.host}${url.pathname}${url.search}`,
-          );
+      const knownRecord = await requestEngine.fetcher.fetchByName(servedCardName).catch(() => undefined);
+      if (knownRecord?.id !== undefined) {
+        const setCookie = pageViewCookie(req.headers.cookie, `http://${req.headers.host}${url.pathname}${url.search}`, {
+          known: true,
+          html: true,
+          ajax: false,
+          // save_location?'s own codename leg (location_history.rb:47-51):
+          // the *signin card's page never joins the history — Ruby reads
+          // card.codename on the rendered card, so the seam carries the
+          // record's codename rather than a path-shape guess (the stock
+          // profile serves the sign-in page through the card-page branch,
+          // where a path set cannot see the card).
+          codename: knownRecord.codename,
+        });
+        if (setCookie !== undefined && response.headers["Set-Cookie"] === undefined) {
+          response.headers["Set-Cookie"] = setCookie;
         }
       }
     }

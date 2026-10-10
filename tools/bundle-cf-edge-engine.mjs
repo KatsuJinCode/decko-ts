@@ -14,6 +14,7 @@ import { resolve, dirname } from "node:path";
 import { builtinModules } from "node:module";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { coffeescriptNodeBuiltinStubs } from "./vendor/coffeescript-edge-bundler-stubs.mjs";
 
 // The repository root, from this file's location, so the build works from
 // any working directory.
@@ -40,6 +41,12 @@ await build({
   // entry carries the same WebAssembly module inline (base64) and compiles
   // it with WebAssembly.Module, which the workerd runtime supports.
   alias: { "@cf-wasm/photon": "@cf-wasm/photon/node" },
+  // The write surface bundles the npm coffeescript package (the CoffeeScript
+  // compiler, coffee-npm-compiler.ts); its entry requires fs/vm/path for
+  // file and eval helpers compile() never touches. Stub those three for the
+  // coffeescript subtree only — the bundle's no-static-node-imports
+  // discipline stays intact.
+  plugins: [coffeescriptNodeBuiltinStubs()],
   logLevel: "warning",
 });
 const bytes = statSync(out).size;

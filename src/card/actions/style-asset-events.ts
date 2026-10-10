@@ -375,8 +375,11 @@ export async function assertStyleCompilerFor(
     }
   }
   if (missing !== undefined) {
+    // The refusal the edge hosts' gate pins (write-routes-compiler-dispatch):
+    // a host without a compiler rejects the save as invalid FOR THIS HOST —
+    // a user-error-shaped 422 with the named option, not a server fault.
     throw new CardActionError(
-      "server-error",
+      "user-error",
       `${name.s}: saving it rebuilds asset files, and this host has no ${missing} compiler configured (the ${
         missing === "SCSS" ? "scssCompiler" : "coffeeCompiler"
       } engine option)`,

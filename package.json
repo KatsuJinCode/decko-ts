@@ -3,17 +3,23 @@
   "version": "0.1.0",
   "private": true,
   "license": "GPL-3.0-or-later",
-  "description": "TypeScript implementation of the Decko card engine. A derivative work of decko-commons/decko (card 1.110.0 / decko 0.20.0), licensed GPL-3.0-or-later; see NOTICE. Parity against the Ruby engine is byte-for-byte and is re-measured per release — see README for the current measured figure and how to reproduce it. Edge-native (Cloudflare D1, libSQL/Bunny).",
+  "description": "TypeScript implementation of the Decko card engine. A derivative work of decko-commons/decko (card 1.110.0 / decko 0.20.0), licensed GPL-3.0-or-later; see NOTICE. Parity against the Ruby engine is byte-for-byte and is re-measured per release \u2014 see README for the current measured figure and how to reproduce it. Edge-native (Cloudflare D1, libSQL/Bunny).",
   "type": "module",
   "cloudflare": {
     "bindings": {
       "DB": {
-        "description": "Your deck. The deploy creates this D1 database for you and fills it with the core schema plus a small 4-card demo deck (`Home`, `Hello World`, `About`). Read-only in the demo — the Worker never writes to it."
+        "description": "Your deck. The deploy creates this D1 database for you and fills it with the core schema plus a small 4-card demo deck (`Home`, `Hello World`, `About`). Read-only in the demo \u2014 the Worker never writes to it."
       }
     }
   },
   "scripts": {
-    "test": "vitest run tests/card/",
+    "test": "node tools/test-gates.mjs run correctness",
+    "test:merge": "node tools/test-gates.mjs run full",
+    "test:capacity": "node tools/test-gates.mjs run capacity",
+    "test:deploy": "node tools/test-gates.mjs run deploy",
+    "test:parity": "node tools/test-gates.mjs run parity",
+    "test:harness": "node tools/test-gates.mjs run harness",
+    "test:gates": "node tools/test-gates.mjs list && node tools/test-gates.mjs check",
     "typecheck": "tsc --noEmit",
     "replay": "vitest run oracle-replay tests/testing",
     "db:migrations:apply": "npx wrangler d1 migrations apply DB --remote",
@@ -27,7 +33,7 @@
     "@types/node": "^26.6.2",
     "better-sqlite3": "^13.0.3",
     "esbuild": "^0.28.2",
-    "miniflare": "^5.20260918.0-alpha",
+    "miniflare": "^5.20261006.1-alpha",
     "typescript": "^7.0.2",
     "vitest": "^5.0.1"
   },

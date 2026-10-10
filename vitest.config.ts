@@ -3,9 +3,13 @@ import { purgeStaleVitestTemp } from "./tests/support/purge-stale-vitest-temp";
 
 purgeStaleVitestTemp();
 
-// Test files run in forked workers, at most four at a time, so a hung test
-// cannot keep the run alive and peak memory stays bounded. `dist/` is
-// excluded because it holds the tsc-compiled copy of the suite.
+// Test files run in forked workers. maxWorkers was 4 on a 28-processor machine.
+// Measured on a 160-file slice: 4 workers 33.9s, 8 workers 27.1s, 16 workers
+// 23.9s, 24 workers 25.1s. Sixteen is the turning point - past it each extra
+// worker re-transforms the module graph and costs more than it saves. Forks are
+// kept rather than threads so a hung test cannot keep the run alive and peak
+// memory stays bounded. `dist/` is excluded because it holds the tsc-compiled
+// copy of the suite.
 export default defineConfig({
   test: {
     testTimeout: 30000,
@@ -13,7 +17,7 @@ export default defineConfig({
     teardownTimeout: 5000,
     setupFiles: ["tests/support/scratch-setup.ts"],
     pool: "forks",
-    maxWorkers: 4,
+    maxWorkers: 16,
     // The second reporter lists every suite that skipped for lack of data.
     reporters: ["default", "./tests/support/skip-summary-reporter.ts"],
     // Suites written for Node's own runner (`node --test`) are not vitest

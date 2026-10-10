@@ -1,0 +1,160 @@
+#!/usr/bin/env node
+// Builds docs/scaling-comparison-deep-nesting.md from recorded runs: one
+// TypeScript round-trip attribution run (tests/card/render/
+// deep-nesting-trip-attribution.test.ts) and one or more Ruby Decko runs of
+// benchmarks/run_ruby_deep_nesting_bench.rb (or a script with the same output
+// format) on the same fixture names.
+//
+//   node benchmarks/deep-nesting/build-comparison.mjs \
+//     --ts <attribution.json> \
+//     --ruby "Ruby Decko 0.20 (stock)=<file>" --ruby "<label>=<file>" ... \
+//     [--runs-dir benchmarks/results/runs] [--out docs/scaling-comparison-deep-nesting.md]
+//
+// Every input is first copied into --runs-dir under its SHA-256 (written once;
+// an existing file is never replaced), and the document cites those copies, so
+// the published table can always be traced to the exact bytes it came from.
+
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, openSync, writeSync, closeSync } from "node:fs";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+
+function parseArgs(argv) {
+  const out = { ruby: [] };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === "--ruby") out.ruby.push(argv[++i]);
+    else if (a.startsWith("--")) out[a.slice(2)] = argv[++i];
+  }
+  return out;
+}
+
+const args = parseArgs(process.argv.slice(2));
+if (!args.ts || args.ruby.length === 0) {
+  console.error("usage: build-comparison.mjs --ts <attribution.json> --ruby <label>=<file> [--ruby ...] [--runs-dir dir] [--out file]");
+  process.exit(2);
+}
+const runsDir = resolve(ROOT, args["runs-dir"] ?? "benchmarks/results/runs");
+const outPath = resolve(ROOT, args.out ?? "docs/scaling-comparison-deep-nesting.md");
+const relRoot = (p) => relative(ROOT, p).split(sep).join("/");
+
+/** Copies a run into the runs directory under its hash, once. */
+function pin(path, prefix) {
+  const bytes = readFileSync(path);
+  const hash = createHash("sha256").update(bytes).digest("hex");
+  mkdirSync(runsDir, { recursive: true });
+  const target = join(runsDir, `${prefix}-${hash.slice(0, 16)}.json`);
+  if (existsSync(target)) {
+    if (!readFileSync(target).equals(bytes)) throw new Error(`${target} exists with other contents`);
+  } else {
+    const fd = openSync(target, "wx");
+    try {
+      writeSync(fd, bytes);
+    } finally {
+      closeSync(fd);
+    }
+  }
+  return { file: relRoot(target), sha256: hash, source_name: basename(path) };
+}
+
+const ts = JSON.parse(readFileSync(args.ts, "utf8"));
+const tsPin = pin(args.ts, "deep-nesting-ts");
+const rubies = args.ruby.map((spec) => {
+  const eq = spec.indexOf("=");
+  const label = spec.slice(0, eq);
+  const file = spec.slice(eq + 1);
+  const run = JSON.parse(readFileSync(file, "utf8"));
+  return { label, run, pinned: pin(file, "deep-nesting-ruby") };
+});
+
+// Fixture key shared by both engines' names.
+const key = (root) => root.replace(/^BenchDN_/, "").replace(/_(root|open|n01)/g, "").replace(/_chain_d/, "chain_d");
+const fixtureOrder = ts.rows.map((r) => ({ key: key(r.root), row: r }));
+
+function rubyCell(run, k) {
+  const s = run.shapes.find((x) => key(x.root) === k);
+  if (s === undefined) return { text: "not run", queries: null };
+  if (s.error) return { text: "error", queries: null };
+  const q = s.cold_summary?.queries_median;
+  return { text: q === undefined ? "-" : q.toLocaleString("en-US"), queries: q ?? null };
+}
+
+const header = ["Fixture", "Cards", ...rubies.map((r) => `${r.label}: queries`), "TypeScript: round trips", "TypeScript: statements"];
+const lines = [`| ${header.join(" | ")} |`, `|---|${header.slice(1).map(() => "---:").join("|")}|`];
+for (const { key: k, row } of fixtureOrder) {
+  lines.push(
+    `| ${row.fixture} | ${row.cards.toLocaleString("en-US")} | ${rubies.map((r) => rubyCell(r.run, k).text).join(" | ")} | ${row.round_trips} | ${row.statements} |`,
+  );
+}
+
+const causeLines = ts.causes.map((c) => `- **${c.id}**: ${c.what}.`);
+const attrHeader = ["Fixture", "root", "prelude", "closure", "wave", "total"];
+const attr = [`| ${attrHeader.join(" | ")} |`, `|---|${attrHeader.slice(1).map(() => "---:").join("|")}|`];
+for (const r of ts.rows) {
+  const c = (id) => r.by_cause[id]?.trips ?? 0;
+  attr.push(`| ${r.fixture} | ${c("root")} | ${c("prelude")} | ${c("closure")} | ${c("wave")} | ${r.round_trips} |`);
+}
+
+const rubyEnv = rubies.map((r) => {
+  const e = r.run.environment ?? {};
+  const cfg = r.run.config ?? {};
+  return `- **${r.label}**: card ${e.card_gem}, decko ${e.decko_gem}, Ruby ${e.ruby}, Rails ${e.rails}, ${e.db_engine}; cold renders after \`Card::Cache.reset\`, median of ${cfg.render_n}; recorded ${r.run.date}. Run file \`${r.pinned.file}\` (SHA-256 \`${r.pinned.sha256}\`).`;
+});
+
+const doc = `# Deep nesting: Ruby Decko and the TypeScript engine on the same fixtures
+
+Generated by \`benchmarks/deep-nesting/build-comparison.mjs\` from recorded runs. Do not edit by hand; regenerate it.
+
+## What is compared
+
+Both engines render the same fixture decks, seeded under the same card names (\`BenchDN_...\`):
+
+- **chains**: card 1 nests card 2, which nests card 3, and so on;
+- **fans**: one card nesting *n* cards side by side;
+- **trees**: every card nests *f* cards, *d* levels deep (4 × 4 is 341 cards, 3 × 10 is 1,111, root included).
+
+Each figure is one cold render of the fixture's root card in the \`open\` view.
+
+**Ruby** counts SQL queries. Ruby Decko sends one statement per query and waits for each answer, so its queries, statements and round trips are the same number.
+
+**The TypeScript engine** counts round trips (calls to the database driver; a batch of statements sent together is one call, and on the edge drivers one HTTP request) and statements separately.
+
+The two counts measure the same thing, waits on the database, with two differences in what "cold" includes:
+
+1. Ruby renders inside a booted process: \`Card::Cache.reset\` empties the card, lexicon and rule caches, but the process keeps what Rails and Decko loaded at boot. The TypeScript engine starts from nothing: its first batch also reads the codename table, the permission parties and read rules, the deck's types and the freshness stamp (the 13 statements of its prelude).
+2. The TypeScript fixture decks hold only the fixture and its type card; the Ruby runs seed the fixtures into a stock deck (background cards and all of Decko's own cards present). Leaf bodies are fixed letters in TypeScript and random letters in Ruby; counts do not depend on them, and the HTML of the two engines is not compared here.
+
+Wall-clock times are recorded in the run files but not compared: the engines ran on different databases (in-memory against a file) and runtimes, so a time comparison would measure the setup, not the engines.
+
+## Results
+
+${lines.join("\n")}
+
+Past Ruby's \`max_depth\` of 20 both engines refuse the render (chains of 50, 100 and 200 cards); those rows are in the run files.
+
+## Where every TypeScript round trip goes
+
+Every round trip of every cold render above was recorded with the engine function that issued it. Each falls under one of four causes:
+
+${causeLines.join("\n")}
+
+${attr.join("\n")}
+
+So a cold render costs **4 round trips plus one per level of nesting below the root**, however many cards each level holds. A chain is all levels and no breadth, so it still costs one round trip per card, as Ruby does. Breadth costs nothing extra: a fan of 200 is 5 round trips, and a tree of 1,111 cards 3 levels deep is 7.
+
+The \`root\`, \`prelude\` and \`wave\` trips are a fixed cost of 4. An earlier version of this comparison (2026-10-03) reported 2: it predates the wave prime, which was added so the types and rule cards of every card in hand are loaded in two batches before rendering rather than one at a time during it. That added two round trips to every cold render, including these small fixtures, and is why the chain counts went from 2 / 11 / 21 to 4 / 13 / 23 at depths 1 / 10 / 20.
+
+A warm render (the same card again on the same engine) costs one round trip: a single read of the deck's freshness stamp, which tells the engine whether anything it holds has changed.
+
+## Sources
+
+- TypeScript: engine commit \`${ts.engine_commit}\`${ts.engine_tree_dirty ? " (with uncommitted changes)" : ""}, Node ${ts.node}, ${ts.definitions.database}; generated ${ts.generated_at}. Run file \`${tsPin.file}\` (SHA-256 \`${tsPin.sha256}\`).
+${rubyEnv.join("\n")}
+
+To reproduce the TypeScript run: \`DECKO_BENCH_RUN_DIR=<dir> npx vitest run tests/card/render/deep-nesting-trip-attribution.test.ts\`. The Ruby runs use \`benchmarks/run_ruby_deep_nesting_bench.rb\`, or a copy of it with switches for the batched-loading settings, on a throwaway copy of a stock deck; each run file records its configuration.
+`;
+
+writeFileSync(outPath, doc);
+console.log(`wrote ${relRoot(outPath)} from ${1 + rubies.length} pinned runs`);

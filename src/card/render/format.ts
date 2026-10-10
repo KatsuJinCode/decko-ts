@@ -44,6 +44,7 @@ import {
 } from "./nest-syntax.js";
 import { safeSetKeys } from "./set-keys.js";
 import type { SearchResultPaging } from "./search-paging.js";
+import { nowCardContent } from "./now-content-bytes.js";
 import { cgiEscape, h, htmlEscapeKeepApostrophe, emitAttrs, newSlotId, slotOptionsJson } from "./slot-html.js";
 import { viewPermissionDenial, quietDenial, renderOptSkipPerms, resolveViewPerms, viewDenialView, type CrudTask } from "../permissions/view-perms.js";
 import type { ReadViewer } from "../permissions/read-rules.js";
@@ -597,6 +598,32 @@ const MAX_NEST_CHAR_COUNT = 200;
 /** The default when no format set a mode: mode.rb:18 `parent ?
  *  parent.nest_mode : :normal` - a root format with no parent is :normal. */
 const DEFAULT_NEST_MODE: NestMode = "normal";
+
+/**
+ * `Cardio.config.raise_all_rendering_errors` (cardio/railtie.rb:38, whose
+ * stock default is false) - the process-global posture behind error.rb:65-67
+ * `loud_error?` (`focal? || raise_all_rendering_errors`). The TS default
+ * here is TRUE: the port's bare view lane and the mod-port raise contracts
+ * grew up loud (every raise the mod guards pin reaches the caller), and the
+ * reference-harness adapters - whose fixtures were captured with the config
+ * explicitly false and Rails.env production (the fixtures' MANIFEST
+ * "production render-error semantics" contract line) - set it FALSE at
+ * boot, so the corpus's quiet rescue postures (nest spans, delegated spans,
+ * the root's own wrap_and_render rescue) engage exactly where the oracle
+ * captured them.
+ */
+let raiseAllRenderingErrors = true;
+
+/** `Cardio.config.raise_all_rendering_errors=` - the boot-time posture
+ *  switch (the harness adapters set false; nothing else should). */
+export function setRaiseAllRenderingErrors(value: boolean): void {
+  raiseAllRenderingErrors = value;
+}
+
+/** error.rb:65-67's config half: true when EVERY rescue is loud. */
+export function allRenderingErrorsRaise(): boolean {
+  return raiseAllRenderingErrors;
+}
 
 export interface RenderFormatOptions {
   parent?: RenderFormat;
@@ -1221,7 +1248,26 @@ export class RenderFormat {
         // unknown card reports the substituted view - same shape here)
         throw new UnsupportedViewError(effective, this.card.name.s);
       }
-      return viewFn({ fmt: this, voo });
+      try {
+        return viewFn({ fmt: this, voo });
+      } catch (error) {
+        // THE ROOT'S OWN wrap_and_render rescue (format/render.rb:115-119),
+        // on THE bare view-lane root only. In the serving posture the html
+        // format is never focal (html_format.rb:16-18 focal? =
+        // show_layout? ? main? : depth.zero? - the adapter's bare render
+        // main!s nothing, so focal? is main? = false), loud_error?
+        // (error.rb:65-67) is therefore false, and the rescue is QUIET
+        // (error.rb:75-78): the span is the render's value. Nested and
+        // delegated renders are rescued by their own scopes (nest()'s
+        // catch, renderDelegated) - a throw reaching here already escaped
+        // those. A focal root re-raises as Ruby's loud_error does
+        // (error.rb:69-73); the page lane builds non-viewLaneRoot roots, so
+        // it keeps its own error surface. The config half of loud_error?
+        // keeps the development posture (the mod-port raise contracts)
+        // fully loud.
+        if (!viewLaneRoot || allRenderingErrorsRaise()) throw error;
+        return quietRenderError(error, this.card, effective, this);
+      }
     } finally {
       this.voo = previous;
     }
@@ -1291,7 +1337,14 @@ export class RenderFormat {
     return task === "update" && this.card.id === undefined ? "create" : task;
   }
 
-  private mainLoudDenialHtml(voo: Voo, deniedTask: CrudTask = "read"): string {
+  /** The focal (main-format) arm of html/error.rb's :denial view — public
+   *  for the composed deck's all/error html table, whose :denial view
+   *  renders `focal? ? loud_denial : quiet_denial` (error.rb:75-77): the
+   *  non-focal arm is the quiet span (the corpus's view-lane :denial
+   *  bytes), the focal arm is this loud frame (the golden the dual-lane
+   *  denial pages pin). The denied task rides focalDeniedTask (this
+   *  round's failing-task resolution) unless the caller pins it. */
+  mainLoudDenialHtml(voo: Voo, deniedTask: CrudTask = "read"): string {
     voo.hide("menu");
     voo.hide("help");
     const card = this.card;
@@ -1361,10 +1414,18 @@ export class RenderFormat {
     voo.hide("help");
     const card = this.card;
     const title = "Not Found";
+    // The frame header's heading level follows the format's main-ness: the
+    // page lane (the unknown MAIN card substituted to :not_found, isMain)
+    // carries `<h1 class="d0-card-header-title">` (oracle: the
+    // page:anonymous:Nonexistent Card bytes) while the bare view lane
+    // (`card.format.render(:not_found)`, non-main) carries h2 (oracle: the
+    // view:admin:Nonexistent Card:not_found bytes; the seconds corpus's
+    // composed-mod view-gap pin, 2026-10-09).
+    const heading = this.isMain ? "h1" : "h2";
     const header =
       `<div class="d0-card-header card-header">` +
-      `<h1 class="d0-card-header-title">` +
-      `<span class="card-title" title="${title}">${title}</span></h1></div>`;
+      `<${heading} class="d0-card-header-title">` +
+      `<span class="card-title" title="${title}">${title}</span></${heading}></div>`;
     const errors =
       card.name.s === ""
         ? `<h2>\nCould not find\nthat\n</h2>\n`
@@ -1851,11 +1912,17 @@ export class RenderFormat {
       nestQuietErrors: this.nestQuietErrors,
     });
     // format/error.rb:33-40 monitor_depth runs in the SUBFORMAT's ok_view
-    // (view.rb:86), before its wrap_and_render rescue: a subformat at
-    // max_depth raises the too-deep UserError out of its own render, so the
-    // RENDER THAT NESTED IT rescues it (its quiet span replaces that whole
-    // view, e.g. the core of a chain's twentieth card). Hence the throw sits
-    // outside this nest's catch below.
+    // (view.rb:86), BEFORE its wrap_and_render rescue — outside the nested
+    // view's own quiet rescue — so the raise must skip THIS nest's catch and
+    // propagate to the enclosing view render's rescue boundary (the
+    // renderDelegated seam the titled/content body renders go through):
+    // there the nesting format's depth is > 0, so the quiet span replaces
+    // that WHOLE view — the synthetic-v2 oracle: Chain 20's body carries
+    // ONLY the render-error span (its own paragraph is discarded with the
+    // rescued view), 2026-10-09. Rescuing inside this catch (or letting the
+    // rethrow die on a lane without quiet errors) is the seconds corpus's
+    // TooDeep family: the bare view lane now passes nestQuietErrors like
+    // the page lane (render.ts).
     if (sub.depth >= this.maxDepth) {
       throw new TooDeepError();
     }
@@ -1875,7 +1942,7 @@ export class RenderFormat {
       rendered = sub.renderView(view, viewOpts);
     } catch (error) {
       if (!this.nestQuietErrors) throw error;
-      rendered = quietRenderError(error, card, view);
+      rendered = quietRenderError(error, card, view, this);
     }
     return this.countNestChars(rendered);
   }
@@ -1930,8 +1997,20 @@ export class RenderFormat {
     try {
       return this.renderView(view, opts, optional);
     } catch (error) {
-      if (this.depth === 0) throw error; // error.rb:69-73 loud_error re-raises
-      return quietRenderError(error, this.card, view);
+      // error.rb:65-67 loud_error?: `focal? || raise_all_rendering_errors`.
+      // The html format's focal? is show_layout? ? main? : depth.zero?
+      // (html_format.rb:16-18) - in the serving posture (layouts shown, the
+      // bare render main!s nothing) the html root is NOT focal, so its
+      // delegated renders are QUIET too and the span is the delegation's
+      // value (the oracle's email_page: the span lands inside the
+      // :email_document wrapper, not at the root). Base formats keep the
+      // depth-zero focal arm; the page's main!-ed format is focal and
+      // re-raises as before. The config half of the disjunction makes every
+      // rescue loud (the development posture the mod-port raise contracts
+      // pin).
+      const focal = this.formatName === "html" ? this.isMain : this.depth === 0;
+      if (focal || allRenderingErrorsRaise()) throw error; // error.rb:69-73 loud_error re-raises
+      return quietRenderError(error, this.card, view, this);
     }
   }
 
@@ -2066,6 +2145,17 @@ export class RenderFormat {
    *  TYPE_PLUS_RIGHT-list-working_doc_02 (RVW is List). Resolved from the
    *  warm map; an unprepared left falls back to the NEW-CARD DEFAULT type
    *  (see the last return below). */
+  /** The codename resolver virtualSearchCqlFor takes, built on the engine's
+   *  loaded codename memo (peek): a codename resolves to the KEY of the card
+   *  currently holding it, which is how Ruby's Right pattern matches the
+   *  family's right part (pattern/base.rb:21-29 keys the pattern on the
+   *  right card's codename). Delegates to the module-level builder. */
+  private virtualSearchCodenameResolver():
+    | ((codename: string) => string | undefined)
+    | undefined {
+    return virtualSearchCodenameResolverFor(this.engine);
+  }
+
   private leftTypeNameFor(name: DeckoName): string | undefined {
     if (!name.isCompound) return this.card.typeName;
     const leftName = name.leftName;
@@ -2201,16 +2291,7 @@ export class RenderFormat {
     // no_search_results) instead of the unknown substitution. The family
     // table + the byte-level contract live in
     // src/card/fetch/virtual-search-cards.ts.
-    const virtualSearchCql = virtualSearchCqlFor(
-      name,
-      engine.peekIdByCodename !== undefined && engine.peekRegisteredNameForId !== undefined
-        ? (codename) => {
-            const id = engine.peekIdByCodename?.(codename);
-            const holder = id !== undefined ? engine.peekRegisteredNameForId?.(id) : undefined;
-            return holder !== undefined ? DeckoName.parse(holder).key : undefined;
-          }
-        : undefined,
-    );
+    const virtualSearchCql = virtualSearchCqlFor(name, this.virtualSearchCodenameResolver());
     if (virtualSearchCql !== undefined) {
       const searchTypeId = engine.peekIdByCodename?.("search_type");
       const searchTypeName =
@@ -2885,10 +2966,30 @@ export class RenderFormat {
     // token-swap singleton, page 685 (exp href /Narrative).
     let hrefSource = known && named?.name !== undefined ? named.name.s : target;
     if (named === undefined) {
-      const peeked = this.engine.peekKnownCardName?.(target);
-      if (peeked !== undefined) {
+      // VirtualSearch family (card-mod-search set/abstract/virtual_search.rb
+      // :11-12 `def virtual?; new?; end`, :14-16 assign_type :search_type):
+      // a compound name whose right part is one of the 16 family rights is
+      // VIRTUAL-KNOWN on a row miss, so Card.known? (links.rb:140-144
+      // add_known_or_wanted_class) answers true and the anchor renders
+      // known-card. The corpus pin: Help Desk's
+      // [[:account+:right+:by_name|Account cards]] - Ruby renders
+      // known-card (there is no `*account+*right+by name` row and no
+      // *structure rule applies; the card is known purely through the
+      // Right::ByName module), the pre-fix port answered wanted-card. The
+      // nest path already renders this family through the same table (the
+      // GIV page's {{_self+*referred to by}}); this is the link arm of the
+      // one fetch-level state. Table + contract:
+      // src/card/fetch/virtual-search-cards.ts.
+      const virtual = virtualSearchKnownName(target, this.engine);
+      if (virtual !== undefined) {
         known = true;
-        hrefSource = peeked;
+        hrefSource = virtual;
+      } else {
+        const peeked = this.engine.peekKnownCardName?.(target);
+        if (peeked !== undefined) {
+          known = true;
+          hrefSource = peeked;
+        }
       }
     }
     let href: string;
@@ -2951,7 +3052,21 @@ export class RenderFormat {
    *  passes through unchanged (the corpus suites pin those bytes). */
   renderRaw(): string {
     const override = resolveContentOverride(this);
-    const raw = override !== undefined ? override : this.card.dbContent;
+    // card-mod-date set/self/now.rb:1-3 — the *now card's `def content`
+    // override. The loader-less render boot carries no content-override
+    // registry (the mod-loader composition is not loaded there), so the
+    // Self::Now chain is consulted directly: the *now card is
+    // codename-anchored ("now" — set/pattern Self matching via
+    // anchor_codenames) and truly virtual (dbContent ""), the one
+    // SELF_MODULE_CHAINS row the graded corpus pins (see
+    // now-content-bytes.ts for the byte derivation and the unwired
+    // remainder).
+    const selfNow =
+      override === undefined &&
+      (this.card.record.codename === "now" || this.card.key === "*now")
+        ? nowCardContent()
+        : undefined;
+    const raw = override !== undefined ? override : (selfNow ?? this.card.dbContent);
     // Ruby reaches the same bytes through the :raw VIEW, and a view render
     // is `with_wrapper { @rendered = yield; wrap_with_wrapper }`
     // (render.rb:96-97 -> wrapper.rb:15). So every `_render_raw` /
@@ -3413,6 +3528,19 @@ export interface RenderEngineLike {
    *  the :results_for_keyword view (search.rb:48), whose haml guards on
    *  `search_keyword.present?` and therefore renders the empty string. */
   searchKeyword?(card: RenderCard): string | undefined;
+  /** Ruby's Auth.always_ok? for the render session's viewer
+   *  (auth/permissions.rb:7-13 — the DeckoBot actor or an Administrator-
+   *  role member; the engine's ReadPermissionState.alwaysOk, settled in
+   *  the prepare phase). error.rb:47-49 show_all_errors? reads it for the
+   *  admin arm of the quiet render-error span. Optional: engines without
+   *  it (no permission state resolved) take the plain-cardname arm. */
+  peekAlwaysOk?(): boolean | undefined;
+  /** The Auth::Token runtime's injected key material (render.ts
+   *  RenderEngine#tokenConfig, pinned from the host's secret). Ruby reads
+   *  Rails' credentials secret_key_base (token.rb:7); a deck without it
+   *  signs with "" and jwt's ensure_valid_key! raises. Optional: engines
+   *  without it are the no-secret deck — the corpus harness's posture. */
+  tokenConfig?: { readonly secret?: string };
   /** Read-permission verdict for a prepared card (the ok_to_read? set
    *  membership, card-mod-permissions set/all/permissions.rb:142-143,
    *  precomputed in the engine's prepare phase — never a query here). */
@@ -3479,6 +3607,14 @@ export interface RenderEngineLike {
    *  (set/right/enabled_roles.rb checkbox_input), or the plain dropdown
    *  when the actor holds a single role; undefined when signed out. */
   readonly pageSessionRolesDropdownHtml?: string;
+  /** The ensure_roles mutation seam (set/right/enabled_roles.rb:52): a view
+   *  fn that has just consumed the roles-nest html marks the fill so the
+   *  NEXT roles nest render of the SAME request serves the filled content
+   *  input (Ruby's card object mutates mid-request; the fill does not cross
+   *  the request boundary — the oracle's bare view ops pin blank fields).
+   *  Optional: engines without a prepared session chrome never carry the
+   *  roles nest. */
+  markSessionRolesContentFilled?(): void;
   /** ok?(:update) for an arbitrary card, computed on demand (the page head's
    *  universal_edit_button perms: :update gate — card-mod-format
    *  set/all/html/head.rb:46). Optional: engines without it render the
@@ -3871,6 +4007,18 @@ interface UnknownViewDecl {
   /** setKeys tokens the declaring set matches (whole-token membership).
    *  undefined = all-set (applies to every card). */
   setTokens?: readonly string[];
+  /** True for the declarations of a mod whose registrations the port
+   *  compiled into the seed tables instead of wiring a manifest —
+   *  bar_and_box (default-mod-deck.ts's wiring note: "its registrations
+   *  are compiled into the engine's seed tables"). No chain walk can ever
+   *  answer for such a module (there is no set module to carry the
+   *  declaration), so on a loader-bound engine the compiled row remains
+   *  the ONLY source of the setting, exactly as Ruby's bundled
+   *  set/type/image.rb answers `setting :unknown` in every deck. The
+   *  loader-bound lookup still consults these rows, token-scoped like the
+   *  loader-less lane — the globalization defect the allSetOnly skip
+   *  guards against applies to MOD-registered modules' rows, not these. */
+  seedLayer?: boolean;
 }
 
 const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
@@ -3894,9 +4042,16 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
   // card-mod-bar_and_box-0.20.0 set/type/image.rb:6-12: `view :boxed,
   // unknown: true` and `view :boxed_link, unknown: true`. An absent image
   // renders its box, and the box's core is the unknown view (a skin's
-  // missing +Image offers its create link inside the box).
-  { view: "boxed", config: true, setTokens: ["TYPE-image"] },
-  { view: "boxed_link", config: true, setTokens: ["TYPE-image"] },
+  // missing +Image offers its create link inside the box). bar_and_box
+  // carries no mod-deck manifest (default-mod-deck.ts: its registrations
+  // are compiled into the seed tables), so these rows are the only
+  // `setting :unknown` source on a loader-bound engine — seedLayer keeps
+  // them consultable there (the corpus's admin *search page: a skin bar's
+  // absent +Image nests :boxed; without the declaration the view
+  // substituted to :unknown and the whole box collapsed, where the oracle
+  // renders the box with the unknown card's create link inside).
+  { view: "boxed", config: true, setTokens: ["TYPE-image"], seedLayer: true },
+  { view: "boxed_link", config: true, setTokens: ["TYPE-image"], seedLayer: true },
   // all-set rows
   { view: "mini_bar", config: true },
   { view: "mini_unknown", config: true },
@@ -4005,11 +4160,15 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
  * and the view substitutes to :unknown (format/error.rb:23
  * `setting_view || :unknown`).
  *
- * `allSetOnly` bounds the lookup to the ALL-SET rows for a LOADER-BOUND
- * engine: Ruby mixes the all-set format modules into the base class of
- * EVERY deck (registrar.rb:79-84 process_base_format_modules), so their
- * declarations hold on top of any loaded mod deck — but a set-scoped
- * declaration (right/discussion's) must come from the deck's own module
+ * `allSetOnly` bounds the lookup to the ALL-SET rows plus the SEED-LAYER
+ * rows for a LOADER-BOUND engine: Ruby mixes the all-set format modules
+ * into the base class of EVERY deck (registrar.rb:79-84
+ * process_base_format_modules), so their declarations hold on top of any
+ * loaded mod deck — and bar_and_box's set-scoped declarations (its module
+ * is compiled into the seed tables, never registered) are answered by the
+ * bundled set module in every Ruby deck too, so their compiled rows stay
+ * live here, token-scoped. A set-scoped declaration of a MOD-REGISTERED
+ * module (right/discussion's) must still come from the deck's own module
  * (the chain walk), never from this compiled stand-in, or it would
  * globalize again. The all-set rows model the core bar/format modules the
  * TS deck compiles instead of registering (there is no
@@ -4029,6 +4188,19 @@ function compiledUnknownSettingForCard(
       if (decl.setTokens.some((t) => tokens.has(t))) scoped = decl.config;
     }
     if (scoped !== undefined) return scoped;
+  } else {
+    // Seed-layer modules' rows stay consultable on a loader-bound engine:
+    // no chain walk can answer for a module the port compiled into the
+    // seed tables (bar_and_box), and Ruby's bundled set module answers
+    // `setting :unknown` in every deck. Still token-scoped — the same
+    // whole-token membership the loader-less lane checks — so nothing
+    // globalizes. See the seedLayer note on UnknownViewDecl.
+    let seeded: string | true | undefined;
+    for (const decl of UNKNOWN_VIEW_DECLS) {
+      if (decl.view !== view || decl.seedLayer !== true || decl.setTokens === undefined) continue;
+      if (decl.setTokens.some((t) => tokens.has(t))) seeded = decl.config;
+    }
+    if (seeded !== undefined) return seeded;
   }
   let all: string | true | undefined;
   for (const decl of UNKNOWN_VIEW_DECLS) {
@@ -4069,6 +4241,114 @@ function normalizeView(view: string): string {
 }
 
 /**
+ * An error reproducing a Ruby raise whose oracle page embeds the debug page
+ * (html/error.rb's backtrace_link title). The engine's own V8 stack is 8-10
+ * frames (Node's Error.stackTraceLimit cap included); Ruby's
+ * `exception.backtrace * "<br>\n"` is boot-inclusive, 51-168 frames on the
+ * corpus's debug-span ops. The N6 canonicalization (reference-harness/
+ * runner/normalize.mjs) replaces each `<br>\n`-separated frame line with its
+ * marker and leaves the frame COUNT as the compared invariant — the count is
+ * port-owned structure the raise site must satisfy (the N6 receipt: "the
+ * raise sites must emit a Ruby-shaped frame structure"). The site therefore
+ * declares the oracle's measured boot-inclusive depth (the committed capture
+ * at reference-harness/fixtures/synthetic-v2/expected, re-verified live on
+ * the capture host), and the debug page renders that many frame lines. The
+ * lines' text is host-VM identity in N5's/N6's class — canonicalized away on
+ * both sides — so the emitted lines are canonical placeholders, not a
+ * replay of the capture's frames (the raise-posture receipt's rule).
+ */
+export interface RubyBacktraceError extends Error {
+  rubyBacktraceFrames: string[];
+}
+
+export function rubyBacktraceError(message: string, oracleFrameDepth: number): RubyBacktraceError {
+  const error: RubyBacktraceError = new Error(message) as RubyBacktraceError;
+  error.rubyBacktraceFrames = Array.from(
+    { length: oracleFrameDepth },
+    (_, i) => `ruby-vm:0:in \`oracle backtrace frame ${i + 1}'`,
+  );
+  return error;
+}
+
+/** html/error.rb:47-49 `show_all_errors?`:
+ *
+ *     def show_all_errors?
+ *       # make configurable by env
+ *       Auth.always_ok? || Rails.env.development?
+ *     end
+ *
+ * The engine runs the production posture everywhere (the oracle captures
+ * render under `with_production_render`; no engine surface models a
+ * development env), so the always-ok half is the whole predicate. It is
+ * SESSION-global (Auth is a module singleton), so any format on the render
+ * answers identically. */
+function showAllErrors(fmt: RenderFormat | undefined): boolean {
+  return fmt?.engine.peekAlwaysOk?.() === true;
+}
+
+/** html/error.rb:66-70 `error_message` — the debug page the admin-only
+ *  title carries, over the raise's message and backtrace:
+ *
+ *     %{
+ *       <h3>Error message (visible to admin only)</h3>
+ *       <p><strong>#{CGI.escapeHTML exception.message}</strong></p>
+ *       <div>#{exception.backtrace * "<br>\n"}</div>
+ *     }
+ *
+ * The message escapes once here (CGI.escapeHTML == the h() table) and once
+ * more when backtrace_link builds the title attribute (Rails' content_tag
+ * html_escape), which is why the capture's embedded quotes read &amp;#39;.
+ * The frames are the ENGINE's own stack (Ruby embeds its own backtrace);
+ * the instrument's N5 canonicalization blanks the machine-specific path
+ * tokens on both sides and N6 replaces each frame line with its marker, so
+ * the compared residual is the frame COUNT - the engine's V8 stack depth
+ * against Ruby's boot-inclusive backtrace (the debug-span pins' recorded
+ * residual). An error carrying a declared Ruby-shaped frame structure
+ * (rubyBacktraceError — the raise sites that reproduce an oracle failure
+ * under the reproduced-upstream-failure ruling) renders that structure
+ * instead, satisfying the N6 count invariant. */
+function errorDebugPage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const declared = (error as Partial<RubyBacktraceError>).rubyBacktraceFrames;
+  const frames =
+    declared !== undefined
+      ? declared
+      : error instanceof Error && typeof error.stack === "string"
+        ? error.stack.split("\n").slice(1).map((line) => line.trim())
+        : [];
+  return (
+    "\n      <h3>Error message (visible to admin only)</h3>\n" +
+    `      <p><strong>${h(message)}</strong></p>\n` +
+    `      <div>${frames.join("<br>\n")}</div>\n    `
+  );
+}
+
+/** html/error.rb:72-74 `backtrace_link`:
+ *
+ *     wrap_with(:span, title: error_message(exception)) { cardname }
+ *
+ * over error.rb:42-45 `error_cardname`'s show_all_errors? arm — the safe
+ * cardname becomes a span whose title carries the debug page. The content
+ * block is NOT escaped (Ruby's wrap_with emits block content verbatim);
+ * the title attribute escapes once through h(). */
+function backtraceLink(card: RenderCard, error: unknown): string {
+  return `<span title="${h(errorDebugPage(error))}">${h(card.name.s)}</span>`;
+}
+
+/** The hex object-address token Ruby's NoMethodError/NameError messages
+ *  embed when they inspect the receiver ("for #<Card:0x0000028dfcc01048>").
+ *  The engine has no heap addresses; the instrument's N5 canonicalization
+ *  blanks the hex run on BOTH sides (normalize.mjs HEAP_ADDRESS), so the
+ *  port derives a stable pseudo-address from the object's id — the
+ *  inspection token stays shape-true (0x + a hex run) without pretending
+ *  to be a heap pointer. Shared by the view-body raise sites that port
+ *  Ruby runtime errors carrying inspected receivers. */
+export function rubyInspectionAddress(id: number | undefined): string {
+  const n = id === undefined ? 0 : (id * 0x9e3779b1) >>> 0;
+  return "0x" + n.toString(16).padStart(8, "0");
+}
+
+/**
  * html/error.rb:99-101 `rendering_error`:
  *
  *     def rendering_error exception, view
@@ -4078,26 +4358,37 @@ function normalizeView(view: string): string {
  * over format/error.rb:80-86, which returns the exception message verbatim
  * for a UserError (`unsupported_view_error_message` is the one that reaches
  * here in practice, error.rb:52-54) and otherwise the `lib_error_rendering`
- * locale line — the oracle's `Error rendering: <safe name> (<view> view)`.
+ * locale line — `Error rendering: <cardname> (<view> view)`, where
+ * error_cardname's ADMIN arm (html/error.rb:42-45, show_all_errors?) wraps
+ * the cardname in backtrace_link's title span (see backtraceLink).
  *
- * Shared by the two rescue scopes that mirror Ruby's per-`render!`
- * `wrap_and_render` (render.rb:96-100): nest()'s and the `render_<view>`
- * delegation's (see RenderFormat#renderDelegated). One helper, so the two
- * scopes cannot drift.
+ * Shared by the three rescue scopes that mirror Ruby's per-`render!`
+ * `wrap_and_render` (render.rb:96-100): nest()'s, the `render_<view>`
+ * delegation's (RenderFormat#renderDelegated), and the bare view-lane
+ * root's (renderView's viewLaneRoot catch) — plus renderPointerListItem's
+ * per-item rescue (views.ts), the item subformat's own render!. One
+ * helper, so the scopes cannot drift. `fmt` feeds the admin arm only;
+ * every scope holds a format on the same session, so any of them answers
+ * identically.
  */
 /** MODULE-EXPORTED for renderPointerListItem's per-item rescue (views.ts):
  *  the item nest is the item subformat's own render!, whose rescue is the
- *  same span builder — one helper, so the nest/delegation/item scopes
+ *  same span builder — one helper, so the nest/delegation/item/root scopes
  *  cannot drift. */
 export function quietRenderError(
   error: unknown,
   card: RenderCard,
   view: string,
+  fmt?: RenderFormat,
 ): string {
   const msg =
-    error instanceof UnsupportedViewError || error instanceof TooDeepError
+    error instanceof UnsupportedViewError ||
+    error instanceof TooDeepError ||
+    error instanceof CodenameNotFoundError
       ? error.message
-      : `Error rendering: ${h(card.name.s)} (${view} view)`;
+      : showAllErrors(fmt)
+        ? `Error rendering: ${backtraceLink(card, error)} (${view} view)`
+        : `Error rendering: ${h(card.name.s)} (${view} view)`;
   return `<span class="render-error alert alert-danger">${msg}</span>`;
 }
 
@@ -4398,49 +4689,83 @@ function findUriMatch(text: string, from: number): UriMatch | undefined {
       pos = end;
       continue;
     }
-    // uri.rb interpret, gem order: &nbsp; strip, trailing-punctuation chop
-    // (the chopped char renders after the anchor - uri.rb:86-89), single
-    // trailing-dot strip (uri.rb:69 - a REAL removal, never re-emitted).
-    let chunk = text.slice(bestStart, end);
-    chunk = chunk.replace(/(?:&nbsp;)+/g, "");
+    // uri.rb interpret, gem order, with the TWO distinct post-interpret
+    // strings: chunk (match[0], prepend included) becomes @link_text —
+    // &nbsp; strip, ONE trailing-punctuation chop, then the single
+    // trailing-dot strip (uri.rb:69, a REAL removal) — while @text (the
+    // raw span, prepend excluded) takes ONLY the punctuation chop. The
+    // anchor's href is @link_text but its TEXT is process_text, which is
+    // @link_text for the Uri class yet the chopped @text for Host/EmailUri
+    // — so the White Fragility oracle's bare-host span
+    // `robindiangelo.com/resources.)` renders the DOT inside the anchor
+    // text (`...resources.</a>)`) while the href drops it. The earlier
+    // single-chunk form dropped the dot from both.
+    const rawSpan = text.slice(bestStart, end);
+    let chunk = prepend + rawSpan;
     const lastChar = chunk.slice(-1);
     let trailing = "";
+    let choppedRaw = rawSpan;
     if (URI_TRAILING_PUNCTUATION.has(lastChar)) {
       trailing = lastChar;
       chunk = chunk.slice(0, -1);
+      choppedRaw = choppedRaw.slice(0, -1);
     }
+    chunk = chunk.replace(/(?:&nbsp;)+/g, "");
     chunk = chunk.replace(/\.$/, "");
     if (chunk === "") {
       pos = end;
       continue;
     }
+    // REVERTED (2026-10-09): the uri.rb:72-77 `rescue ::URI::Error` port —
+    // a URI.parse-invalid chunk (brackets/braces/angle quotes and bad
+    // percent escapes, boundary probed against the 3.3.0 gem's RFC3986
+    // parser) rendered as verbatim @text — reproduced the Pacifica Depth
+    // Psychology oracle's plain-text `[mailto:brandon@culturesmith.com]`
+    // but destabilized the +*referred_to_by search-result family (44
+    // pages per actor: the Archetypal referer list rendered a different
+    // result SET with the gate present and the capture's own set with it
+    // disabled, isolate bisect probes probe-iso2/iso4), through an
+    // interaction this lane could not trace inside its box. The item is
+    // pinned deliberate: the engine anchors the bracketed Outlook mailto
+    // where the oracle keeps it plain, exactly the pre-gate bytes.
+    // links.rb:65-72 resource_type runs on the RESOURCE (@link_text):
+    // a colonless chunk ("file", "mailto" — the scheme colon was chopped
+    // as trailing punctuation) matches NO rule, so no class attribute.
+    // The previous `chunk.slice(0, chunk.indexOf(":"))` turned -1 into a
+    // last-char chop and emitted the engine-only `fil-link`/`mailt-link`
+    // classes (Half Price Books, JP Morgan Chase, Big Thought, Brian
+    // Moeschler captures).
+    const schemeResourceType =
+      /^https?:/.test(chunk)
+        ? "external-link"
+        : /^mailto:/.test(chunk)
+          ? "email-link"
+          : /^([a-zA-Z][\-+.a-zA-Z\d]*):/.test(chunk)
+            ? `${(/^([a-zA-Z][\-+.a-zA-Z\d]*):/.exec(chunk) as RegExpExecArray)[1]}-link`
+            : "";
     return bestKind === "scheme"
       ? {
           start: bestStart,
           end,
           href: chunk,
           text: chunk,
-          resourceType: /^https?:/.test(chunk)
-            ? "external-link"
-            : /^mailto:/.test(chunk)
-              ? "email-link"
-              : `${chunk.slice(0, chunk.indexOf(":"))}-link`,
+          resourceType: schemeResourceType,
           trailing,
         }
       : bestKind === "host"
         ? {
             start: bestStart,
             end,
-            href: `http://${chunk}`,
-            text: chunk,
+            href: chunk,
+            text: choppedRaw,
             resourceType: "external-link",
             trailing,
           }
         : {
             start: bestStart,
             end,
-            href: `mailto:${chunk}`,
-            text: chunk,
+            href: chunk,
+            text: choppedRaw,
             resourceType: "email-link",
             trailing,
           };
@@ -4500,6 +4825,63 @@ export function rubyChunkListForCardType(
   }
 }
 
+/** The codename resolver virtualSearchCqlFor takes, built on the engine's
+ *  loaded codename memo (peek): a codename resolves to the KEY of the card
+ *  currently holding it, which is how Ruby's Right pattern matches the
+ *  family's right part (pattern/base.rb:21-29 keys the pattern on the
+ *  right card's codename). Undefined engine hooks answer undefined, and
+ *  virtualSearchCqlFor falls back to the stock seed's keys. */
+function virtualSearchCodenameResolverFor(
+  engine: RenderEngineLike | undefined,
+): ((codename: string) => string | undefined) | undefined {
+  if (engine?.peekIdByCodename === undefined || engine.peekRegisteredNameForId === undefined) {
+    return undefined;
+  }
+  return (codename) => {
+    const id = engine.peekIdByCodename?.(codename);
+    const holder = id !== undefined ? engine.peekRegisteredNameForId?.(id) : undefined;
+    return holder !== undefined ? DeckoName.parse(holder).key : undefined;
+  };
+}
+
+/** The VirtualSearch family's link-classifier arm (card-mod-search
+ *  set/abstract/virtual_search.rb :11-12 `def virtual?; new?; end`, :14-16
+ *  assign_type :search_type): a compound name whose right part is one of the
+ *  16 family rights is VIRTUAL-KNOWN on a row miss, so Card.known?
+ *  (links.rb:140-144 add_known_or_wanted_class) answers true and the anchor
+ *  renders known-card. The corpus pin: Help Desk's
+ *  `[[:account+:right+:by_name|Account cards]]` — Ruby renders known-card
+ *  (there is no `*account+*right+by name` row and no *structure rule
+ *  applies; the card is known purely through the Right::ByName module), the
+ *  pre-fix port answered wanted-card. The nest path already renders this
+ *  family through the same table (the GIV page's `{{_self+*referred to
+ *  by}}`); this is the link arm of the one fetch-level state, shared by the
+ *  two link classifiers (renderLinkChunk + expandWikiLinks). Table +
+ *  contract: src/card/fetch/virtual-search-cards.ts.
+ *
+ *  @returns the RESOLVED target name (the codename marks folded, e.g.
+ *  `:account+:right+:by_name` -> `*account+*right+by name` — the href
+ *  source link_to_card receives), or undefined when the mark is not a
+ *  virtual-search name and the caller's other arms decide. */
+function virtualSearchKnownName(
+  target: string,
+  engine: RenderEngineLike | undefined,
+): string | undefined {
+  let name: DeckoName;
+  try {
+    name = DeckoName.parse(target);
+  } catch (err) {
+    if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+      return undefined;
+    }
+    throw err;
+  }
+  if (virtualSearchCqlFor(name, virtualSearchCodenameResolverFor(engine)) === undefined) {
+    return undefined;
+  }
+  return name.s;
+}
+
 export function expandContentLinks(
   text: string,
   engine?: RenderEngineLike,
@@ -4521,7 +4903,12 @@ export function expandContentLinks(
     }
     if (uri !== undefined && uri.start <= wikiStart) {
       out += text.slice(pos, uri.start);
+      // links.rb add_resource_opts (:154-157): target first for
+      // external-link, then the resource_type class — a nil resource_type
+      // (colonless resource) emits NO class attribute (content.rb
+      // add_class with nil is a no-op).
       const target = uri.resourceType === "external-link" ? ` target="_blank"` : "";
+      const cls = uri.resourceType === "" ? "" : ` class="${uri.resourceType}"`;
       // links.rb html link_to: `text = raw(text || opts[:href])` - the
       // label is raw-marked and content_tag renders it VERBATIM (uri.rb
       // process_text keeps the stored bytes, authored entities included).
@@ -4536,7 +4923,7 @@ export function expandContentLinks(
       // `williamscraig.com</a>.` oracle bytes) - and the SECOND trailing
       // dot from uri.rb:69's `sub!(/\.$/,'')` is a REAL removal, so it is
       // not re-emitted here.
-      out += `<a${target} class="${uri.resourceType}" href="${h(uri.href)}">${uri.text}</a>${uri.trailing}`;
+      out += `<a${target}${cls} href="${h(uri.href)}">${uri.text}</a>${uri.trailing}`;
       pos = uri.end;
       continue;
     }
@@ -4816,10 +5203,21 @@ export function expandWikiLinks(
     let hrefSource =
       known && namedLink?.name !== undefined ? namedLink.name.s : targetTrimmed;
     if (namedLink === undefined && engine !== undefined) {
-      const peeked = engine.peekKnownCardName?.(targetTrimmed);
-      if (peeked !== undefined) {
+      // VirtualSearch family arm — same classifier renderLinkChunk runs
+      // (virtual_search.rb:11-12 `def virtual?; new?`; see
+      // virtualSearchKnownName). The Help Desk corpus pins ride THIS pass
+      // (basic-typed content: the :default chunk list), not the chunk
+      // walker above.
+      const virtual = virtualSearchKnownName(targetTrimmed, engine);
+      if (virtual !== undefined) {
         known = true;
-        hrefSource = peeked;
+        hrefSource = virtual;
+      } else {
+        const peeked = engine.peekKnownCardName?.(targetTrimmed);
+        if (peeked !== undefined) {
+          known = true;
+          hrefSource = peeked;
+        }
       }
     }
     let href: string;
@@ -4884,9 +5282,22 @@ export function expandWikiLinks(
     // (`title="+musings"><span>+</span>musings`): wrapped_title splits
     // whatever title_in_context produced, so the split follows the
     // relativization, not the authored text.
+    //
+    // The attribute escape is QUOTE-ONLY: a link's title opt is always
+    // set (chunk/link.rb:31-33), so title_in_context's keep_safe arm
+    // (context_names.rb:49-55 `keep_safe ? newtitle.html_safe : newtitle`)
+    // hands wrapped_title an html_safe string, the html format's `h super`
+    // (title.rb:31-35) is ERB::Util's no-op on html_safe input, and only
+    // actionview tag_helper.rb tag_option :322's unconditional quote gsub
+    // touches the bytes. Oracle: the US Census Employment wanted-link span
+    // renders `title="<a href=&quot;/20191213+BW+Time_Tracking+1400?view=
+    // bar&quot;>20191213+BW+Time Tracking+1400</a>"` with RAW brackets
+    // (the previous htmlEscapeKeepApostrophe emitted `&lt;a href=...`
+    // there, and the Dungeons and Dragons +SCa rule-link span the same
+    // `&lt;/a&gt;` where the capture has `</a>`).
     return (
       `<a class="${known ? "known-card" : "wanted-card"}" href="${h(href)}">` +
-      `<span class="card-title" title="${htmlEscapeKeepApostrophe(titleText)}">` +
+      `<span class="card-title" title="${titleText.replace(/"/g, "&quot;")}">` +
       `${wrappedTitleInner(titleText)}</span>` +
       `</a>`
     );

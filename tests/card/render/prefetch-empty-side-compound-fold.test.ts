@@ -138,7 +138,7 @@ describe("prefetch closure: empty-sided compound names fold", () => {
         // renders as unknown). Only the engine's own per-render SecureRandom
         // slot id varies between renders, so it is normalized here and only
         // here.
-        const normalized = html.replace(/data-slot-id="[0-9a-f]{20}"/g, 'data-slot-id="SLOTID"');
+        const normalized = html.replace(/data-slot-id=(["'])[0-9a-f]{20}\1/g, 'data-slot-id="SLOTID"');
         expect(normalized).toBe(
           '<div id="empty_side_page-content-view" class="card-slot content-view ALL TYPE-empty_side_page ' +
             'SELF-empty_side_page d0-card-content" data-card-id="1" data-card-name="Empty Side Page" ' +

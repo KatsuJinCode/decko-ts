@@ -15,18 +15,16 @@
 // deck's "Wild Card!" block (set/all/html/server_error.haml, the bytes the
 // live site serves). It names no card, no exception and no code.
 //
-// DELIBERATE DIFFERENCE for :debug_server_error. Stock Ruby cannot render
-// it: better_errors reaches a deck only through card-mod-monkey, a
-// development-group gem, so in a deck built from its generated Gemfile the
-// constant lookup raises "NameError: uninitialized constant
-// Card::Set::All::Html::Error::BetterErrors" on every card
-// (tools/oracle/debug-server-error-probe.rb). That is a crash, which the
-// port does not copy; and the page it was meant to show (source, locals,
-// the backtrace, a live console) must never reach a production visitor. The
-// port renders the :server_error view in its place, through the same
-// render! a view body's render_server_error takes, so the two cannot
-// drift: the page neither crashes nor reveals anything a visitor could not
-// already see.
+// :debug_server_error RAISES in stock Ruby. better_errors reaches a deck
+// only through card-mod-monkey, a development-group gem, so in a deck built
+// from its generated Gemfile the constant lookup at error.rb:5 raises
+// "NameError: uninitialized constant Card::Set::All::Html::Error::BetterErrors"
+// on every card (tools/oracle/debug-server-error-probe.rb; the stock
+// synthetic-v2 capture pins it on view:admin:Note 001:debug_server_error,
+// where the quiet non-focal rescue renders the admin debug span around the
+// NameError). The port raises the same error from the same point; the
+// debug PAGE the view was meant to show (source, locals, a live console)
+// still never renders — the raise precedes it, exactly as in Ruby.
 
 import type { ViewFn } from "./format.js";
 
@@ -44,7 +42,11 @@ export const SERVER_ERROR_HTML =
 /** view :server_error, template: :haml (set/all/html/error.rb:2). */
 export const serverErrorHtmlView: ViewFn = () => SERVER_ERROR_HTML;
 
-/** view :debug_server_error (set/all/html/error.rb:4-8), rendered as
- *  :server_error (see the header: a deliberate difference from Ruby's
- *  NameError). */
-export const debugServerErrorView: ViewFn = ({ fmt }) => fmt.renderDelegated("server_error");
+/** view :debug_server_error (set/all/html/error.rb:4-8) — the body's
+ *  BetterErrors constant lookup raises stock Ruby's NameError (see the
+ *  header); the port raises it from the same point. */
+export const debugServerErrorView: ViewFn = () => {
+  throw new Error(
+    "uninitialized constant Card::Set::All::Html::Error::BetterErrors",
+  );
+};

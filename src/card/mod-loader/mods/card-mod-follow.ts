@@ -189,12 +189,24 @@ import type {
   CardRecord,
 } from "../../fetch/card-record.js";
 import { followRuleNameFor, followSetCardName } from "../../follow/follow-rule-walk.js";
-import {
+import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
+import type { PatternCardInput } from "../../set-patterns/types.js";import {
   engineOwnedEvent,
   type DeckoModManifest,
+  type ModEventFn,
+  type ModEventRegistration,
   type ModSetModuleFile,
 } from "../mod-manifest.js";
-import { followOptionDescription } from "../../follow/follow-options.js";
+import { parseSetName } from "../../set-patterns/set-name.js";
+
+/** The set-module event declarations (the mod-events lane, 2026-10-08):
+ *  stub-bodied, with the per-event reason on the declaration. Same shape
+ *  as core-mod.ts's local helper. */
+function event(
+  decl: Omit<ModEventRegistration, "fn"> & { fn?: ModEventFn },
+): ModEventRegistration {
+  return { fn: () => undefined, ...decl };
+}
 import {
   buttonTag,
   cardFormOpen,
@@ -203,13 +215,14 @@ import {
   hiddenTags,
   linkTo,
   output,
-  successTags,
 } from "../../follow/follow-form-shapes.js";
 import type {
   FollowRenderBundle,
   FollowTabRow,
 } from "../../follow/follow-render-seam.js";
 import { errorsView as formatErrorsView } from "./card-mod-format.js";
+import { tabsPanel } from "./card-mod-tabs.js";
+import { followButton } from "./card-mod-edit.js";
 
 // ---------------------------------------------------------------------------
 // captured base views - the "super()" references Ruby's set-module DSL
@@ -304,11 +317,13 @@ const userFollowEditView: ViewFn = ({ fmt }) => fmt.renderView("open");
 // ---------------------------------------------------------------------------
 // set/self/follow_defaults.rb:24-30 view :confirm_update_all.
 //
-// The Ruby body wraps an alert helper inside a `wrap do ... end`:
+// The corpus render (the synthetic-v2 view pin, admin) proves the view
+// REACHES its card (the wave-1 "unreachable" note was the anonymous-arm
+// capture): the body is `wrap do alert(:info) do %(...) end end` -
 //
 //   view :confirm_update_all do
 //     wrap do
-//       alert "info" do
+//       alert :info do
 //         %(
 //           <h1>Are you sure you want to change the default follow rules?</h1>
 //           <p>You may choose to update all existing users.
@@ -318,18 +333,23 @@ const userFollowEditView: ViewFn = ({ fmt }) => fmt.renderView("open");
 //     end
 //   end
 //
-// `wrap do X end` is voo_api.rb:167-177 - `<div>X</div>` (no attrs).
-// `alert "info" do X end` is the bootstrap alert helper (helper.rb -
-// adds class "alert alert-info" to the wrapper). Inlined to a literal
-// `<div class="alert alert-info"><h1>...</h1><p>...</p></div>`. The
-// inner markup is the literal string the view produces (the h1 + p +
-// the trailing whitespace inside the haml literal).
+// `wrap` is the slot wrap (wrap.rb:11-14 - the card-slot div with the
+// view/set-key classes and the data-slot payload, whose show list the
+// view-lane root enrollment fills); the bootstrap alert helper adds
+// role="alert" beside the class chain; the %( ) literal keeps the source
+// whitespace verbatim (10-space h1/p indents, the 13-space continuation,
+// the 8-space line before the helper's closing tag).
 // ---------------------------------------------------------------------------
 
-const confirmUpdateAllView: ViewFn = () =>
-  `<div class="alert alert-info"><h1>Are you sure you want to change the default follow rules?</h1>` +
-  `<p>You may choose to update all existing users.` +
-  ` This may take a while. </p></div>`;
+const confirmUpdateAllView: ViewFn = (ctx) => {
+  const alert =
+    `<div class="alert alert-info" role="alert">` +
+    `\n          <h1>Are you sure you want to change the default follow rules?</h1>` +
+    `\n          <p>You may choose to update all existing users.` +
+    `\n             This may take a while. </p>\n        ` +
+    `</div>`;
+  return modSlotWrap(ctx, "confirm_update_all", alert);
+};
 
 // ===========================================================================
 // lane-follow (2026-09-28): the follow views whose bodies the follow-rule
@@ -341,25 +361,43 @@ const confirmUpdateAllView: ViewFn = () =>
 
 // --- shared body helpers ---------------------------------------------------
 
-/** The slot wrap (set/all/html/wrap.rb:6-13 `wrap slot=true`) for bodies
- *  composed outside a ViewFn (the subformat rows): a fresh voo, the shared
- *  modSlotWrap emitter (byte-identical to the core slotWrap by
- *  construction - mod-view-helpers.ts header). */
-function slotWrap(fmt: RenderFormat, view: string, inner: string): string {
-  return modSlotWrap({ fmt, voo: new Voo(undefined, view, {}) }, view, inner);
+/** set/type/set.rb follow_label: subclass_for_set.short_label(anchor_name)
+ *  - the per-pattern short labels (labels.ts via the set-name parser: the
+ *  pattern resolves through the tag card's codename). The *all set's short
+ *  label is "everything" (01_all.rb) - the corpus follow_item pin's link
+ *  text. Empty string when no pattern registers (the Ruby nil klass arm
+ *  returns "" from label/short_label dispatch). */
+function setFollowLabel(ruleSetName: string): string {
+  const parsed = parseSetName(ruleSetName);
+  return parsed.spec ? parsed.spec.shortLabel(parsed.anchorName?.s) : "";
 }
 
-/** set/type/set.rb:9-15 follow_label: subclass_for_set.short_label(
- *  name.left_name); set/all/follow.rb:6-8 default: `name`. The pattern
- *  short labels live in src/card/set-patterns/labels.ts (selfShortLabel
- *  returns the anchor unchanged; 09_self.rb:5-7 short_label = name). */
-function followLabelOfRuleSet(ruleSetName: string): string {
-  const name = DeckoName.parse(ruleSetName);
-  const tag = name.tagName;
-  if (tag !== undefined && tag.s.startsWith("*") && !name.isSimple) {
-    return name.leftName?.s ?? ruleSetName; // the short_label(anchor) arm
-  }
-  return ruleSetName; // all/follow.rb:6-8 the plain-card arm
+/** rules.rb:73-75 set_prototype: `rule_set.prototype` - Pattern#
+ *  prototype_args(anchor) over each set_pattern file (01_all.rb:9 {} -
+ *  unnamed; 02_all_plus.rb:11 {name: "+"}; 03_type.rb:15 {type: anchor} -
+ *  unnamed; 04_star.rb:9 {name: "*dummy"}; 05_rstar.rb:11
+ *  {name: "*dummy+*dummy"}; 06_rule.rb:11 {name: "*all+*create"};
+ *  07_right.rb:18 {name: "*dummy+<anchor>"}; 08_type_plus_right.rb:23
+ *  {name: "+<anchor.tag>"}; 09_self.rb:13 {name: anchor}). The key of the
+ *  unnamed prototypes is "". The corpus pin (*all rule) carries the empty
+ *  string. */
+function setPrototypeKey(ruleSetName: string): string {
+  const parsed = parseSetName(ruleSetName);
+  const anchor = parsed.anchorName?.s ?? "";
+  const tag = DeckoName.parse(anchor).tagName?.s ?? anchor;
+  const prototypeName: Record<string, string | undefined> = {
+    all: undefined,
+    all_plus: "+",
+    type: undefined,
+    star: "*dummy",
+    rstar: "*dummy+*dummy",
+    rule: "*all+*create",
+    right: `*dummy+${anchor}`,
+    type_plus_right: `+${tag}`,
+    self: anchor,
+  };
+  const name = prototypeName[parsed.patternCode ?? ""];
+  return name === undefined ? "" : DeckoName.parse(name).key;
 }
 
 /** right/follow.rb:111-115 follow_item_link_target: the rule set's
@@ -412,57 +450,84 @@ function followItemHiddenTags(card: RenderCard, condition: string): string {
  *  icon: button_tag type: :submit, "aria-label": "Left Align", class:
  *  "btn-sm btn-item <add|delete class>"; bootstrapify_button appends
  *  "btn btn-primary" (situation default, form.rb:33-36); icon_tag(:add |
- *  :check) is the material-icons <i> (the literal name passes through). */
+ *  :check) is the material-icons <i>. The captured attribute order is the
+ *  oracle's (follow_item pin): name="button", type, aria-label, class. */
 function followItemButton(card: RenderCard, condition: string): string {
   const add =
     card.id === undefined || !followRuleItems(card).includes(condition);
   const cls = add ? "btn-item-add" : "btn-item-delete btn-primary";
   const icon = add ? "add" : "check";
-  return buttonTag(`<i class="notranslate material-icons">${icon}</i>`, {
-    class: `btn-sm btn-item ${cls}`,
-    ariaLabel: "Left Align",
-  });
+  return (
+    `<button name="button" type="submit" aria-label="Left Align"` +
+    ` class="btn-sm btn-item ${cls} btn btn-primary">` +
+    `<i class="notranslate material-icons">${icon}</i></button>`
+  );
 }
 
 /** right/follow.rb:107-123 follow_item_link: link_to_card(target, text);
- *  text = option_card.description(rule_set) || rule_set.follow_label
- *  (follow_option.rb abstract description + the created/edited overrides
- *  live in follow-options.ts). */
-function followItemLink(ruleSetName: string, condition: string): string {
+ *  text = follow_item_link_text (:116-119): BOTH arms answer the rule set's
+ *  follow_label (the option card's description(set) IS set.follow_label,
+ *  abstract/follow_option.rb:5-7, and the no-option-card arm reads
+ *  card.rule_set.follow_label directly); target = follow_item_link_target
+ *  (:111-114): `set.tag.codename == :self ? setname.left :
+ *  setname.field("by name")`. link_to_card carries the known/wanted class
+ *  (links.rb add_known_or_wanted_class - the target's existence). */
+function followItemLink(fmt: RenderFormat, ruleSetName: string): string {
   const target = followItemLinkTarget(ruleSetName);
-  const setLabel = followLabelOfRuleSet(ruleSetName);
-  const text = condition.startsWith("*")
-    ? followOptionDescription(condition.slice(1), setLabel)
-    : setLabel;
-  return linkTo(text, followPath(DeckoName.parse(target).urlKey));
+  const targetName = DeckoName.parse(target);
+  const targetCard = fmt.engine.fetchRenderCard(targetName.key);
+  const known = targetCard !== undefined && targetCard.unknown !== true;
+  return linkTo(setFollowLabel(ruleSetName), followPath(targetName.urlKey), {
+    class: known ? "known-card" : "wanted-card",
+  });
+}
+
+/** right/follow.rb:67-78 follow_item condition, button=true - the FORM body
+ *  the :follow_item view and the User+*follow editor rows render (without
+ *  the wrap; callers apply the slot wrap). card_form action: :update,
+ *  success: {view: :follow_item} - the success rides the ACTION QUERY
+ *  (card_form_url_and_action, the oracle's
+ *  ?success%5Bview%5D=follow_item), no success hidden tag; the form class
+ *  is "card-form slotter" (the captured follow_item form carries NO
+ *  autosave); the body is [hidden_tags, (button), link] newline-joined
+ *  (content.rb:68-70 output). */
+function followItemFormBytes(
+  fmt: RenderFormat,
+  condition: string,
+  button: boolean,
+): string {
+  const card = fmt.card;
+  return (
+    cardFormOpen({
+      formId: card.id !== undefined ? `edit_card_${card.id}` : "new_card",
+      action: followPath(card.name.urlKey, {
+        action: "update",
+        query: { "success[view]": "follow_item" },
+      }),
+      classes: "card-form slotter",
+    }) +
+    output([
+      followItemHiddenTags(card, condition),
+      button ? followItemButton(card, condition) : undefined,
+      followItemLink(fmt, ruleSetNameOf(card.name.s)),
+    ]) +
+    CARD_FORM_CLOSE
+  );
 }
 
 /** right/follow.rb:67-78 follow_item condition, button=true - the body the
- *  :follow_item view and the User+*follow editor rows render:
- *  card_form action: :update, success: {view: :follow_item} (form.rb:193-200)
- *  = success hidden tags + the [hidden_tags, (button), link].compact body
- *  newline-joined (content.rb:68-70), wrapped by `wrap do ... end` - the
- *  slot div (set/all/html/wrap.rb:6-13, slot=true). */
+ *  :follow_item view and the User+*follow editor rows render, wrapped by
+ *  `wrap do ... end` - the slot div (set/all/html/wrap.rb:6-13). The wrap
+ *  reads the RENDER's live voo (Ruby: the same format's @voo - the
+ *  harness's view-lane root enrollment is what puts the "show" list into
+ *  the data-slot payload, the corpus pins' 1990/1990 slots). */
 function followItemHtml(
-  fmt: RenderFormat,
+  ctx: ViewContext,
   condition: string,
   button: boolean,
   wrapView: string,
 ): string {
-  const card = fmt.card;
-  const form =
-    cardFormOpen({
-      formId: card.id !== undefined ? `edit_card_${card.id}` : "new_card",
-      action: followPath(card.name.urlKey, { action: "update" }),
-    }) +
-    successTags({ view: "follow_item" }) +
-    output([
-      followItemHiddenTags(card, condition),
-      button ? followItemButton(card, condition) : undefined,
-      followItemLink(ruleSetNameOf(card.name.s), condition),
-    ]) +
-    CARD_FORM_CLOSE;
-  return slotWrap(fmt, wrapView, form);
+  return modSlotWrap(ctx, wrapView, followItemFormBytes(ctx.fmt, condition, button));
 }
 
 /** The seam accessor - undefined when the engine carries no follow seam
@@ -475,45 +540,52 @@ function followBundle(ctx: ViewContext): FollowRenderBundle | undefined {
 // --- set/right/follow.rb ----------------------------------------------------
 
 /** right/follow.rb:58-60 view :follow_status, cache: :never -
- *  `wrap { haml :follow_status }`; follow_status.haml walks
- *  card.item_names and renders follow_item(option == "*never" ?
- *  "*always" : option) per item, then link_to_view :rule_form,
- *  "more options", class: "btn update-follow-link slotter",
- *  "data-card_key": card.set_prototype.key. The href is the mark+view
- *  segment path (lib/card/path.rb:42-47); set_prototype.key is the set
- *  anchor's key (the rules mod owns the full prototype machinery; this
- *  reads the anchor name only - the anchor IS the prototype's name for
- *  every set shape these rule cards carry). */
+ *  `wrap { haml :follow_status }`; follow_status.haml (the whole template):
+ *
+ *      %h4
+ *        Get notified about changes
+ *      %ul.delete-list.list-group
+ *        - card.item_names.each do |option|
+ *          %li.list-group-item
+ *            = follow_item(option == "*never" ? "*always" : option)
+ *      = link_to_view :rule_form, "more options",
+ *                     class: "btn update-follow-link slotter",
+ *                     "data-card_key": card.set_prototype.key
+ *
+ *  Haml bytes: the h4 text on its own lines, single-quoted class
+ *  attributes, every item in its own li, no indentation. The rows call the
+ *  follow_item FORMAT METHOD on the same format (not a subformat render),
+ *  so each nested wrap reads @current_view follow_status - the nested
+ *  slots' id/class/data-slot all say follow_status-view (the oracle's
+ *  nested slot pins it). link_to_view adds rel nofollow + data-remote and
+ *  its own "slotter" (the passed class already carries one - the captured
+ *  double "slotter slotter"); set_prototype.key for the *all rule set is
+ *  "" (rules.rb:73 + 01_all.rb:9). */
 const followStatusView: ViewFn = (ctx) => {
   const { fmt } = ctx;
   const card = fmt.card;
   const rows = followRuleItems(card)
     .map(
       (option) =>
-        `  <li class="list-group-item">${followItemHtml(
-          fmt,
+        `<li class='list-group-item'>\n${followItemHtml(
+          ctx,
           option === "*never" ? "*always" : option,
           true,
-          "follow_status", // the helper's wrap reads @current_view
-        )}</li>`,
+          "follow_status",
+        )}\n</li>`
     )
     .join("\n");
   const setName = ruleSetNameOf(card.name.s);
-  const anchorKey =
-    DeckoName.parse(setName).leftName?.key ?? DeckoName.parse(setName).key;
-  const moreOptions = linkTo(
-    "more options",
-    followPath(card.name.urlKey, { view: "rule_form" }),
-    {
-      class: "btn update-follow-link slotter",
-      "data-card_key": anchorKey,
-    },
-  );
+  const moreOptions =
+    `<a rel="nofollow" class="btn update-follow-link slotter slotter"` +
+    ` data-card_key="${h(setPrototypeKey(setName))}"` +
+    ` href="${followPath(card.name.urlKey, { view: "rule_form" })}"` +
+    ` data-remote="true">more options</a>`;
   const body =
-    `<h4>Get notified about changes</h4>\n` +
-    `<ul class="delete-list list-group">\n${rows}\n</ul>\n` +
-    `${moreOptions}`;
-  return slotWrap(fmt, "follow_status", body);
+    `<h4>\nGet notified about changes\n</h4>\n` +
+    `<ul class='delete-list list-group'>${rows === "" ? "" : `\n${rows}`}\n</ul>\n` +
+    moreOptions;
+  return modSlotWrap(ctx, "follow_status", body);
 };
 
 /** right/follow.rb:63-65 view :follow_item -
@@ -522,14 +594,15 @@ const followStatusView: ViewFn = (ctx) => {
  *  is nil and follow_item's `condition ||= "*always"` arm applies
  *  (right/follow.rb:68). The button param rides the voo opts (Ruby's
  *  follow_item(condition, button=true) second arg when the editor rows
- *  call it). */
+ *  call it). The wrap reads the render's live voo (the "show" list in the
+ *  data-slot payload). */
 const followItemView: ViewFn = (ctx) => {
   const condition =
     typeof ctx.voo.opts["condition"] === "string"
       ? (ctx.voo.opts["condition"] as string)
       : "*always";
   const button = ctx.voo.opts["follow_button"] !== false;
-  return followItemHtml(ctx.fmt, condition, button, "follow_item");
+  return followItemHtml(ctx, condition, button, "follow_item");
 };
 
 // --- set/all/follow/follow_link_views.rb (the FollowLink family) ------------
@@ -539,45 +612,22 @@ const followItemView: ViewFn = (ctx) => {
  *  "follow" / "send" / ""; stop_follow_link.rb:4-14 - *never / "following" /
  *  "stop sending" / "unfollow" hover / "btn-item-delete"). card.followed?
  *  picks the class (follow_link_views.rb:2-4) - the seam's followed verdict
- *  under the SESSION actor. link_to (links.rb:101-106, href LAST); remote:
- *  true emits data-remote="true"; path (:54-59): mark =
- *  follow_set_card.follow_rule_name(Auth.current.name) (the seam's
- *  followMark), action :update, success {mark: card.name, view:
- *  success_view}, card {content: "[[#{rule_content}]]"} - Hash#to_param
- *  query (sorted keys, Rack escape). */
+ *  under the SESSION actor. The bytes are the card-mod-edit port's
+ *  followButton builder - the SAME FollowLink#button anchor the
+ *  follow_section embed renders (the oracle pins both surfaces with
+ *  identical bytes; the standalone view used to emit its own attribute
+ *  order, class list and href encoding, which the pin caught). The actor
+ *  arm: Ruby's Auth.current.name is "Anonymous" under no session (the
+ *  follow rule mark carries it - the oracle's anonymous pin). */
 const followButtonView: ViewFn = (ctx) => {
-  const { fmt } = ctx;
   const bundle = followBundle(ctx);
-  const followed = bundle?.followed === true;
-  const ruleContent = followed ? "*never" : "*always";
-  const linkText = followed ? "following" : "follow";
-  const action = followed ? "stop sending" : "send";
-  const hoverText = followed ? "unfollow" : undefined;
-  const cssClass = followed ? "btn-item-delete" : "";
-  const mark = bundle?.followMark ?? "";
-  const query: Record<string, string> = {
-    "card[content]": `[[${ruleContent}]]`,
-    "success[mark]": fmt.card.name.s,
-    "success[view]": "follow_section",
-  };
-  const href = followPath(DeckoName.parse(mark).urlKey, {
-    action: "update",
-    query,
-  });
-  const classes = ["follow-link", cssClass, "slotter btn btn-sm btn-primary"]
-    .filter((c) => c !== "")
-    .join(" ");
-  return linkTo(
-    `<span class="follow-verb">${linkText}</span>`,
-    href,
+  return followButton(
     {
-      class: classes,
-      title: `${action} emails about changes to ${bundle?.followLabel ?? fmt.card.name.s}`,
-      "data-remote": "true",
-      "data-update-foreign-slot":
-        ".d0-card-body > .card-slot.RIGHT-Xfollower.content-view",
-      "data-hover-text": hoverText,
+      session: { actorName: bundle?.session?.actorName ?? "Anonymous" },
+      followed: bundle?.followed === true,
+      followLabel: bundle?.followLabel ?? ctx.fmt.card.name.s,
     },
+    ctx.fmt.card.name.s,
   );
 };
 
@@ -609,27 +659,36 @@ function followEditorBody(
     bundle?.session !== undefined &&
     (bundle.session.actorName === fmt.card.name.leftName?.s ||
       bundle.session.actorId === 1); // Auth.always_ok? (the bot actor arm)
+  // follow_editor.haml: every walk row renders an <li> - a missing rule card
+  // or the walk's empty `yield nil` arm (follow_editor_helper.rb:45) renders
+  // the literal "no entries" text INSIDE the li (haml: the -if/-else arms).
+  // Haml emission: no indentation, single-quoted class attributes, one
+  // newline per synthesized line - the corpus view pins carry exactly these
+  // bytes for the empty tab ("no entries" li).
   const lis = rows.map((row) => {
     const ruleCard = ctx.fmt.engine.fetchRenderCard(row.ruleCardName);
     if (ruleCard === undefined) {
       // the walk enriched every row; a miss means the card vanished
       // between prepare and render - Ruby would raise on nil subformat;
       // the haml's nil rule_card arm is "no entries"
-      return `  <li class="list-group-item">no entries</li>`;
+      return `<li class='list-group-item'>\nno entries\n</li>`;
     }
     const sub = new RenderFormat(ruleCard, ctx.fmt.engine, { parent: fmt });
-    return `  <li class="list-group-item">${followItemHtml(
-      sub,
+    return `<li class='list-group-item'>\n${followItemHtml(
+      { fmt: sub, voo: new Voo(undefined, "follow_item", {}) },
       row.option,
       showButton,
       "follow_item",
-    )}</li>`;
+    )}\n</li>`;
   });
   const list =
     lis.length > 0
-      ? `<ul class="delete-list list-group">\n${lis.join("\n")}\n</ul>`
-      : `<ul class="delete-list list-group">\n  no entries\n</ul>`;
-  return `<div class="pointer-list-editor">\n${list}\n</div>`;
+      ? `<ul class='delete-list list-group'>\n${lis.join("\n")}\n</ul>`
+      : `<ul class='delete-list list-group'>\n<li class='list-group-item'>\nno entries\n</li>\n</ul>`;
+  // Haml output always ends with one newline after the last synthesized tag
+  // - the corpus view pins carry the trailing byte ("</div>\n"), and inside
+  // the tab pane it separates the editor from the pane's closing tag.
+  return `<div class='pointer-list-editor'>\n${list}\n</div>\n`;
 }
 
 /** user/follow.rb:45-47 view :follow_tab, cache: :never -
@@ -641,6 +700,31 @@ const followTabView: ViewFn = (ctx) =>
  *  haml :follow_editor, items_method: :ignoring_rules_and_options. */
 const ignoreTabView: ViewFn = (ctx) =>
   followEditorBody(ctx, followBundle(ctx)?.ignoreTabRows ?? []);
+
+/** user/follow.rb:1-2 FOLLOW_TABS - the static tab hash: view configs only,
+ *  no titles (the label falls to the tab name) and no paths (LazyTab builds
+ *  format.path(view:) - path.rb:32-40 mark/view, no query). */
+const FOLLOW_TABS: ReadonlyArray<{ name: string; view: string }> = [
+  { name: "Follow", view: "follow_tab" },
+  { name: "Ignore", view: "ignore_tab" },
+];
+
+/** user/follow.rb:39-43 view :core - `tabs FOLLOW_TABS, "Follow",
+ *  load: :lazy do render_follow_tab end`. The tab machinery bytes ride the
+ *  card-mod-tabs port's panel builder (all/tabs.rb:29-39 + tab_panel.haml -
+ *  the same gem helper, LazyTab klass via load: :lazy): the tab ids consume
+ *  the ROOT format's id counter in button order (Follow, Ignore), the lazy
+ *  tab data-urls are the mark/view paths, and the ACTIVE pane's content is
+ *  the rendered :follow_tab view while the lazy pane stays empty
+ *  (lazy_tab.rb:33-36). No slot wrap: the view body IS the tab panel
+ *  (the oracle :core bytes open at the tabbable div). */
+const userFollowCoreView: ViewFn = (ctx) => {
+  const urlKey = ctx.fmt.card.name.urlKey;
+  const hash = new Map(
+    FOLLOW_TABS.map((e) => [e.name, { title: e.name, path: `/${urlKey}/${e.view}` }]),
+  );
+  return tabsPanel(ctx, hash, "Follow", "tabs", ctx.fmt.renderView("follow_tab"));
+};
 
 // --- set/self/follow_defaults.rb (the deprecated editor) --------------------
 
@@ -846,10 +930,50 @@ const followerNotifyView: ViewFn = () => "follower";
 
 // --- set/right/following.rb view :rule_editor --------------------------------
 
-/** The corpus-pinned Pointer type (virtual-rule-card.ts's map - id 34843
- *  "Pointer"): Ruby's `Card.fetch preference_name, new: { type_id:
- *  PointerID }` new-card arm stamps the POINTER codename's id. */
+/** The corpus-pinned Pointer type fallback (virtual-rule-card.ts's map -
+ *  id 34843 "Pointer" in the RAW corpus deck): Ruby's `Card.fetch
+ *  preference_name, new: { type_id: PointerID }` new-card arm stamps the
+ *  POINTER codename's id from the LIVE deck's registry (id 56 in the
+ *  synthetic-v2 deck - the corpus rule_form pin's data-card-type-id). */
 const POINTER_TYPE = { typeId: 34843, typeName: "Pointer", typeCode: "pointer" } as const;
+
+/** The live deck's Pointer cardtype: the deck-fetched Pointer card's id when
+ *  it is warm (the codename card is in every deck), else the fallback. */
+function pointerTypeOf(ctx: ViewContext): {
+  typeId: number;
+  typeName: string;
+  typeCode: string;
+} {
+  const pointer = ctx.fmt.engine.fetchRenderCard("Pointer");
+  if (pointer !== undefined && pointer.id !== undefined && pointer.unknown !== true) {
+    return { typeId: pointer.id, typeName: "Pointer", typeCode: "pointer" };
+  }
+  return POINTER_TYPE;
+}
+
+/** The TPR anchor's left type for the view's NEW rule card
+ *  (pattern/class_methods.rb:59-71 left_type -> quick_type): the new
+ *  card's parts are unfetched (the oracle probe's rule.left is nil), so
+ *  the superleft arm answers nil and quick_type decides -
+ *  Card.fetch(left_name, skip_modules: true, new: {}).type_name. The
+ *  skip-modules arm excludes the set-module assign_type answers
+ *  (X+*self's Right::Self -> Set never applies), so the type falls to
+ *  type_id_from_template (type.rb:78-80) - the applicable *default rule
+ *  card's OWN type. The first existing *default candidate on the follow
+ *  rule's left is the ALL-set default `*all+*default`, itself a RichText
+ *  card in the corpus deck - the rule_form pin's
+ *  TYPE_PLUS_RIGHT-rich_text-Xfollow set-key token. */
+function quickTypeLeftTypeName(ctx: ViewContext, ruleName: string): string {
+  const leftName = DeckoName.parse(ruleName).leftName;
+  if (leftName === undefined) return "RichText"; // Card.default_type_id's cardtype
+  const input: PatternCardInput = { name: leftName.s, isNew: true };
+  for (const candidate of ruleNamesForCard(input, "*default")) {
+    const rule = ctx.fmt.engine.fetchRenderCard(candidate);
+    if (rule === undefined) continue; // candidate default rule does not exist
+    if (rule.typeName !== undefined) return rule.typeName;
+  }
+  return "RichText";
+}
 
 /** A NEW-card RenderCard (Card.fetch mark, new: {...}): id-less, isNew,
  *  empty content, pointer type. setKeys through the same safeSetKeys input
@@ -949,8 +1073,8 @@ const ruleEditorView: ViewFn = (ctx) => {
     // holds no such rule card yet; the in-memory pointer card
     ruleContext = newCardRenderCard(
       prefName,
-      POINTER_TYPE,
-      "User", // the preferer part's type (the composed [-2] is the actor)
+      pointerTypeOf(ctx),
+      quickTypeLeftTypeName(ctx, prefName),
       true,
     );
   }
@@ -968,7 +1092,7 @@ const ruleEditorView: ViewFn = (ctx) => {
           undefined,
           false,
         )
-      : newCardRenderCard(targetName, POINTER_TYPE, "User", true);
+      : newCardRenderCard(targetName, pointerTypeOf(ctx), quickTypeLeftTypeName(ctx, targetName), true);
   }
   const sub = new RenderFormat(target, fmt.engine, { parent: fmt });
   return (
@@ -977,6 +1101,10 @@ const ruleEditorView: ViewFn = (ctx) => {
       success_view: "open",
       form_type: "modal",
       rule_context: prefName,
+      // right/follow.rb:119-121 rule_form_args override - the follow
+      // rule's form hooks the follow_section foreign slot (the same opt
+      // channel rule_form's success_view/form_type/rule_context ride)
+      data_update_foreign_slot: ".card-slot.follow_section-view",
     }) +
     `</div>`
   );
@@ -1271,6 +1399,15 @@ const cardModFollow: DeckoModManifest = {
       // both the Self set and the Right set define it; here the
       // method lives on the Right side and is not view-portable.
       setPath: "right/follow",
+      // cache_expired_for_new_preference (mod-events lane 2026-10-08) —
+      // STUB with an architecture reason (right/follow.rb:7-9): the body
+      // is Card.follow_caches_expired (clears the FOLLOWER_IDS +
+      // preference caches); the port's follower resolution
+      // (notify/follower-resolver.ts) queries the reference + preference
+      // rows FRESH per call — there is no cache to expire.
+      events: [
+        event({ event: "cache_expired_for_new_preference", at: "integrate", when: "preference?" }),
+      ],
       formats: {
         html: {
           views: [
@@ -1313,22 +1450,38 @@ const cardModFollow: DeckoModManifest = {
       // the wrap + preference_name + applied-string dispatch (the rules
       // mod's ruleFormView owns the form bytes; the seam's rule_editor
       // branch resolves the actor + the applied content + the warm).
+      // 2026-10-09 wave 2: :status + :rule_editor carry unknown: true -
+      // in Ruby EVERY X+*following card is virtual-known (the set
+      // module's own `def virtual?; new?; end`, right/following.rb:4-6),
+      // so alter_unknown never fires and the views always dispatch; the
+      // headless engine's fetch does not model the set-module virtual
+      // mechanism (documented remainder), and the unknown-capable config
+      // is what lets the same dispatch happen here (the unknown card's
+      // denial check still runs - permission.rb:22-23).
       setPath: "right/following",
       formats: {
         html: {
           views: [
-            { view: "status", viewFn: followingStatusView },
+            { view: "status", viewFn: followingStatusView, config: { unknown: true } },
             { view: "one_line_content", viewFn: followingOneLineContentView },
-            { view: "rule_editor", viewFn: ruleEditorView, config: { cache: "never" } },
+            {
+              view: "rule_editor",
+              viewFn: ruleEditorView,
+              config: { cache: "never", unknown: true },
+            },
           ],
         },
       },
     },
     {
       // card-mod-follow-0.20.0/set/right/follow_fields.rb - assign_type
-      // :list + event :follow_fields_changed. NOT ported: write-path
-      // event + the assignment, no views.
+      // :list + event :follow_fields_changed.
+      // Event (mod-events lane 2026-10-08) — STUB, same architecture
+      // reason as right/follow's cache_expired_for_new_preference
+      // (follow_fields.rb:3-5: the body is Card.follow_caches_expired;
+      // the port resolves followers fresh per call).
       setPath: "right/follow_fields",
+      events: [event({ event: "follow_fields_changed", at: "integrate" })],
       formats: { html: { views: [] } },
     },
     passiveSetModule("right/message"),
@@ -1384,6 +1537,15 @@ const cardModFollow: DeckoModManifest = {
       // FollowDefaults constant; the capture is cited in the honest
       // remainder above. The port's raise is Ruby-true.
       setPath: "self/follow_defaults",
+      // update_follow_rules (mod-events lane 2026-10-08) — STUB, named
+      // remainder (self/follow_defaults.rb:17-30, the card's own header
+      // says DEPRECATED): the triggered body rewrites every user's follow
+      // rule for the listed sets (Auth.as_bot bulk Card.search + per-user
+      // rule saves); the port has no bulk-rule-rewrite surface and the
+      // mechanism is deprecated upstream.
+      events: [
+        event({ event: "update_follow_rules", at: "finalize", on: ["save"], trigger: "required" }),
+      ],
       formats: {
         html: {
           views: [
@@ -1469,7 +1631,11 @@ const cardModFollow: DeckoModManifest = {
       // helpers + the follow_editor.haml template + the
       // follow_editor_helper.rb helper file.
       // Ported: :one_line_content (""), :edit (render :open dispatch),
-      // :follow_tab + :ignore_tab (the seam's followEditorRows walk).
+      // :follow_tab + :ignore_tab (the seam's followEditorRows walk),
+      // :core (2026-10-09 wave 2: the FOLLOW_TABS tab machinery - the
+      // card-mod-tabs `tabs` helper over the static hash, active pane
+      // rendering :follow_tab; the oracle :core bytes open at the
+      // tabbable tab-panel div, not the pointer list).
       // Wave-1 (2026-10-03): :errors joins - the no-errors arm (the ONLY
       // arm a headless render reaches: the engine models no ActiveRecord
       // error state, so `return unless card.errors.any?` returns nil -> "")
@@ -1486,6 +1652,7 @@ const cardModFollow: DeckoModManifest = {
           views: [
             { view: "one_line_content", viewFn: userFollowOneLineContentView },
             { view: "edit", viewFn: userFollowEditView },
+            { view: "core", viewFn: userFollowCoreView },
             { view: "follow_tab", viewFn: followTabView, config: { cache: "never" } },
             { view: "ignore_tab", viewFn: ignoreTabView, config: { cache: "never" } },
             { view: "errors", viewFn: userFollowErrorsView, config: { perms: "none" } },

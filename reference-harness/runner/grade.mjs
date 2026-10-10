@@ -1,137 +1,53 @@
 #!/usr/bin/env node
 // Grades an engine's recorded results against a fixture's reference outputs,
-// on the four parity kinds: rendering, semantics, persistence, side effects.
+// on the four parity kinds (rendering, semantics, persistence, side effects),
+// and checks that reads wrote nothing the oracle's reads did not.
 //
 //   node reference-harness/runner/grade.mjs --fixture <fixtureDir> \
-//        --actual <resultsDir> [--report <report.json>]
+//        --actual <resultsDir> [--expected <expectedDir>] [--report <report.json>] [--allow-partial]
 //
-// Exit status 0 when every graded item matches, 1 otherwise.
+// Exit status: 0 every item matches; 1 a complete, valid run with failures;
+// 2 not a grade (the run is incomplete, names another fixture, lacks its
+// metadata, or the fixture or expected outputs do not match their manifests).
+// --allow-partial grades a filtered or partial run on what it holds, for
+// development; it still exits 2.
 
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import path from "node:path";
-import { gunzipSync } from "node:zlib";
-import { normalizeHtml, normalizeWriteResult, stable } from "./normalize.mjs";
+import { writeFileSync } from "node:fs";
+import { EXIT, KINDS, gradeRun } from "./grade-lib.mjs";
 
-const args = Object.fromEntries(
-  process.argv.slice(2).reduce((acc, v, i, a) => (i % 2 === 0 ? [...acc, [v.replace(/^--/, ""), a[i + 1]]] : acc), []),
-);
-const fixture = path.resolve(args.fixture);
-const actualDir = path.resolve(args.actual);
-const expectedDir = path.join(fixture, "expected");
-
-// A results file may be stored gzipped (<name>.jsonl.gz), as the large
-// reference outputs are.
-const readText = (file) =>
-  existsSync(file)
-    ? readFileSync(file, "utf8")
-    : existsSync(file + ".gz")
-      ? gunzipSync(readFileSync(file + ".gz")).toString("utf8")
-      : "";
-const readLines = (file) =>
-  readText(file).split("\n").filter((l) => l.trim() !== "").map((l) => JSON.parse(l));
-const byId = (rows) => new Map(rows.map((r) => [r.id, r]));
-
-const KINDS = ["rendering", "semantics", "persistence", "side_effects"];
-const tally = Object.fromEntries(KINDS.map((k) => [k, { graded: 0, pass: 0, fail: 0, oracle_errors: 0, missing: 0, groups: {} }]));
-const failures = Object.fromEntries(KINDS.map((k) => [k, []]));
-
-function firstDifference(a, b) {
-  const sa = typeof a === "string" ? a : JSON.stringify(stable(a));
-  const sb = typeof b === "string" ? b : JSON.stringify(stable(b));
-  let i = 0;
-  while (i < sa.length && i < sb.length && sa[i] === sb[i]) i++;
-  return { at: i, expected: sa.slice(Math.max(0, i - 60), i + 120), actual: sb.slice(Math.max(0, i - 60), i + 120) };
+const argv = process.argv.slice(2);
+const args = {};
+for (let i = 0; i < argv.length; i++) {
+  if (!argv[i].startsWith("--")) throw new Error(`unexpected argument ${argv[i]}`);
+  const key = argv[i].slice(2);
+  if (key === "allow-partial") args[key] = true;
+  else args[key] = argv[++i];
 }
+for (const required of ["fixture", "actual"]) if (!args[required]) throw new Error(`--${required} is required`);
 
-/** Grades one item. `expected`/`actual` are already normalised values, or
- *  undefined when the recorded line carried an adapter error instead. */
-function grade(kind, group, id, exp, act) {
-  const t = tally[kind];
-  t.groups[group] ??= { graded: 0, pass: 0 };
-  if (exp.error) {
-    t.oracle_errors++;
-    return;
-  }
-  t.graded++;
-  t.groups[group].graded++;
-  if (act === undefined) {
-    t.missing++;
-    t.fail++;
-    failures[kind].push({ id, group, reason: "no result recorded" });
-    return;
-  }
-  if (act.error) {
-    t.fail++;
-    failures[kind].push({ id, group, reason: `adapter error ${act.error.class}: ${act.error.message}` });
-    return;
-  }
-  const a = JSON.stringify(stable(exp.value));
-  const b = JSON.stringify(stable(act.value));
-  if (a === b) {
-    t.pass++;
-    t.groups[group].pass++;
-  } else {
-    t.fail++;
-    failures[kind].push({ id, group, reason: "differs", diff: firstDifference(exp.value, act.value) });
-  }
-}
-
-const wrap = (line, norm) => (line === undefined ? undefined : line.error ? { error: line.error } : { value: norm(line.result) });
-const renderNorm = (r) => (r && typeof r === "object" ? { ...r, html: normalizeHtml(r.html) } : r);
-const ident = (r) => r;
-
-// ---- read operations ------------------------------------------------------------
-const renderActual = byId(readLines(path.join(actualDir, "render.jsonl")));
-for (const exp of readLines(path.join(expectedDir, "render.jsonl"))) {
-  const [view, actor] = exp.id.split(":");
-  grade("rendering", `${view === "page" ? "page" : "view"} / ${actor}`, exp.id, wrap(exp, renderNorm), wrap(renderActual.get(exp.id), renderNorm));
-}
-const semActual = byId(readLines(path.join(actualDir, "semantics.jsonl")));
-for (const exp of readLines(path.join(expectedDir, "semantics.jsonl"))) {
-  grade("semantics", exp.id.split(":")[0], exp.id, wrap(exp, ident), wrap(semActual.get(exp.id), ident));
-}
-
-// ---- write scenarios: each step graded on the kinds it exercises --------------
-const scenarioOps = new Map(
-  JSON.parse(readFileSync(path.join(fixture, "ops", "scenarios.json"), "utf8")).scenarios.map((s) => [s.id, s]),
-);
-const scenActual = byId(readLines(path.join(actualDir, "scenarios.jsonl")));
-for (const exp of readLines(path.join(expectedDir, "scenarios.jsonl"))) {
-  const ops = scenarioOps.get(exp.id).steps;
-  const act = scenActual.get(exp.id);
-  exp.steps.forEach((step, i) => {
-    const op = ops[i];
-    const id = `${exp.id}#${i + 1}`;
-    const actStep = act?.steps?.[i];
-    if (op.op === "render") {
-      grade("rendering", "after write", id, wrap(step, renderNorm), wrap(actStep, renderNorm));
-    } else if (op.op === "ask") {
-      grade("semantics", "after write", id, wrap(step, ident), wrap(actStep, ident));
-    } else {
-      // A write's or sign-in's answer is its side effect: saved or refused,
-      // the errors shown, the mail sent, the identity signed in.
-      grade("side_effects", op.op === "signin" ? "sign-in" : `write ${op.action}`, id, wrap(step, normalizeWriteResult), wrap(actStep, normalizeWriteResult));
-    }
-    if (op.op === "write") {
-      const rows = (s) => (s === undefined ? undefined : { value: s.rows ?? {} });
-      grade("persistence", `write ${op.action}`, id, rows(step), rows(actStep));
-    } else if (step.rows && Object.keys(step.rows).length > 0) {
-      // A read that wrote rows in the oracle is itself graded as persistence.
-      grade("persistence", "read side writes", id, { value: step.rows }, actStep ? { value: actStep.rows ?? {} } : undefined);
-    }
-  });
-}
-
-// ---- report ------------------------------------------------------------------------
-const summary = Object.fromEntries(
-  KINDS.map((k) => [k, { ...tally[k], rate: tally[k].graded ? +(tally[k].pass / tally[k].graded * 100).toFixed(2) : null }]),
-);
-const report = { fixture: path.basename(fixture), actual: actualDir, graded_at: new Date().toISOString(), summary, failures };
+const report = gradeRun({ fixture: args.fixture, actual: args.actual, expected: args.expected, allowPartial: Boolean(args["allow-partial"]) });
+report.graded_at = new Date().toISOString();
 if (args.report) writeFileSync(args.report, JSON.stringify(report, null, 2) + "\n");
+
+if (report.oracle?.variant && report.oracle.variant !== "stock") {
+  console.log(`PATCHED ORACLE "${report.oracle.variant}": graded against expectations that differ from stock Decko (${report.oracle.patches.map((p) => p.id ?? p).join(", ")})`);
+}
+for (const p of report.problems) console.log(`problem: ${p}`);
+for (const w of report.warnings) console.log(`warning: ${w}`);
+if (report.verdict === "invalid") {
+  console.log(`NOT A GRADE: ${report.problems.length} problem(s) above. No pass rate is reported for this run.`);
+  process.exit(EXIT.invalid);
+}
+if (report.verdict === "partial") console.log(`PARTIAL RUN, not a grade: ${report.partial.join("; ")}`);
 for (const k of KINDS) {
-  const s = summary[k];
+  const s = report.summary[k];
   console.log(`${k.padEnd(13)} ${String(s.pass).padStart(5)} / ${String(s.graded).padEnd(5)} ${s.rate === null ? "-" : s.rate + "%"}` +
-    (s.oracle_errors ? `  (${s.oracle_errors} oracle errors not graded)` : ""));
+    (s.reproduced_upstream_failures ? `  (${s.reproduced_upstream_failures} reproduced upstream failures)` : "") +
+    (s.oracle_errors ? `  (${s.oracle_errors} oracle capture faults not graded)` : ""));
   for (const [g, v] of Object.entries(s.groups)) console.log(`    ${g.padEnd(24)} ${v.pass} / ${v.graded}`);
 }
-process.exit(KINDS.every((k) => summary[k].fail === 0) ? 0 : 1);
+const rw = report.read_writes;
+console.log(`${"read writes".padEnd(13)} ${String(rw.pass).padStart(5)} / ${String(rw.graded).padEnd(5)} reads that wrote only what the oracle's reads wrote`);
+for (const f of rw.failures) console.log(`    ${f.id}: ${f.reason}`);
+console.log(`verdict: ${report.verdict}`);
+process.exit(EXIT[report.verdict]);

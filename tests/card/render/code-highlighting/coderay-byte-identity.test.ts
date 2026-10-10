@@ -113,11 +113,36 @@ describe("code-highlighting: langForTypeCode dispatch", () => {
     ["scss", "css"],
     ["layout_type", "html"],
     ["head", "html"],
+    ["java_script", "java_script"],
+    ["coffee_script", undefined],
     ["basic", undefined],
     ["search_type", undefined],
     [undefined, undefined],
   ] as const)("maps type_code %s -> %s", (input, expected) => {
     expect(langForTypeCode(input)).toBe(expected);
+  });
+});
+
+describe("code-highlighting: the java_script :core seam (Corpus Script)", () => {
+  // Ground truth: the committed synthetic-v2 oracle capture
+  // (reference-harness/fixtures/synthetic-v2/expected/render.jsonl.gz, op
+  // core:anonymous:Corpus Script). Ruby: card-mod-script
+  // set/abstract/00_script.rb:73-76 `view :core { process_content
+  // highlight(render_raw) }` with highlight = `::CodeRay.scan(script,
+  // :js).div`; the content carries no [[link]]/{{nest}} chunks, so the
+  // highlighted DIV is the whole view body and a full-block pin is exact.
+  const CORPUS_SCRIPT_CONTENT = "/* corpus script */\nwindow.corpusMarker = 1;\n";
+  const CORPUS_SCRIPT_ORACLE_DIV =
+    '<div class="CodeRay">\n  <div class="code"><pre><span style="color:#777">/* corpus script */</span>\nwindow.corpusMarker = <span style="color:#00D">1</span>;\n</pre></div>\n</div>\n';
+
+  it("highlight(content, :java_script) reproduces the committed oracle DIV byte-for-byte", () => {
+    expect(highlight(CORPUS_SCRIPT_CONTENT, "java_script")).toBe(CORPUS_SCRIPT_ORACLE_DIV);
+  });
+
+  it("the oracle bytes carry the comment and integer spans the passthrough dropped (pin sanity)", () => {
+    // alpha.rb:43 .comment { color:#777 }, alpha.rb:69 .integer { color:#00D }
+    expect(CORPUS_SCRIPT_ORACLE_DIV).toContain('<span style="color:#777">/* corpus script */</span>');
+    expect(CORPUS_SCRIPT_ORACLE_DIV).toContain("<span style=\"color:#00D\">1</span>");
   });
 });
 

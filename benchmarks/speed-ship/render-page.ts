@@ -203,7 +203,7 @@ try {
         second_request_round_trips: counter.rts - firstTrips,
         first_request_had_marker: html.includes(marker),
         second_request_has_marker: second.includes(marker),
-        second_request_identical_otherwise: second.replace(marker, "").replace(/data-slot-id="[0-9a-f]+"/g, "") === html.replace(/data-slot-id="[0-9a-f]+"/g, ""),
+        second_request_identical_otherwise: second.replace(marker, "").replace(/data-slot-id=(["'])[0-9a-f]+\1/g, "") === html.replace(/data-slot-id=(["'])[0-9a-f]+\1/g, ""),
       };
     }
   } else {

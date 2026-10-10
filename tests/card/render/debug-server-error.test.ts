@@ -1,13 +1,15 @@
 // card-mod-format set/all/html/error.rb: the html :server_error view and
 // :debug_server_error, both registered on All::Html::Error.
 //
-// DELIBERATE DIFFERENCE pinned here. Stock Ruby cannot render
-// :debug_server_error: its body names BetterErrors, which a deck built from
-// its generated Gemfile never loads, so it raises "NameError: uninitialized
-// constant Card::Set::All::Html::Error::BetterErrors" on every card
-// (tools/oracle/debug-server-error-probe.rb). The port copies neither the
-// crash nor the BetterErrors page (source, locals, backtrace, console): it
-// renders :server_error, the "Wild Card!" block a production visitor sees.
+// :debug_server_error RAISES in stock Ruby: its body names BetterErrors,
+// which a deck built from its generated Gemfile never loads, so it raises
+// "NameError: uninitialized constant Card::Set::All::Html::Error::BetterErrors"
+// on every card (tools/oracle/debug-server-error-probe.rb; the stock
+// synthetic-v2 capture pins the rescued admin span on
+// view:admin:Note 001:debug_server_error). The port raises the same error
+// from the same point; the BetterErrors page (source, locals, backtrace,
+// console) never renders — the raise precedes it, exactly as in Ruby.
+// :server_error keeps the "Wild Card!" block a production visitor sees.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck.js";
@@ -25,6 +27,10 @@ const WILD_CARD =
   "</h4>\n" +
   "</div>\n";
 
+/** error.rb:5's NameError, verbatim. */
+const BETTER_ERRORS_NAME_ERROR =
+  "uninitialized constant Card::Set::All::Html::Error::BetterErrors";
+
 it("server_error and debug_server_error are All::Html::Error's, on every card", () => {
   const loader = defaultDeckLoader();
   for (const view of ["server_error", "debug_server_error"]) {
@@ -33,7 +39,7 @@ it("server_error and debug_server_error are All::Html::Error's, on every card", 
   expect(SERVER_ERROR_HTML).toBe(WILD_CARD);
 });
 
-describe("debug_server_error renders the production server_error view", () => {
+describe("debug_server_error raises stock Ruby's BetterErrors NameError", () => {
   let storage: RenderTestStorage;
   beforeAll(async () => {
     storage = await createRenderTestStorage();
@@ -45,22 +51,22 @@ describe("debug_server_error renders the production server_error view", () => {
   });
   afterAll(() => storage.close());
 
-  it("the focal render gives the Wild Card block, not a raise", async () => {
+  it("the focal render raises (server_error keeps the Wild Card block)", async () => {
     expect(await storage.engine.render("Home", "server_error")).toBe(WILD_CARD);
-    expect(await storage.engine.render("Home", "debug_server_error")).toBe(WILD_CARD);
+    await expect(storage.engine.render("Home", "debug_server_error")).rejects.toThrow(
+      BETTER_ERRORS_NAME_ERROR,
+    );
   });
 
-  it("a nest gives the same block, not the render-error span", async () => {
+  it("a nest under the quiet posture gives the plain render-error span", async () => {
     await storage.engine.prepareItemForRender("Home");
     const card = await storage.engine.prepareItemForRender("host");
     const html = new RenderFormat(card!, storage.engine, { main: true, nestQuietErrors: true }).renderView("core");
-    expect(html).toBe(`[${WILD_CARD}]`);
-  });
-
-  it("reveals nothing about the card, the error or the code", async () => {
-    const html = await storage.engine.render("Home", "debug_server_error");
-    for (const internal of ["Home", "BetterErrors", "NameError", "backtrace", "frame", ".ts", "<script", "<pre"]) {
-      expect(html).not.toContain(internal);
-    }
+    // Ruby's quiet rescue (non-focal): the lib_error_rendering locale line
+    // naming the card and the DELEGATED view; a session without an
+    // always-ok viewer takes the plain-cardname arm (no debug title).
+    expect(html).toBe(
+      `[<span class="render-error alert alert-danger">Error rendering: Home (debug_server_error view)</span>]`,
+    );
   });
 });

@@ -117,6 +117,30 @@ export function normalizeSlotIds(html: string): string {
 }
 
 /**
+ * Mask slot-id VALUES only, keeping the quote style Ruby wrote: the
+ * reference harness's N1 (reference-harness/runner/normalize.mjs). This is
+ * the rule for a reference stored as Ruby wrote it. Ruby writes a Haml bar's
+ * slot id single-quoted and a content_tag wrap's double-quoted, so quote style
+ * is part of the output and must be compared.
+ */
+export function maskSlotIdValues(html: string): string {
+  return html
+    .replace(SLOT_ID_PATTERN, (_m, q: string) => `data-slot-id=${q}RANDOMIZED${q}`)
+    .replace(ESCAPED_SLOT_ID_PATTERN, ESCAPED_RANDOMIZED_SLOT_ATTRIBUTE);
+}
+
+/**
+ * True when a reference was stored by an older capture that rewrote every
+ * slot id to data-slot-id="RANDOMIZED" (erasing quote style). Such a
+ * reference cannot speak to quote style, so it is compared under
+ * normalizeSlotIds; a reference stored as Ruby wrote it holds raw ids and
+ * is compared under maskSlotIdValues.
+ */
+export function referenceErasedSlotQuotes(expected: string): boolean {
+  return expected.includes(RANDOMIZED_SLOT_ATTRIBUTE) || expected.includes(ESCAPED_RANDOMIZED_SLOT_ATTRIBUTE);
+}
+
+/**
  * The Cloudflare challenge-platform injection. The live pages carry a
  * per-response <script> block immediately before </body> whose
  * __CF$cv$params r/t tokens are rotated per response by the edge
@@ -198,10 +222,9 @@ export function normalizeModObjectAddresses(html: string): string {
  * live; `normalizeSlotIds` alone stays exactly the recording-layer rule its
  * documented contract claims, and its direct callers are unaffected.
  */
-export function normalizeForReplay(html: string): string {
-  return normalizeCloudflareChallengeBlocks(
-    normalizeModObjectAddresses(normalizeAccordionGroupIds(normalizeSlotIds(html))),
-  );
+export function normalizeForReplay(html: string, keepSlotQuotes = false): string {
+  const slots = keepSlotQuotes ? maskSlotIdValues(html) : normalizeSlotIds(html);
+  return normalizeCloudflareChallengeBlocks(normalizeModObjectAddresses(normalizeAccordionGroupIds(slots)));
 }
 
 export interface FirstDifference {
@@ -288,12 +311,18 @@ export function byteDiff(
  * Cardio::Mod object addresses), then diff
  * exact bytes. src/testing/replay.ts judges every canvas entry through this
  * function, so this is where a normalization that mirrors the recording layer
- * has to land for the canvas to see it.
+ * has to land for the canvas to see it. Slot-id quote style is compared
+ * whenever the reference kept it (referenceErasedSlotQuotes).
  */
 export function compareNormalized(
   expected: string,
   actual: string,
   contextRadius: number = CONTEXT_RADIUS
 ): ByteDiffResult {
-  return byteDiff(normalizeForReplay(expected), normalizeForReplay(actual), contextRadius);
+  const keepSlotQuotes = !referenceErasedSlotQuotes(expected);
+  return byteDiff(
+    normalizeForReplay(expected, keepSlotQuotes),
+    normalizeForReplay(actual, keepSlotQuotes),
+    contextRadius,
+  );
 }

@@ -40,9 +40,10 @@
 //
 // NOT ported (honest remainder, updated lane-follow 2026-09-28):
 // - signin reset_password_success + edit_buttons ARE PORTED now
-//   (lane-follow; the frame helper's full chrome - header/panel - is
-//   DISCLOSED remainder inside resetPasswordSuccessView's comment: the
-//   body renders in the standard slot wrap).
+//   (lane-follow; the styleform lane 2026-10-10 completes
+//   reset_password_success's frame: the view now renders through the
+//   shared framedView helper - full chrome, oracle-pinned by the
+//   synthetic-v2 corpus op).
 // - signin edit (:154-157): the base :edit form super() target is
 //   card-mod-edit's (still unported); reset_password_voo's
 //   edit_structure rides the same machinery.
@@ -61,13 +62,12 @@
 //   form.rb's). :core IS ported (R17 - the invite-links haml core, see
 //   signupCoreView; set/type/signup/core.haml + views.rb:30-33 +
 //   helpers).
-// - right/account closure IS PORTED now: the haml body via
-//   the seam's closureDeletions walk (account_holder.rb:87-89), the
-//   confirmed delete link built on the Path byte rules
-//   (follow-form-shapes.ts followPath), perms :delete in the view config.
-//   The deletion ORDER is search order (rowid) - Ruby CQL's default sort
-//   is by name; no oracle capture exists to split the two orderings at
-//   corpus sizes (DISCLOSED in the receipt follow-rule-walk.md).
+// - right/account closure RAISES (stock Ruby): the haml's deletion walk
+//   calls the PRIVATE closure_deletions from outside the receiver
+//   (account_holder.rb:81/87-89; closure.haml:25 on card.accounted), so
+//   every render passing perms :delete raises NoMethodError - the port
+//   raises it (closureView). The deletion walk itself stays ported in
+//   accountFollowBundle for the follow surface.
 // - right/account verify_url/reset_password_url: rails (card_url + the
 //   async-HMAC x sync-ViewFn boundary the token-runtime receipt names).
 //   The Auth::Token half of the gap CLOSED 2026-09-28:
@@ -150,7 +150,10 @@ import {
 } from "../../follow/follow-form-shapes.js";
 import { isNewCard } from "../../fetch/card-record.js";
 import { resetPasswordUrlView, verifyUrlView } from "../../render/views.js";
+import { rubyInspectionAddress } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
+import { CodenameNotFoundError } from "../../name/errors.js";
+import { getNameEnvironment } from "../../name/environment.js";
 import {
   BOARD_PILL_UL_CLASSES,
   BOARD_SLOT_SELECTOR,
@@ -159,8 +162,22 @@ import { DEFAULT_TOKEN_EXPIRY_SECONDS } from "../../auth/token.js";
 import {
   engineOwnedEvent,
   type DeckoModManifest,
+  type ModEventRegistration,
+  type ModEventFn,
   type ModSetModuleFile,
 } from "../mod-manifest.js";
+
+/** The set-module event declarations below (the mod-events lane,
+ *  2026-10-08): a stub-bodied declaration unless the engine has no
+ *  counterpart (then `engineOwnedEvent` - the behavior lives in engine
+ *  code, the declaration only records Ruby's set membership + metadata).
+ *  Same shape as core-mod.ts's local helper; the per-event owner or
+ *  stub reason rides the declaration's comment. */
+function event(
+  decl: Omit<ModEventRegistration, "fn"> & { fn?: ModEventFn },
+): ModEventRegistration {
+  return { fn: () => undefined, ...decl };
+}
 
 // ---------------------------------------------------------------------------
 // view bodies (Ruby source cited per block)
@@ -345,17 +362,18 @@ const ACCOUNT_LOCALE = {
 } as const;
 
 /** set/self/signin.rb:148-151 view :reset_password_success -
- *  `frame { t :account_check_email }`. The frame helper (card-mod-format
- *  set/all/html/frame.rb:6-24: with_frame -> wrap(slot) { panel {
- *  [header, frame_help, render_flash, body] } }) needs the header/panel
- *  machinery the layout surface owns; the port renders the body inside
- *  the standard slot wrap - the frame's full chrome is named remainder
- *  (the DISCLOSED shape gap, not a silent drop: the manifest's not-ported
- *  block carries it). */
+ *  `frame { t :account_check_email }` - the standard frame (frame.rb:9-27
+ *  via card-mod-edit.ts framedView: with_frame's voo.hide :help -
+ *  the slot payload's hide list - add_name_context, the bootstrap
+ *  class_ups d0-card-header card-header / d0-card-body card-body card-text
+ *  / d0-card-frame card, the header with the :title override's
+ *  "Sign In" span + the card menu, the hidden help arm compacted out, the
+ *  flash "" line, the body div). Oracle-pinned by the synthetic-v2 corpus
+ *  (view:anonymous:*signin:reset_password_success: the h2 title + the
+ *  three-link card menu + the "Check your email..." body inside
+ *  d0-card-frame card). */
 const resetPasswordSuccessView: ViewFn = (ctx) =>
-  modSlotWrap(
-    ctx,
-    "reset_password_success",
+  framedView(ctx, "reset_password_success", () =>
     ACCOUNT_LOCALE.account_check_email,
   );
 
@@ -387,7 +405,18 @@ const linkWithCheckboxView: ViewFn = (ctx) => {
   const bundle = accountFollowBundle(ctx);
   const actorName =
     bundle?.session?.actorName ?? "Anonymous"; // Auth.current (AnonymousID arm)
-  const rolesName = `${actorName}+*disabled roles`;
+  // Auth.current.field(:disabled_roles) resolves the SYMBOL tag through the
+  // codename table (Card#fetch -> Card.id_or_name -> Card::Name.compose ->
+  // from_cardish(Symbol) -> Codename.name!, card-1.110.0 lib/card/name.rb:77)
+  // - the deck carries no disabled_roles codename, so role_checkbox's first
+  // call (card.disabled?, roles.rb:4-6) raises Card::Error::CodenameNotFound
+  // inside the view body; in the serving posture the root rescue is quiet
+  // (html_format.rb:16-18), so the verbatim span is the whole view (the
+  // corpus's Contractor link_with_checkbox pin). The former hardcoded star
+  // string skipped the codename table and rendered the checkbox bytes.
+  const disabledRolesTag = getNameEnvironment()?.codename?.name("disabled_roles");
+  if (disabledRolesTag === undefined) throw new CodenameNotFoundError("unknown codename: disabled_roles");
+  const rolesName = `${actorName}+${disabledRolesTag}`;
   const rolesCard = ctx.fmt.engine.fetchRenderCard(rolesName);
   const disabledIds = (rolesCard?.dbContent ?? "")
     .split("\n")
@@ -417,77 +446,30 @@ const linkWithCheckboxView: ViewFn = (ctx) => {
 };
 
 /** set/right/account/views.rb:22 view :closure, perms: :delete,
- *  template: :haml, wrap: :slot - closure.haml. The deletion walk is the
- *  seam's closureDeletions (account_holder.rb:87-89 closure_deletions =
- *  Auth.as_bot { Card.search left: id, not: {right: :account} }). The
- *  confirm string interpolates %{accounted} = accounted.name (the left
- *  card). The button's href: path(success: { mark: "~<id>", redirect:
- *  true, view: :closed_account }) - no action, mark+? -> the mark-only
- *  base with the success hash as the to_param query (path.rb:42-63).
- *  perms: :delete rides VIEW_PERMS_DIRECTIVES (the M5 machinery). */
+ *  template: :haml, wrap: :slot - closure.haml. The template's deletion
+ *  walk at (haml):25 — `- card.accounted.closure_deletions.each do
+ *  |deletee|` — calls closure_deletions from OUTSIDE its receiver:
+ *  account_holder.rb:81 marks it `private` (:87-89), and card.accounted is
+ *  a DIFFERENT Card than the template's self, so stock Ruby raises
+ *  NoMethodError "private method `closure_deletions' called for
+ *  #<Card:0x...>" on every render that passes the perms: :delete gate
+ *  (the stock synthetic-v2 capture pins it on
+ *  view:admin:Ada Admin+*account:closure, where the quiet non-focal rescue
+ *  renders the admin debug span around it). The haml below line 25 (the
+ *  deletion list, the close button) never renders in stock Ruby, so the
+ *  port raises from the same point; the inspection address is the engine's
+ *  derived stand-in for the receiver's heap token (rubyInspectionAddress —
+ *  N5 blanks the hex on both sides). The deletion WALK itself stays ported
+ *  in accountFollowBundle (the follow surface reads it); close_account's
+ *  own internal call (:77) is in-object and never hits the visibility
+ *  boundary. */
 const closureView: ViewFn = (ctx) => {
-  const { fmt } = ctx;
-  const card = fmt.card;
-  const bundle = accountFollowBundle(ctx);
-  const accountedName = card.name.leftName?.s ?? "";
-  // RenderCard carries record (the cards row) - accounted_id is
-  // right/account.rb:26-28 `left_id`
-  const accountedId = card.record.leftId;
-  const deletions = bundle?.closureDeletions ?? [];
-  const confirm =
-    ACCOUNT_LOCALE.account_confirm_delete_account_prefix + accountedName + "?";
-  const deleteeLis = deletions
-    .map(
-      (d) =>
-        `      <li>${linkTo(d.name, followPath(h(d.name).replace(/ /g, "_")))}</li>`,
-    )
-    .join("\n");
-  const closeButton = linkTo(
-    ACCOUNT_LOCALE.account_close_account,
-    followPath(card.name.urlKey, {
-      query: {
-        "success[mark]": `~${accountedId}`,
-        "success[redirect]": "true",
-        "success[view]": "closed_account",
-      },
-    }),
-    {
-      class: "btn btn-primary slotter",
-      "data-method": "delete",
-      "data-remote": "true",
-      rel: "nofollow",
-      "data-confirm": confirm,
-    },
+  const accountedId = ctx.fmt.card.record.leftId;
+  throw new Error(
+    "private method `closure_deletions' called for #<Card:" +
+      rubyInspectionAddress(accountedId) +
+      ">",
   );
-  const body =
-    `<div id="account-closure" class="p-3">\n` +
-    `  <h2>Close Account</h2>\n\n` +
-    `  <div class="alert-danger p-4 my-3">\n` +
-    `    <strong>Warning:</strong>\n` +
-    `    this action cannot be undone\n` +
-    `  </div>\n\n` +
-    `  <p>\n` +
-    `    Closing your account entails:\n` +
-    `    <ul>\n` +
-    `      <li>Deleting your account information and personal data</li>\n` +
-    `      <li>Anonymizing your edits</li>\n` +
-    `    </ul>\n\n` +
-    `    It does\n` +
-    `    <em>not</em>\n` +
-    `    entail deleting your collaborative contributions; that would be messy and unfair to\n` +
-    `    collaborators.\n` +
-    `  </p>\n\n` +
-    `  <div class="closure-deletions">\n` +
-    `    The following cards will be permanently deleted:\n\n` +
-    `    <ul class="py-2">\n` +
-    `${deleteeLis}\n` +
-    `    </ul>\n` +
-    `  </div>\n\n` +
-    `  <div class="button-form-group py-3 justify-content-end">\n` +
-    `    ${closeButton}\n` +
-    `  </div>\n` +
-    `</div>`;
-  return modSlotWrap(ctx, "closure", body);
 };
 
 /** set/abstract/account_holder.rb:126 view :closed_account, template:
@@ -1224,7 +1206,93 @@ const setModules: ModSetModuleFile[] = [
   },
   // pattern: right
   { setPath: "right/account" },
-  { setPath: "right/account/events" },
+  {
+    // set/right/account/events.rb — the whole verification/reset chain.
+    // Engine ownership: the flows the events implement run in
+    // src/card/auth/account-verify-reset-flows.ts (the request/confirm
+    // ladders, the template renders, the SMTP delivery) and
+    // src/card/auth/account-fields.ts (the create-time field events);
+    // src/card/actions/card-action-engine.ts:3029-3051 runs delete_account's
+    // close_account walk. The three send_*_email events come from the
+    // gem's dynamic `%i[password_reset_email verification_email
+    // welcome_email].each { event :"send_#{email}" }` loop (events.rb:33-35)
+    // — the recount regex only sees literal `event :name` declarations, so
+    // they sit outside the 30-name denominator; they are declared anyway
+    // (Ruby has them; the dispatch seam triggers them, engine
+    // card-action-engine.ts input.triggeredIntegrate).
+    setPath: "right/account/events",
+    events: [
+      // events.rb:3-5 — engine: account-fields.ts planAccountFields
+      // (generateSalt on create).
+      engineOwnedEvent({
+        event: "set_default_salt",
+        at: "prepare_to_validate",
+        on: ["create"],
+      }),
+      // events.rb:7-9 — engine: account-fields.ts planAccountFields
+      // (default status "active"/"unverified"/"unapproved").
+      engineOwnedEvent({
+        event: "set_default_status",
+        at: "prepare_to_validate",
+        on: ["create"],
+      }),
+      // events.rb:15-17, trigger: :required — engine:
+      // account-verify-reset-flows.ts (the confirm arm: token decode ->
+      // reset_password_success/failure).
+      engineOwnedEvent({
+        event: "reset_password",
+        at: "prepare_to_validate",
+        on: ["update"],
+        trigger: "required",
+      }),
+      // events.rb:19-24, trigger: :required — engine:
+      // account-verify-reset-flows.ts (verify_and_activate ladder,
+      // activatable's no-subcards guard).
+      engineOwnedEvent({
+        event: "verify_and_activate",
+        at: "prepare_to_validate",
+        on: ["update"],
+        trigger: "required",
+      }),
+      // events.rb:26-28, when: :password_redirect? — STUB, named
+      // remainder: the body is a redirect channel (success << {id:,
+      // view: "edit"}) and the engine's save path has no success/redirect
+      // composition surface to mutate (grep over src/card/actions finds
+      // none); the redirect after a password save is route-layer work.
+      event({
+        event: "password_redirect",
+        at: "finalize",
+        on: ["update"],
+        when: "password_redirect?",
+      }),
+      // events.rb:33-35 (the dynamic three), trigger: :required — engine:
+      // account-verify-reset-flows.ts renders + delivers each template.
+      engineOwnedEvent({ event: "send_password_reset_email", at: "integrate", trigger: "required" }),
+      engineOwnedEvent({ event: "send_verification_email", at: "integrate", trigger: "required" }),
+      engineOwnedEvent({ event: "send_welcome_email", at: "integrate", trigger: "required" }),
+      // events.rb:40-43 (no stage) — engine: account-verify-reset-flows.ts
+      // runs activate_account inside verify_and_activate_success (status ->
+      // "active" + trigger_event! :send_welcome_email).
+      engineOwnedEvent({ event: "activate_account" }),
+      // events.rb:45-47 — engine: card-action-engine.ts:3029-3051
+      // (deleteAccount's close_account: anonymize + closure deletions).
+      engineOwnedEvent({
+        event: "delete_account",
+        at: "prepare_to_validate",
+        on: ["delete"],
+      }),
+      // events.rb:49-51, when: :current_account? — STUB, named remainder:
+      // signing the session out when the deleted account IS the acting
+      // session's account has no engine surface (the visitor-session
+      // lifecycle is route-layer; no delete-path hook exists).
+      event({
+        event: "signout_upon_delete",
+        at: "integrate",
+        on: ["delete"],
+        when: "current_account?",
+      }),
+    ],
+  },
   {
     // set/right/account/views.rb:1-47 base block (verify_url,
     // reset_password_url, token_expiry, token_days + verify_days/
@@ -1262,8 +1330,23 @@ const setModules: ModSetModuleFile[] = [
     // set/right/email.rb:5 `assign_type :phrase` (advanced_api.rb:5-8 —
     // the trait's cards are Phrase-typed; the +*account page's phantom
     // +*password field slot pins type-id 52 Phrase).
+    // Events (mod-events lane 2026-10-08): the three email validations run
+    // inside src/card/auth/account-fields.ts planAccountFields —
+    // normalizeEmail is downcase_email (:29-32) then validate_email's strip
+    // (:7-9); emailIsValid is validate_email's grammar (:10-13);
+    // planAccountFields' emailTaken probe is validate_unique_email's
+    // Auth.as_bot cql search (:16-27).
     setPath: "right/email",
     assignsType: "phrase",
+    events: [
+      engineOwnedEvent({ event: "validate_email", at: "validate", on: ["save"] }),
+      engineOwnedEvent({
+        event: "validate_unique_email",
+        after: "validate_email",
+        on: ["save"],
+      }),
+      engineOwnedEvent({ event: "downcase_email", at: "prepare_to_validate", on: ["save"] }),
+    ],
   },
   {
     // set/right/password.rb:53-55 view :raw (base, returns t :account_
@@ -1272,10 +1355,33 @@ const setModules: ModSetModuleFile[] = [
     // surfaces-batch3: BOTH views ported (the visible half of every
     // password field — a labeled render shows the "encrypted" stand-in,
     // never the hash). Still unported: the input_type/autocomplete?
-    // helpers (edit-form machinery) + the password validation events.
+    // helpers (edit-form machinery).
+    // Events (mod-events lane 2026-10-08): the four password events run in
+    // account-fields.ts passwordErrors (validate_password_length :30-35 +
+    // validate_password_chars :37-47 — PASSWORD_REGEX and the requirement
+    // labels are that module's constants) and encryptPassword
+    // (encrypt_password :21-26, Auth.encrypt); validate_password_present
+    // (:49-51, blank update aborts) is card-action-engine.ts:1220-1223
+    // (a blank +*password update changes nothing) and first-run-setup.ts
+    // :472-478 (the setup form's password_blank arm).
     // Ruby :3 `assign_type :phrase` (merged from the tip's batch side).
     setPath: "right/password",
     assignsType: "phrase",
+    events: [
+      engineOwnedEvent({
+        event: "encrypt_password",
+        at: "store",
+        on: ["save"],
+        changed: ["content"],
+      }),
+      engineOwnedEvent({ event: "validate_password_length", at: "validate", on: ["save"] }),
+      engineOwnedEvent({ event: "validate_password_chars", at: "validate", on: ["save"] }),
+      engineOwnedEvent({
+        event: "validate_password_present",
+        at: "prepare_to_validate",
+        on: ["update"],
+      }),
+    ],
     formats: {
       html: {
         views: [
@@ -1321,7 +1427,32 @@ const setModules: ModSetModuleFile[] = [
     // the edge cached the heading-only page), open_content (the
     // _render_core delegation - delegates to :core via
     // ctx.fmt.renderView("core")) and one_line_content (the empty body).
+    // Events (mod-events lane 2026-10-08): the four signin events run in
+    // src/card/auth/signin.ts — authenticate_or_abort + the error ladder
+    // (:42-84) is the signin event's body (signin.rb:10-12); signin_success
+    // (:15-17, abort after success, no row write) and signout (:19-23,
+    // Auth.signin Anonymous + Env.reset_session + abort) are the same
+    // module's flow; send_reset_password_token (:27-31) is
+    // account-verify-reset-flows.ts sendResetPasswordToken (the request
+    // arm: blank/unknown/inactive email ladders).
     setPath: "self/signin",
+    events: [
+      // signin.rb:27-31 `event :send_reset_password_token, before:
+      // :signin, on: :update, trigger: :required` — Ruby's before: keeps
+      // @stage nil and hangs the event on signin's callback chain (the
+      // signin event is :validate), so the surface records the resolved
+      // stage; declared FIRST so the same-stage walk order keeps it ahead
+      // of signin (the check_setup precedent, type/user below).
+      engineOwnedEvent({
+        event: "send_reset_password_token",
+        at: "validate",
+        on: ["update"],
+        trigger: "required",
+      }),
+      engineOwnedEvent({ event: "signin", at: "validate", on: ["update"] }),
+      engineOwnedEvent({ event: "signin_success", after: "signin" }),
+      engineOwnedEvent({ event: "signout", at: "validate", on: ["delete"] }),
+    ],
     formats: {
       html: {
         views: [
@@ -1368,6 +1499,41 @@ const setModules: ModSetModuleFile[] = [
     // whose own module lacks the view expands to the modules nested under
     // it).
     setPath: "type/signup",
+    // Events (mod-events lane 2026-10-08; signup.rb:20-38). Engine
+    // ownership: the approval ladder is account-verify-reset-flows.ts —
+    // auto_approve_with_verification (:20-22, when: :can_approve?) runs on
+    // the CREATE path (request_verification: +*status "unverified" +
+    // trigger send_verification_email, flows.ts:630-645); the two UPDATE
+    // approvals (:24-34, trigger: :required) ride the same
+    // request_verification / activate_accounted+activate_account machinery
+    // through the flow module (flows.ts:674-678, 992); can_approve? itself
+    // is card-action-engine.ts:1256-1263 canCreateDefaultAccountedType.
+    events: [
+      engineOwnedEvent({
+        event: "auto_approve_with_verification",
+        at: "validate",
+        on: ["create"],
+        when: "can_approve?",
+      }),
+      engineOwnedEvent({
+        event: "approve_with_verification",
+        at: "validate",
+        on: ["update"],
+        trigger: "required",
+      }),
+      engineOwnedEvent({
+        event: "approve_without_verification",
+        at: "validate",
+        on: ["update"],
+        trigger: "required",
+      }),
+      // signup.rb:36-38 — STUB, named remainder: Ruby switches the acting
+      // session to the freshly created id for the integrate stage
+      // (Auth.current_id = id, "needs justification!" per the gem). The
+      // port's save path has no mid-act actor switch; the engine's actor
+      // model is fixed per engine instance (card-action-engine.ts Actor).
+      event({ event: "act_as_current_for_integrate_stage", at: "integrate", on: ["create"] }),
+    ],
   },
   {
     // set/type/signup/views.rb — the NESTED child file (Ruby's SetTemplate
@@ -1442,7 +1608,18 @@ const setModules: ModSetModuleFile[] = [
   {
     // set/type_plus_right/role/members.rb:1-7 include_set Abstract::IdList,
     // assign_type :list, event :update_role_cache. No views.
+    // Event (mod-events lane 2026-10-08) — STUB with an engine-architecture
+    // reason, not an omission: Ruby's body refreshes a CACHE
+    // (Self::Role.update_rolehash(left.id, item_ids), members.rb:5-7) that
+    // read-time permission checks consult. The port derives the role lists
+    // from the reference rows FRESH at every read
+    // (permissions/read-rules.ts:245-265 — role_ids_from_role_member_cards
+    // reads the same rows generate_rolehash would) — there is no cache to
+    // refresh, so the event has no behavior to run. The declaration records
+    // Ruby's set membership + metadata (plain stub - NOT engineOwnedEvent:
+    // no engine code implements it; the architecture makes it moot).
     setPath: "type_plus_right/role/members",
+    events: [event({ event: "update_role_cache", at: "finalize" })],
   },
   {
     // set/type_plus_right/user/email.rb:1-17 def virtual? + view :raw

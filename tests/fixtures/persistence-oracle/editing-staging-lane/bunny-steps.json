@@ -1,0 +1,1140 @@
+[
+ {
+  "step": 1,
+  "label": "create simple",
+  "detail": {
+   "ok": true,
+   "kind": "create",
+   "httpStatus": 303
+  },
+  "state": {
+   "probe_card_ids": [
+    "53099"
+   ],
+   "cards": [
+    {
+     "id": 53099,
+     "name": "PersistProbe A",
+     "key": "persist_probe_a",
+     "codename": null,
+     "left_id": null,
+     "right_id": null,
+     "trash": 0,
+     "type_id": 3,
+     "db_content": "alpha",
+     "creator_id": 53076,
+     "updater_id": 53076,
+     "read_rule_class": "*all",
+     "read_rule_id": 6568,
+     "current_revision_id": null,
+     "references_expired": null,
+     "created_at": "2026-10-08 23:21:17.021",
+     "updated_at": "2026-10-08 23:21:17.021"
+    }
+   ],
+   "card_acts": [
+    {
+     "id": 28,
+     "card_id": 53099,
+     "actor_id": 53076,
+     "ip_address": "2400:52e0:1a01::912:1",
+     "acted_at": "2026-10-08 23:21:17.021"
+    }
+   ],
+   "card_actions": [
+    {
+     "id": 30,
+     "card_id": 53099,
+     "card_act_id": 28,
+     "super_action_id": null,
+     "action_type": 0,
+     "draft": 0,
+     "comment": null
+    }
+   ],
+   "card_changes": [],
+   "card_references": [],
+   "card_virtuals": [],
+   "files": []
+  }
+ },
+ {
+  "step": 2,
+  "label": "create compound",
+  "detail": {
+   "ok": true,
+   "kind": "create",
+   "httpStatus": 303
+  },
+  "state": {
+   "probe_card_ids": [
+    "53099",
+    "53100",
+    "53101"
+   ],
+   "cards": [
+    {
+     "id": 53099,
+     "name": "PersistProbe A",
+     "key": "persist_probe_a",
+     "codename": null,
+     "left_id": null,
+     "right_id": null,
+     "trash": 0,
+     "type_id": 3,
+     "db_content": "alpha",
+     "creator_id": 53076,
+     "updater_id": 53076,
+     "read_rule_class": "*all",
+     "read_rule_id": 6568,
+     "current_revision_id": null,
+     "references_expired": null,
+     "created_at": "2026-10-08 23:21:17.021",
+     "updated_at": "2026-10-08 23:21:17.021"
+    },
+    {
+     "id": 53100,
+     "name": "PersistProbe B",
+     "key": "persist_probe_b",
+     "codename": null,
+     "left_id": null,
+     "right_id": null,
+     "trash": 0,
+     "type_id": 22281,
+     "db_content": "",
+     "creator_id": 53076,
+     "updater_id": 53076,
+     "read_rule_class": "*type",
+     "read_rule_id": 22283,
+     "current_revision_id": null,
+     "references_expired": null,
+     "created_at": "2026-10-08 23:21:18.024",
+     "updated_at": "2026-10-08 23:21:18.024"
+    },
+    {
+     "id": 53101,
+     "name": null,
+     "key": null,
+     "codename": null,
+     "left_id": 53099,
+     "right_id": 53100,
+     "trash": 0,
+     "type_id": 3,
+     "db_content": "beta",
+     "creator_id": 53076,
+     "updater_id": 53076,
+     "read_rule_class": "*all plus",
+     "read_rule_id": 6568,
+     "current_revision_id": null,
+     "references_expired": null,
+     "created_at": "2026-10-08 23:21:18.472",
+     "updated_at": "2026-10-08 23:21:18.472"
+    }
+   ],
+   "card_acts": [
+    {
+     "id": 28,
+     "card_id": 53099,
+     "actor_id": 53076,
+     "ip_address": "2400:52e0:1a01::912:1",
+     "acted_at": "2026-10-08 23:21:17.021"
+    },
+    {
+     "id": 29,
+     "card_id": 53101,
+     "actor_id": 53076,
+     "ip_address": "2400:52e0:1a01::912:1",
+     "acted_at": "2026-10-08 23:21:17.591"
+    }
+   ],
+   "card_actions": [
+    {
+     "id": 30,
+     "card_id": 53099,
+     "card_act_id": 28,
+     "super_action_id": null,
+     "action_type": 0,
+     "draft": 0,
+     "comment": null
+    },
+    {
+     "id": 31,
+     "card_id": 53101,
+     "card_act_id": 29,
+     "super_action_id": null,
+     "action_type": 0,
+     "draft": 0,
+     "comment": null
+    },
+    {
+     "id": 32,
+     "card_id": 53100,
+     "card_act_id": 29,
+     "super_action_id": 31,
+     "action_type": 0,
+     "draft": 0,
+     "comment": null
+    }
+   ],
+   "card_changes": [],
+   "card_references": [],
+   "card_virtuals": [],
+   "files": []
+  }
+ },
+ {
+  "step": 3,
+  "label": "update content",
+  "detail": {
+   "ok": true,
+   "kind": "update",
+   "httpStatus": 303
+  },
+  "state": {
+   "probe_card_ids": [
+    "53099",
+    "53100",
+    "53101"
+   ],
+   "cards": [
+    {
+     "id": 53099,
+     "name": "PersistProbe A",
+     "key": "persist_probe_a",
+     "codename": null,
+     "left_id": null,
+     "right_id": null,
+     "trash": 0,
+     "type_id": 3,
+     "db_content": "alpha beta",
+     "creator_id": 53076,
+     "updater_id": 53076,
+     "read_rule_class": "*all",
+     "read_rule_id": 6568,
+     "current_revision_id": null,
+     "references_expired": null,
+     "created_at": "2026-10-08 23:21:17.021",
+     "updated_at": "2026-10-08 23:21:19.047"
+    },
+    {
+     "id": 53100,
+     "name": "PersistProbe B",
+     "key": "persist_probe_b",
+     "codename": null,
+     "left_id": null,
+     "right_id": null,
+     "trash": 0,
+     "type_id": 22281,
+     "db_content": "",
+     "creator_id": 53076,
+     "updater_id": 53076,
+     "read_rule_class": "*type",
+     "read_rule_id": 22283,
+     "current_revision_id": null,
+     "references_expired": null,
+     "created_at": "2026-10-08 23:21:18.024",
+     "updated_at": "2026-10-08 23:21:18.024"
+    },
+    {
+     "id": 53101,
+     "name": null,
+     "key": null,
+     "codename": null,
+     "left_id": 53099,
+     "right_id": 53100,
+     "trash": 0,
+     "type_id": 3,
+     "db_content": "beta",
+     "creator_id": 53076,
+     "updater_id": 53076,
+     "read_rule_class": "*all plus",
+     "read_rule_id": 6568,
+     "current_revision_id": null,
+     "references_expired": null,
+     "created_at": "2026-10-08 23:21:18.472",
+     "updated_at": "2026-10-08 23:21:18.472"
+    }
+   ],
+   "card_acts": [
+    {
+     "id": 28,
+     "card_id": 53099,
+     "actor_id": 53076,
+     "ip_address": "2400:52e0:1a01::912:1",
+     "acted_at": "2026-10-08 23:21:17.021"
+    },
+    {
+     "id": 29,
+     "card_id": 53101,
+     "actor_id": 53076,
+     "ip_address": "2400:52e0:1a01::912:1",
+     "acted_at": "2026-10-08 23:21:17.591"
+    },
+    {
+     "id": 30,
+     "card_id": 53099,
+     "actor_id": 53076,
+     "ip_address": "2400:52e0:1a01::912:1",
+     "acted_at": "2026-10-08 23:21:19.047"
+    }
+   ],
+   "card_actions": [
+    {
+     "id": 30,
+     "card_id": 53099,
+     "card_act_id": 28,
+     "super_action_id": null,
+     "action_type": 0,
+     "draft": 0,
+     "comment": null
+    },
+    {
+     "id": 31,
+     "card_id": 53101,
+     "card_act_id": 29,
+     "super_action_id": null,
+     "action_type": 0,
+     "draft": 0,
+     "comment": null
+    },
+    {
+     "id": 32,
+     "card_id": 53100,
+     "card_act_id": 29,
+     "super_action_id": 31,
+     "action_type": 0,
+     "draft": 0,
+     "comment": null
+    },
+    {
+     "id": 33,
+     "card_id": 53099,
+     "card_act_id": 30,
+     "super_action_id": null,
+     "action_type": 1,
+     "draft": 0,
+     "comment": null
+    }
+   ],
+   "card_changes": [
+    {
+     "id": 56,
+     "card_action_id": 30,
+     "field": 0,
+     "value": "PersistProbe A"
+    },
+    {
+     "id": 57,
+     "card_action_id": 30,
+     "field": 1,
+     "value": "3"
+    },
+    {
+     "id": 58,
+     "card_action_id": 30,
+     "field": 2,
+     "value": "alpha"
+    },
+    {
+     "id": 59,
+     "card_action_id": 30,
+     "field": 3,
+     "value": "f"
+    },
+    {
+     "id": 60,
+     "card_action_id": 30,
+     "field": 4,
+     "value": null
+    },
+    {
+     "id": 61,
+     "card_action_id": 30,
+     "field": 5,
+     "value": null
+    },
+    {
+     "id": 62,
+     "card_action_id": 33,
+     "field": 2,
+     "value": "alpha beta"
+    }
+   ],
+   "card_references": [],
+   "card_virtuals": [],
+   "files": []
+  }
+ },
+ {
+  "step": 4,
+  "label": "update with link",
+  "detail": {
+   "ok": true,
+   "kind": "update",
+   "httpStatus": 303
+  },
+  "state": {
+   "probe_card_ids": [
+    "53099",
+    "53100",
+    "53101"
+   ],
+   "cards": [
+    {
+     "id": 53099,
+     "name": "PersistProbe A",
+     "key": "persist_probe_a",
+     "codename": null,
+     "left_id": null,
+     "right_id": null,
+     "trash": 0,
+     "type_id": 3,
+     "db_content": "alpha beta [[PersistProbe B]]",
+     "creator_id": 53076,
+     "updater_id": 53076,
+     "read_rule_class": "*all",
+     "read_rule_id": 6568,
+     "current_revision_id": null,
+     "references_expired": null,
+     "created_at": "2026-10-08 23:21:17.021",
+     "updated_at": "2026-10-08 23:21:19.462"
+    },
+    {
+     "id": 53100,
+     "name": "PersistProbe B",
+     "key": "persist_probe_b",
+     "codename": null,
+     "left_id": null,
+     "right_id": null,
+     "trash": 0,
+     "type_id": 22281,
+     "db_content": "",
+     "creator_id": 53076,
+     "updater_id": 53076,
+     "read_rule_class": "*type",
+     "read_rule_id": 22283,
+     "current_revision_id": null,
+     "references_expired": null,
+     "created_at": "2026-10-08 23:21:18.024",
+     "updated_at": "2026-10-08 23:21:18.024"
+    },
+    {
+     "id": 53101,
+     "name": null,
+     "key": null,
+     "codename": null,
+     "left_id": 53099,
+     "right_id": 53100,
+     "trash": 0,
+     "type_id": 3,
+     "db_content": "beta",
+     "creator_id": 53076,
+     "updater_id": 53076,
+     "read_rule_class": "*all plus",
+     "read_rule_id": 6568,
+     "current_revision_id": null,
+     "references_expired": null,
+     "created_at": "2026-10-08 23:21:18.472",
+     "updated_at": "2026-10-08 23:21:18.472"
+    }
+   ],
+   "card_acts": [
+    {
+     "id": 28,
+     "card_id": 53099,
+     "actor_id": 53076,
+     "ip_address": "2400:52e0:1a01::912:1",
+     "acted_at": "2026-10-08 23:21:17.021"
+    },
+    {
+     "id": 29,
+     "card_id": 53101,
+     "actor_id": 53076,
+     "ip_address": "2400:52e0:1a01::912:1",
+     "acted_at": "2026-10-08 23:21:17.591"
+    },
+    {
+     "id": 30,
+     "card_id": 53099,
+     "actor_id": 53076,
+     "ip_address": "2400:52e0:1a01::912:1",
+     "acted_at": "2026-10-08 23:21:19.047"
+    },
+    {
+     "id": 31,
+     "card_id": 53099,
+     "actor_id": 53076,
+     "ip_address": "2400:52e0:1a01::912:1",
+     "acted_at": "2026-10-08 23:21:19.462"
+    }
+   ],
+   "card_actions": [
+    {
+     "id": 30,
+     "card_id": 53099,
+     "card_act_id": 28,
+     "super_action_id": null,
+     "action_type": 0,
+     "draft": 0,
+     "comment": null
+    },
+    {
+     "id": 31,
+     "card_id": 53101,
+     "card_act_id": 29,
+     "super_action_id": null,
+     "action_type": 0,
+     "draft": 0,
+     "comment": null
+    },
+    {
+     "id": 32,
+     "card_id": 53100,
+     "card_act_id": 29,
+     "super_action_id": 31,
+     "action_type": 0,
+     "draft": 0,
+     "comment": null
+    },
+    {
+     "id": 33,
+     "card_id": 53099,
+     "card_act_id": 30,
+     "super_action_id": null,
+     "action_type": 1,
+     "draft": 0,
+     "comment": null
+    },
+    {
+     "id": 34,
+     "card_id": 53099,
+     "card_act_id": 31,
+     "super_action_id": null,
+     "action_type": 1,
+     "draft": 0,
+     "comment": null
+    }
+   ],
+   "card_changes": [
+    {
+     "id": 56,
+     "card_action_id": 30,
+     "field": 0,
+     "value": "PersistProbe A"
+    },
+    {
+     "id": 57,
+     "card_action_id": 30,
+     "field": 1,
+     "value": "3"
+    },
+    {
+     "id": 58,
+     "card_action_id": 30,
+     "field": 2,
+     "value": "alpha"
+    },
+    {
+     "id": 59,
+     "card_action_id": 30,
+     "field": 3,
+     "value": "f"
+    },
+    {
+     "id": 60,
+     "card_action_id": 30,
+     "field": 4,
+     "value": null
+    },
+    {
+     "id": 61,
+     "card_action_id": 30,
+     "field": 5,
+     "value": null
+    },
+    {
+     "id": 62,
+     "card_action_id": 33,
+     "field": 2,
+     "value": "alpha beta"
+    },
+    {
+     "id": 63,
+     "card_action_id": 34,
+     "field": 2,
+     "value": "alpha beta [[PersistProbe B]]"
+    }
+   ],
+   "card_references": [
+    {
+     "id": 5715197,
+     "referer_id": 53099,
+     "referee_key": "persist_probe_b",
+     "referee_id": 53100,
+     "ref_type": "L",
+     "is_present": null
+    }
+   ],
+   "card_virtuals": [],
+   "files": []
+  }
+ },
+ {
+  "step": 5,
+  "label": "rename",
+  "detail": {
+   "ok": true,
+   "kind": "update",
+   "httpStatus": 303
+  },
+  "state": {
+   "probe_card_ids": [
+    "53099",
+    "53100",
+    "53102",
+    "53101"
+   ],
+   "cards": [
+    {
+     "id": 53099,
+     "name": "PersistProbe A",
+     "key": "persist_probe_a",
+     "codename": null,
+     "left_id": null,
+     "right_id": null,
+     "trash": 0,
+     "type_id": 3,
+     "db_content": "alpha beta [[PersistProbe B]]",
+     "creator_id": 53076,
+     "updater_id": 53076,
+     "read_rule_class": "*all",
+     "read_rule_id": 6568,
+     "current_revision_id": null,
+     "references_expired": null,
+     "created_at": "2026-10-08 23:21:17.021",
+     "updated_at": "2026-10-08 23:21:19.462"
+    },
+    {
+     "id": 53100,
+     "name": "PersistProbe B",
+     "key": "persist_probe_b",
+     "codename": null,
+     "left_id": null,
+     "right_id": null,
+     "trash": 0,
+     "type_id": 22281,
+     "db_content": "",
+     "creator_id": 53076,
+     "updater_id": 53076,
+     "read_rule_class": "*type",
+     "read_rule_id": 22283,
+     "current_revision_id": null,
+     "references_expired": null,
+     "created_at": "2026-10-08 23:21:18.024",
+     "updated_at": "2026-10-08 23:21:18.024"
+    },
+    {
+     "id": 53101,
+     "name": null,
+     "key": null,
+     "codename": null,
+     "left_id": 53099,
+     "right_id": 53100,
+     "trash": 0,
+     "type_id": 3,
+     "db_content": "beta",
+     "creator_id": 53076,
+     "updater_id": 53076,
+     "read_rule_class": "*all plus",
+     "read_rule_id": 6568,
+     "current_revision_id": null,
+     "references_expired": null,
+     "created_at": "2026-10-08 23:21:18.472",
+     "updated_at": "2026-10-08 23:21:18.472"
+    },
+    {
+     "id": 53102,
+     "name": "PersistProbe Renamed",
+     "key": "persist_probe_renamed",
+     "codename": null,
+     "left_id": null,
+     "right_id": null,
+     "trash": 0,
+     "type_id": 22281,
+     "db_content": "",
+     "creator_id": 53076,
+     "updater_id": 53076,
+     "read_rule_class": "*type",
+     "read_rule_id": 22283,
+     "current_revision_id": null,
+     "references_expired": null,
+     "created_at": "2026-10-08 23:21:20.227",
+     "updated_at": "2026-10-08 23:21:20.227"
+    }
+   ],
+   "card_acts": [
+    {
+     "id": 28,
+     "card_id": 53099,
+     "actor_id": 53076,
+     "ip_address": "2400:52e0:1a01::912:1",
+     "acted_at": "2026-10-08 23:21:17.021"
+    },
+    {
+     "id": 29,
+     "card_id": 53101,
+     "actor_id": 53076,
+     "ip_address": "2400:52e0:1a01::912:1",
+     "acted_at": "2026-10-08 23:21:17.591"
+    },
+    {
+     "id": 30,
+     "card_id": 53099,
+     "actor_id": 53076,
+     "ip_address": "2400:52e0:1a01::912:1",
+     "acted_at": "2026-10-08 23:21:19.047"
+    },
+    {
+     "id": 31,
+     "card_id": 53099,
+     "actor_id": 53076,
+     "ip_address": "2400:52e0:1a01::912:1",
+     "acted_at": "2026-10-08 23:21:19.462"
+    },
+    {
+     "id": 32,
+     "card_id": 53102,
+     "actor_id": 53076,
+     "ip_address": "2400:52e0:1a01::912:1",
+     "acted_at": "2026-10-08 23:21:20.227"
+    }
+   ],
+   "card_actions": [
+    {
+     "id": 30,
+     "card_id": 53099,
+     "card_act_id": 28,
+     "super_action_id": null,
+     "action_type": 0,
+     "draft": 0,
+     "comment": null
+    },
+    {
+     "id": 31,
+     "card_id": 53101,
+     "card_act_id": 29,
+     "super_action_id": null,
+     "action_type": 0,
+     "draft": 0,
+     "comment": null
+    },
+    {
+     "id": 32,
+     "card_id": 53100,
+     "card_act_id": 29,
+     "super_action_id": 31,
+     "action_type": 0,
+     "draft": 0,
+     "comment": null
+    },
+    {
+     "id": 33,
+     "card_id": 53099,
+     "card_act_id": 30,
+     "super_action_id": null,
+     "action_type": 1,
+     "draft": 0,
+     "comment": null
+    },
+    {
+     "id": 34,
+     "card_id": 53099,
+     "card_act_id": 31,
+     "super_action_id": null,
+     "action_type": 1,
+     "draft": 0,
+     "comment": null
+    },
+    {
+     "id": 35,
+     "card_id": 53102,
+     "card_act_id": 32,
+     "super_action_id": null,
+     "action_type": 0,
+     "draft": 0,
+     "comment": null
+    }
+   ],
+   "card_changes": [
+    {
+     "id": 56,
+     "card_action_id": 30,
+     "field": 0,
+     "value": "PersistProbe A"
+    },
+    {
+     "id": 57,
+     "card_action_id": 30,
+     "field": 1,
+     "value": "3"
+    },
+    {
+     "id": 58,
+     "card_action_id": 30,
+     "field": 2,
+     "value": "alpha"
+    },
+    {
+     "id": 59,
+     "card_action_id": 30,
+     "field": 3,
+     "value": "f"
+    },
+    {
+     "id": 60,
+     "card_action_id": 30,
+     "field": 4,
+     "value": null
+    },
+    {
+     "id": 61,
+     "card_action_id": 30,
+     "field": 5,
+     "value": null
+    },
+    {
+     "id": 62,
+     "card_action_id": 33,
+     "field": 2,
+     "value": "alpha beta"
+    },
+    {
+     "id": 63,
+     "card_action_id": 34,
+     "field": 2,
+     "value": "alpha beta [[PersistProbe B]]"
+    }
+   ],
+   "card_references": [
+    {
+     "id": 5715197,
+     "referer_id": 53099,
+     "referee_key": "persist_probe_b",
+     "referee_id": 53100,
+     "ref_type": "L",
+     "is_present": null
+    }
+   ],
+   "card_virtuals": [],
+   "files": []
+  }
+ },
+ {
+  "step": 6,
+  "label": "trash (delete!)",
+  "detail": {
+   "ok": true,
+   "kind": "trash",
+   "httpStatus": 303
+  },
+  "state": {
+   "probe_card_ids": [
+    "53099",
+    "53100",
+    "53102",
+    "53101"
+   ],
+   "cards": [
+    {
+     "id": 53099,
+     "name": "PersistProbe A",
+     "key": "persist_probe_a",
+     "codename": null,
+     "left_id": null,
+     "right_id": null,
+     "trash": 0,
+     "type_id": 3,
+     "db_content": "alpha beta [[PersistProbe B]]",
+     "creator_id": 53076,
+     "updater_id": 53076,
+     "read_rule_class": "*all",
+     "read_rule_id": 6568,
+     "current_revision_id": null,
+     "references_expired": null,
+     "created_at": "2026-10-08 23:21:17.021",
+     "updated_at": "2026-10-08 23:21:19.462"
+    },
+    {
+     "id": 53100,
+     "name": "PersistProbe B",
+     "key": "persist_probe_b",
+     "codename": null,
+     "left_id": null,
+     "right_id": null,
+     "trash": 0,
+     "type_id": 22281,
+     "db_content": "",
+     "creator_id": 53076,
+     "updater_id": 53076,
+     "read_rule_class": "*type",
+     "read_rule_id": 22283,
+     "current_revision_id": null,
+     "references_expired": null,
+     "created_at": "2026-10-08 23:21:18.024",
+     "updated_at": "2026-10-08 23:21:18.024"
+    },
+    {
+     "id": 53101,
+     "name": null,
+     "key": null,
+     "codename": null,
+     "left_id": 53099,
+     "right_id": 53100,
+     "trash": 0,
+     "type_id": 3,
+     "db_content": "beta",
+     "creator_id": 53076,
+     "updater_id": 53076,
+     "read_rule_class": "*all plus",
+     "read_rule_id": 6568,
+     "current_revision_id": null,
+     "references_expired": null,
+     "created_at": "2026-10-08 23:21:18.472",
+     "updated_at": "2026-10-08 23:21:18.472"
+    },
+    {
+     "id": 53102,
+     "name": "PersistProbe Renamed",
+     "key": "persist_probe_renamed",
+     "codename": null,
+     "left_id": null,
+     "right_id": null,
+     "trash": 1,
+     "type_id": 22281,
+     "db_content": "",
+     "creator_id": 53076,
+     "updater_id": 53076,
+     "read_rule_class": "*type",
+     "read_rule_id": 22283,
+     "current_revision_id": null,
+     "references_expired": null,
+     "created_at": "2026-10-08 23:21:20.227",
+     "updated_at": "2026-10-08 23:21:21.302"
+    }
+   ],
+   "card_acts": [
+    {
+     "id": 28,
+     "card_id": 53099,
+     "actor_id": 53076,
+     "ip_address": "2400:52e0:1a01::912:1",
+     "acted_at": "2026-10-08 23:21:17.021"
+    },
+    {
+     "id": 29,
+     "card_id": 53101,
+     "actor_id": 53076,
+     "ip_address": "2400:52e0:1a01::912:1",
+     "acted_at": "2026-10-08 23:21:17.591"
+    },
+    {
+     "id": 30,
+     "card_id": 53099,
+     "actor_id": 53076,
+     "ip_address": "2400:52e0:1a01::912:1",
+     "acted_at": "2026-10-08 23:21:19.047"
+    },
+    {
+     "id": 31,
+     "card_id": 53099,
+     "actor_id": 53076,
+     "ip_address": "2400:52e0:1a01::912:1",
+     "acted_at": "2026-10-08 23:21:19.462"
+    },
+    {
+     "id": 32,
+     "card_id": 53102,
+     "actor_id": 53076,
+     "ip_address": "2400:52e0:1a01::912:1",
+     "acted_at": "2026-10-08 23:21:20.227"
+    },
+    {
+     "id": 33,
+     "card_id": 53102,
+     "actor_id": 53076,
+     "ip_address": "2400:52e0:1a01::996:1",
+     "acted_at": "2026-10-08 23:21:21.302"
+    }
+   ],
+   "card_actions": [
+    {
+     "id": 30,
+     "card_id": 53099,
+     "card_act_id": 28,
+     "super_action_id": null,
+     "action_type": 0,
+     "draft": 0,
+     "comment": null
+    },
+    {
+     "id": 31,
+     "card_id": 53101,
+     "card_act_id": 29,
+     "super_action_id": null,
+     "action_type": 0,
+     "draft": 0,
+     "comment": null
+    },
+    {
+     "id": 32,
+     "card_id": 53100,
+     "card_act_id": 29,
+     "super_action_id": 31,
+     "action_type": 0,
+     "draft": 0,
+     "comment": null
+    },
+    {
+     "id": 33,
+     "card_id": 53099,
+     "card_act_id": 30,
+     "super_action_id": null,
+     "action_type": 1,
+     "draft": 0,
+     "comment": null
+    },
+    {
+     "id": 34,
+     "card_id": 53099,
+     "card_act_id": 31,
+     "super_action_id": null,
+     "action_type": 1,
+     "draft": 0,
+     "comment": null
+    },
+    {
+     "id": 35,
+     "card_id": 53102,
+     "card_act_id": 32,
+     "super_action_id": null,
+     "action_type": 0,
+     "draft": 0,
+     "comment": null
+    },
+    {
+     "id": 36,
+     "card_id": 53102,
+     "card_act_id": 33,
+     "super_action_id": null,
+     "action_type": 2,
+     "draft": 0,
+     "comment": null
+    }
+   ],
+   "card_changes": [
+    {
+     "id": 56,
+     "card_action_id": 30,
+     "field": 0,
+     "value": "PersistProbe A"
+    },
+    {
+     "id": 57,
+     "card_action_id": 30,
+     "field": 1,
+     "value": "3"
+    },
+    {
+     "id": 58,
+     "card_action_id": 30,
+     "field": 2,
+     "value": "alpha"
+    },
+    {
+     "id": 59,
+     "card_action_id": 30,
+     "field": 3,
+     "value": "f"
+    },
+    {
+     "id": 60,
+     "card_action_id": 30,
+     "field": 4,
+     "value": null
+    },
+    {
+     "id": 61,
+     "card_action_id": 30,
+     "field": 5,
+     "value": null
+    },
+    {
+     "id": 62,
+     "card_action_id": 33,
+     "field": 2,
+     "value": "alpha beta"
+    },
+    {
+     "id": 63,
+     "card_action_id": 34,
+     "field": 2,
+     "value": "alpha beta [[PersistProbe B]]"
+    },
+    {
+     "id": 64,
+     "card_action_id": 35,
+     "field": 0,
+     "value": "PersistProbe Renamed"
+    },
+    {
+     "id": 65,
+     "card_action_id": 35,
+     "field": 1,
+     "value": "22281"
+    },
+    {
+     "id": 66,
+     "card_action_id": 35,
+     "field": 2,
+     "value": ""
+    },
+    {
+     "id": 67,
+     "card_action_id": 35,
+     "field": 3,
+     "value": "f"
+    },
+    {
+     "id": 68,
+     "card_action_id": 35,
+     "field": 4,
+     "value": null
+    },
+    {
+     "id": 69,
+     "card_action_id": 35,
+     "field": 5,
+     "value": null
+    },
+    {
+     "id": 70,
+     "card_action_id": 36,
+     "field": 3,
+     "value": "t"
+    }
+   ],
+   "card_references": [
+    {
+     "id": 5715197,
+     "referer_id": 53099,
+     "referee_key": "persist_probe_b",
+     "referee_id": 53100,
+     "ref_type": "L",
+     "is_present": null
+    }
+   ],
+   "card_virtuals": [],
+   "files": []
+  }
+ }
+]

@@ -386,7 +386,18 @@ export class FetchEngine {
     opts: FetchOptions,
   ): Promise<CardRecord | undefined> {
     const newOpts = opts.new;
-    let effective = card;
+    // Ruby's cache hands every reader its OWN card object (the shared cache
+    // Marshal-loads per read), so results.rb's in-place quick_renew
+    // assign_name can never leak into another request's answer. This port's
+    // cache stores the record BY REFERENCE, and the render's internal
+    // key-form fetches (fetchByKey / fetchByName(key) in the prepare waves)
+    // run assign_name on the SAME object a page request may already hold —
+    // the page's record mutated from its requested name to the canonical key
+    // string mid-render (the acceptance's compound-masthead rows: the masthead
+    // and <title> rendered "dream_team+association" where the oracle renders
+    // the requested "Dream Team+Associations"). Dup here: every caller owns
+    // its copy; the cache entry stays what the last store wrote.
+    let effective: CardRecord = { ...card };
     if (newOpts !== undefined) {
       // results.rb#with_new_card (25-34): quick_renew || renew
       const markName = mark.kind === "name" ? mark.name : DeckoName.parse("");

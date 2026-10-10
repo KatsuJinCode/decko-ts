@@ -1,0 +1,1679 @@
+{
+ "format": "seconds-corpus-pinned-divergences/2",
+ "note": "Two sections, the operator's 2026-10-10 ruling. `pins`: TRUE DIVERGENCES, remaining port work - operations where the engine's bytes differ from the oracle's recorded bytes, each pinned with its first-difference evidence and its row_kind (99 divergences on working pages; 8 rows whose oracle capture is itself a failure page, named with their failure kind). A pin is a port gap to CLOSE, not an intent to differ: when a fix lands, delete its pins and the gate tightens automatically. Any diff on an op NOT listed here fails the gate. `reproduced_upstream_failures`: REPRODUCED UPSTREAM FAILURES, successes of the port - operations whose oracle answer is a recorded failure that the engine reproduces failure-for-failure under the same byte-identity bar (N7 class naming, byte-exact message). Both directions are enforced: a listed row that stops reproducing, or a reproduced row missing from the ledger, fails the gate.",
+ "pins": [
+  {
+   "op": "page:member:Corpus Skin",
+   "family": "composed-mod-view-gap",
+   "group": "page / member",
+   "evidence": {
+    "firstDiffAt": 14932,
+    "expected": "Corpus+Skin+customized\\\">Customize</a>\\n<div class='mt-4'>\\n<div id=\\\"corpu_skin-image-unknown-view\\\" class=\\\"card-slot unknown-view ALL ALL_PLUS TYPE-image RIGHT-image TYPE_PLUS_R",
+    "actual": "Corpus+Skin+customized\\\">Customize</a>\\n<div class='mt-4'>\\n\\n</div>\\n<h5 class='mt-4'>\\nSkin configuration\\n</h5>\\n<div class='small mb-3'>\\nfrom simplest to most advanced\\n</div>"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "page:contractor:Corpus Skin",
+   "family": "composed-mod-view-gap",
+   "group": "page / contractor",
+   "evidence": {
+    "firstDiffAt": 12801,
+    "expected": "Corpus+Skin+customized\\\">Customize</a>\\n<div class='mt-4'>\\n<div id=\\\"corpu_skin-image-unknown-view\\\" class=\\\"card-slot unknown-view ALL ALL_PLUS TYPE-image RIGHT-image TYPE_PLUS_R",
+    "actual": "Corpus+Skin+customized\\\">Customize</a>\\n<div class='mt-4'>\\n\\n</div>\\n<h5 class='mt-4'>\\nSkin configuration\\n</h5>\\n<div class='small mb-3'>\\nfrom simplest to most advanced\\n</div>"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "page:admin:Corpus Skin",
+   "family": "composed-mod-view-gap",
+   "group": "page / admin",
+   "evidence": {
+    "firstDiffAt": 14940,
+    "expected": "Corpus+Skin+customized\\\">Customize</a>\\n<div class='mt-4'>\\n<div id=\\\"corpu_skin-image-unknown-view\\\" class=\\\"card-slot unknown-view ALL ALL_PLUS TYPE-image RIGHT-image TYPE_PLUS_R",
+    "actual": "Corpus+Skin+customized\\\">Customize</a>\\n<div class='mt-4'>\\n\\n</div>\\n<h5 class='mt-4'>\\nSkin configuration\\n</h5>\\n<div class='small mb-3'>\\nfrom simplest to most advanced\\n</div>"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "core:admin:Corpus Skin",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 424,
+    "expected": "Corpus+Skin+customized\\\">Customize</a>\\n<div class='mt-4'>\\n<div id=\\\"corpu_skin-image-unknown-view\\\" class=\\\"card-slot unknown-view ALL ALL_PLUS TYPE-image RIGHT-image TYPE_PLUS_R",
+    "actual": "Corpus+Skin+customized\\\">Customize</a>\\n<div class='mt-4'>\\n\\n</div>\\n<h5 class='mt-4'>\\nSkin configuration\\n</h5>\\n<div class='small mb-3'>\\nfrom simplest to most advanced\\n</div>"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "core:admin:Topic 001+discussion",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 30,
+    "expected": "{\"html\":\"<p>First comment.</p>\"}",
+    "actual": "{\"html\":\"<p>First comment.</p>\\n<div class=\\\"comment-box nodblclick\\\"><form class=\\\"card-form slotter autosave\\\" id=\\\"edit_card_949\\\" action=\\\"/update"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "core:anonymous:Topic 001+discussion",
+   "family": "composed-mod-view-gap",
+   "group": "view / anonymous",
+   "evidence": {
+    "firstDiffAt": 30,
+    "expected": "{\"html\":\"<p>First comment.</p>\"}",
+    "actual": "{\"html\":\"<p>First comment.</p>\\n\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "core:admin:Topic 002+discussion",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 9,
+    "expected": "{\"html\":\"\"}",
+    "actual": "{\"html\":\"\\n<div class=\\\"comment-box nodblclick\\\"><form class=\\\"card-form slotter autosave\\\" id=\\\"edit_card_950\\\" action=\\\"/update"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "core:anonymous:Topic 002+discussion",
+   "family": "composed-mod-view-gap",
+   "group": "view / anonymous",
+   "evidence": {
+    "firstDiffAt": 9,
+    "expected": "{\"html\":\"\"}",
+    "actual": "{\"html\":\"\\n\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "page:member:*account links",
+   "family": "composed-mod-view-gap",
+   "group": "page / member",
+   "evidence": {
+    "firstDiffAt": 15804,
+    "expected": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><div class=\\\"btn-group\\\"><a id=\\\"my-ca",
+    "actual": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" value=\\\"Anyone Signed In\\nMember\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><di"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "page:admin:*account links",
+   "family": "composed-mod-view-gap",
+   "group": "page / admin",
+   "evidence": {
+    "firstDiffAt": 15919,
+    "expected": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><div class=\\\"btn-group\\\"><a id=\\\"my-ca",
+    "actual": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" value=\\\"Anyone Signed In\\nAdministrator\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-lis"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "page:anonymous:*help",
+   "family": "composed-mod-view-gap",
+   "group": "page / anonymous",
+   "evidence": {
+    "firstDiffAt": 16302,
+    "expected": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by &quot;mating&quot; {{_left|name}} with another c...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-",
+    "actual": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by \\\"mating\\\" *children+*right with another...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-link-cli"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "page:member:*help",
+   "family": "composed-mod-view-gap",
+   "group": "page / member",
+   "evidence": {
+    "firstDiffAt": 18966,
+    "expected": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by &quot;mating&quot; {{_left|name}} with another c...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-",
+    "actual": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by \\\"mating\\\" *children+*right with another...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-link-cli"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "page:contractor:*help",
+   "family": "composed-mod-view-gap",
+   "group": "page / contractor",
+   "evidence": {
+    "firstDiffAt": 16835,
+    "expected": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by &quot;mating&quot; {{_left|name}} with another c...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-",
+    "actual": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by \\\"mating\\\" *children+*right with another...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-link-cli"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "page:admin:*help",
+   "family": "composed-mod-view-gap",
+   "group": "page / admin",
+   "evidence": {
+    "firstDiffAt": 19075,
+    "expected": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by &quot;mating&quot; {{_left|name}} with another c...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-",
+    "actual": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by \\\"mating\\\" *children+*right with another...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-link-cli"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "core:admin:*help",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 4424,
+    "expected": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by &quot;mating&quot; {{_left|name}} with another c...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-",
+    "actual": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by \\\"mating\\\" *children+*right with another...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-link-cli"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "core:anonymous:*help",
+   "family": "composed-mod-view-gap",
+   "group": "view / anonymous",
+   "evidence": {
+    "firstDiffAt": 4424,
+    "expected": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by &quot;mating&quot; {{_left|name}} with another c...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-",
+    "actual": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by \\\"mating\\\" *children+*right with another...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-link-cli"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "page:member:*header",
+   "family": "composed-mod-view-gap",
+   "group": "page / member",
+   "evidence": {
+    "firstDiffAt": 10856,
+    "expected": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" value=\\\"Anyone Signed In\\nMember\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><di",
+    "actual": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><div class=\\\"btn-group\\\"><a id=\\\"my-ca"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "page:admin:*header",
+   "family": "composed-mod-view-gap",
+   "group": "page / admin",
+   "evidence": {
+    "firstDiffAt": 10949,
+    "expected": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" value=\\\"Anyone Signed In\\nAdministrator\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-lis",
+    "actual": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><div class=\\\"btn-group\\\"><a id=\\\"my-ca"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "page:anonymous:*sidebar",
+   "family": "composed-mod-view-gap",
+   "group": "page / anonymous",
+   "evidence": {
+    "firstDiffAt": 10860,
+    "expected": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layouts&quot;&gt;Layouts&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;external-link&quot; ",
+    "actual": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layout&quot;&gt;Layout&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;external-link&quot; hr"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "page:member:*sidebar",
+   "family": "composed-mod-view-gap",
+   "group": "page / member",
+   "evidence": {
+    "firstDiffAt": 13524,
+    "expected": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layouts&quot;&gt;Layouts&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;external-link&quot; ",
+    "actual": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layout&quot;&gt;Layout&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;external-link&quot; hr"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "page:contractor:*sidebar",
+   "family": "composed-mod-view-gap",
+   "group": "page / contractor",
+   "evidence": {
+    "firstDiffAt": 11393,
+    "expected": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layouts&quot;&gt;Layouts&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;external-link&quot; ",
+    "actual": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layout&quot;&gt;Layout&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;external-link&quot; hr"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "page:admin:*sidebar",
+   "family": "composed-mod-view-gap",
+   "group": "page / admin",
+   "evidence": {
+    "firstDiffAt": 13636,
+    "expected": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layouts&quot;&gt;Layouts&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;external-link&quot; ",
+    "actual": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layout&quot;&gt;Layout&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;external-link&quot; hr"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "page:admin:Help Desk",
+   "family": "composed-mod-view-gap",
+   "group": "page / admin",
+   "evidence": {
+    "firstDiffAt": 29186,
+    "expected": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"welcome_email-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-email_template SELF-welcome_email\\\" data-card-id=\\\"253\\\" da",
+    "actual": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"cohort_welcome-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-email_template SELF-cohort_welcome\\\" data-card-id=\\\"941\\\" "
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "core:admin:Help Desk",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 14654,
+    "expected": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"welcome_email-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-email_template SELF-welcome_email\\\" data-card-id=\\\"253\\\" da",
+    "actual": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"cohort_welcome-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-email_template SELF-cohort_welcome\\\" data-card-id=\\\"941\\\" "
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic 001:id",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 8,
+    "expected": "{\"html\":655}",
+    "actual": "{\"html\":\"655\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic 001+summary:hidden_content_field",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 16,
+    "expected": "{\"html\":\"<input class=\\\"d0-card-content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" value=\\\"&lt;p&gt;Signal hollow granite willo",
+    "actual": "{\"html\":\"<input autocomplete=\\\"off\\\" type=\\\"hidden\\\" name=\\\"content[{:class=&gt;&quot;d0-card-content&quot;}]\\\" id=\\\"content_{:class=&gt"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Corpus Skin:bar_bottom",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 430,
+    "expected": "Corpus+Skin+customized\\\">Customize</a>\\n<div class='mt-4'>\\n<div id=\\\"corpu_skin-image-unknown-view\\\" class=\\\"card-slot unknown-view ALL ALL_PLUS TYPE-image RIGHT-image TYPE_PLUS_R",
+    "actual": "Corpus+Skin+customized\\\">Customize</a>\\n<div class='mt-4'>\\n\\n</div>\\n<h5 class='mt-4'>\\nSkin configuration\\n</h5>\\n<div class='small mb-3'>\\nfrom simplest to most advanced\\n</div>"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic+*type:quick_edit_setting_list",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 2250,
+    "expected": "ect form-control\\\" data-select2-id=\\\"topic-Xtype-Xdefault-1-1789819200\\\"><optgroup label=\\\"Text\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option>\\n<option value=",
+    "actual": "ect form-control\\\" data-select2-id=\\\"topic-Xtype-Xdefault-1-0\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option></select>\\n<input type=\\\"hidden\\\" name=\\\"assign\\\" "
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic+*type:nest_rules",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 2697,
+    "expected": "ect form-control\\\" data-select2-id=\\\"topic-Xtype-Xdefault-1-1789819200\\\"><optgroup label=\\\"Text\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option>\\n<option value=",
+    "actual": "ect form-control\\\" data-select2-id=\\\"topic-Xtype-Xdefault-1-0\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option></select>\\n<input type=\\\"hidden\\\" name=\\\"assign\\\" "
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic+*type:modal_nest_rules",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 3968,
+    "expected": "ect form-control\\\" data-select2-id=\\\"topic-Xtype-Xdefault-1-1789819200\\\"><optgroup label=\\\"Text\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option>\\n<option value=",
+    "actual": "ect form-control\\\" data-select2-id=\\\"topic-Xtype-Xdefault-1-0\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option></select>\\n<input type=\\\"hidden\\\" name=\\\"assign\\\" "
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic 001:boxed",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "expected": "",
+    "actual": ""
+   },
+   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/; 2026-10-10 re-adjudication: the engine answers 'adapter error UnsupportedViewError: view (boxed) not supported for Topic 001' - the recorded first difference is the pre-error evidence",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic 001:boxed_link",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "expected": "",
+    "actual": ""
+   },
+   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/; 2026-10-10 re-adjudication: the engine answers 'adapter error UnsupportedViewError: view (boxed_link) not supported for Topic 001' - the recorded first difference is the pre-error evidence",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Ada Admin:tabs_static",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 10,
+    "expected": "{\"html\":\"<div class='tabbable tab-panel' role='tabpanel'>\\n<ul class='nav nav-tabs' role='tablist'>\\n</ul>\\n<div class='tab-conten",
+    "actual": "{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible t"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Ada Admin:pills_static",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 10,
+    "expected": "{\"html\":\"<div class='tabbable tab-panel' role='tabpanel'>\\n<ul class='nav nav-pills' role='tablist'>\\n</ul>\\n<div class='tab-conte",
+    "actual": "{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible t"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Home:icons",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 16,
+    "expected": "{\"html\":\"<table>\\n<tr>\\n<th>lookup key</th>\\n<th>\\nmaterial\\n</th>\\n<th>\\nfont_awesome\\n</th>\\n<th>\\nbootstrap\\n</th>\\n</tr>\\n<tr>\\n<td>",
+    "actual": "{\"html\":\"<table><tr><th>lookup key</th><th>material</th><th>font_awesome</th><th>bootstrap</th></tr><tr><td>plus</td><td>add</td><td>plu"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:All Topics:progress_bar",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "expected": "",
+    "actual": ""
+   },
+   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/; 2026-10-10 re-adjudication: the engine answers 'adapter error UnsupportedViewError: view (progress_bar) not supported for All Topics' - the recorded first difference is the pre-error evidence",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic 001:board",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 4526,
+    "expected": "</div>\\n<fieldset class=\\\"card-editor editor\\\"><div class=\\\"form-group card-editor RIGHT-summary\\\" data-card-id=\\\"656\\\" data-card-name=\\\"Topic 001+summary\\\" data-card-link-name=\\\"T",
+    "actual": "</div>\\n<fieldset class=\\\"card-editor editor\\\"><div class=\\\"RIGHT-summary card-editor form-group\\\" data-card-name=\\\"Topic 001+summary\\\">\\n<label for=\\\"card[subcards][+summary]_cont"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic 001:board_act",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 10,
+    "expected": "{\"html\":\"<div id=\\\"topic_001-board_act-view\\\" class=\\\"card-slot board_act-view ALL TYPE-topic SELF-topic_001 _overlay d0-card-over",
+    "actual": "{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible t"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic 001:related_tab",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 4011,
+    "expected": "umb=\\\"Related\\\" data-breadcrumb-class=\\\"related\\\" data-cy=\\\"topic_card-pill\\\" href=\\\"/Topic+*type+by_name/content?layout=overlay&amp;slot%5Bitems%5D%5Bview%5D=closed\\\" data-remote=",
+    "actual": "umb=\\\"Related\\\" data-breadcrumb-class=\\\"related\\\" data-cy=\\\"rich_text_card-pill\\\" href=\\\"/Topic+*type+by_name/content?layout=overlay&amp;slot%5Bitems%5D%5Bview%5D=closed\\\" data-rem"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic 001+discussion:engage_tab",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 967,
+    "expected": "ent%5D=%5B%5B%2Aalways%5D%5D&amp;success%5Bmark%5D=Topic+001%2Bdiscussion&amp;success%5Bview%5D=follow_section\\\" data-remote=\\\"true\\\"><span class=\\\"follow-verb\\\">follow</span></a>\\",
+    "actual": "ent%5D=%5B%5B%2Aalways%5D%5D&amp;success%5Bmark%5D=Topic+001+discussion&amp;success%5Bview%5D=follow_section\\\" data-remote=\\\"true\\\"><span class=\\\"follow-verb\\\">follow</span></a>\\n<"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Search Page:edit_nests",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 1702,
+    "expected": "></div>\\n\\n<div class=\\\"d0-card-body card-body card-text\\\"><div class=\\\"form-group card-editor\\\" data-card-id=\\\"867\\\" data-card-name=\\\"All Topics\\\" data-card-link-name=\\\"All_Topics",
+    "actual": "></div>\\n\\n<div class=\\\"d0-card-body card-body card-text\\\"></div></div></div>\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+
+  {
+   "op": "view:admin:Topic 001:edit_rules",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 153,
+    "expected": "iew ALL ALL_PLUS TYPE-set RSTAR RIGHT-Xself TYPE_PLUS_RIGHT-topic-Xself SELF-topic_001-Xself d-flex flex-column gap-3 mx-3 mt-2\\\" data-card-id=\\\"929\\\" data-card-name=\\\"Topic 001+*s",
+    "actual": "iew ALL ALL_PLUS TYPE-set RSTAR RIGHT-Xself TYPE_PLUS_RIGHT-rich_text-Xself SELF-topic_001-Xself d-flex flex-column gap-3 mx-3 mt-2\\\" data-card-id=\\\"929\\\" data-card-name=\\\"Topic_00"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:anonymous:Sign up:content_formgroups",
+   "family": "composed-mod-view-gap",
+   "group": "view / anonymous",
+   "evidence": {
+    "firstDiffAt": 53,
+    "expected": "{\"html\":\"<fieldset class=\\\"card-editor editor\\\"><div id=\\\"sign_up-description-content-view\\\" class=\\\"card-slot content-view ALL ALL_PLUS TYPE-rich_text RIGHT-description TYP",
+    "actual": "{\"html\":\"<fieldset class=\\\"card-editor editor\\\"><div class=\\\"RIGHT-description card-editor form-group\\\" data-card-name=\\\"Sign up+description\\\">\\n<label for=\\\"card[subcards]["
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic 001:edit_in_form",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 14,
+    "expected": "{\"html\":\"<div id=\\\"topic_001-summary-titled-view\\\" class=\\\"card-slot titled-view ALL ALL_PLUS TYPE-rich_text RIGHT-summary TYPE_PLUS_R",
+    "actual": "{\"html\":\"<div class=\\\"form-group card-editor\\\" data-card-id=\\\"655\\\" data-card-name=\\\"Topic 001\\\" data-card-link-name=\\\"Topic_001\\\"><la"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic 001:content_with_title",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 448,
+    "expected": "uot;content_with_title&quot;]}\\\" title=\\\"Topic 001+summary\\nTopic 001+Tag[http://deck.example/Topic_001+Tag]\\nTopic 001+related: Topic 002, Topic 012\\\"><div class=\\\"card-menu nodbl",
+    "actual": "uot;content_with_title&quot;]}\\\" title=\\\"Topic 001+summary\\nhelp\\nedit \\nspace_dashboard \\n\\nSignal hollow granite willow juniper orchard ember ember. See Topic 008.Missing: Unwrit"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic 001:subedit_notice",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 9,
+    "expected": "{\"html\":\"<li>Topic 001 created\\n<li>   cardtype: Topic</li>\\n<li>   content: </li>\\n</li>\\n\"}",
+    "actual": "{\"html\":\"\\nTopic 001 created\\n   cardtype: Topic\\n   content: \\n\\n\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic 001:subedits",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 9,
+    "expected": "{\"html\":\"\"}",
+    "actual": "{\"html\":\"{{_|subedits}}\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Note 001:just_deleted",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 13,
+    "expected": "{\"html\":\"<div id=\\\"note_001-just_deleted-view\\\" class=\\\"card-slot just_deleted-view ALL TYPE-rich_text SELF-note_001\\\" data-card-id=\\",
+    "actual": "{\"html\":\"<div><span class=\\\"card-title\\\" title=\\\"Note 001\\\">Note 001</span> deleted</div>\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic 001:nest_content",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 1700,
+    "expected": "off\\\" /><fieldset class=\\\"card-editor editor\\\"><div class=\\\"form-group card-editor RIGHT-summary\\\" data-card-id=\\\"656\\\" data-card-name=\\\"Topic 001+summary\\\" data-card-link-name=\\\"T",
+    "actual": "off\\\" /><fieldset class=\\\"card-editor editor\\\"><div class=\\\"RIGHT-summary card-editor form-group\\\" data-card-name=\\\"Topic 001+summary\\\">\\n<label for=\\\"card[subcards][+summary]_cont"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:*favicon:nest_image",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 410,
+    "expected": "ot;nest_image&quot;,&quot;show&quot;:[&quot;nest_image&quot;,&quot;content_tab&quot;]}\\\"><div class='_nest-editor'>\\n<div class='card-header d-flex'>\\n<h5 class='mt-1'>\\nImage\\n</h",
+    "actual": "ot;nest_image&quot;,&quot;show&quot;:[&quot;nest_image&quot;]}\\\"><div class='_nest-editor'>\\n<div class='card-header d-flex'>\\n<h5 class='mt-1'>\\nImage\\n</h5>\\n<div class='ms-auto'"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:*favicon:modal_nest_image",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 404,
+    "expected": "t_image&quot;,&quot;show&quot;:[&quot;modal_nest_image&quot;,&quot;content_tab&quot;]}\\\"><div class='_nest-editor'>\\n<div class='card-header d-flex'>\\n<h5 class='mt-1'>\\nImage\\n</h",
+    "actual": "t_image&quot;,&quot;show&quot;:[&quot;modal_nest_image&quot;]}\\\"><div class='_nest-editor'>\\n<div class='card-header d-flex'>\\n<h5 class='mt-1'>\\nImage\\n</h5>\\n<div class='ms-auto'"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:*favicon:new_image",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 429,
+    "expected": "ot;help&quot;],&quot;hide&quot;:[&quot;name_formgroup&quot;]}\\\"><form class=\\\"card-form slotter\\\" id=\\\"edit_card_294\\\" action=\\\"/card/create\\\" accept-charset=\\\"UTF-8\\\" data-remote=",
+    "actual": "ot;help&quot;],&quot;hide&quot;:[&quot;name_formgroup&quot;],&quot;buttons_view&quot;:&quot;new_image_buttons&quot;}\\\"><form class=\\\"card-form slotter\\\" id=\\\"new_card\\\" action=\\\"/c"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Report 1:preview_editor",
+   "family": "render-error-panel: the backtrace div's frame COUNT differs under N6 (Ruby boot-inclusive backtrace vs the engine's own V8 stack)",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 420,
+    "expected": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;",
+    "actual": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;/div&gt;\\n    \\\">Report 1</span> (preview_editor view)</span>\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/). Under N6 the div's residual is the frame count: 60 Ruby frames (oracle backtrace) vs 8 V8 frames (engine stack).",
+   "row_kind": "upstream-failure page",
+   "failure_kind": "same raise posture as debug_server_error: byte-same message, N6 frame-count residual",
+   "ruled": "necessary divergence — the N6 frame-count residual (Ruby boot-inclusive backtraces vs the engine's V8 stacks), closed as port work per operator ruling 2026-10-10; graded and byte-checked here, not remaining work"
+  },
+  {
+   "op": "view:admin:Topic 001:card_select",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 10,
+    "expected": "{\"html\":\"<div id=\\\"topic_001-card_select-view\\\" class=\\\"card-slot card_select-view ALL TYPE-topic SELF-topic_001\\\" data-card-id=\\\"",
+    "actual": "{\"html\":\"<form role=\\\"filter\\\" data-slot-selector=\\\".card-slot._fixed-slot\\\" class=\\\"nodblclick slotter\\\" action=\\\"/?view=filtered"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic:add_link",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 12,
+    "expected": "{\"html\":\"<a data-slotter-mode=\\\"modal\\\" data-modal-class=\\\"modal-dialog modal-dialog-centered\\\" class=\\\"slotter\\\" href=\\\"/type/Topic",
+    "actual": "{\"html\":\"<a class=\\\"cardtype-add-link\\\" href=\\\"/topic/new\\\">add</a>\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic:grouped_list",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "expected": "",
+    "actual": ""
+   },
+   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/; 2026-10-10 re-adjudication: the engine answers 'adapter error UnsupportedViewError: view (grouped_list) not supported for Topic' - the recorded first difference is the pre-error evidence",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Nonexistent Card:errors",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 8,
+    "expected": "{\"html\":null}",
+    "actual": "{\"html\":\"Problem:\\n\\n\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Note 001:debug_server_error",
+   "family": "render-error-panel: the backtrace div's frame COUNT differs under N6 (Ruby boot-inclusive backtrace vs the engine's own V8 stack)",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 445,
+    "expected": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;",
+    "actual": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;/div&gt;\\n    \\\">Note 001</span> (debug_server_error view)</span>\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/). Under N6 the div's residual is the frame count: 51 Ruby frames (oracle backtrace) vs 8 V8 frames (engine stack).",
+   "row_kind": "upstream-failure page",
+   "failure_kind": "the oracle's own render raises (uninitialized constant BetterErrors) and the recorded page is the raise's debug page; the engine raises the same NameError with the byte-same message - the residual is the backtrace div's frame count (N6)",
+   "ruled": "necessary divergence — the N6 frame-count residual (Ruby boot-inclusive backtraces vs the engine's V8 stacks), closed as port work per operator ruling 2026-10-10; graded and byte-checked here, not remaining work"
+  },
+  {
+   "op": "view:admin:Topic 001:change",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 352,
+    "expected": "uot;:&quot;change&quot;,&quot;show&quot;:[&quot;change&quot;,&quot;title_link&quot;],&quot;hide&quot;:[&quot;menu&quot;]}\\\"><a class=\\\"known-card\\\" href=\\\"/Topic_001\\\"><span class=",
+    "actual": "uot;:&quot;change&quot;,&quot;show&quot;:[&quot;change&quot;],&quot;hide&quot;:[&quot;menu&quot;]}\\\"><a class=\\\"known-card\\\" href=\\\"/Topic_001\\\"><span class=\\\"card-title\\\" title=\\\""
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic 001:list_of_changes",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 9,
+    "expected": "{\"html\":\"<li>   cardtype: Topic</li>\\n<li>   content: </li>\\n\"}",
+    "actual": "{\"html\":\"\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:*all+Mira Member+*follow:follow_status",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 1875,
+    "expected": "notranslate material-icons\\\">check</i></button>\\n<a class=\\\"known-card\\\" href=\\\"/*all+by_name\\\">everything</a></form></div>\\n</li>\\n</ul>\\n<a rel=\\\"nofollow\\\" class=\\\"btn update-fo",
+    "actual": "notranslate material-icons\\\">check</i></button>\\n<a class=\\\"wanted-card\\\" href=\\\"/*all+by_name\\\">everything</a></form></div>\\n</li>\\n</ul>\\n<a rel=\\\"nofollow\\\" class=\\\"btn update-f"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:*all+Mira Member+*follow:follow_item",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 1259,
+    "expected": "notranslate material-icons\\\">check</i></button>\\n<a class=\\\"known-card\\\" href=\\\"/*all+by_name\\\">everything</a></form></div>\"}",
+    "actual": "notranslate material-icons\\\">check</i></button>\\n<a class=\\\"wanted-card\\\" href=\\\"/*all+by_name\\\">everything</a></form></div>\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Ada Admin:account_tab",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 119,
+    "expected": "d-pills flex-column\\\"><h6 class=\\\"ms-1 mt-3\\\">Settings</h6><li class=\\\"nav-item\\\"><a data-slot-selector=\\\".board-main &gt; .overlay-container &gt; .card-slot._bottomlay-slot,.board",
+    "actual": "d-pills flex-column\\\"><h6 class=\\\"ms-1 mt-3\\\">Settings</h6><a data-slot-selector=\\\".board-main &gt; .overlay-container &gt; .card-slot._bottomlay-slot,.board-main &gt; ._overlay-co"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Ada Admin:closed_account",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 37,
+    "expected": "{\"html\":\"<h2>Account Closed</h2>\\n<p>\\nThe sign-in account once associated with this card has been removed, the card\\nhas been anonymized, and its data field",
+    "actual": "{\"html\":\"<h2>Account Closed</h2>\\n<p>The sign-in account once associated with this card has been removed, the card has been anonymized, and its data fields h"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Ada Admin+*account:api_key",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 14,
+    "expected": "{\"html\":\"<div id=\\\"ada_admin-Xaccount-Xapi_key-titled-view\\\" class=\\\"card-slot titled-view ALL ALL_PLUS TYPE-rich_text RSTAR RIGHT-Xap",
+    "actual": "{\"html\":\"<div class='api-key-core p-1'>\\n<div class='api-key-buttons d-flex my-2 py-3 justify-content-between w-100'>\\n<form class=\\\"c"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Ada Admin+*account:verify_url",
+   "family": "render-error-panel: the backtrace div's frame COUNT differs under N6 (Ruby boot-inclusive backtrace vs the engine's own V8 stack)",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 445,
+    "expected": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;",
+    "actual": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;/div&gt;\\n    \\\">Ada Admin+*account</span> (verify_url view)</span>\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/). Under N6 the div's residual is the frame count: 63 Ruby frames (oracle backtrace) vs 10 V8 frames (engine stack).",
+   "row_kind": "upstream-failure page",
+   "failure_kind": "same raise posture as debug_server_error: byte-same message, N6 frame-count residual",
+   "ruled": "necessary divergence — the N6 frame-count residual (Ruby boot-inclusive backtraces vs the engine's V8 stacks), closed as port work per operator ruling 2026-10-10; graded and byte-checked here, not remaining work"
+  },
+  {
+   "op": "view:admin:Ada Admin+*account:reset_password_url",
+   "family": "render-error-panel: the backtrace div's frame COUNT differs under N6 (Ruby boot-inclusive backtrace vs the engine's own V8 stack)",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 445,
+    "expected": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;",
+    "actual": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;/div&gt;\\n    \\\">Ada Admin+*account</span> (reset_password_url view)</span>\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/). Under N6 the div's residual is the frame count: 63 Ruby frames (oracle backtrace) vs 10 V8 frames (engine stack).",
+   "row_kind": "upstream-failure page",
+   "failure_kind": "same raise posture as debug_server_error: byte-same message, N6 frame-count residual",
+   "ruled": "necessary divergence — the N6 frame-count residual (Ruby boot-inclusive backtraces vs the engine's V8 stacks), closed as port work per operator ruling 2026-10-10; graded and byte-checked here, not remaining work"
+  },
+  {
+   "op": "view:admin:Ada Admin+*account:token_days",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 8,
+    "expected": "{\"html\":2}",
+    "actual": "{\"html\":\"2\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Ada Admin+*account:verify_days",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 8,
+    "expected": "{\"html\":2}",
+    "actual": "{\"html\":\"2\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Ada Admin+*account:reset_password_days",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 8,
+    "expected": "{\"html\":2}",
+    "actual": "{\"html\":\"2\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Ada Admin+*account:closure",
+   "family": "render-error-panel: the backtrace div's frame COUNT differs under N6 (Ruby boot-inclusive backtrace vs the engine's own V8 stack)",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 464,
+    "expected": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;",
+    "actual": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;/div&gt;\\n    \\\">Ada Admin+*account</span> (closure view)</span>\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/). Under N6 the div's residual is the frame count: 59 Ruby frames (oracle backtrace) vs 8 V8 frames (engine stack).",
+   "row_kind": "upstream-failure page",
+   "failure_kind": "same raise posture as debug_server_error: byte-same message, N6 frame-count residual",
+   "ruled": "necessary divergence — the N6 frame-count residual (Ruby boot-inclusive backtraces vs the engine's V8 stacks), closed as port work per operator ruling 2026-10-10; graded and byte-checked here, not remaining work"
+  },
+  {
+   "op": "view:admin:*admin:admin",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "expected": "",
+    "actual": ""
+   },
+   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/; 2026-10-10 re-adjudication: the engine answers 'adapter error UnsupportedViewError: view (admin) not supported for *admin' - the recorded first difference is the pre-error evidence",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:mod: help:configurations",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 8,
+    "expected": "{\"html\":null}",
+    "actual": "{\"html\":\"\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:mod: help:tasks",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 8,
+    "expected": "{\"html\":null}",
+    "actual": "{\"html\":\"\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:mod: help:scripts",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 8,
+    "expected": "{\"html\":null}",
+    "actual": "{\"html\":\"\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:mod: help:roles",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "expected": "",
+    "actual": ""
+   },
+   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/; 2026-10-10 re-adjudication: the engine answers 'adapter error UnsupportedViewError: view (roles) not supported for mod: help' - the recorded first difference is the pre-error evidence",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:All Topics:search_count",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 9,
+    "expected": "{\"html\":\"[#<Card#655[:605](Topic 001){set_mods_loaded}, #<Card#659[:605](Topic 002){set_mods_loaded}, #<Card#663[:605](Topic 003)",
+    "actual": "{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible "
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+
+  {
+   "op": "view:admin:All Topics:paging",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 9,
+    "expected": "{\"html\":\"<nav class='nav justify-content-between align-items-center'>\\n<ul class='pagination paging'>\\n<li class=\\\"page-item\\\"><d",
+    "actual": "{\"html\":\"\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic 001+tags:list",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 360,
+    "expected": "lass=\\\"pointer-item-text form-control\\\" data-options-card=\\\"Tag+*type+by_name\\\" placeholder=\\\"\\\" />\\n<button class='pointer-item-delete btn btn-secondary' type='button'>\\n<i class=",
+    "actual": "lass=\\\"pointer-item-text form-control\\\" data-options-card=\\\"*all\\\" placeholder=\\\"\\\" />\\n<button class='pointer-item-delete btn btn-secondary' type='button'>\\n<i class=\\\"notranslate"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic 001+tags:checkbox",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 247,
+    "expected": " 01\\\" class=\\\"pointer-checkbox-button \\\" checked=\\\"checked\\\" />\\n<label class=\\\"form-check-label\\\" for=\\\"pointer-checkbox-tag_01\\\">Tag 01</label>\\n</div>\\n<div class='pointer-check",
+    "actual": " 01\\\" class=\\\"pointer-checkbox-button \\\" checked=\\\"checked\\\">\\n<label class=\\\"form-check-label\\\" for=\\\"pointer-checkbox-tag_01\\\">Tag 01</label>\\n</div>\\n<div class='pointer-checkbo"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic 001+tags:checkbox_list",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "expected": "",
+    "actual": ""
+   },
+   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/; 2026-10-10 re-adjudication: the engine answers 'adapter error UnsupportedViewError: view (checkbox_list) not supported for Topic 001+Tag' - the recorded first difference is the pre-error evidence",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic 001+tags:autocomplete",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 216,
+    "expected": "item-text form-control _autocomplete \\\" data-options-card=\\\"Tag+*type+by_name\\\" placeholder=\\\"\\\" />\\n</div>\\n\"}",
+    "actual": "item-text form-control _autocomplete \\\" data-options-card=\\\"*all\\\" placeholder=\\\"\\\" />\\n</div>\\n\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic 001:goto_autocomplete_item",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 38,
+    "expected": "{\"html\":\"<div class='autocomplete-item-goto autocomplete-item'>\\n<div class='autocomplete-icon'>\\n<i class=\\\"notranslate material-icons\\\">arrow_forward</i>\\n<",
+    "actual": "{\"html\":\"<div class='autocomplete-item autocomplete-item-goto'>\\n  <div class='autocomplete-icon'>\\n    <i class=\\\"notranslate material-icons\\\">arrow_forward<"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic 001:add_autocomplete_item",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 38,
+    "expected": "{\"html\":\"<div class='autocomplete-item-add autocomplete-item'>\\n<div class='autocomplete-icon'>\\n<i class=\\\"notranslate material-icons\\\">add</i>\\n</div>\\n<div",
+    "actual": "{\"html\":\"<div class='autocomplete-item autocomplete-item-add'>\\n  <div class='autocomplete-icon'>\\n    <i class=\\\"notranslate material-icons\\\">add</i>\\n  </di"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic 001+tags:pointer_core",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "expected": "",
+    "actual": ""
+   },
+   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/; 2026-10-10 re-adjudication: the engine answers 'adapter error UnsupportedViewError: view (pointer_core) not supported for Topic 001+Tag' - the recorded first difference is the pre-error evidence",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Home:javascript_tags",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 9,
+    "expected": "{\"html\":\"<!-- mod: format (remote) -->\\n<script src=\\\"https://code.jquery.com/jquery-3.5.1.min.js\\\" crossorigin=\\\"anonymous\\\"></s",
+    "actual": "{\"html\":\"\\n<!-- MAIN DECKO JAVASCRIPT -->\\n<script src=\\\"/files/~307/1789819200.js\\\"></script>\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Home:script_calls",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 32,
+    "expected": "{\"html\":\"<script>\\n//<![CDATA[\\ndecko.setAceConfig('{\\\\n  \\\\\\\"default\\\\\\\": {\\\\n  \\\\\\\"showGutter\\\\\\\": true,\\\\n  \\\\\\\"theme\\\\\\\": \\\\\\\"ace/theme/github\\\\\\\",\\",
+    "actual": "{\"html\":\"<script>\\n//<![CDATA[\\n$('document').ready(function() { $('.card-slot').trigger('decko.slot.ready'); })\\n//]]>\\n</script>\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Home:script_variables",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 47,
+    "expected": "{\"html\":\"<script>\\n//<![CDATA[\\ndecko.rootUrl='http://deck.example/';\\ndecko.doubleClick='signed_in';\\ndecko.cssPath='/files/~447/1789819200.css';\\ndecko.signed_in=tru",
+    "actual": "{\"html\":\"<script>\\n//<![CDATA[\\ndecko.rootUrl='/';\\ndecko.doubleClick='signed_in';\\ndecko.cssPath='/files/~447/1789819200.css';\\ndecko.signed_in=false;\\n\\n//]]>\\n</scr"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:style: mods:stylesheet_include_tag",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "expected": "",
+    "actual": ""
+   },
+   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/; 2026-10-10 re-adjudication: the engine answers 'adapter error UnsupportedViewError: view (stylesheet_include_tag) not supported for style: mods' - the recorded first difference is the pre-error evidence",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:style: mods:remote_style_tags",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 9,
+    "expected": "{\"html\":\"<link href=\\\"https://fonts.googleapis.com/css2?family=Material+Icons\\\" media=\\\"all\\\" rel=\\\"stylesheet\\\" type=\\\"text/css\\",
+    "actual": "{\"html\":\"\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:*all+*script:remote_script_tags",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 9,
+    "expected": "{\"html\":\"<!-- mod: format (remote) -->\\n<script src=\\\"https://code.jquery.com/jquery-3.5.1.min.js\\\" crossorigin=\\\"anonymous\\\"></s",
+    "actual": "{\"html\":\"\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:*all+*script:asset_output_url",
+   "family": "render-error-panel: the backtrace div's frame COUNT differs under N6 (Ruby boot-inclusive backtrace vs the engine's own V8 stack)",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 482,
+    "expected": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;",
+    "actual": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;/div&gt;\\n    \\\">*all+*script</span> (asset_output_url view)</span>\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/). Under N6 the div's residual is the frame count: 53 Ruby frames (oracle backtrace) vs 8 V8 frames (engine stack).",
+   "row_kind": "upstream-failure page",
+   "failure_kind": "same raise posture as debug_server_error: byte-same message, N6 frame-count residual",
+   "ruled": "necessary divergence — the N6 frame-count residual (Ruby boot-inclusive backtraces vs the engine's V8 stacks), closed as port work per operator ruling 2026-10-10; graded and byte-checked here, not remaining work"
+  },
+  {
+   "op": "view:admin:Report 1:file_size",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "expected": "",
+    "actual": ""
+   },
+   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/; 2026-10-10 re-adjudication: the engine answers 'adapter error UnsupportedViewError: view (file_size) not supported for Report 1' - the recorded first difference is the pre-error evidence",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:*favicon:full_width",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 14,
+    "expected": "{\"html\":\"<img alt=\\\"*favicon\\\" class=\\\"w-100\\\" src=\\\"/files/:favicon/carrierwave-medium.png\\\" />\"}",
+    "actual": "{\"html\":\"<img src=\\\"/files/:favicon/carrierwave-medium.png\\\" alt=\\\"*favicon\\\" class=\\\"w-100\\\">\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:*favicon:content_changes",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 11,
+    "expected": "{\"html\":\"<ins class='diffins diff-added'><img alt=\\\"*favicon\\\" src=\\\"/files/:favicon/carrierwave-medium.png\\\" /></ins>\"}",
+    "actual": "{\"html\":\"<img alt=\\\"*favicon\\\" src=\\\"/files/:favicon/carrierwave-medium.png\\\" /><img alt=\\\"*favicon\\\" src=\\\"/files/:favicon/carrier"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:*favicon:link_tag",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 72,
+    "expected": "nk rel=\\\"shortcut icon\\\" href=\\\"/files/:favicon/carrierwave-small.png\\\" />\"}",
+    "actual": "nk rel=\\\"shortcut icon\\\" href=\\\"/files/:favicon/carrierwave-medium.png\\\">\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Home:head",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 542,
+    "expected": "/x-wiki\\\" title=\\\"Edit this page!\\\" href=\\\"/Home/edit\\\" />\\n<!-- mod: format (remote) -->\\n<script src=\\\"https://code.jquery.com/jquery-3.5.1.min.js\\\" crossorigin=\\\"anonymous\\\"></s",
+    "actual": "/x-wiki\\\" title=\\\"Edit this page!\\\" href=\\\"/Home/edit\\\" />\\n\\n\\n<!-- MAIN DECKO JAVASCRIPT -->\\n<script src=\\\"/files/~307/1789819200.js\\\"></script>\\n<script>\\n//<![CDATA[\\ndecko.ro"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:*head:head_content",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "expected": "",
+    "actual": ""
+   },
+   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/; 2026-10-10 re-adjudication: the engine answers 'adapter error UnsupportedViewError: view (head_content) not supported for *head' - the recorded first difference is the pre-error evidence",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Home:rss_links",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 8,
+    "expected": "{\"html\":null}",
+    "actual": "{\"html\":\"\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic+*type+*structure:rule_edit",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 2860,
+    "expected": "-remote=\\\"true\\\" data-select2-id=\\\"topic-Xtype-Xstructure-1-1789819200\\\"><optgroup label=\\\"Text\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option>\\n<option value=",
+    "actual": "-remote=\\\"true\\\" data-select2-id=\\\"topic-Xtype-Xstructure-1-0\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option></select>\\n<input type=\\\"hidden\\\" name=\\\"assign\\\" "
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic+*type+*structure:overlay_rule",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 4234,
+    "expected": "-remote=\\\"true\\\" data-select2-id=\\\"topic-Xtype-Xstructure-1-1789819200\\\"><optgroup label=\\\"Text\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option>\\n<option value=",
+    "actual": "-remote=\\\"true\\\" data-select2-id=\\\"topic-Xtype-Xstructure-1-0\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option></select>\\n<input type=\\\"hidden\\\" name=\\\"assign\\\" "
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Topic+*type+*structure:modal_rule",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 2924,
+    "expected": "-remote=\\\"true\\\" data-select2-id=\\\"topic-Xtype-Xstructure-1-1789819200\\\"><optgroup label=\\\"Text\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option>\\n<option value=",
+    "actual": "-remote=\\\"true\\\" data-select2-id=\\\"topic-Xtype-Xstructure-1-0\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option></select>\\n<input type=\\\"hidden\\\" name=\\\"assign\\\" "
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Toggle 1:labeled_editor",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 10,
+    "expected": "{\"html\":\"<input name=\\\"card[content]\\\" type=\\\"hidden\\\" value=\\\"0\\\" autocomplete=\\\"off\\\" /><input type=\\\"checkbox\\\" value=\\\"1\\\" che",
+    "actual": "{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible t"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Quinn Contractor:setup",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 10,
+    "expected": "{\"html\":\"<div id=\\\"quinn_contractor-setup-view\\\" class=\\\"card-slot setup-view ALL TYPE-user SELF-quinn_contractor\\\" data-card-id=\\",
+    "actual": "{\"html\":\"<span class=\\\"denied\\\"><!-- Sorry, you don't have permission (create) --></span>\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:*admin:warning",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 224,
+    "expected": "se\\\"></button>\\n<h5>\\nAdministrator Warning\\n</h5>\\n<ul><li>Email delivery is turned off. Change settings in config/application.rb to send sign up notifications.</li>\\n<li><p>You a",
+    "actual": "se\\\"></button>\\n<h5>\\nAdministrator Warning\\n</h5>\\n<ul><li><p>You are configured to use <a class=\\\"known-card\\\" href=\\\"/*captcha\\\">*captcha</a>, but for that to work you need new "
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  }
+ ],
+ "reproduced_upstream_failures": [
+  {
+   "op": "page:anonymous:Cohort Welcome",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / anonymous",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:member:Cohort Welcome",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / member",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:contractor:Cohort Welcome",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / contractor",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:admin:Cohort Welcome",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / admin",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:anonymous:welcome email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / anonymous",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:member:welcome email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / member",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:contractor:welcome email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / contractor",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:admin:welcome email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / admin",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:anonymous:password reset email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / anonymous",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:member:password reset email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / member",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:contractor:password reset email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / contractor",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:admin:password reset email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / admin",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:anonymous:follower notification email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / anonymous",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:member:follower notification email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / member",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:contractor:follower notification email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / contractor",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:admin:follower notification email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / admin",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:anonymous:verification email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / anonymous",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:member:verification email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / member",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:contractor:verification email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / contractor",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:admin:verification email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / admin",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:anonymous:signup alert email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / anonymous",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:member:signup alert email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / member",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:contractor:signup alert email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / contractor",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:admin:signup alert email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / admin",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  }
+ ]
+}

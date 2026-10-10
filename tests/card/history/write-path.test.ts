@@ -126,7 +126,7 @@ describe("createCard", () => {
       right_id: null,
     });
     expect(card.created_at).toBe(card.updated_at);
-    expect(card.created_at).toBe("2026-09-19 12:00:00.000");
+    expect(card.created_at).toBe("2026-09-19 12:00:00");
 
     // act row: actor passthrough (act.rb:131-134 assign_actor), acted_at =
     // create-timestamp (act.rb:64-68), ip from Env at Act.new
@@ -137,7 +137,7 @@ describe("createCard", () => {
       id: actId,
       card_id: cardId, // finalize_act, events.rb:48-50
       actor_id: ACTOR_A,
-      acted_at: "2026-09-19 12:00:00.000",
+      acted_at: "2026-09-19 12:00:00",
       ip_address: IP,
     });
 
@@ -226,14 +226,14 @@ describe("updateCard (db_content only)", () => {
     expect(acts(f.storage)).toHaveLength(2);
     expect(acts(f.storage)[1]!.id).toBe(actId);
     expect(acts(f.storage)[1]!.card_id).toBe(cardId);
-    expect(acts(f.storage)[1]!.acted_at).toBe("2026-09-19 12:00:01.000"); // clock ticked
+    expect(acts(f.storage)[1]!.acted_at).toBe("2026-09-19 12:00:01"); // clock ticked
 
     // cards row: content updated, updated_at bumped, updater_id set,
     // created_at untouched (Rails timestamps: created only on create)
     const card = cardRow(f.storage, cardId) as Record<string, unknown>;
     expect(card.db_content).toBe("v2");
-    expect(card.updated_at).toBe("2026-09-19 12:00:01.000");
-    expect(card.created_at).toBe("2026-09-19 12:00:00.000");
+    expect(card.updated_at).toBe("2026-09-19 12:00:01");
+    expect(card.created_at).toBe("2026-09-19 12:00:00");
     expect(card.updater_id).toBe(ACTOR_A);
 
     // two actions now: create + update (action_type 1)
@@ -305,7 +305,7 @@ describe("updateCard (db_content only)", () => {
     // finalize_act saves the act card's act even with no action in it.
     expect(acts(f.storage)).toHaveLength(2);
     expect((cardRow(f.storage, cardId) as Record<string, unknown>).updated_at).toBe(
-      "2026-09-19 12:00:00.000",
+      "2026-09-19 12:00:00",
     );
   });
 });
@@ -402,7 +402,7 @@ describe("trashCard (delete)", () => {
 
     const card = cardRow(f.storage, cardId) as Record<string, unknown>;
     expect(card.trash).toBe(1);
-    expect(card.updated_at).toBe("2026-09-19 12:00:01.000");
+    expect(card.updated_at).toBe("2026-09-19 12:00:01");
 
     // the delete action's only changed field is trash (value serialized "t")
     expect(changes(f.storage, actionId)).toEqual([
@@ -622,7 +622,7 @@ describe("update_ancestor_timestamps", () => {
       after: { ...stateOf(f.storage, childId), db_content: "child v2" },
     });
     expect((cardRow(f.storage, parentId) as Record<string, unknown>).updated_at).toBe(
-      "2026-09-19 12:00:00.000", // untouched by the child's save
+      "2026-09-19 12:00:00", // untouched by the child's save
     );
 
     const grandparentId = await createSimple(f.storage, f.writer, "Grandparent"); // tick 3
@@ -636,7 +636,7 @@ describe("update_ancestor_timestamps", () => {
 
     const grandparent = cardRow(f.storage, grandparentId) as Record<string, unknown>;
     expect(grandparent.updater_id).toBe(ACTOR_A);
-    expect(grandparent.updated_at).toBe("2026-09-19 12:00:04.000");
+    expect(grandparent.updated_at).toBe("2026-09-19 12:00:04");
   });
 });
 

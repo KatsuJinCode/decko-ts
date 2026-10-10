@@ -16,7 +16,7 @@
 //   - Oracle Date Probe (no content; the date views fall through to
 //     the date-only path)
 
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import {
@@ -31,6 +31,12 @@ import {
   modEngineHost,
 } from "../../../src/card/mod-loader.js";
 import cardModFormat from "../../../src/card/mod-loader/mods/card-mod-format.js";
+import { setCaptureWallClock } from "../../../src/card/wall-clock.js";
+
+// The date-view tests freeze the clock seam for a deterministic phrase;
+// every test restores the real clock afterwards (the engine must never
+// leak a frozen instant into another test file).
+afterEach(() => setCaptureWallClock(undefined));
 
 /** The captured layout one-line oracle (fixtures/captured/layout-one-line.
  *  json, captured from the live decko 0.20.0 oracle app via
@@ -535,33 +541,45 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     const s = storage!;
     // The prefetch walk carries cards.created_at through to the
     // composed CardRecord (prefetch.ts RawRow), so the seeded
-    // "2026-09-19 00:00:00.000" renders through the date view - the
-    // former "documented divergence from Ruby" (empty timestamp) is
-    // closed; Ruby always has the timestamp and so does the port now.
+    // "2026-09-19 00:00:00.000" renders through the date view. The
+    // non-variant arm is Ruby's time_ago_in_words (the corpus oracle
+    // pins the phrase bytes: view:admin:Topic 001:created_at ->
+    // {"html":"less than a minute"}); the former ISO-date fallthrough
+    // was the documented divergence those bytes closed. The clock seam
+    // freezes "now" to 12:00Z the same day - 12h after the UTC-parsed
+    // timestamp - so the phrase is deterministic ("about 12 hours", the
+    // date_helper 90 min..22 h bucket; no "ago" tail - the view's
+    // helper is bare distance_of_time_in_words).
+    setCaptureWallClock(new Date("2026-09-19T12:00:00Z"));
     const rendered = await s.engine.render("Oracle Date Probe", "created_at");
-    expect(rendered).toBe("2026-09-19");
+    expect(rendered).toBe("about 12 hours");
   });
 
   it("WITH the mod: :updated_at reads the card record's date (base.rb:62)", async () => {
     const s = storage!;
+    setCaptureWallClock(new Date("2026-09-19T12:00:00Z"));
     const rendered = await s.engine.render("Oracle Date Probe", "updated_at");
-    expect(rendered).toBe("2026-09-19");
+    expect(rendered).toBe("about 12 hours");
   });
 
   it("WITH the mod: :acted_at reads the card record's date (base.rb:63)", async () => {
     const s = storage!;
     // :acted_at falls through to updated_at (the schema has no acted_at).
+    setCaptureWallClock(new Date("2026-09-19T12:00:00Z"));
     const rendered = await s.engine.render("Oracle Date Probe", "acted_at");
-    expect(rendered).toBe("2026-09-19");
+    expect(rendered).toBe("about 12 hours");
   });
 
   it("WITH the mod: :created_at formats a present date when voo.variant is a strftime pattern", async () => {
     const s = storage!;
     // The seeded timestamp hydrates through the prefetch row, so the
     // view formats it; the variant branch (strftime) is exercised by
-    // the formatStrftime helper directly.
+    // the formatStrftime helper directly. The non-variant render here
+    // reads the same time-ago arm as :created_at above (frozen clock,
+    // deterministic phrase).
+    setCaptureWallClock(new Date("2026-09-19T12:00:00Z"));
     const result = await s.engine.render("Oracle Date Probe", "created_at");
-    expect(result).toBe("2026-09-19");
+    expect(result).toBe("about 12 hours");
   });
 
   it("WITH the mod: :raw renders the dbContent (base.rb:75-77)", async () => {
@@ -689,10 +707,15 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     expect(await s.engine.render("Oracle Format Probe", "server_error")).toContain("<h1>Wild Card!</h1>");
   });
 
-  it("WITH the mod: :denial renders the locale token (error.rb:14-16)", async () => {
+  it("WITH the mod: html :denial is the quiet span (html/error.rb:75-77, the corpus's view-lane bytes)", async () => {
+    // The base block's locale token is overridden in the html format by
+    // `focal? ? loud_denial : quiet_denial`; the headless render is
+    // non-focal, @denied_task is unset on an explicit view render, so the
+    // parens are empty (synthetic-v2 oracle: view:anonymous:Brief 01:denial,
+    // the seconds corpus's composed-mod view-gap family, 2026-10-09).
     const s = storage!;
     expect(await s.engine.render("Oracle Format Probe", "denial")).toBe(
-      "format.denial",
+      '<span class="denied"><!-- Sorry, you don\'t have permission () --></span>',
     );
   });
 
@@ -703,11 +726,15 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     );
   });
 
-  it("WITH the mod: :bad_address renders the locale token (error.rb:23-26)", async () => {
+  it("WITH the mod: html :bad_address is the 404 text (html/error.rb's arm, the corpus's view-lane bytes)", async () => {
+    // The base block's locale token is overridden in the html format by
+    // `root.error_status = 404` + the rendered "404: Bad Address"
+    // (synthetic-v2 oracle: view:admin:Nonexistent Card:bad_address,
+    // the seconds corpus's composed-mod view-gap family, 2026-10-09).
     const s = storage!;
     expect(
       await s.engine.render("Oracle Format Probe", "bad_address"),
-    ).toBe("format.bad_address");
+    ).toBe("404: Bad Address");
   });
 
   it("WITH the mod: :errors renders the 'Problem:' prefix (error.rb:28-30)", async () => {

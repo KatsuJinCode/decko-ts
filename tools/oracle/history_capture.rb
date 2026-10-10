@@ -46,7 +46,7 @@ ACTION_PARAM_RE = /action_id=\d+/.freeze
 CARD_ID_ATTR_RE = /data-card-id=(["'])\d+\1/.freeze
 
 def normalize(html)
-  html.gsub(SLOT_ID_RE, 'data-slot-id="RANDOMIZED"')
+  html # slot ids stored as Ruby wrote them; masked at compare time
       .gsub(TIME_AGO_RE, "TIME_AGO ago")
       .gsub(ACT_ID_RE, "act-id-N")
       .gsub(REVISION_RE, "revision-N")

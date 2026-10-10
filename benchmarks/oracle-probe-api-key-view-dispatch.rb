@@ -137,7 +137,7 @@ payload["view_settings"] = settings
 # --- the rendered bytes, with the key value redacted ---------------------
 key = probe.content.to_s.strip
 redact = lambda do |html|
-  html = html.gsub(/data-slot-id=(["'])\h+\1/, 'data-slot-id="RANDOMIZED"')
+  # slot ids stored as Ruby wrote them; masked at compare time
   html = html.gsub(/data-card-id=(["'])\d+\1/, 'data-card-id="RANDOMIZED"')
   key.empty? ? html : html.gsub(key, "<API-KEY-REDACTED>")
 end
