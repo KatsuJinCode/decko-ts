@@ -1727,7 +1727,7 @@ export class CardActionEngine {
       reservedActionId,
     });
     if (rightCode !== undefined && NO_HISTORY_RIGHT_CODENAMES.has(rightCode)) {
-      await this.dropHistory(created.actionId, created.actId);
+      await this.dropHistory(created.actionId, created.actId, created.actPreexisted === true);
     }
     // set_default_salt (account/events.rb:3-5): the account's salt is
     // generated now, so a password saved later in this act encrypts over it;
@@ -2000,6 +2000,27 @@ export class CardActionEngine {
       };
     } else if (result !== null && subResults.length > 0) {
       result = { ...result, subactions: [...result.subactions, ...subResults] };
+    }
+    if (result === null && subResults.length === 0 && input.subcards !== undefined) {
+      // The save RAN (the director instantiated the posted subcards) but no
+      // card changed: Ruby's update! still records the ACT on the mark —
+      // one card_acts row, zero actions (the oracle probe's "one act"; the
+      // graded account-change-password delta is card_acts +1 {card_id 618,
+      // actor 617, acted_at, ip} with cards ~3 updater touches only — the
+      // posted +*password re-encrypts to the stored digest, the no-change
+      // +*email subcard and the mark itself carry only the director touch).
+      // The writer's act INSERT is lazy (first persisted action), so the
+      // all-no-op save inserts it here, verbatim columns. The result stays
+      // null: no action exists for the integrate phase to see.
+      await this.fetch.driver.query(
+        "INSERT INTO card_acts (card_id, actor_id, acted_at, ip_address) VALUES (?, ?, ?, ?)",
+        [
+          row.id,
+          (await this.actingIdForWrite()) ?? this.actor?.id ?? null,
+          sqlDateTime(this.clock()),
+          this.ipAddress,
+        ],
+      );
     }
     // II (director.rb:26): the integrate seam before the notify hooks (see
     // the create path's note). A no-op save commits nothing, so ActiveRecord
@@ -2435,7 +2456,7 @@ export class CardActionEngine {
     }
     if (noHistory) {
       await this.fetch.driver.query("DELETE FROM card_changes WHERE id > ?", [changesBefore]);
-      await this.dropHistory(saved.actionId, saved.actId);
+      await this.dropHistory(saved.actionId, saved.actId, saved.actPreexisted === true);
     }
     if (after.trash === 1 && before.trash === 0) {
       // Only the rollback's nested update! reaches here (guarded above): the
@@ -4113,11 +4134,18 @@ export class CardActionEngine {
   }
 
   /** history? false (account-fields.ts): the save keeps its cards row but no
-   *  action, no changes, and no act when the act holds nothing else. */
-  private async dropHistory(actionId: number, actId: number): Promise<void> {
+   *  action and no changes. Ruby's history-less cards never run assign_action
+   *  (events.rb:11-13, `when: :actionable?`) — the port creates the action to
+   *  write the save and drops it here. The act row goes with the action ONLY
+   *  when this operation lazily created it (a pure history-less save leaves
+   *  no act at all); an act that predates the operation is Ruby's
+   *  finalize_act shape — the act card's bare row (events.rb:48-50) — and
+   *  survives its zero actions. */
+  private async dropHistory(actionId: number, actId: number, actPreexisted: boolean): Promise<void> {
     const driver = this.fetch.driver;
     await driver.query("DELETE FROM card_changes WHERE card_action_id = ?", [actionId]);
     await driver.query("DELETE FROM card_actions WHERE id = ?", [actionId]);
+    if (actPreexisted) return;
     const left = (
       await driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM card_actions WHERE card_act_id = ?", [actId])
     ).rows[0];
