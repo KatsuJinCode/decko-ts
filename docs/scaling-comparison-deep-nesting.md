@@ -80,7 +80,7 @@ A warm render (the same card again on the same engine) costs one round trip: a s
 
 ## Sources
 
-- TypeScript: engine commit `4908717aa58d292bfa57e28a5e01763c6ba2564d`, Node v24.19.0, better-sqlite3 in memory, schema db/schema.sqlite.sql; generated 2026-10-09T22:23:09.897Z. Run file `benchmarks/results/runs/deep-nesting-ts-304f4ad5400830e3.json` (SHA-256 `304f4ad5400830e3d65e2ea9c9bf9ef769502940525a525a2c2df2b846b6f58d`).
+- TypeScript: engine commit `b6a2ca5707e0a039d66ae27124b32cfa880d3c4c`, Node v24.19.0, better-sqlite3 in memory, schema db/schema.sqlite.sql; generated 2026-10-10T02:22:04.055Z. Run file `benchmarks/results/runs/deep-nesting-ts-3a90dbf38ddbcea1.json` (SHA-256 `3a90dbf38ddbcea183905546e3cbe2796070e1f9678041c7b0eb65e181b6bc3a`).
 - **Ruby 0.20.0**: card 1.110.0, decko 0.20.0, Ruby 3.3.12, Rails 7.2.4, sqlite3; cold renders after `Card::Cache.reset`, median of 7; recorded 2026-10-03T12:36:27Z. Run file `benchmarks/results/runs/deep-nesting-ruby-99b28d9273a8af00.json` (SHA-256 `99b28d9273a8af00f413263be9575efa63693b4a38c5c45beb4dd1d412e9fd62`).
 - **Ruby main**: card 1.110.0, decko 0.20.0, Ruby 3.3.12, Rails 7.2.4, sqlite3; cold renders after `Card::Cache.reset`, median of 5; recorded 2026-10-08T07:11:27Z. Run file `benchmarks/results/runs/deep-nesting-ruby-a746a48527c9f965.json` (SHA-256 `a746a48527c9f9658ba76b25e7cdd4270142670bf743653ea567ce700da9377c`).
 - **Ruby main + nest prefetch**: card 1.110.0, decko 0.20.0, Ruby 3.3.12, Rails 7.2.4, sqlite3; cold renders after `Card::Cache.reset`, median of 5; recorded 2026-10-08T07:17:19Z. Run file `benchmarks/results/runs/deep-nesting-ruby-e5453da57df10047.json` (SHA-256 `e5453da57df100478640c4885d4ab14cdfd0327173c3bd8b9ce26d90f788af55`).
