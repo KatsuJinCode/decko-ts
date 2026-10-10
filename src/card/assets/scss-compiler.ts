@@ -10,9 +10,10 @@
 //
 //   - Node hosts: libsassProcessCompiler (src/server/libsass-process.ts),
 //     the LibSass sources built as a program (tools/libsass/).
-//   - Edge runtimes have no compiler today; stylesheet rebuilds there are
-//     refused with a named error instead of storing a stylesheet Ruby would
-//     not have stored.
+//   - Edge runtimes: libsassWasmCompiler (src/server/libsass-wasm.ts), the
+//     same sources built to a WebAssembly module (tools/libsass/build-wasm.mjs,
+//     vendored under vendor/libsass-wasm/). Both produce LibSass's bytes; the
+//     edge byte-identity is pinned by tests/server/libsass-wasm.test.ts.
 
 export type ScssOutputStyle = "nested" | "expanded" | "compact" | "compressed";
 
