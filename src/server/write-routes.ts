@@ -178,7 +178,13 @@ export interface WriteRouteContext {
    *  re-renders through `show`). Absent -> ajax saves fall back to the
    *  hard redirect (documented TS deviation for host surfaces with no
    *  renderer; the staging server always provides it). */
-  renderSlot?: (name: string, view?: string) => Promise<string>;
+  /** The third parameter carries the POSTED subcards' full names (the
+   *  same list the response's expiryNames stamp): the director's
+   *  set_stamper assigns their updater at instantiation, so the slot
+   *  re-render must read their POST-save state — expiring only the mark
+   *  left a changed +*email rendering its pre-save value inside the slot
+   *  bytes themselves. */
+  renderSlot?: (name: string, view?: string, subcardNames?: string[]) => Promise<string>;
   /** The attachment storage seam (E4.4.a's LocalAttachmentStore), passed
    *  through to every write engine this module builds — the multipart
    *  upload surface stores bytes through it. Absent = attachment saves
@@ -237,6 +243,13 @@ export interface WriteRouteResponse {
    *  HTML one. Error responses leave it unset (no commit, no expire —
    *  phases.rb:19-21). */
   expiryName?: string;
+  /** Every card the save persisted — the mark plus each posted subcard
+   *  (subcards.rb: the director saves each as its own card, each with its
+   *  own post-commit expire). The host's render-map expiry walks this list:
+   *  the per-engine enriched render-card entries of a saved SUBCARD are
+   *  TS-only structures (post-save-cache-expiry.ts header), and expiring
+   *  only the mark left a changed +*email rendering its pre-save value. */
+  expiryNames?: string[];
 }
 
 /** Whether the host exposes the write path at all. The staging server
@@ -709,6 +722,7 @@ function successResponse(
   json: boolean,
   name: string,
   saved: { cardId: number; actId: number; actionId: number; verb: WriteVerb },
+  subcardNames: string[] | undefined,
 ): WriteRouteResponse {
   if (json) {
     return {
@@ -720,6 +734,7 @@ function successResponse(
         action_id: saved.actionId,
       }),
       expiryName: name,
+      ...(subcardNames !== undefined && subcardNames.length > 0 ? { expiryNames: subcardNames } : {}),
     };
   }
   return {
@@ -727,6 +742,7 @@ function successResponse(
     headers: { Location: cardUrl(req, `/${locationName(name)}`), "Cache-Control": "no-store" },
     body: "",
     expiryName: name,
+    ...(subcardNames !== undefined && subcardNames.length > 0 ? { expiryNames: subcardNames } : {}),
   };
 }
 
@@ -1140,15 +1156,24 @@ export async function handleWriteRequest(
     // redirect, which an ajax request receives as {redirect: url} so the
     // page itself navigates (response.rb hard_redirect) — the new-card
     // form's data-main-success path.
+    // Every card the save persisted: the mark (name) plus each posted
+    // subcard's full name (subcards.rb — each saves as its own card with
+    // its own post-commit expire). The host render-map expiry walks this
+    // list so a changed subcard (the account form's +*email) never
+    // renders its pre-save value.
+    const subcardExpiryNames = Object.keys(parsed.subcards)
+      .filter((slot) => slot.startsWith("+"))
+      .map((slot) => `${name}${slot}`);
     const redirect = parsed.success["redirect"];
     if (!json && isAjax(req, parsed) && redirect !== undefined && redirect !== "" && redirect !== "soft") {
       return {
         ...jsonResponse(200, { redirect: cardUrl(req, `/${locationName(successName)}`) }),
         expiryName: name,
+        expiryNames: subcardExpiryNames,
       };
     }
     if (!json && isAjax(req, parsed) && ctx.renderSlot !== undefined) {
-      const slotHtml = await ctx.renderSlot(successName, parsed.success["view"] || undefined);
+      const slotHtml = await ctx.renderSlot(successName, parsed.success["view"] || undefined, subcardExpiryNames);
       return {
         status: 200,
         headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
@@ -1159,9 +1184,10 @@ export async function handleWriteRequest(
         // (actor engine only) cannot — the save's cache expiry cannot
         // depend on the response shape (WriteRouteResponse module header).
         expiryName: name,
+        expiryNames: subcardExpiryNames,
       };
     }
-    return successResponse(req, json, name, saved);
+    return successResponse(req, json, name, saved, subcardExpiryNames);
   } catch (error) {
     if (error instanceof CardActionError) return errorResponse(json, error);
     throw error;

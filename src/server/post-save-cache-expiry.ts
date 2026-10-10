@@ -61,4 +61,16 @@ export function expireRenderCachesAfterSave(
   for (const engine of engines.signedInEngines) {
     engine.expireRenderCard(name);
   }
+  // The save's SUBCARDS are cards too (subcards.rb — each saves as its own
+  // card with its own post-commit expire): a changed +*email child whose
+  // enriched entry stays warm renders its pre-save value on the mark's
+  // page (the account-change journeys' residual).
+  for (const sub of writeResponse.expiryNames ?? []) {
+    if (sub === undefined || sub === "") continue;
+    engines.fetcher.expireName(sub);
+    engines.renderEngine.expireRenderCard(sub);
+    for (const engine of engines.signedInEngines) {
+      engine.expireRenderCard(sub);
+    }
+  }
 }

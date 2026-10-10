@@ -706,11 +706,19 @@ export class CardActionEngine {
           // family's updater to the acting member (rows 618/619/620 — the
           // mark, the posted +*password, and the no-change +*email — one
           // act; the model-level update! without the posted no-change
-          // subcard writes only the password row).
-          await this.fetch.driver.query(
-            "UPDATE cards SET updated_at = ?, updater_id = ? WHERE id = ?",
-            [sqlDateTime(this.clock()), (await this.actingIdForWrite()) ?? this.actor?.id ?? null, existingRow.id],
-          );
+          // subcard writes only the password row). An ABORTED subcard save
+          // is different: validate_password_present sends a blank posted
+          // +*password home before the stamp ("storing nothing" — no row
+          // write at all), so the touch skips it.
+          const abortedBlankPassword =
+            (existingRow.right_id !== null && (await this.fetch.codenames.nameForId(existingRow.right_id))) === "password" &&
+            (sub.content ?? "").trim() === "";
+          if (!abortedBlankPassword) {
+            await this.fetch.driver.query(
+              "UPDATE cards SET updated_at = ?, updater_id = ? WHERE id = ?",
+              [sqlDateTime(this.clock()), (await this.actingIdForWrite()) ?? this.actor?.id ?? null, existingRow.id],
+            );
+          }
         }
         if (sub.subcards !== undefined) {
           saved.push(

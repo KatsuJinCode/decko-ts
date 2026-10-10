@@ -3202,13 +3202,23 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
       notifyTransport: mailTransport,
       renderSlot:
         cookieActor !== null
-          ? async (name, view) => {
+          ? async (name, view, subcardNames) => {
               // Ruby's order: the save expires the saved card's cache
               // (cache/all.rb) BEFORE the soft redirect re-renders it —
               // without this the slot render reads the pre-save warm maps.
               fetcher.expireName(name);
               const actorEngine = engineForActor(cookieActor.id);
               actorEngine.expireRenderCard(name);
+              // The save's POSTED subcards are cards too (subcards.rb —
+              // each saves as its own card with its own post-commit
+              // expire): the slot re-render must read their POST-save
+              // state, or a changed +*email renders its pre-save value in
+              // the slot bytes themselves.
+              for (const sub of subcardNames ?? []) {
+                if (!sub) continue;
+                fetcher.expireName(sub);
+                actorEngine.expireRenderCard(sub);
+              }
               // The ajax response re-render runs on the request's MAIN
               // format (the response's card is the ajax request's main
               // card, so the slot's header renders h1 — the recorded
