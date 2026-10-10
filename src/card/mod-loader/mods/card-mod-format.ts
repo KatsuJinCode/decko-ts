@@ -231,7 +231,13 @@ import { DeckoName } from "../../name.js";
 // 2026-10-01::link/:nav_link share the flat
 // HTML_VIEWS bodies (the urlView doctrine at :300-304 of this file) — one
 // fn per view, so the two registrations cannot drift again.
-import { HTML_VIEWS, linkView, navLinkView } from "../../render/views.js";
+import {
+  HTML_VIEWS,
+  linkView,
+  navLinkView,
+  unknownView as htmlErrorUnknownView,
+  miniUnknownView as htmlErrorMiniUnknownView,
+} from "../../render/views.js";
 import { popoverLink } from "./card-mod-bootstrap.js";
 import type {
   DeckoModManifest,
@@ -678,11 +684,23 @@ const htmlLabeledView: ViewFn = (ctx) => (ENGINE_LABELED === undefined ? "" : EN
 const compactMissingView: ViewFn = ({ fmt }) =>
   `<span class="text-muted">${h(fmt.card.name.from(...fmt.contextNames))}</span>`;
 
-/** set/all/error.rb:6-8 view :unknown, perms: :none, cache: :never:
- *  the literal empty string. The HTML override
- *  (set/all/html/error.rb:10-12) wraps in a createable link; the
- *  BASE view is bare "". */
-const unknownView: ViewFn = () => "";
+/** set/all/error.rb:6-8 view :unknown, perms: :none, cache: :never, and the
+ *  html override set/all/html/error.rb:10-12 (`createable { wrap {
+ *  unknown_link "#{unknown_icon} #{render_title}" } }`). The composed deck
+ *  used to register the BASE arm (the literal "") on the html table, so
+ *  every unknown-card nest rendered empty where the oracle carries the
+ *  card-slot unknown-view frame (the seconds corpus's composed-mod
+ *  view-gap family, 2026-10-09: 244 pinned ops, the unknown-frame surface
+ *  the largest single slice). The html table now registers the html arm —
+ *  the createable-gated frame in render/views.ts (unknownCardCreatable →
+ *  "" exactly when Ruby denies create, the same positive check), whose
+ *  bytes were oracle-verified against the search-list capture before this
+ *  corpus existed. The base "" arm remains what the non-html formats and
+ *  the email overrides serve. */
+const unknownView: ViewFn = htmlErrorUnknownView;
+
+/** html/error.rb:21-23 :mini_unknown — the icon-only createable link. */
+const miniUnknownView: ViewFn = htmlErrorMiniUnknownView;
 
 /** set/all/error.rb:10-12 view :server_error, perms: :none:
  *  `t(:format_server_error)`. The headless engine has no i18n;
@@ -1642,6 +1660,11 @@ const setModules: ModSetModuleFile[] = [
         views: [
           { view: "compact_missing", viewFn: compactMissingView, config: { perms: "none" } },
           { view: "unknown", viewFn: unknownView, config: { perms: "none", cache: "never" } },
+          // html/error.rb:21-23 — the html arm (:mini_unknown, icon-only),
+          // explicit here so the composed deck serves the same bytes the
+          // flat base table serves (the substitution target of
+          // one_line_content/labeled_content on unknown cards).
+          { view: "mini_unknown", viewFn: miniUnknownView, config: { perms: "none" } },
           { view: "server_error", viewFn: serverErrorView, config: { perms: "none" } },
           { view: "denial", viewFn: denialView, config: { perms: "none" } },
           { view: "not_found", viewFn: notFoundView, config: { perms: "none" } },

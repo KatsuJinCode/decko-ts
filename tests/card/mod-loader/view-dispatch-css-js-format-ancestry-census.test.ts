@@ -216,7 +216,12 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // Error's production :server_error (4b7b1338's error-page ruling,
       // debug_server_error's renderer twin), measured on the merged tree;
       // still no new format key and no css/scss row.
-      ["html", 355],
+      // 355 -> 356 (composed-mod view gaps, 2026-10-09): All::Error's html
+      // table registers :mini_unknown (html/error.rb:21-23, the icon-only
+      // createable link) explicitly alongside :unknown's html arm, so the
+      // composed deck serves the same bytes the flat base table serves;
+      // still no new format key and no css/scss row.
+      ["html", 356],
 
       ["js", 2],
       ["json", 3],

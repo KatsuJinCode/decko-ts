@@ -5610,7 +5610,10 @@ function unknownLinkHref(fmt: RenderFormat): string {
   return `/${h(url)}/new_in_modal${unknownLinkQuery(fmt)}`;
 }
 
-const unknownView: ViewFn = (ctx) => {
+/** The html arm of :unknown (the bytes the corpus's unknown-card nests
+ *  carry) — exported for the composed mod deck's all/error html table,
+ *  whose previous entry was the base-format "" body. */
+export const unknownView: ViewFn = (ctx) => {
   const { fmt } = ctx;
   // createable is a POSITIVE check (card.ok?(:create)): only a verdict of
   // true renders. undefined (the rule-less-seed case - no *create rule at
@@ -5636,7 +5639,7 @@ const blankView: ViewFn = () => "";
  *  "unknown-link slotter" href="/radio/new_in_modal" data-remote="true">
  *  <i class="notranslate material-icons">add_box</i></a></div>` for bot;
  *  empty for sara/anonymous). */
-const miniUnknownView: ViewFn = (ctx) => {
+export const miniUnknownView: ViewFn = (ctx) => {
   const { fmt } = ctx;
   // same positive createable check as :unknown (see there).
   if (!unknownCardCreatable(fmt)) return "";
