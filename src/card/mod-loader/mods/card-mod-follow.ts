@@ -1,3 +1,4 @@
+import { str } from "../../render/format.js";
 // The card-mod-follow gem (card-mod-follow-0.20.0), ported through the
 // mod loader. The follow mod is large (32 set rb files + 2 HAML templates
 // + 2 lib files) and overwhelmingly Rails-runtime: the notification
@@ -731,7 +732,7 @@ const userFollowCoreView: ViewFn = (ctx) => {
   const hash = new Map(
     FOLLOW_TABS.map((e) => [e.name, { title: e.name, path: `/${urlKey}/${e.view}` }]),
   );
-  return tabsPanel(ctx, hash, "Follow", "tabs", ctx.fmt.renderView("follow_tab"));
+  return tabsPanel(ctx, hash, "Follow", "tabs", str(ctx.fmt.renderView("follow_tab")));
 };
 
 // --- set/self/follow_defaults.rb (the deprecated editor) --------------------
@@ -1213,7 +1214,7 @@ const userFollowErrorsView: ViewFn = (ctx) => {
 export const followProbeSurface = {
   /** base_views.rb:41-43 the follower fallback (the page arm). */
   followerFrom(): string {
-    return followerNotifyView({} as ViewContext);
+    return str(followerNotifyView({} as ViewContext));
   },
   /** base_views.rb:25-31 the subedit_notice composition over a documented
    *  action shape (the oracle's ActionDouble analog): the probe hands the
@@ -1252,7 +1253,7 @@ export const followProbeSurface = {
   },
   /** the super() arm (the chain's all-set body - card-mod-format's). */
   errorsSuperBytes(): string {
-    return formatErrorsView({} as ViewContext);
+    return str(formatErrorsView({} as ViewContext));
   },
 };
 
