@@ -188,6 +188,7 @@ import type { ViewContext, ViewFn } from "../../render/format.js";
 import { serializerFollowsLive } from "../../render/deployment-follow-live-config.js";
 import { DeckoName } from "../../name.js";
 import { emitAttrs, h, newSlotId, slotOptionsJson } from "../../render/slot-html.js";
+import { str, type ViewResult } from "../../render/format.js";
 import { modSlotWrap } from "../mod-view-helpers.js";
 import { createFormShell } from "../mod-form-substrate.js";
 import { readFormgroupBody, templateLinkSetNameFromParts } from "../../render/views.js";
@@ -220,9 +221,12 @@ import type {
  *  a blank line); empty STRINGS are Ruby-truthy and stay (they would join
  *  as empty lines). The forms surface has no empty-string members, but the
  *  compaction contract is kept exact. */
-function output(parts: (string | undefined | null)[]): string {
+function output(parts: (ViewResult | undefined)[]): string {
+  // Ruby's join is to_s over the compacted array (content.rb:70-73) - the
+  // per-part str() once view bodies may answer numbers/null.
   return parts
-    .filter((part): part is string => part !== undefined && part !== null)
+    .filter((part): part is Exclude<ViewResult, null> => part !== undefined && part !== null)
+    .map(str)
     .join("\n");
 }
 
@@ -811,7 +815,7 @@ function editSlot(ctx: ViewContext): string {
   const { fmt, voo } = ctx;
   if (multiCardEditor(ctx)) return multiCardEdit(ctx, true);
   if (voo.show("type_formgroup") || voo.show("name_formgroup"))
-    return fmt.renderView("content_formgroup");
+    return str(fmt.renderView("content_formgroup"));
   return `<div class="editor content-editor">${contentField({ fmt, voo })}</div>`;
 }
 
@@ -1728,7 +1732,7 @@ const editTypeFormView: ViewFn = ({ fmt, voo }) => {
  *  the inner slot wrap rides (the captured framed bytes carry the
  *  edit_type_form slot div, its show list accumulated with edit_type). */
 const editTypeView: ViewFn = (ctx) =>
-  framedView(ctx, "edit_type", () => ctx.fmt.renderView("edit_type_form"));
+  framedView(ctx, "edit_type", () => str(ctx.fmt.renderView("edit_type_form")));
 
 /** new.rb:162-166 view :new_buttons: button_formgroup {
  *  [standard_create_button, standard_cancel_button(href:
@@ -1988,7 +1992,7 @@ function newViewName(ctx: ViewContext): string | undefined {
  *  "card[type_id]", card.type_id. */
 function newViewType(ctx: ViewContext): string {
   // `_render_new_type_formgroup`: the underscore skips the unknown check.
-  if (newTypePrompt(ctx)) return ctx.fmt.renderView("new_type_formgroup", { skip_perms: true });
+  if (newTypePrompt(ctx)) return str(ctx.fmt.renderView("new_type_formgroup", { skip_perms: true }));
   return hiddenFieldTag("card[type_id]", String(ctx.fmt.card.typeId ?? ""));
 }
 
@@ -2008,7 +2012,7 @@ function newViewTitle(ctx: ViewContext): string {
 /** new.rb:89-91 new_in_modal_title:
  *  `new_name_prompt? ? new_view_title : render_title`. */
 function newInModalTitle(ctx: ViewContext): string {
-  return newNamePrompt(ctx) ? newViewTitle(ctx) : ctx.fmt.renderView("title");
+  return newNamePrompt(ctx) ? newViewTitle(ctx) : str(ctx.fmt.renderView("title"));
 }
 
 /** new.rb:93-95 new_success: `{ mark: card.rule(:thanks) || "_self" }` -
@@ -2783,7 +2787,7 @@ function boardTabsView(ctx: ViewContext): string {
   // active tab), then the wrap freezes the sidebar slot POST-body (the
   // captured sidebar JSON carries edit_type_row + the modal_footer hide)
   const activeContent =
-    activeView === "" ? "" : fmt.renderView(activeView);
+    activeView === "" ? "" : str(fmt.renderView(activeView));
   return modSlotWrap(ctx, "board", tabPanel.replace(BOARD_TABS_SENTINEL, activeContent));
 }
 

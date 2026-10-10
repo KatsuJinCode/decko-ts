@@ -1,3 +1,4 @@
+import { str } from "../../render/format.js";
 // The card-mod-bootstrap gem (card-mod-bootstrap-0.20.0), ported through
 // the mod loader. This gem is the rendering side of Decko's bootstrap skin:
 // 11 set files (4 abstract, 2 all, 2 self, 2 type, 1 type_plus_right) and
@@ -326,7 +327,7 @@ function renderCarouselItemInner(
     parent: ctx.fmt,
     maxDepth: ctx.fmt.maxDepth,
   });
-  return sub.renderView("core");
+  return str(sub.renderView("core"));
 }
 
 const carouselView: ViewFn = (ctx) => {
@@ -970,7 +971,7 @@ function linkToCardName(ctx: ViewContext, target: string): string {
  *  surface is the loader-less engine, so the type-level core body is
  *  reached from the engine layer, not a set-scoped registration). */
 export function bootswatchSkinCoreHtml(ctx: ViewContext): string {
-  return bootswatchCoreView(ctx);
+  return str(bootswatchCoreView(ctx));
 }
 
 /** set/type/bootswatch_skin/core.haml - the bootswatch skin page's :core

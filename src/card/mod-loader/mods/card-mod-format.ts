@@ -1,3 +1,4 @@
+import { str } from "../../render/format.js";
 // The card-mod-format gem (card-mod-format-0.20.0), ported through the
 // mod loader - the mod that defines the format layer (base/abstract/
 // html/css/csv/data/file/json/jsonld/js/rss/text/xml/yaml formats), the
@@ -576,8 +577,7 @@ const codenameView: ViewFn = ({ fmt }) => {
 };
 
 /** set/all/base.rb:56 view :id: `card.id`. */
-const idView: ViewFn = ({ fmt }) =>
-  fmt.card.id === undefined ? "" : String(fmt.card.id);
+const idView: ViewFn = ({ fmt }) => fmt.card.id ?? null;
 
 /** set/all/base.rb:57 view :type: `card.type_name`. The
  *  html block (set/all/html.rb:5-7) overrides this with a cardtype
@@ -1021,7 +1021,13 @@ function cardtypeConfigureAnchor(fmt: RenderFormatBase, cssClass: string | undef
  *  Exported (wave-1 follow family): the follow mod's User+*follow :errors
  *  view's super() arm dispatches THIS body (user/follow.rb:76-78) - the
  *  chain's all-set definition the type_plus_right registration shadows. */
-export const errorsView: ViewFn = () => "Problem:\n\n";
+export const errorsView: ViewFn = () =>
+  // error.rb:53-54 view :errors, perms: :none: `return if card.errors.empty?`
+  // - the nil arm is the view's answer whenever the card carries no error
+  // list (the headless engine never has one), and the corpus's unknown-card
+  // op records Ruby's nil (JSON null). The with-errors arm (the problems
+  // haml) stays the unported remainder - no error-attachment surface.
+  null;
 
 // ---------------------------------------------------------------------------
 // content.rb set/all/content: :label, :closed_content, :raw_one_line_content
@@ -1095,7 +1101,7 @@ const closedContentView: ViewFn = ({ fmt, voo }) => {
   const sizeOpt = voo.opts["size"];
   const length = typeof sizeOpt === "number" ? sizeOpt : ONE_LINE_CHARACTER_LIMIT;
   return fmt.withNestMode("compact", () =>
-    truncate(stripTags(fmt.renderView("core")), length, "..."),
+    truncate(stripTags(str(fmt.renderView("core"))), length, "..."),
   );
 };
 
@@ -1241,7 +1247,7 @@ const smartLabelView: ViewFn = ({ fmt }) => {
     maxDepth: fmt.maxDepth,
     nestQuietErrors: fmt.nestQuietErrors,
   }).renderView("core");
-  return `${label} ${popoverLink(description)}`;
+  return `${label} ${popoverLink(str(description))}`;
 };
 
 // ---------------------------------------------------------------------------
@@ -1274,9 +1280,9 @@ const flashView: ViewFn = () => "";
 const shortContentView: ViewFn = ({ fmt }) => {
   let body: string;
   if (fmt.card.typeName === "Toggle") {
-    body = fmt.renderView("core");
+    body = str(fmt.renderView("core"));
   } else {
-    const content = fmt.renderView("core");
+    const content = str(fmt.renderView("core"));
     const newlines = content.match(/\n/g)?.length ?? 0;
     if (content.length === 0) body = "empty";
     else if (content.length <= 5) body = content;
@@ -1326,7 +1332,7 @@ const shortContentView: ViewFn = ({ fmt }) => {
 export const allHtmlViewsOneLineContentView: ViewFn = ({ fmt, voo }) => {
   const sizeOpt = voo.opts["size"];
   const length = typeof sizeOpt === "number" ? sizeOpt : ONE_LINE_CHARACTER_LIMIT;
-  return `<div class="text-muted">${truncate(stripTags(fmt.renderView("core")), length, "...")}</div>`;
+  return `<div class="text-muted">${truncate(stripTags(str(fmt.renderView("core"))), length, "...")}</div>`;
 };
 
 /** set/all/demo.rb:8-12 view :view_list:
@@ -1549,7 +1555,7 @@ const headView: ViewFn = ({ fmt }) => {
   for (const viewName of HEAD_VIEWS) {
     let bytes: string;
     try {
-      bytes = fmt.renderView(viewName);
+      bytes = str(fmt.renderView(viewName));
     } catch (error) {
       // NOT REGISTERED (no line at all). Distinct from a registered view
       // that renders blank: Ruby's map/compact/join never had a

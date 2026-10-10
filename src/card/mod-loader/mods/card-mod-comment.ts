@@ -58,6 +58,7 @@
 //   the format comment_author's two arms (commentWithSignature /
 //   commentSignature / commentAuthorFor below).
 
+import { str, type ViewResult } from "../../render/format.js";
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import { HTML_VIEWS } from "../../render/views.js";
 import { h } from "../../render/slot-html.js";
@@ -67,9 +68,11 @@ import type { ModEventContext, ModEventSaveInput } from "../mod-event-dispatch.j
 /** card-1.110.0 lib/card/format/content.rb:70-72 - Ruby's output():
  *  Array.wrap(content).flatten.compact.join "\n" (nils drop; empty strings
  *  are Ruby-truthy and stay). The comment_buttons array rides this. */
-function output(parts: (string | undefined | null)[]): string {
+function output(parts: (ViewResult | undefined)[]): string {
+  // Ruby's join is to_s over the compacted array (content.rb:70-73).
   return parts
-    .filter((part): part is string => part !== undefined && part !== null)
+    .filter((part): part is Exclude<ViewResult, null> => part !== undefined && part !== null)
+    .map(str)
     .join("\n");
 }
 
@@ -310,7 +313,7 @@ const discussionInputView: ViewFn = (ctx) => {
  *  diagnosable from the test output rather than silently swallowed
  *  (discussionCoreView and discussionInputView both dispatch through
  *  here and surface the throw). */
-function callBaseView(ctx: ViewContext, base: ViewFn | undefined, name: string): string {
+function callBaseView(ctx: ViewContext, base: ViewFn | undefined, name: string): ViewResult {
   if (base !== undefined) return base(ctx);
   throw new Error(`base view missing for discussion super() call: ${name}`);
 }

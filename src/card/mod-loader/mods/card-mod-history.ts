@@ -1,3 +1,4 @@
+import { str } from "../../render/format.js";
 // The card-mod-history gem (card-mod-history-0.20.0), ported through the
 // mod loader - the history-tracking mod (acts, actions, changes).
 //
@@ -1527,7 +1528,7 @@ function nestedActionSummary(
   const info = reader.actionCard(action);
   if (info?.renderCard === undefined) return "";
   const sub = new RenderFormat(info.renderCard, ctx.fmt.engine, { parent: ctx.fmt });
-  return sub.renderView("action_summary", { action_id: action.id });
+  return str(sub.renderView("action_summary", { action_id: action.id }));
 }
 
 /** action_renderer.rb:29-56 ActionRenderer#render - the container/row/ul/li

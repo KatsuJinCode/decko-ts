@@ -1,3 +1,4 @@
+import { str } from "../../render/format.js";
 // The card-mod-carrierwave gem (card-mod-carrierwave-0.20.0), ported
 // through the mod loader.
 //
@@ -331,7 +332,7 @@ const imageHtmlPreviewView: ViewFn = (ctx) => {
  *  :core bytes: a blank core renders "", otherwise the core appears twice,
  *  once standing in for each side of the pair. */
 const imageHtmlContentChangesView: ViewFn = (ctx) => {
-  const core = ctx.fmt.renderView("core");
+  const core = str(ctx.fmt.renderView("core"));
   if (core === "") return "";
   return core + core;
 };
@@ -353,7 +354,7 @@ const faviconLinkTagView: ViewFn = (ctx) => {
   // favicon.rb:7-11: `return unless (source = render :source, size: :small)`
   // - the source renders at the SMALL carrierwave variant, and the nil arm
   // (a blank source) renders Ruby's nil (the headless "").
-  const src = ctx.fmt.renderView("source", { size: "small" });
+  const src = str(ctx.fmt.renderView("source", { size: "small" }));
   if (src === "") return "";
   return `<link rel="shortcut icon" href="${h(src)}" />`;
 };

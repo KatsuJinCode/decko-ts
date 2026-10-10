@@ -1,3 +1,4 @@
+import { str } from "../../render/format.js";
 // The card-mod-tinymce_editor gem (card-mod-tinymce_editor-0.20.0), ported
 // through the mod loader.
 //
@@ -1742,7 +1743,7 @@ const nestContentView: ViewFn = (ctx) => {
     : (() => {
         voo.hide("cancel_button");
         return fmt.withNestMode("edit", () =>
-          modSlotWrap(ctx, "nest_content", fmt.renderView("edit_inline")),
+          modSlotWrap(ctx, "nest_content", str(fmt.renderView("edit_inline"))),
         );
       })();
   return modSlotWrap(ctx, "nest_content", inner);

@@ -409,10 +409,10 @@ class StubFmt {
   renderView(view: string, _opts: Record<string, unknown> = {}): string {
     const fn = resolveViewFn(view);
     if (fn !== undefined) {
-      return fn({
+      return String(fn({
         fmt: this as unknown as RenderFormat,
         voo: new StubVoo(view) as unknown as Voo,
-      } as unknown as ViewContext);
+      } as unknown as ViewContext) ?? "");
     }
     return `[rendered:${view}]`;
   }

@@ -478,7 +478,25 @@ export interface ViewContext {
   voo: Voo;
 }
 
-export type ViewFn = (ctx: ViewContext) => string;
+/** A view body's answer. Ruby's view blocks are plain methods: most return
+ *  HTML strings, but several return raw values that survive to the render
+ *  API boundary — integers (:id, the account token-days views) and nil (the
+ *  `return unless` early arms: type/mod.rb's configurations/tasks/scripts,
+ *  head.rb's :rss_links) — and the reference capture records those verbatim
+ *  (numbers as JSON numbers, nil as null). Anything interpolated INTO
+ *  another view passes through Ruby's to_s at that interpolation; only the
+ *  top-level render boundary carries the raw value. */
+export type ViewResult = string | number | null;
+
+/** Ruby's to_s at interpolation: a view answer embedded in HTML assembly
+ *  (nil.to_s is the empty string). The identity for every HTML-string view;
+ *  the coercion the interpolating sites owe once view bodies may answer
+ *  numbers/null. */
+export function str(result: ViewResult): string {
+  return result === null ? "" : String(result);
+}
+
+export type ViewFn = (ctx: ViewContext) => ViewResult;
 
 /** The menu help-popover resolver (help-popover.ts HelpRulesResolver), when
  *  a composition installed one. Optional: engines without it keep the
@@ -943,7 +961,8 @@ export class RenderFormat {
       maxDepth: this.maxDepth,
       nestQuietErrors: this.nestQuietErrors,
     });
-    return sub.renderView(view, opts);
+    // the nest chunk result embeds into content: Ruby's to_s layer.
+    return str(sub.renderView(view, opts));
   }
 
   /**
@@ -1077,7 +1096,7 @@ export class RenderFormat {
     opts: Record<string, unknown> = {},
     optional: unknown = "show",
     viewLaneRoot = false,
-  ): string {
+  ): ViewResult {
     const normalized = normalizeView(view);
     // view.rb#ok_view (view.rb:86 `altered_view || requested_view`): on an
     // unknown card the view is substituted BEFORE dispatch (view/permission.rb
@@ -1946,7 +1965,7 @@ export class RenderFormat {
     // exception bypasses it.
     let rendered: string;
     try {
-      rendered = sub.renderView(view, viewOpts);
+      rendered = str(sub.renderView(view, viewOpts));
     } catch (error) {
       if (!this.nestQuietErrors) throw error;
       rendered = quietRenderError(error, card, view, this);
@@ -2002,7 +2021,7 @@ export class RenderFormat {
     optional: unknown = "show",
   ): string {
     try {
-      return this.renderView(view, opts, optional);
+      return str(this.renderView(view, opts, optional));
     } catch (error) {
       // error.rb:65-67 loud_error?: `focal? || raise_all_rendering_errors`.
       // The html format's focal? is show_layout? ? main? : depth.zero?
@@ -2644,7 +2663,7 @@ export class RenderFormat {
     if (sub.depth >= this.maxDepth) {
       throw new TooDeepError(); // monitor_depth, see nest()
     }
-    return sub.renderView(view, viewOpts);
+    return str(sub.renderView(view, viewOpts));
   }
 
   /** chunk/reference.rb#referee_name: the authored name absolutized against
@@ -3192,14 +3211,14 @@ export class RenderFormat {
       throw new TooDeepError(); // monitor_depth, see nest()
     }
     return this.withNestMode("normal", () =>
-      sub.renderView(this.modalNestView(view, root.card), {
+      str(sub.renderView(this.modalNestView(view, root.card), {
         ...(nest.chunkNestSyntax !== undefined ? { nest_syntax: nest.chunkNestSyntax } : {}),
         ...this.nestOptionEntries(nest.options),
         nest_name: nest.name,
         home_view: view === "closed" || view === "edit" ? "open" : view,
         main: true,
         main_view: true,
-      }),
+      })),
     );
   }
 

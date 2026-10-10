@@ -1,3 +1,4 @@
+import { str } from "../../render/format.js";
 // The card-mod-account gem (card-mod-account-0.20.0), ported through the
 // mod loader - the mod that adds user accounts, signin, signup, the +*account
 // cardtype, password reset, and the related closure lifecycle.
@@ -203,11 +204,14 @@ function event(
  *  stamp `exp`, so the sentence on the page and the lifetime of the link it
  *  describes cannot drift apart. The integer renders as a string (Ruby's
  *  Integer#to_s). */
-function tokenDaysValue(): string {
-  return String(DEFAULT_TOKEN_EXPIRY_SECONDS / 86400);
+function tokenDaysValue(): number {
+  return DEFAULT_TOKEN_EXPIRY_SECONDS / 86400;
 }
 
-/** set/right/account/views.rb:14-16 base body - the integer-as-string. */
+/** set/right/account/views.rb:14-16 base body - the INTEGER (the view
+ *  block's raw answer; the render boundary records it as a JSON number,
+ *  and every interpolation - the :token_expiry sentence below - to_s's
+ *  it). */
 const tokenDaysView: ViewFn = () => tokenDaysValue();
 
 /** set/right/account/views.rb:18-19 view :verify_days, :token_days
@@ -1004,10 +1008,10 @@ function accountFormgroups(ctx: ViewContext): string {
   // card[subcards][+*account][subcards][+*email][content] - the recorded
   // oracle signup form pins exactly that input name.
   const accountRelative = accountCard.name.from(fmt.card.name);
-  return sub.renderView("content_formgroups", {
+  return str(sub.renderView("content_formgroups", {
     structure: "true",
     form_name_prefix: `card[subcards][${accountRelative}]`,
-  });
+  }));
 }
 
 /** set/type/signup/views.rb:11-13 view :content_formgroups:
@@ -1126,7 +1130,7 @@ const setupView: ViewFn = (ctx) => {
     // (the as_bot widening rides the seeded grants)
     const body = output([
       setupHiddenFields(ctx),
-      fmt.renderView("name_formgroup"),
+      str(fmt.renderView("name_formgroup")),
       // account_formgroups (the walk; the +email/+password field cards'
       // editors render through the subformat's nest machinery under the
       // inherited nest_mode :edit)

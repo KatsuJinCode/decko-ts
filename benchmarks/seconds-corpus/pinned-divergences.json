@@ -267,17 +267,6 @@
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
     },
     {
-      "op": "view:admin:Topic 001:id",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 8,
-        "expected": "{\"html\":655}",
-        "actual": "{\"html\":\"655\"}"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
       "op": "view:admin:Topic 001+summary:hidden_content_field",
       "family": "composed-mod-view-gap",
       "group": "view / admin",
@@ -509,17 +498,6 @@
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/). Under N6 the div's residual is the frame count: 60 Ruby frames (oracle backtrace) vs 8 V8 frames (engine stack)."
     },
     {
-      "op": "view:admin:Nonexistent Card:errors",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 8,
-        "expected": "{\"html\":null}",
-        "actual": "{\"html\":\"Problem:\\n\\n\"}"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
       "op": "view:admin:Note 001:debug_server_error",
       "family": "render-error-panel: the backtrace div's frame COUNT differs under N6 (Ruby boot-inclusive backtrace vs the engine's own V8 stack)",
       "group": "view / admin",
@@ -575,39 +553,6 @@
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/). Under N6 the div's residual is the frame count: 63 Ruby frames (oracle backtrace) vs 10 V8 frames (engine stack)."
     },
     {
-      "op": "view:admin:Ada Admin+*account:token_days",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 8,
-        "expected": "{\"html\":2}",
-        "actual": "{\"html\":\"2\"}"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:Ada Admin+*account:verify_days",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 8,
-        "expected": "{\"html\":2}",
-        "actual": "{\"html\":\"2\"}"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:Ada Admin+*account:reset_password_days",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 8,
-        "expected": "{\"html\":2}",
-        "actual": "{\"html\":\"2\"}"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
       "op": "view:admin:Ada Admin+*account:closure",
       "family": "render-error-panel: the backtrace div's frame COUNT differs under N6 (Ruby boot-inclusive backtrace vs the engine's own V8 stack)",
       "group": "view / admin",
@@ -617,39 +562,6 @@
         "actual": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;/div&gt;\\n    \\\">Ada Admin+*account</span> (closure view)</span>\"}"
       },
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/). Under N6 the div's residual is the frame count: 59 Ruby frames (oracle backtrace) vs 8 V8 frames (engine stack)."
-    },
-    {
-      "op": "view:admin:mod: help:configurations",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 8,
-        "expected": "{\"html\":null}",
-        "actual": "{\"html\":\"\"}"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:mod: help:tasks",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 8,
-        "expected": "{\"html\":null}",
-        "actual": "{\"html\":\"\"}"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:mod: help:scripts",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 8,
-        "expected": "{\"html\":null}",
-        "actual": "{\"html\":\"\"}"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
     },
     {
       "op": "view:admin:All Topics:search_count",
@@ -780,17 +692,6 @@
         "firstDiffAt": 542,
         "expected": "/x-wiki\\\" title=\\\"Edit this page!\\\" href=\\\"/Home/edit\\\" />\\n<!-- mod: format (remote) -->\\n<script src=\\\"https://code.jquery.com/jquery-3.5.1.min.js\\\" crossorigin=\\\"anonymous\\\"></s",
         "actual": "/x-wiki\\\" title=\\\"Edit this page!\\\" href=\\\"/Home/edit\\\" />\\n\\n\\n<!-- MAIN DECKO JAVASCRIPT -->\\n<script src=\\\"/files/~307/1789819200.js\\\"></script>\\n<script>\\n//<![CDATA[\\ndecko.ro"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:Home:rss_links",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 8,
-        "expected": "{\"html\":null}",
-        "actual": "{\"html\":\"\"}"
       },
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
     },

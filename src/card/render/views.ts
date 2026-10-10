@@ -1,3 +1,4 @@
+import { str, type ViewResult } from "./format.js";
 // The html-format view registry: TypeScript ports of the view definitions the
 // captured fixtures exercise (:open, :closed, :content, :title and the
 // internal views they delegate to). Every view cites its Ruby source; the
@@ -1829,7 +1830,7 @@ const coreView: ViewFn = (ctx) => {
   if (ctx.fmt.card.name.rightName?.key !== "discussion") return base;
   let box = "";
   try {
-    box = ctx.fmt.renderView("comment_box", {}, "hide");
+    box = str(ctx.fmt.renderView("comment_box", {}, "hide"));
   } catch {
     box = ""; // comment mod not registered: the :update-denied blank
   }
@@ -1954,7 +1955,7 @@ function testContextCardFor(ctx: ViewContext): ViewContext["fmt"]["card"] | unde
  *  CARD and with_context assigns/restores it around the block
  *  (contextual_content.rb:5-12, with an ensure); the port writes the
  *  format's contextCard field around the same yield shape. */
-function contextualizingTestContext(ctx: ViewContext, run: () => string): string {
+function contextualizingTestContext(ctx: ViewContext, run: () => ViewResult): ViewResult {
   if (ctx.fmt.contextCard !== undefined) return run(); // @context_card.present?
   if (ctx.voo.viz.get("test_context") === "hide") return run(); // voo.hide?
   const target = testContextCardFor(ctx);
@@ -1979,7 +1980,7 @@ function contextualizingTestContext(ctx: ViewContext, run: () => string): string
  *  card through the format's contextCard seam (format/nest/fetch.rb:12),
  *  rendering the notification's `{{_|link}}` / `{{_|last_action_verb}}` /
  *  `{{_|subedits}}` marks against `*changed card` — the oracle bytes. */
-export function htmlMessageCoreBody(ctx: ViewContext): string {
+export function htmlMessageCoreBody(ctx: ViewContext): ViewResult {
   return contextualizingTestContext(ctx, () => coreView(ctx));
 }
 
@@ -1996,7 +1997,7 @@ export function htmlMessageCoreBody(ctx: ViewContext): string {
  *  `_render_core`) — the dispatcher below routes the subject scope HERE,
  *  which without the arm fell through to the bare coreView and resolved
  *  the nests against the field card itself. */
-export function subjectCoreBody(ctx: ViewContext): string {
+export function subjectCoreBody(ctx: ViewContext): ViewResult {
   return contextualizingTestContext(ctx, () => coreView(ctx));
 }
 
@@ -2089,9 +2090,9 @@ export function contentWithLinkBody(ctx: ViewContext): string {
  *  for a nested render (set/all/error.rb:13-15) — exactly the oracle's
  *  `was just  by` double space where the html message renders the quiet
  *  span. */
-export function textMessageCoreBody(ctx: ViewContext): string {
+export function textMessageCoreBody(ctx: ViewContext): ViewResult {
   return contextualizingTestContext(ctx, () =>
-    toText(ctx.fmt.withFormatName("email_text").renderView("core")),
+    toText(str(ctx.fmt.withFormatName("email_text").renderView("core"))),
   );
 }
 
@@ -4769,7 +4770,7 @@ function cardStub(fmt: ViewContext["fmt"], view: string): string {
 function barBottomHtml(ctx: ViewContext, open: boolean): string {
   const { fmt } = ctx;
   if (!open) return cardStub(fmt, "bar_bottom");
-  return fmt.renderView("bar_bottom");
+  return str(fmt.renderView("bar_bottom"));
 }
 
 /** bar.rb#build_accordion_bar + accordion_item.haml, byte-shaped (the
@@ -4857,7 +4858,7 @@ const openView: ViewFn = (ctx) => {
 /** The generic bar_left: title.rb's :title view (bar.rb:14 `bar_left do
  *  _render_title end`). */
 function genericBarLeftHtml(ctx: ViewContext): string {
-  return ctx.fmt.renderView("title");
+  return str(ctx.fmt.renderView("title"));
 }
 
 /** card-mod-bootstrap set/type/bootswatch_skin/html_views.rb:57-63
@@ -5429,7 +5430,11 @@ const universalEditButtonView: ViewFn = (ctx) => {
  *  nil -> "". This engine registers no :rss_link_tag, so the port returns ""
  *  — which is the same bytes the page-level renderer emits for the rss slot
  *  (src/card/render/page.ts:498-499 documents the "" it joins in). */
-const rssLinksView: ViewFn = () => "";
+const rssLinksView: ViewFn = () =>
+  // head.rb:41-43: `render :rss_link_tag if rss_link?` - the guard-false arm
+  // is Ruby's NIL (the corpus records JSON null at the render boundary; the
+  // head's interpolation to_s's it to the "" the captured pages carry).
+  null;
 
 /** meta_tags.haml, byte-shaped to the HAML conventions this module already
  *  pins (views.ts:5-8: HAML templates emit SORTED single-quoted attributes;
@@ -6292,7 +6297,7 @@ function imageBoxCore(ctx: ViewContext): string {
   const rawSize = ctx.voo.opts["size"];
   const size = typeof rawSize === "string" && rawSize !== "" ? rawSize : "medium";
   const renderSize = IMAGE_BOX_SIZE_MAP[size] ?? "medium";
-  return ctx.fmt.renderView("core", { size: renderSize });
+  return str(ctx.fmt.renderView("core", { size: renderSize }));
 }
 
 /** image.rb:6-8 `view :boxed, unknown: true do image_box { |size| render_core
@@ -6702,7 +6707,7 @@ export function flatViewRefused(view: string, setKeys: string): boolean {
  *  Function declarations, so a mod module can bind them however the import
  *  graph orders evaluation. */
 export function baseTableView(view: string): ViewFn {
-  return function sharedBaseView(ctx: ViewContext): string {
+  return function sharedBaseView(ctx: ViewContext): ViewResult {
     const fn = BASE_TABLE_VIEWS[view];
     if (fn === undefined) throw new UnsupportedViewError(view, ctx.fmt.card.name.s);
     return fn(ctx);

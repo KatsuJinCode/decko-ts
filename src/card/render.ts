@@ -61,10 +61,12 @@ import type { CardsRow } from "../server/schema.js";
 import {
   RenderFormat,
   RUBY_MAX_DEPTH,
+  str,
   UnsupportedViewError,
   type RenderCard,
   type RenderEngineLike,
   type ViewFn,
+  type ViewResult,
 } from "./render/format.js";
 import { renderPageBytes, headContent, UnknownLayoutError } from "./render/page.js";
 import { deckDefaultHtmlView, envOriginForSurface, pageDefaultHtmlView } from "./render/deck-origin.js";
@@ -983,10 +985,24 @@ export class RenderEngine implements RenderEngineLike {
   }
 
   /**
-   * Render one view of one card to HTML bytes. Throws UnsupportedViewError
-   * for views outside the ported registry (the captured sentinel contract).
+   * Render one view of one card to HTML bytes (Ruby's to_s-ing consumer of
+   * the view answer). Throws UnsupportedViewError for views outside the
+   * ported registry (the captured sentinel contract). The RAW boundary -
+   * integers (:id, the token-days views) and nil (the early-return arms)
+   * surviving as numbers/null, exactly what Ruby's format.render returns -
+   * is renderRaw(); the reference harness records through it.
    */
   async render(cardName: string, view: string, params: HistoryRenderParams = {}): Promise<string> {
+    return str(await this.renderRaw(cardName, view, params));
+  }
+
+  /**
+   * Ruby's card.format.render(view): the view block's value verbatim. The
+   * render API boundary the corpus adapter records through - every OTHER
+   * consumer of a view answer (HTML assembly, caches) interpolates through
+   * Ruby's to_s (str()).
+   */
+  async renderRaw(cardName: string, view: string, params: HistoryRenderParams = {}): Promise<ViewResult> {
     // One render is one request: hold the Temporary caches so no
     // within_key_counts reset drops an entry this render seated before its
     // synchronous readers use it (TemporaryCache#hold). Nested inside a
@@ -1004,7 +1020,7 @@ export class RenderEngine implements RenderEngineLike {
     }
   }
 
-  private async renderHeld(cardName: string, view: string, params: HistoryRenderParams): Promise<string> {
+  private async renderHeld(cardName: string, view: string, params: HistoryRenderParams): Promise<ViewResult> {
     // THE SWEEP SURFACE reset: this render's sweeps chase only what THIS
     // render seats (the sweep-cascade cut — renderSeats' doc). The page
     // lane clears once for the whole page render (beginPagePrepare), so
@@ -2264,7 +2280,11 @@ export class RenderEngine implements RenderEngineLike {
       override = rule === undefined ? undefined : resolveViewOverride(view, [rule.rule]);
       this.ruleCache.set(cacheKey, override);
     }
-    if (override !== undefined) return applyViewOverride(baseHtml, override);
+    if (override !== undefined && typeof baseHtml === "string") return applyViewOverride(baseHtml, override);
+    // The boundary: Ruby's render returns the view block's value verbatim -
+    // integers (:id, the token-days views) and nil (the early-return arms)
+    // survive as numbers/null; view-override rules substitute view NAMES, so
+    // they never post-process a non-string answer.
     return baseHtml;
   }
 
@@ -7154,7 +7174,7 @@ export class RenderEngine implements RenderEngineLike {
    *  and render again. Nested entry points defer to the outermost. A
    *  verdict is memoized under the card's key, so the loop ends: a second
    *  pass can only miss on cards the first pass never reached. */
-  async renderWithUnknownCreateVerdicts(run: () => Promise<string>): Promise<string> {
+  async renderWithUnknownCreateVerdicts(run: () => Promise<ViewResult>): Promise<ViewResult> {
     if (this.unknownCreateRenderDepth > 0) return run();
     this.unknownCreateRenderDepth += 1;
     try {

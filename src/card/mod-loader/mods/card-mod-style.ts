@@ -1,3 +1,4 @@
+import type { ViewResult } from "../../render/format.js";
 // The card-mod-style gem (card-mod-style-0.20.0), ported through the mod
 // loader - the stylesheet/skin mod: the Css / Scss / Skin cardtypes, the
 // *style setting, and the SkinBox abstract.
@@ -177,7 +178,7 @@ function priorOrUnsupported(
   prior: ViewFn | undefined,
   view: string,
   ctx: ViewContext,
-): string {
+): ViewResult {
   if (prior === undefined) {
     throw new UnsupportedViewError(view, ctx.fmt.card.name.s);
   }
@@ -189,7 +190,7 @@ function priorOrUnsupported(
  *  bytes (Haml::Engine.new('-#TODO').render == "", oracle run against the
  *  installed haml gem), so the view body is the empty string. No view
  *  config - Ruby declares no options. */
-const skinBoxBottomView: ViewFn = (ctx: ViewContext): string => {
+const skinBoxBottomView: ViewFn = (ctx: ViewContext): ViewResult => {
   if (!isInSkinBoxSet(ctx)) return priorOrUnsupported(priorBoxBottom, "box_bottom", ctx);
   return "";
 };
@@ -201,7 +202,7 @@ const skinBoxBottomView: ViewFn = (ctx: ViewContext): string => {
  *  makes SkinBox's empty body the resolved method for both types, the
  *  same last-defined-wins rule the flat table's later registration
  *  encodes). */
-const skinCustomizeButtonView: ViewFn = (ctx: ViewContext): string => {
+const skinCustomizeButtonView: ViewFn = (ctx: ViewContext): ViewResult => {
   if (!isInSkinBoxSet(ctx)) {
     return priorOrUnsupported(priorCustomizeButton, "customize_button", ctx);
   }
@@ -220,7 +221,7 @@ const skinCustomizeButtonView: ViewFn = (ctx: ViewContext): string => {
  *  in the inclusion closure reads as "no image" (the same cold-miss
  *  trade the pointer core's item reads make, views.ts renderPointerListItem);
  *  tests warm the field through the engine's prepareItemForRender hook. */
-const skinBoxMiddleView: ViewFn = (ctx: ViewContext): string => {
+const skinBoxMiddleView: ViewFn = (ctx: ViewContext): ViewResult => {
   if (!isInSkinBoxSet(ctx)) return priorOrUnsupported(priorBoxMiddle, "box_middle", ctx);
   const image = ctx.fmt.engine.fetchRenderCard(`${ctx.fmt.card.name.s}+image`);
   if (image === undefined) return ""; // card.fetch :image -> nil -> no render

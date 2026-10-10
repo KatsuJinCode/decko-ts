@@ -1,3 +1,4 @@
+import { str, type ViewResult } from "../../render/format.js";
 // The card-mod-rules gem (card-mod-rules-0.20.0), ported through the mod
 // loader - the mod that turns rule cards and set cards into a configurable
 // surface: the rule bar family, the rule editor views, the set card's Rules
@@ -518,7 +519,7 @@ export function ruleCoreView(ctx: ViewContext, baseCore: ViewFn): string {
   if (typeCode === "search_type" || ctx.fmt.card.typeName === "Search") {
     return ctx.fmt.renderRaw();
   }
-  return baseCore(ctx);
+  return str(baseCore(ctx));
 }
 
 // ---------------------------------------------------------------------------
@@ -1355,7 +1356,7 @@ function filteredRuleList(
   filterView: string,
   selectedCategory: string,
   mark: string | undefined,
-  listBody: (ctx: ViewContext) => string,
+  listBody: ViewFn,
 ): string {
   return `${settingFilter(ctx, filterView, selectedCategory, mark)}\n${listBody(ctx)}`;
 }
@@ -1724,7 +1725,7 @@ function quickEditorBody(ctx: ViewContext, setting: string | undefined): string 
       `<input value="${h(fmt.card.dbContent)}" class="d0-card-content _submit-after-typing form-control" type="text" name="card[content]" id="card_content" /></div></div>`
     );
   }
-  return fmt.renderView("content_formgroup", { hide: ["conflict_tracker"] });
+  return str(fmt.renderView("content_formgroup", { hide: ["conflict_tracker"] }));
 }
 
 /** The formgroup div's data attrs (formgroup.rb:35-43 formgroup_div_args:
@@ -1955,8 +1956,9 @@ function icon(name: string, extraClass?: string): string {
 
 /** output (card-1.110.0 lib/card/format/content.rb:70-73): compact + "\n".
  *  join. */
-function outputJoin(parts: (string | undefined)[]): string {
-  return parts.filter((p) => p !== undefined).join("\n");
+function outputJoin(parts: (ViewResult | undefined)[]): string {
+  // Ruby's join is to_s over the compacted array (content.rb:70-73).
+  return parts.filter((p) => p !== undefined).map(str).join("\n");
 }
 
 /** link_to_card's attribute shape for the target: icon/link carriers -
@@ -2585,7 +2587,7 @@ const overlayRuleView: ViewFn = (ctx) => {
  *  menu. */
 function overlayMenuHtml(ctx: ViewContext): string {
   const { fmt } = ctx;
-  const helpContent = h(fmt.renderView("help_text"));
+  const helpContent = h(str(fmt.renderView("help_text")));
   const helpLink =
     `<a path="#" tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus"` +
     ` data-bs-content="${helpContent}" data-bs-placement="left"` +
@@ -2694,7 +2696,7 @@ function quickEditSettingListItem(ctx: ViewContext, setting: string): string {
  *  the chain); the nest_rules slot wrap (wrap: :slot, no class) wraps it. */
 const nestRulesView: ViewFn = (ctx) => {
   assertSetCard(ctx, "nest_rules");
-  const body = ctx.fmt.renderView("quick_edit_setting_list");
+  const body = str(ctx.fmt.renderView("quick_edit_setting_list"));
   return modSlotWrap(ctx, "nest_rules", body);
 };
 

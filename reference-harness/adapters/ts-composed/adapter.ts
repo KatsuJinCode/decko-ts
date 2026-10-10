@@ -214,7 +214,9 @@ async function opRender(req: Req): Promise<Json> {
   // edit_inline form's content input renders blank. The engine cache here
   // is a boot-cost cache, not a session; each render re-signs in.
   engine.resetRequestSession();
-  const html = req.view ? await engine.render(req.card, req.view) : await engine.renderPage(req.card);
+  // renderRaw: Ruby's format.render boundary - the view block's value
+  // verbatim (integers and nil survive; the page lane is HTML-only).
+  const html = req.view ? await engine.renderRaw(req.card, req.view) : await engine.renderPage(req.card);
   return { html };
 }
 

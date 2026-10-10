@@ -1,3 +1,4 @@
+import type { ViewResult } from "../../render/format.js";
 // The card-mod-search gem (card-mod-search-0.20.0), ported through the mod
 // loader - the search surface: the CQL-backed search semantics behind the
 // count views, the search-family one_line_content override, and the
@@ -418,7 +419,7 @@ function warmedCount(
  *  dispatch (item.rb:118-120/:180-182, card-mod-collection). Unregistered
  *  chain = the view does not exist for the card (render.rb#view_method's
  *  "view ... not supported" error, exactly the search-mod-only deck). */
-function delegateCount(ctx: ViewContext): string {
+function delegateCount(ctx: ViewContext): ViewResult {
   const chain = getDefaultModLoader()?.viewChain(ctx.fmt.card.setKeys, "count") ?? [];
   const next = chain.find((entry) => entry.setModule !== "Abstract::Search");
   if (next === undefined) {

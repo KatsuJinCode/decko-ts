@@ -1,3 +1,4 @@
+import { str, type ViewResult } from "../render/format.js";
 // Rule-card bar-right content (card-mod-rules-0.20.0 set/rule/bar_view.rb):
 // for a card matching the *rule pattern, :bar_right nests the card's own
 // :one_line_content view, wrapped in the rule format's
@@ -132,7 +133,7 @@ function ruleOneLineContent(
   card: RenderCard,
   rightSetting: string | undefined,
   engine?: RenderEngineLike,
-  renderCoreText?: (card: RenderCard) => string,
+  renderCoreText?: (card: RenderCard) => ViewResult,
   /** bar_view.rb:63-66 rule_short_content nests the existing rule with
    *  `set_context: card.name.trunk_name` — the trunk of the BAR-RENDERED
    *  (outer, often virtual) rule card, NOT the substituted existing rule's
@@ -287,7 +288,7 @@ function ruleOneLineContent(
   // the stored RichText markup (`<p><em>…</em></p>`) never reaches the
   // one-line bytes (oracle: the AAM+*self+*help bar-right renders the
   // plain sentence, not the `<p><em>…` markup form).
-  return truncate(stripTags(coreText), ONE_LINE_CHARACTER_LIMIT);
+  return truncate(stripTags(str(coreText)), ONE_LINE_CHARACTER_LIMIT);
 }
 
 /** :bar_right for a rule card ("..." when the card is not a rule card —
@@ -333,7 +334,7 @@ export function permissionInheritContentHtml(setContextTag: string | undefined):
 export function ruleBarRightHtml(
   card: RenderCard,
   engine?: RenderEngineLike,
-  renderCoreText?: (card: RenderCard) => string,
+  renderCoreText?: (card: RenderCard) => ViewResult,
 ): string {
   const setKeyTokens = card.setKeys.split(" ");
   if (!setKeyTokens.includes("RULE")) return "";
