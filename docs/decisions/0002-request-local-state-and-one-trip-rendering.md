@@ -18,12 +18,18 @@ lands, and a stale permission verdict is a data leak, not a slow page.
 
 ## Decision
 
-**Nothing that depends on deck content is kept between requests.** Within one
+**What a request may serve is decided inside that request.** Within one
 request, a row store holds what that request has fetched. It answers a later
 statement from those rows only when it can prove they are the complete result;
 otherwise the statement goes to storage. The guarantee is tested directly:
 permission verdicts, rule resolutions and search results must not carry over
 from one request to the next.
+
+Long-lived engines keep fetched rows, the lexicon, and resolved rules between
+requests; every serving entry re-reads the deck's data-version stamp once per
+request and drops all of it when anything has changed (see ARCHITECTURE.md,
+"What is request-local, and what is retained"). Platform-level response
+caches are a separate, optional layer and are not relied on for correctness.
 
 Warm performance therefore comes from *within* a request rather than across
 them. The engine computes the rows a page needs — its closure — before
