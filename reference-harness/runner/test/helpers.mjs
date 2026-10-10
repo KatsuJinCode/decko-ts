@@ -39,6 +39,9 @@ export function makeFixture(root) {
   const db = new DatabaseSync(path.join(dir, "deck", "deck.sqlite3"));
   db.exec("CREATE TABLE cards (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, updated_at TEXT)");
   db.exec("INSERT INTO cards (name, updated_at) VALUES ('Alpha', '2026-09-19 12:00:00'), ('Beta', '2026-09-19 12:00:00')");
+  // A table outside Decko's card tables, so a write that touches it records an
+  // `other_tables` delta the grader grades (finding 5).
+  db.exec("CREATE TABLE sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT)");
   db.close();
   const jsonl = (rows) => rows.map((r) => JSON.stringify(r)).join("\n") + "\n";
   writeFileSync(
@@ -82,14 +85,19 @@ export function runFake(fixture, out, { mode = "", version = 1, extraArgs = [] }
 }
 
 /** A tiny fixture with expected outputs captured from the fake adapter (as
- *  the stock oracle), plus a clean actual run. */
-export function makeCapturedFixture(root) {
+ *  the stock oracle), plus a clean actual run. `captureOpts` and `runOpts`
+ *  go to the adapter as FAKE_MODE/FAKE_VERSION, so the expected outputs and
+ *  the clean run can share a mode. */
+export function makeCapturedFixture(root, { captureOpts = {}, runOpts = {} } = {}) {
   const fixture = makeFixture(root);
   const expected = path.join(fixture, "expected");
-  const cap = runFake(fixture, expected);
+  const cap = runFake(fixture, expected, captureOpts);
   if (cap.status !== 0) throw new Error(`capture failed: ${cap.stderr}`);
   writeExpectedManifest(fixture, expected);
-  return { fixture, expected };
+  const actual = path.join(root, "good");
+  const run = runFake(fixture, actual, runOpts);
+  if (run.status !== 0) throw new Error(`run failed: ${run.stderr}`);
+  return { fixture, expected, actual };
 }
 
 /** Copies a results directory so a test can tamper with the copy. */

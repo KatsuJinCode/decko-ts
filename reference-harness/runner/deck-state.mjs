@@ -96,7 +96,8 @@ function sameValue(x, y) {
 }
 
 /** Splits a full delta into the card tables (graded as persistence) and the
- *  rest (recorded, reported, not graded for writes). */
+ *  rest (graded too: a write's must equal the oracle's, a read's the oracle's
+ *  empty, save for declared differences). */
 export function splitDelta(full) {
   const rows = {};
   const other = {};

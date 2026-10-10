@@ -235,8 +235,19 @@ is reported as an oracle error and not graded.
 `other_tables` (renders, questions, sign-ins), must equal the oracle's for the
 same session or step, which on `synthetic-v1` is nothing. These are reported
 as their own line, `read writes`, and any failure fails the grade even when
-every answer matches. Changes a write step makes outside the card tables are
-listed in the report (`other_table_writes`) and not graded.
+every answer matches.
+
+**A write changes only the tables the oracle's write changed.** Each write
+step's `other_tables` (every table outside Decko's card tables the step
+changed) must equal the oracle's for the same step; they are recorded truths
+like the `rows`. A difference fails the grade unless it is declared:
+`--declared-other-tables` names a JSON map keyed on step id then table name,
+`{"create-then-render#1": {"sessions": "why"}}`, of differences an engine is
+known to make (its own bookkeeping tables, say). A declared difference is
+graded as declared, recorded in the report (`other_tables`, with its why),
+and does not fail; an undeclared one fails the grade even when every answer
+matches. Every write step whose non-card tables changed is listed in the
+report (`other_table_writes`), with its verdict: pass, declared, or fail.
 
 Exit status: 0 every item passes; 1 a valid grade with failures; 2 not a
 grade.
@@ -262,9 +273,12 @@ Two kinds of rule, applied to both sides before comparison, and nothing else:
   erases nothing.
 
 1. **N1 (mask).** In rendered HTML, a `data-slot-id` attribute in attribute
-   position holding exactly 20 lowercase hex digits has its value replaced by
-   `SLOT`; the quote character is kept. Ruby Decko draws slot ids at random
-   per render.
+   position — between `<` and `>` of one tag, a whitespace-preceded name
+   followed by `=` and a quoted value — holding exactly 20 lowercase hex
+   digits has its value replaced by `SLOT`; the quote character is kept. The
+   same text anywhere else (element content, comments, attribute values,
+   script and style bodies) is compared exactly: the mask touches only real
+   attribute tokens. Ruby Decko draws slot ids at random per render.
 2. **N2 (canonical form).** JSON object key order never counts; array order
    always does.
 

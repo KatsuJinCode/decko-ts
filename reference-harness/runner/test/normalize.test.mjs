@@ -49,6 +49,41 @@ describe("N1: slot ids, the one mask", () => {
   });
 });
 
+describe("N1 masks only a real attribute token (finding 6)", () => {
+  it("the reviewer's control: text in element content is never masked, whatever precedes it", () => {
+    assert.ok(!same(`<p>Example data-slot-id="${slot}"</p>`, `<p>Example data-slot-id="${other}"</p>`), "a preceding word is not attribute position");
+    assert.ok(!same(`<p>Example data-slot-id="${slot}"</p>`, `<p>Other data-slot-id="${slot}"</p>`), "the visible text itself still counts");
+  });
+
+  it("text inside a comment is never masked", () => {
+    assert.ok(!same(`<!-- data-slot-id="${slot}" -->`, `<!-- data-slot-id="${other}" -->`));
+    assert.ok(!same(`<div><!-- data-slot-id="${slot}" --></div>`, `<div><!-- data-slot-id="${other}" --></div>`));
+  });
+
+  it("text inside a quoted attribute value is never masked", () => {
+    assert.ok(!same(`<div title=" data-slot-id='${slot}'">x</div>`, `<div title=" data-slot-id='${other}'">x</div>`), "a quoted value is value text, not an attribute");
+    assert.ok(!same(`<div title="note: data-slot-id=${slot} done">x</div>`, `<div title="note: data-slot-id=${other} done">x</div>`));
+  });
+
+  it("text inside script and style bodies is never masked, even when shaped like a tag", () => {
+    assert.ok(!same(`<script>var s = " data-slot-id='${slot}'";</script>`, `<script>var s = " data-slot-id='${other}'";</script>`));
+    assert.ok(!same(`<style>.a::after { content: " data-slot-id='${slot}'" }</style>`, `<style>.a::after { content: " data-slot-id='${other}'" }</style>`));
+    assert.ok(!same(`<script>document.write('<i data-slot-id="${slot}">')</script>`, `<script>document.write('<i data-slot-id="${other}">')</script>`), "a pseudo-tag in a script body");
+    assert.ok(!same(`<script>if (a<b) x="${slot}";</script>`, `<script>if (a<b) x="${other}";</script>`), "a bare < in a body is not a tag boundary");
+  });
+
+  it("a real attribute is masked whatever whitespace precedes it, and on a raw text element itself", () => {
+    assert.ok(same(`<div class="c"\n  data-slot-id="${slot}">x</div>`, `<div class="c"\n  data-slot-id="${other}">x</div>`), "newline between attributes");
+    assert.ok(same(`<script data-slot-id="${slot}">var x = 1;</script>`, `<script data-slot-id="${other}">var x = 1;</script>`));
+    assert.ok(!same(`<script data-slot-id="${slot}">var x = 1;</script>`, `<script data-slot-id="${other}">var y = 2;</script>`), "the body still counts");
+  });
+
+  it("everything outside the masked value is kept byte for byte", () => {
+    const h = `<p>Example data-slot-id="${slot}"</p><!-- x>y --><!DOCTYPE html>\n<div title="t'a>b" data-x=00123456789012345678ab>a > b</div>`;
+    assert.equal(normalizeHtml(h), h);
+  });
+});
+
 describe("removed rules: these now count", () => {
   it("hexadecimal numbers in HTML are compared (the former address mask)", () => {
     assert.ok(!same("<p>0xdeadbeef</p>", "<p>0xfeedface</p>"));

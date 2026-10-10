@@ -1,10 +1,10 @@
 // Shared scratch-directory helper for tests, benchmarks and tools.
 //
 // Every temp directory a run creates is registered here and removed when the
-// run ends (success or failure), so nothing accumulates in the OS temp folder
-// (AGENTS.md, Zero Unmanaged Scratch Policy).
+// run ends (success or failure), so nothing accumulates (AGENTS.md, Zero
+// Unmanaged Scratch Policy).
 //
-//   scratchDir(prefix)   mkdtemp under os.tmpdir(), registered for removal
+//   scratchDir(prefix)   mkdtemp under the repo scratch root, registered for removal
 //   removeScratchDir(d)  remove one directory now (idempotent)
 //   cleanupScratch()     remove everything registered (afterAll / finally)
 //
@@ -14,13 +14,56 @@
 // hidden detached node process after this one exits.
 //
 // DECKO_KEEP_SCRATCH=1 keeps every directory for debugging.
-import { mkdtempSync, rmSync, existsSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+//
+// Where directories live, and who may delete them (finding 17): a scratch
+// directory is created under the repo's own root — tmp/test-scratch/, or the
+// directory named by DECKO_TEST_TEMP_ROOT — never directly in the shared OS
+// temp folder, and it carries an ownership manifest naming this repo checkout
+// and this machine. The stale-run purge (tests/support/purge-stale-vitest-temp.ts)
+// deletes a stale directory only under that root and only when its manifest
+// matches, so a directory this checkout did not create is never a deletion
+// candidate, no matter how its name looks or how old it is.
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { hostname } from "node:os";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
 
 const registered = new Set();
 let exitHookInstalled = false;
+
+/** The file inside a scratch directory that names its owner. */
+export const SCRATCH_OWNERSHIP_FILE = "decko-scratch-ownership.json";
+const OWNERSHIP_TOOL = "decko test scratch";
+const envRoot = () => (process.env.DECKO_TEST_TEMP_ROOT ? resolve(process.env.DECKO_TEST_TEMP_ROOT) : null);
+const repoRoot = realpathSync(fileURLToPath(new URL("../..", import.meta.url)));
+const machine = hostname();
+
+/** The dedicated root every scratch directory is created under: the repo's
+ *  own tmp/test-scratch/, or DECKO_TEST_TEMP_ROOT for a run that must keep
+ *  its scratch elsewhere (another drive, a CI cache). Created when missing. */
+export function scratchRoot() {
+  const root = envRoot() ?? join(repoRoot, "tmp", "test-scratch");
+  mkdirSync(root, { recursive: true });
+  return root;
+}
+
+/** The ownership manifest: which tool, which repo checkout, which machine. */
+export function writeScratchOwnershipManifest(dir) {
+  writeFileSync(join(dir, SCRATCH_OWNERSHIP_FILE), JSON.stringify({ tool: OWNERSHIP_TOOL, repo: repoRoot, machine, created_at: new Date().toISOString() }, null, 2) + "\n");
+}
+
+/** True when `dir` carries an ownership manifest naming this checkout of this
+ *  repo on this machine. Anything else — no manifest, a corrupt one, another
+ *  checkout's or another machine's — is not this repo's to delete. */
+export function scratchOwnershipMatches(dir) {
+  try {
+    const m = JSON.parse(readFileSync(join(dir, SCRATCH_OWNERSHIP_FILE), "utf8"));
+    return m.tool === OWNERSHIP_TOOL && m.repo === repoRoot && m.machine === machine;
+  } catch {
+    return false;
+  }
+}
 
 export function keepScratch() {
   return process.env.DECKO_KEEP_SCRATCH === "1";
@@ -65,10 +108,12 @@ function installExitHook() {
   });
 }
 
-/** Create a uniquely named directory under the OS temp folder, removed at the
- *  end of the run (or by cleanupScratch). */
+/** Create a uniquely named directory under the repo scratch root, owned by
+ *  this checkout (an ownership manifest is written at creation), removed at
+ *  the end of the run (or by cleanupScratch). */
 export function scratchDir(prefix) {
-  const dir = mkdtempSync(join(tmpdir(), prefix));
+  const dir = mkdtempSync(join(scratchRoot(), prefix));
+  writeScratchOwnershipManifest(dir);
   registered.add(dir);
   installExitHook();
   return dir;

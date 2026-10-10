@@ -1,7 +1,9 @@
 // The grader: checks that a results directory is a complete run of the named
 // fixture by one engine, then compares it with the oracle's expected outputs
-// item by item on the four parity kinds, and checks that reads wrote nothing
-// the oracle did not. See reference-harness/SPEC.md, "Runner" and "Grading".
+// item by item on the four parity kinds, checks that reads wrote nothing the
+// oracle did not, and checks that each write step's changes outside Decko's
+// card tables are the oracle's, or declared. See reference-harness/SPEC.md,
+// "Runner" and "Grading".
 
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -22,8 +24,14 @@ export const EXIT = { pass: 0, fail: 1, invalid: 2, partial: 2 };
  * `allowPartial` lets a run with a --filter/--limit selection or missing kinds
  * be graded on what it holds, for development; its verdict is "partial",
  * never "pass".
+ * `declaredOtherTables` is the declared-difference record for write steps'
+ * changes outside Decko's card tables, keyed on step id then table name:
+ * `{ "create-then-render#1": { sessions: "why the engine's row differs" } }`.
+ * A difference named here is graded as declared (recorded, with its why, in
+ * the report); every other difference fails the grade.
  */
-export function gradeRun({ fixture, actual, expected, allowPartial = false }) {
+export function gradeRun({ fixture, actual, expected, allowPartial = false, declaredOtherTables = {} }) {
+  const declared = validateDeclaredOtherTables(declaredOtherTables);
   const fixtureDir = path.resolve(fixture);
   const actualDir = path.resolve(actual);
   const expectedDir = path.resolve(expected ?? path.join(fixtureDir, "expected"));
@@ -86,6 +94,7 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false }) {
   const failures = Object.fromEntries(KINDS.map((k) => [k, []]));
   const readWrites = { graded: 0, pass: 0, fail: 0, failures: [] };
   const otherTableWrites = [];
+  const otherTables = { graded: 0, pass: 0, declared: 0, fail: 0, failures: [] };
   const selected = (kind, id) => !allowPartial || act.present[kind].has(id);
 
   const grade = (kind, group, id, e, a, mode) => {
@@ -128,6 +137,37 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false }) {
       readWrites.failures.push({ id, reason: "wrote rows the oracle did not", differences: leafDifferences(expWrites ?? {}, actWrites) });
     }
   };
+  // A write step's `other_tables` are Ruby-recorded truth just like its `rows`:
+  // the engine's changed non-card tables must equal the oracle's, and every
+  // differing table must be declared (step id + table) or the grade fails.
+  const gradeOtherTables = (id, expOther, actOther) => {
+    const record = { id, expected: expOther, actual: actOther };
+    otherTableWrites.push(record);
+    otherTables.graded++;
+    if (sameJson(expOther, actOther)) {
+      record.verdict = "pass";
+      otherTables.pass++;
+      return;
+    }
+    const tables = [...new Set([...Object.keys(expOther), ...Object.keys(actOther)])].sort();
+    const differing = tables.filter((t) => !sameJson(expOther[t] ?? {}, actOther[t] ?? {}));
+    const why = (t) => declared[id]?.[t];
+    const undeclared = differing.filter((t) => why(t) === undefined);
+    if (undeclared.length === 0) {
+      record.verdict = "declared";
+      record.declared = differing.map((t) => ({ table: t, why: why(t) }));
+      otherTables.declared++;
+      return;
+    }
+    record.verdict = "fail";
+    otherTables.fail++;
+    otherTables.failures.push({
+      id,
+      reason: "wrote rows in tables outside the card tables that the oracle's write did not, and not declared",
+      tables: undeclared,
+      differences: differing.map((t) => ({ table: t, declared: why(t) !== undefined, differences: leafDifferences(expOther[t] ?? {}, actOther[t] ?? {}) })),
+    });
+  };
   const wrap = (line, norm) => (line === undefined ? undefined : line.error ? { error: line.error } : { value: norm(line.result) });
   const ident = (r) => r;
 
@@ -164,7 +204,7 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false }) {
         if (step.rows === undefined && !step.error) problems.push(`expected: scenario step ${id} has no row delta`);
         const rows = (s) => (s === undefined ? undefined : s.rows === undefined ? { error: { class: "HarnessMissingRows", message: "no row delta recorded" } } : { value: s.rows });
         grade("persistence", `write ${op.action}`, id, rows(step), rows(actStep), "rows");
-        if (step.other_tables || actStep?.other_tables) otherTableWrites.push({ id, expected: step.other_tables ?? {}, actual: actStep?.other_tables ?? {} });
+        if (step.other_tables || actStep?.other_tables) gradeOtherTables(id, step.other_tables ?? {}, actStep?.other_tables ?? {});
       } else {
         const all = (s) => (s === undefined ? undefined : { ...(s.rows ?? {}), ...(s.other_tables ?? {}) });
         gradeReadWrites(id, all(step), actStep && actStep.rows !== undefined ? all(actStep) : undefined);
@@ -175,7 +215,7 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false }) {
   const summary = Object.fromEntries(
     KINDS.map((k) => [k, { ...tally[k], rate: tally[k].graded ? +((tally[k].pass / tally[k].graded) * 100).toFixed(2) : null }]),
   );
-  const allPass = KINDS.every((k) => summary[k].fail === 0) && readWrites.fail === 0;
+  const allPass = KINDS.every((k) => summary[k].fail === 0) && readWrites.fail === 0 && otherTables.fail === 0;
   const verdict = problems.length > 0 ? "invalid" : partial.length > 0 ? (allowPartial ? "partial" : "invalid") : allPass ? "pass" : "fail";
   if (!allowPartial) problems.push(...partial.map((p) => `incomplete: ${p}`));
   return {
@@ -192,9 +232,21 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false }) {
     warnings,
     summary,
     read_writes: readWrites,
+    other_tables: otherTables,
     other_table_writes: otherTableWrites,
     failures,
   };
+}
+
+/** The declared-difference record's shape: `{ "<step id>": { "<table>": "why" } }`. */
+function validateDeclaredOtherTables(declared) {
+  const bad = "declaredOtherTables must be { \"<step id>\": { \"<table>\": \"why\" } }";
+  if (declared === null || typeof declared !== "object" || Array.isArray(declared)) throw new TypeError(bad);
+  for (const [id, tables] of Object.entries(declared)) {
+    if (tables === null || typeof tables !== "object" || Array.isArray(tables)) throw new TypeError(`${bad}; "${id}" does not map to a table object`);
+    for (const [table, why] of Object.entries(tables)) if (typeof why !== "string") throw new TypeError(`${bad}; the why of "${id}" table "${table}" is not a string`);
+  }
+  return declared;
 }
 
 function checkRunRecord(kind, run, { digest, ops, problems, partial, warnings }) {

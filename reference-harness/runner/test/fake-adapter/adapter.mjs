@@ -5,6 +5,9 @@
 //   FAKE_VERSION=<n>            the version its ready line reports (default 1)
 //   FAKE_MODE=read-writes       every render also inserts a card row
 //   FAKE_MODE=step-read-writes  the first render after a write inserts a card row
+//   FAKE_MODE=write-other-table every write also inserts a row in the deck's
+//                               `sessions` table (outside the card tables), as
+//                               an engine with its own bookkeeping table would
 //   FAKE_MODE=crash-after:<n>   exits without answering request n+1
 //   FAKE_MODE=wrong-html:<card> renders that card with different content
 
@@ -43,6 +46,7 @@ function answer(req) {
     case "write": {
       sawWrite = true;
       const id = insertCard(req.card);
+      if (mode === "write-other-table") db.prepare("INSERT INTO sessions (token) VALUES (?)").run(`session for ${req.card}`);
       return { saved: true, errors: [], card: { name: req.card, id }, mail: [] };
     }
     case "signin":

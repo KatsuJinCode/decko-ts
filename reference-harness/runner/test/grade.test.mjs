@@ -19,10 +19,7 @@ let good; // a clean, complete actual run
 
 before(() => {
   tmp = scratch();
-  ({ fixture, expected } = makeCapturedFixture(tmp.dir));
-  good = path.join(tmp.dir, "good");
-  const r = runFake(fixture, good);
-  assert.equal(r.status, 0, r.stderr);
+  ({ fixture, expected, actual: good } = makeCapturedFixture(tmp.dir));
 });
 after(() => tmp.cleanup());
 
@@ -96,6 +93,74 @@ describe("mutations during reads (finding 12)", () => {
     const report = grade(dir);
     assert.equal(report.verdict, "invalid");
     assert.notEqual(gradeCli(["--fixture", fixture, "--actual", dir]).status, 0);
+  });
+});
+
+describe("write steps' other tables (finding 5)", () => {
+  /** Sets a write step's `other_tables` delta on top of what the run recorded. */
+  const injectOtherTables = (dir, tables) => {
+    const file = path.join(dir, "scenarios.jsonl");
+    const lines = readFileSync(file, "utf8").trim().split("\n").map((l) => JSON.parse(l));
+    const scenario = lines.find((l) => l.id === "create-then-render");
+    scenario.steps[0].other_tables = { ...scenario.steps[0].other_tables, ...tables };
+    writeFileSync(file, lines.map((l) => JSON.stringify(l)).join("\n") + "\n");
+  };
+  const syntheticSessions = { sessions: { inserted: [{ id: 999999, token: "synthetic" }], updated: [], deleted: [] } };
+
+  it("the reviewer's control: a synthetic sessions insert on a write step fails the grade", () => {
+    const dir = copyGood();
+    injectOtherTables(dir, syntheticSessions);
+    const report = grade(dir);
+    assert.equal(report.verdict, "fail");
+    assert.equal(report.other_tables.fail, 1);
+    assert.deepEqual(report.other_tables.failures.map((f) => f.id), ["create-then-render#1"]);
+    assert.deepEqual(report.other_tables.failures[0].tables, ["sessions"]);
+    assert.equal(report.other_table_writes[0].verdict, "fail");
+    const cli = gradeCli(["--fixture", fixture, "--actual", dir]);
+    assert.equal(cli.status, 1);
+    assert.match(cli.stdout, /create-then-render#1: wrote rows in tables outside the card tables/);
+  });
+
+  it("a declared difference is graded as declared and passes", () => {
+    const dir = copyGood();
+    injectOtherTables(dir, syntheticSessions);
+    const declared = { "create-then-render#1": { sessions: "the engine keeps its own session rows" } };
+    const report = grade(dir, { declaredOtherTables: declared });
+    assert.equal(report.verdict, "pass");
+    assert.equal(report.other_tables.declared, 1);
+    assert.equal(report.other_table_writes[0].verdict, "declared");
+    assert.deepEqual(report.other_table_writes[0].declared.map((d) => d.table), ["sessions"]);
+    const file = path.join(tmp.dir, "declared-other-tables.json");
+    writeJson(file, declared);
+    assert.equal(gradeCli(["--fixture", fixture, "--actual", dir, "--declared-other-tables", file]).status, 0);
+  });
+
+  it("a declaration is keyed on the step id and the table: another step or table does not cover it", () => {
+    for (const declared of [{ "create-then-render#2": { sessions: "another step" } }, { "create-then-render#1": { other: "another table" } }]) {
+      const dir = copyGood();
+      injectOtherTables(dir, syntheticSessions);
+      assert.equal(grade(dir, { declaredOtherTables: declared }).verdict, "fail", JSON.stringify(declared));
+    }
+  });
+
+  it("a write that really touches a non-card table is graded: equal deltas pass, a changed delta fails or is declared", () => {
+    const t = scratch();
+    try {
+      const cap = makeCapturedFixture(t.dir, { captureOpts: { mode: "write-other-table" }, runOpts: { mode: "write-other-table" } });
+      const report = gradeRun({ fixture: cap.fixture, actual: cap.actual });
+      assert.equal(report.verdict, "pass");
+      assert.equal(report.other_tables.graded, 1);
+      assert.equal(report.other_tables.pass, 1);
+      assert.ok(report.other_table_writes[0].expected.sessions, "the write really recorded a non-card delta");
+      const dir = copyDir(cap.actual, path.join(t.dir, "tampered"));
+      injectOtherTables(dir, { sessions: { inserted: [{ id: 999999, token: "another engine's row" }], updated: [], deleted: [] } });
+      assert.equal(gradeRun({ fixture: cap.fixture, actual: dir }).verdict, "fail");
+      const declared = gradeRun({ fixture: cap.fixture, actual: dir, declaredOtherTables: { "create-then-render#1": { sessions: "engine bookkeeping" } } });
+      assert.equal(declared.verdict, "pass");
+      assert.equal(declared.other_tables.declared, 1);
+    } finally {
+      t.cleanup();
+    }
   });
 });
 

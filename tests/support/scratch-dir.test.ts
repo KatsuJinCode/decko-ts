@@ -1,15 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { cleanupScratch, registeredScratch, scratchDir } from "./scratch-dir.mjs";
+import { SCRATCH_OWNERSHIP_FILE, cleanupScratch, registeredScratch, scratchDir, scratchOwnershipMatches, scratchRoot } from "./scratch-dir.mjs";
 
 const helperUrl = new URL("./scratch-dir.mjs", import.meta.url).href;
 
 function leftovers(prefix: string): string[] {
-  return readdirSync(tmpdir()).filter((n) => n.startsWith(prefix));
+  return readdirSync(scratchRoot()).filter((n) => n.startsWith(prefix));
 }
 
 // A throwaway script that creates a scratch directory, fills it, prints the
@@ -30,15 +29,26 @@ function runFixture(prefix: string, mode: "ok" | "throw", env: Record<string, st
   return { dir: r.stdout.trim(), status: r.status };
 }
 
-describe("scratch-dir helper leaves nothing in the OS temp folder", () => {
+describe("scratch-dir helper leaves nothing behind in the repo scratch root", () => {
   it("removes the directory when the script exits normally", () => {
     const prefix = `scratch-selftest-ok-${process.pid}-`;
     const before = leftovers(prefix);
     const { dir, status } = runFixture(prefix, "ok");
     expect(status).toBe(0);
-    expect(dir.startsWith(tmpdir())).toBe(true);
+    expect(dir.startsWith(scratchRoot())).toBe(true);
     expect(existsSync(dir)).toBe(false);
     expect(leftovers(prefix)).toEqual(before);
+  });
+
+  it("creates directories under the repo scratch root, owned by this checkout", () => {
+    const dir = scratchDir(`scratch-selftest-owned-${process.pid}-`);
+    try {
+      expect(dir.startsWith(scratchRoot())).toBe(true);
+      expect(existsSync(join(dir, SCRATCH_OWNERSHIP_FILE))).toBe(true);
+      expect(scratchOwnershipMatches(dir)).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("removes the directory when the script fails", () => {

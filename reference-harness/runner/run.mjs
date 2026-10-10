@@ -160,7 +160,8 @@ try {
           results.push({
             ...(answer.ok ? { result: answer.result } : { error: answer.error }),
             // Raw row delta in Decko's card tables (graded as persistence),
-            // and any other table the step changed (graded for reads).
+            // and any other table the step changed (graded too: a write's
+            // must equal the oracle's, a read's the oracle's empty).
             rows,
             ...(Object.keys(other).length ? { other_tables: other } : {}),
           });
