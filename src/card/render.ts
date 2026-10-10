@@ -1954,6 +1954,16 @@ export class RenderEngine implements RenderEngineLike {
     // guard hit instead of depending on fallback-round ordering.
     const format = new RenderFormat(rootCard, this, {
       maxDepth: RUBY_MAX_DEPTH,
+      // The bare view lane rescues nested render errors to the quiet span,
+      // the same render-global config the page lane passes (page.ts
+      // nestQuietErrors: true): Ruby's wrap_and_render rescue is quiet for
+      // every NESTED render (nesting/subformat.rb:41-43 focal? is
+      // depth.zero?, and a nest's nesting format always has depth > 0).
+      // The previous default rethrew, so a nest-depth raise aborted the
+      // whole op where the oracle carries the full frames plus the inline
+      // render-error span (the seconds corpus's Chain/Loop ops,
+      // 2026-10-09).
+      nestQuietErrors: true,
       // THE bare view-lane root (render.ts renders nothing else at this
       // entry; page.ts builds its own rootFormat without the marker). The
       // census-M1 bar-seat climbs the parent chain for this flag.

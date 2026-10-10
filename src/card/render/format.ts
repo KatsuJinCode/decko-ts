@@ -1857,11 +1857,17 @@ export class RenderFormat {
       nestQuietErrors: this.nestQuietErrors,
     });
     // format/error.rb:33-40 monitor_depth runs in the SUBFORMAT's ok_view
-    // (view.rb:86), before its wrap_and_render rescue: a subformat at
-    // max_depth raises the too-deep UserError out of its own render, so the
-    // RENDER THAT NESTED IT rescues it (its quiet span replaces that whole
-    // view, e.g. the core of a chain's twentieth card). Hence the throw sits
-    // outside this nest's catch below.
+    // (view.rb:86), BEFORE its wrap_and_render rescue — outside the nested
+    // view's own quiet rescue — so the raise must skip THIS nest's catch and
+    // propagate to the enclosing view render's rescue boundary (the
+    // renderDelegated seam the titled/content body renders go through):
+    // there the nesting format's depth is > 0, so the quiet span replaces
+    // that WHOLE view — the synthetic-v2 oracle: Chain 20's body carries
+    // ONLY the render-error span (its own paragraph is discarded with the
+    // rescued view), 2026-10-09. Rescuing inside this catch (or letting the
+    // rethrow die on a lane without quiet errors) is the seconds corpus's
+    // TooDeep family: the bare view lane now passes nestQuietErrors like
+    // the page lane (render.ts).
     if (sub.depth >= this.maxDepth) {
       throw new TooDeepError();
     }

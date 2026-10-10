@@ -627,14 +627,18 @@ const rawView: ViewFn = ({ fmt }) => fmt.renderRaw();
 /** set/all/base.rb:101-103 view :labeled_content, unknown: :mini_unknown:
  *  `render_core`. The base body is the core view's bytes; the
  *  unknown-card substitution routes unknown cards to :mini_unknown.
- *  In the engine the core view is registered separately; this port
- *  just runs the core (renderCore would call into HTML_VIEWS.core, so
- *  the headless port calls renderView("core")). */
-const labeledContentView: ViewFn = ({ fmt }) => fmt.renderView("core");
+ *  In the engine the core view is registered separately; this port runs
+ *  the core through the delegated-render seam (renderDelegated): Ruby's
+ *  render_core is a METHOD delegation (method_missing -> render! -> its
+ *  own wrap_and_render rescue), so a raising core carries the quiet
+ *  render-error span inside this view's own output — the seconds corpus's
+ *  TooDeep family (2026-10-09) pinned the span at the body of the
+ *  depth-capped card, which only the delegation boundary produces. */
+const labeledContentView: ViewFn = ({ fmt }) => fmt.renderDelegated("core");
 
 /** set/all/base.rb:105-107 view :titled_content, unknown: :blank:
- *  `render_core`. Same body as :labeled_content. */
-const titledContentView: ViewFn = ({ fmt }) => fmt.renderView("core");
+ *  `render_core`. Same rescue-scoped delegation as :labeled_content. */
+const titledContentView: ViewFn = ({ fmt }) => fmt.renderDelegated("core");
 
 /** set/all/base.rb:109-111 view :blank, perms: :none:
  *  the literal empty string. (HTML_VIEWS already has a blankView; this
@@ -643,9 +647,10 @@ const titledContentView: ViewFn = ({ fmt }) => fmt.renderView("core");
 const blankView: ViewFn = () => "";
 
 /** set/all/base.rb:125-127 view :labeled: `"#{card.name}: #{_render_
- *  labeled_content}"`. */
+ *  labeled_content}"` — _render_labeled_content is the same rescue-scoped
+ *  method delegation (see :labeled_content above). */
 const labeledView: ViewFn = ({ fmt }) =>
-  `${fmt.card.name.s}: ${fmt.renderView("labeled_content")}`;
+  `${fmt.card.name.s}: ${fmt.renderDelegated("labeled_content")}`;
 
 /** set/all/html.rb:5-7 and set/type/cardtype.rb:2-4 view :type, unknown:
  *  true: `link_to_card card.type_card, nil, class: "cardtype"` - the html
