@@ -162,6 +162,10 @@ import {
   sessionCookieHeader,
   clearedSessionCookieHeader,
 } from "./dist/src/server/write-routes.js";
+// The session location history (card/lib/card/env/location_history.rb +
+// mod/session set/all/location_history.rb): full-page reads push their URL,
+// `*previous` resolves to the last entry, a delete discards the card's.
+import { SessionLocationHistory } from "./dist/src/server/session-location-history.js";
 // The recaptcha seat's host-config source (staging-seat-wiring lane): reads
 // the DECKO_RECAPTCHA_* environment keys into the WriteRouteContext.recaptcha
 // seat (write-routes.ts). Undefined until ops sets the keys — INERT by
@@ -606,6 +610,8 @@ if (firstRunEnabled() && writePathEnabled()) {
   }
 }
 const sessions = new SessionStore({ driver: authDriver });
+// One history per visitor session, server-side like Ruby's session store.
+const locationHistory = new SessionLocationHistory();
 
 // ---------------------------------------------------------------------------
 // Account email-token flows boot (lane-reset-flows)
@@ -3300,6 +3306,10 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
       fetcher,
       attachmentStore,
       followMail: followMailContext,
+      // The `*previous` success-mark resolution (mark.rb:12-14): the edit
+      // modal's Delete link carries success[mark]=*previous, and the delete's
+      // hard-redirect JSON answers the session's previous location.
+      ...(cookieToken !== null ? { previousLocation: () => locationHistory.previous(cookieToken) } : {}),
       ...(scssCompiler === undefined ? {} : { scssCompiler }),
       coffeeCompiler,
       // staging-seat-wiring lane: the recaptcha seat, composed only when the
@@ -3585,6 +3595,22 @@ const server = http.createServer(async (req, res) => {
       const writeResponse = await dispatchWriteRequest(req, pathname);
       if (writeResponse !== null) {
         res.writeHead(writeResponse.status, writeResponse.headers).end(writeResponse.body);
+        // event :discard_deleted_locations (:finalize, on: :delete —
+        // mod/session set/all/location_history.rb): a successful delete drops
+        // the deleted card's own entries from the session's location history
+        // (the *previous resolution read the history BEFORE this, so the
+        // delete's redirect still answers the page the delete was fired
+        // from). The url key is the location Cardname form: the path's first
+        // segment, underscore-encoded.
+        if (
+          writeResponse.expiryName !== undefined &&
+          (req.method === "DELETE" || /^\/(card\/)?delete(\/|$)/.test(pathname))
+        ) {
+          const cookieToken2 = readSessionCookie(req.headers.cookie);
+          if (cookieToken2 !== null) {
+            locationHistory.discardCard(cookieToken2, writeResponse.expiryName.replace(/\s+/g, "_"));
+          }
+        }
         // Ruby expires the saved card's cache on every save (card-1.110.0
         // director/phases.rb:54 after_commit -> cache/all.rb:17-24 expire).
         // The write engine runs on its own per-request fetcher, so the
@@ -3626,6 +3652,9 @@ const server = http.createServer(async (req, res) => {
   const requestEngine = actor !== null ? engineForActor(actor.id) : render;
 
   let response;
+  // The card name the page branches served (the location-history push checks
+  // its known-ness against the fetcher once, after the branch chain).
+  let servedCardName;
   try {
     const flowLink = parseAccountFlowLink(pathname, url.searchParams);
     if (
@@ -3752,6 +3781,7 @@ const server = http.createServer(async (req, res) => {
     } else if (pathname === "/") {
       // The home page renders for the session's account like any other page.
       response = await renderCardPage(HOME_CARD_NAME, requestEngine, requestedView, undefined, pageOpts);
+      servedCardName = HOME_CARD_NAME;
     } else if (STOCK_DECK && MOD_PUBLIC_DIR !== undefined && pathname.startsWith("/mod/")) {
       response = await serveModPublicFile(pathname);
     } else if (pathname.startsWith("/files/")) {
@@ -3812,6 +3842,7 @@ const server = http.createServer(async (req, res) => {
           STOCK_DECK ? await newCardRenderParams(name, url.searchParams) : undefined,
           pageOpts,
         );
+        servedCardName = name;
       }
     } else {
       // Multi-segment GET grammar — decko-0.20.0 config/engine_routes.rb,
@@ -3868,6 +3899,7 @@ const server = http.createServer(async (req, res) => {
           response = jsonResponse(400, { error: "empty card name" });
         } else {
           response = await renderCardPage(name, requestEngine, routeView, undefined, pageOpts);
+          servedCardName = name;
         }
       } else {
         response = htmlResponse(
@@ -3875,6 +3907,33 @@ const server = http.createServer(async (req, res) => {
           `<h1>Not found</h1><pre>No route for ${escapeHtml(pathname)} — try /<card-name> or /<card-name>.json</pre>`,
           "Not found",
         );
+      }
+    }
+    // event :save_current_location (mod/session set/all/location_history.rb):
+    // a full-page read of a KNOWN card pushes its own URL onto the session's
+    // location history (save_location?, location_history.rb:47-51:
+    // non-ajax, html, known, not the *signin codename — the html leg is the
+    // request's Accept negotiation). The `*previous` success mark resolves
+    // to the LAST entry, so a delete fired from an edit page answers its
+    // hard-redirect JSON with that page's own address.
+    if (
+      req.method === "GET" &&
+      servedCardName !== undefined &&
+      response.status === 200 &&
+      String(response.headers["Content-Type"] ?? "").includes("text/html") &&
+      req.headers["x-requested-with"] !== "XMLHttpRequest" &&
+      String(req.headers.accept ?? "").includes("text/html") &&
+      !SIGNIN_PAGE_PATHS.has(pathname)
+    ) {
+      const historyToken = readSessionCookie(req.headers.cookie);
+      if (historyToken !== null) {
+        const knownRecord = await requestEngine.fetcher.fetchByName(servedCardName).catch(() => undefined);
+        if (knownRecord?.id !== undefined) {
+          locationHistory.push(
+            historyToken,
+            `http://${req.headers.host}${url.pathname}${url.search}`,
+          );
+        }
       }
     }
   } catch (error) {

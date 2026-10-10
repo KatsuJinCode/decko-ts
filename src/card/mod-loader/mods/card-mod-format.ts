@@ -2098,7 +2098,12 @@ const setModules: ModSetModuleFile[] = [
         on: ["save"],
         fn: (card) => {
           const message = numberValidationMessage(card.dbContent ?? "");
-          if (message !== null) throw new CardActionError("user-error", message, message);
+          if (message !== null)
+            // The errors view shows the attribute key before the message and
+            // titles the alert "Problems with <name>" (standard_errors +
+            // voo.title, html/error.rb:54-66) — the card name rides the
+            // error for the alert's heading.
+            throw new CardActionError("user-error", message, message, { content: message }, card.name);
         },
       },
     ],

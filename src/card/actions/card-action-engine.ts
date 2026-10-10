@@ -1579,6 +1579,14 @@ export class CardActionEngine {
     const typeId =
       opts.resolvedTypeId ??
       (await resolveTypeId(this.fetch, { ...input, name })); // extract_type_id! + type_id_from_code + default
+    // The validate-stage event card reads this variable (the closure below):
+    // once the form's type resolution lands, the type-scoped set modules'
+    // events (set/type/number.rb :validate_number — card-mod-format's
+    // `errors.add :content, t(:format_not_numeric) unless content.number?`)
+    // match by it. Leaving the caller's undefined in place silently skipped
+    // every type-scoped validate event on a create whose type the request
+    // itself resolved.
+    eventTypeId = typeId;
     // set_default_content (content.rb:12-15, :prepare_to_validate, on:
     // :create, when: use_default_content?): a create that assigns no content
     // takes the new-card template's content. Ruby's db_content_changed? is
@@ -3295,10 +3303,20 @@ export class CardActionEngine {
     const card = await composeCardRecord(row, this.fetch.lexicon);
     await this.assertCanWrite(card, "delete"); // ok_to_delete? (permissions.rb:155-157)
     if (row.codename !== null && row.codename !== "") {
-      // validate_delete (trash.rb:31-34): "error: system card"
+      // validate_delete (trash.rb:31-34): errors.add :delete,
+      // t(:core_error_system_card, name: name, codename: codename) —
+      // card/mod/core/config/locales/en.yml:18 "%{name} is is a system
+      // card. (%{codename})" (the doubled "is" is the shipped template's).
+      // The errors view shows the attribute upcased before the message
+      // (standard_errors "<KEY>: <message>") and titles the alert
+      // "Problems with <name>".
+      const message = `${card.name?.s ?? `~${row.id}`} is is a system card. (${row.codename})`;
       throw new CardActionError(
         "protected-card",
-        `card has a codename and cannot be deleted: ${card.name?.s ?? `~${row.id}`}`,
+        message,
+        `DELETE: ${message}`,
+        { delete: message },
+        card.name?.s,
       );
     }
     // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55) is a

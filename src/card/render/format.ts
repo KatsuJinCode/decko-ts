@@ -1181,7 +1181,7 @@ export class RenderFormat {
           // 1,377-char loud frame plus one extra closing </div> on every
           // +discussion page where the Ruby oracle renders nothing.
           if (this.isMain && viewDenialView(normalized) === undefined) {
-            return this.mainLoudDenialHtml(voo);
+            return this.mainLoudDenialHtml(voo, this.focalDeniedTask(normalized));
           }
           return denial;
         }
@@ -1216,12 +1216,7 @@ export class RenderFormat {
         if (denial !== undefined) {
           this.noteFocalDenial(voo);
           if (this.isMain && viewDenialView(normalized) === undefined) {
-            // The task the loud message names (permission.rb denied_task):
-            // the view's perms task, update read as create on a new card.
-            const perms = resolveViewPerms(normalized);
-            let deniedTask: CrudTask = perms.check && !perms.predicate ? perms.task : "read";
-            if (deniedTask === "update" && this.card.id === undefined) deniedTask = "create";
-            return this.mainLoudDenialHtml(voo, deniedTask);
+            return this.mainLoudDenialHtml(voo, this.focalDeniedTask(normalized));
           }
           return denial;
         }
@@ -1329,12 +1324,26 @@ export class RenderFormat {
     return SELF_SET_TITLE_OVERRIDES.get(this.card.record.codename ?? "");
   }
 
+  /** The task the loud denial message names (card/lib/card/format/error.rb:38-42
+   *  view_for_denial `@denied_task = task` — the FAILING task, which html/error.rb:214-222
+   *  to_do_unauthorized_task interpolates into "to %{denied_task} this"). The view's
+   *  perms task (view-perms.ts resolveViewPerms), read for method predicates, and a
+   *  new card's update reads as create (error.rb:5-7 ok? `task = :create if
+   *  task == :update && card.new_card?`). Both focal-denial arms share this so a
+   *  known card's edit denial names update exactly as an unknown-card arm does. */
+  private focalDeniedTask(view: string): CrudTask {
+    const perms = resolveViewPerms(view);
+    const task: CrudTask = perms.check && !perms.predicate ? perms.task : "read";
+    return task === "update" && this.card.id === undefined ? "create" : task;
+  }
+
   /** The focal (main-format) arm of html/error.rb's :denial view — public
    *  for the composed deck's all/error html table, whose :denial view
    *  renders `focal? ? loud_denial : quiet_denial` (error.rb:75-77): the
    *  non-focal arm is the quiet span (the corpus's view-lane :denial
    *  bytes), the focal arm is this loud frame (the golden the dual-lane
-   *  denial pages pin). */
+   *  denial pages pin). The denied task rides focalDeniedTask (this
+   *  round's failing-task resolution) unless the caller pins it. */
   mainLoudDenialHtml(voo: Voo, deniedTask: CrudTask = "read"): string {
     voo.hide("menu");
     voo.hide("help");

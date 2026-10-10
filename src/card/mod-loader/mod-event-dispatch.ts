@@ -312,14 +312,30 @@ function whenConditionApplies(
 }
 
 /** set_condition_applies? (all.rb:26-29): "all/"-pattern set modules are
- *  included on every card; anything scoped consults the runtime resolver. */
-function setConditionApplies(
+ *  included on every card; anything scoped consults the runtime resolver.
+ *  The built-in fallback resolves the TYPE-scoped sets ("type/<codename>":
+ *  the card's type carries the codename — set/type/number.rb's
+ *  :validate_number and set/type/json.rb :validate_json are the registry's
+ *  type-scoped entries); a runtime that supplies its own setMember keeps
+ *  precedence. Without one of the two, a scoped event is
+ *  set-not-applicable — the silent skip that left the port creating Number
+ *  cards Ruby refuses. */
+async function setConditionApplies(
   event: RegisteredModEvent,
   runtime: ModEventRuntime,
   card: ModEventCard,
-): boolean {
+  ctx: ModEventContext | undefined,
+): Promise<boolean> {
   if (event.setPath.startsWith("all/")) return true;
-  return runtime.setMember?.(event.setPath, card) ?? false;
+  const supplied = runtime.setMember?.(event.setPath, card);
+  if (supplied !== undefined) return supplied;
+  const typeMatch = /^type\/(.+)$/.exec(event.setPath);
+  if (typeMatch === null || ctx === undefined || card.typeId === undefined) return false;
+  const codenameRow = await ctx.driver
+    .query<{ id: number }>("SELECT id FROM cards WHERE codename = ? AND trash = 0", [typeMatch[1]])
+    .then((r) => r.rows[0])
+    .catch(() => undefined);
+  return codenameRow !== undefined && card.typeId === codenameRow.id;
 }
 
 // ---------------------------------------------------------------------------
@@ -432,7 +448,7 @@ export async function runModEventStage(
       skipped.push({ event: event.event, reason: "trigger" });
       continue;
     }
-    if (!setConditionApplies(event, runtime, card)) {
+    if (!(await setConditionApplies(event, runtime, card, ctx))) {
       skipped.push({ event: event.event, reason: "set-not-applicable" });
       continue;
     }
