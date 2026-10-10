@@ -284,6 +284,28 @@ export function registerBuiltInContentOverride(entry: RegisteredContentOverride)
 
 let defaultRegistry: ContentOverrideRegistry | undefined = BUILT_IN_DEFAULT_REGISTRY;
 
+/** The registry the render path reads when a deck boot binds one. A deck
+ *  boot REPLACES the loader-less built-in default registry, and the mod
+ *  manifests deliberately do NOT re-declare the engine-layer `def content`
+ *  hooks (the bootstrap mod's own note above: a manifest entry never
+ *  registers for loader-less consumers) — so the consultation walks the
+ *  built-in entries FIRST and the bound registry SECOND: the bound (mod)
+ *  entries keep precedence on a shared set path (last match wins, the same
+ *  rule the single registry walked by), and the engine-layer hooks Ruby's
+ *  include chain always carries survive every mod-deck boot (the edge
+ *  hosts' serve boots, the staging VM). Without the underlay walk, a booted
+ *  host rendered the affected cards' empty stored rows. Unbinding
+ *  (undefined) stays a full unbind — no registry, no bytes (the corpus
+ *  suite pin). The bound registry itself is never mutated (the loader's
+ *  own-registry pins stay exact), and binding-then-registering keeps
+ *  working: the walk reads the live bound registry. */
+function consultRegistries(): readonly ContentOverrideRegistry[] {
+  if (defaultRegistry === undefined) return [];
+  return defaultRegistry === BUILT_IN_DEFAULT_REGISTRY
+    ? [defaultRegistry]
+    : [BUILT_IN_DEFAULT_REGISTRY, defaultRegistry];
+}
+
 /** Bind a registry as the render-path default (call after the mod loader's
  *  SetLoader phase). The render layer reads from this seam; mod porters do
  *  NOT need to know about the engine - they hand their ContentFn to the
@@ -300,7 +322,12 @@ export function setDefaultContentOverrideRegistry(
  *  registered one). Mirrors mod-loader.ts#modViewUnknown / modViewPerms -
  *  the same process-wide-default pattern. */
 export function contentOverrideFor(setPath: string): RegisteredContentOverride | undefined {
-  return defaultRegistry?.forPath(setPath);
+  // the bound (mod) registry keeps precedence, the built-in entries underlay
+  for (const reg of [...consultRegistries()].reverse()) {
+    const entry = reg.forPath(setPath);
+    if (entry !== undefined) return entry;
+  }
+  return undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -333,6 +360,14 @@ export function cardBelongsToSet(card: RenderCard, setPath: string): boolean {
   const slash = setPath.indexOf("/");
   const pattern = slash === -1 ? setPath : setPath.slice(0, slash);
   const anchor = slash === -1 ? "" : setPath.slice(slash + 1);
+
+  // A card without a name belongs to no named set (the render path only
+  // ever passes named cards; this guard keeps synthetic rigs honest now
+  // that the consultation walks the built-in registry too — its self/star
+  // arms read the card's name).
+  if (card.name === undefined && pattern !== "all" && pattern !== "abstract") {
+    return false;
+  }
 
   switch (pattern) {
     case "all":
@@ -422,13 +457,16 @@ export function resolveContentOverride(fmt: RenderFormat): string | undefined {
 export function resolveContentOverrideEntry(
   fmt: RenderFormat,
 ): RegisteredContentOverride | undefined {
-  if (defaultRegistry === undefined) return undefined;
   const card = fmt.card;
   let lastMatch: RegisteredContentOverride | undefined;
-  for (const setPath of defaultRegistry.paths()) {
-    if (!cardBelongsToSet(card, setPath)) continue;
-    const reg = defaultRegistry.forPath(setPath);
-    if (reg !== undefined) lastMatch = reg;
+  // the built-in entries underlay the bound registry: walking them FIRST
+  // lets the bound (mod) entry win a shared set path (last match wins)
+  for (const registry of consultRegistries()) {
+    for (const setPath of registry.paths()) {
+      if (!cardBelongsToSet(card, setPath)) continue;
+      const reg = registry.forPath(setPath);
+      if (reg !== undefined) lastMatch = reg;
+    }
   }
   return lastMatch;
 }
