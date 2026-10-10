@@ -292,13 +292,32 @@ export function toWebResponse(
 // the surfaces
 // ---------------------------------------------------------------------------
 
-function plainText(status: number, title: string, message: string): WorkersWriteResponse {
+/** Entity-escape a string landing in an HTML text or attribute slot. The
+ *  body is verbatim worker.ts's escapeHtml (the deploy lineage's 5dd6ab0
+ *  fix, carried through 12bd5236) — the same four entities in the same
+ *  order, so every HTML emitter in the repo escapes identically. */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** The write surface's HTML error-page emitter. Title AND message are
+ *  entity-escaped HERE, at the emission point (the root worker's error
+ *  pages pin the same contract — worker.ts:365-371): the message slot is
+ *  one careless call away from embedding a requested name or an engine
+ *  error's raw text, and an unescaped interpolation would reflect
+ *  executable markup back onto the requesting browser. Today's call sites
+ *  pass fixed literals; the escape keeps that fact irrelevant. */
+export function plainText(status: number, title: string, message: string): WorkersWriteResponse {
   return {
     status,
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
     body:
-      `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title></head>` +
-      `<body><h1>${title}</h1><p>${message}</p></body></html>`,
+      `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title></head>` +
+      `<body><h1>${escapeHtml(title)}</h1><p>${escapeHtml(message)}</p></body></html>`,
   };
 }
 
