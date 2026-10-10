@@ -1131,7 +1131,7 @@ export async function actionHashList(
 
 import { DeckoName } from "../../name.js";
 import { h, emitAttrs, newSlotId, slotOptionsJson } from "../../render/slot-html.js";
-import { RenderFormat, Voo, type ViewContext, type ViewFn } from "../../render/format.js";
+import { RenderFormat, Voo, type RenderCard, type ViewContext, type ViewFn } from "../../render/format.js";
 import { ContentDiff } from "../../history/content-diff.js";
 import type { HistoryRenderParams, HistoryRenderReader } from "../../history/render-seam.js";
 
@@ -1375,6 +1375,40 @@ function actionContentToggleBytes(
  *  @content_diff_object memoization (differ.rb:79-86); the flag is only
  *  meaningful AFTER the summary rendered (summary.rb:31-33 reads the
  *  render-time @content_omitted). */
+/**
+ * Whether the card's html format chain includes a `content_changes` override
+ * that pre-wraps the action diff in `wrap_with(:pre)`. Two gem families
+ * carry the identical `def content_changes action, diff_type, hide_diff=false
+ * wrap_with(:pre) { super } end` (format :html):
+ *
+ * - Abstract::Css (card-mod-style set/abstract/01_css.rb:42-44): the css
+ *   type (set/type/css.rb:1), the scss type (set/type/scss.rb:1 ->
+ *   Abstract::Scss -> 02_scss.rb:1), the bootswatch_skin type
+ *   (card-mod-bootstrap set/type/bootswatch_skin.rb:29 -> Abstract::Scss),
+ *   and the codename-anchored BootstrapCodeFile cards
+ *   (set/abstract/bootstrap_code_file.rb:1 -> Abstract::Scss).
+ * - Abstract::Script (card-mod-script set/abstract/00_script.rb:68-70): the
+ *   java_script type (type/java_script.rb:3 -> Abstract::JavaScript ->
+ *   01_java_script.rb:3) and the coffee_script type (type/coffee_script.rb:3
+ *   -> Abstract::CoffeeScript -> 02_coffee_script.rb:5). The script GROUP
+ *   types ride Abstract::ScriptGroup -> AssetGroup, which defines no
+ *   content_changes - not in this family.
+ */
+function actionDiffPrewrapped(card: RenderCard): boolean {
+  switch (card.typeCode) {
+    case "css":
+    case "scss":
+    case "bootswatch_skin":
+    case "java_script":
+    case "coffee_script":
+      return true;
+    default: {
+      const codename = card.record.codename;
+      return codename === "bootstrap_core" || codename === "bootstrap_functions";
+    }
+  }
+}
+
 function actionContentBytes(
   ctx: ViewContext,
   reader: HistoryRenderReader,
@@ -1398,9 +1432,27 @@ function actionContentBytes(
   // BOTH view kinds. The corpus *recent oracle pins the summary arm
   // (action 1032, an update whose content diff summary is blank ->
   // <i>empty</i>); the expanded arm rides the same content_diff call.
+  // The PRE-WRAP FAMILIES evaluate the guard on the WRAPPED string: the
+  // Abstract::Css and Abstract::Script format :html blocks (01_css.rb
+  // :42-44, 00_script.rb:68-70 - actionDiffPrewrapped above) override
+  // content_changes as `wrap_with(:pre) { super }`, so a blank diff answers
+  // "<pre></pre>" - present! - and "<i>empty</i>" stays reachable only
+  // through the new_content? false short-circuit (the guard never sees a
+  // blank string). Oracle: the Corpus Skin act's summaries on the *recent
+  // pages (action 1027 "<pre><ins>...</ins></pre>", the empty
+  // +*colors/+*variables creates "<pre></pre>", the Corpus Script create
+  // 1018 "<pre><ins>...</ins></pre>") against the RichText control
+  // (action 1032 "<i>empty</i>") and the SCSS update without a content
+  // change (action 994 "<i>empty</i>" - short-circuited).
   const rawDiff =
     dobj === undefined ? null : viewKind === "summary" ? dobj.summary : dobj.complete;
-  const diff = rawDiff === null || rawDiff.trim() === "" ? "<i>empty</i>" : rawDiff;
+  const diff = actionDiffPrewrapped(ctx.fmt.card)
+    ? rawDiff === null
+      ? "<i>empty</i>"
+      : `<pre>${rawDiff}</pre>`
+    : rawDiff === null || rawDiff.trim() === ""
+      ? "<i>empty</i>"
+      : rawDiff;
   return toggle === null ? diff : `${toggle}\n${diff}`;
 }
 
@@ -1466,18 +1518,31 @@ function nestedActionSummary(
  *  add_content separator the capture pins. actionListClass is the
  *  classy("action-list") value - board_act's class_up "action-list",
  *  "my-3" (history_board.rb:22) makes it "action-list my-3"; the default
- *  is the plain class every other caller renders. */
+ *  is the plain class every other caller renders. actCardName is the name
+ *  of the card whose FORMAT renders this action - Ruby's ActionRenderer
+ *  @format: act_listing.rb:73-75 act_list (the feeds - :history's
+ *  :relative list and the *recent :absolute list) swaps to
+ *  `act.card.format(:html)` per act, while view :act (views.rb:15-17) and
+ *  view :board_act (history_board.rb:24-25) call act_listing DIRECTLY on
+ *  the view's format - and name_diff's compound branch
+ *  relativizes against THAT card (action_renderer.rb:63-65
+ *  `@action.card.name.from @format.card.name`). Oracle: the *recent pages
+ *  render the Corpus Skin act's subcard actions as "+*colors" /
+ *  "Cohort Welcome+*subject" as "+*subject" while the same items'
+ *  self-acts keep the full name; the capture probe#act(child_act) pins
+ *  the child's action relative to the PAGE card. */
 function actionRendererBytes(
   ctx: ViewContext,
   reader: HistoryRenderReader,
   action: HistoryActionRow,
+  actCardName: string,
   actionListClass = "action-list",
 ): string {
   const cardInfo = reader.actionCard(action);
   // name_diff (action_renderer.rb:62-82)
   let nameDiff: string;
   if (cardInfo !== undefined && DeckoName.parse(cardInfo.name).isCompound) {
-    nameDiff = h(DeckoName.parse(cardInfo.name).from(ctx.fmt.card.name));
+    nameDiff = h(DeckoName.parse(cardInfo.name).from(actCardName));
   } else {
     nameDiff = nameChangesBytes(ctx, reader, action);
   }
@@ -1506,11 +1571,12 @@ function actDetailsBytes(
   ctx: ViewContext,
   reader: HistoryRenderReader,
   actions: HistoryActionRow[],
+  actCardName: string,
   actionListClass = "action-list",
 ): string {
   const approved = reader.approvedActions(actions).slice(0, 21);
   return approved
-    .map((action) => actionRendererBytes(ctx, reader, action, actionListClass))
+    .map((action) => actionRendererBytes(ctx, reader, action, actCardName, actionListClass))
     .join("");
 }
 
@@ -1638,7 +1704,9 @@ function relativeActItemBytes(
   return accordionItemBytes({
     headerInner,
     subheader: relativeActSubheader(ctx, reader, act, actions),
-    body: actDetailsBytes(ctx, reader, actions),
+    // the :relative context renders with the PAGE format
+    // (act_listing.rb:73 `context == :relative ? self : ...`)
+    body: actDetailsBytes(ctx, reader, actions, ctx.fmt.card.name.s),
     collapseId: `act-id-${act.id}`,
   });
 }
@@ -1700,7 +1768,10 @@ const actView: ViewFn = (ctx) => {
   return accordionItemBytes({
     headerInner,
     subheader: absoluteActLinks(actCard.name),
-    body: actDetailsBytes(ctx, reader, actions),
+    // views.rb:15-17 view :act calls act_listing DIRECTLY on the VIEW's
+    // format (no act_list swap - the capture probe#act(child_act) pins the
+    // child action's name relative to the PAGE card)
+    body: actDetailsBytes(ctx, reader, actions, ctx.fmt.card.name.s),
     collapseId: `act-id-${act.id}`,
   });
 };
@@ -1905,7 +1976,7 @@ const boardActView: ViewFn = (ctx) => {
   const header = `<div class="${voo.classy("d0-card-header")}">${overlayTitle}\n${menu}</div>`;
   // :24-25 act_listing(act, opts[:act_seq], :board) - the BOARD renderer's
   // render is the details list alone
-  const details = boardActDetails(ctx, reader, actions, actionListClass);
+  const details = boardActDetails(ctx, reader, actions, ctx.fmt.card.name.s, actionListClass);
   // wrap_body (wrap.rb:101-107): body_css_classes = d0-card-body +
   // safe_set_keys (the wrapper's @set_keys = true; NO d0-card-content,
   // NO bootstrap card-body class on this path)
@@ -1925,14 +1996,16 @@ const boardActView: ViewFn = (ctx) => {
 };
 
 /** ActRenderer#details for the board: approved_actions[0..20] with the
- *  view's class-upped action-list class. */
+ *  view's class-upped action-list class. history_board.rb:24-25 calls
+ *  act_listing on the VIEW's format (like view :act - no act_list swap). */
 function boardActDetails(
   ctx: ViewContext,
   reader: HistoryRenderReader,
   actions: HistoryActionRow[],
+  actCardName: string,
   actionListClass: string,
 ): string {
-  return actDetailsBytes(ctx, reader, actions, actionListClass);
+  return actDetailsBytes(ctx, reader, actions, actCardName, actionListClass);
 }
 
 /** The board_act pieces' PROBE SURFACE - the composition cores the harness
@@ -2284,7 +2357,9 @@ export function recentChangesCoreBytes(
       accordionItemBytes({
         headerInner,
         subheader: absoluteActLinks(actCard.name),
-        body: actDetailsBytes(ctx, reader, actions),
+        // acts_layout's :absolute context renders each act with the ACT
+        // CARD's format (act_listing.rb:73-75) - the name_diff context
+        body: actDetailsBytes(ctx, reader, actions, actCard.name),
         collapseId: `act-id-${act.id}`,
       }),
     );

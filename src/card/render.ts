@@ -7793,10 +7793,33 @@ export class RenderEngine implements RenderEngineLike {
     // The actions-by-act fold moved into finishHistoryReader (shared with
     // the deck-wide *recent source).
 
-    // The verdict pass for the newly enriched family cards, then the
+    // The verdict pass for the history family's involved cards, then the
     // act-level viewable filter (an act survives when at least one of its
     // actions' cards is readable - act.rb:54-59 DISTINCT semantics).
+    // ensureVerdicts judges this render's SEATS only - and a warm engine
+    // re-enriches held cards through enrichAndStore's early return WITHOUT
+    // re-seating them (resetDerivedRenderState clears renderSeats and
+    // deniedVerdicts together every render), so a deck-wide feed's act
+    // cards can ride a missing verdict - which isDenied reads as ALLOWED.
+    // Judge the family explicitly (the same input shape as the seat pass):
+    // the *recent feed's oracle pins the shape twice over - the anonymous
+    // *recent page must DROP the Shared Note 01/Contractor Note 01
+    // +*self+*read rule acts (their rule cards' own read rule is
+    // self-pointing, content "Anyone Signed In"/"Contractor" - not the
+    // anonymous parties) and BACKFILL the window with the next-readable
+    // acts (Report Index, Report 4).
     await this.ensureVerdicts();
+    for (const [involvedId, renderCard] of cardById) {
+      if (this.deniedVerdicts.has(involvedId)) continue;
+      const allowed = await this.cardReadAllowed(
+        renderCard.name,
+        involvedId,
+        renderCard.record.typeId,
+        renderCard.typeName,
+        renderCard.record.readRuleId,
+      );
+      this.deniedVerdicts.set(involvedId, allowed === false);
+    }
     // clean_acts (act_listing.rb:59-63, applied by BOTH sources'
     // acts_for_accordion): drop acts whose primary card row is gone.
     const cleanActs = rawActs.filter(
