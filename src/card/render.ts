@@ -363,12 +363,14 @@ function searchCqlLimit(statement: Record<string, unknown>): number | undefined 
  *  set/type/setting.rb#set_classes_with_rules + card-mod-rules
  *  set/type/setting/core.haml:1-12): every rule whose right part is the
  *  setting's name is bucketed under one of these classes, in this order.
- *  The *rule / *star / *rstar patterns are excluded — they don't classify
- *  setting children. The lookup order (PATTERN_TABLE) is preserved so the
- *  rendered per-pattern groups match Ruby's `klass.to_s` ordering. */
-const SETTING_CLASSES = PATTERN_TABLE.filter(
-  (spec) => spec.code !== "rule" && spec.code !== "star" && spec.code !== "rstar",
-);
+ *  Ruby walks ALL of `Pattern.concrete.reverse` — no pattern is excluded —
+ *  and a class survives whenever rules_for_set_class finds rows: the
+ *  oracle's *create Setting page carries `*star` and `*rstar` sections
+ *  (the deck stores *star+*create / *rstar+*create rows, and the earlier
+ *  rule/star/rstar exclusion dropped both sections from every *create
+ *  page). The lookup order (PATTERN_TABLE) reversed gives Ruby's
+ *  least-specific-first section order. */
+const SETTING_CLASSES = PATTERN_TABLE;
 
 /** The [[target]] wikilinks inside one content string, deduplicated by the
  *  caller's array (targets may repeat across cards). Target = the part
@@ -7853,11 +7855,12 @@ export class RenderEngine implements RenderEngineLike {
    *  `card.rules_for_set_class(klass)`: for a setting-type card (e.g.
    *  *read), walk every rule whose right part matches this setting and
    *  bucket by the LEFT pattern class. Each PatternSpec's patternCardName
-   *  (*all, *all plus, *type, *right, *type plus right, *self — in the
-   *  registry's lookup order, the ones a setting's children can carry)
-   *  becomes one bucket; `anchorless` mirrors whether the pattern carries
-   *  an `anchor_name` override (the *all and *all_plus specs don't, so
-   *  Ruby collapses those into a single full-name row; the anchored
+   *  (*all, *all plus, *type, *right, *type plus right, *self — the ones a
+   *  setting's children can carry) becomes one bucket, emitted in
+   *  `Pattern.concrete.reverse` order (least-specific first: *all opens the
+   *  page, *self closes it); `anchorless` mirrors whether the pattern
+   *  carries an `anchor_name` override (the *all and *all_plus specs don't,
+   *  so Ruby collapses those into a single full-name row; the anchored
    *  ones iterate per-rule). Used by the setting-card core view
    *  (setting.rb:39-55 + core.haml:1-12). */
   setClassesWithRules(host: RenderCard): SettingClassWithRules[] {
@@ -7901,30 +7904,38 @@ export class RenderEngine implements RenderEngineLike {
         bucket.push(card);
       }
     }
-    // core.haml renders the classes GENERAL -> SPECIFIC (the oracle's
-    // *read page: all cards, all "+" cards, cards of a given type, given
-    // field cards, a single card; the *create page interleaves the star
-    // rows between type and right) — the reverse of the registry's
-    // specificity order. The previous forward iteration produced the
-    // given-field-cards section before the given-type one on every
-    // setting page (the seconds corpus's *help family, 2026-10-09).
+    // card-mod-rules set/type/setting.rb:40-46 walks `Pattern.concrete.reverse`
+    // — the LOOKUP order reversed, least-specific first — so a Setting page
+    // opens with the *all section ("all cards") and closes with *self ("a
+    // single card"). Two more subtleties of the Ruby shape:
+    //
+    //   • rules_for_set_class matches rows by set_class.pattern_id (the
+    //     pattern CARD's id, setting.rb:51-53), so the deck's spelling of the
+    //     pattern card's name cannot break the match. The port's buckets are
+    //     keyed by card KEY (bucketKey above), so the lookup must use
+    //     DeckoName's key of the pattern card name — not a raw lowercase —
+    //     or the one pattern whose name keys differently (*all plus keys to
+    //     "*all_plu") never matches and its section silently drops.
+    //
+    //   • rules_for_set_class sorts by %w[content name] (setting.rb:50) —
+    //     SQL `ORDER BY db_content, key`. The corpus deck stores every rule
+    //     junction name-less (cards.key IS NULL for all 503 junction rows),
+    //     so the key tier never discriminates: NULLs sort first in SQLite
+    //     ASC and the fully-tied tier falls to rowid — the same (content,
+    //     id) shape the engine's search port pins as its standard
+    //     tie-breaker (cql/sql.ts orderDirectivesOf). RenderCard.record.key
+    //     cannot stand in for the column: composeCardRecord fills it with
+    //     the COMPOSED key for junction rows, which would interleave rows
+    //     Ruby leaves in rowid order (sidebar/api-key first-diff shape).
+    const byteOrder = (x: string, y: string): number => (x < y ? -1 : x > y ? 1 : 0);
     for (const klass of [...SETTING_CLASSES].reverse()) {
-      const leftKey = klass.patternCardName.toLowerCase();
-      const rules = settingBuckets.get(leftKey);
+      const bucketKey = DeckoName.parse(klass.patternCardName).key;
+      const rules = settingBuckets.get(bucketKey);
       if (rules === undefined || rules.length === 0) continue;
-      // setting.rb:38 rules_for_set_class's `sort_by: %w[content name]`:
-      // within one set class the rows order by db_content bytes, then
-      // name. Oracle: the *on create *type class renders
-      // "#<Card[set:259]Tracked Item+*type+*on create" (rule 21805,
-      // content "_left+email config", "_"<"s") ahead of
-      // "Sign up+*type+*on create" (21799, "signup alert email"), where
-      // the map-order walk put Sign up first.
       rules.sort((a, b) => {
-        const ca = a.dbContent ?? "";
-        const cb = b.dbContent ?? "";
-        const byContent = ca < cb ? -1 : ca > cb ? 1 : 0;
-        if (byContent !== 0) return byContent;
-        return a.name.s < b.name.s ? -1 : a.name.s > b.name.s ? 1 : 0;
+        const contentOrder = byteOrder(a.record.dbContent ?? "", b.record.dbContent ?? "");
+        if (contentOrder !== 0) return contentOrder;
+        return (a.id ?? 0) - (b.id ?? 0);
       });
       out.push({
         klass,

@@ -2757,7 +2757,12 @@ function settingCoreHtml(ctx: ViewContext): string {
     // `</h5>` / the nest lines / `</p>`), not the single-line
     // `<p><h5>label</h5>…</p>` the old code emitted (oracle 17450:
     // `<p>\n<h5>\nall cards\n</h5>\n` … `\n</p>\n`).
-    body += `<p>\n<h5>\n${h(heading.toLowerCase())}\n</h5>\n`;
+    // The label bytes are RAW: Decko's haml helper does not escape `=`
+    // output, so the oracle prints `all "+" cards` (and the *create page's
+    // `all "*" cards` / `all "+*" cards`) with literal quotes — the
+    // h()-escaped `&quot;` form was a +10-byte first difference on every
+    // *read page and +30 on every *create page.
+    body += `<p>\n<h5>\n${heading.toLowerCase()}\n</h5>\n`;
     if (cls.anchorless) {
       // Anchorless: collapse the per-class group to ONE bar with the
       // full left name (Ruby: anchorless? rows render once with
