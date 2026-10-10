@@ -1,0 +1,807 @@
+{
+  "step": 6,
+  "label": "create revive host",
+  "detail": {
+    "ok": true,
+    "kind": "create",
+    "value": 3380
+  },
+  "state": {
+    "probe_card_ids": [
+      15,
+      483,
+      484,
+      485,
+      486,
+      487,
+      3377,
+      3378,
+      3379,
+      3380
+    ],
+    "cards": [
+      {
+        "id": 15,
+        "name": "Mod",
+        "key": "mod",
+        "codename": "mod",
+        "left_id": null,
+        "right_id": null,
+        "trash": 0,
+        "type_id": 3,
+        "db_content": "history\nMachines\n*recent settings",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2025-07-01 17:29:25",
+        "updated_at": "2026-10-09 07:19:12.629135"
+      },
+      {
+        "id": 483,
+        "name": "*recent settings",
+        "key": "*recent_setting",
+        "codename": "recent_settings",
+        "left_id": null,
+        "right_id": null,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "*read\n*create\nDecko Bot\n*all+*layout",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*self",
+        "read_rule_id": 486,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2025-07-01 17:31:42",
+        "updated_at": "2026-10-09 07:19:00.396985"
+      },
+      {
+        "id": 484,
+        "name": null,
+        "key": null,
+        "codename": null,
+        "left_id": 483,
+        "right_id": 27,
+        "trash": 0,
+        "type_id": 5,
+        "db_content": "",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all plus",
+        "read_rule_id": 486,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2025-07-01 17:31:42",
+        "updated_at": "2025-07-01 17:31:42"
+      },
+      {
+        "id": 485,
+        "name": null,
+        "key": null,
+        "codename": null,
+        "left_id": 484,
+        "right_id": 67,
+        "trash": 0,
+        "type_id": 4,
+        "db_content": "Anyone",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all plus",
+        "read_rule_id": 486,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2025-07-01 17:31:42",
+        "updated_at": "2025-07-01 17:31:42"
+      },
+      {
+        "id": 486,
+        "name": null,
+        "key": null,
+        "codename": null,
+        "left_id": 484,
+        "right_id": 9,
+        "trash": 0,
+        "type_id": 4,
+        "db_content": "Anyone",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all plus",
+        "read_rule_id": 486,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2025-07-01 17:31:42",
+        "updated_at": "2025-07-01 17:31:42"
+      },
+      {
+        "id": 487,
+        "name": null,
+        "key": null,
+        "codename": null,
+        "left_id": 484,
+        "right_id": 60,
+        "trash": 0,
+        "type_id": 98,
+        "db_content": "{\"type\":\"setting\"}",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all plus",
+        "read_rule_id": 486,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2025-07-01 17:31:42",
+        "updated_at": "2025-07-01 17:31:42"
+      },
+      {
+        "id": 3377,
+        "name": "PersistProbe Ruled",
+        "key": "persist_probe_ruled",
+        "codename": null,
+        "left_id": null,
+        "right_id": null,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "r",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*self",
+        "read_rule_id": 3379,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-09 07:18:18.287887",
+        "updated_at": "2026-10-09 07:18:18.287887"
+      },
+      {
+        "id": 3378,
+        "name": null,
+        "key": null,
+        "codename": null,
+        "left_id": 3377,
+        "right_id": 27,
+        "trash": 0,
+        "type_id": 5,
+        "db_content": "",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all plus",
+        "read_rule_id": 3379,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-09 07:18:31.580683",
+        "updated_at": "2026-10-09 07:18:31.580683"
+      },
+      {
+        "id": 3379,
+        "name": null,
+        "key": null,
+        "codename": null,
+        "left_id": 3378,
+        "right_id": 66,
+        "trash": 0,
+        "type_id": 4,
+        "db_content": "Anyone Signed In",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all plus",
+        "read_rule_id": 3379,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-09 07:18:31.591046",
+        "updated_at": "2026-10-09 07:18:47.194871"
+      },
+      {
+        "id": 3380,
+        "name": "PersistProbe Host",
+        "key": "persist_probe_host",
+        "codename": null,
+        "left_id": null,
+        "right_id": null,
+        "trash": 0,
+        "type_id": 2,
+        "db_content": "h",
+        "creator_id": 1,
+        "updater_id": 1,
+        "read_rule_class": "*all",
+        "read_rule_id": 10,
+        "current_revision_id": null,
+        "references_expired": null,
+        "created_at": "2026-10-09 07:19:26.802220",
+        "updated_at": "2026-10-09 07:19:26.802220"
+      }
+    ],
+    "card_acts": [
+      {
+        "id": 116060,
+        "card_id": 3377,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-09 07:18:18.376270"
+      },
+      {
+        "id": 116061,
+        "card_id": 3379,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-09 07:18:31.849116"
+      },
+      {
+        "id": 116062,
+        "card_id": 3379,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-09 07:18:47.273942"
+      },
+      {
+        "id": 116063,
+        "card_id": 15,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-09 07:19:12.720808"
+      },
+      {
+        "id": 116064,
+        "card_id": 3380,
+        "actor_id": 1,
+        "ip_address": null,
+        "acted_at": "2026-10-09 07:19:26.872104"
+      }
+    ],
+    "card_actions": [
+      {
+        "id": 17,
+        "card_id": 15,
+        "card_act_id": 105328,
+        "super_action_id": null,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 560,
+        "card_id": 483,
+        "card_act_id": 105328,
+        "super_action_id": null,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 562,
+        "card_id": 484,
+        "card_act_id": 105328,
+        "super_action_id": 561,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 563,
+        "card_id": 485,
+        "card_act_id": 105328,
+        "super_action_id": 562,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 564,
+        "card_id": 486,
+        "card_act_id": 105328,
+        "super_action_id": 562,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 565,
+        "card_id": 487,
+        "card_act_id": 105328,
+        "super_action_id": 562,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11479,
+        "card_id": 3377,
+        "card_act_id": 116060,
+        "super_action_id": null,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11480,
+        "card_id": 3379,
+        "card_act_id": 116061,
+        "super_action_id": null,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11481,
+        "card_id": 3378,
+        "card_act_id": 116061,
+        "super_action_id": 11480,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11482,
+        "card_id": 3379,
+        "card_act_id": 116062,
+        "super_action_id": null,
+        "action_type": 1,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11483,
+        "card_id": 15,
+        "card_act_id": 116063,
+        "super_action_id": null,
+        "action_type": 1,
+        "draft": 0,
+        "comment": null
+      },
+      {
+        "id": 11484,
+        "card_id": 3380,
+        "card_act_id": 116064,
+        "super_action_id": null,
+        "action_type": 0,
+        "draft": 0,
+        "comment": null
+      }
+    ],
+    "card_changes": [
+      {
+        "id": 31991,
+        "card_action_id": 11480,
+        "field": 0,
+        "value": null
+      },
+      {
+        "id": 31992,
+        "card_action_id": 11480,
+        "field": 1,
+        "value": "4"
+      },
+      {
+        "id": 31993,
+        "card_action_id": 11480,
+        "field": 2,
+        "value": "Anyone Signed In"
+      },
+      {
+        "id": 31994,
+        "card_action_id": 11480,
+        "field": 3,
+        "value": "f"
+      },
+      {
+        "id": 31995,
+        "card_action_id": 11480,
+        "field": 4,
+        "value": "3378"
+      },
+      {
+        "id": 31996,
+        "card_action_id": 11480,
+        "field": 5,
+        "value": "9"
+      },
+      {
+        "id": 31997,
+        "card_action_id": 11482,
+        "field": 5,
+        "value": "66"
+      },
+      {
+        "id": 31998,
+        "card_action_id": 17,
+        "field": 0,
+        "value": "Mod"
+      },
+      {
+        "id": 31999,
+        "card_action_id": 17,
+        "field": 1,
+        "value": "3"
+      },
+      {
+        "id": 32000,
+        "card_action_id": 17,
+        "field": 2,
+        "value": ""
+      },
+      {
+        "id": 32001,
+        "card_action_id": 17,
+        "field": 3,
+        "value": "f"
+      },
+      {
+        "id": 32002,
+        "card_action_id": 17,
+        "field": 4,
+        "value": null
+      },
+      {
+        "id": 32003,
+        "card_action_id": 17,
+        "field": 5,
+        "value": null
+      },
+      {
+        "id": 32004,
+        "card_action_id": 11483,
+        "field": 2,
+        "value": "history\nMachines\n*recent settings"
+      }
+    ],
+    "card_references": [
+      {
+        "id": 316,
+        "referer_id": 485,
+        "referee_key": "anyone",
+        "referee_id": 180,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 317,
+        "referer_id": 486,
+        "referee_key": "anyone",
+        "referee_id": 180,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 318,
+        "referer_id": 487,
+        "referee_key": "setting",
+        "referee_id": 6,
+        "ref_type": "Q",
+        "is_present": null
+      },
+      {
+        "id": 5053,
+        "referer_id": 3379,
+        "referee_key": "anyone_signed_in",
+        "referee_id": 182,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5062,
+        "referer_id": 483,
+        "referee_key": "*read",
+        "referee_id": 9,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5063,
+        "referer_id": 483,
+        "referee_key": "*create",
+        "referee_id": 66,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5064,
+        "referer_id": 483,
+        "referee_key": "decko_bot",
+        "referee_id": 1,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5065,
+        "referer_id": 483,
+        "referee_key": "*all+*layout",
+        "referee_id": 497,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5066,
+        "referer_id": 15,
+        "referee_key": "mod_account",
+        "referee_id": 561,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5067,
+        "referer_id": 15,
+        "referee_key": "mod_ace_editor",
+        "referee_id": 572,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5068,
+        "referer_id": 15,
+        "referee_key": "mod_api_key",
+        "referee_id": 574,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5069,
+        "referer_id": 15,
+        "referee_key": "mod_asset",
+        "referee_id": 570,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5070,
+        "referer_id": 15,
+        "referee_key": "mod_bar_and_box",
+        "referee_id": 578,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5071,
+        "referer_id": 15,
+        "referee_key": "mod_bootstrap",
+        "referee_id": 581,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5072,
+        "referer_id": 15,
+        "referee_key": "mod_carrierwave",
+        "referee_id": 566,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5073,
+        "referer_id": 15,
+        "referee_key": "mod_collection",
+        "referee_id": 537,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5074,
+        "referer_id": 15,
+        "referee_key": "mod_comment",
+        "referee_id": 584,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5075,
+        "referer_id": 15,
+        "referee_key": "mod_content",
+        "referee_id": 538,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5076,
+        "referer_id": 15,
+        "referee_key": "mod_core",
+        "referee_id": 536,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5077,
+        "referer_id": 15,
+        "referee_key": "mod_date",
+        "referee_id": 586,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5078,
+        "referer_id": 15,
+        "referee_key": "mod_default",
+        "referee_id": 602,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5079,
+        "referer_id": 15,
+        "referee_key": "mod_delayed_job",
+        "referee_id": 587,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5080,
+        "referer_id": 15,
+        "referee_key": "mod_edit",
+        "referee_id": 556,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5081,
+        "referer_id": 15,
+        "referee_key": "mod_email",
+        "referee_id": 559,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5082,
+        "referer_id": 15,
+        "referee_key": "mod_follow",
+        "referee_id": 588,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5083,
+        "referer_id": 15,
+        "referee_key": "mod_format",
+        "referee_id": 539,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5084,
+        "referer_id": 15,
+        "referee_key": "mod_help",
+        "referee_id": 548,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5085,
+        "referer_id": 15,
+        "referee_key": "mod_history",
+        "referee_id": 564,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5086,
+        "referer_id": 15,
+        "referee_key": "mod_integrate",
+        "referee_id": 560,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5087,
+        "referer_id": 15,
+        "referee_key": "mod_layout",
+        "referee_id": 594,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5088,
+        "referer_id": 15,
+        "referee_key": "mod_list",
+        "referee_id": 542,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5089,
+        "referer_id": 15,
+        "referee_key": "mod_markdown",
+        "referee_id": 545,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5090,
+        "referer_id": 15,
+        "referee_key": "mod_monkey",
+        "referee_id": 603,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5091,
+        "referer_id": 15,
+        "referee_key": "mod_permission",
+        "referee_id": 546,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5092,
+        "referer_id": 15,
+        "referee_key": "mod_platypu",
+        "referee_id": 604,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5093,
+        "referer_id": 15,
+        "referee_key": "mod_recaptcha",
+        "referee_id": 597,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5094,
+        "referer_id": 15,
+        "referee_key": "mod_rule",
+        "referee_id": 553,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5095,
+        "referer_id": 15,
+        "referee_key": "mod_script",
+        "referee_id": 571,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5096,
+        "referer_id": 15,
+        "referee_key": "mod_search",
+        "referee_id": 550,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5097,
+        "referer_id": 15,
+        "referee_key": "mod_session",
+        "referee_id": 591,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5098,
+        "referer_id": 15,
+        "referee_key": "mod_style",
+        "referee_id": 576,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5099,
+        "referer_id": 15,
+        "referee_key": "mod_tab",
+        "referee_id": 592,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5100,
+        "referer_id": 15,
+        "referee_key": "mod_tinymce_editor",
+        "referee_id": 599,
+        "ref_type": "L",
+        "is_present": null
+      },
+      {
+        "id": 5101,
+        "referer_id": 15,
+        "referee_key": "mod_virtual",
+        "referee_id": 569,
+        "ref_type": "L",
+        "is_present": null
+      }
+    ],
+    "card_virtuals": []
+  },
+  "codename_ids": {
+    "salt": 221,
+    "password": 216
+  }
+}

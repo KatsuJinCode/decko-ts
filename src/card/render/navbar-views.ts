@@ -289,10 +289,18 @@ export const NAVBAR_VIEWS: Record<string, ViewFn> = {
  *  items (the same navbar_items the :navbar_links view renders — Ruby's
  *  navbar_items METHOD is shared by both views); otherwise the sign_up +
  *  sign_in pair (my_card/sign_out are signed_in?-gated with denial :blank —
- *  dropped from the compact). */
+ *  dropped from the compact).
+ *
+ *  The prepared items embed the my_card roles nest, whose edit_inline render
+ *  is where Ruby's ensure_roles mutates the session card (set/right/
+ *  enabled_roles.rb:52) — so consuming the prepared items here marks the
+ *  fill for the REST of this request: this core render (the page's MAIN
+ *  body, rendered before the layout) serves the blank content input the
+ *  oracle pins, and the navbar's later roles nest serves the filled one. */
 export function accountLinksCoreHtml(ctx: ViewContext): string {
   const prepared = ctx.fmt.engine.pageSessionAccountLinksHtml;
   if (prepared !== undefined) {
+    ctx.fmt.engine.markSessionRolesContentFilled?.();
     return `<div id="logging" class="logged-in">${fillUniqueIds(prepared, ctx.fmt)}</div>`;
   }
   const links = [

@@ -69,6 +69,7 @@
 // surface is quiet AND wrapped, the top-level surface throws.
 
 import { describe, it, expect } from "vitest";
+import { allRenderingErrorsRaise, setRaiseAllRenderingErrors } from "../../../src/card/render/format.js";
 import { createRenderTestStorage, seedCard } from "./render-test-storage.js";
 
 const DATE_CARD = "broken date card";
@@ -104,62 +105,85 @@ async function seed(): Promise<ReturnType<typeof createRenderTestStorage>> {
 }
 
 describe("a delegated render_core is its own rescue scope (render.rb:7-14, :96-100)", () => {
-  it("NESTED: the :content view still emits its card-slot div around the error", async () => {
-    const storage = await seed();
+  // Posture-explicit pins: the engine's process default is the
+  // development-loud posture (raise_all_rendering_errors=true, the mod-port
+  // raise contracts' world). The NESTED cases pin Ruby's STOCK rescue shape
+  // — quiet at a non-focal depth (error.rb:65-78 loud_error? = focal? ||
+  // config, stock default false, cardio/railtie.rb:38) — so they set the
+  // stock posture explicitly; the TOP-LEVEL case pins the loud arm and sets
+  // the loud posture explicitly. Every case restores the prior value.
+  const withPosture = async (loud: boolean, body: () => Promise<void>) => {
+    const prior = allRenderingErrorsRaise();
+    setRaiseAllRenderingErrors(loud);
     try {
-      const html = await storage.engine.render(HOST_CARD, "content");
-      // views.rb:10-18's `wrap` ran: the slot div is present, with the
-      // `content-view` class views.ts#slotWrap builds.
-      expect(html, "the content-view slot div must survive a raising core").toMatch(
-        /class="card-slot content-view[^"]*"/,
-      );
-      expect(html).toContain("d0-card-content"); // before(:content) class_up
-      // ...and the error span is INSIDE that div, not a bare replacement
-      // for it. The div opens, then the span, then the div closes.
-      const divAt = html.indexOf('class="card-slot content-view');
-      const spanAt = html.indexOf("<span class=\"render-error");
-      const closeAt = html.indexOf("</div>", spanAt);
-      expect(divAt).toBeGreaterThanOrEqual(0);
-      expect(spanAt).toBeGreaterThan(divAt);
-      expect(closeAt).toBeGreaterThan(spanAt);
+      await body();
     } finally {
-      storage.close();
+      setRaiseAllRenderingErrors(prior);
     }
+  };
+
+  it("NESTED: the :content view still emits its card-slot div around the error", async () => {
+    await withPosture(false, async () => {
+      const storage = await seed();
+      try {
+        const html = await storage.engine.render(HOST_CARD, "content");
+        // views.rb:10-18's `wrap` ran: the slot div is present, with the
+        // `content-view` class views.ts#slotWrap builds.
+        expect(html, "the content-view slot div must survive a raising core").toMatch(
+          /class="card-slot content-view[^"]*"/,
+        );
+        expect(html).toContain("d0-card-content"); // before(:content) class_up
+        // ...and the error span is INSIDE that div, not a bare replacement
+        // for it. The div opens, then the span, then the div closes.
+        const divAt = html.indexOf('class="card-slot content-view');
+        const spanAt = html.indexOf("<span class=\"render-error");
+        const closeAt = html.indexOf("</div>", spanAt);
+        expect(divAt).toBeGreaterThanOrEqual(0);
+        expect(spanAt).toBeGreaterThan(divAt);
+        expect(closeAt).toBeGreaterThan(spanAt);
+      } finally {
+        storage.close();
+      }
+    });
   });
 
   it("NESTED: the error is labelled with the DELEGATED view, not the wrapper's", async () => {
-    const storage = await seed();
-    try {
-      const html = await storage.engine.render(HOST_CARD, "content");
-      expect(html).toContain("Error rendering: broken date card (core view)");
-      // The pre-fix label. Asserted absent so a regression back to the
-      // dispatch-seam raise is a named failure, not a silent one.
-      expect(html).not.toContain("(content view)");
-    } finally {
-      storage.close();
-    }
+    await withPosture(false, async () => {
+      const storage = await seed();
+      try {
+        const html = await storage.engine.render(HOST_CARD, "content");
+        expect(html).toContain("Error rendering: broken date card (core view)");
+        // The pre-fix label. Asserted absent so a regression back to the
+        // dispatch-seam raise is a named failure, not a silent one.
+        expect(html).not.toContain("(content view)");
+      } finally {
+        storage.close();
+      }
+    });
   });
 
   it("TOP-LEVEL: a depth-0 render of the same card still RE-RAISES (error.rb:69-73)", async () => {
-    const storage = await seed();
-    try {
-      // Ruby: `focal?` is `depth.zero?` and raise_all_rendering_errors is
-      // false, so a bare `format.render(:content)` of this card is
-      // `loud_error` -> `raise e`. The corpus pins that surface as
-      // CAPTURE_ERROR, and this pin keeps it that way — moving the raise
-      // down a level must not turn a capture_error into a rendered page.
-      let captured: unknown;
+    await withPosture(true, async () => {
+      const storage = await seed();
       try {
-        await storage.engine.render(DATE_CARD, "content");
-      } catch (err) {
-        captured = err;
+        // The loud arm of loud_error? (error.rb:65-73): under the
+        // development posture (config true) every rescue re-raises. The
+        // corpus pins that surface as CAPTURE_ERROR, and this pin keeps it
+        // that way — moving the raise down a level must not turn a
+        // capture_error into a rendered page.
+        let captured: unknown;
+        try {
+          await storage.engine.render(DATE_CARD, "content");
+        } catch (err) {
+          captured = err;
+        }
+        expect(captured, "the focal render must still raise").toBeDefined();
+        expect((captured as Error).constructor.name).toBe("Date::Error");
+        expect((captured as Error).message).toBe("invalid date");
+      } finally {
+        storage.close();
       }
-      expect(captured, "the focal render must still raise").toBeDefined();
-      expect((captured as Error).constructor.name).toBe("Date::Error");
-      expect((captured as Error).message).toBe("invalid date");
-    } finally {
-      storage.close();
-    }
+    });
   });
 
   it("a VALID Date content still renders the strftime body, unwrapped-error path untouched", async () => {

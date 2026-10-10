@@ -105,7 +105,7 @@ function get(path: string): Promise<Response> {
  *  nonce (slot-html.ts mints a fresh data-slot-id every render), so that is
  *  the one attribute normalized before comparing two responses byte-wise. */
 function withoutSlotNonce(html: string): string {
-  return html.replace(/data-slot-id="[0-9a-f]+"/g, 'data-slot-id="<nonce>"');
+  return html.replace(/data-slot-id=(["'])[0-9a-f]+\1/g, 'data-slot-id="<nonce>"');
 }
 
 describe("deploy worker route grammar — the alternate GET views (R4)", () => {

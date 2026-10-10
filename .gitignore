@@ -1,5 +1,11 @@
 node_modules/
 dist/
+# The vendored asset sources are committed content (the sha256-pinned copy of
+# what the Decko gems ship; tests/card/assets pins them). A bare `dist/` rule
+# silently excluded everything under any dist/ DIRECTORY inside that tree —
+# card-mod-bootstrap's select2 dist was missing from fresh checkouts for it
+# (the build machine's untracked copy masked the gap). Re-include the tree.
+!fixtures/vendor/**/dist/
 *.log
 tools/oracle/decko-oracle-app/
 # MySQL rung of the oracle harness (docs/parity-method.md): portable

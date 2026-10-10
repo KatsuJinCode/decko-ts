@@ -78,7 +78,7 @@ function d1Shim(driver: LocalSqliteDriver): D1DatabaseLike {
 /** Two renders differ only in the per-render slot nonce; normalize it so
  *  bodies compare byte-wise where the shells agree. */
 function withoutSlotNonce(html: string): string {
-  return html.replace(/data-slot-id="[0-9a-f]+"/g, 'data-slot-id="<nonce>"');
+  return html.replace(/data-slot-id=(["'])[0-9a-f]+\1/g, 'data-slot-id="<nonce>"');
 }
 
 let driver: LocalSqliteDriver | undefined;

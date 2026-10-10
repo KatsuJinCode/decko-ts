@@ -29,13 +29,16 @@ import type { SQLDateTime } from "../../server/schema.js";
 import type { Actor } from "./actor.js";
 import { generateSessionToken, sha256Hex, tokensEqual } from "./session-token.js";
 
-/** Canonical UTC datetime string ("YYYY-MM-DD HH:MM:SS.mmm") — the same
- *  storage form the core schema uses. Local copy (history/act.ts has the
- *  twin) so the auth layer stands alone against the clean seam; three
- *  lines, kept in lockstep by the shared convention in db/schema.sqlite.sql's
- *  header. */
+/** UTC datetime TEXT in ActiveRecord's form ("YYYY-MM-DD HH:MM:SS", plus
+ *  ".ffffff" only when the microseconds are not zero) — the same storage
+ *  form the core schema uses. Local copy (history/act.ts has the twin and
+ *  the Ruby citation) so the auth layer stands alone against the clean seam;
+ *  kept in lockstep with it by tests/card/history/act.test.ts. */
 export function sqlDateTime(date: Date): SQLDateTime {
-  return date.toISOString().replace("T", " ").replace("Z", "").slice(0, 23);
+  const iso = date.toISOString();
+  const seconds = `${iso.slice(0, 10)} ${iso.slice(11, 19)}`;
+  const ms = date.getUTCMilliseconds();
+  return ms === 0 ? seconds : `${seconds}.${String(ms).padStart(3, "0")}000`;
 }
 
 /**

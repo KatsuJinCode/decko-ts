@@ -142,6 +142,13 @@ async function seedDeck(s: RenderTestStorage): Promise<void> {
   ];
   for (const [id, name, codename] of settings) await seedCard(s, { id, name, codename });
 
+  // The Phrase cardtype (the right/email.rb + right/password.rb
+  // assign_type :phrase target): the sign-in form's absent-field fallback
+  // resolves the field type id through the deck's codename table
+  // (PhraseID = Codename.id :phrase), and this deck needs the codename any
+  // real deck carries.
+  await seedCard(s, { id: 90, name: "Phrase", codename: "phrase", typeId: BASIC_TYPE_ID });
+
   // Unconditional-true overrides: stored rule 37 (generic deny) overridden.
   await seedCard(s, {
     id: 40, leftId: 30, rightId: 58, dbContent: "head bytes",
@@ -263,6 +270,9 @@ async function seedDeck(s: RenderTestStorage): Promise<void> {
 beforeAll(async () => {
   storage = await createRenderTestStorage();
   await seedDeck(storage);
+  // the codename registry's memo loads from the deck on demand; the
+  // sign-in form's phrase fallback reads it synchronously
+  await storage.fetcher.codenames.ensureLoaded();
 }, 60_000);
 
 afterAll(() => {

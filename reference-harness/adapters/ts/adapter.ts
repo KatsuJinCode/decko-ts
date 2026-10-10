@@ -10,6 +10,7 @@ import { createInterface } from "node:readline";
 import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
 import { RenderEngine } from "../../../src/card/render.js";
+import { setRaiseAllRenderingErrors } from "../../../src/card/render/format.js";
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
 import type { CreateCardInput, UpdateCardInput } from "../../../src/card/actions/types.js";
 import { DeckoName } from "../../../src/card/name.js";
@@ -61,6 +62,10 @@ setDeckEnvironment({
   origin: spec.environment?.origin,
   defaultHtmlView: spec.environment?.default_html_view,
 });
+// The capture contract (the fixtures' MANIFEST "production render-error
+// semantics" line): Cardio.config.raise_all_rendering_errors = false with
+// Rails.env production - nested view errors render inline, no debug detail.
+setRaiseAllRenderingErrors(false);
 
 const out = process.stdout;
 const emit = (obj: unknown): void => {

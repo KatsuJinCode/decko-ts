@@ -92,7 +92,7 @@ async function seedWagneerDeck(s: RenderTestStorage): Promise<void> {
 }
 
 /** Only the per-render random slot id differs between two renders. */
-const masked = (html: string) => html.replace(/data-slot-id="[0-9a-f]+"/g, 'data-slot-id="X"');
+const masked = (html: string) => html.replace(/data-slot-id=(["'])[0-9a-f]+\1/g, 'data-slot-id="X"');
 
 async function renderWagneer(
   maxTemporaryCacheKeys: number,

@@ -1,0 +1,30 @@
+# The pod the coded-storage check eats (tests/tools/pod-features.test.ts,
+# "pod coded storage stores Ruby's rows and mod files"). Its items exercise
+# the three paths `storage_type: :coded` takes (Eat::Edibles#handle_attachments
+# + validate_coded_storage_type):
+#
+#  1. a PRISTINE coded card (*logo, codename logo): the save runs, the file
+#     is kept in the mod (coded.rb coded_dir), the content becomes the coded
+#     identifier ":logo/<mod>.svg";
+#  2. a coded item whose name has no codenames: the save fails
+#     ("codename needed for storage type coded");
+#  3. a coded item with no :image/:file — handle_attachments' :mod arm lives
+#     inside the attachment loop, so no mod reaches the save, and a new
+#     card's content names none: it fails with both storage-type errors.
+#
+# The mod name and directory come from the harness (POD_MOD_NAME /
+# POD_MOD_DIR, run-pod-coded.sh); the port's eat takes them as codedMod /
+# codedDir.
+---
+- :name: "*logo"
+  :type: :image
+  :codename: logo
+  :storage_type: :coded
+  :image: pod-coded-logo.svg
+- :name: PodCoded No Codename
+  :type: :image
+  :storage_type: :coded
+  :image: pod-coded-logo.svg
+- :name: PodCoded Bare
+  :type: :image
+  :storage_type: :coded

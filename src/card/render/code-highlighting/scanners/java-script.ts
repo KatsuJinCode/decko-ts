@@ -19,7 +19,20 @@
 // normalized the whole input before the body was cut (scanner.rb:137), and
 // the Ruby sub-scanner's re-normalization is the identity there.
 
-import type { HtmlTokenEncoder } from "../encoder.js";
+import { HtmlTokenEncoder } from "../encoder.js";
+
+/** Standalone scan (CodeRay.scan(content, :js) top-level): the token
+ *  stream into a FRESH encoder, DIV content returned. The <script>-body
+ *  delegation (scanJavaScriptInto) shares every branch; the only
+ *  difference is the encoder instance. Callers normalize (`to_unix`)
+ *  at the dispatch, exactly as index.ts#highlight does for the other
+ *  languages - the Into variant's no-renormalization note above applies
+ *  to this wrapper too: normalize ONCE, at the dispatch. */
+export function scanJavaScript(input: string): string {
+  const enc = new HtmlTokenEncoder();
+  scanJavaScriptInto(enc, input);
+  return enc.toString();
+}
 
 /** java_script.rb:13-17. */
 const KEYWORDS = new Set([

@@ -133,14 +133,27 @@ import { PATTERN_TABLE, findPattern } from "../../set-patterns/registry.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import { labelForParsedSet, parseSetName } from "../../set-patterns/set-name.js";
 import { cardFormShell, submitButton } from "../mod-form-substrate.js";
+import { cardWallClockNow } from "../../wall-clock.js";
 import { getDefaultModLoader } from "../../mod-loader.js";
 import { modSlotWrap } from "../mod-view-helpers.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
 import type {
   DeckoModManifest,
   ModEngineHost,
+  ModEventFn,
+  ModEventRegistration,
   ModSetModuleFile,
 } from "../mod-manifest.js";
+import { engineOwnedEvent } from "../mod-manifest.js";
+
+/** The set-module event declarations (the mod-events lane, 2026-10-08):
+ *  stub-bodied unless the engine owns the behavior (then engineOwnedEvent).
+ *  Same shape as core-mod.ts's local helper. */
+function event(
+  decl: Omit<ModEventRegistration, "fn"> & { fn?: ModEventFn },
+): ModEventRegistration {
+  return { fn: () => undefined, ...decl };
+}
 
 // ---------------------------------------------------------------------------
 // set guards (the set-module inclusion Ruby gives these views)
@@ -1988,34 +2001,70 @@ function boardRuleSetSelection(ctx: ViewContext): string {
 /** rules.rb:57-63 set_options + :76-104 the walk: candidates = the rule
  *  set's prototype's set_names, sliced from the rule's OWN set's position
  *  (`candidates[first..]` - rules.rb:78-80 first_set_option_index: a rule
- *  can move ITSELF or to any BROADER set, never to a narrower one); each
- *  candidate pairs with :current/:overwritten/:available (rules.rb:88-100
- *  state_of_set: the FIRST candidate with an existing rule is :current,
- *  later existing ones :overwritten, the rest :available). The prototype
- *  (set/type/set.rb:90-92) is a NEW card of the set's prototype type - a
- *  new card's set names are the type set + *all, specific-first (the live
- *  probe: *all's prototype is a new RichText card, set_names
- *  ["RichText+*type", "*all"]). rule_user_setting_name (rules.rb:44-50)
- *  is the rule's tag for non-preference rules. */
+ *  can move ITSELF or to any BROADER set, never to a narrower one; a NEW
+ *  rule card slices from 0); each candidate pairs with
+ *  :current/:overwritten/:available (rules.rb:88-100 state_of_set: the
+ *  FIRST candidate with an existing rule is :current, later existing ones
+ *  :overwritten, the rest :available).
+ *
+ *  For a PREFERENCE rule (rules.rb:48-50 set_prototype + :47-49
+ *  rule_user_setting_name) the prototype is the SET part's own prototype
+ *  (`self[0..-3].prototype` - for a Self-set `Mira Member+*self` the
+ *  prototype is a new card named after the anchor, typed as the anchor
+ *  card, whose set_names are the SELF set, the type set, *all -
+ *  specific-first) and every candidate composes with the rule's
+ *  user-setting name (`Ada Admin+*follow` - the corpus rule_form pin's
+ *  three radio values). The standard-rule walk (prototype of the trunk's
+ *  type) is the existing arm. The radio ids carry the radio's 1-based
+ *  index and Time.now.to_i (cardWallClockNow - the capture clock's epoch
+ *  1789819200 in the corpus bytes). */
 function ruleSetOptionsRadios(ctx: ViewContext): string {
   const { fmt } = ctx;
   const ruleCard = fmt.card;
-  const setName = ruleCard.name.leftName;
-  const prototypeType = prototypeDefaultTypeCode(ctx);
+  const parts = ruleCard.name.partNames;
+  const settingCodename = ruleSettingCodename(ctx) ?? "";
+  const tag = `*${settingCodename}`;
+  const isPreference = parts.length > 2;
+  const userSettingName = isPreference
+    ? `${DeckoName.parse(parts[parts.length - 2].s).s}+${tag}`
+    : tag;
   const candidates: string[] = [];
-  if (prototypeType !== undefined && prototypeType !== "basic") {
-    // the type set's name: "<TypeName>+*type" (pattern.rb Type#set_name)
-    const typeName = defaultRuleTypeName(ctx, prototypeType);
-    if (typeName !== undefined) candidates.push(`${typeName}+*type`);
+  if (isPreference) {
+    // rules.rb:48-50 set_prototype for preference rules: the SET part's
+    // prototype (`self[0..-3]` - for `Mira Member+*self+Ada Admin+*follow`
+    // the four-part name's set part is `Mira Member+*self`) - a new card
+    // named after the set anchor, typed as the anchor card - whose
+    // set_names are the SELF set, the type set, *all
+    const setName = parts.slice(0, -2).map((p) => p.s).join("+");
+    const anchorName = DeckoName.parse(setName).leftName?.s;
+    const anchor = anchorName !== undefined ? fmt.engine.fetchRenderCard(anchorName) : undefined;
+    const typeName = anchor !== undefined && anchor.unknown !== true && anchor.typeName !== undefined
+      ? anchor.typeName
+      : "RichText";
+    candidates.push(setName);
+    candidates.push(`${typeName}+*type`);
+    candidates.push("*all");
+  } else {
+    const setName = ruleCard.name.leftName;
+    const prototypeType = prototypeDefaultTypeCode(ctx);
+    if (prototypeType !== undefined && prototypeType !== "basic") {
+      // the type set's name: "<TypeName>+*type" (pattern.rb Type#set_name)
+      const typeName = defaultRuleTypeName(ctx, prototypeType);
+      if (typeName !== undefined) candidates.push(`${typeName}+*type`);
+    }
+    candidates.push("*all");
   }
-  candidates.push("*all");
-  const ruleSetKey = setName?.key ?? "";
-  const first = candidates.findIndex((c) => DeckoName.parse(c).key === ruleSetKey);
+  const ruleSetKey = isPreference
+    ? DeckoName.parse(parts.slice(0, -2).map((p) => p.s).join("+")).key
+    : (ruleCard.name.leftName?.key ?? "");
+  const first = ruleCard.id === undefined || isPreference
+    ? 0 // rules.rb:78-80 first_set_option_index: a new rule slices from 0
+    : candidates.findIndex((c) => DeckoName.parse(c).key === ruleSetKey);
   const sliced = first === -1 ? candidates : candidates.slice(first);
-  const userSettingName = `*${ruleSettingCodename(ctx) ?? ""}`;
   const radios: string[] = [];
   let existingRules = 0;
-  for (const [setNameStr, state] of sliced
+  let index = 0;
+  for (const [candidateSetName, state] of sliced
     .map((c) => {
       const ruleName = `${c}+${userSettingName}`;
       const existing = fmt.engine.fetchRenderCard(ruleName);
@@ -2030,9 +2079,10 @@ function ruleSetOptionsRadios(ctx: ViewContext): string {
       return [c, state] as [string, string];
     })
     .reverse()) {
-    radios.push(ruleSetRadioHtml(ctx, setNameStr, state));
+    index += 1;
+    radios.push(ruleSetRadioHtml(ctx, candidateSetName, state, index, userSettingName));
   }
-  return radios.join("");
+  return radios.join("\n");
 }
 
 /** The set's prototype default card's type code (set/type/set.rb:95-101
@@ -2072,26 +2122,42 @@ function defaultRuleTypeName(ctx: ViewContext, typeCode: string): string | undef
  *  *all literal, else the narrower-rules walk (unpinned - the capture's
  *  single *all option never reaches it; the narrower_warning machinery is
  *  the cited remainder). */
-function ruleSetRadioHtml(ctx: ViewContext, setName: string, state: string): string {
+function ruleSetRadioHtml(
+  ctx: ViewContext,
+  setName: string,
+  state: string,
+  index: number,
+  userSettingName: string,
+): string {
   const { fmt } = ctx;
-  const tag = `*${ruleSettingCodename(ctx) ?? ""}`;
-  const radioText = `${setName}+${tag}`;
-  const id = `${fmt.card.name.safeKey}-1-0`;
+  const radioText = `${setName}+${userSettingName}`;
+  // rules_type_formgroup's radio ids: the rule card's safe key, the radio's
+  // 1-based index, and Time.now.to_i (cardWallClockNow - the corpus bytes
+  // carry the capture clock's epoch 1789819200)
+  const epochSeconds = Math.floor(cardWallClockNow().getTime() / 1000);
+  const id = `${fmt.card.name.safeKey}-${index}-${epochSeconds}`;
   const isCurrent = state === "current";
   const warning =
     setName === "*all" ? "This rule will affect all cards! Are you sure?" : "";
   const labelClasses =
     `set-label${isCurrent ? " current-set-label" : ""}`;
-  // set/type/set.rb:38-41 label - through the fetched SET CARD's record
-  // codename (the peek-lexicon route labelForParsedSet takes is not primed
-  // this early in the rule_form chain; the record codename is the same
-  // Card::Codename answer, DB-backed)
+  // set/type/set.rb:38-41 label - subclass_for_set.label(anchor_name) - the
+  // pattern resolves through the tag card's codename. The warm set card's
+  // record codename answers for fetched sets; an UNWARMED set card's label
+  // resolves from the NAME (parseSetName - the same codename registry), the
+  // rule_form chain's ruleSetOptions walk reaching sets no prior render
+  // warmed (the corpus pin's `User+*type` radio).
   const setCardRecord = fmt.engine.fetchRenderCard(setName);
-  const patternCode =
-    setCardRecord === undefined || setCardRecord.unknown === true
-      ? undefined
-      : setCardRecord.record.codename;
-  const anchor = setCardRecord?.name.leftName?.s;
+  let patternCode: string | undefined;
+  let anchor: string | undefined;
+  if (setCardRecord !== undefined && setCardRecord.unknown !== true) {
+    patternCode = setCardRecord.record.codename;
+    anchor = setCardRecord.name.leftName?.s;
+  } else {
+    const parsed = parseSetName(setName);
+    patternCode = parsed.patternCode ?? undefined;
+    anchor = parsed.anchorName?.s ?? undefined;
+  }
   const setLabel =
     patternCode !== undefined
       ? (findPattern(patternCode)?.label(anchor) ?? "")
@@ -2143,7 +2209,11 @@ function editRuleButtons(ctx: ViewContext, formType: string): string {
     ` class="_close-${formType}-on-success slotter btn btn-outline-danger ms-auto"` +
     ` data-confirm="${h(confirmMsg)}" href="/delete/${h(fmt.urlKey())}?" data-remote="true">Delete</a></span>`
   );
-  return `<div class="button-area">${outputJoin([save, saveAndClose, cancel, del])}</div>`;
+  // buttons.rb:23 edit_rule_delete_button - `return if card.new_card?`: a
+  // NEW rule has nothing to delete (the corpus follow rule_form pin's
+  // button area ends at Cancel)
+  const parts2 = fmt.card.id === undefined ? [save, saveAndClose, cancel] : [save, saveAndClose, cancel, del];
+  return `<div class="button-area">${outputJoin(parts2)}</div>`;
 }
 
 /** rule_form.rb:56-64 edit_rule_form + :66-69 rule_form_args: the
@@ -2153,10 +2223,16 @@ function editRuleButtons(ctx: ViewContext, formType: string): string {
  *  the substrate's cardFormShell is the card_form port. The body is the
  *  rule_form.haml walk (:2-13 render :rule_form_card_editor inline - the
  *  SAME voo, so the child slot's show list accumulates
- *  ["rule_form","rule_form_card_editor"], the captured pair). */
+ *  ["rule_form","rule_form_card_editor"], the captured pair). The dom id
+ *  is form_for's (new_card for an id-less card). The
+ *  data-update-foreign-slot render opt carries the follow mod's
+ *  rule_form_args override (right/follow.rb:119-121 - the follow rule's
+ *  form hooks the follow_section foreign slot) through the same opt
+ *  channel rule_form's success_view/form_type/rule_context ride. */
 function editRuleForm(ctx: ViewContext): string {
   const { fmt } = ctx;
   const success = editRuleSuccessHash(ctx);
+  const foreignSlot = ctx.voo.opts["data_update_foreign_slot"];
   const body =
     `<div class='guide-line rule-section mt-4'>\n<h5>\n<div class='guide-line-number'>1</div>\nDefine rule\n</h5>\n` +
     fmt.renderView("rule_form_card_editor") +
@@ -2169,10 +2245,17 @@ function editRuleForm(ctx: ViewContext): string {
     `\n</div>\n</div>\n`;
   return cardFormShell(ctx, {
     formClass: "card-rule-form card-form slotter",
-    id: `edit_card_${fmt.card.id}`,
-    htmlAttrs: [["data-slotter-mode", "update-origin"]],
+    id: fmt.card.id === undefined ? "new_card" : `edit_card_${fmt.card.id}`,
+    htmlAttrs:
+      typeof foreignSlot === "string"
+        ? [["data-slotter-mode", "update-origin"], ["data-update-foreign-slot", foreignSlot]]
+        : [["data-slotter-mode", "update-origin"]],
     action: "/card/update",
-    methodSpoof: "patch",
+    // Rails form_for infers PATCH from the record's persistence: a persisted
+    // rule card emits the _method patch spoof, a new one posts plain (the
+    // corpus follow rule_form pin: the new-card form carries no spoof - the
+    // same semantics the quick_editor's shell applies)
+    methodSpoof: fmt.card.id === undefined ? null : "patch",
     success: success,
     body: body,
   });
@@ -2622,7 +2705,20 @@ const setModules: ModSetModuleFile[] = [
     // The naming half already lives engine-side:
     // src/card/set-patterns/rule-names.ts ruleSetCardName (rules.rb:12-18)
     // and ruleSettingCardName (rules.rb:36-38).
+    //
+    // Event (mod-events lane 2026-10-08) — ENGINE-OWNED: the save path
+    // moves the saved rule's setting to the top of the *recent settings
+    // list (card-action-engine.ts saveRecentlyEditedSettings, citing
+    // rules.rb:1-6; run on the create/update paths at :1347/:2012).
     setPath: "rule/rules",
+    events: [
+      engineOwnedEvent({
+        event: "save_recently_edited_settings",
+        at: "integrate",
+        on: ["save"],
+        changed: ["type", "content"],
+      }),
+    ],
   },
   {
     // set/rule/html_views.rb:2-12 - the rule-set :core override

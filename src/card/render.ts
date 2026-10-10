@@ -135,6 +135,7 @@ import {
   historyCardIds,
   lastAction,
   lastAct,
+  recentActs,
   updaterOf,
 } from "./mod-loader/mods/card-mod-history.js";
 import { trackedFieldByIndex } from "./history/change.js";
@@ -363,12 +364,14 @@ function searchCqlLimit(statement: Record<string, unknown>): number | undefined 
  *  set/type/setting.rb#set_classes_with_rules + card-mod-rules
  *  set/type/setting/core.haml:1-12): every rule whose right part is the
  *  setting's name is bucketed under one of these classes, in this order.
- *  The *rule / *star / *rstar patterns are excluded — they don't classify
- *  setting children. The lookup order (PATTERN_TABLE) is preserved so the
- *  rendered per-pattern groups match Ruby's `klass.to_s` ordering. */
-const SETTING_CLASSES = PATTERN_TABLE.filter(
-  (spec) => spec.code !== "rule" && spec.code !== "star" && spec.code !== "rstar",
-);
+ *  Ruby walks ALL of `Pattern.concrete.reverse` — no pattern is excluded —
+ *  and a class survives whenever rules_for_set_class finds rows: the
+ *  oracle's *create Setting page carries `*star` and `*rstar` sections
+ *  (the deck stores *star+*create / *rstar+*create rows, and the earlier
+ *  rule/star/rstar exclusion dropped both sections from every *create
+ *  page). The lookup order (PATTERN_TABLE) reversed gives Ruby's
+ *  least-specific-first section order. */
+const SETTING_CLASSES = PATTERN_TABLE;
 
 /** The [[target]] wikilinks inside one content string, deduplicated by the
  *  caller's array (targets may repeat across cards). Target = the part
@@ -636,26 +639,39 @@ export class RenderEngine implements RenderEngineLike {
    *  response. */
   renderAbsentCards = false;
   /** The prepared signed-in *account_links navbar items (see
-   *  RenderEngineLike.pageSessionAccountLinksHtml). Filled once per
-   *  session actor by prepareSessionAccountLinks; survives across pages of
-   *  the same engine (the chrome session does not change mid-engine). */
+   *  RenderEngineLike.pageSessionAccountLinksHtml, the UNFILLED variant).
+   *  Filled once per session actor by prepareSessionAccountLinks; survives
+   *  across pages of the same engine (the chrome session does not change
+   *  mid-engine; the ensure_roles fill rides the per-request flag, not the
+   *  prepared strings). */
   private sessionAccountLinks: string | undefined;
   private sessionAccountLinksActorId: number | undefined;
   /** The prepared :my_card view body (the account_dropdown arm) — see
    *  RenderEngineLike.pageSessionMyCardHtml. */
   private sessionMyCardHtml: string | undefined;
+  /** The FILLED :my_card variant (the ensure_roles read-fill applied — the
+   *  hidden content field's value present). Baked alongside the unfilled
+   *  string when the session's actor holds the roles nest; served once a
+   *  render has already shown the roles nest once (below). */
+  private sessionMyCardHtmlFilled: string | undefined;
   /** RenderEngineLike.pageSessionRolesDropdownHtml. */
   private sessionRolesDropdownHtml: string | undefined;
-  /** The session +*enabled_roles card's content: set/right/enabled_roles.rb
-   *  ensure_roles fills it during the first render that shows the roles
-   *  dropdown, after that render's content input (blank) is out; the card
-   *  stays cached, so later renders carry the roles. Actor ids whose card an
-   *  earlier render filled. */
-  private enabledRolesContentFilled = new Set<number>();
-  /** The actor whose roles dropdown the current render showed (filled at
-   *  the end of the render). */
-  private enabledRolesPendingActor: number | undefined;
-  private sessionAccountLinksFilled = false;
+  /** The prepared signed-in *account_links navbar items, FILLED variant (the
+   *  my_card roles nest inside it carrying the ensure_roles value). */
+  private sessionAccountLinksFilledHtml: string | undefined;
+  /** The session +*enabled_roles card's content fill, the port of
+   *  set/right/enabled_roles.rb ensure_roles' ORDER SEMANTICS (probed live
+   *  against the Ruby oracle, 2026-10-10): checkbox_input calls
+   *  card.ensure_roles at EVERY roles-nest render; the card object mutates
+   *  mid-request, so the FIRST nest render of a request shows the blank
+   *  content input (the fill lands after the field is out) and every LATER
+   *  nest render of the same request reads the filled content. Ruby's fill
+   *  does not cross the request boundary (Card::Env.reset per recorded
+   *  op; the oracle's bare view ops pin blank fields), so the flag is
+   *  render-scoped: cleared at every render() entry, flipped by the view
+   *  fns AFTER they consume the roles-nest html
+   *  (RenderEngineLike.markSessionRolesContentFilled). */
+  private sessionRolesContentFilled = false;
   private sessionAccountLinksHasRoles = false;
 
   /** The render-time history seam bundle (src/card/history/render-seam.ts):
@@ -726,6 +742,24 @@ export class RenderEngine implements RenderEngineLike {
   private ruleTypeIds:
     | { setting: number | undefined; set: number | undefined; user: number | undefined }
     | undefined;
+  /** Keys of COMPOUND cards whose set keys were computed while ruleTypeIds
+   *  was still undefined — exactly the enrichment state where the RULE
+   *  pattern's applies? cannot answer and safeSetKeys writes the set keys
+   *  WITHOUT the bare RULE token (06_rule.rb; the corpus's rule-page
+   *  key-order family). The rule set-key repair below re-derives those
+   *  cards' set keys once the ids exist, then clears this record, so the
+   *  repair's gate is the HAZARD itself ("cards seated before the ids
+   *  folded") rather than the ids' temperature: the help resolver
+   *  (help-popover.ts prepare) memoizes ruleTypeIds during the mod
+   *  prepare phase — BEFORE the first render — while the boot-time rule
+   *  cache (card-mod-rules prepareRuleCache, earlier in the same prepare
+   *  phase) has already enriched the deck's rule cards without them.
+   *  Gating on ruleTypeIds === undefined there skipped the repair forever
+   *  and left every deck-created rule card's page slot one token short
+   *  (the 118 pinned corpus ops this field retires). Cleared on
+   *  resetCaches() beside ruleTypeIds (the map the keys point into is
+   *  dropped with it). */
+  private setKeysPendingRuleTypes = new Set<string>();
   /** existing-rule resolution for VIRTUAL rule cards — the port of
    *  card-mod-rules set/rule/editor.rb:119-131 find_existing_rule_card
    *  (`new_card? ? existing_rule_from_prototype : self`): for a rule card
@@ -956,6 +990,14 @@ export class RenderEngine implements RenderEngineLike {
     // lane clears once for the whole page render (beginPagePrepare), so
     // its inner render() leaves the layout warm-ups' seats in scope.
     if (this.pagePrepareDepth === 0) this.renderSeats.clear();
+    // The chrome session's account-links data (the *account links views'
+    // and the navbar's prepared items): Ruby reads Auth.current live on
+    // every render; the port prepares once per actor. The page lane calls
+    // this ahead of the sync layout render (page.ts); the bare view lane
+    // prepares here so a direct *account links view render (the corpus's
+    // view ops) sees the signed-in items, not the signed-out pair.
+    // Memoized per actor; a no-op for signed-out sessions.
+    await this.prepareSessionAccountLinks();
     // THE ONE-TRIP SEAT (stamp-as-column lane, 2026-10-06 — spec §c): moved
     // ABOVE the freshness gate because on this posture the seat's HEAD
     // statement IS the render's stamp read — deck_data_version rides the
@@ -1086,6 +1128,9 @@ export class RenderEngine implements RenderEngineLike {
     this.historyReader = undefined;
     this.updaterReader = undefined;
     this.requestNewCard = params.newCard;
+    // The ensure_roles fill is per-request (see the field note): a fresh
+    // render starts with the session card's blank content.
+    this.sessionRolesContentFilled = false;
 
     // Read-permission preparation (see src/card/permissions/). On a cold
     // render the state resolution rides the prefetch batch (one round trip
@@ -1304,7 +1349,7 @@ export class RenderEngine implements RenderEngineLike {
       // check that admitted it.
       this.bootProbeVersion = undefined;
     }
-    if (ruleTypesCold) {
+    if (ruleTypesCold || this.setKeysPendingRuleTypes.size > 0) {
       // Warm-closure FIRST render: the fold above never ran (the batch is
       // skipped), so parse here defensively - one standalone codename load,
       // once per engine (parseRuleTypeIds' own defensive branch).
@@ -1319,17 +1364,30 @@ export class RenderEngine implements RenderEngineLike {
       // never recomputed them. Re-derive now that the ids are folded:
       // structurePatternInputForSync is the SAME input contract safeSetKeys
       // consumes (its doc), and every compound card's name parts are
-      // enriched ahead of it, so the sync predicate resolves. Runs once per
-      // engine (ruleTypesCold); memory-only, zero queries.
+      // enriched ahead of it, so the sync predicate resolves.
+      // Memory-only, zero queries.
+      // THE GATE IS THE HAZARD, NOT THE IDS' TEMPERATURE: the pending set
+      // (setKeysPendingRuleTypes) records every compound card enriched
+      // before the ids folded - the only cards whose set keys can be
+      // missing the RULE token. Gating on ruleTypesCold alone skipped this
+      // repair forever on the composed adapters, where the help resolver
+      // (help-popover.ts prepare) memoizes ruleTypeIds during the mod
+      // prepare phase - after the boot-time rule cache
+      // (card-mod-rules prepareRuleCache) had already enriched the deck's
+      // rule cards WITHOUT them - so every deck-created rule card's page
+      // slot rendered one token short (the corpus's rule-page key-order
+      // family, 118 pinned ops, retired 2026-10-10).
       // The map need not hold every part the predicate reads: a rule card
       // reached by its stored key (`*all+*style` from a set's rules board)
       // enters without its right part (`*style`). The sync read cannot tell
       // "not a rule" from "parts not in the map", so a card whose parts are
       // missing is answered by the fetching predicate, as Ruby's rule?
-      // fetches them. The cards that need it are collected first: the
-      // fetches below can enrich more cards into the map.
-      const repaired = [...this.renderCards.values()].filter((card) => card.name.isCompound);
-      for (const card of repaired) {
+      // fetches them.
+      for (const pendingKey of this.setKeysPendingRuleTypes) {
+        const card = this.renderCards.get(pendingKey);
+        // resetCaches dropped the map beside ruleTypeIds (the pending set is
+        // cleared there too); a missing entry has nothing to repair.
+        if (card === undefined || !card.name.isCompound) continue;
         const input = this.structurePatternInputForSync(card);
         let isRule = input.isRule === true;
         if (!isRule && !this.rulePartsInMap(card)) {
@@ -1347,6 +1405,7 @@ export class RenderEngine implements RenderEngineLike {
           isRule,
         });
       }
+      this.setKeysPendingRuleTypes.clear();
     }
     // Defensive fallback for the one shape the fold cannot cover: a first
     // render that took the WARM-closure branch (a prior closureWarmup
@@ -2001,6 +2060,16 @@ export class RenderEngine implements RenderEngineLike {
     // guard hit instead of depending on fallback-round ordering.
     const format = new RenderFormat(rootCard, this, {
       maxDepth: RUBY_MAX_DEPTH,
+      // The bare view lane rescues nested render errors to the quiet span,
+      // the same render-global config the page lane passes (page.ts
+      // nestQuietErrors: true): Ruby's wrap_and_render rescue is quiet for
+      // every NESTED render (nesting/subformat.rb:41-43 focal? is
+      // depth.zero?, and a nest's nesting format always has depth > 0).
+      // The previous default rethrew, so a nest-depth raise aborted the
+      // whole op where the oracle carries the full frames plus the inline
+      // render-error span (the seconds corpus's Chain/Loop ops,
+      // 2026-10-09).
+      nestQuietErrors: true,
       // THE bare view-lane root (render.ts renders nothing else at this
       // entry; page.ts builds its own rootFormat without the marker). The
       // census-M1 bar-seat climbs the parent chain for this flag.
@@ -2037,6 +2106,18 @@ export class RenderEngine implements RenderEngineLike {
     // prepared read verdicts.
     if (HISTORY_SEAM_VIEWS.has(view)) {
       this.historyReader = await this.prepareHistoryRender(rootCard, params);
+    }
+    // set/self/recent.rb:28-33 - the *recent card's html :core is the
+    // deck-wide recent-acts feed (recent_acts + acts_layout :absolute), a
+    // Self-set override of the search core (self outranks Type::SearchType
+    // in the set chain). The seam loads for any core-reaching render whose
+    // ROOT is the *recent card itself (SELF-Xrecent) - the bare view lane
+    // (:core) and the page lane (titled/open reach the core) alike.
+    if (
+      CORE_REACHING_VIEWS.has(view) &&
+      rootCard.setKeys.split(" ").includes("SELF-Xrecent")
+    ) {
+      this.historyReader = await this.prepareHistoryRender(rootCard, params, "recent");
     }
     // The render-time ACT-SEARCH seam (updater-seam.ts): load the DISTINCT
     // update-actor cards the :updated_by view reads - ONLY for the two
@@ -2483,6 +2564,10 @@ export class RenderEngine implements RenderEngineLike {
     this.existingRuleCards = undefined;
     this.setRulePreloadDoneIds = undefined;
     this.ruleTypeIds = undefined;
+    // The pending-repair keys point into the render-card map dropped above
+    // (setKeysPendingRuleTypes' doc): entries repaired or dropped with the
+    // map; post-reset enrichments re-record themselves.
+    this.setKeysPendingRuleTypes.clear();
     this.structureContents = undefined;
     this.structureRuleTypes = undefined;
     this.structureProcessed.clear();
@@ -6690,8 +6775,7 @@ export class RenderEngine implements RenderEngineLike {
         if (!this.existingRuleCards.has(name.key)) {
           const protoInput = await this.prototypePatternInput(setCard);
           if (protoInput !== undefined) {
-            const rule = await findRule(
-              this.fetcher,
+            const rule = await this.findPrototypeRule(
               protoInput,
               settingCard.name?.s ?? `*${settingCodename}`,
             );
@@ -6703,6 +6787,138 @@ export class RenderEngine implements RenderEngineLike {
         }
       }
     }
+  }
+
+  /** findRule with Ruby's cache-walk semantics for NEW-card prototypes.
+   *
+   *  TYPE-ANCHORED CANDIDATES NEED A TYPE: a NEW card whose type the
+   *  template chain has not resolved carries no Type / TypePlusRight
+   *  pattern (set_pattern application anchors those on card.type_id), so
+   *  its rule-cache walk emits no "<type>+<setting>" /
+   *  "<type>+<anchor>+*type plus right+<setting>" lookup keys. The
+   *  name-walk's candidates for an untyped input compose those forms with
+   *  the registry's RichText default; on the RVW+*right set prototype that
+   *  composition answered "existing" where the oracle pins the opposite
+   *  (the capture's slot census: hide:["bar_nav"] exactly on
+   *  structure/autoname/help/input_type/on_create/on_update/on_delete/
+   *  thanks/follow). Skip while the input's type is unresolved.
+   *
+   *  TPR CANDIDATES ANCHOR ON left_type, NOT THE CARD'S OWN TYPE:
+   *  pattern/class_methods.rb:59-73 left_type = `card.superleft&.type_name
+   *  || quick_type(card.name.left_name)`, where quick_type types a NEW
+   *  left card through ITS OWN *default walk — for the set prototype
+   *  *dummy+RVW (typed RichText via *all plus+*default) the TPR anchor is
+   *  quick_type("*dummy") = the *all+*default rule's type ("Basic Cs"),
+   *  so Ruby's lookup key reads "BasicCs+RVW+type_plus_right+<setting>" —
+   *  an anchor naming NO card (@anchor_id nil, pattern/base.rb:75-80
+   *  `elsif @anchor_id`) — and the key never forms: the
+   *  RichText+RVW+*type plus right+*structure rule (10722) stays
+   *  unreachable and the prototype's existing-rule verdict for *structure
+   *  is nil. The name walk instead composes the TPR candidate from the
+   *  input's own type name (RichText), whose anchor card DOES exist — the
+   *  one-hit divergence. Probe the quick-type-anchored form and skip the
+   *  input-type-anchored one for plain (supercard-less) compounds;
+   *  supercard-shaped inputs keep leftTypeName (class_methods.rb:61's
+   *  superleft arm, the Search+large image pin). */
+  private async findPrototypeRule(
+    protoInput: PatternCardInput,
+    setting: string,
+  ): Promise<{ rule: CardRecord } | undefined> {
+    const candidates = ruleNamesForCard(protoInput, setting);
+    const protoName =
+      protoInput.name instanceof DeckoName
+        ? protoInput.name
+        : DeckoName.parse(String(protoInput.name));
+    const quickLeftTypeName =
+      protoInput.typeId !== undefined &&
+      protoInput.isNew === true &&
+      protoInput.leftTypeName === undefined &&
+      protoName.isCompound
+        ? await this.quickTypeName(protoName.leftName)
+        : undefined;
+    for (const candidate of candidates) {
+      if (
+        protoInput.typeId === undefined &&
+        /\+(\*type|\*type plus right)\+/.test(candidate)
+      ) {
+        continue;
+      }
+      const tprMatch = /^(.*)\+\*type plus right\+/.exec(candidate);
+      let probe = candidate;
+      if (
+        tprMatch !== null &&
+        quickLeftTypeName !== undefined &&
+        protoInput.typeName !== undefined &&
+        tprMatch[1].startsWith(`${protoInput.typeName}+`)
+      ) {
+        // rewrite the anchor's left type to Ruby's quick_type(left_name)
+        probe = `${quickLeftTypeName}${candidate.slice(String(protoInput.typeName).length)}`;
+      } else if (tprMatch !== null && quickLeftTypeName === undefined) {
+        continue;
+      }
+      let record: CardRecord | undefined;
+      try {
+        record = await this.fetcher.fetchByName(probe);
+      } catch (err) {
+        if (
+          err instanceof CodenameNotFoundError ||
+          err instanceof NameNotFoundError
+        ) {
+          continue;
+        }
+        throw err;
+      }
+      if (record !== undefined && record.name !== undefined) {
+        return { rule: record };
+      }
+    }
+    return undefined;
+  }
+
+  /** class_methods.rb:64-72 quick_type: the type name of a NEW card named
+   *  `name`, resolved through its own *default walk (untyped input; the
+   *  *self candidate drops for new cards and the compound-only *all plus
+   *  candidates need a type), first existing rule's own type. Undefined
+   *  when no *default rule applies or the type card cannot be named. */
+  private async quickTypeName(name: DeckoName | undefined): Promise<string | undefined> {
+    if (name === undefined) return undefined;
+    const candidates = ruleNamesForCard(
+      { name, id: undefined, typeId: undefined, typeName: undefined, isNew: true },
+      "*default",
+    );
+    for (const candidate of candidates) {
+      if (/\+(\*type|\*type plus right)\+/.test(candidate)) continue;
+      let record: CardRecord | undefined;
+      try {
+        record = await this.fetcher.fetchByName(candidate);
+      } catch (err) {
+        if (
+          err instanceof CodenameNotFoundError ||
+          err instanceof NameNotFoundError
+        ) {
+          continue;
+        }
+        throw err;
+      }
+      if (record !== undefined && record.typeId !== undefined) {
+        const typeCard = await this.fetcher.fetchById(record.typeId);
+        const typeName = typeCard?.name?.s;
+        if (typeName !== undefined) return typeName;
+      }
+    }
+    return undefined;
+  }
+
+  /** Ruby's Auth.always_ok? for the session's viewer — the
+   *  ReadPermissionState.alwaysOk verdict (auth/permissions.rb:7-13, the
+   *  DeckoBot actor or an Administrator-role member), settled in the
+   *  prepare phase and read synchronously here (format.ts RenderEngineLike#
+   *  peekAlwaysOk). html/error.rb:47-49 show_all_errors? consumes it: the
+   *  quiet render-error span's ADMIN arm (backtrace_link's debug-page
+   *  title) renders only for an always-ok viewer. Undefined = no
+   *  permission state resolved (the plain-cardname arm). */
+  peekAlwaysOk(): boolean | undefined {
+    return this.readPermission?.alwaysOk;
   }
 
   /** The read-permission verdict for a prepared card (ok_to_read?'s set
@@ -6851,10 +7067,6 @@ export class RenderEngine implements RenderEngineLike {
     } finally {
       this.unknownCreateMisses.clear();
       this.unknownCreateRenderDepth -= 1;
-      if (this.enabledRolesPendingActor !== undefined) {
-        this.enabledRolesContentFilled.add(this.enabledRolesPendingActor);
-        this.enabledRolesPendingActor = undefined;
-      }
     }
   }
 
@@ -6868,29 +7080,45 @@ export class RenderEngine implements RenderEngineLike {
     this.sessionAccountLinks = undefined;
     this.sessionAccountLinksActorId = undefined;
     this.sessionMyCardHtml = undefined;
+    this.sessionMyCardHtmlFilled = undefined;
     this.sessionRolesDropdownHtml = undefined;
-    this.enabledRolesContentFilled.clear();
-    this.enabledRolesPendingActor = undefined;
-    this.sessionAccountLinksFilled = false;
+    this.sessionAccountLinksFilledHtml = undefined;
+    this.sessionRolesContentFilled = false;
     this.sessionAccountLinksHasRoles = false;
   }
 
   /** RenderEngineLike.pageSessionAccountLinksHtml — the prepared signed-in
    *  *account_links navbar items (undefined until a page render prepared
-   *  them for a signed-in chrome session). */
+   *  them for a signed-in chrome session). Serves the FILLED variant once
+   *  this render has already shown the roles nest once (ensure_roles'
+   *  mid-request mutation; see the field note). */
   get pageSessionAccountLinksHtml(): string | undefined {
-    return this.sessionAccountLinks;
+    return this.sessionRolesContentFilled
+      ? (this.sessionAccountLinksFilledHtml ?? this.sessionAccountLinks)
+      : this.sessionAccountLinks;
   }
 
   /** RenderEngineLike.pageSessionMyCardHtml — the prepared :my_card view
-   *  body (the account_dropdown arm; see the prepare note below). */
+   *  body (the account_dropdown arm; see the prepare note below). Serves
+   *  the FILLED variant once this render has already shown the roles nest
+   *  once (ensure_roles' mid-request mutation; see the field note). */
   get pageSessionMyCardHtml(): string | undefined {
-    return this.sessionMyCardHtml;
+    return this.sessionRolesContentFilled ? (this.sessionMyCardHtmlFilled ?? this.sessionMyCardHtml) : this.sessionMyCardHtml;
   }
 
   /** RenderEngineLike.pageSessionRolesDropdownHtml. */
   get pageSessionRolesDropdownHtml(): string | undefined {
     return this.sessionRolesDropdownHtml;
+  }
+
+  /** RenderEngineLike.markSessionRolesContentFilled — the port of
+   *  ensure_roles' mutation point (set/right/enabled_roles.rb:52
+   *  checkbox_input's first line): a view fn that has just consumed the
+   *  roles-nest html flips this request's fill state, so the NEXT roles
+   *  nest render of the same request serves the filled content input.
+   *  A no-op unless the session's chrome carries the roles nest. */
+  markSessionRolesContentFilled(): void {
+    if (this.sessionAccountLinksHasRoles) this.sessionRolesContentFilled = true;
   }
 
   /** Prepare the signed-in account-links chrome for the page session — the
@@ -6913,10 +7141,8 @@ export class RenderEngine implements RenderEngineLike {
     if (session?.signedIn !== true || session.actorId === undefined) return;
     if (
       this.sessionAccountLinks !== undefined &&
-      this.sessionAccountLinksActorId === session.actorId &&
-      this.sessionAccountLinksFilled === this.enabledRolesContentFilled.has(session.actorId)
+      this.sessionAccountLinksActorId === session.actorId
     ) {
-      if (this.sessionAccountLinksHasRoles) this.enabledRolesPendingActor = session.actorId;
       return;
     }
     const actor = await this.fetcher.fetchById(session.actorId, { skipVirtual: true });
@@ -6925,7 +7151,9 @@ export class RenderEngine implements RenderEngineLike {
       this.sessionAccountLinks = undefined;
       this.sessionAccountLinksActorId = undefined;
       this.sessionMyCardHtml = undefined;
+      this.sessionMyCardHtmlFilled = undefined;
       this.sessionRolesDropdownHtml = undefined;
+      this.sessionAccountLinksFilledHtml = undefined;
       return;
     }
     const actorName: string = actor.name.s;
@@ -6954,20 +7182,29 @@ export class RenderEngine implements RenderEngineLike {
     };
     // The :my_card view body (account_links.rb view :my_card):
     // `can_disable_roles? ? interactive_roles_dropdown : account_dropdown`.
+    // Both ensure_roles variants bake here (the async prepare is the only
+    // place with the resolved roles): UNFILLED for the first roles-nest
+    // render of a request (the blank content input the oracle pins), FILLED
+    // for every later nest render of the same request — the fill state
+    // itself flips per request at the consumption seam
+    // (markSessionRolesContentFilled).
     const rolesInput = await this.sessionRolesInput(actor);
-    const filled = this.enabledRolesContentFilled.has(session.actorId);
-    this.sessionAccountLinksFilled = filled;
     this.sessionAccountLinksHasRoles = rolesInput !== undefined;
-    if (rolesInput !== undefined) this.enabledRolesPendingActor = session.actorId;
     this.sessionMyCardHtml =
       rolesInput === undefined
         ? myCardDropdownInnerHtml(actorName, known, [])
-        : enabledRolesDropdownHtml(rolesInput, known, filled);
+        : enabledRolesDropdownHtml(rolesInput, known, false);
+    this.sessionMyCardHtmlFilled =
+      rolesInput === undefined ? undefined : enabledRolesDropdownHtml(rolesInput, known, true);
     this.sessionRolesDropdownHtml =
       rolesInput === undefined
         ? myCardDropdownInnerHtml(actorName, known, [])
         : rolesAccountDropdownHtml(rolesInput, known);
     this.sessionAccountLinks = signedInAccountLinksInnerHtml(actorName, known, this.sessionMyCardHtml);
+    this.sessionAccountLinksFilledHtml =
+      rolesInput === undefined
+        ? undefined
+        : signedInAccountLinksInnerHtml(actorName, known, this.sessionMyCardHtmlFilled);
     this.sessionAccountLinksActorId = session.actorId;
   }
 
@@ -7418,6 +7655,7 @@ export class RenderEngine implements RenderEngineLike {
   private async prepareHistoryRender(
     rootCard: RenderCard,
     params: HistoryRenderParams,
+    source: "history" | "recent" = "history",
   ): Promise<HistoryRenderReader> {
     const driver = this.fetcher.driver;
     const cardId = rootCard.id;
@@ -7467,11 +7705,20 @@ export class RenderEngine implements RenderEngineLike {
     // and an act with no surviving action drops from the DISTINCT - so the
     // raw acts load first, the family's cards enrich + judge, then the
     // at-least-one-viewable-action filter runs.
+    //
+    // The "recent" source (set/self/recent.rb:14-21 recent_acts) swaps the
+    // per-card reference closure for the DECK-WIDE feed: every act with a
+    // non-draft action on an existing card, id DESC, under limiting_scan
+    // (the last 10k act ids). The viewable filter rides the same
+    // verdict pass; clean_acts (act_listing.rb:59-63) drops below.
     const historyCardIdList = await historyCardIds(driver, cardId);
-    const rawActs = await historyActs(driver, historyCardIdList, {
-      currentUserId,
-      withDrafts: true,
-    });
+    const rawActs =
+      source === "recent"
+        ? await recentActs(driver)
+        : await historyActs(driver, historyCardIdList, {
+            currentUserId,
+            withDrafts: true,
+          });
 
     // The acts' actions + changes (one IN-list SELECT per table - the same
     // rows Act#actions and Action#all_changes read, batched).
@@ -7534,6 +7781,34 @@ export class RenderEngine implements RenderEngineLike {
         renderCard,
       });
     }
+    // The bootswatch-skin act warm (the action-summary assembly's
+    // synchronous reads): a bootswatch_skin-typed action card's summary
+    // renders through BootswatchSkin#content (card-mod-bootstrap
+    // set/type/bootswatch_skin.rb:44-48, the four-part CONTENT_PARTS
+    // assembly served by the content-override registry's type/
+    // bootswatch_skin entry) — differ.rb:60-66 raw_view renders the card's
+    // raw view, whose card.content is the ASSEMBLY, and the assembly's
+    // fetchRenderCard reads (+*colors / +*variables / +*stylesheets / the
+    // +parent pointer / the style: mods card) are cache-only. Nothing in a
+    // history render's nest closure chases those rows, so warm the family
+    // for each involved skin card — the same conditional-family shape as
+    // the skin-page warm (a skin-typed ROOT warms +Image/+parent/the three
+    // skin fields below). Cards that do not exist warm nothing.
+    if (this.peekCodenameById !== undefined) {
+      let styleModsWarmed = false;
+      for (const renderCard of cardById.values()) {
+        if (this.peekCodenameById(renderCard.typeId ?? -1) !== "bootswatch_skin") continue;
+        const n = renderCard.name.s;
+        await this.prepareItemForRender(`${n}+*colors`);
+        await this.prepareItemForRender(`${n}+*variables`);
+        await this.prepareItemForRender(`${n}+*stylesheets`);
+        await this.prepareItemForRender(`${n}+parent`);
+        if (!styleModsWarmed) {
+          await this.prepareItemForRender("style: mods");
+          styleModsWarmed = true;
+        }
+      }
+    }
 
     // The value / previous-value projections (changes.rb readers - the
     // sole-action synthesis stays inside the tested functions).
@@ -7564,6 +7839,94 @@ export class RenderEngine implements RenderEngineLike {
       }
     }
 
+    // The actions-by-act fold moved into finishHistoryReader (shared with
+    // the deck-wide *recent source).
+
+    // The verdict pass for the history family's involved cards, then the
+    // act-level viewable filter (an act survives when at least one of its
+    // actions' cards is readable - act.rb:54-59 DISTINCT semantics).
+    // ensureVerdicts judges this render's SEATS only - and a warm engine
+    // re-enriches held cards through enrichAndStore's early return WITHOUT
+    // re-seating them (resetDerivedRenderState clears renderSeats and
+    // deniedVerdicts together every render), so a deck-wide feed's act
+    // cards can ride a missing verdict - which isDenied reads as ALLOWED.
+    // Judge the family explicitly (the same input shape as the seat pass):
+    // the *recent feed's oracle pins the shape twice over - the anonymous
+    // *recent page must DROP the Shared Note 01/Contractor Note 01
+    // +*self+*read rule acts (their rule cards' own read rule is
+    // self-pointing, content "Anyone Signed In"/"Contractor" - not the
+    // anonymous parties) and BACKFILL the window with the next-readable
+    // acts (Report Index, Report 4).
+    await this.ensureVerdicts();
+    for (const [involvedId, renderCard] of cardById) {
+      if (this.deniedVerdicts.has(involvedId)) continue;
+      const allowed = await this.cardReadAllowed(
+        renderCard.name,
+        involvedId,
+        renderCard.record.typeId,
+        renderCard.typeName,
+        renderCard.record.readRuleId,
+      );
+      this.deniedVerdicts.set(involvedId, allowed === false);
+    }
+    // clean_acts (act_listing.rb:59-63, applied by BOTH sources'
+    // acts_for_accordion): drop acts whose primary card row is gone.
+    const cleanActs = rawActs.filter(
+      (act) => act.card_id !== null && cardInfoById.has(Number(act.card_id)),
+    );
+    // history_card_ids of the ROOT (the actions_affecting closure test).
+    const rootHistoryIds = new Set(historyCardIdList);
+    return this.finishHistoryReader(rootCard, params, currentUserId, {
+      rawActs: cleanActs,
+      actions,
+      changeRows,
+      cardInfoById,
+      valueCache,
+      previousCache,
+      typeNames,
+      cardLastAct,
+      cardLastAction,
+      rootHistoryIds,
+    });
+  }
+
+  /** The reader construction both history sources share (the per-card
+   *  history seam AND the deck-wide *recent feed - set/self/recent.rb).
+   *  The act-level viewable filter runs here: an act survives when at
+   *  least one of its actions' cards is readable (act.rb:54-59's DISTINCT
+   *  semantics - Ruby's recent_acts/history_acts apply viewable_sql inside
+   *  the SQL JOIN, so an act with no surviving action drops). */
+  private async finishHistoryReader(
+    rootCard: RenderCard,
+    params: HistoryRenderParams,
+    currentUserId: number,
+    loaded: {
+      rawActs: HistoryActRow[];
+      actions: HistoryActionRow[];
+      changeRows: HistoryChangeRow[];
+      cardInfoById: Map<number, HistoryActionCardInfo>;
+      valueCache: Map<number, Map<string, string | number | boolean | null | undefined>>;
+      previousCache: Map<number, Map<string, string | number | boolean | null | undefined>>;
+      typeNames: Map<number, string>;
+      cardLastAct: HistoryActRow | undefined;
+      cardLastAction: HistoryActionRow | undefined;
+      rootHistoryIds: Set<number> | undefined;
+    },
+  ): Promise<HistoryRenderReader> {
+    const cardId = rootCard.id;
+    const {
+      rawActs,
+      actions,
+      changeRows,
+      cardInfoById,
+      valueCache,
+      previousCache,
+      typeNames,
+      cardLastAct,
+      cardLastAction,
+      rootHistoryIds,
+    } = loaded;
+    // Act#actions (act.rb:88-92, id order) — the fold both sources read.
     const actionsByActRaw = new Map<number, HistoryActionRow[]>();
     for (const action of actions) {
       if (action.card_act_id === null) continue;
@@ -7572,10 +7935,6 @@ export class RenderEngine implements RenderEngineLike {
       if (list === undefined) actionsByActRaw.set(actId, [action]);
       else list.push(action);
     }
-    // The verdict pass for the newly enriched family cards, then the
-    // act-level viewable filter (an act survives when at least one of its
-    // actions' cards is readable - act.rb:54-59 DISTINCT semantics).
-    await this.ensureVerdicts();
     const acts = rawActs.filter((act) =>
       (actionsByActRaw.get(act.id) ?? []).some(
         (a) => a.card_id !== null && this.deniedVerdicts.get(Number(a.card_id)) !== true,
@@ -7589,9 +7948,6 @@ export class RenderEngine implements RenderEngineLike {
       if (list === undefined) changesByAction.set(change.cardActionId, [change]);
       else list.push(change);
     }
-    // history_card_ids of the ROOT (the actions_affecting closure test).
-    const rootHistoryIds = new Set(historyCardIdList);
-
     const readValue = (
       action: HistoryActionRow,
       field: "name" | "type_id" | "db_content" | "content" | "trash",
@@ -7621,7 +7977,7 @@ export class RenderEngine implements RenderEngineLike {
         (actionsByActRaw.get(actId) ?? []).filter(
           (a) =>
             a.card_id === affectingCardId ||
-            (a.card_id !== null && rootHistoryIds.has(Number(a.card_id))),
+            (a.card_id !== null && rootHistoryIds?.has(Number(a.card_id)) === true),
         ),
       approvedActions: (list) =>
         list.filter((a) => {
@@ -7735,11 +8091,12 @@ export class RenderEngine implements RenderEngineLike {
    *  `card.rules_for_set_class(klass)`: for a setting-type card (e.g.
    *  *read), walk every rule whose right part matches this setting and
    *  bucket by the LEFT pattern class. Each PatternSpec's patternCardName
-   *  (*all, *all plus, *type, *right, *type plus right, *self — in the
-   *  registry's lookup order, the ones a setting's children can carry)
-   *  becomes one bucket; `anchorless` mirrors whether the pattern carries
-   *  an `anchor_name` override (the *all and *all_plus specs don't, so
-   *  Ruby collapses those into a single full-name row; the anchored
+   *  (*all, *all plus, *type, *right, *type plus right, *self — the ones a
+   *  setting's children can carry) becomes one bucket, emitted in
+   *  `Pattern.concrete.reverse` order (least-specific first: *all opens the
+   *  page, *self closes it); `anchorless` mirrors whether the pattern
+   *  carries an `anchor_name` override (the *all and *all_plus specs don't,
+   *  so Ruby collapses those into a single full-name row; the anchored
    *  ones iterate per-rule). Used by the setting-card core view
    *  (setting.rb:39-55 + core.haml:1-12). */
   setClassesWithRules(host: RenderCard): SettingClassWithRules[] {
@@ -7783,10 +8140,39 @@ export class RenderEngine implements RenderEngineLike {
         bucket.push(card);
       }
     }
-    for (const klass of SETTING_CLASSES) {
-      const leftKey = klass.patternCardName.toLowerCase();
-      const rules = settingBuckets.get(leftKey);
+    // card-mod-rules set/type/setting.rb:40-46 walks `Pattern.concrete.reverse`
+    // — the LOOKUP order reversed, least-specific first — so a Setting page
+    // opens with the *all section ("all cards") and closes with *self ("a
+    // single card"). Two more subtleties of the Ruby shape:
+    //
+    //   • rules_for_set_class matches rows by set_class.pattern_id (the
+    //     pattern CARD's id, setting.rb:51-53), so the deck's spelling of the
+    //     pattern card's name cannot break the match. The port's buckets are
+    //     keyed by card KEY (bucketKey above), so the lookup must use
+    //     DeckoName's key of the pattern card name — not a raw lowercase —
+    //     or the one pattern whose name keys differently (*all plus keys to
+    //     "*all_plu") never matches and its section silently drops.
+    //
+    //   • rules_for_set_class sorts by %w[content name] (setting.rb:50) —
+    //     SQL `ORDER BY db_content, key`. The corpus deck stores every rule
+    //     junction name-less (cards.key IS NULL for all 503 junction rows),
+    //     so the key tier never discriminates: NULLs sort first in SQLite
+    //     ASC and the fully-tied tier falls to rowid — the same (content,
+    //     id) shape the engine's search port pins as its standard
+    //     tie-breaker (cql/sql.ts orderDirectivesOf). RenderCard.record.key
+    //     cannot stand in for the column: composeCardRecord fills it with
+    //     the COMPOSED key for junction rows, which would interleave rows
+    //     Ruby leaves in rowid order (sidebar/api-key first-diff shape).
+    const byteOrder = (x: string, y: string): number => (x < y ? -1 : x > y ? 1 : 0);
+    for (const klass of [...SETTING_CLASSES].reverse()) {
+      const bucketKey = DeckoName.parse(klass.patternCardName).key;
+      const rules = settingBuckets.get(bucketKey);
       if (rules === undefined || rules.length === 0) continue;
+      rules.sort((a, b) => {
+        const contentOrder = byteOrder(a.record.dbContent ?? "", b.record.dbContent ?? "");
+        if (contentOrder !== 0) return contentOrder;
+        return (a.id ?? 0) - (b.id ?? 0);
+      });
       out.push({
         klass,
         rules,
@@ -8571,6 +8957,11 @@ export class RenderEngine implements RenderEngineLike {
       }
     }
     const isRule = name.isCompound ? await this.computeIsRule(name, leftRecord) : false;
+    // computeIsRule answered undefined (ids not folded yet): the set keys
+    // written below CANNOT carry the RULE token even for a stored rule card.
+    // Record the card for the rule set-key repair (render() entry path) —
+    // see setKeysPendingRuleTypes.
+    if (name.isCompound && isRule === undefined) this.setKeysPendingRuleTypes.add(key);
     const card: RenderCard = {
       record,
       name,

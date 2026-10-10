@@ -11,8 +11,11 @@
 // Reads go through a runtime process.getBuiltinModule probe, never a static
 // "node:fs" import, as style-sources.ts explains: this module sits in bundle
 // graphs whose runtimes have no node: modules. On such a runtime the reads
-// throw (there are no vendored files to read); nothing substitutes an empty
-// string for a missing source.
+// fall back to the GENERATED snapshot of the vendored tree
+// (vendor/edge-script-source-snapshot.js), which the edge bundles carry;
+// nothing substitutes an empty string for a missing source.
+
+import { edgeAssetSources } from "../../../vendor/edge-script-source-snapshot.js";
 
 interface NodeSyncFs {
   readFileSync(path: string | URL, encoding: string): string;
@@ -20,15 +23,36 @@ interface NodeSyncFs {
 }
 
 let nodeFs: NodeSyncFs | undefined;
-function fs(): NodeSyncFs {
+function fsOrNull(): NodeSyncFs | undefined {
   if (nodeFs !== undefined) return nodeFs;
   const proc = (globalThis as unknown as { process?: { getBuiltinModule?: (id: string) => unknown } }).process;
   const found = proc?.getBuiltinModule?.("node:fs") as NodeSyncFs | undefined;
+  if (found !== undefined) nodeFs = found;
+  return found;
+}
+
+function fs(): NodeSyncFs {
+  const found = fsOrNull();
   if (found === undefined) {
     throw new Error("script sources need a Node filesystem (the vendored fixtures/vendor/ tree); this runtime has none");
   }
-  nodeFs = found;
   return found;
+}
+
+/** One vendored file's text: from the repository tree on a Node host, from
+ *  the generated snapshot on an edge runtime. Undefined when the file is
+ *  neither on disk nor in the snapshot — never an empty string. */
+function readVendored(relativePath: string): string | undefined {
+  const nodeFs = fsOrNull();
+  if (nodeFs !== undefined) {
+    try {
+      return nodeFs.readFileSync(new URL(relativePath, vendorDirectory()), "utf8");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code !== "ENOENT") throw error;
+      return undefined;
+    }
+  }
+  return edgeAssetSources[relativePath];
 }
 
 /** The repository's fixtures/vendor/ directory. This module runs from src/
@@ -74,27 +98,27 @@ let manifest: Record<string, ModScriptGroup[]> | undefined;
 /** The vendored files of one mod's script groups, in Ruby's order; undefined
  *  for a mod with no script assets (its `+*script` card has no groups). */
 export function modScriptGroups(modName: string): readonly ModScriptGroup[] | undefined {
-  manifest ??= (JSON.parse(
-    fs().readFileSync(new URL("mod-script-assets/manifest.json", vendorDirectory()), "utf8"),
-  ) as { mods: Record<string, ModScriptGroup[]> }).mods;
+  if (manifest === undefined) {
+    const text = readVendored("mod-script-assets/manifest.json");
+    if (text === undefined) throw new Error("vendored script sources not found: mod-script-assets/manifest.json");
+    manifest = (JSON.parse(text) as { mods: Record<string, ModScriptGroup[]> }).mods;
+  }
   return manifest[modName];
 }
 
 /** An asset file card's `content`: the file's text (Abstract::AssetFile ->
  *  Abstract::CodeFile reads its source path). */
 export function modScriptFileContent(file: ModScriptFile): string {
-  return fs().readFileSync(new URL(`mod-script-assets/${file.file}`, vendorDirectory()), "utf8");
+  const text = readVendored(`mod-script-assets/${file.file}`);
+  if (text === undefined) throw new Error(`vendored script source not found: mod-script-assets/${file.file}`);
+  return text;
 }
 
 /** Whether this host can read the vendored sources (a Node filesystem with
- *  the vendored tree present). A `<set>+*script` save is refused before
+ *  the vendored tree present, or — on an edge runtime — the generated
+ *  snapshot of the same tree). A `<set>+*script` save is refused before
  *  anything is written on a host without them, as a stylesheet rebuild is
  *  refused without the SCSS compiler. */
 export function scriptSourcesAvailable(): boolean {
-  try {
-    vendorDirectory();
-    return true;
-  } catch {
-    return false;
-  }
+  return readVendored("mod-script-assets/manifest.json") !== undefined;
 }

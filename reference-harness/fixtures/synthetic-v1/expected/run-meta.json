@@ -1,38 +1,84 @@
 {
-  "adapter": "decko-ruby",
+  "results_format": 2,
   "fixture": "synthetic-v1",
-  "started": "2026-10-08T06:26:34.264Z",
-  "kinds": [
-    "render",
-    "semantics",
-    "scenarios"
-  ],
-  "engine": {
-    "ready": true,
-    "protocol": 1,
-    "engine": "decko-ruby",
-    "version": {
-      "decko": "0.20.0",
-      "card": "1.110.0"
-    }
-  },
-  "render_ms_per_op": 214,
-  "render_session_row_changes": {},
-  "semantics_ms_per_op": 89,
-  "semantics_session_row_changes": {},
-  "finished": "2026-10-08T06:31:08.595Z",
   "runs": {
     "render": {
-      "started": "2026-10-08T05:56:53.761Z",
-      "finished": "2026-10-08T06:11:31.478Z"
+      "started": "2026-10-08T16:02:28.031Z",
+      "finished": "2026-10-08T16:10:43.212Z",
+      "complete": true,
+      "selection": null,
+      "ops_total": 1752,
+      "ops_run": 1752,
+      "adapter": "decko-ruby",
+      "adapter_checkout": {
+        "commit": "28f0278139c373237fafb1cd04a35bd7a41d12e3",
+        "dirty": false
+      },
+      "engine": {
+        "ready": true,
+        "protocol": 1,
+        "engine": "decko-ruby",
+        "version": {
+          "decko": "0.20.0",
+          "card": "1.110.0"
+        }
+      },
+      "fixture_digest": "b9da0312d4562a18448e76791f8cc3765da1c4a3680c0917503f1e15c17e53bb",
+      "fixture_problems": [],
+      "ms_per_op": 272,
+      "session_writes": {}
     },
     "semantics": {
-      "started": "2026-10-08T05:56:53.761Z",
-      "finished": "2026-10-08T06:11:31.478Z"
+      "started": "2026-10-08T16:10:43.217Z",
+      "finished": "2026-10-08T16:16:12.364Z",
+      "complete": true,
+      "selection": null,
+      "ops_total": 2388,
+      "ops_run": 2388,
+      "adapter": "decko-ruby",
+      "adapter_checkout": {
+        "commit": "28f0278139c373237fafb1cd04a35bd7a41d12e3",
+        "dirty": false
+      },
+      "engine": {
+        "ready": true,
+        "protocol": 1,
+        "engine": "decko-ruby",
+        "version": {
+          "decko": "0.20.0",
+          "card": "1.110.0"
+        }
+      },
+      "fixture_digest": "b9da0312d4562a18448e76791f8cc3765da1c4a3680c0917503f1e15c17e53bb",
+      "fixture_problems": [],
+      "ms_per_op": 129,
+      "session_writes": {}
     },
     "scenarios": {
-      "started": "2026-10-08T06:26:34.264Z",
-      "finished": "2026-10-08T06:31:08.595Z"
+      "started": "2026-10-08T16:16:12.365Z",
+      "finished": "2026-10-08T16:21:38.559Z",
+      "complete": true,
+      "selection": null,
+      "ops_total": 16,
+      "ops_run": 16,
+      "adapter": "decko-ruby",
+      "adapter_checkout": {
+        "commit": "28f0278139c373237fafb1cd04a35bd7a41d12e3",
+        "dirty": false
+      },
+      "engine": {
+        "ready": true,
+        "protocol": 1,
+        "engine": "decko-ruby",
+        "version": {
+          "decko": "0.20.0",
+          "card": "1.110.0"
+        }
+      },
+      "fixture_digest": "b9da0312d4562a18448e76791f8cc3765da1c4a3680c0917503f1e15c17e53bb",
+      "fixture_problems": [],
+      "steps_total": 22,
+      "steps_run": 22
     }
   }
 }

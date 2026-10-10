@@ -83,8 +83,8 @@
 #   tmp/raw-ground-truth/expected-v2/page-lane/recapture-raw-shard-NNNNNN.jsonl
 #   tmp/raw-ground-truth/expected-v2/view-lane/recapture-raw-shard-NNNNNN.jsonl
 #   (sample mode: page-lane/<label>.jsonl and view-lane/<label>.jsonl)
-# One JSON line per card: compact, deeply-sorted keys, slot-id normalized
-# (SLOT_ID_RE -> data-slot-id="RANDOMIZED"). Page lines add lane/layout fields;
+# One JSON line per card: compact, deeply-sorted keys, rendered bytes exactly
+# as Ruby wrote them (slot ids included). Page lines add lane/layout fields;
 # view lines add the lane field and otherwise match the old shard schema.
 #
 # MODES
@@ -281,8 +281,10 @@ end
 
 # ---- normalize / serialize helpers (identical to the old capture) -----------
 SLOT_ID_RE = /data-slot-id=(["'])\h+\1/.freeze
+# Slot ids are stored exactly as Ruby wrote them (value and quote style);
+# graders mask the random value at compare time (reference-harness N1).
 def normalize(html)
-  html.gsub(SLOT_ID_RE, 'data-slot-id="RANDOMIZED"')
+  html
 end
 
 def deep_sort(obj)

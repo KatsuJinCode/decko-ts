@@ -27,6 +27,7 @@
 
 import type { RenderCard, RenderEngineLike } from "./format.js";
 import { DeckoName } from "../name.js";
+import { CodenameNotFoundError, NameNotFoundError, UnsupportedIdentifierError } from "../name/errors.js";
 import { h } from "./slot-html.js";
 import { stripTags } from "./nest-syntax.js";
 import { isPermissionRightSetting, isPointerOrListCard, rawItemStrings } from "./pointer-list.js";
@@ -243,9 +244,36 @@ function ruleOneLineContent(
     if (items.length !== 1) {
       return `${items.length} items`;
     }
-    // count == 1 -> first_name: the raw single item string (a NAME —
-    // no strip_tags on this branch).
-    return truncate(card.dbContent, ONE_LINE_CHARACTER_LIMIT);
+    // count == 1 -> first_name (item.rb:63-65 item_names.first) — and
+    // item_names ABSOLUTIZES every item against the list card's own name
+    // (item.rb:15-22 -> clean_item_name item.rb:258-268:
+    // `context ||= context_card.name; item.absolute_name context`), so the
+    // single-item form is the RESOLVED name, not the raw string. Oracle:
+    // the *on create page's rule 21805 ("#<Card[set:259]Tracked Item+*type
+    // +*on create", List-typed, content "_left+email config") renders its
+    // bar-right one-line as "#<Card[set:259]Tracked Item+*type+email
+    // config" — the item's `_left` resolved against the rule card's own
+    // left — where the raw dbContent form dropped the resolution.
+    // Absolute items are their own absolutization, so the captured
+    // "*all+*layout" single-item pin ("Default Layout") is unchanged.
+    let firstName: string;
+    try {
+      firstName = DeckoName.parse(card.dbContent ?? "")
+        .absoluteName(card.name)
+        .s;
+    } catch (err) {
+      if (
+        err instanceof CodenameNotFoundError ||
+        err instanceof NameNotFoundError ||
+        err instanceof UnsupportedIdentifierError
+      ) {
+        firstName = card.dbContent ?? "";
+      } else {
+        throw err;
+      }
+    }
+    // a NAME — no strip_tags on this branch.
+    return truncate(firstName, ONE_LINE_CHARACTER_LIMIT);
   }
   // Non-list rule cards (RichText help/guide contents, HTML, …): the
   // base method path truncate(strip_tags(render_core)) — render_core is

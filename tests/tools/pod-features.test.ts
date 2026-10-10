@@ -17,7 +17,7 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { eatYaml } from "../../src/card/pods/eat.js";
+import { eatYaml, type EatReport } from "../../src/card/pods/eat.js";
 import { bootDeck } from "../../src/card/pods/deck.js";
 import { sowYaml, type SowOptions } from "../../src/card/pods/sow.js";
 
@@ -144,6 +144,69 @@ describe("pod features (TS engine against the Ruby oracle)", () => {
     }
   }, 300000);
 
+  // 4. Coded storage (storage_type: :coded): a coded pod eaten into a fresh
+  //    copy of the oracle deck. The files are kept in the mod
+  //    (<codedDir>/data/files/<codename parts>), the card's content becomes
+  //    the coded identifier, and the refusals are Ruby's
+  //    validate_coded_storage_type messages (tests/fixtures/pods/
+  //    coded-storage.ruby-eat.json; tools/persistence/run-pod-coded.sh made
+  //    the Ruby artifacts).
+  it.runIf(RUN)("pod coded storage stores Ruby's rows and mod files", async () => {
+    mkdirSync(WORK, { recursive: true });
+    const store = path.join(WORK, "coded-store");
+    const modDir = path.join(WORK, "coded-mod");
+    rmSync(store, { recursive: true, force: true });
+    rmSync(modDir, { recursive: true, force: true });
+    const target = path.join(WORK, "coded.sqlite3");
+    copyFileSync(BASE, target);
+    const report: EatReport = { items: 0, created: 0, updated: 0, unchanged: 0, skippedNotPristine: [], errors: [] };
+    try {
+      const deck = await bootDeck(target, { filesDir: store, codedDir: modDir });
+      try {
+        const eaten = await eatYaml(
+          deck.fetcher,
+          (actor, now) => deck.engineFor(actor, now),
+          readFileSync(path.join(FIXTURES, "coded-storage.yml"), "utf8"),
+          {
+            defaultActor: BOT,
+            filesDir: path.join(FIXTURES, "files"),
+            codedMod: "parity_pod_mod",
+            codedDir: modDir,
+          },
+        );
+        Object.assign(report, eaten);
+      } finally {
+        deck.close();
+      }
+      const run = spawnSync(
+        process.execPath,
+        [
+          path.join(REPO, "tools/persistence/compare-decks.mjs"),
+          BASE,
+          path.join(FIXTURES, "coded-storage.ruby-delta.json"),
+          target,
+          path.join(WORK, "coded-report.json"),
+        ],
+        { windowsHide: true, encoding: "utf8" },
+      );
+      expect(run.status, run.stderr).toBe(0);
+      // The mod files Ruby's eat stored.
+      const ruby = JSON.parse(readFileSync(path.join(FIXTURES, "coded-storage.ruby-files.json"), "utf8"));
+      expect(storedFiles(path.join(modDir, "data", "files"))).toEqual(ruby);
+      // The eat report: the item outcomes and the exact error wordings.
+      const rubyReport = JSON.parse(
+        readFileSync(path.join(FIXTURES, "coded-storage.ruby-eat.json"), "utf8"),
+      ) as EatReport;
+      expect(report.items).toBe(rubyReport.items);
+      expect(report.skippedNotPristine).toEqual(rubyReport.skippedNotPristine);
+      expect(report.errors).toEqual(rubyReport.errors);
+    } finally {
+      for (const f of [target, `${target}-shm`, `${target}-wal`]) rmSync(f, { force: true });
+      rmSync(store, { recursive: true, force: true });
+      rmSync(modDir, { recursive: true, force: true });
+    }
+  }, 300000);
+
   it.runIf(RUN_SOW)("sow's --items, --url and -m pods equal Ruby's byte for byte", async () => {
     mkdirSync(WORK, { recursive: true });
     const copy = path.join(WORK, "probe-deck.sqlite3");
@@ -176,6 +239,50 @@ describe("pod features (TS engine against the Ruby oracle)", () => {
     expect(asked).toEqual(["https://deck.example.org/Some_Card+Field/pod.yml"]);
     expect(yaml).toBe("---\n- :name: Some Card\n");
   });
+
+  // 5. `sow --remote` against the Ruby oracle: a local server serves the
+  //    committed pod tree (tests/fixtures/pods/remote-tree/), and the port's
+  //    remote fetch must read it to exactly the bytes Ruby's --remote
+  //    produced for the same request (tools/persistence/run-pod-remote.sh
+  //    made from-remote.ruby.yml and logged the path Ruby asked for). The
+  //    server records what the port asks for, so the URL shape is part of
+  //    the check.
+  it.runIf(existsSync(path.join(FIXTURES, "remote-tree")))(
+    "--remote fetches what Ruby's --remote fetches, byte for byte",
+    async () => {
+      const { createServer } = await import("node:http");
+      const tree = path.join(FIXTURES, "remote-tree");
+      const ruby = readFileSync(path.join(FIXTURES, "sow-features", "from-remote.ruby.yml"), "utf8");
+      const server = createServer((req, res) => {
+        const url = req.url ?? "/";
+        const rest = url.replace(/^\//, "");
+        if (rest.includes("..")) {
+          res.writeHead(403).end();
+          return;
+        }
+        const file = path.join(tree, rest);
+        if (existsSync(file) && file.startsWith(tree)) {
+          res.writeHead(200, { "content-type": "text/yaml" }).end(readFileSync(file));
+        } else {
+          res.writeHead(404).end("not found");
+        }
+      });
+      const port = await new Promise<number>((resolvePort) => {
+        server.listen(0, "127.0.0.1", () => {
+          resolvePort((server.address() as { port: number }).port);
+        });
+      });
+      try {
+        const yaml = await sowYaml({} as Parameters<typeof sowYaml>[0], {
+          remote: `http://127.0.0.1:${port}`,
+          names: ["PersistProbe List"],
+        });
+        expect(yaml).toBe(ruby);
+      } finally {
+        await new Promise<void>((closeDone) => server.close(() => closeDone()));
+      }
+    },
+  );
 
   it.runIf(RUN)("conflict modes and codename-versus-name resolution leave Ruby's rows", async () => {
     const result = await eatAndCompare(

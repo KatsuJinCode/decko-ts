@@ -54,4 +54,7 @@ Third-party components
 
 Components under `vendor/` are redistributed under their own licenses; see
 the notices in that directory. In particular `vendor/uglifier-4.2.1-uglify-harmony/`
-carries its own provenance and license notice.
+carries its own provenance and license notice, and `vendor/libsass-wasm/`
+carries the MIT license and provenance of the LibSass sources compiled to the
+WebAssembly module the edge write surfaces load (MIT is compatible with this
+project's GPL-3.0-or-later terms).

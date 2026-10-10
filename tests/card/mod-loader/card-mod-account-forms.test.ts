@@ -137,23 +137,21 @@ describe("card-mod-account form views through the loader (lane-follow)", () => {
     e.pageSession = undefined;
   });
 
-  it(":closure renders the haml warning, the deletion list, and the confirmed delete link (right/account/views.rb:22 + closure.haml)", async () => {
+  it(":closure raises stock Ruby's private-method NoMethodError (closure.haml:25 on the private walk)", async () => {
     const s = storage!;
     const e = await loadMod();
     e.pageSession = { signedIn: true, actorId: 300 };
-    const html = await e.render("Brandon+*account", "closure");
-    expect(html).toContain(`id="account-closure"`);
-    expect(html).toContain(`<h2>Close Account</h2>`);
-    expect(html).toContain(`<strong>Warning:</strong>`);
-    expect(html).toContain("The following cards will be permanently deleted:");
-    // the deletion walk: cards whose left is Brandon except +*account rights
-    expect(html).toContain(`>Brandon+Notebook</a>`);
-    // the confirm button: data-confirm = t(:account_confirm_delete_account,
-    // accounted: "Brandon") with the %{accounted} interpolation
-    expect(html).toContain(`data-confirm="Are you CERTAIN you want to PERMANENTLY delete the account associated with Brandon?"`);
-    expect(html).toContain(`data-method="delete"`);
-    expect(html).toContain(`rel="nofollow"`);
-    expect(html).toContain(`>Permanently Close Account</a>`);
+    // closure.haml:25 `- card.accounted.closure_deletions.each` calls the
+    // PRIVATE closure_deletions (account_holder.rb:81/87-89) from outside
+    // its receiver — card.accounted is a different Card — so every render
+    // passing perms :delete raises NoMethodError (the stock synthetic-v2
+    // oracle pins the rescued admin span on
+    // view:admin:Ada Admin+*account:closure). The haml below line 25 (the
+    // warning, the deletion list, the confirmed delete link) never renders
+    // in stock Ruby; the loud test posture re-raises to the caller.
+    await expect(e.render("Brandon+*account", "closure")).rejects.toThrow(
+      "private method `closure_deletions' called for #<Card:0x",
+    );
     e.pageSession = undefined;
   });
 });

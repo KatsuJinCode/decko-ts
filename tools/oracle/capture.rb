@@ -43,13 +43,15 @@ RENDER_VIEWS = %i[open closed content title].freeze
 # Decko stamps every rendered slot with a random DOM id:
 #   card-mod-format-0.20.0/set/all/html/wrap.rb -> wrap_data -> "slot-id": SecureRandom.hex(10)
 # The value is random by design and carries no card semantics. The capture
-# normalizes it to a placeholder at the recording layer (attribute presence is
-# preserved) instead of patching Ruby behavior. Any other run-to-run divergence
-# in rendered output is a real oracle nondeterminism and must fail the diff.
+# stores it as written (value and quote style); comparisons mask the value at
+# compare time. Any other run-to-run divergence in rendered output is a real
+# oracle nondeterminism and must fail the diff.
 SLOT_ID_RE = /data-slot-id=(["'])\h+\1/.freeze
 
+# Slot ids are stored exactly as Ruby wrote them (value and quote style);
+# graders mask the random value at compare time (reference-harness N1).
 def normalize(html)
-  html.gsub(SLOT_ID_RE, 'data-slot-id="RANDOMIZED"')
+  html
 end
 
 def deep_sort(obj)

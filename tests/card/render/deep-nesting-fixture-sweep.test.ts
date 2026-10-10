@@ -42,113 +42,23 @@ import { execSync } from "node:child_process";
 import { cpus, totalmem, hostname, platform } from "node:os";
 import {
   createRenderTestStorage,
-  seedCard,
   type RenderTestStorage,
 } from "./render-test-storage.js";
+import {
+  DEEP_REJECTED_CHAIN_DEPTHS,
+  DEEP_RENDERABLE_CHAIN_DEPTHS,
+  FANOUTS,
+  PARITY_CHAIN_DEPTHS,
+  PREFIX,
+  TREES,
+  chainName,
+  fanRootName,
+  seedChain,
+  seedFan,
+  seedTree,
+  treeRootName,
+} from "./deep-nesting-fixtures.js";
 import { RUBY_MAX_DEPTH } from "../../../src/card/render/format.js";
-
-// ---- fixture shapes ---------------------------------------------------------
-
-const PARITY_CHAIN_DEPTHS = [1, 2, 4, 8, 16] as const;
-const DEEP_RENDERABLE_CHAIN_DEPTHS = [10, 20] as const;
-const DEEP_REJECTED_CHAIN_DEPTHS = [50, 100, 200] as const;
-const FANOUTS = [1, 4, 16, 50, 100, 200] as const;
-const TREES = [
-  { depth: 4, fanout: 4 }, // 1 + 4 + 16 + 64 + 256 = 341 cards
-  { depth: 3, fanout: 10 }, // 1 + 10 + 100 + 1000 = 1111 cards
-] as const;
-
-const PREFIX = "BenchDN";
-
-const pad = (n: number, w: number): string => String(n).padStart(w, "0");
-
-/** Deterministic ~200-byte body filler (the Ruby harness seeds random a-z;
- *  content SIZE is what matters to the query axes, not the exact bytes). */
-function filler(bytes: number): string {
-  const alphabet = "abcdefghijklmnopqrstuvwxyz";
-  const unit = alphabet.repeat(Math.ceil(bytes / alphabet.length));
-  return unit.slice(0, bytes);
-}
-
-const chainName = (depth: number, i: number): string =>
-  `${PREFIX}_chain_open_d${pad(depth, 2)}_n${pad(i, 2)}`;
-const fanChildName = (f: number, i: number): string => `${PREFIX}_fan_f${pad(f, 2)}_c${pad(i, 2)}`;
-const fanRootName = (f: number): string => `${PREFIX}_fan_f${pad(f, 2)}_root`;
-const treeRootName = (d: number, f: number): string =>
-  `${PREFIX}_tree_d${pad(d, 2)}_f${pad(f, 2)}_root`;
-const treeNodeName = (d: number, f: number, level: number, j: number): string =>
-  `${PREFIX}_tree_d${pad(d, 2)}_f${pad(f, 2)}_l${pad(level, 2)}_n${pad(j, 4)}`;
-
-async function seedRichTextType(storage: RenderTestStorage): Promise<void> {
-  await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
-}
-
-async function seedChain(storage: RenderTestStorage, depth: number): Promise<void> {
-  await seedRichTextType(storage);
-  for (let i = 1; i <= depth; i++) {
-    const content =
-      i < depth ? `level ${i} body {{${chainName(depth, i + 1)}|open}}` : `leaf body ${filler(200)}`;
-    await seedCard(storage, {
-      id: 100 + i,
-      name: chainName(depth, i),
-      typeId: 2,
-      dbContent: content,
-    });
-  }
-}
-
-async function seedFan(storage: RenderTestStorage, fanout: number): Promise<void> {
-  await seedRichTextType(storage);
-  for (let i = 0; i < fanout; i++) {
-    await seedCard(storage, {
-      id: 1000 + i,
-      name: fanChildName(fanout, i),
-      typeId: 2,
-      dbContent: `fan leaf ${filler(200)}`,
-    });
-  }
-  const nests = Array.from({ length: fanout }, (_, i) => `{{${fanChildName(fanout, i)}|open}}`);
-  await seedCard(storage, {
-    id: 999,
-    name: fanRootName(fanout),
-    typeId: 2,
-    dbContent: nests.join("\n"),
-  });
-}
-
-/** Whole inclusion tree: root -> f^1 -> ... -> f^depth leaves. Every level's
- *  nodes nest all their children; the leaves carry body text. */
-async function seedTree(storage: RenderTestStorage, depth: number, fanout: number): Promise<void> {
-  await seedRichTextType(storage);
-  let nextId = 2000;
-  for (let level = depth; level >= 1; level--) {
-    const count = Math.pow(fanout, level);
-    for (let j = 1; j <= count; j++) {
-      const content =
-        level < depth
-          ? Array.from({ length: fanout }, (_, k) => {
-              const childIndex = (j - 1) * fanout + k + 1;
-              return `{{${treeNodeName(depth, fanout, level + 1, childIndex)}|open}}`;
-            }).join("\n")
-          : `tree leaf ${filler(200)}`;
-      await seedCard(storage, {
-        id: nextId++,
-        name: treeNodeName(depth, fanout, level, j),
-        typeId: 2,
-        dbContent: content,
-      });
-    }
-  }
-  const rootChildren = Array.from({ length: fanout }, (_, k) => {
-    return `{{${treeNodeName(depth, fanout, 1, k + 1)}|open}}`;
-  }).join("\n");
-  await seedCard(storage, {
-    id: 1999,
-    name: treeRootName(depth, fanout),
-    typeId: 2,
-    dbContent: rootChildren,
-  });
-}
 
 // ---- measurement ------------------------------------------------------------
 
@@ -427,8 +337,8 @@ describe("Deep-nesting fixture sweep (#1282 scaling proof: TS engine vs fixture 
       let engineCommit = "unknown";
       let engineBranch = "unknown";
       try {
-        engineCommit = execSync("git rev-parse --short HEAD").toString().trim();
-        engineBranch = execSync("git rev-parse --abbrev-ref HEAD").toString().trim();
+        engineCommit = execSync("git rev-parse --short HEAD", { windowsHide: true }).toString().trim();
+        engineBranch = execSync("git rev-parse --abbrev-ref HEAD", { windowsHide: true }).toString().trim();
       } catch {
         // metadata only - never fail the measurement for it
       }
@@ -447,7 +357,7 @@ describe("Deep-nesting fixture sweep (#1282 scaling proof: TS engine vs fixture 
             environment: {
               host: hostname(),
               os: platform(),
-              osVersion: platform() === "win32" ? execSync("cmd /c ver").toString().trim() : null,
+              osVersion: platform() === "win32" ? execSync("cmd /c ver", { windowsHide: true }).toString().trim() : null,
               node: process.version,
               cpuModel: cpus()[0]?.model ?? null,
               cpuCount: cpus().length,

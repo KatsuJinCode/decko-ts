@@ -194,7 +194,7 @@ console.log("ON posture complete");
 // --- grade --------------------------------------------------------------------
 const normalizeSlotIds = (html) => html
   .replace(/data-slot-id=&quot;[0-9a-f]{20}&quot;/g, "data-slot-id=SLOTID")
-  .replace(/data-slot-id="[0-9a-f]{20}"/g, 'data-slot-id="SLOTID"');
+  .replace(/data-slot-id=(["'])[0-9a-f]{20}\1/g, 'data-slot-id="SLOTID"');
 
 // Request layout: [0]=/_status, [1..5]=cold pass, [6..10]=warm pass.
 const pick = (requests, i) => requests[i];

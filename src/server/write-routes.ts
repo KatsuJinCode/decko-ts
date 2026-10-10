@@ -59,13 +59,7 @@
 // to Anonymous (auth/current.rb:58-63); Anonymous writes are denied per the
 // rules (PermissionDenied, HTTP 403, exactly like Ruby).
 //
-// CSRF — a SECURITY DIVERGENCE (docs/SECURITY.md, "Cross-site requests"):
-// every write route and the sign-in action pass the same-origin check in
-// request-origin.ts (Sec-Fetch-Site, then Origin, then Referer; requests
-// carrying none of them are not from a browser page and pass), which
-// refuses a cross-site form with 403 and changes no page bytes (no token).
-// DECKO_ORIGIN_CHECK=off restores Ruby's behaviour. What Ruby does, for the
-// record: live decko arms no forgery protection.
+// CSRF — none, deliberately: live decko arms no forgery protection.
 // decko-0.20.0 / card-1.110.0 contain no `protect_from_forgery` call
 // anywhere (the ONLY forgery reference in the whole generation is
 // decko-0.20.0/config/environments/cucumber.rb:27, which DISABLES
@@ -77,8 +71,9 @@
 // captured page). Rails' origin check (valid_request_origin?) lives inside
 // verify_authenticity_token (request_forgery_protection.rb), so it is
 // equally unarmed: a cross-origin form post is not a live failure either.
-// The port's origin check needs no token, so same-origin token-less posts
-// (every captured shape) still go straight through to the action gates.
+// This reverses the earlier TS posture (HMAC csrfTokenFor + 422), which
+// modeled "the Rails default" instead of the live app; the save-path pins
+// that enforced it were updated to the live shapes.
 //
 // Error shapes — card-1.110.0 lib/card/error.rb status codes:
 //   Card::Error::PermissionDenied -> 403 (view :denial, error.rb:104);
@@ -103,30 +98,42 @@
 // API shape (200 + ids) — not part of the captured browser session.
 
 import type { SQLDatabaseDriver } from "./driver.js";
+import type { NotifyTransport } from "../card/notify/types.js";
 import type { FetchEngine } from "../card/fetch.js";
 import { composeCardRecord, type CardRecord } from "../card/fetch/card-record.js";
 import type { CardsRow } from "./schema.js";
 import { SessionStore } from "../card/auth/index.js";
 import { signinAccount } from "../card/auth/signin.js";
-import { createCardActionEngineForSession } from "../card/actions/engine-for-session.js";
-import type { CardActionEngine } from "../card/actions/card-action-engine.js";
 import {
-  CardActionError,
-  type ActionResult,
-  type AttachmentInput,
-  type SubcardInput,
-} from "../card/actions/types.js";
-import type { NotifyTransport } from "../card/notify/types.js";
+  sendAccountVerificationToken,
+  sendAccountWelcomeEmail,
+  sendResetPasswordToken,
+  type AccountFlowContext,
+} from "../card/auth/account-verify-reset-flows.js";
+import { createCardActionEngineForSession } from "../card/actions/engine-for-session.js";
+import { CardActionError, type ActionResult, type AttachmentInput, type SubcardInput } from "../card/actions/types.js";
+import type { CardActionEngine } from "../card/actions/card-action-engine.js";
 import type { CardActionRecaptchaConfig } from "../card/actions/card-action-engine.js";
-import type { ModEventRuntime } from "../card/mod-loader/mod-event-dispatch.js";
+import type { ModEventRuntime, ModEventStageReport } from "../card/mod-loader/mod-event-dispatch.js";
 import type { ModEngineHost } from "../card/mod-loader/mod-manifest.js";
 import type { AttachmentStore } from "../card/attachments/attachment-store.js";
+import type { ScssCompiler } from "../card/assets/scss-compiler.js";
+import type { CoffeeCompiler } from "../card/assets/coffee-compiler.js";
 import { DeckoName } from "../card/name.js";
 import { parseMultipartForm, type MultipartFilePart } from "./multipart-form.js";
 import { decodeUriComponentSafe } from "./decode-uri-component-safe.js";
 import {
-  checkRequestOrigin,
+  discardLocationsFor,
+  previousLocation,
+  readVisitorSession,
+  saveLocation,
+  storeSessionCardContent,
+  visitorSessionCookie,
+  type VisitorSession,
+} from "../card/session/visitor-session.js";
+import {
   CROSS_ORIGIN_MESSAGE,
+  checkRequestOrigin,
   defaultOriginPolicy,
   type OriginPolicy,
 } from "./request-origin.js";
@@ -207,11 +214,30 @@ export interface WriteRouteContext {
     name: string;
     opts: Record<string, unknown>;
   }) => Promise<string>;
+  /** The deck origin and bot address the follower notification's nest
+   *  views render with (Cardio.config.deck_origin port + the Decko Bot
+   *  account's email for safe_from_and_reply_to!, email_config.rb:52-79).
+   *  Absent = the computed default (the request origin + the Decko Bot
+   *  account's email looked up from the deck). */
+  followMail?: { origin: string; deckoBotEmail: string };
+  /** The same-origin policy for writes and sign-in (request-origin.ts).
+   *  Absent: from process.env, else enabled with no extra origins. */
+  originPolicy?: OriginPolicy;
   /** The attachment storage seam (E4.4.a's LocalAttachmentStore), passed
    *  through to every write engine this module builds — the multipart
    *  upload surface stores bytes through it. Absent = attachment saves
    *  fail with the engine's programming-error rejection. */
   attachmentStore?: AttachmentStore;
+  /** The SassC seam the style asset events compile with (skin and CSS
+   *  asset inputs, the site stylesheet): LibSass on Node hosts
+   *  (libsass-process.ts). Absent = saves that need a compile are refused
+   *  with a named error. */
+  scssCompiler?: ScssCompiler;
+  /** The CoffeeScript seam the script asset events compile with (JavaScript
+   *  / CoffeeScript asset inputs, the site script): the npm coffeescript
+   *  package on Node hosts (coffee-npm-compiler.ts). Absent = saves that
+   *  need a compile are refused with a named error. */
+  coffeeCompiler?: CoffeeCompiler;
   /** The deck's file_storage config (Cardio.config.file_storage port;
    *  undefined = the :local default) — validate_file_exist's web? arm and
    *  the storage-type resolution ride it. */
@@ -232,35 +258,25 @@ export interface WriteRouteContext {
    *  Card::Rule.toggle(rule(:captcha)) candidate walk); verify defaults
    *  to the real siteverify GET (recaptcha.rb:41-44). */
   recaptcha?: CardActionRecaptchaConfig;
-  /** The same-origin policy for writes and sign-in (request-origin.ts).
-   *  Absent: from process.env, else enabled with no extra origins. */
-  originPolicy?: OriginPolicy;
-  /** The mail transport the saves' notifications go through (follower
-   *  mail, card-mod-follow's :notify_followers integration event), passed
-   *  to every write engine this module builds. Absent = the engine's
-   *  default transport. */
+  /** Observer for every mod-event stage walk a save performs (the
+   *  dispatcher's onReport: fired and skipped event names, in walk order).
+   *  Diagnostics and the side-effects parity harness read event order
+   *  through it. Absent = no observer; dispatch is unchanged either way. */
+  onModEventReport?: (report: ModEventStageReport) => void;
+  /** The account-mail seat: what the *signin update's
+   *  send_reset_password_token trigger needs to build and send the reset
+   *  email (card-mod-account set/self/signin.rb:62-84). Absent = the host
+   *  sends no account mail, and the trigger answers the not-configured
+   *  error instead of silently succeeding. */
+  accountMail?: Omit<AccountFlowContext, "driver" | "fetcher" | "sessions">;
+  /** Where save-path notifications go: the follower notification emails
+   *  card-mod-follow sends after a signed-in save (notify.rb:13-16, the
+   *  engine's default follow-notify hook). Absent = the notify module's
+   *  no-op transport, which drops them. */
   notifyTransport?: NotifyTransport;
-  /** The deck origin and bot address the follower notification's nest
-   *  views render with (Cardio.config.deck_origin port + the Decko Bot
-   *  account's email for safe_from_and_reply_to!, email_config.rb:52-79).
-   *  Absent = the notification template renders without its nest values
-   *  (every `{{_|...}}` nest falls back to its bare name). */
-  followMail?: { origin: string; deckoBotEmail: string };
-  /** The visitor session's previous location — `session[:history]`'s last
-   *  entry (card/lib/card/env/location_history.rb:29-31 previous_location),
-   *  the `*previous` success-mark resolution (mark.rb:12-14 hard_redirects
-   *  it; the Success target resolves the same way) and the delete's
-   *  configure_successful_deletion redirect (mod/session
-   *  set/all/location_history.rb:9-17). Absent or returning undefined
-   *  leaves the literal-name arms (documented remainder). */
-  previousLocation?: () => string | undefined;
 }
 
 export interface WriteRouteResponse {
-  /** The visitor-session cookie a request that arrived without one receives
-   *  (the visitor session the write routes mint), appended after any
-   *  session cookie by the host. */
-  visitorCookie?: string;
   status: number;
   headers: Record<string, string>;
   body: string;
@@ -280,6 +296,11 @@ export interface WriteRouteResponse {
    *  TS-only structures (post-save-cache-expiry.ts header), and expiring
    *  only the mark left a changed +*email rendering its pre-save value. */
   expiryNames?: string[];
+  /** The visitor-session cookie (card/session/visitor-session.ts) to set
+   *  alongside any Set-Cookie header: the location history and Session-card
+   *  content Ruby keeps in its Rails session. Present only when the request
+   *  changed that state. */
+  visitorCookie?: string;
 }
 
 /** Whether the host exposes the write path at all. The staging server
@@ -340,28 +361,16 @@ interface ParsedBody {
    *  cardFiles, never this map (a text part under a mount name lands here
    *  as a string — card_mount.rb:41-42's blank early-return shape). */
   card: Record<string, string>;
-  /** params[:card][:subcards]["+*email"] etc. — the subcard-hash grammar
-   *  the captured sign-in form posts (card[subcards][+*email][content]).
-   *  Only the *signin update consumes these (the :signin event); general
-   *  subcard saves remain unported. */
+  /** params[:card][:subcards]["+*email"] etc. — the first level of the
+   *  subcard hash as flat fields: the captured sign-in form's grammar
+   *  (card[subcards][+*email][content]), read by the :signin event. */
   subcards: Record<string, Record<string, string>>;
-  /** The NESTED subcard hash — card[subcards][+*account][subcards][+*email][content],
-   *  the sign-up form's grammar (the +*account subcard's own +*email /
-   *  +*password fields): slot → field → param tail. subcardInputsFromParams
-   *  folds it into the +*account SubcardInput's own subcards. */
-  nestedSubcards: Record<string, Record<string, Record<string, string>>>;
+  /** params[:card][:subcards] at every depth (subcards.rb:1-16): each
+   *  entry's own fields and its nested subcards, in parameter order — a
+   *  sign-up posts card[subcards][+*account][subcards][+*email][content]. */
+  subcardTree: Record<string, ParsedSubcard>;
   /** params[:success] — the success hash (success[redirect], success[mark]). */
   success: Record<string, string>;
-  /** params[:slot] — the ajax slot context (slot[view], slot[main],
-   *  slot[layout], slot[show][], slot[hide][]) the decko.js slotter appends
-   *  to its write requests; show_layout? reads slot[layout] (html/show.rb:
-   *  an ajax request with a layout param renders the full page, not the
-   *  bare slot). */
-  slotParams: Record<string, string>;
-  /** params[:is_main] — configure_successful_deletion's modal-arm fork
-   *  (mod/session set/all/location_history.rb:11): present = the hard
-   *  redirect to :previous, absent = the unknown-view modal slot. */
-  isMain?: string;
   /** The multipart FILE parts under the card hash, by mount name — the
    *  card[<mount>] file part is Rack's UploadedFile (parser.rb:138-146),
    *  CardMount's file=/image= argument (card_mount.rb:41-44). */
@@ -372,18 +381,15 @@ interface ParsedBody {
   methodOverride?: string;
   /** params[:simulate_xhr] (env/serializable.rb:24 — the ajax half). */
   simulateXhr?: boolean;
+  /** params[:is_main] — configure_successful_deletion's modal-arm fork
+   *  (mod/session set/all/location_history.rb:11): present on an ajax delete
+   *  whose success target is the deleted card = the hard redirect to
+   *  :previous; absent = the unknown-view modal slot. */
+  isMain?: string;
   /** params[:comment] / params[:comment_author] — the add_comment event's
    *  inputs (card-mod-comment set/all/comment.rb:4-12). */
   comment?: string;
   commentAuthor?: string;
-  /** params[:attachment_upload] — the two-step upload's preliminary flag
-   *  (card-mod-carrierwave 00_upload_cache.rb:80-82 `preliminary_upload?
-   *  = Card::Env.params[:attachment_upload]`): the JS editor's fileupload
-   *  formData posts it beside the file part (upload.js.coffee:10-17). The
-   *  value names the posted card hash ("card[file]"), which
-   *  cached_upload_card_name gsubs into the preview's hidden-input name
-   *  (file.rb:144-146). */
-  attachmentUpload?: string;
   /** params[:draft] — `Env.params["draft"] == "true"` reads it
    *  (mod/core/set/all/content.rb:20-22), the autosave POST's flag
    *  (card-mod-edit-0.20.0 assets/script/autosave.js.coffee:20 posts
@@ -402,6 +408,11 @@ interface ParsedBody {
   revertActions?: string[];
   revertTo?: string;
   revertAct?: string;
+  /** params[:attachment_upload] — the first step of a two-step upload
+   *  (card-mod-carrierwave set/abstract/attachment/00_upload_cache.rb
+   *  preliminary_upload?): the file is stored as a draft and the request
+   *  answers its action id. */
+  attachmentUpload?: string;
 }
 
 /** The urlencoded/json key grammar every content type shares (the
@@ -413,21 +424,13 @@ function applyParam(
 ): void {
   // the subcard shape FIRST — the plain card-hash match below is greedy
   // and would swallow card[subcards][+*email][content] whole.
-  const subMatch = /^card\[subcards\]\[([^\]]+)\]\[([^\]]+)\]$/.exec(key);
-  if (subMatch !== null) {
-    const slot = (parsed.subcards[subMatch[1]] ??= {});
-    slot[subMatch[2]] = value;
-    return;
-  }
-  // The NESTED subcard hash (the sign-up form): the +*account subcard's
-  // own +*email / +*password fields —
-  // card[subcards][+*account][subcards][+*email][content].
-  const nestedSubMatch =
-    /^card\[subcards\]\[([^\]]+)\]\[subcards\]\[([^\]]+)\]\[([^\]]+)\]$/.exec(key);
-  if (nestedSubMatch !== null) {
-    const slot = (parsed.nestedSubcards[nestedSubMatch[1]] ??= {});
-    const field = (slot[nestedSubMatch[2]] ??= {});
-    field[nestedSubMatch[3]] = value;
+  if (key.startsWith("card[subcards][")) {
+    const segments = [...key.slice("card".length).matchAll(/\[([^\]]*)\]/g)].map((m) => m[1]).slice(1);
+    addSubcardParam(parsed.subcardTree, segments, value);
+    if (segments.length === 2) {
+      const slot = (parsed.subcards[segments[0]] ??= {});
+      slot[segments[1]] = value;
+    }
     return;
   }
   const cardMatch = /^card\[(.+)\]$/.exec(key);
@@ -440,16 +443,10 @@ function applyParam(
     parsed.success[successMatch[1]] = value;
     return;
   }
-  const slotMatch = /^slot\[([^\]]+)\]$/.exec(key);
-  if (slotMatch !== null) {
-    parsed.slotParams[slotMatch[1]] = value;
-    return;
-  }
-  if (key === "is_main") parsed.isMain = value;
   if (key === "token") parsed.token = value;
   else if (key === "_method") parsed.methodOverride = value;
-  else if (key === "attachment_upload") parsed.attachmentUpload = value;
   else if (key === "simulate_xhr") parsed.simulateXhr = value !== "";
+  else if (key === "is_main") parsed.isMain = value;
   else if (key === "comment") parsed.comment = value;
   else if (key === "comment_author") parsed.commentAuthor = value;
   else if (key === "draft") parsed.draft = value;
@@ -459,6 +456,7 @@ function applyParam(
     (parsed.revertActions ??= []).push(value);
   } else if (key === "revert_to") parsed.revertTo = value;
   else if (key === "revert_act") parsed.revertAct = value;
+  else if (key === "attachment_upload") parsed.attachmentUpload = value;
 }
 
 /** The query-string parameters, applied before the body's so a body
@@ -475,14 +473,53 @@ function applyQuery(parsed: ParsedBody, search: string | undefined): ParsedBody 
     ...Object.fromEntries(Object.entries(parsed).filter(([, v]) => v !== undefined)),
     card: { ...fromQuery.card, ...parsed.card },
     subcards: { ...fromQuery.subcards, ...parsed.subcards },
-    nestedSubcards: { ...fromQuery.nestedSubcards, ...parsed.nestedSubcards },
     success: { ...fromQuery.success, ...parsed.success },
     cardFiles: parsed.cardFiles,
   } as ParsedBody;
 }
 
+/** One subcard of the request's card hash: its fields and nested subcards. */
+interface ParsedSubcard {
+  fields: Record<string, string>;
+  subcards: Record<string, ParsedSubcard>;
+}
+
+/** Place card[subcards][K1]([subcards][K2])*[field] = value in the tree. */
+function addSubcardParam(tree: Record<string, ParsedSubcard>, segments: string[], value: string): void {
+  let level = tree;
+  let i = 0;
+  while (i < segments.length) {
+    const node = (level[segments[i]] ??= { fields: {}, subcards: {} });
+    const rest = segments.length - i - 1;
+    if (rest === 1) {
+      node.fields[segments[i + 1]] = value;
+      return;
+    }
+    if (rest < 3 || segments[i + 1] !== "subcards") return; // not the subcard grammar
+    level = node.subcards;
+    i += 2;
+  }
+}
+
+/** A JSON card hash's subcards object, at every depth. */
+function subcardTreeFromJson(raw: unknown): Record<string, ParsedSubcard> {
+  const out: Record<string, ParsedSubcard> = {};
+  if (typeof raw !== "object" || raw === null) return out;
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof value !== "object" || value === null) continue;
+    const node: ParsedSubcard = { fields: {}, subcards: {} };
+    for (const [field, v] of Object.entries(value as Record<string, unknown>)) {
+      if (field === "subcards") node.subcards = subcardTreeFromJson(v);
+      else if (typeof v === "string") node.fields[field] = v;
+      else if (typeof v === "number") node.fields[field] = String(v);
+    }
+    out[key] = node;
+  }
+  return out;
+}
+
 function emptyParsedBody(): ParsedBody {
-  return { card: {}, subcards: {}, nestedSubcards: {}, success: {}, slotParams: {}, cardFiles: {} };
+  return { card: {}, subcards: {}, subcardTree: {}, success: {}, cardFiles: {} };
 }
 
 function parseBody(req: WriteRouteRequest): ParsedBody {
@@ -554,12 +591,14 @@ function parseBody(req: WriteRouteRequest): ParsedBody {
     for (const [key, value] of Object.entries(rawSuccess)) {
       if (typeof value === "string") success[key] = value;
     }
+    const subcardTree = subcardTreeFromJson(rawCard["subcards"]);
+    const subcards: Record<string, Record<string, string>> = {};
+    for (const [k, node] of Object.entries(subcardTree)) subcards[k] = { ...node.fields };
     return {
       card,
-      subcards: {},
-      nestedSubcards: {},
+      subcards,
+      subcardTree,
       success,
-      slotParams: {},
       cardFiles: {},
       token: typeof obj["token"] === "string" ? obj["token"] : undefined,
       methodOverride: typeof obj["_method"] === "string" ? obj["_method"] : undefined,
@@ -712,16 +751,6 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** card-1.110.0 lib/card/error.rb status codes: PermissionDenied 403
- *  (:104), NotFound 404 (:83,89), UserError (validation) 422 (:21).
- *  anonymous-actor is Ruby's permission denial in engine terms (module
- *  header). */
-function errorStatus(code: CardActionError["code"]): number {
-  if (code === "not-found") return 404;
-  if (code === "anonymous-actor" || code === "permission-denied") return 403;
-  return 422;
-}
-
 /** A write or sign-in refused by the same-origin check: 403, the class Ruby
  *  uses for a forbidden action (error.rb:103-105). The reason is logged by
  *  hosts that log responses; the visitor sees a plain explanation. */
@@ -732,11 +761,120 @@ function crossOriginResponse(json: boolean, reason: string): WriteRouteResponse 
     : htmlResponse(403, "Error (cross-origin)", `<pre>${escapeHtml(message)}</pre>`);
 }
 
-function errorResponse(json: boolean, error: CardActionError): WriteRouteResponse {
+/** card-1.110.0 lib/card/error.rb status codes: PermissionDenied 403
+ *  (:104), NotFound 404 (:83,89), UserError (validation) 422 (:21).
+ *  anonymous-actor is Ruby's permission denial in engine terms (module
+ *  header). */
+function errorStatus(code: CardActionError["code"]): number {
+  if (code === "not-found") return 404;
+  if (code === "server-error") return 500;
+  if (code === "anonymous-actor" || code === "permission-denied") return 403;
+  return 422;
+}
+
+/** The loud denial's text (card-mod-format set/all/html/error.rb:191-216,
+ *  en.yml format_sorry / format_please / format_to_do_that /
+ *  format_need_permission_task): anonymous requests are asked to sign in or
+ *  sign up; signed-in requests are told they need permission. The
+ *  controller-level denial carries no denied task, hence "to do that". */
+function denialText(signedIn: boolean): string {
+  return signedIn
+    ? "Sorry! You need permission to do that."
+    : "Sorry! Please sign in or sign up to do that.";
+}
+
+/** The text the HTML error surface shows: the denial text for 403s, else
+ *  the Ruby-worded message when the throw site supplied one. */
+function userFacingMessage(error: CardActionError, signedIn: boolean): string {
+  if (errorStatus(error.code) === 403) return denialText(signedIn);
+  return error.userMessage ?? error.message;
+}
+
+/** Deleting a card that does not exist: the controller fetches a NEW card
+ *  for the mark (card_class.rb uri_fetch new: {}), and deleting a new card
+ *  raises a bare Card::Error::UserError (error.rb:21, status 422), which the
+ *  errors view shows under its class name. */
+const MISSING_CARD_DELETE_MESSAGE = "USERERROR: Card::Error::UserError";
+
+/** Whether the request's session resolves to a live account: the
+ *  Auth.signed_in? test the denial text branches on. */
+async function signedInFor(ctx: WriteRouteContext, sessionToken: string | null): Promise<boolean> {
+  if (sessionToken === null) return false;
+  return (await new SessionStore({ driver: ctx.driver }).lookupSession(sessionToken)) !== null;
+}
+
+/** The errors hash Ruby's JSON errors view reports (card-mod-format
+ *  set/all/error.rb format :json view :errors: `{attribute => message}`,
+ *  a later message for the same attribute replacing an earlier one). The
+ *  throw site's explicit attribute map wins; otherwise the shown
+ *  "KEY: message" lines are read back (Ruby upcases the attribute symbol
+ *  for display; attributes are lower-case symbols). */
+function rubyErrorsHash(error: CardActionError, signedIn: boolean): Record<string, string> {
+  if (error.errorsByAttribute !== undefined) return { ...error.errorsByAttribute };
+  // A denial without the rule walk's wording (the host write hook, a deck
+  // without the anonymous card): still Ruby's :permission_denied key.
+  if (errorStatus(error.code) === 403) return { permission_denied: error.message };
+  // recaptcha.rb:28-31 errors.add :recaptcha, <message>
+  if (error.code === "recaptcha") return { recaptcha: error.message };
+  const shown = userFacingMessage(error, signedIn);
+  const out: Record<string, string> = {};
+  for (const line of shown.split("\n")) {
+    const m = /^([A-Z0-9_*+ ]+): ([\s\S]*)$/.exec(line.trim());
+    if (m !== null) out[m[1].toLowerCase()] = m[2];
+  }
+  if (Object.keys(out).length === 0 && shown !== "") out["error"] = shown;
+  return out;
+}
+
+/** Time#utc.to_s: "YYYY-MM-DD HH:MM:SS UTC". */
+function rubyUtcString(d: Date): string {
+  return `${d.toISOString().slice(0, 19).replace("T", " ")} UTC`;
+}
+
+/** The request's own URL (Rails request_url): scheme, host, path. */
+function requestUrl(req: WriteRouteRequest): string {
+  return `${req.scheme ?? "http"}://${req.host ?? ""}${req.pathname}`;
+}
+
+function errorResponse(
+  json: boolean,
+  error: CardActionError,
+  signedIn = false,
+  meta?: { url: string; now: Date },
+): WriteRouteResponse {
   const status = errorStatus(error.code);
-  return json
-    ? jsonResponse(status, { error: { code: error.code, message: error.message } })
-    : htmlResponse(status, `Error (${error.code})`, cardErrorAlertHtml(error));
+  if (json) {
+    // card-mod-format set/all/json.rb page_details: the errors view's hash
+    // plus url and requested_at, pretty-generated.
+    const payload: Record<string, unknown> = {
+      error_status: status,
+      errors: rubyErrorsHash(error, signedIn),
+    };
+    if (meta !== undefined) {
+      payload["url"] = meta.url;
+      payload["requested_at"] = rubyUtcString(meta.now);
+    }
+    return {
+      status,
+      headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
+      body: JSON.stringify(payload, null, 2),
+    };
+  }
+  // card-mod-format set/all/html/error.rb: the errors view's standard_errors
+  // alert (layout/set/all/alert.rb:7-25's dismissible warning alert, one
+  // "<p><strong>KEY:</strong> message</p>" per error) is the body Ruby's
+  // VALIDATION failures render (422 UserError) — the ajax save's 422 lands
+  // in the form's card-notice (the slotter JS), so these bytes are the
+  // whole observable difference. The other families keep the audited
+  // bodies below (the 403 denial's quiet text and its diagnostic comment).
+  if (status === errorStatus("user-error")) {
+    return htmlResponse(status, `Error (${error.code})`, cardErrorAlertHtml(error));
+  }
+  return htmlResponse(
+    status,
+    `Error (${error.code})`,
+    `<pre>${escapeHtml(userFacingMessage(error, signedIn))}</pre>${diagnosticComment(error, signedIn)}`,
+  );
 }
 
 /** The errors view's alert bytes (card-mod-format set/all/html/error.rb:54-66
@@ -745,9 +883,7 @@ function errorResponse(json: boolean, error: CardActionError): WriteRouteRespons
  *  the card-error-msg class_up, the btn-close button, the
  *  "Problems with <card name>" h4 heading (t :format_problems_name) and one
  *  `<p><strong>KEY:</strong> message</p>` per error (:132-133
- *  standard_error_message). The ajax save's 422 body lands in the form's
- *  card-notice (the slotter JS), so these bytes are the whole observable
- *  difference. */
+ *  standard_error_message). */
 function cardErrorAlertHtml(error: CardActionError): string {
   // standard_error_message splits the shown key from the message at the
   // first ": " — but ONLY for the throw sites that compose "<KEY>:
@@ -771,6 +907,36 @@ function cardErrorAlertHtml(error: CardActionError): string {
   );
 }
 
+/** The engine's own reason, kept beside the user-facing text as an HTML
+ *  comment when the two differ (Ruby's quiet denial carries its reason the
+ *  same way: "<!-- Sorry, you don't have permission (task) -->",
+ *  set/all/html/error.rb:185-189). */
+function diagnosticComment(error: CardActionError, signedIn: boolean): string {
+  if (userFacingMessage(error, signedIn) === error.message) return "";
+  return `<!-- ${escapeHtml(error.message).replace(/--/g, "&#45;&#45;")} -->`;
+}
+
+/** The Decko Bot account's email (Decko Bot+*account+*email), or the
+ *  address the account mod seeds for it (card-mod-account data/real.yml,
+ *  decko_bot+account email) when the deck has no such row. Follower mail
+ *  is sent from it (safe_from_and_reply_to!). */
+async function deckoBotAccountEmail(driver: SQLDatabaseDriver): Promise<string> {
+  try {
+    const r = await driver.query<{ email: string }>(
+      "SELECT e.db_content AS email FROM cards e JOIN cards a ON a.id = e.left_id " +
+        "JOIN cards b ON b.id = a.left_id WHERE b.codename = 'decko_bot' " +
+        "AND a.right_id = (SELECT id FROM cards WHERE codename = 'account') " +
+        "AND e.right_id = (SELECT id FROM cards WHERE codename = 'email') AND e.trash = 0",
+      [],
+    );
+    const email = r.rows[0]?.email;
+    if (typeof email === "string" && email !== "") return email;
+  } catch {
+    // a deck without the account cards: the seeded address below
+  }
+  return "no-reply@decko.org";
+}
+
 /** Ruby's cud_success (rest.rb:80-89): HTML redirects to the card's
  *  location; JSON reloads (the caller re-fetches — the response carries
  *  the ids to reconcile). BOTH flavors carry expiryName: this is the
@@ -784,43 +950,10 @@ function cardErrorAlertHtml(error: CardActionError): string {
  *  headers are absolute (captured: "http://localhost:3011/..."). */
 function cardUrl(req: WriteRouteRequest, path: string): string {
   if (req.host === undefined || req.host === "") return path; // no Host: relative (documented degenerate case)
-  // Already absolute (the *previous history stores original_url's absolute
-  // shape): Env::Location passes an absolute URL through unchanged.
-  if (/^https?:\/\//i.test(path)) return path;
-  // The client's own scheme, so an https deck never redirects to http.
+  // The client's own scheme, so an https deck never redirects to http
+  // (the edge-signin-form-fix graft; the deploy lineage's scheme-aware
+  // card_url).
   return `${req.scheme ?? "http"}://${req.host}${path}`;
-}
-
-/** Ruby's cud_success for the PLAIN-form flavor (response.rb:25-33): the
- *  hard redirect — `hard_redirect success.to_url, 303` (:31), Location
- *  absolutized through card_url (:41). JSON keeps the API shape. */
-function successResponse(
-  req: WriteRouteRequest,
-  json: boolean,
-  name: string,
-  saved: { cardId: number; actId: number; actionId: number; verb: WriteVerb },
-  subcardNames: string[] | undefined,
-): WriteRouteResponse {
-  if (json) {
-    return {
-      ...jsonResponse(200, {
-        card: { name, url: `/${locationName(name)}` },
-        verb: saved.verb,
-        card_id: saved.cardId,
-        act_id: saved.actId,
-        action_id: saved.actionId,
-      }),
-      expiryName: name,
-      ...(subcardNames !== undefined && subcardNames.length > 0 ? { expiryNames: subcardNames } : {}),
-    };
-  }
-  return {
-    status: 303,
-    headers: { Location: cardUrl(req, `/${locationName(name)}`), "Cache-Control": "no-store" },
-    body: "",
-    expiryName: name,
-    ...(subcardNames !== undefined && subcardNames.length > 0 ? { expiryNames: subcardNames } : {}),
-  };
 }
 
 /** The errors view's alert bytes for the *signin failure
@@ -837,9 +970,64 @@ function signinErrorAlertHtml(message: string): string {
   );
 }
 
-/** The URL form of a card name (decko location grammar: spaces -> "_"). */
+/** Ruby's cud_success for the PLAIN-form flavor (response.rb:25-33): the
+ *  hard redirect — `hard_redirect success.to_url, 303` (:31), Location
+ *  absolutized through card_url (:41). JSON keeps the API shape. */
+function successResponse(
+  req: WriteRouteRequest,
+  json: boolean,
+  name: string,
+  saved: { cardId: number; actId: number; actionId: number; verb: WriteVerb },
+  redirectPath: string = `/${locationName(name)}`,
+  subcardNames?: string[],
+): WriteRouteResponse {
+  if (json) {
+    return {
+      ...jsonResponse(200, {
+        card: { name, url: `/${locationName(name)}` },
+        verb: saved.verb,
+        card_id: saved.cardId,
+        act_id: saved.actId,
+        action_id: saved.actionId,
+      }),
+      ...(subcardNames !== undefined && subcardNames.length > 0 ? { expiryNames: subcardNames } : {}),
+      expiryName: name,
+    };
+  }
+  return {
+    status: 303,
+    headers: { Location: absoluteTarget(req, redirectPath), "Cache-Control": "no-store" },
+    body: "",
+    ...(subcardNames !== undefined && subcardNames.length > 0 ? { expiryNames: subcardNames } : {}),
+    expiryName: name,
+  };
+}
+
+/** The URL form of a card name: Ruby's path(mark:) is the name's url_key
+ *  (variants.rb), whose joint and key characters ("+", "*") stay literal;
+ *  only characters a URL path cannot carry are percent-encoded. */
 function locationName(name: string): string {
-  return encodeURIComponent(name.replace(/ /g, "_"));
+  return encodeURI(DeckoName.parse(name).urlKey).replace(/[?#]/g, (c) => encodeURIComponent(c));
+}
+
+/** A redirect target as Ruby's hard_redirect sends it (response.rb:41,
+ *  card_url): a full URL as given (the location history stores request
+ *  URLs), a path prefixed with the deck origin. */
+function absoluteTarget(req: WriteRouteRequest, target: string): string {
+  return /^https?:\/\//.test(target) ? target : cardUrl(req, target);
+}
+
+/** The success target path (env/success/target.rb process_target):
+ *  success[mark] "*previous" -> previous location (the visitor's location
+ *  history, location_history.rb:19-21); an absolute path or URL as given;
+ *  another mark -> that card's path; no mark -> the request's own card. */
+function successTargetPath(parsed: ParsedBody, ownName: string, visit: VisitorSession): string {
+  const mark = parsed.success["mark"] ?? parsed.success["id"];
+  if (mark === undefined) return `/${locationName(ownName)}`;
+  if (mark === "") return "";
+  if (mark === "*previous" || mark === ":previous") return previousLocation(visit);
+  if (/^(http|\/)/.test(mark)) return mark;
+  return `/${locationName(mark)}`;
 }
 
 // -----------------------------------------------------------------------
@@ -869,29 +1057,41 @@ async function handleSigninUpdate(
   req: WriteRouteRequest,
   json: boolean,
   parsed: ParsedBody,
+  visit: VisitorSession,
 ): Promise<WriteRouteResponse> {
   const email = parsed.subcards["+*email"]?.content ?? "";
   const password = parsed.subcards["+*password"]?.content ?? "";
-  // signin.rb:46-48 abort_unless email/password — "email missing" /
-  // "password missing" are failure aborts before any authentication.
+  const fail = (message: string, shown: string): WriteRouteResponse =>
+    json
+      ? errorResponse(true, new CardActionError("user-error", message, shown), false, {
+          url: requestUrl(req),
+          now: ctx.now?.() ?? new Date(),
+        })
+      : htmlResponse(422, "Error (signin-failure)", signinErrorAlertHtml(shown));
+  // The send_reset_password_token trigger (signin.rb:62-84): the forgot-
+  // password form posts the email with card[trigger]; the :signin event
+  // does not run.
+  if (parsed.card["trigger"] === "send_reset_password_token") {
+    return handleResetPasswordTrigger(ctx, req, json, parsed, email, fail);
+  }
+  // signin.rb:46-48 abort_unless email/password: blank fields abort before
+  // any authentication. Ruby shows the attribute and account_error_blank
+  // ("email can't be blank", the abort message without an errors key).
   if (email === "" || password === "") {
-    const message = email === "" ? "email missing" : "password missing";
-    return json
-      ? jsonResponse(422, { error: { code: "signin-failure", message } })
-      : htmlResponse(422, "Error (signin-failure)", signinErrorAlertHtml(message));
+    const field = email === "" ? "email" : "password";
+    return fail(`${field} missing`, `${field} can't be blank`);
   }
   const sessions = new SessionStore({ driver: ctx.driver });
   const outcome = await signinAccount(ctx.driver, sessions, email, password);
   if (!outcome.ok) {
-    const message = outcome.message;
-    return json
-      ? jsonResponse(422, { error: { code: "signin-failure", message } })
-      : htmlResponse(422, "Error (signin-failure)", signinErrorAlertHtml(message));
+    // authenticate_or_abort adds the ladder message under :signin
+    // (signin.rb:50-58 errors.add :signin, ...): "SIGNIN: <message>".
+    return fail(outcome.message, `SIGNIN: ${outcome.message}`);
   }
-  // *previous (signin.rb:171) -> previous_location -> "/" fresh
-  // (location_history.rb:6-9); the session history stack itself is
-  // unported (documented).
-  const target = cardUrl(req, "/");
+  // The success target (env/success/target.rb): the form's
+  // success[mark]=*previous (signin.rb:171) -> previous_location; without a
+  // success mark the target is the card itself, *signin.
+  const target = absoluteTarget(req, successTargetPath(parsed, "*signin", visit));
   if (isAjax(req, parsed)) {
     // the ajax hard redirect (response.rb:42-46)
     const body = jsonResponse(200, { redirect: target });
@@ -906,6 +1106,68 @@ async function handleSigninUpdate(
     headers: { Location: target, "Cache-Control": "no-store", "Set-Cookie": sessionCookieHeader(outcome.session.token) },
     body: "",
   };
+}
+
+/** The forgot-password trigger on the *signin update (card-mod-account
+ *  set/self/signin.rb:62-84, event :send_reset_password_token): look the
+ *  email up, send the reset email to an active account, and redirect to the
+ *  success view the form asked for (success[view]; signin.rb's form pins
+ *  reset_password_success). Failures are errors on :email
+ *  (signin.rb:96-102 error_on), shown as "EMAIL: <message>". */
+async function handleResetPasswordTrigger(
+  ctx: WriteRouteContext,
+  req: WriteRouteRequest,
+  json: boolean,
+  parsed: ParsedBody,
+  email: string,
+  fail: (message: string, shown: string) => WriteRouteResponse,
+): Promise<WriteRouteResponse> {
+  if (ctx.accountMail === undefined) {
+    return fail("account mail is not configured on this host", "account mail is not configured on this host");
+  }
+  const outcome = await sendResetPasswordToken(
+    {
+      ...ctx.accountMail,
+      driver: ctx.driver,
+      fetcher: ctx.fetcher,
+      sessions: new SessionStore({ driver: ctx.driver }),
+    },
+    email,
+  );
+  if (!outcome.ok) return fail(outcome.message, `EMAIL: ${outcome.message}`);
+  const view = parsed.success["view"];
+  const path = view === undefined || view === ""
+    ? `/${locationName("*signin")}`
+    : `/${locationName("*signin")}/${encodeURIComponent(view)}`;
+  if (json) return jsonResponse(200, { redirect: cardUrl(req, path) });
+  return { status: 303, headers: { Location: cardUrl(req, path), "Cache-Control": "no-store" }, body: "" };
+}
+
+/** Sign-out: DELETE /delete/*signin (card-mod-account set/self/signin.rb
+ *  event :signout, on: :delete — `Auth.signin nil`, then abort :success so
+ *  no card row is touched). The session is revoked, the cookie cleared, and
+ *  the request redirected to the *signin card (the delete's success target
+ *  is the card itself). Env.reset_session (signin.rb:21) drops the rest of
+ *  the visitor's session too: the location history and Session-card
+ *  content. */
+async function handleSignout(
+  ctx: WriteRouteContext,
+  req: WriteRouteRequest,
+  json: boolean,
+  parsed: ParsedBody,
+  visit: VisitorSession,
+): Promise<WriteRouteResponse> {
+  const token = tokenFromRequest(req, parsed) ?? readSessionCookie(req.headers.cookie);
+  if (token !== null) await new SessionStore({ driver: ctx.driver }).revokeSession(token);
+  delete visit.history;
+  visit.cards = {};
+  const target = cardUrl(req, `/${locationName("*signin")}`);
+  const headers = { "Cache-Control": "no-store", "Set-Cookie": clearedSessionCookieHeader() };
+  if (json) {
+    const body = jsonResponse(200, { redirect: target });
+    return { ...body, headers: { ...body.headers, ...headers } };
+  }
+  return { status: 303, headers: { ...headers, Location: target }, body: "" };
 }
 
 // -----------------------------------------------------------------------
@@ -990,6 +1252,49 @@ export function servingModEventRuntime(): Promise<ModEventRuntime> {
   return servingModEventRuntimeSeat;
 }
 
+/** The serving runtime, with the host's stage-report observer attached when
+ *  one is given. The shared runtime object is never mutated: an observed
+ *  request gets a shallow copy carrying its own onReport. */
+async function observedModEventRuntime(ctx: WriteRouteContext): Promise<ModEventRuntime> {
+  const runtime = await servingModEventRuntime();
+  const codenameOfType = await typeCodenames(ctx.driver);
+  return {
+    ...runtime,
+    setMember: typeSetMember(codenameOfType),
+    ...(ctx.onModEventReport === undefined ? {} : { onReport: ctx.onModEventReport }),
+  };
+}
+
+/** Type-set membership for scoped event set paths: a card belongs to the
+ *  set module "type/<codename>[/...]" when its type card carries that
+ *  codename (Card::Set::Type, card-1.110.0 lib/card/set/pattern; the set
+ *  file's directory is the type's codename). Every other scoped pattern
+ *  stays not-applicable, as before this resolver existed. */
+function typeSetMember(codenameOfType: ReadonlyMap<number, string>) {
+  return (setPath: string, card: { typeId?: number | null }): boolean => {
+    const match = /^type\/([^/]+)/.exec(setPath);
+    if (match === null || card.typeId === undefined || card.typeId === null) return false;
+    return codenameOfType.get(card.typeId) === match[1];
+  };
+}
+
+/** id -> codename for every codenamed card (the codename table, read once
+ *  per driver; codenames are deck structure, not request data). */
+const typeCodenameCache = new WeakMap<object, Promise<Map<number, string>>>();
+function typeCodenames(driver: SQLDatabaseDriver): Promise<Map<number, string>> {
+  let cached = typeCodenameCache.get(driver);
+  if (cached === undefined) {
+    cached = driver
+      .query<{ id: number; codename: string }>(
+        "SELECT id, codename FROM cards WHERE codename IS NOT NULL AND codename <> '' AND trash = 0",
+        [],
+      )
+      .then((r) => new Map(r.rows.map((row) => [Number(row.id), String(row.codename)])));
+    typeCodenameCache.set(driver, cached);
+  }
+  return cached;
+}
+
 /**
  * Dispatch one non-GET request against the write grammar. Returns the
  * response, or NULL when the request is not a write route at all (the
@@ -1007,6 +1312,23 @@ export async function handleWriteRequest(
   req: WriteRouteRequest,
   opts?: { authOnly?: boolean },
 ): Promise<WriteRouteResponse | null> {
+  // The visitor's session state (location history, Session-card content):
+  // read from its cookie, changed by the request, stored back only when it
+  // changed.
+  const visit = readVisitorSession(req.headers.cookie);
+  const before = visitorSessionCookie(visit);
+  const res = await dispatchWriteRequest(ctx, req, opts, visit);
+  if (res === null) return null;
+  if (visitorSessionCookie(visit) === before) return res;
+  return { ...res, visitorCookie: visitorSessionCookie(visit, { secure: req.scheme === "https" }) };
+}
+
+async function dispatchWriteRequest(
+  ctx: WriteRouteContext,
+  req: WriteRouteRequest,
+  opts: { authOnly?: boolean } | undefined,
+  visit: VisitorSession,
+): Promise<WriteRouteResponse | null> {
   // Response format: the .json suffix on the mark, or the Accept header
   // (routes.rb ":(.:format)" grammar; rest.rb responds per format).
   const json =
@@ -1016,7 +1338,9 @@ export async function handleWriteRequest(
   try {
     parsed = applyQuery(parseBody(req), req.search);
   } catch (error) {
-    if (error instanceof CardActionError) return errorResponse(json, error);
+    if (error instanceof CardActionError) {
+      return errorResponse(json, error, false, { url: requestUrl(req), now: ctx.now?.() ?? new Date() });
+    }
     throw error;
   }
   // Rails MethodOverride (rack-method_override: POST + `_method` param
@@ -1039,10 +1363,9 @@ export async function handleWriteRequest(
   // the login action") — before any card machinery runs.
   if (route.verb === "update" && route.mark !== undefined) {
     if (DeckoName.parse(markToName(route.mark)).key === SIGNIN_KEY) {
-      return handleSigninUpdate(ctx, req, json, parsed);
+      return handleSigninUpdate(ctx, req, json, parsed, visit);
     }
   }
-
   // The AUTH-ONLY arm (edge-signin-form-fix lane, 2026-10-03): everything
   // below this line is CARD CREATE/UPDATE/DELETE — the surface a deployment
   // flag may lawfully switch off. Sign-in is not a card write (the :signin
@@ -1053,6 +1376,15 @@ export async function handleWriteRequest(
   // branch and nothing else.
   if (opts?.authOnly === true) return null;
 
+  // The *signin delete is the logout action (signin.rb event :signout). It
+  // stays behind the auth-only gate: disarmed hosts pin every delete route
+  // against *signin as a gated card write.
+  if (route.verb === "delete" && route.mark !== undefined) {
+    if (DeckoName.parse(markToName(route.mark)).key === SIGNIN_KEY) {
+      return handleSignout(ctx, req, json, parsed, visit);
+    }
+  }
+
   // authenticate (rest.rb:37-40): header/param token first, else the
   // cookie session (auth/current.rb:50-63); unresolvable = Anonymous.
   const sessionToken =
@@ -1062,6 +1394,8 @@ export async function handleWriteRequest(
     ipAddress: ctx.ipAddress ?? req.headers["x-forwarded-for"] ?? "127.0.0.1",
     now: ctx.now,
     attachmentStore: ctx.attachmentStore,
+    ...(ctx.scssCompiler === undefined ? {} : { scssCompiler: ctx.scssCompiler }),
+    ...(ctx.coffeeCompiler === undefined ? {} : { coffeeCompiler: ctx.coffeeCompiler }),
     fileStorage: ctx.fileStorage,
     // the deck's event runtime rides EVERY save (the deck-boot seam,
     // servingModEventRuntime above - Ruby's boot composes all mods once and
@@ -1073,10 +1407,13 @@ export async function handleWriteRequest(
     // config the engine composes at validate time (card-action-engine.ts
     // prepareRecaptchaSaveInput), so an unarmed host registers the event and
     // still never fires the guard (recaptcha_keys? false, recaptcha.rb:46-48).
-    modEvents: await servingModEventRuntime(),
-    ...(ctx.recaptcha === undefined ? {} : { recaptcha: ctx.recaptcha }),
+    modEvents: await observedModEventRuntime(ctx),
     ...(ctx.notifyTransport === undefined ? {} : { notifyTransport: ctx.notifyTransport }),
-    ...(ctx.followMail === undefined ? {} : { followMail: ctx.followMail }),
+    followMail: {
+      origin: cardUrl(req, ""),
+      deckoBotEmail: ctx.accountMail?.deckoBotEmail ?? (await deckoBotAccountEmail(ctx.driver)),
+    },
+    ...(ctx.recaptcha === undefined ? {} : { recaptcha: ctx.recaptcha }),
   });
 
   // CardMount's mount argument: the card[<mount>] file part is the
@@ -1100,7 +1437,10 @@ export async function handleWriteRequest(
         declaredContentType: attachmentInput.contentType,
       };
 
+  let signOutAfterDelete: { sessions: SessionStore; token: string } | undefined;
   try {
+    let result: ActionResult | null;
+    let name: string;
     // THE TWO-STEP UPLOAD's preliminary arm (00_upload_cache.rb:8-25
     // prepare_attachment, when preliminary_upload?): a card save whose
     // request carries params[:attachment_upload] beside a file part stores
@@ -1117,8 +1457,6 @@ export async function handleWriteRequest(
     ) {
       return await handlePreliminaryUpload(ctx, engine, route, parsed, attachment, mount);
     }
-    let result: ActionResult | null;
-    let name: string;
     if (route.verb === "create") {
       const input = {
         ...createInputFromParams(route, parsed, attachment),
@@ -1133,8 +1471,24 @@ export async function handleWriteRequest(
         commentAuthor: parsed.commentAuthor,
         recaptchaToken: parsed.recaptchaToken,
       };
+      if (await isSessionTypeCreate(ctx.fetcher, input)) {
+        // card-mod-session set/type/session.rb: ok_to_create? is true for
+        // everyone, and store_in_session keeps the content in the visitor's
+        // session and aborts with success (abort :success at
+        // :prepare_to_store), so nothing reaches the card tables. The
+        // content is kept in the visitor session under the card's key.
+        storeSessionCardContent(visit, input.name, input.content);
+        return successResponse(
+          req,
+          json,
+          input.name,
+          { cardId: 0, actId: 0, actionId: 0, verb: "create" },
+          successTargetPath(parsed, input.name, visit),
+        );
+      }
       result = await engine.createCard(input);
       name = result.name?.s ?? input.name;
+      await requestSignupVerification(ctx, name, input.subcards);
     } else if (route.verb === "update") {
       const card = parsed.card;
       if (route.mark === undefined && card["name"] === undefined) {
@@ -1146,22 +1500,19 @@ export async function handleWriteRequest(
       const markName = route.mark !== undefined ? markToName(route.mark) : undefined;
       const hashName = card["name"];
       const updateName = hashName ?? markName;
-      // THE CARD IS THE MARK (rest.rb's update action fetches the card the
-      // URL names); a card-hash name is the RENAME argument (name_events.rb),
-      // not the fetch key. Resolving by the hash name first turned every
-      // rename into an update-of-a-new-card CREATE (the rename form posts
-      // card[name]="Phrase One" against /update/Phrase_1 and the engine
-      // created Phrase One instead of renaming Phrase 1). The mark resolves
-      // the card; the hash name resolves only when the request names no mark.
-      const resolveName = markName ?? hashName;
+      // The card is fetched by the URL mark when there is one (uri_fetch,
+      // card_class.rb:128-133: Card.fetch(mark, new: opts)); card[name] is
+      // then the rename argument. Looking up by card[name] instead would
+      // land a rename-onto-an-existing-name on the OTHER card as a no-op.
       const reverting =
         (parsed.revertActions !== undefined && parsed.revertActions.length > 0) ||
         (parsed.revertAct !== undefined && parsed.revertAct !== "");
       // look_in_trash (uri_fetch): a trashed card is fetched as itself, not
       // as a new card. The history pane's revert requests send it.
       const trashedTarget =
-        parsed.lookInTrash === true ? await lookupTrashedCard(ctx.fetcher, resolveName) : undefined;
-      const existing = (await lookupLiveCard(ctx.fetcher, resolveName)) ?? trashedTarget;
+        parsed.lookInTrash === true ? await lookupTrashedCard(ctx.fetcher, markName ?? updateName) : undefined;
+      const existing = (await lookupLiveCard(ctx.fetcher, markName ?? updateName)) ?? trashedTarget;
+      const trigger = card["trigger"];
       if (existing !== undefined && reverting) {
         // :rollback_actions (card-mod-history set/all/history/events.rb:40-46)
         // replaces the update with the revisions the request names.
@@ -1172,6 +1523,27 @@ export async function handleWriteRequest(
           revertToPrevious: parsed.revertTo === "previous",
         });
         name = result?.name?.s ?? updateName;
+      } else if (
+        existing !== undefined &&
+        (trigger === "approve_with_verification" || trigger === "approve_without_verification") &&
+        (await typeCodenameOf(ctx.fetcher, existing.typeId)) === "signup"
+      ) {
+        name = existing.name?.s ?? updateName;
+        result = await approveSignup(ctx, engine, existing.id, name, trigger === "approve_with_verification");
+      } else if (
+        existing !== undefined &&
+        trigger === "use_as_current_skin" &&
+        (await typeCodenameOf(ctx.fetcher, existing.typeId)) === "bootswatch_skin"
+      ) {
+        // use_as_current_skin (card-mod-bootstrap set/type/bootswatch_skin.rb
+        // :180-184, :finalize, trigger: :required): the skin's own save
+        // changes nothing (its act stays empty) and the event saves the
+        // *all+*style rule with the skin's name, inside that act.
+        name = existing.name?.s ?? updateName;
+        await engine.assertMayUpdate(existing.id);
+        const style = await lookupLiveCard(ctx.fetcher, "*all+*style");
+        if (style === undefined) throw new CardActionError("not-found", "no *all+*style rule card");
+        result = await engine.updateCard({ cardId: style.id, content: name, withinOtherAct: true });
       } else if (existing === undefined) {
         // rest.rb:14-16 — update of a NEW card routes to CREATE (the fetch
         // builds the card from the params; trashed marks fetch as new and
@@ -1180,9 +1552,6 @@ export async function handleWriteRequest(
         const created = await engine.createCard({
           ...createInputFromParams(route, parsed, attachment),
           name: updateName,
-          ...(cachedUploadActionParam(parsed) !== undefined
-            ? { actionIdOfCachedUpload: cachedUploadActionParam(parsed) }
-            : {}),
           comment: parsed.comment,
           commentAuthor: parsed.commentAuthor,
           recaptchaToken: parsed.recaptchaToken,
@@ -1195,9 +1564,6 @@ export async function handleWriteRequest(
           cardId: existing.id,
           ...(existing.trash ? { lookInTrash: true } : {}),
           ...(card["skip"] === "validate_renaming" ? { skipValidateRenaming: true } : {}),
-          // card[skip] names an event the act skips (skip_and_trigger.rb);
-          // the rename form's box sends update_referer_content.
-          ...(card["skip"] !== undefined && card["skip"] !== "" ? { skip: [card["skip"]] } : {}),
           // card-hash name WINS over the URL mark (uri_fetch_opts) — a
           // card[name] on an update is the RENAME arg (name_events.rb).
           name: hashName !== undefined && hashName !== markName ? hashName : undefined,
@@ -1209,6 +1575,12 @@ export async function handleWriteRequest(
           ...(cachedUploadActionParam(parsed) !== undefined
             ? { actionIdOfCachedUpload: cachedUploadActionParam(parsed) }
             : {}),
+          // the structured form's field subcards
+          // (card[subcards][+summary][content], subcards.rb) save in this
+          // act: missing subcards created, existing ones updated.
+          ...(Object.keys(subcardInputs(parsed.subcardTree)).length > 0
+            ? { subcards: subcardInputs(parsed.subcardTree) }
+            : {}),
           comment: parsed.comment,
           commentAuthor: parsed.commentAuthor,
           recaptchaToken: parsed.recaptchaToken,
@@ -1217,10 +1589,6 @@ export async function handleWriteRequest(
           // value detect_conflict validates (card-mod-history
           // set/all/history/events.rb:19-22, when: :edit_conflict?).
           lastActionIdBeforeEdit: card["last_action_id_before_edit"],
-          // the structured form's field subcards
-          // (card[subcards][+summary][content], subcards.rb) save in this
-          // act: missing subcards created, existing ones updated.
-          subcards: subcardInputsFromParams(parsed),
           // Env.params["draft"] == "true" (mod/core/set/all/content.rb:20-22):
           // the autosave POST (assets/script/autosave.js.coffee:20).
           draft: parsed.draft === "true",
@@ -1234,7 +1602,27 @@ export async function handleWriteRequest(
       const markName = markToName(route.mark);
       const existing = await lookupLiveCard(ctx.fetcher, markName);
       if (existing === undefined) {
-        throw new CardActionError("not-found", `no such card: ${markName}`);
+        throw new CardActionError("user-error", `no such card: ${markName}`, MISSING_CARD_DELETE_MESSAGE, {
+          UserError: "Card::Error::UserError",
+        });
+      }
+      // signout_upon_delete (card-mod-account set/right/account/events.rb
+      // :49-51, :integrate, when: current_account?): closing your own
+      // account signs you out. Ruby's event names a constant that does not
+      // exist (Card::Set::Right::Self::Signin), the integrate stage swallows
+      // the NameError, and the closed account stays signed in; the port signs
+      // out as the event intends (a deliberate difference).
+      const accountCodenameId = await ctx.fetcher.codenames.id("account");
+      if (
+        sessionToken !== null &&
+        accountCodenameId !== undefined &&
+        existing.rightId === accountCodenameId &&
+        existing.leftId !== null &&
+        existing.leftId !== undefined
+      ) {
+        const sessions = new SessionStore({ driver: ctx.driver });
+        const actor = await sessions.lookupSession(sessionToken);
+        if (actor !== null && actor.id === existing.leftId) signOutAfterDelete = { sessions, token: sessionToken };
       }
       result = await engine.deleteCard({
         cardId: existing.id,
@@ -1260,21 +1648,9 @@ export async function handleWriteRequest(
     // titled slot). JSON requests keep the API shape.
     // The success target (Card::Env::Success): success[mark] names another
     // card ("_self", the default, is the saved card), success[view] the view.
-    // "*previous" is the session's previous location (mark.rb:12-14 resolves
-    // the mark through Card::Env.previous_location — the edit modal's Delete
-    // link carries success[mark]=*previous, and the delete's own response is
-    // the hard redirect's JSON, which the client follows to the previous
-    // page; the deleted card's URL then serves the create form through the
-    // unknown-card page branch).
     const successMark = parsed.success["mark"];
-    const previousRedirect =
-      successMark === "*previous" && ctx.previousLocation !== undefined ? ctx.previousLocation() : undefined;
     const successName =
-      previousRedirect !== undefined
-        ? undefined
-        : successMark !== undefined && successMark !== "" && !successMark.startsWith("_")
-          ? successMark
-          : name;
+      successMark !== undefined && successMark !== "" && !successMark.startsWith("_") ? successMark : name;
     // redirect_cud_success: success[redirect] other than "soft" is the hard
     // redirect, which an ajax request receives as {redirect: url} so the
     // page itself navigates (response.rb hard_redirect) — the new-card
@@ -1287,51 +1663,37 @@ export async function handleWriteRequest(
     const subcardExpiryNames = Object.keys(parsed.subcards)
       .filter((slot) => slot.startsWith("+"))
       .map((slot) => `${name}${slot}`);
-    const redirect = parsed.success["redirect"];
+    const successRedirect = parsed.success["redirect"];
     // configure_successful_deletion (mod/session set/all/location_history.rb:9-17,
     // inside event :discard_deleted_locations, :finalize on :delete): an ajax
     // delete whose success target is the deleted card itself (no mark = self)
     // with is_main in the params rewrites the success — redirect=true,
     // target=:previous. The hard-redirect JSON then carries the session's
-    // previous location, resolved BEFORE the delete's discard drops the
-    // card's own entries; the browser reloads that address and the trashed
-    // card's page renders the create form through the unknown-card branch
-    // (card-mod-format html/error.rb:81-86 page_view_for_unknown).
-    const deleteConfigureRedirect =
-      route.verb === "delete" &&
+    // previous location (resolved before the discard below), and the browser
+    // reloads that address: the trashed card's page renders the create form
+    // through the unknown-card branch (card-mod-format html/error.rb:81-86
+    // page_view_for_unknown).
+    if (
+      saved.verb === "delete" &&
       !json && isAjax(req, parsed) &&
       (parsed.success["mark"] === undefined || parsed.success["mark"] === "" || parsed.success["mark"] === "_self") &&
-      parsed.isMain !== undefined;
-    if (deleteConfigureRedirect && ctx.previousLocation !== undefined) {
-      const previous = ctx.previousLocation();
-      if (previous !== undefined) {
-        return {
-          ...jsonResponse(200, { redirect: cardUrl(req, previous) }),
-          expiryName: name,
-          expiryNames: subcardExpiryNames,
-        };
-      }
-    }
-    if (!json && isAjax(req, parsed) && redirect !== undefined && redirect !== "" && redirect !== "soft") {
+      parsed.isMain !== undefined
+    ) {
       return {
-        ...jsonResponse(200, {
-          redirect:
-            previousRedirect !== undefined
-              ? cardUrl(req, previousRedirect)
-              : cardUrl(req, `/${locationName(successName!)}`),
-        }),
+        ...jsonResponse(200, { redirect: absoluteTarget(req, previousLocation(visit)) }),
+        expiryName: name,
+        expiryNames: subcardExpiryNames,
+      };
+    }
+    if (!json && isAjax(req, parsed) && successRedirect !== undefined && successRedirect !== "" && successRedirect !== "soft") {
+      return {
+        ...jsonResponse(200, { redirect: cardUrl(req, `/${locationName(successName)}`) }),
         expiryName: name,
         expiryNames: subcardExpiryNames,
       };
     }
     if (!json && isAjax(req, parsed) && ctx.renderSlot !== undefined) {
-      // The *previous resolution answers through the redirect arm above, so
-      // the slot arm only fires for a card-name success target.
-      const slotHtml = await ctx.renderSlot(
-        successName ?? name,
-        parsed.success["view"] || undefined,
-        subcardExpiryNames,
-      );
+      const slotHtml = await ctx.renderSlot(successName, parsed.success["view"] || undefined, subcardExpiryNames);
       return {
         status: 200,
         headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
@@ -1345,9 +1707,38 @@ export async function handleWriteRequest(
         expiryNames: subcardExpiryNames,
       };
     }
-    return successResponse(req, json, name, saved, subcardExpiryNames);
+    // discard_deleted_locations (card-mod-session
+    // set/all/location_history.rb:1-4): a deleted card leaves the visitor's
+    // location history, and configure_successful_deletion (:12-20) sends a
+    // non-ajax delete to the previous location; other saves go to the
+    // success target.
+    if (saved.verb === "delete") discardLocationsFor(visit, name);
+    const redirectPath = saved.verb === "delete" && parsed.success["mark"] === undefined
+      ? previousLocation(visit)
+      : successTargetPath(parsed, name, visit);
+    const response = successResponse(req, json, name, saved, redirectPath, subcardExpiryNames);
+    if (signOutAfterDelete !== undefined) {
+      await signOutAfterDelete.sessions.revokeSession(signOutAfterDelete.token);
+      delete visit.history;
+      visit.cards = {};
+      return { ...response, headers: { ...response.headers, "Set-Cookie": clearedSessionCookieHeader() } };
+    }
+    return response;
   } catch (error) {
-    if (error instanceof CardActionError) return errorResponse(json, error);
+    if (error instanceof CardActionError) {
+      // An error page renders the request's card (show_page), and a known
+      // card's page view joins the location history like any other
+      // (event :save_current_location, before: :show_page): the request URL
+      // is saved for HTML, non-ajax requests on an existing card.
+      if (!json && !isAjax(req, parsed) && route.mark !== undefined) {
+        const shown = await lookupLiveCard(ctx.fetcher, markToName(route.mark));
+        if (shown !== undefined && shown.codename !== "signin") saveLocation(visit, requestUrl(req));
+      }
+      return errorResponse(json, error, await signedInFor(ctx, sessionToken), {
+        url: requestUrl(req),
+        now: ctx.now?.() ?? new Date(),
+      });
+    }
     throw error;
   }
 }
@@ -1501,10 +1892,11 @@ function createInputFromParams(
   subcards?: Record<string, SubcardInput>;
 } {
   const card = parsed.card;
+  const subcards = subcardInputs(parsed.subcardTree);
   const name = card["name"] ?? (route.mark !== undefined ? markToName(route.mark) : "");
   if (name === "") {
     // Ruby: Card.new(name: nil).save! -> validation error -> 422.
-    throw new CardActionError("name-illegal", "param is missing or the value is empty: name");
+    throw new CardActionError("name-illegal", "param is missing or the value is empty: name", "NAME: can't be blank");
   }
   const typeName = card["type"] ?? route.typeShortcut;
   const typeIdRaw = card["type_id"];
@@ -1514,39 +1906,124 @@ function createInputFromParams(
     typeName,
     typeId: typeIdRaw !== undefined && /^\d+$/.test(typeIdRaw) ? Number(typeIdRaw) : undefined,
     attachment,
-    subcards: subcardInputsFromParams(parsed),
+    ...(Object.keys(subcards).length > 0 ? { subcards } : {}),
   };
 }
 
-/** params[:card][:subcards] as the action engine's SubcardInput map
- *  (subcards.rb): the structured-form and account fields the edit surface
- *  posts beside the main card (card[subcards][+summary][content] etc.).
- *  Only the keys the forms actually post are carried: content and type. */
-function subcardInputsFromParams(parsed: ParsedBody): Record<string, SubcardInput> | undefined {
-  const entries = Object.entries(parsed.subcards);
-  const nestedEntries = Object.entries(parsed.nestedSubcards ?? {});
-  if (entries.length === 0 && nestedEntries.length === 0) return undefined;
-  const merged = new Map<string, SubcardInput>();
-  for (const [slot, sub] of entries) {
-    merged.set(slot, {
-      ...(sub.content !== undefined ? { content: sub.content } : {}),
-      ...(sub.type !== undefined && sub.type !== "" ? { typeName: sub.type } : {}),
-    });
-  }
-  // The nested subcard hash (the sign-up form): the slot's own subfields
-  // become the SubcardInput's subcards, keyed by the field name with its
-  // subcards-tail folded to content (card[subcards][+*account][subcards]
-  // [+*email][content] -> "+*account".subcards["+*email"].content).
-  for (const [slot, fields] of nestedEntries) {
-    const sub = merged.get(slot) ?? {};
-    const subSubcards: Record<string, SubcardInput> = {};
-    for (const [field, params] of Object.entries(fields)) {
-      subSubcards[field] =
-        params.content !== undefined ? { content: params.content } : {};
+/** Whether the create names the Session cardtype (by name or id). */
+async function isSessionTypeCreate(
+  fetcher: FetchEngine,
+  input: { typeName?: string; typeId?: number },
+): Promise<boolean> {
+  const type = input.typeId !== undefined
+    ? await fetcher.fetchById(input.typeId)
+    : input.typeName !== undefined
+      ? await fetcher.fetchByName(input.typeName)
+      : undefined;
+  return type !== undefined && !type.trash && type.codename === "session";
+}
+
+/** request_verification (card-mod-account set/type/signup.rb): a sign-up
+ *  its creator can approve starts "unverified", and the account's
+ *  send_verification_email event mails the verification link at
+ *  :integrate. The engine wrote the status; this sends the mail through
+ *  the host's account-mail seat. */
+async function requestSignupVerification(
+  ctx: WriteRouteContext,
+  name: string,
+  subcards: Record<string, SubcardInput> | undefined,
+): Promise<void> {
+  if (ctx.accountMail === undefined || subcards?.["+*account"] === undefined) return;
+  const status = await lookupLiveCard(ctx.fetcher, `${name}+*account+*status`);
+  if (status?.dbContent !== "unverified") return;
+  await sendAccountVerificationToken(
+    {
+      ...ctx.accountMail,
+      driver: ctx.driver,
+      fetcher: ctx.fetcher,
+      sessions: new SessionStore({ driver: ctx.driver }),
+    },
+    `${name}+*account`,
+  );
+}
+
+/** The codename of a card's type card ("" when it has none). */
+async function typeCodenameOf(fetcher: FetchEngine, typeId: number | null | undefined): Promise<string> {
+  if (typeId === null || typeId === undefined) return "";
+  return (await fetcher.fetchById(typeId))?.codename ?? "";
+}
+
+/** An administrator's approval of a pending sign-up (card-mod-account
+ *  set/type/signup.rb:24-35, the "Send verification email" and "Approve
+ *  without verification" links of the sign-up's verification_links view).
+ *
+ *  Both are update saves of the Sign up card carrying card[trigger]. The
+ *  validate stage judges ok?(:update) first; a denied approval then reaches
+ *  the event's abort(:failure), which reports the card's permission error
+ *  as a plain user error (422, "PERMISSION_DENIED: ..."), not as the 403
+ *  denial page. `approvable` requires can_approve? (the actor may create a
+ *  User), else aborts "illegal approval".
+ *
+ *  with verification: request_verification sets +*account+*status to
+ *  "unverified" and triggers send_verification_email;
+ *  without: activate_accounted makes the card a User, and activate_account
+ *  sets the status "active" and triggers send_welcome_email. */
+async function approveSignup(
+  ctx: WriteRouteContext,
+  engine: Awaited<ReturnType<typeof createCardActionEngineForSession>>,
+  cardId: number,
+  name: string,
+  withVerification: boolean,
+): Promise<ActionResult | null> {
+  try {
+    await engine.assertMayUpdate(cardId);
+  } catch (error) {
+    if (error instanceof CardActionError && error.code === "permission-denied") {
+      const message = error.errorsByAttribute?.["permission_denied"] ?? `You don't have permission to update ${name}`;
+      throw new CardActionError("user-error", error.message, `PERMISSION_DENIED: ${message}`, {
+        permission_denied: message,
+      });
     }
-    merged.set(slot, { ...sub, subcards: subSubcards });
+    throw error;
   }
-  return Object.fromEntries(merged);
+  // Card.default_accounted_type_id: the User cardtype.
+  const accountedTypeId = await ctx.fetcher.codenames.id("user");
+  if (accountedTypeId === undefined || !(await engine.mayCreateCardOfType(accountedTypeId))) {
+    throw new CardActionError("user-error", "illegal approval", "ABORT: illegal approval");
+  }
+  const accountMail = ctx.accountMail;
+  const flow = accountMail === undefined
+    ? undefined
+    : { ...accountMail, driver: ctx.driver, fetcher: ctx.fetcher, sessions: new SessionStore({ driver: ctx.driver }) };
+  return engine.updateCard({
+    cardId,
+    ...(withVerification ? {} : { typeId: accountedTypeId }),
+    subcards: {
+      "+*account": { subcards: { "+*status": { content: withVerification ? "unverified" : "active" } } },
+    },
+    triggeredIntegrate: async () => {
+      if (flow === undefined) return;
+      if (withVerification) await sendAccountVerificationToken(flow, `${name}+*account`);
+      else await sendAccountWelcomeEmail(flow, `${name}+*account`);
+    },
+  });
+}
+
+/** The request's subcard tree as the engine's subcard input
+ *  (subcards.rb:1-16): content, type and nested subcards per entry. */
+function subcardInputs(tree: Record<string, ParsedSubcard>): Record<string, SubcardInput> {
+  const out: Record<string, SubcardInput> = {};
+  for (const [key, node] of Object.entries(tree)) {
+    const typeIdRaw = node.fields["type_id"];
+    const nested = subcardInputs(node.subcards);
+    out[key] = {
+      ...(node.fields["content"] !== undefined ? { content: node.fields["content"] } : {}),
+      ...(node.fields["type"] !== undefined ? { typeName: node.fields["type"] } : {}),
+      ...(typeIdRaw !== undefined && /^\d+$/.test(typeIdRaw) ? { typeId: Number(typeIdRaw) } : {}),
+      ...(Object.keys(nested).length > 0 ? { subcards: nested } : {}),
+    };
+  }
+  return out;
 }
 
 /** A trashed card by name — a look_in_trash fetch (retrieve.rb:31). Simple
