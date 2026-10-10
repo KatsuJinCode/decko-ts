@@ -37,6 +37,12 @@ and exits 0 only when every step passed.
 **A button deploy is read-only.** You can browse and fetch card records;
 every write verb answers `403` and the engine is never called. Two opt-in
 variables turn the write surface on; see [operations.md](operations.md).
+Write-enabled D1 is for evaluation and single-user use, not a supported
+multiuser deployment: D1 has no interactive transactions, so while a save
+runs a concurrent reader can see its partial rows, and a save that fails
+was briefly visible before it vanished. A multiuser deployment on D1 keeps
+writes disabled or accepts that window
+([decision 0007](decisions/0007-atomic-saves-and-transaction-contract.md)).
 
 No secret or API token is stored in the repository. The Worker reads exactly
 one thing from its environment: the D1 binding.

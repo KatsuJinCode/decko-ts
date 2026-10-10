@@ -27,8 +27,8 @@
 //     behavior with both DECKO_WRITE_PATH and DECKO_FIRST_RUN unset.
 
 //
-// RUNTIME FACTS THIS ENTRY DEPENDS ON (verified empirically on script 93646
-// unless cited):
+// RUNTIME FACTS THIS ENTRY DEPENDS ON (verified empirically on the deployed
+// edge unless cited):
 //   - The live reader bundle already imports node:process and runs — the
 //     Bunny runtime resolves node: imports (deploy/bunny-edge-trial-runbook.md
 //     section 5 cites the docs for env-via-process.env).

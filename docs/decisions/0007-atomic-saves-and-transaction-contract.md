@@ -158,7 +158,11 @@ unexpired — that intermediate-visibility window remains, stated plainly:
 a read that answered moments before the lease ran out keeps what it served.
 What a reader is never served is an interrupted save's rows: once the lease
 is known expired, a serving read restores the journal before answering, so
-recovery does not wait for the next save. A D1 save that fails is undone at
+recovery does not wait for the next save. Because of that window,
+write-enabled D1 is presented as evaluation/single-user grade, not a
+supported multiuser deployment: a multiuser deployment on D1 keeps writes
+disabled or accepts that a save's rows are visible to concurrent readers
+mid-save and vanish if the save fails. A D1 save that fails is undone at
 once; one whose isolate dies is undone by the next save or by the first
 serving read after its lease expires. Every statement the save runs is
 fenced to the lease (the ownership assert rides in the statement's own

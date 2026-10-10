@@ -4,7 +4,7 @@
 //
 // WHY L2 EXISTS (measured, not assumed): the L1 design
 // (bunny-edge-cache-headers.ts) emits `public, max-age=0, s-maxage=<TTL>` on
-// content responses when armed. Deployed and probed live on script 93646
+// content responses when armed. Deployed and probed live
 // (2026-10-02, twice — with the flag variable added AND after a no-op
 // republish onto fresh isolates): the Bunny layer outside the script serves
 // `Cache-Control: no-cache` for script responses regardless of what the

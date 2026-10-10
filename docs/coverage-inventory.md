@@ -110,7 +110,11 @@ Stated plainly, with where the gap closes when it closes:
    server backed by real SQLite — never against hosted D1, sqld, Turso or
    Bunny ([decisions/0007](decisions/0007-atomic-saves-and-transaction-contract.md):
    "Nothing here was run against a hosted service"). No committed evidence
-   describes a production write on any host.
+   describes a production write on any host. Writes on D1 are presented
+   accordingly, as evaluation/single-user grade rather than a supported
+   multiuser deployment: until the intermediate-visibility window 0007
+   documents is closed, a multiuser D1 deployment keeps writes disabled or
+   accepts that a failed save is briefly visible mid-save.
 4. **Arbitrary mods.** Existing Ruby mods are not executed — the site's own
    mods are hand-ported, and the compatibility report's labels are
    declaration-level

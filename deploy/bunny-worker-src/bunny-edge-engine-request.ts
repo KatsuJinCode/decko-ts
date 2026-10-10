@@ -362,8 +362,9 @@ export function json(
 // not markup. Every interpolation of error text in an HTML page goes
 // through this. (Carried forward from the error-page-escape lane's 70d2042
 // monolith entry through the engine-request split — the split initially
-// dropped it; that hardening is deployed live on script 93646, release
-// dAZ4TRWv, so this adoption must not un-ship it. edge-true-union merge:
+// dropped it; the deployed edge serves the hardened bytes, so this
+// adoption must not un-ship the fix — a regression here would again let a
+// crafted card name land in an error page as markup. edge-true-union merge:
 // the local copy is superseded by the single-source export this module now
 // imports from worker.ts — 5dd6ab0 exported the identical body there when
 // it escaped layoutPage's <title>; one implementation, two call sites.)
@@ -404,8 +405,8 @@ async function dispatchEngineRequest(
   // engine's attachment views derive (derivedCloudAttachmentSource — Ruby's
   // action-id filename derivation, never the stored key), and 302s to it;
   // an unresolvable id answers the LIVE app's own shape for this path
-  // (404, text/plain, "Could not find <id>." — measured on
-  // culturesmith.com/files/103/3649-small.jpg).
+  // (404, text/plain, "Could not find <id>." — measured on the live
+  // site's /files/103/3649-small.jpg path).
   if (/^\/files\/\d+\/[^/]+/.test(url.pathname)) {
     return filesRouteResponse(await source.deck(), url.pathname);
   }
@@ -465,7 +466,7 @@ async function dispatchEngineRequest(
         // served db_content_preview for cards the HTML views replace with the
         // denial span — the same hole the CF worker's record-JSON route had
         // and closed (deploy/worker.ts cardRecordJson:469-492, the probe
-        // battery's batch-05 KNOWN HOLE there): verified live on script 93646
+        // battery's batch-05 KNOWN HOLE there): verified live
         // (GET /api/card/Taking%20Stock -> 200 + 200 chars of the denied
         // card's content while GET /Taking%20Stock rendered the denial).
         // Ruby's GET of a denied card renders the denial (ok_to_read? fails,
@@ -697,8 +698,8 @@ async function filesRouteResponse(deck: Deck, pathname: string): Promise<Respons
 }
 
 /** The live app's own /files/ answer for an id it cannot resolve:
- *  404, text/plain, "Could not find <id>." (measured on
- *  culturesmith.com/files/103/3649-small.jpg, 2026-10-02). */
+ *  404, text/plain, "Could not find <id>." (measured on the live
+ *  site's /files/103/3649-small.jpg path, 2026-10-02). */
 function filesNotFoundResponse(id: string): Response {
   return new Response(filesNotFoundBody(id), {
     status: 404,

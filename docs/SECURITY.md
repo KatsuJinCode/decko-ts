@@ -76,7 +76,11 @@ Please report suspected vulnerabilities privately to the maintainers rather than
   compensating journal rather than `BEGIN`/`COMMIT`, other connections can
   read a save's rows before it commits, and rolled-back ids are not reused —
   a difference from Ruby's and plain SQLite's behavior that a migration
-  validating rows mid-import must account for. Authoritative table:
+  validating rows mid-import must account for. That visibility window is
+  also why write-enabled D1 is presented as evaluation/single-user grade,
+  not a supported multiuser deployment: a multiuser deployment on D1 keeps
+  writes disabled or accepts that a failed save is briefly visible mid-save.
+  Authoritative table:
   `docs/decisions/0007-atomic-saves-and-transaction-contract.md`.
 
 ### Shadow routing never runs a write twice

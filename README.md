@@ -113,6 +113,16 @@ your session. Sign-in stores only a SHA-256 digest of the session token in
 D1 — the token itself is never written down — and hands you an `HttpOnly`,
 `SameSite=Lax`, `Secure` cookie that carries it.
 
+Writes on D1 are for evaluation and single-user use, not a supported
+multiuser deployment. D1 has no interactive transactions, so the engine
+saves there through a compensating journal
+([decision 0007](docs/decisions/0007-atomic-saves-and-transaction-contract.md)):
+a failed save is fully undone, but while a save is running a concurrent
+reader can see its partial rows — a save that fails was briefly visible
+before it vanished. A multiuser deployment on D1 therefore either keeps
+`DECKO_WRITE_PATH` off or accepts that window; local SQLite and libSQL have
+real transactions and do not have it.
+
 One honest thing to know before you try a card write: the demo deck that
 migration `0004` seeds ships **no create / update / delete rights at all**, so
 the engine's permission walk refuses every save with a `403`, correctly, for

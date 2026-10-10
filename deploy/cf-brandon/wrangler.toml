@@ -42,7 +42,7 @@ binding = "DB"
 database_name = "decko-brandon-trial"
 database_id = "00000000-0000-0000-0000-000000000000"
 
-# The same serving switches as Bunny's live script 93646 after the
+# The same serving switches as the Bunny edge after the
 # 2026-10-07 switch, with every page-cache tier off and writes off.
 [vars]
 DECKO_HAML_SLOT_STYLE = "separate"

@@ -216,7 +216,7 @@ const PAGE_STYLE = `
  *  at their own call sites.
  *
  *  deploy-surface-union (2026-10-03): the ESCAPE is the deploy lineage's
- *  5dd6ab0 fix (deployed live, release dAZ4TRWv) — a parsed card name rides
+ *  5dd6ab0 fix (the one the deployed edge serves) — a parsed card name rides
  *  the title on 200-pages, so a crafted URL-path name must land as text.
  *  The lineage's root worker.ts has had this since edge-true-union; this
  *  line's copy predated it (the carried layout-page-title-escape pin
