@@ -951,6 +951,16 @@ const cardModSearch: DeckoModManifest = {
             // search.rb:48 view :results_for_keyword, cache: :never,
             // template: :haml
             { view: "results_for_keyword", viewFn: resultsForKeywordView, config: { cache: "never" } },
+            // search.rb:45 view :core, cache: :never — the SELF-set override
+            // the *search page's own renders dispatch: the keyword header
+            // (results_for_keyword — the var-carrying requests) followed by
+            // the super's core (the abstract search_views' search_result_view
+            // → the card list / count / error dispatch).
+            {
+              view: "core",
+              viewFn: (ctx) => resultsForKeywordView(ctx) + ctx.fmt.renderView("card_list"),
+              config: { cache: "never" },
+            },
           ],
         },
       },

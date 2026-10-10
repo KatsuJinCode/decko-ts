@@ -82,6 +82,14 @@ export interface HistoryRenderParams {
    *  card_class.rb:104-133). Read only when the engine renders absent cards
    *  (RenderEngine#renderAbsentCards); undefined is the `new: {}` idiom. */
   newCard?: NewCardOptions;
+
+  /** The search request parameters (search_params.rb: the query vars
+   *  `Env.hash(params[:query])` merged into the search's cql as vars, and
+   *  the paging window — offset from `Env.params[:offset]`, focal-only per
+   *  paging.rb:37-45). Read by the search warm's statement merge and the
+   *  search views' keyword header; undefined = the headless shape (no vars,
+   *  offset 0). */
+  search?: { vars?: Record<string, string>; offset?: number };
 }
 
 /** One action's card as the views need it (name algebra + type + the

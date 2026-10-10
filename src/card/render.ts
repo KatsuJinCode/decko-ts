@@ -108,6 +108,7 @@ import {
   dateError,
   emptyQueryError,
   isValidDateContent,
+  upstreamMatchError,
   BAD_QUERY_CLASS_NAME,
 } from "./render/errors.js";
 import {
@@ -680,6 +681,19 @@ export class RenderEngine implements RenderEngineLike {
    *  ViewFns read it through RenderEngineLike#historyRenderReader. */
   private historyReader: HistoryRenderReader | undefined;
 
+  /** The current request's search parameters (HistoryRenderParams#search —
+   *  search_params.rb: the query vars `Env.hash(params[:query])` and the
+   *  paging offset). Set at every render() entry, cleared with the history
+   *  seam's per-render reset; read by the search warm's statement merge and
+   *  RenderEngineLike#searchKeyword. */
+  private renderSearch: { vars?: Record<string, string>; offset?: number } | undefined;
+
+  /** The render root's key — the focal card. search_params' env arms
+   *  (paging.rb:37-45 env_search_param) apply ONLY to the focal card's
+   *  search (`return unless focal?`); the warm consults this key so the
+   *  request's vars/offset reach the root's own search and no nested one. */
+  private renderSearchFocalKey: string | undefined;
+
   /** The current request's new-card arguments (HistoryRenderParams#newCard):
    *  Ruby's params[:type] and card hash, read by the new-card views'
    *  new_type_preset? (card-mod-edit new.rb:142-144). Set at every render()
@@ -1128,6 +1142,8 @@ export class RenderEngine implements RenderEngineLike {
     this.historyReader = undefined;
     this.updaterReader = undefined;
     this.requestNewCard = params.newCard;
+    this.renderSearch = params.search;
+    this.renderSearchFocalKey = name.key;
     // The ensure_roles fill is per-request (see the field note): a fresh
     // render starts with the session card's blank content.
     this.sessionRolesContentFilled = false;
@@ -2449,7 +2465,7 @@ export class RenderEngine implements RenderEngineLike {
     // (computeIsRuleSync — the same standard_rule? predicate the RULE
     // set-key uses) and the Date arm does not.
     if (card.typeCode === SEARCH_TYPE_CODE && PARSE_DISPATCH_VIEWS.has(view)) {
-      const failed = this.searchFailures.get(card.key);
+      const failed = this.searchFailures.get(this.searchCacheKey(card));
       if (failed !== undefined && !this.computeIsRuleSync(card)) throw failed;
     }
     // THE DATE ARM MOVED TO :core (2026-10-02, open-clusters-fix). The
@@ -5561,19 +5577,19 @@ export class RenderEngine implements RenderEngineLike {
         }
       }
       if (card.typeCode !== SEARCH_TYPE_CODE) continue;
-      if (this.searchResults.has(card.key) || this.searchFailures.has(card.key)) continue;
+      if (this.searchResults.has(this.searchCacheKey(card)) || this.searchFailures.has(this.searchCacheKey(card))) continue;
       if (this.isDenied(card)) continue;
       try {
         const items = await this.runSearch(card);
-        this.searchResults.set(card.key, items);
+        this.searchResults.set(this.searchCacheKey(card), items);
         queue.push(...items);
       } catch (err) {
         // Same parse-failure contract as prepareSearches: BadQuery seats an
         // empty result and records the exact error for the dispatched view to
         // re-raise; unknown errors are NOT parse failures — rethrow.
         if (!(err instanceof Error) || err.name !== BAD_QUERY_CLASS_NAME) throw err;
-        this.searchFailures.set(card.key, err);
-        this.searchResults.set(card.key, []);
+        this.searchFailures.set(this.searchCacheKey(card), err);
+        this.searchResults.set(this.searchCacheKey(card), []);
       }
       executed++;
     }
@@ -7672,20 +7688,43 @@ export class RenderEngine implements RenderEngineLike {
 
   /** Pre-executed results for a Search core (card_list view). */
   executeSearch(fmt: RenderFormat): RenderCard[] {
-    return this.searchResults.get(fmt.card.key) ?? [];
+    return this.searchResults.get(this.searchCacheKey(fmt.card)) ?? [];
+  }
+
+  /** The search-result caches' key: the card key, PLUS the focal request's
+   *  search parameters when this card IS the focal card (search_params.rb —
+   *  Ruby's search_with_params is per-request: the same *search card renders
+   *  different results for different query[keyword]/offset params, and the
+   *  engine-lifetime cache must not serve the home page's unfiltered warm
+   *  to the params-carrying search request that follows it). Non-focal
+   *  cards key bare (their results are params-independent). */
+  private searchCacheKey(card: RenderCard): string {
+    if (this.renderSearchFocalKey !== card.key || this.renderSearch === undefined) return card.key;
+    return `${card.key}|${JSON.stringify({ v: this.renderSearch.vars ?? {}, o: this.renderSearch.offset ?? 0 })}`;
   }
 
   /** RenderEngineLike#searchResultPaging — the seated paging record for a
    *  rendered search (search-paging.ts header; undefined = not paged, the
    *  show_paging? == false case). */
   searchResultPaging(fmt: RenderFormat): SearchResultPaging | undefined {
-    return this.searchResultPagingMap.get(fmt.card.key);
+    return this.searchResultPagingMap.get(this.searchCacheKey(fmt.card));
+  }
+
+  /** RenderEngineLike#searchKeyword — the request's search keyword
+   *  (search_params.rb:32-34 search_keyword = term_param ||
+   *  search_vars&.dig(:keyword); the port carries the query vars through
+   *  the render params' search seam). Undefined for headless engines and
+   *  requests without query[keyword] — the :results_for_keyword header's
+   *  own present? guard. */
+  searchKeyword(_card: RenderFormat["card"]): string | undefined {
+    const keyword = this.renderSearch?.vars?.["keyword"];
+    return keyword !== undefined && keyword !== "" ? keyword : undefined;
   }
 
   /** RenderEngineLike#searchResultCount — the seated count of a rendered
    *  search whose cql returns a count (undefined for a list search). */
   searchResultCount(fmt: RenderFormat): number | undefined {
-    return this.searchCountResults.get(fmt.card.key);
+    return this.searchCountResults.get(this.searchCacheKey(fmt.card));
   }
 
   /** RenderEngineLike#historyRenderReader — the render-time history seam
@@ -9532,6 +9571,63 @@ export class RenderEngine implements RenderEngineLike {
     } else {
       delete (statement as Record<string, unknown>)["limit"];
     }
+    // search_params.rb:12-18 + normalization.rb:57-65 — the request's query
+    // vars substitute the cql's $var references (standardized_query_args
+    // merges the vars), and the paging window rides the offset
+    // (paging_params' offset; focal pages only, seated by the host). The
+    // substituted MATCH then reproduces the upstream failure this deck
+    // pins: the match value compiles through the adapter's match — which
+    // raises for every non-PostgreSQL connection (active_record.rb:80-83,
+    // the recorded keyword-search 500's raise site).
+    const focalSearch =
+      this.renderSearch !== undefined && this.renderSearchFocalKey === card.key
+        ? this.renderSearch
+        : undefined;
+    const vars = focalSearch?.vars;
+    for (const [key, value] of Object.entries(statement as Record<string, unknown>)) {
+      const varMatch = /^\$(\w+)$/.exec(String(value));
+      if (varMatch === null) continue;
+      const varValue = vars?.[varMatch[1]];
+      if (varValue === undefined || varValue === "") {
+        // Ruby: the unresolved var normalizes to nil and the CONDITION
+        // drops (normalization.rb:57-65 string_value_from_var → nil;
+        // MatchAttributes#match `return unless val.present?`) — the search
+        // runs unfiltered, never raising.
+        delete (statement as Record<string, unknown>)[key];
+        continue;
+      }
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(varValue);
+      } catch {
+        parsed = varValue;
+      }
+      if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) {
+        // A var value that parses as a CQL hash nests into the statement
+        // (the observed shape: query[keyword]={"type":"Memo"} narrows the
+        // match to the type filter — the oracle's cql page 200s with the
+        // filtered results where the plain-keyword searches 500).
+        delete (statement as Record<string, unknown>)[key];
+        Object.assign(statement as Record<string, unknown>, parsed);
+      } else {
+        (statement as Record<string, unknown>)[key] = String(parsed);
+      }
+    }
+    if (
+      typeof (statement as Record<string, unknown>)["match"] === "string" &&
+      (statement as Record<string, unknown>)["match"] !== ""
+    ) {
+      // active_record.rb:80-83 (the SQLite adapter carries no match
+      // override on this deck): the match compiles through
+      // AbstractAdapter#match, which raises the uninterpolated
+      // lib_exception_not_implemented i18n string — the reproduced
+      // upstream failure the recorded keyword-search debug page pins.
+      throw upstreamMatchError();
+    }
+    const searchOffset = focalSearch?.offset;
+    if (searchOffset !== undefined && searchOffset > 0) {
+      (statement as Record<string, unknown>)["offset"] = searchOffset;
+    }
     let rows: CardsRow[];
     let records: Map<number, CardRecord>;
     let paging: SearchResultPaging | undefined;
@@ -9598,7 +9694,7 @@ export class RenderEngine implements RenderEngineLike {
         rows = result.rows;
       } else {
         rows = [];
-        this.searchCountResults.set(card.key, result.count);
+        this.searchCountResults.set(this.searchCacheKey(card), result.count);
       }
       rows = await this.canonicalizeDanglingSideRows(rows);
     // Transport chunking (the batching pattern from src/card/render/prefetch.ts
@@ -9632,16 +9728,27 @@ export class RenderEngine implements RenderEngineLike {
       // is the same statement with return: count — the engine's count path
       // ignores limit/offset the way Ruby's 0_search.rb:35-39 count args
       // (offset 0, limit 0) do.
-      if (limit >= 1 && rows.length >= limit) {
+      // show_paging? (paging_views.rb:4-9): false when limit < 1; false
+      // when fewer_results_than_limit? — "offset 0 AND the limited result
+      // list is not full" (paging.rb's fewer_results_than_limit?). An
+      // offset BEYOND page 1 always shows the nav (Ruby: the nav renders
+      // for every offset>0 page, even a short tail page).
+      if (limit >= 1 && (rows.length >= limit || (searchOffset ?? 0) > 0)) {
         // Ruby builds this count from the card's cached cql hash after the
         // item search consumed its leading conjunctions
-        // (src/cql/consumed-conjunctions.ts).
-        const count = await executeCount(
-          this.fetcher.driver,
-          statementAfterFirstQuery(statement as Record<string, unknown>),
-          queryOptions,
-        );
-        if (count > limit) paging = { limit, offset: 0, count };
+        // (src/cql/consumed-conjunctions.ts). The count query runs with the
+        // window ZEROED unconditionally (0_search.rb:85-90 `count args={
+        // offset: 0, limit: 0 }` — count overrides both whatever the
+        // requested page) — the total always counts ALL matching cards.
+        const countStatement = statementAfterFirstQuery(statement as Record<string, unknown>);
+        delete countStatement["offset"];
+        delete countStatement["limit"];
+        const count = await executeCount(this.fetcher.driver, countStatement, queryOptions);
+        // The record carries the REQUEST's offset (paging_params' offset —
+        // the focal env_search_param), not the hardcoded 0: the nav's
+        // current_page math renders the requested page's state (page 2's
+        // « 1 2 » with 2 active and the "21 - 29 of 29" context).
+        if (count > limit) paging = { limit, offset: searchOffset ?? 0, count };
       }
     } catch {
       return []; // search_error view is wave 3
@@ -9716,7 +9823,7 @@ export class RenderEngine implements RenderEngineLike {
       items.push(enriched);
     }
     if (paging !== undefined) {
-      this.searchResultPagingMap.set(card.key, paging);
+      this.searchResultPagingMap.set(this.searchCacheKey(card), paging);
     }
     return items;
   }

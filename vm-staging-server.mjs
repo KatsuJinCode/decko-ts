@@ -167,7 +167,7 @@ import {
 // host seam — a full-page read of a known card stores its own URL, and the
 // write path's `*previous` / configure_successful_deletion redirects resolve
 // to the last entry.
-import { emptyVisitorSession, pageViewCookie, visitorSessionCookie } from "./dist/src/card/session/visitor-session.js";
+import { emptyVisitorSession, pageViewCookie, readVisitorSession, visitorSessionCookie } from "./dist/src/card/session/visitor-session.js";
 // The recaptcha seat's host-config source (staging-seat-wiring lane): reads
 // the DECKO_RECAPTCHA_* environment keys into the WriteRouteContext.recaptcha
 // seat (write-routes.ts). Undefined until ops sets the keys — INERT by
@@ -2449,6 +2449,57 @@ async function resolveDefaultLayout() {
   };
 }
 
+// The reproduced-upstream keyword-search failure's serving surface: the
+// Rails debug-exceptions page (actionpack's DebugExceptions middleware
+// response, development mode), status 500. The template derives from the
+// Ruby oracle's own captured bytes for this exact failure (the SQLite
+// match raise — active_record.rb:80-83 raising the uninterpolated
+// lib_exception_not_implemented i18n string); the dynamic slots carry the
+// port's own host identity: Rails.root (the port's oracle app root), the
+// stack frames (the port's V8 throw-path stack — the N6 instrument
+// canonicalizes the frame lines and records the frame COUNT as the
+// declared residual: Ruby's boot-inclusive backtraces run 40-168 frames,
+// the engine's V8 throw-path 8-10), the request parameters (the live
+// request's params hash in Ruby's inspect shape), and the session/env
+// dumps (the visitor session's history and the request headers).
+const DEBUG_EXCEPTIONS_TEMPLATE_PATH = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "reference-harness", "browser", "templates", "rails-debug-exceptions.html",
+);
+let debugExceptionsTemplate;
+function htmlEscapeRuby(s) {
+  return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+}
+async function renderDebugExceptionsPage(error, { requestUrl, paramsJson, historyEntries, sessionToken, headers }) {
+  try {
+    debugExceptionsTemplate ??= await fs.readFile(DEBUG_EXCEPTIONS_TEMPLATE_PATH, "utf8");
+  } catch {
+    debugExceptionsTemplate = undefined;
+  }
+  if (debugExceptionsTemplate === undefined) return undefined;
+  const stackLines = (error.stack ?? "")
+    .split("\n")
+    .slice(1)
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("at "))
+    .map((line) => `      <a class="trace-frames trace-frames-0" data-exception-object="null" href="#">${htmlEscapeRuby(line)}</a>`);
+  const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "reference-harness", "oracle", "app");
+  const sessionDump = [
+    `history: [${(historyEntries ?? []).map((u) => JSON.stringify(u)).join(", ")}]`,
+    `session_id: ${JSON.stringify(sessionToken ?? "")}`,
+  ].join(" ");
+  const envDump = Object.entries(headers ?? {})
+    .filter(([k]) => /^http_|remote_addr|server_name|server_protocol/i.test(k))
+    .map(([k, v]) => `${k.toUpperCase().replaceAll("-", "_")}: ${JSON.stringify(String(v))}`)
+    .join("\n");
+  return debugExceptionsTemplate
+    .replaceAll("{{ROOT}}", root.replaceAll("\\", "/"))
+    .replaceAll("{{FRAMES}}", stackLines.join("\n"))
+    .replaceAll("{{PARAMS_JSON}}", paramsJson)
+    .replaceAll("{{SESSION_DUMP}}", htmlEscapeRuby(sessionDump))
+    .replaceAll("{{ENV_DUMP}}", htmlEscapeRuby(envDump));
+}
+
 // Build and return one of the two live error shapes. Any failure inside the
 // builder falls back to the previous minimal stubs so the server's error
 // path can never 500 a second time into the handler.
@@ -2729,6 +2780,25 @@ async function renderCardPage(cardName, renderEngine = render, requestedView, re
         `<pre>${escapeHtml(message)}</pre>`,
         "Error (unsupported view)",
       );
+    }
+    if (error instanceof Error && error.name === "UpstreamSqliteMatchError") {
+      // The reproduced-upstream keyword-search failure (the SQLite match
+      // raise — active_record.rb:80-83): the search card's render escapes
+      // rescuing_bad_query (RuntimeError is not BadQuery) and the
+      // controller's debug-exceptions middleware answers the Rails debug
+      // page, status 500 — the recorded oracle bytes for every
+      // plain-keyword search on this deck. The request info rides for the
+      // page's Request/Session/Env sections.
+      if (typeof renderDebugExceptionsPage === "function" && pageOpts.debugRequestInfo !== undefined) {
+        const debugBody = await renderDebugExceptionsPage(error, pageOpts.debugRequestInfo);
+        if (debugBody !== undefined) {
+          return {
+            status: 500,
+            headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+            body: debugBody,
+          };
+        }
+      }
     }
     if (/^card not found: /.test(message)) {
       // Live serves Decko's full-chrome not_found page for unresolved names
@@ -3529,9 +3599,33 @@ const server = http.createServer(async (req, res) => {
     const m = /^slot\[(.+)\]$/.exec(key);
     if (m && m[1] !== "layout") slotParams[m[1]] = value;
   }
+  // The debug-exceptions page's Request/Session sections (the reproduced
+  // upstream keyword-search 500's recorded shape): the live request's
+  // params hash (Ruby inspect shape), the visitor session's history, and
+  // the request headers. Built once per request; consumed only by the
+  // match-raise surface.
+  const debugRequestInfo = (() => {
+    const parts = [];
+    if (url.searchParams.has("utf8")) parts.push('"utf8"=&gt;"✓"');
+    const queryHashPairs = [];
+    for (const [key, value] of url.searchParams) {
+      const m = /^query\[(\w+)\]$/.exec(key);
+      if (m) queryHashPairs.push(`"${m[1]}"=&gt;${JSON.stringify(value)}`);
+    }
+    if (queryHashPairs.length > 0) parts.push(`"query"=&gt;{${queryHashPairs.join(", ")}}`);
+    if (pathname.length > 1) parts.push(`"mark"=&gt;${JSON.stringify(pathname.slice(1))}`);
+    const visit = readVisitorSession(req.headers.cookie);
+    return {
+      paramsJson: `{${parts.join(", ")}}`,
+      historyEntries: visit.history ?? [],
+      sessionToken: req.headers.cookie?.match(/_[^_]*session=([^;]+)/)?.[1] ?? "",
+      headers: req.headers,
+    };
+  })();
   const pageOpts = {
     bare: STOCK_DECK && req.headers["x-requested-with"] === "XMLHttpRequest" && !url.searchParams.has("layout"),
     slotParams,
+    debugRequestInfo,
   };
 
   // Every state-changing request (sign-in and sign-out, the account forms,
@@ -3831,11 +3925,37 @@ const server = http.createServer(async (req, res) => {
       } else if (shadowViewLane && requestedView !== null && requestedView !== "") {
         response = await renderCardView(name, requestedView, requestEngine);
       } else {
+        const pageRenderParams =
+          STOCK_DECK ? await newCardRenderParams(name, url.searchParams) : undefined;
+        const searchKeywordParam = url.searchParams.get("query[keyword]");
+        const searchOffsetRaw = url.searchParams.get("offset");
+        const searchOffset =
+          searchOffsetRaw !== null && /^\d+$/.test(searchOffsetRaw) && Number(searchOffsetRaw) > 0
+            ? Number(searchOffsetRaw)
+            : undefined;
+        const searchReqSingle =
+          searchKeywordParam === null && searchOffset === undefined
+            ? undefined
+            : {
+                ...(searchKeywordParam !== null ? { vars: { keyword: searchKeywordParam } } : {}),
+                ...(searchOffset !== undefined ? { offset: searchOffset } : {}),
+                ...(actor === null && searchOffset !== undefined && searchOffset > 1000 ? { capped: true } : {}),
+              };
         response = await renderCardPage(
           name,
           requestEngine,
           requestedView,
-          STOCK_DECK ? await newCardRenderParams(name, url.searchParams) : undefined,
+          {
+            ...(pageRenderParams ?? {}),
+            ...(searchReqSingle !== undefined
+              ? {
+                  search:
+                    searchReqSingle.capped === true
+                      ? { vars: searchReqSingle.vars, offset: 1000 }
+                      : { vars: searchReqSingle.vars, offset: searchReqSingle.offset },
+                }
+              : {}),
+          },
           pageOpts,
         );
         servedCardName = name;
@@ -3867,6 +3987,40 @@ const server = http.createServer(async (req, res) => {
       let routeName;
       let routeView;
       let renderParams;
+      // search_params.rb:12-18 + paging.rb:37-45: the request's query vars
+      // (Env.hash(params[:query])) and the paging offset (Env.params[:offset],
+      // focal-only) ride every page render; the search warm applies them to
+      // the FOCAL card's own search only (renderSearchFocalKey). The
+      // anonymous offset cap is legal_search_param's MAX_ANONYMOUS_SEARCH_
+      // PARAM (1000): over it, Ruby raises PermissionDenied — surfaced as
+      // the 403 below.
+      const searchOffsetRaw = url.searchParams.get("offset");
+      const searchOffset =
+        searchOffsetRaw !== null && /^\d+$/.test(searchOffsetRaw) && Number(searchOffsetRaw) > 0
+          ? Number(searchOffsetRaw)
+          : undefined;
+      if (
+        searchOffset !== undefined &&
+        actor === null &&
+        searchOffset > 1000
+      ) {
+        response = htmlResponse(
+          403,
+          `<h1>Forbidden</h1><pre>limit parameter exceeds maximum for anonymous users (1000)</pre>`,
+          "Forbidden",
+        );
+        res.writeHead(response.status, response.headers).end(response.body);
+        console.log(`[vm-staging] ${req.method} ${pathname} -> 403 anonymous offset (${Date.now() - startedAt}ms)`);
+        return;
+      }
+      const searchVarsSource = url.searchParams.get("query[keyword]");
+      const searchReq =
+        searchVarsSource !== null || searchOffset !== undefined
+          ? {
+              vars: searchVarsSource !== null ? { keyword: searchVarsSource } : undefined,
+              offset: searchOffset,
+            }
+          : undefined;
       const newCardRoute = STOCK_DECK ? parseNewCardRoute(segs, url.searchParams) : null;
       if (newCardRoute !== null) {
         routeName = newCardRoute.name;
@@ -3894,7 +4048,7 @@ const server = http.createServer(async (req, res) => {
         if (name === undefined || name === "") {
           response = jsonResponse(400, { error: "empty card name" });
         } else {
-          response = await renderCardPage(name, requestEngine, routeView, undefined, pageOpts);
+          response = await renderCardPage(name, requestEngine, routeView, searchReq ? { search: searchReq } : undefined, pageOpts);
           servedCardName = name;
         }
       } else {
