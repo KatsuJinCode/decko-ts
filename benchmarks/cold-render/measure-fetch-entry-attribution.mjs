@@ -7642,7 +7642,7 @@ ${body}</div>`;
    * nest label lands inside the anchor expanded. Live receipts:
    * `<a class="internal-link" href="/wagn/Latest_news_items.rss">…` (feed
    * icon wrap) and `<a class="internal-link" href="/account/signup">sign-in
-   * account</a>` (live Brandon bio; identical bytes in the recapture
+   * account</a>` (live Casey bio; identical bytes in the recapture
    * oracle).
    *
    * Name targets (link.rb:85-86 + 71-75) render view :link on the target
@@ -11067,10 +11067,10 @@ var HelpRulesResolver = class {
    *  zero the engine's own count SQL returns.
    *
    *  HONEST LIMIT on the predicate's shape. The two sibling entries
-   *  (`Don't Wait For The Study+*self+Brandon WilliamsCraig+*follow`,
-   *  `Make Contact+*self+Brandon WilliamsCraig+*follow`) satisfy
+   *  (`Don't Wait For The Study+*self+Casey Morgan+*follow`,
+   *  `Make Contact+*self+Casey Morgan+*follow`) satisfy
    *  valid_preferer? through the OTHER arm (their `self[-2]` is
-   *  `Brandon WilliamsCraig`, card 393, type 4 = the `user` codename), but
+   *  `Casey Morgan`, card 393, type 4 = the `user` codename), but
    *  their `name[0..-3]` is a junction with no Set-typed row in the corpus, so
    *  preference?'s third clause cannot be evaluated true from the shipped
    *  artifacts. Ruby nonetheless served both the identical setting_link (the
@@ -21098,7 +21098,7 @@ var RenderEngine = class {
    *  one host's fold must never answer another host's item slot — the
    *  per-item-only keying let a pointer host that resolves Person
    *  (weekday_morning_usual+owner) pre-empt the RVW List's untyped BasicCs
-   *  verdict and render Williamscraig readable where the oracle denies.
+   *  verdict and render Morgan readable where the oracle denies.
    *  Cleared on resetCaches(). */
   pointerItemVerdicts = /* @__PURE__ */ new Map();
   /** Item keys whose verdict already seeded the deck-global verdict maps
@@ -21737,7 +21737,7 @@ var RenderEngine = class {
    *  exist) render the plain quiet denial span (SMD exp @8350, PdG exp
    *  @8515-8987 — and the live Task card Merchandise denies as a real
    *  card), while the simple-named denied phantoms (the view-lane census,
-   *  133 entries — Test Person 01, Morihei Ueshiba, Robert Kent, all
+   *  133 entries — Test Person 01, Regina Chatham, Mabel Bridgewater, all
    *  BasicCs/RichText/Practice-typed) render the mini_bar wrap with the
    *  two-span body: name.simple? short-circuits virtual? to false
    *  (states.rb:45) whatever their type.
@@ -22975,7 +22975,7 @@ var RenderEngine = class {
    *  (or static help popover) links cards no {{nest}} reference reaches
    *  emitted wanted-card for existing cards — 15 pass-15 dump entries
    *  (10x the *content options popover's [[List]]/[[Pointer]]/[[Search]],
-   *  5x card-body links like Anthony Gonzales's [[Bluevolution]]).
+   *  5x card-body links like Dawn Emerson's [[Bluevolution]]).
    *
    *  Harvest (memory only): the [[target]] matches of every prepared card's
    *  dbContent not yet scanned (once per engine per card), plus the rendered
@@ -23517,7 +23517,7 @@ var RenderEngine = class {
    * walk) typed every host-typed phantom BasicCs, and BasicCs+*type+*read
    * = "Anyone Signed In" denied Anonymous where Ruby's walk on the REAL
    * type falls through to *all+*read = "Anyone" — the Kimberly
-   * Richardson / Michael Christensen+musings divergence (captured oracle
+   * Richardson / Jacob Benedetti+musings divergence (captured oracle
    * renders the full bar body for both). The default-template walk stays
    * as the fallback for hosts that resolve no item type, exactly
    * Card.new's ensure_type_id.
@@ -25216,7 +25216,7 @@ var RenderEngine = class {
           // statement (`refer_to: "_left"`, `_self`, `_right`, `_N`) resolves
           // against the blank context to the unresolvable-name sentinel — the
           // query returns zero rows even with every name key resolvable
-          // (2026-09-25 Brandon_WilliamsCraig +Project(s) Participating "0
+          // (2026-09-25 Casey_Morgan +Project(s) Participating "0
           // results" defect 2; ParseOptions.context, src/cql/ast.ts).
           context: card.name.s,
           // sync resolver over the prefetched id map (module doc), falling

@@ -2,7 +2,7 @@
  * Regression: the "+Project(s) Participating" search shape — the CQL
  * `{"type":"Project","plus":["Participant(s)",{"refer_to":"_left"}]}` that
  * serves the Person participating sections (2026-09-25 staging defect: both
- * the Brandon_WilliamsCraig and Jamie_Zimron sections rendered "0 results").
+ * the Casey_Morgan and Jamie_Zimron sections rendered "0 results").
  *
  * Two stacked engine defects, both pinned here:
  *
@@ -22,7 +22,7 @@
  *    without it root.context is "" and the relative reference resolves to
  *    the sentinel even with every key resolvable.
  *
- * The seeded deck mirrors the corpus shape (Jane Doe stands in for Brandon /
+ * The seeded deck mirrors the corpus shape (Jane Doe stands in for Casey /
  * Jamie; explicit STORED keys so seeding is independent of the engine's
  * current inflection state, exactly like a corpus written by live Ruby).
  */
@@ -46,7 +46,7 @@ afterEach(() => {
   resetDeckInflections();
 });
 
-/** The Brandon/Jamie participating-section statement (card 422's *query). */
+/** The Casey/Jamie participating-section statement (card 422's *query). */
 const PARTICIPATING_CQL = JSON.stringify({
   type: "Project",
   plus: ["Participant(s)", { refer_to: "_left" }],

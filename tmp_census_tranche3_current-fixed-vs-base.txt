@@ -377,7 +377,7 @@ tests/card/render/perm-leak-denial-corpus-replay.test.ts:58: *  pre-existing at 
 tests/card/render/perm-leak-denial-corpus-replay.test.ts:60: *  class, not the fail-open leak this lane fixes; this lane's contract
 tests/card/render/perm-leak-denial-corpus-replay.test.ts:62: *  stays pinned as a remaining diff in the lane receipt and the sweep
 tests/card/render/perm-leak-denial-corpus-replay.test.ts:74: *  wanted names. Shard line order is stable, names are unique per lane. */
-tests/card/render/phantom-item-verdict-host-item-type.test.ts:3:// template walk's type (the p20-autolink lane's Kimberly Richardson fix,
+tests/card/render/phantom-item-verdict-host-item-type.test.ts:3:// template walk's type (the p20-autolink lane's Chloe Pallister fix,
 tests/card/render/prefetch-side-id-pair-chunk.test.ts:4:// THE BUG (perm-leak lane, 2026-09-29): prefetchInclusionClosure's round
 tests/card/render/r16-rule-bar-and-stored-verdict-parity.test.ts:120:  // The *recent settings card (lane p22-rules-table): the recent category
 tests/card/render/r16-rule-bar-and-stored-verdict-parity.test.ts:1:// R16 residual-lane regression pins (2026-09-27). The failure families the
@@ -451,7 +451,7 @@ tests/card/render/slot-html-no-double-escape.test.ts:122:    // RE-PIN (mm-escap
 tests/card/render/slot-html-no-double-escape.test.ts:31:// THE OTHER SIDE (mm-escape-residue lane, 2026-09-30): emitHamlAttrs is the
 tests/card/render/title-in-context-relative-name.test.ts:15://   mechanism-3 lane): an earlier version of this test expected the WANTED
 tests/card/render/title-in-context-relative-name.test.ts:5:// lane) flagged exactly this on /Aikido_2 and /Archetypal_Psychology.
-tests/card/render/uri-scanner-host-word-boundary.test.ts:2:// lane's page 11251 "IT'S ALL ABOUT ANGELS by Paula Craig" fix).
+tests/card/render/uri-scanner-host-word-boundary.test.ts:2:// lane's page 11251 "IT'S ALL ABOUT ANGELS by Daniel Ferreira" fix).
 tests/card/render/virtual-search-family-virtual-decision.test.ts:2:// lane's regression net for the VirtualSearch family (FIX A): a nest whose
 tests/card/rules/structure-templates.test.ts:266:      // than the cold-query lane's own tree measured (14 -> 13). The
 tests/card/rules/structure-templates.test.ts:271:      // cold-query lane: the prelude batch folds the type row and the

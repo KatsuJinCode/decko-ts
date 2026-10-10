@@ -171,7 +171,7 @@ describe("+*referred_to_by: the search result set over the corpus graph", () => 
           "CM 20101222+Associations+tags",
           "BW_20110109+Associations+tags",
           "tracked item test+associations+tags",
-          "WilliamsCraig Library+Associations+tags",
+          "Morgan Library+Associations+tags",
           "Schema",
         ]);
         const engineNames = itemNames(region);
@@ -182,7 +182,7 @@ describe("+*referred_to_by: the search result set over the corpus graph", () => 
           "CM 20101222+Associations+tags",
           "CM 20110109+Associations+tags",
           "tracked item test+associations+tags",
-          "WilliamsCraig Library+Associations+tags",
+          "Morgan Library+Associations+tags",
           "Schema",
         ]);
 

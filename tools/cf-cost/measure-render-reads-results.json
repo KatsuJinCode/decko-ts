@@ -983,7 +983,7 @@
     },
     "corpusCopy": {
       "cards": 49829,
-      "refs": 556526,
+      "refs": "withheld: derived from the source corpus, not reproducible from this tree",
       "timings": [
         {
           "index": "cards_key_binary_index",

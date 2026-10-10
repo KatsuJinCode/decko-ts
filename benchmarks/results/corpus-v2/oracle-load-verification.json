@@ -1,7 +1,7 @@
 {
   "loaded": {
     "cards": 49829,
-    "references": 556526
+    "references": "withheld: derived from the source corpus, not reproducible from this tree"
   },
   "connected_database": "C:/localProjects/decko-ts/tools/oracle/decko-oracle-app/db/corpus-v2.sqlite3",
   "sample": [

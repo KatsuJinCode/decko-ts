@@ -75,11 +75,11 @@
   },
   "digests": {
     "cards_digest_match": true,
-    "cards_digest_recomputed": "0a1cf531a4068b09974d6203c39177c348d8bdf7930313fb303b06622ff76258",
-    "cards_digest_recorded": "0a1cf531a4068b09974d6203c39177c348d8bdf7930313fb303b06622ff76258",
+    "cards_digest_recomputed": "withheld: derived from the source corpus, not reproducible from this tree",
+    "cards_digest_recorded": "withheld: derived from the source corpus, not reproducible from this tree",
     "references_digest_match": true,
-    "references_digest_recomputed": "df6feb272f0ccae39597bf5468886cf81c5b03210f76441d62b886a6efd2ac2b",
-    "references_digest_recorded": "df6feb272f0ccae39597bf5468886cf81c5b03210f76441d62b886a6efd2ac2b"
+    "references_digest_recomputed": "withheld: derived from the source corpus, not reproducible from this tree",
+    "references_digest_recorded": "withheld: derived from the source corpus, not reproducible from this tree"
   },
   "leak_scan_by_column": {
     "codename": 1,
@@ -333,8 +333,8 @@
     },
     "references_rows": {
       "equal": true,
-      "original": 556526,
-      "sanitized": 556526
+      "original": "withheld: derived from the source corpus, not reproducible from this tree",
+      "sanitized": "withheld: derived from the source corpus, not reproducible from this tree"
     },
     "row_topology_equal": {
       "equal": true,

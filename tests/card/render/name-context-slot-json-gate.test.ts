@@ -29,7 +29,7 @@
 //   - Conflict_Done_Well nests {{+management|closed}} DIRECTLY in the page
 //     body; the wanted (id-less) Conflict_Done_Well+management mini_bar slot
 //     CARRIES name_context "conflict_done_well".
-//   - Latest News's wanted Brian_Roemmele_...+pdf slots nest under the ITEM
+//   - Latest News's wanted Cora_Mortimer_...+pdf slots nest under the ITEM
 //     card (the pointer item's own content), whose format context filtered
 //     to the item's parts is EMPTY — name_context count 0 on the WHOLE page.
 // The prior engine gate (`fmt.card.unknown !== true`, pinned to a stale

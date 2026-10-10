@@ -6,7 +6,7 @@
 //   - 4 mixed18 route-outs booked to perm (an internal work log
 //     round-3 ledger: "the perm regions remain route-out (perm-allow family,
 //     as pinned by the dead agents)" on BW Oversight+ARCHETYPALLY, Starhawk,
-//     Daemeon Reiydelle, Michael Christensen; the mixed18 engine commits are
+//     Emery Lockhart, Jacob Benedetti; the mixed18 engine commits are
 //     NOT in this base -- 38ba98e/8991ee9 are not ancestors of b2f4700 -- so
 //     these pages carry their full diff here, of which this suite owns the
 //     permission-shaped regions);
@@ -16,7 +16,7 @@
 //   - 3 layout pages the mm-whitespace port left with a `{{*foot|core}}` nest
 //     rendering as its literal text where the oracle renders the read-denied
 //     span (an internal work log leftovers: home-layout,
-//     bdwilliamscraig-layout, Golden_Bears_Aikido_at_UC_Berkeley main layout).
+//     caseymorgan-layout, Golden_Bears_Aikido_at_UC_Berkeley main layout).
 //
 // Block 1 (report-only): renders each page over the full-deck corpus seed,
 // writes exp/act pairs + a JSONL line (byte-exact, code units, first-diff
@@ -64,14 +64,14 @@ const SWEEP_REQUESTED = process.env.P20_PERM_RESIDUALS === "1";
  * own instrument (perm-allow-overdeny-corpus-replay.test.ts). */
 const LANE_PAGES = [
   { name: "BW Oversight+ARCHETYPALLY", routedBy: "mixed18-r3 route-out (perm regions)" },
-  { name: "Daemeon Reiydelle", routedBy: "mixed18-r3 route-out (perm regions)" },
+  { name: "Emery Lockhart", routedBy: "mixed18-r3 route-out (perm regions)" },
   { name: "Starhawk", routedBy: "mixed18-r3 route-out (perm regions)" },
-  { name: "Michael Christensen", routedBy: "mixed18-r3 route-out (perm regions)" },
+  { name: "Jacob Benedetti", routedBy: "mixed18-r3 route-out (perm regions)" },
   { name: "Administrator", routedBy: "mm-roleviews leftover 5 (:configs grouping)" },
   { name: "Administrator+Dashboard", routedBy: "mm-roleviews leftover 5 (:configs grouping)" },
   { name: "Help Desk", routedBy: "mm-roleviews leftover 5 (:configs grouping)" },
   { name: "home-layout", routedBy: "mm-whitespace leftover ({{*foot|core}} literal)" },
-  { name: "bdwilliamscraig-layout", routedBy: "mm-whitespace leftover ({{*foot|core}} literal)" },
+  { name: "caseymorgan-layout", routedBy: "mm-whitespace leftover ({{*foot|core}} literal)" },
   {
     name: "Golden_Bears_Aikido_at_UC_Berkeley main layout",
     routedBy: "mm-whitespace leftover ({{*foot|core}} literal)",
@@ -81,7 +81,7 @@ const LANE_PAGES = [
 /** Pages flipped byte-exact by this suite, pinned hard after the flip. */
 const FLIPPED_PAGES: ReadonlyArray<string> = [
   "home-layout",
-  "bdwilliamscraig-layout",
+  "caseymorgan-layout",
   "Golden_Bears_Aikido_at_UC_Berkeley main layout",
 ];
 

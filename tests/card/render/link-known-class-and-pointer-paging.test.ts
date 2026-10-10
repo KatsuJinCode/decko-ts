@@ -9,9 +9,9 @@
 //   the *content options help popover's [[List]]/[[Pointer]]/[[Search]]
 //   cardtype links (10 dump entries, e.g. 000000-_layout_right_content_
 //   options-open) and card-body wikilinks to real deck cards (5 entries,
-//   e.g. 000020-Anthony_Gonzales-content: [[Bluevolution]] known).
+//   e.g. 000020-Dawn_Emerson-content: [[Bluevolution]] known).
 // - Oracle WANTED stays wanted: "People Green" has NO card in the deck —
-//   sabrina mejias AND Anthony Gonzales both pin
+//   sage pettibone AND Dawn Emerson both pin
 //   `<a class="wanted-card" href="/People_Green">` on the ORACLE side, and
 //   the engine's warm-map answer byte-matches today (format.ts R17 note).
 //   The fix must flip existence-hits only, never absence.
@@ -140,7 +140,7 @@ describe("wikilink known/wanted class follows live card existence (links.rb:140-
   });
 
   it("renders body wikilinks to an existing card known-card with the stored name's href", async () => {
-    // Oracle 000020-Anthony_Gonzales-content: [[Bluevolution]] known. The
+    // Oracle 000020-Dawn_Emerson-content: [[Bluevolution]] known. The
     // authored casing never leaks into the href (corpus scan: every
     // case-differing known-card anchor hrefs the REAL name,
     // [[narrative]] -> /Narrative); the label/title keep the authored form.
@@ -154,7 +154,7 @@ describe("wikilink known/wanted class follows live card existence (links.rb:140-
   });
 
   it("keeps wanted-card for links to cards that do not exist", async () => {
-    // Oracle pins (sabrina mejias + Anthony Gonzales): "People Green" has
+    // Oracle pins (sage pettibone + Dawn Emerson): "People Green" has
     // no card — the anchor stays wanted-card on BOTH sides. The existence
     // fix must not flip absence.
     const html = await storage!.engine.render("Discussion Post", "content");

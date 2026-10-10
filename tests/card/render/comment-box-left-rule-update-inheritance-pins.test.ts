@@ -1,5 +1,5 @@
 // The comment box's update-permission verdict: the _left rule-value
-// inheritance (census M8, Kayla_Feder_20230902+discussion:open -1073).
+// inheritance (census M8, Joan_Callahan_20230902+discussion:open -1073).
 //
 // Ruby mechanism (card-mod-permissions set/all/permissions.rb:55-71):
 //
@@ -13,9 +13,9 @@
 //
 // For a COMPOUND card whose applicable *update rule's VALUE is "_left"
 // ("inherit from left"), the who-can rule recurses to the LEFT card's own
-// *update rule. The graded pair pins the surface: Kayla_Feder_20230902+
+// *update rule. The graded pair pins the surface: Joan_Callahan_20230902+
 // discussion's own chain first resolves *all plus+*update = rule 6571
-// (content "_left"), so the verdict recurses to Kayla Feder 20230902
+// (content "_left"), so the verdict recurses to Joan Callahan 20230902
 // (45129), whose *self rule (45186) grants "Anyone" -- the anonymous
 // viewer's update PASSES and the comment-box form renders (the pair's
 // closing bytes, recaptcha site key per the live deployment config).
@@ -50,7 +50,7 @@ const KAYLA_PAIR = path.join(
   "tmp",
   "view187-census",
   "probe-armed-w37",
-  "expected--Kayla_Feder_20230902_discussion__open.html",
+  "expected--Joan_Callahan_20230902_discussion__open.html",
 );
 
 const REPLAY_REQUESTED = process.env.COMMENT_BOX_LEFT_INHERIT_REPLAY === "1";
@@ -99,13 +99,13 @@ describe("comment box: the _left update-rule inheritance walk", () => {
       await storage.fetcher.warmLexicon(everyLiveId);
       try {
         const expectedForm = kaylaCommentBoxBytes();
-        expect(expectedForm).toContain("Kayla_Feder_20230902+discussion");
+        expect(expectedForm).toContain("Joan_Callahan_20230902+discussion");
         expect(expectedForm).toContain("6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW");
 
         // THE PIN: the inherited-grant form renders (RED at base: the
         // engine's _left-less walk denies update, the gate blanks the box).
         const kaylaOpen = await storage.engine.render(
-          "Kayla Feder 20230902+discussion",
+          "Joan Callahan 20230902+discussion",
           "open",
         );
         expect(kaylaOpen, "kayla: the comment-box form must render").toContain(

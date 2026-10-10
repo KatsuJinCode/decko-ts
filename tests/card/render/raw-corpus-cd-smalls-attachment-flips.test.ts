@@ -35,11 +35,11 @@ const SHARDS_PRESENT = existsSync(PAGE_LANE_DIR);
 const PAGES = [
   "Iris McGinnis",
   "soul",
-  "Mikaela Keepin",
-  "Andrew Porter",
+  "Rowan Lockhart",
+  "Brian Ahlgren",
   "Pacifica Graduate Institute",
-  "Henry Corbin",
-  "Paula Craig Birthday - Dallas 2013",
+  "Martha Ostrander",
+  "Kelly Zeller - Dallas 2013",
 ] as const;
 
 function loadOraclePageEntries(wanted: ReadonlyArray<string>): Map<string, string> {

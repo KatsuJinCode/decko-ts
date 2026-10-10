@@ -123,8 +123,8 @@
     },
     "references_rows": {
       "equal": true,
-      "original": 556526,
-      "sanitized": 556526
+      "original": "withheld: derived from the source corpus, not reproducible from this tree",
+      "sanitized": "withheld: derived from the source corpus, not reproducible from this tree"
     },
     "row_topology_equal": {
       "equal": true,

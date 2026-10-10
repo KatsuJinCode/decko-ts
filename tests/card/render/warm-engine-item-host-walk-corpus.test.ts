@@ -14,8 +14,8 @@
 // the read-verdict size shortcut. This is the bench-paired grade's E4
 // cluster: each page passes alone and fails after other pages.
 //
-// Reproducer: the 14 E4 pages that precede Richard Strozzi-Heckler in the
-// cluster, then Richard Strozzi-Heckler: its Related Project list item
+// Reproducer: the 14 E4 pages that precede Beverly Bonneville-Heckler in the
+// cluster, then Beverly Bonneville-Heckler: its Related Project list item
 // "Aiki Extensions" must carry "type":"Project".
 //
 // Gate: opt-in via WARM_ITEM_HOST_REPLAY=1 (raw bench corpus).
@@ -29,7 +29,7 @@ const REPLAY_REQUESTED = process.env.WARM_ITEM_HOST_REPLAY === "1";
 const describeIfCorpus = describeWithCorpus(REPLAY_REQUESTED, "tests/card/render/warm-engine-item-host-walk-corpus.test.ts", "corpus replay was not requested (set DECKO_TS_CORPUS_REPLAY=1)");
 
 const WARMUP_PAGES = [
-  "David Williams",
+  "Bridget Castellan",
   "Iris McGinnis",
   "Meghan Williams Keepin",
   "Motoki M",
@@ -37,8 +37,8 @@ const WARMUP_PAGES = [
   "Shen and Legum on Mandella",
   "Shen and Legum on Mandella+Associates",
   "David L Miller",
-  "Huston Smith",
-  "Huston Smith+musings",
+  "Kirsten Cadwell",
+  "Kirsten Cadwell+musings",
   "Iris McGinnis+Project(s) Organizing",
   "Iris McGinnis+Related Project",
   "Francisco Pontual",
@@ -63,9 +63,9 @@ describeIfCorpus("warm engine: seated item hosts are walked even when the map di
     storage?.close();
   });
 
-  it("Richard Strozzi-Heckler after 14 pages: Related Project items carry type Project", async () => {
+  it("Beverly Bonneville-Heckler after 14 pages: Related Project items carry type Project", async () => {
     for (const page of WARMUP_PAGES) await storage!.engine.renderPage(page);
-    const html = await storage!.engine.renderPage("Richard Strozzi-Heckler");
+    const html = await storage!.engine.renderPage("Beverly Bonneville-Heckler");
     const at = html.indexOf('id="aiki_extension-bar-view"');
     expect(at).toBeGreaterThan(-1);
     const slot = html.slice(at, html.indexOf(">", at));

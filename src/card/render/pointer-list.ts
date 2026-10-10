@@ -138,9 +138,9 @@ export function resolvePointerItemName(item: string, hostName: DeckoName): strin
     const parsed = DeckoName.parse(item);
     // item.rb clean_item_name absolutizes every line; an absolute name only
     // changes there when a blank extreme takes the context
-    // (contextual.rb absolutize_extremes): "Williamscraig Family+" under
-    // "Christian Johnson - Caliber Home Loans+Project" names
-    // "Williamscraig Family+Christian Johnson - Caliber Home Loans+Project".
+    // (contextual.rb absolutize_extremes): "Morgan Family+" under
+    // "Hope Langdon - Caliber Home Loans+Project" names
+    // "Morgan Family+Hope Langdon - Caliber Home Loans+Project".
     const parts = parsed.parts;
     const blankExtreme = parts.length > 1 && (parts[0] === "" || parts[parts.length - 1] === "");
     if (parsed.isAbsolute && !blankExtreme) return item;
@@ -552,7 +552,7 @@ export function pointerListItemBodyForUnknown(
   const typeId = identity?.typeId ?? deckPhantomType?.typeId;
   // The attr pair is the deck-wide oracle shape (every shard's inner
   // bodies: `data-card-link-name='<url-key>' data-card-name='<name>'`,
-  // e.g. shard-000024's "Brandon_WilliamsCraig"/"Brandon WilliamsCraig")
+  // e.g. shard-000024's "Casey_Morgan"/"Casey Morgan")
   // — the LINK attr is the url-key form, the NAME attr the display form.
   // The resolved-mark pin (CB_role+*members' ~861
   // line: the rendered bar "ANON-350cb08c081a" / "ANON_350cb08c081a") is

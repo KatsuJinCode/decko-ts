@@ -93,7 +93,7 @@ tests/card/render/bootstrap-code-file-pages.test.ts:3:// the byte evidence (tmp/
 tests/card/render/cardtype-add-button-page-interface-parity.test.ts:33:// The expected bytes are the raw-oracle page-lane shards under
 tests/card/render/cardtype-add-button-page-interface-parity.test.ts:34:// tmp/raw-ground-truth/expected-v2/page-lane/ (gitignored, copied into
 tests/card/render/cardtype-add-button-page-interface-parity.test.ts:3:// page-lane yardstick.
-tests/card/render/carrierwave-cloud-filename-derivation.test.ts:30:// ORACLE ACCEPTANCE BYTES: Michael Christensen page (expected-v2 page-lane
+tests/card/render/carrierwave-cloud-filename-derivation.test.ts:30:// ORACLE ACCEPTANCE BYTES: Jacob Benedetti page (expected-v2 page-lane
 tests/card/render/code-highlighting/coderay-to-unix-crlf.test.ts:24:// the span-stripped form of the frozen oracle page-lane capture's <pre>
 tests/card/render/code-highlighting/highlighter-seams-h1-h2-oracle-pins.test.ts:5://   oracle   tmp/raw-ground-truth/expected-v2/view-lane recapture shards
 tests/card/render/code-highlighting/html-scanner-span-fidelity.test.ts:39:// oracle for card 22747 (tmp/raw-ground-truth/expected-v2/page-lane/

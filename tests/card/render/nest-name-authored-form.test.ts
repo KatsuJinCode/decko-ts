@@ -20,7 +20,7 @@
 //     "+Organizer(s)", "_main", "Su$tainability" (dollar intact),
 //     "Conflict_Done_Well+class_schedule" (authored underscores) —
 //     never the absolutized forms the engine emitted before this fix
-//     ("Brandon WilliamsCraig+Image", "Cheryl Honey+Recommendations",
+//     ("Casey Morgan+Image", "Francis Langdon+Recommendations",
 //     ... in an internal work log).
 //
 // The pointer/list item path (views.ts#renderPointerListItem) keeps

@@ -13,7 +13,7 @@
 // The page-mechanism-census found this defect in 20 of the 346 clean-state
 // sampled pages (census §3 mechanism #5 "double-escape"): the engine emits
 // `data-card-name="Sample Card 183 - I&amp;#39;m Staying Inside"` where the
-// oracle emits `data-card-name="Paula Craig - I&#39;m Staying Inside"`
+// oracle emits `data-card-name="Daniel Ferreira - I&#39;m Staying Inside"`
 // (single-escape). The `&amp;` is the double-escape artefact: callers pass
 // h(name.s) — already `&#39;` — and emitAttrs then re-escapes `&` to
 // `&amp;`, producing `&amp;#39;`.
@@ -34,7 +34,7 @@
 // same `wrap_data` payload as a HAML `data:` attribute, so an
 // apostrophe-bearing name renders `data-card-name='Mikko&amp;#39;s Blog'`
 // there while the content_tag slot wrap renders the single-escaped
-// `data-card-name="Paula Craig - I&#39;m Staying Inside"`. Two levels, one
+// `data-card-name="Daniel Ferreira - I&#39;m Staying Inside"`. Two levels, one
 // payload, and the level is decided by which emitter crossed the attribute
 // boundary. The three emitHamlAttrs tests below pin that.
 
@@ -50,17 +50,17 @@ import {
 describe("emitAttrs / emitHamlAttrs — single-escape, no double-escape (Rails content_tag parity)", () => {
   it("emitAttrs escapes a RAW apostrophe in data-card-name (no double-escape)", () => {
     // Caller (views.ts:165 / wrap.rb:50-54) now passes the raw
-    // card.name.s — `"Paula Craig - I'm Staying Inside"` — and emitAttrs
+    // card.name.s — `"Daniel Ferreira - I'm Staying Inside"` — and emitAttrs
     // does the single Rails content_tag escape. The captured oracle byte
     // shape (recapture-raw-shard-000000.jsonl entry id 665 / Paula
     // Craig, slot-wrap offset 14329) is
-    // `data-card-name="Paula Craig - I&#39;m Staying Inside"`.
+    // `data-card-name="Daniel Ferreira - I&#39;m Staying Inside"`.
     const html = emitAttrs({
-      "data-card-name": "Paula Craig - I'm Staying Inside",
+      "data-card-name": "Daniel Ferreira - I'm Staying Inside",
       "data-card-type-id": 814,
     });
     expect(html).toBe(
-      ' data-card-name="Paula Craig - I&#39;m Staying Inside" data-card-type-id="814"',
+      ' data-card-name="Daniel Ferreira - I&#39;m Staying Inside" data-card-type-id="814"',
     );
     expect(html).not.toContain("&amp;#39;");
     expect(html).not.toContain("&amp;");
@@ -141,7 +141,7 @@ describe("emitAttrs / emitHamlAttrs — single-escape, no double-escape (Rails c
     //   data-card-name='Mikko&amp;#39;s Blog+*self+*layout'
     //
     // against the slot wrap's single-escaped form (shard-000000 id 665,
-    // Paula Craig): data-card-name="Paula Craig - I&#39;m Staying Inside".
+    // Daniel Ferreira): data-card-name="Daniel Ferreira - I&#39;m Staying Inside".
     // 149,929 bar divs in the captured corpus, and every one of the 16
     // distinct apostrophe-bearing card names they carry renders the
     // two-level form.
@@ -183,8 +183,8 @@ describe("emitAttrs / emitHamlAttrs — single-escape, no double-escape (Rails c
     // called on emitAttrs inputs any more — emitAttrs owns the
     // attribute-context escape. h() stays as a building block for
     // template-literal interpolations.
-    expect(h("Paula Craig - I'm Staying Inside")).toBe(
-      "Paula Craig - I&#39;m Staying Inside",
+    expect(h("Daniel Ferreira - I'm Staying Inside")).toBe(
+      "Daniel Ferreira - I&#39;m Staying Inside",
     );
     expect(h('hmmm<hr><p>broken!</p>')).toBe(
       "hmmm&lt;hr&gt;&lt;p&gt;broken!&lt;/p&gt;",

@@ -1,4 +1,4 @@
-# Cloudflare Worker serving Brandon's deck from D1: the Bunny edge engine's
+# Cloudflare Worker serving Casey's deck from D1: the Bunny edge engine's
 # handler over a D1 binding (deploy/cf-worker-src/cf-edge-engine-entry.ts).
 # Runbook: brandonDojoTech recovery/CLOUDFLARE-HOSTING.md.
 #
@@ -10,7 +10,7 @@
 # tools/bundle-cf-edge-engine.mjs, unchanged (no_bundle): the bytes measured
 # locally in workerd are the bytes Cloudflare runs.
 
-name = "decko-brandon-trial"
+name = "decko-casey-trial"
 main = "../dist/cf-edge-engine.bundle.js"
 no_bundle = true
 compatibility_date = "2026-09-01"
@@ -39,7 +39,7 @@ globs = ["cf-edge-engine.bundle.js"]
 # --database-name looks it up on the named account and writes it here).
 [[d1_databases]]
 binding = "DB"
-database_name = "decko-brandon-trial"
+database_name = "decko-casey-trial"
 database_id = "00000000-0000-0000-0000-000000000000"
 
 # The same serving switches as the Bunny edge after the

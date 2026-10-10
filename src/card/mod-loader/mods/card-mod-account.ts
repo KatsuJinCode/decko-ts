@@ -525,7 +525,7 @@ const userEmailRawView: ViewFn = ({ fmt }: ViewContext) => {
  *  `card.creator_id == AnonymousID` (views.rb:43-45): self-signed-up
  *  cards (the corpus's 53 of 55 live Sign up cards, creator_id 15 =
  *  Anonymous) read "signed up on"; the 2 admin-created ones
- *  (Tesfaye Tekelu, Marc Sacks, creator 393) read "was signed up on".
+ *  (Tesfaye Tekelu, Rowan Pettibone, creator 393) read "was signed up on".
  *  format_date (card-1.110.0 lib/card/format/content.rb:29-41) localizes
  *  with :card_date_seconds = `'%B %e, %Y %H:%M:%S'` (en.yml:30) — %e is
  *  the SPACE-padded day ("November 18, 2023 16:24:47"; the captured

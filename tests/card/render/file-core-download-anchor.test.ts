@@ -8,7 +8,7 @@
 //   - config/locales/en.yml:5 `carrierwave_download: Download %{title}`
 //   - title_in_context (card-1.110.0 lib/card/format/context_names.rb:49-55)
 //   - relativizes the card name against the format's context names, so the
-//     file card `Paula Craig+description+bio` nested inside the Paula
+//     file card `Daniel Ferreira+description+bio` nested inside the Paula
 //     Craig page labels `Download +description+bio`.
 //   - HAML renders attributes with the apostrophe attr_wrapper by default,
 //     so the anchor is `<a href='SOURCE'>Download TITLE</a>`.
@@ -16,8 +16,8 @@
 // The engine emitted `<a href="SOURCE">SOURCE</a>` (label = the URL,
 // double-quoted href) -- the exact quote-style diff on all 9 exemplars
 // (Werkshop Museum `Download +Documents`, David K Weinstock
-// `Download +description+bio`, Steven Goldin `Download +description+resume`,
-// Windows - JS / Paula Craig considerations `Download +doc version`,
+// `Download +description+bio`, June Jessup `Download +description+resume`,
+// Windows - JS / Daniel Ferreira considerations `Download +doc version`,
 // Depth Psychology `Download +File`).
 //
 // Blank source still renders "" (file.rb:34-45 handle_source short

@@ -96,8 +96,8 @@ const KNOWN_TRIPWIRES = [
 // these appear, real content leaked into the repo.
 const PRIVATE_CONTENT = [
   { needle: "culturesmith", label: "Culturesmith (real site/deck identity)" },
-  { needle: "williamscraig", label: "Brandon WilliamsCraig (real person)" },
-  { needle: "brandon", label: "Brandon (real person first name; genericize to 'the site owner')" },
+  { needle: "morgan", label: "Casey Morgan (real person)" },
+  { needle: "casey", label: "Casey (real person first name; genericize to 'the site owner')" },
   { needle: "campletters", label: "campletters.quest (real deployment hostname)" },
   { needle: "brandondojo", label: "brandonDojoTech (workspace identity)" },
 ];

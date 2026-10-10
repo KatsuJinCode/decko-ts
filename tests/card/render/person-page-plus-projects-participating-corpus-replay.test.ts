@@ -3,7 +3,7 @@
 // the Ruby yardstick on the machine-local raw corpus.
 //
 // DEFECT (2026-10-03, lane-p2-person-section): on the deployed edge, the
-// person page /Brandon_WilliamsCraig is missing the whole "+Project(s)
+// person page /Casey_Morgan is missing the whole "+Project(s)
 // Participating" section (171px shorter than live; screenshot lane
 // deliverables/screenshot-proof/crop-person-bottom-{live,edge}.png). The
 // junction row (id 419) is TRASHED with empty RichText content in the corpus
@@ -15,7 +15,7 @@
 // -- the ported chain is src/card/fetch/virtual-cards.ts (states.rb:44-50
 // virtual?, templating.rb:40-48 structure, type.rb:78-80
 // type_id_from_template). The Ruby yardstick
-// (tmp/raw-ground-truth/expected-v2/page-lane, name "Brandon WilliamsCraig")
+// (tmp/raw-ground-truth/expected-v2/page-lane, name "Casey Morgan")
 // renders the titled slot with data-card-type-name="Search" and the search
 // rows mythosynth + NXDD.
 //
@@ -44,7 +44,7 @@ const REPLAY_REQUESTED = process.env.P2_PERSON_REPLAY === "1";
 const PROBE_REQUESTED = process.env.P2_PERSON_PROBE === "1";
 const CORPUS_PRESENT = existsSync(RAW_CORPUS_DB);
 
-const PERSON_PAGE_NAME = "Brandon WilliamsCraig";
+const PERSON_PAGE_NAME = "Casey Morgan";
 
 /** The titled-search slot markers the Ruby yardstick carries for the
  *  "+Project(s) Participating" nest (expected-v2 page-lane verified). */

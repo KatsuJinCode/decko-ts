@@ -21,7 +21,7 @@
  *  the denial frame fires when the main verdict resolves at sync-render
  *  time — these pages' closures do not trip the prepare-crash class). */
 export const FOCAL_DENIAL_EXEMPLARS: Array<{ name: string; id: number }> = [
-  { name: "ABCglobal 20100722 Iris Nick Leon Brandon", id: 1177 },
+  { name: "ABCglobal 20100722 Camille Dahlgren Casey", id: 1177 },
   { name: "Azzia Sample", id: 1345 },
   { name: "CM 20100704 Itdepends Day", id: 870 },
   { name: "20260412+CM+Time Tracking", id: 52658 },
@@ -31,7 +31,7 @@ export const FOCAL_DENIAL_EXEMPLARS: Array<{ name: string; id: number }> = [
  *  the over-deny control — the port must keep rendering their bodies and
  *  must not start denying them. */
 export const READABLE_CONTROLS: Array<{ name: string; id: number }> = [
-  { name: "Brandon WilliamsCraig", id: 393 },
+  { name: "Casey Morgan", id: 393 },
   { name: "the reference deck", id: 637 },
   { name: "Martial Nonviolence", id: 577 },
 ];
@@ -45,7 +45,7 @@ export const FOCAL_DENIAL_CENSUS_SUBSET: Array<{
   id: number;
   boundary?: boolean;
 }> = [
-  { name: "ABCglobal 20100722 Iris Nick Leon Brandon", id: 1177 },
+  { name: "ABCglobal 20100722 Camille Dahlgren Casey", id: 1177 },
   { name: "rename", id: 719 },
   { name: "Lost - thoughts", id: 1424 },
   { name: "CM 20110109", id: 3361 },
@@ -76,11 +76,11 @@ export const FOCAL_DENIAL_CENSUS_SUBSET: Array<{
   { name: "MNv leadership training - Flight Deck 20150521", id: 23369 },
   { name: "Spa Finder gift certificate use", id: 25749 },
   { name: "Social Media Schedule converted to Google Sheet", id: 26828 },
-  { name: "Martha Eddy connection", id: 27562 },
+  { name: "Wren Halloway connection", id: 27562 },
   { name: "RWE TFD Comm Gen Admin", id: 29231 },
-  { name: "WilliamsCraig+Family Business+Financial+FTB", id: 30062 },
+  { name: "Morgan+Family Business+Financial+FTB", id: 30062 },
   { name: "USABP Presentation 20181102", id: 31223 },
-  { name: "Jesuit Dallas Teaching Position", id: 31719 },
+  { name: "Jesuit Alfred Conquest Position", id: 31719 },
   { name: "Essilor Manager Corporate Partnerships", id: 32713 },
   { name: "The Center for American and International Law - President", id: 32689 },
   { name: "St Marks Upper School History and English Teacher", id: 33973 },
@@ -88,7 +88,7 @@ export const FOCAL_DENIAL_CENSUS_SUBSET: Array<{
     name: "Deloitte-Senior Manager-Enabling Areas Learning and Development E20NATSSRMJM101-HRL6",
     id: 34901,
   },
-  { name: "WilliamsCraig+Family Business+Financial+TWC", id: 36154 },
+  { name: "Morgan+Family Business+Financial+TWC", id: 36154 },
   { name: "US Census Employment+Clerk+Grievance", id: 36855 },
   { name: "Create PM paper slips and print", id: 37751 },
   { name: "USPS Employment", id: 39755 },

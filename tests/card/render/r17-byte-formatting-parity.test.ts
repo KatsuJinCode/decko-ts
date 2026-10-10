@@ -34,7 +34,7 @@
 //    the earliest chunk first).
 // 6. KNOWN/WANTED LINK CLASSES (links.rb:135-140 add_known_or_wanted_class):
 //    known = Card.known? — the warm render-card map answers it; absent
-//    targets render wanted-card (sabrina mejias [[People Green]] pin).
+//    targets render wanted-card (sage pettibone [[People Green]] pin).
 // 7. BAR NAV HIDE SCOPE (bar_view.rb:11): the hide belongs to RULE bars —
 //    non-rule unknown bars keep bar_nav visible (RVW open's mini_bar items
 //    pin hide ["bar_middle"] without bar_nav).

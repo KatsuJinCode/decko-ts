@@ -121,7 +121,7 @@ export class D1HttpExecutor {
 export class MiniflareD1Executor {
   /** persistDir: where Miniflare keeps the local D1 (reused by the local
    *  Worker run). dbName: the D1 database id inside it. */
-  static async open({ persistDir, dbName = "decko-brandon-trial" }) {
+  static async open({ persistDir, dbName = "decko-casey-trial" }) {
     const { Miniflare, convertV4MiniflareOptions } = await import("miniflare");
     const mf = new Miniflare(
       convertV4MiniflareOptions({

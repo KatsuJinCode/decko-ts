@@ -30,8 +30,8 @@
           "marks": [
             "fetchByName(RichText+description) [3928]",
             "fetchByName(News Item+description) [14193]",
-            "fetchByName(Huston Smith+recommendation) [37855]",
-            "fetchByName(Martha Hart Eddy+recommendation) [37816]",
+            "fetchByName(Kirsten Cadwell+recommendation) [37855]",
+            "fetchByName(Wren Halloway+recommendation) [37816]",
             "fetchByName(Ed Correia+recommendation) [37815]"
           ]
         },
@@ -67,11 +67,11 @@
           "consumerFrames": [],
           "calls": 45,
           "marks": [
-            "fetchByName(Huston Smith+recommendation) [3459]",
-            "fetchByName(Martha Hart Eddy+recommendation) [3100]",
+            "fetchByName(Kirsten Cadwell+recommendation) [3459]",
+            "fetchByName(Wren Halloway+recommendation) [3100]",
             "fetchByName(Ed Correia+recommendation) [2303]",
-            "fetchByName(Kayla Feder+recommendation) [1263]",
-            "fetchByName(Robert Kent+recommendation) [741]"
+            "fetchByName(Joan Callahan+recommendation) [1263]",
+            "fetchByName(Mabel Bridgewater+recommendation) [741]"
           ]
         },
         {
@@ -84,7 +84,7 @@
           "marks": [
             "fetchByName(*recent settings+*self+*content options) [23808,264]",
             "fetchByName(*recent settings+*self+*content options) [23809,86]",
-            "fetchByName(Brian Roemmele - AI DEFENDING THE STATUS QUO+tags+*self+*content opt [51580,264]",
+            "fetchByName(Cora Mortimer - AI DEFENDING THE STATUS QUO+tags+*self+*content opt [51580,264]",
             "fetchByName(Source+tags+*type plus right+*content options) [1023,128]",
             "fetchByName(tags+*right+*content options) [355,86]"
           ]
@@ -98,10 +98,10 @@
           "calls": 31,
           "marks": [
             "fetchByName(kaori_suzuki) [\"kaori_suzuki\"]",
-            "fetchByName(huston_smith) [\"huston_smith\"]",
-            "fetchByName(martha_hart_eddy) [\"martha_hart_eddy\"]",
+            "fetchByName(kirsten_cadwell) [\"kirsten_cadwell\"]",
+            "fetchByName(wren_halloway) [\"wren_halloway\"]",
             "fetchByName(ed_correium) [\"ed_correium\"]",
-            "fetchByName(kayla_feder) [\"kayla_feder\"]"
+            "fetchByName(joan_callahan) [\"joan_callahan\"]"
           ]
         },
         {
@@ -244,7 +244,7 @@
           "calls": 2,
           "marks": [
             "fetchByName(Conflict_Done_Well+Online_Classes) [\"online_class\"]",
-            "fetchByName(Martha Hart Eddy+CV) [\"cv\"]"
+            "fetchByName(Wren Halloway+CV) [\"cv\"]"
           ]
         },
         {
@@ -254,7 +254,7 @@
           "calls": 2,
           "marks": [
             "fetchByName(Conflict_Done_Well+Online_Classes) [15113,35336]",
-            "fetchByName(Martha Hart Eddy+CV) [3100,4167]"
+            "fetchByName(Wren Halloway+CV) [3100,4167]"
           ]
         },
         {
@@ -264,7 +264,7 @@
           "calls": 2,
           "marks": [
             "fetchByName(Conflict_Done_Well+Online_Classes) [35337]",
-            "fetchByName(Martha Hart Eddy+CV) [22647]"
+            "fetchByName(Wren Halloway+CV) [22647]"
           ]
         },
         {
@@ -274,7 +274,7 @@
           "calls": 2,
           "marks": [
             "fetchByName(Conflict_Done_Well+Online_Classes) [35336]",
-            "fetchByName(Martha Hart Eddy+CV) [4167]"
+            "fetchByName(Wren Halloway+CV) [4167]"
           ]
         },
         {
@@ -485,7 +485,7 @@
           "consumerFrames": [],
           "calls": 1,
           "marks": [
-            "phase:render [\"brian_roemmele_ai_defending_the_status_quo\",\"bw_recommendation\"]"
+            "phase:render [\"cora_mortimer_ai_defending_the_status_quo\",\"bw_recommendation\"]"
           ]
         },
         {
@@ -494,7 +494,7 @@
           "consumerFrames": [],
           "calls": 1,
           "marks": [
-            "phase:render [\"huston_smith_recommendation\",\"odette_lockwood_stewart_recommendation\",\"kayla_f"
+            "phase:render [\"kirsten_cadwell_recommendation\",\"odette_lockwood_stewart_recommendation\",\"kayla_f"
           ]
         },
         {
@@ -665,7 +665,7 @@
             "fetchByName(Roundtable+April 13th) [\"april_13th\"]",
             "fetchByName(Roundtable+May 18th) [\"may_18th\"]",
             "fetchByName(Roundtable+July 20th) [\"july_20th\"]",
-            "fetchByName(Brandon WilliamsCraig+videos) [\"video\"]"
+            "fetchByName(Casey Morgan+videos) [\"video\"]"
           ]
         },
         {
@@ -677,7 +677,7 @@
             "fetchByName(Roundtable+March 9th) [17559,19335]",
             "fetchByName(Roundtable+April 13th) [17559,19337]",
             "fetchByName(Roundtable+May 18th) [17559,19488]",
-            "fetchByName(Brandon WilliamsCraig+videos) [393,1833]",
+            "fetchByName(Casey Morgan+videos) [393,1833]",
             "fetchByName(Intellectual Property+Index) [23615,28237]"
           ]
         },
@@ -690,7 +690,7 @@
             "fetchByName(Roundtable+March 9th) [19335]",
             "fetchByName(Roundtable+April 13th) [19337]",
             "fetchByName(Roundtable+May 18th) [19488]",
-            "fetchByName(Brandon WilliamsCraig+videos) [1833]",
+            "fetchByName(Casey Morgan+videos) [1833]",
             "fetchByName(Intellectual Property+Index) [28237]"
           ]
         },
@@ -702,9 +702,9 @@
           "marks": [
             "fetchByName(Process Arts+overview) [22065]",
             "fetchByName(Aikido and Attention+member content+sign-in only) [15964]",
-            "fetchByName(Brandon WilliamsCraig+bio) [13229]",
-            "fetchByName(Brandon WilliamsCraig+Musings) [2975]",
-            "fetchByName(Brandon WilliamsCraig+Project(s) Organizing) [1638]"
+            "fetchByName(Casey Morgan+bio) [13229]",
+            "fetchByName(Casey Morgan+Musings) [2975]",
+            "fetchByName(Casey Morgan+Project(s) Organizing) [1638]"
           ]
         },
         {
@@ -716,7 +716,7 @@
             "fetchByName(Roundtable+March 9th) [19037]",
             "fetchByName(Roundtable+April 13th) [19332]",
             "fetchByName(Roundtable+May 18th) [19489]",
-            "fetchByName(Brandon WilliamsCraig+videos) [23464]",
+            "fetchByName(Casey Morgan+videos) [23464]",
             "fetchByName(Intellectual Property+Index) [28238]"
           ]
         },
@@ -743,7 +743,7 @@
           "calls": 25,
           "marks": [
             "phase:render [\"\",\"project\",\"\",\"status\",\"\",\"owner\",\"\",\"issue\",\"\",\"solution\",\"\",\"log_entry\",\"\",",
-            "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"conversation_with_huston_smith\",\"roundtable\",\"consulting_",
+            "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"conversation_with_kirsten_cadwell\",\"roundtable\",\"consulting_",
             "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"consulting_and_project_management\",\"free_aiki_dojo_partne",
             "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"consulting_and_project_management\",\"free_aiki_dojo_partne",
             "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"consulting_and_project_management\",\"free_aiki_dojo_partne"
@@ -1172,7 +1172,7 @@
             "fetchByName(MNv) [\"m_nv\"]",
             "fetchByName(PxPx) [\"px_px\"]",
             "fetchByName(CDW) [\"cdw\"]",
-            "fetchByName(Kayla Feder Bio) [\"kayla_feder_bio\"]",
+            "fetchByName(Joan Callahan Bio) [\"joan_callahan_bio\"]",
             "fetchByName(Aikido of Berkeley) [\"aikido_of_berkeley\"]"
           ]
         },
@@ -1200,8 +1200,8 @@
             "fetchByName(Conflict Done Well+Pages) [34369]",
             "fetchByName(Conflict Done Well+discussion) [27993]",
             "fetchByName(Aikido 2+image01) [27859]",
-            "fetchByName(Kayla Feder+how to contact me) [3474]",
-            "fetchByName(David Williams+how to contact me) [3127]"
+            "fetchByName(Joan Callahan+how to contact me) [3474]",
+            "fetchByName(Bridget Castellan+how to contact me) [3127]"
           ]
         },
         {
@@ -1331,10 +1331,10 @@
           "calls": 10,
           "marks": [
             "fetchByName(Aikido 2+image01) [\"image01\"]",
-            "fetchByName(Kayla Feder+bio) [\"bio\"]",
-            "fetchByName(Kayla Feder+Company) [\"company\"]",
-            "fetchByName(Kayla Feder+Skills) [\"skill\"]",
-            "fetchByName(Kayla Feder+Related People) [\"related_person\"]"
+            "fetchByName(Joan Callahan+bio) [\"bio\"]",
+            "fetchByName(Joan Callahan+Company) [\"company\"]",
+            "fetchByName(Joan Callahan+Skills) [\"skill\"]",
+            "fetchByName(Joan Callahan+Related People) [\"related_person\"]"
           ]
         },
         {
@@ -1359,7 +1359,7 @@
           "calls": 6,
           "marks": [
             "fetchByName(Aikido 2+image01) [10518]",
-            "fetchByName(Huston Smith+bio) [13229]",
+            "fetchByName(Kirsten Cadwell+bio) [13229]",
             "fetchByName(Family+Articles) [658]",
             "fetchByName(Family+References) [1975]",
             "fetchByName(Intellectual Property+Statement) [23615]"
@@ -1712,7 +1712,7 @@
           "marks": [
             "fetchByName(*recent settings+*self+*content options) [23808,264]",
             "fetchByName(*recent settings+*self+*content options) [23809,86]",
-            "fetchByName(Brandon WilliamsCraig+musings+*self+*content options) [3057,264]",
+            "fetchByName(Casey Morgan+musings+*self+*content options) [3057,264]",
             "fetchByName(Person+musings+*type plus right+*content options) [4,2975]",
             "fetchByName(musings+*right+*content options) [2975,260]"
           ]
@@ -1737,10 +1737,10 @@
           "calls": 24,
           "marks": [
             "fetchByName(RichText+description) [3928]",
-            "fetchByName(Brandon WilliamsCraig+bio) [26026]",
-            "fetchByName(Brandon WilliamsCraig+Description) [2259]",
-            "fetchByName(Brandon WilliamsCraig+Musings) [3057]",
-            "fetchByName(Brandon WilliamsCraig+Pages) [792]"
+            "fetchByName(Casey Morgan+bio) [26026]",
+            "fetchByName(Casey Morgan+Description) [2259]",
+            "fetchByName(Casey Morgan+Musings) [3057]",
+            "fetchByName(Casey Morgan+Pages) [792]"
           ]
         },
         {
@@ -1749,11 +1749,11 @@
           "consumerFrames": [],
           "calls": 24,
           "marks": [
-            "fetchByName(Brandon WilliamsCraig+bio) [\"bio\"]",
-            "fetchByName(Brandon WilliamsCraig+Company) [\"company\"]",
-            "fetchByName(Brandon WilliamsCraig+Skills) [\"skill\"]",
-            "fetchByName(Brandon WilliamsCraig+Musings) [\"musing\"]",
-            "fetchByName(Brandon WilliamsCraig+Pages) [\"page\"]"
+            "fetchByName(Casey Morgan+bio) [\"bio\"]",
+            "fetchByName(Casey Morgan+Company) [\"company\"]",
+            "fetchByName(Casey Morgan+Skills) [\"skill\"]",
+            "fetchByName(Casey Morgan+Musings) [\"musing\"]",
+            "fetchByName(Casey Morgan+Pages) [\"page\"]"
           ]
         },
         {
@@ -1788,7 +1788,7 @@
           "consumerFrames": [],
           "calls": 20,
           "marks": [
-            "fetchByName(Brandon WilliamsCraig+videos) [\"video\"]",
+            "fetchByName(Casey Morgan+videos) [\"video\"]",
             "fetchByName(MNv+Instructor Training) [\"m_nv\"]",
             "fetchByName(MNv+Instructor Training) [\"instructor_training\"]",
             "fetchByName(Martial Nonviolence+Improvisation) [\"improvisation\"]",
@@ -1817,7 +1817,7 @@
           "consumerFrames": [],
           "calls": 16,
           "marks": [
-            "fetchByName(Brandon WilliamsCraig+videos) [393,1833]",
+            "fetchByName(Casey Morgan+videos) [393,1833]",
             "fetchByName(MNv+Instructor Training) [1205,22621]",
             "fetchByName(Martial Nonviolence+Improvisation) [577,29424]",
             "fetchByName(Martial Nonviolence+Related Reading) [577,23539]",
@@ -1830,7 +1830,7 @@
           "consumerFrames": [],
           "calls": 16,
           "marks": [
-            "fetchByName(Brandon WilliamsCraig+videos) [1833]",
+            "fetchByName(Casey Morgan+videos) [1833]",
             "fetchByName(MNv+Instructor Training) [1205]",
             "fetchByName(MNv+Instructor Training) [22621]",
             "fetchByName(Martial Nonviolence+Improvisation) [29424]",
@@ -1843,7 +1843,7 @@
           "consumerFrames": [],
           "calls": 15,
           "marks": [
-            "fetchByName(Brandon WilliamsCraig+videos) [23464]",
+            "fetchByName(Casey Morgan+videos) [23464]",
             "fetchByName(MNv+Instructor Training) [22622]",
             "fetchByName(Martial Nonviolence+Improvisation) [29425]",
             "fetchByName(Martial Nonviolence+Related Reading) [23540]",
@@ -1869,11 +1869,11 @@
           "consumerFrames": [],
           "calls": 10,
           "marks": [
-            "fetchByName(Brandon WilliamsCraig+bio) [13229]",
-            "fetchByName(Brandon WilliamsCraig+Musings) [2975]",
-            "fetchByName(Brandon WilliamsCraig+Pages) [668]",
-            "fetchByName(Brandon WilliamsCraig+Project(s) Organizing) [1638]",
-            "fetchByName(Brandon WilliamsCraig+Core Projects) [586]"
+            "fetchByName(Casey Morgan+bio) [13229]",
+            "fetchByName(Casey Morgan+Musings) [2975]",
+            "fetchByName(Casey Morgan+Pages) [668]",
+            "fetchByName(Casey Morgan+Project(s) Organizing) [1638]",
+            "fetchByName(Casey Eli+Emerson Projects) [586]"
           ]
         },
         {

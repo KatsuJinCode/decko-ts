@@ -2309,7 +2309,7 @@ export function formatImageCore(
  *  voo.size == :full` (:56) is the full→original mapping the live deck's
  *  bytes pin (size:full nests serve -original.png, A-15/R13-4 — 101
  *  corpus cards); absent size falls to default_size :medium (live: the
- *  unsized Brandon +image nest serves 60560-medium.jpg). */
+ *  unsized Casey +image nest serves 60560-medium.jpg). */
 export function imageSizeVariant(sizeOpt: unknown): string {
   if (sizeOpt === undefined || sizeOpt === null || sizeOpt === "") return "medium";
   const size = String(sizeOpt);
@@ -2323,7 +2323,7 @@ export function imageSizeVariant(sizeOpt: unknown): string {
  *  `https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com`).
  *
  *  Live receipts (assumption-audit A-13/A-15/A-30; live-wire bytes):
- *   <img alt="Brandon WilliamsCraig+Image"
+ *   <img alt="Casey Morgan+Image"
  *    src="https://…spaces.com/files/431/60560-medium.jpg" />
  *   <img alt="CDW_…" src="…/files/39355/277091-original.png" />
  *  — alt attribute first, space-slash self-close (Rails image_tag
@@ -3972,7 +3972,7 @@ function renderPointerListItem(fmt: RenderFormat, name: string, itemView: string
   // the span (no slot wrap), leaving exactly
   // `<div class="pointer-item item-bar"><span class="denied">...`.
   // expected-v2 census: 538 bare-span denied items (every one a REAL
-  // cards row — e.g. "ABCglobal 20100722 Iris Nick Leon Brandon" under
+  // cards row — e.g. "ABCglobal 20100722 Camille Dahlgren Casey" under
   // "Center for Embodied Change+Pages" open) vs 270 mini_bar slots
   // carrying denial bodies — and EVERY one of those 270 is an
   // ABSENT-ROW item the phantom path above already covers (Test Person
@@ -4141,7 +4141,7 @@ function renderUnknownPointerListItem(
     // rich_text (recapture-raw-shard-000016/28, the 10 email entries).
     // The compound pins hold through the same walk: quick_type("MNv+ITM")
     // = RichText (the MNv cascade pages stay byte-exact),
-    // WilliamsCraig+Retreats+Shoreline = RichText. This is the same
+    // Morgan+Retreats+Shoreline = RichText. This is the same
     // mechanism leftTypeNameFor's last resort ports (format.ts, 96a5305);
     // that arm never sees these bytes because the rule-shaped phantom
     // (right = a Setting) skips nestRecord's withNewCardContext rebuild.
@@ -4191,7 +4191,7 @@ function renderUnknownPointerListItem(
     // render the bare span (SMD exp @8350; PdG exp @8515-8987 — the base
     // act diff was SMD 3 denials/0 bare vs oracle 2/1; PdG 9/2 vs 6/5),
     // while the simple-named denied phantoms (the view-lane census, 133
-    // entries: Test Person 01, Morihei Ueshiba, Robert Kent —
+    // entries: Test Person 01, Regina Chatham, Mabel Bridgewater —
     // BasicCs/RichText/Practice-typed) keep the mini_bar two-span
     // family: name.simple? short-circuits virtual? to false whatever
     // the type (states.rb:45).
@@ -4377,7 +4377,7 @@ function phantomIdentity(
   // because the WALK decided them. Measured:
   // newCardDefaultType("MNv+ITM") -> {typeId: 3, typeName: "RichText"};
   // newCardDefaultType of the simple absent names "mytho-psychology" /
-  // "Germany" / "Rosalie Victoria Williamscraig" -> {typeId: 22281,
+  // "Germany" / "Rowan Victoria Morgan" -> {typeId: 22281,
   // typeName: "BasicCs"}.
   //
   // The literal below is the arm the old premise actually reached: a deck
@@ -4590,7 +4590,7 @@ function linkAnchorBody(ctx: ViewContext, extraClass: string): string {
   // A known host-typed item takes no card[type] (specify_type_in_link!
   // returns for a known card), but Card::Path#known_name? asks Card.known?
   // by name, which sees the default type: a name the url key loses still
-  // carries card[name] (Christian Johnson - Caliber Home Loans+Project's
+  // carries card[name] (Hope Langdon - Caliber Home Loans+Project's
   // virtual Project item).
   const query = !known
     ? unknownLinkQuery(fmt)
@@ -5002,7 +5002,7 @@ function nameShapeRuleRefutedByTypes(
  *  `<div class="pointer-list">` directly, with no intermediate
  *  `<div id="X-content-view" class="card-slot content-view …">` wrap.
  *  All other cardtypes' captured open views (non-rule pointer/list like
- *  corpus:77 *home and corpus:792 Brandon WilliamsCraig+Pages, plus
+ *  corpus:77 *home and corpus:792 Casey Morgan+Pages, plus
  *  every other cardtype) carry the content-view wrap inside
  *  accordion-body. The fix (CLUSTER 3, set-card-pointer-list-vs-
  *  nested-content, 690 entries on shard-0) narrows the no-wrap path
@@ -5133,8 +5133,8 @@ const barBottomView: ViewFn = (ctx) => {
     }
     // Non-rule pointer/list: Ruby wraps the pointer-list in a
     // content-view slot (corpus:77 *home at
-    // fixtures/corpus/shard-000000.jsonl:44, corpus:792 Brandon
-    // WilliamsCraig+Pages, and the 690-entry shard-0 cluster). The
+    // fixtures/corpus/shard-000000.jsonl:44, corpus:792 Casey
+    // Morgan+Pages, and the 690-entry shard-0 cluster). The
     // `home_view: "content"` opt rides into the nested content view's
     // voo. Per-item slots inside the list still dispatch through
     // renderPointerListItem and carry `view:"bar"` in their data-slot

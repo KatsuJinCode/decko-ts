@@ -20,10 +20,6 @@
     ]
   },
   "content_length_overflows": 148,
-  "digests": {
-    "cards": "0a1cf531a4068b09974d6203c39177c348d8bdf7930313fb303b06622ff76258",
-    "references": "df6feb272f0ccae39597bf5468886cf81c5b03210f76441d62b886a6efd2ac2b"
-  },
   "extract": "cards-extract.jsonl",
   "extract_crosscheck": {
     "comparable_names": 9466,
@@ -7381,7 +7377,6 @@
   },
   "live_unresolved_names": 3,
   "name_byte_length_exact_for_all_cards": true,
-  "ref_rows": 556526,
   "ref_type_mix": {
     "I": 283157,
     "L": 23386,

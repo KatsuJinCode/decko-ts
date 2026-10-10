@@ -5539,7 +5539,7 @@ ${body}</div>`;
    * nest label lands inside the anchor expanded. Live receipts:
    * `<a class="internal-link" href="/wagn/Latest_news_items.rss">…` (feed
    * icon wrap) and `<a class="internal-link" href="/account/signup">sign-in
-   * account</a>` (live Brandon bio; identical bytes in the recapture
+   * account</a>` (live Casey bio; identical bytes in the recapture
    * oracle).
    *
    * Name targets (link.rb:85-86 + 71-75) render view :link on the target

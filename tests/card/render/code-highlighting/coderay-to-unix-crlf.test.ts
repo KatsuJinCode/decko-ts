@@ -24,7 +24,7 @@
 // the span-stripped form of the frozen oracle page-lane capture's <pre>
 // block - so a regression fails on the real bytes, not on a hand-written
 // paraphrase. The 5 pages of the class are FrAi layout (12392), Classic
-// Layout (314), home-layout, bdwilliamscraig-layout, and
+// Layout (314), home-layout, caseymorgan-layout, and
 // Golden_Bears_Aikido_at_UC_Berkeley main layout; their stored bodies
 // carry 7/43/5/3/17 CRLF respectively, and the engine emitted exactly that
 // many extra spaces before the fix.

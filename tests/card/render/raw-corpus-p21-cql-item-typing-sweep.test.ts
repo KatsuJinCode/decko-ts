@@ -61,7 +61,7 @@ const OUT_DIR = path.join(REPO_ROOT, "tmp", "p21-cql-item-typing");
 const SWEEP_REQUESTED = process.env.P21_CQL_ITEM_TYPING === "1";
 
 const CLASS_PAGES = [
-  "Daemeon Reiydelle",
+  "Emery Lockhart",
   "Starhawk",
   "Social Media Distribution+Tactics",
   "Production+design+Graphics+Tactics",
@@ -73,7 +73,7 @@ const REPORT_ONLY_PAGES = ["BW Oversight+ARCHETYPALLY"];
  *  this session) pinning the TYPED FULL item bars. */
 const TYPED_SLOT_PINS: ReadonlyArray<{ page: string; excerpt: string }> = [
   {
-    page: "Daemeon Reiydelle",
+    page: "Emery Lockhart",
     excerpt:
       '<div id="improving_project_success_through_myth_discovery-mini_bar-view" ' +
       'class="card-slot mini_bar-view ALL TYPE-project" ' +

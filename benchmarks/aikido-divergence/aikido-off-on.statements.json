@@ -1761,7 +1761,7 @@
   {
    "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
    "params": [
-    "morihei_ueshiba",
+    "regina_chatham",
     "aiki",
     "aikido_benefit",
     "aikido_theme",
@@ -1774,7 +1774,7 @@
     "moriteru_ueshiba_50th_all_japan_aikido_embukai_2012_may_26_nihon_budokan_tokyo",
     "aikido_documentary_short_1961",
     "art_of_peace_doka_selection",
-    "embodied_leadership_and_aikido_with_wendy_palmer_video"
+    "embodied_leadership_and_aikido_with_olivia_quimby_video"
    ],
    "rowCount": 13,
    "cardIds": [
@@ -2065,7 +2065,7 @@
   {
    "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
    "params": [
-    "brandon_william_craig",
+    "casey_morgan",
     "conflict_done_well_method"
    ],
    "rowCount": 2,
@@ -3622,7 +3622,7 @@
     "moriteru_ueshiba_50th_all_japan_aikido_embukai_2012_may_26_nihon_budokan_tokyo",
     "aikido_documentary_short_1961",
     "art_of_peace_doka_selection",
-    "embodied_leadership_and_aikido_with_wendy_palmer_video"
+    "embodied_leadership_and_aikido_with_olivia_quimby_video"
    ],
    "rowCount": 10,
    "cardIds": [
@@ -3821,7 +3821,7 @@
   {
    "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
    "params": [
-    "bill_leicht",
+    "madison_marchetti",
     "jerry_green"
    ],
    "rowCount": 2,

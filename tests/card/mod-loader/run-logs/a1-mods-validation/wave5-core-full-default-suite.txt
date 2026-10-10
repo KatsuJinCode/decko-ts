@@ -1065,12 +1065,12 @@ ENGINE-NEST {"requested":"content","view":"content","card":"*footer","nestName":
    [31m❯[39m renderplan replay: the cold render's trip profile is plan-driven [2m(1)[22m
 [31m     [31m×[31m replays Home to the 5-trip floor, zero covered-family live reads, bytes equal to OFF[39m[32m 5[2mms[22m[39m
 [90mstdout[2m | tests/deploy/bunny-edge-person-participating-virtual-section.test.ts[2m > [22m[2mbunny edge boot renders the person page's virtual +Project(s) Participating section[2m > [22m[2mboots the corpus deck engines and renders the structured search section
-[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Brandon WilliamsCraig+Project(s) Organizing","nestName":"+Project(s) Organizing"}
-ENGINE-NEST {"requested":"titled","view":"titled","card":"Brandon WilliamsCraig+Project(s) Participating","nestName":"+Project(s) Participating"}
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Casey Morgan+Project(s) Organizing","nestName":"+Project(s) Organizing"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"Casey Morgan+Project(s) Participating","nestName":"+Project(s) Participating"}
 
 [90mstdout[2m | tests/deploy/bunny-edge-person-participating-virtual-section.test.ts[2m > [22m[2mbunny edge boot renders the person page's virtual +Project(s) Participating section[2m > [22m[2mboots the corpus deck engines and renders the structured search section
-[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Brandon WilliamsCraig+Project(s) Organizing","nestName":"+Project(s) Organizing"}
-ENGINE-NEST {"requested":"titled","view":"titled","card":"Brandon WilliamsCraig+Project(s) Participating","nestName":"+Project(s) Participating"}
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Casey Morgan+Project(s) Organizing","nestName":"+Project(s) Organizing"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"Casey Morgan+Project(s) Participating","nestName":"+Project(s) Participating"}
 
 [90mstdout[2m | tests/deploy/bunny-edge-person-participating-virtual-section.test.ts[2m > [22m[2mbunny edge boot renders the person page's virtual +Project(s) Participating section[2m > [22m[2mboots the corpus deck engines and renders the structured search section
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*header","nestName":":header"}
@@ -5747,10 +5747,10 @@ ENGINE-NEST {"requested":"link","view":"link","card":"Set","nestName":"Set"}
  [32m✓[39m tests/card/render/serializer-follow-live-deployment-config.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 6[2mms[22m[39m
  [32m✓[39m tests/card/render/raw-corpus-raise-leadview-pages.test.ts [2m([22m[2m1 test[22m[2m | [22m[33m1 skipped[39m[2m)[22m[32m 2[2mms[22m[39m
 [90mstdout[2m | tests/card/render/help-popover-rule-preference-clause-set.test.ts[2m > [22m[2mrule? clause set (all.rb:33-54): the popover's setting_link rides Ruby's preference? exactly[2m > [22m[2mADMITS the 4-part self-set guard via the USER preferer arm
-[22m[39mLEX-DEBUG Brandon WilliamsCraig+*account+email isSimple: [33mfalse[39m left: Brandon WilliamsCraig+*account right: email
+[22m[39mLEX-DEBUG Casey Morgan+*account+email isSimple: [33mfalse[39m left: Casey Morgan+*account right: email
 
 [90mstdout[2m | tests/card/render/help-popover-rule-preference-clause-set.test.ts[2m > [22m[2mrule? clause set (all.rb:33-54): the popover's setting_link rides Ruby's preference? exactly[2m > [22m[2mREFUSES the 4-part shape when the trunk is NOT Set-typed (the clause the widening skipped)
-[22m[39mLEX-DEBUG Brandon WilliamsCraig+*account+email isSimple: [33mfalse[39m left: Brandon WilliamsCraig+*account right: email
+[22m[39mLEX-DEBUG Casey Morgan+*account+email isSimple: [33mfalse[39m left: Casey Morgan+*account right: email
 
  [32m✓[39m tests/card/render/help-popover-rule-preference-clause-set.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 60[2mms[22m[39m
  [32m✓[39m tests/card/render/mod-asset-section-and-permission-inherit-core-pins.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 31[2mms[22m[39m
@@ -5843,13 +5843,13 @@ set-member count drifts (capture-vs-dump snapshot skew, R1 class): 0
      [33m[2m✓[22m[39m replays captured non-denied views of structure-pending entries byte-exactly[33m 451[2mms[22m[39m
  [2m[90m↓[39m[22m tests/card/render/cql-append-sort-execution-pins.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
  [32m✓[39m tests/card/render/slot-html-no-double-escape.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 3[2mms[22m[39m
-[90mstdout[2m | tests/card/render/carrierwave-cloud-filename-derivation.test.ts[2m > [22m[2mfile :core renders the derived cloud anchor (Michael Christensen acceptance)[2m > [22m[2mrenders <a href='http://s3.amazonaws.com//files/14547/1.doc'>Download +description+CV</a>
-[22m[39mENGINE-NEST {"requested":"content","view":"content","card":"Michael Christensen+description","nestName":"+description"}
-ENGINE-NEST {"requested":"content","view":"content","card":"Michael Christensen+description+CV","nestName":"+CV"}
+[90mstdout[2m | tests/card/render/carrierwave-cloud-filename-derivation.test.ts[2m > [22m[2mfile :core renders the derived cloud anchor (Jacob Benedetti acceptance)[2m > [22m[2mrenders <a href='http://s3.amazonaws.com//files/14547/1.doc'>Download +description+CV</a>
+[22m[39mENGINE-NEST {"requested":"content","view":"content","card":"Jacob Benedetti+description","nestName":"+description"}
+ENGINE-NEST {"requested":"content","view":"content","card":"Jacob Benedetti+description+CV","nestName":"+CV"}
 
-[90mstdout[2m | tests/card/render/carrierwave-cloud-filename-derivation.test.ts[2m > [22m[2mfile :core renders the derived cloud anchor (Michael Christensen acceptance)[2m > [22m[2mrenders <a href='http://s3.amazonaws.com//files/14547/1.doc'>Download +description+CV</a>
-[22m[39mENGINE-NEST {"requested":"content","view":"content","card":"Michael Christensen+description","nestName":"+description"}
-ENGINE-NEST {"requested":"content","view":"content","card":"Michael Christensen+description+CV","nestName":"+CV"}
+[90mstdout[2m | tests/card/render/carrierwave-cloud-filename-derivation.test.ts[2m > [22m[2mfile :core renders the derived cloud anchor (Jacob Benedetti acceptance)[2m > [22m[2mrenders <a href='http://s3.amazonaws.com//files/14547/1.doc'>Download +description+CV</a>
+[22m[39mENGINE-NEST {"requested":"content","view":"content","card":"Jacob Benedetti+description","nestName":"+description"}
+ENGINE-NEST {"requested":"content","view":"content","card":"Jacob Benedetti+description+CV","nestName":"+CV"}
 
  [32m✓[39m tests/card/render/carrierwave-cloud-filename-derivation.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 40[2mms[22m[39m
  [32m✓[39m tests/card/mod-loader/mod-registration.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 7[2mms[22m[39m

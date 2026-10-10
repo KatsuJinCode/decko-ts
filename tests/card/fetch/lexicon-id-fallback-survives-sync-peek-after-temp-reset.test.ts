@@ -42,12 +42,12 @@ afterEach(() => {
 
 describe("DbLexicon sync peek after a Temporary reset (stored nil vs evicted entry)", () => {
   it("peekId of an evicted-but-existing name must not poison the async id() db fallback", async () => {
-    await seedCard(storage, { id: 583, name: "David Williams" });
+    await seedCard(storage, { id: 583, name: "Bridget Castellan" });
     const lexicon = storage.engine.lexicon;
 
     // warm: the entry the 10k-key reset wipes mid-render
-    expect(await lexicon.id("David Williams")).toBe(583);
-    expect(lexicon.peekId("David Williams")).toBe(583);
+    expect(await lexicon.id("Bridget Castellan")).toBe(583);
+    expect(lexicon.peekId("Bridget Castellan")).toBe(583);
 
     // force the eviction the Temporary max-keys reset performs (the same
     // state the census render is in after warmLexicon: entry gone, db row
@@ -56,7 +56,7 @@ describe("DbLexicon sync peek after a Temporary reset (stored nil vs evicted ent
     expect(lexicon.cache.temp.read("L-david_william")).toBeUndefined();
 
     // the sync peek: cache-only by contract, answers undefined on the miss
-    expect(lexicon.peekId("David Williams")).toBeUndefined();
+    expect(lexicon.peekId("Bridget Castellan")).toBeUndefined();
     // THE HAZARD: the miss is an EVICTION, not an answer - the peek must
     // not materialize a stored negative Ruby could only have via a real
     // SQL negative
@@ -65,9 +65,9 @@ describe("DbLexicon sync peek after a Temporary reset (stored nil vs evicted ent
     // Ruby's fallback leg: Lexicon.id falls through to SQL on a plain miss
     // (lexicon.rb#lex_to_id cache.fetch compute) - it must not answer the
     // peek's materialized nil
-    expect(await lexicon.id("David Williams")).toBe(583);
+    expect(await lexicon.id("Bridget Castellan")).toBe(583);
     // and the sync peek reads warm again
-    expect(lexicon.peekId("David Williams")).toBe(583);
+    expect(lexicon.peekId("Bridget Castellan")).toBe(583);
   });
 
   it("a peek of an evicted COMPOUND name poisons neither its sides nor its key", async () => {

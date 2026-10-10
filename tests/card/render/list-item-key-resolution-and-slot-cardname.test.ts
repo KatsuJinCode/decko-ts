@@ -8,9 +8,9 @@
 // "Business"->"business", strips to "Covid-19"->"covid_19"; verified by
 // executing the gems). Ruby's nest_item -> Card.fetch(item) resolves the
 // line through its key and renders the REAL card under its STORED name
-// (live pin: Brandon_WilliamsCraig.html renders data-card-id="23464"
-// data-card-name="Brandon WilliamsCraig+video" for the authored line
-// "Brandon WilliamsCraig+videos"; the string "videos" appears 0 times on
+// (live pin: Casey_Morgan.html renders data-card-id="23464"
+// data-card-name="Casey Morgan+video" for the authored line
+// "Casey Morgan+videos"; the string "videos" appears 0 times on
 // the live page). The port's old path emitted the AUTHORED line as a
 // phantom slot (renderPointerListItem's fetch miss ->
 // phantomPointerListItem): the item batch lookup was junction-blind
@@ -153,7 +153,7 @@ describe("list-item key resolution + unsaved-compound slot_cardname (name-form t
       await seedListFixture(storage);
       const html = await storage.engine.render("Host Person+Pages", "content");
       // The RESOLVED card's slot: stored name displayed (live pin:
-      // data-card-name="Brandon WilliamsCraig+video"), not the authored
+      // data-card-name="Casey Morgan+video"), not the authored
       // line.
       expect(html).toContain('data-card-name="Host Person+video"');
       expect(html).not.toContain("Host Person+videos");

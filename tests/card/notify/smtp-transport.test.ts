@@ -141,7 +141,7 @@ function makeTransport(server: MockServer, over: Partial<SmtpTransportOptions> =
   return new SmtpTransport({
     host: "127.0.0.1",
     port: server.port,
-    user: "brandon@culturesmith.com",
+    user: "casey@culturesmith.com",
     pass: "test-app-password",
     from: "no-reply@culturesmith.com",
     ...over,
@@ -173,7 +173,7 @@ describe("transportFromEnv config wiring", () => {
   });
 
   it("returns an SmtpTransport when DECKO_SMTP_PASS is set, with Proton defaults", () => {
-    const t = transportFromEnv({ DECKO_SMTP_PASS: "secret", DECKO_SMTP_USER: "brandon@culturesmith.com" });
+    const t = transportFromEnv({ DECKO_SMTP_PASS: "secret", DECKO_SMTP_USER: "casey@culturesmith.com" });
     expect(t).toBeInstanceOf(SmtpTransport);
     expect(t.name).toBe("smtp");
     const s = t as SmtpTransport;
@@ -181,7 +181,7 @@ describe("transportFromEnv config wiring", () => {
     expect(s.describe()).toContain("587");
     expect(s.describe()).toContain("starttls=auto");
     expect(s.describe()).toContain("from=no-reply@culturesmith.com");
-    expect(s.describe()).toContain("user=brandon@culturesmith.com");
+    expect(s.describe()).toContain("user=casey@culturesmith.com");
     // the app password must never be describable
     expect(s.describe()).not.toContain("secret");
   });
@@ -223,7 +223,7 @@ describe("SmtpTransport wire conversation", () => {
     expect(server.captured.authLine).toMatch(/^AUTH PLAIN /i);
     const b64 = server.captured.authLine!.slice("AUTH PLAIN ".length);
     expect(Buffer.from(b64, "base64").toString("utf-8")).toBe(
-      "\u0000brandon@culturesmith.com\u0000test-app-password",
+      "\u0000casey@culturesmith.com\u0000test-app-password",
     );
     // envelope-from = resolved actual address; envelope-to = the recipient.
     expect(server.captured.mailFrom).toBe("no-reply@culturesmith.com");
@@ -269,7 +269,7 @@ describe("SmtpTransport wire conversation", () => {
     const server = await startMockServer();
     openServers.push(server);
     const t = makeTransport(server); // from = no-reply@culturesmith.com
-    await t.sendMail(textMessage({ from: "brandon@culturesmith.com" }));
+    await t.sendMail(textMessage({ from: "casey@culturesmith.com" }));
 
     // actual address = config default; the template's bare address (which is
     // its conf_text under configured_from_name_and_email) becomes the
@@ -277,7 +277,7 @@ describe("SmtpTransport wire conversation", () => {
     expect(server.captured.mailFrom).toBe("no-reply@culturesmith.com");
     const headerBlock = server.captured.data!.split("\r\n\r\n")[0]!;
     expect(headerBlock).toContain(
-      'From: "brandon@culturesmith.com" <no-reply@culturesmith.com>',
+      'From: "casey@culturesmith.com" <no-reply@culturesmith.com>',
     );
   });
 

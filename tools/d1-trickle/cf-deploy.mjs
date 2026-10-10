@@ -2,14 +2,14 @@
 // tools/d1-trickle/cf-deploy.mjs — deploy (or check) the D1-backed Worker on
 // an account named by an API token and account id from a credentials file.
 //
-//   node tools/d1-trickle/cf-deploy.mjs --creds-file <file> --token-key BRANDON_CF_API_TOKEN \
-//        --account-key BRANDON_CF_ACCOUNT_ID --database-name decko-brandon \
-//        [--worker-name decko-brandon] [--set VAR=value ...] [--dry-run]
+//   node tools/d1-trickle/cf-deploy.mjs --creds-file <file> --token-key CASEY_CF_API_TOKEN \
+//        --account-key CASEY_CF_ACCOUNT_ID --database-name decko-casey \
+//        [--worker-name decko-casey] [--set VAR=value ...] [--dry-run]
 //
 // It runs `wrangler deploy` with CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID
 // set for that one child process, so wrangler uses exactly that account and
 // never its own login. The config it deploys is a copy of
-// deploy/cf-brandon/wrangler.toml with the database id looked up on that
+// deploy/cf-casey/wrangler.toml with the database id looked up on that
 // account, the Worker name, and any --set variables filled in; the copy lives
 // in a scratch folder removed on exit. The token is never printed.
 
@@ -68,7 +68,7 @@ async function main() {
     const config = join(scratch, "wrangler.toml");
     writeFileSync(
       config,
-      fillConfig(readFileSync(resolve(REPO, "deploy/cf-brandon/wrangler.toml"), "utf8"), {
+      fillConfig(readFileSync(resolve(REPO, "deploy/cf-casey/wrangler.toml"), "utf8"), {
         workerName,
         databaseName,
         databaseId: dbs[0].uuid,

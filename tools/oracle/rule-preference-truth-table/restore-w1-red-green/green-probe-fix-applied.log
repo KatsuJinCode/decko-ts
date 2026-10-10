@@ -68,15 +68,15 @@ PASS mod: account+*script:closed (byte-identical after slot-id normalization)
 PASS mod: shades+*script:closed (byte-identical after slot-id normalization)
 PASS mod: account+*script:page (byte-identical after slot-id normalization)
 PASS mod: shades+*script:page (byte-identical after slot-id normalization)
-PASS Don't Wait For The Study+*self+Brandon WilliamsCraig+*follow:closed (byte-identical after slot-id normalization)
-PASS Don't Wait For The Study+*self+Brandon WilliamsCraig+*follow:open (byte-identical after slot-id normalization)
+PASS Don't Wait For The Study+*self+Casey Morgan+*follow:closed (byte-identical after slot-id normalization)
+PASS Don't Wait For The Study+*self+Casey Morgan+*follow:open (byte-identical after slot-id normalization)
 PASS *all+*all+*follow:closed (byte-identical after slot-id normalization)
 PASS *all+*all+*follow:open (byte-identical after slot-id normalization)
-PASS Make Contact+*self+Brandon WilliamsCraig+*follow:closed (byte-identical after slot-id normalization)
-PASS Make Contact+*self+Brandon WilliamsCraig+*follow:open (byte-identical after slot-id normalization)
-PASS Don't Wait For The Study+*self+Brandon WilliamsCraig+*follow:page (byte-identical after slot-id normalization)
+PASS Make Contact+*self+Casey Morgan+*follow:closed (byte-identical after slot-id normalization)
+PASS Make Contact+*self+Casey Morgan+*follow:open (byte-identical after slot-id normalization)
+PASS Don't Wait For The Study+*self+Casey Morgan+*follow:page (byte-identical after slot-id normalization)
 PASS *all+*all+*follow:page (byte-identical after slot-id normalization)
-PASS Make Contact+*self+Brandon WilliamsCraig+*follow:page (byte-identical after slot-id normalization)
+PASS Make Contact+*self+Casey Morgan+*follow:page (byte-identical after slot-id normalization)
 PROBE summary:
   PASS mod: account+*style:closed 0
   PASS mod: ace editor+*script:closed 0
@@ -146,13 +146,13 @@ PROBE summary:
   PASS mod: shades+*script:closed 0
   PASS mod: account+*script:page 0
   PASS mod: shades+*script:page 0
-  PASS Don't Wait For The Study+*self+Brandon WilliamsCraig+*follow:closed 0
-  PASS Don't Wait For The Study+*self+Brandon WilliamsCraig+*follow:open 0
+  PASS Don't Wait For The Study+*self+Casey Morgan+*follow:closed 0
+  PASS Don't Wait For The Study+*self+Casey Morgan+*follow:open 0
   PASS *all+*all+*follow:closed 0
   PASS *all+*all+*follow:open 0
-  PASS Make Contact+*self+Brandon WilliamsCraig+*follow:closed 0
-  PASS Make Contact+*self+Brandon WilliamsCraig+*follow:open 0
-  PASS Don't Wait For The Study+*self+Brandon WilliamsCraig+*follow:page 0
+  PASS Make Contact+*self+Casey Morgan+*follow:closed 0
+  PASS Make Contact+*self+Casey Morgan+*follow:open 0
+  PASS Don't Wait For The Study+*self+Casey Morgan+*follow:page 0
   PASS *all+*all+*follow:page 0
-  PASS Make Contact+*self+Brandon WilliamsCraig+*follow:page 0
+  PASS Make Contact+*self+Casey Morgan+*follow:page 0
 PROBE outputs in C:\localProjects\decko-ts-lane-restore-w1-helppopover-2026-10-03\tmp\restore-w1-helppopover\probe-green

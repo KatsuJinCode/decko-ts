@@ -32,7 +32,7 @@
           "marks": [
             "fetchByName(*recent settings+*self+*content options) [23808,264]",
             "fetchByName(*recent settings+*self+*content options) [23809,86]",
-            "fetchByName(Brian Roemmele - AI DEFENDING THE STATUS QUO+tags+*self+*content opt [51580,264]",
+            "fetchByName(Cora Mortimer - AI DEFENDING THE STATUS QUO+tags+*self+*content opt [51580,264]",
             "fetchByName(Source+tags+*type plus right+*content options) [1023,128]",
             "fetchByName(tags+*right+*content options) [355,86]"
           ]
@@ -76,7 +76,7 @@
             "fetchByName(News Item+*type+by name) [815,184]",
             "fetchByName(Image+*type+by name) [3383,184]",
             "fetchByName(tags+BDWC+private) [41198,14155]",
-            "fetchByName(tags+BDWC+private+Williamscraig) [40301,18145]"
+            "fetchByName(tags+BDWC+private+Morgan) [40301,18145]"
           ]
         },
         {
@@ -144,7 +144,7 @@
             "phase:render [\"rich_text\",\"description\"]",
             "phase:render [\"rich_text\",\"*type\"]",
             "phase:render [\"tag\",\"bdwc\"]",
-            "phase:render [\"williamscraig\",\"item\"]"
+            "phase:render [\"morgan\",\"item\"]"
           ]
         },
         {
@@ -154,8 +154,8 @@
           "calls": 4,
           "marks": [
             "phase:render [\"kaori_suzuki\",\"kaori_suzuki\",\"kaori_suzuki\",\"kaori_suzuki\",\"kaori_suzuki\",\"kao",
-            "phase:render [\"huston_smith\",\"martha_hart_eddy\",\"ed_correium\",\"kayla_feder\",\"robert_kent\",\"mo",
-            "phase:render [\"tag\",\"tag\",\"david_william\",\"iri_mc_ginni\",\"don_mc_clure\",\"robert_kent\",\"christ",
+            "phase:render [\"kirsten_cadwell\",\"wren_halloway\",\"ed_correium\",\"joan_callahan\",\"mabel_bridgewater\",\"mo",
+            "phase:render [\"tag\",\"tag\",\"david_william\",\"iri_mc_ginni\",\"don_mc_clure\",\"mabel_bridgewater\",\"christ",
             "phase:render [\"public\",\"public\",\"public\",\"public\",\"public\",\"public\",\"public\",\"public\",\"public"
           ]
         },
@@ -178,7 +178,7 @@
           "calls": 3,
           "marks": [
             "phase:render [\"description\"]",
-            "phase:render [\"williamscraig\"]",
+            "phase:render [\"morgan\"]",
             "phase:render [\"item\"]"
           ]
         },
@@ -251,7 +251,7 @@
           "calls": 2,
           "marks": [
             "fetchByName(tags+BDWC+private) [40301]",
-            "fetchByName(tags+BDWC+private+Williamscraig) [40445]"
+            "fetchByName(tags+BDWC+private+Morgan) [40445]"
           ]
         },
         {
@@ -261,7 +261,7 @@
           "calls": 2,
           "marks": [
             "fetchByName(Conflict_Done_Well+Online_Classes) [\"online_class\"]",
-            "fetchByName(Martha Hart Eddy+CV) [\"cv\"]"
+            "fetchByName(Wren Halloway+CV) [\"cv\"]"
           ]
         },
         {
@@ -271,7 +271,7 @@
           "calls": 2,
           "marks": [
             "fetchByName(Conflict_Done_Well+Online_Classes) [15113,35336]",
-            "fetchByName(Martha Hart Eddy+CV) [3100,4167]"
+            "fetchByName(Wren Halloway+CV) [3100,4167]"
           ]
         },
         {
@@ -281,7 +281,7 @@
           "calls": 2,
           "marks": [
             "fetchByName(Conflict_Done_Well+Online_Classes) [35337]",
-            "fetchByName(Martha Hart Eddy+CV) [22647]"
+            "fetchByName(Wren Halloway+CV) [22647]"
           ]
         },
         {
@@ -291,7 +291,7 @@
           "calls": 2,
           "marks": [
             "fetchByName(Conflict_Done_Well+Online_Classes) [35336]",
-            "fetchByName(Martha Hart Eddy+CV) [4167]"
+            "fetchByName(Wren Halloway+CV) [4167]"
           ]
         },
         {
@@ -511,7 +511,7 @@
           "consumerFrames": [],
           "calls": 1,
           "marks": [
-            "phase:render [\"brian_roemmele_ai_defending_the_status_quo\",\"bw_recommendation\"]"
+            "phase:render [\"cora_mortimer_ai_defending_the_status_quo\",\"bw_recommendation\"]"
           ]
         },
         {
@@ -529,7 +529,7 @@
           "consumerFrames": [],
           "calls": 1,
           "marks": [
-            "phase:render [\"huston_smith_recommendation\",\"odette_lockwood_stewart_recommendation\",\"kayla_f"
+            "phase:render [\"kirsten_cadwell_recommendation\",\"odette_lockwood_stewart_recommendation\",\"kayla_f"
           ]
         },
         {
@@ -538,7 +538,7 @@
           "consumerFrames": [],
           "calls": 1,
           "marks": [
-            "phase:render [\"huston_smith\",\"martha_hart_eddy\",\"ed_correium\",\"kayla_feder\",\"robert_kent\",\"mo"
+            "phase:render [\"kirsten_cadwell\",\"wren_halloway\",\"ed_correium\",\"joan_callahan\",\"mabel_bridgewater\",\"mo"
           ]
         },
         {
@@ -666,7 +666,7 @@
             "fetchByName(Roundtable+April 13th) [\"april_13th\"]",
             "fetchByName(Roundtable+May 18th) [\"may_18th\"]",
             "fetchByName(Roundtable+July 20th) [\"july_20th\"]",
-            "fetchByName(Brandon WilliamsCraig+videos) [\"video\"]"
+            "fetchByName(Casey Morgan+videos) [\"video\"]"
           ]
         },
         {
@@ -678,7 +678,7 @@
             "fetchByName(Roundtable+March 9th) [17559,19335]",
             "fetchByName(Roundtable+April 13th) [17559,19337]",
             "fetchByName(Roundtable+May 18th) [17559,19488]",
-            "fetchByName(Brandon WilliamsCraig+videos) [393,1833]",
+            "fetchByName(Casey Morgan+videos) [393,1833]",
             "fetchByName(Intellectual Property+Index) [23615,28237]"
           ]
         },
@@ -704,7 +704,7 @@
             "fetchByName(Roundtable+March 9th) [19335]",
             "fetchByName(Roundtable+April 13th) [19337]",
             "fetchByName(Roundtable+May 18th) [19488]",
-            "fetchByName(Brandon WilliamsCraig+videos) [1833]",
+            "fetchByName(Casey Morgan+videos) [1833]",
             "fetchByName(Intellectual Property+Index) [28237]"
           ]
         },
@@ -746,7 +746,7 @@
             "fetchByName(Roundtable+March 9th) [19037]",
             "fetchByName(Roundtable+April 13th) [19332]",
             "fetchByName(Roundtable+May 18th) [19489]",
-            "fetchByName(Brandon WilliamsCraig+videos) [23464]",
+            "fetchByName(Casey Morgan+videos) [23464]",
             "fetchByName(Intellectual Property+Index) [28238]"
           ]
         },
@@ -757,7 +757,7 @@
           "calls": 25,
           "marks": [
             "phase:render [\"\",\"project\",\"\",\"status\",\"\",\"owner\",\"\",\"issue\",\"\",\"solution\",\"\",\"log_entry\",\"\",",
-            "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"conversation_with_huston_smith\",\"roundtable\",\"consulting_",
+            "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"conversation_with_kirsten_cadwell\",\"roundtable\",\"consulting_",
             "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"consulting_and_project_management\",\"free_aiki_dojo_partne",
             "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"consulting_and_project_management\",\"free_aiki_dojo_partne",
             "phase:render [\"\",\"\",\"\",\"\",\"\",\"\",\"\",\"consulting_and_project_management\",\"free_aiki_dojo_partne"
@@ -1288,7 +1288,7 @@
             "fetchByName(MNv) [\"m_nv\"]",
             "fetchByName(PxPx) [\"px_px\"]",
             "fetchByName(CDW) [\"cdw\"]",
-            "fetchByName(Kayla Feder Bio) [\"kayla_feder_bio\"]",
+            "fetchByName(Joan Callahan Bio) [\"joan_callahan_bio\"]",
             "fetchByName(Aikido of Berkeley) [\"aikido_of_berkeley\"]"
           ]
         },
@@ -1503,8 +1503,8 @@
           "consumerFrames": [],
           "calls": 2,
           "marks": [
-            "phase:render [\"aikido_2\",\"kayla_feder\",\"kayla_feder\",\"kayla_feder\",\"kayla_feder\",\"david_willi",
-            "phase:render [\"richard_page\",\"richard_page\",\"richard_page\",\"richard_page\",\"mair_alight\",\"mair"
+            "phase:render [\"aikido_2\",\"joan_callahan\",\"joan_callahan\",\"joan_callahan\",\"joan_callahan\",\"david_willi",
+            "phase:render [\"rebecca_halloran\",\"rebecca_halloran\",\"rebecca_halloran\",\"rebecca_halloran\",\"mair_alight\",\"mair"
           ]
         },
         {
@@ -1842,7 +1842,7 @@
             "fetchByName(MNv+Instructor Training) [\"instructor_training\"]",
             "fetchByName(Martial Nonviolence+Improvisation) [\"improvisation\"]",
             "fetchByName(Martial Nonviolence+Related Reading) [\"related_reading\"]",
-            "fetchByName(Brandon WilliamsCraig+videos) [\"video\"]"
+            "fetchByName(Casey Morgan+videos) [\"video\"]"
           ]
         },
         {
@@ -1883,7 +1883,7 @@
             "fetchByName(MNv+Instructor Training) [1205,22621]",
             "fetchByName(Martial Nonviolence+Improvisation) [577,29424]",
             "fetchByName(Martial Nonviolence+Related Reading) [577,23539]",
-            "fetchByName(Brandon WilliamsCraig+videos) [393,1833]",
+            "fetchByName(Casey Morgan+videos) [393,1833]",
             "fetchByName(Intellectual Property+Index) [23615,28237]"
           ]
         },
@@ -1897,7 +1897,7 @@
             "fetchByName(MNv+Instructor Training) [22621]",
             "fetchByName(Martial Nonviolence+Improvisation) [29424]",
             "fetchByName(Martial Nonviolence+Related Reading) [23539]",
-            "fetchByName(Brandon WilliamsCraig+videos) [1833]"
+            "fetchByName(Casey Morgan+videos) [1833]"
           ]
         },
         {
@@ -1909,7 +1909,7 @@
             "fetchByName(MNv+Instructor Training) [22622]",
             "fetchByName(Martial Nonviolence+Improvisation) [29425]",
             "fetchByName(Martial Nonviolence+Related Reading) [23540]",
-            "fetchByName(Brandon WilliamsCraig+videos) [23464]",
+            "fetchByName(Casey Morgan+videos) [23464]",
             "fetchByName(Intellectual Property+Index) [28238]"
           ]
         },
@@ -2183,7 +2183,7 @@
           "consumerFrames": [],
           "calls": 1,
           "marks": [
-            "phase:render [\"brandon_william_craig\",\"brandon_william_craig\",\"brandon_william_craig\",\"brando"
+            "phase:render [\"casey_morgan\",\"casey_morgan\",\"casey_morgan\",\"brando"
           ]
         },
         {

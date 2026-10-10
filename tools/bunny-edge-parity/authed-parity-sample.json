@@ -828,9 +828,9 @@
       "authed_has_set_cookie": false
     },
     {
-      "path": "/Brandon Williamscraig",
+      "path": "/Casey Morgan",
       "label": "readable-person-1",
-      "name": "Brandon Williamscraig",
+      "name": "Casey Morgan",
       "view": "open",
       "anon_status": 200,
       "authed_status": 200,
@@ -845,8 +845,8 @@
       "oracle_bytes": 5247,
       "oracle_first_diff": {
         "offset": 0,
-        "left": "id=\"brandon_williamscraig-open-view\" class=\"card-slot open-v",
-        "right": "<div id=\"brandon_williamscraig-open-view\" class=\"card-slot o",
+        "left": "id=\"casey_morgan-open-view\" class=\"card-slot open-v",
+        "right": "<div id=\"casey_morgan-open-view\" class=\"card-slot o",
         "left_len": 5242,
         "right_len": 5247
       },
@@ -872,9 +872,9 @@
       "authed_has_set_cookie": false
     },
     {
-      "path": "/David Williams",
+      "path": "/Bridget Castellan",
       "label": "readable-person-3",
-      "name": "David Williams",
+      "name": "Bridget Castellan",
       "view": "open",
       "anon_status": 200,
       "authed_status": 200,
@@ -891,9 +891,9 @@
       "authed_has_set_cookie": false
     },
     {
-      "path": "/Brandon Williamscraig/content",
+      "path": "/Casey Morgan/content",
       "label": "readable-person-1-content",
-      "name": "Brandon Williamscraig",
+      "name": "Casey Morgan",
       "view": "content",
       "anon_status": 200,
       "authed_status": 200,

@@ -19,9 +19,9 @@
 // walk - in the async phase the port has, so the sync interpretation reads
 // warm entries.
 //
-// This test seeds the census page shape in miniature (David Williams +
+// This test seeds the census page shape in miniature (Bridget Castellan +
 // Project(s) Participating -> The Myth of Peace, whose +Participant(s)
-// junction part links [[David Williams]]) plus enough filler cards that
+// junction part links [[Bridget Castellan]]) plus enough filler cards that
 // warmLexicon's writes blow past the 10k cap and reset the mirror exactly
 // like the production deck does.
 
@@ -40,7 +40,7 @@ const CQL =
  *  (id->lex via cacheFetch write-back + the lex->id tap), so 6,000 cards
  *  clear the 10,000-key reset threshold and evict the real cards' entries
  *  (ids seeded first, i.e. the LOWEST ids - exactly the production shape:
- *  David Williams id 583, Participant(s) id 406, Project id 398). */
+ *  Bridget Castellan id 583, Participant(s) id 406, Project id 398). */
 const FILLER_CARDS = 6000;
 
 async function seedDeck(storage: RenderTestStorage): Promise<void> {
@@ -53,7 +53,7 @@ async function seedDeck(storage: RenderTestStorage): Promise<void> {
   // the plus part; the corpus pair is card 810 -> referee 583).
   await seedCard(storage, { id: 398, name: "Project", typeId: 2 });
   await seedCard(storage, { id: 406, name: "Participant(s)", typeId: 2 });
-  await seedCard(storage, { id: 583, name: "David Williams", typeId: 2 });
+  await seedCard(storage, { id: 583, name: "Bridget Castellan", typeId: 2 });
   await seedCard(storage, { id: 580, name: "The Myth of Peace", typeId: 398 });
   await seedCard(storage, {
     id: 810,
@@ -63,13 +63,13 @@ async function seedDeck(storage: RenderTestStorage): Promise<void> {
     typeId: 2,
   });
   await seedReference(storage, 810, 583, "david_william", "L");
-  // the search card: the virtual "David Williams+Project(s) Participating"
+  // the search card: the virtual "Bridget Castellan+Project(s) Participating"
   // page card - its structure-rule CQL content, stored directly (the same
   // statement rule 422 carries in the census deck).
   await seedCard(storage, { id: 418, name: "Project(s) Participating", typeId: 2 });
   await seedCard(storage, {
     id: 704,
-    name: "David Williams+Project(s) Participating",
+    name: "Bridget Castellan+Project(s) Participating",
     leftId: 583,
     rightId: 418,
     typeId: 98,
@@ -110,11 +110,11 @@ describe("search CQL name resolution survives the lexicon temp-cache reset", () 
       expect(temp.read("L-david_william")).toBeUndefined();
 
       const html = await storage.engine.render(
-        "David Williams+Project(s) Participating",
+        "Bridget Castellan+Project(s) Participating",
         "content",
       );
       // the empty arm Ruby does NOT render for this page (census:
-      // recapture-raw-shard-000000.jsonl "David Williams" page_html carries
+      // recapture-raw-shard-000000.jsonl "Bridget Castellan" page_html carries
       // the card_list with The Myth of Peace as the result item)
       expect(html).not.toContain('<div class="search-no-results"></div>');
       // the result bytes: the card_list wrapper + at least one result item
@@ -123,7 +123,7 @@ describe("search CQL name resolution survives the lexicon temp-cache reset", () 
       expect(items).not.toBeNull();
       expect(items!.length).toBeGreaterThan(0);
       // the actual result: The Myth of Peace (corpus id 580 - the project
-      // whose +Participant(s) part links David Williams)
+      // whose +Participant(s) part links Bridget Castellan)
       expect(html).toContain('data-card-name="The Myth of Peace"');
     } finally {
       storage.close();
@@ -140,7 +140,7 @@ describe("search CQL name resolution survives the lexicon temp-cache reset", () 
       await seedCard(storage, { id: 98, name: "Search", codename: "search_type", typeId: 2 });
       await seedCard(storage, { id: 398, name: "Project", typeId: 2 });
       await seedCard(storage, { id: 406, name: "Participant(s)", typeId: 2 });
-      await seedCard(storage, { id: 583, name: "David Williams", typeId: 2 });
+      await seedCard(storage, { id: 583, name: "Bridget Castellan", typeId: 2 });
       await seedCard(storage, { id: 580, name: "The Myth of Peace", typeId: 398 });
       await seedCard(storage, {
         id: 810,
@@ -153,7 +153,7 @@ describe("search CQL name resolution survives the lexicon temp-cache reset", () 
       await seedCard(storage, { id: 418, name: "Project(s) Participating", typeId: 2 });
       await seedCard(storage, {
         id: 704,
-        name: "David Williams+Project(s) Participating",
+        name: "Bridget Castellan+Project(s) Participating",
         leftId: 583,
         rightId: 418,
         typeId: 98,
@@ -163,7 +163,7 @@ describe("search CQL name resolution survives the lexicon temp-cache reset", () 
       expect(storage.fetcher.lexicon.cache.temp.read("L-project")).toBeUndefined();
 
       const html = await storage.engine.render(
-        "David Williams+Project(s) Participating",
+        "Bridget Castellan+Project(s) Participating",
         "content",
       );
       expect(html).not.toContain('<div class="search-no-results"></div>');

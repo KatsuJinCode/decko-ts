@@ -1,7 +1,7 @@
 // A *structure template's nest of a card an EARLIER render stored is still
 // this render's nest — corpus replay on the key-repaired deck.
 //
-// `sabrina mejias` nests `+agree`, and `agree+*right+*structure` substitutes
+// `sage pettibone` nests `+agree`, and `agree+*right+*structure` substitutes
 // `{{Intellectual Property+Statement}}` into it. The engine's sweep surface
 // (renderSeats) gained that statement card only when this render inserted it
 // into the map. On a warm engine an earlier render had already stored it, the
@@ -9,7 +9,7 @@
 // card was rendered without being seated: the link-target pass never scanned
 // it, and its links to existing cards (`[[Embody Nonviolence]]`,
 // `[[Process Arts]]`) came out wanted-card. The same four views (sabrina
-// mejias, Dan Williams, Marc Sacks, Anthony Gonzales) pass as a fresh
+// mejias, Dan Williams, Rowan Pettibone, Dawn Emerson) pass as a fresh
 // engine's first render.
 //
 // Gate: opt-in via WARM_STRUCTURE_REF_SEAT_REPLAY=1 (needs the key-repaired
@@ -41,9 +41,9 @@ describeIfCorpus("warm engine: structure-template nests of stored cards are seat
     storage?.close();
   });
 
-  it("sabrina mejias after another view: the statement's links stay known", async () => {
+  it("sage pettibone after another view: the statement's links stay known", async () => {
     await storage!.engine.render("*all+*default html view", "content");
-    const html = await storage!.engine.render("sabrina mejias", "content");
+    const html = await storage!.engine.render("sage pettibone", "content");
     expect(html).toContain(
       '<a class="known-card" href="/Embody_Nonviolence"><span class="card-title" title="Embody Nonviolence">Embody Nonviolence</span></a>',
     );

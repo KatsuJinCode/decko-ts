@@ -196,7 +196,7 @@ export async function liveRenderPage(
     (env?.DECKO_LIVE_AUTO_THRESHOLD !== undefined ? Number(env.DECKO_LIVE_AUTO_THRESHOLD) : Number.POSITIVE_INFINITY);
   // Default 0 (no blocking tail): with lazy structure references a blocking
   // pass pays one sequential round trip per fetch-ladder step of the walks
-  // it runs eagerly (Kimberly Winston 26 trips against 12 without it).
+  // it runs eagerly (Marie Mardini 26 trips against 12 without it).
   const tail = opts.autoTail ?? (env?.DECKO_LIVE_AUTO_TAIL !== undefined ? Number(env.DECKO_LIVE_AUTO_TAIL) : 0);
   const tailTrips = opts.autoTailTrips === undefined || opts.autoTailTrips < 0 ? undefined : opts.autoTailTrips;
   const seeds = new Set<string>();

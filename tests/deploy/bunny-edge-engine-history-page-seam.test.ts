@@ -93,7 +93,7 @@ function normalize(html: string): string {
 /** normalize + the ONE documented lane-context delta: the main card's
  *  frame title level. The live PAGE lane renders the main card's
  *  d0-card-frame title as <h1> — exactly one per page on every live capture
- *  (live-About/Aikido/Eagle/Brandon_WilliamsCraig.html, edge-site-shell
+ *  (live-About/Aikido/Eagle/Casey_Morgan.html, edge-site-shell
  *  work dir) — while the bare VIEW lane (where the Ruby oracle fixture was
  *  captured) renders <h2>. Ruby's wrap_all main-context semantics,
  *  unchanged by this lane; masked so the byte-preservation comparison

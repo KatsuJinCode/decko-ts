@@ -73,8 +73,8 @@ beforeAll(async () => {
 
   // Fields Probe Member (a User) with its account fields. DECK SHAPE
   // (raw deck read-only SELECT, cards k JOIN k.left_id = junction): the
-  // account fields are CHILDREN OF THE +*account JUNCTION ("Brandon
-  // WilliamsCraig+*account" left_id chain: +*email Phrase, +*password
+  // account fields are CHILDREN OF THE +*account JUNCTION ("Casey
+  // Morgan+*account" left_id chain: +*email Phrase, +*password
   // Phrase, +*salt/+*status PlainText) — matching field_nest's
   // card.name.field(:email) = "<junction>+email". The plain-spelling right
   // rows used here are KEY-EQUIVALENT to the deck's starred form (keys

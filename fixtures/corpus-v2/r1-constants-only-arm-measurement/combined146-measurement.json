@@ -46,11 +46,11 @@
     "Very Rosie July 4 in 2013+Gallery10vert+image05+discussion:page",
     "Very Rosie July 4 in 2013+Gallery10vert+image06+discussion:page",
     "Very Rosie July 4 in 2013+Gallery10vert+image07+discussion:page",
-    "Williamscraig:page",
+    "Morgan:page",
     "Guns:page",
     "Project+Task+*type plus right:page",
     "Message+Conversation+*type plus right:page",
-    "Brandon feedback+discussion:page",
+    "Casey feedback+discussion:page",
     "A Taste of Your Own Medicine The Problematic Nature of Revenge+discussion:page",
     "*all+*head:page",
     "Administrator+Dashboard:page",
@@ -58,7 +58,7 @@
     "PCTS+*self+*head:page",
     "Pointer:page",
     "Shark:page",
-    "Kayla Feder 20230902+discussion:page",
+    "Amber Arvidsson 20230902+discussion:page",
     "mod: account:page",
     "mod: bootstrap:page",
     "mod: carrierwave:page",
@@ -76,7 +76,7 @@
     "mod: tinymce editor:page",
     "mod: shades:page",
     "Klickstein continues+discussion:open",
-    "Andrew Porter:open",
+    "Kristina Garrison:open",
     "media+GBA+YouTube Browser:open",
     "The Habit - a predictable travesty:open",
     "Very Rosie July 4 in 2013+Gallery10vert+image01+discussion:open",
@@ -90,7 +90,7 @@
     "Free Aiki Dojo - Golden Bears Aikido training schedule from January 27th 2014:open",
     "Guns:open",
     "Free Aiki Dojo and Golden Bears Aikido training schedule - week of 2014 11 24:open",
-    "Brandon feedback+discussion:open",
+    "Casey feedback+discussion:open",
     "Conflict Resolution Plan Prepares You to Move From Mediation to Blood Sport:open",
     "A Taste of Your Own Medicine The Problematic Nature of Revenge+discussion:open",
     "children:open",
@@ -98,11 +98,11 @@
     "Belief about the rightness of Insert System Here establishes an axis:open",
     "Wikirate:open",
     "Work Week:open",
-    "Kayla Feder 20230902:open",
-    "Kayla Feder 20230902+discussion:open",
-    "Rosalie Williamscraig:open",
+    "Amber Arvidsson 20230902:open",
+    "Amber Arvidsson 20230902+discussion:open",
+    "Jordan Marchetti:open",
     "Conflict Done Well+WE Greiner:open",
-    "Huston Williamscraig:open"
+    "Catherine Radcliffe:open"
   ],
   "eraOnlyTags": [
     "*input type+*right:page",
@@ -113,7 +113,7 @@
     "Christmas:page",
     "*search:page",
     "*input type+*right+*content options:page",
-    "Williamscraig:page",
+    "Morgan:page",
     "Guns:page",
     "Project+Task+*type plus right:page",
     "Message+Conversation+*type plus right:page",
@@ -152,18 +152,18 @@
     "BDWC_academic_resume+*self:open",
     "Plans+*self:content",
     "Americanism+*self:content",
-    "Jeffrey Hohenstein+*self:open",
+    "Julia Wainwright+*self:open",
     "Please pre-register+*self:open",
     "Aikido video+*self:open",
     "Klickstein continues+discussion:open",
     "Library - BW+*self:open",
-    "Andrew Porter:open",
+    "Kristina Garrison:open",
     "How Can I Keep From Singing - Lyrics+discussion:open",
     "*input type+*right+*content options:closed",
     "*input type+*right+*content options:content",
     "*input type+*right+*content options:open",
     "media+GBA+YouTube Browser:open",
-    "Antero Alli - Astrology as Archetypal Language+tags:open",
+    "Casey Langdon - Astrology as Archetypal Language+tags:open",
     "politics+Documents:open",
     "The Habit - a predictable travesty:open",
     "Very Rosie July 4 in 2013+Gallery10vert+image01+discussion:open",
@@ -186,12 +186,12 @@
     "Message+Conversation+*type plus right:content",
     "Message+Conversation+*type plus right:open",
     "darkly skin:open",
-    "Brandon feedback+discussion:open",
+    "Casey feedback+discussion:open",
     "Conflict Resolution Plan Prepares You to Move From Mediation to Blood Sport:open",
     "A Taste of Your Own Medicine The Problematic Nature of Revenge+discussion:open",
     "Bessel van der Kolk Here and Now New Ways Of Treating Trauma Try Some Yoga+Associates:open",
     "Soma+tags:open",
-    "WilliamsCraig+Vacations+Pages:open",
+    "Iversen Frank+Vacations+Pages:open",
     "Wishlist+tags:open",
     "children:open",
     "Perennial Wisdom Tradition:open",
@@ -211,8 +211,8 @@
     "Intellectual Property+Unsecured:open",
     "Pork Roast Clay Baked+discussion:open",
     "Work Week:open",
-    "Kayla Feder 20230902:open",
-    "Kayla Feder 20230902+discussion:open",
+    "Amber Arvidsson 20230902:open",
+    "Amber Arvidsson 20230902+discussion:open",
     "Mod:content",
     "Mod:open",
     "mod: account:closed",
@@ -230,9 +230,9 @@
     "mod: session:closed",
     "mod: style:closed",
     "mod: tinymce editor:closed",
-    "Rosalie Williamscraig:open",
+    "Jordan Marchetti:open",
     "Conflict Done Well+WE Greiner:open",
-    "Huston Williamscraig:open"
+    "Catherine Radcliffe:open"
   ],
   "rows": [
     {
@@ -918,7 +918,7 @@
     {
       "lane": "page",
       "shard": "recapture-raw-shard-000013.jsonl",
-      "tag": "Williamscraig:page",
+      "tag": "Morgan:page",
       "states": {
         "UNARMED": {
           "verdict": "FAIL",
@@ -1054,7 +1054,7 @@
     {
       "lane": "page",
       "shard": "recapture-raw-shard-000018.jsonl",
-      "tag": "Brandon feedback+discussion:page",
+      "tag": "Casey feedback+discussion:page",
       "states": {
         "UNARMED": {
           "verdict": "FAIL",
@@ -1326,7 +1326,7 @@
     {
       "lane": "page",
       "shard": "recapture-raw-shard-000039.jsonl",
-      "tag": "Kayla Feder 20230902+discussion:page",
+      "tag": "Amber Arvidsson 20230902+discussion:page",
       "states": {
         "UNARMED": {
           "verdict": "FAIL",
@@ -2448,7 +2448,7 @@
     {
       "lane": "view",
       "shard": "recapture-raw-shard-000004.jsonl",
-      "tag": "Jeffrey Hohenstein+*self:open",
+      "tag": "Julia Wainwright+*self:open",
       "states": {
         "UNARMED": {
           "verdict": "PASS",
@@ -2618,7 +2618,7 @@
     {
       "lane": "view",
       "shard": "recapture-raw-shard-000006.jsonl",
-      "tag": "Andrew Porter:open",
+      "tag": "Kristina Garrison:open",
       "states": {
         "UNARMED": {
           "verdict": "FAIL",
@@ -2822,7 +2822,7 @@
     {
       "lane": "view",
       "shard": "recapture-raw-shard-000009.jsonl",
-      "tag": "Antero Alli - Astrology as Archetypal Language+tags:open",
+      "tag": "Casey Langdon - Astrology as Archetypal Language+tags:open",
       "states": {
         "UNARMED": {
           "verdict": "PASS",
@@ -3604,7 +3604,7 @@
     {
       "lane": "view",
       "shard": "recapture-raw-shard-000018.jsonl",
-      "tag": "Brandon feedback+discussion:open",
+      "tag": "Casey feedback+discussion:open",
       "states": {
         "UNARMED": {
           "verdict": "FAIL",
@@ -3774,7 +3774,7 @@
     {
       "lane": "view",
       "shard": "recapture-raw-shard-000024.jsonl",
-      "tag": "WilliamsCraig+Vacations+Pages:open",
+      "tag": "Iversen Frank+Vacations+Pages:open",
       "states": {
         "UNARMED": {
           "verdict": "FAIL",
@@ -4454,7 +4454,7 @@
     {
       "lane": "view",
       "shard": "recapture-raw-shard-000039.jsonl",
-      "tag": "Kayla Feder 20230902:open",
+      "tag": "Amber Arvidsson 20230902:open",
       "states": {
         "UNARMED": {
           "verdict": "FAIL",
@@ -4488,7 +4488,7 @@
     {
       "lane": "view",
       "shard": "recapture-raw-shard-000039.jsonl",
-      "tag": "Kayla Feder 20230902+discussion:open",
+      "tag": "Amber Arvidsson 20230902+discussion:open",
       "states": {
         "UNARMED": {
           "verdict": "FAIL",
@@ -5100,7 +5100,7 @@
     {
       "lane": "view",
       "shard": "recapture-raw-shard-000041.jsonl",
-      "tag": "Rosalie Williamscraig:open",
+      "tag": "Jordan Marchetti:open",
       "states": {
         "UNARMED": {
           "verdict": "FAIL",
@@ -5168,7 +5168,7 @@
     {
       "lane": "view",
       "shard": "recapture-raw-shard-000045.jsonl",
-      "tag": "Huston Williamscraig:open",
+      "tag": "Catherine Radcliffe:open",
       "states": {
         "UNARMED": {
           "verdict": "FAIL",

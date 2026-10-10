@@ -35,7 +35,7 @@ const PAGE_NAMES = [
   "mod: rules", "mod: script", "mod: search", "mod: session", "mod: style",
   "mod: tabs",
   "*input type+*right", "Administrator", "Archetypal", "Family", "Christmas",
-  "*search", "*input type+*right+*content options", "Williamscraig",
+  "*search", "*input type+*right+*content options", "Morgan",
   "Project+Task+*type plus right", "Message+Conversation+*type plus right",
   "Administrator+Dashboard", "Help Desk", "Pointer", "Shark",
   "mod: tinymce editor",

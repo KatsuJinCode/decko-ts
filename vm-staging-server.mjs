@@ -1180,7 +1180,7 @@ const FOOTER_SETTING_NAME = "*footer";
 //
 // Rule shapes present in this corpus:
 //   1. Direct junction:        left_id = <card>,        right_id = 255
-//      — covers rules like PCTS+*layout, bdwilliamscraig+*layout
+//      — covers rules like PCTS+*layout, caseymorgan+*layout
 //   2. Junction-of-junction:   left_id = <card>+*self,   right_id = 255
 //      — the *self junction (left=<card>, right=264) is a 2-level indirection
 //      for cards whose layout rule was authored as <card>+*self+*layout
@@ -2001,10 +2001,10 @@ async function renderFooterContent() {
 // the main slot. The body's `{{:header|core}}`, `{{_main|<view>}}`,
 // `{{:footer|content}}`, and `{{*foot|core}}` tokens are substituted;
 // everything around them (body tag attributes, article/footer wrappers,
-// the bare `<div>` of bdwilliamscraig-layout) is the layout's own bytes.
+// the bare `<div>` of caseymorgan-layout) is the layout's own bytes.
 // Default Layout's body yields the standard
 // `  <header>…  <article …><div id="main">…</article>  <footer …>`
-// chrome; bdwilliamscraig-layout's body yields Recommendations' bare
+// chrome; caseymorgan-layout's body yields Recommendations' bare
 // `<body >\n<div><div id="main">…</div>\n<p></p>` shell with NO
 // header/nav/footer (live Recommendations.html). The outer card-slot
 // nesting follows the layout's mainView exactly as before (open view's
@@ -2052,7 +2052,7 @@ async function wrapWithLayout(cardName, viewHtml, layout, pageOpts = {}) {
   // A-6/A-11 (round 10): the page SHELL is built from the resolved
   // layout's BODY — the per-card layout rule drives the whole document,
   // not just the main slot. Live Recommendations (layout
-  // `bdwilliamscraig-layout`, body `<body >\n<div>{{_main|content}}</div>
+  // `caseymorgan-layout`, body `<body >\n<div>{{_main|content}}</div>
   // \n<p>{{*foot|core}}</p>\n</body>`) serves NO header/nav/footer/
   // article chrome — its shell is `<body >` + `<div><div id="main">…`.
   // Default Layout's body (`<body class="d-flex flex-column h-100">…`)
@@ -2092,7 +2092,7 @@ async function wrapWithLayout(cardName, viewHtml, layout, pageOpts = {}) {
   const renderedInner = layoutInner
     .replace(/\{\{:header\|core\}\}/g, () => headerHtml)
     .replace(/\{\{:footer\|content\}\}/g, () => footerHtml)
-    // Live receipt: the bdwilliamscraig-layout `<p>{{*foot|core}}</p>`
+    // Live receipt: the caseymorgan-layout `<p>{{*foot|core}}</p>`
     // renders `<p></p>` for the anonymous viewer (Recommendations.html
     // tail) — the nest contributes zero bytes, so substitute "".
     .replace(/\{\{\*foot\|core\}\}/g, () => "")

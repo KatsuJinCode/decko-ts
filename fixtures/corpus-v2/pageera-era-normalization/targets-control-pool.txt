@@ -5,9 +5,9 @@ page	recapture-raw-shard-000001.jsonl	BW 20100927	page
 page	recapture-raw-shard-000001.jsonl	CDKLMSW	page
 page	recapture-raw-shard-000001.jsonl	Fang Rui	page
 page	recapture-raw-shard-000001.jsonl	Golden_Bears_Aikido_at_UC_Berkeley main layout	page
-page	recapture-raw-shard-000001.jsonl	Jeremy Su	page
-page	recapture-raw-shard-000001.jsonl	Lauren Rayburn	page
-page	recapture-raw-shard-000001.jsonl	Michael Nagler	page
+page	recapture-raw-shard-000001.jsonl	Ahlgren Pedro	page
+page	recapture-raw-shard-000001.jsonl	Anne Farnham	page
+page	recapture-raw-shard-000001.jsonl	Erica Mercado	page
 page	recapture-raw-shard-000001.jsonl	Romain Barnard+Core Project	page
 page	recapture-raw-shard-000001.jsonl	Uchi Deshi at Aikido of Berkeley Dojo+Central Places	page
 page	recapture-raw-shard-000001.jsonl	culturopoiesis+Core Project	page
@@ -15,20 +15,20 @@ page	recapture-raw-shard-000002.jsonl	A PCraig Christmas - 2010	page
 page	recapture-raw-shard-000002.jsonl	BW 20101119	page
 page	recapture-raw-shard-000002.jsonl	BWhtmlHeader+*self+*table of contents	page
 page	recapture-raw-shard-000002.jsonl	Clark Suprynowicz	page
-page	recapture-raw-shard-000002.jsonl	Don Levine+Documents	page
-page	recapture-raw-shard-000002.jsonl	Huston Smith	page
-page	recapture-raw-shard-000002.jsonl	Joe Strykowski+musings	page
-page	recapture-raw-shard-000002.jsonl	Mark Lumpkin	page
+page	recapture-raw-shard-000002.jsonl	Caroline Yardley+Documents	page
+page	recapture-raw-shard-000002.jsonl	Ellen Emerson	page
+page	recapture-raw-shard-000002.jsonl	Emily Bridgewater+musings	page
+page	recapture-raw-shard-000002.jsonl	Bridget Colville	page
 page	recapture-raw-shard-000002.jsonl	Not really monothiests	page
-page	recapture-raw-shard-000002.jsonl	Paula Craig - MY FEAR	page
-page	recapture-raw-shard-000002.jsonl	Renee Benmeleh	page
+page	recapture-raw-shard-000002.jsonl	Antonio Ackland - MY FEAR	page
+page	recapture-raw-shard-000002.jsonl	Jeffrey Benedetti	page
 page	recapture-raw-shard-000002.jsonl	Tucson Memorial Speech	page
 page	recapture-raw-shard-000002.jsonl	mythopsychology+Organizer(s)	page
 page	recapture-raw-shard-000003.jsonl	*alerts	page
 page	recapture-raw-shard-000003.jsonl	ASCSR2010gallery02+*self	page
 page	recapture-raw-shard-000003.jsonl	Aiki Peace Week+*self	page
 page	recapture-raw-shard-000003.jsonl	BW 20110512	page
-page	recapture-raw-shard-000003.jsonl	Bill Leicht 2011a+*self	page
+page	recapture-raw-shard-000003.jsonl	Anna Eastbrook 2011a+*self	page
 page	recapture-raw-shard-000003.jsonl	Employment Research and Applications	page
 page	recapture-raw-shard-000003.jsonl	Invite Success+*self	page
 page	recapture-raw-shard-000003.jsonl	MaSo+*self	page
@@ -38,7 +38,7 @@ page	recapture-raw-shard-000003.jsonl	Rosa at Thinking About Art+*self	page
 page	recapture-raw-shard-000003.jsonl	Urban Visions embed+*self	page
 page	recapture-raw-shard-000003.jsonl	somatic+*self	page
 page	recapture-raw-shard-000004.jsonl	201006-07 vacation in Oregon+*self	page
-page	recapture-raw-shard-000004.jsonl	Aiki Peace Week 2010 Dispatch - Richard Strozzi-Heckler+*self	page
+page	recapture-raw-shard-000004.jsonl	Aiki Peace Week 2010 Dispatch - Beverly Bonneville-Heckler+*self	page
 page	recapture-raw-shard-000004.jsonl	BW2010profile_bw+*self	page
 page	recapture-raw-shard-000004.jsonl	Cs button - aikido+*self	page
 page	recapture-raw-shard-000004.jsonl	GBA_20101123_3539board+*self	page
@@ -54,7 +54,7 @@ page	recapture-raw-shard-000005.jsonl	*create+*right	page
 page	recapture-raw-shard-000005.jsonl	AikidoAge3YouTube+*self	page
 page	recapture-raw-shard-000005.jsonl	BW 20110929+Narrative+*self	page
 page	recapture-raw-shard-000005.jsonl	Carolyn Remick+*self	page
-page	recapture-raw-shard-000005.jsonl	Don Levine - human rights and democratic procedures in Ethiopia - view point+*self	page
+page	recapture-raw-shard-000005.jsonl	Caroline Yardley - human rights and democratic procedures in Ethiopia - view point+*self	page
 page	recapture-raw-shard-000005.jsonl	Golden Bears Aikido 2011 Fundraiser flier+*self	page
 page	recapture-raw-shard-000005.jsonl	Jamie Zimron+Project(s) Organizing	page
 page	recapture-raw-shard-000005.jsonl	Mailman Email commands quick reference+*self	page
@@ -63,7 +63,7 @@ page	recapture-raw-shard-000005.jsonl	Rosa Naparstek - Reach f+*self	page
 page	recapture-raw-shard-000005.jsonl	Sivan Marcus	page
 page	recapture-raw-shard-000005.jsonl	Wildcat Canyon - Sphinx Grill_4047med+*self	page
 page	recapture-raw-shard-000006.jsonl	 Designate meeting time and place for Thursday class at TRS	page
-page	recapture-raw-shard-000006.jsonl	Andrew Porter	page
+page	recapture-raw-shard-000006.jsonl	Julia Carmichael	page
 page	recapture-raw-shard-000006.jsonl	BW 20111026	page
 page	recapture-raw-shard-000006.jsonl	BW 20111125-27+Narrative+Gallery10	page
 page	recapture-raw-shard-000006.jsonl	BW+*right	page
@@ -72,43 +72,43 @@ page	recapture-raw-shard-000006.jsonl	How Can I Keep From Singing - Lyrics+discu
 page	recapture-raw-shard-000006.jsonl	Lift Every Voice and Sing - Lyrics	page
 page	recapture-raw-shard-000006.jsonl	Nirmala Nataraj - The Crane and the Crocodile explores depression+Associations+tags	page
 page	recapture-raw-shard-000006.jsonl	RVW+*right	page
-page	recapture-raw-shard-000006.jsonl	Russell Ahn+Project(s) Participating	page
-page	recapture-raw-shard-000006.jsonl	Steven Goldin+Menu	page
+page	recapture-raw-shard-000006.jsonl	Catherine Chamberlain+Project(s) Participating	page
+page	recapture-raw-shard-000006.jsonl	Caleb Middleton+Menu	page
 page	recapture-raw-shard-000006.jsonl	What Americans Keep Ignoring About Finland's School Success	page
 page	recapture-raw-shard-000007.jsonl	*input type+*right+*content options	page
-page	recapture-raw-shard-000007.jsonl	Amanda Marcotte - Newt Gingrichs Behavior Is Actually Quite Traditional	page
-page	recapture-raw-shard-000007.jsonl	Bob Keyes - Photographer puts new spin	page
+page	recapture-raw-shard-000007.jsonl	Anthony Trevelyan - Newt Gingrichs Behavior Is Actually Quite Traditional	page
+page	recapture-raw-shard-000007.jsonl	Christian Farnham - Photographer puts new spin	page
 page	recapture-raw-shard-000007.jsonl	David R. Francis - Thanks to Occupy rich-poor gap is front and center+discussion	page
 page	recapture-raw-shard-000007.jsonl	HEM	page
-page	recapture-raw-shard-000007.jsonl	John Schweizer	page
-page	recapture-raw-shard-000007.jsonl	Kimberly Winston+Pages	page
+page	recapture-raw-shard-000007.jsonl	Leonard Chamberlain	page
+page	recapture-raw-shard-000007.jsonl	Ashley Castellan+Pages	page
 page	recapture-raw-shard-000007.jsonl	Micah M White - The Dinner Party at Berkeley	page
 page	recapture-raw-shard-000007.jsonl	Panikkar - on the right to offend+Associates	page
 page	recapture-raw-shard-000007.jsonl	SGo Training Journal 20120316	page
 page	recapture-raw-shard-000007.jsonl	Staughton Lynd - A Letter To Other Occupiers+Associates	page
-page	recapture-raw-shard-000007.jsonl	Tom Vanderwell - 10 Ways Being a Theatre Major Prepared Me for Success	page
+page	recapture-raw-shard-000007.jsonl	Ralph Bonneville - 10 Ways Being a Theatre Major Prepared Me for Success	page
 page	recapture-raw-shard-000007.jsonl	shomenuchi ikkyo ura	page
 page	recapture-raw-shard-000008.jsonl	20120418+BW+RVW	page
 page	recapture-raw-shard-000008.jsonl	20120705+BW+Time Tracking	page
 page	recapture-raw-shard-000008.jsonl	Aiki Links plus GBA+*self	page
-page	recapture-raw-shard-000008.jsonl	Craig Zelizer - Guide to Careers in International Affairs	page
-page	recapture-raw-shard-000008.jsonl	David Swanson - Ending the Minset That Gets Us Into War+Associates	page
+page	recapture-raw-shard-000008.jsonl	Kirsten Langdon - Guide to Careers in International Affairs	page
+page	recapture-raw-shard-000008.jsonl	Roger Cavendish - Ending the Minset That Gets Us Into War+Associates	page
 page	recapture-raw-shard-000008.jsonl	J and P OJ and The Tree+*self	page
 page	recapture-raw-shard-000008.jsonl	Lakoff and Wehling - Economics and Morality+Associates	page
 page	recapture-raw-shard-000008.jsonl	Maxson J McDowell - Cézanne Hofmann Winnicott Jung	page
-page	recapture-raw-shard-000008.jsonl	Pacifica remembers James Hillman+Associates	page
-page	recapture-raw-shard-000008.jsonl	Richard Strozzi-Heckler+Central Places	page
+page	recapture-raw-shard-000008.jsonl	Pacifica remembers Jeffrey Dahlgren+Associates	page
+page	recapture-raw-shard-000008.jsonl	Beverly Bonneville-Heckler+Central Places	page
 page	recapture-raw-shard-000008.jsonl	TRS	page
 page	recapture-raw-shard-000008.jsonl	Violent encounters with random strangers+Associates	page
 page	recapture-raw-shard-000008.jsonl	war+Documents	page
 page	recapture-raw-shard-000009.jsonl	20120705+BW+RVW	page
 page	recapture-raw-shard-000009.jsonl	20120809+BW+Time Tracking	page
-page	recapture-raw-shard-000009.jsonl	Antero Alli - Astrology as Archetypal Language+tags	page
-page	recapture-raw-shard-000009.jsonl	Aurora Shooting 201200720 USA Today Coverage	page
+page	recapture-raw-shard-000009.jsonl	Cora Rasmussen - Astrology as Archetypal Language+tags	page
+page	recapture-raw-shard-000009.jsonl	Arnold Fitzgerald 201200720 USA Today Coverage	page
 page	recapture-raw-shard-000009.jsonl	Carolyn Jones - Berkeley residents fight for post office	page
 page	recapture-raw-shard-000009.jsonl	Contact Cupertino Harveys for permission to use their documents	page
 page	recapture-raw-shard-000009.jsonl	Jaccii Farris - The Samurai Games help disadvantaged students+Associates	page
-page	recapture-raw-shard-000009.jsonl	LISA W FODERARO - Colleges Now Offering Education in Disaster	page
+page	recapture-raw-shard-000009.jsonl	ROWAN W FODERARO - Colleges Now Offering Education in Disaster	page
 page	recapture-raw-shard-000009.jsonl	Online Learning+Documents	page
 page	recapture-raw-shard-000009.jsonl	Stanley Pranin - Introduction to the Omoto Religion+Associates	page
 page	recapture-raw-shard-000009.jsonl	Time cover 20120723 military suicides+*self	page
@@ -119,12 +119,12 @@ page	recapture-raw-shard-000010.jsonl	20120925+BW+Time Tracking	page
 page	recapture-raw-shard-000010.jsonl	20121009+BW+RVW	page
 page	recapture-raw-shard-000010.jsonl	20121102+BW+RVW	page
 page	recapture-raw-shard-000010.jsonl	20121118+RVW	page
-page	recapture-raw-shard-000010.jsonl	Arnold Mindell+Pages	page
+page	recapture-raw-shard-000010.jsonl	Marie Bellweather+Pages	page
 page	recapture-raw-shard-000010.jsonl	CG Jung	page
 page	recapture-raw-shard-000010.jsonl	Derek Beres - The Mythology of Burning Man	page
-page	recapture-raw-shard-000010.jsonl	Huston Smith - Joseph Campbell and the Boy Who Was a Fire Hydrant	page
-page	recapture-raw-shard-000010.jsonl	Michael Christensen+musings	page
-page	recapture-raw-shard-000010.jsonl	Ryan Nichols - Trauma Studies and Conflict Resolution	page
+page	recapture-raw-shard-000010.jsonl	Ellen Emerson - Joseph Campbell and the Boy Who Was a Fire Hydrant	page
+page	recapture-raw-shard-000010.jsonl	Dennis Rendell+musings	page
+page	recapture-raw-shard-000010.jsonl	Jacob Forsythe - Trauma Studies and Conflict Resolution	page
 page	recapture-raw-shard-000010.jsonl	Thinking Archetypally about Waiting+discussion	page
 page	recapture-raw-shard-000010.jsonl	myth+Documents	page
 page	recapture-raw-shard-000011.jsonl	20121125+BW+RVW	page
@@ -132,13 +132,13 @@ page	recapture-raw-shard-000011.jsonl	20121203+BW+RVW	page
 page	recapture-raw-shard-000011.jsonl	20121217+BW+RVW	page
 page	recapture-raw-shard-000011.jsonl	20130117+BW+Time Tracking	page
 page	recapture-raw-shard-000011.jsonl	Anonymous+*account	page
-page	recapture-raw-shard-000011.jsonl	Brian Adkins	page
+page	recapture-raw-shard-000011.jsonl	Roland Fenwick	page
 page	recapture-raw-shard-000011.jsonl	Follow Your Bliss+discussion+*self	page
 page	recapture-raw-shard-000011.jsonl	JO BECKER and SCOTT SHANE - Secret Kill List Proves a Test of Obama’s Principles and Will+discussion	page
 page	recapture-raw-shard-000011.jsonl	Marie-Louise von Franz	page
-page	recapture-raw-shard-000011.jsonl	O Holy Night - Dallas TXmas 2011 - Brandon WilliamsCraig+*self	page
+page	recapture-raw-shard-000011.jsonl	O Holy Night - Dallas TXmas 2011 - Jessup Patrick+*self	page
 page	recapture-raw-shard-000011.jsonl	STEVEN GREENHOUSE - NY Times - How Costco Became the Anti-Wal-Mart+discussion	page
-page	recapture-raw-shard-000011.jsonl	Thomas Moore - An Altar to Artemis+discussion	page
+page	recapture-raw-shard-000011.jsonl	Neil Devereaux - An Altar to Artemis+discussion	page
 page	recapture-raw-shard-000011.jsonl	birth	page
 page	recapture-raw-shard-000012.jsonl	*TinyMCE+*self	page
 page	recapture-raw-shard-000012.jsonl	20130430+BW+Time Tracking	page
@@ -146,7 +146,7 @@ page	recapture-raw-shard-000012.jsonl	20130709+BW+RVW	page
 page	recapture-raw-shard-000012.jsonl	20130806+BW+RVW	page
 page	recapture-raw-shard-000012.jsonl	20131008+BW+Time Tracking	page
 page	recapture-raw-shard-000012.jsonl	Bradley Olson - The Disturbing Release of Personality+Associates	page
-page	recapture-raw-shard-000012.jsonl	Cheryl Honey graduates from Antioch 2004+Associates	page
+page	recapture-raw-shard-000012.jsonl	Clara Ellingham graduates from Antioch 2004+Associates	page
 page	recapture-raw-shard-000012.jsonl	Family Support Network	page
 page	recapture-raw-shard-000012.jsonl	Lowe Dissertation+Documents	page
 page	recapture-raw-shard-000012.jsonl	Pontual Dissertation	page
@@ -162,7 +162,7 @@ page	recapture-raw-shard-000013.jsonl	File+*right	page
 page	recapture-raw-shard-000013.jsonl	Item+Creator+*type plus right	page
 page	recapture-raw-shard-000013.jsonl	Item+Subject+*type plus right	page
 page	recapture-raw-shard-000013.jsonl	Kipnis - The End of Money	page
-page	recapture-raw-shard-000013.jsonl	Paula Craig - I love the way the Wisdom flows+discussion	page
+page	recapture-raw-shard-000013.jsonl	Antonio Ackland - I love the way the Wisdom flows+discussion	page
 page	recapture-raw-shard-000013.jsonl	Shen and Legum on Mandella+Associates	page
 page	recapture-raw-shard-000013.jsonl	aiki_consulting_exemplars	page
 page	recapture-raw-shard-000013.jsonl	slideshow+*type	page
@@ -190,7 +190,7 @@ page	recapture-raw-shard-000015.jsonl	Anonymous+*account+*email	page
 page	recapture-raw-shard-000015.jsonl	Don't Send Your Kid to the Ivy League	page
 page	recapture-raw-shard-000015.jsonl	ECT+discussion	page
 page	recapture-raw-shard-000015.jsonl	JavaScript	page
-page	recapture-raw-shard-000015.jsonl	Meredith Ann Seeley	page
+page	recapture-raw-shard-000015.jsonl	Meredith Anthony Hawthorne	page
 page	recapture-raw-shard-000015.jsonl	Sign up+*type+*captcha	page
 page	recapture-raw-shard-000015.jsonl	muffins	page
 page	recapture-raw-shard-000015.jsonl	test personage	page
@@ -215,7 +215,7 @@ page	recapture-raw-shard-000018.jsonl	20150920+BW+Time Tracking	page
 page	recapture-raw-shard-000018.jsonl	Bank accounts review	page
 page	recapture-raw-shard-000018.jsonl	David L Miller - Mything the Study of Myth	page
 page	recapture-raw-shard-000018.jsonl	Giovanni Sanchez	page
-page	recapture-raw-shard-000018.jsonl	Katie Johnson - Client	page
+page	recapture-raw-shard-000018.jsonl	Jordan Pennington - Client	page
 page	recapture-raw-shard-000018.jsonl	Norma Salinas	page
 page	recapture-raw-shard-000018.jsonl	Scampi+discussion	page
 page	recapture-raw-shard-000018.jsonl	Wagneer	page
@@ -232,7 +232,7 @@ page	recapture-raw-shard-000019.jsonl	Greek Mac and Cheese+discussion	page
 page	recapture-raw-shard-000019.jsonl	MNv videos+Pages	page
 page	recapture-raw-shard-000019.jsonl	NSAID+discussion	page
 page	recapture-raw-shard-000019.jsonl	The Leadership Circle training	page
-page	recapture-raw-shard-000019.jsonl	WilliamsCraig+Family Business+Argonne	page
+page	recapture-raw-shard-000019.jsonl	Iversen Jasmine+Mancini Business+Argonne	page
 page	recapture-raw-shard-000020.jsonl	20160424+BW+Time Tracking	page
 page	recapture-raw-shard-000020.jsonl	20160612+BW+Time Tracking	page
 page	recapture-raw-shard-000020.jsonl	20160708+BW+Time Tracking	page
@@ -243,7 +243,7 @@ page	recapture-raw-shard-000020.jsonl	AE Board communications	page
 page	recapture-raw-shard-000020.jsonl	Chicken Ziegler+tags	page
 page	recapture-raw-shard-000020.jsonl	Hazan grilled fish and pasta+discussion	page
 page	recapture-raw-shard-000020.jsonl	Media Library curation	page
-page	recapture-raw-shard-000020.jsonl	Talk Like It's Brandon's 41st Birth Day+tags	page
+page	recapture-raw-shard-000020.jsonl	Talk Like It's Casey's 41st Birth Day+tags	page
 page	recapture-raw-shard-000020.jsonl	blog+*self+*read	page
 page	recapture-raw-shard-000020.jsonl	tales and lore fairy and folk+discussion	page
 page	recapture-raw-shard-000021.jsonl	20130718+BW+RVW	page
@@ -253,11 +253,11 @@ page	recapture-raw-shard-000021.jsonl	20170117+BW+RVW	page
 page	recapture-raw-shard-000021.jsonl	Bertram Wohak+tags	page
 page	recapture-raw-shard-000021.jsonl	Christianity+Documents	page
 page	recapture-raw-shard-000021.jsonl	Derek Thompson - The Four-Letter Code to Selling Just About Anything+discussion	page
-page	recapture-raw-shard-000021.jsonl	George Lakoff - How Talking About Trump Makes Him Normal In Your Brain+discussion	page
-page	recapture-raw-shard-000021.jsonl	Huston Smith NYT Obit+tags	page
-page	recapture-raw-shard-000021.jsonl	Martha Eddy - Access to Somatic Theory and Applications - Socio-political Concerns	page
-page	recapture-raw-shard-000021.jsonl	Richard Rohr - Bias from the Bottom+Associates	page
-page	recapture-raw-shard-000021.jsonl	Thomas Moore Fb radical about non-violent solutions to conflict+discussion	page
+page	recapture-raw-shard-000021.jsonl	Diane Sutherland - How Talking About Trump Makes Him Normal In Your Brain+discussion	page
+page	recapture-raw-shard-000021.jsonl	Ellen Emerson NYT Obit+tags	page
+page	recapture-raw-shard-000021.jsonl	Danforth Amelia - Access to Somatic Theory and Applications - Socio-political Concerns	page
+page	recapture-raw-shard-000021.jsonl	Marilyn Halloran - Bias from the Bottom+Associates	page
+page	recapture-raw-shard-000021.jsonl	Neil Devereaux Fb radical about non-violent solutions to conflict+discussion	page
 page	recapture-raw-shard-000021.jsonl	christianism+discussion	page
 page	recapture-raw-shard-000022.jsonl	20170131+BW+Time Tracking	page
 page	recapture-raw-shard-000022.jsonl	20170216+BW+Time Tracking	page
@@ -266,8 +266,8 @@ page	recapture-raw-shard-000022.jsonl	20170321+BW+Time Tracking	page
 page	recapture-raw-shard-000022.jsonl	Aidan memorial updates and SUDC	page
 page	recapture-raw-shard-000022.jsonl	Cs Dev+design	page
 page	recapture-raw-shard-000022.jsonl	GRIP ED	page
-page	recapture-raw-shard-000022.jsonl	James S Gordon - Despite his lies Donald Trump is a potent truth-teller+tags	page
-page	recapture-raw-shard-000022.jsonl	Martha Eddy connection	page
+page	recapture-raw-shard-000022.jsonl	James S Gordon - Despite his lies Robert Whitfield is a potent truth-teller+tags	page
+page	recapture-raw-shard-000022.jsonl	Danforth Amelia connection	page
 page	recapture-raw-shard-000022.jsonl	Process Arts+discussion	page
 page	recapture-raw-shard-000022.jsonl	Soma+articles	page
 page	recapture-raw-shard-000022.jsonl	TinyLetter admin	page
@@ -280,7 +280,7 @@ page	recapture-raw-shard-000023.jsonl	20170526+BW+Time Tracking	page
 page	recapture-raw-shard-000023.jsonl	20170609+BW+Time Tracking	page
 page	recapture-raw-shard-000023.jsonl	Consulting+Pages	page
 page	recapture-raw-shard-000023.jsonl	Epworth UMC Retreat 2017	page
-page	recapture-raw-shard-000023.jsonl	Kayla Feder connection	page
+page	recapture-raw-shard-000023.jsonl	Caroline Quimby connection	page
 page	recapture-raw-shard-000023.jsonl	Of The Oppressed	page
 page	recapture-raw-shard-000023.jsonl	Pastitsio - Baked Pasta with Meat and Bechamel	page
 page	recapture-raw-shard-000023.jsonl	Ragged Wing Flight Deck Ensemble Communications Manager	page
@@ -294,11 +294,11 @@ page	recapture-raw-shard-000024.jsonl	20171002+BW+Time Tracking	page
 page	recapture-raw-shard-000024.jsonl	20171116+BW+Time Tracking	page
 page	recapture-raw-shard-000024.jsonl	20171208+BW+Time Tracking	page
 page	recapture-raw-shard-000024.jsonl	Black Mothers Keep Dying After Giving Birth Shalon Irvings Story Explains Why+discussion	page
-page	recapture-raw-shard-000024.jsonl	Gary Dorrien	page
+page	recapture-raw-shard-000024.jsonl	Helen Silverthorne	page
 page	recapture-raw-shard-000024.jsonl	PGI+DP+Soma+932	page
-page	recapture-raw-shard-000024.jsonl	Paul Bloom - The Root Of All Cruelty+discussion	page
+page	recapture-raw-shard-000024.jsonl	Jacqueline Croswell - The Root Of All Cruelty+discussion	page
 page	recapture-raw-shard-000024.jsonl	Rigatoni with meatballs+tags	page
-page	recapture-raw-shard-000024.jsonl	WilliamsCraig+Family Business+Financial+FTB	page
+page	recapture-raw-shard-000024.jsonl	Iversen Jasmine+Mancini Business+Financial+FTB	page
 page	recapture-raw-shard-000025.jsonl	20171218+BW+Time Tracking	page
 page	recapture-raw-shard-000025.jsonl	20180118+BW+Time Tracking	page
 page	recapture-raw-shard-000025.jsonl	20180206+BW+Time Tracking	page
@@ -308,9 +308,9 @@ page	recapture-raw-shard-000025.jsonl	20180423+BW+Time Tracking	page
 page	recapture-raw-shard-000025.jsonl	20180514+BW+Time Tracking	page
 page	recapture-raw-shard-000025.jsonl	Counter Campaign+discussion	page
 page	recapture-raw-shard-000025.jsonl	FAUXS - Fake Human Influencers - Artificial Yes - Intelligence No	page
-page	recapture-raw-shard-000025.jsonl	Louis Menand - Words of the Year 2017	page
-page	recapture-raw-shard-000025.jsonl	Michael Massing - Luther Evangelicalism and Trump+discussion	page
-page	recapture-raw-shard-000025.jsonl	Robert Dilts - Eye Movements and NLP+tags	page
+page	recapture-raw-shard-000025.jsonl	Roy Bridgewater - Words of the Year 2017	page
+page	recapture-raw-shard-000025.jsonl	Kelly Gallagher - Luther Evangelicalism and Trump+discussion	page
+page	recapture-raw-shard-000025.jsonl	Brian Stanhope - Eye Movements and NLP+tags	page
 page	recapture-raw-shard-000025.jsonl	USABP Presentation 20181102	page
 page	recapture-raw-shard-000026.jsonl	20180512+BW+RVW	page
 page	recapture-raw-shard-000026.jsonl	20180611+BW+Time Tracking	page
@@ -321,7 +321,7 @@ page	recapture-raw-shard-000026.jsonl	Benito Mussolini - What is Fascism+tags	pa
 page	recapture-raw-shard-000026.jsonl	Godan promotion	page
 page	recapture-raw-shard-000026.jsonl	Jung on the Human Body+Associates	page
 page	recapture-raw-shard-000026.jsonl	Leadership Council+discussion	page
-page	recapture-raw-shard-000026.jsonl	Philip Emminger connection	page
+page	recapture-raw-shard-000026.jsonl	Joseph Hawthorne connection	page
 page	recapture-raw-shard-000026.jsonl	Rich A Lee	page
 page	recapture-raw-shard-000026.jsonl	Utility - Mesquite TX Water Service	page
 page	recapture-raw-shard-000026.jsonl	heroism+tags	page
@@ -331,7 +331,7 @@ page	recapture-raw-shard-000027.jsonl	20180913+BW+Time Tracking	page
 page	recapture-raw-shard-000027.jsonl	20180924+BW+Time Tracking	page
 page	recapture-raw-shard-000027.jsonl	20181007+BW+Time Tracking	page
 page	recapture-raw-shard-000027.jsonl	3733 Strayhorn Dr Mesquite TX 75150 FirstKey Homes 657342+Project Management	page
-page	recapture-raw-shard-000027.jsonl	Bob Woodward’s new book reveals a ‘nervous breakdown’ of Trump’s presidency+Associates	page
+page	recapture-raw-shard-000027.jsonl	Mabel Salisbury’s new book reveals a ‘nervous breakdown’ of Trump’s presidency+Associates	page
 page	recapture-raw-shard-000027.jsonl	DAN SOLOMON - A Visual History Of Big Tex+discussion	page
 page	recapture-raw-shard-000027.jsonl	Eastfield CC Adjunct Faculty - Psychology 495298	page
 page	recapture-raw-shard-000027.jsonl	Larry Allums connection	page
@@ -344,7 +344,7 @@ page	recapture-raw-shard-000028.jsonl	20181123+BW+Time Tracking	page
 page	recapture-raw-shard-000028.jsonl	20190115+BW+Time Tracking	page
 page	recapture-raw-shard-000028.jsonl	20190305+BW+Time Tracking	page
 page	recapture-raw-shard-000028.jsonl	20190426+BW+Time Tracking	page
-page	recapture-raw-shard-000028.jsonl	Chris Dowdy connection	page
+page	recapture-raw-shard-000028.jsonl	Linda Cadwell connection	page
 page	recapture-raw-shard-000028.jsonl	FedEx Manager Administrative Assistant	page
 page	recapture-raw-shard-000028.jsonl	Marianne Cooper - The False Promise of Meritocracy	page
 page	recapture-raw-shard-000028.jsonl	PickaPapa+tags	page
@@ -357,9 +357,9 @@ page	recapture-raw-shard-000029.jsonl	20190913+BW+Time Tracking	page
 page	recapture-raw-shard-000029.jsonl	20191120+BW+Time Tracking	page
 page	recapture-raw-shard-000029.jsonl	20200124+BW+Time Tracking	page
 page	recapture-raw-shard-000029.jsonl	20200331+BW+Time Tracking	page
-page	recapture-raw-shard-000029.jsonl	Anna Cruickshank	page
+page	recapture-raw-shard-000029.jsonl	Roland Underhill	page
 page	recapture-raw-shard-000029.jsonl	Deloitte-Senior Manager-Enabling Areas Learning and Development E20NATSSRMJM101-HRL6	page
-page	recapture-raw-shard-000029.jsonl	Jean Stark	page
+page	recapture-raw-shard-000029.jsonl	Adam Gallagher	page
 page	recapture-raw-shard-000029.jsonl	Markdown	page
 page	recapture-raw-shard-000029.jsonl	Production+design+video	page
 page	recapture-raw-shard-000029.jsonl	St Stephen UMC	page
@@ -372,9 +372,9 @@ page	recapture-raw-shard-000030.jsonl	20200620+BW+Time Tracking	page
 page	recapture-raw-shard-000030.jsonl	20200719+BW+Time Tracking	page
 page	recapture-raw-shard-000030.jsonl	20200922+BW+Time Tracking	page
 page	recapture-raw-shard-000030.jsonl	Aikido and Bias+discussion	page
-page	recapture-raw-shard-000030.jsonl	Brandon Interviewed by Rafael Tonani	page
+page	recapture-raw-shard-000030.jsonl	Anders Northcote by Rafael Tonani	page
 page	recapture-raw-shard-000030.jsonl	Francisco Walsh	page
-page	recapture-raw-shard-000030.jsonl	Ruth Peyser Yamada Yoshimitsu New York Aikikai	page
+page	recapture-raw-shard-000030.jsonl	Grace Northcote Yamada Yoshimitsu New York Aikikai	page
 page	recapture-raw-shard-000030.jsonl	Walking Distance Neighbors+*self	page
 page	recapture-raw-shard-000030.jsonl	dena burd+Core Project	page
 page	recapture-raw-shard-000031.jsonl	20200920+BW+Time Tracking	page
@@ -401,7 +401,7 @@ page	recapture-raw-shard-000032.jsonl	20210718+BW+Time Tracking	page
 page	recapture-raw-shard-000032.jsonl	Archived Project+*type	page
 page	recapture-raw-shard-000032.jsonl	Create PM paper slips and print	page
 page	recapture-raw-shard-000032.jsonl	Lowe Dissertation+discussion	page
-page	recapture-raw-shard-000032.jsonl	TSYR Mythology Denki RFP - Karl Garrison	page
+page	recapture-raw-shard-000032.jsonl	TSYR Mythology Denki RFP - Evelyn Blackwood	page
 page	recapture-raw-shard-000032.jsonl	parent+articles	page
 page	recapture-raw-shard-000033.jsonl	20210528+BW+RVW	page
 page	recapture-raw-shard-000033.jsonl	20210818+BW+Time Tracking	page
@@ -428,7 +428,7 @@ page	recapture-raw-shard-000034.jsonl	20220325+BW+Time Tracking	page
 page	recapture-raw-shard-000034.jsonl	20220404+BW+Time Tracking	page
 page	recapture-raw-shard-000034.jsonl	Learning Pool+Customer Success Consultant	page
 page	recapture-raw-shard-000034.jsonl	Learning Pool+discussion	page
-page	recapture-raw-shard-000034.jsonl	Susan Steele relationship	page
+page	recapture-raw-shard-000034.jsonl	Henry Farnham relationship	page
 page	recapture-raw-shard-000035.jsonl	202200505+BW+RVW	page
 page	recapture-raw-shard-000035.jsonl	20220412+BW+Time Tracking	page
 page	recapture-raw-shard-000035.jsonl	20220421+BW+Time Tracking	page
@@ -521,7 +521,7 @@ page	recapture-raw-shard-000042.jsonl	20240922+BW+Time Tracking	page
 page	recapture-raw-shard-000042.jsonl	20241001+BW+Time Tracking	page
 page	recapture-raw-shard-000042.jsonl	20241010+BW+Time Tracking	page
 page	recapture-raw-shard-000042.jsonl	20241021+BW+Time Tracking	page
-page	recapture-raw-shard-000042.jsonl	Julia Napoles	page
+page	recapture-raw-shard-000042.jsonl	Maria Castellan	page
 page	recapture-raw-shard-000043.jsonl	20241026+BW+Time Tracking	page
 page	recapture-raw-shard-000043.jsonl	20241105+BW+Time Tracking	page
 page	recapture-raw-shard-000043.jsonl	20241115+BW+Time Tracking	page

@@ -6,9 +6,9 @@
 //   The 7 pages' ONLY diff region is an img src extension case: the engine
 //   serves ".../8871-medium.JPG" where the oracle serves
 //   ".../8871-medium.jpg" (Iris McGinnis 1490/8871, soul 18898/81618,
-//   Mikaela Keepin 10011/38377, Andrew Porter 10065/38821,
-//   Pacifica Graduate Institute 12002/51511-large, Henry Corbin
-//   14812/63653, Paula Craig Birthday 18149/79523-large).
+//   Rowan Lockhart 10011/38377, Brian Ahlgren 10065/38821,
+//   Pacifica Graduate Institute 12002/51511-large, Martha Ostrander
+//   14812/63653, Kelly Zeller 18149/79523-large).
 //
 //   Ruby mechanism: the served filename is built by the decko uploader, and
 //   its extension is DOWNCASED unconditionally --
@@ -43,15 +43,15 @@ describe("attachment served-filename extension case (uploader extension.downcase
     ["(my_bucket)/1490/8871.JPG", "medium", "http://s3.amazonaws.com//files/1490/8871-medium.jpg"],
     // soul: card 18898, source ".../81618.JPG"
     ["(my_bucket)/18898/81618.JPG", "medium", "http://s3.amazonaws.com//files/18898/81618-medium.jpg"],
-    // Mikaela Keepin: card 10011, ".../38377.JPG"
+    // Rowan Lockhart: card 10011, ".../38377.JPG"
     ["(my_bucket)/10011/38377.JPG", "medium", "http://s3.amazonaws.com//files/10011/38377-medium.jpg"],
-    // Andrew Porter: card 10065, ".../38821.JPG"
+    // Brian Ahlgren: card 10065, ".../38821.JPG"
     ["(my_bucket)/10065/38821.JPG", "medium", "http://s3.amazonaws.com//files/10065/38821-medium.jpg"],
-    // Henry Corbin: card 14812, ".../63653.JPG"
+    // Martha Ostrander: card 14812, ".../63653.JPG"
     ["(my_bucket)/14812/63653.JPG", "medium", "http://s3.amazonaws.com//files/14812/63653-medium.jpg"],
     // Pacifica Graduate Institute: card 12002, ".../51511.JPG" at size large
     ["(my_bucket)/12002/51511.JPG", "large", "http://s3.amazonaws.com//files/12002/51511-large.jpg"],
-    // Paula Craig Birthday - Dallas 2013: card 18149, ".../79523.JPG" large
+    // Kelly Zeller - Dallas 2013: card 18149, ".../79523.JPG" large
     ["(my_bucket)/18149/79523.JPG", "large", "http://s3.amazonaws.com//files/18149/79523-large.jpg"],
     // already-lowercase sources stay byte-identical (the 1000+ pins that
     // pass today must not move)

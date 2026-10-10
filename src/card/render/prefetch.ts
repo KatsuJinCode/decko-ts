@@ -885,7 +885,7 @@ async function driveClosure(
         // ("~861" — a TRASHED row the pointer/list item enrichment resolves
         // through the async lexicon's no-trash-filter read, lexicon.rb
         // #id_to_lex) must skip the reference, never unwind the whole
-        // prepare (the CB_role / WilliamsCraig Family +*members pages). The
+        // prepare (the CB_role / Morgan Family +*members pages). The
         // render's item path reports true fetch misses.
         let name: DeckoName;
         try {

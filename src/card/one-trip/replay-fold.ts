@@ -592,8 +592,8 @@ export function decomposeMergedRows(
 // depend on mid-flight cache evolution; a bind set that differs from record
 // time misses the armed map's exact (sql, params) key and the statement
 // rides live in a small batch. Measured record-vs-live shapes: the recorded
-// ask `IN ("", "", "", "", "", "kayla_feder", "recommendation")` comes back
-// live as `IN ("kayla_feder", "recommendation")` — the SAME question with
+// ask `IN ("", "", "", "", "", "joan_callahan", "recommendation")` comes back
+// live as `IN ("joan_callahan", "recommendation")` — the SAME question with
 // the cache-warmed holes gone.
 //
 // THE CURE (spec §2): the drift classes' answers are indexed by BIND VALUE,

@@ -341,8 +341,8 @@ describe("the page head's edit link uses the card's url key (head.rb universal_e
     expect(await universalEditButtonTag(engine, card("ABCglobal+Organizer(s)"))).toBe(
       '<link rel="alternate" type="application/x-wiki" title="Edit this page!" href="/ABCglobal+Organizer_s/edit" />',
     );
-    expect(await universalEditButtonTag(engine, card("Huston Smith - Joseph Campbell"))).toBe(
-      '<link rel="alternate" type="application/x-wiki" title="Edit this page!" href="/Huston_Smith_Joseph_Campbell/edit" />',
+    expect(await universalEditButtonTag(engine, card("Kirsten Cadwell - Joseph Campbell"))).toBe(
+      '<link rel="alternate" type="application/x-wiki" title="Edit this page!" href="/Kirsten_Cadwell_Joseph_Campbell/edit" />',
     );
   });
 });

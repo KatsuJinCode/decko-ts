@@ -139,7 +139,7 @@ export async function createRawStructureSeededStorage(
   // The oracle deck's inflection table (uncountables s/this/anonymous),
   // recovered from the production-stored keys, applied before any corpus
   // name is parsed so engine key computation matches the keys the oracle
-  // deck stored/rendered (participant_s, at_this_time, brandon_s ...).
+  // deck stored/rendered (participant_s, at_this_time, casey_s ...).
   // Without this the 105-row key/inflection family diverges (merge-pass-2
   // finding A / view-lane class 3).
   bootOracleDeckInflections();

@@ -22,7 +22,7 @@
 //     at the view-permission gate (view/permission.rb:19-23
 //     altered_view) before any slot wrap. The dual-lane raw oracle
 //     pins this 538 times (expected-v2 census) — e.g. "ABCglobal
-//     20100722 Iris Nick Leon Brandon" under
+//     20100722 Camille Dahlgren Casey" under
 //     "Center for Embodied Change+Pages" open — and NEVER renders a
 //     mini_bar wrap for a denied item with a row. The mini_bar slot is
 //     bar.rb:9's UNKNOWN-card substitution (`view :bar, unknown:

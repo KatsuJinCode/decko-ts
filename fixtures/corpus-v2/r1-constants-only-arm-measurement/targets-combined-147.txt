@@ -18,11 +18,11 @@ page	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+im
 page	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+image05+discussion	page
 page	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+image06+discussion	page
 page	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+image07+discussion	page
-page	recapture-raw-shard-000013.jsonl	Williamscraig	page
+page	recapture-raw-shard-000013.jsonl	Morgan	page
 page	recapture-raw-shard-000016.jsonl	Guns	page
 page	recapture-raw-shard-000016.jsonl	Project+Task+*type plus right	page
 page	recapture-raw-shard-000017.jsonl	Message+Conversation+*type plus right	page
-page	recapture-raw-shard-000018.jsonl	Brandon feedback+discussion	page
+page	recapture-raw-shard-000018.jsonl	Casey feedback+discussion	page
 page	recapture-raw-shard-000019.jsonl	A Taste of Your Own Medicine The Problematic Nature of Revenge+discussion	page
 page	recapture-raw-shard-000029.jsonl	*all+*head	page
 page	recapture-raw-shard-000029.jsonl	Administrator+Dashboard	page
@@ -30,7 +30,7 @@ page	recapture-raw-shard-000029.jsonl	Help Desk	page
 page	recapture-raw-shard-000029.jsonl	PCTS+*self+*head	page
 page	recapture-raw-shard-000029.jsonl	Pointer	page
 page	recapture-raw-shard-000029.jsonl	Shark	page
-page	recapture-raw-shard-000039.jsonl	Kayla Feder 20230902+discussion	page
+page	recapture-raw-shard-000039.jsonl	Caroline Quimby 20230902+discussion	page
 page	recapture-raw-shard-000039.jsonl	mod: account	page
 page	recapture-raw-shard-000039.jsonl	mod: bootstrap	page
 page	recapture-raw-shard-000039.jsonl	mod: carrierwave	page
@@ -63,18 +63,18 @@ view	recapture-raw-shard-000003.jsonl	*star	open
 view	recapture-raw-shard-000003.jsonl	BDWC_academic_resume+*self	open
 view	recapture-raw-shard-000003.jsonl	Plans+*self	content
 view	recapture-raw-shard-000004.jsonl	Americanism+*self	content
-view	recapture-raw-shard-000004.jsonl	Jeffrey Hohenstein+*self	open
+view	recapture-raw-shard-000004.jsonl	Diana Ostrander+*self	open
 view	recapture-raw-shard-000004.jsonl	Please pre-register+*self	open
 view	recapture-raw-shard-000005.jsonl	Aikido video+*self	open
 view	recapture-raw-shard-000005.jsonl	Klickstein continues+discussion	open
 view	recapture-raw-shard-000005.jsonl	Library - BW+*self	open
-view	recapture-raw-shard-000006.jsonl	Andrew Porter	open
+view	recapture-raw-shard-000006.jsonl	Julia Carmichael	open
 view	recapture-raw-shard-000006.jsonl	How Can I Keep From Singing - Lyrics+discussion	open
 view	recapture-raw-shard-000007.jsonl	*input type+*right+*content options	closed
 view	recapture-raw-shard-000007.jsonl	*input type+*right+*content options	content
 view	recapture-raw-shard-000007.jsonl	*input type+*right+*content options	open
 view	recapture-raw-shard-000008.jsonl	media+GBA+YouTube Browser	open
-view	recapture-raw-shard-000009.jsonl	Antero Alli - Astrology as Archetypal Language+tags	open
+view	recapture-raw-shard-000009.jsonl	Cora Rasmussen - Astrology as Archetypal Language+tags	open
 view	recapture-raw-shard-000010.jsonl	politics+Documents	open
 view	recapture-raw-shard-000011.jsonl	The Habit - a predictable travesty	open
 view	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+image01+discussion	open
@@ -97,12 +97,12 @@ view	recapture-raw-shard-000017.jsonl	Free Aiki Dojo and Golden Bears Aikido tra
 view	recapture-raw-shard-000017.jsonl	Message+Conversation+*type plus right	content
 view	recapture-raw-shard-000017.jsonl	Message+Conversation+*type plus right	open
 view	recapture-raw-shard-000017.jsonl	darkly skin	open
-view	recapture-raw-shard-000018.jsonl	Brandon feedback+discussion	open
+view	recapture-raw-shard-000018.jsonl	Casey feedback+discussion	open
 view	recapture-raw-shard-000018.jsonl	Conflict Resolution Plan Prepares You to Move From Mediation to Blood Sport	open
 view	recapture-raw-shard-000019.jsonl	A Taste of Your Own Medicine The Problematic Nature of Revenge+discussion	open
 view	recapture-raw-shard-000021.jsonl	Bessel van der Kolk Here and Now New Ways Of Treating Trauma Try Some Yoga+Associates	open
 view	recapture-raw-shard-000022.jsonl	Soma+tags	open
-view	recapture-raw-shard-000024.jsonl	WilliamsCraig+Vacations+Pages	open
+view	recapture-raw-shard-000024.jsonl	Iversen Eileen+Bellweather+Pages	open
 view	recapture-raw-shard-000024.jsonl	Wishlist+tags	open
 view	recapture-raw-shard-000025.jsonl	children	open
 view	recapture-raw-shard-000027.jsonl	Perennial Wisdom Tradition	open
@@ -122,8 +122,8 @@ view	recapture-raw-shard-000033.jsonl	Wikirate	open
 view	recapture-raw-shard-000034.jsonl	Intellectual Property+Unsecured	open
 view	recapture-raw-shard-000036.jsonl	Pork Roast Clay Baked+discussion	open
 view	recapture-raw-shard-000037.jsonl	Work Week	open
-view	recapture-raw-shard-000039.jsonl	Kayla Feder 20230902	open
-view	recapture-raw-shard-000039.jsonl	Kayla Feder 20230902+discussion	open
+view	recapture-raw-shard-000039.jsonl	Caroline Quimby 20230902	open
+view	recapture-raw-shard-000039.jsonl	Caroline Quimby 20230902+discussion	open
 view	recapture-raw-shard-000039.jsonl	Mod	content
 view	recapture-raw-shard-000039.jsonl	Mod	open
 view	recapture-raw-shard-000039.jsonl	mod: account	closed
@@ -141,6 +141,6 @@ view	recapture-raw-shard-000039.jsonl	mod: search	closed
 view	recapture-raw-shard-000039.jsonl	mod: session	closed
 view	recapture-raw-shard-000039.jsonl	mod: style	closed
 view	recapture-raw-shard-000039.jsonl	mod: tinymce editor	closed
-view	recapture-raw-shard-000041.jsonl	Rosalie Williamscraig	open
+view	recapture-raw-shard-000041.jsonl	Gregory Ellsworth	open
 view	recapture-raw-shard-000043.jsonl	Conflict Done Well+WE Greiner	open
-view	recapture-raw-shard-000045.jsonl	Huston Williamscraig	open
+view	recapture-raw-shard-000045.jsonl	Helen Ostrander	open

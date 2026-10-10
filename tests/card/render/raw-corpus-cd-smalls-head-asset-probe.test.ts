@@ -48,7 +48,7 @@ const CORPUS_PRESENT = existsSync(RAW_CORPUS_DB);
 const PROBE_CARDS = [
   "*signin",
   "*recent settings",
-  "Kayla Feder 20230902+discussion",
+  "Joan Callahan 20230902+discussion",
   "Very Rosie July 4 in 2013+Gallery10vert+image01+discussion",
   "A Taste of Your Own Medicine The Problematic Nature of Revenge+discussion",
   "Home",

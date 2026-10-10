@@ -66,12 +66,12 @@ view	recapture-raw-shard-000043.jsonl	mod: account+*script	closed
 view	recapture-raw-shard-000043.jsonl	mod: shades+*script	closed
 page	recapture-raw-shard-000043.jsonl	mod: account+*script	page
 page	recapture-raw-shard-000043.jsonl	mod: shades+*script	page
-view	recapture-raw-shard-000021.jsonl	Don't Wait For The Study+*self+Brandon WilliamsCraig+*follow	closed
-view	recapture-raw-shard-000021.jsonl	Don't Wait For The Study+*self+Brandon WilliamsCraig+*follow	open
+view	recapture-raw-shard-000021.jsonl	Don't Wait For The Study+*self+Casey Morgan+*follow	closed
+view	recapture-raw-shard-000021.jsonl	Don't Wait For The Study+*self+Casey Morgan+*follow	open
 view	recapture-raw-shard-000017.jsonl	*all+*all+*follow	closed
 view	recapture-raw-shard-000017.jsonl	*all+*all+*follow	open
-view	recapture-raw-shard-000029.jsonl	Make Contact+*self+Brandon WilliamsCraig+*follow	closed
-view	recapture-raw-shard-000029.jsonl	Make Contact+*self+Brandon WilliamsCraig+*follow	open
-page	recapture-raw-shard-000021.jsonl	Don't Wait For The Study+*self+Brandon WilliamsCraig+*follow	page
+view	recapture-raw-shard-000029.jsonl	Make Contact+*self+Casey Morgan+*follow	closed
+view	recapture-raw-shard-000029.jsonl	Make Contact+*self+Casey Morgan+*follow	open
+page	recapture-raw-shard-000021.jsonl	Don't Wait For The Study+*self+Casey Morgan+*follow	page
 page	recapture-raw-shard-000017.jsonl	*all+*all+*follow	page
-page	recapture-raw-shard-000029.jsonl	Make Contact+*self+Brandon WilliamsCraig+*follow	page
+page	recapture-raw-shard-000029.jsonl	Make Contact+*self+Casey Morgan+*follow	page

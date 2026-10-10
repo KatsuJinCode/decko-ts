@@ -65,7 +65,7 @@ beforeAll(async () => {
   await seedCard(s, { id: 3, name: "*read", codename: "read" });
   await seedCard(s, { id: 16, name: "*self", codename: "self" });
   // An owner-only read rule: "*self+*read" on one card granting the owner
-  // alone (the Red Book considered rule shape — [[David Williams]]). The
+  // alone (the Red Book considered rule shape — [[Bridget Castellan]]). The
   // rule hangs off the *self SET card (left, Set-typed — the ReadRuleCache
   // join's sets.type_id filter), right_id the *read setting.
   await seedCard(s, {

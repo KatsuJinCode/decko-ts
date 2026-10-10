@@ -3,12 +3,12 @@ view	recapture-raw-shard-000001.jsonl	Romain Barnard+Core Project	open
 view	recapture-raw-shard-000003.jsonl	BDWC_academic_resume+*self	open
 view	recapture-raw-shard-000003.jsonl	Plans+*self	content
 view	recapture-raw-shard-000004.jsonl	Americanism+*self	content
-view	recapture-raw-shard-000004.jsonl	Jeffrey Hohenstein+*self	open
+view	recapture-raw-shard-000004.jsonl	Diana Ostrander+*self	open
 view	recapture-raw-shard-000004.jsonl	Please pre-register+*self	open
 view	recapture-raw-shard-000005.jsonl	Aikido video+*self	open
 view	recapture-raw-shard-000005.jsonl	Library - BW+*self	open
 view	recapture-raw-shard-000006.jsonl	How Can I Keep From Singing - Lyrics+discussion	open
-view	recapture-raw-shard-000009.jsonl	Antero Alli - Astrology as Archetypal Language+tags	open
+view	recapture-raw-shard-000009.jsonl	Cora Rasmussen - Astrology as Archetypal Language+tags	open
 view	recapture-raw-shard-000010.jsonl	politics+Documents	open
 view	recapture-raw-shard-000013.jsonl	Item+*type	content
 view	recapture-raw-shard-000015.jsonl	Plans+*right	open

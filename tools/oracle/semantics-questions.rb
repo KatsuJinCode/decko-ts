@@ -165,7 +165,7 @@ CQL_QUERIES = [
   { "label" => "plus_rstar", "query" => { "plus" => "*rstar", "sort" => "name" } },
   { "label" => "plus_type", "query" => { "plus" => "*type", "sort" => "name" } },
   { "label" => "name_star", "query" => { "name" => "*all" } },
-  { "label" => "name_person_any", "query" => { "name" => "David Williams" } },
+  { "label" => "name_person_any", "query" => { "name" => "Bridget Castellan" } },
   { "label" => "not_cardtype", "query" => { "not" => { "type" => "Cardtype" }, "type" => "Person", "sort" => "name" } },
   { "label" => "type_desc", "query" => { "type" => "Person", "sort" => "name", "dir" => "desc" } },
   { "label" => "type_create_desc", "query" => { "type" => "Person", "sort" => "create", "dir" => "desc", "limit" => 30 } },

@@ -63,7 +63,7 @@ function deckInflectionsActive() {
  *  key-repair hook, under the deployed deck's inflection table
  *  (src/card/name/oracle-deck-inflections.ts) exactly as a serving boot
  *  applies it. Without the table, names containing "Anonymous", "this" or a
- *  lone "s" ("Participant(s)", "Brandon's") get keys no serving engine or
+ *  lone "s" ("Participant(s)", "Casey's") get keys no serving engine or
  *  Ruby deck looks up, and those cards become unreachable by name. */
 export function deriveKeyWithEngine(name) {
   if (!deckInflectionsActive()) applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);

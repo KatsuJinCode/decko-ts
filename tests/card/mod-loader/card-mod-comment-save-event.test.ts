@@ -254,11 +254,11 @@ describe("E6 add_comment — the helper byte shapes (comment.jsonl + gem source)
       "[[Joe User]]",
     );
     // the capture's format|comment_signature_anonymous ran with
-    // Env.params[:comment_author] = "Brandon" → "Brandon (Not signed in)"
+    // Env.params[:comment_author] = "Casey" → "Casey (Not signed in)"
     // is the param arm's shape (the capture's OWN author fell through to
     // "Anonymous" because the runner's Env.params carried no comment_author).
-    expect(commentAuthorFor({ signedInActorName: undefined, commentAuthor: "Brandon" })).toBe(
-      "Brandon (Not signed in)",
+    expect(commentAuthorFor({ signedInActorName: undefined, commentAuthor: "Casey" })).toBe(
+      "Casey (Not signed in)",
     );
     expect(commentAuthorFor({ signedInActorName: undefined, commentAuthor: undefined })).toBe(
       "Anonymous (Not signed in)",

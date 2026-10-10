@@ -69,7 +69,7 @@ const CENSUS_TARGETS = [
   ["*rstar", "recapture-raw-shard-000003.jsonl", "open"],
   ["*star", "recapture-raw-shard-000003.jsonl", "content"],
   ["*star", "recapture-raw-shard-000003.jsonl", "open"],
-  ["Andrew Porter", "recapture-raw-shard-000006.jsonl", "open"],
+  ["Brian Ahlgren", "recapture-raw-shard-000006.jsonl", "open"],
   ["RichText+Gallery10+*type plus right", "recapture-raw-shard-000006.jsonl", "content"],
   ["RichText+Gallery10+*type plus right", "recapture-raw-shard-000006.jsonl", "open"],
 ];

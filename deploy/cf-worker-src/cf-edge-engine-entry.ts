@@ -8,7 +8,7 @@
 // CloudflareD1Adapter, timed into the same per-isolate ledger so
 // Server-Timing's db/stmt mean the same thing on both hosts.
 //
-// Read-only and uncached by configuration (deploy/cf-brandon/wrangler.toml):
+// Read-only and uncached by configuration (deploy/cf-casey/wrangler.toml):
 // DECKO_WRITE_PATH=0, DECKO_EDGE_CACHE=0, DECKO_EDGE_GLOBAL_CACHE=0.
 //
 // Build: node tools/bundle-cf-edge-engine.mjs  ->  deploy/dist/cf-edge-engine.bundle.js

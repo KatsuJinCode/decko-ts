@@ -15,8 +15,8 @@
 //   - view WITHOUT `unknown: true` (the implicit nest view on a plain
 //     card): alter_unknown substitutes :unknown (format/error.rb:23),
 //     whose createable gate renders "" for Anonymous — corpus 10488
-//     `Steven Goldin+Menu`, blank `{{}}` -> empty on content/open.
-//     RE-PROVEN LIVE 2026-10-03: example.com/Steven_Goldin+Menu
+//     `June Jessup+Menu`, blank `{{}}` -> empty on content/open.
+//     RE-PROVEN LIVE 2026-10-03: example.com/June_Jessup+Menu
 //     ?view=content|open carry zero denial spans and the stored raw
 //     content still embeds the blank nest (fetch tmp/live-10488/ logs,
 //     live-truth-application-lane.md).

@@ -26,7 +26,7 @@
 //     wrap AND the inner pointer-list. Raw expected-byte citation:
 //     `...<div class='accordion-body d0-card-body'>\n` +
 //     `<div id="Xhome-content-view" class="card-slot content-view ALL TYPE-pointer STAR SELF-Xhome d0-card-content" data-card-id="77" data-card-name="*home" data-card-type-id="34843" data-card-type-name="Pointer" data-card-link-name="*home" data-slot-id="RANDOMIZED" data-slot="{&quot;view&quot;:&quot;content&quot;,&quot;show&quot;:[&quot;open&quot;,&quot;bar_bottom&quot;,&quot;content&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;content&quot;}"><div class="card-list card-list-bar pointer-list">...`.
-//     corpus:792 Brandon WilliamsCraig+Pages list card at
+//     corpus:792 Casey Morgan+Pages list card at
 //     fixtures/corpus/shard-000000.jsonl is the same shape (the
 //     canonical set-card-with-right-TYPE example named in the cluster
 //     doc). The OLD test pinned the inverse ("no content-view wrap")
@@ -42,8 +42,8 @@
 // Cross-shard survey: the 690 cluster entries are the union of rule
 // cards (corpus:6551-7118 in shard-000003, parallel entries in
 // shard-000004, every entry has `id >= 6551`) and non-rule
-// pointer/list cards (corpus:77 *home, corpus:792 Brandon
-// WilliamsCraig+Pages, etc.). The byte-diff character pair `c/i` (or
+// pointer/list cards (corpus:77 *home, corpus:792 Casey
+// Morgan+Pages, etc.). The byte-diff character pair `c/i` (or
 // `i/c` depending on direction) marks the slot-wrap boundary at
 // offset ~2400-2700 of every failing entry.
 

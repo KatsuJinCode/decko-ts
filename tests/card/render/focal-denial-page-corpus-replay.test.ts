@@ -16,7 +16,7 @@
 //      controls pin the OVER-DENY direction with denial-direction
 //      INVARIANTS (no denial frame, no Sorry heading, the main slot still
 //      renders) -- deliberately NOT full byte equality, because one control
-//      (Brandon WilliamsCraig 393) carries the corpus' known
+//      (Casey Morgan 393) carries the corpus' known
 //      link-query-dropped class (wanted-card href loses its
 //      ?card[name]= query; a graded-corpus divergence family outside this
 //      suite's contract -- pinning it here would gate this suite on another

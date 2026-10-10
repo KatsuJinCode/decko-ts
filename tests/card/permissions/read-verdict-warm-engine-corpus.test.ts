@@ -28,7 +28,7 @@ const REPLAY_REQUESTED = process.env.PERM_WARM_VERDICT_REPLAY === "1";
 const describeIfCorpus = describeWithCorpus(REPLAY_REQUESTED, "tests/card/permissions/read-verdict-warm-engine-corpus.test.ts", "corpus replay was not requested (set DECKO_TS_CORPUS_REPLAY=1)");
 
 const WARMUP_PAGES = [
-  "Lauren Rayburn+*account",
+  "Eileen Cavendish+*account",
   "20160420+CM+Time Tracking+1015",
   "20201230+CM+Time Tracking",
   "Len Forfang memorial service prep+Project",

@@ -154,7 +154,7 @@ end
 fmt = Card.fetch("Supercard").format
 emit("comment.jsonl", card: "Supercard", format: "format", view: "comment_signature_anonymous",
      bytes: begin
-       Card::Env.params[:comment_author] = "Brandon"
+       Card::Env.params[:comment_author] = "Casey"
        fmt.comment_signature
      ensure
        Card::Env.params.delete(:comment_author)

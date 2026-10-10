@@ -1,5 +1,5 @@
 // URI scanner trailing word boundary + TLD list parity (the p20-autolink
-// pass's page 11251 "IT'S ALL ABOUT ANGELS by Paula Craig" fix).
+// pass's page 11251 "IT'S ALL ABOUT ANGELS by Daniel Ferreira" fix).
 //
 // Ruby truth (card-mod-content-0.20.0 lib/card/content/chunk/uri.rb, the gem
 // the oracle app runs):

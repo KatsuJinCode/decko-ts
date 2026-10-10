@@ -19,8 +19,8 @@
 // carries NO +*default rule rows at all, so the template walk returns
 // undefined on the raw corpus and the raw constants apply).
 //
-// Graded surface: RVW (List card 4094, content "Rosalie Victoria
-// Williamscraig" -- a simple-named phantom). The canvas fail
+// Graded surface: RVW (List card 4094, content "Catherine Rothschild
+// Morgan" -- a simple-named phantom). The canvas fail
 // dual-lane-view:RVW:render:open is a single -2 region: the engine emits
 // data-card-type-id="3"/data-card-type-name="RichText"/TYPE-rich_text where
 // the corpus pins 22281/"BasicCs"/basic_c in all four identity spots (slot
@@ -83,8 +83,8 @@ describeOrSkipLoud(!RUN, "tests/card/render/phantom-item-simple-name-basic-cs-co
       // The graded entry's ONLY divergence at the lane base was the phantom
       // identity tokens (single -2 region, first diff at 2503). Pin all four
       // identity spots on the item slot.
-      expect(actual).toContain('id="rosalie_victorium_williamscraig-mini_bar-view"');
-      const slotStart = actual.indexOf('id="rosalie_victorium_williamscraig-mini_bar-view"');
+      expect(actual).toContain('id="rosalie_victorium_morgan-mini_bar-view"');
+      const slotStart = actual.indexOf('id="rosalie_victorium_morgan-mini_bar-view"');
       const slotTag = actual.slice(slotStart, actual.indexOf(">", slotStart) + 1);
       expect(slotTag).toContain("TYPE-basic_c");
       expect(slotTag).not.toContain("TYPE-rich_text");

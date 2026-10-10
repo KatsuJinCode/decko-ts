@@ -201,7 +201,7 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/version-bump-and-warm-render
     // A real signed-in actor of the corpus (the edge's signed-in viewers
     // are actors of exactly this kind).
     const person = await corpus.query<{ id: number }>(
-      "SELECT id FROM cards WHERE \"key\" = 'lisa_william_craig' AND trash = 0 LIMIT 1",
+      "SELECT id FROM cards WHERE \"key\" = 'rowan_morgan' AND trash = 0 LIMIT 1",
       [],
     );
     actorId = person.rows[0]!.id;
