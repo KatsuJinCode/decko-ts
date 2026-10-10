@@ -15,7 +15,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-const GENERATOR_VERSION = 1;
+const GENERATOR_VERSION = 2;
 const out = process.argv[2];
 if (!out) {
   console.error("usage: generate-deck.mjs <fixtureDir>");
@@ -56,6 +56,10 @@ const add = (card) => cards.push(card);
 const ACTORS = {
   anonymous: { card: "Anonymous" },
   member: { card: "Mira Member", email: "mira.member@example.test", password: "Fixture member pass 1#" },
+  // v2: a second custom role, so the read lattice carries two distinct
+  // non-admin roles (a card Member may read that Contractor may not, and
+  // the reverse).
+  contractor: { card: "Quinn Contractor", email: "quinn.contractor@example.test", password: "Fixture contractor pass 3#" },
   admin: { card: "Ada Admin", email: "ada.admin@example.test", password: "Fixture admin pass 2#" },
 };
 
@@ -191,9 +195,64 @@ add({ name: "Report Index", type: "RichText", content: "{{Report 1}}\n{{Report 2
 add({ name: "email stylesheet", type: "SCSS" });
 add({ name: "*all+Mira Member+*follow", content: "*always" });
 
+// ---- v2 coverage additions ------------------------------------------------------------
+// The seconds corpus renders every view the composed deck can serve (see
+// reference-harness/corpus/coverage-view-ops.mjs). These cards give every
+// registration a concrete card to render: one card per stock card type the
+// seed lacks, a second custom role with its own read rules, the account and
+// api-key surfaces, the mod card surface, and the discussion/help/rule
+// machinery the view table names.
+add({ name: "Contractor", type: "Role" });
+add({ name: "Contractor+*members", content: "[[Quinn Contractor]]" });
+add({
+  name: "Quinn Contractor",
+  type: "User",
+  fields: {
+    "+*account": { fields: { "+*email": ACTORS.contractor.email, "+*password": ACTORS.contractor.password, "+*status": "active" } },
+    "+*api_key": "corpuscontractorkey0000000001",
+  },
+});
+add({ name: "Ada Admin+*api_key", content: "corpusadminkey000000000000001" });
+add({ name: "Ada Admin+*follow", content: "*always" });
+// Permission lattice: a memo (Member-readable by type) a contractor is
+// denied; a contractor-only note; a signed-in-only note.
+add({ name: "Contractor Memo 01", type: "Memo", content: `<p>${sentence(6)}</p>` });
+add({ name: "Contractor Note 01", type: "RichText", content: `<p>${sentence(6)}</p>` });
+add({ name: "Contractor Note 01+*self+*read", type: "Pointer", content: "[[Contractor]]" });
+add({ name: "Shared Note 01", type: "RichText", content: `<p>${sentence(6)}</p>` });
+add({ name: "Shared Note 01+*self+*read", type: "Pointer", content: "[[Anyone Signed In]]" });
+add({ name: "Topic 001+*self+*update", type: "Pointer", content: "[[Member]]" });
+// One card per stock type the v1 deck did not carry.
+add({ name: "Example Site", type: "URI", content: "http://deck.example/scene" });
+add({ name: "Markdown Guide", type: "Markdown", content: "## Heading\n\nA **bold** word and a [link](http://deck.example)." });
+add({ name: "Reading List", type: "Link list", content: "[[Topic 001]]\n[[Topic 002]]" });
+add({ name: "Panel Layout", type: "Nest list", content: "summary\ntags" });
+add({ name: "Corpus List", type: "List", content: "[[Topic 001]]\n[[Topic 002]]" });
+add({ name: "Corpus Script", type: "JavaScript", content: "/* corpus script */\nwindow.corpusMarker = 1;\n" });
+add({ name: "Corpus Style", type: "SCSS", content: ".corpus { color: #35507f; }\n" });
+add({ name: "Corpus Layout", type: "Layout", content: "[[Corpus Header]]\n|open content|\n[[Corpus Footer]]" });
+add({ name: "Corpus Header", type: "RichText", content: "<p>Corpus header.</p>" });
+add({ name: "Corpus Footer", type: "RichText", content: "<p>Corpus footer.</p>" });
+add({
+  name: "Cohort Welcome",
+  type: "Email template",
+  fields: { "+*subject": "Welcome to the corpus", "+*html_message": "<p>Welcome, {{_self+*subject}}.</p>", "+*text_message": "Welcome to the corpus." },
+});
+add({ name: "Corpus Skin", type: "Bootswatch skin", content: "default", fields: { "+*colors": "" } });
+add({ name: "mod: script+*script", content: "" });
+add({ name: "mod: style+*style", content: "" });
+// Discussions (comment machinery) and a type help rule (help machinery).
+add({ name: "Topic 001+discussion", type: "RichText", content: "<p>First comment.</p>" });
+add({ name: "Topic 002+discussion", type: "RichText", content: "" });
+add({ name: "Note+*type+*help", type: "RichText", content: "<p>A note records an observation.</p>" });
+// The image-type views render on the seed's own coded-storage Image cards
+// (*favicon, Decko logo), so the corpus adds no upload of its own: uploads'
+// persistence parity is synthetic-v1's File-card ground, and the view family
+// needs only existing Image cards.
+
 const deck = {
   format: "decko-reference-deck/1",
-  name: "synthetic-v1",
+  name: path.basename(out),
   generator: { script: "reference-harness/corpus/generate-deck.mjs", version: GENERATOR_VERSION },
   base: { seed: "decko setup", decko: "0.20.0", card: "1.110.0" },
   clock: "2026-09-19T12:00:00Z",

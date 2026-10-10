@@ -716,6 +716,24 @@ export class RenderEngine implements RenderEngineLike {
   private ruleTypeIds:
     | { setting: number | undefined; set: number | undefined; user: number | undefined }
     | undefined;
+  /** Keys of COMPOUND cards whose set keys were computed while ruleTypeIds
+   *  was still undefined — exactly the enrichment state where the RULE
+   *  pattern's applies? cannot answer and safeSetKeys writes the set keys
+   *  WITHOUT the bare RULE token (06_rule.rb; the corpus's rule-page
+   *  key-order family). The rule set-key repair below re-derives those
+   *  cards' set keys once the ids exist, then clears this record, so the
+   *  repair's gate is the HAZARD itself ("cards seated before the ids
+   *  folded") rather than the ids' temperature: the help resolver
+   *  (help-popover.ts prepare) memoizes ruleTypeIds during the mod
+   *  prepare phase — BEFORE the first render — while the boot-time rule
+   *  cache (card-mod-rules prepareRuleCache, earlier in the same prepare
+   *  phase) has already enriched the deck's rule cards without them.
+   *  Gating on ruleTypeIds === undefined there skipped the repair forever
+   *  and left every deck-created rule card's page slot one token short
+   *  (the 118 pinned corpus ops this field retires). Cleared on
+   *  resetCaches() beside ruleTypeIds (the map the keys point into is
+   *  dropped with it). */
+  private setKeysPendingRuleTypes = new Set<string>();
   /** existing-rule resolution for VIRTUAL rule cards — the port of
    *  card-mod-rules set/rule/editor.rb:119-131 find_existing_rule_card
    *  (`new_card? ? existing_rule_from_prototype : self`): for a rule card
@@ -1294,7 +1312,7 @@ export class RenderEngine implements RenderEngineLike {
       // check that admitted it.
       this.bootProbeVersion = undefined;
     }
-    if (ruleTypesCold) {
+    if (ruleTypesCold || this.setKeysPendingRuleTypes.size > 0) {
       // Warm-closure FIRST render: the fold above never ran (the batch is
       // skipped), so parse here defensively - one standalone codename load,
       // once per engine (parseRuleTypeIds' own defensive branch).
@@ -1309,17 +1327,30 @@ export class RenderEngine implements RenderEngineLike {
       // never recomputed them. Re-derive now that the ids are folded:
       // structurePatternInputForSync is the SAME input contract safeSetKeys
       // consumes (its doc), and every compound card's name parts are
-      // enriched ahead of it, so the sync predicate resolves. Runs once per
-      // engine (ruleTypesCold); memory-only, zero queries.
+      // enriched ahead of it, so the sync predicate resolves.
+      // Memory-only, zero queries.
+      // THE GATE IS THE HAZARD, NOT THE IDS' TEMPERATURE: the pending set
+      // (setKeysPendingRuleTypes) records every compound card enriched
+      // before the ids folded - the only cards whose set keys can be
+      // missing the RULE token. Gating on ruleTypesCold alone skipped this
+      // repair forever on the composed adapters, where the help resolver
+      // (help-popover.ts prepare) memoizes ruleTypeIds during the mod
+      // prepare phase - after the boot-time rule cache
+      // (card-mod-rules prepareRuleCache) had already enriched the deck's
+      // rule cards WITHOUT them - so every deck-created rule card's page
+      // slot rendered one token short (the corpus's rule-page key-order
+      // family, 118 pinned ops, retired 2026-10-10).
       // The map need not hold every part the predicate reads: a rule card
       // reached by its stored key (`*all+*style` from a set's rules board)
       // enters without its right part (`*style`). The sync read cannot tell
       // "not a rule" from "parts not in the map", so a card whose parts are
       // missing is answered by the fetching predicate, as Ruby's rule?
-      // fetches them. The cards that need it are collected first: the
-      // fetches below can enrich more cards into the map.
-      const repaired = [...this.renderCards.values()].filter((card) => card.name.isCompound);
-      for (const card of repaired) {
+      // fetches them.
+      for (const pendingKey of this.setKeysPendingRuleTypes) {
+        const card = this.renderCards.get(pendingKey);
+        // resetCaches dropped the map beside ruleTypeIds (the pending set is
+        // cleared there too); a missing entry has nothing to repair.
+        if (card === undefined || !card.name.isCompound) continue;
         const input = this.structurePatternInputForSync(card);
         let isRule = input.isRule === true;
         if (!isRule && !this.rulePartsInMap(card)) {
@@ -1337,6 +1368,7 @@ export class RenderEngine implements RenderEngineLike {
           isRule,
         });
       }
+      this.setKeysPendingRuleTypes.clear();
     }
     // Defensive fallback for the one shape the fold cannot cover: a first
     // render that took the WARM-closure branch (a prior closureWarmup
@@ -2436,6 +2468,10 @@ export class RenderEngine implements RenderEngineLike {
     this.existingRuleCards = undefined;
     this.setRulePreloadDoneIds = undefined;
     this.ruleTypeIds = undefined;
+    // The pending-repair keys point into the render-card map dropped above
+    // (setKeysPendingRuleTypes' doc): entries repaired or dropped with the
+    // map; post-reset enrichments re-record themselves.
+    this.setKeysPendingRuleTypes.clear();
     this.structureContents = undefined;
     this.structureRuleTypes = undefined;
     this.structureProcessed.clear();
@@ -6643,8 +6679,7 @@ export class RenderEngine implements RenderEngineLike {
         if (!this.existingRuleCards.has(name.key)) {
           const protoInput = await this.prototypePatternInput(setCard);
           if (protoInput !== undefined) {
-            const rule = await findRule(
-              this.fetcher,
+            const rule = await this.findPrototypeRule(
               protoInput,
               settingCard.name?.s ?? `*${settingCodename}`,
             );
@@ -6656,6 +6691,126 @@ export class RenderEngine implements RenderEngineLike {
         }
       }
     }
+  }
+
+  /** findRule with Ruby's cache-walk semantics for NEW-card prototypes.
+   *
+   *  TYPE-ANCHORED CANDIDATES NEED A TYPE: a NEW card whose type the
+   *  template chain has not resolved carries no Type / TypePlusRight
+   *  pattern (set_pattern application anchors those on card.type_id), so
+   *  its rule-cache walk emits no "<type>+<setting>" /
+   *  "<type>+<anchor>+*type plus right+<setting>" lookup keys. The
+   *  name-walk's candidates for an untyped input compose those forms with
+   *  the registry's RichText default; on the RVW+*right set prototype that
+   *  composition answered "existing" where the oracle pins the opposite
+   *  (the capture's slot census: hide:["bar_nav"] exactly on
+   *  structure/autoname/help/input_type/on_create/on_update/on_delete/
+   *  thanks/follow). Skip while the input's type is unresolved.
+   *
+   *  TPR CANDIDATES ANCHOR ON left_type, NOT THE CARD'S OWN TYPE:
+   *  pattern/class_methods.rb:59-73 left_type = `card.superleft&.type_name
+   *  || quick_type(card.name.left_name)`, where quick_type types a NEW
+   *  left card through ITS OWN *default walk — for the set prototype
+   *  *dummy+RVW (typed RichText via *all plus+*default) the TPR anchor is
+   *  quick_type("*dummy") = the *all+*default rule's type ("Basic Cs"),
+   *  so Ruby's lookup key reads "BasicCs+RVW+type_plus_right+<setting>" —
+   *  an anchor naming NO card (@anchor_id nil, pattern/base.rb:75-80
+   *  `elsif @anchor_id`) — and the key never forms: the
+   *  RichText+RVW+*type plus right+*structure rule (10722) stays
+   *  unreachable and the prototype's existing-rule verdict for *structure
+   *  is nil. The name walk instead composes the TPR candidate from the
+   *  input's own type name (RichText), whose anchor card DOES exist — the
+   *  one-hit divergence. Probe the quick-type-anchored form and skip the
+   *  input-type-anchored one for plain (supercard-less) compounds;
+   *  supercard-shaped inputs keep leftTypeName (class_methods.rb:61's
+   *  superleft arm, the Search+large image pin). */
+  private async findPrototypeRule(
+    protoInput: PatternCardInput,
+    setting: string,
+  ): Promise<{ rule: CardRecord } | undefined> {
+    const candidates = ruleNamesForCard(protoInput, setting);
+    const protoName =
+      protoInput.name instanceof DeckoName
+        ? protoInput.name
+        : DeckoName.parse(String(protoInput.name));
+    const quickLeftTypeName =
+      protoInput.typeId !== undefined &&
+      protoInput.isNew === true &&
+      protoInput.leftTypeName === undefined &&
+      protoName.isCompound
+        ? await this.quickTypeName(protoName.leftName)
+        : undefined;
+    for (const candidate of candidates) {
+      if (
+        protoInput.typeId === undefined &&
+        /\+(\*type|\*type plus right)\+/.test(candidate)
+      ) {
+        continue;
+      }
+      const tprMatch = /^(.*)\+\*type plus right\+/.exec(candidate);
+      let probe = candidate;
+      if (
+        tprMatch !== null &&
+        quickLeftTypeName !== undefined &&
+        protoInput.typeName !== undefined &&
+        tprMatch[1].startsWith(`${protoInput.typeName}+`)
+      ) {
+        // rewrite the anchor's left type to Ruby's quick_type(left_name)
+        probe = `${quickLeftTypeName}${candidate.slice(String(protoInput.typeName).length)}`;
+      } else if (tprMatch !== null && quickLeftTypeName === undefined) {
+        continue;
+      }
+      let record: CardRecord | undefined;
+      try {
+        record = await this.fetcher.fetchByName(probe);
+      } catch (err) {
+        if (
+          err instanceof CodenameNotFoundError ||
+          err instanceof NameNotFoundError
+        ) {
+          continue;
+        }
+        throw err;
+      }
+      if (record !== undefined && record.name !== undefined) {
+        return { rule: record };
+      }
+    }
+    return undefined;
+  }
+
+  /** class_methods.rb:64-72 quick_type: the type name of a NEW card named
+   *  `name`, resolved through its own *default walk (untyped input; the
+   *  *self candidate drops for new cards and the compound-only *all plus
+   *  candidates need a type), first existing rule's own type. Undefined
+   *  when no *default rule applies or the type card cannot be named. */
+  private async quickTypeName(name: DeckoName | undefined): Promise<string | undefined> {
+    if (name === undefined) return undefined;
+    const candidates = ruleNamesForCard(
+      { name, id: undefined, typeId: undefined, typeName: undefined, isNew: true },
+      "*default",
+    );
+    for (const candidate of candidates) {
+      if (/\+(\*type|\*type plus right)\+/.test(candidate)) continue;
+      let record: CardRecord | undefined;
+      try {
+        record = await this.fetcher.fetchByName(candidate);
+      } catch (err) {
+        if (
+          err instanceof CodenameNotFoundError ||
+          err instanceof NameNotFoundError
+        ) {
+          continue;
+        }
+        throw err;
+      }
+      if (record !== undefined && record.typeId !== undefined) {
+        const typeCard = await this.fetcher.fetchById(record.typeId);
+        const typeName = typeCard?.name?.s;
+        if (typeName !== undefined) return typeName;
+      }
+    }
+    return undefined;
   }
 
   /** The read-permission verdict for a prepared card (ok_to_read?'s set
@@ -7740,6 +7895,20 @@ export class RenderEngine implements RenderEngineLike {
       const leftKey = klass.patternCardName.toLowerCase();
       const rules = settingBuckets.get(leftKey);
       if (rules === undefined || rules.length === 0) continue;
+      // setting.rb:38 rules_for_set_class's `sort_by: %w[content name]`:
+      // within one set class the rows order by db_content bytes, then
+      // name. Oracle: the *on create *type class renders
+      // "#<Card[set:259]Tracked Item+*type+*on create" (rule 21805,
+      // content "_left+email config", "_"<"s") ahead of
+      // "Sign up+*type+*on create" (21799, "signup alert email"), where
+      // the map-order walk put Sign up first.
+      rules.sort((a, b) => {
+        const ca = a.dbContent ?? "";
+        const cb = b.dbContent ?? "";
+        const byContent = ca < cb ? -1 : ca > cb ? 1 : 0;
+        if (byContent !== 0) return byContent;
+        return a.name.s < b.name.s ? -1 : a.name.s > b.name.s ? 1 : 0;
+      });
       out.push({
         klass,
         rules,
@@ -8524,6 +8693,11 @@ export class RenderEngine implements RenderEngineLike {
       }
     }
     const isRule = name.isCompound ? await this.computeIsRule(name, leftRecord) : false;
+    // computeIsRule answered undefined (ids not folded yet): the set keys
+    // written below CANNOT carry the RULE token even for a stored rule card.
+    // Record the card for the rule set-key repair (render() entry path) —
+    // see setKeysPendingRuleTypes.
+    if (name.isCompound && isRule === undefined) this.setKeysPendingRuleTypes.add(key);
     const card: RenderCard = {
       record,
       name,

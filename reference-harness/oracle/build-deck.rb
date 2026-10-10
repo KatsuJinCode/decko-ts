@@ -34,7 +34,13 @@ def create_args(card, fixture_dir)
   end
   args[:content] = card["content"] if card.key?("content")
   args[:subcards] = subcards_for(card["fields"]) if card["fields"]
-  args[:file] = File.open(File.join(fixture_dir, card["file"]), "rb") if card["file"]
+  if card["file"]
+    # Image cards mount their attachment as `image` (card-mod-carrierwave
+    # set/type/image.rb: `attachment :image`), File cards as `file`.
+    image_type_id = Card.fetch("Image")&.id
+    attr = card["type"] && Card.fetch(card["type"])&.id == image_type_id ? :image : :file
+    args[attr] = File.open(File.join(fixture_dir, card["file"]), "rb")
+  end
   args
 end
 
