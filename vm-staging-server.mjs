@@ -3301,6 +3301,37 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
               );
             }
           : undefined,
+      // The two-step upload's preliminary arm (00_upload_cache.rb:18-24):
+      // the success answer is the BARE preview_editor view of the target
+      // card (the cache card for a new card's upload, the card itself for
+      // an update) — decko.js's doneFile replaces .chosen-file with the
+      // response body verbatim (upload.js.coffee:48-51), and the captured
+      // oracle round trip shows no card-slot wrapper around it. The render
+      // is the ACTING account's engine (the request's own session), expired
+      // first so it reads the draft rows the write path just stored — the
+      // same expiry discipline the renderSlot hook applies. No main-format
+      // opts: this render is not the page's main card (Ruby's soft redirect
+      // show renders it view-only; the observed preview carries the bare
+      // .chosen-file bytes).
+      renderPreviewEditor:
+        cookieActor !== null
+          ? async ({ name, opts }) => {
+              fetcher.expireName(name);
+              const actorEngine = engineForActor(cookieActor.id);
+              actorEngine.expireRenderCard(name);
+              const { RenderFormat } = await import("./dist/src/card/render/format.js");
+              const previewCard = await actorEngine
+                .render(name, "preview_editor")
+                .then(() => actorEngine.fetchRenderCard(name));
+              if (previewCard === undefined) {
+                throw new Error(`preview_editor render could not seat the card: ${name}`);
+              }
+              return new RenderFormat(previewCard, actorEngine, { nestQuietErrors: true }).renderView(
+                "preview_editor",
+                opts,
+              );
+            }
+          : undefined,
     },
     {
       method: req.method,

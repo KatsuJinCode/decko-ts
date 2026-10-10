@@ -210,7 +210,7 @@ import { expireRuleResolutionCache } from "../permissions/read-rules.js";
  *  and `attachment :image` (set/type/image.rb:1, Image cards codename
  *  `image`). validate_file_exist's attachment_name and the multipart
  *  route's card[<mount>] param names derive from these declarations. */
-const ATTACHMENT_MOUNTS: Readonly<Record<string, string>> = {
+const ATTACHMENT_MOUNTS: Readonly<Record<string, "file" | "image">> = {
   file: "file",
   image: "image",
 };
@@ -1321,6 +1321,30 @@ export class CardActionEngine {
     const typeId = await resolveTypeId(this.fetch, { ...input, name });
     const placeholder = newCardRecord(name, { typeId });
     await this.assertCanWrite(placeholder, "create");
+    // The two-step upload's final save (00_upload_cache.rb:27-34
+    // assign_attachment_on_create, after :assign_action, when
+    // save_preliminary_upload?): the cached DRAFT action's stored file
+    // becomes this save's attachment — its comment (the original filename)
+    // rides the action comment through the writer's attachment arm, and
+    // the integrate phase (below) deletes the draft action + its cache
+    // file while the draft's ACT survives. The cache bytes live in the tmp
+    // area under the *new file/*new image card; cachedUploadAttachment
+    // resolves that shape from the action id alone. An unresolvable id
+    // leaves the save WITHOUT an attachment — Ruby's arm returns early the
+    // same way (Card::Action.fetch nil), and validate_file_exist then
+    // refuses the mount-typed create ("File/Image is missing", 422).
+    let cachedUpload: { attachment: AttachmentInput; release: () => Promise<void> } | undefined;
+    if (input.actionIdOfCachedUpload !== undefined) {
+      const typeRow = await this.fetchRowById(typeId);
+      const mount =
+        typeRow?.codename != null && typeRow.codename !== ""
+          ? ATTACHMENT_MOUNTS[typeRow.codename]
+          : undefined;
+      if (mount !== undefined) {
+        cachedUpload = await this.cachedUploadAttachment(input.actionIdOfCachedUpload, { mount });
+        if (cachedUpload !== undefined) input = { ...input, attachment: cachedUpload.attachment };
+      }
+    }
     // The account field events (auth/account-fields.ts) run over the whole
     // +*account subtree before anything is written: Ruby validates every
     // subcard in the validate stage, so a rejected sign-up stores nothing.
@@ -1369,6 +1393,13 @@ export class CardActionEngine {
           typeId,
         }),
       );
+      // delete_cached_upload_file_on_create (:integrate, 00_upload_cache.rb
+      // :51-57): the cache files + the DRAFT action row go
+      // (upload_cache_card.delete_files_for_action action; action.delete —
+      // ActiveRecord #delete, so the draft's change rows stay); the
+      // draft's ACT survives — the oracle rows pin the surviving orphan
+      // (card_acts card_id null beside the create's own act).
+      if (cachedUpload !== undefined) await cachedUpload.release();
       await this.saveRecentlyEditedSettings(finalResult);
       await this.dispatchSavePathIntegrations(finalResult, {
         delayedStageDropped: input.attachment !== undefined && input.attachment.fromCachedUpload !== true,
@@ -1873,6 +1904,32 @@ export class CardActionEngine {
     if (row === undefined || (row.trash === 1 && input.lookInTrash !== true)) {
       throw new CardActionError("not-found", `no such card: ${input.cardId}`);
     }
+    // The two-step upload's replace arm (00_upload_cache.rb:36-42
+    // assign_attachment_on_update, after :assign_action, when
+    // save_preliminary_upload?): the cached DRAFT action's file — stored
+    // under THIS card's own files dir at the preliminary step — is read
+    // back with the draft action selected and becomes the save's
+    // attachment (its comment, the original filename, rides the action
+    // comment). The integrate phase (below) deletes the draft's stored
+    // file + action row; the draft's ACT survives. An unresolvable id
+    // leaves the save without an attachment — Ruby's arm returns early
+    // (Card::Action.fetch nil) and the update saves whatever else it
+    // carried.
+    let cachedUpload: { attachment: AttachmentInput; release: () => Promise<void> } | undefined;
+    if (input.actionIdOfCachedUpload !== undefined) {
+      const typeRow = await this.fetchRowById(row.type_id);
+      const mount =
+        typeRow?.codename != null && typeRow.codename !== ""
+          ? ATTACHMENT_MOUNTS[typeRow.codename]
+          : undefined;
+      if (mount !== undefined) {
+        cachedUpload = await this.cachedUploadAttachment(input.actionIdOfCachedUpload, {
+          cardId: row.id,
+          mount,
+        });
+        if (cachedUpload !== undefined) input = { ...input, attachment: cachedUpload.attachment };
+      }
+    }
     // validate_account_holder_name_change (card-mod-account
     // set/abstract/account_holder.rb:1-5): renaming a card that has an
     // account needs an account manager — the account itself, or a Help
@@ -2056,6 +2113,12 @@ export class CardActionEngine {
         }),
       );
       await this.saveRecentlyEditedSettings(committed);
+      // delete_cached_upload_file_on_update (:integrate, 00_upload_cache.rb
+      // :66-72): the draft's stored file (under this card's files dir) +
+      // the draft action row go; the draft's ACT survives (the oracle
+      // update-arm rows pin the surviving orphan act beside the update's
+      // own stamped act).
+      if (cachedUpload !== undefined) await cachedUpload.release();
       // Events the request triggered for the :integrate stage (trigger:
       // :required, e.g. send_verification_email / send_welcome_email) run
       // with that stage, before the delayed follower notice.
@@ -3715,7 +3778,20 @@ export class CardActionEngine {
     typeId: number;
     mount: "file" | "image";
     attachment: AttachmentInput;
-  }): Promise<{ actionId: number; cacheCardName: string | undefined }> {
+  }): Promise<{
+    actionId: number;
+    cacheCardName: string | undefined;
+    /** The stored identifier ("~<card>/<draft action><ext>") — the draft
+     *  action's db_content change row and Ruby's in-memory content after
+     *  write_identifier (the cards row stays untouched). */
+    identifier: string;
+    /** The stored byte count — number_to_human_size's input for the
+     *  preview_editor render (preview_editor.haml's attachment.size). */
+    size: number;
+    /** The original filename — the draft action's comment
+     *  (save_original_filename) and the preview's p.name byte. */
+    originalFilename: string;
+  }> {
     if (this.attachmentStore === undefined) {
       throw new Error("a preliminary upload requires the engine's attachmentStore option");
     }
@@ -3756,7 +3832,13 @@ export class CardActionEngine {
       bytes: input.attachment.bytes,
       ...(input.cardId === undefined ? { area: "tmp" as const } : {}),
     });
-    return { actionId: saved.actionId, cacheCardName };
+    return {
+      actionId: saved.actionId,
+      cacheCardName,
+      identifier: localAttachmentIdentifier(cardId, saved.actionId, ext),
+      size: input.attachment.bytes.byteLength,
+      originalFilename: input.attachment.originalFilename,
+    };
   }
 
   /** The second step (assign_attachment_on_create / _on_update,

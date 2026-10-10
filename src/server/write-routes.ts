@@ -39,9 +39,14 @@
 // without an upload; the success/error responses stay the shared cud
 // shapes documented below. The two-step preliminary upload flow
 // (00_upload_cache.rb — the JS editor's attachment_upload param, the
-// new_file cache card, the preview_editor round trip) is NOT this
-// surface: the direct file-part save is Ruby's own path for existing
-// cards and for creates without the cache detour.
+// new_file cache card, the preview_editor round trip) IS this surface's
+// preliminary arm: a save whose request carries attachment_upload beside
+// the file part answers handlePreliminaryUpload below (the draft write +
+// the bare preview_editor html; WriteRouteContext.renderPreviewEditor is
+// the host render seam) and the final save carries the preview's
+// card[action_id_of_cached_upload] hidden input through to the engine's
+// cached-upload attach (00_upload_cache.rb:27-43 assign_attachment_on_*)
+// and integrate-phase cache cleanup (:51-72 delete_cached_upload_file_on_*).
 //
 // Auth — card_controller/rest.rb:37-40 `Card::Auth.signin_with(**authenticators)`
 // runs as a before_action on EVERY request: authenticators are
@@ -104,6 +109,7 @@ import type { CardsRow } from "./schema.js";
 import { SessionStore } from "../card/auth/index.js";
 import { signinAccount } from "../card/auth/signin.js";
 import { createCardActionEngineForSession } from "../card/actions/engine-for-session.js";
+import type { CardActionEngine } from "../card/actions/card-action-engine.js";
 import {
   CardActionError,
   type ActionResult,
@@ -185,6 +191,22 @@ export interface WriteRouteContext {
    *  left a changed +*email rendering its pre-save value inside the slot
    *  bytes themselves. */
   renderSlot?: (name: string, view?: string, subcardNames?: string[]) => Promise<string>;
+  /** Renders one card's preview_editor view — the host's render machinery
+   *  for the two-step upload's success response (00_upload_cache.rb:18-24:
+   *  the preliminary abort's success target rendered on view
+   *  :preview_editor, answered as the fileupload AJAX's 200 html —
+   *  response.rb soft_redirect show). `opts` are the view's render opts:
+   *  attachment_upload (the hidden-input name source), original_filename,
+   *  attachment_size, and the preliminary round trip's selected_action_id /
+   *  cached_upload_identifier. The response body is the BARE view (the
+   *  decko.js doneFile handler replaces .chosen-file with it verbatim —
+   *  upload.js.coffee:48-51). Absent -> the preliminary upload arm refuses
+   *  with a named error (no silent fallthrough into the direct-save
+   *  grammar). */
+  renderPreviewEditor?: (input: {
+    name: string;
+    opts: Record<string, unknown>;
+  }) => Promise<string>;
   /** The attachment storage seam (E4.4.a's LocalAttachmentStore), passed
    *  through to every write engine this module builds — the multipart
    *  upload surface stores bytes through it. Absent = attachment saves
@@ -331,6 +353,14 @@ interface ParsedBody {
    *  inputs (card-mod-comment set/all/comment.rb:4-12). */
   comment?: string;
   commentAuthor?: string;
+  /** params[:attachment_upload] — the two-step upload's preliminary flag
+   *  (card-mod-carrierwave 00_upload_cache.rb:80-82 `preliminary_upload?
+   *  = Card::Env.params[:attachment_upload]`): the JS editor's fileupload
+   *  formData posts it beside the file part (upload.js.coffee:10-17). The
+   *  value names the posted card hash ("card[file]"), which
+   *  cached_upload_card_name gsubs into the preview's hidden-input name
+   *  (file.rb:144-146). */
+  attachmentUpload?: string;
   /** params[:draft] — `Env.params["draft"] == "true"` reads it
    *  (mod/core/set/all/content.rb:20-22), the autosave POST's flag
    *  (card-mod-edit-0.20.0 assets/script/autosave.js.coffee:20 posts
@@ -378,6 +408,7 @@ function applyParam(
   }
   if (key === "token") parsed.token = value;
   else if (key === "_method") parsed.methodOverride = value;
+  else if (key === "attachment_upload") parsed.attachmentUpload = value;
   else if (key === "simulate_xhr") parsed.simulateXhr = value !== "";
   else if (key === "comment") parsed.comment = value;
   else if (key === "comment_author") parsed.commentAuthor = value;
@@ -1008,8 +1039,13 @@ export async function handleWriteRequest(
   // (set/type/file.rb:1) / `attachment :image` (set/type/image.rb:1). A
   // file part under any other card-hash key is Ruby's unknown-attribute
   // error class; this surface reads only the two mounts (documented).
-  const attachmentInput =
-    parsed.cardFiles["file"] ?? parsed.cardFiles["image"] ?? undefined;
+  const mount: "file" | "image" | undefined =
+    parsed.cardFiles["file"] !== undefined
+      ? "file"
+      : parsed.cardFiles["image"] !== undefined
+      ? "image"
+      : undefined;
+  const attachmentInput = mount !== undefined ? parsed.cardFiles[mount] : undefined;
   const attachment: AttachmentInput | undefined = attachmentInput === undefined
     ? undefined
     : {
@@ -1019,11 +1055,34 @@ export async function handleWriteRequest(
       };
 
   try {
+    // THE TWO-STEP UPLOAD's preliminary arm (00_upload_cache.rb:8-25
+    // prepare_attachment, when preliminary_upload?): a card save whose
+    // request carries params[:attachment_upload] beside a file part stores
+    // the file + one draft action and ABORTS :success with the
+    // preview_editor view of the cache card (new card) or the card itself
+    // (update) — the ajax response decko.js's doneFile swaps into
+    // .chosen-file. The abort happens at :prepare_to_validate, so no full
+    // save runs: this arm answers before the create/update dispatch below.
+    if (
+      parsed.attachmentUpload !== undefined &&
+      parsed.attachmentUpload !== "" &&
+      attachment !== undefined &&
+      (route.verb === "create" || route.verb === "update")
+    ) {
+      return await handlePreliminaryUpload(ctx, engine, route, parsed, attachment, mount);
+    }
     let result: ActionResult | null;
     let name: string;
     if (route.verb === "create") {
       const input = {
         ...createInputFromParams(route, parsed, attachment),
+        // the preview's hidden input (00_upload_cache.rb:2's
+        // attr_accessor, reached through Rails assign_attributes): the
+        // final save's cached-upload action id (00_upload_cache.rb:27-34
+        // assign_attachment_on_create, when save_preliminary_upload?).
+        ...(cachedUploadActionParam(parsed) !== undefined
+          ? { actionIdOfCachedUpload: cachedUploadActionParam(parsed) }
+          : {}),
         comment: parsed.comment,
         commentAuthor: parsed.commentAuthor,
         recaptchaToken: parsed.recaptchaToken,
@@ -1075,6 +1134,9 @@ export async function handleWriteRequest(
         const created = await engine.createCard({
           ...createInputFromParams(route, parsed, attachment),
           name: updateName,
+          ...(cachedUploadActionParam(parsed) !== undefined
+            ? { actionIdOfCachedUpload: cachedUploadActionParam(parsed) }
+            : {}),
           comment: parsed.comment,
           commentAuthor: parsed.commentAuthor,
           recaptchaToken: parsed.recaptchaToken,
@@ -1098,6 +1160,9 @@ export async function handleWriteRequest(
           typeId:
             typeIdRaw !== undefined && /^\d+$/.test(typeIdRaw) ? Number(typeIdRaw) : undefined,
           attachment,
+          ...(cachedUploadActionParam(parsed) !== undefined
+            ? { actionIdOfCachedUpload: cachedUploadActionParam(parsed) }
+            : {}),
           comment: parsed.comment,
           commentAuthor: parsed.commentAuthor,
           recaptchaToken: parsed.recaptchaToken,
@@ -1192,6 +1257,120 @@ export async function handleWriteRequest(
     if (error instanceof CardActionError) return errorResponse(json, error);
     throw error;
   }
+}
+
+/** card[action_id_of_cached_upload] — the preview_editor hidden input the
+ *  swapped-in preview posts back with the final save
+ *  (00_upload_cache.rb:2's attr_accessor; save_preliminary_upload? reads
+ *  it, :84-86). A subcard-scoped variant
+ *  (card[subcards][+x][action_id_of_cached_upload]) stays unported with the
+ *  rest of the general subcard grammar (the module header's documented
+ *  remainder; the journeys' forms post the top-level name only). */
+function cachedUploadActionParam(parsed: ParsedBody): string | undefined {
+  const value = parsed.card["action_id_of_cached_upload"];
+  return value !== undefined && value !== "" ? value : undefined;
+}
+
+/** The preliminary upload arm (00_upload_cache.rb:8-25 prepare_attachment):
+ *  store the uploaded bytes, file the draft action, and answer the
+ *  preview_editor html the JS editor swaps into .chosen-file
+ *  (upload.js.coffee:48-51). Ruby's abort :success skips the rest of the
+ *  save — no cards row, no finalize, and the draft's ACT stays card_id
+ *  NULL (the oracle rows pin it: upload-remove-preview-admin carries one
+ *  act beside the draft action filed on the cache card). */
+async function handlePreliminaryUpload(
+  ctx: WriteRouteContext,
+  engine: CardActionEngine,
+  route: RouteMatch,
+  parsed: ParsedBody,
+  attachment: AttachmentInput,
+  mount: "file" | "image" | undefined,
+): Promise<WriteRouteResponse> {
+  if (mount === undefined) {
+    // validate_file_exist's shape: a mount-typed save without an upload is
+    // the "<mount> is missing" 422 (attachment.rb:26-34) — but this arm is
+    // only entered WITH a file part (the caller's guard); unreachable.
+    throw new CardActionError("field-required", `${route.verb} requires an upload`);
+  }
+  if (ctx.renderPreviewEditor === undefined) {
+    // Loud, per the dual-path rule: a hosting surface without the render
+    // seam must not silently fall through into the direct-save grammar.
+    throw new Error(
+      "the preliminary upload arm requires WriteRouteContext.renderPreviewEditor (the host's preview_editor render seam)",
+    );
+  }
+  let cardId: number | undefined;
+  let typeId: number;
+  if (route.verb === "update") {
+    if (route.mark === undefined) {
+      throw new CardActionError("not-found", "no card name in request (no mark)");
+    }
+    const existing = await lookupLiveCard(ctx.fetcher, markToName(route.mark));
+    if (existing === undefined) {
+      throw new CardActionError("not-found", `no such card: ${markToName(route.mark)}`);
+    }
+    cardId = existing.id;
+    if (existing.typeId === undefined) {
+      throw new CardActionError("not-found", `card ${existing.id} carries no type`);
+    }
+    typeId = existing.typeId;
+  } else {
+    const typeIdRaw = parsed.card["type_id"];
+    if (typeIdRaw === undefined || !/^\d+$/.test(typeIdRaw)) {
+      // the editor's fileupload formData always posts card[type_id]
+      // (upload.js.coffee:13, the #attachment_type_id value); without it
+      // the save has no type — Ruby's Card.new(type_id: nil) would fail
+      // validation, and no oracle shape reaches here.
+      throw new CardActionError("type-unknown", "a preliminary upload requires card[type_id]");
+    }
+    typeId = Number(typeIdRaw);
+  }
+  const { actionId, cacheCardName, identifier, size, originalFilename } =
+    await engine.recordPreliminaryUpload({
+      ...(cardId !== undefined ? { cardId } : {}),
+      typeId,
+      mount,
+      attachment,
+    });
+  // The success target (00_upload_cache.rb:19): the cache card (*new file /
+  // *new image) for a new card's upload, the card itself for an update.
+  const renderName = cardId !== undefined
+    ? await lookupLiveCardName(ctx, cardId)
+    : cacheCardName;
+  if (renderName === undefined) {
+    throw new CardActionError("not-found", "no *new cache card for the preliminary upload");
+  }
+  // The response renders the save's OWN post-draft state (Ruby renders the
+  // in-memory success target: selected_action_id = the draft just filed —
+  // the success hash's rev_id through select_action_by_params — and the
+  // draft identifier as the selected content). The host hook expires the
+  // name so its render engines see the draft rows this request wrote.
+  const html = await ctx.renderPreviewEditor({
+    name: renderName,
+    opts: {
+      // cached_upload_card_name (file.rb:144-146): the posted
+      // attachment_upload value gsubbed to the hidden-input name.
+      attachment_upload: parsed.attachmentUpload,
+      original_filename: originalFilename,
+      attachment_size: size,
+      selected_action_id: actionId,
+      cached_upload_identifier: identifier,
+    },
+  });
+  return {
+    status: 200,
+    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+    body: html,
+  };
+}
+
+/** The render target's name by id (the update arm renders the card
+ *  itself). */
+async function lookupLiveCardName(ctx: WriteRouteContext, cardId: number): Promise<string> {
+  const record = await ctx.fetcher.fetchById(cardId);
+  const name = record?.name?.s;
+  if (name === undefined) throw new CardActionError("not-found", `no such card: ${cardId}`);
+  return name;
 }
 
 /** The AUTH-ONLY dispatch (edge-signin-form-fix lane, 2026-10-03): the

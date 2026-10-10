@@ -536,7 +536,18 @@ export class ActWriter {
    *  with the original filename as its comment and the change rows that
    *  store_card_changes writes, then aborts — the cards row is untouched.
    *  `changes` receives the new action id (the stored file's identifier
-   *  carries it). */
+   *  carries it).
+   *
+   *  The ACT row carries card_id NULL: Ruby's director builds every act as
+   *  `Card::Act.new ip_address: Env.ip` (director/class_methods.rb:27-28)
+   *  and only `finalize_act` (history/events.rb:55-57) stamps the acting
+   *  card's id on it — an event the preliminary save never reaches, because
+   *  prepare_attachment aborts :success at :prepare_to_validate. The oracle
+   *  rows pin the shape (upload-remove-preview-admin: card_acts #1
+   *  card_id null beside card_actions #1 card_id 295, the cache card). The
+   *  ACTION is filed on `cardId` — the draft card itself
+   *  (00_upload_cache.rb:17 `@current_action.update! draft: true,
+   *  card_id: card_id`). */
   async recordUploadDraft(input: {
     cardId: number;
     actionType: "create" | "update";
@@ -545,7 +556,7 @@ export class ActWriter {
   }): Promise<SavedAction> {
     const ts = sqlDateTime(this.clock());
     const stmts: SQLStatement[] = [];
-    const actIdSelect = this.actId === null ? this.pushInsertAct(stmts, input.cardId, ts) : undefined;
+    const actIdSelect = this.actId === null ? this.pushInsertAct(stmts, null, ts) : undefined;
     const actionIdSelect = this.pushInsertAction(stmts, {
       cardId: input.cardId,
       superActionId: null,
