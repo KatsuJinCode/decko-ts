@@ -173,9 +173,14 @@ describe("card-mod-follow views through the loader (lane-follow)", () => {
     const e = await loadMod();
     e.pageSession = { signedIn: true, actorId: 300 };
     const html = await e.render("Brandon+*follow", "follow_tab");
-    expect(html).toContain(`<div class="pointer-list-editor">`);
-    expect(html).toContain(`<ul class="delete-list list-group">`);
-    expect(html).toContain(`<li class="list-group-item">`);
+    // Haml template bytes, corpus-adjudicated (2026-10-09, the synthetic-v2
+    // oracle's follow_tab/ignore_tab pins): single-quoted class attributes,
+    // no indentation, every walk row wrapped in its own li, one trailing
+    // newline after the closing div.
+    expect(html).toContain(`<div class='pointer-list-editor'>`);
+    expect(html).toContain(`<ul class='delete-list list-group'>`);
+    expect(html).toContain(`<li class='list-group-item'>\n`);
+    expect(html).not.toContain(`<div class="pointer-list-editor">`);
     expect(html).toContain(`Make Contact`);
     e.pageSession = undefined;
   });

@@ -641,28 +641,6 @@
    "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
-   "op": "core:admin:Ada Admin+*follow",
-   "family": "composed-mod-view-gap",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 20,
-    "expected": "{\"html\":\"<div class='tabbable tab-panel' role='tabpanel'>\\n<ul class='nav nav-tabs' role='tablist'>\\n<li role=\\\"presentation\\\" class=\\\"nav-i",
-    "actual": "{\"html\":\"<div class=\\\"card-list card-list-bar pointer-list\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"Xalway-bar-view\\\" class=\\\"card-s"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "core:anonymous:Ada Admin+*follow",
-   "family": "composed-mod-view-gap",
-   "group": "view / anonymous",
-   "evidence": {
-    "firstDiffAt": 20,
-    "expected": "{\"html\":\"<div class='tabbable tab-panel' role='tabpanel'>\\n<ul class='nav nav-tabs' role='tablist'>\\n<li role=\\\"presentation\\\" class=\\\"nav-i",
-    "actual": "{\"html\":\"<div class=\\\"card-list card-list-bar pointer-list\\\"><div class=\\\"pointer-item item-bar\\\"><div id=\\\"Xalway-bar-view\\\" class=\\\"card-s"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
    "op": "page:anonymous:Contractor Note 01+*self+*read",
    "family": "rule-page-key-order: the rule page bar slot class order differs (set-module key order in the page rule list)",
    "group": "page / anonymous",
@@ -3408,28 +3386,6 @@
     "firstDiffAt": 9,
     "expected": "{\"html\":\"<div class=\\\"edit-rule\\\"><div id=\\\"mira_member-Xself-ada_admin-Xfollow-rule_form-view\\\" class=\\\"card-slot rule_form-view",
     "actual": "{\"html\":\"\"}"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "view:admin:Ada Admin+*follow:follow_tab",
-   "family": "composed-mod-view-gap",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 20,
-    "expected": "{\"html\":\"<div class='pointer-list-editor'>\\n<ul class='delete-list list-group'>\\n<li class='list-group-item'>\\nno entries\\n</li>\\n</ul>\\n</d",
-    "actual": "{\"html\":\"<div class=\\\"pointer-list-editor\\\">\\n<ul class=\\\"delete-list list-group\\\">\\n  no entries\\n</ul>\\n</div>\"}"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "view:admin:Ada Admin+*follow:ignore_tab",
-   "family": "composed-mod-view-gap",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 20,
-    "expected": "{\"html\":\"<div class='pointer-list-editor'>\\n<ul class='delete-list list-group'>\\n<li class='list-group-item'>\\nno entries\\n</li>\\n</ul>\\n</d",
-    "actual": "{\"html\":\"<div class=\\\"pointer-list-editor\\\">\\n<ul class=\\\"delete-list list-group\\\">\\n  no entries\\n</ul>\\n</div>\"}"
    },
    "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },

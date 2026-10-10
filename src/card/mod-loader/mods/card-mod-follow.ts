@@ -221,6 +221,7 @@ import type {
   FollowTabRow,
 } from "../../follow/follow-render-seam.js";
 import { errorsView as formatErrorsView } from "./card-mod-format.js";
+import { tabsPanel } from "./card-mod-tabs.js";
 
 // ---------------------------------------------------------------------------
 // captured base views - the "super()" references Ruby's set-module DSL
@@ -620,27 +621,36 @@ function followEditorBody(
     bundle?.session !== undefined &&
     (bundle.session.actorName === fmt.card.name.leftName?.s ||
       bundle.session.actorId === 1); // Auth.always_ok? (the bot actor arm)
+  // follow_editor.haml: every walk row renders an <li> - a missing rule card
+  // or the walk's empty `yield nil` arm (follow_editor_helper.rb:45) renders
+  // the literal "no entries" text INSIDE the li (haml: the -if/-else arms).
+  // Haml emission: no indentation, single-quoted class attributes, one
+  // newline per synthesized line - the corpus view pins carry exactly these
+  // bytes for the empty tab ("no entries" li).
   const lis = rows.map((row) => {
     const ruleCard = ctx.fmt.engine.fetchRenderCard(row.ruleCardName);
     if (ruleCard === undefined) {
       // the walk enriched every row; a miss means the card vanished
       // between prepare and render - Ruby would raise on nil subformat;
       // the haml's nil rule_card arm is "no entries"
-      return `  <li class="list-group-item">no entries</li>`;
+      return `<li class='list-group-item'>\nno entries\n</li>`;
     }
     const sub = new RenderFormat(ruleCard, ctx.fmt.engine, { parent: fmt });
-    return `  <li class="list-group-item">${followItemHtml(
+    return `<li class='list-group-item'>\n${followItemHtml(
       sub,
       row.option,
       showButton,
       "follow_item",
-    )}</li>`;
+    )}\n</li>`;
   });
   const list =
     lis.length > 0
-      ? `<ul class="delete-list list-group">\n${lis.join("\n")}\n</ul>`
-      : `<ul class="delete-list list-group">\n  no entries\n</ul>`;
-  return `<div class="pointer-list-editor">\n${list}\n</div>`;
+      ? `<ul class='delete-list list-group'>\n${lis.join("\n")}\n</ul>`
+      : `<ul class='delete-list list-group'>\n<li class='list-group-item'>\nno entries\n</li>\n</ul>`;
+  // Haml output always ends with one newline after the last synthesized tag
+  // - the corpus view pins carry the trailing byte ("</div>\n"), and inside
+  // the tab pane it separates the editor from the pane's closing tag.
+  return `<div class='pointer-list-editor'>\n${list}\n</div>\n`;
 }
 
 /** user/follow.rb:45-47 view :follow_tab, cache: :never -
@@ -652,6 +662,31 @@ const followTabView: ViewFn = (ctx) =>
  *  haml :follow_editor, items_method: :ignoring_rules_and_options. */
 const ignoreTabView: ViewFn = (ctx) =>
   followEditorBody(ctx, followBundle(ctx)?.ignoreTabRows ?? []);
+
+/** user/follow.rb:1-2 FOLLOW_TABS - the static tab hash: view configs only,
+ *  no titles (the label falls to the tab name) and no paths (LazyTab builds
+ *  format.path(view:) - path.rb:32-40 mark/view, no query). */
+const FOLLOW_TABS: ReadonlyArray<{ name: string; view: string }> = [
+  { name: "Follow", view: "follow_tab" },
+  { name: "Ignore", view: "ignore_tab" },
+];
+
+/** user/follow.rb:39-43 view :core - `tabs FOLLOW_TABS, "Follow",
+ *  load: :lazy do render_follow_tab end`. The tab machinery bytes ride the
+ *  card-mod-tabs port's panel builder (all/tabs.rb:29-39 + tab_panel.haml -
+ *  the same gem helper, LazyTab klass via load: :lazy): the tab ids consume
+ *  the ROOT format's id counter in button order (Follow, Ignore), the lazy
+ *  tab data-urls are the mark/view paths, and the ACTIVE pane's content is
+ *  the rendered :follow_tab view while the lazy pane stays empty
+ *  (lazy_tab.rb:33-36). No slot wrap: the view body IS the tab panel
+ *  (the oracle :core bytes open at the tabbable div). */
+const userFollowCoreView: ViewFn = (ctx) => {
+  const urlKey = ctx.fmt.card.name.urlKey;
+  const hash = new Map(
+    FOLLOW_TABS.map((e) => [e.name, { title: e.name, path: `/${urlKey}/${e.view}` }]),
+  );
+  return tabsPanel(ctx, hash, "Follow", "tabs", ctx.fmt.renderView("follow_tab"));
+};
 
 // --- set/self/follow_defaults.rb (the deprecated editor) --------------------
 
@@ -1502,7 +1537,11 @@ const cardModFollow: DeckoModManifest = {
       // helpers + the follow_editor.haml template + the
       // follow_editor_helper.rb helper file.
       // Ported: :one_line_content (""), :edit (render :open dispatch),
-      // :follow_tab + :ignore_tab (the seam's followEditorRows walk).
+      // :follow_tab + :ignore_tab (the seam's followEditorRows walk),
+      // :core (2026-10-09 wave 2: the FOLLOW_TABS tab machinery - the
+      // card-mod-tabs `tabs` helper over the static hash, active pane
+      // rendering :follow_tab; the oracle :core bytes open at the
+      // tabbable tab-panel div, not the pointer list).
       // Wave-1 (2026-10-03): :errors joins - the no-errors arm (the ONLY
       // arm a headless render reaches: the engine models no ActiveRecord
       // error state, so `return unless card.errors.any?` returns nil -> "")
@@ -1519,6 +1558,7 @@ const cardModFollow: DeckoModManifest = {
           views: [
             { view: "one_line_content", viewFn: userFollowOneLineContentView },
             { view: "edit", viewFn: userFollowEditView },
+            { view: "core", viewFn: userFollowCoreView },
             { view: "follow_tab", viewFn: followTabView, config: { cache: "never" } },
             { view: "ignore_tab", viewFn: ignoreTabView, config: { cache: "never" } },
             { view: "errors", viewFn: userFollowErrorsView, config: { perms: "none" } },

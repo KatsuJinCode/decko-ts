@@ -408,8 +408,10 @@ interface TabObject {
 }
 
 /** tab.rb:7-13 tab_objects + :17-20 active: the requested name matched by
- *  name equality (key comparison), else keys.first. */
-function tabObjects(
+ *  name equality (key comparison), else keys.first. Shared with the follow
+ *  mod's :core (type_plus_right/user/follow.rb:39-43 calls the same `tabs`
+ *  helper over its static FOLLOW_TABS hash - the helper lives in this gem). */
+export function tabObjects(
   fmt: ViewContext["fmt"],
   tabHash: Map<string, { title: string; path: string }>,
   activeName: string | undefined,
@@ -466,8 +468,9 @@ function tabPane(tab: TabObject, blockContent: string): string {
  *  set/all/tabs/tab_panel.haml. The haml bytes (capture-pinned): sorted
  *  single-quote attributes on the two wrapper divs, no indentation, one
  *  newline per element; classy('nav') contributes the bare "nav" (no
- *  class_ups on this surface). */
-function tabsPanel(
+ *  class_ups on this surface). Shared with the follow mod's :core - the
+ *  follow set module calls this same `tabs` helper (user/follow.rb:40). */
+export function tabsPanel(
   ctx: ViewContext,
   tabHash: Map<string, { title: string; path: string }>,
   activeName: string | undefined,

@@ -221,7 +221,12 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // createable link) explicitly alongside :unknown's html arm, so the
       // composed deck serves the same bytes the flat base table serves;
       // still no new format key and no css/scss row.
-      ["html", 356],
+      // 356 -> 357 (composed-mod view gaps wave 2, 2026-10-09): the follow
+      // mod's type_plus_right/user/follow table registers :core (user/
+      // follow.rb:39-43, the FOLLOW_TABS tab machinery - the view was
+      // missing, so [User]+*follow cards fell through to the pointer-list
+      // :core); still no new format key and no css/scss row.
+      ["html", 357],
 
       ["js", 2],
       ["json", 3],
