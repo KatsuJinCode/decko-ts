@@ -7,7 +7,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
 import { EXPECTED_MANIFEST_FORMAT, resultFiles, storedFileHashes, verifyFixture } from "./manifest.mjs";
-import { normalizeRender, sameJson, stable } from "./normalize.mjs";
+import { normalizeErrorRecord, normalizeRender, sameFailure, sameJson, stable } from "./normalize.mjs";
 
 export const RESULTS_FORMAT = 2;
 export const PROTOCOL = 1;
@@ -82,8 +82,9 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false }) {
   const act = loadResults(actualDir, "results", ops, problems, partial);
 
   // ---- item comparison -----------------------------------------------------------
-  const tally = Object.fromEntries(KINDS.map((k) => [k, { graded: 0, pass: 0, fail: 0, oracle_errors: 0, missing: 0, groups: {} }]));
+  const tally = Object.fromEntries(KINDS.map((k) => [k, { graded: 0, pass: 0, fail: 0, reproduced_upstream_failures: 0, oracle_errors: 0, missing: 0, groups: {} }]));
   const failures = Object.fromEntries(KINDS.map((k) => [k, []]));
+  const reproduced = Object.fromEntries(KINDS.map((k) => [k, []]));
   const readWrites = { graded: 0, pass: 0, fail: 0, failures: [] };
   const otherTableWrites = [];
   const selected = (kind, id) => !allowPartial || act.present[kind].has(id);
@@ -92,7 +93,52 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false }) {
     const t = tally[kind];
     t.groups[group] ??= { graded: 0, pass: 0 };
     if (e.error) {
-      t.oracle_errors++;
+      // The oracle's recorded answer is itself a failure. Two disjoint cases.
+      // A capture-side fault (the CAPTURE_ERROR sentinel the capture scripts
+      // record when their own machinery threw) says nothing about the site
+      // and stays ungraded. A recorded upstream failure - the oracle raised
+      // while serving - is the upstream behavior the port must reproduce
+      // (the operator's ruling: reproducing a reproduced failure is a
+      // success, not a divergence). Identity is still the bar: the engine's
+      // failure must equal the oracle's under N7 (the class's host naming
+      // canonicalized) with the message byte-exact, and a match is counted
+      // as a reproduced upstream failure, its own success category. Any
+      // other answer - a different failure, or a render where the oracle
+      // failed - fails the item.
+      if (isCaptureFault(e.error)) {
+        t.oracle_errors++;
+        return;
+      }
+      t.graded++;
+      t.groups[group].graded++;
+      if (a === undefined) {
+        t.missing++;
+        t.fail++;
+        failures[kind].push({ id, group, reason: "no result recorded" });
+        return;
+      }
+      if (a.error === undefined || a.error === null) {
+        t.fail++;
+        failures[kind].push({
+          id,
+          group,
+        reason: `upstream failure not reproduced: the oracle raised ${e.error.class}: ${e.error.message} and the engine rendered a result`,
+        diff: firstDifference(stable(e.error), stable(a.value ?? null)),
+        });
+        return;
+      }
+      if (sameFailure(e.error, a.error)) {
+        t.reproduced_upstream_failures++;
+        reproduced[kind].push({ id, group, oracle: e.error, engine: a.error });
+        return;
+      }
+      t.fail++;
+      failures[kind].push({
+        id,
+        group,
+        reason: `reproduced a different failure: the oracle raised ${e.error.class}: ${e.error.message}, the engine ${a.error.class}: ${a.error.message}`,
+        diff: firstDifference(normalizeErrorRecord(e.error), normalizeErrorRecord(a.error)),
+      });
       return;
     }
     t.graded++;
@@ -194,7 +240,23 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false }) {
     read_writes: readWrites,
     other_table_writes: otherTableWrites,
     failures,
+    reproduced,
   };
+}
+
+/**
+ * A capture-side fault sentinel, not a recorded site behavior: the capture
+ * scripts (benchmarks/capture-*.rb) record `CAPTURE_ERROR: <class>:
+ * <message>` - as the error record or as the payload itself - when their own
+ * machinery threw, so the oracle's bytes hold no site behavior to reproduce
+ * and the operation cannot be graded. A real exception class the oracle
+ * raised while serving is the site's behavior and is graded (see `grade`).
+ */
+function isCaptureFault(error) {
+  if (error === null || typeof error !== "object") return false;
+  if (typeof error.class === "string" && error.class.includes("CAPTURE_ERROR")) return true;
+  if (typeof error.message === "string" && error.message.startsWith("CAPTURE_ERROR:")) return true;
+  return false;
 }
 
 function checkRunRecord(kind, run, { digest, ops, problems, partial, warnings }) {

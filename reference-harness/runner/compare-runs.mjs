@@ -12,7 +12,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
-import { COLLAPSE_ID, RELATIVE_TIME, SLOT_ID, normalizeRender, sameJson } from "./normalize.mjs";
+import { COLLAPSE_ID, RELATIVE_TIME, SLOT_ID, normalizeErrorRecord, normalizeRender, sameJson } from "./normalize.mjs";
 
 const [a, b, ...rest] = process.argv.slice(2);
 const jsonOut = rest[0] === "--json" ? rest[1] : null;
@@ -118,13 +118,17 @@ for (const kind of ["render", "semantics", "scenarios"]) {
       continue;
     }
     maskAccounting(result, x, y);
-    // Masked as the grader masks: render HTML by N1+N3+N4+N5+N6, everything else raw.
+    // Masked as the grader masks: render HTML by N1+N3+N4+N5+N6, an error
+    // record's class by N7 (any kind records failures), everything else raw.
+    const withError = (line) => (line.error !== undefined ? { ...line, error: normalizeErrorRecord(line.error) } : line);
     const norm = (line) =>
-      kind === "render"
-        ? { ...line, result: normalizeRender(line.result) }
-        : kind === "scenarios"
-          ? { ...line, steps: line.steps.map((s) => ({ ...s, result: normalizeRender(s.result) })) }
-          : line;
+      withError(
+        kind === "render"
+          ? { ...line, result: normalizeRender(line.result) }
+          : kind === "scenarios"
+            ? { ...line, steps: line.steps.map((s) => ({ ...s, result: normalizeRender(s.result) })) }
+            : line,
+      );
     if (sameJson(norm(x), norm(y))) k.equal_after_masks++;
     else {
       k.unexplained++;

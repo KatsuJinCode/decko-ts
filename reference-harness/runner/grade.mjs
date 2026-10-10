@@ -42,7 +42,8 @@ if (report.verdict === "partial") console.log(`PARTIAL RUN, not a grade: ${repor
 for (const k of KINDS) {
   const s = report.summary[k];
   console.log(`${k.padEnd(13)} ${String(s.pass).padStart(5)} / ${String(s.graded).padEnd(5)} ${s.rate === null ? "-" : s.rate + "%"}` +
-    (s.oracle_errors ? `  (${s.oracle_errors} oracle errors not graded)` : ""));
+    (s.reproduced_upstream_failures ? `  (${s.reproduced_upstream_failures} reproduced upstream failures)` : "") +
+    (s.oracle_errors ? `  (${s.oracle_errors} oracle capture faults not graded)` : ""));
   for (const [g, v] of Object.entries(s.groups)) console.log(`    ${g.padEnd(24)} ${v.pass} / ${v.graded}`);
 }
 const rw = report.read_writes;

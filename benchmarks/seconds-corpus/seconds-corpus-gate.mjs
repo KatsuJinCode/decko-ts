@@ -16,8 +16,13 @@
 //
 // Prints "SECONDS-CORPUS-REPORT {json}" on success and a failure line with
 // the first differing operations otherwise. Exit 0 only when every corpus
-// page is byte-identical to the oracle (after the slot-id mask the harness
-// normalizes; every other byte counts).
+// page is byte-identical to the oracle (after the canonical forms the
+// harness normalizes; every other byte counts) or is one of the ledger's
+// pinned true divergences, and every reproduced upstream failure in the
+// ledger still reproduces. The report carries both counts: the reproduced
+// upstream failures (the oracle's own recorded failures the engine
+// reproduces failure-for-failure - successes of the port, the operator's
+// ruling) and the true divergences (remaining port work).
 
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
@@ -48,13 +53,17 @@ const resultsDir = path.join(work, "results");
 // differ from the oracle's recorded bytes and the divergence is a NAMED,
 // evidenced port gap (each entry: op id, mechanism, oracle evidence). A diff
 // on a pinned op is reported as pinned, not failing; a diff on anything
-// else fails the gate. The file is committed beside this script.
-const pinsFile = path.join(repo, "benchmarks/seconds-corpus/pinned-divergences.json");
-const pins = new Map(
-  existsSync(pinsFile)
-    ? (JSON.parse(readFileSync(pinsFile, "utf8")).pins ?? []).map((p) => [p.op, p])
-    : [],
-);
+// else fails the gate. The ledger's second section, reproduced upstream
+// failures, is the opposite sign: operations whose oracle answer IS a
+// failure (the oracle raised while serving) that the engine reproduces
+// failure-for-failure - successes of the port, verified every run by the
+// same byte-identity bar (the grader's N7 + message-exact failure
+// comparison), with the ledger naming what kind of thing is matched. The
+// file is committed beside this script.
+const ledgerFile = path.join(repo, "benchmarks/seconds-corpus/pinned-divergences.json");
+const ledger = existsSync(ledgerFile) ? JSON.parse(readFileSync(ledgerFile, "utf8")) : { pins: [], reproduced_upstream_failures: [] };
+const pins = new Map((ledger.pins ?? []).map((p) => [p.op, p]));
+const reproducedLedger = new Map((ledger.reproduced_upstream_failures ?? []).map((p) => [p.op, p]));
 
 const hidden = { windowsHide: true };
 const wallStart = Date.now();
@@ -74,11 +83,21 @@ const gradeR = spawnSync(
 );
 
 const report = JSON.parse(readFileSync(path.join(work, "report.json"), "utf8"));
-const render = report.summary?.rendering ?? { graded: 0, pass: 0, fail: 0, oracle_errors: 0 };
+const render = report.summary?.rendering ?? { graded: 0, pass: 0, fail: 0, reproduced_upstream_failures: 0, oracle_errors: 0 };
 const fails = report.failures?.rendering ?? [];
 const failIds = fails.map((f) => f.id ?? f);
 const unpinned = failIds.filter((id) => !pins.has(id));
 const pinned = failIds.filter((id) => pins.has(id));
+// The reproduced-failure ledger must mirror the run in both directions: a
+// listed row that stopped reproducing (the engine now renders the page, or
+// fails differently) is a regressed success and fails the gate; a run row
+// missing from the ledger is an unreported success and fails it too. The
+// ledger is the record; the grader's failure-level byte identity is the bar.
+const renderedReproduced = new Map(
+  Object.values(report.reproduced ?? {}).flatMap((list) => list.map((r) => [r.id, r])),
+);
+const regressed = [...reproducedLedger.keys()].filter((id) => !renderedReproduced.has(id));
+const unrecorded = [...renderedReproduced.keys()].filter((id) => !reproducedLedger.has(id));
 const verdict = {
   instrument: "seconds-corpus",
   fixture: "synthetic-v2",
@@ -86,20 +105,27 @@ const verdict = {
   pages: render.graded,
   identical: render.pass,
   not_identical: unpinned.length,
-  pinned_divergences: pinned.length,
+  reproduced_upstream_failures: renderedReproduced.size,
+  true_divergences: pinned.length,
   oracle_errors: render.oracle_errors,
   wall_ms: runWall,
   under_60s: runWall < 60000,
-  same: unpinned.length === 0,
+  same: unpinned.length === 0 && regressed.length === 0 && unrecorded.length === 0,
 };
 const line = `SECONDS-CORPUS-REPORT ${JSON.stringify(verdict)}`;
 console.log(line);
-// grade.mjs exits 0 (all graded items identical), 1 (a valid grade with
-// failures - allowed here when every failure is a pinned known divergence)
-// or 2 (not a grade - always a gate failure).
+// grade.mjs exits 0 (all graded items identical or a matched failure), 1 (a
+// valid grade with failures - allowed here when every failure is a pinned
+// true divergence) or 2 (not a grade - always a gate failure).
 if (gradeR.status === 2) {
   console.error(`seconds-corpus-gate: NOT A GRADE\n${(gradeR.stdout || "")}`);
   process.exit(2);
+}
+if (regressed.length || unrecorded.length) {
+  console.error(`seconds-corpus-gate: FAILED - the reproduced-failure ledger does not match the run (report at ${path.join(work, "report.json")})`);
+  for (const id of regressed.slice(0, 10)) console.error(`  - listed reproduced failure did not reproduce: ${id} (${reproducedLedger.get(id).failure?.kind ?? "see ledger"})`);
+  for (const id of unrecorded.slice(0, 10)) console.error(`  - reproduced upstream failure missing from the ledger: ${id}`);
+  process.exit(1);
 }
 if (!verdict.same) {
   console.error(`seconds-corpus-gate: FAILED - report at ${path.join(work, "report.json")}`);
@@ -108,6 +134,6 @@ if (!verdict.same) {
   console.error(`   node reference-harness/runner/causes.mjs ${path.join(work, "report.json")} rendering groups them)`);
   process.exit(1);
 }
-if (pinned.length) console.log(`seconds-corpus-gate: ${pinned.length} pinned known divergences (see pinned-divergences.json)`);
+if (pinned.length) console.log(`seconds-corpus-gate: ${pinned.length} pinned true divergences, ${renderedReproduced.size} reproduced upstream failures (see pinned-divergences.json)`);
 if (!keep) rmSync(work, { recursive: true, force: true });
 process.exit(0);

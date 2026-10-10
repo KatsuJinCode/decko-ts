@@ -19,6 +19,44 @@
 // meaningful change still fails.
 
 /**
+ * N7. An error record's class name, on an operation whose recorded result IS
+ * the failure. Where the oracle raised while serving, its capture holds
+ * `{class, message}` - the class named through Ruby's naming
+ * (`Card::Error::CodenameNotFound`, module path included); the engine names
+ * its own Error subclass through the host language's convention
+ * (`CodenameNotFoundError`, flat, suffixed). A class NAME is the host
+ * language's identity in the same class as N5's capture-host content and N6's
+ * frame lines: no port can emit the other language's naming. The canonical
+ * form keeps the class's name proper - the terminal `::` segment of the Ruby
+ * path, with one trailing `Error` suffix (the JS subclass convention) dropped
+ * from either side - so a reproduced failure must still be THE SAME failure:
+ * another class proper, or another message (compared byte-exact), still
+ * fails. Measured on synthetic-v2: 24 oracle ops record the upstream raise
+ * `Card::Error::CodenameNotFound: unknown codename: test_context`; the engine
+ * raises `CodenameNotFoundError` with the byte-same message on all 24, and
+ * after N7 the failure records compare equal
+ * (benchmarks/seconds-corpus/upstream-failure-classification-evidence.md).
+ */
+export function canonicalErrorClass(name) {
+  if (typeof name !== "string" || name === "") return name;
+  const proper = name.includes("::") ? name.slice(name.lastIndexOf("::") + 2) : name;
+  const stem = "Error";
+  return proper.endsWith(stem) && proper.length > stem.length ? proper.slice(0, -stem.length) : proper;
+}
+
+/** N7 on an error record: the class's host naming canonicalizes; the message
+ *  and every other field compare exact. */
+export function normalizeErrorRecord(error) {
+  if (error === null || typeof error !== "object") return error;
+  return { ...error, class: canonicalErrorClass(error.class) };
+}
+
+/** Equality for two recorded failures under N7 and N2. */
+export function sameFailure(a, b) {
+  return sameJson(normalizeErrorRecord(a), normalizeErrorRecord(b));
+}
+
+/**
  * N1. A slot id: the `data-slot-id` attribute holding exactly 20 lowercase
  * hex digits, in attribute position, quote style kept. Ruby Decko draws it at
  * random for every render, so two oracle runs of one fixture differ in it and

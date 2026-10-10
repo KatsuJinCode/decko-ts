@@ -221,8 +221,20 @@ Each item is compared with the expected outputs after normalisation
 group (page or view and actor; question type; write action). Scenario steps
 are graded on every kind they exercise: a write's answer is a side-effect
 item, its `rows` a persistence item, a render or question after a write a
-rendering or semantics item. An item whose oracle answer was an adapter error
-is reported as an oracle error and not graded.
+rendering or semantics item.
+
+An item whose oracle answer is itself a failure is graded on what kind of
+thing the oracle recorded. A capture-side fault (the `CAPTURE_ERROR` sentinel
+the capture scripts record when their own machinery threw) says nothing about
+the site: it is reported as an oracle capture fault and not graded. A recorded
+upstream failure - the oracle raised while serving, and its capture holds the
+error record - is the upstream behavior the port must reproduce: the engine's
+answer must be the same failure under N7 (the class's host naming
+canonicalized) with the message byte-exact, and a match is counted as a
+**reproduced upstream failure**, its own success category (the operator's
+ruling: where the original is broken and the copy breaks the same way, that
+is the port succeeding). Any other answer on such an item - a different
+failure, or a render where the oracle failed - fails it.
 
 **Reads write only what the oracle's reads wrote.** Each read session's
 `session_writes`, and each non-write scenario step's `rows` and
@@ -334,6 +346,18 @@ comparator's N1-N6 above. The two vocabularies coexist:
    the `<br>`-separated structure inside the div stays compared, so a side
    emitting a different number of its own frames still fails, as do the
    heading, the error message and every byte outside the div.
+7. **N7 (canonical form over the host language's class naming).** On an
+   operation whose recorded result IS the failure (section 3, "What the
+   grader compares"), the error record's class name canonicalizes to its
+   name proper: the terminal `::` segment of the Ruby path
+   (`Card::Error::CodenameNotFound` -> `CodenameNotFound`), with one
+   trailing `Error` suffix — the JS subclass convention
+   (`CodenameNotFoundError` -> `CodenameNotFound`) — dropped from either
+   side. A class name is the host language's identity in the same class as
+   N5's and N6's content: no port can emit the other language's naming.
+   Everything else in the record counts: the message compares byte-exact,
+   and a different name proper is a different failure, which fails the
+   item.
 
 Everything else is compared exactly: every byte of HTML, every field of a
 write answer (the new card's id and every byte of mail text included), every
@@ -374,6 +398,15 @@ engine's 8-10 V8 frames (Node's `Error.stackTraceLimit` caps at 10), so the
 frame count — the invariant N6 checks — is the six raise-posture rows'
 recorded residual
 (`benchmarks/seconds-corpus/backtrace-frame-canonicalization-evidence.md`).
+N7's evidence is the failure records themselves (the oracle's capture bytes
+carry the raise; the measurement is over oracle-vs-engine pairs): 24 of the
+oracle's 2,581 render operations record the upstream raise
+`Card::Error::CodenameNotFound: unknown codename: test_context` (six
+email/codename-bearing cards x four actors) — previously tallied as oracle
+errors and left ungraded — and the engine raises `CodenameNotFoundError`
+with the byte-same message on all 24, so after N7 all 24 grade as reproduced
+upstream failures
+(`benchmarks/seconds-corpus/upstream-failure-classification-evidence.md`).
 
 Rules the first version applied and no longer does, because no oracle run
 varies in them: hexadecimal object addresses (never present in any recorded
