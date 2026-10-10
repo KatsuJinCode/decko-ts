@@ -47,72 +47,6 @@
    "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
-   "op": "page:anonymous:mod: style+*style",
-   "family": "composed-mod-view-gap",
-   "group": "page / anonymous",
-   "evidence": {
-    "firstDiffAt": 12287,
-    "expected": "-Xstyle TYPE_PLUS_RIGHT-mod-Xstyle SELF-mod_style-Xstyle\\\"><p>\\n<h5>\\ngroup: local\\n</h5>\\n<ul class=\\\"list-group\\\"><li class=\\\"list-group-item\\\">jquery_ui_deck",
-    "actual": "-Xstyle TYPE_PLUS_RIGHT-mod-Xstyle SELF-mod_style-Xstyle\\\"></div></div></div></article>\\n  <footer class=\\\"footer mt-auto py-3\\\"><div id=\\\"Xfooter-content-view\\"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:member:mod: style+*style",
-   "family": "composed-mod-view-gap",
-   "group": "page / member",
-   "evidence": {
-    "firstDiffAt": 14951,
-    "expected": "-Xstyle TYPE_PLUS_RIGHT-mod-Xstyle SELF-mod_style-Xstyle\\\"><p>\\n<h5>\\ngroup: local\\n</h5>\\n<ul class=\\\"list-group\\\"><li class=\\\"list-group-item\\\">jquery_ui_deck",
-    "actual": "-Xstyle TYPE_PLUS_RIGHT-mod-Xstyle SELF-mod_style-Xstyle\\\"></div></div></div></article>\\n  <footer class=\\\"footer mt-auto py-3\\\"><div id=\\\"Xfooter-content-view\\"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:contractor:mod: style+*style",
-   "family": "composed-mod-view-gap",
-   "group": "page / contractor",
-   "evidence": {
-    "firstDiffAt": 12820,
-    "expected": "-Xstyle TYPE_PLUS_RIGHT-mod-Xstyle SELF-mod_style-Xstyle\\\"><p>\\n<h5>\\ngroup: local\\n</h5>\\n<ul class=\\\"list-group\\\"><li class=\\\"list-group-item\\\">jquery_ui_deck",
-    "actual": "-Xstyle TYPE_PLUS_RIGHT-mod-Xstyle SELF-mod_style-Xstyle\\\"></div></div></div></article>\\n  <footer class=\\\"footer mt-auto py-3\\\"><div id=\\\"Xfooter-content-view\\"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:admin:mod: style+*style",
-   "family": "composed-mod-view-gap",
-   "group": "page / admin",
-   "evidence": {
-    "firstDiffAt": 15071,
-    "expected": "-Xstyle TYPE_PLUS_RIGHT-mod-Xstyle SELF-mod_style-Xstyle\\\"><p>\\n<h5>\\ngroup: local\\n</h5>\\n<ul class=\\\"list-group\\\"><li class=\\\"list-group-item\\\">jquery_ui_deck",
-    "actual": "-Xstyle TYPE_PLUS_RIGHT-mod-Xstyle SELF-mod_style-Xstyle\\\"></div></div></div></article>\\n  <footer class=\\\"footer mt-auto py-3\\\"><div id=\\\"Xfooter-content-view\\"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "core:admin:mod: style+*style",
-   "family": "composed-mod-view-gap",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 9,
-    "expected": "{\"html\":\"<p>\\n<h5>\\ngroup: local\\n</h5>\\n<ul class=\\\"list-group\\\"><li class=\\\"list-group-item\\\">jquery_ui_decko.scss</li>\\n<li cl",
-    "actual": "{\"html\":\"\"}"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "core:anonymous:mod: style+*style",
-   "family": "composed-mod-view-gap",
-   "group": "view / anonymous",
-   "evidence": {
-    "firstDiffAt": 9,
-    "expected": "{\"html\":\"<p>\\n<h5>\\ngroup: local\\n</h5>\\n<ul class=\\\"list-group\\\"><li class=\\\"list-group-item\\\">jquery_ui_decko.scss</li>\\n<li cl",
-    "actual": "{\"html\":\"\"}"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
    "op": "core:admin:Topic 001+discussion",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
@@ -153,72 +87,6 @@
     "firstDiffAt": 9,
     "expected": "{\"html\":\"\"}",
     "actual": "{\"html\":\"\\n\"}"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:anonymous:*signin",
-   "family": "composed-mod-view-gap",
-   "group": "page / anonymous",
-   "evidence": {
-    "firstDiffAt": 12821,
-    "expected": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"43\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat",
-    "actual": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"52\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:member:*signin",
-   "family": "composed-mod-view-gap",
-   "group": "page / member",
-   "evidence": {
-    "firstDiffAt": 15485,
-    "expected": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"43\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat",
-    "actual": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"52\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:contractor:*signin",
-   "family": "composed-mod-view-gap",
-   "group": "page / contractor",
-   "evidence": {
-    "firstDiffAt": 13354,
-    "expected": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"43\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat",
-    "actual": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"52\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:admin:*signin",
-   "family": "composed-mod-view-gap",
-   "group": "page / admin",
-   "evidence": {
-    "firstDiffAt": 15493,
-    "expected": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"43\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat",
-    "actual": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"52\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "core:admin:*signin",
-   "family": "composed-mod-view-gap",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 1051,
-    "expected": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"43\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat",
-    "actual": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"52\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "core:anonymous:*signin",
-   "family": "composed-mod-view-gap",
-   "group": "view / anonymous",
-   "evidence": {
-    "firstDiffAt": 1051,
-    "expected": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"43\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat",
-    "actual": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"52\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat"
    },
    "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
@@ -920,17 +788,6 @@
    "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
-   "op": "view:anonymous:*signin:reset_password_success",
-   "family": "composed-mod-view-gap",
-   "group": "view / anonymous",
-   "evidence": {
-    "firstDiffAt": 419,
-    "expected": "&quot;,&quot;show&quot;:[&quot;reset_password_success&quot;],&quot;hide&quot;:[&quot;help&quot;]}\\\"><div class=\\\"d0-card-frame card\\\"><div class=\\\"d0-card-heade",
-    "actual": "&quot;,&quot;show&quot;:[&quot;reset_password_success&quot;]}\\\">Check your email for a link to reset your password</div>\"}"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
    "op": "view:admin:*admin:admin",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
@@ -980,17 +837,6 @@
    "evidence": {
     "expected": "",
     "actual": ""
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "view:admin:mod: style+*style:core",
-   "family": "composed-mod-view-gap",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 9,
-    "expected": "{\"html\":\"<p>\\n<h5>\\ngroup: local\\n</h5>\\n<ul class=\\\"list-group\\\"><li class=\\\"list-group-item\\\">jquery_ui_decko.scss</li>\\n<li cl",
-    "actual": "{\"html\":\"\"}"
    },
    "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
