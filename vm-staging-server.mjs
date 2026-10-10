@@ -114,7 +114,7 @@ import { FetchEngine } from "./dist/src/card/fetch.js";
 import { RenderEngine } from "./dist/src/card/render.js";
 import { DeckoName } from "./dist/src/card/name.js";
 import { applyDeckInflections } from "./dist/src/card/name/inflect.js";
-import { ORACLE_DECK_INFLECTIONS } from "./dist/src/card/name/oracle-deck-inflections.js";
+import { CARD_GEM_INITIALIZER_INFLECTIONS } from "./dist/src/card/name/oracle-deck-inflections.js";
 import { sqliteRegexpUdf } from "./dist/src/cql/sqlite-regexp.js";
 // The first-run journey (first-run-experience lane): Ruby's
 // Card::Auth.needs_setup? census + the owner create, as a separate HTTP
@@ -224,7 +224,7 @@ import {
 // (2026-09-25 staging "0 results" defect 1). applyDeckInflections also drops
 // the DeckoName parse cache, so the keys primed below (primeEngine's
 // keyToId / idToName maps) are computed under the deck table.
-applyDeckInflections(ORACLE_DECK_INFLECTIONS);
+applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
 
 // ---------------------------------------------------------------------------
 // Lexicon / codename cache backing store (origin-side round 8 wiring)

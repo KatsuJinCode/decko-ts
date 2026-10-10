@@ -34,7 +34,7 @@ import {
   toWebResponse,
 } from "./src/server/cloudflare-write-routes.js";
 import { applyDeckInflections } from "./src/card/name/inflect.js";
-import { ORACLE_DECK_INFLECTIONS } from "./src/card/name/oracle-deck-inflections.js";
+import { CARD_GEM_INITIALIZER_INFLECTIONS } from "./src/card/name/oracle-deck-inflections.js";
 import { createVirtualCardLookup } from "./src/card/fetch/virtual-cards.js";
 import {
   structureRuleUniverseStatement,
@@ -83,7 +83,7 @@ async function bootDeck(env: Env): Promise<Deck> {
   // inflections.rb runs"). Without it every key derives gem-default
   // (`Anonymous` keyed `anonymou`) and the divergence rides into the
   // rendered slot class tokens — visible in the card BYTES.
-  applyDeckInflections(ORACLE_DECK_INFLECTIONS);
+  applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
   const driver = new CloudflareD1Adapter(env.DB);
   const fetcher = new FetchEngine(driver);
   const render = new RenderEngine(fetcher);

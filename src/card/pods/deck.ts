@@ -9,7 +9,7 @@ import { FetchEngine } from "../fetch.js";
 import { CardActionEngine } from "../actions/card-action-engine.js";
 import { LocalAttachmentStore } from "../attachments/attachment-store.js";
 import { applyDeckInflections } from "../name/inflect.js";
-import { ORACLE_DECK_INFLECTIONS } from "../name/oracle-deck-inflections.js";
+import { CARD_GEM_INITIALIZER_INFLECTIONS } from "../name/oracle-deck-inflections.js";
 import { DeckoName } from "../name.js";
 import {
   structureRuleUniverseStatement,
@@ -34,7 +34,7 @@ export async function bootDeck(
   dbPath: string,
   opts: { readonly?: boolean; filesDir?: string } = {},
 ): Promise<BootedDeck> {
-  applyDeckInflections(ORACLE_DECK_INFLECTIONS);
+  applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
   const driver = new LocalSqliteDriver({ path: dbPath, readonly: opts.readonly ?? false });
   registerSqliteRegexpFunction(driver);
   const fetcher = new FetchEngine(driver);

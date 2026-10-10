@@ -28,12 +28,18 @@ Three consequences follow from taking byte comparison seriously:
 - **A running oracle is part of the build.** `tools/oracle/` holds a Ruby
   app and the scripts that record its behaviour. The app is disposable and
   rebuildable; the fixtures it produces are committed.
-- **Nondeterminism is removed at the recording layer, not at comparison time.**
-  Exactly one value is normalized: the random slot identifier, rewritten to a
-  fixed placeholder on both sides. Timestamps and creator identifiers are
-  excluded from capture rather than normalized, so a divergence there cannot
-  hide. Card identifiers are stripped from both sides before comparison,
-  because they are database-local rather than content-derived.
+- **Nondeterminism is removed at the comparison seam, not by a tolerant
+  comparator.** Each instrument defines its own normalisations, and a figure
+  takes the normalisations of the instrument that produced it — never a
+  different instrument's. The authoritative per-instrument table is in
+  [../parity-method.md](../parity-method.md), "Every instrument's
+  normalisations, in one table": the public harness's N1/N2, the oracle-replay
+  comparator's three rules, and the historical corpus's four normalizations
+  plus two transforms and its 13 live-swapped expectations. Timestamps and
+  creator identifiers are excluded from capture rather than normalized, so a
+  divergence there cannot hide. Card identifiers are stripped from both sides
+  before comparison, because they are database-local rather than
+  content-derived.
 - **Everything else is exact bytes.** No whitespace tolerance, no case
   folding, no attribute reordering. A tolerant comparator would convert the
   measurement into a weaker claim than the one being made.

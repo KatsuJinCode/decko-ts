@@ -49,8 +49,11 @@
 //   check_permissions; set/all/update_read_rules.rb:4-11 bodies of
 //   update_rule_cache / expire_related; set/right/read.rb:9-14 body of
 //   cascade_read_rule + its cascade machinery, 16-77) - the manifest
-//   models no event bus (mod-loader-port-notes.md "Events, chunks, ...
-//   are not modeled"). The DECLARATIONS land on the ModEventRegistry
+//   records a DECLARATION for each and the stage walk consults the
+//   registry, but no Ruby-equivalent event BUS runs these bodies (the
+//   ModEventRegistry is a declaration table plus a stage walk, not a
+//   message bus: src/card/mod-loader/mod-event-registry.ts). The
+//   DECLARATIONS land on the ModEventRegistry
 //   (see the Events section below); the bodies are no-op stubs. The READ
 //   half of the permission semantics already exists engine-side:
 //   RenderEngineLike.isDenied/taskAllowed cite exactly permissions.rb:

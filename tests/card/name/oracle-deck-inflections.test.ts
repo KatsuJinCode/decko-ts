@@ -1,7 +1,7 @@
 /**
  * The deployed deck's inflection table (src/card/name/oracle-deck-inflections.ts).
  *
- * The deck-serving origins apply ORACLE_DECK_INFLECTIONS at boot (the Rails
+ * The deck-serving origins apply CARD_GEM_INITIALIZER_INFLECTIONS at boot (the Rails
  * config/initializers/inflections.rb moment) so the engine keys names exactly
  * as the corpus's live Ruby stored them. The 2026-09-25 staging defect made
  * the stakes concrete: WITHOUT the boot call the engine computes
@@ -21,7 +21,7 @@ import {
   applyDeckInflections,
   resetDeckInflections,
 } from "../../../src/card/name/inflect.js";
-import { ORACLE_DECK_INFLECTIONS } from "../../../src/card/name/oracle-deck-inflections.js";
+import { CARD_GEM_INITIALIZER_INFLECTIONS } from "../../../src/card/name/oracle-deck-inflections.js";
 
 afterEach(() => {
   resetDeckInflections();
@@ -38,7 +38,7 @@ describe("oracle deck inflection table (deployed deck boot data)", () => {
   });
 
   it("keys parenthesized junction names exactly as the corpus stores them", () => {
-    applyDeckInflections(ORACLE_DECK_INFLECTIONS);
+    applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
     // the corpus-stored keys (live Ruby's bytes, cards 406 / 420 / Brandon's
     // virtual participating section)
     expect(DeckoName.parse("Participant(s)").key).toBe("participant_s");
@@ -55,7 +55,7 @@ describe("oracle deck inflection table (deployed deck boot data)", () => {
   });
 
   it("protects the other two recovered uncountables and nothing else", () => {
-    applyDeckInflections(ORACLE_DECK_INFLECTIONS);
+    applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
     expect(DeckoName.parse("delete this").key).toBe("delete_this");
     expect(DeckoName.parse("Anonymous").key).toBe("anonymous");
     // every other default singularization still fires under the deck table
@@ -68,7 +68,7 @@ describe("oracle deck inflection table (deployed deck boot data)", () => {
     // "grave", "graveyard"`; expected keys are cardname 0.20.0's output with
     // that initializer loaded. "Graveyards" stays whole: singularizing twice
     // gives graveyard -> grave, an unstable key, which cardname refuses.
-    applyDeckInflections(ORACLE_DECK_INFLECTIONS);
+    applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
     expect(DeckoName.parse("Graveyard").key).toBe("grave");
     expect(DeckoName.parse("Graveyards").key).toBe("graveyards");
     expect(DeckoName.parse("Grave").key).toBe("grave");

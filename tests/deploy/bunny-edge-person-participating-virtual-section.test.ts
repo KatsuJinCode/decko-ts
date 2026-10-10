@@ -54,7 +54,7 @@ import { splitSqlStatements } from "../card/render/render-test-storage.js";
 import { LocalSqliteDriver } from "../../src/server/drivers/local-sqlite.js";
 import { DeckoName } from "../../src/card/name.js";
 import { applyDeckInflections } from "../../src/card/name/inflect.js";
-import { ORACLE_DECK_INFLECTIONS } from "../../src/card/name/oracle-deck-inflections.js";
+import { CARD_GEM_INITIALIZER_INFLECTIONS } from "../../src/card/name/oracle-deck-inflections.js";
 
 const REPO_ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -198,7 +198,7 @@ describe("bunny edge boot renders the person page's virtual +Project(s) Particip
     async () => {
       // Deck-boot order: inflections BEFORE any deck row is written (the
       // Rails-initializer moment) so the stored keys match the corpus.
-      applyDeckInflections(ORACLE_DECK_INFLECTIONS);
+      applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
 
       const driver = new LocalSqliteDriver({ path: ":memory:" });
       const ddl = readFileSync(path.join(REPO_ROOT, "db", "schema.sqlite.sql"), "utf8");

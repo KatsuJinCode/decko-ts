@@ -36,9 +36,18 @@ rendering oracle. The upstream versions targeted are:
 
 Parts of this project are direct ports of the corresponding Ruby source.
 Those ports carry the upstream copyright and remain under the upstream
-license. Ported files and areas are documented in ARCHITECTURE.md and in the
-`docs/*-port-notes.md` series, which record the upstream file each area was
-ported from.
+license.
+
+**Where the port record lives: in the source comments themselves.** There is
+no separate port-notes document, and there never was one. Each ported module
+under `src/` carries a header naming the Ruby file and the line numbers its
+behaviors came from — the same per-file citation style
+`src/card/render/views.ts` uses at its head ("View sources: :open / :closed
+card-mod-bar_and_box-0.20.0 set/all/bar.rb …"). **197 of the 229 tracked
+TypeScript files under `src/card/` name a `.rb` path in a source comment**;
+the engine's area-level map is [ARCHITECTURE.md](ARCHITECTURE.md), and the
+behaviour-level decisions are the records in
+[docs/decisions/](docs/decisions/).
 
 
 Scope of the GPL grant
@@ -52,6 +61,78 @@ remains, and any work derived from this project inherits the same terms.
 Third-party components
 ----------------------
 
-Components under `vendor/` are redistributed under their own licenses; see
-the notices in that directory. In particular `vendor/uglifier-4.2.1-uglify-harmony/`
-carries its own provenance and license notice.
+Components under `vendor/`, `tools/libsass/libsass/`, `fixtures/vendor/` and
+the compiled deployment bundles are redistributed under their own licenses.
+**Every component ships its full license text beside its own bytes, in a
+`LICENSE`/`License.txt` file in the same directory as the code it covers,
+together with the copyright line that code's header states.** Where a
+vendored file states no copyright line, its license file says so and names
+the upstream project from the file's embedded metadata instead. The full
+inventory:
+
+### `vendor/` — the JavaScript minifier
+
+The `*all+*script` asset compiler's compression engine: the five source files
+the `uglifier` 4.2.1 gem loads into ExecJS. This directory already carried a
+complete per-file license record before this inventory existed, and it is
+more granular than one row can express — it ships four separate license texts
+beside their own bytes:
+
+| Component | License | License text |
+| --- | --- | --- |
+| Uglifier (the gem's own code) | MIT | `vendor/uglifier-4.2.1-uglify-harmony/uglifier-gem-LICENSE-MIT.txt` |
+| uglify-js harmony (the minifier) | BSD-2-Clause | `vendor/uglifier-4.2.1-uglify-harmony/uglify-harmony-js-LICENSE-BSD-2-Clause.txt` |
+| split.js | MIT | `vendor/uglifier-4.2.1-uglify-harmony/split-js-LICENSE-MIT.txt` |
+| source-map.js (a webpack bundle carrying two notices: Mozilla's BSD and the Base 64 VLQ module's) | BSD-3-Clause and the notice stated for the VLQ module | `vendor/uglifier-4.2.1-uglify-harmony/source-map-js-LICENSE-NOTICES.txt` |
+
+What this directory is, and which upstream commit it came from, is
+`vendor/uglifier-4.2.1-uglify-harmony/PROVENANCE-AND-LICENSE.md`.
+
+### `tools/libsass/libsass/` — the Sass compiler
+
+| Component | Version | License | License text |
+| --- | --- | --- | --- |
+| LibSass (as bundled by the `sassc-ruby` gem, `sassc` 2.4.0) | 3.6.4 | MIT, "Copyright (C) 2012-2016 by the Sass Open Source Foundation" | `tools/libsass/libsass/LICENSE`, with `PROVENANCE.md` beside it |
+
+### `fixtures/vendor/` — the vendored Ruby mod asset trees
+
+These are byte-copies of the asset trees the Ruby `card-mod-*` gems ship, so
+the engine can compile and render the same stylesheets and load the same
+scripts without a Ruby install. Each component's license file sits beside
+that component's bytes:
+
+| Component | Version | License | License text |
+| --- | --- | --- | --- |
+| Bootstrap (JavaScript) | 5.1.3 | MIT, "Copyright 2011-2021 The Bootstrap Authors" | `fixtures/vendor/mod-script-assets/card-mod-bootstrap/vendor/bootstrap/LICENSE.txt` |
+| Bootstrap (Sass source) | 5.1.3 | MIT, "Copyright 2011-2021 The Bootstrap Authors" | `fixtures/vendor/bootstrap-scss/LICENSE.txt` |
+| Bootstrap Icons (font CSS) | not stated in the vendored file | MIT | `fixtures/vendor/mod-style-assets/card-mod-bootstrap/assets/style/LICENSE.txt` |
+| Bootstrap Colorpicker (JavaScript) | 2.5.2 | **Apache-2.0** (the last release before the 3.0.0 change to MIT) | `fixtures/vendor/mod-script-assets/card-mod-bootstrap/vendor/bootstrap-colorpicker/LICENSE.txt` |
+| Bootstrap Colorpicker (Sass) | 2.5.2 | **Apache-2.0** | `fixtures/vendor/mod-style-assets/card-mod-bootstrap/vendor/bootstrap-colorpicker/LICENSE.txt` |
+| Select2 (CSS) | 4.x, no patch stated in the file | MIT | `fixtures/vendor/mod-style-assets/card-mod-bootstrap/vendor/select2/LICENSE.txt` |
+| Select2 Bootstrap 5 Theme (Sass) | not stated in the files | MIT | `fixtures/vendor/mod-style-assets/card-mod-bootstrap/vendor/select2-bootstrap-5-theme/LICENSE.txt` |
+| jQuery UI | 1.12.1 | MIT, "Copyright jQuery Foundation and other contributors" | `fixtures/vendor/mod-script-assets/card-mod-format/assets/script/jquery/LICENSE.txt` |
+| Autosize | 1.18.13 | MIT (the file states its license and home page but no copyright line) | same file as jQuery UI above |
+| jQuery File Upload Plugin | not stated in the file | MIT, "Copyright 2010, Sebastian Tschan" | `fixtures/vendor/mod-script-assets/card-mod-format/vendor/jquery_file_upload/LICENSE.txt` |
+| TinyMCE | 5.10.7 | **LGPL-2.1** or Tiny commercial; "Copyright (c) Tiny Technologies, Inc." | `fixtures/vendor/mod-script-assets/card-mod-tinymce_editor/assets/script/LICENSE.txt` (notice) and `License-lgpl-2.1.txt` (**the full LGPL-2.1 text, shipped in full** — the vendored copy's banner points at a `License.txt` that was not shipped with it) |
+| Bootswatch themes | not stated in the trees | MIT, "Copyright (c) 2013 Thomas Park" | `fixtures/vendor/bootswatch/LICENSE` |
+| Rails / ActionView `en` locale strings (a test fixture) | 7.2.3.2 | MIT | `fixtures/vendor/LICENSE.txt` |
+
+### `scripts/deploy/one-click-deck/demo-static-assets/assets/` — compiled bundles
+
+`all-script.js` and `all-style.css` are **concatenations**: SassC- and
+Uglifier-compiled from the trees above plus the deck's own assets. A
+concatenation has no "beside it", so the notices that the per-file license
+texts carry are restated in
+[`assets/PROVENANCE.md`](scripts/deploy/one-click-deck/demo-static-assets/assets/PROVENANCE.md),
+which maps every third-party section of each bundle to its license text.
+
+### The one that constrains redistribution
+
+**TinyMCE is LGPL-2.1.** Every other component above is MIT or Apache-2.0,
+which require only that the notice travel with the software. LGPL-2.1
+requires more: a redistributor must also make the library's source available
+(section 6), which this project satisfies — it is GPL-3.0-or-later, and the
+GPL's section 6 is the same copy-and-modify mechanism. TinyMCE is also
+available from Tiny under a commercial license; choosing that arm is a
+licensing decision for whoever redistributes the package, not a code change,
+because the vendored bytes are identical either way.

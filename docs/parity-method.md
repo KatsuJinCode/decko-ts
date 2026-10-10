@@ -79,12 +79,47 @@ Three things are not captured, and their absence is deliberate:
    already present, which legitimately differs between runs. It goes to
    stdout, never into the fixture.
 
+### Every instrument's normalisations, in one table
+
+**This table is authoritative.** Every other document that states how many
+values are normalized points here rather than restating a count. A figure
+takes its normalisations from the instrument that produced it, so the
+instrument is named first and its rules second.
+
+| Instrument | Rules | Where each is defined |
+| --- | --- | --- |
+| **Public reference harness** (N1/N2) | **2**: N1 masks the `data-slot-id` attribute **value** (quote style kept); N2 is a canonical form — JSON object key order never counts, array order always does. Nothing else. | `reference-harness/runner/normalize.mjs:25` (`SLOT_ID`), `:51` (`normalizeHtml`/N1), `:189` (`stable`/N2). Spec: `reference-harness/SPEC.md` §4. |
+| **Oracle-replay comparator** | **3** replay-legitimate normalizations, applied to **both** sides by `normalizeForReplay` in this order: (1) `data-slot-id` → `RANDOMIZED`; (2) accordion group hash → `HASH`; (3) `Cardio::Mod` object address → `ADDRESS`. | `src/testing/diff.ts:225` (`normalizeForReplay`, the compare seam); the three rules at `:1-20` (rule 1), `:90` (`ACCORDION_GROUP_HASH_PATTERN`), `:201` (`MOD_OBJECT_ADDRESS_PATTERN`). |
+| **Historical corpus replay** | **4 normalizations** (the three above **plus** the Cloudflare `__CF$cv$params` challenge-script block, removed from both sides) **+ 2 expectation transforms applied once, upstream of the comparison** (the s3→DigitalOcean-Spaces asset-host prefix; the denied-seam blank-line re-anchor) **+ the 13 live-swapped expectations** from the subsection above. | Normalizations: `src/testing/diff.ts:165` (`CF_CHALLENGE_BLOCK_PATTERN`, the fourth; applied in `normalizeForReplay` at `:227`). Transforms: `tools/oracle/apply-asset-host-follow-live-close-71.mjs` (asset host) and `tools/oracle/denied-seam-reanchor-page-lane-expectations.mjs` (denied seam). Live swap: the "thirteen live expectations" subsection above, manifest under `fixtures/corpus-v2/w5-live-alignment-2026-10-03/`. |
+
+Two consequences worth stating plainly, because they are where the older
+prose went wrong:
+
+- **"Exactly one value is normalized" was never true of the comparator.** It
+  described the *recording layer*: what the capture script rewrote before
+  writing a fixture. The current smoke capture rewrites nothing —
+  `tools/oracle/capture.rb:52-54` defines `normalize` as the identity,
+  because the slot id's quote style is part of Ruby's output and an earlier
+  rig that rewrote the value to `data-slot-id="RANDOMIZED"` erased it
+  (`tools/oracle/capture-stores-raw-slot-ids.test.mjs` is the standing guard
+  against that class of rewrite returning). Masking now happens at the
+  **compare seam**, on both sides, and both harnesses do it: the replay
+  comparator through `normalizeForReplay`, the reference harness through N1.
+  Older fixtures captured before that change still carry the erased form;
+  `src/testing/diff.ts:134` (`referenceErasedSlotQuotes`) detects them and
+  compares them under the quote-erasing rule rather than the quote-keeping
+  one, so both generations of fixture stay gradable.
+- **The corpus row is not one number.** Four normalizations, two transforms
+  and a 13-entry live swap are three different mechanisms at three different
+  points in the pipeline. A figure that quotes the corpus must say which of
+  them it depends on.
+
 ### What the oracle-replay comparator normalises
 
 Every instrument defines its own normalisations, and a figure takes its
-normalisations from the instrument that produced it. This comparator's rules
-are the three defined in `src/testing/diff.ts`; the reference harness's are
-the two defined in `../reference-harness/runner/normalize.mjs`.
+normalisations from the instrument that produced it; the table above is the
+single place that says which is which. The prose below describes the
+oracle-replay comparator's three rules in full.
 
 First, every wrapped slot render embeds a random DOM identifier, generated
 from `SecureRandom.hex(10)`. It cannot be captured as a literal value, so the
@@ -216,6 +251,57 @@ differ, or the manifest is missing or unparseable while a corpus is staged),
 unbound (a corpus is present that was never photographed here — reported, not
 refused, because nothing recorded can be contradicted) and absent.
 
+### The thirteen live expectations (dated 2026-10-04)
+
+**The corpus grade is not purely oracle-against-oracle. Thirteen of its
+expectations are bytes fetched from the live site, not from the 0.20.0
+oracle.** Stating this is the point of the subsection; a figure that carries
+them must not be quoted as a pure Ruby-parity figure.
+
+- **Count: exactly 13 entries — 6 view-lane, 7 page-lane.** The count is not
+  a summary of the manifest, it is the number the tool refuses to run without:
+  `tools/oracle/apply-w5-expectations-follow-live-2026-10-03.mjs:86` fails
+  unless the verdicts file holds exactly 13 `LIVE-DIFFERS` rows. The
+  committed manifest
+  (`fixtures/corpus-v2/w5-live-alignment-2026-10-03/w5-live-alignment-swap-manifest.json`)
+  records the same 13 (applied 2026-10-04T01:04:58Z, per-entry `liveFetchedAt`
+  between 00:39:22Z and 00:39:51Z on 2026-10-04).
+- **Source: `culturesmith.com` live GETs on 2026-10-04, captured whole-body
+  and stored verbatim**, including the documented per-response noise
+  (Cloudflare `__CF$cv$params` tokens, per-render `data-slot-id` hashes).
+- **Era: the live 0.19.1 serializer, not the 0.20.0 oracle.** The live
+  deployment renders `Decko v0.19.1` in its footer credit
+  (`src/card/render/deployment-follow-live-config.ts:38-41`,
+  `footerDeckoVersion`, live `"Decko v0.19.1"` against the card gem's
+  `"0.20.0"`). Those 13 entries are therefore measured against a **newer
+  engine era's output, recorded from a site, not from a 0.20.0 Ruby process**.
+- **Policy: live truth wins where the live capture holds the page.** This
+  follows the same live-truth capture policy as the two reversible,
+  manifest-bound corpus overlays beside it — the asset-host transform
+  (`tools/oracle/apply-asset-host-follow-live-close-71.mjs`) and the
+  denied-seam re-anchor
+  (`tools/oracle/denied-seam-reanchor-page-lane-expectations.mjs`). Each is a
+  one-direction overlay that refuses on state drift and records an inverse
+  manifest, so the frozen originals stay recoverable as history.
+- **What it means for the historical figure.** A corpus replay whose
+  denominator includes those 13 entries is, for those entries, measuring
+  agreement with a 0.19.1-era live site rather than with the oracle the rest
+  of the corpus was captured from. The correct reading of such a figure is:
+  *13 expectations are live-anchored; the remaining corpus is
+  oracle-anchored.* It is not a weaker claim in the direction of being
+  flattering — live bytes are a real rendering of a real Decko deck — but it
+  is a **different** claim, and the corpus figure must say which 13. The
+  entry ids are named per-entry in the manifest (`id`, `lane`, `shard`,
+  `line`, `name`, `view`, `liveUrl`, `liveFetchedAt`, and the before/after
+  sha256 pair), so any quoted figure can be recomputed with and without
+  them.
+- **What was deliberately not swapped, and why.** The same tool records the
+  exclusions in its header: the 2 `LIVE-CONFIRMS` entries keep their oracle
+  expectation (the entry fails for engine reasons, so live truth does not
+  clear it), and the 5 `record` entries keep theirs because the live site has
+  no record view surface to capture (422/403 responses, not renderings). The
+  swap count of 13 is the complete live-anchored set, not a sample of it.
+
 ---
 
 ## Performance measurement
@@ -272,11 +358,45 @@ byte-level proof for a view is a capture that rendered it.
 
 ## Reproducing the numbers
 
+The **public grade** — the reference-harness run and grade against the
+committed `synthetic-v1` expected outputs — was last measured on
+**2026-10-10**:
+
+```bash
+node reference-harness/runner/run.mjs --adapter reference-harness/adapters/ts/adapter.json \
+     --fixture reference-harness/fixtures/synthetic-v1 --out <resultsDir>
+node reference-harness/runner/grade.mjs --fixture reference-harness/fixtures/synthetic-v1 \
+     --actual <resultsDir>
+```
+
+It needs only Node and the engine — no Ruby, no private deck. The
+per-domain figures it produces are inventoried in
+[coverage-inventory.md](coverage-inventory.md), and the standing engine suite
+has its own commands:
+
 ```bash
 npx vitest run tests/testing   # the replay machinery on its own
 npm run replay                 # machinery plus every area's replay suite
 npm test                       # the engine suite against the miniature corpus
 ```
+
+**Provenance of the expected outputs, and why the tree is the artifact.** The
+`MANIFEST.json` beside them records the oracle checkout they were captured
+against: commit `28f0278139c373237fafb1cd04a35bd7a41d12e3` (the
+results-format-2 capture of 2026-10-08), which supersedes the 2026-10-07
+capture taken at `7826664f`
+(`reference-harness/fixtures/synthetic-v1/expected/MANIFEST.json`, under
+`provenance.supersedes`). Those are **development-tree commits, not published
+history**: the published history is squashed, and neither hash is reachable
+from the default branch (verified — `git merge-base --is-ancestor` against
+`origin/main` exits 1 for both, while both sit on this integration line). A
+reader who clones the repository will not find them as ancestors of anything
+they check out, so `git show 28f0278` is not a route to the expected bytes.
+**The committed tree is the artifact.** The manifest's own guard is the
+operative one: the grader refuses expected outputs whose files do not match
+their manifest (`reference-harness/SPEC.md` §3, refusal 5), so what is
+verifiable from a clean clone is the tree against its manifest — not the tree
+against a commit identifier the squashed history does not contain.
 
 The oracle itself needs a Ruby install with the target gems, so re-capturing
 is a separate exercise from replaying a committed fixture. The capture and

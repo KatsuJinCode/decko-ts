@@ -404,9 +404,9 @@ export class FetchEngine {
     // states.rb#known? -> virtual? (states.rb:44-50): a COMPOUND unknown name
     // is known when a *structure rule applies to it. The rule walk is the
     // injected hook (src/card/fetch/virtual-cards.ts) — storage factories
-    // with a loaded structure universe wire it; engines without it keep the
-    // historical nil (the fetch-port-notes deferral, now closed where the
-    // universe is loaded). A hit makes the placeholder the virtual card:
+    // with a loaded structure universe wire it; an engine that wires none
+    // answers nil for the unknown compound name, which is the behaviour
+    // this branch keeps. A hit makes the placeholder the virtual card:
     // the rule template becomes the content (content/all.rb:8-10, the
     // virtual card's standard_content is empty) and the type falls to the
     // rule card's type (type.rb:78-80 type_id_from_template).

@@ -33,7 +33,7 @@
 // copies them rather than re-deriving them through the port at seed time --
 // re-deriving would substitute the port's chunk parser for production's
 // stored truth. The `plus: {refer_to}` CQL class (census pages "David
-// Williams" / "John Abbe", structure rule
+// Williams" / "Jordan Sample", structure rule
 // `((Person + Project(s) Participating) + *type plus right) + *structure`)
 // resolves through these rows: junction "The Myth of Peace+Participant(s)"
 // (id 810) carries the referee-583 (david_william) row the clause joins on.
@@ -61,7 +61,7 @@ import {
 } from "../../../src/card/rules/structure.js";
 import { createVirtualCardLookup } from "../../../src/card/fetch/virtual-cards.js";
 import { applyDeckInflections } from "../../../src/card/name/inflect.js";
-import { ORACLE_DECK_INFLECTIONS } from "../../../src/card/name/oracle-deck-inflections.js";
+import { CARD_GEM_INITIALIZER_INFLECTIONS } from "../../../src/card/name/oracle-deck-inflections.js";
 
 const REPO_ROOT = path.resolve(
   fileURLToPath(new URL("../../..", import.meta.url)),
@@ -199,7 +199,7 @@ export async function createRawStructureSeededStorage(
   // finding A / view-lane class 3). Table + rationale:
   // src/card/name/oracle-deck-inflections.ts (the deck-data census copy this
   // replaces lived at tmp/raw-ground-truth/scripts/oracle-deck-inflection-config.ts).
-  applyDeckInflections(ORACLE_DECK_INFLECTIONS);
+  applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
   const storage = await createRenderTestStorage();
   const corpus = new Database(RAW_CORPUS_DB, { readonly: true });
 

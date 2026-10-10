@@ -96,9 +96,10 @@
 //   proof 5018 -> 5018) added the nest_rules/modal_nest_rules bytes and
 //   corrected modal_nest_rules (the mark-less path action + the full
 //   slot-wrapped list render).
-// - the event save_recently_edited_settings (set/rule/rules.rb:1-6):
-//   events (the manifest models no event bus; the mod-loader-port-notes
-//   "Events ... are not modeled" note)
+// - the event save_recently_edited_settings (set/rule/rules.rb:1-6): the
+//   declaration is registered on the ModEventRegistry, but no
+//   Ruby-equivalent event BUS runs the body (the registry is a declaration
+//   table plus a stage walk: src/card/mod-loader/mod-event-registry.ts)
 // - the card-level method files (rules.rb's rule_set_name/rule_user/etc,
 //   rstar/rule_user.rb, related_sets.rb, type/set.rb's anchor/prototype/
 //   label machinery, setting_categories.rb's category walks, right/*.rb's

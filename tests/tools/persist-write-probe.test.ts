@@ -59,7 +59,7 @@ import { RenderEngine } from "../../src/card/render.js";
 import { CardActionEngine } from "../../src/card/actions/card-action-engine.js";
 import type { CreateCardInput, UpdateCardInput } from "../../src/card/actions/types.js";
 import { applyDeckInflections } from "../../src/card/name/inflect.js";
-import { ORACLE_DECK_INFLECTIONS } from "../../src/card/name/oracle-deck-inflections.js";
+import { CARD_GEM_INITIALIZER_INFLECTIONS } from "../../src/card/name/oracle-deck-inflections.js";
 import { DeckoName } from "../../src/card/name.js";
 import {
   structureRuleUniverseStatement,
@@ -349,7 +349,7 @@ describe("persistence write probe (TS half)", () => {
     const dbPath = path.join(dir, "ts.sqlite3");
     copyFileSync(SRC, dbPath);
     rmSync(FILES_DIR, { recursive: true, force: true });
-    applyDeckInflections(ORACLE_DECK_INFLECTIONS);
+    applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
     const { driver, engine } = await bootEngine(dbPath);
     const out: Row[] = [];
     // The account fields whose content is random or derived from it

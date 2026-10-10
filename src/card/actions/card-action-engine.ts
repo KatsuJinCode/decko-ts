@@ -2,8 +2,9 @@
 // (trash flip) — the card-mutating API on top of the ActWriter history
 // machinery. One applyAction call = one Ruby save request = one act.
 //
-// Ruby trail (every behavior cites its source; full notes in
-// ):
+// Ruby trail (every behavior below cites its own upstream file and lines;
+// there is no separate port-notes document for this file — this comment is
+// the citation):
 // - Card.create!/update!/delete! enter the Director pipeline
 //   (lib/card/director/card_class.rb:5-13, lib/card/director/all.rb:46-61,
 //   mod/core/set/all/trash.rb:11-21) — one act per request

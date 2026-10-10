@@ -38,7 +38,7 @@ import { handleEngineRequest, type Deck } from "../../deploy/bunny-worker-src/bu
 import { ActorRenderEngines } from "../../deploy/bunny-worker-src/bunny-edge-session-viewer.js";
 import { renderPageWithStatus } from "../../src/card/render/page.js";
 import { applyDeckInflections } from "../../src/card/name/inflect.js";
-import { ORACLE_DECK_INFLECTIONS } from "../../src/card/name/oracle-deck-inflections.js";
+import { CARD_GEM_INITIALIZER_INFLECTIONS } from "../../src/card/name/oracle-deck-inflections.js";
 import { describeOrSkipLoud } from "../support/describe-with-corpus.js";
 
 const DECK =
@@ -86,7 +86,7 @@ describeOrSkipLoud(!HAVE_DECK, "tests/deploy/no-caching-synthetic.test.ts", "HAV
   "freshness between requests on the synthetic deck",
   () => {
     beforeAll(async () => {
-      applyDeckInflections(ORACLE_DECK_INFLECTIONS);
+      applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
       const dir = mkdtempSync(join(tmpdir(), "decko-fresh-synthetic-"));
       const path = join(dir, "deck.sqlite3");
       copyFileSync(DECK, path);

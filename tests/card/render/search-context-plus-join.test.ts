@@ -10,7 +10,7 @@
  *    "Participant(s)"; the corpus stores its live-Ruby key `participant_s`
  *    while the default English inflections compute `participant_` (the lone
  *    "s" segment singularizes to ""). The deck's inflection table
- *    (ORACLE_DECK_INFLECTIONS) must be applied at boot BEFORE the engine
+ *    (CARD_GEM_INITIALIZER_INFLECTIONS) must be applied at boot BEFORE the engine
  *    parses/keys names, so the CQL name resolver's
  *    `idsByKey.get(DeckoName.parse(name).key)` hits the stored row instead
  *    of falling back to Ruby's -999 sentinel.
@@ -34,7 +34,7 @@ import {
   applyDeckInflections,
   resetDeckInflections,
 } from "../../../src/card/name/inflect.js";
-import { ORACLE_DECK_INFLECTIONS } from "../../../src/card/name/oracle-deck-inflections.js";
+import { CARD_GEM_INITIALIZER_INFLECTIONS } from "../../../src/card/name/oracle-deck-inflections.js";
 import {
   createRenderTestStorage,
   seedCard,
@@ -100,7 +100,7 @@ async function seedParticipatingDeck(storage: RenderTestStorage): Promise<void> 
 describe("participating-section search: deck-table keying + host-context _left", () => {
   it("renders both projects where the pre-fix engine returned zero rows", async () => {
     // deck boot FIRST (the Rails-initializer moment), then seed, then render
-    applyDeckInflections(ORACLE_DECK_INFLECTIONS);
+    applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
     const storage = await createRenderTestStorage();
     try {
       await seedParticipatingDeck(storage);
@@ -127,7 +127,7 @@ describe("participating-section search: deck-table keying + host-context _left",
     // runSearch's lexicon.peekId fallback. Prime ONLY the lexicon (what
     // origins do at boot: vm-staging-server primeEngine step 3) and render
     // the search card cold: no warm renders, no idsByKey entries.
-    applyDeckInflections(ORACLE_DECK_INFLECTIONS);
+    applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
     const storage = await createRenderTestStorage();
     try {
       await seedParticipatingDeck(storage);
@@ -145,7 +145,7 @@ describe("participating-section search: deck-table keying + host-context _left",
   });
 
   it("refer_to:_left absolutizes against the parse context (executeQuery level)", async () => {
-    applyDeckInflections(ORACLE_DECK_INFLECTIONS);
+    applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
     const storage = await createRenderTestStorage();
     try {
       await seedParticipatingDeck(storage);

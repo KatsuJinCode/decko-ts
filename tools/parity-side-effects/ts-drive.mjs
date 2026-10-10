@@ -51,7 +51,7 @@ const dist = (p) => new URL(`../../dist/src/${p}`, import.meta.url).href;
 const { LocalSqliteDriver } = await import(dist("server/drivers/local-sqlite.js"));
 const { handleWriteRequest, readSessionCookie } = await import(dist("server/write-routes.js"));
 const { applyDeckInflections } = await import(dist("card/name/inflect.js"));
-const { ORACLE_DECK_INFLECTIONS } = await import(dist("card/name/oracle-deck-inflections.js"));
+const { CARD_GEM_INITIALIZER_INFLECTIONS } = await import(dist("card/name/oracle-deck-inflections.js"));
 const { FetchEngine } = await import(dist("card/fetch.js"));
 const { registerSqliteRegexpFunction } = await import(dist("cql/sqlite-regexp.js"));
 const { SessionStore } = await import(dist("card/auth/session-store.js"));
@@ -80,7 +80,7 @@ const FILES = join(WORK, "files");
 rmSync(FILES, { recursive: true, force: true });
 mkdirSync(FILES, { recursive: true });
 
-applyDeckInflections(ORACLE_DECK_INFLECTIONS);
+applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
 const driver = new LocalSqliteDriver({ path: DB, readonly: false });
 try { registerSqliteRegexpFunction(driver); } catch { /* already registered */ }
 

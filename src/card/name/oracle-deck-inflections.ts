@@ -1,11 +1,18 @@
 /**
- * THE DECK'S INFLECTION TABLE (deck-boot data, not engine defaults).
+ * THE CARD GEM'S OWN INFLECTION INITIALIZER (neither an engine default nor
+ * this deck's private data).
+ *
+ * The table below is a port of `card-1.110.0 config/initializers/inflections.rb`
+ * — the card gem's own initializer, which EVERY Decko deck loads. It is not
+ * configuration particular to one deck and not a capture of one oracle's
+ * settings; the constant is named for where the rules come from, and the
+ * PROVENANCE section below carries the upstream lines verbatim.
  *
  * Every deck-serving origin MUST apply this table at boot, BEFORE any name is
  * parsed or any row is primed — the same moment a Rails deck's
  * config/initializers/inflections.rb runs — via
  *
- *   applyDeckInflections(ORACLE_DECK_INFLECTIONS);   // src/card/name/inflect.ts
+ *   applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);   // src/card/name/inflect.ts
  *
  * Origins that skip the boot call key parenthesized and possessive names
  * differently from the stored corpus keys: the CQL name resolver then
@@ -45,7 +52,7 @@
 
 import type { DeckInflectionConfig } from "./inflect.js";
 
-export const ORACLE_DECK_INFLECTIONS: DeckInflectionConfig = {
+export const CARD_GEM_INITIALIZER_INFLECTIONS: DeckInflectionConfig = {
   uncountables: ["s", "this", "anonymous"],
   singular: [
     [/(g)rave$/i, "$1rave"],

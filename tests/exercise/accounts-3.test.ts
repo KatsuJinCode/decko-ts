@@ -66,7 +66,7 @@ import Database from "better-sqlite3";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { applyDeckInflections } from "../../src/card/name/inflect.js";
-import { ORACLE_DECK_INFLECTIONS } from "../../src/card/name/oracle-deck-inflections.js";
+import { CARD_GEM_INITIALIZER_INFLECTIONS } from "../../src/card/name/oracle-deck-inflections.js";
 import { sha256Hex } from "../../src/card/auth/session-token.js";
 import { SessionStore } from "../../src/card/auth/session-store.js";
 import { RenderEngine } from "../../src/card/render.js";
@@ -308,7 +308,7 @@ const ACCOUNT_JUNCTION_COUNT_SQL = `SELECT COUNT(*) AS n FROM cards
 
 describe("accounts on a self-built deck: sign-in/out, staying signed in, reset, tokens, first-run setup", () => {
   beforeAll(async () => {
-    applyDeckInflections(ORACLE_DECK_INFLECTIONS);
+    applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
     deckDir = mkdtempSync(path.join(tmpdir(), "decko-accounts-3-"));
     deckPath = path.join(deckDir, "deck.sqlite3");
     makeFreshDeck(deckPath);
@@ -450,7 +450,7 @@ describe("accounts on a self-built deck: sign-in/out, staying signed in, reset, 
     // An in-process view of the same deck file, for the token's read arm:
     // the read path's OWN resolver over the same SessionStore SQL the
     // cookie path uses (bunny-edge-session-viewer.ts resolveViewerFromToken).
-    applyDeckInflections(ORACLE_DECK_INFLECTIONS);
+    applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
     const driver = new LocalSqliteDriver({ path: deckPath });
     let deck: Awaited<ReturnType<typeof bootEdgeServingEngines>> | undefined;
     try {

@@ -33,7 +33,7 @@
 import type { DeckInflectionConfig } from "../../src/card/name/inflect.js";
 import { applyDeckInflections } from "../../src/card/name/inflect.js";
 
-export const ORACLE_DECK_INFLECTIONS: DeckInflectionConfig = {
+export const CARD_GEM_INITIALIZER_INFLECTIONS: DeckInflectionConfig = {
   uncountables: ["s", "this", "anonymous"],
 };
 
@@ -41,5 +41,5 @@ export const ORACLE_DECK_INFLECTIONS: DeckInflectionConfig = {
  * before seeding (a Rails initializer runs before any request, and the
  * seam drops all memoized DeckoName keys when applied). */
 export function bootOracleDeckInflections(): void {
-  applyDeckInflections(ORACLE_DECK_INFLECTIONS);
+  applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
 }

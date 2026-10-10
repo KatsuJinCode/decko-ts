@@ -8,7 +8,7 @@
 //   Every deck-serving origin MUST apply this table at boot, BEFORE any name
 //   is parsed or any row is primed - the same moment a Rails deck's
 //   config/initializers/inflections.rb runs - via
-//     applyDeckInflections(ORACLE_DECK_INFLECTIONS);
+//     applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
 //
 // The table is three uncountables (`s`, `this`, `anonymous`;
 // oracle-deck-inflections.ts:53-55) recovered from the deck's 9,466 stored
@@ -156,11 +156,11 @@ afterAll(() => {
 });
 
 describe("deck-serving origins apply the deck inflection table at boot", () => {
-  it("bootDeck applies ORACLE_DECK_INFLECTIONS before it parses any name", () => {
+  it("bootDeck applies CARD_GEM_INITIALIZER_INFLECTIONS before it parses any name", () => {
     for (const origin of ORIGINS) {
       const src = readFileSync(`${REPO_ROOT}${origin.file}`, "utf8");
-      const call = src.indexOf("applyDeckInflections(ORACLE_DECK_INFLECTIONS)");
-      expect(call, `${origin.file} must call applyDeckInflections(ORACLE_DECK_INFLECTIONS)`).toBeGreaterThan(-1);
+      const call = src.indexOf("applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS)");
+      expect(call, `${origin.file} must call applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS)`).toBeGreaterThan(-1);
       const derive = src.indexOf(origin.keyDerivationSite);
       expect(derive, `${origin.file} lost its key-derivation site ${origin.keyDerivationSite}`).toBeGreaterThan(-1);
       expect(

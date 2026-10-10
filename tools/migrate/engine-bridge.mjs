@@ -48,7 +48,7 @@ import { FetchEngine } from "../../src/card/fetch.ts";
 import { RenderEngine } from "../../src/card/render.ts";
 import { DeckoName } from "../../src/card/name.ts";
 import { applyDeckInflections, singularize } from "../../src/card/name/inflect.ts";
-import { ORACLE_DECK_INFLECTIONS } from "../../src/card/name/oracle-deck-inflections.ts";
+import { CARD_GEM_INITIALIZER_INFLECTIONS } from "../../src/card/name/oracle-deck-inflections.ts";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
@@ -66,7 +66,7 @@ function deckInflectionsActive() {
  *  lone "s" ("Participant(s)", "Brandon's") get keys no serving engine or
  *  Ruby deck looks up, and those cards become unreachable by name. */
 export function deriveKeyWithEngine(name) {
-  if (!deckInflectionsActive()) applyDeckInflections(ORACLE_DECK_INFLECTIONS);
+  if (!deckInflectionsActive()) applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
   return DeckoName.parse(name).key;
 }
 
