@@ -246,6 +246,14 @@ export interface WriteRouteContext {
    *  Absent = the notification template renders without its nest values
    *  (every `{{_|...}}` nest falls back to its bare name). */
   followMail?: { origin: string; deckoBotEmail: string };
+  /** The visitor session's previous location — `session[:history]`'s last
+   *  entry (card/lib/card/env/location_history.rb:29-31 previous_location),
+   *  the `*previous` success-mark resolution (mark.rb:12-14 hard_redirects
+   *  it; the Success target resolves the same way) and the delete's
+   *  configure_successful_deletion redirect (mod/session
+   *  set/all/location_history.rb:9-17). Absent or returning undefined
+   *  leaves the literal-name arms (documented remainder). */
+  previousLocation?: () => string | undefined;
 }
 
 export interface WriteRouteResponse {
@@ -344,6 +352,16 @@ interface ParsedBody {
   nestedSubcards: Record<string, Record<string, Record<string, string>>>;
   /** params[:success] — the success hash (success[redirect], success[mark]). */
   success: Record<string, string>;
+  /** params[:slot] — the ajax slot context (slot[view], slot[main],
+   *  slot[layout], slot[show][], slot[hide][]) the decko.js slotter appends
+   *  to its write requests; show_layout? reads slot[layout] (html/show.rb:
+   *  an ajax request with a layout param renders the full page, not the
+   *  bare slot). */
+  slotParams: Record<string, string>;
+  /** params[:is_main] — configure_successful_deletion's modal-arm fork
+   *  (mod/session set/all/location_history.rb:11): present = the hard
+   *  redirect to :previous, absent = the unknown-view modal slot. */
+  isMain?: string;
   /** The multipart FILE parts under the card hash, by mount name — the
    *  card[<mount>] file part is Rack's UploadedFile (parser.rb:138-146),
    *  CardMount's file=/image= argument (card_mount.rb:41-44). */
@@ -422,6 +440,12 @@ function applyParam(
     parsed.success[successMatch[1]] = value;
     return;
   }
+  const slotMatch = /^slot\[([^\]]+)\]$/.exec(key);
+  if (slotMatch !== null) {
+    parsed.slotParams[slotMatch[1]] = value;
+    return;
+  }
+  if (key === "is_main") parsed.isMain = value;
   if (key === "token") parsed.token = value;
   else if (key === "_method") parsed.methodOverride = value;
   else if (key === "attachment_upload") parsed.attachmentUpload = value;
@@ -458,7 +482,7 @@ function applyQuery(parsed: ParsedBody, search: string | undefined): ParsedBody 
 }
 
 function emptyParsedBody(): ParsedBody {
-  return { card: {}, subcards: {}, nestedSubcards: {}, success: {}, cardFiles: {} };
+  return { card: {}, subcards: {}, nestedSubcards: {}, success: {}, slotParams: {}, cardFiles: {} };
 }
 
 function parseBody(req: WriteRouteRequest): ParsedBody {
@@ -535,6 +559,7 @@ function parseBody(req: WriteRouteRequest): ParsedBody {
       subcards: {},
       nestedSubcards: {},
       success,
+      slotParams: {},
       cardFiles: {},
       token: typeof obj["token"] === "string" ? obj["token"] : undefined,
       methodOverride: typeof obj["_method"] === "string" ? obj["_method"] : undefined,
@@ -759,6 +784,9 @@ function cardErrorAlertHtml(error: CardActionError): string {
  *  headers are absolute (captured: "http://localhost:3011/..."). */
 function cardUrl(req: WriteRouteRequest, path: string): string {
   if (req.host === undefined || req.host === "") return path; // no Host: relative (documented degenerate case)
+  // Already absolute (the *previous history stores original_url's absolute
+  // shape): Env::Location passes an absolute URL through unchanged.
+  if (/^https?:\/\//i.test(path)) return path;
   // The client's own scheme, so an https deck never redirects to http.
   return `${req.scheme ?? "http"}://${req.host}${path}`;
 }
@@ -1232,9 +1260,21 @@ export async function handleWriteRequest(
     // titled slot). JSON requests keep the API shape.
     // The success target (Card::Env::Success): success[mark] names another
     // card ("_self", the default, is the saved card), success[view] the view.
+    // "*previous" is the session's previous location (mark.rb:12-14 resolves
+    // the mark through Card::Env.previous_location — the edit modal's Delete
+    // link carries success[mark]=*previous, and the delete's own response is
+    // the hard redirect's JSON, which the client follows to the previous
+    // page; the deleted card's URL then serves the create form through the
+    // unknown-card page branch).
     const successMark = parsed.success["mark"];
+    const previousRedirect =
+      successMark === "*previous" && ctx.previousLocation !== undefined ? ctx.previousLocation() : undefined;
     const successName =
-      successMark !== undefined && successMark !== "" && !successMark.startsWith("_") ? successMark : name;
+      previousRedirect !== undefined
+        ? undefined
+        : successMark !== undefined && successMark !== "" && !successMark.startsWith("_")
+          ? successMark
+          : name;
     // redirect_cud_success: success[redirect] other than "soft" is the hard
     // redirect, which an ajax request receives as {redirect: url} so the
     // page itself navigates (response.rb hard_redirect) — the new-card
@@ -1248,15 +1288,50 @@ export async function handleWriteRequest(
       .filter((slot) => slot.startsWith("+"))
       .map((slot) => `${name}${slot}`);
     const redirect = parsed.success["redirect"];
+    // configure_successful_deletion (mod/session set/all/location_history.rb:9-17,
+    // inside event :discard_deleted_locations, :finalize on :delete): an ajax
+    // delete whose success target is the deleted card itself (no mark = self)
+    // with is_main in the params rewrites the success — redirect=true,
+    // target=:previous. The hard-redirect JSON then carries the session's
+    // previous location, resolved BEFORE the delete's discard drops the
+    // card's own entries; the browser reloads that address and the trashed
+    // card's page renders the create form through the unknown-card branch
+    // (card-mod-format html/error.rb:81-86 page_view_for_unknown).
+    const deleteConfigureRedirect =
+      route.verb === "delete" &&
+      !json && isAjax(req, parsed) &&
+      (parsed.success["mark"] === undefined || parsed.success["mark"] === "" || parsed.success["mark"] === "_self") &&
+      parsed.isMain !== undefined;
+    if (deleteConfigureRedirect && ctx.previousLocation !== undefined) {
+      const previous = ctx.previousLocation();
+      if (previous !== undefined) {
+        return {
+          ...jsonResponse(200, { redirect: cardUrl(req, previous) }),
+          expiryName: name,
+          expiryNames: subcardExpiryNames,
+        };
+      }
+    }
     if (!json && isAjax(req, parsed) && redirect !== undefined && redirect !== "" && redirect !== "soft") {
       return {
-        ...jsonResponse(200, { redirect: cardUrl(req, `/${locationName(successName)}`) }),
+        ...jsonResponse(200, {
+          redirect:
+            previousRedirect !== undefined
+              ? cardUrl(req, previousRedirect)
+              : cardUrl(req, `/${locationName(successName!)}`),
+        }),
         expiryName: name,
         expiryNames: subcardExpiryNames,
       };
     }
     if (!json && isAjax(req, parsed) && ctx.renderSlot !== undefined) {
-      const slotHtml = await ctx.renderSlot(successName, parsed.success["view"] || undefined, subcardExpiryNames);
+      // The *previous resolution answers through the redirect arm above, so
+      // the slot arm only fires for a card-name success target.
+      const slotHtml = await ctx.renderSlot(
+        successName ?? name,
+        parsed.success["view"] || undefined,
+        subcardExpiryNames,
+      );
       return {
         status: 200,
         headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },

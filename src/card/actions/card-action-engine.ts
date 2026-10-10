@@ -1449,6 +1449,14 @@ export class CardActionEngine {
     const typeId =
       opts.resolvedTypeId ??
       (await resolveTypeId(this.fetch, { ...input, name })); // extract_type_id! + type_id_from_code + default
+    // The validate-stage event card reads this variable (the closure below):
+    // once the form's type resolution lands, the type-scoped set modules'
+    // events (set/type/number.rb :validate_number — card-mod-format's
+    // `errors.add :content, t(:format_not_numeric) unless content.number?`)
+    // match by it. Leaving the caller's undefined in place silently skipped
+    // every type-scoped validate event on a create whose type the request
+    // itself resolved.
+    eventTypeId = typeId;
     // set_default_content (content.rb:12-15, :prepare_to_validate, on:
     // :create, when: use_default_content?): a create that assigns no content
     // takes the new-card template's content. Ruby's db_content_changed? is

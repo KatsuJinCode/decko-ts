@@ -302,15 +302,34 @@ async function renderOutsideOfLayout(
   view: string,
   historyParams?: HistoryRenderParams,
 ): Promise<string> {
-  const body = await renderPageBytesWithPageConfigInner(engine, cardName, undefined, historyParams, true);
-  const status = engine.pageErrorStatus;
-  let record = await engine.fetcher.fetchByName(cardName);
+  const found = await engine.fetcher.fetchByName(cardName);
+  // RenderEngine#renderAbsentCards: the controller's Card.fetch with the
+  // request's new-card arguments. The unknown MAIN-card page branch
+  // (card-mod-format set/all/html/error.rb:81-86 page_view_for_unknown):
+  // an unknown card whose actor may create renders the :new page at the
+  // requested address (status 200) — the create form a browser lands on
+  // when a deleted card's address reloads — with the requested view riding
+  // the modal on that same new card. Without create permission the
+  // card-not-found raise stands (page_status_for_unknown's 404).
+  let record = (found === undefined || found.isNew === true) && engine.renderAbsentCards
+    ? await engine.fetcher.fetchByName(cardName, { new: historyParams?.newCard ?? {} })
+    : found;
   if (record !== undefined && record.id === undefined && cardName.includes("_")) {
     record = (await engine.fetcher.fetchByName(cardName.replace(/_/g, " "))) ?? record;
   }
   if (record === undefined || record.name === undefined) {
     throw new Error(`card not found: ${cardName}`);
   }
+  const body = await renderPageBytesWithPageConfigInner(
+    engine,
+    cardName,
+    // page_view_for_unknown: the unknown card's page view is :new (the
+    // create form); a known card keeps its layout's own main view.
+    record.isNew === true ? "new" : undefined,
+    historyParams,
+    true,
+  );
+  const status = engine.pageErrorStatus;
   try {
     await engine.render(record.name.s, view, historyParams);
   } catch {
@@ -318,6 +337,11 @@ async function renderOutsideOfLayout(
   }
   const rootCard = engine.fetchRenderCard(record.name.s);
   if (rootCard === undefined) throw new Error(`render card not prepared: ${record.name.s}`);
+  if (record.isNew === true && !engine.unknownCardCreatable(rootCard)) {
+    // page_status_for_unknown: no create permission answers the not_found
+    // page (404), not the create form.
+    throw new Error(`card not found: ${cardName}`);
+  }
   engine.pageErrorStatus = status;
   const modalFormat = new RenderFormat(rootCard, engine, { main: true, nestQuietErrors: true });
   // The body's main view ran on the same Ruby format; a titled or labeled
@@ -394,7 +418,23 @@ async function renderPageBytesWithPageConfigInner(
   // default_page_view (= default_nest_view = Cardio.config.default_html_view,
   // :content in production) when the layout carries no view. The page lane's
   // config is active here, so the accessor answers "content".
-  const mainView = requestedView ?? layout.mainViewRaw ?? engine.defaultHtmlViewConfig();
+  // An unknown MAIN card (a trashed or never-existing name) substitutes the
+  // requested view with :new — card-mod-format set/all/html/error.rb:81-86
+  // page_view_for_unknown (`ok?(:create) ? :new : super`): the create form
+  // is the page a deleted card's address reloads to (?view=edit). The
+  // substitution needs a REQUESTED view (an absent one keeps the layout's
+  // own main — the null the query parser hands down is normalized here);
+  // the create-permission gate rides the rendered card below
+  // (unknownCardCreatable: no permission — or a render too denied to seat
+  // the card — re-raises the not-found raise, page_status_for_unknown's
+  // 404).
+  const recordIsNew = record.isNew === true;
+  const requestedSubstituted =
+    recordIsNew && requestedView != null && requestedView !== "new";
+  const mainView =
+    recordIsNew && requestedSubstituted
+      ? "new"
+      : (requestedView ?? layout.mainViewRaw ?? engine.defaultHtmlViewConfig());
 
   // The main render + the full prepare sequence (permission state, search
   // parse gates, structure universe...) — the identical preparation and
@@ -418,6 +458,16 @@ async function renderPageBytesWithPageConfigInner(
     // below reads it. undefined passes through render()'s own `= {}`
     // default, so non-history pages are untouched.
     await engine.render(record.name.s, mainView, historyParams);
+    if (recordIsNew && requestedSubstituted) {
+      // page_status_for_unknown: the :new substitution renders only when the
+      // actor may create (card-mod-format html/error.rb:85-86); without it —
+      // or when the denial left no seated card at all — the not-found raise
+      // stands (the host answers the 404 page).
+      const substitutedRoot = engine.fetchRenderCard(record.name.s);
+      if (substitutedRoot === undefined || !engine.unknownCardCreatable(substitutedRoot)) {
+        throw new Error(`card not found: ${cardName}`);
+      }
+    }
   } catch (error) {
     prepareError = error as Error;
   }
