@@ -1227,17 +1227,18 @@ export const allHtmlViewsOneLineContentView: ViewFn = ({ fmt, voo }) => {
  *  wrap_with :p joins the pair with output's "\\n" (content.rb:70-73
  *  `Array.wrap(content).flatten.compact.join "\\n"`), and flatten.join
  *  joins the seven <p> blocks with NO separator. view_list (:14-16) is the
- *  fixed list [content, titled, labeled, bar, box, open, closed].
- *  DISCLOSED DIVERGENCE: Ruby passes show: :menu, which viz-es the menu
- *  visible inside the rendered arms (the captured slot JSON carries
- *  show:["view_list","menu","content"] and the menu renders); the
- *  engine's renderView has no show-option seam, so the arms render with
- *  their default visibility (the menu hidden - optional: :hide). */
+ *  fixed list [content, titled, labeled, bar, box, open, closed]. Each arm
+ *  renders with show: :menu (demo.rb:10): the arm voo vizzes :menu visible
+ *  (visibility.rb process_visibility_options; the option is deleted from
+ *  the live opts so the emitted data-slot re-derives show from the viz -
+ *  the corpus pins show:["view_list","menu","content"] on the :content arm)
+ *  and the frame's menu emits (the corpus pins the card-menu div between
+ *  the arm slot's opening tag and its body). */
 const viewListView: ViewFn = ({ fmt }) => {
   const views = ["content", "titled", "labeled", "bar", "box", "open", "closed"];
   const parts: string[] = [];
   for (const v of views) {
-    parts.push(`<p><h3>${v}</h3>\n${fmt.renderView(v)}</p>`);
+    parts.push(`<p><h3>${v}</h3>\n${fmt.renderView(v, { show: ["menu"] })}</p>`);
   }
   return parts.join("");
 };
