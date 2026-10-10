@@ -53,6 +53,7 @@ import {
   ruleNamesForCard,
   settingCardNameForCode,
 } from "../set-patterns/rule-names.js";
+import { modRuleSeedContentForCandidate } from "../mod-loader/mod-rule-seeds.js";
 
 /**
  * Card#rule(setting_code) - rule/all.rb:5-15 + 66-73: the card's candidate
@@ -74,6 +75,16 @@ export async function ruleContentForCard(
     const record = await fetch.fetch(candidate);
     if (record === undefined) continue; // candidate rule card does not exist
     return record.dbContent;
+  }
+  // The mod rule seeds (mod-rule-seeds.ts): a stock deck carries the mods'
+  // data/real.yml rule rows as STORAGE (seeded at deck creation), so on a
+  // real deck this arm never fires; the port's fixture decks and scrubbed
+  // corpora lack those rows and the seeds stand in — the recorded oracle
+  // boots armed on exactly these (mod/recaptcha data/real.yml's captcha
+  // toggles). A storage rule row always wins (the loop above).
+  for (const candidate of ruleNamesForCard(pattern, settingName)) {
+    const seeded = undefined; // BISECT: seed consult disabled
+    if (seeded !== undefined) return seeded;
   }
   return undefined;
 }

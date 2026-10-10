@@ -321,6 +321,13 @@ export interface ModSetModuleFile {
    *  type_id_from_template`). */
   readonly assignsType?: string;
 
+  /** The file's mod data rule seeds (data/real.yml rule rows the gem ships;
+   *  card-mod-recaptcha data/real.yml's *captcha toggles are the ported
+   *  case). Registered into the mod rule-seed registry (mod-rule-seeds.ts)
+   *  at load; ruleContentForCard consults them when no storage candidate
+   *  exists, and the form-side recaptcha gate reads them synchronously. */
+  readonly ruleSeeds?: readonly Readonly<{ name: string; content: string }>[];
+
   /** the file's `basket[:tasks][:name] = {...}` declarations
    *  (set/self/admin.rb in card-mod-carrierwave; the registrar's basket
    *  machinery, lib/card/set/basket.rb). The loader collects them in load

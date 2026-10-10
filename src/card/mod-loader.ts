@@ -68,6 +68,7 @@ import {
   registerSetTypeAssignment,
   resetSetTypeAssignments,
 } from "./set-patterns/set-type-assignment.js";
+import { registerModRuleSeed } from "./mod-loader/mod-rule-seeds.js";
 /** The registered format names whose Ruby class descends from HtmlFormat
  *  (AbstractFormat#format_ancestry, registration.rb:60-65) and therefore
  *  reopens the html method table when they carry no own registration:
@@ -1205,6 +1206,12 @@ export class ModLoader {
     // name string the gem's line named, e.g. "list" on set/right/to.rb).
     if (file.assignsType !== undefined) {
       registerSetTypeAssignment(shortname, file.assignsType);
+    }
+    // The mod's data rule seeds (data/real.yml rule rows): the fallback
+    // answer ruleContentForCard consults when no storage candidate exists
+    // (mod-rule-seeds.ts — the precedence note there).
+    for (const seed of file.ruleSeeds ?? []) {
+      registerModRuleSeed(modName, seed.name, seed.content);
     }
   }
 }

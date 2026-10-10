@@ -337,6 +337,11 @@ interface ParsedBody {
    *  Only the *signin update consumes these (the :signin event); general
    *  subcard saves remain unported. */
   subcards: Record<string, Record<string, string>>;
+  /** The NESTED subcard hash — card[subcards][+*account][subcards][+*email][content],
+   *  the sign-up form's grammar (the +*account subcard's own +*email /
+   *  +*password fields): slot → field → param tail. subcardInputsFromParams
+   *  folds it into the +*account SubcardInput's own subcards. */
+  nestedSubcards: Record<string, Record<string, Record<string, string>>>;
   /** params[:success] — the success hash (success[redirect], success[mark]). */
   success: Record<string, string>;
   /** The multipart FILE parts under the card hash, by mount name — the
@@ -396,6 +401,17 @@ function applyParam(
     slot[subMatch[2]] = value;
     return;
   }
+  // The NESTED subcard hash (the sign-up form): the +*account subcard's
+  // own +*email / +*password fields —
+  // card[subcards][+*account][subcards][+*email][content].
+  const nestedSubMatch =
+    /^card\[subcards\]\[([^\]]+)\]\[subcards\]\[([^\]]+)\]\[([^\]]+)\]$/.exec(key);
+  if (nestedSubMatch !== null) {
+    const slot = (parsed.nestedSubcards[nestedSubMatch[1]] ??= {});
+    const field = (slot[nestedSubMatch[2]] ??= {});
+    field[nestedSubMatch[3]] = value;
+    return;
+  }
   const cardMatch = /^card\[(.+)\]$/.exec(key);
   if (cardMatch !== null) {
     parsed.card[cardMatch[1]] = value;
@@ -435,13 +451,14 @@ function applyQuery(parsed: ParsedBody, search: string | undefined): ParsedBody 
     ...Object.fromEntries(Object.entries(parsed).filter(([, v]) => v !== undefined)),
     card: { ...fromQuery.card, ...parsed.card },
     subcards: { ...fromQuery.subcards, ...parsed.subcards },
+    nestedSubcards: { ...fromQuery.nestedSubcards, ...parsed.nestedSubcards },
     success: { ...fromQuery.success, ...parsed.success },
     cardFiles: parsed.cardFiles,
   } as ParsedBody;
 }
 
 function emptyParsedBody(): ParsedBody {
-  return { card: {}, subcards: {}, success: {}, cardFiles: {} };
+  return { card: {}, subcards: {}, nestedSubcards: {}, success: {}, cardFiles: {} };
 }
 
 function parseBody(req: WriteRouteRequest): ParsedBody {
@@ -516,6 +533,7 @@ function parseBody(req: WriteRouteRequest): ParsedBody {
     return {
       card,
       subcards: {},
+      nestedSubcards: {},
       success,
       cardFiles: {},
       token: typeof obj["token"] === "string" ? obj["token"] : undefined,
@@ -1431,16 +1449,29 @@ function createInputFromParams(
  *  Only the keys the forms actually post are carried: content and type. */
 function subcardInputsFromParams(parsed: ParsedBody): Record<string, SubcardInput> | undefined {
   const entries = Object.entries(parsed.subcards);
-  if (entries.length === 0) return undefined;
-  return Object.fromEntries(
-    entries.map(([slot, sub]) => [
-      slot,
-      {
-        ...(sub.content !== undefined ? { content: sub.content } : {}),
-        ...(sub.type !== undefined && sub.type !== "" ? { typeName: sub.type } : {}),
-      } satisfies SubcardInput,
-    ]),
-  );
+  const nestedEntries = Object.entries(parsed.nestedSubcards ?? {});
+  if (entries.length === 0 && nestedEntries.length === 0) return undefined;
+  const merged = new Map<string, SubcardInput>();
+  for (const [slot, sub] of entries) {
+    merged.set(slot, {
+      ...(sub.content !== undefined ? { content: sub.content } : {}),
+      ...(sub.type !== undefined && sub.type !== "" ? { typeName: sub.type } : {}),
+    });
+  }
+  // The nested subcard hash (the sign-up form): the slot's own subfields
+  // become the SubcardInput's subcards, keyed by the field name with its
+  // subcards-tail folded to content (card[subcards][+*account][subcards]
+  // [+*email][content] -> "+*account".subcards["+*email"].content).
+  for (const [slot, fields] of nestedEntries) {
+    const sub = merged.get(slot) ?? {};
+    const subSubcards: Record<string, SubcardInput> = {};
+    for (const [field, params] of Object.entries(fields)) {
+      subSubcards[field] =
+        params.content !== undefined ? { content: params.content } : {};
+    }
+    merged.set(slot, { ...sub, subcards: subSubcards });
+  }
+  return Object.fromEntries(merged);
 }
 
 /** A trashed card by name — a look_in_trash fetch (retrieve.rb:31). Simple
