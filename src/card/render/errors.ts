@@ -360,3 +360,28 @@ export function parseRubyDateContent(content: string): Date | null {
 export function isValidDateContent(content: string): boolean {
   return parseRubyDateContent(content) !== null;
 }
+
+/**
+ * The reproduced-upstream keyword-search failure (the search cluster's
+ * match row): the *search card's cql {"match":"$keyword"} compiles its
+ * match condition through the connection adapter's `match` — and on this
+ * deck's SQLite connection that resolves to AbstractAdapter#match
+ * (active_record.rb:80-83), which raises the uninterpolated i18n string
+ * ("%{func} not implemented", en.yml:36 — no interpolation params are
+ * passed). The raise escapes rescuing_bad_query (it rescues BadQuery, not
+ * RuntimeError) and surfaces as the Rails debug-exceptions page with
+ * status 500 — the recorded oracle bytes for every plain-keyword search.
+ * The error NAME carries the raise site so the serving surface can pin
+ * the debug-page composition to this exact upstream failure. */
+export class UpstreamSqliteMatchError extends Error {
+  readonly requestParamsJson: string;
+  constructor(requestParamsJson: string) {
+    super("%{func} not implemented");
+    this.name = "UpstreamSqliteMatchError";
+    this.requestParamsJson = requestParamsJson;
+  }
+}
+
+export function upstreamMatchError(requestParamsJson = "{}"): Error {
+  return new UpstreamSqliteMatchError(requestParamsJson);
+}
