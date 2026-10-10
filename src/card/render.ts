@@ -514,6 +514,16 @@ export class RenderEngine implements RenderEngineLike {
       // that drops the card invalidates that record, so a re-enriched card
       // gets its refs re-chased.
       this.warmupScannedKeys.delete(key);
+      // The structure-content sweep's done-set is engine-lifetime for the
+      // same reason — but its entry describes the MAP CARD the sweep
+      // processed, and the expiry just deleted that entry. The re-fetch
+      // seats a FRESH record (the stored row: Topic 002's db_content is
+      // empty; the *structure template's content is what the sweep swaps
+      // in), so the done-set entry must go too or the re-seated card skips
+      // the sweep and renders its raw (empty) row content — the post-save
+      // slot refresh of a structured card rendered a bare empty body
+      // (edit-nested-summary-member's "topic after nested edit").
+      this.structureProcessed.delete(key);
     }
     // M9: a save flips the Card.exist? verdict for exactly the stored name
     // it wrote. Drop every warmed decision that ASKED about that name, and

@@ -2565,46 +2565,33 @@ async function renderCardPage(cardName, renderEngine = render, requestedView, re
       // main-nest data-slot JSON {view, nest_name, nest_syntax, main,
       // home_view} (no "show" viz — the graded h1/h2 arm on the
       // account-change and edit-save journeys came from this lane serving
-      // a bare non-main render). The :layout param is CONSUMED by
-      // show_layout? (it is what decides bare vs layout) and never lands
-      // in the emitted slot JSON (the recorded phrase_4 saved slot, whose
-      // POST carried slot[layout], emits no layout key).
+      // a bare non-main render). The render goes through the PAGE lane's
+      // bareMainOpts seam so the full prepare sequence (the late-seat
+      // structure sweep especially) seats the closure the sync main render
+      // reads — the edit-nested-summary class rendered its structured body
+      // empty when the bare arm ran without it. The :layout param is
+      // CONSUMED by show_layout? (it is what decides bare vs layout) and
+      // never lands in the emitted slot JSON (the recorded phrase_4 saved
+      // slot, whose POST carried slot[layout], emits no layout key).
       const slotParams = pageOpts.slotParams;
       if (slotParams?.main === "true") {
-        await renderEngine.render(cardName, view, renderParams);
-        // The request's mark may be an id mark (/~618/titled): the prepared
-        // map is keyed by the card's canonical key, so resolve through the
-        // lexicon the way page.ts resolveIdMarksInRequestedName does.
-        let rootName = cardName;
-        const idMark = /^~(\d+)$/.exec(cardName);
-        if (idMark) {
-          const resolved = await renderEngine.fetcher.lexicon
-            .name(Number(idMark[1]))
-            .catch(() => undefined);
-          if (typeof resolved === "string" && resolved !== "") rootName = resolved;
-        }
-        const rootCard = renderEngine.fetchRenderCard(rootName);
-        if (rootCard !== undefined) {
-          const { RenderFormat } = await import("./dist/src/card/render/format.js");
-          const html = new RenderFormat(rootCard, renderEngine, {
+        const { html, status } = await renderPageWithStatus(
+          renderEngine,
+          cardName,
+          view,
+          renderParams,
+          {
+            nest_name: "_main",
+            nest_syntax: `_main|${view}`,
             main: true,
-            nestQuietErrors: true,
-          }).renderView(
-            view,
-            {
-              nest_name: "_main",
-              nest_syntax: `_main|${view}`,
-              main: true,
-              home_view: slotParams.home_view ?? view,
-            },
-            null,
-          );
-          return {
-            status: renderEngine.pageErrorStatus ?? 200,
-            headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
-            body: html,
-          };
-        }
+            home_view: slotParams.home_view ?? view,
+          },
+        );
+        return {
+          status,
+          headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+          body: html,
+        };
       }
       const html = await renderEngine.render(cardName, view, renderParams);
       return {
