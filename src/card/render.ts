@@ -716,6 +716,24 @@ export class RenderEngine implements RenderEngineLike {
   private ruleTypeIds:
     | { setting: number | undefined; set: number | undefined; user: number | undefined }
     | undefined;
+  /** Keys of COMPOUND cards whose set keys were computed while ruleTypeIds
+   *  was still undefined — exactly the enrichment state where the RULE
+   *  pattern's applies? cannot answer and safeSetKeys writes the set keys
+   *  WITHOUT the bare RULE token (06_rule.rb; the corpus's rule-page
+   *  key-order family). The rule set-key repair below re-derives those
+   *  cards' set keys once the ids exist, then clears this record, so the
+   *  repair's gate is the HAZARD itself ("cards seated before the ids
+   *  folded") rather than the ids' temperature: the help resolver
+   *  (help-popover.ts prepare) memoizes ruleTypeIds during the mod
+   *  prepare phase — BEFORE the first render — while the boot-time rule
+   *  cache (card-mod-rules prepareRuleCache, earlier in the same prepare
+   *  phase) has already enriched the deck's rule cards without them.
+   *  Gating on ruleTypeIds === undefined there skipped the repair forever
+   *  and left every deck-created rule card's page slot one token short
+   *  (the 118 pinned corpus ops this field retires). Cleared on
+   *  resetCaches() beside ruleTypeIds (the map the keys point into is
+   *  dropped with it). */
+  private setKeysPendingRuleTypes = new Set<string>();
   /** existing-rule resolution for VIRTUAL rule cards — the port of
    *  card-mod-rules set/rule/editor.rb:119-131 find_existing_rule_card
    *  (`new_card? ? existing_rule_from_prototype : self`): for a rule card
@@ -1294,7 +1312,7 @@ export class RenderEngine implements RenderEngineLike {
       // check that admitted it.
       this.bootProbeVersion = undefined;
     }
-    if (ruleTypesCold) {
+    if (ruleTypesCold || this.setKeysPendingRuleTypes.size > 0) {
       // Warm-closure FIRST render: the fold above never ran (the batch is
       // skipped), so parse here defensively - one standalone codename load,
       // once per engine (parseRuleTypeIds' own defensive branch).
@@ -1309,17 +1327,30 @@ export class RenderEngine implements RenderEngineLike {
       // never recomputed them. Re-derive now that the ids are folded:
       // structurePatternInputForSync is the SAME input contract safeSetKeys
       // consumes (its doc), and every compound card's name parts are
-      // enriched ahead of it, so the sync predicate resolves. Runs once per
-      // engine (ruleTypesCold); memory-only, zero queries.
+      // enriched ahead of it, so the sync predicate resolves.
+      // Memory-only, zero queries.
+      // THE GATE IS THE HAZARD, NOT THE IDS' TEMPERATURE: the pending set
+      // (setKeysPendingRuleTypes) records every compound card enriched
+      // before the ids folded - the only cards whose set keys can be
+      // missing the RULE token. Gating on ruleTypesCold alone skipped this
+      // repair forever on the composed adapters, where the help resolver
+      // (help-popover.ts prepare) memoizes ruleTypeIds during the mod
+      // prepare phase - after the boot-time rule cache
+      // (card-mod-rules prepareRuleCache) had already enriched the deck's
+      // rule cards WITHOUT them - so every deck-created rule card's page
+      // slot rendered one token short (the corpus's rule-page key-order
+      // family, 118 pinned ops, retired 2026-10-10).
       // The map need not hold every part the predicate reads: a rule card
       // reached by its stored key (`*all+*style` from a set's rules board)
       // enters without its right part (`*style`). The sync read cannot tell
       // "not a rule" from "parts not in the map", so a card whose parts are
       // missing is answered by the fetching predicate, as Ruby's rule?
-      // fetches them. The cards that need it are collected first: the
-      // fetches below can enrich more cards into the map.
-      const repaired = [...this.renderCards.values()].filter((card) => card.name.isCompound);
-      for (const card of repaired) {
+      // fetches them.
+      for (const pendingKey of this.setKeysPendingRuleTypes) {
+        const card = this.renderCards.get(pendingKey);
+        // resetCaches dropped the map beside ruleTypeIds (the pending set is
+        // cleared there too); a missing entry has nothing to repair.
+        if (card === undefined || !card.name.isCompound) continue;
         const input = this.structurePatternInputForSync(card);
         let isRule = input.isRule === true;
         if (!isRule && !this.rulePartsInMap(card)) {
@@ -1337,6 +1368,7 @@ export class RenderEngine implements RenderEngineLike {
           isRule,
         });
       }
+      this.setKeysPendingRuleTypes.clear();
     }
     // Defensive fallback for the one shape the fold cannot cover: a first
     // render that took the WARM-closure branch (a prior closureWarmup
@@ -2436,6 +2468,10 @@ export class RenderEngine implements RenderEngineLike {
     this.existingRuleCards = undefined;
     this.setRulePreloadDoneIds = undefined;
     this.ruleTypeIds = undefined;
+    // The pending-repair keys point into the render-card map dropped above
+    // (setKeysPendingRuleTypes' doc): entries repaired or dropped with the
+    // map; post-reset enrichments re-record themselves.
+    this.setKeysPendingRuleTypes.clear();
     this.structureContents = undefined;
     this.structureRuleTypes = undefined;
     this.structureProcessed.clear();
@@ -8524,6 +8560,11 @@ export class RenderEngine implements RenderEngineLike {
       }
     }
     const isRule = name.isCompound ? await this.computeIsRule(name, leftRecord) : false;
+    // computeIsRule answered undefined (ids not folded yet): the set keys
+    // written below CANNOT carry the RULE token even for a stored rule card.
+    // Record the card for the rule set-key repair (render() entry path) —
+    // see setKeysPendingRuleTypes.
+    if (name.isCompound && isRule === undefined) this.setKeysPendingRuleTypes.add(key);
     const card: RenderCard = {
       record,
       name,
