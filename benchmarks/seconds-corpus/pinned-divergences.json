@@ -3350,22 +3350,22 @@
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "firstDiffAt": 460,
-    "expected": "OT\\\" data-slot=\\\"{&quot;view&quot;:&quot;follow_status&quot;,&quot;show&quot;:[&quot;follow_status&quot;]}\\\"><h4>\\nGet notified about changes\\n</h4>\\n<ul class=",
-    "actual": "OT\\\" data-slot=\\\"{&quot;view&quot;:&quot;follow_status&quot;}\\\"><h4>Get notified about changes</h4>\\n<ul class=\\\"delete-list list-group\\\">\\n  <li class=\\\"list-g"
+    "firstDiffAt": 1764,
+    "expected": "{\"html\":\"<a class=\\\"known-card\\\" href=\\\"/*all+by_name\\\">everything</a></form></div>\"}",
+    "actual": "{\"html\":\"<a class=\\\"wanted-card\\\" href=\\\"/*all+by_name\\\">everything</a></form></div>\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-09 wave-2 slice-2 refresh (commit pending) vs stock-oracle capture of synthetic-v2: every byte of the two views now matches except the by-name link's known/wanted class - the RIGHT::BY-NAME virtual-card mechanism (card-mod-search set/right/by_name.rb includes Abstract::VirtualSearch, whose .included assigns type search_type and whose virtual? = new?, so Card.known?(X+by name) is true for every deck) - the link-existence seating lane's shared mechanism (same token as the Help Desk by-name pins). View-lane bytes adjudicated: h4/haml list shape, the live-voo data-slot show list, the follow_item form (card-form slotter, success in the action query, the button attr order name/type/aria-label/class, the follow_label link text), and the more-options link_to_view anchor all match the oracle bytes."
   },
   {
    "op": "view:admin:*all+Mira Member+*follow:follow_item",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "firstDiffAt": 454,
-    "expected": "SLOT\\\" data-slot=\\\"{&quot;view&quot;:&quot;follow_item&quot;,&quot;show&quot;:[&quot;follow_item&quot;]}\\\"><form class=\\\"card-form slotter\\\" id=\\\"edit_card_910\\",
-    "actual": "SLOT\\\" data-slot=\\\"{&quot;view&quot;:&quot;follow_item&quot;}\\\"><form class=\\\"card-form slotter autosave\\\" id=\\\"edit_card_910\\\" action=\\\"/update/*all+Mira_Membe"
+    "firstDiffAt": 1171,
+    "expected": "{\"html\":\"<a class=\\\"known-card\\\" href=\\\"/*all+by_name\\\">everything</a></form></div>\"}",
+    "actual": "{\"html\":\"<a class=\\\"wanted-card\\\" href=\\\"/*all+by_name\\\">everything</a></form></div>\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-09 wave-2 slice-2 refresh (commit pending) vs stock-oracle capture of synthetic-v2: every byte of the two views now matches except the by-name link's known/wanted class - the RIGHT::BY-NAME virtual-card mechanism (card-mod-search set/right/by_name.rb includes Abstract::VirtualSearch, whose .included assigns type search_type and whose virtual? = new?, so Card.known?(X+by name) is true for every deck) - the link-existence seating lane's shared mechanism (same token as the Help Desk by-name pins). View-lane bytes adjudicated: h4/haml list shape, the live-voo data-slot show list, the follow_item form (card-form slotter, success in the action query, the button attr order name/type/aria-label/class, the follow_label link text), and the more-options link_to_view anchor all match the oracle bytes."
   },
   {
    "op": "view:admin:Mira Member+*following:status",

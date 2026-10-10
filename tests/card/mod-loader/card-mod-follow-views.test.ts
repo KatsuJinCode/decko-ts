@@ -118,13 +118,17 @@ describe("card-mod-follow views through the loader (lane-follow)", () => {
     // add_follow_item? is false (the rule's items include *always), so the
     // hidden tags carry condition + drop_item and the button is the delete
     // arm (follow_item_button_class "btn-item-delete btn-primary", icon
-    // :check); the form is card_form :update, success view :follow_item.
-    expect(html).toContain(`<form class="card-form slotter autosave"`);
+    // :check). Corpus-adjudicated bytes (2026-10-09, the synthetic-v2
+    // follow_item pin): the form class is "card-form slotter" (no autosave),
+    // the success rides the ACTION QUERY, and the button attributes render
+    // in the captured order (name, type, aria-label, class).
+    expect(html).toContain(`<form class="card-form slotter"`);
     expect(html).toContain(`action="/update/`);
+    expect(html).toContain(`success%5Bview%5D=follow_item`);
     expect(html).toContain(`<input type="hidden" name="condition" id="condition" value="*always" autocomplete="off" />`);
     expect(html).toContain(`<input type="hidden" name="drop_item" id="drop_item" value="*always" autocomplete="off" />`);
     expect(html).toContain(
-      `class="btn-sm btn-item btn-item-delete btn-primary btn btn-primary"`,
+      `<button name="button" type="submit" aria-label="Left Align" class="btn-sm btn-item btn-item-delete btn-primary btn btn-primary">`,
     );
     expect(html).toContain(`>check</i>`);
     // the link arm: link_to_card(rule_set anchor name) — the set is
@@ -138,12 +142,17 @@ describe("card-mod-follow views through the loader (lane-follow)", () => {
     const html = await s.engine.render(
       "Make Contact+*self+Brandon+*follow", "follow_status",
     );
-    expect(html).toContain(`<h4>Get notified about changes</h4>`);
-    expect(html).toContain(`<ul class="delete-list list-group">`);
-    expect(html).toContain(`<li class="list-group-item">`);
-    expect(html).toContain(`Get notified about changes`);
-    // the "more options" link_to_view :rule_form
-    expect(html).toContain(`update-follow-link`);
+    // Haml template bytes, corpus-adjudicated (2026-10-09, the synthetic-v2
+    // follow_status pin): the h4 text on its own lines, single-quoted class
+    // attributes, the "more options" link_to_view anchor with rel nofollow,
+    // the appended slotter (the caller class already carries one), and
+    // data-remote last.
+    expect(html).toContain(`<h4>\nGet notified about changes\n</h4>`);
+    expect(html).toContain(`<ul class='delete-list list-group'>`);
+    expect(html).toContain(`<li class='list-group-item'>\n`);
+    expect(html).toContain(
+      `<a rel="nofollow" class="btn update-follow-link slotter slotter"`,
+    );
     expect(html).toContain(`more options`);
   });
 
