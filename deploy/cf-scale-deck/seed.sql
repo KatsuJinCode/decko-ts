@@ -5644,7 +5644,7 @@ INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_
 -- 2278
 INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id, created_at, updated_at, creator_id, updater_id, read_rule_class, read_rule_id, references_expired, trash, type_id, db_content) VALUES (   2278, 'Mod Probe 100', 'mod_probe_100', NULL, NULL, NULL, NULL,   '2026-09-23 00:00:00.000', '2026-09-23 00:00:00.000', 1, 1, NULL, NULL, NULL, 0, 6, 'Mod probe card 100. Rendered under the default mod deck on the deployed engine.');
 -- 2279
-INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id, created_at, updated_at, creator_id, updater_id, read_rule_class, read_rule_id, references_expired, trash, type_id, db_content) VALUES (   2279, 'All Scale Page Probe', 'all_scale_page_probe', NULL, NULL, NULL, NULL,   '2026-09-23 00:00:00.000', '2026-09-23 00:00:00.000', 1, 1, NULL, NULL, NULL, 0, 2, '{"match":"Scale Page","sort":{"name":"asc"},"limit":50}');
+INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id, created_at, updated_at, creator_id, updater_id, read_rule_class, read_rule_id, references_expired, trash, type_id, db_content) VALUES (   2279, 'All Scale Page Probe', 'all_scale_page_probe', NULL, NULL, NULL, NULL,   '2026-09-23 00:00:00.000', '2026-09-23 00:00:00.000', 1, 1, NULL, NULL, NULL, 0, 2, '{"type":"Scale Page","sort":{"name":"asc"},"limit":50}');
 
 INSERT INTO card_references (id, referer_id, referee_key, referee_id, ref_type, is_present) VALUES (2011, 2010, 'depth_level_31', 2009, 'I', 1);
 INSERT INTO card_references (id, referer_id, referee_key, referee_id, ref_type, is_present) VALUES (2013, 2012, 'depth_level_30', 2010, 'I', 1);

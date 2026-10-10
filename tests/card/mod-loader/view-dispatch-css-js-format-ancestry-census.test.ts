@@ -227,7 +227,12 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // the mod-view-gaps wave-2 slice's FOLLOW_TABS :core (user/follow.rb:
       // 39-43, card-mod-tabs over the static hash); still no new format key
       // and no css/scss row. Measured on the merged tree.
-      ["html", 358],
+      // 358 -> 359 (the search cluster, 2026-10-11): the search mod's SELF
+      // set registers view :core explicitly (search.rb:45 — the *search
+      // page's own renders dispatch the keyword header composed with the
+      // card list); still no new format key and no css/scss row. Measured
+      // on the merged tree.
+      ["html", 359],
 
       ["js", 2],
       ["json", 3],
