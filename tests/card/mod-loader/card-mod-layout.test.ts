@@ -142,9 +142,16 @@ const OVERLAY_HELP_LINK_NO_GUIDE =
 /** overlay.rb:35-44 add_open_guide_opts (merge! appends the slotter attrs;
  *  href = path(mark: card, view: :overlay_guide) = "/<url>/overlay_guide")
  *  - the bytes when a readable *guide rule exists (the mod's prepareEngine
- *  warmed "Oracle Layout Probe+*self+*guide"). */
+ *  warmed "Oracle Layout Probe+*self+*guide"). path "#": popover_opts seeds
+ *  opts with path: "#" and html links.rb:102 `opts[:href] ||=
+ *  path opts.delete(:path)` never evaluates its right side once href is
+ *  set, so the :path key survives into the rendered attributes as the
+ *  literal first attribute - the corpus oracle pins exactly these bytes
+ *  (view:admin:Topic 001:overlay_help_link, expected/render.jsonl.gz; the
+ *  2026-10-09 mod-card-attrs pins recorded the missing path as the first
+ *  difference, closed 2026-10-10). */
 const OVERLAY_HELP_LINK_GUIDE =
-  `<a tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus" ` +
+  `<a path="#" tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus" ` +
   `data-bs-content="&amp;nbsp;" data-bs-placement="left" ` +
   `class="help-link ps-1 _popover_link slotter text-muted p-1 ms-1" ` +
   `href="/Oracle_Layout_Probe/overlay_guide" ` +

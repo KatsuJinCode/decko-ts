@@ -1378,26 +1378,26 @@
    "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
-   "op": "page:admin:*search",
-   "family": "rule-page-key-order: the rule page bar slot class order differs (set-module key order in the page rule list)",
+   "op": "page:admin:Cards with accounts",
+   "family": "search-result-composition: the admin account-search surface serves a different result set than the oracle (Ruby widens the match population through the admin read rules - on the recorded bytes the oracle list leads with the sign_up card while the engine leads with decko_bot). Recorded 2026-10-09 on the admin *search page; the rule set-key repair (merged 2026-10-10) fixed that surface, and the divergence moved to the 'Cards with accounts' search card, re-keyed here from the mod-card-attrs lane's gate run at base 8008f893. Left pinned for the search/CQL surface",
    "group": "page / admin",
    "evidence": {
-    "firstDiffAt": 14567,
-    "expected": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"note-Xtype-Xhelp-bar-view\\\" class=\\\"card-slot bar-view ALL ALL_PLUS TYPE-rich_text RSTAR RULE RIGHT-",
-    "actual": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"decko_bot-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-rich_text SELF-decko_bot\\\" data-card-id=\\\"1"
+    "firstDiffAt": 14691,
+    "expected": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"sign_up-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-cardtype SELF-sign_up\\\" data-card-id=\\\"232\\\" data-card-name=\\\"Sig",
+    "actual": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"decko_bot-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-rich_text SELF-decko_bot\\\" data-card-id=\\\"1\\\" data-card-name=\\\""
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 re-key from the fixed *search surface; evidence from the gate run at base 8008f893 (tmp/seconds-corpus-repro/report.json) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
-   "op": "core:admin:*search",
-   "family": "rule-page-key-order: the rule page bar slot class order differs (set-module key order in the page rule list)",
+   "op": "core:admin:Cards with accounts",
+   "family": "search-result-composition: the admin account-search surface serves a different result set than the oracle (Ruby widens the match population through the admin read rules - on the recorded bytes the oracle list leads with the sign_up card while the engine leads with decko_bot). Recorded 2026-10-09 on the admin *search page; the rule set-key repair (merged 2026-10-10) fixed that surface, and the divergence moved to the 'Cards with accounts' search card, re-keyed here from the mod-card-attrs lane's gate run at base 8008f893. Left pinned for the search/CQL surface",
    "group": "view / admin",
    "evidence": {
-    "firstDiffAt": 122,
-    "expected": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"note-Xtype-Xhelp-bar-view\\\" class=\\\"card-slot bar-view ALL ALL_PLUS TYPE-rich_text RSTAR RULE RIGHT-",
-    "actual": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"decko_bot-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-rich_text SELF-decko_bot\\\" data-card-id=\\\"1"
+    "firstDiffAt": 120,
+    "expected": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"sign_up-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-cardtype SELF-sign_up\\\" data-card-id=\\\"232\\\" data-card-name=\\\"Sig",
+    "actual": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"decko_bot-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-rich_text SELF-decko_bot\\\" data-card-id=\\\"1\\\" data-card-name=\\\""
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 re-key from the fixed *search surface; evidence from the gate run at base 8008f893 (tmp/seconds-corpus-repro/report.json) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "core:anonymous:*search",
@@ -1895,336 +1895,6 @@
    "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
-   "op": "page:anonymous:mod: account",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "page / anonymous",
-   "evidence": {
-    "firstDiffAt": 11949,
-    "expected": "llapsed accordion-button' data-bs-target='#card-mod_account-84163683-collapse-id' data-bs-toggle='collapse' type='button'>\\nAdmin\\n</button>\\n</h2>\\n<div class=",
-    "actual": "llapsed accordion-button' data-bs-target='#card-mod_account-63116079-collapse-id' data-bs-toggle='collapse' type='button'>\\nAdmin\\n</button>\\n</h2>\\n<div class="
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:member:mod: account",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "page / member",
-   "evidence": {
-    "firstDiffAt": 14720,
-    "expected": "llapsed accordion-button' data-bs-target='#card-mod_account-84163683-collapse-id' data-bs-toggle='collapse' type='button'>\\nAdmin\\n</button>\\n</h2>\\n<div class=",
-    "actual": "llapsed accordion-button' data-bs-target='#card-mod_account-63116079-collapse-id' data-bs-toggle='collapse' type='button'>\\nAdmin\\n</button>\\n</h2>\\n<div class="
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:contractor:mod: account",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "page / contractor",
-   "evidence": {
-    "firstDiffAt": 12589,
-    "expected": "llapsed accordion-button' data-bs-target='#card-mod_account-84163683-collapse-id' data-bs-toggle='collapse' type='button'>\\nAdmin\\n</button>\\n</h2>\\n<div class=",
-    "actual": "llapsed accordion-button' data-bs-target='#card-mod_account-63116079-collapse-id' data-bs-toggle='collapse' type='button'>\\nAdmin\\n</button>\\n</h2>\\n<div class="
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:admin:mod: account",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "page / admin",
-   "evidence": {
-    "firstDiffAt": 14728,
-    "expected": "llapsed accordion-button' data-bs-target='#card-mod_account-84163683-collapse-id' data-bs-toggle='collapse' type='button'>\\nAdmin\\n</button>\\n</h2>\\n<div class=",
-    "actual": "llapsed accordion-button' data-bs-target='#card-mod_account-63116079-collapse-id' data-bs-toggle='collapse' type='button'>\\nAdmin\\n</button>\\n</h2>\\n<div class="
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "core:admin:mod: account",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 265,
-    "expected": "llapsed accordion-button' data-bs-target='#card-mod_account-84163683-collapse-id' data-bs-toggle='collapse' type='button'>\\nAdmin\\n</button>\\n</h2>\\n<div class=",
-    "actual": "llapsed accordion-button' data-bs-target='#card-mod_account-63116079-collapse-id' data-bs-toggle='collapse' type='button'>\\nAdmin\\n</button>\\n</h2>\\n<div class="
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "core:anonymous:mod: account",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "view / anonymous",
-   "evidence": {
-    "firstDiffAt": 265,
-    "expected": "llapsed accordion-button' data-bs-target='#card-mod_account-84163683-collapse-id' data-bs-toggle='collapse' type='button'>\\nAdmin\\n</button>\\n</h2>\\n<div class=",
-    "actual": "llapsed accordion-button' data-bs-target='#card-mod_account-63116079-collapse-id' data-bs-toggle='collapse' type='button'>\\nAdmin\\n</button>\\n</h2>\\n<div class="
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:anonymous:mod: style",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "page / anonymous",
-   "evidence": {
-    "firstDiffAt": 14294,
-    "expected": "collapsed accordion-button' data-bs-target='#card-mod_style-419010129-collapse-id' data-bs-toggle='collapse' type='button'>\\nAssets\\n</button>\\n</h2>\\n<div clas",
-    "actual": "collapsed accordion-button' data-bs-target='#card-mod_style-1970626467-collapse-id' data-bs-toggle='collapse' type='button'>\\nAssets\\n</button>\\n</h2>\\n<div cla"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:member:mod: style",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "page / member",
-   "evidence": {
-    "firstDiffAt": 17063,
-    "expected": "collapsed accordion-button' data-bs-target='#card-mod_style-419010129-collapse-id' data-bs-toggle='collapse' type='button'>\\nAssets\\n</button>\\n</h2>\\n<div clas",
-    "actual": "collapsed accordion-button' data-bs-target='#card-mod_style-1970626467-collapse-id' data-bs-toggle='collapse' type='button'>\\nAssets\\n</button>\\n</h2>\\n<div cla"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:contractor:mod: style",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "page / contractor",
-   "evidence": {
-    "firstDiffAt": 14932,
-    "expected": "collapsed accordion-button' data-bs-target='#card-mod_style-419010129-collapse-id' data-bs-toggle='collapse' type='button'>\\nAssets\\n</button>\\n</h2>\\n<div clas",
-    "actual": "collapsed accordion-button' data-bs-target='#card-mod_style-1970626467-collapse-id' data-bs-toggle='collapse' type='button'>\\nAssets\\n</button>\\n</h2>\\n<div cla"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:admin:mod: style",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "page / admin",
-   "evidence": {
-    "firstDiffAt": 17071,
-    "expected": "collapsed accordion-button' data-bs-target='#card-mod_style-419010129-collapse-id' data-bs-toggle='collapse' type='button'>\\nAssets\\n</button>\\n</h2>\\n<div clas",
-    "actual": "collapsed accordion-button' data-bs-target='#card-mod_style-1970626467-collapse-id' data-bs-toggle='collapse' type='button'>\\nAssets\\n</button>\\n</h2>\\n<div cla"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "core:admin:mod: style",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 2634,
-    "expected": "collapsed accordion-button' data-bs-target='#card-mod_style-419010129-collapse-id' data-bs-toggle='collapse' type='button'>\\nAssets\\n</button>\\n</h2>\\n<div clas",
-    "actual": "collapsed accordion-button' data-bs-target='#card-mod_style-1970626467-collapse-id' data-bs-toggle='collapse' type='button'>\\nAssets\\n</button>\\n</h2>\\n<div cla"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "core:anonymous:mod: style",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "view / anonymous",
-   "evidence": {
-    "firstDiffAt": 2634,
-    "expected": "collapsed accordion-button' data-bs-target='#card-mod_style-419010129-collapse-id' data-bs-toggle='collapse' type='button'>\\nAssets\\n</button>\\n</h2>\\n<div clas",
-    "actual": "collapsed accordion-button' data-bs-target='#card-mod_style-1970626467-collapse-id' data-bs-toggle='collapse' type='button'>\\nAssets\\n</button>\\n</h2>\\n<div cla"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:anonymous:mod: script",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "page / anonymous",
-   "evidence": {
-    "firstDiffAt": 14330,
-    "expected": "ollapsed accordion-button' data-bs-target='#card-mod_script-1069734521-collapse-id' data-bs-toggle='collapse' type='button'>\\nScripting\\n</button>\\n</h2>\\n<div ",
-    "actual": "ollapsed accordion-button' data-bs-target='#card-mod_script--2041041129-collapse-id' data-bs-toggle='collapse' type='button'>\\nScripting\\n</button>\\n</h2>\\n<div"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:member:mod: script",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "page / member",
-   "evidence": {
-    "firstDiffAt": 17100,
-    "expected": "ollapsed accordion-button' data-bs-target='#card-mod_script-1069734521-collapse-id' data-bs-toggle='collapse' type='button'>\\nScripting\\n</button>\\n</h2>\\n<div ",
-    "actual": "ollapsed accordion-button' data-bs-target='#card-mod_script--2041041129-collapse-id' data-bs-toggle='collapse' type='button'>\\nScripting\\n</button>\\n</h2>\\n<div"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:contractor:mod: script",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "page / contractor",
-   "evidence": {
-    "firstDiffAt": 14969,
-    "expected": "ollapsed accordion-button' data-bs-target='#card-mod_script-1069734521-collapse-id' data-bs-toggle='collapse' type='button'>\\nScripting\\n</button>\\n</h2>\\n<div ",
-    "actual": "ollapsed accordion-button' data-bs-target='#card-mod_script--2041041129-collapse-id' data-bs-toggle='collapse' type='button'>\\nScripting\\n</button>\\n</h2>\\n<div"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:admin:mod: script",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "page / admin",
-   "evidence": {
-    "firstDiffAt": 17108,
-    "expected": "ollapsed accordion-button' data-bs-target='#card-mod_script-1069734521-collapse-id' data-bs-toggle='collapse' type='button'>\\nScripting\\n</button>\\n</h2>\\n<div ",
-    "actual": "ollapsed accordion-button' data-bs-target='#card-mod_script--2041041129-collapse-id' data-bs-toggle='collapse' type='button'>\\nScripting\\n</button>\\n</h2>\\n<div"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "core:admin:mod: script",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 2658,
-    "expected": "ollapsed accordion-button' data-bs-target='#card-mod_script-1069734521-collapse-id' data-bs-toggle='collapse' type='button'>\\nScripting\\n</button>\\n</h2>\\n<div ",
-    "actual": "ollapsed accordion-button' data-bs-target='#card-mod_script--2041041129-collapse-id' data-bs-toggle='collapse' type='button'>\\nScripting\\n</button>\\n</h2>\\n<div"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "core:anonymous:mod: script",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "view / anonymous",
-   "evidence": {
-    "firstDiffAt": 2658,
-    "expected": "ollapsed accordion-button' data-bs-target='#card-mod_script-1069734521-collapse-id' data-bs-toggle='collapse' type='button'>\\nScripting\\n</button>\\n</h2>\\n<div ",
-    "actual": "ollapsed accordion-button' data-bs-target='#card-mod_script--2041041129-collapse-id' data-bs-toggle='collapse' type='button'>\\nScripting\\n</button>\\n</h2>\\n<div"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:anonymous:mod: search",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "page / anonymous",
-   "evidence": {
-    "firstDiffAt": 14306,
-    "expected": "ollapsed accordion-button' data-bs-target='#card-mod_search--39944292-collapse-id' data-bs-toggle='collapse' type='button'>\\nOrganize\\n</button>\\n</h2>\\n<div cl",
-    "actual": "ollapsed accordion-button' data-bs-target='#card-mod_search-1381033411-collapse-id' data-bs-toggle='collapse' type='button'>\\nOrganize\\n</button>\\n</h2>\\n<div c"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:member:mod: search",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "page / member",
-   "evidence": {
-    "firstDiffAt": 17076,
-    "expected": "ollapsed accordion-button' data-bs-target='#card-mod_search--39944292-collapse-id' data-bs-toggle='collapse' type='button'>\\nOrganize\\n</button>\\n</h2>\\n<div cl",
-    "actual": "ollapsed accordion-button' data-bs-target='#card-mod_search-1381033411-collapse-id' data-bs-toggle='collapse' type='button'>\\nOrganize\\n</button>\\n</h2>\\n<div c"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:contractor:mod: search",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "page / contractor",
-   "evidence": {
-    "firstDiffAt": 14945,
-    "expected": "ollapsed accordion-button' data-bs-target='#card-mod_search--39944292-collapse-id' data-bs-toggle='collapse' type='button'>\\nOrganize\\n</button>\\n</h2>\\n<div cl",
-    "actual": "ollapsed accordion-button' data-bs-target='#card-mod_search-1381033411-collapse-id' data-bs-toggle='collapse' type='button'>\\nOrganize\\n</button>\\n</h2>\\n<div c"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:admin:mod: search",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "page / admin",
-   "evidence": {
-    "firstDiffAt": 17084,
-    "expected": "ollapsed accordion-button' data-bs-target='#card-mod_search--39944292-collapse-id' data-bs-toggle='collapse' type='button'>\\nOrganize\\n</button>\\n</h2>\\n<div cl",
-    "actual": "ollapsed accordion-button' data-bs-target='#card-mod_search-1381033411-collapse-id' data-bs-toggle='collapse' type='button'>\\nOrganize\\n</button>\\n</h2>\\n<div c"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "core:admin:mod: search",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 2634,
-    "expected": "ollapsed accordion-button' data-bs-target='#card-mod_search--39944292-collapse-id' data-bs-toggle='collapse' type='button'>\\nOrganize\\n</button>\\n</h2>\\n<div cl",
-    "actual": "ollapsed accordion-button' data-bs-target='#card-mod_search-1381033411-collapse-id' data-bs-toggle='collapse' type='button'>\\nOrganize\\n</button>\\n</h2>\\n<div c"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "core:anonymous:mod: search",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "view / anonymous",
-   "evidence": {
-    "firstDiffAt": 2634,
-    "expected": "ollapsed accordion-button' data-bs-target='#card-mod_search--39944292-collapse-id' data-bs-toggle='collapse' type='button'>\\nOrganize\\n</button>\\n</h2>\\n<div cl",
-    "actual": "ollapsed accordion-button' data-bs-target='#card-mod_search-1381033411-collapse-id' data-bs-toggle='collapse' type='button'>\\nOrganize\\n</button>\\n</h2>\\n<div c"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:anonymous:mod: email",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "page / anonymous",
-   "evidence": {
-    "firstDiffAt": 11894,
-    "expected": "ollapsed accordion-button' data-bs-target='#card-mod_email--313764096-collapse-id' data-bs-toggle='collapse' type='button'>\\nTemplate\\n</button>\\n</h2>\\n<div cl",
-    "actual": "ollapsed accordion-button' data-bs-target='#card-mod_email--1256902502-collapse-id' data-bs-toggle='collapse' type='button'>\\nTemplate\\n</button>\\n</h2>\\n<div c"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:member:mod: email",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "page / member",
-   "evidence": {
-    "firstDiffAt": 14663,
-    "expected": "ollapsed accordion-button' data-bs-target='#card-mod_email--313764096-collapse-id' data-bs-toggle='collapse' type='button'>\\nTemplate\\n</button>\\n</h2>\\n<div cl",
-    "actual": "ollapsed accordion-button' data-bs-target='#card-mod_email--1256902502-collapse-id' data-bs-toggle='collapse' type='button'>\\nTemplate\\n</button>\\n</h2>\\n<div c"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:contractor:mod: email",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "page / contractor",
-   "evidence": {
-    "firstDiffAt": 12532,
-    "expected": "ollapsed accordion-button' data-bs-target='#card-mod_email--313764096-collapse-id' data-bs-toggle='collapse' type='button'>\\nTemplate\\n</button>\\n</h2>\\n<div cl",
-    "actual": "ollapsed accordion-button' data-bs-target='#card-mod_email--1256902502-collapse-id' data-bs-toggle='collapse' type='button'>\\nTemplate\\n</button>\\n</h2>\\n<div c"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:admin:mod: email",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "page / admin",
-   "evidence": {
-    "firstDiffAt": 14671,
-    "expected": "ollapsed accordion-button' data-bs-target='#card-mod_email--313764096-collapse-id' data-bs-toggle='collapse' type='button'>\\nTemplate\\n</button>\\n</h2>\\n<div cl",
-    "actual": "ollapsed accordion-button' data-bs-target='#card-mod_email--1256902502-collapse-id' data-bs-toggle='collapse' type='button'>\\nTemplate\\n</button>\\n</h2>\\n<div c"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "core:admin:mod: email",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 234,
-    "expected": "ollapsed accordion-button' data-bs-target='#card-mod_email--313764096-collapse-id' data-bs-toggle='collapse' type='button'>\\nTemplate\\n</button>\\n</h2>\\n<div cl",
-    "actual": "ollapsed accordion-button' data-bs-target='#card-mod_email--1256902502-collapse-id' data-bs-toggle='collapse' type='button'>\\nTemplate\\n</button>\\n</h2>\\n<div c"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "core:anonymous:mod: email",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "view / anonymous",
-   "evidence": {
-    "firstDiffAt": 234,
-    "expected": "ollapsed accordion-button' data-bs-target='#card-mod_email--313764096-collapse-id' data-bs-toggle='collapse' type='button'>\\nTemplate\\n</button>\\n</h2>\\n<div cl",
-    "actual": "ollapsed accordion-button' data-bs-target='#card-mod_email--1256902502-collapse-id' data-bs-toggle='collapse' type='button'>\\nTemplate\\n</button>\\n</h2>\\n<div c"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
    "op": "core:admin:welcome email",
    "family": "render-error-panel: inline render-error panel bytes differ",
    "group": "view / admin",
@@ -2629,39 +2299,6 @@
    "evidence": {
     "expected": "",
     "actual": ""
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "view:admin:Topic 001:overlay_header",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 143,
-    "expected": "opic 001\\\">Topic 001</span>\\n<div class=\\\"overlay-menu\\\"><a path=\\\"#\\\" tabindex=\\\"0\\\" data-bs-toggle=\\\"popover\\\" data-bs-trigger=\\\"hover focus\\\" data-bs-content",
-    "actual": "opic 001\\\">Topic 001</span>\\n<div class=\\\"overlay-menu\\\"><a tabindex=\\\"0\\\" data-bs-toggle=\\\"popover\\\" data-bs-trigger=\\\"hover focus\\\" data-bs-content=\\\"&amp;nbs"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "view:admin:Topic 001:overlay_menu",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 40,
-    "expected": "{\"html\":\"<div class=\\\"overlay-menu\\\"><a path=\\\"#\\\" tabindex=\\\"0\\\" data-bs-toggle=\\\"popover\\\" data-bs-trigger=\\\"hover focus\\\" data-bs-content=\\\"&amp;nbsp;\\\" data",
-    "actual": "{\"html\":\"<div class=\\\"overlay-menu\\\"><a tabindex=\\\"0\\\" data-bs-toggle=\\\"popover\\\" data-bs-trigger=\\\"hover focus\\\" data-bs-content=\\\"&amp;nbsp;\\\" data-bs-placeme"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "view:admin:Topic 001:overlay_help_link",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 12,
-    "expected": "{\"html\":\"<a path=\\\"#\\\" tabindex=\\\"0\\\" data-bs-toggle=\\\"popover\\\" data-bs-trigger=\\\"hover focus\\\" data-bs-content=\\\"&amp;nbsp;\\\" data",
-    "actual": "{\"html\":\"<a tabindex=\\\"0\\\" data-bs-toggle=\\\"popover\\\" data-bs-trigger=\\\"hover focus\\\" data-bs-content=\\\"&amp;nbsp;\\\" data-bs-placeme"
    },
    "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
@@ -3502,14 +3139,14 @@
   },
   {
    "op": "view:admin:Topic 001:view_list",
-   "family": "mod-card-attrs: mod card page attribute bytes differ",
+   "family": "frozen-clock-relative-time: the oracle was captured minutes after the synthetic deck was built, so its distance-of-time bytes ('less than a minute ago') are timestamps no engine clock can reproduce against the built deck's fixed created_at; the engine answers with the real elapsed time ('20 days ago'). The same mechanism class as the 12 composed-mod-view-gap rows pinned on the Topic 001 time-rendering views. This op reached its structural fix first (the mod-card-attrs lane's 2026-10-10 slice: view_list's show: :menu arm option, the content view's optional menu, the box header's menu line - the arms now carry the card-menu div and the show lists the oracle pins); what remains is the clock",
    "group": "view / admin",
    "evidence": {
-    "firstDiffAt": 402,
-    "expected": "content&quot;,&quot;show&quot;:[&quot;view_list&quot;,&quot;menu&quot;,&quot;content&quot;]}\\\"><div class=\\\"card-menu nodblclick _show-on-hover\\\"><a tabindex=\\\"",
-    "actual": "content&quot;,&quot;show&quot;:[&quot;view_list&quot;,&quot;content&quot;]}\\\"><div id=\\\"topic_001-summary-titled-view\\\" class=\\\"card-slot titled-view ALL ALL_PL"
+    "firstDiffAt": 32271,
+    "expected": "ass=\\\"card-title\\\" title=\\\"Decko Bot\\\">Decko Bot</span></a> less than a minute ago</div>\\n<div class=\\\"text-muted\\\"></div>\\n</div>\\n</div>\\n</p><p><h3>open</h3>\\n<div id=\\\"topic_00",
+    "actual": "ass=\\\"card-title\\\" title=\\\"Decko Bot\\\">Decko Bot</span></a> 20 days ago</div>\\n<div class=\\\"text-muted\\\"></div>\\n</div>\\n</div>\\n</p><p><h3>open</h3>\\n<div id=\\\"topic_001-open-view"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 re-adjudication after the structural fixes (gate runs at base 8008f893, tmp/seconds-corpus-sliceA4/report.json) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:demo",
@@ -3902,26 +3539,26 @@
    "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
-   "op": "page:admin:Cards with accounts",
-   "family": "search-result-composition: the admin 'Cards with accounts' search (CQL {\"right_plus\": \":account\"}) renders the same eight result bars as the oracle in a different order - the captured order leads [Sign up (232), User (18), Decko Bot (1)], the engine's key-index tie tier leads [Decko Bot (1), User (18), Sign up (232)] (id-asc); the remaining four bars are byte-identical in sequence and the page byte counts are equal (34,148 both sides). Inherited from merge 23's sort-tier content: the gate fails byte-identically at base 8008f893 (same two ops unpinned there), so the acceptance-rows closeout commits moved zero pins; first measured on the merge-24 battery, whose corpus baseline (341 pinned / 0 unpinned) was recorded at 64bca433 and is stale for every tip since 8008f893. Left pinned for the search/CQL surface",
+   "op": "page:admin:*search",
+   "family": "search-result-composition: admin-scoped search surfaces serve a different result set than the oracle (Ruby widens the match population through the admin read rules). At base 8008f893 the family spans two surfaces: the admin *search page (oracle list leads with the Note+*type+*help rule bar; engine serves the anonymous list) and the 'Cards with accounts' search card (oracle list leads with sign_up; engine leads with decko_bot). Both surfaces adjudicated 2026-10-10 against the committed oracle bytes by the mod-card-attrs lane's gate runs; the *search surface was previously misfiled under rule-page-key-order and re-adjudicated after the rule set-key repair fixed that family's 116 true members. Left pinned for the search/CQL surface",
    "group": "page / admin",
    "evidence": {
-    "firstDiffAt": 14691,
-    "expected": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"sign_up-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-cardtype SELF-sign_up\\\" data-card-id=\\\"232\\\" data-card-name=\\\"Sig",
-    "actual": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"decko_bot-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-rich_text SELF-decko_bot\\\" data-card-id=\\\"1\\\" data-card-name=\\\""
+    "firstDiffAt": 14567,
+    "expected": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"note-Xtype-Xhelp-bar-view\\\" class=\\\"card-slot bar-view ALL ALL_PLUS TYPE-rich_text RSTAR RULE RIGHT-",
+    "actual": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"decko_bot-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-rich_text SELF-decko_bot\\\" data-card-id=\\\"1"
    },
-   "recorded": "2026-10-09 merge-24 gate run (commit 3d52acdf) vs stock-oracle capture of synthetic-v2; base-falsified identical at 8008f893; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 adjudication at base 8008f893 (tmp/seconds-corpus-repro/report.json) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
-   "op": "core:admin:Cards with accounts",
-   "family": "search-result-composition: the admin 'Cards with accounts' search (CQL {\"right_plus\": \":account\"}) renders the same eight result bars as the oracle in a different order - the captured order leads [Sign up (232), User (18), Decko Bot (1)], the engine's key-index tie tier leads [Decko Bot (1), User (18), Sign up (232)] (id-asc); the remaining four bars are byte-identical in sequence and the page byte counts are equal (34,148 both sides). Inherited from merge 23's sort-tier content: the gate fails byte-identically at base 8008f893 (same two ops unpinned there), so the acceptance-rows closeout commits moved zero pins; first measured on the merge-24 battery, whose corpus baseline (341 pinned / 0 unpinned) was recorded at 64bca433 and is stale for every tip since 8008f893. Left pinned for the search/CQL surface",
+   "op": "core:admin:*search",
+   "family": "search-result-composition: admin-scoped search surfaces serve a different result set than the oracle (Ruby widens the match population through the admin read rules). At base 8008f893 the family spans two surfaces: the admin *search page (oracle list leads with the Note+*type+*help rule bar; engine serves the anonymous list) and the 'Cards with accounts' search card (oracle list leads with sign_up; engine leads with decko_bot). Both surfaces adjudicated 2026-10-10 against the committed oracle bytes by the mod-card-attrs lane's gate runs; the *search surface was previously misfiled under rule-page-key-order and re-adjudicated after the rule set-key repair fixed that family's 116 true members. Left pinned for the search/CQL surface",
    "group": "view / admin",
    "evidence": {
-    "firstDiffAt": 120,
-    "expected": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"sign_up-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-cardtype SELF-sign_up\\\" data-card-id=\\\"232\\\" data-card-name=\\\"Sig",
-    "actual": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"decko_bot-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-rich_text SELF-decko_bot\\\" data-card-id=\\\"1\\\" data-card-name=\\\""
+    "firstDiffAt": 122,
+    "expected": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"note-Xtype-Xhelp-bar-view\\\" class=\\\"card-slot bar-view ALL ALL_PLUS TYPE-rich_text RSTAR RULE RIGHT-",
+    "actual": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"decko_bot-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-rich_text SELF-decko_bot\\\" data-card-id=\\\"1"
    },
-   "recorded": "2026-10-09 merge-24 gate run (commit 3d52acdf) vs stock-oracle capture of synthetic-v2; base-falsified identical at 8008f893; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 adjudication at base 8008f893 (tmp/seconds-corpus-repro/report.json) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   }
  ]
 }

@@ -12,7 +12,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
-import { SLOT_ID, normalizeRender, sameJson } from "./normalize.mjs";
+import { COLLAPSE_ID, SLOT_ID, normalizeRender, sameJson } from "./normalize.mjs";
 
 const [a, b, ...rest] = process.argv.slice(2);
 const jsonOut = rest[0] === "--json" ? rest[1] : null;
@@ -32,8 +32,14 @@ const slotValues = (value) => {
   if (value !== null && typeof value === "object") return Object.values(value).flatMap(slotValues);
   return [];
 };
+/** Every collapse id N3 matches in any string of a recorded line, in order. */
+const collapseValues = (value) => {
+  if (typeof value === "string") return [...value.matchAll(COLLAPSE_ID)].map((m) => m[0]);
+  if (value !== null && typeof value === "object") return Object.values(value).flatMap(collapseValues);
+  return [];
+};
 
-const result = { runs: [path.resolve(a), path.resolve(b)], kinds: {}, masks: { N1: { matched_pairs: 0, differing_pairs: 0 } }, unexplained: [] };
+const result = { runs: [path.resolve(a), path.resolve(b)], kinds: {}, masks: { N1: { matched_pairs: 0, differing_pairs: 0 }, N3: { matched_pairs: 0, differing_pairs: 0 } }, unexplained: [] };
 for (const kind of ["render", "semantics", "scenarios"]) {
   const A = read(a, kind);
   const B = read(b, kind);
@@ -50,7 +56,11 @@ for (const kind of ["render", "semantics", "scenarios"]) {
     const vb = slotValues(y);
     result.masks.N1.matched_pairs += Math.min(va.length, vb.length);
     va.forEach((v, i) => { if (vb[i] !== undefined && vb[i] !== v) result.masks.N1.differing_pairs++; });
-    // Masked as the grader masks: render HTML by N1, everything else raw.
+    const ca = collapseValues(x);
+    const cb = collapseValues(y);
+    result.masks.N3.matched_pairs += Math.min(ca.length, cb.length);
+    ca.forEach((v, i) => { if (cb[i] !== undefined && cb[i] !== v) result.masks.N3.differing_pairs++; });
+    // Masked as the grader masks: render HTML by N1+N3, everything else raw.
     const norm = (line) =>
       kind === "render"
         ? { ...line, result: normalizeRender(line.result) }
@@ -70,6 +80,7 @@ for (const [kind, k] of Object.entries(result.kinds)) {
   console.log(`${kind.padEnd(10)} ${k.items} items: ${k.raw_equal} identical, ${k.equal_after_masks} equal after masks, ${k.unexplained} unexplained`);
 }
 console.log(`N1 slot ids: ${result.masks.N1.differing_pairs} of ${result.masks.N1.matched_pairs} paired values differ between the runs`);
+console.log(`N3 collapse ids: ${result.masks.N3.differing_pairs} of ${result.masks.N3.matched_pairs} paired values differ between the runs`);
 for (const u of result.unexplained) console.log(`unexplained: ${u}`);
 if (jsonOut) writeFileSync(jsonOut, JSON.stringify(result, null, 2) + "\n");
 process.exit(result.unexplained.length ? 1 : 0);

@@ -595,10 +595,18 @@ const helpLinkView: ViewFn = (ctx) => menuHelpAnchor(ctx);
 // :content (html/views.rb)
 // ---------------------------------------------------------------------------
 
-const contentView: ViewFn = ({ fmt }) => {
-  // wrap do [render_menu(optional: :hide), render_core, render_edit_button(...)] end
-  // both optionals are :hide in the captured context -> the body is render_core
-  // (which dispatches to the search card_list for Search-type cards).
+const contentView: ViewFn = ({ fmt, voo }) => {
+  // wrap do [render_menu(optional: :hide), render_core,
+  //          render_edit_button(optional: :hide, edit: :inline)] end
+  // `optional: :hide` seeds each member's viz HIDDEN on this voo
+  // (visibility.rb process_visibility_options via View#process), so a member
+  // renders only on an EXPLICIT show viz - explicitShow, not show() (show()
+  // answers true on no viz entry, the :show default; these members' default
+  // is :hide). view_list's `render(v, show: :menu)` (set/all/demo.rb:10) is
+  // the corpus-pinned show arm: the content arm emits the card-menu div
+  // before the core (view:admin:Topic 001:view_list). A hidden member
+  // renders NIL, and output's compact drops nil before the "\n" join
+  // (content.rb:70-73), so no separator remains.
   //
   // renderDelegated, not renderView: Ruby's `render_core` is a METHOD
   // DELEGATION (format/method_delegation.rb:41-47) that opens its own
@@ -610,7 +618,12 @@ const contentView: ViewFn = ({ fmt }) => {
   // with. See RenderFormat#renderDelegated. The corpus bytes: card 34322
   // `Maturana ...+Date` and siblings render the full `content-view` slot
   // around `Error rendering: ...+Date (core view)`.
-  return slotWrapCommon(fmt, "content", fmt.renderDelegated("core"));
+  const parts = [
+    voo.explicitShow("menu") ? fmt.renderView("menu") : undefined,
+    fmt.renderDelegated("core"),
+    voo.explicitShow("edit_button") ? fmt.renderView("edit_button", { edit: "inline" }) : undefined,
+  ].filter((p) => p !== undefined);
+  return slotWrapCommon(fmt, "content", parts.join("\n"));
 };
 
 function slotWrapCommon(fmt: ViewContext["fmt"], view: string, inner: string): string {
@@ -5940,12 +5953,19 @@ const boxView: ViewFn = (ctx) => {
   let out = `<div class='${voo.classy("box", card.setKeys)} card _card-link nodblclick'${dataAttrs}>\n`;
   if (voo.show("box_top")) {
     // `.card-header.text-center{class: classy("box-top")}` — a nested
-    // `= render :box_top` then `= render :menu`; the menu renders empty
-    // (hidden above), and the haml `= x` lines each contribute their own
-    // newline, so box_top and the (empty) menu are newline-separated.
+    // `= render :box_top` then `= render :menu`; the menu view was viz-HIDDEN
+    // by the body's `voo.hide :menu` above (first-write-wins: an arm that
+    // showed :menu BEFORE the body ran - view_list's `render(v, show:
+    // :menu)` - keeps the show), and the haml `= x` lines each contribute
+    // their own newline, so box_top and the menu line are newline-separated;
+    // a hidden menu renders nil and its line stays an empty newline
+    // (visibility.rb#show? on a hidden view), so the header carries box_top
+    // alone. The corpus pins the show arm: view:admin:Topic 001:view_list's
+    // box arm emits the card-menu div between box_top and </div>.
     out += `<div class='${voo.classy("box-top")} card-header text-center'>\n`;
     out += `${fmt.renderView("box_top")}\n`;
-    out += `\n</div>\n`;
+    out += voo.show("menu") ? `${fmt.renderView("menu")}\n` : "\n";
+    out += `</div>\n`;
   }
   if (voo.show("box_middle")) {
     out += `<div class='${voo.classy("box-middle")} card-body'>\n`;

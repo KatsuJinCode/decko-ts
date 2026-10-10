@@ -360,9 +360,17 @@ function overlayHelpLinkAttrs(fmt: ViewContext["fmt"]): Record<string, string | 
  *  data-slotter-mode after the existing keys; overlay_menu_link's add_class
  *  appends "text-muted p-1 ms-1" and the slotter class IN PLACE in the
  *  class value). href = path(mark: card, view: :overlay_guide) =
- *  "/<url_key>/overlay_guide" (lib/card/path.rb:35-39 mark/view base). */
+ *  "/<url_key>/overlay_guide" (lib/card/path.rb:35-39 mark/view base).
+ *  path "#": popover_opts seeded opts with path: "#", and html links.rb:102
+ *  `opts[:href] ||= path opts.delete(:path)` evaluates its right side ONLY
+ *  when href is unset - with the guide branch's href preset, the :path key
+ *  is never deleted and Rails content_tag renders it as the literal first
+ *  attribute (the oracle pins `<a path="#" tabindex=...`). The no-guide
+ *  branch keeps the delete: href=nil there, so path("#") becomes href="#"
+ *  and no path attribute renders. */
 function overlayHelpLinkGuideAttrs(fmt: ViewContext["fmt"]): Record<string, string | number | undefined> {
   return {
+    path: "#",
     ...overlayHelpLinkAttrs(fmt),
     class: "help-link ps-1 _popover_link slotter text-muted p-1 ms-1",
     href: `${cardPath(fmt.urlKey())}/overlay_guide`,
@@ -376,8 +384,10 @@ function overlayHelpLinkGuideAttrs(fmt: ViewContext["fmt"]): Record<string, stri
  *  opts = help_popover_opts; add_open_guide_opts opts (fires only when
  *  card.guide_card resolves - see guideCard below); overlay_menu_link :help,
  *  opts. smart_link_to sees no :view/:card/:resource key (links.rb:55-61) ->
- *  link_to -> href as above (the guide branch's :href pre-empts the path-#
- *  default, links.rb:102 `||=`). */
+ *  link_to - the guide branch carries popover_opts' path "#" through as a
+ *  literal attribute (links.rb:102 ||= never deletes it; see
+ *  overlayHelpLinkGuideAttrs); the no-guide branch deletes it into
+ *  href="#". */
 const overlayHelpLinkView: ViewFn = ({ fmt }) =>
   contentTag("a", guideCard(fmt) === undefined
     ? { ...overlayHelpLinkAttrs(fmt), class: `${overlayHelpLinkAttrs(fmt)["class"]} text-muted p-1 ms-1`, href: "#" }

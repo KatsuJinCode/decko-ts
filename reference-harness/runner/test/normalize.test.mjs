@@ -49,6 +49,51 @@ describe("N1: slot ids, the one mask", () => {
   });
 });
 
+describe("N3: collapse-id contexts, the second volatile value", () => {
+  const accordion = (n) =>
+    `<button class='accordion-button collapsed' data-bs-target='#card-mod_style-${n}-collapse-id' data-bs-toggle='collapse' type='button'>\nStyles\n</button>\n<div class='accordion-collapse collapse' id='card-mod_style-${n}-collapse-id'>`;
+  const other = (n) => n.replace(/-?\d+/, (d) => String(Number(d) + 77777));
+
+  it("normalizes the digits of a collapse id to first-appearance placeholders", () => {
+    assert.ok(same(accordion(419010129), accordion(-900385456)));
+    // two distinct ids on one page keep two distinct placeholders, in order
+    const page = (a, b) => `<div id='card-mod_style-${a}-collapse-id'></div><div id='card-mod_style-${b}-collapse-id'></div>`;
+    assert.equal(
+      normalizeHtml(page(419010129, -900385456)).match(/N3#\d/g).join(","),
+      "N3#1,N3#2",
+    );
+    assert.equal(
+      normalizeHtml(page(-900385456, 419010129)).match(/N3#\d/g).join(","),
+      "N3#1,N3#2",
+      "the first appearance on a page becomes N3#1 whichever value it is",
+    );
+  });
+
+  it("a button target and its panel id must still agree across the normalization", () => {
+    // the engine pairing target X with panel Y is a real divergence
+    assert.ok(!same(
+      accordion(419010129),
+      accordion(419010129).replace(/-collapse-id'/g, "-collapse-id'").replace("id='card-mod_style-419010129", "id='card-mod_style--900385456"),
+    ));
+  });
+
+  it("does not touch literal-context collapse ids or unrelated numbers", () => {
+    assert.ok(!same(
+      "<div id='card-mod_format-files-collapse-id'></div>",
+      "<div id='card-mod_format-depends_on-collapse-id'></div>",
+    ), "the gem_info literal contexts are real bytes");
+    assert.ok(!same("<p>419010129</p>", "<p>-900385456</p>"), "bare numbers in text");
+    assert.ok(!same("<div id='card-Topic-419010129'></div>", "<div id='card-Topic--900385456'></div>"), "no collapse-id suffix, no rule");
+  });
+
+  it("a content change beside a normalized collapse id still differs", () => {
+    assert.ok(!same(
+      accordion(419010129) + "<h3>Styles</h3>",
+      accordion(-900385456) + "<h3>Tasks</h3>",
+    ));
+  });
+});
+
 describe("removed rules: these now count", () => {
   it("hexadecimal numbers in HTML are compared (the former address mask)", () => {
     assert.ok(!same("<p>0xdeadbeef</p>", "<p>0xfeedface</p>"));
