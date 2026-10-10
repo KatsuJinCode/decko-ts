@@ -1939,7 +1939,17 @@ export class RenderFormat {
     try {
       return this.renderView(view, opts, optional);
     } catch (error) {
-      if (this.depth === 0) throw error; // error.rb:69-73 loud_error re-raises
+      // error.rb:65-67 loud_error?: `focal? || raise_all_rendering_errors`.
+      // The html format's focal? is show_layout? ? main? : depth.zero?
+      // (html_format.rb:16-18) - in the serving posture (layouts shown, the
+      // bare render main!s nothing) the html root is NOT focal, so its
+      // delegated renders are QUIET too and the span is the delegation's
+      // value (the oracle's email_page: the span lands inside the
+      // :email_document wrapper, not at the root). Base formats keep the
+      // depth-zero focal arm; the page's main!-ed format is focal and
+      // re-raises as before.
+      const focal = this.formatName === "html" ? this.isMain : this.depth === 0;
+      if (focal) throw error; // error.rb:69-73 loud_error re-raises
       return quietRenderError(error, this.card, view);
     }
   }

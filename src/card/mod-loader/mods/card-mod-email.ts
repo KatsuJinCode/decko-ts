@@ -212,7 +212,7 @@ const emailDocumentWrapper =
   '  <body class="d0-email-body">' + "\n" +
   "    INTERIOR\n" +
   "  </body>\n" +
-  "</html>";
+  "</html>\n";
 
 const emailPageView: ViewFn = (ctx: ViewContext) => {
   // Ruby's body is `render_core` (set/all/email_html.rb:11-13) - a
