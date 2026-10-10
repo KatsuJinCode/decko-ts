@@ -564,28 +564,6 @@
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/). Under N6 the div's residual is the frame count: 60 Ruby frames (oracle backtrace) vs 8 V8 frames (engine stack)."
     },
     {
-      "op": "view:admin:Topic 001:card_select",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 10,
-        "expected": "{\"html\":\"<div id=\\\"topic_001-card_select-view\\\" class=\\\"card-slot card_select-view ALL TYPE-topic SELF-topic_001\\\" data-card-id=\\\"",
-        "actual": "{\"html\":\"<form role=\\\"filter\\\" data-slot-selector=\\\".card-slot._fixed-slot\\\" class=\\\"nodblclick slotter\\\" action=\\\"/?view=filtered"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:Topic:add_link",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 12,
-        "expected": "{\"html\":\"<a data-slotter-mode=\\\"modal\\\" data-modal-class=\\\"modal-dialog modal-dialog-centered\\\" class=\\\"slotter\\\" href=\\\"/type/Topic",
-        "actual": "{\"html\":\"<a class=\\\"cardtype-add-link\\\" href=\\\"/topic/new\\\">add</a>\"}"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
       "op": "view:admin:Nonexistent Card:errors",
       "family": "composed-mod-view-gap",
       "group": "view / admin",
@@ -626,28 +604,6 @@
         "firstDiffAt": 9,
         "expected": "{\"html\":\"<li>   cardtype: Topic</li>\\n<li>   content: </li>\\n\"}",
         "actual": "{\"html\":\"\"}"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:*all+Mira Member+*follow:follow_status",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 1875,
-        "expected": "notranslate material-icons\\\">check</i></button>\\n<a class=\\\"known-card\\\" href=\\\"/*all+by_name\\\">everything</a></form></div>\\n</li>\\n</ul>\\n<a rel=\\\"nofollow\\\" class=\\\"btn update-fo",
-        "actual": "notranslate material-icons\\\">check</i></button>\\n<a class=\\\"wanted-card\\\" href=\\\"/*all+by_name\\\">everything</a></form></div>\\n</li>\\n</ul>\\n<a rel=\\\"nofollow\\\" class=\\\"btn update-f"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:*all+Mira Member+*follow:follow_item",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 1259,
-        "expected": "notranslate material-icons\\\">check</i></button>\\n<a class=\\\"known-card\\\" href=\\\"/*all+by_name\\\">everything</a></form></div>\"}",
-        "actual": "notranslate material-icons\\\">check</i></button>\\n<a class=\\\"wanted-card\\\" href=\\\"/*all+by_name\\\">everything</a></form></div>\"}"
       },
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
     },
@@ -817,17 +773,6 @@
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
     },
     {
-      "op": "view:admin:Topic 001+tags:list",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 360,
-        "expected": "lass=\\\"pointer-item-text form-control\\\" data-options-card=\\\"Tag+*type+by_name\\\" placeholder=\\\"\\\" />\\n<button class='pointer-item-delete btn btn-secondary' type='button'>\\n<i class=",
-        "actual": "lass=\\\"pointer-item-text form-control\\\" data-options-card=\\\"*all\\\" placeholder=\\\"\\\" />\\n<button class='pointer-item-delete btn btn-secondary' type='button'>\\n<i class=\\\"notranslate"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
       "op": "view:admin:Topic 001+tags:checkbox",
       "family": "composed-mod-view-gap",
       "group": "view / admin",
@@ -835,39 +780,6 @@
         "firstDiffAt": 247,
         "expected": " 01\\\" class=\\\"pointer-checkbox-button \\\" checked=\\\"checked\\\" />\\n<label class=\\\"form-check-label\\\" for=\\\"pointer-checkbox-tag_01\\\">Tag 01</label>\\n</div>\\n<div class='pointer-check",
         "actual": " 01\\\" class=\\\"pointer-checkbox-button \\\" checked=\\\"checked\\\">\\n<label class=\\\"form-check-label\\\" for=\\\"pointer-checkbox-tag_01\\\">Tag 01</label>\\n</div>\\n<div class='pointer-checkbo"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:Topic 001+tags:autocomplete",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 216,
-        "expected": "item-text form-control _autocomplete \\\" data-options-card=\\\"Tag+*type+by_name\\\" placeholder=\\\"\\\" />\\n</div>\\n\"}",
-        "actual": "item-text form-control _autocomplete \\\" data-options-card=\\\"*all\\\" placeholder=\\\"\\\" />\\n</div>\\n\"}"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:Topic 001:goto_autocomplete_item",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 38,
-        "expected": "{\"html\":\"<div class='autocomplete-item-goto autocomplete-item'>\\n<div class='autocomplete-icon'>\\n<i class=\\\"notranslate material-icons\\\">arrow_forward</i>\\n<",
-        "actual": "{\"html\":\"<div class='autocomplete-item autocomplete-item-goto'>\\n  <div class='autocomplete-icon'>\\n    <i class=\\\"notranslate material-icons\\\">arrow_forward<"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:Topic 001:add_autocomplete_item",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 38,
-        "expected": "{\"html\":\"<div class='autocomplete-item-add autocomplete-item'>\\n<div class='autocomplete-icon'>\\n<i class=\\\"notranslate material-icons\\\">add</i>\\n</div>\\n<div",
-        "actual": "{\"html\":\"<div class='autocomplete-item autocomplete-item-add'>\\n  <div class='autocomplete-icon'>\\n    <i class=\\\"notranslate material-icons\\\">add</i>\\n  </di"
       },
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
     },
@@ -989,39 +901,6 @@
         "firstDiffAt": 8,
         "expected": "{\"html\":null}",
         "actual": "{\"html\":\"\"}"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:Topic+*type+*structure:rule_edit",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 2860,
-        "expected": "-remote=\\\"true\\\" data-select2-id=\\\"topic-Xtype-Xstructure-1-1789819200\\\"><optgroup label=\\\"Text\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option>\\n<option value=",
-        "actual": "-remote=\\\"true\\\" data-select2-id=\\\"topic-Xtype-Xstructure-1-0\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option></select>\\n<input type=\\\"hidden\\\" name=\\\"assign\\\" "
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:Topic+*type+*structure:overlay_rule",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 4234,
-        "expected": "-remote=\\\"true\\\" data-select2-id=\\\"topic-Xtype-Xstructure-1-1789819200\\\"><optgroup label=\\\"Text\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option>\\n<option value=",
-        "actual": "-remote=\\\"true\\\" data-select2-id=\\\"topic-Xtype-Xstructure-1-0\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option></select>\\n<input type=\\\"hidden\\\" name=\\\"assign\\\" "
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:Topic+*type+*structure:modal_rule",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 2924,
-        "expected": "-remote=\\\"true\\\" data-select2-id=\\\"topic-Xtype-Xstructure-1-1789819200\\\"><optgroup label=\\\"Text\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option>\\n<option value=",
-        "actual": "-remote=\\\"true\\\" data-select2-id=\\\"topic-Xtype-Xstructure-1-0\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option></select>\\n<input type=\\\"hidden\\\" name=\\\"assign\\\" "
       },
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
     },

@@ -132,6 +132,7 @@ import { DeckoName } from "../../name.js";
 import { PATTERN_TABLE, findPattern } from "../../set-patterns/registry.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import { labelForParsedSet, parseSetName } from "../../set-patterns/set-name.js";
+import { setNamesForCard } from "../../set-patterns/card-patterns.js";
 import { cardFormShell, submitButton } from "../mod-form-substrate.js";
 import { typeField, typeFormgroup } from "./card-mod-edit.js";
 import { cardWallClockNow } from "../../wall-clock.js";
@@ -788,58 +789,40 @@ function select2TimestampSeconds(): number {
   return Math.floor(cardWallClockNow().getTime() / 1000);
 }
 
-/** set/all/set_select.rb:49-57 set_list: `Card.search(left_id: id,
- *  type_id: SetID).map(&:name)` (the type filter excludes List-typed rule
- *  cards like *all+*read - only Set-typed rule cards contribute options).
- *  Returns the distinct right tag names from the walked cards
- *  (`"+#{tag_name}"` option value prefix per the rule_select_tag
- *  convention). */
-function relatedSetsRightNames(card: RenderCard, engine: RenderFormat["engine"]): string[] {
-  const out: string[] = [];
-  const seen = new Set<string>();
-  // engine.collectRules (render.ts:3086) walks every rule card whose left
-  // is `card`. The capture filter (type_id == SetID) is applied here.
-  const rules = engine.collectRules?.(card) ?? [];
-  for (const rule of rules) {
-    if (rule.typeId !== 5 && rule.typeCode !== "set") continue;
-    const rightName = rule.name.rightName?.s;
-    if (rightName === undefined) continue;
-    if (seen.has(rightName)) continue;
-    seen.add(rightName);
-    out.push(rightName);
-  }
-  return out;
-}
-
-/** One <option> row: the right tag's "+tag_name" value + the SETTING
- *  card's label as display text. An unset (no content) setting card
- *  renders the empty display (capture: "The card """ for *self). */
-function cardSelectOptionBytes(rightName: string, engine: RenderFormat["engine"]): string {
-  const settingCard = engine.fetchRenderCard(rightName);
-  // set_select.rb's option_for_set: `set_card ? set_card.label :
-  // "The card \"#{name}\""`. The capture pins empty between the quotes
-  // for *self (the setting card exists but has no label - the test seed
-  // gives *self an empty dbContent). The escape (`&quot;`) is the
-  // ERB::Util.html_escape applied to the label by content_tag.
-  const label = settingCard?.dbContent ?? "";
-  return `<option value="+${rightName}">The card &quot;${h(label)}&quot;</option>`;
+/** set/all/related_sets.rb:1-7 related_sets(with_self) - "the sets users
+ *  may configure from the current card": name+:self always (with_self),
+ *  name+:right only when the card is known? && simple? (states.rb known? =
+ *  real? || virtual?; a compound card's Right set is not a related set).
+ *  The set cards need no fetch: a pattern name answers virtually, and both
+ *  bytes the option list needs (Set#label, name.url_key) are name-level
+ *  (set/type/set.rb label through the pattern registry). */
+function relatedSetsNames(card: RenderCard): string[] {
+  const sets = [`${card.name.s}+*self`];
+  const known = card.unknown !== true;
+  if (known && !card.name.isCompound) sets.push(`${card.name.s}+*right`);
+  return sets;
 }
 
 const cardSelectView: ViewFn = (ctx) => {
-  // The filter form's action and the empty fixed-slot div come from
-  // set_select_tag + the format's wrapping form_tag (Rails form_tag
-  // defaults - the headless port's action / method / slot-selector /
-  // class / data-remote attrs mirror the captured bytes exactly).
+  // set_select.rb:27-35 set_select_tag: `cards.map(&:label_and_url_key)`
+  // (set/type/set.rb:111-113 - [Set#label, name.url_key] pairs),
+  // `options.unshift("")` for the placeholder, then options_for_select -
+  // `<option value="URL_KEY">LABEL</option>` rows (labels and attribute
+  // values ERB-escaped), the empty placeholder row first. The corpus's
+  // Topic 001 answers its two stored-or-virtual set cards: Topic_001+*self
+  // (label `The card "Topic 001"`) and Topic_001+*right (label
+  // `All "+Topic 001" cards`).
   const card = ctx.fmt.card;
-  const rightNames = relatedSetsRightNames(card, ctx.fmt.engine);
-  const options = [
-    `<option value=""></option>`,
-    ...rightNames.map((name) => cardSelectOptionBytes(name, ctx.fmt.engine)),
-  ].join("\n");
-  // select2 data-select2-id: `<safe_key>-<card_id>-<seconds>` (Time.now
-  // stamp - the frozen capture clock's seconds; see select2TimestampSeconds).
-  const select2Id =
-    `${card.name.safeKey}-${card.id ?? 0}-${select2TimestampSeconds()}`;
+  const setOptions = relatedSetsNames(card).map((setName) => {
+    const parsed = parseSetName(setName);
+    const label = labelForParsedSet(parsed);
+    return `<option value="${h(DeckoName.parse(setName).urlKey)}">${h(label)}</option>`;
+  });
+  const options = [`<option value=""></option>`, ...setOptions].join("\n");
+  // set_select_tag's data-select2-id: `#{unique_id}-#{Time.now.to_i}`
+  // (content.rb:66-70 unique_id = safe_key + the format-chain id counter;
+  // Time.now through the engine wall clock - see select2TimestampSeconds).
+  const select2Id = `${ctx.fmt.uniqueId()}-${select2TimestampSeconds()}`;
   // set_select.rb:20 view :card_select, wrap: :slot - the corpus op pins the
   // slot wrap around the filter form (wrap.rb wrap_classes: "card-slot
   // card_select-view" + the set keys, the standard slot data attrs).
@@ -853,7 +836,7 @@ const cardSelectView: ViewFn = (ctx) => {
       ` data-minimum-results-for-search="Infinity" data-placeholder="Select set"` +
       ` data-select2-id="${select2Id}">` +
       options +
-      `</select>` +
+      `</select>\n` +
       `<div class="card-slot _fixed-slot"></div>` +
       `</form>`,
   );
@@ -2023,72 +2006,124 @@ function boardRuleSetSelection(ctx: ViewContext): string {
   );
 }
 
+/** Rule::All#preference? (rule/all.rb:42-48 + :51-54): parts > 2 AND the
+ *  tag card is Setting-typed AND name[0..-3] is Set-typed AND the [-2]
+ *  part (the preference's user) is User-typed or *all (valid_preferer?).
+ *  A three-part Set+Setting RULE name ("Topic+*type+*structure") fails the
+ *  Set-typed arm ("Topic" is a Cardtype) — a bare parts-count test
+ *  misroutes every standard rule into the preference walk. The Set-typed
+ *  check resolves the warmed row first and falls back to the NAME (a
+ *  set part parses to a registered pattern exactly when it is a Set card
+ *  the pattern registry knows - set/type/set.rb subclass_for_set rides the
+ *  TAG's codename, no row needed); the preferer check is warmed-row only. */
+function isPreferenceRuleName(ctx: ViewContext): boolean {
+  const name = ctx.fmt.card.name;
+  const parts = name.partNames;
+  if (parts.length <= 2) return false;
+  const engine = ctx.fmt.engine;
+  const setPart = parts.slice(0, -2).map((p) => p.s).join("+");
+  const setCard = engine.fetchRenderCard(setPart);
+  const setTyped = setCard !== undefined && setCard.unknown !== true
+    ? setCard.typeCode === "set"
+    : parseSetName(setPart).spec !== undefined;
+  if (!setTyped) return false;
+  const preferer = parts[parts.length - 2];
+  if (preferer.key === "all") return true;
+  const prefererCard = engine.fetchRenderCard(preferer.s);
+  return prefererCard !== undefined && prefererCard.unknown !== true &&
+    prefererCard.typeCode === "user";
+}
+
+/** Set#prototype (set/type/set.rb:90-93): `Card.fetch opts[:name], new:
+ *  opts` - the STORED anchor card when the name exists (Mira Member is a
+ *  real User: her prototype keeps the Self set in its set_names), a new
+ *  card built from the args otherwise (the Type pattern's {type: anchor}
+ *  args carry no name: a nameless new Topic-typed card). The candidates
+ *  are that prototype card's set_names (rules.rb:76-80
+ *  set_option_candidates). */
+function prototypeSetCandidates(ctx: ViewContext, setName: string): string[] {
+  const parsed = parseSetName(setName);
+  const protoArgs = parsed.spec?.prototypeArgs(parsed.anchorName?.s);
+  if (protoArgs === undefined) return ["*all"];
+  if (protoArgs.name !== undefined) {
+    const stored = ctx.fmt.engine.fetchRenderCard(protoArgs.name);
+    if (stored !== undefined && stored.unknown !== true) {
+      return setNamesForCard({
+        name: stored.name.s,
+        typeName: stored.typeName,
+        typeId: stored.id,
+      });
+    }
+    return setNamesForCard({
+      name: protoArgs.name,
+      isNew: true,
+      typeName: protoArgs.type,
+    });
+  }
+  const typeName = protoArgs.type ?? "";
+  const typeCard = ctx.fmt.engine.fetchRenderCard(typeName);
+  const typeId = typeCard !== undefined && typeCard.unknown !== true
+    ? typeCard.id
+    : DeckoName.parse(typeName).cardId;
+  return setNamesForCard({ name: "", isNew: true, typeName, typeId });
+}
+
 /** rules.rb:57-63 set_options + :76-104 the walk: candidates = the rule
- *  set's prototype's set_names, sliced from the rule's OWN set's position
- *  (`candidates[first..]` - rules.rb:78-80 first_set_option_index: a rule
- *  can move ITSELF or to any BROADER set, never to a narrower one; a NEW
- *  rule card slices from 0); each candidate pairs with
- *  :current/:overwritten/:available (rules.rb:88-100 state_of_set: the
- *  FIRST candidate with an existing rule is :current, later existing ones
- *  :overwritten, the rest :available).
+ *  set's prototype's set_names (set_prototype = trunk.prototype, the set
+ *  PATTERN's prototype_args card - type.rb {type: anchor}, self.rb {name:
+ *  anchor}), sliced from the rule's OWN set's position (`candidates[first..]`
+ *  - rules.rb:78-80 first_set_option_index: a rule can move ITSELF or to any
+ *  BROADER set, never to a narrower one; a NEW rule card slices from 0);
+ *  each candidate pairs with :current/:overwritten/:available (rules.rb:88-100
+ *  state_of_set: the FIRST candidate with an existing rule is :current, later
+ *  existing ones :overwritten, the rest :available - Card.exist? is the
+ *  STORED-row check, so a candidate whose rule card is absent stays
+ *  :overwritten when a narrower candidate had one).
  *
- *  For a PREFERENCE rule (rules.rb:48-50 set_prototype + :47-49
- *  rule_user_setting_name) the prototype is the SET part's own prototype
+ *  For a PREFERENCE rule the prototype is the SET part's own prototype
  *  (`self[0..-3].prototype` - for a Self-set `Mira Member+*self` the
  *  prototype is a new card named after the anchor, typed as the anchor
  *  card, whose set_names are the SELF set, the type set, *all -
  *  specific-first) and every candidate composes with the rule's
  *  user-setting name (`Ada Admin+*follow` - the corpus rule_form pin's
- *  three radio values). The standard-rule walk (prototype of the trunk's
- *  type) is the existing arm. The radio ids carry the radio's 1-based
- *  index and Time.now.to_i (cardWallClockNow - the capture clock's epoch
- *  1789819200 in the corpus bytes). */
+ *  three radio values). The radio ids carry the SHARED format id counter
+ *  (content.rb unique_id - the tinymce textarea consumed -2- earlier in
+ *  the same render) and Time.now.to_i (cardWallClockNow - the capture
+ *  clock's epoch 1789819200 in the corpus bytes). */
 function ruleSetOptionsRadios(ctx: ViewContext): string {
   const { fmt } = ctx;
   const ruleCard = fmt.card;
   const parts = ruleCard.name.partNames;
   const settingCodename = ruleSettingCodename(ctx) ?? "";
   const tag = `*${settingCodename}`;
-  const isPreference = parts.length > 2;
+  const isPreference = isPreferenceRuleName(ctx);
   const userSettingName = isPreference
     ? `${DeckoName.parse(parts[parts.length - 2].s).s}+${tag}`
     : tag;
-  const candidates: string[] = [];
+  let candidates: string[];
   if (isPreference) {
     // rules.rb:48-50 set_prototype for preference rules: the SET part's
-    // prototype (`self[0..-3]` - for `Mira Member+*self+Ada Admin+*follow`
-    // the four-part name's set part is `Mira Member+*self`) - a new card
-    // named after the set anchor, typed as the anchor card - whose
-    // set_names are the SELF set, the type set, *all
-    const setName = parts.slice(0, -2).map((p) => p.s).join("+");
-    const anchorName = DeckoName.parse(setName).leftName?.s;
-    const anchor = anchorName !== undefined ? fmt.engine.fetchRenderCard(anchorName) : undefined;
-    const typeName = anchor !== undefined && anchor.unknown !== true && anchor.typeName !== undefined
-      ? anchor.typeName
-      : "RichText";
-    candidates.push(setName);
-    candidates.push(`${typeName}+*type`);
-    candidates.push("*all");
+    // own prototype (`self[0..-3]`)
+    candidates = prototypeSetCandidates(
+      ctx,
+      parts.slice(0, -2).map((p) => p.s).join("+"),
+    );
   } else {
+    // rules.rb:72-75 set_prototype: trunk.prototype - the rule set's own
+    // PATTERN's prototype card
     const setName = ruleCard.name.leftName;
-    const prototypeType = prototypeDefaultTypeCode(ctx);
-    if (prototypeType !== undefined && prototypeType !== "basic") {
-      // the type set's name: "<TypeName>+*type" (pattern.rb Type#set_name)
-      const typeName = defaultRuleTypeName(ctx, prototypeType);
-      if (typeName !== undefined) candidates.push(`${typeName}+*type`);
-    }
-    candidates.push("*all");
+    if (setName === undefined) return "";
+    candidates = prototypeSetCandidates(ctx, setName.s);
   }
   const ruleSetKey = isPreference
     ? DeckoName.parse(parts.slice(0, -2).map((p) => p.s).join("+")).key
     : (ruleCard.name.leftName?.key ?? "");
-  const first = ruleCard.id === undefined || isPreference
+  const first = ruleCard.id === undefined || ruleCard.unknown === true
     ? 0 // rules.rb:78-80 first_set_option_index: a new rule slices from 0
     : candidates.findIndex((c) => DeckoName.parse(c).key === ruleSetKey);
   const sliced = first === -1 ? candidates : candidates.slice(first);
   const radios: string[] = [];
   let existingRules = 0;
-  let index = 0;
   for (const [candidateSetName, state] of sliced
     .map((c) => {
       const ruleName = `${c}+${userSettingName}`;
@@ -2104,8 +2139,7 @@ function ruleSetOptionsRadios(ctx: ViewContext): string {
       return [c, state] as [string, string];
     })
     .reverse()) {
-    index += 1;
-    radios.push(ruleSetRadioHtml(ctx, candidateSetName, state, index, userSettingName));
+    radios.push(ruleSetRadioHtml(ctx, candidateSetName, state, userSettingName));
   }
   return radios.join("\n");
 }
@@ -2139,55 +2173,56 @@ function defaultRuleTypeName(ctx: ViewContext, typeCode: string): string | undef
  *  class: "form-check-input", id: @id) - Rails Tags::RadioButton#render:
  *  the caller options in position (warning, class, id), then type/value
  *  set, name appended LAST; @id (:19) = "#{unique_id}-#{Time.now.to_i}" -
- *  the seconds are nondeterministic (the port freezes unique_id's rand to
- *  1 and the seconds to 0; the test normalizes both sides to TIME, the
- *  select2 precedent); label (:40-50): the set card's label, the
- *  "(current)" extra_info for the :current state wrapped in <em>, and the
- *  set link (link_to_card target: "decko_set"); warning (:57-62): the
- *  *all literal, else the narrower-rules walk (unpinned - the capture's
- *  single *all option never reaches it; the narrower_warning machinery is
- *  the cited remainder). */
+ *  the SHARED format id counter (content.rb:66-70: the tinymce textarea
+ *  consumed -2- earlier in the same render, so the radios answer -3-, -4-,
+ *  ...; Time.now through the engine wall clock - the corpus bytes carry the
+ *  capture clock's epoch 1789819200); label (:40-50): the set card's label,
+ *  the extra_info (:current "(current)", :overwritten/:exists the set+
+ *  setting rule card link, target: "_blank", the known/wanted class riding
+ *  the rule card's known? verdict), and the set link (link_to_card target:
+ *  "decko_set"); warning (:57-62): the *all literal, else the
+ *  narrower-rules walk (unpinned - the corpus radios never reach it). */
 function ruleSetRadioHtml(
   ctx: ViewContext,
   setName: string,
   state: string,
-  index: number,
   userSettingName: string,
 ): string {
   const { fmt } = ctx;
   const radioText = `${setName}+${userSettingName}`;
-  // rules_type_formgroup's radio ids: the rule card's safe key, the radio's
-  // 1-based index, and Time.now.to_i (cardWallClockNow - the corpus bytes
-  // carry the capture clock's epoch 1789819200)
+  // set_set_radio.rb:19 @id: unique_id (the format's shared counter) plus
+  // Time.now.to_i (cardWallClockNow - the corpus bytes carry 1789819200)
   const epochSeconds = Math.floor(cardWallClockNow().getTime() / 1000);
-  const id = `${fmt.card.name.safeKey}-${index}-${epochSeconds}`;
+  const id = `${fmt.uniqueId()}-${epochSeconds}`;
   const isCurrent = state === "current";
   const warning =
     setName === "*all" ? "This rule will affect all cards! Are you sure?" : "";
   const labelClasses =
     `set-label${isCurrent ? " current-set-label" : ""}`;
   // set/type/set.rb:38-41 label - subclass_for_set.label(anchor_name) - the
-  // pattern resolves through the tag card's codename. The warm set card's
-  // record codename answers for fetched sets; an UNWARMED set card's label
-  // resolves from the NAME (parseSetName - the same codename registry), the
-  // rule_form chain's ruleSetOptions walk reaching sets no prior render
-  // warmed (the corpus pin's `User+*type` radio).
-  const setCardRecord = fmt.engine.fetchRenderCard(setName);
-  let patternCode: string | undefined;
-  let anchor: string | undefined;
-  if (setCardRecord !== undefined && setCardRecord.unknown !== true) {
-    patternCode = setCardRecord.record.codename;
-    anchor = setCardRecord.name.leftName?.s;
-  } else {
-    const parsed = parseSetName(setName);
-    patternCode = parsed.patternCode ?? undefined;
-    anchor = parsed.anchorName?.s ?? undefined;
+  // pattern resolves through the TAG card's codename (parseSetName - the
+  // codename registry; an anchored set card's row carries no codename of
+  // its own, so the walk is name-level in every case).
+  const parsed = parseSetName(setName);
+  const setLabel = parsed.spec !== undefined
+    ? (parsed.spec.label(parsed.anchorName?.s) ?? "")
+    : "";
+  // rule_set_radio.rb:40-50 extra_info: :current renders the literal;
+  // :overwritten/:exists link the set+setting rule card with the
+  // known/wanted class from its own known? verdict (the corpus's
+  // *all+*structure is neither real nor virtual -> wanted-card).
+  let extraInfo = "";
+  if (isCurrent) {
+    extraInfo = " <em>(current)</em>";
+  } else if (state === "overwritten" || state === "exists") {
+    const ruleName = `${setName}+${userSettingName}`;
+    const ruleCardRecord = fmt.engine.fetchRenderCard(ruleName);
+    const known = ruleCardRecord !== undefined && ruleCardRecord.unknown !== true;
+    extraInfo =
+      ` <em><a target="_blank" class="${known ? "known-card" : "wanted-card"}"` +
+      ` href="/${h(DeckoName.parse(ruleName).urlKey)}">(${h(state)})</a></em>`;
   }
-  const setLabel =
-    patternCode !== undefined
-      ? (findPattern(patternCode)?.label(anchor) ?? "")
-      : "";
-  const text = isCurrent ? `${setLabel} <em>(current)</em>` : setLabel;
+  const text = `${setLabel}${extraInfo}`;
   return (
     `<div class="form-check">` +
     `<input${warning === "" ? "" : ` warning="${h(warning)}"`} class="form-check-input" id="${h(id)}" type="radio" value="${h(radioText)}" name="card[name]" />\n` +
@@ -2227,7 +2262,18 @@ function editRuleButtons(ctx: ViewContext, formType: string): string {
       ? `<button name="button" type="button" data-bs-dismiss="modal" data-cy="close-modal" class="btn-sm btn btn-secondary">Cancel</button>`
       : `<button name="button" type="button" class="_close-overlay btn-sm btn-sm btn btn-secondary" data-bs-dismiss="overlay">Cancel</button>`;
   const settingTitle = ruleSettingCodename(ctx) ?? "";
-  const confirmMsg = `Are you sure you want to delete the *${settingTitle} rule for everything?`;
+  // buttons.rb:36-43 - the confirm names the rule set's follow_label
+  // (editor.rb:93-95 card.rule_set.follow_label): Set#follow_label
+  // (mod/follow set/type/set.rb:9-15) is the pattern's short_label of the
+  // set anchor - the Type pattern's is `all "#{anchor}s"` (03_type.rb:7-9,
+  // the corpus's all &quot;Topics&quot;), *all's short_label "everything"
+  // (01_all.rb:6-8).
+  const ruleSetName = fmt.card.name.leftName;
+  const ruleSetParsed = ruleSetName !== undefined ? parseSetName(ruleSetName.s) : undefined;
+  const followLabel = ruleSetParsed?.spec !== undefined
+    ? (ruleSetParsed.spec.shortLabel(ruleSetParsed.anchorName?.s) ?? "")
+    : "";
+  const confirmMsg = `Are you sure you want to delete the *${settingTitle} rule for ${followLabel}?`;
   const del = (
     `<span class="rule-delete-section">` +
     `<a confirm="${h(confirmMsg)}" data-slotter-mode="silent-success"` +

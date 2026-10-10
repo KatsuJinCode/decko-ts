@@ -1599,7 +1599,10 @@ export function typeField(
       .map(([group, items]) => `<optgroup label="${group}">${items.map(optionHtml).join("\n")}</optgroup>`)
       .join("");
   }
-  const href = opts.href === undefined ? "" : ` href="${opts.href}"`;
+  // Rails' tag helper html-escapes every attribute value (tag_options'
+  // ERB::Util.html_escape): the rule editors' href query "assign=true&mark="
+  // renders as "...assign=true&amp;mark=" (the corpus rule-form ops).
+  const href = opts.href === undefined ? "" : ` href="${h(opts.href)}"`;
   const live = opts.href === undefined ? "" : ` data-remote="true"`;
   // the class composition: the helper chain (board/type formgroups)
   // prepend "_live-type-field " via the href arm; the :new_type_formgroup
@@ -1692,7 +1695,9 @@ const typeFormgroupView: ViewFn = (ctx) => typeFormgroup(ctx, {});
  *  the assign flag + the Rails-deep-encoded slot show query (the captured
  *  bytes: /<mark>/edit_form?assign=true&amp;slot%5Bshow%5D%5B%5D=type_form). */
 const boardTypeFormgroupView: ViewFn = (ctx) => {
-  const href = `/${ctx.fmt.urlKey()}/edit_form?assign=true&amp;slot%5Bshow%5D%5B%5D=type_form`;
+  // the RAW query ("&"); typeField's tag-helper escape renders the &amp;
+  // (the captured bytes: /<mark>/edit_form?assign=true&amp;slot...)
+  const href = `/${ctx.fmt.urlKey()}/edit_form?assign=true&slot%5Bshow%5D%5B%5D=type_form`;
   return modSlotWrap(
     ctx,
     "board_type_formgroup",
