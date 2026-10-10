@@ -190,7 +190,7 @@ import { DeckoName } from "../../name.js";
 import { emitAttrs, h, newSlotId, slotOptionsJson } from "../../render/slot-html.js";
 import { str, type ViewResult } from "../../render/format.js";
 import { modSlotWrap } from "../mod-view-helpers.js";
-import { createFormShell } from "../mod-form-substrate.js";
+import { createFormShell, successTags } from "../mod-form-substrate.js";
 import { readFormgroupBody, templateLinkSetNameFromParts } from "../../render/views.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
@@ -2122,6 +2122,9 @@ function captchaRuleSeedFor(ctx: ViewContext): string | undefined {
 function createFormWithAlertGuide(ctx: ViewContext): string {
   const fields = ctx.fmt.renderView("new_fields", {
     buttons_view: ctx.voo.opts["buttons_view"],
+    // the nest's type opt (the image-typed new cards) inherits to the
+    // new_fields render — new_type_prompt? reads it there (new.rb:142-144).
+    type: ctx.voo.opts["type"],
   });
   return (
     `<div class="d-flex justify-content-between">` +
@@ -2136,7 +2139,7 @@ function createFormWithAlertGuide(ctx: ViewContext): string {
  *  wrap.rb:6-9), so the slot JSON is frozen pre-body (the captured
  *  standalone arm: show:[new_fields] only, the body's visible? writes
  *  excluded). The port freezes the wrap first and splices the body in. */
-const NEW_FIELDS_SENTINEL = "\u0000new_fields-body\u0000";
+export const NEW_FIELDS_SENTINEL = "\u0000new_fields-body\u0000";
 export const newFieldsView: ViewFn = (ctx) => {
   const open = modSlotWrap(ctx, "new_fields", NEW_FIELDS_SENTINEL, "w-100");
   const body = output([
@@ -2225,6 +2228,19 @@ export function createFormDataShell(
   });
 }
 
+/** create_form's UPDATE-shape arm (Ruby's create_form on a STORED card:
+ *  card.new_card? is false, so form_for names the form edit_card_<id>
+ *  and adds the _method=patch spoof while the action stays :create - the
+ *  favicon's new_image op renders exactly this shape on the stored
+ *  *favicon card). The recaptcha gate rides createCardForm like the
+ *  create arm's. */
+export function updateFormDataShell(
+  ctx: ViewContext,
+  formOpts: { success?: Record<string, unknown> },
+): string {
+  withCreateContext(ctx);
+  return createCardForm(ctx, "", successTags(formOpts.success), createFormWithAlertGuide(ctx));
+}
 /** form.rb:186-200 card_form(:create, form_opts) with a CALLER body - the
  *  frame_and_form chain's inner shell (user.rb:29-32 setup_form:
  *  frame_and_form :create { [hidden fields, name formgroup,

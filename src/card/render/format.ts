@@ -2115,9 +2115,42 @@ export class RenderFormat {
    *  TYPE-toggle chain, body "no"); RVW open's +working doc 02 item slot
    *  (TYPE_PLUS_RIGHT-list-working_doc_02 — RVW is List-typed; the
    *  fabricated shape pinned rich_text). */
+  /** Card.fetch(type_card_name) for the explicit nest type opt, with the
+   *  codename-registry fallback for type cards the cache-only fetch misses
+   *  (the Image type card in the image01 nest-miss phantom). */
+  private resolveExplicitTypeCard(name: string): RenderCard | undefined {
+    const warmed = this.engine.fetchRenderCard(name);
+    if (warmed !== undefined && warmed.id !== undefined) return warmed;
+    const id = this.engine.peekIdByCodename?.(name);
+    if (id === undefined) return undefined;
+    const typeName = this.engine.peekRegisteredNameForId?.(id);
+    const record = {
+      id,
+      name: typeName ?? name,
+      codename: name,
+      typeId: this.engine.peekIdByCodename?.("cardtype"),
+    };
+    return {
+      record: record as never,
+      name: (typeName ?? name) as never,
+      key: name,
+      typeName: typeName ?? name,
+      typeId: id,
+      typeCode: name,
+      id,
+      dbContent: "",
+      setKeys: "",
+    } as unknown as RenderCard;
+  }
+
   private withNewCardContext(target: RenderCard, nestTypeOpt?: string): RenderCard {
+    // The cache-only fetchRenderCard misses when the TYPE CARD was never
+    // warmed (the image01 nest-miss phantom: the Image type card is not in
+    // the prepared map). Ruby's Card.fetch(name, new: { type: X }) resolves
+    // the type through the codename registry — the port's peek pair is the
+    // same sync surface (Card::Codename.id + Lexicon.name).
     const explicitType =
-      nestTypeOpt !== undefined ? this.engine.fetchRenderCard(nestTypeOpt) : undefined;
+      nestTypeOpt !== undefined ? this.resolveExplicitTypeCard(nestTypeOpt) : undefined;
     const typeId = explicitType !== undefined && explicitType.id !== undefined ? explicitType.id : target.typeId;
     const typeName =
       explicitType !== undefined && explicitType.id !== undefined

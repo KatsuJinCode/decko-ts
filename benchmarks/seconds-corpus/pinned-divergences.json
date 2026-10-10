@@ -267,17 +267,6 @@
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
     },
     {
-      "op": "view:admin:*favicon:new_image",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 429,
-        "expected": "ot;help&quot;],&quot;hide&quot;:[&quot;name_formgroup&quot;]}\\\"><form class=\\\"card-form slotter\\\" id=\\\"edit_card_294\\\" action=\\\"/card/create\\\" accept-charset=\\\"UTF-8\\\" data-remote=",
-        "actual": "ot;help&quot;],&quot;hide&quot;:[&quot;name_formgroup&quot;],&quot;buttons_view&quot;:&quot;new_image_buttons&quot;}\\\"><form class=\\\"card-form slotter\\\" id=\\\"new_card\\\" action=\\\"/c"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
       "op": "view:admin:Report 1:preview_editor",
       "family": "render-error-panel: the backtrace div's frame COUNT differs under N6 (Ruby boot-inclusive backtrace vs the engine's own V8 stack)",
       "group": "view / admin",
