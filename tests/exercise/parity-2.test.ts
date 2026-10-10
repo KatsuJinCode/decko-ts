@@ -728,7 +728,7 @@ describe("the committed write-battery recording behind the published write count
   const BATTERY_MANIFEST = join(BATTERY_FIXTURE, "MANIFEST.json");
   const PERSIST_STEPS = join(BATTERY_FIXTURE, "expected", "persist-steps");
 
-  it("holds one committed synthetic deck with a 70-step Ruby probe recording and a 90-step Ruby scenario trace on it, integrity-gated by its manifest, with the 5 probe differences declared and the scenario finding recorded", () => {
+  it("holds one committed synthetic deck with a 70-step Ruby probe recording and a 90-step Ruby scenario trace on it, integrity-gated by its manifest, with the 5 probe differences and the battery's account-holder divergence (docs/SECURITY.md 5) declared", () => {
     // Integrity: the fixture's own manifest pins the sha256 of the deck and
     // of both recordings, exactly as the reference-harness fixtures do.
     expect(existsSync(BATTERY_MANIFEST), "the fixture has a MANIFEST.json").toBe(true);
@@ -764,10 +764,11 @@ describe("the committed write-battery recording behind the published write count
 
     // The scenario battery's Ruby truth: 90 steps on the same deck, no
     // blocked network attempt, recorded under the drive the production grade
-    // used. The recorded trace carries an open finding (37 steps whose
-    // verdicts differ, one root cause — see
-    // tests/tools/side-effects-scenario-battery.test.ts); the recording is
-    // the evidence that finding is graded against.
+    // used. The recorded trace is the clean-deck evidence the declared
+    // account-holder divergence is graded against (37 steps whose verdicts
+    // differ, one declared root cause -- docs/SECURITY.md divergence 5,
+    // pinned step by step in
+    // tests/tools/side-effects-scenario-battery.test.ts).
     const ruby = JSON.parse(readFileSync(join(BATTERY_FIXTURE, "expected", "side-effects-ruby.json"), "utf8")) as {
       engine: string;
       network_blocked: string[];

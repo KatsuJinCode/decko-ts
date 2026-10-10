@@ -19,7 +19,7 @@ The mod-compatibility boundary is its own decision record
 | Rendering | HTML/format output byte-identical to Ruby's | Reference-harness render ops; miniature smoke fixture; corpus replay | 1,754 / 1,754 renders byte-identical, `synthetic-v1` reference-harness grade. The with-mods corpus replay measured 167,674 / 180,442 views byte-identical (92.9%) on 2026-09-23, on an earlier revision of the engine |
 | Semantics | Names, keys, types, sets, rules, permissions, CQL answer as Ruby answers | Reference-harness semantics ops; CQL batteries in `fixtures/captured/` | 2,388 semantics operations, `synthetic-v1` fixture |
 | Persistence | The rows a write leaves behind match Ruby's, table by table | Reference-harness scenario steps (raw row deltas); the 70-step write probe on `write-battery-v1` | 16 write steps, one raw row-delta comparison each; the write probe: 70 of 70 operations' row deltas match on the committed `write-battery-v1` synthetic deck (5 of them declared deliberate differences) |
-| Side effects | Saved/refused verdicts, errors, mail, sign-in identity match Ruby's | Reference-harness write and sign-in step answers; captured mail; the 90-step scenario battery on `write-battery-v1` | 19 comparisons: 16 write answers + 3 sign-in answers; the scenario battery: 49 of 90 steps match on the committed `write-battery-v1` synthetic deck (4 declared, 37 mismatched — an open finding, one root cause: see `tests/tools/side-effects-scenario-battery.test.ts`) |
+| Side effects | Saved/refused verdicts, errors, mail, sign-in identity match Ruby's | Reference-harness write and sign-in step answers; captured mail; the 90-step scenario battery on `write-battery-v1` | 19 comparisons: 16 write answers + 3 sign-in answers; the scenario battery: 49 of 90 steps match on the committed `write-battery-v1` synthetic deck (4 declared, 37 mismatched under the declared account-holder security divergence, `docs/SECURITY.md` divergence 5: see `tests/tools/side-effects-scenario-battery.test.ts`) |
 
 The standing test net (`tests/standing-net.json`, 68 manifest files) run
 2026-10-01: 696 passed, 4 expected fail, 12 skipped (712). That net is
@@ -73,23 +73,25 @@ ones above.
   differences (`docs/SECURITY.md` stored-HTML and password-storage choices,
   two upstream Ruby defects). It runs from a clean checkout; no Ruby, no
   private deck.
-- **The 90-step scenario battery** (recording committed; grade blocked on an
-  open finding): `tests/tools/side-effects-scenario-battery.test.ts` (in the
-  working tree) drives the TypeScript engine through the same 90 HTTP-shaped
-  steps the production-deck measurement drove
+- **The 90-step scenario battery** (recording committed; the clean-deck
+  divergence declared): `tests/tools/side-effects-scenario-battery.test.ts`
+  (in the working tree) drives the TypeScript engine through the same 90
+  HTTP-shaped steps the production-deck measurement drove
   (`tools/parity-side-effects/`), from the committed
   `reference-harness/fixtures/write-battery-v1` deck, and compares every
   step's verdict against the Ruby trace recorded on that deck
   (`expected/side-effects-ruby.json`). On this clean synthetic deck the
   verdicts differ at 37 of 90 steps (49 pass, 4 declared, 37 mismatched),
-  all traceable to one root cause: the port refuses to rename another user's
-  account holder where Ruby 0.20's `account_manager?` check is vacuous and
-  allows it. On the production deck that difference never surfaced because
-  Ruby crashes mid-rename there (the `valid_preferer?` defect one of the 7
-  production pins declares); the crash does not reproduce on a clean deck,
-  so three of the seven production pins do not transfer. The finding is
-  recorded, not adjusted away; the production-deck figures remain the
-  measured 83 + 7 of 90.
+  36 of them traceable to one root cause, now a declared security
+  divergence (`docs/SECURITY.md`, divergence 5): the port refuses to rename
+  another user's account holder where Ruby 0.20's `account_manager?` check
+  is vacuous and allows it. On the production deck that difference never
+  surfaced because Ruby crashes mid-rename there (the `valid_preferer?`
+  defect one of the 7 production pins declares); the crash does not
+  reproduce on a clean deck, so three of the seven production pins do not
+  transfer. The divergence is declared, not adjusted away; the exact
+  verdicts stay pinned step by step, and the production-deck figures remain
+  the measured 83 + 7 of 90.
 - **The pod import/export round-trips remain private**:
   `tests/tools/pod-round-trip.test.ts` and `tests/tools/pod-features.test.ts`
   skip unless `PODS_SRC_DECK` / `PODS_BASE_DECK` name a private oracle deck.
@@ -151,7 +153,8 @@ Stated plainly, with where the gap closes when it closes:
    pod round-trips and the production-deck runs of the write batteries on the
    real oracle deck. The 70-step write sequence is now public, on the
    committed `write-battery-v1` synthetic deck; the 90-step scenario battery
-   is recorded on that deck with an open finding (above). What remains
+   is recorded on that deck with its account-holder divergence declared
+   (above). What remains
    non-public is the same measurement on a copy of the 49,829-card
    production deck.
 

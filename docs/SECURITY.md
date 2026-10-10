@@ -59,6 +59,17 @@ Please report suspected vulnerabilities privately to the maintainers rather than
 | **Compatibility** | None: the results are identical, only the timing differs. |
 | **Tests** | `tests/card/auth/session-token.test.ts` covers the comparison; `password-hash.test.ts` and `signin.test.ts` cover its use for passwords. |
 
+### 5. An account holder's name may be changed only by its holder or Help Desk
+
+| | |
+|---|---|
+| **Ruby** | The guard against renaming an account holder never runs. `validate_account_holder_name_change` (`mod/account/set/abstract/account_holder.rb:1-5`) returns early unless `!Card::Auth.as_card.account_manager?`, and `account_manager?` (:71-73) is `own_account? \|\| parties.member?(HelpDeskID)`, where `own_account?` (:15-17) is `key == Auth.as_card.key`. Both sides are evaluated on the actor's own card, so the comparison is the actor's key against itself: it is true for every signed-in actor, the guard's condition is never met, and the error is never added. Any signed-in user who may update the card can therefore rename another user's account holder, changing the identity the account, its follow preferences and its inbound references answer to. The defect is reported upstream separately. |
+| **Port** | `assertMayRenameAccountHolder` (`src/card/actions/card-action-engine.ts:1045`) implements the check's evident intent: an account holder's name change is refused before anything is written, with Ruby's own error (`NAME: cannot rename Account Holder`, HTTP 422), unless the actor is the account holder or a member of Help Desk. Administrators are not exempt — `account_manager?` has no `always_ok?` arm. |
+| **Why** | Renaming another user's account holder acts against that user: it takes over the name their session, notification mail and references answer to, and Ruby's vacuous guard leaves it to the deck's ordinary update rule, which on a default deck any signed-in user passes. |
+| **Compatibility** | A rename Ruby accepts, the port refuses; nothing else changes, because the port's allowance (own account, Help Desk) is the check's evident intent. On a clean deck Ruby's rename succeeds and cascades — its later notification mails name the renamed follow rule, and its action ids run one ahead — so the difference reaches 37 of the 90 side-effects battery steps. On production decks Ruby crashes mid-rename before the divergence can show (`lib/card/rule/all.rb:51-54`: `valid_preferer?` dereferences a nil card while re-keying the account's follow preferences — a second Ruby defect, reported upstream separately), which is why the production grade was 90 of 90 with seven declared pins (`tools/parity-side-effects/scenarios.json`). The crash depends on production deck state and does not reproduce on a clean deck, so three of the seven production pins do not transfer to it. |
+| **Configuration** | None. |
+| **Tests** | `tests/tools/side-effects-scenario-battery.test.ts`: the 90-step battery on the committed synthetic deck (`reference-harness/fixtures/write-battery-v1`) pins the exact clean-deck verdicts — 49 pass, 4 declared, and the 37 steps expected under this divergence (two rename refusals, 34 cascade steps, and the closure sign-out step whose production pin does not transfer because the mails around it shifted). Any engine change at any of them fails the suite. |
+
 ## Migration tooling
 
 ### Migration compatibility at a glance

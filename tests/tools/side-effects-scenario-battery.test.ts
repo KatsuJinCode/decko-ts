@@ -17,11 +17,13 @@
 //                     deltas, actions, mail, files, image variants,
 //                     virtuals, session identity)
 //
-// THE OPEN FINDING THIS SUITE PINS. The published production-deck grade is
-// 90 of 90 steps (83 pass + 7 declared deliberate). On the clean synthetic
-// deck the recorded verdicts differ at 37 steps (49 pass + 4 declared +
-// 37 mismatched), all traceable to ONE root difference: renaming another
-// user's account holder. Ruby 0.20's guard (account_holder.rb
+// THE DECLARED DIVERGENCE THIS SUITE PINS. The published production-deck
+// grade is 90 of 90 steps (83 pass + 7 declared deliberate). On the clean
+// synthetic deck the recorded verdicts differ at 37 steps (49 pass + 4
+// declared + 37 mismatched), 36 of them traceable to ONE declared security
+// divergence (docs/SECURITY.md, "An account holder's name may be changed
+// only by its holder or Help Desk"): renaming another user's account
+// holder. Ruby 0.20's guard (account_holder.rb
 // validate_account_holder_name_change: `Card::Auth.as_card.account_manager?`)
 // is vacuous for any signed-in actor -- account_manager? asks whether the
 // actor is the actor -- so Ruby allows the rename. The port implements the
@@ -37,9 +39,11 @@
 // run one ahead, which accounts for the remaining mismatched steps
 // (mailText/mailHtml/stored fields). The recording is committed unchanged
 // (expected/side-effects-ruby.json); this suite pins the exact current
-// verdicts so any engine change here fails loudly and forces the finding to
-// be re-graded. Resolving it (declaring the divergence for clean decks, or
-// changing one side) is an operator decision.
+// verdicts under the declared mechanism -- divergence 5 of
+// docs/SECURITY.md, the operator's ruling that Ruby's vacuous manager check
+// is the defect and the port's refusal is correct -- so any engine change
+// here fails loudly and forces the divergence to be re-graded. Neither
+// engine's behavior changes.
 //
 // BUILD ARTIFACTS (not committed, like node_modules): ts-drive.mjs runs the
 // engine from dist/ (npx tsc -p tsconfig.json) and compiles the skin SCSS the
@@ -138,7 +142,7 @@ describe("side-effects scenario battery (90 steps, committed synthetic deck)", (
     );
   }
 
-  it("drives the TypeScript engine through the 90 steps and compares it with the recorded Ruby trace: 49 steps pass, the 4 steps whose production pins still hold are declared, and the 37 steps of the open account-holder-rename finding are pinned step by step", () => {
+  it("drives the TypeScript engine through the 90 steps and compares it with the recorded Ruby trace: 49 steps pass, the 4 steps whose production pins still hold are declared, and the 37 steps of the declared account-holder-rename divergence (docs/SECURITY.md 5) are pinned step by step", () => {
     expect(missing, "the battery's committed inputs and build artifacts are present").toEqual([]);
 
     const fixtureProblems = verifyManifestFiles([
@@ -189,12 +193,12 @@ describe("side-effects scenario battery (90 steps, committed synthetic deck)", (
       total: 90,
     });
 
-    // The open finding, pinned step by step: every mismatched step and the
-    // fields it differs on. 36 of the 37 trace to the step-14 rename
+    // The declared divergence, pinned step by step: every mismatched step
+    // and the fields it differs on. 36 of the 37 trace to the step-14 rename
     // (Ruby's follow-rule rename cascades into its later notification mails
     // and its action-id sequence); admin-close-own-account is the closure
     // signout's own difference. A change on either side fails here and
-    // forces the finding to be re-graded.
+    // forces the divergence (docs/SECURITY.md 5) to be re-graded.
     const mismatches = report.rows.filter((r) => r.verdict === "MISMATCH");
     expect(mismatches.map((r) => ({ step: r.step, fields: Object.keys(r.diffs).sort() }))).toEqual([
       { step: "probe-rename-other-account", fields: ["actions", "errors", "location", "mail", "mailHtml", "mailText", "stamps", "status", "stored", "writes"] },
@@ -236,9 +240,10 @@ describe("side-effects scenario battery (90 steps, committed synthetic deck)", (
       { step: "admin-close-own-account", fields: ["mail", "mailHtml", "mailText", "session"] },
     ]);
 
-    // The root difference, spelled out: on the rename of another user's
-    // account holder, Ruby 303s and writes the rename; the port refuses with
-    // the account-holder guard.
+    // The declared mechanism, spelled out: on the rename of another user's
+    // account holder, Ruby 303s and writes the rename (the vacuous manager
+    // check lets it through); the port refuses with the account-holder
+    // guard.
     const root = mismatches.find((r) => r.step === "probe-rename-other-account")!;
     expect(root.diffs.status).toEqual(["303", "422"]);
     expect(String(root.diffs.errors![1])).toContain("cannot rename Account Holder");
