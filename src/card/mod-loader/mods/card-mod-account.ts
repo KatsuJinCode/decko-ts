@@ -150,6 +150,8 @@ import {
 import { isNewCard } from "../../fetch/card-record.js";
 import { resetPasswordUrlView, verifyUrlView } from "../../render/views.js";
 import { DeckoName } from "../../name.js";
+import { CodenameNotFoundError } from "../../name/errors.js";
+import { getNameEnvironment } from "../../name/environment.js";
 import {
   BOARD_PILL_UL_CLASSES,
   BOARD_SLOT_SELECTOR,
@@ -368,7 +370,18 @@ const linkWithCheckboxView: ViewFn = (ctx) => {
   const bundle = accountFollowBundle(ctx);
   const actorName =
     bundle?.session?.actorName ?? "Anonymous"; // Auth.current (AnonymousID arm)
-  const rolesName = `${actorName}+*disabled roles`;
+  // Auth.current.field(:disabled_roles) resolves the SYMBOL tag through the
+  // codename table (Card#fetch -> Card.id_or_name -> Card::Name.compose ->
+  // from_cardish(Symbol) -> Codename.name!, card-1.110.0 lib/card/name.rb:77)
+  // - the deck carries no disabled_roles codename, so role_checkbox's first
+  // call (card.disabled?, roles.rb:4-6) raises Card::Error::CodenameNotFound
+  // inside the view body; in the serving posture the root rescue is quiet
+  // (html_format.rb:16-18), so the verbatim span is the whole view (the
+  // corpus's Contractor link_with_checkbox pin). The former hardcoded star
+  // string skipped the codename table and rendered the checkbox bytes.
+  const disabledRolesTag = getNameEnvironment()?.codename?.name("disabled_roles");
+  if (disabledRolesTag === undefined) throw new CodenameNotFoundError("unknown codename: disabled_roles");
+  const rolesName = `${actorName}+${disabledRolesTag}`;
   const rolesCard = ctx.fmt.engine.fetchRenderCard(rolesName);
   const disabledIds = (rolesCard?.dbContent ?? "")
     .split("\n")
