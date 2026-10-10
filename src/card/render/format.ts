@@ -599,6 +599,32 @@ const MAX_NEST_CHAR_COUNT = 200;
  *  parent.nest_mode : :normal` - a root format with no parent is :normal. */
 const DEFAULT_NEST_MODE: NestMode = "normal";
 
+/**
+ * `Cardio.config.raise_all_rendering_errors` (cardio/railtie.rb:38, whose
+ * stock default is false) - the process-global posture behind error.rb:65-67
+ * `loud_error?` (`focal? || raise_all_rendering_errors`). The TS default
+ * here is TRUE: the port's bare view lane and the mod-port raise contracts
+ * grew up loud (every raise the mod guards pin reaches the caller), and the
+ * reference-harness adapters - whose fixtures were captured with the config
+ * explicitly false and Rails.env production (the fixtures' MANIFEST
+ * "production render-error semantics" contract line) - set it FALSE at
+ * boot, so the corpus's quiet rescue postures (nest spans, delegated spans,
+ * the root's own wrap_and_render rescue) engage exactly where the oracle
+ * captured them.
+ */
+let raiseAllRenderingErrors = true;
+
+/** `Cardio.config.raise_all_rendering_errors=` - the boot-time posture
+ *  switch (the harness adapters set false; nothing else should). */
+export function setRaiseAllRenderingErrors(value: boolean): void {
+  raiseAllRenderingErrors = value;
+}
+
+/** error.rb:65-67's config half: true when EVERY rescue is loud. */
+export function allRenderingErrorsRaise(): boolean {
+  return raiseAllRenderingErrors;
+}
+
 export interface RenderFormatOptions {
   parent?: RenderFormat;
   main?: boolean;
@@ -1227,7 +1253,26 @@ export class RenderFormat {
         // unknown card reports the substituted view - same shape here)
         throw new UnsupportedViewError(effective, this.card.name.s);
       }
-      return viewFn({ fmt: this, voo });
+      try {
+        return viewFn({ fmt: this, voo });
+      } catch (error) {
+        // THE ROOT'S OWN wrap_and_render rescue (format/render.rb:115-119),
+        // on THE bare view-lane root only. In the serving posture the html
+        // format is never focal (html_format.rb:16-18 focal? =
+        // show_layout? ? main? : depth.zero? - the adapter's bare render
+        // main!s nothing, so focal? is main? = false), loud_error?
+        // (error.rb:65-67) is therefore false, and the rescue is QUIET
+        // (error.rb:75-78): the span is the render's value. Nested and
+        // delegated renders are rescued by their own scopes (nest()'s
+        // catch, renderDelegated) - a throw reaching here already escaped
+        // those. A focal root re-raises as Ruby's loud_error does
+        // (error.rb:69-73); the page lane builds non-viewLaneRoot roots, so
+        // it keeps its own error surface. The config half of loud_error?
+        // keeps the development posture (the mod-port raise contracts)
+        // fully loud.
+        if (!viewLaneRoot || allRenderingErrorsRaise()) throw error;
+        return quietRenderError(error, this.card, effective);
+      }
     } finally {
       this.voo = previous;
     }
@@ -1943,7 +1988,19 @@ export class RenderFormat {
     try {
       return this.renderView(view, opts, optional);
     } catch (error) {
-      if (this.depth === 0) throw error; // error.rb:69-73 loud_error re-raises
+      // error.rb:65-67 loud_error?: `focal? || raise_all_rendering_errors`.
+      // The html format's focal? is show_layout? ? main? : depth.zero?
+      // (html_format.rb:16-18) - in the serving posture (layouts shown, the
+      // bare render main!s nothing) the html root is NOT focal, so its
+      // delegated renders are QUIET too and the span is the delegation's
+      // value (the oracle's email_page: the span lands inside the
+      // :email_document wrapper, not at the root). Base formats keep the
+      // depth-zero focal arm; the page's main!-ed format is focal and
+      // re-raises as before. The config half of the disjunction makes every
+      // rescue loud (the development posture the mod-port raise contracts
+      // pin).
+      const focal = this.formatName === "html" ? this.isMain : this.depth === 0;
+      if (focal || allRenderingErrorsRaise()) throw error; // error.rb:69-73 loud_error re-raises
       return quietRenderError(error, this.card, view);
     }
   }
@@ -4100,7 +4157,9 @@ export function quietRenderError(
   view: string,
 ): string {
   const msg =
-    error instanceof UnsupportedViewError || error instanceof TooDeepError
+    error instanceof UnsupportedViewError ||
+    error instanceof TooDeepError ||
+    error instanceof CodenameNotFoundError
       ? error.message
       : `Error rendering: ${h(card.name.s)} (${view} view)`;
   return `<span class="render-error alert alert-danger">${msg}</span>`;

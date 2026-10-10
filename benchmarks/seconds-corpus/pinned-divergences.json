@@ -2523,7 +2523,7 @@
   },
   {
    "op": "view:admin:Report 1:preview_editor",
-   "family": "render-error-panel: inline render-error panel bytes differ",
+   "family": "render-error-panel: inline render-error panel bytes differ Adjudicated 2026-10-10 (render-panels lane): the recorded expected bytes embed the CAPTURE HOST's Ruby debug page - card-mod-format set/all/html/error.rb renders the admin-only error page inside the quiet span's title attribute with the exception's backtrace, gem paths (C:/Ruby33-x64/...) and heap addresses from the capture machine; the port's serving bytes are real render output and a byte match would require emitting the capture host's stack - not port behavior. The pin stays as the honest record of this surface.",
    "group": "view / admin",
    "evidence": {
     "firstDiffAt": 10,
@@ -2588,7 +2588,7 @@
   },
   {
    "op": "view:admin:Note 001:debug_server_error",
-   "family": "render-error-panel: inline render-error panel bytes differ",
+   "family": "render-error-panel: inline render-error panel bytes differ Adjudicated 2026-10-10 (render-panels lane): the recorded expected bytes embed the CAPTURE HOST's Ruby debug page - card-mod-format set/all/html/error.rb renders the admin-only error page inside the quiet span's title attribute with the exception's backtrace, gem paths (C:/Ruby33-x64/...) and heap addresses from the capture machine; the port's serving bytes are real render output and a byte match would require emitting the capture host's stack - not port behavior. The pin stays as the honest record of this surface.",
    "group": "view / admin",
    "evidence": {
     "firstDiffAt": 10,
@@ -2852,7 +2852,7 @@
   },
   {
    "op": "view:admin:Ada Admin+*account:verify_url",
-   "family": "render-error-panel: inline render-error panel bytes differ",
+   "family": "render-error-panel: inline render-error panel bytes differ Adjudicated 2026-10-10 (render-panels lane): the recorded expected bytes embed the CAPTURE HOST's Ruby debug page - card-mod-format set/all/html/error.rb renders the admin-only error page inside the quiet span's title attribute with the exception's backtrace, gem paths (C:/Ruby33-x64/...) and heap addresses from the capture machine; the port's serving bytes are real render output and a byte match would require emitting the capture host's stack - not port behavior. The pin stays as the honest record of this surface.",
    "group": "view / admin",
    "evidence": {
     "firstDiffAt": 9,
@@ -2863,7 +2863,7 @@
   },
   {
    "op": "view:admin:Ada Admin+*account:reset_password_url",
-   "family": "render-error-panel: inline render-error panel bytes differ",
+   "family": "render-error-panel: inline render-error panel bytes differ Adjudicated 2026-10-10 (render-panels lane): the recorded expected bytes embed the CAPTURE HOST's Ruby debug page - card-mod-format set/all/html/error.rb renders the admin-only error page inside the quiet span's title attribute with the exception's backtrace, gem paths (C:/Ruby33-x64/...) and heap addresses from the capture machine; the port's serving bytes are real render output and a byte match would require emitting the capture host's stack - not port behavior. The pin stays as the honest record of this surface.",
    "group": "view / admin",
    "evidence": {
     "firstDiffAt": 9,
@@ -2907,7 +2907,7 @@
   },
   {
    "op": "view:admin:Ada Admin+*account:closure",
-   "family": "render-error-panel: inline render-error panel bytes differ",
+   "family": "render-error-panel: inline render-error panel bytes differ Adjudicated 2026-10-10 (render-panels lane): the recorded expected bytes embed the CAPTURE HOST's Ruby debug page - card-mod-format set/all/html/error.rb renders the admin-only error page inside the quiet span's title attribute with the exception's backtrace, gem paths (C:/Ruby33-x64/...) and heap addresses from the capture machine; the port's serving bytes are real render output and a byte match would require emitting the capture host's stack - not port behavior. The pin stays as the honest record of this surface.",
    "group": "view / admin",
    "evidence": {
     "firstDiffAt": 10,
@@ -3226,7 +3226,7 @@
   },
   {
    "op": "view:admin:*all+*script:asset_output_url",
-   "family": "render-error-panel: inline render-error panel bytes differ",
+   "family": "render-error-panel: inline render-error panel bytes differ Adjudicated 2026-10-10 (render-panels lane): the recorded expected bytes embed the CAPTURE HOST's Ruby debug page - card-mod-format set/all/html/error.rb renders the admin-only error page inside the quiet span's title attribute with the exception's backtrace, gem paths (C:/Ruby33-x64/...) and heap addresses from the capture machine; the port's serving bytes are real render output and a byte match would require emitting the capture host's stack - not port behavior. The pin stays as the honest record of this surface.",
    "group": "view / admin",
    "evidence": {
     "firstDiffAt": 9,

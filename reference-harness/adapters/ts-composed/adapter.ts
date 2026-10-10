@@ -31,6 +31,7 @@ import {
 } from "../../../src/card/rules/structure.js";
 import { setCaptureWallClock } from "../../../src/card/wall-clock.js";
 import { setDeckEnvironment } from "../../../src/card/render/deck-origin.js";
+import { setRaiseAllRenderingErrors } from "../../../src/card/render/format.js";
 import { findRule } from "../../../src/card/rules/lookup.js";
 import { patternsForCard } from "../../../src/card/set-patterns/card-patterns.js";
 import { settingCardNameForCode } from "../../../src/card/set-patterns/rule-names.js";
@@ -70,6 +71,10 @@ setDeckEnvironment({
   origin: spec.environment?.origin,
   defaultHtmlView: spec.environment?.default_html_view,
 });
+// The capture contract (the fixtures' MANIFEST "production render-error
+// semantics" line): Cardio.config.raise_all_rendering_errors = false with
+// Rails.env production - nested view errors render inline, no debug detail.
+setRaiseAllRenderingErrors(false);
 
 // The deck boot: compose the mod deck into the live view table and bind the
 // process-wide defaults BEFORE any engine exists (the constructor reads
