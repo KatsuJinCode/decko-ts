@@ -284,6 +284,33 @@ export function registerBuiltInContentOverride(entry: RegisteredContentOverride)
 
 let defaultRegistry: ContentOverrideRegistry | undefined = BUILT_IN_DEFAULT_REGISTRY;
 
+/** The registry the render path reads when a deck boot binds one: a DERIVED
+ *  registry holding the built-in engine-layer entries (the bootstrap code
+ *  files, the retired-layout comments, the list input options, the
+ *  when-created/when-last-edited fields) underneath the bound registry's
+ *  own. A deck boot REPLACES the loader-less default registry, and the mod
+ *  manifests deliberately do NOT re-declare these (the bootstrap mod's own
+ *  note above: a manifest entry never registers for loader-less consumers)
+ *  — without the underlay, every mod-deck boot (the edge hosts' serve
+ *  boots, the staging VM) dropped the engine-layer `def content` hooks
+ *  Ruby's include chain always carries, and the affected cards rendered
+ *  their empty stored rows. The bound entries are re-registered after the
+ *  seed, so a mod-side re-declaration of the same set path keeps
+ *  precedence (Map.set last-wins). The caller's registry is not mutated
+ *  (the loader's own registry pins stay exact). */
+function boundRegistryWithBuiltIns(registry: ContentOverrideRegistry): ContentOverrideRegistry {
+  const bound = new ContentOverrideRegistry();
+  for (const path of BUILT_IN_DEFAULT_REGISTRY.paths()) {
+    const entry = BUILT_IN_DEFAULT_REGISTRY.forPath(path);
+    if (entry !== undefined) bound.register(entry);
+  }
+  for (const path of registry.paths()) {
+    const entry = registry.forPath(path);
+    if (entry !== undefined) bound.register(entry);
+  }
+  return bound;
+}
+
 /** Bind a registry as the render-path default (call after the mod loader's
  *  SetLoader phase). The render layer reads from this seam; mod porters do
  *  NOT need to know about the engine - they hand their ContentFn to the
@@ -292,7 +319,7 @@ let defaultRegistry: ContentOverrideRegistry | undefined = BUILT_IN_DEFAULT_REGI
 export function setDefaultContentOverrideRegistry(
   registry: ContentOverrideRegistry | undefined,
 ): void {
-  defaultRegistry = registry;
+  defaultRegistry = registry === undefined ? undefined : boundRegistryWithBuiltIns(registry);
 }
 
 /** The render-layer consultation seam by set path. Returns the registered
