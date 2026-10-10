@@ -261,6 +261,14 @@ Two kinds of rule, applied to both sides before comparison, and nothing else:
    per render.
 2. **N2 (canonical form).** JSON object key order never counts; array order
    always does.
+3. **N3 (canonical form over a volatile value).** In rendered HTML, the
+   numeric context of a `card-<safe-key>-<n>-collapse-id` token — the
+   accordion collapse id `admin.rb:96` seeds with Ruby's `title.hash` — is
+   replaced per html string by `N3#k` in first-appearance order, so the
+   accordion button's `data-bs-target` and its panel `id` must still agree.
+   Ruby hashes strings with a per-process seed; the digits are process noise.
+   The literal contexts (`files`, `depends_on`, view names) hold no digits
+   and never match.
 
 Everything else is compared exactly: every byte of HTML, every field of a
 write answer (the new card's id and every byte of mail text included), every
@@ -273,7 +281,12 @@ two complete stock-oracle runs differ in 1,351 of 4,156 items, all in slot
 ids: 9,061 of 9,061 slot ids differ, and nothing else does. The result is in
 the expected outputs' manifest (`provenance.nondeterminism`), and a test
 checks that it covers exactly the masks `normalize.mjs` applies. A new mask
-needs the same evidence on the fixture that needs it.
+needs the same evidence on the fixture that needs it. For `synthetic-v2`'s
+N3: two stock-oracle processes run over every op of that fixture that
+carries the token (30 of 2,557, 84 tokens; the capture commands are in
+`benchmarks/seconds-corpus/collapse-id-nondeterminism-evidence.md`) differ
+in 84 of 84 collapse ids and 442 of 442 slot ids, and in nothing else
+(0 unexplained).
 
 Rules the first version applied and no longer does, because no oracle run
 varies in them: hexadecimal object addresses (never present in any recorded
