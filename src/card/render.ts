@@ -135,6 +135,7 @@ import {
   historyCardIds,
   lastAction,
   lastAct,
+  recentActs,
   updaterOf,
 } from "./mod-loader/mods/card-mod-history.js";
 import { trackedFieldByIndex } from "./history/change.js";
@@ -976,6 +977,14 @@ export class RenderEngine implements RenderEngineLike {
     // lane clears once for the whole page render (beginPagePrepare), so
     // its inner render() leaves the layout warm-ups' seats in scope.
     if (this.pagePrepareDepth === 0) this.renderSeats.clear();
+    // The chrome session's account-links data (the *account links views'
+    // and the navbar's prepared items): Ruby reads Auth.current live on
+    // every render; the port prepares once per actor. The page lane calls
+    // this ahead of the sync layout render (page.ts); the bare view lane
+    // prepares here so a direct *account links view render (the corpus's
+    // view ops) sees the signed-in items, not the signed-out pair.
+    // Memoized per actor; a no-op for signed-out sessions.
+    await this.prepareSessionAccountLinks();
     // THE ONE-TRIP SEAT (stamp-as-column lane, 2026-10-06 — spec §c): moved
     // ABOVE the freshness gate because on this posture the seat's HEAD
     // statement IS the render's stamp read — deck_data_version rides the
@@ -2081,6 +2090,18 @@ export class RenderEngine implements RenderEngineLike {
     // prepared read verdicts.
     if (HISTORY_SEAM_VIEWS.has(view)) {
       this.historyReader = await this.prepareHistoryRender(rootCard, params);
+    }
+    // set/self/recent.rb:28-33 - the *recent card's html :core is the
+    // deck-wide recent-acts feed (recent_acts + acts_layout :absolute), a
+    // Self-set override of the search core (self outranks Type::SearchType
+    // in the set chain). The seam loads for any core-reaching render whose
+    // ROOT is the *recent card itself (SELF-Xrecent) - the bare view lane
+    // (:core) and the page lane (titled/open reach the core) alike.
+    if (
+      CORE_REACHING_VIEWS.has(view) &&
+      rootCard.setKeys.split(" ").includes("SELF-Xrecent")
+    ) {
+      this.historyReader = await this.prepareHistoryRender(rootCard, params, "recent");
     }
     // The render-time ACT-SEARCH seam (updater-seam.ts): load the DISTINCT
     // update-actor cards the :updated_by view reads - ONLY for the two
@@ -7585,6 +7606,7 @@ export class RenderEngine implements RenderEngineLike {
   private async prepareHistoryRender(
     rootCard: RenderCard,
     params: HistoryRenderParams,
+    source: "history" | "recent" = "history",
   ): Promise<HistoryRenderReader> {
     const driver = this.fetcher.driver;
     const cardId = rootCard.id;
@@ -7634,11 +7656,20 @@ export class RenderEngine implements RenderEngineLike {
     // and an act with no surviving action drops from the DISTINCT - so the
     // raw acts load first, the family's cards enrich + judge, then the
     // at-least-one-viewable-action filter runs.
+    //
+    // The "recent" source (set/self/recent.rb:14-21 recent_acts) swaps the
+    // per-card reference closure for the DECK-WIDE feed: every act with a
+    // non-draft action on an existing card, id DESC, under limiting_scan
+    // (the last 10k act ids). The viewable filter rides the same
+    // verdict pass; clean_acts (act_listing.rb:59-63) drops below.
     const historyCardIdList = await historyCardIds(driver, cardId);
-    const rawActs = await historyActs(driver, historyCardIdList, {
-      currentUserId,
-      withDrafts: true,
-    });
+    const rawActs =
+      source === "recent"
+        ? await recentActs(driver)
+        : await historyActs(driver, historyCardIdList, {
+            currentUserId,
+            withDrafts: true,
+          });
 
     // The acts' actions + changes (one IN-list SELECT per table - the same
     // rows Act#actions and Action#all_changes read, batched).
@@ -7759,6 +7790,71 @@ export class RenderEngine implements RenderEngineLike {
       }
     }
 
+    // The actions-by-act fold moved into finishHistoryReader (shared with
+    // the deck-wide *recent source).
+
+    // The verdict pass for the newly enriched family cards, then the
+    // act-level viewable filter (an act survives when at least one of its
+    // actions' cards is readable - act.rb:54-59 DISTINCT semantics).
+    await this.ensureVerdicts();
+    // clean_acts (act_listing.rb:59-63, applied by BOTH sources'
+    // acts_for_accordion): drop acts whose primary card row is gone.
+    const cleanActs = rawActs.filter(
+      (act) => act.card_id !== null && cardInfoById.has(Number(act.card_id)),
+    );
+    // history_card_ids of the ROOT (the actions_affecting closure test).
+    const rootHistoryIds = new Set(historyCardIdList);
+    return this.finishHistoryReader(rootCard, params, currentUserId, {
+      rawActs: cleanActs,
+      actions,
+      changeRows,
+      cardInfoById,
+      valueCache,
+      previousCache,
+      typeNames,
+      cardLastAct,
+      cardLastAction,
+      rootHistoryIds,
+    });
+  }
+
+  /** The reader construction both history sources share (the per-card
+   *  history seam AND the deck-wide *recent feed - set/self/recent.rb).
+   *  The act-level viewable filter runs here: an act survives when at
+   *  least one of its actions' cards is readable (act.rb:54-59's DISTINCT
+   *  semantics - Ruby's recent_acts/history_acts apply viewable_sql inside
+   *  the SQL JOIN, so an act with no surviving action drops). */
+  private async finishHistoryReader(
+    rootCard: RenderCard,
+    params: HistoryRenderParams,
+    currentUserId: number,
+    loaded: {
+      rawActs: HistoryActRow[];
+      actions: HistoryActionRow[];
+      changeRows: HistoryChangeRow[];
+      cardInfoById: Map<number, HistoryActionCardInfo>;
+      valueCache: Map<number, Map<string, string | number | boolean | null | undefined>>;
+      previousCache: Map<number, Map<string, string | number | boolean | null | undefined>>;
+      typeNames: Map<number, string>;
+      cardLastAct: HistoryActRow | undefined;
+      cardLastAction: HistoryActionRow | undefined;
+      rootHistoryIds: Set<number> | undefined;
+    },
+  ): Promise<HistoryRenderReader> {
+    const cardId = rootCard.id;
+    const {
+      rawActs,
+      actions,
+      changeRows,
+      cardInfoById,
+      valueCache,
+      previousCache,
+      typeNames,
+      cardLastAct,
+      cardLastAction,
+      rootHistoryIds,
+    } = loaded;
+    // Act#actions (act.rb:88-92, id order) — the fold both sources read.
     const actionsByActRaw = new Map<number, HistoryActionRow[]>();
     for (const action of actions) {
       if (action.card_act_id === null) continue;
@@ -7767,10 +7863,6 @@ export class RenderEngine implements RenderEngineLike {
       if (list === undefined) actionsByActRaw.set(actId, [action]);
       else list.push(action);
     }
-    // The verdict pass for the newly enriched family cards, then the
-    // act-level viewable filter (an act survives when at least one of its
-    // actions' cards is readable - act.rb:54-59 DISTINCT semantics).
-    await this.ensureVerdicts();
     const acts = rawActs.filter((act) =>
       (actionsByActRaw.get(act.id) ?? []).some(
         (a) => a.card_id !== null && this.deniedVerdicts.get(Number(a.card_id)) !== true,
@@ -7784,9 +7876,6 @@ export class RenderEngine implements RenderEngineLike {
       if (list === undefined) changesByAction.set(change.cardActionId, [change]);
       else list.push(change);
     }
-    // history_card_ids of the ROOT (the actions_affecting closure test).
-    const rootHistoryIds = new Set(historyCardIdList);
-
     const readValue = (
       action: HistoryActionRow,
       field: "name" | "type_id" | "db_content" | "content" | "trash",
@@ -7816,7 +7905,7 @@ export class RenderEngine implements RenderEngineLike {
         (actionsByActRaw.get(actId) ?? []).filter(
           (a) =>
             a.card_id === affectingCardId ||
-            (a.card_id !== null && rootHistoryIds.has(Number(a.card_id))),
+            (a.card_id !== null && rootHistoryIds?.has(Number(a.card_id)) === true),
         ),
       approvedActions: (list) =>
         list.filter((a) => {

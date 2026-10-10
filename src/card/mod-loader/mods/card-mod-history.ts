@@ -113,6 +113,7 @@
 import type { SQLDatabaseDriver } from "../../../server/driver.js";
 import { serializerFollowsLive } from "../../render/deployment-follow-live-config.js";
 import { timeAgoInWords as sharedTimeAgoInWords } from "../../render/text-helpers.js";
+import { cardWallClockNow } from "../../wall-clock.js";
 import { sqlDateTime } from "../../history/act.js";
 import type {
   CardActsRow,
@@ -1130,7 +1131,7 @@ export async function actionHashList(
 
 import { DeckoName } from "../../name.js";
 import { h, emitAttrs, newSlotId, slotOptionsJson } from "../../render/slot-html.js";
-import { RenderFormat, type ViewContext, type ViewFn } from "../../render/format.js";
+import { RenderFormat, Voo, type ViewContext, type ViewFn } from "../../render/format.js";
 import { ContentDiff } from "../../history/content-diff.js";
 import type { HistoryRenderParams, HistoryRenderReader } from "../../history/render-seam.js";
 
@@ -1198,8 +1199,16 @@ function historyIcon(name: string): string {
 /** Rails DateHelper#time_ago_in_words (distance_of_time_in_words from now,
  *  include_seconds: false): the buckets the history bytes carry. The
  *  capture NORMALIZES this phrase (wall-clock dependent -> TIME_AGO), so
- *  the bucket word list is shape-faithful, not byte-pinned. */
-export function timeAgoInWords(from: Date, to: Date = new Date()): string {
+ *  the bucket word list is shape-faithful, not byte-pinned.
+ *
+ *  The "now" default is the ENGINE's clock seam (cardWallClockNow), not
+ *  the process clock: Ruby reads Time.now at render time, and the capture
+ *  harness freezes that instant (deck.json clock -> setCaptureWallClock).
+ *  The *recent corpus oracle pins the real phrase ("less than a minute
+ *  ago" - every fixture act's acted_at sits AT the frozen clock); a wall
+ *  -clock default answered "21 days ago" there. Production is unchanged:
+ *  unset, cardWallClockNow IS the real clock. */
+export function timeAgoInWords(from: Date, to: Date = cardWallClockNow()): string {
   // DELEGATED to the byte-exact Rails port (render/text-helpers.ts - the
   // full date_helper.rb:95-165 bucket table, locale pluralization). This
   // helper was a shape-faithful copy whose capture normalized the phrase;
@@ -1382,14 +1391,17 @@ function actionContentBytes(
   // renders and memoizes it.
   const toggleShown = viewKind === "expanded" || (dobj !== undefined && dobj.summaryOmitsContent);
   const toggle = toggleShown ? actionContentToggleBytes(ctx, action, viewKind) : null;
-  const summary = dobj === undefined ? null : dobj.summary;
-  const diff =
-    dobj === undefined
-      ? "<i>empty</i>" // actions.rb:51-56: "<i>empty</i>" unless diff.present?
-      : viewKind === "summary"
-        ? summary
-        : dobj.complete;
-  return toggle === null ? diff! : `${toggle}\n${diff!}`;
+  // actions.rb:51-56 content_diff: `diff = action.new_content? &&
+  //   content_changes(action, view_type); return "<i>empty</i>" unless
+  //   diff.present?` - present? is Rails String#present? (non-blank), so a
+  // diff object whose rendered string is blank answers "<i>empty</i>" on
+  // BOTH view kinds. The corpus *recent oracle pins the summary arm
+  // (action 1032, an update whose content diff summary is blank ->
+  // <i>empty</i>); the expanded arm rides the same content_diff call.
+  const rawDiff =
+    dobj === undefined ? null : viewKind === "summary" ? dobj.summary : dobj.complete;
+  const diff = rawDiff === null || rawDiff.trim() === "" ? "<i>empty</i>" : rawDiff;
+  return toggle === null ? diff : `${toggle}\n${diff}`;
 }
 
 /** differ.rb:74-76 diff_object(field) - the previous-vs-value Diff for the
@@ -2184,6 +2196,117 @@ const changeView: ViewFn = (ctx) => {
 /** The shared body for all six declarations - none is implemented (see
  *  the section header). */
 const historyEventNotImplemented: ModEventFn = () => {};
+
+// ---------------------------------------------------------------------------
+// set/self/recent.rb - the *recent card (Search-typed, codename "recent"):
+// its html :core is NOT a CQL search at all ("FIXME: this should not be a
+// CQL search card", self/recent.rb:9-12 sets cql_content to {}) - it is the
+// deck-wide recent-acts feed through acts_layout(:absolute). Served from
+// the render layer's SELF-Xrecent branch (views.ts) on the corpus grading
+// surface, which has no set-module dispatch.
+// ---------------------------------------------------------------------------
+
+/** self/recent.rb:1 ACTS_PER_PAGE - the *recent core sets @acts_per_page
+ *  to this before acts_layout (self/recent.rb:31), overriding
+ *  Card.config.acts_per_page (act_listing.rb:74-76's default 10). */
+export const RECENT_ACTS_PER_PAGE = 25;
+
+/** self/recent.rb:14-21 recent_acts:
+ *
+ *      Act.joins(ar_actions: :ar_card).distinct
+ *         .where(Query::CardQuery.viewable_sql)
+ *         .where("draft is not true")
+ *         .order id: :desc
+ *
+ *  under limiting_scan (self/recent.rb:23-26: the scan caps at the last
+ *  10,000 act ids - `card_acts.id > MAX(id) - 10000` when positive). The
+ *  viewable WHERE (the read gate) rides the port's established verdict
+ *  simplification (render-seam.ts note 4): the rows load unfiltered and
+ *  RenderEngine#finishHistoryReader drops acts with no surviving
+ *  viewable action after the involved cards' verdicts land. DISTINCT
+ *  dedupes the act rows the join fans out (one row per action); the
+ *  port's fold (actionsByActRaw) re-attaches the actions, so the SELECT
+ *  keeps Ruby's row shape and order (id DESC, first occurrence wins). */
+export async function recentActs(driver: SQLDatabaseDriver): Promise<HistoryActRow[]> {
+  const maxRow = await driver.query<{ m: number | null }>(
+    "SELECT MAX(id) AS m FROM card_acts",
+    [],
+  );
+  const minId = Number(maxRow.rows[0]?.m ?? 0) - 10000; // MAX_ACTS_TO_SCAN
+  const limitingScan = minId > 0 ? "AND card_acts.id > ?" : "";
+  const result = await driver.query<HistoryActRow>(
+    `SELECT DISTINCT card_acts.* FROM card_acts
+     JOIN card_actions ON card_actions.card_act_id = card_acts.id
+     JOIN cards ON cards.id = card_actions.card_id
+     WHERE card_actions.draft IS NOT TRUE AND card_acts.card_id IS NOT NULL
+       ${limitingScan}
+     ORDER BY card_acts.id DESC`,
+    minId > 0 ? [minId] : [],
+  );
+  return result.rows;
+}
+
+/** self/recent.rb:28-33 view :core:
+ *
+ *      voo.hide :history_legend unless voo.main
+ *      @acts_per_page = ACTS_PER_PAGE
+ *      acts_layout card.recent_acts, :absolute
+ *
+ *  acts_layout (act_listing.rb:18-27): the legend row, then row(12) with
+ *  the act accordion (paging stays unported - act_listing.rb:25 is
+ *  commented out in the gem). The leading blank lines are the bs_layout
+ *  wrapper's bytes (the oracle core opens "\n\n<div class=\"row pb-3\">").
+ *  Each item is the ABSOLUTE renderer (act_renderer.rb AbsoluteActRenderer
+ *  < base): title = the act card's name, subtitle = actor_and_ago, the
+ *  act_links subheader, the approved-actions details - the exact pieces
+ *  view :act composes (actView above); clean_acts
+ *  (act_listing.rb:59-63) drops acts whose primary card row is gone -
+ *  the reader's cardInfo answers undefined for those. The corpus's
+ *  capture clock freezes every acted_at AT the clock, so
+ *  time_ago_in_words answers "less than a minute" on both sides. */
+export function recentChangesCoreBytes(
+  fmt: RenderFormat,
+  reader: HistoryRenderReader,
+): string {
+  const ctx: ViewContext = { fmt, voo: new Voo(undefined, "core", {}) };
+  const pageActs = reader.acts.slice(0, RECENT_ACTS_PER_PAGE);
+  const items: string[] = [];
+  for (const act of pageActs) {
+    const actCard = reader.cardInfo(Number(act.card_id));
+    if (actCard === undefined) continue; // clean_acts: acts.select(&:card)
+    const actions = reader.actionsOfAct(act.id);
+    const headerInner = actHeaderInner({
+      title: h(actCard.name),
+      badge: actSummaryBadge(reader, actions),
+      subtitle: actorAndAgo(ctx, reader, act),
+    });
+    items.push(
+      accordionItemBytes({
+        headerInner,
+        subheader: absoluteActLinks(actCard.name),
+        body: actDetailsBytes(ctx, reader, actions),
+        collapseId: `act-id-${act.id}`,
+      }),
+    );
+  }
+  const actRow = `<div class="row">\n<div class="accordion">${items.join("")}</div></div>`;
+  // The LEGEND: the *recent oracle bytes pin the THREE-icon action legend
+  // ("created | updated | deleted" - no draft arm) while the :act_legend
+  // harness capture (actLegendRowBytes, the :history surface) pins the
+  // draft arm PRESENT. Ruby: action_legend (actions.rb:91-98) appends
+  // _render_draft_legend `if voo.show?(:draft_legend)` - show? is the
+  // DEFAULT-true !hide? (visibility.rb:23-25), so the arm's absence on
+  // THIS render is the acts_layout render opt
+  // (`_render_act_legend(draft_legend: :draft_legend)`,
+  // act_listing.rb:21) landing the opt in the voo where the general
+  // viz-normalization path does not show it. The committed oracle bytes
+  // decide the adjudication either way; the :history surface keeps its
+  // own pinned bytes (actLegendRowBytes stays showDraftLegend=true).
+  const legendRow =
+    `<div class="row pb-3">\n<div class="col-md-12 col-lg-7">\n${actionLegendHtml(false)}</div>` +
+    `\n<div class="col-md-12 col-lg-5 text-end">\n${contentLegendHtml()}</div></div>`;
+  return `\n\n${legendRow}\n${actRow}`;
+}
 
 // ---------------------------------------------------------------------------
 // the manifest (one entry per gem set file; setPaths as in the gem tree)

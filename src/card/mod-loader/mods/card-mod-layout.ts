@@ -885,14 +885,17 @@ const headBarBottomView: ViewFn = (ctx) =>
 // the bytes for a signed-OUT reader.
 // ---------------------------------------------------------------------------
 
-/** DeckoName.url_key for the account cards these views link to. `signin` /
- *  `signup` are the codename'd account cards; their url_key is the
- *  lowercase form (nothing to escape), so the engine's urlKey is the same
- *  string. `action` is the trailing path segment `path({action: :new,
- *  mark: :signup})` produces. */
-function accountCardHref(name: string, action?: string): string {
-  const urlKey = DeckoName.parse(name).urlKey;
-  return action === undefined ? `/${h(urlKey)}` : `/${h(urlKey)}/${h(action)}`;
+/** The link targets are the CODENAME cards' NAMES (account_links.rb:34-53:
+ *  link_to_card :signup / :signin - Card::Name[:signup] is the "Sign up"
+ *  card, :signin the *signin card) and the href is link_to_card's
+ *  path(mark:) - `/<mark url key>` - with the action arms riding PATH
+ *  position, not mark position: `path: {action: :new, mark: :signup}` is
+ *  "/new/Sign_up" and `path: {action: :delete}` on *signin is
+ *  "/delete/*signin" (path.rb:34-63: "<action>/<mark>"). The corpus view
+ *  pins carry exactly these hrefs plus the known-card class (both targets
+ *  exist in every deck that seeds the account mod). */
+function accountLinkHref(targetUrlKey: string, action?: string): string {
+  return action === undefined ? `/${h(targetUrlKey)}` : `/${h(action)}/${h(targetUrlKey)}`;
 }
 
 /** links.rb:140-144 add_known_or_wanted_class: `Card.known?(name)`. The
@@ -903,22 +906,42 @@ function knownOrWantedClass(fmt: RenderFormat, name: string): string {
   return fmt.engine.fetchRenderCard(name) === undefined ? "wanted-card" : "known-card";
 }
 
+/** account_links.rb:29-31 link_options perms - the method-predicate gates.
+ *  The denial is :blank ("" for a gate failure). The signed-in read is the
+ *  chrome session (Auth.current - the same seam follow_section's
+ *  show_follow? reads); show_signup_link? (:90-92) is not_signed_in? &&
+ *  Card.new(type: :signup).ok?(:create) - the create check stays the
+ *  documented-allowed remainder (an unimplemented predicate leaves the
+ *  view allowed), the sign-in state decides. */
+function accountLinkGate(ctx: ViewContext, requires: "signed_in" | "not_signed_in"): string | undefined {
+  const signedIn = ctx.fmt.engine.viewer?.signedIn === true;
+  if (requires === "signed_in" && !signedIn) return "";
+  if (requires === "not_signed_in" && signedIn) return "";
+  return undefined;
+}
+
 function accountLinkView(
-  target: string,
+  targetUrlKey: string,
+  knownName: string,
   linkClass: string,
   text: string,
   action?: string,
+  requires?: "signed_in" | "not_signed_in",
 ): ViewFn {
   return (ctx) => {
-    const cls = `nav-link ${linkClass} ${knownOrWantedClass(ctx.fmt, target)}`;
-    return `<a class="${h(cls)}" href="${h(accountCardHref(target, action))}">${h(text)}</a>`;
+    if (requires !== undefined) {
+      const denial = accountLinkGate(ctx, requires);
+      if (denial !== undefined) return denial;
+    }
+    const cls = `nav-link ${linkClass} ${knownOrWantedClass(ctx.fmt, knownName)}`;
+    return `<a class="${h(cls)}" href="${h(accountLinkHref(targetUrlKey, action))}">${h(text)}</a>`;
   };
 }
 
-const signInView = accountLinkView("signin", "signin-link", "Sign in");
-const signUpView = accountLinkView("signup", "signup-link", "Sign up", "new");
-const signOutView = accountLinkView("signin", "signout-link", "Sign out", "delete");
-const inviteView = accountLinkView("signup", "invite-link", "Invite", "new");
+const signInView = accountLinkView("*signin", "*signin", "signin-link", "Sign in", undefined, "not_signed_in");
+const signUpView = accountLinkView("Sign_up", "Sign up", "signup-link", "Sign up", "new", "not_signed_in");
+const signOutView = accountLinkView("*signin", "*signin", "signout-link", "Sign out", "delete", "signed_in");
+const inviteView = accountLinkView("Sign_up", "Sign up", "invite-link", "Invite", "new", "signed_in");
 
 // ---------------------------------------------------------------------------
 // the :my_card and :edit_inline views (the R21 port,

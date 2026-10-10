@@ -2136,6 +2136,17 @@ export class RenderFormat {
    *  TYPE_PLUS_RIGHT-list-working_doc_02 (RVW is List). Resolved from the
    *  warm map; an unprepared left falls back to the NEW-CARD DEFAULT type
    *  (see the last return below). */
+  /** The codename resolver virtualSearchCqlFor takes, built on the engine's
+   *  loaded codename memo (peek): a codename resolves to the KEY of the card
+   *  currently holding it, which is how Ruby's Right pattern matches the
+   *  family's right part (pattern/base.rb:21-29 keys the pattern on the
+   *  right card's codename). Delegates to the module-level builder. */
+  private virtualSearchCodenameResolver():
+    | ((codename: string) => string | undefined)
+    | undefined {
+    return virtualSearchCodenameResolverFor(this.engine);
+  }
+
   private leftTypeNameFor(name: DeckoName): string | undefined {
     if (!name.isCompound) return this.card.typeName;
     const leftName = name.leftName;
@@ -2271,16 +2282,7 @@ export class RenderFormat {
     // no_search_results) instead of the unknown substitution. The family
     // table + the byte-level contract live in
     // src/card/fetch/virtual-search-cards.ts.
-    const virtualSearchCql = virtualSearchCqlFor(
-      name,
-      engine.peekIdByCodename !== undefined && engine.peekRegisteredNameForId !== undefined
-        ? (codename) => {
-            const id = engine.peekIdByCodename?.(codename);
-            const holder = id !== undefined ? engine.peekRegisteredNameForId?.(id) : undefined;
-            return holder !== undefined ? DeckoName.parse(holder).key : undefined;
-          }
-        : undefined,
-    );
+    const virtualSearchCql = virtualSearchCqlFor(name, this.virtualSearchCodenameResolver());
     if (virtualSearchCql !== undefined) {
       const searchTypeId = engine.peekIdByCodename?.("search_type");
       const searchTypeName =
@@ -2955,10 +2957,30 @@ export class RenderFormat {
     // token-swap singleton, page 685 (exp href /Narrative).
     let hrefSource = known && named?.name !== undefined ? named.name.s : target;
     if (named === undefined) {
-      const peeked = this.engine.peekKnownCardName?.(target);
-      if (peeked !== undefined) {
+      // VirtualSearch family (card-mod-search set/abstract/virtual_search.rb
+      // :11-12 `def virtual?; new?; end`, :14-16 assign_type :search_type):
+      // a compound name whose right part is one of the 16 family rights is
+      // VIRTUAL-KNOWN on a row miss, so Card.known? (links.rb:140-144
+      // add_known_or_wanted_class) answers true and the anchor renders
+      // known-card. The corpus pin: Help Desk's
+      // [[:account+:right+:by_name|Account cards]] - Ruby renders
+      // known-card (there is no `*account+*right+by name` row and no
+      // *structure rule applies; the card is known purely through the
+      // Right::ByName module), the pre-fix port answered wanted-card. The
+      // nest path already renders this family through the same table (the
+      // GIV page's {{_self+*referred to by}}); this is the link arm of the
+      // one fetch-level state. Table + contract:
+      // src/card/fetch/virtual-search-cards.ts.
+      const virtual = virtualSearchKnownName(target, this.engine);
+      if (virtual !== undefined) {
         known = true;
-        hrefSource = peeked;
+        hrefSource = virtual;
+      } else {
+        const peeked = this.engine.peekKnownCardName?.(target);
+        if (peeked !== undefined) {
+          known = true;
+          hrefSource = peeked;
+        }
       }
     }
     let href: string;
@@ -4656,6 +4678,63 @@ export function rubyChunkListForCardType(
   }
 }
 
+/** The codename resolver virtualSearchCqlFor takes, built on the engine's
+ *  loaded codename memo (peek): a codename resolves to the KEY of the card
+ *  currently holding it, which is how Ruby's Right pattern matches the
+ *  family's right part (pattern/base.rb:21-29 keys the pattern on the
+ *  right card's codename). Undefined engine hooks answer undefined, and
+ *  virtualSearchCqlFor falls back to the stock seed's keys. */
+function virtualSearchCodenameResolverFor(
+  engine: RenderEngineLike | undefined,
+): ((codename: string) => string | undefined) | undefined {
+  if (engine?.peekIdByCodename === undefined || engine.peekRegisteredNameForId === undefined) {
+    return undefined;
+  }
+  return (codename) => {
+    const id = engine.peekIdByCodename?.(codename);
+    const holder = id !== undefined ? engine.peekRegisteredNameForId?.(id) : undefined;
+    return holder !== undefined ? DeckoName.parse(holder).key : undefined;
+  };
+}
+
+/** The VirtualSearch family's link-classifier arm (card-mod-search
+ *  set/abstract/virtual_search.rb :11-12 `def virtual?; new?; end`, :14-16
+ *  assign_type :search_type): a compound name whose right part is one of the
+ *  16 family rights is VIRTUAL-KNOWN on a row miss, so Card.known?
+ *  (links.rb:140-144 add_known_or_wanted_class) answers true and the anchor
+ *  renders known-card. The corpus pin: Help Desk's
+ *  `[[:account+:right+:by_name|Account cards]]` — Ruby renders known-card
+ *  (there is no `*account+*right+by name` row and no *structure rule
+ *  applies; the card is known purely through the Right::ByName module), the
+ *  pre-fix port answered wanted-card. The nest path already renders this
+ *  family through the same table (the GIV page's `{{_self+*referred to
+ *  by}}`); this is the link arm of the one fetch-level state, shared by the
+ *  two link classifiers (renderLinkChunk + expandWikiLinks). Table +
+ *  contract: src/card/fetch/virtual-search-cards.ts.
+ *
+ *  @returns the RESOLVED target name (the codename marks folded, e.g.
+ *  `:account+:right+:by_name` -> `*account+*right+by name` — the href
+ *  source link_to_card receives), or undefined when the mark is not a
+ *  virtual-search name and the caller's other arms decide. */
+function virtualSearchKnownName(
+  target: string,
+  engine: RenderEngineLike | undefined,
+): string | undefined {
+  let name: DeckoName;
+  try {
+    name = DeckoName.parse(target);
+  } catch (err) {
+    if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+      return undefined;
+    }
+    throw err;
+  }
+  if (virtualSearchCqlFor(name, virtualSearchCodenameResolverFor(engine)) === undefined) {
+    return undefined;
+  }
+  return name.s;
+}
+
 export function expandContentLinks(
   text: string,
   engine?: RenderEngineLike,
@@ -4977,10 +5056,21 @@ export function expandWikiLinks(
     let hrefSource =
       known && namedLink?.name !== undefined ? namedLink.name.s : targetTrimmed;
     if (namedLink === undefined && engine !== undefined) {
-      const peeked = engine.peekKnownCardName?.(targetTrimmed);
-      if (peeked !== undefined) {
+      // VirtualSearch family arm — same classifier renderLinkChunk runs
+      // (virtual_search.rb:11-12 `def virtual?; new?`; see
+      // virtualSearchKnownName). The Help Desk corpus pins ride THIS pass
+      // (basic-typed content: the :default chunk list), not the chunk
+      // walker above.
+      const virtual = virtualSearchKnownName(targetTrimmed, engine);
+      if (virtual !== undefined) {
         known = true;
-        hrefSource = peeked;
+        hrefSource = virtual;
+      } else {
+        const peeked = engine.peekKnownCardName?.(targetTrimmed);
+        if (peeked !== undefined) {
+          known = true;
+          hrefSource = peeked;
+        }
       }
     }
     let href: string;
