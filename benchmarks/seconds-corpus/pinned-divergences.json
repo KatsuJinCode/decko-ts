@@ -2223,7 +2223,7 @@
   },
   {
    "op": "page:admin:*search",
-   "family": "rule-page-key-order: the rule page bar slot class order differs (set-module key order in the page rule list)",
+   "family": "search-result-composition: the admin *search page serves a different result set than the oracle (Ruby widens the match population through the admin read rules - the recorded list leads with the Note+*type+*help rule bar - while the engine serves the same list as anonymous). Misfiled on 2026-10-09 under rule-page-key-order: the recorded evidence and the first difference are the search list, not a key order. Adjudicated 2026-10-10 against the committed oracle bytes after the rule set-key repair fixed the family and its 116 true members; left pinned here for the search/CQL surface",
    "group": "page / admin",
    "evidence": {
     "firstDiffAt": 14567,
@@ -2234,7 +2234,7 @@
   },
   {
    "op": "core:admin:*search",
-   "family": "rule-page-key-order: the rule page bar slot class order differs (set-module key order in the page rule list)",
+   "family": "search-result-composition: the admin *search page serves a different result set than the oracle (Ruby widens the match population through the admin read rules - the recorded list leads with the Note+*type+*help rule bar - while the engine serves the same list as anonymous). Misfiled on 2026-10-09 under rule-page-key-order: the recorded evidence and the first difference are the search list, not a key order. Adjudicated 2026-10-10 against the committed oracle bytes after the rule set-key repair fixed the family and its 116 true members; left pinned here for the search/CQL surface",
    "group": "view / admin",
    "evidence": {
     "firstDiffAt": 122,
