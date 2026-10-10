@@ -3,50 +3,6 @@
   "note": "Known composed-posture divergences from the Ruby oracle, each pinned with its first-difference evidence. A pin is a port gap to CLOSE, not an intent to differ: when a fix lands, delete its pins and the gate tightens automatically. Any diff on an op NOT listed here fails the gate.",
   "pins": [
     {
-      "op": "core:admin:Topic 001+discussion",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 30,
-        "expected": "{\"html\":\"<p>First comment.</p>\"}",
-        "actual": "{\"html\":\"<p>First comment.</p>\\n<div class=\\\"comment-box nodblclick\\\"><form class=\\\"card-form slotter autosave\\\" id=\\\"edit_card_949\\\" action=\\\"/update"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "core:anonymous:Topic 001+discussion",
-      "family": "composed-mod-view-gap",
-      "group": "view / anonymous",
-      "evidence": {
-        "firstDiffAt": 30,
-        "expected": "{\"html\":\"<p>First comment.</p>\"}",
-        "actual": "{\"html\":\"<p>First comment.</p>\\n\"}"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "core:admin:Topic 002+discussion",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 9,
-        "expected": "{\"html\":\"\"}",
-        "actual": "{\"html\":\"\\n<div class=\\\"comment-box nodblclick\\\"><form class=\\\"card-form slotter autosave\\\" id=\\\"edit_card_950\\\" action=\\\"/update"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "core:anonymous:Topic 002+discussion",
-      "family": "composed-mod-view-gap",
-      "group": "view / anonymous",
-      "evidence": {
-        "firstDiffAt": 9,
-        "expected": "{\"html\":\"\"}",
-        "actual": "{\"html\":\"\\n\"}"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
       "op": "page:member:*account links",
       "family": "composed-mod-view-gap",
       "group": "page / member",

@@ -221,9 +221,14 @@ const commentBoxView: ViewFn = (ctx) =>
 // or check by the page template renders it.
 // ---------------------------------------------------------------------------
 
-/** discussion.rb:1-6 view :open, unknown: true. */
+/** discussion.rb:1-6 view :open, unknown: true. The voo.show :comment_box
+ *  here is the SETTER (visibility.rb show! via vizWrite, first write wins):
+  *  the recorded show propagates to the comment_box child render's voo, whose
+ *  optional :hide then does NOT enroll (viz already set) and the box
+  *  renders; the :core view never sets it, so its child voo's optional
+  *  :hide bails the box render to nil (voo_api.rb:154). */
 const discussionOpenView: ViewFn = (ctx) => {
-  ctx.voo.show("comment_box");
+  ctx.voo.showViz("comment_box");
   return callBaseView(ctx, BASE_OPEN, "open");
 };
 
@@ -233,19 +238,19 @@ const discussionOpenView: ViewFn = (ctx) => {
  *  port preserves the semantic shape - show comment_box and emit empty
  *  bytes when no base view exists. */
 const discussionOpenContentView: ViewFn = (ctx) => {
-  ctx.voo.show("comment_box");
+  ctx.voo.showViz("comment_box");
   return callBaseView(ctx, BASE_INPUT ?? HTML_VIEWS["content"], "open_content");
 };
 
 /** discussion.rb:1-6 view :titled, unknown: true. */
 const discussionTitledView: ViewFn = (ctx) => {
-  ctx.voo.show("comment_box");
+  ctx.voo.showViz("comment_box");
   return callBaseView(ctx, BASE_TITLED, "titled");
 };
 
 /** discussion.rb:1-6 view :titled_content, unknown: true. */
 const discussionTitledContentView: ViewFn = (ctx) => {
-  ctx.voo.show("comment_box");
+  ctx.voo.showViz("comment_box");
   return callBaseView(ctx, BASE_TITLED_CONTENT, "titled_content");
 };
 
