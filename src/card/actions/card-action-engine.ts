@@ -135,7 +135,6 @@ import {
   type SavePathIntegrationHook,
 } from "../notify/index.js";
 import {
-  codedAttachmentIdentifier,
   detectAttachmentExtension,
   lastContentActionIdFromIdentifier,
   localAttachmentIdentifier,
@@ -170,7 +169,6 @@ import { refreshReferencesIn } from "./refresh-references-in.js";
 import { updateRefererContent, updateRefererReferencesOut } from "./update-referer-content.js";
 import {
   LIST_RIGHT_CODENAMES,
-  LIST_SELF_CODENAMES,
   LIST_TYPE_CODENAMES,
   listItemStrings,
   standardizeIdListContent,
@@ -212,9 +210,7 @@ import { expireRuleResolutionCache } from "../permissions/read-rules.js";
  *  and `attachment :image` (set/type/image.rb:1, Image cards codename
  *  `image`). validate_file_exist's attachment_name and the multipart
  *  route's card[<mount>] param names derive from these declarations. */
-/** The mount name per attachment-capable type codename (set/type/image.rb:1
- *  `attachment :image`, set/type/file.rb:1 `attachment :file`). */
-export const ATTACHMENT_MOUNTS: Readonly<Record<string, "file" | "image">> = {
+const ATTACHMENT_MOUNTS: Readonly<Record<string, "file" | "image">> = {
   file: "file",
   image: "image",
 };
@@ -291,11 +287,6 @@ export interface CardActionEngineOptions {
    *  CarrierWave::Storage::File port). Required for saves that carry an
    *  `attachment` input; saves without one behave exactly as before. */
   attachmentStore?: AttachmentStore;
-  /** The store for CODED attachments (storage_type :coded): the mod's
-   *  data/files directory, keyed by codename parts instead of card id
-   *  (set/abstract/attachment/coded.rb coded_dir). Absent = a coded save
-   *  falls back to the attachmentStore. */
-  codedAttachmentStore?: AttachmentStore;
   /** The SassC seam for the style asset events (the skin and CSS asset
    *  inputs and the site stylesheet, style-asset-events.ts). Only LibSass
    *  reproduces the oracle's bytes (assets/scss-compiler.ts). Absent = a
@@ -415,7 +406,6 @@ export class CardActionEngine {
    *  ensureTaskVerdicts model (one batch pair per engine, never per save). */
   private writeTaskState: ViewTaskState | undefined;
   private readonly attachmentStore: AttachmentStore | undefined;
-  private readonly codedAttachmentStore: AttachmentStore | undefined;
   private readonly scssCompiler: ScssCompiler | undefined;
   private readonly coffeeCompiler: CoffeeCompiler | undefined;
   /** Card::Cache[Virtual] for the card_virtuals rows this engine writes. */
@@ -450,7 +440,6 @@ export class CardActionEngine {
     this.passwordHashing = options.passwordHashing;
     this.followMail = options.followMail;
     this.attachmentStore = options.attachmentStore;
-    this.codedAttachmentStore = options.codedAttachmentStore;
     this.scssCompiler = options.scssCompiler;
     this.coffeeCompiler = options.coffeeCompiler;
     this.fileStorage = options.fileStorage;
@@ -528,15 +517,10 @@ export class CardActionEngine {
   private async forgetRolledBackSave(): Promise<void> {
     const files = this.filesStoredThisSave;
     this.filesStoredThisSave = [];
-    if (this.attachmentStore?.discard !== undefined || this.codedAttachmentStore?.discard !== undefined) {
+    if (this.attachmentStore?.discard !== undefined) {
       for (const file of files) {
         try {
-          // Coded files discard from the coded store (its own root).
-          const store =
-            file.coded !== undefined && this.codedAttachmentStore !== undefined
-              ? this.codedAttachmentStore
-              : this.attachmentStore;
-          await store?.discard?.(file);
+          await this.attachmentStore.discard(file);
         } catch {
           // A file left behind is unreferenced (no row names it); the
           // rollback itself has already succeeded.
@@ -799,21 +783,6 @@ export class CardActionEngine {
         );
       }
     }
-    // delete_children (trash.rb:46-57) fires on EVERY :delete save — also on
-    // a subcard trashed within a bigger save. The cascade runs once the act's
-    // OWN trash arms have all processed, and skips the cards those arms
-    // trashed (Ruby's director reuses a subcard already in the act: the card
-    // keeps the supercard's action as its super action) while still walking
-    // THROUGH them — their descendants cascade under the in-act card's own
-    // delete action, exactly the oracle's revert cascade (leftover probe
-    // step 12: the act's subcard deletes under the main action, the cards
-    // outside the act under their cascade parents).
-    if (trashedHere.length > 0) {
-      const inAct = new Set<number>(trashedHere.map((t) => t.cardId));
-      for (const t of trashedHere) {
-        saved.push(...(await this.deleteChildren(writer, t.cardId, t.actionId, inAct)));
-      }
-    }
     return saved;
   }
 
@@ -884,39 +853,18 @@ export class CardActionEngine {
     const cardRow = await this.fetchRowById(cardId);
     const typeRow = cardRow !== undefined ? await this.fetchRowById(cardRow.type_id) : undefined;
     const codename = typeRow?.codename ?? undefined;
-    const mount = codename !== undefined ? ATTACHMENT_MOUNTS[codename] : undefined;
-    // Coded storage (attachment.coded): the files live under the mod's
-    // data/files/<codename parts> and are named by the mount
-    // ("image-original.svg", "file.txt") — coded.rb coded_dir +
-    // FileCardUploader#filename — and the identifier is the coded one.
-    const coded = attachment.coded;
-    // full_filename (image_card_uploader.rb:44-57): the base file of an
-    // IMAGE-mount upload carries -original whatever its extension (versions
-    // alone depend on create_versions?); a FILE mount stores the plain
-    // "<mount><ext>" (file_card_uploader.rb filename).
     const renditionNames =
-      coded === undefined
-        ? codename !== undefined && codename !== "" && mountUsesImageUploader(codename) && createVersionsFor(ext)
-          ? renditionFileNames(actionId, ext)
-          : undefined
-        : mountUsesImageUploader(codename ?? "")
-          ? [
-              `${mount}-original${ext}`,
-              ...(createVersionsFor(ext) ? IMAGE_VERSION_NAMES.map((v) => `${mount}-${v}${ext}`) : []),
-            ]
-          : undefined;
+      codename !== undefined && codename !== "" && mountUsesImageUploader(codename) && createVersionsFor(ext)
+        ? renditionFileNames(actionId, ext)
+        : undefined;
     // The version files (image_card_uploader.rb:16-27): resized renditions
-    // keyed by their stored names — the SAME names renditionNames lists,
-    // per storage class (the store looks bytes up by name): local keys are
-    // action-id-keyed (Versions#full_filename), coded keys mount-keyed.
+    // keyed by their stored names.
     let renditionBytes: Record<string, Uint8Array> | undefined;
     if (renditionNames !== undefined) {
       const versions = await imageVersionBytes(attachment.bytes, ext);
       if (versions !== undefined) {
         renditionBytes = {};
-        for (const v of IMAGE_VERSION_NAMES) {
-          renditionBytes[coded === undefined ? `${actionId}-${v}${ext}` : `${mount}-${v}${ext}`] = versions[v];
-        }
+        for (const v of IMAGE_VERSION_NAMES) renditionBytes[`${actionId}-${v}${ext}`] = versions[v];
       }
     }
     const storeInput: AttachmentStoreInput = {
@@ -925,33 +873,15 @@ export class CardActionEngine {
       ext,
       bytes: attachment.bytes,
       renditionNames,
-      ...(coded !== undefined && coded.mod !== undefined
-        ? {
-            coded: {
-              mod: coded.mod,
-              dirParts: await this.attachmentCodenameParts(cardRow),
-              mountName: mount ?? "file",
-            },
-          }
-        : {}),
-      // Recorded before the write, so a store that fails half-way is cleaned
-      // up with the rest of a rolled-back save.
     };
+    // Recorded before the write, so a store that fails half-way is cleaned
+    // up with the rest of a rolled-back save.
     this.filesStoredThisSave.push(storeInput);
-    // Coded files live under the mod's data/files (their own store root).
-    const store = coded !== undefined && this.codedAttachmentStore !== undefined ? this.codedAttachmentStore : this.attachmentStore;
-    const stored = await store.store({
+    const stored = await this.attachmentStore.store({
       ...storeInput,
       ...(renditionBytes !== undefined ? { renditionBytes } : {}),
     });
-    const identifier =
-      coded !== undefined && coded.mod !== undefined
-        ? codedAttachmentIdentifier(
-            (storeInput.coded as { dirParts: readonly string[] }).dirParts,
-            coded.mod,
-            ext,
-          )
-        : localAttachmentIdentifier(cardId, actionId, ext);
+    const identifier = localAttachmentIdentifier(cardId, actionId, ext);
 
     // :correct_identifier (attachment.rb:13-17): update_column :db_content —
     // the raw column write, no history event, no timestamp bump.
@@ -1065,66 +995,6 @@ export class CardActionEngine {
       const ext = detectAttachmentExtension(input.attachment.originalFilename, input.attachment.bytes);
       if (canResize(ext) && !(await imageDecodes(input.attachment.bytes))) throw missing();
     }
-  }
-
-  /**
-   * event :validate_coded_storage_type, :validate, on: :save, when: :coded?
-   * (card-mod-carrierwave set/abstract/attachment/coded.rb:7-10):
-   *
-   *   storage_type_error :mod_argument_needed_to_save unless mod
-   *   storage_type_error :codename_needed_for_storage unless coded_ok?
-   *
-   * A coded save is one whose attachment carries the coded marker (the port
-   * has no storage_type column; the marker is the assigned attribute). The
-   * two errors accumulate, so a save with neither a mod nor full codename
-   * coverage reports both, joined as ActiveRecord's RecordInvalid joins full
-   * messages (locale en.yml: "mod argument needed to save card as coded",
-   * "codename needed for storage type coded"; attribute Storage type).
-   * coded_ok? (:22-24): no blank among the name parts' codenames.
-   */
-  private async validateCodedStorageType(
-    attachment: AttachmentInput | undefined,
-    name: DeckoName,
-  ): Promise<void> {
-    const coded = attachment?.coded;
-    if (coded === undefined) return;
-    const problems: string[] = [];
-    if (coded.mod === undefined || coded.mod === "") {
-      problems.push("Storage type mod argument needed to save card as coded");
-    }
-    const parts = await Promise.all(
-      name.partNames.map(async (part) => {
-        const id = await this.fetch.lexicon.id(part);
-        return id === undefined ? undefined : (await this.fetchRowById(id))?.codename ?? undefined;
-      }),
-    );
-    if (parts.some((p) => p === undefined || p === "")) {
-      problems.push("Storage type codename needed for storage type coded");
-    }
-    if (problems.length > 0) {
-      throw new CardActionError(
-        "validation-failed",
-        `Validation failed: ${problems.join(", ")}`,
-        `STORAGE TYPE: ${problems.map((p) => p.replace(/^Storage type /, "")).join(", ")}`,
-      );
-    }
-  }
-
-  /** The card name's codename parts, in order (coded.rb codename_parts:
-   *  `name.parts.map { |p| p.codename&.to_s }`) — the coded file directory
-   *  under the mod's data/files. */
-  private async attachmentCodenameParts(cardRow: CardsRow | undefined): Promise<readonly string[]> {
-    if (cardRow === undefined) return [];
-    const name = (await this.fetch.fetchById(cardRow.id))?.name;
-    const parts: string[] = [];
-    if (name !== undefined) {
-      for (const part of name.partNames) {
-        const id = await this.fetch.lexicon.id(part);
-        const code = id === undefined ? undefined : (await this.fetchRowById(id))?.codename ?? undefined;
-        if (code !== undefined && code !== "") parts.push(code);
-      }
-    }
-    return parts;
   }
 
   // -----------------------------------------------------------------------
@@ -1600,10 +1470,6 @@ export class CardActionEngine {
         typeId,
         name.isCompound && name.leftName !== undefined ? ((await this.fetch.lexicon.id(name.leftName)) ?? null) : null,
         name.isCompound && name.rightName !== undefined ? ((await this.fetch.lexicon.id(name.rightName)) ?? null) : null,
-        // The saved card's own codename (the self-set list cards): a create
-        // carries one only when assigned; an existing name is refused below,
-        // so the update path supplies the row's codename instead.
-        (input as { codename?: string }).codename,
       );
     }
     if (input.content == null && input.attachment === undefined) {
@@ -1612,7 +1478,6 @@ export class CardActionEngine {
     }
     await assertNameAvailable(this.fetch, name, undefined); // validate_uniqueness_of_name (:19-26)
     await this.validateFileExist(input, typeId); // validate_file_exist (attachment.rb:26-34)
-    await this.validateCodedStorageType(input.attachment, name); // validate_coded_storage_type (coded.rb:7-10)
     // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55) is a
     // :validate-stage event — its guard snapshot must exist before this
     // walk (prepareRecaptchaSaveInput no-ops without the mod/config). The
@@ -1627,12 +1492,8 @@ export class CardActionEngine {
 
     // A compound card's own action row is saved before the side subcards
     // its create makes (ActWriter.reserveAction has the Ruby mechanism), so
-    // it is reserved here and filled by the row write below. A history-less
-    // create records no action at all (write-path returns before the fill),
-    // so reserving for one would strand an orphaned cardless action row —
-    // Ruby records nothing for a no-history create (the account plan's
-    // +*salt / +*password writes).
-    const reservedActionId = name.isCompound && input.history !== false
+    // it is reserved here and filled by the row write below.
+    const reservedActionId = name.isCompound
       ? await writer.reserveAction({ actionType: "create", superActionId: input.superActionId ?? null })
       : undefined;
     // prepare_left_and_right (name_events.rb:68-73): compound names resolve
@@ -2381,9 +2242,6 @@ export class CardActionEngine {
       }),
     );
     await this.dispatchEventStage("validate", validationCard());
-    // validate_coded_storage_type (coded.rb:7-10) is on: :save — the update
-    // path runs it under the card's assigned name, like the create path.
-    await this.validateCodedStorageType(input.attachment, newName ?? currentName ?? DeckoName.parse(""));
     return { currentName, currentKey, newName, nameChanged };
   }
 
@@ -2460,7 +2318,6 @@ export class CardActionEngine {
         resolvedTypeId ?? before.type_id,
         before.left_id,
         before.right_id,
-        row.codename ?? undefined,
       );
     }
     // Account fields (account-fields.ts): encrypt_password runs when the
@@ -2824,21 +2681,10 @@ export class CardActionEngine {
     // RULE card whose name is changing re-derives its set's members and
     // every card pointing at it. The gate reads the SAVED row (the sides may
     // have been rewired by this rename).
-    //
-    // A RENAME carries the pre-write binding as a lookup overlay (see
-    // RuleLookupOverlay in set-read-rule.ts): Ruby's row write lands after
-    // the finalize cascade, so its re-derivation still resolves the rule
-    // under the OLD tag — the stored read_rule columns keep naming the
-    // renamed card (oracle: leftover probe step 3, tools/persistence/
-    // rule-rename-lookup-trace.rb).
     if (nameChanged) {
       const savedRow = await this.fetchRowById(row.id);
       if (savedRow !== undefined) {
-        const overlay =
-          currentName !== undefined && currentName.key !== nameAfter?.key
-            ? new Map([[currentName.key, savedRow.id]])
-            : undefined;
-        await cascadeReadRuleAfterRuleSave(this.readRuleDeps(), savedRow, true, overlay);
+        await cascadeReadRuleAfterRuleSave(this.readRuleDeps(), savedRow, true);
       }
     }
     if (nameChanged) await this.refreshDescendantCaches(row.id);
@@ -3163,21 +3009,7 @@ export class CardActionEngine {
       else others.set(action.card_id, { row: actionCard, rev: { ...(others.get(action.card_id)?.rev ?? {}), ...rev } });
     }
     const subcards: Record<string, SubcardInput> = {};
-    // The REVIVAL arm (the oracle's step 9): a revision whose trash comes
-    // back false on an already trashed card — reverting an act that cascade-
-    // deleted it. Ruby's nested save applies the revision as a subcard: the
-    // save adopts the trashed row (pull_from_trash!, trash.rb:57-68), writes
-    // trash back, and its reserved subaction is REMOVED at finalize as a
-    // no-change save (finalize_action's empty arm, history events.rb:34-37 —
-    // traced live: INSERT card_actions + DELETE of that row, UPDATE cards
-    // SET trash; tools/persistence/revert-trace.rb) — the row flips with NO
-    // action and NO change rows. The port writes the row directly.
-    const revivals: { row: CardsRow; rev: Revision }[] = [];
     for (const { row: other, rev } of others.values()) {
-      if (rev.trash === false && other.trash === 1) {
-        revivals.push({ row: other, rev });
-        continue;
-      }
       const otherName = await this.composedNameOf(other);
       // A revision that trashes the other card (revision_before_action of
       // its create: { trash: true }) becomes a trashing subcard, a :delete
@@ -3207,28 +3039,6 @@ export class CardActionEngine {
         content: rev.db_content ?? "",
         ...(typeof rev.type_id === "number" ? { typeId: rev.type_id } : {}),
       };
-    }
-    for (const { row: other, rev } of revivals) {
-      // The revival is exact only when the revision restores the row's own
-      // values (a delete action ever only changed trash, so the revision
-      // before it repeats the pre-delete row). A differing field would make
-      // Ruby's save store an action; that shape has no oracle evidence and
-      // stays refused.
-      const exact =
-        (rev.db_content ?? null) === (other.db_content ?? null) &&
-        (rev.type_id ?? null) === other.type_id &&
-        (rev.left_id ?? null) === other.left_id &&
-        (rev.right_id ?? null) === other.right_id;
-      if (!exact) {
-        throw new CardActionError(
-          "revert-unsupported",
-          `reverting another card's trash state with further changes is not supported (card ${other.id})`,
-        );
-      }
-      await driver.query(
-        "UPDATE cards SET trash = 0, updated_at = ? WHERE id = ?",
-        [sqlDateTime(this.clock()), other.id],
-      );
     }
     const hasSubcards = Object.keys(subcards).length > 0;
     // The card's own revision. A revision with trash: true (reverting a
@@ -3543,13 +3353,6 @@ export class CardActionEngine {
       [["clear_references", () => clearReferencesOnDelete(this.fetch.driver, row.id)]],
     );
     await cascadeReadRuleAfterRuleSave(this.readRuleDeps(), row, true);
-    // The delete_children cascade does NOT run here: a subcard trashed by a
-    // multi-subcard save must leave the cards that are THEMSELVES that
-    // save's trash subcards under the supercard's action (Ruby's director
-    // reuses a subcard already in the act), and trashing them early would
-    // turn their own arms into pull-from-trash revivals. The caller runs
-    // the cascade once the act's own subcard arms have all processed (see
-    // saveSubcardsInWriter).
     return [{ cardId: row.id, actionId: saved.actionId, actId: saved.actId, verb: "delete", name }];
   }
 
@@ -3562,9 +3365,8 @@ export class CardActionEngine {
     writer: ActWriter,
     rootId: number,
     rootActionId: number,
-    skip?: Set<number>,
-  ): Promise<(CardActionSummary & { actId: number })[]> {
-    const summaries: (CardActionSummary & { actId: number })[] = [];
+  ): Promise<CardActionSummary[]> {
+    const summaries: CardActionSummary[] = [];
     const visited = new Set<number>([rootId]);
     let frontier: { parentId: number; parentActionId: number }[] = [
       { parentId: rootId, parentActionId: rootActionId },
@@ -3574,13 +3376,6 @@ export class CardActionEngine {
       for (const { parentId, parentActionId } of frontier) {
         for (const child of await this.childRows(parentId)) {
           if (visited.has(child.id)) continue;
-          // A card the act itself trashes (one of the save's own trash
-          // subcards) keeps its own super-action linkage: skip registering
-          // it here — its own trash arm walks its subtree.
-          if (skip?.has(child.id)) {
-            visited.add(child.id);
-            continue;
-          }
           visited.add(child.id);
           const history = await this.fieldHasHistory(child);
           const saved = await writer.trashCard({
@@ -3614,7 +3409,6 @@ export class CardActionEngine {
             summaries.push({
               cardId: child.id,
               actionId: saved.actionId,
-              actId: saved.actId,
               verb: "delete",
               name: await this.composedNameOf(child),
             });
@@ -4521,23 +4315,18 @@ export class CardActionEngine {
 
   /** Abstract::List#standardize_content on assigned content (list-content.ts):
    *  a card in a list set stores its items one per line, without brackets.
-   *  The self sets of *recent settings and the Mod card are list sets too
-   *  (LIST_SELF_CODENAMES), so assigned content of those two cards
-   *  standardizes the same way. Content of any other card is returned
-   *  unchanged. */
+   *  Content of any other card is returned unchanged. */
   private async standardizeAssignedContent(
     content: string,
     typeId: number | null,
     leftId: number | null,
     rightId: number | null,
-    ownCode?: string | null,
   ): Promise<string> {
     const typeCode = typeId === null ? undefined : await this.fetch.codenames.nameForId(typeId);
     const rightCode = rightId === null ? undefined : await this.fetch.codenames.nameForId(rightId);
     let isList =
       (typeCode !== undefined && LIST_TYPE_CODENAMES.has(typeCode)) ||
-      (rightCode !== undefined && LIST_RIGHT_CODENAMES.has(rightCode)) ||
-      (ownCode !== undefined && ownCode !== null && ownCode !== "" && LIST_SELF_CODENAMES.has(ownCode));
+      (rightCode !== undefined && LIST_RIGHT_CODENAMES.has(rightCode));
     const leftType = async (): Promise<string | undefined> => {
       if (leftId === null) return undefined;
       const left = await this.fetchRowById(leftId);

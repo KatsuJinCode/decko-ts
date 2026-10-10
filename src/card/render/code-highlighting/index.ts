@@ -16,19 +16,17 @@
 // and uses :css => :style (inline styles from the alpha theme).
 //
 // This module re-implements the minimum CodeRay surface to byte-match the
-// corpus captures (fixtures/captured/coderay/*.html). The scanners cover
-// the languages the corpus exercises (json, css, html, java_script - the
-// last through the same state machine the html scanner delegates
-// <script> bodies to).
+// corpus captures (fixtures/captured/coderay/*.html). The scanners here
+// only cover the languages actually present in the corpus (json, css, html);
+// languages with no captured oracle fall back to passthrough.
 
 import { scanJson } from "./scanners/json.js";
 import { scanCss } from "./scanners/css.js";
 import { scanHtml } from "./scanners/html.js";
-import { scanJavaScript } from "./scanners/java-script.js";
 
 /** Languages the scanner dispatcher recognizes. Maps to the `LANG`
  *  argument the deck passes to `CodeRay.scan(...)` (json.rb:31 etc.). */
-export type HighlightLanguage = "json" | "css" | "html" | "java_script";
+export type HighlightLanguage = "json" | "css" | "html";
 
 /** The :div template (coderay-1.1.3 lib/coderay/encoders/html/output.rb:117).
  *  CONTENT is the highlighted span stream produced by the scanner. */
@@ -85,8 +83,6 @@ export function highlight(content: string, lang: HighlightLanguage): string {
       return wrapDiv(scanCss(code));
     case "html":
       return wrapDiv(scanHtml(code));
-    case "java_script":
-      return wrapDiv(scanJavaScript(code));
   }
 }
 
@@ -104,20 +100,14 @@ export const CODERAY_CARDTYPE_CODENAMES: ReadonlySet<string> = new Set([
 ]);
 
 /** Map a cardtype codename to its scanner language. Returns undefined when
- *  the codename doesn't trigger CodeRay. java_script reaches here through
- *  the card-mod-script Abstract::Script html :core override
- *  (set/abstract/00_script.rb:73-76 `process_content highlight(render_raw)`
- *  with highlight = `::CodeRay.scan(script, :js).div`); the family's
- *  chunk_list (:nest_only, 00_script.rb:50-58) already lives in
- *  format.ts#rubyChunkListForCardType. coffee_script stays unmapped: its
- *  html :core resolves through Abstract::CoffeeScript's base-format
- *  `view :core` (compiled CoffeeScript, 02_coffee_script.rb:23-25), a
- *  different mechanism the corpus does not exercise. */
+ *  the codename doesn't trigger CodeRay, or when the language has no
+ *  captured oracle fixture (the :js scanner the script mod uses is in
+ *  this category today - java_script/coffee_script cards aren't in the
+ *  corpus). */
 export function langForTypeCode(typeCode: string | undefined): HighlightLanguage | undefined {
   if (typeCode === undefined) return undefined;
   if (typeCode === "json") return "json";
   if (typeCode === "css" || typeCode === "scss") return "css";
   if (typeCode === "layout_type" || typeCode === "head") return "html";
-  if (typeCode === "java_script") return "java_script";
   return undefined;
 }

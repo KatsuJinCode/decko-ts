@@ -53,12 +53,6 @@ beforeAll(async () => {
   await seedCard(s, { id: 11, name: "*self", codename: "self", typeId: 14 });
   await seedCard(s, { id: 13, name: "*set", codename: "set", typeId: 13 });
   await seedCard(s, { id: 14, name: "*setting", codename: "setting", typeId: 14 });
-  // the Phrase cardtype (the right/email.rb + right/password.rb
-  // assign_type :phrase target): the sign-in form's absent-field fallback
-  // resolves the field type id through the deck's codename table
-  // (PhraseID = Codename.id :phrase), and this deck needs the codename any
-  // real deck carries.
-  await seedCard(s, { id: 52, name: "Phrase", codename: "phrase", typeId: 2 });
 
   // the *signin card (the *self anchor for Self::Signin; the name is the
   // codename registry's lookup key)
@@ -133,9 +127,6 @@ beforeAll(async () => {
     typeId: 2,
     dbContent: "alice@example.com",
   });
-  // the codename registry's memo loads from the deck on demand; the
-  // sign-in form's phrase fallback reads it synchronously
-  await s.fetcher.codenames.ensureLoaded();
 }, 60_000);
 
 afterAll(() => {

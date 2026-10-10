@@ -1,113 +1,11 @@
 // Reads a deck's persisted state straight from its SQLite file (Decko's own
-// schema is the persistence contract) and computes row deltas between two
-// snapshots. The runner records raw deltas (rawDelta): ids, timestamps and
-// every other column exactly as stored, which the grader compares as they are
-// (reference-harness/SPEC.md, "Normalisation"). `delta` is the symbolic form
-// for comparisons that cannot pin ids and clocks. Uses node:sqlite, so the
-// runner needs nothing beyond Node.
+// schema is the persistence contract) and computes per-step row deltas.
+// Uses node:sqlite, so the runner needs nothing beyond Node itself.
 
 import { DatabaseSync } from "node:sqlite";
 
-/** The tables stock Decko writes when cards change: the persistence contract
- *  a write step is graded on. */
+/** The tables stock Decko writes when cards change. */
 export const CARD_TABLES = ["cards", "card_acts", "card_actions", "card_changes", "card_references", "card_virtuals"];
-
-/**
- * Every table of the deck, row by row. A table with an `id` column is keyed
- * by id; any other table by the row's own JSON (a multiset, so duplicate rows
- * still count). SQLite's internal tables are included: a read that bumps an
- * autoincrement counter has written.
- */
-export function snapshot(dbPath) {
-  const db = new DatabaseSync(dbPath, { readOnly: true });
-  try {
-    const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all().map((r) => r.name);
-    const state = {};
-    for (const table of tables) {
-      const rows = db.prepare(`SELECT * FROM "${table.replaceAll('"', '""')}"`).all();
-      const keyed = new Map();
-      const hasId = rows.length > 0 ? Object.hasOwn(rows[0], "id") : columnNames(db, table).includes("id");
-      for (const row of rows) {
-        // A BLOB is recorded as its hex bytes, so it survives JSON unchanged.
-        const copy = Object.fromEntries(
-          Object.entries(row).map(([k, v]) => [k, v instanceof Uint8Array ? { $blob: Buffer.from(v).toString("hex") } : v]),
-        );
-        if (hasId) {
-          keyed.set(`id:${copy.id}`, copy);
-        } else {
-          const json = JSON.stringify(copy);
-          let key = `row:${json}`;
-          for (let n = 2; keyed.has(key); n++) key = `row:${json}#${n}`;
-          keyed.set(key, copy);
-        }
-      }
-      state[table] = keyed;
-    }
-    // Card tables are always present in the snapshot, empty if the deck lacks one.
-    for (const table of CARD_TABLES) state[table] ??= new Map();
-    return state;
-  } finally {
-    db.close();
-  }
-}
-
-function columnNames(db, table) {
-  return db.prepare(`PRAGMA table_info("${table.replaceAll('"', '""')}")`).all().map((c) => c.name);
-}
-
-/**
- * The raw row delta between two snapshots, per table:
- * `{ inserted: [row], updated: [{id, changes: {column: [before, after]}}], deleted: [row] }`.
- * Only tables that changed appear. Values are compared as stored (type and
- * text), so a timestamp rewritten in another text form is a change.
- * `tables` limits the delta to those tables (default: every table).
- */
-export function rawDelta(before, after, tables) {
-  const names = tables ?? [...new Set([...Object.keys(before), ...Object.keys(after)])].sort();
-  const result = {};
-  for (const table of names) {
-    const b = before[table] ?? new Map();
-    const a = after[table] ?? new Map();
-    const inserted = [];
-    const updated = [];
-    const deleted = [];
-    for (const [key, row] of a) {
-      const old = b.get(key);
-      if (!old) {
-        inserted.push(row);
-        continue;
-      }
-      const changes = {};
-      for (const col of new Set([...Object.keys(old), ...Object.keys(row)])) {
-        if (!sameValue(old[col], row[col])) changes[col] = [old[col] ?? null, row[col] ?? null];
-      }
-      if (Object.keys(changes).length > 0) updated.push({ id: row.id, changes });
-    }
-    for (const [key, row] of b) if (!a.has(key)) deleted.push(row);
-    if (inserted.length || updated.length || deleted.length) result[table] = { inserted, updated, deleted };
-  }
-  return result;
-}
-
-function sameValue(x, y) {
-  if (x === y) return true;
-  if (x !== null && y !== null && typeof x === "object" && typeof y === "object") return x.$blob === y.$blob;
-  return false;
-}
-
-/** Splits a full delta into the card tables (graded as persistence) and the
- *  rest (recorded, reported, not graded for writes). */
-export function splitDelta(full) {
-  const rows = {};
-  const other = {};
-  for (const [table, d] of Object.entries(full)) (CARD_TABLES.includes(table) ? rows : other)[table] = d;
-  return { rows, other };
-}
-
-// ---- symbolic delta ---------------------------------------------------------
-// For comparisons that cannot pin both engines to the same ids and clock (the
-// browser scenarios, where each engine serves its own requests in real time).
-// The reference grader does not use it: it compares raw deltas.
 
 /** Columns holding a row id of another table, by table. */
 const FOREIGN = {
@@ -121,8 +19,22 @@ const FOREIGN = {
 };
 const TIME_COLUMNS = new Set(["created_at", "updated_at", "acted_at"]);
 
-/** A card table of a snapshot, keyed by numeric id. */
-const byNumericId = (table) => new Map([...(table ?? new Map()).values()].map((row) => [Number(row.id), row]));
+export function snapshot(dbPath) {
+  const db = new DatabaseSync(dbPath, { readOnly: true });
+  try {
+    const present = new Set(db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map((r) => r.name));
+    const state = {};
+    for (const table of CARD_TABLES) {
+      const rows = present.has(table) ? db.prepare(`SELECT * FROM "${table}"`).all() : [];
+      const byId = new Map();
+      for (const row of rows) byId.set(Number(row.id), { ...row });
+      state[table] = byId;
+    }
+    return state;
+  } finally {
+    db.close();
+  }
+}
 
 /** A card's full name from the snapshot, composed through left/right ids. */
 function composedName(cards, id, seen = new Set()) {
@@ -143,14 +55,13 @@ function canonicalTime(value) {
 }
 
 /**
- * The card-table delta between two snapshots with rows the step created
- * given symbolic ids (a card by its name, other rows by table and creation
- * order), every column pointing at them rewritten the same way, and
- * timestamps compared as instants.
+ * The normalised row delta between two snapshots. Rows the step created get
+ * symbolic ids (a card by its name, other rows by table and creation order),
+ * and every column pointing at them is rewritten the same way; ids of rows
+ * that existed before stay as they are, since both engines start from the
+ * same deck file.
  */
-export function delta(beforeSnapshot, afterSnapshot) {
-  const before = Object.fromEntries(CARD_TABLES.map((t) => [t, byNumericId(beforeSnapshot[t])]));
-  const after = Object.fromEntries(CARD_TABLES.map((t) => [t, byNumericId(afterSnapshot[t])]));
+export function delta(before, after) {
   const symbols = {};
   for (const table of CARD_TABLES) {
     const fresh = [...after[table].keys()].filter((id) => !before[table].has(id)).sort((a, b) => a - b);
@@ -173,9 +84,13 @@ export function delta(beforeSnapshot, afterSnapshot) {
         continue;
       }
       const target = FOREIGN[table]?.[col];
-      if (target && value !== null && value !== undefined) out[col] = symbols[target].get(Number(value)) ?? value;
-      else if (TIME_COLUMNS.has(col)) out[col] = canonicalTime(value);
-      else out[col] = value;
+      if (target && value !== null && value !== undefined) {
+        out[col] = symbols[target].get(Number(value)) ?? value;
+      } else if (TIME_COLUMNS.has(col)) {
+        out[col] = canonicalTime(value);
+      } else {
+        out[col] = value;
+      }
     }
     return out;
   };
@@ -190,6 +105,8 @@ export function delta(beforeSnapshot, afterSnapshot) {
         inserted.push(norm(table, row));
         continue;
       }
+      // Compared after normalisation: a timestamp rewritten to the same
+      // instant in another text form is not a change.
       const changes = {};
       const was = norm(table, old);
       const now = norm(table, row);

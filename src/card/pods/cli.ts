@@ -61,24 +61,16 @@ export async function main(argv: string[]): Promise<number> {
       deck.close();
     }
   }
-  const podPath = args.find((a, i) => !a.startsWith("-") && !["--deck", "-d", "-u", "--user", "--files", "--store", "--coded-mod", "--coded-dir"].includes(args[i - 1] ?? ""));
+  const podPath = args.find((a, i) => !a.startsWith("-") && !["--deck", "-d", "-u", "--user", "--files", "--store"].includes(args[i - 1] ?? ""));
   if (podPath === undefined) {
     process.stderr.write("eat: no pod file given\n");
     return 2;
   }
   // --files: the mod's data/files directory pod attachments are read from;
-  // --store: the deck's files directory uploads are stored in;
-  // --coded-mod/--coded-dir: coded storage (storage_type :coded) — the mod
-  // name the coded items carry and the mod directory whose data/files
-  // receives their files.
+  // --store: the deck's files directory uploads are stored in.
   const filesDir = option(args, "--files");
   const storeDir = option(args, "--store");
-  const codedMod = option(args, "--coded-mod");
-  const codedDir = option(args, "--coded-dir");
-  const deck = await bootDeck(deckPath, {
-    ...(storeDir !== undefined ? { filesDir: storeDir } : {}),
-    ...(codedDir !== undefined ? { codedDir } : {}),
-  });
+  const deck = await bootDeck(deckPath, storeDir !== undefined ? { filesDir: storeDir } : {});
   try {
     let actor = { id: 1, name: "Decko Bot" };
     const user = option(args, "-u", "--user");
@@ -90,7 +82,6 @@ export async function main(argv: string[]): Promise<number> {
     const report = await eatYaml(deck.fetcher, (a, now) => deck.engineFor(a, now), readFileSync(podPath, "utf8"), {
       defaultActor: actor,
       ...(filesDir !== undefined ? { filesDir } : {}),
-      ...(codedMod !== undefined ? { codedMod } : {}),
     });
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
     return report.errors.length === 0 ? 0 : 1;

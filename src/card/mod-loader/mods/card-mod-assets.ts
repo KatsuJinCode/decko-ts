@@ -54,37 +54,22 @@
 //   with the views they target.
 
 import type { ViewContext, ViewFn } from "../../render/format.js";
-import { rubyInspectionAddress } from "../../render/format.js";
 import { localAttachmentUrl } from "../../attachments/asset-output-write.js";
 import { superView } from "../mod-view-helpers.js";
 import type {
   DeckoModManifest,
-  ModEventFn,
-  ModEventRegistration,
 } from "../mod-manifest.js";
-import { engineOwnedEvent } from "../mod-manifest.js";
-
-/** The set-module event declarations (the mod-events lane, 2026-10-08):
- *  stub-bodied unless the engine owns the behavior (then engineOwnedEvent).
- *  Same shape as core-mod.ts's local helper; the per-event owner or stub
- *  reason rides the declaration's comment. */
-function event(
-  decl: Omit<ModEventRegistration, "fn"> & { fn?: ModEventFn },
-): ModEventRegistration {
-  return { fn: () => undefined, ...decl };
-}
 
 // ---------------------------------------------------------------------------
 // The asset OUTPUT url + the right/asset_output :not_found gate
 // (set/abstract/asset_outputter.rb:61-63, set/right/asset_output.rb:19-34).
-// Oracle-pinned by live renders of the booted oracle app and by the stock
-// synthetic-v2 capture.
+// Oracle-pinned by live renders of the booted oracle app.
 // ---------------------------------------------------------------------------
 
 /** The `+*asset output` child of a card, fetched through the engine's
  *  render-card cache. Ruby's card_accessor generates asset_output_card
- *  (fetch-or-new); a missing child reads as undefined here and the live
- *  write branch renders the Ruby new-card shape (file&.url -> nil -> ""). */
+ *  (fetch-or-new); a missing child reads as undefined here and the views
+ *  render the Ruby new-card shape (file&.url -> nil -> ""). */
 function fetchAssetOutputCard(ctx: ViewContext): { dbContent: string } | undefined {
   const card = ctx.fmt.card;
   const childName = `${card.name.s}+*asset output`;
@@ -94,51 +79,18 @@ function fetchAssetOutputCard(ctx: ViewContext): { dbContent: string } | undefin
   return engine.fetchRenderCard?.(childName);
 }
 
-/** The CARD-level method port (asset_outputter.rb:78-82):
- *
- *     def asset_output_url
- *       # ensure_asset_output
- *       asset_output_card.file&.url # (:default, timestamp: false)
- *     end
- *
- * The local-identifier url is the oracle-pinned "/files/~<card>/<action><ext>"
- * (localAttachmentUrl — the tilde MARK form, FileCardUploader::Path#
- * local_url); a missing child is Ruby's `file&.url` on a new card -> nil,
- * which the caller renders as "". The right/asset_output :not_found live
- * branch reaches this surface — Ruby's `outputter.update_asset_output_live`
- * runs it with self = the CARD, so the bare `asset_output_url` inside
- * resolves as a card method (unlike the VIEW body's bare call, which lands
- * on the format — see assetOutputUrlView). */
-function cardAssetOutputUrl(ctx: ViewContext): string {
+/** asset_outputter.rb:61-63 view :asset_output_url -> asset_output_url
+ *  (:78-82) = `asset_output_card.file&.url`. The local-identifier url is
+ *  the oracle-pinned "/files/~<card>/<action><ext>" (localAttachmentUrl —
+ *  the tilde MARK form, FileCardUploader::Path#local_url). A missing child
+ *  renders "" (Ruby: file&.url on a new card -> nil). NOTE: Ruby's bare
+ *  `asset_output_url` call inside the view body raises NoMethodError
+ *  through the format's ActionView delegation (captured in the oracle
+ *  JSON); the card-level method's bytes are the view's intent and this
+ *  port. */
+const assetOutputUrlView: ViewFn = (ctx) => {
   const child = fetchAssetOutputCard(ctx);
   return localAttachmentUrl(child?.dbContent ?? "");
-}
-
-/** asset_outputter.rb:61-63 view :asset_output_url:
- *
- *     view :asset_output_url do
- *       asset_output_url
- *     end
- *
- * The view block's self is the FORMAT, not the card, so the bare call hits
- * the format's method_missing (card format/method_delegation.rb:41-47);
- * the name is not render-shaped, so the delegation lands on the ActionView
- * context (:73 delegate_to_action_view -> CardActionView), which carries
- * no such helper — NoMethodError "undefined method `asset_output_url' for
- * #<Card::Format::CardActionView:0x...>". That raise IS the view's stock
- * behavior: the synthetic-v2 oracle pins it on
- * view:admin:*all+*script:asset_output_url (and the cwwrite lane's own
- * view_*_asset_output_url captures carry the rescued span), so the port
- * raises it; the receiver inspection address is the engine's derived
- * stand-in (rubyInspectionAddress — N5 blanks the hex on both sides).
- * The CARD-level method keeps its port in cardAssetOutputUrl, which the
- * :not_found live branch calls. */
-const assetOutputUrlView: ViewFn = (ctx) => {
-  throw new Error(
-    "undefined method `asset_output_url' for #<Card::Format::CardActionView:" +
-      rubyInspectionAddress(ctx.fmt.card.id) +
-      ">",
-  );
 };
 
 /** The Abstract::AssetOutputter membership check behind
@@ -175,11 +127,11 @@ function leftIsAssetOutputter(ctx: ViewContext): boolean {
  *  since a ViewFn is synchronous). When the rendered card IS the
  *  `+*asset output` child, the url reads from the card's own db_content
  *  (the child exists by definition); from the outputter's side it reads
- *  through the card-level method port (cardAssetOutputUrl). The 302 is
- *  root-format response state (the engine has no root.error_status
- *  surface — same remainder as :bad_address). A non-outputter left
- *  delegates via super() to the chain's next :not_found (oracle
- *  not_found_super: the standard not_found shape). */
+ *  through the child fetch (assetOutputUrlView). The 302 is root-format
+ *  response state (the engine has no root.error_status surface — same
+ *  remainder as :bad_address). A non-outputter left delegates via super()
+ *  to the chain's next :not_found (oracle not_found_super: the standard
+ *  not_found shape). */
 const assetOutputNotFoundView: ViewFn = (ctx) => {
   if (!leftIsAssetOutputter(ctx)) {
     return superView(ctx, "Right::AssetOutput", "not_found");
@@ -188,7 +140,7 @@ const assetOutputNotFoundView: ViewFn = (ctx) => {
   if (card.name.s.endsWith("+*asset output")) {
     return localAttachmentUrl(card.dbContent);
   }
-  return cardAssetOutputUrl(ctx);
+  return assetOutputUrlView(ctx);
 };
 
 
@@ -323,17 +275,8 @@ const cardModAssets: DeckoModManifest = {
       // so every `X+*asset output` card dispatches the gate instead of the
       // bare engine :not_found. NOT ported from the same file:
       // followable?/ok_to_read?/history? (the read-permission and history
-      // surfaces are engine-level).
-      // Event (mod-events lane 2026-10-08) — STUB, named remainder:
-      // asset_output.rb:13-17 `event :remove_codename, :prepare_to_validate,
-      // on: :delete, when: :codename?` loads the attachment then strips the
-      // codename so the to-be-deleted card releases it; the engine's delete
-      // path has no codename-mutation hook (the port's codename registry is
-      // read-only at delete).
+      // surfaces are engine-level) and the remove_codename delete event.
       setPath: "right/asset_output",
-      events: [
-        event({ event: "remove_codename", at: "prepare_to_validate", on: ["delete"], when: "codename?" }),
-      ],
       formats: {
         html: {
           views: [{ view: "not_found", viewFn: assetOutputNotFoundView }],
@@ -351,49 +294,7 @@ const cardModAssets: DeckoModManifest = {
       // the :not_found gate's outputter check reads (leftIsAssetOutputter).
       // Bookkeeping entry for the abstract file itself (basket parity, the
       // pattern other mods' abstract surfaces use).
-      //
-      // Events (mod-events lane 2026-10-08) — ENGINE-OWNED: the write
-      // path's asset-event runner (src/card/actions/style-asset-events.ts)
-      // executes both at their stages: update_asset_output_file via
-      // attachments/asset-output-write.ts storeAssetOutput (the lock +
-      // assembled-content write, asset_outputter.rb:20-30), and
-      // validate_asset_inputs via asset-input-assembly.ts's validate twin
-      // (asset_outputter.rb:10-18's find_invalid_input guard).
       setPath: "abstract/asset_outputter",
-      events: [
-        engineOwnedEvent({ event: "update_asset_output_file", at: "finalize", on: ["save"] }),
-        engineOwnedEvent({ event: "validate_asset_inputs", at: "validate", on: ["save"], skip: "allowed" }),
-      ],
-    },
-    {
-      // set/abstract/asset_inputter.rb — the input side of the asset
-      // pipeline (card_accessor :asset_input + the two change events).
-      // Events ENGINE-OWNED: style-asset-events.ts runs both
-      // (asset_inputter.rb:24-27 at finalize on save — the inputter's
-      // +*asset input virtual content re-store; :20-23 on delete, before
-      // clear_references — the referers walk that re-stores dependents
-      // before the references die). Ruby's `before: :clear_references`
-      // hangs the event on clear_references' chain (itself a :finalize
-      // on: :delete event); the surface records the resolved stage and
-      // the engine's delete path owns the position (the check_setup
-      // precedent).
-      setPath: "abstract/asset_inputter",
-      events: [
-        engineOwnedEvent({
-          event: "asset_input_changed",
-          at: "finalize",
-          on: ["save"],
-          when: "asset_inputter?",
-          changed: ["content"],
-          skip: "allowed",
-        }),
-        engineOwnedEvent({
-          event: "asset_input_changed_on_delete",
-          at: "finalize",
-          on: ["delete"],
-          when: "asset_inputter?",
-        }),
-      ],
     },
     {
       setPath: "type_plus_right/set/style",

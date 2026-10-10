@@ -200,7 +200,7 @@ import { getNameEnvironment } from "../../name/environment.js";
 import { modRuleSeedContentForCandidate } from "../mod-rule-seeds.js";
 import { renderRecaptchaConfig } from "../../render/render-recaptcha-config.js";
 import { recaptchaFormOn, recaptchaHiddenFormTags } from "./card-mod-recaptcha.js";
-import { timeAgoInWords, actSummaryBadge } from "./card-mod-history.js";
+import { timeAgoInWords } from "./card-mod-history.js";
 import { ruleSidesStatement } from "./rule-card-warm.js";
 import { cardWallClockNow } from "../../wall-clock.js";
 import type {
@@ -2928,18 +2928,18 @@ export const historyTabView: ViewFn = ({ fmt, voo }) => {
               ),
             );
       const ago = agoDate === undefined ? "" : `${timeAgoInWords(agoDate)} ago`;
-      // summary: ActRenderer#summary (act_renderer.rb:37-41 + 96-103) - the
-      // act's APPROVED ACTIONS' per-type icons, the same composition the
-      // accordion's header badge renders (actSummaryBadge). NOT
-      // act.action_on(card.id): the on-this-card lookup is
-      // last_action_verb's mechanism - a family act (+summary, +tags)
-      // carries no action on the render root, and the earlier lookup
-      // defaulted every non-root pill to the edit icon where the corpus
-      // oracle pins add_circle for all four Topic 001 pills.
-      const summary =
-        reader === undefined
-          ? ""
-          : actSummaryBadge(reader, reader.actionsOfAct(Number(act.id)));
+      // summary: the act's action on THIS card (act.rb:97-101 action_on);
+      // action_type is the STORED integer (action.rb:89-91: create=0,
+      // update=1, delete=2)
+      const action = reader?.actionOn(Number(act.id), fmt.card.id as number);
+      const iconByType: Record<number, string> = {
+        0: "add_circle",
+        1: "edit",
+        2: "delete",
+      };
+      const actionType = action === undefined ? 1 : Number(action.action_type);
+      const iconName = iconByType[actionType] ?? "edit";
+      const summary = `<i class="notranslate material-icons">${iconName}</i><small> </small>`;
       const title =
         `<div class="me-2">#${thisSeq} ${h(actorName)} <small>${ago}</small></div>` +
         `<div class="ms-auto act-summary">${summary}</div>`;
@@ -2976,11 +2976,8 @@ export const historyTabView: ViewFn = ({ fmt, voo }) => {
  *  path (follow_link.rb:66-69): mark = follow_set_card.follow_rule_name
  *  (Auth.current.name), action :update, success {mark: card.name, view:
  *  :follow_section}, card {content: "[[*always]]" / "[[*never]]"} - the
- *  Rails to_query encodings (spaces +, brackets/star %XX). Shared with the
- *  follow mod's :follow_button view (the SAME FollowLink#button bytes -
- *  the standalone view renders the identical anchor, the oracle pins
- *  both). */
-export function followButton(
+ *  Rails to_query encodings (spaces +, brackets/star %XX). */
+function followButton(
   bundle: { session: { actorName: string } | undefined; followed: boolean; followLabel: string },
   cardName: string,
 ): string {

@@ -36,7 +36,6 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
-import { setHamlSlotStyle } from "../../../src/card/render/haml-slot-style.js";
 
 import { renderPageBytes } from "../../../src/card/render/page.js";
 import {
@@ -371,11 +370,6 @@ async function seedDeck(): Promise<void> {
 }
 
 beforeAll(async () => {
-  // The oracle app whose main regions these pins reproduce serves the
-  // production-lineage bar template: the slot id rides OUTSIDE the Haml
-  // data hash, double-quoted (the recorded oracle regions carry that
-  // form), so this fixture renders in the separate style.
-  setHamlSlotStyle("separate");
   storage = await createRenderTestStorage();
   await seedDeck();
   storage.fetcher.codenames.ensureLoaded();
@@ -389,7 +383,6 @@ beforeAll(async () => {
 }, 60_000);
 
 afterAll(() => {
-  setHamlSlotStyle("hash");
   storage?.close();
 });
 

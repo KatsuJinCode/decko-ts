@@ -216,18 +216,10 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // Error's production :server_error (4b7b1338's error-page ruling,
       // debug_server_error's renderer twin), measured on the merged tree;
       // still no new format key and no css/scss row.
-      // 355 -> 356 (composed-mod view gaps, 2026-10-09): All::Error's html
-      // table registers :mini_unknown (html/error.rb:21-23, the icon-only
-      // createable link) explicitly alongside :unknown's html arm, so the
-      // composed deck serves the same bytes the flat base table serves.
-      // 356 -> 358 on the combined tree: THREE single-step registrations
-      // landed here — this line's composed-mod-view-gaps :mini_unknown
-      // (html/error.rb:21-23), the journeys lane's Right::Password :input
-      // (the account form's password editor, probe-password-input.rb), and
-      // the mod-view-gaps wave-2 slice's FOLLOW_TABS :core (user/follow.rb:
-      // 39-43, card-mod-tabs over the static hash); still no new format key
-      // and no css/scss row. Measured on the merged tree.
-      ["html", 358],
+      // 355 -> 356 (browser-journeys lane, 2026-10-09): Right::Password's
+      // :input — the account form's password editor (the live-oracle probe
+      // receipt probe-password-input.rb); still no new format key.
+      ["html", 356],
 
       ["js", 2],
       ["json", 3],

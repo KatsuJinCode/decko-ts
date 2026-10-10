@@ -158,96 +158,39 @@ because the runner reads the deck file between steps.
 Every answer must come from the engine's own entry points. An adapter routes
 requests and shapes results; it must not compute an answer itself.
 
-## 3. Runner and grading
+## 3. Runner
 
 ```
 node runner/run.mjs --adapter adapters/<engine>/adapter.json \
      --fixture fixtures/<name> --out <resultsDir> [--kinds render,semantics,scenarios] [--filter <regex>] [--limit <n>]
-node runner/grade.mjs --fixture fixtures/<name> --actual <resultsDir> \
-     [--expected <expectedDir>] [--report report.json] [--allow-partial]
+node runner/grade.mjs --fixture fixtures/<name> --actual <resultsDir> [--report report.json]
 ```
 
-### What a run records
-
 `run.mjs` copies the built deck per session, runs the operations, and writes
-`render.jsonl`, `semantics.jsonl` and `scenarios.jsonl` plus `run-meta.json`
-(results format 2).
+`render.jsonl`, `semantics.jsonl` and `scenarios.jsonl` plus `run-meta.json`.
+For every scenario step it snapshots Decko's card tables before and after and
+records the normalised row delta. For read sessions it records any row the
+session changed (`*_session_row_changes` in `run-meta.json`): reads must not
+write.
 
-`run-meta.json` holds one record per kind under `runs`, written when the kind
-starts (`complete: false`) and again when it ends, so an interrupted run never
-claims completion. Each record names: `started`, `finished`, `complete`,
-`selection` (the `--filter`/`--limit` used, or null), `ops_total` (the
-fixture's count) and `ops_run`, the adapter's name, its ready line
-(`engine`), its source checkout (`adapter_checkout`: commit and whether it had
-uncommitted changes), and the fixture digest the run used with any
-disagreement between the fixture and its manifest (`fixture_problems`). A read
-kind also records `session_writes`: every row of every table the session
-changed, raw. A run that ends because the adapter exited is incomplete.
-
-For every scenario step the runner snapshots the deck before and after and
-records the raw row delta: `rows` for Decko's card tables (`cards`,
-`card_acts`, `card_actions`, `card_changes`, `card_references`,
-`card_virtuals`), and `other_tables` for any other table the step changed.
-Raw means ids, timestamps and every other column exactly as stored.
-
-### What the grader refuses
-
-`grade.mjs` first checks that the results are a grade at all. Any of these
-makes the verdict **not a grade** (exit 2), and no pass rate is printed:
-
-1. `run-meta.json` missing, unreadable, in another results format, or naming
-   another fixture; a kind's record missing a field listed above.
-2. A kind not run, not complete, run with a selection, or with a different
-   operation count from the fixture's.
-3. An operation with no result line, a result line twice, a result id the
-   fixture does not have, or a scenario with fewer steps than the fixture's.
-4. The fixture tree not matching its `MANIFEST.json`; results recorded on
-   another fixture digest, or on a fixture that did not match its manifest.
-5. The expected outputs without a `MANIFEST.json`, captured on another
-   fixture digest, holding a file that differs from or is missing from their
-   manifest, or naming an oracle variant inconsistent with their directory
-   (section 5).
-6. Kinds answered by different adapters, engine versions or commits.
-
-`--allow-partial` grades a filtered or partial run on what it holds, for
-development; its verdict is `partial` and it still exits 2. A run from a
-checkout with uncommitted changes, or from outside git, is graded with a
-warning that it is not a release grade.
-
-### What the grader compares
-
-Each item is compared with the expected outputs after normalisation
-(section 4) and passes only if equal. Results are tallied per kind and per
-group (page or view and actor; question type; write action). Scenario steps
-are graded on every kind they exercise: a write's answer is a side-effect
-item, its `rows` a persistence item, a render or question after a write a
-rendering or semantics item. An item whose oracle answer was an adapter error
-is reported as an oracle error and not graded.
-
-**Reads write only what the oracle's reads wrote.** Each read session's
-`session_writes`, and each non-write scenario step's `rows` and
-`other_tables` (renders, questions, sign-ins), must equal the oracle's for the
-same session or step, which on `synthetic-v1` is nothing. These are reported
-as their own line, `read writes`, and any failure fails the grade even when
-every answer matches. Changes a write step makes outside the card tables are
-listed in the report (`other_table_writes`) and not graded.
-
-Exit status: 0 every item passes; 1 a valid grade with failures; 2 not a
-grade.
+`grade.mjs` compares an engine's results with `expected/` item by item and
+prints a pass rate per kind and per group (page or view and actor; question
+type; write action). Scenario steps are graded on every kind they exercise: a
+write's answer is a side-effect item, its row delta a persistence item, a
+render or question after a write a rendering or semantics item. An item whose
+oracle answer was an adapter error is reported as an oracle error and not
+graded.
 
 Any results file may be stored gzipped (`render.jsonl.gz`); the fixture's
 large reference renders are. `node runner/causes.mjs report.json [kind]`
 groups a report's failures by the shape of their first difference, so one
-root cause reads as one line. Persistence and read-write failures also list
-every differing value (`differences`).
+root cause reads as one line.
 
-The runner and grader need Node 22.5 or later and nothing else
-(`node:sqlite`). Their tests, including a negative control for every refusal
-above, run with `node --test "reference-harness/runner/test/*.test.mjs"`.
+The runner needs Node 22.5 or later and nothing else (`node:sqlite`).
 
 ## 4. Normalisation
 
-Two kinds of rule, applied to both sides before comparison, and nothing else:
+Applied to both sides before comparison, and nothing else:
 
 1. **N1.** `data-slot-id="<hex>"` becomes `data-slot-id="SLOT"`: slot ids are
    random per render in every engine.
@@ -266,122 +209,9 @@ Two kinds of rule, applied to both sides before comparison, and nothing else:
    answers on a fresh per-journey port, so an absolute URL the deck itself
    builds (a mail body's card link) carries a port that is random per run on
    both engines. The host and scheme stay exact.
-The seconds-corpus instrument (section 4's later subsections) carries its
-own rule namespace — its N3 (the collapse-id canonical form) and its N5
-(the dawn-pass plan) are THAT instrument's rules, not the journeys
-comparator's N1-N6 above. The two vocabularies coexist:
 
-- A **mask** erases a value. It is allowed only for a field shown to vary
-  between two complete runs of the same oracle on the same fixture, and only
-  in that field's exact shape.
-- A **canonical form** compares the same value in another encoding and
-  erases nothing.
-
-1. **N1 (mask).** In rendered HTML, a `data-slot-id` attribute in attribute
-   position holding exactly 20 lowercase hex digits has its value replaced by
-   `SLOT`; the quote character is kept. Ruby Decko draws slot ids at random
-   per render.
-2. **N2 (canonical form).** JSON object key order never counts; array order
-   always does.
-3. **N3 (canonical form over a volatile value).** In rendered HTML, the
-   numeric context of a `card-<safe-key>-<n>-collapse-id` token — the
-   accordion collapse id `admin.rb:96` seeds with Ruby's `title.hash` — is
-   replaced per html string by `N3#k` in first-appearance order, so the
-   accordion button's `data-bs-target` and its panel `id` must still agree.
-   Ruby hashes strings with a per-process seed; the digits are process noise.
-   The literal contexts (`files`, `depends_on`, view names) hold no digits
-   and never match.
-4. **N4 (canonical form over a capture-clock value).** In rendered HTML, a
-   relative-time span — a Rails `time_ago_in_words` phrase
-   (`date_helper.rb:95-165`, within its table's bounds: minutes 1-44, hours
-   1-24, days 1-30, months 1-12, years 1+, singular and plural, with the
-   `about`/`over`/`almost` qualifiers) — is replaced by the single
-   placeholder `N4#elapsed`. The oracle's words are a pure function of the
-   fixture clock the harness freezes (`oracle/lib/harness_env.rb`
-   `freeze_clock!`, `travel_to` the fixture clock for the whole process), so
-   a card built moments before the capture reads "less than a minute"
-   forever; an engine's live clock reads "20 days" for the same stored
-   timestamp, and no two engine runs agree either. The span's presence,
-   position and every surrounding byte still count: anchors are compared
-   exactly, so a real content change beside a span, a tail present on one
-   side only, or a different sentence shape still fails. Absolute dates
-   (`2026-09-19`) are NOT spans and stay exact — a date view is an encoding
-   the engine must get right, not clock noise.
-5. **N5 (canonical form over capture-host content).** In rendered HTML,
-   inside a render-error span's `title` attribute that begins with the Ruby
-   debug page marker (`&lt;h3&gt;Error message (visible to admin only)
-   &lt;/h3&gt;`), absolute paths (drive-letter, forward or back slashes) and
-   hexadecimal heap addresses become `N5#path` / `N5#addr`. The debug pages
-   embed the capture host's backtrace frames — the Ruby install, gem home
-   and harness checkout of the machine that recorded the capture — which
-   are that machine's filesystem, not the oracle's semantics; a frame path
-   token ends at its `:line:` separator. Every byte outside such a title,
-   and the error message inside it, still count. (Written when the engine
-   did not raise where the oracle raises; the raise posture has since made
-   the engine emit the same debug page, and N6 below now carries the frame
-   layer.)
-6. **N6 (canonical form over the host VM's stack identity).** In rendered
-   HTML, inside a render-error span's debug-page title, every backtrace
-   frame line within the div that follows the message paragraph — the
-   `<br>\n`-separated lines Ruby's `exception.backtrace * "<br>\n"` embeds —
-   becomes the single placeholder `N6#frame`. The two sides run different
-   languages: the oracle's frames are Ruby's (`path:line:in \`method'`,
-   boot-inclusive — dozens of frames from the capture process's startup
-   up), the engine's are V8's (`at fn (file:///path:line:col)`). A frame
-   line's text is the host VM's identity — language, paths, boot history —
-   in the same class as N5's capture-host content; nothing in the oracle's
-   semantics lives in it. The frame COUNT becomes the checkable invariant:
-   the `<br>`-separated structure inside the div stays compared, so a side
-   emitting a different number of its own frames still fails, as do the
-   heading, the error message and every byte outside the div.
-
-Everything else is compared exactly: every byte of HTML, every field of a
-write answer (the new card's id and every byte of mail text included), every
-column of every row (ids and timestamps as stored).
-
-**Evidence.** `node runner/compare-runs.mjs <runA> <runB>` compares two runs
-item by item, raw, and reports every difference no mask explains and, per
-mask, how many of the values it matched actually differed. For `synthetic-v1`
-two complete stock-oracle runs differ in 1,351 of 4,156 items, all in slot
-ids: 9,061 of 9,061 slot ids differ, and nothing else does. The result is in
-the expected outputs' manifest (`provenance.nondeterminism`), and a test
-checks that it covers exactly the masks `normalize.mjs` applies. A new mask
-needs the same evidence on the fixture that needs it. For `synthetic-v2`'s
-N3: two stock-oracle processes run over every op of that fixture that
-carries the token (30 of 2,557, 84 tokens; the capture commands are in
-`benchmarks/seconds-corpus/collapse-id-nondeterminism-evidence.md`) differ
-in 84 of 84 collapse ids and 442 of 442 slot ids, and in nothing else
-(0 unexplained). N4 and N5 are canonical forms over values that do NOT vary
-between two runs of the oracle on one machine — the frozen clock and the
-capture host's filesystem are constant within a capture — so their evidence
-shape is different: the committed capture bytes themselves carry the
-volatility (the oracle's frozen-clock spans, the capture host's absolute
-paths in the debug pages), and the measurement is over oracle-vs-engine
-pairs on the fixture. For `synthetic-v2`: 22 of 2,557 oracle ops carry a
-relative-time span ("less than a minute" ×179, "2 days" ×1); the four ops
-whose only divergence was the span grade identical after N4 and no
-identical op breaks; 8 ops carry the debug page (554 path tokens, 2 heap
-addresses) and at its original commit N5 closed no op — the six debug rows
-were structural then (the engine did not raise where the oracle raises);
-the raise posture closed that layer and N6 above now carries the frame
-layer. Full procedure,
-commands and counts in
-`benchmarks/seconds-corpus/capture-clock-and-debug-span-canonicalization-evidence.md`.
-N6's evidence shape is N4/N5's (the committed capture bytes carry the
-host-VM identity; the measurement is over oracle-vs-engine pairs): at the
-raise posture the 8 oracle debug pages carry 51-63 Ruby frames against the
-engine's 8-10 V8 frames (Node's `Error.stackTraceLimit` caps at 10), so the
-frame count — the invariant N6 checks — is the six raise-posture rows'
-recorded residual
-(`benchmarks/seconds-corpus/backtrace-frame-canonicalization-evidence.md`).
-
-Rules the first version applied and no longer does, because no oracle run
-varies in them: hexadecimal object addresses (never present in any recorded
-output), dropping a write answer's card id and trimming mail whitespace (no
-verdict depended on them), and rewriting new rows' ids symbolically and
-comparing timestamps as instants (the oracle's ids and timestamp text are
-identical between runs; an engine that stores another text form, or assigns
-other ids, differs from Ruby).
+Everything else is compared exactly: every byte of HTML, every row column,
+every error message.
 
 ## 5. The Ruby oracle
 
@@ -399,36 +229,6 @@ Renders run with `Rails.env` reporting production, as a served page does
 (inline render errors without debug detail); asset outputs are never
 recompiled during a session.
 
-### The oracle contract
-
-`oracle/contract.json` lists every way the oracle's process differs from a
-stock deck served through Decko's controller, each with where it is set and a
-class: `determinism` (pins a value that would vary between runs),
-`configuration` (a value a deck operator sets), `request` (makes the runner
-behave as one served request), `capture` (records mail instead of sending
-it), `platform` (a host workaround that reaches no recorded byte), `fixture`
-(a fixture data choice applied through Decko's own write path), and `patch`
-(changes what Decko does). The stock oracle has no `patch` entry.
-
-### Stock and patched expectations
-
-`fixtures/<name>/expected/` holds the stock oracle's outputs, always. An
-oracle that changes what Decko does (a gem patch, a changed mod
-configuration, a monkey patch) is a **patched variant**: its outputs go in
-`fixtures/<name>/expected-patched/<variant>/`, with every patch listed, and
-are graded only by naming that directory (`--expected`). The grader labels
-such a grade `PATCHED ORACLE "<variant>"` and records the variant in the
-report; a stock grade is always available beside it.
-
-Each expected directory has a `MANIFEST.json`
-(`node runner/manifest.mjs expected <fixtureDir> <expectedDir> [--variant <name> --patches <file>]`):
-the fixture digest it was captured on; the oracle's variant, patches and
-contract (with its sha256); the engine's ready line and the per-kind run
-records; the sha256 of every stored file and of its uncompressed content; and
-its provenance (when and how it was captured, the hashes of any files it
-supersedes, and the nondeterminism evidence of section 4). The grader
-refuses expected outputs whose files do not match it.
-
 Run natively (Ruby 3.3 with `bundle install` in `oracle/app`) through
 `adapters/ruby/adapter.json`, or in Docker:
 
@@ -438,8 +238,6 @@ docker run --rm -v "$PWD/reference-harness/fixtures/synthetic-v1:/fixture" \
   decko-reference-oracle:0.20.0 bash /oracle/build-deck.sh /fixture
 node reference-harness/runner/run.mjs --adapter reference-harness/adapters/ruby-docker/adapter.json \
   --fixture reference-harness/fixtures/synthetic-v1 --out reference-harness/fixtures/synthetic-v1/expected
-node reference-harness/runner/manifest.mjs expected reference-harness/fixtures/synthetic-v1 \
-  reference-harness/fixtures/synthetic-v1/expected
 ```
 
 ## 6. Versioning
@@ -449,18 +247,12 @@ node reference-harness/runner/manifest.mjs expected reference-harness/fixtures/s
   protocol.
 - **Deck format** (`"format": "decko-reference-deck/1"`): bumped when
   deck.json's meaning changes.
-- **Results format** (`"results_format": 2` in `run-meta.json`): bumped when
-  what the runner records changes. The grader reads one format.
 - **Fixture**: a fixture is immutable once its expected outputs are
-  published. Its `MANIFEST.json`
-  (`node runner/manifest.mjs fixture <fixtureDir>`, checked with `check`)
-  lists the sha256 of every input file (deck.json, the built deck and its
-  files, the upload sources, the operation lists) and one digest over them;
-  results and expected outputs record that digest. A changed generator or
-  operation list makes a new fixture name (`synthetic-v2`), so a pass rate
-  always names exactly what it was measured on.
-- **Oracle**: expected outputs record the oracle's versions, variant and
-  contract in their manifest. Capturing against another Decko release makes a
+  published. A changed generator or operation list makes a new fixture name
+  (`synthetic-v2`), so a pass rate always names exactly what it was measured
+  on.
+- **Oracle**: expected outputs record the oracle's versions in
+  `expected/run-meta.json`. Capturing against another Decko release makes a
   new fixture name.
 
 ## 7. Writing an adapter for another engine

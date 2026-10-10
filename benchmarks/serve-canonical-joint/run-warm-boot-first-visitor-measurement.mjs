@@ -153,7 +153,7 @@ writeFileSync(join(OUT_ROOT, "store-build-report.json"), JSON.stringify(buildRep
 // posture; one fresh self-terminating worker process per cell.
 const normalizeSlotIds = (html) => html
   .replace(/data-slot-id=&quot;[0-9a-f]{20}&quot;/g, "data-slot-id=SLOTID")
-  .replace(/data-slot-id=(["'])[0-9a-f]{20}\1/g, 'data-slot-id="SLOTID"');
+  .replace(/data-slot-id="[0-9a-f]{20}"/g, 'data-slot-id="SLOTID"');
 const slug = (path) => path.replace(/[^A-Za-z0-9]+/g, "_");
 
 const cells = [];

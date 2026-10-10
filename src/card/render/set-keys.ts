@@ -46,11 +46,10 @@ export interface SetKeysInput {
    * Card#rule? - the 06_rule.rb pattern_applies?. Ruby derives it from
    * storage (lib/card/rule/all.rb#rule?: the right part's type is Setting
    * and the left part's type is Set, or the preference shape). The render
-   * enrichment (src/card/render.ts enrichAndStore) supplies it from the
-   * memoized codename ids (ruleTypeIds); a compound card enriched before
-   * those ids exist gets no RULE key here, and lands in the engine's
-   * setKeysPendingRuleTypes set for the rule set-key repair (render.ts,
-   * the render-entry pass) to re-derive once the ids have folded.
+   * enrichment (src/card/render.ts enrichAndStore) must supply it; until
+   * it does, undefined means the RULE pattern does not apply and rule
+   * cards' slot classes miss the bare RULE key (the exact patch is in
+   * ).
    */
   isRule?: boolean;
   /**

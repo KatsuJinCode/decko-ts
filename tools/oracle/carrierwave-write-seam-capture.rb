@@ -12,7 +12,7 @@
 #
 # Determinism contract (same as capture.rb): seeding is create-if-missing,
 # timestamps are not captured, JSON is pretty-printed with deeply sorted keys.
-# The slot DOM id is stored as Ruby wrote it; comparisons mask its value.
+# The slot DOM id is normalized to RANDOMIZED at the recording layer.
 # The probes create additive cards only (Oracle Cw * + *all+*style + its
 # *asset output child) - no deletes, no rewrites of pre-existing cards.
 
@@ -24,10 +24,8 @@ OUT_PATH  = File.join(REPO_ROOT, "tmp", "carrierwave-write-seam-oracle.json")
 
 SLOT_ID_RE = /data-slot-id=(["'])\h+\1/.freeze
 
-# Slot ids are stored exactly as Ruby wrote them (value and quote style);
-# graders mask the random value at compare time (reference-harness N1).
 def normalize(html)
-  html
+  html.gsub(SLOT_ID_RE, 'data-slot-id="RANDOMIZED"')
 end
 
 def deep_sort(obj)

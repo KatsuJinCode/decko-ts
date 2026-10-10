@@ -131,12 +131,9 @@ describe("flat-record format-scope census (composed deck)", () => {
     // 152 -> 153: All::Html::Error's production :server_error — the
     // semantics-part3 lane's error-page ruling (4b7b1338), measured on the
     // merged tree (2026-10-08).
-    // 153 -> 154 (composed-mod view gaps, 2026-10-09): All::Error's html
-    // table registers :mini_unknown explicitly (html/error.rb:21-23, the
-    // icon-only createable link) alongside :unknown's html arm.
     // Abstract 30 -> 33, the same branch: Abstract::Items' :nav_item,
     // Abstract::List's :radio and Abstract::Script's :javascript_include_tag.
-    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(154);
+    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(153);
     expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(33);
   });
 

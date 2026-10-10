@@ -134,22 +134,8 @@
 
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import { CardActionError } from "../../actions/types.js";
-import type {
-  DeckoModManifest,
-  ModEventCard,
-  ModEventFn,
-  ModEventRegistration,
-} from "../mod-manifest.js";
+import type { DeckoModManifest, ModEventCard } from "../mod-manifest.js";
 import type { ModEventContext } from "../mod-event-dispatch.js";
-
-/** The set-module event declarations (the mod-events lane, 2026-10-08):
- *  stub-bodied, with the per-event reason on the declaration. Same shape
- *  as core-mod.ts's local helper. */
-function event(
-  decl: Omit<ModEventRegistration, "fn"> & { fn?: ModEventFn },
-): ModEventRegistration {
-  return { fn: () => undefined, ...decl };
-}
 
 // ---------------------------------------------------------------------------
 // set/all/recaptcha.rb - the error-code table + the pure predicates
@@ -650,13 +636,10 @@ function fieldNest(ctx: ViewContext, field: string): string {
 
 /** recaptcha_settings.rb:11-13 view :core:
  *  `[field_nest(:site_key), field_nest(:secret_key)]` - the array renders
- *  through the output join (content.rb:70-72 `Array.wrap(content).flatten
- *  .compact.join "\\n"`), one newline between the two field nests (the
- *  oracle's core bytes: `</div>\\n<div id="Xrecaptcha_setting-secret_key...`,
- *  the seconds corpus's composed-mod view-gap family, 2026-10-09). No view
- *  config (no unknown/cache/wrap on the Ruby `view :core` call). */
+ *  joined with no separator. No view config (no unknown/cache/wrap on the
+ *  Ruby `view :core` call). */
 const recaptchaSettingsCoreView: ViewFn = (ctx) =>
-  [fieldNest(ctx, "site key"), fieldNest(ctx, "secret key")].join("\n");
+  [fieldNest(ctx, "site key"), fieldNest(ctx, "secret key")].join("");
 
 // ---------------------------------------------------------------------------
 // event :recaptcha (set/all/recaptcha.rb:50-55) — the A9 port through the
@@ -805,25 +788,7 @@ const cardModRecaptcha: DeckoModManifest = {
       // set_recaptcha_site_key (:finalize, 7-9): no event surface in TS.
       // The portable semantics ride the exported
       // recaptchaFieldContentError / isRecaptchaSettingChild above.
-      //
-      // Events (mod-events lane 2026-10-08) — two STUBS with named
-      // reasons (recaptcha_setting.rb:1-9; the header's own disposition):
-      // - validate_recaptcha_field (:validate, when:
-      //   recaptcha_setting?) — the content-validation pure predicate IS
-      //   ported (recaptchaFieldContentError, the grammar /^[a-zA-Z0-9\-_]*$/
-      //   and the "invalid key" message); the event half is the
-      //   errors.add bookkeeping on the setting-card save, which has no
-      //   engine write-path surface.
-      // - set_recaptcha_site_key (:finalize, when: :recaptcha_setting?)
-      //   pushes the content into Card.config
-      //   (recaptcha_#{codename}=); the engine's recaptcha config is
-      //   composition input (ModEventRecaptchaGuard), never mutated by a
-      //   card save.
       setPath: "abstract/recaptcha_setting",
-      events: [
-        event({ event: "validate_recaptcha_field", at: "validate", when: "recaptcha_setting?" }),
-        event({ event: "set_recaptcha_site_key", at: "finalize", when: "recaptcha_setting?" }),
-      ],
     },
     {
       // card-mod-recaptcha-0.20.0/set/all/recaptcha.rb - event :recaptcha

@@ -44,7 +44,7 @@ describe("SessionStore round trip (create -> store -> resolve)", () => {
     const actor = await store.lookupSession(token);
     expect(actor).toEqual({ id: USER.id, name: USER.name });
     // expires_at = create instant + ttl (canonical UTC TEXT, schema convention)
-    expect(expiresAt).toBe("2026-09-20 13:00:00");
+    expect(expiresAt).toBe("2026-09-20 13:00:00.000");
   });
 
   it("stores only the token's sha256 digest — the raw token never lands in the DB", async () => {
@@ -68,7 +68,7 @@ describe("SessionStore round trip (create -> store -> resolve)", () => {
       "SELECT account_card_id, created_at FROM auth_sessions",
     );
     expect(row!.account_card_id).toBe(USER.id);
-    expect(row!.created_at).toBe("2026-09-20 12:00:00");
+    expect(row!.created_at).toBe("2026-09-20 12:00:00.000");
   });
 
   it("resolveActorFromToken is the lookupSession alias (same actor)", async () => {
@@ -86,7 +86,7 @@ describe("SessionStore round trip (create -> store -> resolve)", () => {
       defaultTtlSeconds: 30,
     });
     const { expiresAt } = await store.createSession(USER.id);
-    expect(expiresAt).toBe("2026-09-20 12:00:30");
+    expect(expiresAt).toBe("2026-09-20 12:00:30.000");
   });
 
   it("DEFAULT_SESSION_TTL_SECONDS is the documented 48h port default", async () => {
@@ -264,7 +264,7 @@ describe("SessionStore bookkeeping reads", () => {
     expect(row).toEqual({
       token_hash: await sha256Hex(token),
       account_card_id: USER.id,
-      created_at: "2026-09-20 12:00:00",
+      created_at: "2026-09-20 12:00:00.000",
       expires_at: expiresAt,
     });
     expect(await selectAuthSessionsRow(storage.driver, await sha256Hex("nope"))).toBeUndefined();

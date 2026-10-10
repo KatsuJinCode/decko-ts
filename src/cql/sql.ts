@@ -126,7 +126,7 @@ function renderQuery(query: QueryNode, ctx: GenContext, isRoot: boolean): string
   const full = isRoot && query.mods.return !== "count"; // CardQuery#full?
 
   // Order#order_directives (full queries only; fields feed the select list)
-  const orderDirectives = full ? orderDirectivesOf(query, ctx) : [];
+  const orderDirectives = full ? orderDirectivesOf(query) : [];
 
   // SqlStatement#fields
   const parts: string[] = [fullField(alias, query.mods.return)];
@@ -416,43 +416,23 @@ interface OrderDirective {
 }
 
 /** Order#order_directives / #order_field / #order_dir, plus the id
- *  tie-breaker (SINGLE-TABLE scans only), shaped by the viewer.
+ *  tie-breaker (SINGLE-TABLE scans only).
  *
  *  WHY THE TIE-BREAKER: Ruby's ORDER BY declares no tie-break
  *  (sql_statement/order.rb builds `ORDER BY <field> <dir>` only), so tied
- *  rows come out in SQLite's unspecified tier. The captured oracle bytes
- *  embed two DIFFERENT unspecified tiers, and both are reproducible:
- *
- *  - Permission-filtered scans (always_ok false): the statement carries
- *    `read_rule_id IN (...)`, and the capture deck's plan rode whichever
- *    index the sort allowed. A KEY primary (sort name/alpha) rode the key
- *    index itself — the ORDER BY is satisfied without a sorter, so tied
- *    rows stay in rowid order: `c0.id asc` (the Image member search's
- *    NULL-key cohort renders in id order 217,431,...,712). Any other
- *    primary (updated_at has no satisfying plan with the filter in
- *    flight) drove the read_rule_id index — one loop per list value,
- *    rows in rowid order — feeding a stable sort: `c0.read_rule_id asc,
- *    c0.id asc`. That is the *search page (`{"match":"$keyword",
- *    "sort":"relevance"}` → `ORDER BY updated_at desc`): its 2026-09-06
- *    15:26:37 tie cohort renders 393,1001,1708,2456,26026 then the
- *    7786-rule row 1334, and the 01:14:36 cohort 3523,3526 then
- *    12221(12223) then 1823(40702) — for both signed-in members.
- *  - Always-ok scans (the Administrator captures): no permission
- *    condition, and the captured ties follow the primary's direction —
- *    the updated_at index ride backward emits id DESC under a descending
- *    primary (the Administrator *search head-20 runs
- *    26026,2456,1708,1334,1265,1001,393), forward rides emit id ASC (the
- *    `ORDER BY key asc` capture heads). The tier is pinned to the primary
- *    directive's own direction.
- *
+ *  rows come out in SQLite's unspecified tier — physical rowid order. In
+ *  every real deck rowid IS cards.id (INTEGER PRIMARY KEY), so production
+ *  ties resolved in id-ascending order; the captured oracle bytes embed
+ *  exactly that (the Image member search's NULL-key cohort renders in
+ *  id order 217,431,...,712 — the exact `ORDER BY key, id` head).
  *  The ported decks break ties by THEIR physical order instead: the corpus
  *  scrub carries name/key as NULL for 40,090 of 49,829 rows
  *  (seedCard writes keyColumn NULL for unnamed rows,
  *  render-test-storage.ts), so every `sort: name` search over such rows
  *  ties on the NULL-key tier and the seeded deck's insertion (BFS closure)
  *  order decides — scrambling the head-20 the html limit renders.
- *  Appending the explicit tie-breaker pins the unspecified tier to the
- *  captured semantics on any schema; queries without ties are untouched.
+ *  Appending `<alias>.id ASC` pins the unspecified tier to the production
+ *  semantics; queries without ties are untouched.
  *
  *  WHY NOT ON JOINED STATEMENTS: with a join in the statement the
  *  unspecified tier is the JOIN EMISSION order — the driving table's rowid
@@ -471,49 +451,9 @@ interface OrderDirective {
  *  29740 off the limited listing — the somatic first-diff. better-sqlite3
  *  reproduces Ruby's emission exactly for the Ruby SQL shape (verified
  *  head-30 equal), so joined statements carry the bare Ruby ORDER BY. */
-function orderDirectivesOf(query: QueryNode, ctx: GenContext): OrderDirective[] {
+function orderDirectivesOf(query: QueryNode): OrderDirective[] {
   const sortMod = query.mods.sortBy ?? query.mods.sort;
-  if (!sortMod || sortMod.length === 0) {
-    // SORTLESS JOINED STATEMENTS. Ruby's statement carries no ORDER BY and
-    // the captured row order is the JOIN EMISSION order - the plan's
-    // driving-table sequence, reproducible by emitting Ruby's bare
-    // statement (node:sqlite reproduces Ruby's emission for the Ruby SQL
-    // shape on the same database file). Two captured families still carry
-    // the id-asc determinism pin, and the shapes are distinguishable by
-    // their join fields:
-    //
-    // - REFERENCE-join statements (card_references joins; the +*members
-    //   family): the tie tier flipped between engine builds whose
-    //   prepare-phase query sequences differ (the Help Desk +*members
-    //   listing: verification email (21783) and password reset email
-    //   (21787)); the Help Desk capture is id-ascending.
-    // - LOOKUP ties (the subquery joined by its id - the type tie's
-    //   `c0.type_id = c1.id`): the captured emission is the superquery's
-    //   rowid ride (one sub row, main rows in type_id-index order =
-    //   id asc; sql-generation.test.ts pins the graded shape).
-    //
-    // JUNCTION ties are the third shape, and the bare statement is theirs:
-    // right_plus/left_plus traverse a SUB-ROW SET (JOIN cards ON
-    // c0.id = c1.left_id), and the corpus's "Cards with accounts" search
-    // ({"right_plus": ":account"}, sortless) captured the emission order
-    // 232,18,1,611,617,913 - the cards_right_id_index ride on the
-    // subquery (right rows 239,244,249,612,618,914), which the previous
-    // blanket id-asc pin re-sorted to 1,18,232,... (the
-    // search-result-composition family's divergence). Sorted joined
-    // shapes keep their bare Ruby ORDER BY untouched either way.
-    const joins = renderedJoins(query);
-    if (joins.length > 0) {
-      const junctionTie = joins.every(
-        (j) =>
-          j.toTable === "cards" &&
-          j.fromField === "id" &&
-          (j.toField === "left_id" || j.toField === "right_id"),
-      );
-      if (!junctionTie) return [{ field: `${query.tableAlias}.id`, dir: "asc" }];
-      return [];
-    }
-    return [];
-  }
+  if (!sortMod || sortMod.length === 0) return [];
   const directives = sortMod.map((token, index) => {
     const field = orderField(query, token);
     return { field, dir: orderDir(query, token, index) };
@@ -523,22 +463,8 @@ function orderDirectivesOf(query: QueryNode, ctx: GenContext): OrderDirective[] 
   // Joined statements never take the tie-breaker at all (see above): their
   // unspecified tier must stay the join emission order.
   const idField = `${query.tableAlias}.id`;
-  if (directives.some((d) => d.field === idField) || renderedJoins(query).length !== 0) {
-    return directives;
-  }
-  if (ctx.options.alwaysOk === false) {
-    if (directives[0].field === `${query.tableAlias}.key`) {
-      // Key primary: the key index satisfies the ORDER BY outright — the
-      // filter rides along rowid-order, so the tier stays plain id asc.
-      directives.push({ field: idField, dir: "asc" });
-    } else {
-      // Any other primary: the read_rule_id index loop, then rowid within it.
-      directives.push({ field: `${query.tableAlias}.read_rule_id`, dir: "asc" });
-      directives.push({ field: idField, dir: "asc" });
-    }
-  } else {
-    // Always-ok scan: the unspecified tier follows the primary's direction.
-    directives.push({ field: idField, dir: directives[0].dir || "asc" });
+  if (!directives.some((d) => d.field === idField) && renderedJoins(query).length === 0) {
+    directives.push({ field: idField, dir: "asc" });
   }
   return directives;
 }

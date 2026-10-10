@@ -8,11 +8,9 @@
 //
 // A host passes the compiler it has:
 //   - Node hosts: coffeeNpmCompiler (src/server/coffee-npm-compiler.ts).
-//   - Edge runtimes: the same coffeeNpmCompiler — the npm package is pure
-//     JavaScript, so the edge bundles carry it; only its three Node-builtin
-//     requires (fs, vm, path, used by its file and eval helpers, never by
-//     compile) are stubbed at bundle time
-//     (deploy/shims/coffeescript-node-builtin-stub.mjs).
+//   - Edge runtimes have none today; a save that would compile CoffeeScript
+//     there is refused with a named error before anything is written, as a
+//     stylesheet rebuild is refused without the SCSS compiler.
 
 /** Compile CoffeeScript source to JavaScript; throws on a syntax error, as
  *  Ruby's compile_coffee raises Card::Error from the ExecJS failure. */

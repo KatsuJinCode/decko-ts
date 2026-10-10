@@ -45,7 +45,6 @@ database_id = "00000000-0000-0000-0000-000000000000"
 # The same serving switches as Bunny's live script 93646 after the
 # 2026-10-07 switch, with every page-cache tier off and writes off.
 [vars]
-DECKO_HAML_SLOT_STYLE = "separate"
 DECKO_WRITE_PATH = "0"
 DECKO_EDGE_CACHE = "0"
 DECKO_EDGE_GLOBAL_CACHE = "0"

@@ -81,8 +81,6 @@ import { handleFirstRunRequest, SETUP_PATH } from "./first-run-routes.js";
 import { originPolicyFromEnv, type OriginPolicy } from "./request-origin.js";
 import { configurePasswordHashing, passwordHashPolicyFromEnv } from "../card/auth/password-hash.js";
 import { expireRenderCachesAfterSave } from "./post-save-cache-expiry.js";
-import { libsassWasmCompiler } from "./libsass-wasm.js";
-import { coffeeNpmCompiler } from "./coffee-npm-compiler.js";
 
 /** The subset of the Workers `env` this surface reads. The D1 binding is the
  *  one the deploy already provisions; the two flags are optional [vars]. */
@@ -177,23 +175,6 @@ export const WORKERS_SIGNIN_PATH = "/_signin";
  *  grammar). encodeURIComponent leaves "*" alone, so the literal path
  *  matches. */
 const SIGNIN_FORM_ACTION = "/update/*signin";
-
-// ---------------------------------------------------------------------------
-// the edge compilers
-// ---------------------------------------------------------------------------
-//
-// The write surface's asset compilers (the scssCompiler / coffeeCompiler
-// engine options, src/card/assets/scss-compiler.ts). An edge runtime cannot
-// run the Node host's LibSass program (libsass-process.ts spawns one), so
-// the SCSS compile runs HERE through the vendored WebAssembly build of the
-// same LibSass 3.6.4 (libsass-wasm.ts; tools/libsass/build-wasm.mjs). The
-// CoffeeScript compiler is the npm package on every host — the same compiler
-// bytes the oracle's gem bundles; the bundlers stub its three Node-builtin
-// requires (see deploy/shims/coffeescript-node-builtin-stub.mjs). Both are
-// lazy: the wasm module compiles on first use, and a host that never saves
-// a stylesheet or a script pays only their closures.
-const edgeScssCompiler = libsassWasmCompiler();
-const edgeCoffeeCompiler = coffeeNpmCompiler();
 
 // ---------------------------------------------------------------------------
 // the gates
@@ -436,11 +417,6 @@ async function mountWrite(
         ctx.renderEngine.expireRenderCard(name);
         return ctx.renderEngine.render(name, "titled");
       },
-      // The edge compilers (the scssCompiler / coffeeCompiler seams): the
-      // WebAssembly LibSass and the npm coffeescript package, so stylesheet
-      // and script saves compile here instead of being refused.
-      scssCompiler: edgeScssCompiler,
-      coffeeCompiler: edgeCoffeeCompiler,
       // attachmentStore is deliberately ABSENT: a Workers deployment binds no
       // R2 bucket, so there is no storage seam to pass. An upload therefore
       // fails with the engine's programming-error rejection rather than

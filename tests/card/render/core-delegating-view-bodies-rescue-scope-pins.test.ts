@@ -53,9 +53,8 @@
 // The wired bodies changed no measured byte: the 31-entry probe set of the
 // open-clusters lane re-run at this tip moves nothing (receipt step 8).
 
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect } from "vitest";
 import { createRenderTestStorage, seedCard, type RenderTestStorage } from "./render-test-storage.js";
-import { allRenderingErrorsRaise, setRaiseAllRenderingErrors } from "../../../src/card/render/format.js";
 
 const DATE_CARD = "broken date card";
 const SKIN_CARD = "lux skin card";
@@ -93,24 +92,6 @@ const CORE_LABEL = `Error rendering: ${DATE_CARD} (core view)`;
 
 describe("the remaining core-delegating view bodies are rescue-scoped delegations", () => {
   let storage: RenderTestStorage;
-
-  // These pins hold the port to Ruby's STOCK rescue posture: quiet at any
-  // non-focal depth (error.rb:65-78 loud_error? = focal? ||
-  // config.raise_all_rendering_errors, whose stock default is false —
-  // cardio/railtie.rb:38). The engine's process default here is the
-  // development-loud posture (raise_all_rendering_errors=true, the mod-port
-  // raise contracts' world); under it every delegated rescue re-raises and
-  // the span comes from the nest-level catch instead. The scope+label shape
-  // pinned below is the stock posture's, so the pins set it explicitly and
-  // restore the process default afterwards.
-  let priorLoud: boolean | undefined;
-  beforeAll(() => {
-    priorLoud = allRenderingErrorsRaise();
-    setRaiseAllRenderingErrors(false);
-  });
-  afterAll(() => {
-    if (priorLoud !== undefined) setRaiseAllRenderingErrors(priorLoud);
-  });
 
   it("open_content (_render_core, base.rb:93-95) labels the span (core view), not (open_content view)", async () => {
     storage = await seed();

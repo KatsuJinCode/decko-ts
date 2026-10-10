@@ -11,7 +11,6 @@ import { LocalAttachmentStore } from "../attachments/attachment-store.js";
 import { applyDeckInflections } from "../name/inflect.js";
 import { ORACLE_DECK_INFLECTIONS } from "../name/oracle-deck-inflections.js";
 import { DeckoName } from "../name.js";
-import { join } from "node:path";
 import {
   structureRuleUniverseStatement,
   structureUniverseFromResults,
@@ -30,12 +29,10 @@ export interface BootedDeck {
 }
 
 /** `filesDir`: the deck's files directory (Card.paths["files"]), where saves
- *  that upload a file store it. `codedDir`: a mod directory whose
- *  data/files receives CODED storage files (storage_type :coded,
- *  attachment-store.ts coded input; coded.rb coded_dir). */
+ *  that upload a file store it. */
 export async function bootDeck(
   dbPath: string,
-  opts: { readonly?: boolean; filesDir?: string; codedDir?: string } = {},
+  opts: { readonly?: boolean; filesDir?: string } = {},
 ): Promise<BootedDeck> {
   applyDeckInflections(ORACLE_DECK_INFLECTIONS);
   const driver = new LocalSqliteDriver({ path: dbPath, readonly: opts.readonly ?? false });
@@ -75,13 +72,6 @@ export async function bootDeck(
     contents: structureUniverseFromResults(universe),
     ruleTypeIds: structureRuleTypesFromResults(universe),
   });
-  // The deck's mod event runtime rides every save, exactly as the serving
-  // write routes compose it (write-routes.ts servingModEventRuntime): Ruby's
-  // `decko eat` runs inside the booted app, so its saves walk the one event
-  // space. The import stays dynamic so a read-only use (sow) never loads the
-  // server surface.
-  const { servingModEventRuntime } = await import("../../server/write-routes.js");
-  const modEvents = await servingModEventRuntime();
   return {
     driver,
     fetcher,
@@ -90,11 +80,7 @@ export async function bootDeck(
         actor,
         ipAddress: null,
         now: now ?? (() => new Date()),
-        modEvents,
         ...(opts.filesDir !== undefined ? { attachmentStore: new LocalAttachmentStore(opts.filesDir) } : {}),
-        ...(opts.codedDir !== undefined
-          ? { codedAttachmentStore: new LocalAttachmentStore(join(opts.codedDir, "data", "files")) }
-          : {}),
       }),
     close: () => driver.close(),
   };

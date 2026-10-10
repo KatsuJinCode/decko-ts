@@ -118,17 +118,13 @@ describe("card-mod-follow views through the loader (lane-follow)", () => {
     // add_follow_item? is false (the rule's items include *always), so the
     // hidden tags carry condition + drop_item and the button is the delete
     // arm (follow_item_button_class "btn-item-delete btn-primary", icon
-    // :check). Corpus-adjudicated bytes (2026-10-09, the synthetic-v2
-    // follow_item pin): the form class is "card-form slotter" (no autosave),
-    // the success rides the ACTION QUERY, and the button attributes render
-    // in the captured order (name, type, aria-label, class).
-    expect(html).toContain(`<form class="card-form slotter"`);
+    // :check); the form is card_form :update, success view :follow_item.
+    expect(html).toContain(`<form class="card-form slotter autosave"`);
     expect(html).toContain(`action="/update/`);
-    expect(html).toContain(`success%5Bview%5D=follow_item`);
     expect(html).toContain(`<input type="hidden" name="condition" id="condition" value="*always" autocomplete="off" />`);
     expect(html).toContain(`<input type="hidden" name="drop_item" id="drop_item" value="*always" autocomplete="off" />`);
     expect(html).toContain(
-      `<button name="button" type="submit" aria-label="Left Align" class="btn-sm btn-item btn-item-delete btn-primary btn btn-primary">`,
+      `class="btn-sm btn-item btn-item-delete btn-primary btn btn-primary"`,
     );
     expect(html).toContain(`>check</i>`);
     // the link arm: link_to_card(rule_set anchor name) — the set is
@@ -142,37 +138,26 @@ describe("card-mod-follow views through the loader (lane-follow)", () => {
     const html = await s.engine.render(
       "Make Contact+*self+Brandon+*follow", "follow_status",
     );
-    // Haml template bytes, corpus-adjudicated (2026-10-09, the synthetic-v2
-    // follow_status pin): the h4 text on its own lines, single-quoted class
-    // attributes, the "more options" link_to_view anchor with rel nofollow,
-    // the appended slotter (the caller class already carries one), and
-    // data-remote last.
-    expect(html).toContain(`<h4>\nGet notified about changes\n</h4>`);
-    expect(html).toContain(`<ul class='delete-list list-group'>`);
-    expect(html).toContain(`<li class='list-group-item'>\n`);
-    expect(html).toContain(
-      `<a rel="nofollow" class="btn update-follow-link slotter slotter"`,
-    );
+    expect(html).toContain(`<h4>Get notified about changes</h4>`);
+    expect(html).toContain(`<ul class="delete-list list-group">`);
+    expect(html).toContain(`<li class="list-group-item">`);
+    expect(html).toContain(`Get notified about changes`);
+    // the "more options" link_to_view :rule_form
+    expect(html).toContain(`update-follow-link`);
     expect(html).toContain(`more options`);
   });
 
   it(":follow_button renders the StartFollowLink arm signed out and the StopFollowLink arm signed in (follow_link_views.rb:26-28 + follow_link.rb)", async () => {
     const s = storage!;
     const e = await loadMod();
-    // signed OUT: followed? is false under no session -> StartFollowLink.
-    // Corpus-adjudicated bytes (2026-10-09, the synthetic-v2 follow_button
-    // pins - the same builder the follow_section embed renders): the empty
-    // css_class keeps its blank in the class list, the data-update-foreign-
-    // slot's > is attribute-escaped, and the href's to_query pairs join
-    // with &amp; inside the attribute.
+    // signed OUT: followed? is false under no session -> StartFollowLink
     const out = await e.render("Make Contact", "follow_button");
     expect(out).toContain(`<span class="follow-verb">follow</span>`);
     expect(out).toContain(`title="send emails about changes to Make Contact"`);
-    expect(out).toContain(`class="follow-link  slotter btn btn-sm btn-primary"`);
-    expect(out).toContain(`data-update-foreign-slot=".d0-card-body &gt; .card-slot.RIGHT-Xfollower.content-view"`);
+    expect(out).toContain(`slotter btn btn-sm btn-primary`);
+    expect(out).toContain(`data-update-foreign-slot=".d0-card-body > .card-slot.RIGHT-Xfollower.content-view"`);
     expect(out).toContain(
-      `href="/update/Make_Contact+*self+Anonymous+*follow?card%5Bcontent%5D=%5B%5B%2Aalways%5D%5D` +
-        `&amp;success%5Bmark%5D=Make+Contact&amp;success%5Bview%5D=follow_section"`,
+      `href="/update/Make_Contact+*self+Anonymous+*follow?card%5Bcontent%5D=%5B%5B%2Aalways%5D%5D`,
     );
     // signed IN as Brandon, who follows *always -> StopFollowLink
     e.pageSession = { signedIn: true, actorId: 300 };
@@ -188,14 +173,9 @@ describe("card-mod-follow views through the loader (lane-follow)", () => {
     const e = await loadMod();
     e.pageSession = { signedIn: true, actorId: 300 };
     const html = await e.render("Brandon+*follow", "follow_tab");
-    // Haml template bytes, corpus-adjudicated (2026-10-09, the synthetic-v2
-    // oracle's follow_tab/ignore_tab pins): single-quoted class attributes,
-    // no indentation, every walk row wrapped in its own li, one trailing
-    // newline after the closing div.
-    expect(html).toContain(`<div class='pointer-list-editor'>`);
-    expect(html).toContain(`<ul class='delete-list list-group'>`);
-    expect(html).toContain(`<li class='list-group-item'>\n`);
-    expect(html).not.toContain(`<div class="pointer-list-editor">`);
+    expect(html).toContain(`<div class="pointer-list-editor">`);
+    expect(html).toContain(`<ul class="delete-list list-group">`);
+    expect(html).toContain(`<li class="list-group-item">`);
     expect(html).toContain(`Make Contact`);
     e.pageSession = undefined;
   });

@@ -1,5 +1,0 @@
-{
-  "name": "decko-ts-composed",
-  "description": "The TypeScript port with the composed default mod deck loaded (every ported card-mod manifest in the oracle bundle order), matching what stock Ruby Decko serves by virtue of bundling the card-mod gems. The seconds-corpus instrument renders through this adapter; the plain decko-ts adapter (no mods) stays the edge-parity reference.",
-  "command": ["node", "adapter.mjs"]
-}

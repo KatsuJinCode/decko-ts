@@ -52,7 +52,6 @@ import {
 import { MetricsRecorder, type MetricsRoute } from "./src/worker-metrics.js";
 import {
   decodeName,
-  decodeViewSegment,
   historyViewParams,
   mapRenderError,
   queryViewFromUrl,
@@ -412,7 +411,7 @@ function parseCardRoute(pathname: string): ParsedRoute {
 
   if (segments.length === 3 && segments[1] === "view") {
     const name = decodeName(segments[0]!);
-    const view = decodeViewSegment(segments[2]!);
+    const view = decodeName(segments[2]!);
     if (name === undefined || view === undefined || name === "" || view === "") {
       return { kind: "no-route" };
     }
@@ -421,7 +420,7 @@ function parseCardRoute(pathname: string): ParsedRoute {
 
   if (segments.length === 2) {
     const name = decodeName(segments[0]!);
-    const view = decodeViewSegment(segments[1]!);
+    const view = decodeName(segments[1]!);
     if (name === undefined || view === undefined || name === "" || view === "") {
       return { kind: "no-route" };
     }

@@ -213,22 +213,16 @@ describe("card-mod-follow through the mod loader (A/B)", () => {
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
     const html = await s.engine.render("*follow defaults", "confirm_update_all");
-    // Corpus-adjudicated bytes (2026-10-09, the synthetic-v2 view pin):
-    // the Ruby body is `wrap { alert(:info) { %( ... ) } }` - the SLOT
-    // wrap (the card-slot div with the view/set-key classes and the
-    // data-slot payload, whose show list the view-lane root enrollment
-    // fills), the bootstrap alert helper's role="alert", and the %( )
-    // literal's source whitespace verbatim (10-space h1/p indents, the
-    // 13-space continuation, the 8-space line before the closing tag).
-    // The corpus render also disproves the wave-1 "unreachable" note for
-    // this view: it dispatches for its card.
-    expect(html).toContain(
-      `<div id="Xfollow_default-confirm_update_all-view" class="card-slot confirm_update_all-view`,
+    // The Ruby body wraps an alert helper inside a `wrap do ... end`:
+    //   wrap { alert "info" { %(<h1>Are you sure you want to change the
+    //   default follow rules?</h1><p>You may choose to update all
+    //   existing users. This may take a while. </p>) } }
+    // The wrap helper emits <div>X</div>; the alert helper adds
+    // class="alert alert-info". The inner literal h1+p is preserved.
+    expect(html).toBe(
+      `<div class="alert alert-info"><h1>Are you sure you want to change the default follow rules?</h1>` +
+      `<p>You may choose to update all existing users. This may take a while. </p></div>`,
     );
-    expect(html).toContain(`SELF-Xfollow_default"`);
-    expect(html).toContain(`<div class="alert alert-info" role="alert">`);
-    expect(html).toContain(`\n          <h1>Are you sure you want to change the default follow rules?</h1>`);
-    expect(html).toContain(`\n             This may take a while. </p>\n        </div></div>`);
   });
 
   it("WITH the mod: :status on +*following renders the literal 'No following preference' fallback (right/following.rb:13-22)", async () => {

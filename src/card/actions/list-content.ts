@@ -27,11 +27,8 @@
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import { DeckoName } from "../name.js";
 
-/** Type codenames whose cards include Abstract::List. Skin is one:
- *  card-mod-style set/type/skin.rb includes Abstract::List, so a skin's
- *  references come from its content lines as items (the side-effects
- *  parity receipt: admin-create-old-skin, Ruby card_references+2). */
-export const LIST_TYPE_CODENAMES: ReadonlySet<string> = new Set(["pointer", "list", "mod", "skin"]);
+/** Type codenames whose cards include Abstract::List. */
+export const LIST_TYPE_CODENAMES: ReadonlySet<string> = new Set(["pointer", "list", "mod"]);
 /** Codenamed cards whose own (self) sets include Abstract::List:
  *  *recent settings (card-mod-rules set/self/recent_settings.rb) and the
  *  Mod card (card-1.110.0 mod/core set/self/mod.rb). */

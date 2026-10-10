@@ -9,13 +9,13 @@
 //   ActiveRecord attribute names (parity with the oracle matters more than
 //   TS style; the TABLES constant carries the field->column mapping seam if
 //   a divergence is ever needed).
-// * Datetimes are `string` — stored as UTC "YYYY-MM-DD HH:MM:SS[.ffffff]" TEXT
+// * Datetimes are `string` — stored as UTC "YYYY-MM-DD HH:MM:SS.mmm" TEXT
 //   (see db/schema.sqlite.sql header).
 // * MySQL tinyint(1) booleans are `0 | 1` — the storage shape SQLite hands
 //   back; the engine layer maps to/from `boolean` like ActiveRecord does.
 // * `| null` exactly where the MySQL column is nullable (DEFAULT NULL).
 
-/** UTC datetime stored as TEXT in ActiveRecord's form ("YYYY-MM-DD HH:MM:SS", plus ".ffffff" when the microseconds are not zero). */
+/** UTC datetime stored as fixed-width ISO-8601-ish TEXT ("YYYY-MM-DD HH:MM:SS.mmm"). */
 export type SQLDateTime = string;
 
 /** MySQL tinyint(1) as SQLite stores it. `null` when the column is nullable. */

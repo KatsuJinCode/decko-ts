@@ -122,26 +122,6 @@ interface DirectRuleCard {
   readonly rightId: number | null;
 }
 
-/**
- * A scoped rule-lookup overlay: composed rule-name KEY -> rule card id,
- * consulted by the derivation's candidate resolution before storage.
- *
- * This is the deliberate reproduction of Ruby's stale-cache window around a
- * rule RENAME: the rename's row write lands when the storage phase ends
- * (the storage_phase around_save yields AFTER the store and finalize
- * stages, lib/card/director/phases.rb:33-42), so event :cascade_read_rule —
- * which runs at finalize, before the write — re-derives every affected card
- * against the PRE-rename binding (Rule::Cache repopulates from the
- * not-yet-written row: the old "<set>+read" key still resolves to the
- * renamed card; verified against the oracle, tools/persistence/
- * rule-rename-lookup-trace.rb: the host's (*self, read) lookup returns the
- * renamed card id mid-cascade, and only a lookup after the save completes
- * sees the new tag). The port's cascade runs after its own row write, so it
- * carries the pre-write binding explicitly: only the renamed rule's own old
- * name is overlaid, only for the duration of this one cascade.
- */
-type RuleLookupOverlay = ReadonlyMap<string, number>;
-
 /** The storage + lexicon seam the derivation reads through. */
 export interface ReadRuleWriteDeps {
   readonly driver: SQLDatabaseDriver;
@@ -161,13 +141,12 @@ export interface ReadRuleWriteDeps {
 export async function deriveReadRuleRecord(
   deps: ReadRuleWriteDeps,
   card: ReadRuleCardInput,
-  overlay?: RuleLookupOverlay,
 ): Promise<ReadRuleRecord> {
-  const direct = await firstApplicableReadRule(deps, card, overlay);
+  const direct = await firstApplicableReadRule(deps, card);
   if (direct === undefined) {
     return { readRuleId: null, readRuleClass: null };
   }
-  const readRuleId = await permissionRuleId(deps, card, direct, overlay);
+  const readRuleId = await permissionRuleId(deps, card, direct);
   const readRuleClass = await directRuleClassName(deps, direct);
   return { readRuleId, readRuleClass };
 }
@@ -204,11 +183,10 @@ async function permissionRuleId(
   deps: ReadRuleWriteDeps,
   card: ReadRuleCardInput,
   direct: DirectRuleCard,
-  overlay?: RuleLookupOverlay,
 ): Promise<number | null> {
   const compound = DeckoName.parse(card.name).isCompound;
   if (compound && direct.content !== null && LEFT_RULE_CONTENT.test(direct.content)) {
-    return leftPermissionRuleId(deps, card, overlay);
+    return leftPermissionRuleId(deps, card);
   }
   return direct.id;
 }
@@ -220,7 +198,6 @@ async function permissionRuleId(
 async function leftPermissionRuleId(
   deps: ReadRuleWriteDeps,
   card: ReadRuleCardInput,
-  overlay?: RuleLookupOverlay,
 ): Promise<number | null> {
   const leftName = DeckoName.parse(card.name).leftName;
   if (leftName === undefined) {
@@ -238,7 +215,6 @@ async function leftPermissionRuleId(
       const derived = await deriveReadRuleRecord(
         deps,
         await rowCardInput(deps, leftRow),
-        overlay,
       );
       return derived.readRuleId;
     }
@@ -249,7 +225,7 @@ async function leftPermissionRuleId(
     name: leftName.s,
     typeId: null,
     isNew: true,
-  }, overlay);
+  });
   return direct?.id ?? null;
 }
 
@@ -260,7 +236,6 @@ async function leftPermissionRuleId(
 async function firstApplicableReadRule(
   deps: ReadRuleWriteDeps,
   card: ReadRuleCardInput,
-  overlay?: RuleLookupOverlay,
 ): Promise<DirectRuleCard | undefined> {
   const patternInput = await patternCardInput(deps, card);
   const candidates = ruleNamesForCard(patternInput, "*read");
@@ -270,8 +245,7 @@ async function firstApplicableReadRule(
     candidates.map((name) => DeckoName.parse(name).key),
   );
   for (const name of candidates) {
-    const key = DeckoName.parse(name).key;
-    const id = overlay?.get(key) ?? resolved.get(key);
+    const id = resolved.get(DeckoName.parse(name).key);
     if (id === undefined) continue;
     const row = await fetchCardsRow(deps.driver, id);
     if (row === undefined || row.trash !== 0) continue;
@@ -355,14 +329,12 @@ export async function updateReadRule(
   deps: ReadRuleWriteDeps,
   cardId: number,
   changed?: Set<number>,
-  overlay?: RuleLookupOverlay,
 ): Promise<void> {
   const row = await fetchCardsRow(deps.driver, cardId);
   if (row === undefined || row.trash !== 0) return;
   const derived = await deriveReadRuleRecord(
     deps,
     await rowCardInput(deps, row),
-    overlay,
   );
   // Card.where(id: id).update_all ... (permissions.rb:15-16) — unconditional,
   // without_timestamps (permissions.rb:190-195): updated_at/updater_id stay.
@@ -377,7 +349,7 @@ export async function updateReadRule(
   // update_field_read_rules (permissions.rb:166-172): the fields whose own
   // applicable read rule says "_left" re-derive. (The type_id_changed? half
   // of the guard cannot fire here — update_read_rule never changes a type.)
-  await cascadeLeftRuleFieldReadRules(deps, cardId, changed, overlay);
+  await cascadeLeftRuleFieldReadRules(deps, cardId, changed);
 }
 
 /** set_field_read_rules (permissions.rb:7-9): a type-changing update runs
@@ -400,7 +372,6 @@ async function cascadeLeftRuleFieldReadRules(
   deps: ReadRuleWriteDeps,
   cardId: number,
   changed?: Set<number>,
-  overlay?: RuleLookupOverlay,
 ): Promise<void> {
   for (const fieldId of await fieldCardIds(deps, cardId)) {
     if (changed?.has(fieldId)) continue;
@@ -409,12 +380,11 @@ async function cascadeLeftRuleFieldReadRules(
     const direct = await firstApplicableReadRule(
       deps,
       await rowCardInput(deps, fieldRow),
-      overlay,
     );
     if (direct === undefined || direct.content === null) continue;
     if (!LEFT_RULE_CONTENT.test(direct.content)) continue;
     changed?.add(fieldId);
-    await updateReadRule(deps, fieldId, changed, overlay);
+    await updateReadRule(deps, fieldId, changed);
   }
 }
 
@@ -442,7 +412,6 @@ export async function cascadeReadRuleAfterRuleSave(
   deps: ReadRuleWriteDeps,
   ruleCardRow: CardsRow,
   nameOrTrashChanging: boolean,
-  overlay?: RuleLookupOverlay,
 ): Promise<void> {
   if (!nameOrTrashChanging) return; // read.rb:11
   if (!(await isStandardRuleCardRow(deps, ruleCardRow))) return; // when: :rule?
@@ -460,7 +429,7 @@ export async function cascadeReadRuleAfterRuleSave(
     for (const memberId of await setMemberIds(deps, setRow)) {
       if (changed.has(memberId)) continue;
       changed.add(memberId);
-      await updateReadRule(deps, memberId, changed, overlay);
+      await updateReadRule(deps, memberId, changed);
     }
   }
 
@@ -474,7 +443,7 @@ export async function cascadeReadRuleAfterRuleSave(
   for (const { id } of pointing.rows) {
     if (changed.has(id)) continue;
     changed.add(id);
-    await updateReadRule(deps, id, changed, overlay);
+    await updateReadRule(deps, id, changed);
   }
 }
 

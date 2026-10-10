@@ -579,11 +579,7 @@ describe("error shapes over HTTP", () => {
   it("shows validation errors as the errors view words them", async () => {
     const res = await call(baseUrl, "POST", "/", { form: { "card[name]": "" }, token: joeToken });
     expect(res.status).toBe(422);
-    expect(res.body).toContain("card-error-msg");
-    // card-mod-format set/all/html/error.rb standard_errors: the 422
-    // validation body is the errors view's alert (layout/set/all/alert.rb),
-    // one "<p><strong>KEY:</strong> message</p>" per error.
-    expect(res.body).toContain("<strong>NAME:</strong> can't be blank");
+    expect(res.body).toContain("<pre>NAME: can't be blank</pre>");
   });
 
   it("missing card on DELETE: 422 (Card::Error::UserError)", async () => {

@@ -35,10 +35,8 @@ OUT_PATH = File.join(REPO_ROOT, "fixtures", "captured",
                      "codename-reset-and-read-rule-union-oracle.json")
 SLOT_ID_RE = /data-slot-id=(["'])\h+\1/.freeze
 
-# Slot ids are stored exactly as Ruby wrote them (value and quote style);
-# graders mask the random value at compare time (reference-harness N1).
 def normalize(html)
-  html
+  html.gsub(SLOT_ID_RE, 'data-slot-id="RANDOMIZED"')
 end
 
 def raw_sql(sql)

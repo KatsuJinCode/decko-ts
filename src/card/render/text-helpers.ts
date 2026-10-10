@@ -217,31 +217,15 @@ export function truncate(text: string, length: number = 30, omission: string = "
 /** Ruby normalize_distance_of_time_argument_to_time (date_helper.rb:706-714):
  *  Numeric -> Time.at(value); respond_to(:to_time) -> value.to_time();
  *  otherwise raise. JS doesn't have a Time class; we use Date. Unix
- *  epoch seconds are converted to milliseconds; strings pass through
- *  Date's parser (SQL timestamp strings as UTC, see below). */
+ *  epoch seconds are converted to milliseconds; ISO strings pass through
+ *  Date's parser. */
 function normalizeTime(value: Date | number | string): Date {
   if (value instanceof Date) return value;
   if (typeof value === "number") {
     // Ruby uses seconds (Unix epoch); JS Date uses milliseconds.
     return new Date(value * 1000);
   }
-  // String: SQL timestamp form ("2026-09-19 12:00:00", the cards/acts row
-  // shape) is UTC - the schema stores UTC (ActiveRecord's
-  // default_timezone convention; the same rule the history module's
-  // parseActedAt and card-mod-format's parseSqlDate apply), and JS's
-  // space-form Date constructor would read it machine-local - against the
-  // UTC frozen capture clock the corpus renders answered "about 7 hours"
-  // where the oracle pins "less than a minute". Explicit zone suffixes
-  // (Z, +hh:mm) keep Date's parser.
-  if (!/[zZ]$|[+-]\d{2}:?\d{2}$/.test(value)) {
-    const m = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/.exec(value);
-    if (m !== null) {
-      return new Date(
-        Date.UTC(+m[1]!, +m[2]! - 1, +m[3]!, +m[4]!, +m[5]!, +m[6]!),
-      );
-    }
-  }
-  // ISO/RFC -> Date's parser.
+  // String: ISO/RFC -> Date's parser.
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) {
     throw new Error(`distance_of_time_in_words: cannot parse ${JSON.stringify(value)}`);

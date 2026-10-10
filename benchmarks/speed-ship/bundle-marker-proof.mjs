@@ -66,7 +66,7 @@ try {
   const writer = new DatabaseSync(scratch);
   const footer = writer.prepare("SELECT id, db_content FROM cards WHERE key = ? AND trash = 0").get("*footer");
   if (!footer) throw new Error("no *footer card in the mirror");
-  const SLOT = /data-slot-id=(["'])[0-9a-f]+\1/g;
+  const SLOT = /data-slot-id="[0-9a-f]+"/g;
   // Boot the isolate's deck first, so its one-time boot trips are not
   // counted against the first page.
   await (await globalThis.__served(new Request("https://edge.test/_status"))).text();

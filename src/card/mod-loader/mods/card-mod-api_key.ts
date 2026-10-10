@@ -70,21 +70,8 @@
 //     not exercised in the headless render path
 
 import type { ViewContext, ViewFn } from "../../render/format.js";
-import type {
-  DeckoModManifest,
-  ModEventFn,
-  ModEventRegistration,
-} from "../mod-manifest.js";
+import type { DeckoModManifest } from "../mod-manifest.js";
 import { superView } from "../mod-view-helpers.js";
-
-/** The set-module event declarations (the mod-events lane, 2026-10-08):
- *  stub-bodied, with the per-event reason on the declaration. Same shape
- *  as core-mod.ts's local helper. */
-function event(
-  decl: Omit<ModEventRegistration, "fn"> & { fn?: ModEventFn },
-): ModEventRegistration {
-  return { fn: () => undefined, ...decl };
-}
 
 // ---------------------------------------------------------------------------
 // The mod's config/locales/en.yml strings, inlined (no i18n surface in TS).
@@ -364,24 +351,7 @@ const cardModApiKey: DeckoModManifest = {
   setModules: [
     {
       // card-mod-api_key-0.20.0/set/right/api_key.rb
-      //
-      // Events (mod-events lane 2026-10-08) — two STUBS with a shared
-      // named reason: the port has no API-key AUTH runtime
-      // (Auth.find_account_by_api_key, api_key.rb:14-18 api_key_taken?,
-      // and the authenticate_api_key ladder :34-45 are account-lookup
-      // machinery the engine has not ported), so neither the
-      // trigger-driven regeneration nor the uniqueness validation has a
-      // surface to run against:
-      // - generate_api_key (:prepare_to_validate, trigger: :required;
-      //   api_key.rb:4-6 — SecureRandom.base64 tr "+/=" -> "Qrt" via
-      //   generate).
-      // - validate_api_key (:validate, on: :save, changed: :content;
-      //   :8-12 — the /^\w{20,}$/ grammar + api_key_taken? uniqueness).
       setPath: "right/api_key",
-      events: [
-        event({ event: "generate_api_key", at: "prepare_to_validate", trigger: "required" }),
-        event({ event: "validate_api_key", at: "validate", on: ["save"], changed: ["content"] }),
-      ],
       formats: {
         html: {
           views: [

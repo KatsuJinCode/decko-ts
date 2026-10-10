@@ -45,18 +45,12 @@ export function assignActor(
 }
 
 /**
- * UTC datetime TEXT for SQLite storage, in exactly the form ActiveRecord
- * writes: `quoted_date` (activerecord-7.2 connection_adapters/abstract/
- * quoting.rb:184-198) is `value.to_fs(:db)`, "YYYY-MM-DD HH:MM:SS", plus
- * "." and six microsecond digits only when the microseconds are not zero.
- * A JavaScript Date carries milliseconds, so the fraction, when present, is
- * the milliseconds followed by "000". Rows the port and Ruby write to one
- * deck therefore hold the same text for the same instant, and compare and
- * sort the same way as text.
+ * Canonical UTC datetime TEXT for SQLite storage — "YYYY-MM-DD HH:MM:SS.mmm"
+ * (db/schema.sqlite.sql mapping decision: space separator, fixed width,
+ * lexicographic order == chronological order). Ruby writes Rails datetime
+ * timestamps (microsecond precision in MySQL); the SQLite schema stores
+ * milliseconds.
  */
 export function sqlDateTime(date: Date): SQLDateTime {
-  const iso = date.toISOString();
-  const seconds = `${iso.slice(0, 10)} ${iso.slice(11, 19)}`;
-  const ms = date.getUTCMilliseconds();
-  return ms === 0 ? seconds : `${seconds}.${String(ms).padStart(3, "0")}000`;
+  return date.toISOString().replace("T", " ").replace("Z", "").slice(0, 23);
 }

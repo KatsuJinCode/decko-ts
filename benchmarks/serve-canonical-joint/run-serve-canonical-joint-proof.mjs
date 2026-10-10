@@ -257,7 +257,7 @@ console.log("FIRST-POSITION phase complete (44 fresh-engine single-page runs)");
 // --- grade --------------------------------------------------------------------
 const normalizeSlotIds = (html) => html
   .replace(/data-slot-id=&quot;[0-9a-f]{20}&quot;/g, "data-slot-id=SLOTID")
-  .replace(/data-slot-id=(["'])[0-9a-f]{20}\1/g, 'data-slot-id="SLOTID"');
+  .replace(/data-slot-id="[0-9a-f]{20}"/g, 'data-slot-id="SLOTID"');
 
 const slug = (path) => path.replace(/[^A-Za-z0-9]+/g, "_");
 // Request layout: [0]=/_status, [1..22]=cold pass, [23..44]=warm pass.

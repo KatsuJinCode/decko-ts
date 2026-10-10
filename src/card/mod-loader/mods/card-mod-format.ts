@@ -127,8 +127,8 @@
 //   set/all/html/wrap.rb (the wrap pipeline is the slot machinery),
 //   set/all/html/show.rb (page-view rails), set/all/html/error.rb's
 //   :not_found frame). :server_error and :debug_server_error are
-//   registered on all/html/error; the debug view raises stock Ruby's
-//   BetterErrors NameError (render/debug-server-error.ts).
+//   registered on all/html/error; the debug view deliberately renders
+//   :server_error (render/debug-server-error.ts).
 // - set/all/title.rb :title_link :title_no_link html block +
 //   helpers: rails (link_to_card + the card-title span rendering);
 //   :title in the html block has a `show_view?(:title_link, :hide)`
@@ -198,12 +198,7 @@
 //   vendor/*: rails (haml template compilation, asset pipeline,
 //   i18n, seed data)
 
-import {
-  ONE_LINE_CHARACTER_LIMIT,
-  timeAgoInWords as sharedTimeAgoInWords,
-  truncate,
-} from "../../render/text-helpers.js";
-import { cardWallClockNow } from "../../wall-clock.js";
+import { ONE_LINE_CHARACTER_LIMIT, truncate } from "../../render/text-helpers.js";
 import { modBarRightSections } from "./core-admin-runtime.js";
 import { debugServerErrorView, serverErrorHtmlView } from "../../render/debug-server-error.js";
 import {
@@ -232,18 +227,12 @@ import { UnsupportedViewError } from "../../render/format.js";
 // :url_link anchor escapes its href the way Rails' content_tag does
 // (links.rb:101-106).
 import { h } from "../../render/slot-html.js";
-import { quietDenial } from "../../permissions/view-perms.js";
 import { DeckoName } from "../../name.js";
 // 2026-10-01::link/:nav_link share the flat
 // HTML_VIEWS bodies (the urlView doctrine at :300-304 of this file) — one
 // fn per view, so the two registrations cannot drift again.
-import {
-  HTML_VIEWS,
-  linkView,
-  navLinkView,
-  unknownView as htmlErrorUnknownView,
-  miniUnknownView as htmlErrorMiniUnknownView,
-} from "../../render/views.js";import { popoverLink } from "./card-mod-bootstrap.js";
+import { HTML_VIEWS, linkView, navLinkView } from "../../render/views.js";
+import { popoverLink } from "./card-mod-bootstrap.js";
 import type {
   DeckoModManifest,
   ModSetModuleFile,
@@ -253,22 +242,18 @@ import { cardFormShell } from "../mod-form-substrate.js";
 import { allAdminConfigCodenamesOfCategory } from "./core-mod.js";
 import { CardActionError } from "../../actions/types.js";
 import { jsonValidationMessage, numberValidationMessage } from "./format-validations.js";
-import { envOriginForSurface } from "../../render/deck-origin.js";
 
 // ---------------------------------------------------------------------------
 // helpers (Ruby source cited per block)
 // ---------------------------------------------------------------------------
 
-/** set/all/base.rb:59-68 date_view: `voo.variant ? date.strftime(voo.variant)
+/** set/all/base.rb:65-71 date_view: `voo.variant ? date.strftime(voo.variant)
  *  : time_ago_in_words(date)`. The variant branch returns the strftime
  *  output (e.g. "%Y-%m-%d"); the default returns time_ago_in_words
- *  ("less than a minute" shape, no "ago" tail). The non-variant arm goes
- *  through the byte-exact Rails port (render/text-helpers.ts
- *  timeAgoInWords, date_helper.rb:95-165) with the engine's clock seam
- *  (cardWallClockNow) as "now" - Ruby reads Time.now at render time, and
- *  the capture harness freezes that instant (deck.json clock ->
- *  setCaptureWallClock). Production is unchanged: unset, the seam IS the
- *  real clock. */
+ *  ("about 5 minutes ago" shape). The headless engine has no
+ *  time_ago_in_words; a non-variant render falls through to the
+ *  ISO-formatted date (documented divergence - the engine's
+ *  formatDateCore reads the same Date.toISOString().substring(0,10)). */
 function dateView(ctx: ViewContext, sqlDate: string | undefined): string {
   if (sqlDate === undefined || sqlDate === "") return "";
   const date = parseSqlDate(sqlDate);
@@ -277,25 +262,15 @@ function dateView(ctx: ViewContext, sqlDate: string | undefined): string {
   if (typeof variant === "string") {
     return formatStrftime(date, variant);
   }
-  return sharedTimeAgoInWords(date, cardWallClockNow());
+  return formatDateCore(date.toISOString());
 }
 
 /** parseSqlDate: accept either a Date (the CardRecord surface the
  *  fetch layer hydrates some dates into) or a SQL timestamp string
- *  ("2026-09-19 12:00:00.000"). SQL timestamp strings parse as UTC -
- *  the schema stores UTC and JS's space-form Date constructor would
- *  otherwise read them as machine-local (the same convention the
- *  history module's parseActedAt pins). Returns null for any
- *  unparseable input. */
+ *  ("2026-09-19 00:00:00.000"). Returns null for any unparseable
+ *  input. */
 function parseSqlDate(value: string | Date): Date | null {
   if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
-  const m =
-    /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/.exec(value);
-  if (m !== null) {
-    return new Date(
-      Date.UTC(+m[1]!, +m[2]! - 1, +m[3]!, +m[4]!, +m[5]!, +m[6]!),
-    );
-  }
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
@@ -313,6 +288,16 @@ function formatStrftime(date: Date, fmt: string): string {
     .replace(/%H/g, pad(date.getUTCHours()))
     .replace(/%M/g, pad(date.getUTCMinutes()))
     .replace(/%S/g, pad(date.getUTCSeconds()));
+}
+
+/** Local copy of the formatDateCore emitter (views.ts#formatDateCore is
+ *  private to the render package). The card-mod-format date views
+ *  invoke the same emitter when voo.variant is absent. */
+function formatDateCore(iso: string): string {
+  // The engine's formatDateCore slices the first 10 chars of an ISO
+  // timestamp ("2026-09-19"); the time_ago_in_words path is a
+  // documented divergence.
+  return iso.substring(0, 10);
 }
 
 // ---------------------------------------------------------------------------
@@ -635,28 +620,14 @@ const rawView: ViewFn = ({ fmt }) => fmt.renderRaw();
 /** set/all/base.rb:101-103 view :labeled_content, unknown: :mini_unknown:
  *  `render_core`. The base body is the core view's bytes; the
  *  unknown-card substitution routes unknown cards to :mini_unknown.
- *  In the engine the core view is registered separately; this port runs
- *  the core through the delegated-render seam (renderDelegated): Ruby's
- *  render_core is a METHOD delegation (method_missing -> render! -> its
- *  own wrap_and_render rescue), so a raising core carries the quiet
- *  render-error span inside this view's own output — the seconds corpus's
- *  TooDeep family (2026-10-09) pinned the span at the body of the
- *  depth-capped card, which only the delegation boundary produces. */
-const labeledContentView: ViewFn = ({ fmt }) => fmt.renderDelegated("core");
+ *  In the engine the core view is registered separately; this port
+ *  just runs the core (renderCore would call into HTML_VIEWS.core, so
+ *  the headless port calls renderView("core")). */
+const labeledContentView: ViewFn = ({ fmt }) => fmt.renderView("core");
 
 /** set/all/base.rb:105-107 view :titled_content, unknown: :blank:
- *  `render_core`. Same body as :labeled_content. `render_core` is a
- *  method_missing -> api_render -> render! delegation (method_delegation.rb
- *  :41-47), so the body's render opens its OWN wrap_and_render rescue scope
- *  (render.rb:96-100): a raising nested render — the corpus's too-deep
- *  UserError from monitor_depth (format/error.rb:33-40) — becomes THIS
- *  view's return value (the quiet render-error span, error.rb:75-78) while
- *  every enclosing wrap survives (the titled slot and its d0-card-body
- *  div, oracle synthetic-v2 Chain/Loop page bytes). renderDelegated is that
- *  rescue-scoped delegation; the former renderView call let the error
- *  escape to the grandparent nest's catch, which replaced the whole card
- *  slot with the span. */
-const titledContentView: ViewFn = ({ fmt }) => fmt.renderDelegated("core");
+ *  `render_core`. Same body as :labeled_content. */
+const titledContentView: ViewFn = ({ fmt }) => fmt.renderView("core");
 
 /** set/all/base.rb:109-111 view :blank, perms: :none:
  *  the literal empty string. (HTML_VIEWS already has a blankView; this
@@ -665,10 +636,9 @@ const titledContentView: ViewFn = ({ fmt }) => fmt.renderDelegated("core");
 const blankView: ViewFn = () => "";
 
 /** set/all/base.rb:125-127 view :labeled: `"#{card.name}: #{_render_
- *  labeled_content}"` — _render_labeled_content is the same rescue-scoped
- *  method delegation (see :labeled_content above). */
+ *  labeled_content}"`. */
 const labeledView: ViewFn = ({ fmt }) =>
-  `${fmt.card.name.s}: ${fmt.renderDelegated("labeled_content")}`;
+  `${fmt.card.name.s}: ${fmt.renderView("labeled_content")}`;
 
 /** set/all/html.rb:5-7 and set/type/cardtype.rb:2-4 view :type, unknown:
  *  true: `link_to_card card.type_card, nil, class: "cardtype"` - the html
@@ -708,38 +678,12 @@ const htmlLabeledView: ViewFn = (ctx) => (ENGINE_LABELED === undefined ? "" : EN
 const compactMissingView: ViewFn = ({ fmt }) =>
   `<span class="text-muted">${h(fmt.card.name.from(...fmt.contextNames))}</span>`;
 
-/** set/all/error.rb:6-8 view :unknown, perms: :none, cache: :never, and the
- *  html override set/all/html/error.rb:10-12 (`createable { wrap {
- *  unknown_link "#{unknown_icon} #{render_title}" } }`). The composed deck
- *  used to register the BASE arm (the literal "") on the html table, so
- *  every unknown-card nest rendered empty where the oracle carries the
- *  card-slot unknown-view frame (the seconds corpus's composed-mod
- *  view-gap family, 2026-10-09: 244 pinned ops, the unknown-frame surface
- *  the largest single slice). The html table now registers the html arm —
- *  the createable-gated frame in render/views.ts (unknownCardCreatable →
- *  "" exactly when Ruby denies create, the same positive check), whose
- *  bytes were oracle-verified against the search-list capture before this
- *  corpus existed. The base "" arm remains what the non-html formats and
- *  the email overrides serve. */
 /** set/all/error.rb:6-8 view :unknown, perms: :none, cache: :never:
- *  the literal empty string. The BASE-format body. The HTML format
- *  REDEFINES :unknown (set/all/html/error.rb:15-17, the createable
- *  unknown_link wrap) and every html render dispatches the html body —
- *  which is the only format this port renders — so the set/all/error
- *  registration below serves the html body (render/views.ts's unknownView, the arm this file registers as unknownView)
- *  htmlFormatUnknownView) and this base body stays unrendered on the
- *  ported surface. Registering the base body under set/all would shadow
- *  the html view on the whole composed surface: the chain's set/all block
- *  matches every card, and the base table (which carries the html body)
- *  is only consulted when no chain entry answers. That shadowing was the
- *  corpus's admin *search skin box defect: a skin bar's absent +Image
- *  nests :boxed, whose core substitutes to :unknown, and the engine
- *  rendered an empty box where the oracle renders the box with the
- *  createable link inside. */
-const unknownView: ViewFn = htmlErrorUnknownView;
+ *  the literal empty string. The HTML override
+ *  (set/all/html/error.rb:10-12) wraps in a createable link; the
+ *  BASE view is bare "". */
+const unknownView: ViewFn = () => "";
 
-/** html/error.rb:21-23 :mini_unknown — the icon-only createable link. */
-const miniUnknownView: ViewFn = htmlErrorMiniUnknownView;
 /** set/all/error.rb:10-12 view :server_error, perms: :none:
  *  `t(:format_server_error)`. The headless engine has no i18n;
  *  the locale token renders as the bare key (documented divergence
@@ -753,17 +697,6 @@ const serverErrorView: ViewFn = () => "format.server_error";
  *  tracking); the locale token renders as the bare key. */
 const denialView: ViewFn = () => "format.denial";
 
-/** html/error.rb:75-77 view :denial — `focal? ? loud_denial : quiet_denial`:
- *  the html arm the corpus's view-lane :denial render carries
- *  (`<span class="denied"><!-- Sorry, you don't have permission () --></span>`,
- *  @denied_task unset on an explicit view render, so the parens are empty).
- *  The focal arm is the loud frame the substituted denial path already
- *  renders on main formats (RenderFormat#mainLoudDenialHtml, the dual-lane
- *  denial pages' golden). The base token arm above stays what the
- *  non-html formats serve. */
-const denialHtmlView: ViewFn = ({ fmt, voo }) =>
-  fmt.isMain ? fmt.mainLoudDenialHtml(voo!) : quietDenial("");
-
 /** set/all/error.rb:18-21 view :not_found, perms: :none:
  *  `t(:format_not_found_named, cardname: ...)`. The cardname picks
  *  safe_name when the card's name is present, or the no-name locale
@@ -776,14 +709,6 @@ const notFoundView: ViewFn = () => "format.not_found_named";
  *  engine has no root.error_status surface; the locale token renders
  *  as the bare key. */
 const badAddressView: ViewFn = () => "format.bad_address";
-
-/** html/error.rb's :bad_address arm — `root.error_status = 404` and the
- *  rendered text "404: Bad Address" (the corpus's view-lane bytes). The
- *  engine's page-status surface is the port's root.error_status. */
-const badAddressHtmlView: ViewFn = ({ fmt }) => {
-  fmt.engine.pageErrorStatus = 404;
-  return "404: Bad Address";
-};
 
 /** set/type/cardtype.rb (card-mod-cardtype set/type/cardtype.rb)
  *  views :add_link, :add_button, :add_url — ported to the headless
@@ -878,19 +803,7 @@ function cardtypeAddButtonView({ fmt }: ViewContext): string {
   );
 }
 function cardtypeAddUrlView({ fmt }: ViewContext): string {
-  // set/type/cardtype.rb:36-38 `view :add_url do card_url _render_add_path
-  // end`: _render_add_path is an api_render delegation of the :add_path
-  // VIEW, which the set module never registers (add_path is a plain helper,
-  // cardtype.rb:41-52), so the delegated render raises the unsupported-view
-  // UserError and its QUIET rescue (the serving posture's non-focal root,
-  // error.rb:65-78) makes the verbatim span the delegation's VALUE; card_url
-  // then prepends Env.origin and the path separator around it. The oracle
-  // pins the 112-byte origin-prefixed span; the former headless
-  // "/<key>/new" stub fabricated a working path Ruby never serves.
-  const delegating = fmt as unknown as RenderFormatBase & {
-    renderDelegated(view: string): string;
-  };
-  return `${envOriginForSurface(false)}/${delegating.renderDelegated("add_path")}`;
+  return `/${cardtypeUrlKey(fmt as unknown as RenderFormatBase)}/new`;
 }
 interface RenderFormatBase {
   card: { key?: string; name?: { s: string } };
@@ -1314,18 +1227,17 @@ export const allHtmlViewsOneLineContentView: ViewFn = ({ fmt, voo }) => {
  *  wrap_with :p joins the pair with output's "\\n" (content.rb:70-73
  *  `Array.wrap(content).flatten.compact.join "\\n"`), and flatten.join
  *  joins the seven <p> blocks with NO separator. view_list (:14-16) is the
- *  fixed list [content, titled, labeled, bar, box, open, closed]. Each arm
- *  renders with show: :menu (demo.rb:10): the arm voo vizzes :menu visible
- *  (visibility.rb process_visibility_options; the option is deleted from
- *  the live opts so the emitted data-slot re-derives show from the viz -
- *  the corpus pins show:["view_list","menu","content"] on the :content arm)
- *  and the frame's menu emits (the corpus pins the card-menu div between
- *  the arm slot's opening tag and its body). */
+ *  fixed list [content, titled, labeled, bar, box, open, closed].
+ *  DISCLOSED DIVERGENCE: Ruby passes show: :menu, which viz-es the menu
+ *  visible inside the rendered arms (the captured slot JSON carries
+ *  show:["view_list","menu","content"] and the menu renders); the
+ *  engine's renderView has no show-option seam, so the arms render with
+ *  their default visibility (the menu hidden - optional: :hide). */
 const viewListView: ViewFn = ({ fmt }) => {
   const views = ["content", "titled", "labeled", "bar", "box", "open", "closed"];
   const parts: string[] = [];
   for (const v of views) {
-    parts.push(`<p><h3>${v}</h3>\n${fmt.renderView(v, { show: ["menu"] })}</p>`);
+    parts.push(`<p><h3>${v}</h3>\n${fmt.renderView(v)}</p>`);
   }
   return parts.join("");
 };
@@ -1730,14 +1642,10 @@ const setModules: ModSetModuleFile[] = [
         views: [
           { view: "compact_missing", viewFn: compactMissingView, config: { perms: "none" } },
           { view: "unknown", viewFn: unknownView, config: { perms: "none", cache: "never" } },
-          // html/error.rb:21-23 — the html arm (:mini_unknown, icon-only),
-          // explicit here so the composed deck serves the same bytes the
-          // flat base table serves (the substitution target of
-          // one_line_content/labeled_content on unknown cards).
-          { view: "mini_unknown", viewFn: miniUnknownView, config: { perms: "none" } },          { view: "server_error", viewFn: serverErrorView, config: { perms: "none" } },
-          { view: "denial", viewFn: denialHtmlView, config: { perms: "none" } },
+          { view: "server_error", viewFn: serverErrorView, config: { perms: "none" } },
+          { view: "denial", viewFn: denialView, config: { perms: "none" } },
           { view: "not_found", viewFn: notFoundView, config: { perms: "none" } },
-          { view: "bad_address", viewFn: badAddressHtmlView, config: { perms: "none" } },
+          { view: "bad_address", viewFn: badAddressView, config: { perms: "none" } },
           { view: "errors", viewFn: errorsView },
         ],
       },

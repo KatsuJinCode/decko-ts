@@ -14,12 +14,8 @@
 // Reads go through a runtime process.getBuiltinModule probe, never a static
 // "node:fs" import, for the reason render/bootstrap-code-files.ts gives: this
 // module sits in bundle graphs whose runtimes have no node: modules. On such
-// a runtime the reads fall back to the GENERATED snapshot of the vendored
-// tree (vendor/edge-style-source-snapshot.js,
-// tools/vendor/build-edge-asset-source-snapshot.mjs), which the edge bundles
-// carry; nothing substitutes an empty string for a missing source.
-
-import { edgeAssetSources } from "../../../vendor/edge-style-source-snapshot.js";
+// a runtime the reads throw (there are no vendored files to read); nothing
+// substitutes an empty string for a missing source.
 
 interface NodeSyncFs {
   readFileSync(path: string | URL, encoding: string): string;
@@ -27,36 +23,15 @@ interface NodeSyncFs {
 }
 
 let nodeFs: NodeSyncFs | undefined;
-function fsOrNull(): NodeSyncFs | undefined {
+function fs(): NodeSyncFs {
   if (nodeFs !== undefined) return nodeFs;
   const proc = (globalThis as unknown as { process?: { getBuiltinModule?: (id: string) => unknown } }).process;
   const found = proc?.getBuiltinModule?.("node:fs") as NodeSyncFs | undefined;
-  if (found !== undefined) nodeFs = found;
-  return found;
-}
-
-function fs(): NodeSyncFs {
-  const found = fsOrNull();
   if (found === undefined) {
     throw new Error("style sources need a Node filesystem (the vendored fixtures/vendor/ tree); this runtime has none");
   }
+  nodeFs = found;
   return found;
-}
-
-/** One vendored file's text: from the repository tree on a Node host, from
- *  the generated snapshot on an edge runtime. Undefined when the file is
- *  neither on disk nor in the snapshot — never an empty string. */
-function readVendored(relativePath: string): string | undefined {
-  const nodeFs = fsOrNull();
-  if (nodeFs !== undefined) {
-    try {
-      return nodeFs.readFileSync(new URL(relativePath, vendorDirectory()), "utf8");
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException)?.code !== "ENOENT") throw error;
-      return undefined;
-    }
-  }
-  return edgeAssetSources[relativePath];
 }
 
 /** The repository's fixtures/vendor/ directory. This module runs from src/
@@ -87,20 +62,16 @@ let manifest: Record<string, ModStyleFile[]> | undefined;
 /** The vendored files of one mod's style groups, in Ruby's order; undefined
  *  for a mod with no style assets (its `+*style` card has no groups). */
 export function modStyleFiles(modName: string): readonly ModStyleFile[] | undefined {
-  if (manifest === undefined) {
-    const text = readVendored("mod-style-assets/manifest.json");
-    if (text === undefined) throw new Error("vendored style sources not found: mod-style-assets/manifest.json");
-    manifest = (JSON.parse(text) as { mods: Record<string, ModStyleFile[]> }).mods;
-  }
+  manifest ??= (JSON.parse(
+    fs().readFileSync(new URL("mod-style-assets/manifest.json", vendorDirectory()), "utf8"),
+  ) as { mods: Record<string, ModStyleFile[]> }).mods;
   return manifest[modName];
 }
 
 /** An asset file card's `content`: the file's text (Abstract::AssetFile ->
  *  Abstract::CodeFile reads its source path). */
 export function modStyleFileContent(file: ModStyleFile): string {
-  const text = readVendored(`mod-style-assets/${file.file}`);
-  if (text === undefined) throw new Error(`vendored style source not found: mod-style-assets/${file.file}`);
-  return text;
+  return fs().readFileSync(new URL(`mod-style-assets/${file.file}`, vendorDirectory()), "utf8");
 }
 
 /** bootswatch_skin.rb:74-77 scss_from_theme_file: the theme directory's
@@ -108,5 +79,6 @@ export function modStyleFileContent(file: ModStyleFile): string {
  *  reads the dist directory itself, which holds neither file). */
 export function bootswatchThemeFile(theme: string, file: "variables" | "bootswatch"): string {
   if (theme === "" || /[\\/.]/.test(theme)) return "";
-  return readVendored(`bootswatch/${theme}/_${file}.scss`) ?? "";
+  const url = new URL(`bootswatch/${theme}/_${file}.scss`, vendorDirectory());
+  return fs().existsSync(url) ? fs().readFileSync(url, "utf8") : "";
 }

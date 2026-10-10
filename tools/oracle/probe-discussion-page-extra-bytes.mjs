@@ -115,7 +115,7 @@ console.log(`PROBE boot done: ids=${everyLiveId.length}`);
 
 // ---- render + diff ----------------------------------------------------------
 
-const SLOT_ID_RE = /data-slot-id=(?:"[^"]*"|'[^']*')/g;
+const SLOT_ID_RE = /data-slot-id="[^"]*"/g;
 const normalizeSlotIds = (s) => s.replace(SLOT_ID_RE, 'data-slot-id="RANDOMIZED"');
 
 /** Single-block test: locate the inserted `-denial-view` card-slot div (the

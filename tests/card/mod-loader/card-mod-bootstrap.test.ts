@@ -721,35 +721,19 @@ describe("card-mod-bootstrap through the mod loader", () => {
       expect(validate?.on).toEqual(["create"]);
       // The event carries registration order: 3 events come from
       // type/bootswatch_skin/events and 1 from abstract/skin_field.
-      // (2026-10-08, mod-events lane: the registry grew to six —
-      // use_as_current_skin (type/bootswatch_skin.rb:180) and
-      // translate_variables_to_scss (colors.rb:116) joined; the walk
-      // order is the setModules order.)
-      expect(allEvents.length).toBe(6);
-      expect(allEvents.map((e) => e.event)).toEqual([
-        "update_skin_asset_input",
-        "use_as_current_skin",
-        "initialize_because_of_type_change",
-        "copy_theme",
-        "validate_theme_template",
-        "translate_variables_to_scss",
-      ]);
+      expect(allEvents.length).toBe(4);
+      expect(allEvents[0]?.event).toBe("update_skin_asset_input");
+      expect(allEvents[1]?.event).toBe("initialize_because_of_type_change");
+      expect(allEvents[2]?.event).toBe("copy_theme");
+      expect(allEvents[3]?.event).toBe("validate_theme_template");
     });
 
     it("forStage returns events at one stage, in registration order", () => {
       const registry = loader!.eventRegistry();
-      // :finalize: update_skin_asset_input (skin_field.rb:1) +
-      // use_as_current_skin (type/bootswatch_skin.rb:180, mod-events
-      // lane 2026-10-08), in setModules walk order.
+      // :finalize: only update_skin_asset_input (skin_field.rb:1).
       expect(registry.forStage("finalize").map((e) => e.event)).toEqual([
         "update_skin_asset_input",
-        "use_as_current_skin",
       ]);
-      // :prepare_to_validate: translate_variables_to_scss
-      // (colors.rb:116, mod-events lane 2026-10-08).
-      expect(
-        registry.forStage("prepare_to_validate").map((e) => e.event),
-      ).toEqual(["translate_variables_to_scss"]);
       // :prepare_to_store: initialize_because_of_type_change + copy_theme
       // (type/bootswatch_skin/events.rb registration order).
       expect(

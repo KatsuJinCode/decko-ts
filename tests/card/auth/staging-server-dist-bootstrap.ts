@@ -29,7 +29,7 @@
 // so a normal `vitest run` stays quiet; failures throw loudly regardless.
 
 import { spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -43,32 +43,6 @@ const LOCK_STALE_MS = 10 * 60_000;
 const LOCK_WAIT_MS = 180_000;
 const TSC_BIN = path.join(REPO_ROOT, "node_modules", "typescript", "bin", "tsc");
 
-// The generated asset-source snapshots the write surface's source readers
-// fall back to on an edge runtime (src/card/assets/style-sources.ts and
-// script-sources.ts, src/card/render/bootstrap-code-files.ts import them
-// from vendor/). tsc emits only dist/src/**; the generated JS modules must
-// be copied alongside, or the dist server dies with ERR_MODULE_NOT_FOUND
-// the same way a missing emit would.
-const VENDOR_SNAPSHOT_FILES = [
-  "edge-bootstrap-scss-snapshot.js",
-  "edge-style-source-snapshot.js",
-  "edge-script-source-snapshot.js",
-].map((f) => path.join(REPO_ROOT, "vendor", f));
-const VENDOR_DIST_DIR = path.join(DIST_DIR, "vendor");
-
-function copyVendorSnapshots(): void {
-  const missing = VENDOR_SNAPSHOT_FILES.filter((f) => !existsSync(f));
-  if (missing.length > 0) {
-    throw new Error(
-      "staging-server dist bootstrap: the generated vendor snapshots are missing " +
-        "(generate with tools/vendor/build-edge-asset-source-snapshot.mjs):\n" +
-        missing.join("\n"),
-    );
-  }
-  mkdirSync(VENDOR_DIST_DIR, { recursive: true });
-  for (const file of VENDOR_SNAPSHOT_FILES) copyFileSync(file, path.join(VENDOR_DIST_DIR, path.basename(file)));
-}
-
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 /** The dist modules vm-staging-server.mjs actually imports (the ./dist/...
@@ -79,17 +53,13 @@ function requiredServerDistModules(): string[] {
   return [...new Set(specifiers)].map((s) => path.join(REPO_ROOT, s));
 }
 
-/** Dist-side readiness gaps: the entry, any module the server imports, or
- *  any vendored snapshot copy — missing or EMPTY (0 bytes is never a valid
- *  module emit, so a truncated or half-written file counts as missing). */
+/** Dist-side readiness gaps: the entry, or any module the server imports,
+ *  missing or EMPTY (0 bytes is never a valid module emit, so a truncated
+ *  or half-written file counts as missing). */
 function missingDistModules(): string[] {
   const missing: string[] = [];
   if (!existsSync(DIST_ENTRY)) missing.push(path.relative(REPO_ROOT, DIST_ENTRY));
-  const distModules = [
-    ...requiredServerDistModules(),
-    ...VENDOR_SNAPSHOT_FILES.map((f) => path.join(VENDOR_DIST_DIR, path.basename(f))),
-  ];
-  for (const file of distModules) {
+  for (const file of requiredServerDistModules()) {
     let ready = false;
     try {
       ready = statSync(file).size > 0;
@@ -167,7 +137,6 @@ export async function ensureStagingServerDist(): Promise<void> {
       cwd: REPO_ROOT,
       encoding: "utf8",
     });
-    if (result.status === 0) copyVendorSnapshots();
     const stillMissing = missingDistModules();
     if (result.status !== 0 || stillMissing.length > 0) {
       throw new Error(

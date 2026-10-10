@@ -142,13 +142,7 @@ describe("card-mod-history ladder views (act_legend / last_action / change)", ()
     const s = storage!;
     await installLoader();
     const mine = normalize(await s.engine.render(probeName, "act_legend"));
-    // The STANDALONE view carries the bs_layout DSL's one leading newline
-    // ahead of the row div (the corpus oracle pins it:
-    // view:admin:Topic 001:act_legend -> {"html":"\n<div class=\"row
-    // pb-3\">..."); the capture slice below is the acts_layout
-    // COMPOSITION's part, whose surrounding newlines live in the frame -
-    // so the expected side takes the seam explicitly.
-    expect(mine).toBe("\n" + normalize(capturedLegendRow()));
+    expect(mine).toBe(normalize(capturedLegendRow()));
   });
 
   it("WITH the mod: :last_action renders the last-update span (views.rb:46-53)", async () => {
@@ -157,14 +151,12 @@ describe("card-mod-history ladder views (act_legend / last_action / change)", ()
     const html = normalize(await s.engine.render(probeName, "last_action"));
     // the %() literal's shape: leading newline + 6-space indent, the verb
     // anchor (the update act's :edited arm), the time_ago + "ago by", the
-    // actor :link nest (Decko Bot's known-card anchor WITH the card-title
-    // span wrapper - the corpus oracle pins the span inside the anchor:
-    // view:admin:Topic 001:last_action), the closing indent.
+    // actor :link nest (Decko Bot's known-card anchor), the closing indent.
     expect(html).toBe(
       '\n      <span class="last-update">\n        ' +
         '<a class="last-edited slotter" rel="nofollow" href="/Ladder_Probe?view=history" data-remote="true">edited</a>' +
         " TIME_AGO ago by\n        " +
-        '<a class="known-card" href="/Decko_Bot"><span class="card-title" title="Decko Bot">Decko Bot</span></a>\n      </span>\n    ',
+        '<a class="known-card" href="/Decko_Bot">Decko Bot</a>\n      </span>\n    ',
     );
   });
 

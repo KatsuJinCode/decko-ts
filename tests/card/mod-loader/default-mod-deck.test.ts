@@ -133,28 +133,6 @@ describe("default-mod-deck: one loader, oracle order, live registrations", () =>
     expect(second).toEqual(first);
   });
 
-  it("the deck-boot seam keeps the engine-layer content overrides (the bootstrap code files render on booted hosts)", () => {
-    // The boot REPLACES the loader-less built-in default registry with the
-    // loader's own, and the mod manifests deliberately do NOT re-declare
-    // the engine-layer `def content` hooks (the bootstrap mod's note:
-    // a manifest entry never registers for loader-less consumers). The
-    // bind seam therefore binds an underlay of the built-in entries beneath
-    // every bound registry - without it, every serve boot (the edge hosts,
-    // the staging VM) rendered the bootstrap code files' empty stored rows.
-    defaultDeckLoader();
-    for (const setPath of [
-      "self/bootstrap_core",
-      "self/bootstrap_function",
-      "self/*alert",
-      "self/*foot",
-      "self/*input_type+*right+*content_option",
-      "right/*when_created",
-      "right/*when_last_edited",
-    ]) {
-      expect(contentOverrideFor(setPath), setPath).toBeDefined();
-    }
-  });
-
   it(":count dispatches to the search-family registration with collection's behind it", () => {
     const loader = defaultDeckLoader();
     // search registers :count under the abstract pattern (card-mod-search

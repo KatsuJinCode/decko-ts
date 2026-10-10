@@ -137,37 +137,32 @@ afterAll(() => {
 });
 
 // ---------------------------------------------------------------------------
-// :asset_output_url — the VIEW raises (stock Ruby); the CARD-level method
-// (`def asset_output_url`, the "/files/~447/1790661047.css" surface) is
-// pinned through the :not_found live branch below
+// :asset_output_url — oracle: "/files/~447/1790661047.css"
 // ---------------------------------------------------------------------------
 
 describe("card-mod-assets :asset_output_url (oracle-pinned)", () => {
-  it("raises NoMethodError: the view body's bare call lands on the format, not the card", async () => {
+  it("renders the child file card's carrierwave url from the local identifier", async () => {
     const s = storage!;
-    // asset_outputter.rb:61-63: `view :asset_output_url do asset_output_url
-    // end` — the view block's self is the FORMAT, so the bare call goes
-    // through method_missing -> delegate_to_action_view and CardActionView
-    // carries no such helper. The stock synthetic-v2 oracle pins the
-    // rescued span on view:admin:*all+*script:asset_output_url; the
-    // cwwrite lane's own view_*_asset_output_url captures carried the same
-    // span (the earlier url pin here read the CARD-level method's bytes —
-    // `asset_output_url_after` — not the view's).
-    await expect(s.engine.render("*all+*style", "asset_output_url")).rejects.toThrow(
-      "undefined method `asset_output_url' for #<Card::Format::CardActionView:0x",
-    );
+    // oracle asset_output_url_after: "/files/~447/1790661047.css"
+    // (identifier "~447/1790661047.css" — the TILDE mark stays in the url,
+    // the /files routes' current grammar /files/:mark/:rev_id.:format)
+    const out = await s.engine.render("*all+*style", "asset_output_url");
+    expect(out).toBe("/files/~447/1790661047.css");
   });
 
-  it("raises the same way with no asset output child (the raise precedes any child read)", async () => {
+  it("renders empty when the outputter card has no asset output child (Ruby: file&.url -> nil)", async () => {
     const s = storage!;
-    // The raise is the view dispatch's shape on every outputter card; the
-    // childless-card arm ("file&.url -> nil") belongs to the CARD-level
-    // method, reachable through the :not_found live branch.
+    // The capture's view_asset_output_url_before arm shape: an OUTPUTTER
+    // card with no +*asset output child. The includer set is anchored
+    // left-TYPE "Set" + right "*style" (type_plus_right "set+style" —
+    // card-mod-style set/type_plus_right/set/style.rb:1, the only concrete
+    // include beside card-mod-script's script.rb:1), so the probe card is
+    // a Set-typed left with a +*style right, as *all+*style is. The view
+    // body runs, file&.url answers nil, the bytes are "".
     await seedCard(s, { id: 60, name: "*probe", codename: "probe", typeId: SET_TYPE_ID });
     await seedCard(s, { id: 61, name: "*probe+*style", leftId: 60, rightId: 11, typeId: 2 });
-    await expect(s.engine.render("*probe+*style", "asset_output_url")).rejects.toThrow(
-      "undefined method `asset_output_url' for #<Card::Format::CardActionView:0x",
-    );
+    const out = await s.engine.render("*probe+*style", "asset_output_url");
+    expect(out).toBe("");
   });
 
   it("raises unsupported-view off the includer set (Ruby: render.rb:59-63)", async () => {
@@ -335,12 +330,8 @@ describe("card-mod-carrierwave :preview_editor on type/file (oracle-pinned)", ()
     // the selected action id (parsed from the identifier per SelectedAction),
     // the name is the upload's original filename (the action comment — the
     // composition passes it), the size renders through Rails'
-    // number_to_human_size (oracle ladder: 1234 -> "1.21 KB"). The capture
-    // rendered WITH the round trip's :attachment_upload param set (the
-    // capture script form-posts it before the render); without the param
-    // the view raises stock Ruby's gsub-on-nil (see the no-param test).
+    // number_to_human_size (oracle ladder: 1234 -> "1.21 KB").
     const ctx = makeFileCtx("Oracle Cw Local", "~1347/5031.png");
-    ctx.voo.opts["attachment_upload"] = "card[file]";
     ctx.voo.opts["original_filename"] = "oracle_cw_probe.png";
     ctx.voo.opts["attachment_size"] = 1234;
     const out = filePreviewEditorView(ctx);
@@ -382,16 +373,11 @@ describe("card-mod-carrierwave :preview_editor on type/file (oracle-pinned)", ()
     expect(out).toContain("<input name='card[action_id_of_cached_upload]' type='hidden'");
   });
 
-  it("the dispatch lands through the engine, and the no-param render raises Ruby's gsub-on-nil", async () => {
+  it("the dispatch lands through the engine (registration, not just the export)", async () => {
     const s = storage!;
-    // The bare render carries no :attachment_upload param, which is stock
-    // Ruby's raise arm (file.rb:145 gsub on nil; the synthetic-v2 oracle
-    // pins the rescued admin span on view:admin:Report 1:preview_editor).
-    // A reject naming the gsub message proves the dispatch reached the
-    // registered view body (the loud test posture re-raises to the caller).
-    await expect(s.engine.render("Oracle Cw Local", "preview_editor")).rejects.toThrow(
-      "undefined method `gsub' for nil",
-    );
+    const out = await s.engine.render("Oracle Cw Local", "preview_editor");
+    expect(out.startsWith("<div class='chosen-file'>\n")).toBe(true);
+    expect(out).toContain("value='5031'");
   });
 });
 

@@ -43,7 +43,7 @@ function norm(v, key) {
   if (v === 1 || v === true) return true;
   if (v === undefined) return null;
   if (v === null && key !== undefined && PREDICATE_KEYS.has(key)) return false;
-  if (key === "core" && typeof v === "string") return v.replace(/data-slot-id=(["'])[0-9a-f]+\1/g, 'data-slot-id="X"');
+  if (key === "core" && typeof v === "string") return v.replace(/data-slot-id="[0-9a-f]+"/g, 'data-slot-id="X"');
   return v;
 }
 const isErr = (v) => typeof v === "string" && v.startsWith("ERR:");

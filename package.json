@@ -27,7 +27,7 @@
     "@types/node": "^26.6.2",
     "better-sqlite3": "^13.0.3",
     "esbuild": "^0.28.2",
-    "miniflare": "^5.20261006.1-alpha",
+    "miniflare": "^5.20260918.0-alpha",
     "typescript": "^7.0.2",
     "vitest": "^5.0.1"
   },

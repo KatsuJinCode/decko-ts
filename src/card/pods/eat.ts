@@ -21,7 +21,6 @@
 
 import type { FetchEngine } from "../fetch.js";
 import type { CardActionEngine } from "../actions/card-action-engine.js";
-import { ATTACHMENT_MOUNTS } from "../actions/card-action-engine.js";
 import type { AttachmentInput, SubcardInput } from "../actions/types.js";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
@@ -40,14 +39,6 @@ export interface EatOptions {
   /** The mod's data/files directory: an item's :file / :image value names a
    *  file there, uploaded with the card (Eat::Edibles#handle_attachments). */
   filesDir?: string;
-  /** Coded file storage (storage_type: :coded): the name of the mod whose
-   *  data the pod came from (handle_attachments sets the item's :mod), and
-   *  the mod's own directory — its data/files receives the stored files
-   *  (coded.rb coded_dir). Absent = the pod names no mod, and a coded item
-   *  saves like one without a mod: Ruby's validate_coded_storage_type
-   *  refuses it. */
-  codedMod?: string;
-  codedDir?: string;
 }
 
 export interface EatReport {
@@ -128,7 +119,7 @@ async function ensure(
   staleNames: Map<string, number>,
 ): Promise<Outcome> {
   const a = attrs(item);
-  const attachment = podAttachment(a, opts);
+  const attachment = podAttachment(a, opts.filesDir);
   const mode = conflictMode(a.get("conflict"));
   const actor = await resolveActor(fetch, a.get("user"), opts.defaultActor);
   const now = clockFor(a.get("time"));
@@ -141,15 +132,7 @@ async function ensure(
   const typeSpec = typeSpecOf(a.get("type"));
   const content = a.has("content") ? toContent(a.get("content")) : undefined;
   const subcards = await fieldSubcards(fetch, a.get("fields"));
-  const wanted: Wanted = {
-    name,
-    codename,
-    typeSpec,
-    content,
-    subcards,
-    attachment,
-    codedStorage: asString(a.get("storage_type")) === "coded" && attachment === undefined,
-  };
+  const wanted: Wanted = { name, codename, typeSpec, content, subcards, attachment };
 
   // fetch_for_ensure: the card named by the codename (else the name), and,
   // when both are given and the name belongs to a different live card, that
@@ -195,34 +178,22 @@ interface Wanted {
   content: string | undefined;
   subcards: Record<string, SubcardInput>;
   attachment: AttachmentInput | undefined;
-  /** storage_type: :coded with no :file / :image — the save runs
-   *  validate_coded_storage_type with no mod from handle_attachments (it
-   *  sets :mod only inside the attachment loop), so the save survives only
-   *  when the card already carries coded content naming a mod
-   *  (coded.rb mod_from_content). */
-  codedStorage: boolean;
 }
 
-/** handle_attachments + mod_file (Eat::Edibles): the :file / :image value
- *  opened from the mod's data/files directory, uploaded with the card. An
- *  item with storage_type :coded rides the mod name on the attachment
- *  (`hash[:mod] = mod.name`): the file is kept in the mod, and the card's
- *  content becomes the coded identifier. The save-time validations are the
- *  engine's (validate_coded_storage_type). */
-function podAttachment(a: Map<string, YamlValue>, opts: EatOptions): AttachmentInput | undefined {
+/** handle_attachments + mod_file: the :file / :image value opened from the
+ *  mod's data/files directory. Coded storage (storage_type: :coded, the
+ *  file kept in the mod itself) is refused. */
+function podAttachment(a: Map<string, YamlValue>, filesDir: string | undefined): AttachmentInput | undefined {
+  const storage = asString(a.get("storage_type"));
+  if (storage === "coded" || a.has("mod")) throw new EatError("coded file storage (storage_type: :coded) is not supported");
   const key = ["file", "image"].find((k) => a.has(k));
   if (key === undefined) return undefined;
   const filename = String(asString(a.get(key)) ?? "");
-  const path = opts.filesDir === undefined ? undefined : join(opts.filesDir, filename);
+  const path = filesDir === undefined ? undefined : join(filesDir, filename);
   if (path === undefined || !existsSync(path)) {
     throw new EatError(`${filename} not found. Should be in data/files.`);
   }
-  const storage = asString(a.get("storage_type"));
-  return {
-    bytes: readFileSync(path),
-    originalFilename: basename(filename),
-    ...(storage === "coded" ? { coded: { mod: opts.codedMod } } : {}),
-  };
+  return { bytes: readFileSync(path), originalFilename: basename(filename) };
 }
 
 /** Card.new(opts).save!: new cards are pristine and always need saving. */
@@ -232,9 +203,6 @@ async function createWanted(
   name: DeckoName | undefined,
 ): Promise<Outcome> {
   if (name === undefined) throw new EatError(`no card has codename :${wanted.codename} and the pod gives no name`);
-  if (wanted.codedStorage) {
-    throw await codedStorageError(engine, undefined, name, wanted.typeSpec);
-  }
   await engine.createCard({
     name: name.s,
     ...(wanted.content !== undefined ? { content: wanted.content } : {}),
@@ -273,7 +241,6 @@ async function saveIfNeeded(
   if (!nameChanging && !contentChanging && !typeChanging && !codenameChanging && !fieldsNeedSave && !attaching) {
     return "unchanged";
   }
-  if (wanted.codedStorage) throw await codedStorageError(engine, row, wanted.name);
   if (nameChanging || contentChanging || typeChanging || fieldsNeedSave || attaching) {
     await engine.updateCard({
       cardId: row.id,
@@ -334,56 +301,6 @@ async function ensureAdvanced(
   // Ruby defect the port reproduces so an import ends in the same state;
   // recorded in recovery/parity-team/persistence.md.
   throw new EatError(`Validation failed: Name must be unique; '${moved.s}' already exists.`);
-}
-
-/** validate_coded_storage_type (coded.rb:7-10) for an attachment-less coded
- *  item, raised exactly when the save would run. Ruby's RecordInvalid
- *  message joins the full messages in validation order — on a CREATE,
- *  validate_file_exist (attachment.rb:26-34, on: :create) adds
- *  "<Image|File> is missing" first, then the two storage-type errors
- *  (attribute Storage type) — the same wording the engine's own validation
- *  raises for a coded attachment. */
-async function codedStorageError(
-  engine: CardActionEngine,
-  row: CardsRow | undefined,
-  name: DeckoName | undefined,
-  typeSpec?: { typeCode?: string; typeName?: string },
-): Promise<EatError> {
-  const problems: string[] = [];
-  // validate_file_exist (on: :create only): a new card whose type mounts an
-  // attachment and whose item carries no :file/:image.
-  if (row === undefined) {
-    let typeCode = typeSpec?.typeCode;
-    if (typeCode === undefined && typeSpec?.typeName !== undefined) {
-      const id = await engine.fetch.lexicon.id(DeckoName.parse(typeSpec.typeName));
-      typeCode = id === undefined ? undefined : (await engine.fetch.fetchById(id))?.codename ?? undefined;
-    }
-    const mount = typeCode !== undefined ? ATTACHMENT_MOUNTS[typeCode] : undefined;
-    if (mount !== undefined) {
-      problems.push(`${mount.charAt(0).toUpperCase()}${mount.slice(1)} is missing`);
-    }
-  }
-  // mod (coded.rb:17-24): mod_from_content of the existing card — a new
-  // card, or one whose content names no mod, has none.
-  const content = row?.db_content ?? "";
-  const modern = /^:[:\w/+]+\/([^./]+)\./.exec(content);
-  const lines = content.split("\n");
-  const deprecated =
-    content !== "" && !content.startsWith("~") && lines.length === 4 ? lines[lines.length - 1] : undefined;
-  if ((modern === null || modern === undefined) && deprecated === undefined) {
-    problems.push("Storage type mod argument needed to save card as coded");
-  }
-  if (name !== undefined) {
-    for (const part of name.partNames) {
-      const id = await engine.fetch.lexicon.id(part);
-      const code = id === undefined ? undefined : (await engine.fetch.fetchById(id))?.codename;
-      if (code === undefined || code === null || code === "") {
-        problems.push("Storage type codename needed for storage type coded");
-        break;
-      }
-    }
-  }
-  return new EatError(`Validation failed: ${problems.join(", ")}`);
 }
 
 /** Name#alternative (card-1.110.0 lib/card/name/card_class.rb

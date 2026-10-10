@@ -41,7 +41,7 @@ import { prewarmStaticDeck } from "../../support/prewarm-static-deck.js";
  *  (capture-time placeholder is the literal "RANDOMIZED"; engine emits
  *  a fresh per-render id). */
 function bytesEqualModuloRandomSlotId(actual: string, expected: string): boolean {
-  const norm = (s: string): string => s.replace(/data-slot-id=(?:"[^"]*"|'[^']*')/g, 'data-slot-id="RANDOMIZED"');
+  const norm = (s: string): string => s.replace(/data-slot-id="[^"]*"/g, 'data-slot-id="RANDOMIZED"');
   return norm(actual) === norm(expected);
 }
 

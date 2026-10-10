@@ -20,15 +20,7 @@ report_path = ARGV[1] or abort "usage: pod-eat.rb <pod.yml> <report.json>"
 # it. Stored uploads go to PERSIST_FILES_DIR (never the app's own files or
 # public trees, never a cloud bucket), with hard links for the public links
 # as in persist-write-probe.rb.
-#
-# CODED storage (storage_type: :coded): the real handle_attachments sets
-# `hash[:mod] = mod.name` inside the attachment loop, and the save keeps the
-# file in the mod (coded.rb coded_dir = mod_dir/data/files/<codename parts>).
-# POD_MOD_NAME names the stand-in mod and POD_MOD_DIR is its directory,
-# registered with Cardio::Mod.dirs so coded_dir resolves inside the run's
-# scratch tree instead of the app.
 POD_FILES_DIR = ENV["POD_FILES_DIR"]
-POD_MOD_NAME = ENV["POD_MOD_NAME"]
 if (store = ENV["PERSIST_FILES_DIR"])
   require "fileutils"
   FileUtils.mkdir_p(File.join(store, "files"))
@@ -42,10 +34,6 @@ if (store = ENV["PERSIST_FILES_DIR"])
     def symlink?(path) = File.exist?(path)
   end)
 end
-if POD_MOD_NAME && (pod_mod_dir = ENV["POD_MOD_DIR"])
-  FileUtils.mkdir_p(pod_mod_dir)
-  Cardio::Mod.dirs.add_mod POD_MOD_NAME, path: pod_mod_dir
-end
 
 def handle_attachments edible
   return edible unless POD_FILES_DIR
@@ -57,9 +45,6 @@ def handle_attachments edible
     raise StandardError, "#{edible[key]} not found. Should be in data/files." unless File.exist?(path)
 
     edible[key] = File.open(path, "rb")
-    # handle_attachments' coded arm: `hash[:mod] = mod.name if
-    # hash[:storage_type] == :coded` (edibles.rb:64-67).
-    edible[:mod] = POD_MOD_NAME if edible[:storage_type] == :coded
   end
   edible
 end

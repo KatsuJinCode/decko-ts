@@ -119,19 +119,8 @@ import { baseTableView } from "../../render/views.js";
 import { superView } from "../mod-view-helpers.js";
 import type {
   DeckoModManifest,
-  ModEventFn,
-  ModEventRegistration,
   ModSetModuleFile,
 } from "../mod-manifest.js";
-
-/** The set-module event declarations (the mod-events lane, 2026-10-08):
- *  stub-bodied, with the per-event reason on the declaration. Same shape
- *  as core-mod.ts's local helper. */
-function event(
-  decl: Omit<ModEventRegistration, "fn"> & { fn?: ModEventFn },
-): ModEventRegistration {
-  return { fn: () => undefined, ...decl };
-}
 
 // ---------------------------------------------------------------------------
 // html-emit helpers shared between popoverLink and the carousel view
@@ -1218,16 +1207,6 @@ const cardModBootstrap: DeckoModManifest = {
       // (bootswatchSkinCoreHtml below) is exported and views.ts calls
       // it for bootswatch_skin-typed cards.
       setPath: "type/bootswatch_skin",
-      // use_as_current_skin (mod-events lane 2026-10-08) — STUB, named
-      // remainder (type/bootswatch_skin.rb:180-184): the TRIGGERED
-      // finalize body writes the *all+*style rule's content to this skin
-      // and saves it (Card[:all, :style].content = name; save!) — a
-      // secondary save riding the trigger machinery, which the engine's
-      // write path has no surface for (the style rule is changed through
-      // its own save).
-      events: [
-        event({ event: "use_as_current_skin", at: "finalize", on: ["save"], trigger: "required" }),
-      ],
       formats: {
         html: {
           views: [{ view: "input", viewFn: inputView }],
@@ -1347,16 +1326,6 @@ const cardModBootstrap: DeckoModManifest = {
       // set-module bookkeeping below preserves the registrar's
       // source_location walk.
       setPath: "type_plus_right/bootswatch_skin/colors",
-      // translate_variables_to_scss (mod-events lane 2026-10-08) — STUB,
-      // named remainder (colors.rb:116-119 + replace_values :121+): the
-      // body translates posted color-group params into SCSS variable
-      // lines inside the +*colors content (variable_values_from_params
-      // reads the REQUEST params); the engine's save input carries no
-      // colors-params channel (ModEventSaveInput is comment/recaptcha
-      // shaped), so the param-driven mutation has no surface.
-      events: [
-        event({ event: "translate_variables_to_scss", at: "prepare_to_validate", on: ["update"] }),
-      ],
       formats: {
         html: {
           views: [

@@ -7,10 +7,9 @@
 -- decko-0.20.0 core migrations. Full reasoning in docs/schema-notes.md.
 --
 -- MAPPING DECISIONS (summary; see schema-notes.md for justification):
--- * datetime  -> TEXT, UTC, in ActiveRecord-on-SQLite's form: "YYYY-MM-DD HH:MM:SS",
---   plus ".ffffff" only when the microseconds are not zero (space separator,
---   so lexicographic order == chronological order; same family as MySQL dump
---   values).
+-- * datetime  -> TEXT, canonical form UTC "YYYY-MM-DD HH:MM:SS.mmm"
+--   (space separator, fixed width, so lexicographic order == chronological
+--   order; same family as MySQL dump values and ActiveRecord-on-SQLite).
 -- * int/bigint -> INTEGER (SQLite INTEGER is 64-bit).
 -- * AUTO_INCREMENT ids -> "id" INTEGER PRIMARY KEY AUTOINCREMENT — matches
 --   the InnoDB contract that ids are never reused after delete.

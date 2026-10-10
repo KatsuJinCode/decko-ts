@@ -295,9 +295,7 @@ describe("compact_missing/unknown/last_action same-token order (format + email +
   it("html :last_action renders the history last-update span (views.rb:46-53)", async () => {
     // the corrected bytes: the html registration's span (verb anchor +
     // time-ago + actor link), NOT the email_text stub's "" — the byte
-    // change the order fix lands. The actor :link nest carries the
-    // card-title span wrapper (the corpus oracle pins it:
-    // view:admin:Topic 001:last_action).
+    // change the order fix lands.
     const html = normalize(
       await storage!.engine.render("Dispatch Order Trio Probe", "last_action"),
     );
@@ -305,7 +303,7 @@ describe("compact_missing/unknown/last_action same-token order (format + email +
       '\n      <span class="last-update">\n        ' +
         '<a class="last-edited slotter" rel="nofollow" href="/Dispatch_Order_Trio_Probe?view=history" data-remote="true">edited</a>' +
         " TIME_AGO ago by\n        " +
-        '<a class="known-card" href="/Decko_Bot"><span class="card-title" title="Decko Bot">Decko Bot</span></a>\n      </span>\n    ',
+        '<a class="known-card" href="/Decko_Bot">Decko Bot</a>\n      </span>\n    ',
     );
   });
 

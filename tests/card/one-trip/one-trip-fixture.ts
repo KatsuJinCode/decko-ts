@@ -151,7 +151,7 @@ export async function bootEngine(driver: SQLDatabaseDriver): Promise<EngineBoot>
  *  token on both sides before comparison. */
 export function normalizeSlotIds(html: string): string {
   return html.replace(/data-slot-id=&quot;[0-9a-f]{20}&quot;/g, "data-slot-id=SLOTID").replace(
-    /data-slot-id=(["'])[0-9a-f]{20}\1/g,
+    /data-slot-id="[0-9a-f]{20}"/g,
     'data-slot-id="SLOTID"',
   );
 }

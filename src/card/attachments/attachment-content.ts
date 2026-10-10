@@ -153,16 +153,6 @@ export function localAttachmentIdentifier(cardId: number, actionId: number, ext:
   return `~${cardId}/${actionId}${ext}`;
 }
 
-/** The db_content identifier for a CODED attachment — the same db_content
- *  form with the coded arms (paths.rb:53-55 file_dir for a coded card is
- *  `codename_parts.map { |c| ":#{c}" }.join("+")`; file_card_uploader.rb
- *  :171-177 url_filename for a coded card is `"#{model.mod}#{extension}"`):
- *  `:<codename parts joined "+ with : prefix">/<mod><ext>`. The real deck's
- *  `*logo` carries `:logo/carrierwave.svg`. */
-export function codedAttachmentIdentifier(codenameParts: readonly string[], mod: string, ext: string): string {
-  return `${codenameParts.map((c) => `:${c}`).join("+")}/${mod}${ext}`;
-}
-
 /** SelectedAction#last_content_action_id (set/type/file.rb:8-13): the
  *  action id parsed OUT of a db_content identifier —
  *  `db_content.to_s.split(%r{[/.]})[-2]`, numeric or nil. */

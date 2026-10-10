@@ -15,18 +15,11 @@
 // What is DERIVED from the deck at render time (not capture-copied): the
 // card id in the form dom id, the subcards' type/set keys (from the render
 // cache when the prefetch holds them; the account mod's own invariants —
-// right/email.rb and right/password.rb assign_type :phrase, the type id
-// resolved through the deck's phrase codename, PhraseID = Card::Codename.id
-// :phrase — when it does not, which is the cold-render case:
-// fetchRenderCard is cache-only), and the email field's stored content as
-// the input value. The slot payload's name_context key rides Ruby's
-// presence gate (wrap.rb:63-78): this render is a ROOT render — empty
-// context, NO name_context — so the capture's tail (production rendered
-// the form nested in the page, context "*signin") is not part of these
-// bytes; the synthetic-v2 corpus pins both postures (core:anonymous:*signin
-// without the key, page:anonymous:*signin with "name_context":"*signin").
-// The ONLY byte this file normalizes is the per-render random
-// data-slot-id (SecureRandom hex(10), the repo-wide RANDOMIZED convention).
+// right/email.rb and right/password.rb assign_type :phrase — when it does
+// not, which is the cold-render case: fetchRenderCard is cache-only), and
+// the email field's stored content as the input value. The ONLY byte this
+// file normalizes is the per-render random data-slot-id (SecureRandom
+// hex(10), the repo-wide RANDOMIZED convention).
 //
 // Ruby line citations in the expectations match the downloaded gem
 // (rubygems.org card-mod-account-0.20.0, extracted this lane).
@@ -107,11 +100,11 @@ function normalize(html: string): string {
  *  capture byte-for-byte; data-slot-id is the one normalized byte). */
 const ORACLE_FORM = `<form class="card-form slotter autosave" id="edit_card_19957" recaptcha="off" action="/update/*signin" accept-charset="UTF-8" data-remote="true" method="post"><input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" /><input type="hidden" name="_method" value="patch" autocomplete="off" /><input type="hidden" name="success[redirect]" id="success_redirect" value="true" autocomplete="off" /><input type="hidden" name="success[mark]" id="success_mark" value="*previous" autocomplete="off" /><div class='signin-fields'>
 <fieldset class="card-editor editor"><div class="form-group card-editor RIGHT-Xemail" data-card-name="*signin+*email" data-card-link-name="*signin+*email"><label for="card_subcards___email_content"><span class="card-title" title="email">email</span>
-<div id="Xsignin-Xemail-help-view" class="card-slot help-view ALL ALL_PLUS TYPE-phrase RSTAR RIGHT-Xemail TYPE_PLUS_RIGHT-rich_text-Xemail" data-card-name="*signin+*email" data-card-type-id="52" data-card-type-name="Phrase" data-card-link-name="*signin+*email" data-slot-id="RANDOMIZED" data-slot="{&quot;view&quot;:&quot;help&quot;,&quot;show&quot;:[&quot;edit_in_form&quot;,&quot;help&quot;],&quot;home_view&quot;:&quot;titled&quot;,&quot;title&quot;:&quot;email&quot;}"></div></label>
+<div id="Xsignin-Xemail-help-view" class="card-slot help-view ALL ALL_PLUS TYPE-phrase RSTAR RIGHT-Xemail TYPE_PLUS_RIGHT-rich_text-Xemail" data-card-name="*signin+*email" data-card-type-id="52" data-card-type-name="Phrase" data-card-link-name="*signin+*email" data-slot-id="RANDOMIZED" data-slot="{&quot;view&quot;:&quot;help&quot;,&quot;show&quot;:[&quot;edit_in_form&quot;,&quot;help&quot;],&quot;home_view&quot;:&quot;titled&quot;,&quot;title&quot;:&quot;email&quot;,&quot;name_context&quot;:&quot;*signin&quot;}"></div></label>
 <div class="editor content-editor"><input class="d0-card-content form-control" placeholder="" type="text" value="" name="card[subcards][+*email][content]" id="card_subcards___email_content" />
 <input autocomplete="off" type="hidden" value="52" name="card[subcards][+*email][type_id]" id="card_subcards___email_type_id" /></div></div>
 <div class="form-group card-editor RIGHT-Xpassword" data-card-name="*signin+*password" data-card-link-name="*signin+*password"><label for="card_subcards___password_content"><span class="card-title" title="password">password</span>
-<div id="Xsignin-Xpassword-help-view" class="card-slot help-view ALL ALL_PLUS TYPE-phrase RSTAR RIGHT-Xpassword TYPE_PLUS_RIGHT-rich_text-Xpassword" data-card-name="*signin+*password" data-card-type-id="52" data-card-type-name="Phrase" data-card-link-name="*signin+*password" data-slot-id="RANDOMIZED" data-slot="{&quot;view&quot;:&quot;help&quot;,&quot;show&quot;:[&quot;edit_in_form&quot;,&quot;help&quot;],&quot;home_view&quot;:&quot;titled&quot;,&quot;title&quot;:&quot;password&quot;}"></div></label>
+<div id="Xsignin-Xpassword-help-view" class="card-slot help-view ALL ALL_PLUS TYPE-phrase RSTAR RIGHT-Xpassword TYPE_PLUS_RIGHT-rich_text-Xpassword" data-card-name="*signin+*password" data-card-type-id="52" data-card-type-name="Phrase" data-card-link-name="*signin+*password" data-slot-id="RANDOMIZED" data-slot="{&quot;view&quot;:&quot;help&quot;,&quot;show&quot;:[&quot;edit_in_form&quot;,&quot;help&quot;],&quot;home_view&quot;:&quot;titled&quot;,&quot;title&quot;:&quot;password&quot;,&quot;name_context&quot;:&quot;*signin&quot;}"></div></label>
 <div class="editor content-editor"><input class="d0-card-content _pw-input form-control" placeholder="Password" autocomplete="off" type="password" name="card[subcards][+*password][content]" id="card_subcards___password_content" />
 <span class='_toggle-password visibility-icon _pw-text-area'>
 <i class="_toggle-pw-visibility notranslate material-icons">visibility_off</i>
@@ -133,31 +126,10 @@ const ORACLE_FORM = `<form class="card-form slotter autosave" id="edit_card_1995
 </form>`;
 
 describe("self/signin :core — the sign-in form (edge-signin-form-fix lane)", () => {
-  /** The form bytes per CONTEXT posture. Ruby's help-slot payload carries
-   *  "name_context" only when the render sits inside a live name context
-   *  (wrap.rb:74-78; context_names.rb:22-29): a ROOT :core render has an
-   *  empty working context (the corpus oracle core:anonymous:*signin pins
-   *  ORACLE_FORM verbatim), while the :titled body runs add_name_context
-   *  before its core (html/views.rb:59 naming), so the SAME form renders
-   *  with `,"name_context":"*signin"` on both help slots inside :titled —
-   *  the posture the production capture and the corpus page op
-   *  (page:anonymous:*signin) pin. */
-  function formFor(posture: "root" | "nested"): string {
-    if (posture === "root") return ORACLE_FORM;
-    const tail = `,&quot;name_context&quot;:&quot;*signin&quot;`;
-    return ORACLE_FORM.replace(
-      /&quot;title&quot;:&quot;email&quot;\}/,
-      `&quot;title&quot;:&quot;email&quot;${tail}}`,
-    ).replace(
-      /&quot;title&quot;:&quot;password&quot;\}/,
-      `&quot;title&quot;:&quot;password&quot;${tail}}`,
-    );
-  }
-
   it("renders the live-oracle form bytes on the :core view", async () => {
     const s = storage!;
     const html = await s.engine.render("*signin", "core");
-    expect(normalize(html)).toBe(formFor("root"));
+    expect(normalize(html)).toBe(ORACLE_FORM);
   });
 
   it("open_content delegates to core (signin.rb:139-142), so the titled body carries the form", async () => {
@@ -167,14 +139,12 @@ describe("self/signin :core — the sign-in form (edge-signin-form-fix lane)", (
     );
     const titled = normalize(await s.engine.render("*signin", "titled"));
     // the titled wrap the layout's {{_main|titled}} chunk produces, with the
-    // form (not the empty content) as the body — in the NAMED-CONTEXT
-    // posture (:titled adds the name context before its body), the same
-    // posture the production capture and the corpus page op pin
+    // form (not the empty content) as the body
     expect(titled).toContain(
       `<div class="d0-card-body d0-card-content ALL TYPE-rich_text STAR SELF-Xsignin">` +
         `<form class="card-form slotter autosave" id="edit_card_19957"`,
     );
-    expect(titled).toContain(formFor("nested"));
+    expect(titled).toContain(ORACLE_FORM);
     expect(titled).toContain(
       `<span class="card-title" title="Sign In">Sign In</span>`,
     );

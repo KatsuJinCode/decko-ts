@@ -49,10 +49,9 @@ import { DeckoName } from "../../../src/card/name.js";
 // Deterministic clock: one Virtual operation = one second on the fake clock
 // (same shape as the write-path tests' fixture).
 const T0 = Date.parse("2026-09-21T12:00:00.000Z");
-// ActiveRecord's sqlite timestamp text form: second precision, no millis.
-const STAMP_1 = "2026-09-21 12:00:00";
-const STAMP_2 = "2026-09-21 12:00:01";
-const STAMP_3 = "2026-09-21 12:00:02";
+const STAMP_1 = "2026-09-21 12:00:00.000";
+const STAMP_2 = "2026-09-21 12:00:01.000";
+const STAMP_3 = "2026-09-21 12:00:02.000";
 
 function tickClock() {
   let ticks = 0;

@@ -85,7 +85,7 @@ export async function refreshReferencesOut(
   // delete_references_out (all.rb:48; reference_events.rb:63-65).
   await driver.query("DELETE FROM card_references WHERE referer_id = ?", [refererId]);
   const rows = (await isListCard(driver, refererId))
-    ? await createListReferencesOut(driver, lexicon, refererId, refererName, content)
+    ? await createListReferencesOut(lexicon, refererId, refererName, content)
     : await createReferencesOut(lexicon, refererId, refererName, content);
   // Reference.insert_in_slices (all.rb:61, reference.rb:19-23): bulk
   // insert in ref-hash order; 5000-row slices kept for fidelity.
@@ -155,16 +155,8 @@ async function createReferencesOut(
 /** A list card's references (Abstract::List#each_reference_out,
  *  card-mod-list-0.20.0 set/abstract/01_list.rb:53-57): every item name,
  *  absolutized against the card's own name (item_names -> clean_item_name,
- *  card-mod-collection set/all/item.rb:15-22, :258-267), as a link ("L").
- *
- * A CARDTYPE-typed list card's item names are the SEARCH's (card-mod-search
- * set/type/cardtype.rb includes Abstract::CqlSearch — its cql_content is
- * `{type_id: <the card's own id>, sort_by: :name}` — and 0_search's
- * item_names overrides Abstract::Items'), so the walk references every live
- * card OF the cardtype, not the stored content: saving the Mod card
- * references all 36 "mod: x" cards (oracle: leftover probe step 5). */
+ *  card-mod-collection set/all/item.rb:15-22, :258-267), as a link ("L"). */
 async function createListReferencesOut(
-  driver: SQLDatabaseDriver,
   lexicon: ReferenceLexicon,
   refererId: number,
   refererName: DeckoName,
@@ -172,8 +164,7 @@ async function createListReferencesOut(
 ): Promise<ReferenceRow[]> {
   const refHash = new Map<string, { refereeId: number | undefined; refTypes: string[] }>();
   const idRows: ReferenceRow[] = [];
-  const items = await listCardItemNames(driver, refererId) ?? listItemStrings(content);
-  for (const item of items) {
+  for (const item of listItemStrings(content)) {
     // An "~<id>" item (an id list's storage): Ruby's name for it has no key,
     // so the row carries the id and a NULL referee_key.
     const markedId = idMarkOf(item);
@@ -190,27 +181,6 @@ async function createListReferencesOut(
     await interpretReference(lexicon, refHash, name, "L", refererName);
   }
   return [...idRows, ...referenceValuesArray(refHash, refererId)];
-}
-
-/** The item names a list card's walk walks: the cardtype search's results
- *  for a Cardtype-typed card (see createListReferencesOut), else the stored
- *  content's items (undefined -> the caller uses the content). */
-async function listCardItemNames(
-  driver: SQLDatabaseDriver,
-  refererId: number,
-): Promise<string[] | undefined> {
-  const row = (
-    await driver.query<{ codename: string | null }>(
-      `SELECT t.codename AS codename FROM cards c JOIN cards t ON t.id = c.type_id WHERE c.id = ?`,
-      [refererId],
-    )
-  ).rows[0];
-  if (row?.codename !== "cardtype") return undefined;
-  const items = await driver.query<{ name: string }>(
-    "SELECT name FROM cards WHERE type_id = ? AND trash = 0",
-    [refererId],
-  );
-  return items.rows.map((r) => String(r.name));
 }
 
 /** all.rb:80-86 interpret_reference + :88-96 with_normalized_referee. */

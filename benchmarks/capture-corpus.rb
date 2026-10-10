@@ -6,7 +6,7 @@
 #   - :open and :content renders for live cards with non-empty content
 #   - the card-attributes record (same 8 fields as tools/oracle/capture.rb)
 # Output: fixtures/corpus/shard-NNNNNN.jsonl (one JSON object per card,
-# compact, deeply sorted keys, rendered bytes exactly as Ruby wrote them).
+# compact, deeply sorted keys, slot-id normalized at this recording layer).
 #
 # RESUMABLE: shards of 1,000 cards in ascending id order. A shard is
 # complete iff its file exists and its line count equals the shard's card
@@ -62,10 +62,8 @@ total_views = live.size * 2 + live.count { |r| r[2] == 1 } * 2
 puts "live cards to capture: #{live.size} (min views: #{total_views})"
 
 SLOT_ID_RE = /data-slot-id=(["'])\h+\1/.freeze
-# Slot ids are stored exactly as Ruby wrote them (value and quote style);
-# graders mask the random value at compare time (reference-harness N1).
 def normalize(html)
-  html
+  html.gsub(SLOT_ID_RE, 'data-slot-id="RANDOMIZED"')
 end
 
 def deep_sort(obj)

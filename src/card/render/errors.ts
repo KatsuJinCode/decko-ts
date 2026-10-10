@@ -312,35 +312,15 @@ export function parseRubyDateContent(content: string): Date | null {
   // gem-parseable classes survive, and the completion's today-dependence
   // reads the wall-clock seam (fillFromReferenceMonth). The corpus-uncertain White Fragility residual stays as refill2's
   // receipt recorded it.
-  // Slash-form dates. Ruby's slashed triples are GEM-VERIFIED (ruby 3.3,
-  // date gem): the FIRST component's width picks the shape.
-  //   - 4-digit first -> Y/M/D ("2019/3/19" -> 2019-03-19).
-  //   - 4-digit last  -> D/M/Y ("03/01/2021" -> 2021-01-03, the Create PM
-  //     paper slips and print+deadline oracle bytes "January 3, 2021";
-  //     "19/3/2019" -> 2019-03-19) with NO month/day swap on overflow
-  //     ("3/19/2019" and "25/13/2021" raise Date::Error).
-  //   - both short    -> Y/M/D with the two-digit-year window on the FIRST
-  //     component ("3/1/21" -> 2003-01-21).
+  // Slash-form dates ("3/19/2019", "19/3/2019", "2019/3/19") — Ruby parses;
+  // JS accepts only the US-style "M/D/YYYY" reliably.
   const slashMatch = /^(\d{1,4})\/(\d{1,2})\/(\d{1,4})$/.exec(content);
   if (slashMatch !== null) {
     const a = Number(slashMatch[1]);
     const b = Number(slashMatch[2]);
     const c = Number(slashMatch[3]);
-    if (a >= 1000) {
-      if (b >= 1 && b <= 12 && c >= 1 && c <= 31) {
-        return new Date(Date.UTC(a, b - 1, c));
-      }
-      return null;
-    }
-    if (c >= 1000) {
-      if (a >= 1 && a <= 31 && b >= 1 && b <= 12) {
-        return new Date(Date.UTC(c, b - 1, a));
-      }
-      return null;
-    }
-    if (b >= 1 && b <= 12 && c >= 1 && c <= 31) {
-      const y = a <= 99 ? (a <= 68 ? 2000 + a : 1900 + a) : a;
-      return new Date(Date.UTC(y, b - 1, c));
+    if (a >= 1 && a <= 9999 && b >= 1 && b <= 12 && c >= 1 && c <= 31) {
+      return new Date(Date.UTC(a, b - 1, c));
     }
     return null;
   }

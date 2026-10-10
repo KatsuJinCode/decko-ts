@@ -379,7 +379,7 @@ describeIfCorpus("staging server sign-in endpoints (booted server, disposable co
    *  comparison). Normalize it before cross-request byte comparisons —
    *  everything else must be identical. */
   function normalizeSlotIds(html: string): string {
-    return html.replace(/data-slot-id=(["'])[0-9a-f]+\1/g, 'data-slot-id="X"');
+    return html.replace(/data-slot-id="[0-9a-f]+"/g, 'data-slot-id="X"');
   }
 
   it("POST /_signin (JSON) signs the real account in and sets the session cookie", async () => {

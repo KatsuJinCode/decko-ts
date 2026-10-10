@@ -77,39 +77,8 @@ export function mapRenderError(message: string): RenderErrorPage {
  * addresses junctions as /A+B and multi-word simple names as /A%20B (or
  * the underscore alias form). Caught by the targeted Cloudflare test
  * 2026-09-23; reconciled to the engine-canonical key 2026-09-24.
- *
- * The underscore decode is card_class.rb:126-131 uri_fetch_opts:
- * `opts[:name] ||= Name[params[:mark]]&.tr "_", " "`. An underscored mark and
- * the same name with spaces fold to the SAME key, so the fetch result is
- * unchanged; the decode is what an ABSENT-card render displays (the
- * placeholder is Card.new(name: mark), fetch/store.rb:21-28). Without it, an
- * orphan-junction page (left_id/right_id NULL rows fetched virtual) rendered
- * the underscored mark — and, through the key-seated render placeholder, the
- * canonical key string — in the masthead and <title> where the oracle renders
- * the requested name ("dream_team+association" vs "Dream Team+Associations",
- * the acceptance's compound-masthead rows).
- *
- * The fold is for PLAIN names only: a codename mark's underscore is the
- * primed codehash key's own spelling (the `:` prefix routes through the
- * codehash, not name folding — folding it 404'd `GET /:search_type`), and a
- * VIEW segment is a snake_case identifier matched literally (folding it
- * turned the unsupported-view grammar's `no_such_view` 422 and the
- * `action_summary` history seam into misses). Hence decodeName folds plain
- * names and skips codename marks, while view segments ride decodeViewSegment
- * (the plain decode — views are not uri_fetch_opts' subject).
  */
 export function decodeName(raw: string): string | undefined {
-  try {
-    const decoded = decodeURIComponent(raw);
-    return decoded.startsWith(":") ? decoded : decoded.replace(/_/g, " ");
-  } catch {
-    return undefined;
-  }
-}
-
-/** The plain decode for path segments that are NOT card names: view
- *  identifiers are snake_case and matched literally, so no fold. */
-export function decodeViewSegment(raw: string): string | undefined {
   try {
     return decodeURIComponent(raw);
   } catch {

@@ -59,25 +59,11 @@
 //   capture wall clock (the corpus's graded bytes are a frozen sample of a
 //   time-varying answer).
 //
-// Named remainders (derivation complete, NOT wired here — see the receipt):
+// Named remainders (derivation complete, NOT wired — see the receipt):
 // - Type::BootswatchSkin (card-mod-bootstrap set/type/bootswatch_skin.rb:44-48):
-//   WIRED at the RENDER layer (2026-10-10, the bootswatch-skin-content lane):
-//   the four-part CONTENT_PARTS assembly is served by the built-in
-//   ContentOverrideRegistry entry "type/bootswatch_skin"
-//   (src/card/render/content-overrides.ts bootswatchSkinRenderContent — the
-//   file-backed theme content: vendored bootswatch dist files, the vendored
-//   mod style groups, the codename-anchored bootstrap code files; the
-//   corpus's six *recent ops' action-1027 summary pins ride its first
-//   bytes). THIS record-path resolver stays unwired: it is a synchronous
-//   function over a plain card struct with no access to the card's
-//   +*colors/+*variables children or the style-mods subtree, so a faithful
-//   answer needs the record handler (tools/oracle/
-//   dual-lane-direct-runner-core.ts, async) to precompute the assembly for
-//   bootswatch_skin-typed cards — the existing async port
-//   assets/skin-stylesheet.ts bootswatchSkinContent is that computation —
-//   and pass it through a SetModuleContentCard field. No graded surface
-//   exercises the record path for a skin card (the synthetic-v2 corpus's
-//   only skin bytes are the six truncated summaries, all render-path).
+//   CONTENT_PARTS assembly resolves a mod-style subtree ("style: mods" →
+//   18 "mod: X+*style" rule cards) whose ~222KB of deck scss at capture time
+//   rides an untraced rule-card item mechanism; wired wire would be a guess.
 // - Right::GroupRemote (card-mod-assets set/right/group_remote.rb:29-31) and
 //   Right::Followers (card-mod-follow set/right/followers.rb:13-15): zero
 //   corpus presence (census: no live junction carries these tag codenames);

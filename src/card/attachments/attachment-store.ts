@@ -24,11 +24,7 @@
 import type { BlobDriver } from "../../blob/driver.js";
 import { FilesystemBlobDriver } from "../../blob/filesystem.js";
 import { contentTypeForExtension } from "../../blob/content-types.js";
-import {
-  codedAttachmentIdentifier,
-  filenameWithVariant,
-  localAttachmentIdentifier,
-} from "./attachment-content.js";
+import { filenameWithVariant, localAttachmentIdentifier } from "./attachment-content.js";
 import { renditionFileNames } from "./image-renditions.js";
 
 /** The bytes + names one upload carries into the store. */
@@ -55,13 +51,6 @@ export interface AttachmentStoreInput {
    *  files_base_dir("tmp")/files/<cache card id>), kept apart from the
    *  deck's files. Absent = the files area. */
   area?: "files" | "tmp";
-  /** Coded storage (set/abstract/attachment/coded.rb): the files live under
-   *  the mod's data/files/<codename parts> directory, not the deck's files
-   *  area, keyed by codename and mount name instead of card and action id.
-   *  `dirParts` is the card name's codename parts in order; `mountName` is
-   *  "image" or "file" (the mounted attribute, set/type/image.rb:1 and
-   *  set/type/file.rb:1). */
-  coded?: { mod: string; dirParts: readonly string[]; mountName: string };
 }
 
 /** What a store returns per successful write. */
@@ -100,28 +89,14 @@ export class BlobAttachmentStore implements AttachmentStore {
     this.blobs = blobs;
   }
 
-  /** The blob key for one stored file. The tmp upload cache of a two-step
-   *  upload lives under the tmp partition of the files base
-   *  (00_upload_cache.rb files_base_dir("tmp")), never among the deck's
-   *  served files. */
-  private keyFor(cardId: number, name: string, area?: "files" | "tmp"): string {
-    return area === "tmp" ? `tmp/${cardId}/${name}` : `${cardId}/${name}`;
-  }
-
   async store(input: AttachmentStoreInput): Promise<StoredAttachment> {
     // The stored filenames: FileCardUploader shape = <action_id><ext>;
     // ImageCardUploader shape (renditionNames present) = the -original
     // file + one file per version (image_card_uploader.rb:16-27, :44-57;
-    // file_card_uploader.rb:266-283). Coded storage keys the same shapes by
-    // mount name ("image-original.svg", "file.txt") under the codename
-    // directory, and its identifier is the coded one (file_card_uploader.rb
-    // :171-177 url_filename for a coded card: "<mod><ext>").
-    const coded = input.coded;
-    // The key: local storage keys by card id (<card_id>/<action_id><ext>,
-    // file_card_uploader.rb store path); CODED storage keys by the codename
-    // parts under the mod's data/files (coded.rb coded_dir), no card id.
-    const prefix = coded === undefined ? `${input.cardId}/` : `${coded.dirParts.join("/")}/`;
-    const names = input.renditionNames ?? [coded === undefined ? filenameWithVariant(input.actionId, input.ext) : `${coded.mountName}${input.ext}`];
+    // file_card_uploader.rb:266-283). Version bytes are the original's
+    // byte-copy (the mini_magick resize is the named seam,
+    // image-renditions.ts versionBytes).
+    const names = input.renditionNames ?? [filenameWithVariant(input.actionId, input.ext)];
     let stored = 0;
     for (const name of names) {
       // The versions are real resizes when the caller supplies their bytes
@@ -129,10 +104,7 @@ export class BlobAttachmentStore implements AttachmentStore {
       // name the resizer did not produce store the original bytes.
       const bytes = input.renditionBytes?.[name] ?? input.bytes;
       const result = await this.blobs.put(
-        // Local keys ride keyFor so the two-step upload's tmp area keeps its
-        // prefix (carrierwave's cache/store split); coded keys are the mod's
-        // own directory, no area.
-        coded === undefined ? this.keyFor(input.cardId, name, input.area) : `${prefix}${name}`,
+        `${input.cardId}/${name}`,
         bytes,
         { contentType: contentTypeForExtension(input.ext) },
       );
@@ -145,21 +117,14 @@ export class BlobAttachmentStore implements AttachmentStore {
       stored = Math.max(stored, result.size);
     }
     return {
-      identifier:
-        coded !== undefined
-          ? codedAttachmentIdentifier(coded.dirParts, coded.mod, input.ext)
-          : localAttachmentIdentifier(input.cardId, input.actionId, input.ext),
+      identifier: localAttachmentIdentifier(input.cardId, input.actionId, input.ext),
       size: Math.max(stored, input.bytes.length),
     };
   }
 
   async discard(input: AttachmentStoreInput): Promise<void> {
-    const coded = input.coded;
-    const prefix = coded === undefined ? `${input.cardId}/` : `${coded.dirParts.join("/")}/`;
-    const names = input.renditionNames ?? [coded === undefined ? filenameWithVariant(input.actionId, input.ext) : `${coded.mountName}${input.ext}`];
-    for (const name of names) {
-      await this.blobs.delete(coded === undefined ? this.keyFor(input.cardId, name, input.area) : `${prefix}${name}`);
-    }
+    const names = input.renditionNames ?? [filenameWithVariant(input.actionId, input.ext)];
+    for (const name of names) await this.blobs.delete(`${input.cardId}/${name}`);
   }
 
   async read(
@@ -185,7 +150,7 @@ export class BlobAttachmentStore implements AttachmentStore {
         ? [filenameWithVariant(actionId, ext), filenameWithVariant(actionId, ext, "original")]
         : [filenameWithVariant(actionId, ext, variant), filenameWithVariant(actionId, ext)];
     for (const name of candidates) {
-      const bytes = await this.blobs.getBytes(this.keyFor(cardId, name, area));
+      const bytes = await this.blobs.getBytes(`${cardId}/${name}`);
       if (bytes !== undefined) return bytes;
     }
     return undefined;

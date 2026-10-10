@@ -53,21 +53,6 @@ main = "worker.ts"
 compatibility_date = "2026-08-01"
 compatibility_flags = ["nodejs_compat"]
 
-# The CoffeeScript compiler (an edge write surface's coffeeCompiler,
-# coffee-npm-compiler.ts) is the pure-JavaScript npm package, but its module
-# entry requires fs, vm and path for its file and eval helpers — compile()
-# uses none of them. These aliases swap in a loud stub for the whole graph;
-# no other module here imports those three specifiers statically (the
-# engine's node reads all go through the process.getBuiltinModule probe),
-# so the aliases are no-ops for everything else. Same idea as
-# deploy/wrangler.toml's "node:crypto" alias; the esbuild-based bundle
-# builds scope the stub to the coffeescript subtree instead
-# (tools/vendor/coffeescript-edge-bundler-stubs.mjs).
-[alias]
-"fs" = "./deploy/shims/coffeescript-node-builtin-stub.mjs"
-"vm" = "./deploy/shims/coffeescript-node-builtin-stub.mjs"
-"path" = "./deploy/shims/coffeescript-node-builtin-stub.mjs"
-
 [define]
 __DECKO_RUNTIME__ = "'workers'"
 
