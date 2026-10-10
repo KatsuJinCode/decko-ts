@@ -218,10 +218,10 @@ describe("image :core (set/type/image/html_views.rb:5-11)", () => {
 });
 
 describe("image :full_width (set/type/image/html_views.rb:25-29)", () => {
-  it("emits <img ... class=w-100>", () => {
+  it("emits <img ... class=w-100> in Rails attr order, self-closing (the corpus's *favicon:full_width bytes)", () => {
     const html = imageHtmlFullWidthView(makeCtx("https://example.com/banner.png", { name: "Banner" }));
     expect(html).toBe(
-      '<img src="https://example.com/banner.png" alt="Banner" class="w-100">',
+      '<img alt="Banner" class="w-100" src="https://example.com/banner.png" />',
     );
   });
   it("returns empty string for blank src (set/type/file.rb:34-45 handle_source short-circuit)", () => {
@@ -298,11 +298,11 @@ describe("imageOneLineContentView type guard (set/type/image.rb:18-20 scoping)",
 });
 
 describe("favicon :link_tag (set/self/favicon.rb:7-11, perms: :none)", () => {
-  it("emits <link rel=shortcut icon href=URL> for an image-typed favicon", () => {
+  it("emits <link rel=shortcut icon href=URL> for an image-typed favicon (the source renders at the SMALL variant; the tag self-closes per the corpus bytes)", () => {
     const html = faviconLinkTagView(
       makeCtx("https://example.com/favicon.ico", { typeName: "Image", name: "favicon" }),
     );
-    expect(html).toBe('<link rel="shortcut icon" href="https://example.com/favicon.ico">');
+    expect(html).toBe('<link rel="shortcut icon" href="https://example.com/favicon.ico" />');
   });
   it("returns empty for a non-image favicon (no logo nest in headless)", () => {
     const html = faviconLinkTagView(makeCtx("", { typeName: "File", name: "favicon" }));
