@@ -195,7 +195,7 @@ import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
 import { parseNestOptions, scanNests } from "../../render/nest-syntax.js";
 import { safeSetKeys } from "../../render/set-keys.js";
-import { timeAgoInWords } from "./card-mod-history.js";
+import { timeAgoInWords, actSummaryBadge } from "./card-mod-history.js";
 import { ruleSidesStatement } from "./rule-card-warm.js";
 import { cardWallClockNow } from "../../wall-clock.js";
 import type {
@@ -2794,18 +2794,15 @@ export const historyTabView: ViewFn = ({ fmt, voo }) => {
               ),
             );
       const ago = agoDate === undefined ? "" : `${timeAgoInWords(agoDate)} ago`;
-      // summary: the act's action on THIS card (act.rb:97-101 action_on);
-      // action_type is the STORED integer (action.rb:89-91: create=0,
-      // update=1, delete=2)
-      const action = reader?.actionOn(Number(act.id), fmt.card.id as number);
-      const iconByType: Record<number, string> = {
-        0: "add_circle",
-        1: "edit",
-        2: "delete",
-      };
-      const actionType = action === undefined ? 1 : Number(action.action_type);
-      const iconName = iconByType[actionType] ?? "edit";
-      const summary = `<i class="notranslate material-icons">${iconName}</i><small> </small>`;
+      // summary: ActRenderer#summary (act_renderer.rb:37-41 + 96-103) - the
+      // act's APPROVED ACTIONS' per-type icons, the same composition the
+      // accordion's header badge renders (actSummaryBadge). NOT
+      // act.action_on(card.id): the on-this-card lookup is
+      // last_action_verb's mechanism - a family act (+summary, +tags)
+      // carries no action on the render root, and the earlier lookup
+      // defaulted every non-root pill to the edit icon where the corpus
+      // oracle pins add_circle for all four Topic 001 pills.
+      const summary = actSummaryBadge(reader, reader?.actionsOfAct(Number(act.id)) ?? []);
       const title =
         `<div class="me-2">#${thisSeq} ${h(actorName)} <small>${ago}</small></div>` +
         `<div class="ms-auto act-summary">${summary}</div>`;
