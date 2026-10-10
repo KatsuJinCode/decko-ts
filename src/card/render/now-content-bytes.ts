@@ -1,14 +1,17 @@
 // Self::Now's `def content` bytes — card-mod-date-0.20.0 set/self/now.rb:1-3,
 // `I18n.localize(Time.now, format: :card_dayofwk_min_tz)`.
 //
-// The en.yml:29 format string is '%A, %B %d, %Y %I:%M %p %Z', rendered in
-// the capture deck's environment: America/Los_Angeles wall time with the
-// Windows %Z display name "Pacific Standard Time" (standard spelling even
-// in DST — the capture-host zone census in
-// set-module-content-overrides.ts#ORACLE_DECK_TIME_ZONE). The instant comes
-// from the injectable capture wall clock (the graded corpus freezes it;
-// CAPTURE_FROZEN_CLOCK=2026-09-19T12:00:00Z renders "Saturday, September
-// 19, 2026 05:00 AM Pacific Standard Time" — the *now page pin).
+// The en.yml:29 format string is '%A, %B %d, %Y %I:%M %p %Z'. Both the
+// WALL-CLOCK ZONE and the %Z LABEL now come from the deck's configured time
+// zone (src/card/deck-time-zone.ts), not from the capture host's operating
+// system: the zone the instant is rendered in is the deck's, and the
+// abbreviation is computed from that zone and offset, so a daylight-time
+// instant reads "PDT" where it used to read the Windows display name
+// "Pacific Standard Time" (review round 4, finding 22 — see that module's
+// header for why the display name was wrong half the year). The instant
+// comes from the injectable capture wall clock (the graded corpus freezes
+// it; CAPTURE_FROZEN_CLOCK=2026-09-19T12:00:00Z renders "Saturday,
+// September 19, 2026 05:00 AM PDT" in the graded deck's zone).
 //
 // This is a leaf module on purpose: the loader-less render boot carries no
 // content-override registry (the mod-loader composition is not loaded
@@ -21,6 +24,7 @@
 // stored dbContent bytes and only *now is pinned virtual.
 
 import { cardWallClockNow } from "../wall-clock.js";
+import { deckTimeZoneName, formatCardDayofwkMinTz } from "../deck-time-zone.js";
 
 const WEEKDAY_NAMES = [
   "Sunday",
@@ -47,23 +51,8 @@ const MONTH_NAMES = [
   "December",
 ] as const;
 
-/** The Self::Now content bytes at the current capture wall-clock instant. */
+/** The Self::Now content bytes at the current capture wall-clock instant, in
+ *  the DECK's configured zone. */
 export function nowCardContent(): string {
-  const date = cardWallClockNow();
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Los_Angeles",
-    weekday: "long",
-    month: "long",
-    day: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  }).formatToParts(date);
-  const get = (type: string): string =>
-    parts.find((p) => p.type === type)?.value ?? "";
-  return (
-    `${get("weekday")}, ${get("month")} ${get("day")}, ${get("year")} ` +
-    `${get("hour")}:${get("minute")} ${get("dayPeriod")} Pacific Standard Time`
-  );
+  return formatCardDayofwkMinTz(cardWallClockNow(), deckTimeZoneName());
 }

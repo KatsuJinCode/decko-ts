@@ -57,6 +57,7 @@ import { applyDeckInflections } from "../../src/card/name/inflect.js";
 import { CARD_GEM_INITIALIZER_INFLECTIONS } from "../../src/card/name/oracle-deck-inflections.js";
 import { createVirtualCardLookup } from "../../src/card/fetch/virtual-cards.js";
 import { installDeckNameEnvironment } from "../../src/server/worker-shared-surface.js";
+import { setDeckTimeZone } from "../../src/card/deck-time-zone.js";
 import {
   structureRuleUniverseStatement,
   structureUniverseFromResults,
@@ -189,6 +190,9 @@ export async function bootEdgeServingEngines(
      *  deck config form of Ruby's `*all+*default` template type. Unset, the
      *  deck's unknown items carry no type chip and no type attributes. */
     phantomItemType?: { typeId: number; typeName: string; typeKey: string };
+    /** The deck's configured time zone (IANA name) for every timestamp the
+     *  render path formats. Unset keeps the graded deck's zone. */
+    timeZone?: string;
   } = {},
 ): Promise<DeckEngines> {
   const engines = await bootCorpusDeckEngines(
@@ -208,5 +212,11 @@ export async function bootEdgeServingEngines(
   }
   engines.render.imageCdnHost = opts.assetHost;
   engines.render.phantomItemType = opts.phantomItemType;
+  // The DECK's time zone (review round 4, finding 22). The render path's
+  // timestamps read it from src/card/deck-time-zone.ts rather than from a
+  // hard-coded capture-host zone, so a deployment sets it here. Unset keeps
+  // the graded deck's zone, which is what leaves every graded byte intact
+  // while removing the dependency on the capture host's OS setting.
+  if (opts.timeZone !== undefined) setDeckTimeZone(opts.timeZone);
   return engines;
 }

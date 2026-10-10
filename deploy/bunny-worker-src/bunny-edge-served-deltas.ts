@@ -25,6 +25,7 @@
 //
 //   1. One JSON blob: DECKO_SERVED_DELTAS='{"footerVersionPin":"0.19.1",…}'
 //   2. Individual plain variables, one per value:
+//        DECKO_TIME_ZONE
 //        DECKO_SERVED_ASSET_HOST
 //        DECKO_SERVED_FOOTER_VERSION_PIN
 //        DECKO_SERVED_STYLESHEET_FROM / DECKO_SERVED_STYLESHEET_TO
@@ -85,6 +86,12 @@ export interface PhantomTypeDelta {
  *  is optional; the empty object is the stock-deck default and every delta
  *  pass it drives is a no-op. */
 export interface ServedEnvironmentDeltas {
+  /** The deck's configured time zone (an IANA name) for every timestamp the
+   *  render path formats — Ruby's `Time.zone` (review round 4, finding 22).
+   *  undefined = the engine's default, which is the GRADED deck's zone so an
+   *  unconfigured deployment keeps its graded bytes; it is not a claim about
+   *  the host machine, which is what the hard-coded capture-host zone was. */
+  timeZone?: string;
   /** The asset host this deployment serves /files/ URLs from. undefined =
    *  the engine's own host-relative /files/ form (RenderEngine#imageCdnHost
    *  left unset), which is what a deck with no CDN configured renders. */
@@ -180,6 +187,8 @@ function parseDeltasBlob(raw: string | undefined): ServedEnvironmentDeltas {
     return typeof v === "number" && Number.isInteger(v) ? v : undefined;
   };
   const out: ServedEnvironmentDeltas = {};
+  const timeZone = str("timeZone");
+  if (timeZone !== undefined) out.timeZone = timeZone;
   const assetHost = str("assetHost");
   if (assetHost !== undefined) out.assetHost = assetHost;
   const footerVersionPin = str("footerVersionPin");
@@ -338,6 +347,9 @@ function parseIntegrityPairs(raw: string | undefined): ScriptIntegrityDelta[] | 
 export function resolveServedEnvironmentDeltas(env: ServedDeltasEnv | undefined): ServedEnvironmentDeltas {
   const src = env ?? {};
   const out: ServedEnvironmentDeltas = { ...parseDeltasBlob(src["DECKO_SERVED_DELTAS"]) };
+
+  const timeZone = trimmed(src["DECKO_TIME_ZONE"]);
+  if (out.timeZone === undefined && timeZone !== undefined) out.timeZone = timeZone;
 
   const assetHost = trimmed(src["DECKO_SERVED_ASSET_HOST"]);
   if (out.assetHost === undefined && assetHost !== undefined) out.assetHost = assetHost;

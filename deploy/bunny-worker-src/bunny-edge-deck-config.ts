@@ -182,6 +182,10 @@ export async function bootDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<
     ...(oneTripWantsPayload() ? { maxTemporaryCacheKeys: ONE_TRIP_BOOT_MAX_TEMPORARY_CACHE_KEYS } : {}),
     ...(servedDeltas.assetHost === undefined ? {} : { assetHost: servedDeltas.assetHost }),
     ...(servedDeltas.phantomType === undefined ? {} : { phantomItemType: servedDeltas.phantomType }),
+    // The deck's time zone (review round 4, finding 22) — Ruby's Time.zone,
+    // which every rendered timestamp reads instead of a hard-coded
+    // capture-host zone.
+    ...(servedDeltas.timeZone === undefined ? {} : { timeZone: servedDeltas.timeZone }),
   });
   return { ...engines, servedDeltas };
 }

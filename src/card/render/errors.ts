@@ -22,6 +22,7 @@
 // ----------------------------------------------------------------------------
 
 import { cardWallClockNow } from "../wall-clock.js";
+import { deckTimeZoneName } from "../deck-time-zone.js";
 
 /** card-mod-search set/abstract/cql_search.rb#parse_json_cql (line 29-34):
  *  JSON::ParserError on the card's content raises
@@ -191,12 +192,17 @@ export const NO_METHOD_ERROR_CLASS_NAME = "NoMethodError";
  *  supplies the day (`ruby -rdate -e 'p Date._parse("20-0405")'` gives
  *  only :mday and a zone), and the month and year come from Date.today.
  *  Today is read from the engine's wall-clock seam (src/card/wall-clock.ts),
- *  so a capture run that freezes the clock gets the capture's month. */
+ *  so a capture run that freezes the clock gets the capture's month, in the
+ *  DECK's configured zone (src/card/deck-time-zone.ts — review round 4,
+ *  finding 22; this used to name America/Los_Angeles, the capture host's
+ *  operating-system zone, so a deck in another zone completed the date from
+ *  the wrong "today"). */
 function fillFromReferenceMonth(day: number): Date | null {
   // Ruby's Date.parse completes the missing month and year from Date.today
-  // in the host's zone. Read the engine's wall-clock seam the same way.
+  // in the deck's zone. Read the engine's wall-clock seam and the deck's
+  // configured zone the same way.
   const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Los_Angeles",
+    timeZone: deckTimeZoneName(),
     year: "numeric",
     month: "numeric",
   }).formatToParts(cardWallClockNow());

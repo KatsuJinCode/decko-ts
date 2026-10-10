@@ -33,9 +33,14 @@
 //   fixtures/captured/help-mod-loader.json). Line count (34) and the "_mod"
 //   suffix are the Ruby-derivable part; the address bytes are not.
 // - Self::Now: I18n.localize(Time.now) — the capture froze a live wall clock
-//   on a Pacific-time Windows host ("...03:12 PM Pacific Standard Time").
-//   The port takes the instant from the injectable capture wall clock; the
-//   pin freezes it to the captured minute.
+//   in the graded deck's zone (America/Los_Angeles). The port takes the
+//   instant from the injectable capture wall clock; the pin freezes it to the
+//   captured minute. The zone is the DECK's configured one and %Z is the
+//   abbreviation computed from it, so this September (PDT) instant reads
+//   "PDT" where the corpus photographed the Windows display name "Pacific
+//   Standard Time" — Ruby prints the abbreviation; that display name was the
+//   capture host's operating system leaking into the port's output (review
+//   round 4, finding 22).
 import { describe, expect, it } from "vitest";
 
 import { ORACLE_BUNDLE_ORDER } from "../../../src/card/mod-loader/default-mod-deck.js";
@@ -71,7 +76,7 @@ describe("set-module content override universe (card-level record path)", () => 
     const answer = resolveSetModuleContent(card({}));
     // The captured record bytes (view-lane shard-000003, *now record.content):
     expect(answer).toBe(ORACLE_CAPTURE_NOW_BYTES);
-    expect(answer).toBe("Monday, September 28, 2026 03:12 PM Pacific Standard Time");
+    expect(answer).toBe("Monday, September 28, 2026 03:12 PM PDT");
   });
 
   it("Self::Version answers the card gem release (mod/core/set/self/version.rb:7-9)", () => {
@@ -166,7 +171,7 @@ describe("set-module content override universe (card-level record path)", () => 
         leftCreatedAt: "2026-09-28 22:12:00.000",
       }),
     );
-    expect(answer).toBe("Monday, September 28, 2026 03:12 PM Pacific Standard Time");
+    expect(answer).toBe("Monday, September 28, 2026 03:12 PM PDT");
     const unrealLeft = resolveSetModuleContent(
       card({
         key: "home+when_created",
@@ -212,7 +217,7 @@ describe("set-module content override universe (card-level record path)", () => 
   it("formatCardDayofwkMinTz applies en.yml:29's '%A, %B %d, %Y %I:%M %p %Z' in the deck zone", () => {
     setCaptureWallClock(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT);
     expect(formatCardDayofwkMinTz(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT)).toBe(
-      "Monday, September 28, 2026 03:12 PM Pacific Standard Time",
+      "Monday, September 28, 2026 03:12 PM PDT",
     );
   });
 

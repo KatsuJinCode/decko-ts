@@ -20,7 +20,7 @@ describe("CAPTURE_FROZEN_CLOCK", () => {
     // corpus of record, view lane shard 3, `*now` record.content
     const instant = captureClockFromEnv("2026-09-19T12:00:00Z");
     expect(formatCardDayofwkMinTz(instant)).toBe(
-      "Saturday, September 19, 2026 05:00 AM Pacific Standard Time",
+      "Saturday, September 19, 2026 05:00 AM PDT",
     );
   });
 

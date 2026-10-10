@@ -51,13 +51,16 @@
 //   shape and on every other byte — not as an accepted exception.
 // - Self::Now / Right::WhenCreated / Right::WhenLastEdited:
 //   I18n.localize(..., format: :card_dayofwk_min_tz) renders the wall clock /
-//   row timestamp in the deck's Rails Time.zone. The capture deck ran on a
-//   Pacific-time Windows host (its %Z renders "Pacific Standard Time" — the
-//   Windows zone display name, standard spelling even in DST, as the captured
-//   *now record bytes show). The port models that deck environment as the
-//   ORACLE_DECK_TIME_ZONE constant and takes "now" from the injectable
-//   capture wall clock (the corpus's graded bytes are a frozen sample of a
-//   time-varying answer).
+//   row timestamp in the deck's Rails Time.zone, with %Z the zone's
+//   abbreviation at that instant. Both now come from the deck's configured
+//   zone (src/card/deck-time-zone.ts, review round 4, finding 22) rather
+//   than from a hard-coded capture-host zone and a Windows display-name
+//   literal; "now" still comes from the injectable capture wall clock (the
+//   corpus's graded bytes are a frozen sample of a time-varying answer).
+//   The graded deck's zone remains the default so those bytes do not move —
+//   only the %Z LABEL changes, from the Windows display name
+//   "Pacific Standard Time" to the abbreviation Ruby prints ("PDT" for the
+//   corpus's September instants, "PST" for a winter one).
 //
 // Named remainders (derivation complete, NOT wired — see the receipt):
 // - Type::BootswatchSkin (card-mod-bootstrap set/type/bootswatch_skin.rb:44-48):
@@ -76,6 +79,10 @@
 
 import { randomBytes } from "node:crypto";
 import { cardWallClockNow, setCaptureWallClock } from "./wall-clock.js";
+import {
+  DEFAULT_DECK_TIME_ZONE,
+  formatCardDayofwkMinTz,
+} from "./deck-time-zone.js";
 
 import { ORACLE_BUNDLE_ORDER } from "./mod-loader/default-mod-deck.js";
 import {
@@ -97,29 +104,32 @@ export { listInputOptionsContent, toPointerContent };
 
 /**
  * The capture instant the corpus's Self::Now record bytes photograph:
- * "Monday, September 28, 2026 03:12 PM Pacific Standard Time"
- * (tmp/raw-ground-truth/expected-v2 view-lane/recapture-raw-shard-000003.jsonl,
- * *now record.content). The %I:%M format is minute-precision, so the exact
- * second is unobservable; :00 is the canonical choice. 15:12 America/Los_Angeles
- * = 22:12:00Z.
+ * "Monday, September 28, 2026 03:12 PM" (tmp/raw-ground-truth/expected-v2
+ * view-lane/recapture-raw-shard-000003.jsonl, *now record.content). The
+ * %I:%M format is minute-precision, so the exact second is unobservable;
+ * :00 is the canonical choice. 15:12 America/Los_Angeles = 22:12:00Z.
  */
 export const CAPTURE_WALL_CLOCK_CAPTURE_INSTANT: Date = new Date(
   "2026-09-28T22:12:00Z",
 );
 
-/** The captured *now record.content bytes (the pin target). */
-export const ORACLE_CAPTURE_NOW_BYTES =
-  "Monday, September 28, 2026 03:12 PM Pacific Standard Time";
+/** The captured *now record.content bytes (the pin target), as the port now
+ *  renders them: the same wall clock, with %Z as the zone's ABBREVIATION at
+ *  that instant. The corpus photographed the Windows display name
+ *  "Pacific Standard Time" for this September (PDT) instant because the
+ *  capture host was Windows; Ruby prints the abbreviation, so the port does
+ *  too (review round 4, finding 22 — see src/card/deck-time-zone.ts). */
+export const ORACLE_CAPTURE_NOW_BYTES = "Monday, September 28, 2026 03:12 PM PDT";
 
-/** The capture deck's Rails Time.zone, as its own %Z renders it. Windows
- *  hosts render the zone DISPLAY name (standard spelling regardless of DST);
- *  the captured bytes show "Pacific Standard Time" for a September (DST)
- *  instant — that display name is what byte parity requires. */
+/** The GRADED deck's configured time zone. The default, so an unconfigured
+ *  engine keeps the corpus's arithmetic byte-for-byte; a deck or fixture
+ *  that configures a different zone renders in that zone. */
 export const ORACLE_DECK_TIME_ZONE = {
-  /** Ruby Time#zone / %Z output on the capture host. */
-  zoneName: "Pacific Standard Time",
   /** The IANA zone the instant arithmetic uses. */
-  ianaTimeZone: "America/Los_Angeles",
+  ianaTimeZone: DEFAULT_DECK_TIME_ZONE,
+  /** The abbreviation %Z renders for a September (PDT) instant in it — what
+   *  Ruby's %Z produces, and what ORACLE_CAPTURE_NOW_BYTES carries. */
+  zoneName: "PDT",
 } as const;
 
 export { setCaptureWallClock, cardWallClockNow };
@@ -134,29 +144,13 @@ export { setCaptureWallClock, cardWallClockNow };
 
 /**
  * I18n.localize(..., format: :card_dayofwk_min_tz) — the en.yml:29 format
- * string '%A, %B %d, %Y %I:%M %p %Z', rendered in the deck zone with the
- * deck's %Z display name (ORACLE_DECK_TIME_ZONE).
+ * string '%A, %B %d, %Y %I:%M %p %Z', rendered in the DECK's configured zone
+ * with the abbreviation computed from that zone. Re-exported from
+ * src/card/deck-time-zone.ts, which owns both; the `zone` argument is what
+ * lets one instant be rendered in two zones without moving the deck-wide
+ * setting.
  */
-export function formatCardDayofwkMinTz(date: Date): string {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: ORACLE_DECK_TIME_ZONE.ianaTimeZone,
-    weekday: "long",
-    month: "long",
-    day: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  }).formatToParts(date);
-  const get = (type: string): string =>
-    parts.find((p) => p.type === type)?.value ?? "";
-  // en-US 2-digit hour12 gives "01".."12" — Ruby's %I padding matches.
-  return (
-    `${get("weekday")}, ${get("month")} ${get("day")}, ${get("year")} ` +
-    `${get("hour")}:${get("minute")} ${get("dayPeriod")} ` +
-    `${ORACLE_DECK_TIME_ZONE.zoneName}`
-  );
-}
+export { formatCardDayofwkMinTz };
 
 /** Parse a SQLDateTime ("YYYY-MM-DD HH:MM:SS.SSS", UTC — the LocalSqliteDriver
  *  write shape) into the Date the deck-zone render reads. Same reading as
