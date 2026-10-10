@@ -488,6 +488,14 @@ const MOD_STYLE_GROUPS: Record<
       ],
     ],
   ],
+  // card-mod-style-0.20.0 assets/style/ ships jquery_ui_decko.scss (the
+  // gem tree); the oracle capture host's folder ALSO carried
+  // jquery_ui_smoothness.css (the compiled jquery-ui theme beside it).
+  // Same capture-pinned-filesystem-state rule as the format entry: the
+  // synthetic-v2 oracle's mod: style+*style :core pins this exact pair in
+  // this order (the "group: local" folder group, no manifest.yml in the
+  // gem's assets/style tree).
+  style: [["group: local", ["jquery_ui_decko.scss", "jquery_ui_smoothness.css"]]],
 };
 
 // ---------------------------------------------------------------------------

@@ -42,6 +42,8 @@ import {
   newSlotId,
   slotOptionsJson,
 } from "./slot-html.js";
+import { DeckoName } from "../name.js";
+import { getNameEnvironment } from "../name/environment.js";
 import { cardFormShell } from "../mod-loader/mod-form-substrate.js";
 import type { ViewContext } from "./format.js";
 
@@ -83,30 +85,77 @@ function signinFieldGroup(
   const subName = `${ctx.fmt.card.name.s}+*${field}`;
   const safeRight = field === "email" ? "Xemail" : "Xpassword";
   const rightClass = `RIGHT-${safeRight}`;
-  // The structural fallbacks are the account mod's own invariants: both
-  // rights assign_type :phrase (right/email.rb:3, right/password.rb:3;
-  // type_id 52 on every deck the mod ships on); the set-key list is the
-  // Phrase right-card's standard chain (the captured oracle bytes).
+  // The structural fallbacks mirror Ruby's new-card resolution for the
+  // absent field card: the nest builds it in the page context and the
+  // right-module type assignment applies - Right::Email / Right::Password
+  // `assign_type :phrase` (right/email.rb:3, right/password.rb:3) - and
+  // the type id resolves through the DECK's codename table (the PhraseID
+  // constant = Card::Codename.id(:phrase): 43 on the synthetic-v2 corpus
+  // deck, 52 on production - never a baked number). The set-key list is
+  // the Phrase right-card's standard chain (the captured oracle bytes;
+  // codename-keyed tokens, deck-independent). A deck without the phrase
+  // codename has the constant uninitialized: the Ruby view body raises
+  // and the engine's quiet rescue emits the standard bytes
+  // (html_format.rb:16-18) - the throw reproduces that shape.
   const setKeys = subcard?.setKeys ??
     `ALL ALL_PLUS TYPE-phrase RSTAR ${rightClass} TYPE_PLUS_RIGHT-rich_text-${safeRight}`;
-  const typeId = subcard?.typeId !== undefined ? String(subcard.typeId) : "52";
-  const typeName = subcard?.typeName ?? "Phrase";
+  const phraseCodename = getNameEnvironment()?.codename;
+  const fallbackTypeId = phraseCodename?.id("phrase");
+  const fallbackTypeName = phraseCodename?.name("phrase");
+  let typeId: string;
+  let typeName: string;
+  if (subcard?.typeId !== undefined) {
+    typeId = String(subcard.typeId);
+    // a stored subcard's type name composes from the deck; the phrase
+    // constant arm is unreachable on a well-formed deck
+    typeName = subcard.typeName ?? fallbackTypeName ?? "Phrase";
+  } else {
+    if (fallbackTypeId === undefined || fallbackTypeName === undefined) {
+      throw new Error(
+        "uninitialized constant PhraseID (the deck carries no phrase codename)",
+      );
+    }
+    typeId = String(fallbackTypeId);
+    typeName = fallbackTypeName;
+  }
   const contentId = signinSubcardInputId(field, "content");
   const typeIdId = signinSubcardInputId(field, "type_id");
   const contentName = `card[subcards][+*${field}][content]`;
   const typeIdName = `card[subcards][+*${field}][type_id]`;
   // The help-view slot's data-slot payload: the edit-form field help nest's
   // fixed Ruby semantics (view help, the edit_in_form+help show list, the
-  // field's titled home view, the field title, the parent name context) —
-  // constant across decks; slotOptionsJson orders/escapes it into the
-  // captured data-slot bytes.
-  const dataSlot = slotOptionsJson({
-    view: "help",
-    show: ["edit_in_form", "help"],
-    home_view: "titled",
-    title: field,
-    name_context: ctx.fmt.card.name.s,
-  });
+  // field's titled home view, the field title) plus the context-aware
+  // name_context of wrap.rb:74-78 #name_context_slot_option. Ruby emits
+  // the NEST format's initial_context_names - the parent's WORKING context
+  // (context_names.rb:22-29: parent.context_names filtered to this card's
+  // part keys) joined as NAMES - so the key rides ONLY when the form
+  // renders inside a live context: the page's :titled runs add_name_context
+  // before its body (html/views.rb:59 naming), making the page op emit
+  // "name_context":"*signin", while a root :core render has an empty
+  // working context and carries none (the corpus oracle:
+  // core:anonymous:*signin has no name_context key). The port's working
+  // list stores keys, and the synthetic deck's context cards are all
+  // key-shaped EXCEPT the starred settings - the page op pins the NAME
+  // ("*signin", not the key "xsignin") - so each key resolves through the
+  // lexicon the way Ruby's Name objects join.
+  const dataSlot = (() => {
+    const options: Record<string, unknown> = {
+      view: "help",
+      show: ["edit_in_form", "help"],
+      home_view: "titled",
+      title: field,
+    };
+    const childPartKeys = DeckoName.parse(subName).partKeys;
+    const environment = getNameEnvironment();
+    const contextNames = ctx.fmt.contextNames
+      .filter((key) => childPartKeys.includes(key))
+      .map((key) => {
+        const id = environment?.lexicon?.id(key);
+        return (id !== undefined ? environment?.lexicon?.name(id) : undefined) ?? key;
+      });
+    if (contextNames.length > 0) options["name_context"] = contextNames.join(",");
+    return slotOptionsJson(options);
+  })();
   const label =
     `<label for="${contentId}"><span class="card-title" title="${field}">${field}</span>\n` +
     `<div${emitAttrs({
