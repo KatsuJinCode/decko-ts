@@ -385,10 +385,6 @@ interface ParsedBody {
    *  an ajax request with a layout param renders the full page, not the
    *  bare slot). */
   slotParams: Record<string, string>;
-  /** params[:is_main] — configure_successful_deletion's modal-arm fork
-   *  (mod/session set/all/location_history.rb:11): present = the hard
-   *  redirect to :previous, absent = the unknown-view modal slot. */
-  isMain?: string;
   /** The multipart FILE parts under the card hash, by mount name — the
    *  card[<mount>] file part is Rack's UploadedFile (parser.rb:138-146),
    *  CardMount's file=/image= argument (card_mount.rb:41-44). */
@@ -399,6 +395,11 @@ interface ParsedBody {
   methodOverride?: string;
   /** params[:simulate_xhr] (env/serializable.rb:24 — the ajax half). */
   simulateXhr?: boolean;
+  /** params[:is_main] — configure_successful_deletion's modal-arm fork
+   *  (mod/session set/all/location_history.rb:11): present on an ajax delete
+   *  whose success target is the deleted card = the hard redirect to
+   *  :previous; absent = the unknown-view modal slot. */
+  isMain?: string;
   /** params[:comment] / params[:comment_author] — the add_comment event's
    *  inputs (card-mod-comment set/all/comment.rb:4-12). */
   comment?: string;
@@ -465,6 +466,7 @@ function applyParam(
   if (key === "token") parsed.token = value;
   else if (key === "_method") parsed.methodOverride = value;
   else if (key === "simulate_xhr") parsed.simulateXhr = value !== "";
+  else if (key === "is_main") parsed.isMain = value;
   else if (key === "comment") parsed.comment = value;
   else if (key === "comment_author") parsed.commentAuthor = value;
   else if (key === "draft") parsed.draft = value;
@@ -1107,8 +1109,11 @@ async function handleSigninUpdate(
   const outcome = await signinAccount(ctx.driver, sessions, email, password);
   if (!outcome.ok) {
     // authenticate_or_abort adds the ladder message under :signin
-    // (signin.rb:50-58 errors.add :signin, ...): "SIGNIN: <message>".
-    return fail(outcome.message, `SIGNIN: ${outcome.message}`);
+    // (signin.rb:50-58 errors.add :signin, ...): the errors view renders the
+    // attribute name upcased ("SIGNIN:") ahead of the message — the alert
+    // template below owns that prefix, so the shown bytes are the ladder
+    // message itself, unprefixed.
+    return fail(outcome.message, outcome.message);
   }
   // The success target (env/success/target.rb): the form's
   // success[mark]=*previous (signin.rb:171) -> previous_location; without a
@@ -1722,6 +1727,27 @@ async function dispatchWriteRequest(
       }
     }
     const successRedirect = parsed.success["redirect"];
+    // configure_successful_deletion (mod/session set/all/location_history.rb:9-17,
+    // inside event :discard_deleted_locations, :finalize on :delete): an ajax
+    // delete whose success target is the deleted card itself (no mark = self)
+    // with is_main in the params rewrites the success — redirect=true,
+    // target=:previous. The hard-redirect JSON then carries the session's
+    // previous location (resolved before the discard below), and the browser
+    // reloads that address: the trashed card's page renders the create form
+    // through the unknown-card branch (card-mod-format html/error.rb:81-86
+    // page_view_for_unknown).
+    if (
+      saved.verb === "delete" &&
+      !json && isAjax(req, parsed) &&
+      (parsed.success["mark"] === undefined || parsed.success["mark"] === "" || parsed.success["mark"] === "_self") &&
+      parsed.isMain !== undefined
+    ) {
+      return {
+        ...jsonResponse(200, { redirect: absoluteTarget(req, previousLocation(visit)) }),
+        expiryName: name,
+        expiryNames: subcardExpiryNames,
+      };
+    }
     if (!json && isAjax(req, parsed) && successRedirect !== undefined && successRedirect !== "" && successRedirect !== "soft") {
       return {
         ...jsonResponse(200, {
