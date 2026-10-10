@@ -598,6 +598,32 @@ const MAX_NEST_CHAR_COUNT = 200;
  *  parent.nest_mode : :normal` - a root format with no parent is :normal. */
 const DEFAULT_NEST_MODE: NestMode = "normal";
 
+/**
+ * `Cardio.config.raise_all_rendering_errors` (cardio/railtie.rb:38, whose
+ * stock default is false) - the process-global posture behind error.rb:65-67
+ * `loud_error?` (`focal? || raise_all_rendering_errors`). The TS default
+ * here is TRUE: the port's bare view lane and the mod-port raise contracts
+ * grew up loud (every raise the mod guards pin reaches the caller), and the
+ * reference-harness adapters - whose fixtures were captured with the config
+ * explicitly false and Rails.env production (the fixtures' MANIFEST
+ * "production render-error semantics" contract line) - set it FALSE at
+ * boot, so the corpus's quiet rescue postures (nest spans, delegated spans,
+ * the root's own wrap_and_render rescue) engage exactly where the oracle
+ * captured them.
+ */
+let raiseAllRenderingErrors = true;
+
+/** `Cardio.config.raise_all_rendering_errors=` - the boot-time posture
+ *  switch (the harness adapters set false; nothing else should). */
+export function setRaiseAllRenderingErrors(value: boolean): void {
+  raiseAllRenderingErrors = value;
+}
+
+/** error.rb:65-67's config half: true when EVERY rescue is loud. */
+export function allRenderingErrorsRaise(): boolean {
+  return raiseAllRenderingErrors;
+}
+
 export interface RenderFormatOptions {
   parent?: RenderFormat;
   main?: boolean;
@@ -1240,8 +1266,10 @@ export class RenderFormat {
         // catch, renderDelegated) - a throw reaching here already escaped
         // those. A focal root re-raises as Ruby's loud_error does
         // (error.rb:69-73); the page lane builds non-viewLaneRoot roots, so
-        // it keeps its own error surface.
-        if (!viewLaneRoot) throw error;
+        // it keeps its own error surface. The config half of loud_error?
+        // keeps the development posture (the mod-port raise contracts)
+        // fully loud.
+        if (!viewLaneRoot || allRenderingErrorsRaise()) throw error;
         return quietRenderError(error, this.card, effective);
       }
     } finally {
@@ -1947,9 +1975,11 @@ export class RenderFormat {
       // value (the oracle's email_page: the span lands inside the
       // :email_document wrapper, not at the root). Base formats keep the
       // depth-zero focal arm; the page's main!-ed format is focal and
-      // re-raises as before.
+      // re-raises as before. The config half of the disjunction makes every
+      // rescue loud (the development posture the mod-port raise contracts
+      // pin).
       const focal = this.formatName === "html" ? this.isMain : this.depth === 0;
-      if (focal) throw error; // error.rb:69-73 loud_error re-raises
+      if (focal || allRenderingErrorsRaise()) throw error; // error.rb:69-73 loud_error re-raises
       return quietRenderError(error, this.card, view);
     }
   }
