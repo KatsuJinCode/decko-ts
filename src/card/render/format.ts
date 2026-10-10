@@ -4261,8 +4261,10 @@ function showAllErrors(fmt: RenderFormat | undefined): boolean {
  * html_escape), which is why the capture's embedded quotes read &amp;#39;.
  * The frames are the ENGINE's own stack (Ruby embeds its own backtrace);
  * the instrument's N5 canonicalization blanks the machine-specific path
- * tokens on both sides while the frame structure stays compared — the
- * committed residual for the debug-span pins. */
+ * tokens on both sides and N6 replaces each frame line with its marker, so
+ * the compared residual is the frame COUNT - the engine's V8 stack depth
+ * against Ruby's boot-inclusive backtrace (the debug-span pins' recorded
+ * residual). */
 function errorDebugPage(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   const frames =

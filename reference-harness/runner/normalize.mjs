@@ -6,11 +6,12 @@
 //   narrow as that field's exact shape. There is one: N1.
 // - A canonical form over a volatile value replaces values that are a pure
 //   function of something outside the engines (a per-process hash seed, the
-//   capture clock, the capture host's filesystem) with one placeholder, so
-//   the comparison sees only what the engines themselves decide. The
-//   surrounding bytes still count: an engine whose output differs anywhere
-//   outside the volatile span still fails. There are three: N3 (collapse
-//   ids), N4 (relative-time spans), N5 (capture-host debug content).
+//   capture clock, the capture host's filesystem, the host language's stack
+//   format) with one placeholder, so the comparison sees only what the
+//   engines themselves decide. The surrounding bytes still count: an engine
+//   whose output differs anywhere outside the volatile span still fails.
+//   There are four: N3 (collapse ids), N4 (relative-time spans), N5
+//   (capture-host debug content), N6 (backtrace frame lines).
 // - A plain canonical form compares the same value in another encoding and
 //   erases nothing: N2, JSON key order.
 //
@@ -75,14 +76,12 @@ export const RELATIVE_TIME =
  * capture from another host - or the same deck captured after a checkout
  * move - differs in them while saying the same thing. Inside a title that
  * begins with the debug page marker they become placeholders; the error
- * message itself, the frame structure and every byte outside the title
- * still count. The engine must never emit a debug page: N5 only stops the
- * comparison from demanding the capture machine's filesystem. Measured on
- * synthetic-v2: 8 oracle ops carry the page (554 path tokens, 2 heap
- * addresses); the six ops whose recorded divergence is the embedded page
- * keep their pins - the engine does not raise where the oracle raises,
- * which is a structural gap N5 does not and must not hide (same evidence
- * receipt as N4).
+ * message, the frame COUNT (N6) and every byte outside the title still
+ * count. Measured on synthetic-v2: 8 oracle ops carry the page (554 path
+ * tokens, 2 heap addresses). The engine emits the same debug page where it
+ * raises as stock Ruby raises (error.rb's backtrace_link posture), so this
+ * rule stops the comparison from demanding the capture machine's
+ * filesystem on either side (same evidence receipt as N4).
  */
 export const ERROR_SPAN_TITLE =
   /(title=")(\s*&lt;h3&gt;Error message \(visible to admin only\)&lt;\/h3&gt;[\s\S]*?)(")/g;
@@ -91,6 +90,35 @@ export const ERROR_SPAN_TITLE =
 // stay compared oracle semantics (no Windows path carries a colon).
 const CAPTURE_HOST_PATH = /\b[A-Za-z]:[/\\][^\s<>&":]+/g;
 const HEAP_ADDRESS = /0x[0-9a-fA-F]{6,16}/g;
+
+/**
+ * N6. A backtrace frame line, inside a render-error span title's backtrace
+ * div. Ruby's debug page embeds `exception.backtrace * "<br>\n"` - the
+ * raising VM's own stack, one line per frame. The two sides run different
+ * languages: the oracle's frames are Ruby's (`path:line:in \`method'`,
+ * boot-inclusive, dozens of frames from the process's startup up), the
+ * engine's are V8's (`at fn (file:///path:line:col)`). A frame line is the
+ * host VM's identity - its language, its paths, its boot history - in the
+ * same class as N5's capture-host content: no port can emit the other
+ * language's stack, and nothing in the oracle's semantics lives in a
+ * frame's TEXT. Each frame line therefore becomes the one placeholder
+ * `N6#frame`, and the frame COUNT becomes the checkable invariant: the
+ * `<br>`-separated structure stays compared, so a side emitting a different
+ * number of its own frames still fails, as do the heading, the error
+ * message and every byte outside the div (they keep their existing rules).
+ * Measured on synthetic-v2 at the raise posture: the 8 oracle debug pages
+ * carry 51-63 Ruby frames; the engine's raise sites produce 8-10 V8 frames
+ * (Node's Error.stackTraceLimit caps at 10), so the six raise-posture rows
+ * stay pinned with the count as their recorded residual
+ * (benchmarks/seconds-corpus/backtrace-frame-canonicalization-evidence.md).
+ */
+export const FRAME_MARKER = "N6#frame";
+// The debug page's backtrace div: the region between the message paragraph's
+// close and the div's close, both html-escaped inside the title attribute.
+// The frames are joined by the escaped Ruby join separator; splitting on it
+// yields one segment per frame line.
+const BACKTRACE_DIV = /(&lt;\/p&gt;\s*&lt;div&gt;)([\s\S]*?)(&lt;\/div&gt;)/;
+const FRAME_SEPARATOR = /&lt;br&gt;\n/g;
 
 export function normalizeHtml(html) {
   if (typeof html !== "string") return html;
@@ -106,7 +134,23 @@ export function normalizeHtml(html) {
       return `${pre}${k}${post}`;
     })
     .replace(RELATIVE_TIME, "N4#elapsed")
-    .replace(ERROR_SPAN_TITLE, (_, open, body, close) => open + body.replace(CAPTURE_HOST_PATH, "N5#path").replace(HEAP_ADDRESS, "N5#addr") + close);
+    .replace(ERROR_SPAN_TITLE, (_, open, body, close) => open + canonicalizeDebugTitle(body) + close);
+}
+
+/** N5 then N6, inside a debug-page title: the capture host's path and heap
+ *  tokens become placeholders, then each backtrace frame line inside the
+ *  div becomes N6#frame - separators and everything outside the div stay
+ *  exact, so the frame count and the div's anchors still compare. */
+function canonicalizeDebugTitle(body) {
+  return body
+    .replace(CAPTURE_HOST_PATH, "N5#path")
+    .replace(HEAP_ADDRESS, "N5#addr")
+    .replace(BACKTRACE_DIV, (_, pre, frames, post) => {
+      // an empty div holds zero frames; `"".split(sep)` would yield [""] and
+      // wrongly normalize to one
+      const lines = (frames === "" ? [] : frames.split(FRAME_SEPARATOR)).map(() => FRAME_MARKER);
+      return pre + lines.join("&lt;br&gt;\n") + post;
+    });
 }
 
 /** A render result: its HTML normalised by N1, every other field as is. */

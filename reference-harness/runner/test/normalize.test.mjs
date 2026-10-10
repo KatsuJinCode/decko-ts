@@ -149,26 +149,31 @@ describe("N4: relative-time spans, the frozen-clock canonical form", () => {
 });
 
 describe("N5: capture-host content in debug-page titles, the capture-machine canonical form", () => {
-  const debugTitle = (frames) =>
-    `<span class="render-error alert alert-danger">Error rendering: <span title="\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\n      &lt;p&gt;&lt;strong&gt;HMAC key cannot be empty&lt;/strong&gt;&lt;/p&gt;\n${frames}">Ada Admin+*account</span> (verify_url view)</span>`;
+  // the real shape since the raise posture: the title carries the debug page
+  // - heading, message paragraph, backtrace div
+  const debugTitle = (message, frames) =>
+    `<span class="render-error alert alert-danger">Error rendering: <span title="\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\n      &lt;p&gt;&lt;strong&gt;${message}&lt;/strong&gt;&lt;/p&gt;\n      &lt;div&gt;${frames}&lt;/div&gt;\n    ">Ada Admin+*account</span> (verify_url view)</span>`;
   const frames = (host) =>
     `C:/${host}/lib/ruby/gems/3.3.0/gems/jwt-2.10.3/lib/jwt/jwa/hmac.rb:40:in &lt;code&gt;ensure_valid_key!&lt;br&gt;\nC:/${host}/reference-harness/oracle/adapter.rb:56:in &lt;code&gt;`;
 
-  it("canonicalizes the capture host's paths and heap addresses inside a debug title", () => {
-    assert.ok(same(debugTitle(frames("Ruby33-x64")), debugTitle(frames("other-install"))));
-    const m = normalizeHtml(debugTitle(frames("Ruby33-x64"))).match(/N5#path/g);
-    assert.ok(m && m.length === 2, "each frame's path token becomes N5#path");
+  it("canonicalizes capture-host content in the message and title outside the div", () => {
     assert.ok(same(
-      debugTitle("x #&lt;Card:0x000073a1c2d3e4f0&gt;"),
-      debugTitle("x #&lt;Card:0x000073a1c2d3e4f8&gt;"),
-    ), "heap addresses inside the title are capture-machine noise");
+      debugTitle("private method `closure_deletions' called for #&lt;Card:0x000073a1c2d3e4f0&gt;", frames("Ruby33-x64")),
+      debugTitle("private method `closure_deletions' called for #&lt;Card:0x000073a1c2d3e4f8&gt;", frames("Ruby33-x64")),
+    ), "heap addresses in the message are capture-machine noise");
+    assert.ok(!same(
+      debugTitle("uninitialized constant Card::Set::All::Html::Error::BetterErrors", frames("Ruby33-x64")),
+      debugTitle("uninitialized constant Card::Set::All::Html::Error::Other", frames("Ruby33-x64")),
+    ), "the message text itself is oracle semantics");
+    const m = normalizeHtml(debugTitle("msg", frames("Ruby33-x64"))).match(/N5#path/g);
+    assert.ok(!m, "frame lines inside the div are N6's, not N5's");
+    const outside = `<span title="\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\nC:/Ruby33-x64/loose.rb">card</span>`;
+    assert.equal([...normalizeHtml(outside).matchAll(/N5#path/g)].length, 1, "title content outside the message and div still gets N5");
   });
 
-  it("the error message, the frame structure and the anchors still count", () => {
-    assert.ok(!same(debugTitle(frames("Ruby33-x64")), debugTitle(frames("Ruby33-x64")).replace("HMAC key cannot be empty", "other failure")));
-    assert.ok(!same(debugTitle(frames("Ruby33-x64")), debugTitle(frames("Ruby33-x64")).replace("(verify_url view)", "(reset_password_url view)")));
-    assert.ok(!same(debugTitle(frames("Ruby33-x64")), debugTitle(frames("Ruby33-x64")).replace(":40:in", ":41:in")), "the frame's line is oracle semantics");
-    assert.ok(!same(debugTitle(frames("Ruby33-x64")), "<span class=\"render-error alert alert-danger\">Error rendering: <span title=\"\">Ada Admin+*account</span> (verify_url view)</span>"), "an engine that emits no debug page still differs structurally");
+  it("the anchors still count", () => {
+    assert.ok(!same(debugTitle("HMAC key cannot be empty", frames("Ruby33-x64")), debugTitle("HMAC key cannot be empty", frames("Ruby33-x64")).replace("(verify_url view)", "(reset_password_url view)")));
+    assert.ok(!same(debugTitle("HMAC key cannot be empty", frames("Ruby33-x64")), `<span class="render-error alert alert-danger">Error rendering: <span title="">Ada Admin+*account</span> (verify_url view)</span>`), "an engine that emits no debug page still differs structurally");
   });
 
   it("does not touch paths or addresses outside a debug title", () => {
@@ -180,6 +185,53 @@ describe("N5: capture-host content in debug-page titles, the capture-machine can
   it("the rule keys on the debug page's own first bytes, not the span class alone", () => {
     const plainError = `<span title="something went wrong C:/Ruby33-x64/x.rb">card</span>`;
     assert.ok(!same(plainError, plainError.replace("Ruby33-x64", "other")), "no debug-page marker, no rule");
+  });
+});
+
+describe("N6: backtrace frame lines, the host-VM stack canonical form", () => {
+  // the real shapes: the oracle's frames are Ruby's (boot-inclusive, escaped
+  // inside the title), the engine's are V8's; both join with the escaped
+  // `<br>\n` separator
+  const debugTitle = (frames) =>
+    `<span class="render-error alert alert-danger">Error rendering: <span title="\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\n      &lt;p&gt;&lt;strong&gt;HMAC key cannot be empty&lt;/strong&gt;&lt;/p&gt;\n      &lt;div&gt;${frames}&lt;/div&gt;\n    ">Ada Admin+*account</span> (verify_url view)</span>`;
+  const rubyFrame = (gem, line, method) =>
+    `C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/${gem}:${line}:in \`${method}&#39;`;
+  const v8Frame = (fn, file) =>
+    `at ${fn} (file:///C:/localProjects/decko-ts-corpusinst/src/card/render/${file})`;
+  const join = (frames) => frames.join("&lt;br&gt;\n");
+
+  it("canonicalizes each frame line to one marker whichever VM produced it, preserving the count", () => {
+    const ruby = debugTitle(join([rubyFrame("jwt-2.10.3/lib/jwt/jwa/hmac.rb", 40, "ensure_valid_key!"), "&lt;internal:kernel&gt;:90:in `tap&#39;", "script/decko:6:in `&lt;main&gt;&#39;"]));
+    const v8 = debugTitle(join([v8Frame("tokenUrlBody", "views.ts"), v8Frame("renderView", "format.ts"), v8Frame("renderPage", "run.mjs")]));
+    assert.ok(same(ruby, v8), "three Ruby frames and three V8 frames carry the same compared content");
+    assert.equal([...normalizeHtml(ruby).matchAll(/N6#frame/g)].length, 3, "three frames, three markers");
+    assert.ok(!normalizeHtml(ruby).includes("hmac.rb") && !normalizeHtml(v8).includes("tokenUrlBody"), "no frame text survives");
+  });
+
+  it("the frame count is the checkable invariant: a different count still fails", () => {
+    const three = debugTitle(join([v8Frame("a", "x.ts"), v8Frame("b", "y.ts"), v8Frame("c", "z.ts")]));
+    const four = debugTitle(join([v8Frame("a", "x.ts"), v8Frame("b", "y.ts"), v8Frame("c", "z.ts"), v8Frame("d", "w.ts")]));
+    assert.ok(!same(three, four), "8 engine frames against 63 Ruby frames still differ");
+    assert.ok(!same(three, debugTitle(join([v8Frame("a", "x.ts"), v8Frame("b", "y.ts")]))), "a dropped frame");
+    assert.ok(!same(three, three.replace("&lt;br&gt;\n", "")), "a lost separator changes the count");
+  });
+
+  it("the heading, the message and the div's anchors still count", () => {
+    const ruby3 = () => join([rubyFrame("jwt-2.10.3/lib/jwt/jwa/hmac.rb", 40, "ensure_valid_key!"), "&lt;internal:kernel&gt;:90:in `tap&#39;", "script/decko:6:in `&lt;main&gt;&#39;"]);
+    assert.ok(!same(debugTitle(ruby3()), debugTitle(ruby3()).replace("HMAC key cannot be empty", "other failure")), "the message is oracle semantics");
+    assert.ok(!same(debugTitle(ruby3()), debugTitle(ruby3()).replace("(verify_url view)", "(reset_password_url view)")), "the span's anchors are oracle semantics");
+    assert.ok(!same(debugTitle(ruby3()), debugTitle(ruby3()).replace("&lt;/div&gt;\n    ", "&lt;/div&gt;\n      ")), "the div's tail is oracle semantics");
+    assert.ok(!same(debugTitle(ruby3()), debugTitle("")), "an engine emitting an empty div holds zero frames against three");
+    assert.ok(!same(debugTitle(ruby3()), `<span class="render-error alert alert-danger">Error rendering: <span title="">Ada Admin+*account</span> (verify_url view)</span>`), "no debug page at all still differs structurally");
+  });
+
+  it("fires only inside the debug title's backtrace div", () => {
+    assert.ok(!same("<p>at fn (file:///C:/a/x.ts:1:1)&lt;br&gt;\nat g (file:///C:/a/y.ts:2:2)</p>", "<p>at fn (file:///C:/b/x.ts:1:1)&lt;br&gt;\nat g (file:///C:/b/y.ts:2:2)</p>"), "frames outside a debug title are real bytes");
+    const ordinaryTitle = (frames) => `<span title="${frames}">card</span>`;
+    assert.ok(!same(ordinaryTitle(join([v8Frame("a", "x.ts"), v8Frame("b", "y.ts")])), ordinaryTitle(join([v8Frame("c", "x.ts"), v8Frame("d", "y.ts")]))), "no debug-page marker, no rule");
+    const messageDiv = (msg) =>
+      `<span title="\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\n      &lt;p&gt;&lt;strong&gt;${msg}&lt;/strong&gt;&lt;/p&gt;\n      &lt;div&gt;${join([v8Frame("a", "x.ts")])}&lt;/div&gt;\n    ">card</span>`;
+    assert.ok(!same(messageDiv("a &lt;div&gt; b"), messageDiv("a &lt;div&gt; c")), "a div-shaped token in the message is message text, not the backtrace div");
   });
 });
 
