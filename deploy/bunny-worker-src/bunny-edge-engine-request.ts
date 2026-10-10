@@ -408,7 +408,18 @@ async function dispatchEngineRequest(
   // (404, text/plain, "Could not find <id>." — measured on the live
   // site's /files/103/3649-small.jpg path).
   if (/^\/files\/\d+\/[^/]+/.test(url.pathname)) {
-    return filesRouteResponse(await source.deck(), url.pathname);
+    // THE FRESHNESS GATE (review round 3, finding 1 — the shared-edge
+    // counterpart of the gate both Cloudflare twins run at their data
+    // routes, RenderEngine#ensureFreshness): this route resolves the
+    // attachment through the ISOLATE-RETAINED engine (the handler's
+    // one-deck-per-isolate boot retains it across requests), whose fetch
+    // caches outlive the request — a committed content edit would keep
+    // answering the pre-edit carrier URL here. Read the deck's
+    // committed-write stamp and clear every derived cache when it moved,
+    // BEFORE the fetch.
+    const filesDeck = await source.deck();
+    await filesDeck.render.ensureFreshness();
+    return filesRouteResponse(filesDeck, url.pathname);
   }
 
   const parsed = parsePath(url.pathname, url.searchParams);
@@ -422,7 +433,15 @@ async function dispatchEngineRequest(
       // ok?(:create) on the virtual card) lives in
       // bunny-edge-new-card-form.ts; the measured 404 this replaces is
       // capture-log-demo-nav.jsonl seq 97.
-      return await newCardRouteResponse(await source.deck(), parsed.typeName);
+      // THE FRESHNESS GATE (review round 3, finding 1 — same gate as the
+      // /files arm above): the type fetch (fetchByKey) and the
+      // create-verdict walk in bunny-edge-new-card-form.ts both read the
+      // ISOLATE-RETAINED fetcher's card and rule caches, so a committed
+      // rule revocation must move the deck's committed-write stamp and
+      // clear those caches HERE, before the verdict is computed.
+      const newCardDeck = await source.deck();
+      await newCardDeck.render.ensureFreshness();
+      return await newCardRouteResponse(newCardDeck, parsed.typeName);
     }
     if (parsed.kind === "notFound") {
       // THE NO-ROUTE CLASS (p2-error-shell lane, 2026-10-03): paths that
@@ -458,6 +477,23 @@ async function dispatchEngineRequest(
           return json(400, { error: "empty card name" });
         }
         const deck = await source.deck();
+        // THE FRESHNESS BOUNDARY BEFORE THE FETCH AND THE READ GATE (review
+        // round 3, finding 1 — the BLOCKER the shared edge missed): this
+        // handler retains ONE deck per isolate (the handler's module-scope
+        // deckPromise), and canReadCard's verdicts memoize on that retained
+        // engine (readPermission, deniedVerdicts — render.ts), while the
+        // fetcher caches the rule rows the verdict walk reads. Without this
+        // gate a read rule revoked after the engine's last freshness check
+        // kept serving 200 with the protected body here — the reviewer's
+        // grant-Anyone/read-200/revoke-to-Member/read-200 reproduction —
+        // while the render entry clears its caches at this same gate on
+        // every request (RenderEngine#render's renderHeld gate) and the
+        // root Worker's /api/card branch has run RenderEngine#
+        // ensureFreshness() since the earlier fix (worker.ts:310). One
+        // stamp read, exactly what a warm render pays; a moved stamp
+        // resets every derived cache so the fetch and verdict below answer
+        // over the committed state.
+        await deck.render.ensureFreshness();
         const record = await deck.fetcher.fetchByName(name);
         if (record === undefined || record.name === undefined) {
           return json(404, { error: "card not found", name });

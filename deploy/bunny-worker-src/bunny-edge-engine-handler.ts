@@ -65,8 +65,10 @@ import { probeArmed, probeHeaderValue, probeRecordBoot, probeRoute } from "./bun
 import { SessionStore } from "../../src/card/auth/session-store.js";
 import {
   bunnyEdgeWriteArmed,
+  bunnyEdgeWriteFlags,
   mountBunnyEdgeWriteSurface,
 } from "./bunny-edge-signin-session-surface.js";
+import { applySecuritySettings } from "../../src/server/cloudflare-write-routes.js";
 import {
   ActorRenderEngines,
   handleEdgeSignout,
@@ -242,7 +244,12 @@ async function routeBunnyEngineRequest(
   // card write, and gating sign-out behind DECKO_WRITE_PATH while sign-in
   // runs ungated would strand live sessions. The handler itself is
   // read-shaped: it revokes the CALLER'S OWN session row (or answers
-  // revoked:false) and never touches cards.
+  // revoked:false) and never touches cards. NOT ungated to the ORIGIN
+  // check (review round 3, finding 3): the surface now runs the same
+  // checkRequestOrigin policy the write routes and sign-in run
+  // (docs/SECURITY.md's row names sign-out among the origin-checked
+  // requests) — a cross-site GET/POST is refused 403 before the session
+  // row is touched; same-origin and address-bar navigations pass.
   //
   // MOUNT ORDER — fixed live 2026-10-03 (union-2 lane proof): this mount
   // sits ABOVE the write surface because matchRoute claims a bare
@@ -257,7 +264,16 @@ async function routeBunnyEngineRequest(
     const signoutConfig = resolveDbConfig(env);
     if (!("error" in signoutConfig)) {
       const signoutDeck = await getDeck(signoutConfig, env);
-      const signout = await handleEdgeSignout(signoutDeck, request);
+      // THE ORIGIN GATE'S POLICY (review round 3, finding 3): the SAME
+      // OriginPolicy derivation the write surface below runs its
+      // requests through (applySecuritySettings over this host's env —
+      // DECKO_ORIGIN_CHECK / DECKO_TRUSTED_ORIGINS), so sign-in,
+      // sign-out and the writes answer one origin policy per host.
+      const signout = await handleEdgeSignout(
+        signoutDeck,
+        request,
+        applySecuritySettings(bunnyEdgeWriteFlags(env)),
+      );
       if (signout !== null) return signout;
     }
   }

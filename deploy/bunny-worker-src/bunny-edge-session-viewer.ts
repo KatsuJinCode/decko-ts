@@ -81,6 +81,12 @@ import { signoutAccount } from "../../src/card/auth/signin.js";
 import type { FetchEngine } from "../../src/card/fetch.js";
 import { RenderEngine } from "../../src/card/render.js";
 import {
+  CROSS_ORIGIN_MESSAGE,
+  checkRequestOrigin,
+  defaultOriginPolicy,
+  type OriginPolicy,
+} from "../../src/server/request-origin.js";
+import {
   ANONYMOUS_VIEWER,
   type ReadViewer,
 } from "../../src/card/permissions/read-rules.js";
@@ -224,6 +230,23 @@ export class ActorRenderEngines {
  * clearedSessionCookieHeader carries no Secure because the Node staging
  * host also serves plain http on localhost).
  *
+ * THE ORIGIN GATE (review round 3, finding 3): sign-out is a
+ * state-changing request, and docs/SECURITY.md's approved-divergences row
+ * says writes AND sign-in/sign-out pass the same-origin check — the same
+ * checkRequestOrigin policy (request-origin.ts: Sec-Fetch-Site, then
+ * Origin, then Referer; a request with none of the three did not come
+ * from a browser page and passes, so scripts and API clients keep
+ * working; a same-origin or address-bar GET navigation passes; a
+ * cross-site or same-site one is refused) the write routes run before
+ * their own state changes (write-routes.ts dispatch) and the edge's
+ * sign-in surface runs through the same OriginPolicy its host derives
+ * (applySecuritySettings over the DECKO_ORIGIN_CHECK /
+ * DECKO_TRUSTED_ORIGINS env). The handler passes that SAME policy here,
+ * so one env derivation governs sign-in, sign-out and the write surface
+ * on this host. A refusal answers the write routes' 403 cross-origin
+ * shape (write-routes.ts crossOriginResponse, the JSON arm this
+ * surface's own responses speak) and revokes NOTHING.
+ *
  * Idempotent, like Ruby's: signing out Anonymous is a no-op success, so a
  * second sign-out with the same (now dead) cookie answers 200 revoked:false.
  *
@@ -233,10 +256,32 @@ export class ActorRenderEngines {
 export async function handleEdgeSignout(
   deck: SessionDeck,
   request: Request,
+  originPolicy?: OriginPolicy,
 ): Promise<Response | null> {
   if (request.method !== "GET" && request.method !== "POST") return null;
   const url = new URL(request.url);
   if (url.pathname.replace(/\/+$/, "") !== EDGE_SIGNOUT_PATH) return null;
+
+  // The origin gate, BEFORE any session work: the same header evidence the
+  // write routes judge (lower-cased headers record + the URL's host, the
+  // same derivation readWorkersRequest hands the shared surface). A
+  // refused request must not touch the session row.
+  const headers: Record<string, string | undefined> = {};
+  request.headers.forEach((value, key) => {
+    headers[key.toLowerCase()] = value;
+  });
+  const originVerdict = checkRequestOrigin(
+    { headers, host: url.host },
+    originPolicy ?? defaultOriginPolicy(),
+  );
+  if (!originVerdict.ok) {
+    return json(403, {
+      error: {
+        code: "cross-origin",
+        message: `${CROSS_ORIGIN_MESSAGE} (${originVerdict.reason})`,
+      },
+    });
+  }
 
   const sessions = new SessionStore({ driver: deck.fetcher.driver });
   const token = sessionTokenFromRequest(request);
