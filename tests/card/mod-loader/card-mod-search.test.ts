@@ -266,10 +266,22 @@ describe("card-mod-search through the mod loader (A/B)", () => {
     );
   });
 
-  it("WITH the mod: :search_error on a healthy card refuses (Ruby's Integer/Array .message raises NoMethodError - no defined bytes)", async () => {
+  it("WITH the mod: :search_error on a healthy card raises Ruby's Array#message NoMethodError (the reproduced upstream failure; views.rb:6-8)", async () => {
     const s = storage!;
+    // The healthy search warms with a result Array, so the view's
+    // interpolation (`"#{search_with_params.class} :: #{search_with_params
+    // .message} :: ..."` - 0_search/views.rb:6-8) gets through .class and
+    // crashes on .message: "undefined method `message' for an instance of
+    // Array" (Ruby 3.3's receiver phrasing). That is the oracle's observed
+    // failure for view:admin:All Topics:search_error - the quiet
+    // render-error span carrying that debug page (51 boot-inclusive Ruby
+    // frames in the committed capture) - and the corpus gate now grades the
+    // engine's page byte-identical to it. The suite's raise contracts run
+    // the loud posture (raise_all_rendering_errors defaults true; only the
+    // harness adapters set it false), so the raise surfaces here verbatim
+    // instead of as the span.
     await expect(s.engine.render("A Search", "search_error")).rejects.toThrow(
-      /rescued BadQuery/,
+      /undefined method `message' for an instance of Array/,
     );
   });
 

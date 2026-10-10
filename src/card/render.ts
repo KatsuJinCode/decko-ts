@@ -1682,6 +1682,21 @@ export class RenderEngine implements RenderEngineLike {
         }
       }
     }
+    // The edit_structure nest warm (view :edit_structure): the view walks the
+    // root card's *structure rule candidates over the SEATED render cards
+    // (card-mod-edit.ts editStructureView - fetchRenderCard is cache-only)
+    // and the rule cards are no nest-syntax references the prefetch closure
+    // chases, so the view's candidates ride this warm: one point fetch per
+    // candidate (the *all tail miss is cheap, the rule_help warm's own
+    // precedent). Every other view warms nothing.
+    if (view === "edit_structure") {
+      for (const candidate of ruleNamesForCard(
+        { name: name.s, id: record.id, typeId: record.typeId, isNew: record.isNew === true },
+        "*structure",
+      )) {
+        await this.prepareItemForRender(candidate);
+      }
+    }
     // view-fail class V6: the bootswatch_skin bar_left
     // nests the card's +Image child at :boxed (card-mod-bar_and_box
     // media_snippet.haml's `nest image_card, view: :boxed, size: size`).
