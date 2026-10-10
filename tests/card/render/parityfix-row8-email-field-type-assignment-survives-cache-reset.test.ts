@@ -32,7 +32,7 @@
 // (tmp/parityfixes-work/probe-assignment-walk-warmth.mjs):
 //   after boot, before any render: moduleKeys
 //     ["TypePlusRight::Basic::To","Right::To"], findAssignedTypeName "list"
-//   after rendering BW+*right:    moduleKeys [], findAssignedTypeName null
+//   after rendering CM+*right:    moduleKeys [], findAssignedTypeName null
 // and the rendered page follows the walk exactly:
 //   row 8 rendered 1st/3rd : 21,686 B, data-card-type-name="List"
 //   row 8 rendered 7th     : 21,702 B, data-card-type-name="RichText"

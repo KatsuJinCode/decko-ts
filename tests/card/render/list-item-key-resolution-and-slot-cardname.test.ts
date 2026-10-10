@@ -331,7 +331,7 @@ describe("pointer-item slot name-form quadrants (wrap.rb:50-53 compound gate)", 
   it(
     "an unsaved COMPOUND-named phantom item displays the url_key form (the id-less underscored census class)",
     () => {
-      // Oracle: the mixed18 BW capture pins the compound phantom's
+      // Oracle: the mixed18 CM capture pins the compound phantom's
       // underscored slot form
       // data-card-name="BW_Oversight+ARCHETYPALLY+Human" (the shape the
       // leftclimb TPR pins match tolerantly today); the same class holds

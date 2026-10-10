@@ -4020,7 +4020,7 @@ function renderPointerListItem(fmt: RenderFormat, name: string, itemView: string
   // Corpus bytes: HDW CM 20131229 0264+tags `titled;item:taglink` —
   // item 1 read-denied (the quiet denial span, unchanged), item 2
   // `<div class="pointer-item item-taglink"><span class="render-error
-  // alert alert-danger">view (taglink) not supported for BW</span></div>`
+  // alert alert-danger">view (taglink) not supported for CM</span></div>`
   // inside `<div class="card-list card-list-taglink pointer-list">`.
   // UnsupportedViewError keeps its own message in the span
   // (quietRenderError; error.rb:52-54) — the capture's exact bytes.
