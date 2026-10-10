@@ -2256,7 +2256,11 @@ const lastActionView: ViewFn = (ctx) => {
  *  lands (it lands in this commit). */
 const changeView: ViewFn = (ctx) => {
   const { fmt, voo } = ctx;
-  voo.show("title_link");
+  // Ruby's `voo.show :title_link` is the SETTER form (visibility.rb show! -
+  // vizWrite, first write wins): it RECORDS, and the slot JSON's show list
+  // carries it (the corpus :change slot reads show:["change","title_link"],
+  // hide:["menu"]). The query form (show?) decides the title arm below.
+  voo.showViz("title_link");
   voo.hide("menu");
   // title.rb:14-16 show_view?(:title_link, :hide) ? render_title_link :
   // render_title_no_link — the voo the :change body just viz'd decides the
@@ -2265,7 +2269,15 @@ const changeView: ViewFn = (ctx) => {
   const title = fmt.renderView("title_link");
   const menu = voo.show("menu") ? fmt.renderView("menu") : "";
   const lastAction = fmt.renderView("last_action");
-  return historySlotWrap(ctx, "change", [title, menu, lastAction].join("\n"));
+  // output() compacts the array before the newline join (content.rb:73-77
+  // Array.wrap(content).flatten.compact): the hidden menu and the headless
+  // empty :last_action render nothing - the corpus :change bytes end at the
+  // title link, no trailing separator.
+  return historySlotWrap(
+    ctx,
+    "change",
+    [title, menu, lastAction].filter((part) => part !== "").join("\n"),
+  );
 };
 
 // ---------------------------------------------------------------------------

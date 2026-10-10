@@ -443,28 +443,6 @@
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
     },
     {
-      "op": "view:admin:Topic 001:subedit_notice",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 9,
-        "expected": "{\"html\":\"<li>Topic 001 created\\n<li>   cardtype: Topic</li>\\n<li>   content: </li>\\n</li>\\n\"}",
-        "actual": "{\"html\":\"\\nTopic 001 created\\n   cardtype: Topic\\n   content: \\n\\n\"}"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:Topic 001:subedits",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 9,
-        "expected": "{\"html\":\"\"}",
-        "actual": "{\"html\":\"{{_|subedits}}\"}"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
       "op": "view:admin:Note 001:just_deleted",
       "family": "composed-mod-view-gap",
       "group": "view / admin",
@@ -553,28 +531,6 @@
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/). Under N6 the div's residual is the frame count: 51 Ruby frames (oracle backtrace) vs 8 V8 frames (engine stack)."
     },
     {
-      "op": "view:admin:Topic 001:change",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 352,
-        "expected": "uot;:&quot;change&quot;,&quot;show&quot;:[&quot;change&quot;,&quot;title_link&quot;],&quot;hide&quot;:[&quot;menu&quot;]}\\\"><a class=\\\"known-card\\\" href=\\\"/Topic_001\\\"><span class=",
-        "actual": "uot;:&quot;change&quot;,&quot;show&quot;:[&quot;change&quot;],&quot;hide&quot;:[&quot;menu&quot;]}\\\"><a class=\\\"known-card\\\" href=\\\"/Topic_001\\\"><span class=\\\"card-title\\\" title=\\\""
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:Topic 001:list_of_changes",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 9,
-        "expected": "{\"html\":\"<li>   cardtype: Topic</li>\\n<li>   content: </li>\\n\"}",
-        "actual": "{\"html\":\"\"}"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
       "op": "view:admin:Ada Admin:account_tab",
       "family": "composed-mod-view-gap",
       "group": "view / admin",
@@ -582,17 +538,6 @@
         "firstDiffAt": 119,
         "expected": "d-pills flex-column\\\"><h6 class=\\\"ms-1 mt-3\\\">Settings</h6><li class=\\\"nav-item\\\"><a data-slot-selector=\\\".board-main &gt; .overlay-container &gt; .card-slot._bottomlay-slot,.board",
         "actual": "d-pills flex-column\\\"><h6 class=\\\"ms-1 mt-3\\\">Settings</h6><a data-slot-selector=\\\".board-main &gt; .overlay-container &gt; .card-slot._bottomlay-slot,.board-main &gt; ._overlay-co"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:Ada Admin:closed_account",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 37,
-        "expected": "{\"html\":\"<h2>Account Closed</h2>\\n<p>\\nThe sign-in account once associated with this card has been removed, the card\\nhas been anonymized, and its data field",
-        "actual": "{\"html\":\"<h2>Account Closed</h2>\\n<p>The sign-in account once associated with this card has been removed, the card has been anonymized, and its data fields h"
       },
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
     },
@@ -817,17 +762,6 @@
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/). Under N6 the div's residual is the frame count: 53 Ruby frames (oracle backtrace) vs 8 V8 frames (engine stack)."
     },
     {
-      "op": "view:admin:*favicon:full_width",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 14,
-        "expected": "{\"html\":\"<img alt=\\\"*favicon\\\" class=\\\"w-100\\\" src=\\\"/files/:favicon/carrierwave-medium.png\\\" />\"}",
-        "actual": "{\"html\":\"<img src=\\\"/files/:favicon/carrierwave-medium.png\\\" alt=\\\"*favicon\\\" class=\\\"w-100\\\">\"}"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
       "op": "view:admin:*favicon:content_changes",
       "family": "composed-mod-view-gap",
       "group": "view / admin",
@@ -835,17 +769,6 @@
         "firstDiffAt": 11,
         "expected": "{\"html\":\"<ins class='diffins diff-added'><img alt=\\\"*favicon\\\" src=\\\"/files/:favicon/carrierwave-medium.png\\\" /></ins>\"}",
         "actual": "{\"html\":\"<img alt=\\\"*favicon\\\" src=\\\"/files/:favicon/carrierwave-medium.png\\\" /><img alt=\\\"*favicon\\\" src=\\\"/files/:favicon/carrier"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:*favicon:link_tag",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 72,
-        "expected": "nk rel=\\\"shortcut icon\\\" href=\\\"/files/:favicon/carrierwave-small.png\\\" />\"}",
-        "actual": "nk rel=\\\"shortcut icon\\\" href=\\\"/files/:favicon/carrierwave-medium.png\\\">\"}"
       },
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
     },
@@ -890,17 +813,6 @@
         "firstDiffAt": 10,
         "expected": "{\"html\":\"<div id=\\\"quinn_contractor-setup-view\\\" class=\\\"card-slot setup-view ALL TYPE-user SELF-quinn_contractor\\\" data-card-id=\\",
         "actual": "{\"html\":\"<span class=\\\"denied\\\"><!-- Sorry, you don't have permission (create) --></span>\"}"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:*admin:warning",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 224,
-        "expected": "se\\\"></button>\\n<h5>\\nAdministrator Warning\\n</h5>\\n<ul><li>Email delivery is turned off. Change settings in config/application.rb to send sign up notifications.</li>\\n<li><p>You a",
-        "actual": "se\\\"></button>\\n<h5>\\nAdministrator Warning\\n</h5>\\n<ul><li><p>You are configured to use <a class=\\\"known-card\\\" href=\\\"/*captcha\\\">*captcha</a>, but for that to work you need new "
       },
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
     }

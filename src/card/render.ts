@@ -168,9 +168,12 @@ const HISTORY_SEAM_VIEWS = new Set([
   // wave-1 follow family: base_views.rb's :subedit_notice reads the same
   // prepared act bundle (notification_action's card.last_action / Action
   // .fetch walk over the changed fields — set/all/notify/base_views.rb:
-  // 25-31 + 84-96 + 121-123; the sibling :list_of_changes stays gated out,
-  // its flat-record page arm is the email lane's pinned contract).
+  // 25-31 + 84-96 + 121-123; the sibling :list_of_changes joins (wave-2,
+  // 2026-10-10): the corpus's headless admin op pins the ALLOWED arm's
+  // action rows - the email lane's flat "" was the DENIED arm the
+  // denial:blank config answers before any body runs).
   "subedit_notice",
+  "list_of_changes",
 ]);
 import type {
   HistoryActionCardInfo,

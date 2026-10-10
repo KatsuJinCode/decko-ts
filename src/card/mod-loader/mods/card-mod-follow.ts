@@ -840,7 +840,10 @@ function editInfoRow(
       : String(value);
   const label =
     actionType === "update" ? "new" : actionType === "delete" ? "deleted" : undefined;
-  return `  ${label ?? ""} ${field}: ${shown}\n`;
+  // the bare ITEM (base_views.rb:92 `wrap_list_item "  #{label} #{field}:
+  // #{value}"` - the item carries no trailing newline; the per-format
+  // wrap_list_item adds it: base "#{item}\n", html "<li>#{item}</li>\n").
+  return `  ${label ?? ""} ${field}: ${shown}`;
 }
 
 /** base_views.rb:57-59 name_before_action:
@@ -864,8 +867,12 @@ function nameBeforeAction(
 /** base_views.rb:6-11 view :list_of_changes' BODY (the rows only - the
  *  registered flat-record :list_of_changes keeps the email lane's page-arm
  *  contract; THIS walk is the subedit_notice body's internal
- *  render_list_of_changes dispatch, Ruby-true through the seam). */
+ *  render_list_of_changes dispatch, Ruby-true through the seam). The rows
+ *  wrap per format: the HTML override (notify/html_views.rb:10-12)
+ *  wrap_list_item is "<li>#{item}</li>\n", the base (:109-111) the bare
+ *  item (its trailing \n included). */
 function listOfChangesRowsFrom(
+  ctx: ViewContext,
   reader: HistoryRenderReader,
   action: HistoryActionRow,
 ): string {
@@ -875,9 +882,11 @@ function listOfChangesRowsFrom(
     // rescue renders the standard nested-error bytes.
     throw new Error("subedit_notice: unknown action_type code");
   }
+  const html = ctx.fmt.formatName === "html";
   return RELEVANT_FIELDS_BY_ACTION[actionType]
     .map((field) => editInfoRow(reader, action, field))
     .filter((row) => row !== undefined)
+    .map((row) => (html ? `<li>${row}</li>\n` : `${row}\n`))
     .join("");
 }
 
@@ -922,9 +931,43 @@ const subeditNoticeView: ViewFn = (ctx) => {
   const header = `${nameBeforeAction(reader, action, ctx.fmt.card.name.s)} ${actionType}d\n`;
   // the inner render_list_of_changes(action_id: action.id) re-fetches THE
   // SAME action (the probe's explicit-action_id scenario pins the contract)
-  const inner = header + listOfChangesRowsFrom(reader, action);
-  return `\n${inner}\n`;
+  const inner = header + listOfChangesRowsFrom(ctx, reader, action);
+  // wrap_subedit_item per format: the HTML override (notify/html_views.rb:
+  // 14-16) is "<li>#{yield}</li>\n", the base format's (base_views.rb:
+  // 113-115) "\n#{yield}\n".
+  return ctx.fmt.formatName === "html" ? `<li>${inner}</li>\n` : `\n${inner}\n`;
 };
+
+/** base_views.rb:6-11 view :list_of_changes, denial: :blank, cache: :never.
+ *  notification_action (base_views.rb:121-123): the voo's action_id fetches
+ *  that action, else card.last_action - headless renders answer
+ *  card.last_action (the seam's cardLastAction). The rows wrap per format
+ *  (the HTML <li> override above). Ruby's body raises on a nil action (no
+ *  acts); the quiet rescue bytes - the port throws for the same posture. */
+const listOfChangesNotifyView: ViewFn = (ctx) => {
+  const reader = notifyHistoryReader(ctx);
+  if (reader === undefined) return "";
+  const action = reader.cardLastAction;
+  if (action === undefined) {
+    throw new Error(
+      `list_of_changes: no notification action for ${ctx.fmt.card.name.s}`,
+    );
+  }
+  return listOfChangesRowsFrom(ctx, reader, action);
+};
+
+/** base_views.rb:13-22 view :subedits, perms: :none, cache: :never:
+ *  `return unless notification_act` - the NOTIFICATION ACT is the email
+ *  send path's state, never set on a page render; the body answers Ruby's
+ *  nil. The two render postures carry that nil differently (the corpus's
+ *  TOP-LEVEL op renders it the empty string; a nest inside rendered
+ *  content falls through Chunk::Abstract#result to the AUTHORED SYNTAX -
+ *  `{{_|subedits}}`, the follower-email pin). The voo parent chain tells
+ *  the postures apart: a top-level render's voo has no parent. The
+ *  actions_affecting walk and the wrap_subedits list stay the email-lane
+ *  remainder behind that state. */
+const subeditsNotifyView: ViewFn = (ctx) =>
+  ctx.voo.parent === undefined ? "" : "{{_|subedits}}";
 
 /** base_views.rb:41-43 view :follower, perms: :none, compact: true:
  *  `active_notice(:follower) || "follower"`. @active_notice is the
@@ -1343,10 +1386,12 @@ const cardModFollow: DeckoModManifest = {
       // card.last_action/Action.fetch - base_views.rb:25-31), :follower
       // the page arm of `active_notice(:follower) || "follower"` (:41-43,
       // the send-path ivar is the same disclosed basis the flat record's
-      // followed/unfollow_url arms carry). The REST of the family stays
-      // unregistered here: :list_of_changes/:subedits/:followed/
-      // :unfollow_url read the notification_act / active_notice state
-      // the email-delivery path sets up (rails-runtime; the flat record
+      // followed/unfollow_url arms carry). Wave-2 (2026-10-10): the corpus's
+      // headless ops pin :list_of_changes (card.last_action's rows, the HTML
+      // <li> override) and :subedits (the nil notification_act arm, "") -
+      // both join the base registrations. STILL unregistered:
+      // :followed/:unfollow_url - they read the active_notice state the
+      // email-delivery path sets up (rails-runtime; the flat record
       // carries the ported bodies where they exist - the email lane's
       // pinned page-arm contracts).
       setPath: "all/notify/base_views",
@@ -1364,6 +1409,16 @@ const cardModFollow: DeckoModManifest = {
               config: { cache: "never" },
             },
             {
+              view: "list_of_changes",
+              viewFn: listOfChangesNotifyView,
+              config: { cache: "never", denial: "blank" },
+            },
+            {
+              view: "subedits",
+              viewFn: subeditsNotifyView,
+              config: { cache: "never", perms: "none" },
+            },
+            {
               view: "follower",
               viewFn: followerNotifyView,
               config: { cache: "never" },
@@ -1377,8 +1432,29 @@ const cardModFollow: DeckoModManifest = {
       // :html do block: wrap_list / wrap_list_item / wrap_subedit_item
       // overrides (HTML <ul>/<li>/<li> wrappers for the notification
       // email). NOT ported: the email-template surface (write path).
+      // The html VIEWS ride the same set module (the base-format views
+      // surface through the chain walk where no own-format arm exists;
+      // the corpus's headless html ops pin the html-armed bytes here -
+      // list_of_changes' action rows and subedits' nil-act arm - where the
+      // email lane's flat-record page arms (render/views.ts) answered ""
+      // and the {{_|subedits}} literal for the NEST posture they pin).
       setPath: "all/notify/html_views",
-      formats: { html: { views: [] } },
+      formats: {
+        html: {
+          views: [
+            {
+              view: "list_of_changes",
+              viewFn: listOfChangesNotifyView,
+              config: { cache: "never", denial: "blank" },
+            },
+            {
+              view: "subedits",
+              viewFn: subeditsNotifyView,
+              config: { cache: "never", perms: "none" },
+            },
+          ],
+        },
+      },
     },
     // pattern: right
     {

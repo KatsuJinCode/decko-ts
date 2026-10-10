@@ -476,18 +476,26 @@ const closureView: ViewFn = (ctx) => {
  *  :haml, served by set/abstract/closed_account.haml:
  *  ```
  *  %h2 Account Closed
+ *
  *  %p
  *    The sign-in account once associated with this card has been removed, the card
  *    has been anonymized, and its data fields have been deleted.
  *  ```
- *  HAML block-tag emission: `%h2 X` -> `<h2>X</h2>` with a trailing
- *  newline, then `%p` with whitespace-stripped text -> `<p>TEXT</p>`. The
- *  view renders bare (no slot wrap) - account_holder.rb:125 opens the
- *  `format :html do` block but carries no `wrap:` config on this view. */
+ *  HAML emission: `%h2 X` -> `<h2>X</h2>` + "\n" (the whitespace-only
+ *  source line emits nothing), `%p` opens the tag and its indented
+ *  TWO-LINE text block renders on the FOLLOWING lines with the block's
+ *  internal line breaks preserved and the shared indentation stripped, the
+ *  closing tag on its own line, one trailing newline (the corpus's
+ *  closed_account bytes: <h2>...</h2>\n<p>\n...removed, the
+ *  card\nhas been...deleted.\n</p>\n). The view renders
+ *  bare (no slot wrap) - account_holder.rb:125 opens the `format :html do`
+ *  block but carries no `wrap:` config on this view. */
 const closedAccountView: ViewFn = () =>
   "<h2>Account Closed</h2>\n" +
-  "<p>The sign-in account once associated with this card has been removed, " +
-  "the card has been anonymized, and its data fields have been deleted.</p>";
+  "<p>\n" +
+  "The sign-in account once associated with this card has been removed, the card\n" +
+  "has been anonymized, and its data fields have been deleted.\n" +
+  "</p>\n";
 
 /** set/type_plus_right/user/email.rb:1-3 `def virtual?; new?; end` -
  *  the User+email card is virtual when the card is unsaved. set/type_plus_

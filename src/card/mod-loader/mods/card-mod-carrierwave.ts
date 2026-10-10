@@ -309,7 +309,10 @@ const imageHtmlFullWidthView: ViewFn = (ctx) => {
   if (src === "missing") {
     return `<!-- invalid image for ${h(ctx.fmt.card.name.s)}; source: ${h(src)} -->`;
   }
-  return `<img src="${h(src)}" alt="${h(ctx.fmt.card.name.s)}" class="w-100">`;
+  // Rails' image_tag attr order (Tags::Base#render): the caller opts first
+  // (alt, class), src LAST, and the void tag self-closes (" />" - the corpus
+  // *favicon:full_width bytes).
+  return `<img alt="${h(ctx.fmt.card.name.s)}" class="w-100" src="${h(src)}" />`;
 };
 
 /** set/type/image/html_views.rb:36-43 def preview. */
@@ -347,9 +350,12 @@ function faviconSource(ctx: ViewContext): string {
 }
 
 const faviconLinkTagView: ViewFn = (ctx) => {
-  const src = faviconSource(ctx);
+  // favicon.rb:7-11: `return unless (source = render :source, size: :small)`
+  // - the source renders at the SMALL carrierwave variant, and the nil arm
+  // (a blank source) renders Ruby's nil (the headless "").
+  const src = ctx.fmt.renderView("source", { size: "small" });
   if (src === "") return "";
-  return `<link rel="shortcut icon" href="${h(src)}">`;
+  return `<link rel="shortcut icon" href="${h(src)}" />`;
 };
 
 /** set/self/favicon.rb:13-16 raw_help_text: the static help prose. Mirrors
