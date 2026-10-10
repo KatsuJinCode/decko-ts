@@ -943,8 +943,14 @@ function skinFieldNest(
     return fmt.nestRecord(real, "accordion_bar", opts);
   }
   if (field === "stylesheets") {
-    // a plain fetch-miss nest: its :unknown view renders the create link
-    // for an actor who may create the field, nothing for one who may not
+    // The +*stylesheets child is VIRTUAL and SKIN-typed: the SkinField
+    // TPR set's code assignment (TypePlusRight::BootswatchSkin::
+    // Stylesheets -> skin, the set-type-assignment registry's bootstrap
+    // entry) types the nest-miss card — the admin oracle's unknown-view
+    // slot carries the Skin attrs and the create link WITHOUT an explicit
+    // card[type] (the assignment is implicit, no |type: opt); the
+    // anonymous/member/contractor renders drop the accordion (create
+    // denied).
     return fmt.nest({
       name: `${name}+*${field}`,
       syntax: `${name}+*${field}`,
@@ -1033,8 +1039,15 @@ const bootswatchCoreView: ViewFn = (ctx) => {
     // set/abstract/media.rb:2-4); every corpus skin carries an Image row
     // (the bootswatch mod data files ship them), so the fetch resolves.
     out += `${customizeButtonView(ctx)}\n`;
-    const imageCard = fmt.engine.fetchRenderCard(`${name}+Image`);
-    out += `<div class='mt-4'>\n${imageCard === undefined ? "" : fmt.nestRecord(imageCard, "content", { size: "large" })}\n</div>\n`;
+    // An absent +Image is nested as the NEW card the fetch builds (the
+    // views.ts skin-box arm's seam): the bootswatch_skin+*image TPR rule
+    // types it Image, and :content on the unknown card routes through the
+    // unknown substitution - the corpus's unknown-view slot
+    // (corpu_skin-image-unknown-view, view :content in the slot JSON).
+    const imageCard =
+      fmt.engine.fetchRenderCard(`${name}+Image`) ??
+      fmt.unknownChildCard(`${name}+Image`);
+    out += `<div class='mt-4'>\n${fmt.nestRecord(imageCard, "content", { size: "large" })}\n</div>\n`;
   }
   out += `<h5 class='mt-4'>\nSkin configuration\n</h5>\n<div class='small mb-3'>\nfrom simplest to most advanced\n</div>\n<div class='accordion'>\n`;
   out += `${skinFieldNest(ctx, "colors", "Palette and uses of colors")}\n`;
