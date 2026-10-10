@@ -2,7 +2,7 @@
 // marker-edit proof (benchmarks/speed-ship) shows the request store and its
 // memo are not carried between requests; this file covers what it does not:
 // permission verdicts, rule resolution and search results, plus the marker
-// proof across all 40 gate pages.
+// proof across all gate pages (fixtures/edge-byte-gate-pages.txt).
 //
 // Every case runs two requests in ONE process over a scratch copy of the
 // local deck mirror (benchmarks/one-trip-render/deck-analyzed.sqlite3), with
@@ -34,6 +34,9 @@ import { describeOrSkipLoud } from "../support/describe-with-corpus.js";
 
 const MIRROR = join(process.cwd(), "benchmarks", "one-trip-render", "deck-analyzed.sqlite3");
 const GATE_PAGES = join(process.cwd(), "tmp", "gate", "pages.txt");
+/** The committed page-list of record (fixtures/edge-byte-gate-pages.md): the
+ *  tmp/gate working copy must always match it, count included. */
+const GATE_PAGES_OF_RECORD = join(process.cwd(), "fixtures", "edge-byte-gate-pages.txt");
 const HAVE_MIRROR = existsSync(MIRROR);
 
 const SLOT = /data-slot-id="[0-9a-f]+"/g;
@@ -225,7 +228,7 @@ describeOrSkipLoud(!HAVE_MIRROR, "tests/deploy/no-caching-decision-state.test.ts
   }, 120_000);
 });
 
-describeOrSkipLoud(!HAVE_MIRROR || !existsSync(GATE_PAGES), "tests/deploy/no-caching-decision-state.test.ts", "not (!HAVE_MIRROR || !existsSync(GATE_PAGES))")("marker-edit proof across the 40 gate pages", () => {
+describeOrSkipLoud(!HAVE_MIRROR || !existsSync(GATE_PAGES), "tests/deploy/no-caching-decision-state.test.ts", "not (!HAVE_MIRROR || !existsSync(GATE_PAGES))")("marker-edit proof across the gate pages", () => {
   let env: Env | undefined;
   beforeAll(async () => {
     env = await openEnv();
@@ -255,6 +258,7 @@ describeOrSkipLoud(!HAVE_MIRROR || !existsSync(GATE_PAGES), "tests/deploy/no-cac
       if (!ok) failures.push(page);
     }
     expect(failures).toEqual([]);
-    expect(pages.length).toBe(40);
+    const ofRecord = readFileSync(GATE_PAGES_OF_RECORD, "utf8").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    expect(pages).toEqual(ofRecord);
   }, 600_000);
 });
