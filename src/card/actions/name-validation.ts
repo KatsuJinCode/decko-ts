@@ -67,6 +67,8 @@ export async function assertNameAvailable(
       `name is already taken: ${name.s}`,
       // core_error_name_exists names the EXISTING card (name_events.rb:25)
       `NAME: must be unique; '${result.rows[0].name ?? name.s}' already exists.`,
+      undefined,
+      name.s,
     );
   }
 }

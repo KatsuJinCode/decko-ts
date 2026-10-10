@@ -327,12 +327,20 @@ describe("card-mod-list: the :select + :multiselect editors (html_views.rb:56-58
     expect(html).not.toContain(`selected="selected"`);
   });
 
-  it("a select probe with no *content_options rule raises (the options fallback walk is unported)", async () => {
+  it("a select probe with no *content_options rule falls back to the *all card's items plus its own (options_api.rb:47-49)", async () => {
     // probe S3 (ids 158-160): an *input_type rule naming select and NO
-    // *content_options rule
-    await expect(
-      storage!.engine.render("Oracle Select Orphan", "select"),
-    ).rejects.toThrow(/select input without a \*content_options rule is not ported/);
+    // *content_options rule. The chain's last arm is Card[:all]; the seed
+    // deck's *all has no items, so the union arm supplies the card's own
+    // selected "Option One" alone - the same fallback shape the checkbox
+    // orphan probe pins (the options walk landed; the loud boundary is
+    // gone).
+    const html = await storage!.engine.render("Oracle Select Orphan", "select");
+    expect(html).toBe(
+      `<select name="pointer_select-oracle_select_orphan-1" id="pointer_select-oracle_select_orphan-1" ` +
+        `class="pointer-select form-control">` +
+        `<option value="">-- Select --</option>\n` +
+        `<option selected="selected" value="Option One">Option One</option></select>`,
+    );
   });
 
   it("the sibling list types still refuse :select (the view lives on Abstract::List only)", async () => {

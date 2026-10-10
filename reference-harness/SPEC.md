@@ -249,6 +249,28 @@ above, run with `node --test "reference-harness/runner/test/*.test.mjs"`.
 
 Two kinds of rule, applied to both sides before comparison, and nothing else:
 
+1. **N1.** `data-slot-id="<hex>"` becomes `data-slot-id="SLOT"`: slot ids are
+   random per render in every engine.
+2. **N2.** `0x` followed by 8 to 16 hex digits becomes `0xADDR`: a
+   host-language object address printed into an error message.
+3. **N3.** In a write result, the new card is compared by name (its id is a
+   row id, compared by persistence), and mail text loses trailing spaces per
+   line, CRLF line ends and surrounding blank lines.
+4. **N4.** In a row delta, rows the step created get symbolic ids (a card by
+   its full name, any other row by table and creation order) and every column
+   pointing at them is rewritten the same way; timestamps are compared as
+   instants. Rows that existed before the step keep their ids, because both
+   engines start from the same deck file.
+5. **N5.** JSON object key order never counts; array order always does.
+6. **N6.** `127.0.0.1:<port>` becomes `127.0.0.1:PORT`: each engine server
+   answers on a fresh per-journey port, so an absolute URL the deck itself
+   builds (a mail body's card link) carries a port that is random per run on
+   both engines. The host and scheme stay exact.
+The seconds-corpus instrument (section 4's later subsections) carries its
+own rule namespace — its N3 (the collapse-id canonical form) and its N5
+(the dawn-pass plan) are THAT instrument's rules, not the journeys
+comparator's N1-N6 above. The two vocabularies coexist:
+
 - A **mask** erases a value. It is allowed only for a field shown to vary
   between two complete runs of the same oracle on the same fixture, and only
   in that field's exact shape.

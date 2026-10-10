@@ -3459,6 +3459,28 @@ export interface RenderEngineLike {
   peekCustomizedName?(name: string): string | undefined;
   /** Search execution for Search-type cores (see views.ts card_list). */
   executeSearch(fmt: RenderFormat): RenderCard[];
+  /** options_hash (card-mod-layout set/abstract/items/options_api.rb:4-6)
+   *  for the pointer/list editors — the [label, name] pairs the five editor
+   *  views iterate, resolved through the prepared options_card chain
+   *  (render.ts optionsCardSource + ensurePointerEditorOptions; the chain's
+   *  search member seats in the async prepare phase). Optional: engines
+   *  without it fail the list editors loudly (card-mod-list
+   *  editorOptionPairs). */
+  optionsCardPairs?(card: RenderCard): Array<[string, string]>;
+  /** templating.rb:60-71 Card#structure, resolved sync against the boot's
+   *  structure universe (render.ts structureRuleForSync :=
+   *  resolveStructuredContent): the winning *structure rule's name and
+   *  template content; undefined when no rule applies or its content is
+   *  "_self". Optional: engines without it render the single-card edit
+   *  field (multiCardEditor's card.structure arm answers false). */
+  structureRuleForSync?(card: {
+    name: string;
+    id?: number;
+    typeId?: number;
+    typeName?: string;
+    leftTypeName?: string;
+    isNew?: boolean;
+  }): { ruleName: string; content: string } | undefined;
   /** The seated paging record for a rendered search (search-paging.ts;
    *  undefined = the show_paging? == false case — the :card_list view
    *  renders no nav). */

@@ -65,33 +65,33 @@ beforeAll(async () => {
   await seedCard(s, { id: 14, name: "*setting", codename: "setting", typeId: 14 });
 
   // the *account setting card (right anchor of Right::Account)
-  await seedCard(s, { id: 111, name: "account", codename: "account", typeId: 14 });
-  // the +email / +password right cards (plain names — account.rb's
-  // card_accessor fields are the unstarred email/password rights)
-  await seedCard(s, { id: 130, name: "email", codename: "email", typeId: 14 });
-  await seedCard(s, { id: 140, name: "password", codename: "password", typeId: 14 });
+  await seedCard(s, { id: 111, name: "*account", codename: "account", typeId: 14 });
+  // the +*email / +*password right cards (the starred setting names —
+  // account.rb's card_accessor fields resolve through the codename lookup:
+  // field(:email) stars the mark, runtime-probed
+  // ("".to_name.field(:email) == "+*email"))
+  await seedCard(s, { id: 130, name: "*email", codename: "email", typeId: 14 });
+  await seedCard(s, { id: 140, name: "*password", codename: "password", typeId: 14 });
 
   // Fields Probe Member (a User) with its account fields. DECK SHAPE
-  // (raw deck read-only SELECT, cards k JOIN k.left_id = junction): the
-  // account fields are CHILDREN OF THE +*account JUNCTION ("Brandon
-  // WilliamsCraig+*account" left_id chain: +*email Phrase, +*password
-  // Phrase, +*salt/+*status PlainText) — matching field_nest's
-  // card.name.field(:email) = "<junction>+email". The plain-spelling right
-  // rows used here are KEY-EQUIVALENT to the deck's starred form (keys
-  // strip stars: "*email".key == "email".key).
+  // (raw deck read-only SELECT, cards k JOIN k.left_id = junction — the
+  // real deck's account fields are the STARRED children of the +*account
+  // junction ("Mira Member+*account": +*email Phrase id 619, +*password
+  // Phrase id 620, +*status/+*salt PlainText): field_nest's
+  // card.name.field(:email) = "<junction>+*email".
   await seedCard(s, { id: 120, name: "Fields Probe Member", typeId: 4, dbContent: "member body" });
   await seedCard(s, {
     id: 121,
-    name: "Fields Probe Member+account+email",
-    leftId: 110, // the +account junction — the field of the junction
+    name: "Fields Probe Member+*account+*email",
+    leftId: 110, // the +*account junction — the field of the junction
     rightId: 130,
     typeId: 2,
     dbContent: "probe@example.com",
   });
   await seedCard(s, {
     id: 141,
-    name: "Fields Probe Member+account+password",
-    leftId: 110, // the +account junction
+    name: "Fields Probe Member+*account+*password",
+    leftId: 110, // the +*account junction
     rightId: 140,
     typeId: 2,
     dbContent: "fake-hash-not-a-real-password",
@@ -119,17 +119,14 @@ describe("card-mod-account field views (right/account :core + right/password raw
   // child's :raw has NO flat registration on its chain (observed: raises
   // UnsupportedViewError) — the mod's Right::Password registration is what
   // makes the view exist there, so the A/B for raw/core is raises → bytes.
-  it("WITHOUT the mod: the base bodies (setting listing; raw raises on the child)", async () => {
+  it("WITHOUT the mod: the +*password child raw raises (the mod registration is what makes the view exist)", async () => {
     const s = storage!;
-    const baseAccountCore = await s.engine.render(
-      "Fields Probe Member+account",
-      "core",
-    );
-    expect(baseAccountCore).toContain(
-      "All Fields Probe Member+account rules that apply to",
-    );
+    // The starred deck shape's base :core already renders both children's
+    // labeled slots with their titles (verified 2026-10-09 while landing the
+    // starred field marks), so a body-level A/B no longer distinguishes;
+    // the child raw view is the surface that needs the mod registration.
     await expect(
-      s.engine.render("Fields_Probe_Member+account+password", "raw"),
+      s.engine.render("Fields_Probe_Member+*account+*password", "raw"),
     ).rejects.toThrow(UnsupportedViewError);
   });
 
@@ -140,7 +137,7 @@ describe("card-mod-account field views (right/account :core + right/password raw
     bindModLoaderToEngine(storage!, loader!);
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
-    const actual = await s.engine.render("Fields Probe Member+account", "core");
+    const actual = await s.engine.render("Fields Probe Member+*account", "core");
     // The two programmatic field nests (output() joins the array body with
     // a newline — content.rb:70-73; the slot markup itself is multi-line).
     // Each nest renders the child card's :labeled view in a slot carrying
@@ -149,9 +146,9 @@ describe("card-mod-account field views (right/account :core + right/password raw
     // the warming-independent invariants (whether the nested child renders
     // resolved or fabricated-unknown depends on the prefetch cache — see
     // the NAMED SEAM note).
-    const emailIdx = actual.indexOf("field_probe_member-account-email-labeled-view");
+    const emailIdx = actual.indexOf("field_probe_member-Xaccount-Xemail-labeled-view");
     const passwordIdx = actual.indexOf(
-      "field_probe_member-account-password-labeled-view",
+      "field_probe_member-Xaccount-Xpassword-labeled-view",
     );
     expect(emailIdx).toBeGreaterThan(-1);
     expect(passwordIdx).toBeGreaterThan(emailIdx);
@@ -162,18 +159,18 @@ describe("card-mod-account field views (right/account :core + right/password raw
     expect(actual).toContain(
       '&quot;title&quot;:&quot;password&quot;',
     );
-    expect(actual).toContain("&quot;nest_name&quot;:&quot;+email&quot;");
-    expect(actual).toContain("&quot;nest_name&quot;:&quot;+password&quot;");
+    expect(actual).toContain("&quot;nest_name&quot;:&quot;+*email&quot;");
+    expect(actual).toContain("&quot;nest_name&quot;:&quot;+*password&quot;");
     // The child card's own renders are complete: its :core is the
     // linkified email body (RichText URI scan), its :labeled carries the
     // row id + content.
     const childCore = await s.engine.render(
-      "Fields Probe Member+account+email",
+      "Fields Probe Member+*account+*email",
       "core",
     );
     expect(childCore).toContain('href="mailto:probe@example.com"');
     const childLabeled = await s.engine.render(
-      "Fields Probe Member+account+email",
+      "Fields Probe Member+*account+*email",
       "labeled",
     );
     expect(childLabeled).toContain('data-card-id="121"');
@@ -189,7 +186,7 @@ describe("card-mod-account field views (right/account :core + right/password raw
 
     // t(:account_encrypted) — card-mod-account en.yml:6 "encrypted: encrypted"
     // under the account scope. The hash content is NEVER rendered.
-    expect(await s.engine.render("Fields_Probe_Member+account+password", "raw")).toBe("encrypted");
+    expect(await s.engine.render("Fields_Probe_Member+*account+*password", "raw")).toBe("encrypted");
   });
 
   it("WITH the mod: +password :core wraps the raw in <em> (right/password.rb:81-83)", async () => {
@@ -202,7 +199,7 @@ describe("card-mod-account field views (right/account :core + right/password raw
     // view :core, wrap: :em do render_raw end — the wrap: :em config wraps
     // the body in the em tag (the port emits the wrap in-body; the loader's
     // config.wrap field is declaration-only today).
-    expect(await s.engine.render("Fields_Probe_Member+account+password", "core")).toBe(
+    expect(await s.engine.render("Fields_Probe_Member+*account+*password", "core")).toBe(
       "<em>encrypted</em>",
     );
   });

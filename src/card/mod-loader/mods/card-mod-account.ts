@@ -255,10 +255,14 @@ const tokenExpiryView: ViewFn = () =>
  *  :content_formgroups hook (views.rb:60-62) is the edit-form machinery's
  *  (E1's) surface. */
 const accountCoreView: ViewFn = (ctx) => {
+  // account_field_nest(:email)/(:password): field :email names the SETTING
+  // card - Card::Name#field stars codenamed fields (nesting.rb docstring),
+  // so the nests are +*email/+*password (the labeled rows' values are the
+  // real rows' cores: the email text and the password raw's "encrypted").
   const fieldNest = (field: string, title: string): string =>
     ctx.fmt.nest({
-      syntax: `{{+${field}|view:labeled|title:${title}}}`,
-      name: `+${field}`,
+      syntax: `{{+*${field}|view:labeled|title:${title}}}`,
+      name: `+*${field}`,
       options: { view: "labeled", title, extra: {} },
       comment: undefined,
     });
@@ -271,6 +275,34 @@ const accountCoreView: ViewFn = (ctx) => {
  *  carries `encrypted: encrypted` under the account scope, so the bytes are
  *  the literal string. The password hash is NEVER rendered. */
 const passwordRawView: ViewFn = () => "encrypted";
+
+/** all/password_input.rb:2-4 password_input + password_input.haml, through
+ *  right/password.rb:86-88's `def input_type; :password end` (the editor
+ *  dispatch reaches password_field's editor the same way editor.rb's
+ *  input_method routes every set-module input). The bytes are the
+ *  live-oracle probe receipt: class "d0-card-content _pw-input form-control"
+ *  (the caller's class string, then the bootstrap FIELD_HELPERS " form-control"
+ *  append), placeholder "Password", autocomplete "off" (autocomplete?:
+ *  right/password.rb:90-95 - the *signin+*account parent HACK arm answers
+ *  "on", every other card "off"), type password, then the haml's
+ *  toggle-password span with the hide_password icon through icon_lookup to
+ *  visibility_off. The name/id ride the form prefix (form.rb:147-160). */
+const passwordInputView: ViewFn = (ctx) => {
+  const { fmt, voo } = ctx;
+  const namePrefix =
+    typeof voo.opts["form_name_prefix"] === "string"
+      ? (voo.opts["form_name_prefix"] as string)
+      : "card";
+  const idPrefix = namePrefix === "card" ? "card" : namePrefix.replace(/\]/g, "").replace(/[\[+]/g, "_");
+  const autocomplete =
+    fmt.parent?.card.name.s === "*signin+*account" ? "on" : "off";
+  return (
+    `<input class="d0-card-content _pw-input form-control" placeholder="Password" autocomplete="${autocomplete}" type="password" name="${namePrefix}[content]" id="${idPrefix}_content" />\n` +
+    `<span class='_toggle-password visibility-icon _pw-text-area'>\n` +
+    `<i class="_toggle-pw-visibility notranslate material-icons">visibility_off</i>\n` +
+    `</span>`
+  );
+};
 
 /** set/right/password.rb:81-83 (html block) view :core, wrap: :em —
  *  `render_raw` wrapped in the em tag. The port emits the wrap in-body
@@ -928,7 +960,11 @@ export const accountProbeSurface = {
   } {
     return {
       title: "Forgot Password",
-      editStructure: [{ name: "+email", title: "email", view: "titled", skipPerms: true }],
+      // signin_field :198-202 field :email -> the SETTING card *email
+      // (Card::Name#field stars codenamed fields: home.field_nest :self =>
+      // 'Home+*self', nesting.rb docstring; the recorded reset form's input
+      // name is card[subcards][+*email][content])
+      editStructure: [{ name: "+*email", title: "email", view: "titled", skipPerms: true }],
       hide: ["help"],
     };
   },
@@ -950,12 +986,33 @@ export const accountProbeSurface = {
  *  read grants (the established basis). */
 function accountFormgroups(ctx: ViewContext): string {
   const { fmt } = ctx;
-  const accountCard = fmt.engine.fetchRenderCard(`${fmt.card.name.s}+*account`);
-  if (accountCard === undefined || accountCard.unknown === true) {
+  // card.account (account_holder.rb:143): Card.fetch [name, :account] with
+  // new: {} semantics - a signup card has no +*account row yet, and Ruby's
+  // fetch builds the NEW +*account card (its type the *account card's own,
+  // RichText) rather than answering nil. The fabricated record overrides
+  // the *account template's id/record (the new card has no row) while
+  // keeping the template's type and set keys.
+  const existing = fmt.engine.fetchRenderCard(`${fmt.card.name.s}+*account`);
+  const accountCard =
+    existing !== undefined && existing.unknown !== true
+      ? existing
+      : (() => {
+          const template = fmt.engine.fetchRenderCard("*account");
+          if (template === undefined) return undefined;
+          const name = DeckoName.parse(`${fmt.card.name.s}+*account`);
+          return {
+            ...template,
+            name,
+            key: name.key,
+            id: undefined,
+            unknown: true,
+            record: { ...template.record, id: undefined, name, key: name.key, isNew: true },
+          } as ViewContext["fmt"]["card"];
+        })();
+  if (accountCard === undefined) {
     return "";
   }
   const sub = new RenderFormat(accountCard, fmt.engine, { parent: fmt, maxDepth: fmt.maxDepth, nestQuietErrors: fmt.nestQuietErrors });
-  console.log("AF-DEBUG", JSON.stringify({ card: accountCard.name.s, known: accountCard.unknown }));
   return sub.renderView("content_formgroups", { structure: "true" });
 }
 
@@ -987,13 +1044,17 @@ const signupContentFormgroupsView: ViewFn = (ctx) => {
  *                            [:password, { title: "password" }]]
  *    end
  *  The tuple's relative marks normalize through the edit mod's walk
- *  (card.name.field over the +*account card -> "<card>+*account+email").
+ *  (card.name.field over the +*account card): :email names the SETTING
+ *  card, so field stars it - Card::Name#field's own docstring
+ *  (home.field_nest :self => nest for 'Home+*self') and the recorded form's
+ *  input names (card[subcards][+*email][content]) both pin
+ *  "<card>+*account+*email", NOT "<card>+*account+email".
  *  The dispatch rides superView to the edit mod's contentFormgroupsView
  *  (the multi-card walk the mod-completion-100 lane ported there). */
 const accountBeforeContentFormgroupsView: ViewFn = (ctx) => {
   ctx.voo.opts["edit_structure"] = [
-    ["+email", { title: "email" }],
-    ["+password", { title: "password" }],
+    ["+*email", { title: "email" }],
+    ["+*password", { title: "password" }],
   ];
   return superView(ctx, setModuleShortname("right/account/views"), "content_formgroups");
 };
@@ -1340,6 +1401,15 @@ const setModules: ModSetModuleFile[] = [
         views: [
           { view: "raw", viewFn: passwordRawView },
           { view: "core", viewFn: passwordCoreView },
+          // right/password.rb:86-88 def input_type: :password + the
+          // all/password_input set module's password_input (the haml
+          // password_field + the toggle-password span) - the editor the
+          // account form's +*password field renders. The bytes are the
+          // live-oracle probe receipt (tmp/int/probe-password-input.rb):
+          // class "d0-card-content _pw-input form-control", placeholder
+          // "Password", autocomplete "off", type password, and the
+          // visibility_off icon span.
+          { view: "input", viewFn: passwordInputView },
         ],
       },
     },

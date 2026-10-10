@@ -431,7 +431,7 @@ describe("validate_file_exist (attachment.rb:26-34, on :create only)", () => {
         form,
       });
       expect(res.status).toBe(422);
-      expect(res.body).toContain("Validation failed: File is missing");
+      expect(res.body).toContain("<strong>FILE:</strong> is missing");
     }
   });
 
@@ -441,7 +441,7 @@ describe("validate_file_exist (attachment.rb:26-34, on :create only)", () => {
       form: { "card[name]": "No Image Upload", "card[type]": "Image" },
     });
     expect(res.status).toBe(422);
-    expect(res.body).toContain("Validation failed: Image is missing");
+    expect(res.body).toContain("<strong>IMAGE:</strong> is missing");
   });
 
   it("a multipart create without a file part fails the same way", async () => {
@@ -455,7 +455,7 @@ describe("validate_file_exist (attachment.rb:26-34, on :create only)", () => {
       },
     });
     expect(res.status).toBe(422);
-    expect(res.body).toContain("Validation failed: File is missing");
+    expect(res.body).toContain("<strong>FILE:</strong> is missing");
   });
 
   it("updates are never validate_file_exist targets: a File card's content-less urlencoded update stays a 303 no-op", async () => {

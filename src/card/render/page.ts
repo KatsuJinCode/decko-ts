@@ -170,6 +170,7 @@ export async function renderPageBytes(
   cardName: string,
   requestedView?: string,
   historyParams?: HistoryRenderParams,
+  bareMainOpts?: Record<string, unknown>,
 ): Promise<string> {
   // The page capture wraps `fmt.show(nil, {})` in the production config
   // (capture-dual-lane-page-and-view.rb:369, inside the config block at
@@ -190,7 +191,9 @@ export async function renderPageBytes(
     const releaseCaches =
       typeof engine.fetcher?.holdTemporaryCaches === "function" ? engine.fetcher.holdTemporaryCaches() : () => {};
     const render = () =>
-      engine.runWithPageConfig(() => renderPageBytesWithPageConfig(engine, cardName, requestedView, historyParams));
+      engine.runWithPageConfig(() =>
+        renderPageBytesWithPageConfig(engine, cardName, requestedView, historyParams, bareMainOpts),
+      );
     try {
       // (The stub engines of the edge request tests carry no unknown-card
       // create-verdict pass; the real engine always does.)
@@ -215,8 +218,9 @@ export async function renderPageWithStatus(
   cardName: string,
   requestedView?: string,
   historyParams?: HistoryRenderParams,
+  bareMainOpts?: Record<string, unknown>,
 ): Promise<{ html: string; status: number }> {
-  const html = await renderPageBytes(engine, cardName, requestedView, historyParams);
+  const html = await renderPageBytes(engine, cardName, requestedView, historyParams, bareMainOpts);
   return { html, status: engine.pageErrorStatus ?? 200 };
 }
 
@@ -240,6 +244,7 @@ async function renderPageBytesWithPageConfig(
   cardName: string,
   requestedView?: string,
   historyParams?: HistoryRenderParams,
+  bareMainOpts?: Record<string, unknown>,
 ): Promise<string> {
   // THE PAGE LANE'S SWEEP-SURFACE scope (renderSeats' doc): the layout
   // warm-ups below seat AROUND the inner render() — one clear here puts the
@@ -257,6 +262,8 @@ async function renderPageBytesWithPageConfig(
       cardName,
       requestedView,
       historyParams,
+      false,
+      bareMainOpts,
     );
   } finally {
     engine.endPagePrepare();
@@ -330,6 +337,15 @@ async function renderPageBytesWithPageConfigInner(
   // render_outside_of_layout renders the body with `render_with_layout nil,
   // layout, {}`: no main_render_args, so the main slot carries no main_view
   outsideOfLayout = false,
+  // THE AJAX SLOT-REFRESH OPTS (the bare main-view lane): when present, the
+  // main view renders with THESE opts and the layout wrap is skipped —
+  // show_without_page_layout's `render view, slot_params` (the decko.js
+  // post-save slot refresh GET /~<id>/<view>?slot[main]=true&... whose
+  // recorded answer is the saved-slot shape: the main format + the main-nest
+  // data-slot JSON). The full page warm sequence below still runs: the sync
+  // main render's prepare needs every seat the layout lane seats (the
+  // late-seat structure sweep especially — a structured body's field rows).
+  bareMainOpts?: Record<string, unknown>,
 ): Promise<string> {
   // process_layout.rb: main! (the root format is the main format) then
   // page_layout — the *layout rule walk happens BEFORE the main render.
@@ -557,14 +573,16 @@ async function renderPageBytesWithPageConfigInner(
   const skipSync = engine.skipSyncRender?.() === true;
   const mainBody = skipSync ? "" : rootFormat.renderView(
     mainView,
-    {
-      nest_name: "_main",
-      ...(layout.mainNestSyntax !== undefined ? { nest_syntax: layout.mainNestSyntax } : {}),
-      main: true,
-      home_view: mainView,
-      ...(outsideOfLayout ? {} : { main_view: true }),
-      layout: layout.layoutName,
-    },
+    bareMainOpts !== undefined
+      ? { ...bareMainOpts, view: mainView }
+      : {
+          nest_name: "_main",
+          ...(layout.mainNestSyntax !== undefined ? { nest_syntax: layout.mainNestSyntax } : {}),
+          main: true,
+          home_view: mainView,
+          ...(outsideOfLayout ? {} : { main_view: true }),
+          layout: layout.layoutName,
+        },
     // show_with_page_layout's render! carries NO optional render opt — the
     // main slot's captured data-slot has no "show" viz (unlike the bare
     // view lane where format.render pins show:[view]). null = no viz (a
@@ -572,6 +590,10 @@ async function renderPageBytesWithPageConfigInner(
     null,
   );
   rootFormat.rendered = await applyMainViewOverride(engine, rootCard, mainView, mainBody);
+  // The bare main-view lane returns HERE: show_without_page_layout renders
+  // the view alone — no layout body, no layout nest warm-ups (the main
+  // closure above is complete).
+  if (bareMainOpts !== undefined) return mainBody;
 
   // Unknown layouts raise AFTER the main render (wrap_with_wrapper ->
   // raise_wrap_error), never before — matching the capture's sentinel order.

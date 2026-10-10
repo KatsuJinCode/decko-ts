@@ -214,7 +214,7 @@ import { expireRuleResolutionCache } from "../permissions/read-rules.js";
  *  route's card[<mount>] param names derive from these declarations. */
 /** The mount name per attachment-capable type codename (set/type/image.rb:1
  *  `attachment :image`, set/type/file.rb:1 `attachment :file`). */
-export const ATTACHMENT_MOUNTS: Readonly<Record<string, string>> = {
+export const ATTACHMENT_MOUNTS: Readonly<Record<string, "file" | "image">> = {
   file: "file",
   image: "image",
 };
@@ -712,6 +712,29 @@ export class CardActionEngine {
             verb: updated.verb,
             name: updated.name,
           });
+        } else {
+          // A POSTED subcard whose tracked fields all match still writes its
+          // row: the director's set_stamper assigns updater_id/updated_at at
+          // instantiation, so the controller-path save stamps the row with
+          // no action and no change rows (events.rb:34-37 skips only the
+          // action). The browser-journeys lane's oracle probe pins it: the
+          // account form's password change moves the whole +*account
+          // family's updater to the acting member (rows 618/619/620 — the
+          // mark, the posted +*password, and the no-change +*email — one
+          // act; the model-level update! without the posted no-change
+          // subcard writes only the password row). An ABORTED subcard save
+          // is different: validate_password_present sends a blank posted
+          // +*password home before the stamp ("storing nothing" — no row
+          // write at all), so the touch skips it.
+          const abortedBlankPassword =
+            (existingRow.right_id !== null && (await this.fetch.codenames.nameForId(existingRow.right_id))) === "password" &&
+            (sub.content ?? "").trim() === "";
+          if (!abortedBlankPassword) {
+            await this.fetch.driver.query(
+              "UPDATE cards SET updated_at = ?, updater_id = ? WHERE id = ?",
+              [sqlDateTime(this.clock()), (await this.actingIdForWrite()) ?? this.actor?.id ?? null, existingRow.id],
+            );
+          }
         }
         if (sub.subcards !== undefined) {
           saved.push(
@@ -1027,6 +1050,8 @@ export class CardActionEngine {
         "attachment-missing",
         `Validation failed: ${humanized} is missing`,
         `${mount.toUpperCase()}: is missing`,
+        undefined,
+        typeof input.name === "string" ? input.name : undefined,
       );
     if (input.attachment === undefined) {
       // the attachment arm: errors.add attachment_name, "is missing"
@@ -1426,6 +1451,30 @@ export class CardActionEngine {
     const typeId = await resolveTypeId(this.fetch, { ...input, name });
     const placeholder = newCardRecord(name, { typeId });
     await this.assertCanWrite(placeholder, "create");
+    // The two-step upload's final save (00_upload_cache.rb:27-34
+    // assign_attachment_on_create, after :assign_action, when
+    // save_preliminary_upload?): the cached DRAFT action's stored file
+    // becomes this save's attachment — its comment (the original filename)
+    // rides the action comment through the writer's attachment arm, and
+    // the integrate phase (below) deletes the draft action + its cache
+    // file while the draft's ACT survives. The cache bytes live in the tmp
+    // area under the *new file/*new image card; cachedUploadAttachment
+    // resolves that shape from the action id alone. An unresolvable id
+    // leaves the save WITHOUT an attachment — Ruby's arm returns early the
+    // same way (Card::Action.fetch nil), and validate_file_exist then
+    // refuses the mount-typed create ("File/Image is missing", 422).
+    let cachedUpload: { attachment: AttachmentInput; release: () => Promise<void> } | undefined;
+    if (input.actionIdOfCachedUpload !== undefined) {
+      const typeRow = await this.fetchRowById(typeId);
+      const mount =
+        typeRow?.codename != null && typeRow.codename !== ""
+          ? ATTACHMENT_MOUNTS[typeRow.codename]
+          : undefined;
+      if (mount !== undefined) {
+        cachedUpload = await this.cachedUploadAttachment(input.actionIdOfCachedUpload, { mount });
+        if (cachedUpload !== undefined) input = { ...input, attachment: cachedUpload.attachment };
+      }
+    }
     // The account field events (auth/account-fields.ts) run over the whole
     // +*account subtree before anything is written: Ruby validates every
     // subcard in the validate stage, so a rejected sign-up stores nothing.
@@ -1474,6 +1523,13 @@ export class CardActionEngine {
           typeId,
         }),
       );
+      // delete_cached_upload_file_on_create (:integrate, 00_upload_cache.rb
+      // :51-57): the cache files + the DRAFT action row go
+      // (upload_cache_card.delete_files_for_action action; action.delete —
+      // ActiveRecord #delete, so the draft's change rows stay); the
+      // draft's ACT survives — the oracle rows pin the surviving orphan
+      // (card_acts card_id null beside the create's own act).
+      if (cachedUpload !== undefined) await cachedUpload.release();
       await this.saveRecentlyEditedSettings(finalResult);
       await this.dispatchSavePathIntegrations(finalResult, {
         delayedStageDropped: input.attachment !== undefined && input.attachment.fromCachedUpload !== true,
@@ -1841,7 +1897,7 @@ export class CardActionEngine {
       reservedActionId,
     });
     if (rightCode !== undefined && NO_HISTORY_RIGHT_CODENAMES.has(rightCode)) {
-      await this.dropHistory(created.actionId, created.actId);
+      await this.dropHistory(created.actionId, created.actId, created.actPreexisted === true);
     }
     // set_default_salt (account/events.rb:3-5): the account's salt is
     // generated now, so a password saved later in this act encrypts over it;
@@ -1987,6 +2043,32 @@ export class CardActionEngine {
     if (row === undefined || (row.trash === 1 && input.lookInTrash !== true)) {
       throw new CardActionError("not-found", `no such card: ${input.cardId}`);
     }
+    // The two-step upload's replace arm (00_upload_cache.rb:36-42
+    // assign_attachment_on_update, after :assign_action, when
+    // save_preliminary_upload?): the cached DRAFT action's file — stored
+    // under THIS card's own files dir at the preliminary step — is read
+    // back with the draft action selected and becomes the save's
+    // attachment (its comment, the original filename, rides the action
+    // comment). The integrate phase (below) deletes the draft's stored
+    // file + action row; the draft's ACT survives. An unresolvable id
+    // leaves the save without an attachment — Ruby's arm returns early
+    // (Card::Action.fetch nil) and the update saves whatever else it
+    // carried.
+    let cachedUpload: { attachment: AttachmentInput; release: () => Promise<void> } | undefined;
+    if (input.actionIdOfCachedUpload !== undefined) {
+      const typeRow = await this.fetchRowById(row.type_id);
+      const mount =
+        typeRow?.codename != null && typeRow.codename !== ""
+          ? ATTACHMENT_MOUNTS[typeRow.codename]
+          : undefined;
+      if (mount !== undefined) {
+        cachedUpload = await this.cachedUploadAttachment(input.actionIdOfCachedUpload, {
+          cardId: row.id,
+          mount,
+        });
+        if (cachedUpload !== undefined) input = { ...input, attachment: cachedUpload.attachment };
+      }
+    }
     // validate_account_holder_name_change (card-mod-account
     // set/abstract/account_holder.rb:1-5): renaming a card that has an
     // account needs an account manager — the account itself, or a Help
@@ -2115,6 +2197,27 @@ export class CardActionEngine {
     } else if (result !== null && subResults.length > 0) {
       result = { ...result, subactions: [...result.subactions, ...subResults] };
     }
+    if (result === null && subResults.length === 0 && input.subcards !== undefined) {
+      // The save RAN (the director instantiated the posted subcards) but no
+      // card changed: Ruby's update! still records the ACT on the mark —
+      // one card_acts row, zero actions (the oracle probe's "one act"; the
+      // graded account-change-password delta is card_acts +1 {card_id 618,
+      // actor 617, acted_at, ip} with cards ~3 updater touches only — the
+      // posted +*password re-encrypts to the stored digest, the no-change
+      // +*email subcard and the mark itself carry only the director touch).
+      // The writer's act INSERT is lazy (first persisted action), so the
+      // all-no-op save inserts it here, verbatim columns. The result stays
+      // null: no action exists for the integrate phase to see.
+      await this.fetch.driver.query(
+        "INSERT INTO card_acts (card_id, actor_id, acted_at, ip_address) VALUES (?, ?, ?, ?)",
+        [
+          row.id,
+          (await this.actingIdForWrite()) ?? this.actor?.id ?? null,
+          sqlDateTime(this.clock()),
+          this.ipAddress,
+        ],
+      );
+    }
     // II (director.rb:26): the integrate seam before the notify hooks (see
     // the create path's note). A no-op save commits nothing, so ActiveRecord
     // runs no after_commit integration phase for it (phases.rb:3) and its
@@ -2149,6 +2252,12 @@ export class CardActionEngine {
         }),
       );
       await this.saveRecentlyEditedSettings(committed);
+      // delete_cached_upload_file_on_update (:integrate, 00_upload_cache.rb
+      // :66-72): the draft's stored file (under this card's files dir) +
+      // the draft action row go; the draft's ACT survives (the oracle
+      // update-arm rows pin the surviving orphan act beside the update's
+      // own stamped act).
+      if (cachedUpload !== undefined) await cachedUpload.release();
       // Events the request triggered for the :integrate stage (trigger:
       // :required, e.g. send_verification_email / send_welcome_email) run
       // with that stage, before the delayed follower notice.
@@ -2535,10 +2644,25 @@ export class CardActionEngine {
       isActCard: opts.isActCard ?? true,
       reservedActionId,
     });
-    if (saved === null) return null; // no-op save: nothing persisted
+    if (saved === null) {
+      // The mark itself was POSTED (it is the update target): the director's
+      // set_stamper assigned its updater_id/updated_at at instantiation, so
+      // a no-op mark save still stamps its row (no action, no change rows) —
+      // the same director-layer touch the subcard path below applies. The
+      // stamp rides only saves that POSTED subcards (the director
+      // instantiated them): a plain no-op content save instantiates nothing
+      // and writes nothing (the writer-layer pins hold).
+      if (input.subcards !== undefined) {
+        await this.fetch.driver.query(
+          "UPDATE cards SET updated_at = ?, updater_id = ? WHERE id = ?",
+          [sqlDateTime(this.clock()), (await this.actingIdForWrite()) ?? this.actor?.id ?? null, row.id],
+        );
+      }
+      return null; // no-op save: no action rows persisted
+    }
     if (noHistory) {
       await this.fetch.driver.query("DELETE FROM card_changes WHERE id > ?", [changesBefore]);
-      await this.dropHistory(saved.actionId, saved.actId);
+      await this.dropHistory(saved.actionId, saved.actId, saved.actPreexisted === true);
     }
     if (after.trash === 1 && before.trash === 0) {
       // Only the rollback's nested update! reaches here (guarded above): the
@@ -3860,7 +3984,20 @@ export class CardActionEngine {
     typeId: number;
     mount: "file" | "image";
     attachment: AttachmentInput;
-  }): Promise<{ actionId: number; cacheCardName: string | undefined }> {
+  }): Promise<{
+    actionId: number;
+    cacheCardName: string | undefined;
+    /** The stored identifier ("~<card>/<draft action><ext>") — the draft
+     *  action's db_content change row and Ruby's in-memory content after
+     *  write_identifier (the cards row stays untouched). */
+    identifier: string;
+    /** The stored byte count — number_to_human_size's input for the
+     *  preview_editor render (preview_editor.haml's attachment.size). */
+    size: number;
+    /** The original filename — the draft action's comment
+     *  (save_original_filename) and the preview's p.name byte. */
+    originalFilename: string;
+  }> {
     if (this.attachmentStore === undefined) {
       throw new Error("a preliminary upload requires the engine's attachmentStore option");
     }
@@ -3901,7 +4038,13 @@ export class CardActionEngine {
       bytes: input.attachment.bytes,
       ...(input.cardId === undefined ? { area: "tmp" as const } : {}),
     });
-    return { actionId: saved.actionId, cacheCardName };
+    return {
+      actionId: saved.actionId,
+      cacheCardName,
+      identifier: localAttachmentIdentifier(cardId, saved.actionId, ext),
+      size: input.attachment.bytes.byteLength,
+      originalFilename: input.attachment.originalFilename,
+    };
   }
 
   /** The second step (assign_attachment_on_create / _on_update,
@@ -4279,11 +4422,18 @@ export class CardActionEngine {
   }
 
   /** history? false (account-fields.ts): the save keeps its cards row but no
-   *  action, no changes, and no act when the act holds nothing else. */
-  private async dropHistory(actionId: number, actId: number): Promise<void> {
+   *  action and no changes. Ruby's history-less cards never run assign_action
+   *  (events.rb:11-13, `when: :actionable?`) — the port creates the action to
+   *  write the save and drops it here. The act row goes with the action ONLY
+   *  when this operation lazily created it (a pure history-less save leaves
+   *  no act at all); an act that predates the operation is Ruby's
+   *  finalize_act shape — the act card's bare row (events.rb:48-50) — and
+   *  survives its zero actions. */
+  private async dropHistory(actionId: number, actId: number, actPreexisted: boolean): Promise<void> {
     const driver = this.fetch.driver;
     await driver.query("DELETE FROM card_changes WHERE card_action_id = ?", [actionId]);
     await driver.query("DELETE FROM card_actions WHERE id = ?", [actionId]);
+    if (actPreexisted) return;
     const left = (
       await driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM card_actions WHERE card_act_id = ?", [actId])
     ).rows[0];

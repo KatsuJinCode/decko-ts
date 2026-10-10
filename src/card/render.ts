@@ -35,7 +35,7 @@ import {
 } from "./one-trip/render-gate.js";
 import { cardContent, composeCardRecord, type CardRecord } from "./fetch/card-record.js";
 import { executeCount, executeQuery, type CqlQueryResult } from "../cql/execute.js";
-import { resolvePointerItemName } from "./render/pointer-list.js";
+import { resolvePointerItemName, rawItemStrings } from "./render/pointer-list.js";
 import { listItemContentOverride } from "./render/content-overrides.js";
 import { findRule } from "./rules/lookup.js";
 import { ruleNamesForCard } from "./set-patterns/rule-names.js";
@@ -516,6 +516,16 @@ export class RenderEngine implements RenderEngineLike {
       // that drops the card invalidates that record, so a re-enriched card
       // gets its refs re-chased.
       this.warmupScannedKeys.delete(key);
+      // The structure-content sweep's done-set is engine-lifetime for the
+      // same reason — but its entry describes the MAP CARD the sweep
+      // processed, and the expiry just deleted that entry. The re-fetch
+      // seats a FRESH record (the stored row: Topic 002's db_content is
+      // empty; the *structure template's content is what the sweep swaps
+      // in), so the done-set entry must go too or the re-seated card skips
+      // the sweep and renders its raw (empty) row content — the post-save
+      // slot refresh of a structured card rendered a bare empty body
+      // (edit-nested-summary-member's "topic after nested edit").
+      this.structureProcessed.delete(key);
     }
     // M9: a save flips the Card.exist? verdict for exactly the stored name
     // it wrote. Drop every warmed decision that ASKED about that name, and
@@ -1703,6 +1713,43 @@ export class RenderEngine implements RenderEngineLike {
     // skips existing keys, so renderCards only grows.
     const deniedRootSkip = this.skipDeniedRootWalks && this.isDenied(rootCard);
     if (!deniedRootSkip) await this.enrichPointerListItemsClosure();
+    // The pointer/list editors' options walk (card-mod-layout options_api.rb,
+    // the checkbox/radio/select/multiselect editors' card.options_hash): the
+    // sync editor views read seated items, so the chain's search member
+    // seats here, on the one view whose root renders an editor (the
+    // journeys' ?view=edit surface). No-op for every other root.
+    if (view === "edit") {
+      await this.ensurePointerEditorOptions(rootCard);
+    }
+    // A junction root's OWN field rows sit in no reference closure (a
+    // subcard is reachable only through its left_id), and a CODED core's
+    // nests are runtime-built - the account core's labeled rows emit
+    // {{+*email}} / {{+*password}} from views.rb's tuples while the
+    // +*account row's stored db_content is empty - so neither the prefetch
+    // closure (stored nest syntax only) nor any other warm reaches them.
+    // Ruby's nest fetch (format/nest/fetch.rb fetch_card) is a LIVE
+    // Card.fetch per nest: the row exists, every view renders it. The sync
+    // port's nest() is cache-only, so the rows must seat in prepare or the
+    // nest renders the fabricated new-card (observed: the after-save ajax
+    // slot of an account change re-rendered the +*email/+*password labeled
+    // rows with the tag-typed empty fabrication once the posted-subcard
+    // expiry dropped the edit page's stale seats - the stale value was gone
+    // AND the fresh value unreadable until the next full page load's edit
+    // view re-warmed them). Every view, one batch, junction roots only.
+    if (rootCard.id !== undefined && rootCard.name.isCompound && !rootCard.unknown) {
+      const children = (await this.fetcher.driver.query<CardsRow>(
+        "SELECT * FROM cards WHERE left_id = ? AND trash = false",
+        [rootCard.id],
+      )).rows;
+      for (const row of children) {
+        const tag = row.right_id !== undefined && row.right_id !== null
+          ? this.peekNameForId(row.right_id)
+          : undefined;
+        if (tag === undefined) continue;
+        await this.prepareItemForRender(`${rootCard.name.s}+${tag}`);
+      }
+      await this.ensureVerdicts();
+    }
     // The V6 nested-skin scan has to run again HERE, not only above. A skin
     // reached through a POINTER/LIST item is not in the render-card map when
     // the earlier scan walks it — measured cold on
@@ -8943,7 +8990,199 @@ export class RenderEngine implements RenderEngineLike {
     return items;
   }
 
-  private async runSearch(card: RenderCard): Promise<RenderCard[]> {
+  // -------------------------------------------------------------------------
+  // card-mod-layout set/abstract/items/options_api.rb - the pointer/list
+  // editors' options walk (the browser-journeys lane: the checkbox/radio/
+  // select/multiselect editors read it through card-mod-list).
+  // -------------------------------------------------------------------------
+
+  /** options_card (options_api.rb:47-49):
+   *  `rule_card(:content_options) || right_type_options || Card[:all]`,
+   *  resolved against the prepared map. The rule arm resolves the SETTING
+   *  BY CODENAME (lib/card/rule/cache.rb lookup_key keys the rule cache by
+   *  `Codename[setting_id]`, so the candidates hang off the card HOLDING
+   *  the content_options codename — the probe options-probe receipt: a
+   *  deck rule card merely NAMED `+*options` without the codename is NOT
+   *  found). The right-type arm fires only when the pointer's right card
+   *  exists as a real Cardtype (options_api.rb:57-63 right_type?), naming
+   *  the `[right, :type, :by name]` virtual search. The last arm is the
+   *  *all set card. undefined = no chain member resolves (degenerate deck:
+   *  no *all). */
+  optionsCardSource(card: RenderCard):
+    | { source: "rule"; card: RenderCard }
+    | { source: "right-type"; name: string }
+    | { source: "all"; card: RenderCard }
+    | undefined {
+    const settingId = this.peekIdByCodename("content_options");
+    if (settingId !== undefined) {
+      const settingName = this.peekRegisteredNameForId(settingId);
+      if (settingName !== undefined) {
+        const setting = DeckoName.parse(settingName);
+        const input: PatternCardInput = {
+          name: card.name.s,
+          id: card.id,
+          typeId: card.typeId,
+          typeName: card.typeName,
+        };
+        if (card.name.isCompound) {
+          const leftKey = card.name.leftName?.key;
+          const left =
+            leftKey !== undefined ? this.fetchRenderCard(leftKey) : undefined;
+          input.leftTypeName = left?.typeName;
+        }
+        for (const candidate of ruleNamesForCard(input, setting.s)) {
+          const record = this.fetchRenderCard(candidate);
+          if (record === undefined || record.unknown === true) continue;
+          if (this.isDenied(record)) continue; // ok?(:read) false
+          return { source: "rule", card: record };
+        }
+      }
+    }
+    const rightName = card.name.rightName;
+    if (rightName !== undefined) {
+      const right = this.fetchRenderCard(rightName.key);
+      if (
+        right !== undefined &&
+        right.unknown !== true &&
+        right.typeCode === "cardtype"
+      ) {
+        return { source: "right-type", name: `${rightName.s}+*type+by name` };
+      }
+    }
+    const all = this.fetchRenderCard("*all");
+    if (all !== undefined && all.unknown !== true) {
+      return { source: "all", card: all };
+    }
+    return undefined;
+  }
+
+  /** The options walk, seated in the async prepare phase (the sync editor
+   *  views cannot query): whichever SEARCH/SET member the chain resolves
+   *  to has its items seated exactly like prepareSearches seats a search
+   *  (BadQuery seats an empty result plus the recorded failure); the
+   *  right-type member is a virtual search (prepareVirtualFamilySearch).
+   *  Literal (non-search) rule members need no seat — the sync walk reads
+   *  their dbContent items directly. */
+  private async ensurePointerEditorOptions(rootCard: RenderCard): Promise<void> {
+    if (rootCard.unknown === true) return;
+    if (rootCard.typeCode !== "pointer" && rootCard.typeCode !== "list") return;
+    const source = this.optionsCardSource(rootCard);
+    if (source === undefined) return;
+    if (source.source === "right-type") {
+      await this.prepareVirtualFamilySearch(source.name);
+      return;
+    }
+    const typeCode = source.card.typeCode;
+    if (typeCode !== "search" && typeCode !== "set") return;
+    const key = source.card.key;
+    if (this.searchResults.has(key) || this.searchFailures.has(key)) return;
+    // Ruby's limit (options_api.rb:42,45 `o_card.try(:default_limit).to_i`):
+    // the only chain member defining a card-level default_limit is the
+    // *content_options rule card (card-mod-list set/right/content_options.rb:
+    // 3-5, 50); the *all set answers none — 0, Ruby's unlimited.
+    const limit = source.source === "rule" ? 50 : 0;
+    try {
+      const items = await this.runSearch(source.card, limit);
+      this.searchResults.set(key, items);
+    } catch (err) {
+      if (!(err instanceof Error) || err.name !== BAD_QUERY_CLASS_NAME) throw err;
+      this.searchFailures.set(key, err);
+      this.searchResults.set(key, []);
+    }
+  }
+
+  /** Seated search results by KEY (the options walk's read side; also the
+   *  virtual searches prepareVirtualFamilySearch seated). undefined = not
+   *  seated; [] = seated empty, including a seated BadQuery failure. */
+  seatedSearchItems(key: string): RenderCard[] | undefined {
+    return this.searchResults.get(key);
+  }
+
+  /** templating.rb:60-71 structure_rule_card + Card#structure, resolved
+   *  SYNC against the boot's structure universe (resolveStructuredContent —
+   *  the same walk the core-view substitution runs, "_self" included): the
+   *  winning *structure rule's name and template content for this card;
+   *  undefined when no rule applies. The card-mod-edit multi-card editor
+   *  (multiCardEditor/multiCardEdit) reads this — the rule card itself is
+   *  in no render closure on a new/edit page, so a fetchRenderCard walk
+   *  misses it. */
+  structureRuleForSync(
+    card: PatternCardInput,
+  ): { ruleName: string; content: string } | undefined {
+    const resolved = resolveStructuredContent(
+      card,
+      this.structureContents ?? new Map(),
+    );
+    return resolved === undefined
+      ? undefined
+      : { ruleName: resolved.ruleName, content: resolved.templateContent };
+  }
+
+  /** options_hash (options_api.rb:4-6) as the [label, name] pairs the five
+   *  list editors iterate: json_options? (options_api.rb:8-10) parses the
+   *  JSON-typed options card's content (its own pairs); otherwise
+   *  option_hash_from_names (options_api.rb:12-16) pairs every option_name
+   *  with itself. option_names (options_api.rb:18-24) = (standard +
+   *  selected).uniq — standard = the options card's item names
+   *  (option_names_from_items, options_api.rb:40-45), selected = the
+   *  pointer's own items. */
+  optionsCardPairs(card: RenderCard): Array<[string, string]> {
+    const source = this.optionsCardSource(card);
+    let standard: string[];
+    if (source === undefined) {
+      standard = [];
+    } else if (source.source === "right-type") {
+      const key = DeckoName.parse(source.name).key;
+      standard = (this.searchResults.get(key) ?? []).map((r) => r.name.s);
+    } else {
+      const opts = source.card;
+      if (opts.typeCode === "json") {
+        // json_options? arm (options_api.rb:33-34): the parsed hash's own
+        // pairs, values the option names (standard_option_names reads
+        // values.map(&:to_name)). A non-object parse is Ruby's
+        // parse_content NoMethodError-equivalent: throw loudly.
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(String(opts.dbContent ?? ""));
+        } catch {
+          throw badQuery(String(opts.dbContent ?? ""));
+        }
+        if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+          throw new Error(`options card ${opts.name.s} is not a JSON hash`);
+        }
+        return Object.entries(parsed as Record<string, unknown>).map(([k, v]) => [
+          k,
+          String(v),
+        ]);
+      }
+      if (opts.typeCode === "search" || opts.typeCode === "set") {
+        standard = (this.searchResults.get(opts.key) ?? []).map((r) => r.name.s);
+      } else {
+        // Literal item names (item.rb:15-22, context: the options card's
+        // own name — option_names_from_items passes context_name only for
+        // the non-right-type host; the members reached here absolutize
+        // against the options card itself).
+        standard = rawItemStrings(opts.dbContent).map((item) =>
+          DeckoName.parse(item.replace(/\[\[|\]\]/g, "").trim()).absoluteName(opts.name).s,
+        );
+      }
+    }
+    // selected (options_api.rb:19): the host card's own items. An empty
+    // content yields NO items (Ruby's split discards them - rawItemStrings
+    // keeps the trailing empty, the shared helper's JS-split model), so the
+    // union never grows a phantom empty option.
+    const selected = rawItemStrings(card.dbContent)
+      .map((item) => item.replace(/\[\[|\]\]/g, "").trim())
+      .filter((item) => item !== "")
+      .map((item) => DeckoName.parse(item).absoluteName(card.name).s);
+    const names: string[] = [];
+    for (const name of [...standard, ...selected]) {
+      if (!names.includes(name)) names.push(name); // options_api.rb:20 uniq
+    }
+    return names.map((name) => [name, name]);
+  }
+
+  private async runSearch(card: RenderCard, limitOverride?: number): Promise<RenderCard[]> {
     const rawContent = card.dbContent;
     if (rawContent === "") {
       throw emptyQueryError();
@@ -8980,8 +9219,22 @@ export class RenderEngine implements RenderEngineLike {
     // limit < count); a search with more items now renders Ruby's first
     // page instead of the whole set.
     const cqlLimit = searchCqlLimit(statement as Record<string, unknown>);
-    const limit = cqlLimit ?? 20;
-    (statement as Record<string, unknown>)["limit"] = limit;
+    // limitOverride rides the pointer-editor options walk only
+    // (ensurePointerEditorOptions): Ruby's option_names_from_items reads
+    // `limit: o_card.try(:default_limit).to_i` (options_api.rb:42,45) — the
+    // *content_options rule card is the only chain member that defines a
+    // card-level default_limit (card-mod-list set/right/content_options.rb:
+    // 3-5, 50); every other chain member (the type+by name virtual search,
+    // the *all set) answers no method, so 0 — Ruby's unlimited. 0 deletes
+    // the key (Ruby's limit_and_offset treats a 0/absent limit as
+    // unbounded); undefined keeps the search-view default below.
+    const limit =
+      limitOverride === undefined ? (cqlLimit ?? 20) : limitOverride <= 0 ? 0 : limitOverride;
+    if (limitOverride === undefined || limitOverride > 0) {
+      (statement as Record<string, unknown>)["limit"] = limit;
+    } else {
+      delete (statement as Record<string, unknown>)["limit"];
+    }
     let rows: CardsRow[];
     let records: Map<number, CardRecord>;
     let paging: SearchResultPaging | undefined;

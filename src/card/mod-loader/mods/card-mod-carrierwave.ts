@@ -99,7 +99,10 @@ import {
   localStorageUrl,
 } from "../../render/views.js";
 import { h } from "../../render/slot-html.js";
-import { lastContentActionIdFromIdentifier } from "../../attachments/attachment-content.js";
+import {
+  lastContentActionIdFromIdentifier,
+  parseLocalAttachmentIdentifier,
+} from "../../attachments/attachment-content.js";
 import type {
   DeckoModManifest,
   ModEventFn,
@@ -464,9 +467,39 @@ function fileChooserBytes(ctx: ViewContext, mount: "file" | "image" = "file"): s
  *  file.rb:140-142 `def preview; ""; end`, which the image html format
  *  overrides (image/html_views.rb:36-43) with the wrapped medium core, except
  *  on a new card (`return if card.new_card? && !card.preliminary_upload?`;
- *  the preliminary-upload arm is the unported two-step upload's param). */
-function previewLine(ctx: ViewContext, mount: "file" | "image"): string {
+ *  the preliminary-upload arm is the unported two-step upload's param).
+ *  `preliminaryIdentifier` carries the two-step upload's DRAFT identifier
+ *  ("~296/997.png") when the preview editor renders the upload round trip:
+ *  Ruby's render card carries the draft's selected content there
+ *  (load_action -> select_action_by_params on the success hash's rev_id,
+ *  card_controller/response.rb:54-62 + rest.rb:105; SelectedAction's
+ *  content_at_time_of_selected_action reads the draft's db_content change
+ *  row, selected.rb:37-44, including_drafts: true), so the wrapped core
+ *  resolves the just-stored draft file — the oracle round trip pins the
+ *  bytes (upload-image-admin: <div class="attachment-preview"
+ *  id="997.png-preview"> around the medium core of ~296/997.png). The id
+ *  is attachment.filename (html_views.rb:40) — the stored draft file's
+ *  basename "<action id><ext>" — NOT the card name the standing
+ *  imageHtmlPreviewView pins for the file-chooser context. */
+function previewLine(
+  ctx: ViewContext,
+  mount: "file" | "image",
+  preliminaryIdentifier?: string,
+): string {
   if (mount !== "image") return "\n";
+  if (preliminaryIdentifier !== undefined) {
+    const parsed = parseLocalAttachmentIdentifier(preliminaryIdentifier);
+    if (parsed !== undefined) {
+      const inner = formatImageCore(
+        preliminaryIdentifier,
+        ctx.fmt.card.id,
+        ctx.fmt.card.name.s,
+        "medium",
+        ctx.fmt.engine.imageCdnHost,
+      );
+      return `<div class="attachment-preview" id="${h(`${parsed.actionId}${parsed.ext}`)}-preview">${inner}</div>\n`;
+    }
+  }
   const card = ctx.fmt.card as { id?: number; record?: { isNew?: boolean } };
   const isNew = card.record?.isNew === true || card.id === undefined;
   return isNew ? "\n" : `${imageHtmlPreviewView(ctx)}\n`;
@@ -521,7 +554,30 @@ function cachedUploadCardName(ctx: ViewContext): string {
  *  lastContentActionIdFromIdentifier). */
 const filePreviewEditorView: ViewFn = (ctx) => {
   const card = ctx.fmt.card;
-  const actionId = lastContentActionIdFromIdentifier(card.dbContent);
+  // The hidden input's value is the selected action id. Ruby resolves it
+  // through the success round trip: prepare_attachment's success hash
+  // carries rev_id = current_action.id, and the soft redirect's load_action
+  // runs select_action_by_params on it (response.rb:54-62, rest.rb:105,
+  // selected.rb:13-16) — the DRAFT action just filed on the rendered card.
+  // The port carries the same id as the selected_action_id render opt (the
+  // writer's fresh action id; the cards row was never written, so the
+  // db_content parse below cannot see the draft). Without the opt (a direct
+  // preview_editor render of a stored card) the SelectedAction#
+  // last_content_action_id parse stands in (set/type/file.rb:8-13, the
+  // files lane's lastContentActionIdFromIdentifier).
+  const optAction = ctx.voo.opts["selected_action_id"];
+  const actionId = typeof optAction === "number"
+    ? optAction
+    : typeof optAction === "string" && /^\d+$/.test(optAction)
+    ? Number(optAction)
+    : lastContentActionIdFromIdentifier(card.dbContent);
+  // The DRAFT identifier (the preliminary round trip's selected content —
+  // see previewLine): the two-step upload's cache-shaped
+  // "~<cache card>/<draft action><ext>", carried beside the action id.
+  const optIdentifier = ctx.voo.opts["cached_upload_identifier"];
+  const preliminaryIdentifier = typeof optIdentifier === "string" && optIdentifier !== ""
+    ? optIdentifier
+    : undefined;
   const name = typeof ctx.voo.opts["original_filename"] === "string"
     ? (ctx.voo.opts["original_filename"] as string)
     : "";
@@ -532,7 +588,7 @@ const filePreviewEditorView: ViewFn = (ctx) => {
     "<div class='chosen-file'>\n" +
     `<input name='${h(cachedUploadCardName(ctx))}' type='hidden' value='${actionId ?? ""}'>\n` +
     "<div class='d-flex'>\n" +
-    previewLine(ctx, ctx.fmt.card.typeCode === "image" ? "image" : "file") +
+    previewLine(ctx, ctx.fmt.card.typeCode === "image" ? "image" : "file", preliminaryIdentifier) +
     "<div class='d-flex flex-column justify-content-between ml-2 w-100'>\n" +
     "<div>\n" +
     "<p class='name'>\n" +
