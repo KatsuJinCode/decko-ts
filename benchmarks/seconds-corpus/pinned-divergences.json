@@ -113,72 +113,6 @@
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
     },
     {
-      "op": "page:anonymous:*help",
-      "family": "composed-mod-view-gap",
-      "group": "page / anonymous",
-      "evidence": {
-        "firstDiffAt": 16302,
-        "expected": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by &quot;mating&quot; {{_left|name}} with another c...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-",
-        "actual": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by \\\"mating\\\" *children+*right with another...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-link-cli"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "page:member:*help",
-      "family": "composed-mod-view-gap",
-      "group": "page / member",
-      "evidence": {
-        "firstDiffAt": 18966,
-        "expected": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by &quot;mating&quot; {{_left|name}} with another c...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-",
-        "actual": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by \\\"mating\\\" *children+*right with another...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-link-cli"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "page:contractor:*help",
-      "family": "composed-mod-view-gap",
-      "group": "page / contractor",
-      "evidence": {
-        "firstDiffAt": 16835,
-        "expected": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by &quot;mating&quot; {{_left|name}} with another c...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-",
-        "actual": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by \\\"mating\\\" *children+*right with another...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-link-cli"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "page:admin:*help",
-      "family": "composed-mod-view-gap",
-      "group": "page / admin",
-      "evidence": {
-        "firstDiffAt": 19075,
-        "expected": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by &quot;mating&quot; {{_left|name}} with another c...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-",
-        "actual": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by \\\"mating\\\" *children+*right with another...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-link-cli"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "core:admin:*help",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 4424,
-        "expected": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by &quot;mating&quot; {{_left|name}} with another c...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-",
-        "actual": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by \\\"mating\\\" *children+*right with another...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-link-cli"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "core:anonymous:*help",
-      "family": "composed-mod-view-gap",
-      "group": "view / anonymous",
-      "evidence": {
-        "firstDiffAt": 4424,
-        "expected": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by &quot;mating&quot; {{_left|name}} with another c...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-",
-        "actual": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by \\\"mating\\\" *children+*right with another...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card-link _card-link-cli"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
       "op": "page:member:*header",
       "family": "composed-mod-view-gap",
       "group": "page / member",
@@ -197,50 +131,6 @@
         "firstDiffAt": 10949,
         "expected": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" value=\\\"Anyone Signed In\\nAdministrator\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-lis",
         "actual": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><div class=\\\"btn-group\\\"><a id=\\\"my-ca"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "page:anonymous:*sidebar",
-      "family": "composed-mod-view-gap",
-      "group": "page / anonymous",
-      "evidence": {
-        "firstDiffAt": 10860,
-        "expected": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layouts&quot;&gt;Layouts&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;external-link&quot; ",
-        "actual": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layout&quot;&gt;Layout&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;external-link&quot; hr"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "page:member:*sidebar",
-      "family": "composed-mod-view-gap",
-      "group": "page / member",
-      "evidence": {
-        "firstDiffAt": 13524,
-        "expected": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layouts&quot;&gt;Layouts&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;external-link&quot; ",
-        "actual": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layout&quot;&gt;Layout&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;external-link&quot; hr"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "page:contractor:*sidebar",
-      "family": "composed-mod-view-gap",
-      "group": "page / contractor",
-      "evidence": {
-        "firstDiffAt": 11393,
-        "expected": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layouts&quot;&gt;Layouts&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;external-link&quot; ",
-        "actual": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layout&quot;&gt;Layout&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;external-link&quot; hr"
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "page:admin:*sidebar",
-      "family": "composed-mod-view-gap",
-      "group": "page / admin",
-      "evidence": {
-        "firstDiffAt": 13636,
-        "expected": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layouts&quot;&gt;Layouts&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;external-link&quot; ",
-        "actual": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layout&quot;&gt;Layout&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;external-link&quot; hr"
       },
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
     },

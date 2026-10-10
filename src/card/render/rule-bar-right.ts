@@ -288,7 +288,21 @@ function ruleOneLineContent(
   // the stored RichText markup (`<p><em>…</em></p>`) never reaches the
   // one-line bytes (oracle: the AAM+*self+*help bar-right renders the
   // plain sentence, not the `<p><em>…` markup form).
-  return truncate(stripTags(str(coreText)), ONE_LINE_CHARACTER_LIMIT);
+    // THE ONE-LINE DISPATCH (the seconds corpus is the arbiter on both
+  // arms): MARKDOWN-typed rule cards render their core (kramdown) - the
+  // *guide bars carry the RENDERED heading text ('Editing Guide', no
+  // '####'); every other rule card (the RichText *help family, 13 bars)
+  // takes the RAW arm: truncate(strip_tags(render_raw)) with render_raw
+  // the STORED bytes - the nest syntax stays authored ({{_left|name}}
+  // literal in every escaped bar) - and the ERB escape rides the
+  // wrapping interpolation (&quot;mating&quot;). Rails truncate with
+  // the omission inside the length (60 -> cut at 57 + '...'): the
+  // *children+*right+*help bar cuts exactly at "with another c".
+  if (card.typeName === "Markdown") {
+    const coreText = renderCoreText !== undefined ? renderCoreText(card) : card.dbContent;
+    return truncate(stripTags(str(coreText)), ONE_LINE_CHARACTER_LIMIT);
+  }
+  return h(truncate(stripTags(card.dbContent), ONE_LINE_CHARACTER_LIMIT));
 }
 
 /** :bar_right for a rule card ("..." when the card is not a rule card —

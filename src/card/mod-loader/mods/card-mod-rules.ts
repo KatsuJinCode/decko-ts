@@ -1,4 +1,6 @@
 import { str, type ViewResult } from "../../render/format.js";
+import { ONE_LINE_CHARACTER_LIMIT, truncate } from "../../render/text-helpers.js";
+import { stripTags } from "../../render/nest-syntax.js";
 // The card-mod-rules gem (card-mod-rules-0.20.0), ported through the mod
 // loader - the mod that turns rule cards and set cards into a configurable
 // surface: the rule bar family, the rule editor views, the set card's Rules
@@ -626,6 +628,11 @@ function ruleOneLineInner(ctx: ViewContext, rightSetting: string | undefined): s
   }
   if (rightSetting === "*structure") {
     return `${card.typeName ?? ""} : ${card.dbContent}`;
+  }
+  // the same dispatch as rule-bar-right.ts: Markdown renders its core,
+  // everything else the raw+escape arm.
+  if (card.typeName !== "Markdown") {
+    return h(truncate(stripTags(card.dbContent), ONE_LINE_CHARACTER_LIMIT));
   }
   return truncatedCore(card.dbContent);
 }
