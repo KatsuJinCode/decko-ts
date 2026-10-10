@@ -7701,6 +7701,34 @@ export class RenderEngine implements RenderEngineLike {
         renderCard,
       });
     }
+    // The bootswatch-skin act warm (the action-summary assembly's
+    // synchronous reads): a bootswatch_skin-typed action card's summary
+    // renders through BootswatchSkin#content (card-mod-bootstrap
+    // set/type/bootswatch_skin.rb:44-48, the four-part CONTENT_PARTS
+    // assembly served by the content-override registry's type/
+    // bootswatch_skin entry) — differ.rb:60-66 raw_view renders the card's
+    // raw view, whose card.content is the ASSEMBLY, and the assembly's
+    // fetchRenderCard reads (+*colors / +*variables / +*stylesheets / the
+    // +parent pointer / the style: mods card) are cache-only. Nothing in a
+    // history render's nest closure chases those rows, so warm the family
+    // for each involved skin card — the same conditional-family shape as
+    // the skin-page warm (a skin-typed ROOT warms +Image/+parent/the three
+    // skin fields below). Cards that do not exist warm nothing.
+    if (this.peekCodenameById !== undefined) {
+      let styleModsWarmed = false;
+      for (const renderCard of cardById.values()) {
+        if (this.peekCodenameById(renderCard.typeId ?? -1) !== "bootswatch_skin") continue;
+        const n = renderCard.name.s;
+        await this.prepareItemForRender(`${n}+*colors`);
+        await this.prepareItemForRender(`${n}+*variables`);
+        await this.prepareItemForRender(`${n}+*stylesheets`);
+        await this.prepareItemForRender(`${n}+parent`);
+        if (!styleModsWarmed) {
+          await this.prepareItemForRender("style: mods");
+          styleModsWarmed = true;
+        }
+      }
+    }
 
     // The value / previous-value projections (changes.rb readers - the
     // sole-action synthesis stays inside the tested functions).
