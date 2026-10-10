@@ -3890,6 +3890,46 @@ const server = http.createServer(async (req, res) => {
       const name = decodeName(raw);
       if (name === undefined || name === "") {
         response = jsonResponse(400, { error: "empty card name" });
+      } else if (name === "*search/search box complete") {
+        // search_box_complete (mod/search set/self/search.rb:70-72, perms
+        // :none): the navbox typeahead's JSON — the search action item plus
+        // the goto items (the complete search: the first 8 names whose key
+        // starts with the term's key, sorted by name — AUTOCOMPLETE_LIMIT).
+        // The deck script's jQuery UI autocomplete renders each item's
+        // label into the dropdown lis the search journeys wait for.
+        const term = url.searchParams.get("term") ?? "";
+        const termKey = DeckoName.parse(term).key;
+        const nameRows = term === ""
+          ? []
+          : (
+              await requestEngine.fetcher.driver.query(
+                "SELECT name FROM cards WHERE trash = 0 AND key LIKE ? ORDER BY name LIMIT 8",
+                [`${termKey}%`],
+              )
+            ).rows;
+        const origin = `http://${req.headers.host}`;
+        const searchLabel =
+          `<div class='autocomplete-item-search autocomplete-item'>\n` +
+          `<div class='autocomplete-icon'>\n<i class="notranslate material-icons">search</i>\n</div>\n` +
+          `<div class='autocomplete-label'>\n${term}\n</div>\n</div>\n`;
+        const gotoLabel = (itemName) =>
+          `<div class='autocomplete-item-goto autocomplete-item'>\n` +
+          `<div class='autocomplete-icon'>\n<i class="notranslate material-icons">arrow_forward</i>\n</div>\n` +
+          `<div class='autocomplete-label'>\n${itemName}\n</div>\n</div>\n`;
+        response = jsonResponse(200, [
+          {
+            url: `${origin}/*search?query%5Bkeyword%5D=${encodeURIComponent(term)}`,
+            action: "search",
+            value: term,
+            label: searchLabel,
+          },
+          ...nameRows.map((row) => ({
+            url: `${origin}/${encodeURIComponent(row.name)}`,
+            action: "goto",
+            value: row.name,
+            label: gotoLabel(row.name),
+          })),
+        ]);
       } else {
         response = await cardRecordJson(name, requestEngine);
       }
@@ -4047,6 +4087,50 @@ const server = http.createServer(async (req, res) => {
         const name = decodeName(routeName);
         if (name === undefined || name === "") {
           response = jsonResponse(400, { error: "empty card name" });
+        } else if (
+          name === "*search" &&
+          routeView === "search_box_complete"
+        ) {
+          // search_box_complete (mod/search set/self/search.rb:70-72, perms
+          // :none): the navbox typeahead's JSON — the search action item
+          // plus the goto items (the complete search: the first 8 names
+          // whose key starts with the term's key, sorted by name —
+          // AUTOCOMPLETE_LIMIT). The deck script's jQuery UI autocomplete
+          // renders each item's label into the dropdown lis.
+          const term = url.searchParams.get("term") ?? "";
+          const termKey = DeckoName.parse(term).key;
+          const nameRows = term === ""
+            ? []
+            : (
+                await requestEngine.fetcher.driver.query(
+                  "SELECT name FROM cards WHERE trash = 0 AND key LIKE ? ORDER BY name LIMIT 8",
+                  [`${termKey}%`],
+                )
+              ).rows;
+          const origin = `http://${req.headers.host}`;
+          const searchLabel =
+            `<div class='autocomplete-item-search autocomplete-item'>\n` +
+            `<div class='autocomplete-icon'>\n<i class="notranslate material-icons">search</i>\n</div>\n` +
+            `<div class='autocomplete-label'>\n${term}\n</div>\n</div>\n`;
+          const gotoLabel = (itemName) =>
+            `<div class='autocomplete-item-goto autocomplete-item'>\n` +
+            `<div class='autocomplete-icon'>\n<i class="notranslate material-icons">arrow_forward</i>\n</div>\n` +
+            `<div class='autocomplete-label'>\n${itemName}\n</div>\n</div>\n`;
+          const items = [
+            {
+              url: `${origin}/*search?query%5Bkeyword%5D=${encodeURIComponent(term)}`,
+              action: "search",
+              value: term,
+              label: searchLabel,
+            },
+            ...nameRows.map((row) => ({
+              url: `${origin}/${encodeURIComponent(row.name)}`,
+              action: "goto",
+              value: row.name,
+              label: gotoLabel(row.name),
+            })),
+          ];
+          response = jsonResponse(200, items);
         } else {
           response = await renderCardPage(name, requestEngine, routeView, searchReq ? { search: searchReq } : undefined, pageOpts);
           servedCardName = name;
