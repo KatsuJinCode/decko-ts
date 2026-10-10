@@ -1207,9 +1207,9 @@ export class ModLoader {
     if (file.assignsType !== undefined) {
       registerSetTypeAssignment(shortname, file.assignsType);
     }
-    // The mod's data rule seeds (data/real.yml rule rows): the fallback
-    // answer ruleContentForCard consults when no storage candidate exists
-    // (mod-rule-seeds.ts — the precedence note there).
+    // The mod's data rule seeds (data/real.yml rule rows): the form-side
+    // gate's synchronous read (mod-rule-seeds.ts — the validate side stays
+    // storage-only, per the header note there).
     for (const seed of file.ruleSeeds ?? []) {
       registerModRuleSeed(modName, seed.name, seed.content);
     }

@@ -123,12 +123,24 @@ describe("vm-staging-server.mjs wiring (source pins — the file boots on import
   });
 
   it("(8) reads the host env ONCE at boot, beside the other engine inputs (attachmentStore)", () => {
-    expect(source).toContain("const recaptchaConfig = recaptchaConfigFromHostEnv(process.env);");
+    // the read rides the boot composition: env keys when ops sets them, the
+    // gem's DEVELOPMENT default pair otherwise (lib/card/mod/recaptcha.rb
+    // @defaults through recaptcha_setting_value's card -> config ->
+    // deprecated -> default chain) — a stock decko boot is armed, and the
+    // anonymous create journeys hit the captcha guard exactly as the
+    // recorded oracle journey pins.
+    expect(source).toContain(
+      "const recaptchaConfig =\n  recaptchaConfigFromHostEnv(process.env) ?? {",
+    );
+    expect(source).toContain("siteKey: \"6Lc3c-EoAAAAALnzfnHIWb5Rqy-rNui8l8qsguYG\"");
     // the read sits in the boot block, after the attachment store it peers at
     const attachmentStoreAt = source.indexOf("const attachmentStore = new LocalAttachmentStore(");
-    const bootReadAt = source.indexOf("const recaptchaConfig = recaptchaConfigFromHostEnv(");
+    const bootReadAt = source.indexOf("recaptchaConfigFromHostEnv(process.env)");
     expect(attachmentStoreAt).toBeGreaterThan(-1);
     expect(bootReadAt).toBeGreaterThan(attachmentStoreAt);
+    // the FORM side of the guard reads the same config through the render
+    // seam (card-mod-edit createCardForm's gate); absent, no form arms.
+    expect(source).toContain("setRenderRecaptchaConfig(recaptchaConfig);");
   });
 
   it("(9) dispatchWriteRequest composes the seat into handleWriteRequest's context — present when armed, ABSENT (byte-identical shape) when inert", () => {

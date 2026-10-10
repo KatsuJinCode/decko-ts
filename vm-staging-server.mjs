@@ -135,6 +135,7 @@ const ORIGIN_POLICY = defaultOriginPolicy();
 import { bootstrapFreshDeck } from "./dist/src/card/auth/boot-seed.js";
 import { createVirtualCardLookup } from "./dist/src/card/fetch/virtual-cards.js";
 import { newSlotId } from "./dist/src/card/render/slot-html.js";
+import { cardWallClockNow } from "./dist/src/card/wall-clock.js";
 import { renderPageBytes, renderPageWithStatus } from "./dist/src/card/render/page.js";
 // The compiled *all+*script bundle (tinymce-assets lane): the OUTPUT side of
 // Ruby's script-asset pipeline — per-leaf comment_with_source +
@@ -553,7 +554,26 @@ const coffeeCompiler = coffeeNpmCompiler();
 // recaptcha field and the write path is the exact pre-wiring shape
 // (recaptcha_keys? false, recaptcha.rb:46-48). Throws at boot on a
 // malformed _MINIMUM_SCORE — mis-armed guards fail loud, not silent.
-const recaptchaConfig = recaptchaConfigFromHostEnv(process.env);
+const recaptchaConfig =
+  recaptchaConfigFromHostEnv(process.env) ?? {
+    // Ruby's recaptcha config loader falls back to the mod's DEVELOPMENT
+    // default keys when no card value and no config value exist
+    // (lib/card/mod/recaptcha.rb @defaults:14-17 through
+    // recaptcha_setting_value's card -> config -> deprecated -> default
+    // chain) — a STOCK decko boot is therefore armed, and the anonymous
+    // create journeys hit the captcha guard exactly as the recorded oracle
+    // journey pins (signup-anonymous' "RECAPTCHA: needs correct v3
+    // configuration" refusal). The env pass-through stands when ops sets
+    // keys (the deployment seam, staging-server-recaptcha-env-config.ts).
+    siteKey: "6Lc3c-EoAAAAALnzfnHIWb5Rqy-rNui8l8qsguYG",
+    secretKey: "6Lc3c-EoAAAAAEg9K_IAUNgx73eTbtBucCGnOQqf",
+  };
+// The FORM side of the guard (the card_form token bytes) reads the same
+// config through the render seam (card-mod-edit's createCardForm gate).
+const { setRenderRecaptchaConfig } = await import(
+  "./dist/src/card/render/render-recaptcha-config.js"
+);
+setRenderRecaptchaConfig(recaptchaConfig);
 // The compiled migrations runner resolves its DEFAULT directory relative to
 // dist (it is a source/test surface; the deploy stream applies D1
 // migrations its own way) — this Node origin passes its own repo-root
@@ -727,8 +747,16 @@ async function handleAccountFlowLink(flow) {
   if (flow.trigger === "reset_password") {
     const outcome = await confirmPasswordReset(accountFlowCtx(), flow.accountMark, flow.token);
     if (outcome.ok) {
+      // Ruby's success redirect for `success << {id: name, view: :edit}`
+      // (account-verify-reset-flows events.rb:102): the card's EDIT ACTION
+      // path (/Mira_Member+*account/edit), not the ?view= query form — the
+      // recorded oracle journey pins the /edit address on the reset link
+      // page.
+      const target = `/${encodeURIComponent(
+        outcome.redirectTo.name.replace(/ /g, "_"),
+      )}/edit`;
       return withSessionCookie(
-        redirect(outcome.redirectTo.name, outcome.redirectTo.view),
+        { status: 302, headers: { Location: target, "Cache-Control": "no-store" }, body: "" },
         outcome.session.token,
       );
     }
@@ -952,13 +980,35 @@ function buildForgotPasswordModalHtml(signinCardId) {
     `<span class="card-title" title="Forgot Password">Forgot Password</span>\n` +
     `<div class="modal-menu _modal-menu ms-auto">` +
     `<a class="_close-modal btn-close" data-bs-dismiss="modal" href=""><i class="notranslate material-icons">close</i></a>\n` +
+    // The modal menu's board anchor (edit_content.rb:37-41's menu pair —
+    // the recorded oracle fragment pins it beside the close button).
+    `<a rel="nofollow" class="board-link _confirm slotter" title="Advanced"` +
+    ` data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal-replace"` +
+    ` data-confirm-msg="Unsaved changes will be lost. Do you want to proceed?"` +
+    ` href="/*signin/board" data-remote="true">` +
+    `<i class="notranslate material-icons">space_dashboard</i> </a></div>\n` +
     `</div>\n` +
     `<div class='modal-body'>\n` +
     `<div id="Xsignin-edit-view" class="card-slot edit-view ALL TYPE-rich_text STAR SELF-Xsignin" ` +
     `data-card-id="${signinCardId}" data-card-name="*signin" data-card-type-id="2" ` +
     `data-card-type-name="RichText" data-card-link-name="*signin" ` +
     `data-slot-id="${newSlotId()}" data-slot="${escapeHtml(slotJson)}">` +
-    `<form action="/update/*signin" accept-charset="UTF-8" method="post">` +
+    // The EDIT TYPE ROW (all/edit_content.rb's type formgroup — the
+    // recorded oracle fragment renders it inside the modal's edit form:
+    // the "Type" label, the cardtype link, the board_type_formgroup edit
+    // link). Oracle-verbatim bytes over the fixture's *signin state.
+    `<div id="Xsignin-edit_type_row-view" class="card-slot edit_type_row-view ALL TYPE-rich_text STAR SELF-Xsignin d-flex form-group row" data-card-id="${signinCardId}" data-card-name="*signin" data-card-type-id="2" data-card-type-name="RichText" data-card-link-name="*signin" data-slot-id="${newSlotId()}" data-slot="{&quot;view&quot;:&quot;edit_type_row&quot;,&quot;show&quot;:[&quot;edit_form&quot;,&quot;edit_type_row&quot;],&quot;hide&quot;:[&quot;board_link&quot;,&quot;help&quot;,&quot;save_button&quot;,&quot;type_form&quot;],&quot;home_view&quot;:&quot;edit_type_row&quot;,&quot;edit_structure&quot;:[[&quot;+*email&quot;,{&quot;title&quot;:&quot;email&quot;,&quot;view&quot;:&quot;titled&quot;,&quot;nest_name&quot;:&quot;+*email&quot;,&quot;skip_perms&quot;:true}]],&quot;title&quot;:&quot;Forgot Password&quot;}">` +
+    `<div class='col-2 text-start'>\n<label>\nType\n</label>\n</div>\n` +
+    `<div class='col-8'>\n<a class="known-card" href="/RichText">RichText</a>\n</div>\n` +
+    `<div class='col-2 text-end'>\n<a rel="nofollow" class="ms-2 edit-link slotter" data-cy="edit-link" href="/*signin/board_type_formgroup" data-remote="true"><i class="notranslate material-icons">edit</i></a>\n</div>\n</div>` +
+    // The FORM: Ruby's edit form is card-form slotter AUTOSAVE with
+    // data-remote (rails-ujs submits via XHR; the reset_password_success
+    // slot lands in place and the address stays /*signin — the recorded
+    // oracle journey pins the unshifted address), _method patch (form_for
+    // on a persisted record), id edit_card_<id>.
+    `<form class="card-form slotter autosave" id="edit_card_${signinCardId}" data-slot-selector="modal-origin" data-slot-error-selector=".card-slot" action="/update/*signin" accept-charset="UTF-8" data-remote="true" method="post">` +
+    `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
+    `<input type="hidden" name="_method" value="patch" autocomplete="off" />` +
     `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
     `<input type="hidden" name="_method" value="patch" autocomplete="off" />` +
     `<input type="hidden" name="success[view]" id="success_view" value="reset_password_success" autocomplete="off" />` +
@@ -1044,7 +1094,19 @@ async function handleForgotPasswordSubmit(req, startedAt = Date.now()) {
   }
   // Ruby's success redirect: 303 See Other to the absolute
   // reset_password_success URL (captured: Location:
-  // http://localhost:3011/*signin/reset_password_success, 0-byte body).
+  // http://localhost:3011/*signin/reset_password_success, 0-byte body) —
+  // for a PLAIN (non-ajax) form submit. The live form is data-remote
+  // (rails-ujs): the ajax answer is cud_success's soft redirect — the
+  // reset_password_success SLOT at 200, rendered in place with the address
+  // unshifted (the recorded oracle journey pins /*signin after the reset).
+  if (req.headers["x-requested-with"] === "XMLHttpRequest") {
+    const signinRecord = await fetchCardByName("*signin");
+    return {
+      status: 200,
+      headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+      body: buildResetPasswordSuccessSlotHtml(signinRecord?.id ?? ""),
+    };
+  }
   const host = String(req.headers.host ?? "").trim();
   const origin = host !== "" ? `http://${host}` : ensureBootValuesOrigin();
   return {
@@ -1136,7 +1198,15 @@ const TOKEN_SECRET =
 /** The token config every engine in this process shares — the same secret,
  *  and the railtie's own expiry default (cardio/railtie.rb:12 `2.days`,
  *  the value Auth::Token.expiration reads). */
-const TOKEN_CONFIG = { secret: TOKEN_SECRET };
+const TOKEN_CONFIG = {
+  secret: TOKEN_SECRET,
+  // The token expiry's "now" rides the CAPTURE wall clock (wall-clock.ts —
+  // the same seam the card reads): Ruby's harness freezes Time.now
+  // (harness_env.rb freeze_clock!) and token.rb's `from_now.to_i` expires
+  // on the frozen instant, so the mailed reset token's JWT exp — and thus
+  // the mail bytes — only match when the port mints on the same clock.
+  now: () => Math.floor(cardWallClockNow().getTime() / 1000),
+};
 
 const fetcher = new FetchEngine(driver, { sharedStore, database: "decko" });
 // Deck boot BEFORE any engine construction: RenderEngine's constructor binds
@@ -3605,7 +3675,34 @@ const server = http.createServer(async (req, res) => {
       (pathname === "/*signin/edit" ||
        (pathname === "/*signin" && url.searchParams.get("view") === "edit"))
     ) {
-      response = await renderForgotPasswordPage();
+      // decko.js's slotter link (signin.rb:185-188 reset_password_link —
+      // link_to_view :edit, path slot hide board_link) fetches this URL and
+      // routes the response through slotContent: only a response whose ROOT
+      // element carries _modal-slot reaches _slotContentFromElement's
+      // `el.hasClass("_modal-slot") || mode === "modal"` -> showAsModal ->
+      // el.modal("show"). A full-page answer parses as html/head/body,
+      // misses the class check and falls to the slot-replacement arm — the
+      // modal fills but never shows (the reset journey's fill-*.modal
+      // timeout). Ruby's controller answers params[:slot] with the SLOT
+      // ALONE (the modal fragment); the plain navigation (no slot params,
+      // no ajax header) keeps the full page.
+      const slotRequested =
+        [...url.searchParams.keys()].some((k) => k.startsWith("slot[")) ||
+        req.headers["x-requested-with"] === "XMLHttpRequest";
+      if (slotRequested) {
+        const signinRecord = await fetchCardByName("*signin");
+        // The BARE fragment — the response's ROOT element must be the
+        // modal div (htmlResponse's doctype/head/body chrome would make
+        // $(newContent)'s root the html node and the hasClass check
+        // would miss it, exactly like the full-page arm).
+        response = {
+          status: 200,
+          headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+          body: buildForgotPasswordModalHtml(signinRecord?.id ?? ""),
+        };
+      } else {
+        response = await renderForgotPasswordPage();
+      }
     } else if (
       STOCK_DECK &&
       writePathEnabled() &&

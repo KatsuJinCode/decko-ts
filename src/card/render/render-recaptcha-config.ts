@@ -5,8 +5,8 @@
 // every card_form's token bytes when the guard is on. Ruby reads
 // Card.config + rule(:captcha) synchronously inside the format override;
 // the port's form builders read this config plus the mod rule-seed
-// registry (mod-rule-seeds.ts — the same seeds the validate side's
-// ruleContentForCard consults).
+// registry (mod-rule-seeds.ts — form-side only; the validate side resolves
+// its rule content from storage).
 
 export interface RenderRecaptchaConfig {
   siteKey: string;

@@ -1996,10 +1996,11 @@ function createCardForm(
   // this gate: the config is the host's render-side seam
   // (render-recaptcha-config.ts — the SAME object the write path's guard
   // runs on), the rule content rides the mod rule seeds (mod-rule-seeds.ts
-  // — the same answer the validate-side ruleContentForCard reaches), and
+  // — the validate side resolves the same answer from storage, where the
+  // boot seeds the gems' rows), and
   // the auth operands are the request render's (anonymous, not always_ok,
   // a set-up deck).
-  const recaptchaConfig = renderRecaptchaConfig(); // BISECT: gate disabled below
+  const recaptchaConfig = renderRecaptchaConfig();
   const recaptchaOnForm =
     recaptchaConfig !== undefined &&
     recaptchaFormOn(

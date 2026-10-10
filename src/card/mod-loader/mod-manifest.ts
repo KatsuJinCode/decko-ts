@@ -324,8 +324,9 @@ export interface ModSetModuleFile {
   /** The file's mod data rule seeds (data/real.yml rule rows the gem ships;
    *  card-mod-recaptcha data/real.yml's *captcha toggles are the ported
    *  case). Registered into the mod rule-seed registry (mod-rule-seeds.ts)
-   *  at load; ruleContentForCard consults them when no storage candidate
-   *  exists, and the form-side recaptcha gate reads them synchronously. */
+   *  at load; the form-side recaptcha gate reads them synchronously (the
+   *  validate side stays storage-only — mod-rule-seeds.ts' header records
+   *  why). */
   readonly ruleSeeds?: readonly Readonly<{ name: string; content: string }>[];
 
   /** the file's `basket[:tasks][:name] = {...}` declarations

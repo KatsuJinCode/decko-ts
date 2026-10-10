@@ -53,7 +53,6 @@ import {
   ruleNamesForCard,
   settingCardNameForCode,
 } from "../set-patterns/rule-names.js";
-import { modRuleSeedContentForCandidate } from "../mod-loader/mod-rule-seeds.js";
 
 /**
  * Card#rule(setting_code) - rule/all.rb:5-15 + 66-73: the card's candidate
@@ -76,16 +75,19 @@ export async function ruleContentForCard(
     if (record === undefined) continue; // candidate rule card does not exist
     return record.dbContent;
   }
-  // The mod rule seeds (mod-rule-seeds.ts): a stock deck carries the mods'
-  // data/real.yml rule rows as STORAGE (seeded at deck creation), so on a
-  // real deck this arm never fires; the port's fixture decks and scrubbed
-  // corpora lack those rows and the seeds stand in — the recorded oracle
-  // boots armed on exactly these (mod/recaptcha data/real.yml's captcha
-  // toggles). A storage rule row always wins (the loop above).
-  for (const candidate of ruleNamesForCard(pattern, settingName)) {
-    const seeded = undefined; // BISECT: seed consult disabled
-    if (seeded !== undefined) return seeded;
-  }
+  // Deliberately NO fallback beyond storage. Ruby's deck carries the mods'
+  // data/real.yml rule rows as rows (seeded at deck creation), so a served
+  // deck answers here; a deck WITHOUT the rows (pre-mod / mod removed) has
+  // no rule and disarms exactly as Ruby's toggle(nil) - recaptcha.rb:16-23.
+  // The mod rule-seed registry (mod-rule-seeds.ts) is deliberately NOT
+  // consulted here: its reach runs through the process-global name
+  // environment, so a consult would arm decks Ruby keeps unarmed and would
+  // flip on whether some other engine instance in the same process had
+  // installed the environment (observed: the recaptcha-seat endpoint pins
+  // flipped 303 -> 422 with the suite's chunk order). The form side reads
+  // the seeds at render (card-mod-edit createCardForm); the validate side
+  // stays storage-only, and the two agree on served decks because the boot
+  // seeds the same rows the gems ship.
   return undefined;
 }
 
