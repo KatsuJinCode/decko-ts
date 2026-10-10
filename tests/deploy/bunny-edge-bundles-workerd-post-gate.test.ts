@@ -50,6 +50,8 @@ import { fileURLToPath } from "node:url";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { build } from "esbuild";
+// @ts-expect-error — the stub plugin is an untyped .mjs tool module
+import { coffeescriptNodeBuiltinStubs } from "../../tools/vendor/coffeescript-edge-bundler-stubs.mjs";
 import { Miniflare, convertV4MiniflareOptions } from "miniflare";
 
 import { BunnyDbDriver } from "../../src/card/drivers/bunny-db.js";
@@ -170,6 +172,10 @@ async function buildBundle(entry: string, name: string): Promise<string> {
     conditions: ["deno", "bunny", "import", "default"],
     mainFields: ["module", "main"],
     alias: { "@cf-wasm/photon": "@cf-wasm/photon/node" },
+    // The coffeescript subtree requires fs/vm/path for helpers compile()
+    // never touches — the same stubs the deploy tool bundles with. Without
+    // them the built engine bundle dies at module load in workerd.
+    plugins: [coffeescriptNodeBuiltinStubs()],
     logLevel: "silent",
     banner: { js: 'globalThis.__deckoEval0=[typeof performance<"u"?performance.now():-1,Date.now()];' },
   });
