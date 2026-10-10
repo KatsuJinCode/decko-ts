@@ -212,7 +212,10 @@ export async function followMailViews(
       const before = newName !== undefined ? await previousValue(action, "name") : undefined;
       const name = before ?? (await nameOf(action.cardId));
       const body = `${name} ${action.type}d\n${await listOfChanges(action, html)}`;
-      items += html ? `<li>${body}</li>\n` : `\n${body}\n`;
+      // The notices join DIRECTLY (base_views.rb:16-20 map.compact.join —
+      // each subedit notice carries its own trailing newline and no leading
+      // one; wrap_list's "\n#{list}\n" supplies the leading blank line).
+      items += html ? `<li>${body}</li>\n` : `${body}\n`;
     }
     if (items === "") return "";
     const list = html ? `<ul>${items}</ul>\n` : `\n${items}\n`;

@@ -1140,8 +1140,15 @@ function fieldEditorInMultiCard(
   // formgroup (formgroup.rb:20-43): div.form-group.card-editor (the field's
   // junction classes prepend - the captured RIGHT-summary bytes), the
   // data-card attrs, label + editor div.
+  // The field editor is the FORM'S WRITING SURFACE: Ruby renders it for
+  // whoever may fill the parent form (the save rides the parent's
+  // permission), and the field's own read rule never gates the editor —
+  // a Pointer-typed field's *type read rule ("Help Desk") would deny the
+  // member the editor Ruby's form shows. skip_perms scopes that to the
+  // structured-form field editors only.
   const contentFieldHtml = fmt.nestRecord(fieldCard, "input", {
     form_name_prefix: prefix,
+    skip_perms: true,
   });
   const hiddenTypeId =
     fieldCard.id === undefined

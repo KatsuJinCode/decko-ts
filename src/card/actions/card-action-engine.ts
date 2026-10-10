@@ -752,13 +752,12 @@ export class CardActionEngine {
         // `standard_db_content || ""`), so the subcard's director aborts
         // unchanged — no action row, no INSERT, no mail section. The
         // structured form's pointer fields post exactly this shape (the
-        // +related field's hidden blank content field); Ruby's create
-        // leaves the structure nest a reference only.
+        // +related field's hidden blank content field — with the field's
+        // *default-template type riding the hidden type_id input; the type
+        // does not make the save: a blank-content subcard stores nothing
+        // whatever its type).
         const blankNoop =
           (sub.content === undefined || sub.content === "") &&
-          sub.typeId === undefined &&
-          sub.typeCode === undefined &&
-          sub.typeName === undefined &&
           sub.attachment === undefined &&
           (sub.subcards === undefined || Object.keys(sub.subcards).length === 0);
         if (blankNoop) continue;
