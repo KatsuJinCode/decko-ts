@@ -14,7 +14,7 @@
 // keeps the "RichText" literal for the BLANK-name branch only. Post-warm
 // the engine answers BasicCs (corpus 22281) for the simple absent left
 // "Decko Bot" and RichText for the compound lefts the earlier oracle pins
-// name (Soma+tic, WilliamsCraig+Vacations+Oregon -- the pins recorded in
+// name (Soma+tic, WilliamsCraig+Retreats+Shoreline -- the pins recorded in
 // format.ts leftTypeNameFor's block comment must not move).
 //
 // BLOCK 2 -- byte-exact pins for the five W2-class entries that PASS at the
@@ -98,7 +98,7 @@ describeOrSkipLoud(!GATED, "tests/card/render/restore-w2-left-type-quick-type-an
           // The compound-left oracle pins recorded in format.ts
           // leftTypeNameFor (Soma+tic+aikido ->
           // TYPE_PLUS_RIGHT-rich_text-aikido;
-          // WilliamsCraig+Vacations+Oregon+20180623_0728 ->
+          // WilliamsCraig+Retreats+Shoreline+20180623_0728 ->
           // TYPE_PLUS_RIGHT-rich_text-20180623_0728): the arm must keep
           // answering RichText there.
           expect(engine.newCardDefaultType?.(nameMod.DeckoName.parse("Soma+tic"))).toEqual({
@@ -106,7 +106,7 @@ describeOrSkipLoud(!GATED, "tests/card/render/restore-w2-left-type-quick-type-an
             typeName: "RichText",
           });
           expect(
-            engine.newCardDefaultType?.(nameMod.DeckoName.parse("WilliamsCraig+Vacations+Oregon")),
+            engine.newCardDefaultType?.(nameMod.DeckoName.parse("WilliamsCraig+Retreats+Shoreline")),
           ).toEqual({ typeId: 3, typeName: "RichText" });
           // THE FIX'S OWN OUTCOME (the discriminator between base and the
           // fix commit): leftTypeNameFor's last resort now consults the

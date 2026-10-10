@@ -358,12 +358,12 @@ const titleNoLinkView: ViewFn = ({ fmt, voo }) => {
   // chunk/link.rb:31-33) or derived (standardTitle's h()'d name), carries
   // ONLY the quote escape; the explicit arm's markup brackets stay RAW.
   // Oracle: the US Census Employment wanted-link span renders
-  // `title="<a href=&quot;/20191213+BW+Time_Tracking+1400?view=bar&quot;>..."`
+  // `title="<a href=&quot;/20191213+CM+Time_Tracking+1400?view=bar&quot;>..."`
   // (Ruby probe tmp/perm/ruby-link-probe.rb, link_census) and the
   // Waging Peace anchor renders `title="...Gasshuku &amp; Benefit..."`
   // verbatim-single-escaped from the stored name bytes. The previous
   // h() here double-escaped the derived arm's entities (`&amp;amp;`,
-  // BW 20101113) and escaped the explicit arm's brackets (`&lt;`).
+  // CM 20101113) and escaped the explicit arm's brackets (`&lt;`).
   const attr = title.replace(/"/g, "&quot;");
   // wrapped_title parts.join wrapped_joint (title.rb:40) - the SHARED
   // helper (format.ts#wrappedTitleInner), so the split is single-sourced
@@ -4017,7 +4017,7 @@ function renderPointerListItem(fmt: RenderFormat, name: string, itemView: string
   // divs and every earlier item. The item subformat is never focal
   // (depth >= 1, subformat.rb:41-43), so the rescue is always the quiet
   // span (error.rb:65-73), labelled with the ITEM view (error.rb:80-86).
-  // Corpus bytes: HDW BW 20131229 0264+tags `titled;item:taglink` —
+  // Corpus bytes: HDW CM 20131229 0264+tags `titled;item:taglink` —
   // item 1 read-denied (the quiet denial span, unchanged), item 2
   // `<div class="pointer-item item-taglink"><span class="render-error
   // alert alert-danger">view (taglink) not supported for BW</span></div>`
@@ -4141,7 +4141,7 @@ function renderUnknownPointerListItem(
     // rich_text (recapture-raw-shard-000016/28, the 10 email entries).
     // The compound pins hold through the same walk: quick_type("MNv+ITM")
     // = RichText (the MNv cascade pages stay byte-exact),
-    // WilliamsCraig+Vacations+Oregon = RichText. This is the same
+    // WilliamsCraig+Retreats+Shoreline = RichText. This is the same
     // mechanism leftTypeNameFor's last resort ports (format.ts, 96a5305);
     // that arm never sees these bytes because the rule-shaped phantom
     // (right = a Setting) skips nestRecord's withNewCardContext rebuild.

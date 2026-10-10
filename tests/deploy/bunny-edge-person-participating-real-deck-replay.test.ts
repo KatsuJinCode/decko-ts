@@ -115,8 +115,8 @@ describe("person page +Project(s) Participating section on the REAL production d
       expect(actual).toContain(SECTION_MARKERS.slotClass);
       expect(actual).toContain(SECTION_MARKERS.typeName);
       expect(actual).toContain(SECTION_MARKERS.slotId);
-      expect(actual).toContain("mythopsychology");
-      expect(actual).toContain("NCDD");
+      expect(actual).toContain("mythosynth");
+      expect(actual).toContain("NXDD");
 
       // Yardstick evidence: the section markers exist on the RUBY side too,
       // and the full-page byte diff is reported (not gated -- the known

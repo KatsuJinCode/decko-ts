@@ -9,7 +9,8 @@
 // (tmp/census/mechanism-analysis.json, analyze-census-pages.mjs, pageMechSets
 // where mechs includes "c-structural"). These are the pages the search-parity
 // receipts (an internal work log, search-parity-2.md) named
-// the "David Williams / John Abbe class": pages whose oracle HTML lists
+// the "person-name page" class (the two cards whose names are a person's
+// name): pages whose oracle HTML lists
 // search-result-item bars where the engine rendered search-no-results -- the
 // `plus: {refer_to}` CQL class whose resolution needs (1) the CQL-name
 // db-fallback leg (lane-search-cache d078357) and (2) the harness's full
@@ -52,14 +53,14 @@ export interface CensusSubsetEntry {
 export const CENSUS_SEARCH_PAGE_SUBSET: CensusSubsetEntry[] = [
   { phase: "000", id: 12, name: "Sign up" },
   { phase: "000", id: 22, name: "PlainText" },
-  { phase: "000", id: 394, name: "John Abbe" },
+  { phase: "000", id: 394, name: "Jordan Sample" },
   { phase: "000", id: 583, name: "David Williams" },
   { phase: "000", id: 665, name: "Paula Craig" },
-  { phase: "000", id: 685, name: "mythopsychology" },
-  { phase: "000", id: 702, name: "NCDD" },
-  { phase: "000", id: 827, name: "VAP" },
+  { phase: "000", id: 685, name: "mythosynth" },
+  { phase: "000", id: 702, name: "NXDD" },
+  { phase: "000", id: 827, name: "VPX" },
   { phase: "000", id: 2154, name: "politics" },
-  { phase: "002", id: 7530, name: "201006-07 vacation in Oregon+*self" },
+  { phase: "002", id: 7530, name: "201006-07 retreat in Vermont+*self" },
   { phase: "002", id: 7686, name: "Cs button - aikido+*self" },
   { phase: "002", id: 7797, name: "Knee-jerks 20100822+*self" },
   { phase: "002", id: 8265, name: "self-destruction+*self" },
@@ -68,26 +69,26 @@ export const CENSUS_SEARCH_PAGE_SUBSET: CensusSubsetEntry[] = [
   { phase: "002", id: 9285, name: "Aikido Transforming Youth - Montreaux+*self" },
   { phase: "003", id: 10597, name: "GBA+*right+*layout+*self" },
   { phase: "003", id: 11287, name: "Pacific Coast Theological Society - Call for Papers for 2012 April 13-14th+*self" },
-  { phase: "004", id: 12399, name: "20120418+BW+RVW" },
-  { phase: "004", id: 13264, name: "20120708+BW+Time Tracking" },
-  { phase: "004", id: 13330, name: "20120711+BW+Time Tracking" },
+  { phase: "004", id: 12399, name: "20120418+CM+RVW" },
+  { phase: "004", id: 13264, name: "20120708+CM+Time Tracking" },
+  { phase: "004", id: 13330, name: "20120711+CM+Time Tracking" },
   { phase: "004", id: 13610, name: "Jessica Ghawi aka Redfield - the final post on her personal blog" },
   { phase: "004", id: 13665, name: "David K. Weinstock - THE RESOURCES AT YOUR BACK" },
   { phase: "004", id: 13849, name: "Paul Rest - A Remarkable Afternoon with Professor John Stevens Shihan" },
   { phase: "004", id: 14007, name: "imprisonment" },
   { phase: "004", id: 14142, name: "reason" },
-  { phase: "004", id: 14302, name: "20120817+BW+Time Tracking" },
+  { phase: "004", id: 14302, name: "20120817+CM+Time Tracking" },
   { phase: "005", id: 14553, name: "Epworth UMC Transition - Welcome, Questions, and Concerns+*self" },
-  { phase: "005", id: 15141, name: "20121017+BW+Time Tracking" },
+  { phase: "005", id: 15141, name: "20121017+CM+Time Tracking" },
   { phase: "005", id: 15648, name: "equity" },
-  { phase: "005", id: 15760, name: "20121201+BW+RVW" },
-  { phase: "005", id: 15822, name: "20121206+BW+Time Tracking" },
-  { phase: "005", id: 16170, name: "20130103+BW+RVW" },
+  { phase: "005", id: 15760, name: "20121201+CM+RVW" },
+  { phase: "005", id: 15822, name: "20121206+CM+Time Tracking" },
+  { phase: "005", id: 16170, name: "20130103+CM+RVW" },
   { phase: "005", id: 16178, name: "Fracking" },
-  { phase: "005", id: 16493, name: "20130411+BW+RVW" },
-  { phase: "006", id: 16714, name: "20130502+BW+Time Tracking" },
+  { phase: "005", id: 16493, name: "20130411+CM+RVW" },
+  { phase: "006", id: 16714, name: "20130502+CM+Time Tracking" },
   { phase: "006", id: 16994, name: "Very Rosie July 4 in 2013+Gallery10vert+image07+discussion" },
-  { phase: "006", id: 17404, name: "20130905+BW+Time Tracking" },
+  { phase: "006", id: 17404, name: "20130905+CM+Time Tracking" },
   { phase: "006", id: 18253, name: "money" },
   { phase: "007", id: 19503, name: "Roundtable+How Does Change Work" },
   { phase: "007", id: 19517, name: "Kanazawa - Why Liberals and Atheists Are More Intelligent" },

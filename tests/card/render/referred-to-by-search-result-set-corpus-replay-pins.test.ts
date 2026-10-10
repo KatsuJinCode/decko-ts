@@ -10,7 +10,7 @@
 //
 // THE MECHANISM THIS PIN CLOSES: the seed used to NULL the stored name on
 // EVERY compound row (render-test-storage.ts). For the corpus's 23 SIDE-LESS
-// compound rows (left_id/right_id NULL — e.g. 3265 "BW 20101222+Associations")
+// compound rows (left_id/right_id NULL — e.g. 3265 "CM 20101222+Associations")
 // the pair-lex path cannot form and the search-item name composition has no
 // source, so every search listing whose results hang off those rows rendered
 // empty where the graded Family page carries five result bars. The seed keeps
@@ -21,7 +21,7 @@
 // match): live's second result bar renders as a read-DENIED mini_bar named
 // "BW_20110109+Associations+tags" (underscore inflection). The corpus
 // contradicts both surfaces: the card's stored read rule 9121 (left 9120
-// "BW 20110109+Associations", right 6547 *read) carries "Anyone" — the
+// "CM 20110109+Associations", right 6547 *read) carries "Anyone" — the
 // anonymous viewer READS it and the engine's granted bar is the corpus
 // verdict — and the corpus stores the left's name with spaces. The capture's
 // permission material and name inflection post-date/pre-date the corpus
@@ -168,7 +168,7 @@ describe("+*referred_to_by: the search result set over the corpus graph", () => 
         const graded = gradedFamilyRegion();
         const gradedNames = itemNames(graded);
         expect(gradedNames).toEqual([
-          "BW 20101222+Associations+tags",
+          "CM 20101222+Associations+tags",
           "BW_20110109+Associations+tags",
           "tracked item test+associations+tags",
           "WilliamsCraig Library+Associations+tags",
@@ -179,8 +179,8 @@ describe("+*referred_to_by: the search result set over the corpus graph", () => 
         // left (3364) carries spaces where the capture-era deck carried the
         // underscore inflection — same key, different stored bytes.
         expect(engineNames).toEqual([
-          "BW 20101222+Associations+tags",
-          "BW 20110109+Associations+tags",
+          "CM 20101222+Associations+tags",
+          "CM 20110109+Associations+tags",
           "tracked item test+associations+tags",
           "WilliamsCraig Library+Associations+tags",
           "Schema",
@@ -205,7 +205,7 @@ describe("+*referred_to_by: the search result set over the corpus graph", () => 
         // name-composition change that respells it, fails here.
         expect(engineBlocks[1]).toContain('id="bw_20110109-association-tag-bar-view"');
         expect(engineBlocks[1]).toContain('class="card-slot bar-view ');
-        expect(engineBlocks[1]).toContain('title="BW 20110109+Associations+tags"');
+        expect(engineBlocks[1]).toContain('title="CM 20110109+Associations+tags"');
         expect(engineBlocks[1]).not.toContain('<span class="denied">');
       } finally {
         storage.close();

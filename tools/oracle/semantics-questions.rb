@@ -75,13 +75,13 @@ EDGE_NAMES = [
   "*all", "*type", "+*type", "*type+*create", "*all+*type+*read",
   "my name", "My Name", "MY NAME", "a+b+c+d", "A+B+C",
   "participant(s)", "Participant (s)", "Participant(s) Child",
-  "BW 20110527-28", "20120918+BW+Thoughts", "x's card", "X'S Card",
-  "*rstar", "*star", "John Abbe", "david_william",
+  "CM 20110527-28", "20120918+CM+Thoughts", "x's card", "X'S Card",
+  "*rstar", "*star", "Jordan Sample", "david_william",
   "  leading space", "trailing space  ", "double  space",
   "under_score", "dash-name", "period.name", "comma,name",
   "semi;colon", "paren(name)", "name+number", "name+number two",
   "RichText", "rich_text", "*all+*self+*read",
-  "20140113+BW+Time Tracking", "nested+deeper+deepest",
+  "20140113+CM+Time Tracking", "nested+deeper+deepest",
   "This one's got an apostrophe", "quote\"inside",
   "emoji 😀 card", "über name", "naïve",
   "*following", "*followed", "*followers", "*followees",
@@ -184,7 +184,7 @@ q(questions, "cql", "queries", { "queries" => CQL_QUERIES })
 STRUCTURE_NAMES = [
   "my new card", "My New Card", "*all", "Person+*self", "Person+new field",
   "Shark+new field", "*all+new field", "Team+new field",
-  "a+b+c", "20140113+BW+Time Tracking", "*type", "+*type",
+  "a+b+c", "20140113+CM+Time Tracking", "*type", "+*type",
   "Anyone+new field", "Administrator+new field"
 ]
 q(questions, "inheritance", "new_card_type", { "names" => STRUCTURE_NAMES })

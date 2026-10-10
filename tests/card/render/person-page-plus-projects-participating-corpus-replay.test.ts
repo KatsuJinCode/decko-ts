@@ -17,7 +17,7 @@
 // type_id_from_template). The Ruby yardstick
 // (tmp/raw-ground-truth/expected-v2/page-lane, name "Brandon WilliamsCraig")
 // renders the titled slot with data-card-type-name="Search" and the search
-// rows mythopsychology + NCDD.
+// rows mythosynth + NXDD.
 //
 // RUN (machine-local raw corpus; one whole-deck seed, several minutes):
 //   P2_PERSON_REPLAY=1 NODE_OPTIONS=--max-old-space-size=4096 \
@@ -56,7 +56,7 @@ const SECTION_MARKERS = {
 
 /** The search-result rows the structured search renders on the yardstick
  *  (Project cards whose Participant(s) junction refers to the person). */
-const RESULT_ROW_CARDS = ["mythopsychology", "NCDD"];
+const RESULT_ROW_CARDS = ["mythosynth", "NXDD"];
 
 async function seedRawCorpusStorage() {
   const idLister = new Database(RAW_CORPUS_DB, { readonly: true });

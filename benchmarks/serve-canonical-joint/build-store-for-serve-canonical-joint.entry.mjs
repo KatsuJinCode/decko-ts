@@ -4568,7 +4568,7 @@ var RenderFormat = class _RenderFormat {
   }
   /** R16 batch 2: the focal (main) denial — html/error.rb:203-208
    *  loud_denial + :194-198 with_frame, byte-pinned by the 2,835-page
-   *  oracle class (a named corpus page / BW 20100614 / Martial Nonviolence Public
+   *  oracle class (a named corpus page / CM 20100614 / Martial Nonviolence Public
    *  Module 01 page captures):
    *
    *  loud_denial: `voo.hide :menu; frame { [wrap_with(:h1, "Sorry!"),

@@ -36,7 +36,7 @@
 // unsupported (UnsupportedViewError) propagated up through
 // pointerListCoreHtml and aborted the WHOLE core, which the parent view's
 // renderDelegated then caught — the list's wrapper divs and every earlier
-// item vanished. Corpus bytes this fixes: HDW BW 20131229 0264+tags
+// item vanished. Corpus bytes this fixes: HDW CM 20131229 0264+tags
 // (`+tags|titled;item:taglink`, page recapture-raw-shard-000013) — the
 // engine emitted ONLY `<span class="render-error alert alert-danger">view
 // (taglink) not supported for BW</span>` in the titled body where the

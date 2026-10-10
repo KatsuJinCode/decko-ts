@@ -79,8 +79,8 @@ const SHARDS_PRESENT = existsSync(PAGE_LANE_DIR);
 /** The red-first exemplars — one per mechanism direction:
  *  "Associative Inquiry" (missing +discussion titled),
  *  "Diddly Squat" (phantom +Articles open),
- *  "BW 20100717 Sat" (missing seven mini_bar). */
-const EXEMPLARS = ["Associative Inquiry", "Diddly Squat", "BW 20100717 Sat"];
+ *  "CM 20100717 Sat" (missing seven mini_bar). */
+const EXEMPLARS = ["Associative Inquiry", "Diddly Squat", "CM 20100717 Sat"];
 
 interface PageLaneLine {
   lane: string;

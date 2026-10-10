@@ -63,19 +63,19 @@ async function seedParticipatingDeck(storage: RenderTestStorage): Promise<void> 
   await seedCard(storage, { id: 700, name: "Project", typeId: 2 });
   await seedCard(storage, { id: 400, name: "Participant(s)", key: "participant_s", typeId: 2 });
   await seedCard(storage, { id: 500, name: "Jane Doe", typeId: 2 });
-  await seedCard(storage, { id: 600, name: "mythopsychology", typeId: 700 });
-  await seedCard(storage, { id: 601, name: "NCDD", typeId: 700 });
+  await seedCard(storage, { id: 600, name: "mythosynth", typeId: 700 });
+  await seedCard(storage, { id: 601, name: "NXDD", typeId: 700 });
   await seedCard(storage, {
     id: 610,
-    name: "mythopsychology+Participant(s)",
-    key: "mythopsychology+participant_s",
+    name: "mythosynth+Participant(s)",
+    key: "mythosynth+participant_s",
     leftId: 600,
     rightId: 400,
     typeId: 2,
   });
   await seedCard(storage, {
     id: 611,
-    name: "NCDD+Participant(s)",
+    name: "NXDD+Participant(s)",
     key: "ncdd+participant_s",
     leftId: 601,
     rightId: 400,
@@ -112,8 +112,8 @@ describe("participating-section search: deck-table keying + host-context _left",
       await storage.engine.render("Project", "content");
 
       const html = await storage.engine.render("Jane Doe+Participating Search", "content");
-      expect(html).toContain("mythopsychology");
-      expect(html).toContain("NCDD");
+      expect(html).toContain("mythosynth");
+      expect(html).toContain("NXDD");
       expect(html).not.toContain("search-no-results");
     } finally {
       storage.close();
@@ -137,8 +137,8 @@ describe("participating-section search: deck-table keying + host-context _left",
       await storage.fetcher.lexicon.id("Project");
 
       const html = await storage.engine.render("Jane Doe+Participating Search", "content");
-      expect(html).toContain("mythopsychology");
-      expect(html).toContain("NCDD");
+      expect(html).toContain("mythosynth");
+      expect(html).toContain("NXDD");
     } finally {
       storage.close();
     }

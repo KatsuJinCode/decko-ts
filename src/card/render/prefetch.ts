@@ -1074,7 +1074,7 @@ async function driveClosure(
       // SQLITE_MAX_EXPR_DEPTH (default 1000) counts every OR arm toward the
       // expression tree: the unchunked one-statement tuple died at 1019 pairs
       // ("Expression tree is too large (maximum depth 1000)", corpus page
-      // 20120122+BW+RVW's closure round) — and the throw killed the WHOLE
+      // 20120122+CM+RVW's closure round) — and the throw killed the WHOLE
       // folded batch, permission statements included, so the prepare render
       // died before the read-permission state resolved and the page rendered
       // read-denied bodies unjudged (the denial-wrapper-leak class). Chunk at

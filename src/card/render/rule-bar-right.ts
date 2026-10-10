@@ -198,8 +198,8 @@ function ruleOneLineContent(
       // branches — in_context_of_self_set? (permission.rb:107-110) tests
       // the @set_context the NEST carried (bar_view.rb:63-66:
       // `set_context: card.name.trunk_name`, the bar-rendered rule card's
-      // trunk — e.g. `BW 20110918-19+Narrative+*self+*update`'s trunk
-      // `BW 20110918-19+Narrative+*self`, tag *self) — NOT the substituted
+      // trunk — e.g. `CM 20110918-19+Narrative+*self+*update`'s trunk
+      // `CM 20110918-19+Narrative+*self`, tag *self) — NOT the substituted
       // existing rule's own set (the stored winner often lives under a
       // broader set; its trunk tag decided this branch wrongly and every
       // *self-set rule list rendered "Inherit from left card" where the

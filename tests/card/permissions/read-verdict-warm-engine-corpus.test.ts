@@ -29,8 +29,8 @@ const describeIfCorpus = describeWithCorpus(REPLAY_REQUESTED, "tests/card/permis
 
 const WARMUP_PAGES = [
   "Lauren Rayburn+*account",
-  "20160420+BW+Time Tracking+1015",
-  "20201230+BW+Time Tracking",
+  "20160420+CM+Time Tracking+1015",
+  "20201230+CM+Time Tracking",
   "Len Forfang memorial service prep+Project",
   "20120728+RQ+game notes",
 ];

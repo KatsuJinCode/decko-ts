@@ -9,7 +9,7 @@
 // examples id 14546 "Michael Christensen+musings", id 15261 "Daemeon
 // Reiydelle+Project(s) Organizing", id 16122 "Antero Alli+musings",
 // id 14329 "Dennis Slattery+musings", id 12 "Sign up", id 22 "PlainText",
-// id 827 "VAP", id 35864 "Ruth Peyser Yamada Yoshimitsu New York Aikikai",
+// id 827 "VPX", id 35864 "Ruth Peyser Yamada Yoshimitsu New York Aikikai",
 // id 40381 "Learning Pool+Slack Channel naming conventions most in use+*self",
 // id 43485 "Artificial Intelligence+anon_exchange_02+*self", id 49305
 // "mod: account+*script" — pages whose names share an entity cluster

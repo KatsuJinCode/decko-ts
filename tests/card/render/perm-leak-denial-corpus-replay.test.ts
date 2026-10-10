@@ -4,7 +4,7 @@
 // main slot in the denial frame (130 pages at tip 017b182; the triage is
 // an internal work log in REPO_DIR).
 //
-// Root cause (traced on 20120122+BW+RVW, card 11179): the cold prepare
+// Root cause (traced on 20120122+CM+RVW, card 11179): the cold prepare
 // render's folded batch died on SQLite's expression-depth limit (the
 // prefetch closure's 1019-pair junction OR-tuple — see
 // prefetch-side-id-pair-chunk.test.ts), the page path caught the prepare
@@ -62,7 +62,7 @@ const SHARDS_PRESENT = existsSync(PAGE_LANE_DIR);
  *  ("deny where Ruby denies") does not permit widening to chase it. It
  *  stays pinned as a remaining diff in the receipt and the sweep
  *  block's JSONL below. */
-const LEAK_EXEMPLARS = ["20120122+BW+RVW", "BW 20111201"];
+const LEAK_EXEMPLARS = ["20120122+CM+RVW", "CM 20111201"];
 
 interface PageLaneLine {
   lane: string;

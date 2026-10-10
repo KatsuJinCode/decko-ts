@@ -28,38 +28,38 @@ describe("autolink seams pins (captured oracle bytes)", () => {
     );
   });
 
-  it("A1: re-emits the chopped closing paren (Medcalf oracle)", () => {
+  it("A1: re-emits the chopped closing paren (article-image oracle)", () => {
     const out = expandContentLinks(
-      "reproduced in full (http://dlmiller.mysite.syr.edu/LegendeImage.htm) with permission",
+      "reproduced in full (http://author-portal.example.edu/LegendeImage.htm) with permission",
       undefined,
       undefined,
     );
     expect(out).toBe(
-      'reproduced in full (<a target="_blank" class="external-link" href="http://dlmiller.mysite.syr.edu/LegendeImage.htm">http://dlmiller.mysite.syr.edu/LegendeImage.htm</a>) with permission',
+      'reproduced in full (<a target="_blank" class="external-link" href="http://author-portal.example.edu/LegendeImage.htm">http://author-portal.example.edu/LegendeImage.htm</a>) with permission',
     );
   });
 
-  it("A2a: autolinks a URL in the LABEL of an authored anchor (USABP oracle)", () => {
-    // oracle shard-000025 USABP Presentation 20181102+discussion open:
-    // `or ABC (<a href="http://abcglobal.net/"><a target="_blank"
-    // class="external-link" href="http://ABCglobal.net">ABCglobal.net</a></a>).`
+  it("A2a: autolinks a URL in the LABEL of an authored anchor (org-page oracle)", () => {
+    // oracle shard-000025 <USABP card> +discussion open:
+    // `or ORG (<a href="http://example.net/"><a target="_blank"
+    // class="external-link" href="http://Example.net">Example.net</a></a>).`
     // The outer href's URI is context-rejected (preceded by `="` - the
     // $-anchored REJECTED_PREFIX) and stays verbatim; the LABEL text is
     // preceded by `">` - not $-rejected - so the HostUri chunk autolinks it.
     const out = expandContentLinks(
-      'or ABC (<a href="http://abcglobal.net/">ABCglobal.net</a>). He is a fellow',
+      'or ORG (<a href="http://example.net/">Example.net</a>). He is a fellow',
       undefined,
       undefined,
     );
     expect(out).toBe(
-      'or ABC (<a href="http://abcglobal.net/"><a target="_blank" class="external-link" href="http://ABCglobal.net">ABCglobal.net</a></a>). He is a fellow',
+      'or ORG (<a href="http://example.net/"><a target="_blank" class="external-link" href="http://Example.net">Example.net</a></a>). He is a fellow',
     );
   });
 
-  it("A2a: leaves a URI inside a quoted attribute verbatim (Zombie oracle)", () => {
+  it("A2a: leaves a URI inside a quoted attribute verbatim (broadcaster oracle)", () => {
     // The uri.rb:38/54 rejection class the $-anchor must keep: a URI
     // preceded by `="` (inside the authored href) never anchors.
-    const src = '<a href="http://billmoyers.com/segment/henry-giroux" target="_blank">here</a>';
+    const src = '<a href="http://broadcaster.example/segment/guest-essay" target="_blank">here</a>';
     expect(expandContentLinks(src, undefined, undefined)).toBe(src);
   });
 });

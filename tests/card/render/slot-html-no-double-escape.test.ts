@@ -18,7 +18,7 @@
 // h(name.s) — already `&#39;` — and emitAttrs then re-escapes `&` to
 // `&amp;`, producing `&amp;#39;`.
 //
-// Card 394 (John Abbe — slot wrap at offset 14499) and card 35313 (Paula
+// Card 394 (Jordan Sample — slot wrap at offset 14499) and card 35313 (Paula
 // Craig - I'm Staying Inside — slot wrap at offset 14329) are the captured
 // instances the census names. The fix lands on every emitAttrs caller
 // that pre-escaped (views.ts:165 / 2298 / 2590, format.ts:653,
@@ -67,7 +67,7 @@ describe("emitAttrs / emitHamlAttrs — single-escape, no double-escape (Rails c
   });
 
   it("emitAttrs escapes raw `<hr>` / `<p>` text in data-card-name (no double-escape)", () => {
-    // Card 394 John Abbe diff region: the stored content carries
+    // Card 394 Jordan Sample diff region: the stored content carries
     // `<hr>`, `<p>`, `<em>` as literal text. After emitAttrs' single
     // escape they become `&lt;hr&gt;`, `&lt;p&gt;`, `&lt;em&gt;` — the
     // exact oracle shape, NOT `&amp;lt;hr&amp;gt;` (the double-escape

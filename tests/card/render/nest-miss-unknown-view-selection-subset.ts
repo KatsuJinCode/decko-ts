@@ -17,7 +17,7 @@ export const NEST_MISS_PAGE_SUBSET: readonly string[] = [
   "Center for Embodied Change",
   "the reference deck",
   "Healing Friction",
-  "NCDD",
+  "NXDD",
   "Nonviolent Peaceforce",
   "Online Learning",
   "Peace Training Project",
@@ -26,15 +26,15 @@ export const NEST_MISS_PAGE_SUBSET: readonly string[] = [
   "Earth House Center",
   "Peoplegreen",
   "Open Source Aikido Lab",
-  "AVP",
+  "AVX",
   "CodePink",
   "Family Support Network",
   "Center for Story-based Strategies",
   "Earthlandia Thought Experiment",
   "Champagne Hughes+training",
-  // missing-slot, BWjournal cardtype (2): seven mini_bar slots inside +body
-  "BW 20100717 Sat",
-  "BW_20100526_ReferenceDeck_WAGN_born",
+  // missing-slot, journal cardtype (2): seven mini_bar slots inside +body
+  "CM 20100717 Sat",
+  "CM_20100526_ReferenceDeck_Notes_born",
   // phantom-slot, Research cardtype (10): the +Articles open nest
   "Diddly Squat",
   "death and bereavement",

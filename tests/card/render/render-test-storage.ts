@@ -277,7 +277,7 @@ export interface SeedOptions {
  *  SIDE-LESS junction rows keep their stored NAME (census M3,
  *  serializer-followup2 2026-10-03): the corpus carries 23 compound-named
  *  rows with left_id/right_id NULL (all 23 named compound rows in the deck
- *  — e.g. 3265 "BW 20101222+Associations", whose +tags child 3266 the
+ *  — e.g. 3265 "CM 20101222+Associations", whose +tags child 3266 the
  *  live Family+*referred_to_by search renders as a result bar). For these
  *  rows the pair-lex path the R4 proof protects cannot even form (no sides
  *  -> idToLex's pair arm would write the garbage [undefined, undefined]

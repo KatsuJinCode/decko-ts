@@ -8,7 +8,7 @@
 // page_html carries the denial-view main slot; all Default Layout,
 // 12.9-13.2 KB — the frame dominates the page). This module pins a
 // stratified slice across the corpus' name families (capped per family so
-// the repeated "…+BW+Time Tracking" / "…+BW+RVW" journal junctions cannot
+// the repeated "…+CM+Time Tracking" / "…+CM+RVW" journal junctions cannot
 // crowd out other shapes) plus the perm-leak triage's two named exemplars,
 // which are the KNOWN BOUNDARY of this suite: they are the
 // denial-wrapper-leak class (prepare-render verdict timing, the
@@ -22,9 +22,9 @@
  *  time — these pages' closures do not trip the prepare-crash class). */
 export const FOCAL_DENIAL_EXEMPLARS: Array<{ name: string; id: number }> = [
   { name: "ABCglobal 20100722 Iris Nick Leon Brandon", id: 1177 },
-  { name: "Azzia Zur", id: 1345 },
-  { name: "BW 20100704 Itdepends Day", id: 870 },
-  { name: "20260412+BW+Time Tracking", id: 52658 },
+  { name: "Azzia Sample", id: 1345 },
+  { name: "CM 20100704 Itdepends Day", id: 870 },
+  { name: "20260412+CM+Time Tracking", id: 52658 },
 ];
 
 /** Readable pages from the same capture (no denial frame in the oracle):
@@ -48,31 +48,31 @@ export const FOCAL_DENIAL_CENSUS_SUBSET: Array<{
   { name: "ABCglobal 20100722 Iris Nick Leon Brandon", id: 1177 },
   { name: "rename", id: 719 },
   { name: "Lost - thoughts", id: 1424 },
-  { name: "BW 20110109", id: 3361 },
+  { name: "CM 20110109", id: 3361 },
   { name: "*now", id: 4036 },
-  { name: "BW 20110629", id: 4147 },
+  { name: "CM 20110629", id: 4147 },
   { name: "Living in Spin", id: 10042 },
   { name: "Aiki Development Group", id: 10239 },
-  { name: "BW 20111106", id: 10388 },
+  { name: "CM 20111106", id: 10388 },
   { name: "SGo Training Journal 20111021", id: 10190 },
-  { name: "20120418+BW+RVW", id: 12399 },
-  { name: "20120712+BW+Time Tracking", id: 13347 },
-  { name: "20120815+BW+Time Tracking", id: 14179 },
-  { name: "20120926+BW+Time Tracking", id: 14707 },
-  { name: "20121023+BW+Time Tracking", id: 15233 },
-  { name: "20121129+BW+Time Tracking", id: 15688 },
-  { name: "20121224+BW+Time Tracking", id: 15948 },
-  { name: "20130430+BW+RVW", id: 16695 },
+  { name: "20120418+CM+RVW", id: 12399 },
+  { name: "20120712+CM+Time Tracking", id: 13347 },
+  { name: "20120815+CM+Time Tracking", id: 14179 },
+  { name: "20120926+CM+Time Tracking", id: 14707 },
+  { name: "20121023+CM+Time Tracking", id: 15233 },
+  { name: "20121129+CM+Time Tracking", id: 15688 },
+  { name: "20121224+CM+Time Tracking", id: 15948 },
+  { name: "20130430+CM+RVW", id: 16695 },
   { name: "Pontual Dissertation", id: 17068 },
-  { name: "20140131+BW+RVW", id: 18747 },
-  { name: "20140409+BW+RVW", id: 19287 },
-  { name: "20141027+BW+RVW", id: 21685 },
+  { name: "20140131+CM+RVW", id: 18747 },
+  { name: "20140409+CM+RVW", id: 19287 },
+  { name: "20141027+CM+RVW", id: 21685 },
   {
     name: "MNv+ITM+Preliminary Exercises+2-2 Preparing the Bodymind+2-2-3 Go - Stop (Hajime - Yame)",
     id: 21337,
   },
   { name: "Holland Service", id: 22475 },
-  { name: "20150609+BW+RVW", id: 23492 },
+  { name: "20150609+CM+RVW", id: 23492 },
   { name: "MNv leadership training - Flight Deck 20150521", id: 23369 },
   { name: "Spa Finder gift certificate use", id: 25749 },
   { name: "Social Media Schedule converted to Google Sheet", id: 26828 },
@@ -93,6 +93,6 @@ export const FOCAL_DENIAL_CENSUS_SUBSET: Array<{
   { name: "Create PM paper slips and print", id: 37751 },
   { name: "USPS Employment", id: 39755 },
   { name: "Ireland 20220731-0807", id: 41774 },
-  { name: "20120122+BW+RVW", id: 11179, boundary: true },
-  { name: "BW 20111201", id: 10623, boundary: true },
+  { name: "20120122+CM+RVW", id: 11179, boundary: true },
+  { name: "CM 20111201", id: 10623, boundary: true },
 ];

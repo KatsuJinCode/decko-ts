@@ -2,7 +2,7 @@
 // found_by CQL gap (the residual trio after the search-prepare port:
 // an internal work log section 3): the
 // `<cardtype>+*type+by name` virtual searches (Sign up 12 / PlainText 22 /
-// VAP 827) execute into the SQL generator's found_by refusal
+// VPX 827) execute into the SQL generator's found_by refusal
 // (src/cql/sql.ts "foundBy" case), runSearch's inner catch seats [] and the
 // card_list view renders search-no-results where the oracle lists real
 // result bars.
@@ -122,7 +122,7 @@ function searchResultRegion(page: string, dataCardName: string): string {
 const PAGES: Array<{ id: number; name: string; slot: string }> = [
   { id: 12, name: "Sign up", slot: "Sign_up+*type+by_name" },
   { id: 22, name: "PlainText", slot: "PlainText+*type+by_name" },
-  { id: 827, name: "VAP", slot: "VAP+*type+by_name" },
+  { id: 827, name: "VPX", slot: "VPX+*type+by_name" },
 ];
 
 describe("raw-corpus found_by search (the +*type+by name trio)", () => {
@@ -202,8 +202,8 @@ describe("raw-corpus found_by search (the +*type+by name trio)", () => {
         expect(diff.equal).toBe(true);
 
         // Full-slot byte parity for the pages whose slot chrome has no
-        // other unit's divergence: Sign up and VAP's found_by targets are
-        // corpus rows (Sign up+*type 323 / VAP+*type 6575, both Set-typed).
+        // other unit's divergence: Sign up and VPX's found_by targets are
+        // corpus rows (Sign up+*type 323 / VPX+*type 6575, both Set-typed).
         // PlainText+*type has NO corpus row; Ruby fabricates a Set-typed
         // pattern card and the slot class chain reads
         // TYPE_PLUS_RIGHT-set-by_name, while the render layer's left-type

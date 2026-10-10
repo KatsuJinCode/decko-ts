@@ -14,7 +14,7 @@
 // catches prepare errors and continues) the sync render runs with ZERO
 // verdicts: isDenied answers false for every card and read-denied bodies
 // render in full (an earlier triage's 130 denial-wrapper-leak pages;
-// corpus proof: 20120122+BW+RVW's closure round carried 1019 id pairs).
+// corpus proof: 20120122+CM+RVW's closure round carried 1019 id pairs).
 //
 // THE FIX: chunk the id pairs into statements of 400 pairs (800 params —
 // under the depth limit and under the classic 999-variable limit), all

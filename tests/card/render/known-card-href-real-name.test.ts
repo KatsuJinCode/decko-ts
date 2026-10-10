@@ -1,5 +1,5 @@
 // Known-card wikilink href carries the RESOLVED card's name - the census
-// "token-swap" singleton (page 685 mythopsychology, census receipt
+// "token-swap" singleton (page 685 mythosynth, census receipt
 // WORK_DIR/page-mechanism-census.md: sole diff
 // exp "N" vs act "n" at offset 13794 - href /Narrative vs /narrative).
 //
@@ -39,7 +39,7 @@ async function seedKnownLinkDeck(): Promise<RenderTestStorage> {
   await seedCard(storage, { id: 907, name: "*tiny_mce", codename: "tiny_mce", typeId: 2 });
   await seedCard(storage, { id: 910, leftId: 900, rightId: 901, typeId: 2, dbContent: "Probe Layout" });
   await seedCard(storage, { id: 911, name: "Probe Layout", typeId: 2, dbContent: "{{_main|titled}}" });
-  // The mythopsychology shape: prose linking the card with authored
+  // The mythosynth shape: prose linking the card with authored
   // lowercase text, plus the reverse-capitalization link.
   await seedCard(storage, {
     id: 685,

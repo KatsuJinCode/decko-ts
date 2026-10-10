@@ -1135,7 +1135,7 @@ export class RenderFormat {
           // the FOCAL (main, root) denial is the LOUD denial frame,
           // slot-wrapped as `<key>-denial-view` with the ORIGINAL requested
           // view still in the data-slot JSON (the 2,835-page oracle class:
-          // a named corpus page, BW 20100614, ...). Non-main formats keep the quiet
+          // a named corpus page, CM 20100614, ...). Non-main formats keep the quiet
           // span (the bare view lane's pinned pointer-item surface; the
           // view-lane capture recorded no per-view bytes for fully denied
           // cards, so nothing graded changes there).
@@ -1242,7 +1242,7 @@ export class RenderFormat {
 
   /** R16 batch 2: the focal (main) denial — html/error.rb:203-208
    *  loud_denial + :194-198 with_frame, byte-pinned by the 2,835-page
-   *  oracle class (a named corpus page / BW 20100614 / Martial Nonviolence Public
+   *  oracle class (a named corpus page / CM 20100614 / Martial Nonviolence Public
    *  Module 01 page captures):
    *
    *  loud_denial: `voo.hide :menu; frame { [wrap_with(:h1, "Sorry!"),
@@ -2116,7 +2116,7 @@ export class RenderFormat {
     //
     // ORACLE PINS — Soma+tic+aikido nested from Soma+tags (a List) reads
     // TYPE_PLUS_RIGHT-rich_text-aikido, and
-    // WilliamsCraig+Vacations+Oregon+20180623_0728 reads
+    // WilliamsCraig+Retreats+Shoreline+20180623_0728 reads
     // TYPE_PLUS_RIGHT-rich_text-20180623_0728.
     //
     // THE LAST RESORT IS RUBY'S quick_type BODY, NOT ITS BLANK-NAME
@@ -4288,8 +4288,8 @@ const URI_EMAIL_REGEXP = /[a-zA-Z\d](?:[-a-zA-Z\d.]*[a-zA-Z\d])?@\b/g;
 // The $ matters exactly where the oracle autolinks INSIDE authored markup:
 // a URL in the LABEL of a literal `<a href="X">URL</a>` is preceded by
 // `">` - the two-char window CONTAINS a quote but does not END with one,
-// so Ruby autolinks it (the nested-anchor oracle bytes: Technomancers,
-// USABP's `(<a href="http://abcglobal.net/"><a target=...>`), while a URI
+// so Ruby autolinks it (the nested-anchor oracle bytes: Sample Collective,
+// USABP's `(<a href="http://example.net/"><a target=...>`), while a URI
 // inside a quoted attribute is preceded by `="` - ends with `"` - and is
 // rejected (73 quoted src="..." regions across the view-lane oracle, ZERO
 // anchored). The unanchored port regex rejected BOTH classes; the $
@@ -4922,8 +4922,8 @@ export function expandWikiLinks(
     // (title.rb:31-35) is ERB::Util's no-op on html_safe input, and only
     // actionview tag_helper.rb tag_option :322's unconditional quote gsub
     // touches the bytes. Oracle: the US Census Employment wanted-link span
-    // renders `title="<a href=&quot;/20191213+BW+Time_Tracking+1400?view=
-    // bar&quot;>20191213+BW+Time Tracking+1400</a>"` with RAW brackets
+    // renders `title="<a href=&quot;/20191213+CM+Time_Tracking+1400?view=
+    // bar&quot;>20191213+CM+Time Tracking+1400</a>"` with RAW brackets
     // (the previous htmlEscapeKeepApostrophe emitted `&lt;a href=...`
     // there, and the Dungeons and Dragons +SCa rule-link span the same
     // `&lt;/a&gt;` where the capture has `</a>`).

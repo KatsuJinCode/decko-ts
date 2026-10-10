@@ -1,6 +1,6 @@
 // raw-corpus-search-census-page-replay.test.ts -- search-results census
 // replay: renders the page-mechanism census's 47 c-structural pages (the
-// "David Williams / John Abbe" search-results class, pinned in
+// "person-name page" search-results class, pinned in
 // raw-corpus-search-census-page-subset.ts) through the engine's REAL page
 // renderer over the RAW ground-truth corpus, and compares byte-for-byte
 // against the oracle's captured page HTML with the census's own comparator

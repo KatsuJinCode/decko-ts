@@ -13,7 +13,7 @@
 //    content {"type":"project","plus":["Participant(s)",{"refer_to":"_left"}]})
 // makes every Person's "+Project(s) Participating" junction a live searcher
 // over Project cards whose Participant(s) junction refers to the person
-// (mythopsychology + NCDD on the Ruby yardstick, expected-v2 page-lane).
+// (mythosynth + NXDD on the Ruby yardstick, expected-v2 page-lane).
 // Ruby renders it; the edge must too.
 //
 // The boot under test is deploy/bunny-worker-src/bunny-edge-deck-boot.ts
@@ -183,9 +183,9 @@ function personPageDeckRows(): SeedRow[] {
     },
 
     // -- the search's data side: one Project card whose Participant(s)
-    //    junction refers to the person (the mythopsychology row of the
+    //    junction refers to the person (the mythosynth row of the
     //    Ruby yardstick)
-    { id: 685, name: "mythopsychology", typeId: 398, dbContent: "<p>mythopsychology body</p>" },
+    { id: 685, name: "mythosynth", typeId: 398, dbContent: "<p>mythosynth body</p>" },
     { id: 406, name: "Participant(s)", typeId: 2 },
     { id: 690, leftId: 685, rightId: 406, typeId: 47, dbContent: "Brandon WilliamsCraig" },
   ];
@@ -206,7 +206,7 @@ describe("bunny edge boot renders the person page's virtual +Project(s) Particip
         await driver.query(statement, []);
       }
       await seedCards(driver, personPageDeckRows());
-      // The reference graph the CQL plus-join reads: the mythopsychology
+      // The reference graph the CQL plus-join reads: the mythosynth
       // Participant(s) junction (referer 690) refers to the person (393) --
       // the row shape the corpus carries (ref_type "L", referee_key the
       // composed key).
@@ -240,7 +240,7 @@ describe("bunny edge boot renders the person page's virtual +Project(s) Particip
       expect(html).toContain("brandon_william_craig-project_s_participating-titled-view");
       // ... and the search finds the referring project (the CQL runs with
       // the junction's own name context, _left -> the person).
-      expect(html).toContain("mythopsychology");
+      expect(html).toContain("mythosynth");
     },
   );
 });

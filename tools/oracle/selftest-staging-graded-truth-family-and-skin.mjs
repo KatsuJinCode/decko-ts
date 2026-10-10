@@ -10,8 +10,8 @@
 //      CQL ({"refer_to":"_left","sort":"name"}) through the runSearch-shaped
 //      executeQuery (permission options + context) returns the ORACLE's item
 //      set. The oracle Family page (expected-v2 page-lane id 568) renders
-//      FIVE search-result items (BW 20101222+Associations+tags,
-//      BW 20110109+Associations+tags, tracked item test+associations+tags,
+//      FIVE search-result items (CM 20101222+Associations+tags,
+//      CM 20110109+Associations+tags, tracked item test+associations+tags,
 //      WilliamsCraig Library+Associations+tags, Schema) -- the "19 items"
 //      figure in the M5 narrative was the ref_type-L ROW census, not the
 //      oracle's rendered item count. The page-render seating itself is

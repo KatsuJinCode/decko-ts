@@ -118,14 +118,14 @@ Capture-error texts (the 172 `errorLines`):
 
 ### Class A — stale-capture, 2,540 pages (the dominant one)
 
-Hand-verified on 6 of 6 sampled pages (`20120705+BW+RVW`, `20120709/10/11/12+BW+Time Tracking`,
-`20120713+BW+RVW`).
+Hand-verified on 6 of 6 sampled pages (`20120705+CM+RVW`, `20120709/10/11/12+CM+Time Tracking`,
+`20120713+CM+RVW`).
 
 At the first differing byte the engine appends a `SELF-<slug>` class token to the
 slot's class list and swaps `data-card-name` for `data-card-id`:
 
 ```
-expected: ... TYPE_PLUS_RIGHT-rich_text-rvw" data-card-name="20120705+BW+RVW" data-card-type-id="3" ...
+expected: ... TYPE_PLUS_RIGHT-rich_text-rvw" data-card-name="20120705+CM+RVW" data-card-type-id="3" ...
 actual:   ... TYPE_PLUS_RIGHT-rich_text-rvw SELF-20120705-bw-rvw" data-card-id="13398" ...
 ```
 
@@ -170,9 +170,9 @@ next step, not a finished claim.
 
 First difference `expected "d" but got "t"`, i.e. the expectation's bytes render
 `denial-view` and the engine rendered `titled-view`. Hand-checked 6 of 6
-(`201006-07 vacation in Oregon+*self`, `20101027 Sono 01+*self`,
-`BW 20110428+*self`, `20101125-28 vacation in Oregon+*self`, `BW 20100717 Sat+*self`,
-`BW 20110918-19+Narrative+*self`): every one carries
+(`201006-07 retreat in Vermont+*self`, `20101027 Sono 01+*self`,
+`CM 20110428+*self`, `20101125-28 retreat in Vermont+*self`, `CM 20100717 Sat+*self`,
+`CM 20110918-19+Narrative+*self`): every one carries
 `layout_main_view = {"effective":"titled","raw":"titled"}` **in the corpus's own
 metadata**, while the corpus's own `page_html` says `denial-view`.
 

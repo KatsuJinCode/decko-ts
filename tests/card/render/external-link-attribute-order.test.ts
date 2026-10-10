@@ -1,5 +1,5 @@
 // External-link anchor attribute order - the census "target attribute
-// placement" mechanism (3 pages: John Abbe, Sign up, Archetypal Psychology;
+// placement" mechanism (3 pages: Jordan Sample, Sign up, Archetypal Psychology;
 // receipt WORK_DIR/page-mechanism-census.md).
 //
 // Mechanism: Ruby renders every external resource link through
@@ -21,7 +21,7 @@
 //
 // The raw authored content is wikilink syntax, not HTML
 // (corpus card 14800 "Archetypal Psychology+description":
-// `[[http://abcglobal.net|Association Building Community]]`), so the
+// `[[http://example.net|Association Building Community]]`), so the
 // anchor shape is decided by the link renderer, not the stored bytes.
 
 import { describe, expect, it } from "vitest";
@@ -64,7 +64,7 @@ async function seedExternalLinkDeck(): Promise<RenderTestStorage> {
     typeId: 3,
     dbContent:
       "This resource is provided by example.com and supported by " +
-      "the non-profit [[http://abcglobal.net|Association Building Community]].",
+      "the non-profit [[http://example.net|Association Building Community]].",
   });
   await storage.fetcher.codenames.ensureLoaded();
   return storage;
@@ -77,7 +77,7 @@ describe("external-link anchors render target first (links.rb opts insertion ord
     const page = await renderPageBytes(storage.engine, "External Link Probe");
     // links.rb html block + add_resource_opts: target, class, href.
     expect(page).toContain(
-      '<a target="_blank" class="external-link" href="http://abcglobal.net">Association Building Community</a>',
+      '<a target="_blank" class="external-link" href="http://example.net">Association Building Community</a>',
     );
     // The autolink path (bare URL) - already correct before this port; the
     // assertion pins that the wikilink fix does not touch it.

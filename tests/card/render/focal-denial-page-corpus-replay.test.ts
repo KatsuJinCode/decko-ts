@@ -26,7 +26,7 @@
 //      (focal-denial-page-subset.ts) across the 3,069-entry class, one JSONL
 //      line each (verdict, sizes, first-diff offset, denial-frame markers on
 //      both sides) to tmp/focal-denial-replay/sweep-results.jsonl. The two
-//      boundary:true entries (20120122+BW+RVW 11179, BW 20111201 10623) are
+//      boundary:true entries (20120122+CM+RVW 11179, CM 20111201 10623) are
 //      the perm-leak port's denial-wrapper-leak exemplars -- on THIS tree's
 //      base (before lane-perm-allow's verdict-timing fix 3e50585 merges) the
 //      cold prepare crash leaves zero verdicts and the leak class renders

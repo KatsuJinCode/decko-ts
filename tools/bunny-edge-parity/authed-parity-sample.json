@@ -853,9 +853,9 @@
       "authed_has_set_cookie": false
     },
     {
-      "path": "/John Abbe",
+      "path": "/Jordan Sample",
       "label": "readable-person-2",
-      "name": "John Abbe",
+      "name": "Jordan Sample",
       "view": "open",
       "anon_status": 200,
       "authed_status": 200,
@@ -910,9 +910,9 @@
       "authed_has_set_cookie": false
     },
     {
-      "path": "/John Abbe/content",
+      "path": "/Jordan Sample/content",
       "label": "readable-person-2-content",
-      "name": "John Abbe",
+      "name": "Jordan Sample",
       "view": "content",
       "anon_status": 200,
       "authed_status": 200,

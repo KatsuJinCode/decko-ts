@@ -457,7 +457,7 @@ async function renderPageBytesWithPageConfigInner(
   // {{_self+*referred_to_by}} class: money 18253 + six more census pages)
   // or saw them enriched only AFTER its walk (structure-content junction
   // searches applyStructureContent joins late — the {{+*type+by name}}
-  // class: Sign up 12, PlainText 22, VAP 827). The mainBody render below
+  // class: Sign up 12, PlainText 22, VPX 827). The mainBody render below
   // dispatches these nests synchronously through the card_list view, which
   // reads ONLY the pre-executed map (executeSearch →
   // searchResults.get(key) ?? []) — so they rendered search-no-results with
@@ -481,7 +481,7 @@ async function renderPageBytesWithPageConfigInner(
   // Permission recovery (2026-09-29): a prepare render
   // that died before the folded batch landed (the corpus proof was the cold
   // closure batch's SqliteError "Expression tree is too large" — the 1019-
-  // pair junction OR-tuple of 20120122+BW+RVW) leaves the read-permission
+  // pair junction OR-tuple of 20120122+CM+RVW) leaves the read-permission
   // state unresolved and every prepared card unjudged. The sync gate's
   // unjudged-allowed contract would then render the read-denied MAIN body in
   // full where Ruby emits the denial frame (an earlier triage's 130
