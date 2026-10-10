@@ -315,7 +315,11 @@ describe("port write path produces the captured oracle upload tree pattern", () 
       attachment: { bytes: PNG_BYTES, originalFilename: "oracle_cw_probe_v2.png" },
     });
 
-    const tree = await walkTree(filesDir);
+    // The scratch-ownership manifest is test infrastructure written at the
+    // scratch root, not an upload; the oracle-shape assertion is about files
+    // the engine's attachment store wrote.
+    const OWNERSHIP_MANIFEST = "decko-scratch-ownership.json";
+    const tree = (await walkTree(filesDir)).filter((relPath) => relPath !== OWNERSHIP_MANIFEST);
     expect(tree.length).toBeGreaterThanOrEqual(4);
     for (const relPath of tree) {
       expect(relPath, `port tree file ${relPath} matches the captured oracle store shape`).toMatch(shape);

@@ -42,7 +42,6 @@ import {
   manifestPath,
 } from "../../tools/incremental-diff-grade.mjs";
 import { sha256File, verifyManifestForGrading } from "../../tools/capture-manifest-provenance.mjs";
-import { scratchDir } from "../support/scratch-dir.mjs";
 
 // ---------- synthetic repo fixture ----------
 
@@ -91,7 +90,10 @@ interface Repo {
 }
 
 function makeSyntheticRepo(): Repo {
-  const repo = scratchDir("decko-diffgrade-");
+  // The OS temp, not the repo-owned scratch root: this fixture's premise is
+  // that it is NOT inside a git repository (the baseline's gitHead must be
+  // null), and a repo-rooted scratch dir resolves a gitHead in any checkout.
+  const repo = mkdtempSync(join(tmpdir(), "decko-diffgrade-"));
   const rg = join(repo, "tmp", "raw-ground-truth");
   const viewLane = join(rg, "expected-v2", "view-lane");
   const pageLane = join(rg, "expected-v2", "page-lane");
