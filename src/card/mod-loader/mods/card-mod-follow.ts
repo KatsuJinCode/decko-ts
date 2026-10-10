@@ -173,6 +173,7 @@
 import {
   RenderFormat,
   Voo,
+  virtualSearchKnownName,
   type RenderCard,
   type ViewContext,
   type ViewFn,
@@ -470,13 +471,20 @@ function followItemButton(card: RenderCard, condition: string): string {
  *  abstract/follow_option.rb:5-7, and the no-option-card arm reads
  *  card.rule_set.follow_label directly); target = follow_item_link_target
  *  (:111-114): `set.tag.codename == :self ? setname.left :
- *  setname.field("by name")`. link_to_card carries the known/wanted class
- *  (links.rb add_known_or_wanted_class - the target's existence). */
+ *  setname.field("by name")`. The known/wanted class is links.rb:140-144
+ *  add_known_or_wanted_class with no :known opt, i.e. Card.known? =
+ *  `real? || virtual?` (card core set/all/states.rb:65-67): the by_name
+ *  right joins the VirtualSearch family (virtual_search.rb:11-12 def
+ *  virtual?; new?; end), so a "*all+by_name" target is virtual-known on a
+ *  row miss and renders known-card (the corpus oracle's follow_status and
+ *  follow_item pins, 2026-10-10). */
 function followItemLink(fmt: RenderFormat, ruleSetName: string): string {
   const target = followItemLinkTarget(ruleSetName);
   const targetName = DeckoName.parse(target);
   const targetCard = fmt.engine.fetchRenderCard(targetName.key);
-  const known = targetCard !== undefined && targetCard.unknown !== true;
+  const known =
+    (targetCard !== undefined && targetCard.unknown !== true) ||
+    virtualSearchKnownName(target, fmt.engine) !== undefined;
   return linkTo(setFollowLabel(ruleSetName), followPath(targetName.urlKey), {
     class: known ? "known-card" : "wanted-card",
   });
@@ -584,7 +592,7 @@ const followStatusView: ViewFn = (ctx) => {
   const body =
     `<h4>\nGet notified about changes\n</h4>\n` +
     `<ul class='delete-list list-group'>${rows === "" ? "" : `\n${rows}`}\n</ul>\n` +
-    moreOptions;
+    `${moreOptions}\n`;
   return modSlotWrap(ctx, "follow_status", body);
 };
 

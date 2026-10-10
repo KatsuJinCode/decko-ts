@@ -802,10 +802,9 @@ const badAddressHtmlView: ViewFn = ({ fmt }) => {
  *  card-title span. `cardtypeAddButtonView` below is now the pinned
  *  oracle shape; see its own doc comment for the measured evidence.
  *
- *  `add_link` and `add_url` remain unpinned: neither
- *  `cardtype-add-link` nor an `add_url` string appears in ANY of the 63
- *  expected page bytes, so their bodies are still the placeholder form and
- *  are deliberately left alone (changing them would be unmeasured). */
+ *  `add_url` remains pinned to its own oracle shape (cardtypeAddUrlView
+ *  below); `add_link` joined it 2026-10-10 when the corpus's view op
+ *  Topic:add_link measured the anchor (see that view's doc comment). */
 function cardtypeUrlKey(fmt: RenderFormatBase): string {
   return fmt.card.key ?? "";
 }
@@ -825,9 +824,31 @@ function cardtypeUrlKey(fmt: RenderFormatBase): string {
 function cardtypeAddPathSegment(fmt: RenderFormatBase): string {
   return (fmt.card.name?.s ?? "").replace(/ /g, "_");
 }
+/** set/type/cardtype.rb:14-16 view :add_link — the same modal anchor as the
+ *  :add_button view below WITHOUT the btn classes: add_link calls
+ *  add_link_opts({}) with no opts, and modal_link_opts (card-mod-layout
+ *  set/all/modal.rb:72-78) adds only the "slotter" class
+ *  (add_class opts, "slotter"), so the class list is the single token.
+ *  Corpus oracle bytes (view op Topic:add_link, 2026-10-10):
+ *
+ *      <a data-slotter-mode="modal"
+ *         data-modal-class="modal-dialog modal-dialog-centered"
+ *         class="slotter"
+ *         href="/type/<Name_underscored>?view=new_in_modal"
+ *         data-remote="true"><span class="card-title"
+ *         title="Add <Name>">Add <Name></span></a>
+ */
 function cardtypeAddLinkView({ fmt }: ViewContext): string {
-  const url = cardtypeUrlKey(fmt as unknown as RenderFormatBase);
-  return `<a class="cardtype-add-link" href="/${url}/new">add</a>`;
+  const base = fmt as unknown as RenderFormatBase;
+  const segment = cardtypeAddPathSegment(base);
+  const label = `Add ${base.card.name?.s ?? ""}`;
+  const safeLabel = h(label);
+  return (
+    `<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered" ` +
+    `class="slotter" href="/type/${h(segment)}?view=new_in_modal" ` +
+    `data-remote="true"><span class="card-title" title="${safeLabel}">` +
+    `${wrappedTitleInner(safeLabel)}</span></a>`
+  );
 }
 /** set/type/cardtype.rb :add_button — the cardtype page template's add
  *  affordance, byte-pinned across the captured Cardtype pages.

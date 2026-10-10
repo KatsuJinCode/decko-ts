@@ -4833,8 +4833,14 @@ function virtualSearchCodenameResolverFor(
  *  @returns the RESOLVED target name (the codename marks folded, e.g.
  *  `:account+:right+:by_name` -> `*account+*right+by name` — the href
  *  source link_to_card receives), or undefined when the mark is not a
- *  virtual-search name and the caller's other arms decide. */
-function virtualSearchKnownName(
+ *  virtual-search name and the caller's other arms decide.
+ *
+ *  MODULE-EXPORTED for the follow views' item links (card-mod-follow.ts
+ *  followItemLink): links.rb:140-144 add_known_or_wanted_class answers
+ *  Card.known? = real? || virtual? (card core set/all/states.rb:65-67), so
+ *  a link whose target is a VirtualSearch-family name is known-card on a
+ *  row miss, exactly as the two link classifiers treat it here. */
+export function virtualSearchKnownName(
   target: string,
   engine: RenderEngineLike | undefined,
 ): string | undefined {

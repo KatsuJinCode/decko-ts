@@ -577,12 +577,15 @@ const oneLineContentView: ViewFn = ({ fmt }) => {
 
 /** autocomplete_item.haml:1-6 - Haml's single-quoted attributes; the icon is
  *  a Rails helper string (html_safe, unescaped), the label a plain name
- *  (escaped). */
+ *  (escaped). Haml merges the hash class BEFORE the literal one
+ *  (`class: "autocomplete-item-#{type}"` on `.autocomplete-item` renders
+ *  `autocomplete-item-<type> autocomplete-item`, the corpus oracle bytes)
+ *  and emits the template's lines flush-left (no pretty indentation). */
 function autocompleteItem(type: string, icon: string, label: string): string {
   return (
-    `<div class='autocomplete-item autocomplete-item-${type}'>\n` +
-    `  <div class='autocomplete-icon'>\n    ${icon}\n  </div>\n` +
-    `  <div class='autocomplete-label'>\n    ${h(label)}\n  </div>\n` +
+    `<div class='autocomplete-item-${type} autocomplete-item'>\n` +
+    `<div class='autocomplete-icon'>\n${icon}\n</div>\n` +
+    `<div class='autocomplete-label'>\n${h(label)}\n</div>\n` +
     `</div>\n`
   );
 }
