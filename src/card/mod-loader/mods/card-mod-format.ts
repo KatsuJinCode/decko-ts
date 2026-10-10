@@ -127,8 +127,8 @@
 //   set/all/html/wrap.rb (the wrap pipeline is the slot machinery),
 //   set/all/html/show.rb (page-view rails), set/all/html/error.rb's
 //   :not_found frame). :server_error and :debug_server_error are
-//   registered on all/html/error; the debug view deliberately renders
-//   :server_error (render/debug-server-error.ts).
+//   registered on all/html/error; the debug view raises stock Ruby's
+//   BetterErrors NameError (render/debug-server-error.ts).
 // - set/all/title.rb :title_link :title_no_link html block +
 //   helpers: rails (link_to_card + the card-title span rendering);
 //   :title in the html block has a `show_view?(:title_link, :hide)`

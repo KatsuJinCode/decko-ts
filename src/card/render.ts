@@ -6909,6 +6909,18 @@ export class RenderEngine implements RenderEngineLike {
     return undefined;
   }
 
+  /** Ruby's Auth.always_ok? for the session's viewer — the
+   *  ReadPermissionState.alwaysOk verdict (auth/permissions.rb:7-13, the
+   *  DeckoBot actor or an Administrator-role member), settled in the
+   *  prepare phase and read synchronously here (format.ts RenderEngineLike#
+   *  peekAlwaysOk). html/error.rb:47-49 show_all_errors? consumes it: the
+   *  quiet render-error span's ADMIN arm (backtrace_link's debug-page
+   *  title) renders only for an always-ok viewer. Undefined = no
+   *  permission state resolved (the plain-cardname arm). */
+  peekAlwaysOk(): boolean | undefined {
+    return this.readPermission?.alwaysOk;
+  }
+
   /** The read-permission verdict for a prepared card (ok_to_read?'s set
    *  membership, precomputed in the prepare phase — never a query here).
    *  ID-less cards (the virtual cards) read their verdicts from the

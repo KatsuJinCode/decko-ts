@@ -4132,7 +4132,7 @@ function renderPointerListItem(fmt: RenderFormat, name: string, itemView: string
       { pointerListItem: true },
     );
   } catch (error) {
-    return quietRenderError(error, target, itemView);
+    return quietRenderError(error, target, itemView, fmt);
   }
 }
 
@@ -6571,13 +6571,38 @@ const unfollowUrlView: ViewFn = () => "";
  *  BOTH predicates fail and `denial: :blank` renders "". That is the arm
  *  the capture pins (`<a href="">follow this link</a>`, and an empty line
  *  where the text message's standalone `{{_|verify_url}}` sits).
- *  The SEND path — the arm that builds a real token URL — is
- *  src/card/auth/account-verify-reset-flows.ts#buildAccountTokenUrl
- *  (the `token_url` port); it substitutes the URL into
- *  the message text itself and does not render through this view, so
- *  registering the blank arm here does not touch a delivered email. */
-export const verifyUrlView: ViewFn = () => "";
-export const resetPasswordUrlView: ViewFn = () => "";
+ *
+ *  THE BODY ARM (a render that passes the perms gate — the corpus's
+ *  admin-actor bare renders of an account's +*account right): the body
+ *  runs `token_url` -> `new_token` -> `Auth::Token.encode` ->
+ *  jwt's `Hmac#ensure_valid_key!` (hmac.rb:39-40). The harness deck has no
+ *  Rails credentials secret_key_base, so the HMAC key is "" and the encode
+ *  RAISES "HMAC key cannot be empty" — the stock synthetic-v2 oracle bytes
+ *  for view:admin:Ada Admin+*account:verify_url / :reset_password_url (the
+ *  quiet non-focal rescue renders the admin debug span around them). The
+ *  key check is synchronous (it precedes any crypto), so the raise ports
+ *  in this sync ViewFn; the SUCCESS arm (a deck WITH a secret) is the
+ *  async-ViewFn boundary — the HMAC encode cannot be awaited here — and
+ *  keeps the blank arm until the async-view seam lands. The SEND path is
+ *  src/card/auth/account-verify-reset-flows.ts#buildAccountTokenUrl (the
+ *  `token_url` port); it substitutes the URL into the message text itself
+ *  and does not render through this view. */
+export const verifyUrlView: ViewFn = (ctx) => tokenUrlBody(ctx);
+export const resetPasswordUrlView: ViewFn = (ctx) => tokenUrlBody(ctx);
+
+/** The shared token_url body arm (see the two views above). */
+function tokenUrlBody(ctx: ViewContext): string {
+  const secret = ctx.fmt.engine.tokenConfig?.secret;
+  if (typeof secret !== "string" || secret === "") {
+    // jwt-2.10.3 lib/jwt/jwa/hmac.rb:40 ensure_valid_key! —
+    // `raise_verify_error!('HMAC key cannot be empty')` (jwa/signing_algorithm.rb:38
+    // raises JWT::DecodeError; the MESSAGE is what the corpus pins — the
+    // gem class is not a Decko UserError, so the quiet rescue takes the
+    // lib_error_rendering arm).
+    throw new Error("HMAC key cannot be empty");
+  }
+  return "";
+}
 
 /** card-mod-account set/right/account/views.rb:18-20 — the DEPRECATED
  *  aliases `view :verify_days, :token_days` /
