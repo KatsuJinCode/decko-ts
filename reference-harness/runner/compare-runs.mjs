@@ -48,7 +48,9 @@ const relativeTimeValues = (value) => {
  *  title in any string of a recorded line, in order. */
 const debugTitle = (s) => {
   const out = [];
-  for (const m of s.matchAll(/title="(\s*&lt;h3&gt;Error message \(visible to admin only\)&lt;\/h3&gt;[\s\S]*?)("/g)) out.push(m[1]);
+  // (Fix 2026-10-10: the committed regex held an unterminated group - the
+  // module could not load; the capture group is the title body, m[1].)
+  for (const m of s.matchAll(/title="(\s*&lt;h3&gt;Error message \(visible to admin only\)&lt;\/h3&gt;[\s\S]*?)"/g)) out.push(m[1]);
   return out;
 };
 const captureHostValues = (value) => {
@@ -60,6 +62,18 @@ const captureHostValues = (value) => {
   if (value !== null && typeof value === "object") return Object.values(value).flatMap(captureHostValues);
   return [];
 };
+/** Every backtrace frame line N6 matches in any string of a recorded line,
+ *  in order: the `<br>`-separated segments inside a debug-page title's
+ *  backtrace div (the div that follows the message paragraph). */
+const frameLineValues = (value) => {
+  if (typeof value === "string")
+    return debugTitle(value).flatMap((t) => {
+      const m = t.match(/&lt;\/p&gt;\s*&lt;div&gt;([\s\S]*?)&lt;\/div&gt;/);
+      return m && m[1] !== "" ? m[1].split(/&lt;br&gt;\n/) : [];
+    });
+  if (value !== null && typeof value === "object") return Object.values(value).flatMap(frameLineValues);
+  return [];
+};
 
 const maskAccounting = (result, nameA, nameB) => {
   const counts = (line) => ({
@@ -67,10 +81,11 @@ const maskAccounting = (result, nameA, nameB) => {
     N3: collapseValues(line),
     N4: relativeTimeValues(line),
     N5: captureHostValues(line),
+    N6: frameLineValues(line),
   });
   const a = counts(nameA);
   const b = counts(nameB);
-  for (const rule of ["N1", "N3", "N4", "N5"]) {
+  for (const rule of ["N1", "N3", "N4", "N5", "N6"]) {
     result.masks[rule].matched_pairs += Math.min(a[rule].length, b[rule].length);
     a[rule].forEach((v, i) => {
       if (b[rule][i] !== undefined && b[rule][i] !== v) result.masks[rule].differing_pairs++;
@@ -86,6 +101,7 @@ const result = {
     N3: { matched_pairs: 0, differing_pairs: 0 },
     N4: { matched_pairs: 0, differing_pairs: 0 },
     N5: { matched_pairs: 0, differing_pairs: 0 },
+    N6: { matched_pairs: 0, differing_pairs: 0 },
   },
   unexplained: [],
 };
@@ -102,7 +118,7 @@ for (const kind of ["render", "semantics", "scenarios"]) {
       continue;
     }
     maskAccounting(result, x, y);
-    // Masked as the grader masks: render HTML by N1+N3+N4+N5, everything else raw.
+    // Masked as the grader masks: render HTML by N1+N3+N4+N5+N6, everything else raw.
     const norm = (line) =>
       kind === "render"
         ? { ...line, result: normalizeRender(line.result) }
@@ -129,6 +145,7 @@ console.log(pairLine("N1", "slot ids"));
 console.log(pairLine("N3", "collapse ids"));
 console.log(pairLine("N4", "relative-time spans"));
 console.log(pairLine("N5", "capture-host tokens in debug titles"));
+console.log(pairLine("N6", "backtrace frame lines"));
 for (const u of result.unexplained) console.log(`unexplained: ${u}`);
 if (jsonOut) writeFileSync(jsonOut, JSON.stringify(result, null, 2) + "\n");
 process.exit(result.unexplained.length ? 1 : 0);

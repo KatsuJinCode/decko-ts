@@ -311,15 +311,29 @@ comparator's N1-N6 above. The two vocabularies coexist:
    inside a render-error span's `title` attribute that begins with the Ruby
    debug page marker (`&lt;h3&gt;Error message (visible to admin only)
    &lt;/h3&gt;`), absolute paths (drive-letter, forward or back slashes) and
-   hexadecimal heap addresses become `N5#path` / `N5#addr`. The oracle's
-   quiet spans embed the capture host's backtrace frames — the Ruby install,
-   gem home and harness checkout of the machine that recorded the capture —
-   which are that machine's filesystem, not the oracle's semantics; a frame
-   path token ends at its `:line:` separator, so the frame's line and method
-   stay compared exactly. Every byte outside such a title, and the error
-   message inside it, still count. The engine must never emit a debug page:
-   an engine span without the debug region still differs structurally, and
-   N5 does not hide that.
+   hexadecimal heap addresses become `N5#path` / `N5#addr`. The debug pages
+   embed the capture host's backtrace frames — the Ruby install, gem home
+   and harness checkout of the machine that recorded the capture — which
+   are that machine's filesystem, not the oracle's semantics; a frame path
+   token ends at its `:line:` separator. Every byte outside such a title,
+   and the error message inside it, still count. (Written when the engine
+   did not raise where the oracle raises; the raise posture has since made
+   the engine emit the same debug page, and N6 below now carries the frame
+   layer.)
+6. **N6 (canonical form over the host VM's stack identity).** In rendered
+   HTML, inside a render-error span's debug-page title, every backtrace
+   frame line within the div that follows the message paragraph — the
+   `<br>\n`-separated lines Ruby's `exception.backtrace * "<br>\n"` embeds —
+   becomes the single placeholder `N6#frame`. The two sides run different
+   languages: the oracle's frames are Ruby's (`path:line:in \`method'`,
+   boot-inclusive — dozens of frames from the capture process's startup
+   up), the engine's are V8's (`at fn (file:///path:line:col)`). A frame
+   line's text is the host VM's identity — language, paths, boot history —
+   in the same class as N5's capture-host content; nothing in the oracle's
+   semantics lives in it. The frame COUNT becomes the checkable invariant:
+   the `<br>`-separated structure inside the div stays compared, so a side
+   emitting a different number of its own frames still fails, as do the
+   heading, the error message and every byte outside the div.
 
 Everything else is compared exactly: every byte of HTML, every field of a
 write answer (the new card's id and every byte of mail text included), every
@@ -347,10 +361,19 @@ pairs on the fixture. For `synthetic-v2`: 22 of 2,557 oracle ops carry a
 relative-time span ("less than a minute" ×179, "2 days" ×1); the four ops
 whose only divergence was the span grade identical after N4 and no
 identical op breaks; 8 ops carry the debug page (554 path tokens, 2 heap
-addresses) and N5 closes no op — the six pinned debug rows are structural
-(the engine does not raise where the oracle raises). Full procedure,
+addresses) and at its original commit N5 closed no op — the six debug rows
+were structural then (the engine did not raise where the oracle raises);
+the raise posture closed that layer and N6 above now carries the frame
+layer. Full procedure,
 commands and counts in
 `benchmarks/seconds-corpus/capture-clock-and-debug-span-canonicalization-evidence.md`.
+N6's evidence shape is N4/N5's (the committed capture bytes carry the
+host-VM identity; the measurement is over oracle-vs-engine pairs): at the
+raise posture the 8 oracle debug pages carry 51-63 Ruby frames against the
+engine's 8-10 V8 frames (Node's `Error.stackTraceLimit` caps at 10), so the
+frame count — the invariant N6 checks — is the six raise-posture rows'
+recorded residual
+(`benchmarks/seconds-corpus/backtrace-frame-canonicalization-evidence.md`).
 
 Rules the first version applied and no longer does, because no oracle run
 varies in them: hexadecimal object addresses (never present in any recorded
