@@ -5712,6 +5712,19 @@ export const unknownView: ViewFn = (ctx) => {
   return slotWrapCommon(fmt, "unknown", link);
 };
 
+/** The html-format :unknown body (card-mod-format set/all/html/error.rb's
+ *  override of the base format's bare-"" :unknown — html/error.rb:15-17
+ *  `view :unknown do createable { wrap { unknown_link ... } } end`),
+ *  exported for the card-mod-format set/all/error registration: the mod
+ *  chain's set/all block answers :unknown for EVERY card on a
+ *  loader-bound engine, so it must carry this body, not the base format's
+ *  "". With the base-"" registration the composed surface rendered no
+ *  unknown link anywhere (the corpus's admin *search page: a skin bar's
+ *  absent +Image nested :boxed, whose core substitutes to :unknown — the
+ *  oracle renders the box with the create link inside, the engine an
+ *  empty box). */
+export { unknownView as htmlFormatUnknownView };
+
 /** base.rb (card-mod-format) view :blank: literally "" (base.rb:109-111). */
 const blankView: ViewFn = () => "";
 

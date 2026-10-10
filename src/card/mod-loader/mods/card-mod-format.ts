@@ -238,8 +238,7 @@ import {
   navLinkView,
   unknownView as htmlErrorUnknownView,
   miniUnknownView as htmlErrorMiniUnknownView,
-} from "../../render/views.js";
-import { popoverLink } from "./card-mod-bootstrap.js";
+} from "../../render/views.js";import { popoverLink } from "./card-mod-bootstrap.js";
 import type {
   DeckoModManifest,
   ModSetModuleFile,
@@ -714,11 +713,25 @@ const compactMissingView: ViewFn = ({ fmt }) =>
  *  bytes were oracle-verified against the search-list capture before this
  *  corpus existed. The base "" arm remains what the non-html formats and
  *  the email overrides serve. */
+/** set/all/error.rb:6-8 view :unknown, perms: :none, cache: :never:
+ *  the literal empty string. The BASE-format body. The HTML format
+ *  REDEFINES :unknown (set/all/html/error.rb:15-17, the createable
+ *  unknown_link wrap) and every html render dispatches the html body —
+ *  which is the only format this port renders — so the set/all/error
+ *  registration below serves the html body (render/views.ts's unknownView, the arm this file registers as unknownView)
+ *  htmlFormatUnknownView) and this base body stays unrendered on the
+ *  ported surface. Registering the base body under set/all would shadow
+ *  the html view on the whole composed surface: the chain's set/all block
+ *  matches every card, and the base table (which carries the html body)
+ *  is only consulted when no chain entry answers. That shadowing was the
+ *  corpus's admin *search skin box defect: a skin bar's absent +Image
+ *  nests :boxed, whose core substitutes to :unknown, and the engine
+ *  rendered an empty box where the oracle renders the box with the
+ *  createable link inside. */
 const unknownView: ViewFn = htmlErrorUnknownView;
 
 /** html/error.rb:21-23 :mini_unknown — the icon-only createable link. */
 const miniUnknownView: ViewFn = htmlErrorMiniUnknownView;
-
 /** set/all/error.rb:10-12 view :server_error, perms: :none:
  *  `t(:format_server_error)`. The headless engine has no i18n;
  *  the locale token renders as the bare key (documented divergence
@@ -1713,8 +1726,7 @@ const setModules: ModSetModuleFile[] = [
           // explicit here so the composed deck serves the same bytes the
           // flat base table serves (the substitution target of
           // one_line_content/labeled_content on unknown cards).
-          { view: "mini_unknown", viewFn: miniUnknownView, config: { perms: "none" } },
-          { view: "server_error", viewFn: serverErrorView, config: { perms: "none" } },
+          { view: "mini_unknown", viewFn: miniUnknownView, config: { perms: "none" } },          { view: "server_error", viewFn: serverErrorView, config: { perms: "none" } },
           { view: "denial", viewFn: denialHtmlView, config: { perms: "none" } },
           { view: "not_found", viewFn: notFoundView, config: { perms: "none" } },
           { view: "bad_address", viewFn: badAddressHtmlView, config: { perms: "none" } },

@@ -3955,6 +3955,18 @@ interface UnknownViewDecl {
   /** setKeys tokens the declaring set matches (whole-token membership).
    *  undefined = all-set (applies to every card). */
   setTokens?: readonly string[];
+  /** True for the declarations of a mod whose registrations the port
+   *  compiled into the seed tables instead of wiring a manifest —
+   *  bar_and_box (default-mod-deck.ts's wiring note: "its registrations
+   *  are compiled into the engine's seed tables"). No chain walk can ever
+   *  answer for such a module (there is no set module to carry the
+   *  declaration), so on a loader-bound engine the compiled row remains
+   *  the ONLY source of the setting, exactly as Ruby's bundled
+   *  set/type/image.rb answers `setting :unknown` in every deck. The
+   *  loader-bound lookup still consults these rows, token-scoped like the
+   *  loader-less lane — the globalization defect the allSetOnly skip
+   *  guards against applies to MOD-registered modules' rows, not these. */
+  seedLayer?: boolean;
 }
 
 const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
@@ -3978,9 +3990,16 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
   // card-mod-bar_and_box-0.20.0 set/type/image.rb:6-12: `view :boxed,
   // unknown: true` and `view :boxed_link, unknown: true`. An absent image
   // renders its box, and the box's core is the unknown view (a skin's
-  // missing +Image offers its create link inside the box).
-  { view: "boxed", config: true, setTokens: ["TYPE-image"] },
-  { view: "boxed_link", config: true, setTokens: ["TYPE-image"] },
+  // missing +Image offers its create link inside the box). bar_and_box
+  // carries no mod-deck manifest (default-mod-deck.ts: its registrations
+  // are compiled into the seed tables), so these rows are the only
+  // `setting :unknown` source on a loader-bound engine — seedLayer keeps
+  // them consultable there (the corpus's admin *search page: a skin bar's
+  // absent +Image nests :boxed; without the declaration the view
+  // substituted to :unknown and the whole box collapsed, where the oracle
+  // renders the box with the unknown card's create link inside).
+  { view: "boxed", config: true, setTokens: ["TYPE-image"], seedLayer: true },
+  { view: "boxed_link", config: true, setTokens: ["TYPE-image"], seedLayer: true },
   // all-set rows
   { view: "mini_bar", config: true },
   { view: "mini_unknown", config: true },
@@ -4089,11 +4108,15 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
  * and the view substitutes to :unknown (format/error.rb:23
  * `setting_view || :unknown`).
  *
- * `allSetOnly` bounds the lookup to the ALL-SET rows for a LOADER-BOUND
- * engine: Ruby mixes the all-set format modules into the base class of
- * EVERY deck (registrar.rb:79-84 process_base_format_modules), so their
- * declarations hold on top of any loaded mod deck — but a set-scoped
- * declaration (right/discussion's) must come from the deck's own module
+ * `allSetOnly` bounds the lookup to the ALL-SET rows plus the SEED-LAYER
+ * rows for a LOADER-BOUND engine: Ruby mixes the all-set format modules
+ * into the base class of EVERY deck (registrar.rb:79-84
+ * process_base_format_modules), so their declarations hold on top of any
+ * loaded mod deck — and bar_and_box's set-scoped declarations (its module
+ * is compiled into the seed tables, never registered) are answered by the
+ * bundled set module in every Ruby deck too, so their compiled rows stay
+ * live here, token-scoped. A set-scoped declaration of a MOD-REGISTERED
+ * module (right/discussion's) must still come from the deck's own module
  * (the chain walk), never from this compiled stand-in, or it would
  * globalize again. The all-set rows model the core bar/format modules the
  * TS deck compiles instead of registering (there is no
@@ -4113,6 +4136,19 @@ function compiledUnknownSettingForCard(
       if (decl.setTokens.some((t) => tokens.has(t))) scoped = decl.config;
     }
     if (scoped !== undefined) return scoped;
+  } else {
+    // Seed-layer modules' rows stay consultable on a loader-bound engine:
+    // no chain walk can answer for a module the port compiled into the
+    // seed tables (bar_and_box), and Ruby's bundled set module answers
+    // `setting :unknown` in every deck. Still token-scoped — the same
+    // whole-token membership the loader-less lane checks — so nothing
+    // globalizes. See the seedLayer note on UnknownViewDecl.
+    let seeded: string | true | undefined;
+    for (const decl of UNKNOWN_VIEW_DECLS) {
+      if (decl.view !== view || decl.seedLayer !== true || decl.setTokens === undefined) continue;
+      if (decl.setTokens.some((t) => tokens.has(t))) seeded = decl.config;
+    }
+    if (seeded !== undefined) return seeded;
   }
   let all: string | true | undefined;
   for (const decl of UNKNOWN_VIEW_DECLS) {
