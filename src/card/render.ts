@@ -7746,7 +7746,14 @@ export class RenderEngine implements RenderEngineLike {
         bucket.push(card);
       }
     }
-    for (const klass of SETTING_CLASSES) {
+    // core.haml renders the classes GENERAL -> SPECIFIC (the oracle's
+    // *read page: all cards, all "+" cards, cards of a given type, given
+    // field cards, a single card; the *create page interleaves the star
+    // rows between type and right) — the reverse of the registry's
+    // specificity order. The previous forward iteration produced the
+    // given-field-cards section before the given-type one on every
+    // setting page (the seconds corpus's *help family, 2026-10-09).
+    for (const klass of [...SETTING_CLASSES].reverse()) {
       const leftKey = klass.patternCardName.toLowerCase();
       const rules = settingBuckets.get(leftKey);
       if (rules === undefined || rules.length === 0) continue;
