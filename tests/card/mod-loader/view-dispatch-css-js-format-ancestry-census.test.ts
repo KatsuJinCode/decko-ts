@@ -216,20 +216,15 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // Error's production :server_error (4b7b1338's error-page ruling,
       // debug_server_error's renderer twin), measured on the merged tree;
       // still no new format key and no css/scss row.
-      // 356 -> 357 on the combined tree: BOTH single-step bumps above landed
-      // here — this line's composed-mod-view-gaps :mini_unknown registration
-      // (html/error.rb:21-23) AND the journeys lane's Right::Password :input
-      // (the account form's password editor); still no new format key and
-      // no css/scss row. The tree's count is asserted below; if either
-      // registration is missing the number is wrong by one.
-      // 356 -> 357 (combined)
+      // 355 -> 356 (composed-mod view gaps, 2026-10-09): All::Error's html
       // table registers :mini_unknown (html/error.rb:21-23, the icon-only
       // createable link) explicitly alongside :unknown's html arm, so the
-      // composed deck serves the same bytes the flat base table serves;
-      // still no new format key and no css/scss row.
-      // also landed here (browser-journeys lane, 2026-10-09): Right::Password's
-      // :input — the account form's password editor (the live-oracle probe
-      // receipt probe-password-input.rb); still no new format key.      ["html", 356],
+      // composed deck serves the same bytes the flat base table serves.
+      // 356 -> 357 on the combined tree: the journeys lane's Right::Password
+      // :input (the account form's password editor, the live-oracle probe
+      // receipt probe-password-input.rb) landed here too; still no new
+      // format key and no css/scss row. Measured on the merged tree.
+      ["html", 357],
 
       ["js", 2],
       ["json", 3],
