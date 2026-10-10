@@ -167,7 +167,7 @@ import {
 // host seam — a full-page read of a known card stores its own URL, and the
 // write path's `*previous` / configure_successful_deletion redirects resolve
 // to the last entry.
-import { pageViewCookie } from "./dist/src/card/session/visitor-session.js";
+import { emptyVisitorSession, pageViewCookie, visitorSessionCookie } from "./dist/src/card/session/visitor-session.js";
 // The recaptcha seat's host-config source (staging-seat-wiring lane): reads
 // the DECKO_RECAPTCHA_* environment keys into the WriteRouteContext.recaptcha
 // seat (write-routes.ts). Undefined until ops sets the keys — INERT by
@@ -3400,9 +3400,23 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
               const actorEngine = engineForActor(cookieActor.id);
               actorEngine.expireRenderCard(name);
               const { RenderFormat } = await import("./dist/src/card/render/format.js");
-              const previewCard = await actorEngine
-                .render(name, "preview_editor")
-                .then(() => actorEngine.fetchRenderCard(name));
+              // The seat render runs the view WITHOUT the round-trip opts —
+              // they ride only the final renderView below. A view whose
+              // posture raises on the missing param (preview_editor's
+              // gsub-on-nil, the raise-posture lane's stock shape) must not
+              // fail the flow here: Ruby renders preview_editor exactly
+              // once, WITH the request params present. The seating itself
+              // happens in the render's prepare phase, before the view body
+              // runs, so the card is seated even when the view raises; the
+              // same catch-and-reread pattern the renderSlot hook above
+              // uses. The final renderView keeps the posture: a genuinely
+              // param-less render raises to the caller unchanged.
+              try {
+                await actorEngine.render(name, "preview_editor");
+              } catch {
+                // the seat's view error is the final renderView's to raise (or not)
+              }
+              const previewCard = actorEngine.fetchRenderCard(name);
               if (previewCard === undefined) {
                 throw new Error(`preview_editor render could not seat the card: ${name}`);
               }
@@ -3740,12 +3754,20 @@ const server = http.createServer(async (req, res) => {
       // The navbar's "Sign out" link is GET /delete/*signin: Decko's routes
       // take delete over GET (engine_routes.rb "(card)/delete(/:mark)"), and
       // the *signin card's :signout event ends the session
-      // (set/self/signin.rb), then the page shows *signin.
+      // (set/self/signin.rb), then the page shows *signin. Env.reset_session
+      // (signin.rb:21) drops the REST of the visitor's session with it — the
+      // location history and Session-card content — exactly what the write
+      // path's DELETE arm does through its visitor-session wrapper; this GET
+      // arm owns the reset itself.
       const token = readSessionCookie(req.headers.cookie);
       await signoutAccount(sessions, token);
       response = {
         status: 302,
-        headers: { Location: "/*signin", "Set-Cookie": clearedSessionCookieHeader(), "Cache-Control": "no-store" },
+        headers: {
+          Location: "/*signin",
+          "Set-Cookie": [clearedSessionCookieHeader(), visitorSessionCookie(emptyVisitorSession())],
+          "Cache-Control": "no-store",
+        },
         body: "",
       };
     } else if (req.method === "GET" && pathname === "/_mail-log") {
@@ -3910,6 +3932,13 @@ const server = http.createServer(async (req, res) => {
           known: true,
           html: true,
           ajax: false,
+          // save_location?'s own codename leg (location_history.rb:47-51):
+          // the *signin card's page never joins the history — Ruby reads
+          // card.codename on the rendered card, so the seam carries the
+          // record's codename rather than a path-shape guess (the stock
+          // profile serves the sign-in page through the card-page branch,
+          // where a path set cannot see the card).
+          codename: knownRecord.codename,
         });
         if (setCookie !== undefined && response.headers["Set-Cookie"] === undefined) {
           response.headers["Set-Cookie"] = setCookie;

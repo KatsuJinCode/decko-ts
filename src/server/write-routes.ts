@@ -1085,8 +1085,11 @@ async function handleSigninUpdate(
   const outcome = await signinAccount(ctx.driver, sessions, email, password);
   if (!outcome.ok) {
     // authenticate_or_abort adds the ladder message under :signin
-    // (signin.rb:50-58 errors.add :signin, ...): "SIGNIN: <message>".
-    return fail(outcome.message, `SIGNIN: ${outcome.message}`);
+    // (signin.rb:50-58 errors.add :signin, ...): the errors view renders the
+    // attribute name upcased ("SIGNIN:") ahead of the message — the alert
+    // template below owns that prefix, so the shown bytes are the ladder
+    // message itself, unprefixed.
+    return fail(outcome.message, outcome.message);
   }
   // The success target (env/success/target.rb): the form's
   // success[mark]=*previous (signin.rb:171) -> previous_location; without a
