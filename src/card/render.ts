@@ -38,6 +38,8 @@ import { executeCount, executeQuery, type CqlQueryResult } from "../cql/execute.
 import { resolvePointerItemName, rawItemStrings } from "./render/pointer-list.js";
 import { listItemContentOverride } from "./render/content-overrides.js";
 import { findRule } from "./rules/lookup.js";
+import { ruleCacheStatement, type RuleCacheRow } from "./rules/rule-cache.js";
+import { ruleCacheKeyFromRow } from "./set-patterns/rule-names.js";
 import { ruleNamesForCard } from "./set-patterns/rule-names.js";
 import { applyViewOverride, resolveViewOverride } from "./rules/apply.js";
 import { resolveVirtualCardStructure } from "./fetch/virtual-cards.js";
@@ -1013,6 +1015,10 @@ export class RenderEngine implements RenderEngineLike {
     // view ops) sees the signed-in items, not the signed-out pair.
     // Memoized per actor; a no-op for signed-out sessions.
     await this.prepareSessionAccountLinks();
+    // Ruby's Rule::Cache.read: populated on first rule lookup, so the sync
+    // view half can answer find_existing_rule_card's rule-cache walk
+    // (one deck-wide query per engine lifetime, cleared on writes).
+    await this.ensureRuleCacheSetLabels();
     // THE ONE-TRIP SEAT (stamp-as-column lane, 2026-10-06 — spec §c): moved
     // ABOVE the freshness gate because on this posture the seat's HEAD
     // statement IS the render's stamp read — deck_data_version rides the
@@ -2514,6 +2520,10 @@ export class RenderEngine implements RenderEngineLike {
     this.fetcher.resetCaches();
     this.renderCards.clear();
     this.idsByKey.clear();
+    // Ruby's clear_rule_cache: a write invalidates the deck-wide rule
+    // lookup hash (the set-label winner map included).
+    this.ruleCacheSetLabels = undefined;
+    this.ruleCacheSetLabelsLoad = undefined;
     this.resetDerivedRenderState();
   }
 
@@ -3070,6 +3080,98 @@ export class RenderEngine implements RenderEngineLike {
       throw err;
     }
     return universe.get(key);
+  }
+
+  /**
+   * Ruby's Rule::Cache (lib/card/rule/cache.rb) - the deck-wide rule
+   * lookup hash, populated on FIRST rule lookup (Cache.read -> populate)
+   * and cleared on writes. The port preloads the same SQL
+   * (ruleCacheStatement) once per engine, in the async render half, and
+   * answers rule-cache walks synchronously at view time:
+   * set/rule/editor.rb's find_existing_rule_card chain (new_card? ->
+   * existing_rule_from_prototype -> set_prototype.rule_card(setting) ->
+   * rule_card_id -> rule_id_lookup) needs a sync answer no render-warmed
+   * fetch can give (a stored rule no earlier render happened to seat).
+   * Values carry the winning rule's SET identity (cache.rb's pattern_code
+   * + the anchor name) so Set#label composes without a second lookup.
+   * Cleared on resetCaches() (Ruby's clear_rule_cache).
+   */
+  private ruleCacheSetLabels:
+    | Map<string, { patternCode: string; anchorName: string | undefined }>
+    | undefined;
+  private ruleCacheSetLabelsLoad: Promise<void> | undefined;
+
+  async ensureRuleCacheSetLabels(): Promise<void> {
+    if (this.ruleCacheSetLabels !== undefined) return;
+    this.ruleCacheSetLabelsLoad ??= (async () => {
+      const setTypeId = this.peekIdByCodename("set");
+      const settingTypeId = this.peekIdByCodename("setting");
+      if (setTypeId === undefined || settingTypeId === undefined) {
+        this.ruleCacheSetLabels = new Map();
+        return;
+      }
+      const statement = ruleCacheStatement(setTypeId, settingTypeId);
+      const result = await this.fetcher.driver.query<RuleCacheRow>(
+        statement.sql,
+        statement.params ?? [],
+      );
+      // Anchor names: one lexicon read per distinct anchor id, resolved
+      // here in the async half; the view-time answer is a Map hit.
+      const anchorNames = new Map<number, string | undefined>();
+      for (const row of result.rows) {
+        if (row.anchor_id === null) continue;
+        const anchorId = Number(row.anchor_id);
+        if (anchorNames.has(anchorId)) continue;
+        anchorNames.set(anchorId, (await this.fetcher.lexicon.name(anchorId))?.s);
+      }
+      const hash = new Map<
+        string,
+        { patternCode: string; anchorName: string | undefined }
+      >();
+      for (const row of result.rows) {
+        const anchorId = row.anchor_id === null ? null : Number(row.anchor_id);
+        // cache.rb pattern_code: the anchorless arm reads the set row's
+        // OWN id, the anchored arm its pattern tag (set_tag_id).
+        const patternSourceId =
+          anchorId === null ? Number(row.set_id) : Number(row.set_tag_id ?? 0);
+        const patternCode = this.peekCodenameById(patternSourceId);
+        const settingCode = this.peekCodenameById(Number(row.setting_id));
+        if (patternCode === undefined || settingCode === undefined) continue;
+        hash.set(
+          ruleCacheKeyFromRow(anchorId, patternCode, settingCode),
+          {
+            patternCode,
+            anchorName:
+              anchorId === null ? undefined : anchorNames.get(anchorId),
+          },
+        );
+      }
+      this.ruleCacheSetLabels = hash;
+    })();
+    await this.ruleCacheSetLabelsLoad;
+  }
+
+  /**
+   * Rule::All#rule_card_id + rule_id_lookup (rule/all.rb:23-27, :66-74):
+   * the FIRST lookup key whose "<key>+<setting>" the rule cache answers -
+   * no fallback suffix (rule_card has none; that is preference_card_id's
+   * arm). Returns the winning rule's SET identity (pattern code + anchor
+   * name) so the caller composes Set#label without a second lookup.
+   * Undefined when the cache is not loaded (ensureRuleCacheSetLabels not
+   * awaited) or no key hits - Ruby's Card.fetch(nil) arm, the caller's
+   * "--" fallback.
+   */
+  ruleCacheSetLabelWinner(
+    lookupKeys: readonly string[],
+    settingCode: string,
+  ): { patternCode: string; anchorName: string | undefined } | undefined {
+    const hash = this.ruleCacheSetLabels;
+    if (hash === undefined) return undefined;
+    for (const key of lookupKeys) {
+      const winner = hash.get(`${key}+${settingCode}`);
+      if (winner !== undefined) return winner;
+    }
+    return undefined;
   }
 
   /**

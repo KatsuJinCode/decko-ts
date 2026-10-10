@@ -3689,6 +3689,18 @@ export interface RenderEngineLike {
    *  return an empty list (no rule rows — a degenerate Rules section
    *  still renders the h4 header + filter form, no accordion). */
   collectRules?(host: RenderCard): RenderCard[];
+  /** Rule::All#rule_card_id over the preloaded deck-wide rule cache
+   *  (lib/card/rule/cache.rb + rule/all.rb:66-74): the FIRST lookup key
+   *  whose "<key>+<setting>" the cache answers, returning the winning
+   *  rule's SET identity (cache.rb pattern_code + anchor name) so
+   *  Set#label composes without a second lookup. Consumed by
+   *  card-mod-rules setInfoHtml's find_existing_rule_card chain (the
+   *  new-rule arm's existing_rule_from_prototype walk). Optional: engines
+   *  without it render the "--" fallback (the pre-seam behavior). */
+  ruleCacheSetLabelWinner?(
+    lookupKeys: readonly string[],
+    settingCode: string,
+  ): { patternCode: string; anchorName: string | undefined } | undefined;
   /** The set's own *default rule card's TYPE ID from the preloaded
    *  full-deck *default universe (defaultRuleUniverseStatement) — the
    *  template leg's cold arm for setPrototypeTypeCode (views.ts

@@ -300,39 +300,6 @@
       "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
     },
     {
-      "op": "view:admin:Topic+*type:quick_edit_setting_list",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 2250,
-        "expected": "ect form-control\\\" data-select2-id=\\\"topic-Xtype-Xdefault-1-1789819200\\\"><optgroup label=\\\"Text\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option>\\n<option value=",
-        "actual": "ect form-control\\\" data-select2-id=\\\"topic-Xtype-Xdefault-1-0\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option></select>\\n<input type=\\\"hidden\\\" name=\\\"assign\\\" "
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:Topic+*type:nest_rules",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 2697,
-        "expected": "ect form-control\\\" data-select2-id=\\\"topic-Xtype-Xdefault-1-1789819200\\\"><optgroup label=\\\"Text\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option>\\n<option value=",
-        "actual": "ect form-control\\\" data-select2-id=\\\"topic-Xtype-Xdefault-1-0\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option></select>\\n<input type=\\\"hidden\\\" name=\\\"assign\\\" "
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
-      "op": "view:admin:Topic+*type:modal_nest_rules",
-      "family": "composed-mod-view-gap",
-      "group": "view / admin",
-      "evidence": {
-        "firstDiffAt": 3968,
-        "expected": "ect form-control\\\" data-select2-id=\\\"topic-Xtype-Xdefault-1-1789819200\\\"><optgroup label=\\\"Text\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option>\\n<option value=",
-        "actual": "ect form-control\\\" data-select2-id=\\\"topic-Xtype-Xdefault-1-0\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option></select>\\n<input type=\\\"hidden\\\" name=\\\"assign\\\" "
-      },
-      "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/)."
-    },
-    {
       "op": "view:admin:Ada Admin:tabs_static",
       "family": "composed-mod-view-gap",
       "group": "view / admin",

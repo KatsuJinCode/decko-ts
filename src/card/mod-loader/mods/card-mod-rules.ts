@@ -132,7 +132,7 @@ import { DeckoName } from "../../name.js";
 import { PATTERN_TABLE, findPattern } from "../../set-patterns/registry.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import { labelForParsedSet, parseSetName } from "../../set-patterns/set-name.js";
-import { setNamesForCard } from "../../set-patterns/card-patterns.js";
+import { setNamesForCard, ruleLookupKeysForCard } from "../../set-patterns/card-patterns.js";
 import { cardFormShell, submitButton } from "../mod-form-substrate.js";
 import { typeField, typeFormgroup } from "./card-mod-edit.js";
 import { cardWallClockNow } from "../../wall-clock.js";
@@ -1781,28 +1781,45 @@ function undoButton(ctx: ViewContext): string {
  *  exposes stored rules only. */
 function setInfoHtml(ctx: ViewContext, notifyChange: boolean): string {
   const { fmt } = ctx;
-  // find_existing_rule_card&.left&.label || "--" (editor.rb:119-130): for a
-  // NEW (virtual) rule card existing_rule_from_prototype resolves no stored
-  // rule -> "--" (the captured *help item's set-info); for a STORED rule
-  // card the card is itself, so left is the rule SET card and label is
-  // set/type/set.rb:38-41's label (setCardLabel's machinery - "*all"
-  // labels "All cards").
+  // set_info.haml: `card.find_existing_rule_card&.left&.label || "--"`
+  // (editor.rb:119-130). For a STORED rule card find_existing_rule_card is
+  // the card itself, so left is the rule SET card and label is
+  // set/type/set.rb:38-41's label - subclass_for_set.label(anchor_name),
+  // the pattern through the TAG card's codename (parseSetName - the
+  // codename registry; an anchored set card's row carries no codename of
+  // its own, so the resolution is name-level in every case). For a NEW
+  // rule card existing_rule_from_prototype (rules.rb:85-90) walks
+  // set_prototype.rule_card(setting) - the rule-cache lookup over the
+  // set PATTERN's prototype card's rule_lookup_keys (rule/all.rb
+  // rule_card_id -> rule_id_lookup); the winner's SET label is the text,
+  // no winner is Ruby's nil arm (the "--" literal - every corpus
+  // quick-edit setting without a stored rule).
   const isNew = fmt.card.id === undefined || fmt.card.unknown === true;
   const setName = fmt.card.name.leftName;
-  // set/type/set.rb:38-41 label through the SET CARD's record codename
-  // (findPattern - the same Card::Codename answer labelForParsedSet's
-  // peek-lexicon route gives, without depending on the lexicon cache being
-  // primed at this point in the chain)
-  const setCardRecord =
-    setName !== undefined ? fmt.engine.fetchRenderCard(setName.s) : undefined;
-  const patternCode =
-    setCardRecord === undefined || setCardRecord.unknown === true
-      ? undefined
-      : setCardRecord.record.codename;
-  const label =
-    !isNew && setName !== undefined && patternCode !== undefined
-      ? (findPattern(patternCode)?.label(setCardRecord?.name.leftName?.s) ?? "")
-      : "";
+  let label = "";
+  if (setName !== undefined) {
+    if (!isNew) {
+      const parsed = parseSetName(setName.s);
+      label =
+        parsed.spec !== undefined
+          ? (parsed.spec.label(parsed.anchorName?.s) ?? "")
+          : "";
+    } else {
+      const settingCodename = ruleSettingCodename(ctx);
+      const prototypeInput = prototypePatternInput(ctx, setName.s);
+      const winner =
+        settingCodename !== undefined && prototypeInput !== undefined
+          ? fmt.engine.ruleCacheSetLabelWinner?.(
+              ruleLookupKeysForCard(prototypeInput),
+              settingCodename,
+            )
+          : undefined;
+      label =
+        winner !== undefined
+          ? (findPattern(winner.patternCode)?.label(winner.anchorName) ?? "")
+          : "";
+    }
+  }
   const inner =
     `<div class='form-group form-control-feedback'>\n` +
     `<label>\nSet\n</label>\n` +
@@ -2034,38 +2051,46 @@ function isPreferenceRuleName(ctx: ViewContext): boolean {
     prefererCard.typeCode === "user";
 }
 
-/** Set#prototype (set/type/set.rb:90-93): `Card.fetch opts[:name], new:
- *  opts` - the STORED anchor card when the name exists (Mira Member is a
- *  real User: her prototype keeps the Self set in its set_names), a new
- *  card built from the args otherwise (the Type pattern's {type: anchor}
- *  args carry no name: a nameless new Topic-typed card). The candidates
- *  are that prototype card's set_names (rules.rb:76-80
- *  set_option_candidates). */
-function prototypeSetCandidates(ctx: ViewContext, setName: string): string[] {
+/** The set's Set#prototype card as a PatternCardInput (set/type/set.rb:90-93
+ *  `Card.fetch opts[:name], new: opts`): the STORED anchor when the name
+ *  exists (Mira Member is a real User: her prototype keeps the Self set in
+ *  its set_names), a new card built from the pattern's prototype_args
+ *  otherwise (the Type pattern's {type: anchor} args carry no name: a
+ *  nameless new Topic-typed card). Undefined when the set's pattern is not
+ *  registered (subclass_for_set nil - Ruby raises there; the callers treat
+ *  it as no prototype). */
+function prototypePatternInput(
+  ctx: ViewContext,
+  setName: string,
+): PatternCardInput | undefined {
   const parsed = parseSetName(setName);
   const protoArgs = parsed.spec?.prototypeArgs(parsed.anchorName?.s);
-  if (protoArgs === undefined) return ["*all"];
+  if (protoArgs === undefined) return undefined;
   if (protoArgs.name !== undefined) {
     const stored = ctx.fmt.engine.fetchRenderCard(protoArgs.name);
     if (stored !== undefined && stored.unknown !== true) {
-      return setNamesForCard({
+      return {
         name: stored.name.s,
         typeName: stored.typeName,
         typeId: stored.id,
-      });
+      };
     }
-    return setNamesForCard({
-      name: protoArgs.name,
-      isNew: true,
-      typeName: protoArgs.type,
-    });
+    return { name: protoArgs.name, isNew: true, typeName: protoArgs.type };
   }
   const typeName = protoArgs.type ?? "";
   const typeCard = ctx.fmt.engine.fetchRenderCard(typeName);
-  const typeId = typeCard !== undefined && typeCard.unknown !== true
-    ? typeCard.id
-    : DeckoName.parse(typeName).cardId;
-  return setNamesForCard({ name: "", isNew: true, typeName, typeId });
+  const typeId =
+    typeCard !== undefined && typeCard.unknown !== true
+      ? typeCard.id
+      : DeckoName.parse(typeName).cardId;
+  return { name: "", isNew: true, typeName, typeId };
+}
+
+/** rules.rb:76-80 set_option_candidates: the prototype card's set_names
+ *  (the candidate sets, specific-first). */
+function prototypeSetCandidates(ctx: ViewContext, setName: string): string[] {
+  const input = prototypePatternInput(ctx, setName);
+  return input !== undefined ? setNamesForCard(input) : ["*all"];
 }
 
 /** rules.rb:57-63 set_options + :76-104 the walk: candidates = the rule
