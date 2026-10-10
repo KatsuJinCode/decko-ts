@@ -16,7 +16,7 @@ The mod-compatibility boundary is its own decision record
 
 | Domain | What parity means | Measured by (public package) | Headline figure |
 | --- | --- | --- | --- |
-| Rendering | HTML/format output byte-identical to Ruby's | Corpus replay; miniature smoke fixture; reference-harness render ops | 167,674 / 180,442 views byte-identical (92.9%), with-mods corpus replay, 2026-09-23 |
+| Rendering | HTML/format output byte-identical to Ruby's | Reference-harness render ops; miniature smoke fixture; corpus replay | 1,754 / 1,754 renders byte-identical, `synthetic-v1` reference-harness grade. The with-mods corpus replay measured 167,674 / 180,442 views byte-identical (92.9%) on 2026-09-23, on an earlier revision of the engine |
 | Semantics | Names, keys, types, sets, rules, permissions, CQL answer as Ruby answers | Reference-harness semantics ops; CQL batteries in `fixtures/captured/` | 2,388 semantics operations, `synthetic-v1` fixture |
 | Persistence | The rows a write leaves behind match Ruby's, table by table | Reference-harness scenario steps (raw row deltas) | 16 write steps, one raw row-delta comparison each |
 | Side effects | Saved/refused verdicts, errors, mail, sign-in identity match Ruby's | Reference-harness write and sign-in step answers; captured mail | 19 comparisons: 16 write answers + 3 sign-in answers |

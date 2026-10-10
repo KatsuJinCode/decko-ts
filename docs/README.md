@@ -7,7 +7,7 @@ and the decisions that shaped it.
 
 | Document | What it covers |
 | --- | --- |
-| [parity-method.md](parity-method.md) | How byte parity with Ruby Decko is measured: the oracle, the captured fixtures, corpus replay, the comparator and its one normalisation, and what a parity figure does and does not tell you. |
+| [parity-method.md](parity-method.md) | How byte parity with Ruby Decko is measured: the oracle, the captured fixtures, corpus replay, what each instrument's comparator normalises, and what a parity figure does and does not tell you. |
 | [deploy-bunny.md](deploy-bunny.md) | Deploying on Bunny Edge Scripting against Bunny Database (libSQL): the two bundles, configuration variables, caching switches, the write-surface gate and status endpoints. |
 | [deploy-cloudflare.md](deploy-cloudflare.md) | Deploying on Cloudflare Workers over D1: the deploy button, manual deployment, the Worker entry and its bundle, D1's tighter limits and how the engine works within them. |
 | [operations.md](operations.md) | Running the engine: local development, the staging server, Server-Timing and the edge profiler, data freshness, cache invalidation, credential rotation and troubleshooting. |

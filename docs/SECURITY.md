@@ -7,7 +7,7 @@ There are two exceptions, and only two:
 1. **Security holes.** Where Ruby's behaviour lets one user act against another (run script in their browser, act with their session, read or guess their credentials), the port does not copy it.
 2. **Crashes.** Where Ruby fails with an internal error, the port gives the error Ruby intended.
 
-Each exception is an *approved security divergence*: it is listed below with what Ruby does, what the port does, why, what it costs in compatibility, how to configure it, and the test that pins it. Anything not listed here is meant to behave exactly as Ruby Decko does; a difference that is not listed is a defect.
+Each exception is an *approved security divergence*: it is listed below with what Ruby does, what the port does, why, what it costs in compatibility, how to configure it, and the test that pins it. Anything not listed here is meant to behave exactly as Ruby Decko does; a difference that is not listed is a defect. Two kinds of deliberate difference are governed outside this list, and neither is a security divergence: the transaction/save differences on adapters without interactive transactions, listed and pinned by [decisions/0007](decisions/0007-atomic-saves-and-transaction-contract.md); and the row-level differences the persistence oracle declares step by step, with their reasons, in `tests/fixtures/persistence-oracle/deliberate-differences.json` (divergence 1 above accounts for steps 20, 22 and 31 of that list).
 
 ## Reporting a vulnerability
 

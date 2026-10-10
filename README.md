@@ -13,12 +13,21 @@ future work and supersede conflicting TS-only direction in older notes.
 TypeScript port of the Decko card engine. Target: full compatibility with
 Ruby Decko (card 1.110.0 / decko 0.20.0) for ANY deck — any combination of
 mods, cards, and settings. The running Ruby engine is the oracle; the
-acceptance criterion is byte-for-byte output parity. That target is not
-reached yet: as of the with-mods corpus replay of 2026-09-23, 167,674 of
-180,442 captured views render byte-identically — 92.9%, with the remaining
-gap broken down under [Migration status](#migration-status) below. Upstream
+acceptance criterion is byte-for-byte output parity. Upstream
 proposal: decko-commons/decko#1282 (held on this fork until parity +
 flawless production run, per the proposal's question 3 recommendation).
+
+The parity grade of record is the public synthetic deck, graded by the
+reference harness and reproducible from this repository
+([reference-harness/SPEC.md](reference-harness/SPEC.md)): rendering
+1,754 of 1,754, semantics 2,389 of 2,389, persistence 16 of 16, side
+effects 19 of 19, read-writes 8 of 8. The larger figures under
+[Migration status](#migration-status) — the with-mods corpus replay —
+are historical: they were measured on an earlier revision of the engine,
+on 2026-09-23, against a corpus that is not redistributable and cannot be
+reproduced from this repository. The current tree is verified by the test
+suite and by byte identity on a fixed set of 40 pages across every serving
+path, not by a second full grade.
 
 ---
 
@@ -279,9 +288,15 @@ budgets are green solo (warm
 `benchmarks/results/perf/render-perf.json`).
 
 `npm test` runs the card-engine suite (the largest tree); the full tree
-runs with `npx vitest run`. The renderer includes a depth-sweep test (1..32)
-that proves the `#1282` claim: constant queries per render regardless of
-inclusion depth.
+runs with `npx vitest run`. Round trips per render are pinned by the
+measured law ([docs/scaling-comparison-deep-nesting.md](docs/scaling-comparison-deep-nesting.md),
+reproducible with `tests/card/render/deep-nesting-trip-attribution.test.ts`):
+a cold render costs four fixed round trips plus one per nesting level below
+the root, however many cards each level holds — breadth costs nothing extra
+(a 200-card fan is 5 round trips) — while Ruby sends one query per card at
+every depth. The `#1282` constant-per-depth claim is not met; the
+depth-sweep test (`tests/card/render/depth-sweep.test.ts`) asserts the same
+slope at every depth up to the renderer's 20-level ceiling.
 
 ## Ground rules
 
@@ -306,8 +321,11 @@ registry, fetch/cache, renderer with batched inclusion prefetch, rule
 application, mod loading with chain-aware per-card view dispatch, request
 metrics, the perf harness, and the generalized dump importer.
 
-Full-corpus render parity (the with-mods corpus replay, 2026-09-23):
-167,674 / 180,442 captured views byte-identical (92.9%; that day's runs
+Full-corpus render parity (the with-mods corpus replay, 2026-09-23, measured
+on an earlier revision of the engine — the grade of record is the
+synthetic-deck grade at the top of this file, and the current tree was
+re-verified on the 40-page production gate rather than by a new full corpus
+grade): 167,674 / 180,442 captured views byte-identical (92.9%; that day's runs
 progressed 91.4% → 92.4% → 92.9%). The rule-count, name-leak, mini-bar, and
 structure-wrapper families are eliminated corpus-wide; the remaining mass
 is dominated by the permission family (~58%: denied sentinels and the

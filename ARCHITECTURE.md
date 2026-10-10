@@ -59,7 +59,7 @@ Everything else is built from cards:
 | `follow/`, `notify/` | `card-mod-follow`, mailers | following cards and notification mail |
 | `attachments/`, `assets/` | `card-mod-carrierwave`, `card-mod-assets` | file and image cards, compiled assets |
 | `live/` | none | the request-local row store (see below) |
-| `one-trip/` | none | rendering a page in one storage round trip (see below) |
+| `one-trip/` | none | batching a page's fetches into a few round trips (see below) |
 
 Outside `card/`:
 
@@ -100,23 +100,44 @@ A page request, in order:
 6. **Wrap.** The layout card's content is rendered with the main card nested
    into it.
 
-### Request-local state only
+### What is request-local, and what is retained
 
-Nothing that depends on deck content is kept between requests. Within one
-request, `src/card/live/request-store.ts` holds the rows that request has
-fetched, and `store-row-evaluator.ts` answers a later statement from those rows
-only when it can prove they are the complete result; otherwise the statement
-goes to storage. `tests/deploy/no-caching-decision-state.test.ts` checks that
-permission verdicts, rule resolutions and search results do not carry over
-from one request to the next.
+Two kinds of state are kept, under different rules.
 
-### One round trip per page
+Within one request, `src/card/live/request-store.ts` holds the rows that
+request has fetched, and `store-row-evaluator.ts` answers a later statement
+from those rows only when it can prove they are the complete result; otherwise
+the statement goes to storage. Nothing in that store outlives the request.
+
+The engines that serve `/:card/:view` paths and signed-in actors are
+long-lived, and they do keep state between requests: loaded card rows, the
+name lexicon and resolved rules. Each request's render reads the deck's
+data-version stamp once — a counter that database triggers advance on every
+change to cards or references — and resets the retained state when the counter
+has moved, so nothing retained is served past the write that invalidated it
+(`src/card/render.ts`; a warm render's whole extra cost is that one stamp
+read). `tests/deploy/no-caching-decision-state.test.ts` runs two requests in
+one process with a change made between them through a separate connection,
+and checks on every serving path that the second request answers from the
+deck as it now is.
+
+Platform-level response caches (`DECKO_EDGE_CACHE`, `DECKO_EDGE_GLOBAL_CACHE`)
+are a separate, optional layer: off by default, and not relied on for
+correctness by anything above.
+
+### Round trips per page
 
 A naive render issues one query per nest level, which on an edge database
 means hundreds of network round trips per page. `src/card/one-trip/` computes
-the rows a page needs (its closure) ahead of rendering and fetches them in a
-few batched statements. It is a performance path, not a semantic one: the page
-must be byte-identical with and without it, and the tests compare both.
+the rows a page needs (its closure) ahead of rendering and fetches them in
+batched statements. The measured shape
+([docs/scaling-comparison-deep-nesting.md](docs/scaling-comparison-deep-nesting.md),
+pinned by `tests/card/render/deep-nesting-trip-attribution.test.ts`): a cold
+render costs four fixed round trips plus one per level of nesting below the
+root, however many cards each level holds — breadth costs nothing extra, so a
+fan of 200 cards is 5 round trips. Ruby sends one query per card at every
+depth. It is a performance path, not a semantic one: the page must be
+byte-identical with and without it, and the tests compare both.
 
 ---
 

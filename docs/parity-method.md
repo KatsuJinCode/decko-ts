@@ -21,7 +21,7 @@ covers.
 
 | Layer | What parity means | Instrument |
 | --- | --- | --- |
-| **Rendering** | The HTML, JSON and other format output is byte-identical to what Ruby emitted for the same card and view. | Oracle replay and corpus replay, both byte comparison. |
+| **Rendering** | The HTML, JSON and other format output is byte-identical to what Ruby emitted for the same card and view. | Oracle replay, corpus replay and the reference harness (`../reference-harness/SPEC.md`), all byte comparison. |
 | **Semantics** | Names, keys, types, sets, rules, permissions and CQL produce the answers Ruby would produce. | Oracle replay of names, rules and CQL fixtures; the CQL `match` battery. |
 | **Persistence** | Save, delete, rename and reference state reproduce Ruby's act, action, change and reference chain. | Write-conformance scenarios replayed against the engine. |
 | **Side effects** | Events, notifications and permission denials produce the observable effects Ruby produced. | Captured notification mail bytes; captured permission-denial bytes. |
@@ -79,10 +79,15 @@ Three things are not captured, and their absence is deliberate:
    already present, which legitimately differs between runs. It goes to
    stdout, never into the fixture.
 
-### The one normalisation
+### What the oracle-replay comparator normalises
 
-Every wrapped slot render embeds a random DOM identifier, generated from
-`SecureRandom.hex(10)`. It cannot be captured as a literal value, so the
+Every instrument defines its own normalisations, and a figure takes its
+normalisations from the instrument that produced it. This comparator's rules
+are the three defined in `src/testing/diff.ts`; the reference harness's are
+the two defined in `../reference-harness/runner/normalize.mjs`.
+
+First, every wrapped slot render embeds a random DOM identifier, generated
+from `SecureRandom.hex(10)`. It cannot be captured as a literal value, so the
 recording layer rewrites `data-slot-id` to a fixed placeholder for both quote
 styles. The attribute's presence remains part of the fixture: a view that
 should carry a slot id and does not still fails.
@@ -94,8 +99,15 @@ normalization and fails the diff, which is the point; uppercase hex survives
 too, because Ruby's output is lowercase and uppercase would be a real
 divergence. The rule is idempotent, so the placeholder is never rematched.
 
-This is the only normalization. Everything else is compared as exact bytes:
-no whitespace tolerance, no case folding, no attribute reordering.
+The other two rules cover the same class of capture-process artifact: the
+per-process accordion group hash (Ruby 3.3 seeds `String#hash` per process,
+so a collapse id carries a value no deterministic engine can reproduce) and
+the `Cardio::Mod` object address that one mod's output interpolates (the
+object defines no `to_s`, so Ruby prints its heap address). Both are
+normalised to fixed placeholders on both sides.
+
+Everything else is compared as exact bytes: no whitespace tolerance, no case
+folding, no attribute reordering.
 
 ### `match` needs a second oracle
 
@@ -212,14 +224,16 @@ Parity is the acceptance criterion; performance is the reason the port exists
 on an edge runtime. The two are measured separately and never traded.
 
 The comparison renders identically-named synthetic fixture decks through both
-engines: chains one to two hundred levels deep, fans of one to two hundred
-children, and whole inclusion trees. The shape of the result is what matters:
-Ruby's query cost grows linearly with every axis — roughly one query per
-included card — while this engine's cost tracks the shape of the inclusion
-tree rather than the size of the deck, because one batched statement fetches a
-whole inclusion level. Warm renders are served from cache at zero round trips
-at every renderable shape. Past the render cap both engines refuse, and the
-rejection cost is bounded and depth-independent on both sides.
+engines: chains up to the twenty-level render cap (past it both engines
+refuse, and the rejection cost is bounded and depth-independent on both
+sides), fans of one to two hundred children, and whole inclusion trees. The
+shape of the result is what matters: Ruby's query cost grows linearly with
+every axis — roughly one query per included card — while this engine's cost
+tracks the shape of the inclusion tree rather than the size of the deck,
+because one batched statement fetches a whole inclusion level. A warm render
+on a long-lived engine costs one round trip: the freshness-stamp read that
+opens every request. Zero round trips holds only within a single request,
+where the request-local store answers.
 
 Counts are comparable across engines; wall-clock is not, because the two
 render against different storage backings. Every quoted figure should cite the
