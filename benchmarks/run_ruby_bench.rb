@@ -19,7 +19,7 @@
 #   BENCH_BACKGROUND background plain cards for table-size realism (default 400)
 #   BENCH_PREFIX     bench card name prefix (default "BenchR1")
 #
-# Contract with the oracle app (docs/oracle-harness.md rules): the harness
+# Contract with the oracle app (tools/oracle/README.md rules): the harness
 # seeds ONLY cards carrying the distinctive prefix, touches no existing
 # fixture cards, and renders as the runner's default user (Anonymous), which
 # is the realistic page-render permission path (writes use Card::Auth.as_bot).

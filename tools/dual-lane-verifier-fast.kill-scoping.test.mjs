@@ -26,8 +26,9 @@
 //   import safety   importing the verifier module must not spawn or exit
 //                   (entry guard) -- implicit: this file imports it and runs
 
-import { describe, expect, it } from "vitest";
+import { expect, it } from "vitest";
 import { spawn, spawnSync } from "node:child_process";
+import { describeOrSkipLoud } from "../tests/support/describe-with-corpus.ts";
 import {
   killOwnTree,
   killPhaseTree,
@@ -97,10 +98,13 @@ async function expectDead(pid, what) {
 // snapshot) and loud-refuses on other hosts (PLATFORM-OPS gate in
 // prepareRunState). Gate the suite the same way coderay-byte-identity gates
 // its corpus fixtures: skip cleanly where the platform branch is missing
-// instead of failing red on a host the instrument has never supported.
-const d = process.platform === "win32" ? describe : describe.skip;
-
-d("dual-lane-verifier-fast kill scoping (pass21 sweep defect guard)", () => {
+// instead of failing red on a host the instrument has never supported — and
+// say so in the output, never a silent skip.
+describeOrSkipLoud(
+  process.platform !== "win32",
+  "tools/dual-lane-verifier-fast.kill-scoping.test.mjs",
+  "process.platform === 'win32' — the kill machinery under test is win32-only (taskkill/tasklist/powershell snapshot) and loud-refuses on other hosts (PLATFORM-OPS gate in prepareRunState)",
+)("dual-lane-verifier-fast kill scoping (pass21 sweep defect guard)", () => {
   it("deadline-scoped killPhaseTree kills ONLY its own phase tree; the sibling tree survives untouched", async () => {
     const target = spawnPhaseShapedTree();
     const sibling = spawnPhaseShapedTree();

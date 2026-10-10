@@ -17,7 +17,8 @@
 import { copyFileSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, expect, it } from "vitest";
+import { describeOrSkipLoud } from "../support/describe-with-corpus.js";
 import { LocalSqliteDriver } from "../../src/server/drivers/local-sqlite.js";
 import { FetchEngine } from "../../src/card/fetch.js";
 import { CardActionEngine } from "../../src/card/actions/card-action-engine.js";
@@ -89,7 +90,11 @@ async function boot(dbPath: string, actor: { id: number; name: string }) {
   return { driver, engine };
 }
 
-describe.skipIf(!HAVE_DECK)(
+describeOrSkipLoud(
+  !HAVE_DECK,
+  "tests/tools/junction-create-left-inheritance.test.ts",
+  `the private editing-oracle deck is present at ${SRC} (set EDITING_DECK) — the staging-lane finding this suite pins is reproduced on that oracle deck, which a clean checkout does not carry`,
+)(
   "junction create inherits the left card's update rule across tasks (staging lane finding)",
   () => {
     let driver: LocalSqliteDriver;

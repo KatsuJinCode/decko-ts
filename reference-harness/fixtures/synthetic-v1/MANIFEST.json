@@ -1,10 +1,10 @@
 {
   "format": "decko-reference-fixture-manifest/1",
   "fixture": "synthetic-v1",
-  "digest": "b9da0312d4562a18448e76791f8cc3765da1c4a3680c0917503f1e15c17e53bb",
+  "digest": "7a96292d07200136b2de4f9727d9f2aafed105a79d37d8f834ac1788dd1f823b",
   "files": {
     "deck.json": "3a5fae5f3afaa51220111e7805c093fef7c0d736793c31acc2752da53ac7465e",
-    "deck/deck.sqlite3": "339e9de5a1dca21ac6d5a1aae6b3b8b947a3ba9d4fec86aeb260c5737ca49ef1",
+    "deck/deck.sqlite3": "a9f580814c2a5adc30e21f704985573ebb3f1090a14993bacacbdb1fb9a32f3d",
     "deck/files/307/1789819200.js": "53efb75374566e03e6d3fa7c179e888f100bb3545c4b724748128355c3f1c865",
     "deck/files/447/1789819200.css": "e9dbcbbb1bf1aa328e85804d5c2445fc8f9eb79247b7bf04687baece6256b2bb",
     "deck/files/904/989.txt": "a37174c59b20f89276202dad3363eb929679e37aa2a16f381bd58b0c6b2af3fe",

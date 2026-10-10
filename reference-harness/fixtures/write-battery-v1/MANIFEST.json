@@ -3,7 +3,7 @@
   "fixture": "write-battery-v1",
   "files": {
     "deck.json": "0b9a70ae1e4e835a6f97975372aa0780f0ec1f53f96a9f57e39b5f5e8a14055a",
-    "deck/deck.sqlite3": "8f277c67905aefe23f748a678e189ebdc1731ae00bab8c9c202315b387190409",
+    "deck/deck.sqlite3": "b025a82888c7912386c1267885ea035c221fb4d0b83b4b25601c8b62c135a2b4",
     "deck/files/307/1791633600.js": "53efb75374566e03e6d3fa7c179e888f100bb3545c4b724748128355c3f1c865",
     "deck/files/447/1791633600.css": "e9dbcbbb1bf1aa328e85804d5c2445fc8f9eb79247b7bf04687baece6256b2bb",
     "expected/persist-steps/step-01.json": "98a998c1407c9bc4574fc1da4dff56725bb971ffc79d7e3279496a888d3151e2",

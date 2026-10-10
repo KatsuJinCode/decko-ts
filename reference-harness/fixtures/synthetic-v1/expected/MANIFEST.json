@@ -1,7 +1,7 @@
 {
   "format": "decko-reference-expected-manifest/1",
   "fixture": "synthetic-v1",
-  "fixture_digest": "b9da0312d4562a18448e76791f8cc3765da1c4a3680c0917503f1e15c17e53bb",
+  "fixture_digest": "7a96292d07200136b2de4f9727d9f2aafed105a79d37d8f834ac1788dd1f823b",
   "oracle": {
     "variant": "stock",
     "patches": [],
@@ -138,7 +138,7 @@
           "card": "1.110.0"
         }
       },
-      "fixture_digest": "b9da0312d4562a18448e76791f8cc3765da1c4a3680c0917503f1e15c17e53bb",
+      "fixture_digest": "7a96292d07200136b2de4f9727d9f2aafed105a79d37d8f834ac1788dd1f823b",
       "fixture_problems": [],
       "ms_per_op": 272,
       "session_writes": {}
@@ -164,7 +164,7 @@
           "card": "1.110.0"
         }
       },
-      "fixture_digest": "b9da0312d4562a18448e76791f8cc3765da1c4a3680c0917503f1e15c17e53bb",
+      "fixture_digest": "7a96292d07200136b2de4f9727d9f2aafed105a79d37d8f834ac1788dd1f823b",
       "fixture_problems": [],
       "ms_per_op": 129,
       "session_writes": {}
@@ -190,7 +190,7 @@
           "card": "1.110.0"
         }
       },
-      "fixture_digest": "b9da0312d4562a18448e76791f8cc3765da1c4a3680c0917503f1e15c17e53bb",
+      "fixture_digest": "7a96292d07200136b2de4f9727d9f2aafed105a79d37d8f834ac1788dd1f823b",
       "fixture_problems": [],
       "steps_total": 22,
       "steps_run": 22
@@ -203,8 +203,8 @@
       "bytes": 1425444
     },
     "run-meta.json": {
-      "sha256": "e55403f1c0dd6dd4578067dd80d0ee6ae9f46ba7c8239d6e090e88bdc6f7a914",
-      "content_sha256": "e55403f1c0dd6dd4578067dd80d0ee6ae9f46ba7c8239d6e090e88bdc6f7a914",
+      "sha256": "f7075cc7041ecd405aacee187b283a70052d7429eea5b31590ed30ed06bec3df",
+      "content_sha256": "f7075cc7041ecd405aacee187b283a70052d7429eea5b31590ed30ed06bec3df",
       "bytes": 2259
     },
     "scenarios.jsonl": {
@@ -287,6 +287,12 @@
         }
       },
       "unexplained": []
+    },
+    "repin": {
+      "date": "2026-10-10",
+      "what": "The fixture deck lost its eight empty private-app library_* tables (reference-harness/corpus/drop-private-app-tables-from-fixture-decks.mjs); the fixture manifest, this directory's run-meta run records and this manifest were re-pinned to the new fixture digest without re-capture.",
+      "why": "The tables carried another application's schema, were empty, and sit outside the graded surface: render, semantics and scenario answers and every row delta are unchanged. The grade run recorded beside this manifest re-verifies the answers against the re-pinned fixture.",
+      "previous_fixture_digest": "b9da0312d4562a18448e76791f8cc3765da1c4a3680c0917503f1e15c17e53bb"
     }
   }
 }

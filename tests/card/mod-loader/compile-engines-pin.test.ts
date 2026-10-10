@@ -45,9 +45,10 @@
 //   class catalogue and its residuals live in
 //    and the adapter header.
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { describeOrSkipLoud } from "../../../tests/support/describe-with-corpus.js";
 import {
   compressCss,
   compileCoffeeScript,
@@ -289,7 +290,29 @@ describe("SassC compile (01_css.rb compress/compile, 02_scss.rb compile_scss)", 
   });
 });
 
-describe("mod asset-dir walk (asset_group.rb relative_paths)", () => {
+// The asset-walk describe pins Dir.glob semantics LIVE against the gem
+// directories the capture recorded: fixtures/captured/compile-engines.json
+// stores the oracle machine's absolute assets_path values (C:/Ruby33-x64/...)
+// and the walk runs against those directories on disk. On a machine without
+// them the walk returns [] and every recorded relative_paths list fails —
+// a portability failure, not a divergence. Skip loudly instead: the fixture
+// records a machine-specific compile verification, and the byte-level
+// compile pins above carry the portable half of the guarantee.
+const RECORDED_GEM_DIRS = [
+  ...new Set(
+    Object.values(FIXTURE.asset_walk)
+      .flatMap((byKind) => Object.values(byKind))
+      .flatMap((walk) => [walk.assets_path, ...walk.groups.map((g) => g.base_path)])
+      .filter((p): p is string => typeof p === "string" && p.length > 0),
+  ),
+];
+const GEM_DIRS_PRESENT = RECORDED_GEM_DIRS.every((p) => existsSync(p));
+
+describeOrSkipLoud(
+  !GEM_DIRS_PRESENT,
+  "tests/card/mod-loader/compile-engines-pin.test.ts (mod asset-dir walk)",
+  `the fixture's recorded gem directories are present on this machine (${RECORDED_GEM_DIRS.join(", ")}) — the fixture records a machine-specific compile verification: its absolute assets_path values point at the oracle machine's Ruby gem tree, and the walk is pinned live against them`,
+)("mod asset-dir walk (asset_group.rb relative_paths)", () => {
   it("folder-group walk: Dir.glob('**/*.{exts}') semantics pinned live against the recorded gem dirs", () => {
     const styleWalk = FIXTURE.asset_walk["style"]?.["style"];
     expect(styleWalk?.assets_path).toBeDefined();

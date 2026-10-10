@@ -240,6 +240,7 @@ flag first to see the plan; nothing is contacted. See
 6. Check `GET /_status` on the deployed host and confirm the card count is the
    one you seeded.
 
-An origin server, if you need one, is under `deploy/bunny-origin/`: the
-server script, an nginx configuration, a Caddy configuration and a systemd
-unit.
+An origin server, if you need one, lives in the project's internal tooling
+(the server script, an nginx configuration, a Caddy configuration and a
+systemd unit), which is not part of this repository; what this repository
+ships for the Bunny path is the edge worker under `deploy/bunny-worker-src/`.

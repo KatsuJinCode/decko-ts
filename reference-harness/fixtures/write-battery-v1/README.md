@@ -69,3 +69,16 @@ recorded in `MANIFEST.json`'s `provenance`.
 Rebuilding the deck reproduces it row for row: the generator is deterministic
 and the builder freezes the deck.json clock, so even the account salts are
 stable. The manifest pins the recorded bytes.
+
+One deliberate difference from a fresh rebuild: the deck was built inside a
+private reading-assistant application whose eight empty `library_*` tables
+(`library_assistant_decisions`, `library_assistant_interactions`,
+`library_assistant_learner_levels`, `library_assistant_threads`,
+`library_audit_log`, `library_feature_events`, `library_lib_settings`,
+`library_proposals`) rode along in the committed deck file. They are not part
+of the battery — every one is empty, nothing in this repository creates or
+reads them, and no recording touches them — and
+`reference-harness/corpus/drop-private-app-tables-from-fixture-decks.mjs`
+dropped them from the committed deck (2026-10-10). A fresh rebuild inside the
+private application still carries them; the batteries and the whole-deck
+comparison are blind to their presence or absence.

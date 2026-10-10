@@ -11,7 +11,7 @@ Each exception is an *approved security divergence*: it is listed below with wha
 
 ## Reporting a vulnerability
 
-Please report suspected vulnerabilities privately to the maintainers rather than in a public issue. Include the request or content that triggers the problem and what you observed. Where the same flaw exists in Ruby Decko, we also report it upstream.
+Please report suspected vulnerabilities privately rather than in a public issue, through a [GitHub Security Advisory](https://github.com/decko-commons/decko-ts/security/advisories/new) or by email to the maintainers (address to be published here before the first public release — placeholder, not yet live). Include the request or content that triggers the problem and what you observed. Where the same flaw exists in Ruby Decko, we also report it upstream.
 
 ## Approved divergences
 

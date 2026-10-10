@@ -23,7 +23,7 @@
           "card": "1.110.0"
         }
       },
-      "fixture_digest": "b9da0312d4562a18448e76791f8cc3765da1c4a3680c0917503f1e15c17e53bb",
+      "fixture_digest": "7a96292d07200136b2de4f9727d9f2aafed105a79d37d8f834ac1788dd1f823b",
       "fixture_problems": [],
       "ms_per_op": 272,
       "session_writes": {}
@@ -49,7 +49,7 @@
           "card": "1.110.0"
         }
       },
-      "fixture_digest": "b9da0312d4562a18448e76791f8cc3765da1c4a3680c0917503f1e15c17e53bb",
+      "fixture_digest": "7a96292d07200136b2de4f9727d9f2aafed105a79d37d8f834ac1788dd1f823b",
       "fixture_problems": [],
       "ms_per_op": 129,
       "session_writes": {}
@@ -75,7 +75,7 @@
           "card": "1.110.0"
         }
       },
-      "fixture_digest": "b9da0312d4562a18448e76791f8cc3765da1c4a3680c0917503f1e15c17e53bb",
+      "fixture_digest": "7a96292d07200136b2de4f9727d9f2aafed105a79d37d8f834ac1788dd1f823b",
       "fixture_problems": [],
       "steps_total": 22,
       "steps_run": 22

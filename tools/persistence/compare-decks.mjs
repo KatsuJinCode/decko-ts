@@ -32,7 +32,9 @@
 // Exit 0 when the outside-probe deltas match, 1 otherwise, 2 on missing input.
 
 import { DatabaseSync } from "node:sqlite";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 // --deliberate=<deliberate-differences.json>: rows a declared difference
 // leaves in the Ruby deck alone (each difference's outsideRows, as
@@ -53,7 +55,20 @@ const PORT_ONLY_TABLES = new Set(["deck_data_version"]);
 const TIMESTAMPS = new Set(["created_at", "updated_at", "acted_at"]);
 
 const open = (f) => new DatabaseSync(f, { readOnly: true });
-const base = open(baseFile);
+// The base deck is usually a committed fixture (write-battery-v1), whose
+// decks are WAL-mode: opening one in place - even read-only - creates
+// -shm/-wal sidecars beside it, a read-only connection cannot remove them
+// on close, and the fixture's manifest lists no such files, so the next
+// manifest check would report the fixture as changed. Read a scratch copy
+// instead; the TS deck is already a copy, and the Ruby deck is a private
+// oracle deck, not a committed fixture.
+const base = (() => {
+  const dir = mkdtempSync(join(tmpdir(), "persist-base-deck-"));
+  const copy = join(dir, "base.sqlite3");
+  copyFileSync(baseFile, copy);
+  process.on("exit", () => rmSync(dir, { recursive: true, force: true }));
+  return open(copy);
+})();
 const rubyIsDelta = rubyFile.endsWith(".json");
 const ruby = rubyIsDelta ? undefined : open(rubyFile);
 const ts = open(tsFile);
@@ -235,6 +250,24 @@ for (const table of tables) {
   if (t?.portOnly && r === undefined) {
     report.portOnlyTables.push(table);
     continue;
+  }
+  // A recorded entry that records NOTHING (no probe rows, nothing changed,
+  // added or removed) is an observation, not an obligation: the Ruby deck
+  // carried the table and wrote nothing to it, so a final deck without the
+  // table matches the recording (the fixture decks dropped their empty
+  // private-app library_* tables after that recording was made). Only an
+  // entry that records nothing is skipped this way; any recorded row makes
+  // the table's absence a mismatch.
+  if (t === undefined && r !== undefined && !r.portOnly) {
+    const empty =
+      (r.probeRows ?? 0) === 0 &&
+      Object.keys(r.changed ?? {}).length === 0 &&
+      (r.added ?? []).length === 0 &&
+      (r.removed ?? []).length === 0;
+    if (empty) {
+      report.tables.push({ table, skipped: "recorded delta is empty and the deck no longer carries the table" });
+      continue;
+    }
   }
   if (r === undefined || t === undefined || r.portOnly || t.portOnly) {
     report.tables.push({ table, error: `table present in ${r ? "ruby" : ""}${t ? " ts" : ""} only` });

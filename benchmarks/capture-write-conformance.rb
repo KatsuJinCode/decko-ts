@@ -20,7 +20,7 @@
 #   fixtures/write-conformance/<scenario>.jsonl
 # (one file per scenario; deterministic across re-runs of the same DB copy).
 #
-# ENVIRONMENT (the proven oracle app pattern from docs/oracle-harness.md):
+# ENVIRONMENT (the proven oracle app pattern from tools/oracle/README.md):
 #   - tools/oracle/decko-oracle-app/db/<copy>.sqlite3 (NOT the capture
 #     corpus db; the copy is per-run disposable)
 #   - RAILS_ENV=development

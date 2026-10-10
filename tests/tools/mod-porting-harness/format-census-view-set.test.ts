@@ -38,10 +38,11 @@
 // gem is read READ-ONLY; Ruby does no Rails boot, no DB, no network.
 
 import { spawnSync } from "node:child_process";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { expect, it } from "vitest";
+import { describeOrSkipLoud } from "../../../tests/support/describe-with-corpus.js";
 import { mineViews } from "../../../tools/mod-porting-harness/mod-harness.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -99,7 +100,18 @@ function rubyCensus(): RubyCensus {
   return JSON.parse(res.stdout) as RubyCensus;
 }
 
-describe("card-mod-format view census == Ruby's view set", () => {
+// GEM_DIR is the oracle machine's absolute gem path baked into this suite
+// (and into mod-harness.mjs): on a machine without that tree the census walk
+// below throws ENOENT and the suite fails red on a host it has never
+// supported. Skip loudly instead — the fixture records a machine-specific
+// compile verification against that gem checkout.
+const GEM_TREE_PRESENT = existsSync(GEM_PATH);
+
+describeOrSkipLoud(
+  !GEM_TREE_PRESENT,
+  "tests/tools/mod-porting-harness/format-census-view-set.test.ts",
+  `the recorded gem tree is present at ${GEM_PATH} — the fixture records a machine-specific compile verification: the view census is mined from the oracle machine's card-mod-format checkout at an absolute path, absent here`,
+)("card-mod-format view census == Ruby's view set", () => {
   const ruby = rubyCensus();
   const setFiles = rbFiles(join(GEM_PATH, "set"));
   const mined = setFiles.flatMap((full) => {
