@@ -54,11 +54,11 @@ import {
 } from "../../src/server/worker-shared-surface.js";
 import { escapeHtml, layoutPage, parsePath } from "./bunny-edge-lineage-worker-surface.js";
 import {
-  SPACES_ASSET_HOST,
   applyServedEnvironmentDeltas,
   filesLeafVariant,
   filesNotFoundBody,
 } from "./bunny-edge-page-shell.js";
+import { EMPTY_SERVED_DELTAS, type ServedEnvironmentDeltas } from "./bunny-edge-served-deltas.js";
 import {
   EDGE_ERROR_PAGE_GRACE_MS,
   noRouteNotFoundResponse,
@@ -74,6 +74,29 @@ import { newCardRouteResponse } from "./bunny-edge-new-card-form.js";
 export interface Deck {
   fetcher: FetchEngine;
   render: RenderEngine;
+  /** The deployment's served-environment deltas (review round 4, finding 9).
+   *  The carrier for every value that used to be one private deck's
+   *  hard-coded identity: its footer version, asset host and revisions, the
+   *  error chrome's card ids and asset URLs, and the phantom item type.
+   *  Absent = the stock deck, whose every delta pass is a no-op. The field
+   *  rides the deck rather than the request options because the ERROR pages
+   *  and the /files/ route read it after `deck()` has answered — they get
+   *  the same object the render path does. */
+  servedDeltas?: ServedEnvironmentDeltas;
+}
+
+/** The deltas for a deck, defaulting to the stock (empty) set. Every call
+ *  site in this module goes through here so an unconfigured deployment has
+ *  exactly one definition of "no deltas". */
+export function deckServedDeltas(deck: Deck | ErrorPageDeckLike): ServedEnvironmentDeltas {
+  return deck.servedDeltas ?? EMPTY_SERVED_DELTAS;
+}
+
+/** The error-page builder's structural view of a deck (its own ErrorPageDeck
+ *  in bunny-edge-error-page.ts, named structurally here so this module does
+ *  not import a type it does not otherwise need). */
+interface ErrorPageDeckLike {
+  servedDeltas?: ServedEnvironmentDeltas;
 }
 
 /** A deck the request boots only when it needs one. The live page path
@@ -621,7 +644,10 @@ async function dispatchEngineRequest(
               (await source.deck()).fetcher.installNameEnvironment?.();
             }
           });
-    return html(page.status, applyServedEnvironmentDeltas(page.html));
+    return html(
+      page.status,
+      applyServedEnvironmentDeltas(page.html, deckServedDeltas(await source.deck())),
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     // Status mapping aligned with the CF worker's render path
@@ -723,7 +749,11 @@ async function filesRouteResponse(deck: Deck, pathname: string): Promise<Respons
   if (record === undefined || record.name === undefined || typeof source !== "string") {
     return filesNotFoundResponse(id);
   }
-  const target = derivedCloudAttachmentSource(source, SPACES_ASSET_HOST, filesLeafVariant(leaf));
+  const target = derivedCloudAttachmentSource(
+    source,
+    deckServedDeltas(deck).assetHost,
+    filesLeafVariant(leaf),
+  );
   if (target === "") {
     return filesNotFoundResponse(id);
   }

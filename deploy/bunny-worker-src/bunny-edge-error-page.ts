@@ -53,13 +53,24 @@ import { DeckoName } from "../../src/card/name.js";
 import { newSlotId } from "../../src/card/render/slot-html.js";
 import { SERVER_ERROR_HTML } from "../../src/card/render/debug-server-error.js";
 import { escapeHtml } from "./bunny-edge-lineage-worker-surface.js";
-import { SPACES_ASSET_HOST } from "./bunny-edge-page-shell.js";
+import { EMPTY_SERVED_DELTAS, type ServedEnvironmentDeltas } from "./bunny-edge-served-deltas.js";
 
 /** The deck the error pages build from. Structural, so tests can pass the
  *  real engines over the in-memory sqlite deck (the request core's Deck
  *  shape satisfies it; only the FetchEngine is consumed). */
 export interface ErrorPageDeck {
   fetcher: FetchEngine;
+  /** The deployment's served-environment deltas (deployment configuration,
+   *  EMPTY by default). Every corpus card id, asset URL and version pin this
+   *  chrome used to hard-code reads through here — see
+   *  bunny-edge-served-deltas.ts and the module header's finding-9 note. */
+  servedDeltas?: ServedEnvironmentDeltas;
+}
+
+/** The deltas for this deck, defaulting to the stock (empty) set so a
+ *  deployment that configures nothing builds a deck-neutral error page. */
+function deltasOf(deck: ErrorPageDeck): ServedEnvironmentDeltas {
+  return deck.servedDeltas ?? EMPTY_SERVED_DELTAS;
 }
 
 /** The literal-read driver surface this module uses (SQLDatabaseDriver's
@@ -69,45 +80,30 @@ interface ErrorPageDriver {
 }
 
 // ---------------------------------------------------------------------------
-// Constants — byte-verbatim from vm-staging-server.mjs
+// Deck identity — DEPLOYMENT CONFIGURATION, not constants
+// (review round 4, finding 9)
 // ---------------------------------------------------------------------------
-
-/** The not-found card's type constants, pinned from the live bytes, not
- *  derived (vm-staging-server.mjs:1364-1374): the type a fresh Decko card
- *  gets comes from the *all+*default rule, and the corpus's copy of that
- *  rule is empty. The live bytes are the contract. */
-const NOT_FOUND_DEFAULT_TYPE = {
-  id: "22281",
-  name: "BasicCs",
-  classToken: "basic_c",
-} as const;
-
-/** The deck-wide default layout rule parties (vm-staging-server.mjs:331-332,
- *  corpus ids). */
-const ALL_CARD_ID = 274;
-const LAYOUT_POINTER_ID = 255;
-
-/** Pointer type id (corpus) — drives the navbar dropdown branch
- *  (vm-staging-server.mjs:902). */
-const POINTER_TYPE_ID = 34843;
-
-/** The served head's asset URLs: the LIVE revisions baked directly, exactly
- *  as the staging host's wrapWithLayout does (vm-staging-server.mjs:346-348)
- *  — the served-environment delta pass is NOT applied to error pages there
- *  and is not applied here. */
-const MAIN_CSS_URL = `${SPACES_ASSET_HOST}/files/45514/1790384218.css`;
-const MAIN_JS_URL = `${SPACES_ASSET_HOST}/files/50617/1768074298.js`;
-
-/** Boot-value defaults (vm-staging-server.mjs:792-800): the *title read
- *  overrides the site title; the logo/favicon URLs stay the recorded live
- *  URLs (the *favicon/*logo rows only confirm them). */
-const SITE_TITLE_DEFAULT = "Culturesmith";
-
-/** The footer version pin (vm-staging-server.mjs:1081-1092): the live pages
- *  print "Decko v0.19.1" — a LIVE-byte receipt; the corpus's *version card
- *  says 0.20.0 and the recapture oracle prints 0.20.0, and neither is the
- *  served target. Do not "correct" this constant. */
-const FOOTER_VERSION_PIN = "0.19.1";
+//
+// Every value in this block used to be a module constant pinned from one
+// private deck's live bytes, so every deployment served that deck's card ids,
+// asset URLs and version string. Each is now a field on the deployment's
+// ServedEnvironmentDeltas (bunny-edge-served-deltas.ts), EMPTY by default:
+//
+//   notFoundType / allCardId / layoutPointerId / pointerTypeId  the corpus
+//     card ids the chrome's not_found slot and default-layout lookup read.
+//     Unset, the not_found slot renders with NO type chip and NO type
+//     attributes, and the default-layout lookup has no ids to query with —
+//     so the builder's own fallback (the minimal stub, below) answers rather
+//     than guessing another deck's layout rule.
+//   mainCssUrl / mainJsUrl / logoUrl / faviconUrl / siteTitleDefault  the
+//     head's asset URLs and boot-value fallbacks. Unset, the chrome links no
+//     compiled CSS or main script and falls back to a stock site title.
+//   footerVersionPin  the version the credit block prints. Unset, the credit
+//     block prints the deck's own stored bytes with no rewrite.
+//
+// The builder's fallback contract is unchanged and is what an UNCONFIGURED
+// deployment leans on: a chrome it cannot build answers the minimal stub, so
+// the error path can never 500 a second time.
 
 /** Grace bound for the budget-503 chrome build (module header): when the
  *  render budget fired because the database is slow or dead, the error page
@@ -202,10 +198,14 @@ interface ErrorPageBootValues {
 }
 
 async function ensureBootValues(deck: ErrorPageDeck): Promise<ErrorPageBootValues> {
+  const deltas = deltasOf(deck);
   const result: ErrorPageBootValues = {
-    siteTitle: SITE_TITLE_DEFAULT,
-    logoUrl: `${SPACES_ASSET_HOST}/files/79/3643-small.jpg`,
-    faviconUrl: `${SPACES_ASSET_HOST}/files/103/3649-small.jpg`,
+    // The *title read overrides these fallbacks; without a configured
+    // fallback a deck that stores no *title gets the stock label below
+    // rather than another deck's site name.
+    siteTitle: deltas.siteTitleDefault ?? "Deck",
+    logoUrl: deltas.logoUrl ?? "",
+    faviconUrl: deltas.faviconUrl ?? "",
   };
   try {
     const { rows } = await deckRows<{ name?: string | null; db_content?: string | null }>(
@@ -220,9 +220,10 @@ async function ensureBootValues(deck: ErrorPageDeck): Promise<ErrorPageBootValue
           result.siteTitle = raw.trim();
         }
       }
-      // *favicon (id 103) and *logo (id 79): the hard-coded URLs are the
-      // documented fallback (vm-staging-server.mjs:813-818) — the Spaces
-      // host returns 200 for these file ids.
+      // *favicon and *logo: a deck that stores neither keeps the configured
+      // fallback URLs (empty when the deployment configures none, so the
+      // head carries no favicon/logo reference at all rather than a broken
+      // link to a file id from another deck's bucket).
     }
   } catch {
     // Keep the defaults if the lookup fails.
@@ -344,12 +345,16 @@ function parseDropdownList(content: string): DropdownItem[] {
  *  trailing denied span, and the "\r\n" item separator
  *  (vm-staging-server.mjs:894-968). */
 async function renderNavbarLinks(deck: ErrorPageDeck): Promise<string> {
+  const deltas = deltasOf(deck);
   const mainMenuContent = await fetchCardDbContent(deck, "*main menu");
   const items = parseWikiLinkList(mainMenuContent);
   const parts: string[] = [`<ul class="navbar-nav">`];
   for (const item of items) {
     const targetType = await fetchCardTypeId(deck, item.target);
-    const isPointer = targetType === POINTER_TYPE_ID;
+    // With no configured Pointer type id the dropdown branch can never be
+    // identified, so every item renders the plain link arm — the stock
+    // shape, rather than another deck's dropdown structure.
+    const isPointer = deltas.pointerTypeId !== undefined && targetType === deltas.pointerTypeId;
     if (item.target.startsWith("*") && isPointer) {
       const childContent = await fetchCardDbContent(deck, item.target);
       const children = parseDropdownList(childContent);
@@ -395,15 +400,20 @@ async function renderNavbarLinks(deck: ErrorPageDeck): Promise<string> {
  *  escape only on the slot JSON — the live byte form. */
 async function renderFooterContent(deck: ErrorPageDeck): Promise<string> {
   const creditImage = await fetchCardDbContent(deck, "*credit_image");
-  const version = FOOTER_VERSION_PIN;
+  // The footer version pin is deployment configuration (finding 9). With no
+  // pin configured the credit block prints the deck's own stored bytes and
+  // makes no version claim of its own.
+  const version = deltasOf(deck).footerVersionPin;
   // The corpus's *credit_image db_content ends "</svg>\n"; strip the
   // trailing newline so the template's own "\n" supplies the one live
   // serves (vm-staging-server.mjs:1093-1098).
   const svg = (creditImage.length > 0 ? creditImage : "").replace(/\n$/, "");
+  const versionLine =
+    version === undefined ? "" : `<a href="http://decko.org">Decko v${escapeHtml(version)}</a>\n`;
   const body =
     `<div class="d-flex justify-content-center align-items-center">\n` +
     `  ${svg}\n` +
-    `<a href="http://decko.org">Decko v${escapeHtml(version)}</a>\n` +
+    versionLine +
     `\n` +
     `</div>`;
   const slot = {
@@ -413,8 +423,20 @@ async function renderFooterContent(deck: ErrorPageDeck): Promise<string> {
     show: ["content"],
     home_view: "content",
   };
+  // The slot wrapper's card identity is deployment configuration too: a
+  // deployment that configures none carries no data-card-id / type
+  // attributes rather than another deck's card ids.
+  const deltas = deltasOf(deck);
+  const cardIdAttr =
+    deltas.footerCardId === undefined ? "" : ` data-card-id="${escapeHtml(deltas.footerCardId)}"`;
+  const typeIdAttr =
+    deltas.footerTypeId === undefined ? "" : ` data-card-type-id="${escapeHtml(deltas.footerTypeId)}"`;
+  const typeNameAttr =
+    deltas.footerTypeName === undefined
+      ? ""
+      : ` data-card-type-name="${escapeHtml(deltas.footerTypeName)}"`;
   return (
-    `<div id="Xfooter-content-view" class="card-slot content-view ALL TYPE-html STAR SELF-Xfooter d0-card-content" data-card-id="22749" data-card-name="*footer" data-card-type-id="50" data-card-type-name="HTML" data-card-link-name="*footer" data-slot-id="33f1de3d32299e8ffeb8" data-slot="${escapeHtml(JSON.stringify(slot))}">${body}</div>`
+    `<div id="Xfooter-content-view" class="card-slot content-view ALL TYPE-html STAR SELF-Xfooter d0-card-content"${cardIdAttr} data-card-name="*footer"${typeIdAttr}${typeNameAttr} data-card-link-name="*footer" data-slot="${escapeHtml(JSON.stringify(slot))}">${body}</div>`
   );
 }
 
@@ -462,12 +484,25 @@ interface DefaultLayout {
  *  live. Throws when the layout body is missing (the caller's fallback
  *  serves the minimal stub, exactly the staging contract). */
 async function resolveDefaultLayout(deck: ErrorPageDeck): Promise<DefaultLayout> {
+  const deltas = deltasOf(deck);
+  // The default-layout rule's two anchors are the deck's OWN *all and *layout
+  // card ids, which differ per deck (finding 9). Without them there is
+  // nothing to query with, so the builder falls back to its minimal stub —
+  // the same contract as a missing layout body, and the honest answer for a
+  // deployment that has not told us which layout rule is its default.
+  if (deltas.allCardId === undefined || deltas.layoutPointerId === undefined) {
+    throw new Error(
+      "no default-layout rule anchors configured; set DECKO_SERVED_ALL_CARD_ID and " +
+        "DECKO_SERVED_LAYOUT_POINTER_ID (or the DECKO_SERVED_DELTAS allCardId/layoutPointerId " +
+        "fields) so the error page can resolve this deck's Default Layout",
+    );
+  }
   let dbContent: string | undefined;
   try {
     const { rows } = await deckRows<{ id?: number | string | null; db_content?: string | null }>(
       deck,
       "SELECT id, db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
-      [ALL_CARD_ID, LAYOUT_POINTER_ID],
+      [deltas.allCardId, deltas.layoutPointerId],
     );
     const row = rows[0];
     if (row !== undefined && typeof row.db_content === "string") dbContent = row.db_content;
@@ -509,14 +544,29 @@ function notFoundSlotOptionsJson(): string {
  *  verbatim except the per-name fields and the per-request slot id
  *  (vm-staging-server.mjs:1393-1426). escapeHtml single-escapes the slot
  *  JSON's quotes — the live byte form. */
-function buildNotFoundSlotHtml(displayName: string, nameKey: string, urlKey: string): string {
+function buildNotFoundSlotHtml(
+  deck: ErrorPageDeck,
+  displayName: string,
+  nameKey: string,
+  urlKey: string,
+): string {
   const slotJson = notFoundSlotOptionsJson();
+  // The not-found card's TYPE identity is deployment configuration (finding
+  // 9). Unset, the slot carries no TYPE- class chip and no type attributes —
+  // the stock shape, rather than another deck's default type card.
+  const notFoundType = deltasOf(deck).notFoundType;
+  const typeChip = notFoundType === undefined ? "" : ` TYPE-${notFoundType.classToken}`;
+  const typeIdAttr =
+    notFoundType === undefined ? "" : ` data-card-type-id="${escapeHtml(notFoundType.id)}"`;
+  const typeNameAttr =
+    notFoundType === undefined ? "" : ` data-card-type-name="${escapeHtml(notFoundType.name)}"`;
   return (
     `<div id="${escapeHtml(`${nameKey}-not_found-view`)}" ` +
-    `class="card-slot not_found-view ALL TYPE-${NOT_FOUND_DEFAULT_TYPE.classToken}" ` +
-    `data-card-name="${escapeHtml(displayName)}" ` +
-    `data-card-type-id="${NOT_FOUND_DEFAULT_TYPE.id}" ` +
-    `data-card-type-name="${NOT_FOUND_DEFAULT_TYPE.name}" ` +
+    `class="card-slot not_found-view ALL${typeChip}" ` +
+    `data-card-name="${escapeHtml(displayName)}"` +
+    typeIdAttr +
+    typeNameAttr +
+    ` ` +
     `data-card-link-name="${escapeHtml(urlKey)}" ` +
     `data-slot-id="${newSlotId()}" ` +
     `data-slot="${escapeHtml(slotJson)}">` +
@@ -589,8 +639,16 @@ async function wrapWithLayout(
   const headerHtml = await substituteHeaderTokens(deck, rawHeaderHtml, boot);
   const bodyProcessed = viewHtml;
   const pageTitle = pageOpts.titleText ?? `${storedName} - ${boot.siteTitle}`;
-  const cssUrl = MAIN_CSS_URL;
-  const jsUrl = MAIN_JS_URL;
+  const deltas = deltasOf(deck);
+  const cssUrl = deltas.mainCssUrl ?? "";
+  const jsUrl = deltas.mainJsUrl ?? "";
+  // The head's remote <script> tags, each a COMPLETE tag supplied by the
+  // deployment (their SRI hashes belong to the files that deployment serves,
+  // so they are configuration, not something this builder can derive).
+  const remoteScriptTags =
+    deltas.headScripts === undefined
+      ? ""
+      : deltas.headScripts.map((tag) => `${tag}\n`).join("");
   if (typeof layout.layoutBody !== "string" || layout.layoutBody.length === 0) {
     throw new Error(
       `layout body missing or empty for card ${cardName} (layout: ${layout.layoutName}); ` +
@@ -639,25 +697,23 @@ async function wrapWithLayout(
     `          <title>${escapeHtml(pageTitle)}</title>\n` +
     `<meta charset='UTF-8'>\n` +
     `<meta content='width=device-width, initial-scale=1.0' name='viewport'>\n` +
-    (pageOpts.headExtraLine ?? "") +
+(pageOpts.headExtraLine ?? "") +
     `\n` +
-    `<link rel="shortcut icon" href="${escapeHtml(boot.faviconUrl)}" />\n` +
+    // The favicon and the compiled CSS link are emitted only when the
+    // deployment configured URLs for them (finding 9): an unconfigured deck
+    // gets no reference to another deck's asset files.
+    (boot.faviconUrl === "" ? "" : `<link rel="shortcut icon" href="${escapeHtml(boot.faviconUrl)}" />\n`) +
     `<link href="https://fonts.googleapis.com/css2?family=Material+Icons" media="all" rel="stylesheet" type="text/css" />\n` +
-    `<link media="all" rel="stylesheet" type="text/css" href="${escapeHtml(cssUrl)}" />\n` +
+    (cssUrl === "" ? "" : `<link media="all" rel="stylesheet" type="text/css" href="${escapeHtml(cssUrl)}" />\n`) +
     `\n` +
-    `<!-- mod: format (remote) -->\n` +
-    `<script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0="></script>\n` +
-    `<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-ujs/1.2.3/rails.min.js" crossorigin="anonymous" integrity="sha512-yDJWVxuRSkQa1u9/Zif6Gh93Gk0Urboz98JLEPcERMQ+pTHz/c27d0Xz08G+lgutFyKklB9UILtnhG6bth6B4A==" referrerpolicy="no-referrer"></script>\n` +
-    `<!-- mod: ace editor (remote) -->\n` +
-    `<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.18.0/ace.min.js" crossorigin="anonymous" integrity="sha512-xcE2qpHHeRGdUixQ0W0CRrb5RcfFLPol+7Kbix/fxXMnB+Dg4ECW3pldd3gY3bOOqcKQ3wv4IHJKUbSlgn83Qw=="></script>\n` +
-    `<!-- mod: bootstrap (remote) -->\n` +
-    `<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.1/js/select2.full.min.js" crossorigin="anonymous" integrity="sha512-Y4+u+T/6DpDb2AkTrxs3eJiN9o/u+l8pLNt0lSRKnJe2wIDVCwd7N8afy+70Pmr5FtmoX5IXmwK6H7Jlb8Nx8A==" referrerpolicy="no-referrer"></script>\n` +
-    `<script src="https://kit.fontawesome.com/1366963381.js" crossorigin="anonymous"></script>\n` +
-    `<!-- MAIN DECKO JAVASCRIPT -->\n` +
-    `<script src="${escapeHtml(jsUrl)}"></script>\n` +
+    // The remote script tags are the deployment's own, verbatim (their SRI
+    // hashes belong to the files that deployment serves, so they cannot be
+    // derived here). Unconfigured, the head carries none of them.
+    remoteScriptTags +
+    (jsUrl === "" ? "" : `<!-- MAIN DECKO JAVASCRIPT -->\n<script src="${escapeHtml(jsUrl)}"></script>\n`) +
     `<script>\n` +
     `//<![CDATA[\n` +
-    `decko.rootUrl='https://culturesmith.com/';\n` +
+    `decko.rootUrl='${escapeHtml(deltas.rootUrl ?? "")}';\n` +
     `decko.doubleClick='signed_in';\n` +
     `decko.cssPath='${escapeHtml(cssUrl)}';\n` +
     `decko.signed_in=false;\n` +
@@ -666,9 +722,9 @@ async function wrapWithLayout(
     `</script>\n` +
     `<script>\n` +
     `//<![CDATA[\n` +
-    `decko.setAceConfig('{\\n  \\"default\\": {\\n  \\"showGutter\\": true,\\n  \\"theme\\": \\"ace/theme/github\\",\\n  \\"printMargin\\": false,\\n  \\"tabSize\\": 2,\\n  \\"useSoftTabs\\": true,\\n  \\"maxLines\\": 30\\n  }\\n}\\n')\n` +
+    `decko.setAceConfig('{\n  \\"default\\": {\\n  \\"showGutter\\": true,\\n  \\"theme\\": \\"ace/theme/github\\",\\n  \\"printMargin\\": false,\\n  \\"tabSize\\": 2,\\n  \\"useSoftTabs\\": true,\\n  \\"maxLines\\": 30\\n  }\\n}\\n')\n` +
     `\n` +
-    `decko.setTinyMCEConfig('{\\n  \\"theme\\": \\"silver\\",\\n  \\"menubar\\": \\"edit view insert format table\\",\\n  \\"plugins\\": \\"autoresize code lists hr link autolink table\\",\\n  \\"toolbar1\\": \\"formatselect | bold italic strikethrough forecolor backcolor | deckolink nest |   | numlist bullist outdent indent  | removeformat\\",\\n  \\"width\\":\\"100%\\",\\n  \\"auto_resize\\":true,\\n  \\"autoresize_max_height\\": 500,\\n  \\"relative_urls\\":false,\\n  \\"extended_valid_elements\\":\\"a[name|href|target|title|onclick],img[class|src|border=0|alt|title|hspace|vspace|width|height|align|onmouseover|onmouseout|name],hr[class|width|size|noshade],font[face|size|color|style],span[class|align|style]\\"\\n }\\n')\n` +
+    `decko.setTinyMCEConfig('{\n  \\"theme\\": \\"silver\\",\\n  \\"menubar\\": \\"edit view insert format table\\",\\n  \\"plugins\\": \\"autoresize code lists hr link autolink table\\",\\n  \\"toolbar1\\": \\"formatselect | bold italic strikethrough forecolor backcolor | deckolink nest |   | numlist bullist outdent indent  | removeformat\\",\n  \\"width\\":\\"100%\\",\n  \\"auto_resize\\":true,\\n  \\"autoresize_max_height\\": 500,\\n  \\"relative_urls\\":false,\\n  \\"extended_valid_elements\\": \\"a[name|href|target|title|onclick],img[class|src|border=0|alt|title|hspace|vspace|width|height|align|onmouseover|onmouseout|name],hr[class|width|size|noshade],font[face|size|color|style],span[class|align|style]\"\n }\\n')\n` +
     `\n` +
     `$('document').ready(function() { $('.card-slot').trigger('decko.slot.ready'); })\n` +
     `//]]>\n` +
@@ -772,7 +828,7 @@ export async function renderDeckoNotFoundErrorPage(
     const displayName = urlDisplayNameForSlug(cardName);
     const boot = await ensureBootValues(deck);
     const parsed = DeckoName.parse(displayName);
-    const viewHtml = buildNotFoundSlotHtml(displayName, parsed.key, parsed.urlKey);
+    const viewHtml = buildNotFoundSlotHtml(deck, displayName, parsed.key, parsed.urlKey);
     const body = await wrapWithLayout(deck, cardName, viewHtml, layout, {
       headExtraLine: `<meta content='noindex' name='robots'>\n`,
       titleText: `${displayName} - ${boot.siteTitle}`,

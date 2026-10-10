@@ -22,6 +22,7 @@ import { gunzipSync } from "node:zlib";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { removeScratchDir, scratchDir } from "../../support/scratch-dir.mjs";
 import { pointerListItemBodyForUnknown } from "../../../src/card/render/pointer-list.js";
+import { PRODUCTION_PHANTOM_ITEM_TYPE } from "../../deploy/fixtures/production-deck-served-deltas.js";
 // @ts-expect-error: plain JavaScript module of the harness, no type declarations
 import { normalizeHtml, sameJson } from "../../../reference-harness/runner/normalize.mjs";
 
@@ -118,8 +119,20 @@ describe("the denied item bar uses the same Haml form", () => {
   // The read-denied or unknown list item keeps bar.haml's div with its body
   // replaced by two denials; its data attributes, slot id included, are the
   // same sorted, single-quoted Haml list as a live bar's.
+  //
+  // The item is given the deck's CONFIGURED phantom type (its
+  // `*all+*default` template type — deployment configuration since review
+  // round 4, finding 9), because this pin asserts the ATTRIBUTE ORDER of a
+  // typed bar: the slot id comes after the type name. A deck with no
+  // configured type emits no type attributes at all and there is no order
+  // to assert — the "no type chip" shape is pinned in
+  // entity-cluster-pointer-item.test.ts.
   it("writes the slot id single-quoted after the type name", () => {
-    const html = pointerListItemBodyForUnknown("Unknown Item");
+    const html = pointerListItemBodyForUnknown(
+      "Unknown Item",
+      undefined,
+      PRODUCTION_PHANTOM_ITEM_TYPE,
+    );
     expect(html).toMatch(/ data-card-type-name='[^']*' data-slot-id='[0-9a-f]{20}'>\n/);
     expect(html).not.toContain('data-slot-id="');
   });

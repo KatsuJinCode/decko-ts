@@ -13,6 +13,10 @@ import {
   ONE_TRIP_BOOT_MAX_TEMPORARY_CACHE_KEYS,
 } from "./bunny-edge-deck-boot.js";
 import { oneTripWantsPayload } from "../../src/card/one-trip/render-gate.js";
+import {
+  resolveServedEnvironmentDeltas,
+  servedDeltasAreEmpty,
+} from "./bunny-edge-served-deltas.js";
 import { json, resolveEdgePipelineTimeoutMs, type Deck } from "./bunny-edge-engine-request.js";
 import {
   edgeDbTimingFetch,
@@ -135,8 +139,17 @@ export function getDriver(config: ResolvedDbConfig, env: EdgeEnv): SQLDatabaseDr
  *    lacked: the per-pipeline hop timeout resolved off
  *    DECKO_EDGE_PIPELINE_TIMEOUT_MS (the P1 incident fix; needs the
  *    carried driver whose 0 maps to "no per-hop abort"), and
- *    render.imageCdnHost = SPACES_ASSET_HOST (the edge-site-shell lane —
- *    content images resolve exactly as live).
+ *    render.imageCdnHost from the deployment's CONFIGURED asset host
+ *    (review round 4, finding 9 — content images resolve against the host
+ *    this deployment serves from, not against one deck's hard-coded CDN
+ *    bucket).
+ *
+ *  THE DECK ALSO CARRIES ITS SERVED DELTAS (finding 9): bootDeck resolves
+ *  them off the same env bag the credentials came from and hangs them on the
+ *  Deck, so the page path's delta pass, the /files/ route and the error
+ *  pages all read the same deployment configuration. A deployment that sets
+ *  nothing gets the stock (empty) deltas — no footer version rewrite, no
+ *  corpus card ids, no private asset references.
  */
 export async function bootDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<Deck> {
   // THE EDGE PROFILER (2026-10-05): the driver's two EXISTING instrumentation
@@ -158,10 +171,19 @@ export async function bootDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<
   // process.env) — the same var the render path's seat check reads.
   // bootEdgeServingEngines: the corpus boot + imageCdnHost, without the
   // deck-wide name scan unless DECKO_EDGE_NAME_SCAN=1 (see its doc).
-  return await bootEdgeServingEngines(
-    driver,
-    oneTripWantsPayload() ? { maxTemporaryCacheKeys: ONE_TRIP_BOOT_MAX_TEMPORARY_CACHE_KEYS } : {},
-  );
+  //
+  // THE DEPLOYMENT'S SERVED DELTAS (review round 4, finding 9): resolved
+  // here, once per isolate, off the same env bag the credentials came from,
+  // and carried on the Deck so every serving surface reads one answer. With
+  // no configuration this is the empty set and every delta pass is a no-op —
+  // a stock deck, with no other deck's identity in its bytes.
+  const servedDeltas = resolveServedEnvironmentDeltas(env);
+  const engines = await bootEdgeServingEngines(driver, {
+    ...(oneTripWantsPayload() ? { maxTemporaryCacheKeys: ONE_TRIP_BOOT_MAX_TEMPORARY_CACHE_KEYS } : {}),
+    ...(servedDeltas.assetHost === undefined ? {} : { assetHost: servedDeltas.assetHost }),
+    ...(servedDeltas.phantomType === undefined ? {} : { phantomItemType: servedDeltas.phantomType }),
+  });
+  return { ...engines, servedDeltas };
 }
 
 export async function statusResponse(
@@ -180,6 +202,16 @@ export async function statusResponse(
     );
     const n = Number(r.rows[0]?.n);
     const host = edgeHostLabels();
+    // THE DEPLOYMENT'S DECK IDENTITY, AS A BOOLEAN (finding 9): whether the
+    // served deltas carry any configuration at all. Names and counts only —
+    // never a configured VALUE, which can be a private URL — so /_status
+    // stays safe to expose while still letting an operator confirm that a
+    // deployment is serving configured (or stock) bytes.
+    const deltas = deck.servedDeltas ?? {};
+    const servedIdentity = {
+      configured: !servedDeltasAreEmpty(deltas),
+      configured_fields: Object.keys(deltas).sort(),
+    };
     if (host.binding !== undefined) {
       // A binding-backed host (Cloudflare D1): no credential variables are
       // involved, so report the binding instead of their names.
@@ -189,6 +221,7 @@ export async function statusResponse(
         runtime: host.runtime,
         view: "full render engine (SUPPORTED_VIEWS dispatch + layout shell)",
         database: { ok: true, driver: host.driver, card_count: n, binding: host.binding },
+        served_identity: servedIdentity,
         version: "2.0.0",
       });
     }
@@ -197,6 +230,7 @@ export async function statusResponse(
       engine: "decko-ts",
       runtime: host.runtime,
       view: "full render engine (SUPPORTED_VIEWS dispatch + layout shell)",
+      served_identity: servedIdentity,
       database: {
         ok: true,
         driver: host.driver,

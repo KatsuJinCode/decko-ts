@@ -136,6 +136,77 @@ you'll need").
 
 ---
 
+## 3b. Configure the deck's served identity (empty by default)
+
+The shipped edge code carries **no deck's identity**. Everything a
+deployment serves that differs from a stock 0.20.0 deck — its footer version
+string, its asset host, its compiled-CSS revision, its SRI hashes, its error
+chrome's card ids and asset URLs, its phantom (unknown-item) type — is
+deployment configuration, read from the environment at boot
+(`deploy/bunny-worker-src/bunny-edge-served-deltas.ts`).
+
+**With nothing configured the deployment serves a stock deck:** no version
+rewrite, no corpus card ids, no private asset references, and the error pages
+fall back to their minimal stubs (the documented "never 500 a second time"
+contract). That is the correct posture for any deployment that is not the
+original reference deck, and it is what a new operator gets for free.
+
+**To reproduce the reference deck's served bytes**, set `DECKO_SERVED_DELTAS`
+to the JSON blob below (one variable, one paste). Each field can equally be
+set as its own loose variable — `DECKO_SERVED_ASSET_HOST`,
+`DECKO_SERVED_FOOTER_VERSION_PIN`, `DECKO_SERVED_STYLESHEET_FROM` /
+`_TO`, `DECKO_SERVED_SCRIPT_INTEGRITY`, `DECKO_SERVED_NOT_FOUND_TYPE_ID` /
+`_NAME` / `_CLASS_TOKEN`, `DECKO_SERVED_FOOTER_CARD_ID` / `_TYPE_ID` /
+`_TYPE_NAME`, `DECKO_SERVED_ALL_CARD_ID` / `_LAYOUT_POINTER_ID` /
+`_POINTER_TYPE_ID`, `DECKO_SERVED_MAIN_CSS_URL` / `_MAIN_JS_URL`,
+`DECKO_SERVED_ROOT_URL`, `DECKO_SERVED_HEAD_SCRIPTS`,
+`DECKO_SERVED_LOGO_URL` / `_FAVICON_URL` / `_SITE_TITLE_DEFAULT`,
+`DECKO_SERVED_PHANTOM_TYPE_ID` / `_NAME` / `_KEY`. Where both forms are
+present the JSON wins field-by-field.
+
+The values below are the reference deck's own. They are reproduced in
+`tests/deploy/fixtures/production-deck-served-deltas.ts`, which is what the
+deploy suites configure when they assert that deck's served bytes.
+
+```json
+{
+  "assetHost": "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com",
+  "footerVersionPin": "0.19.1",
+  "stylesheetRevisionFrom": "45514/1786554352.css",
+  "stylesheetRevisionTo": "45514/1790384218.css",
+  "scriptIntegrity": [
+    {
+      "src": "<script src=\"https://code.jquery.com/jquery-3.5.1.min.js\" crossorigin=\"anonymous\"></script>",
+      "withIntegrity": "<script src=\"https://code.jquery.com/jquery-3.5.1.min.js\" crossorigin=\"anonymous\" integrity=\"sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=\"></script>"
+    }
+  ],
+  "notFoundType": { "id": "22281", "name": "BasicCs", "classToken": "basic_c" },
+  "footerCardId": "22749", "footerTypeId": "50", "footerTypeName": "HTML",
+  "allCardId": 274, "layoutPointerId": 255, "pointerTypeId": 34843,
+  "mainCssUrl": "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/45514/1790384218.css",
+  "mainJsUrl": "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/50617/1768074298.js",
+  "logoUrl": "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/79/3643-small.jpg",
+  "faviconUrl": "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/103/3649-small.jpg",
+  "siteTitleDefault": "Culturesmith",
+  "rootUrl": "https://culturesmith.com/",
+  "headScripts": [
+    "<script src=\"https://code.jquery.com/jquery-3.5.1.min.js\" crossorigin=\"anonymous\" integrity=\"sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=\"></script>",
+    "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/jquery-ujs/1.2.3/rails.min.js\" crossorigin=\"anonymous\" integrity=\"sha512-yDJWVxuRSkQa1u9/Zif6Gh93Gk0Urboz98JLEPcERMQ+pTHz/c27d0Xz08G+lgutFyKklB9UILtnhG6bth6B4A==\" referrerpolicy=\"no-referrer\"></script>",
+    "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/ace/1.18.0/ace.min.js\" crossorigin=\"anonymous\" integrity=\"sha512-xcE2qpHHeRGdUixQ0W0CRrb5RcfFLPol+7Kbix/fxXMnB+Dg4ECW3pldd3gY3bOOqcKQ3wv4IHJKUbSlgn83Qw==\"></script>",
+    "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.1/js/select2.full.min.js\" crossorigin=\"anonymous\" integrity=\"sha512-Y4+u+T/6DpDb2AkTrxs3eJiN9o/u+l8pLNt0lSRKnJe2wIDVCwd7N8afy+70Pmr5FtmoX5IXmwK6H7Jlb8Nx8A==\" referrerpolicy=\"no-referrer\"></script>",
+    "<script src=\"https://kit.fontawesome.com/1366963381.js\" crossorigin=\"anonymous\"></script>"
+  ],
+  "phantomType": { "typeId": 22281, "typeName": "BasicCs", "typeKey": "basic_c" }
+}
+```
+
+**Verifying it landed:** `GET /_status` reports
+`served_identity.configured` (a boolean) and `served_identity.configured_fields`
+(the field names it found — never values, since a value can be a private
+URL). `configured: false` means the deployment is serving stock bytes.
+
+---
+
 ## 4. Hit it
 
 | Request | Expected |

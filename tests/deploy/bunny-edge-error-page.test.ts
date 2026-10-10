@@ -54,14 +54,28 @@ import {
   seedCard,
   type RenderTestStorage,
 } from "../card/render/render-test-storage.js";
+import {
+  PRODUCTION_ASSET_HOST,
+  PRODUCTION_DECK_SERVED_DELTAS,
+} from "./fixtures/production-deck-served-deltas.js";
 import type { RenderEngine } from "../../src/card/render.js";
 
 function edgeGet(pathname: string): Request {
   return new Request(`https://script-placeholder.bunny.run${pathname}`);
 }
 
+/** The seeded shell deck, CONFIGURED as the production migration
+ *  deployment. The chrome pins below assert that deployment's bytes (its
+ *  corpus card ids, its asset URLs, its footer version pin), so this suite
+ *  states that configuration explicitly — the same values its runbook sets
+ *  through the environment — rather than relying on the engine's source
+ *  carrying one deck's identity by default (review round 4, finding 9). */
 function realDeck(storage: RenderTestStorage) {
-  return { fetcher: storage.fetcher, render: storage.engine };
+  return {
+    fetcher: storage.fetcher,
+    render: storage.engine,
+    servedDeltas: PRODUCTION_DECK_SERVED_DELTAS,
+  };
 }
 
 function deckWhoseRenderThrows(storage: RenderTestStorage, error: unknown) {
@@ -72,6 +86,7 @@ function deckWhoseRenderThrows(storage: RenderTestStorage, error: unknown) {
         throw error;
       },
     } as unknown as RenderEngine,
+    servedDeltas: PRODUCTION_DECK_SERVED_DELTAS,
   };
 }
 
@@ -84,6 +99,7 @@ function deckWithRenderDelay(storage: RenderTestStorage, ms: number) {
         return `<p>Some+Card open</p>`;
       },
     } as unknown as RenderEngine,
+    servedDeltas: PRODUCTION_DECK_SERVED_DELTAS,
   };
 }
 
@@ -109,7 +125,7 @@ async function seedShellHeadDeck(storage: RenderTestStorage): Promise<void> {
   await seedCard(storage, { id: 22749, name: "*footer", codename: "footer", typeId: 50, dbContent: `<footer class="footer mt-auto py-3"><a href="/:latest">Decko v</a></footer>` });
 }
 
-const SPACES = "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com";
+const SPACES = PRODUCTION_ASSET_HOST;
 
 describe("bunny edge — full-chrome not_found page (staging builder shape)", () => {
   it("GET a missing card serves Decko's not_found page in the Default-Layout chrome, status 404", async () => {
@@ -196,6 +212,86 @@ describe("bunny edge — full-chrome not_found page (staging builder shape)", ()
           `<body><h1>Card not found</h1><pre>card not found: Nope</pre>` +
           `<p><a href="/">Home</a> · <a href="/_status">status</a></p></body></html>`,
       );
+    } finally {
+      storage.close();
+    }
+  });
+});
+
+describe("bunny edge — the error chrome carries NO deck identity when none is configured", () => {
+  // Review round 4, finding 9. The chrome above pins the PRODUCTION deck's
+  // bytes because it states that deck's configuration. This suite pins the
+  // other half: with no configuration, the same seeded deck serves no corpus
+  // card ids, no private asset URLs and no version pin belonging to any other
+  // deck.
+  it("an UNCONFIGURED deck's 404 falls back to the minimal stub (no corpus ids to look up)", async () => {
+    const storage = await createRenderTestStorage();
+    try {
+      await seedShellHeadDeck(storage);
+      const res = await handleEngineRequest(edgeGet("/NoSuchCard"), {
+        fetcher: storage.fetcher,
+        render: storage.engine,
+      });
+      expect(res.status).toBe(404);
+      expect(res.headers.get("Cache-Control")).toBe("no-store");
+      const body = await res.text();
+      // No layout-rule anchors configured -> the builder cannot resolve a
+      // default layout -> its documented fallback answers, and the error
+      // path never 500s a second time.
+      expect(body).toContain(`<h1>Card not found</h1>`);
+      // And nothing from another deck's chrome leaked into it.
+      expect(body).not.toContain("22281");
+      expect(body).not.toContain("basic_c");
+      expect(body).not.toContain("Decko v0.19.1");
+      expect(body).not.toContain(PRODUCTION_ASSET_HOST);
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("an UNCONFIGURED deck's 500 renders no corpus ids and no version pin", async () => {
+    const storage = await createRenderTestStorage();
+    try {
+      await seedShellHeadDeck(storage);
+      const res = await handleEngineRequest(
+        edgeGet("/Home"),
+        // The SAME throwing render, but with no deltas configured: this
+        // suite is about the unconfigured half, so it must not borrow the
+        // production deck's configuration the way the pins above do.
+        {
+          fetcher: storage.fetcher,
+          render: {
+            runWithPageConfig: async () => {
+              throw new Error("engine exploded");
+            },
+          } as unknown as RenderEngine,
+        },
+      );
+      expect(res.status).toBe(500);
+      const body = await res.text();
+      expect(body).not.toContain("22281");
+      expect(body).not.toContain("basic_c");
+      expect(body).not.toContain("Decko v0.19.1");
+      expect(body).not.toContain(PRODUCTION_ASSET_HOST);
+      expect(body).not.toContain("culturesmith");
+    } finally {
+      storage.close();
+    }
+  });
+
+  it("a CONFIGURED deck's chrome contains exactly its configured ids", async () => {
+    // The counterpart: with the production deltas the same deck answers the
+    // full chrome carrying THAT deck's identity — the pins above, restated
+    // as a before/after so the pair is legible in one place.
+    const storage = await createRenderTestStorage();
+    try {
+      await seedShellHeadDeck(storage);
+      const res = await handleEngineRequest(edgeGet("/NoSuchCard"), realDeck(storage));
+      const body = await res.text();
+      expect(body).toContain(`data-card-type-id="22281"`);
+      expect(body).toContain(`TYPE-basic_c`);
+      expect(body).toContain(`Decko v0.19.1`);
+      expect(body).toContain(PRODUCTION_ASSET_HOST);
     } finally {
       storage.close();
     }
@@ -354,6 +450,7 @@ describe("bunny edge — budget-exceeded 503 in the full chrome", () => {
           query: () => new Promise<{ rows: never[] }>(() => {}),
         },
       },
+      servedDeltas: PRODUCTION_DECK_SERVED_DELTAS,
     } as unknown as ErrorPageDeck;
     const started = Date.now();
     const res = await renderFullChromeErrorPage(hungDeck, {

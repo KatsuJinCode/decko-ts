@@ -54,10 +54,9 @@ import { getDefaultModLoader } from "../../src/card/mod-loader.js";
 import { defaultDeckLoader } from "../../src/card/mod-loader/default-mod-deck.js";
 import type { SQLDatabaseDriver } from "../../src/server/driver.js";
 import { applyDeckInflections } from "../../src/card/name/inflect.js";
-import { ORACLE_DECK_INFLECTIONS } from "../../src/card/name/oracle-deck-inflections.js";
+import { CARD_GEM_INITIALIZER_INFLECTIONS } from "../../src/card/name/oracle-deck-inflections.js";
 import { createVirtualCardLookup } from "../../src/card/fetch/virtual-cards.js";
 import { installDeckNameEnvironment } from "../../src/server/worker-shared-surface.js";
-import { SPACES_ASSET_HOST } from "./bunny-edge-page-shell.js";
 import {
   structureRuleUniverseStatement,
   structureUniverseFromResults,
@@ -95,7 +94,7 @@ export async function bootCorpusDeckEngines(
   // Inflection boot BEFORE any DeckoName.parse of deck-sourced names (the
   // Rails-initializer moment; applyDeckInflections clears the parse cache,
   // so a re-boot under amended tables cannot serve stale keys).
-  applyDeckInflections(ORACLE_DECK_INFLECTIONS);
+  applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
 
   // The OFF-default branch keeps the pinned boot expression verbatim
   // (deploy-origin-deck-inflection-boot.test.ts scans this file for
@@ -178,7 +177,19 @@ export async function refreshEdgeServingEngines(driver: SQLDatabaseDriver, rende
  *  DECKO_EDGE_NAME_SCAN=1 restores the scan. */
 export async function bootEdgeServingEngines(
   driver: SQLDatabaseDriver,
-  opts: { maxTemporaryCacheKeys?: number; nameScan?: boolean } = {},
+  opts: {
+    maxTemporaryCacheKeys?: number;
+    nameScan?: boolean;
+    /** The deployment's configured asset host (review round 4, finding 9).
+     *  Unset = the engine's own host-relative /files/ form, which is what a
+     *  deck with no CDN configured serves. Read from the deployment's
+     *  DECKO_SERVED_DELTAS assetHost by bootDeck; never hard-coded. */
+    assetHost?: string;
+    /** The deck's phantom (unknown pointer/list item) type identity — the
+     *  deck config form of Ruby's `*all+*default` template type. Unset, the
+     *  deck's unknown items carry no type chip and no type attributes. */
+    phantomItemType?: { typeId: number; typeName: string; typeKey: string };
+  } = {},
 ): Promise<DeckEngines> {
   const engines = await bootCorpusDeckEngines(
     driver,
@@ -195,6 +206,7 @@ export async function bootEdgeServingEngines(
     engines.fetcher.installNameEnvironment();
     await engines.fetcher.codenames.ensureLoaded();
   }
-  engines.render.imageCdnHost = SPACES_ASSET_HOST;
+  engines.render.imageCdnHost = opts.assetHost;
+  engines.render.phantomItemType = opts.phantomItemType;
   return engines;
 }

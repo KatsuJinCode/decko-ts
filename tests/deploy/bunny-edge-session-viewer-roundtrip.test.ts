@@ -83,6 +83,7 @@ import {
   seedReference,
   type RenderTestStorage,
 } from "../card/render/render-test-storage.js";
+import { PRODUCTION_DECK_SERVED_DELTAS } from "./fixtures/production-deck-served-deltas.js";
 import { startMockHranaServer, type MockHranaServer } from "../server/drivers/mock-hrana-server.js";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..");
@@ -326,6 +327,7 @@ describe("edge read path — the anonymous bytes do not move", () => {
     const res = await handleEngineRequest(edgeGet("/Home"), {
       fetcher: storage.fetcher,
       render: storage.engine,
+      servedDeltas: PRODUCTION_DECK_SERVED_DELTAS,
     });
     expect(res.status).toBe(200);
     const body = await res.text();
@@ -397,12 +399,16 @@ describe("edge read path — the anonymous bytes do not move", () => {
 // for everything that is about the SESSION rather than about rule keys.
 describe("edge read path — a signed-in viewer reads DIFFERENT bytes than an anonymous one", () => {
   let storage: RenderTestStorage;
-  let anonDeck: { fetcher: FetchEngine; render: RenderEngine };
+  let anonDeck: { fetcher: FetchEngine; render: RenderEngine; servedDeltas?: typeof PRODUCTION_DECK_SERVED_DELTAS };
 
   beforeAll(async () => {
     storage = await createRenderTestStorage();
     await seedViewerSensitive(storage);
-    anonDeck = { fetcher: storage.fetcher, render: storage.engine };
+    anonDeck = {
+      fetcher: storage.fetcher,
+      render: storage.engine,
+      servedDeltas: PRODUCTION_DECK_SERVED_DELTAS,
+    };
   });
   afterAll(() => storage.close());
 
@@ -472,6 +478,11 @@ describe("edge read path — a signed-in viewer reads DIFFERENT bytes than an an
       expect(engines.deckFor(4).render.imageCdnHost).toBe("cdn.example");
       expect(engines.deckFor(4).render.tokenConfig).toEqual({ secret: "s" } as never);
       expect(engines.deckFor(4).render.fileStorage).toBe(anonDeck.render.fileStorage);
+      // The phantom (unknown item) type is host-deployment config on the
+      // same terms (review round 4, finding 9): a per-actor render must not
+      // silently lose the deck's `*all+*default` template type and start
+      // rendering unknown items with no type chip at all.
+      expect(engines.deckFor(4).render.phantomItemType).toBe(anonDeck.render.phantomItemType);
     } finally {
       anonDeck.render.imageCdnHost = undefined;
       anonDeck.render.tokenConfig = undefined;

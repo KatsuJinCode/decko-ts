@@ -51,7 +51,10 @@ import { fileURLToPath } from "node:url";
 
 import { handleEngineRequest } from "../../deploy/bunny-worker-src/bunny-edge-engine-request.js";
 import { historyRenderParamsFromWire } from "../../deploy/bunny-worker-src/bunny-edge-engine-request.js";
-import { SPACES_ASSET_HOST } from "../../deploy/bunny-worker-src/bunny-edge-page-shell.js";
+import {
+  PRODUCTION_ASSET_HOST,
+  PRODUCTION_DECK_SERVED_DELTAS,
+} from "./fixtures/production-deck-served-deltas.js";
 import {
   createRenderTestStorage,
   seedCard,
@@ -262,18 +265,22 @@ async function getBody(pathAndQuery: string): Promise<{ status: number; body: st
   const res = await handleEngineRequest(edgeGet(pathAndQuery), {
     fetcher: storage!.fetcher,
     render: storage!.engine,
+    servedDeltas: PRODUCTION_DECK_SERVED_DELTAS,
   });
   return { status: res.status, body: await res.text() };
 }
 
-/** The full-chrome markers (the shell lane's derived constants, the same
- *  pins bunny-edge-page-shell.test.ts makes for content pages). */
+/** The full-chrome markers for the CONFIGURED production deck. This suite
+ *  pins what the production deployment serves, so it states that
+ *  deployment's configuration explicitly (PRODUCTION_DECK_SERVED_DELTAS)
+ *  rather than inheriting it from the engine's source — the same values the
+ *  operator sets through the environment. */
 function expectFullChrome(body: string): void {
   expect(body).toContain("<!DOCTYPE HTML>");
   expect(body).toContain(`<html class="h-100">`);
   // the live head pieces
   expect(body).toContain(
-    `<link rel="shortcut icon" href="${SPACES_ASSET_HOST}/files/103/3649-small.jpg" />`,
+    `<link rel="shortcut icon" href="${PRODUCTION_ASSET_HOST}/files/103/3649-small.jpg" />`,
   );
   expect(body).toContain(`<!-- MAIN DECKO JAVASCRIPT -->`);
   expect(body).toContain(`integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0="`);

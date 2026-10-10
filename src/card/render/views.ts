@@ -4124,7 +4124,7 @@ function renderUnknownPointerListItem(
   hostItemType: { typeName: string; typeId: number } | undefined,
 ): string {
   const identity = phantomIdentity(fmt, name, hostItemType);
-  const phantom = phantomPointerListItem(name, identity);
+  const phantom = phantomPointerListItem(name, identity, fmt.engine.phantomItemType);
   if (hostItemType === undefined && identity !== undefined) {
     // The name-shaped pattern keys (see phantomIdentity's citation). The
     // HOST-resolved arm keeps the pinned short `ALL TYPE-<x>` form (the
@@ -4260,7 +4260,11 @@ function renderUnknownPointerListItem(
           typeId: phantom.typeId,
           setKeys: phantom.setKeys,
         })
-      : pointerListItemBodyForUnknown(slotCardname(phantom));
+      : pointerListItemBodyForUnknown(
+          slotCardname(phantom),
+          undefined,
+          fmt.engine.phantomItemType,
+        );
     return pointerListItemSlot(phantom, body, slotTypeName);
   }
   // A host-typed compound phantom whose item type carries a *structure rule
@@ -5793,7 +5797,7 @@ const miniBarView: ViewFn = (ctx) => {
         ...(ctx.fmt.card.setKeys !== undefined ? { setKeys: ctx.fmt.card.setKeys } : {}),
         ...(ctx.fmt.card.typeName !== undefined ? { typeName: ctx.fmt.card.typeName } : {}),
         ...(ctx.fmt.card.typeId !== undefined ? { typeId: ctx.fmt.card.typeId } : {}),
-      }),
+      }, ctx.fmt.engine.phantomItemType),
     );
   }
 

@@ -194,6 +194,13 @@ export class ActorRenderEngines {
     render.imageCdnHost = this.base.render.imageCdnHost;
     render.tokenConfig = this.base.render.tokenConfig;
     render.fileStorage = this.base.render.fileStorage;
+    // The deck's phantom (unknown item) type is host-deployment config on
+    // the same terms as the three above (review round 4, finding 9), so it
+    // is copied off the shared engine rather than re-derived — an actor
+    // render that lost it would render unknown pointer items with no type
+    // chip, which is a different page from the one the anonymous engine
+    // served.
+    render.phantomItemType = this.base.render.phantomItemType;
     // The session itself. Set BEFORE the first render — the field docs
     // (render.ts:443-447) and the memoization above both say so.
     const viewer: ReadViewer = { signedIn: true, actorId };

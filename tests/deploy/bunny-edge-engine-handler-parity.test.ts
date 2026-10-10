@@ -30,6 +30,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { LocalSqliteDriver } from "../../src/server/drivers/local-sqlite.js";
 import { splitSqlStatements } from "../card/render/render-test-storage.js";
+import { PRODUCTION_DECK_SERVED_DELTAS } from "./fixtures/production-deck-served-deltas.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const MIGRATIONS = `${REPO_ROOT}deploy/migrations/0001-schema.sql`;
@@ -38,6 +39,16 @@ const SEED = `${REPO_ROOT}deploy/seed/seed.sql`;
 const CREDENTIAL_ENV = {
   BUNNY_DATABASE_URL: "https://fixture-db.lite.bunnydb.net",
   BUNNY_DATABASE_AUTH_TOKEN: "fixture-token",
+};
+
+/** The same env PLUS the production deployment's served deltas, in the
+ *  loose-variable form an operator would paste (review round 4, finding 9).
+ *  This suite drives the REAL handler through the REAL boot, so it is the
+ *  end-to-end proof that the deltas reach the served bytes from the
+ *  environment alone — no test-only injection. */
+const CONFIGURED_ENV = {
+  ...CREDENTIAL_ENV,
+  DECKO_SERVED_DELTAS: JSON.stringify(PRODUCTION_DECK_SERVED_DELTAS),
 };
 
 /** Translate BunnyDbDriver's Hrana-v2 pipeline POSTs into local sqlite
@@ -158,8 +169,8 @@ afterAll(() => {
   driver?.close();
 });
 
-function get(path: string): Promise<Response> {
-  return handler(new Request(`https://decko-edge.test${path}`), CREDENTIAL_ENV);
+function get(path: string, env: Record<string, string> = CREDENTIAL_ENV): Promise<Response> {
+  return handler(new Request(`https://decko-edge.test${path}`), env);
 }
 
 describe("bunny edge engine handler — the shared read surface", () => {
@@ -175,16 +186,29 @@ describe("bunny edge engine handler — the shared read surface", () => {
     expect(await response.text()).not.toContain("only synthetic demo content");
   });
 
-  it("a missing card answers 404 Decko's not_found page in the served chrome (error.rb:88-89; the bare <h1>Card not found</h1> shape the pre-union handler served moved with the p2-error-shell surfaces)", async () => {
+  it("a missing card answers 404 the minimal not_found stub on an UNCONFIGURED deployment (finding 9)", async () => {
+    // THE UNCONFIGURED CASE (review round 4, finding 9), and the regression
+    // guard for the defect itself: with no deltas in the environment the
+    // builder has no layout-rule anchors to resolve this deck's Default
+    // Layout with, so its documented fallback answers — and no corpus card
+    // id, private asset URL or version pin from another deck reaches it.
+    //
+    // This runs FIRST in the suite on purpose. The handler memoizes ONE deck
+    // per isolate (`deckPromise` in bunny-edge-engine-handler.ts), and the
+    // boot reads the environment once — so the first boot fixes the
+    // configuration for every later request in this process. That is the
+    // production contract, not a test artifact: one isolate, one
+    // configuration. The CONFIGURED counterpart therefore has to run in its
+    // own file (bunny-edge-handler-configured-parity.test.ts), which is a
+    // separate isolate.
     const response = await get("/No+Such+Card");
     expect(response.status).toBe(404);
     const body = await response.text();
-    // The full-chrome not_found page (the staging builder shape the carried
-    // bunny-edge-error-page.test.ts pins): noindex head line + the Could not
-    // find slot carrying the requested name as escaped text.
-    expect(body).toContain("<meta content='noindex' name='robots'>");
-    expect(body).toContain("Could not find");
-    expect(body).toContain("No+Such+Card");
+    expect(body).toContain("<h1>Card not found</h1>");
+    expect(body).not.toContain("22281");
+    expect(body).not.toContain("basic_c");
+    expect(body).not.toContain("culturesmith-production-storage");
+    expect(body).not.toContain("Decko v0.19.1");
   });
 
   it("an unregistered view answers the 422 UserError shape (error.rb:21)", async () => {

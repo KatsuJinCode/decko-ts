@@ -3329,6 +3329,20 @@ function settingDisplayTitle(
   return SETTING_DISPLAY_TITLES[codename];
 }
 
+/** The deck's phantom (unknown pointer/list item) type identity: the type a
+ *  record-less item carries when no host item type resolves one. In Ruby this
+ *  is the deck's own `*all+*default` template type, so it is DECK
+ *  configuration rather than an engine constant (review round 4, finding 9).
+ *  `typeKey` is the type's simpleKey form — the class-chip token
+ *  (`TYPE-basic_c`) — which is not derivable from the display name without
+ *  the same inflection table the name parser uses, so it travels with the
+ *  other two. */
+export interface PhantomItemType {
+  typeId: number;
+  typeName: string;
+  typeKey: string;
+}
+
 export interface RenderEngineLike {
   views: Record<string, ViewFn>;
   /** The render viewer (render.ts RenderEngine#viewer - the read-verdict
@@ -3756,6 +3770,13 @@ export interface RenderEngineLike {
    *  /files shape renders host-relative. Deck-deployment config (Ruby's
    *  fog bucket host), never derivable from the corpus. */
   readonly imageCdnHost?: string | undefined;
+  /** The deck's phantom (unknown pointer/list item) type identity — the deck
+   *  config form of Ruby's `*all+*default` template type (see
+   *  PhantomItemType). undefined = the deck configures no such rule and its
+   *  unknown items carry no type chip and no type attributes. Deck-deployment
+   *  config, never an engine constant: one deck's template type id/name is
+   *  not every deck's (review round 4, finding 9). */
+  readonly phantomItemType?: PhantomItemType | undefined;
   /** Cardio.config.file_storage's port (card-mod-carrierwave
    *  set/abstract/attachment/01_storage_type.rb:75-79): the attachment
    *  storage default the deck is configured with. The file :input view's

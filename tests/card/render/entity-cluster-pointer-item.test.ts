@@ -51,6 +51,7 @@
 import { describe, it, expect, afterAll } from "vitest";
 import { pointerListItemBodyForUnknown } from "../../../src/card/render/pointer-list.js";
 import { createRenderTestStorage, seedCard, type RenderTestStorage } from "./render-test-storage.js";
+import { PRODUCTION_PHANTOM_ITEM_TYPE } from "../../deploy/fixtures/production-deck-served-deltas.js";
 
 /** The cardtype cards the codename registry needs for typeCode gates. */
 async function seedCardtypes(s: RenderTestStorage): Promise<void> {
@@ -86,8 +87,16 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
   // already accepts an identity override; these tests pin its contract
   // so the call-site fix can rely on it without re-deriving the chip math.
   // -------------------------------------------------------------------------
-  it("unit: no identity -> BasicCs default (the no-host-type fallback pin)", () => {
-    const body = pointerListItemBodyForUnknown("phantom item");
+  it("unit: no identity -> the DECK's configured phantom type (the no-host-type fallback pin)", () => {
+    // The fallback is the deck's own `*all+*default` template type, which is
+    // deployment CONFIGURATION (review round 4, finding 9) rather than an
+    // engine constant. This case hands the builder the production deck's
+    // configured type and pins that those bytes still come out right.
+    const body = pointerListItemBodyForUnknown(
+      "phantom item",
+      undefined,
+      PRODUCTION_PHANTOM_ITEM_TYPE,
+    );
     expect(body).toMatch(/<div class='bar [^']*TYPE-basic_c[^']*with-bar-menu/);
     expect(body).toContain("data-card-type-id='22281'");
     expect(body).toContain("data-card-type-name='BasicCs'");
@@ -95,9 +104,28 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
     expect(body).not.toContain("data-card-type-id='2979'");
   });
 
+  it("unit: no identity AND no configured phantom type -> no type chip at all", () => {
+    // The counterpart, and the regression guard for the defect itself: a
+    // deck with no `*all+*default` rule renders unknown items with NO type
+    // chip and no type attributes — Ruby's template walk answers nil there,
+    // so the new card carries no type at all. It must NOT quietly fall back
+    // to another deck's type.
+    const body = pointerListItemBodyForUnknown("phantom item");
+    expect(body).toMatch(/<div class='bar [^']*with-bar-menu/);
+    expect(body).not.toContain("TYPE-");
+    expect(body).not.toContain("data-card-type-id");
+    expect(body).not.toContain("data-card-type-name");
+    expect(body).not.toContain("22281");
+    expect(body).not.toContain("BasicCs");
+  });
+
   it("unit: with consideration identity -> inner body carries consideration", () => {
     const identity = { typeName: "consideration", typeId: 2979, setKeys: "ALL TYPE-consideration" };
-    const body = pointerListItemBodyForUnknown("phantom item", identity);
+    const body = pointerListItemBodyForUnknown(
+      "phantom item",
+      identity,
+      PRODUCTION_PHANTOM_ITEM_TYPE,
+    );
     expect(body).toMatch(/<div class='bar [^']*TYPE-consideration[^']*with-bar-menu/);
     expect(body).toContain("data-card-type-id='2979'");
     expect(body).toContain("data-card-type-name='consideration'");

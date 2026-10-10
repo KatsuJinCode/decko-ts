@@ -55,7 +55,7 @@
 // - card-1.110.0 lib/card/view/options/voo_api.rb:51-54 (slot_options:
 //   the data-slot view field)
 
-import type { RenderCard } from "./format.js";
+import type { PhantomItemType, RenderCard } from "./format.js";
 import { serializerFollowsLive } from "./deployment-follow-live-config.js";
 import { DeckoName } from "../name.js";
 import { isNewCard, type CardRecord } from "../fetch/card-record.js";
@@ -431,27 +431,29 @@ function itemWrap(name: string, inner: string, itemView: string = POINTER_LIST_I
   return `<div class="pointer-item item-${itemView}">${inner}</div>`;
 }
 
-/** The phantom item type card id and name the captured oracle pins for
- *  every unknown/phantom item rendered through the pointer/list path.
- *  Census of the expected-v2 view lane (merge pass 2, 2026-09-26): 256
- *  denied mini_bar bodies, 248 carrying data-card-type-name="BasicCs"
- *  with type id 22281 (6 RichText, 2 Practice — resolved-rule types the
- *  item-type machinery must grow later); the string "swtktey" occurs
- *  ZERO times in the entire oracle. The previous pin ("swtktey") kept
- *  the right id 22281 — the corpus's BasicCs type card (cards row
- *  22281) — but a name that matches no oracle bytes; every swtktey-
- *  emitting entry was an automatic miss. Hardcoded here because the
- *  engine's buildUnknownNestCard leaves typeId/typeName undefined
- *  (prototype/lib/card/format/nest/fetch.rb#new_card: phantom cards
- *  carry no inferred type from `supercard`). */
-const PHANTOM_TYPE_ID = 22281;
-const PHANTOM_TYPE_NAME = "BasicCs";
-
-/** The type's key form (simpleKey("BasicCs")) — the class-chip token the
- *  captured oracle carries (`ALL TYPE-basic_c`, recapture-raw shard,
- *  *home content view, phantom item "Test Person 01"), not the display
- *  name. */
-const PHANTOM_TYPE_KEY = "basic_c";
+/** The phantom item's TYPE identity (id, display name, class-chip key).
+ *
+ *  WHY IT IS A DECK CONFIGURATION AND NOT A CONSTANT (review round 4, finding
+ *  9): these three values used to be hard-coded here (22281 / "BasicCs" /
+ *  "basic_c", pinned from the captured corpus — the census behind them:
+ *  256 denied mini_bar bodies, 248 carrying data-card-type-name="BasicCs"
+ *  with type id 22281). But in Ruby this identity is the DECK's own
+ *  `*all+*default` template type — `Card.fetch(name, new: {})` resolves
+ *  type_id through that deck's rule row (states.rb:44-50 + the *default
+ *  template chain) — so it differs per deck, and hard-coding one deck's
+ *  made every other deck's unknown pointer items render another deck's type
+ *  chip and data-card-type-* attributes.
+ *
+ *  It is engine configuration now (RenderEngineLike.phantomItemType, beside
+ *  imageCdnHost — same "host-deployment config, undefined = stock shape"
+ *  contract). undefined is NOT a fallback to some other deck's type: it is
+ *  the shape a deck with no `*all+*default` rule produces, where Ruby's
+ *  template walk answers nil and the new card carries no type at all — no
+ *  TYPE- chip, no data-card-type-id, no data-card-type-name. The engine's
+ *  buildUnknownNestCard leaves typeId/typeName undefined for the same reason
+ *  (prototype/lib/card/format/nest/fetch.rb#new_card: phantom cards carry no
+ *  inferred type from `supercard`). */
+export type { PhantomItemType } from "./format.js";
 
 /** The mini_bar slot wrap for one pointer/list item: slot id ends in
  *  `mini_bar-view`, slot classes include `mini_bar-view`, and the
@@ -503,6 +505,15 @@ export function pointerListItemSlot(
   return `<div${attrs}>${inner}</div>`;
 }
 
+/** The class chain for a phantom item: `ALL TYPE-<key>` when the deck
+ *  configures a phantom type, and the bare `ALL` when it does not (no type
+ *  chip at all — the shape a deck with no `*all+*default` rule renders).
+ *  The chip token is the type's simpleKey form, which is configuration
+ *  (`typeKey`) rather than something derived from the display name. */
+function phantomSetKeys(phantomType: PhantomItemType | undefined): string {
+  return phantomType === undefined ? "ALL" : `ALL TYPE-${phantomType.typeKey}`;
+}
+
 /** The bar.haml-shaped body for an UNKNOWN/phantom pointer/list item.
  *  Captured oracle (corpus:77 inner yzzw; corpus:400 inner yqwnywnhs;
  *  corpus:6551 inner irjkznnbpewjpr; …): a `<div class="bar ALL
@@ -527,16 +538,18 @@ export function pointerListItemSlot(
 export function pointerListItemBodyForUnknown(
   name: string,
   identity?: { setKeys?: string; typeName?: string; typeId?: number },
+  deckPhantomType?: PhantomItemType,
 ): string {
-  // Defaults preserve the corpus's phantom-item bytes (every captured
-  // denied pointer/list item is BasicCs-typed, PHANTOM_TYPE_* above; the
-  // class chip is the type's key form, PHANTOM_TYPE_KEY). The identity
-  // override lets the read-denied KNOWN-item path emit the fetched
-  // card's real set keys / type attrs (the slot + body shapes are
-  // identical; only the identity tokens differ).
-  const setKeys = identity?.setKeys ?? `ALL TYPE-${PHANTOM_TYPE_KEY}`;
-  const typeName = identity?.typeName ?? PHANTOM_TYPE_NAME;
-  const typeId = identity?.typeId ?? PHANTOM_TYPE_ID;
+  // The phantom's type identity is the DECK's configuration (the header
+  // above), with the caller's resolved `identity` taking precedence — the
+  // read-denied KNOWN-item path emits the fetched card's real set keys and
+  // type attrs (the slot + body shapes are identical; only the identity
+  // tokens differ). With neither, the item renders with NO type chip and NO
+  // type attributes: the shape a deck with no `*all+*default` template type
+  // produces, not another deck's type.
+  const setKeys = identity?.setKeys ?? phantomSetKeys(deckPhantomType);
+  const typeName = identity?.typeName ?? deckPhantomType?.typeName;
+  const typeId = identity?.typeId ?? deckPhantomType?.typeId;
   // The attr pair is the deck-wide oracle shape (every shard's inner
   // bodies: `data-card-link-name='<url-key>' data-card-name='<name>'`,
   // e.g. shard-000024's "Brandon_WilliamsCraig"/"Brandon WilliamsCraig")
@@ -627,26 +640,28 @@ function jsonEscapeAttr(s: string): string {
  *  fetchRenderCard returns undefined for a pointer/list item name. The
  *  phantom card carries the item type its HOST resolves (item.rb:245-248
  *  new_unknown_item_args: `itype = args[:type] || item_type_name; itype ?
- *  { type: itype } : {}` — the typed identity argument below) so the
- *  emitted slot wrap's data-card-type-* attrs match the captured oracle
- *  byte-for-byte; the corpus's *all+*default template (22281 BasicCs) is
- *  the no-host-rule fallback the same way Ruby's ensure_type_id template
- *  walk lands there for every untyped new card. */
+ *  { type: itype } : {}` — the typed identity argument below); with no host
+ *  type it falls back to the DECK's configured `*all+*default` template type
+ *  (the `deckPhantomType` argument — Ruby's ensure_type_id template walk),
+ *  and with neither the phantom carries no type at all. */
 export function phantomPointerListItem(
   name: string,
   typed?: { typeName: string; typeId: number },
+  deckPhantomType?: PhantomItemType,
 ): RenderCard {
   const deckName = DeckoName.parse(name);
-  const typeName = typed?.typeName ?? PHANTOM_TYPE_NAME;
-  const typeId = typed?.typeId ?? PHANTOM_TYPE_ID;
+  const typeName = typed?.typeName ?? deckPhantomType?.typeName;
+  const typeId = typed?.typeId ?? deckPhantomType?.typeId;
   // Typed identities carry the type's KEY form in the class chain — the
   // captured oracle pins `card-slot mini_bar-view ALL TYPE-place` for the
   // rule-typed unknown items (Free Aiki Dojo+Central Places, shard-000024:
-  // "The Flight Deck" et al.). The no-identity fallback keeps the corpus's
-  // BasicCs pin bytes exactly (merge pass 2's class B survey).
-  const setKeys = typed !== undefined
-    ? `ALL TYPE-${DeckoName.parse(typed.typeName).key}`
-    : `ALL TYPE-${PHANTOM_TYPE_NAME}`;
+  // "The Flight Deck" et al.). The no-host-identity arm uses the deck's
+  // configured phantom type's key (the *all+*default template's own class
+  // token), and with no configured type the chip is absent entirely.
+  const setKeys =
+    typed !== undefined
+      ? `ALL TYPE-${DeckoName.parse(typed.typeName).key}`
+      : phantomSetKeys(deckPhantomType);
   // The record is a proper unsaved record (Ruby's Card.new on the fetch
   // miss) so the slot builders' slot_cardname rule reads a real new?
   // state instead of special-casing a record-less cast.

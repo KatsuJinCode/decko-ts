@@ -30,6 +30,7 @@ import {
   seedCard,
   type RenderTestStorage,
 } from "../card/render/render-test-storage.js";
+import { PRODUCTION_DECK_SERVED_DELTAS } from "./fixtures/production-deck-served-deltas.js";
 import type { RenderEngine } from "../../src/card/render.js";
 
 function edgeGet(pathname: string): Request {
@@ -38,7 +39,11 @@ function edgeGet(pathname: string): Request {
 
 /** The entry's deck shape, real engines over the in-memory sqlite deck. */
 function realDeck(storage: RenderTestStorage) {
-  return { fetcher: storage.fetcher, render: storage.engine };
+  return {
+    fetcher: storage.fetcher,
+    render: storage.engine,
+    servedDeltas: PRODUCTION_DECK_SERVED_DELTAS,
+  };
 }
 
 /** A deck whose page entry throws the given error; used only where the

@@ -205,7 +205,7 @@ import { safeSetKeys } from "./render/set-keys.js";
 import { referencedNames, scanNests } from "./render/nest-syntax.js";
 import type { PatternCardInput } from "./set-patterns/types.js";
 import { PATTERN_TABLE } from "./set-patterns/registry.js";
-import type { SettingClassWithRules } from "./render/format.js";
+import type { PhantomItemType, SettingClassWithRules } from "./render/format.js";
 import {
   readPermissionStatements,
   readPermissionStateFromViewerResults,
@@ -689,6 +689,23 @@ export class RenderEngine implements RenderEngineLike {
    *  RenderEngineLike.imageCdnHost). Host-deployment config; undefined =
    *  host-relative /files URLs. */
   imageCdnHost: string | undefined;
+  /** The deck's PHANTOM item type — the type an unknown (record-less)
+   *  pointer/list item carries when no host item type resolves one.
+   *
+   *  WHY IT IS CONFIGURATION (review round 4, finding 22's sibling, finding
+   *  9): in Ruby this is the deck's own `*all+*default` template type —
+   *  `Card.fetch(name, new: {})`, whose type_id comes from the deck's rule
+   *  row (states.rb:44-50 + the *default template chain). It is a property
+   *  of the DECK, not of the engine: one corpus's `*all+*default` names a
+   *  BasicCs type card, and hard-coding that id/name/key made every other
+   *  deck's unknown items render another deck's type chip and data attrs.
+   *
+   *  undefined = no phantom type configured, and the unknown item renders
+   *  with NO type chip and NO type attributes — the shape a deck with no
+   *  `*all+*default` rule produces (Ruby: the template walk answers nil, so
+   *  the new card carries no type at all). A deck that HAS such a rule
+   *  configures this at boot with its own type's id, name and key. */
+  phantomItemType: PhantomItemType | undefined;
   /** The Auth::Token runtime config — the HMAC secret the account
    *  verify_url / reset_password_url links are signed with
    *  (card-1.110.0/lib/card/auth/token.rb:7 reads Rails' secret_key_base;
