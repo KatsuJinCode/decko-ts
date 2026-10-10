@@ -39,12 +39,12 @@
 // item vanished. Corpus bytes this fixes: HDW CM 20131229 0264+tags
 // (`+tags|titled;item:taglink`, page recapture-raw-shard-000013) — the
 // engine emitted ONLY `<span class="render-error alert alert-danger">view
-// (taglink) not supported for BW</span>` in the titled body where the
+// (taglink) not supported for CM</span>` in the titled body where the
 // capture carries
 //     <div class="card-list card-list-taglink pointer-list">
 //       <div class="pointer-item item-taglink"><span class="denied">…</span></div>
 //       <div class="pointer-item item-taglink"><span class="render-error …">
-//         view (taglink) not supported for BW</span></div>
+//         view (taglink) not supported for CM</span></div>
 //     </div>
 // (item 1 is read-denied — its quiet denial span is the item gate's, not
 // this rescue's; item 2's taglink view is unsupported IN RUBY TOO — the
