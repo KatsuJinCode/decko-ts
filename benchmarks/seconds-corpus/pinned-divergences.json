@@ -597,50 +597,6 @@
    "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
-   "op": "page:anonymous:Ada Admin+*follow",
-   "family": "composed-mod-view-gap",
-   "group": "page / anonymous",
-   "evidence": {
-    "firstDiffAt": 11308,
-    "expected": "&lt;/i&gt; &lt;/a&gt;&lt;/span&gt;Get notified about changes.\\\" data-bs-placement=\\\"left\\\" class=\\\"help-link ps-1 _popover_link _card-menu-popover\\\" data-bs-tit",
-    "actual": "&lt;/i&gt; &lt;/a&gt;&lt;/span&gt;Get notified about changes\\\" data-bs-placement=\\\"left\\\" class=\\\"help-link ps-1 _popover_link _card-menu-popover\\\" data-bs-titl"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:member:Ada Admin+*follow",
-   "family": "composed-mod-view-gap",
-   "group": "page / member",
-   "evidence": {
-    "firstDiffAt": 11703,
-    "expected": "heckbox\\\" name=\\\"pointer_checkbox-mira_member-Xenabled_role-3\\\" id=\\\"pointer-checkbox-anyone_signed_in\\\" value=\\\"Anyone Signed In\\\" class=\\\"pointer-checkbox-but",
-    "actual": "heckbox\\\" name=\\\"pointer_checkbox-mira_member-Xenabled_role-1\\\" id=\\\"pointer-checkbox-anyone_signed_in\\\" value=\\\"Anyone Signed In\\\" class=\\\"pointer-checkbox-but"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:contractor:Ada Admin+*follow",
-   "family": "composed-mod-view-gap",
-   "group": "page / contractor",
-   "evidence": {
-    "firstDiffAt": 11841,
-    "expected": "&lt;/i&gt; &lt;/a&gt;&lt;/span&gt;Get notified about changes.\\\" data-bs-placement=\\\"left\\\" class=\\\"help-link ps-1 _popover_link _card-menu-popover\\\" data-bs-tit",
-    "actual": "&lt;/i&gt; &lt;/a&gt;&lt;/span&gt;Get notified about changes\\\" data-bs-placement=\\\"left\\\" class=\\\"help-link ps-1 _popover_link _card-menu-popover\\\" data-bs-titl"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "page:admin:Ada Admin+*follow",
-   "family": "composed-mod-view-gap",
-   "group": "page / admin",
-   "evidence": {
-    "firstDiffAt": 11798,
-    "expected": "\"checkbox\\\" name=\\\"pointer_checkbox-ada_admin-Xenabled_role-3\\\" id=\\\"pointer-checkbox-anyone_signed_in\\\" value=\\\"Anyone Signed In\\\" class=\\\"pointer-checkbox-but",
-    "actual": "\"checkbox\\\" name=\\\"pointer_checkbox-ada_admin-Xenabled_role-1\\\" id=\\\"pointer-checkbox-anyone_signed_in\\\" value=\\\"Anyone Signed In\\\" class=\\\"pointer-checkbox-but"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
    "op": "page:anonymous:Contractor Note 01+*self+*read",
    "family": "rule-page-key-order: the rule page bar slot class order differs (set-module key order in the page rule list)",
    "group": "page / anonymous",
@@ -1675,17 +1631,6 @@
    "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
-   "op": "core:admin:*account links",
-   "family": "composed-mod-view-gap",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 44,
-    "expected": "{\"html\":\"<div id=\\\"logging\\\" class=\\\"logged-in\\\"><li class=\\\"nav-item\\\"><div id=\\\"ada_admin-Xenabled_role-edit_inline-view\\\" class=\\\"card-slot edit_inline-view ",
-    "actual": "{\"html\":\"<div id=\\\"logging\\\" class=\\\"logged-out\\\"><li class=\\\"nav-item\\\"><a class=\\\"nav-link signup-link known-card\\\" href=\\\"/new/Sign_up\\\">Sign up</a></li>\\n<l"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
    "op": "page:anonymous:*guide",
    "family": "setting-page-sections: the Setting page rule-list section labels and set sections differ",
    "group": "page / anonymous",
@@ -1836,17 +1781,6 @@
     "firstDiffAt": 10949,
     "expected": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" value=\\\"Anyone Signed In\\nAdministrator\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"",
     "actual": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><div class=\\\"btn-g"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "core:admin:*header",
-   "family": "composed-mod-view-gap",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 6858,
-    "expected": ">\\n        <ul class=\\\"navbar-nav\\\"><li class=\\\"nav-item\\\"><div id=\\\"ada_admin-Xenabled_role-edit_inline-view\\\" class=\\\"card-slot edit_inline-view ALL ALL_PLUS ",
-    "actual": ">\\n        <ul class=\\\"navbar-nav\\\"><li class=\\\"nav-item\\\"><a class=\\\"nav-link signup-link known-card\\\" href=\\\"/new/Sign_up\\\">Sign up</a></li>\\n<li class=\\\"nav-"
    },
    "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
@@ -3997,61 +3931,6 @@
     "firstDiffAt": 10,
     "expected": "{\"html\":\"<div id=\\\"quinn_contractor-setup-view\\\" class=\\\"card-slot setup-view ALL TYPE-user SELF-quinn_contractor\\\" data-card-id=\\",
     "actual": "{\"html\":\"<span class=\\\"denied\\\"><!-- Sorry, you don't have permission (create) --></span>\"}"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "view:anonymous:*account links:sign_up",
-   "family": "composed-mod-view-gap",
-   "group": "view / anonymous",
-   "evidence": {
-    "firstDiffAt": 41,
-    "expected": "{\"html\":\"<a class=\\\"nav-link signup-link known-card\\\" href=\\\"/new/Sign_up\\\">Sign up</a>\"}",
-    "actual": "{\"html\":\"<a class=\\\"nav-link signup-link wanted-card\\\" href=\\\"/signup/new\\\">Sign up</a>\"}"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "view:anonymous:*account links:sign_in",
-   "family": "composed-mod-view-gap",
-   "group": "view / anonymous",
-   "evidence": {
-    "firstDiffAt": 41,
-    "expected": "{\"html\":\"<a class=\\\"nav-link signin-link known-card\\\" href=\\\"/*signin\\\">Sign in</a>\"}",
-    "actual": "{\"html\":\"<a class=\\\"nav-link signin-link wanted-card\\\" href=\\\"/signin\\\">Sign in</a>\"}"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "view:anonymous:*account links:sign_out",
-   "family": "composed-mod-view-gap",
-   "group": "view / anonymous",
-   "evidence": {
-    "firstDiffAt": 9,
-    "expected": "{\"html\":\"\"}",
-    "actual": "{\"html\":\"<a class=\\\"nav-link signout-link wanted-card\\\" href=\\\"/signin/delete\\\">Sign out</a>\"}"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "view:admin:*account links:invite",
-   "family": "composed-mod-view-gap",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 41,
-    "expected": "{\"html\":\"<a class=\\\"nav-link invite-link known-card\\\" href=\\\"/new/Sign_up\\\">Invite</a>\"}",
-    "actual": "{\"html\":\"<a class=\\\"nav-link invite-link wanted-card\\\" href=\\\"/signup/new\\\">Invite</a>\"}"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "view:admin:*account links:my_card",
-   "family": "composed-mod-view-gap",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 9,
-    "expected": "{\"html\":\"<div id=\\\"ada_admin-Xenabled_role-edit_inline-view\\\" class=\\\"card-slot edit_inline-view ALL ALL_PLUS TYPE-session RSTAR ",
-    "actual": "{\"html\":\"\"}"
    },
    "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
