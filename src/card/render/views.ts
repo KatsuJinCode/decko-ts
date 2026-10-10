@@ -38,6 +38,7 @@ import { DeckoName } from "../name.js";
 import { CodenameNotFoundError, NameNotFoundError } from "../name/errors.js";
 import { getNameEnvironment } from "../name/environment.js";
 import { timeAgoInWords } from "./text-helpers.js";
+import { cardWallClockNow } from "../wall-clock.js";
 import { searchPagingNav } from "./search-paging.js";
 import { footerDeckoVersion, recaptchaSiteKey, serializerFollowsLive } from "./deployment-follow-live-config.js";
 import type { UpdaterCardInfo } from "../history/updater-seam.js";
@@ -6096,8 +6097,15 @@ function lexiconNameForId(id: number): string | undefined {
  *  cards.creator_id (record.creatorId), cards.created_at
  *  (record.createdAt), the creator NAME (the sync lexicon peek,
  *  NameLexicon.name — Ruby's own lexicon is cache-first too), and the
- *  time_ago_in_words helper already byte-pinned in text-helpers.ts (the
- *  capture normalizes the age to TIME_AGO on both sides). The wrap option
+ *  time_ago_in_words helper already byte-pinned in text-helpers.ts. Ruby
+ *  reads Time.now at render time; the engine's clock seam
+ *  (cardWallClockNow) is that instant - the capture harness freezes it
+ *  (deck.json clock -> setCaptureWallClock) and the corpus oracle pins the
+ *  real phrase ("less than a minute" - the fixture creator sits AT the
+ *  frozen instant; a wall-clock default answered "21 days ago"). The
+ *  captured board-views fixtures normalize the age to TIME_AGO on both
+ *  sides, so production is unchanged: unset, the seam IS the real clock.
+ *  The wrap option
  *  is an UNCONDITIONAL tag wrapper (card-1.110.0
  *  lib/card/set/format/abstract_format/wrapper.rb define_tag_wrapper ->
  *  wrap_with), so the guard's "" body renders inside its wrap div — the
@@ -6112,7 +6120,7 @@ const creatorCreditView: ViewFn = (ctx) => {
   const body =
     name === undefined || record.createdAt === undefined
       ? ""
-      : `Created by ${creditLinkHtml(name)} ${timeAgoInWords(record.createdAt)} ago`;
+      : `Created by ${creditLinkHtml(name)} ${timeAgoInWords(record.createdAt, cardWallClockNow())} ago`;
   return `<div class="text-muted creator-credit">${body}</div>`;
 };
 

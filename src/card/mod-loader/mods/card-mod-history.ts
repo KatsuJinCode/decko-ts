@@ -1238,8 +1238,10 @@ function actorAndAgo(ctx: ViewContext, reader: HistoryRenderReader, act: History
   return `<small>${link}\n${editedAgo}</small>`;
 }
 
-/** act_renderer.rb:60-64 summary - the per-type count badge. */
-function actSummaryBadge(reader: HistoryRenderReader, actions: HistoryActionRow[]): string {
+/** act_renderer.rb:60-64 summary - the per-type count badge (the
+ *  ActRenderer#summary composition the board pills share - card-mod-edit's
+ *  historyTabView renders it through this helper). */
+export function actSummaryBadge(reader: HistoryRenderReader, actions: HistoryActionRow[]): string {
   const counts = new Map<string, number>();
   for (const action of reader.approvedActions(actions)) {
     const type = actionTypeSymbol(action);
@@ -1298,8 +1300,15 @@ function relativeTitle(ctx: ViewContext, actCardName: string): string {
 }
 
 /** differ.rb:60-66 raw_view - the content rendered through the action
- *  card's raw view (dbContent passthrough; the structure-rule override
- *  surface rides RenderFormat.renderRaw on a shadow card). */
+ *  card's raw view. base.rb:75-77 `view :raw do structure_card&.content ||
+ *  _render_blank end`: for a governed card the raw view reads the RULE
+ *  card's content and the raw_view assignment (differ.rb:69-74
+ *  `card.db_content = ...`) is INERT - the synthesized sole-create value
+ *  "" never reaches the bytes (Topic 001 rides Topic+*type+*structure; the
+ *  corpus oracle pins the template verbatim inside the diffins block, and
+ *  BOTH arms of an update diff render the template, whose blank diff is
+ *  Ruby's own "<i>empty</i>"). Ungoverned cards keep the dbContent
+ *  passthrough (RenderFormat.renderRaw on a shadow card). */
 function rawViewBytes(
   ctx: ViewContext,
   reader: HistoryRenderReader,
@@ -1308,6 +1317,14 @@ function rawViewBytes(
 ): string {
   const info = reader.actionCard(action);
   if (info?.renderCard === undefined) return content;
+  const card = info.renderCard;
+  const structure = ctx.fmt.engine.structureRuleForSync?.({
+    name: card.name.s,
+    id: card.id,
+    typeId: card.typeId,
+    ...(card.typeName !== undefined ? { typeName: card.typeName } : {}),
+  });
+  if (structure !== undefined) return structure.content;
   const shadow = { ...info.renderCard, dbContent: content };
   const sub = new RenderFormat(shadow, ctx.fmt.engine, { parent: ctx.fmt });
   return sub.renderRaw();
@@ -2114,8 +2131,14 @@ function actLegendRowBytes(): string {
 }
 
 /** views.rb:15-23 view :act_legend — the legend row alone (see
- *  actLegendRowBytes for the composition + capture cite). */
-const actLegendView: ViewFn = () => actLegendRowBytes();
+ *  actLegendRowBytes for the composition + capture cite). The standalone
+ *  view output carries ONE leading newline ahead of the row div (the
+ *  bs_layout DSL's part-join emission - the corpus oracle pins
+ *  `{"html":"\n<div class=\"row pb-3\">...`); the :history composition
+ *  (acts_layout's `html _render_act_legend` part between the frame's own
+ *  newlines) pins the row WITHOUT it, so the shared helper stays bare and
+ *  only the view adds the seam. */
+const actLegendView: ViewFn = () => `\n${actLegendRowBytes()}`;
 
 /** views.rb:46-53 view :last_action:
  *  `%(\n      <span class="last-update">\n        #{render_last_action_verb}
@@ -2124,11 +2147,13 @@ const actLegendView: ViewFn = () => actLegendRowBytes();
  *  indentation. render_acted_at is the :acted_at view (format base.rb:63,
  *  date_view = time_ago_in_words — no variant); card.acted_at is
  *  last.rb:1-2 `last_act.acted_at`. The actor nest renders :link — for a
- *  known actor the link view's bytes are the known-card anchor (the same
- *  anchor actorAndAgo emits for the act listing; the nil-card arm renders
- *  the bare id, last.rb:65-67 last_actor = last_act.actor). Byte basis:
- *  GEM-SOURCE-DERIVED (RENDERED-UNPINNED — no capture shard renders the
- *  name), the same disclosed basis as :last_action_verb. */
+ *  known actor the nest's link-view bytes carry the card-title span
+ *  wrapper (links.rb known-card anchor; the corpus oracle pins
+ *  `<span class="card-title" title="Decko Bot">Decko Bot</span>` inside
+ *  the anchor - a DIFFERENT shape from act_renderer's link_to_card
+ *  subtitle anchor, which actorAndAgo emits bare and the :act header pins
+ *  bare); the nil-card arm renders the bare id, last.rb:65-67
+ *  last_actor = last_act.actor. */
 const lastActionView: ViewFn = (ctx) => {
   const reader = historyReader(ctx);
   const act = reader.cardLastAct;
@@ -2144,7 +2169,7 @@ const lastActionView: ViewFn = (ctx) => {
       ? act === undefined
         ? ""
         : h(String(act.actor_id))
-      : `<a class="known-card" href="/${h(DeckoName.parse(actor.name).urlKey)}">${h(actor.name)}</a>`;
+      : `<a class="known-card" href="/${h(DeckoName.parse(actor.name).urlKey)}"><span class="card-title" title="${h(actor.name)}">${h(actor.name)}</span></a>`;
   return (
     `\n      <span class="last-update">\n        ${verb} ${actedAt} ago by\n        ${actorLink}\n      </span>\n    `
   );

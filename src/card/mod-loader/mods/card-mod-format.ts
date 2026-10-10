@@ -198,7 +198,12 @@
 //   vendor/*: rails (haml template compilation, asset pipeline,
 //   i18n, seed data)
 
-import { ONE_LINE_CHARACTER_LIMIT, truncate } from "../../render/text-helpers.js";
+import {
+  ONE_LINE_CHARACTER_LIMIT,
+  timeAgoInWords as sharedTimeAgoInWords,
+  truncate,
+} from "../../render/text-helpers.js";
+import { cardWallClockNow } from "../../wall-clock.js";
 import { modBarRightSections } from "./core-admin-runtime.js";
 import { debugServerErrorView, serverErrorHtmlView } from "../../render/debug-server-error.js";
 import {
@@ -254,13 +259,16 @@ import { envOriginForSurface } from "../../render/deck-origin.js";
 // helpers (Ruby source cited per block)
 // ---------------------------------------------------------------------------
 
-/** set/all/base.rb:65-71 date_view: `voo.variant ? date.strftime(voo.variant)
+/** set/all/base.rb:59-68 date_view: `voo.variant ? date.strftime(voo.variant)
  *  : time_ago_in_words(date)`. The variant branch returns the strftime
  *  output (e.g. "%Y-%m-%d"); the default returns time_ago_in_words
- *  ("about 5 minutes ago" shape). The headless engine has no
- *  time_ago_in_words; a non-variant render falls through to the
- *  ISO-formatted date (documented divergence - the engine's
- *  formatDateCore reads the same Date.toISOString().substring(0,10)). */
+ *  ("less than a minute" shape, no "ago" tail). The non-variant arm goes
+ *  through the byte-exact Rails port (render/text-helpers.ts
+ *  timeAgoInWords, date_helper.rb:95-165) with the engine's clock seam
+ *  (cardWallClockNow) as "now" - Ruby reads Time.now at render time, and
+ *  the capture harness freezes that instant (deck.json clock ->
+ *  setCaptureWallClock). Production is unchanged: unset, the seam IS the
+ *  real clock. */
 function dateView(ctx: ViewContext, sqlDate: string | undefined): string {
   if (sqlDate === undefined || sqlDate === "") return "";
   const date = parseSqlDate(sqlDate);
@@ -269,15 +277,25 @@ function dateView(ctx: ViewContext, sqlDate: string | undefined): string {
   if (typeof variant === "string") {
     return formatStrftime(date, variant);
   }
-  return formatDateCore(date.toISOString());
+  return sharedTimeAgoInWords(date, cardWallClockNow());
 }
 
 /** parseSqlDate: accept either a Date (the CardRecord surface the
  *  fetch layer hydrates some dates into) or a SQL timestamp string
- *  ("2026-09-19 00:00:00.000"). Returns null for any unparseable
- *  input. */
+ *  ("2026-09-19 12:00:00.000"). SQL timestamp strings parse as UTC -
+ *  the schema stores UTC and JS's space-form Date constructor would
+ *  otherwise read them as machine-local (the same convention the
+ *  history module's parseActedAt pins). Returns null for any
+ *  unparseable input. */
 function parseSqlDate(value: string | Date): Date | null {
   if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  const m =
+    /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/.exec(value);
+  if (m !== null) {
+    return new Date(
+      Date.UTC(+m[1]!, +m[2]! - 1, +m[3]!, +m[4]!, +m[5]!, +m[6]!),
+    );
+  }
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
@@ -295,16 +313,6 @@ function formatStrftime(date: Date, fmt: string): string {
     .replace(/%H/g, pad(date.getUTCHours()))
     .replace(/%M/g, pad(date.getUTCMinutes()))
     .replace(/%S/g, pad(date.getUTCSeconds()));
-}
-
-/** Local copy of the formatDateCore emitter (views.ts#formatDateCore is
- *  private to the render package). The card-mod-format date views
- *  invoke the same emitter when voo.variant is absent. */
-function formatDateCore(iso: string): string {
-  // The engine's formatDateCore slices the first 10 chars of an ISO
-  // timestamp ("2026-09-19"); the time_ago_in_words path is a
-  // documented divergence.
-  return iso.substring(0, 10);
 }
 
 // ---------------------------------------------------------------------------
