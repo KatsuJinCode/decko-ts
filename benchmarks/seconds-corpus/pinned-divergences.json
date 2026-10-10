@@ -3346,17 +3346,6 @@
    "recorded": "2026-10-09 wave-2 slice-2 refresh (commit pending) vs stock-oracle capture of synthetic-v2: every byte of the two views now matches except the by-name link's known/wanted class - the RIGHT::BY-NAME virtual-card mechanism (card-mod-search set/right/by_name.rb includes Abstract::VirtualSearch, whose .included assigns type search_type and whose virtual? = new?, so Card.known?(X+by name) is true for every deck) - the link-existence seating lane's shared mechanism (same token as the Help Desk by-name pins). View-lane bytes adjudicated: h4/haml list shape, the live-voo data-slot show list, the follow_item form (card-form slotter, success in the action query, the button attr order name/type/aria-label/class, the follow_label link text), and the more-options link_to_view anchor all match the oracle bytes."
   },
   {
-   "op": "view:admin:*follow defaults:confirm_update_all",
-   "family": "composed-mod-view-gap",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 14,
-    "expected": "{\"html\":\"<div id=\\\"Xfollow_default-confirm_update_all-view\\\" class=\\\"card-slot confirm_update_all-view ALL TYPE-list STAR SELF-Xfollow",
-    "actual": "{\"html\":\"<div class=\\\"alert alert-info\\\"><h1>Are you sure you want to change the default follow rules?</h1><p>You may choose to update"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
    "op": "view:admin:Ada Admin:account_tab",
    "family": "composed-mod-view-gap",
    "group": "view / admin",

@@ -317,11 +317,13 @@ const userFollowEditView: ViewFn = ({ fmt }) => fmt.renderView("open");
 // ---------------------------------------------------------------------------
 // set/self/follow_defaults.rb:24-30 view :confirm_update_all.
 //
-// The Ruby body wraps an alert helper inside a `wrap do ... end`:
+// The corpus render (the synthetic-v2 view pin, admin) proves the view
+// REACHES its card (the wave-1 "unreachable" note was the anonymous-arm
+// capture): the body is `wrap do alert(:info) do %(...) end end` -
 //
 //   view :confirm_update_all do
 //     wrap do
-//       alert "info" do
+//       alert :info do
 //         %(
 //           <h1>Are you sure you want to change the default follow rules?</h1>
 //           <p>You may choose to update all existing users.
@@ -331,18 +333,23 @@ const userFollowEditView: ViewFn = ({ fmt }) => fmt.renderView("open");
 //     end
 //   end
 //
-// `wrap do X end` is voo_api.rb:167-177 - `<div>X</div>` (no attrs).
-// `alert "info" do X end` is the bootstrap alert helper (helper.rb -
-// adds class "alert alert-info" to the wrapper). Inlined to a literal
-// `<div class="alert alert-info"><h1>...</h1><p>...</p></div>`. The
-// inner markup is the literal string the view produces (the h1 + p +
-// the trailing whitespace inside the haml literal).
+// `wrap` is the slot wrap (wrap.rb:11-14 - the card-slot div with the
+// view/set-key classes and the data-slot payload, whose show list the
+// view-lane root enrollment fills); the bootstrap alert helper adds
+// role="alert" beside the class chain; the %( ) literal keeps the source
+// whitespace verbatim (10-space h1/p indents, the 13-space continuation,
+// the 8-space line before the helper's closing tag).
 // ---------------------------------------------------------------------------
 
-const confirmUpdateAllView: ViewFn = () =>
-  `<div class="alert alert-info"><h1>Are you sure you want to change the default follow rules?</h1>` +
-  `<p>You may choose to update all existing users.` +
-  ` This may take a while. </p></div>`;
+const confirmUpdateAllView: ViewFn = (ctx) => {
+  const alert =
+    `<div class="alert alert-info" role="alert">` +
+    `\n          <h1>Are you sure you want to change the default follow rules?</h1>` +
+    `\n          <p>You may choose to update all existing users.` +
+    `\n             This may take a while. </p>\n        ` +
+    `</div>`;
+  return modSlotWrap(ctx, "confirm_update_all", alert);
+};
 
 // ===========================================================================
 // lane-follow (2026-09-28): the follow views whose bodies the follow-rule
