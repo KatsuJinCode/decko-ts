@@ -76,3 +76,4 @@ scripts/deploy/one-click-deck/out/
 /tmp-edge-bench/
 /tmp-lane-cssparity/
 /.zcode/
+vitest.gate.generated.ts
