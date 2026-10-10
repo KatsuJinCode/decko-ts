@@ -1226,7 +1226,24 @@ export class RenderFormat {
         // unknown card reports the substituted view - same shape here)
         throw new UnsupportedViewError(effective, this.card.name.s);
       }
-      return viewFn({ fmt: this, voo });
+      try {
+        return viewFn({ fmt: this, voo });
+      } catch (error) {
+        // THE ROOT'S OWN wrap_and_render rescue (format/render.rb:115-119),
+        // on THE bare view-lane root only. In the serving posture the html
+        // format is never focal (html_format.rb:16-18 focal? =
+        // show_layout? ? main? : depth.zero? - the adapter's bare render
+        // main!s nothing, so focal? is main? = false), loud_error?
+        // (error.rb:65-67) is therefore false, and the rescue is QUIET
+        // (error.rb:75-78): the span is the render's value. Nested and
+        // delegated renders are rescued by their own scopes (nest()'s
+        // catch, renderDelegated) - a throw reaching here already escaped
+        // those. A focal root re-raises as Ruby's loud_error does
+        // (error.rb:69-73); the page lane builds non-viewLaneRoot roots, so
+        // it keeps its own error surface.
+        if (!viewLaneRoot) throw error;
+        return quietRenderError(error, this.card, effective);
+      }
     } finally {
       this.voo = previous;
     }
@@ -4065,7 +4082,9 @@ export function quietRenderError(
   view: string,
 ): string {
   const msg =
-    error instanceof UnsupportedViewError || error instanceof TooDeepError
+    error instanceof UnsupportedViewError ||
+    error instanceof TooDeepError ||
+    error instanceof CodenameNotFoundError
       ? error.message
       : `Error rendering: ${h(card.name.s)} (${view} view)`;
   return `<span class="render-error alert alert-danger">${msg}</span>`;

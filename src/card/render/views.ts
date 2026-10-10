@@ -2070,29 +2070,55 @@ export function textMessageCoreBody(ctx: ViewContext): string {
  *  card PROGRAMMATICALLY (no nest_syntax in the slot JSON, absolute
  *  nest_name) in :read_formgroup — the ported view
  *  (card-mod-edit.ts readFormgroupView, wrap: :slot, unknown: true). */
-const EMAIL_TEMPLATE_FIELD_TAGS = [
+/** set/type/email_template/html.rb:3 `EmailTemplate::EmailConfig::EMAIL_FIELDS
+ *  + [:test_context]` - the SYMBOL tags exactly as the gem defines them
+ *  (email_config.rb:1). */
+const EMAIL_TEMPLATE_FIELD_CODENAMES = [
   "to",
   "from",
   "cc",
   "bcc",
   "attach",
   "subject",
-  "text message",
-  "html message",
-  "test context",
+  "text_message",
+  "html_message",
+  "test_context",
 ] as const;
 
 export function emailTemplateCoreBody(ctx: ViewContext): string {
   const base = ctx.fmt.card.name.s;
-  return EMAIL_TEMPLATE_FIELD_TAGS.map((tag) => {
-    const fieldMark = `${base}+*${tag}`;
-    return ctx.fmt.nest({
-      name: fieldMark,
-      syntax: "",
-      options: { view: "read_formgroup", title: fieldMark, extra: {} },
-      comment: undefined,
-    });
-  }).join("\n");
+  // render_read_form (card-mod-edit set/all/formgroup.rb:2-7) maps
+  // read_field_configs -> edit_field_configs' explicit arm
+  // (card-mod-content set/all/chunk.rb:121-133), which resolves EVERY
+  // edit_fields SYMBOL tag through the codename table BEFORE any field nest
+  // runs: normalized_edit_field_config -> card.name.field(tag) ->
+  // Card::Name.compose -> from_cardish(Symbol) -> Codename.name!
+  // (card-1.110.0 lib/card/name.rb:77 -> codename.rb:90,160). The marks are
+  // the codenamed cards' NAMES (":to" resolves to the "*to" card, hence the
+  // starred trait form the live probe recorded); a codename the deck does
+  // not carry raises Card::Error::CodenameNotFound there - in the serving
+  // posture the html format is not focal (html_format.rb:16-18 focal? =
+  // show_layout? ? main? : depth.zero?, and the bare adapter root is never
+  // main!-ed), so the rescue is QUIET (error.rb:65-67,75-78) and the
+  // verbatim span becomes the whole read_form = the whole core (oracle
+  // synthetic-v2: the 83-byte span-only core; the former star-form STRING
+  // marks skipped the codename table entirely and rendered all nine
+  // formgroups).
+  const fieldMarks = EMAIL_TEMPLATE_FIELD_CODENAMES.map((code) => {
+    const tag = getNameEnvironment()?.codename?.name(code);
+    if (tag === undefined) throw new CodenameNotFoundError(`unknown codename: ${code}`);
+    return `${base}+${tag}`;
+  });
+  return fieldMarks
+    .map((fieldMark) =>
+      ctx.fmt.nest({
+        name: fieldMark,
+        syntax: "",
+        options: { view: "read_formgroup", title: fieldMark, extra: {} },
+        comment: undefined,
+      }),
+    )
+    .join("\n");
 }
 
 /** The flat `core` entry's scope dispatcher. Ruby resolves :core per card
