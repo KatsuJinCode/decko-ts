@@ -4570,6 +4570,33 @@ export class RenderEngine implements RenderEngineLike {
   // route and CQL API) — same engine state the HTML verdicts read
   // -------------------------------------------------------------------------
 
+  /** THE FRESHNESS BOUNDARY FOR THE NON-RENDER CARD-SERVING ENTRIES (the
+   *  Workers' JSON/API routes): the same gate the render entry runs at the
+   *  top of renderHeld, minus the render path's one-trip-seat column fold.
+   *  render() reads the deck's committed-write stamp (deck_data_version,
+   *  ONE point SELECT) and clears every derived cache when it moved, so a
+   *  warm runtime never serves post-revocation state; a route that answers
+   *  through fetcher/canReadCard WITHOUT rendering skips that gate, and the
+   *  memoized permission state (readPermission, deniedVerdicts) then serves
+   *  a verdict computed before the revocation was committed. Callers run
+   *  this ONCE per request, BEFORE any fetch or permission check. Cost: the
+   *  stamp read — exactly what a warm render pays. A first call on a cold
+   *  engine only arms the baseline (nothing warm exists to protect, the
+   *  first-render arm). The stamp's loud-missing throw applies here too:
+   *  an unmigrated database must not serve permission verdicts. */
+  async ensureFreshness(): Promise<void> {
+    const observed = await this.readDeckDataVersion();
+    if (this.deckDataVersion === undefined || observed === this.deckDataVersion) {
+      this.deckDataVersion = observed;
+      return;
+    }
+    this.resetCaches();
+    this.fetcher.replayRouter.disarmRenderPlan();
+    invalidateSeatedPagePayloads(this.fetcher);
+    await this.fetcher.reprimeBootState();
+    this.deckDataVersion = observed;
+  }
+
   /** Read verdict for one card record — the per-card half of ensureVerdicts,
    *  shared by entries that serve card data outside the HTML view pipeline
    *  (deploy/worker.ts cardRecordJson). The full ok_to_read? port — the mod

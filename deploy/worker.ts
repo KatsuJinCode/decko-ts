@@ -476,6 +476,11 @@ async function renderCardPage(
 }
 
 async function cardRecordJson(deck: Deck, cardName: string): Promise<Response> {
+  // Freshness before the fetch and the read gate (RenderEngine#ensureFreshness
+  // — the render path's own gate): the retained engine memoizes permission
+  // verdicts, so a rule revoked after the last render must not keep serving
+  // the record JSON.
+  await deck.render.ensureFreshness();
   const record = await deck.fetcher.fetchByName(cardName);
   if (record === undefined || record.name === undefined) {
     return jsonResponse(404, { error: "card not found", name: cardName });
@@ -540,6 +545,10 @@ async function cardFormatShow(
   cardName: string,
   format: "csv" | "rss",
 ): Promise<Response> {
+  // Freshness before the fetch and the read gate (see cardRecordJson): the
+  // csv/rss surfaces judge permissions against the same memoized engine
+  // state and must not outlive a committed revocation.
+  await deck.render.ensureFreshness();
   const record = await deck.fetcher.fetchByName(cardName);
   if (record === undefined || record.name === undefined) {
     return jsonResponse(404, { error: "card not found", name: cardName });
@@ -592,6 +601,11 @@ async function apiQuery(request: Request, deck: Deck): Promise<Response> {
     return jsonResponse(400, { error: 'expected a JSON body like {"cql": {...}}' });
   }
   try {
+    // Freshness before the permission filter and the query (see
+    // cardRecordJson): cqlPermissionOptions reads the same memoized
+    // readable-rule state, so a stale isolate would filter rows by the
+    // pre-revocation rule set.
+    await deck.render.ensureFreshness();
     // Permission filter (the port of Where#permission_conditions): without
     // it the API returns db_content for cards the HTML views deny — the
     // same leak the record-JSON route had. The generator renders

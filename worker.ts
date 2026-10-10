@@ -300,6 +300,14 @@ export default {
             return json(400, { error: "empty card name" });
           }
           const deck = await getDeck(env);
+          // The freshness boundary BEFORE any fetch or permission check:
+          // canReadCard's verdicts (and the permission state behind them)
+          // memoize on the isolate's retained engine, so a read rule revoked
+          // after this engine's last freshness check would still serve
+          // content here — the render path clears its caches at this same
+          // gate on every request (RenderEngine#render), and the API surface
+          // must answer over the same committed state.
+          await deck.render.ensureFreshness();
           const record = await deck.fetcher.fetchByName(name);
           if (record === undefined || record.name === undefined) {
             return json(404, { error: "card not found", name });
@@ -351,7 +359,18 @@ export default {
       // deploy-button verification lane caught it live (the public
       // lineage's 90d5f31); the mapping is now shared code, not a twin.
       const mapped = mapRenderError(message);
-      return html(mapped.status, layoutPage(mapped.title, `<h1>${mapped.title}</h1><pre>${message}</pre>`));
+      // title AND message are entity-escaped at the emitter (the deploy
+      // entry's errorPage does the same): the message can embed the raw
+      // requested view or card name (format.ts UnsupportedViewError —
+      // "view (X) not supported for Y"), so an unescaped interpolation
+      // reflects executable markup back onto the requesting browser.
+      return html(
+        mapped.status,
+        layoutPage(
+          mapped.title,
+          `<h1>${escapeHtml(mapped.title)}</h1><pre>${escapeHtml(message)}</pre>`,
+        ),
+      );
     }
   },
 };
