@@ -5107,6 +5107,28 @@
     "actual": "se\\\"></button>\\n<h5>\\nAdministrator Warning\\n</h5>\\n<ul><li><p>You are configured to use <a class=\\\"known-card\\\" href=\\\"/*captcha\\\">*captcha</a>, but for that t"
    },
    "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+  },
+  {
+   "op": "page:admin:Cards with accounts",
+   "family": "search-result-composition: the admin 'Cards with accounts' search (CQL {\"right_plus\": \":account\"}) renders the same eight result bars as the oracle in a different order - the captured order leads [Sign up (232), User (18), Decko Bot (1)], the engine's key-index tie tier leads [Decko Bot (1), User (18), Sign up (232)] (id-asc); the remaining four bars are byte-identical in sequence and the page byte counts are equal (34,148 both sides). Inherited from merge 23's sort-tier content: the gate fails byte-identically at base 8008f893 (same two ops unpinned there), so the acceptance-rows closeout commits moved zero pins; first measured on the merge-24 battery, whose corpus baseline (341 pinned / 0 unpinned) was recorded at 64bca433 and is stale for every tip since 8008f893. Left pinned for the search/CQL surface",
+   "group": "page / admin",
+   "evidence": {
+    "firstDiffAt": 14691,
+    "expected": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"sign_up-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-cardtype SELF-sign_up\\\" data-card-id=\\\"232\\\" data-card-name=\\\"Sig",
+    "actual": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"decko_bot-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-rich_text SELF-decko_bot\\\" data-card-id=\\\"1\\\" data-card-name=\\\""
+   },
+   "recorded": "2026-10-09 merge-24 gate run (commit 3d52acdf) vs stock-oracle capture of synthetic-v2; base-falsified identical at 8008f893; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+  },
+  {
+   "op": "core:admin:Cards with accounts",
+   "family": "search-result-composition: the admin 'Cards with accounts' search (CQL {\"right_plus\": \":account\"}) renders the same eight result bars as the oracle in a different order - the captured order leads [Sign up (232), User (18), Decko Bot (1)], the engine's key-index tie tier leads [Decko Bot (1), User (18), Sign up (232)] (id-asc); the remaining four bars are byte-identical in sequence and the page byte counts are equal (34,148 both sides). Inherited from merge 23's sort-tier content: the gate fails byte-identically at base 8008f893 (same two ops unpinned there), so the acceptance-rows closeout commits moved zero pins; first measured on the merge-24 battery, whose corpus baseline (341 pinned / 0 unpinned) was recorded at 64bca433 and is stale for every tip since 8008f893. Left pinned for the search/CQL surface",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 120,
+    "expected": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"sign_up-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-cardtype SELF-sign_up\\\" data-card-id=\\\"232\\\" data-card-name=\\\"Sig",
+    "actual": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"decko_bot-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-rich_text SELF-decko_bot\\\" data-card-id=\\\"1\\\" data-card-name=\\\""
+   },
+   "recorded": "2026-10-09 merge-24 gate run (commit 3d52acdf) vs stock-oracle capture of synthetic-v2; base-falsified identical at 8008f893; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   }
  ]
 }
