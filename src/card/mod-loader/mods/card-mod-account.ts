@@ -40,9 +40,10 @@
 //
 // NOT ported (honest remainder, updated lane-follow 2026-09-28):
 // - signin reset_password_success + edit_buttons ARE PORTED now
-//   (lane-follow; the frame helper's full chrome - header/panel - is
-//   DISCLOSED remainder inside resetPasswordSuccessView's comment: the
-//   body renders in the standard slot wrap).
+//   (lane-follow; the styleform lane 2026-10-10 completes
+//   reset_password_success's frame: the view now renders through the
+//   shared framedView helper - full chrome, oracle-pinned by the
+//   synthetic-v2 corpus op).
 // - signin edit (:154-157): the base :edit form super() target is
 //   card-mod-edit's (still unported); reset_password_voo's
 //   edit_structure rides the same machinery.
@@ -360,17 +361,18 @@ const ACCOUNT_LOCALE = {
 } as const;
 
 /** set/self/signin.rb:148-151 view :reset_password_success -
- *  `frame { t :account_check_email }`. The frame helper (card-mod-format
- *  set/all/html/frame.rb:6-24: with_frame -> wrap(slot) { panel {
- *  [header, frame_help, render_flash, body] } }) needs the header/panel
- *  machinery the layout surface owns; the port renders the body inside
- *  the standard slot wrap - the frame's full chrome is named remainder
- *  (the DISCLOSED shape gap, not a silent drop: the manifest's not-ported
- *  block carries it). */
+ *  `frame { t :account_check_email }` - the standard frame (frame.rb:9-27
+ *  via card-mod-edit.ts framedView: with_frame's voo.hide :help -
+ *  the slot payload's hide list - add_name_context, the bootstrap
+ *  class_ups d0-card-header card-header / d0-card-body card-body card-text
+ *  / d0-card-frame card, the header with the :title override's
+ *  "Sign In" span + the card menu, the hidden help arm compacted out, the
+ *  flash "" line, the body div). Oracle-pinned by the synthetic-v2 corpus
+ *  (view:anonymous:*signin:reset_password_success: the h2 title + the
+ *  three-link card menu + the "Check your email..." body inside
+ *  d0-card-frame card). */
 const resetPasswordSuccessView: ViewFn = (ctx) =>
-  modSlotWrap(
-    ctx,
-    "reset_password_success",
+  framedView(ctx, "reset_password_success", () =>
     ACCOUNT_LOCALE.account_check_email,
   );
 
