@@ -1,5 +1,15 @@
 """Speed-ship byte-identity and trip gate.
 
+RETIRED AS THE PER-CHANGE BYTE GATE (2026-10-09): the standard gate is the
+seconds corpus - benchmarks/seconds-corpus/seconds-corpus-gate.mjs, which
+renders fixtures/synthetic-v2 through the composed engine and byte-compares
+every page against the committed Ruby oracle outputs. That instrument is
+exhaustive over code paths (every view the composed deck serves, every card
+type, every permission shape, every mod), oracle-backed rather than
+self-referential, and runs in seconds. This script's arbitrary 40-page
+real-deck list (WRITEUP rounds 5-9 below) remains only for explicit
+--pages measurements of a bundle against the real deck mirror.
+
 Every render is one fresh hidden node process over the local trial-deck
 mirror. Byte identity masks only the data-slot-id value (its quote style is
 compared, as Ruby writes it). The reference is the
@@ -101,10 +111,17 @@ def main():
     ap.add_argument("--start", type=int, default=0)
     ap.add_argument("--count", type=int, default=1000)
     a = ap.parse_args()
+    if a.cmd != "pages" and not a.pages:
+        # The 40-page list is retired as a gate default: a gate run without
+        # explicit pages would silently measure an arbitrary slice again.
+        print(json.dumps({"retired": "the per-change byte gate is the seconds corpus",
+                          "gate": "node benchmarks/seconds-corpus/seconds-corpus-gate.mjs",
+                          "this_script": "pass --pages 'A;B;...' for an explicit real-deck measurement"}))
+        sys.exit(2)
     ps = a.pages.split(";") if a.pages else pages()
     ps = ps[a.start:a.start + a.count]
     if a.cmd == "pages":
-        for i, p in enumerate(pages()):
+        for i, p in enumerate(ps):
             print(i, p)
         return
     if a.cmd == "ref":
