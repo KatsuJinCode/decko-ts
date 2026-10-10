@@ -11,7 +11,7 @@
     "expected": "Corpus+Skin+customized\\\">Customize</a>\\n<div class='mt-4'>\\n<div id=\\\"corpu_skin-image-unknown-view\\\" class=\\\"card-slot unknown-view ALL ALL_PLUS TYPE-image RIG",
     "actual": "Corpus+Skin+customized\\\">Customize</a>\\n<div class='mt-4'>\\n\\n</div>\\n<h5 class='mt-4'>\\nSkin configuration\\n</h5>\\n<div class='small mb-3'>\\nfrom simplest to m"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:contractor:Corpus Skin",
@@ -22,7 +22,7 @@
     "expected": "Corpus+Skin+customized\\\">Customize</a>\\n<div class='mt-4'>\\n<div id=\\\"corpu_skin-image-unknown-view\\\" class=\\\"card-slot unknown-view ALL ALL_PLUS TYPE-image RIG",
     "actual": "Corpus+Skin+customized\\\">Customize</a>\\n<div class='mt-4'>\\n\\n</div>\\n<h5 class='mt-4'>\\nSkin configuration\\n</h5>\\n<div class='small mb-3'>\\nfrom simplest to m"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:admin:Corpus Skin",
@@ -33,7 +33,7 @@
     "expected": "Corpus+Skin+customized\\\">Customize</a>\\n<div class='mt-4'>\\n<div id=\\\"corpu_skin-image-unknown-view\\\" class=\\\"card-slot unknown-view ALL ALL_PLUS TYPE-image RIG",
     "actual": "Corpus+Skin+customized\\\">Customize</a>\\n<div class='mt-4'>\\n\\n</div>\\n<h5 class='mt-4'>\\nSkin configuration\\n</h5>\\n<div class='small mb-3'>\\nfrom simplest to m"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "core:admin:Corpus Skin",
@@ -44,7 +44,7 @@
     "expected": "Corpus+Skin+customized\\\">Customize</a>\\n<div class='mt-4'>\\n<div id=\\\"corpu_skin-image-unknown-view\\\" class=\\\"card-slot unknown-view ALL ALL_PLUS TYPE-image RIG",
     "actual": "Corpus+Skin+customized\\\">Customize</a>\\n<div class='mt-4'>\\n\\n</div>\\n<h5 class='mt-4'>\\nSkin configuration\\n</h5>\\n<div class='small mb-3'>\\nfrom simplest to m"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:anonymous:mod: style+*style",
@@ -55,7 +55,7 @@
     "expected": "-Xstyle TYPE_PLUS_RIGHT-mod-Xstyle SELF-mod_style-Xstyle\\\"><p>\\n<h5>\\ngroup: local\\n</h5>\\n<ul class=\\\"list-group\\\"><li class=\\\"list-group-item\\\">jquery_ui_deck",
     "actual": "-Xstyle TYPE_PLUS_RIGHT-mod-Xstyle SELF-mod_style-Xstyle\\\"></div></div></div></article>\\n  <footer class=\\\"footer mt-auto py-3\\\"><div id=\\\"Xfooter-content-view\\"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:member:mod: style+*style",
@@ -66,7 +66,7 @@
     "expected": "-Xstyle TYPE_PLUS_RIGHT-mod-Xstyle SELF-mod_style-Xstyle\\\"><p>\\n<h5>\\ngroup: local\\n</h5>\\n<ul class=\\\"list-group\\\"><li class=\\\"list-group-item\\\">jquery_ui_deck",
     "actual": "-Xstyle TYPE_PLUS_RIGHT-mod-Xstyle SELF-mod_style-Xstyle\\\"></div></div></div></article>\\n  <footer class=\\\"footer mt-auto py-3\\\"><div id=\\\"Xfooter-content-view\\"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:contractor:mod: style+*style",
@@ -77,7 +77,7 @@
     "expected": "-Xstyle TYPE_PLUS_RIGHT-mod-Xstyle SELF-mod_style-Xstyle\\\"><p>\\n<h5>\\ngroup: local\\n</h5>\\n<ul class=\\\"list-group\\\"><li class=\\\"list-group-item\\\">jquery_ui_deck",
     "actual": "-Xstyle TYPE_PLUS_RIGHT-mod-Xstyle SELF-mod_style-Xstyle\\\"></div></div></div></article>\\n  <footer class=\\\"footer mt-auto py-3\\\"><div id=\\\"Xfooter-content-view\\"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:admin:mod: style+*style",
@@ -88,7 +88,7 @@
     "expected": "-Xstyle TYPE_PLUS_RIGHT-mod-Xstyle SELF-mod_style-Xstyle\\\"><p>\\n<h5>\\ngroup: local\\n</h5>\\n<ul class=\\\"list-group\\\"><li class=\\\"list-group-item\\\">jquery_ui_deck",
     "actual": "-Xstyle TYPE_PLUS_RIGHT-mod-Xstyle SELF-mod_style-Xstyle\\\"></div></div></div></article>\\n  <footer class=\\\"footer mt-auto py-3\\\"><div id=\\\"Xfooter-content-view\\"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "core:admin:mod: style+*style",
@@ -99,7 +99,7 @@
     "expected": "{\"html\":\"<p>\\n<h5>\\ngroup: local\\n</h5>\\n<ul class=\\\"list-group\\\"><li class=\\\"list-group-item\\\">jquery_ui_decko.scss</li>\\n<li cl",
     "actual": "{\"html\":\"\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "core:anonymous:mod: style+*style",
@@ -110,7 +110,7 @@
     "expected": "{\"html\":\"<p>\\n<h5>\\ngroup: local\\n</h5>\\n<ul class=\\\"list-group\\\"><li class=\\\"list-group-item\\\">jquery_ui_decko.scss</li>\\n<li cl",
     "actual": "{\"html\":\"\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "core:admin:Topic 001+discussion",
@@ -121,7 +121,7 @@
     "expected": "{\"html\":\"<p>First comment.</p>\"}",
     "actual": "{\"html\":\"<p>First comment.</p>\\n<div class=\\\"comment-box nodblclick\\\"><form class=\\\"card-form slotter autosave\\\" id=\\\"edit_card_949\\\" action=\\\"/update"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "core:anonymous:Topic 001+discussion",
@@ -132,7 +132,7 @@
     "expected": "{\"html\":\"<p>First comment.</p>\"}",
     "actual": "{\"html\":\"<p>First comment.</p>\\n\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "core:admin:Topic 002+discussion",
@@ -143,7 +143,7 @@
     "expected": "{\"html\":\"\"}",
     "actual": "{\"html\":\"\\n<div class=\\\"comment-box nodblclick\\\"><form class=\\\"card-form slotter autosave\\\" id=\\\"edit_card_950\\\" action=\\\"/update"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "core:anonymous:Topic 002+discussion",
@@ -154,7 +154,7 @@
     "expected": "{\"html\":\"\"}",
     "actual": "{\"html\":\"\\n\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:anonymous:*signin",
@@ -165,7 +165,7 @@
     "expected": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"43\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat",
     "actual": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"52\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:member:*signin",
@@ -176,7 +176,7 @@
     "expected": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"43\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat",
     "actual": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"52\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:contractor:*signin",
@@ -187,7 +187,7 @@
     "expected": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"43\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat",
     "actual": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"52\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:admin:*signin",
@@ -198,7 +198,7 @@
     "expected": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"43\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat",
     "actual": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"52\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "core:admin:*signin",
@@ -209,7 +209,7 @@
     "expected": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"43\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat",
     "actual": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"52\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "core:anonymous:*signin",
@@ -220,161 +220,161 @@
     "expected": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"43\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat",
     "actual": "ail\\\" data-card-name=\\\"*signin+*email\\\" data-card-type-id=\\\"52\\\" data-card-type-name=\\\"Phrase\\\" data-card-link-name=\\\"*signin+*email\\\" data-slot-id=\\\"SLOT\\\" dat"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:anonymous:*recent",
    "family": "composed-mod-view-gap",
    "group": "page / anonymous",
    "evidence": {
-    "firstDiffAt": 11679,
-    "expected": "rd-body d0-card-content ALL TYPE-search STAR SELF-Xrecent\\\">\\n\\n<div class=\\\"row pb-3\\\">\\n<div class=\\\"col-md-12 col-lg-7\\\">\\n<small>Actions: <i class=\\\"notrans",
-    "actual": "rd-body d0-card-content ALL TYPE-search STAR SELF-Xrecent\\\"><div class=\\\"search-no-results\\\"></div></div></div></div></article>\\n  <footer class=\\\"footer mt-aut"
+    "firstDiffAt": 22011,
+    "expected": "[&quot;action_summary&quot;],&quot;action_id&quot;:1027}\\\"><a rel=\\\"nofollow\\\" class=\\\"revision-105636 float-end slotter\\\" href=\\\"/Corpus_Skin/action_expanded?a",
+    "actual": "[&quot;action_summary&quot;],&quot;action_id&quot;:1027}\\\"><ins class='diffins diff-added'>default</ins></div></div>\\n                </li>\\n              </ul>"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:member:*recent",
    "family": "composed-mod-view-gap",
    "group": "page / member",
    "evidence": {
-    "firstDiffAt": 14343,
-    "expected": "rd-body d0-card-content ALL TYPE-search STAR SELF-Xrecent\\\">\\n\\n<div class=\\\"row pb-3\\\">\\n<div class=\\\"col-md-12 col-lg-7\\\">\\n<small>Actions: <i class=\\\"notrans",
-    "actual": "rd-body d0-card-content ALL TYPE-search STAR SELF-Xrecent\\\"><div class=\\\"search-no-results\\\"></div></div></div></div></article>\\n  <footer class=\\\"footer mt-aut"
+    "firstDiffAt": 24675,
+    "expected": "[&quot;action_summary&quot;],&quot;action_id&quot;:1027}\\\"><a rel=\\\"nofollow\\\" class=\\\"revision-105636 float-end slotter\\\" href=\\\"/Corpus_Skin/action_expanded?a",
+    "actual": "[&quot;action_summary&quot;],&quot;action_id&quot;:1027}\\\"><ins class='diffins diff-added'>default</ins></div></div>\\n                </li>\\n              </ul>"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:contractor:*recent",
    "family": "composed-mod-view-gap",
    "group": "page / contractor",
    "evidence": {
-    "firstDiffAt": 12212,
-    "expected": "rd-body d0-card-content ALL TYPE-search STAR SELF-Xrecent\\\">\\n\\n<div class=\\\"row pb-3\\\">\\n<div class=\\\"col-md-12 col-lg-7\\\">\\n<small>Actions: <i class=\\\"notrans",
-    "actual": "rd-body d0-card-content ALL TYPE-search STAR SELF-Xrecent\\\"><div class=\\\"search-no-results\\\"></div></div></div></div></article>\\n  <footer class=\\\"footer mt-aut"
+    "firstDiffAt": 22544,
+    "expected": "[&quot;action_summary&quot;],&quot;action_id&quot;:1027}\\\"><a rel=\\\"nofollow\\\" class=\\\"revision-105636 float-end slotter\\\" href=\\\"/Corpus_Skin/action_expanded?a",
+    "actual": "[&quot;action_summary&quot;],&quot;action_id&quot;:1027}\\\"><ins class='diffins diff-added'>default</ins></div></div>\\n                </li>\\n              </ul>"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:admin:*recent",
    "family": "composed-mod-view-gap",
    "group": "page / admin",
    "evidence": {
-    "firstDiffAt": 14454,
-    "expected": "rd-body d0-card-content ALL TYPE-search STAR SELF-Xrecent\\\">\\n\\n<div class=\\\"row pb-3\\\">\\n<div class=\\\"col-md-12 col-lg-7\\\">\\n<small>Actions: <i class=\\\"notrans",
-    "actual": "rd-body d0-card-content ALL TYPE-search STAR SELF-Xrecent\\\"><div class=\\\"search-no-results\\\"></div></div></div></div></article>\\n  <footer class=\\\"footer mt-aut"
+    "firstDiffAt": 24786,
+    "expected": "[&quot;action_summary&quot;],&quot;action_id&quot;:1027}\\\"><a rel=\\\"nofollow\\\" class=\\\"revision-105636 float-end slotter\\\" href=\\\"/Corpus_Skin/action_expanded?a",
+    "actual": "[&quot;action_summary&quot;],&quot;action_id&quot;:1027}\\\"><ins class='diffins diff-added'>default</ins></div></div>\\n                </li>\\n              </ul>"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "core:admin:*recent",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "firstDiffAt": 9,
-    "expected": "{\"html\":\"\\n\\n<div class=\\\"row pb-3\\\">\\n<div class=\\\"col-md-12 col-lg-7\\\">\\n<small>Actions: <i class=\\\"notranslate material-icons\\",
-    "actual": "{\"html\":\"<div class=\\\"search-no-results\\\"></div>\"}"
+    "firstDiffAt": 10341,
+    "expected": "[&quot;action_summary&quot;],&quot;action_id&quot;:1027}\\\"><a rel=\\\"nofollow\\\" class=\\\"revision-105636 float-end slotter\\\" href=\\\"/Corpus_Skin/action_expanded?a",
+    "actual": "[&quot;action_summary&quot;],&quot;action_id&quot;:1027}\\\"><ins class='diffins diff-added'>default</ins></div></div>\\n                </li>\\n              </ul>"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "core:anonymous:*recent",
    "family": "composed-mod-view-gap",
    "group": "view / anonymous",
    "evidence": {
-    "firstDiffAt": 9,
-    "expected": "{\"html\":\"\\n\\n<div class=\\\"row pb-3\\\">\\n<div class=\\\"col-md-12 col-lg-7\\\">\\n<small>Actions: <i class=\\\"notranslate material-icons\\",
-    "actual": "{\"html\":\"<div class=\\\"search-no-results\\\"></div>\"}"
+    "firstDiffAt": 10341,
+    "expected": "[&quot;action_summary&quot;],&quot;action_id&quot;:1027}\\\"><a rel=\\\"nofollow\\\" class=\\\"revision-105636 float-end slotter\\\" href=\\\"/Corpus_Skin/action_expanded?a",
+    "actual": "[&quot;action_summary&quot;],&quot;action_id&quot;:1027}\\\"><ins class='diffins diff-added'>default</ins></div></div>\\n                </li>\\n              </ul>"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:member:*account links",
    "family": "composed-mod-view-gap",
    "group": "page / member",
    "evidence": {
-    "firstDiffAt": 10121,
-    "expected": "{\\\"html\\\":\\\"value=\\\"Anyone Signed In\nMember\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"point\\\"}",
-    "actual": "{\\\"html\\\":\\\"name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><div class=\\\"bt\\\"}"
+    "firstDiffAt": 10863,
+    "expected": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" value=\\\"Anyone Signed In\\nMember\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer",
+    "actual": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><div class=\\\"btn-g"
    },
-   "recorded": "2026-10-09 wave-2 refresh (commit pending) vs stock-oracle capture of synthetic-v2: the page body renders to the my_card interactive-roles nest and every byte matches except the edit_inline hidden content field's value - the ensure_roles read-fill (card-mod-layout set/right/enabled_roles.rb: checkbox_input calls card.ensure_roles, which fills the blank session card's content with Auth.current_roles before the pointer-checkbox list renders; the earlier navbar render of the same card object had already mutated it when the page body's render reads the field). The port's enabled-roles registration misses the view-chain walk (the registrar's named singularization divergence - the card token RIGHT-Xenabled_role vs Right::EnabledRoles), so the generic edit_inline substrate serves the region and the fill never applies. Owner: the registrar chain-walk lane (the divergence class is documented in mod-registrar.ts's header) + the ensure_roles read-fill."
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:admin:*account links",
    "family": "composed-mod-view-gap",
    "group": "page / admin",
    "evidence": {
-    "firstDiffAt": 10213,
-    "expected": "{\\\"html\\\":\\\"value=\\\"Anyone Signed In\nAdministrator\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class\\\"}",
-    "actual": "{\\\"html\\\":\\\"name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><div class=\\\"bt\\\"}"
+    "firstDiffAt": 10963,
+    "expected": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" value=\\\"Anyone Signed In\\nAdministrator\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"",
+    "actual": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><div class=\\\"btn-g"
    },
-   "recorded": "2026-10-09 wave-2 refresh (commit pending) vs stock-oracle capture of synthetic-v2: the page body renders to the my_card interactive-roles nest and every byte matches except the edit_inline hidden content field's value - the ensure_roles read-fill (card-mod-layout set/right/enabled_roles.rb: checkbox_input calls card.ensure_roles, which fills the blank session card's content with Auth.current_roles before the pointer-checkbox list renders; the earlier navbar render of the same card object had already mutated it when the page body's render reads the field). The port's enabled-roles registration misses the view-chain walk (the registrar's named singularization divergence - the card token RIGHT-Xenabled_role vs Right::EnabledRoles), so the generic edit_inline substrate serves the region and the fill never applies. Owner: the registrar chain-walk lane (the divergence class is documented in mod-registrar.ts's header) + the ensure_roles read-fill."
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:anonymous:*help",
    "family": "composed-mod-view-gap",
    "group": "page / anonymous",
    "evidence": {
-    "firstDiffAt": 12039,
-    "expected": "g.</div>\\n<h3>All help rules that apply to</h3>\\n<p>\\n<h5>\\ncards of a given type\\n</h5>\\n<div id=\\\"note-Xtype-Xhelp-bar-view\\\" class=\\\"card-slot bar-view ALL A",
-    "actual": "g.</div>\\n<h3>All help rules that apply to</h3>\\n<p>\\n<h5>\\ngiven field cards\\n</h5>\\n<div id=\\\"Xcreated-Xright-Xhelp-bar-view\\\" class=\\\"card-slot bar-view ALL "
+    "firstDiffAt": 16302,
+    "expected": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by &quot;mating&quot; {{_left|name}} with another c...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _o",
+    "actual": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by \\\"mating\\\" *children+*right with another...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:member:*help",
    "family": "composed-mod-view-gap",
    "group": "page / member",
    "evidence": {
-    "firstDiffAt": 14703,
-    "expected": "g.</div>\\n<h3>All help rules that apply to</h3>\\n<p>\\n<h5>\\ncards of a given type\\n</h5>\\n<div id=\\\"note-Xtype-Xhelp-bar-view\\\" class=\\\"card-slot bar-view ALL A",
-    "actual": "g.</div>\\n<h3>All help rules that apply to</h3>\\n<p>\\n<h5>\\ngiven field cards\\n</h5>\\n<div id=\\\"Xcreated-Xright-Xhelp-bar-view\\\" class=\\\"card-slot bar-view ALL "
+    "firstDiffAt": 18966,
+    "expected": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by &quot;mating&quot; {{_left|name}} with another c...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _o",
+    "actual": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by \\\"mating\\\" *children+*right with another...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:contractor:*help",
    "family": "composed-mod-view-gap",
    "group": "page / contractor",
    "evidence": {
-    "firstDiffAt": 12572,
-    "expected": "g.</div>\\n<h3>All help rules that apply to</h3>\\n<p>\\n<h5>\\ncards of a given type\\n</h5>\\n<div id=\\\"note-Xtype-Xhelp-bar-view\\\" class=\\\"card-slot bar-view ALL A",
-    "actual": "g.</div>\\n<h3>All help rules that apply to</h3>\\n<p>\\n<h5>\\ngiven field cards\\n</h5>\\n<div id=\\\"Xcreated-Xright-Xhelp-bar-view\\\" class=\\\"card-slot bar-view ALL "
+    "firstDiffAt": 16835,
+    "expected": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by &quot;mating&quot; {{_left|name}} with another c...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _o",
+    "actual": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by \\\"mating\\\" *children+*right with another...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:admin:*help",
    "family": "composed-mod-view-gap",
    "group": "page / admin",
    "evidence": {
-    "firstDiffAt": 14812,
-    "expected": "g.</div>\\n<h3>All help rules that apply to</h3>\\n<p>\\n<h5>\\ncards of a given type\\n</h5>\\n<div id=\\\"note-Xtype-Xhelp-bar-view\\\" class=\\\"card-slot bar-view ALL A",
-    "actual": "g.</div>\\n<h3>All help rules that apply to</h3>\\n<p>\\n<h5>\\ngiven field cards\\n</h5>\\n<div id=\\\"Xcreated-Xright-Xhelp-bar-view\\\" class=\\\"card-slot bar-view ALL "
+    "firstDiffAt": 19075,
+    "expected": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by &quot;mating&quot; {{_left|name}} with another c...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _o",
+    "actual": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by \\\"mating\\\" *children+*right with another...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "core:admin:*help",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "firstDiffAt": 247,
-    "expected": "g.</div>\\n<h3>All help rules that apply to</h3>\\n<p>\\n<h5>\\ncards of a given type\\n</h5>\\n<div id=\\\"note-Xtype-Xhelp-bar-view\\\" class=\\\"card-slot bar-view ALL A",
-    "actual": "g.</div>\\n<h3>All help rules that apply to</h3>\\n<p>\\n<h5>\\ngiven field cards\\n</h5>\\n<div id=\\\"Xcreated-Xright-Xhelp-bar-view\\\" class=\\\"card-slot bar-view ALL "
+    "firstDiffAt": 4424,
+    "expected": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by &quot;mating&quot; {{_left|name}} with another c...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _o",
+    "actual": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by \\\"mating\\\" *children+*right with another...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "core:anonymous:*help",
    "family": "composed-mod-view-gap",
    "group": "view / anonymous",
    "evidence": {
-    "firstDiffAt": 247,
-    "expected": "g.</div>\\n<h3>All help rules that apply to</h3>\\n<p>\\n<h5>\\ncards of a given type\\n</h5>\\n<div id=\\\"note-Xtype-Xhelp-bar-view\\\" class=\\\"card-slot bar-view ALL A",
-    "actual": "g.</div>\\n<h3>All help rules that apply to</h3>\\n<p>\\n<h5>\\ngiven field cards\\n</h5>\\n<div id=\\\"Xcreated-Xright-Xhelp-bar-view\\\" class=\\\"card-slot bar-view ALL "
+    "firstDiffAt": 4424,
+    "expected": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by &quot;mating&quot; {{_left|name}} with another c...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _o",
+    "actual": "3'>\\n<div class=\\\"text-muted one-line\\\">\\n  Cards formed by \\\"mating\\\" *children+*right with another...</div>\\n</div>\\n</div>\\n\\n<div class='bar-menu _over-card"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:member:*header",
@@ -385,7 +385,7 @@
     "expected": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" value=\\\"Anyone Signed In\\nMember\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer",
     "actual": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><div class=\\\"btn-g"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:admin:*header",
@@ -396,7 +396,7 @@
     "expected": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" value=\\\"Anyone Signed In\\nAdministrator\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"",
     "actual": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><div class=\\\"btn-g"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:anonymous:*sidebar",
@@ -407,7 +407,7 @@
     "expected": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layouts&quot;&gt;Layouts&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;",
     "actual": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layout&quot;&gt;Layout&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;ex"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:member:*sidebar",
@@ -418,7 +418,7 @@
     "expected": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layouts&quot;&gt;Layouts&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;",
     "actual": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layout&quot;&gt;Layout&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;ex"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:contractor:*sidebar",
@@ -429,7 +429,7 @@
     "expected": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layouts&quot;&gt;Layouts&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;",
     "actual": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layout&quot;&gt;Layout&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;ex"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:admin:*sidebar",
@@ -440,29 +440,29 @@
     "expected": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layouts&quot;&gt;Layouts&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;",
     "actual": "&gt;&lt;span class=&quot;card-title&quot; title=&quot;Layout&quot;&gt;Layout&lt;/span&gt;&lt;/a&gt; with sidebar. &lt;a target=&quot;_blank&quot; class=&quot;ex"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "page:admin:Help Desk",
    "family": "composed-mod-view-gap",
    "group": "page / admin",
    "evidence": {
-    "firstDiffAt": 25670,
-    "expected": "ards with accounts</span></a></em></li>\\n<li><em><a class=\\\"known-card\\\" href=\\\"/*account+*right+by_name\\\"><span class=\\\"card-title\\\" title=\\\"Account cards\\\">Ac",
-    "actual": "ards with accounts</span></a></em></li>\\n<li><em><a class=\\\"wanted-card\\\" href=\\\"/*account+*right+by_name\\\"><span class=\\\"card-title\\\" title=\\\"Account cards\\\">A"
+    "firstDiffAt": 29186,
+    "expected": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"welcome_email-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-email_template SELF-welcome_email\\\" dat",
+    "actual": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"cohort_welcome-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-email_template SELF-cohort_welcome\\\" d"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "core:admin:Help Desk",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "firstDiffAt": 11138,
-    "expected": "ards with accounts</span></a></em></li>\\n<li><em><a class=\\\"known-card\\\" href=\\\"/*account+*right+by_name\\\"><span class=\\\"card-title\\\" title=\\\"Account cards\\\">Ac",
-    "actual": "ards with accounts</span></a></em></li>\\n<li><em><a class=\\\"wanted-card\\\" href=\\\"/*account+*right+by_name\\\"><span class=\\\"card-title\\\" title=\\\"Account cards\\\">A"
+    "firstDiffAt": 14654,
+    "expected": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"welcome_email-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-email_template SELF-welcome_email\\\" dat",
+    "actual": "list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"cohort_welcome-bar-view\\\" class=\\\"card-slot bar-view ALL TYPE-email_template SELF-cohort_welcome\\\" d"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:id",
@@ -473,7 +473,7 @@
     "expected": "{\"html\":655}",
     "actual": "{\"html\":\"655\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:created_at",
@@ -481,10 +481,10 @@
    "group": "view / admin",
    "evidence": {
     "firstDiffAt": 9,
-    "expected": "{\"html\":\"less than a minute\"}",
+    "expected": "{\"html\":\"N4#elapsed\"}",
     "actual": "{\"html\":\"2026-09-19\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:updated_at",
@@ -492,10 +492,10 @@
    "group": "view / admin",
    "evidence": {
     "firstDiffAt": 9,
-    "expected": "{\"html\":\"less than a minute\"}",
+    "expected": "{\"html\":\"N4#elapsed\"}",
     "actual": "{\"html\":\"2026-09-19\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001+summary:hidden_content_field",
@@ -506,7 +506,7 @@
     "expected": "{\"html\":\"<input class=\\\"d0-card-content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" value=\\\"&lt;p&gt;Signal hollow granite willo",
     "actual": "{\"html\":\"<input autocomplete=\\\"off\\\" type=\\\"hidden\\\" name=\\\"content[{:class=&gt;&quot;d0-card-content&quot;}]\\\" id=\\\"content_{:class=&gt"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Corpus Skin:bar_bottom",
@@ -517,7 +517,7 @@
     "expected": "Corpus+Skin+customized\\\">Customize</a>\\n<div class='mt-4'>\\n<div id=\\\"corpu_skin-image-unknown-view\\\" class=\\\"card-slot unknown-view ALL ALL_PLUS TYPE-image RIG",
     "actual": "Corpus+Skin+customized\\\">Customize</a>\\n<div class='mt-4'>\\n\\n</div>\\n<h5 class='mt-4'>\\nSkin configuration\\n</h5>\\n<div class='small mb-3'>\\nfrom simplest to m"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic+*type:quick_edit_setting_list",
@@ -528,7 +528,7 @@
     "expected": "ect form-control\\\" data-select2-id=\\\"topic-Xtype-Xdefault-1-1789819200\\\"><optgroup label=\\\"Text\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</opt",
     "actual": "ect form-control\\\" data-select2-id=\\\"topic-Xtype-Xdefault-1-0\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option></select>\\n<input type=\\\"hidde"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic+*type:nest_rules",
@@ -539,7 +539,7 @@
     "expected": "ect form-control\\\" data-select2-id=\\\"topic-Xtype-Xdefault-1-1789819200\\\"><optgroup label=\\\"Text\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</opt",
     "actual": "ect form-control\\\" data-select2-id=\\\"topic-Xtype-Xdefault-1-0\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option></select>\\n<input type=\\\"hidde"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic+*type:modal_nest_rules",
@@ -550,7 +550,7 @@
     "expected": "ect form-control\\\" data-select2-id=\\\"topic-Xtype-Xdefault-1-1789819200\\\"><optgroup label=\\\"Text\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</opt",
     "actual": "ect form-control\\\" data-select2-id=\\\"topic-Xtype-Xdefault-1-0\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option></select>\\n<input type=\\\"hidde"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:boxed",
@@ -577,20 +577,22 @@
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "expected": "",
-    "actual": ""
+    "firstDiffAt": 10,
+    "expected": "{\"html\":\"<div class='tabbable tab-panel' role='tabpanel'>\\n<ul class='nav nav-tabs' role='tablist'>\\n</ul>\\n<div class='tab-conten",
+    "actual": "{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible t"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Ada Admin:pills_static",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "expected": "",
-    "actual": ""
+    "firstDiffAt": 10,
+    "expected": "{\"html\":\"<div class='tabbable tab-panel' role='tabpanel'>\\n<ul class='nav nav-pills' role='tablist'>\\n</ul>\\n<div class='tab-conte",
+    "actual": "{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible t"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Home:icons",
@@ -601,7 +603,7 @@
     "expected": "{\"html\":\"<table>\\n<tr>\\n<th>lookup key</th>\\n<th>\\nmaterial\\n</th>\\n<th>\\nfont_awesome\\n</th>\\n<th>\\nbootstrap\\n</th>\\n</tr>\\n<tr>\\n<td>",
     "actual": "{\"html\":\"<table><tr><th>lookup key</th><th>material</th><th>font_awesome</th><th>bootstrap</th></tr><tr><td>plus</td><td>add</td><td>plu"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:All Topics:progress_bar",
@@ -618,21 +620,22 @@
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "firstDiffAt": 4548,
-    "expected": "s=\\\"card-editor editor\\\"><div class=\\\"form-group card-editor RIGHT-summary\\\" data-card-id=\\\"656\\\" data-card-name=\\\"Topic 001+summary\\\" data-card-link-name=\\\"Top",
-    "actual": "s=\\\"card-editor editor\\\"><div class=\\\"form-group card-editor\\\" data-card-id=\\\"655\\\" data-card-name=\\\"Topic 001\\\" data-card-link-name=\\\"Topic_001\\\"><label for=\\\""
+    "firstDiffAt": 4526,
+    "expected": "</div>\\n<fieldset class=\\\"card-editor editor\\\"><div class=\\\"form-group card-editor RIGHT-summary\\\" data-card-id=\\\"656\\\" data-card-name=\\\"Topic 001+summary\\\" dat",
+    "actual": "</div>\\n<fieldset class=\\\"card-editor editor\\\"><div class=\\\"RIGHT-summary card-editor form-group\\\" data-card-name=\\\"Topic 001+summary\\\">\\n<label for=\\\"card[subc"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:board_act",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "expected": "",
-    "actual": ""
+    "firstDiffAt": 10,
+    "expected": "{\"html\":\"<div id=\\\"topic_001-board_act-view\\\" class=\\\"card-slot board_act-view ALL TYPE-topic SELF-topic_001 _overlay d0-card-over",
+    "actual": "{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible t"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:related_tab",
@@ -643,29 +646,29 @@
     "expected": "umb=\\\"Related\\\" data-breadcrumb-class=\\\"related\\\" data-cy=\\\"topic_card-pill\\\" href=\\\"/Topic+*type+by_name/content?layout=overlay&amp;slot%5Bitems%5D%5Bview%5D=c",
     "actual": "umb=\\\"Related\\\" data-breadcrumb-class=\\\"related\\\" data-cy=\\\"rich_text_card-pill\\\" href=\\\"/Topic+*type+by_name/content?layout=overlay&amp;slot%5Bitems%5D%5Bview%"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:history_tab",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "firstDiffAt": 583,
-    "expected": "ass=\\\"card-title\\\" title=\\\"Decko Bot\\\">Decko Bot</span></a> less than a minute ago</div>\\n<ul class=\\\"nav nav-pills _auto-single-select board-pills flex-column\\",
-    "actual": "ass=\\\"card-title\\\" title=\\\"Decko Bot\\\">Decko Bot</span></a> 20 days ago</div>\\n<ul class=\\\"nav nav-pills _auto-single-select board-pills flex-column\\\"><li class"
+    "firstDiffAt": 1218,
+    "expected": "-auto act-summary\\\"><i class=\\\"notranslate material-icons\\\">add_circle</i><small> </small></div></a></li>\\n<li class=\\\"nav-item\\\"><a data-bs-toggle=\\\"pill\\\" dat",
+    "actual": "-auto act-summary\\\"><i class=\\\"notranslate material-icons\\\">edit</i><small> </small></div></a></li>\\n<li class=\\\"nav-item\\\"><a data-bs-toggle=\\\"pill\\\" data-slot"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:anonymous:Topic 001:history_tab",
    "family": "composed-mod-view-gap",
    "group": "view / anonymous",
    "evidence": {
-    "firstDiffAt": 583,
-    "expected": "ass=\\\"card-title\\\" title=\\\"Decko Bot\\\">Decko Bot</span></a> less than a minute ago</div>\\n<ul class=\\\"nav nav-pills _auto-single-select board-pills flex-column\\",
-    "actual": "ass=\\\"card-title\\\" title=\\\"Decko Bot\\\">Decko Bot</span></a> 20 days ago</div>\\n<ul class=\\\"nav nav-pills _auto-single-select board-pills flex-column\\\"><li class"
+    "firstDiffAt": 1218,
+    "expected": "-auto act-summary\\\"><i class=\\\"notranslate material-icons\\\">add_circle</i><small> </small></div></a></li>\\n<li class=\\\"nav-item\\\"><a data-bs-toggle=\\\"pill\\\" dat",
+    "actual": "-auto act-summary\\\"><i class=\\\"notranslate material-icons\\\">edit</i><small> </small></div></a></li>\\n<li class=\\\"nav-item\\\"><a data-bs-toggle=\\\"pill\\\" data-slot"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001+discussion:engage_tab",
@@ -676,7 +679,7 @@
     "expected": "ent%5D=%5B%5B%2Aalways%5D%5D&amp;success%5Bmark%5D=Topic+001%2Bdiscussion&amp;success%5Bview%5D=follow_section\\\" data-remote=\\\"true\\\"><span class=\\\"follow-verb\\",
     "actual": "ent%5D=%5B%5B%2Aalways%5D%5D&amp;success%5Bmark%5D=Topic+001+discussion&amp;success%5Bview%5D=follow_section\\\" data-remote=\\\"true\\\"><span class=\\\"follow-verb\\\">"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Search Page:edit_nests",
@@ -687,7 +690,7 @@
     "expected": "></div>\\n\\n<div class=\\\"d0-card-body card-body card-text\\\"><div class=\\\"form-group card-editor\\\" data-card-id=\\\"867\\\" data-card-name=\\\"All Topics\\\" data-card-li",
     "actual": "></div>\\n\\n<div class=\\\"d0-card-body card-body card-text\\\"></div></div></div>\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:edit_structure",
@@ -698,7 +701,7 @@
     "expected": "{\"html\":\"<div class='modal fade _modal-slot' id='modal-container' role='dialog'>\\n<!-- /, \\\"data-backdrop\\\": \\\"static\\\"} -->\\n<di",
     "actual": "{\"html\":\"\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:edit_rules",
@@ -709,7 +712,7 @@
     "expected": "iew ALL ALL_PLUS TYPE-set RSTAR RIGHT-Xself TYPE_PLUS_RIGHT-topic-Xself SELF-topic_001-Xself d-flex flex-column gap-3 mx-3 mt-2\\\" data-card-id=\\\"929\\\" data-card",
     "actual": "iew ALL ALL_PLUS TYPE-set RSTAR RIGHT-Xself TYPE_PLUS_RIGHT-rich_text-Xself SELF-topic_001-Xself d-flex flex-column gap-3 mx-3 mt-2\\\" data-card-id=\\\"929\\\" data-"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:anonymous:Sign up:content_formgroups",
@@ -718,9 +721,9 @@
    "evidence": {
     "firstDiffAt": 53,
     "expected": "{\"html\":\"<fieldset class=\\\"card-editor editor\\\"><div id=\\\"sign_up-description-content-view\\\" class=\\\"card-slot content-view ALL ALL_PLUS TYPE-rich_text RIGHT-de",
-    "actual": "{\"html\":\"<fieldset class=\\\"card-editor editor\\\"><div class=\\\"form-group card-editor\\\" data-card-id=\\\"232\\\" data-card-name=\\\"Sign up\\\" data-card-link-name=\\\"Sign"
+    "actual": "{\"html\":\"<fieldset class=\\\"card-editor editor\\\"><div class=\\\"RIGHT-description card-editor form-group\\\" data-card-name=\\\"Sign up+description\\\">\\n<label for=\\\"ca"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:edit_in_form",
@@ -731,7 +734,7 @@
     "expected": "{\"html\":\"<div id=\\\"topic_001-summary-titled-view\\\" class=\\\"card-slot titled-view ALL ALL_PLUS TYPE-rich_text RIGHT-summary TYPE_PLUS_R",
     "actual": "{\"html\":\"<div class=\\\"form-group card-editor\\\" data-card-id=\\\"655\\\" data-card-name=\\\"Topic 001\\\" data-card-link-name=\\\"Topic_001\\\"><la"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:content_with_title",
@@ -742,7 +745,7 @@
     "expected": "uot;content_with_title&quot;]}\\\" title=\\\"Topic 001+summary\\nTopic 001+Tag[http://deck.example/Topic_001+Tag]\\nTopic 001+related: Topic 002, Topic 012\\\"><div cla",
     "actual": "uot;content_with_title&quot;]}\\\" title=\\\"Topic 001+summary\\nhelp\\nedit \\nspace_dashboard \\n\\nSignal hollow granite willow juniper orchard ember ember. See Topic"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:subedit_notice",
@@ -753,7 +756,7 @@
     "expected": "{\"html\":\"<li>Topic 001 created\\n<li>   cardtype: Topic</li>\\n<li>   content: </li>\\n</li>\\n\"}",
     "actual": "{\"html\":\"\\nTopic 001 created\\n   cardtype: Topic\\n   content: \\n\\n\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:subedits",
@@ -764,7 +767,7 @@
     "expected": "{\"html\":\"\"}",
     "actual": "{\"html\":\"{{_|subedits}}\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Note 001:just_deleted",
@@ -775,7 +778,7 @@
     "expected": "{\"html\":\"<div id=\\\"note_001-just_deleted-view\\\" class=\\\"card-slot just_deleted-view ALL TYPE-rich_text SELF-note_001\\\" data-card-id=\\",
     "actual": "{\"html\":\"<div><span class=\\\"card-title\\\" title=\\\"Note 001\\\">Note 001</span> deleted</div>\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:nest_content",
@@ -784,9 +787,9 @@
    "evidence": {
     "firstDiffAt": 1700,
     "expected": "off\\\" /><fieldset class=\\\"card-editor editor\\\"><div class=\\\"form-group card-editor RIGHT-summary\\\" data-card-id=\\\"656\\\" data-card-name=\\\"Topic 001+summary\\\" dat",
-    "actual": "off\\\" /><fieldset class=\\\"card-editor editor\\\"><div class=\\\"editor content-editor\\\"><input class=\\\"current_revision_id form-control\\\" autocomplete=\\\"off\\\" type="
+    "actual": "off\\\" /><fieldset class=\\\"card-editor editor\\\"><div class=\\\"RIGHT-summary card-editor form-group\\\" data-card-name=\\\"Topic 001+summary\\\">\\n<label for=\\\"card[subc"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:*favicon:nest_image",
@@ -797,7 +800,7 @@
     "expected": "ot;nest_image&quot;,&quot;show&quot;:[&quot;nest_image&quot;,&quot;content_tab&quot;]}\\\"><div class='_nest-editor'>\\n<div class='card-header d-flex'>\\n<h5 class",
     "actual": "ot;nest_image&quot;,&quot;show&quot;:[&quot;nest_image&quot;]}\\\"><div class='_nest-editor'>\\n<div class='card-header d-flex'>\\n<h5 class='mt-1'>\\nImage\\n</h5>\\n"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:*favicon:modal_nest_image",
@@ -808,7 +811,7 @@
     "expected": "t_image&quot;,&quot;show&quot;:[&quot;modal_nest_image&quot;,&quot;content_tab&quot;]}\\\"><div class='_nest-editor'>\\n<div class='card-header d-flex'>\\n<h5 class",
     "actual": "t_image&quot;,&quot;show&quot;:[&quot;modal_nest_image&quot;]}\\\"><div class='_nest-editor'>\\n<div class='card-header d-flex'>\\n<h5 class='mt-1'>\\nImage\\n</h5>\\n"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:*favicon:new_image",
@@ -819,18 +822,18 @@
     "expected": "ot;help&quot;],&quot;hide&quot;:[&quot;name_formgroup&quot;]}\\\"><form class=\\\"card-form slotter\\\" id=\\\"edit_card_294\\\" action=\\\"/card/create\\\" accept-charset=\\\"",
     "actual": "ot;help&quot;],&quot;hide&quot;:[&quot;name_formgroup&quot;],&quot;buttons_view&quot;:&quot;new_image_buttons&quot;}\\\"><form class=\\\"card-form slotter\\\" id=\\\"ne"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Report 1:preview_editor",
    "family": "render-error-panel: inline render-error panel bytes differ",
    "group": "view / admin",
    "evidence": {
-    "firstDiffAt": 10,
-    "expected": "{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible t",
-    "actual": "{\"html\":\"<div class='chosen-file'>\\n<input name='card[action_id_of_cached_upload]' type='hidden' value='989'>\\n<div class='d-flex'"
+    "firstDiffAt": 268,
+    "expected": "amp;#39; for nil&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;N5#path:145:in `cached_upload_card_name&#39;&lt;br&gt;\\n(haml):2:in `haml_to_html&#39;&lt;br&gt;\\nN5",
+    "actual": "amp;#39; for nil&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;at filePreviewEditorView (file:///N5#path:393:9)&lt;br&gt;\\nat RenderFormat.renderView (file:///N5#p"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:card_select",
@@ -841,7 +844,7 @@
     "expected": "{\"html\":\"<div id=\\\"topic_001-card_select-view\\\" class=\\\"card-slot card_select-view ALL TYPE-topic SELF-topic_001\\\" data-card-id=\\\"",
     "actual": "{\"html\":\"<form role=\\\"filter\\\" data-slot-selector=\\\".card-slot._fixed-slot\\\" class=\\\"nodblclick slotter\\\" action=\\\"/?view=filtered"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic:add_link",
@@ -852,7 +855,7 @@
     "expected": "{\"html\":\"<a data-slotter-mode=\\\"modal\\\" data-modal-class=\\\"modal-dialog modal-dialog-centered\\\" class=\\\"slotter\\\" href=\\\"/type/Topic",
     "actual": "{\"html\":\"<a class=\\\"cardtype-add-link\\\" href=\\\"/topic/new\\\">add</a>\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic:grouped_list",
@@ -873,51 +876,51 @@
     "expected": "{\"html\":null}",
     "actual": "{\"html\":\"Problem:\\n\\n\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Note 001:debug_server_error",
    "family": "render-error-panel: inline render-error panel bytes differ",
    "group": "view / admin",
    "evidence": {
-    "firstDiffAt": 10,
-    "expected": "{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible t",
-    "actual": "{\"html\":\"<div class='border border-danger text-center p-3'>\\n<h1>Wild Card!</h1>\\n<h2 class='alert-danger'>500 Server Error</h2>\\n"
+    "firstDiffAt": 293,
+    "expected": "or::BetterErrors&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;N5#path:5:in `block (2 levels) in &lt;module:Error&gt;&#39;&lt;br&gt;\\nN5#path:103:in `call&#39;&lt;",
+    "actual": "or::BetterErrors&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;at debugServerErrorView (file:///N5#path:10:8)&lt;br&gt;\\nat RenderFormat.renderView (file:///N5#pat"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:history",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "firstDiffAt": 2592,
-    "expected": "><a class=\\\"known-card\\\" href=\\\"/Decko_Bot\\\">Decko Bot</a>\\nless than a minute ago</small>\\n<span class=\\\"text-muted ps-1 badge\\\">\\n<i class=\\\"notranslate mater",
-    "actual": "><a class=\\\"known-card\\\" href=\\\"/Decko_Bot\\\">Decko Bot</a>\\n20 days ago</small>\\n<span class=\\\"text-muted ps-1 badge\\\">\\n<i class=\\\"notranslate material-icons\\\""
+    "firstDiffAt": 10351,
+    "expected": "ot;:740,&quot;name_context&quot;:&quot;topic_001&quot;}\\\"><ins class='diffins diff-added'>{{+summary}}\\n{{+tags|link}}\\n{{+related|closed}}</ins></div></div>\\n ",
+    "actual": "ot;:740,&quot;name_context&quot;:&quot;topic_001&quot;}\\\"><i>empty</i></div></div>\\n                </li>\\n              </ul>\\n</div></div>\\n</div>\\n</div>\\n</"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:anonymous:Topic 001:history",
    "family": "composed-mod-view-gap",
    "group": "view / anonymous",
    "evidence": {
-    "firstDiffAt": 2592,
-    "expected": "><a class=\\\"known-card\\\" href=\\\"/Decko_Bot\\\">Decko Bot</a>\\nless than a minute ago</small>\\n<span class=\\\"text-muted ps-1 badge\\\">\\n<i class=\\\"notranslate mater",
-    "actual": "><a class=\\\"known-card\\\" href=\\\"/Decko_Bot\\\">Decko Bot</a>\\n20 days ago</small>\\n<span class=\\\"text-muted ps-1 badge\\\">\\n<i class=\\\"notranslate material-icons\\\""
+    "firstDiffAt": 9097,
+    "expected": "ot;:740,&quot;name_context&quot;:&quot;topic_001&quot;}\\\"><ins class='diffins diff-added'>{{+summary}}\\n{{+tags|link}}\\n{{+related|closed}}</ins></div></div>\\n ",
+    "actual": "ot;:740,&quot;name_context&quot;:&quot;topic_001&quot;}\\\"><i>empty</i></div></div>\\n                </li>\\n              </ul>\\n</div></div>\\n</div>\\n</div>\\n</"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:act",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "firstDiffAt": 490,
-    "expected": "><a class=\\\"known-card\\\" href=\\\"/Decko_Bot\\\">Decko Bot</a>\\nless than a minute ago</small></div></div>\\n</button>\\n</h2>\\n<div class='accordion-collapse collaps",
-    "actual": "><a class=\\\"known-card\\\" href=\\\"/Decko_Bot\\\">Decko Bot</a>\\n20 days ago</small></div></div>\\n</button>\\n</h2>\\n<div class='accordion-collapse collapse' id='act-"
+    "firstDiffAt": 1775,
+    "expected": "[&quot;action_summary&quot;],&quot;action_id&quot;:740}\\\"><ins class='diffins diff-added'>{{+summary}}\\n{{+tags|link}}\\n{{+related|closed}}</ins></div></div>\\n ",
+    "actual": "[&quot;action_summary&quot;],&quot;action_id&quot;:740}\\\"><i>empty</i></div></div>\\n                </li>\\n              </ul>\\n</div></div>\\n</div>\\n</div>\\n</"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:act_legend",
@@ -928,7 +931,7 @@
     "expected": "{\"html\":\"\\n<div class=\\\"row pb-3\\\">\\n<div class=\\\"col-md-12 col-lg-7\\\">\\n<small>Actions: <i class=\\\"notranslate material-icons\\\">",
     "actual": "{\"html\":\"<div class=\\\"row pb-3\\\">\\n<div class=\\\"col-md-12 col-lg-7\\\">\\n<small>Actions: <i class=\\\"notranslate material-icons\\\">ad"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:acted_at",
@@ -936,43 +939,43 @@
    "group": "view / admin",
    "evidence": {
     "firstDiffAt": 9,
-    "expected": "{\"html\":\"less than a minute\"}",
+    "expected": "{\"html\":\"N4#elapsed\"}",
     "actual": "{\"html\":\"2026-09-19\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:action_summary",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "firstDiffAt": 390,
-    "expected": "ary&quot;,&quot;show&quot;:[&quot;action_summary&quot;]}\\\"><ins class='diffins diff-added'>{{+summary}}\\n{{+tags|link}}\\n{{+related|closed}}</ins></div>\"}",
-    "actual": "ary&quot;,&quot;show&quot;:[&quot;action_summary&quot;]}\\\"></div>\"}"
+    "firstDiffAt": 391,
+    "expected": "ry&quot;,&quot;show&quot;:[&quot;action_summary&quot;]}\\\"><ins class='diffins diff-added'>{{+summary}}\\n{{+tags|link}}\\n{{+related|closed}}</ins></div>\"}",
+    "actual": "ry&quot;,&quot;show&quot;:[&quot;action_summary&quot;]}\\\"><i>empty</i></div>\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:action_expanded",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "firstDiffAt": 612,
-    "expected": " class=\\\"notranslate material-icons\\\">expand_less</i></a>\\n<ins class='diffins diff-added'>{{+summary}}<br>{{+tags|link}}<br>{{+related|closed}}</ins></div>\"}",
-    "actual": " class=\\\"notranslate material-icons\\\">expand_less</i></a>\\n</div>\"}"
+    "firstDiffAt": 613,
+    "expected": "class=\\\"notranslate material-icons\\\">expand_less</i></a>\\n<ins class='diffins diff-added'>{{+summary}}<br>{{+tags|link}}<br>{{+related|closed}}</ins></div>\"}",
+    "actual": "class=\\\"notranslate material-icons\\\">expand_less</i></a>\\n<i>empty</i></div>\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:last_action",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "firstDiffAt": 61,
-    "expected": "\"html\":\"\\n      <span class=\\\"last-update\\\">\\n        added less than a minute ago by\\n        <a class=\\\"known-card\\\" href=\\\"/Decko_Bot\\\"><span class=\\\"card-ti",
-    "actual": "\"html\":\"\\n      <span class=\\\"last-update\\\">\\n        added 20 days ago by\\n        <a class=\\\"known-card\\\" href=\\\"/Decko_Bot\\\">Decko Bot</a>\\n      </span>\\n  "
+    "firstDiffAt": 132,
+    "expected": "ago by\\n        <a class=\\\"known-card\\\" href=\\\"/Decko_Bot\\\"><span class=\\\"card-title\\\" title=\\\"Decko Bot\\\">Decko Bot</span></a>\\n      </span>\\n    \"}",
+    "actual": "ago by\\n        <a class=\\\"known-card\\\" href=\\\"/Decko_Bot\\\">Decko Bot</a>\\n      </span>\\n    \"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:change",
@@ -983,7 +986,7 @@
     "expected": "uot;:&quot;change&quot;,&quot;show&quot;:[&quot;change&quot;,&quot;title_link&quot;],&quot;hide&quot;:[&quot;menu&quot;]}\\\"><a class=\\\"known-card\\\" href=\\\"/Topi",
     "actual": "uot;:&quot;change&quot;,&quot;show&quot;:[&quot;change&quot;],&quot;hide&quot;:[&quot;menu&quot;]}\\\"><a class=\\\"known-card\\\" href=\\\"/Topic_001\\\"><span class=\\\"c"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:list_of_changes",
@@ -994,29 +997,29 @@
     "expected": "{\"html\":\"<li>   cardtype: Topic</li>\\n<li>   content: </li>\\n\"}",
     "actual": "{\"html\":\"\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:*all+Mira Member+*follow:follow_status",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "firstDiffAt": 1764,
-    "expected": "{\"html\":\"<a class=\\\"known-card\\\" href=\\\"/*all+by_name\\\">everything</a></form></div>\"}",
-    "actual": "{\"html\":\"<a class=\\\"wanted-card\\\" href=\\\"/*all+by_name\\\">everything</a></form></div>\"}"
+    "firstDiffAt": 1875,
+    "expected": "notranslate material-icons\\\">check</i></button>\\n<a class=\\\"known-card\\\" href=\\\"/*all+by_name\\\">everything</a></form></div>\\n</li>\\n</ul>\\n<a rel=\\\"nofollow\\\" c",
+    "actual": "notranslate material-icons\\\">check</i></button>\\n<a class=\\\"wanted-card\\\" href=\\\"/*all+by_name\\\">everything</a></form></div>\\n</li>\\n</ul>\\n<a rel=\\\"nofollow\\\" "
    },
-   "recorded": "2026-10-09 wave-2 slice-2 refresh (commit pending) vs stock-oracle capture of synthetic-v2: every byte of the two views now matches except the by-name link's known/wanted class - the RIGHT::BY-NAME virtual-card mechanism (card-mod-search set/right/by_name.rb includes Abstract::VirtualSearch, whose .included assigns type search_type and whose virtual? = new?, so Card.known?(X+by name) is true for every deck) - the link-existence seating lane's shared mechanism (same token as the Help Desk by-name pins). View-lane bytes adjudicated: h4/haml list shape, the live-voo data-slot show list, the follow_item form (card-form slotter, success in the action query, the button attr order name/type/aria-label/class, the follow_label link text), and the more-options link_to_view anchor all match the oracle bytes."
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:*all+Mira Member+*follow:follow_item",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "firstDiffAt": 1171,
-    "expected": "{\"html\":\"<a class=\\\"known-card\\\" href=\\\"/*all+by_name\\\">everything</a></form></div>\"}",
-    "actual": "{\"html\":\"<a class=\\\"wanted-card\\\" href=\\\"/*all+by_name\\\">everything</a></form></div>\"}"
+    "firstDiffAt": 1259,
+    "expected": "notranslate material-icons\\\">check</i></button>\\n<a class=\\\"known-card\\\" href=\\\"/*all+by_name\\\">everything</a></form></div>\"}",
+    "actual": "notranslate material-icons\\\">check</i></button>\\n<a class=\\\"wanted-card\\\" href=\\\"/*all+by_name\\\">everything</a></form></div>\"}"
    },
-   "recorded": "2026-10-09 wave-2 slice-2 refresh (commit pending) vs stock-oracle capture of synthetic-v2: every byte of the two views now matches except the by-name link's known/wanted class - the RIGHT::BY-NAME virtual-card mechanism (card-mod-search set/right/by_name.rb includes Abstract::VirtualSearch, whose .included assigns type search_type and whose virtual? = new?, so Card.known?(X+by name) is true for every deck) - the link-existence seating lane's shared mechanism (same token as the Help Desk by-name pins). View-lane bytes adjudicated: h4/haml list shape, the live-voo data-slot show list, the follow_item form (card-form slotter, success in the action query, the button attr order name/type/aria-label/class, the follow_label link text), and the more-options link_to_view anchor all match the oracle bytes."
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Ada Admin:account_tab",
@@ -1027,7 +1030,7 @@
     "expected": "d-pills flex-column\\\"><h6 class=\\\"ms-1 mt-3\\\">Settings</h6><li class=\\\"nav-item\\\"><a data-slot-selector=\\\".board-main &gt; .overlay-container &gt; .card-slot._b",
     "actual": "d-pills flex-column\\\"><h6 class=\\\"ms-1 mt-3\\\">Settings</h6><a data-slot-selector=\\\".board-main &gt; .overlay-container &gt; .card-slot._bottomlay-slot,.board-ma"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Ada Admin:closed_account",
@@ -1038,7 +1041,7 @@
     "expected": "{\"html\":\"<h2>Account Closed</h2>\\n<p>\\nThe sign-in account once associated with this card has been removed, the card\\nhas been anonymized, and its data field",
     "actual": "{\"html\":\"<h2>Account Closed</h2>\\n<p>The sign-in account once associated with this card has been removed, the card has been anonymized, and its data fields h"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Ada Admin+*account:api_key",
@@ -1049,29 +1052,29 @@
     "expected": "{\"html\":\"<div id=\\\"ada_admin-Xaccount-Xapi_key-titled-view\\\" class=\\\"card-slot titled-view ALL ALL_PLUS TYPE-rich_text RSTAR RIGHT-Xap",
     "actual": "{\"html\":\"<div class='api-key-core p-1'>\\n<div class='api-key-buttons d-flex my-2 py-3 justify-content-between w-100'>\\n<form class=\\\"c"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Ada Admin+*account:verify_url",
    "family": "render-error-panel: inline render-error panel bytes differ",
    "group": "view / admin",
    "evidence": {
-    "firstDiffAt": 9,
-    "expected": "{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible ",
-    "actual": "{\"html\":\"\"}"
+    "firstDiffAt": 253,
+    "expected": " cannot be empty&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;&lt;internal:kernel&gt;:90:in `tap&#39;&lt;br&gt;\\nN5#path:39:in `raise_verify_error!&#39;&lt;br&gt;",
+    "actual": " cannot be empty&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;at tokenUrlBody (file:///N5#path:6042:9)&lt;br&gt;\\nat verifyUrlView (file:///N5#path:6031:39)&lt;br"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Ada Admin+*account:reset_password_url",
    "family": "render-error-panel: inline render-error panel bytes differ",
    "group": "view / admin",
    "evidence": {
-    "firstDiffAt": 9,
-    "expected": "{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible ",
-    "actual": "{\"html\":\"\"}"
+    "firstDiffAt": 253,
+    "expected": " cannot be empty&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;&lt;internal:kernel&gt;:90:in `tap&#39;&lt;br&gt;\\nN5#path:39:in `raise_verify_error!&#39;&lt;br&gt;",
+    "actual": " cannot be empty&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;at tokenUrlBody (file:///N5#path:6042:9)&lt;br&gt;\\nat resetPasswordUrlView (file:///N5#path:6032:46"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Ada Admin+*account:token_days",
@@ -1082,7 +1085,7 @@
     "expected": "{\"html\":2}",
     "actual": "{\"html\":\"2\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Ada Admin+*account:verify_days",
@@ -1093,7 +1096,7 @@
     "expected": "{\"html\":2}",
     "actual": "{\"html\":\"2\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Ada Admin+*account:reset_password_days",
@@ -1104,18 +1107,18 @@
     "expected": "{\"html\":2}",
     "actual": "{\"html\":\"2\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Ada Admin+*account:closure",
    "family": "render-error-panel: inline render-error panel bytes differ",
    "group": "view / admin",
    "evidence": {
-    "firstDiffAt": 10,
-    "expected": "{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible t",
-    "actual": "{\"html\":\"<div id=\\\"ada_admin-Xaccount-closure-view\\\" class=\\\"card-slot closure-view ALL ALL_PLUS TYPE-rich_text RSTAR RIGHT-Xaccou"
+    "firstDiffAt": 312,
+    "expected": ":N5#addr&amp;gt;&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;N5#path:509:in `method_missing&#39;&lt;br&gt;\\nN5#path:497:in `method_missing&#39;&lt;br&gt;\\n(haml)",
+    "actual": ":N5#addr&amp;gt;&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;at closureView (file:///N5#path:393:8)&lt;br&gt;\\nat RenderFormat.renderView (file:///N5#path:1004:1"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:anonymous:*signin:reset_password_success",
@@ -1126,7 +1129,7 @@
     "expected": "&quot;,&quot;show&quot;:[&quot;reset_password_success&quot;],&quot;hide&quot;:[&quot;help&quot;]}\\\"><div class=\\\"d0-card-frame card\\\"><div class=\\\"d0-card-heade",
     "actual": "&quot;,&quot;show&quot;:[&quot;reset_password_success&quot;]}\\\">Check your email for a link to reset your password</div>\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:*admin:admin",
@@ -1147,7 +1150,7 @@
     "expected": "{\"html\":null}",
     "actual": "{\"html\":\"\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:mod: help:tasks",
@@ -1158,7 +1161,7 @@
     "expected": "{\"html\":null}",
     "actual": "{\"html\":\"\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:mod: help:scripts",
@@ -1169,7 +1172,7 @@
     "expected": "{\"html\":null}",
     "actual": "{\"html\":\"\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:mod: help:roles",
@@ -1190,27 +1193,29 @@
     "expected": "{\"html\":\"<p>\\n<h5>\\ngroup: local\\n</h5>\\n<ul class=\\\"list-group\\\"><li class=\\\"list-group-item\\\">jquery_ui_decko.scss</li>\\n<li cl",
     "actual": "{\"html\":\"\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:All Topics:search_count",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "expected": "",
-    "actual": ""
+    "firstDiffAt": 9,
+    "expected": "{\"html\":\"[#<Card#655[:605](Topic 001){set_mods_loaded}, #<Card#659[:605](Topic 002){set_mods_loaded}, #<Card#663[:605](Topic 003)",
+    "actual": "{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible "
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:All Topics:search_error",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "expected": "",
-    "actual": ""
+    "firstDiffAt": 185,
+    "expected": "ble to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method `message&amp;#39; for an instance of Array&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&",
+    "actual": "ble to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;search_error bytes exist only for a rescued BadQuery (Ruby&amp;#39;s Integer/Array results crash .me"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:All Topics:paging",
@@ -1221,7 +1226,7 @@
     "expected": "{\"html\":\"<nav class='nav justify-content-between align-items-center'>\\n<ul class='pagination paging'>\\n<li class=\\\"page-item\\\"><d",
     "actual": "{\"html\":\"\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001+tags:list",
@@ -1232,17 +1237,18 @@
     "expected": "lass=\\\"pointer-item-text form-control\\\" data-options-card=\\\"Tag+*type+by_name\\\" placeholder=\\\"\\\" />\\n<button class='pointer-item-delete btn btn-secondary' type=",
     "actual": "lass=\\\"pointer-item-text form-control\\\" data-options-card=\\\"*all\\\" placeholder=\\\"\\\" />\\n<button class='pointer-item-delete btn btn-secondary' type='button'>\\n<i"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001+tags:checkbox",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "expected": "",
-    "actual": ""
+    "firstDiffAt": 247,
+    "expected": " 01\\\" class=\\\"pointer-checkbox-button \\\" checked=\\\"checked\\\" />\\n<label class=\\\"form-check-label\\\" for=\\\"pointer-checkbox-tag_01\\\">Tag 01</label>\\n</div>\\n<div ",
+    "actual": " 01\\\" class=\\\"pointer-checkbox-button \\\" checked=\\\"checked\\\">\\n<label class=\\\"form-check-label\\\" for=\\\"pointer-checkbox-tag_01\\\">Tag 01</label>\\n</div>\\n<div cl"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001+tags:checkbox_list",
@@ -1263,7 +1269,7 @@
     "expected": "item-text form-control _autocomplete \\\" data-options-card=\\\"Tag+*type+by_name\\\" placeholder=\\\"\\\" />\\n</div>\\n\"}",
     "actual": "item-text form-control _autocomplete \\\" data-options-card=\\\"*all\\\" placeholder=\\\"\\\" />\\n</div>\\n\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:goto_autocomplete_item",
@@ -1274,7 +1280,7 @@
     "expected": "{\"html\":\"<div class='autocomplete-item-goto autocomplete-item'>\\n<div class='autocomplete-icon'>\\n<i class=\\\"notranslate material-icons\\\">arrow_forward</i>\\n<",
     "actual": "{\"html\":\"<div class='autocomplete-item autocomplete-item-goto'>\\n  <div class='autocomplete-icon'>\\n    <i class=\\\"notranslate material-icons\\\">arrow_forward<"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001:add_autocomplete_item",
@@ -1285,7 +1291,7 @@
     "expected": "{\"html\":\"<div class='autocomplete-item-add autocomplete-item'>\\n<div class='autocomplete-icon'>\\n<i class=\\\"notranslate material-icons\\\">add</i>\\n</div>\\n<div",
     "actual": "{\"html\":\"<div class='autocomplete-item autocomplete-item-add'>\\n  <div class='autocomplete-icon'>\\n    <i class=\\\"notranslate material-icons\\\">add</i>\\n  </di"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic 001+tags:pointer_core",
@@ -1306,7 +1312,7 @@
     "expected": "{\"html\":\"<!-- mod: format (remote) -->\\n<script src=\\\"https://code.jquery.com/jquery-3.5.1.min.js\\\" crossorigin=\\\"anonymous\\\"></s",
     "actual": "{\"html\":\"\\n<!-- MAIN DECKO JAVASCRIPT -->\\n<script src=\\\"/files/~307/1789819200.js\\\"></script>\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Home:script_calls",
@@ -1317,7 +1323,7 @@
     "expected": "{\"html\":\"<script>\\n//<![CDATA[\\ndecko.setAceConfig('{\\\\n  \\\\\\\"default\\\\\\\": {\\\\n  \\\\\\\"showGutter\\\\\\\": true,\\\\n  \\\\\\\"theme\\\\\\\": \\\\\\\"ace/theme/github\\\\\\\",\\",
     "actual": "{\"html\":\"<script>\\n//<![CDATA[\\n$('document').ready(function() { $('.card-slot').trigger('decko.slot.ready'); })\\n//]]>\\n</script>\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Home:script_variables",
@@ -1328,7 +1334,7 @@
     "expected": "{\"html\":\"<script>\\n//<![CDATA[\\ndecko.rootUrl='http://deck.example/';\\ndecko.doubleClick='signed_in';\\ndecko.cssPath='/files/~447/1789819200.css';\\ndecko.signed",
     "actual": "{\"html\":\"<script>\\n//<![CDATA[\\ndecko.rootUrl='/';\\ndecko.doubleClick='signed_in';\\ndecko.cssPath='/files/~447/1789819200.css';\\ndecko.signed_in=false;\\n\\n//]]>"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:style: mods:stylesheet_include_tag",
@@ -1349,7 +1355,7 @@
     "expected": "{\"html\":\"<link href=\\\"https://fonts.googleapis.com/css2?family=Material+Icons\\\" media=\\\"all\\\" rel=\\\"stylesheet\\\" type=\\\"text/css\\",
     "actual": "{\"html\":\"\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:*all+*script:remote_script_tags",
@@ -1360,18 +1366,18 @@
     "expected": "{\"html\":\"<!-- mod: format (remote) -->\\n<script src=\\\"https://code.jquery.com/jquery-3.5.1.min.js\\\" crossorigin=\\\"anonymous\\\"></s",
     "actual": "{\"html\":\"\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:*all+*script:asset_output_url",
    "family": "render-error-panel: inline render-error panel bytes differ",
    "group": "view / admin",
    "evidence": {
-    "firstDiffAt": 9,
-    "expected": "{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible ",
-    "actual": "{\"html\":\"/files/~307/1789819200.js\"}"
+    "firstDiffAt": 330,
+    "expected": ":N5#addr&amp;gt;&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;N5#path:73:in `delegate_to_action_view&#39;&lt;br&gt;\\nN5#path:45:in `method_missing&#39;&lt;br&gt;\\",
+    "actual": ":N5#addr&amp;gt;&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;at assetOutputUrlView (file:///N5#path:70:8)&lt;br&gt;\\nat RenderFormat.renderView (file:///N5#path:"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Report 1:file_size",
@@ -1392,7 +1398,7 @@
     "expected": "{\"html\":\"<img alt=\\\"*favicon\\\" class=\\\"w-100\\\" src=\\\"/files/:favicon/carrierwave-medium.png\\\" />\"}",
     "actual": "{\"html\":\"<img src=\\\"/files/:favicon/carrierwave-medium.png\\\" alt=\\\"*favicon\\\" class=\\\"w-100\\\">\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:*favicon:content_changes",
@@ -1403,7 +1409,7 @@
     "expected": "{\"html\":\"<ins class='diffins diff-added'><img alt=\\\"*favicon\\\" src=\\\"/files/:favicon/carrierwave-medium.png\\\" /></ins>\"}",
     "actual": "{\"html\":\"<img alt=\\\"*favicon\\\" src=\\\"/files/:favicon/carrierwave-medium.png\\\" /><img alt=\\\"*favicon\\\" src=\\\"/files/:favicon/carrier"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:*favicon:link_tag",
@@ -1414,7 +1420,7 @@
     "expected": "nk rel=\\\"shortcut icon\\\" href=\\\"/files/:favicon/carrierwave-small.png\\\" />\"}",
     "actual": "nk rel=\\\"shortcut icon\\\" href=\\\"/files/:favicon/carrierwave-medium.png\\\">\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Home:head",
@@ -1425,7 +1431,7 @@
     "expected": "/x-wiki\\\" title=\\\"Edit this page!\\\" href=\\\"/Home/edit\\\" />\\n<!-- mod: format (remote) -->\\n<script src=\\\"https://code.jquery.com/jquery-3.5.1.min.js\\\" crossorig",
     "actual": "/x-wiki\\\" title=\\\"Edit this page!\\\" href=\\\"/Home/edit\\\" />\\n\\n\\n<!-- MAIN DECKO JAVASCRIPT -->\\n<script src=\\\"/files/~307/1789819200.js\\\"></script>\\n<script>\\n/"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:*head:head_content",
@@ -1446,47 +1452,51 @@
     "expected": "{\"html\":null}",
     "actual": "{\"html\":\"\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic+*type+*structure:rule_edit",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "expected": "",
-    "actual": ""
+    "firstDiffAt": 2860,
+    "expected": "-remote=\\\"true\\\" data-select2-id=\\\"topic-Xtype-Xstructure-1-1789819200\\\"><optgroup label=\\\"Text\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</opt",
+    "actual": "-remote=\\\"true\\\" data-select2-id=\\\"topic-Xtype-Xstructure-1-0\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option></select>\\n<input type=\\\"hidde"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic+*type+*structure:overlay_rule",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "expected": "",
-    "actual": ""
+    "firstDiffAt": 4234,
+    "expected": "-remote=\\\"true\\\" data-select2-id=\\\"topic-Xtype-Xstructure-1-1789819200\\\"><optgroup label=\\\"Text\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</opt",
+    "actual": "-remote=\\\"true\\\" data-select2-id=\\\"topic-Xtype-Xstructure-1-0\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option></select>\\n<input type=\\\"hidde"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Topic+*type+*structure:modal_rule",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "expected": "",
-    "actual": ""
+    "firstDiffAt": 2924,
+    "expected": "-remote=\\\"true\\\" data-select2-id=\\\"topic-Xtype-Xstructure-1-1789819200\\\"><optgroup label=\\\"Text\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</opt",
+    "actual": "-remote=\\\"true\\\" data-select2-id=\\\"topic-Xtype-Xstructure-1-0\\\"><option selected=\\\"selected\\\" value=\\\"RichText\\\">RichText</option></select>\\n<input type=\\\"hidde"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Toggle 1:labeled_editor",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
    "evidence": {
-    "expected": "",
-    "actual": ""
+    "firstDiffAt": 10,
+    "expected": "{\"html\":\"<input name=\\\"card[content]\\\" type=\\\"hidden\\\" value=\\\"0\\\" autocomplete=\\\"off\\\" /><input type=\\\"checkbox\\\" value=\\\"1\\\" che",
+    "actual": "{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible t"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:Quinn Contractor:setup",
@@ -1497,7 +1507,7 @@
     "expected": "{\"html\":\"<div id=\\\"quinn_contractor-setup-view\\\" class=\\\"card-slot setup-view ALL TYPE-user SELF-quinn_contractor\\\" data-card-id=\\",
     "actual": "{\"html\":\"<span class=\\\"denied\\\"><!-- Sorry, you don't have permission (create) --></span>\"}"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
    "op": "view:admin:*admin:warning",
@@ -1508,7 +1518,7 @@
     "expected": "se\\\"></button>\\n<h5>\\nAdministrator Warning\\n</h5>\\n<ul><li>Email delivery is turned off. Change settings in config/application.rb to send sign up notifications",
     "actual": "se\\\"></button>\\n<h5>\\nAdministrator Warning\\n</h5>\\n<ul><li><p>You are configured to use <a class=\\\"known-card\\\" href=\\\"/*captcha\\\">*captcha</a>, but for that t"
    },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
+   "recorded": "2026-10-10 raise-posture gate run (branch raise-posture-errors-2026-10-10, base 5cfc0493) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   }
  ]
 }

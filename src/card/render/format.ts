@@ -1271,7 +1271,7 @@ export class RenderFormat {
         // keeps the development posture (the mod-port raise contracts)
         // fully loud.
         if (!viewLaneRoot || allRenderingErrorsRaise()) throw error;
-        return quietRenderError(error, this.card, effective);
+        return quietRenderError(error, this.card, effective, this);
       }
     } finally {
       this.voo = previous;
@@ -1933,7 +1933,7 @@ export class RenderFormat {
       rendered = sub.renderView(view, viewOpts);
     } catch (error) {
       if (!this.nestQuietErrors) throw error;
-      rendered = quietRenderError(error, card, view);
+      rendered = quietRenderError(error, card, view, this);
     }
     return this.countNestChars(rendered);
   }
@@ -2001,7 +2001,7 @@ export class RenderFormat {
       // pin).
       const focal = this.formatName === "html" ? this.isMain : this.depth === 0;
       if (focal || allRenderingErrorsRaise()) throw error; // error.rb:69-73 loud_error re-raises
-      return quietRenderError(error, this.card, view);
+      return quietRenderError(error, this.card, view, this);
     }
   }
 
@@ -3519,6 +3519,19 @@ export interface RenderEngineLike {
    *  the :results_for_keyword view (search.rb:48), whose haml guards on
    *  `search_keyword.present?` and therefore renders the empty string. */
   searchKeyword?(card: RenderCard): string | undefined;
+  /** Ruby's Auth.always_ok? for the render session's viewer
+   *  (auth/permissions.rb:7-13 — the DeckoBot actor or an Administrator-
+   *  role member; the engine's ReadPermissionState.alwaysOk, settled in
+   *  the prepare phase). error.rb:47-49 show_all_errors? reads it for the
+   *  admin arm of the quiet render-error span. Optional: engines without
+   *  it (no permission state resolved) take the plain-cardname arm. */
+  peekAlwaysOk?(): boolean | undefined;
+  /** The Auth::Token runtime's injected key material (render.ts
+   *  RenderEngine#tokenConfig, pinned from the host's secret). Ruby reads
+   *  Rails' credentials secret_key_base (token.rb:7); a deck without it
+   *  signs with "" and jwt's ensure_valid_key! raises. Optional: engines
+   *  without it are the no-secret deck — the corpus harness's posture. */
+  tokenConfig?: { readonly secret?: string };
   /** Read-permission verdict for a prepared card (the ok_to_read? set
    *  membership, card-mod-permissions set/all/permissions.rb:142-143,
    *  precomputed in the engine's prepare phase — never a query here). */
@@ -4210,6 +4223,76 @@ function normalizeView(view: string): string {
   return view; // Card::View.normalize (to_sym); TS views are strings already
 }
 
+/** html/error.rb:47-49 `show_all_errors?`:
+ *
+ *     def show_all_errors?
+ *       # make configurable by env
+ *       Auth.always_ok? || Rails.env.development?
+ *     end
+ *
+ * The engine runs the production posture everywhere (the oracle captures
+ * render under `with_production_render`; no engine surface models a
+ * development env), so the always-ok half is the whole predicate. It is
+ * SESSION-global (Auth is a module singleton), so any format on the render
+ * answers identically. */
+function showAllErrors(fmt: RenderFormat | undefined): boolean {
+  return fmt?.engine.peekAlwaysOk?.() === true;
+}
+
+/** html/error.rb:66-70 `error_message` — the debug page the admin-only
+ *  title carries, over the raise's message and backtrace:
+ *
+ *     %{
+ *       <h3>Error message (visible to admin only)</h3>
+ *       <p><strong>#{CGI.escapeHTML exception.message}</strong></p>
+ *       <div>#{exception.backtrace * "<br>\n"}</div>
+ *     }
+ *
+ * The message escapes once here (CGI.escapeHTML == the h() table) and once
+ * more when backtrace_link builds the title attribute (Rails' content_tag
+ * html_escape), which is why the capture's embedded quotes read &amp;#39;.
+ * The frames are the ENGINE's own stack (Ruby embeds its own backtrace);
+ * the instrument's N5 canonicalization blanks the machine-specific path
+ * tokens on both sides while the frame structure stays compared — the
+ * committed residual for the debug-span pins. */
+function errorDebugPage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const frames =
+    error instanceof Error && typeof error.stack === "string"
+      ? error.stack.split("\n").slice(1).map((line) => line.trim())
+      : [];
+  return (
+    "\n      <h3>Error message (visible to admin only)</h3>\n" +
+    `      <p><strong>${h(message)}</strong></p>\n` +
+    `      <div>${frames.join("<br>\n")}</div>\n    `
+  );
+}
+
+/** html/error.rb:72-74 `backtrace_link`:
+ *
+ *     wrap_with(:span, title: error_message(exception)) { cardname }
+ *
+ * over error.rb:42-45 `error_cardname`'s show_all_errors? arm — the safe
+ * cardname becomes a span whose title carries the debug page. The content
+ * block is NOT escaped (Ruby's wrap_with emits block content verbatim);
+ * the title attribute escapes once through h(). */
+function backtraceLink(card: RenderCard, error: unknown): string {
+  return `<span title="${h(errorDebugPage(error))}">${h(card.name.s)}</span>`;
+}
+
+/** The hex object-address token Ruby's NoMethodError/NameError messages
+ *  embed when they inspect the receiver ("for #<Card:0x0000028dfcc01048>").
+ *  The engine has no heap addresses; the instrument's N5 canonicalization
+ *  blanks the hex run on BOTH sides (normalize.mjs HEAP_ADDRESS), so the
+ *  port derives a stable pseudo-address from the object's id — the
+ *  inspection token stays shape-true (0x + a hex run) without pretending
+ *  to be a heap pointer. Shared by the view-body raise sites that port
+ *  Ruby runtime errors carrying inspected receivers. */
+export function rubyInspectionAddress(id: number | undefined): string {
+  const n = id === undefined ? 0 : (id * 0x9e3779b1) >>> 0;
+  return "0x" + n.toString(16).padStart(8, "0");
+}
+
 /**
  * html/error.rb:99-101 `rendering_error`:
  *
@@ -4220,28 +4303,37 @@ function normalizeView(view: string): string {
  * over format/error.rb:80-86, which returns the exception message verbatim
  * for a UserError (`unsupported_view_error_message` is the one that reaches
  * here in practice, error.rb:52-54) and otherwise the `lib_error_rendering`
- * locale line — the oracle's `Error rendering: <safe name> (<view> view)`.
+ * locale line — `Error rendering: <cardname> (<view> view)`, where
+ * error_cardname's ADMIN arm (html/error.rb:42-45, show_all_errors?) wraps
+ * the cardname in backtrace_link's title span (see backtraceLink).
  *
- * Shared by the two rescue scopes that mirror Ruby's per-`render!`
- * `wrap_and_render` (render.rb:96-100): nest()'s and the `render_<view>`
- * delegation's (see RenderFormat#renderDelegated). One helper, so the two
- * scopes cannot drift.
+ * Shared by the three rescue scopes that mirror Ruby's per-`render!`
+ * `wrap_and_render` (render.rb:96-100): nest()'s, the `render_<view>`
+ * delegation's (RenderFormat#renderDelegated), and the bare view-lane
+ * root's (renderView's viewLaneRoot catch) — plus renderPointerListItem's
+ * per-item rescue (views.ts), the item subformat's own render!. One
+ * helper, so the scopes cannot drift. `fmt` feeds the admin arm only;
+ * every scope holds a format on the same session, so any of them answers
+ * identically.
  */
 /** MODULE-EXPORTED for renderPointerListItem's per-item rescue (views.ts):
  *  the item nest is the item subformat's own render!, whose rescue is the
- *  same span builder — one helper, so the nest/delegation/item scopes
+ *  same span builder — one helper, so the nest/delegation/item/root scopes
  *  cannot drift. */
 export function quietRenderError(
   error: unknown,
   card: RenderCard,
   view: string,
+  fmt?: RenderFormat,
 ): string {
   const msg =
     error instanceof UnsupportedViewError ||
     error instanceof TooDeepError ||
     error instanceof CodenameNotFoundError
       ? error.message
-      : `Error rendering: ${h(card.name.s)} (${view} view)`;
+      : showAllErrors(fmt)
+        ? `Error rendering: ${backtraceLink(card, error)} (${view} view)`
+        : `Error rendering: ${h(card.name.s)} (${view} view)`;
   return `<span class="render-error alert alert-danger">${msg}</span>`;
 }
 

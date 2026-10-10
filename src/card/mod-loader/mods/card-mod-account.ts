@@ -61,13 +61,12 @@
 //   form.rb's). :core IS ported (R17 - the invite-links haml core, see
 //   signupCoreView; set/type/signup/core.haml + views.rb:30-33 +
 //   helpers).
-// - right/account closure IS PORTED now: the haml body via
-//   the seam's closureDeletions walk (account_holder.rb:87-89), the
-//   confirmed delete link built on the Path byte rules
-//   (follow-form-shapes.ts followPath), perms :delete in the view config.
-//   The deletion ORDER is search order (rowid) - Ruby CQL's default sort
-//   is by name; no oracle capture exists to split the two orderings at
-//   corpus sizes (DISCLOSED in the receipt follow-rule-walk.md).
+// - right/account closure RAISES (stock Ruby): the haml's deletion walk
+//   calls the PRIVATE closure_deletions from outside the receiver
+//   (account_holder.rb:81/87-89; closure.haml:25 on card.accounted), so
+//   every render passing perms :delete raises NoMethodError - the port
+//   raises it (closureView). The deletion walk itself stays ported in
+//   accountFollowBundle for the follow surface.
 // - right/account verify_url/reset_password_url: rails (card_url + the
 //   async-HMAC x sync-ViewFn boundary the token-runtime receipt names).
 //   The Auth::Token half of the gap CLOSED 2026-09-28:
@@ -149,6 +148,7 @@ import {
 } from "../../follow/follow-form-shapes.js";
 import { isNewCard } from "../../fetch/card-record.js";
 import { resetPasswordUrlView, verifyUrlView } from "../../render/views.js";
+import { rubyInspectionAddress } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
 import { CodenameNotFoundError } from "../../name/errors.js";
 import { getNameEnvironment } from "../../name/environment.js";
@@ -443,77 +443,30 @@ const linkWithCheckboxView: ViewFn = (ctx) => {
 };
 
 /** set/right/account/views.rb:22 view :closure, perms: :delete,
- *  template: :haml, wrap: :slot - closure.haml. The deletion walk is the
- *  seam's closureDeletions (account_holder.rb:87-89 closure_deletions =
- *  Auth.as_bot { Card.search left: id, not: {right: :account} }). The
- *  confirm string interpolates %{accounted} = accounted.name (the left
- *  card). The button's href: path(success: { mark: "~<id>", redirect:
- *  true, view: :closed_account }) - no action, mark+? -> the mark-only
- *  base with the success hash as the to_param query (path.rb:42-63).
- *  perms: :delete rides VIEW_PERMS_DIRECTIVES (the M5 machinery). */
+ *  template: :haml, wrap: :slot - closure.haml. The template's deletion
+ *  walk at (haml):25 — `- card.accounted.closure_deletions.each do
+ *  |deletee|` — calls closure_deletions from OUTSIDE its receiver:
+ *  account_holder.rb:81 marks it `private` (:87-89), and card.accounted is
+ *  a DIFFERENT Card than the template's self, so stock Ruby raises
+ *  NoMethodError "private method `closure_deletions' called for
+ *  #<Card:0x...>" on every render that passes the perms: :delete gate
+ *  (the stock synthetic-v2 capture pins it on
+ *  view:admin:Ada Admin+*account:closure, where the quiet non-focal rescue
+ *  renders the admin debug span around it). The haml below line 25 (the
+ *  deletion list, the close button) never renders in stock Ruby, so the
+ *  port raises from the same point; the inspection address is the engine's
+ *  derived stand-in for the receiver's heap token (rubyInspectionAddress —
+ *  N5 blanks the hex on both sides). The deletion WALK itself stays ported
+ *  in accountFollowBundle (the follow surface reads it); close_account's
+ *  own internal call (:77) is in-object and never hits the visibility
+ *  boundary. */
 const closureView: ViewFn = (ctx) => {
-  const { fmt } = ctx;
-  const card = fmt.card;
-  const bundle = accountFollowBundle(ctx);
-  const accountedName = card.name.leftName?.s ?? "";
-  // RenderCard carries record (the cards row) - accounted_id is
-  // right/account.rb:26-28 `left_id`
-  const accountedId = card.record.leftId;
-  const deletions = bundle?.closureDeletions ?? [];
-  const confirm =
-    ACCOUNT_LOCALE.account_confirm_delete_account_prefix + accountedName + "?";
-  const deleteeLis = deletions
-    .map(
-      (d) =>
-        `      <li>${linkTo(d.name, followPath(h(d.name).replace(/ /g, "_")))}</li>`,
-    )
-    .join("\n");
-  const closeButton = linkTo(
-    ACCOUNT_LOCALE.account_close_account,
-    followPath(card.name.urlKey, {
-      query: {
-        "success[mark]": `~${accountedId}`,
-        "success[redirect]": "true",
-        "success[view]": "closed_account",
-      },
-    }),
-    {
-      class: "btn btn-primary slotter",
-      "data-method": "delete",
-      "data-remote": "true",
-      rel: "nofollow",
-      "data-confirm": confirm,
-    },
+  const accountedId = ctx.fmt.card.record.leftId;
+  throw new Error(
+    "private method `closure_deletions' called for #<Card:" +
+      rubyInspectionAddress(accountedId) +
+      ">",
   );
-  const body =
-    `<div id="account-closure" class="p-3">\n` +
-    `  <h2>Close Account</h2>\n\n` +
-    `  <div class="alert-danger p-4 my-3">\n` +
-    `    <strong>Warning:</strong>\n` +
-    `    this action cannot be undone\n` +
-    `  </div>\n\n` +
-    `  <p>\n` +
-    `    Closing your account entails:\n` +
-    `    <ul>\n` +
-    `      <li>Deleting your account information and personal data</li>\n` +
-    `      <li>Anonymizing your edits</li>\n` +
-    `    </ul>\n\n` +
-    `    It does\n` +
-    `    <em>not</em>\n` +
-    `    entail deleting your collaborative contributions; that would be messy and unfair to\n` +
-    `    collaborators.\n` +
-    `  </p>\n\n` +
-    `  <div class="closure-deletions">\n` +
-    `    The following cards will be permanently deleted:\n\n` +
-    `    <ul class="py-2">\n` +
-    `${deleteeLis}\n` +
-    `    </ul>\n` +
-    `  </div>\n\n` +
-    `  <div class="button-form-group py-3 justify-content-end">\n` +
-    `    ${closeButton}\n` +
-    `  </div>\n` +
-    `</div>`;
-  return modSlotWrap(ctx, "closure", body);
 };
 
 /** set/abstract/account_holder.rb:126 view :closed_account, template:

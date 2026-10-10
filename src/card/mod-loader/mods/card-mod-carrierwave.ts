@@ -79,8 +79,9 @@
 //   draft LIFECYCLE (the two-step preliminary upload's events,
 //   00_upload_cache.rb) stays unported; the editor views read their editor
 //   context through render opts (the composition layer's contract — the
-//   source of the params in Ruby), with the no-param render defined by the
-//   oracle.
+//   source of the params in Ruby), and the NO-PARAM render is stock
+//   Ruby's raise (preview_editor's cached_upload_card_name gsub on nil,
+//   synthetic-v2 view:admin:Report 1:preview_editor).
 // - assets/style/file.scss + assets/script/upload.js.coffee - stylesheet +
 //   upload JS widget; these are static asset surfaces, not view ports
 // - config/locales/*.yml - i18n; no TS consumer
@@ -535,7 +536,8 @@ const imageInputView: ViewFn = (ctx) => {
  *  cached_upload]")`. The editor context rides render opts (the request
  *  params' port at the composition layer); the standard editor form posts
  *  "card[<mount>]" names, whose gsub output is invariant:
- *  "card[action_id_of_cached_upload]". */
+ *  "card[action_id_of_cached_upload]". The caller raises on the missing
+ *  param before reaching here (the round-trip surface always passes it). */
 function cachedUploadCardName(ctx: ViewContext): string {
   const raw = ctx.voo.opts["attachment_upload"];
   const value = typeof raw === "string" && raw !== "" ? raw : "card[file]";
@@ -551,8 +553,22 @@ function cachedUploadCardName(ctx: ViewContext): string {
  *  zero-byte degenerate "0 Bytes"). The hidden input's value is the
  *  selected action id — SelectedAction#last_content_action_id parsed from
  *  the identifier (set/type/file.rb:8-13, the files lane's
- *  lastContentActionIdFromIdentifier). */
+ *  lastContentActionIdFromIdentifier).
+ *
+ *  THE NO-PARAM ARM RAISES. Ruby's haml line 2 calls cached_upload_card_name
+ *  (file.rb:144-146): `Card::Env.params[:attachment_upload].gsub(...)` —
+ *  outside the two-step upload round trip the request params carry no
+ *  :attachment_upload, so the gsub lands on nil and the view raises
+ *  NoMethodError "undefined method `gsub' for nil" (the stock synthetic-v2
+ *  capture pins it on view:admin:Report 1:preview_editor, where the quiet
+ *  non-focal rescue renders the admin debug span around it). The
+ *  round-trip surface passes the param (the cwwrite capture renders it the
+ *  same way) and keeps the editor bytes below. */
 const filePreviewEditorView: ViewFn = (ctx) => {
+  const uploadParam = ctx.voo.opts["attachment_upload"];
+  if (typeof uploadParam !== "string" || uploadParam === "") {
+    throw new Error("undefined method `gsub' for nil");
+  }
   const card = ctx.fmt.card;
   // The hidden input's value is the selected action id. Ruby resolves it
   // through the success round trip: prepare_attachment's success hash
