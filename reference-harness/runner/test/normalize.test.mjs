@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { gradeRun } from "../grade-lib.mjs";
-import { normalizeHtml, normalizeRender, sameJson } from "../normalize.mjs";
+import { canonicalErrorClass, normalizeErrorRecord, normalizeHtml, normalizeRender, sameFailure, sameJson } from "../normalize.mjs";
 import { HARNESS } from "./helpers.mjs";
 
 const slot = "0123456789abcdef0123";
@@ -267,6 +267,44 @@ describe("N2: key order, the one canonical form", () => {
     assert.ok(!sameJson({ names: ["A", "B"] }, { names: ["B", "A"] }));
     assert.ok(!sameJson({ a: 1 }, { a: "1" }), "type counts");
     assert.ok(!sameJson({ a: null }, {}), "a null field is not an absent one");
+  });
+});
+
+describe("N7: an error record's class name, the host-language naming canonical form", () => {
+  const ruby = { class: "Card::Error::CodenameNotFound", message: "unknown codename: test_context" };
+  const engine = { class: "CodenameNotFoundError", message: "unknown codename: test_context" };
+
+  it("the same failure named by each host language compares equal", () => {
+    assert.ok(sameFailure(ruby, engine), "the ruby-named and engine-named records are one failure");
+    assert.ok(sameFailure(engine, ruby), "the rule is two-sided");
+    assert.equal(canonicalErrorClass("Card::Error::CodenameNotFound"), "CodenameNotFound", "the terminal :: segment is the name proper");
+    assert.equal(canonicalErrorClass("CodenameNotFoundError"), "CodenameNotFound", "the JS Error suffix drops");
+  });
+
+  it("a genuinely different failure still fails: another class proper or another message", () => {
+    assert.ok(!sameFailure(ruby, { ...ruby, message: "a different fault" }), "the message compares byte-exact");
+    assert.ok(!sameFailure(ruby, { class: "SomeOtherFaultError", message: ruby.message }), "another class proper");
+    assert.ok(!sameFailure(ruby, { class: "Card::Error::NotFound", message: ruby.message }), "a different name under the same namespace");
+  });
+
+  it("every other field of the record counts", () => {
+    assert.ok(!sameFailure(ruby, { ...ruby, backtrace: "..." }));
+    assert.ok(!sameFailure({ class: "X", message: "y", status: 1 }, { class: "X", message: "y", status: 2 }));
+  });
+
+  it("only host naming is erased, and the erasure is narrow", () => {
+    assert.equal(canonicalErrorClass("CodenameNotFound"), "CodenameNotFound", "a bare name without the suffix stays");
+    assert.equal(canonicalErrorClass("FakeError"), "Fake");
+    assert.equal(canonicalErrorClass("Error"), "Error", "a bare Error would empty; it stays");
+    assert.equal(canonicalErrorClass("Card::Error::CodenameNotFoundError"), "CodenameNotFound", "namespace and suffix drop together");
+    assert.equal(canonicalErrorClass(""), "");
+    assert.equal(canonicalErrorClass(undefined), undefined);
+  });
+
+  it("non-error records pass through untouched", () => {
+    assert.equal(normalizeErrorRecord(undefined), undefined);
+    assert.equal(normalizeErrorRecord("str"), "str");
+    assert.deepEqual(normalizeErrorRecord({ class: "X", message: "y" }), { class: "X", message: "y" });
   });
 });
 
