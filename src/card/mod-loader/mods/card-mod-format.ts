@@ -626,8 +626,18 @@ const rawView: ViewFn = ({ fmt }) => fmt.renderRaw();
 const labeledContentView: ViewFn = ({ fmt }) => fmt.renderView("core");
 
 /** set/all/base.rb:105-107 view :titled_content, unknown: :blank:
- *  `render_core`. Same body as :labeled_content. */
-const titledContentView: ViewFn = ({ fmt }) => fmt.renderView("core");
+ *  `render_core`. Same body as :labeled_content. `render_core` is a
+ *  method_missing -> api_render -> render! delegation (method_delegation.rb
+ *  :41-47), so the body's render opens its OWN wrap_and_render rescue scope
+ *  (render.rb:96-100): a raising nested render — the corpus's too-deep
+ *  UserError from monitor_depth (format/error.rb:33-40) — becomes THIS
+ *  view's return value (the quiet render-error span, error.rb:75-78) while
+ *  every enclosing wrap survives (the titled slot and its d0-card-body
+ *  div, oracle synthetic-v2 Chain/Loop page bytes). renderDelegated is that
+ *  rescue-scoped delegation; the former renderView call let the error
+ *  escape to the grandparent nest's catch, which replaced the whole card
+ *  slot with the span. */
+const titledContentView: ViewFn = ({ fmt }) => fmt.renderDelegated("core");
 
 /** set/all/base.rb:109-111 view :blank, perms: :none:
  *  the literal empty string. (HTML_VIEWS already has a blankView; this
