@@ -491,19 +491,7 @@
    "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
    "row_kind": "working-page divergence"
   },
-  {
-   "op": "view:admin:Topic 001:edit_structure",
-   "family": "composed-mod-view-gap",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 9,
-    "expected": "{\"html\":\"<div class='modal fade _modal-slot' id='modal-container' role='dialog'>\\n<!-- /, \\\"data-backdrop\\\": \\\"static\\\"} -->\\n<di",
-    "actual": "{\"html\":\"\"}"
-   },
-   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
-   "row_kind": "upstream-failure page",
-   "failure_kind": "the oracle's own render raises (BetterErrors absent from the production bundle) and the recorded page is the raise's debug page; the engine renders an empty result - the failure is not reproduced"
-  },
+
   {
    "op": "view:admin:Topic 001:edit_rules",
    "family": "composed-mod-view-gap",
@@ -943,19 +931,7 @@
    "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
    "row_kind": "working-page divergence"
   },
-  {
-   "op": "view:admin:All Topics:search_error",
-   "family": "composed-mod-view-gap",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 185,
-    "expected": "ble to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method `message&amp;#39; for an instance of Array&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;N6#frame&lt;br&gt",
-    "actual": "ble to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;search_error bytes exist only for a rescued BadQuery (Ruby&amp;#39;s Integer/Array results crash .message with NoMethodE"
-   },
-   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/). Under N6 the div's residual is the frame count: 51 Ruby frames (oracle backtrace) vs 8 V8 frames (engine stack).",
-   "row_kind": "upstream-failure page",
-   "failure_kind": "the oracle's own render raises (undefined method `message' for an instance of Array) and the recorded page is the raise's debug page; the engine raises its BadQuery guard with a different message - a different failure"
-  },
+
   {
    "op": "view:admin:All Topics:paging",
    "family": "composed-mod-view-gap",

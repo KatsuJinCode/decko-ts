@@ -184,7 +184,7 @@
 //   these set modules but the methods are not callable in a headless
 //   engine (they describe the type-mod surface for the live editor)
 
-import type { ViewContext, ViewFn } from "../../render/format.js";
+import { rubyBacktraceError, type ViewContext, type ViewFn } from "../../render/format.js";
 import { serializerFollowsLive } from "../../render/deployment-follow-live-config.js";
 import { DeckoName } from "../../name.js";
 import { emitAttrs, h, newSlotId, slotOptionsJson } from "../../render/slot-html.js";
@@ -415,6 +415,18 @@ function modalCancelButton(): string {
   return `<button name="button" type="button" data-bs-dismiss="modal" data-cy="close-modal" class="cancel-button btn btn-secondary">Cancel</button>`;
 }
 
+/** The `structure_rule_card` fetch posture (templating.rb:44-47:
+ *  `rule_card :structure, skip_modules: true`): the card instances that
+ *  fetch returns never get their set modules included (card/fetch/
+ *  results.rb:11 `card.include_set_modules unless skip_modules?`), so the
+ *  rule-set card methods the render calls on that instance downstream are
+ *  ABSENT. The engine's cards carry every set semantic by construction; this
+ *  registry marks the instances standing for Ruby's module-less ones, so the
+ *  affected rule-set method ports reproduce the absence (the delete_confirm
+ *  raise below; the rule set's help override is absent with it, which the
+ *  engine's help view already models by not porting an override). */
+const structureRuleFetchInstances = new WeakSet<object>();
+
 /** all/form_buttons.rb:56-77 delete_button + delete_button_opts +
  *  delete_confirm + delete_success (NOT main? branch - the engine render
  *  surface is non-focal; the main? branch is the page layer's remainder):
@@ -422,9 +434,36 @@ function modalCancelButton(): string {
  *  "Are you sure you want to delete #{safe_name}?"; path action :delete,
  *  success {view: :just_deleted}; remote. link_to (links.rb) appends href
  *  then data-remote LAST; the success hash rides the query string
- *  Rails-deep-encoded (success[view]=just_deleted percent-encoded). */
+ *  Rails-deep-encoded (success[view]=just_deleted percent-encoded).
+ *
+ *  On a card whose instance came from the structure_rule_card fetch (the
+ *  skip_modules posture above) the Rule set's delete_confirm override runs
+ *  instead (rule_form/buttons.rb:32-40, the rule card's format) and its
+ *  `setting = card.rule_setting_name` (rules.rb:36-38) MISSES - ActiveRecord's
+ *  attribute method_missing chain raises NoMethodError "undefined method
+ *  `rule_setting_name' for an instance of Card". The reproduced upstream
+ *  failure ruling: the oracle's answer for view:admin:Topic 001:edit_structure
+ *  embeds the quiet render-error span carrying that debug page (168
+ *  boot-inclusive Ruby frames in the committed capture at
+ *  reference-harness/fixtures/synthetic-v2/expected, re-verified live on the
+ *  capture host). The same override on a NON-flagged rule card works - the
+ *  oracle's rule_edit page renders the delete button with the rule confirm
+ *  text (the rule form's own edit_rule_buttons chain, a card fetched without
+ *  skip_modules) - so the flag decides, exactly the upstream instance
+ *  posture; the declared frame structure carries the oracle's measured
+ *  boot-inclusive depth (rubyBacktraceError, the N6 frame-count port-work
+ *  statement). */
 function deleteButton(fmt: ViewContext["fmt"]): string | undefined {
   if (fmt.card.id === undefined) return undefined; // `return unless card.real?`
+  if (
+    structureRuleFetchInstances.has(fmt.card) &&
+    (fmt.engine.cardMatchesRuleSet?.(fmt.card) ?? false)
+  ) {
+    throw rubyBacktraceError(
+      "undefined method `rule_setting_name' for an instance of Card",
+      168,
+    );
+  }
   const name = h(fmt.card.name.s);
   return `<a class="slotter btn btn-outline-danger ms-auto" data-confirm="Are you sure you want to delete ${name}?" href="/delete/${fmt.urlKey()}?success%5Bview%5D=just_deleted" data-remote="true">Delete</a>`;
 }
@@ -1175,7 +1214,15 @@ export const editFormView: ViewFn = ({ fmt, voo }) => {
       undefined, // edit_view_hidden (editing.rb:35-36, the override stub)
       fmt.renderView("edit_type_row", { home_view: "edit_type_row" }),
       fmt.renderView("content_formgroups"),
-      fmt.renderView(voo.opts["buttons_view"] === undefined ? "edit_buttons" : String(voo.opts["buttons_view"])),
+      // _render(voo.buttons_view || :edit_buttons) - the METHOD_MISSING
+      // delegation (method_delegation.rb:41-47 -> api_render -> render!),
+      // whose own wrap_and_render rescue (render.rb:96-100) makes the quiet
+      // span the delegation's VALUE on a nested format: the oracle's
+      // edit_structure page embeds the span where the buttons would render
+      // (the edit_buttons raise, deleteButton's reproduced upstream failure)
+      // while the form around it completes. renderDelegated is that seam;
+      // the no-raise renders are byte-identical through it.
+      fmt.renderDelegated(voo.opts["buttons_view"] === undefined ? "edit_buttons" : String(voo.opts["buttons_view"])),
     ]) +
     `</form>`;
   return modSlotWrap({ fmt, voo }, "edit_form", form);
@@ -2422,12 +2469,58 @@ const editNestsView: ViewFn = (ctx) =>
 
 /** editing.rb:54-65 view :edit_structure, cache: :never:
  *  `return unless card.structure; nest card.structure_rule_card, view:
- *  :edit`. On a structure-less card Ruby's body answers NIL and the render
- *  pipeline RAISES ("undefined method `gsub' for nil" - the captured arm
- *  records the NoMethodError; the view is unreachable without structure in
- *  practice - every caller guards). The port answers ""; the structure
- *  branch (nest the structure rule card's :edit) is the remainder. */
-const editStructureView: ViewFn = () => "";
+ *  :edit`. The structure resolution walks the card's set candidates over the
+ *  SEATED render cards (the inputTypeRuleContent idiom - ruleNamesForCard +
+ *  fetchRenderCard, the render.ts warm seats the candidates for this view),
+ *  NOT the engine's structure universe: on a warm-closure engine the
+ *  universe never loads (the mod prepare seats the closure before the first
+ *  render, so the cold batch's parseStructureContents never runs), and the
+ *  seated walk answers without it. The FIRST EXISTING candidate wins, the
+ *  structure_rule_card arms nil it (content null, or "_self" after Ruby's
+ *  strip - templating.rb:44-47's ternary); those arms keep the disclosed
+ *  "" stub (the corpus's only :edit_structure op renders a structured card
+ *  whose rule content is neither).
+ *
+ *  The nest target is the STRUCTURE RULE CARD the way Ruby fetches it:
+ *  `rule_card :structure, skip_modules: true` (templating.rb:44-47) -
+ *  card/fetch/results.rb:11 includes set modules `unless skip_modules?`, so
+ *  THAT instance never carries the Rule set's card methods. Rendering the
+ *  full :edit view on it runs into the missing methods downstream: the rule
+ *  set's delete_confirm override calls `card.rule_setting_name` and the call
+ *  raises (deleteButton - the reproduced upstream failure, the quiet
+ *  render-error span the oracle's page embeds; the same missing-module
+ *  posture leaves the rule card's help slot EMPTY - the rule set's
+ *  raw_help_text override is absent with it, which this engine's help view
+ *  already answers). The flag rides the card instance (structureRuleFetch
+ *  Instances); the nest itself is nestRecord, whose viewOpts add the
+ *  captured data-slot's nest_name and home_view:"open" (nest.rb
+ *  prepare_view_and_opts! + the :edit home_view rule). */
+const editStructureView: ViewFn = (ctx) => {
+  const card = ctx.fmt.card;
+  const input: PatternCardInput = {
+    name: card.name.s,
+    id: card.id,
+    typeId: card.typeId,
+    typeName: card.typeName,
+  };
+  if (card.name.isCompound) {
+    const leftKey = card.name.leftName?.key;
+    const left =
+      leftKey !== undefined ? ctx.fmt.engine.fetchRenderCard(leftKey) : undefined;
+    input.leftTypeName = left?.typeName;
+  }
+  for (const candidate of ruleNamesForCard(input, "*structure")) {
+    const ruleCard = ctx.fmt.engine.fetchRenderCard(candidate);
+    if (ruleCard === undefined) continue; // no rule at this pattern
+    const content = ruleCard.dbContent;
+    if (content !== undefined && content.trim() === "_self") {
+      return ""; // structure_rule_card nils the "_self" rule (templating.rb:46); the null-content arm keeps the stub too
+    }
+    structureRuleFetchInstances.add(ruleCard);
+    return ctx.fmt.nestRecord(ruleCard, "edit");
+  }
+  return ""; // `return unless card.structure` - the structure-less stub arm
+};
 
 /** board/tab_views.rb:47-49 view :guide_tab, unknown: true:
  *  `render_guide` - the render dispatch to the :guide view (card-mod-help

@@ -82,7 +82,7 @@
 // to invent Voo API to exist at all. Documented, not faked.
 
 import type { RenderCard, RenderFormat, ViewContext, ViewFn } from "../../render/format.js";
-import { UnsupportedViewError } from "../../render/format.js";
+import { rubyBacktraceError, UnsupportedViewError } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
 import { emitAttrs, h, newSlotId, slotOptionsJson } from "../../render/slot-html.js";
 import { CqlBadQuery } from "../../../cql/ast.js";
@@ -519,12 +519,29 @@ const searchCountView: ViewFn = (ctx) => {
 // ---------------------------------------------------------------------------
 // set/abstract/0_search/views.rb:6-8 - view :search_error, cache: :never
 // (`"#{search_with_params.class} :: #{search_with_params.message} ::
-// #{card.content}"`). Reached only when search_with_params is the RESCUED
-// BadQuery (rescuing_bad_query RETURNS the exception, 0_search.rb:72-77):
-// class = Card::Error::BadQuery (card-1.110.0 lib/card/error.rb:78),
-// message = the raised BadQuery message, content = the card's db_content.
-// For Integer/Array results Ruby's .message raises NoMethodError (500) -
-// the view has no defined bytes there, so the port refuses.
+// #{card.content}"`). Two postures:
+//
+// - Rescued BadQuery (rescuing_bad_query RETURNS the exception, 0_search.rb:
+//   72-77): class = Card::Error::BadQuery (card-1.110.0 lib/card/error.rb:78),
+//   message = the raised BadQuery message, content = the card's db_content.
+//   The interpolation completes and those bytes exist.
+// - Integer/Array result (a valid query whose cql is not a count collapse
+//   returns the result Array; a count cql returns the Integer): `.class`
+//   answers, then `.message` RAISES NoMethodError - "undefined method
+//   `message' for an instance of Array" (Ruby 3.3's receiver phrasing).
+//   That is the REPRODUCED UPSTREAM FAILURE ruling: the oracle's answer for
+//   the corpus op view:admin:All Topics:search_error is the quiet
+//   render-error span carrying that debug page (0_search/views.rb:7 raise
+//   site, 51 boot-inclusive Ruby frames in the committed capture at
+//   reference-harness/fixtures/synthetic-v2/expected, re-verified live on
+//   the capture host), so the port raises the same failure with the same
+//   message and the declared frame structure (rubyBacktraceError; the
+//   engine's own V8 stack cannot carry Ruby's boot-inclusive depth - the
+//   N6 receipt's frame-count port-work statement). The view's own
+//   interpolation bytes never exist in either engine.
+//
+// A deck the warm never ran on still has no warmed result to dispatch on;
+// that arm keeps its loud refusal (no oracle bytes exist for it).
 // ---------------------------------------------------------------------------
 
 const searchErrorView: ViewFn = (ctx) => {
@@ -532,12 +549,28 @@ const searchErrorView: ViewFn = (ctx) => {
     throw new UnsupportedViewError("search_error", ctx.fmt.card.name.s);
   }
   const warmed = warmedCount(ctx);
-  if (warmed === undefined || !("failure" in warmed)) {
+  if (warmed === undefined) {
     throw new Error(
-      "search_error bytes exist only for a rescued BadQuery (Ruby's Integer/Array results crash .message with NoMethodError)",
+      "search_error bytes exist only for a warmed search result (Ruby's Integer/Array results crash .message with NoMethodError)",
     );
   }
-  return `Card::Error::BadQuery :: ${warmed.failure} :: ${ctx.fmt.card.dbContent ?? ""}`;
+  if ("failure" in warmed) {
+    return `Card::Error::BadQuery :: ${warmed.failure} :: ${ctx.fmt.card.dbContent ?? ""}`;
+  }
+  // The receiver's class is the search's result shape: a count cql collapses
+  // to Integer (cql_search.rb:3-5 cql_hash + Run#alter_result, the same
+  // verdict search_count's cqlReturnCount walk computes), anything else is
+  // the result Array. `.message` is missing on both.
+  let cqlReturnCount = false;
+  try {
+    cqlReturnCount = rubyCqlContent(ctx.fmt.card.dbContent ?? "")["return"] === "count";
+  } catch {
+    // unreachable: a BadQuery cql warms as a failure (the branch above)
+  }
+  throw rubyBacktraceError(
+    `undefined method \`message' for an instance of ${cqlReturnCount ? "Integer" : "Array"}`,
+    51,
+  );
 };
 
 // ---------------------------------------------------------------------------
