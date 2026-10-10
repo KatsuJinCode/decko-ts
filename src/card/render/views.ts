@@ -42,6 +42,7 @@ import { searchPagingNav } from "./search-paging.js";
 import { footerDeckoVersion, recaptchaSiteKey, serializerFollowsLive } from "./deployment-follow-live-config.js";
 import type { UpdaterCardInfo } from "../history/updater-seam.js";
 import { isNewCard } from "../fetch/card-record.js";
+import { recentChangesCoreBytes } from "../mod-loader/mods/card-mod-history.js";
 import { cgiEscape, emitAttrs, emitHamlAttrs, h, newSlotId, slotOptionsJson, slotOptionsWithNameContext } from "./slot-html.js";
 import { hamlSlotInHash } from "./haml-slot-style.js";
 import {
@@ -1010,6 +1011,20 @@ const coreViewBase: ViewFn = (ctx) => {
   //   unported path emitted the raw apostrophes.
   if (fmt.card.typeCode === "plain_text" || fmt.card.typeName === "PlainText") {
     return fmt.processContent(h(fmt.renderRaw()));
+  }
+  // set/self/recent.rb:28-33 - the *recent card's html :core: the
+  // deck-wide recent-acts feed (recent_acts + acts_layout :absolute), a
+  // Self-set override of the search core below (self outranks
+  // Type::SearchType in the set chain; self/recent.rb:9-12 even nils
+  // cql_content with "FIXME: this should not be a CQL search card").
+  // The bytes builder (card-mod-history.ts recentChangesCoreBytes) reads
+  // the render-time history seam's DECK-WIDE reader - prepared for any
+  // core-reaching render whose root is *recent (render.ts SELF-Xrecent
+  // gate). Without the seat the view answers the search card_list the
+  // type dispatch below serves (the pre-port search-no-results bytes).
+  if (fmt.card.setKeys.split(" ").includes("SELF-Xrecent")) {
+    const reader = fmt.engine.historyRenderReader?.();
+    if (reader !== undefined) return recentChangesCoreBytes(fmt, reader);
   }
   // Match by codename (card-mod-search type card's codehash has codename
   // "search_type"); the corpus search cards have type cards whose CARD
