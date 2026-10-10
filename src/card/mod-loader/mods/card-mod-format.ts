@@ -242,6 +242,7 @@ import { cardFormShell } from "../mod-form-substrate.js";
 import { allAdminConfigCodenamesOfCategory } from "./core-mod.js";
 import { CardActionError } from "../../actions/types.js";
 import { jsonValidationMessage, numberValidationMessage } from "./format-validations.js";
+import { envOriginForSurface } from "../../render/deck-origin.js";
 
 // ---------------------------------------------------------------------------
 // helpers (Ruby source cited per block)
@@ -813,7 +814,19 @@ function cardtypeAddButtonView({ fmt }: ViewContext): string {
   );
 }
 function cardtypeAddUrlView({ fmt }: ViewContext): string {
-  return `/${cardtypeUrlKey(fmt as unknown as RenderFormatBase)}/new`;
+  // set/type/cardtype.rb:36-38 `view :add_url do card_url _render_add_path
+  // end`: _render_add_path is an api_render delegation of the :add_path
+  // VIEW, which the set module never registers (add_path is a plain helper,
+  // cardtype.rb:41-52), so the delegated render raises the unsupported-view
+  // UserError and its QUIET rescue (the serving posture's non-focal root,
+  // error.rb:65-78) makes the verbatim span the delegation's VALUE; card_url
+  // then prepends Env.origin and the path separator around it. The oracle
+  // pins the 112-byte origin-prefixed span; the former headless
+  // "/<key>/new" stub fabricated a working path Ruby never serves.
+  const delegating = fmt as unknown as RenderFormatBase & {
+    renderDelegated(view: string): string;
+  };
+  return `${envOriginForSurface(false)}/${delegating.renderDelegated("add_path")}`;
 }
 interface RenderFormatBase {
   card: { key?: string; name?: { s: string } };
