@@ -24,10 +24,18 @@
  */
 export const SLOT_ID = /(?<=\s)data-slot-id=(["'])[0-9a-f]{20}\1/g;
 
-// Elements whose content is text, not markup, until their matching close tag
-// (HTML5 raw text and escapable raw text). Everything between is compared
-// byte for byte.
-const RAW_TEXT_ELEMENTS = new Set(["script", "style", "textarea", "title"]);
+// Elements whose content is text, not markup, until their matching close tag.
+// The HTML5 raw text elements (script, style, textarea, title), the obsolete
+// raw text element xmp (parsed by browsers exactly like the others: its body
+// is text until `</xmp>`), and plaintext, which has no end tag at all — the
+// tokenizer never leaves the plaintext state, so everything from `<plaintext>`
+// to EOF is displayed text (a `</plaintext>` look-alike is text too, as is a
+// self-closing slash). Everything between the open tag and the end of the
+// body is compared byte for byte. (Review round 3, finding 6: inside xmp and
+// plaintext, a `data-slot-id="…"` look-alike is VISIBLE text, never an
+// attribute, so it must not be masked.)
+const RAW_TEXT_ELEMENTS = new Set(["script", "style", "textarea", "title", "xmp"]);
+const RAW_TEXT_NEVER_CLOSES = "plaintext";
 
 const isWhitespace = (c) => c === " " || c === "\n" || c === "\r" || c === "\t" || c === "\f";
 const isNameChar = (c) => /[A-Za-z0-9:_-]/.test(c);
@@ -98,8 +106,10 @@ export function normalizeHtml(html) {
     const tagText = html.slice(i, tagEnd);
     out += closing ? tagText : maskSlotIdAttributes(tagText);
     i = tagEnd;
-    // A raw text element's body is text, not markup, until its close tag:
-    // copied verbatim, whatever it contains.
+    // A raw text element's body is text, not markup: copied verbatim,
+    // whatever it contains. xmp closes like the others, at its end tag;
+    // plaintext never closes — everything after it to EOF is its body,
+    // whatever it looks like (browsers have no `</plaintext>`).
     const lowerName = name.toLowerCase();
     if (!closing && RAW_TEXT_ELEMENTS.has(lowerName) && !tagText.endsWith("/>")) {
       const closeAt = lower.indexOf(`</${lowerName}`, i);
@@ -109,6 +119,9 @@ export function normalizeHtml(html) {
       })();
       out += html.slice(i, bodyEnd);
       i = bodyEnd;
+    } else if (!closing && lowerName === RAW_TEXT_NEVER_CLOSES) {
+      out += html.slice(i);
+      i = html.length;
     }
   }
   return out;

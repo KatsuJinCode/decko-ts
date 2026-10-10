@@ -19,7 +19,7 @@
     "test:shadow": "vitest run tests/tools/shadow/",
     "test:reference-harness": "node --test \"reference-harness/runner/test/*.test.mjs\"",
     "test:persistence-probe": "vitest run tests/tools/persist-write-probe.test.ts",
-    "release-check": "npm run test && npm run test:deploy && npm run test:drivers && npm run test:shadow && npm run test:reference-harness && npm run test:persistence-probe",
+    "release-check": "node scripts/release-check.mjs",
     "typecheck": "tsc --noEmit",
     "replay": "vitest run oracle-replay tests/testing",
     "db:migrations:apply": "npx wrangler d1 migrations apply DB --remote",

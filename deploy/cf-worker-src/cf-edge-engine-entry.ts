@@ -16,18 +16,85 @@
 // locally in workerd is byte for byte the code Cloudflare runs.
 
 import { handleBunnyEngineRequest, setEdgeDbDriverFactory, type EdgeEnv } from "../bunny-worker-src/bunny-edge-engine-handler.js";
-import { recordEdgeDbRoundTrip, edgeDriverQueryCounter, edgeDbLedgerSnapshot } from "../bunny-worker-src/bunny-edge-server-timing.js";
+import {
+  edgeDbLedgerSnapshot,
+  edgeDriverQueryCounter,
+  recordEdgeDbBindingCall,
+  recordEdgeDbDriverOp,
+} from "../bunny-worker-src/bunny-edge-server-timing.js";
 import { setEdgeHostLabels } from "../bunny-worker-src/edge-host-labels.js";
 import {
   CLOUDFLARE_WORKERS_PBKDF2_MAX_ITERATIONS,
   setPbkdf2IterationLimit,
 } from "../../src/card/auth/password-hash.js";
-import { CloudflareD1Adapter, type D1DatabaseLike } from "../../src/server/drivers/d1.js";
+import { CloudflareD1Adapter, type D1DatabaseLike, type D1PreparedStatementLike } from "../../src/server/drivers/d1.js";
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement, SQLTransactionGuarantee } from "../../src/server/driver.js";
 
-/** CloudflareD1Adapter with each binding call timed into the edge ledger
- *  (one call = one round trip) and each statement counted. */
-class LedgerD1Driver implements SQLDatabaseDriver {
+/** THE BINDING BOUNDARY (review round 3, finding 5): every D1 round trip is
+ *  timed and counted where it physically happens — the binding call — not
+ *  at the driver interface. One logical driver operation can issue several
+ *  binding batches: a serving read before the transaction-state table is
+ *  installed sends a lock-state probe batch that FAILS ("no such table")
+ *  and then a fallback batch; a serving read that finds an expired lease
+ *  runs the repair batches and re-reads; inside a transaction the journal's
+ *  begin, commit and rollback are binding batches of their own. None of
+ *  these pass through a driver query()/batch() call, so counting there
+ *  undercounted (the reviewer's repro: one driver query over a fresh
+ *  database, two binding batches on the wire — and the old wrapper also
+ *  missed the journal's begin/commit entirely). The adapter can only reach
+ *  D1 through prepare()/batch() on its binding and run()/all() on a
+ *  prepared statement, so wrapping those three catches every call, failed
+ *  ones included (recorded in `finally`, before the rejection propagates).
+ *  Each statement's count is what the call physically carried: a batch's
+ *  full prepared list — the adapter's appended `SELECT changes()` rows, the
+ *  lock-state probe, lease fences and ownership asserts included. */
+export function ledgeredBinding(db: D1DatabaseLike): D1DatabaseLike {
+  // A prepared statement the adapter receives from THIS binding is the
+  // wrapper; the batch() call must hand the real binding its own prepared
+  // statements back, so the wrapper keeps the mapping.
+  const innerOf = new WeakMap<D1PreparedStatementLike, D1PreparedStatementLike>();
+  return {
+    prepare(sql: string): D1PreparedStatementLike {
+      const inner = db.prepare(sql);
+      const invoke = async <T>(call: () => Promise<T>): Promise<T> => {
+        const t0 = Date.now();
+        try {
+          return await call();
+        } finally {
+          recordEdgeDbBindingCall(Date.now() - t0, 1);
+        }
+      };
+      const prepared: D1PreparedStatementLike = {
+        bind(...values) {
+          inner.bind(...values);
+          return prepared;
+        },
+        run: () => invoke(() => inner.run()),
+        all: () => invoke(() => inner.all()),
+      };
+      innerOf.set(prepared, inner);
+      return prepared;
+    },
+    async batch(statements) {
+      const t0 = Date.now();
+      try {
+        return await db.batch(statements.map((s) => innerOf.get(s) ?? s));
+      } finally {
+        recordEdgeDbBindingCall(Date.now() - t0, statements.length);
+      }
+    },
+  };
+}
+
+/** CloudflareD1Adapter over the ledgered binding. The wrapper's own methods
+ *  are the LOGICAL view, kept under separate labels so the two counts stay
+ *  distinguishable (finding 5): `stmt` on Server-Timing stays the deck
+ *  driver's statement counter exactly as dashboards know it, and each
+ *  query()/batch()/transaction() invocation is one driver operation.
+ *  Round-trip wall time is recorded at the binding (ledgeredBinding), not
+ *  here — so `db;dur` covers the journal's and serving path's own batches
+ *  too, which the previous per-call timing never saw. */
+export class LedgerD1Driver implements SQLDatabaseDriver {
   constructor(private readonly inner: SQLDatabaseDriver) {}
 
   get transactionGuarantee(): SQLTransactionGuarantee | undefined {
@@ -36,27 +103,20 @@ class LedgerD1Driver implements SQLDatabaseDriver {
 
   async transaction<R>(work: () => Promise<R>): Promise<R> {
     if (this.inner.transaction === undefined) throw new Error("the wrapped D1 driver has no transaction()");
+    recordEdgeDbDriverOp();
     return this.inner.transaction(work);
   }
 
   async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
-    const t0 = Date.now();
     edgeDriverQueryCounter().recordQuery(sql);
-    try {
-      return await this.inner.query<T>(sql, params);
-    } finally {
-      recordEdgeDbRoundTrip(Date.now() - t0);
-    }
+    recordEdgeDbDriverOp();
+    return await this.inner.query<T>(sql, params);
   }
 
   async batch(statements: SQLStatement[]): Promise<SQLQueryResult[]> {
-    const t0 = Date.now();
     for (const s of statements) edgeDriverQueryCounter().recordQuery(s.sql);
-    try {
-      return await this.inner.batch(statements);
-    } finally {
-      recordEdgeDbRoundTrip(Date.now() - t0);
-    }
+    recordEdgeDbDriverOp();
+    return await this.inner.batch(statements);
   }
 }
 
@@ -81,7 +141,7 @@ setEdgeHostLabels({
 });
 setEdgeDbDriverFactory(() => {
   if (binding === undefined) throw new Error("D1 binding DB is not configured");
-  return new LedgerD1Driver(new CloudflareD1Adapter(binding));
+  return new LedgerD1Driver(new CloudflareD1Adapter(ledgeredBinding(binding)));
 });
 
 /** How D1 counts its per-invocation query limit (50 on the free plan) is not
@@ -130,10 +190,15 @@ export default {
     const before = edgeDbLedgerSnapshot();
     const response = await handleBunnyEngineRequest(request, vars);
     const marked = new Response(response.body, response);
-    // Database round trips for this request: D1 binding calls, each one
-    // batch() of a trip's statements. Server-Timing's stmt counts statements,
-    // so per-trip cost is db.dur / this. (Exact when requests do not overlap
-    // in the isolate, as the ledger's own contract says.)
+    // Database round trips for this request: D1 binding calls, counted at
+    // the binding (finding 5) — the serving path's probe-then-fallback
+    // pair before the transaction-state table exists counts as the two
+    // round trips it is, and so do lease repairs and the transaction
+    // journal's own begin/commit batches. Server-Timing's stmt counts the
+    // logical statements the driver was asked to run and wire= counts what
+    // the binding physically received, so per-trip cost is db.dur / trips
+    // and per-trip width is wire / trips. (Exact when requests do not
+    // overlap in the isolate, as the ledger's own contract says.)
     marked.headers.set("X-Decko-Db-Trips", String(Math.max(0, edgeDbLedgerSnapshot().posts - before.posts)));
     if (vars.DECKO_PARTIAL_DECK === "1") {
       // While the trickle import is still running, pages outside the

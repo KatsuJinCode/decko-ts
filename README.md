@@ -21,7 +21,15 @@ The parity grade of record is the public synthetic deck, graded by the
 reference harness and reproducible from this repository
 ([reference-harness/SPEC.md](reference-harness/SPEC.md)): rendering
 1,754 of 1,754, semantics 2,389 of 2,389, persistence 16 of 16, side
-effects 19 of 19, read-writes 8 of 8. The larger figures under
+effects 19 of 19 (16 write answers plus three sign-in answers — the
+public scenarios include no sign-out), read-writes 8 of 8. The public
+harness's normalization is exactly two rules
+([SPEC.md](reference-harness/SPEC.md), "Normalisation"): the
+`data-slot-id` attribute mask and JSON key canonicalization; the corpus
+replay's additional normalizations (the accordion group hash, the CDN
+challenge block, the object address, the asset-host prefix, the trailing
+newline at the denied seam) belong to the historical corpus workflow, not
+to this grade. The larger figures under
 [Migration status](#migration-status) — the with-mods corpus replay —
 are historical: they were measured on an earlier revision of the engine,
 on 2026-09-23, against a corpus that is not redistributable and cannot be

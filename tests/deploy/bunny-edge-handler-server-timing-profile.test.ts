@@ -312,24 +312,50 @@ describe("edge profiler — header format units", () => {
       authMs: 3.4,
       seatMs: 0,
       renderMs: 1_234.6,
-      start: { dbMs: 500, posts: 10, stmts: 40 },
+      start: { dbMs: 500, posts: 10, stmts: 40, wireStmts: 0, driverOps: 0 },
     };
     // Freeze the ledger end so the db delta is known: +231.2 ms, +21
-    // statements OVER THE PROFILE'S OWN start snapshot. total;dur is
+    // statements, +15 binding-carried statements and +5 logical driver
+    // operations OVER THE PROFILE'S OWN start snapshot. total;dur is
     // wall-clock (t0 = 1_000, long past) — pinned as a prefix so the
     // assertion cannot flake on the clock.
     const value = serverTimingHeaderValue(profile, {
       dbMs: profile.start.dbMs + 231.2,
       posts: profile.start.posts + 5,
       stmts: profile.start.stmts + 21,
+      wireStmts: profile.start.wireStmts + 15,
+      driverOps: profile.start.driverOps + 5,
     });
     // The exact wire shape the operator sees (everything but total;dur).
     expect(
-      value.startsWith("auth;dur=3, seat;dur=0, db;dur=231;stmt=21, render;dur=1235, total;dur="),
+      value.startsWith(
+        "auth;dur=3, seat;dur=0, db;dur=231;stmt=21;wire=15;ops=5, render;dur=1235, total;dur=",
+      ),
     ).toBe(true);
-    // The db metric's two params ride one metric, comma-free.
+    // The db metric's params ride one metric, comma-free.
     expect(value).not.toContain("db;dur=231,");
-    expect(value).toContain("db;dur=231;stmt=21");
+    expect(value).toContain("db;dur=231;stmt=21;wire=15;ops=5");
+  });
+
+  it("a host that does not measure at the binding boundary omits wire and ops instead of printing 0", () => {
+    const profile: EdgeRequestProfile = {
+      t0: 1_000,
+      authMs: 0,
+      seatMs: 0,
+      renderMs: 5,
+      start: { dbMs: 0, posts: 0, stmts: 0, wireStmts: 0, driverOps: 0 },
+    };
+    const value = serverTimingHeaderValue(profile, {
+      dbMs: 20,
+      posts: 3,
+      stmts: 7,
+      wireStmts: 0,
+      driverOps: 0,
+    });
+    // The Bunny host's shape is unchanged: stmt only.
+    expect(value).toContain("db;dur=20;stmt=7, render;dur=5");
+    expect(value).not.toContain("wire=");
+    expect(value).not.toContain("ops=");
   });
 
   it("startEdgeRequestProfile starts every phase at zero and snapshots the ledger", () => {

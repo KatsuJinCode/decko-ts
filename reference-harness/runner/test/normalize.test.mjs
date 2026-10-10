@@ -84,6 +84,29 @@ describe("N1 masks only a real attribute token (finding 6)", () => {
   });
 });
 
+describe("N1 and the raw text elements xmp and plaintext (review round 3, finding 6)", () => {
+  it("the reviewer's case: inside <xmp> a slot-id look-alike is DISPLAYED text, never masked", () => {
+    assert.ok(!same(`<xmp><b data-slot-id="${slot}"></b></xmp>`, `<xmp><b data-slot-id="${other}"></b></xmp>`), "inside xmp the content counts");
+    assert.equal(normalizeHtml(`<xmp><b data-slot-id="${slot}"></b></xmp>`), `<xmp><b data-slot-id="${slot}"></b></xmp>`, "the xmp body is copied byte for byte");
+  });
+
+  it("xmp closes at </xmp>: a real attribute after it is masked, and a real difference there still counts", () => {
+    assert.ok(same(`<xmp><i data-slot-id="${slot}"></i></xmp><div data-slot-id="${slot}">x</div>`, `<xmp><i data-slot-id="${slot}"></i></xmp><div data-slot-id="${other}">x</div>`), "markup resumes after xmp");
+    assert.ok(!same(`<xmp>a</xmp><div data-slot-id="${slot}">x</div>`, `<xmp>b</xmp><div data-slot-id="${other}">x</div>`), "a visible difference after xmp is never masked away");
+  });
+
+  it("inside <plaintext> everything to EOF is displayed text — pseudo-tags, a pseudo end tag, and a self-closing slash are all text", () => {
+    assert.ok(!same(`<plaintext><b data-slot-id="${slot}"></b>`, `<plaintext><b data-slot-id="${other}"></b>`), "plaintext has no end tag; the body runs to EOF");
+    assert.ok(!same(`<plaintext>${slot}</plaintext><div data-slot-id="${slot}">`, `<plaintext>${other}</plaintext><div data-slot-id="${other}">`), "</plaintext> is text, not a close tag");
+    assert.ok(!same(`<plaintext/>${slot}`, `<plaintext/>${other}`), "browsers ignore the self-closing slash on plaintext");
+  });
+
+  it("negative control: a real attribute inside a normal tag is still masked", () => {
+    assert.ok(same(`<div data-slot-id="${slot}">x</div>`, `<div data-slot-id="${other}">x</div>`));
+    assert.ok(same(`<b data-slot-id="${slot}">x</b>`, `<b data-slot-id="${other}">x</b>`), "the reviewer's tag, outside xmp, masks");
+  });
+});
+
 describe("removed rules: these now count", () => {
   it("hexadecimal numbers in HTML are compared (the former address mask)", () => {
     assert.ok(!same("<p>0xdeadbeef</p>", "<p>0xfeedface</p>"));

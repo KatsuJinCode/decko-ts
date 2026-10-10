@@ -27,13 +27,21 @@
 //            ~0). Computed as the serve-layer wall minus the render wall —
 //            sound in a single-threaded isolate, where the render closure's
 //            wall is strictly nested inside the serve layer's wall.
-//   db     — AGGREGATE wall across the isolate's Bunny DB pipeline POSTs
-//            during this request, with stmt=N = statements that hit the
-//            wire. db OVERLAPS the wall phases by design — auth's session
-//            SELECT, the seat tier's lookup/store hops, and the render
-//            ladder all POST to the same database; db answers "how much of
-//            this request was database", the wall phases answer "where in
-//            the pipeline it went". stmt counts REAL wire statements only:
+//   db     — AGGREGATE wall across the isolate's database round trips
+//            during this request — Bunny DB pipeline POSTs, or D1 binding
+//            calls on the Cloudflare host — with stmt=N = statements the
+//            deck driver was asked to run (logical; one per query() call,
+//            one per statement in batch()), and, where the host measures
+//            at the round-trip boundary, wire=M = statements physically
+//            carried by those round trips and ops=K = logical driver
+//            operations (one query()/batch()/transaction() call, however
+//            many round trips it issued — the number trips used to carry
+//            before finding 5). db OVERLAPS the wall phases by design —
+//            auth's session SELECT, the seat tier's lookup/store hops, and
+//            the render ladder all hit the same database; db answers "how
+//            much of this request was database", the wall phases answer
+//            "where in the pipeline it went". stmt counts REAL wire
+//            statements only:
 //            the counter rides the deck driver's own
 //            BunnyDbQueryCounterLike seam, which a render-plan replay
 //            answer never reaches (replayed reads are zero-round-trip by
@@ -83,18 +91,43 @@ export const EDGE_SERVER_TIMING_HEADER = "Server-Timing";
 
 /** A point-in-time reading of the isolate's database ledger. */
 export interface EdgeDbLedgerSnapshot {
-  /** Aggregate wall ms across completed pipeline POSTs. */
+  /** Aggregate wall ms across completed round trips (pipeline POSTs on
+   *  Bunny; binding calls on Cloudflare). */
   readonly dbMs: number;
-  /** How many pipeline POSTs completed (retries included — each attempt is
-   *  real wall time the request paid). */
+  /** How many round trips completed: pipeline POSTs (Bunny) or D1 binding
+   *  calls (Cloudflare), retries and failed attempts included — each is
+   *  real wall time the request paid. On Cloudflare this counts what the
+   *  binding actually received, not logical driver calls: one driver
+   *  operation can issue several binding batches (the lock-state probe
+   *  plus its fallback before the transaction-state table is installed, a
+   *  lease repair, the journal's begin and commit). */
   readonly posts: number;
-  /** Statements that hit the wire (deck driver's counter: one per query()
-   *  call, one per statement in batch()). */
+  /** Logical statements the deck driver was asked to run (its counter: one
+   *  per query() call, one per statement in batch()). This is the
+   *  DRIVER-operation view, kept under its own name so dashboards that
+   *  read it keep their meaning; the statements physically inside the
+   *  round trips are `wireStmts`. */
   readonly stmts: number;
+  /** Statements physically carried by the counted round trips (a D1
+   *  batch's full statement list, the adapter's own appended
+   *  `SELECT changes()`, lock-state probes, lease fences and ownership
+   *  asserts included). Recorded only by hosts that measure at the
+   *  binding boundary (Cloudflare); Bunny leaves it at zero and the
+   *  header omits it rather than printing a false 0. */
+  readonly wireStmts: number;
+  /** Logical driver operations: SQLDatabaseDriver.query()/batch()/
+   *  transaction() invocations, one each however many round trips they
+   *  issue. This is the count the trips number used to carry before the
+   *  binding-boundary fix (review round 3, finding 5), kept so a
+   *  dashboard comparing driver work across hosts still can. Recorded
+   *  only on Cloudflare; Bunny leaves it at zero and the header omits it. */
+  readonly driverOps: number;
 }
 
 let ledgerDbMs = 0;
 let ledgerPosts = 0;
+let ledgerWireStmts = 0;
+let ledgerDriverOps = 0;
 /** THE statement counter — the driver's OWN mutable counter class (its
  *  `queryCounter` option takes exactly this type), installed as the deck
  *  driver's counter at boot. Single source of truth for stmt: the ledger
@@ -105,7 +138,13 @@ const ledgerQueryCounter = new BunnyDbQueryCounter();
 
 /** Current ledger reading. */
 export function edgeDbLedgerSnapshot(): EdgeDbLedgerSnapshot {
-  return { dbMs: ledgerDbMs, posts: ledgerPosts, stmts: ledgerQueryCounter.count() };
+  return {
+    dbMs: ledgerDbMs,
+    posts: ledgerPosts,
+    stmts: ledgerQueryCounter.count(),
+    wireStmts: ledgerWireStmts,
+    driverOps: ledgerDriverOps,
+  };
 }
 
 /** Test seam: zero the isolate ledger (isolate-bound state must not leak
@@ -114,6 +153,8 @@ export function edgeDbLedgerSnapshot(): EdgeDbLedgerSnapshot {
 export function resetEdgeDbLedgerForTests(): void {
   ledgerDbMs = 0;
   ledgerPosts = 0;
+  ledgerWireStmts = 0;
+  ledgerDriverOps = 0;
   ledgerQueryCounter.reset();
 }
 
@@ -140,12 +181,28 @@ export function edgeDbTimingFetch(): typeof fetch {
   };
 }
 
-/** Record one database round trip that did not go through fetch (a
- *  Cloudflare D1 binding call, cf-hosting 2026-10-07): its wall time into
- *  the ledger, as edgeDbTimingFetch does for a pipeline POST. */
-export function recordEdgeDbRoundTrip(ms: number): void {
+/** Record one database round trip and its statements, measured where the
+ *  round trip actually happens (cf-hosting 2026-10-07; binding-boundary
+ *  counting per review round 3, finding 5): its wall time into the ledger,
+ *  one trip, and the statements the trip physically carried. A FAILED call
+ *  is recorded too — the D1 lock-state probe batch against a database
+ *  without the transaction-state table is a round trip the request paid.
+ *  One driver operation may record here several times (probe + fallback,
+ *  lease repair, the journal's begin and commit); the logical-operation
+ *  count lives in recordEdgeDbDriverOp, labelled separately. */
+export function recordEdgeDbBindingCall(ms: number, statements: number): void {
   ledgerDbMs += Math.max(0, ms);
   ledgerPosts += 1;
+  ledgerWireStmts += Math.max(0, statements);
+}
+
+/** Record one logical driver operation: a single SQLDatabaseDriver
+ *  query()/batch()/transaction() invocation, however many binding calls it
+ *  actually issued. Kept as its own labelled counter (finding 5) so the
+ *  trips number can report real round trips without a dashboard that
+ *  tracked the old per-invocation figure silently changing meaning. */
+export function recordEdgeDbDriverOp(): void {
+  ledgerDriverOps += 1;
 }
 
 /** The counter handed to the deck driver as its `queryCounter` (the driver
@@ -189,21 +246,29 @@ export function startEdgeRequestProfile(): EdgeRequestProfile {
 
 /** The db phase for a profile: ledger deltas across the request window,
  *  clamped non-negative (a clock can only go forward; the clamp keeps a
- *  test seam from producing absurd output). */
+ *  test seam from producing absurd output). `stmt` is the logical-statement
+ *  delta; `wire` and `ops` are the binding-statement and logical-driver-
+ *  operation deltas, present only where the host measures them. */
 export function edgeDbDelta(
   profile: EdgeRequestProfile,
   end: EdgeDbLedgerSnapshot = edgeDbLedgerSnapshot(),
-): { dur: number; stmt: number } {
+): { dur: number; stmt: number; wire: number; ops: number } {
   return {
     dur: Math.max(0, end.dbMs - profile.start.dbMs),
     stmt: Math.max(0, end.stmts - profile.start.stmts),
+    wire: Math.max(0, end.wireStmts - profile.start.wireStmts),
+    ops: Math.max(0, end.driverOps - profile.start.driverOps),
   };
 }
 
 /** The exact wire value:
- *  `auth;dur=X, seat;dur=Y, db;dur=Z;stmt=N, render;dur=W, total;dur=T`.
+ *  `auth;dur=X, seat;dur=Y, db;dur=Z;stmt=N[, wire=M][, ops=K], render;dur=W, total;dur=T`.
  *  Integer milliseconds (`;stmt=` is a custom metric param — spec-legal,
- *  ignored by profilers that do not know it). `end` is a test seam; the
+ *  ignored by profilers that do not know it). `wire=` names the statements
+ *  physically inside the round trips and `ops=` the logical driver
+ *  operations, each appended only when the host measured it — an
+ *  unmeasured number is omitted, never printed as 0 (the same honesty the
+ *  stmt counter keeps for replayed reads). `end` is a test seam; the
  *  handler omits it and the live ledger answers. */
 export function serverTimingHeaderValue(
   profile: EdgeRequestProfile,
@@ -211,9 +276,11 @@ export function serverTimingHeaderValue(
 ): string {
   const r = (n: number): number => Math.max(0, Math.round(n));
   const db = edgeDbDelta(profile, end);
+  const dbParams = `db;dur=${r(db.dur)};stmt=${db.stmt}` +
+    `${db.wire > 0 ? `;wire=${db.wire}` : ""}${db.ops > 0 ? `;ops=${db.ops}` : ""}`;
   return (
     `auth;dur=${r(profile.authMs)}, seat;dur=${r(profile.seatMs)}, ` +
-    `db;dur=${r(db.dur)};stmt=${db.stmt}, ` +
+    `${dbParams}, ` +
     `render;dur=${r(profile.renderMs)}, ` +
     `total;dur=${r(Math.max(0, Date.now() - profile.t0))}`
   );
