@@ -1,17 +1,25 @@
 #!/usr/bin/env bash
-# Run the byte gate over the whole page set in slices (each slice one
-# command well under two minutes), split over LANES parallel lanes.
-#   benchmarks/speed-ship/run-gate.sh <bundle> <mode> <ref-dir> <out-dir> <results.jsonl> [lanes] [slice] [extra...]
+# RETIRED AS THE STANDARD GATE (2026-10-09): the per-change byte gate is the
+# seconds corpus (benchmarks/seconds-corpus/seconds-corpus-gate.mjs). This
+# script still drives gate.py over an explicit page set for real-deck bundle
+# measurements, but gate.py refuses the retired 40-page default, so pass the
+# pages via GATE_PAGES (semicolon-separated).
+#   GATE_PAGES="About;Home" benchmarks/speed-ship/run-gate.sh <bundle> <mode> <ref-dir> <out-dir> <results.jsonl> [lanes] [slice] [extra...]
 set -u
 BUNDLE=$1; MODE=$2; REF=$3; OUT=$4; RES=$5; LANES=${6:-2}; SLICE=${7:-5}; shift 7 2>/dev/null || shift $#
 EXTRA="$*"
-N=$(python benchmarks/speed-ship/gate.py pages | wc -l)
+PAGES_ARG="${GATE_PAGES:-}"
+if [ -z "$PAGES_ARG" ]; then
+  echo "run-gate.sh: the 40-page gate list is retired; set GATE_PAGES (the standard gate is benchmarks/seconds-corpus/seconds-corpus-gate.mjs)" >&2
+  exit 2
+fi
+N=$(python benchmarks/speed-ship/gate.py pages --pages "$PAGES_ARG" | wc -l)
 : > "$RES"
 lane() {
   local start=$1
   while [ "$start" -lt "$N" ]; do
     python benchmarks/speed-ship/gate.py check --bundle "$BUNDLE" --mode "$MODE" --ref-dir "$REF" --out-dir "$OUT" \
-      --start "$start" --count "$SLICE" --extra "$EXTRA" ${GATE_DB:+--db "$GATE_DB"} | grep -v '"not_identical"' >> "$RES"
+      --start "$start" --count "$SLICE" --pages "$PAGES_ARG" --extra "$EXTRA" ${GATE_DB:+--db "$GATE_DB"} | grep -v '"not_identical"' >> "$RES"
     start=$((start + SLICE * LANES))
   done
 }
