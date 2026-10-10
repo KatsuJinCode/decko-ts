@@ -15,7 +15,14 @@
 
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement, SQLTransactionGuarantee } from "../driver.js";
 import { rowIdOrOmit, TransactionGate } from "../driver.js";
-import { UndoJournal, type UndoJournalOptions } from "./undo-journal.js";
+import {
+  clearLeaseAssertStatement,
+  isLeaseAssertFailure,
+  lockStateStatement,
+  TransactionLeaseLostError,
+  UndoJournal,
+  type UndoJournalOptions,
+} from "./undo-journal.js";
 
 /** Bind values D1 accepts. Note: JS numbers bind with REAL storage class
  *  (D1 has no integer binding for JS numbers), ArrayBuffer/Uint8Array bind
@@ -176,17 +183,26 @@ export class CloudflareD1Adapter implements SQLDatabaseDriver {
   private readonly db: D1DatabaseLike;
   private readonly gate = new TransactionGate();
   private readonly journal: UndoJournal;
+  /** True once a read here has seen the lock-state table, so the serving
+   *  path can stop tolerating the not-installed-yet case. The table is
+   *  never dropped once created; before the first transaction ever ran,
+   *  there is no lease and nothing to repair. */
+  private lockStateSeen = false;
 
   /** D1 has no interactive transaction (BEGIN is refused; only a batch is
    *  atomic, and a batch cannot read its own writes and branch). A save
    *  reads between writes, so transaction() is compensating: the undo
    *  journal records each write's prior row and a failure restores them in
    *  one atomic batch. A database lock row serializes transactions across
-   *  isolates. */
+   *  isolates; every statement a transaction runs is fenced to its lease
+   *  (batched with an ownership assert), and a serving read repairs a
+   *  lease-expired holder's rows before answering, so recovery does not
+   *  wait for the next transaction. What is still true: a reader sees a
+   *  live, unexpired transaction's intermediate rows. */
   readonly transactionGuarantee: SQLTransactionGuarantee = {
     mechanism: "compensating",
     atomicOnFailure: true,
-    crashRecovery: "next-transaction",
+    crashRecovery: "next-transaction-or-read",
     readersIsolated: false,
     serializedWriters: "database",
     atomicBatch: true,
@@ -195,14 +211,43 @@ export class CloudflareD1Adapter implements SQLDatabaseDriver {
 
   constructor(db: D1DatabaseLike, options: CloudflareD1AdapterOptions = {}) {
     this.db = db;
+    // The journal's own batches carry their ownership guards already
+    // (begin, takeover, commit, rollback); wiring it to the plain methods
+    // keeps them out of the serving-read lease check, which is meaningless
+    // mid-begin, and out of the fence, which would double-assert.
     this.journal = new UndoJournal(
-      { query: (sql, params) => this.query(sql, params), batch: (statements) => this.batch(statements) },
+      { query: (sql, params) => this.plainQuery(sql, params), batch: (statements) => this.plainBatch(statements) },
       options.journal,
     );
   }
 
   async transaction<R>(work: () => Promise<R>): Promise<R> {
     return this.gate.run(() => this.journal.run(work));
+  }
+
+  /** Every statement the transaction callback runs is batched with a fence
+   *  that verifies, atomically with the statement's execution, that the
+   *  transaction still owns the lock: a batch is D1's atomic unit, so a
+   *  statement can no more land after a takeover than after a failed
+   *  assert, and the journal's triggers fire only for statements its
+   *  owner really executed. */
+  async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
+    if (isWriteStatement(sql)) {
+      const [result] = await this.batch([{ sql, params }]);
+      return result as SQLQueryResult<T>;
+    }
+    const fence = this.transactionFence();
+    if (fence !== undefined) {
+      let results: SQLQueryResult[];
+      try {
+        results = await this.plainBatch([fence, { sql, params }, clearLeaseAssertStatement()]);
+      } catch (error) {
+        throw lostLeaseOrOriginal(error);
+      }
+      return results[1] as SQLQueryResult<T>;
+    }
+    const [result] = await this.servingReads([{ sql, params }]);
+    return result as SQLQueryResult<T>;
   }
 
   /** The prepared statement, with the values inlined when there are more
@@ -216,23 +261,12 @@ export class CloudflareD1Adapter implements SQLDatabaseDriver {
     return this.db.prepare(sql).bind(...(params as D1BindValue[]));
   }
 
-  async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
-    if (isWriteStatement(sql)) {
-      const [result] = await this.batch([{ sql, params }]);
-      return result as SQLQueryResult<T>;
-    }
-    const result = await this.prepareBound(sql, params).all();
-    assertSuccess("query", sql, result);
-    return this.toQueryResult<T>(result);
-  }
-
-  /** Each write statement is followed in the same batch by
-   *  `SELECT changes()`: D1's meta.changes is sqlite3_total_changes(),
-   *  which also counts rows that TRIGGERS wrote (the deck_data_version
-   *  stamp, the undo journal), so an UPDATE of one card reported 2 or more
-   *  rows. changes() counts only the statement's own rows, which is what
-   *  rowsAffected means on every other adapter. Same round trip. */
-  async batch(statements: SQLStatement[]): Promise<SQLQueryResult[]> {
+  /** plainBatch: the statements exactly as given, results aligned to them,
+   *  with each write followed by `SELECT changes()` so rowsAffected counts
+   *  the statement's own rows (D1's meta.changes is
+   *  sqlite3_total_changes(), which also counts rows its triggers wrote —
+   *  the deck_data_version stamp, the undo journal). */
+  private async plainBatch(statements: SQLStatement[]): Promise<SQLQueryResult[]> {
     const prepared: D1PreparedStatementLike[] = [];
     const changesAt: (number | undefined)[] = [];
     for (const s of statements) {
@@ -260,6 +294,71 @@ export class CloudflareD1Adapter implements SQLDatabaseDriver {
     });
   }
 
+  /** Outside a transaction this is the serving path (servingReads); inside
+   *  one, the whole batch runs behind a single lease fence — a D1 batch is
+   *  atomic, so the ownership check at its front holds for every statement
+   *  in it, and a lost lease aborts the batch with nothing executed. */
+  async batch(statements: SQLStatement[]): Promise<SQLQueryResult[]> {
+    const fence = this.transactionFence();
+    if (fence === undefined) return this.servingReads(statements);
+    // One fence guards the whole batch: a D1 batch is atomic, so the
+    // ownership check at its front holds for every statement in it.
+    let results: SQLQueryResult[];
+    try {
+      results = await this.plainBatch([fence, ...statements, clearLeaseAssertStatement()]);
+    } catch (error) {
+      throw lostLeaseOrOriginal(error);
+    }
+    return results.slice(1, 1 + statements.length);
+  }
+
+  /** Answers read-only statements when no transaction is active on this
+   *  adapter. Pairs them with the lock row in one atomic batch: when the
+   *  row names a holder whose lease has expired, that holder's journal is
+   *  restored first (repairExpiredLease) and the reads are answered after,
+   *  so an interrupted save's rows are never served and its recovery does
+   *  not wait for the next transaction. A batch that writes is not
+   *  checked: it cannot be safely re-run after a repair, and the engine
+   *  writes journaled tables only inside transactions. */
+  private async servingReads(statements: SQLStatement[]): Promise<SQLQueryResult[]> {
+    if (statements.some((s) => isWriteStatement(s.sql))) return this.plainBatch(statements);
+    let results: SQLQueryResult[];
+    try {
+      results = await this.plainBatch([lockStateStatement(), ...statements]);
+    } catch (error) {
+      if (!this.lockStateSeen && isMissingLockStateTable(error)) return this.plainBatch(statements);
+      throw error;
+    }
+    this.lockStateSeen = true;
+    const state = results[0].rows[0] as { tx: unknown; expires_at: unknown } | undefined;
+    if (state !== undefined && this.journal.leaseIsExpired(state)) {
+      await this.journal.repairExpiredLease(String(state.tx));
+      return this.plainBatch(statements); // answer only after the dead rows are restored away
+    }
+    return results.slice(1);
+  }
+
+  /** The lease fence for a statement issued right now, or null outside a
+   *  transaction callback (the serving path's lease check applies there
+   *  instead). */
+  private transactionFence(): SQLStatement | undefined {
+    const tx = this.journal.activeTx;
+    return tx === null ? undefined : this.journal.leaseFenceStatement(tx);
+  }
+
+  /** Statement execution with no lease bookkeeping: the journal's own
+   *  batches (they carry their ownership guards) and the serving path's
+   *  re-reads after a repair. */
+  private async plainQuery<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
+    if (isWriteStatement(sql)) {
+      const [result] = await this.plainBatch([{ sql, params }]);
+      return result as SQLQueryResult<T>;
+    }
+    const result = await this.prepareBound(sql, params).all();
+    assertSuccess("query", sql, result);
+    return this.toQueryResult<T>(result);
+  }
+
   private toQueryResult<T>(result: D1ResultLike): SQLQueryResult<T> {
     return {
       rows: (result.results ?? []) as T[],
@@ -275,6 +374,21 @@ export class CloudflareD1Adapter implements SQLDatabaseDriver {
  *  engine writes no other way). */
 function isWriteStatement(sql: string): boolean {
   return /^\s*(?:INSERT|UPDATE|DELETE|REPLACE)\b/i.test(sql);
+}
+
+/** A fenced statement's batch was aborted by the lease fence's CHECK: this
+ *  transaction no longer owns the lock. Reported as the lost lease, so the
+ *  caller's error names what actually happened to its writes. */
+function lostLeaseOrOriginal(error: unknown): unknown {
+  return isLeaseAssertFailure(error) ? new TransactionLeaseLostError() : error;
+}
+
+/** Before the first transaction has ever run against the database, the
+ *  lock-state table does not exist and a serving read's lease check cannot
+ *  either; the plain read is answered instead. */
+function isMissingLockStateTable(error: unknown): boolean {
+  const message = error instanceof Error ? `${error.message} ${String((error as { cause?: unknown }).cause ?? "")}` : String(error);
+  return /no such table/i.test(message) && message.includes("decko_tx_state");
 }
 
 /** D1 reports errors by rejecting; a present-but-false `success` flag is

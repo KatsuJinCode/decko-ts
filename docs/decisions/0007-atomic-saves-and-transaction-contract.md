@@ -46,11 +46,26 @@ through a driver with no transaction rather than save non-atomically.
 |---|---|---|---|
 | Mechanism | `BEGIN IMMEDIATE` / `COMMIT` on the driver's connection | `BEGIN IMMEDIATE` / `COMMIT` on one Hrana stream (baton) | Compensating: undo journal kept by triggers, restored in one atomic batch |
 | Atomic on failure | yes | yes | yes |
-| Interrupted transaction undone by | the database | the database (a dropped stream rolls back) | the next transaction (the lock lease expires and it restores the journal) |
-| Other connections see uncommitted writes | no | no | yes, until commit or rollback |
+| Interrupted transaction undone by | the database | the database (a dropped stream rolls back) | the next transaction, or any serving read once the lock lease is known expired (the read restores the journal before answering) |
+| Other connections see uncommitted writes | no | no | yes while the transaction runs and its lease is unexpired; a lease-expired holder's rows are restored before a serving read answers |
 | Writers serialized | database-wide (SQLite write lock) | database-wide (SQLite write lock) | database-wide (lock row with a lease) |
 | `batch()` atomic on its own | yes | no (a pipeline autocommits each statement) | yes |
 | Ids given back by a rollback | yes | yes | no (ids skip, as PostgreSQL sequences do) |
+
+Two D1 lease properties sit behind that table. **Fencing:** every statement a
+transaction's callback issues — reads included — is batched with an ownership
+assert against the lock row, and a D1 batch is atomic, so a statement can
+only execute while its transaction still owns the lease. A transaction that
+lost its lease therefore writes nothing after the takeover; its commit fails
+with `TransactionLeaseLostError`, and that report is then literally true:
+the winner restored the writes made before the takeover, and nothing made
+after it landed. **Read-time repair:** a serving read carries the lock row
+in its own atomic batch, and when the row names a holder whose lease has
+expired, the read restores that holder's journal first and answers only
+after, so an interrupted save's rows are not served and its recovery does
+not wait for the next transaction. Batches that write skip the check (they
+cannot be safely re-run after a repair; the engine writes journaled tables
+only inside transactions).
 
 The D1 journal covers the tables a save writes (`cards`, `card_acts`,
 `card_actions`, `card_changes`, `card_references`, `card_virtuals`). It is
@@ -138,9 +153,19 @@ Mail and other integration effects follow a committed save only.
 
 On D1 a save costs two extra round trips (taking the lock, committing) and
 one extra row write per journaled row it changes. A reader on another
-connection can see a D1 save's rows before it commits; a D1 save that fails
-or whose isolate dies is undone, the latter by the next save. A D1 save that
-holds the lock longer than its lease (two minutes) loses it and fails.
+connection can see a D1 save's rows while it runs and its lease is
+unexpired — that intermediate-visibility window remains, stated plainly:
+a read that answered moments before the lease ran out keeps what it served.
+What a reader is never served is an interrupted save's rows: once the lease
+is known expired, a serving read restores the journal before answering, so
+recovery does not wait for the next save. A D1 save that fails is undone at
+once; one whose isolate dies is undone by the next save or by the first
+serving read after its lease expires. Every statement the save runs is
+fenced to the lease (the ownership assert rides in the statement's own
+atomic batch), so a save that lost its lease writes nothing further and
+fails with `TransactionLeaseLostError`, with the reported outcome matching
+the database's final state. A D1 save that holds the lock longer than its
+lease (two minutes) loses it and fails.
 
 Writes to journaled tables made outside the save path while a D1 save is open
 are journaled under that save and undone if it rolls back. Requests write

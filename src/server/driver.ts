@@ -75,9 +75,12 @@ export interface SQLTransactionGuarantee {
    *  were before it started. True for every adapter. */
   readonly atomicOnFailure: true;
   /** Where an interrupted transaction (process killed mid-way) is undone:
-   *  "database" — by the database itself; "next-transaction" — the
-   *  journal survives and the next transaction to start restores it. */
-  readonly crashRecovery: "database" | "next-transaction";
+   *  "database" — by the database itself; "next-transaction" — the journal
+   *  survives and the next transaction to start restores it;
+   *  "next-transaction-or-read" — as "next-transaction", and the serving
+   *  read path restores it too the moment the lease is known expired, so
+   *  interrupted rows are never served. */
+  readonly crashRecovery: "database" | "next-transaction" | "next-transaction-or-read";
   /** Whether a reader that does NOT share this driver object sees the
    *  transaction's uncommitted writes: false for compensating adapters,
    *  where each statement commits as it runs. Readers that share the

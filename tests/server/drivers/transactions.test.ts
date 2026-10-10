@@ -240,7 +240,10 @@ describe("transactions: CloudflareD1Adapter (miniflare local D1, compensating)",
   });
 
   it("restores a dead holder's writes when its lease expires, and the holder's late commit fails", async () => {
-    const opts = { journal: { tables: ["crash_t"], leaseMs: 200 } };
+    // The lease clock is injected, so expiry is exact instead of racing the
+    // round-trip time of the statements the test issues.
+    const clock = { value: 1_000_000 };
+    const opts = { journal: { tables: ["crash_t"], leaseMs: 200, now: () => clock.value } };
     const dying = new CloudflareD1Adapter(binding, opts);
     const next = new CloudflareD1Adapter(binding, opts);
     await next.query("CREATE TABLE crash_t (id INTEGER PRIMARY KEY, s TEXT)", []);
@@ -261,11 +264,11 @@ describe("transactions: CloudflareD1Adapter (miniflare local D1, compensating)",
     });
     await hasWritten;
     // A reader on another connection sees the intermediate rows (no
-    // isolation on a compensating adapter) ...
+    // isolation on a compensating adapter; the lease is still live) ...
     const mid = await next.query<{ s: string }>("SELECT s FROM crash_t ORDER BY id", []);
     expect(mid.rows.map((r) => r.s)).toEqual(["half-done", "half-done"]);
-    // ... until the next transaction finds the lease expired and restores it.
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    // ... until the lease runs out and the next transaction restores it.
+    clock.value += 1_000;
     await next.transaction(async () => {
       const seen = await next.query<{ s: string }>("SELECT s FROM crash_t ORDER BY id", []);
       expect(seen.rows.map((r) => r.s)).toEqual(["committed"]);
@@ -274,6 +277,161 @@ describe("transactions: CloudflareD1Adapter (miniflare local D1, compensating)",
     await expect(dyingRun).rejects.toBeInstanceOf(TransactionLeaseLostError);
     const final = await next.query<{ s: string }>("SELECT s FROM crash_t ORDER BY id", []);
     expect(final.rows.map((r) => r.s)).toEqual(["committed"]);
+  });
+
+  it("refuses an expired transaction's statements while the replacement transaction is still active, and the replacement's write survives", async () => {
+    const clock = { value: 1_000_000 };
+    const opts = { journal: { tables: ["fence_live_t"], leaseMs: 200, now: () => clock.value } };
+    const dying = new CloudflareD1Adapter(binding, opts);
+    const next = new CloudflareD1Adapter(binding, opts);
+    await next.query("CREATE TABLE fence_live_t (id INTEGER PRIMARY KEY, s TEXT)", []);
+    await next.query("INSERT INTO fence_live_t VALUES (1, 'original')", []);
+    let releaseA!: () => void;
+    const stalledA = new Promise<void>((resolve) => {
+      releaseA = resolve;
+    });
+    let wroteA!: () => void;
+    const hasWrittenA = new Promise<void>((resolve) => {
+      wroteA = resolve;
+    });
+    let releaseB!: () => void;
+    const stalledB = new Promise<void>((resolve) => {
+      releaseB = resolve;
+    });
+    let wroteB!: () => void;
+    const hasWrittenB = new Promise<void>((resolve) => {
+      wroteB = resolve;
+    });
+    const attempted: string[] = [];
+    const runA = dying.transaction(async () => {
+      await dying.query("UPDATE fence_live_t SET s = 'a1' WHERE id = 1", []);
+      wroteA();
+      await stalledA; // the holder hangs past its lease, as a killed isolate would
+      // A resumed after B took over: every statement must be refused, and
+      // nothing it attempts from here on may land or be journaled under B.
+      try {
+        const read = await dying.query<{ s: string }>("SELECT s FROM fence_live_t WHERE id = 1", []);
+        attempted.push(`read served: ${String(read.rows[0]?.s)}`);
+      } catch (error) {
+        attempted.push(error instanceof TransactionLeaseLostError ? "read refused as lease-lost" : `read refused: ${String(error)}`);
+      }
+      try {
+        await dying.query("UPDATE fence_live_t SET s = 'a2' WHERE id = 1", []);
+        attempted.push("write landed");
+      } catch (error) {
+        attempted.push(error instanceof TransactionLeaseLostError ? "write refused as lease-lost" : `write refused: ${String(error)}`);
+      }
+    });
+    await hasWrittenA;
+    clock.value += 1_000; // A's lease runs out
+    const runB = next.transaction(async () => {
+      // B's begin takes over A's expired lease and restores A's journal.
+      await next.query("UPDATE fence_live_t SET s = 'b' WHERE id = 1", []);
+      wroteB();
+      await stalledB; // B stays active while A resumes
+    });
+    await hasWrittenB;
+    releaseA();
+    await expect(runA).rejects.toBeInstanceOf(TransactionLeaseLostError);
+    expect(attempted).toEqual(["read refused as lease-lost", "write refused as lease-lost"]);
+    releaseB();
+    await runB;
+    const final = await next.query<{ s: string }>("SELECT s FROM fence_live_t WHERE id = 1", []);
+    expect(final.rows[0].s).toBe("b");
+    // A's post-takeover attempts left no journal rows behind, under any tx.
+    const undo = await next.query<{ c: number }>("SELECT COUNT(*) AS c FROM decko_tx_undo", []);
+    const shadow = await next.query<{ c: number }>("SELECT COUNT(*) AS c FROM decko_undo_fence_live_t", []);
+    expect(Number(undo.rows[0].c)).toBe(0);
+    expect(Number(shadow.rows[0].c)).toBe(0);
+  });
+
+  it("refuses an expired transaction's statements after the replacement has committed, and the committed value survives", async () => {
+    const clock = { value: 1_000_000 };
+    const opts = { journal: { tables: ["fence_done_t"], leaseMs: 200, now: () => clock.value } };
+    const dying = new CloudflareD1Adapter(binding, opts);
+    const next = new CloudflareD1Adapter(binding, opts);
+    await next.query("CREATE TABLE fence_done_t (id INTEGER PRIMARY KEY, s TEXT)", []);
+    await next.query("INSERT INTO fence_done_t VALUES (1, 'original')", []);
+    let releaseA!: () => void;
+    const stalledA = new Promise<void>((resolve) => {
+      releaseA = resolve;
+    });
+    let wroteA!: () => void;
+    const hasWrittenA = new Promise<void>((resolve) => {
+      wroteA = resolve;
+    });
+    const attempted: string[] = [];
+    const runA = dying.transaction(async () => {
+      await dying.query("UPDATE fence_done_t SET s = 'a1' WHERE id = 1", []);
+      wroteA();
+      await stalledA;
+      try {
+        await dying.query("UPDATE fence_done_t SET s = 'a2' WHERE id = 1", []);
+        attempted.push("write landed");
+      } catch (error) {
+        attempted.push(error instanceof TransactionLeaseLostError ? "write refused as lease-lost" : `write refused: ${String(error)}`);
+      }
+    });
+    await hasWrittenA;
+    clock.value += 1_000; // A's lease runs out
+    // B takes over A's lease, writes its own value and commits, releasing
+    // the lock; A then resumes against an unowned lock.
+    await next.transaction(async () => {
+      await next.query("UPDATE fence_done_t SET s = 'b' WHERE id = 1", []);
+    });
+    releaseA();
+    await expect(runA).rejects.toBeInstanceOf(TransactionLeaseLostError);
+    expect(attempted).toEqual(["write refused as lease-lost"]);
+    const final = await next.query<{ s: string }>("SELECT s FROM fence_done_t WHERE id = 1", []);
+    expect(final.rows[0].s).toBe("b");
+  });
+
+  it("serving reads restore a dead save's rows as soon as its lease is expired, without waiting for a transaction", async () => {
+    const clock = { value: 1_000_000 };
+    const opts = { journal: { tables: ["serve_t"], leaseMs: 200, now: () => clock.value } };
+    const dying = new CloudflareD1Adapter(binding, opts);
+    const reader = new CloudflareD1Adapter(binding, opts);
+    await reader.query("CREATE TABLE serve_t (id INTEGER PRIMARY KEY, s TEXT)", []);
+    await reader.query("INSERT INTO serve_t VALUES (1, 'committed')", []);
+    let release!: () => void;
+    const stalled = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let wrote!: () => void;
+    const hasWritten = new Promise<void>((resolve) => {
+      wrote = resolve;
+    });
+    const dyingRun = dying.transaction(async () => {
+      await dying.query("UPDATE serve_t SET s = 'half-done' WHERE id = 1", []);
+      await dying.query("INSERT INTO serve_t VALUES (2, 'half-done')", []);
+      wrote();
+      await stalled; // the holder hangs past its lease and never commits
+    });
+    await hasWritten;
+    // The lease is still live: a serving read sees the intermediate rows
+    // (the visibility window a compensating transaction keeps).
+    const mid = await reader.query<{ s: string }>("SELECT s FROM serve_t ORDER BY id", []);
+    expect(mid.rows.map((r) => r.s)).toEqual(["half-done", "half-done"]);
+    clock.value += 1_000; // the lease runs out
+    // The same serving read must not answer with the dead save's rows.
+    const after = await reader.query<{ s: string }>("SELECT s FROM serve_t ORDER BY id", []);
+    expect(after.rows.map((r) => r.s)).toEqual(["committed"]);
+    // The read repaired the lease: the lock is free and the journal empty,
+    // with no transaction ever having started.
+    const state = await reader.query<{ tx: string | null }>("SELECT tx FROM decko_tx_state WHERE id = 1", []);
+    const undo = await reader.query<{ c: number }>("SELECT COUNT(*) AS c FROM decko_tx_undo", []);
+    expect(state.rows[0].tx).toBeNull();
+    expect(Number(undo.rows[0].c)).toBe(0);
+    // A later serving read is still clean, and a fresh transaction can run.
+    const again = await reader.query<{ s: string }>("SELECT s FROM serve_t ORDER BY id", []);
+    expect(again.rows.map((r) => r.s)).toEqual(["committed"]);
+    await reader.transaction(async () => {
+      const seen = await reader.query<{ s: string }>("SELECT s FROM serve_t WHERE id = 1", []);
+      expect(seen.rows[0].s).toBe("committed");
+    });
+    // The zombified holder cannot commit past the repair either.
+    release();
+    await expect(dyingRun).rejects.toBeInstanceOf(TransactionLeaseLostError);
   });
 
   it("leaves no journal rows behind after commits and rollbacks", async () => {

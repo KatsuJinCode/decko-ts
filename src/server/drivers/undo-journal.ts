@@ -14,14 +14,30 @@
 // restore is set-based, so it is a fixed handful of statements whatever the
 // transaction wrote.
 //
+// Fencing. The lock can be lost mid-transaction: the lease runs out and
+// another transaction takes over (restoring the journal), or the serving
+// read path repairs the dead lease (see below). Every statement a
+// transaction's callback runs therefore carries an ownership check in its
+// own atomic batch (the host adapter batches leaseFenceStatement with it):
+// a statement can only execute while its transaction still owns the lock,
+// so nothing a transaction attempts after losing the lease lands, and the
+// TransactionLeaseLostError its commit then reports — "its writes were
+// undone" — matches the database's actual state.
+//
 // The lock row serializes transactions across every driver object and
 // process using the database. It carries a lease: a transaction whose
 // holder died is found expired by the next one, which restores its journal
-// before starting (crash recovery), in the same batch that takes the lock.
+// before starting (crash recovery), in the same batch that takes the lock —
+// and, independently of any transaction, by the serving read path the
+// moment the lease is known expired (repairExpiredLease), so an
+// interrupted save's rows are never served and recovery does not wait for
+// the next write.
 //
 // What it does not give: isolation. Each statement commits as it runs, so a
-// reader on another connection can see a transaction's intermediate rows
-// until it commits or rolls back. Writes to journaled tables made outside
+// reader can see a LIVE transaction's intermediate rows until it commits or
+// rolls back; only a lease-expired holder's rows are repaired before a
+// serving read answers, and a read that answered moments before the lease
+// ran out keeps what it served. Writes to journaled tables made outside
 // any transaction while one is open are journaled under it and are undone
 // if it rolls back; the write path issues every save inside a transaction,
 // so this only concerns writers that bypass it. AUTOINCREMENT counters are
@@ -103,13 +119,29 @@ const BOOTSTRAP: SQLStatement[] = [
   { sql: `CREATE TABLE IF NOT EXISTS ${ASSERT} (ok INTEGER NOT NULL CONSTRAINT decko_tx_lock_held CHECK (ok = 1))`, params: [] },
 ];
 
-/** Thrown when a transaction's lease ran out and another transaction took
- *  the lock (and restored this one's writes) before it could commit. */
+/** Thrown when a transaction's lease ran out and the lock was taken over —
+ *  by another transaction, or by the serving read path's repair of the
+ *  dead lease. Everything the transaction wrote before the takeover was
+ *  restored, and its fenced statements after it were refused, so the
+ *  message matches the database's state. */
 export class TransactionLeaseLostError extends Error {
   constructor() {
-    super("the transaction's lock lease expired and another transaction took it over; its writes were undone");
+    super("the transaction's lock lease expired and the lock was taken over; its writes were undone");
     this.name = "TransactionLeaseLostError";
   }
+}
+
+/** The lock-row read the serving path pairs with its own reads, so a dead
+ *  lease can be noticed and repaired in the same atomic batch. */
+export function lockStateStatement(): SQLStatement {
+  return { sql: `SELECT tx, expires_at FROM ${STATE} WHERE id = 1`, params: [] };
+}
+
+/** Removes the assert row a passed lease fence inserted; batched after the
+ *  fenced statements so the assert table is empty again when the batch
+ *  commits, and untouched when the fence fails (the whole batch aborts). */
+export function clearLeaseAssertStatement(): SQLStatement {
+  return { sql: `DELETE FROM ${ASSERT}`, params: [] };
 }
 
 export class UndoJournal {
@@ -121,6 +153,9 @@ export class UndoJournal {
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly newTxId: () => string;
   private bootstrapped: Promise<void> | undefined;
+  /** The transaction whose callback is running on this journal, for the
+   *  host adapter's lease fencing; null outside a callback. */
+  private active: string | null = null;
   /** The journaled tables that exist in this database, with their columns,
    *  as of the last install check. */
   private installed: { table: string; columns: string[] }[] = [];
@@ -136,25 +171,81 @@ export class UndoJournal {
   }
 
   /** Runs `work` between begin and commit; on any failure restores the
-   *  journal and rethrows the original error. */
+   *  journal and rethrows the original error. While `work` runs, activeTx
+   *  names this transaction, so the host driver can fence every statement
+   *  it issues to the lease. */
   async run<R>(work: () => Promise<R>): Promise<R> {
     const tx = await this.begin();
-    let result: R;
+    this.active = tx;
     try {
-      result = await work();
+      let result: R;
+      try {
+        result = await work();
+      } catch (error) {
+        await this.rollback(tx);
+        throw error;
+      }
+      try {
+        await this.commit(tx);
+      } catch (error) {
+        // The commit batch is atomic: either the journal is gone (committed)
+        // or it is intact. A lost lease means the taker already restored it.
+        if (!(error instanceof TransactionLeaseLostError)) await this.rollback(tx);
+        throw error;
+      }
+      return result;
+    } finally {
+      this.active = null;
+    }
+  }
+
+  /** The transaction whose lease every statement issued right now must
+   *  prove, or null outside a transaction callback. The host adapter
+   *  batches leaseFenceStatement(activeTx) with each statement the
+   *  callback runs, so a statement executes only inside a batch that has
+   *  atomically verified its transaction still owns the lock. */
+  get activeTx(): string | null {
+    return this.active;
+  }
+
+  /** The statement that aborts its whole batch (CHECK decko_tx_lock_held)
+   *  unless `tx` still owns the lock. */
+  leaseFenceStatement(tx: string): SQLStatement {
+    return ownerAssert(tx);
+  }
+
+  /** True when a lock row as read names a holder whose lease has run out.
+   *  A hint only: repairExpiredLease re-checks the expiry inside its own
+   *  atomic batch. */
+  leaseIsExpired(state: { tx: unknown; expires_at: unknown }): boolean {
+    return (
+      state.tx != null && state.expires_at != null && Number.isFinite(Number(state.expires_at)) && Number(state.expires_at) < this.now()
+    );
+  }
+
+  /** Restores a lease-expired holder's journal and frees the lock, in one
+   *  atomic batch guarded by the expiry still holding — the serving read
+   *  path runs this so a dead save's rows are undone as soon as the lease
+   *  is known expired instead of at the next transaction. Returns false
+   *  when the lock has already moved on. */
+  async repairExpiredLease(staleTx: string): Promise<boolean> {
+    await this.bootstrap();
+    if (this.installed.length === 0) await this.loadInstalledTables();
+    try {
+      await this.db.batch([
+        {
+          sql: `INSERT INTO ${ASSERT} (ok) SELECT COUNT(*) FROM ${STATE} WHERE id = 1 AND tx = ? AND expires_at < ?`,
+          params: [staleTx, this.now()],
+        },
+        { sql: `UPDATE ${STATE} SET tx = NULL, expires_at = NULL WHERE id = 1`, params: [] },
+        ...this.restoreStatements(staleTx),
+        { sql: `DELETE FROM ${ASSERT}`, params: [] },
+      ]);
+      return true;
     } catch (error) {
-      await this.rollback(tx);
+      if (isLeaseAssertFailure(error)) return false;
       throw error;
     }
-    try {
-      await this.commit(tx);
-    } catch (error) {
-      // The commit batch is atomic: either the journal is gone (committed)
-      // or it is intact. A lost lease means the taker already restored it.
-      if (!(error instanceof TransactionLeaseLostError)) await this.rollback(tx);
-      throw error;
-    }
-    return result;
   }
 
   private async bootstrap(): Promise<void> {
@@ -246,7 +337,7 @@ export class UndoJournal {
       ]);
       return true;
     } catch (error) {
-      if (isAssertFailure(error)) return false;
+      if (isLeaseAssertFailure(error)) return false;
       throw error;
     }
   }
@@ -293,7 +384,7 @@ export class UndoJournal {
     try {
       await this.db.batch(statements);
     } catch (error) {
-      if (isAssertFailure(error)) throw new TransactionLeaseLostError();
+      if (isLeaseAssertFailure(error)) throw new TransactionLeaseLostError();
       throw error;
     }
   }
@@ -309,7 +400,7 @@ export class UndoJournal {
       ]);
     } catch (error) {
       // A lost lease: the taker restored this journal already.
-      if (isAssertFailure(error)) return;
+      if (isLeaseAssertFailure(error)) return;
       throw error;
     }
   }
@@ -322,7 +413,10 @@ function ownerAssert(tx: string): SQLStatement {
   };
 }
 
-function isAssertFailure(error: unknown): boolean {
+/** True when an error is the lease fence's CHECK failing, which aborts the
+ *  whole batch it ran in. Exported so the D1 adapter can recognize a fenced
+ *  statement's rejection as a lost lease. */
+export function isLeaseAssertFailure(error: unknown): boolean {
   const message = error instanceof Error ? `${error.message} ${String((error as { cause?: unknown }).cause ?? "")}` : String(error);
   return /CHECK constraint failed/i.test(message) && message.includes("decko_tx_lock_held");
 }
