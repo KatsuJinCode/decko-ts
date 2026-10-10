@@ -26,6 +26,22 @@ The standing test net (`tests/standing-net.json`, 68 manifest files) run
 regression protection, not a parity measurement; the parity figures are the
 ones above.
 
+### The public batteries, accounted
+
+Three committed batteries carry the deepest public evidence. Each accounts
+for every step it runs: match, or a declared difference, or nothing.
+
+| Battery | Where | Steps | Accounted as |
+| --- | --- | ---: | --- |
+| Reference-harness scenarios | `reference-harness/fixtures/synthetic-v1` | 22 | 16 write steps' row deltas (persistence 16/16) + 19 step answers (side effects 19/19: 16 write answers, 3 sign-in answers); the 2 renders and 1 question among them grade as rendering and semantics, reads write only what the oracle's reads wrote (read writes 8/8, other tables 12/12) |
+| The 70-step write probe | `tests/tools/persist-write-probe.test.ts` on `write-battery-v1` | 70 | 65 identical row deltas + 5 declared deliberate differences = 70 |
+| The 90-step scenario battery | `tests/tools/side-effects-scenario-battery.test.ts` on `write-battery-v1` | 90 | 49 match + 4 declared + 37 under the declared account-holder security divergence (`docs/SECURITY.md` 5) = 90 |
+
+Every step of all three is pinned: a change in any of them fails the suite
+that runs it. The production-deck runs of the same two batteries remain the
+deeper, non-public evidence — see Persistence below and What the public
+package does NOT measure, item 6.
+
 ---
 
 ## Where each measurement lives
@@ -157,6 +173,29 @@ Stated plainly, with where the gap closes when it closes:
    (above). What remains
    non-public is the same measurement on a copy of the 49,829-card
    production deck.
+
+---
+
+## What changed from the original proposal
+
+The proposal upstream ([decko-commons/decko#1282](https://github.com/decko-commons/decko/issues/1282))
+promised five things that later measurement moved. Each is listed here with
+the section of this page that says where the promise actually stands, so a
+claim quoted anywhere can be checked against the instrument behind it.
+
+| The proposal promised | What stands here | Check it in |
+| --- | --- | --- |
+| Hosting is effectively free ("$0 on Cloudflare's free tier") | Withdrawn as a total-cost claim. This repository holds **no cost measurements** — the Bunny deploy document says so in terms — and the page-view cost model built alongside it prices anonymous read-only views from a private deployment with provider prices read on a stated date. Cloudflare's free plan does not fit a real deck. | [deploy-bunny.md](deploy-bunny.md); [deploy-cloudflare.md](deploy-cloudflare.md) |
+| A constant number of queries regardless of depth | **Not met.** The measured law is four fixed round trips plus one per nesting level below the root, however many cards each level holds — breadth is free, depth is not. Reproduced by `tests/card/render/deep-nesting-trip-attribution.test.ts` and asserted at every depth by `tests/card/render/depth-sweep.test.ts`. | [scaling-comparison-deep-nesting.md](scaling-comparison-deep-nesting.md) |
+| Same data, no migration required | **Withdrawn.** Import reads a SQLite deck file, a `mysqldump` text dump or deck-INSERT SQL. PostgreSQL is unsupported — no adapter or dialect translator exists in the tree. While Ruby still serves the deck the port must store Ruby's own password digest, because Ruby cannot verify PBKDF2; D1's transaction semantics differ from Ruby's and SQLite's. | `tools/migrate/IMPORT_DECK_RECIPE.md`; [SECURITY.md](SECURITY.md) "Migration compatibility at a glance"; [decisions/0007](decisions/0007-atomic-saves-and-transaction-contract.md) |
+| Faster responses at the edge | **Not established.** No speed run is recorded against a release candidate, and no response-time comparison is committed evidence anywhere in this repository. The published, reproducible comparison is round trips per render. | [scaling-comparison-deep-nesting.md](scaling-comparison-deep-nesting.md) |
+| One click provisions everything | **Not verified.** The button deploys one Worker and one D1 database, applies the migrations and ships a read-only four-card demo; every write verb answers `403`. No KV, no R2, no queues, no secrets in `wrangler.toml` — the Worker reads exactly the D1 binding. | [deploy-cloudflare.md](deploy-cloudflare.md); README, "Deploy to Cloudflare" |
+
+Two further promises are covered by the sections above rather than by an
+instrument: the mod story is the compatibility report's declaration-level
+labels plus the byte-pins (item 4 above), and "exact output parity" is the
+grade of record at the top of this page, with what it leaves out stated in
+the same table.
 
 ---
 

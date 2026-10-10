@@ -44,6 +44,8 @@ path, not by a second full grade.
 This is a **Deploy to Cloudflare** button. Click it and the same engine you
 read about below runs on Cloudflare Workers against a D1 database in your own
 account. You need no terminal, no Node install, and no Cloudflare setup first.
+What the button deploys is a **read-only four-card demo deck**; a writable deck
+takes the steps in [docs/deploy-cloudflare.md](docs/deploy-cloudflare.md).
 
 [![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/KatsuJinCode/decko-ts)
 
