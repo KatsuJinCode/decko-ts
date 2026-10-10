@@ -6679,8 +6679,7 @@ export class RenderEngine implements RenderEngineLike {
         if (!this.existingRuleCards.has(name.key)) {
           const protoInput = await this.prototypePatternInput(setCard);
           if (protoInput !== undefined) {
-            const rule = await findRule(
-              this.fetcher,
+            const rule = await this.findPrototypeRule(
               protoInput,
               settingCard.name?.s ?? `*${settingCodename}`,
             );
@@ -6692,6 +6691,126 @@ export class RenderEngine implements RenderEngineLike {
         }
       }
     }
+  }
+
+  /** findRule with Ruby's cache-walk semantics for NEW-card prototypes.
+   *
+   *  TYPE-ANCHORED CANDIDATES NEED A TYPE: a NEW card whose type the
+   *  template chain has not resolved carries no Type / TypePlusRight
+   *  pattern (set_pattern application anchors those on card.type_id), so
+   *  its rule-cache walk emits no "<type>+<setting>" /
+   *  "<type>+<anchor>+*type plus right+<setting>" lookup keys. The
+   *  name-walk's candidates for an untyped input compose those forms with
+   *  the registry's RichText default; on the RVW+*right set prototype that
+   *  composition answered "existing" where the oracle pins the opposite
+   *  (the capture's slot census: hide:["bar_nav"] exactly on
+   *  structure/autoname/help/input_type/on_create/on_update/on_delete/
+   *  thanks/follow). Skip while the input's type is unresolved.
+   *
+   *  TPR CANDIDATES ANCHOR ON left_type, NOT THE CARD'S OWN TYPE:
+   *  pattern/class_methods.rb:59-73 left_type = `card.superleft&.type_name
+   *  || quick_type(card.name.left_name)`, where quick_type types a NEW
+   *  left card through ITS OWN *default walk — for the set prototype
+   *  *dummy+RVW (typed RichText via *all plus+*default) the TPR anchor is
+   *  quick_type("*dummy") = the *all+*default rule's type ("Basic Cs"),
+   *  so Ruby's lookup key reads "BasicCs+RVW+type_plus_right+<setting>" —
+   *  an anchor naming NO card (@anchor_id nil, pattern/base.rb:75-80
+   *  `elsif @anchor_id`) — and the key never forms: the
+   *  RichText+RVW+*type plus right+*structure rule (10722) stays
+   *  unreachable and the prototype's existing-rule verdict for *structure
+   *  is nil. The name walk instead composes the TPR candidate from the
+   *  input's own type name (RichText), whose anchor card DOES exist — the
+   *  one-hit divergence. Probe the quick-type-anchored form and skip the
+   *  input-type-anchored one for plain (supercard-less) compounds;
+   *  supercard-shaped inputs keep leftTypeName (class_methods.rb:61's
+   *  superleft arm, the Search+large image pin). */
+  private async findPrototypeRule(
+    protoInput: PatternCardInput,
+    setting: string,
+  ): Promise<{ rule: CardRecord } | undefined> {
+    const candidates = ruleNamesForCard(protoInput, setting);
+    const protoName =
+      protoInput.name instanceof DeckoName
+        ? protoInput.name
+        : DeckoName.parse(String(protoInput.name));
+    const quickLeftTypeName =
+      protoInput.typeId !== undefined &&
+      protoInput.isNew === true &&
+      protoInput.leftTypeName === undefined &&
+      protoName.isCompound
+        ? await this.quickTypeName(protoName.leftName)
+        : undefined;
+    for (const candidate of candidates) {
+      if (
+        protoInput.typeId === undefined &&
+        /\+(\*type|\*type plus right)\+/.test(candidate)
+      ) {
+        continue;
+      }
+      const tprMatch = /^(.*)\+\*type plus right\+/.exec(candidate);
+      let probe = candidate;
+      if (
+        tprMatch !== null &&
+        quickLeftTypeName !== undefined &&
+        protoInput.typeName !== undefined &&
+        tprMatch[1].startsWith(`${protoInput.typeName}+`)
+      ) {
+        // rewrite the anchor's left type to Ruby's quick_type(left_name)
+        probe = `${quickLeftTypeName}${candidate.slice(String(protoInput.typeName).length)}`;
+      } else if (tprMatch !== null && quickLeftTypeName === undefined) {
+        continue;
+      }
+      let record: CardRecord | undefined;
+      try {
+        record = await this.fetcher.fetchByName(probe);
+      } catch (err) {
+        if (
+          err instanceof CodenameNotFoundError ||
+          err instanceof NameNotFoundError
+        ) {
+          continue;
+        }
+        throw err;
+      }
+      if (record !== undefined && record.name !== undefined) {
+        return { rule: record };
+      }
+    }
+    return undefined;
+  }
+
+  /** class_methods.rb:64-72 quick_type: the type name of a NEW card named
+   *  `name`, resolved through its own *default walk (untyped input; the
+   *  *self candidate drops for new cards and the compound-only *all plus
+   *  candidates need a type), first existing rule's own type. Undefined
+   *  when no *default rule applies or the type card cannot be named. */
+  private async quickTypeName(name: DeckoName | undefined): Promise<string | undefined> {
+    if (name === undefined) return undefined;
+    const candidates = ruleNamesForCard(
+      { name, id: undefined, typeId: undefined, typeName: undefined, isNew: true },
+      "*default",
+    );
+    for (const candidate of candidates) {
+      if (/\+(\*type|\*type plus right)\+/.test(candidate)) continue;
+      let record: CardRecord | undefined;
+      try {
+        record = await this.fetcher.fetchByName(candidate);
+      } catch (err) {
+        if (
+          err instanceof CodenameNotFoundError ||
+          err instanceof NameNotFoundError
+        ) {
+          continue;
+        }
+        throw err;
+      }
+      if (record !== undefined && record.typeId !== undefined) {
+        const typeCard = await this.fetcher.fetchById(record.typeId);
+        const typeName = typeCard?.name?.s;
+        if (typeName !== undefined) return typeName;
+      }
+    }
+    return undefined;
   }
 
   /** The read-permission verdict for a prepared card (ok_to_read?'s set
@@ -7776,6 +7895,20 @@ export class RenderEngine implements RenderEngineLike {
       const leftKey = klass.patternCardName.toLowerCase();
       const rules = settingBuckets.get(leftKey);
       if (rules === undefined || rules.length === 0) continue;
+      // setting.rb:38 rules_for_set_class's `sort_by: %w[content name]`:
+      // within one set class the rows order by db_content bytes, then
+      // name. Oracle: the *on create *type class renders
+      // "#<Card[set:259]Tracked Item+*type+*on create" (rule 21805,
+      // content "_left+email config", "_"<"s") ahead of
+      // "Sign up+*type+*on create" (21799, "signup alert email"), where
+      // the map-order walk put Sign up first.
+      rules.sort((a, b) => {
+        const ca = a.dbContent ?? "";
+        const cb = b.dbContent ?? "";
+        const byContent = ca < cb ? -1 : ca > cb ? 1 : 0;
+        if (byContent !== 0) return byContent;
+        return a.name.s < b.name.s ? -1 : a.name.s > b.name.s ? 1 : 0;
+      });
       out.push({
         klass,
         rules,
