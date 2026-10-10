@@ -1,7 +1,8 @@
-# Worktree reclamation, DRY RUN ONLY: the vetted reaper runs with its default
-# (nothing deleted) and a two-hour freshness window; the report accumulates in
-# C:/Users/jpswi/.zcode/logs/ci/ as the week's evidence. Switching on actual
-# removal (--yes) is a separate, explicit operator decision after that review.
+# Worktree reclamation, ARMED: the vetted reaper runs with --yes per the
+# operator authorization of 2026-10-10, after the first dry-run report was
+# reviewed and a nine-item list was vetted item-by-item (merged, on the
+# private remote, clean, idle). Five gates, all fail-closed, two-hour
+# freshness window; every report logs to C:/Users/jpswi/.zcode/logs/ci/.
 #
 # Breaker: a failed run disables this workflow (the failed-run notification is
 # the one notice). Fix the cause, then re-enable deliberately:
@@ -27,7 +28,7 @@ jobs:
     steps:
       - name: Reclamation dry run (deletes nothing)
         shell: bash
-        run: node "C:/Users/jpswi/.zcode/tools/ci/worktree-reclaim-dry-run.mjs"
+        run: node "C:/Users/jpswi/.zcode/tools/ci/worktree-reclaim-dry-run.mjs" --yes
 
   breaker:
     needs: reclaim
