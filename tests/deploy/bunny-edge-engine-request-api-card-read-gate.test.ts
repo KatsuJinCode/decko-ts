@@ -5,7 +5,7 @@
 // THE HOLE: the route answered fetchByName directly and returned
 // db_content_preview — 200 JSON carrying the card's stored content — for
 // cards the HTML render path DENIES (the quiet denial span replaces the
-// whole view). Verified live on script 93646: GET /api/card/Taking%20Stock
+// whole view). Verified live on the deployed edge: GET /api/card/Taking%20Stock
 // answered 200 with 200 chars of the denied card's content while
 // GET /Taking%20Stock rendered "Sorry, you don't have permission (read)".
 //

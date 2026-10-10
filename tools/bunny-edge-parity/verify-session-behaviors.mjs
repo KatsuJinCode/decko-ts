@@ -26,7 +26,18 @@ import { query, pipelineEndpoint } from "./probe-trial-account-schema.mjs";
 import { createHash } from "node:crypto";
 
 const EDGE = "https://decko-edge-wm2um.bunny.run";
-const RELEASE_ID = 1125468;
+// The deployment target is operator input, never committed to the public
+// tree: the tool refuses to run rather than default to an unnamed deploy.
+function requireEnv(name) {
+  const v = process.env[name];
+  if (v === undefined || v.trim() === "") {
+    console.error(`MISSING INPUT: set ${name} (the deployed edge's ${name === "BUNNY_SCRIPT_ID" ? "script" : "release"} id) before running this tool.`);
+    process.exit(1);
+  }
+  return v.trim();
+}
+const SCRIPT_ID = requireEnv("BUNNY_SCRIPT_ID");
+const RELEASE_ID = requireEnv("BUNNY_RELEASE_ID");
 const CREDS_PATH = "C:/localProjects/brandonDojoTech/library/data/creds";
 const SEED_OUT = new URL("./throwaway-account-seed-output.json", import.meta.url);
 const OUT = new URL("./session-behavior-checks.json", import.meta.url);
@@ -60,7 +71,7 @@ async function main() {
   const seed = JSON.parse(readFileSync(SEED_OUT, "utf8"));
   const { url, token } = readCreds(CREDS_PATH);
   const ep = pipelineEndpoint(url);
-  const out = { target: EDGE, release_id: RELEASE_ID, script_id: 93646, account: "trial", sampled_at: new Date().toISOString() };
+  const out = { target: EDGE, release_id: "redacted", script_id: "redacted", account: "trial", sampled_at: new Date().toISOString() };
 
   // ---- (A) positive control: is the session row real to the engine? -----
   // The exact lookup SessionStore.lookupSession runs (src/card/auth/session-store.ts:140-149).

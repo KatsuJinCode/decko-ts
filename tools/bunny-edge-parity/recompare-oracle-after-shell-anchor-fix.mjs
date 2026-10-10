@@ -25,7 +25,18 @@ import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 
 const EDGE = "https://decko-edge-wm2um.bunny.run";
-const RELEASE_ID = 1125468;
+// The deployment target is operator input, never committed to the public
+// tree: the tool refuses to run rather than default to an unnamed deploy.
+function requireEnv(name) {
+  const v = process.env[name];
+  if (v === undefined || v.trim() === "") {
+    console.error(`MISSING INPUT: set ${name} (the deployed edge's ${name === "BUNNY_SCRIPT_ID" ? "script" : "release"} id) before running this tool.`);
+    process.exit(1);
+  }
+  return v.trim();
+}
+const SCRIPT_ID = requireEnv("BUNNY_SCRIPT_ID");
+const RELEASE_ID = requireEnv("BUNNY_RELEASE_ID");
 const SEED_OUT = new URL("./throwaway-account-seed-output.json", import.meta.url);
 const ORACLE_ROOT = "C:/localProjects/decko-ts-lane-postfix-canvas/tmp/raw-ground-truth/expected-v2";
 const IN = new URL("./authed-parity-sample.json", import.meta.url);
@@ -162,7 +173,7 @@ async function main() {
   }
 
   const out = {
-    target: EDGE, release_id: RELEASE_ID, script_id: 93646, account: "trial",
+    target: EDGE, release_id: "redacted", script_id: "redacted", account: "trial",
     stage: "pass 2 — oracle recompare with the corrected shell-strip anchor",
     sampled_at: new Date().toISOString(),
     requests_issued_this_stage: requests,

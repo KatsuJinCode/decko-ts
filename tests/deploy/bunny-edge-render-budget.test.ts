@@ -276,7 +276,7 @@ describe("bunny edge — render budget env resolver", () => {
   });
 
   it("the default sits above every cold render measured on the trial edge", () => {
-    // Measured 2026-10-03 on script 93646, 60 sequential cold probes with
+    // Measured 2026-10-03 on the deployed edge, 60 sequential cold probes with
     // guaranteed cache misses: p50 3.3 s, p95 5.0 s, max 13.5 s (the
     // heaviest card, Laundry, reproducibly 12.9-13.5 s across 3 probes).
     // A deadline at or below that number would 503 renders that work.

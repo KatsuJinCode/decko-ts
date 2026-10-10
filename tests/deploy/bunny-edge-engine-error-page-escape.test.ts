@@ -2,7 +2,7 @@
 // interpolated into an HTML page must go through escapeHtml.
 //
 // The vuln this pins shut (error-page-escape lane, 2026-10-02, commit
-// 70d2042, deployed to script 93646 release dAZ4TRWv): the render engine
+// 70d2042, deployed to the live edge): the render engine
 // embeds the requested card name verbatim in its not-found error
 // (src/card/render.ts "card not found: ${cardName}"), parsePath decodes the
 // URL path before render (worker.ts parsePath), and the error page

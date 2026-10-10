@@ -1,5 +1,6 @@
 // run-authed-parity-against-bunny-edge.mjs — SIGNED-IN parity sample against
-// the Bunny TRIAL edge (script 93646, release 1125468).
+// the Bunny TRIAL edge (target identified by BUNNY_SCRIPT_ID / BUNNY_RELEASE_ID,
+// operator-supplied, never committed).
 //
 // WHAT THIS MEASURES, in this order, per URL:
 //   1. ANON vs AUTHED. The same URL fetched twice — once bare, once with
@@ -28,7 +29,18 @@ import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { readFile as rf } from "node:fs/promises";
 
 const EDGE = "https://decko-edge-wm2um.bunny.run";
-const RELEASE_ID = 1125468;
+// The deployment target is operator input, never committed to the public
+// tree: the tool refuses to run rather than default to an unnamed deploy.
+function requireEnv(name) {
+  const v = process.env[name];
+  if (v === undefined || v.trim() === "") {
+    console.error(`MISSING INPUT: set ${name} (the deployed edge's ${name === "BUNNY_SCRIPT_ID" ? "script" : "release"} id) before running this tool.`);
+    process.exit(1);
+  }
+  return v.trim();
+}
+const SCRIPT_ID = requireEnv("BUNNY_SCRIPT_ID");
+const RELEASE_ID = requireEnv("BUNNY_RELEASE_ID");
 const SEED_OUT = new URL("./throwaway-account-seed-output.json", import.meta.url);
 const ORACLE_ROOT = "C:/localProjects/decko-ts-lane-postfix-canvas/tmp/raw-ground-truth/expected-v2";
 const OUT = new URL("./authed-parity-sample.json", import.meta.url);
@@ -287,8 +299,8 @@ async function main() {
 
   const out = {
     target: EDGE,
-    release_id: RELEASE_ID,
-    script_id: 93646,
+    release_id: "redacted",
+    script_id: "redacted",
     account: "trial",
     sampled_at: new Date().toISOString(),
     account_holder: seed.HOLDER_NAME,

@@ -4,7 +4,7 @@
 // WHY IT EXISTS (measured, not assumed):
 //   The deployed edge's write surface is DISARMED — POST /update/*signin and
 //   POST /_signin both answer 403 {"error":"forbidden: this edge deploy is
-//   read-only"} on release 1125468 — so the ask's first option ("create the
+//   read-only"} — so the ask's first option ("create the
 //   account via the deployed write path") needs a gate re-arming whose last
 //   live arming exposed the write surface for 2-3 minutes
 //   (edge-redeploy-lane.md:145-152). The ask's second option ("seed one via
