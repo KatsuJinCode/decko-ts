@@ -21,11 +21,23 @@ Provenance: copied verbatim from the Ruby gem install
 `C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/uglifier-4.2.1/lib/` (the gem version
 the deck's own Gemfile.lock pins: `uglifier (4.2.1)`), unmodified.
 
-License: uglify-harmony.js and the wrappers carry their own BSD license
-headers (Mihai Bazon / UglifyJS2, BSD-2-Clause; source-map.js carries its own
-BSD/CLA header; uglifier's wrapper is MIT — all preserved in-file). Vendoring
-with headers intact satisfies BSD-2-Clause attribution; this file is the
-attribution record.
+License, per file (each `LICENSE-*.txt` here is copied from the license text
+exactly as the gem or the vendored file itself carries it):
+
+| file | license where the file itself carries one | LICENSE file here |
+|---|---|---|
+| `uglify-harmony.js` | full BSD-2-Clause banner in-file (Mihai Bazon / UglifyJS2) | `uglify-harmony-js-LICENSE-BSD-2-Clause.txt` (the banner, verbatim) |
+| `source-map.js` | no single header: the Mozilla Foundation notice (`BSD-3-Clause` per URL) heads the bundle's modules, and its Base 64 VLQ module (from Closure Compiler) carries the full BSD-3-Clause terms in-file | `source-map-js-LICENSE-NOTICES.txt` (both notices, verbatim) |
+| `split.js` | in-file header names the MIT License (Steven Levithan) without stating its terms | `split-js-LICENSE-MIT.txt` (the header, verbatim, plus the standard MIT terms text) |
+| `uglifier.js` | no license header | `uglifier-gem-LICENSE-MIT.txt` — the uglifier gem's own MIT license (`LICENSE.txt`, © Ville Lautanala; gemspec: `spec.license = "MIT"`), verbatim |
+| `es5.js` | no license header | none — the gem ships it with no separate upstream license text; it is distributed here under the gem's MIT license (`uglifier-gem-LICENSE-MIT.txt`) |
+
+The uglifier gem itself is MIT (`uglifier.gemspec` `spec.license = "MIT"`), and
+its `LICENSE.txt` is the attribution text for the gem's own code (`uglifier.js`,
+`lib/uglifier.rb`) and for the gem's distribution of the unheadered fragments
+(`es5.js`). The upstream snapshots (`uglify-harmony.js`, `source-map.js`,
+`split.js`) carry their own licenses above, preserved in-file. This file and
+the `LICENSE-*.txt` texts are the attribution record.
 
 Byte-exactness evidence (tinymce-assets lane, 2026-09-29): loading these five
 files in a Node `vm` and calling the `uglifier(options)` wrapper with

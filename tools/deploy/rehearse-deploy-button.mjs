@@ -8,7 +8,8 @@
 // worker.ts. Only the copy into GitHub, the database creation and the upload
 // need Cloudflare. This script runs every other step with the real wrangler:
 //
-//   1. copy the files the deploy reads into a scratch directory;
+//   1. copy the files the deploy reads into a scratch directory, and link the
+//      repository's installed node_modules into the copy (offline resolution);
 //   2. replace the placeholder database_id, as the button does;
 //   3. `wrangler deploy --dry-run`: the same bundle the button uploads;
 //   4. `wrangler d1 migrations apply DB --local` on a fresh database,
@@ -39,6 +40,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { createServer } from "node:net";
@@ -50,8 +52,11 @@ const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const GUARD = join(REPO, "tools/deploy/no-external-network.mjs");
 
 /** What a button deploy reads: the root config and entry, the engine, the
- *  migrations. Anything outside these the bundle cannot reach. */
-const COPY_FILES = ["worker.ts", "wrangler.toml", "package.json", "tsconfig.json"];
+ *  migrations. Anything outside these the bundle cannot reach. package-lock.json
+ *  records the dependency set the copy declares; the installed node_modules is
+ *  linked in below so the bundle resolves @cf-wasm/photon and the other runtime
+ *  dependencies without touching a registry. */
+const COPY_FILES = ["worker.ts", "wrangler.toml", "package.json", "package-lock.json", "tsconfig.json"];
 const COPY_DIRS = ["src/", "deploy/", "vendor/"];
 
 /** The routes the README's "What you get" table promises, plus the
@@ -246,7 +251,16 @@ async function main() {
       mkdirSync(dirname(join(work, f)), { recursive: true });
       copyFileSync(join(REPO, f), join(work, f));
     }
-    result.steps.push({ step: "copy", ok: files.includes("worker.ts") && files.includes("wrangler.toml"), files: files.length });
+    // The installed dependencies come along as a link (a junction on Windows,
+    // a symlink elsewhere), so the dry-run resolves the same packages the
+    // repository resolves and no registry is contacted. Node's recursive
+    // removal deletes the link itself, never its target.
+    const repoNodeModules = join(REPO, "node_modules");
+    if (!existsSync(join(repoNodeModules, "@cf-wasm/photon/package.json"))) {
+      throw new Error(`${repoNodeModules} has no installed @cf-wasm/photon; run npm ci in the repository first (offline, from a populated cache) or point this checkout's node_modules at an existing install`);
+    }
+    symlinkSync(repoNodeModules, join(work, "node_modules"), "junction");
+    result.steps.push({ step: "copy", ok: files.includes("worker.ts") && files.includes("wrangler.toml"), files: files.length, nodeModules: "linked" });
 
     // 2. The database id the button writes into the copy.
     const tomlPath = join(work, "wrangler.toml");

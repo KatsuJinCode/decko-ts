@@ -153,7 +153,9 @@ A warm render (the same card again on the same engine) costs one round trip: a s
 - TypeScript: engine commit \`${ts.engine_commit}\`${ts.engine_tree_dirty ? " (with uncommitted changes)" : ""}, Node ${ts.node}, ${ts.definitions.database}; generated ${ts.generated_at}. Run file \`${tsPin.file}\` (SHA-256 \`${tsPin.sha256}\`).
 ${rubyEnv.join("\n")}
 
-To reproduce the TypeScript run: \`DECKO_BENCH_RUN_DIR=<dir> npx vitest run tests/card/render/deep-nesting-trip-attribution.test.ts\`. The Ruby runs use \`benchmarks/run_ruby_deep_nesting_bench.rb\`, or a copy of it with switches for the batched-loading settings, on a throwaway copy of a stock deck; each run file records its configuration.
+To reproduce the TypeScript run: \`DECKO_BENCH_RUN_DIR=<dir> npx vitest run tests/card/render/deep-nesting-trip-attribution.test.ts\`. The Ruby runs cannot be reproduced from this repository alone: \`benchmarks/run_ruby_deep_nesting_bench.rb\` is the runner (the batched-loading variants above were copies of it with switches, not part of this repository), but it needs a Ruby Decko checkout and a throwaway copy of a stock deck, neither of which is carried here. Each run file records its own configuration.
+
+Run files, and what this repository publishes: the TypeScript run file and the two Ruby run files recorded without a host name (\`deep-nesting-ruby-a746a48527c9f965\`, \`deep-nesting-ruby-e5453da57df10047\`) ship with this repository. The other three Ruby run files are left out of the published candidate because their environment blocks record the machine they ran on; only their figures above and their SHA-256 pins stand for them here.
 `;
 
 writeFileSync(outPath, doc);
