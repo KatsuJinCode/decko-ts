@@ -75,6 +75,19 @@ export async function ruleContentForCard(
     if (record === undefined) continue; // candidate rule card does not exist
     return record.dbContent;
   }
+  // Deliberately NO fallback beyond storage. Ruby's deck carries the mods'
+  // data/real.yml rule rows as rows (seeded at deck creation), so a served
+  // deck answers here; a deck WITHOUT the rows (pre-mod / mod removed) has
+  // no rule and disarms exactly as Ruby's toggle(nil) - recaptcha.rb:16-23.
+  // The mod rule-seed registry (mod-rule-seeds.ts) is deliberately NOT
+  // consulted here: its reach runs through the process-global name
+  // environment, so a consult would arm decks Ruby keeps unarmed and would
+  // flip on whether some other engine instance in the same process had
+  // installed the environment (observed: the recaptcha-seat endpoint pins
+  // flipped 303 -> 422 with the suite's chunk order). The form side reads
+  // the seeds at render (card-mod-edit createCardForm); the validate side
+  // stays storage-only, and the two agree on served decks because the boot
+  // seeds the same rows the gems ship.
   return undefined;
 }
 

@@ -195,6 +195,11 @@ import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
 import { parseNestOptions, scanNests } from "../../render/nest-syntax.js";
 import { safeSetKeys } from "../../render/set-keys.js";
+import { findAssignedTypeName } from "../../set-patterns/set-type-assignment.js";
+import { getNameEnvironment } from "../../name/environment.js";
+import { modRuleSeedContentForCandidate } from "../mod-rule-seeds.js";
+import { renderRecaptchaConfig } from "../../render/render-recaptcha-config.js";
+import { recaptchaFormOn, recaptchaHiddenFormTags } from "./card-mod-recaptcha.js";
 import { timeAgoInWords, actSummaryBadge } from "./card-mod-history.js";
 import { ruleSidesStatement } from "./rule-card-warm.js";
 import { cardWallClockNow } from "../../wall-clock.js";
@@ -952,6 +957,34 @@ function fieldEditorInMultiCard(
   // here was the +*account edit form's 500).
   const known = fmt.engine.fetchRenderCard(fieldName.key);
   const tagCard = known ?? fmt.engine.fetchRenderCard(fieldName.tag ?? fieldName.s);
+  // THE NEW FIELD CARD'S TYPE IS THE SET-TYPE ASSIGNMENT'S, not the tag
+  // card's: Ruby's ensure_type_id runs type_id_from_code
+  // (mod/core/set/all/type.rb:69-76) BEFORE the template arm — for a
+  // compound card each assigns_type pattern (07_right.rb:3
+  // `assigns_type: true` on the right pattern) consults
+  // Card::Set::Type.assignment (set/type.rb:5-6, filled by the mods'
+  // `assign_type :foo` boot lines, advanced_api.rb:5-8). The account
+  // family's rights all call `assign_type :phrase` (right/email.rb:5,
+  // right/password.rb:3, right/salt.rb:3, right/status.rb:4), so a NEW
+  // +*email field is PHRASE-typed at form time and its editor is the
+  // plain text input — not the tag RichText type's tinymce textarea (the
+  // oracle signup form pins the input; the recorded capture's fields list
+  // names the email input without any editor chrome). findAssignedTypeName
+  // is the ported walk; the codename env resolves the assigned type name
+  // to the id (the sync peek the boot's ensureLoaded serves).
+  const assignedTypeName = findAssignedTypeName({
+    name: fieldName,
+    isNew: true,
+    typeId: tagCard?.typeId,
+    typeName: tagCard?.typeName,
+  });
+  const env = getNameEnvironment();
+  const assignedTypeId =
+    assignedTypeName !== undefined
+      ? (env?.codename?.id(assignedTypeName) ?? env?.codename?.id(assignedTypeName.toLowerCase()))
+      : undefined;
+  const fieldTypeId = assignedTypeId ?? tagCard?.typeId;
+  const fieldTypeName = assignedTypeName ?? tagCard?.typeName;
   const fieldCard = known ??
     ({
       ...(tagCard ?? {}),
@@ -963,7 +996,7 @@ function fieldEditorInMultiCard(
         codename: undefined,
         leftId: undefined,
         rightId: tagCard?.id,
-        typeId: tagCard?.typeId,
+        typeId: fieldTypeId,
         dbContent: undefined,
         trash: false,
         creatorId: undefined,
@@ -982,17 +1015,46 @@ function fieldEditorInMultiCard(
       },
       id: undefined,
       dbContent: "",
-      typeName: tagCard?.typeName,
-      typeId: tagCard?.typeId,
-      typeCode: tagCard?.typeCode,
-      setKeys:
-        tagCard?.setKeys ??
-        safeSetKeys({ name: fieldName, typeId: tagCard?.typeId, typeName: tagCard?.typeName, leftTypeName: undefined }),
+      typeName: fieldTypeName,
+      typeId: fieldTypeId,
+      typeCode:
+        assignedTypeId !== undefined
+          ? env?.codename?.nameForId(assignedTypeId)
+          : tagCard?.typeCode,
+      // THE JUNCTION'S OWN KEYS (RIGHT-Xemail etc.), not the tag card's:
+      // the tag *email card's keys carry SELF-Xemail and no RIGHT- token,
+      // so a tag-derived chain never sees the right-set modules the field
+      // card belongs to. Ruby's new-card patterns (pattern/all.rb:40-42)
+      // drop the self pattern and key the junction + right patterns off
+      // the field name; safeSetKeys is the engine's own new-card
+      // computation. leftTypeName undefined = the left card has no row yet
+      // (Ruby's quick_type default, pattern/class_methods.rb:59-71).
+      setKeys: safeSetKeys({
+        name: fieldName,
+        typeId: fieldTypeId,
+        typeName: fieldTypeName,
+        leftTypeName: undefined,
+        isNew: true,
+      }),
     } as ViewContext["fmt"]["card"]);
   // edit_in_form_prefix (form.rb:160): the subcard's input names ride the
   // parent form's prefix + [subcards][<field relative to the form card>].
+  // A STRUCTURE-context subform render (account_formgroups'
+  // `_render :content_formgroups, structure: true` on the +*account card
+  // inside the signup card's form) carries the parent form's prefix in the
+  // voo: Rails' fields_for nests the subform under
+  // card[subcards][+*account], so the +*email field's input is
+  // card[subcards][+*account][subcards][+*email][content] - the recorded
+  // oracle signup form pins exactly that name.
+  const parentPrefix =
+    typeof ctx.voo.opts["form_name_prefix"] === "string"
+      ? (ctx.voo.opts["form_name_prefix"] as string)
+      : undefined;
   const relative = fieldName.from(fmt.card.name);
-  const prefix = `card[subcards][${relative}]`;
+  const prefix =
+    parentPrefix !== undefined
+      ? `${parentPrefix}[subcards][${relative}]`
+      : `card[subcards][${relative}]`;
   // wrap_editor_in_multi_card's formgroup title is render_title - the field
   // card's name as the nest shows it, RELATIVE to the form card (the Ruby
   // observations pin "+summary", never "Topic 002+summary" - the nest's
@@ -1015,7 +1077,15 @@ function fieldEditorInMultiCard(
   const tagSafe = DeckoName.parse(fieldName.tag ?? fieldName.s).safeKey;
   return (
     `<div class="RIGHT-${tagSafe} card-editor form-group" data-card-name="${h(fieldName.s)}">\n` +
-    `<label for="${prefix}_content"><span class="card-title"><span>${h(title)}</span></span></label>\n` +
+    // THE TITLE SPAN: the settings-context formgroup renders the nested
+    // title-in-context shape (span.card-title > span - the passing
+    // account-change pages pin it); the STRUCTURE-context subform
+    // (account_formgroups' `structure: true` subformat, the signup form's
+    // +*account fieldset) renders the title WITHOUT the inner span - the
+    // recorded oracle signup form pins label > span.card-title alone.
+    (parentPrefix !== undefined
+      ? `<label for="${prefix}_content"><span class="card-title">${h(title)}</span></span></label>\n`
+      : `<label for="${prefix}_content"><span class="card-title"><span>${h(title)}</span></span></label>\n`) +
     `<div class="editor content-editor">${contentFieldHtml}</div>\n` +
     hiddenTypeId +
     `</div>`
@@ -1915,15 +1985,79 @@ function createCardForm(
   // form_for on a NEW record (the absent card a page offers to create):
   // Rails names the form "new_card" and sends a plain post, no _method.
   const persisted = ctx.fmt.card.id !== undefined;
+  // THE RECAPTCHA TOKEN BYTES (set/all/recaptcha.rb:89-93
+  // hidden_form_tags override — `return super unless recaptcha?(opts);
+  // super + recaptcha_token(action)`): EVERY card_form carries them when
+  // the guard is on — Ruby's format-module override shadows the base
+  // hidden_form_tags for the whole app, and the recorded oracle signup
+  // form is armed on the mod's seeded toggles (data/real.yml) + the
+  // development default keys (lib/card/mod/recaptcha.rb @defaults). The
+  // port's form consumers hand the token bytes to the form builder through
+  // this gate: the config is the host's render-side seam
+  // (render-recaptcha-config.ts — the SAME object the write path's guard
+  // runs on), the rule content rides the mod rule seeds (mod-rule-seeds.ts
+  // — the validate side resolves the same answer from storage, where the
+  // boot seeds the gems' rows), and
+  // the auth operands are the request render's (anonymous, not always_ok,
+  // a set-up deck).
+  const recaptchaConfig = renderRecaptchaConfig();
+  const recaptchaOnForm =
+    recaptchaConfig !== undefined &&
+    recaptchaFormOn(
+      {
+        siteKey: recaptchaConfig.siteKey,
+        secretKey: recaptchaConfig.secretKey,
+        envController: true,
+        signedIn: ctx.fmt.engine.viewer?.signedIn === true,
+        alwaysOk: false,
+        needsSetup: false,
+        captchaRuleContent: captchaRuleSeedFor(ctx),
+      },
+      undefined,
+    );
+  const effectiveSuccessTags = recaptchaHiddenFormTags(
+    successTags,
+    recaptchaOnForm,
+    "create",
+    recaptchaConfig?.siteKey ?? "",
+  );
+  // card_form_html_opts's override (set/all/recaptcha.rb:95-99): the form
+  // carries data-recaptcha="on" when the guard is on — the recaptcha
+  // script's submit handler (assets/script/recaptcha.js.coffee:3-6) keys
+  // on exactly this attribute to set the posted token.
+  const effectiveFormAttrs =
+    formAttrs + (recaptchaOnForm ? ` data-recaptcha="on"` : "");
   return (
-    `<form class="card-form slotter" id="${persisted ? `edit_card_${ctx.fmt.card.id}` : "new_card"}"${formAttrs}` +
+    `<form class="card-form slotter" id="${persisted ? `edit_card_${ctx.fmt.card.id}` : "new_card"}"${effectiveFormAttrs}` +
     ` action="/card/create" accept-charset="UTF-8" data-remote="true" method="post">` +
     `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
     (persisted ? `<input type="hidden" name="_method" value="patch" autocomplete="off" />` : "") +
-    successTags +
+    effectiveSuccessTags +
     body +
     `</form>`
   );
+}
+
+/** rule(:captcha) for the rendered card, from the mod rule seeds (the sync
+ *  read the form render needs; the storage rows win on a real deck — see
+ *  mod-rule-seeds.ts' precedence note). Undefined when no seed names the
+ *  card's candidates (rule/all.rb's nil -> Card::Rule.toggle false). */
+function captchaRuleSeedFor(ctx: ViewContext): string | undefined {
+  const card = ctx.fmt.card;
+  const candidates = ruleNamesForCard(
+    {
+      name: card.name?.s ?? "",
+      isNew: card.id === undefined,
+      typeId: card.typeId,
+      typeName: card.typeName,
+    },
+    "*captcha",
+  );
+  for (const candidate of candidates) {
+    const seeded = modRuleSeedContentForCandidate(candidate);
+    if (seeded !== undefined) return seeded;
+  }
+  return undefined;
 }
 
 /** new.rb:71-75 create_form_with_alert_guide:

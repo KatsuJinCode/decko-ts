@@ -122,6 +122,7 @@ import {
   type ViewFn,
 } from "../../render/format.js";
 import { h } from "../../render/slot-html.js";
+import { safeSetKeys } from "../../render/set-keys.js";
 // set/self/signin.rb:119-125 view :core — the sign-in form. The emitter
 // lives in the render layer (signin-core-form-view.ts) because it is consumed
 // by TWO registrations: this manifest entry (the loader-bound path) and the
@@ -1007,13 +1008,43 @@ function accountFormgroups(ctx: ViewContext): string {
             id: undefined,
             unknown: true,
             record: { ...template.record, id: undefined, name, key: name.key, isNew: true },
+            // THE SET KEYS ARE THE JUNCTION CARD'S, not the template's: the
+            // *account template's own keys carry SELF-Xaccount (the codename
+            // card's self anchor) and no RIGHT- token, while the new
+            // +*account subcard is a JUNCTION whose right side keys to the
+            // account codename - RIGHT-Xaccount is what brings
+            // Right::Account::Views (the before :content_formgroups hook
+            // that sets the edit_structure) into the subformat's chain.
+            // Ruby's new-card patterns (pattern/all.rb:40-42) drop the self
+            // pattern and key the junction + right patterns off the name;
+            // safeSetKeys is the engine's own new-card computation (the
+            // seat at render.ts uses exactly it). leftTypeName undefined =
+            // the left signup card has no row yet - Ruby's quick_type
+            // default applies, as for any new junction whose left is
+            // unfetchable (lib/card/set/pattern/class_methods.rb:59-71).
+            setKeys: safeSetKeys({
+              name,
+              typeId: template.typeId,
+              typeName: template.typeName,
+              leftTypeName: undefined,
+              isNew: true,
+            }),
           } as ViewContext["fmt"]["card"];
         })();
   if (accountCard === undefined) {
     return "";
   }
   const sub = new RenderFormat(accountCard, fmt.engine, { parent: fmt, maxDepth: fmt.maxDepth, nestQuietErrors: fmt.nestQuietErrors });
-  return sub.renderView("content_formgroups", { structure: "true" });
+  // Rails' fields_for nests the subform under the parent form's prefix:
+  // the +*account subcard's own fields_for prefix is
+  // card[subcards][+*account], so its fields render
+  // card[subcards][+*account][subcards][+*email][content] - the recorded
+  // oracle signup form pins exactly that input name.
+  const accountRelative = accountCard.name.from(fmt.card.name);
+  return sub.renderView("content_formgroups", {
+    structure: "true",
+    form_name_prefix: `card[subcards][${accountRelative}]`,
+  });
 }
 
 /** set/type/signup/views.rb:11-13 view :content_formgroups:

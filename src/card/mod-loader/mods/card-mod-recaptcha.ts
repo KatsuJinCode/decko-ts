@@ -710,13 +710,29 @@ export async function recaptchaEventFn(
   if (rec === undefined) return;
   const config = handleRecaptchaConfigErrors(rec.token);
   if (config.kind === "add-error") {
-    throw new CardActionError("recaptcha", config.message ?? "");
+    // errors.add "recaptcha", "needs correct v3 configuration" — the errors
+    // view's alert carries "Problems with <card name>" (error.rb:56-62
+    // voo.title) over "<KEY>: <message>" (standard_errors), so the throw
+    // carries the userMessage split and the acting card's name.
+    throw new CardActionError(
+      "recaptcha",
+      config.message ?? "",
+      `RECAPTCHA: ${config.message ?? ""}`,
+      undefined,
+      card.name,
+    );
   }
   if (config.kind === "card-error") {
     // Ruby raises Card::Error (not a validation error) — the port carries
     // the message on the engine's own CardActionError; write-routes maps
     // it by code like every other refusal.
-    throw new CardActionError("recaptcha", config.message ?? "");
+    throw new CardActionError(
+      "recaptcha",
+      config.message ?? "",
+      `RECAPTCHA: ${config.message ?? ""}`,
+      undefined,
+      card.name,
+    );
   }
   rec.markUsed(); // recaptcha.rb:52 — BEFORE the verify (:71 skips the next)
   const body = await rec.verify(rec.guard.verifyUrl, {
@@ -737,7 +753,13 @@ export async function recaptchaEventFn(
     // add_recaptcha_errors (:25-33): one errors.add per code (or the single
     // default). The ActiveRecord failure carries them as a list — the port
     // joins one line per added error.
-    throw new CardActionError("recaptcha", verdict.errorMessages.join("\n"));
+    throw new CardActionError(
+      "recaptcha",
+      verdict.errorMessages.join("\n"),
+      `RECAPTCHA: ${verdict.errorMessages.join("\n")}`,
+      undefined,
+      card.name,
+    );
   }
 }
 
@@ -817,6 +839,14 @@ const cardModRecaptcha: DeckoModManifest = {
       // / handleRecaptchaConfigErrors / validateRecaptcha /
       // recaptchaTokenHtml above. No views declared.
       setPath: "all/recaptcha",
+      // data/real.yml:6-13 — the mod's seeded captcha toggles (*all+*captcha
+      // '1' and *signup+*type+*captcha '1'): a stock deck boots with the
+      // captcha guard ON for anonymous creates, and the recorded oracle
+      // signup journey pins the armed refusal. Registered into the mod
+      // rule-seed registry (mod-rule-seeds.ts) for the form-side gate's
+      // synchronous read; the validate side resolves the same answer from
+      // storage, where the serving boot seeds these rows.
+      ruleSeeds: [{ name: "signup+*type+*captcha", content: "1" }],
       events: [
         {
           event: "recaptcha",
