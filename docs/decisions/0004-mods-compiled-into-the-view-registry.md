@@ -30,10 +30,42 @@ views live in that record alongside core views.
 Compatibility is measured rather than assumed. A generator walks every
 installed mod's set and library trees, mines the view, format, set-module,
 event and configuration declarations, and compares that inventory against what
-this registry implements — producing a per-mod verdict of ported, partial or
-missing. The classification deliberately excludes the universal views every
-card routes through, because counting those would mark a mod ported on the
-strength of one inherited fallback view.
+this registry implements — producing a per-mod verdict of declared-complete,
+partial or missing. The classification deliberately excludes the universal
+views every card routes through, because counting those would mark a mod
+declared-complete on the strength of one inherited fallback view.
+
+## What is and is not supported
+
+This is the whole mod contract. Nothing outside it is claimed.
+
+**Supported:** the site's own mods — the `card-mod-*` gems that ship with
+card 1.110.0 / decko 0.20.0 — hand-ported into `src/card/mod-loader/mods/`,
+one module per mod, registering the views, events and settings the Ruby mod
+declares. The evidence is graded, not assumed: the compatibility report
+(`tools/compat-report/mod-compat-report.md`) inventories each gem's
+declarations against the registry, and `tests/card/mod-loader/*.test.ts` pin
+the rendered bytes of a subset of views against Ruby oracle captures. What the
+evidence covers, and what it does not, is inventoried in
+`docs/coverage-inventory.md`.
+
+**Not supported:** executing an existing Ruby mod's code unchanged. A
+`card-mod-*` gem's Ruby is never loaded, interpreted or translated at runtime;
+there is no Ruby runtime on any host this engine deploys to. Also not
+supported: loading mods at runtime — no mod directory is read at request time,
+no gem manifest is interpreted in production, and a deck cannot gain a mod by
+dropping files into a folder. The loader's load order is ported; its
+filesystem-driven loading is not.
+
+**What a third-party mod author must do today:** hand-port the mod — write a
+TypeScript module under `src/card/mod-loader/mods/` that registers the mod's
+views and events through the same manifest interface, port any set modules it
+needs onto the implemented set patterns, add byte-pin tests against a captured
+Ruby oracle output for every view whose bytes matter, and re-run the
+compatibility report. There is no import path from a Ruby mod gem to a
+registered TS mod; the promise of "mods included" in the upstream discussion
+(decko-commons#1282) means this repository includes hand-ports of the site's
+own mods, not a general Ruby-mod execution capability.
 
 ## Consequences
 
@@ -43,12 +75,14 @@ because it costs nothing at runtime beyond a compiled function.
 
 The consequence that costs the most is honesty in the verdict. The generator
 compares **declarations**, not behaviour: it cannot tell a one-line stub from a
-two-hundred-line rendering pipeline. So "covered" in a compatibility report
-means a renderer exists — and for every view except the handful the captures
-exercise, that is not the same as the renderer matching Ruby's output. The
-report's own documentation says so, and the distinction has to be repeated
-wherever a number from it is quoted.
+two-hundred-line rendering pipeline. So "declared-complete" in a compatibility
+report means the declarations exist — a manifest registers the views, the set
+patterns land, some views are byte-pinned — and for every view except the
+handful the pins render, that is not the same as the renderer matching Ruby's
+output. No label in the report measures executable behavior, event hooks, or
+non-html formats. The report's own documentation says so, and the distinction
+has to be repeated wherever a number from it is quoted.
 
 The load-order mechanism is ported; the general notion of loading mods at
 runtime is not, and the compatibility report is a snapshot of what has been
-implemented rather than a claim that the general loader works.
+declared rather than a claim that the general loader works.

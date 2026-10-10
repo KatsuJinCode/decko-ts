@@ -271,7 +271,10 @@ Test Files  66 passed | 2 skipped (68)
 
 This is the tree's one standing total; per-stream counts in
 `docs/port-tracker.md` are historical landing-time records, not a
-current measure. All four render-perf budgets are green solo (warm
+current measure. What each parity instrument measures, and what the
+public package does not measure, is inventoried in
+[docs/coverage-inventory.md](docs/coverage-inventory.md). All four render-perf
+budgets are green solo (warm
 4.8ms/entry vs 25 budget, 0 cold cards; receipt
 `benchmarks/results/perf/render-perf.json`).
 
@@ -312,7 +315,10 @@ read-rule universe) plus two freshly re-signatured structure buckets —
 see `tools/corpus-failure-classes/failure-buckets.json`.
 
 Remaining to publication: the three corpus families above, mod view
-deepening (1 mod fully ported, 30 registered with partial view coverage),
+deepening (the compatibility report marks 29 of 33 mods declared-complete —
+a declaration-level label, not a behavior claim; per-mod detail in
+`tools/compat-report/mod-compat-report.md`, contract boundary in
+`docs/decisions/0004-mods-compiled-into-the-view-registry.md`),
 the PostgreSQL read rung, the one-command migration launch path, and the
 publication hygiene rounds (in progress: `tools/hygiene/`). See
 `docs/port-tracker.md` for the wave plan + per-stream notes.

@@ -1,22 +1,24 @@
 # card-mod compatibility report — decko-ts
 
-Generated: 2026-10-02T01:46:52.787Z
+Generated: 2026-10-10T00:00:14.223Z
 Gem dir:   $GEM_HOME
-Repo:      REPO_ROOT\
+Repo:      REPO_ROOT
 
 ## Summary
 
 Mods scanned: **33**
 
-- ported:  **29**
+- declared-complete:  **29**
 - partial: **2**
 - missing: **0**
 - ignored: **2** (legacy-labeled or data-only)
 
+**What these labels measure: declarations only.** "declared-complete" means the mod's view names, set modules and set patterns exist in this repository's view registry and mod loader (and, on the byte-pin criterion, that a test pins some rendered views' bytes against the Ruby oracle capture). It does NOT measure executable behavior: no event hook is exercised, no non-html format (json, css, email, rss, csv) is rendered, and every view beyond the handful the byte-pins render is unproven against Ruby's output. Where the evidence for what IS byte-proven lives: `docs/coverage-inventory.md`.
+
 ## decko-ts implemented surface (truth)
 
 - Set patterns (9): all, all_plus, right, rstar, rule, self, star, type, type_plus_right
-- Html views in HTML_VIEWS (285): accordion_bar, accordion_bar_list, accordion_rule_list, act, act_legend, acted_at, action_expanded, action_summary, add_autocomplete_item, add_button, add_link, add_url, admin, api_key, asset_output_url, bad_address, bar, bar_body, bar_bottom, bar_left, bar_menu, bar_middle, bar_right, bar_setting_list, blank, board, board_link, board_rules_tab, board_type_formgroup, box, box_bottom, box_middle, box_top, boxed, boxed_link, buttons, card_list, card_select, cardboard, cardtypes, carousel, change, change_create_to_update, checkbox, checkbox_list, close_modal_link, closed, closed_account, closed_bar, closed_content, closure, codename, comment_box, compact_missing, configs, configurations, configure_button, configure_link, confirm_update_all, conflict, conflict_tracker, content, content_changes, content_formgroup, content_formgroups, content_panel, content_with_title, core, count, created_at, creator_credit, current, customize_button, denial, depends_on, description, draft_legend, edit, edit_button, edit_buttons, edit_form, edit_in_form, edit_inline, edit_inline_buttons, edit_link, edit_name, edit_name_row, edit_nests, edit_row, edit_rules, edit_structure, edit_type, edit_type_form, edit_type_row, email_page, engage_tab, errors, expanded_bar, favicon_tag, file_size, filtered_accordion_rule_list, flash, follow_button, follow_item, follow_section, follow_status, follow_tab, followed, full_bar, full_page_link, full_width, gem_info, generate_button, goto_autocomplete_item, grouped_list, guide, guide_tab, head, head_content, header, header_title, help, help_link, help_text, hidden_content_field, history, history_tab, home_path, home_url, home_view, icons, id, id_url, ignore_tab, image_complete, inline, input, invite, javascript_include_tag, javascript_tags, just_deleted, key, label, labeled, labeled_content, labeled_editor, last_action, last_action_verb, lead, link, link_editor, link_tag, link_with_checkbox, linkname, list, list_of_changes, menu, menu_block, meta_tags, mini_bar, mini_unknown, modal, modal_footer, modal_link, modal_link_editor, modal_menu, modal_nest_rules, modal_pill_setting_list, modal_rule, modal_title, my_card, name, name_form, name_formgroup, nav_item, nav_link, nav_link_in_dropdown, navbar_links, nest_list_input, nest_rules, new, new_buttons, new_fields, new_image_buttons, new_in_modal, new_in_modal_buttons, new_type_formgroup, no_search_results, not_found, one_line_content, open, open_bar, open_content, open_nest_editor, overlay_guide, overlay_header, overlay_help_link, overlay_menu, overlay_rule, overlay_rule_list_link, overlay_title, page_title, page_title_tag, paging, pill_setting_list, pills, pills_static, pointer_core, pop_out_modal_link, popover, preview, preview_editor, progress_bar, quick_edit, quick_edit_setting_list, quick_edit_success, raw, raw_one_line_content, read_form, read_formgroup, related_tab, remote_script_tags, reset_password_days, reset_password_success, reset_password_url, results_for_keyword, roles, rss_links, rule_board_link, rule_edit, rule_form, rule_form_card_editor, rule_help, rule_nest_editor_link, rules_tab, script_calls, script_variables, scripts, search_count, search_error, server_error, set_label, settings, short_content, sign_in, sign_out, sign_up, simple_new, smart_label, source, status, styles, stylesheet_include_tag, stylesheet_tags, subedits, tabs, tabs_static, tasks, template_link, template_nest, text_without_nests, title, title_link, title_no_link, titled, titled_content, token, token_days, token_expiry, token_link, type, type_formgroup, type_info, unfollow_url, universal_edit_button, unknown, updated_at, updated_by, url, url_link, verify_days, verify_url, view_list, views, warning
+- Html views in HTML_VIEWS (305): accordion_bar, accordion_bar_list, accordion_rule_list, account_tab, act, act_legend, acted_at, action_expanded, action_summary, add_autocomplete_item, add_button, add_link, add_url, admin, api_key, asset_output_url, autocomplete, bad_address, bar, bar_body, bar_bottom, bar_left, bar_menu, bar_middle, bar_right, bar_setting_list, blank, board, board_act, board_link, board_rules_tab, board_type_formgroup, box, box_bottom, box_middle, box_top, boxed, boxed_link, buttons, card_list, card_select, cardboard, cardtypes, carousel, change, change_create_to_update, checkbox, checkbox_list, close_modal_link, closed, closed_account, closed_bar, closed_content, closure, codename, comment_box, compact_missing, configs, configurations, configure_button, configure_link, confirm_update_all, conflict, conflict_tracker, content, content_changes, content_formgroup, content_formgroups, content_panel, content_with_title, core, count, created_at, creator_credit, current, customize_button, debug_server_error, demo, denial, depends_on, description, draft_legend, edit, edit_button, edit_buttons, edit_form, edit_in_form, edit_inline, edit_inline_buttons, edit_link, edit_name, edit_name_row, edit_nests, edit_row, edit_rules, edit_structure, edit_type, edit_type_form, edit_type_row, email_page, engage_tab, errors, expanded_bar, favicon_tag, file_size, filtered_accordion_rule_list, flash, follow_button, follow_item, follow_section, follow_status, follow_tab, followed, follower, full_bar, full_page_link, full_width, gem_info, generate_button, goto_autocomplete_item, grouped_list, guide, guide_tab, head, head_content, header, header_title, help, help_link, help_text, hidden_content_field, history, history_tab, home_path, home_url, home_view, icons, id, id_url, ignore_tab, image_complete, inline, input, invite, javascript_include_tag, javascript_tags, just_deleted, key, label, labeled, labeled_content, labeled_editor, last_action, last_action_verb, lead, link, link_editor, link_tag, link_with_checkbox, linkname, list, list_of_changes, menu, menu_block, meta_tags, mini_bar, mini_unknown, modal, modal_footer, modal_link, modal_link_editor, modal_menu, modal_nest_editor, modal_nest_image, modal_nest_rules, modal_pill_setting_list, modal_rule, modal_title, multiselect, my_card, name, name_form, name_formgroup, nav_item, nav_link, nav_link_in_dropdown, navbar_links, nest_content, nest_editor, nest_image, nest_list_input, nest_rules, new, new_buttons, new_fields, new_image, new_image_buttons, new_in_modal, new_in_modal_buttons, new_type_formgroup, no_search_results, not_found, one_line_content, open, open_bar, open_content, open_nest_editor, overlay_guide, overlay_header, overlay_help_link, overlay_menu, overlay_rule, overlay_rule_list_link, overlay_title, page_title, page_title_tag, paging, pill_setting_list, pills, pills_static, pointer_core, pop_out_modal_link, popover, preview_editor, progress_bar, quick_edit, quick_edit_setting_list, quick_edit_success, radio, raw, raw_one_line_content, read_form, read_formgroup, related_tab, remote_include_tags, remote_script_tags, remote_style_tags, reset_password_days, reset_password_success, reset_password_url, results_for_keyword, roles, rss_links, rule_board_link, rule_edit, rule_editor, rule_form, rule_form_card_editor, rule_help, rule_nest_editor_link, rules_tab, script_calls, script_variables, scripts, search_count, search_error, select, server_error, set_label, settings, setup, short_content, sign_in, sign_out, sign_up, simple_new, smart_label, source, status, styles, stylesheet_include_tag, stylesheet_path, stylesheet_tags, subedit_notice, subedits, tabs, tabs_static, tasks, template_link, template_nest, text_without_nests, title, title_link, title_no_link, titled, titled_content, token, token_days, token_expiry, token_link, type, type_formgroup, type_info, unfollow_url, universal_edit_button, unknown, updated_at, updated_by, url, url_link, verify_days, verify_url, view_list, views, warning
 - Rules: lookup=yes, apply=yes
 - Permissions: yes (read-rules.ts, view-perms.ts)
 
@@ -24,51 +26,51 @@ Mods scanned: **33**
 
 | mod | status | mod-specific views | manifest views | set modules | lib rb | test it() / byte-pins | verdict |
 |-----|--------|-------------------:|---------------:|------------:|-------:|----------------------:|---------|
-| `card-mod-account-0.20.0` | ported | 17/19 | 15 (covered=15) | 22 (abstract=2, all=2, right=7, self=4, type=4, type_plus_right=3) | 1 | 12/1 | 17 mod-specific view(s) ported: closed_account, closure, configs, content_formgroups, edit, edit_buttons, ... |
+| `card-mod-account-0.20.0` | declared-complete | 19/19 | 26 (covered=26) | 22 (abstract=2, all=2, right=7, self=4, type=4, type_plus_right=3) | 1 | 12/1 | 19 mod-specific view(s) declared: account_tab, closed_account, closure, configs, content_formgroups, edit, ... |
 | `card-mod-ace_editor-0.20.0` | partial | 0/0 | 0 (covered=0) | 2 (all=1, self=1) | 0 | 10/2 | mod-specific: covered=(no mod-specific views covered); missing=(no mod-specific views); pins=2/10 |
-| `card-mod-api_key-0.20.0` | ported | 6/6 | 10 (covered=10) | 2 (right=2) | 2 | 34/14 | 6 mod-specific view(s) ported: api_key, buttons, current, generate_button, token, token_link |
-| `card-mod-assets-0.20.0` | ported | 2/2 | 4 (covered=4) | 12 (abstract=8, right=3, type=1) | 1 | 15/6 | 2 mod-specific view(s) ported: javascript_include_tag, stylesheet_include_tag |
-| `card-mod-bar_and_box-0.20.0` | ported | 11/11 | 0 (covered=0) | 4 (abstract=1, all=2, type=1) | 0 | 0/0 | 11 mod-specific view(s) ported: bar, bar_body, bar_bottom, bar_left, bar_menu, bar_middle, ... |
-| `card-mod-bootstrap-0.20.0` | ported | 10/10 | 13 (covered=13) | 11 (abstract=4, all=2, self=2, type=2, type_plus_right=1) | 16 | 32/30 | 10 mod-specific view(s) ported: bar_bottom, bar_left, bar_middle, bar_right, carousel, customize_button, ... |
-| `card-mod-carrierwave-0.20.0` | ported | 6/6 | 11 (covered=11) | 11 (abstract=2, all=1, self=5, type=3) | 7 | 35/21 | 6 mod-specific view(s) ported: content_changes, full_width, input, link_tag, preview_editor, source |
-| `card-mod-collection-0.20.0` | ported | 2/3 | 2 (covered=2) | 6 (abstract=3, all=3) | 1 | 22/16 | 2 mod-specific view(s) ported: count, paging |
+| `card-mod-api_key-0.20.0` | declared-complete | 6/6 | 10 (covered=10) | 2 (right=2) | 2 | 34/14 | 6 mod-specific view(s) declared: api_key, buttons, current, generate_button, token, token_link |
+| `card-mod-assets-0.20.0` | declared-complete | 2/2 | 4 (covered=4) | 12 (abstract=8, right=3, type=1) | 1 | 15/6 | 2 mod-specific view(s) declared: javascript_include_tag, stylesheet_include_tag |
+| `card-mod-bar_and_box-0.20.0` | declared-complete | 11/11 | 0 (covered=0) | 4 (abstract=1, all=2, type=1) | 0 | 0/0 | 11 mod-specific view(s) declared: bar, bar_body, bar_bottom, bar_left, bar_menu, bar_middle, ... |
+| `card-mod-bootstrap-0.20.0` | declared-complete | 10/10 | 12 (covered=12) | 11 (abstract=4, all=2, self=2, type=2, type_plus_right=1) | 16 | 32/27 | 10 mod-specific view(s) declared: bar_bottom, bar_left, bar_middle, bar_right, carousel, customize_button, ... |
+| `card-mod-carrierwave-0.20.0` | declared-complete | 6/6 | 10 (covered=10) | 11 (abstract=2, all=1, self=5, type=3) | 7 | 36/21 | 6 mod-specific view(s) declared: content_changes, full_width, input, link_tag, preview_editor, source |
+| `card-mod-collection-0.20.0` | declared-complete | 2/3 | 2 (covered=2) | 6 (abstract=3, all=3) | 1 | 22/16 | 2 mod-specific view(s) declared: count, paging |
 | `card-mod-comment-0.20.0` | partial | 0/0 | 7 (covered=7) | 3 (all=1, right=2) | 0 | 12/4 | mod-specific: covered=(no mod-specific views covered); missing=(no mod-specific views); pins=4/12 |
-| `card-mod-content-0.20.0` | ported | 4/4 | 4 (covered=4) | 14 (abstract=7, all=3, right=2, self=2) | 7 | 16/9 | 4 mod-specific view(s) ported: bar_middle, file_size, input, one_line_content |
-| `card-mod-date-0.20.0` | ported | 0/0 | 0 (covered=0) | 5 (all=1, right=2, self=1, type=1) | 0 | 32/20 | manifest + byte-pinned test (20 pins across 32 it()):  |
+| `card-mod-content-0.20.0` | declared-complete | 4/4 | 4 (covered=4) | 14 (abstract=7, all=3, right=2, self=2) | 7 | 16/9 | 4 mod-specific view(s) declared: bar_middle, file_size, input, one_line_content |
+| `card-mod-date-0.20.0` | declared-complete | 0/0 | 0 (covered=0) | 5 (all=1, right=2, self=1, type=1) | 0 | 32/20 | manifest + byte-pinned test (20 pins across 32 it()):  |
 | `card-mod-defaults-0.20.0` | ignored | 0/0 | 0 (covered=0) | 0 () | 1 | 0/0 | ignored (legacy-labeled per upstream maintainer guidance) |
 | `card-mod-delayed_job-0.20.0` | ignored | 0/0 | 0 (covered=0) | 0 () | 2 | 0/0 | ignored (legacy-labeled per upstream maintainer guidance) |
-| `card-mod-edit-0.20.0` | ported | 41/41 | 44 (covered=44) | 21 (all=15, right=2, self=1, type=3) | 0 | 9/4 | 41 mod-specific view(s) ported: board, board_type_formgroup, conflict_tracker, content_formgroup, content_formgroups, edit, ... |
-| `card-mod-email-0.20.0` | ported | 2/2 | 6 (covered=6) | 13 (abstract=2, all=2, right=7, type=2) | 2 | 10/4 | 2 mod-specific view(s) ported: compact_missing, email_page |
-| `card-mod-follow-0.20.0` | ported | 11/12 | 13 (covered=13) | 25 (abstract=1, all=4, right=8, self=7, type=4, type_plus_right=1) | 2 | 11/6 | 11 mod-specific view(s) ported: confirm_update_all, edit, edit_buttons, errors, follow_button, follow_item, ... |
-| `card-mod-format-0.20.0` | ported | 44/46 | 51 (covered=51) | 33 (abstract=1, all=20, right=1, self=1, type=10) | 16 | 46/8 | 44 mod-specific view(s) ported: add_button, add_link, add_url, admin, bar_right, board_link, ... |
-| `card-mod-help-0.20.0` | ported | 5/5 | 5 (covered=5) | 6 (all=2, right=2, self=2) | 0 | 13/8 | 5 mod-specific view(s) ported: guide, help, help_text, lead, popover |
-| `card-mod-history-0.20.0` | ported | 11/12 | 9 (covered=9) | 3 (all=3) | 12 | 40/38 | 11 mod-specific view(s) ported: act, act_legend, action_expanded, action_summary, change, creator_credit, ... |
-| `card-mod-integrate-0.20.0` | ported | 0/0 | 0 (covered=0) | 8 (all=1, right=3, self=4) | 0 | 28/21 | manifest + byte-pinned test (21 pins across 28 it()):  |
-| `card-mod-layout-0.20.0` | ported | 24/24 | 25 (covered=25) | 23 (abstract=4, all=6, right=3, self=8, type=2) | 5 | 34/7 | 24 mod-specific view(s) ported: bar_bottom, close_modal_link, edit_inline, head_content, input, invite, ... |
-| `card-mod-list-0.20.0` | ported | 5/5 | 6 (covered=6) | 16 (abstract=6, all=1, right=2, self=3, type=4) | 0 | 15/15 | 5 mod-specific view(s) ported: input, list, nest_list_input, one_line_content, view_list |
-| `card-mod-markdown-0.20.0` | ported | 0/0 | 1 (covered=1) | 1 (type=1) | 0 | 14/15 | manifest + byte-pinned test (15 pins across 14 it()): core |
-| `card-mod-permissions-0.20.0` | ported | 3/3 | 4 (covered=4) | 11 (abstract=1, all=2, right=4, self=4) | 0 | 33/33 | 3 mod-specific view(s) ported: input, one_line_content, pointer_core |
-| `card-mod-recaptcha-0.20.0` | ported | 0/0 | 1 (covered=1) | 8 (abstract=1, all=1, right=3, self=3) | 1 | 41/12 | manifest + byte-pinned test (12 pins across 41 it()): core |
-| `card-mod-rules-0.20.0` | ported | 34/34 | 30 (covered=30) | 24 (abstract=1, all=3, right=4, rstar=1, rule=8, self=2, type=4, type_plus_right=1) | 0 | 29/19 | 34 mod-specific view(s) ported: accordion_bar_list, accordion_rule_list, bar, bar_bottom, bar_middle, bar_right, ... |
-| `card-mod-script-0.20.0` | ported | 5/6 | 6 (covered=6) | 16 (abstract=7, all=1, right=1, self=1, type=4, type_plus_right=2) | 2 | 18/15 | 5 mod-specific view(s) ported: javascript_include_tag, javascript_tags, remote_script_tags, script_calls, script_variables |
-| `card-mod-search-0.20.0` | ported | 10/20 | 8 (covered=8) | 28 (abstract=6, all=1, right=17, self=2, type=2) | 1 | 27/5 | 10 mod-specific view(s) ported: add_autocomplete_item, bar, card_list, checkbox_list, count, goto_autocomplete_item, ... |
-| `card-mod-session-0.20.0` | ported | 0/0 | 0 (covered=0) | 2 (all=1, type=1) | 1 | 13/6 | manifest + byte-pinned test (6 pins across 13 it()):  |
-| `card-mod-style-0.20.0` | ported | 6/12 | 4 (covered=4) | 16 (abstract=7, self=2, type=5, type_plus_right=2) | 0 | 17/37 | 6 mod-specific view(s) ported: box, box_bottom, box_middle, customize_button, labeled, stylesheet_include_tag |
-| `card-mod-tabs-0.20.0` | ported | 4/4 | 4 (covered=4) | 2 (abstract=1, all=1) | 2 | 9/1 | 4 mod-specific view(s) ported: pills, pills_static, tabs, tabs_static |
-| `card-mod-tinymce_editor-0.20.0` | ported | 5/11 | 5 (covered=5) | 4 (all=3, self=1) | 1 | 33/31 | 5 mod-specific view(s) ported: change_create_to_update, link_editor, modal_link_editor, new_image_buttons, open_nest_editor |
-| `card-mod-virtual-0.20.0` | ported | 0/0 | 0 (covered=0) | 1 (abstract=1) | 1 | 33/16 | manifest + byte-pinned test (16 pins across 33 it()):  |
+| `card-mod-edit-0.20.0` | declared-complete | 41/41 | 45 (covered=45) | 21 (all=15, right=2, self=1, type=3) | 0 | 9/4 | 41 mod-specific view(s) declared: board, board_type_formgroup, conflict_tracker, content_formgroup, content_formgroups, edit, ... |
+| `card-mod-email-0.20.0` | declared-complete | 2/2 | 6 (covered=6) | 13 (abstract=2, all=2, right=7, type=2) | 2 | 10/4 | 2 mod-specific view(s) declared: compact_missing, email_page |
+| `card-mod-follow-0.20.0` | declared-complete | 12/12 | 17 (covered=17) | 25 (abstract=1, all=4, right=8, self=7, type=4, type_plus_right=1) | 2 | 12/6 | 12 mod-specific view(s) declared: confirm_update_all, edit, edit_buttons, errors, follow_button, follow_item, ... |
+| `card-mod-format-0.20.0` | declared-complete | 46/46 | 53 (covered=53) | 33 (abstract=1, all=20, right=1, self=1, type=10) | 16 | 49/8 | 46 mod-specific view(s) declared: add_button, add_link, add_url, admin, bar_right, board_link, ... |
+| `card-mod-help-0.20.0` | declared-complete | 5/5 | 5 (covered=5) | 6 (all=2, right=2, self=2) | 0 | 13/8 | 5 mod-specific view(s) declared: guide, help, help_text, lead, popover |
+| `card-mod-history-0.20.0` | declared-complete | 12/12 | 10 (covered=10) | 3 (all=3) | 12 | 40/39 | 12 mod-specific view(s) declared: act, act_legend, action_expanded, action_summary, board_act, change, ... |
+| `card-mod-integrate-0.20.0` | declared-complete | 0/0 | 0 (covered=0) | 8 (all=1, right=3, self=4) | 0 | 28/21 | manifest + byte-pinned test (21 pins across 28 it()):  |
+| `card-mod-layout-0.20.0` | declared-complete | 24/24 | 26 (covered=26) | 23 (abstract=4, all=6, right=3, self=8, type=2) | 5 | 36/7 | 24 mod-specific view(s) declared: bar_bottom, close_modal_link, edit_inline, head_content, input, invite, ... |
+| `card-mod-list-0.20.0` | declared-complete | 5/5 | 10 (covered=10) | 16 (abstract=6, all=1, right=2, self=3, type=4) | 0 | 15/15 | 5 mod-specific view(s) declared: input, list, nest_list_input, one_line_content, view_list |
+| `card-mod-markdown-0.20.0` | declared-complete | 0/0 | 1 (covered=1) | 1 (type=1) | 0 | 14/15 | manifest + byte-pinned test (15 pins across 14 it()): core |
+| `card-mod-permissions-0.20.0` | declared-complete | 3/3 | 4 (covered=4) | 11 (abstract=1, all=2, right=4, self=4) | 0 | 33/33 | 3 mod-specific view(s) declared: input, one_line_content, pointer_core |
+| `card-mod-recaptcha-0.20.0` | declared-complete | 0/0 | 1 (covered=1) | 8 (abstract=1, all=1, right=3, self=3) | 1 | 40/12 | manifest + byte-pinned test (12 pins across 40 it()): core |
+| `card-mod-rules-0.20.0` | declared-complete | 34/34 | 30 (covered=30) | 24 (abstract=1, all=3, right=4, rstar=1, rule=8, self=2, type=4, type_plus_right=1) | 0 | 29/19 | 34 mod-specific view(s) declared: accordion_bar_list, accordion_rule_list, bar, bar_bottom, bar_middle, bar_right, ... |
+| `card-mod-script-0.20.0` | declared-complete | 5/6 | 6 (covered=6) | 16 (abstract=7, all=1, right=1, self=1, type=4, type_plus_right=2) | 2 | 18/15 | 5 mod-specific view(s) declared: javascript_include_tag, javascript_tags, remote_script_tags, script_calls, script_variables |
+| `card-mod-search-0.20.0` | declared-complete | 10/20 | 8 (covered=8) | 28 (abstract=6, all=1, right=17, self=2, type=2) | 1 | 28/5 | 10 mod-specific view(s) declared: add_autocomplete_item, bar, card_list, checkbox_list, count, goto_autocomplete_item, ... |
+| `card-mod-session-0.20.0` | declared-complete | 0/0 | 0 (covered=0) | 2 (all=1, type=1) | 1 | 7/5 | manifest + byte-pinned test (5 pins across 7 it()):  |
+| `card-mod-style-0.20.0` | declared-complete | 9/12 | 8 (covered=8) | 16 (abstract=7, self=2, type=5, type_plus_right=2) | 0 | 17/37 | 9 mod-specific view(s) declared: box, box_bottom, box_middle, customize_button, labeled, remote_include_tags, ... |
+| `card-mod-tabs-0.20.0` | declared-complete | 4/4 | 4 (covered=4) | 2 (abstract=1, all=1) | 2 | 9/1 | 4 mod-specific view(s) declared: pills, pills_static, tabs, tabs_static |
+| `card-mod-tinymce_editor-0.20.0` | declared-complete | 11/11 | 12 (covered=12) | 4 (all=3, self=1) | 1 | 33/31 | 11 mod-specific view(s) declared: change_create_to_update, link_editor, modal_link_editor, modal_nest_editor, modal_nest_image, nest_content, ... |
+| `card-mod-virtual-0.20.0` | declared-complete | 0/0 | 0 (covered=0) | 1 (abstract=1) | 1 | 33/16 | manifest + byte-pinned test (16 pins across 33 it()):  |
 
 ## Per-mod detail
 
 ### card-mod-account-0.20.0
 
-- **status**: `ported`
-- **verdict**: 17 mod-specific view(s) ported: closed_account, closure, configs, content_formgroups, edit, edit_buttons, ...
-- **evidence**: 22/24 html views in HTML_VIEWS∪mod-manifests (17/19 mod-specific); mod-loader pins: manifest=yes, test=12 it(), byte-pins=1
-- **mod-loader manifest**: yes (15 views registered)
+- **status**: `declared-complete`
+- **verdict**: 19 mod-specific view(s) declared: account_tab, closed_account, closure, configs, content_formgroups, edit, ...
+- **evidence**: 24/24 html views in HTML_VIEWS∪mod-manifests (19/19 mod-specific); mod-loader pins: manifest=yes, test=12 it(), byte-pins=1
+- **mod-loader manifest**: yes (26 views registered)
 - **byte-pinned test**: yes (12 it() blocks, 1 toBe(<literal>) pins)
 - **set modules by pattern**: abstract=2, all=2, right=7, self=4, type=4, type_plus_right=3
-- **mod-specific html views (covered/total)**: 17/19 (account_tab, closed_account, closure, configs, content_formgroups, edit, edit_buttons, link_with_checkbox, new, new_buttons, one_line_content, open_content, raw, reset_password_days, reset_password_success, reset_password_url, setup, token_days, token_expiry, verify_days, verify_url)
+- **mod-specific html views (covered/total)**: 19/19 (account_tab, closed_account, closure, configs, content_formgroups, edit, edit_buttons, link_with_checkbox, new, new_buttons, one_line_content, open_content, raw, reset_password_days, reset_password_success, reset_password_url, setup, token_days, token_expiry, verify_days, verify_url)
 - **all html views declared**: account_tab, closed_account, closure, configs, content_formgroups, core, edit, edit_buttons, link_with_checkbox, new, new_buttons, one_line_content, open, open_content, raw, reset_password_days, reset_password_success, reset_password_url, setup, title, token_days, token_expiry, verify_days, verify_url
 - **non-html views**: email_html:closure, email_html:core, email_html:reset_password_days, email_html:reset_password_url, email_html:token_days, email_html:token_expiry, email_html:verify_days, email_html:verify_url
 - **view aliases**: :verify_days -> :token_days, :reset_password_days -> :token_days
@@ -100,8 +102,8 @@ Mods scanned: **33**
 
 ### card-mod-api_key-0.20.0
 
-- **status**: `ported`
-- **verdict**: 6 mod-specific view(s) ported: api_key, buttons, current, generate_button, token, token_link
+- **status**: `declared-complete`
+- **verdict**: 6 mod-specific view(s) declared: api_key, buttons, current, generate_button, token, token_link
 - **evidence**: 7/7 html views in HTML_VIEWS∪mod-manifests (6/6 mod-specific); mod-loader pins: manifest=yes, test=34 it(), byte-pins=14
 - **mod-loader manifest**: yes (10 views registered)
 - **byte-pinned test**: yes (34 it() blocks, 14 toBe(<literal>) pins)
@@ -119,8 +121,8 @@ Mods scanned: **33**
 
 ### card-mod-assets-0.20.0
 
-- **status**: `ported`
-- **verdict**: 2 mod-specific view(s) ported: javascript_include_tag, stylesheet_include_tag
+- **status**: `declared-complete`
+- **verdict**: 2 mod-specific view(s) declared: javascript_include_tag, stylesheet_include_tag
 - **evidence**: 3/3 html views in HTML_VIEWS∪mod-manifests (2/2 mod-specific); mod-loader pins: manifest=yes, test=15 it(), byte-pins=6
 - **mod-loader manifest**: yes (4 views registered)
 - **byte-pinned test**: yes (15 it() blocks, 6 toBe(<literal>) pins)
@@ -138,8 +140,8 @@ Mods scanned: **33**
 
 ### card-mod-bar_and_box-0.20.0
 
-- **status**: `ported`
-- **verdict**: 11 mod-specific view(s) ported: bar, bar_body, bar_bottom, bar_left, bar_menu, bar_middle, ...
+- **status**: `declared-complete`
+- **verdict**: 11 mod-specific view(s) declared: bar, bar_body, bar_bottom, bar_left, bar_menu, bar_middle, ...
 - **evidence**: 17/17 html views in HTML_VIEWS∪mod-manifests (11/11 mod-specific)
 - **mod-loader manifest**: no
 - **byte-pinned test**: no
@@ -157,11 +159,11 @@ Mods scanned: **33**
 
 ### card-mod-bootstrap-0.20.0
 
-- **status**: `ported`
-- **verdict**: 10 mod-specific view(s) ported: bar_bottom, bar_left, bar_middle, bar_right, carousel, customize_button, ...
-- **evidence**: 11/11 html views in HTML_VIEWS∪mod-manifests (10/10 mod-specific); mod-loader pins: manifest=yes, test=32 it(), byte-pins=30
-- **mod-loader manifest**: yes (13 views registered)
-- **byte-pinned test**: yes (32 it() blocks, 30 toBe(<literal>) pins)
+- **status**: `declared-complete`
+- **verdict**: 10 mod-specific view(s) declared: bar_bottom, bar_left, bar_middle, bar_right, carousel, customize_button, ...
+- **evidence**: 11/11 html views in HTML_VIEWS∪mod-manifests (10/10 mod-specific); mod-loader pins: manifest=yes, test=32 it(), byte-pins=27
+- **mod-loader manifest**: yes (12 views registered)
+- **byte-pinned test**: yes (32 it() blocks, 27 toBe(<literal>) pins)
 - **set modules by pattern**: abstract=4, all=2, self=2, type=2, type_plus_right=1
 - **mod-specific html views (covered/total)**: 10/10 (bar_bottom, bar_left, bar_middle, bar_right, carousel, customize_button, icons, input, one_line_content, progress_bar)
 - **all html views declared**: bar_bottom, bar_left, bar_middle, bar_right, carousel, core, customize_button, icons, input, one_line_content, progress_bar
@@ -176,11 +178,11 @@ Mods scanned: **33**
 
 ### card-mod-carrierwave-0.20.0
 
-- **status**: `ported`
-- **verdict**: 6 mod-specific view(s) ported: content_changes, full_width, input, link_tag, preview_editor, source
-- **evidence**: 8/8 html views in HTML_VIEWS∪mod-manifests (6/6 mod-specific); mod-loader pins: manifest=yes, test=35 it(), byte-pins=21
-- **mod-loader manifest**: yes (11 views registered)
-- **byte-pinned test**: yes (35 it() blocks, 21 toBe(<literal>) pins)
+- **status**: `declared-complete`
+- **verdict**: 6 mod-specific view(s) declared: content_changes, full_width, input, link_tag, preview_editor, source
+- **evidence**: 8/8 html views in HTML_VIEWS∪mod-manifests (6/6 mod-specific); mod-loader pins: manifest=yes, test=36 it(), byte-pins=21
+- **mod-loader manifest**: yes (10 views registered)
+- **byte-pinned test**: yes (36 it() blocks, 21 toBe(<literal>) pins)
 - **set modules by pattern**: abstract=2, all=1, self=5, type=3
 - **mod-specific html views (covered/total)**: 6/6 (content_changes, full_width, input, link_tag, preview_editor, source)
 - **all html views declared**: content, content_changes, core, full_width, input, link_tag, preview_editor, source
@@ -195,8 +197,8 @@ Mods scanned: **33**
 
 ### card-mod-collection-0.20.0
 
-- **status**: `ported`
-- **verdict**: 2 mod-specific view(s) ported: count, paging
+- **status**: `declared-complete`
+- **verdict**: 2 mod-specific view(s) declared: count, paging
 - **evidence**: 2/3 html views in HTML_VIEWS∪mod-manifests (2/3 mod-specific); mod-loader pins: manifest=yes, test=22 it(), byte-pins=16
 - **mod-loader manifest**: yes (2 views registered)
 - **byte-pinned test**: yes (22 it() blocks, 16 toBe(<literal>) pins)
@@ -233,8 +235,8 @@ Mods scanned: **33**
 
 ### card-mod-content-0.20.0
 
-- **status**: `ported`
-- **verdict**: 4 mod-specific view(s) ported: bar_middle, file_size, input, one_line_content
+- **status**: `declared-complete`
+- **verdict**: 4 mod-specific view(s) declared: bar_middle, file_size, input, one_line_content
 - **evidence**: 5/5 html views in HTML_VIEWS∪mod-manifests (4/4 mod-specific); mod-loader pins: manifest=yes, test=16 it(), byte-pins=9
 - **mod-loader manifest**: yes (4 views registered)
 - **byte-pinned test**: yes (16 it() blocks, 9 toBe(<literal>) pins)
@@ -252,7 +254,7 @@ Mods scanned: **33**
 
 ### card-mod-date-0.20.0
 
-- **status**: `ported`
+- **status**: `declared-complete`
 - **verdict**: manifest + byte-pinned test (20 pins across 32 it()): 
 - **evidence**: 1/1 html views in HTML_VIEWS∪mod-manifests (0/0 mod-specific); mod-loader pins: manifest=yes, test=32 it(), byte-pins=20
 - **mod-loader manifest**: yes (0 views registered)
@@ -309,10 +311,10 @@ Mods scanned: **33**
 
 ### card-mod-edit-0.20.0
 
-- **status**: `ported`
-- **verdict**: 41 mod-specific view(s) ported: board, board_type_formgroup, conflict_tracker, content_formgroup, content_formgroups, edit, ...
+- **status**: `declared-complete`
+- **verdict**: 41 mod-specific view(s) declared: board, board_type_formgroup, conflict_tracker, content_formgroup, content_formgroups, edit, ...
 - **evidence**: 42/42 html views in HTML_VIEWS∪mod-manifests (41/41 mod-specific); mod-loader pins: manifest=yes, test=9 it(), byte-pins=4
-- **mod-loader manifest**: yes (44 views registered)
+- **mod-loader manifest**: yes (45 views registered)
 - **byte-pinned test**: yes (9 it() blocks, 4 toBe(<literal>) pins)
 - **set modules by pattern**: all=15, right=2, self=1, type=3
 - **mod-specific html views (covered/total)**: 41/41 (board, board_type_formgroup, cardboard, conflict_tracker, content_formgroup, content_formgroups, edit, edit_buttons, edit_form, edit_in_form, edit_inline, edit_inline_buttons, edit_name, edit_name_row, edit_nests, edit_row, edit_rules, edit_structure, edit_type, edit_type_form, edit_type_row, engage_tab, follow_section, guide_tab, history_tab, input, just_deleted, name_form, name_formgroup, new, new_buttons, new_fields, new_in_modal, new_in_modal_buttons, new_type_formgroup, overlay_guide, read_form, read_formgroup, related_tab, rules_tab, simple_new, type_formgroup)
@@ -328,8 +330,8 @@ Mods scanned: **33**
 
 ### card-mod-email-0.20.0
 
-- **status**: `ported`
-- **verdict**: 2 mod-specific view(s) ported: compact_missing, email_page
+- **status**: `declared-complete`
+- **verdict**: 2 mod-specific view(s) declared: compact_missing, email_page
 - **evidence**: 5/5 html views in HTML_VIEWS∪mod-manifests (2/2 mod-specific); mod-loader pins: manifest=yes, test=10 it(), byte-pins=4
 - **mod-loader manifest**: yes (6 views registered)
 - **byte-pinned test**: yes (10 it() blocks, 4 toBe(<literal>) pins)
@@ -347,13 +349,13 @@ Mods scanned: **33**
 
 ### card-mod-follow-0.20.0
 
-- **status**: `ported`
-- **verdict**: 11 mod-specific view(s) ported: confirm_update_all, edit, edit_buttons, errors, follow_button, follow_item, ...
-- **evidence**: 12/13 html views in HTML_VIEWS∪mod-manifests (11/12 mod-specific); mod-loader pins: manifest=yes, test=11 it(), byte-pins=6
-- **mod-loader manifest**: yes (13 views registered)
-- **byte-pinned test**: yes (11 it() blocks, 6 toBe(<literal>) pins)
+- **status**: `declared-complete`
+- **verdict**: 12 mod-specific view(s) declared: confirm_update_all, edit, edit_buttons, errors, follow_button, follow_item, ...
+- **evidence**: 13/13 html views in HTML_VIEWS∪mod-manifests (12/12 mod-specific); mod-loader pins: manifest=yes, test=12 it(), byte-pins=6
+- **mod-loader manifest**: yes (17 views registered)
+- **byte-pinned test**: yes (12 it() blocks, 6 toBe(<literal>) pins)
 - **set modules by pattern**: abstract=1, all=4, right=8, self=7, type=4, type_plus_right=1
-- **mod-specific html views (covered/total)**: 11/12 (confirm_update_all, edit, edit_buttons, errors, follow_button, follow_item, follow_status, follow_tab, ignore_tab, one_line_content, rule_editor, status)
+- **mod-specific html views (covered/total)**: 12/12 (confirm_update_all, edit, edit_buttons, errors, follow_button, follow_item, follow_status, follow_tab, ignore_tab, one_line_content, rule_editor, status)
 - **all html views declared**: confirm_update_all, core, edit, edit_buttons, errors, follow_button, follow_item, follow_status, follow_tab, ignore_tab, one_line_content, rule_editor, status
 - **non-html views**: json:follow_button, json:follow_status
 - **view aliases**: (none)
@@ -366,13 +368,13 @@ Mods scanned: **33**
 
 ### card-mod-format-0.20.0
 
-- **status**: `ported`
-- **verdict**: 44 mod-specific view(s) ported: add_button, add_link, add_url, admin, bar_right, board_link, ...
-- **evidence**: 55/57 html views in HTML_VIEWS∪mod-manifests (44/46 mod-specific); mod-loader pins: manifest=yes, test=46 it(), byte-pins=8
-- **mod-loader manifest**: yes (51 views registered)
-- **byte-pinned test**: yes (46 it() blocks, 8 toBe(<literal>) pins)
+- **status**: `declared-complete`
+- **verdict**: 46 mod-specific view(s) declared: add_button, add_link, add_url, admin, bar_right, board_link, ...
+- **evidence**: 57/57 html views in HTML_VIEWS∪mod-manifests (46/46 mod-specific); mod-loader pins: manifest=yes, test=49 it(), byte-pins=8
+- **mod-loader manifest**: yes (53 views registered)
+- **byte-pinned test**: yes (49 it() blocks, 8 toBe(<literal>) pins)
 - **set modules by pattern**: abstract=1, all=20, right=1, self=1, type=10
-- **mod-specific html views (covered/total)**: 44/46 (add_button, add_link, add_url, admin, bar_right, board_link, closed_content, compact_missing, configure_button, configure_link, conflict, content_panel, content_with_title, debug_server_error, demo, denial, edit_button, edit_link, errors, favicon_tag, flash, full_page_link, head, header, header_title, help_link, hidden_content_field, input, label, labeled, labeled_editor, menu_block, meta_tags, not_found, one_line_content, page_title, page_title_tag, raw_one_line_content, rss_links, server_error, short_content, smart_label, stylesheet_tags, title_link, title_no_link, type, type_info, universal_edit_button, url_link, view_list)
+- **mod-specific html views (covered/total)**: 46/46 (add_button, add_link, add_url, admin, bar_right, board_link, closed_content, compact_missing, configure_button, configure_link, conflict, content_panel, content_with_title, debug_server_error, demo, denial, edit_button, edit_link, errors, favicon_tag, flash, full_page_link, head, header, header_title, help_link, hidden_content_field, input, label, labeled, labeled_editor, menu_block, meta_tags, not_found, one_line_content, page_title, page_title_tag, raw_one_line_content, rss_links, server_error, short_content, smart_label, stylesheet_tags, title_link, title_no_link, type, type_info, universal_edit_button, url_link, view_list)
 - **all html views declared**: add_button, add_link, add_url, admin, bar_right, board_link, closed_content, compact_missing, configure_button, configure_link, conflict, content, content_panel, content_with_title, core, debug_server_error, demo, denial, edit_button, edit_link, errors, favicon_tag, flash, full_page_link, head, header, header_title, help_link, hidden_content_field, input, label, labeled, labeled_editor, menu, menu_block, meta_tags, mini_unknown, not_found, one_line_content, page_title, page_title_tag, raw_one_line_content, rss_links, server_error, short_content, smart_label, stylesheet_tags, title, title_link, title_no_link, titled, type, type_info, universal_edit_button, unknown, url_link, view_list
 - **non-html views**: jsonld:bad_address, jsonld:compact_missing, jsonld:denial, jsonld:errors, jsonld:format_unsupported, jsonld:items, jsonld:not_found, jsonld:server_error, jsonld:test, jsonld:unknown, css:content, css:import, css:titled, css:unknown, css:url, csv:body, csv:header, csv:row, csv:titled, csv:unknown, data:ancestors, data:atom, data:cast, data:content, data:core, data:items, data:links, data:molecule, data:nucleus, data:pod, json:bad_address, json:compact_missing, json:denial, json:errors, json:format_unsupported, json:not_found, json:page, json:server_error, json:status, json:test, json:unknown, file:core, file:style, js:source, rss:closed, rss:comment_box, rss:content, rss:feed, rss:feed_body, rss:feed_description, rss:feed_item, rss:feed_item_description, rss:feed_title, rss:menu, rss:open, rss:open_content, text:core, text:text_without_nests, yaml:core
 - **view aliases**: :open -> :titled, :closed -> :labeled, :closed_content -> :one_line_content, :server_error -> :errors, :denial -> :errors, :not_found -> :errors, :server_error -> :errors, :open -> :titled, ...(3 more)
@@ -385,8 +387,8 @@ Mods scanned: **33**
 
 ### card-mod-help-0.20.0
 
-- **status**: `ported`
-- **verdict**: 5 mod-specific view(s) ported: guide, help, help_text, lead, popover
+- **status**: `declared-complete`
+- **verdict**: 5 mod-specific view(s) declared: guide, help, help_text, lead, popover
 - **evidence**: 5/5 html views in HTML_VIEWS∪mod-manifests (5/5 mod-specific); mod-loader pins: manifest=yes, test=13 it(), byte-pins=8
 - **mod-loader manifest**: yes (5 views registered)
 - **byte-pinned test**: yes (13 it() blocks, 8 toBe(<literal>) pins)
@@ -404,13 +406,13 @@ Mods scanned: **33**
 
 ### card-mod-history-0.20.0
 
-- **status**: `ported`
-- **verdict**: 11 mod-specific view(s) ported: act, act_legend, action_expanded, action_summary, change, creator_credit, ...
-- **evidence**: 11/12 html views in HTML_VIEWS∪mod-manifests (11/12 mod-specific); mod-loader pins: manifest=yes, test=40 it(), byte-pins=38
-- **mod-loader manifest**: yes (9 views registered)
-- **byte-pinned test**: yes (40 it() blocks, 38 toBe(<literal>) pins)
+- **status**: `declared-complete`
+- **verdict**: 12 mod-specific view(s) declared: act, act_legend, action_expanded, action_summary, board_act, change, ...
+- **evidence**: 12/12 html views in HTML_VIEWS∪mod-manifests (12/12 mod-specific); mod-loader pins: manifest=yes, test=40 it(), byte-pins=39
+- **mod-loader manifest**: yes (10 views registered)
+- **byte-pinned test**: yes (40 it() blocks, 39 toBe(<literal>) pins)
 - **set modules by pattern**: all=3
-- **mod-specific html views (covered/total)**: 11/12 (act, act_legend, action_expanded, action_summary, board_act, change, creator_credit, draft_legend, history, last_action, last_action_verb, updated_by)
+- **mod-specific html views (covered/total)**: 12/12 (act, act_legend, action_expanded, action_summary, board_act, change, creator_credit, draft_legend, history, last_action, last_action_verb, updated_by)
 - **all html views declared**: act, act_legend, action_expanded, action_summary, board_act, change, creator_credit, draft_legend, history, last_action, last_action_verb, updated_by
 - **non-html views**: json:actions, json:history
 - **view aliases**: (none)
@@ -423,7 +425,7 @@ Mods scanned: **33**
 
 ### card-mod-integrate-0.20.0
 
-- **status**: `ported`
+- **status**: `declared-complete`
 - **verdict**: manifest + byte-pinned test (21 pins across 28 it()): 
 - **evidence**: no html view declarations in this mod; mod-loader pins: manifest=yes, test=28 it(), byte-pins=21
 - **mod-loader manifest**: yes (0 views registered)
@@ -442,11 +444,11 @@ Mods scanned: **33**
 
 ### card-mod-layout-0.20.0
 
-- **status**: `ported`
-- **verdict**: 24 mod-specific view(s) ported: bar_bottom, close_modal_link, edit_inline, head_content, input, invite, ...
-- **evidence**: 25/25 html views in HTML_VIEWS∪mod-manifests (24/24 mod-specific); mod-loader pins: manifest=yes, test=34 it(), byte-pins=7
-- **mod-loader manifest**: yes (25 views registered)
-- **byte-pinned test**: yes (34 it() blocks, 7 toBe(<literal>) pins)
+- **status**: `declared-complete`
+- **verdict**: 24 mod-specific view(s) declared: bar_bottom, close_modal_link, edit_inline, head_content, input, invite, ...
+- **evidence**: 25/25 html views in HTML_VIEWS∪mod-manifests (24/24 mod-specific); mod-loader pins: manifest=yes, test=36 it(), byte-pins=7
+- **mod-loader manifest**: yes (26 views registered)
+- **byte-pinned test**: yes (36 it() blocks, 7 toBe(<literal>) pins)
 - **set modules by pattern**: abstract=4, all=6, right=3, self=8, type=2
 - **mod-specific html views (covered/total)**: 24/24 (bar_bottom, close_modal_link, edit_inline, head_content, input, invite, modal, modal_footer, modal_link, modal_menu, modal_title, my_card, nav_item, nav_link_in_dropdown, navbar_links, one_line_content, overlay_header, overlay_help_link, overlay_menu, overlay_title, pop_out_modal_link, sign_in, sign_out, sign_up)
 - **all html views declared**: bar_bottom, close_modal_link, core, edit_inline, head_content, input, invite, modal, modal_footer, modal_link, modal_menu, modal_title, my_card, nav_item, nav_link_in_dropdown, navbar_links, one_line_content, overlay_header, overlay_help_link, overlay_menu, overlay_title, pop_out_modal_link, sign_in, sign_out, sign_up
@@ -461,10 +463,10 @@ Mods scanned: **33**
 
 ### card-mod-list-0.20.0
 
-- **status**: `ported`
-- **verdict**: 5 mod-specific view(s) ported: input, list, nest_list_input, one_line_content, view_list
+- **status**: `declared-complete`
+- **verdict**: 5 mod-specific view(s) declared: input, list, nest_list_input, one_line_content, view_list
 - **evidence**: 6/6 html views in HTML_VIEWS∪mod-manifests (5/5 mod-specific); mod-loader pins: manifest=yes, test=15 it(), byte-pins=15
-- **mod-loader manifest**: yes (6 views registered)
+- **mod-loader manifest**: yes (10 views registered)
 - **byte-pinned test**: yes (15 it() blocks, 15 toBe(<literal>) pins)
 - **set modules by pattern**: abstract=6, all=1, right=2, self=3, type=4
 - **mod-specific html views (covered/total)**: 5/5 (input, list, nest_list_input, one_line_content, view_list)
@@ -480,7 +482,7 @@ Mods scanned: **33**
 
 ### card-mod-markdown-0.20.0
 
-- **status**: `ported`
+- **status**: `declared-complete`
 - **verdict**: manifest + byte-pinned test (15 pins across 14 it()): core
 - **evidence**: 1/1 html views in HTML_VIEWS∪mod-manifests (0/0 mod-specific); mod-loader pins: manifest=yes, test=14 it(), byte-pins=15
 - **mod-loader manifest**: yes (1 views registered)
@@ -499,8 +501,8 @@ Mods scanned: **33**
 
 ### card-mod-permissions-0.20.0
 
-- **status**: `ported`
-- **verdict**: 3 mod-specific view(s) ported: input, one_line_content, pointer_core
+- **status**: `declared-complete`
+- **verdict**: 3 mod-specific view(s) declared: input, one_line_content, pointer_core
 - **evidence**: 4/4 html views in HTML_VIEWS∪mod-manifests (3/3 mod-specific); mod-loader pins: manifest=yes, test=33 it(), byte-pins=33
 - **mod-loader manifest**: yes (4 views registered)
 - **byte-pinned test**: yes (33 it() blocks, 33 toBe(<literal>) pins)
@@ -518,11 +520,11 @@ Mods scanned: **33**
 
 ### card-mod-recaptcha-0.20.0
 
-- **status**: `ported`
-- **verdict**: manifest + byte-pinned test (12 pins across 41 it()): core
-- **evidence**: 1/1 html views in HTML_VIEWS∪mod-manifests (0/0 mod-specific); mod-loader pins: manifest=yes, test=41 it(), byte-pins=12
+- **status**: `declared-complete`
+- **verdict**: manifest + byte-pinned test (12 pins across 40 it()): core
+- **evidence**: 1/1 html views in HTML_VIEWS∪mod-manifests (0/0 mod-specific); mod-loader pins: manifest=yes, test=40 it(), byte-pins=12
 - **mod-loader manifest**: yes (1 views registered)
-- **byte-pinned test**: yes (41 it() blocks, 12 toBe(<literal>) pins)
+- **byte-pinned test**: yes (40 it() blocks, 12 toBe(<literal>) pins)
 - **set modules by pattern**: abstract=1, all=1, right=3, self=3
 - **mod-specific html views (covered/total)**: 0/0 ((none))
 - **all html views declared**: core
@@ -537,8 +539,8 @@ Mods scanned: **33**
 
 ### card-mod-rules-0.20.0
 
-- **status**: `ported`
-- **verdict**: 34 mod-specific view(s) ported: accordion_bar_list, accordion_rule_list, bar, bar_bottom, bar_middle, bar_right, ...
+- **status**: `declared-complete`
+- **verdict**: 34 mod-specific view(s) declared: accordion_bar_list, accordion_rule_list, bar, bar_bottom, bar_middle, bar_right, ...
 - **evidence**: 35/35 html views in HTML_VIEWS∪mod-manifests (34/34 mod-specific); mod-loader pins: manifest=yes, test=29 it(), byte-pins=19
 - **mod-loader manifest**: yes (30 views registered)
 - **byte-pinned test**: yes (29 it() blocks, 19 toBe(<literal>) pins)
@@ -556,8 +558,8 @@ Mods scanned: **33**
 
 ### card-mod-script-0.20.0
 
-- **status**: `ported`
-- **verdict**: 5 mod-specific view(s) ported: javascript_include_tag, javascript_tags, remote_script_tags, script_calls, script_variables
+- **status**: `declared-complete`
+- **verdict**: 5 mod-specific view(s) declared: javascript_include_tag, javascript_tags, remote_script_tags, script_calls, script_variables
 - **evidence**: 6/7 html views in HTML_VIEWS∪mod-manifests (5/6 mod-specific); mod-loader pins: manifest=yes, test=18 it(), byte-pins=15
 - **mod-loader manifest**: yes (6 views registered)
 - **byte-pinned test**: yes (18 it() blocks, 15 toBe(<literal>) pins)
@@ -575,11 +577,11 @@ Mods scanned: **33**
 
 ### card-mod-search-0.20.0
 
-- **status**: `ported`
-- **verdict**: 10 mod-specific view(s) ported: add_autocomplete_item, bar, card_list, checkbox_list, count, goto_autocomplete_item, ...
-- **evidence**: 13/23 html views in HTML_VIEWS∪mod-manifests (10/20 mod-specific); mod-loader pins: manifest=yes, test=27 it(), byte-pins=5
+- **status**: `declared-complete`
+- **verdict**: 10 mod-specific view(s) declared: add_autocomplete_item, bar, card_list, checkbox_list, count, goto_autocomplete_item, ...
+- **evidence**: 13/23 html views in HTML_VIEWS∪mod-manifests (10/20 mod-specific); mod-loader pins: manifest=yes, test=28 it(), byte-pins=5
 - **mod-loader manifest**: yes (8 views registered)
-- **byte-pinned test**: yes (27 it() blocks, 5 toBe(<literal>) pins)
+- **byte-pinned test**: yes (28 it() blocks, 5 toBe(<literal>) pins)
 - **set modules by pattern**: abstract=6, all=1, right=17, self=2, type=2
 - **mod-specific html views (covered/total)**: 10/20 (add_autocomplete_item, bar, body, card_list, checkbox_list, complete, count, feed_body, feed_item_description, goto_autocomplete_item, molecule, name_complete, name_match, one_line_content, results_for_keyword, search_box, search_box_complete, search_count, search_error, select2_option)
 - **all html views declared**: add_autocomplete_item, bar, body, card_list, checkbox_list, complete, core, count, feed_body, feed_item_description, goto_autocomplete_item, molecule, name_complete, name_match, no_search_results, one_line_content, results_for_keyword, search_box, search_box_complete, search_count, search_error, select2_option, title
@@ -594,11 +596,11 @@ Mods scanned: **33**
 
 ### card-mod-session-0.20.0
 
-- **status**: `ported`
-- **verdict**: manifest + byte-pinned test (6 pins across 13 it()): 
-- **evidence**: no html view declarations in this mod; mod-loader pins: manifest=yes, test=13 it(), byte-pins=6
+- **status**: `declared-complete`
+- **verdict**: manifest + byte-pinned test (5 pins across 7 it()): 
+- **evidence**: no html view declarations in this mod; mod-loader pins: manifest=yes, test=7 it(), byte-pins=5
 - **mod-loader manifest**: yes (0 views registered)
-- **byte-pinned test**: yes (13 it() blocks, 6 toBe(<literal>) pins)
+- **byte-pinned test**: yes (7 it() blocks, 5 toBe(<literal>) pins)
 - **set modules by pattern**: all=1, type=1
 - **mod-specific html views (covered/total)**: 0/0 ((none))
 - **all html views declared**: (none)
@@ -613,13 +615,13 @@ Mods scanned: **33**
 
 ### card-mod-style-0.20.0
 
-- **status**: `ported`
-- **verdict**: 6 mod-specific view(s) ported: box, box_bottom, box_middle, customize_button, labeled, stylesheet_include_tag
-- **evidence**: 7/13 html views in HTML_VIEWS∪mod-manifests (6/12 mod-specific); mod-loader pins: manifest=yes, test=17 it(), byte-pins=37
-- **mod-loader manifest**: yes (4 views registered)
+- **status**: `declared-complete`
+- **verdict**: 9 mod-specific view(s) declared: box, box_bottom, box_middle, customize_button, labeled, remote_include_tags, ...
+- **evidence**: 10/13 html views in HTML_VIEWS∪mod-manifests (9/12 mod-specific); mod-loader pins: manifest=yes, test=17 it(), byte-pins=37
+- **mod-loader manifest**: yes (8 views registered)
 - **byte-pinned test**: yes (17 it() blocks, 37 toBe(<literal>) pins)
 - **set modules by pattern**: abstract=7, self=2, type=5, type_plus_right=2
-- **mod-specific html views (covered/total)**: 6/12 (box, box_bottom, box_middle, compiled, compressed, customize_button, import, labeled, remote_include_tags, remote_style_tags, stylesheet_include_tag, stylesheet_path)
+- **mod-specific html views (covered/total)**: 9/12 (box, box_bottom, box_middle, compiled, compressed, customize_button, import, labeled, remote_include_tags, remote_style_tags, stylesheet_include_tag, stylesheet_path)
 - **all html views declared**: box, box_bottom, box_middle, compiled, compressed, core, customize_button, import, labeled, remote_include_tags, remote_style_tags, stylesheet_include_tag, stylesheet_path
 - **non-html views**: css:compiled, css:compressed, css:concat, css:core, css:import, css:labeled, scss:compiled, scss:core, scss:labeled, scss:stylesheet_include_tag
 - **view aliases**: (none)
@@ -632,8 +634,8 @@ Mods scanned: **33**
 
 ### card-mod-tabs-0.20.0
 
-- **status**: `ported`
-- **verdict**: 4 mod-specific view(s) ported: pills, pills_static, tabs, tabs_static
+- **status**: `declared-complete`
+- **verdict**: 4 mod-specific view(s) declared: pills, pills_static, tabs, tabs_static
 - **evidence**: 4/4 html views in HTML_VIEWS∪mod-manifests (4/4 mod-specific); mod-loader pins: manifest=yes, test=9 it(), byte-pins=1
 - **mod-loader manifest**: yes (4 views registered)
 - **byte-pinned test**: yes (9 it() blocks, 1 toBe(<literal>) pins)
@@ -651,13 +653,13 @@ Mods scanned: **33**
 
 ### card-mod-tinymce_editor-0.20.0
 
-- **status**: `ported`
-- **verdict**: 5 mod-specific view(s) ported: change_create_to_update, link_editor, modal_link_editor, new_image_buttons, open_nest_editor
-- **evidence**: 5/11 html views in HTML_VIEWS∪mod-manifests (5/11 mod-specific); mod-loader pins: manifest=yes, test=33 it(), byte-pins=31
-- **mod-loader manifest**: yes (5 views registered)
+- **status**: `declared-complete`
+- **verdict**: 11 mod-specific view(s) declared: change_create_to_update, link_editor, modal_link_editor, modal_nest_editor, modal_nest_image, nest_content, ...
+- **evidence**: 11/11 html views in HTML_VIEWS∪mod-manifests (11/11 mod-specific); mod-loader pins: manifest=yes, test=33 it(), byte-pins=31
+- **mod-loader manifest**: yes (12 views registered)
 - **byte-pinned test**: yes (33 it() blocks, 31 toBe(<literal>) pins)
 - **set modules by pattern**: all=3, self=1
-- **mod-specific html views (covered/total)**: 5/11 (change_create_to_update, link_editor, modal_link_editor, modal_nest_editor, modal_nest_image, nest_content, nest_editor, nest_image, new_image, new_image_buttons, open_nest_editor)
+- **mod-specific html views (covered/total)**: 11/11 (change_create_to_update, link_editor, modal_link_editor, modal_nest_editor, modal_nest_image, nest_content, nest_editor, nest_image, new_image, new_image_buttons, open_nest_editor)
 - **all html views declared**: change_create_to_update, link_editor, modal_link_editor, modal_nest_editor, modal_nest_image, nest_content, nest_editor, nest_image, new_image, new_image_buttons, open_nest_editor
 - **non-html views**: js:change_create_to_update, js:modal_nest_image, js:nest_image, js:new_image, js:new_image_buttons, js:open_nest_editor
 - **view aliases**: (none)
@@ -670,7 +672,7 @@ Mods scanned: **33**
 
 ### card-mod-virtual-0.20.0
 
-- **status**: `ported`
+- **status**: `declared-complete`
 - **verdict**: manifest + byte-pinned test (16 pins across 33 it()): 
 - **evidence**: no html view declarations in this mod; mod-loader pins: manifest=yes, test=33 it(), byte-pins=16
 - **mod-loader manifest**: yes (0 views registered)
@@ -697,14 +699,19 @@ Per gem, walk `set/**/*.rb` and `lib/**/*.rb`, mine via regex:
 
 Compare against decko-ts `src/card/set-patterns/registry.ts` PATTERN_TABLE
 (which set patterns are registered) and `src/card/render/views.ts` HTML_VIEWS
-UNIONED with every ported mod's manifest views under
+UNIONED with every registered mod's manifest views under
 `src/card/mod-loader/mods/*.ts` (the engine resolves both —
 HTML_VIEWS is the seed table, the mod loader's `viewsTable` is the
-post-load live table). Status thresholds:
-- **ported**: either (a) ≥50% of MOD-SPECIFIC declared html views are covered AND ≥50% of patterns the mod uses are implemented AND the mod has pattern-backed set modules; OR (b) the mod has a ported manifest under `src/card/mod-loader/mods/` AND a byte-pinned test under `tests/card/mod-loader/` with ≥5 `toBe(<literal>)` assertions (the verification round's 'complete' criterion).
-- **partial**: some coverage (any html view present, or ≥50% pattern coverage, or lib/ + permissions, or a manifest + partial pin file), but not enough for ported.
+post-load live table). Status thresholds — all declaration-level:
+- **declared-complete**: either (a) >=50% of the MOD-SPECIFIC html view NAMES the mod declares exist in the implemented surface AND >=50% of the patterns the mod uses are implemented AND the mod has pattern-backed set modules; OR (b) the mod has a registered manifest under `src/card/mod-loader/mods/` AND a byte-pinned test under `tests/card/mod-loader/` with >=5 `toBe(<literal>)` assertions (the verification round's criterion). Neither branch renders the mod end to end: (a) compares names, (b) pins the bytes of the views its tests render only.
+- **partial**: some declarations (any html view name present, or >=50% pattern coverage, or lib/ + permissions, or a manifest + partial pin file), but not enough for declared-complete.
 - **missing**: zero coverage.
 - **ignored**: legacy-labeled per upstream (decko-commons#1282 thread) or data/transform-only with no set/ tree.
 
-See `docs/decisions/0004-mods-compiled-into-the-view-registry.md` for caveats, false positives, and the
-boundary cases that move a mod between categories.
+NOT measured by any label above: whether event hooks fire, whether
+non-html formats (json, css, email, rss, csv) render, and whether any
+renderer beyond the byte-pinned views matches Ruby's bytes. See
+`docs/coverage-inventory.md` for where byte-level evidence actually
+exists, and `docs/decisions/0004-mods-compiled-into-the-view-registry.md`
+for caveats, false positives, and the boundary cases that move a mod
+between categories.

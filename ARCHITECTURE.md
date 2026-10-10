@@ -128,7 +128,9 @@ sets, the views, events and settings the Ruby mod defines. The loader applies
 them in Ruby's load order so that later mods override earlier ones in the
 same way. A generator compares each mod's declared views, set modules, events
 and settings against what the registry implements, and reports a per-mod
-verdict; see `tools/compat-report/`.
+verdict of declared-complete, partial or missing — a declaration-level
+measure, not a behavior one (see `docs/decisions/0004-mods-compiled-into-the-view-registry.md`
+for exactly what is and is not supported); see `tools/compat-report/`.
 
 ---
 

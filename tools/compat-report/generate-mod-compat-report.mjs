@@ -4,8 +4,16 @@
 // (set patterns, set modules, html views, rules - parsing set/*.rb, lib/**/*.rb,
 // set/**/*.haml), then compare against the decko-ts implemented surface
 // (src/card/set-patterns/, src/card/render/ - read-only inspection of source).
-// Classify each mod as ported / partial / missing with one line of evidence per
-// verdict. Legacy-labeled mods are flagged 'ignored'.
+// Classify each mod as declared-complete / partial / missing with one line of
+// evidence per verdict. Legacy-labeled mods are flagged 'ignored'.
+//
+// "declared-complete" measures DECLARATIONS ONLY: that a manifest registers the
+// mod's views and a test file pins some of their bytes, or that the mod's
+// declared html view names and set patterns exist in the implemented surface.
+// It does NOT measure executable behavior: it says nothing about whether an
+// event hook fires, whether a non-html format (json, css, email, rss, csv)
+// renders, or whether any renderer beyond the handful of byte-pinned views
+// matches Ruby's output. See docs/decisions/0004-mods-compiled-into-the-view-registry.md.
 //
 // Usage:
 //   node tools/compat-report/generate-mod-compat-report.mjs
@@ -63,9 +71,9 @@ const IMPLEMENTED_PATTERNS = [
 // "Universal" views shipped by card-mod-format and the deck core - every
 // card renders through them. A mod that declares only these as its html
 // views contributes NO mod-specific rendering; using them as the sole
-// signal would over-report ported status (a mod that just calls
-// `view :core do ...end` would appear "ported" because :core is in
-// HTML_VIEWS, even though nothing mod-specific is implemented). See
+// signal would over-report declared-complete status (a mod that just calls
+// `view :core do ...end` would appear "declared-complete" because :core is
+// in HTML_VIEWS, even though nothing mod-specific is declared). See
 // docs/decisions/0004-mods-compiled-into-the-view-registry.md.
 const UNIVERSAL_HTML_VIEWS = new Set([
   "core",
@@ -449,7 +457,7 @@ function inventoryDeckoTs() {
     htmlViews.add(m[1]);
   }
 
-  // 2b) MOD-LOADER REGISTRATIONS — every ported mod's manifest exports
+  // 2b) MOD-LOADER REGISTRATIONS — every registered mod's manifest exports
   // additional views through manifest.views[]; the rendered surface the
   // engine consults at request time is HTML_VIEWS + the mod-loader
   // view-chains table (src/card/mod-loader.ts#viewsTable). Without unioning
@@ -497,10 +505,12 @@ function inventoryDeckoTs() {
 // For each mod: scan the mod's manifest (mod-loader/mods/*.ts) for the
 // view registrations it contributes, and the mod's test file
 // (tests/card/mod-loader/*.test.ts) for the A/B pin tests that prove each
-// rendered view matches the Ruby oracle bytes. A mod is "complete" in the
-// honest sense when the manifest exists AND the test file has byte-pinning
-// assertions (toBe(<literal-string>) per the existing pin style in
-// tests/card/mod-loader/card-mod-format.test.ts).
+// rendered view matches the Ruby oracle bytes. A mod is declared-complete
+// in the classifier's sense when the manifest exists AND the test file has
+// byte-pinning assertions (toBe(<literal-string>) per the existing pin style
+// in tests/card/mod-loader/card-mod-format.test.ts). That is still a
+// declaration-level signal: the pins cover the views they render, not every
+// view the manifest registers.
 function inventoryModPins(gemName) {
   // gemName is e.g. "card-mod-format-0.20.0"; mod id is "card-mod-format".
   const modId = gemName.replace(/-0\.\d+\.\d+$/, "");
@@ -557,7 +567,7 @@ function inventoryModPins(gemName) {
 // them is vacuous - no set modules / no views to port) AND a clearly
 // config-only or backend-only lib/ are flagged. Mods with non-trivial set/
 // trees are NOT in this set, even if their lib/ is a thin config wrapper,
-// because the set/ tree represents unported code that should show up as
+// because the set/ tree represents undeclared code that should show up as
 // missing/partial in the report. See docs/decisions/0004-mods-compiled-into-the-view-registry.md for the
 // evidence trail and the upstream-thread citations.
 const LEGACY_MODS = new Set([
@@ -623,7 +633,7 @@ function classify(inv, surface, pins) {
       : implementedUsed.length / patternsUsed.length;
 
   // HTML views coverage. surface.htmlViews is the union of HTML_VIEWS and
-  // every ported mod's manifest.views[] (added by inventoryDeckoTs).
+  // every registered mod's manifest.views[] (added by inventoryDeckoTs).
   const htmlViewsDeclared = inv.viewsByFormat["html"] ?? [];
   const htmlViewsCovered = htmlViewsDeclared.filter((v) =>
     surface.htmlViews.includes(v),
@@ -663,8 +673,8 @@ function classify(inv, surface, pins) {
   // Byte-pin evidence from the per-mod test file: the A/B pattern
   // (tests/card/mod-loader/card-mod-XYZ.test.ts) pins the rendered bytes
   // against the Ruby oracle capture. >=5 byte-pins per mod is the threshold
-  // the verification round used to call a mod "complete" — below that, the
-  // manifest may exist but the views are not yet byte-pinned.
+  // the verification round used to call a mod "declared-complete" — below
+  // that, the manifest may exist but the views are not yet byte-pinned.
   const hasManifest = pins.manifestExists;
   const hasTest = pins.testExists;
   const bytePins = pins.bytePins;
@@ -684,21 +694,25 @@ function classify(inv, surface, pins) {
   }
 
   // Status thresholds (see docs/decisions/0004-mods-compiled-into-the-view-registry.md for the rubric).
-  // ported:    either (a) ≥50% of MOD-SPECIFIC html views covered AND ≥50%
-  //            of patterns implemented AND pattern-backed set modules (the
-  //            classic view+set rubric); OR (b) the mod has a ported
-  //            manifest + a byte-pinned test file with ≥5 toBe(<literal>)
-  //            pins (the verification round's "complete" criterion). The
-  //            OR widens the rubric to honor the loader+pin surface that
-  //            the HTML_VIEWS-only check missed.
-  // partial:   some coverage (any html view present, or ≥50% pattern
+  // declared-complete:
+  //            either (a) >=50% of MOD-SPECIFIC html view NAMES declared by the
+  //            mod exist in the implemented surface AND >=50% of the patterns
+  //            it uses are implemented AND pattern-backed set modules exist
+  //            (the name+pattern rubric); OR (b) the mod has a registered
+  //            manifest + a byte-pinned test file with >=5 toBe(<literal>)
+  //            pins (the verification round's criterion). Both measure
+  //            declarations: a name present in the view table, a manifest
+  //            present in the loader, pins for the views they render. None of
+  //            it measures executable behavior, event hooks, or non-html
+  //            formats.
+  // partial:   some declarations (any html view name present, or >=50% pattern
   //            coverage, or substantial lib/ + permissions, or a partial
-  //            pin file), but not enough for ported.
+  //            pin file), but not enough for declared-complete.
   // missing:   zero coverage.
   let status = "missing";
   if (totalSetModules === 0 && inv.counts.libRbFiles === 0 && !hasManifest) {
     // Pure data/transform gem with no set/ and no lib/. Treat as
-    // config-only / data-only — port is vacuous.
+    // config-only / data-only — declaration is vacuous.
     status = "ignored";
     evidence = "data/transform-only gem (no set/ tree, no lib/ ruby)";
   } else if (
@@ -708,7 +722,7 @@ function classify(inv, surface, pins) {
       patternBackedModules) ||
     bytePinComplete
   ) {
-    status = "ported";
+    status = "declared-complete";
   } else if (
     htmlViewsCovered.length > 0 ||
     patternsCoverage >= 0.5 ||
@@ -723,12 +737,12 @@ function classify(inv, surface, pins) {
 
   // One-line verdict + evidence.
   let verdict = "";
-  if (status === "ported") {
+  if (status === "declared-complete") {
     if (bytePinComplete && specificViewsCovered.length === 0) {
       // Honored via the byte-pin criterion alone.
       verdict = `manifest + byte-pinned test (${bytePins} pins across ${pins.testCount} it()): ${pins.manifestViews.slice(0, 6).join(", ")}${pins.manifestViews.length > 6 ? ", ..." : ""}`;
     } else {
-      verdict = `${specificViewsCovered.length} mod-specific view(s) ported: ${specificViewsCovered.slice(0, 6).join(", ")}${specificViewsCovered.length > 6 ? ", ..." : ""}`;
+      verdict = `${specificViewsCovered.length} mod-specific view(s) declared: ${specificViewsCovered.slice(0, 6).join(", ")}${specificViewsCovered.length > 6 ? ", ..." : ""}`;
     }
   } else if (status === "partial") {
     const specificMissing = specificViewsDeclared.filter(
@@ -794,10 +808,10 @@ function renderMd(report) {
   lines.push("");
   lines.push(`Mods scanned: **${report.mods.length}**`);
   lines.push("");
-  const byStatus = { ported: 0, partial: 0, missing: 0, ignored: 0 };
+  const byStatus = { "declared-complete": 0, partial: 0, missing: 0, ignored: 0 };
   for (const m of report.mods) byStatus[m.classification.status]++;
   lines.push(
-    `- ported:  **${byStatus.ported}**`,
+    `- declared-complete:  **${byStatus["declared-complete"]}**`,
   );
   lines.push(
     `- partial: **${byStatus.partial}**`,
@@ -807,6 +821,10 @@ function renderMd(report) {
   );
   lines.push(
     `- ignored: **${byStatus.ignored}** (legacy-labeled or data-only)`,
+  );
+  lines.push("");
+  lines.push(
+    "**What these labels measure: declarations only.** \"declared-complete\" means the mod's view names, set modules and set patterns exist in this repository's view registry and mod loader (and, on the byte-pin criterion, that a test pins some rendered views' bytes against the Ruby oracle capture). It does NOT measure executable behavior: no event hook is exercised, no non-html format (json, css, email, rss, csv) is rendered, and every view beyond the handful the byte-pins render is unproven against Ruby's output. Where the evidence for what IS byte-proven lives: `docs/coverage-inventory.md`.",
   );
   lines.push("");
   lines.push("## decko-ts implemented surface (truth)");
@@ -868,17 +886,22 @@ function renderMd(report) {
   lines.push("");
   lines.push("Compare against decko-ts `src/card/set-patterns/registry.ts` PATTERN_TABLE");
   lines.push("(which set patterns are registered) and `src/card/render/views.ts` HTML_VIEWS");
-  lines.push("UNIONED with every ported mod's manifest views under");
+  lines.push("UNIONED with every registered mod's manifest views under");
   lines.push("`src/card/mod-loader/mods/*.ts` (the engine resolves both —");
   lines.push("HTML_VIEWS is the seed table, the mod loader's `viewsTable` is the");
-  lines.push("post-load live table). Status thresholds:");
-  lines.push("- **ported**: either (a) ≥50% of MOD-SPECIFIC declared html views are covered AND ≥50% of patterns the mod uses are implemented AND the mod has pattern-backed set modules; OR (b) the mod has a ported manifest under `src/card/mod-loader/mods/` AND a byte-pinned test under `tests/card/mod-loader/` with ≥5 `toBe(<literal>)` assertions (the verification round's 'complete' criterion).");
-  lines.push("- **partial**: some coverage (any html view present, or ≥50% pattern coverage, or lib/ + permissions, or a manifest + partial pin file), but not enough for ported.");
+  lines.push("post-load live table). Status thresholds — all declaration-level:");
+  lines.push("- **declared-complete**: either (a) >=50% of the MOD-SPECIFIC html view NAMES the mod declares exist in the implemented surface AND >=50% of the patterns the mod uses are implemented AND the mod has pattern-backed set modules; OR (b) the mod has a registered manifest under `src/card/mod-loader/mods/` AND a byte-pinned test under `tests/card/mod-loader/` with >=5 `toBe(<literal>)` assertions (the verification round's criterion). Neither branch renders the mod end to end: (a) compares names, (b) pins the bytes of the views its tests render only.");
+  lines.push("- **partial**: some declarations (any html view name present, or >=50% pattern coverage, or lib/ + permissions, or a manifest + partial pin file), but not enough for declared-complete.");
   lines.push("- **missing**: zero coverage.");
   lines.push("- **ignored**: legacy-labeled per upstream (decko-commons#1282 thread) or data/transform-only with no set/ tree.");
   lines.push("");
-  lines.push("See `docs/decisions/0004-mods-compiled-into-the-view-registry.md` for caveats, false positives, and the");
-  lines.push("boundary cases that move a mod between categories.");
+  lines.push("NOT measured by any label above: whether event hooks fire, whether");
+  lines.push("non-html formats (json, css, email, rss, csv) render, and whether any");
+  lines.push("renderer beyond the byte-pinned views matches Ruby's bytes. See");
+  lines.push("`docs/coverage-inventory.md` for where byte-level evidence actually");
+  lines.push("exists, and `docs/decisions/0004-mods-compiled-into-the-view-registry.md`");
+  lines.push("for caveats, false positives, and the boundary cases that move a mod");
+  lines.push("between categories.");
   lines.push("");
   return lines.join("\n");
 }
@@ -904,7 +927,9 @@ function main() {
   const report = {
     generatedAt: new Date().toISOString(),
     gemDir: "$GEM_HOME",
-    repo: REPO,
+    // portable placeholder, per the header comment: the report must stay
+    // portable across machines, so it records no absolute checkout path.
+    repo: "REPO_ROOT",
     surface: {
       implementedPatterns: surface.implementedPatterns,
       htmlViews: surface.htmlViews,

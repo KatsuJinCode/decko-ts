@@ -16,6 +16,12 @@ Ruby Decko is the oracle. Its answers are recorded once per fixture under
 `fixtures/<name>/expected/` and committed, so grading an engine needs Node
 and the engine, not Ruby.
 
+This harness is one instrument among several. What it measures, what the
+other instruments cover, and what nothing in the public package measures
+(browser journeys, the default PBKDF2 password path in the graded fixture,
+hosted database writes) is inventoried in
+[../docs/coverage-inventory.md](../docs/coverage-inventory.md).
+
 ## Layout
 
 ```

@@ -1,5 +1,28 @@
 # import-deck.mjs — the productized importer, with the chunking recipe
 
+## Migration compatibility
+
+| Source | Supported | Ingest path |
+|---|---|---|
+| SQLite deck file | yes | `source-sqlite.mjs` + `generalized-import.mjs` |
+| MySQL dump (mysqldump text) | yes | `parse-dump.mjs` + `import.mjs` |
+| deck-INSERT seed SQL | yes | `deck-seed-parser.mjs` |
+| PostgreSQL dump | **no** | no PostgreSQL adapter or dialect translator exists in the tree (removed as unverified — `docs/decisions/0007-atomic-saves-and-transaction-contract.md`) |
+
+Two further compatibility facts a migration must plan around:
+
+- **Passwords.** By default the port stores new and upgraded passwords as
+  PBKDF2, which **Ruby Decko cannot verify**. While Ruby Decko still serves
+  the same deck (a shared-engine migration), the port must run with
+  `DECKO_PASSWORD_HASH=legacy-sha1` so every digest stays in Ruby's form;
+  accounts whose passwords the port already upgraded need a password reset to
+  sign in through Ruby. Full detail: `docs/SECURITY.md`, approved divergence 2.
+- **D1 transaction semantics differ** from Ruby's and from plain SQLite: a
+  save on D1 is atomic through a compensating journal (not `BEGIN`/`COMMIT`),
+  other connections can read a D1 save's rows before it commits, and ids
+  handed back by a rollback are not reused. `docs/decisions/0007-atomic-saves-and-transaction-contract.md`
+  is the authoritative table.
+
 ## What it does
 
 `tools/migrate/import-deck.mjs` is the one-command productized path

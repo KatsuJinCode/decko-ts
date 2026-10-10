@@ -298,7 +298,7 @@ if (opts.modCompat) {
   } else {
     try {
       const compat = JSON.parse(readFileSync(compatPath, "utf8"));
-      const byStatus = { ported: 0, partial: 0, missing: 0, ignored: 0 };
+      const byStatus = { "declared-complete": 0, partial: 0, missing: 0, ignored: 0 };
       for (const m of compat.mods ?? []) {
         const s = m.classification?.status ?? "missing";
         byStatus[s] = (byStatus[s] ?? 0) + 1;
@@ -314,7 +314,7 @@ if (opts.modCompat) {
         })),
       };
       console.log(`\nmod-compat:`);
-      console.log(`  ported:  ${byStatus.ported ?? 0}`);
+      console.log(`  declared-complete:  ${byStatus["declared-complete"] ?? 0}`);
       console.log(`  partial: ${byStatus.partial ?? 0}`);
       console.log(`  missing: ${byStatus.missing ?? 0}`);
       console.log(`  ignored: ${byStatus.ignored ?? 0}`);

@@ -10,6 +10,15 @@ Bunny Database database. No object storage, no queues, no cron triggers. An
 origin server is optional and is used when the deployment needs writes or a
 signed-in session.
 
+**Costs and energy.** This repository contains no cost measurements and no
+energy measurements for any deployment topology. The only cost arithmetic in
+the tree is the dated trial-scale walkthrough in
+[bunny-edge-trial-runbook.md](../deploy/bunny-edge-trial-runbook.md) (scripting
+line only, rates as published on Bunny's pricing page on 2026-10-01); what a
+real deployment invoices depends on its request volume, CPU time per request
+and database usage, and no per-request time figure in that walkthrough is a
+measurement.
+
 ---
 
 ## The two bundles

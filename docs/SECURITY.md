@@ -61,6 +61,24 @@ Please report suspected vulnerabilities privately to the maintainers rather than
 
 ## Migration tooling
 
+### Migration compatibility at a glance
+
+- **Deck conversion:** supported from a SQLite deck file, a MySQL dump
+  (mysqldump text) and deck-INSERT seed SQL. **PostgreSQL is unsupported** —
+  no PostgreSQL adapter exists in the tree. See the compatibility matrix at
+  the top of `tools/migrate/IMPORT_DECK_RECIPE.md`.
+- **Passwords during a shared-engine migration:** Ruby cannot verify the
+  port's default PBKDF2 hashes. While Ruby Decko still serves the same deck,
+  the port must run with `DECKO_PASSWORD_HASH=legacy-sha1`; an account whose
+  password the port already set or upgraded cannot sign in through Ruby until
+  its password is set again. Full detail: approved divergence 2 above.
+- **Transaction semantics:** on Cloudflare D1 a save is atomic through a
+  compensating journal rather than `BEGIN`/`COMMIT`, other connections can
+  read a save's rows before it commits, and rolled-back ids are not reused —
+  a difference from Ruby's and plain SQLite's behavior that a migration
+  validating rows mid-import must account for. Authoritative table:
+  `docs/decisions/0007-atomic-saves-and-transaction-contract.md`.
+
 ### Shadow routing never runs a write twice
 
 The shadow router (`tools/shadow/shadow-router.mjs`) lets a site run decko-ts beside Ruby Decko during a migration: every request goes to Ruby, whose answer the visitor gets, and a copy goes to decko-ts for comparison. The two engines share the deck, so copying a write would run it twice: two sets of rows and history, two emails, two uploads.

@@ -145,10 +145,20 @@ preserved, and `OR` is associative, so the statement means the same thing.
 ## The trickle importer
 
 `tools/d1-trickle/` imports a large deck into D1 in bounded daily slices.
-D1's free plan writes a limited number of rows per day, and a deck of tens of
-thousands of cards cannot be inserted in one pass without exhausting the
-allowance — so the importer plans the work into units and spends the daily
-budget a slice at a time.
+D1's free plan caps row writes per day, and a deck of tens of thousands of
+cards cannot be inserted in one pass without exhausting that day's allowance
+— so the importer plans the work into units and spends the daily budget a
+slice at a time. How many days an import needs is a property of the deck
+(total rows to write) and of the share of the daily cap the operator
+configures; the cap itself is Cloudflare's figure, changes over time, and is
+read from Cloudflare's published D1 limits page rather than restated here.
+
+**Costs and energy.** This repository contains no cost measurements and no
+energy measurements for any deployment topology. What a deployment invoices
+depends on that deployment's request volume, CPU time, storage and egress;
+Cloudflare's published, dated rates (Workers paid plan, D1 rows read/written)
+are the source for any bill estimate, and no estimate in this repository
+should be read as a measurement.
 
 **Input.** A local SQLite copy of the deck, which a snapshot tool can produce
 from a running libSQL database through a read-only claim check. Tables that

@@ -224,24 +224,28 @@ script serves a single request, the first increment of each component is
 charged in full, and all remaining usage within that increment is already
 covered."
 
-Arithmetic for a trial that serves, say, 50 requests at ~12 ms CPU each:
+Arithmetic for a trial that serves, say, 50 requests. **The ~12 ms CPU per
+request below is an assumption, not a measurement** — no request has been
+profiled on Bunny's runtime, and the conclusion does not depend on it: any
+per-request CPU small enough to leave all 50 requests inside the first
+increment produces the same floor.
 
 ```
-CPU time:  50 requests x 12 ms = 600 ms
+CPU time:  50 requests x 12 ms (assumed) = 600 ms
            600 ms is inside the first 1,000,000 ms increment
            1 increment x $0.02                            = $0.02
 
 Requests:  50 requests is inside the first 1,000,000 increment
            1 increment x $0.20                            = $0.20
-                                                            --------
-                                                            $0.22 / month
+                                                          --------
+                                                          $0.22 / month
 ```
 
 **$0.22 is the floor and it is reached on the first request.** It does not move
 until you pass 1,000,000 requests or 1000 s of CPU in a month. Worked examples
-on that page: 10 M requests x 10 ms = $4.00; 100 M requests x 7 ms = $34.00.
-To stay at the floor, stay under 1,000,000 requests a month — roughly 33,000
-requests a day, or one request every 2.6 seconds.
+quoted from that page: 10 M requests x 10 ms = $4.00; 100 M requests x 7 ms =
+$34.00. To stay at the floor, stay under 1,000,000 requests a month — roughly
+33,000 requests a day, or one request every 2.6 seconds.
 
 **Separately billed:** CDN bandwidth, at the normal CDN rate, not included in
 the scripting line (same page). The database is billed on its own schedule —
@@ -318,3 +322,6 @@ operator to run.
    code, the fix is to install the SDK and inline it (delete the entry from
    `EXTERNAL_RUNTIME_IMPORTS` in `tools/bundle-bunny-worker.mjs`). This was
    not verifiable without an account.
+
+No energy measurement exists anywhere in this repository for this or any
+other topology; nothing in this runbook is an energy claim.

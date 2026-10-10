@@ -1264,12 +1264,12 @@ function buildRegistry() {
     } else if (sc !== null) {
       status = "ported";
       statusEvidence = `harness scorecard, 0 RED: ${sc.totals.validated}/${sc.totals.behaviors} harness-oracle-validated, ${sc.totals.standingNet} pinned by the mod's standing suite${sc.totals.namedRemainder ? `, ${sc.totals.namedRemainder} named-remainder(s) (see the scorecard rows)` : ``} (see tools/mod-porting-harness/reports/${modId}/scorecard.md)`;
-    } else if (manifestExists && compatStatus === "ported") {
+    } else if (manifestExists && compatStatus === "declared-complete") {
       status = "ported";
-      statusEvidence = c?.classification?.verdict ?? "compat report ported + manifest present (harness not yet run)";
+      statusEvidence = c?.classification?.verdict ?? "compat report declared-complete + manifest present (harness not yet run)";
     } else {
       status = "unported";
-      statusEvidence = c?.classification?.verdict ?? (manifestExists ? "manifest present but compat report not ported (harness not yet run)" : "no TS manifest");
+      statusEvidence = c?.classification?.verdict ?? (manifestExists ? "manifest present but compat report not declared-complete (harness not yet run)" : "no TS manifest");
     }
     rows.push({
       mod: modId,

@@ -4,7 +4,9 @@ This engine is a port. Its acceptance criterion is not "it works" but "it
 produces the same bytes Ruby Decko produces". That criterion is only worth
 anything if the measurement behind it is trustworthy, so this document
 describes how parity is measured, what each instrument can and cannot prove,
-and where the numbers that get quoted come from.
+and where the numbers that get quoted come from. Per-domain coverage — what
+is measured where, with counts, and what the public package does not measure
+at all — is inventoried in [coverage-inventory.md](coverage-inventory.md).
 
 The oracle is card 1.110.0 and decko 0.20.0 on Ruby 3.3. Everything below
 that says "Ruby" means that version.
