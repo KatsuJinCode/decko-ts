@@ -935,8 +935,18 @@ const inviteView = accountLinkView("signup", "invite-link", "Invite", "new");
  *  more than one current role and the *enabled_roles codename exists, the
  *  interactive_roles_dropdown nest of +*enabled_roles in :edit_inline.
  *  Signed-out or unprepared sessions render "" (the denial :blank shape).
- */
-const myCardView: ViewFn = (ctx) => fillUniqueIds(ctx.fmt.engine.pageSessionMyCardHtml ?? "", ctx.fmt);
+ *
+ *  Consuming the prepared body marks the ensure_roles fill for the rest of
+ *  the request (set/right/enabled_roles.rb:52 — the roles nest's edit_inline
+ *  render mutates the session card mid-request): on a page whose MAIN body
+ *  already rendered the *account_links :core, this navbar nest serves the
+ *  FILLED content input; on every other page this is the request's first
+ *  roles-nest render and serves the blank one — both oracle-pinned. */
+const myCardView: ViewFn = (ctx) => {
+  const prepared = ctx.fmt.engine.pageSessionMyCardHtml ?? "";
+  ctx.fmt.engine.markSessionRolesContentFilled?.();
+  return fillUniqueIds(prepared, ctx.fmt);
+};
 
 /** right/enabled_roles.rb:26-43 — view :edit_inline (perms :none, unknown:
  *  true, cache: :never, wrap: :slot, super()) whose checkbox_input override
@@ -946,12 +956,17 @@ const myCardView: ViewFn = (ctx) => fillUniqueIds(ctx.fmt.engine.pageSessionMyCa
  *  The port composes the account_dropdown from the prepared session state
  *  (pageSessionRolesDropdownHtml: the role checkboxes, every one checked,
  *  because ensure_roles fills the session card's blank content with every
- *  current role); a signed-out engine composes the Anonymous-actor shape. */
+ *  current role); a signed-out engine composes the Anonymous-actor shape.
+ *  This IS the ensure_roles mutation point (checkbox_input's first line),
+ *  so consuming the prepared state marks the fill for the rest of the
+ *  request. */
 const enabledRolesEditInlineView: ViewFn = (ctx) => {
   // A session actor with roles: the role-checkbox dropdown; otherwise the
   // plain account dropdown.
+  const prepared = ctx.fmt.engine.pageSessionRolesDropdownHtml;
+  if (prepared !== undefined) ctx.fmt.engine.markSessionRolesContentFilled?.();
   const sessionHtml =
-    ctx.fmt.engine.pageSessionRolesDropdownHtml ??
+    prepared ??
     myCardDropdownInnerHtml(
       "Anonymous",
       { actor: true, accountSettings: false, signin: true },

@@ -3585,6 +3585,14 @@ export interface RenderEngineLike {
    *  (set/right/enabled_roles.rb checkbox_input), or the plain dropdown
    *  when the actor holds a single role; undefined when signed out. */
   readonly pageSessionRolesDropdownHtml?: string;
+  /** The ensure_roles mutation seam (set/right/enabled_roles.rb:52): a view
+   *  fn that has just consumed the roles-nest html marks the fill so the
+   *  NEXT roles nest render of the SAME request serves the filled content
+   *  input (Ruby's card object mutates mid-request; the fill does not cross
+   *  the request boundary — the oracle's bare view ops pin blank fields).
+   *  Optional: engines without a prepared session chrome never carry the
+   *  roles nest. */
+  markSessionRolesContentFilled?(): void;
   /** ok?(:update) for an arbitrary card, computed on demand (the page head's
    *  universal_edit_button perms: :update gate — card-mod-format
    *  set/all/html/head.rb:46). Optional: engines without it render the

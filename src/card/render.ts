@@ -639,26 +639,39 @@ export class RenderEngine implements RenderEngineLike {
    *  response. */
   renderAbsentCards = false;
   /** The prepared signed-in *account_links navbar items (see
-   *  RenderEngineLike.pageSessionAccountLinksHtml). Filled once per
-   *  session actor by prepareSessionAccountLinks; survives across pages of
-   *  the same engine (the chrome session does not change mid-engine). */
+   *  RenderEngineLike.pageSessionAccountLinksHtml, the UNFILLED variant).
+   *  Filled once per session actor by prepareSessionAccountLinks; survives
+   *  across pages of the same engine (the chrome session does not change
+   *  mid-engine; the ensure_roles fill rides the per-request flag, not the
+   *  prepared strings). */
   private sessionAccountLinks: string | undefined;
   private sessionAccountLinksActorId: number | undefined;
   /** The prepared :my_card view body (the account_dropdown arm) — see
    *  RenderEngineLike.pageSessionMyCardHtml. */
   private sessionMyCardHtml: string | undefined;
+  /** The FILLED :my_card variant (the ensure_roles read-fill applied — the
+   *  hidden content field's value present). Baked alongside the unfilled
+   *  string when the session's actor holds the roles nest; served once a
+   *  render has already shown the roles nest once (below). */
+  private sessionMyCardHtmlFilled: string | undefined;
   /** RenderEngineLike.pageSessionRolesDropdownHtml. */
   private sessionRolesDropdownHtml: string | undefined;
-  /** The session +*enabled_roles card's content: set/right/enabled_roles.rb
-   *  ensure_roles fills it during the first render that shows the roles
-   *  dropdown, after that render's content input (blank) is out; the card
-   *  stays cached, so later renders carry the roles. Actor ids whose card an
-   *  earlier render filled. */
-  private enabledRolesContentFilled = new Set<number>();
-  /** The actor whose roles dropdown the current render showed (filled at
-   *  the end of the render). */
-  private enabledRolesPendingActor: number | undefined;
-  private sessionAccountLinksFilled = false;
+  /** The prepared signed-in *account_links navbar items, FILLED variant (the
+   *  my_card roles nest inside it carrying the ensure_roles value). */
+  private sessionAccountLinksFilledHtml: string | undefined;
+  /** The session +*enabled_roles card's content fill, the port of
+   *  set/right/enabled_roles.rb ensure_roles' ORDER SEMANTICS (probed live
+   *  against the Ruby oracle, 2026-10-10): checkbox_input calls
+   *  card.ensure_roles at EVERY roles-nest render; the card object mutates
+   *  mid-request, so the FIRST nest render of a request shows the blank
+   *  content input (the fill lands after the field is out) and every LATER
+   *  nest render of the same request reads the filled content. Ruby's fill
+   *  does not cross the request boundary (Card::Env.reset per recorded
+   *  op; the oracle's bare view ops pin blank fields), so the flag is
+   *  render-scoped: cleared at every render() entry, flipped by the view
+   *  fns AFTER they consume the roles-nest html
+   *  (RenderEngineLike.markSessionRolesContentFilled). */
+  private sessionRolesContentFilled = false;
   private sessionAccountLinksHasRoles = false;
 
   /** The render-time history seam bundle (src/card/history/render-seam.ts):
@@ -1107,6 +1120,9 @@ export class RenderEngine implements RenderEngineLike {
     this.historyReader = undefined;
     this.updaterReader = undefined;
     this.requestNewCard = params.newCard;
+    // The ensure_roles fill is per-request (see the field note): a fresh
+    // render starts with the session card's blank content.
+    this.sessionRolesContentFilled = false;
 
     // Read-permission preparation (see src/card/permissions/). On a cold
     // render the state resolution rides the prefetch batch (one round trip
@@ -7031,10 +7047,6 @@ export class RenderEngine implements RenderEngineLike {
     } finally {
       this.unknownCreateMisses.clear();
       this.unknownCreateRenderDepth -= 1;
-      if (this.enabledRolesPendingActor !== undefined) {
-        this.enabledRolesContentFilled.add(this.enabledRolesPendingActor);
-        this.enabledRolesPendingActor = undefined;
-      }
     }
   }
 
@@ -7048,29 +7060,45 @@ export class RenderEngine implements RenderEngineLike {
     this.sessionAccountLinks = undefined;
     this.sessionAccountLinksActorId = undefined;
     this.sessionMyCardHtml = undefined;
+    this.sessionMyCardHtmlFilled = undefined;
     this.sessionRolesDropdownHtml = undefined;
-    this.enabledRolesContentFilled.clear();
-    this.enabledRolesPendingActor = undefined;
-    this.sessionAccountLinksFilled = false;
+    this.sessionAccountLinksFilledHtml = undefined;
+    this.sessionRolesContentFilled = false;
     this.sessionAccountLinksHasRoles = false;
   }
 
   /** RenderEngineLike.pageSessionAccountLinksHtml — the prepared signed-in
    *  *account_links navbar items (undefined until a page render prepared
-   *  them for a signed-in chrome session). */
+   *  them for a signed-in chrome session). Serves the FILLED variant once
+   *  this render has already shown the roles nest once (ensure_roles'
+   *  mid-request mutation; see the field note). */
   get pageSessionAccountLinksHtml(): string | undefined {
-    return this.sessionAccountLinks;
+    return this.sessionRolesContentFilled
+      ? (this.sessionAccountLinksFilledHtml ?? this.sessionAccountLinks)
+      : this.sessionAccountLinks;
   }
 
   /** RenderEngineLike.pageSessionMyCardHtml — the prepared :my_card view
-   *  body (the account_dropdown arm; see the prepare note below). */
+   *  body (the account_dropdown arm; see the prepare note below). Serves
+   *  the FILLED variant once this render has already shown the roles nest
+   *  once (ensure_roles' mid-request mutation; see the field note). */
   get pageSessionMyCardHtml(): string | undefined {
-    return this.sessionMyCardHtml;
+    return this.sessionRolesContentFilled ? (this.sessionMyCardHtmlFilled ?? this.sessionMyCardHtml) : this.sessionMyCardHtml;
   }
 
   /** RenderEngineLike.pageSessionRolesDropdownHtml. */
   get pageSessionRolesDropdownHtml(): string | undefined {
     return this.sessionRolesDropdownHtml;
+  }
+
+  /** RenderEngineLike.markSessionRolesContentFilled — the port of
+   *  ensure_roles' mutation point (set/right/enabled_roles.rb:52
+   *  checkbox_input's first line): a view fn that has just consumed the
+   *  roles-nest html flips this request's fill state, so the NEXT roles
+   *  nest render of the same request serves the filled content input.
+   *  A no-op unless the session's chrome carries the roles nest. */
+  markSessionRolesContentFilled(): void {
+    if (this.sessionAccountLinksHasRoles) this.sessionRolesContentFilled = true;
   }
 
   /** Prepare the signed-in account-links chrome for the page session — the
@@ -7093,10 +7121,8 @@ export class RenderEngine implements RenderEngineLike {
     if (session?.signedIn !== true || session.actorId === undefined) return;
     if (
       this.sessionAccountLinks !== undefined &&
-      this.sessionAccountLinksActorId === session.actorId &&
-      this.sessionAccountLinksFilled === this.enabledRolesContentFilled.has(session.actorId)
+      this.sessionAccountLinksActorId === session.actorId
     ) {
-      if (this.sessionAccountLinksHasRoles) this.enabledRolesPendingActor = session.actorId;
       return;
     }
     const actor = await this.fetcher.fetchById(session.actorId, { skipVirtual: true });
@@ -7105,7 +7131,9 @@ export class RenderEngine implements RenderEngineLike {
       this.sessionAccountLinks = undefined;
       this.sessionAccountLinksActorId = undefined;
       this.sessionMyCardHtml = undefined;
+      this.sessionMyCardHtmlFilled = undefined;
       this.sessionRolesDropdownHtml = undefined;
+      this.sessionAccountLinksFilledHtml = undefined;
       return;
     }
     const actorName: string = actor.name.s;
@@ -7134,20 +7162,29 @@ export class RenderEngine implements RenderEngineLike {
     };
     // The :my_card view body (account_links.rb view :my_card):
     // `can_disable_roles? ? interactive_roles_dropdown : account_dropdown`.
+    // Both ensure_roles variants bake here (the async prepare is the only
+    // place with the resolved roles): UNFILLED for the first roles-nest
+    // render of a request (the blank content input the oracle pins), FILLED
+    // for every later nest render of the same request — the fill state
+    // itself flips per request at the consumption seam
+    // (markSessionRolesContentFilled).
     const rolesInput = await this.sessionRolesInput(actor);
-    const filled = this.enabledRolesContentFilled.has(session.actorId);
-    this.sessionAccountLinksFilled = filled;
     this.sessionAccountLinksHasRoles = rolesInput !== undefined;
-    if (rolesInput !== undefined) this.enabledRolesPendingActor = session.actorId;
     this.sessionMyCardHtml =
       rolesInput === undefined
         ? myCardDropdownInnerHtml(actorName, known, [])
-        : enabledRolesDropdownHtml(rolesInput, known, filled);
+        : enabledRolesDropdownHtml(rolesInput, known, false);
+    this.sessionMyCardHtmlFilled =
+      rolesInput === undefined ? undefined : enabledRolesDropdownHtml(rolesInput, known, true);
     this.sessionRolesDropdownHtml =
       rolesInput === undefined
         ? myCardDropdownInnerHtml(actorName, known, [])
         : rolesAccountDropdownHtml(rolesInput, known);
     this.sessionAccountLinks = signedInAccountLinksInnerHtml(actorName, known, this.sessionMyCardHtml);
+    this.sessionAccountLinksFilledHtml =
+      rolesInput === undefined
+        ? undefined
+        : signedInAccountLinksInnerHtml(actorName, known, this.sessionMyCardHtmlFilled);
     this.sessionAccountLinksActorId = session.actorId;
   }
 
