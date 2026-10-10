@@ -1,0 +1,43 @@
+# The push gate: typecheck + the correctness gate, run on the branch's own
+# local working folder by the machine-home dispatcher (no checkout — the code
+# is already on this disk and already vetted). Baseline failures classified
+# against the tree's own KNOWN_FAILURES.md; only NEW failures fail the gate.
+# A branch with no local working folder skips benignly.
+#
+# Breaker: a failed run disables this workflow (the failed-run notification is
+# the one notice). Fix the cause, then re-enable deliberately:
+#   gh workflow enable "Gates" --repo KatsuJinCode/decko-ts
+name: Gates
+on:
+  push:
+    branches: ["integration-*", "int-100-*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: gates-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    runs-on: [self-hosted, windows]
+    timeout-minutes: 20
+    steps:
+      - name: Typecheck and correctness gate on the branch's working folder
+        shell: bash
+        run: node "C:/Users/jpswi/.zcode/tools/ci/push-gate.mjs" --branch "${{ github.ref_name }}" --sha "${{ github.sha }}"
+
+  breaker:
+    needs: gates
+    if: failure()
+    runs-on: [self-hosted, windows]
+    timeout-minutes: 5
+    steps:
+      - name: Disable this workflow after a failed run
+        shell: bash
+        run: node "C:/Users/jpswi/.zcode/tools/ci/disable-own-workflow.mjs" "Gates"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

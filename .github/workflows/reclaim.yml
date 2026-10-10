@@ -1,0 +1,42 @@
+# Worktree reclamation, DRY RUN ONLY: the vetted reaper runs with its default
+# (nothing deleted) and a two-hour freshness window; the report accumulates in
+# C:/Users/jpswi/.zcode/logs/ci/ as the week's evidence. Switching on actual
+# removal (--yes) is a separate, explicit operator decision after that review.
+#
+# Breaker: a failed run disables this workflow (the failed-run notification is
+# the one notice). Fix the cause, then re-enable deliberately:
+#   gh workflow enable "Reclaim worktrees" --repo KatsuJinCode/decko-ts
+name: Reclaim worktrees
+on:
+  push:
+    branches: ["integration-*", "int-100-*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: reclaim-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  reclaim:
+    runs-on: [self-hosted, windows]
+    timeout-minutes: 15
+    steps:
+      - name: Reclamation dry run (deletes nothing)
+        shell: bash
+        run: node "C:/Users/jpswi/.zcode/tools/ci/worktree-reclaim-dry-run.mjs"
+
+  breaker:
+    needs: reclaim
+    if: failure()
+    runs-on: [self-hosted, windows]
+    timeout-minutes: 5
+    steps:
+      - name: Disable this workflow after a failed run
+        shell: bash
+        run: node "C:/Users/jpswi/.zcode/tools/ci/disable-own-workflow.mjs" "Reclaim worktrees"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
