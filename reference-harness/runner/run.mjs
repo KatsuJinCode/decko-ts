@@ -148,6 +148,15 @@ try {
     const run = beginKind("scenarios", all.length, { steps_total: all.reduce((n, s) => n + s.steps.length, 0), steps_run: 0 });
     const outFile = path.join(outDir, "scenarios.jsonl");
     writeFileSync(outFile, "");
+    if (scenarios.length === 0) {
+      // A fixture with no scenarios (the seconds corpus renders only) still
+      // runs one session, so the kind's record names the engine that WOULD
+      // have answered it - the same shape render and semantics records
+      // always carry.
+      await withSession(root, async (_session, _stage, hello) => {
+        run.engine = hello;
+      });
+    }
     for (const scenario of scenarios) {
       const steps = await withSession(root, async (session, stage, hello) => {
         run.engine ??= hello;
