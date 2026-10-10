@@ -231,7 +231,7 @@ import { DeckoName } from "../../name.js";
 // 2026-10-01::link/:nav_link share the flat
 // HTML_VIEWS bodies (the urlView doctrine at :300-304 of this file) — one
 // fn per view, so the two registrations cannot drift again.
-import { HTML_VIEWS, linkView, navLinkView } from "../../render/views.js";
+import { HTML_VIEWS, htmlFormatUnknownView, linkView, navLinkView } from "../../render/views.js";
 import { popoverLink } from "./card-mod-bootstrap.js";
 import type {
   DeckoModManifest,
@@ -679,10 +679,21 @@ const compactMissingView: ViewFn = ({ fmt }) =>
   `<span class="text-muted">${h(fmt.card.name.from(...fmt.contextNames))}</span>`;
 
 /** set/all/error.rb:6-8 view :unknown, perms: :none, cache: :never:
- *  the literal empty string. The HTML override
- *  (set/all/html/error.rb:10-12) wraps in a createable link; the
- *  BASE view is bare "". */
-const unknownView: ViewFn = () => "";
+ *  the literal empty string. The BASE-format body. The HTML format
+ *  REDEFINES :unknown (set/all/html/error.rb:15-17, the createable
+ *  unknown_link wrap) and every html render dispatches the html body —
+ *  which is the only format this port renders — so the set/all/error
+ *  registration below serves the html body (views.ts's
+ *  htmlFormatUnknownView) and this base body stays unrendered on the
+ *  ported surface. Registering the base body under set/all would shadow
+ *  the html view on the whole composed surface: the chain's set/all block
+ *  matches every card, and the base table (which carries the html body)
+ *  is only consulted when no chain entry answers. That shadowing was the
+ *  corpus's admin *search skin box defect: a skin bar's absent +Image
+ *  nests :boxed, whose core substitutes to :unknown, and the engine
+ *  rendered an empty box where the oracle renders the box with the
+ *  createable link inside. */
+const unknownViewBaseFormat: ViewFn = () => "";
 
 /** set/all/error.rb:10-12 view :server_error, perms: :none:
  *  `t(:format_server_error)`. The headless engine has no i18n;
@@ -1641,7 +1652,7 @@ const setModules: ModSetModuleFile[] = [
       html: {
         views: [
           { view: "compact_missing", viewFn: compactMissingView, config: { perms: "none" } },
-          { view: "unknown", viewFn: unknownView, config: { perms: "none", cache: "never" } },
+          { view: "unknown", viewFn: htmlFormatUnknownView, config: { perms: "none", cache: "never" } },
           { view: "server_error", viewFn: serverErrorView, config: { perms: "none" } },
           { view: "denial", viewFn: denialView, config: { perms: "none" } },
           { view: "not_found", viewFn: notFoundView, config: { perms: "none" } },
