@@ -176,12 +176,29 @@ const BOOTSTRAP_CORE_FILES: readonly string[] = [
  *  files come from the vendored tree; on an edge runtime, from the generated
  *  snapshot of the same tree (vendor/edge-asset-source-snapshot.js) — the
  *  skin assembly reads these cards on the write path. A file in neither
- *  place is an error, never a silent empty-string substitute. */
+ *  place is an error, never a silent empty-string substitute.
+ *
+ *  The fs probe alone no longer proves a real filesystem: workerd's
+ *  nodejs_compat layer (compatibility date 2026-09-01) answers
+ *  process.getBuiltinModule("node:fs") with a virtual fs, and on that host
+ *  the directory resolution throws anyway (bootstrapScssDirectory's
+ *  `new URL` needs an absolute import.meta.url, which workerd does not
+ *  provide). So the fs branch runs only when the directory actually
+ *  resolves AND holds the first file; every other host reads the embedded
+ *  snapshot — same bytes, and a file missing from BOTH places still
+ *  throws. */
 function loadStylesheets(files: readonly string[]): string {
   const fs = nodeFsOrNull();
-  if (fs !== undefined) {
-    const base = bootstrapScssDirectory();
-    return files.map((f) => fs.readFileSync(new URL(f, base), "utf8")).join("\n");
+  if (files.length > 0 && fs !== undefined) {
+    let base: URL | undefined;
+    try {
+      base = bootstrapScssDirectory();
+    } catch {
+      base = undefined;
+    }
+    if (base !== undefined && (fs.existsSync === undefined || fs.existsSync(new URL(files[0]!, base)))) {
+      return files.map((f) => fs.readFileSync(new URL(f, base!), "utf8")).join("\n");
+    }
   }
   return files
     .map((f) => {
