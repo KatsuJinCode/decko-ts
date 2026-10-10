@@ -94,6 +94,10 @@ import type { PatternCardInput } from "../../set-patterns/types.js";
 import { safeSetKeys } from "../../render/set-keys.js";
 import { h } from "../../render/slot-html.js";
 import { rawItemStrings } from "../../render/pointer-list.js";
+import {
+  FOLLOW_OPTION_CARD_NAMES,
+  followOptionLabel,
+} from "../../follow/follow-options.js";
 import type { CardRecord } from "../../fetch/card-record.js";
 import type {
   DeckoModManifest,
@@ -453,15 +457,40 @@ function listFamilyInputHtml(ctx: ViewContext): string {
   );
 }
 
+/** right/follow.rb:16-21 `options_card` override - a follow rule card's
+ *  options are NOT a *content_options rule (none exists for any follow
+ *  set): Right::Follow overrides options_card to a virtual list of
+ *  `option_cards` = Card::FollowOption.cards (lib/card/follow_option.rb:
+ *  20-22, the registry the four self/*.rb set modules populate in :all
+ *  order). The editor's own selected items union in (options_api.rb:10-15).
+ *  The radio labels ride the option cards' set-module `label` methods
+ *  (self/always.rb:6-8 "follow", self/created.rb:9-11, self/edited.rb,
+ *  self/never.rb:6-8 "ignore") through options_api.rb:73-83's smart_label
+ *  nest - the corpus rule_form pin's exact bytes. */
+function isFollowRuleCard(card: RenderCard): boolean {
+  if (!card.name.isCompound) return false;
+  return card.name.rightName?.key === "*follow";
+}
+
 /** options_hash (card-mod-layout set/abstract/items/options_api.rb:3-19):
  *  the *content_options rule card's item names plus the editing card's own
  *  selected items, uniq'd in order (item.rb:10-14 union) - the walk both
  *  the radio and the checkbox editor bodies share. A missing
  *  *content_options rule throws (the options fallback walk needs the
- *  search surface). */
+ *  search surface) - EXCEPT the follow rule's options_card override. */
 function optionsHashForInput(ctx: ViewContext, editor: string): string[] {
   const optionsRule = ruleCard(ctx, "*content_options");
   if (optionsRule === undefined) {
+    if (isFollowRuleCard(ctx.fmt.card)) {
+      const optionNames = [...FOLLOW_OPTION_CARD_NAMES];
+      for (const selected of itemNames(ctx.fmt.card, undefined)) {
+        // Ruby's item_names on blank content is [] (split drops the empty
+        // field) - a blank new rule card unions nothing into the options
+        if (selected === "") continue;
+        if (!optionNames.includes(selected)) optionNames.push(selected); // item.rb:10-14 union
+      }
+      return optionNames;
+    }
     throw new Error(
       editor +
         " input without a *content_options rule is not ported (the " +
@@ -491,21 +520,39 @@ function radioInputHtml(ctx: ViewContext): string {
   if (optionNames.length === 0) return "<ul class='pointer-radio-list'>\nno options\n</ul>\n";
   const firstName = itemNames(card, undefined)[0];
   const inputName = `pointer_radio_button-${card.key}`;
+  const followRule = isFollowRuleCard(card);
   const rows = optionNames
     .map((option) => {
       const key = DeckoName.parse(option).key;
       const checked = option === firstName ? ` checked="checked"` : "";
-      if (ctx.fmt.engine.fetchRenderCard(option) !== undefined) {
-        throw new Error(
-          `radio option labels for EXISTING cards nest :smart_label ` +
-            `(card-mod-layout options_api.rb:79-83) - not ported (${option})`,
+      const optionCard = ctx.fmt.engine.fetchRenderCard(option);
+      // options_api.rb:73-83 option_label_text: an EXISTING option card's
+      // label nests the card at :smart_label (the option_view default);
+      // the follow rule's option labels resolve through the option cards'
+      // set-module `label` methods (the follow-options registry - the
+      // corpus rule_form pin's "follow"/"follow if I created"/"follow if
+      // I edited"/"ignore" labels). Any OTHER existing-card surface still
+      // fails loudly (the general smart_label-over-set-module-label walk
+      // has no second captured surface to adjudicate).
+      let labelText: string;
+      if (optionCard !== undefined) {
+        if (!followRule) {
+          throw new Error(
+            `radio option labels for EXISTING cards nest :smart_label ` +
+              `(card-mod-layout options_api.rb:79-83) - not ported (${option})`,
+          );
+        }
+        labelText = h(
+          followOptionLabel(DeckoName.parse(option).tagName?.s.replace(/^\*/, "") ?? ""),
         );
+      } else {
+        labelText = h(option);
       }
       return (
         `<li class='pointer-radio radio form-check'>\n` +
         `<input type="radio" name="${inputName}" id="pointer-radio-${key}" value="${h(option)}" ` +
         `class="pointer-radio-button form-check-input "${checked} />\n` +
-        `<label class="form-check-label" for="pointer-radio-${key}">${h(option)}</label>\n` +
+        `<label class="form-check-label" for="pointer-radio-${key}">${labelText}</label>\n` +
         `</li>\n`
       );
     })

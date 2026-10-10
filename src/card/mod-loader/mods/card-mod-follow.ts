@@ -188,7 +188,9 @@ import type { HistoryActionRow } from "./card-mod-history.js";
 import type {
   CardRecord,
 } from "../../fetch/card-record.js";
-import { followRuleNameFor, followSetCardName } from "../../follow/follow-rule-walk.js";import {
+import { followRuleNameFor, followSetCardName } from "../../follow/follow-rule-walk.js";
+import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
+import type { PatternCardInput } from "../../set-patterns/types.js";import {
   engineOwnedEvent,
   type DeckoModManifest,
   type ModEventFn,
@@ -921,10 +923,50 @@ const followerNotifyView: ViewFn = () => "follower";
 
 // --- set/right/following.rb view :rule_editor --------------------------------
 
-/** The corpus-pinned Pointer type (virtual-rule-card.ts's map - id 34843
- *  "Pointer"): Ruby's `Card.fetch preference_name, new: { type_id:
- *  PointerID }` new-card arm stamps the POINTER codename's id. */
+/** The corpus-pinned Pointer type fallback (virtual-rule-card.ts's map -
+ *  id 34843 "Pointer" in the RAW corpus deck): Ruby's `Card.fetch
+ *  preference_name, new: { type_id: PointerID }` new-card arm stamps the
+ *  POINTER codename's id from the LIVE deck's registry (id 56 in the
+ *  synthetic-v2 deck - the corpus rule_form pin's data-card-type-id). */
 const POINTER_TYPE = { typeId: 34843, typeName: "Pointer", typeCode: "pointer" } as const;
+
+/** The live deck's Pointer cardtype: the deck-fetched Pointer card's id when
+ *  it is warm (the codename card is in every deck), else the fallback. */
+function pointerTypeOf(ctx: ViewContext): {
+  typeId: number;
+  typeName: string;
+  typeCode: string;
+} {
+  const pointer = ctx.fmt.engine.fetchRenderCard("Pointer");
+  if (pointer !== undefined && pointer.id !== undefined && pointer.unknown !== true) {
+    return { typeId: pointer.id, typeName: "Pointer", typeCode: "pointer" };
+  }
+  return POINTER_TYPE;
+}
+
+/** The TPR anchor's left type for the view's NEW rule card
+ *  (pattern/class_methods.rb:59-71 left_type -> quick_type): the new
+ *  card's parts are unfetched (the oracle probe's rule.left is nil), so
+ *  the superleft arm answers nil and quick_type decides -
+ *  Card.fetch(left_name, skip_modules: true, new: {}).type_name. The
+ *  skip-modules arm excludes the set-module assign_type answers
+ *  (X+*self's Right::Self -> Set never applies), so the type falls to
+ *  type_id_from_template (type.rb:78-80) - the applicable *default rule
+ *  card's OWN type. The first existing *default candidate on the follow
+ *  rule's left is the ALL-set default `*all+*default`, itself a RichText
+ *  card in the corpus deck - the rule_form pin's
+ *  TYPE_PLUS_RIGHT-rich_text-Xfollow set-key token. */
+function quickTypeLeftTypeName(ctx: ViewContext, ruleName: string): string {
+  const leftName = DeckoName.parse(ruleName).leftName;
+  if (leftName === undefined) return "RichText"; // Card.default_type_id's cardtype
+  const input: PatternCardInput = { name: leftName.s, isNew: true };
+  for (const candidate of ruleNamesForCard(input, "*default")) {
+    const rule = ctx.fmt.engine.fetchRenderCard(candidate);
+    if (rule === undefined) continue; // candidate default rule does not exist
+    if (rule.typeName !== undefined) return rule.typeName;
+  }
+  return "RichText";
+}
 
 /** A NEW-card RenderCard (Card.fetch mark, new: {...}): id-less, isNew,
  *  empty content, pointer type. setKeys through the same safeSetKeys input
@@ -1024,8 +1066,8 @@ const ruleEditorView: ViewFn = (ctx) => {
     // holds no such rule card yet; the in-memory pointer card
     ruleContext = newCardRenderCard(
       prefName,
-      POINTER_TYPE,
-      "User", // the preferer part's type (the composed [-2] is the actor)
+      pointerTypeOf(ctx),
+      quickTypeLeftTypeName(ctx, prefName),
       true,
     );
   }
@@ -1043,7 +1085,7 @@ const ruleEditorView: ViewFn = (ctx) => {
           undefined,
           false,
         )
-      : newCardRenderCard(targetName, POINTER_TYPE, "User", true);
+      : newCardRenderCard(targetName, pointerTypeOf(ctx), quickTypeLeftTypeName(ctx, targetName), true);
   }
   const sub = new RenderFormat(target, fmt.engine, { parent: fmt });
   return (
@@ -1052,6 +1094,10 @@ const ruleEditorView: ViewFn = (ctx) => {
       success_view: "open",
       form_type: "modal",
       rule_context: prefName,
+      // right/follow.rb:119-121 rule_form_args override - the follow
+      // rule's form hooks the follow_section foreign slot (the same opt
+      // channel rule_form's success_view/form_type/rule_context ride)
+      data_update_foreign_slot: ".card-slot.follow_section-view",
     }) +
     `</div>`
   );
@@ -1397,13 +1443,25 @@ const cardModFollow: DeckoModManifest = {
       // the wrap + preference_name + applied-string dispatch (the rules
       // mod's ruleFormView owns the form bytes; the seam's rule_editor
       // branch resolves the actor + the applied content + the warm).
+      // 2026-10-09 wave 2: :status + :rule_editor carry unknown: true -
+      // in Ruby EVERY X+*following card is virtual-known (the set
+      // module's own `def virtual?; new?; end`, right/following.rb:4-6),
+      // so alter_unknown never fires and the views always dispatch; the
+      // headless engine's fetch does not model the set-module virtual
+      // mechanism (documented remainder), and the unknown-capable config
+      // is what lets the same dispatch happen here (the unknown card's
+      // denial check still runs - permission.rb:22-23).
       setPath: "right/following",
       formats: {
         html: {
           views: [
-            { view: "status", viewFn: followingStatusView },
+            { view: "status", viewFn: followingStatusView, config: { unknown: true } },
             { view: "one_line_content", viewFn: followingOneLineContentView },
-            { view: "rule_editor", viewFn: ruleEditorView, config: { cache: "never" } },
+            {
+              view: "rule_editor",
+              viewFn: ruleEditorView,
+              config: { cache: "never", unknown: true },
+            },
           ],
         },
       },
