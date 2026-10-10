@@ -1676,26 +1676,35 @@ export class RenderEngine implements RenderEngineLike {
     // journeys' ?view=edit surface). No-op for every other root.
     if (view === "edit") {
       await this.ensurePointerEditorOptions(rootCard);
-      // A junction root's OWN field rows sit in no reference closure (a
-      // subcard is reachable only through its left_id), so the edit form's
-      // field editors would fetch-miss them into fabricated new cards - the
-      // +*account page's +*email/+*password rows carry their real types
-      // (Phrase) and read rules only after this warm. One batch, junction
-      // roots only.
-      if (rootCard.id !== undefined && rootCard.name.isCompound && !rootCard.unknown) {
-        const children = (await this.fetcher.driver.query<CardsRow>(
-          "SELECT * FROM cards WHERE left_id = ? AND trash = false",
-          [rootCard.id],
-        )).rows;
-        for (const row of children) {
-          const tag = row.right_id !== undefined && row.right_id !== null
-            ? this.peekNameForId(row.right_id)
-            : undefined;
-          if (tag === undefined) continue;
-          await this.prepareItemForRender(`${rootCard.name.s}+${tag}`);
-        }
-        await this.ensureVerdicts();
+    }
+    // A junction root's OWN field rows sit in no reference closure (a
+    // subcard is reachable only through its left_id), and a CODED core's
+    // nests are runtime-built - the account core's labeled rows emit
+    // {{+*email}} / {{+*password}} from views.rb's tuples while the
+    // +*account row's stored db_content is empty - so neither the prefetch
+    // closure (stored nest syntax only) nor any other warm reaches them.
+    // Ruby's nest fetch (format/nest/fetch.rb fetch_card) is a LIVE
+    // Card.fetch per nest: the row exists, every view renders it. The sync
+    // port's nest() is cache-only, so the rows must seat in prepare or the
+    // nest renders the fabricated new-card (observed: the after-save ajax
+    // slot of an account change re-rendered the +*email/+*password labeled
+    // rows with the tag-typed empty fabrication once the posted-subcard
+    // expiry dropped the edit page's stale seats - the stale value was gone
+    // AND the fresh value unreadable until the next full page load's edit
+    // view re-warmed them). Every view, one batch, junction roots only.
+    if (rootCard.id !== undefined && rootCard.name.isCompound && !rootCard.unknown) {
+      const children = (await this.fetcher.driver.query<CardsRow>(
+        "SELECT * FROM cards WHERE left_id = ? AND trash = false",
+        [rootCard.id],
+      )).rows;
+      for (const row of children) {
+        const tag = row.right_id !== undefined && row.right_id !== null
+          ? this.peekNameForId(row.right_id)
+          : undefined;
+        if (tag === undefined) continue;
+        await this.prepareItemForRender(`${rootCard.name.s}+${tag}`);
       }
+      await this.ensureVerdicts();
     }
     // The V6 nested-skin scan has to run again HERE, not only above. A skin
     // reached through a POINTER/LIST item is not in the render-card map when

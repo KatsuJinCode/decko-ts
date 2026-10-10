@@ -2556,6 +2556,56 @@ async function renderCardPage(cardName, renderEngine = render, requestedView, re
       // show_without_page_layout: view ||= home_view || default_page_view.
       const view = requestedView ?? renderEngine.defaultHtmlViewConfig();
       renderEngine.pageErrorStatus = undefined;
+      // Ruby's card#read renders the requested view with params[:slot]
+      // merged into the render opts (the controller's slot_params walk).
+      // decko.js's post-save slot refresh issues exactly that request:
+      // GET /~<id>/<view>?slot[main]=true&slot[nest_name]=_main&... — and
+      // the recorded Ruby answers carry the saved-slot shape: the MAIN
+      // format (h1 header — default_header main? ? :h1 : :h2) and the
+      // main-nest data-slot JSON {view, nest_name, nest_syntax, main,
+      // home_view} (no "show" viz — the graded h1/h2 arm on the
+      // account-change and edit-save journeys came from this lane serving
+      // a bare non-main render). The :layout param is CONSUMED by
+      // show_layout? (it is what decides bare vs layout) and never lands
+      // in the emitted slot JSON (the recorded phrase_4 saved slot, whose
+      // POST carried slot[layout], emits no layout key).
+      const slotParams = pageOpts.slotParams;
+      if (slotParams?.main === "true") {
+        await renderEngine.render(cardName, view, renderParams);
+        // The request's mark may be an id mark (/~618/titled): the prepared
+        // map is keyed by the card's canonical key, so resolve through the
+        // lexicon the way page.ts resolveIdMarksInRequestedName does.
+        let rootName = cardName;
+        const idMark = /^~(\d+)$/.exec(cardName);
+        if (idMark) {
+          const resolved = await renderEngine.fetcher.lexicon
+            .name(Number(idMark[1]))
+            .catch(() => undefined);
+          if (typeof resolved === "string" && resolved !== "") rootName = resolved;
+        }
+        const rootCard = renderEngine.fetchRenderCard(rootName);
+        if (rootCard !== undefined) {
+          const { RenderFormat } = await import("./dist/src/card/render/format.js");
+          const html = new RenderFormat(rootCard, renderEngine, {
+            main: true,
+            nestQuietErrors: true,
+          }).renderView(
+            view,
+            {
+              nest_name: "_main",
+              nest_syntax: `_main|${view}`,
+              main: true,
+              home_view: slotParams.home_view ?? view,
+            },
+            null,
+          );
+          return {
+            status: renderEngine.pageErrorStatus ?? 200,
+            headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+            body: html,
+          };
+        }
+      }
       const html = await renderEngine.render(cardName, view, renderParams);
       return {
         status: renderEngine.pageErrorStatus ?? 200,
@@ -3225,6 +3275,22 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
               // session pins h1 in the saved slot). The bare render lane
               // is not main; the modal arm's main-format shape is what
               // Ruby answers with.
+              // The save expired the mark + posted subcards (above), so the
+              // render-card map ALWAYS misses here. Prepare through the
+              // engine's full render first (it seats the fresh post-save
+              // closure — a coded core's field children ride the prepare's
+              // junction-children warm), then re-render the seated card on
+              // the MAIN format: Ruby's soft redirect answers the ajax save
+              // with the saved card as the request's main card (response.rb
+              // :54-62; the recorded session pins h1 in the saved slot), and
+              // a bare render() is not the main format — its titled header
+              // rendered h2 (the h1/h2 residual the account-change and
+              // edit-save journeys carried).
+              try {
+                await actorEngine.render(name, view ?? "titled");
+              } catch {
+                // the prepare render's own failure surfaces through the main render below
+              }
               const slotCard = actorEngine.fetchRenderCard(name);
               if (slotCard === undefined) return actorEngine.render(name, view ?? "titled");
               const { RenderFormat } = await import("./dist/src/card/render/format.js");
@@ -3346,8 +3412,14 @@ const server = http.createServer(async (req, res) => {
   // html/show.rb show_layout?: an ajax request renders the view alone, with
   // no page layout, unless it asks for one (params[:layout]). Decko's own
   // scripts load modals, slots and save results this way.
+  const slotParams = {};
+  for (const [key, value] of url.searchParams) {
+    const m = /^slot\[(.+)\]$/.exec(key);
+    if (m && m[1] !== "layout") slotParams[m[1]] = value;
+  }
   const pageOpts = {
     bare: STOCK_DECK && req.headers["x-requested-with"] === "XMLHttpRequest" && !url.searchParams.has("layout"),
+    slotParams,
   };
 
   // Every state-changing request (sign-in and sign-out, the account forms,
