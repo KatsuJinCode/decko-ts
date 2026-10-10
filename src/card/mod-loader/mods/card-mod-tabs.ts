@@ -283,17 +283,21 @@ function nestPath(fmt: ViewContext["fmt"], name: string, tabOptions: Record<stri
 
 /** id_counter lives on the ROOT format (lib/card/format/content.rb:59-64;
  *  :60 `return @parent.id_counter if @parent`) and unique_id is the HOST
- *  card's safe_key plus the root's counter (content.rb:66-67). The TS
- *  formats are per-render objects, so the counter rides a WeakMap keyed
- *  by the root. */
-const idCounters = new WeakMap<object, number>();
+ *  card's safe_key plus the root's counter (content.rb:66-67). The counter
+ *  is the ROOT FORMAT'S - ONE PER REQUEST, shared by every unique_id
+ *  consumer (the tabs, the pointer editors' checkbox names, the set
+ *  editor's radio ids) - RenderFormat#uniqueId owns it (format.ts, the
+ *  same content.rb port). The tabs' former private WeakMap here forked
+ *  that counter: on pages whose main body renders tabs, the layout
+ *  chrome's own unique_id consumers (the my_card roles checkboxes) drew
+ *  from a counter the tabs had never touched - the corpus pins
+ *  pointer_checkbox-<actor>-Xenabled_role-3 on the [User]+*follow page
+ *  (the main body's two tab ids are 1 and 2, the navbar's checkbox 3),
+ *  which the fork rendered as -1. */
 
-function uniqueId(fmt: ViewContext["fmt"]): string {
-  let root = fmt;
-  while (root.parent !== undefined) root = root.parent;
-  const next = (idCounters.get(root) ?? 0) + 1;
-  idCounters.set(root, next);
-  return `${fmt.card.name.safeKey}-${next}`;
+function tabId(fmt: ViewContext["fmt"], name: string): string {
+  // tab.rb:77 "tab-#{unique_id}-#{name.to_name.safe_key}"
+  return `tab-${fmt.uniqueId()}-${DeckoName.parse(name).safeKey}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -408,8 +412,10 @@ interface TabObject {
 }
 
 /** tab.rb:7-13 tab_objects + :17-20 active: the requested name matched by
- *  name equality (key comparison), else keys.first. */
-function tabObjects(
+ *  name equality (key comparison), else keys.first. Shared with the follow
+ *  mod's :core (type_plus_right/user/follow.rb:39-43 calls the same `tabs`
+ *  helper over its static FOLLOW_TABS hash - the helper lives in this gem). */
+export function tabObjects(
   fmt: ViewContext["fmt"],
   tabHash: Map<string, { title: string; path: string }>,
   activeName: string | undefined,
@@ -425,7 +431,7 @@ function tabObjects(
     path: tabHash.get(name)!.path,
     // tab.rb:77 "tab-#{unique_id}-#{name.to_name.safe_key}" - assigned in
     // tab order (button render order) below
-    id: `tab-${uniqueId(fmt)}-${DeckoName.parse(name).safeKey}`,
+    id: tabId(fmt, name),
   }));
 }
 
@@ -466,8 +472,9 @@ function tabPane(tab: TabObject, blockContent: string): string {
  *  set/all/tabs/tab_panel.haml. The haml bytes (capture-pinned): sorted
  *  single-quote attributes on the two wrapper divs, no indentation, one
  *  newline per element; classy('nav') contributes the bare "nav" (no
- *  class_ups on this surface). */
-function tabsPanel(
+ *  class_ups on this surface). Shared with the follow mod's :core - the
+ *  follow set module calls this same `tabs` helper (user/follow.rb:40). */
+export function tabsPanel(
   ctx: ViewContext,
   tabHash: Map<string, { title: string; path: string }>,
   activeName: string | undefined,

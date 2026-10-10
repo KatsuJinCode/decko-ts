@@ -220,11 +220,14 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // table registers :mini_unknown (html/error.rb:21-23, the icon-only
       // createable link) explicitly alongside :unknown's html arm, so the
       // composed deck serves the same bytes the flat base table serves.
-      // 356 -> 357 on the combined tree: the journeys lane's Right::Password
-      // :input (the account form's password editor, the live-oracle probe
-      // receipt probe-password-input.rb) landed here too; still no new
-      // format key and no css/scss row. Measured on the merged tree.
-      ["html", 357],
+      // 356 -> 358 on the combined tree: THREE single-step registrations
+      // landed here — this line's composed-mod-view-gaps :mini_unknown
+      // (html/error.rb:21-23), the journeys lane's Right::Password :input
+      // (the account form's password editor, probe-password-input.rb), and
+      // the mod-view-gaps wave-2 slice's FOLLOW_TABS :core (user/follow.rb:
+      // 39-43, card-mod-tabs over the static hash); still no new format key
+      // and no css/scss row. Measured on the merged tree.
+      ["html", 358],
 
       ["js", 2],
       ["json", 3],

@@ -155,11 +155,17 @@ export const SETTING_HELP_TEXT: ReadonlyMap<string, SettingHelpEntry> = new Map(
   ["favicon", {
     self: "A favicon (or shortcut icon) is a small image used by browsers to help identify your website. [[http://www.decko.org/favicon|How to customize your favicon]]",
   }],
-  // card-mod-follow-0.20.0 set/right/follow.rb:39-41 (card-level def, Right
-  // set only)
-  ["follow", {
-    right: "Get notified about changes",
-  }],
+  // card-mod-follow-0.20.0 set/right/follow.rb:39-41 defines raw_help_text
+  // at the card level, but the oracle probe (2026-10-09) shows it never
+  // answers for a follow card in the captured deck: Card.fetch("Ada Admin
+  // +*follow", new: {}).try(:raw_help_text) is NIL (Right::Follow is not
+  // effective on the card's chain there) and all/help.rb:36-38 falls
+  // through to card.help_rule_card&.content - the *follow+*right+*help
+  // rule card (deck id 458, content "Get notified about changes." WITH
+  // the period). This registry therefore stays ABSENT for follow: the
+  // help-popover resolver's rule-card fallback serves the oracle's exact
+  // bytes (the corpus page pins' popover diff was exactly the missing
+  // period).
   // card-mod-help-0.20.0 set/right/guide.rb (format-level def, Right set
   // only; set/self/guide.rb registers only short_help_text, so the *guide
   // card itself correctly stays absent -> nbsp placeholder)

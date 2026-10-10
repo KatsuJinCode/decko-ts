@@ -977,6 +977,14 @@ export class RenderEngine implements RenderEngineLike {
     // lane clears once for the whole page render (beginPagePrepare), so
     // its inner render() leaves the layout warm-ups' seats in scope.
     if (this.pagePrepareDepth === 0) this.renderSeats.clear();
+    // The chrome session's account-links data (the *account links views'
+    // and the navbar's prepared items): Ruby reads Auth.current live on
+    // every render; the port prepares once per actor. The page lane calls
+    // this ahead of the sync layout render (page.ts); the bare view lane
+    // prepares here so a direct *account links view render (the corpus's
+    // view ops) sees the signed-in items, not the signed-out pair.
+    // Memoized per actor; a no-op for signed-out sessions.
+    await this.prepareSessionAccountLinks();
     // THE ONE-TRIP SEAT (stamp-as-column lane, 2026-10-06 — spec §c): moved
     // ABOVE the freshness gate because on this posture the seat's HEAD
     // statement IS the render's stamp read — deck_data_version rides the
