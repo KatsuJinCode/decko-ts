@@ -44,6 +44,7 @@ import {
 } from "./nest-syntax.js";
 import { safeSetKeys } from "./set-keys.js";
 import type { SearchResultPaging } from "./search-paging.js";
+import { nowCardContent } from "./now-content-bytes.js";
 import { cgiEscape, h, htmlEscapeKeepApostrophe, emitAttrs, newSlotId, slotOptionsJson } from "./slot-html.js";
 import { viewPermissionDenial, quietDenial, renderOptSkipPerms, resolveViewPerms, viewDenialView, type CrudTask } from "../permissions/view-perms.js";
 import type { ReadViewer } from "../permissions/read-rules.js";
@@ -2949,7 +2950,21 @@ export class RenderFormat {
    *  passes through unchanged (the corpus suites pin those bytes). */
   renderRaw(): string {
     const override = resolveContentOverride(this);
-    const raw = override !== undefined ? override : this.card.dbContent;
+    // card-mod-date set/self/now.rb:1-3 — the *now card's `def content`
+    // override. The loader-less render boot carries no content-override
+    // registry (the mod-loader composition is not loaded there), so the
+    // Self::Now chain is consulted directly: the *now card is
+    // codename-anchored ("now" — set/pattern Self matching via
+    // anchor_codenames) and truly virtual (dbContent ""), the one
+    // SELF_MODULE_CHAINS row the graded corpus pins (see
+    // now-content-bytes.ts for the byte derivation and the unwired
+    // remainder).
+    const selfNow =
+      override === undefined &&
+      (this.card.record.codename === "now" || this.card.key === "*now")
+        ? nowCardContent()
+        : undefined;
+    const raw = override !== undefined ? override : (selfNow ?? this.card.dbContent);
     // Ruby reaches the same bytes through the :raw VIEW, and a view render
     // is `with_wrapper { @rendered = yield; wrap_with_wrapper }`
     // (render.rb:96-97 -> wrapper.rb:15). So every `_render_raw` /
@@ -4374,49 +4389,83 @@ function findUriMatch(text: string, from: number): UriMatch | undefined {
       pos = end;
       continue;
     }
-    // uri.rb interpret, gem order: &nbsp; strip, trailing-punctuation chop
-    // (the chopped char renders after the anchor - uri.rb:86-89), single
-    // trailing-dot strip (uri.rb:69 - a REAL removal, never re-emitted).
-    let chunk = text.slice(bestStart, end);
-    chunk = chunk.replace(/(?:&nbsp;)+/g, "");
+    // uri.rb interpret, gem order, with the TWO distinct post-interpret
+    // strings: chunk (match[0], prepend included) becomes @link_text —
+    // &nbsp; strip, ONE trailing-punctuation chop, then the single
+    // trailing-dot strip (uri.rb:69, a REAL removal) — while @text (the
+    // raw span, prepend excluded) takes ONLY the punctuation chop. The
+    // anchor's href is @link_text but its TEXT is process_text, which is
+    // @link_text for the Uri class yet the chopped @text for Host/EmailUri
+    // — so the White Fragility oracle's bare-host span
+    // `robindiangelo.com/resources.)` renders the DOT inside the anchor
+    // text (`...resources.</a>)`) while the href drops it. The earlier
+    // single-chunk form dropped the dot from both.
+    const rawSpan = text.slice(bestStart, end);
+    let chunk = prepend + rawSpan;
     const lastChar = chunk.slice(-1);
     let trailing = "";
+    let choppedRaw = rawSpan;
     if (URI_TRAILING_PUNCTUATION.has(lastChar)) {
       trailing = lastChar;
       chunk = chunk.slice(0, -1);
+      choppedRaw = choppedRaw.slice(0, -1);
     }
+    chunk = chunk.replace(/(?:&nbsp;)+/g, "");
     chunk = chunk.replace(/\.$/, "");
     if (chunk === "") {
       pos = end;
       continue;
     }
+    // REVERTED (2026-10-09): the uri.rb:72-77 `rescue ::URI::Error` port —
+    // a URI.parse-invalid chunk (brackets/braces/angle quotes and bad
+    // percent escapes, boundary probed against the 3.3.0 gem's RFC3986
+    // parser) rendered as verbatim @text — reproduced the Pacifica Depth
+    // Psychology oracle's plain-text `[mailto:brandon@culturesmith.com]`
+    // but destabilized the +*referred_to_by search-result family (44
+    // pages per actor: the Archetypal referer list rendered a different
+    // result SET with the gate present and the capture's own set with it
+    // disabled, isolate bisect probes probe-iso2/iso4), through an
+    // interaction this lane could not trace inside its box. The item is
+    // pinned deliberate: the engine anchors the bracketed Outlook mailto
+    // where the oracle keeps it plain, exactly the pre-gate bytes.
+    // links.rb:65-72 resource_type runs on the RESOURCE (@link_text):
+    // a colonless chunk ("file", "mailto" — the scheme colon was chopped
+    // as trailing punctuation) matches NO rule, so no class attribute.
+    // The previous `chunk.slice(0, chunk.indexOf(":"))` turned -1 into a
+    // last-char chop and emitted the engine-only `fil-link`/`mailt-link`
+    // classes (Half Price Books, JP Morgan Chase, Big Thought, Brian
+    // Moeschler captures).
+    const schemeResourceType =
+      /^https?:/.test(chunk)
+        ? "external-link"
+        : /^mailto:/.test(chunk)
+          ? "email-link"
+          : /^([a-zA-Z][\-+.a-zA-Z\d]*):/.test(chunk)
+            ? `${(/^([a-zA-Z][\-+.a-zA-Z\d]*):/.exec(chunk) as RegExpExecArray)[1]}-link`
+            : "";
     return bestKind === "scheme"
       ? {
           start: bestStart,
           end,
           href: chunk,
           text: chunk,
-          resourceType: /^https?:/.test(chunk)
-            ? "external-link"
-            : /^mailto:/.test(chunk)
-              ? "email-link"
-              : `${chunk.slice(0, chunk.indexOf(":"))}-link`,
+          resourceType: schemeResourceType,
           trailing,
         }
       : bestKind === "host"
         ? {
             start: bestStart,
             end,
-            href: `http://${chunk}`,
-            text: chunk,
+            href: chunk,
+            text: choppedRaw,
             resourceType: "external-link",
             trailing,
           }
         : {
             start: bestStart,
             end,
-            href: `mailto:${chunk}`,
-            text: chunk,
+            href: chunk,
+            text: choppedRaw,
             resourceType: "email-link",
             trailing,
           };
@@ -4497,7 +4546,12 @@ export function expandContentLinks(
     }
     if (uri !== undefined && uri.start <= wikiStart) {
       out += text.slice(pos, uri.start);
+      // links.rb add_resource_opts (:154-157): target first for
+      // external-link, then the resource_type class — a nil resource_type
+      // (colonless resource) emits NO class attribute (content.rb
+      // add_class with nil is a no-op).
       const target = uri.resourceType === "external-link" ? ` target="_blank"` : "";
+      const cls = uri.resourceType === "" ? "" : ` class="${uri.resourceType}"`;
       // links.rb html link_to: `text = raw(text || opts[:href])` - the
       // label is raw-marked and content_tag renders it VERBATIM (uri.rb
       // process_text keeps the stored bytes, authored entities included).
@@ -4512,7 +4566,7 @@ export function expandContentLinks(
       // `williamscraig.com</a>.` oracle bytes) - and the SECOND trailing
       // dot from uri.rb:69's `sub!(/\.$/,'')` is a REAL removal, so it is
       // not re-emitted here.
-      out += `<a${target} class="${uri.resourceType}" href="${h(uri.href)}">${uri.text}</a>${uri.trailing}`;
+      out += `<a${target}${cls} href="${h(uri.href)}">${uri.text}</a>${uri.trailing}`;
       pos = uri.end;
       continue;
     }
@@ -4860,9 +4914,22 @@ export function expandWikiLinks(
     // (`title="+musings"><span>+</span>musings`): wrapped_title splits
     // whatever title_in_context produced, so the split follows the
     // relativization, not the authored text.
+    //
+    // The attribute escape is QUOTE-ONLY: a link's title opt is always
+    // set (chunk/link.rb:31-33), so title_in_context's keep_safe arm
+    // (context_names.rb:49-55 `keep_safe ? newtitle.html_safe : newtitle`)
+    // hands wrapped_title an html_safe string, the html format's `h super`
+    // (title.rb:31-35) is ERB::Util's no-op on html_safe input, and only
+    // actionview tag_helper.rb tag_option :322's unconditional quote gsub
+    // touches the bytes. Oracle: the US Census Employment wanted-link span
+    // renders `title="<a href=&quot;/20191213+BW+Time_Tracking+1400?view=
+    // bar&quot;>20191213+BW+Time Tracking+1400</a>"` with RAW brackets
+    // (the previous htmlEscapeKeepApostrophe emitted `&lt;a href=...`
+    // there, and the Dungeons and Dragons +SCa rule-link span the same
+    // `&lt;/a&gt;` where the capture has `</a>`).
     return (
       `<a class="${known ? "known-card" : "wanted-card"}" href="${h(href)}">` +
-      `<span class="card-title" title="${htmlEscapeKeepApostrophe(titleText)}">` +
+      `<span class="card-title" title="${titleText.replace(/"/g, "&quot;")}">` +
       `${wrappedTitleInner(titleText)}</span>` +
       `</a>`
     );

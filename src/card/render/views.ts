@@ -349,7 +349,22 @@ const titleNoLinkView: ViewFn = ({ fmt, voo }) => {
     explicit !== undefined
       ? fmt.standardTitle()
       : (override ?? fmt.standardTitle());
-  const attr = explicit ? h(title) : title;
+  // Rails' attribute emitter (actionview-7.2.4 tag_helper.rb tag_option):
+  // an html_safe value crosses `ERB::Util.unwrapped_html_escape` UNCHANGED
+  // and then hits the unconditional closing line
+  //   `value = value.gsub('"', "&quot;") if value.include?('"')` (:322)
+  // — so EVERY card-title attribute value, explicit (title.rb's
+  // `title&.html_safe` arm, the link chunk's always-set title opt,
+  // chunk/link.rb:31-33) or derived (standardTitle's h()'d name), carries
+  // ONLY the quote escape; the explicit arm's markup brackets stay RAW.
+  // Oracle: the US Census Employment wanted-link span renders
+  // `title="<a href=&quot;/20191213+BW+Time_Tracking+1400?view=bar&quot;>..."`
+  // (Ruby probe tmp/perm/ruby-link-probe.rb, link_census) and the
+  // Waging Peace anchor renders `title="...Gasshuku &amp; Benefit..."`
+  // verbatim-single-escaped from the stored name bytes. The previous
+  // h() here double-escaped the derived arm's entities (`&amp;amp;`,
+  // BW 20101113) and escaped the explicit arm's brackets (`&lt;`).
+  const attr = title.replace(/"/g, "&quot;");
   // wrapped_title parts.join wrapped_joint (title.rb:40) - the SHARED
   // helper (format.ts#wrappedTitleInner), so the split is single-sourced
   // with the link-label arms; byte-identical to the previous split("+")
@@ -475,10 +490,19 @@ function menuEditAnchor(fmt: RenderFormat): string {
  *  board_link(in_modal: false) -> NO slotter-mode attribute). */
 function menuBoardAnchor(fmt: RenderFormat, opts: { inModal: boolean }): string {
   const url = fmt.urlKey();
+  // Card::Path#handle_unknown (path.rb:89-96) fires for UNKNOWN marks that
+  // are not name_standardish? (path.rb:107-109): the query stashes
+  // `card[name]=<mark>`. Oracle: the Cardtype+*type+*guide content nests
+  // `{\_|board_link}` — the escaped-blank reference `\_` — and the capture
+  // renders `/_/board?card%5Bname%5D=%5C_`: url_key strips the backslash
+  // ("_") so the standardish test fails and the query carries the raw mark
+  // bytes. Known cards keep the bare url_key path.
+  const unknownQuery =
+    fmt.card.unknown === true ? wantedHrefQuerySuffix(fmt.card.name.s) : "";
   const slotterMode = opts.inModal ? ` data-slotter-mode="modal-replace"` : "";
   return (
     `<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom"${slotterMode}` +
-    ` href="/${h(url)}/board" data-remote="true">${icon("space_dashboard")} </a>`
+    ` href="/${h(url)}/board${unknownQuery}" data-remote="true">${icon("space_dashboard")} </a>`
   );
 }
 
@@ -2464,9 +2488,19 @@ export function derivedCloudAttachmentSource(
   if (ext === "") return "";
   const actionId = lastContentActionIdFromDbContent(trimmed);
   const basename = actionId === null ? storedBaseName(trimmed) : String(actionId);
-  const leaf = sizeVariant === undefined
+  const unencodedLeaf = sizeVariant === undefined
     ? `${basename}${ext}`
     : appendVariantLowercasingExt(`${basename}${ext}`, sizeVariant);
+  // The cloud URL's filename segment is PERCENT-ENCODED: the fog storage
+  // URL builder escapes every byte outside the URI unreserved set, so the
+  // Bodywork+Image identifier `(my_bucket)/9672/36229.jpg">` (the stored
+  // filename carries stray markup bytes) renders
+  // `.../files/9672/36229-large.jpg%22%3E` — the earlier raw form emitted
+  // `36229-large.jpg">`, whose attribute escape then produced the
+  // engine-only `&quot;&gt;` tail (the Bodywork capture).
+  const leaf = unencodedLeaf.replace(/[^A-Za-z0-9\-_.~]/g, (c) =>
+    `%${c.codePointAt(0)!.toString(16).toUpperCase().padStart(2, "0")}`,
+  );
   // Host resolution order: the caller's per-engine imageCdnHost (the edge
   // deployment's per-engine setting), then the process-wide deployment
   // asset host (the graded environment's setting -- Ruby's process-wide
@@ -4525,14 +4559,19 @@ function linkAnchorBody(ctx: ViewContext, extraClass: string): string {
   // format.ts#wrappedTitleInner's oracle census.
   const inner =
     label !== undefined
-      ? // The ATTR escapes (h); the TEXT does not. Oracle: the Process Arts
-        // +*referred_to_by anchor (page-lane shard-000000, offset 12658)
-        // renders title="Pages tagged with &quot;Process Arts&quot;" with
-        // the RAW quotes in the span text — `>Pages tagged with "Process
-        // Arts"<` — and the +bytes family (Process Arts +10) was exactly
-        // the double-escaped text. title.rb:39-42 wrapped_title splits
-        // joints only; it never html-escapes.
-        `<span class="card-title" title="${h(label)}">${wrappedTitleInner(label)}</span>`
+      ? // The ATTR carries ONLY the quote escape (actionview-7.2.4
+        // tag_helper.rb tag_option :322 — see titleNoLinkView's doc block);
+        // the TEXT is verbatim. Oracle: the Process Arts +*referred_to_by
+        // anchor (page-lane shard-000000, offset 12658) renders
+        // title="Pages tagged with &quot;Process Arts&quot;" with the RAW
+        // quotes in the span text — `>Pages tagged with "Process Arts"<` —
+        // and the +bytes family (Process Arts +10) was exactly the
+        // double-escaped text. title.rb:39-42 wrapped_title splits joints
+        // only; it never html-escapes. The markup-bracket case (US Census
+        // Employment's wanted [[...]] link, the wanted name carrying a raw
+        // anchor) pins the RAW brackets in the attribute
+        // (ruby-link-probe.rb link_census); the previous h() escaped them.
+        `<span class="card-title" title="${label.replace(/"/g, "&quot;")}">${wrappedTitleInner(label)}</span>`
       : fmt.renderView("title");
   // Card::Path#handle_unknown (card-mod-format lib/card/path.rb:89-96) fires
   // for UNKNOWN cards only: a wanted name that is not name_standardish?
