@@ -2802,7 +2802,10 @@ export const historyTabView: ViewFn = ({ fmt, voo }) => {
       // carries no action on the render root, and the earlier lookup
       // defaulted every non-root pill to the edit icon where the corpus
       // oracle pins add_circle for all four Topic 001 pills.
-      const summary = actSummaryBadge(reader, reader?.actionsOfAct(Number(act.id)) ?? []);
+      const summary =
+        reader === undefined
+          ? ""
+          : actSummaryBadge(reader, reader.actionsOfAct(Number(act.id)));
       const title =
         `<div class="me-2">#${thisSeq} ${h(actorName)} <small>${ago}</small></div>` +
         `<div class="ms-auto act-summary">${summary}</div>`;
