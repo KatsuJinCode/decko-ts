@@ -61,10 +61,17 @@
 //   does not give. The compat report's viewsByFormat.html entry for
 //   "compressed" is a parser artifact; the only Ruby definition is the js
 //   one.
-// - the html :core override (00_script.rb:73-76, CodeRay-highlighted div):
-//   the T6 verdict counts :core as covered by the engine's core view, and a
-//   byte-port of CodeRay's js tokenizer (span color classes) is not
-//   headlessly reproducible with a JS highlighter.
+// - the html :core override (00_script.rb:73-76, CodeRay-highlighted div)
+//   IS ported: java_script cards reach it through the langForTypeCode
+//   dispatch (views.ts core branch, renderRaw -> highlight(:js) ->
+//   processContent with the family's :nest_only chunk list). The byte-port
+//   runs on the code-highlighting module's java_script scanner (the same
+//   state machine the html scanner delegates <script> bodies to); the
+//   pre-2026-10 "not headlessly reproducible" verdict was overturned when
+//   that module landed. coffee_script's html :core is NOT this file's
+//   highlight path (Abstract::CoffeeScript's base-format view :core compiles
+//   first - 02_coffee_script.rb:23-25); it stays unported, unexercised by
+//   the corpus.
 // - lib/cardio/utils/ansi2_html.rb: consumed only by the
 //   validate_javascript_syntax error message (type/java_script.rb:8) - no
 //   reachable consumer headlessly.
