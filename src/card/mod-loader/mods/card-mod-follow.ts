@@ -220,6 +220,7 @@ import type {
 } from "../../follow/follow-render-seam.js";
 import { errorsView as formatErrorsView } from "./card-mod-format.js";
 import { tabsPanel } from "./card-mod-tabs.js";
+import { followButton } from "./card-mod-edit.js";
 
 // ---------------------------------------------------------------------------
 // captured base views - the "super()" references Ruby's set-module DSL
@@ -602,45 +603,22 @@ const followItemView: ViewFn = (ctx) => {
  *  "follow" / "send" / ""; stop_follow_link.rb:4-14 - *never / "following" /
  *  "stop sending" / "unfollow" hover / "btn-item-delete"). card.followed?
  *  picks the class (follow_link_views.rb:2-4) - the seam's followed verdict
- *  under the SESSION actor. link_to (links.rb:101-106, href LAST); remote:
- *  true emits data-remote="true"; path (:54-59): mark =
- *  follow_set_card.follow_rule_name(Auth.current.name) (the seam's
- *  followMark), action :update, success {mark: card.name, view:
- *  success_view}, card {content: "[[#{rule_content}]]"} - Hash#to_param
- *  query (sorted keys, Rack escape). */
+ *  under the SESSION actor. The bytes are the card-mod-edit port's
+ *  followButton builder - the SAME FollowLink#button anchor the
+ *  follow_section embed renders (the oracle pins both surfaces with
+ *  identical bytes; the standalone view used to emit its own attribute
+ *  order, class list and href encoding, which the pin caught). The actor
+ *  arm: Ruby's Auth.current.name is "Anonymous" under no session (the
+ *  follow rule mark carries it - the oracle's anonymous pin). */
 const followButtonView: ViewFn = (ctx) => {
-  const { fmt } = ctx;
   const bundle = followBundle(ctx);
-  const followed = bundle?.followed === true;
-  const ruleContent = followed ? "*never" : "*always";
-  const linkText = followed ? "following" : "follow";
-  const action = followed ? "stop sending" : "send";
-  const hoverText = followed ? "unfollow" : undefined;
-  const cssClass = followed ? "btn-item-delete" : "";
-  const mark = bundle?.followMark ?? "";
-  const query: Record<string, string> = {
-    "card[content]": `[[${ruleContent}]]`,
-    "success[mark]": fmt.card.name.s,
-    "success[view]": "follow_section",
-  };
-  const href = followPath(DeckoName.parse(mark).urlKey, {
-    action: "update",
-    query,
-  });
-  const classes = ["follow-link", cssClass, "slotter btn btn-sm btn-primary"]
-    .filter((c) => c !== "")
-    .join(" ");
-  return linkTo(
-    `<span class="follow-verb">${linkText}</span>`,
-    href,
+  return followButton(
     {
-      class: classes,
-      title: `${action} emails about changes to ${bundle?.followLabel ?? fmt.card.name.s}`,
-      "data-remote": "true",
-      "data-update-foreign-slot":
-        ".d0-card-body > .card-slot.RIGHT-Xfollower.content-view",
-      "data-hover-text": hoverText,
+      session: { actorName: bundle?.session?.actorName ?? "Anonymous" },
+      followed: bundle?.followed === true,
+      followLabel: bundle?.followLabel ?? ctx.fmt.card.name.s,
     },
+    ctx.fmt.card.name.s,
   );
 };
 

@@ -159,14 +159,20 @@ describe("card-mod-follow views through the loader (lane-follow)", () => {
   it(":follow_button renders the StartFollowLink arm signed out and the StopFollowLink arm signed in (follow_link_views.rb:26-28 + follow_link.rb)", async () => {
     const s = storage!;
     const e = await loadMod();
-    // signed OUT: followed? is false under no session -> StartFollowLink
+    // signed OUT: followed? is false under no session -> StartFollowLink.
+    // Corpus-adjudicated bytes (2026-10-09, the synthetic-v2 follow_button
+    // pins - the same builder the follow_section embed renders): the empty
+    // css_class keeps its blank in the class list, the data-update-foreign-
+    // slot's > is attribute-escaped, and the href's to_query pairs join
+    // with &amp; inside the attribute.
     const out = await e.render("Make Contact", "follow_button");
     expect(out).toContain(`<span class="follow-verb">follow</span>`);
     expect(out).toContain(`title="send emails about changes to Make Contact"`);
-    expect(out).toContain(`slotter btn btn-sm btn-primary`);
-    expect(out).toContain(`data-update-foreign-slot=".d0-card-body > .card-slot.RIGHT-Xfollower.content-view"`);
+    expect(out).toContain(`class="follow-link  slotter btn btn-sm btn-primary"`);
+    expect(out).toContain(`data-update-foreign-slot=".d0-card-body &gt; .card-slot.RIGHT-Xfollower.content-view"`);
     expect(out).toContain(
-      `href="/update/Make_Contact+*self+Anonymous+*follow?card%5Bcontent%5D=%5B%5B%2Aalways%5D%5D`,
+      `href="/update/Make_Contact+*self+Anonymous+*follow?card%5Bcontent%5D=%5B%5B%2Aalways%5D%5D` +
+        `&amp;success%5Bmark%5D=Make+Contact&amp;success%5Bview%5D=follow_section"`,
     );
     // signed IN as Brandon, who follows *always -> StopFollowLink
     e.pageSession = { signedIn: true, actorId: 300 };

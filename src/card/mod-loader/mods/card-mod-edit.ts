@@ -2677,8 +2677,11 @@ export const historyTabView: ViewFn = ({ fmt, voo }) => {
  *  path (follow_link.rb:66-69): mark = follow_set_card.follow_rule_name
  *  (Auth.current.name), action :update, success {mark: card.name, view:
  *  :follow_section}, card {content: "[[*always]]" / "[[*never]]"} - the
- *  Rails to_query encodings (spaces +, brackets/star %XX). */
-function followButton(
+ *  Rails to_query encodings (spaces +, brackets/star %XX). Shared with the
+ *  follow mod's :follow_button view (the SAME FollowLink#button bytes -
+ *  the standalone view renders the identical anchor, the oracle pins
+ *  both). */
+export function followButton(
   bundle: { session: { actorName: string } | undefined; followed: boolean; followLabel: string },
   cardName: string,
 ): string {

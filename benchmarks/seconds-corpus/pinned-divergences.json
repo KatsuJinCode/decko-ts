@@ -3324,28 +3324,6 @@
    "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
   },
   {
-   "op": "view:admin:Topic 001:follow_button",
-   "family": "composed-mod-view-gap",
-   "group": "view / admin",
-   "evidence": {
-    "firstDiffAt": 12,
-    "expected": "{\"html\":\"<a title=\\\"send emails about changes to Topic 001\\\" class=\\\"follow-link  slotter btn btn-sm btn-primary\\\" data-update-forei",
-    "actual": "{\"html\":\"<a class=\\\"follow-link slotter btn btn-sm btn-primary\\\" title=\\\"send emails about changes to Topic 001\\\" data-remote=\\\"true"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
-   "op": "view:anonymous:Topic 001:follow_button",
-   "family": "composed-mod-view-gap",
-   "group": "view / anonymous",
-   "evidence": {
-    "firstDiffAt": 12,
-    "expected": "{\"html\":\"<a title=\\\"send emails about changes to Topic 001\\\" class=\\\"follow-link  slotter btn btn-sm btn-primary\\\" data-update-forei",
-    "actual": "{\"html\":\"<a class=\\\"follow-link slotter btn btn-sm btn-primary\\\" title=\\\"send emails about changes to Topic 001\\\" data-remote=\\\"true"
-   },
-   "recorded": "2026-10-09 gate-run-1 (commit 3ec598fa) vs stock-oracle capture of synthetic-v2; the oracle bytes are committed under reference-harness/fixtures/synthetic-v2/expected/"
-  },
-  {
    "op": "view:admin:*all+Mira Member+*follow:follow_status",
    "family": "composed-mod-view-gap",
    "group": "view / admin",
