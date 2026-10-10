@@ -1986,6 +1986,16 @@ export class RenderEngine implements RenderEngineLike {
     // guard hit instead of depending on fallback-round ordering.
     const format = new RenderFormat(rootCard, this, {
       maxDepth: RUBY_MAX_DEPTH,
+      // The bare view lane rescues nested render errors to the quiet span,
+      // the same render-global config the page lane passes (page.ts
+      // nestQuietErrors: true): Ruby's wrap_and_render rescue is quiet for
+      // every NESTED render (nesting/subformat.rb:41-43 focal? is
+      // depth.zero?, and a nest's nesting format always has depth > 0).
+      // The previous default rethrew, so a nest-depth raise aborted the
+      // whole op where the oracle carries the full frames plus the inline
+      // render-error span (the seconds corpus's Chain/Loop ops,
+      // 2026-10-09).
+      nestQuietErrors: true,
       // THE bare view-lane root (render.ts renders nothing else at this
       // entry; page.ts builds its own rootFormat without the marker). The
       // census-M1 bar-seat climbs the parent chain for this flag.
@@ -7891,7 +7901,14 @@ export class RenderEngine implements RenderEngineLike {
         bucket.push(card);
       }
     }
-    for (const klass of SETTING_CLASSES) {
+    // core.haml renders the classes GENERAL -> SPECIFIC (the oracle's
+    // *read page: all cards, all "+" cards, cards of a given type, given
+    // field cards, a single card; the *create page interleaves the star
+    // rows between type and right) — the reverse of the registry's
+    // specificity order. The previous forward iteration produced the
+    // given-field-cards section before the given-type one on every
+    // setting page (the seconds corpus's *help family, 2026-10-09).
+    for (const klass of [...SETTING_CLASSES].reverse()) {
       const leftKey = klass.patternCardName.toLowerCase();
       const rules = settingBuckets.get(leftKey);
       if (rules === undefined || rules.length === 0) continue;

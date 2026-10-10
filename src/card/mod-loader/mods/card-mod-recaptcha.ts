@@ -650,10 +650,13 @@ function fieldNest(ctx: ViewContext, field: string): string {
 
 /** recaptcha_settings.rb:11-13 view :core:
  *  `[field_nest(:site_key), field_nest(:secret_key)]` - the array renders
- *  joined with no separator. No view config (no unknown/cache/wrap on the
- *  Ruby `view :core` call). */
+ *  through the output join (content.rb:70-72 `Array.wrap(content).flatten
+ *  .compact.join "\\n"`), one newline between the two field nests (the
+ *  oracle's core bytes: `</div>\\n<div id="Xrecaptcha_setting-secret_key...`,
+ *  the seconds corpus's composed-mod view-gap family, 2026-10-09). No view
+ *  config (no unknown/cache/wrap on the Ruby `view :core` call). */
 const recaptchaSettingsCoreView: ViewFn = (ctx) =>
-  [fieldNest(ctx, "site key"), fieldNest(ctx, "secret key")].join("");
+  [fieldNest(ctx, "site key"), fieldNest(ctx, "secret key")].join("\n");
 
 // ---------------------------------------------------------------------------
 // event :recaptcha (set/all/recaptcha.rb:50-55) — the A9 port through the

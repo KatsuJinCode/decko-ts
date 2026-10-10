@@ -192,14 +192,17 @@ describe("card-mod-recaptcha against the live engine", () => {
     expect(secret).toContain("TEST-SECRET-KEY_value");
   });
 
-  it("the mod's :core body composes the two field nests' bytes in order", () => {
+  it("the mod's :core body composes the two field nests' bytes in order, newline-joined (the output join)", () => {
     // The structural pin (see the file header for why the composed bytes
     // are proved structurally): recaptcha_settings.rb:11-13
-    // `[field_nest(:site_key), field_nest(:secret_key)]` - array join, no
-    // separator.
+    // `[field_nest(:site_key), field_nest(:secret_key)]` - the array renders
+    // through the output join (content.rb:70-72 Array.wrap(...).join "\n"),
+    // one newline between the nests (synthetic-v2 oracle, the seconds
+    // corpus's composed-mod view-gap family, 2026-10-09).
     const { out } = runCoreView();
     expect(out).toBe(
       "[nested:*recaptcha settings+site key|title:Site key]" +
+        "\n" +
         "[nested:*recaptcha settings+secret key|title:Secret key]",
     );
   });

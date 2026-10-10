@@ -227,11 +227,18 @@ import { UnsupportedViewError } from "../../render/format.js";
 // :url_link anchor escapes its href the way Rails' content_tag does
 // (links.rb:101-106).
 import { h } from "../../render/slot-html.js";
+import { quietDenial } from "../../permissions/view-perms.js";
 import { DeckoName } from "../../name.js";
 // 2026-10-01::link/:nav_link share the flat
 // HTML_VIEWS bodies (the urlView doctrine at :300-304 of this file) — one
 // fn per view, so the two registrations cannot drift again.
-import { HTML_VIEWS, linkView, navLinkView } from "../../render/views.js";
+import {
+  HTML_VIEWS,
+  linkView,
+  navLinkView,
+  unknownView as htmlErrorUnknownView,
+  miniUnknownView as htmlErrorMiniUnknownView,
+} from "../../render/views.js";
 import { popoverLink } from "./card-mod-bootstrap.js";
 import type {
   DeckoModManifest,
@@ -620,14 +627,18 @@ const rawView: ViewFn = ({ fmt }) => fmt.renderRaw();
 /** set/all/base.rb:101-103 view :labeled_content, unknown: :mini_unknown:
  *  `render_core`. The base body is the core view's bytes; the
  *  unknown-card substitution routes unknown cards to :mini_unknown.
- *  In the engine the core view is registered separately; this port
- *  just runs the core (renderCore would call into HTML_VIEWS.core, so
- *  the headless port calls renderView("core")). */
-const labeledContentView: ViewFn = ({ fmt }) => fmt.renderView("core");
+ *  In the engine the core view is registered separately; this port runs
+ *  the core through the delegated-render seam (renderDelegated): Ruby's
+ *  render_core is a METHOD delegation (method_missing -> render! -> its
+ *  own wrap_and_render rescue), so a raising core carries the quiet
+ *  render-error span inside this view's own output — the seconds corpus's
+ *  TooDeep family (2026-10-09) pinned the span at the body of the
+ *  depth-capped card, which only the delegation boundary produces. */
+const labeledContentView: ViewFn = ({ fmt }) => fmt.renderDelegated("core");
 
 /** set/all/base.rb:105-107 view :titled_content, unknown: :blank:
- *  `render_core`. Same body as :labeled_content. */
-const titledContentView: ViewFn = ({ fmt }) => fmt.renderView("core");
+ *  `render_core`. Same rescue-scoped delegation as :labeled_content. */
+const titledContentView: ViewFn = ({ fmt }) => fmt.renderDelegated("core");
 
 /** set/all/base.rb:109-111 view :blank, perms: :none:
  *  the literal empty string. (HTML_VIEWS already has a blankView; this
@@ -636,9 +647,10 @@ const titledContentView: ViewFn = ({ fmt }) => fmt.renderView("core");
 const blankView: ViewFn = () => "";
 
 /** set/all/base.rb:125-127 view :labeled: `"#{card.name}: #{_render_
- *  labeled_content}"`. */
+ *  labeled_content}"` — _render_labeled_content is the same rescue-scoped
+ *  method delegation (see :labeled_content above). */
 const labeledView: ViewFn = ({ fmt }) =>
-  `${fmt.card.name.s}: ${fmt.renderView("labeled_content")}`;
+  `${fmt.card.name.s}: ${fmt.renderDelegated("labeled_content")}`;
 
 /** set/all/html.rb:5-7 and set/type/cardtype.rb:2-4 view :type, unknown:
  *  true: `link_to_card card.type_card, nil, class: "cardtype"` - the html
@@ -678,11 +690,23 @@ const htmlLabeledView: ViewFn = (ctx) => (ENGINE_LABELED === undefined ? "" : EN
 const compactMissingView: ViewFn = ({ fmt }) =>
   `<span class="text-muted">${h(fmt.card.name.from(...fmt.contextNames))}</span>`;
 
-/** set/all/error.rb:6-8 view :unknown, perms: :none, cache: :never:
- *  the literal empty string. The HTML override
- *  (set/all/html/error.rb:10-12) wraps in a createable link; the
- *  BASE view is bare "". */
-const unknownView: ViewFn = () => "";
+/** set/all/error.rb:6-8 view :unknown, perms: :none, cache: :never, and the
+ *  html override set/all/html/error.rb:10-12 (`createable { wrap {
+ *  unknown_link "#{unknown_icon} #{render_title}" } }`). The composed deck
+ *  used to register the BASE arm (the literal "") on the html table, so
+ *  every unknown-card nest rendered empty where the oracle carries the
+ *  card-slot unknown-view frame (the seconds corpus's composed-mod
+ *  view-gap family, 2026-10-09: 244 pinned ops, the unknown-frame surface
+ *  the largest single slice). The html table now registers the html arm —
+ *  the createable-gated frame in render/views.ts (unknownCardCreatable →
+ *  "" exactly when Ruby denies create, the same positive check), whose
+ *  bytes were oracle-verified against the search-list capture before this
+ *  corpus existed. The base "" arm remains what the non-html formats and
+ *  the email overrides serve. */
+const unknownView: ViewFn = htmlErrorUnknownView;
+
+/** html/error.rb:21-23 :mini_unknown — the icon-only createable link. */
+const miniUnknownView: ViewFn = htmlErrorMiniUnknownView;
 
 /** set/all/error.rb:10-12 view :server_error, perms: :none:
  *  `t(:format_server_error)`. The headless engine has no i18n;
@@ -697,6 +721,17 @@ const serverErrorView: ViewFn = () => "format.server_error";
  *  tracking); the locale token renders as the bare key. */
 const denialView: ViewFn = () => "format.denial";
 
+/** html/error.rb:75-77 view :denial — `focal? ? loud_denial : quiet_denial`:
+ *  the html arm the corpus's view-lane :denial render carries
+ *  (`<span class="denied"><!-- Sorry, you don't have permission () --></span>`,
+ *  @denied_task unset on an explicit view render, so the parens are empty).
+ *  The focal arm is the loud frame the substituted denial path already
+ *  renders on main formats (RenderFormat#mainLoudDenialHtml, the dual-lane
+ *  denial pages' golden). The base token arm above stays what the
+ *  non-html formats serve. */
+const denialHtmlView: ViewFn = ({ fmt, voo }) =>
+  fmt.isMain ? fmt.mainLoudDenialHtml(voo!) : quietDenial("");
+
 /** set/all/error.rb:18-21 view :not_found, perms: :none:
  *  `t(:format_not_found_named, cardname: ...)`. The cardname picks
  *  safe_name when the card's name is present, or the no-name locale
@@ -709,6 +744,14 @@ const notFoundView: ViewFn = () => "format.not_found_named";
  *  engine has no root.error_status surface; the locale token renders
  *  as the bare key. */
 const badAddressView: ViewFn = () => "format.bad_address";
+
+/** html/error.rb's :bad_address arm — `root.error_status = 404` and the
+ *  rendered text "404: Bad Address" (the corpus's view-lane bytes). The
+ *  engine's page-status surface is the port's root.error_status. */
+const badAddressHtmlView: ViewFn = ({ fmt }) => {
+  fmt.engine.pageErrorStatus = 404;
+  return "404: Bad Address";
+};
 
 /** set/type/cardtype.rb (card-mod-cardtype set/type/cardtype.rb)
  *  views :add_link, :add_button, :add_url — ported to the headless
@@ -1642,10 +1685,15 @@ const setModules: ModSetModuleFile[] = [
         views: [
           { view: "compact_missing", viewFn: compactMissingView, config: { perms: "none" } },
           { view: "unknown", viewFn: unknownView, config: { perms: "none", cache: "never" } },
+          // html/error.rb:21-23 — the html arm (:mini_unknown, icon-only),
+          // explicit here so the composed deck serves the same bytes the
+          // flat base table serves (the substitution target of
+          // one_line_content/labeled_content on unknown cards).
+          { view: "mini_unknown", viewFn: miniUnknownView, config: { perms: "none" } },
           { view: "server_error", viewFn: serverErrorView, config: { perms: "none" } },
-          { view: "denial", viewFn: denialView, config: { perms: "none" } },
+          { view: "denial", viewFn: denialHtmlView, config: { perms: "none" } },
           { view: "not_found", viewFn: notFoundView, config: { perms: "none" } },
-          { view: "bad_address", viewFn: badAddressView, config: { perms: "none" } },
+          { view: "bad_address", viewFn: badAddressHtmlView, config: { perms: "none" } },
           { view: "errors", viewFn: errorsView },
         ],
       },
