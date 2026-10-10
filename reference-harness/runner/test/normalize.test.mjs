@@ -94,6 +94,95 @@ describe("N3: collapse-id contexts, the second volatile value", () => {
   });
 });
 
+describe("N4: relative-time spans, the frozen-clock canonical form", () => {
+  // the oracle's frozen capture clock says "less than a minute"; any live
+  // engine clock says "20 days" for the same stored timestamp
+  const credit = (span) =>
+    `<div class="cred"><a class="known-card" href="/Decko_Bot">Decko Bot</a> ${span}</div>`;
+
+  it("canonicalizes every Rails time_ago_in_words shape to one placeholder", () => {
+    for (const span of [
+      "less than a minute",
+      "1 minute",
+      "2 minutes",
+      "44 minutes",
+      "about 1 hour",
+      "about 3 hours",
+      "1 day",
+      "20 days",
+      "about 1 month",
+      "3 months",
+      "about 1 year",
+      "over 2 years",
+      "almost 3 years",
+    ]) {
+      assert.ok(same(credit(span), credit("20 days")), span);
+    }
+  });
+
+  it("the surrounding sentence still counts: a change outside the span fails", () => {
+    assert.ok(!same(credit("less than a minute ago"), credit("20 days")), 'the "ago" tail is an anchor: present on one side only');
+    assert.ok(same(credit("less than a minute ago"), credit("20 days ago")), "identical tails on both sides agree");
+    assert.ok(!same(
+      "<span class=\"last-update\">\n        added less than a minute ago by\n      </span>",
+      "<span class=\"last-update\">\n        updated 20 days ago by\n      </span>",
+    ));
+    assert.ok(!same(credit("less than a minute"), credit("less than a minute") + "<p>more</p>"));
+  });
+
+  it("canonicalizes only the span: bare dates and other numbers are real bytes", () => {
+    assert.ok(!same("<p>2026-09-19</p>", "<p>less than a minute</p>"), "the date view's encoding is not a relative-time span");
+    assert.ok(!same("<p>2026-09-19</p>", "<p>2026-09-20</p>"));
+    assert.ok(!same("<p>in 20 days</p>", "<p>in 3 weeks</p>"), "only the Rails vocabulary matches, and weeks is not in it");
+  });
+
+  it("does not swallow numbers outside Rails' table or digits that merely contain them", () => {
+    assert.ok(!same("<p>120 days</p>", "<p>20 days</p>"), "Rails emits at most 30 days; prose keeps its real bytes");
+    assert.ok(!same("<p>x120 days</p>", "<p>x20 days</p>"), "no word boundary, no rule");
+  });
+
+  it("a page may hold several spans; each becomes the same placeholder and anchors still bind", () => {
+    const page = (a, b) => `<div>${a}</div><div>${b}</div>`;
+    assert.ok(same(page("less than a minute", "2 minutes"), page("20 days", "1 day")));
+    assert.ok(!same(page("less than a minute", "2 minutes"), page("20 days", "x")));
+  });
+});
+
+describe("N5: capture-host content in debug-page titles, the capture-machine canonical form", () => {
+  const debugTitle = (frames) =>
+    `<span class="render-error alert alert-danger">Error rendering: <span title="\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\n      &lt;p&gt;&lt;strong&gt;HMAC key cannot be empty&lt;/strong&gt;&lt;/p&gt;\n${frames}">Ada Admin+*account</span> (verify_url view)</span>`;
+  const frames = (host) =>
+    `C:/${host}/lib/ruby/gems/3.3.0/gems/jwt-2.10.3/lib/jwt/jwa/hmac.rb:40:in &lt;code&gt;ensure_valid_key!&lt;br&gt;\nC:/${host}/reference-harness/oracle/adapter.rb:56:in &lt;code&gt;`;
+
+  it("canonicalizes the capture host's paths and heap addresses inside a debug title", () => {
+    assert.ok(same(debugTitle(frames("Ruby33-x64")), debugTitle(frames("other-install"))));
+    const m = normalizeHtml(debugTitle(frames("Ruby33-x64"))).match(/N5#path/g);
+    assert.ok(m && m.length === 2, "each frame's path token becomes N5#path");
+    assert.ok(same(
+      debugTitle("x #&lt;Card:0x000073a1c2d3e4f0&gt;"),
+      debugTitle("x #&lt;Card:0x000073a1c2d3e4f8&gt;"),
+    ), "heap addresses inside the title are capture-machine noise");
+  });
+
+  it("the error message, the frame structure and the anchors still count", () => {
+    assert.ok(!same(debugTitle(frames("Ruby33-x64")), debugTitle(frames("Ruby33-x64")).replace("HMAC key cannot be empty", "other failure")));
+    assert.ok(!same(debugTitle(frames("Ruby33-x64")), debugTitle(frames("Ruby33-x64")).replace("(verify_url view)", "(reset_password_url view)")));
+    assert.ok(!same(debugTitle(frames("Ruby33-x64")), debugTitle(frames("Ruby33-x64")).replace(":40:in", ":41:in")), "the frame's line is oracle semantics");
+    assert.ok(!same(debugTitle(frames("Ruby33-x64")), "<span class=\"render-error alert alert-danger\">Error rendering: <span title=\"\">Ada Admin+*account</span> (verify_url view)</span>"), "an engine that emits no debug page still differs structurally");
+  });
+
+  it("does not touch paths or addresses outside a debug title", () => {
+    assert.ok(!same("<p>C:/Ruby33-x64/gems/jwt.rb</p>", "<p>C:/other/gems/jwt.rb</p>"));
+    assert.ok(!same("<p>0xdeadbeef</p>", "<p>0xfeedface</p>"));
+    assert.ok(!same("<p>title=\"C:/a.rb\"</p>", "<p>title=\"C:/b.rb\"</p>"), "an ordinary title attribute is not the debug page");
+  });
+
+  it("the rule keys on the debug page's own first bytes, not the span class alone", () => {
+    const plainError = `<span title="something went wrong C:/Ruby33-x64/x.rb">card</span>`;
+    assert.ok(!same(plainError, plainError.replace("Ruby33-x64", "other")), "no debug-page marker, no rule");
+  });
+});
+
 describe("removed rules: these now count", () => {
   it("hexadecimal numbers in HTML are compared (the former address mask)", () => {
     assert.ok(!same("<p>0xdeadbeef</p>", "<p>0xfeedface</p>"));

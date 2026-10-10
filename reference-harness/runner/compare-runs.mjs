@@ -12,7 +12,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
-import { COLLAPSE_ID, SLOT_ID, normalizeRender, sameJson } from "./normalize.mjs";
+import { COLLAPSE_ID, RELATIVE_TIME, SLOT_ID, normalizeRender, sameJson } from "./normalize.mjs";
 
 const [a, b, ...rest] = process.argv.slice(2);
 const jsonOut = rest[0] === "--json" ? rest[1] : null;
@@ -38,8 +38,57 @@ const collapseValues = (value) => {
   if (value !== null && typeof value === "object") return Object.values(value).flatMap(collapseValues);
   return [];
 };
+/** Every relative-time span N4 matches in any string of a recorded line, in order. */
+const relativeTimeValues = (value) => {
+  if (typeof value === "string") return [...value.matchAll(RELATIVE_TIME)].map((m) => m[0]);
+  if (value !== null && typeof value === "object") return Object.values(value).flatMap(relativeTimeValues);
+  return [];
+};
+/** Every capture-host path or heap address N5 matches inside a debug-page
+ *  title in any string of a recorded line, in order. */
+const debugTitle = (s) => {
+  const out = [];
+  for (const m of s.matchAll(/title="(\s*&lt;h3&gt;Error message \(visible to admin only\)&lt;\/h3&gt;[\s\S]*?)("/g)) out.push(m[1]);
+  return out;
+};
+const captureHostValues = (value) => {
+  if (typeof value === "string")
+    return debugTitle(value).flatMap((t) => [
+      ...[...t.matchAll(/\b[A-Za-z]:[/\\][^\s<>&":]+/g)].map((m) => m[0]),
+      ...[...t.matchAll(/0x[0-9a-fA-F]{6,16}/g)].map((m) => m[0]),
+    ]);
+  if (value !== null && typeof value === "object") return Object.values(value).flatMap(captureHostValues);
+  return [];
+};
 
-const result = { runs: [path.resolve(a), path.resolve(b)], kinds: {}, masks: { N1: { matched_pairs: 0, differing_pairs: 0 }, N3: { matched_pairs: 0, differing_pairs: 0 } }, unexplained: [] };
+const maskAccounting = (result, nameA, nameB) => {
+  const counts = (line) => ({
+    N1: slotValues(line),
+    N3: collapseValues(line),
+    N4: relativeTimeValues(line),
+    N5: captureHostValues(line),
+  });
+  const a = counts(nameA);
+  const b = counts(nameB);
+  for (const rule of ["N1", "N3", "N4", "N5"]) {
+    result.masks[rule].matched_pairs += Math.min(a[rule].length, b[rule].length);
+    a[rule].forEach((v, i) => {
+      if (b[rule][i] !== undefined && b[rule][i] !== v) result.masks[rule].differing_pairs++;
+    });
+  }
+};
+
+const result = {
+  runs: [path.resolve(a), path.resolve(b)],
+  kinds: {},
+  masks: {
+    N1: { matched_pairs: 0, differing_pairs: 0 },
+    N3: { matched_pairs: 0, differing_pairs: 0 },
+    N4: { matched_pairs: 0, differing_pairs: 0 },
+    N5: { matched_pairs: 0, differing_pairs: 0 },
+  },
+  unexplained: [],
+};
 for (const kind of ["render", "semantics", "scenarios"]) {
   const A = read(a, kind);
   const B = read(b, kind);
@@ -52,15 +101,8 @@ for (const kind of ["render", "semantics", "scenarios"]) {
       k.raw_equal++;
       continue;
     }
-    const va = slotValues(x);
-    const vb = slotValues(y);
-    result.masks.N1.matched_pairs += Math.min(va.length, vb.length);
-    va.forEach((v, i) => { if (vb[i] !== undefined && vb[i] !== v) result.masks.N1.differing_pairs++; });
-    const ca = collapseValues(x);
-    const cb = collapseValues(y);
-    result.masks.N3.matched_pairs += Math.min(ca.length, cb.length);
-    ca.forEach((v, i) => { if (cb[i] !== undefined && cb[i] !== v) result.masks.N3.differing_pairs++; });
-    // Masked as the grader masks: render HTML by N1+N3, everything else raw.
+    maskAccounting(result, x, y);
+    // Masked as the grader masks: render HTML by N1+N3+N4+N5, everything else raw.
     const norm = (line) =>
       kind === "render"
         ? { ...line, result: normalizeRender(line.result) }
@@ -79,8 +121,14 @@ for (const kind of ["render", "semantics", "scenarios"]) {
 for (const [kind, k] of Object.entries(result.kinds)) {
   console.log(`${kind.padEnd(10)} ${k.items} items: ${k.raw_equal} identical, ${k.equal_after_masks} equal after masks, ${k.unexplained} unexplained`);
 }
-console.log(`N1 slot ids: ${result.masks.N1.differing_pairs} of ${result.masks.N1.matched_pairs} paired values differ between the runs`);
-console.log(`N3 collapse ids: ${result.masks.N3.differing_pairs} of ${result.masks.N3.matched_pairs} paired values differ between the runs`);
+const pairLine = (rule, label) => {
+  const m = result.masks[rule];
+  return `${rule} ${label}: ${m.differing_pairs} of ${m.matched_pairs} paired values differ between the runs`;
+};
+console.log(pairLine("N1", "slot ids"));
+console.log(pairLine("N3", "collapse ids"));
+console.log(pairLine("N4", "relative-time spans"));
+console.log(pairLine("N5", "capture-host tokens in debug titles"));
 for (const u of result.unexplained) console.log(`unexplained: ${u}`);
 if (jsonOut) writeFileSync(jsonOut, JSON.stringify(result, null, 2) + "\n");
 process.exit(result.unexplained.length ? 1 : 0);
