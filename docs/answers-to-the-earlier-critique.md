@@ -4,8 +4,8 @@ This document answers the critique linked from issue #1282.
 
 The critique is third-party AI commentary on the original port proposal, not
 binding direction; binding direction comes from the upstream thread
-(`decko-commons/decko#1282`). Its full text is recorded in this repository at
-[`upstream-1282-external-critical-review-fulltext.md`](upstream-1282-external-critical-review-fulltext.md),
+(`decko-commons/decko#1282`). Its full text is the reply the Decko lead posted on the upstream thread
+(decko-commons/decko#1282), and it is answered here point by point
 and it is answered here point by point, in its own numbering (1-21, plus its
 closing request), from what this repository actually measures.
 
@@ -46,7 +46,7 @@ divergences").
 
 The area map the critique asks for — what must be ported, what can be replaced,
 what is a major unknown — is [ARCHITECTURE.md](../ARCHITECTURE.md), with the
-behaviour-level decisions in [decisions/](decisions/). The honest summary of the
+behaviour-level decisions in the decision records under docs/decisions/. The honest summary of the
 scope is in the coverage inventory's own account of what is *not* measured
 (items 1-6): browser journeys, the default PBKDF2 path in the graded fixture,
 hosted database writes, arbitrary mods, jobs, and everything a skipped probe
@@ -207,7 +207,7 @@ the migration matrix at the top of
 carries `PostgreSQL dump | **no** | no PostgreSQL adapter or dialect translator
 exists in the tree`. The support work is tracked as
 [Decko Core: Storage — add PostgreSQL support in parallel](https://github.com/KatsuJinCode/decko-ts/issues/8)
-([docs/core/work-board.md](core/work-board.md)).
+(the working board, docs/core/work-board.md).
 
 Two further migration facts the critique's list did not anticipate are recorded
 in [docs/SECURITY.md](SECURITY.md) "Migration compatibility at a glance": while
@@ -422,7 +422,7 @@ repository."
 
 The roadmap item is
 [Decko Core: Evidence — measure hosting and performance claims before replacing public values](https://github.com/KatsuJinCode/decko-ts/issues/11)
-([docs/core/work-board.md](core/work-board.md)). What the repository does
+(the working board, docs/core/work-board.md). What the repository does
 publish on the measurement-infrastructure side is the budget harness — warm
 per-entry render time, worst-case pathological content, statement count on a
 warm render, and how many cards remain cold after prewarming — explicitly "not
@@ -541,7 +541,7 @@ A one-time mapping is a snapshot; the repository's answer is an instrument that
 regenerates the equivalent every time, plus an architecture map.
 
 - [ARCHITECTURE.md](../ARCHITECTURE.md) is the area-level map, and
-  [decisions/](decisions/) holds the behaviour-level records. Decision 0008 is
+  the decision records under docs/decisions/ holds the behaviour-level records. Decision 0008 is
   precisely the kind of correction this request was reaching for: it retires two
   claims the repository used to make about itself (per-set view dispatch, and a
   source directory that mirrors Ruby's) after checking them, because "a reader
