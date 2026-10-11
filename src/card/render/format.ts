@@ -1469,6 +1469,13 @@ export class RenderFormat {
    *  the runner session — capture-authenticated-pages.rb:143-153). */
   private loudDenialMessageHtml(deniedTask: CrudTask = "read"): string {
     if (this.engine.pageSession?.signedIn === true) {
+      // html/error.rb:200-204: @denied_task NIL renders t(:format_to_do_that)
+      // — "to do that", the controller-rescue denial's wording (a raised
+      // PermissionDenied carries no view-level denied task). The page-scoped
+      // phrase override is that nil arm; the view-level walk keeps its own
+      // task wording.
+      const phrase = this.engine.pageLoudDenialTaskPhrase;
+      if (phrase !== undefined) return `<div>You need permission to ${phrase}.</div>`;
       return `<div>You need permission to ${deniedTask} this.</div>`;
     }
     return (
@@ -3451,6 +3458,11 @@ export interface RenderEngineLike {
    *  RenderEngine#pageErrorStatus). Optional: engines without it ignore
    *  the status. */
   pageErrorStatus?: number | undefined;
+  /** html/error.rb:200-204's @denied_task-nil arm (render.ts
+   *  RenderEngine#pageLoudDenialTaskPhrase): the loud denial's "to do that"
+   *  wording for a controller-rescue denial. Optional: engines without it
+   *  keep the view-level task wording. */
+  pageLoudDenialTaskPhrase?: string | undefined;
   /** Chain-aware view resolution for a single (card, view, format) triple.
    *  With a mod loader wired up, walks the per-card MRO chain (set/
    *  format.rb:146-150 + format.rb:62-68) and returns the most-specific

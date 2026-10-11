@@ -298,7 +298,7 @@ export interface ReferenceChunk {
   /** undefined = the chunk carries no reference (explicit-resource link,
    *  comment nest). */
   refereeName: string | undefined;
-  refType: "L" | "I";
+  refType: "L" | "I" | "Q";
   /** Full-token span, start inclusive / end exclusive, into the scanned
    *  content string. Lets the rename-side rewrite (update-referer-content.ts)
    *  splice swapped chunk text back into the content. */
@@ -319,18 +319,32 @@ const NEST_FULL_STICKY = /\{\{([^{}]*)\}\}/y;
 const NEST_SPAN = /\{\{[^{}]*\}\}/g;
 /** link.rb:82 — %r{^(/|https?:|mailto:)} explicit-resource targets. */
 export const EXPLICIT_LINK = /^(\/|https?:|mailto:)/;
+/** query_reference.rb :46-50 — the QueryReference prefix (a quote preceded
+ *  by `:`, `,` or `[` — the lookbehind does not consume) and its full match
+ *  (:47-48 \A\s*"([^"]+)"). The chunk text starts at the opening quote.
+ *  GLOBAL, not sticky: the prefix is searched forward through the content
+ *  (Ruby's content.index(prefix_re, position)), unlike the bracket prefixes
+ *  whose indexOf already answers the position. */
+const QUERY_PREFIX_GLOBAL = /(?<=[:,\[])\s*"([^"]+)"/g;
 
 /** The parser walk (parser.rb:45-59): leftmost [[ or {{ prefix wins; its
  *  full regex consumes through the closer; a failed full match advances
- *  one character (parser.rb:53). */
+ *  one character (parser.rb:53). The QueryReference prefix competes in the
+ *  same leftmost walk (a quote after :/,/[ in the plain text — inside a
+ *  [[...]]/{{...}} token the bracket prefix consumed it first). */
 export function scanReferenceChunks(content: string): ReferenceChunk[] {
   const chunks: ReferenceChunk[] = [];
   let position = 0;
   while (position < content.length) {
     const linkIdx = content.indexOf("[[", position);
     const nestIdx = content.indexOf("{{", position);
-    if (linkIdx === -1 && nestIdx === -1) break;
-    const idx = linkIdx === -1 ? nestIdx : nestIdx === -1 ? linkIdx : Math.min(linkIdx, nestIdx);
+    QUERY_PREFIX_GLOBAL.lastIndex = position;
+    const queryMatch = QUERY_PREFIX_GLOBAL.exec(content);
+    const queryIdx = queryMatch === null ? -1 : queryMatch.index;
+    if (linkIdx === -1 && nestIdx === -1 && queryIdx === -1) break;
+    const idx = Math.min(
+      ...[linkIdx, nestIdx, queryIdx].filter((i) => i !== -1),
+    );
     let matched: ReferenceChunk | undefined;
     if (idx === linkIdx) {
       LINK_FULL_STICKY.lastIndex = idx;
@@ -345,7 +359,7 @@ export function scanReferenceChunks(content: string): ReferenceChunk[] {
         };
         position = idx + m[0].length;
       }
-    } else {
+    } else if (idx === nestIdx) {
       NEST_FULL_STICKY.lastIndex = idx;
       const m = NEST_FULL_STICKY.exec(content);
       if (m !== null) {
@@ -358,6 +372,17 @@ export function scanReferenceChunks(content: string): ReferenceChunk[] {
         };
         position = idx + m[0].length;
       }
+    } else {
+      matched = {
+        // query_reference.rb :76-78 interpret: @name = match[1] (the quoted
+        // text; Name[] canonicalization happens in the reference walk).
+        refereeName: queryMatch![1] ?? "",
+        refType: "Q",
+        start: idx,
+        end: idx + queryMatch![0].length,
+        inner: queryMatch![1] ?? "",
+      };
+      position = idx + queryMatch![0].length;
     }
     if (matched !== undefined) {
       chunks.push(matched);

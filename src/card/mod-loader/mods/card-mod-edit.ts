@@ -195,7 +195,6 @@ import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
 import { parseNestOptions, scanNests } from "../../render/nest-syntax.js";
 import { safeSetKeys } from "../../render/set-keys.js";
-import { findAssignedTypeName } from "../../set-patterns/set-type-assignment.js";
 import { getNameEnvironment } from "../../name/environment.js";
 import { modRuleSeedContentForCandidate } from "../mod-rule-seeds.js";
 import { renderRecaptchaConfig } from "../../render/render-recaptcha-config.js";
@@ -1033,34 +1032,34 @@ function fieldEditorInMultiCard(
   // here was the +*account edit form's 500).
   const known = fmt.engine.fetchRenderCard(fieldName.key);
   const tagCard = known ?? fmt.engine.fetchRenderCard(fieldName.tag ?? fieldName.s);
-  // THE NEW FIELD CARD'S TYPE IS THE SET-TYPE ASSIGNMENT'S, not the tag
-  // card's: Ruby's ensure_type_id runs type_id_from_code
-  // (mod/core/set/all/type.rb:69-76) BEFORE the template arm — for a
+  // THE NEW FIELD CARD'S TYPE IS ENSURE_TYPE_ID'S FULL WALK (type.rb:58-66
+  // `type_id_from_code || type_id_from_template`), not the tag card's:
+  // the assignment arm first (mod/core/set/all/type.rb:69-76 — for a
   // compound card each assigns_type pattern (07_right.rb:3
   // `assigns_type: true` on the right pattern) consults
   // Card::Set::Type.assignment (set/type.rb:5-6, filled by the mods'
-  // `assign_type :foo` boot lines, advanced_api.rb:5-8). The account
+  // `assign_type :foo` boot lines, advanced_api.rb:5-8); the account
   // family's rights all call `assign_type :phrase` (right/email.rb:5,
   // right/password.rb:3, right/salt.rb:3, right/status.rb:4), so a NEW
   // +*email field is PHRASE-typed at form time and its editor is the
-  // plain text input — not the tag RichText type's tinymce textarea (the
-  // oracle signup form pins the input; the recorded capture's fields list
-  // names the email input without any editor chrome). findAssignedTypeName
-  // is the ported walk; the codename env resolves the assigned type name
-  // to the id (the sync peek the boot's ensureLoaded serves).
-  const assignedTypeName = findAssignedTypeName({
-    name: fieldName,
-    isNew: true,
-    typeId: tagCard?.typeId,
-    typeName: tagCard?.typeName,
-  });
+  // plain text input — not the tag RichText type's tinymce textarea), THEN
+  // the template arm (type.rb:78-80 type_id_from_template: the *default
+  // rule card IS the template, its own type_id answers — on the synthetic
+  // deck related+*right+*default is Pointer-typed, so the board-page edit
+  // form's NEW +related field renders the pointer-list editor where the
+  // tag "related" card's RichText typed it into a tinymce). The engine's
+  // newCardDefaultType is that whole walk (render.ts, rule/all.rb
+  // first-hit over the *default universe); the tag card's type stays the
+  // port's no-rule last resort (Ruby's miss answers the *all+*default
+  // type — the tag fallback approximates it without a query).
   const env = getNameEnvironment();
-  const assignedTypeId =
-    assignedTypeName !== undefined
-      ? (env?.codename?.id(assignedTypeName) ?? env?.codename?.id(assignedTypeName.toLowerCase()))
-      : undefined;
-  const fieldTypeId = assignedTypeId ?? tagCard?.typeId;
-  const fieldTypeName = assignedTypeName ?? tagCard?.typeName;
+  const leftName = fieldName.leftName;
+  const leftTypeName =
+    (leftName !== undefined ? fmt.engine.fetchRenderCard(leftName.s)?.typeName : undefined) ??
+    fmt.card.typeName;
+  const defaulted = fmt.engine.newCardDefaultType?.(fieldName, leftTypeName);
+  const fieldTypeId = defaulted?.typeId ?? tagCard?.typeId;
+  const fieldTypeName = defaulted?.typeName ?? tagCard?.typeName;
   const fieldCard = known ??
     ({
       ...(tagCard ?? {}),
@@ -1094,8 +1093,8 @@ function fieldEditorInMultiCard(
       typeName: fieldTypeName,
       typeId: fieldTypeId,
       typeCode:
-        assignedTypeId !== undefined
-          ? env?.codename?.nameForId(assignedTypeId)
+        fieldTypeId !== undefined
+          ? (env?.codename?.nameForId(fieldTypeId) ?? tagCard?.typeCode)
           : tagCard?.typeCode,
       // THE JUNCTION'S OWN KEYS (RIGHT-Xemail etc.), not the tag card's:
       // the tag *email card's keys carry SELF-Xemail and no RIGHT- token,

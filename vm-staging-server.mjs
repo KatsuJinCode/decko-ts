@@ -3451,6 +3451,23 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
               );
             }
           : undefined,
+      // The explicit-GET update alternative's non-ajax denial page (the
+      // plain-href follow links navigate; Ruby's card#update rescue renders
+      // the target card's denial view through the FULL layout at 403 —
+      // renderErrorPage in write-routes.ts). The page lane runs on the
+      // request's own session engine, exactly like every GET page.
+      renderErrorPage: async (name, view) => {
+        const actorEngine = cookieActor !== null ? engineForActor(cookieActor.id) : render;
+        // html/error.rb:200-204's @denied_task-nil arm: the controller
+        // rescue's loud denial reads "to do that", not a view-level task.
+        actorEngine.pageLoudDenialTaskPhrase = "do that";
+        try {
+          const { html } = await renderPageWithStatus(actorEngine, name, view, {});
+          return html;
+        } finally {
+          actorEngine.pageLoudDenialTaskPhrase = undefined;
+        }
+      },
       // The two-step upload's preliminary arm (00_upload_cache.rb:18-24):
       // the success answer is the BARE preview_editor view of the target
       // card (the cache card for a new card's upload, the card itself for
@@ -3738,7 +3755,38 @@ const server = http.createServer(async (req, res) => {
   // its known-ness against the fetcher once, after the branch chain).
   let servedCardName;
   try {
-    const flowLink = parseAccountFlowLink(pathname, url.searchParams);
+    const flowLinkCandidate = parseAccountFlowLink(pathname, url.searchParams);
+    // engine_routes.rb:41-44's explicit GET alternative for UPDATE (the
+    // create/read/delete/asset actions stay page-branch — the recorded
+    // remainder): GET /update/<mark> routes to card#update exactly like the
+    // verb-explicit forms (rest.rb:14-16 — the save runs with the query's
+    // card params; the follow-family follow-links are data-remote anchors
+    // and the emailed links are plain hrefs, both GET). The trigger+token
+    // flow links above keep priority; a GET the module does not route (any
+    // non-update path) answers null and falls to the page branch unchanged.
+    if (
+      flowLinkCandidate === null &&
+      req.method === "GET" &&
+      writePathEnabled()
+    ) {
+      const writeResponse = await dispatchWriteRequest(req, pathname);
+      if (writeResponse !== null) {
+        expireRenderCachesAfterSave(
+          {
+            fetcher,
+            renderEngine: render,
+            signedInEngines: signedInEngines.values(),
+          },
+          writeResponse,
+        );
+        console.log(
+          `[vm-staging] ${req.method} ${pathname} -> ${writeResponse.status} (${Date.now() - startedAt}ms)`,
+        );
+        res.writeHead(writeResponse.status, writeResponse.headers).end(writeResponse.body);
+        return;
+      }
+    }
+    const flowLink = flowLinkCandidate;
     if (
       req.method !== "GET" &&
       flowLink === null &&

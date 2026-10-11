@@ -198,6 +198,14 @@ export interface WriteRouteContext {
    *  left a changed +*email rendering its pre-save value inside the slot
    *  bytes themselves. */
   renderSlot?: (name: string, view?: string, subcardNames?: string[]) => Promise<string>;
+  /** Renders one card's page through the host's page lane (the full layout
+   *  html) for the named view — the explicit-GET update alternative's
+   *  non-ajax denial surface: Ruby's card#update rescue renders the target
+   *  card's denial view INSIDE the deck layout (format/error.rb's
+   *  view_for_denial page, status 403), and only the host has the page
+   *  machinery. Absent -> the plain quiet-text error body (the historical
+   *  shape; the staging server is the only implementor today). */
+  renderErrorPage?: (name: string, view: string) => Promise<string>;
   /** Renders one card's preview_editor view — the host's render machinery
    *  for the two-step upload's success response (00_upload_cache.rb:18-24:
    *  the preliminary abort's success target rendered on view
@@ -678,6 +686,22 @@ function matchRoute(method: string, pathname: string): RouteMatch | null {
   const post = method === "POST";
   const put = method === "PUT" || method === "PATCH";
   const del = method === "DELETE";
+  // engine_routes.rb:41-44 — the explicit GET alternatives:
+  //   %w[create read update delete asset].each { get "(card)/#{action}(/:mark)" => "card", action: action }
+  // GET /update/<mark> is a FIRST-CLASS route to card#update (rest.rb:14-16:
+  // `card.new_card? ? create : handle { card.update! params[:card] }` — the
+  // save runs with whatever card params the query carries, exactly like the
+  // POST verb; the follow-family follow-links are anchor hrefs, and
+  // data-remote anchors follow the href with GET). The read and asset
+  // actions stay on the page branch; the create/delete GET alternatives are
+  // the recorded remainder (no graded surface reaches them; the page
+  // fallback serves them today).
+  if (method === "GET") {
+    const explicit = /^\/(?:card\/)?update(?:\/([^/]+))?$/.exec(pathname);
+    if (explicit !== null && (pathname.startsWith("/card/update") || explicit[1] !== undefined)) {
+      return { verb: "update", mark: explicit[1], json: false };
+    }
+  }
   if (!post && !put && !del) return null;
   if (pathname === "/" || pathname === "") {
     if (post) return { verb: "create", json: false };
@@ -862,6 +886,7 @@ function errorResponse(
   error: CardActionError,
   signedIn = false,
   meta?: { url: string; now: Date },
+  opts?: { ajax?: boolean; getAlternative?: boolean },
 ): WriteRouteResponse {
   const status = errorStatus(error.code);
   if (json) {
@@ -886,9 +911,15 @@ function errorResponse(
   // "<p><strong>KEY:</strong> message</p>" per error) is the body Ruby's
   // VALIDATION failures render (422 UserError) — the ajax save's 422 lands
   // in the form's card-notice (the slotter JS), so these bytes are the
-  // whole observable difference. The other families keep the audited
+  // whole observable difference. An AJAX permission denial on an ACT CARD
+  // (error.cardName set — the subcard-error fold names the act) renders the
+  // same alert: the follow-family unfollow link's slot swap pins the
+  // "Problems with <card>" bytes. The other families keep the audited
   // bodies below (the 403 denial's quiet text and its diagnostic comment).
   if (status === errorStatus("user-error")) {
+    return htmlResponse(status, `Error (${error.code})`, cardErrorAlertHtml(error));
+  }
+  if (opts?.ajax === true && error.cardName !== undefined) {
     return htmlResponse(status, `Error (${error.code})`, cardErrorAlertHtml(error));
   }
   return htmlResponse(
@@ -1808,10 +1839,33 @@ async function dispatchWriteRequest(
         const shown = await lookupLiveCard(ctx.fetcher, markToName(route.mark));
         if (shown !== undefined && shown.codename !== "signin") saveLocation(visit, requestUrl(req));
       }
+      // The explicit-GET update alternative's non-ajax denial is a PAGE:
+      // card#update's PermissionDenied rescue renders the target card's
+      // denial view through the full layout (the plain-href follow links
+      // navigate; Ruby's 403 body is the denial page, not the quiet text).
+      if (
+        !json &&
+        !isAjax(req, parsed) &&
+        req.method === "GET" &&
+        route.mark !== undefined &&
+        errorStatus(error.code) === 403 &&
+        ctx.renderErrorPage !== undefined
+      ) {
+        try {
+          const pageHtml = await ctx.renderErrorPage(markToName(route.mark), "unknown");
+          return {
+            status: 403,
+            headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+            body: pageHtml,
+          };
+        } catch {
+          // a page-render miss keeps the audited quiet-text body
+        }
+      }
       return errorResponse(json, error, await signedInFor(ctx, sessionToken), {
         url: requestUrl(req),
         now: ctx.now?.() ?? new Date(),
-      });
+      }, { ajax: isAjax(req, parsed), getAlternative: req.method === "GET" });
     }
     throw error;
   }

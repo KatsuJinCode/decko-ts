@@ -39,9 +39,10 @@
 //     ({{#...}} — nest.rb:20-21 never sets @name) would rebuild to
 //     "{{}}". Both are Ruby data-corruption warts, not behaviors the
 //     parity corpus asserts; the divergences are recorded here and in the
-//     task report. QueryReference chunks (CQL, chunk/query_reference.rb
-//     :86-89) are outside this port's chunk model, same as in the
-//     out-direction, and stay untouched too.
+//     task report. QueryReference chunks (chunk/query_reference.rb,
+//     ref_type "Q" — the quoted names in JSON/CQL content) swap in the
+//     gaps between the L/I chunks (swapQueryReferencesInGap); the
+//     rename-referers journey's JSON card pins the arm.
 // - content_quietly= (reference_events.rb:52-58): assign the content; if
 //   the db_content column actually changed (the loop guard, :54), write the
 //   column DIRECTLY (`update_column` — no validations, no callbacks, no
@@ -237,7 +238,10 @@ async function contentQuietlySet(
 /** swap_names (all.rb:65-71): swap every Reference chunk and re-serialize.
  *  Chunks that carry no reference (explicit-resource links, comment nests)
  *  stay untouched — see the module header for the divergence from Ruby,
- *  which rebuilds them into corrupted forms. */
+ *  which rebuilds them into corrupted forms. The QueryReference chunks
+ *  (chunk/query_reference.rb — the quoted names in JSON/CQL content,
+ *  ref_type "Q") swap in the same walk: the rename-referers journey's JSON
+ *  card ({"link_to":"Topic 001"}) pins the Q arm. */
 export function swapNames(
   content: string | null | undefined,
   oldName: DeckoName,
@@ -264,8 +268,20 @@ function swapChunkText(
   newName: DeckoName,
   refererName: DeckoName,
 ): string {
-  const original = (chunk.refType === "L" ? "[[" : "{{") + chunk.inner + (chunk.refType === "L" ? "]]" : "}}");
+  const original =
+    chunk.refType === "L"
+      ? `[[${chunk.inner}]]`
+      : chunk.refType === "I"
+        ? `{{${chunk.inner}}}`
+        : `"${chunk.inner}"`;
   try {
+    if (chunk.refType === "Q") {
+      // QueryReference#swap_name (query_reference.rb:86-89): the quoted
+      // name runs Name#swap; the chunk rebuilds as "#{@name}" (the quotes
+      // re-emitted around the swapped name).
+      const swapped = DeckoName.parse(chunk.inner).swap(oldName, newName);
+      return `"${swapped.s}"`;
+    }
     if (chunk.refType === "L") {
       // link.rb:35-40. The target|text split follows interpret
       // (link.rb:89-97) via the same divider_index (link.rb:99-109).

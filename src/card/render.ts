@@ -470,6 +470,14 @@ export class RenderEngine implements RenderEngineLike {
    *  (beginPagePrepare); read by renderPageWithStatus. */
   pageErrorStatus: number | undefined = undefined;
 
+  /** html/error.rb:200-204's @denied_task-nil arm — the loud denial's
+   *  "to do that" wording for a CONTROLLER-rescue denial (a raised
+   *  PermissionDenied carries no view-level denied task; the explicit-GET
+   *  update alternative's renderErrorPage hook is that surface). Host scope:
+   *  the error-page hook sets it before the render and clears it after (the
+   *  page-lane prepare must not wipe a value the same render reads). */
+  pageLoudDenialTaskPhrase: string | undefined = undefined;
+
   /** Open the page lane's prepare scope (see pagePrepareDepth): one clear
    *  of the sweep surface for the whole page render, its layout warm-ups
    *  included. Pair with endPagePrepare in a finally block. */
@@ -1527,7 +1535,7 @@ export class RenderEngine implements RenderEngineLike {
     // page lane runs the same warm at page.ts; census M8: the graded
     // Kayla_Feder_20230902+discussion:open pair renders the
     // inherited-grant form on THIS lane).
-    await this.ensureDiscussionUpdateVerdicts();
+    await this.ensureDiscussionUpdateVerdicts({ cardName, view });
     // The type editor's select (auth/permissions.rb:18-26 createable_types):
     // precomputed for the views whose body reaches it so the sync render
     // resolves the option list query-free.
@@ -7518,7 +7526,10 @@ export class RenderEngine implements RenderEngineLike {
    *  discussion: left_id 9813's *update row, content "Anyone") is what
    *  the anonymous viewer's update rides - the same algebra
    *  allTaskVerdictsForCard already walks. */
-  async ensureDiscussionUpdateVerdicts(): Promise<void> {
+  async ensureDiscussionUpdateVerdicts(page?: {
+    cardName: string;
+    view: string;
+  }): Promise<void> {
     if (this.readPermission === undefined) return;
     // Closure gate: a render whose closure carries no +discussion card
     // must not pay the who_can batch - the junction-depth-closure /
@@ -7535,10 +7546,29 @@ export class RenderEngine implements RenderEngineLike {
         break;
       }
     }
-    if (!hasDiscussionCard) return;
+    if (!hasDiscussionCard && !this.isBoardDiscussionPage(page)) {
+      return;
+    }
     if (this.taskState === undefined) {
       const results = await this.fetcher.driver.batch(viewTaskPermissionStatements());
       this.taskState = viewTaskStateFromResults(results, this.readPermission);
+    }
+    // THE BOARD PAGE'S PHANTOM DISCUSSION CHILD: the board view's engage_tab
+    // nests `<main>+discussion` programmatically during the SYNC render
+    // (card-mod-edit.ts engageTabView), so the child never seats before this
+    // warm and the comment_box gate's taskAllowed(card, "create") read (the
+    // comment.rb:46 perms :update arm on a new card) answered undefined —
+    // no form where Ruby renders one. Ruby resolves the same chain at nest
+    // time: the phantom is a new card (fetch new:{}, *all+*default types it
+    // RichText), whose create verdict runs the _left inheritance (rule
+    // all-plus "_left" -> the real left's :update rule — on the synthetic
+    // deck Topic+*type+*update "Member", the live-probe verdicts). Seat the
+    // child's create verdict from the same taskState the sweep below uses;
+    // the sync nest then renders the seated verdict. Board-view pages only:
+    // the engage_tab is the tab family's only discussion nest, so no other
+    // page pays the batch.
+    if (page !== undefined && this.isBoardDiscussionPage(page)) {
+      await this.seatBoardPagePhantomDiscussionVerdict(page.cardName);
     }
     for (const card of this.renderCards.values()) {
       if (!this.renderSeats.has(card.key)) continue;
@@ -7577,6 +7607,48 @@ export class RenderEngine implements RenderEngineLike {
         ),
       );
     }
+  }
+
+  /** The page-context arm of the discussion warm: the board view's engage
+   *  tab is the only surface that nests the (usually absent) +discussion
+   *  child of a real card. page.view "board" is that tab family's dispatch
+   *  surface; a signed-out visitor renders no engage tab at all
+   *  (tab_visibility show_engage? = card.real? && signed_in for this arm). */
+  private isBoardDiscussionPage(page?: { cardName: string; view: string }): boolean {
+    return (
+      page !== undefined &&
+      page.view === "board" &&
+      page.cardName !== "" &&
+      this.readPermission?.signedInActorId !== undefined
+    );
+  }
+
+  /** The board page's `<main>+discussion` phantom's create verdict (the
+   *  comment_box gate's read — see ensureDiscussionUpdateVerdicts' board
+   *  arm above). The phantom input is the new-card shape the nest builds:
+   *  *all+*default's type (newCardDefaultType) over the absolutized field
+   *  name; the verdict walk is allTaskVerdictsForCard, whose create arm
+   *  runs the _left inheritance through the real left's :update rule. */
+  private async seatBoardPagePhantomDiscussionVerdict(cardName: string): Promise<void> {
+    const name = DeckoName.parse(`${cardName}+discussion`);
+    if (this.taskVerdicts.has(name.key)) return;
+    if (this.renderCards.has(name.key)) return; // a seated card: the sweep owns it
+    const defaulted = this.newCardDefaultType(name);
+    const verdicts = await allTaskVerdictsForCard(
+      this.fetcher,
+      {
+        name,
+        isNew: true,
+        ...(defaulted?.typeId !== undefined ? { typeId: defaulted.typeId } : {}),
+        ...(defaulted?.typeName !== undefined ? { typeName: defaulted.typeName } : {}),
+      },
+      this.taskState!,
+    );
+    this.taskVerdicts.set(name.key, {
+      update: undefined,
+      delete: undefined,
+      create: verdicts.create,
+    });
   }
 
   private async ensureTaskVerdicts(view: string): Promise<void> {
