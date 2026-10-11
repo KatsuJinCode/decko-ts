@@ -70,15 +70,20 @@ Rebuilding the deck reproduces it row for row: the generator is deterministic
 and the builder freezes the deck.json clock, so even the account salts are
 stable. The manifest pins the recorded bytes.
 
-One deliberate difference from a fresh rebuild: the deck was built inside a
-private reading-assistant application whose eight empty `library_*` tables
+One deliberate difference from a fresh rebuild, and it is now the only one. The
+build path recorded above and in `MANIFEST.json`'s `provenance` is the stock
+oracle (`reference-harness/oracle/build-deck.sh`, then `seed.rb`) against
+decko 0.20.0 / card 1.110.0, and that path does not create another
+application's schema. The committed deck file nevertheless carried eight empty
+`library_*` tables belonging to a private reading-assistant application
 (`library_assistant_decisions`, `library_assistant_interactions`,
 `library_assistant_learner_levels`, `library_assistant_threads`,
 `library_audit_log`, `library_feature_events`, `library_lib_settings`,
-`library_proposals`) rode along in the committed deck file. They are not part
-of the battery — every one is empty, nothing in this repository creates or
-reads them, and no recording touches them — and
+`library_proposals`) whose presence the recorded build does not explain — so
+the committed deck was not a byte-reproducible output of the recorded path. They
+are not part of the battery: every one is empty, nothing in this repository
+creates or reads them, and no recording touches them.
 `reference-harness/corpus/drop-private-app-tables-from-fixture-decks.mjs`
-dropped them from the committed deck (2026-10-10). A fresh rebuild inside the
-private application still carries them; the batteries and the whole-deck
-comparison are blind to their presence or absence.
+dropped them from the committed deck (2026-10-10), so the committed file is now
+what the recorded build produces. The batteries and the whole-deck comparison
+were blind to their presence either way.

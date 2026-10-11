@@ -379,6 +379,42 @@ node reference-harness/runner/manifest.mjs expected reference-harness/fixtures/s
   results and expected outputs record that digest. A changed generator or
   operation list makes a new fixture name (`synthetic-v2`), so a pass rate
   always names exactly what it was measured on.
+  **Declared re-pin.** One exception exists to "immutable", and it is for a
+  deck that must change for privacy or packaging reasons, not for a deck
+  whose answers changed. A fixture's built deck may be modified after its
+  expected outputs are published when, and only when, all five of the
+  following hold:
+
+  1. **The change is out of the graded surface.** It removes content nothing
+     grades — a table the operation list never reads or writes, a row the
+     scenario steps never touch. It never alters a card, a render input, or an
+     operation list.
+  2. **A committed script performs it**, and is the record of what was done.
+     Re-running the script on a deck it has already processed is a no-op, so
+     the change is auditable rather than asserted.
+  3. **The manifest is re-pinned to the new fixture digest** in the same change,
+     by `manifest.mjs fixture` as above, so the tree and its digest never
+     disagree.
+  4. **The expected directory's manifest carries a `provenance.repin` entry**
+     naming the date, what changed, why, and the **previous fixture digest**,
+     so a reader can tell a re-pinned fixture from a recaptured one. Re-pinning
+     is not re-capture: the `captured` field still describes when the oracle's
+     answers were captured, and the two dates are not the same event.
+  5. **The grade is re-run against the re-pinned fixture**, and the passing
+     result is what the public figure quotes. The grader's refusal 5 (this
+     section) means a run recorded against the old digest is not a grade at
+     all, so a re-pin without a re-run leaves the fixture ungraded rather than
+     quietly graded.
+
+  A re-pin that changes a graded input is not a re-pin; it is a new fixture
+  (`synthetic-v2`) with its own capture. The one re-pin this repository has
+  made is `synthetic-v1` on 2026-10-10
+  (`reference-harness/corpus/drop-private-app-tables-from-fixture-decks.mjs`,
+  described under `provenance.repin` in that fixture's `expected/MANIFEST.json`);
+  it dropped eight empty `library_*` tables of another application that rode
+  along in the deck file, and the grade re-run against the re-pinned fixture is
+  the 1,754 / 1,754 renders and 2,388 semantics operations the
+  [coverage inventory](../docs/coverage-inventory.md) quotes.
 - **Oracle**: expected outputs record the oracle's versions, variant and
   contract in their manifest. Capturing against another Decko release makes a
   new fixture name.

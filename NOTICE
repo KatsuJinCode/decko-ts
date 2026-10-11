@@ -126,6 +126,38 @@ texts carry are restated in
 [`assets/PROVENANCE.md`](scripts/deploy/one-click-deck/demo-static-assets/assets/PROVENANCE.md),
 which maps every third-party section of each bundle to its license text.
 
+### `reference-harness/fixtures/*/deck/files/` — the compiled bundles inside the fixture decks
+
+The two committed reference-harness fixture decks each carry the deck's own
+compiled asset outputs as their card content, under file ids `307` (the
+`*all+*script` output, `.js`) and `447` (the `*all+*style` output, `.css`):
+
+- `reference-harness/fixtures/synthetic-v1/deck/files/307/*.js`
+- `reference-harness/fixtures/synthetic-v1/deck/files/447/*.css`
+- `reference-harness/fixtures/write-battery-v1/deck/files/307/*.js`
+- `reference-harness/fixtures/write-battery-v1/deck/files/447/*.css`
+
+**Why compiled outputs ship inside a fixture deck:** these files are the
+fixture decks' own committed card content, not build inputs. Decko stores a
+deck's compiled `*all+*script` and `*all+*style` outputs as File cards, and the
+reference harness drives a real Decko schema — a fixture whose deck were
+missing its asset outputs would not be the deck the oracle answered against.
+They are consequently subject to the same notice-destroying concatenation
+problem as the demo bundles above, which is why they are listed here. The
+licenses are the ones already shipped in the `fixtures/vendor/` inventory
+above, unmodified and in the same terms; `PROVENANCE.md` beside the demo
+bundles maps section markers to those same files.
+
+| File | What it is | Third-party components it carries | License | Full text ships at |
+| --- | --- | --- | --- | --- |
+| `fixtures/*/deck/files/307/*.js` | Uglifier-compiled concatenation of the deck's script assets: jQuery UI, Autosize, the jQuery File Upload plugin, Bootstrap JS, Bootstrap Colorpicker, TinyMCE, plus Decko's own `.coffee` assets | jQuery UI 1.12.1; Autosize 1.18.13; jQuery File Upload; Bootstrap 5.1.3 (JS); Bootstrap Colorpicker 2.5.2; TinyMCE 5.10.7 | MIT, MIT, MIT, MIT, **Apache-2.0**, **LGPL-2.1** | each row of the `fixtures/vendor/` table above, TinyMCE at `fixtures/vendor/mod-script-assets/card-mod-tinymce_editor/assets/script/License-lgpl-2.1.txt` |
+| `fixtures/*/deck/files/447/*.css` | SassC-compiled deck stylesheet: Bootstrap 5.1.3 + Bootswatch theme + the mods' own Sass | Bootstrap 5.1.3; Bootstrap Icons; Bootswatch themes; Select2 and its Bootstrap 5 theme | MIT | `fixtures/vendor/bootstrap-scss/LICENSE.txt`, `fixtures/vendor/bootswatch/LICENSE`, and the Select2 rows of the `fixtures/vendor/` table above |
+
+**TinyMCE remains the one that constrains redistribution.** It is LGPL-2.1 in
+these fixture bundles exactly as in every other location in this project, and
+the reasoning is the one stated below; the full LGPL-2.1 text ships beside the
+vendored TinyMCE copy and is named in the table row.
+
 ### The one that constrains redistribution
 
 **TinyMCE is LGPL-2.1.** Every other component above is MIT or Apache-2.0,
