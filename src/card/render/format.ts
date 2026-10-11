@@ -1589,6 +1589,13 @@ export class RenderFormat {
    *  the runner session — capture-authenticated-pages.rb:143-153). */
   private loudDenialMessageHtml(deniedTask: CrudTask = "read"): string {
     if (this.engine.pageSession?.signedIn === true) {
+      // html/error.rb:200-204: @denied_task NIL renders t(:format_to_do_that)
+      // — "to do that", the controller-rescue denial's wording (a raised
+      // PermissionDenied carries no view-level denied task). The page-scoped
+      // phrase override is that nil arm; the view-level walk keeps its own
+      // task wording.
+      const phrase = this.engine.pageLoudDenialTaskPhrase;
+      if (phrase !== undefined) return `<div>You need permission to ${phrase}.</div>`;
       return `<div>You need permission to ${deniedTask} this.</div>`;
     }
     return (
@@ -2052,7 +2059,13 @@ export class RenderFormat {
     // rescued view), 2026-10-09. Rescuing inside this catch (or letting the
     // rethrow die on a lane without quiet errors) is the seconds corpus's
     // TooDeep family: the bare view lane now passes nestQuietErrors like
-    // the page lane (render.ts).
+    // the page lane (render.ts). THE BOUNDARY-GRANULARITY QUESTION (the
+    // live v1 oracle vs this v2 pin — the ruling-1 observation,
+    // tmp/int/depth-probe/: the live /Chain_01 page renders Chain 20's
+    // titled shell + header with the span as the BODY, and the recorded
+    // core:Chain 01 pins the span inside Chain 20's core slot — the two
+    // fixtures pin OPPOSITE granularities; the reconciliation is the
+    // follow-up lane's) is recorded in full in the §10.28 receipt.
     if (sub.depth >= this.maxDepth) {
       throw new TooDeepError();
     }
@@ -3392,6 +3405,9 @@ export class RenderFormat {
       main: true,
     });
     if (sub.depth >= this.maxDepth) {
+      // The corpus never reaches this arm (main.rendered memoizes first);
+      // the raise stays the recorded posture here — see nest()'s depth
+      // guard for the observed quiet shape.
       throw new TooDeepError(); // monitor_depth, see nest()
     }
     return this.withNestMode("normal", () =>
@@ -3677,6 +3693,11 @@ export interface RenderEngineLike {
    *  RenderEngine#pageErrorStatus). Optional: engines without it ignore
    *  the status. */
   pageErrorStatus?: number | undefined;
+  /** html/error.rb:200-204's @denied_task-nil arm (render.ts
+   *  RenderEngine#pageLoudDenialTaskPhrase): the loud denial's "to do that"
+   *  wording for a controller-rescue denial. Optional: engines without it
+   *  keep the view-level task wording. */
+  pageLoudDenialTaskPhrase?: string | undefined;
   /** Chain-aware view resolution for a single (card, view, format) triple.
    *  With a mod loader wired up, walks the per-card MRO chain (set/
    *  format.rb:146-150 + format.rb:62-68) and returns the most-specific

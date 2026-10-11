@@ -109,6 +109,7 @@ import {
 } from "../permissions/read-rules.js";
 import {
   saveTaskVerdictForCard,
+  taskVerdictForCard,
   viewTaskPermissionStatements,
   viewTaskStateFromResults,
   type ViewTaskState,
@@ -4231,6 +4232,29 @@ export class CardActionEngine {
       // permissions.rb:117 deny_because you_cant("#{verb} #{name}"), added
       // to card.errors under :permission_denied (:204).
       const shownName = card.name?.s !== undefined && card.name.s !== "" ? card.name.s : "this";
+      // A COMPOUND create whose own permit passed but whose SIDE walk failed
+      // (permissions.rb:127-137 ok_to_create_side: a missing part is judged
+      // as a virtual new card's own ok?(:create)) composes the SUBCARD-ERROR
+      // shape the act reports: the part card's permission_denied error folds
+      // onto the supercard under the part's name (the standard_errors view
+      // upcases the attribute for display), so the alert reads
+      // "<PART NAME UP>: permission_denied You don't have permission to
+      // create <part name>" under the "Problems with <card>" heading. The
+      // board follow-family's unfollow link pins these bytes (the virtual
+      // left "Topic 009+*self+Mira Member" denies where the preference's own
+      // right/follow.rb permit override passed).
+      if (task === "create" && card.name !== undefined && card.name.isCompound === true) {
+        const side = await this.failingCreateSide(card.name);
+        if (side !== undefined) {
+          throw new CardActionError(
+            "permission-denied",
+            `actor ${this.actor?.name ?? ANONYMOUS_ACTOR_NAME} may not ${task} card ${card.name.s}`,
+            `${side.toUpperCase()}: permission_denied You don't have permission to create ${side}`,
+            { [side.toLowerCase()]: `permission_denied You don't have permission to create ${side}` },
+            card.name.s,
+          );
+        }
+      }
       throw new CardActionError(
         "permission-denied",
         `actor ${this.actor?.name ?? ANONYMOUS_ACTOR_NAME} may not ${task} card ${card.name?.s ?? String(card.id)}`,
@@ -4331,8 +4355,30 @@ export class CardActionEngine {
    *  superleft&.type_name || quick_type(name.left_name),
    *  set/pattern/class_methods.rb:59-69). Direct row reads; write-path
    *  calls are rare. */
-  private async patternInputFor(
-    card: CardRecord,
+  /** The failing side of a compound create whose own permit passed
+   *  (permissions.rb:127-137 ok_to_create_side: an existing part passes;
+   *  a missing part is judged as a virtual new card's own ok?(:create)).
+   *  The side name when one denies, undefined when both sides pass (the
+   *  caller falls back to the plain card denial — the failure was the
+   *  permit arm, not a side). */
+  private async failingCreateSide(name: DeckoName): Promise<string | undefined> {
+    const state = await this.writePermissionState();
+    for (const partName of [name.leftName, name.rightName]) {
+      if (partName === undefined) continue;
+      const existing = await this.fetch.fetchByKey(partName.key);
+      if (existing !== undefined && existing.id !== undefined) continue; // ok_to_create_side's part_card&.new_card? false
+      const verdict = await taskVerdictForCard(
+        this.fetch,
+        { name: partName, isNew: true },
+        "create",
+        state,
+      );
+      if (verdict === false) return partName.s;
+    }
+    return undefined;
+  }
+
+  private async patternInputFor(    card: CardRecord,
     assignedTypeId: number | undefined,
     assignedName?: string,
   ): Promise<PatternCardInput> {
@@ -4445,7 +4491,6 @@ export class CardActionEngine {
     const driver = this.fetch.driver;
     const recentId = await this.fetch.codenames.id("recent_settings");
     if (recentId === undefined) return;
-    const setTypeId = await this.fetch.codenames.id("set");
     const settingTypeId = await this.fetch.codenames.id("setting");
     const actions = [
       { cardId: result.cardId, actionId: result.actionId, verb: result.verb, name: result.name },
@@ -4455,27 +4500,17 @@ export class CardActionEngine {
       if (action.verb === "delete") continue;
       const row = await this.fetchRowById(action.cardId);
       if (row === undefined || row.trash === 1 || row.left_id === null || row.right_id === null) continue;
-      const left = await this.fetchRowById(row.left_id);
       const right = await this.fetchRowById(row.right_id);
-      // Card#rule? (lib/card/rule/all.rb:33-40) — the event's set module
-      // (Set::Rule, mod/core/set_pattern/06_rule.rb pattern_applies?
-      // `card.rule?`): standard_rule? — the LEFT is Set-typed and the right
-      // a Setting — OR preference? — parts > 2, the right a Setting, and
-      // name[0..-3] (the left's own left) Set-typed. The follow family's
-      // rules are preferences ("Topic 008+*self+Ada Admin+*follow": the
-      // immediate left is the USER card; the set part sits two parts up),
-      // so the old left-must-be-a-Set gate skipped exactly those.
-      const rightIsSetting = right !== undefined && right.type_id === settingTypeId;
-      if (!rightIsSetting) continue;
-      const leftIsSet = left !== undefined && left.type_id === setTypeId;
-      if (!leftIsSet) {
-        // preference? (rule/all.rb:41-44): parts > 2 (the left is itself a
-        // compound) and name[0..-3] is Set-typed.
-        const leftRow = left !== undefined && left.left_id !== null ? await this.fetchRowById(left.left_id) : undefined;
-        if (left === undefined || left.left_id === null || leftRow === undefined || leftRow.type_id !== setTypeId) {
-          continue;
-        }
-      }
+      // set/rule/rules.rb's set is EVERY rule-and-preference card (the right
+      // part is a Setting) — the follow family's PREFERENCE saves
+      // ("Topic 008+*self+Ada Admin+*follow", whose direct left is a User
+      // junction, not a Set) fire it exactly like a set-anchored rule does;
+      // the set-anchored left check dropped the preference arm entirely.
+      // (Both merge lines landed this event-set fix — merge 50 as Card#rule?'s
+      // standard_rule?/preference? disjunction, this branch as the event set's
+      // own right-Setting membership; the set definition is the binding one
+      // and admits the superset, so the right-Setting membership stays.)
+      if (right === undefined || right.type_id !== settingTypeId || right.trash === 1) continue;
       if (action.verb === "update") {
         const changed = (
           await driver.query<{ n: number }>(
