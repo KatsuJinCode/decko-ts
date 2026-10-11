@@ -655,17 +655,98 @@ ${fmt.renderDelegated("core")}</div>`;
   return slotWrapCommon(fmt, "content_panel", inner);
 };
 
+/** The BASE-format core (text.rb:22-24's `to_text super()` target): the
+ *  card's content rendered with base-format nest semantics —
+ *  default_nest_view is :name (nesting.rb:47-49), :link renders
+ *  "text[path]" (links.rb:10-18, the base-format link), :closed delegates
+ *  to :labeled ("name: core", base.rb:125-127), and List-family cards'
+ *  core is the items' names joined ", " (card-mod-list other_views.rb:8-11
+ *  pointer_items.join ", "). Structured cards' content is their structure
+ *  template (content/all.rb:12-14 structured_content). */
+function textFormatCoreFor(fmt: RenderFormat, depth: number): string {
+  const card = fmt.card;
+  const listFamily = card.typeCode === "pointer" || card.typeCode === "list" || card.typeCode === "list_mod";
+  if (listFamily) {
+    return rawItemStrings(card.dbContent ?? "").join(", ");
+  }
+  const structure =
+    fmt.engine.structureRuleForSync?.({
+      name: card.name.s,
+      id: card.id,
+      typeId: card.typeId,
+      typeName: card.typeName,
+      isNew: card.record.isNew === true,
+    });
+  const content = structure !== undefined ? structure.content : (card.dbContent ?? "");
+  if (depth <= 0) return content;
+  let out = "";
+  let cursor = 0;
+  for (const piece of scanNests(content)) {
+    if (piece.kind !== "nest" || piece.nest === undefined) continue;
+    const nest = piece.nest;
+    if (nest.comment !== undefined) continue;
+    const openText = `{{${nest.syntax}}}`;
+    const at = content.indexOf(openText, cursor);
+    if (at === -1) continue;
+    out += content.slice(cursor, at);
+    cursor = at + openText.length;
+    const target = DeckoName.parse(nest.name).absoluteName(card.name);
+    const view = typeof nest.options.view === "string" && nest.options.view !== "" ? nest.options.view : "name";
+    out += baseFormatNestRender(fmt, target.s, view, depth - 1);
+  }
+  if (cursor === 0) return content;
+  out += content.slice(cursor);
+  return out;
+}
+
+/** One nest's base-format render for the text core. */
+function baseFormatNestRender(
+  fmt: RenderFormat,
+  targetName: string,
+  view: string,
+  depth: number,
+): string {
+  const target = fmt.engine.fetchRenderCard(targetName) ?? fmt.newCardFor(targetName);
+  switch (view) {
+    case "name":
+      return target.name.s;
+    case "link": {
+      // base.rb:43-47 link_view -> links.rb:10-18 link_to: text[path] —
+      // the text = the target's title view (its own name here), the path =
+      // the card's absolute URL (base formats render paths absolute).
+      const text = target.name.s;
+      const url = fmt.cardUrl(DeckoName.parse(target.name.s).urlKey);
+      return text !== url ? `${text}[${url}]` : url;
+    }
+    case "closed":
+    case "labeled":
+      // base.rb:125-127 :labeled — "name: core" (the target's recursive
+      // base core)
+      return `${target.name.s}: ${textFormatCoreFor(
+        new RenderFormat(target, fmt.engine, { parent: fmt, maxDepth: fmt.maxDepth }),
+        depth,
+      )}`;
+    default:
+      return textFormatCoreFor(
+        new RenderFormat(target, fmt.engine, { parent: fmt, maxDepth: fmt.maxDepth }),
+        depth,
+      );
+  }
+}
+
 /** html/views.rb:36-40 view :content_with_title:
  *  `wrap true, title: card.format(:text).render_core do [render_menu,
  *  render_core] end`. The title value is the card's core rendered in the
  *  TEXT format (text.rb:22-24 view :core -> to_text super = the base
- *  format's core html run through to_text, text.rb:4-6: HTMLEntities.decode
- *  strip_tags(html)). The slot_attr deep-merge puts the title attribute
- *  AFTER the data attributes (slotWrap's extraAttrs). The before hook
- *  (:34) adds the d0-card-content class_up only. */
+ *  format's core, run through to_text — text.rb:4-6). The base core is
+ *  the textFormatCoreFor walk above; the earlier shape rendered the HTML
+ *  core (wrap + menu bytes leaked into the title). The slot_attr
+ *  deep-merge puts the title attribute AFTER the data attributes
+ *  (slotWrap's extraAttrs). The before hook (:34) adds the
+ *  d0-card-content class_up only. */
 const contentWithTitleView: ViewFn = ({ fmt }) => {
   const core = fmt.renderDelegated("core");
-  const title = toText(core);
+  const title = toText(textFormatCoreFor(fmt, 3));
   const inner = `${fmt.renderView("menu")}
 ${core}`;
   const voo = fmt.voo;
