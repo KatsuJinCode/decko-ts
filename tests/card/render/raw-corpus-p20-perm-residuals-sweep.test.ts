@@ -38,6 +38,7 @@ import { describe, it, expect } from "vitest";
 import { byteDiff, normalizeSlotIds } from "../../../src/testing/diff.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
 import { setDeploymentCloudAssetHost } from "../../../src/card/render/views.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 // The graded environment's live cloud-asset host (views.ts: the close-71
 // transform moved the graded corpus expectations to the Spaces prefix; the
@@ -135,7 +136,7 @@ describe(
       { timeout: 3_600_000 },
       async (itCtx) => {
         if (!SWEEP_REQUESTED) {
-          itCtx.skip();
+          skipLoud(itCtx, "tests/card/render/raw-corpus-p20-perm-residuals-sweep.test.ts", "SWEEP_REQUESTED");
           return;
         }
         expect(existsSync(PAGE_LANE_DIR), `page-lane shards missing: ${PAGE_LANE_DIR}`).toBe(true);
@@ -205,11 +206,11 @@ describe(
       { timeout: 3_600_000 },
       async (itCtx) => {
         if (!SWEEP_REQUESTED) {
-          itCtx.skip();
+          skipLoud(itCtx, "tests/card/render/raw-corpus-p20-perm-residuals-sweep.test.ts", "SWEEP_REQUESTED");
           return;
         }
         if (FLIPPED_PAGES.length === 0) {
-          itCtx.skip();
+          skipLoud(itCtx, "tests/card/render/raw-corpus-p20-perm-residuals-sweep.test.ts", "FLIPPED_PAGES is empty");
           return;
         }
         expect(existsSync(PAGE_LANE_DIR)).toBe(true);

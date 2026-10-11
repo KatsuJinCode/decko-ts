@@ -52,6 +52,7 @@ import Database from "better-sqlite3";
 import { describe, it, expect } from "vitest";
 import { byteDiff, normalizeSlotIds } from "../../../src/testing/diff.js";
 import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-seeding.js";
+import { skipLoud } from "../../support/describe-with-corpus.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -166,7 +167,7 @@ describe(
       { timeout: 3_600_000 },
       async (itCtx) => {
         if (!SWEEP_REQUESTED) {
-          itCtx.skip();
+          skipLoud(itCtx, "tests/card/render/raw-corpus-p21-cql-item-typing-sweep.test.ts", "SWEEP_REQUESTED");
           return;
         }
         expect(existsSync(PAGE_LANE_DIR), `page-lane shards missing: ${PAGE_LANE_DIR}`).toBe(true);
