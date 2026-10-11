@@ -620,14 +620,22 @@ const rawView: ViewFn = ({ fmt }) => fmt.renderRaw();
 /** set/all/base.rb:101-103 view :labeled_content, unknown: :mini_unknown:
  *  `render_core`. The base body is the core view's bytes; the
  *  unknown-card substitution routes unknown cards to :mini_unknown.
- *  In the engine the core view is registered separately; this port
- *  just runs the core (renderCore would call into HTML_VIEWS.core, so
- *  the headless port calls renderView("core")). */
-const labeledContentView: ViewFn = ({ fmt }) => fmt.renderView("core");
+ *
+ *  `render_core` is Ruby's METHOD DELEGATION (method_delegation.rb:41-47
+ *  -> `api_render` :14-18 -> `render!`), not a plain dispatch: it opens
+ *  its own `wrap_and_render` rescue (format/render.rb:7-14, :96-100), so
+ *  a raising core returns the quiet render-error span on a nested format
+ *  and only re-raises on the focal (depth-0) one. `renderDelegated` is
+ *  that seam. Calling `renderView` here instead skipped the rescue scope
+ *  entirely and let the error escape the whole nest chain — the too-deep
+ *  chain of the corpus rendered as a thrown adapter error instead of the
+ *  quiet span Ruby emits inside the twentieth card's own view. */
+const labeledContentView: ViewFn = ({ fmt }) => fmt.renderDelegated("core");
 
 /** set/all/base.rb:105-107 view :titled_content, unknown: :blank:
- *  `render_core`. Same body as :labeled_content. */
-const titledContentView: ViewFn = ({ fmt }) => fmt.renderView("core");
+ *  `render_core`. Same body as :labeled_content, same method-delegation
+ *  seam (see above). */
+const titledContentView: ViewFn = ({ fmt }) => fmt.renderDelegated("core");
 
 /** set/all/base.rb:109-111 view :blank, perms: :none:
  *  the literal empty string. (HTML_VIEWS already has a blankView; this

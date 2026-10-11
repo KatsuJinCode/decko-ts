@@ -8,6 +8,8 @@
 import { readFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck.js";
+import { getDefaultModLoader } from "../../../src/card/mod-loader.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
 import { RenderEngine } from "../../../src/card/render.js";
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
@@ -90,6 +92,30 @@ await driver.query(
   [],
 );
 await driver.query(`INSERT OR IGNORE INTO "deck_data_version" ("id", "version") VALUES (1, 0)`, []);
+
+// THE GRADED CONFIGURATION IS THE SERVED CONFIGURATION.
+//
+// The harness grades the engine the way the product boots it, so the deck's
+// mods are loaded here exactly as both edge hosts load them:
+// bootCorpusDeckEngines (deploy/bunny-worker-src/bunny-edge-deck-boot.ts:114)
+// calls defaultDeckLoader() once per isolate, before any RenderEngine is
+// constructed, and RenderEngine's constructor reads the process-wide default
+// loader for its view dispatch (src/card/render.ts:929). Without this line the
+// adapter's RenderEngine bound an undefined loader, every render resolved
+// through the compiled base view table alone, and a grade taken that way
+// measured a configuration the product never serves - it reported a clean
+// 100% on a rendering surface that is not the rendering surface.
+//
+// Bound once, guarded, for the same reason the edge boot guards it: a second
+// defaultDeckLoader() call rebinds to a FRESH loader (reload semantics,
+// default-mod-deck.ts:189), and this module re-boots after every write
+// (boot() below). DEBUGGING ONLY: DECKO_HARNESS_MOD_LOADER=off unbinds the
+// mods so a divergence can be attributed to the loader rather than to the
+// engine underneath it. It is not a graded configuration - a run taken with it
+// off is a diagnosis, never a grade.
+if (process.env.DECKO_HARNESS_MOD_LOADER !== "off" && getDefaultModLoader() === undefined) {
+  defaultDeckLoader();
+}
 
 // ---- engine state, rebuilt after every write ---------------------------------
 let fetcher: FetchEngine;
