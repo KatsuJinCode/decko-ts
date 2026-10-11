@@ -119,7 +119,7 @@ describe("pointer/list trailing-newline byte-level pin (M3 family: unclassified:
         id: 9020,
         name: "bifaarykabanhm",
         typeId: 909891,
-        readRuleId: 6568,
+        readRuleId: 902787,
         readRuleClass: "*all",
       });
       const html = await storage.engine.render("*all+*layout", "content");
@@ -164,7 +164,7 @@ describe("pointer/list trailing-newline byte-level pin (M3 family: unclassified:
         id: 9010,
         name: "irjkznnbpewjpr",
         typeId: 909891,
-        readRuleId: 6568,
+        readRuleId: 902787,
         readRuleClass: "*all",
       });
       const html = await storage.engine.render("*star+*create", "content");

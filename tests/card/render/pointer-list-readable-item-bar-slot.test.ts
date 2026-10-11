@@ -109,14 +109,14 @@ describe("pointer/list item slot: readable items keep the bar-view slot, denied 
       await seedCard(corpusStorage, {
         id: 99102,
         name: "deferred lane denied list",
-        typeId: 47,
+        typeId: 900032,
         dbContent: "denied item",
       });
       await seedCard(corpusStorage, {
         id: 99103,
         name: "denied item",
         typeId: 909891,
-        readRuleId: 22283,
+        readRuleId: 909893,
         readRuleClass: "*type",
       });
       const html = await corpusStorage.engine.render("deferred lane denied list", "content");

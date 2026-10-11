@@ -132,7 +132,7 @@ describe("pointer/list open-view accordion-body omits the content-view slot wrap
         id: 9020,
         name: "yzzw",
         typeId: 909891,
-        readRuleId: 22283,
+        readRuleId: 909893,
         readRuleClass: "*type",
       });
       let captured: unknown;
@@ -171,15 +171,15 @@ describe("pointer/list open-view accordion-body omits the content-view slot wrap
         id: 9022,
         name: "wrapper probe+*self",
         leftId: 9021,
-        rightId: 264,
-        typeId: 259,
+        rightId: 900118,
+        typeId: 900113,
       });
       await seedCard(storage, {
         id: 9023,
         name: "wrapper probe+*self+*content options",
         leftId: 9022,
-        rightId: 86,
-        typeId: 30,
+        rightId: 900051,
+        typeId: 900017,
         dbContent: '{"type":"Basic"}',
       });
       const html = await storage.engine.render("wrapper_probe", "open");
