@@ -50,7 +50,7 @@ describe("N1: slot ids, the one mask", () => {
 });
 
 describe("N1 masks only a real attribute token (finding 6)", () => {
-  it("the reviewer's control: text in element content is never masked, whatever precedes it", () => {
+  it("text in element content is never masked, whatever precedes it", () => {
     assert.ok(!same(`<p>Example data-slot-id="${slot}"</p>`, `<p>Example data-slot-id="${other}"</p>`), "a preceding word is not attribute position");
     assert.ok(!same(`<p>Example data-slot-id="${slot}"</p>`, `<p>Other data-slot-id="${slot}"</p>`), "the visible text itself still counts");
   });
@@ -84,8 +84,8 @@ describe("N1 masks only a real attribute token (finding 6)", () => {
   });
 });
 
-describe("N1 and the raw text elements xmp and plaintext (review round 3, finding 6)", () => {
-  it("the reviewer's case: inside <xmp> a slot-id look-alike is DISPLAYED text, never masked", () => {
+describe("N1 and the raw text elements xmp and plaintext", () => {
+  it("inside <xmp> a slot-id look-alike is DISPLAYED text, never masked", () => {
     assert.ok(!same(`<xmp><b data-slot-id="${slot}"></b></xmp>`, `<xmp><b data-slot-id="${other}"></b></xmp>`), "inside xmp the content counts");
     assert.equal(normalizeHtml(`<xmp><b data-slot-id="${slot}"></b></xmp>`), `<xmp><b data-slot-id="${slot}"></b></xmp>`, "the xmp body is copied byte for byte");
   });
@@ -103,7 +103,7 @@ describe("N1 and the raw text elements xmp and plaintext (review round 3, findin
 
   it("negative control: a real attribute inside a normal tag is still masked", () => {
     assert.ok(same(`<div data-slot-id="${slot}">x</div>`, `<div data-slot-id="${other}">x</div>`));
-    assert.ok(same(`<b data-slot-id="${slot}">x</b>`, `<b data-slot-id="${other}">x</b>`), "the reviewer's tag, outside xmp, masks");
+    assert.ok(same(`<b data-slot-id="${slot}">x</b>`, `<b data-slot-id="${other}">x</b>`), "the tag, outside xmp, masks");
   });
 });
 

@@ -1,4 +1,4 @@
-// The release gate, as one aggregating runner (review round 3, finding 7).
+// The release gate, as one aggregating runner.
 //
 // WHY THIS EXISTS: the release-check npm script used to join its stages with
 // `&&`, so the seven documented baseline failures in the first stage

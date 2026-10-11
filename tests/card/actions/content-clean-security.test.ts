@@ -261,7 +261,7 @@ describe("cleanContent: hostile input", () => {
   });
 });
 
-describe("cleanContent: the review's reproductions", () => {
+describe("cleanContent: security reproductions", () => {
   it("drops a javascript: link target and keeps the link text", () => {
     expect(cleanContent(`<a href="javascript:alert(1)">click</a>`)).toBe("<a>click</a>");
   });

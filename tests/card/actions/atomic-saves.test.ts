@@ -328,7 +328,7 @@ for (const [label, make] of Object.entries(BACKENDS)) {
       await deck?.backend.dispose();
     });
 
-    it("the reviewer's probe: a child of an unknown type rolls its parent back", async () => {
+    it("a child of an unknown type rolls its parent back", async () => {
       const before = await deck.snapshot();
       let error = "";
       try {

@@ -23,9 +23,9 @@
 //
 // CPU vs wall time: Cloudflare Workers has no in-isolate CPU-time API
 // (V8 isolates do not expose process times; performance.now() is the
-// only monotone clock). The recorder reports BOTH cpuMs and wallMs for
-// API compatibility with the review's request list, and the aggregate
-// exposes an `accounting` block that LABEL the equivalence so a
+// only monotone clock). The recorder reports BOTH cpuMs and wallMs
+// so consumers can select either field, and the aggregate
+// exposes an `accounting` block that labels the equivalence so a
 // reader is not misled. cpuMs = wallMs (perf.now diff) at the per-
 // request level on this runtime.
 //

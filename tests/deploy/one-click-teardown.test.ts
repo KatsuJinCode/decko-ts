@@ -94,7 +94,7 @@ describe("LIST mode — parses the recorded Cloudflare API responses", () => {
     expect(plan.refusals).toEqual([]);
   });
 
-  it("prints name, id and created-date for every deletion candidate — the three facts a reviewer needs", () => {
+  it("prints name, id and created-date for every deletion candidate — the three facts an operator needs", () => {
     const plan = deployedPlan();
     const text = renderPlanText(plan);
 
@@ -278,7 +278,7 @@ describe("DESTROY mode — --yes, and then the plan fingerprint", () => {
     expect(run.mock.calls).toEqual([]);
   });
 
-  it("refuses a fingerprint from a DIFFERENT plan (the plan changed under the reviewer)", () => {
+  it("refuses a fingerprint from a DIFFERENT plan (the plan changed under the check)", () => {
     const plan = deployedPlan();
     const other = deployedPlan({
       d1ListResponse: fixture("cloudflare-d1-database-list-name-mismatch-response.json"),
