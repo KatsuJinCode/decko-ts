@@ -177,9 +177,9 @@ Stated plainly, with where the gap closes when it closes:
 
 1. **Browser journeys.** The machinery is committed
    (`reference-harness/browser/`) and 51 journeys are defined as data
-   (`browser/journeys/synthetic-v1.json`), but no journey comparison run is
-   committed. What a browser session sees — editors, uploads, follow flows —
-   is unproven in the public package.
+   (`reference-harness/browser/journeys/synthetic-v1.json`), but no journey
+   comparison run is committed. What a browser session sees — editors, uploads,
+   follow flows — is unproven in the public package.
 2. **The default PBKDF2 password path, in the harness grade.** The public
    fixture's TS adapter pins `DECKO_PASSWORD_HASH=legacy-sha1`
    (`reference-harness/adapters/ts/adapter.ts`), because the fixture deck is
