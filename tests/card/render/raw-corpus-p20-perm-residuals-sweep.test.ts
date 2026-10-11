@@ -6,7 +6,7 @@
 //   - 4 mixed18 route-outs booked to perm (an internal work log
 //     round-3 ledger: "the perm regions remain route-out (perm-allow family,
 //     as pinned by the dead agents)" on BW Oversight+ARCHETYPALLY, Starhawk,
-//     Emery Lockhart, Jonas Verhoeven; the mixed18 engine commits are
+//     Emery Lokhart, Jonas Verhove; the mixed18 engine commits are
 //     NOT in this base -- 38ba98e/8991ee9 are not ancestors of b2f4700 -- so
 //     these pages carry their full diff here, of which this suite owns the
 //     permission-shaped regions);
@@ -64,9 +64,9 @@ const SWEEP_REQUESTED = process.env.P20_PERM_RESIDUALS === "1";
  * own instrument (perm-allow-overdeny-corpus-replay.test.ts). */
 const LANE_PAGES = [
   { name: "BW Oversight+ARCHETYPALLY", routedBy: "mixed18-r3 route-out (perm regions)" },
-  { name: "Emery Lockhart", routedBy: "mixed18-r3 route-out (perm regions)" },
+  { name: "Emery Lokhart", routedBy: "mixed18-r3 route-out (perm regions)" },
   { name: "Starhawk", routedBy: "mixed18-r3 route-out (perm regions)" },
-  { name: "Jonas Verhoeven", routedBy: "mixed18-r3 route-out (perm regions)" },
+  { name: "Jonas Verhove", routedBy: "mixed18-r3 route-out (perm regions)" },
   { name: "Administrator", routedBy: "mm-roleviews leftover 5 (:configs grouping)" },
   { name: "Administrator+Dashboard", routedBy: "mm-roleviews leftover 5 (:configs grouping)" },
   { name: "Help Desk", routedBy: "mm-roleviews leftover 5 (:configs grouping)" },

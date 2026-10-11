@@ -16,7 +16,7 @@
 // The engine emitted `<a href="SOURCE">SOURCE</a>` (label = the URL,
 // double-quoted href) -- the exact quote-style diff on all 9 exemplars
 // (Werkshop Museum `Download +Documents`, Damon K Fairhurst
-// `Download +description+bio`, June Jessup `Download +description+resume`,
+// `Download +description+bio`, June Pemberton `Download +description+resume`,
 // Windows - JS / Daniel Ferreira considerations `Download +doc version`,
 // Depth Psychology `Download +File`).
 //

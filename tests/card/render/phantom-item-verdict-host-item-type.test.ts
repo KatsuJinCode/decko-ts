@@ -25,7 +25,7 @@
 //   * 18560 Delia Rosenquist — item "Kimberly Sensei does not
 //     contribute directly to the reference deck at this time" (host
 //     +musings, item type consideration; oracle shard-000013)
-//   * 14546 Jonas Verhoeven+musings — same shape (shard-000010)
+//   * 14546 Jonas Verhove+musings — same shape (shard-000010)
 // The verdict and the rendered identity were computed from DIFFERENT
 // types — the slot carried consideration (phantomIdentity, hostItemType
 // wins) while the verdict typed BasicCs. This test pins them to the same

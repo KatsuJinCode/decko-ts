@@ -140,7 +140,7 @@ describe("contextualizePath (file_card_uploader.rb doc lines 88-117)", () => {
     // (file_card_uploader.rb:147-153 + set/type/file.rb:11-15): the
     // [-2] [/.] segment of "(my_bucket)/1/2.png" is "2", so the URL is
     // the fog public_url of files/1/2.png — NOT the stored key verbatim
-    // (the Jonas Verhoeven oracle anchor pins the derivation).
+    // (the Jonas Verhove oracle anchor pins the derivation).
     expect(contextualizePath("(my_bucket)/1/2.png")).toBe(
       "http://s3.amazonaws.com//files/1/2.png",
     );

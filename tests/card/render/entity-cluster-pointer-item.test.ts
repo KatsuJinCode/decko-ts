@@ -6,7 +6,7 @@
 //
 // Bug shape (mechanism-census mechanism (f) "unresolved
 // content-divergence with an entity-named-card cluster"; sampled
-// examples id 14546 "Jonas Verhoeven+musings", id 15261 "Daemeon
+// examples id 14546 "Jonas Verhove+musings", id 15261 "Daemeon
 // Reiydelle+Project(s) Organizing", id 16122 "Alexander Rendell+musings",
 // id 14329 "Nathan Colville+musings", id 12 "Sign up", id 22 "PlainText",
 // id 827 "VPX", id 35864 "Robert Ellingham Yamada Yoshimitsu New York Aikikai",
@@ -133,7 +133,7 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
     expect(body).not.toContain("data-card-type-id='22281'");
   });
 
-  it("unit: with Project identity -> inner body carries Project (Emery Lockhart sample)", () => {
+  it("unit: with Project identity -> inner body carries Project (Emery Lokhart sample)", () => {
     const identity = { typeName: "Project", typeId: 398, setKeys: "ALL TYPE-project" };
     const body = pointerListItemBodyForUnknown("Improving Project Success through Myth Discovery", identity);
     expect(body).toMatch(/<div class='bar [^']*TYPE-project[^']*with-bar-menu/);
@@ -158,7 +158,7 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
       // The consideration cardtype — what the host's cql-typed
       // *content_options rule points at (matches corpus id 2979).
       await seedCard(storage, { id: 2979, name: "consideration", typeId: 5 });
-      // The host list card (matches corpus "Jonas Verhoeven+musings"
+      // The host list card (matches corpus "Jonas Verhove+musings"
       // shape — type 47 List, one item that does NOT exist in the deck).
       await seedCard(storage, {
         id: 99146,

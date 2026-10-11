@@ -321,17 +321,17 @@
           "appliedNow": false
         },
         {
-          "id": "view:Kristina Garrison:open",
+          "id": "view:Kristina Garrity:open",
           "cls": "TEST-DATA-GAP",
           "action": "SWAP-RESOLVES",
-          "expectationFile": "updated-expectations/view-Kristina_Garrison__open.live.html",
+          "expectationFile": "updated-expectations/view-Kristina_Garrity__open.live.html",
           "sha256": "362519ddde590e2e6ca393d97522db1d796a5d6185718a804755b064ecc38f02",
           "bytes": 17710,
           "fetchedAt": "2026-10-03T03:48:57.030Z",
-          "url": "https://culturesmith.com/Kristina_Garrison?view=open",
+          "url": "https://culturesmith.com/Kristina_Garrity?view=open",
           "caveat": "view bytes are the live XHR slot inner (outer card-slot div stripped); grade-side view comparisons must apply the same stripping or grade the wrapped form",
           "lane": "view",
-          "name": "Kristina Garrison",
+          "name": "Kristina Garrity",
           "view": "open",
           "appliedByLayer": "live-truth-application lane (verified in place by build-final-graded-dataset-2026-10-03.mjs)",
           "appliedNow": false
@@ -385,17 +385,17 @@
           "appliedNow": false
         },
         {
-          "id": "view:Amber Arvidsson 20230902:open",
+          "id": "view:Amber Arvidsen 20230902:open",
           "cls": "TEST-DATA-GAP",
           "action": "SWAP-RESOLVES",
-          "expectationFile": "updated-expectations/view-Amber_Arvidsson_20230902__open.live.html",
+          "expectationFile": "updated-expectations/view-Amber_Arvidsen_20230902__open.live.html",
           "sha256": "4eabce9ba539b75a581b00a0d18fccad46f26dca3fe3adf34ba704eac15880c6",
           "bytes": 6706,
           "fetchedAt": "2026-10-03T03:49:17.411Z",
-          "url": "https://culturesmith.com/Amber_Arvidsson_20230902?view=open",
+          "url": "https://culturesmith.com/Amber_Arvidsen_20230902?view=open",
           "caveat": "view bytes are the live XHR slot inner (outer card-slot div stripped); grade-side view comparisons must apply the same stripping or grade the wrapped form",
           "lane": "view",
-          "name": "Amber Arvidsson 20230902",
+          "name": "Amber Arvidsen 20230902",
           "view": "open",
           "appliedByLayer": "live-truth-application lane (verified in place by build-final-graded-dataset-2026-10-03.mjs)",
           "appliedNow": false
@@ -1593,18 +1593,18 @@
           "appliedAt": "2026-10-03T12:31:50.877Z"
         },
         {
-          "id": "page:Amber Arvidsson 20230902+discussion:page",
+          "id": "page:Amber Arvidsen 20230902+discussion:page",
           "lane": "page",
           "shard": "recapture-raw-shard-000039.jsonl",
-          "name": "Amber Arvidsson 20230902+discussion",
+          "name": "Amber Arvidsen 20230902+discussion",
           "view": null,
           "class": "RECORDED-DISAGREEMENT",
           "priorState": "present-in-generation-1-post-staging",
           "oldSha256": "a400c44c6cc58e7bba96a64227d222e74cfa1e7220a19cc97df86bdbc6025704",
           "newBytes": 17624,
           "newSha256": "7c84ddf19bdd240430c6dee0ef014bf24f0373b6cd5a20589183b806584f7228",
-          "liveSource": "live-now-recapture-2026-10-02/pages\\Amber_Arvidsson_20230902+discussion.html",
-          "url": "https://culturesmith.com/Amber_Arvidsson_20230902+discussion",
+          "liveSource": "live-now-recapture-2026-10-02/pages\\Amber_Arvidsen_20230902+discussion.html",
+          "url": "https://culturesmith.com/Amber_Arvidsen_20230902+discussion",
           "httpStatus": 200,
           "fetchedAt": "2026-10-03T12:08:28.857Z",
           "appliedAt": "2026-10-03T12:31:50.877Z"
@@ -1848,18 +1848,18 @@
           "appliedAt": "2026-10-03T12:31:50.879Z"
         },
         {
-          "id": "view:Amber Arvidsson 20230902+discussion:open",
+          "id": "view:Amber Arvidsen 20230902+discussion:open",
           "lane": "view",
           "shard": "recapture-raw-shard-000039.jsonl",
-          "name": "Amber Arvidsson 20230902+discussion",
+          "name": "Amber Arvidsen 20230902+discussion",
           "view": "open",
           "class": "RECORDED-DISAGREEMENT",
           "priorState": "present-in-generation-1-post-staging",
           "oldSha256": "1775a80ff746322a4cd5dde5ef9e4b21cc6d8f1b75b089aa615e51f5b989435b",
           "newBytes": 4877,
           "newSha256": "9a6e81f9a30703d7ab3ad2283a0b22606f0baeb6813da433d4ffc9c8c0f93ac1",
-          "liveSource": "live-now-recapture-2026-10-02/views\\Amber_Arvidsson_20230902+discussion__open.html",
-          "url": "https://culturesmith.com/Amber_Arvidsson_20230902+discussion?view=open",
+          "liveSource": "live-now-recapture-2026-10-02/views\\Amber_Arvidsen_20230902+discussion__open.html",
+          "url": "https://culturesmith.com/Amber_Arvidsen_20230902+discussion?view=open",
           "httpStatus": 200,
           "fetchedAt": "2026-10-03T12:09:00.393Z",
           "appliedAt": "2026-10-03T12:31:50.879Z"
@@ -2234,7 +2234,7 @@
       "note": "frozen capture; unchanged from generation 1"
     },
     {
-      "page": "Kristina Garrison",
+      "page": "Kristina Garrity",
       "class": "TEST-DATA-GAP",
       "included": true,
       "expectationSource": "frozen-capture",
@@ -2304,7 +2304,7 @@
       "note": "frozen capture; unchanged from generation 1"
     },
     {
-      "page": "Amber Arvidsson 20230902",
+      "page": "Amber Arvidsen 20230902",
       "class": "TEST-DATA-GAP",
       "included": true,
       "expectationSource": "frozen-capture",
@@ -2524,7 +2524,7 @@
       "note": "frozen capture; unchanged from generation 1"
     },
     {
-      "page": "Don't Wait For The Study+*self+Jessup Patrick+*follow",
+      "page": "Don't Wait For The Study+*self+Pemberton Patrick+*follow",
       "class": "REBUILD-GAP",
       "included": true,
       "expectationSource": "frozen-capture",
@@ -2614,7 +2614,7 @@
       "note": "frozen capture; unchanged from generation 1"
     },
     {
-      "page": "Amber Arvidsson 20230902+discussion",
+      "page": "Amber Arvidsen 20230902+discussion",
       "class": "REBUILD-GAP",
       "included": true,
       "expectationSource": "live-now",
@@ -2644,7 +2644,7 @@
       "note": "generation-1 hedged on frozen bytes despite measured old-vs-live disagreement; swapped to live-now bytes per the same ruling"
     },
     {
-      "page": "Make Contact+*self+Jessup Patrick+*follow",
+      "page": "Make Contact+*self+Pemberton Patrick+*follow",
       "class": "REBUILD-GAP",
       "included": true,
       "expectationSource": "frozen-capture",

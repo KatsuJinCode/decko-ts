@@ -22938,7 +22938,7 @@ var RenderEngine = class {
    * walk) typed every host-typed phantom BasicCs, and BasicCs+*type+*read
    * = "Anyone Signed In" denied Anonymous where Ruby's walk on the REAL
    * type falls through to *all+*read = "Anyone" — the Kimberly
-   * Richardson / Jonas Verhoeven+musings divergence (captured oracle
+   * Richardson / Jonas Verhove+musings divergence (captured oracle
    * renders the full bar body for both). The default-template walk stays
    * as the fallback for hosts that resolve no item type, exactly
    * Card.new's ensure_type_id.

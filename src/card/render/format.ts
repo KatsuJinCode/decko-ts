@@ -1720,8 +1720,8 @@ export class RenderFormat {
     //   - a view WITHOUT `unknown: true` substitutes :unknown
     //     (format/error.rb:23 `setting_view || :unknown`), whose createable
     //     gate renders "" for Anonymous - the plain-card shape (corpus
-    //     10488 `June Jessup+Menu`, blank `{{}}` -> empty on content/open;
-    //     re-proven LIVE 2026-10-03: example.com/June_Jessup+Menu
+    //     10488 `June Pemberton+Menu`, blank `{{}}` -> empty on content/open;
+    //     re-proven LIVE 2026-10-03: example.com/June_Pemberton+Menu
     //     ?view=content|open carry zero denial spans, stored content still
     //     embeds the blank nest).
     //   - a view WITH `unknown: true` lets alter_unknown answer nil and the
@@ -4689,7 +4689,7 @@ function linkNestCardName(
  *  `name_from` returns `self` (contextual.rb:46-51: `from.compact.present?`
  *  false ⇒ `return self`) and the title keeps its full name.
  *
- *  FROZEN ORACLE (the two halves of D7, entry 10488 `June Jessup+Menu`,
+ *  FROZEN ORACLE (the two halves of D7, entry 10488 `June Pemberton+Menu`,
  *  `[[june jessup+musings]]` in its RichText body):
  *    page surface  `<span class="card-title" title="+musings">…`
  *    view surface  `<span class="card-title" title="june jessup+musings">…`
@@ -4907,7 +4907,7 @@ export function expandWikiLinks(
     // subformat_card -> Card.fetch), and its context_names are the parent
     // format's working list filtered to that card's part keys
     // (context_names.rb:20-29). Oracle entry 10488 page surface: the authored
-    // `[[june jessup+musings]]` under the page card `June Jessup+Menu`
+    // `[[june jessup+musings]]` under the page card `June Pemberton+Menu`
     // renders `title="+musings"`; the same link on the view surface keeps
     // `title="june jessup+musings"` because nothing called add_name_context
     // there. Entry 21923 `Task+discussion` is the second corpus instance
@@ -4930,7 +4930,7 @@ export function expandWikiLinks(
     // underscored href. The INNER content is the joint-split title
     // (wrappedTitleInner): a junction link's anchor text carries
     // `<span>+</span>` per joint — oracle entry 10488 view-surface `content`
-    // pin: `<a class="known-card" href="/June_Jessup+musings"><span
+    // pin: `<a class="known-card" href="/June_Pemberton+musings"><span
     // class="card-title" title="june jessup+musings">steven
     // goldin<span>+</span>musings</span></a>`, and the page-surface
     // `+musings` half splits the SAME way

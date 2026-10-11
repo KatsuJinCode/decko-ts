@@ -23,12 +23,12 @@ POOL = r"C:\localProjects\brandonDojoTech\recovery\page-sample-pool.txt"
 # WRITEUP rounds 5-8: the 8 gate pages, the 4 holdout pages, rounds 7-8's 12.
 EARLIER = [
     "About", "Home", "Aikido Oak Cliff", "Archetypal Psychology", "Conflict Done Well", "Latest News",
-    "Final", "ZQRglobal 20100909 Georgia Garrison",
+    "Final", "ZQRglobal 20100909 Georgia Garrity",
     "EM Forster - The Machine Stops 1909", "Anniversary card for Rowan 2013", "AriseBuilding",
     "Alexander Rendell - Astrology as Archetypal Language",
     "NCDHHSFAST SBR 03", "Family Christmas Ideas", "PxPx PRINTS Emeryville 20150107 4059",
     "Martial Concordance Cultural Resources", "Translators Note",
-    "Marie Mardini - Kirsten Cadwell A History Of Faith", "NMLIC QBR 04 prep", "Runequest w Don McClure",
+    "Marie Mardini - Kirsten Cadwell A History Of Faith", "NMLIC QBR 04 prep", "Runequest w Don McClaren",
     "screenshot", "Pavis - The Big Rubble Map", "social media maintenance", "Donald Akerman - An Altar to Artemis",
 ]
 # Round 9: the Wagneer defect page and the slowest classes (denied root, deep content).

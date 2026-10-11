@@ -20,7 +20,7 @@ page	recapture-raw-shard-000002.jsonl	Ellen Emerson	page
 page	recapture-raw-shard-000002.jsonl	Emily Bridgewater+musings	page
 page	recapture-raw-shard-000002.jsonl	Bridget Colville	page
 page	recapture-raw-shard-000002.jsonl	Not really monothiests	page
-page	recapture-raw-shard-000002.jsonl	Antonio Ackland - MY FEAR	page
+page	recapture-raw-shard-000002.jsonl	Antonio Acklen - MY FEAR	page
 page	recapture-raw-shard-000002.jsonl	Jeffrey Benedetti	page
 page	recapture-raw-shard-000002.jsonl	Tucson Memorial Speech	page
 page	recapture-raw-shard-000002.jsonl	mythopsychology+Organizer(s)	page
@@ -91,7 +91,7 @@ page	recapture-raw-shard-000007.jsonl	shomenuchi ikkyo ura	page
 page	recapture-raw-shard-000008.jsonl	20120418+BW+RVW	page
 page	recapture-raw-shard-000008.jsonl	20120705+BW+Time Tracking	page
 page	recapture-raw-shard-000008.jsonl	Aiki Links plus HBQ+*self	page
-page	recapture-raw-shard-000008.jsonl	Kirsten Langdon - Guide to Careers in International Affairs	page
+page	recapture-raw-shard-000008.jsonl	Kirsten Langley - Guide to Careers in International Affairs	page
 page	recapture-raw-shard-000008.jsonl	Roger Cavendish - Ending the Minset That Gets Us Into War+Associates	page
 page	recapture-raw-shard-000008.jsonl	J and P OJ and The Tree+*self	page
 page	recapture-raw-shard-000008.jsonl	Lakoff and Wehling - Economics and Morality+Associates	page
@@ -136,7 +136,7 @@ page	recapture-raw-shard-000011.jsonl	Roland Fenwick	page
 page	recapture-raw-shard-000011.jsonl	Follow Your Bliss+discussion+*self	page
 page	recapture-raw-shard-000011.jsonl	JO BECKER and SCOTT SHANE - Secret Kill List Proves a Test of Obama’s Principles and Will+discussion	page
 page	recapture-raw-shard-000011.jsonl	Marie-Louise von Franz	page
-page	recapture-raw-shard-000011.jsonl	O Holy Night - Dallas TXmas 2011 - Jessup Patrick+*self	page
+page	recapture-raw-shard-000011.jsonl	O Holy Night - Dallas TXmas 2011 - Pemberton Patrick+*self	page
 page	recapture-raw-shard-000011.jsonl	STEVEN GREENHOUSE - NY Times - How Costco Became the Anti-Wal-Mart+discussion	page
 page	recapture-raw-shard-000011.jsonl	Neil Devereaux - An Altar to Artemis+discussion	page
 page	recapture-raw-shard-000011.jsonl	birth	page
@@ -162,7 +162,7 @@ page	recapture-raw-shard-000013.jsonl	File+*right	page
 page	recapture-raw-shard-000013.jsonl	Item+Creator+*type plus right	page
 page	recapture-raw-shard-000013.jsonl	Item+Subject+*type plus right	page
 page	recapture-raw-shard-000013.jsonl	Kipnis - The End of Money	page
-page	recapture-raw-shard-000013.jsonl	Antonio Ackland - I love the way the Wisdom flows+discussion	page
+page	recapture-raw-shard-000013.jsonl	Antonio Acklen - I love the way the Wisdom flows+discussion	page
 page	recapture-raw-shard-000013.jsonl	Shen and Legum on Mandella+Associates	page
 page	recapture-raw-shard-000013.jsonl	aiki_consulting_exemplars	page
 page	recapture-raw-shard-000013.jsonl	slideshow+*type	page
@@ -255,7 +255,7 @@ page	recapture-raw-shard-000021.jsonl	Christianity+Documents	page
 page	recapture-raw-shard-000021.jsonl	Derek Thompson - The Four-Letter Code to Selling Just About Anything+discussion	page
 page	recapture-raw-shard-000021.jsonl	Diane Sutherland - How Talking About Trump Makes Him Normal In Your Brain+discussion	page
 page	recapture-raw-shard-000021.jsonl	Ellen Emerson NYT Obit+tags	page
-page	recapture-raw-shard-000021.jsonl	Danforth Amelia - Access to Somatic Theory and Applications - Socio-political Concerns	page
+page	recapture-raw-shard-000021.jsonl	Danferth Amelia - Access to Somatic Theory and Applications - Socio-political Concerns	page
 page	recapture-raw-shard-000021.jsonl	Marilyn Halloran - Bias from the Bottom+Associates	page
 page	recapture-raw-shard-000021.jsonl	Neil Devereaux Fb radical about non-violent solutions to conflict+discussion	page
 page	recapture-raw-shard-000021.jsonl	christianism+discussion	page
@@ -267,7 +267,7 @@ page	recapture-raw-shard-000022.jsonl	Aidan memorial updates and SUDC	page
 page	recapture-raw-shard-000022.jsonl	Cs Dev+design	page
 page	recapture-raw-shard-000022.jsonl	GRIP ED	page
 page	recapture-raw-shard-000022.jsonl	James S Gordon - Despite his lies Robert Whitfield is a potent truth-teller+tags	page
-page	recapture-raw-shard-000022.jsonl	Danforth Amelia connection	page
+page	recapture-raw-shard-000022.jsonl	Danferth Amelia connection	page
 page	recapture-raw-shard-000022.jsonl	Process Arts+discussion	page
 page	recapture-raw-shard-000022.jsonl	Soma+articles	page
 page	recapture-raw-shard-000022.jsonl	TinyLetter admin	page
@@ -346,7 +346,7 @@ page	recapture-raw-shard-000028.jsonl	20190305+BW+Time Tracking	page
 page	recapture-raw-shard-000028.jsonl	20190426+BW+Time Tracking	page
 page	recapture-raw-shard-000028.jsonl	Linda Cadwell connection	page
 page	recapture-raw-shard-000028.jsonl	FedEx Manager Administrative Assistant	page
-page	recapture-raw-shard-000028.jsonl	Marianne Cooper - The False Promise of Meritocracy	page
+page	recapture-raw-shard-000028.jsonl	Marianne Cooperman - The False Promise of Meritocracy	page
 page	recapture-raw-shard-000028.jsonl	PickaPapa+tags	page
 page	recapture-raw-shard-000028.jsonl	Time Slicing+*self	page
 page	recapture-raw-shard-000028.jsonl	journal skin customized	page

@@ -58,7 +58,7 @@
     "ZQVT+*self+*head:page",
     "Pointer:page",
     "Shark:page",
-    "Amber Arvidsson 20230902+discussion:page",
+    "Amber Arvidsen 20230902+discussion:page",
     "mod: account:page",
     "mod: bootstrap:page",
     "mod: carrierwave:page",
@@ -76,7 +76,7 @@
     "mod: tinymce editor:page",
     "mod: shades:page",
     "Klickstein continues+discussion:open",
-    "Kristina Garrison:open",
+    "Kristina Garrity:open",
     "media+HBQ+YouTube Browser:open",
     "The Habit - a predictable travesty:open",
     "Very Rosie July 4 in 2013+Gallery10vert+image01+discussion:open",
@@ -98,8 +98,8 @@
     "Belief about the rightness of Insert System Here establishes an axis:open",
     "Wikirate:open",
     "Work Week:open",
-    "Amber Arvidsson 20230902:open",
-    "Amber Arvidsson 20230902+discussion:open",
+    "Amber Arvidsen 20230902:open",
+    "Amber Arvidsen 20230902+discussion:open",
     "Jordan Marchetti:open",
     "Conflict Done Well+WE Greiner:open",
     "Catherine Radcliffe:open"
@@ -157,13 +157,13 @@
     "Aikido video+*self:open",
     "Klickstein continues+discussion:open",
     "Library - BW+*self:open",
-    "Kristina Garrison:open",
+    "Kristina Garrity:open",
     "How Can I Keep From Singing - Lyrics+discussion:open",
     "*input type+*right+*content options:closed",
     "*input type+*right+*content options:content",
     "*input type+*right+*content options:open",
     "media+HBQ+YouTube Browser:open",
-    "Riley Langdon - Astrology as Archetypal Language+tags:open",
+    "Riley Langley - Astrology as Archetypal Language+tags:open",
     "politics+Documents:open",
     "The Habit - a predictable travesty:open",
     "Very Rosie July 4 in 2013+Gallery10vert+image01+discussion:open",
@@ -211,8 +211,8 @@
     "Intellectual Property+Unsecured:open",
     "Pork Roast Clay Baked+discussion:open",
     "Work Week:open",
-    "Amber Arvidsson 20230902:open",
-    "Amber Arvidsson 20230902+discussion:open",
+    "Amber Arvidsen 20230902:open",
+    "Amber Arvidsen 20230902+discussion:open",
     "Mod:content",
     "Mod:open",
     "mod: account:closed",
@@ -1326,7 +1326,7 @@
     {
       "lane": "page",
       "shard": "recapture-raw-shard-000039.jsonl",
-      "tag": "Amber Arvidsson 20230902+discussion:page",
+      "tag": "Amber Arvidsen 20230902+discussion:page",
       "states": {
         "UNARMED": {
           "verdict": "FAIL",
@@ -2618,7 +2618,7 @@
     {
       "lane": "view",
       "shard": "recapture-raw-shard-000006.jsonl",
-      "tag": "Kristina Garrison:open",
+      "tag": "Kristina Garrity:open",
       "states": {
         "UNARMED": {
           "verdict": "FAIL",
@@ -2822,7 +2822,7 @@
     {
       "lane": "view",
       "shard": "recapture-raw-shard-000009.jsonl",
-      "tag": "Riley Langdon - Astrology as Archetypal Language+tags:open",
+      "tag": "Riley Langley - Astrology as Archetypal Language+tags:open",
       "states": {
         "UNARMED": {
           "verdict": "PASS",
@@ -4454,7 +4454,7 @@
     {
       "lane": "view",
       "shard": "recapture-raw-shard-000039.jsonl",
-      "tag": "Amber Arvidsson 20230902:open",
+      "tag": "Amber Arvidsen 20230902:open",
       "states": {
         "UNARMED": {
           "verdict": "FAIL",
@@ -4488,7 +4488,7 @@
     {
       "lane": "view",
       "shard": "recapture-raw-shard-000039.jsonl",
-      "tag": "Amber Arvidsson 20230902+discussion:open",
+      "tag": "Amber Arvidsen 20230902+discussion:open",
       "states": {
         "UNARMED": {
           "verdict": "FAIL",

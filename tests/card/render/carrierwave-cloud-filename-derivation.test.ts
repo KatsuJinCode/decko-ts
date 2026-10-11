@@ -27,7 +27,7 @@
 //    (card-mod-format-0.20.0 set/all/path.rb:74-77; card-1.110.0
 //    lib/card/env/location.rb:6-16)
 //
-// ORACLE ACCEPTANCE BYTES: Jonas Verhoeven page (expected-v2 page-lane
+// ORACLE ACCEPTANCE BYTES: Jonas Verhove page (expected-v2 page-lane
 // recapture-raw-shard-000010.jsonl entry 14542, page_html offset ~12792):
 //   <a href='http://s3.amazonaws.com//files/14547/1.doc'>Download +description+CV</a>
 // rendered from card 14547 db_content `(my_bucket)/14547/61887.abr.1.doc`
@@ -86,7 +86,7 @@ describe("lastContentActionIdFromDbContent (set/type/file.rb:11-15)", () => {
 });
 
 describe("derivedCloudAttachmentSource (file_card_uploader.rb:147-153 + path.rb:41-43)", () => {
-  it("derives 1.doc from the Jonas Verhoeven stored key (oracle href)", () => {
+  it("derives 1.doc from the Jonas Verhove stored key (oracle href)", () => {
     expect(derivedCloudAttachmentSource("(my_bucket)/14547/61887.abr.1.doc")).toBe(
       "http://s3.amazonaws.com//files/14547/1.doc",
     );
@@ -135,7 +135,7 @@ describe("derivedCloudAttachmentSource (file_card_uploader.rb:147-153 + path.rb:
   });
 });
 
-describe("file :core renders the derived cloud anchor (Jonas Verhoeven acceptance)", () => {
+describe("file :core renders the derived cloud anchor (Jonas Verhove acceptance)", () => {
   async function seedMichaelDeck(): Promise<RenderTestStorage> {
     const storage = await createRenderTestStorage();
     await seedCard(storage, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
@@ -167,7 +167,7 @@ describe("file :core renders the derived cloud anchor (Jonas Verhoeven acceptanc
     // relativized against the page context: +description+CV.
     await seedCard(storage, {
       id: 14542,
-      name: "Jonas Verhoeven",
+      name: "Jonas Verhove",
       typeId: 3,
       dbContent: "<p>{{+description}}</p>",
     });
@@ -193,7 +193,7 @@ describe("file :core renders the derived cloud anchor (Jonas Verhoeven acceptanc
 
   it("renders <a href='http://s3.amazonaws.com//files/14547/1.doc'>Download +description+CV</a>", async () => {
     const storage = await seedMichaelDeck();
-    const page = await renderPageBytes(storage.engine, "Jonas Verhoeven");
+    const page = await renderPageBytes(storage.engine, "Jonas Verhove");
     expect(page).toContain(
       "<a href='http://s3.amazonaws.com//files/14547/1.doc'>Download +description+CV</a>\n",
     );
@@ -205,8 +205,8 @@ describe("file :core renders the derived cloud anchor (Jonas Verhoeven acceptanc
   it("formatFileCore derives the same anchor bytes from the same content", () => {
     expect(
       formatFileCore("(my_bucket)/14547/61887.abr.1.doc", {
-        cardName: "Jonas Verhoeven+description+CV",
-        contextNames: ["Jonas Verhoeven"],
+        cardName: "Jonas Verhove+description+CV",
+        contextNames: ["Jonas Verhove"],
       }),
     ).toBe("<a href='http://s3.amazonaws.com//files/14547/1.doc'>Download +description+CV</a>\n");
   });

@@ -125,7 +125,7 @@ const ENTRIES = [
   {
     key: "michael-christensen-page",
     finding: "attachment-key",
-    name: "Jonas Verhoeven",
+    name: "Jonas Verhove",
     id: 14542,
     lane: "page",
     view: "page_html",

@@ -5849,7 +5849,7 @@ export class RenderEngine implements RenderEngineLike {
         // walk's type (BasicCs here), and BasicCs+*type+*read = "Anyone
         // Signed In" denied Anonymous — rendering the two-span denied body
         // for exactly the host-typed unknown items Ruby renders the full
-        // bar for (Delia Rosenquist id 18560, Jonas Verhoeven+musings
+        // bar for (Delia Rosenquist id 18560, Jonas Verhove+musings
         // id 14546; the captured oracle renders bar-body/card-title/
         // bar-menu for both).
         await this.resolveHostItemTypeName(card);
@@ -5927,7 +5927,7 @@ export class RenderEngine implements RenderEngineLike {
    * walk) typed every host-typed phantom BasicCs, and BasicCs+*type+*read
    * = "Anyone Signed In" denied Anonymous where Ruby's walk on the REAL
    * type falls through to *all+*read = "Anyone" — the Kimberly
-   * Richardson / Jonas Verhoeven+musings divergence (captured oracle
+   * Richardson / Jonas Verhove+musings divergence (captured oracle
    * renders the full bar body for both). The default-template walk stays
    * as the fallback for hosts that resolve no item type, exactly
    * Card.new's ensure_type_id.

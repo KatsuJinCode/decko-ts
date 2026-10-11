@@ -41,7 +41,7 @@ export const ESCAPE_FAMILY_PAGE_SUBSET: EscapeFamilyEntry[] = [
   { phase: "000002", id: 3475, name: "Rebecca Halloran", escapeClass: "attr-target", shard: "recapture-raw-shard-000002.jsonl" },
   { phase: "000004", id: 8460, name: "Mikko's Blog+*self", escapeClass: "double-escape", shard: "recapture-raw-shard-000004.jsonl" },
   { phase: "000005", id: 9271, name: "Daniel Ferreira - Father's Day+*self", escapeClass: "double-escape", shard: "recapture-raw-shard-000005.jsonl" },
-  { phase: "000005", id: 9653, name: "June Jessup", escapeClass: "quote-style", shard: "recapture-raw-shard-000005.jsonl" },
+  { phase: "000005", id: 9653, name: "June Pemberton", escapeClass: "quote-style", shard: "recapture-raw-shard-000005.jsonl" },
   { phase: "000006", id: 10113, name: "Mikko's Blog+*self+*layout", escapeClass: "double-escape", shard: "recapture-raw-shard-000006.jsonl" },
   { phase: "000006", id: 11081, name: "What Americans Keep Ignoring About Finland's School Success", escapeClass: "double-escape", shard: "recapture-raw-shard-000006.jsonl" },
   { phase: "000007", id: 11251, name: "IT'S ALL ABOUT ANGELS by Daniel Ferreira", escapeClass: "double-escape", shard: "recapture-raw-shard-000007.jsonl" },

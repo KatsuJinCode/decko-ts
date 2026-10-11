@@ -31,8 +31,8 @@ const describeIfCorpus = describeWithCorpus(REPLAY_REQUESTED, "tests/card/render
 const WARMUP_PAGES = [
   "Bridget Castellan",
   "Iris McGinnis",
-  "Meghan Williams Keepin",
-  "Motoki M",
+  "Meghan Williams Kerrigan",
+  "Masato O",
   "aikido",
   "Shen and Legum on Mandella",
   "Shen and Legum on Mandella+Associates",

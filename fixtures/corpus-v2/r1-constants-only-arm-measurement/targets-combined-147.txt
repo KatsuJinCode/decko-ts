@@ -63,7 +63,7 @@ view	recapture-raw-shard-000003.jsonl	*star	open
 view	recapture-raw-shard-000003.jsonl	BDWC_academic_resume+*self	open
 view	recapture-raw-shard-000003.jsonl	Plans+*self	content
 view	recapture-raw-shard-000004.jsonl	Americanism+*self	content
-view	recapture-raw-shard-000004.jsonl	Diana Ostrander+*self	open
+view	recapture-raw-shard-000004.jsonl	Diana Ostrand+*self	open
 view	recapture-raw-shard-000004.jsonl	Please pre-register+*self	open
 view	recapture-raw-shard-000005.jsonl	Aikido video+*self	open
 view	recapture-raw-shard-000005.jsonl	Klickstein continues+discussion	open
@@ -143,4 +143,4 @@ view	recapture-raw-shard-000039.jsonl	mod: style	closed
 view	recapture-raw-shard-000039.jsonl	mod: tinymce editor	closed
 view	recapture-raw-shard-000041.jsonl	Gregory Ellsworth	open
 view	recapture-raw-shard-000043.jsonl	Conflict Done Well+WE Greiner	open
-view	recapture-raw-shard-000045.jsonl	Helen Ostrander	open
+view	recapture-raw-shard-000045.jsonl	Helen Ostrand	open

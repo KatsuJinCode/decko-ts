@@ -35,10 +35,10 @@ const SHARDS_PRESENT = existsSync(PAGE_LANE_DIR);
 const PAGES = [
   "Iris McGinnis",
   "soul",
-  "Rowan Lockhart",
+  "Rowan Lokhart",
   "Brian Ahlgren",
   "Pacifica Graduate Institute",
-  "Martha Ostrander",
+  "Martha Ostrand",
   "Kelly Zeller - Dallas 2013",
 ] as const;
 

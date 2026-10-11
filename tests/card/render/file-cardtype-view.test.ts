@@ -49,7 +49,7 @@ describe("formatFileCore — the file cardtype html :core body (core.haml)", () 
     // render-time derivation, never the stored key verbatim
     // (set/type/file.rb:11-15 [-2] split + file_card_uploader.rb:147-153
     // filename + path.rb:41-43 retrieval ignoring the identifier; the
-    // Jonas Verhoeven oracle anchor pins it): [-2] of
+    // Jonas Verhove oracle anchor pins it): [-2] of
     // "(bucket)/808/42.png" is "42" -> the fog URL of files/808/42.png.
     ["https://example.com/attach.png", "https://example.com/attach.png"],
     ["http://example.com/attach.pdf", "http://example.com/attach.pdf"],
