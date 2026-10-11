@@ -99,7 +99,7 @@ describe("graded arm: the R1 type CAN express five-without-the-sixth", () => {
     // the six required, this line stops compiling and the shrink stops being
     // expressible without a type change.
     const handBuiltFive: Omit<DeploymentFollowLiveConfig, "serializerEra"> = {
-      mainStylesheetRevisionDigits: "1790384218",
+      mainStylesheetRevisionDigits: "0000000001",
       footerDeckoVersion: "0.19.1",
       recaptchaSiteKey: "6LSYNTHETICLIVEKEY00000000000000000000AA",
       deckoRootUrl: "https://culturesmith.com/",
@@ -113,7 +113,7 @@ describe("graded arm: the R1 type CAN express five-without-the-sixth", () => {
   it("the shrunk arm is itself a valid value of the R1 type", () => {
     const asR1Type: Omit<DeploymentFollowLiveConfig, "serializerEra"> =
       GRADED_ARM_DEPLOYMENT_CONSTANTS;
-    expect(asR1Type.mainStylesheetRevisionDigits).toBe("1790384218");
+    expect(asR1Type.mainStylesheetRevisionDigits).toBe("0000000001");
   });
 });
 
@@ -170,14 +170,14 @@ describe("graded arm: the FIVE constants still arm", () => {
   it("the compiled-CSS revision rewrites the stylesheet, never the .js asset", () => {
     setDeploymentFollowLiveConfig(GRADED_ARM_DEPLOYMENT_CONSTANTS);
     expect(applyDeploymentCssRevision(FROZEN_CSS)).toBe(
-      "https://production-storage.r1.cdn.objectstore.example/files/45514/1790384218.css",
+      "https://production-storage.r1.cdn.objectstore.example/files/45514/0000000001.css",
     );
     expect(
       applyDeploymentCssRevision(
-        "https://production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
+        "https://production-storage.r1.cdn.objectstore.example/files/50617/0000000002.js",
       ),
     ).toBe(
-      "https://production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
+      "https://production-storage.r1.cdn.objectstore.example/files/50617/0000000002.js",
     );
   });
 

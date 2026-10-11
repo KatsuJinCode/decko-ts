@@ -16,7 +16,8 @@
 //     snapshot in a Node vm, uglifier.rb's exact option shape.
 //   fixtures/captured/script-compile-oracle-leaves.json
 //     the live production bundle's per-leaf byte metadata (the bucket copy
-//     of /files/~50617/1768074298.js): 48/49 shared leaves byte-exact, 1
+//     of the deck's compiled *all+*script attachment): 48/49 shared leaves
+//     byte-exact, 1
 //     one-byte divergence, 4 leaves of a live-only custom mod.
 //
 // The tinymce entrypoint assertions are this suite's reason to exist: the

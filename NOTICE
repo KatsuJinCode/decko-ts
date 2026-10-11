@@ -43,7 +43,7 @@ no separate port-notes document, and there never was one. Each ported module
 under `src/` carries a header naming the Ruby file and the line numbers its
 behaviors came from — the same per-file citation style
 `src/card/render/views.ts` uses at its head ("View sources: :open / :closed
-card-mod-bar_and_box-0.20.0 set/all/bar.rb …"). **197 of the 229 tracked
+card-mod-bar_and_box-0.20.0 set/all/bar.rb …"). **197 of the 230 tracked
 TypeScript files under `src/card/` name a `.rb` path in a source comment**;
 the engine's area-level map is [ARCHITECTURE.md](ARCHITECTURE.md), and the
 behaviour-level decisions are the records in

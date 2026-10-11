@@ -4419,8 +4419,8 @@ function findUriMatch(text: string, from: number): UriMatch | undefined {
     // raw span, prepend excluded) takes ONLY the punctuation chop. The
     // anchor's href is @link_text but its TEXT is process_text, which is
     // @link_text for the Uri class yet the chopped @text for Host/EmailUri
-    // — so the White Fragility oracle's bare-host span
-    // `robindiangelo.com/resources.)` renders the DOT inside the anchor
+    // — so the host-span oracle's bare-host span
+    // `sample-host.example/resources.)` renders the DOT inside the anchor
     // text (`...resources.</a>)`) while the href drops it. The earlier
     // single-chunk form dropped the dot from both.
     const rawSpan = text.slice(bestStart, end);
@@ -4442,8 +4442,8 @@ function findUriMatch(text: string, from: number): UriMatch | undefined {
     // REVERTED (2026-10-09): the uri.rb:72-77 `rescue ::URI::Error` port —
     // a URI.parse-invalid chunk (brackets/braces/angle quotes and bad
     // percent escapes, boundary probed against the 3.3.0 gem's RFC3986
-    // parser) rendered as verbatim @text — reproduced the Pacifica Depth
-    // Psychology oracle's plain-text `[mailto:riley@culturesmith.com]`
+    // parser) rendered as verbatim @text — reproduced the depth-psychology
+    // oracle's plain-text `[mailto:reader@sample-site.example]`
     // but destabilized the +*referred_to_by search-result family (44
     // pages per actor: the Archetypal referer list rendered a different
     // result SET with the gate present and the capture's own set with it
@@ -4456,8 +4456,8 @@ function findUriMatch(text: string, from: number): UriMatch | undefined {
     // as trailing punctuation) matches NO rule, so no class attribute.
     // The previous `chunk.slice(0, chunk.indexOf(":"))` turned -1 into a
     // last-char chop and emitted the engine-only `fil-link`/`mailt-link`
-    // classes (Half Price Books, JP Nora Thistlewood, Big Thought, Brian
-    // Moeschler captures).
+    // classes (several publisher, bookseller and bookstore
+    // capture sites).
     const schemeResourceType =
       /^https?:/.test(chunk)
         ? "external-link"

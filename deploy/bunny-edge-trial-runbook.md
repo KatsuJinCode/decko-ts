@@ -177,7 +177,7 @@ deploy suites configure when they assert that deck's served bytes.
   "assetHost": "https://production-storage.r1.cdn.objectstore.example",
   "footerVersionPin": "0.19.1",
   "stylesheetRevisionFrom": "45514/1786554352.css",
-  "stylesheetRevisionTo": "45514/1790384218.css",
+  "stylesheetRevisionTo": "45514/0000000001.css",
   "scriptIntegrity": [
     {
       "src": "<script src=\"https://code.jquery.com/jquery-3.5.1.min.js\" crossorigin=\"anonymous\"></script>",
@@ -187,10 +187,10 @@ deploy suites configure when they assert that deck's served bytes.
   "notFoundType": { "id": "22281", "name": "BasicCs", "classToken": "basic_c" },
   "footerCardId": "22749", "footerTypeId": "50", "footerTypeName": "HTML",
   "allCardId": 274, "layoutPointerId": 255, "pointerTypeId": 34843,
-  "mainCssUrl": "https://production-storage.r1.cdn.objectstore.example/files/45514/1790384218.css",
-  "mainJsUrl": "https://production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
-  "logoUrl": "https://production-storage.r1.cdn.objectstore.example/files/79/3643-small.jpg",
-  "faviconUrl": "https://production-storage.r1.cdn.objectstore.example/files/103/3649-small.jpg",
+  "mainCssUrl": "https://production-storage.r1.cdn.objectstore.example/files/45514/0000000001.css",
+  "mainJsUrl": "https://production-storage.r1.cdn.objectstore.example/files/50617/0000000002.js",
+  "logoUrl": "https://production-storage.r1.cdn.objectstore.example/files/79/0000000003-small.jpg",
+  "faviconUrl": "https://production-storage.r1.cdn.objectstore.example/files/103/0000000004-small.jpg",
   "siteTitleDefault": "Culturesmith",
   "rootUrl": "https://culturesmith.com/",
   "deckOrigin": "https://culturesmith.com",

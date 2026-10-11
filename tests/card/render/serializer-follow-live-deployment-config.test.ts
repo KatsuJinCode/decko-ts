@@ -17,7 +17,7 @@
 //      remote script tags (after crossorigin, before referrerpolicy — live
 //      head 12/12 pages); the compiled-CSS revision digits rewrite on
 //      main-stylesheet attachment URLs only (the .js asset revision is NOT
-//      touched — live serves 1768074298.js unchanged).
+//      touched — live serves 0000000002.js unchanged).
 //   4. IDENTITY: unset again, every form returns exactly (afterEach
 //      restores, so no other suite ever sees the config).
 import { describe, expect, it, afterEach } from "vitest";
@@ -200,26 +200,26 @@ describe("deployment follow-live config: live head constants", () => {
   });
 
   it("the compiled-CSS revision rewrites on main-stylesheet URLs only", () => {
-    setDeploymentFollowLiveConfig({ mainStylesheetRevisionDigits: "1790384218" });
+    setDeploymentFollowLiveConfig({ mainStylesheetRevisionDigits: "0000000001" });
     expect(
       applyDeploymentCssRevision(
         "https://production-storage.r1.cdn.objectstore.example/files/45514/1786554352.css",
       ),
     ).toBe(
-      "https://production-storage.r1.cdn.objectstore.example/files/45514/1790384218.css",
+      "https://production-storage.r1.cdn.objectstore.example/files/45514/0000000001.css",
     );
     // the script asset's revision is NOT the stylesheet's — untouched.
     expect(
       applyDeploymentCssRevision(
-        "https://production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
+        "https://production-storage.r1.cdn.objectstore.example/files/50617/0000000002.js",
       ),
     ).toBe(
-      "https://production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
+      "https://production-storage.r1.cdn.objectstore.example/files/50617/0000000002.js",
     );
     // the fog double-slash form (unset asset host) rewrites the same way.
     expect(
       applyDeploymentCssRevision("http://s3.amazonaws.com//files/45514/1786554352.css"),
-    ).toBe("http://s3.amazonaws.com//files/45514/1790384218.css");
+    ).toBe("http://s3.amazonaws.com//files/45514/0000000001.css");
   });
 
   it("footer version + recaptcha site key read through the config", () => {

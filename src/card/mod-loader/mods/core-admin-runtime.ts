@@ -888,7 +888,8 @@ const MOD_ASSET_GROUPS_SRC: Readonly<
   // expected--mod_shades__page.html, which it cited as the graded
   // expected-v2 corpus. It is not. That file is a LIVE recapture of the
   // production site (taken 2026-10-03) carrying the DigitalOcean cssPath
-  // files/45514/1790384218.css = 2026-09-26; the graded yardstick's
+  // files/45514/0000000001.css, a 2026-09-26 compile; the graded
+  // yardstick's
   // page-surface/recapture-raw-shard-000043 carries the s3 cssPath
   // files/45514/1786554352.css = 2026-08-12, 44.3 days earlier. The site
   // changed in between; the yardstick did not.
