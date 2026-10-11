@@ -112,6 +112,23 @@ import fs from "node:fs/promises";
 import { LocalSqliteDriver } from "./dist/src/server/drivers/local-sqlite.js";
 import { FetchEngine } from "./dist/src/card/fetch.js";
 import { RenderEngine } from "./dist/src/card/render.js";
+// The serving posture for nested render errors: Cardio's stock boot is QUIET
+// (cardio/railtie.rb:38 `config.raise_all_rendering_errors = false`), so a
+// raise inside a delegated render — `render_core` from a view body
+// (method_delegation.rb:41-47 -> render! -> its own wrap_and_render rescue,
+// format/render.rb:96-100) — becomes THAT render's return value (the quiet
+// render-error span) while the enclosing view's slot completes. With the
+// engine's boot-default LOUD posture the delegated boundary rethrows and the
+// raise escapes to the enclosing nest's catch, which discards the nesting
+// card's WHOLE view (the read-pages depth boundary: Chain 20's titled shell
+// vanished, the span landed inside Chain 19 — the live Ruby observation pins
+// the shell surviving with the span as its body, BROWSER-PARITY-SCENARIOS
+// section 10.29). The harness adapters set the same posture at boot
+// (adapters/ts/adapter.ts); the raising-render 500 surface ("Wild Card!")
+// is the FOCAL arm (error.rb:69-73 loud_error re-raises) and does not
+// change — only nested/delegated rescues go quiet.
+import { setRaiseAllRenderingErrors } from "./dist/src/card/render/format.js";
+setRaiseAllRenderingErrors(false);
 import { DeckoName } from "./dist/src/card/name.js";
 import { applyDeckInflections } from "./dist/src/card/name/inflect.js";
 import { ORACLE_DECK_INFLECTIONS } from "./dist/src/card/name/oracle-deck-inflections.js";
