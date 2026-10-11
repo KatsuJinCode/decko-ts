@@ -8,9 +8,9 @@
 // "Business"->"business", strips to "Covid-19"->"covid_19"; verified by
 // executing the gems). Ruby's nest_item -> Card.fetch(item) resolves the
 // line through its key and renders the REAL card under its STORED name
-// (live pin: Casey_Morgan.html renders data-card-id="23464"
-// data-card-name="Casey Morgan+video" for the authored line
-// "Casey Morgan+videos"; the string "videos" appears 0 times on
+// (live pin: Riley_Ellery.html renders data-card-id="23464"
+// data-card-name="Riley Ellery+video" for the authored line
+// "Riley Ellery+videos"; the string "videos" appears 0 times on
 // the live page). The port's old path emitted the AUTHORED line as a
 // phantom slot (renderPointerListItem's fetch miss ->
 // phantomPointerListItem): the item batch lookup was junction-blind
@@ -69,9 +69,9 @@ import {
 // The wide-read rule card the other render tests pin readRuleId to
 // (seeded into the shard universe via baseIds, same pattern as
 // pointer-list-mini-bar-phantom.test.ts).
-const WIDE_READ_RULE_ID = 6568;
+const WIDE_READ_RULE_ID = 902787;
 // The corpus's codename "list" card (its id is the list cardtype's id).
-const LIST_TYPE_ID = 47;
+const LIST_TYPE_ID = 900032;
 
 // Left/right/type card ids for the seeded fixture family (high, outside
 // the corpus's 1..53069 card-id range).
@@ -153,7 +153,7 @@ describe("list-item key resolution + unsaved-compound slot_cardname (name-form t
       await seedListFixture(storage);
       const html = await storage.engine.render("Host Person+Pages", "content");
       // The RESOLVED card's slot: stored name displayed (live pin:
-      // data-card-name="Casey Morgan+video"), not the authored
+      // data-card-name="Riley Ellery+video"), not the authored
       // line.
       expect(html).toContain('data-card-name="Host Person+video"');
       expect(html).not.toContain("Host Person+videos");

@@ -21,9 +21,9 @@
 //     inside the pointer-item div: the nested :bar render short-circuits
 //     at the view-permission gate (view/permission.rb:19-23
 //     altered_view) before any slot wrap. The dual-lane raw oracle
-//     pins this 538 times (expected-v2 census) — e.g. "ABCglobal
-//     20100722 Camille Dahlgren Casey" under
-//     "Center for Embodied Change+Pages" open — and NEVER renders a
+//     pins this 538 times (expected-v2 census) — e.g. "ZQRglobal
+//     20100722 Corinne Hallberg Riley" under
+//     "Center for Systems Change+Pages" open — and NEVER renders a
 //     mini_bar wrap for a denied item with a row. The mini_bar slot is
 //     bar.rb:9's UNKNOWN-card substitution (`view :bar, unknown:
 //     :mini_bar`): all 270 mini_bar-with-denial-body oracle slots wrap
@@ -103,8 +103,8 @@ describe("pointer/list item slot: readable items keep the bar-view slot, denied 
       // denies at the view-permission gate — the bare span — and the
       // mini_bar (unknown-card) substitution must not fire.
       const baseIds = new Set(readShardLines().map((l) => l.id));
-      baseIds.add(22281); // the swtktey type card (set-key TYPE token)
-      baseIds.add(22282); // the swtktey+*type set card
+      baseIds.add(909891); // the swtktey type card (set-key TYPE token)
+      baseIds.add(909892); // the swtktey+*type set card
       corpusStorage = await createStructureSeededStorageFor(baseIds);
       await seedCard(corpusStorage, {
         id: 99102,
@@ -115,7 +115,7 @@ describe("pointer/list item slot: readable items keep the bar-view slot, denied 
       await seedCard(corpusStorage, {
         id: 99103,
         name: "denied item",
-        typeId: 22281,
+        typeId: 909891,
         readRuleId: 22283,
         readRuleClass: "*type",
       });

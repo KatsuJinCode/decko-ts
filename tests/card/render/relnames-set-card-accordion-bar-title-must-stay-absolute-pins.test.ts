@@ -53,7 +53,7 @@ import {
 import { installHelpRules } from "../../../src/card/render/help-popover.js";
 import type { RenderTestStorage } from "./render-test-storage.js";
 
-const SET_CARD_ID = 268;
+const SET_CARD_ID = 900122;
 const SET_CARD_NAME = "*input type+*right";
 
 let storage: RenderTestStorage | undefined;

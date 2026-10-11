@@ -49,7 +49,7 @@ describe("formatFileCore — the file cardtype html :core body (core.haml)", () 
     // render-time derivation, never the stored key verbatim
     // (set/type/file.rb:11-15 [-2] split + file_card_uploader.rb:147-153
     // filename + path.rb:41-43 retrieval ignoring the identifier; the
-    // Jacob Benedetti oracle anchor pins it): [-2] of
+    // Jonas Verhoeven oracle anchor pins it): [-2] of
     // "(bucket)/808/42.png" is "42" -> the fog URL of files/808/42.png.
     ["https://example.com/attach.png", "https://example.com/attach.png"],
     ["http://example.com/attach.pdf", "http://example.com/attach.pdf"],
@@ -113,7 +113,7 @@ describe("File-type card :content view — empty inner for prefix-less content",
         typeId: 2,
       });
       await seedCard(storage, {
-        id: 808,
+        id: 900487,
         name: "bctnycubfauuwcwfx+syryhpllh",
         leftId: 580,
         rightId: 675,
@@ -250,7 +250,7 @@ describe("captured corpus — File-type card byte surface", () => {
     const lines = text.split("\n").filter((l) => l.trim().length > 0);
     const entry808 = lines
       .map((l) => JSON.parse(l))
-      .find((e: { id: number }) => e.id === 808) as
+      .find((e: { id: number }) => e.id === 900487) as
       | {
           id: number;
           name: string;

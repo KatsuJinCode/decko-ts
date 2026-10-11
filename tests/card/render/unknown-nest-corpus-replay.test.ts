@@ -67,7 +67,7 @@ interface ShardLine {
   views?: Record<string, string>;
 }
 
-const PROOF_ENTRIES: readonly number[] = [640, 643, 639, 1120];
+const PROOF_ENTRIES: readonly number[] = [900388, 900391, 900387, 900713];
 
 describe("corpus replay: unknown-card nests render Ruby's unknown views byte-identically", () => {
   it(

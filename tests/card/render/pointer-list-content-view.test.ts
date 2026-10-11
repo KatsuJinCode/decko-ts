@@ -72,9 +72,9 @@ describe("pointer/list content view (stream M3 structural shape)", () => {
     "*home pointer content view renders the card-list pointer-list wrapper with item-wrap and mini_bar slot",
     async () => {
       const baseIds = new Set(readShardLines().map((l) => l.id));
-      baseIds.add(77);
-      baseIds.add(34843);
-      baseIds.add(22283);
+      baseIds.add(900045);
+      baseIds.add(913689);
+      baseIds.add(909893);
       storage = await createStructureSeededStorageFor(baseIds);
       // Seed NOTHING for yzzw (the *home pointer's single item): the
       // corpus's yzzw has NO row (verified directly against the corpus
@@ -109,8 +109,8 @@ describe("pointer/list content view (stream M3 structural shape)", () => {
     "*all+*layout list content view renders the card-list pointer-list wrapper (list cardtype dispatches to the same code path)",
     async () => {
       const baseIds = new Set(readShardLines().map((l) => l.id));
-      baseIds.add(275);
-      baseIds.add(22283);
+      baseIds.add(900125);
+      baseIds.add(909893);
       storage = await createStructureSeededStorageFor(baseIds);
       // bifaarykabanhm has NO row in the corpus db (verified directly) —
       // same absent-item mini_bar path as yzzw above; no seed.

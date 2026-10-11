@@ -52,7 +52,7 @@ const CORPUS_PATH = CORPUS_DB_PATH;
 
 const FIXTURE_PATH = path.join(REPO_ROOT, "tmp", "signin-endpoint-fixture.sqlite3");
 const TEST_PASSWORD = generatedPassword("signinendpoint");
-const HOLDER_ID = 583;
+const HOLDER_ID = 900360;
 
 const describeIfCorpus = describeWithCorpus(CORPUS_PATH !== null, "tests/card/auth/signin-endpoint.test.ts", "the committed miniature corpus (fixtures/test-corpus/) is not present");
 

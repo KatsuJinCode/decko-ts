@@ -50,9 +50,9 @@ describe("pointer/list trailing-newline byte-level pin (M3 family: unclassified:
       // the captured byte shape is preserved (the corpus pins the denied
       // spans inside the bar div).
       const baseIds = new Set(readShardLines().map((l) => l.id));
-      baseIds.add(77);
-      baseIds.add(34843);
-      baseIds.add(6568);
+      baseIds.add(900045);
+      baseIds.add(913689);
+      baseIds.add(902787);
       storage = await createStructureSeededStorageFor(baseIds);
       const html = await storage.engine.render("*home", "content");
       // Pin the structure: card-list wrapper, mini_bar slot, denied spans
@@ -111,14 +111,14 @@ describe("pointer/list trailing-newline byte-level pin (M3 family: unclassified:
       // family seeding). Instead pin the simple wrapper branch with a
       // direct substring assertion on the WIDTH of the emit.
       const baseIds = new Set(readShardLines().map((l) => l.id));
-      baseIds.add(275); // *all+*layout list rule — non-permission right,
+      baseIds.add(900125); // *all+*layout list rule — non-permission right,
                         // dispatches via the card-list-bar wrapper.
-      baseIds.add(6568);
+      baseIds.add(902787);
       storage = await createStructureSeededStorageFor(baseIds);
       await seedCard(storage, {
         id: 9020,
         name: "bifaarykabanhm",
-        typeId: 22281,
+        typeId: 909891,
         readRuleId: 6568,
         readRuleClass: "*all",
       });
@@ -157,13 +157,13 @@ describe("pointer/list trailing-newline byte-level pin (M3 family: unclassified:
       // inline `</div>` is `\n` in the engine but `<` in Ruby (the start
       // of the 5th `</div>`, the content-view slot-wrap close).
       const baseIds = new Set(readShardLines().map((l) => l.id));
-      baseIds.add(6551);
-      baseIds.add(6568);
+      baseIds.add(902775);
+      baseIds.add(902787);
       storage = await createStructureSeededStorageFor(baseIds);
       await seedCard(storage, {
         id: 9010,
         name: "irjkznnbpewjpr",
-        typeId: 22281,
+        typeId: 909891,
         readRuleId: 6568,
         readRuleClass: "*all",
       });

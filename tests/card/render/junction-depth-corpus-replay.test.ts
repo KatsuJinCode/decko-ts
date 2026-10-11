@@ -56,7 +56,7 @@ interface ShardLine {
  *  enforcement, a distinct pending class) — it proves nothing about
  *  junction resolution. */
 const PROOF_ENTRIES: Array<{ id: number; views: readonly string[] }> = [
-  { id: 19334, views: ["closed", "content", "open", "title"] },
+  { id: 909147, views: ["closed", "content", "open", "title"] },
 ];
 
 describe("corpus replay: depth-3+ junction inclusion chains render byte-identically", () => {

@@ -65,8 +65,8 @@ describe("pointer/list content view: outer-wrapper branch + phantom-item mini_ba
       // shape, which the dual-lane raw oracle renders as the bare quiet
       // span instead (538 bare spans, zero mini wraps for real items).
       const baseIds = new Set(readShardLines().map((l) => l.id));
-      baseIds.add(6551);
-      baseIds.add(22283);
+      baseIds.add(902775);
+      baseIds.add(909893);
       storage = await createStructureSeededStorageFor(baseIds);
       const html = await storage.engine.render("*star+*create", "content");
       // The outer wrapper must be the simple one — NOT the full prefix.
@@ -89,8 +89,8 @@ describe("pointer/list content view: outer-wrapper branch + phantom-item mini_ba
       // non-permission setting rights. Pin the negative side of the
       // branch to keep the rule from over-firing.
       const baseIds = new Set(readShardLines().map((l) => l.id));
-      baseIds.add(275);
-      baseIds.add(22283);
+      baseIds.add(900125);
+      baseIds.add(909893);
       storage = await createStructureSeededStorageFor(baseIds);
       // bifaarykabanhm has NO row in the corpus db (verified directly) —
       // the phantom path renders its mini_bar slot; no seed.
@@ -110,9 +110,9 @@ describe("pointer/list content view: outer-wrapper branch + phantom-item mini_ba
       // captured oracle uses the full prefix; the branch must NOT
       // pick the simple wrapper for non-rule cards.
       const baseIds = new Set(readShardLines().map((l) => l.id));
-      baseIds.add(77);
-      baseIds.add(34843);
-      baseIds.add(22283);
+      baseIds.add(900045);
+      baseIds.add(913689);
+      baseIds.add(909893);
       storage = await createStructureSeededStorageFor(baseIds);
       // yzzw has NO row in the corpus db (verified directly) — same
       // absent-item shape as the phantom test below; no seed.
@@ -132,9 +132,9 @@ describe("pointer/list content view: outer-wrapper branch + phantom-item mini_ba
       // RenderCard via phantomPointerListItem and the body via
       // pointerListItemBodyForUnknown.
       const baseIds = new Set(readShardLines().map((l) => l.id));
-      baseIds.add(77);
-      baseIds.add(34843);
-      baseIds.add(22283);
+      baseIds.add(900045);
+      baseIds.add(913689);
+      baseIds.add(909893);
       // Note: no yzzw seed.
       storage = await createStructureSeededStorageFor(baseIds);
       const html = await storage.engine.render("*home", "content");
@@ -172,10 +172,10 @@ describe("pointer/list content view: outer-wrapper branch + phantom-item mini_ba
       // bar_left's title and bar_right's ruleBarRightHtml).
       const deniedCount = (html.match(/<span class="denied"><!-- Sorry, you don't have permission \(read\) --><\/span>/g) || []).length;
       expect(deniedCount).toBe(2);
-      // The phantom type info: data-card-type-id="22281" on the inner
+      // The phantom type info: data-card-type-id="909891" on the inner
       // slot (oracle: cards row 22281 is the deck's default type card;
       // "swtktey" never appears in the expected-v2 view lane).
-      expect(html).toContain('data-card-type-id="22281"');
+      expect(html).toContain('data-card-type-id="909891"');
       // SLOTJSON-TYPE LANE FLIP (evidence-labeled): the phantom's type
       // attrs now resolve through the MECHANISM instead of the retired
       // BasicCs constant — new_unknown_item_args (item.rb:245-248) falls
@@ -190,7 +190,7 @@ describe("pointer/list content view: outer-wrapper branch + phantom-item mini_ba
       // The body's identity (single-quoted attrs): the id is deck-stable
       // (22281 in both decks); the name follows the deck like the chip
       // above (BODY FLIP note).
-      expect(html).toContain("data-card-type-id='22281'");
+      expect(html).toContain("data-card-type-id='909891'");
       expect(html).toContain("data-card-type-name='swtktey'");
     },
   );

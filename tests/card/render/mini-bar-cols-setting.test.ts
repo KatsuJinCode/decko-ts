@@ -140,7 +140,7 @@ describe("render integration: mini-bar cols setting", () => {
 
   it("byte-parity for bar cols (corpus:67 :closed view, structure-seeded)", async () => {
     // The captured entry from fixtures/corpus/shard-000000.jsonl, id 67.
-    const line = readShardLines().find((l) => l.id === 67);
+    const line = readShardLines().find((l) => l.id === 900041);
     expect(line, "shard carries corpus entry 67").toBeDefined();
     const expected = line!.views!["closed"];
     expect(expected, "corpus:67 has captured :closed bytes").toBeDefined();

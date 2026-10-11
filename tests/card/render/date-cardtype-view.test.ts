@@ -263,7 +263,7 @@ describe("captured corpus — Date-type card byte surface", () => {
     const lines = text.split("\n").filter((l) => l.trim().length > 0);
     const entry1135 = lines
       .map((l) => JSON.parse(l))
-      .find((e: { id: number }) => e.id === 1135) as
+      .find((e: { id: number }) => e.id === 900724) as
       | { id: number; name: string; record: { content: string; type_code: string }; views: Record<string, string> }
       | undefined;
     expect(entry1135).toBeDefined();
@@ -290,7 +290,7 @@ describe("captured corpus — Date-type card byte surface", () => {
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
       await seedCard(storage, { id: 90, name: "Date", codename: "date", typeId: 2 });
       await seedCard(storage, {
-        id: 1135,
+        id: 900724,
         name: "broken_date_one",
         typeId: 90,
         dbContent: "brcvtwrvz",

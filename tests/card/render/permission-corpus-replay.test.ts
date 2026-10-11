@@ -50,28 +50,28 @@ function byId(lines: ShardLine[], id: number): ShardLine {
 /** The (entry id, view) pairs each class pins. Ids are shard-000000
  *  entries — see the module doc for how they were chosen. */
 const DENIED_PICKS: Array<{ id: number; view: string }> = [
-  { id: 28, view: "closed" }, // "*all+*default" - a rule card denied whole
-  { id: 34, view: "open" }, // "*children+*right+*structure" - compound card
-  { id: 34, view: "content" },
-  { id: 41, view: "closed" },
-  { id: 44, view: "content" },
-  { id: 95, view: "open" },
+  { id: 900016, view: "closed" }, // "*all+*default" - a rule card denied whole
+  { id: 900019, view: "open" }, // "*children+*right+*structure" - compound card
+  { id: 900019, view: "content" },
+  { id: 900026, view: "closed" },
+  { id: 900029, view: "content" },
+  { id: 900058, view: "open" },
 ];
 
 const READABLE_PICKS: Array<{ id: number; view: string }> = [
-  { id: 1, view: "closed" },
-  { id: 1, view: "content" },
-  { id: 15, view: "open" },
-  { id: 55, view: "content" },
-  { id: 66, view: "open" },
+  { id: 900001, view: "closed" },
+  { id: 900001, view: "content" },
+  { id: 900010, view: "open" },
+  { id: 900037, view: "content" },
+  { id: 900040, view: "open" },
 ];
 
-const DENIED_TITLE_PICKS: Array<{ id: number }> = [{ id: 28 }, { id: 33 }];
+const DENIED_TITLE_PICKS: Array<{ id: number }> = [{ id: 900016 }, { id: 900018 }];
 
-/** corpus:581:content - a readable host whose captured view embeds the
+/** corpus:900358:content - a readable host whose captured view embeds the
  *  denial span for nested denied cards; renders byte-identically. */
 const MID_DENIED_PICKS: Array<{ id: number; view: string }> = [
-  { id: 581, view: "content" },
+  { id: 900358, view: "content" },
 ];
 
 describe("corpus replay: read-permission denial renders byte-identically", () => {

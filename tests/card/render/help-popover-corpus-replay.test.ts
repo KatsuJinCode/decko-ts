@@ -64,7 +64,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
 
 const PROOF_ENTRIES: readonly number[] = [
-  53, 61, 79, 81, 82, 86, 241, 247, 252, 255, 256, 317, 318, 89,
+  900036, 900038, 900046, 900048, 900049, 900051, 900103, 900105, 900108, 900110, 900111, 900145, 900146, 900054,
 ];
 
 interface ShardLine {

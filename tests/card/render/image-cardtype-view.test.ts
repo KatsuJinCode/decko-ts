@@ -353,7 +353,7 @@ describe("captured corpus — Image-type card byte surface", () => {
     const lines = text.split("\n").filter((l) => l.trim().length > 0);
     const entry79 = lines
       .map((l) => JSON.parse(l))
-      .find((e: { id: number }) => e.id === 79) as
+      .find((e: { id: number }) => e.id === 900046) as
       | {
           id: number;
           name: string;

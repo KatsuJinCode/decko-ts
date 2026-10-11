@@ -27,7 +27,7 @@ const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 export const CORPUS_PATH = CORPUS_DB_PATH;
 
 /** The corpus-proven account the flow journeys run against. */
-export const HOLDER_ID = 583;
+export const HOLDER_ID = 900360;
 
 /** The resolved fixture rows the tests need (all strings read from the
  *  COPY — no secrets, just deck-shaped data). */

@@ -33,7 +33,7 @@ import { installHelpRules } from "../../../src/card/render/help-popover.js";
 import { normalizeSlotIds } from "../../../src/testing/diff.js";
 import type { RenderTestStorage } from "./render-test-storage.js";
 
-const TARGET_IDS = [217, 268, 273, 294, 300, 302, 315] as const;
+const TARGET_IDS = [900098, 900122, 900123, 900137, 900140, 900141, 900143] as const;
 
 interface ProofEntry {
   id: number;

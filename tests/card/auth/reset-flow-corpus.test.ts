@@ -116,7 +116,7 @@ describeIfCorpus("password-reset flow over the corpus copy (holder 583)", () => 
     // forgetting the password): after the flow it must STILL resolve —
     // Ruby invalidates nothing on a password reset.
     const sessions = fixture.ctx.sessions;
-    const oldSession = await sessions.createSession(583);
+    const oldSession = await sessions.createSession(900360);
 
     // 1. REQUEST (signin.rb:27-31).
     const request = await sendResetPasswordToken(fixture.ctx, fixture.info.email);
@@ -146,7 +146,7 @@ describeIfCorpus("password-reset flow over the corpus copy (holder 583)", () => 
     const confirmation = await confirmPasswordReset(fixture.ctx, link?.[1] ?? "", link?.[2] ?? "");
     expect(confirmation.ok).toBe(true);
     if (!confirmation.ok) return;
-    expect(confirmation.holder.id).toBe(583);
+    expect(confirmation.holder.id).toBe(900360);
     expect(confirmation.holder.name).toBe(fixture.info.holderName);
     expect(confirmation.redirectTo).toEqual({
       name: fixture.info.junctionName,
@@ -155,11 +155,11 @@ describeIfCorpus("password-reset flow over the corpus copy (holder 583)", () => 
 
     // 4. THE SESSION binds the member (Auth.signin parity).
     const actor = await sessions.lookupSession(confirmation.session.token);
-    expect(actor?.id).toBe(583);
+    expect(actor?.id).toBe(900360);
     // ...and the PRE-EXISTING session is untouched (Ruby invalidates
     // nothing — the parity pin, not a bug).
     const stillOld = await sessions.lookupSession(oldSession.token);
-    expect(stillOld?.id).toBe(583);
+    expect(stillOld?.id).toBe(900360);
 
     // 5. SET THE NEW PASSWORD (right/password.rb validate/store events),
     //    as the signed-in member (the confirm redirect's actor).

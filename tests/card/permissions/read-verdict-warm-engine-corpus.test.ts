@@ -57,6 +57,6 @@ describeIfCorpus("warm engine: a card already in the render map is still judged"
     for (const page of WARMUP_PAGES) await storage!.engine.renderPage(page);
     const html = await storage!.engine.renderPage("tags");
     expect(html).not.toContain("the reference deck uses two methods to tag");
-    expect(storage!.engine.isDenied({ id: 128, key: "tags" } as never)).toBe(true);
+    expect(storage!.engine.isDenied({ id: 900066, key: "tags" } as never)).toBe(true);
   }, 300_000);
 });

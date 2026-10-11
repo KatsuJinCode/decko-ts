@@ -58,7 +58,7 @@ interface ProofEntry {
  *  rows, set-member count skew). Skipping them here avoids duplicating the
  *  classification with a weaker whole-buffer marker; the coverage is
  *  cross-referenced, not dropped. */
-const OWNED_BY_SET_CARD_VIEWS = new Set([217, 268, 273, 294, 300, 302, 315]);
+const OWNED_BY_SET_CARD_VIEWS = new Set([900098, 900122, 900123, 900137, 900140, 900141, 900143]);
 
 function proofEntries(): ProofEntry[] {
   const templates = structureTemplateContents();
