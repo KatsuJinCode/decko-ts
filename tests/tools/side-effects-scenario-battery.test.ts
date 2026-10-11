@@ -23,16 +23,15 @@
 // declared + 37 mismatched), 36 of them traceable to ONE declared security
 // divergence (docs/SECURITY.md, "An account holder's name may be changed
 // only by its holder or Help Desk"): renaming another user's account
-// holder. Ruby 0.20's guard (account_holder.rb
-// validate_account_holder_name_change: `Card::Auth.as_card.account_manager?`)
-// is vacuous for any signed-in actor -- account_manager? asks whether the
-// actor is the actor -- so Ruby allows the rename. The port implements the
-// check's evident intent and refuses it (card-action-engine.ts
-// assertMayRenameAccountHolder). On the production deck that difference
-// never surfaces because Ruby crashes mid-rename there (rule/all.rb:53
-// valid_preferer? on a nil card -- one of the 7 declared production pins);
-// the crash depends on production deck state and does not reproduce on a
-// clean deck, so three of the seven production pins do not transfer
+// holder. Ruby 0.20's guard on that path is vacuous for any signed-in
+// actor -- it asks only whether the actor is the actor -- so Ruby allows
+// the rename. The port implements the check's evident intent and refuses
+// it (card-action-engine.ts assertMayRenameAccountHolder). On the
+// production deck that difference never surfaces because Ruby crashes
+// mid-rename there (a crash on a nil card -- one of the 7 declared
+// production pins); the crash depends on production deck state and does
+// not reproduce on a clean deck, so three of the seven production pins do
+// not transfer
 // (probe-rename-other-account, admin-rename-account-holder,
 // admin-close-own-account), and Ruby's successful renames cascade: its
 // later notification mails name the renamed follow rule, and its action ids

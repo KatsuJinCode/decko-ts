@@ -52,14 +52,37 @@
 //
 // STILL THE SAME MINIMAL SCOPE (NOT THE FULL decko-ts engine): the render
 // engine depends on better-sqlite3, node:fs and node:crypto, so this entry
-// fetches the card and shapes a minimal HTML/JSON record response. Route
-// surface and response bodies are unchanged from the Sept entry.
+// fetches the card and shapes a minimal HTML/JSON record response.
+//
+// STORED CONTENT IS NEVER SERVED. This entry has no session, no viewer
+// identity and no read rule — handleRequest answers whatever URL it is given,
+// so a route that returns db_content returns it to anyone who guesses the
+// card name. On a real deck db_content carries an account's `+*password`
+// digest, `+*salt` and `+*email` (src/card/auth/account-fields.ts), so the
+// record view is metadata only: id, name, key, codename, type_id, left_id,
+// right_id, trash and the timestamps. fetchCardByName does not SELECT
+// db_content, so the column never reaches this module at all; that is the
+// structural half of the fix, and a later route change cannot re-expose the
+// content by forgetting to filter a response.
+//
+// This is deliberately NOT routed through the engine's read gate. Two reasons,
+// both verified in this tree rather than assumed:
+//   - canReadCard is a RenderEngine method (src/card/render.ts) whose verdict
+//     needs a deck, a viewer and its read rules. Importing it here would pull
+//     the engine — and the better-sqlite3 / node:fs / node:crypto deps this
+//     entry exists to avoid — into the edge bundle. It is also vacuous here:
+//     there is no viewer to ask about.
+//   - publicDbContent (src/server/worker-shared-surface.ts) masks only a
+//     `+*password` card's content and returns everything else verbatim, so
+//     `+*salt` and `+*email` would still be served. It is the right helper
+//     where a real viewer exists (the engine-based Bunny and Cloudflare
+//     entries use it); it is not a fix for an anonymous route.
 //
 // ROUTES (unchanged from the Sept entry):
 //   GET  /               -> render the "Home" card (minimal HTML record view)
 //   GET  /_status        -> { ok, runtime, db_ok, cards_n, version }
 //   GET  /<card-name>    -> minimal HTML record view of that card (200/404)
-//   GET  /<card-name>.json -> the card record as JSON
+//   GET  /<card-name>.json -> the card record as JSON (metadata, no content)
 //   anything else        -> 404
 //
 // Deployment (dashboard-first, trial account):
@@ -150,7 +173,6 @@ export interface CardRecord {
   type_id: number | null;
   left_id: number | null;
   right_id: number | null;
-  db_content: string | null;
   trash: number;
   created_at: string;
   updated_at: string;
@@ -282,9 +304,11 @@ async function status(db: CardClient, config: ResolvedDbConfig): Promise<Respons
   }
 }
 
+/** The card row as this entry is allowed to see it. `db_content` is absent by
+ *  design — see the STORED CONTENT IS NEVER SERVED note in the header. */
 async function fetchCardByName(db: CardClient, name: string): Promise<CardRecord | null> {
   const r = await db.execute({
-    sql: "SELECT id, name, key, codename, type_id, left_id, right_id, db_content, trash, created_at, updated_at FROM cards WHERE name = ? AND trash = 0 LIMIT 1",
+    sql: "SELECT id, name, key, codename, type_id, left_id, right_id, trash, created_at, updated_at FROM cards WHERE name = ? AND trash = 0 LIMIT 1",
     args: [name],
   });
   if (r.rows.length === 0) return null;
@@ -307,7 +331,6 @@ async function cardRecordJson(db: CardClient, name: string): Promise<Response> {
     trash: rec.trash,
     created_at: rec.created_at,
     updated_at: rec.updated_at,
-    db_content: rec.db_content,
   });
 }
 
@@ -328,7 +351,7 @@ async function renderCardPage(db: CardClient, name: string): Promise<Response> {
     (rec.codename ? ` · <strong>codename:</strong> ${escapeHtml(rec.codename)}` : "") +
     `</p>` +
     `<h2>db_content</h2>` +
-    `<pre>${escapeHtml(rec.db_content ?? "(empty)")}</pre>` +
+    `<p><em>withheld — this entry serves card records, not stored content.</em></p>` +
     `<p><a href="/${encodeURIComponent(name)}.json">record JSON</a> · <a href="/_status">status</a> · <a href="/">Home</a></p>` +
     `</div>`;
   return htmlResponse(200, body, name);

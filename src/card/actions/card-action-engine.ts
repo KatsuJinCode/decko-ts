@@ -1039,10 +1039,15 @@ export class CardActionEngine {
     return { ...input, subcards: { ...input.subcards, "+*account": { ...account, subcards } } };
   }
 
-  /** account_holder.rb:1-5: `return unless account? &&
-   *  !Auth.as_card.account_manager?; errors.add :name, "cannot rename
-   *  Account Holder"`. account_manager? = own_account? ||
-   *  parties.member?(HelpDeskID) (:79-81); the bot is always_ok. */
+  /** Renaming an account holder is refused before anything is written unless
+   *  the actor is the account itself or a member of Help Desk.
+   *
+   *  Upstream's guard on this path grants a broader allowance and exempts a
+   *  system actor outright. This port implements the check's evident intent
+   *  instead, so an administrator who is not in Help Desk is refused too.
+   *  Approved divergence 5 in docs/SECURITY.md records the difference, and
+   *  the upstream file, line and mechanism behind it are withheld there
+   *  until a private disclosure channel exists. */
   private async assertMayRenameAccountHolder(cardId: number): Promise<void> {
     const accountId = await this.fetch.codenames.id("account");
     if (accountId === undefined) return;
@@ -1051,8 +1056,9 @@ export class CardActionEngine {
       [cardId, accountId],
     );
     if (r.rows.length === 0) return; // not an account holder
-    // account_manager? (account_holder.rb:71-73) has no always_ok? arm: an
-    // administrator who is not in Help Desk may not rename another account.
+    // No blanket allow arm here, unlike upstream: an administrator who is
+    // not in Help Desk may not rename another account (approved divergence 5,
+    // docs/SECURITY.md).
     const state = await this.writePermissionState();
     if (this.actor !== null && this.actor.id === cardId) return; // own account
     const helpDesk = await this.fetch.codenames.id("help_desk");
@@ -1873,10 +1879,10 @@ export class CardActionEngine {
     if (row === undefined || (row.trash === 1 && input.lookInTrash !== true)) {
       throw new CardActionError("not-found", `no such card: ${input.cardId}`);
     }
-    // validate_account_holder_name_change (card-mod-account
-    // set/abstract/account_holder.rb:1-5): renaming a card that has an
-    // account needs an account manager — the account itself, or a Help
-    // Desk member (account_manager?).
+    // Renaming a card that has an account needs an account manager — the
+    // account itself, or a Help Desk member. Approved divergence 5 in
+    // docs/SECURITY.md; the upstream file and lines behind this guard are
+    // withheld until a private disclosure channel exists.
     if (input.name !== undefined) {
       const current = (await this.fetch.fetchById(row.id))?.name?.key;
       if (DeckoName.parse(input.name).key !== current) await this.assertMayRenameAccountHolder(row.id);
