@@ -459,7 +459,7 @@ describe("match via the REGEXP UDF", () => {
   });
 
   it("name match hits the name column; NULL names never match", async () => {
-    // name contains 'a': Basic, Joe Admin, Tova Sample, About, Zebra,
+    // name contains 'a': Basic, Joe Admin, Tova Sample, About, status, Zebra,
     // Alpha Page, status ("restricted"/"Editor Notes" have no letter 'a');
     // junction rows have NULL names and never match.
     expect(await ids({ name: ["~", "a"] })).toEqual([1, 10, 11, 21, 22, 24, 33]);
@@ -572,7 +572,7 @@ describe("sort / limit / offset", () => {
   const NAME_MATCH_SET = [1, 10, 11, 21, 22, 24, 33];
   // keys in binary order: about < alpha_page < basic < joe_admin
   // < tova_sample < status < zebra
-  const NAME_ASC_ORDER = [21, 24, 1, 10, 11, 33, 22];
+  const NAME_ASC_ORDER = [21, 24, 1, 10, 33, 11, 22];
 
   it("sort by name asc orders by key", async () => {
     const result = await runRows({ name: ["~", "a"], sort: "name", sort_dir: "asc" });
