@@ -84,6 +84,15 @@ const navbarLinksView: ViewFn = (ctx) => {
     // dropped).
     const prepared = ctx.fmt.engine.pageSessionAccountLinksHtml;
     if (prepared !== undefined) {
+      // The prepared string embeds the my_card roles nest whose render is
+      // ensure_roles' mutation point — consuming it marks the fill for the
+      // rest of the process (the same consume-then-mark the :core arm
+      // carries; the Default Layout's navbar dispatches through THIS view,
+      // so without the mark here a signed-in page's roles form never
+      // flips to the filled variant and every page after the first renders
+      // the blank content input the real captures only pin on each
+      // capture process's first page).
+      ctx.fmt.engine.markSessionRolesContentFilled?.();
       return `<ul class="navbar-nav">${fillUniqueIds(prepared, fmt)}</ul>`;
     }
     const links = [

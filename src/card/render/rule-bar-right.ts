@@ -322,6 +322,16 @@ function ruleOneLineContent(
     const coreText = renderCoreText !== undefined ? renderCoreText(card) : card.dbContent;
     return oneLineFromStripped(stripTags(str(coreText)));
   }
+  if (card.typeName === "Search") {
+    // card-mod-rules set/rule/html_views.rb:2-12 — the rule set's :core
+    // override renders SEARCH-typed rule cards raw ("the search doesn't
+    // work properly in the context of the rule card itself. Hence we show
+    // the query syntax and not the search result"): the stored bytes
+    // verbatim — links included ([[on]] stays authored; the real deck's
+    // *debugger+*self+*content options bar pins it, Search-typed, content
+    // "[[on]]").
+    return oneLineFromStripped(stripTags(card.dbContent ?? ""));
+  }
   return oneLineFromStripped(stripTags(referencesOnlyCoreText(card.dbContent ?? "")));
 }
 
