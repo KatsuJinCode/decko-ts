@@ -6,10 +6,10 @@
 //
 // Bug shape (mechanism-census mechanism (f) "unresolved
 // content-divergence with an entity-named-card cluster"; sampled
-// examples id 14546 "Jonas Verhove+musings", id 15261 "Daemeon
-// Reiydelle+Project(s) Organizing", id 16122 "Alexander Rendell+musings",
-// id 14329 "Nathan Colville+musings", id 12 "Sign up", id 22 "PlainText",
-// id 827 "VPX", id 35864 "Robert Ellingham Yamada Yoshimitsu New York Aikikai",
+// examples id 14546 "Sample Person A+musings", id 15261 "Sample Person
+// B+Project(s) Organizing", id 16122 "Sample Person C+musings",
+// id 14329 "Sample Person D+musings", id 12 "Sign up", id 22 "PlainText",
+// id 827 "VPX", id 35864 "Sample Person E Sample Person F Sample Place Dojo",
 // id 40381 "Practice Pool+Slack Channel naming conventions most in use+*self",
 // id 43485 "Artificial Intelligence+anon_exchange_02+*self", id 49305
 // "mod: account+*script" — pages whose names share an entity cluster
@@ -158,7 +158,7 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
       // The consideration cardtype — what the host's cql-typed
       // *content_options rule points at (matches corpus id 2979).
       await seedCard(storage, { id: 2979, name: "consideration", typeId: 5 });
-      // The host list card (matches corpus "Jonas Verhove+musings"
+      // The host list card (matches the corpus's "<person name>+musings"
       // shape — type 47 List, one item that does NOT exist in the deck).
       await seedCard(storage, {
         id: 99146,
