@@ -45,25 +45,26 @@ Requires `npx wrangler login` once (browser). Every command below runs from
 this `deploy/` directory.
 
 ```sh
-# 0. create the database; wrangler prints its id
-npx wrangler d1 create 
+# 0. create the database; wrangler prints its id.
+#    The name must match `database_name` in wrangler.toml.
+npx wrangler d1 create decko-ts-demo-db
 
 # 1. paste that id into wrangler.toml -> [[d1_databases]] database_id
 
 # 2. apply the schema (self-contained inside deploy/)
-npx wrangler d1 execute  --remote --file migrations/0001-schema.sql
+npx wrangler d1 execute decko-ts-demo-db --remote --file migrations/0001-schema.sql
 
 # 2b. ALREADY-PROVISIONED databases only (0001 never re-runs for them):
 #     backfill the BINARY key/codename lookup indexes
-npx wrangler d1 execute  --remote --file migrations/0002-card-text-binary-lookup-indexes.sql
+npx wrangler d1 execute decko-ts-demo-db --remote --file migrations/0002-card-text-binary-lookup-indexes.sql
 
 # 3. load the synthetic demo deck
-npx wrangler d1 execute  --remote --file seed/seed.sql
+npx wrangler d1 execute decko-ts-demo-db --remote --file seed/seed.sql
 
 # 3b. planner stats — REQUIRED after seed (useless on empty tables). Without
 #     this the SQLite planner probes cards_trash_index (whole deck) for every
 #     " AND trash = 0" predicate instead of seeking the key/codename indexes.
-npx wrangler d1 execute  --remote --command "ANALYZE"
+npx wrangler d1 execute decko-ts-demo-db --remote --command "ANALYZE"
 
 # 4. deploy the Worker (wrangler bundles worker.ts + the engine)
 npx wrangler deploy
@@ -96,7 +97,7 @@ CQL result JSON), `GET /_status` (engine + database health).
 
 The one exception to "run everything from this directory": the cleanup
 script names the two resources it removes explicitly (`wrangler delete
---name `, `wrangler d1 delete `), so the
+--name decko-ts-demo`, `wrangler d1 delete decko-ts-demo-db`), so the
 deletions do not depend on which `wrangler.toml` cwd resolves. It is
 written repo-root-relative here; from inside `deploy/`, drop the `deploy/`
 prefix. It is also the only script here that talks to a real account, and
