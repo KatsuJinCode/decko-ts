@@ -1729,10 +1729,19 @@ async function dispatchWriteRequest(
     // subcard's full name (subcards.rb — each saves as its own card with
     // its own post-commit expire). The host render-map expiry walks this
     // list so a changed subcard (the account form's +*email) never
-    // renders its pre-save value.
-    const subcardExpiryNames = Object.keys(parsed.subcards)
-      .filter((slot) => slot.startsWith("+"))
-      .map((slot) => `${name}${slot}`);
+    // renders its pre-save value. A RENAME also carries the card's
+    // BEFORE name: Ruby's expire_names (cache/all.rb:104-108) expires
+    // BOTH key versions via name_before_act, and the render engines'
+    // maps hold the pre-rename entry under the old key (the edit_name
+    // form's page seated it) — without it the renamed card's old name
+    // keeps answering known off a map entry the model-layer expire
+    // cannot reach.
+    const subcardExpiryNames = [
+      ...Object.keys(parsed.subcards)
+        .filter((slot) => slot.startsWith("+"))
+        .map((slot) => `${name}${slot}`),
+      ...(result?.nameBeforeAct !== undefined ? [result.nameBeforeAct.s] : []),
+    ];
     // configure_successful_deletion (mod/session set/all/location_history.rb:9-17,
     // inside event :discard_deleted_locations, :finalize on :delete): an ajax
     // delete whose success target is the deleted card itself (no mark = self)

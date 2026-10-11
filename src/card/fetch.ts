@@ -126,6 +126,24 @@ export class FetchEngine {
   readonly codenames: DbCodenameRegistry;
   /** states.rb#virtual? injection (see VirtualCardLookup). */
   virtualCardLookup?: VirtualCardLookup;
+  /** THE UPDATE-COLUMN STALENESS KEEPER (the rename-referers pin,
+   *  BROWSER-PARITY-SCENARIOS §10.28). Ruby's replace_references rewrites a
+   *  referer's row via `update_column` with NO cache expire
+   *  (reference_events.rb:52-58), and the referer Card[id] fetch inside
+   *  `referers` (reference/all.rb:15) has already put the PRE-rewrite card
+   *  in Card::Cache — so Ruby's next render of the referer serves the
+   *  pre-rename bytes until a legitimate write to that card expires the
+   *  entry. This port has a second invalidation Ruby does not have: the
+   *  freshness gate's resetCaches() (render.ts, delivery contract:79),
+   *  which fires on EVERY committed version move and would serve the
+   *  rewritten row where the graded oracle freezes the staleness. Keeper
+   *  entries are that cache layer's Ruby-shaped survivors: pinned by the
+   *  rename rewrite at the update_column arm, read before the card cache,
+   *  dropped exactly where Ruby's entry drops — any legitimate expire of
+   *  the card (expireCard/expireName, the after_commit half of any write
+   *  path save) — and deliberately SURVIVING resetCaches() (wiping them
+   *  there is the divergence being repaired). */
+  private stalenessKeeper = new Map<string, CardRecord>();
 
   constructor(
     driver: SQLDatabaseDriver,
@@ -273,6 +291,12 @@ export class FetchEngine {
 
   /** cache/card_class.rb#retrieve_from_cache (13-15) + #retrieve_from_cache_by_key (24-26). */
   retrieveFromCacheByKey(key: string, localOnly = false): CardRecord | undefined {
+    // The keeper reads FIRST: a pinned staleness entry is Ruby's cached card
+    // — no TS-only reset has expired it, so the read answers pre-write. Any
+    // legitimate write to the card dropped the entry (expireCard), so a hit
+    // here is exactly Ruby's unexpired-cache state.
+    const kept = localOnly ? undefined : this.stalenessKeeper.get(key);
+    if (kept !== undefined) return kept;
     const value = localOnly ? this.cardCache.temp.read(key) : this.cardCache.read(key);
     return isCardValue(value) ? value : undefined;
   }
@@ -617,10 +641,33 @@ export class FetchEngine {
     this.cardCache.temp.write(card.key, card);
   }
 
-  /** cache/card_class.rb#expire (42-47): expire the cached card with this name. */
+  /** THE UPDATE-COLUMN ARM's pin (see the stalenessKeeper field doc): the
+   *  rename rewrite calls this with the referer's PRE-write card at the
+   *  moment it rewrites the row behind every cache (content_quietly=,
+   *  reference_events.rb:52-58). The entry reads as Ruby's cached card and
+   *  drops on the card's own expire (expireNames) — never anywhere else. */
+  pinStaleCard(card: CardRecord): void {
+    if (card.key === undefined || card.key === "") return;
+    this.stalenessKeeper.set(card.key, card);
+  }
+
+  /** The keeper's read for one key — the prefetch walk's seam (render.ts
+   *  cacheFetchedRecord): a row composed fresh from storage must not
+   *  out-seat a pinned staleness entry, because Ruby's cached card is what
+   *  renders after the update_column wrote behind its cache. */
+  peekStaleCard(key: string): CardRecord | undefined {
+    return this.stalenessKeeper.get(key);
+  }
+
+  /** cache/card_class.rb#expire (42-47): expire the cached card with this name.
+   *  The keeper counts as cached: after a freshness-gate reset the card
+   *  cache is empty but a pinned staleness entry may still hold this name —
+   *  a write to the card must expire it the same way (the boundary the
+   *  rename-referers pin demands: the staleness clears on the next
+   *  legitimate write, never accumulates). */
   expireName(name: Nameish): void {
     const key = DeckoName.parse(name ?? "").key;
-    const card = this.cardCache.read(key);
+    const card = this.cardCache.read(key) ?? this.stalenessKeeper.get(key);
     if (isCardValue(card)) this.expireCard(card);
   }
 
@@ -649,6 +696,9 @@ export class FetchEngine {
       if (key === "" || seen.has(key)) continue; // expire_name's present? guard
       seen.add(key);
       this.cardCache.delete(key);
+      // the keeper's entry is the same cached card Ruby would expire —
+      // a legitimate write drops it with the cache entry
+      this.stalenessKeeper.delete(key);
     }
   }
 
@@ -698,6 +748,13 @@ export class FetchEngine {
     this.cardCache.reset();
     this.lexiconCache.reset();
     this.codenames.resetCache();
+    // The staleness keeper SURVIVES on purpose: a reset answers a committed
+    // version move, and the keeper's entries are exactly the cards whose
+    // stale bytes the graded oracle freezes across that move (Ruby's
+    // unexpired card cache — the update_column arms see no expire in Ruby
+    // either). A keeper entry leaves only through its card's own expire
+    // (expireNames); anything else would serve the post-update_column row
+    // where the rename-referers oracle pins the pre-rename bytes.
     // The armed render plan is derived state like the caches above: its rows
     // were read at seat time against the deck AS IT WAS, so a reset (the
     // freshness gate's version-triggered one in particular) must drop it —

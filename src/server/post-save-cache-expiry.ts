@@ -54,22 +54,33 @@ export function expireRenderCachesAfterSave(
   if (writeResponse.status < 200 || writeResponse.status >= 400) return;
   const name = writeResponse.expiryName;
   if (name === undefined || name === "") return;
+  // The signed-in list materializes ONCE: this fan-out walks it twice (the
+  // saved card's name here, every expiryNames entry below), and the Iterable
+  // the host passes (the signed-in engines Map's values iterator) exhausts
+  // on the first walk — the second loop then iterates nothing, and the
+  // signed-in engines' render maps kept every expiryNames entry warm (a
+  // renamed card's BEFORE name kept answering known off the pre-rename
+  // map entry; a changed subcard likewise on the account forms). An array
+  // is re-iterable, which is all the fan-out needs.
+  const signedInEngines = Array.from(engines.signedInEngines);
   engines.fetcher.expireName(name);
   // the enriched render-card maps live on the RENDER engines (the
   // fetch-layer expiry above cannot reach them)
   engines.renderEngine.expireRenderCard(name);
-  for (const engine of engines.signedInEngines) {
+  for (const engine of signedInEngines) {
     engine.expireRenderCard(name);
   }
   // The save's SUBCARDS are cards too (subcards.rb — each saves as its own
   // card with its own post-commit expire): a changed +*email child whose
   // enriched entry stays warm renders its pre-save value on the mark's
-  // page (the account-change journeys' residual).
+  // page (the account-change journeys' residual). A rename's BEFORE name
+  // rides the same list (expire_names covers both key versions,
+  // cache/all.rb:104-108 — the write route stamps it on the response).
   for (const sub of writeResponse.expiryNames ?? []) {
     if (sub === undefined || sub === "") continue;
     engines.fetcher.expireName(sub);
     engines.renderEngine.expireRenderCard(sub);
-    for (const engine of engines.signedInEngines) {
+    for (const engine of signedInEngines) {
       engine.expireRenderCard(sub);
     }
   }
