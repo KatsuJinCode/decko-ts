@@ -1720,8 +1720,8 @@ export class RenderFormat {
     //   - a view WITHOUT `unknown: true` substitutes :unknown
     //     (format/error.rb:23 `setting_view || :unknown`), whose createable
     //     gate renders "" for Anonymous - the plain-card shape (corpus
-    //     10488 `Steven Goldin+Menu`, blank `{{}}` -> empty on content/open;
-    //     re-proven LIVE 2026-10-03: example.com/Steven_Goldin+Menu
+    //     10488 `June Jessup+Menu`, blank `{{}}` -> empty on content/open;
+    //     re-proven LIVE 2026-10-03: example.com/June_Jessup+Menu
     //     ?view=content|open carry zero denial spans, stored content still
     //     embeds the blank nest).
     //   - a view WITH `unknown: true` lets alter_unknown answer nil and the
@@ -2116,7 +2116,7 @@ export class RenderFormat {
     //
     // ORACLE PINS — Soma+tic+aikido nested from Soma+tags (a List) reads
     // TYPE_PLUS_RIGHT-rich_text-aikido, and
-    // WilliamsCraig+Retreats+Shoreline+20180623_0728 reads
+    // Morgan+Retreats+Shoreline+20180623_0728 reads
     // TYPE_PLUS_RIGHT-rich_text-20180623_0728.
     //
     // THE LAST RESORT IS RUBY'S quick_type BODY, NOT ITS BLANK-NAME
@@ -2489,11 +2489,12 @@ export class RenderFormat {
    * a constant: serializable.rb:20-22 reads `Cardio.config.deck_origin`
    * first (nil at boot, cardio/railtie.rb:28) and falls back to
    * `"#{protocol}#{request&.host_with_port}"`, which is "" for a
-   * requestless runner. The capture photographs BOTH shapes —
-   * capture-dual-lane-page-and-view.rb:343 sets deck_origin for the page
-   * lane only (restored at :348; the view-function lane at :277-287 runs
-   * outside that block) — so the port resolves it from the same
-   * pageConfigActive flag `defaultNestView` uses. See
+   * requestless runner. The value is the DECK'S CONFIGURATION (review
+   * round 4, finding 9): the capture script itself assigns deck_origin
+   * for the page lane (capture-dual-lane-page-and-view.rb:391-400,
+   * restored at :400; the view-function lane at :277-287 runs outside
+   * that block), and the port installs it the same way — through
+   * setDeckEnvironment — never as an engine constant. See
    * render/deck-origin.ts for the oracle census.
    */
   envOrigin(): string {
@@ -2839,7 +2840,7 @@ export class RenderFormat {
    * nest label lands inside the anchor expanded. Live receipts:
    * `<a class="internal-link" href="/wagn/Latest_news_items.rss">…` (feed
    * icon wrap) and `<a class="internal-link" href="/account/signup">sign-in
-   * account</a>` (live Brandon bio; identical bytes in the recapture
+   * account</a>` (live Casey bio; identical bytes in the recapture
    * oracle).
    *
    * Name targets (link.rb:85-86 + 71-75) render view :link on the target
@@ -3741,14 +3742,15 @@ export interface RenderEngineLike {
   defaultHtmlViewConfig?(): string;
   /** The effective `Card::Env.origin` (card-1.110.0 lib/card/env/
    *  serializable.rb:20-22 `Cardio.config.deck_origin ||
-   *  "#{protocol}#{request&.host_with_port}"`) for the CURRENT render
-   *  lane: the pinned deck origin while a page render is active (the
-   *  production config the page capture applies,
-   *  capture-dual-lane-page-and-view.rb:343) and "" otherwise (railtie
-   *  default nil + a requestless runner). `card_url` interpolates it, so
-   *  this is what decides `/User` vs `https://example.com/User` for
-   *  the :url / :id_url / :url_link views. See RenderFormat.envOrigin
-   *  and render/deck-origin.ts for the full mechanism.
+   *  "#{protocol}#{request&.host_with_port}"`): the DECK'S CONFIGURED
+   *  origin (review round 4, finding 9 — the capture assigns it per lane
+   *  at capture-dual-lane-page-and-view.rb:391-400, and the port reads it
+   *  from the same kind of configuration through setDeckEnvironment), or
+   *  "" when nothing is configured (railtie default nil + a requestless
+   *  runner). `card_url` interpolates it, so this is what decides
+   *  `/User` vs `https://configured.origin/User` for the :url / :id_url /
+   *  :url_link views. See RenderFormat.envOrigin and
+   *  render/deck-origin.ts for the full mechanism.
    *  Optional: engines without it take the requestless fallback "". */
   envOriginConfig?(): string;
   /** card-mod-format set/type/cardtype.rb:68-70 can_configure? —
@@ -4441,7 +4443,7 @@ function findUriMatch(text: string, from: number): UriMatch | undefined {
     // a URI.parse-invalid chunk (brackets/braces/angle quotes and bad
     // percent escapes, boundary probed against the 3.3.0 gem's RFC3986
     // parser) rendered as verbatim @text — reproduced the Pacifica Depth
-    // Psychology oracle's plain-text `[mailto:brandon@culturesmith.com]`
+    // Psychology oracle's plain-text `[mailto:casey@culturesmith.com]`
     // but destabilized the +*referred_to_by search-result family (44
     // pages per actor: the Archetypal referer list rendered a different
     // result SET with the gate present and the capture's own set with it
@@ -4454,7 +4456,7 @@ function findUriMatch(text: string, from: number): UriMatch | undefined {
     // as trailing punctuation) matches NO rule, so no class attribute.
     // The previous `chunk.slice(0, chunk.indexOf(":"))` turned -1 into a
     // last-char chop and emitted the engine-only `fil-link`/`mailt-link`
-    // classes (Half Price Books, JP Morgan Chase, Big Thought, Brian
+    // classes (Half Price Books, JP Nora Thistlewood, Big Thought, Brian
     // Moeschler captures).
     const schemeResourceType =
       /^https?:/.test(chunk)
@@ -4584,7 +4586,7 @@ export function expandContentLinks(
       // uri.rb:86-89: process_uri_chunk appends @trailing_punctuation
       // AFTER the anchor (`"#{link}#{@trailing_punctuation}"`) - the
       // source's chopped [,.)!:?] byte renders right behind `</a>` (the
-      // `williamscraig.com</a>.` oracle bytes) - and the SECOND trailing
+      // `morgan.com</a>.` oracle bytes) - and the SECOND trailing
       // dot from uri.rb:69's `sub!(/\.$/,'')` is a REAL removal, so it is
       // not re-emitted here.
       out += `<a${target}${cls} href="${h(uri.href)}">${uri.text}</a>${uri.trailing}`;
@@ -4687,13 +4689,13 @@ function linkNestCardName(
  *  `name_from` returns `self` (contextual.rb:46-51: `from.compact.present?`
  *  false ⇒ `return self`) and the title keeps its full name.
  *
- *  FROZEN ORACLE (the two halves of D7, entry 10488 `Steven Goldin+Menu`,
- *  `[[steven goldin+musings]]` in its RichText body):
+ *  FROZEN ORACLE (the two halves of D7, entry 10488 `June Jessup+Menu`,
+ *  `[[june jessup+musings]]` in its RichText body):
  *    page lane  `<span class="card-title" title="+musings">…`
- *    view lane  `<span class="card-title" title="steven goldin+musings">…`
+ *    view lane  `<span class="card-title" title="june jessup+musings">…`
  *  for BOTH views.content and views.open. The round-trip guard in
  *  `name_from` (contextual.rb:50 `key == compressed.absolute_name(from).key`)
- *  is why the view-lane half is not "steven goldin+musings" compressed
+ *  is why the view-lane half is not "june jessup+musings" compressed
  *  either: it never gets a context to compress against, and when it does get
  *  one, `from` refuses any compression that would not absolutize back.
  *
@@ -4822,7 +4824,7 @@ export function expandWikiLinks(
     // spaced target as href — the oracle pins the underscored url_key form
     // (`href="/Help_Desk" title="Help Desk"`, recapture-raw shard-000000)
     // and live pins internal-link for explicit targets
-    // (`href="/account/signup">sign-in account`, live Brandon bio), so the
+    // (`href="/account/signup">sign-in account`, live Casey bio), so the
     // branches resolve here identically to renderLinkChunk.
     // (Merge pass 2: the b055982 collapsed every explicit
     // resource to one internal-link form from the PCTS/GBA nav pin; the
@@ -4905,9 +4907,9 @@ export function expandWikiLinks(
     // subformat_card -> Card.fetch), and its context_names are the parent
     // format's working list filtered to that card's part keys
     // (context_names.rb:20-29). Oracle entry 10488 page lane: the authored
-    // `[[steven goldin+musings]]` under the page card `Steven Goldin+Menu`
+    // `[[june jessup+musings]]` under the page card `June Jessup+Menu`
     // renders `title="+musings"`; the same link on the view lane keeps
-    // `title="steven goldin+musings"` because nothing called add_name_context
+    // `title="june jessup+musings"` because nothing called add_name_context
     // there. Entry 21923 `Task+discussion` is the second corpus instance
     // (`[[Task+*type+*structure]]` -> `+*type+*structure`).
     const nestCard = linkNestCardName(fetchTarget, known ? namedLink?.name : undefined);
@@ -4928,8 +4930,8 @@ export function expandWikiLinks(
     // underscored href. The INNER content is the joint-split title
     // (wrappedTitleInner): a junction link's anchor text carries
     // `<span>+</span>` per joint — oracle entry 10488 view-lane `content`
-    // pin: `<a class="known-card" href="/Steven_Goldin+musings"><span
-    // class="card-title" title="steven goldin+musings">steven
+    // pin: `<a class="known-card" href="/June_Jessup+musings"><span
+    // class="card-title" title="june jessup+musings">steven
     // goldin<span>+</span>musings</span></a>` (D4), and the page-lane
     // `+musings` half splits the SAME way
     // (`title="+musings"><span>+</span>musings`): wrapped_title splits

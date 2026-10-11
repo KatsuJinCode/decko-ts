@@ -129,7 +129,7 @@ you'll need").
    **Credentials caveat:** the script no longer falls back to the
    production-account creds file. If you get no credentials, it exits 2 and
    says so. That is deliberate — a trial import must not be able to silently
-   write to Brandon's account.
+   write to Casey's account.
 
 6. Check the row landed: the database dashboard, or
    `GET https://<script-hostname>/_status` once published (§4).
@@ -141,7 +141,10 @@ you'll need").
 The shipped edge code carries **no deck's identity**. Everything a
 deployment serves that differs from a stock 0.20.0 deck — its footer version
 string, its asset host, its compiled-CSS revision, its SRI hashes, its error
-chrome's card ids and asset URLs, its phantom (unknown-item) type — is
+chrome's card ids and asset URLs, its phantom (unknown-item) type, its
+engine-side origin (`deckOrigin` — Ruby's `Cardio.config.deck_origin`, the
+prefix `card_url` puts on `decko.rootUrl` and the `:url` views; unset, the
+engine renders Ruby's requestless relative form) — is
 deployment configuration, read from the environment at boot
 (`deploy/bunny-worker-src/bunny-edge-served-deltas.ts`).
 
@@ -153,7 +156,8 @@ original reference deck, and it is what a new operator gets for free.
 
 **To reproduce the reference deck's served bytes**, set `DECKO_SERVED_DELTAS`
 to the JSON blob below (one variable, one paste). Each field can equally be
-set as its own loose variable — `DECKO_SERVED_ASSET_HOST`,
+set as its own loose variable — `DECKO_TIME_ZONE`, `DECKO_DECK_ORIGIN`,
+`DECKO_SERVED_ASSET_HOST`,
 `DECKO_SERVED_FOOTER_VERSION_PIN`, `DECKO_SERVED_STYLESHEET_FROM` /
 `_TO`, `DECKO_SERVED_SCRIPT_INTEGRITY`, `DECKO_SERVED_NOT_FOUND_TYPE_ID` /
 `_NAME` / `_CLASS_TOKEN`, `DECKO_SERVED_FOOTER_CARD_ID` / `_TYPE_ID` /
@@ -189,6 +193,7 @@ deploy suites configure when they assert that deck's served bytes.
   "faviconUrl": "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/103/3649-small.jpg",
   "siteTitleDefault": "Culturesmith",
   "rootUrl": "https://culturesmith.com/",
+  "deckOrigin": "https://culturesmith.com",
   "headScripts": [
     "<script src=\"https://code.jquery.com/jquery-3.5.1.min.js\" crossorigin=\"anonymous\" integrity=\"sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=\"></script>",
     "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/jquery-ujs/1.2.3/rails.min.js\" crossorigin=\"anonymous\" integrity=\"sha512-yDJWVxuRSkQa1u9/Zif6Gh93Gk0Urboz98JLEPcERMQ+pTHz/c27d0Xz08G+lgutFyKklB9UILtnhG6bth6B4A==\" referrerpolicy=\"no-referrer\"></script>",

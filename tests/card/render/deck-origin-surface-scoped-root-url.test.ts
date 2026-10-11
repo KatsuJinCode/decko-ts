@@ -1,6 +1,6 @@
 // deck-origin-surface-scoped-root-url.test.ts — `decko.rootUrl` is a
-// PER-SURFACE value (card_url("")), not a constant. This is the pin for the
-// surface split.
+// PER-CONFIGURATION value (card_url("")), not a constant. This is the pin
+// for the origin-follows-configuration contract.
 //
 // MECHANISM (gem source, C:/localProjects/archive/decko-fork-study/decko/):
 //   mod/script/set/all/head_javascript.rb:33-40 `decko_script_variables`
@@ -15,35 +15,36 @@
 //   card/lib/card/env.rb:17                  `request` = controller&.request
 //   card/lib/cardio/railtie.rb:28            config.deck_origin = nil  (default)
 //
-// So `card_url("")` is Env.origin + "/", and Env.origin is EMPTY whenever the
-// deck_origin config is unset and there is no controller — which is exactly
-// the view-function surface. The two capture lanes photograph both shapes:
+// So `card_url("")` is Env.origin + "/", and Env.origin is the DECK'S
+// CONFIGURED deck_origin (review round 4, finding 9) — or the requestless
+// "" when the deck configures none and there is no controller, which is
+// exactly the view-function capture lane. The two capture lanes photograph
+// two CONFIGURATION states of the same helper:
 //
 //   PAGE lane   `with_capture_page_bucket` assigns
-//               Cardio.config.deck_origin = "https://culturesmith.com"
-//               (capture-dual-lane-page-and-view.rb:343, restored at :348)
-//               -> decko.rootUrl='https://culturesmith.com/'   6588/6588 rows
+//               Cardio.config.deck_origin (capture-dual-lane-page-and-view
+//               .rb:391-400, restored at :400)
+//               -> decko.rootUrl='<origin>/'               6588/6588 rows
 //   VIEW lane   `capture_view_lane` (:277-287) renders OUTSIDE that block and
 //               `Card::Env.reset` (:439) left no controller
-//               -> decko.rootUrl='/'                            cards 34754/34758
+//               -> decko.rootUrl='/'                       cards 34754/34758
 //
-// THE DEFECT THIS PINS. `page.ts#scriptVariablesTag` interpolated the
-// DECK_ORIGIN constant, so the value could not follow the surface. Since the
-// bare-view-lane fix (RenderEngine#render seats this SAME headContent for an
-// unseated root whose content nests the head card's :core — render.ts:1385),
-// the view lane reaches the page-lane builder and got the page-surface bytes:
-// the four *head-family view rows carried
-// `decko.rootUrl='https://culturesmith.com/'` where the oracle carries `/`,
-// a +24 delta that is exactly the length of "https://culturesmith.com".
+// THE ENGINE USED TO answer the page lane from a hard-coded constant
+// (`DECK_ORIGIN = "https://culturesmith.com"` in render/deck-origin.ts) —
+// one private deck's identity baked into every deployment. The constant is
+// gone: the engine reads the deck's configured origin through
+// setDeckEnvironment, "" when nothing is configured, and the replay suites
+// install the capture's configuration value (the fixture
+// tests/card/fixtures/capture-page-lane-deck-origin.ts) exactly as the
+// capture script did.
 //
-// The fix reads the surface through the engine's own accessor
-// (`engine.envOriginConfig()` -> `envOriginForSurface(pageConfigActive)`,
-// render.ts:1770-1772, render/deck-origin.ts:73-75), which is TRUE only
-// inside `runWithPageConfig` — i.e. only for `renderPageBytes`.
-//
-// WHY BOTH HALVES ARE ASSERTED. A "flip" fix (always "/" or always the
-// origin) would satisfy either single test and break the other; the oracle
-// pins both directions, so the pin holds both.
+// WHY BOTH HALVES ARE ASSERTED. A "flip" fix (always "/" or always a
+// pinned origin) would satisfy either single test and break the other; the
+// oracle pins both directions, so the pin holds both: a CONFIGURED deck
+// carries its configured origin on both lanes, an UNCONFIGURED deck carries
+// the requestless "/" on both lanes — and the value the configured deck
+// carries is THE DECK'S OWN, not the private value (asserted here with a
+// neutral origin the test configures itself).
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -53,8 +54,17 @@ import {
 } from "./render-test-storage.js";
 import { headContent, renderPageBytes } from "../../../src/card/render/page.js";
 import { DeckoName } from "../../../src/card/name.js";
+import { setDeckEnvironment } from "../../../src/card/render/deck-origin.js";
+import {
+  CAPTURE_PAGE_LANE_DECK_ORIGIN,
+  CAPTURE_PAGE_LANE_ROOT_URL,
+  resetDeckEnvironmentForViewLane,
+} from "../fixtures/capture-page-lane-deck-origin.js";
 
-const PAGE_ROOT_URL = "decko.rootUrl='https://culturesmith.com/';";
+/** The head byte a deck configured with THIS test's own neutral origin
+ *  carries: the deck's configuration, verbatim — not any engine constant. */
+const TEST_DECK_ORIGIN = "https://deck-configured-origin.example";
+const TEST_DECK_ROOT_URL = `decko.rootUrl='${TEST_DECK_ORIGIN}/';`;
 const VIEW_ROOT_URL = "decko.rootUrl='/';";
 
 let storage: RenderTestStorage | undefined;
@@ -96,6 +106,9 @@ beforeAll(async () => {
 }, 60_000);
 
 afterAll(() => {
+  // The origin setting is process-wide module state; leave the requestless
+  // form behind so no view-lane byte in another suite renders configured.
+  resetDeckEnvironmentForViewLane();
   storage?.close();
 });
 
@@ -106,46 +119,75 @@ function rootUrlLine(head: string): string {
   return line;
 }
 
-describe("decko.rootUrl is surface-scoped (head_javascript.rb:35 card_url(\"\"))", () => {
-  it("PAGE surface: the served page head carries the capture's deck_origin", async () => {
+describe("decko.rootUrl follows the deck's configured origin (head_javascript.rb:35 card_url(\"\"))", () => {
+  it("a deck that configures ITS OWN origin carries that origin on the page head — not any engine constant", async () => {
     const s = storage!;
-    const page = await renderPageBytes(s.engine, "Origin Probe");
-    expect(page).toContain(PAGE_ROOT_URL);
+    setDeckEnvironment({ origin: TEST_DECK_ORIGIN });
+    try {
+      const page = await renderPageBytes(s.engine, "Origin Probe");
+      expect(page).toContain(TEST_DECK_ROOT_URL);
+      // The negative half: the private capture-era value is NOT in the
+      // engine anymore — a deck configured with its own origin never
+      // renders another deck's.
+      expect(page).not.toContain("https://culturesmith.com");
+    } finally {
+      resetDeckEnvironmentForViewLane();
+    }
   });
 
-  it("VIEW surface: headContent outside runWithPageConfig carries the bare root", async () => {
+  it("a deck that configures no origin carries the requestless '/' on BOTH lanes (railtie.rb:28 + env.rb:17-19)", async () => {
     const s = storage!;
+    resetDeckEnvironmentForViewLane();
+    // PAGE lane, unconfigured: renderPageBytes under no origin — the
+    // requestless form (the capture's page lane always configured one, so
+    // this arm is Ruby's deck_origin-nil page shape: protocol and
+    // host_with_port are what Ruby would interpolate, and this engine has
+    // no controller, so "").
+    const page = await renderPageBytes(s.engine, "Origin Probe");
+    expect(page).toContain(VIEW_ROOT_URL);
+    // VIEW lane, unconfigured: the bare root the oracle pins.
     const rootCard = await s.engine.prepareItemForRender("Origin Probe");
     expect(rootCard).toBeDefined();
-    // Bare: pageConfigActive is false, so Env.origin is "" and card_url("")
-    // is "/" (railtie.rb:28 + env.rb:17 + location.rb:14/:19-21).
     const head = await headContent(s.engine, DeckoName.parse("Origin Probe"), rootCard!);
     expect(rootUrlLine(head)).toBe(VIEW_ROOT_URL);
-    // The negative half, and the one the defect actually broke: the view
-    // surface must not carry the page surface's origin anywhere in the
-    // script_variables block.
     expect(head).not.toContain("https://culturesmith.com");
   });
 
-  it("PAGE surface, called directly: the same builder under runWithPageConfig carries the origin", async () => {
+  it("the CAPTURE's page-lane configuration reproduces the graded page bytes (the :391-400 assignment through the same seam)", async () => {
     const s = storage!;
-    const rootCard = await s.engine.prepareItemForRender("Origin Probe");
-    expect(rootCard).toBeDefined();
-    const head = await s.engine.runWithPageConfig(() =>
-      headContent(s.engine, DeckoName.parse("Origin Probe"), rootCard!),
-    );
-    expect(rootUrlLine(head)).toBe(PAGE_ROOT_URL);
+    setDeckEnvironment({ origin: CAPTURE_PAGE_LANE_DECK_ORIGIN });
+    try {
+      const page = await renderPageBytes(s.engine, "Origin Probe");
+      expect(page).toContain(CAPTURE_PAGE_LANE_ROOT_URL);
+      // The builder, called directly under the same configuration — the
+      // value comes from the configuration, not from which builder entry
+      // the page path takes.
+      const rootCard = await s.engine.prepareItemForRender("Origin Probe");
+      expect(rootCard).toBeDefined();
+      const head = await s.engine.runWithPageConfig(() =>
+        headContent(s.engine, DeckoName.parse("Origin Probe"), rootCard!),
+      );
+      expect(rootUrlLine(head)).toBe(CAPTURE_PAGE_LANE_ROOT_URL);
+    } finally {
+      resetDeckEnvironmentForViewLane();
+    }
   });
 
-  it("the flag is restored after runWithPageConfig (nesting-safe, render.ts:1783-1814)", async () => {
+  it("the page-config flag does not corrupt the configured value (nesting-safe, render.ts runWithPageConfig)", async () => {
     const s = storage!;
-    const rootCard = await s.engine.prepareItemForRender("Origin Probe");
-    expect(rootCard).toBeDefined();
-    const before = s.engine.envOriginConfig();
-    await s.engine.runWithPageConfig(async () => {
-      expect(s.engine.envOriginConfig()).toBe("https://culturesmith.com");
-    });
-    expect(s.engine.envOriginConfig()).toBe(before);
-    expect(before).toBe("");
+    setDeckEnvironment({ origin: TEST_DECK_ORIGIN });
+    try {
+      const before = s.engine.envOriginConfig();
+      await s.engine.runWithPageConfig(async () => {
+        // Configuration answers BOTH lanes (serializable.rb reads
+        // deck_origin before any lane flag) — the value inside the page
+        // wrapper is the deck's own, unchanged.
+        expect(s.engine.envOriginConfig()).toBe(TEST_DECK_ORIGIN);
+      });
+      expect(s.engine.envOriginConfig()).toBe(before);
+      expect(before).toBe(TEST_DECK_ORIGIN);
+    } finally {
+      resetDeckEnvironmentForViewLane();
+    }
   });
 });

@@ -26,6 +26,7 @@
 //   1. One JSON blob: DECKO_SERVED_DELTAS='{"footerVersionPin":"0.19.1",…}'
 //   2. Individual plain variables, one per value:
 //        DECKO_TIME_ZONE
+//        DECKO_DECK_ORIGIN
 //        DECKO_SERVED_ASSET_HOST
 //        DECKO_SERVED_FOOTER_VERSION_PIN
 //        DECKO_SERVED_STYLESHEET_FROM / DECKO_SERVED_STYLESHEET_TO
@@ -92,6 +93,16 @@ export interface ServedEnvironmentDeltas {
    *  unconfigured deployment keeps its graded bytes; it is not a claim about
    *  the host machine, which is what the hard-coded capture-host zone was. */
   timeZone?: string;
+  /** The deck's configured origin — Ruby's `Cardio.config.deck_origin`,
+   *  WITHOUT a trailing slash (review round 4, finding 9). This is the
+   *  origin prefix `card_url` adds to the ENGINE'S OWN rendered bytes:
+   *  the page head's `decko.rootUrl`, the :url / :id_url views, the email
+   *  links. undefined = the engine renders Ruby's requestless form
+   *  (relative URLs, `decko.rootUrl='/'`) — a deck that configures no
+   *  origin serves no origin in its bytes. The error chrome's `rootUrl`
+   *  below is the SAME site identity with its trailing slash; a
+   *  deployment that serves pages from this origin sets both. */
+  deckOrigin?: string;
   /** The asset host this deployment serves /files/ URLs from. undefined =
    *  the engine's own host-relative /files/ form (RenderEngine#imageCdnHost
    *  left unset), which is what a deck with no CDN configured renders. */
@@ -189,6 +200,8 @@ function parseDeltasBlob(raw: string | undefined): ServedEnvironmentDeltas {
   const out: ServedEnvironmentDeltas = {};
   const timeZone = str("timeZone");
   if (timeZone !== undefined) out.timeZone = timeZone;
+  const deckOrigin = str("deckOrigin");
+  if (deckOrigin !== undefined) out.deckOrigin = deckOrigin;
   const assetHost = str("assetHost");
   if (assetHost !== undefined) out.assetHost = assetHost;
   const footerVersionPin = str("footerVersionPin");
@@ -350,6 +363,9 @@ export function resolveServedEnvironmentDeltas(env: ServedDeltasEnv | undefined)
 
   const timeZone = trimmed(src["DECKO_TIME_ZONE"]);
   if (out.timeZone === undefined && timeZone !== undefined) out.timeZone = timeZone;
+
+  const deckOrigin = trimmed(src["DECKO_DECK_ORIGIN"]);
+  if (out.deckOrigin === undefined && deckOrigin !== undefined) out.deckOrigin = deckOrigin;
 
   const assetHost = trimmed(src["DECKO_SERVED_ASSET_HOST"]);
   if (out.assetHost === undefined && assetHost !== undefined) out.assetHost = assetHost;

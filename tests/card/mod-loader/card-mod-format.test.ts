@@ -31,6 +31,7 @@ import {
   modEngineHost,
 } from "../../../src/card/mod-loader.js";
 import cardModFormat from "../../../src/card/mod-loader/mods/card-mod-format.js";
+import { withCapturePageLaneOrigin } from "../fixtures/capture-page-lane-deck-origin.js";
 
 /** The captured layout one-line oracle (fixtures/captured/layout-one-line.
  *  json, captured from the live decko 0.20.0 oracle app via
@@ -271,18 +272,23 @@ describe("card-mod-format through the mod loader (A/B)", () => {
 
   it("WITH the mod: :url renders the origin-absolute card_url on the PAGE lane", async () => {
     const s = storage!;
-    // The other half of the same seam. The page capture sets
-    // `Cardio.config.deck_origin = "https://culturesmith.com"`
-    // (capture-dual-lane-page-and-view.rb:343, restored at :348), so
-    // every page render sees a non-empty origin and the same helper
-    // returns the absolute URL. runWithPageConfig is exactly the scope
-    // page.ts:141 wraps renderPageBytes in, so this is the surface the
-    // 6588 page-lane oracle rows pin (`decko.rootUrl=
+    // The other half of the same seam. The page capture CONFIGURES the
+    // origin (capture-dual-lane-page-and-view.rb:391-400 assigns
+    // `Cardio.config.deck_origin` around the page lane, restored in its
+    // ensure), so every page render sees a non-empty origin and the same
+    // helper returns the absolute URL. runWithPageConfig is exactly the
+    // scope page.ts:141 wraps renderPageBytes in, so this is the surface
+    // the 6588 page-lane oracle rows pin (`decko.rootUrl=
     // 'https://culturesmith.com/'`; `<a href="https://culturesmith.com/
-    // User">` on card 21792).
-    expect(
-      await s.engine.runWithPageConfig(() => s.engine.render("Oracle Format Probe", "url")),
-    ).toBe("https://culturesmith.com/Oracle_Format_Probe");
+    // User">` on card 21792). The origin is DECK CONFIGURATION now
+    // (review round 4, finding 9 — the engine constant is gone), so the
+    // test installs the capture's configuration the same way the capture
+    // script did: around the page render, restored after.
+    await withCapturePageLaneOrigin(async () => {
+      expect(
+        await s.engine.runWithPageConfig(() => s.engine.render("Oracle Format Probe", "url")),
+      ).toBe("https://culturesmith.com/Oracle_Format_Probe");
+    });
   });
 
   it("WITH the mod: :id_url renders the view-lane id-mark card_url (base.rb:29)", async () => {
@@ -300,9 +306,16 @@ describe("card-mod-format through the mod loader (A/B)", () => {
 
   it("WITH the mod: :id_url renders the origin-absolute id-mark card_url on the PAGE lane", async () => {
     const s = storage!;
-    expect(
-      await s.engine.runWithPageConfig(() => s.engine.render("Oracle Format Probe", "id_url")),
-    ).toBe("https://culturesmith.com/~200");
+    // The page capture's configured origin (review round 4, finding 9: the
+    // origin is deck configuration now — the capture assigns
+    // Cardio.config.deck_origin around the page lane at
+    // capture-dual-lane-page-and-view.rb:391-400, and this test does the
+    // same through the seam).
+    await withCapturePageLaneOrigin(async () => {
+      expect(
+        await s.engine.runWithPageConfig(() => s.engine.render("Oracle Format Probe", "id_url")),
+      ).toBe("https://culturesmith.com/~200");
+    });
   });
 
   it("WITH the mod: :id_url renders blank for an unknown card (no id)", async () => {
@@ -353,15 +366,18 @@ describe("card-mod-format through the mod loader (A/B)", () => {
 
   it("WITH the mod: :url_link renders the external-link anchor on the PAGE lane", async () => {
     const s = storage!;
-    // The same chain with the page capture's deck_origin active, so
-    // card_url is absolute and resource_type takes links.rb:67's external
-    // arm: target FIRST, then class, then href (links.rb:155-156, :102 —
-    // Hash insertion order, the capture-pinned order).
-    expect(
-      await s.engine.runWithPageConfig(() => s.engine.render("Oracle Format Probe", "url_link")),
-    ).toBe(
-      '<a target="_blank" class="external-link" href="https://culturesmith.com/Oracle_Format_Probe">https://culturesmith.com/Oracle_Format_Probe</a>',
-    );
+    // The same chain with the page capture's configured origin active (the
+    // :391-400 assignment, through the seam — review round 4, finding 9),
+    // so card_url is absolute and resource_type takes links.rb:67's
+    // external arm: target FIRST, then class, then href (links.rb:155-156,
+    // :102 — Hash insertion order, the capture-pinned order).
+    await withCapturePageLaneOrigin(async () => {
+      expect(
+        await s.engine.runWithPageConfig(() => s.engine.render("Oracle Format Probe", "url_link")),
+      ).toBe(
+        '<a target="_blank" class="external-link" href="https://culturesmith.com/Oracle_Format_Probe">https://culturesmith.com/Oracle_Format_Probe</a>',
+      );
+    });
   });
 
   // ---- type/uri.rb (the URI cardtype's render path) --------------------

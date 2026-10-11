@@ -89,6 +89,10 @@ export const PRODUCTION_DECK_SERVED_DELTAS: ServedEnvironmentDeltas = {
   faviconUrl: `${PRODUCTION_ASSET_HOST}/files/103/3649-small.jpg`,
   siteTitleDefault: "Culturesmith",
   rootUrl: "https://culturesmith.com/",
+  // The engine's own card_url origin (Ruby's Cardio.config.deck_origin,
+  // no trailing slash) — the same site identity rootUrl carries with its
+  // slash, fed to the render engine through setDeckEnvironment at boot.
+  deckOrigin: "https://culturesmith.com",
   headScripts: PRODUCTION_HEAD_SCRIPTS,
   phantomType: { typeId: 22281, typeName: "BasicCs", typeKey: "basic_c" },
 };

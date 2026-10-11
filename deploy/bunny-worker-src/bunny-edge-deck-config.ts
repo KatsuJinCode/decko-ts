@@ -186,6 +186,11 @@ export async function bootDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<
     // which every rendered timestamp reads instead of a hard-coded
     // capture-host zone.
     ...(servedDeltas.timeZone === undefined ? {} : { timeZone: servedDeltas.timeZone }),
+    // The deck's configured origin (review round 4, finding 9) — Ruby's
+    // Cardio.config.deck_origin, which card_url prefixes onto the engine's
+    // own bytes (decko.rootUrl, the :url views). Unset, the engine renders
+    // relative URLs: no byte carries an origin nobody configured.
+    ...(servedDeltas.deckOrigin === undefined ? {} : { deckOrigin: servedDeltas.deckOrigin }),
   });
   return { ...engines, servedDeltas };
 }

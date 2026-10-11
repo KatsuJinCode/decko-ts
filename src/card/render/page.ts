@@ -62,15 +62,17 @@ import { deckoRootUrl } from "./deployment-follow-live-config.js";
 import { scriptIntegrityFor } from "./deployment-follow-live-config.js";
 import type { RenderEngine } from "../render.js";
 import type { HistoryRenderParams } from "../history/render-seam.js";
-import { DECK_ORIGIN } from "./deck-origin.js";
 import { h } from "./slot-html.js";
 import { debugFlag } from "../debug-flags.js";
 
-// The production `Cardio.config.deck_origin` the capture pinned (runbook
-// production-equivalent setting 4; Env.origin with no request) now lives in
-// render/deck-origin.ts: the `:url` view needs the same literal (Ruby's
-// `card_url` is ABSOLUTE, and the email-template pages pin its output), so
-// the head tag and the view share one source instead of two literals.
+// The `decko.rootUrl` this head emits (scriptVariablesTag below) reads the
+// deployment's follow-live constant first, then the ENGINE's configured
+// origin (render/deck-origin.ts — the deck's own `Cardio.config.deck_origin`
+// through setDeckEnvironment, review round 4, finding 9); with neither, the
+// bare rooted form Ruby's requestless runner produces. The same value feeds
+// the `:url` view through the engine accessor (Ruby's `card_url` is
+// ABSOLUTE only when an origin is configured; the email-template pages pin
+// the configured shape).
 
 /** The production `Cardio.config.default_html_view`: :content (the page
  *  capture's production-equivalent setting 5, documented at

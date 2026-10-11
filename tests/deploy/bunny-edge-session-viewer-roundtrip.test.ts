@@ -84,6 +84,7 @@ import {
   type RenderTestStorage,
 } from "../card/render/render-test-storage.js";
 import { PRODUCTION_DECK_SERVED_DELTAS } from "./fixtures/production-deck-served-deltas.js";
+import { setDeckEnvironment } from "../../src/card/render/deck-origin.js";
 import { startMockHranaServer, type MockHranaServer } from "../server/drivers/mock-hrana-server.js";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..");
@@ -307,8 +308,19 @@ describe("edge read path — the anonymous bytes do not move", () => {
   beforeAll(async () => {
     storage = await createRenderTestStorage();
     await seedMinimal(storage);
+    // The baseline's deck configuration (review round 4, finding 9): the
+    // shell-lane capture was taken with the deck's origin configured, and
+    // the origin is DEPLOYMENT CONFIGURATION now (the engine constant is
+    // gone). This suite boots its deck by hand — bypassing bootDeck's
+    // served-deltas wiring — so it installs the configuration its own
+    // servedDeltas fixture carries, exactly as bootDeck would.
+    setDeckEnvironment({ origin: PRODUCTION_DECK_SERVED_DELTAS.deckOrigin });
   });
-  afterAll(() => storage.close());
+  afterAll(() => {
+    // Process-global config: leave the requestless state behind.
+    setDeckEnvironment(undefined);
+    storage.close();
+  });
 
   it("the fixture is the shell-lane capture, not a freshly minted copy", () => {
     // Guards against someone regenerating the fixture from drifting code

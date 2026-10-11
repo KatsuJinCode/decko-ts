@@ -1,5 +1,4 @@
-// `Card::Env.origin` — the ONE source of the origin prefix `card_url` adds,
-// per render surface.
+// `Card::Env.origin` — the ONE source of the origin prefix `card_url` adds.
 //
 // RUBY'S VALUE (card-1.110.0 lib/card/env/serializable.rb:20-22):
 //
@@ -18,66 +17,75 @@
 // rooted path, which is why this reads as "joins Env.origin ONLY when
 // present": the conditional lives in the VALUE, not in card_url.
 //
-// THE TWO ORACLE SURFACES, and why they disagree (the frozen record
-// photographs BOTH shapes of the same helper; they are not in conflict):
+// THE ORIGIN IS THE DECK'S CONFIGURATION, NOT AN ENGINE CONSTANT (review
+// round 4, finding 9): this file used to ship `DECK_ORIGIN =
+// "https://culturesmith.com"` and answer it for the page surface — one
+// private deck's identity baked into the engine's source, so every other
+// deployment's pages carried that site's origin in `decko.rootUrl`, the
+// :url views and the email links. Ruby has no such constant: the capture
+// script itself ASSIGNS the origin as configuration
+// (capture-dual-lane-page-and-view.rb:391-400 —
+// `Cardio.config.deck_origin = "https://culturesmith.com"` inside the
+// page-lane block, restored in its ensure). The two capture lanes
+// photographed two CONFIGURATION states, not two surface rules:
 //
-//   1. SERVED PAGE (page lane). `capture-dual-lane-page-and-view.rb:343`
-//      sets `Cardio.config.deck_origin = "https://example.com"` inside
-//      `with_capture_page_bucket` and restores it in the ensure (line 348),
-//      so every page render sees a non-empty origin. Oracle:
-//      `decko.rootUrl='https://example.com/'` on 6588/6588 page-lane
-//      rows; `<a href="https://example.com/User">` (card 21792) and
-//      `https://example.com/*changed_card?view=history` (card 21796).
+//   1. SERVED PAGE (page lane): deck_origin SET (:391-400). Oracle:
+//      `decko.rootUrl='https://culturesmith.com/'` on 6588/6588 page-lane
+//      rows.
+//   2. VIEW FUNCTION (view lane): deck_origin back to nil (:348 restore)
+//      and `Card::Env.reset` (:439) left no controller — `Env.origin ==
+//      ""`. Oracle: `decko.rootUrl='/'` (cards 34754 / 34758).
 //
-//   2. VIEW FUNCTION (view lane). `capture_view_lane` (same script, lines
-//      277-287) renders `card.format.render(view)` OUTSIDE that block, so
-//      `deck_origin` is back to nil AND `Card::Env.reset` (line 439) left
-//      no controller — `Env.origin == ""`. Oracle: `decko.rootUrl='/'`
-//      (cards 34754 / 34758) and `<a href="/User">` (card 21792, shard
-//      recapture-raw-shard-000016, the D1 first-diff at byte 590 of that
-//      card's :content view).
+// So the port reads the origin the same way Ruby does — from
+// configuration, through `setDeckEnvironment` (below). The channels that
+// install it:
 //
-// So the port models the SAME railtie-vs-production-config split it
-// already models for `default_html_view`: the engine's `pageConfigActive`
-// flag (render.ts, set by `runWithPageConfig`, which page.ts:141 wraps
-// every page render in) selects the surface, and `envOriginConfig()`
-// answers Ruby's `Env.origin` for it. One flag, both production-equivalent
-// settings — the capture block sets them together.
+//   - the DECK'S OWN SPEC (reference-harness/adapters/ts/adapter.ts reads
+//     `spec.environment.origin` — the deck's own declared origin, the
+//     same surface Ruby's deck config file answers);
+//   - the DEPLOYMENT'S ENVIRONMENT (the edge boot wires the served
+//     deltas' `deckOrigin` / DECKO_DECK_ORIGIN here — the production
+//     migration deployment supplies its origin exactly the way the
+//     capture script did, as configuration).
 //
-// SOURCE: capture-dual-lane-page-and-view.rb:307-317, production-equivalent
-// setting 4 ("deck_origin https://example.com") — the same pinned
-// setting page.ts cites. It is a CAPTURE-CONTRACT constant, not a guess: the
-// corpus pins the head tag's bytes on all 6588 page rows, and the page
-// lane pins `card_url` output. The view-lane half is pinned just as hard,
-// in the opposite direction (4 rows carry `decko.rootUrl='/'`).
+// UNSET, the answer is "" on BOTH surfaces — Ruby's requestless form
+// (railtie.rb:28 nil + env.rb:17-19 no controller), and the shape the
+// view lane pins. A deck that configures nothing serves relative URLs;
+// no byte carries anyone's private identity. The replay suites that pin
+// the capture-era page bytes install the capture's configuration value
+// through this same seam — the value lives in the tests' fixture
+// configuration and the excluded runbook, never in src/.
 //
-// The two remaining literal sites are lane-local by construction and stay
-// literal: page.ts#scriptVariablesTag's `decko.rootUrl='<origin>/'` (inside
-// the page wrapper) and the card-mod-script.ts `:script_variables` view's
-// `decko.rootUrl='/'` (the own shape, matching the 4 rows).
+// The `pageSurface` argument of `envOriginForSurface` stays because the
+// accessor is lane-shaped (render.ts#envOriginConfig reads it inside
+// `runWithPageConfig`), but with the constant gone the answer no longer
+// depends on it: configuration answers both surfaces, exactly as Ruby's
+// `deck_origin` does, and "" answers both when nothing is configured.
 
-/** The pinned deck origin for the SERVED-PAGE surface, WITHOUT a trailing
- *  slash (page.ts appends one for rootUrl; the :url view appends the
- *  "/<linkname>" separator). */
-export const DECK_ORIGIN = "https://culturesmith.com";
-
-/** `Card::Env.origin` for the VIEW-FUNCTION surface: the empty string —
- *  `deck_origin` nil (cardio/railtie.rb:28) with no request (`protocol`
- *  and `request&.host_with_port` both nil, env.rb:17-19). `card_url
- *  "User"` is then `"" + card_path("User")` = `"/User"` (location.rb:19-21
- *  + :6-16) — the shape the oracle pins. */
+/** `Card::Env.origin` for the REQUESTLESS state: `deck_origin` nil
+ *  (cardio/railtie.rb:28) with no request (`protocol` and
+ *  `request&.host_with_port` both nil, env.rb:17-19). `card_url "User"`
+ *  is then `"" + card_path("User")` = `"/User"` (location.rb:19-21
+ *  + :6-16) — the shape the view-lane oracle pins. */
 export const NO_REQUEST_ORIGIN = "";
 
-/** `Card::Env.origin` for a render surface; `false` is the view-function
- *  surface. Every `card_url` consumer reads the value through this. */
-export function envOriginForSurface(pageSurface: boolean): string {
+/** `Card::Env.origin` (serializable.rb:20-22): the deck's configured
+ *  origin — `Cardio.config.deck_origin`, installed through
+ *  `setDeckEnvironment` — or the requestless "" when nothing is
+ *  configured. The `pageSurface` flag is accepted for call-site
+ *  compatibility (render.ts#envOriginConfig passes the lane flag) but no
+ *  longer selects a value: configuration answers both surfaces, exactly
+ *  as Ruby's `deck_origin` does, and "" answers both when nothing is
+ *  configured. */
+export function envOriginForSurface(_pageSurface: boolean): string {
   if (deckEnvironment?.origin !== undefined) return deckEnvironment.origin;
-  return pageSurface ? DECK_ORIGIN : NO_REQUEST_ORIGIN;
+  return NO_REQUEST_ORIGIN;
 }
 
 /** A deck's own process configuration, for hosts that serve a deck other
  *  than the graded one (the reference harness's synthetic decks, a fresh
- *  install). Unset keeps the graded deployment's two-surface model above.
+ *  install). Unset = the requestless form: relative URLs, no origin in any
+ *  byte.
  *   - `origin`: `Cardio.config.deck_origin`, without a trailing slash. Ruby
  *     reads it on every surface (`Env.origin = deck_origin || request
  *     origin`), so when set it answers for page and view renders alike.

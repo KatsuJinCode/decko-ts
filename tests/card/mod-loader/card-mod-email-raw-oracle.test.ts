@@ -26,6 +26,7 @@
 //   provenance.no_write_proof, before === after).
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { withCapturePageLaneOrigin } from "../fixtures/capture-page-lane-deck-origin.js";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -275,14 +276,20 @@ describeOrSkipLoud(!FIXTURE_PRESENT, "tests/card/mod-loader/card-mod-email-raw-o
   });
 
   it("base :url renders the origin-absolute card_url on the PAGE lane (the page oracle)", async () => {
-    expect(
-      await storage!.engine.runWithPageConfig(() => storage!.engine.render("verification email", "url")),
-    ).toBe("https://culturesmith.com/verification_email");
-    expect(
-      await storage!.engine.runWithPageConfig(() =>
-        storage!.engine.render("verification email+*html message", "url"),
-      ),
-    ).toBe("https://culturesmith.com/verification_email+*html_message");
+    // The page capture CONFIGURES the origin (the :391-400 assignment; the
+    // engine constant is gone — review round 4, finding 9), so the test
+    // installs the capture's configuration around the page render the way
+    // the capture script did.
+    await withCapturePageLaneOrigin(async () => {
+      expect(
+        await storage!.engine.runWithPageConfig(() => storage!.engine.render("verification email", "url")),
+      ).toBe("https://culturesmith.com/verification_email");
+      expect(
+        await storage!.engine.runWithPageConfig(() =>
+          storage!.engine.render("verification email+*html message", "url"),
+        ),
+      ).toBe("https://culturesmith.com/verification_email+*html_message");
+    });
   });
 
   it("base :id_url renders the view-lane card_url (origin absent)", async () => {
@@ -297,9 +304,11 @@ describeOrSkipLoud(!FIXTURE_PRESENT, "tests/card/mod-loader/card-mod-email-raw-o
   });
 
   it("base :id_url renders the origin-absolute card_url on the PAGE lane", async () => {
-    expect(
-      await storage!.engine.runWithPageConfig(() => storage!.engine.render("verification email", "id_url")),
-    ).toBe("https://culturesmith.com/~21783");
+    await withCapturePageLaneOrigin(async () => {
+      expect(
+        await storage!.engine.runWithPageConfig(() => storage!.engine.render("verification email", "id_url")),
+      ).toBe("https://culturesmith.com/~21783");
+    });
   });
 
   // ---------------------------------------------------------------------

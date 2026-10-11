@@ -867,7 +867,7 @@ export class RenderEngine implements RenderEngineLike {
    *  one host's fold must never answer another host's item slot — the
    *  per-item-only keying let a pointer host that resolves Person
    *  (weekday_morning_usual+owner) pre-empt the RVW List's untyped BasicCs
-   *  verdict and render Williamscraig readable where the oracle denies.
+   *  verdict and render Morgan readable where the oracle denies.
    *  Cleared on resetCaches(). */
   private pointerItemVerdicts = new Map<
     string,
@@ -1457,7 +1457,7 @@ export class RenderEngine implements RenderEngineLike {
     // on a POSITIVE update verdict, and the generic task warm above is
     // view-gated (viewRequiresTask) - warm the discussion cards here (the
     // page lane runs the same warm at page.ts; census M8: the graded
-    // Kayla_Feder_20230902+discussion:open pair renders the
+    // Joan_Callahan_20230902+discussion:open pair renders the
     // inherited-grant form on THIS lane).
     await this.ensureDiscussionUpdateVerdicts();
     // The type editor's select (auth/permissions.rb:18-26 createable_types):
@@ -2580,18 +2580,21 @@ export class RenderEngine implements RenderEngineLike {
    * RenderEngineLike#envOriginConfig — the modeled `Card::Env.origin` for
    * the CURRENT render lane (card-1.110.0 lib/card/env/serializable.rb:
    * 20-22 `Cardio.config.deck_origin || "#{protocol}#{request&
-   * host_with_port}"`). The page capture sets deck_origin inside its
-   * production-config block (capture-dual-lane-page-and-view.rb:343,
-   * restored at :348); the view-function lane renders outside that block
-   * with a controller-less `Card::Env.reset` (:439), so protocol and
-   * host_with_port are both nil and the value interpolates to "".
-   * `card_url` (env/location.rb:19-21) is `"#{Env.origin}#{card_path
-   * rel}"`, so the empty origin yields the bare rooted path — the view
-   * lane's `/User`, against the page lane's
-   * `https://example.com/User`. SAME flag, SAME production-config
-   * block as defaultHtmlViewConfig above; the oracle pins both halves
-   * (6588/6588 page rows carry `decko.rootUrl='https://example.com
-   * /'`, 4 view rows carry `decko.rootUrl='/'`).
+   * host_with_port}"`). The value is the DECK'S CONFIGURATION (review
+   * round 4, finding 9): `deck_origin` installed through
+   * setDeckEnvironment — by the deck's own spec
+   * (reference-harness/adapters/ts/adapter.ts) or by the deployment's
+   * served-deltas `deckOrigin` / DECKO_DECK_ORIGIN at the edge boot — or
+   * "" when nothing is configured (railtie.rb:28 nil + a requestless
+   * runner, env.rb:17-19). `card_url` (env/location.rb:19-21) is
+   * `"#{Env.origin}#{card_path rel}"`, so the empty origin yields the
+   * bare rooted path. The capture photographed the two CONFIGURATION
+   * states: the page lane set deck_origin
+   * (capture-dual-lane-page-and-view.rb:391-400 — 6588/6588 page rows
+   * carry its `decko.rootUrl`), the view lane rendered outside that
+   * block with a controller-less `Card::Env.reset` (:439 — 4 view rows
+   * carry `decko.rootUrl='/'`). The lane flag stays lane-shaped here,
+   * but the VALUE follows configuration, not the lane.
    */
   envOriginConfig(): string {
     return envOriginForSurface(this.pageConfigActive);
@@ -2729,7 +2732,7 @@ export class RenderEngine implements RenderEngineLike {
    *  exist) render the plain quiet denial span (SMD exp @8350, PdG exp
    *  @8515-8987 — and the live Task card Merchandise denies as a real
    *  card), while the simple-named denied phantoms (the view-lane census,
-   *  133 entries — Test Person 01, Morihei Ueshiba, Robert Kent, all
+   *  133 entries — Test Person 01, Regina Chatham, Mabel Bridgewater, all
    *  BasicCs/RichText/Practice-typed) render the mini_bar wrap with the
    *  two-span body: name.simple? short-circuits virtual? to false
    *  (states.rb:45) whatever their type.
@@ -3154,7 +3157,7 @@ export class RenderEngine implements RenderEngineLike {
           // never saw this edge, and enrichAndStore seats only on insert. Seat
           // the card's closure here, so this render's sweeps (structure, link
           // targets, verdicts) process it exactly as a fresh engine would.
-          // Without this, `sabrina mejias`'s `+agree` (whose
+          // Without this, `sage pettibone`'s `+agree` (whose
           // `agree+*right+*structure` nests `Intellectual Property+Statement`)
           // rendered that card's links as wanted on any warm engine.
           if (refKey !== "" && this.renderCards.has(refKey) && !this.renderSeats.has(refKey)) {
@@ -4285,7 +4288,7 @@ export class RenderEngine implements RenderEngineLike {
       // off the render-card map instead of the fetch ladder. Corpus
       // evidence for both preferer clauses: `*all` is card 274, type 259
       // (Set) = the trunk, codename "all" = the codename clause;
-      // `Brandon WilliamsCraig` is card 393, type 4 (codename "user") =
+      // `Casey Morgan` is card 393, type 4 (codename "user") =
       // the User clause.
       const trunkKey = DeckoName.parse(name.parts.slice(0, -2).join("+")).key;
       if (trunkKey === "") return false;
@@ -4990,7 +4993,7 @@ export class RenderEngine implements RenderEngineLike {
    *  (or static help popover) links cards no {{nest}} reference reaches
    *  emitted wanted-card for existing cards — 15 an earlier pass dump entries
    *  (10x the *content options popover's [[List]]/[[Pointer]]/[[Search]],
-   *  5x card-body links like Anthony Gonzales's [[Bluevolution]]).
+   *  5x card-body links like Dawn Emerson's [[Bluevolution]]).
    *
    *  Harvest (memory only): the [[target]] matches of every prepared card's
    *  dbContent not yet scanned (once per engine per card), plus the rendered
@@ -5846,7 +5849,7 @@ export class RenderEngine implements RenderEngineLike {
         // walk's type (BasicCs here), and BasicCs+*type+*read = "Anyone
         // Signed In" denied Anonymous — rendering the two-span denied body
         // for exactly the host-typed unknown items Ruby renders the full
-        // bar for (Kimberly Richardson id 18560, Michael Christensen+musings
+        // bar for (Chloe Pallister id 18560, Jacob Benedetti+musings
         // id 14546; the captured oracle renders bar-body/card-title/
         // bar-menu for both).
         await this.resolveHostItemTypeName(card);
@@ -5924,7 +5927,7 @@ export class RenderEngine implements RenderEngineLike {
    * walk) typed every host-typed phantom BasicCs, and BasicCs+*type+*read
    * = "Anyone Signed In" denied Anonymous where Ruby's walk on the REAL
    * type falls through to *all+*read = "Anyone" — the Kimberly
-   * Richardson / Michael Christensen+musings divergence (captured oracle
+   * Richardson / Jacob Benedetti+musings divergence (captured oracle
    * renders the full bar body for both). The default-template walk stays
    * as the fallback for hosts that resolve no item type, exactly
    * Card.new's ensure_type_id.
@@ -6300,7 +6303,7 @@ export class RenderEngine implements RenderEngineLike {
           // Ruby's Lexicon.name(id) reads rows WITHOUT a trash filter
           // (lexicon.rb#id_to_lex), so a `~id` item pointing at a TRASHED
           // member card still RESOLVES to its name there (CB_role /
-          // WilliamsCraig Family +*members: their item ids are trashed
+          // Morgan Family +*members: their item ids are trashed
           // rows, never warmed by warmLexicon's live-id pour and carrying
           // no card_references rows for the seed closure). The async
           // lexicon IS that db fallback: resolve, record the durable name
@@ -8984,7 +8987,7 @@ export class RenderEngine implements RenderEngineLike {
           // statement (`refer_to: "_left"`, `_self`, `_right`, `_N`) resolves
           // against the blank context to the unresolvable-name sentinel — the
           // query returns zero rows even with every name key resolvable
-          // (2026-09-25 Brandon_WilliamsCraig +Project(s) Participating "0
+          // (2026-09-25 Casey_Morgan +Project(s) Participating "0
           // results" defect 2; ParseOptions.context, src/cql/ast.ts).
           context: card.name.s,
           // sync resolver over the prefetched id map (module doc), falling

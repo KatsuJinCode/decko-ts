@@ -58,6 +58,7 @@ import { CARD_GEM_INITIALIZER_INFLECTIONS } from "../../src/card/name/oracle-dec
 import { createVirtualCardLookup } from "../../src/card/fetch/virtual-cards.js";
 import { installDeckNameEnvironment } from "../../src/server/worker-shared-surface.js";
 import { setDeckTimeZone } from "../../src/card/deck-time-zone.js";
+import { setDeckEnvironment } from "../../src/card/render/deck-origin.js";
 import {
   structureRuleUniverseStatement,
   structureUniverseFromResults,
@@ -193,6 +194,12 @@ export async function bootEdgeServingEngines(
     /** The deck's configured time zone (IANA name) for every timestamp the
      *  render path formats. Unset keeps the graded deck's zone. */
     timeZone?: string;
+    /** The deck's configured origin — Ruby's `Cardio.config.deck_origin`
+     *  (review round 4, finding 9). Installed through
+     *  setDeckEnvironment so the engine's own bytes (the page head's
+     *  decko.rootUrl, the :url views) carry the configured origin instead
+     *  of the requestless relative form. Unset = relative URLs. */
+    deckOrigin?: string;
   } = {},
 ): Promise<DeckEngines> {
   const engines = await bootCorpusDeckEngines(
@@ -218,5 +225,12 @@ export async function bootEdgeServingEngines(
   // the graded deck's zone, which is what leaves every graded byte intact
   // while removing the dependency on the capture host's OS setting.
   if (opts.timeZone !== undefined) setDeckTimeZone(opts.timeZone);
+  // THE DECK'S CONFIGURED ORIGIN (review round 4, finding 9): the same
+  // configuration channel the capture script used
+  // (capture-dual-lane-page-and-view.rb:391-400 assigns
+  // Cardio.config.deck_origin around the page lane). Unset, the engine
+  // renders the requestless relative form and no byte carries an origin
+  // nobody configured.
+  if (opts.deckOrigin !== undefined) setDeckEnvironment({ origin: opts.deckOrigin });
   return engines;
 }
