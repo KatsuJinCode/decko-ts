@@ -152,11 +152,10 @@ describe("bunny edge worker — routes", () => {
     expect(res.headers.get("content-type")).toContain("text/html");
     const body = await res.text();
     expect(body).toContain("<h1>Home</h1>");
-    expect(body).toContain("welcome &lt;b&gt;home&lt;/b&gt;");
     expect(db.statements[0]?.args).toEqual(["Home"]);
   });
 
-  it("GET /<card> renders that card and escapes its content", async () => {
+  it("GET /<card> renders that card's record metadata", async () => {
     const db = mockDb();
     const res = await handleRequest(get("/Special%3AAll"), TRIAL_ENV, db.factory);
     expect(res.status).toBe(200);
@@ -172,6 +171,114 @@ describe("bunny edge worker — routes", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("application/json");
     expect(await res.json()).toMatchObject({ id: 1, name: "Home", key: "*homepage*", type_id: 1000 });
+  });
+
+  // Stored content is withheld from both public routes. This entry has no
+  // session and no read rule, so db_content on a real deck (an account's
+  // +*password digest, +*salt and +*email) would reach anyone who guessed the
+  // card name. See the STORED CONTENT IS NEVER SERVED note in bunny-worker.ts.
+  describe("stored content is never served", () => {
+    const ACCOUNT_HOLDER: Record<string, Record<string, unknown>> = {
+      Home: {
+        id: 1,
+        name: "Home",
+        key: "*homepage*",
+        codename: null,
+        type_id: 1000,
+        left_id: null,
+        right_id: null,
+        db_content: "welcome <b>home</b>",
+        trash: 0,
+        created_at: "2026-01-01 00:00:00",
+        updated_at: "2026-01-02 00:00:00",
+      },
+      "Riley+*account+*password": {
+        id: 77,
+        name: "Riley+*account+*password",
+        key: null,
+        codename: null,
+        type_id: 1002,
+        left_id: 5,
+        right_id: 9,
+        db_content: "9f2c1a0b4d3e5f60718293a4b5c6d7e8f90112233",
+        trash: 0,
+        created_at: "2026-01-03 00:00:00",
+        updated_at: "2026-01-04 00:00:00",
+      },
+      "Riley+*account+*salt": {
+        id: 78,
+        name: "Riley+*account+*salt",
+        key: null,
+        codename: null,
+        type_id: 1003,
+        left_id: 5,
+        right_id: 10,
+        db_content: "5c4d3f2e1a0b998877665544332211ffeeddccbb",
+        trash: 0,
+        created_at: "2026-01-03 00:00:00",
+        updated_at: "2026-01-04 00:00:00",
+      },
+      "Riley+*account+*email": {
+        id: 79,
+        name: "Riley+*account+*email",
+        key: null,
+        codename: null,
+        type_id: 1004,
+        left_id: 5,
+        right_id: 11,
+        db_content: "riley@example.com",
+        trash: 0,
+        created_at: "2026-01-03 00:00:00",
+        updated_at: "2026-01-04 00:00:00",
+      },
+    };
+
+    const DIGEST = "9f2c1a0b4d3e5f60718293a4b5c6d7e8f90112233";
+    const SALT = "5c4d3f2e1a0b998877665544332211ffeeddccbb";
+    const EMAIL = "riley@example.com";
+
+    for (const [cardName, row] of Object.entries(ACCOUNT_HOLDER)) {
+      const storedContent = String(row.db_content);
+
+      it(`GET /${encodeURIComponent(cardName)} does not render db_content`, async () => {
+        const db = mockDb({ cards: ACCOUNT_HOLDER });
+        const res = await handleRequest(get(`/${encodeURIComponent(cardName)}`), TRIAL_ENV, db.factory);
+        const body = await res.text();
+        expect(res.status).toBe(200);
+        expect(body).toContain("withheld");
+        if (storedContent !== "null") expect(body).not.toContain(storedContent);
+        // The query itself must not carry the column back in.
+        expect(db.statements[0]?.sql).not.toContain("db_content");
+      });
+
+      it(`GET /${encodeURIComponent(cardName)}.json does not carry db_content`, async () => {
+        const db = mockDb({ cards: ACCOUNT_HOLDER });
+        const res = await handleRequest(get(`/${encodeURIComponent(cardName)}.json`), TRIAL_ENV, db.factory);
+        expect(res.status).toBe(200);
+        const serialized = JSON.stringify(await res.json());
+        expect(serialized).not.toContain("db_content");
+        if (storedContent !== "null") expect(serialized).not.toContain(storedContent);
+        expect(serialized).not.toContain(DIGEST);
+        expect(serialized).not.toContain(SALT);
+        expect(serialized).not.toContain(EMAIL);
+        expect(db.statements[0]?.sql).not.toContain("db_content");
+      });
+    }
+
+    it("no credential material reaches an anonymous caller on any route", async () => {
+      const db = mockDb({ cards: ACCOUNT_HOLDER });
+      const paths = ["/", "/Home", "/Home.json", "/_status"];
+      for (const cardName of Object.keys(ACCOUNT_HOLDER)) {
+        paths.push(`/${encodeURIComponent(cardName)}`, `/${encodeURIComponent(cardName)}.json`);
+      }
+      for (const path of paths) {
+        const res = await handleRequest(get(path), TRIAL_ENV, db.factory);
+        const text = await res.text();
+        expect(text).not.toContain(DIGEST);
+        expect(text).not.toContain(SALT);
+        expect(text).not.toContain(EMAIL);
+      }
+    });
   });
 
   it("GET /_status reports the card count and the env var NAMES, never values", async () => {
