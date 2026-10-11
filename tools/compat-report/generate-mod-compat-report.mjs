@@ -738,11 +738,21 @@ function classify(inv, surface, pins) {
   // One-line verdict + evidence.
   let verdict = "";
   if (status === "declared-complete") {
+    // The label is a threshold, not a statement that every view is present.
+    // A mod can hold it with view names still missing, so say so here rather
+    // than leaving a reader to subtract covered from total to find out.
+    const missingNames = specificViewsDeclared.filter((v) => !specificViewsCovered.includes(v));
+    const incomplete =
+      missingNames.length > 0
+        ? ` — ${missingNames.length} declared view name(s) NOT in the implemented surface: ${missingNames.slice(0, 8).join(", ")}${missingNames.length > 8 ? ", ..." : ""}`
+        : specificViewsDeclared.length === 0
+          ? " — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone"
+          : "";
     if (bytePinComplete && specificViewsCovered.length === 0) {
       // Honored via the byte-pin criterion alone.
-      verdict = `manifest + byte-pinned test (${bytePins} pins across ${pins.testCount} it()): ${pins.manifestViews.slice(0, 6).join(", ")}${pins.manifestViews.length > 6 ? ", ..." : ""}`;
+      verdict = `manifest + byte-pinned test (${bytePins} pins across ${pins.testCount} it()): ${pins.manifestViews.slice(0, 6).join(", ")}${pins.manifestViews.length > 6 ? ", ..." : ""}${incomplete}`;
     } else {
-      verdict = `${specificViewsCovered.length} mod-specific view(s) declared: ${specificViewsCovered.slice(0, 6).join(", ")}${specificViewsCovered.length > 6 ? ", ..." : ""}`;
+      verdict = `${specificViewsCovered.length} mod-specific view(s) declared: ${specificViewsCovered.slice(0, 6).join(", ")}${specificViewsCovered.length > 6 ? ", ..." : ""}${incomplete}`;
     }
   } else if (status === "partial") {
     const specificMissing = specificViewsDeclared.filter(
@@ -824,7 +834,7 @@ function renderMd(report) {
   );
   lines.push("");
   lines.push(
-    "**What these labels measure: declarations only.** \"declared-complete\" means the mod's view names, set modules and set patterns exist in this repository's view registry and mod loader (and, on the byte-pin criterion, that a test pins some rendered views' bytes against the Ruby oracle capture). It does NOT measure executable behavior: no event hook is exercised, no non-html format (json, css, email, rss, csv) is rendered, and every view beyond the handful the byte-pins render is unproven against Ruby's output. Where the evidence for what IS byte-proven lives: `docs/coverage-inventory.md`.",
+    "**What these labels measure: declarations only.** \"declared-complete\" is a THRESHOLD, not a statement that every view is present. The generator calls a mod declared-complete when EITHER (a) at least 50% of the mod-specific html view names it declares exist in the implemented surface, AND at least 50% of the set patterns it uses are implemented, AND it has pattern-backed set modules; OR (b) it has a registered manifest plus a byte-pinned test file with 5 or more `toBe(<literal>)` pins. A mod can therefore hold the label with view names still missing — read the `covered/total` column per mod to see which. It does NOT measure executable behavior: no event hook is exercised, no non-html format (json, css, email, rss, csv) is rendered, and every view beyond the handful the byte-pins render is unproven against Ruby's output. The threshold is decision 0004's rubric, unchanged; where a figure from this report is quoted, the covered/total it rests on is quoted with it. Where the evidence for what IS byte-proven lives: `docs/coverage-inventory.md`.",
   );
   lines.push("");
   lines.push("## decko-ts implemented surface (truth)");

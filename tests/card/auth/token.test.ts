@@ -7,6 +7,11 @@
 // jwt 2.10.3 on this machine. Nothing here is a hand-computed expectation:
 // if the port drifts from the gem, these assertions are what fail.
 //
+// This suite and its fixture are DEVELOPMENT EVIDENCE, not part of the
+// public package: fixtures/captured/ and tests/card/auth/token.test.ts are
+// both on the public candidate's exclusion list, so neither ships and the pin
+// is not recomputable in a clean clone. See src/card/auth/token.ts:31-38.
+//
 // The oracle substitutes exactly two process-global inputs, both recorded
 // in the fixture: SECRET_KEY is a FIXTURE STRING (token.rb:7 reads Rails'
 // secret_key_base, which is per-deployment and must never enter the repo),

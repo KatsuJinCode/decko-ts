@@ -30,7 +30,12 @@
 //
 // FAITHFULNESS, ITEM BY ITEM (each pinned by tests/card/auth/token.test.ts
 // against bytes the real jwt gem produced — see
-// fixtures/captured/auth-token.json and tools/oracle/auth_token_capture.rb):
+// fixtures/captured/auth-token.json and tools/oracle/auth_token_capture.rb).
+// THAT PIN IS DEVELOPMENT EVIDENCE, NOT PART OF THE PUBLIC PACKAGE: both the
+// fixture's directory (fixtures/captured/) and the suite are on the public
+// candidate's exclusion list, so in a clean clone this module ships without
+// the byte pin and without the suite that checks it. The claims below are
+// transcribed from the gem's source, not recomputed there.
 //
 //   * algorithm HS256 — jwt.rb:35 `def encode(payload, key, algorithm = 'HS256', ...)`
 //     with no algorithm argument at token.rb:13.

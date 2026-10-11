@@ -99,7 +99,8 @@ Outside `card/`:
 | `src/testing/` | shared test helpers and corpus path resolution |
 | `worker.ts` | the Cloudflare Worker entry point |
 | `deploy/` | migrations, seeds, the edge entry points and their bundlers |
-| `tools/oracle/` | the harness that captures Ruby output and grades the engine against it |
+| `tools/oracle/` | the capture scripts that record Ruby output into `fixtures/captured/` |
+| `reference-harness/` | the graded harness: its runner, grade, the synthetic fixture it replays, and `reference-harness/oracle/` (the containerised Ruby oracle) |
 
 ### File naming
 

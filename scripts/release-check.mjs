@@ -82,7 +82,11 @@ function runStage(stage, jsonPath) {
   const args =
     stage.runner === "vitest"
       ? [VITEST, "run", ...stage.target, "--reporter=default", "--reporter=json", `--outputFile.json=${jsonPath}`]
-      : ["--test", ...stage.target];
+      // The reporter is named rather than left to node's default, which is
+      // `tap` when stdout is not a terminal and `spec` when it is. Both are
+      // parsed by nodeTestOutcome, but pinning the choice here means the log
+      // a reader opens is the same one the parser read.
+      : ["--test", "--test-reporter=spec", ...stage.target];
   return new Promise((resolveRun) => {
     const child = spawn(process.execPath, args, { cwd: REPO_ROOT, windowsHide: true, shell: false });
     let stdout = "";
@@ -131,21 +135,38 @@ function vitestOutcome(jsonPath, output) {
   return { counts, failedFiles: [] };
 }
 
-/** The node --test side of a stage: counts from the spec reporter's
- *  counters, failing test names from its ✖ lines (files are not
- *  attributable, so names are shown as-is). */
+/** The node --test side of a stage: counts from the runner's own counters,
+ *  failing test names from its failing-name lines (files are not
+ *  attributable, so names are shown as-is).
+ *
+ *  TWO REPORTER FORMATS, because node chooses the default by environment:
+ *  its `spec` reporter prints `ℹ pass 64` and marks a failure `✖ name`, while
+ *  its `tap` reporter prints `# pass 64` and marks a failure
+ *  `not ok 12 - name`. Which one comes out is not this script's decision —
+ *  it changes with the Node version, and with whether stdout is a terminal.
+ *  Reading only one format is how this stage came to report INCOMPLETE
+ *  ("no evidence: no tests ran") on a stage that had just run 64 passing
+ *  tests: the parser found no counter it recognised, left all three counts at
+ *  zero, and classify() reads zero-passed-plus-zero-failed as no evidence.
+ *  So both formats are parsed here, and the stage pins the reporter (see
+ *  runStage) so the output does not depend on the environment at all. */
 function nodeTestOutcome(output) {
   const counts = { passed: 0, failed: 0, skipped: 0 };
   const failedNames = [];
+  // `ℹ pass 64` (spec) and `# pass 64` (tap) are the same line with a
+  // different bullet. Anchored at line start so neither count matches twice.
+  const grab = (label) => output.match(new RegExp(`^(?:ℹ|#) ${label} (\\d+)$`, "m"));
+  if (grab("pass")) counts.passed = Number(grab("pass")[1]);
+  if (grab("fail")) counts.failed = Number(grab("fail")[1]);
+  for (const label of ["skipped", "todo"]) {
+    if (grab(label)) counts.skipped += Number(grab(label)[1]);
+  }
   for (const line of output.split("\n")) {
-    const grab = (label) => line.match(new RegExp(`^ℹ ${label} (\\d+)`));
-    if (grab("pass")) counts.passed = Number(grab("pass")[1]);
-    if (grab("fail")) counts.failed = Number(grab("fail")[1]);
-    for (const label of ["skipped", "todo"]) {
-      if (grab(label)) counts.skipped += Number(grab(label)[1]);
-    }
-    const name = line.match(/^\s+✖\s+(.+?)(?:\s+\(\d+\.\d+ms\))?$/);
-    if (name) failedNames.push(`[test] ${name[1].trim()}`);
+    const spec = line.match(/^\s+✖\s+(.+?)(?:\s+\(\d+\.\d+ms\))?$/);
+    // tap's `not ok 12 - name`, with any trailing `# SKIP`-style directive cut.
+    const tap = line.match(/^not ok \d+ - (.+?)(?:\s+#\s+\S+)*\s*$/);
+    const name = spec?.[1] ?? tap?.[1];
+    if (name) failedNames.push(`[test] ${name.trim()}`);
   }
   return { counts, failedFiles: failedNames };
 }

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-10T00:00:14.223Z",
+  "generatedAt": "2026-10-11T22:11:19.078Z",
   "gemDir": "$GEM_HOME",
   "repo": "REPO_ROOT",
   "surface": {
@@ -1401,7 +1401,7 @@
       "version": "0.20.0",
       "classification": {
         "status": "declared-complete",
-        "verdict": "2 mod-specific view(s) declared: count, paging",
+        "verdict": "2 mod-specific view(s) declared: count, paging — 1 declared view name(s) NOT in the implemented surface: paging_urls",
         "evidence": "2/3 html views in HTML_VIEWS∪mod-manifests (2/3 mod-specific); mod-loader pins: manifest=yes, test=22 it(), byte-pins=16",
         "metrics": {
           "htmlViewsDeclared": 3,
@@ -1684,7 +1684,7 @@
       "version": "0.20.0",
       "classification": {
         "status": "declared-complete",
-        "verdict": "manifest + byte-pinned test (20 pins across 32 it()): ",
+        "verdict": "manifest + byte-pinned test (20 pins across 32 it()):  — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone",
         "evidence": "1/1 html views in HTML_VIEWS∪mod-manifests (0/0 mod-specific); mod-loader pins: manifest=yes, test=32 it(), byte-pins=20",
         "metrics": {
           "htmlViewsDeclared": 1,
@@ -2884,7 +2884,7 @@
       "version": "0.20.0",
       "classification": {
         "status": "declared-complete",
-        "verdict": "manifest + byte-pinned test (21 pins across 28 it()): ",
+        "verdict": "manifest + byte-pinned test (21 pins across 28 it()):  — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone",
         "evidence": "no html view declarations in this mod; mod-loader pins: manifest=yes, test=28 it(), byte-pins=21",
         "metrics": {
           "htmlViewsDeclared": 0,
@@ -3274,7 +3274,7 @@
       "version": "0.20.0",
       "classification": {
         "status": "declared-complete",
-        "verdict": "manifest + byte-pinned test (15 pins across 14 it()): core",
+        "verdict": "manifest + byte-pinned test (15 pins across 14 it()): core — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone",
         "evidence": "1/1 html views in HTML_VIEWS∪mod-manifests (0/0 mod-specific); mod-loader pins: manifest=yes, test=14 it(), byte-pins=15",
         "metrics": {
           "htmlViewsDeclared": 1,
@@ -3466,7 +3466,7 @@
       "version": "0.20.0",
       "classification": {
         "status": "declared-complete",
-        "verdict": "manifest + byte-pinned test (12 pins across 40 it()): core",
+        "verdict": "manifest + byte-pinned test (12 pins across 40 it()): core — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone",
         "evidence": "1/1 html views in HTML_VIEWS∪mod-manifests (0/0 mod-specific); mod-loader pins: manifest=yes, test=40 it(), byte-pins=12",
         "metrics": {
           "htmlViewsDeclared": 1,
@@ -3747,7 +3747,7 @@
       "version": "0.20.0",
       "classification": {
         "status": "declared-complete",
-        "verdict": "5 mod-specific view(s) declared: javascript_include_tag, javascript_tags, remote_script_tags, script_calls, script_variables",
+        "verdict": "5 mod-specific view(s) declared: javascript_include_tag, javascript_tags, remote_script_tags, script_calls, script_variables — 1 declared view name(s) NOT in the implemented surface: compressed",
         "evidence": "6/7 html views in HTML_VIEWS∪mod-manifests (5/6 mod-specific); mod-loader pins: manifest=yes, test=18 it(), byte-pins=15",
         "metrics": {
           "htmlViewsDeclared": 7,
@@ -3877,7 +3877,7 @@
       "version": "0.20.0",
       "classification": {
         "status": "declared-complete",
-        "verdict": "10 mod-specific view(s) declared: add_autocomplete_item, bar, card_list, checkbox_list, count, goto_autocomplete_item, ...",
+        "verdict": "10 mod-specific view(s) declared: add_autocomplete_item, bar, card_list, checkbox_list, count, goto_autocomplete_item, ... — 10 declared view name(s) NOT in the implemented surface: body, complete, feed_body, feed_item_description, molecule, name_complete, name_match, search_box, ...",
         "evidence": "13/23 html views in HTML_VIEWS∪mod-manifests (10/20 mod-specific); mod-loader pins: manifest=yes, test=28 it(), byte-pins=5",
         "metrics": {
           "htmlViewsDeclared": 23,
@@ -4064,7 +4064,7 @@
       "version": "0.20.0",
       "classification": {
         "status": "declared-complete",
-        "verdict": "manifest + byte-pinned test (5 pins across 7 it()): ",
+        "verdict": "manifest + byte-pinned test (5 pins across 7 it()):  — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone",
         "evidence": "no html view declarations in this mod; mod-loader pins: manifest=yes, test=7 it(), byte-pins=5",
         "metrics": {
           "htmlViewsDeclared": 0,
@@ -4157,7 +4157,7 @@
       "version": "0.20.0",
       "classification": {
         "status": "declared-complete",
-        "verdict": "9 mod-specific view(s) declared: box, box_bottom, box_middle, customize_button, labeled, remote_include_tags, ...",
+        "verdict": "9 mod-specific view(s) declared: box, box_bottom, box_middle, customize_button, labeled, remote_include_tags, ... — 3 declared view name(s) NOT in the implemented surface: compiled, compressed, import",
         "evidence": "10/13 html views in HTML_VIEWS∪mod-manifests (9/12 mod-specific); mod-loader pins: manifest=yes, test=17 it(), byte-pins=37",
         "metrics": {
           "htmlViewsDeclared": 13,
@@ -4492,7 +4492,7 @@
       "version": "0.20.0",
       "classification": {
         "status": "declared-complete",
-        "verdict": "manifest + byte-pinned test (16 pins across 33 it()): ",
+        "verdict": "manifest + byte-pinned test (16 pins across 33 it()):  — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone",
         "evidence": "no html view declarations in this mod; mod-loader pins: manifest=yes, test=33 it(), byte-pins=16",
         "metrics": {
           "htmlViewsDeclared": 0,

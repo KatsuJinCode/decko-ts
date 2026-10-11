@@ -31,13 +31,17 @@ npm test
 The parity claim is verified by replaying captured Ruby output. There are two
 tiers of corpus, and the difference matters when you read a test result.
 
-### 1. The miniature corpus (committed, always available)
+### 1. The miniature corpus (private repository — NOT in the public package)
 
 `fixtures/test-corpus/` holds a self-contained sqlite database and captured
-shards, small enough to commit. **Every clone can run the full committed
-test scope from these bytes alone.** This is what `npm test` uses by default.
+shards. **It is on the public candidate's exclusion list**, so a clean clone of
+the published package does not have it, and the suites that read it do not run
+there — they fail at import rather than skip, because a corpus-consuming suite
+opens the fixture at module load. This is stated here because the fixture was
+previously described as committed and always available; in the package it is
+development material.
 
-### 2. The rich corpus (NOT committed)
+### 2. The rich corpus (NOT shipped either)
 
 The rich corpus is captured from the deck this engine was ported from. It
 carries that deck's real content — real card names, real people, real
@@ -46,6 +50,15 @@ authorise its redistribution here.
 
 **It is therefore not part of this fork.** If you have a copy, it belongs
 outside the repository.
+
+### What the public package does ship
+
+`npm test` runs `vitest run tests/card/`, and on a clean clone of the published
+package it runs the suites whose fixtures are shipped: the from-scratch
+synthetic material under `reference-harness/fixtures/` (both `synthetic-v1` and
+`write-battery-v1`), `fixtures/deploy-teardown/`, `fixtures/vendor/`, and the
+unit tests on synthetic fixtures. The corpus-consuming suites are excluded
+along with their fixtures rather than left to fail.
 
 ---
 
@@ -97,13 +110,17 @@ skipped, naming the file and the gate it needed.
 
 ## Supplying the rich corpus
 
+This section applies to the **private repository**, which is where these
+fixtures exist. In the public package none of the paths below ship, so this is
+not a recipe for a clean clone of the published package.
+
 To run the full parity replay you need, outside the repository:
 
-| What | Where the code looks for it |
-|---|---|
-| The corpus sqlite | `$DECKO_TS_CORPUS_V2`, or `fixtures/corpus/` by default |
-| Captured shards | beside it, `shard-000000.jsonl`, `shard-000014.jsonl` |
-| The email oracle bytes | `fixtures/captured/email-templates-raw-oracle.json` |
+| What | Where the code looks for it | In the public package |
+|---|---|---|
+| The corpus sqlite | `$DECKO_TS_CORPUS_V2`, or `fixtures/corpus/` by default | absent; the replay suites are excluded |
+| Captured shards | beside it, `shard-000000.jsonl`, `shard-000014.jsonl` | absent |
+| The email oracle bytes | `fixtures/captured/email-templates-raw-oracle.json` | absent; `fixtures/captured/` is excluded |
 
 Point the engine at them with environment variables:
 
@@ -122,12 +139,17 @@ than quietly degrade.
 
 ## The full grade
 
-The parity figures in the README come from grading the engine against a full
-capture of a real deck: every page and every recorded view, rendered by the
-engine and compared byte for byte with Ruby's output. How that measurement is
-made, and what a figure from it does and does not cover, is in
-[parity-method.md](parity-method.md); the corpus is not redistributed, so the
-grade can only be re-run where that corpus is available.
+The parity figures in the README come from grading the engine against the
+**synthetic** fixture this repository builds from scratch —
+`reference-harness/fixtures/synthetic-v1` — with the Ruby oracle's answers
+recorded against that same fixture: every page and every recorded view,
+rendered by the engine and compared byte for byte with Ruby's output. This is
+not a capture of a real deck; it is a from-scratch deck measured end to end,
+which is why it is the grade of record and why it ships. How that measurement
+is made, and what a figure from it does and does not cover, is in
+[parity-method.md](parity-method.md); the larger corpus figures quoted under
+"Migration status" were measured on a real deck that is not redistributed and
+cannot be reproduced from this repository.
 
 `npm run replay` runs the replay suites against whatever corpus is supplied.
 Whenever you quote a parity figure, give the date it was measured, the corpus

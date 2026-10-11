@@ -72,8 +72,10 @@
 //   async-HMAC x sync-ViewFn boundary the token-runtime recorded result names).
 //   The Auth::Token half of the gap CLOSED 2026-09-28:
 //   src/card/auth/token.ts is a byte-parity port of
-//   card-1.110.0/lib/card/auth/token.rb pinned against the real jwt gem's
-//   own output (fixtures/captured/auth-token.json), and the signing secret
+//   card-1.110.0/lib/card/auth/token.rb, developed against the real jwt gem's
+//   own output (fixtures/captured/auth-token.json) — that pin is development
+//   evidence, excluded from the public package with its fixture and suite,
+//   not a check a clean clone can run — and the signing secret
 //   is injected as RenderEngine.tokenConfig, pinned in
 //   vm-staging-server.mjs from DECKO_TOKEN_SECRET. What is left here is not
 //   the secret or the token — it is that a ViewFn is SYNCHRONOUS
