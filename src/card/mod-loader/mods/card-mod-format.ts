@@ -686,11 +686,13 @@ const htmlLabeledView: ViewFn = (ctx) => (ENGINE_LABELED === undefined ? "" : EN
 const compactMissingView: ViewFn = ({ fmt }) =>
   `<span class="text-muted">${h(fmt.card.name.from(...fmt.contextNames))}</span>`;
 
-/** set/all/error.rb:6-8 view :unknown, perms: :none, cache: :never:
- *  the literal empty string. The HTML override
- *  (set/all/html/error.rb:10-12) wraps in a createable link; the
- *  BASE view is bare "". */
-const unknownView: ViewFn = () => "";
+/** set/all/error.rb:6-8 view :unknown, perms: :none, cache: :never: the
+ *  literal empty string, OVERRIDDEN by the html block's createable link
+ *  (set/all/html/error.rb:10-12) — which is the body that reaches the wire
+ *  and the one registered on All::Error below. The bare "" was the body
+ *  registered here until the html-block override was found missing; it is
+ *  kept as a named local only if a caller needs the base-format arm again
+ *  (no surface renders the base format's :unknown). */
 
 /** set/all/error.rb:10-12 view :server_error, perms: :none:
  *  `t(:format_server_error)`. The headless engine has no i18n;
@@ -1662,7 +1664,16 @@ const setModules: ModSetModuleFile[] = [
       html: {
         views: [
           { view: "compact_missing", viewFn: compactMissingView, config: { perms: "none" } },
-          { view: "unknown", viewFn: unknownView, config: { perms: "none", cache: "never" } },
+          // set/all/html/error.rb:10-12 REOPENS this module's html format
+          // block and overrides `view :unknown` with the createable link;
+          // the BASE block's body (error.rb:6-8) is the bare "". The html
+          // block is the one that reaches the wire, so that is the body
+          // registered here - without it the per-card chain walk answered
+          // the bare "" and every unknown-card substitution rendered
+          // nothing where Ruby renders its create-link span. The body is
+          // HTML_VIEWS["unknown"], the flat table's own identical
+          // html/error.rb:10-12 body, so the two surfaces cannot drift.
+          { view: "unknown", viewFn: HTML_VIEWS["unknown"]!, config: { perms: "none", cache: "never" } },
           { view: "server_error", viewFn: serverErrorView, config: { perms: "none" } },
           { view: "denial", viewFn: denialView, config: { perms: "none" } },
           { view: "not_found", viewFn: notFoundView, config: { perms: "none" } },
@@ -1682,25 +1693,23 @@ const setModules: ModSetModuleFile[] = [
     // port deliberately renders :server_error in its place, with no modal
     // wrap, so the two give the same bytes (render/debug-server-error.ts).
     //
-    // :unknown is ALSO an html-block view (set/all/html/error.rb:10-12) and
-    // it OVERRIDES the base block's literal "" (error.rb:6-8, registered on
-    // All::Error above) with the createable link. That override has to be
-    // registered here: with a loader bound, the per-card chain walk stops at
-    // the first module declaring the view, and All::Error declares it — so
-    // without this row the chain answered the bare "" and the unknown-card
-    // substitution rendered nothing where Ruby renders its create-link span.
-    // The body is the flat table's own :unknown (views.ts HTML_VIEWS.unknown,
-    // the identical html/error.rb:10-12 body), so the two surfaces cannot
-    // drift. :mini_unknown, :compact_missing, :conflict and :errors stay on
-    // the base table: no html-block override exists for them, so the flat
-    // entry they would fall back to IS their html behaviour.
+    // :unknown is ALSO declared in this html block (set/all/html/error.rb
+    // :10-12) and OVERRIDES the base block's literal "" (error.rb:6-8). It
+    // is registered on the All::Error entry's own html block ABOVE rather
+    // than here, because Ruby's set/all/html/error.rb REOPENS All::Error's
+    // html format block - it is not a set module of its own - while this
+    // port's setPath keys a module by camelizing the path
+    // (mod-registrar.ts#setModuleShortname), so a row registered under the
+    // path "all/html/error" would land on a separate All::Html::Error
+    // module no card's set keys name. The same nested-path limitation is
+    // what keeps card-mod-bootstrap's :bar_bottom unregistered, per that
+    // function's KNOWN DIVERGENCE note.
     setPath: "all/html/error",
     formats: {
       html: {
         views: [
           { view: "server_error", viewFn: serverErrorHtmlView, config: { perms: "none" } },
           { view: "debug_server_error", viewFn: debugServerErrorView, config: { perms: "none" } },
-          { view: "unknown", viewFn: HTML_VIEWS["unknown"]!, config: { perms: "none", cache: "never" } },
         ],
       },
     },
