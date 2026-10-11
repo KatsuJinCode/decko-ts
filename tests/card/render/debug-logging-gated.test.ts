@@ -48,11 +48,11 @@ describe("diagnostic logging is gated behind env flags", () => {
     },
   );
 
-  it("DECKO_LEX_TRACE=1 turns the lexicon trace on", async () => {
+  it("DECKO_LEX_TRACE=1 produces no lexicon output: the development trace was removed as narration, not gated", async () => {
     process.env.DECKO_LEX_TRACE = "1";
     storage = await deck();
     const spy = vi.spyOn(console, "log").mockImplementation(() => undefined);
     await storage.fetcher.fetchByName("Probe Signup+*account");
-    expect(tagged(spy, "LEX-DEBUG")).toBeGreaterThan(0);
+    expect(tagged(spy, "LEX-DEBUG")).toBe(0);
   });
 });
