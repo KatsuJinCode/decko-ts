@@ -77,11 +77,11 @@ function resizeToFit(p: Photon, img: PhotonImage, maxW: number, maxH: number): P
  *  Center: offset = floor((W - w) / 2)) on a transparent background. */
 function resizeAndPad(p: Photon, img: PhotonImage, w: number, h: number): PhotonImage {
   const fitted = resizeToFit(p, img, w, h);
-  const clear = () => new p.Rhbq(0, 0, 0, 0);
+  const clear = () => new p.Rgba(0, 0, 0, 0);
   let out = fitted;
   const padX = w - fitted.get_width();
   const padY = h - fitted.get_height();
-  const steps: [(i: PhotonImage, n: number, c: InstanceType<Photon["Rhbq"]>) => PhotonImage, number][] = [
+  const steps: [(i: PhotonImage, n: number, c: InstanceType<Photon["Rgba"]>) => PhotonImage, number][] = [
     [p.padding_left, Math.floor(padX / 2)],
     [p.padding_right, padX - Math.floor(padX / 2)],
     [p.padding_top, Math.floor(padY / 2)],

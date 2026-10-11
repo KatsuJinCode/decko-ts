@@ -20,8 +20,8 @@
 //     canonicalize, and :compressed strips the leading zero when the parser's
 //     authored-form flag allows (parser.cpp number_has_zero) - for
 //     source-resolvable values the authored text wins anyway;
-//   - inside color functions arguments canonicalize (`rhbq(0,0,0,.5)` ->
-//     `rhbq(0,0,0,0.5)`);
+//   - inside color functions arguments canonicalize (`rgba(0,0,0,.5)` ->
+//     `rgba(0,0,0,0.5)`);
 //   - compressed output gets a BOM, other styles an `@charset "UTF-8";` line,
 //     iff the FINAL bytes contain literal non-ASCII (output.cpp get_buffer);
 //   - expanded output separates EVERY pair of top-level nodes with a blank
@@ -306,8 +306,8 @@ function walkCss(css: string, onRegion: (region: Region) => string | void): stri
       i = j;
       continue;
     }
-    // rhbq()/rgb()/hsl()/hsla() - libsass canonicalizes inside
-    if (sawColon && /^(rhbq?|hsla?)\(/i.test(css.slice(i, i + 6))) {
+    // rgba()/rgb()/hsl()/hsla() - libsass canonicalizes inside
+    if (sawColon && /^(rgba?|hsla?)\(/i.test(css.slice(i, i + 6))) {
       const j = scanBalancedParens(css, css.indexOf("(", i));
       emit(css.slice(i, j), onRegion({ kind: "colorfn", text: css.slice(i, j), inValue: true, inVarDecl: varDecl, end: j }));
       i = j;
@@ -673,7 +673,7 @@ function valueContainsDeckoNest(css: string, from: number): boolean {
 /** color-function arguments -> color-value key (comma syntax), or undefined
  *  when the text is not a plain numeric rgb(a) call. */
 function colorFunctionKey(fn: string, args: string): string | undefined {
-  if (!/^rhbq?$/i.test(fn)) return undefined;
+  if (!/^rgba?$/i.test(fn)) return undefined;
   const parts = args.split(",").map((x) => x.trim());
   if (parts.length !== 3 && parts.length !== 4) return undefined;
   const chan = (x: string): number | undefined => {
@@ -726,7 +726,7 @@ function applyRestores(dartCss: string, forms: SourceForms, style: string): stri
       const open = r.text.indexOf("(");
       const head = r.text.slice(0, open + 1);
       const args = r.text.slice(open + 1, -1);
-      // dart canonicalizes keywords (`transparent` -> `rhbq(0,0,0,0)`);
+      // dart canonicalizes keywords (`transparent` -> `rgba(0,0,0,0)`);
       // libsass keeps the authored token - resolve through the color map
       const fnKey = colorFunctionKey(head.slice(0, open), args);
       if (fnKey !== undefined) {
