@@ -704,16 +704,22 @@ export class RenderEngine implements RenderEngineLike {
    *  my_card roles nest inside it carrying the ensure_roles value). */
   private sessionAccountLinksFilledHtml: string | undefined;
   /** The session +*enabled_roles card's content fill, the port of
-   *  set/right/enabled_roles.rb ensure_roles' ORDER SEMANTICS (probed live
-   *  against the Ruby oracle, 2026-10-10): checkbox_input calls
-   *  card.ensure_roles at EVERY roles-nest render; the card object mutates
-   *  mid-request, so the FIRST nest render of a request shows the blank
-   *  content input (the fill lands after the field is out) and every LATER
-   *  nest render of the same request reads the filled content. Ruby's fill
-   *  does not cross the request boundary (Card::Env.reset per recorded
-   *  op; the oracle's bare view ops pin blank fields), so the flag is
-   *  render-scoped: cleared at every render() entry, flipped by the view
-   *  fns AFTER they consume the roles-nest html
+   *  set/right/enabled_roles.rb ensure_roles' STATE LIFETIME (probed live
+   *  against the Ruby oracle on the real capture deck, 2026-10-11):
+   *  checkbox_input calls card.ensure_roles at EVERY roles-nest render; the
+   *  first call fills the blank session card's content AFTER the hidden
+   *  content field is emitted, so the FIRST render shows the blank input
+   *  and every later render of the same process reads the filled content.
+   *  The mutated card object lives in Card::Cache, so the fill's lifetime
+   *  is the CACHE's, not the request's: Card::Env.reset alone keeps the
+   *  filled content (probed: a post-reset page renders FILLED), and
+   *  Card::Cache.renew blanks it again (probed). The real-deck capture rig
+   *  recorded exactly that (6,537 of 6,588 member pages carry the filled
+   *  input; the 48 real-page exceptions are each capture process's FIRST
+   *  page). The flag is therefore cache-scoped: cleared by
+   *  resetRequestSession — the harness seam that stands for the Ruby rigs'
+   *  fresh-process/Cache.renew boundary — never at render() entry, and
+   *  flipped by the view fns AFTER they consume the roles-nest html
    *  (RenderEngineLike.markSessionRolesContentFilled). */
   private sessionRolesContentFilled = false;
   private sessionAccountLinksHasRoles = false;
@@ -1205,9 +1211,10 @@ export class RenderEngine implements RenderEngineLike {
     this.requestNewCard = params.newCard;
     this.renderSearch = params.search;
     this.renderSearchFocalKey = name.key;
-    // The ensure_roles fill is per-request (see the field note): a fresh
-    // render starts with the session card's blank content.
-    this.sessionRolesContentFilled = false;
+    // The ensure_roles fill is NOT cleared here: its state lifetime is the
+    // card cache's, not the request's (the field note's live-oracle probe:
+    // Card::Env.reset alone keeps the filled content; only the harness's
+    // Cache.renew boundary — resetRequestSession — blanks it).
 
     // Read-permission preparation (see src/card/permissions/). On a cold
     // render the state resolution rides the prefetch batch (one round trip
@@ -7370,9 +7377,10 @@ export class RenderEngine implements RenderEngineLike {
     }
   }
 
-  /** Card::Env.reset's session half: a host whose sessions are per request
-   *  (the reference harness's recorder resets the environment before every
-   *  recorded request) clears the prepared chrome and the ensure_roles fill
+  /** The harness's fresh-process boundary (the Ruby rigs' Cache.renew): a
+   *  host whose sessions are per request (the reference harness's recorder
+   *  renews Card::Cache before every recorded op — harness_env.rb
+   *  begin_request!) clears the prepared chrome and the ensure_roles fill
    *  state, so the next render is the session's FIRST render — the roles
    *  dropdown's content input blank, the account links re-prepared. The
    *  pageSession itself stays; the caller re-signs in through it. */
