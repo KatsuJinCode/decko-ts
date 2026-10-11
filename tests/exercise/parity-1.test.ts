@@ -27,7 +27,7 @@
 // synthetic fixture (synthetic names, example.test addresses, a frozen clock).
 //
 // TWO PUBLISHED COUNTS, ONE GRADE. README.md:23 quotes 1,754 renders and 2,389
-// semantics operations; docs/coverage-inventory.md:44 and :50 quote 1,752
+// semantics operations; docs/coverage-inventory.md:60 quotes 1,752
 // render operations and 2,388 semantics operations. They are the same grade
 // counted two ways: the ops files hold 1,752 render and 2,388 semantics
 // operations, and the grader also grades the render and ask steps that run
@@ -330,7 +330,7 @@ describeOrSkipLoud(!HAVE_FIXTURE, "tests/exercise/parity-1.test.ts", "HAVE_FIXTU
       expect(Object.values(rendering.groups).reduce((n, s) => n + s.graded, 0)).toBe(1754);
       // The two published counts, reconciled against the fixture rather than
       // against each other: README.md:19/23 quote 1,754 (the tally above),
-      // docs/coverage-inventory.md:44 quotes 1,752 (the ops file), and the two
+      // docs/coverage-inventory.md:60 quotes 1,752 (the ops file), and the two
       // render steps inside the scenarios are exactly the difference.
       const renderSteps = e.scenarios.flatMap((s) => s.steps.filter((step) => step.op === "render")).length;
       expect({ ops_file: e.renderOps, render_steps_in_scenarios: renderSteps, sum: e.renderOps + renderSteps }).toEqual({
@@ -341,7 +341,7 @@ describeOrSkipLoud(!HAVE_FIXTURE, "tests/exercise/parity-1.test.ts", "HAVE_FIXTU
       expect(e.renderOps).toBe(e.expectedRenders.size);
     });
 
-    it("semantics 2,389 of 2,389 — the grade's semantics tally is 2,389 graded and 2,389 passing; the 2,388 that docs/coverage-inventory.md:20 and :50 both publish is the ops file, and the one ask step that follows a write is the whole difference", () => {
+    it("semantics 2,389 of 2,389 — the grade's semantics tally is 2,389 graded and 2,389 passing; the 2,388 that docs/coverage-inventory.md:20 and :66 both publish is the ops file, and the one ask step that follows a write is the whole difference", () => {
       const e = evidence;
       const semantics = e.report.summary.semantics;
       expect({ graded: semantics.graded, pass: semantics.pass, fail: semantics.fail, rate: semantics.rate }).toEqual({
@@ -373,7 +373,7 @@ describeOrSkipLoud(!HAVE_FIXTURE, "tests/exercise/parity-1.test.ts", "HAVE_FIXTU
         sum: 2389,
       });
       // Both places the 2,388 figure is published, still saying 2,388.
-      expect(e.coverageLines.filter(({ text }) => text.includes("2,388")).map(({ line }) => line)).toEqual([20, 50]);
+      expect(e.coverageLines.filter(({ text }) => text.includes("2,388")).map(({ line }) => line)).toEqual([20, 66]);
       expect(e.coverageLines.filter(({ text }) => text.includes("2,388")).every(({ text }) => text.includes("2,388 semantics operations"))).toBe(true);
     });
 
