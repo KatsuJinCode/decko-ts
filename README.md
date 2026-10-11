@@ -44,12 +44,12 @@ to this grade. The larger figures under
 [Migration status](#migration-status) — the with-mods corpus replay —
 are historical: they were measured on an earlier revision of the engine,
 on 2026-09-23, against a corpus that is not redistributable and cannot be
-reproduced from this repository. A disclosed subset of that historical
-corpus's expectations (13 of them) was re-anchored to bytes fetched from the
-live 0.19.1 site rather than to the 0.20.0 oracle, so those rows measure
-agreement with a live site and not with the oracle the rest of the corpus was
-captured from — see [docs/parity-method.md](docs/parity-method.md), "The
-thirteen live expectations". The current tree is verified by the test
+reproduced from this repository. A share of that historical corpus's
+expected bytes — 50 entries, in two disjoint swap sets of 13 and 37 — comes
+from the live 0.19.1 site rather than from the 0.20.0 oracle, so the
+historical corpus figure is not a pure Ruby-oracle grade: see
+[docs/parity-method.md](docs/parity-method.md), "The live-anchored
+expectations". The current tree is verified by the test
 suite and by byte identity on a fixed set of 40 pages across every serving
 path, not by a second full grade.
 
