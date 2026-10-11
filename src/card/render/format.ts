@@ -1934,7 +1934,13 @@ export class RenderFormat {
     // rescued view), 2026-10-09. Rescuing inside this catch (or letting the
     // rethrow die on a lane without quiet errors) is the seconds corpus's
     // TooDeep family: the bare view lane now passes nestQuietErrors like
-    // the page lane (render.ts).
+    // the page lane (render.ts). THE BOUNDARY-GRANULARITY QUESTION (the
+    // live v1 oracle vs this v2 pin — the ruling-1 observation,
+    // tmp/int/depth-probe/: the live /Chain_01 page renders Chain 20's
+    // titled shell + header with the span as the BODY, and the recorded
+    // core:Chain 01 pins the span inside Chain 20's core slot — the two
+    // fixtures pin OPPOSITE granularities; the reconciliation is the
+    // follow-up lane's) is recorded in full in the §10.28 receipt.
     if (sub.depth >= this.maxDepth) {
       throw new TooDeepError();
     }
@@ -3194,6 +3200,9 @@ export class RenderFormat {
       main: true,
     });
     if (sub.depth >= this.maxDepth) {
+      // The corpus never reaches this arm (main.rendered memoizes first);
+      // the raise stays the recorded posture here — see nest()'s depth
+      // guard for the observed quiet shape.
       throw new TooDeepError(); // monitor_depth, see nest()
     }
     return this.withNestMode("normal", () =>
