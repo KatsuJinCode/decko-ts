@@ -26,7 +26,20 @@
 // and per-test verdicts), never the rendered summary. node --test is read
 // from its spec reporter's stable counters. Stages and their order are the
 // npm script's, unchanged: test (card) -> test:deploy -> test:drivers ->
-// test:shadow -> test:reference-harness -> test:persistence-probe.
+// test:shadow -> test:reference-harness -> test:persistence-probe, plus the
+// no-caching freshness stage appended below.
+//
+// WHY no-caching is its OWN stage and not part of `npm test` (review finding
+// 16). tests/deploy/no-caching-synthetic.test.ts is the PUBLIC proof that a
+// write committed between two requests is visible to the next one on every
+// serving path — the deck_data_version stamp's whole reason to exist — and it
+// ran on no default command. It is fast in isolation (7.84 s measured alone,
+// 2026-10-11), but `npm test` (tests/card/) already costs ~155 s on this
+// tree, so adding it there would not keep that command under the two-minute
+// budget; it would also put a deploy-suite proof inside a card-only script.
+// A stage is the honest home: the suite runs on every release check, its
+// result is classified against KNOWN_FAILURES.md like every other stage, and
+// neither `npm test`'s scope nor its runtime changes.
 
 import { spawn } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
@@ -49,6 +62,7 @@ const STAGES = [
   { name: "shadow", target: ["tests/tools/shadow/"], runner: "vitest" },
   { name: "reference-harness", target: ["reference-harness/runner/test/*.test.mjs"], runner: "node-test" },
   { name: "persistence-probe", target: ["tests/tools/persist-write-probe.test.ts"], runner: "vitest" },
+  { name: "no-caching-freshness", target: ["tests/deploy/no-caching-synthetic.test.ts"], runner: "vitest" },
 ];
 
 /** Suite paths listed in KNOWN_FAILURES.md's table (the first column). A

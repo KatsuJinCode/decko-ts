@@ -127,10 +127,40 @@ data-version stamp once — a counter that database triggers advance on every
 change to cards or references — and resets the retained state when the counter
 has moved, so nothing retained is served past the write that invalidated it
 (`src/card/render.ts`; a warm render's whole extra cost is that one stamp
-read). `tests/deploy/no-caching-decision-state.test.ts` runs two requests in
-one process with a change made between them through a separate connection,
-and checks on every serving path that the second request answers from the
-deck as it now is.
+read).
+
+**The public proof is
+`tests/deploy/no-caching-synthetic.test.ts`** — the same proofs on the
+committed reference-harness synthetic deck rather than on an internal one, so
+a clean clone can run it (`npm run test:no-caching-freshness`; it is also a
+stage of `npm run release-check`). It installs
+`deploy/migrations/0003-deck-data-version-stamp.sql` on its copy exactly as a
+provisioned deck has the triggers, then makes each change through a SEPARATE
+database connection, as another process's committed write would, and renders
+again in the same process — the engine is told nothing, so whatever it kept
+must notice by itself. It covers the anonymous bare-page path, the
+`/:card/:view` path and the signed-in per-actor engine, and pins that a
+signed-in render's verdicts never reach the next anonymous render.
+`tests/deploy/no-caching-decision-state.test.ts` runs the same
+two-requests-one-process shape on internal fixtures.
+
+**What the stamp covers, and what it does not.** The triggers are on `cards`
+and `card_references` only. That is the whole retained render surface — card
+rows, the lexicon and resolved rules — so a stamp move invalidates everything
+it is responsible for. It is not a stamp on every table the render reads: the
+render also reads `card_actions` (the edit form's conflict tracker, and the
+history views), and the write path can mutate `card_actions` on its own — a
+reserved action row inserted with `card_id` NULL before its card exists
+(`ActWriter.reserveAction`), the `action_type` / `super_action_id` patches, and
+the draft clears. Every one of those rides inside a save that also writes
+`cards`, so the stamp moves with it; but a `card_actions`-only mutation that
+was a save's last write and changed no card would leave the stamp unmoved. The
+migration file enumerates the uncovered writes and names the one retained
+reader a stamp move is responsible for
+(`deploy/migrations/0003-deck-data-version-stamp.sql`, "SCOPE, AND WHAT A
+card_actions-ONLY WRITE DOES NOT BUMP"). Widening the triggers to
+`card_actions` would close it at the cost of a write per action row — a
+trade-off, not a comment, so it is not made here.
 
 Platform-level response caches (`DECKO_EDGE_CACHE`, `DECKO_EDGE_GLOBAL_CACHE`)
 are a separate, optional layer: off by default, and not relied on for

@@ -22,6 +22,7 @@
     "test:shadow": "vitest run tests/tools/shadow/",
     "test:reference-harness": "node --test \"reference-harness/runner/test/*.test.mjs\"",
     "test:persistence-probe": "vitest run tests/tools/persist-write-probe.test.ts",
+    "test:no-caching-freshness": "vitest run tests/deploy/no-caching-synthetic.test.ts",
     "release-check": "node scripts/release-check.mjs",
     "typecheck": "tsc --noEmit",
     "replay": "vitest run oracle-replay tests/testing",
