@@ -17,8 +17,7 @@
 -- because a committed write is authoritative regardless of which stream,
 -- process, or connection issued it. Without the stamp the warm render path
 -- serves pre-mutation bytes, including post-revocation permission verdicts
--- (delivery contract:79 — "No stale-success response or post-revocation data
--- leak is acceptable").
+-- (no stale-success response or post-revocation data leak is acceptable).
 --
 -- A database WITHOUT this stamp fails the render-path read LOUDLY by design
 -- (the engine throws "deck_data_version unreadable"): a silently skipped

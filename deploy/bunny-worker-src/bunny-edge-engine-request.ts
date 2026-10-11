@@ -74,7 +74,7 @@ import { newCardRouteResponse } from "./bunny-edge-new-card-form.js";
 export interface Deck {
   fetcher: FetchEngine;
   render: RenderEngine;
-  /** The deployment's served-environment deltas (review round 4, finding 9).
+  /** The deployment's served-environment deltas.
    *  The carrier for every value that used to be one private deck's
    *  hard-coded identity: its footer version, asset host and revisions, the
    *  error chrome's card ids and asset URLs, and the phantom item type.
@@ -431,7 +431,7 @@ async function dispatchEngineRequest(
   // (404, text/plain, "Could not find <id>." — measured on the live
   // site's /files/103/3649-small.jpg path).
   if (/^\/files\/\d+\/[^/]+/.test(url.pathname)) {
-    // THE FRESHNESS GATE (review round 3, finding 1 — the shared-edge
+    // THE FRESHNESS GATE (the shared-edge
     // counterpart of the gate both Cloudflare twins run at their data
     // routes, RenderEngine#ensureFreshness): this route resolves the
     // attachment through the ISOLATE-RETAINED engine (the handler's
@@ -456,7 +456,7 @@ async function dispatchEngineRequest(
       // ok?(:create) on the virtual card) lives in
       // bunny-edge-new-card-form.ts; the measured 404 this replaces is
       // capture-log-demo-nav.jsonl seq 97.
-      // THE FRESHNESS GATE (review round 3, finding 1 — same gate as the
+      // THE FRESHNESS GATE (same gate as the
       // /files arm above): the type fetch (fetchByKey) and the
       // create-verdict walk in bunny-edge-new-card-form.ts both read the
       // ISOLATE-RETAINED fetcher's card and rule caches, so a committed
@@ -500,14 +500,13 @@ async function dispatchEngineRequest(
           return json(400, { error: "empty card name" });
         }
         const deck = await source.deck();
-        // THE FRESHNESS BOUNDARY BEFORE THE FETCH AND THE READ GATE (review
-        // round 3, finding 1 — the BLOCKER the shared edge missed): this
+        // THE FRESHNESS BOUNDARY BEFORE THE FETCH AND THE READ GATE: this
         // handler retains ONE deck per isolate (the handler's module-scope
         // deckPromise), and canReadCard's verdicts memoize on that retained
         // engine (readPermission, deniedVerdicts — render.ts), while the
         // fetcher caches the rule rows the verdict walk reads. Without this
         // gate a read rule revoked after the engine's last freshness check
-        // kept serving 200 with the protected body here — the reviewer's
+        // kept serving 200 with the protected body here — the
         // grant-Anyone/read-200/revoke-to-Member/read-200 reproduction —
         // while the render entry clears its caches at this same gate on
         // every request (RenderEngine#render's renderHeld gate) and the

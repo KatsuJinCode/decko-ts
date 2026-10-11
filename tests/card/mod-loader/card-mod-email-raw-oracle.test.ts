@@ -277,7 +277,7 @@ describeOrSkipLoud(!FIXTURE_PRESENT, "tests/card/mod-loader/card-mod-email-raw-o
 
   it("base :url renders the origin-absolute card_url on the PAGE lane (the page oracle)", async () => {
     // The page capture CONFIGURES the origin (the :391-400 assignment; the
-    // engine constant is gone — review round 4, finding 9), so the test
+    // engine constant is gone), so the test
     // installs the capture's configuration around the page render the way
     // the capture script did.
     await withCapturePageLaneOrigin(async () => {

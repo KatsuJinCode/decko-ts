@@ -121,8 +121,8 @@ describe("the denied item bar uses the same Haml form", () => {
   // same sorted, single-quoted Haml list as a live bar's.
   //
   // The item is given the deck's CONFIGURED phantom type (its
-  // `*all+*default` template type — deployment configuration since review
-  // round 4, finding 9), because this pin asserts the ATTRIBUTE ORDER of a
+  // `*all+*default` template type — deployment configuration), because this
+  // pin asserts the ATTRIBUTE ORDER of a
   // typed bar: the slot id comes after the type name. A deck with no
   // configured type emits no type attributes at all and there is no order
   // to assert — the "no type chip" shape is pinned in

@@ -36,7 +36,8 @@
 //            carried by those round trips and ops=K = logical driver
 //            operations (one query()/batch()/transaction() call, however
 //            many round trips it issued — the number trips used to carry
-//            before finding 5). db OVERLAPS the wall phases by design —
+//            before binding calls and logical operations were counted
+//            separately). db OVERLAPS the wall phases by design —
 //            auth's session SELECT, the seat tier's lookup/store hops, and
 //            the render ladder all hit the same database; db answers "how
 //            much of this request was database", the wall phases answer
@@ -118,7 +119,7 @@ export interface EdgeDbLedgerSnapshot {
   /** Logical driver operations: SQLDatabaseDriver.query()/batch()/
    *  transaction() invocations, one each however many round trips they
    *  issue. This is the count the trips number used to carry before the
-   *  binding-boundary fix (review round 3, finding 5), kept so a
+   *  binding-boundary fix, kept so a
    *  dashboard comparing driver work across hosts still can. Recorded
    *  only on Cloudflare; Bunny leaves it at zero and the header omits it. */
   readonly driverOps: number;
@@ -183,7 +184,7 @@ export function edgeDbTimingFetch(): typeof fetch {
 
 /** Record one database round trip and its statements, measured where the
  *  round trip actually happens (cf-hosting 2026-10-07; binding-boundary
- *  counting per review round 3, finding 5): its wall time into the ledger,
+ *  counting): its wall time into the ledger,
  *  one trip, and the statements the trip physically carried. A FAILED call
  *  is recorded too — the D1 lock-state probe batch against a database
  *  without the transaction-state table is a round trip the request paid.
@@ -198,7 +199,7 @@ export function recordEdgeDbBindingCall(ms: number, statements: number): void {
 
 /** Record one logical driver operation: a single SQLDatabaseDriver
  *  query()/batch()/transaction() invocation, however many binding calls it
- *  actually issued. Kept as its own labelled counter (finding 5) so the
+ *  actually issued. Kept as its own labelled counter so the
  *  trips number can report real round trips without a dashboard that
  *  tracked the old per-invocation figure silently changing meaning. */
 export function recordEdgeDbDriverOp(): void {

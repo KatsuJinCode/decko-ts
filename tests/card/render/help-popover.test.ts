@@ -249,7 +249,7 @@ describe("menu help popover (help.rb + popover_opts + board_rules_editor port)",
       expect(afterPrepare.roundTrips - beforePrepare.roundTrips).toBeLessThanOrEqual(2);
       // warm re-renders cost nothing the resolver adds. Freshness lane
       // 2026-10-05: each warm render pays exactly the deck_data_version
-      // stamp read (one statement, one round trip — delivery contract:79),
+      // stamp read (one statement, one round trip),
       // so the two warm renders below add exactly +2/+2 beyond the first
       // render's own snapshot, all of it the stamp, none of it the resolver.
       expect(afterWarmRenders.roundTrips - afterFirstRender.roundTrips).toBe(2);

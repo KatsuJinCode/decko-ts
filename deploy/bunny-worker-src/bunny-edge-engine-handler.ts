@@ -245,7 +245,7 @@ async function routeBunnyEngineRequest(
   // runs ungated would strand live sessions. The handler itself is
   // read-shaped: it revokes the CALLER'S OWN session row (or answers
   // revoked:false) and never touches cards. NOT ungated to the ORIGIN
-  // check (review round 3, finding 3): the surface now runs the same
+  // check: the surface now runs the same
   // checkRequestOrigin policy the write routes and sign-in run
   // (docs/SECURITY.md's row names sign-out among the origin-checked
   // requests) — a cross-site GET/POST is refused 403 before the session
@@ -264,7 +264,7 @@ async function routeBunnyEngineRequest(
     const signoutConfig = resolveDbConfig(env);
     if (!("error" in signoutConfig)) {
       const signoutDeck = await getDeck(signoutConfig, env);
-      // THE ORIGIN GATE'S POLICY (review round 3, finding 3): the SAME
+      // THE ORIGIN GATE'S POLICY: the SAME
       // OriginPolicy derivation the write surface below runs its
       // requests through (applySecuritySettings over this host's env —
       // DECKO_ORIGIN_CHECK / DECKO_TRUSTED_ORIGINS), so sign-in,

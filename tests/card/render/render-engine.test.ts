@@ -338,7 +338,7 @@ describe("batched inclusion prefetch: queries per render (decko#1282)", () => {
       const html = await storage.engine.render("chain_l1", "content");
       expect(html).toContain("level 8 end");
       // Freshness lane 2026-10-05: the warm render pays exactly the
-      // deck_data_version stamp read (delivery contract:79 — the committed
+      // deck_data_version stamp read (the committed
       // state must be observable on the next request, so the warm render's
       // floor is one statement, not zero).
       expect(storage.counting.snapshot()).toEqual({ statements: 1, roundTrips: 1 });

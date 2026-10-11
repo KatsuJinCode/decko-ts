@@ -1,14 +1,14 @@
 // The SHARED edge handler's security boundaries, driven END TO END through
 // handleBunnyEngineRequest (deploy/bunny-worker-src/bunny-edge-engine-
 // handler.ts) — the module whose module-scope deckPromise RETAINS one deck
-// per isolate across requests. Adversarial review round 3 found the two
-// gaps closed here; each test mirrors the reviewer's reproduction.
+// per isolate across requests. The two security gaps closed here were found
+// by driving this handler adversarially; each test mirrors the reproduction.
 //
-// FINDING 1 (BLOCKER — stale permission verdicts on the retained engine):
+// GAP 1 (BLOCKER — stale permission verdicts on the retained engine):
 // the shared-edge data routes fetched and judged permissions through the
 // retained engine WITHOUT establishing freshness first, so a read rule
 // revoked after the engine's last freshness check kept serving the
-// pre-revocation answer — the reviewer's grant-Anyone / read-200 /
+// pre-revocation answer — the grant-Anyone / read-200 /
 // revoke-to-Member / read-200 probe, while the root Worker's /api/card
 // branch answered 403 (RenderEngine#ensureFreshness has run there since
 // the earlier fix, worker.ts:310). The routes now run ensureFreshness()
@@ -21,14 +21,14 @@
 // viewTaskPermissionStatements batch in bunny-edge-new-card-form.ts), so
 // a rule flip cannot manifest as a stale verdict there; its gate covers
 // the fetcher-cached inputs (the type fetchByKey, the chrome reads).
-// Covered routes: /api/card/<name> (the reviewer's route, permission
+// Covered routes: /api/card/<name> (permission
 // staleness), /files/<id>/<leaf> (data staleness: a committed content
 // edit must move the carrier URL the next request derives), and
 // /new/:type (defense-in-depth behavior pin).
 //
-// FINDING 3 (SHOULD — sign-out bypassed the origin policy): GET|POST
+// GAP 2 (SHOULD — sign-out bypassed the origin policy): GET|POST
 // /_signout revoked the caller's session with NO origin check, so a
-// cross-site GET with a live cookie revoked it (the reviewer's
+// cross-site GET with a live cookie revoked it (the
 // Sec-Fetch-Site: cross-site + foreign Referer probe). The surface now
 // runs the SAME checkRequestOrigin policy the write routes and sign-in
 // run (request-origin.ts; docs/SECURITY.md's approved-divergences row
@@ -316,7 +316,7 @@ async function mintSessionToken(): Promise<string> {
   return match![1] as string;
 }
 
-describe("shared edge handler — retained-engine freshness gates every data route (review round 3, finding 1)", () => {
+describe("shared edge handler — retained-engine freshness gates every data route", () => {
   it("/api/card: grant-Anyone reads 200, a committed revoke-to-signed-in flips it to 403 with no leaked body", async () => {
     const path = "/api/card/Governed%20Page";
     // Request 1 — the grant: 200 with the preview, over the freshly
@@ -338,7 +338,7 @@ describe("shared edge handler — retained-engine freshness gates every data rou
       [IDS_RULE.anyoneSignedIn, IDS_RULE.governedReadRule],
     );
 
-    // Request 2 — the reviewer's failing probe: WITHOUT the freshness gate
+    // Request 2 — the failing probe: WITHOUT the freshness gate
     // the retained engine's memoized verdict (and cached rule rows)
     // answered 200 with the protected body. WITH the gate the moved stamp
     // resets the caches first and the fresh verdict answers 403, the CF
@@ -406,7 +406,7 @@ describe("shared edge handler — retained-engine freshness gates every data rou
   });
 });
 
-describe("shared edge handler — sign-out sits behind the origin policy (review round 3, finding 3)", () => {
+describe("shared edge handler — sign-out sits behind the origin policy", () => {
   it("a cross-site GET /_signout (foreign Sec-Fetch-Site and Referer) is refused 403 and revokes NOTHING", async () => {
     const token = await mintSessionToken();
     // The session is live before the probe.
@@ -427,7 +427,7 @@ describe("shared edge handler — sign-out sits behind the origin policy (review
     const parsed = (await response.json()) as { error?: { code?: string } };
     expect(parsed.error?.code).toBe("cross-origin");
     expect(response.headers.get("set-cookie")).toBeNull();
-    // The session row SURVIVES — the reviewer's reproduction had the
+    // The session row SURVIVES — the reproduction had the
     // cross-site GET revoke it.
     expect(await new SessionStore({ driver }).lookupSession(token)).not.toBeNull();
   });

@@ -1,4 +1,4 @@
-// Review round 2, finding 2 — stale permission verdicts through the root
+// Stale permission verdicts through the root
 // Worker card API. The isolate retains ONE engine across requests (worker.ts
 // getDeck's memoized boot promise) and RenderEngine memoizes the read-
 // permission state plus per-card verdicts. The HTML render path guards that

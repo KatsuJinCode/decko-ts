@@ -6,11 +6,11 @@
 //
 // Bug shape (mechanism-census mechanism (f) "unresolved
 // content-divergence with an entity-named-card cluster"; sampled
-// examples id 14546 "Jacob Benedetti+musings", id 15261 "Daemeon
+// examples id 14546 "Jonas Verhoeven+musings", id 15261 "Daemeon
 // Reiydelle+Project(s) Organizing", id 16122 "Alexander Rendell+musings",
 // id 14329 "Nathan Colville+musings", id 12 "Sign up", id 22 "PlainText",
 // id 827 "VPX", id 35864 "Robert Ellingham Yamada Yoshimitsu New York Aikikai",
-// id 40381 "Learning Pool+Slack Channel naming conventions most in use+*self",
+// id 40381 "Practice Pool+Slack Channel naming conventions most in use+*self",
 // id 43485 "Artificial Intelligence+anon_exchange_02+*self", id 49305
 // "mod: account+*script" — pages whose names share an entity cluster
 // because the +musings / +rvw / +Sign up / etc family all funnel through
@@ -89,7 +89,7 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
   // -------------------------------------------------------------------------
   it("unit: no identity -> the DECK's configured phantom type (the no-host-type fallback pin)", () => {
     // The fallback is the deck's own `*all+*default` template type, which is
-    // deployment CONFIGURATION (review round 4, finding 9) rather than an
+    // deployment CONFIGURATION rather than an
     // engine constant. This case hands the builder the production deck's
     // configured type and pins that those bytes still come out right.
     const body = pointerListItemBodyForUnknown(
@@ -158,7 +158,7 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
       // The consideration cardtype — what the host's cql-typed
       // *content_options rule points at (matches corpus id 2979).
       await seedCard(storage, { id: 2979, name: "consideration", typeId: 5 });
-      // The host list card (matches corpus "Jacob Benedetti+musings"
+      // The host list card (matches corpus "Jonas Verhoeven+musings"
       // shape — type 47 List, one item that does NOT exist in the deck).
       await seedCard(storage, {
         id: 99146,

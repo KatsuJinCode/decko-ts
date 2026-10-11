@@ -182,7 +182,7 @@ export async function bootEdgeServingEngines(
   opts: {
     maxTemporaryCacheKeys?: number;
     nameScan?: boolean;
-    /** The deployment's configured asset host (review round 4, finding 9).
+    /** The deployment's configured asset host.
      *  Unset = the engine's own host-relative /files/ form, which is what a
      *  deck with no CDN configured serves. Read from the deployment's
      *  DECKO_SERVED_DELTAS assetHost by bootDeck; never hard-coded. */
@@ -194,11 +194,11 @@ export async function bootEdgeServingEngines(
     /** The deck's configured time zone (IANA name) for every timestamp the
      *  render path formats. Unset keeps the graded deck's zone. */
     timeZone?: string;
-    /** The deck's configured origin — Ruby's `Cardio.config.deck_origin`
-     *  (review round 4, finding 9). Installed through
-     *  setDeckEnvironment so the engine's own bytes (the page head's
-     *  decko.rootUrl, the :url views) carry the configured origin instead
-     *  of the requestless relative form. Unset = relative URLs. */
+    /** The deck's configured origin — Ruby's `Cardio.config.deck_origin`.
+     *  Installed through setDeckEnvironment so the engine's own bytes (the
+     *  page head's decko.rootUrl, the :url views) carry the configured
+     *  origin instead of the requestless relative form. Unset = relative
+     *  URLs. */
     deckOrigin?: string;
   } = {},
 ): Promise<DeckEngines> {
@@ -219,13 +219,13 @@ export async function bootEdgeServingEngines(
   }
   engines.render.imageCdnHost = opts.assetHost;
   engines.render.phantomItemType = opts.phantomItemType;
-  // The DECK's time zone (review round 4, finding 22). The render path's
+  // The DECK's time zone. The render path's
   // timestamps read it from src/card/deck-time-zone.ts rather than from a
   // hard-coded capture-host zone, so a deployment sets it here. Unset keeps
   // the graded deck's zone, which is what leaves every graded byte intact
   // while removing the dependency on the capture host's OS setting.
   if (opts.timeZone !== undefined) setDeckTimeZone(opts.timeZone);
-  // THE DECK'S CONFIGURED ORIGIN (review round 4, finding 9): the same
+  // THE DECK'S CONFIGURED ORIGIN: the same
   // configuration channel the capture script used
   // (capture-dual-lane-page-and-view.rb:391-400 assigns
   // Cardio.config.deck_origin around the page lane). Unset, the engine

@@ -64,7 +64,7 @@ describe("RenderEngine + rule engine integration", () => {
     expect(html2).toMatch(/\blede\b/);
     // The rule cache served the override without re-walking; the render's
     // only statement is the deck_data_version stamp read (freshness lane
-    // 2026-10-05, delivery contract:79 — the warm-render floor is one
+    // 2026-10-05 — the warm-render floor is one
     // statement so a committed change is observable on the next request).
     const counts = (s.counting as unknown as { snapshot: () => { statements: number; roundTrips: number } }).snapshot();
     expect(counts.roundTrips).toBe(1);

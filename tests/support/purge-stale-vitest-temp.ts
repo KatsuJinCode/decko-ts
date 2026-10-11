@@ -3,7 +3,7 @@
 // run scratch-dir.mjs's exit hook) does not fill the scratch root. Live runs
 // write continuously, so they are never stale.
 //
-// What may be deleted, and what may not (finding 17 — the old version scanned
+// What may be deleted, and what may not (the old version scanned
 // the shared OS temp folder and deleted by name shape and age alone, which
 // could delete another checkout's or another task's scratch):
 //

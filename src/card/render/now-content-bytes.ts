@@ -7,8 +7,8 @@
 // system: the zone the instant is rendered in is the deck's, and the
 // abbreviation is computed from that zone and offset, so a daylight-time
 // instant reads "PDT" where it used to read the Windows display name
-// "Pacific Standard Time" (review round 4, finding 22 — see that module's
-// header for why the display name was wrong half the year). The instant
+// "Pacific Standard Time" (see that module's header for why the display
+// name was wrong half the year). The instant
 // comes from the injectable capture wall clock (the graded corpus freezes
 // it; CAPTURE_FROZEN_CLOCK=2026-09-19T12:00:00Z renders "Saturday,
 // September 19, 2026 05:00 AM PDT" in the graded deck's zone).

@@ -294,8 +294,8 @@ CREATE UNIQUE INDEX "unique_schema_migrations_cards" ON "transform_migrations" (
 -- src/card/render.ts DECK_DATA_VERSION_STATEMENT) and clears its derived
 -- caches when the value moved, so a warm runtime serves the committed state
 -- with no staleness window and a revoked read can no longer be served from a
--- cached verdict (delivery contract:79 — "No stale-success response or
--- post-revocation data leak is acceptable").
+-- cached verdict: no stale-success response or post-revocation data leak is
+-- acceptable.
 --
 -- The bump lives in TRIGGERS, not in an application write API, because a
 -- committed write is authoritative regardless of which stream or process

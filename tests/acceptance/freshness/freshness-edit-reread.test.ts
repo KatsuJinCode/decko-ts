@@ -1,4 +1,4 @@
-// The delivery contract's B "No-cache and freshness rules" arm, as isolated
+// The "No-cache and freshness rules" arm, as isolated
 // engine tests: the commit-edit reread semantics.
 //
 // PORTED to the deployed edge lineage (lane-edge-security-2026-10-05, base
@@ -237,7 +237,7 @@ function discardRuntime(rt: FileRuntime): void {
 }
 
 /** Open a SECOND runtime triple on an existing runtime's database file --
- *  the contract's "a new runtime" arm (delivery contract:79). Deliberately a
+ *  the contract's "a new runtime" arm. Deliberately a
  *  fresh driver, fetcher and engine with no cache state carried over. */
 function openNewRuntimeOn(dbPath: string): FileRuntime {
   const driver = new LocalSqliteDriver({ path: dbPath });
@@ -490,8 +490,8 @@ describe("B freshness mechanism control: manual resetCaches still reveals the co
 // ---------------------------------------------------------------------------
 // Scenario 5 -- the cost of the freshness gate itself: a warm render must
 // issue EXACTLY ONE statement, the deck_data_version stamp read. This is the
-// honest contract-compliant number (delivery contract:79 requires the next
-// request to reflect the committed state, which rules out a zero-statement
+// honest contract-compliant number (the next
+// request must reflect the committed state, which rules out a zero-statement
 // warm render) -- one PK point SELECT, not a re-read of the deck.
 // ---------------------------------------------------------------------------
 

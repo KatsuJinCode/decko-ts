@@ -1,6 +1,6 @@
 // Depth-3+ junction inclusion closure: the defect-2 regression tests.
 //
-// DEFECT (docs/deploy-cloudflare.md finding 2): the prefetcher could not resolve
+// DEFECT: the prefetcher could not resolve
 // junction (NULL-key) nest targets deeper than two parts. The original walk
 // matched frontier keys against cards.key - which junction rows do not
 // carry - and the JS fallback's side-key join required BOTH sides of a
@@ -65,7 +65,7 @@ function chainCards(depth: number): ChainCard[] {
   return cards;
 }
 
-describe("depth-3+ junction inclusion closure (deploy-notes finding 2 fix)", () => {
+describe("depth-3+ junction inclusion closure (recursive compound-side resolution)", () => {
   it("renders a depth-3 junction inclusion chain, covered by the per-key closure rounds", async () => {
     const storage = await createRenderTestStorage();
     try {

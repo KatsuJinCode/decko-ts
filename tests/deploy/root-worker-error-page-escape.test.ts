@@ -1,4 +1,4 @@
-// The root Worker entry's error page — review round 2, finding 1: reflected
+// The root Worker entry's error page — reflected
 // script injection. An engine error MESSAGE embeds the raw request verbatim
 // (UnsupportedViewError's text is "view (X) not supported for Y" —
 // src/card/render/format.ts — and X is whatever rode the ?view= query), so

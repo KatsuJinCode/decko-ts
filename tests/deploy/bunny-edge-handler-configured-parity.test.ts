@@ -1,5 +1,5 @@
 // The CONFIGURED half of the edge handler's deck identity, in its own
-// isolate (review round 4, finding 9).
+// isolate.
 //
 // WHY A SEPARATE FILE. The handler memoizes ONE deck per isolate
 // (`deckPromise` in bunny-edge-engine-handler.ts) and the boot reads the
@@ -183,7 +183,7 @@ describe("bunny edge engine handler — a CONFIGURED deployment serves its own d
     // …and the report carries NAMES only: a configured value can be a
     // private URL, and /_status is exposed.
     const raw = JSON.stringify(status);
-    expect(raw).not.toContain("culturesmith-production-storage");
+    expect(raw).not.toContain("source-deck-production-storage");
     expect(raw).not.toContain("0.19.1");
   });
 });

@@ -1,5 +1,4 @@
-// Rendering reads the DECK's configured time zone (review round 4,
-// finding 22).
+// Rendering reads the DECK's configured time zone.
 //
 // The defect: now-content-bytes.ts, errors.ts and set-module-content-overrides.ts
 // hard-coded America/Los_Angeles — the CAPTURE HOST's operating-system zone —

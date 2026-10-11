@@ -1,5 +1,5 @@
 // The page-lane capture's configured origin, as the TEST CONFIGURATION the
-// replay suites install (review round 4, finding 9).
+// replay suites install.
 //
 // WHAT THIS VALUE IS. The dual-lane capture script assigns
 // `Cardio.config.deck_origin` around the page lane and restores it after

@@ -5,7 +5,8 @@
 // render engine reads the deck_data_version stamp at every render entry
 // (src/card/render.ts DECK_DATA_VERSION_STATEMENT) and fails LOUDLY on an
 // unmigrated database BY DESIGN — a silently skipped check would be a silent
-// staleness window (delivery contract:79's no-leak clause; the throw's own
+// staleness window (a stale-success response or post-revocation data leak is
+// not acceptable; the throw's own
 // doc in readDeckDataVersion). The one-trip suites render through engines
 // opened on copies of the trial-deck mirror, a database built BEFORE the
 // stamp schema existed. This file is that migration, applied where it is

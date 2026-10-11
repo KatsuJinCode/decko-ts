@@ -81,7 +81,6 @@ interface ErrorPageDriver {
 
 // ---------------------------------------------------------------------------
 // Deck identity — DEPLOYMENT CONFIGURATION, not constants
-// (review round 4, finding 9)
 // ---------------------------------------------------------------------------
 //
 // Every value in this block used to be a module constant pinned from one
@@ -400,7 +399,7 @@ async function renderNavbarLinks(deck: ErrorPageDeck): Promise<string> {
  *  escape only on the slot JSON — the live byte form. */
 async function renderFooterContent(deck: ErrorPageDeck): Promise<string> {
   const creditImage = await fetchCardDbContent(deck, "*credit_image");
-  // The footer version pin is deployment configuration (finding 9). With no
+  // The footer version pin is deployment configuration. With no
   // pin configured the credit block prints the deck's own stored bytes and
   // makes no version claim of its own.
   const version = deltasOf(deck).footerVersionPin;
@@ -486,7 +485,7 @@ interface DefaultLayout {
 async function resolveDefaultLayout(deck: ErrorPageDeck): Promise<DefaultLayout> {
   const deltas = deltasOf(deck);
   // The default-layout rule's two anchors are the deck's OWN *all and *layout
-  // card ids, which differ per deck (finding 9). Without them there is
+  // card ids, which differ per deck. Without them there is
   // nothing to query with, so the builder falls back to its minimal stub —
   // the same contract as a missing layout body, and the honest answer for a
   // deployment that has not told us which layout rule is its default.
@@ -551,9 +550,9 @@ function buildNotFoundSlotHtml(
   urlKey: string,
 ): string {
   const slotJson = notFoundSlotOptionsJson();
-  // The not-found card's TYPE identity is deployment configuration (finding
-  // 9). Unset, the slot carries no TYPE- class chip and no type attributes —
-  // the stock shape, rather than another deck's default type card.
+  // The not-found card's TYPE identity is deployment configuration. Unset,
+  // the slot carries no TYPE- class chip and no type attributes — the stock
+  // shape, rather than another deck's default type card.
   const notFoundType = deltasOf(deck).notFoundType;
   const typeChip = notFoundType === undefined ? "" : ` TYPE-${notFoundType.classToken}`;
   const typeIdAttr =
@@ -700,7 +699,7 @@ async function wrapWithLayout(
 (pageOpts.headExtraLine ?? "") +
     `\n` +
     // The favicon and the compiled CSS link are emitted only when the
-    // deployment configured URLs for them (finding 9): an unconfigured deck
+    // deployment configured URLs for them: an unconfigured deck
     // gets no reference to another deck's asset files.
     (boot.faviconUrl === "" ? "" : `<link rel="shortcut icon" href="${escapeHtml(boot.faviconUrl)}" />\n`) +
     `<link href="https://fonts.googleapis.com/css2?family=Material+Icons" media="all" rel="stylesheet" type="text/css" />\n` +

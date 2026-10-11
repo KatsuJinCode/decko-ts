@@ -211,7 +211,7 @@ describe("corpus replay: *structure rule templates render byte-identically", () 
       // structured pass is pure memory once resolved; absent template
       // targets are recorded misses that never re-query). Freshness lane
       // 2026-10-05: the warm render's floor is the deck_data_version read
-      // (one statement, one round trip — delivery contract:79).
+      // (one statement, one round trip).
       const first = entries[0] as ProofEntry;
       const firstView = Object.keys(first.views)[0] as string;
       await storage.engine.render(first.name, firstView);

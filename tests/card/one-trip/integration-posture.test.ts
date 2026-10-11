@@ -58,7 +58,8 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/integration-posture.test.ts"
   let sidePath = "";
   // The engine decks render through the COMPOSED engine, whose freshness
   // gate reads deck_data_version at every render entry and fails LOUDLY on
-  // an unmigrated database BY DESIGN (delivery contract:79). The shared
+  // an unmigrated database BY DESIGN (a stale-success response or a
+// post-revocation data leak is not acceptable). The shared
   // mirror predates the stamp schema and is never modified, so every arm
   // renders from this migrated temp copy instead (0003, order-safe; adds no
   // render bytes).

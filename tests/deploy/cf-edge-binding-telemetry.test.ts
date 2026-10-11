@@ -1,16 +1,16 @@
-// The Cloudflare edge entry's binding-boundary telemetry (review round 3,
-// finding 5): X-Decko-Db-Trips and the ledger must count what the D1
+// The Cloudflare edge entry's binding-boundary telemetry: X-Decko-Db-Trips
+// and the ledger must count what the D1
 // binding actually received — binding CALLS and the statements those calls
 // physically carried — not logical driver operations. The counting fix
 // lives at the binding seam (cf-edge-engine-entry.ts ledgeredBinding), so
 // the counts include the calls no driver query()/batch() ever surfaces:
 // the serving path's lock-state probe batch that FAILS before the
-// transaction-state table is installed (the reviewer's repro: "Driver
+// transaction-state table is installed (the reproduction: "Driver
 // queries: 1, Binding batches: 2"), the fallback batch after it, lease
 // repairs, and the transaction journal's own begin/commit batches.
 //
 // The instrument here is a counting D1 binding over local SQLite — the
-// same shape as the reviewer's repro — and the spine assertion is exact
+// same shape as that reproduction — and the spine assertion is exact
 // equality between what the binding saw and what the ledger recorded, in
 // every scenario, failed batches included.
 
@@ -88,8 +88,8 @@ function makeDriver(sqlite: LocalSqliteDriver): { driver: LedgerD1Driver; bindin
   return { binding, driver: new LedgerD1Driver(new CloudflareD1Adapter(ledgeredBinding(binding))) };
 }
 
-describe("cf edge telemetry: the ledger counts binding calls, not driver operations (finding 5)", () => {
-  it("the reviewer's repro: one driver query over a database without the transaction-state table is TWO binding calls carrying THREE statements", async () => {
+describe("cf edge telemetry: the ledger counts binding calls, not driver operations", () => {
+  it("one driver query over a database without the transaction-state table is TWO binding calls carrying THREE statements", async () => {
     const sqlite = new LocalSqliteDriver({ path: ":memory:" });
     const { driver, binding } = makeDriver(sqlite);
     resetEdgeDbLedgerForTests();

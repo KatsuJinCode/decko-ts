@@ -69,7 +69,7 @@ function edgeGet(pathname: string): Request {
  *  corpus card ids, its asset URLs, its footer version pin), so this suite
  *  states that configuration explicitly — the same values its runbook sets
  *  through the environment — rather than relying on the engine's source
- *  carrying one deck's identity by default (review round 4, finding 9). */
+ *  carrying one deck's identity by default. */
 function realDeck(storage: RenderTestStorage) {
   return {
     fetcher: storage.fetcher,
@@ -219,7 +219,7 @@ describe("bunny edge — full-chrome not_found page (staging builder shape)", ()
 });
 
 describe("bunny edge — the error chrome carries NO deck identity when none is configured", () => {
-  // Review round 4, finding 9. The chrome above pins the PRODUCTION deck's
+  // The chrome above pins the PRODUCTION deck's
   // bytes because it states that deck's configuration. This suite pins the
   // other half: with no configuration, the same seeded deck serves no corpus
   // card ids, no private asset URLs and no version pin belonging to any other

@@ -140,11 +140,11 @@ export function getDriver(config: ResolvedDbConfig, env: EdgeEnv): SQLDatabaseDr
  *    DECKO_EDGE_PIPELINE_TIMEOUT_MS (the P1 incident fix; needs the
  *    carried driver whose 0 maps to "no per-hop abort"), and
  *    render.imageCdnHost from the deployment's CONFIGURED asset host
- *    (review round 4, finding 9 — content images resolve against the host
+ *    (content images resolve against the host
  *    this deployment serves from, not against one deck's hard-coded CDN
  *    bucket).
  *
- *  THE DECK ALSO CARRIES ITS SERVED DELTAS (finding 9): bootDeck resolves
+ *  THE DECK ALSO CARRIES ITS SERVED DELTAS: bootDeck resolves
  *  them off the same env bag the credentials came from and hangs them on the
  *  Deck, so the page path's delta pass, the /files/ route and the error
  *  pages all read the same deployment configuration. A deployment that sets
@@ -172,7 +172,7 @@ export async function bootDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<
   // bootEdgeServingEngines: the corpus boot + imageCdnHost, without the
   // deck-wide name scan unless DECKO_EDGE_NAME_SCAN=1 (see its doc).
   //
-  // THE DEPLOYMENT'S SERVED DELTAS (review round 4, finding 9): resolved
+  // THE DEPLOYMENT'S SERVED DELTAS: resolved
   // here, once per isolate, off the same env bag the credentials came from,
   // and carried on the Deck so every serving surface reads one answer. With
   // no configuration this is the empty set and every delta pass is a no-op —
@@ -182,11 +182,11 @@ export async function bootDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<
     ...(oneTripWantsPayload() ? { maxTemporaryCacheKeys: ONE_TRIP_BOOT_MAX_TEMPORARY_CACHE_KEYS } : {}),
     ...(servedDeltas.assetHost === undefined ? {} : { assetHost: servedDeltas.assetHost }),
     ...(servedDeltas.phantomType === undefined ? {} : { phantomItemType: servedDeltas.phantomType }),
-    // The deck's time zone (review round 4, finding 22) — Ruby's Time.zone,
+    // The deck's time zone — Ruby's Time.zone,
     // which every rendered timestamp reads instead of a hard-coded
     // capture-host zone.
     ...(servedDeltas.timeZone === undefined ? {} : { timeZone: servedDeltas.timeZone }),
-    // The deck's configured origin (review round 4, finding 9) — Ruby's
+    // The deck's configured origin — Ruby's
     // Cardio.config.deck_origin, which card_url prefixes onto the engine's
     // own bytes (decko.rootUrl, the :url views). Unset, the engine renders
     // relative URLs: no byte carries an origin nobody configured.
@@ -211,7 +211,7 @@ export async function statusResponse(
     );
     const n = Number(r.rows[0]?.n);
     const host = edgeHostLabels();
-    // THE DEPLOYMENT'S DECK IDENTITY, AS A BOOLEAN (finding 9): whether the
+    // THE DEPLOYMENT'S DECK IDENTITY, AS A BOOLEAN: whether the
     // served deltas carry any configuration at all. Names and counts only —
     // never a configured VALUE, which can be a private URL — so /_status
     // stays safe to expose while still letting an operator confirm that a

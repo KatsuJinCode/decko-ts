@@ -195,7 +195,7 @@ export class ActorRenderEngines {
     render.tokenConfig = this.base.render.tokenConfig;
     render.fileStorage = this.base.render.fileStorage;
     // The deck's phantom (unknown item) type is host-deployment config on
-    // the same terms as the three above (review round 4, finding 9), so it
+    // the same terms as the three above, so it
     // is copied off the shared engine rather than re-derived — an actor
     // render that lost it would render unknown pointer items with no type
     // chip, which is a different page from the one the anonymous engine
@@ -237,7 +237,7 @@ export class ActorRenderEngines {
  * clearedSessionCookieHeader carries no Secure because the Node staging
  * host also serves plain http on localhost).
  *
- * THE ORIGIN GATE (review round 3, finding 3): sign-out is a
+ * THE ORIGIN GATE: sign-out is a
  * state-changing request, and docs/SECURITY.md's approved-divergences row
  * says writes AND sign-in/sign-out pass the same-origin check — the same
  * checkRequestOrigin policy (request-origin.ts: Sec-Fetch-Site, then

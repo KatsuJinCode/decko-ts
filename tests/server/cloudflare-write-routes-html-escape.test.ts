@@ -1,7 +1,7 @@
 // The Workers write surface's HTML error-page emitter — the src/server
 // sibling of the root worker's error-page escape pin
-// (tests/deploy/root-worker-error-page-escape.test.ts, review round 2
-// finding 1): plainText interpolates title and message into <title>, <h1>
+// (tests/deploy/root-worker-error-page-escape.test.ts): plainText
+// interpolates title and message into <title>, <h1>
 // and <p>, and the message slot is one careless call away from embedding a
 // requested name or an engine error's raw text — the same reflected-XSS
 // shape that hole had. Every current call site passes fixed literals, so

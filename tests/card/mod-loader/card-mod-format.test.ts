@@ -281,7 +281,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     // the 6588 page-lane oracle rows pin (`decko.rootUrl=
     // 'https://culturesmith.com/'`; `<a href="https://culturesmith.com/
     // User">` on card 21792). The origin is DECK CONFIGURATION now
-    // (review round 4, finding 9 — the engine constant is gone), so the
+    // (the engine constant is gone), so the
     // test installs the capture's configuration the same way the capture
     // script did: around the page render, restored after.
     await withCapturePageLaneOrigin(async () => {
@@ -306,8 +306,8 @@ describe("card-mod-format through the mod loader (A/B)", () => {
 
   it("WITH the mod: :id_url renders the origin-absolute id-mark card_url on the PAGE lane", async () => {
     const s = storage!;
-    // The page capture's configured origin (review round 4, finding 9: the
-    // origin is deck configuration now — the capture assigns
+    // The page capture's configured origin (the
+    // origin is deck configuration — the capture assigns
     // Cardio.config.deck_origin around the page lane at
     // capture-dual-lane-page-and-view.rb:391-400, and this test does the
     // same through the seam).
@@ -367,7 +367,7 @@ describe("card-mod-format through the mod loader (A/B)", () => {
   it("WITH the mod: :url_link renders the external-link anchor on the PAGE lane", async () => {
     const s = storage!;
     // The same chain with the page capture's configured origin active (the
-    // :391-400 assignment, through the seam — review round 4, finding 9),
+    // :391-400 assignment, through the seam),
     // so card_url is absolute and resource_type takes links.rb:67's
     // external arm: target FIRST, then class, then href (links.rb:155-156,
     // :102 — Hash insertion order, the capture-pinned order).

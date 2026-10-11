@@ -193,10 +193,9 @@ export const NO_METHOD_ERROR_CLASS_NAME = "NoMethodError";
  *  only :mday and a zone), and the month and year come from Date.today.
  *  Today is read from the engine's wall-clock seam (src/card/wall-clock.ts),
  *  so a capture run that freezes the clock gets the capture's month, in the
- *  DECK's configured zone (src/card/deck-time-zone.ts — review round 4,
- *  finding 22; this used to name America/Los_Angeles, the capture host's
- *  operating-system zone, so a deck in another zone completed the date from
- *  the wrong "today"). */
+ *  DECK's configured zone (src/card/deck-time-zone.ts; this used to name
+ *  America/Los_Angeles, the capture host's operating-system zone, so a deck
+ *  in another zone completed the date from the wrong "today"). */
 function fillFromReferenceMonth(day: number): Date | null {
   // Ruby's Date.parse completes the missing month and year from Date.today
   // in the deck's zone. Read the engine's wall-clock seam and the deck's

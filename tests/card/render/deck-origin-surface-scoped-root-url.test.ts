@@ -16,7 +16,7 @@
 //   card/lib/cardio/railtie.rb:28            config.deck_origin = nil  (default)
 //
 // So `card_url("")` is Env.origin + "/", and Env.origin is the DECK'S
-// CONFIGURED deck_origin (review round 4, finding 9) — or the requestless
+// CONFIGURED deck_origin — or the requestless
 // "" when the deck configures none and there is no controller, which is
 // exactly the view-function capture lane. The two capture lanes photograph
 // two CONFIGURATION states of the same helper:

@@ -692,8 +692,8 @@ export class RenderEngine implements RenderEngineLike {
   /** The deck's PHANTOM item type — the type an unknown (record-less)
    *  pointer/list item carries when no host item type resolves one.
    *
-   *  WHY IT IS CONFIGURATION (review round 4, finding 22's sibling, finding
-   *  9): in Ruby this is the deck's own `*all+*default` template type —
+   *  WHY IT IS CONFIGURATION: in Ruby this is the deck's own
+   *  `*all+*default` template type —
    *  `Card.fetch(name, new: {})`, whose type_id comes from the deck's rule
    *  row (states.rb:44-50 + the *default template chain). It is a property
    *  of the DECK, not of the engine: one corpus's `*all+*default` names a
@@ -867,7 +867,7 @@ export class RenderEngine implements RenderEngineLike {
    *  one host's fold must never answer another host's item slot — the
    *  per-item-only keying let a pointer host that resolves Person
    *  (weekday_morning_usual+owner) pre-empt the RVW List's untyped BasicCs
-   *  verdict and render Morgan readable where the oracle denies.
+   *  verdict and render Ellery readable where the oracle denies.
    *  Cleared on resetCaches(). */
   private pointerItemVerdicts = new Map<
     string,
@@ -2580,8 +2580,8 @@ export class RenderEngine implements RenderEngineLike {
    * RenderEngineLike#envOriginConfig — the modeled `Card::Env.origin` for
    * the CURRENT render surface (card-1.110.0 lib/card/env/serializable.rb:
    * 20-22 `Cardio.config.deck_origin || "#{protocol}#{request&
-   * host_with_port}"`). The value is the DECK'S CONFIGURATION (review
-   * round 4, finding 9): `deck_origin` installed through
+   * host_with_port}"`). The value is the DECK'S CONFIGURATION:
+   * `deck_origin` installed through
    * setDeckEnvironment — by the deck's own spec
    * (reference-harness/adapters/ts/adapter.ts) or by the deployment's
    * served-deltas `deckOrigin` / DECKO_DECK_ORIGIN at the edge boot — or
@@ -2627,7 +2627,7 @@ export class RenderEngine implements RenderEngineLike {
       // filter to the read_rule_id-IS-NULL branch, and every corpus *head
       // rule carries a stored read_rule_id — the page surface rendered
       // "(0 head rules)" where the oracle pins "(2 head rules)" (the
-      // *all+*head / PCTS+*self+*head nest-miss pages). The VIEW path folds
+      // *all+*head / ZQVT+*self+*head nest-miss pages). The VIEW path folds
       // the state earlier in render() (the permissionCold pass) before its
       // own install; the page path must too. Once per engine: the state is
       // memoized, render()'s permissionCold goes false, and its cold batch
@@ -2732,7 +2732,7 @@ export class RenderEngine implements RenderEngineLike {
    *  exist) render the plain quiet denial span (SMD exp @8350, PdG exp
    *  @8515-8987 — and the live Task card Merchandise denies as a real
    *  card), while the simple-named denied phantoms (the view-surface census,
-   *  133 entries — Test Person 01, Regina Chatham, Mabel Bridgewater, all
+   *  133 entries — Test Person 01, Nadine Corliss, Marianne Winslow, all
    *  BasicCs/RichText/Practice-typed) render the mini_bar wrap with the
    *  two-span body: name.simple? short-circuits virtual? to false
    *  (states.rb:45) whatever their type.
@@ -4288,7 +4288,7 @@ export class RenderEngine implements RenderEngineLike {
       // off the render-card map instead of the fetch ladder. Corpus
       // evidence for both preferer clauses: `*all` is card 274, type 259
       // (Set) = the trunk, codename "all" = the codename clause;
-      // `Casey Morgan` is card 393, type 4 (codename "user") =
+      // `Riley Ellery` is card 393, type 4 (codename "user") =
       // the User clause.
       const trunkKey = DeckoName.parse(name.parts.slice(0, -2).join("+")).key;
       if (trunkKey === "") return false;
@@ -4416,7 +4416,7 @@ export class RenderEngine implements RenderEngineLike {
    * verdict pass over every prepared card (the skip-if-set guard inside
    * ensureVerdicts makes this a no-op for already-judged cards — only
    * warm-up enrichments made after the main render's pass get judged
-   * here). The layout subtree's denied items (e.g. the *Opportunities
+   * here). The layout subtree's denied items (e.g. the *Undertakings
    * dropdown's read-denied rows) must render the quiet denial span exactly
    * like the capture; without this refresh a warm-enriched card has no
    * verdict and renders content instead.
@@ -4993,7 +4993,7 @@ export class RenderEngine implements RenderEngineLike {
    *  (or static help popover) links cards no {{nest}} reference reaches
    *  emitted wanted-card for existing cards — 15 an earlier pass dump entries
    *  (10x the *content options popover's [[List]]/[[Pointer]]/[[Search]],
-   *  5x card-body links like Dawn Emerson's [[Bluevolution]]).
+   *  5x card-body links like Vera Prescott's [[Bluevolution]]).
    *
    *  Harvest (memory only): the [[target]] matches of every prepared card's
    *  dbContent not yet scanned (once per engine per card), plus the rendered
@@ -5849,7 +5849,7 @@ export class RenderEngine implements RenderEngineLike {
         // walk's type (BasicCs here), and BasicCs+*type+*read = "Anyone
         // Signed In" denied Anonymous — rendering the two-span denied body
         // for exactly the host-typed unknown items Ruby renders the full
-        // bar for (Chloe Pallister id 18560, Jacob Benedetti+musings
+        // bar for (Delia Rosenquist id 18560, Jonas Verhoeven+musings
         // id 14546; the captured oracle renders bar-body/card-title/
         // bar-menu for both).
         await this.resolveHostItemTypeName(card);
@@ -5891,7 +5891,7 @@ export class RenderEngine implements RenderEngineLike {
    *  renderUnknownPointerListItem right before the phantom's nest renders,
    *  so the inner bar views see THIS host's fold rather than a foreign
    *  host's earlier global seeding of the same item name (the
-   *  Metashamanic+Core Project mytho-psychology poisoning: a foreign
+   *  Quicksilver+Core Project mytho-psychology poisoning: a foreign
    *  untyped BasicCs fold seated denied; this host's Project-typed fold
    *  reads allowed — the oracle renders the item bar). */
   seatPhantomReadVerdict(key: string, denied: boolean): void {
@@ -5927,7 +5927,7 @@ export class RenderEngine implements RenderEngineLike {
    * walk) typed every host-typed phantom BasicCs, and BasicCs+*type+*read
    * = "Anyone Signed In" denied Anonymous where Ruby's walk on the REAL
    * type falls through to *all+*read = "Anyone" — the Kimberly
-   * Richardson / Jacob Benedetti+musings divergence (captured oracle
+   * Richardson / Jonas Verhoeven+musings divergence (captured oracle
    * renders the full bar body for both). The default-template walk stays
    * as the fallback for hosts that resolve no item type, exactly
    * Card.new's ensure_type_id.
@@ -5991,13 +5991,13 @@ export class RenderEngine implements RenderEngineLike {
       // is Ruby's bare Card.new ensure_type_id verdict for the name. A
       // HOST-TYPED computation is per-context in Ruby (each nest constructs
       // its own phantom, Nest::Fetch#new_card) and must neither poison nor
-      // consume the global slot: Metashamanic+Core Project's unknown list
+      // consume the global slot: Quicksilver+Core Project's unknown list
       // item mytho-psychology resolved Project-typed (readable via *all+*read
       // "Anyone") while an earlier render in the same boot seated the global
       // map from a different host's computation (denied) — the nest's view
       // gate then read the poisoned entry and emitted two quiet denial spans
       // where the oracle renders the item bar (recapture-raw-shard-000000,
-      // Metashamanic+Core Project :open, -1605 bytes). Only the untyped walk
+      // Quicksilver+Core Project :open, -1605 bytes). Only the untyped walk
       // may claim pointerItemGlobalVerdictDone, so an untyped computation
       // that arrives later still seeds the global maps (the RVW p21b case:
       // its nil-item-type BasicCs denial must land no matter which
@@ -6303,7 +6303,7 @@ export class RenderEngine implements RenderEngineLike {
           // Ruby's Lexicon.name(id) reads rows WITHOUT a trash filter
           // (lexicon.rb#id_to_lex), so a `~id` item pointing at a TRASHED
           // member card still RESOLVES to its name there (CB_role /
-          // Morgan Family +*members: their item ids are trashed
+          // Ellery Family +*members: their item ids are trashed
           // rows, never warmed by warmLexicon's live-id pour and carrying
           // no card_references rows for the seed closure). The async
           // lexicon IS that db fallback: resolve, record the durable name
@@ -6651,7 +6651,7 @@ export class RenderEngine implements RenderEngineLike {
       // prior deck-wide skip (SETTING_NEVER_VISIBLE via visibleGroupSettings)
       // left those virtual bars unjudged here while the sync nav still
       // rendered them — isDenied map miss = gate-open = the over-allow the
-      // oracle span pairs pin (GBA+*right+*layout+*self: two allowed bars
+      // oracle span pairs pin (HBQ+*right+*layout+*self: two allowed bars
       // where Ruby renders quiet denials). Seating the verdict the nav will
       // look up is the whole fix; the verdict itself (deny via the generic
       // _left walk, permissions.rb:55-71) needed no change.
@@ -7305,7 +7305,7 @@ export class RenderEngine implements RenderEngineLike {
       if (card.id === undefined) {
         // A PHANTOM +discussion (the engage_tab's not-yet-existing child):
         // Ruby's perms :update on a new card consults the CREATE
-        // permission (the board fixture's arms are the oracle: sara -
+        // permission (the board fixture's arms are the oracle: tova -
         // whose only grant is the *all+*create rule "Anyone Signed In" -
         // renders the comment form; anonymous, excluded by that rule,
         // renders the blank). Only the create field is stored: every
@@ -8716,7 +8716,7 @@ export class RenderEngine implements RenderEngineLike {
       // pattern/all.rb#patterns: a NEW card's safe_set_keys drops the SELF
       // token. record.isNew is false for every stored row (byte-neutral
       // there) and true for the fetch placeholders — the virtual-card hits
-      // (the structured/missing children: PCTS+legacy class) whose captured
+      // (the structured/missing children: ZQVT+legacy class) whose captured
       // slots read "ALL ALL_PLUS TYPE-<t> RIGHT-<r> TYPE_PLUS_RIGHT-<l>-<r>"
       // with no SELF.
       setKeys: safeSetKeys({
@@ -8987,7 +8987,7 @@ export class RenderEngine implements RenderEngineLike {
           // statement (`refer_to: "_left"`, `_self`, `_right`, `_N`) resolves
           // against the blank context to the unresolvable-name sentinel — the
           // query returns zero rows even with every name key resolvable
-          // (2026-09-25 Casey_Morgan +Project(s) Participating "0
+          // (2026-09-25 Riley_Ellery +Project(s) Participating "0
           // results" defect 2; ParseOptions.context, src/cql/ast.ts).
           context: card.name.s,
           // sync resolver over the prefetched id map (module doc), falling

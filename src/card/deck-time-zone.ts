@@ -1,6 +1,6 @@
 // The deck's configured time zone, and the %Z abbreviation derived from it.
 //
-// WHY THIS EXISTS (review round 4, finding 22). Ruby's date rendering reads
+// WHY THIS EXISTS. Ruby's date rendering reads
 // `Time.zone` — the deck's own Rails `config.time_zone` — and `%Z` renders
 // the zone's abbreviation AT THAT INSTANT: "PST" in standard time, "PDT" in
 // daylight time. The port instead hard-coded the CAPTURE HOST's operating-

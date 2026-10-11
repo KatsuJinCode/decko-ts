@@ -1018,7 +1018,7 @@ export class RenderFormat {
    *  ensurePointerItemVerdicts fills once per item key GLOBALLY (first fold
    *  wins). An item line that appears on many hosts therefore inherits
    *  whichever host the run touched first: `mytho-psychology` sits on ~30
-   *  corpus cards and under Metashamanic+Core Project the nest read is true
+   *  corpus cards and under Quicksilver+Core Project the nest read is true
    *  (Project/398) while the global entry said denied, rendering bar_left
    *  as a quiet denial where the oracle renders the card title. Probed:
    *  cold isDenied false -> full bar; warm isDenied true -> two denied
@@ -1242,7 +1242,7 @@ export class RenderFormat {
 
   /** R16 batch 2: the focal (main) denial — html/error.rb:203-208
    *  loud_denial + :194-198 with_frame, byte-pinned by the 2,835-page
-   *  oracle class (a named corpus page / CM 20100614 / Martial Nonviolence Public
+   *  oracle class (a named corpus page / CM 20100614 / Martial Concordance Public
    *  Module 01 page captures):
    *
    *  loud_denial: `voo.hide :menu; frame { [wrap_with(:h1, "Sorry!"),
@@ -2116,7 +2116,7 @@ export class RenderFormat {
     //
     // ORACLE PINS — Soma+tic+aikido nested from Soma+tags (a List) reads
     // TYPE_PLUS_RIGHT-rich_text-aikido, and
-    // Morgan+Retreats+Shoreline+20180623_0728 reads
+    // Ellery+Retreats+Shoreline+20180623_0728 reads
     // TYPE_PLUS_RIGHT-rich_text-20180623_0728.
     //
     // THE LAST RESORT IS RUBY'S quick_type BODY, NOT ITS BLANK-NAME
@@ -2489,8 +2489,8 @@ export class RenderFormat {
    * a constant: serializable.rb:20-22 reads `Cardio.config.deck_origin`
    * first (nil at boot, cardio/railtie.rb:28) and falls back to
    * `"#{protocol}#{request&.host_with_port}"`, which is "" for a
-   * requestless runner. The value is the DECK'S CONFIGURATION (review
-   * round 4, finding 9): the capture script itself assigns deck_origin
+   * requestless runner. The value is the DECK'S CONFIGURATION:
+   * the capture script itself assigns deck_origin
    * for the page surface (capture-dual-$1page-and-view.rb:391-400,
    * restored at :400; the view-function surface at :277-287 runs outside
    * that block), and the port installs it the same way — through
@@ -2597,8 +2597,8 @@ export class RenderFormat {
    *  `[[Target|` opener is spanned forward to the first `]]` in a later
    *  text piece, the pieces between render as the label, and the whole
    *  goes through renderLinkChunk. live capture:
-   *  `[[/wagn/Latest_news_items.rss|{{feed icon|...}}]]` ->
-   *  `<a class="internal-link" href="/wagn/Latest_news_items.rss">` +
+   *  `[[/qagn/Latest_news_items.rss|{{feed icon|...}}]]` ->
+   *  `<a class="internal-link" href="/qagn/Latest_news_items.rss">` +
    *  expanded feed-icon slot + `</a>` (live-wire Latest_News/blog). */
   /**
    * content.rb:20-27 `content_nest` — the chunk-level dispatch every
@@ -2838,9 +2838,9 @@ export class RenderFormat {
    * strips the leading slash; contextualize_path re-roots it). The label
    * is the ALREADY-RENDERED bytes (link.rb:47 render_obj ran first), so a
    * nest label lands inside the anchor expanded. live capture:
-   * `<a class="internal-link" href="/wagn/Latest_news_items.rss">…` (feed
+   * `<a class="internal-link" href="/qagn/Latest_news_items.rss">…` (feed
    * icon wrap) and `<a class="internal-link" href="/account/signup">sign-in
-   * account</a>` (live Casey bio; identical bytes in the recapture
+   * account</a>` (live Riley bio; identical bytes in the recapture
    * oracle).
    *
    * Name targets (link.rb:85-86 + 71-75) render view :link on the target
@@ -3108,7 +3108,7 @@ export class RenderFormat {
    * (chunk/reference.rb#referee_name: the authored mark absolutized against
    * the referencing card), so both corpus spellings land on the head card's
    * key: `{{:head|core}}` (card 34754 `*all+*head`) and `{{*head|core}}`
-   * (card 34758 `PCTS+*self+*head`, oracle view-surface
+   * (card 34758 `ZQVT+*self+*head`, oracle view-surface
    * recapture-raw-shard-000029 views.content — pre 2441 B / 2447 B against
    * the port's pre 0 B).
    *
@@ -3204,7 +3204,7 @@ export class RenderFormat {
     // therefore rendered as literal `[[/ |` + nest + `]]` in the port.
     // Oracle witness (sha-verified corpus + expected-v2, entry-scoped):
     // layout card 2347 `Golden_Bears_Aikido_at_UC_Berkeley main layout`
-    // `<div>[[/ |{{GBA logo - admin area}}]]</div>` on page 1316 and
+    // `<div>[[/ |{{HBQ logo - admin area}}]]</div>` on page 1316 and
     // layout 2339 on page 2333; the oracle emits
     // `<a class="internal-link" href="/">` + rendered nest + `</a>`.
     // Five captured layout cards carry the shape (314, 470, 2339, 2347,
@@ -3333,7 +3333,7 @@ function settingDisplayTitle(
 /** The deck's phantom (unknown pointer/list item) type identity: the type a
  *  record-less item carries when no host item type resolves one. In Ruby this
  *  is the deck's own `*all+*default` template type, so it is DECK
- *  configuration rather than an engine constant (review round 4, finding 9).
+ *  configuration rather than an engine constant.
  *  `typeKey` is the type's simpleKey form — the class-chip token
  *  (`TYPE-basic_c`) — which is not derivable from the display name without
  *  the same inflection table the name parser uses, so it travels with the
@@ -3743,7 +3743,7 @@ export interface RenderEngineLike {
   /** The effective `Card::Env.origin` (card-1.110.0 lib/card/env/
    *  serializable.rb:20-22 `Cardio.config.deck_origin ||
    *  "#{protocol}#{request&.host_with_port}"`): the DECK'S CONFIGURED
-   *  origin (review round 4, finding 9 — the capture assigns it per surface
+   *  origin (the capture assigns it per surface
    *  at capture-dual-$1page-and-view.rb:391-400, and the port reads it
    *  from the same kind of configuration through setDeckEnvironment), or
    *  "" when nothing is configured (railtie default nil + a requestless
@@ -3766,7 +3766,7 @@ export interface RenderEngineLike {
   canConfigure?(card: RenderCard): boolean | undefined;
   /** The deck's CDN/asset host for carrierwave cloud images
    *  (A-30): the endpoint live serves file URLs from —
-   *  e.g. `https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com`.
+   *  e.g. `https://source-deck-production-storage.r1.cdn.objectstore.example`.
    *  The image core resolves `(bucket)/<id>/<file>.<ext>` content to
    *  `<host>/files/<id>/<file>-<variant>.<ext>`; when undefined the same
    *  /files shape renders host-relative. Deck-deployment config (Ruby's
@@ -3777,7 +3777,7 @@ export interface RenderEngineLike {
    *  PhantomItemType). undefined = the deck configures no such rule and its
    *  unknown items carry no type chip and no type attributes. Deck-deployment
    *  config, never an engine constant: one deck's template type id/name is
-   *  not every deck's (review round 4, finding 9). */
+   *  not every deck's. */
   readonly phantomItemType?: PhantomItemType | undefined;
   /** Cardio.config.file_storage's port (card-mod-carrierwave
    *  set/abstract/attachment/01_storage_type.rb:75-79): the attachment
@@ -4443,7 +4443,7 @@ function findUriMatch(text: string, from: number): UriMatch | undefined {
     // a URI.parse-invalid chunk (brackets/braces/angle quotes and bad
     // percent escapes, boundary probed against the 3.3.0 gem's RFC3986
     // parser) rendered as verbatim @text — reproduced the Pacifica Depth
-    // Psychology oracle's plain-text `[mailto:casey@culturesmith.com]`
+    // Psychology oracle's plain-text `[mailto:riley@culturesmith.com]`
     // but destabilized the +*referred_to_by search-result family (44
     // pages per actor: the Archetypal referer list rendered a different
     // result SET with the gate present and the capture's own set with it
@@ -4586,7 +4586,7 @@ export function expandContentLinks(
       // uri.rb:86-89: process_uri_chunk appends @trailing_punctuation
       // AFTER the anchor (`"#{link}#{@trailing_punctuation}"`) - the
       // source's chopped [,.)!:?] byte renders right behind `</a>` (the
-      // `morgan.com</a>.` oracle bytes) - and the SECOND trailing
+      // `ellery.com</a>.` oracle bytes) - and the SECOND trailing
       // dot from uri.rb:69's `sub!(/\.$/,'')` is a REAL removal, so it is
       // not re-emitted here.
       out += `<a${target}${cls} href="${h(uri.href)}">${uri.text}</a>${uri.trailing}`;
@@ -4824,10 +4824,10 @@ export function expandWikiLinks(
     // spaced target as href — the oracle pins the underscored url_key form
     // (`href="/Help_Desk" title="Help Desk"`, recapture-raw shard-000000)
     // and live pins internal-link for explicit targets
-    // (`href="/account/signup">sign-in account`, live Casey bio), so the
+    // (`href="/account/signup">sign-in account`, live Riley bio), so the
     // branches resolve here identically to renderLinkChunk.
     // (Merge pass 2: the b055982 collapsed every explicit
-    // resource to one internal-link form from the PCTS/GBA nav pin; the
+    // resource to one internal-link form from the ZQVT/HBQ nav pin; the
     // scheme-differentiated classes below carry the LATER raw-oracle pins
     // (external-link target="_blank" — clusters.4shard.after.md #17) and
     // the same no-card-title-span property.)
@@ -4879,7 +4879,7 @@ export function expandWikiLinks(
     try {
       // link_to_card's mark path (links.rb:75-80) — the name's url_key
       // form: spaces fold to underscores, `$` folds too (live:
-      // /Martial_Nonviolence, /Su_tainability).
+      // /Martial_Concordance, /Su_tainability).
       href = `/${DeckoName.parse(hrefSource).urlKey}`;
     } catch (err) {
       if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {

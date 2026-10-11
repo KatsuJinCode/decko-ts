@@ -172,7 +172,7 @@ describe("the hops gate: one page, one database hit (plus the enumerated excepti
     // stamp read at every render entry (render.ts
     // DECK_DATA_VERSION_STATEMENT; db/schema.sqlite.sql [ENGINE-FRESHNESS]
     // header: "the render contract's warm-render cost is ONE statement, not
-    // zero"; delivery contract:79). The justification receipt is that
+    // zero"). The justification receipt is that
     // commit; this ceiling change carries it as the law requires.
     // More than 2 means a question is being RE-ASKED.
     storage.counting.reset();

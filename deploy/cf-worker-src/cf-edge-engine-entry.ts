@@ -8,7 +8,7 @@
 // CloudflareD1Adapter, timed into the same per-isolate ledger so
 // Server-Timing's db/stmt mean the same thing on both hosts.
 //
-// Read-only and uncached by configuration (deploy/cf-casey/wrangler.toml):
+// Read-only and uncached by configuration (deploy/cf-riley/wrangler.toml):
 // DECKO_WRITE_PATH=0, DECKO_EDGE_CACHE=0, DECKO_EDGE_GLOBAL_CACHE=0.
 //
 // Build: node tools/bundle-cf-edge-engine.mjs  ->  deploy/dist/cf-edge-engine.bundle.js
@@ -30,7 +30,7 @@ import {
 import { CloudflareD1Adapter, type D1DatabaseLike, type D1PreparedStatementLike } from "../../src/server/drivers/d1.js";
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement, SQLTransactionGuarantee } from "../../src/server/driver.js";
 
-/** THE BINDING BOUNDARY (review round 3, finding 5): every D1 round trip is
+/** THE BINDING BOUNDARY: every D1 round trip is
  *  timed and counted where it physically happens — the binding call — not
  *  at the driver interface. One logical driver operation can issue several
  *  binding batches: a serving read before the transaction-state table is
@@ -39,7 +39,7 @@ import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement, SQLTransactionGua
  *  runs the repair batches and re-reads; inside a transaction the journal's
  *  begin, commit and rollback are binding batches of their own. None of
  *  these pass through a driver query()/batch() call, so counting there
- *  undercounted (the reviewer's repro: one driver query over a fresh
+ *  undercounted (the reproduction: one driver query over a fresh
  *  database, two binding batches on the wire — and the old wrapper also
  *  missed the journal's begin/commit entirely). The adapter can only reach
  *  D1 through prepare()/batch() on its binding and run()/all() on a
@@ -88,7 +88,7 @@ export function ledgeredBinding(db: D1DatabaseLike): D1DatabaseLike {
 
 /** CloudflareD1Adapter over the ledgered binding. The wrapper's own methods
  *  are the LOGICAL view, kept under separate labels so the two counts stay
- *  distinguishable (finding 5): `stmt` on Server-Timing stays the deck
+ *  distinguishable: `stmt` on Server-Timing stays the deck
  *  driver's statement counter exactly as dashboards know it, and each
  *  query()/batch()/transaction() invocation is one driver operation.
  *  Round-trip wall time is recorded at the binding (ledgeredBinding), not
@@ -191,7 +191,7 @@ export default {
     const response = await handleBunnyEngineRequest(request, vars);
     const marked = new Response(response.body, response);
     // Database round trips for this request: D1 binding calls, counted at
-    // the binding (finding 5) — the serving path's probe-then-fallback
+    // the binding — the serving path's probe-then-fallback
     // pair before the transaction-state table exists counts as the two
     // round trips it is, and so do lease repairs and the transaction
     // journal's own begin/commit batches. Server-Timing's stmt counts the

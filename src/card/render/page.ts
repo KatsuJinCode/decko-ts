@@ -68,7 +68,7 @@ import { debugFlag } from "../debug-flags.js";
 // The `decko.rootUrl` this head emits (scriptVariablesTag below) reads the
 // deployment's follow-live constant first, then the ENGINE's configured
 // origin (render/deck-origin.ts — the deck's own `Cardio.config.deck_origin`
-// through setDeckEnvironment, review round 4, finding 9); with neither, the
+// through setDeckEnvironment); with neither, the
 // bare rooted form Ruby's requestless runner produces. The same value feeds
 // the `:url` view through the engine accessor (Ruby's `card_url` is
 // ABSOLUTE only when an origin is configured; the email-template pages pin
@@ -125,7 +125,7 @@ export class UnknownLayoutError extends Error {
 
 /** The result of show_with_page_layout's page_layout step. */
 interface PageLayout {
-  /** The resolved layout name ("Default Layout", "PCTS_main_layout", ...) or
+  /** The resolved layout name ("Default Layout", "ZQVT_main_layout", ...) or
    *  ":default" for the built-in code layout fallback. */
   layoutName: string;
   /** How the layout will render (CardLayout / CodeLayout / UnknownLayout). */
@@ -678,7 +678,7 @@ async function applyMainViewOverride(
 /** Prepare every card the layout body can dispatch on: the layout's nest
  *  targets, their content references, [[link]] targets, and pointer/list
  *  items (plain-text item lists the closure walk never chases — the
- *  *Opportunities dropdown items). Enrichment lands in the prepared-card
+ *  *Undertakings dropdown items). Enrichment lands in the prepared-card
  *  map, then one verdict refresh so the warm subtree denies exactly like
  *  the capture. Names resolve exactly like the format does: DeckoName
  *  marks (:codename) through the name environment, RELATIVE names against
@@ -935,7 +935,7 @@ function firstItemOfRuleContent(content: string | null | undefined): string | un
 /** The {{_main|view}} chunk of a layout card's content
  *  (CardLayout#find_main_nest_chunk, direct-chunk case). The name match is
  *  case-sensitive exactly like Ruby's main_nest? ("_MAIN" nests as a plain
- *  child — runbook: the GBA/FrAi uppercase variants never fire the main
+ *  child — runbook: the HBQ/MoKi uppercase variants never fire the main
  *  path). */
 function findMainNestChunk(
   content: string,

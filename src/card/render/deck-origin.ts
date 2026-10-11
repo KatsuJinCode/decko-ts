@@ -17,8 +17,8 @@
 // rooted path, which is why this reads as "joins Env.origin ONLY when
 // present": the conditional lives in the VALUE, not in card_url.
 //
-// THE ORIGIN IS THE DECK'S CONFIGURATION, NOT AN ENGINE CONSTANT (review
-// round 4, finding 9): this file used to ship `DECK_ORIGIN =
+// THE ORIGIN IS THE DECK'S CONFIGURATION, NOT AN ENGINE CONSTANT: this
+// file used to ship `DECK_ORIGIN =
 // "https://culturesmith.com"` and answer it for the page surface — one
 // private deck's identity baked into the engine's source, so every other
 // deployment's pages carried that site's origin in `decko.rootUrl`, the

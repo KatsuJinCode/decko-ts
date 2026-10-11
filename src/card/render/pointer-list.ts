@@ -138,9 +138,9 @@ export function resolvePointerItemName(item: string, hostName: DeckoName): strin
     const parsed = DeckoName.parse(item);
     // item.rb clean_item_name absolutizes every line; an absolute name only
     // changes there when a blank extreme takes the context
-    // (contextual.rb absolutize_extremes): "Morgan Family+" under
-    // "Hope Langdon - Caliber Home Loans+Project" names
-    // "Morgan Family+Hope Langdon - Caliber Home Loans+Project".
+    // (contextual.rb absolutize_extremes): "Ellery Family+" under
+    // "Faith Merrow - Harbour Mutual Loans+Project" names
+    // "Ellery Family+Faith Merrow - Harbour Mutual Loans+Project".
     const parts = parsed.parts;
     const blankExtreme = parts.length > 1 && (parts[0] === "" || parts[parts.length - 1] === "");
     if (parsed.isAbsolute && !blankExtreme) return item;
@@ -283,7 +283,7 @@ export function pointerListCoreHtml(
   // (Merge note: the earlier LIST-typed-only scoping of the same
   // mechanism is superseded here — its own html_views.rb citation wraps
   // ALL pointer/list cores, and the corpus's paged POINTER cores pin the
-  // general shape: Martial Nonviolence+Pages, Learning Pool+training+Notes,
+  // general shape: Martial Concordance+Pages, Practice Pool+training+Notes,
   // *recent settings, AI+Replacement+Documents. Its CB_role+*members
   // LIST-core oracle is covered by this same arm — the nav emitter is
   // byte-identical for the headless page-0 case.)
@@ -335,8 +335,8 @@ export function pointerListCoreHtml(
   // `output` joins the array with "\n") supplies the separator the
   // unpaginated wrapper's trailing "\n" carried, and the nav's own trailing
   // "\n" keeps the slot-close shape (`</nav>\n</div>` — dump-pinned:
-  // phase-000 000000-Martial_Nonviolence_Pages-content,
-  // phase-017 000034-Learning_Pool_training_Notes-content/-open,
+  // phase-000 000000-Martial_Concordance_Pages-content,
+  // phase-017 000034-Practice_Pool_training_Notes-content/-open,
   // phase-009 000018-_recent_settings-content,
   // phase-018 000037-Artificial_Intelligence_Replacement_Documents).
   const ruleShape = isRuleCardWithPermissionRight(parent);
@@ -433,8 +433,8 @@ function itemWrap(name: string, inner: string, itemView: string = POINTER_LIST_I
 
 /** The phantom item's TYPE identity (id, display name, class-chip key).
  *
- *  WHY IT IS A DECK CONFIGURATION AND NOT A CONSTANT (review round 4, finding
- *  9): these three values used to be hard-coded here (22281 / "BasicCs" /
+ *  WHY IT IS A DECK CONFIGURATION AND NOT A CONSTANT: these three values
+ *  used to be hard-coded here (22281 / "BasicCs" /
  *  "basic_c", pinned from the captured corpus — the census behind them:
  *  256 denied mini_bar bodies, 248 carrying data-card-type-name="BasicCs"
  *  with type id 22281). But in Ruby this identity is the DECK's own
@@ -552,7 +552,7 @@ export function pointerListItemBodyForUnknown(
   const typeId = identity?.typeId ?? deckPhantomType?.typeId;
   // The attr pair is the deck-wide oracle shape (every shard's inner
   // bodies: `data-card-link-name='<url-key>' data-card-name='<name>'`,
-  // e.g. shard-000024's "Casey_Morgan"/"Casey Morgan")
+  // e.g. shard-000024's "Riley_Ellery"/"Riley Ellery")
   // — the LINK attr is the url-key form, the NAME attr the display form.
   // The resolved-mark pin (CB_role+*members' ~861
   // line: the rendered bar "ANON-350cb08c081a" / "ANON_350cb08c081a") is

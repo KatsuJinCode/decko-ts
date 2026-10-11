@@ -53,7 +53,7 @@
 //   I18n.localize(..., format: :card_dayofwk_min_tz) renders the wall clock /
 //   row timestamp in the deck's Rails Time.zone, with %Z the zone's
 //   abbreviation at that instant. Both now come from the deck's configured
-//   zone (src/card/deck-time-zone.ts, review round 4, finding 22) rather
+//   zone (src/card/deck-time-zone.ts) rather
 //   than from a hard-coded capture-host zone and a Windows display-name
 //   literal; "now" still comes from the injectable capture wall clock (the
 //   corpus's graded bytes are a frozen sample of a time-varying answer).
@@ -118,7 +118,7 @@ export const CAPTURE_WALL_CLOCK_CAPTURE_INSTANT: Date = new Date(
  *  that instant. The corpus photographed the Windows display name
  *  "Pacific Standard Time" for this September (PDT) instant because the
  *  capture host was Windows; Ruby prints the abbreviation, so the port does
- *  too (review round 4, finding 22 — see src/card/deck-time-zone.ts). */
+ *  too (see src/card/deck-time-zone.ts). */
 export const ORACLE_CAPTURE_NOW_BYTES = "Monday, September 28, 2026 03:12 PM PDT";
 
 /** The GRADED deck's configured time zone. The default, so an unconfigured

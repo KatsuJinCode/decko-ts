@@ -15,7 +15,7 @@
 //
 // DECKO_KEEP_SCRATCH=1 keeps every directory for debugging.
 //
-// Where directories live, and who may delete them (finding 17): a scratch
+// Where directories live, and who may delete them: a scratch
 // directory is created under the repo's own root — tmp/test-scratch/, or the
 // directory named by DECKO_TEST_TEMP_ROOT — never directly in the shared OS
 // temp folder, and it carries an ownership manifest naming this repo checkout

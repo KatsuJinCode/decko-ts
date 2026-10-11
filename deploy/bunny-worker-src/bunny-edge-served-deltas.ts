@@ -2,7 +2,7 @@
 // configuration that carries ONE deck's private identity into the edge's
 // served bytes, EMPTY by default.
 //
-// WHY THIS EXISTS (review round 4, finding 9): the edge path used to
+// WHY THIS EXISTS: the edge path used to
 // hard-code a single private deck's identity as module constants, so EVERY
 // deployment of the engine served that deck's version string, asset
 // revisions, SRI hashes, corpus card ids and phantom type:
@@ -49,8 +49,8 @@
 // reads those values from the deck's own environment; this engine has no
 // Rails initializer at the edge, so the operator supplies them out of band,
 // exactly like DECKO_DB_URL beside it. The production migration deployment
-// sets them explicitly in deploy/bunny-edge-trial-runbook.md, which is
-// excluded from the export — the shipped code carries no deck's identity.
+// sets them explicitly in its own environment (the DECKO_SERVED_* variables
+// above), which is why the shipped code carries no deck's identity.
 //
 // SDK-free by construction (plain object/string handling), so vitest loads
 // it directly — the same testability pattern as bunny-edge-page-shell.ts.
@@ -88,13 +88,13 @@ export interface PhantomTypeDelta {
  *  pass it drives is a no-op. */
 export interface ServedEnvironmentDeltas {
   /** The deck's configured time zone (an IANA name) for every timestamp the
-   *  render path formats — Ruby's `Time.zone` (review round 4, finding 22).
+   *  render path formats — Ruby's `Time.zone`.
    *  undefined = the engine's default, which is the GRADED deck's zone so an
    *  unconfigured deployment keeps its graded bytes; it is not a claim about
    *  the host machine, which is what the hard-coded capture-host zone was. */
   timeZone?: string;
   /** The deck's configured origin — Ruby's `Cardio.config.deck_origin`,
-   *  WITHOUT a trailing slash (review round 4, finding 9). This is the
+   *  WITHOUT a trailing slash. This is the
    *  origin prefix `card_url` adds to the ENGINE'S OWN rendered bytes:
    *  the page head's `decko.rootUrl`, the :url / :id_url views, the email
    *  links. undefined = the engine renders Ruby's requestless form

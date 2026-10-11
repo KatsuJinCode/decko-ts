@@ -39,8 +39,7 @@
 //   abbreviation computed from it, so this September (PDT) instant reads
 //   "PDT" where the corpus photographed the Windows display name "Pacific
 //   Standard Time" — Ruby prints the abbreviation; that display name was the
-//   capture host's operating system leaking into the port's output (review
-//   round 4, finding 22).
+//   capture host's operating system leaking into the port's output.
 import { describe, expect, it } from "vitest";
 
 import { ORACLE_BUNDLE_ORDER } from "../../../src/card/mod-loader/default-mod-deck.js";

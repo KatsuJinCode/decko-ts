@@ -308,7 +308,7 @@ describe("edge read path — the anonymous bytes do not move", () => {
   beforeAll(async () => {
     storage = await createRenderTestStorage();
     await seedMinimal(storage);
-    // The baseline's deck configuration (review round 4, finding 9): the
+    // The baseline's deck configuration: the
     // shell-lane capture was taken with the deck's origin configured, and
     // the origin is DEPLOYMENT CONFIGURATION now (the engine constant is
     // gone). This suite boots its deck by hand — bypassing bootDeck's
@@ -491,7 +491,7 @@ describe("edge read path — a signed-in viewer reads DIFFERENT bytes than an an
       expect(engines.deckFor(4).render.tokenConfig).toEqual({ secret: "s" } as never);
       expect(engines.deckFor(4).render.fileStorage).toBe(anonDeck.render.fileStorage);
       // The phantom (unknown item) type is host-deployment config on the
-      // same terms (review round 4, finding 9): a per-actor render must not
+      // same terms: a per-actor render must not
       // silently lose the deck's `*all+*default` template type and start
       // rendering unknown items with no type chip at all.
       expect(engines.deckFor(4).render.phantomItemType).toBe(anonDeck.render.phantomItemType);

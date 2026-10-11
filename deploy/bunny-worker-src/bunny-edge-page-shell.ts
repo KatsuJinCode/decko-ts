@@ -2,7 +2,7 @@
 // deltas the Bunny edge applies to the engine's page output, and the /files/
 // attachment-URL derivation for the edge's files route.
 //
-// WHY THE DELTAS ARE A PARAMETER (review round 4, finding 9): the edge entry
+// WHY THE DELTAS ARE A PARAMETER: the edge entry
 // used to wrap renders in the root worker.ts layoutPage — a bare inline-styled
 // shell with a two-link nav and no stylesheet, scripts, favicon, navbar, or
 // footer (measured live 2026-10-02: 0 <link> and 0 <script> tags vs the live
@@ -20,8 +20,9 @@
 // configures nothing is a stock 0.20.0 deck and every delta pass below is a
 // no-op. The capture-host values that used to sit here as constants now live
 // in the operator's deployment configuration, set explicitly by the
-// production migration deployment in deploy/bunny-edge-trial-runbook.md
-// (excluded from the export).
+// production migration deployment's environment (the DECKO_SERVED_* variables
+// read by bunny-edge-served-deltas.ts), so the shipped source carries no
+// deck's identity.
 //
 // The one delta that is NOT deck identity and therefore stays unconditional
 // is the trailing newline: it is a byte shape every served HTML document has,

@@ -1,4 +1,5 @@
-// Corpus proof for the depth-3+ junction closure fix (deploy-notes finding 2):
+// Corpus proof for the depth-3+ junction closure fix (recursive
+// compound-side resolution):
 // replays the captured Ruby views of corpus entries whose content nests a
 // depth-3+ junction reference (the exact class the replay driver used to
 // classify as the "nest gap" - failures containing 'nest target not found')

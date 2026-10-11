@@ -167,7 +167,7 @@ describe("the async-view seam: the head read-set is warm after prepare", () => {
     // repair) landed the deck_data_version freshness gate AFTER that pin
     // was written: the render entry reads the stamp ONCE per request
     // (render.ts DECK_DATA_VERSION_STATEMENT, in-source comment
-    // "Warm-render cost: exactly ONE statement", delivery contract:79) and
+    // "Warm-render cost: exactly ONE statement") and
     // resets derived caches only when it moved. The gate is the documented
     // design, so the invariant is now: exactly ONE added statement, and it
     // IS the freshness stamp — anything beyond that would be a real cache
