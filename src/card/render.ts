@@ -161,6 +161,12 @@ const HISTORY_SEAM_VIEWS = new Set([
   "last_action_verb",
   "conflict",
   "history_tab",
+  // surfaces round: view :board_act (history_board.rb:18-26) reads the
+  // same prepared act bundle (act_listing_opts_from_params + act_from_
+  // context + act_renderer(:board) + act_listing — the graded corpus row
+  // view:admin:Topic 001:board_act pins the overlay frame + the create
+  // action's diff/summary listing).
+  "board_act",
   // surfaces-batch3 (2026-09-30): the ladder trio reads the same prepared
   // act bundle (:act_legend's helpers + :last_action's last_act walk and
   // :change's composition over it — card-mod-history views.rb:15-53).

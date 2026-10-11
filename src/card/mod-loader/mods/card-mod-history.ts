@@ -1158,10 +1158,19 @@ function historySlotWrap(
   view: string,
   inner: string,
   extraAttrs: Record<string, string> = {},
+  rawClassSuffix = "",
 ): string {
   const { fmt, voo } = ctx;
   const card = fmt.card;
-  const classes = voo.classy(["card-slot", `${view}-view`, card.setKeys]);
+  // rawClassSuffix appends VERBATIM (bypassing classy's token dedupe) — for
+  // the wrap_with-rendered frames whose class attribute carries duplicates
+  // (the board_act overlay's doubled _overlay, the graded row).
+  const classes =
+    `${voo.classy(["card-slot", `${view}-view`, card.setKeys])}${rawClassSuffix !== "" ? ` ${rawClassSuffix}` : ""}`
+      .split(" ")
+      .filter((t) => t !== "")
+      .join(" ")
+      .trim();
   const slotOptions = voo.slotOptions();
   if (card.unknown !== true) {
     const initial = fmt.initialContextNames;
@@ -1848,7 +1857,10 @@ function boardLeftTitle(
  *  "1 day"); the live view computes it through the shared
  *  timeAgoInWords table above this call. */
 function boardLeftTitleFrom(actorName: string, editedAgo: string, actSeq: string | undefined): string {
-  return `#${actSeq} ${actorName} <small>${editedAgo}</small>`;
+  // Ruby interpolates nil as "" — a param-less board_act render carries no
+  // act_seq and the left title reads "# Decko Bot" (the graded row), not
+  // "#undefined".
+  return `#${actSeq ?? ""} ${actorName} <small>${editedAgo}</small>`;
 }
 
 /** act.rb:108-110 draft? - main_action&.draft (action_on(card_id) ||
@@ -1950,15 +1962,27 @@ function boardOverlayMenu(ctx: ViewContext): string {
   const { fmt } = ctx;
   const rawHelp = fmt.menuHelpContentBytes();
   const helpContent = /^\s*$/.test(rawHelp) ? "&nbsp;" : rawHelp;
+  // overlay.rb:29-36 view :overlay_help_link + add_open_guide_opts: when
+  // the card's guide card resolves (every card's does here — the *all+*guide
+  // rule anchors the walk), the help link opens the card's overlay_guide in
+  // the board sidebar (slot selector + slotter + remote), and the literal
+  // `path="#"` attr rides help_popover_opts' unconsumed path key. The
+  // generic popover arm's data-bs-title does NOT render on this path.
   const helpLink =
-    `<a tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-content="${h(helpContent)}"` +
-    ` data-bs-placement="left" class="help-link ps-1 _popover_link ${OVERLAY_MENU_LINK_CLASS}"` +
-    ` data-bs-title="${h(fmt.card.name.s)}" href="#">${historyIcon("help")}</a>`;
+    `<a path="#" tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-content="${h(helpContent)}"` +
+    ` data-bs-placement="left" class="help-link ps-1 _popover_link slotter ${OVERLAY_MENU_LINK_CLASS}"` +
+    ` href="/${h(fmt.urlKey())}/overlay_guide"` +
+    ` data-slot-selector=".board-sidebar &gt; ._overlay-container-placeholder &gt; .card-slot"` +
+    ` data-slotter-mode="overlay" data-remote="true">${historyIcon("help")}</a>`;
   const newWindowLink =
     `<a class="${OVERLAY_MENU_LINK_CLASS} known-card" href="/${h(fmt.urlKey())}">` +
     `${historyIcon("close_fullscreen")}</a>`;
   const closeLink =
-    `<a class="${OVERLAY_MENU_LINK_CLASS}" href="#" data-bs-dismiss="overlay">${historyIcon("close")}</a>`;
+    // close_overlay_link (overlay.rb:56-58): overlay_menu_link :close,
+    // path: "#", "data-bs-dismiss": "overlay" — the merged opts order puts
+    // the close opts' data-bs-dismiss BEFORE the appended class, and the
+    // href last (the graded row's order).
+    `<a data-bs-dismiss="overlay" class="${OVERLAY_MENU_LINK_CLASS}" href="#">${historyIcon("close")}</a>`;
   return `<div class="overlay-menu">${helpLink}\n${newWindowLink}\n${closeLink}</div>`;
 }
 
@@ -1983,8 +2007,12 @@ const boardActView: ViewFn = (ctx) => {
   // :23 wrap_with_overlay title: ar.overlay_title, slot: breadcrumb_data("History")
   voo.hide("menu"); // wrapper :6 voo.hide! :menu
   voo.hide("help"); // with_frame's voo.hide :help
-  voo.classUp("card-slot", "_overlay d0-card-overlay bg-body"); // wrapper :4, single_use
-  voo.classUp("card-slot", "_overlay"); // overlay_framer's second class_up
+  // wrapper :4's class_up + overlay_framer's second class_up — BOTH append
+  // to "card-slot", and the overlay frame renders through wrap_with
+  // (content_tag), whose class attribute carries duplicates verbatim (the
+  // graded row pins _overlay d0-card-overlay bg-body _overlay). The classy
+  // dedupe models Haml's class-attribute merge — these tokens ride the
+  // historySlotWrap's rawClassSuffix, bypassing it.
   voo.classUp("d0-card-header", "bg-body"); // overlay_header :57
   voo.classUp("d0-card-header-title", "d-flex"); // :58 (no consumer on this path - kept for voo state parity)
   const overlayTitle = boardOverlayTitle(ctx, reader, act, actCard.name, opts.actSeq, actions);
@@ -2010,7 +2038,7 @@ const boardActView: ViewFn = (ctx) => {
   return historySlotWrap(ctx, "board_act", panel, {
     "data-breadcrumb": "History",
     "data-breadcrumb-class": "history",
-  });
+  }, "_overlay d0-card-overlay bg-body _overlay");
 };
 
 /** ActRenderer#details for the board: approved_actions[0..20] with the
