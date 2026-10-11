@@ -1,0 +1,33 @@
+{
+  "runs": [
+    "C:\\localProjects\\decko-ts-r7fix-ruby\\recovery-scratch\\runs\\ruby-3.3.12",
+    "C:\\localProjects\\decko-ts-r7fix-ruby\\recovery-scratch\\runs\\ruby-3.2.11"
+  ],
+  "kinds": {
+    "render": {
+      "items": 1752,
+      "raw_equal": 402,
+      "equal_after_masks": 1350,
+      "unexplained": 0
+    },
+    "semantics": {
+      "items": 2388,
+      "raw_equal": 2388,
+      "equal_after_masks": 0,
+      "unexplained": 0
+    },
+    "scenarios": {
+      "items": 16,
+      "raw_equal": 15,
+      "equal_after_masks": 1,
+      "unexplained": 0
+    }
+  },
+  "masks": {
+    "N1": {
+      "matched_pairs": 9061,
+      "differing_pairs": 9061
+    }
+  },
+  "unexplained": []
+}
