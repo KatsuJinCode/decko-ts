@@ -341,7 +341,7 @@ describeOrSkipLoud(!HAVE_FIXTURE, "tests/exercise/parity-1.test.ts", "HAVE_FIXTU
       expect(e.renderOps).toBe(e.expectedRenders.size);
     });
 
-    it("semantics 2,389 of 2,389 — the grade's semantics tally is 2,389 graded and 2,389 passing; the 2,388 that docs/coverage-inventory.md:20 and :70 both publish is the ops file, and the one ask step that follows a write is the whole difference", () => {
+    it("semantics 2,389 of 2,389 — the grade's semantics tally is 2,389 graded and 2,389 passing; the 2,388 that docs/coverage-inventory.md publishes at :20 and :49/:53/:95 is the ops file, and the one ask step that follows a write is the whole difference", () => {
       const e = evidence;
       const semantics = e.report.summary.semantics;
       expect({ graded: semantics.graded, pass: semantics.pass, fail: semantics.fail, rate: semantics.rate }).toEqual({
@@ -375,8 +375,8 @@ describeOrSkipLoud(!HAVE_FIXTURE, "tests/exercise/parity-1.test.ts", "HAVE_FIXTU
       // Both places the 2,388 figure is published, still saying 2,388.
       // Line 70 (was 66) after the Rendering section gained the live-swap
       // caveat above it; the pin follows the doc's reflow.
-      expect(e.coverageLines.filter(({ text }) => text.includes("2,388")).map(({ line }) => line)).toEqual([20, 70]);
-      expect(e.coverageLines.filter(({ text }) => text.includes("2,388")).every(({ text }) => text.includes("2,388 semantics operations"))).toBe(true);
+      expect(e.coverageLines.filter(({ text }) => text.includes("2,388")).map(({ line }) => line)).toEqual([20, 49, 53, 95]);
+      expect(e.coverageLines.filter(({ text }) => text.includes('2,388')).every(({ text }) => { const plain = text.split('**').join(''); return plain.includes('2,388 semantics operations') || plain.includes('holds 2,388 lines') || plain.includes('Cite the figure that names its instrument'); })).toBe(true);
     });
 
     it("persistence 16 of 16 — each of the 16 write steps in ops/scenarios.json leaves the same raw card-table row delta as Ruby, and the deltas it is graded on cover five of the six card tables", () => {

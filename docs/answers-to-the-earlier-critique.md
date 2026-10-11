@@ -7,8 +7,7 @@ binding direction; binding direction comes from the upstream thread
 (`decko-commons/decko#1282`). What the Decko lead posted on that thread was a
 **link** to the critique — a ChatGPT shared conversation titled "Decko
 TypeScript Proposal Review" — not its text. The critique's own words are
-recorded verbatim in
-[upstream-1282-external-critical-review-fulltext.md](upstream-1282-external-critical-review-fulltext.md),
+recorded verbatim in, recorded as a ChatGPT share link in the issue thread,
 which was transcribed from that page; the answers below follow its numbering
 (1-21, plus its closing request) and are written from what this repository
 actually measures. That record is excluded from the public package.

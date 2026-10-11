@@ -1,4 +1,5 @@
 # Known test failures
+| tests/card/actions/atomic-saves.test.ts | passes alone (44 of 44); failed once inside a concurrent full-suite run on the candidate gate (its first-use engine build races the shared tmp state) | 2026-10-11 |
 
 These suites fail on a clean clone with `npx vitest run`. Each fails identically
 on the revision this release was cut from, so none comes from the release
