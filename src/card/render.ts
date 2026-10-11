@@ -3157,7 +3157,7 @@ export class RenderEngine implements RenderEngineLike {
           // never saw this edge, and enrichAndStore seats only on insert. Seat
           // the card's closure here, so this render's sweeps (structure, link
           // targets, verdicts) process it exactly as a fresh engine would.
-          // Without this, `sage pettibone`'s `+agree` (whose
+          // Without this, a sample author's `+agree` (whose
           // `agree+*right+*structure` nests `Intellectual Property+Statement`)
           // rendered that card's links as wanted on any warm engine.
           if (refKey !== "" && this.renderCards.has(refKey) && !this.renderSeats.has(refKey)) {

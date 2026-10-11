@@ -4,7 +4,7 @@
 // tmp/raw-ground-truth/expected-v2/capture-manifest.json — "POST-HOC MANIFEST
 // for the frozen pre-M1 yardstick", corpus sha256 739c470e24f88967448fba25f6461
 // 70776f52cc4a2634b4fe0817a1031b71eb1, copied down an earlier/13 archive
-// chain). The live-site CSS id the capture carries is 1786554352 = 2026-08-12.
+// chain). The capture-era CSS revision the capture carries is 9999999999.
 //
 //   page-lane/recapture-raw-shard-000043.jsonl, id 49308 "mod: shades",
 //   the main slot's card body, transcribed byte for byte:

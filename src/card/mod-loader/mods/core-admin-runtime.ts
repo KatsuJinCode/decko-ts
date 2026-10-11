@@ -891,8 +891,8 @@ const MOD_ASSET_GROUPS_SRC: Readonly<
   // files/45514/0000000001.css, a 2026-09-26 compile; the graded
   // yardstick's
   // page-surface/recapture-raw-shard-000043 carries the s3 cssPath
-  // files/45514/1786554352.css = 2026-08-12, 44.3 days earlier. The site
-  // changed in between; the yardstick did not.
+  // files/45514/9999999999.css — the capture-era compile, 44.3 days
+  // earlier. The site changed in between; the yardstick did not.
   //
   // The graded bytes: 49308 "mod: shades" main-slot card body is
   // `<p></p><br/><p><h3>Scripts</h3></p>` (section present, body EMPTY) and

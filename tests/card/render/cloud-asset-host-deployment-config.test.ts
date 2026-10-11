@@ -60,9 +60,9 @@ describe("deployment cloud asset host", () => {
     );
     // The css/js mod-asset emission path rides the same helper through
     // cloudAttachmentUrl: the deck's compiled asset output content
-    // "(my_bucket)/45514/1786554352.css" -> the live DO form.
-    expect(cloudAttachmentUrl("(my_bucket)/45514/1786554352.css")).toBe(
-      `${DO_PREFIX}45514/1786554352.css`,
+    // "(my_bucket)/45514/9999999999.css" -> the live DO form.
+    expect(cloudAttachmentUrl("(my_bucket)/45514/9999999999.css")).toBe(
+      `${DO_PREFIX}45514/9999999999.css`,
     );
   });
 

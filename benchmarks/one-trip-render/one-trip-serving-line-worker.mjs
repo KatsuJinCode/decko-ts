@@ -33785,8 +33785,8 @@ function layoutPage(title, body) {
 // deploy/bunny-worker-src/bunny-edge-page-shell.ts
 var SPACES_ASSET_HOST = "https://production-storage.r1.cdn.objectstore.example";
 var SERVED_ASSET_HOST_PREFIX = "http://s3.amazonaws.com//files/";
-var SERVED_CSS_REVISION = "45514/1786554352.css";
-var SERVED_CSS_REVISION_LIVE = "45514/1790384218.css";
+var SERVED_CSS_REVISION = "45514/9999999999.css";
+var SERVED_CSS_REVISION_LIVE = "45514/8888888888.css";
 var SERVED_SCRIPT_INTEGRITY = [
   {
     src: `<script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous"></script>`,
@@ -33836,8 +33836,8 @@ var NOT_FOUND_DEFAULT_TYPE = {
 var ALL_CARD_ID = 274;
 var LAYOUT_POINTER_ID = 255;
 var POINTER_TYPE_ID = 34843;
-var MAIN_CSS_URL = `${SPACES_ASSET_HOST}/files/45514/1790384218.css`;
-var MAIN_JS_URL = `${SPACES_ASSET_HOST}/files/50617/1768074298.js`;
+var MAIN_CSS_URL = `${SPACES_ASSET_HOST}/files/45514/8888888888.css`;
+var MAIN_JS_URL = `${SPACES_ASSET_HOST}/files/50617/7777777777.js`;
 var SITE_TITLE_DEFAULT = "Culturesmith";
 var FOOTER_VERSION_PIN = "0.19.1";
 var EDGE_ERROR_PAGE_GRACE_MS = 5e3;

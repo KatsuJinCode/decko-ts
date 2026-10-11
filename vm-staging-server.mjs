@@ -1200,7 +1200,7 @@ const SELF_POINTER_ID = 264; // *self set pointer (corpus)
 // *all+*style (rule id 17467) → "slate skin customized" (card id 38274,
 // codename `slate_skin_customized`, type_id 33929 bootswatch_skin). Its
 // asset output is card id 45514; the corpus stores the OLDER revision in
-// db_content ("(my_bucket)/45514/1786554352.css"), but the revision live
+// db_content ("(my_bucket)/45514/9999999999.css"), but the revision live
 // actually serves is 0000000001 (12/12 live pages:
 // `/files/45514/0000000001.css` — audit A-2). Byte receipt (2026-09-26):
 // live 0000000001.css EQUALS our SassC compile of the deck's current
@@ -2435,7 +2435,7 @@ async function renderDeckoErrorPage(cardName, kind) {
 //      the capture-env forms remain to rewrite.
 //   2. Stylesheet revision (audit A-2): live serves
 //      /files/45514/0000000001.css (byte receipt vs our SassC compile);
-//      the corpus row stores the OLDER 1786554352 revision, which the
+//      the corpus row stores the OLDER 9999999999 revision, which the
 //      engine resolves from *all+*style+*asset output. Pinned on both the
 //      stylesheet link and decko.cssPath.
 //   3. CDN script integrity attributes (audit A-4): live loads jquery /
@@ -2449,7 +2449,7 @@ async function renderDeckoErrorPage(cardName, kind) {
 //   5. Trailing newline: live and every previously served page end
 //      `</html>\n`; the engine's page string ends at `</html>`.
 const SERVED_ASSET_HOST_PREFIX = "http://s3.amazonaws.com//files/";
-const SERVED_CSS_REVISION = "45514/1786554352.css";
+const SERVED_CSS_REVISION = "45514/9999999999.css";
 const SERVED_CSS_REVISION_LIVE = "45514/0000000001.css";
 // A-4 integrity values, verbatim from the live head bytes (12/12 pages).
 const SERVED_SCRIPT_INTEGRITY = [
@@ -3033,7 +3033,7 @@ async function handleAssetFile(pathname) {
       `(slate skin customized) at /files/~${cardId}/${actionId}.${ext}. ` +
       `The compiled CSS bytes live in the live deck's cloud bucket ` +
       `(live serves /files/45514/0000000001.css; the corpus row still ` +
-      `stores the older 1786554352 revision) and are not in the scrubbed corpus. */\n`;
+      `stores the older 9999999999 revision) and are not in the scrubbed corpus. */\n`;
     return {
       status: 200,
       headers: {
