@@ -1,4 +1,5 @@
 import { str } from "../../render/format.js";
+import { renderAddedChunk } from "../../history/content-diff.js";
 // The card-mod-carrierwave gem (card-mod-carrierwave-0.20.0), ported
 // through the mod loader.
 //
@@ -352,9 +353,16 @@ const imageHtmlPreviewView: ViewFn = (ctx) => {
  *  :core bytes: a blank core renders "", otherwise the core appears twice,
  *  once standing in for each side of the pair. */
 const imageHtmlContentChangesView: ViewFn = (ctx) => {
+  // image/html_views.rb:53-56 content_changes(action, diff_type): the
+  // pair [old_image, new_image].compact.join — the old arm hides
+  // (hide_diff) / has no prior change, so the graded corpus row is the
+  // NEW image alone through Card::Content::Diff.render_added_chunk
+  // (diff.rb:16-21 — the ins.diffins wrapper; src/card/history/
+  // content-diff.ts renderAddedChunk). The bare core+core double was the
+  // earlier unwrapped shape.
   const core = str(ctx.fmt.renderView("core"));
   if (core === "") return "";
-  return core + core;
+  return renderAddedChunk(core);
 };
 
 // ---------------------------------------------------------------------------
