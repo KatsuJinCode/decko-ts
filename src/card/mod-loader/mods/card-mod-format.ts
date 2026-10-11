@@ -1681,14 +1681,26 @@ const setModules: ModSetModuleFile[] = [
     // (BetterErrors is never loaded) and would otherwise show internals; the
     // port deliberately renders :server_error in its place, with no modal
     // wrap, so the two give the same bytes (render/debug-server-error.ts).
-    // The file's other html views (:unknown, :mini_unknown,
-    // :compact_missing, :conflict, :errors) are served by the base table.
+    //
+    // :unknown is ALSO an html-block view (set/all/html/error.rb:10-12) and
+    // it OVERRIDES the base block's literal "" (error.rb:6-8, registered on
+    // All::Error above) with the createable link. That override has to be
+    // registered here: with a loader bound, the per-card chain walk stops at
+    // the first module declaring the view, and All::Error declares it — so
+    // without this row the chain answered the bare "" and the unknown-card
+    // substitution rendered nothing where Ruby renders its create-link span.
+    // The body is the flat table's own :unknown (views.ts HTML_VIEWS.unknown,
+    // the identical html/error.rb:10-12 body), so the two surfaces cannot
+    // drift. :mini_unknown, :compact_missing, :conflict and :errors stay on
+    // the base table: no html-block override exists for them, so the flat
+    // entry they would fall back to IS their html behaviour.
     setPath: "all/html/error",
     formats: {
       html: {
         views: [
           { view: "server_error", viewFn: serverErrorHtmlView, config: { perms: "none" } },
           { view: "debug_server_error", viewFn: debugServerErrorView, config: { perms: "none" } },
+          { view: "unknown", viewFn: HTML_VIEWS["unknown"]!, config: { perms: "none", cache: "never" } },
         ],
       },
     },
