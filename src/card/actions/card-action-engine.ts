@@ -2851,7 +2851,19 @@ export class CardActionEngine {
               !skipReferers
             ) {
               await updateRefererContent(
-                { driver: this.fetch.driver, lexicon: this.fetch.lexicon },
+                {
+                  driver: this.fetch.driver,
+                  lexicon: this.fetch.lexicon,
+                  // all.rb:15's Card[card_id]: the referers mapping fetches
+                  // each referer through the SHARED cache — on a miss it
+                  // warms the pre-rewrite card into the cache the render
+                  // path reads, and the update_column below rewrites the
+                  // row behind it with no expire (reference_events.rb:52-
+                  // 58). That stale entry is what serves the pre-rename
+                  // bytes on the referer's next render — the
+                  // rename-referers oracle's pinned staleness.
+                  fetchRefererCard: (id) => this.fetch.bracket(id),
+                },
                 row.id,
                 currentName,
                 nameAfter,
