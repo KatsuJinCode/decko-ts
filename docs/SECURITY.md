@@ -1,13 +1,17 @@
 # Security policy
 
-decko-ts is a port of Ruby Decko (card 1.110.0, decko 0.20.0). Its acceptance criterion is exact parity with Ruby Decko in rendering, persistence, semantics and side effects, including Ruby's defects, so that an existing deck behaves the same on either engine.
+decko-ts is a port of Ruby Decko (card 1.110.0, decko 0.20.0). Its acceptance criterion is exact parity with Ruby Decko in rendering, persistence, semantics and side effects, including Ruby's defects, so that an existing deck behaves the same on either engine — except where a difference is declared below.
 
-There are two exceptions, and only two:
+There are two classes of exception to that parity rule, and only two:
 
 1. **Security holes.** Where Ruby's behaviour lets one user act against another (run script in their browser, act with their session, read or guess their credentials), the port does not copy it.
 2. **Crashes.** Where Ruby fails with an internal error, the port gives the error Ruby intended.
 
-Each exception is an *approved security divergence*: it is listed below with what Ruby does, what the port does, why, what it costs in compatibility, how to configure it, and the test that pins it. Anything not listed here is meant to behave exactly as Ruby Decko does; a difference that is not listed is a defect. Two kinds of deliberate difference are governed outside this list, and neither is a security divergence: the transaction/save differences on adapters without interactive transactions, listed and pinned by [decisions/0007](decisions/0007-atomic-saves-and-transaction-contract.md); and the row-level differences the persistence oracle declares step by step, with their reasons, in `tests/fixtures/persistence-oracle/deliberate-differences.json` (divergence 1 above accounts for steps 20, 22 and 31 of that list).
+Each exception is an *approved security divergence*: it is listed below with what Ruby does, what the port does, why, what it costs in compatibility, how to configure it, and the test that pins it. Anything not listed here is meant to behave exactly as Ruby Decko does; a difference that is not listed is a defect. Three kinds of deliberate difference are governed outside this list, and none of them is a security divergence:
+
+1. **Transaction and save differences on adapters without interactive transactions** — listed and pinned by [decisions/0007](decisions/0007-atomic-saves-and-transaction-contract.md).
+2. **Differences that exist only on the oracle schema Ruby actually runs on.** These are declared step by step, with their reasons, in `tests/fixtures/persistence-oracle/deliberate-differences.json`, and they are differences between the port and the throwaway oracle deck rather than between the port and Decko. Step 7 is the one of that kind: Ruby inserts a second `cards` row for a compound name whose junction is trashed, and that insert only succeeds on the oracle deck, which lacks the production schema's `UNIQUE (left_id, right_id)` index; the same Ruby save fails on the production schema. The port revives the existing trashed junction row instead, recording the revival's name, type, content, trash and part changes, which keeps one row per name and is valid on the production schema.
+3. **Row-level differences the persistence oracle declares**, in the same file. Divergence 1 below ("Stored HTML is sanitised safely") accounts for steps 20, 22 and 31 of that list; the remainder concern Ruby's own bugs, which are reproduced on purpose.
 
 ## Reporting a vulnerability
 

@@ -74,3 +74,24 @@ Two limits are recorded rather than hidden: the capture came from one server,
 and the local engine's word-boundary semantics are ASCII-only where the
 captured server's are Unicode-aware. Neither is exercised by the capture; both
 are stated so a later reader knows what a passing battery does not cover.
+
+### Declared match divergences
+
+One entry of the captured MySQL-rung match battery is excluded from the strict
+name-set comparison, and it is declared here rather than only in a test:
+
+**`raw_posix_alpha`.** The battery is 30 entries and 29 are compared name for
+name against Ruby. This one is skipped, and it is *not* a regex-dialect
+divergence — the `[[:alpha:]]` form is handled, and an untranslated raw-regex
+form now raises rather than silently mismatching (see *Decision*). Its residual
+is a deck-model row-composition question: the capture deck's id-29 row (an
+RStar-typed junction, left 3 / right 21, name and content NULL) composed
+`Cardtype+*type+*structure` at capture time, while this engine's model composes
+`Cardtype+*type`. Both readings come from the capture deck's own rows, so the
+difference is a property of how that deck was seeded rather than of `match`
+semantics, and it is out of scope for the dialect guard.
+
+The exclusion lives in `tests/cql/oracle-match-replay.test.ts`
+(`KNOWN_DIVERGENCES`, with the reasoning above) and
+`tests/exercise/rules-and-sets-5.test.ts`, so a battery that stops excluding it
+fails rather than passing quietly.
