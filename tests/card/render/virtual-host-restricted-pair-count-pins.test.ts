@@ -92,7 +92,7 @@ describeOrSkipLoud(!(process.env.VIRTUAL_HOST_RESTRICTED_PAIR_COUNT_PINS === "1"
         "../../../src/card/render/views.js"
       );
       setDeploymentCloudAssetHost(
-        "https://source-deck-production-storage.r1.cdn.objectstore.example",
+        "https://production-storage.r1.cdn.objectstore.example",
       );
 
       storage = await createRawStructureSeededStorage(new Set(everyLiveId));

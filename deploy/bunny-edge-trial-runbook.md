@@ -174,7 +174,7 @@ deploy suites configure when they assert that deck's served bytes.
 
 ```json
 {
-  "assetHost": "https://source-deck-production-storage.r1.cdn.objectstore.example",
+  "assetHost": "https://production-storage.r1.cdn.objectstore.example",
   "footerVersionPin": "0.19.1",
   "stylesheetRevisionFrom": "45514/1786554352.css",
   "stylesheetRevisionTo": "45514/1790384218.css",
@@ -187,10 +187,10 @@ deploy suites configure when they assert that deck's served bytes.
   "notFoundType": { "id": "22281", "name": "BasicCs", "classToken": "basic_c" },
   "footerCardId": "22749", "footerTypeId": "50", "footerTypeName": "HTML",
   "allCardId": 274, "layoutPointerId": 255, "pointerTypeId": 34843,
-  "mainCssUrl": "https://source-deck-production-storage.r1.cdn.objectstore.example/files/45514/1790384218.css",
-  "mainJsUrl": "https://source-deck-production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
-  "logoUrl": "https://source-deck-production-storage.r1.cdn.objectstore.example/files/79/3643-small.jpg",
-  "faviconUrl": "https://source-deck-production-storage.r1.cdn.objectstore.example/files/103/3649-small.jpg",
+  "mainCssUrl": "https://production-storage.r1.cdn.objectstore.example/files/45514/1790384218.css",
+  "mainJsUrl": "https://production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
+  "logoUrl": "https://production-storage.r1.cdn.objectstore.example/files/79/3643-small.jpg",
+  "faviconUrl": "https://production-storage.r1.cdn.objectstore.example/files/103/3649-small.jpg",
   "siteTitleDefault": "Culturesmith",
   "rootUrl": "https://culturesmith.com/",
   "deckOrigin": "https://culturesmith.com",

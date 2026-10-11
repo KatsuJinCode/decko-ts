@@ -4,7 +4,7 @@
   "appliedAt": "2026-10-03T20:36:09.414Z",
   "mapping": {
     "from": "http://s3.amazonaws.com//files/",
-    "to": "https://source-deck-production-storage.r1.cdn.objectstore.example/files/",
+    "to": "https://production-storage.r1.cdn.objectstore.example/files/",
     "tails": "carried through unchanged (pure prefix substitution)"
   },
   "groundTruth": {

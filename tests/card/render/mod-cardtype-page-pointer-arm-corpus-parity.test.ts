@@ -98,7 +98,7 @@ describe("Mod cardtype page: the self-set pointer arm is oracle-pinned", () => {
       // head bytes carry the engine-default fog s3 form and every
       // attachment URL diverges.
       setDeploymentCloudAssetHost(
-        "https://source-deck-production-storage.r1.cdn.objectstore.example",
+        "https://production-storage.r1.cdn.objectstore.example",
       );
       const yardstick = loadModYardstick();
       expect(yardstick, "no page-lane yardstick entry for Mod").toBeDefined();

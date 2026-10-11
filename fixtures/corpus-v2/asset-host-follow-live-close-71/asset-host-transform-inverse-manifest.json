@@ -2,7 +2,7 @@
   "schema": "asset-host-follow-live/transform/1",
   "title": "INVERSE of asset-host-transform-manifest.json - reverts the corpus to the gen-2 s3-carrier form",
   "direction": {
-    "from": "https://source-deck-production-storage.r1.cdn.objectstore.example/files/",
+    "from": "https://production-storage.r1.cdn.objectstore.example/files/",
     "to": "http://s3.amazonaws.com//files/"
   },
   "inverseOf": {

@@ -27,7 +27,7 @@ const { setDeploymentFollowLiveConfig } = await import(
   pathToFileURL(path.join(REPO, "src", "card", "render", "deployment-follow-live-config.ts")).href
 );
 setDeploymentCloudAssetHost(
-  "https://source-deck-production-storage.r1.cdn.objectstore.example",
+  "https://production-storage.r1.cdn.objectstore.example",
 );
 
 const ERA_LIVE_CONFIG = {

@@ -104,7 +104,7 @@ describeOrSkipLoud(!(process.env.ALLSET_RULE_CATEGORY_GATE_BADGE_PINS === "1" &&
         "../../../src/card/render/views.js"
       );
       setDeploymentCloudAssetHost(
-        "https://source-deck-production-storage.r1.cdn.objectstore.example",
+        "https://production-storage.r1.cdn.objectstore.example",
       );
 
       storage = await createRawStructureSeededStorage(new Set(everyLiveId));

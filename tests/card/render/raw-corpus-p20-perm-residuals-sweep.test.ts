@@ -50,7 +50,7 @@ import { setDeploymentCloudAssetHost } from "../../../src/card/render/views.js";
 // the lane base f9d81361 (scratch baseline worktree, same 236-byte host
 // delta) — this suite simply predates the binding contract's enforcement.
 const SPACES_HOST =
-  "https://source-deck-production-storage.r1.cdn.objectstore.example";
+  "https://production-storage.r1.cdn.objectstore.example";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");

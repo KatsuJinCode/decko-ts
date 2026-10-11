@@ -207,7 +207,7 @@ describe("bunny edge engine handler — the shared read surface", () => {
     expect(body).toContain("<h1>Card not found</h1>");
     expect(body).not.toContain("22281");
     expect(body).not.toContain("basic_c");
-    expect(body).not.toContain("source-deck-production-storage");
+    expect(body).not.toContain("production-storage");
     expect(body).not.toContain("Decko v0.19.1");
   });
 

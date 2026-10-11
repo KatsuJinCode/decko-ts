@@ -68,7 +68,7 @@ const FROZEN_RAILS =
 
 // The frozen capture-era main-stylesheet attachment (the corpus's own digits).
 const FROZEN_CSS =
-  "https://source-deck-production-storage.r1.cdn.objectstore.example/files/45514/1786554352.css";
+  "https://production-storage.r1.cdn.objectstore.example/files/45514/1786554352.css";
 
 afterEach(() => {
   setDeploymentFollowLiveConfig(undefined);
@@ -131,14 +131,14 @@ describe("deployment constants-only arm: the preset arms the constants", () => {
   it("the compiled-CSS revision rewrites the stylesheet only, never the .js asset", () => {
     setDeploymentFollowLiveConfig(LIVE_DEPLOYMENT_CONSTANTS);
     expect(applyDeploymentCssRevision(FROZEN_CSS)).toBe(
-      "https://source-deck-production-storage.r1.cdn.objectstore.example/files/45514/1790384218.css",
+      "https://production-storage.r1.cdn.objectstore.example/files/45514/1790384218.css",
     );
     expect(
       applyDeploymentCssRevision(
-        "https://source-deck-production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
+        "https://production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
       ),
     ).toBe(
-      "https://source-deck-production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
+      "https://production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
     );
   });
 

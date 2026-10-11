@@ -46,7 +46,7 @@ describeIfCorpus("search append: virtual <item>+short cards", () => {
 
   beforeAll(async () => {
     // the grade boot's asset-host seam (image srcs in the page body)
-    setDeploymentCloudAssetHost("https://source-deck-production-storage.r1.cdn.objectstore.example");
+    setDeploymentCloudAssetHost("https://production-storage.r1.cdn.objectstore.example");
     const idLister = new Database(RAW_CORPUS_DB, { readonly: true });
     const ids = (
       idLister.prepare("SELECT id FROM cards WHERE trash = 0 ORDER BY id").all() as Array<{ id: number }>

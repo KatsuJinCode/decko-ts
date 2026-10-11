@@ -257,17 +257,17 @@ const sharedStore = {
 //
 // The deck's stored image URLs (corpus `db_content` on image cards) point at
 // the deck's original S3 bucket, but the live deck's CDN is now fronting
-// files from the Spaces bucket source-deck-production-storage at the same
+// files from the Spaces bucket production-storage at the same
 // path scheme (`/files/<cardId>/<fileId>-<size>.<ext>`).
 //
 // A-1 (round 10, assumption audit): every asset URL on every live page uses
 // the `.cdn.` Spaces subdomain —
-// `https://source-deck-production-storage.r1.cdn.objectstore.example`
+// `https://production-storage.r1.cdn.objectstore.example`
 // (12/12 live pages: JS, CSS, favicon, logo, and every content image; e.g.
 // Home.html `src="…cdn…/files/27689/135167-large.jpg"`). The previous
 // non-cdn host form was derived from a 2026-09-25 200-OK curl receipt, not
 // from the live page bytes — the live bytes never name that host.
-const SPACES_HOST = "https://source-deck-production-storage.r1.cdn.objectstore.example";
+const SPACES_HOST = "https://production-storage.r1.cdn.objectstore.example";
 
 // DECKO_DECK_PROFILE=stock serves any deck the way stock Decko serves it,
 // for a fresh deck rather than the production deck this host was tuned on:
@@ -1652,7 +1652,7 @@ async function safeRenderSetting(name, preferredView, fallbackView) {
 //                                                      oracle:80:8)
 // Both URLs return 200 image/jpeg on the Spaces host; the LIVE page
 // bytes name the .cdn. host form
-// (source-deck-production-storage.r1.cdn.objectstore.example —
+// (production-storage.r1.cdn.objectstore.example —
 // audit A-1), which is what SPACES_HOST now builds.
 const SITE_TITLE_DEFAULT = "Culturesmith";
 let siteTitleLoaded = null;

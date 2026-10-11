@@ -62,7 +62,7 @@ describeOrSkipLoud(!(process.env.CONTENTOPTS_BLAST_PROBE === "1" && existsSync(R
         "../../../src/card/render/views.js"
       );
       setDeploymentCloudAssetHost(
-        "https://source-deck-production-storage.r1.cdn.objectstore.example",
+        "https://production-storage.r1.cdn.objectstore.example",
       );
       storage = await createRawStructureSeededStorage(new Set(everyLiveId));
       storage.fetcher.installNameEnvironment();

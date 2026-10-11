@@ -33783,7 +33783,7 @@ function layoutPage(title, body) {
 }
 
 // deploy/bunny-worker-src/bunny-edge-page-shell.ts
-var SPACES_ASSET_HOST = "https://source-deck-production-storage.r1.cdn.objectstore.example";
+var SPACES_ASSET_HOST = "https://production-storage.r1.cdn.objectstore.example";
 var SERVED_ASSET_HOST_PREFIX = "http://s3.amazonaws.com//files/";
 var SERVED_CSS_REVISION = "45514/1786554352.css";
 var SERVED_CSS_REVISION_LIVE = "45514/1790384218.css";

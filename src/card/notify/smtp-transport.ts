@@ -103,7 +103,7 @@ export interface SmtpTransportOptions {
 const DEFAULT_HOST = "smtp.mail-synthetic.example";
 const DEFAULT_PORT = 587;
 const DEFAULT_HELO = "localhost.localdomain";
-const DEFAULT_FROM = "no-reply@source-deck.example";
+const DEFAULT_FROM = "no-reply@deck.example";
 const DEFAULT_TIMEOUT_MS = 5000;
 const DEFAULT_STARTTLS: "always" | "auto" | false = "auto";
 

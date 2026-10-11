@@ -22,7 +22,7 @@ if (!outPath) {
 // Rewrites applied to the older tree, in the JSON-encoded line form.
 const OLD_RIG_SLOT = /data-slot-id=(\\"|')[0-9a-f]+\1/g; // the old rig: any quote -> "RANDOMIZED"
 const S3 = "http://s3.amazonaws.com//files/";
-const CDN = "https://source-deck-production-storage.r1.cdn.objectstore.example/files/";
+const CDN = "https://production-storage.r1.cdn.objectstore.example/files/";
 const SEAM_STALE = '<div class=\\"dropdown-divider\\"></div>\\n\\n<span class=\\"denied\\">';
 const SEAM_LIVE = '<div class=\\"dropdown-divider\\"></div>\\n<span class=\\"denied\\">';
 // Values known to be drawn per process.

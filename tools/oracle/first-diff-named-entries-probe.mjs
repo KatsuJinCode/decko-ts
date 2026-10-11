@@ -85,7 +85,7 @@ const { setDeploymentCloudAssetHost } = await import(
   pathToFileURL(path.join(REPO, "src", "card", "render", "views.ts")).href
 );
 const DEPLOYMENT_CLOUD_ASSET_HOST =
-  "https://source-deck-production-storage.r1.cdn.objectstore.example";
+  "https://production-storage.r1.cdn.objectstore.example";
 setDeploymentCloudAssetHost(DEPLOYMENT_CLOUD_ASSET_HOST);
 
 // The same deployment's serializer + head constants (serializer-follow-live

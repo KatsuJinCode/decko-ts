@@ -2,11 +2,11 @@
 """sanitize_corpus.py -- build the structure-preserving, content-free benchmark
 corpus for decko-ts (#1282 benchmark program).
 
-Input : the SourceDeck mysqldump (1.2 GB) -- parsed LINEARLY, anchored on
+Input : the source mysqldump (1.2 GB) -- parsed LINEARLY, anchored on
         `INSERT INTO ... VALUES` line boundaries (never a backtracking regex
         over chunks; per-field matching is the quote/backslash-aware C-speed
         scanner pattern proven on this exact dump by the privacy-review
-        tooling in workspace/scripts/source-deck-migration).
+        tooling in workspace/scripts/deck-migration).
 Output: benchmarks/corpus/bench-corpus.sqlite3 (gitignored) plus
         benchmarks/corpus/sanitize-manifest.json (histograms + build facts,
         no original text).

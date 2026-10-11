@@ -23,7 +23,7 @@ import type { ServedEnvironmentDeltas } from "../../../deploy/bunny-worker-src/b
 
 /** The asset host the production deck serves /files/ URLs from. */
 export const PRODUCTION_ASSET_HOST =
-  "https://source-deck-production-storage.r1.cdn.objectstore.example";
+  "https://production-storage.r1.cdn.objectstore.example";
 
 /** The compiled CSS revision the production deck stores vs. the revision it
  *  serves (the corpus row stores the older one). */
@@ -87,12 +87,12 @@ export const PRODUCTION_DECK_SERVED_DELTAS: ServedEnvironmentDeltas = {
   mainJsUrl: `${PRODUCTION_ASSET_HOST}/files/60311/1610000003.js`,
   logoUrl: `${PRODUCTION_ASSET_HOST}/files/61002/1610000004-small.jpg`,
   faviconUrl: `${PRODUCTION_ASSET_HOST}/files/61003/1610000005-small.jpg`,
-  siteTitleDefault: "SourceDeck",
-  rootUrl: "https://source-deck.example/",
+  siteTitleDefault: "Reference Deck",
+  rootUrl: "https://deck.example/",
   // The engine's own card_url origin (Ruby's Cardio.config.deck_origin,
   // no trailing slash) — the same site identity rootUrl carries with its
   // slash, fed to the render engine through setDeckEnvironment at boot.
-  deckOrigin: "https://source-deck.example",
+  deckOrigin: "https://deck.example",
   headScripts: PRODUCTION_HEAD_SCRIPTS,
   phantomType: { typeId: 72281, typeName: "BasicCs", typeKey: "basic_c" },
 };

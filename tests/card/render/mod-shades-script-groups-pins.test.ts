@@ -55,7 +55,7 @@
 // tmp/serializer-followup/probe-green5/expected--mod_shades__page.html as
 // "the graded expected-v2 corpus". That file is NOT the graded corpus. It
 // is a LIVE recapture of the production site taken 2026-09-03, whose
-// `decko.cssPath` is source-deck-production-storage.r1.cdn
+// `decko.cssPath` is production-storage.r1.cdn
 // .objectstore.example/files/45514/1790384218.css — object storage
 // infrastructure, CSS id 1790384218 = 2026-09-26, i.e. 44.3 days AFTER the
 // graded yardstick's 2026-08-12 s3.amazonaws.com capture. The sibling

@@ -2320,7 +2320,7 @@ export function imageSizeVariant(sizeOpt: unknown): string {
  *  content shape): resolve to the `/files/<id>/<file>-<variant>.<ext>`
  *  path the live deck serves, prefixed by the deck's CDN host when the
  *  engine carries one (imageCdnHost — deck-deployment config, e.g.
- *  `https://source-deck-production-storage.r1.cdn.objectstore.example`).
+ *  `https://production-storage.r1.cdn.objectstore.example`).
  *
  *  live capture (assumption-audit A-13/A-15/A-30; live-wire bytes):
  *   <img alt="Riley Ellery+Image"

@@ -621,7 +621,7 @@ export async function runDirectGrade(opts: DirectRunOptions): Promise<DirectRunR
     pathToFileURL(path.join(REPO_ROOT, "src", "card", "render", "views.ts")).href
   );
   const DEPLOYMENT_CLOUD_ASSET_HOST =
-    "https://source-deck-production-storage.r1.cdn.objectstore.example";
+    "https://production-storage.r1.cdn.objectstore.example";
   setDeploymentCloudAssetHost(DEPLOYMENT_CLOUD_ASSET_HOST);
 
   // The aggregate's OWN directory, which is not necessarily OUT_DIR: a pooled

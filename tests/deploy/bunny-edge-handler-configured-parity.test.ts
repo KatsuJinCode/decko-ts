@@ -183,7 +183,7 @@ describe("bunny edge engine handler — a CONFIGURED deployment serves its own d
     // …and the report carries NAMES only: a configured value can be a
     // private URL, and /_status is exposed.
     const raw = JSON.stringify(status);
-    expect(raw).not.toContain("source-deck-production-storage");
+    expect(raw).not.toContain("production-storage");
     expect(raw).not.toContain("0.19.1");
   });
 });

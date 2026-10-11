@@ -3766,7 +3766,7 @@ export interface RenderEngineLike {
   canConfigure?(card: RenderCard): boolean | undefined;
   /** The deck's CDN/asset host for carrierwave cloud images
    *  (A-30): the endpoint live serves file URLs from —
-   *  e.g. `https://source-deck-production-storage.r1.cdn.objectstore.example`.
+   *  e.g. `https://production-storage.r1.cdn.objectstore.example`.
    *  The image core resolves `(bucket)/<id>/<file>.<ext>` content to
    *  `<host>/files/<id>/<file>-<variant>.<ext>`; when undefined the same
    *  /files shape renders host-relative. Deck-deployment config (Ruby's

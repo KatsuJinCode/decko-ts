@@ -34,7 +34,7 @@ register(
 );
 
 const DEPLOYMENT_CLOUD_ASSET_HOST =
-  "https://source-deck-production-storage.r1.cdn.objectstore.example";
+  "https://production-storage.r1.cdn.objectstore.example";
 
 const seeding = await import(pathToFileURL(path.join(REPO, "tests", "card", "render", "raw-corpus-seeding.js")).href);
 const { createRawStructureSeededStorage, RAW_CORPUS_DB } = seeding;

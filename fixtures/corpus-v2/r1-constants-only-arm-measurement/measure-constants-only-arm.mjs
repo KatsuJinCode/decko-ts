@@ -74,7 +74,7 @@ const STATES = ["UNARMED", "CONSTANTS", "FULL"];
 // runner (dual-lane-direct-runner-core.ts). It is the control's config too:
 // UNARMED means "constants not armed", NOT "no deployment config at all".
 const DEPLOYMENT_CLOUD_ASSET_HOST =
-  "https://source-deck-production-storage.r1.cdn.objectstore.example";
+  "https://production-storage.r1.cdn.objectstore.example";
 
 const SEEDING_MODULE = path.join(REPO, "tests", "card", "render", "raw-corpus-seeding.js");
 const seeding = await import(pathToFileURL(SEEDING_MODULE).href);

@@ -76,10 +76,10 @@ describe("deployment follow-live config: frozen default preserved", () => {
     );
     expect(
       applyDeploymentCssRevision(
-        "https://source-deck-production-storage.r1.cdn.objectstore.example/files/45514/1786554352.css",
+        "https://production-storage.r1.cdn.objectstore.example/files/45514/1786554352.css",
       ),
     ).toBe(
-      "https://source-deck-production-storage.r1.cdn.objectstore.example/files/45514/1786554352.css",
+      "https://production-storage.r1.cdn.objectstore.example/files/45514/1786554352.css",
     );
     expect(footerDeckoVersion()).toBeUndefined();
     expect(recaptchaSiteKey()).toBeUndefined();
@@ -203,18 +203,18 @@ describe("deployment follow-live config: live head constants", () => {
     setDeploymentFollowLiveConfig({ mainStylesheetRevisionDigits: "1790384218" });
     expect(
       applyDeploymentCssRevision(
-        "https://source-deck-production-storage.r1.cdn.objectstore.example/files/45514/1786554352.css",
+        "https://production-storage.r1.cdn.objectstore.example/files/45514/1786554352.css",
       ),
     ).toBe(
-      "https://source-deck-production-storage.r1.cdn.objectstore.example/files/45514/1790384218.css",
+      "https://production-storage.r1.cdn.objectstore.example/files/45514/1790384218.css",
     );
     // the script asset's revision is NOT the stylesheet's — untouched.
     expect(
       applyDeploymentCssRevision(
-        "https://source-deck-production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
+        "https://production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
       ),
     ).toBe(
-      "https://source-deck-production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
+      "https://production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
     );
     // the fog double-slash form (unset asset host) rewrites the same way.
     expect(
