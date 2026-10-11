@@ -551,7 +551,7 @@ regenerates the equivalent every time, plus an architecture map.
   is a generator over every installed mod's `set/` and `lib/` trees, producing a
   per-mod verdict. Its own Method section states the thresholds and, at the end,
   what no label measures.
-- [docs/core/contract-evidence.md](core/contract-evidence.md) is a statement-level
+- A working evidence table (internal tooling, not part of this repository) is a statement-level
   table where each contract ID maps to one row carrying Ruby truth (file and
   line), TypeScript evidence (test file and status), and a status of **proven**,
   **pinned-synthetic**, **divergent-documented** or **unported** — which is the
