@@ -193,7 +193,7 @@ import { createFormShell } from "../mod-form-substrate.js";
 import { readFormgroupBody, templateLinkSetNameFromParts } from "../../render/views.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
-import { parseNestOptions, scanNests } from "../../render/nest-syntax.js";
+import { parseNestOptions, scanNests, type ParsedNest } from "../../render/nest-syntax.js";
 import { safeSetKeys } from "../../render/set-keys.js";
 import { findAssignedTypeName } from "../../set-patterns/set-type-assignment.js";
 import { getNameEnvironment } from "../../name/environment.js";
@@ -585,6 +585,14 @@ const TYPE_FORMAT_INPUT_TYPE: Readonly<
   // sets, so both type codes answer the list editor.
   pointer: { method: "list" },
   list: { method: "list" },
+  // card-mod-search set/type/search_type.rb:1 `include_set Type::Json` —
+  // the Search cardtype's set rides the Json set's html input override
+  // (card-mod-format set/type/json.rb:33-39: input_type :ace_editor,
+  // ace_mode :json) — the pointer-input journeys' /card/new?type=Search
+  // form pins the ace textarea (rows 5, data-ace-mode "json",
+  // id "card_content") where the rich_text fall-through rendered the
+  // tinymce textarea and the editor fill came back <p>-wrapped.
+  search_type: { method: "ace_editor", aceMode: "json" },
 };
 
 /** all/editor.rb:9-11 input_type_from_rule:
@@ -2520,19 +2528,56 @@ function structureLink(): string {
   );
 }
 
+/** chunk.rb:63-70 implicit_edit_fields_config over the CARD'S OWN
+ *  content (the fields_only=false arm edit_nests runs - editing.rb:71
+ *  multi_card_edit's `edit_field_configs false`): each_named_chunk of
+ *  the card's content - every Nest chunk (links are not nests),
+ *  comment nests dropped (nest.rb#interpret), uniq_chunks'd from the
+ *  card's own key (chunk.rb:73-81), each [nest_name, chunk options].
+ *  The virtual arm (each_nested_chunk's virtual: true -
+ *  chunk.rb:126-138 process_virtual_chunk `return if virtual`) drops
+ *  chunks whose referee is a virtual card. Returns the PARSED nest
+ *  pieces so the render rides fmt.nest's own chunk machinery. */
+function cardNestConfigs(fmt: ViewContext["fmt"]): ParsedNest[] {
+  const seen = new Set<string>([fmt.card.key]);
+  const configs: ParsedNest[] = [];
+  for (const piece of scanNests(fmt.card.dbContent ?? "")) {
+    if (piece.kind !== "nest" || piece.nest === undefined) continue;
+    const nest = piece.nest;
+    if (nest.comment !== undefined) continue; // '#' visible / '##' vanishing comments
+    const target = DeckoName.parse(nest.name).absoluteName(fmt.card.name);
+    if (seen.has(target.key)) continue; // uniq_chunks
+    seen.add(target.key);
+    configs.push(nest);
+  }
+  return configs;
+}
+
 /** editing.rb:67-73 view :edit_nests, cache: :never:
  *  `frame do with_nest_mode :edit do multi_card_edit end end` - the frame
  *  machinery (framedView: hides :help first - the captured slot carries
- *  hide:[help]); multi_card_edit (form.rb:115-122) with EMPTY field
- *  configs answers structure_link. Nest-free cards (the captured
- *  "Oracle Basics" arm) pin these bytes; nest-bearing cards render the
- *  nested editors (nest + nest_mode :edit + sub-form prefixes -
- *  rails-runtime remainder; the captured Home arm is recorded in the
- *  fixture, the port answers "" there, disclosed). */
+ *  hide:[help]); multi_card_edit (form.rb:115-122):
+ *  `field_configs = edit_field_configs fields_only` (chunk.rb:55-62 -
+ *  the explicit-edit-fields arm is voo.edit_structure, unset in the
+ *  engine; the implicit arm walks the CARD'S OWN content nests),
+ *  `return structure_link if field_configs.empty?`, else
+ *  `field_configs.map { |name, options| nest name, options || {} }.join
+ *  "\n"`. Each nest renders under nest_mode :edit - mode.rb:46/56-66
+ *  view_in_edit_mode turns it into the field card's :edit_in_form
+ *  (the ported modalNestView edit arm), whose editor_in_multi_card
+ *  formgroup (form.rb:100-113, the ported :edit_in_form view) renders
+ *  the row (the Report 1 / Report 2 file editors the oracle pins).
+ *  Nest-free cards (the captured "Oracle Basics" arm) answer
+ *  structure_link. */
 const editNestsView: ViewFn = (ctx) =>
-  framedView(ctx, "edit_nests", () =>
-    contentHasRealNest(ctx.fmt) ? "" : structureLink(),
-  );
+  framedView(ctx, "edit_nests", () => {
+    const { fmt } = ctx;
+    return fmt.withNestMode("edit", () => {
+      const configs = cardNestConfigs(fmt);
+      if (configs.length === 0) return structureLink();
+      return configs.map((nest) => fmt.nest(nest)).join("\n");
+    });
+  });
 
 /** editing.rb:54-65 view :edit_structure, cache: :never:
  *  `return unless card.structure; nest card.structure_rule_card, view:

@@ -344,6 +344,11 @@ async function renderOutsideOfLayout(
   }
   engine.pageErrorStatus = status;
   const modalFormat = new RenderFormat(rootCard, engine, { main: true, nestQuietErrors: true });
+  // render_outside_of_layout's `render!` runs on the SAME root format
+  // (process_layout.rb:44-48): the modal's editors continue the body's
+  // id_counter numbering (the layout's enabled-roles checkboxes consume
+  // 1-2 first; the pointer-input journeys' oracle pins 3-12).
+  modalFormat.seedRootIdCounter(engine.pageRootIdCounter);
   // The body's main view ran on the same Ruby format; a titled or labeled
   // main view left @content_body set for the denial frame's body.
   const layout = await resolvePageLayout(engine, record);
@@ -401,14 +406,14 @@ async function renderPageBytesWithPageConfigInner(
     // then render it on a main format (focal: a denial is the loud one).
     await engine.render(record.name.s, requestedView, historyParams);
     const modalRoot = engine.fetchRenderCard(record.name.s);
-    const modal =
-      modalRoot === undefined
-        ? ""
-        : new RenderFormat(modalRoot, engine, { main: true, nestQuietErrors: true }).renderView(
-            requestedView,
-            { main: true, main_view: true },
-            null,
-          );
+    let modal = "";
+    if (modalRoot !== undefined) {
+      const modalFormat = new RenderFormat(modalRoot, engine, { main: true, nestQuietErrors: true });
+      // render_outside_of_layout's `render!` runs on the SAME root format
+      // (process_layout.rb:44-48): the modal continues the body's numbering.
+      modalFormat.seedRootIdCounter(engine.pageRootIdCounter);
+      modal = modalFormat.renderView(requestedView, { main: true, main_view: true }, null);
+    }
     return body.includes("</body>") ? body.replace("</body>", () => `${modal}</body>`) : body + modal;
   }
 
@@ -707,6 +712,12 @@ async function renderPageBytesWithPageConfigInner(
     : layout.kind === "card"
       ? rootFormat.processLayoutContent(layout.layoutCardContent ?? "")
       : codeDefaultLayoutInterior(rootFormat);
+  // The body render's id_counter state (the layout's unique_id consumers —
+  // the enabled-roles checkboxes included) is what the modal render
+  // continues: Ruby's render_outside_of_layout `render!` runs on the SAME
+  // root format (process_layout.rb:44-48). The page lane hands the value
+  // to its modal sites through the engine's request-scope state.
+  engine.pageRootIdCounter = rootFormat.exportRootIdCounter();
 
   // show.rb: the :html_page wrapper (head + interior). Byte shape pinned by
   // the page-lane capture: the wrapper heredoc's 6/8/10-space indentation is

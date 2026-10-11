@@ -4448,8 +4448,8 @@ export class CardActionEngine {
     const setTypeId = await this.fetch.codenames.id("set");
     const settingTypeId = await this.fetch.codenames.id("setting");
     const actions = [
-      { cardId: result.cardId, actionId: result.actionId, verb: result.verb },
-      ...result.subactions.map((s) => ({ cardId: s.cardId, actionId: s.actionId, verb: s.verb })),
+      { cardId: result.cardId, actionId: result.actionId, verb: result.verb, name: result.name },
+      ...result.subactions.map((s) => ({ cardId: s.cardId, actionId: s.actionId, verb: s.verb, name: s.name })),
     ];
     for (const action of actions) {
       if (action.verb === "delete") continue;
@@ -4457,7 +4457,25 @@ export class CardActionEngine {
       if (row === undefined || row.trash === 1 || row.left_id === null || row.right_id === null) continue;
       const left = await this.fetchRowById(row.left_id);
       const right = await this.fetchRowById(row.right_id);
-      if (left === undefined || left.type_id !== setTypeId || right?.type_id !== settingTypeId || left.trash === 1) continue;
+      // Card#rule? (lib/card/rule/all.rb:33-40) — the event's set module
+      // (Set::Rule, mod/core/set_pattern/06_rule.rb pattern_applies?
+      // `card.rule?`): standard_rule? — the LEFT is Set-typed and the right
+      // a Setting — OR preference? — parts > 2, the right a Setting, and
+      // name[0..-3] (the left's own left) Set-typed. The follow family's
+      // rules are preferences ("Topic 008+*self+Ada Admin+*follow": the
+      // immediate left is the USER card; the set part sits two parts up),
+      // so the old left-must-be-a-Set gate skipped exactly those.
+      const rightIsSetting = right !== undefined && right.type_id === settingTypeId;
+      if (!rightIsSetting) continue;
+      const leftIsSet = left !== undefined && left.type_id === setTypeId;
+      if (!leftIsSet) {
+        // preference? (rule/all.rb:41-44): parts > 2 (the left is itself a
+        // compound) and name[0..-3] is Set-typed.
+        const leftRow = left !== undefined && left.left_id !== null ? await this.fetchRowById(left.left_id) : undefined;
+        if (left === undefined || left.left_id === null || leftRow === undefined || leftRow.type_id !== setTypeId) {
+          continue;
+        }
+      }
       if (action.verb === "update") {
         const changed = (
           await driver.query<{ n: number }>(
@@ -4469,14 +4487,33 @@ export class CardActionEngine {
       }
       const recent = await this.fetchRowById(recentId);
       if (recent === undefined || recent.trash === 1) continue;
-      const settingName = (await this.fetch.lexicon.name(row.right_id))?.s;
+      // `insert_item 0, name.right` — the RULE card's own right name as
+      // saved (rules.rb:3), not the setting card's stored name: the
+      // pointer-input journeys create "Tag+*right+*input_type" and the
+      // list's new lead entry is "*input_type" where the stored setting
+      // card's name is "*input type" (the old space-form entry drops —
+      // Array#delete's Card::Name == is key equality). The AUTHORED name
+      // rides the action summary (compound rows carry name NULL, and the
+      // sides resolve through the lexicon — the setting card's stored name).
+      const settingName = action.name?.rightName?.s;
       if (settingName === undefined) continue;
       const settingKey = DeckoName.parse(settingName).key;
       const items = listItemStrings(recent.db_content).filter(
         (item) => DeckoName.parse(item).key !== settingKey,
       );
       const content = [settingName, ...items].join("\n");
-      if (content === (recent.db_content ?? "")) continue;
+      if (content === (recent.db_content ?? "")) {
+        // insert_item assigned the identical list: the subcard save still
+        // runs (the director's set_stamper stamps the row — the follow
+        // journey's oracle pins the updater_id-only update) with no content
+        // change row and no reference event (changed: :content is false).
+        await driver.query("UPDATE cards SET updated_at = ?, updater_id = ? WHERE id = ?", [
+          sqlDateTime(this.clock()),
+          this.actor?.id ?? null,
+          recentId,
+        ]);
+        continue;
+      }
       await driver.query("UPDATE cards SET db_content = ?, updated_at = ?, updater_id = ? WHERE id = ?", [
         content,
         sqlDateTime(this.clock()),
