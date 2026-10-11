@@ -1256,8 +1256,14 @@ export const editFormView: ViewFn = ({ fmt, voo }) => {
     `<input type="hidden" name="_method" value="patch" autocomplete="off" />` +
     output([
       undefined, // edit_view_hidden (editing.rb:35-36, the override stub)
-      fmt.renderView("edit_type_row", { home_view: "edit_type_row" }),
-      fmt.renderView("content_formgroups"),
+      // The form body's renders are UNDERSCORE calls in Ruby
+      // (edit_content.rb:20-22 `_render_edit_type_row`,
+      // `_render_content_formgroups`): skip_perms rides the render args
+      // (method_delegation.rb:54), so the nested form machinery renders
+      // AS REQUESTED on an unknown card — the type row and the field
+      // editors where the :unknown substitution stood.
+      fmt.renderView("edit_type_row", { home_view: "edit_type_row", skip_perms: true }),
+      fmt.renderView("content_formgroups", { skip_perms: true }),
       // _render(voo.buttons_view || :edit_buttons) - the METHOD_MISSING
       // delegation (method_delegation.rb:41-47 -> api_render -> render!),
       // whose own wrap_and_render rescue (render.rb:96-100) makes the quiet
@@ -1266,7 +1272,14 @@ export const editFormView: ViewFn = ({ fmt, voo }) => {
       // (the edit_buttons raise, deleteButton's reproduced upstream failure)
       // while the form around it completes. renderDelegated is that seam;
       // the no-raise renders are byte-identical through it.
-      fmt.renderDelegated(voo.opts["buttons_view"] === undefined ? "edit_buttons" : String(voo.opts["buttons_view"])),
+      // `_render(voo.buttons_view || :edit_buttons)` — the underscore lane
+      // again: skip_perms rides the delegation (the buttons render as
+      // themselves on an unknown card; the new-card Delete drop is
+      // deleteButton's own card.real? arm, form_buttons.rb:55).
+      fmt.renderDelegated(
+        voo.opts["buttons_view"] === undefined ? "edit_buttons" : String(voo.opts["buttons_view"]),
+        { skip_perms: true },
+      ),
     ]) +
     `</form>`;
   return modSlotWrap({ fmt, voo }, "edit_form", form);
@@ -1349,14 +1362,19 @@ export const editView: ViewFn = ({ fmt, voo }) => {
   voo.hide("save_button");
   voo.classUp("help-text", "alert alert-info"); // frame_help with_class_up
   // The edit view declares unknown: true (edit_content.rb:28): its whole
-  // body — the inline edit_form included — renders for an unknown card as
-  // the create form. The nested edit_form render rides that decision (the
-  // opts' unknown leg answers the nested altered_view), so the modal's
-  // body renders the form instead of the :unknown substitution.
+  // body renders for an unknown card as the create form. The body's renders
+  // are UNDERSCORE calls in Ruby (`_render :help`, `_render_edit_form`,
+  // edit_content.rb:36) — method_delegation.rb:17 RENDER_METHOD_RE's leading
+  // underscore sets render_args' skip_perms (:54), and permission.rb:26
+  // `altered_view` answers `return if skip_check?` BEFORE alter_unknown, so
+  // the body renders AS REQUESTED on the unknown card: no :unknown
+  // substitution anywhere under the edit view (the pinned
+  // denied-member-delete modal: the create-form bytes, the type row and the
+  // buttons included).
   const body = modSlotWrap(
     { fmt, voo },
     "edit",
-    [fmt.renderView("help"), fmt.renderView("edit_form", { unknown: "edit_form" })].join("\n"),
+    [fmt.renderView("help", { skip_perms: true }), fmt.renderView("edit_form", { skip_perms: true })].join("\n"),
   );
   let out = "<div class='modal fade _modal-slot' id='modal-container' role='dialog'>\n";
   out += "<!-- /, \"data-backdrop\": \"static\"} -->\n";
@@ -2701,11 +2719,13 @@ function boardParts(ctx: ViewContext): string {
   voo.classUp("help-text", "alert alert-info"); // frame_help's with_class_up
   return output([
     fmt.renderView("help"),
-    fmt.renderView("edit_name_row", { home_view: "edit_name_row" }),
-    // The edit view's own unknown: true covers its inline body: the nested
-    // edit_form render rides the parent's decision (the opts' unknown leg
-    // answers the nested altered_view) instead of substituting :unknown.
-    fmt.renderView("edit_form", { unknown: "edit_form" }),
+    // board_parts' renders are UNDERSCORE calls in Ruby (editing.rb:38-42,
+    // `_render_edit_name_row`, `_render_edit_form`): method_delegation.rb:54
+    // render_args sets skip_perms for the underscore prefix, so the whole
+    // board body renders AS REQUESTED on an unknown card — the name row and
+    // the form where the :unknown substitution stood.
+    fmt.renderView("edit_name_row", { home_view: "edit_name_row", skip_perms: true }),
+    fmt.renderView("edit_form", { skip_perms: true }),
   ]);
 }
 
