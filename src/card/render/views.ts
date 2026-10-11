@@ -6623,13 +6623,17 @@ const listOfChangesView: ViewFn = () => "";
  *  AUTHORED SYNTAX. So `{{_|subedits}}` renders as the literal
  *  `{{_|subedits}}`. Oracle-pinned: the follower notification email's
  *  html message shows `<p>{{_|subedits}}</p>` and its text message shows
- *  a bare `{{_|subedits}}` line. The nil fall-through now lives at the
- *  chunk dispatch itself (render/format.ts contentNest -> nest's
- *  authoredText arm, the composed answer to the miscpins wave-2
- *  registrations shadowing this flat arm), so the body answers the raw
- *  nil like Ruby's — a top-level render to_s's it to "" exactly as the
- *  corpus's headless subedits op pins. */
-const subeditsView: ViewFn = () => null;
+ *  a bare `{{_|subedits}}` line. This flat arm answers the same
+ *  posture-dependent shape as the mod's registered arm (the corpus's
+ *  top-level subedits op records {"html":""} there, the email nest the
+ *  authored syntax): the chunk dispatch's authoredNestText opt
+ *  (render/format.ts contentNest -> nest's authoredText arm, the composed
+ *  answer to the miscpins wave-2 registrations shadowing this flat arm)
+ *  carries the chunk's @text, and every other boundary answers "". */
+const subeditsView: ViewFn = (ctx) => {
+  const authored = ctx.voo.opts["authoredNestText"];
+  return typeof authored === "string" ? authored : "";
+};
 
 /** card-mod-follow set/all/notify/base_views.rb:33-40
  *  `view :followed, perms: :none, compact: true` —

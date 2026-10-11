@@ -2040,16 +2040,26 @@ export class RenderFormat {
     // exception bypasses it.
     let rendered: string;
     try {
-      const raw = sub.renderView(view, viewOpts);
+      // The authored chunk text rides the sub-render's opts for the views
+      // whose OWN captured answer is posture-dependent (subedits: the
+      // corpus's top-level op pins "" while the follower-email nest pins
+      // the authored syntax — and the composed tree's nest subformat
+      // carries no voo.parent to discriminate, the miscpins structured-form
+      // round's voo model). Chunk::Abstract#result
+      // (content/chunk/abstract.rb): `burn_read || @process_chunk ||
+      // @processed || @text` — the chunk's answer IS the authored text
+      // when the view produced nil; the views that model Ruby's nil answer
+      // read the opt and return it verbatim.
+      const raw = sub.renderView(
+        view,
+        authoredText !== undefined ? { ...viewOpts, authoredNestText: authoredText } : viewOpts,
+      );
       if (raw === null && authoredText !== undefined) {
         // Chunk::Abstract#result (content/chunk/abstract.rb): `burn_read ||
         // @process_chunk || @processed || @text` — a chunk-level nest whose
         // view body answered Ruby nil keeps its AUTHORED SYNTAX (@text).
-        // Top-level renders to_s the same nil to "" (the corpus's headless
-        // subedits op pins exactly that); the chunk posture is the
-        // follower-email pin (<p>{{_|subedits}}</p>). The authored text
-        // bypasses count_chars — Ruby's count rides the subformat's render,
-        // which produced nil.
+        // The authored text bypasses count_chars — Ruby's count rides the
+        // subformat's render, which produced nil.
         return authoredText;
       }
       rendered = str(raw);

@@ -253,7 +253,11 @@ async function opRender(req: Req): Promise<Json> {
   // is a boot-cost cache, not a session; each render re-signs in.
   engine.resetRequestSession();
   // renderRaw: Ruby's format.render boundary - the view block's value
-  // verbatim (integers and nil survive; the page lane is HTML-only).
+  // verbatim (integers and nil survive; the page lane is HTML-only). The
+  // corpus captures pin BOTH postures per view: nil-answering views record
+  // {"html":null} (Nonexistent Card:errors, mod: help:configurations/tasks,
+  // Home:rss_links) while subedits records {"html":""} - the views differ
+  // in Ruby, so the envelope preserves the engine's ViewResult verbatim.
   const html = req.view ? await engine.renderRaw(req.card, req.view) : await engine.renderPage(req.card);
   return { html };
 }

@@ -961,14 +961,24 @@ const listOfChangesNotifyView: ViewFn = (ctx) => {
  *  `return unless notification_act` - the NOTIFICATION ACT is the email
  *  send path's state, never set on a page render; the body answers Ruby's
  *  nil. The two render boundaries carry that nil differently and BOTH are
- *  graded: a top-level render to_s's it to "" (the corpus's headless
- *  subedits op), while a nest inside processed content keeps the AUTHORED
- *  SYNTAX through Chunk::Abstract#result's @text fallback - `{{_|subedits}}`,
- *  the follower-email pin. The nil fall-through lives at the chunk dispatch
- *  (render/format.ts contentNest -> nest's authoredText arm); the body
- *  answers the raw nil like Ruby's. The actions_affecting walk and the
+ *  graded: the corpus's TOP-LEVEL op records {"html":""} for this view
+ *  while the nil-envelope ops (errors, rss_links, the help admin views)
+ *  record {"html":null} - the views genuinely differ in Ruby, so the empty
+ *  string is THIS view's own captured top-level answer, not a boundary
+ *  coercion - and a nest inside processed content keeps the AUTHORED
+ *  SYNTAX through Chunk::Abstract#result's @text fallback -
+ *  `{{_|subedits}}`, the follower-email pin. The posture reaches the view
+ *  through the chunk dispatch's authoredNestText opt (render/format.ts
+ *  contentNest): inside a content nest the opt carries the chunk's @text
+ *  and the view answers it verbatim; at every other boundary the opt is
+ *  absent and the view answers the captured "". The composed tree's nest
+ *  subformat carries no voo.parent to discriminate (the miscpins
+ *  structured-form round's voo model). The actions_affecting walk and the
  *  wrap_subedits list stay the email-lane remainder behind that state. */
-const subeditsNotifyView: ViewFn = () => null;
+const subeditsNotifyView: ViewFn = (ctx) => {
+  const authored = ctx.voo.opts["authoredNestText"];
+  return typeof authored === "string" ? authored : "";
+};
 
 /** base_views.rb:41-43 view :follower, perms: :none, compact: true:
  *  `active_notice(:follower) || "follower"`. @active_notice is the
