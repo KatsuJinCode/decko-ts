@@ -2187,7 +2187,7 @@ export class RenderFormat {
         leftTypeName: this.leftTypeNameFor(target.name),
         isNew: true,
       });
-    return {
+    const out = {
       ...target,
       // content/all.rb:8-10 — an id-less warm record with content is a
       // VIRTUAL resolution (states.rb:44-50 virtual?: compound + applicable
@@ -2207,6 +2207,7 @@ export class RenderFormat {
       typeCode,
       setKeys: rebuiltSetKeys,
     };
+    return out;
   }
 
   /** The TYPE_PLUS_RIGHT anchor for a NEW compound card: Ruby's pattern
@@ -2496,6 +2497,26 @@ export class RenderFormat {
     const rightCard = rightName === undefined ? undefined : engine.fetchRenderCard(rightName.s);
     const rightCodename = rightCard?.record.codename;
     const virtualSet = rightCodename !== undefined && VIRTUAL_SET_CODENAMES.has(rightCodename);
+    // Card#type_code (mod/core set/all/type.rb:30-32) is
+    // `Card::Codename[type_id.to_i]` — the codehash answer for the card's
+    // RESOLVED type id. A new card Ruby fabricates with `new: { type: X }`
+    // (or through the *default template chain — new_card_args sets :type
+    // either way) answers its type_code like any stored card; the port's
+    // fabricated record must too. Leaving it undefined made every typeCode
+    // read on the typed phantom lie while its setKeys claimed the type: the
+    // *favicon nest editor's image01 upload-tab phantom carried
+    // setKeys "ALL TYPE-image" (so the concrete Type::Image::HtmlViews ->
+    // Type::File include dispatched File::HtmlFormat's :input, exactly
+    // Ruby's structure) but typeCode undefined, so fileInputView's
+    // `typeCode === "image"` mount check failed and the chooser rendered
+    // the FILE mount (card[file] / "Add File...") where the oracle pins
+    // card[image] / "Add Image..." (file.rb:131-138 humanizes the card's
+    // OWN attachment name). peekCodenameById IS Codename[id] (the same
+    // sync surface the prepared-card typeCode fixup uses, render.ts).
+    const typeCode =
+      defaulted?.typeId !== undefined
+        ? engine.peekCodenameById?.(defaulted.typeId)
+        : undefined;
     if (virtualSet) {
       return {
         record,
@@ -2503,7 +2524,7 @@ export class RenderFormat {
         key: name.key,
         typeName: defaulted?.typeName,
         typeId: defaulted?.typeId,
-        typeCode: undefined,
+        typeCode,
         id: undefined,
         dbContent: defaultContent ?? "",
         setKeys,
@@ -2517,7 +2538,7 @@ export class RenderFormat {
       key: name.key,
       typeName: defaulted?.typeName,
       typeId: defaulted?.typeId,
-      typeCode: undefined,
+      typeCode,
       id: undefined,
       dbContent: defaultContent ?? "",
       setKeys,

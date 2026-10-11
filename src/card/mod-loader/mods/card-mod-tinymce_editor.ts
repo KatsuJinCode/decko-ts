@@ -1653,7 +1653,7 @@ export function nestImageChrome(
  *  ENGINE's real seam renders (fmt.nest dispatches the rules mod's
  *  nest_rules view and the image card's new_image view; the wrap seam is
  *  the engine's slot wrapper around the nested core view). */
-function engineChromeContext(ctx: ViewContext, imageMark: string): ChromeContext {
+function engineChromeContext(ctx: ViewContext, imageMark: string, wrapView = "nest_image"): ChromeContext {
   const { fmt } = ctx;
   return {
     cardName: fmt.card.name.s,
@@ -1676,11 +1676,21 @@ function engineChromeContext(ctx: ViewContext, imageMark: string): ChromeContext
     wrap: () =>
       modSlotWrap(
         ctx,
-        "nest_image",
+        // Ruby's preview tab is `wrap true do nest ... end`
+        // (nest_editor_tabs.rb:33-37) — wrap names the slot after the
+        // CURRENT view (view_definition.rb's voo view), so the overlay arm
+        // (view :nest_image) wraps as nest_image-view and the modal arm
+        // (view :modal_nest_image) as modal_nest_image-view.
+        wrapView,
+        // image_preview_tab: `nest(snippet.name, view: :core, type: :image,
+        // hide: :guide)` — the same opts the upload tab carries (the oracle
+        // slot JSON pins "hide":["guide"],"type":"image"; the type opt also
+        // types the preview-tab image01 phantom Image, so its unknown core
+        // slot carries data-card-type-id 284, not the RichText default).
         fmt.nest({
           syntax: `{{${imageMark}|core}}`,
           name: imageMark,
-          options: { view: "core", extra: {} },
+          options: { view: "core", hide: "guide", extra: { type: "image" } },
           comment: undefined,
         }),
       ),
@@ -1716,7 +1726,7 @@ const nestImageView: ViewFn = (ctx) =>
     ctx,
     "nest_image",
     "_overlay d0-card-overlay card nodblclick",
-    nestImageChrome(engineChromeContext(ctx, "image01"), "overlay", "image01"),
+    nestImageChrome(engineChromeContext(ctx, "image01", "nest_image"), "overlay", "image01"),
   );
 
 /** view :modal_nest_image, unknown: true, cache: :never, wrap: { slot:
@@ -1726,7 +1736,7 @@ const modalNestImageView: ViewFn = (ctx) =>
     ctx,
     "modal_nest_image",
     "nodblclick",
-    nestImageChrome(engineChromeContext(ctx, "image01"), "modal", "image01"),
+    nestImageChrome(engineChromeContext(ctx, "image01", "modal_nest_image"), "modal", "image01"),
   );
 
 /** view :nest_content, perms: :create, cache: :never, unknown: true,
