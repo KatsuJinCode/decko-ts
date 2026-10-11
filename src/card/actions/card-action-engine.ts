@@ -108,6 +108,7 @@ import {
   type ReadViewer,
 } from "../permissions/read-rules.js";
 import {
+  followRightPermitPassedForCard,
   saveTaskVerdictForCard,
   taskVerdictForCard,
   viewTaskPermissionStatements,
@@ -4236,18 +4237,45 @@ export class CardActionEngine {
       // (permissions.rb:127-137 ok_to_create_side: a missing part is judged
       // as a virtual new card's own ok?(:create)) composes the SUBCARD-ERROR
       // shape the act reports: the part card's permission_denied error folds
-      // onto the supercard under the part's name (the standard_errors view
-      // upcases the attribute for display), so the alert reads
-      // "<PART NAME UP>: permission_denied You don't have permission to
-      // create <part name>" under the "Problems with <card>" heading. The
-      // board follow-family's unfollow link pins these bytes (the virtual
-      // left "Topic 009+*self+Mira Member" denies where the preference's own
-      // right/follow.rb permit override passed).
-      if (task === "create" && card.name !== undefined && card.name.isCompound === true) {
+      // onto the supercard under the part's name (subcards/all.rb:65-80
+      // handle_subcard_errors: `errors.add subcard.name.from(name),
+      // "#{error.attribute} #{msg}"`), and the surviving act.errors carry
+      // ONLY that part-named attribute — the live-oracle probe (deck copy,
+      // Auth.as("Mira Member") { Card.new(name:
+      // "Topic 009+*self+Mira Member+*follow", content: "[[*never]]").save!
+      // }) answered RecordInvalid with errors exactly
+      // ["Topic 009+*self+Mira Member => permission_denied You don't have
+      // permission to create Topic 009+*self+Mira Member"]. error.rb:177-182
+      // invalid_card_error_class then finds NO :permission_denied/:conflict
+      // KEY on the act and bottoms out at base Card::Error: status 422, view
+      // :errors — the standard_errors alert reads "<PART NAME UP>:
+      // permission_denied You don't have permission to create <part name>"
+      // under the "Problems with <card>" heading. The board follow-family's
+      // unfollow link pins these bytes (the virtual left
+      // "Topic 009+*self+Mira Member" denies where the act's own permit
+      // passed). The 422 class is the client-visible half of the swap: the
+      // deck script's showErrorResponse (slotter.js.coffee) answers 403
+      // with showAsModal but a 422 with notify — the alert lands in the
+      // closest card-slot (the follow_section slot), not the body modal.
+      // The gate below is the Right::Follow override shape
+      // (followRightPermitPassedForCard): the only acts whose ok_to_create?
+      // carries NO sides walk, so a denied side surfaces purely as the
+      // fold. EVERY other act — the secverify deep-name probes (standard
+      // ok_to_create?: its own sides walk lands the act's own
+      // :permission_denied) and unfollow-from-mail's "Mira Member+*follow"
+      // (the override's permit denied) — keeps the plain permission-denied
+      // arm below. All three shapes probed against the live oracle on a
+      // deck copy.
+      if (
+        task === "create" &&
+        card.name !== undefined &&
+        card.name.isCompound === true &&
+        (await followRightPermitPassedForCard(this.fetch, pattern, state))
+      ) {
         const side = await this.failingCreateSide(card.name);
         if (side !== undefined) {
           throw new CardActionError(
-            "permission-denied",
+            "user-error",
             `actor ${this.actor?.name ?? ANONYMOUS_ACTOR_NAME} may not ${task} card ${card.name.s}`,
             `${side.toUpperCase()}: permission_denied You don't have permission to create ${side}`,
             { [side.toLowerCase()]: `permission_denied You don't have permission to create ${side}` },
