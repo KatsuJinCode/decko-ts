@@ -1,0 +1,2524 @@
+{
+  "schema": "decko-deep-nesting-attribution/1",
+  "generated_at": "2026-10-11T02:45:27.662Z",
+  "engine_commit": "58a7687d5638b4c86e450fa8711f834ccdb233df",
+  "engine_tree_dirty": false,
+  "node": "v24.19.0",
+  "platform": "win32",
+  "cpu": "Intel(R) Core(TM) i7-14700F",
+  "definitions": {
+    "round_trip": "one call to the database driver: a query, or a batch of statements sent together (one HTTP request on the edge drivers)",
+    "statement": "one SQL statement; a batch of n statements counts n",
+    "cold": "the first render of the root card by a new engine over a database holding only the fixture and its type card",
+    "database": "better-sqlite3 in memory, schema db/schema.sqlite.sql",
+    "nest_levels_below_root": "chain of n cards: n - 1; fan: 1; tree of depth d: d"
+  },
+  "causes": [
+    {
+      "id": "root",
+      "what": "the requested card, fetched by name"
+    },
+    {
+      "id": "prelude",
+      "what": "one batch of 13 fixed lookups before the walk: the root row by id, the codename table, the permission parties and read rules, two rule-closure walks, the deck's type list, a few named cards, and the deck_data_version freshness stamp"
+    },
+    {
+      "id": "closure",
+      "what": "one batch per further level of nesting: every card the previous level nests, fetched together"
+    },
+    {
+      "id": "wave",
+      "what": "the derived-state prime before rendering: the types of the cards in hand and the rule cards that could govern them, by name, in waves (a compound rule name is looked up once the wave before has found its parts)"
+    }
+  ],
+  "law": "round trips = 1 root + 1 prelude + 1 closure batch per nest level below the root + 2 wave = 4 + nest levels below the root",
+  "rows": [
+    {
+      "fixture": "chain d1",
+      "shape": "chain",
+      "root": "BenchDN_chain_open_d01_n01",
+      "cards": 1,
+      "nest_levels_below_root": 0,
+      "round_trips": 4,
+      "statements": 19,
+      "html_chars": 3011,
+      "by_cause": {
+        "root": {
+          "trips": 1,
+          "statements": 1
+        },
+        "prelude": {
+          "trips": 1,
+          "statements": 13
+        },
+        "wave": {
+          "trips": 2,
+          "statements": 5
+        }
+      },
+      "trips": [
+        {
+          "cause": "root",
+          "kind": "query",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.query src/card/one-trip/replay-plan-router.ts",
+            "retrieveFromDb src/card/fetch/retrieve.ts",
+            "FetchEngine.retrieveExisting src/card/fetch.ts",
+            "FetchEngine.fetchWithOptions src/card/fetch.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1"
+          ]
+        },
+        {
+          "cause": "prelude",
+          "kind": "batch",
+          "statements": 13,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts",
+            "RenderEngine.renderWithUnknownCreateVerdicts src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id = ? AND trash = 0",
+            "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') AND c.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+            "SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', 'decko_bot') AND trash = 0",
+            "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs ON refs.referer_id = read_rules.id JOIN cards sets ON read_rules.left_id = sets.id WHERE read_rules.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND sets.type_id = (SELECT id FROM cards WHERE codename = 'set' AND trash = 0 ORDER BY id LIMIT 1) AND read_rules.trash = 0 AND sets.trash = 0",
+            "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id = (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) THEN 1 ELSE 0 END), 0) AS catchAll FROM cards WHERE cards.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND cards.trash = 0",
+            "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "SELECT DISTINCT c.type_id AS type_id, t.name AS name FROM cards c LEFT JOIN cards t ON t.id = c.type_id WHERE c.trash = 0 AND c.right_id IN ( SELECT id FROM cards WHERE key IN ('*default', '*structure') AND trash = 0) AND c.type_id IS NOT NULL",
+            "SELECT * FROM cards WHERE key IN (?,?,?,?,?,?,?,?,?) AND trash = 0",
+            "SELECT \"version\" FROM \"deck_data_version\" WHERE \"id\" = 1"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 3,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id IN (?) AND trash = 0",
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 2,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?) WHERE j.trash = 0"
+          ]
+        }
+      ]
+    },
+    {
+      "fixture": "chain d2",
+      "shape": "chain",
+      "root": "BenchDN_chain_open_d02_n01",
+      "cards": 2,
+      "nest_levels_below_root": 1,
+      "round_trips": 5,
+      "statements": 20,
+      "html_chars": 5993,
+      "by_cause": {
+        "root": {
+          "trips": 1,
+          "statements": 1
+        },
+        "prelude": {
+          "trips": 1,
+          "statements": 13
+        },
+        "closure": {
+          "trips": 1,
+          "statements": 1
+        },
+        "wave": {
+          "trips": 2,
+          "statements": 5
+        }
+      },
+      "trips": [
+        {
+          "cause": "root",
+          "kind": "query",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.query src/card/one-trip/replay-plan-router.ts",
+            "retrieveFromDb src/card/fetch/retrieve.ts",
+            "FetchEngine.retrieveExisting src/card/fetch.ts",
+            "FetchEngine.fetchWithOptions src/card/fetch.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1"
+          ]
+        },
+        {
+          "cause": "prelude",
+          "kind": "batch",
+          "statements": 13,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts",
+            "RenderEngine.renderWithUnknownCreateVerdicts src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id = ? AND trash = 0",
+            "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') AND c.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+            "SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', 'decko_bot') AND trash = 0",
+            "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs ON refs.referer_id = read_rules.id JOIN cards sets ON read_rules.left_id = sets.id WHERE read_rules.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND sets.type_id = (SELECT id FROM cards WHERE codename = 'set' AND trash = 0 ORDER BY id LIMIT 1) AND read_rules.trash = 0 AND sets.trash = 0",
+            "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id = (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) THEN 1 ELSE 0 END), 0) AS catchAll FROM cards WHERE cards.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND cards.trash = 0",
+            "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "SELECT DISTINCT c.type_id AS type_id, t.name AS name FROM cards c LEFT JOIN cards t ON t.id = c.type_id WHERE c.trash = 0 AND c.right_id IN ( SELECT id FROM cards WHERE key IN ('*default', '*structure') AND trash = 0) AND c.type_id IS NOT NULL",
+            "SELECT * FROM cards WHERE key IN (?,?,?,?,?,?,?,?,?) AND trash = 0",
+            "SELECT \"version\" FROM \"deck_data_version\" WHERE \"id\" = 1"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 3,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id IN (?) AND trash = 0",
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 2,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        }
+      ]
+    },
+    {
+      "fixture": "chain d4",
+      "shape": "chain",
+      "root": "BenchDN_chain_open_d04_n01",
+      "cards": 4,
+      "nest_levels_below_root": 3,
+      "round_trips": 7,
+      "statements": 22,
+      "html_chars": 11957,
+      "by_cause": {
+        "root": {
+          "trips": 1,
+          "statements": 1
+        },
+        "prelude": {
+          "trips": 1,
+          "statements": 13
+        },
+        "closure": {
+          "trips": 3,
+          "statements": 3
+        },
+        "wave": {
+          "trips": 2,
+          "statements": 5
+        }
+      },
+      "trips": [
+        {
+          "cause": "root",
+          "kind": "query",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.query src/card/one-trip/replay-plan-router.ts",
+            "retrieveFromDb src/card/fetch/retrieve.ts",
+            "FetchEngine.retrieveExisting src/card/fetch.ts",
+            "FetchEngine.fetchWithOptions src/card/fetch.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1"
+          ]
+        },
+        {
+          "cause": "prelude",
+          "kind": "batch",
+          "statements": 13,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts",
+            "RenderEngine.renderWithUnknownCreateVerdicts src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id = ? AND trash = 0",
+            "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') AND c.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+            "SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', 'decko_bot') AND trash = 0",
+            "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs ON refs.referer_id = read_rules.id JOIN cards sets ON read_rules.left_id = sets.id WHERE read_rules.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND sets.type_id = (SELECT id FROM cards WHERE codename = 'set' AND trash = 0 ORDER BY id LIMIT 1) AND read_rules.trash = 0 AND sets.trash = 0",
+            "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id = (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) THEN 1 ELSE 0 END), 0) AS catchAll FROM cards WHERE cards.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND cards.trash = 0",
+            "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "SELECT DISTINCT c.type_id AS type_id, t.name AS name FROM cards c LEFT JOIN cards t ON t.id = c.type_id WHERE c.trash = 0 AND c.right_id IN ( SELECT id FROM cards WHERE key IN ('*default', '*structure') AND trash = 0) AND c.type_id IS NOT NULL",
+            "SELECT * FROM cards WHERE key IN (?,?,?,?,?,?,?,?,?) AND trash = 0",
+            "SELECT \"version\" FROM \"deck_data_version\" WHERE \"id\" = 1"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 3,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id IN (?) AND trash = 0",
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 2,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        }
+      ]
+    },
+    {
+      "fixture": "chain d8",
+      "shape": "chain",
+      "root": "BenchDN_chain_open_d08_n01",
+      "cards": 8,
+      "nest_levels_below_root": 7,
+      "round_trips": 11,
+      "statements": 26,
+      "html_chars": 23885,
+      "by_cause": {
+        "root": {
+          "trips": 1,
+          "statements": 1
+        },
+        "prelude": {
+          "trips": 1,
+          "statements": 13
+        },
+        "closure": {
+          "trips": 7,
+          "statements": 7
+        },
+        "wave": {
+          "trips": 2,
+          "statements": 5
+        }
+      },
+      "trips": [
+        {
+          "cause": "root",
+          "kind": "query",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.query src/card/one-trip/replay-plan-router.ts",
+            "retrieveFromDb src/card/fetch/retrieve.ts",
+            "FetchEngine.retrieveExisting src/card/fetch.ts",
+            "FetchEngine.fetchWithOptions src/card/fetch.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1"
+          ]
+        },
+        {
+          "cause": "prelude",
+          "kind": "batch",
+          "statements": 13,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts",
+            "RenderEngine.renderWithUnknownCreateVerdicts src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id = ? AND trash = 0",
+            "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') AND c.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+            "SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', 'decko_bot') AND trash = 0",
+            "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs ON refs.referer_id = read_rules.id JOIN cards sets ON read_rules.left_id = sets.id WHERE read_rules.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND sets.type_id = (SELECT id FROM cards WHERE codename = 'set' AND trash = 0 ORDER BY id LIMIT 1) AND read_rules.trash = 0 AND sets.trash = 0",
+            "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id = (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) THEN 1 ELSE 0 END), 0) AS catchAll FROM cards WHERE cards.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND cards.trash = 0",
+            "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "SELECT DISTINCT c.type_id AS type_id, t.name AS name FROM cards c LEFT JOIN cards t ON t.id = c.type_id WHERE c.trash = 0 AND c.right_id IN ( SELECT id FROM cards WHERE key IN ('*default', '*structure') AND trash = 0) AND c.type_id IS NOT NULL",
+            "SELECT * FROM cards WHERE key IN (?,?,?,?,?,?,?,?,?) AND trash = 0",
+            "SELECT \"version\" FROM \"deck_data_version\" WHERE \"id\" = 1"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 3,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id IN (?) AND trash = 0",
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 2,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        }
+      ]
+    },
+    {
+      "fixture": "chain d10",
+      "shape": "chain",
+      "root": "BenchDN_chain_open_d10_n01",
+      "cards": 10,
+      "nest_levels_below_root": 9,
+      "round_trips": 13,
+      "statements": 28,
+      "html_chars": 29849,
+      "by_cause": {
+        "root": {
+          "trips": 1,
+          "statements": 1
+        },
+        "prelude": {
+          "trips": 1,
+          "statements": 13
+        },
+        "closure": {
+          "trips": 9,
+          "statements": 9
+        },
+        "wave": {
+          "trips": 2,
+          "statements": 5
+        }
+      },
+      "trips": [
+        {
+          "cause": "root",
+          "kind": "query",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.query src/card/one-trip/replay-plan-router.ts",
+            "retrieveFromDb src/card/fetch/retrieve.ts",
+            "FetchEngine.retrieveExisting src/card/fetch.ts",
+            "FetchEngine.fetchWithOptions src/card/fetch.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1"
+          ]
+        },
+        {
+          "cause": "prelude",
+          "kind": "batch",
+          "statements": 13,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts",
+            "RenderEngine.renderWithUnknownCreateVerdicts src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id = ? AND trash = 0",
+            "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') AND c.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+            "SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', 'decko_bot') AND trash = 0",
+            "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs ON refs.referer_id = read_rules.id JOIN cards sets ON read_rules.left_id = sets.id WHERE read_rules.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND sets.type_id = (SELECT id FROM cards WHERE codename = 'set' AND trash = 0 ORDER BY id LIMIT 1) AND read_rules.trash = 0 AND sets.trash = 0",
+            "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id = (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) THEN 1 ELSE 0 END), 0) AS catchAll FROM cards WHERE cards.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND cards.trash = 0",
+            "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "SELECT DISTINCT c.type_id AS type_id, t.name AS name FROM cards c LEFT JOIN cards t ON t.id = c.type_id WHERE c.trash = 0 AND c.right_id IN ( SELECT id FROM cards WHERE key IN ('*default', '*structure') AND trash = 0) AND c.type_id IS NOT NULL",
+            "SELECT * FROM cards WHERE key IN (?,?,?,?,?,?,?,?,?) AND trash = 0",
+            "SELECT \"version\" FROM \"deck_data_version\" WHERE \"id\" = 1"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 3,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id IN (?) AND trash = 0",
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 2,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        }
+      ]
+    },
+    {
+      "fixture": "chain d16",
+      "shape": "chain",
+      "root": "BenchDN_chain_open_d16_n01",
+      "cards": 16,
+      "nest_levels_below_root": 15,
+      "round_trips": 19,
+      "statements": 34,
+      "html_chars": 47747,
+      "by_cause": {
+        "root": {
+          "trips": 1,
+          "statements": 1
+        },
+        "prelude": {
+          "trips": 1,
+          "statements": 13
+        },
+        "closure": {
+          "trips": 15,
+          "statements": 15
+        },
+        "wave": {
+          "trips": 2,
+          "statements": 5
+        }
+      },
+      "trips": [
+        {
+          "cause": "root",
+          "kind": "query",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.query src/card/one-trip/replay-plan-router.ts",
+            "retrieveFromDb src/card/fetch/retrieve.ts",
+            "FetchEngine.retrieveExisting src/card/fetch.ts",
+            "FetchEngine.fetchWithOptions src/card/fetch.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1"
+          ]
+        },
+        {
+          "cause": "prelude",
+          "kind": "batch",
+          "statements": 13,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts",
+            "RenderEngine.renderWithUnknownCreateVerdicts src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id = ? AND trash = 0",
+            "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') AND c.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+            "SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', 'decko_bot') AND trash = 0",
+            "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs ON refs.referer_id = read_rules.id JOIN cards sets ON read_rules.left_id = sets.id WHERE read_rules.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND sets.type_id = (SELECT id FROM cards WHERE codename = 'set' AND trash = 0 ORDER BY id LIMIT 1) AND read_rules.trash = 0 AND sets.trash = 0",
+            "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id = (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) THEN 1 ELSE 0 END), 0) AS catchAll FROM cards WHERE cards.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND cards.trash = 0",
+            "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "SELECT DISTINCT c.type_id AS type_id, t.name AS name FROM cards c LEFT JOIN cards t ON t.id = c.type_id WHERE c.trash = 0 AND c.right_id IN ( SELECT id FROM cards WHERE key IN ('*default', '*structure') AND trash = 0) AND c.type_id IS NOT NULL",
+            "SELECT * FROM cards WHERE key IN (?,?,?,?,?,?,?,?,?) AND trash = 0",
+            "SELECT \"version\" FROM \"deck_data_version\" WHERE \"id\" = 1"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 3,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id IN (?) AND trash = 0",
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 2,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        }
+      ]
+    },
+    {
+      "fixture": "chain d20",
+      "shape": "chain",
+      "root": "BenchDN_chain_open_d20_n01",
+      "cards": 20,
+      "nest_levels_below_root": 19,
+      "round_trips": 23,
+      "statements": 38,
+      "html_chars": 59679,
+      "by_cause": {
+        "root": {
+          "trips": 1,
+          "statements": 1
+        },
+        "prelude": {
+          "trips": 1,
+          "statements": 13
+        },
+        "closure": {
+          "trips": 19,
+          "statements": 19
+        },
+        "wave": {
+          "trips": 2,
+          "statements": 5
+        }
+      },
+      "trips": [
+        {
+          "cause": "root",
+          "kind": "query",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.query src/card/one-trip/replay-plan-router.ts",
+            "retrieveFromDb src/card/fetch/retrieve.ts",
+            "FetchEngine.retrieveExisting src/card/fetch.ts",
+            "FetchEngine.fetchWithOptions src/card/fetch.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1"
+          ]
+        },
+        {
+          "cause": "prelude",
+          "kind": "batch",
+          "statements": 13,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts",
+            "RenderEngine.renderWithUnknownCreateVerdicts src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id = ? AND trash = 0",
+            "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') AND c.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+            "SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', 'decko_bot') AND trash = 0",
+            "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs ON refs.referer_id = read_rules.id JOIN cards sets ON read_rules.left_id = sets.id WHERE read_rules.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND sets.type_id = (SELECT id FROM cards WHERE codename = 'set' AND trash = 0 ORDER BY id LIMIT 1) AND read_rules.trash = 0 AND sets.trash = 0",
+            "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id = (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) THEN 1 ELSE 0 END), 0) AS catchAll FROM cards WHERE cards.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND cards.trash = 0",
+            "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "SELECT DISTINCT c.type_id AS type_id, t.name AS name FROM cards c LEFT JOIN cards t ON t.id = c.type_id WHERE c.trash = 0 AND c.right_id IN ( SELECT id FROM cards WHERE key IN ('*default', '*structure') AND trash = 0) AND c.type_id IS NOT NULL",
+            "SELECT * FROM cards WHERE key IN (?,?,?,?,?,?,?,?,?) AND trash = 0",
+            "SELECT \"version\" FROM \"deck_data_version\" WHERE \"id\" = 1"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 3,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id IN (?) AND trash = 0",
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 2,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        }
+      ]
+    },
+    {
+      "fixture": "fan f1",
+      "shape": "fan",
+      "root": "BenchDN_fan_f01_root",
+      "cards": 2,
+      "nest_levels_below_root": 1,
+      "round_trips": 5,
+      "statements": 20,
+      "html_chars": 5746,
+      "by_cause": {
+        "root": {
+          "trips": 1,
+          "statements": 1
+        },
+        "prelude": {
+          "trips": 1,
+          "statements": 13
+        },
+        "closure": {
+          "trips": 1,
+          "statements": 1
+        },
+        "wave": {
+          "trips": 2,
+          "statements": 5
+        }
+      },
+      "trips": [
+        {
+          "cause": "root",
+          "kind": "query",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.query src/card/one-trip/replay-plan-router.ts",
+            "retrieveFromDb src/card/fetch/retrieve.ts",
+            "FetchEngine.retrieveExisting src/card/fetch.ts",
+            "FetchEngine.fetchWithOptions src/card/fetch.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1"
+          ]
+        },
+        {
+          "cause": "prelude",
+          "kind": "batch",
+          "statements": 13,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts",
+            "RenderEngine.renderWithUnknownCreateVerdicts src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id = ? AND trash = 0",
+            "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') AND c.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+            "SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', 'decko_bot') AND trash = 0",
+            "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs ON refs.referer_id = read_rules.id JOIN cards sets ON read_rules.left_id = sets.id WHERE read_rules.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND sets.type_id = (SELECT id FROM cards WHERE codename = 'set' AND trash = 0 ORDER BY id LIMIT 1) AND read_rules.trash = 0 AND sets.trash = 0",
+            "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id = (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) THEN 1 ELSE 0 END), 0) AS catchAll FROM cards WHERE cards.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND cards.trash = 0",
+            "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "SELECT DISTINCT c.type_id AS type_id, t.name AS name FROM cards c LEFT JOIN cards t ON t.id = c.type_id WHERE c.trash = 0 AND c.right_id IN ( SELECT id FROM cards WHERE key IN ('*default', '*structure') AND trash = 0) AND c.type_id IS NOT NULL",
+            "SELECT * FROM cards WHERE key IN (?,?,?,?,?,?,?,?,?) AND trash = 0",
+            "SELECT \"version\" FROM \"deck_data_version\" WHERE \"id\" = 1"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 3,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id IN (?) AND trash = 0",
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 2,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        }
+      ]
+    },
+    {
+      "fixture": "fan f4",
+      "shape": "fan",
+      "root": "BenchDN_fan_f04_root",
+      "cards": 5,
+      "nest_levels_below_root": 1,
+      "round_trips": 5,
+      "statements": 20,
+      "html_chars": 14890,
+      "by_cause": {
+        "root": {
+          "trips": 1,
+          "statements": 1
+        },
+        "prelude": {
+          "trips": 1,
+          "statements": 13
+        },
+        "closure": {
+          "trips": 1,
+          "statements": 1
+        },
+        "wave": {
+          "trips": 2,
+          "statements": 5
+        }
+      },
+      "trips": [
+        {
+          "cause": "root",
+          "kind": "query",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.query src/card/one-trip/replay-plan-router.ts",
+            "retrieveFromDb src/card/fetch/retrieve.ts",
+            "FetchEngine.retrieveExisting src/card/fetch.ts",
+            "FetchEngine.fetchWithOptions src/card/fetch.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1"
+          ]
+        },
+        {
+          "cause": "prelude",
+          "kind": "batch",
+          "statements": 13,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts",
+            "RenderEngine.renderWithUnknownCreateVerdicts src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id = ? AND trash = 0",
+            "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') AND c.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+            "SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', 'decko_bot') AND trash = 0",
+            "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs ON refs.referer_id = read_rules.id JOIN cards sets ON read_rules.left_id = sets.id WHERE read_rules.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND sets.type_id = (SELECT id FROM cards WHERE codename = 'set' AND trash = 0 ORDER BY id LIMIT 1) AND read_rules.trash = 0 AND sets.trash = 0",
+            "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id = (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) THEN 1 ELSE 0 END), 0) AS catchAll FROM cards WHERE cards.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND cards.trash = 0",
+            "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "SELECT DISTINCT c.type_id AS type_id, t.name AS name FROM cards c LEFT JOIN cards t ON t.id = c.type_id WHERE c.trash = 0 AND c.right_id IN ( SELECT id FROM cards WHERE key IN ('*default', '*structure') AND trash = 0) AND c.type_id IS NOT NULL",
+            "SELECT * FROM cards WHERE key IN (?,?,?,?,?,?,?,?,?) AND trash = 0",
+            "SELECT \"version\" FROM \"deck_data_version\" WHERE \"id\" = 1"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 3,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id IN (?) AND trash = 0",
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 2,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        }
+      ]
+    },
+    {
+      "fixture": "fan f16",
+      "shape": "fan",
+      "root": "BenchDN_fan_f16_root",
+      "cards": 17,
+      "nest_levels_below_root": 1,
+      "round_trips": 5,
+      "statements": 20,
+      "html_chars": 51466,
+      "by_cause": {
+        "root": {
+          "trips": 1,
+          "statements": 1
+        },
+        "prelude": {
+          "trips": 1,
+          "statements": 13
+        },
+        "closure": {
+          "trips": 1,
+          "statements": 1
+        },
+        "wave": {
+          "trips": 2,
+          "statements": 5
+        }
+      },
+      "trips": [
+        {
+          "cause": "root",
+          "kind": "query",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.query src/card/one-trip/replay-plan-router.ts",
+            "retrieveFromDb src/card/fetch/retrieve.ts",
+            "FetchEngine.retrieveExisting src/card/fetch.ts",
+            "FetchEngine.fetchWithOptions src/card/fetch.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1"
+          ]
+        },
+        {
+          "cause": "prelude",
+          "kind": "batch",
+          "statements": 13,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts",
+            "RenderEngine.renderWithUnknownCreateVerdicts src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id = ? AND trash = 0",
+            "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') AND c.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+            "SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', 'decko_bot') AND trash = 0",
+            "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs ON refs.referer_id = read_rules.id JOIN cards sets ON read_rules.left_id = sets.id WHERE read_rules.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND sets.type_id = (SELECT id FROM cards WHERE codename = 'set' AND trash = 0 ORDER BY id LIMIT 1) AND read_rules.trash = 0 AND sets.trash = 0",
+            "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id = (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) THEN 1 ELSE 0 END), 0) AS catchAll FROM cards WHERE cards.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND cards.trash = 0",
+            "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "SELECT DISTINCT c.type_id AS type_id, t.name AS name FROM cards c LEFT JOIN cards t ON t.id = c.type_id WHERE c.trash = 0 AND c.right_id IN ( SELECT id FROM cards WHERE key IN ('*default', '*structure') AND trash = 0) AND c.type_id IS NOT NULL",
+            "SELECT * FROM cards WHERE key IN (?,?,?,?,?,?,?,?,?) AND trash = 0",
+            "SELECT \"version\" FROM \"deck_data_version\" WHERE \"id\" = 1"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 3,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id IN (?) AND trash = 0",
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 2,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        }
+      ]
+    },
+    {
+      "fixture": "fan f50",
+      "shape": "fan",
+      "root": "BenchDN_fan_f50_root",
+      "cards": 51,
+      "nest_levels_below_root": 1,
+      "round_trips": 5,
+      "statements": 21,
+      "html_chars": 155098,
+      "by_cause": {
+        "root": {
+          "trips": 1,
+          "statements": 1
+        },
+        "prelude": {
+          "trips": 1,
+          "statements": 13
+        },
+        "closure": {
+          "trips": 1,
+          "statements": 1
+        },
+        "wave": {
+          "trips": 2,
+          "statements": 6
+        }
+      },
+      "trips": [
+        {
+          "cause": "root",
+          "kind": "query",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.query src/card/one-trip/replay-plan-router.ts",
+            "retrieveFromDb src/card/fetch/retrieve.ts",
+            "FetchEngine.retrieveExisting src/card/fetch.ts",
+            "FetchEngine.fetchWithOptions src/card/fetch.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1"
+          ]
+        },
+        {
+          "cause": "prelude",
+          "kind": "batch",
+          "statements": 13,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts",
+            "RenderEngine.renderWithUnknownCreateVerdicts src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id = ? AND trash = 0",
+            "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') AND c.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+            "SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', 'decko_bot') AND trash = 0",
+            "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs ON refs.referer_id = read_rules.id JOIN cards sets ON read_rules.left_id = sets.id WHERE read_rules.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND sets.type_id = (SELECT id FROM cards WHERE codename = 'set' AND trash = 0 ORDER BY id LIMIT 1) AND read_rules.trash = 0 AND sets.trash = 0",
+            "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id = (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) THEN 1 ELSE 0 END), 0) AS catchAll FROM cards WHERE cards.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND cards.trash = 0",
+            "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "SELECT DISTINCT c.type_id AS type_id, t.name AS name FROM cards c LEFT JOIN cards t ON t.id = c.type_id WHERE c.trash = 0 AND c.right_id IN ( SELECT id FROM cards WHERE key IN ('*default', '*structure') AND trash = 0) AND c.type_id IS NOT NULL",
+            "SELECT * FROM cards WHERE key IN (?,?,?,?,?,?,?,?,?) AND trash = 0",
+            "SELECT \"version\" FROM \"deck_data_version\" WHERE \"id\" = 1"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 3,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id IN (?) AND trash = 0",
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 3,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        }
+      ]
+    },
+    {
+      "fixture": "fan f100",
+      "shape": "fan",
+      "root": "BenchDN_fan_f100_root",
+      "cards": 101,
+      "nest_levels_below_root": 1,
+      "round_trips": 5,
+      "statements": 22,
+      "html_chars": 309415,
+      "by_cause": {
+        "root": {
+          "trips": 1,
+          "statements": 1
+        },
+        "prelude": {
+          "trips": 1,
+          "statements": 13
+        },
+        "closure": {
+          "trips": 1,
+          "statements": 1
+        },
+        "wave": {
+          "trips": 2,
+          "statements": 7
+        }
+      },
+      "trips": [
+        {
+          "cause": "root",
+          "kind": "query",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.query src/card/one-trip/replay-plan-router.ts",
+            "retrieveFromDb src/card/fetch/retrieve.ts",
+            "FetchEngine.retrieveExisting src/card/fetch.ts",
+            "FetchEngine.fetchWithOptions src/card/fetch.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1"
+          ]
+        },
+        {
+          "cause": "prelude",
+          "kind": "batch",
+          "statements": 13,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts",
+            "RenderEngine.renderWithUnknownCreateVerdicts src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id = ? AND trash = 0",
+            "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') AND c.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+            "SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', 'decko_bot') AND trash = 0",
+            "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs ON refs.referer_id = read_rules.id JOIN cards sets ON read_rules.left_id = sets.id WHERE read_rules.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND sets.type_id = (SELECT id FROM cards WHERE codename = 'set' AND trash = 0 ORDER BY id LIMIT 1) AND read_rules.trash = 0 AND sets.trash = 0",
+            "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id = (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) THEN 1 ELSE 0 END), 0) AS catchAll FROM cards WHERE cards.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND cards.trash = 0",
+            "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "SELECT DISTINCT c.type_id AS type_id, t.name AS name FROM cards c LEFT JOIN cards t ON t.id = c.type_id WHERE c.trash = 0 AND c.right_id IN ( SELECT id FROM cards WHERE key IN ('*default', '*structure') AND trash = 0) AND c.type_id IS NOT NULL",
+            "SELECT * FROM cards WHERE key IN (?,?,?,?,?,?,?,?,?) AND trash = 0",
+            "SELECT \"version\" FROM \"deck_data_version\" WHERE \"id\" = 1"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 3,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id IN (?) AND trash = 0",
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 4,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        }
+      ]
+    },
+    {
+      "fixture": "fan f200",
+      "shape": "fan",
+      "root": "BenchDN_fan_f200_root",
+      "cards": 201,
+      "nest_levels_below_root": 1,
+      "round_trips": 5,
+      "statements": 24,
+      "html_chars": 618015,
+      "by_cause": {
+        "root": {
+          "trips": 1,
+          "statements": 1
+        },
+        "prelude": {
+          "trips": 1,
+          "statements": 13
+        },
+        "closure": {
+          "trips": 1,
+          "statements": 1
+        },
+        "wave": {
+          "trips": 2,
+          "statements": 9
+        }
+      },
+      "trips": [
+        {
+          "cause": "root",
+          "kind": "query",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.query src/card/one-trip/replay-plan-router.ts",
+            "retrieveFromDb src/card/fetch/retrieve.ts",
+            "FetchEngine.retrieveExisting src/card/fetch.ts",
+            "FetchEngine.fetchWithOptions src/card/fetch.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1"
+          ]
+        },
+        {
+          "cause": "prelude",
+          "kind": "batch",
+          "statements": 13,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts",
+            "RenderEngine.renderWithUnknownCreateVerdicts src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id = ? AND trash = 0",
+            "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') AND c.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+            "SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', 'decko_bot') AND trash = 0",
+            "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs ON refs.referer_id = read_rules.id JOIN cards sets ON read_rules.left_id = sets.id WHERE read_rules.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND sets.type_id = (SELECT id FROM cards WHERE codename = 'set' AND trash = 0 ORDER BY id LIMIT 1) AND read_rules.trash = 0 AND sets.trash = 0",
+            "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id = (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) THEN 1 ELSE 0 END), 0) AS catchAll FROM cards WHERE cards.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND cards.trash = 0",
+            "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "SELECT DISTINCT c.type_id AS type_id, t.name AS name FROM cards c LEFT JOIN cards t ON t.id = c.type_id WHERE c.trash = 0 AND c.right_id IN ( SELECT id FROM cards WHERE key IN ('*default', '*structure') AND trash = 0) AND c.type_id IS NOT NULL",
+            "SELECT * FROM cards WHERE key IN (?,?,?,?,?,?,?,?,?) AND trash = 0",
+            "SELECT \"version\" FROM \"deck_data_version\" WHERE \"id\" = 1"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 3,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id IN (?) AND trash = 0",
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 6,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        }
+      ]
+    },
+    {
+      "fixture": "tree d4xf4",
+      "shape": "tree",
+      "root": "BenchDN_tree_d04_f04_root",
+      "cards": 341,
+      "nest_levels_below_root": 4,
+      "round_trips": 8,
+      "statements": 30,
+      "html_chars": 1092781,
+      "by_cause": {
+        "root": {
+          "trips": 1,
+          "statements": 1
+        },
+        "prelude": {
+          "trips": 1,
+          "statements": 13
+        },
+        "closure": {
+          "trips": 4,
+          "statements": 4
+        },
+        "wave": {
+          "trips": 2,
+          "statements": 12
+        }
+      },
+      "trips": [
+        {
+          "cause": "root",
+          "kind": "query",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.query src/card/one-trip/replay-plan-router.ts",
+            "retrieveFromDb src/card/fetch/retrieve.ts",
+            "FetchEngine.retrieveExisting src/card/fetch.ts",
+            "FetchEngine.fetchWithOptions src/card/fetch.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1"
+          ]
+        },
+        {
+          "cause": "prelude",
+          "kind": "batch",
+          "statements": 13,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts",
+            "RenderEngine.renderWithUnknownCreateVerdicts src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id = ? AND trash = 0",
+            "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') AND c.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+            "SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', 'decko_bot') AND trash = 0",
+            "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs ON refs.referer_id = read_rules.id JOIN cards sets ON read_rules.left_id = sets.id WHERE read_rules.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND sets.type_id = (SELECT id FROM cards WHERE codename = 'set' AND trash = 0 ORDER BY id LIMIT 1) AND read_rules.trash = 0 AND sets.trash = 0",
+            "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id = (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) THEN 1 ELSE 0 END), 0) AS catchAll FROM cards WHERE cards.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND cards.trash = 0",
+            "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "SELECT DISTINCT c.type_id AS type_id, t.name AS name FROM cards c LEFT JOIN cards t ON t.id = c.type_id WHERE c.trash = 0 AND c.right_id IN ( SELECT id FROM cards WHERE key IN ('*default', '*structure') AND trash = 0) AND c.type_id IS NOT NULL",
+            "SELECT * FROM cards WHERE key IN (?,?,?,?,?,?,?,?,?) AND trash = 0",
+            "SELECT \"version\" FROM \"deck_data_version\" WHERE \"id\" = 1"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 3,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id IN (?) AND trash = 0",
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 9,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        }
+      ]
+    },
+    {
+      "fixture": "tree d3xf10",
+      "shape": "tree",
+      "root": "BenchDN_tree_d03_f10_root",
+      "cards": 1111,
+      "nest_levels_below_root": 3,
+      "round_trips": 7,
+      "statements": 46,
+      "html_chars": 3595955,
+      "by_cause": {
+        "root": {
+          "trips": 1,
+          "statements": 1
+        },
+        "prelude": {
+          "trips": 1,
+          "statements": 13
+        },
+        "closure": {
+          "trips": 3,
+          "statements": 3
+        },
+        "wave": {
+          "trips": 2,
+          "statements": 29
+        }
+      },
+      "trips": [
+        {
+          "cause": "root",
+          "kind": "query",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.query src/card/one-trip/replay-plan-router.ts",
+            "retrieveFromDb src/card/fetch/retrieve.ts",
+            "FetchEngine.retrieveExisting src/card/fetch.ts",
+            "FetchEngine.fetchWithOptions src/card/fetch.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1"
+          ]
+        },
+        {
+          "cause": "prelude",
+          "kind": "batch",
+          "statements": 13,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts",
+            "RenderEngine.renderWithUnknownCreateVerdicts src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id = ? AND trash = 0",
+            "SELECT j.* FROM cards j JOIN cards s ON s.id = j.right_id WHERE j.left_id = ? AND s.codename = 'test_context' AND j.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT c.id, c.key FROM cards c WHERE c.key COLLATE NOCASE IN ('*to','*from','*cc','*bcc','*attach','*subject','*text message','*html message','*test context') AND c.trash = 0 AND EXISTS (SELECT 1 FROM cards t WHERE t.id = ? AND t.codename = 'email_template')",
+            "SELECT id, key FROM cards WHERE key COLLATE NOCASE IN (?, ?, ?) AND trash = 0",
+            "SELECT id, codename FROM cards WHERE codename IN ('anyone', 'anyone_signed_in', 'anonymous', 'administrator', 'decko_bot') AND trash = 0",
+            "SELECT refs.referee_id AS partyId, read_rules.id AS readRuleId FROM cards read_rules JOIN card_references refs ON refs.referer_id = read_rules.id JOIN cards sets ON read_rules.left_id = sets.id WHERE read_rules.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND sets.type_id = (SELECT id FROM cards WHERE codename = 'set' AND trash = 0 ORDER BY id LIMIT 1) AND read_rules.trash = 0 AND sets.trash = 0",
+            "SELECT COUNT(*) AS c, COALESCE(SUM(CASE WHEN cards.left_id = (SELECT id FROM cards WHERE codename = 'all' AND trash = 0 ORDER BY id LIMIT 1) THEN 1 ELSE 0 END), 0) AS catchAll FROM cards WHERE cards.right_id = (SELECT id FROM cards WHERE codename = 'read' AND trash = 0 ORDER BY id LIMIT 1) AND cards.trash = 0",
+            "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "WITH RECURSIVE setting(id) AS (SELECT id FROM cards WHERE (\"key\" = ? OR name = ?) AND trash = 0 ORDER BY id LIMIT 1), rules(rid, lid, db_content, type_id) AS ( SELECT r.id, r.left_id, r.db_content, r.type_id FROM cards r WHERE r.trash = 0 AND r.right_id = (SELECT id FROM setting)), up(rid, cur, suffix) AS ( SELECT rid, lid, '' FROM rules UNION ALL SELECT u.rid, c.left_id, '+' || COALESCE(rk.\"key\", '') || u.suffix FROM up u JOIN cards c ON c.id = u.cur JOIN cards rk ON rk.id = c.right_id WHERE c.left_id IS NOT NULL) SELECT CASE WHEN COALESCE(b.\"key\", '') || u.suffix <> '' THEN COALESCE(b.\"key\", '') || u.suffix || '+' || st.\"key\" ELSE NULL END AS composed_key, rules.db_content AS db_content, rules.type_id AS rule_type_id FROM up u JOIN cards b ON b.id = u.cur AND b.left_id IS NULL AND b.right_id IS NULL JOIN rules ON rules.rid = u.rid JOIN cards st ON st.id = (SELECT id FROM setting) ORDER BY rules.rid",
+            "SELECT DISTINCT c.type_id AS type_id, t.name AS name FROM cards c LEFT JOIN cards t ON t.id = c.type_id WHERE c.trash = 0 AND c.right_id IN ( SELECT id FROM cards WHERE key IN ('*default', '*structure') AND trash = 0) AND c.type_id IS NOT NULL",
+            "SELECT * FROM cards WHERE key IN (?,?,?,?,?,?,?,?,?) AND trash = 0",
+            "SELECT \"version\" FROM \"deck_data_version\" WHERE \"id\" = 1"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "closure",
+          "kind": "batch",
+          "statements": 1,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "driveClosure src/card/render/prefetch.ts",
+            "prefetchInclusionClosure src/card/render/prefetch.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 3,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE id IN (?) AND trash = 0",
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        },
+        {
+          "cause": "wave",
+          "kind": "batch",
+          "statements": 26,
+          "sites": [
+            "ReplayPlanRouter.batch src/card/one-trip/replay-plan-router.ts",
+            "RenderEngine.seatNamesByWave src/card/render.ts",
+            "RenderEngine.primePreparedCardDerivedState src/card/render.ts",
+            "RenderEngine.renderHeld src/card/render.ts"
+          ],
+          "sql": [
+            "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0",
+            "SELECT DISTINCT j.* FROM cards j JOIN cards l ON l.id = j.left_id AND l.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) JOIN cards r ON r.id = j.right_id AND r.\"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) WHERE j.trash = 0"
+          ]
+        }
+      ]
+    }
+  ]
+}
