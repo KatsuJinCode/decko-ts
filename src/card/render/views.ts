@@ -357,10 +357,10 @@ const titleNoLinkView: ViewFn = ({ fmt, voo }) => {
   // `title&.html_safe` arm, the link chunk's always-set title opt,
   // chunk/link.rb:31-33) or derived (standardTitle's h()'d name), carries
   // ONLY the quote escape; the explicit arm's markup brackets stay RAW.
-  // Oracle: the US Census Position wanted-link span renders
+  // Oracle: a sample employer's position wanted-link span renders
   // `title="<a href=&quot;/20191213+CM+Time_Tracking+1400?view=bar&quot;>..."`
   // (Ruby probe tmp/perm/ruby-link-probe.rb, link_census) and the
-  // Waging Peace anchor renders `title="...Gasshuku &amp; Benefit..."`
+  // sample organisation anchor renders `title="...Gasshuku &amp; Benefit..."`
   // verbatim-single-escaped from the stored name bytes. The previous
   // h() here double-escaped the derived arm's entities (`&amp;amp;`,
   // CM 20101113) and escaped the explicit arm's brackets (`&lt;`).
@@ -992,9 +992,9 @@ const coreViewBase: ViewFn = (ctx) => {
   //   `view :core do process_content CGI.escapeHTML(_render_raw) end` —
   //   the raw content is html-escaped BEFORE process_content, so plain-text
   //   apostrophes render as &#39; (CGI.escapeHTML's entity set = our h()).
-  //   Census pin, page 19562: the angieup+source_title content-view carries
-  //   "Son, It&#39;s Okay If You Don&#39;t Get Laid Tonight" where the
-  //   unported path emitted the raw apostrophes.
+  //   Census pin, page 19562: the sample-author+source_title content-view
+  //   carries a stored title whose apostrophes render entity-escaped, where
+  //   the unported path emitted the raw apostrophes.
   if (fmt.card.typeCode === "plain_text" || fmt.card.typeName === "PlainText") {
     return fmt.processContent(h(fmt.renderRaw()));
   }
@@ -3972,8 +3972,8 @@ function renderPointerListItem(fmt: RenderFormat, name: string, itemView: string
   // the span (no slot wrap), leaving exactly
   // `<div class="pointer-item item-bar"><span class="denied">...`.
   // expected-v2 census: 538 bare-span denied items (every one a REAL
-  // cards row — e.g. "ZQRglobal 20100722 Corinne Hallberg Riley" under
-  // "Center for Systems Change+Pages" open) vs 270 mini_bar slots
+  // cards row — e.g. a sample organisation's dated person card under
+  // "Sample Organisation+Pages" open) vs 270 mini_bar slots
   // carrying denial bodies — and EVERY one of those 270 is an
   // ABSENT-ROW item the phantom path above already covers (Test Person
   // 01 / Aikido as Peace Practice, the anonymizer-renamed BasicCs
@@ -4571,8 +4571,8 @@ function linkAnchorBody(ctx: ViewContext, extraClass: string): string {
         // quotes in the span text — `>Pages tagged with "Process Arts"<` —
         // and the +bytes family (Process Arts +10) was exactly the
         // double-escaped text. title.rb:39-42 wrapped_title splits joints
-        // only; it never html-escapes. The markup-bracket case (US Census
-        // Employment's wanted [[...]] link, the wanted name carrying a raw
+        // only; it never html-escapes. The markup-bracket case (a sample
+        // employer's wanted [[...]] link, the wanted name carrying a raw
         // anchor) pins the RAW brackets in the attribute
         // (ruby-link-probe.rb link_census); the previous h() escaped them.
         `<span class="card-title" title="${label.replace(/"/g, "&quot;")}">${wrappedTitleInner(label)}</span>`

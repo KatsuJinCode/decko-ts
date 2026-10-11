@@ -10,7 +10,7 @@
 //   The href is NOT safe: Rails tag_helper escapes option values with
 //   ERB::Util.html_escape, so authored `&amp;` entities in the stored URL
 //   double to `&amp;amp;` in the href while the label keeps the authored
-//   bytes. Exemplar (Montessori Council - benefits, page-lane): oracle
+//   bytes. Exemplar (sample council - benefits, page-lane): oracle
 //   `href="...com_content&amp;amp;view=..."` + label
 //   `...com_content&amp;view=...`; the engine emitted `&amp;amp;` in BOTH.
 //
@@ -76,24 +76,24 @@ async function seedEscapeProbeDeck(pageContent: string): Promise<RenderTestStora
 
 describe("URI-autolink anchors escape the href once and the label verbatim", () => {
   it("authored &amp; entities: href doubles once, label keeps authored bytes", async () => {
-    // The Montessori Council - benefits exemplar shape: the stored Source
+    // The sample council - benefits exemplar shape: the stored Source
     // content carries HTML-escaped query separators.
     const storage = await seedEscapeProbeDeck(
-      "Read http://www.montessori.org/imc/index.php?option=com_content&amp;view=article&amp;id=334 today.",
+      "Read http://www.example.org/imc/index.php?option=com_content&amp;view=article&amp;id=334 today.",
     );
     storage.fetcher.installNameEnvironment();
     const page = await renderPageBytes(storage.engine, "Escape Probe");
     // href: attribute-boundary escape of the authored entities (once more).
     expect(page).toContain(
-      'href="http://www.montessori.org/imc/index.php?option=com_content&amp;amp;view=article&amp;amp;id=334"',
+      'href="http://www.example.org/imc/index.php?option=com_content&amp;amp;view=article&amp;amp;id=334"',
     );
     // label: links.rb `text = raw(text)` -- the stored bytes verbatim.
     expect(page).toContain(
-      ">http://www.montessori.org/imc/index.php?option=com_content&amp;view=article&amp;id=334</a>",
+      ">http://www.example.org/imc/index.php?option=com_content&amp;view=article&amp;id=334</a>",
     );
     // the over-escape this suite fixes: the label must NOT carry &amp;amp;.
     expect(page).not.toContain(
-      ">http://www.montessori.org/imc/index.php?option=com_content&amp;amp;view=",
+      ">http://www.example.org/imc/index.php?option=com_content&amp;amp;view=",
     );
   });
 

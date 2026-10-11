@@ -206,7 +206,7 @@ export function stylesheetTagsBytes(read: HeadReadSet): string {
  *  live deployment recompiled the deck stylesheet and serves the new
  *  attachment revision (/files/45514/0000000001.css, byte-level capture vs the
  *  SassC compile) where the corpus pins the capture-era digits
- *  (1786554352). Rewrites ONLY the 10-digit revision component of a
+ *  (9999999999). Rewrites ONLY the 10-digit revision component of a
  *  main-stylesheet attachment URL; UNSET = identity. Exported for the
  *  deployment-config pin test. */
 export function applyDeploymentCssRevision(url: string): string {

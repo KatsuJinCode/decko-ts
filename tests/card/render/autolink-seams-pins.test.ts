@@ -6,7 +6,7 @@
 //
 // Families pinned here (its committed seam):
 //   A1  uri.rb:63-68+86-89 trailing punctuation re-emitted after the
-//       anchor (sage pettibone / Dan Williams oracle: ellery.com</a>.)
+//       anchor (sample-author oracle: source.example.org</a>.)
 //   A2a uri.rb:53-55 context_ok? anchors REJECTED_PREFIX at $ - a URL in
 //       the LABEL of an authored <a> autolinks (USABP nested-anchor oracle)
 //       while a URI inside a quoted attribute stays verbatim
@@ -15,27 +15,27 @@ import { expandContentLinks } from "../../../src/card/render/format.js";
 
 describe("autolink seams pins (captured oracle bytes)", () => {
   it("A1: re-emits the chopped trailing period after the anchor", () => {
-    // oracle: sage pettibone content view - "reserved to the Commons are"
-    // follows the ellery.com anchor WITH its period (uri.rb:88
-    // `"#{link}#{@trailing_punctuation}"`).
+    // oracle: a sample author content view - "reproduced and released under a
+    // sample licence" follows the source.example.org anchor WITH its period
+    // (uri.rb:88 `"#{link}#{@trailing_punctuation}"`).
     const out = expandContentLinks(
-      "Originated at http://ellery.com. Also originated and reserved to the Commons",
+      "Reprinted at http://source.example.org. Reprinted and released under a sample licence",
       undefined,
       undefined,
     );
     expect(out).toBe(
-      'Originated at <a target="_blank" class="external-link" href="http://ellery.com">http://ellery.com</a>. Also originated and reserved to the Commons',
+      'Reprinted at <a target="_blank" class="external-link" href="http://source.example.org">http://source.example.org</a>. Reprinted and released under a sample licence',
     );
   });
 
   it("A1: re-emits the chopped closing paren (article-image oracle)", () => {
     const out = expandContentLinks(
-      "reproduced in full (http://author-portal.example.edu/LegendeImage.htm) with permission",
+      "reproduced in full (http://author-portal.example.org/SampleImage.htm) with permission",
       undefined,
       undefined,
     );
     expect(out).toBe(
-      'reproduced in full (<a target="_blank" class="external-link" href="http://author-portal.example.edu/LegendeImage.htm">http://author-portal.example.edu/LegendeImage.htm</a>) with permission',
+      'reproduced in full (<a target="_blank" class="external-link" href="http://author-portal.example.org/SampleImage.htm">http://author-portal.example.org/SampleImage.htm</a>) with permission',
     );
   });
 

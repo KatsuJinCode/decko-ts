@@ -4580,13 +4580,13 @@ export function expandContentLinks(
       // process_text keeps the stored bytes, authored entities included).
       // Only the href crosses the attribute boundary (Rails tag_helper
       // html_escape): authored `&amp;` doubles to `&amp;amp;` there and a
-      // raw `&` escapes once - the Montessori exemplar's exact split. An
+      // raw `&` escapes once - the sample-council exemplar's exact split. An
       // h() on the label (the earlier code) double-escaped every entity
       // in the visible anchor text (earlier "double-escape" class).
       // uri.rb:86-89: process_uri_chunk appends @trailing_punctuation
       // AFTER the anchor (`"#{link}#{@trailing_punctuation}"`) - the
       // source's chopped [,.)!:?] byte renders right behind `</a>` (the
-      // `ellery.com</a>.` oracle bytes) - and the SECOND trailing
+      // `source.example.org</a>.` oracle bytes) - and the SECOND trailing
       // dot from uri.rb:69's `sub!(/\.$/,'')` is a REAL removal, so it is
       // not re-emitted here.
       out += `<a${target}${cls} href="${h(uri.href)}">${uri.text}</a>${uri.trailing}`;
@@ -4944,7 +4944,7 @@ export function expandWikiLinks(
     // hands wrapped_title an html_safe string, the html format's `h super`
     // (title.rb:31-35) is ERB::Util's no-op on html_safe input, and only
     // actionview tag_helper.rb tag_option :322's unconditional quote gsub
-    // touches the bytes. Oracle: the US Census Position wanted-link span
+    // touches the bytes. Oracle: a sample employer's position wanted-link span
     // renders `title="<a href=&quot;/20191213+CM+Time_Tracking+1400?view=
     // bar&quot;>20191213+CM+Time Tracking+1400</a>"` with RAW brackets
     // (the previous htmlEscapeKeepApostrophe emitted `&lt;a href=...`

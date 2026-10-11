@@ -76,10 +76,10 @@ describe("deployment follow-live config: frozen default preserved", () => {
     );
     expect(
       applyDeploymentCssRevision(
-        "https://production-storage.r1.cdn.objectstore.example/files/45514/1786554352.css",
+        "https://production-storage.r1.cdn.objectstore.example/files/45514/9999999999.css",
       ),
     ).toBe(
-      "https://production-storage.r1.cdn.objectstore.example/files/45514/1786554352.css",
+      "https://production-storage.r1.cdn.objectstore.example/files/45514/9999999999.css",
     );
     expect(footerDeckoVersion()).toBeUndefined();
     expect(recaptchaSiteKey()).toBeUndefined();
@@ -203,7 +203,7 @@ describe("deployment follow-live config: live head constants", () => {
     setDeploymentFollowLiveConfig({ mainStylesheetRevisionDigits: "0000000001" });
     expect(
       applyDeploymentCssRevision(
-        "https://production-storage.r1.cdn.objectstore.example/files/45514/1786554352.css",
+        "https://production-storage.r1.cdn.objectstore.example/files/45514/9999999999.css",
       ),
     ).toBe(
       "https://production-storage.r1.cdn.objectstore.example/files/45514/0000000001.css",
@@ -218,7 +218,7 @@ describe("deployment follow-live config: live head constants", () => {
     );
     // the fog double-slash form (unset asset host) rewrites the same way.
     expect(
-      applyDeploymentCssRevision("http://s3.amazonaws.com//files/45514/1786554352.css"),
+      applyDeploymentCssRevision("http://s3.amazonaws.com//files/45514/9999999999.css"),
     ).toBe("http://s3.amazonaws.com//files/45514/0000000001.css");
   });
 

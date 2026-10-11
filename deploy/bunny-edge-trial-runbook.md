@@ -176,7 +176,7 @@ deploy suites configure when they assert that deck's served bytes.
 {
   "assetHost": "https://production-storage.r1.cdn.objectstore.example",
   "footerVersionPin": "0.19.1",
-  "stylesheetRevisionFrom": "45514/1786554352.css",
+  "stylesheetRevisionFrom": "45514/9999999999.css",
   "stylesheetRevisionTo": "45514/0000000001.css",
   "scriptIntegrity": [
     {

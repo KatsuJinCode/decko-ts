@@ -73,7 +73,7 @@ const FROZEN_RAILS =
 
 // The frozen capture-era main-stylesheet attachment (the corpus's own digits).
 const FROZEN_CSS =
-  "https://production-storage.r1.cdn.objectstore.example/files/45514/1786554352.css";
+  "https://production-storage.r1.cdn.objectstore.example/files/45514/9999999999.css";
 
 /** The five fields the graded arm installs. Named here, not in the test bodies,
  *  so a sixth addition to the arm has to edit this list to stay green. */

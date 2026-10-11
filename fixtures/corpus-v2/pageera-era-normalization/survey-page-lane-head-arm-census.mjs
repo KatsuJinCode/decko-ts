@@ -14,7 +14,7 @@
 // The four head markers are the graded arm's own fields, read off the engine
 // that consumes them (R1 step 1's call-site table):
 //   src/card/render/page.ts:899            scriptIntegrityFor  -> integrity=
-//   src/card/render/head-views.ts:213       mainStylesheetRevisionDigits -> 1790384218
+//   src/card/render/head-views.ts:213       mainStylesheetRevisionDigits -> 8888888888
 //   src/card/render/views.ts:774            footerDeckoVersion -> Decko v0.19.1
 //   src/card/render/views.ts:1498           recaptchaSiteKey
 //   src/card/render/page.ts:829            deckoRootUrl -> https://culturesmith.com/
@@ -27,7 +27,7 @@ const CORPUS = process.argv.includes("--corpus")
 
 const MARKERS = {
   "sri-integrity": /integrity="sha(?:256|512)-/g,
-  "live-css-revision-1790384218": /\/files\/\d+\/1790384218\.css/g,
+  "live-css-revision-8888888888": /\/files\/\d+\/8888888888\.css/g,
   "footer-decko-v0.19.1": /Decko v0\.19\.1/g,
   "live-rooturl": /decko\.rootUrl='https:\/\/culturesmith\.com\/'/g,
   "cloudflare-challenge": /__CF\$cv\$params/g,
@@ -56,7 +56,7 @@ for (const f of readdirSync(dir).filter((x) => x.endsWith(".jsonl")).sort()) {
     // ARMED means the entry carries the graded arm's head constants at all:
     // the SRI map is the unambiguous one (the engine only emits integrity= when
     // scriptIntegrityFor returned a value for that src).
-    const armed = hits.includes("sri-integrity") || hits.includes("live-css-revision-1790384218") || hits.includes("footer-decko-v0.19.1");
+    const armed = hits.includes("sri-integrity") || hits.includes("live-css-revision-8888888888") || hits.includes("footer-decko-v0.19.1");
     const liveEra = hits.includes("serializer-live-accordion-order");
     const frozenEra = hits.includes("serializer-frozen-accordion-order");
     const key = `${armed ? "ARMED-head" : "unarmed-head"}/${liveEra && !frozenEra ? "live-era" : frozenEra && !liveEra ? "frozen-era" : liveEra && frozenEra ? "mixed-era" : "no-era-marker"}`;
