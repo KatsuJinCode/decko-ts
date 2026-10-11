@@ -268,13 +268,11 @@ the repository states it elsewhere:
   declared, 37 mismatched under one declared security divergence
   ([docs/SECURITY.md](SECURITY.md), divergence 5). It is not presented as a
   clean sweep.
-- The corpus figure is not purely oracle-against-oracle: fifty of its
-  expected entries are bytes fetched from a live 0.19.1-era site on 2026-10-03
-  and 2026-10-04, not from the 0.20.0 oracle — two disjoint swap sets of 13
-  and 37, whose entry keys were checked to be distinct — so the correct
-  reading is "50 expectations are live-anchored; the remaining corpus is
-  oracle-anchored"
-  ([parity-method.md](parity-method.md), "The live-anchored expectations").
+- The corpus figure is not purely oracle-against-oracle: thirteen of its
+  expectations are bytes fetched from a live 0.19.1-era site on 2026-10-04, not
+  from the 0.20.0 oracle, and the correct reading is "13 expectations are
+  live-anchored; the remaining corpus is oracle-anchored"
+  ([parity-method.md](parity-method.md), "The thirteen live expectations").
 
 ## 11. "Byte-for-byte HTML equality is actually problematic"
 

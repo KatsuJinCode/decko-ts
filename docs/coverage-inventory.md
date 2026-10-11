@@ -51,12 +51,8 @@ package does NOT measure, item 6.
 - **Corpus replay** (private corpus, not committed): the full-deck capture —
   every card record and every recorded view compared byte for byte. The
   2026-09-23 with-mods run measured 167,674 of 180,442 captured views
-  byte-identical (92.9%). **That figure is not a pure Ruby-oracle grade**: 50
-  of its expected entries are bytes fetched from the live 0.19.1-era site,
-  not the 0.20.0 oracle — two disjoint swap sets of 13 and 37, entry keys
-  checked distinct, per-entry manifests committed. Method, the full
-  breakdown and the failure families: [parity-method.md](parity-method.md),
-  `tools/corpus-failure-classes/`.
+  byte-identical (92.9%). Method and the failure-family breakdown:
+  [parity-method.md](parity-method.md), `tools/corpus-failure-classes/`.
 - **Miniature fixture** (committed): `fixtures/captured/smoke.json` — a small
   seeded deck with four rendered views per card. This is what a clean clone
   can replay.

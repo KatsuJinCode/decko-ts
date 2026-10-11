@@ -4,7 +4,7 @@
 // the same call the entry makes — and the /files/<id>/<leaf> attachment
 // route.
 //
-// THE DELTAS ARE DEPLOYMENT CONFIGURATION (review round 4, finding 9): they
+// THE DELTAS ARE DEPLOYMENT CONFIGURATION: they
 // used to be module constants in the shipped edge code, so every deployment
 // of the engine served one private deck's version string, asset revisions and
 // SRI hashes. This suite pins BOTH halves of that change:
@@ -65,7 +65,7 @@ function edgeGet(pathname: string): Request {
 }
 
 describe("bunny edge page shell — UNCONFIGURED deltas (the default)", () => {
-  // The regression guard for finding 9: with no configuration, NO deck's
+  // The regression guard for the empty-deltas default: with no configuration, NO deck's
   // private identity reaches the served bytes. Each case feeds the exact
   // fragment the configured half below rewrites and asserts it comes back
   // UNCHANGED.
@@ -416,7 +416,7 @@ describe("bunny edge page shell — the 200-page assembly through the real handl
     }
   });
 
-  it("renders a stock deck with NO private identity when nothing is configured (finding 9)", async () => {
+  it("renders a stock deck with NO private identity when nothing is configured", async () => {
     // The same deck, the same render, and NO deltas. Nothing that belongs to
     // another deck may appear: not the asset host, not the served CSS
     // revision, not an SRI hash, and not the pinned footer version — the

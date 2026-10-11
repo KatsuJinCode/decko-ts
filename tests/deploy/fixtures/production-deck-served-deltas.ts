@@ -1,5 +1,5 @@
 // The PRODUCTION MIGRATION DECK's served-environment deltas, as the test
-// CONFIGURATION they now are (review round 4, finding 9).
+// CONFIGURATION they now are.
 //
 // These values used to be module constants inside the shipped edge code, so
 // every deployment of the engine served this one deck's identity. They are

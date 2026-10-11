@@ -42,7 +42,7 @@ const CREDENTIAL_ENV = {
 };
 
 /** The same env PLUS the production deployment's served deltas, in the
- *  loose-variable form an operator would paste (review round 4, finding 9).
+ *  loose-variable form an operator would paste.
  *  This suite drives the REAL handler through the REAL boot, so it is the
  *  end-to-end proof that the deltas reach the served bytes from the
  *  environment alone — no test-only injection. */
@@ -186,8 +186,8 @@ describe("bunny edge engine handler — the shared read surface", () => {
     expect(await response.text()).not.toContain("only synthetic demo content");
   });
 
-  it("a missing card answers 404 the minimal not_found stub on an UNCONFIGURED deployment (finding 9)", async () => {
-    // THE UNCONFIGURED CASE (review round 4, finding 9), and the regression
+  it("a missing card answers 404 the minimal not_found stub on an UNCONFIGURED deployment", async () => {
+    // THE UNCONFIGURED CASE, and the regression
     // guard for the defect itself: with no deltas in the environment the
     // builder has no layout-rule anchors to resolve this deck's Default
     // Layout with, so its documented fallback answers — and no corpus card
