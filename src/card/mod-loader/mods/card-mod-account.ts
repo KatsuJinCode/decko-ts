@@ -1058,11 +1058,12 @@ const accountBeforeContentFormgroupsView: ViewFn = (ctx) => {
 };
 
 /** set/type/user/setup_help.haml (verbatim, real-Haml oracle bytes): the
- *  h3 + the pb-2 roles note; the delivery-off alert-warning block is the
- *  Card.config.action_mailer.perform_deliveries == false arm (both arms
- *  captured; the reachable arm here is the engine-config one - the headless
- *  engine models no mailer config, so the FALSE-delivery arm stays the
- *  recorded oracle line and the TRUE arm renders). */
+ *  h3 + the pb-2 roles note + the delivery-off alert-warning block. The
+ *  warning block is the Card.config.action_mailer.perform_deliveries ==
+ *  false arm — and the GRADED corpus oracle carries it (the same fact the
+ *  admin-warning row pinned in the earlier slice: the capture
+ *  environment's mailer config answers delivery-off; the corpus gate is
+ *  the arbiter, so the false-delivery arm is the rendered one). */
 const SETUP_HELP_BYTES =
   `<h3>First, set up an account.</h3>
 ` +
@@ -1071,6 +1072,14 @@ const SETUP_HELP_BYTES =
   `As the first account holder for this deck, you will automatically have several
 ` +
   `permissioned roles. You can configure these roles at any time.
+` +
+  `</div>
+` +
+  `<div class='alert-warning p-3'>
+` +
+  `WARNING: Email delivery is turned off.
+` +
+  `Change settings in config/application.rb to send sign up notifications.
 ` +
   `</div>
 `;
@@ -1084,7 +1093,10 @@ const SETUP_HELP_BYTES =
  *  oracle's hiddenFieldsBytes line (the nil-value-omits rule never fires
  *  here - every value is present). */
 function setupHiddenFields(ctx: ViewContext): string {
-  const typeId = ctx.fmt.engine.fetchRenderCard("Sign Up")?.id;
+  // Card.default_accounted_type_id — the USER cardtype's id (the graded
+  // corpus row pins card[type_id] value="18"; the earlier Sign Up read
+  // answered the signup cardtype's id).
+  const typeId = ctx.fmt.engine.fetchRenderCard("User")?.id;
   const hiddenFieldTag = (name: string, value: string): string =>
     `<input type="hidden" name="${h(name)}" id="${h(name.replace(/]/g, "").replace(/\[/g, "_"))}" value="${h(value)}" autocomplete="off" />`;
   const out = [
@@ -1121,11 +1133,17 @@ const setupView: ViewFn = (ctx) => {
     return `<span class="denied"><!-- Sorry, you don't have permission (create) --></span>`;
   }
   return fmt.withNestMode("edit", () => {
-    voo.opts["title"] = "Your deck is ready to go!"; // LOCALIZE
+    // voo.title = / voo.help = are LIVE writers (voo_api.rb:30-32
+    // define_setter) — readable through the accessor, invisible in the
+    // OWNING slot JSON; :help is an heir key, so the child help-view voo
+    // inherits it into its normalized options and ITS slot JSON carries
+    // the text (the graded corpus row pins both halves). Writing them
+    // into voo.opts serialized them on the outer setup slot too.
+    voo.liveTitle = "Your deck is ready to go!"; // LOCALIZE
     voo.showViz("help");
     voo.hide("menu");
     // voo.help = haml :setup_help (the oracle's helpBytes line)
-    voo.opts["help"] = SETUP_HELP_BYTES;
+    voo.liveHelp = SETUP_HELP_BYTES;
     // Auth.as_bot { setup_form } - frame_and_form :create over the body
     // (the as_bot widening rides the seeded grants)
     const body = output([

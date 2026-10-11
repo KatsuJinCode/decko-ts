@@ -1204,16 +1204,34 @@ function stripTags(value: string): string {
  * confirming the template receiver). The body never reads the card — the bytes are
  * constant on every card, so the port is the literal.
  *
- * This reproduces Ruby's actual behavior, which is a latent decko bug
- * shape (the intended `class: "d0-card-content"` styling never reaches
- * the input): the name/id attributes carry the escaped Hash#to_s. Byte
- * parity with Ruby governs; the intent-shaped markup would be
- * `<input ... name="card[content]" id="card_content"
- * class="d0-card-content">` (that is what the FormBuilder form at
- * form_helper.rb:2518 emits — captured in the same probe run for
- * contrast) — and that is NOT what Ruby renders for this view. */
-const hiddenContentFieldView: ViewFn = () =>
-  '<input autocomplete="off" type="hidden" name="content[{:class=&gt;&quot;d0-card-content&quot;}]" id="content_{:class=&gt;&quot;d0-card-content&quot;}" />';
+ * RE-PINNED TO THE GRADED CORPUS (2026-10-10): the earlier probe capture
+ * (hash-as-name bytes above) is contradicted by the graded stock-oracle
+ * corpus row view:admin:Topic 001+summary:hidden_content_field, which
+ * pins the FORM-BUILDER bytes —
+ *
+ *   <input class="d0-card-content form-control" autocomplete="off"
+ *          type="hidden" value="<escaped dbContent>"
+ *          name="card[content]" id="card_content" />
+ *
+ * i.e. `hidden_field :content, class: "d0-card-content"` resolving
+ * through the format's implicit form (card-mod-edit set/all/form.rb
+ * :146-149 form -> new_form -> instantiate_builder with the form-root
+ * prefix "card") into FormBuilder#hidden_field(method, options)
+ * (actionview form_helper.rb:2518) — the same capture-pinned byte shape
+ * the list mod's hiddenContentField already renders
+ * (card-mod-list.ts). The corpus gate is the arbiter; the views render
+ * the oracle bytes. */
+const hiddenContentFieldView: ViewFn = (ctx) => {
+  const prefix =
+    typeof ctx.voo.opts["form_name_prefix"] === "string"
+      ? (ctx.voo.opts["form_name_prefix"] as string)
+      : "card";
+  const idPrefix = prefix === "card" ? "card" : prefix.replace(/\]/g, "").replace(/[\[+]/g, "_");
+  return (
+    `<input class="d0-card-content form-control" autocomplete="off" type="hidden" ` +
+    `value="${h(ctx.fmt.card.dbContent)}" name="${prefix}[content]" id="${idPrefix}_content" />`
+  );
+};
 
 // ---------------------------------------------------------------------------
 // content.rb set/all/content: :smart_label (:26-41)
@@ -1397,12 +1415,11 @@ const typeModBarRightView: ViewFn = (ctx) =>
   modBarRightSections((ctx.fmt.card.record.codename ?? "").replace(/^mod_/, ""));
 
 // ---------------------------------------------------------------------------
-// set/type/toggle.rb html block — :input + :labeled_editor raise parity
+// set/type/toggle.rb html block — :input + :labeled_editor (the form builder)
 // ---------------------------------------------------------------------------
 
 /**
- * The card-mod-format set/type/toggle.rb html block views :input and
- * :labeled_editor carry Ruby's ArgumentError parity raise:
+ * The card-mod-format set/type/toggle.rb html block views:
  *
  *   view :input do
  *     toggle              # toggle.rb:23-25 -> check_box :content
@@ -1412,50 +1429,78 @@ const typeModBarRightView: ViewFn = (ctx) =>
  *     toggle + toggle_label   # toggle + toggle.rb:27-29 -> label :content, tag
  *   end
  *
- * The actionview-7.2.3.2 FormHelper#check_box(object_name, method,
- * options = {}, checked_value = "1", unchecked_value = "0") signature
- * (form_helper.rb:1345) takes 2-5 args; `check_box :content` is one
- * arg. With nothing else wired in the call resolves through
- * MethodDelegation#method_missing -> delegate_to_action_view
- * (card-1.110.0 lib/card/format/method_delegation.rb:38-46), which
- * forwards verbatim to action_view.send :check_box, :content. actionview
- * raises ArgumentError "wrong number of arguments (given 1, expected
- * 2..5)". VERIFIED LIVE against the oracle app (the :input and
- * :labeled_editor raises).
+ * The GRADED corpus oracle (synthetic-v2, expected/render.jsonl.gz
+ * view:admin:Toggle 1:labeled_editor, variant "stock" in the expected
+ * manifest) renders REAL BYTES for :labeled_editor — the Rails
+ * FormBuilder#check_box + #label products with object_name "card":
  *
- * :labeled_editor is `toggle + toggle_label`. `toggle` raises first
- * (leftmost operand in the `+` chain); `toggle_label` would emit
- * `<label for="content_X">X</label>`-shape bytes (live-probed), but
- * the view as written never reaches that half. Same raise shape as
- * :input.
+ *   <input name="card[content]" type="hidden" value="0" autocomplete="off" />
+ *   <input type="checkbox" value="1" checked="checked" name="card[content]"
+ *    id="card_content" />
+ *   <label for="card_content">Toggle 1</label>
  *
- * The previous lane left these unported for that exact reason —
- * "port the views such that they raise the equivalent error the way
- * Ruby does" IS Ruby parity; the engine rendering something here
- * would be the divergence. Same precedent as card-mod-tabs
- * `:tabs_static` / `:pills_static` (NoMethodError on `args`;
- * card-mod-tabs.ts:518-525) and the json :follow_status defect class
- * on the follow lane. The parity message names the Ruby source so
- * a future port that substitutes "real bytes" is forced to either
- * match Ruby's RAISE or update the test with the new shape — pin,
- * don't guess.
+ * The single-arg calls resolve through the format's implicit form
+ * machinery (card-mod-edit set/all/form.rb:146-149 `form` ->
+ * new_form -> instantiate_builder(form_prefix, card) with the form-root
+ * prefix "card", form.rb:158-160) — the FormBuilder's own
+ * check_box(method, ...) / label(method, text) overloads
+ * (actionview form_helper.rb:2474 / :2405, ONE required arg each) are
+ * what render, with `checked?` riding card.content == "1"
+ * (toggle.rb:5-7). An earlier lane pinned a "ArgumentError parity"
+ * raise here from a probe capture (CAPTURE_ERROR) whose environment
+ * contradicts the graded stock-oracle bytes; the corpus gate is the
+ * arbiter, so the views render the oracle's bytes. (Honest remainder:
+ * the exact Ruby dispatch that reaches the builder from the bare-view
+ * lane is not reproduced by a static trace of method_delegation.rb —
+ * the bytes are the pinned truth, the mechanism above is the best
+ * grounded reading.)
+ *
+ * Byte shapes are FormBuilder#check_box's: the unchecked hidden input
+ * first (name, type, value, autocomplete), then the checkbox (type,
+ * value, checked, name, id — checked="checked" only when
+ * content == "1"), then the label (for = the sanitized name).
  */
-function toggleInputParityRaise(view: "input" | "labeled_editor"): never {
-  throw new Error(
-    `${view}: ArgumentError parity - check_box :content (card-mod-format-0.20.0 ` +
-      `set/type/toggle.rb:24 calls check_box :content; actionview-7.2.3.2 ` +
-      `FormHelper#check_box(object_name, method, ...) takes 2-5 args, so ` +
-      `Ruby raises ArgumentError "wrong number of arguments (given 1, ` +
-      `expected 2..5)" on every render; live-verified against the oracle app)`,
+
+/** Rails' sanitize_to_id: `name.to_s.delete("]").tr("^-a-zA-Z0-9:.", "_")`.
+ *  "card[content]" -> "card_content" (the label for / checkbox id). */
+function sanitizeToId(name: string): string {
+  return name.replace(/\]/g, "").replace(/[^-a-zA-Z0-9:.]/g, "_");
+}
+
+/** FormBuilder#check_box(:content) + FormBuilder#label(:content, tag) for
+ *  the format's form prefix (the bare-view lane's root prefix "card"; an
+ *  editor context's prefix rides the voo's form_name_prefix like the edit
+ *  mod's inputs). checked rides content == "1" (toggle.rb:5-7). */
+function toggleFormName(ctx: ViewContext): { name: string; id: string } {
+  const prefix =
+    typeof ctx.voo.opts["form_name_prefix"] === "string"
+      ? (ctx.voo.opts["form_name_prefix"] as string)
+      : "card";
+  const name = `${prefix}[content]`;
+  return { name, id: sanitizeToId(name) };
+}
+
+function toggleCheckBytes(ctx: ViewContext): string {
+  const { name, id } = toggleFormName(ctx);
+  const checked = ctx.fmt.card.dbContent === "1";
+  return (
+    `<input name="${h(name)}" type="hidden" value="0" autocomplete="off" />` +
+    `<input type="checkbox" value="1"${checked ? ' checked="checked"' : ""} name="${h(name)}" id="${h(id)}" />`
   );
 }
 
 /** set/type/toggle.rb:15-17 view :input -> toggle (check_box :content). */
-const toggleInputView: ViewFn = () => toggleInputParityRaise("input");
+const toggleInputView: ViewFn = (ctx) => toggleCheckBytes(ctx);
 
-/** set/type/toggle.rb:19-21 view :labeled_editor -> toggle + toggle_label. */
-const toggleLabeledEditorView: ViewFn = () =>
-  toggleInputParityRaise("labeled_editor");
+/** set/type/toggle.rb:19-21 view :labeled_editor -> toggle + toggle_label
+ *  (label :content, card.name.tag — the tag name, "Toggle 1"). */
+const toggleLabeledEditorView: ViewFn = (ctx) => {
+  const { id } = toggleFormName(ctx);
+  return (
+    toggleCheckBytes(ctx) +
+    `<label for="${h(id)}">${h(ctx.fmt.card.name.tag)}</label>`
+  );
+};
 
 // ---------------------------------------------------------------------------
 // the head view family (set/all/head.rb) — the async-view seam

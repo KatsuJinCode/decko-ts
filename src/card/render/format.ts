@@ -166,6 +166,14 @@ export class Voo {
    *  the consequence: the :template_link slot's data-slot carries
    *  view/nest_name/show/home_view/name_context and NO title key. */
   liveTitle: string | undefined;
+  /** voo.help = X (the same define_setter mechanics as liveTitle): a live
+   *  option readable through the accessor and INVISIBLE in the OWNING
+   *  voo's slot JSON — but an HEIR key, so the child voo a nested view
+   *  render builds inherits it into its NORMALIZED options and its slot
+   *  JSON carries it (the graded setup row: the outer setup slot's
+   *  data-slot has no help key; the inner help-view slot's data-slot
+   *  carries the help text). */
+  liveHelp: string | undefined;
 
   /** True ONLY for the bare view-lane ROOT render's voo (render.ts#render's
    *  `format.renderView(view, ...)` entry — the one call site whose
@@ -207,6 +215,21 @@ export class Voo {
     if (parent !== undefined && opts["size"] === undefined) {
       const inherited = parent.opts["size"];
       if (inherited !== undefined) this.opts["size"] = inherited;
+    }
+    // :help and :title are heir keys carried by the LIVE writers (the
+    // setup view's `voo.help = haml :setup_help` + `voo.title = ...`): the
+    // child voo inherits them into its normalized options
+    // (inherit_options_from_parent!, voo_api.rb:135-143), which is what
+    // slot_options serializes — the graded corpus pins the consequence
+    // (the child help-view slot JSON carries "help" AND "title"; the
+    // owning setup slot's JSON carries neither).
+    if (parent !== undefined && opts["help"] === undefined) {
+      const inherited = parent.liveHelp;
+      if (inherited !== undefined) this.opts["help"] = inherited;
+    }
+    if (parent !== undefined && opts["title"] === undefined && this.liveTitle === undefined) {
+      const inherited = parent.liveTitle;
+      if (inherited !== undefined) this.opts["title"] = inherited;
     }
     // :items is an heir key too (view/options/key_lists.rb
     // keymap[:both]); inherit_options_from_parent! flows it down the voo
@@ -3452,6 +3475,27 @@ export class RenderFormat {
    *  in the loader-bound world; the headless no-loader surface reads the
    *  codename tables instead). */
   standardTitle(): string {
+    // The explicit title reads the LIVE writer through the voo chain:
+    // `voo.title = X` lands on the OWNING voo's live options, and the
+    // delegated :title render runs on a CHILD voo (render.rb with_voo) —
+    // Ruby's accessor falls through to the parent voo, so the setup
+    // frame's header renders "Your deck is ready to go!" (the graded row)
+    // while neither the owning nor the child slot JSON carries a title
+    // key. Own liveTitle first, then the parent chain, then normalized.
+    const live =
+      this.voo?.liveTitle ??
+      (() => {
+        let p = this.voo?.parent;
+        while (p !== undefined) {
+          if (p.liveTitle !== undefined) return p.liveTitle;
+          p = p.parent;
+        }
+        return undefined;
+      })();
+    if (live !== undefined && live !== "") {
+      const absolute = DeckoName.parse(live).absoluteName(this.card.name);
+      return absolute.from(...this.contextNames);
+    }
     const explicit = this.voo?.opts["title"];
     if (typeof explicit === "string" && explicit !== "") {
       // title.rb:34-37 title_in_context(voo.title): the explicit title is a

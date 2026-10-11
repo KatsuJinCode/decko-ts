@@ -354,21 +354,24 @@ export const templateNestView: ViewFn = (ctx) => {
 };
 
 /** all/editing.rb:46-48 :just_deleted, unknown: true: `wrap { "#{render_
-//  title} deleted" }`. `wrap` (voo_api.rb:167-177) is `<div>X</div>` -
-//  no attrs, no class. `render_title` is the title view, ported in
-//  src/card/render/views.ts#titleView (card-mod-format set/all/title.rb).
-//  unknown: true means a deleted card whose view substitution routed
-//  here - the nest that fired the delete action (format/nest/fetch.rb)
-//  receives `<div><span class="card-title" title="X">X</span>
-//  deleted</div>`. The title view runs through the format's normal
-//  voo machinery, so an unknown card still gets the title span (no
-//  read-permission denial: :just_deleted is `perms: :none`-implicit
-//  because the unknown-card substitution routes to it before the
-//  read-permission check, view/permission.rb#skip_check? for
-//  unknown-card substitutions). */
-const justDeletedView: ViewFn = ({ fmt }) => {
+ *  title} deleted" }`. `wrap` (card-mod-format set/all/html/wrap.rb:6-10
+ *  + slot_attributes :22-28) is the FULL SLOT WRAP: id
+ *  `<safe-key>-just_deleted-view`, class "card-slot just_deleted-view"
+ *  + the card's set keys, the data-card-* attrs and the data-slot JSON
+ *  ({view: just_deleted, show:[just_deleted]}). The graded corpus pins
+ *  the wrap on the Note 001 row (a bare `<div>` was the earlier
+ *  reading). `render_title` is the title view, ported in
+ *  src/card/render/views.ts#titleView (card-mod-format set/all/title.rb).
+ *  unknown: true means a deleted card whose view substitution routed
+ *  here. The title view runs through the format's normal voo machinery,
+ *  so an unknown card still gets the title span (no read-permission
+ *  denial: :just_deleted is `perms: :none`-implicit because the
+ *  unknown-card substitution routes to it before the read-permission
+ *  check, view/permission.rb#skip_check? for unknown-card
+ *  substitutions). */
+const justDeletedView: ViewFn = ({ fmt, voo }) => {
   const title = fmt.renderView("title");
-  return `<div>${title} deleted</div>`;
+  return modSlotWrap({ fmt, voo }, "just_deleted", `${title} deleted`);
 };
 
 // ---------------------------------------------------------------------------
@@ -1329,11 +1332,31 @@ export function framedView(
   const body = bodyFn();
   // header.rb:22 default_header: `main? ? :h1 : :h2`.
   const tag = fmt.isMain ? "h1" : "h2";
+  // header.rb:5-12 view :header: `header_wrap [render_header_title,
+  // render_menu]` — output() JOINS the parts with "\n" and COMPACTS the
+  // hidden menu's NIL (the render pipeline's hide bail, view.rb:69 bare
+  // return) but keeps the menu's EMPTY-STRING arms (the denial-:blank /
+  // unknown-card "" — a string, not nil), so a hidden-menu frame ends at
+  // the title tag with no newline (the graded setup row) while the
+  // unknown-card frames keep the title's trailing newline (the graded
+  // Nonexistent Card rows).
+  const titleTag = `<${tag} class="${voo.classy("d0-card-header-title")}">${fmt.renderView("title")}</${tag}>`;
+  const menuRendered = fmt.renderView("menu");
   const header =
     `<div class="${voo.classy("d0-card-header")}">` +
-    `<${tag} class="${voo.classy("d0-card-header-title")}">${fmt.renderView("title")}</${tag}>\n` +
-    `${fmt.renderView("menu")}</div>`;
-  const frameHelp = voo.show("help") ? fmt.renderView("help") : undefined; // nil: hidden
+    (menuRendered === null ? titleTag : `${titleTag}\n${str(menuRendered)}`) +
+    `</div>`;
+  // frame.rb:33-36 frame_help: `with_class_up "help-text", "alert
+  // alert-info" do _render :help end` — the class_up rides the render and
+  // is restored after (with_class_up's scope).
+  let frameHelp: ViewResult | undefined;
+  if (voo.show("help")) {
+    const prevAlert = voo.classUps.get("help-text");
+    voo.classUp("help-text", "alert alert-info");
+    frameHelp = fmt.renderView("help");
+    if (prevAlert === undefined) voo.classUps.delete("help-text");
+    else voo.classUps.set("help-text", prevAlert);
+  }
   const panel =
     `<div class="${voo.classy("d0-card-frame")}">` +
     output([
@@ -2752,7 +2775,19 @@ function visibleBoardTabs(ctx: ViewContext): ReadonlyArray<readonly [string, str
  *  the viewer's signed-in state (the new discussion card's update verdict
  *  is the *all+*update walk; see the disclosure above). */
 function showDiscussionTab(ctx: ViewContext): boolean {
-  return ctx.fmt.engine.viewer?.signedIn === true;
+  // tab_visibility.rb:36-50: discussion_card answers NIL for a new card
+  // and for a card that IS a discussion card (compound && tag ==
+  // discussion), and show_discussion? is that card's ok?(update when the
+  // phantom is new, else read). The graded corpus row
+  // Topic 001+discussion:engage_tab pins the discussion-card arm: the
+  // card's own tag IS discussion, so discussion_section contributes
+  // nothing and the tab ends at the follow section.
+  const { fmt } = ctx;
+  if (fmt.engine.viewer?.signedIn !== true) return false;
+  if (fmt.card.id === undefined) return false; // new_card?
+  const name = fmt.card.name;
+  if (name.isCompound && name.tagKey === "discussion") return false;
+  return true;
 }
 
 function boardTabsView(ctx: ViewContext): string {
@@ -2890,8 +2925,8 @@ function pillCyKey(text: string): string {
   return table[text] ?? "rich_text_card";
 }
 
-function boardPillItem(text: string, markUrlKey: string): string {
-  const cy = `${pillCyKey(text)}-pill`;
+function boardPillItem(text: string, markUrlKey: string, cyKey?: string): string {
+  const cy = `${cyKey ?? pillCyKey(text)}-pill`;
   return (
     `<li class="nav-item">` +
     `<a data-slot-selector="${BOARD_SLOT_SELECTOR_ESC}" data-slotter-mode="override"` +
@@ -2922,14 +2957,27 @@ export const relatedTabView: ViewFn = ({ fmt }) => {
     }),
   ]);
   // related_by_type_items (related_section.rb:31-33): the absolute
-  // "<Type>+*type+by_name" mark
+  // "<Type>+*type+by_name" mark. The pill's data-cy keys on the CARD'S OWN
+  // TYPE ("Topic cards" -> topic_card-pill; the graded corpus row pins
+  // topic_card on the Topic 001 card — the hardcoded rich_text_card
+  // fallback was the RichText label only).
   const typeName = fmt.card.typeName ?? "";
+  // Rails' underscore (ActiveSupport Inflector.underscore): CamelCase runs
+  // split before the downcase — "RichText" -> "rich_text", "Topic" ->
+  // "topic" (the captured rich_text_card-pill pins the split).
+  const typeCode =
+    fmt.card.typeCode ??
+    typeName
+      .replace(/([A-Z])/g, "_$1")
+      .replace(/^_/, "")
+      .toLowerCase();
   sections.push([
     "by type",
     [
       boardPillItem(
         `${typeName} cards`,
         DeckoName.parse(`${typeName}+*type+by_name`).urlKey,
+        `${typeCode}_card`,
       ),
     ],
   ]);
@@ -3066,7 +3114,11 @@ export function followButton(
   const verb = start ? "follow" : "following";
   const option = start ? "always" : "never";
   const hover = start ? "" : ` data-hover-text="unfollow"`;
-  const successMark = cardName.replace(/ /g, "+");
+  // Rails' query-value encoding (CGI.escape): spaces render "+" and a
+  // literal "+" renders "%2B" — "Topic 001+discussion" lands as
+  // "Topic+001%2Bdiscussion" (the graded corpus pins the mark's %2B; the
+  // previous space-only rewrite left the junction plus raw).
+  const successMark = cardName.replace(/ /g, "\u0000").replace(/\+/g, "%2B").replace(/\u0000/g, "+");
   const href =
     `/update/${ruleName}` +
     `?card%5Bcontent%5D=%5B%5B%2A${option}%5D%5D` +

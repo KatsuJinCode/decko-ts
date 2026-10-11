@@ -138,7 +138,12 @@ export const helpView: ViewFn = (ctx) => {
   const help = helpText(ctx);
   const body = /^\s*$/.test(help)
     ? ""
-    : `<div class="help-text">${wrapHelpText(ctx, help)}</div>`;
+    // classy("help-text") — the class_ups ride the voo chain (frame.rb's
+    // with_class_up "help-text", "alert alert-info" lands on the OWNING
+    // voo; the child voo the delegated :help render builds reads it
+    // through deepExtraClasses — the graded setup row pins
+    // "help-text alert alert-info").
+    : `<div class="${ctx.voo.classy("help-text")}">${wrapHelpText(ctx, help)}</div>`;
   return modSlotWrap(ctx, "help", body);
 };
 
