@@ -13,63 +13,63 @@ ENGINE-NEST {"requested":"labeled","view":"labeled","card":"Oracle Token Probe+a
  [32m✓[39m tests/card/mod-loader/card-mod-account.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 41[2mms[22m[39m
  [32m✓[39m tests/card/mod-loader/card-mod-follow.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 55[2mms[22m[39m
  [32m✓[39m tests/card/mod-loader/card-mod-follow-harness-probe.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 43[2mms[22m[39m
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box_middle matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box_middle matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box_middle matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box_middle matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box_middle matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box_middle matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :expanded_bar matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :expanded_bar matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :expanded_bar matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :expanded_bar matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :expanded_bar matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :expanded_bar matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_bar matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_bar matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_bar matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_bar matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_bar matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_bar matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_content matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_content matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_content matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_content matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_content matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_content matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 

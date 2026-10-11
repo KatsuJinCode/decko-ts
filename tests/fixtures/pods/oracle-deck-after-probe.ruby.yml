@@ -145,14 +145,14 @@
 - :name:
   - :html
   - :description
-  :content: "<p>These cards allow unrestricted HTML. [[http://decko.org/wagn/HTML|more]]</p>"
+  :content: "<p>These cards allow unrestricted HTML. [[http://decko.org/qagn/HTML|more]]</p>"
 - :name: Toggle
   :type: :cardtype
   :codename: :toggle
 - :name:
   - :toggle
   - :description
-  :content: "<p>Toggles simply indicate yes or no. [[http://decko.org/wagn/Toggle|more]].</p>"
+  :content: "<p>Toggles simply indicate yes or no. [[http://decko.org/qagn/Toggle|more]].</p>"
 - :name: Phrase
   :type: :cardtype
   :codename: :phrase
@@ -2901,10 +2901,10 @@
 - :name: 'mod: platypus'
   :type: :mod
   :codename: :mod_platypus
-- :name: Sara
+- :name: Tova
   :type: :user
 - :name: account
-- :name: John
+- :name: Jonas
   :type: :user
 - :name:
   - ''
@@ -2967,11 +2967,11 @@
 - :name:
   - Basic
   - :type
-  - Sara
+  - Tova
 - :name:
   - Basic
   - :type
-  - Sara
+  - Tova
   - :follow
   :type: :list
   :content: "*always"
@@ -2988,11 +2988,11 @@
 - :name:
   - Oracle Recipe Card
   - ingredient
-  - Sara
+  - Tova
 - :name:
   - Oracle Recipe Card
   - ingredient
-  - Sara
+  - Tova
   - :follow
   :type: :list
   :content: "*always"
@@ -3038,31 +3038,31 @@
   :type: :phrase
   :content: unverified
 - :name:
-  - Sara
+  - Tova
   - :account
 - :name:
-  - Sara
+  - Tova
   - :account
   - :salt
   :type: :phrase
   :content: f0b0fe5173e582fc9ed50c40e60aea1e190cda5a
 - :name:
-  - Sara
+  - Tova
   - :account
   - :status
   :type: :phrase
   :content: active
 - :name:
-  - John
+  - Jonas
   - :account
 - :name:
-  - John
+  - Jonas
   - :account
   - :salt
   :type: :phrase
   :content: f0b0fe5173e582fc9ed50c40e60aea1e190cda5a
 - :name:
-  - John
+  - Jonas
   - :account
   - :status
   :type: :phrase
@@ -3076,21 +3076,21 @@
   - Oracle Recipe Card
   - ingredient
   - :self
-  - Sara
+  - Tova
 - :name:
   - Oracle Recipe Card
   - ingredient
   - :self
-  - Sara
+  - Tova
   - :follow
   :type: :list
   :content: "*always"
 - :name:
-  - John
+  - Jonas
   - :account
   - :email
   :type: :phrase
-  :content: john@example.com
+  :content: jonas@example.com
 - :name: Jane Oracle Signup
   :type: :user
 - :name:

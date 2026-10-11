@@ -46,16 +46,16 @@
     "Very Rosie July 4 in 2013+Gallery10vert+image05+discussion:page",
     "Very Rosie July 4 in 2013+Gallery10vert+image06+discussion:page",
     "Very Rosie July 4 in 2013+Gallery10vert+image07+discussion:page",
-    "Morgan:page",
+    "Ellery:page",
     "Guns:page",
     "Project+Task+*type plus right:page",
     "Message+Conversation+*type plus right:page",
-    "Casey feedback+discussion:page",
+    "Riley feedback+discussion:page",
     "A Taste of Your Own Medicine The Problematic Nature of Revenge+discussion:page",
     "*all+*head:page",
     "Administrator+Dashboard:page",
     "Help Desk:page",
-    "PCTS+*self+*head:page",
+    "ZQVT+*self+*head:page",
     "Pointer:page",
     "Shark:page",
     "Amber Arvidsson 20230902+discussion:page",
@@ -77,7 +77,7 @@
     "mod: shades:page",
     "Klickstein continues+discussion:open",
     "Kristina Garrison:open",
-    "media+GBA+YouTube Browser:open",
+    "media+HBQ+YouTube Browser:open",
     "The Habit - a predictable travesty:open",
     "Very Rosie July 4 in 2013+Gallery10vert+image01+discussion:open",
     "Very Rosie July 4 in 2013+Gallery10vert+image02+discussion:open",
@@ -90,7 +90,7 @@
     "Free Aiki Dojo - Golden Bears Aikido training schedule from January 27th 2014:open",
     "Guns:open",
     "Free Aiki Dojo and Golden Bears Aikido training schedule - week of 2014 11 24:open",
-    "Casey feedback+discussion:open",
+    "Riley feedback+discussion:open",
     "Conflict Resolution Plan Prepares You to Move From Mediation to Blood Sport:open",
     "A Taste of Your Own Medicine The Problematic Nature of Revenge+discussion:open",
     "children:open",
@@ -113,7 +113,7 @@
     "Christmas:page",
     "*search:page",
     "*input type+*right+*content options:page",
-    "Morgan:page",
+    "Ellery:page",
     "Guns:page",
     "Project+Task+*type plus right:page",
     "Message+Conversation+*type plus right:page",
@@ -162,8 +162,8 @@
     "*input type+*right+*content options:closed",
     "*input type+*right+*content options:content",
     "*input type+*right+*content options:open",
-    "media+GBA+YouTube Browser:open",
-    "Casey Langdon - Astrology as Archetypal Language+tags:open",
+    "media+HBQ+YouTube Browser:open",
+    "Riley Langdon - Astrology as Archetypal Language+tags:open",
     "politics+Documents:open",
     "The Habit - a predictable travesty:open",
     "Very Rosie July 4 in 2013+Gallery10vert+image01+discussion:open",
@@ -186,7 +186,7 @@
     "Message+Conversation+*type plus right:content",
     "Message+Conversation+*type plus right:open",
     "darkly skin:open",
-    "Casey feedback+discussion:open",
+    "Riley feedback+discussion:open",
     "Conflict Resolution Plan Prepares You to Move From Mediation to Blood Sport:open",
     "A Taste of Your Own Medicine The Problematic Nature of Revenge+discussion:open",
     "Bessel van der Kolk Here and Now New Ways Of Treating Trauma Try Some Yoga+Associates:open",
@@ -203,8 +203,8 @@
     "*all+*head:open",
     "Administrator+Dashboard:content",
     "Administrator+Dashboard:open",
-    "PCTS+*self+*head:content",
-    "PCTS+*self+*head:open",
+    "ZQVT+*self+*head:content",
+    "ZQVT+*self+*head:open",
     "TSYR+mythology+articles:open",
     "democracy+tags:open",
     "Wikirate:open",
@@ -918,7 +918,7 @@
     {
       "lane": "page",
       "shard": "recapture-raw-shard-000013.jsonl",
-      "tag": "Morgan:page",
+      "tag": "Ellery:page",
       "states": {
         "UNARMED": {
           "verdict": "FAIL",
@@ -1054,7 +1054,7 @@
     {
       "lane": "page",
       "shard": "recapture-raw-shard-000018.jsonl",
-      "tag": "Casey feedback+discussion:page",
+      "tag": "Riley feedback+discussion:page",
       "states": {
         "UNARMED": {
           "verdict": "FAIL",
@@ -1224,7 +1224,7 @@
     {
       "lane": "page",
       "shard": "recapture-raw-shard-000029.jsonl",
-      "tag": "PCTS+*self+*head:page",
+      "tag": "ZQVT+*self+*head:page",
       "states": {
         "UNARMED": {
           "verdict": "FAIL",
@@ -2788,7 +2788,7 @@
     {
       "lane": "view",
       "shard": "recapture-raw-shard-000008.jsonl",
-      "tag": "media+GBA+YouTube Browser:open",
+      "tag": "media+HBQ+YouTube Browser:open",
       "states": {
         "UNARMED": {
           "verdict": "FAIL",
@@ -2822,7 +2822,7 @@
     {
       "lane": "view",
       "shard": "recapture-raw-shard-000009.jsonl",
-      "tag": "Casey Langdon - Astrology as Archetypal Language+tags:open",
+      "tag": "Riley Langdon - Astrology as Archetypal Language+tags:open",
       "states": {
         "UNARMED": {
           "verdict": "PASS",
@@ -3604,7 +3604,7 @@
     {
       "lane": "view",
       "shard": "recapture-raw-shard-000018.jsonl",
-      "tag": "Casey feedback+discussion:open",
+      "tag": "Riley feedback+discussion:open",
       "states": {
         "UNARMED": {
           "verdict": "FAIL",
@@ -4182,7 +4182,7 @@
     {
       "lane": "view",
       "shard": "recapture-raw-shard-000029.jsonl",
-      "tag": "PCTS+*self+*head:content",
+      "tag": "ZQVT+*self+*head:content",
       "states": {
         "UNARMED": {
           "verdict": "FAIL",
@@ -4216,7 +4216,7 @@
     {
       "lane": "view",
       "shard": "recapture-raw-shard-000029.jsonl",
-      "tag": "PCTS+*self+*head:open",
+      "tag": "ZQVT+*self+*head:open",
       "states": {
         "UNARMED": {
           "verdict": "FAIL",

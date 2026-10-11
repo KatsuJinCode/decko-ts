@@ -33,7 +33,7 @@ export function modEngineHost(
   // loaded, preloadDefaultTypeNames latched an EMPTY defaultTypeNameById, and
   // newCardDefaultType degraded every nest-miss child to the raw phantom
   // constants (the card-mod-search-list oracle's BasicCs-vs-RichText byte
-  // divergence on the sara/anonymous arms). Both seat paths below therefore
+  // divergence on the tova/anonymous arms). Both seat paths below therefore
   // ensure the engine's registry is loaded first; ensureLoaded is memoized
   // (one codehash read per registry, a no-op once loaded).
   const ensureEngineCodenamesLoaded = async (): Promise<void> => {

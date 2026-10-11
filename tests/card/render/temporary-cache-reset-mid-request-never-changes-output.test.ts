@@ -48,7 +48,7 @@ import {
 const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const MEMBER_ONE = { id: 23595, name: "Wagneer Member One" };
 const MEMBER_TWO = { id: 34374, name: "Johannes Ernst" };
-const WAGNEER_ID = 34370;
+const QAGNEER_ID = 34370;
 const MEMBERS_TAG_ID = 908;
 
 async function storageWithCap(maxTemporaryCacheKeys: number): Promise<RenderTestStorage> {
@@ -77,11 +77,11 @@ async function seedWagneerDeck(s: RenderTestStorage): Promise<void> {
   await seedCard(s, { id: 907, name: "*tiny_mce", codename: "tiny_mce", typeId: 2 });
   await seedCard(s, { id: 910, leftId: 900, rightId: 901, typeId: 2, dbContent: "Probe Layout" });
   await seedCard(s, { id: 911, name: "Probe Layout", typeId: 2, dbContent: "{{_main|titled}}" });
-  await seedCard(s, { id: WAGNEER_ID, name: "Wagneer", typeId: 2, dbContent: "{{+*members}}" });
+  await seedCard(s, { id: QAGNEER_ID, name: "Wagneer", typeId: 2, dbContent: "{{+*members}}" });
   await seedCard(s, { id: MEMBERS_TAG_ID, name: "*members", codename: "members", typeId: 2 });
   await seedCard(s, {
     id: 34371,
-    leftId: WAGNEER_ID,
+    leftId: QAGNEER_ID,
     rightId: MEMBERS_TAG_ID,
     name: "Wagneer+*members",
     typeId: 5,

@@ -34,12 +34,12 @@ describe("oracle deck inflection table (deployed deck boot data)", () => {
     // plus-joins return zero rows (projects-data-fix.md defect 1)
     expect(DeckoName.parse("Participant(s)").key).toBe("participant_");
     expect(DeckoName.parse("Project(s) Participating").key).toBe("project__participating");
-    expect(DeckoName.parse("Casey's").key).toBe("casey_");
+    expect(DeckoName.parse("Riley's").key).toBe("riley_");
   });
 
   it("keys parenthesized junction names exactly as the corpus stores them", () => {
     applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
-    // the corpus-stored keys (live Ruby's bytes, cards 406 / 420 / Casey's
+    // the corpus-stored keys (live Ruby's bytes, cards 406 / 420 / Riley's
     // virtual participating section)
     expect(DeckoName.parse("Participant(s)").key).toBe("participant_s");
     expect(DeckoName.parse("Project(s) Participating").key).toBe("project_s_participating");
@@ -49,12 +49,12 @@ describe("oracle deck inflection table (deployed deck boot data)", () => {
     // owner's own name is masked, so the pin carries a synthetic surname in
     // the same inflection class ("Simmons" -> "simmon", the shape the corpus
     // row exercised); the rule under test is unchanged.
-    expect(DeckoName.parse("Casey Simmons").key).toBe("casey_simmon");
+    expect(DeckoName.parse("Riley Simmons").key).toBe("riley_simmon");
     expect(
-      DeckoName.parse("Casey Simmons+Project(s) Participating").key,
-    ).toBe("casey_simmon+project_s_participating");
-    // the possessive family (Casey's -> casey_s) site-wide
-    expect(DeckoName.parse("Casey's").key).toBe("casey_s");
+      DeckoName.parse("Riley Simmons+Project(s) Participating").key,
+    ).toBe("riley_simmon+project_s_participating");
+    // the possessive family (Riley's -> riley_s) site-wide
+    expect(DeckoName.parse("Riley's").key).toBe("riley_s");
   });
 
   it("protects the other two recovered uncountables and nothing else", () => {

@@ -22,13 +22,13 @@
 //         *default walk (02_all_plus.rb:1) -> *all+*default (rule 28,
 //         BasicCs-typed) -> BasicCs+*type+*read (rule 22283,
 //         "Anyone Signed In") — not *all+*read ("Anyone").
-//   R4 (*rstar set page default row + the Metashamanic phantom verdict):
+//   R4 (*rstar set page default row + the Quicksilver phantom verdict):
 //     *rstar                                     shard 000003  content+open
 //       - prototype *dummy+*dummy (compound) lands on *all plus+*default
 //         (rule 17827, RichText) -> the *default walk hits
 //         RichText+*type+*default (rule 21450) — "RichText : <em>empty</em>"
 //         renders where the over-denied engine emitted the quiet span.
-//     Metashamanic+Core Project                 shard 000000  open
+//     Quicksilver+Core Project                 shard 000000  open
 //       - the unknown list item mytho-psychology's verdict is PER-HOST
 //         (Ruby's phantom is a fresh Card per Nest::Fetch#new_card): this
 //         host's Project-typed fold reads allowed via *all+*read; a foreign
@@ -75,7 +75,7 @@ const PINS: Array<{ name: string; view: string; shard: string }> = [
   { name: "*star", view: "open", shard: "recapture-raw-shard-000003.jsonl" },
   { name: "*rstar", view: "content", shard: "recapture-raw-shard-000003.jsonl" },
   { name: "*rstar", view: "open", shard: "recapture-raw-shard-000003.jsonl" },
-  { name: "Metashamanic+Core Project", view: "open", shard: "recapture-raw-shard-000000.jsonl" },
+  { name: "Quicksilver+Core Project", view: "open", shard: "recapture-raw-shard-000000.jsonl" },
 ];
 
 interface ShardLine {

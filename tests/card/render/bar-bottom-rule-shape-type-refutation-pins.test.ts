@@ -31,7 +31,7 @@
 //   recapture-raw-shard-000015 Anonymous+*account+*email:open carries
 //     <div id="anonymous-Xaccount-Xemail-content-view" class="card-slot
 //     content-view ... d0-card-content" ...><a class="email-link"
-//     href="mailto:noreply@wagn.org">noreply@wagn.org</a></div>
+//     href="mailto:noreply@qagn.org">noreply@qagn.org</a></div>
 //   inside the accordion body.
 //
 // THE DEFECT. barBottomView's rule detection fell back to the NAME SHAPE
@@ -88,7 +88,7 @@ async function seedDeck(): Promise<void> {
     leftId: 19977,
     rightId: 22710,
     typeId: 52,
-    dbContent: "noreply@wagn.org",
+    dbContent: "noreply@qagn.org",
   });
   // Everything readable: *all+*read = "Anyone".
   await seedCard(s, {
@@ -130,7 +130,7 @@ describe("a rule row whose left is a rule row is RSTAR, not RULE (rule/all.rb:33
     expect(slotTag, "the slot is the content-view slot").toContain("card-slot content-view");
     expect(slotTag, "the content view's d0-card-content class_up").toContain("d0-card-content");
     // The anchor is INSIDE that slot, not a bare replacement for it.
-    const anchorAt = html.indexOf('<a class="email-link" href="mailto:noreply@wagn.org">');
+    const anchorAt = html.indexOf('<a class="email-link" href="mailto:noreply@qagn.org">');
     expect(anchorAt, "the email anchor renders inside the slot").toBeGreaterThan(slotIdAt);
   });
 });

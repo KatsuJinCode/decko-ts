@@ -9,9 +9,9 @@
 //   the *content options help popover's [[List]]/[[Pointer]]/[[Search]]
 //   cardtype links (10 dump entries, e.g. 000000-_layout_right_content_
 //   options-open) and card-body wikilinks to real deck cards (5 entries,
-//   e.g. 000020-Dawn_Emerson-content: [[Bluevolution]] known).
+//   e.g. 000020-Vera_Prescott-content: [[Bluevolution]] known).
 // - Oracle WANTED stays wanted: "People Green" has NO card in the deck —
-//   sage pettibone AND Dawn Emerson both pin
+//   sage pettibone AND Vera Prescott both pin
 //   `<a class="wanted-card" href="/People_Green">` on the ORACLE side, and
 //   the engine's warm-map answer byte-matches today (format.ts R17 note).
 //   The fix must flip existence-hits only, never absence.
@@ -27,7 +27,7 @@
 // (card-mod-list set/abstract/01_list/other_views.rb:3-5) with the
 // view :paging nav whenever show_paging? holds (count > 20): 8 dump
 // entries render exactly 20 items plus the nav where the engine rendered
-// the full unpaginated list (e.g. 000034-Learning_Pool_training_Notes:
+// the full unpaginated list (e.g. 000034-Practice_Pool_training_Notes:
 // expected 3,692B vs actual 6,913B — 27 pointer-items, no nav).
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -94,7 +94,7 @@ async function seedDeck(): Promise<void> {
   });
 
   // --- pagination surface (view-fail class V8): a pointer holding 27 items
-  // (oracle: Learning Pool+training+Notes, Martial Nonviolence+Pages,
+  // (oracle: Practice Pool+training+Notes, Martial Concordance+Pages,
   // *recent settings, AI+Replacement+Documents — all render 20 items plus
   // the paging nav) and a small pointer (the corpus:77 unpaginated pin).
   const bigItems = Array.from({ length: 27 }, (_, i) => `Page ${String(i + 1).padStart(2, "0")}`);
@@ -140,7 +140,7 @@ describe("wikilink known/wanted class follows live card existence (links.rb:140-
   });
 
   it("renders body wikilinks to an existing card known-card with the stored name's href", async () => {
-    // Oracle 000020-Dawn_Emerson-content: [[Bluevolution]] known. The
+    // Oracle 000020-Vera_Prescott-content: [[Bluevolution]] known. The
     // authored casing never leaks into the href (corpus scan: every
     // case-differing known-card anchor hrefs the REAL name,
     // [[narrative]] -> /Narrative); the label/title keep the authored form.
@@ -154,7 +154,7 @@ describe("wikilink known/wanted class follows live card existence (links.rb:140-
   });
 
   it("keeps wanted-card for links to cards that do not exist", async () => {
-    // Oracle pins (sage pettibone + Dawn Emerson): "People Green" has
+    // Oracle pins (sage pettibone + Vera Prescott): "People Green" has
     // no card — the anchor stays wanted-card on BOTH sides. The existence
     // fix must not flip absence.
     const html = await storage!.engine.render("Discussion Post", "content");
@@ -165,7 +165,7 @@ describe("wikilink known/wanted class follows live card existence (links.rb:140-
 
 describe("pointer core paginates at Ruby's default limit 20 (paging_views.rb show_paging?)", () => {
   it("renders 20 items plus the paging nav for a 27-item pointer", async () => {
-    // Oracle phase-017 000034-Learning_Pool_training_Notes-content: 20
+    // Oracle phase-017 000034-Practice_Pool_training_Notes-content: 20
     // pointer-item divs, then with_paging's output-join "\n" and the
     // view :paging nav — « div (nil-page form), active page 1, page 2,
     // » anchor with aria-label first, the context "1 - 20 of 27".

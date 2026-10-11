@@ -136,10 +136,10 @@ describe("name-key/url shape: name shaper property spot-checks (R3)", () => {
     });
   }
 
-  it("safeKey maps '*' -> X and joint -> '-' (CSS/HTML-id-safe form, oracle slot id rich_text-gba-Xtype_plu_right-content-view)", () => {
+  it("safeKey maps '*' -> X and joint -> '-' (CSS/HTML-id-safe form, oracle slot id rich_text-hbq-Xtype_plu_right-content-view)", () => {
     expect(DeckoName.parse("*type plus right").safeKey).toBe("Xtype_plu_right");
-    expect(DeckoName.parse("RichText+GBA+*type plus right").safeKey).toBe(
-      "rich_text-gba-Xtype_plu_right",
+    expect(DeckoName.parse("RichText+HBQ+*type plus right").safeKey).toBe(
+      "rich_text-hbq-Xtype_plu_right",
     );
   });
 });

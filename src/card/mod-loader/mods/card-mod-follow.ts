@@ -401,7 +401,7 @@ function ruleSetNameOf(ruleCardName: string): string {
 /** right/follow.rb:23-25 add_follow_item?: `new_card? ||
  *  !include_item?(condition)`. The items are the rule card's content
  *  lines - the deck stores BARE option names (corpus truth: "Make
- *  Contact+*self+Casey Morgan+*follow" content "*always"). */
+ *  Contact+*self+Riley Ellery+*follow" content "*always"). */
 function followRuleItems(card: RenderCard): string[] {
   return card.dbContent
     .split("\n")

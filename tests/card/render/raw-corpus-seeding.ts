@@ -194,7 +194,7 @@ export async function createRawStructureSeededStorage(
   // The oracle deck's inflection table (uncountables s/this/anonymous),
   // recovered from the production-stored keys, applied before any corpus
   // name is parsed so engine key computation matches the keys the oracle
-  // deck stored/rendered (participant_s, at_this_time, casey_s ...).
+  // deck stored/rendered (participant_s, at_this_time, riley_s ...).
   // Without this the 105-row key/inflection family diverges (merge
   // finding A / view-lane class 3). Table + rationale:
   // src/card/name/oracle-deck-inflections.ts (the deck-data census copy this
@@ -232,7 +232,7 @@ export async function createRawStructureSeededStorage(
   // "Administrator\r\nWagneer"). Rule rows + their SET cards join the id
   // set; the closure walks then pull the rule rows' referenced parties
   // (the dump's card_references carries the pointer items: referer 6556 ->
-  // referee 10 administrator / referee 23743 wagneer).
+  // referee 10 administrator / referee 23743 qagneer).
   const updateId = (
     corpus
       .prepare(`SELECT id FROM cards WHERE codename = 'update' AND trash = 0`)
@@ -430,9 +430,9 @@ export async function createRawStructureSeededStorage(
   // card_references rows at all — the reference closure above never reaches
   // them, while Ruby's db answers them anyway (lexicon.rb#id_to_lex reads
   // the row by id with NO trash filter). Ruby rendered those members (the
-  // CB_role / Morgan Family +*members oracle pages resolve the ids
+  // CB_role / Ellery Family +*members oracle pages resolve the ids
   // into denied unknown-item bars named "ANON-350cb08c081a" / "Rosalie
-  // Morgan*trash"); the engine without the rows raised
+  // Ellery*trash"); the engine without the rows raised
   // NameNotFoundError at the sync parse (name.ts badMark, name
   // environment peek miss). Walk every seeded card's content for ~N item
   // lines and pull the named rows in — the same no-trash-filter row read
@@ -561,7 +561,7 @@ export async function createRawStructureSeededStorage(
       // gave EVERY row the same seed default, so any `sort: "update"` CQL
       // (SqlStatement::Order ORDER_MAP["update"] -> updated_at,
       // DEFAULT_ORDER_DIRS["update"] = desc) ordered a TOTAL TIE and fell to
-      // the join emission tier -- the media+GBA Control block rendered in
+      // the join emission tier -- the media+HBQ Control block rendered in
       // List content order where the corpus expects updated_at DESC. The
       // corpus rows carry the real capture-era timestamps; staging them is
       // the data half of the sort (the ORDER BY itself already works,

@@ -47,7 +47,7 @@ edit(
       // filter to the read_rule_id-IS-NULL branch, and every corpus *head
       // rule carries a stored read_rule_id — the page lane rendered
       // "(0 head rules)" where the oracle pins "(2 head rules)" (the
-      // *all+*head / PCTS+*self+*head nest-miss pages). The VIEW path folds
+      // *all+*head / ZQVT+*self+*head nest-miss pages). The VIEW path folds
       // the state earlier in render() (the permissionCold pass) before its
       // own install; the page path must too. Once per engine: the state is
       // memoized, render()'s permissionCold goes false, and its cold batch

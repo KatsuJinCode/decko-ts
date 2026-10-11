@@ -139,7 +139,7 @@ export async function createRawStructureSeededStorage(
   // The oracle deck's inflection table (uncountables s/this/anonymous),
   // recovered from the production-stored keys, applied before any corpus
   // name is parsed so engine key computation matches the keys the oracle
-  // deck stored/rendered (participant_s, at_this_time, casey_s ...).
+  // deck stored/rendered (participant_s, at_this_time, riley_s ...).
   // Without this the 105-row key/inflection family diverges (merge-pass-2
   // finding A / view-lane class 3).
   bootOracleDeckInflections();
@@ -203,7 +203,7 @@ export async function createRawStructureSeededStorage(
   // rule cards (*all+*default, *all+*content option view,
   // *help+*right+*default, *sidebar+*self+*default; the byte-diff
   // surfaces as the entries in recapture-raw:*all:render:content,
-  // :open and recapture-raw:Martial Nonviolence+Pages:render:content).
+  // :open and recapture-raw:Martial Concordance+Pages:render:content).
   // The setRefs are gathered here (chunked to 500 to keep the IN-list
   // under SQLITE_MAX_VARIABLE_NUMBER); the cards they reference are
   // pulled into the closure walk; the seedReference insertion happens

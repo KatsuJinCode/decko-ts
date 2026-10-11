@@ -88,119 +88,119 @@ scenario = {
 
 Card::Auth.as_bot do
   # ----- Seed follow + email-template machinery ---------------------------
-  # The follower (Sara). The follower_notification_email trigger calls
+  # The follower (Tova). The follower_notification_email trigger calls
   # `follower.account.send_change_notice`; that method returns
   # `unless email.present?` (card-mod-follow set/right/account.rb:2).
   # `email` here is the ACCOUNT card's `+*email` (card_accessor
   # :email — card-mod-account set/right/account.rb:3 reads from
-  # `<card>+*email`). So the seed must set `Sara+account+*email`, NOT
-  # `Sara+*email` (the user-card email field is not what the trigger
+  # `<card>+*email`). So the seed must set `Tova+account+*email`, NOT
+  # `Tova+*email` (the user-card email field is not what the trigger
   # reads in the dev-DB scenario).
-  sara = Card.fetch "Sara", new: { type_id: Card::UserID }
-  if sara.new_card?
-    Card.create! name: "Sara", type: "User", subcards: {
+  tova = Card.fetch "Tova", new: { type_id: Card::UserID }
+  if tova.new_card?
+    Card.create! name: "Tova", type: "User", subcards: {
       "+account" => { content: "",
-                      subcards: { "+*email" => { content: "sara@example.com" } } },
-      "+*email"  => { content: "sara@example.com" },
+                      subcards: { "+*email" => { content: "tova@example.com" } } },
+      "+*email"  => { content: "tova@example.com" },
     }
-    seed_log["Sara"] = "created"
+    seed_log["Tova"] = "created"
   else
-    seed_log["Sara"] = "present"
+    seed_log["Tova"] = "present"
   end
-  sara = Card.fetch("Sara")
+  tova = Card.fetch("Tova")
 
   # The notify trigger reads `follower.account.email`. In the dev DB,
-  # `Sara.account` is `Sara+*account` (auto-created by the card_accessor).
-  # Its `email` reads `Sara+*account+*email` (also via card_accessor).
+  # `Tova.account` is `Tova+*account` (auto-created by the card_accessor).
+  # Its `email` reads `Tova+*account+*email` (also via card_accessor).
   # The `+*email` field has a uniqueness validator
   # (card-mod-account set/right/email.rb:16-27 `validate_unique_email`)
   # that rejects any two `+*email` cards with the same content. The
-  # canonical user email lives on `Sara+*account+*email`; the early
-  # scripted seed left `Sara+*email` instead, which we trash-flag here.
+  # canonical user email lives on `Tova+*account+*email`; the early
+  # scripted seed left `Tova+*email` instead, which we trash-flag here.
   # We use Card.create! with subcards on the parent so the
-  # `+*email` is set within the same transaction as `Sara+*account`
+  # `+*email` is set within the same transaction as `Tova+*account`
   # (the parent has `require_field :email` — card-mod-account
   # set/right/account.rb:8 — and would otherwise reject the save
   # before its child exists).
-  sara_account_email_card = Card["Sara+*account+*email"]
-  if sara_account_email_card.nil?
-    dup = Card["Sara+*email"]
+  tova_account_email_card = Card["Tova+*account+*email"]
+  if tova_account_email_card.nil?
+    dup = Card["Tova+*email"]
     if dup && !dup.new_card?
       Card.where(id: dup.id).update_all(trash: true)
-      seed_log["Sara+*email"] = "trashed (dup)"
+      seed_log["Tova+*email"] = "trashed (dup)"
     end
-    # If the intermediate Sara+*account exists, fill it in-place.
-    sara_account = Card["Sara+*account"]
-    if sara_account.nil? || sara_account.new_card?
-      sara_account = Card.create!(
-        name: "Sara+*account",
-        subcards: { "+*email" => { content: "sara@example.com" } },
+    # If the intermediate Tova+*account exists, fill it in-place.
+    tova_account = Card["Tova+*account"]
+    if tova_account.nil? || tova_account.new_card?
+      tova_account = Card.create!(
+        name: "Tova+*account",
+        subcards: { "+*email" => { content: "tova@example.com" } },
       )
-      seed_log["Sara+*account"] = "created-with-email"
+      seed_log["Tova+*account"] = "created-with-email"
     else
-      sara_account.update! "+*email" => "sara@example.com"
-      seed_log["Sara+*account"] = "updated-with-email"
+      tova_account.update! "+*email" => "tova@example.com"
+      seed_log["Tova+*account"] = "updated-with-email"
     end
-    seed_log["Sara+*account+*email"] = "ensured"
-  elsif sara_account_email_card.content.to_s.strip.empty?
-    dup = Card["Sara+*email"]
+    seed_log["Tova+*account+*email"] = "ensured"
+  elsif tova_account_email_card.content.to_s.strip.empty?
+    dup = Card["Tova+*email"]
     if dup && !dup.new_card?
       Card.where(id: dup.id).update_all(trash: true)
-      seed_log["Sara+*email"] = "trashed (dup)"
+      seed_log["Tova+*email"] = "trashed (dup)"
     end
-    sara_account_email_card.update! content: "sara@example.com"
-    seed_log["Sara+*account+*email"] = "updated"
+    tova_account_email_card.update! content: "tova@example.com"
+    seed_log["Tova+*account+*email"] = "updated"
   end
 
-  john = Card.fetch("John")
+  jonas = Card.fetch("Jonas")
 
-  john_account_email_card = Card["John+*account+*email"]
-  if john_account_email_card.nil?
-    dup = Card["John+*email"]
+  jonas_account_email_card = Card["Jonas+*account+*email"]
+  if jonas_account_email_card.nil?
+    dup = Card["Jonas+*email"]
     if dup && !dup.new_card?
       Card.where(id: dup.id).update_all(trash: true)
-      seed_log["John+*email"] = "trashed (dup)"
+      seed_log["Jonas+*email"] = "trashed (dup)"
     end
-    john_account = Card["John+*account"]
-    if john_account.nil? || john_account.new_card?
-      john_account = Card.create!(
-        name: "John+*account",
-        subcards: { "+*email" => { content: "john@example.com" } },
+    jonas_account = Card["Jonas+*account"]
+    if jonas_account.nil? || jonas_account.new_card?
+      jonas_account = Card.create!(
+        name: "Jonas+*account",
+        subcards: { "+*email" => { content: "jonas@example.com" } },
       )
-      seed_log["John+*account"] = "created-with-email"
+      seed_log["Jonas+*account"] = "created-with-email"
     else
-      john_account.update! "+*email" => "john@example.com"
-      seed_log["John+*account"] = "updated-with-email"
+      jonas_account.update! "+*email" => "jonas@example.com"
+      seed_log["Jonas+*account"] = "updated-with-email"
     end
-    seed_log["John+*account+*email"] = "ensured"
-  elsif john_account_email_card.content.to_s.strip.empty?
-    dup = Card["John+*email"]
+    seed_log["Jonas+*account+*email"] = "ensured"
+  elsif jonas_account_email_card.content.to_s.strip.empty?
+    dup = Card["Jonas+*email"]
     if dup && !dup.new_card?
       Card.where(id: dup.id).update_all(trash: true)
-      seed_log["John+*email"] = "trashed (dup)"
+      seed_log["Jonas+*email"] = "trashed (dup)"
     end
-    john_account_email_card.update! content: "john@example.com"
-    seed_log["John+*account+*email"] = "updated"
+    jonas_account_email_card.update! content: "jonas@example.com"
+    seed_log["Jonas+*account+*email"] = "updated"
   end
 
-  # The actor (John). We need a non-bot, non-Sara actor because the
+  # The actor (Jonas). We need a non-bot, non-Tova actor because the
   # notify trigger skips when follower == act.actor
-  # (card-mod-follow set/all/notify.rb:51). John has no follow rule, so
+  # (card-mod-follow set/all/notify.rb:51). Jonas has no follow rule, so
   # the act.actor is "other" and the trigger fires.
-  john = Card.fetch "John", new: { type_id: Card::UserID }
-  if john.new_card?
-    Card.create! name: "John", type: "User", subcards: {
+  jonas = Card.fetch "Jonas", new: { type_id: Card::UserID }
+  if jonas.new_card?
+    Card.create! name: "Jonas", type: "User", subcards: {
       "+account" => { content: "",
-                      subcards: { "+*email" => { content: "john@example.com" } } },
-      "+*email"  => { content: "john@example.com" },
+                      subcards: { "+*email" => { content: "jonas@example.com" } } },
+      "+*email"  => { content: "jonas@example.com" },
     }
-    seed_log["John"] = "created"
+    seed_log["Jonas"] = "created"
   else
-    seed_log["John"] = "present"
+    seed_log["Jonas"] = "present"
   end
-  john = Card.fetch("John")
+  jonas = Card.fetch("Jonas")
 
-  # The followed SET. Sara follows "*all" (every card). The follow rule
+  # The followed SET. Tova follows "*all" (every card). The follow rule
   # naming convention (card-mod-follow data/test/rules.yml:97-103) is
   # "*all + <user> + *follow"; the set_card `*all` is already a Set, so
   # the preference-cache SQL can resolve the user_ids
@@ -212,7 +212,7 @@ Card::Auth.as_bot do
   all_set = Card.fetch("*all")
   raise "missing *all seed" unless all_set
 
-  follow_rule_name = Card::Name[*all_set.name, "Sara", :follow]
+  follow_rule_name = Card::Name[*all_set.name, "Tova", :follow]
   rule = Card.fetch(follow_rule_name, new: {})
   if rule.new_card?
     Card.create! name: follow_rule_name, type: :list, content: "*always"
@@ -270,7 +270,7 @@ Card::Auth.as_bot do
         # the EmailTemplate's +*to is a fallback. We use a literal email
         # so the :email_addresses renderer passes it through as-is
         # (card-mod-email set/abstract/email_field.rb:28-30).
-        "+*to" => { content: "sara@example.com" },
+        "+*to" => { content: "tova@example.com" },
       },
     )
     seed_log["follower_notification_email"] = "updated-in-place"
@@ -281,20 +281,20 @@ Card::Auth.as_bot do
       subcards: {
         "+*subject" => { type: :phrase, content: "{{follower}} changed {{followed_set}} on {{follow_option}}" },
         "+*text message" => { type: :plain_text, content: "Hi! {{follower}} changed {{followed_set}}." },
-        "+*to" => { content: "sara@example.com" },
+        "+*to" => { content: "tova@example.com" },
       },
     ).update! codename: "follower_notification_email"
     seed_log["follower_notification_email"] = "created-with-codename"
   end
 
-  # A card John will edit (Sara is NOT the actor).
-  sara_card = Card.fetch("Sara Test Card", new: { type_id: Card::BasicID })
-  if sara_card.new_card?
-    Card.create! name: "Sara Test Card", type: "Basic", content: "original",
-                  creator_id: john.id, updater_id: john.id
-    seed_log["Sara Test Card"] = "created"
+  # A card Jonas will edit (Tova is NOT the actor).
+  tova_card = Card.fetch("Tova Test Card", new: { type_id: Card::BasicID })
+  if tova_card.new_card?
+    Card.create! name: "Tova Test Card", type: "Basic", content: "original",
+                  creator_id: jonas.id, updater_id: jonas.id
+    seed_log["Tova Test Card"] = "created"
   else
-    seed_log["Sara Test Card"] = "present"
+    seed_log["Tova Test Card"] = "present"
   end
 
   # ----- Trigger a save that the follow rule observes ----------------------
@@ -303,7 +303,7 @@ Card::Auth.as_bot do
   # so the proper access path is the module itself, NOT Card.
   Card::Set::All::Notify.force_notifications = true
   begin
-    # Switch auth.current_id to John. `Card::Auth.as(john.id)` would
+    # Switch auth.current_id to Jonas. `Card::Auth.as(jonas.id)` would
     # only set @as_id, not @current_id (proxy.rb:14 — the @current_id
     # branch only runs when it's nil, and as_bot has already set it
     # to DeckoBotID). The notify trigger's notable_change? check is
@@ -311,8 +311,8 @@ Card::Auth.as_bot do
     # set/all/notify.rb:40), so a stale current_id=DeckoBotID makes
     # it skip. `Card::Auth.with` (proxy.rb:48-58) sets current_id
     # directly via the writer; that is the correct seam.
-    Card::Auth.with(john.id) do
-      Card.fetch("Sara Test Card").update! content: "updated by test at #{Time.now.to_i}"
+    Card::Auth.with(jonas.id) do
+      Card.fetch("Tova Test Card").update! content: "updated by test at #{Time.now.to_i}"
     end
   ensure
     Card::Set::All::Notify.force_notifications = false

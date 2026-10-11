@@ -6,7 +6,7 @@
 // may read them. Changes nothing; prints no secret.
 //
 //   node tools/d1-trickle/cf-account-check.mjs --creds-file <file> \
-//        --token-key CASEY_CF_API_TOKEN --account-key CASEY_CF_ACCOUNT_ID
+//        --token-key RILEY_CF_API_TOKEN --account-key RILEY_CF_ACCOUNT_ID
 
 import { D1HttpExecutor, readCredsFile, maskSecrets } from "./executors.mjs";
 

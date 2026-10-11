@@ -16,7 +16,7 @@
           "calls": 22,
           "marks": [
             "phase:render [\"description\"]",
-            "phase:render [\"morgan\"]",
+            "phase:render [\"ellery\"]",
             "phase:render [\"item\"]",
             "phase:render [\"*type_plu_right\"]",
             "phase:render [\"type_news_item_sort_create_dir_desc_limit_9\"]"
@@ -71,8 +71,8 @@
           "calls": 9,
           "marks": [
             "phase:render [\"kaori_suzuki\",\"kaori_suzuki\",\"kaori_suzuki\",\"kaori_suzuki\",\"kaori_suzuki\",\"kao",
-            "phase:render [\"kirsten_cadwell\",\"wren_halloway\",\"ed_correium\",\"joan_callahan\",\"mabel_bridgewater\",\"mo",
-            "phase:render [\"tag\",\"tag\",\"david_william\",\"iri_mc_ginni\",\"don_mc_clure\",\"mabel_bridgewater\",\"christ",
+            "phase:render [\"kirsten_cadwell\",\"wren_kesterly\",\"ed_correium\",\"joan_callahan\",\"marianne_winslow\",\"mo",
+            "phase:render [\"tag\",\"tag\",\"david_william\",\"iri_mc_ginni\",\"don_mc_clure\",\"marianne_winslow\",\"christ",
             "phase:render [\"public\",\"public\",\"public\",\"public\",\"public\",\"public\",\"public\",\"public\",\"public",
             "phase:render [\"*all\",\"*all\",\"*all\",\"*all\",\"*star\",\"*star\",\"*star\",\"*star\",\"*all_plu\",\"*all_pl"
           ]
@@ -115,7 +115,7 @@
             "fetchByName(News Item+*type+by name) [815,184]",
             "fetchByName(Image+*type+by name) [3383,184]",
             "fetchByName(tags+BDWC+private) [41198,14155]",
-            "fetchByName(tags+BDWC+private+Morgan) [40301,18145]"
+            "fetchByName(tags+BDWC+private+Ellery) [40301,18145]"
           ]
         },
         {
@@ -155,7 +155,7 @@
             "phase:render [\"rich_text\",\"description\"]",
             "phase:render [\"rich_text\",\"*type\"]",
             "phase:render [\"tag\",\"bdwc\"]",
-            "phase:render [\"morgan\",\"item\"]"
+            "phase:render [\"ellery\",\"item\"]"
           ]
         },
         {
@@ -166,7 +166,7 @@
           "marks": [
             "phase:render [\"public\",\"private\",\"related_person\"]",
             "phase:render [\"bdwc\",\"writing_sample\",\"linked_in\"]",
-            "phase:render [\"movement_education_org\",\"embody_peace_website\",\"wren_halloway_article_bmc_l",
+            "phase:render [\"movement_education_org\",\"embody_peace_website\",\"wren_kesterly_article_bmc_l",
             "phase:render [\"kirsten_cadwell_on_fresh_air_with_terry_gross_19960219\",\"kirsten_cadwell_remembered_"
           ]
         },
@@ -177,7 +177,7 @@
           "calls": 4,
           "marks": [
             "phase:render [\"ab_cglobal_board\",\"low_impact_body_art_research\",\"mr_to_im_name_change_project",
-            "phase:render [\"kirsten_cadwell_and_casey_morgan\",\"conversation_with_kirsten_cadwell\",\"hust",
+            "phase:render [\"kirsten_cadwell_and_riley_ellery\",\"conversation_with_kirsten_cadwell\",\"hust",
             "phase:render [\"the_red_book_considered\",\"david_and_julie_william_january_2011\",\"meditation_10",
             "phase:render [\"regina_hackett_jefferson_award_francis_langdon_a_weaver_of_neighborhood_network\","
           ]
@@ -264,7 +264,7 @@
           "consumerFrames": [],
           "calls": 2,
           "marks": [
-            "phase:render [\"kirsten_cadwell\",\"wren_halloway\",\"ed_correium\",\"joan_callahan\",\"mabel_bridgewater\",\"mo",
+            "phase:render [\"kirsten_cadwell\",\"wren_kesterly\",\"ed_correium\",\"joan_callahan\",\"marianne_winslow\",\"mo",
             "phase:render [\"some_help_spreading_the_word_would_be_much_appreciated\",\"what_do_we_need_to_kn"
           ]
         },
@@ -285,7 +285,7 @@
           "calls": 2,
           "marks": [
             "fetchByName(tags+BDWC+private) [40301]",
-            "fetchByName(tags+BDWC+private+Morgan) [40445]"
+            "fetchByName(tags+BDWC+private+Ellery) [40445]"
           ]
         },
         {
@@ -593,7 +593,7 @@
           "consumerFrames": [],
           "calls": 1,
           "marks": [
-            "phase:render [\"conflict_done_well\",\"wren_halloway\",\"online_class\",\"cv\"]"
+            "phase:render [\"conflict_done_well\",\"wren_kesterly\",\"online_class\",\"cv\"]"
           ]
         },
         {
@@ -627,7 +627,7 @@
             "fetchByName(The Flight Deck) [\"the_flight_deck\"]",
             "fetchByName(Pacific Rim International School) [\"pacific_rim_international_school\"]",
             "fetchByName(Beacon Day School) [\"beacon_day_school\"]",
-            "fetchByName({\"referred_to_by\":\"GBA_quotes\", \"limit\":\"1\", \"sort\":\"rand()\", \"view\" [\"referred_to_by_gba_quote_limit_1_sort_rand_view_naked\"]",
+            "fetchByName({\"referred_to_by\":\"HBQ_quotes\", \"limit\":\"1\", \"sort\":\"rand()\", \"view\" [\"referred_to_by_hbq_quote_limit_1_sort_rand_view_naked\"]",
             "fetchByName(*comment) [\"*comment\"]"
           ]
         },
@@ -747,7 +747,7 @@
           "calls": 14,
           "marks": [
             "phase:render [\"laundry\",\"laundry\",\"laundry\",\"laundry\",\"laundry\",\"healing_friction\",\"healing_f",
-            "phase:render [\"task\",\"project\",\"log_entry\",\"image\",\"date\",\"gba_style\",\"to_do\",\"file\",\"item\",\"",
+            "phase:render [\"task\",\"project\",\"log_entry\",\"image\",\"date\",\"hbq_style\",\"to_do\",\"file\",\"item\",\"",
             "phase:render [\"*all\",\"*all\",\"*all\",\"*all\",\"*all_plu\",\"*all_plu\",\"*all_plu\",\"*all_plu\",\"*star\"",
             "phase:render [\"task\",\"laundry\",\"discussion\",\"project\",\"owner\",\"log_entry\",\"issue\",\"solution\",",
             "phase:render [\"why_aikido\",\"peace_practice_class_tr\",\"peace_practice_discipline_tr\",\"jaccii_f"
@@ -774,9 +774,9 @@
           "marks": [
             "fetchByName(PGI+DP+Soma) [29783,27516]",
             "fetchByName(PGI+DP+Soma+851) [29786,29784]",
-            "fetchByName(Morgan+Family_Business+Financial+Insurance+Kaiser) [3413,3416]",
-            "fetchByName(Morgan+Family_Business+Financial+Insurance+Kaiser) [3417,11733]",
-            "fetchByName(Morgan+Family_Business+Financial+Insurance+Kaiser) [18575,11267]"
+            "fetchByName(Ellery+Family_Business+Financial+Insurance+Kaiser) [3413,3416]",
+            "fetchByName(Ellery+Family_Business+Financial+Insurance+Kaiser) [3417,11733]",
+            "fetchByName(Ellery+Family_Business+Financial+Insurance+Kaiser) [18575,11267]"
           ]
         },
         {
@@ -802,7 +802,7 @@
             "phase:render [\"grass_common\",\"logo\"]",
             "phase:render [\"*self\",\"idea_about_uniform\"]",
             "phase:render [\"team\",\"dream_team\"]",
-            "phase:render [\"associative_inquiry\",\"martial_nonviolence\"]"
+            "phase:render [\"associative_inquiry\",\"martial_concordance\"]"
           ]
         },
         {
@@ -811,7 +811,7 @@
           "consumerFrames": [],
           "calls": 10,
           "marks": [
-            "phase:render [\"min_ahn_program_at_uc_berkeley\",\"vi_a_vie_gba\"]",
+            "phase:render [\"min_ahn_program_at_uc_berkeley\",\"vi_a_vie_hbq\"]",
             "phase:render [\"20140113\",\"bw\"]",
             "phase:render [\"reading\",\"bw\"]",
             "phase:render [\"grass_common\",\"logo\"]",
@@ -839,8 +839,8 @@
           "marks": [
             "fetchByName(PGI+DP+Soma) [29786]",
             "fetchByName(PGI+DP+Soma+851) [29787]",
-            "fetchByName(Morgan+Family_Business+Financial+Insurance+Kaiser) [11268]",
-            "fetchByName(Morgan+Family Business+Financial+IRS) [14474]",
+            "fetchByName(Ellery+Family_Business+Financial+Insurance+Kaiser) [11268]",
+            "fetchByName(Ellery+Family Business+Financial+IRS) [14474]",
             "fetchByName(Writing workspace+Conflict Done Well+proposal) [33617]"
           ]
         },
@@ -917,7 +917,7 @@
           "calls": 2,
           "marks": [
             "phase:render [\"aikido_a_peace_practice\",\"bw_guideline\"]",
-            "phase:render [\"wagn_skype_w_ethan20100726\",\"wagn_skype_w_ethan20100727\"]"
+            "phase:render [\"qagn_skype_w_ethan20100726\",\"qagn_skype_w_ethan20100727\"]"
           ]
         },
         {
@@ -946,8 +946,8 @@
           "consumerFrames": [],
           "calls": 2,
           "marks": [
-            "phase:render [\"wagn_decko_dev\"]",
-            "phase:render [\"culturesmith_com_wagn_free_aiki_dojo\"]"
+            "phase:render [\"qagn_decko_dev\"]",
+            "phase:render [\"culturesmith_com_qagn_free_aiki_dojo\"]"
           ]
         },
         {
@@ -957,7 +957,7 @@
           "calls": 2,
           "marks": [
             "phase:render [\"bw_issue\",\"bw_learning\",\"card_tool\",\"change\",\"c_dev\",\"direct_card_access_vium_",
-            "phase:render [\"20150522\",\"insurance\",\"loan\",\"morgan\",\"family_business\",\"financial\",\"pa"
+            "phase:render [\"20150522\",\"insurance\",\"loan\",\"ellery\",\"family_business\",\"financial\",\"pa"
           ]
         },
         {
@@ -998,7 +998,7 @@
           "consumerFrames": [],
           "calls": 2,
           "marks": [
-            "phase:render [\"gba_jeremy__13_jo_katum\",\"gba_jeremy__20_jo_suburi\",\"gba_jeremy__1st_kumijo\",\"",
+            "phase:render [\"hbq_jeremy__13_jo_katum\",\"hbq_jeremy__20_jo_suburi\",\"hbq_jeremy__1st_kumijo\",\"",
             "phase:render [\"*read\",\"*script\",\"*input_type\",\"*layout\",\"*thank\",\"*update\",\"*guide\",\"*style\","
           ]
         },

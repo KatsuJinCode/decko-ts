@@ -16,7 +16,7 @@
 #      trigger_event! :send_welcome_email -> welcome_email template (seed
 #      carries NO fields — real.yml:207-209)
 #   4. watcher-on-type notify  notify.rb:13-15 notify_followers_after_save;
-#      follow rule on a TYPE set (Basic+*type+Sara+*follow)
+#      follow rule on a TYPE set (Basic+*type+Tova+*follow)
 #   5. delete notify           notify.rb:22-29 stash_followers (store) +
 #      notify_followers_after_delete (integrate)
 #   6. includer/template notify  FollowerStash over EVERY act action's card
@@ -44,7 +44,7 @@
 #     segment (shape-pinned) — its byte parity is owned by
 #     fixtures/captured/auth-token.json + tests/card/auth/token.test.ts.
 #   - Act-guarantee: every scenario forces a REAL change act on re-runs
-#     (bot sets seed content v1, John updates to v2 — always a diff), so
+#     (bot sets seed content v1, Jonas updates to v2 — always a diff), so
 #     consecutive runs deliver byte-identical mails.
 #   - The follower_notification_email template is RESTORED to the STOCK
 #     seed bytes (card-mod-follow data/real.yml, parsed with the real YAML
@@ -53,7 +53,7 @@
 #     follow_capture.rb:262-266); that rewrite's simple template remains
 #     pinned by fixtures/captured/follow-notification.json (frozen bytes,
 #     not re-run). The stock restore is recorded in seed_log.
-#   - The M6 follow rule "*all+Sara+*follow" is trashed so the reasons
+#   - The M6 follow rule "*all+Tova+*follow" is trashed so the reasons
 #     behind each notification are single-valued and deterministic.
 
 require "json"
@@ -97,13 +97,13 @@ scenarios = {}
 
 Card::Auth.as_bot do
   # --------------------------------------------------------------------
-  # Shared actors: Sara (the follower), John (the actor). The M6 capture
+  # Shared actors: Tova (the follower), Jonas (the actor). The M6 capture
   # already created both with +*account+*email; create-if-missing keeps
   # re-runs convergent. (follow_capture.rb:74-199 is the machinery these
   # seeds ride; the +*email uniqueness validator is why the email lives
   # under +*account+*email.)
   # --------------------------------------------------------------------
-  [["Sara", "sara@example.com"], ["John", "john@example.com"]].each do |name, email|
+  [["Tova", "tova@example.com"], ["Jonas", "jonas@example.com"]].each do |name, email|
     if Card[name].nil? || Card[name].new_card?
       Card.create! name: name, type: "User", subcards: {
         "+account" => { content: "", subcards: { "+*email" => { content: email } } }
@@ -113,8 +113,8 @@ Card::Auth.as_bot do
       seed_log["#{name}"] = "present"
     end
   end
-  sara = Card.fetch("Sara")
-  john = Card.fetch("John")
+  tova = Card.fetch("Tova")
+  jonas = Card.fetch("Jonas")
 
   # -- Actor account repair (measured states of this capture app) --------
   # 1. The no-star "+account" junctions from earlier capture attempts hold
@@ -126,7 +126,7 @@ Card::Auth.as_bot do
   conn = ActiveRecord::Base.connection
   email_id = Card::Codename.id!(:email)
   account_id = Card::Codename.id!(:account)
-  %w[sara@example.com john@example.com rose.oracle@example.com].each do |addr|
+  %w[tova@example.com jonas@example.com rose.oracle@example.com].each do |addr|
     rows = conn.select_values(
       "SELECT id FROM cards WHERE right_id = #{email_id} AND db_content = '#{addr}'"
     ).map(&:to_i)
@@ -149,7 +149,7 @@ Card::Auth.as_bot do
   #    a pre-existing junction can silently drop them (measured: Rose's
   #    +*email never materialized via update! subcards, while direct
   #    creates persist — the CQL right_plus join reads the real rows).
-  [["Sara", "sara@example.com"], ["John", "john@example.com"], ["Rose Oracle", "rose.oracle@example.com"]].each do |name, email|
+  [["Tova", "tova@example.com"], ["Jonas", "jonas@example.com"], ["Rose Oracle", "rose.oracle@example.com"]].each do |name, email|
     acct = Card["#{name}+*account"]
     if acct.nil? || acct.new_card?
       Card.create! name: "#{name}+*account"
@@ -225,13 +225,13 @@ Card::Auth.as_bot do
   end
   seed_log["follower_notification_email"] = "restored-stock"
 
-  # The M6 rule "*all+Sara+*follow" (*always) stays live otherwise and
+  # The M6 rule "*all+Tova+*follow" (*always) stays live otherwise and
   # would co-fire on every act; trash it so scenarios 4-6 have exactly
   # one rule each.
-  m6_rule = Card["*all+Sara+*follow"]
+  m6_rule = Card["*all+Tova+*follow"]
   if m6_rule && !m6_rule.trash?
     Card.where(id: m6_rule.id).update_all(trash: true)
-    seed_log["*all+Sara+*follow"] = "trashed (M6 rule)"
+    seed_log["*all+Tova+*follow"] = "trashed (M6 rule)"
   end
 
   # --------------------------------------------------------------------
@@ -387,7 +387,7 @@ Card::Auth.as_bot do
   }
   # --------------------------------------------------------------------
   # SCENARIOS 4-6 — the follower_notification_email stock template.
-  # Act-guarantee pattern: bot pins seed content v1 (convergent), John's
+  # Act-guarantee pattern: bot pins seed content v1 (convergent), Jonas's
   # act moves it to v2 (always a real change act).
   # The runner silence gate must be OFF: notify.rb:10-13
   # silence_notifications? = !(Card::Env.controller || force_notifications)
@@ -399,38 +399,38 @@ Card::Auth.as_bot do
 
   # SCENARIO 4 — watcher-on-type notify (the SAVE arm, a TYPE-set rule)
   ActionMailer::Base.deliveries.clear
-  rule_name = Card::Name["Basic+*type", "Sara", :follow]
+  rule_name = Card::Name["Basic+*type", "Tova", :follow]
   rule = Card.fetch(rule_name, new: {})
   if rule.new_card?
     Card.create! name: rule_name, type: :list, content: "*always"
-    seed_log["Basic+*type+Sara+*follow"] = "created"
+    seed_log["Basic+*type+Tova+*follow"] = "created"
   else
     rule.update! content: "*always"
-    seed_log["Basic+*type+Sara+*follow"] = "present"
+    seed_log["Basic+*type+Tova+*follow"] = "present"
   end
   watch_name = "Oracle Follow Card"
   watch = Card.fetch(watch_name, new: { type_id: Card::BasicID })
   if watch.new_card?
-    Card::Auth.with(john.id) do
+    Card::Auth.with(jonas.id) do
       Card.create! name: watch_name, type: "Basic", content: "row8 seed v1"
     end
-    seed_log[watch_name] = "created-by-john"
+    seed_log[watch_name] = "created-by-jonas"
   else
     watch.update! content: "row8 seed v1"
     seed_log[watch_name] = "present"
   end
   ActionMailer::Base.deliveries.clear # the seed steps themselves notify
-  Card::Auth.with(john.id) do
+  Card::Auth.with(jonas.id) do
     Card.fetch(watch_name).update! content: "row8 update v2"
   end
   scenarios["watcher_on_type_notify"] = {
-    "seed_log" => { "act" => "John updated #{watch_name} v1->v2 (notify_followers_after_save)" },
+    "seed_log" => { "act" => "Jonas updated #{watch_name} v1->v2 (notify_followers_after_save)" },
     "input" => {
       "template_codename" => "follower_notification_email",
       "template_fields" => stock,
       "follow_rule" => { "name" => rule_name.to_s, "set_card" => "Basic+*type", "option" => "*always" },
-      "act" => { "actor" => "John", "card" => watch_name, "verb" => "updated" },
-      "follower" => "Sara"
+      "act" => { "actor" => "Jonas", "card" => watch_name, "verb" => "updated" },
+      "follower" => "Tova"
     },
     "delivered" => read_deliveries
   }
@@ -442,42 +442,42 @@ Card::Auth.as_bot do
   del_name = "Oracle Delete Card"
   del = Card.fetch(del_name, new: { type_id: Card::BasicID })
   if del.new_card?
-    Card::Auth.with(john.id) do
+    Card::Auth.with(jonas.id) do
       Card.create! name: del_name, type: "Basic", content: "row8 seed v1"
     end
-    seed_log[del_name] = "created-by-john"
+    seed_log[del_name] = "created-by-jonas"
   else
     del.update! content: "row8 seed v1" # revives from trash when needed
     seed_log[del_name] = "present"
   end
   ActionMailer::Base.deliveries.clear # the seed steps themselves notify
-  Card::Auth.with(john.id) do
+  Card::Auth.with(jonas.id) do
     Card.fetch(del_name).delete!
   end
   scenarios["delete_notify"] = {
-    "seed_log" => { "act" => "John deleted #{del_name} (stash + notify_followers_after_delete)" },
+    "seed_log" => { "act" => "Jonas deleted #{del_name} (stash + notify_followers_after_delete)" },
     "input" => {
       "template_codename" => "follower_notification_email",
       "template_fields" => stock,
       "follow_rule" => { "name" => rule_name.to_s, "set_card" => "Basic+*type", "option" => "*always" },
-      "act" => { "actor" => "John", "card" => del_name, "verb" => "deleted" },
-      "follower" => "Sara"
+      "act" => { "actor" => "Jonas", "card" => del_name, "verb" => "deleted" },
+      "follower" => "Tova"
     },
     "delivered" => read_deliveries
   }
 
   # SCENARIO 6 — includer/template notify: ONE act whose actions include a
-  # SUBCARD change; the subcard's follower (Sara follows
+  # SUBCARD change; the subcard's follower (Tova follows
   # "Oracle Recipe Card+ingredient") gets ONE mail per act naming the ACT
   # card (FollowerStash checked-set dedupe, follower_stash.rb:10-18;
   # notify.rb:66-73 walks every act action's card).
   ActionMailer::Base.deliveries.clear
   recipe_name = "Oracle Recipe Card"
   ing_name = "#{recipe_name}+ingredient"
-  recipe_rule_name = Card::Name["#{ing_name}+*self", "Sara", :follow]
+  recipe_rule_name = Card::Name["#{ing_name}+*self", "Tova", :follow]
   # a *self follow's SET is "<card>+*self" — the rule name carries the
   # +*self segment (card-mod-follow data/test/rules.yml:25-31 "All Eyes On
-  # Me + *self + John + *follow"); without it the rule never matches.
+  # Me + *self + Jonas + *follow"); without it the rule never matches.
   recipe_rule = Card.fetch(recipe_rule_name, new: {})
   if recipe_rule.new_card?
     Card.create! name: recipe_rule_name, type: :list, content: "*always"
@@ -488,11 +488,11 @@ Card::Auth.as_bot do
   end
   recipe = Card.fetch(recipe_name, new: { type_id: Card::BasicID })
   if recipe.new_card?
-    Card::Auth.with(john.id) do
+    Card::Auth.with(jonas.id) do
       Card.create! name: recipe_name, type: "Basic", content: "row8 seed v1",
                    subcards: { "+ingredient" => { content: "row8 ingredient v1" } }
     end
-    seed_log[recipe_name] = "created-by-john"
+    seed_log[recipe_name] = "created-by-jonas"
   else
     recipe.update! content: "row8 seed v1",
                    subcards: { "+ingredient" => { content: "row8 ingredient v1" } }
@@ -504,20 +504,20 @@ Card::Auth.as_bot do
   # apply to a card with no action, and the subcard's own event is
   # current_act_card?-gated off), while the one-act-two-actions shape is
   # exactly the update_includers dedupe (one mail per act via the stash).
-  Card::Auth.with(john.id) do
+  Card::Auth.with(jonas.id) do
     Card.fetch(recipe_name).update!(
       content: "row8 update v2",
       subcards: { "+ingredient" => { content: "row8 ingredient v2" } }
     )
   end
   scenarios["includer_template_notify"] = {
-    "seed_log" => { "act" => "John updated #{recipe_name} subcard +ingredient v1->v2 (one act)" },
+    "seed_log" => { "act" => "Jonas updated #{recipe_name} subcard +ingredient v1->v2 (one act)" },
     "input" => {
       "template_codename" => "follower_notification_email",
       "template_fields" => stock,
       "follow_rule" => { "name" => recipe_rule_name.to_s, "set_card" => "#{ing_name}+*self", "option" => "*always" },
-      "act" => { "actor" => "John", "card" => recipe_name, "subcard" => ing_name, "verb" => "updated" },
-      "follower" => "Sara"
+      "act" => { "actor" => "Jonas", "card" => recipe_name, "subcard" => ing_name, "verb" => "updated" },
+      "follower" => "Tova"
     },
     "delivered" => read_deliveries
   }

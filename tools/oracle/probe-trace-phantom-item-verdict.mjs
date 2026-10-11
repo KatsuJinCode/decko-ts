@@ -14,7 +14,7 @@
 //
 // USAGE
 //   node tools/oracle/probe-trace-phantom-item-verdict.mjs \
-//     --name "Metashamanic+Core Project" --view open [--trace]
+//     --name "Quicksilver+Core Project" --view open [--trace]
 
 import { register } from "node:module";
 import path from "node:path";
@@ -28,7 +28,7 @@ function argValue(flag, fallback) {
   const i = process.argv.indexOf(flag);
   return i >= 0 && process.argv[i + 1] !== undefined ? process.argv[i + 1] : fallback;
 }
-const NAME = argValue("--name", "Metashamanic+Core Project");
+const NAME = argValue("--name", "Quicksilver+Core Project");
 const VIEW = argValue("--view", "open");
 const TRACE = process.argv.includes("--trace");
 

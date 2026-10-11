@@ -2,7 +2,7 @@
 // scrubbed Culturesmith deck served from Bunny Database.
 //
 // This is Path B of the edge-deploy lane: a read-only Node service bound
-// to 127.0.0.1:3200 on Casey's portal VM. A Bunny CDN pull zone fronts
+// to 127.0.0.1:3200 on Riley's portal VM. A Bunny CDN pull zone fronts
 // it so pages are edge-cached and reachable over HTTPS.
 //
 // Why not the full decko-ts engine? The TypeScript engine depends on

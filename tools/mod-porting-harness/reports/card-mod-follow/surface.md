@@ -78,8 +78,8 @@ What this mod does (mined from the Ruby gem source, READ-ONLY):
 -  type :list — data/test/rules.yml
 -  type :list — data/test/rules.yml
 -  type :list — data/test/rules.yml
-- John type :user — data/test/users.yml
-- Sara type :user — data/test/users.yml
+- Jonas type :user — data/test/users.yml
+- Tova type :user — data/test/users.yml
 - Big Brother type :user — data/test/users.yml
 - Optic fan type :user — data/test/users.yml
 - Sunglasses fan type :user — data/test/users.yml
@@ -97,8 +97,8 @@ What this mod does (mined from the Ruby gem source, READ-ONLY):
 - All Eyes On Me — data/test.yml
 - No One Sees Me — data/test.yml
 - Look At Me — data/test.yml
-- Sara Following — data/test.yml
-- John Following — data/test.yml
+- Tova Following — data/test.yml
+- Jonas Following — data/test.yml
 -  — data/test.yml
 -  — data/test.yml
 -  — data/test.yml

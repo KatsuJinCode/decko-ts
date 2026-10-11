@@ -22,7 +22,7 @@ view	recapture-raw-shard-000029.jsonl	Administrator+Dashboard	open
 view	recapture-raw-shard-000006.jsonl	Julia Carmichael	open
 view	recapture-raw-shard-000015.jsonl	Anonymous+*account+*email	open
 view	recapture-raw-shard-000028.jsonl	Belief about the rightness of Insert System Here establishes an axis	open
-view	recapture-raw-shard-000018.jsonl	Casey feedback+discussion	open
+view	recapture-raw-shard-000018.jsonl	Riley feedback+discussion	open
 view	recapture-raw-shard-000025.jsonl	children	open
 view	recapture-raw-shard-000043.jsonl	Conflict Done Well+WE Greiner	open
 view	recapture-raw-shard-000018.jsonl	Conflict Resolution Plan Prepares You to Move From Mediation to Blood Sport	open
@@ -37,7 +37,7 @@ view	recapture-raw-shard-000028.jsonl	journal skin customized	open
 view	recapture-raw-shard-000039.jsonl	Caroline Quimby 20230902	open
 view	recapture-raw-shard-000039.jsonl	Caroline Quimby 20230902+discussion	open
 view	recapture-raw-shard-000005.jsonl	Klickstein continues+discussion	open
-view	recapture-raw-shard-000008.jsonl	media+GBA+YouTube Browser	open
+view	recapture-raw-shard-000008.jsonl	media+HBQ+YouTube Browser	open
 view	recapture-raw-shard-000017.jsonl	Message+Conversation+*type plus right	content
 view	recapture-raw-shard-000017.jsonl	Message+Conversation+*type plus right	open
 view	recapture-raw-shard-000039.jsonl	mod: account	closed
@@ -57,8 +57,8 @@ view	recapture-raw-shard-000039.jsonl	mod: style	closed
 view	recapture-raw-shard-000039.jsonl	mod: tinymce editor	closed
 view	recapture-raw-shard-000039.jsonl	Mod	content
 view	recapture-raw-shard-000039.jsonl	Mod	open
-view	recapture-raw-shard-000029.jsonl	PCTS+*self+*head	content
-view	recapture-raw-shard-000029.jsonl	PCTS+*self+*head	open
+view	recapture-raw-shard-000029.jsonl	ZQVT+*self+*head	content
+view	recapture-raw-shard-000029.jsonl	ZQVT+*self+*head	open
 view	recapture-raw-shard-000027.jsonl	Perennial Wisdom Tradition	open
 view	recapture-raw-shard-000016.jsonl	Person+discussion	open
 view	recapture-raw-shard-000016.jsonl	Project+Task+*type plus right	content

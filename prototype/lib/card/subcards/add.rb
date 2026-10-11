@@ -3,15 +3,15 @@ class Card
     # Methods for adding subcards
     module Add
       # @example Add a subcard with name 'spoiler'
-      #   add 'spoiler', type: 'Phrase', content: 'John Snow is a Targaryen'
+      #   add 'spoiler', type: 'Phrase', content: 'Jonas Snow is a Targaryen'
       #   card_obj = Card.new name: 'spoiler', type: 'Phrase',
-      #                       content: 'John Snow is a Targaryen'
+      #                       content: 'Jonas Snow is a Targaryen'
       #   add card_obj
-      #   add name: 'spoiler', type: 'Phrase', content: 'John Snow is a Targaryen'
+      #   add name: 'spoiler', type: 'Phrase', content: 'Jonas Snow is a Targaryen'
       #
       # @example Add a subcard that is added in the integration phase
       #     (and hence doesn't hold up the transaction for the main card)
-      #   add 'spoiler', content: 'John Snow is a Targaryen'
+      #   add 'spoiler', content: 'Jonas Snow is a Targaryen'
       #   add card_obj, delayed: true
 
       include Args

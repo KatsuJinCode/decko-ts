@@ -1,8 +1,8 @@
 PROBE boot: corpus=C:\localProjects\decko-ts-lane-restore-w1-helppopover-2026-10-03\tmp\raw-ground-truth\bench-corpus-raw.sqlite3 seeding=tests/card/render/raw-corpus-seeding.js targets=9
 PROBE boot done: ids=47235
 PASS *recent:title (byte-identical after slot-id normalization)
-PASS Morgan+Vacations:page (byte-identical after slot-id normalization)
-PASS Morgan+Vacations+Pages:page (byte-identical after slot-id normalization)
+PASS Ellery+Vacations:page (byte-identical after slot-id normalization)
+PASS Ellery+Vacations+Pages:page (byte-identical after slot-id normalization)
 PASS *all plus+*delete:page (byte-identical after slot-id normalization)
 PASS *all plus+*read:page (byte-identical after slot-id normalization)
 PASS *all plus+*update:page (byte-identical after slot-id normalization)
@@ -11,8 +11,8 @@ PASS Soma+tags:page (byte-identical after slot-id normalization)
 PASS Stanley Pranin - Introduction to the Omoto Religion:page (byte-identical after slot-id normalization)
 PROBE summary:
   PASS *recent:title 0
-  PASS Morgan+Vacations:page 0
-  PASS Morgan+Vacations+Pages:page 0
+  PASS Ellery+Vacations:page 0
+  PASS Ellery+Vacations+Pages:page 0
   PASS *all plus+*delete:page 0
   PASS *all plus+*read:page 0
   PASS *all plus+*update:page 0

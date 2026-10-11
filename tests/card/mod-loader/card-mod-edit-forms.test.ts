@@ -8,7 +8,7 @@
 // (tools/oracle/decko-oracle-app) via the decko runner script
 // tests/card/mod-loader/oracle-capture-edit-forms.rb, for two existing
 // RichText cards ("Oracle Basics" id 605, the deck-level "Home" id 521)
-// and three actors (Decko Bot = signed-in admin, Sara = signed-in
+// and three actors (Decko Bot = signed-in admin, Tova = signed-in
 // non-admin, Anonymous). Raw HTTP captures of the same surfaces sit in
 // CAPTURE_DIR/
 // (oracle-basics-edit-form.html / home-edit-form.html + the modal-wrapped
@@ -38,8 +38,8 @@
 // Byte contracts proven here:
 // - signed-in (viewer with the update task allowed - the admin stand-in):
 //   :edit renders the full modal (title, edit modal menu, help slot, form);
-//   :edit_form renders the bare form slot; both match the bot AND sara
-//   oracle bytes (bot = sara modulo the dynamic masks).
+//   :edit_form renders the bare form slot; both match the bot AND tova
+//   oracle bytes (bot = tova modulo the dynamic masks).
 // - anonymous: :edit renders the quiet denial span
 //   `<span class="denied"><!-- Sorry, you don't have permission (update) --></span>`
 //   byte-for-byte (perms :update; the verdict comes from the REAL task
@@ -140,7 +140,7 @@ let anonymousEngine: RenderEngine | undefined;
  *  every task verdict passes without a rule walk, matching the captured
  *  admin actor's createable list (all 28 cardtype cards). */
 let botEngine: RenderEngine | undefined;
-/** The sara stand-in engine: a plain signed-in member (actorId 583, no
+/** The tova stand-in engine: a plain signed-in member (actorId 583, no
  *  role membership) - passes *all+*create ("Anyone Signed In"), fails the
  *  eight type-scoped Shark rules - the captured member createable list
  *  (20 of 28). */
@@ -203,7 +203,7 @@ beforeAll(async () => {
   // codename "decko_bot" (underscore) — the STORED spelling the permission
   // machinery matches (actor.ts:47 DECKOBOT_CODENAME; codename.rb:107-110
   // derives DeckoBotID from the stored codename; recode.yml:8 records the
-  // wagn_bot -> decko_bot rename — it was never "deckobot"). The seed
+  // qagn_bot -> decko_bot rename — it was never "deckobot"). The seed
   // predates the read-rules.ts constant fix and the bot stand-in silently
   // lost always_ok, rendering 26 createable types against the captured 28.
   await seedCard(s, { id: 1, name: "Decko Bot 1", codename: "decko_bot" });
@@ -240,7 +240,7 @@ beforeAll(async () => {
     dbContent: "Anyone Signed In",
   });
   await seedReference(s, 80, 17, "anyone_signed_in");
-  // the deck's *all+*update ALSO grants Anyone Signed In (the captured sara
+  // the deck's *all+*update ALSO grants Anyone Signed In (the captured tova
   // renders the full name/type forms - the member passes update); the
   // existing reference row carries the Editor party, this one the
   // signed-in party (the anonymous denial still holds: its parties lack
@@ -293,20 +293,20 @@ describe("card-mod-edit CORE EDIT-FORM PATH (write-path slice 3)", () => {
 
     const basics = normalize(await s.engine.render("Oracle Basics", "edit_form"));
     expect(basics).toBe(FIXTURE.targets.basic_note.views.bot.edit_form);
-    expect(basics).toBe(FIXTURE.targets.basic_note.views.sara.edit_form);
+    expect(basics).toBe(FIXTURE.targets.basic_note.views.tova.edit_form);
     const home = normalize(await s.engine.render("Home", "edit_form"));
     expect(home).toBe(FIXTURE.targets.deck_level.views.bot.edit_form);
-    expect(home).toBe(FIXTURE.targets.deck_level.views.sara.edit_form);
+    expect(home).toBe(FIXTURE.targets.deck_level.views.tova.edit_form);
   });
 
   it("WITH the mod: signed-in :edit matches the oracle modal bytes (both cards)", async () => {
     const s = storage!;
     const basics = normalize(await s.engine.render("Oracle Basics", "edit"));
     expect(basics).toBe(FIXTURE.targets.basic_note.views.bot.edit);
-    expect(basics).toBe(FIXTURE.targets.basic_note.views.sara.edit);
+    expect(basics).toBe(FIXTURE.targets.basic_note.views.tova.edit);
     const home = normalize(await s.engine.render("Home", "edit"));
     expect(home).toBe(FIXTURE.targets.deck_level.views.bot.edit);
-    expect(home).toBe(FIXTURE.targets.deck_level.views.sara.edit);
+    expect(home).toBe(FIXTURE.targets.deck_level.views.tova.edit);
   });
 
   it("anonymous :edit is the quiet denial span, byte-for-byte (real task verdicts)", async () => {
@@ -386,7 +386,7 @@ describe("card-mod-edit NAME + TYPE editors (write-path slice 4)", () => {
     }
   });
 
-  it("sara stand-in (plain member): the type views carry the member createable list", async () => {
+  it("tova stand-in (plain member): the type views carry the member createable list", async () => {
     const s = storage!;
     saraEngine = new RenderEngine(new FetchEngine(s.counting));
     saraEngine.viewer = { signedIn: true, actorId: 583 }; // no role membership
@@ -394,7 +394,7 @@ describe("card-mod-edit NAME + TYPE editors (write-path slice 4)", () => {
     for (const [targetKey, target] of Object.entries(NAME_TYPE_FIXTURE.targets)) {
       for (const view of NAME_TYPE_VIEWS) {
         const html = normalize(await saraEngine.render(target.name, view));
-        expect(html).toBe(NAME_TYPE_FIXTURE.targets[targetKey].views.sara[view]);
+        expect(html).toBe(NAME_TYPE_FIXTURE.targets[targetKey].views.tova[view]);
       }
     }
   });

@@ -8,7 +8,7 @@
 //   expected: <div class='bar-left col-9'>\n<span class="card-title" title="mytho-psychology">mytho-psychology</span>\n</div>
 //   actual:   <div class='bar-left col-9'>\n<span class="denied"><!-- Sorry, you don't have permission (read) --></span>\n</div>
 //
-// Byte probe: Metashamanic+Core Project:open delta went -1605 -> +3 with the
+// Byte probe: Quicksilver+Core Project:open delta went -1605 -> +3 with the
 // first half alone. The residual is bar_left's OWN view-permission gate —
 // format.ts renderView's `else if (effective === normalized)` arm, which runs
 // for the substituted mini_bar's CHILD views (bar_left, bar_menu have no
@@ -47,7 +47,7 @@ const HELPER = [
   "   *  ensurePointerItemVerdicts fills once per item key GLOBALLY (first fold",
   "   *  wins). An item line that appears on many hosts therefore inherits",
   "   *  whichever host the run touched first: `mytho-psychology` sits on ~30",
-  "   *  corpus cards and under Metashamanic+Core Project the nest read is true",
+  "   *  corpus cards and under Quicksilver+Core Project the nest read is true",
   "   *  (Project/398) while the global entry said denied, rendering bar_left",
   "   *  as a quiet denial where the oracle renders the card title. Probed:",
   "   *  cold isDenied false -> full bar; warm isDenied true -> two denied",

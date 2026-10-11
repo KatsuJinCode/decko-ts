@@ -8,7 +8,7 @@
 #     <repo>/tests/card/mod-loader/oracle-capture-search-list-views.rb
 #
 # Records to <lane-worktree>/fixtures/captured/search-list-views.json:
-# 1. For each target and each actor (Decko Bot = signed-in admin, Sara =
+# 1. For each target and each actor (Decko Bot = signed-in admin, Tova =
 #    signed-in non-admin member, Anonymous - the SAME three actors the
 #    edit-name-type capture used):
 #    - checkbox_list + results_for_keyword on two Search-typed cards:
@@ -46,7 +46,7 @@ REPO_ROOT = File.expand_path("../../..", __dir__)
 OUT_PATH  = File.join(REPO_ROOT, "fixtures", "captured", "search-list-views.json")
 PIN_DIR   = "CAPTURE_DIR"
 
-ACTORS = %w[bot sara anonymous].freeze
+ACTORS = %w[bot tova anonymous].freeze
 
 SLOT_ID_RE = /data-slot-id=(["'])\h+\1/.freeze
 
@@ -65,11 +65,11 @@ end
 def as_actor(actor)
   case actor
   when "bot"   then Card::Auth.signin(Card::DeckoBotID)
-  when "sara"
-    sara = Card["Sara"]
-    raise "Sara account card missing" unless sara
+  when "tova"
+    tova = Card["Tova"]
+    raise "Tova account card missing" unless tova
 
-    Card::Auth.signin(sara.id)
+    Card::Auth.signin(tova.id)
   when "anonymous" then Card::Auth.signin(Card::AnonymousID)
   end
   yield
@@ -103,7 +103,7 @@ def action_count
 end
 
 results = {
-  "actors_note" => "bot=Decko Bot(admin) sara=Sara(non-admin member) anonymous=Anonymous",
+  "actors_note" => "bot=Decko Bot(admin) tova=Tova(non-admin member) anonymous=Anonymous",
   "normalizations" => { "data-slot-id" => "RANDOMIZED" },
   "no_write_discipline" =>
     "render-only capture; card_actions count asserted unchanged across every render",

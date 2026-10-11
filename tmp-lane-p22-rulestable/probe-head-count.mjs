@@ -55,8 +55,8 @@ for (const r of rules) {
   );
 }
 
-// What does the *head rules' page render? The rule cards *all+*head and PCTS+*self+*head.
+// What does the *head rules' page render? The rule cards *all+*head and ZQVT+*self+*head.
 const ruleCards = db
-  .prepare("SELECT id, name, key, trash FROM cards WHERE key IN ('*all+*head','pcts+*self+*head')")
+  .prepare("SELECT id, name, key, trash FROM cards WHERE key IN ('*all+*head','zqvt+*self+*head')")
   .all();
 console.log("the two rule cards:", JSON.stringify(ruleCards));

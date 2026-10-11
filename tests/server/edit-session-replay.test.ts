@@ -7,7 +7,7 @@
 //   manifest.json = per-step request/params, response status+sha256+bytes,
 //   and the raw act/action/changes rows written after each state change
 //   (the G-series run: probe card "Session Replay Probe G 2026-09-28",
-//   signed-in member Sara id 1217, anonymous denial on the protected probe).
+//   signed-in member Tova id 1217, anonymous denial on the protected probe).
 // Overridable with DECKO_TS_EDIT_SESSION_CAPTURES. The fixture DB is a
 // DISPOSABLE COPY of the oracle app's development.sqlite3 (env
 // DECKO_TS_ORACLE_DB), rebuilt by every run via the sqlite backup API (so
@@ -94,7 +94,7 @@ const FIXTURE_PATH = path.join(REPO_ROOT, "tmp", "edit-session-replay-fixture.sq
 // The test-issued demo credential (prep-edit-session-capture.rb issued it
 // into the disposable demo DB via the account mod's own encrypt_password
 // event; the demo DB holds no other HTTP-workable password).
-const SARA_EMAIL = "sara@example.com";
+const SARA_EMAIL = "tova@example.com";
 const SARA_PASSWORD = "Capture-Probe-2026!";
 
 interface CapturedRow {
@@ -201,7 +201,7 @@ async function post(
   };
 }
 
-/** Signs Sara in through the staging front door and returns the raw session
+/** Signs Tova in through the staging front door and returns the raw session
  *  token from the issued cookie. */
 async function frontDoorSignin(): Promise<string> {
   const res = await fetch(`${baseUrl}/_signin`, {
@@ -212,7 +212,7 @@ async function frontDoorSignin(): Promise<string> {
   expect(res.status).toBe(200);
   const payload = (await res.json()) as { ok: boolean; name: string };
   expect(payload.ok).toBe(true);
-  expect(payload.name).toBe("Sara");
+  expect(payload.name).toBe("Tova");
   const cookieHeader = res.headers.get("set-cookie") ?? "";
   expect(cookieHeader).not.toBe("");
   return cookieHeader.split(";")[0].split("=").slice(1).join("=");
@@ -422,7 +422,7 @@ describeIfFixture(
       }
     });
 
-    it("step-02 exact shape: POST /update/*signin signs Sara in (303 to *previous, cookie, zero rows)", async () => {
+    it("step-02 exact shape: POST /update/*signin signs Tova in (303 to *previous, cookie, zero rows)", async () => {
       // LIVE (manifest step-02): 303, Location http://localhost:3011/, empty
       // body. Ruby: the :signin event (signin.rb:10-12) authenticates the
       // +*email/+*password subcard contents, signin_success aborts the save
@@ -450,7 +450,7 @@ describeIfFixture(
       expect(rows.card_acts.length).toBe(0);
     });
 
-    it("TS front door: POST /_signin signs Sara in (session cookie issued)", async () => {
+    it("TS front door: POST /_signin signs Tova in (session cookie issued)", async () => {
       const signed = await fetch(`${baseUrl}/_signin`, {
         method: "POST",
         headers: { "content-type": "application/x-www-form-urlencoded; charset=UTF-8" },
@@ -459,7 +459,7 @@ describeIfFixture(
       expect(signed.status).toBe(200);
       const payload = (await signed.json()) as { ok: boolean; name: string };
       expect(payload.ok).toBe(true);
-      expect(payload.name).toBe("Sara");
+      expect(payload.name).toBe("Tova");
       const cookieHeader = signed.headers.get("set-cookie") ?? "";
       expect(cookieHeader).not.toBe("");
       sessionCookie = cookieHeader.split(";")[0];

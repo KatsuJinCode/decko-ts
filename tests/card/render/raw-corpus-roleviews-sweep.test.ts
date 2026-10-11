@@ -36,7 +36,7 @@ const CLASS_UNSUPPORTED = [
   "Epworth UMC",
   "Free Aiki Dojo Member", "Gaming", "Golden Bears Aikido Club Member", "LW",
   "Practicing", "Private01", "Private02", "ABC", "CDKLMSW", "Contributor",
-  "Team", "Morgan Family",
+  "Team", "Ellery Family",
   "follower notification email", "follower notification email+*html message",
   "follower notification email+*text message", "password reset email",
   "password reset email+*html message", "password reset email+*text message",

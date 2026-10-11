@@ -76,7 +76,7 @@
             "fetchByName(News Item+*type+by name) [815,184]",
             "fetchByName(Image+*type+by name) [3383,184]",
             "fetchByName(tags+BDWC+private) [41198,14155]",
-            "fetchByName(tags+BDWC+private+Morgan) [40301,18145]"
+            "fetchByName(tags+BDWC+private+Ellery) [40301,18145]"
           ]
         },
         {
@@ -144,7 +144,7 @@
             "phase:render [\"rich_text\",\"description\"]",
             "phase:render [\"rich_text\",\"*type\"]",
             "phase:render [\"tag\",\"bdwc\"]",
-            "phase:render [\"morgan\",\"item\"]"
+            "phase:render [\"ellery\",\"item\"]"
           ]
         },
         {
@@ -154,8 +154,8 @@
           "calls": 4,
           "marks": [
             "phase:render [\"kaori_suzuki\",\"kaori_suzuki\",\"kaori_suzuki\",\"kaori_suzuki\",\"kaori_suzuki\",\"kao",
-            "phase:render [\"kirsten_cadwell\",\"wren_halloway\",\"ed_correium\",\"joan_callahan\",\"mabel_bridgewater\",\"mo",
-            "phase:render [\"tag\",\"tag\",\"david_william\",\"iri_mc_ginni\",\"don_mc_clure\",\"mabel_bridgewater\",\"christ",
+            "phase:render [\"kirsten_cadwell\",\"wren_kesterly\",\"ed_correium\",\"joan_callahan\",\"marianne_winslow\",\"mo",
+            "phase:render [\"tag\",\"tag\",\"david_william\",\"iri_mc_ginni\",\"don_mc_clure\",\"marianne_winslow\",\"christ",
             "phase:render [\"public\",\"public\",\"public\",\"public\",\"public\",\"public\",\"public\",\"public\",\"public"
           ]
         },
@@ -178,7 +178,7 @@
           "calls": 3,
           "marks": [
             "phase:render [\"description\"]",
-            "phase:render [\"morgan\"]",
+            "phase:render [\"ellery\"]",
             "phase:render [\"item\"]"
           ]
         },
@@ -251,7 +251,7 @@
           "calls": 2,
           "marks": [
             "fetchByName(tags+BDWC+private) [40301]",
-            "fetchByName(tags+BDWC+private+Morgan) [40445]"
+            "fetchByName(tags+BDWC+private+Ellery) [40445]"
           ]
         },
         {
@@ -261,7 +261,7 @@
           "calls": 2,
           "marks": [
             "fetchByName(Conflict_Done_Well+Online_Classes) [\"online_class\"]",
-            "fetchByName(Wren Halloway+CV) [\"cv\"]"
+            "fetchByName(Wren Kesterly+CV) [\"cv\"]"
           ]
         },
         {
@@ -271,7 +271,7 @@
           "calls": 2,
           "marks": [
             "fetchByName(Conflict_Done_Well+Online_Classes) [15113,35336]",
-            "fetchByName(Wren Halloway+CV) [3100,4167]"
+            "fetchByName(Wren Kesterly+CV) [3100,4167]"
           ]
         },
         {
@@ -281,7 +281,7 @@
           "calls": 2,
           "marks": [
             "fetchByName(Conflict_Done_Well+Online_Classes) [35337]",
-            "fetchByName(Wren Halloway+CV) [22647]"
+            "fetchByName(Wren Kesterly+CV) [22647]"
           ]
         },
         {
@@ -291,7 +291,7 @@
           "calls": 2,
           "marks": [
             "fetchByName(Conflict_Done_Well+Online_Classes) [35336]",
-            "fetchByName(Wren Halloway+CV) [4167]"
+            "fetchByName(Wren Kesterly+CV) [4167]"
           ]
         },
         {
@@ -538,7 +538,7 @@
           "consumerFrames": [],
           "calls": 1,
           "marks": [
-            "phase:render [\"kirsten_cadwell\",\"wren_halloway\",\"ed_correium\",\"joan_callahan\",\"mabel_bridgewater\",\"mo"
+            "phase:render [\"kirsten_cadwell\",\"wren_kesterly\",\"ed_correium\",\"joan_callahan\",\"marianne_winslow\",\"mo"
           ]
         },
         {
@@ -634,7 +634,7 @@
           "consumerFrames": [],
           "calls": 230,
           "marks": [
-            "fetchByName(ABCglobal) [\"ab_cglobal\"]",
+            "fetchByName(ZQRglobal) [\"ab_cglobal\"]",
             "fetchByName(Professional Materials) [\"professional_material\"]",
             "fetchByName(BW Press) [\"bw_press\"]",
             "fetchByName(BW links) [\"bw_link\"]",
@@ -666,7 +666,7 @@
             "fetchByName(Roundtable+April 13th) [\"april_13th\"]",
             "fetchByName(Roundtable+May 18th) [\"may_18th\"]",
             "fetchByName(Roundtable+July 20th) [\"july_20th\"]",
-            "fetchByName(Casey Morgan+videos) [\"video\"]"
+            "fetchByName(Riley Ellery+videos) [\"video\"]"
           ]
         },
         {
@@ -678,7 +678,7 @@
             "fetchByName(Roundtable+March 9th) [17559,19335]",
             "fetchByName(Roundtable+April 13th) [17559,19337]",
             "fetchByName(Roundtable+May 18th) [17559,19488]",
-            "fetchByName(Casey Morgan+videos) [393,1833]",
+            "fetchByName(Riley Ellery+videos) [393,1833]",
             "fetchByName(Intellectual Property+Index) [23615,28237]"
           ]
         },
@@ -704,7 +704,7 @@
             "fetchByName(Roundtable+March 9th) [19335]",
             "fetchByName(Roundtable+April 13th) [19337]",
             "fetchByName(Roundtable+May 18th) [19488]",
-            "fetchByName(Casey Morgan+videos) [1833]",
+            "fetchByName(Riley Ellery+videos) [1833]",
             "fetchByName(Intellectual Property+Index) [28237]"
           ]
         },
@@ -746,7 +746,7 @@
             "fetchByName(Roundtable+March 9th) [19037]",
             "fetchByName(Roundtable+April 13th) [19332]",
             "fetchByName(Roundtable+May 18th) [19489]",
-            "fetchByName(Casey Morgan+videos) [23464]",
+            "fetchByName(Riley Ellery+videos) [23464]",
             "fetchByName(Intellectual Property+Index) [28238]"
           ]
         },
@@ -888,7 +888,7 @@
           "consumerFrames": [],
           "calls": 4,
           "marks": [
-            "phase:render [\"min_ahn_program_at_uc_berkeley\",\"vi_a_vie_gba\"]",
+            "phase:render [\"min_ahn_program_at_uc_berkeley\",\"vi_a_vie_hbq\"]",
             "phase:render [\"20140113\",\"bw\"]",
             "phase:render [\"reading\",\"bw\"]",
             "phase:render [\"grass_common\",\"logo\"]"
@@ -933,7 +933,7 @@
           "calls": 2,
           "marks": [
             "phase:render [\"aikido_a_peace_practice\",\"bw_guideline\"]",
-            "phase:render [\"wagn_skype_w_ethan20100726\",\"wagn_skype_w_ethan20100727\"]"
+            "phase:render [\"qagn_skype_w_ethan20100726\",\"qagn_skype_w_ethan20100727\"]"
           ]
         },
         {
@@ -943,7 +943,7 @@
           "calls": 2,
           "marks": [
             "phase:render [\"laundry\",\"laundry\",\"laundry\",\"laundry\",\"laundry\",\"healing_friction\",\"healing_f",
-            "phase:render [\"task\",\"project\",\"log_entry\",\"image\",\"date\",\"gba_style\",\"to_do\",\"file\",\"item\",\""
+            "phase:render [\"task\",\"project\",\"log_entry\",\"image\",\"date\",\"hbq_style\",\"to_do\",\"file\",\"item\",\""
           ]
         },
         {
@@ -972,8 +972,8 @@
           "consumerFrames": [],
           "calls": 2,
           "marks": [
-            "phase:render [\"wagn_decko_dev\"]",
-            "phase:render [\"culturesmith_com_wagn_free_aiki_dojo\"]"
+            "phase:render [\"qagn_decko_dev\"]",
+            "phase:render [\"culturesmith_com_qagn_free_aiki_dojo\"]"
           ]
         },
         {
@@ -1840,9 +1840,9 @@
           "marks": [
             "fetchByName(MNv+Instructor Training) [\"m_nv\"]",
             "fetchByName(MNv+Instructor Training) [\"instructor_training\"]",
-            "fetchByName(Martial Nonviolence+Improvisation) [\"improvisation\"]",
-            "fetchByName(Martial Nonviolence+Related Reading) [\"related_reading\"]",
-            "fetchByName(Casey Morgan+videos) [\"video\"]"
+            "fetchByName(Martial Concordance+Improvisation) [\"improvisation\"]",
+            "fetchByName(Martial Concordance+Related Reading) [\"related_reading\"]",
+            "fetchByName(Riley Ellery+videos) [\"video\"]"
           ]
         },
         {
@@ -1881,9 +1881,9 @@
           "calls": 16,
           "marks": [
             "fetchByName(MNv+Instructor Training) [1205,22621]",
-            "fetchByName(Martial Nonviolence+Improvisation) [577,29424]",
-            "fetchByName(Martial Nonviolence+Related Reading) [577,23539]",
-            "fetchByName(Casey Morgan+videos) [393,1833]",
+            "fetchByName(Martial Concordance+Improvisation) [577,29424]",
+            "fetchByName(Martial Concordance+Related Reading) [577,23539]",
+            "fetchByName(Riley Ellery+videos) [393,1833]",
             "fetchByName(Intellectual Property+Index) [23615,28237]"
           ]
         },
@@ -1895,9 +1895,9 @@
           "marks": [
             "fetchByName(MNv+Instructor Training) [1205]",
             "fetchByName(MNv+Instructor Training) [22621]",
-            "fetchByName(Martial Nonviolence+Improvisation) [29424]",
-            "fetchByName(Martial Nonviolence+Related Reading) [23539]",
-            "fetchByName(Casey Morgan+videos) [1833]"
+            "fetchByName(Martial Concordance+Improvisation) [29424]",
+            "fetchByName(Martial Concordance+Related Reading) [23539]",
+            "fetchByName(Riley Ellery+videos) [1833]"
           ]
         },
         {
@@ -1907,9 +1907,9 @@
           "calls": 15,
           "marks": [
             "fetchByName(MNv+Instructor Training) [22622]",
-            "fetchByName(Martial Nonviolence+Improvisation) [29425]",
-            "fetchByName(Martial Nonviolence+Related Reading) [23540]",
-            "fetchByName(Casey Morgan+videos) [23464]",
+            "fetchByName(Martial Concordance+Improvisation) [29425]",
+            "fetchByName(Martial Concordance+Related Reading) [23540]",
+            "fetchByName(Riley Ellery+videos) [23464]",
             "fetchByName(Intellectual Property+Index) [28238]"
           ]
         },
@@ -1972,7 +1972,7 @@
           "marks": [
             "fetchByName(RichText+*type+by name) [273,184]",
             "fetchByName(Image+*type+by name) [3383,184]",
-            "fetchByName(Martial Nonviolence+Description+twitterfeed) [1003,634]"
+            "fetchByName(Martial Concordance+Description+twitterfeed) [1003,634]"
           ]
         },
         {
@@ -1992,7 +1992,7 @@
           "calls": 2,
           "marks": [
             "phase:render [\"rich_text\",\"image\",\"*type\",\"*type\"]",
-            "phase:render [\"martial_nonviolence\",\"intellectual_property\",\"example\",\"statement\"]"
+            "phase:render [\"martial_concordance\",\"intellectual_property\",\"example\",\"statement\"]"
           ]
         },
         {
@@ -2147,7 +2147,7 @@
           "consumerFrames": [],
           "calls": 1,
           "marks": [
-            "phase:render [\"associative_inquiry\",\"process_art\",\"healing_friction\",\"martial_nonviolence\",\"t"
+            "phase:render [\"associative_inquiry\",\"process_art\",\"healing_friction\",\"martial_concordance\",\"t"
           ]
         },
         {
@@ -2183,7 +2183,7 @@
           "consumerFrames": [],
           "calls": 1,
           "marks": [
-            "phase:render [\"casey_morgan\",\"casey_morgan\",\"casey_morgan\",\"brando"
+            "phase:render [\"riley_ellery\",\"riley_ellery\",\"riley_ellery\",\"brando"
           ]
         },
         {
@@ -2219,7 +2219,7 @@
           "consumerFrames": [],
           "calls": 1,
           "marks": [
-            "fetchByName(Martial Nonviolence+Description+twitterfeed) [2674]"
+            "fetchByName(Martial Concordance+Description+twitterfeed) [2674]"
           ]
         },
         {

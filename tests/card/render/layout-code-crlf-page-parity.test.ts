@@ -58,8 +58,8 @@ const PINNED_PAGES: ReadonlyArray<{ name: string; shard: string }> = [
   { name: "Classic Layout", shard: "recapture-raw-shard-000000.jsonl" },
   { name: "Golden_Bears_Aikido_at_UC_Berkeley main layout", shard: "recapture-raw-shard-000001.jsonl" },
   { name: "home-layout", shard: "recapture-raw-shard-000001.jsonl" },
-  { name: "caseymorgan-layout", shard: "recapture-raw-shard-000002.jsonl" },
-  { name: "FrAi layout", shard: "recapture-raw-shard-000008.jsonl" },
+  { name: "rileyellery-layout", shard: "recapture-raw-shard-000002.jsonl" },
+  { name: "MoKi layout", shard: "recapture-raw-shard-000008.jsonl" },
 ];
 
 const PAGE_PARITY_REQUESTED = process.env.LAYOUT_PAGE_PARITY_REPLAY === "1";

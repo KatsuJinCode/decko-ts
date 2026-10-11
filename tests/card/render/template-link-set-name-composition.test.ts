@@ -1,4 +1,4 @@
-// D2 lane: DeckoName#fieldName's Cardish overload — WAGN's Array#to_name is
+// D2 lane: DeckoName#fieldName's Cardish overload — QAGN's Array#to_name is
 // Card::Name.compose (card-1.110.0
 // config/initializers/01_core_extensions/array.rb:80-83), so a SYMBOL tag
 // resolves through the codename registry to the codename card's NAME.

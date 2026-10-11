@@ -739,18 +739,18 @@
       "source": "card-mod-follow-0.20.0/data/test/rules.yml"
     },
     {
-      "id": "seed:John",
+      "id": "seed:Jonas",
       "kind": "seed",
-      "name": "John",
+      "name": "Jonas",
       "codename": null,
       "type": ":user",
       "contentSha": null,
       "source": "card-mod-follow-0.20.0/data/test/users.yml"
     },
     {
-      "id": "seed:Sara",
+      "id": "seed:Tova",
       "kind": "seed",
-      "name": "Sara",
+      "name": "Tova",
       "codename": null,
       "type": ":user",
       "contentSha": null,
@@ -910,18 +910,18 @@
       "source": "card-mod-follow-0.20.0/data/test.yml"
     },
     {
-      "id": "seed:Sara Following",
+      "id": "seed:Tova Following",
       "kind": "seed",
-      "name": "Sara Following",
+      "name": "Tova Following",
       "codename": null,
       "type": null,
       "contentSha": null,
       "source": "card-mod-follow-0.20.0/data/test.yml"
     },
     {
-      "id": "seed:John Following",
+      "id": "seed:Jonas Following",
       "kind": "seed",
-      "name": "John Following",
+      "name": "Jonas Following",
       "codename": null,
       "type": null,
       "contentSha": null,
@@ -1260,7 +1260,7 @@
       "file": "data/test/rules.yml"
     },
     {
-      "name": "John",
+      "name": "Jonas",
       "codename": null,
       "type": ":user",
       "content": null,
@@ -1268,7 +1268,7 @@
       "file": "data/test/users.yml"
     },
     {
-      "name": "Sara",
+      "name": "Tova",
       "codename": null,
       "type": ":user",
       "content": null,
@@ -1410,7 +1410,7 @@
       "file": "data/test.yml"
     },
     {
-      "name": "Sara Following",
+      "name": "Tova Following",
       "codename": null,
       "type": null,
       "content": null,
@@ -1418,7 +1418,7 @@
       "file": "data/test.yml"
     },
     {
-      "name": "John Following",
+      "name": "Jonas Following",
       "codename": null,
       "type": null,
       "content": null,

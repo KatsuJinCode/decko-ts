@@ -18,9 +18,9 @@
 // touched FIRST.
 //
 // Captured exemplar (expected-v2/view-lane recapture-raw-shard-000000.jsonl,
-// `Metashamanic+Core Project`, corpus card id 802, content = the single item
+// `Quicksilver+Core Project`, corpus card id 802, content = the single item
 // line `mytho-psychology`): that name is an item line on ~30 corpus cards.
-// Under `Metashamanic+Core Project` the phantom is Project-typed (corpus
+// Under `Quicksilver+Core Project` the phantom is Project-typed (corpus
 // type card 398) and its own read verdict is TRUE, and the oracle renders the
 // FULL bar (bar-body row / card-title / wanted-card menu). Rendered after
 // another card had folded the item denied, the global map said denied and the

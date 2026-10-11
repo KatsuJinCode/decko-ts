@@ -16,7 +16,7 @@
 # 1. For each target card (the basic RichText "Oracle Basics" and the
 #    deck-level "Home" - the SAME two targets the edit-forms and
 #    edit-name-type captures used) and each actor (Decko Bot = signed-in
-#    admin, Sara = signed-in non-admin member, Anonymous): the rendered
+#    admin, Tova = signed-in non-admin member, Anonymous): the rendered
 #    bytes of all 16 views above.
 #    The perms-:update views (:edit_inline, :edit_in_form) and the
 #    perms-:create views (:new, :new_in_modal, :new_fields, :simple_new)
@@ -60,7 +60,7 @@ TARGETS = [
   { name: "Oracle Basics", label: "basic_note" },
   { name: "Home",          label: "deck_level" }
 ].freeze
-ACTORS = %w[bot sara anonymous].freeze
+ACTORS = %w[bot tova anonymous].freeze
 VIEWS  = %w[edit_inline edit_inline_buttons edit_row edit_in_form
             new_in_modal_buttons new_type_formgroup
             overlay_guide read_form read_formgroup
@@ -95,11 +95,11 @@ end
 def as_actor(actor)
   case actor
   when "bot"   then Card::Auth.signin(Card::DeckoBotID)
-  when "sara"
-    sara = Card["Sara"]
-    raise "Sara account card missing" unless sara
+  when "tova"
+    tova = Card["Tova"]
+    raise "Tova account card missing" unless tova
 
-    Card::Auth.signin(sara.id)
+    Card::Auth.signin(tova.id)
   when "anonymous" then Card::Auth.signin(Card::AnonymousID)
   end
   yield
@@ -117,7 +117,7 @@ def action_count
   ActiveRecord::Base.connection.select_value("SELECT COUNT(*) FROM card_actions").to_i
 end
 
-results = { "actors_note" => "bot=Decko Bot(admin) sara=Sara(non-admin member) anonymous=Anonymous",
+results = { "actors_note" => "bot=Decko Bot(admin) tova=Tova(non-admin member) anonymous=Anonymous",
             "normalizations" => {
               "data-card-id" => "RANDOMIZED",
               "data-select2-id" => "SELECT2",

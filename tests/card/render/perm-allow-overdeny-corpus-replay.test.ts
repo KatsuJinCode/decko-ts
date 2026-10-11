@@ -53,8 +53,8 @@ const SHARDS_PRESENT = existsSync(PAGE_LANE_DIR);
 const OVER_DENY_PAGES = [
   "Anonymous+*account",
   "Anonymous+*account+*email",
-  "FrAi+*right+*head",
-  "GBA+*right+*head",
+  "MoKi+*right+*head",
+  "HBQ+*right+*head",
   "FOR CHILDREN’S CLASS+*self",
 ];
 
@@ -62,14 +62,14 @@ const OVER_DENY_PAGES = [
  *  (pass15-page-fail-classification.json, sig=permission_denied_mismatch). */
 const TRIAGE_17 = [
   "FOR CHILDREN’S CLASS+*self",
-  "GBA+*right+*layout+*self",
+  "HBQ+*right+*layout+*self",
   "*watermark+*self",
   "signup alert email+*from",
   "Message+Conversation+*type plus right",
   "Social Media Distribution+Tactics",
   "Production+design+Graphics+Tactics",
   "Intellectual Property+Unsecured+*self",
-  "Learning Pool+Slack Channel naming conventions most in use+*self",
+  "Practice Pool+Slack Channel naming conventions most in use+*self",
   "Dungeons and Dragons+SCarol+*self",
   "Dungeons and Dragons+SCarol+Icewind Dale+Communications+*self",
   "Artificial Intelligence+anon_exchange_02+*self",

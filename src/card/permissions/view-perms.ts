@@ -147,7 +147,7 @@ const PERMS_NONE = new Set<string>([
  * new_in_modal, simple_new, new_fields) — all :create;
  * card-mod-comment set/all/comment.rb:46 (comment_box) — :update;
  * card-mod-format set/all/html/head.rb:34-39 (universal_edit_button) —
- * :update, oracle-pinned 2026-09-28: the captured bot/sara arms render the
+ * :update, oracle-pinned 2026-09-28: the captured bot/tova arms render the
  * wiki link while the anonymous arms render "" (denial: :blank), so the
  * directive must resolve before the gate can deny anonymous.
  *

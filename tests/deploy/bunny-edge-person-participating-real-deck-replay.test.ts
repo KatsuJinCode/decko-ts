@@ -1,7 +1,7 @@
 // bunny-edge-person-participating-real-deck-replay.test.ts -- the mission
 // proof on the REAL production deck: the deployed edge's own boot
 // (bootCorpusDeckEngines) over the trial-deck mirror (the db the staging
-// bundle ships, db_content schema), rendering /Casey_Morgan
+// bundle ships, db_content schema), rendering /Riley_Ellery
 // through handleEngineRequest, checked against the RUBY yardstick
 // (expected-v2 page-lane, the verbatim oracle capture rendered from this
 // corpus).
@@ -13,7 +13,7 @@
 //
 // Byte bar: the section's slot + rows must exist verbatim; the FULL-page
 // byteDiff against the yardstick is REPORTED (evidence line) but not
-// hard-asserted equal -- Casey's page carries the corpus' known
+// hard-asserted equal -- Riley's page carries the corpus' known
 // link-query-dropped class (focal-denial-page-corpus-replay.test.ts header:
 // the wanted-card href loses its ?card[name]= query, a graded-corpus
 // divergence family outside this lane's contract).
@@ -52,14 +52,14 @@ const REALDECK_REQUESTED = process.env.P2_PERSON_REALDECK === "1";
 const MIRROR_PRESENT = existsSync(MIRROR_DB);
 const SHARD_PRESENT = existsSync(YARDSTICK_SHARD);
 
-const PERSON_PAGE_NAME = "Casey Morgan";
+const PERSON_PAGE_NAME = "Riley Ellery";
 
 /** The titled-search slot markers the Ruby yardstick carries for the
  *  "+Project(s) Participating" nest. */
 const SECTION_MARKERS = {
   slotClass: "TYPE_PLUS_RIGHT-person-project_s_participating",
   typeName: 'data-card-type-name="Search"',
-  slotId: "casey_morgan-project_s_participating-titled-view",
+  slotId: "riley_ellery-project_s_participating-titled-view",
 };
 
 interface PageLaneLine {
@@ -122,7 +122,7 @@ describe("person page +Project(s) Participating section on the REAL production d
       // and the full-page byte diff is reported (not gated -- the known
       // link-query-dropped class rides this page; see file header).
       const expected = await loadYardstick();
-      expect(expected, "yardstick page_html for Casey Morgan").toBeDefined();
+      expect(expected, "yardstick page_html for Riley Ellery").toBeDefined();
       const diff = byteDiff(normalizeSlotIds(expected!), normalizeSlotIds(actual));
       console.log(
         "REALDECK byteDiff:",

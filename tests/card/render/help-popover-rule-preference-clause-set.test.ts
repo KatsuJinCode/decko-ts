@@ -17,7 +17,7 @@
 //              Set-typed row (`*all` 274; `Don't Wait For The Study+*self`
 //              26849; `Make Contact+*self` 6854 - all type 259) and
 //              valid_preferer? holds (`*all` codename :all;
-//              `Casey Morgan` 393 type 4 = user).
+//              `Riley Ellery` 393 type 4 = user).
 //
 // Every seeded shape below mirrors a corpus row (ids cited per test from
 // corpus-facts.json); the clause DECISIONS are what is pinned, through the
@@ -131,7 +131,7 @@ describe("rule? clause set (all.rb:33-54): the popover's setting_link rides Ruby
       // corpus-exact shape: `Don't Wait For The Study` 26848; `*self`
       // (setting); `Don't Wait For The Study+*self` 26849 (typeId 259 =
       // Set - THE clause 8f8f9ca called unevaluable; the corpus facts close
-      // it); `Casey Morgan` 393 (typeId 4 = user, no codename);
+      // it); `Riley Ellery` 393 (typeId 4 = user, no codename);
       // junction 26850; rule row 26851.
       await seedCard(storage, { id: 26848, name: "Don't Wait For The Study", typeId: BASIC_TYPE_ID });
       await seedCard(storage, { id: 30, name: "*self", codename: "self", typeId: SETTING_TYPE_ID });
@@ -139,7 +139,7 @@ describe("rule? clause set (all.rb:33-54): the popover's setting_link rides Ruby
         id: 26849, leftId: 26848, rightId: 30, typeId: SET_TYPE_ID,
       });
       await seedCard(storage, {
-        id: 393, name: "Casey Morgan", typeId: USER_TYPE_ID,
+        id: 393, name: "Riley Ellery", typeId: USER_TYPE_ID,
       });
       await seedCard(storage, {
         id: 26850, leftId: 26849, rightId: 393, typeId: 3,
@@ -163,14 +163,14 @@ describe("rule? clause set (all.rb:33-54): the popover's setting_link rides Ruby
       // guards byte-exact on the real corpus without any special warm. The
       // one warm render below seats the preferer so THIS assertion exercises
       // the actual all.rb:53 clause, not a cold-map miss.
-      await storage.engine.render("Casey Morgan", "closed");
+      await storage.engine.render("Riley Ellery", "closed");
       const html = await storage.engine.render(
-        "Don't Wait For The Study+*self+Casey Morgan+*follow",
+        "Don't Wait For The Study+*self+Riley Ellery+*follow",
         "closed",
       );
       // standard_rule? false (left 26850 is not Set) but preference? holds:
       // 4 parts; trunk `Don't Wait For The Study+*self` IS Set-typed; the
-      // preferer Casey Morgan is User-typed (all.rb:53 arm 1).
+      // preferer Riley Ellery is User-typed (all.rb:53 arm 1).
       expect(helpContentOf(html)).toContain("ms-auto");
     } finally {
       storage.close();
@@ -189,7 +189,7 @@ describe("rule? clause set (all.rb:33-54): the popover's setting_link rides Ruby
         id: 26849, leftId: 26848, rightId: 30, typeId: BASIC_TYPE_ID,
       });
       await seedCard(storage, {
-        id: 393, name: "Casey Morgan", typeId: USER_TYPE_ID,
+        id: 393, name: "Riley Ellery", typeId: USER_TYPE_ID,
       });
       await seedCard(storage, {
         id: 26850, leftId: 26849, rightId: 393, typeId: 3,
@@ -206,9 +206,9 @@ describe("rule? clause set (all.rb:33-54): the popover's setting_link rides Ruby
       // warm the preferer into the render-card map (cache-only accessor;
       // see the USER-arm test above for why) so the refusal below comes
       // from the trunk clause, not a cold-map miss
-      await storage.engine.render("Casey Morgan", "closed");
+      await storage.engine.render("Riley Ellery", "closed");
       const html = await storage.engine.render(
-        "Don't Wait For The Study+*self+Casey Morgan+*follow",
+        "Don't Wait For The Study+*self+Riley Ellery+*follow",
         "closed",
       );
       expect(helpContentOf(html)).not.toContain("ms-auto");

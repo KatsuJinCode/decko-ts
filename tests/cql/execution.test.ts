@@ -84,10 +84,10 @@ const CARDS: CardsRow[] = [
   }),
   card({
     id: 11,
-    name: "Sara Sample",
-    key: "sara_sample",
+    name: "Tova Sample",
+    key: "tova_sample",
     type_id: 2,
-    db_content: "Sara Sample biography",
+    db_content: "Tova Sample biography",
     creator_id: 11,
     updater_id: 11,
     created_at: T("2026-01-02"),
@@ -216,7 +216,7 @@ const ACTIONS = [
 const RESOLVER = (name: string): number => {
   const ids: Record<string, number> = {
     "Joe Admin": 10,
-    "Sara Sample": 11,
+    "Tova Sample": 11,
     Home: 20,
     About: 21,
     User: 2,
@@ -459,7 +459,7 @@ describe("match via the REGEXP UDF", () => {
   });
 
   it("name match hits the name column; NULL names never match", async () => {
-    // name contains 'a': Basic, Joe Admin, Sara Sample, About, Zebra,
+    // name contains 'a': Basic, Joe Admin, Tova Sample, About, Zebra,
     // Alpha Page, status ("restricted"/"Editor Notes" have no letter 'a');
     // junction rows have NULL names and never match.
     expect(await ids({ name: ["~", "a"] })).toEqual([1, 10, 11, 21, 22, 24, 33]);
@@ -504,7 +504,7 @@ describe("conjunctions and negation", () => {
   it("any with a join condition renders the parenthesized LEFT JOIN group and runs", async () => {
     // the generator's riskiest shape for SQLite: LEFT JOIN (card_actions cn1
     // JOIN card_acts cx2 ... JOIN cards c3 ...) ON ...
-    expect(await ids({ any: [{ edited_by: "Sara Sample" }] })).toEqual([21, 22]);
+    expect(await ids({ any: [{ edited_by: "Tova Sample" }] })).toEqual([21, 22]);
   });
 });
 
@@ -548,12 +548,12 @@ describe("card_references joins", () => {
 
 describe("editor / act chains", () => {
   it("edited_by follows actions regardless of action_type", async () => {
-    // Sara acted on About (update) and Zebra (create)
-    expect(await ids({ edited_by: "Sara Sample" })).toEqual([21, 22]);
+    // Tova acted on About (update) and Zebra (create)
+    expect(await ids({ edited_by: "Tova Sample" })).toEqual([21, 22]);
   });
 
   it("updated_by adds the action_type = 1 condition", async () => {
-    expect(await ids({ updated_by: "Sara Sample" })).toEqual([21]);
+    expect(await ids({ updated_by: "Tova Sample" })).toEqual([21]);
   });
 
   it("creator_of finds the creator user of a card", async () => {
@@ -561,17 +561,17 @@ describe("editor / act chains", () => {
   });
 
   it("last_edited_by restricts on updater_id directly", async () => {
-    expect(await ids({ last_edited_by: "Sara Sample" })).toEqual([11, 22, 24]);
+    expect(await ids({ last_edited_by: "Tova Sample" })).toEqual([11, 22, 24]);
   });
 });
 
 describe("sort / limit / offset", () => {
   // names containing 'a' (case-insensitive), junction NULL names excluded:
-  // Basic, Joe Admin, Sara Sample, About, Zebra, Alpha Page, status
+  // Basic, Joe Admin, Tova Sample, About, Zebra, Alpha Page, status
   // ("restricted" has no letter 'a').
   const NAME_MATCH_SET = [1, 10, 11, 21, 22, 24, 33];
   // keys in binary order: about < alpha_page < basic < joe_admin
-  // < sara_sample < status < zebra
+  // < tova_sample < status < zebra
   const NAME_ASC_ORDER = [21, 24, 1, 10, 11, 33, 22];
 
   it("sort by name asc orders by key", async () => {

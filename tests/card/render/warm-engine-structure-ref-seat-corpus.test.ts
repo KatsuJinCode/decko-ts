@@ -9,7 +9,7 @@
 // card was rendered without being seated: the link-target pass never scanned
 // it, and its links to existing cards (`[[Embody Nonviolence]]`,
 // `[[Process Arts]]`) came out wanted-card. The same four views (sabrina
-// mejias, Dan Williams, Rowan Pettibone, Dawn Emerson) pass as a fresh
+// mejias, Dan Williams, Rowan Pettibone, Vera Prescott) pass as a fresh
 // engine's first render.
 //
 // Gate: opt-in via WARM_STRUCTURE_REF_SEAT_REPLAY=1 (needs the key-repaired

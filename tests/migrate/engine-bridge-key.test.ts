@@ -24,7 +24,7 @@ const RUBY_KEYS: [string, string][] = [
   ["Anonymous", "anonymous"],
   ["Participant(s)", "participant_s"],
   ["Project(s) Participating", "project_s_participating"],
-  ["Talk Like It's Casey's Birth Day", "talk_like_it_s_casey_s_birth_day"],
+  ["Talk Like It's Riley's Birth Day", "talk_like_it_s_riley_s_birth_day"],
   ["How this may be different from what you know", "how_this_may_be_different_from_what_you_know"],
   // Ordinary plurals still singularize as Ruby does.
   ["Participants", "participant"],

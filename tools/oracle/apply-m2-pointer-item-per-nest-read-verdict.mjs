@@ -8,10 +8,10 @@
 // byte replacements and asserts each one applied.
 //
 // THE MECHANISM (tools/oracle/probe-trace-phantom-item-verdict.mjs, run on
-// corpus card 802 "Metashamanic+Core Project" whose content is the single
+// corpus card 802 "Quicksilver+Core Project" whose content is the single
 // pointer item `mytho-psychology`):
 //
-//   verdict lookup   metashamanic+core_project | mytho_psychology
+//   verdict lookup   quicksilver+core_project | mytho_psychology
 //                    -> {"read":true,"create":false}     (BOTH cold and warm)
 //   COLD  isDenied(mytho_psychology) -> false  x2   body = FULL bar (correct)
 //   WARM  isDenied(mytho_psychology) -> true   x1   body = two denied spans

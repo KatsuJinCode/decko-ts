@@ -522,11 +522,11 @@ export const PERM_LEAK_PAGE_SUBSET: LeakPageEntry[] = [
   "sig": "byte-diff"
  },
  {
-  "name": "FrAi+*right+*head",
+  "name": "MoKi+*right+*head",
   "sig": "byte-diff"
  },
  {
-  "name": "GBA+*right+*head",
+  "name": "HBQ+*right+*head",
   "sig": "byte-diff"
  }
 ];

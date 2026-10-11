@@ -33,7 +33,7 @@ describe("deck inflection config seam", () => {
   it("defaults reproduce the gem-standard keys", () => {
     resetDeckInflections();
     expect(singularize("musings")).toBe("musing");
-    expect(DeckoName.parse("Casey's").key).toBe("casey_");
+    expect(DeckoName.parse("Riley's").key).toBe("riley_");
     expect(DeckoName.parse("delete this").key).toBe("delete_thi");
   });
 
@@ -42,7 +42,7 @@ describe("deck inflection config seam", () => {
     // deck words protected
     expect(singularize("s")).toBe("s");
     expect(singularize("this")).toBe("this");
-    expect(DeckoName.parse("Casey's").key).toBe("casey_s");
+    expect(DeckoName.parse("Riley's").key).toBe("riley_s");
     expect(DeckoName.parse("delete this").key).toBe("delete_this");
     // default uncountables still honored
     expect(singularize("series")).toBe("series");
@@ -81,18 +81,18 @@ describe("deck inflection config seam", () => {
   });
 
   it("a config change invalidates the parse cache so new parses recompute", () => {
-    const stale = DeckoName.parse("Casey's");
-    expect(stale.key).toBe("casey_");
+    const stale = DeckoName.parse("Riley's");
+    expect(stale.key).toBe("riley_");
     applyDeckInflections({ uncountables: ["s"] });
     // fresh parse (cache dropped) computes under the deck table...
-    expect(DeckoName.parse("Casey's").key).toBe("casey_s");
+    expect(DeckoName.parse("Riley's").key).toBe("riley_s");
     // ...while a frozen instance memoized before the change keeps its key -
     // identical to Ruby, where @key ||= memoizes per Cardname instance and a
     // Rails inflections initializer runs before any name exists. This is why
     // deck-boot tooling must apply the config before seeding names.
-    expect(stale.key).toBe("casey_");
+    expect(stale.key).toBe("riley_");
     resetDeckInflections();
-    expect(DeckoName.parse("Casey's").key).toBe("casey_");
+    expect(DeckoName.parse("Riley's").key).toBe("riley_");
   });
 
   it("resetDeckInflections restores the gem-standard tables after amendments", () => {

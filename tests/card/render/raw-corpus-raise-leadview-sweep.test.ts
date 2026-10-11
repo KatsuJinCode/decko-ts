@@ -34,7 +34,7 @@ const CLASS_RAISE = [
   "Free Aiki Dojo Member+*members", "Gaming+*members",
   "Golden Bears Aikido Club Member+*members", "LW+*members",
   "Practicing+*members", "Private01+*members", "Private02+*members",
-  "Team+*members", "Wagneer+*members", "Morgan Family+*members",
+  "Team+*members", "Wagneer+*members", "Ellery Family+*members",
 ];
 
 const CLASS_UNSUPPORTED = [
@@ -42,7 +42,7 @@ const CLASS_UNSUPPORTED = [
   "Epworth UMC",
   "Free Aiki Dojo Member", "Gaming", "Golden Bears Aikido Club Member", "LW",
   "Practicing", "Private01", "Private02", "ABC", "CDKLMSW", "Contributor",
-  "Team", "Morgan Family",
+  "Team", "Ellery Family",
   "follower notification email", "follower notification email+*html message",
   "follower notification email+*text message", "password reset email",
   "password reset email+*html message", "password reset email+*text message",

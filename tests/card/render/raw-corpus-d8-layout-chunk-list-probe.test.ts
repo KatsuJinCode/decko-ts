@@ -17,7 +17,7 @@
 //   hosts `example.com.uservoice.com` and
 //   `cdn.uservoice.com/javascripts/widgets/tab.js` stay highlighted source
 //   text. The ONE anchor the oracle emits inside the whole card is
-//   `[[http://www.wagn.org|Wagn]]` at offset 3439 -- a Link chunk, and Link
+//   `[[http://www.qagn.org|Wagn]]` at offset 3439 -- a Link chunk, and Link
 //   IS in :references.
 //
 //   The port's general processContent path already used the gem's table
@@ -28,7 +28,7 @@
 //
 // ORACLE (expected-v2/view-lane, sha-verified shards):
 //   314  Classic Layout  views.content  8203 B, ZERO external-link anchors
-//        inside the <pre> (the only anchor is the wagn.org wiki link at 3439,
+//        inside the <pre> (the only anchor is the qagn.org wiki link at 3439,
 //        before the <pre> at 422..8177)
 //   2575 home-layout     views.content  byte-equal control (no script body)
 //   2339 / 2347          the two other layout cards carrying a URL -- and
@@ -66,7 +66,7 @@ const PROBE_CARDS = [
   // [id, name, the views the oracle captured]
   { id: 314, name: "Classic Layout", views: ["content", "open"] },
   // the two sibling layout cards that also carry a URL: byte-neutral proof
-  { id: 2339, name: "PCTS main layout", views: ["content"] },
+  { id: 2339, name: "ZQVT main layout", views: ["content"] },
   { id: 2347, name: "Golden_Bears_Aikido_at_UC_Berkeley main layout", views: ["content"] },
   // the byte-equal control: a layout with no script body and no URL
   { id: 2575, name: "home-layout", views: ["content"] },

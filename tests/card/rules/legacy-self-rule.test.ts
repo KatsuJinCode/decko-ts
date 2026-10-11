@@ -6,7 +6,7 @@
 // id would read; without the id path the lookup falls through to *all plus.
 //
 // The pin runs on the raw ground-truth deck, where the semantics probe found
-// the case (ABCglobal administration+associations, card 2833, and its
+// the case (ZQRglobal administration+associations, card 2833, and its
 // +*self+*read / +*update rules 8556 / 8557). The deck is machine-local, so
 // a checkout without it skips the suite loudly (docs/TESTING.md).
 
@@ -33,16 +33,16 @@ describeOrSkipLoud(!existsSync(RAW_CORPUS_DB), "tests/card/rules/legacy-self-rul
       const row = await f.fetchById(2833);
       expect(row?.leftId).toBeUndefined();
       const input = await ruleWalkPatternInput(f, {
-        name: DeckoName.parse("ABCglobal administration+associations"),
+        name: DeckoName.parse("ZQRglobal administration+associations"),
         id: 2833,
         isNew: false,
         typeId: row?.typeId ?? null,
       });
       // The name walk alone misses (the lexicon composes through side ids).
-      expect(await f.fetchByName("ABCglobal administration+associations+*self+*read")).toBeUndefined();
+      expect(await f.fetchByName("ZQRglobal administration+associations+*self+*read")).toBeUndefined();
       const read = await findRule(f, input, "*read");
       expect(read?.rule.id).toBe(8556);
-      expect(read?.rule.name?.s).toBe("ABCglobal administration+associations+*self+*read");
+      expect(read?.rule.name?.s).toBe("ZQRglobal administration+associations+*self+*read");
       expect((await findRule(f, input, "*update"))?.rule.id).toBe(8557);
       // A setting the card has no *self rule for keeps the walk's answer.
       expect((await findRule(f, input, "*delete"))?.setName).not.toContain("*self");

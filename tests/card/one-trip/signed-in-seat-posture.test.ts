@@ -186,7 +186,7 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/signed-in-seat-posture.test.
     // A real signed-in actor: a person card of the corpus (the edge's
     // signed-in viewers are actors of exactly this kind).
     const person = await corpus.query<{ id: number }>(
-      "SELECT id FROM cards WHERE \"key\" = 'rowan_morgan' AND trash = 0 LIMIT 1",
+      "SELECT id FROM cards WHERE \"key\" = 'rowan_ellery' AND trash = 0 LIMIT 1",
       [],
     );
     actorId = person.rows[0]!.id;

@@ -1,11 +1,11 @@
 // cql-append-sort-execution-pins.test.ts -- the CQL append/sort execution-wave
-// RED pins (the pageopen lane's `media+GBA+YouTube Browser:page` -6,276 entry,
+// RED pins (the pageopen lane's `media+HBQ+YouTube Browser:page` -6,276 entry,
 // W2b #9). Two defects were named there; this file pins both halves of the
 // result-shaping gap at the layers the vendored Ruby shapes them:
 //
-//   PIN A (appended names, corpus): rendering the media+GBA page's search
+//   PIN A (appended names, corpus): rendering the media+HBQ page's search
 //      lists must carry the statement's `append`-altered result names —
-//      15 `+GBA_YTlinkControl` then 15 `+GBA_YTlinkView` items — with the
+//      15 `+HBQ_YTlinkControl` then 15 `+HBQ_YTlinkView` items — with the
 //      Control block in `sort: "update"` order. The corpus order truth is
 //      measured, not assumed: the Control block is strictly the 15 referred
 //      videos' staging `updated_at` DESC; the View block (no sort key) is the
@@ -59,7 +59,7 @@ const SHARD_PATH = path.join(
 const PINS_REQUESTED = process.env.CQL_APPEND_SORT_PINS === "1";
 const CORPUS_PRESENT = existsSync(RAW_CORPUS_DB) && existsSync(SHARD_PATH);
 
-/** The 15 video cards the media+GBA junction refers to, with the staging
+/** The 15 video cards the media+HBQ junction refers to, with the staging
  *  updated_at that decides the corpus's Control-block order, in
  *  card_references emission order (cr.id). Measured, not transcribed:
  *  read live from RAW_CORPUS_DB at pin time. */
@@ -84,7 +84,7 @@ function referredVideosWithUpdatedAt(db: InstanceType<typeof Database>): Array<{
 }
 
 describeOrSkipLoud(!PINS_REQUESTED || !CORPUS_PRESENT, "tests/card/render/cql-append-sort-execution-pins.test.ts", "not (!PINS_REQUESTED || !CORPUS_PRESENT)")(
-  "CQL append/sort execution-wave pins (media+GBA W2b #9)",
+  "CQL append/sort execution-wave pins (media+HBQ W2b #9)",
   () => {
     const bootstrap = { storage: undefined as unknown as Awaited<ReturnType<typeof createRawStructureSeededStorage>> };
     beforeAll(
@@ -105,10 +105,10 @@ describeOrSkipLoud(!PINS_REQUESTED || !CORPUS_PRESENT, "tests/card/render/cql-ap
     );
 
     it(
-      "PIN A: the media+GBA search lists carry the append-altered names with the Control block in updated_at DESC",
+      "PIN A: the media+HBQ search lists carry the append-altered names with the Control block in updated_at DESC",
       { timeout: 900_000 },
       async () => {
-        const html = await bootstrap.storage.engine.renderPage("media+GBA+YouTube Browser");
+        const html = await bootstrap.storage.engine.renderPage("media+HBQ+YouTube Browser");
         const itemTagRe = /<div class="search-result-item[^"]*"/g;
         const starts: number[] = [];
         let m: RegExpExecArray | null;
@@ -118,14 +118,14 @@ describeOrSkipLoud(!PINS_REQUESTED || !CORPUS_PRESENT, "tests/card/render/cql-ap
           const w = html.slice(s, end);
           return /data-card-name="([^"]*)"/.exec(w)?.[1] ?? "(no name)";
         });
-        // 30 items: 15 +GBA_YTlinkControl then 15 +GBA_YTlinkView — the
+        // 30 items: 15 +HBQ_YTlinkControl then 15 +HBQ_YTlinkView — the
         // appended names Ruby's alter_results produces (census: these two
         // suffixes appear in exactly ONE corpus entry, 60 occurrences each).
         expect(items).toHaveLength(30);
         const control = items.slice(0, 15);
         const view = items.slice(15);
-        expect(control.every((n) => n.endsWith("+GBA_YTlinkControl"))).toBe(true);
-        expect(view.every((n) => n.endsWith("+GBA_YTlinkView"))).toBe(true);
+        expect(control.every((n) => n.endsWith("+HBQ_YTlinkControl"))).toBe(true);
+        expect(view.every((n) => n.endsWith("+HBQ_YTlinkView"))).toBe(true);
 
         // The corpus yardstick: the expected page's own search-result-item
         // data-card-name sequence. Equality here pins names AND the two
@@ -137,7 +137,7 @@ describeOrSkipLoud(!PINS_REQUESTED || !CORPUS_PRESENT, "tests/card/render/cql-ap
           .map((l) => l.trim())
           .filter((l) => l !== "")
           .map((l) => JSON.parse(l) as { name: string; page_html?: string })
-          .find((l) => l.name === "media+GBA+YouTube Browser");
+          .find((l) => l.name === "media+HBQ+YouTube Browser");
         expect(expectedLine?.page_html).toBeDefined();
         const expectedHtml = expectedLine!.page_html!;
         const expStarts: number[] = [];

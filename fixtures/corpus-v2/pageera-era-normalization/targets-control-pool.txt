@@ -41,7 +41,7 @@ page	recapture-raw-shard-000004.jsonl	201006-07 vacation in Oregon+*self	page
 page	recapture-raw-shard-000004.jsonl	Aiki Peace Week 2010 Dispatch - Beverly Bonneville-Heckler+*self	page
 page	recapture-raw-shard-000004.jsonl	BW2010profile_bw+*self	page
 page	recapture-raw-shard-000004.jsonl	Cs button - aikido+*self	page
-page	recapture-raw-shard-000004.jsonl	GBA_20101123_3539board+*self	page
+page	recapture-raw-shard-000004.jsonl	HBQ_20101123_3539board+*self	page
 page	recapture-raw-shard-000004.jsonl	JH+*self	page
 page	recapture-raw-shard-000004.jsonl	Knee-jerks 20100822+*self	page
 page	recapture-raw-shard-000004.jsonl	Ms Paula - PClion75th2003torysteller+*self	page
@@ -84,13 +84,13 @@ page	recapture-raw-shard-000007.jsonl	Leonard Chamberlain	page
 page	recapture-raw-shard-000007.jsonl	Ashley Castellan+Pages	page
 page	recapture-raw-shard-000007.jsonl	Micah M White - The Dinner Party at Berkeley	page
 page	recapture-raw-shard-000007.jsonl	Panikkar - on the right to offend+Associates	page
-page	recapture-raw-shard-000007.jsonl	SGo Training Journal 20120316	page
+page	recapture-raw-shard-000007.jsonl	Rvx Training Journal 20120316	page
 page	recapture-raw-shard-000007.jsonl	Staughton Lynd - A Letter To Other Occupiers+Associates	page
 page	recapture-raw-shard-000007.jsonl	Ralph Bonneville - 10 Ways Being a Theatre Major Prepared Me for Success	page
 page	recapture-raw-shard-000007.jsonl	shomenuchi ikkyo ura	page
 page	recapture-raw-shard-000008.jsonl	20120418+BW+RVW	page
 page	recapture-raw-shard-000008.jsonl	20120705+BW+Time Tracking	page
-page	recapture-raw-shard-000008.jsonl	Aiki Links plus GBA+*self	page
+page	recapture-raw-shard-000008.jsonl	Aiki Links plus HBQ+*self	page
 page	recapture-raw-shard-000008.jsonl	Kirsten Langdon - Guide to Careers in International Affairs	page
 page	recapture-raw-shard-000008.jsonl	Roger Cavendish - Ending the Minset That Gets Us Into War+Associates	page
 page	recapture-raw-shard-000008.jsonl	J and P OJ and The Tree+*self	page
@@ -149,7 +149,7 @@ page	recapture-raw-shard-000012.jsonl	Bradley Olson - The Disturbing Release of 
 page	recapture-raw-shard-000012.jsonl	Clara Ellingham graduates from Antioch 2004+Associates	page
 page	recapture-raw-shard-000012.jsonl	Family Support Network	page
 page	recapture-raw-shard-000012.jsonl	Lowe Dissertation+Documents	page
-page	recapture-raw-shard-000012.jsonl	Pontual Dissertation	page
+page	recapture-raw-shard-000012.jsonl	Pellam Dissertation	page
 page	recapture-raw-shard-000012.jsonl	Skin	page
 page	recapture-raw-shard-000012.jsonl	The Red Book considered+Preface	page
 page	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+image07+discussion	page
@@ -201,7 +201,7 @@ page	recapture-raw-shard-000017.jsonl	20150209+BW+Time Tracking	page
 page	recapture-raw-shard-000017.jsonl	20150320+BW+Time Tracking	page
 page	recapture-raw-shard-000017.jsonl	BasicCs	page
 page	recapture-raw-shard-000017.jsonl	Fish Pie	page
-page	recapture-raw-shard-000017.jsonl	Holland Service	page
+page	recapture-raw-shard-000017.jsonl	Marlow Service	page
 page	recapture-raw-shard-000017.jsonl	Message+*type+*autoname	page
 page	recapture-raw-shard-000017.jsonl	Roman style broiled fish+discussion	page
 page	recapture-raw-shard-000017.jsonl	Social Media Schedule+Dr Myth+20141220+*self	page
@@ -243,7 +243,7 @@ page	recapture-raw-shard-000020.jsonl	AE Board communications	page
 page	recapture-raw-shard-000020.jsonl	Chicken Ziegler+tags	page
 page	recapture-raw-shard-000020.jsonl	Hazan grilled fish and pasta+discussion	page
 page	recapture-raw-shard-000020.jsonl	Media Library curation	page
-page	recapture-raw-shard-000020.jsonl	Talk Like It's Casey's 41st Birth Day+tags	page
+page	recapture-raw-shard-000020.jsonl	Talk Like It's Riley's 41st Birth Day+tags	page
 page	recapture-raw-shard-000020.jsonl	blog+*self+*read	page
 page	recapture-raw-shard-000020.jsonl	tales and lore fairy and folk+discussion	page
 page	recapture-raw-shard-000021.jsonl	20130718+BW+RVW	page
@@ -336,7 +336,7 @@ page	recapture-raw-shard-000027.jsonl	DAN SOLOMON - A Visual History Of Big Tex+
 page	recapture-raw-shard-000027.jsonl	Eastfield CC Adjunct Faculty - Psychology 495298	page
 page	recapture-raw-shard-000027.jsonl	Larry Allums connection	page
 page	recapture-raw-shard-000027.jsonl	Perennial Wisdom Tradition	page
-page	recapture-raw-shard-000027.jsonl	The Center for American and International Law - President	page
+page	recapture-raw-shard-000027.jsonl	The Center for Regional Studies - President	page
 page	recapture-raw-shard-000027.jsonl	humanities	page
 page	recapture-raw-shard-000028.jsonl	*Ace	page
 page	recapture-raw-shard-000028.jsonl	20181024+BW+Time Tracking	page
@@ -358,7 +358,7 @@ page	recapture-raw-shard-000029.jsonl	20191120+BW+Time Tracking	page
 page	recapture-raw-shard-000029.jsonl	20200124+BW+Time Tracking	page
 page	recapture-raw-shard-000029.jsonl	20200331+BW+Time Tracking	page
 page	recapture-raw-shard-000029.jsonl	Roland Underhill	page
-page	recapture-raw-shard-000029.jsonl	Deloitte-Senior Manager-Enabling Areas Learning and Development E20NATSSRMJM101-HRL6	page
+page	recapture-raw-shard-000029.jsonl	Quillon-Senior Manager-Enabling Areas Learning and Development E20NATSSRMJM101-HRL6	page
 page	recapture-raw-shard-000029.jsonl	Adam Gallagher	page
 page	recapture-raw-shard-000029.jsonl	Markdown	page
 page	recapture-raw-shard-000029.jsonl	Production+design+video	page
@@ -390,7 +390,7 @@ page	recapture-raw-shard-000031.jsonl	Production+design+Graphics+Designer+dena b
 page	recapture-raw-shard-000031.jsonl	Sloppy Joes	page
 page	recapture-raw-shard-000031.jsonl	The Embodiment Conference+2020	page
 page	recapture-raw-shard-000031.jsonl	public+*right	page
-page	recapture-raw-shard-000032.jsonl	*Opportunities	page
+page	recapture-raw-shard-000032.jsonl	*Undertakings	page
 page	recapture-raw-shard-000032.jsonl	20210210+BW+Time Tracking	page
 page	recapture-raw-shard-000032.jsonl	20210306+BW+Time Tracking	page
 page	recapture-raw-shard-000032.jsonl	20210323+BW+Time Tracking	page
@@ -413,7 +413,7 @@ page	recapture-raw-shard-000033.jsonl	20211117+BW+Time Tracking	page
 page	recapture-raw-shard-000033.jsonl	20211202+BW+Time Tracking	page
 page	recapture-raw-shard-000033.jsonl	20211222+BW+Time Tracking	page
 page	recapture-raw-shard-000033.jsonl	Crashplan to NAS	page
-page	recapture-raw-shard-000033.jsonl	Learning Pool Delivery Lead - Project Management	page
+page	recapture-raw-shard-000033.jsonl	Practice Pool Delivery Lead - Project Management	page
 page	recapture-raw-shard-000033.jsonl	Span+Archetypes+Alignment	page
 page	recapture-raw-shard-000033.jsonl	Wikirate+Supporters	page
 page	recapture-raw-shard-000034.jsonl	20220104+BW+Time Tracking	page
@@ -426,8 +426,8 @@ page	recapture-raw-shard-000034.jsonl	20220306+BW+Time Tracking	page
 page	recapture-raw-shard-000034.jsonl	20220317+BW+Time Tracking	page
 page	recapture-raw-shard-000034.jsonl	20220325+BW+Time Tracking	page
 page	recapture-raw-shard-000034.jsonl	20220404+BW+Time Tracking	page
-page	recapture-raw-shard-000034.jsonl	Learning Pool+Customer Success Consultant	page
-page	recapture-raw-shard-000034.jsonl	Learning Pool+discussion	page
+page	recapture-raw-shard-000034.jsonl	Practice Pool+Customer Success Consultant	page
+page	recapture-raw-shard-000034.jsonl	Practice Pool+discussion	page
 page	recapture-raw-shard-000034.jsonl	Henry Farnham relationship	page
 page	recapture-raw-shard-000035.jsonl	202200505+BW+RVW	page
 page	recapture-raw-shard-000035.jsonl	20220412+BW+Time Tracking	page

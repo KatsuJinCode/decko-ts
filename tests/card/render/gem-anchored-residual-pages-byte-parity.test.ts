@@ -8,7 +8,7 @@
 //       virtual? override was unported; card-mod-search-0.20.0
 //       set/abstract/virtual_search.rb:11-12 -- FIXED, see
 //       src/card/fetch/virtual-search-cards.ts);
-//   *all+*head, PCTS+*self+*head      -- the engine rendered the Setting
+//   *all+*head, ZQVT+*self+*head      -- the engine rendered the Setting
 //       cardtype's rule listing (rule_help alert + phantom rule bars) where
 //       the oracle renders the CodeRay core (card-mod-layout
 //       set/right/head.rb:16-18 view :core + set/self/head.rb:14-21
@@ -47,7 +47,7 @@ const SHARDS_PRESENT = existsSync(PAGE_LANE_DIR);
 
 /** The three formerly-red pages, named by the replays-adjudication sweep
  *  (its tmp/nest-sel-replay/sweep-results.jsonl slot diffs). */
-const PAGES = ["GIV-the god of intimate violence", "*all+*head", "PCTS+*self+*head"];
+const PAGES = ["GIV-the god of intimate violence", "*all+*head", "ZQVT+*self+*head"];
 
 interface PageLaneLine {
   lane: string;

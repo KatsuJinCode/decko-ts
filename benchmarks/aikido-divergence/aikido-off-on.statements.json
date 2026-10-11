@@ -1761,7 +1761,7 @@
   {
    "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AND trash = 0",
    "params": [
-    "regina_chatham",
+    "nadine_corliss",
     "aiki",
     "aikido_benefit",
     "aikido_theme",
@@ -1943,7 +1943,7 @@
   {
    "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
    "params": [
-    "martial_nonviolence",
+    "martial_concordance",
     "being_in_movement"
    ],
    "rowCount": 2,
@@ -2065,7 +2065,7 @@
   {
    "sql": "SELECT * FROM cards WHERE \"key\" COLLATE NOCASE IN (?, ?) AND trash = 0",
    "params": [
-    "casey_morgan",
+    "riley_ellery",
     "conflict_done_well_method"
    ],
    "rowCount": 2,

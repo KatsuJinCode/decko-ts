@@ -186,11 +186,11 @@ function navDropdown(ctx: ViewContext): string {
  *  Ruby's item walk renders ITEM CARDS (Abstract::List#list_cards —
  *  set/abstract/list.rb, the card-mod-layout module this file ports), so a
  *  raw item string that is no card reference ("https://example.com/
- *  card/new|New Card", corpus card 38283 *Opportunities) never becomes a
+ *  card/new|New Card", corpus card 38283 *Undertakings) never becomes a
  *  render and its join separator vanishes with it; the same for a render
  *  that resolves to no bytes (the engine's unknown-card substitution).
  *  live capture: ZERO `\n\n` sequences inside any captured dropdown-menu
- *  block (the *Opportunities menu renders `divider + "\n" + <denied>` —
+ *  block (the *Undertakings menu renders `divider + "\n" + <denied>` —
  *  the engine's kept empty row emitted `divider\n\n<denied>`, the graded
  *  +1 on every page whose nav carries that menu). */
 function dropdownMenuItems(ctx: ViewContext): string {

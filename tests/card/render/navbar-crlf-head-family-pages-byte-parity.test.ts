@@ -4,10 +4,10 @@
 // from its oracle shard by one CR in the navbar join, engine 0 CRs vs oracle
 // 1 CR at offset ~4916):
 //
-//   FrAi+*right+*head, GBA+*right+*head, *head+*self, *head+*right
+//   MoKi+*right+*head, HBQ+*right+*head, *head+*self, *head+*right
 //
 // The navbar CR's source is corpus card 22752 "*main menu", whose db content
-// is "[[*Opportunities|Opportunities]]\r\n[[*search|Changes]]" -- exactly one
+// is "[[*Undertakings|Opportunities]]\r\n[[*search|Changes]]" -- exactly one
 // CRLF between the two link chunks. Ruby keeps it because navbar_items walks
 // process_content(nil, chunk_list: :references) and renders every non-link
 // chunk with chunk.process_chunk verbatim (card-mod-layout-0.20.0
@@ -54,7 +54,7 @@ const CORPUS_PRESENT = existsSync(RAW_CORPUS_DB);
 const SHARDS_PRESENT = existsSync(PAGE_LANE_DIR);
 
 /** The four *head-family rule pages (the prior receipt's residual class). */
-const PAGES = ["FrAi+*right+*head", "GBA+*right+*head", "*head+*self", "*head+*right"];
+const PAGES = ["MoKi+*right+*head", "HBQ+*right+*head", "*head+*self", "*head+*right"];
 
 interface PageLaneLine {
   lane: string;

@@ -6,7 +6,7 @@
 // tests/card/mod-loader/oracle-capture-bar-box-format-views.rb (commit
 // 191851c): three targets ("Oracle Basics" 605 RichText, the deck-level
 // "Home" 521 RichText, the "Decko logo" 291 Image) x three actors (Decko
-// Bot = signed-in admin, Sara = signed-in member, Anonymous), with the
+// Bot = signed-in admin, Tova = signed-in member, Anonymous), with the
 // in-run no-write proof card_actions 4928 -> 4928 in the fixture
 // (no_write_proof.unchanged).
 //
@@ -32,13 +32,13 @@
 // Actor arms: bot is rendered by the main engine (viewer actorId 1, the
 // decko_bot-codename card -> always-ok — the seed below rides
 // DECKOBOT_CODENAME, the deck's STORED bot codename (codename.rb:107-110
-// camelize derivation), the edit2 stand-in), sara by
-// a signed-in non-admin engine (actorId 1217, the oracle deck's Sara id)
+// camelize derivation), the edit2 stand-in), tova by
+// a signed-in non-admin engine (actorId 1217, the oracle deck's Tova id)
 // whose update permission rides the seeded *all+*update -> [[Anyone
 // Signed In]] rule (the deck's member-update grant), anonymous by a
 // default anonymous engine. Every TS render is compared against its own
-// actor's fixture arm; the bot render is ALSO compared against the sara
-// arm and the sara render against the bot arm (on this surface the two
+// actor's fixture arm; the bot render is ALSO compared against the tova
+// arm and the tova render against the bot arm (on this surface the two
 // signed-in oracle arms are byte-identical modulo the masks - asserted
 // as a fixture property in the first test).
 //
@@ -249,7 +249,7 @@ beforeAll(async () => {
   // the three actor engines over the same storage
   s.engine.viewer = { signedIn: true, actorId: 1 }; // bot stand-in (always-ok)
   saraEngine = new RenderEngine(new FetchEngine(s.counting));
-  saraEngine.viewer = { signedIn: true, actorId: 1217 }; // the deck's Sara
+  saraEngine.viewer = { signedIn: true, actorId: 1217 }; // the deck's Tova
   anonymousEngine = new RenderEngine(new FetchEngine(s.counting));
 }, 60_000);
 
@@ -266,12 +266,12 @@ describe("oracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-v
     expect(SEED.no_write_proof.unchanged).toBe(true);
     for (const [label, target] of Object.entries(FIXTURE.targets)) {
       for (const [view, botArm] of Object.entries(target.views.bot)) {
-        const saraArm = target.views.sara[view];
+        const saraArm = target.views.tova[view];
         const anonArm = target.views.anonymous[view];
         if (botArm.bytes !== undefined) {
           expect(
             normalize(botArm.bytes),
-            `${label}/${view}: bot arm vs sara arm`,
+            `${label}/${view}: bot arm vs tova arm`,
           ).toBe(normalize(saraArm.bytes));
         }
         // anonymity differences are recorded, not assumed: expected and
@@ -287,17 +287,17 @@ describe("oracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-v
   });
 
   // one it per target x view: three actor renders, each compared against
-  // its own fixture arm (bot also vs sara arm, sara also vs bot arm)
+  // its own fixture arm (bot also vs tova arm, tova also vs bot arm)
   for (const [label, targetName] of Object.entries(TARGET_NAMES)) {
     const target = FIXTURE.targets[label];
     for (const view of Object.keys(target.views.bot)) {
-      it(`${targetName} (${label}): :${view} matches the oracle bytes (bot + sara + anonymous)`, async () => {
+      it(`${targetName} (${label}): :${view} matches the oracle bytes (bot + tova + anonymous)`, async () => {
         const s = storage!;
         const mismatches: string[] = [];
 
         const arms: Array<[string, RenderEngine]> = [
           ["bot", s.engine],
-          ["sara", saraEngine!],
+          ["tova", saraEngine!],
           ["anonymous", anonymousEngine!],
         ];
         for (const [actor, engine] of arms) {
@@ -321,7 +321,7 @@ describe("oracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-v
           // each actor's render against its own arm; the signed-in
           // renders additionally against the OTHER signed-in arm
           const expectedArms =
-            actor === "anonymous" ? [actor] : [actor, actor === "bot" ? "sara" : "bot"];
+            actor === "anonymous" ? [actor] : [actor, actor === "bot" ? "tova" : "bot"];
           for (const armName of expectedArms) {
             const expected = normalize(target.views[armName][view].bytes ?? "");
             if (actual !== expected) {

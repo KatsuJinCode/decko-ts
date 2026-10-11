@@ -9,7 +9,7 @@
 #
 # Records to <script-repo>/fixtures/captured/board-views.json:
 # 1. For each target card ("Oracle Basics" / "Home" - the same two targets
-#    as the edit-views capture) and each actor (bot / sara / anonymous):
+#    as the edit-views capture) and each actor (bot / tova / anonymous):
 #    the rendered bytes of the 8 views. :board is perms :update - anonymous
 #    records the denial exactly as the previous captures did; :edit_rules
 #    has no perms directive but nests the current set card's
@@ -35,7 +35,7 @@ TARGETS = [
   { name: "Oracle Basics", label: "basic_note" },
   { name: "Home",          label: "deck_level" }
 ].freeze
-ACTORS = %w[bot sara anonymous].freeze
+ACTORS = %w[bot tova anonymous].freeze
 VIEWS  = %w[board cardboard engage_tab follow_section history_tab
             related_tab rules_tab edit_rules].freeze
 
@@ -64,11 +64,11 @@ end
 def as_actor(actor)
   case actor
   when "bot"   then Card::Auth.signin(Card::DeckoBotID)
-  when "sara"
-    sara = Card["Sara"]
-    raise "Sara account card missing" unless sara
+  when "tova"
+    tova = Card["Tova"]
+    raise "Tova account card missing" unless tova
 
-    Card::Auth.signin(sara.id)
+    Card::Auth.signin(tova.id)
   when "anonymous" then Card::Auth.signin(Card::AnonymousID)
   end
   yield
@@ -86,7 +86,7 @@ def action_count
   ActiveRecord::Base.connection.select_value("SELECT COUNT(*) FROM card_actions").to_i
 end
 
-results = { "actors_note" => "bot=Decko Bot(admin) sara=Sara(non-admin member) anonymous=Anonymous",
+results = { "actors_note" => "bot=Decko Bot(admin) tova=Tova(non-admin member) anonymous=Anonymous",
             "normalizations" => {
               "data-card-id" => "RANDOMIZED",
               "data-select2-id" => "SELECT2",

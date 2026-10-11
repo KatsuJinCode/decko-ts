@@ -13,7 +13,7 @@
 //   a search card queries had no outgoing reference rows and the engine rendered
 //   `search-no-results` where the Ruby oracle renders a result list.
 //
-//   Measured on `media+GBA+YouTube Browser` (page-lane shard 000008):
+//   Measured on `media+HBQ+YouTube Browser` (page-lane shard 000008):
 //     staging copy : expected=110105 actual=16989  delta=-93116
 //                    signature {lists:0, items:0, no:2}
 //     committed home: expected=110105 actual=103829 delta=-6276

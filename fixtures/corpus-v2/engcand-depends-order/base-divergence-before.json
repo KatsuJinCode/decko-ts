@@ -42,7 +42,7 @@
     "liveEqEngine": false
   },
   {
-    "name": "Morgan",
+    "name": "Ellery",
     "liveLen": 15931,
     "engineLen": 60388,
     "liveEqEngine": false
@@ -131,8 +131,8 @@
           "Conflict Done Well+Online",
           "Task+Log Entry+*type plus right+*default",
           "Span+Archetypes",
-          "Learning Pool+Onboarding",
-          "Learning Pool+training+Notes"
+          "Practice Pool+Onboarding",
+          "Practice Pool+training+Notes"
         ]
       },
       {
@@ -177,16 +177,16 @@
           "45649"
         ],
         "onlyLiveNames": [
-          "Learning Pool+training+Notes",
-          "Learning Pool+Onboarding",
+          "Practice Pool+training+Notes",
+          "Practice Pool+Onboarding",
           "Span+Archetypes",
           "Task+Log Entry+*type plus right+*default",
           "Conflict Done Well+Online",
           "*input type+*right+*content options",
           "*home",
-          "*Opportunities",
+          "*Undertakings",
           "Aikido 2.0",
-          "Casey Morgan",
+          "Riley Ellery",
           "EricZ",
           "martialnonviolence",
           "*footer"
@@ -199,9 +199,9 @@
           "*layout+*right+*input type",
           "Topic+*right+*input type",
           "*home",
-          "*Opportunities",
+          "*Undertakings",
           "Aikido 2.0",
-          "Casey Morgan",
+          "Riley Ellery",
           "EricZ",
           "martialnonviolence",
           "*footer"

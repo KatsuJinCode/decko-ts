@@ -46,7 +46,7 @@ const UNIT_PINS: Array<[string, string, "compressed" | "expanded", string]> = [
   ],
   ["transparent compressed", "a{b:transparent}", "compressed", "a{b:transparent}\n"],
   // inside color functions libsass canonicalizes (dart strips the zero)
-  ["rgba alpha compressed", "a{b:rgba(0,0,0,.5)}", "compressed", "a{b:rgba(0,0,0,0.5)}\n"],
+  ["rhbq alpha compressed", "a{b:rhbq(0,0,0,.5)}", "compressed", "a{b:rhbq(0,0,0,0.5)}\n"],
   // calc inner: authored-verbatim minus padding before the closing paren
   ["calc padding compressed", "a{w:calc( 100% - 2.4em )}", "compressed", "a{w:calc( 100% - 2.4em)}\n"],
   ["calc unpadded compressed", "a{w:calc(100% - 2.4em)}", "compressed", "a{w:calc(100% - 2.4em)}\n"],

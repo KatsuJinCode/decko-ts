@@ -275,15 +275,15 @@ FAIL mod: shades+*script:page expectedBytes=14197 actualBytes=14300 delta=103 fi
   region 1/1 expected[6809..+7388] actual[6809..+7491] delta=103 resynced=false
     expected: "JavaScript (or CoffeeScript) for card&#39;s page.\" data-bs-placement=\"left\" class=\"help-link ps-1 _popover_link _card-menu-popover\" data-bs-title=\"&lt;a class=&quot;known-card&quot; href=&quot;/mod_shades&quot;&gt;mod: shades&lt;/a&gt;+&lt;a class=&quot;known-card&quot; href=&quot;/*script&quot;&gt;*script&lt;/a&gt; (&lt;a class=&quot;cardtype known-card&quot; href=&quot;/List&quot;&gt;List&lt;/a&gt;) &lt;a class=&quot;full-page-link known-card&quot; href=&quot;/mod_shades+*script&quot;&gt;&lt;i class=&quot;notranslate material-icons&quot;&gt;open_in_full&lt;/i&gt; &lt;/a&gt;\" href=\"#\"><i class=\"notranslate material-icons\">help</i></a>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slotter-mode=\"modal\" data-modal-class=\"modal-lg\" href=\"/mod_shades+*script/edit\" data-remote=\"true\"><i class=\"
     actual:   "-content=\" &lt;div class=&quot;ms-auto&quot;&gt;&lt;a class=&quot;text-muted known-card&quot; href=&quot;/*script&quot;&gt; (1 script rules)&lt;/a&gt;&lt;/div&gt;\" data-bs-placement=\"left\" class=\"help-link ps-1 _popover_link _card-menu-popover\" data-bs-title=\"&lt;a class=&quot;known-card&quot; href=&quot;/mod_shades&quot;&gt;mod: shades&lt;/a&gt;+&lt;a class=&quot;known-card&quot; href=&quot;/*script&quot;&gt;*script&lt;/a&gt; (&lt;a class=&quot;cardtype known-card&quot; href=&quot;/List&quot;&gt;List&lt;/a&gt;) &lt;a class=&quot;full-page-link known-card&quot; href=&quot;/mod_shades+*script&quot;&gt;&lt;i class=&quot;notranslate material-icons&quot;&gt;open_in_full&lt;/i&gt; &lt;/a&gt;\" href=\"#\"><i class=\"notranslate material-icons\">help</i></a>\n<a rel=\"nofollow\" class=\"edit-link slotter\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-bs-placement=\"bottom\" data-slott
-PASS Don't Wait For The Study+*self+Casey Morgan+*follow:closed (byte-identical after slot-id normalization)
-PASS Don't Wait For The Study+*self+Casey Morgan+*follow:open (byte-identical after slot-id normalization)
+PASS Don't Wait For The Study+*self+Riley Ellery+*follow:closed (byte-identical after slot-id normalization)
+PASS Don't Wait For The Study+*self+Riley Ellery+*follow:open (byte-identical after slot-id normalization)
 PASS *all+*all+*follow:closed (byte-identical after slot-id normalization)
 PASS *all+*all+*follow:open (byte-identical after slot-id normalization)
-PASS Make Contact+*self+Casey Morgan+*follow:closed (byte-identical after slot-id normalization)
-PASS Make Contact+*self+Casey Morgan+*follow:open (byte-identical after slot-id normalization)
-PASS Don't Wait For The Study+*self+Casey Morgan+*follow:page (byte-identical after slot-id normalization)
+PASS Make Contact+*self+Riley Ellery+*follow:closed (byte-identical after slot-id normalization)
+PASS Make Contact+*self+Riley Ellery+*follow:open (byte-identical after slot-id normalization)
+PASS Don't Wait For The Study+*self+Riley Ellery+*follow:page (byte-identical after slot-id normalization)
 PASS *all+*all+*follow:page (byte-identical after slot-id normalization)
-PASS Make Contact+*self+Casey Morgan+*follow:page (byte-identical after slot-id normalization)
+PASS Make Contact+*self+Riley Ellery+*follow:page (byte-identical after slot-id normalization)
 PROBE summary:
   FAIL mod: account+*style:closed -25
   FAIL mod: ace editor+*script:closed 103
@@ -353,13 +353,13 @@ PROBE summary:
   FAIL mod: shades+*script:closed 103
   FAIL mod: account+*script:page 103
   FAIL mod: shades+*script:page 103
-  PASS Don't Wait For The Study+*self+Casey Morgan+*follow:closed 0
-  PASS Don't Wait For The Study+*self+Casey Morgan+*follow:open 0
+  PASS Don't Wait For The Study+*self+Riley Ellery+*follow:closed 0
+  PASS Don't Wait For The Study+*self+Riley Ellery+*follow:open 0
   PASS *all+*all+*follow:closed 0
   PASS *all+*all+*follow:open 0
-  PASS Make Contact+*self+Casey Morgan+*follow:closed 0
-  PASS Make Contact+*self+Casey Morgan+*follow:open 0
-  PASS Don't Wait For The Study+*self+Casey Morgan+*follow:page 0
+  PASS Make Contact+*self+Riley Ellery+*follow:closed 0
+  PASS Make Contact+*self+Riley Ellery+*follow:open 0
+  PASS Don't Wait For The Study+*self+Riley Ellery+*follow:page 0
   PASS *all+*all+*follow:page 0
-  PASS Make Contact+*self+Casey Morgan+*follow:page 0
+  PASS Make Contact+*self+Riley Ellery+*follow:page 0
 PROBE outputs in C:\localProjects\decko-ts-lane-restore-w1-helppopover-2026-10-03\tmp\restore-w1-helppopover\probe-red

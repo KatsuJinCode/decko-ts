@@ -50,7 +50,7 @@ beforeAll(async () => {
 
   // users
   await seedCard(s, { id: 3, name: "User", codename: "user", typeId: 13 });
-  await seedCard(s, { id: 300, name: "Casey", typeId: 3 });
+  await seedCard(s, { id: 300, name: "Riley", typeId: 3 });
 
   // --- LEFT 1: *nests rule + an inclusion row -> the arm fires -------------
   await seedCard(s, { id: 402, name: "status", typeId: 2 });
@@ -69,12 +69,12 @@ beforeAll(async () => {
   });
   await seedCard(s, {
     id: 420,
-    name: "Project Book+*self+Casey+*follow",
+    name: "Project Book+*self+Riley+*follow",
     leftId: 421, rightId: 110, typeId: 14,
     dbContent: "*always",
   });
   await seedCard(s, {
-    id: 421, name: "Project Book+*self+Casey", leftId: 411, rightId: 300, typeId: 14,
+    id: 421, name: "Project Book+*self+Riley", leftId: 411, rightId: 300, typeId: 14,
   });
   await seedReference(s, 400, 401, "project_book_x_status", "I");
 
@@ -96,12 +96,12 @@ beforeAll(async () => {
   });
   await seedCard(s, {
     id: 440,
-    name: "Linked Book+*self+Casey+*follow",
+    name: "Linked Book+*self+Riley+*follow",
     leftId: 441, rightId: 110, typeId: 14,
     dbContent: "*always",
   });
   await seedCard(s, {
-    id: 441, name: "Linked Book+*self+Casey", leftId: 431, rightId: 300, typeId: 14,
+    id: 441, name: "Linked Book+*self+Riley", leftId: 431, rightId: 300, typeId: 14,
   });
   await seedReference(s, 403, 404, "linked_book_x_status_two", "L");
 
@@ -124,12 +124,12 @@ beforeAll(async () => {
   });
   await seedCard(s, {
     id: 460,
-    name: "Keyed Book+*self+Casey+*follow",
+    name: "Keyed Book+*self+Riley+*follow",
     leftId: 461, rightId: 110, typeId: 14,
     dbContent: "*always",
   });
   await seedCard(s, {
-    id: 461, name: "Keyed Book+*self+Casey", leftId: 451, rightId: 300, typeId: 14,
+    id: 461, name: "Keyed Book+*self+Riley", leftId: 451, rightId: 300, typeId: 14,
   });
 
   // --- LEFT 4: NO *self rule - the *all fall-back rule carries *nests
@@ -151,12 +151,12 @@ beforeAll(async () => {
   });
   await seedCard(s, {
     id: 480,
-    name: "All-Ruled Book+*self+Casey+*follow",
+    name: "All-Ruled Book+*self+Riley+*follow",
     leftId: 481, rightId: 110, typeId: 14,
     dbContent: "*always",
   });
   await seedCard(s, {
-    id: 481, name: "All-Ruled Book+*self+Casey", leftId: 471, rightId: 300, typeId: 14,
+    id: 481, name: "All-Ruled Book+*self+Riley", leftId: 471, rightId: 300, typeId: 14,
   });
   await seedReference(s, 409, 501, "all_ruled_book_x_status_four", "I");
 }, 60_000);

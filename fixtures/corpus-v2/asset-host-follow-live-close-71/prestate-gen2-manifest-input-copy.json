@@ -648,10 +648,10 @@
           "appliedAt": "2026-10-03T11:32:40.956Z"
         },
         {
-          "id": "page:Morgan:page",
+          "id": "page:Ellery:page",
           "lane": "page",
           "shard": "recapture-raw-shard-000013.jsonl",
-          "name": "Morgan",
+          "name": "Ellery",
           "view": "page",
           "cls": "MIXED",
           "action": "SWAP-NEITHER-SIDE-PASSES",
@@ -660,9 +660,9 @@
           "oldSha256": "0779365a08922194500b9377f14fd87b3f7979d18becc20bdfd25e4dc5ce68d1",
           "newBytes": 16909,
           "newSha256": "322e183d8b15dd4c3550f61eaaebe54bfcd516aea45592aa0fd12e862a30b256",
-          "liveSource": "updated-expectations/page-Morgan.live.html",
+          "liveSource": "updated-expectations/page-Ellery.live.html",
           "fetchedAt": "2026-10-03T03:47:09.953Z",
-          "url": "https://culturesmith.com/Morgan",
+          "url": "https://culturesmith.com/Ellery",
           "caveat": null,
           "appliedAt": "2026-10-03T11:32:40.957Z"
         },
@@ -1031,18 +1031,18 @@
           "appliedAt": "2026-10-03T12:31:50.875Z"
         },
         {
-          "id": "page:PCTS+*self+*head:page",
+          "id": "page:ZQVT+*self+*head:page",
           "lane": "page",
           "shard": "recapture-raw-shard-000029.jsonl",
-          "name": "PCTS+*self+*head",
+          "name": "ZQVT+*self+*head",
           "view": null,
           "class": "ORIGINAL-CHANGED",
           "priorState": "present-in-generation-1-post-staging",
           "oldSha256": "0c73ae4c13db4e1d6f3b7257a830eefddb8b86c4f761835baad1e0adac628519",
           "newBytes": 19056,
           "newSha256": "41e397425bf362a36b862a5efdb752c50c8ecf99552dd251a27f33d7be36690b",
-          "liveSource": "live-now-recapture-2026-10-02/pages\\PCTS+%2Aself+%2Ahead.html",
-          "url": "https://culturesmith.com/PCTS+*self+*head",
+          "liveSource": "live-now-recapture-2026-10-02/pages\\ZQVT+%2Aself+%2Ahead.html",
+          "url": "https://culturesmith.com/ZQVT+*self+*head",
           "httpStatus": 200,
           "fetchedAt": "2026-10-03T12:07:20.202Z",
           "appliedAt": "2026-10-03T12:31:50.875Z"
@@ -1202,35 +1202,35 @@
           "appliedAt": "2026-10-03T12:31:50.876Z"
         },
         {
-          "id": "view:PCTS+*self+*head:content",
+          "id": "view:ZQVT+*self+*head:content",
           "lane": "view",
           "shard": "recapture-raw-shard-000029.jsonl",
-          "name": "PCTS+*self+*head",
+          "name": "ZQVT+*self+*head",
           "view": "content",
           "class": "ORIGINAL-CHANGED",
           "priorState": "present-in-generation-1-post-staging",
           "oldSha256": "906aee4e5845af77da179c5a7800b33e3d59c126a414d2c28e9f516ee6cd4d89",
           "newBytes": 3530,
           "newSha256": "89a4dca5a2a7d381d25ed7d78efbf15ab1e6cf0200f91a7eae023dff513f3c42",
-          "liveSource": "live-now-recapture-2026-10-02/views\\PCTS+%2Aself+%2Ahead__content.html",
-          "url": "https://culturesmith.com/PCTS+*self+*head?view=content",
+          "liveSource": "live-now-recapture-2026-10-02/views\\ZQVT+%2Aself+%2Ahead__content.html",
+          "url": "https://culturesmith.com/ZQVT+*self+*head?view=content",
           "httpStatus": 200,
           "fetchedAt": "2026-10-03T12:07:41.815Z",
           "appliedAt": "2026-10-03T12:31:50.876Z"
         },
         {
-          "id": "view:PCTS+*self+*head:open",
+          "id": "view:ZQVT+*self+*head:open",
           "lane": "view",
           "shard": "recapture-raw-shard-000029.jsonl",
-          "name": "PCTS+*self+*head",
+          "name": "ZQVT+*self+*head",
           "view": "open",
           "class": "ORIGINAL-CHANGED",
           "priorState": "present-in-generation-1-post-staging",
           "oldSha256": "d359f43bed5ec0452d4541d30a6c64eaee7d0674248540863f4c0587562e5d41",
           "newBytes": 5805,
           "newSha256": "e99b212b6217895acd61ff9e3ffba5f79030b69cf270230e0a36f0a124f84ab7",
-          "liveSource": "live-now-recapture-2026-10-02/views\\PCTS+%2Aself+%2Ahead__open.html",
-          "url": "https://culturesmith.com/PCTS+*self+*head?view=open",
+          "liveSource": "live-now-recapture-2026-10-02/views\\ZQVT+%2Aself+%2Ahead__open.html",
+          "url": "https://culturesmith.com/ZQVT+*self+*head?view=open",
           "httpStatus": 200,
           "fetchedAt": "2026-10-03T12:07:43.441Z",
           "appliedAt": "2026-10-03T12:31:50.876Z"
@@ -1576,18 +1576,18 @@
           "appliedAt": "2026-10-03T12:31:50.877Z"
         },
         {
-          "id": "page:Casey feedback+discussion:page",
+          "id": "page:Riley feedback+discussion:page",
           "lane": "page",
           "shard": "recapture-raw-shard-000018.jsonl",
-          "name": "Casey feedback+discussion",
+          "name": "Riley feedback+discussion",
           "view": null,
           "class": "RECORDED-DISAGREEMENT",
           "priorState": "present-in-generation-1-post-staging",
           "oldSha256": "468a7c8e33795af0ac23fe0a628e8fef18fc9802912ff764e2f161d8dc132627",
           "newBytes": 18058,
           "newSha256": "bbb22e20557ecd8fb12c9c17ac3421601e0c58d05618dd103ba0dea04e8061c1",
-          "liveSource": "live-now-recapture-2026-10-02/pages\\Casey_feedback+discussion.html",
-          "url": "https://culturesmith.com/Casey_feedback+discussion",
+          "liveSource": "live-now-recapture-2026-10-02/pages\\Riley_feedback+discussion.html",
+          "url": "https://culturesmith.com/Riley_feedback+discussion",
           "httpStatus": 200,
           "fetchedAt": "2026-10-03T12:08:27.018Z",
           "appliedAt": "2026-10-03T12:31:50.877Z"
@@ -1831,18 +1831,18 @@
           "appliedAt": "2026-10-03T12:31:50.878Z"
         },
         {
-          "id": "view:Casey feedback+discussion:open",
+          "id": "view:Riley feedback+discussion:open",
           "lane": "view",
           "shard": "recapture-raw-shard-000018.jsonl",
-          "name": "Casey feedback+discussion",
+          "name": "Riley feedback+discussion",
           "view": "open",
           "class": "RECORDED-DISAGREEMENT",
           "priorState": "present-in-generation-1-post-staging",
           "oldSha256": "b48a7aa2af1b7d3d3b74fd31ee238262bb72b715790b603ff8989f1505f53b2c",
           "newBytes": 5297,
           "newSha256": "fc23de7164a89783344c4717bc20e1716836af29a88c5451ff94577c081105d6",
-          "liveSource": "live-now-recapture-2026-10-02/views\\Casey_feedback+discussion__open.html",
-          "url": "https://culturesmith.com/Casey_feedback+discussion?view=open",
+          "liveSource": "live-now-recapture-2026-10-02/views\\Riley_feedback+discussion__open.html",
+          "url": "https://culturesmith.com/Riley_feedback+discussion?view=open",
           "httpStatus": 200,
           "fetchedAt": "2026-10-03T12:08:58.513Z",
           "appliedAt": "2026-10-03T12:31:50.879Z"
@@ -2190,7 +2190,7 @@
         "restoredVia": "live-now recapture 2026-10-02"
       },
       {
-        "page": "PCTS+*self+*head",
+        "page": "ZQVT+*self+*head",
         "class": "ORIGINAL-CHANGED",
         "restoredVia": "live-now recapture 2026-10-02"
       },
@@ -2484,7 +2484,7 @@
       "note": "generation-1 hedged on frozen bytes despite measured old-vs-live disagreement; swapped to live-now bytes per the same ruling"
     },
     {
-      "page": "Casey feedback+discussion",
+      "page": "Riley feedback+discussion",
       "class": "REBUILD-GAP",
       "included": true,
       "expectationSource": "live-now",
@@ -2664,7 +2664,7 @@
       "note": "frozen capture; unchanged from generation 1"
     },
     {
-      "page": "media+GBA+YouTube Browser",
+      "page": "media+HBQ+YouTube Browser",
       "class": "REBUILD-GAP",
       "included": true,
       "expectationSource": "frozen-capture",
@@ -3134,7 +3134,7 @@
       "note": "exclusion reversed per the operator's no-exclusions ruling; every HTTP-surface entry re-anchored to live-now bytes (fetched 2026-10-02, 200); record metadata stays frozen (no live record surface)"
     },
     {
-      "page": "PCTS+*self+*head",
+      "page": "ZQVT+*self+*head",
       "class": "ORIGINAL-CHANGED",
       "included": true,
       "expectationSource": "live-now",
@@ -3174,7 +3174,7 @@
       "note": "frozen capture; unchanged from generation 1"
     },
     {
-      "page": "Morgan",
+      "page": "Ellery",
       "class": "MIXED",
       "included": true,
       "expectationSource": "frozen-capture",

@@ -13,8 +13,8 @@
 // The table is three uncountables (`s`, `this`, `anonymous`;
 // oracle-deck-inflections.ts:53-55) recovered from the deck's 9,466 stored
 // keys: `Anonymous` -> `anonymous` (default `anonymou`), `SCarol` ->
-// `s_carol` (default `_carol`), `Casey's` -> `casey_s` (default
-// `casey_`), `delete this` -> `delete_this` (default `delete_thi`).
+// `s_carol` (default `_carol`), `Riley's` -> `riley_s` (default
+// `riley_`), `delete this` -> `delete_this` (default `delete_thi`).
 //
 // WHY IT IS A RENDER DEFECT AND NOT ONLY A LOOKUP DEFECT. The derived key
 // rides straight into the slot class tokens every card emits, so an origin
@@ -96,7 +96,7 @@ const ORIGINS = [
 const DECK_KEYED_NAMES = [
   { name: "Anonymous", deckKey: "anonymous", defaultKey: "anonymou" },
   { name: "SCarol", deckKey: "s_carol", defaultKey: "_carol" },
-  { name: "Casey's", deckKey: "casey_s", defaultKey: "casey_" },
+  { name: "Riley's", deckKey: "riley_s", defaultKey: "riley_" },
   { name: "delete this", deckKey: "delete_this", defaultKey: "delete_thi" },
 ] as const;
 

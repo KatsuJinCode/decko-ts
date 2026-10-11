@@ -52,7 +52,7 @@ import {
 } from "../../../src/card/notify/mail.js";
 
 const TEMPLATE: EmailTemplate = {
-  to: "sara@example.com",
+  to: "tova@example.com",
   from: "no-reply@decko.org",
   subject: "{{follower}} changed {{followed_set}} on {{follow_option}}",
   textBody: "Hi! {{follower}} changed {{followed_set}}.",
@@ -64,8 +64,8 @@ const TEMPLATE: EmailTemplate = {
 // literal name with braces stripped (the captured fixture pins the
 // unresolvable branch: fixtures/captured/follow-notification.json).
 const NOTICE: FollowNotice = {
-  follower: "Sara",
-  followedSet: "John Following",
+  follower: "Tova",
+  followedSet: "Jonas Following",
   followOption: "always",
 };
 
@@ -75,12 +75,12 @@ describe("interpolateTemplate (real-oracle semantics)", () => {
       interpolateTemplate(
         "{{follower}} :: {{followed_set}} :: {{follow_option}}",
         {
-          follower: "Sara",
-          followed_set: "John Following",
+          follower: "Tova",
+          followed_set: "Jonas Following",
           follow_option: "always",
         },
       ),
-    ).toBe("Sara :: John Following :: always");
+    ).toBe("Tova :: Jonas Following :: always");
   });
 
   it("drops the {{ }} braces and renders the placeholder name verbatim when the key is NOT resolved (matches the captured fixture)", () => {
@@ -120,9 +120,9 @@ describe("renderMail (first-mechanism email — bytes match the captured fixture
     // (the trigger) is responsible for copying it onto the template
     // before renderMail() runs. The capture's literal value
     // (fixtures/captured/follow-notification.json delivered[0].to)
-    // is "sara@example.com" because the test template's +*to at
+    // is "tova@example.com" because the test template's +*to at
     // capture time was set to that literal.
-    expect(mail.to).toBe("sara@example.com");
+    expect(mail.to).toBe("tova@example.com");
   });
 
   it("from is the literal from the template", () => {
@@ -139,14 +139,14 @@ describe("renderMail (first-mechanism email — bytes match the captured fixture
     // capture's literal variant is the UNRESOLVED branch, pinned by the
     // empty-vars interpolateTemplate test above.
     expect(mail.subject).toBe(
-      "Sara changed John Following on always",
+      "Tova changed Jonas Following on always",
     );
   });
 
   it("text body substitutes the resolved inclusions", () => {
     // The capture's literal body ("Hi! follower changed followed_set.")
     // pinned the unresolved branch; with resolution, the values render.
-    expect(mail.textBody).toBe("Hi! Sara changed John Following.");
+    expect(mail.textBody).toBe("Hi! Tova changed Jonas Following.");
   });
 
   it("does not emit an htmlBody when the template omits one", () => {
@@ -158,8 +158,8 @@ describe("renderMail (first-mechanism email — bytes match the captured fixture
     // via tags. Downstream transports (Postmark, SES) use these.
     expect(mail.tags).toEqual({
       trigger: "follow_notification",
-      follower: "Sara",
-      followed_set: "John Following",
+      follower: "Tova",
+      followed_set: "Jonas Following",
       follow_option: "always",
     });
   });
@@ -170,7 +170,7 @@ describe("renderMail (first-mechanism email — bytes match the captured fixture
       NOTICE,
     );
     expect(mailWithHtml.htmlBody).toBe(
-      "<p>Hi! Sara changed John Following.</p>",
+      "<p>Hi! Tova changed Jonas Following.</p>",
     );
   });
 
@@ -187,11 +187,11 @@ describe("mailToString (one-line envelope for snapshots/tests)", () => {
   it("includes From / To / Subject / body in that order", () => {
     const text = mailToString(renderMail(TEMPLATE, NOTICE));
     expect(text).toContain("From: no-reply@decko.org");
-    expect(text).toContain("To: sara@example.com");
+    expect(text).toContain("To: tova@example.com");
     expect(text).toContain(
-      "Subject: Sara changed John Following on always",
+      "Subject: Tova changed Jonas Following on always",
     );
-    expect(text).toContain("\nHi! Sara changed John Following.");
+    expect(text).toContain("\nHi! Tova changed Jonas Following.");
     expect(text.indexOf("From:")).toBeLessThan(text.indexOf("To:"));
     expect(text.indexOf("To:")).toBeLessThan(text.indexOf("Subject:"));
   });

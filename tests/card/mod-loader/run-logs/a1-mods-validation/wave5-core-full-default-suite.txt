@@ -390,37 +390,37 @@ ENGINE-NEST {"requested":"unfollow_url","view":"unfollow_url","card":"*changed c
 [90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: bot stand-in (always_ok) - all pinned arms match the oracle bytes
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
 [90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: anonymous - the perms views deny quietly, the rest renders the full bytes
@@ -446,11 +446,11 @@ ENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*
 [90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: bot stand-in - the board family matches the oracle bytes (both targets)
 [22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Home+discussion","unknown":true,"nestName":"Home+discussion"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in - the board family matches the oracle bytes
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in - the board family matches the oracle bytes
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in - the board family matches the oracle bytes
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in - the board family matches the oracle bytes
 [22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Oracle Basics+discussion","unknown":true,"nestName":"Oracle Basics+discussion"}
 
  [32m✓[39m tests/card/mod-loader/card-mod-edit-views.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 106[2mms[22m[39m
@@ -885,63 +885,63 @@ ENGINE-NEST {"requested":"titled","view":"titled","card":"Depth Level 21","nestN
      [33m[2m✓[22m[39m the report marks checks-fail on an inconsistent target[33m 783[2mms[22m[39m
  [2m[90m↓[39m[22m tests/card/one-trip/inline-chunked-fetch.test.ts [2m([22m[2m10 tests[22m[2m | [22m[33m10 skipped[39m[2m)[22m
  [32m✓[39m tests/card/mod-loader/card-mod-recaptcha-validate-event.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 45[2mms[22m[39m
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box_middle matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box_middle matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box_middle matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box_middle matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box_middle matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :box_middle matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :expanded_bar matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :expanded_bar matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :expanded_bar matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :expanded_bar matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :expanded_bar matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :expanded_bar matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_bar matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_bar matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_bar matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_bar matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_bar matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_bar matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_content matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_content matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_content matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_content matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_content matches the oracle bytes (bot + sara + anonymous)
+[90mstdout[2m | tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts[2m > [22m[2moracle-pinned bar/box/format bytes (fixtures/captured/bar-box-format-views.json)[2m > [22m[2mHome (deck_level): :open_content matches the oracle bytes (bot + tova + anonymous)
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*getting started","nestName":":getting_started"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*getting started+Shark","nestName":"+:shark"}
 
@@ -1065,12 +1065,12 @@ ENGINE-NEST {"requested":"content","view":"content","card":"*footer","nestName":
    [31m❯[39m renderplan replay: the cold render's trip profile is plan-driven [2m(1)[22m
 [31m     [31m×[31m replays Home to the 5-trip floor, zero covered-family live reads, bytes equal to OFF[39m[32m 5[2mms[22m[39m
 [90mstdout[2m | tests/deploy/bunny-edge-person-participating-virtual-section.test.ts[2m > [22m[2mbunny edge boot renders the person page's virtual +Project(s) Participating section[2m > [22m[2mboots the corpus deck engines and renders the structured search section
-[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Casey Morgan+Project(s) Organizing","nestName":"+Project(s) Organizing"}
-ENGINE-NEST {"requested":"titled","view":"titled","card":"Casey Morgan+Project(s) Participating","nestName":"+Project(s) Participating"}
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Riley Ellery+Project(s) Organizing","nestName":"+Project(s) Organizing"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"Riley Ellery+Project(s) Participating","nestName":"+Project(s) Participating"}
 
 [90mstdout[2m | tests/deploy/bunny-edge-person-participating-virtual-section.test.ts[2m > [22m[2mbunny edge boot renders the person page's virtual +Project(s) Participating section[2m > [22m[2mboots the corpus deck engines and renders the structured search section
-[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Casey Morgan+Project(s) Organizing","nestName":"+Project(s) Organizing"}
-ENGINE-NEST {"requested":"titled","view":"titled","card":"Casey Morgan+Project(s) Participating","nestName":"+Project(s) Participating"}
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Riley Ellery+Project(s) Organizing","nestName":"+Project(s) Organizing"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"Riley Ellery+Project(s) Participating","nestName":"+Project(s) Participating"}
 
 [90mstdout[2m | tests/deploy/bunny-edge-person-participating-virtual-section.test.ts[2m > [22m[2mbunny edge boot renders the person page's virtual +Project(s) Participating section[2m > [22m[2mboots the corpus deck engines and renders the structured search section
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*header","nestName":":header"}
@@ -5747,10 +5747,10 @@ ENGINE-NEST {"requested":"link","view":"link","card":"Set","nestName":"Set"}
  [32m✓[39m tests/card/render/serializer-follow-live-deployment-config.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 6[2mms[22m[39m
  [32m✓[39m tests/card/render/raw-corpus-raise-leadview-pages.test.ts [2m([22m[2m1 test[22m[2m | [22m[33m1 skipped[39m[2m)[22m[32m 2[2mms[22m[39m
 [90mstdout[2m | tests/card/render/help-popover-rule-preference-clause-set.test.ts[2m > [22m[2mrule? clause set (all.rb:33-54): the popover's setting_link rides Ruby's preference? exactly[2m > [22m[2mADMITS the 4-part self-set guard via the USER preferer arm
-[22m[39mLEX-DEBUG Casey Morgan+*account+email isSimple: [33mfalse[39m left: Casey Morgan+*account right: email
+[22m[39mLEX-DEBUG Riley Ellery+*account+email isSimple: [33mfalse[39m left: Riley Ellery+*account right: email
 
 [90mstdout[2m | tests/card/render/help-popover-rule-preference-clause-set.test.ts[2m > [22m[2mrule? clause set (all.rb:33-54): the popover's setting_link rides Ruby's preference? exactly[2m > [22m[2mREFUSES the 4-part shape when the trunk is NOT Set-typed (the clause the widening skipped)
-[22m[39mLEX-DEBUG Casey Morgan+*account+email isSimple: [33mfalse[39m left: Casey Morgan+*account right: email
+[22m[39mLEX-DEBUG Riley Ellery+*account+email isSimple: [33mfalse[39m left: Riley Ellery+*account right: email
 
  [32m✓[39m tests/card/render/help-popover-rule-preference-clause-set.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 60[2mms[22m[39m
  [32m✓[39m tests/card/render/mod-asset-section-and-permission-inherit-core-pins.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 31[2mms[22m[39m
@@ -5786,7 +5786,7 @@ ENGINE-NEST {"requested":"core","view":"core","card":"Small Card","nestName":"Sm
 ENGINE-NEST {"requested":"core","view":"core","card":"Small Card","nestName":"Small Card"}
 
  [32m✓[39m tests/card/render/compact-nest-mode-substitution-and-char-elision.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 41[2mms[22m[39m
-[90mstdout[2m | tests/card/render/structured-child-typed-view.test.ts[2m > [22m[2mstructured/missing children: the typed new-card view (PCTS+legacy class)[2m > [22m[2mrenders the missing +legacy nest as the typed virtual child, not a denial
+[90mstdout[2m | tests/card/render/structured-child-typed-view.test.ts[2m > [22m[2mstructured/missing children: the typed new-card view (ZQVT+legacy class)[2m > [22m[2mrenders the missing +legacy nest as the typed virtual child, not a denial
 [22m[39mENGINE-NEST {"requested":"closed","view":"closed","card":"HostA+legacy","nestName":"+legacy"}
 
  [32m✓[39m tests/card/render/structured-child-typed-view.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 50[2mms[22m[39m
@@ -5843,13 +5843,13 @@ set-member count drifts (capture-vs-dump snapshot skew, R1 class): 0
      [33m[2m✓[22m[39m replays captured non-denied views of structure-pending entries byte-exactly[33m 451[2mms[22m[39m
  [2m[90m↓[39m[22m tests/card/render/cql-append-sort-execution-pins.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
  [32m✓[39m tests/card/render/slot-html-no-double-escape.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 3[2mms[22m[39m
-[90mstdout[2m | tests/card/render/carrierwave-cloud-filename-derivation.test.ts[2m > [22m[2mfile :core renders the derived cloud anchor (Jacob Benedetti acceptance)[2m > [22m[2mrenders <a href='http://s3.amazonaws.com//files/14547/1.doc'>Download +description+CV</a>
-[22m[39mENGINE-NEST {"requested":"content","view":"content","card":"Jacob Benedetti+description","nestName":"+description"}
-ENGINE-NEST {"requested":"content","view":"content","card":"Jacob Benedetti+description+CV","nestName":"+CV"}
+[90mstdout[2m | tests/card/render/carrierwave-cloud-filename-derivation.test.ts[2m > [22m[2mfile :core renders the derived cloud anchor (Jonas Verhoeven acceptance)[2m > [22m[2mrenders <a href='http://s3.amazonaws.com//files/14547/1.doc'>Download +description+CV</a>
+[22m[39mENGINE-NEST {"requested":"content","view":"content","card":"Jonas Verhoeven+description","nestName":"+description"}
+ENGINE-NEST {"requested":"content","view":"content","card":"Jonas Verhoeven+description+CV","nestName":"+CV"}
 
-[90mstdout[2m | tests/card/render/carrierwave-cloud-filename-derivation.test.ts[2m > [22m[2mfile :core renders the derived cloud anchor (Jacob Benedetti acceptance)[2m > [22m[2mrenders <a href='http://s3.amazonaws.com//files/14547/1.doc'>Download +description+CV</a>
-[22m[39mENGINE-NEST {"requested":"content","view":"content","card":"Jacob Benedetti+description","nestName":"+description"}
-ENGINE-NEST {"requested":"content","view":"content","card":"Jacob Benedetti+description+CV","nestName":"+CV"}
+[90mstdout[2m | tests/card/render/carrierwave-cloud-filename-derivation.test.ts[2m > [22m[2mfile :core renders the derived cloud anchor (Jonas Verhoeven acceptance)[2m > [22m[2mrenders <a href='http://s3.amazonaws.com//files/14547/1.doc'>Download +description+CV</a>
+[22m[39mENGINE-NEST {"requested":"content","view":"content","card":"Jonas Verhoeven+description","nestName":"+description"}
+ENGINE-NEST {"requested":"content","view":"content","card":"Jonas Verhoeven+description+CV","nestName":"+CV"}
 
  [32m✓[39m tests/card/render/carrierwave-cloud-filename-derivation.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 40[2mms[22m[39m
  [32m✓[39m tests/card/mod-loader/mod-registration.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 7[2mms[22m[39m

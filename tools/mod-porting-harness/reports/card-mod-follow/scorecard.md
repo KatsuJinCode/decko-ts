@@ -73,8 +73,8 @@ Probe suite: 34 passed / 0 failed (tests/card/mod-loader/card-mod-follow-harness
 | `seed:` | seed | registered-standing-net | yes | - | src/card/mod-loader/mods/card-mod-account.ts |
 | `seed:` | seed | registered-standing-net | yes | - | src/card/mod-loader/mods/card-mod-account.ts |
 | `seed:` | seed | registered-standing-net | yes | - | src/card/mod-loader/mods/card-mod-account.ts |
-| `seed:John` | seed | named-remainder | no | - | no TS registration naming "John" |
-| `seed:Sara` | seed | named-remainder | no | - | no TS registration naming "Sara" |
+| `seed:Jonas` | seed | named-remainder | no | - | no TS registration naming "Jonas" |
+| `seed:Tova` | seed | named-remainder | no | - | no TS registration naming "Tova" |
 | `seed:Big Brother` | seed | named-remainder | no | - | no TS registration naming "Big Brother" |
 | `seed:Optic fan` | seed | named-remainder | no | - | no TS registration naming "Optic fan" |
 | `seed:Sunglasses fan` | seed | named-remainder | no | - | no TS registration naming "Sunglasses fan" |
@@ -92,8 +92,8 @@ Probe suite: 34 passed / 0 failed (tests/card/mod-loader/card-mod-follow-harness
 | `seed:All Eyes On Me` | seed | named-remainder | no | - | no TS registration naming "All Eyes On Me" |
 | `seed:No One Sees Me` | seed | named-remainder | no | - | no TS registration naming "No One Sees Me" |
 | `seed:Look At Me` | seed | named-remainder | no | - | no TS registration naming "Look At Me" |
-| `seed:Sara Following` | seed | named-remainder | no | - | no TS registration naming "Sara Following" |
-| `seed:John Following` | seed | named-remainder | no | - | no TS registration naming "John Following" |
+| `seed:Tova Following` | seed | named-remainder | no | - | no TS registration naming "Tova Following" |
+| `seed:Jonas Following` | seed | named-remainder | no | - | no TS registration naming "Jonas Following" |
 | `seed:` | seed | registered-standing-net | yes | - | src/card/mod-loader/mods/card-mod-account.ts |
 | `seed:` | seed | registered-standing-net | yes | - | src/card/mod-loader/mods/card-mod-account.ts |
 | `seed:` | seed | registered-standing-net | yes | - | src/card/mod-loader/mods/card-mod-account.ts |

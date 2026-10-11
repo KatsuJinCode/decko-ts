@@ -14,7 +14,7 @@
 // algorithm diverges on exactly 105 rows, and every divergence is explained
 // by three words surviving singularization that the default /s$/ rule strips:
 //
-//   lone "s"      "Casey's" -> casey_s   (default: casey_ - the
+//   lone "s"      "Riley's" -> riley_s   (default: riley_ - the
 //                 apostrophe split leaves an "s" part; singularize("s") = "")
 //   "this"        "delete this" -> delete_this (default: delete_thi)
 //   "anonymous"   Anonymous -> anonymous     (default: anonymou)

@@ -17,7 +17,7 @@
 //     (camelize: decko_bot → "DeckoBot"). The codenames and names are deck
 //     data, not gem constants: mod/core/data/real.yml:17-19 seeds the bot
 //     as name "Decko Bot", codename "decko_bot" (recode.yml:8 records the
-//     wagn_bot → decko_bot rename; the codename was never "deckobot").
+//     qagn_bot → decko_bot rename; the codename was never "deckobot").
 //
 // Engine-context mapping: the TS engine has no process-global Auth singleton
 // — the actions layer takes an explicit actor parameter — so `as`/`as_bot`

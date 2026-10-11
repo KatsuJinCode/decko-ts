@@ -672,24 +672,24 @@
       "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
     },
     {
-      "behaviorId": "seed:John",
+      "behaviorId": "seed:Jonas",
       "kind": "seed",
       "source": "card-mod-follow-0.20.0/data/test/users.yml",
       "registration": "no",
       "captured": null,
       "state": "named-remainder",
       "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
-      "evidence": "no TS registration naming \"John\""
+      "evidence": "no TS registration naming \"Jonas\""
     },
     {
-      "behaviorId": "seed:Sara",
+      "behaviorId": "seed:Tova",
       "kind": "seed",
       "source": "card-mod-follow-0.20.0/data/test/users.yml",
       "registration": "no",
       "captured": null,
       "state": "named-remainder",
       "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
-      "evidence": "no TS registration naming \"Sara\""
+      "evidence": "no TS registration naming \"Tova\""
     },
     {
       "behaviorId": "seed:Big Brother",
@@ -862,24 +862,24 @@
       "evidence": "no TS registration naming \"Look At Me\""
     },
     {
-      "behaviorId": "seed:Sara Following",
+      "behaviorId": "seed:Tova Following",
       "kind": "seed",
       "source": "card-mod-follow-0.20.0/data/test.yml",
       "registration": "no",
       "captured": null,
       "state": "named-remainder",
       "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
-      "evidence": "no TS registration naming \"Sara Following\""
+      "evidence": "no TS registration naming \"Tova Following\""
     },
     {
-      "behaviorId": "seed:John Following",
+      "behaviorId": "seed:Jonas Following",
       "kind": "seed",
       "source": "card-mod-follow-0.20.0/data/test.yml",
       "registration": "no",
       "captured": null,
       "state": "named-remainder",
       "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
-      "evidence": "no TS registration naming \"John Following\""
+      "evidence": "no TS registration naming \"Jonas Following\""
     },
     {
       "behaviorId": "seed:",

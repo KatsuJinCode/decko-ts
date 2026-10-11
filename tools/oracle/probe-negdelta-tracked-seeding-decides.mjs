@@ -31,7 +31,7 @@
 // USAGE (from the worktree root)
 //   node tools/oracle/probe-negdelta-tracked-seeding-decides.mjs \
 //     --shard recapture-raw-shard-000008.jsonl \
-//     --names "media+GBA+YouTube Browser" [--out tmp/negdelta-tracked-vs-stale]
+//     --names "media+HBQ+YouTube Browser" [--out tmp/negdelta-tracked-vs-stale]
 
 import { register } from "node:module";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";

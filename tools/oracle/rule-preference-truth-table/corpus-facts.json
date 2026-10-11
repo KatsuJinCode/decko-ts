@@ -1142,18 +1142,18 @@
     }
    },
    {
-    "name": "Don't Wait For The Study+*self+Casey Morgan+*follow",
+    "name": "Don't Wait For The Study+*self+Riley Ellery+*follow",
     "parts": [
      "Don't Wait For The Study",
      "*self",
-     "Casey Morgan",
+     "Riley Ellery",
      "*follow"
     ],
     "fetchedNames": {
      "right": "*follow",
-     "left": "Don't Wait For The Study+*self+Casey Morgan",
+     "left": "Don't Wait For The Study+*self+Riley Ellery",
      "trunk": "Don't Wait For The Study+*self",
-     "preferer": "Casey Morgan"
+     "preferer": "Riley Ellery"
     },
     "resolved": {
      "row": {
@@ -1184,18 +1184,18 @@
     }
    },
    {
-    "name": "Make Contact+*self+Casey Morgan+*follow",
+    "name": "Make Contact+*self+Riley Ellery+*follow",
     "parts": [
      "Make Contact",
      "*self",
-     "Casey Morgan",
+     "Riley Ellery",
      "*follow"
     ],
     "fetchedNames": {
      "right": "*follow",
-     "left": "Make Contact+*self+Casey Morgan",
+     "left": "Make Contact+*self+Riley Ellery",
      "trunk": "Make Contact+*self",
-     "preferer": "Casey Morgan"
+     "preferer": "Riley Ellery"
     },
     "resolved": {
      "row": {
@@ -1538,12 +1538,12 @@
    "typeId": 259,
    "codename": "all"
   },
-  "Don't Wait For The Study+*self+Casey Morgan+*follow": {
+  "Don't Wait For The Study+*self+Riley Ellery+*follow": {
    "id": 26851,
    "typeId": 47,
    "codename": null
   },
-  "Don't Wait For The Study+*self+Casey Morgan": {
+  "Don't Wait For The Study+*self+Riley Ellery": {
    "id": 26850,
    "typeId": 3,
    "codename": null
@@ -1553,17 +1553,17 @@
    "typeId": 259,
    "codename": null
   },
-  "Casey Morgan": {
+  "Riley Ellery": {
    "id": 393,
    "typeId": 4,
    "codename": null
   },
-  "Make Contact+*self+Casey Morgan+*follow": {
+  "Make Contact+*self+Riley Ellery+*follow": {
    "id": 34896,
    "typeId": 47,
    "codename": null
   },
-  "Make Contact+*self+Casey Morgan": {
+  "Make Contact+*self+Riley Ellery": {
    "id": 34895,
    "typeId": 3,
    "codename": null

@@ -8,8 +8,8 @@
 // applicable *structure rule is therefore known-card.
 //
 // The engine classed every id-less bar card wanted-card (only star-right
-// compounds were special-cased), so media+GBA+YouTube Browser's 30
-// `<video>+GBA YTlinkControl` / `<video>+GBA YTlinkView` bars (virtual
+// compounds were special-cased), so media+HBQ+YouTube Browser's 30
+// `<video>+HBQ YTlinkControl` / `<video>+HBQ YTlinkView` bars (virtual
 // through their *right+*structure rules) read wanted-card where Ruby reads
 // known-card.
 //
@@ -41,10 +41,10 @@ describeIfCorpus("bar-menu page links of virtual cards are known-card", () => {
     storage?.close();
   });
 
-  it("media+GBA+YouTube Browser: every +GBA YTlinkControl / +GBA YTlinkView page link is known-card", async () => {
-    const html = await storage!.engine.renderPage("media+GBA+YouTube Browser");
+  it("media+HBQ+YouTube Browser: every +HBQ YTlinkControl / +HBQ YTlinkView page link is known-card", async () => {
+    const html = await storage!.engine.renderPage("media+HBQ+YouTube Browser");
     const links = [
-      ...html.matchAll(/class="full-page-link (known|wanted)-card" href="\/[^"]*\+GBA_YTlink(?:Control|View)[^"]*"/g),
+      ...html.matchAll(/class="full-page-link (known|wanted)-card" href="\/[^"]*\+HBQ_YTlink(?:Control|View)[^"]*"/g),
     ];
     expect(links.length).toBe(30);
     expect(links.filter((m) => m[1] === "wanted").length).toBe(0);

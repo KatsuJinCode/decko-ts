@@ -19,12 +19,12 @@
 // which is why the byte-identity suite could not see it; the oracle page
 // captures are the only ground truth for this behavior.
 //
-// The body below is the VERBATIM `content` of corpus card 12392 (`FrAi
+// The body below is the VERBATIM `content` of corpus card 12392 (`MoKi
 // layout`, read from bench-corpus-raw.sqlite3), and the expected string is
 // the span-stripped form of the frozen oracle page-lane capture's <pre>
 // block - so a regression fails on the real bytes, not on a hand-written
-// paraphrase. The 5 pages of the class are FrAi layout (12392), Classic
-// Layout (314), home-layout, caseymorgan-layout, and
+// paraphrase. The 5 pages of the class are MoKi layout (12392), Classic
+// Layout (314), home-layout, rileyellery-layout, and
 // Golden_Bears_Aikido_at_UC_Berkeley main layout; their stored bodies
 // carry 7/43/5/3/17 CRLF respectively, and the engine emitted exactly that
 // many extra spaces before the fix.
@@ -49,16 +49,16 @@ function preBlock(html: string): string {
 describe("code highlighting: coderay to_unix (CRLF -> LF at the scan dispatch)", () => {
   // --- the pure function: the raw bytes of card 12392, verbatim ---------
   const FRAI_RAW =
-    '<body id={{_MAIN|name}} align="center">\r\n{{FrAi_menus|naked}}\r\n\r\n' +
+    '<body id={{_MAIN|name}} align="center">\r\n{{MoKi_menus|naked}}\r\n\r\n' +
     '<div align="center" id="primary"> \r\n{{_main|naked}}\r\n</div>\r\n\r\n</body>';
 
-  // Span-stripped <pre> from the frozen oracle capture for `FrAi layout`.
+  // Span-stripped <pre> from the frozen oracle capture for `MoKi layout`.
   // Note `primary&quot;&gt; \n`: the AUTHORED space before the newline is
   // kept, which is the discriminating byte - a fix that trimmed all
   // whitespace would lose it, and a fix that kept the CR would add a space
   // to the other six lines.
   const FRAI_EXPECTED_PRE =
-    '&lt;body id={{_MAIN|name}} align=&quot;center&quot;&gt;\n{{FrAi_menus|naked}}\n\n' +
+    '&lt;body id={{_MAIN|name}} align=&quot;center&quot;&gt;\n{{MoKi_menus|naked}}\n\n' +
     '&lt;div align=&quot;center&quot; id=&quot;primary&quot;&gt; \n{{_main|naked}}\n' +
     '&lt;/div&gt;\n\n&lt;/body&gt;';
 

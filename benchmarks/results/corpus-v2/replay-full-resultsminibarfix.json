@@ -3333,13 +3333,13 @@
         "shard": "shard-000002.jsonl",
         "area": "render-engine",
         "id": "corpus:3142:render:closed",
-        "first": "FAIL corpus:3142:render:closed (render-engine)\n  handler raised Date::Error: invalid date but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <div id=\"glifkzbcgbaoosgohtqjd-evog-closed-view\"...\n  actual excerpt:   CAPTURE_ERROR: Date::Error: invalid date\n  sizes: expected 2681 bytes, actual 40 bytes"
+        "first": "FAIL corpus:3142:render:closed (render-engine)\n  handler raised Date::Error: invalid date but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <div id=\"glifkzbchbqoosgohtqjd-evog-closed-view\"...\n  actual excerpt:   CAPTURE_ERROR: Date::Error: invalid date\n  sizes: expected 2681 bytes, actual 40 bytes"
       },
       {
         "shard": "shard-000002.jsonl",
         "area": "render-engine",
         "id": "corpus:3142:render:title",
-        "first": "FAIL corpus:3142:render:title (render-engine)\n  handler raised Date::Error: invalid date but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <span class=\"card-title\" title=\"glifkzbcgbaoosgo...\n  actual excerpt:   CAPTURE_ERROR: Date::Error: invalid date\n  sizes: expected 106 bytes, actual 40 bytes"
+        "first": "FAIL corpus:3142:render:title (render-engine)\n  handler raised Date::Error: invalid date but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <span class=\"card-title\" title=\"glifkzbchbqoosgo...\n  actual excerpt:   CAPTURE_ERROR: Date::Error: invalid date\n  sizes: expected 106 bytes, actual 40 bytes"
       },
       {
         "shard": "shard-000002.jsonl",

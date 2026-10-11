@@ -41,7 +41,7 @@ export interface EmailTemplate {
    *  construction (set/type/email_template.rb:55-79). */
   readonly from: string;
   /** The Subject: field — INTERPOLATED against the active_notice hash so
-   *  follow notification subjects can read "John changed John Following".
+   *  follow notification subjects can read "Jonas changed Jonas Following".
    *  Ruby's `contextual_content` walks inclusions; the first-mechanism
    *  port uses simple {{name}} substitution (extension point for the
    *  render module). */

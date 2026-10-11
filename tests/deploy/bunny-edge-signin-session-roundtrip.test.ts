@@ -34,7 +34,7 @@
 //     and that the seam it depends on is the real driver.
 //   - The real deploy is gated off by default; the live trial-DB test
 //     writes and deletes exactly one auth_sessions row and never touches
-//     Casey's account.
+//     Riley's account.
 
 import { readFileSync } from "node:fs";
 import path from "node:path";

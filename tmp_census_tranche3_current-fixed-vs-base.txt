@@ -48,7 +48,7 @@ tests/card/mod-loader/card-mod-assets.test.ts:70:    // the lane-A repair commit
 tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts:134:  // the actor cards + codename/set machinery (mirrors the edit2-lane
 tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts:216:  // {{:getting_started|core}} (edit2-lane harness mechanism)
 tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts:2:// mod-views-a lane ported rendered-unpinned. The oracle bytes are
-tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts:35:// camelize derivation), the edit2-lane stand-in), sara by
+tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts:35:// camelize derivation), the edit2-lane stand-in), tova by
 tests/card/mod-loader/card-mod-bar-box-format-oracle-pinned.test.ts:48:// logged per target/view/actor either way so the lane receipt can quote
 tests/card/mod-loader/card-mod-bootswatch-colors-bar.test.ts:2:// lane): view :bar_middle (colors.rb:102-122) — the fixed colorpicker
 tests/card/mod-loader/card-mod-bootswatch-colors-bar.test.ts:5:// set-key token (the lane-surfaces2 X-star-marker strip's anchor-path
@@ -377,7 +377,7 @@ tests/card/render/perm-leak-denial-corpus-replay.test.ts:58: *  pre-existing at 
 tests/card/render/perm-leak-denial-corpus-replay.test.ts:60: *  class, not the fail-open leak this lane fixes; this lane's contract
 tests/card/render/perm-leak-denial-corpus-replay.test.ts:62: *  stays pinned as a remaining diff in the lane receipt and the sweep
 tests/card/render/perm-leak-denial-corpus-replay.test.ts:74: *  wanted names. Shard line order is stable, names are unique per lane. */
-tests/card/render/phantom-item-verdict-host-item-type.test.ts:3:// template walk's type (the p20-autolink lane's Chloe Pallister fix,
+tests/card/render/phantom-item-verdict-host-item-type.test.ts:3:// template walk's type (the p20-autolink lane's Delia Rosenquist fix,
 tests/card/render/prefetch-side-id-pair-chunk.test.ts:4:// THE BUG (perm-leak lane, 2026-09-29): prefetchInclusionClosure's round
 tests/card/render/r16-rule-bar-and-stored-verdict-parity.test.ts:120:  // The *recent settings card (lane p22-rules-table): the recent category
 tests/card/render/r16-rule-bar-and-stored-verdict-parity.test.ts:1:// R16 residual-lane regression pins (2026-09-27). The failure families the

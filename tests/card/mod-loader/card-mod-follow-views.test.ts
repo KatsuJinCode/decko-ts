@@ -47,8 +47,8 @@ beforeAll(async () => {
   // the User cardtype card (the preference SQL's users.type_id join key)
   await seedCard(s, { id: 3, name: "User", codename: "user", typeId: 13 });
   // users
-  await seedCard(s, { id: 300, name: "Casey", typeId: 3 });
-  await seedCard(s, { id: 301, name: "Sara", typeId: 3 });
+  await seedCard(s, { id: 300, name: "Riley", typeId: 3 });
+  await seedCard(s, { id: 301, name: "Tova", typeId: 3 });
 
   // followed card + set
   await seedCard(s, { id: 200, name: "Make Contact", dbContent: "contact body" });
@@ -56,16 +56,16 @@ beforeAll(async () => {
     id: 210, name: "Make Contact+*self", leftId: 200, rightId: 11, typeId: 13,
   });
   await seedCard(s, {
-    id: 215, name: "Make Contact+*self+Casey", leftId: 210, rightId: 300, typeId: 14,
+    id: 215, name: "Make Contact+*self+Riley", leftId: 210, rightId: 300, typeId: 14,
   });
   await seedCard(s, {
-    id: 220, name: "Make Contact+*self+Casey+*follow",
+    id: 220, name: "Make Contact+*self+Riley+*follow",
     leftId: 215, rightId: 110, typeId: 14, dbContent: "*always",
   });
 
-  // Casey's User+*follow dashboard pointer content (virtual; the items
+  // Riley's User+*follow dashboard pointer content (virtual; the items
   // walk reads preference cards, the dbContent stands in for the seeded state)
-  await seedCard(s, { id: 310, name: "Casey+*follow", leftId: 300, rightId: 110, typeId: 14 });
+  await seedCard(s, { id: 310, name: "Riley+*follow", leftId: 300, rightId: 110, typeId: 14 });
 
   // *follow defaults (the deprecated editor's host card)
   await seedCard(s, {
@@ -101,7 +101,7 @@ describe("card-mod-follow views through the loader (lane-follow)", () => {
   it("WITHOUT the mod: the follow views are unsupported", async () => {
     const s = storage!;
     await expect(
-      s.engine.render("Make Contact+*self+Casey+*follow", "follow_status"),
+      s.engine.render("Make Contact+*self+Riley+*follow", "follow_status"),
     ).rejects.toThrow(UnsupportedViewError);
     await expect(
       s.engine.render("Make Contact", "follow_button"),
@@ -112,7 +112,7 @@ describe("card-mod-follow views through the loader (lane-follow)", () => {
     await loadMod();
     const s = storage!;
     const html = await s.engine.render(
-      "Make Contact+*self+Casey+*follow", "follow_item",
+      "Make Contact+*self+Riley+*follow", "follow_item",
     );
     // follow_item(Env.params[:condition] -> nil -> "*always", button=true);
     // add_follow_item? is false (the rule's items include *always), so the
@@ -136,7 +136,7 @@ describe("card-mod-follow views through the loader (lane-follow)", () => {
     await loadMod();
     const s = storage!;
     const html = await s.engine.render(
-      "Make Contact+*self+Casey+*follow", "follow_status",
+      "Make Contact+*self+Riley+*follow", "follow_status",
     );
     expect(html).toContain(`<h4>Get notified about changes</h4>`);
     expect(html).toContain(`<ul class="delete-list list-group">`);
@@ -159,7 +159,7 @@ describe("card-mod-follow views through the loader (lane-follow)", () => {
     expect(out).toContain(
       `href="/update/Make_Contact+*self+Anonymous+*follow?card%5Bcontent%5D=%5B%5B%2Aalways%5D%5D`,
     );
-    // signed IN as Casey, who follows *always -> StopFollowLink
+    // signed IN as Riley, who follows *always -> StopFollowLink
     e.pageSession = { signedIn: true, actorId: 300 };
     const inn = await e.render("Make Contact", "follow_button");
     expect(inn).toContain(`<span class="follow-verb">following</span>`);
@@ -172,7 +172,7 @@ describe("card-mod-follow views through the loader (lane-follow)", () => {
     const s = storage!;
     const e = await loadMod();
     e.pageSession = { signedIn: true, actorId: 300 };
-    const html = await e.render("Casey+*follow", "follow_tab");
+    const html = await e.render("Riley+*follow", "follow_tab");
     expect(html).toContain(`<div class="pointer-list-editor">`);
     expect(html).toContain(`<ul class="delete-list list-group">`);
     expect(html).toContain(`<li class="list-group-item">`);
@@ -184,8 +184,8 @@ describe("card-mod-follow views through the loader (lane-follow)", () => {
     const s = storage!;
     const e = await loadMod();
     e.pageSession = { signedIn: true, actorId: 300 };
-    const html = await e.render("Casey+*follow", "ignore_tab");
-    // Casey holds only *always -> the walk yields no rows -> the
+    const html = await e.render("Riley+*follow", "ignore_tab");
+    // Riley holds only *always -> the walk yields no rows -> the
     // haml's empty arm ("no entries")
     expect(html).toContain(`no entries`);
     e.pageSession = undefined;

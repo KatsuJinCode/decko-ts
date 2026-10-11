@@ -1,10 +1,10 @@
 // navbar-cr-main-menu-crlf-source-probe.test.ts -- the navbar-cr suite's
-// diagnostic probe. The four *head-family rule pages (FrAi+*right+*head,
-// GBA+*right+*head, *head+*self, *head+*right) each differ from their oracle
+// diagnostic probe. The four *head-family rule pages (MoKi+*right+*head,
+// HBQ+*right+*head, *head+*self, *head+*right) each differ from their oracle
 // shard by exactly ONE byte: a CR the oracle keeps in the navbar join
 // (between </li></li> and the first nav-item li) and the engine drops. The
 // CR's source card is corpus 22752 "*main menu" whose db content is
-// "[[*Opportunities|Opportunities]]\r\n[[*search|Changes]]" -- exactly one
+// "[[*Undertakings|Opportunities]]\r\n[[*search|Changes]]" -- exactly one
 // CRLF. This probe adjudicates WHERE the engine loses it: it dumps (a) the
 // ENGINE deck's stored dbContent bytes for *main menu (CRLF loss there =
 // storage/seed bug; intact there = render-path bug), and (b) the four
@@ -33,7 +33,7 @@ const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
 const OUT_DIR = path.join(REPO_ROOT, "tmp", "navbarcr-probe");
 const PROBE_REQUESTED = process.env.NAVBARCR_PROBE === "1";
 
-const PAGES = ["FrAi+*right+*head", "GBA+*right+*head", "*head+*self", "*head+*right"];
+const PAGES = ["MoKi+*right+*head", "HBQ+*right+*head", "*head+*self", "*head+*right"];
 
 function safeFileName(name: string): string {
   return name.replaceAll("*", "STAR").replaceAll("+", "P").replaceAll(" ", "_").replaceAll("/", "_");

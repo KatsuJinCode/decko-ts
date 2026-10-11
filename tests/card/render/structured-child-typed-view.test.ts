@@ -10,7 +10,7 @@
 //    delegation the walk evaluated viewer membership in the DELEGATING rule's
 //    grants — `_left` names no party, so every id-less compound child under
 //    the deck's `*all plus+*read -> _left` rule denied (the corpus's
-//    PCTS+legacy class: 1,835 oracle pages carry such child slots, all
+//    ZQVT+legacy class: 1,835 oracle pages carry such child slots, all
 //    failing before this port).
 //
 // 2. THE TYPE + SET KEYS (new_card_template via the structure universe +
@@ -18,15 +18,15 @@
 //    card's TYPE (type.rb:78-80 type_id_from_template) and its safe_set_keys
 //    drop the SELF token (a NEW card's pattern list starts at
 //    concrete_patterns[1..]). Oracle pin (expected-v2 page-lane
-//    recapture-raw-shard-000001.jsonl, PCTS): `class="card-slot closed-view
+//    recapture-raw-shard-000001.jsonl, ZQVT): `class="card-slot closed-view
 //    ALL ALL_PLUS TYPE-rich_text RIGHT-legacy
-//    TYPE_PLUS_RIGHT-project-legacy" data-card-name="PCTS+legacy"
+//    TYPE_PLUS_RIGHT-project-legacy" data-card-name="ZQVT+legacy"
 //    data-card-type-id="3" data-card-type-name="RichText"` — no SELF, no
 //    data-card-id.
 //
 // Ruby probes that pinned the mechanism (structured-child-type-probe.rb /
 // structured-child-render-probe.rb against the corpus deck):
-//   Card.new(name: "PCTS+legacy").type_id => 3 (RichText, from
+//   Card.new(name: "ZQVT+legacy").type_id => 3 (RichText, from
 //   `Project+legacy+*type plus right+*structure` id 22060);
 //   ok?(:read) => true; state => :virtual; safe_set_keys => "ALL ALL_PLUS
 //   TYPE-rich_text RIGHT-legacy TYPE_PLUS_RIGHT-project-legacy".
@@ -85,7 +85,7 @@ async function seedStructuredChildDeck(): Promise<RenderTestStorage> {
   seed({ id: 31, name: "*all plus+*read", rightId: 2, typeId: SET_TYPE_ID, dbContent: "_left" });
 
   // The host: type ProjectT (type card id 20), structured content nests the
-  // missing +legacy child (closed view, the PCTS template's shape).
+  // missing +legacy child (closed view, the ZQVT template's shape).
   seed({ id: 20, name: "ProjectT", typeId: TYPE_TYPE_ID }); // a cardtype row
   seed({ id: 40, name: "HostA", typeId: 20, dbContent: "<p>{{+legacy|closed}}</p>" });
 
@@ -152,7 +152,7 @@ async function seedLeftDelegationDeck(): Promise<RenderTestStorage> {
   return storage;
 }
 
-describe("structured/missing children: the typed new-card view (PCTS+legacy class)", () => {
+describe("structured/missing children: the typed new-card view (ZQVT+legacy class)", () => {
   it("renders the missing +legacy nest as the typed virtual child, not a denial", async () => {
     const storage = await seedStructuredChildDeck();
     try {

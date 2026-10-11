@@ -5913,13 +5913,13 @@
         "shard": "shard-000002.jsonl",
         "area": "render-engine",
         "id": "corpus:3142:render:content",
-        "first": "FAIL corpus:3142:render:content (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Date::Error: invalid date\n  actual excerpt:   <div id=\"glifkzbcgbaoosgohtqjd-evog-content-view...\n  sizes: expected 40 bytes, actual 493 bytes"
+        "first": "FAIL corpus:3142:render:content (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Date::Error: invalid date\n  actual excerpt:   <div id=\"glifkzbchbqoosgohtqjd-evog-content-view...\n  sizes: expected 40 bytes, actual 493 bytes"
       },
       {
         "shard": "shard-000002.jsonl",
         "area": "render-engine",
         "id": "corpus:3142:render:open",
-        "first": "FAIL corpus:3142:render:open (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Date::Error: invalid date\n  actual excerpt:   <div id=\"glifkzbcgbaoosgohtqjd-evog-open-view\" c...\n  sizes: expected 40 bytes, actual 3186 bytes"
+        "first": "FAIL corpus:3142:render:open (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Date::Error: invalid date\n  actual excerpt:   <div id=\"glifkzbchbqoosgohtqjd-evog-open-view\" c...\n  sizes: expected 40 bytes, actual 3186 bytes"
       },
       {
         "shard": "shard-000002.jsonl",

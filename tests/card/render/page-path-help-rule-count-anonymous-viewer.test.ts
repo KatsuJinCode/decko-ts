@@ -15,7 +15,7 @@
 // BEFORE the permission state was folded (render()'s permissionCold pass runs
 // later on that path), so the corpus page lane rendered "(0 head rules)"
 // where the oracle pins "(2 head rules)" on the *all+*head and
-// PCTS+*self+*head pages (p21-fix-toggle gate-5 residuals). Corpus facts
+// ZQVT+*self+*head pages (p21-fix-toggle gate-5 residuals). Corpus facts
 // (raw-corpus probes, tmp-lane-p22-rulestable/probe-raw-head-count.mjs):
 // *head (id 4034) carries 4 live rules — 2 stored under read rule 6568 (which
 // grants [[Anyone]], so the anonymous capture viewer reads them) and 2 under

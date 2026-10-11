@@ -55,7 +55,7 @@ export interface SetKeysInput {
   /**
    * Card#new_card? — pattern/all.rb:40-42 (`patterns`): a NEW card's pattern
    * list drops the first concrete pattern (*self), so its safe_set_keys
-   * carries NO SELF- token (oracle pins: the captured PCTS+legacy
+   * carries NO SELF- token (oracle pins: the captured ZQVT+legacy
    * closed-view slot reads "ALL ALL_PLUS TYPE-rich_text RIGHT-legacy
    * TYPE_PLUS_RIGHT-project-legacy", and every *all+*<setting> rule bar in
    * the page bytes reads "ALL ALL_PLUS TYPE-<t> RSTAR RULE RIGHT-<s>

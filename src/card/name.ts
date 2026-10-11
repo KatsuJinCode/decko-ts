@@ -794,7 +794,7 @@ export class DeckoName {
   }
 
   /**
-   * fields.rb #field_name: `[self, tag].to_name`, and in WAGN
+   * fields.rb #field_name: `[self, tag].to_name`, and in QAGN
    * `Array#to_name` is NOT `Cardname.new` — it is `Card::Name.compose`
    * (card-1.110.0 config/initializers/01_core_extensions/array.rb:80-83
    * `def cardname; Card::Name.compose self; end` + `alias to_name`).

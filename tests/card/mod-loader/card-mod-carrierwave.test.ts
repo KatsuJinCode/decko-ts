@@ -140,7 +140,7 @@ describe("contextualizePath (file_card_uploader.rb doc lines 88-117)", () => {
     // (file_card_uploader.rb:147-153 + set/type/file.rb:11-15): the
     // [-2] [/.] segment of "(my_bucket)/1/2.png" is "2", so the URL is
     // the fog public_url of files/1/2.png — NOT the stored key verbatim
-    // (the Jacob Benedetti oracle anchor pins the derivation).
+    // (the Jonas Verhoeven oracle anchor pins the derivation).
     expect(contextualizePath("(my_bucket)/1/2.png")).toBe(
       "http://s3.amazonaws.com//files/1/2.png",
     );
@@ -160,7 +160,7 @@ describe("file :core (set/type/file.rb:24-28 + core.haml:1)", () => {
     // title_in_context(voo.title) — HAML attr_wrapper apostrophe, label
     // "Download " + the context-relativized name (out of context: the
     // full card name). Raw-oracle pin: the quote-style exemplars
-    // (Werkshop Museum / David K Weinstock pages).
+    // (Werkshop Museum / Damon K Fairhurst pages).
     // local_url names the CARD's own id (paths.rb file_id) — this context's
     // card is id 1.
     const html = fileCoreView(makeCtx("~7/act_42.png"));

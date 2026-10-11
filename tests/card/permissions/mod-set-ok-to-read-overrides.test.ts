@@ -31,8 +31,8 @@
 //
 // Ruby oracle, confirmed against the capture deck directly:
 // Anonymous+*account (stored rule grants Help Desk only) ok?(:read)=true;
-// Anonymous+*account+*email (stored rule idem) true; FrAi+*right+*head /
-// GBA+*right+*head (stored "Anyone Signed In" rule) true; the CONTROL FOR
+// Anonymous+*account+*email (stored rule idem) true; MoKi+*right+*head /
+// HBQ+*right+*head (stored "Anyone Signed In" rule) true; the CONTROL FOR
 // CHILDREN'S CLASS (plain card, *self rule granting five roles)
 // ok?(:read)=false -- the generic path still denies.
 //

@@ -674,7 +674,7 @@ async function wrapWithLayout(
   const renderedInner = layoutInner
     .replace(/\{\{:header\|core\}\}/g, () => headerHtml)
     .replace(/\{\{:footer\|content\}\}/g, () => footerHtml)
-    // The caseymorgan-layout `<p>{{*foot|core}}</p>` renders `<p></p>`
+    // The rileyellery-layout `<p>{{*foot|core}}</p>` renders `<p></p>`
     // for the anonymous viewer — the nest contributes zero bytes.
     .replace(/\{\{\*foot\|core\}\}/g, () => "")
     .replace(

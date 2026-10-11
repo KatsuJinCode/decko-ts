@@ -40,37 +40,37 @@ ENGINE-NEST {"requested":"nav_item","view":"nav_item","card":"Layout Link Target
 [90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: bot stand-in (always_ok) - all pinned arms match the oracle bytes
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
 [90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: anonymous - the perms views deny quietly, the rest renders the full bytes
@@ -96,11 +96,11 @@ ENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*
 [90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: bot stand-in - the board family matches the oracle bytes (both targets)
 [22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Home+discussion","unknown":true,"nestName":"Home+discussion"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in - the board family matches the oracle bytes
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in - the board family matches the oracle bytes
 [22m[39mENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 ENGINE-NEST {"requested":"core","view":"core","card":"*all+*guide","nestName":"*all+*guide"}
 
-[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: sara stand-in - the board family matches the oracle bytes
+[90mstdout[2m | tests/card/mod-loader/card-mod-edit-views.test.ts[2m > [22m[2mcard-mod-edit EDIT-VIEWS lane[2m > [22m[2mWITH the mod: tova stand-in - the board family matches the oracle bytes
 [22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Oracle Basics+discussion","unknown":true,"nestName":"Oracle Basics+discussion"}
 
  [32m✓[39m tests/card/mod-loader/card-mod-edit-views.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 102[2mms[22m[39m

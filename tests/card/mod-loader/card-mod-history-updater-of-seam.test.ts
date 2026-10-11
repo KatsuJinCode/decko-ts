@@ -29,8 +29,8 @@
 //   by the SAME actor (actions 4973 and 4974, acts 109527 and 109528) and
 //   `Card.search(updater_of: {id: 605})` returned exactly ONE updater.
 // - the multi-updater sentence: the deck's only multi-updater card (1222
-//   "Sara Test Card", updated by Decko Bot id 1 and John id 1231) renders
-//   `Updated by <a ...>Decko Bot</a> and <a ...>John</a>`; Rails'
+//   "Tova Test Card", updated by Decko Bot id 1 and Jonas id 1231) renders
+//   `Updated by <a ...>Decko Bot</a> and <a ...>Jonas</a>`; Rails'
 //   to_sentence (activesupport-7.2.3.2 conversions.rb) gives
 //   [] -> "", [a] -> "a", [a,b] -> "a and b", [a,b,c] -> "a, b, and c".
 // - the "N others" arm: updater_links with max_count 3 shows
@@ -92,7 +92,7 @@ beforeAll(async () => {
   // STORED deck codename ("decko_bot", real.yml:17-19; codename.rb:107-110
   // derives DeckoBotID from the stored string) — never a restated literal
   await seedCard(s, { id: BOT, name: "Decko Bot", codename: DECKOBOT_CODENAME });
-  await seedCard(s, { id: JOHN, name: "John" });
+  await seedCard(s, { id: JOHN, name: "Jonas" });
   await seedCard(s, { id: 2, name: "RichText", codename: "basic", typeId: 3, typeName: "Cardtype" });
 
   // 100: never updated (create only) - the capture's Home shape
@@ -227,9 +227,9 @@ describe("updated_by view bytes (history_board.rb:10-16, :76-99)", () => {
   });
 
   it("joins two updaters with to_sentence's two_words_connector", async () => {
-    // live Ruby, deck card 1222: "Updated by <a>Decko Bot</a> and <a>John</a>"
+    // live Ruby, deck card 1222: "Updated by <a>Decko Bot</a> and <a>Jonas</a>"
     expect(await updatedBy("Two Updaters")).toBe(
-      `<div class="text-muted">Updated by ${link("Decko Bot")} and ${link("John")}</div>`,
+      `<div class="text-muted">Updated by ${link("Decko Bot")} and ${link("Jonas")}</div>`,
     );
   });
 

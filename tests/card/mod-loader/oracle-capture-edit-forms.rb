@@ -11,7 +11,7 @@
 # Records to <script-repo>/fixtures/captured/edit-forms.json:
 # 1. For each target card (an existing basic RichText content card and the
 #    deck-level Home card) and each actor (Decko Bot = signed-in admin,
-#    Sara = signed-in non-admin member, Anonymous): the rendered :edit view
+#    Tova = signed-in non-admin member, Anonymous): the rendered :edit view
 #    bytes (modal-wrapped frame + form) and the inner :edit_form bytes.
 #    Anonymous renders raise Card::Error::PermissionDenied - recorded as
 #    {denied: true, class:, message:} (what Ruby gives anonymous at the
@@ -49,7 +49,7 @@ TARGETS = [
   { name: "Oracle Basics", label: "basic_note" },
   { name: "Home",          label: "deck_level" }
 ].freeze
-ACTORS = %w[bot sara anonymous].freeze
+ACTORS = %w[bot tova anonymous].freeze
 
 SLOT_ID_RE   = /data-slot-id=(["'])\h+\1/.freeze
 CARD_ID_RE   = /data-card-id=(["'])\d+\1/.freeze
@@ -77,11 +77,11 @@ end
 def as_actor(actor)
   case actor
   when "bot"   then Card::Auth.signin(Card::DeckoBotID)
-  when "sara"
-    sara = Card["Sara"]
-    raise "Sara account card missing" unless sara
+  when "tova"
+    tova = Card["Tova"]
+    raise "Tova account card missing" unless tova
 
-    Card::Auth.signin(sara.id)
+    Card::Auth.signin(tova.id)
   when "anonymous" then Card::Auth.signin(Card::AnonymousID)
   end
   yield
@@ -99,7 +99,7 @@ def action_count
   ActiveRecord::Base.connection.select_value("SELECT COUNT(*) FROM card_actions").to_i
 end
 
-results = { "actors_note" => "bot=Decko Bot(admin) sara=Sara(non-admin member) anonymous=Anonymous",
+results = { "actors_note" => "bot=Decko Bot(admin) tova=Tova(non-admin member) anonymous=Anonymous",
             "normalizations" => {
               "data-card-id" => "RANDOMIZED",
               "data-select2-id" => "SELECT2",
@@ -129,12 +129,12 @@ end
 # (detect_conflict) but never persists. The prior save-based probe wrote an
 # action row (incident recorded in forms-lane.md) - this shape cannot.
 # edit_conflict? needs: stale last_action_id_before_edit AND a last action
-# by a DIFFERENT actor - so the probe signs in as Sara while the card's
+# by a DIFFERENT actor - so the probe signs in as Tova while the card's
 # last action belongs to Decko Bot.
 basic = Card["Oracle Basics"]
 before_count = action_count
 conflict = {}
-as_actor("sara") do
+as_actor("tova") do
   last_id = basic.last_action_id
   stale = ActiveRecord::Base.connection.select_value(
     "SELECT MIN(id) FROM card_actions WHERE card_id=#{basic.id} AND id != #{last_id}"

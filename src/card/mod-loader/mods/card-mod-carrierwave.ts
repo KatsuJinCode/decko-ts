@@ -196,7 +196,7 @@ function contextualizePath(content: string, cardId?: number): string {
 // title: title_in_context(voo.title)`): the download label is the card name
 // relativized against the context names and HAML's attr_wrapper is the
 // apostrophe — `<a href='SRC'>Download +child</a>`. Oracle-pinned by the
-// raw corpus quote-style exemplars (Werkshop Museum / David K Weinstock
+// raw corpus quote-style exemplars (Werkshop Museum / Damon K Fairhurst
 // pages). The empty-source arm still renders "" (file.rb:34-45).
 // ---------------------------------------------------------------------------
 

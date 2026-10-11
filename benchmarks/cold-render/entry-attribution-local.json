@@ -31,7 +31,7 @@
             "fetchByName(RichText+description) [3928]",
             "fetchByName(News Item+description) [14193]",
             "fetchByName(Kirsten Cadwell+recommendation) [37855]",
-            "fetchByName(Wren Halloway+recommendation) [37816]",
+            "fetchByName(Wren Kesterly+recommendation) [37816]",
             "fetchByName(Ed Correia+recommendation) [37815]"
           ]
         },
@@ -68,10 +68,10 @@
           "calls": 45,
           "marks": [
             "fetchByName(Kirsten Cadwell+recommendation) [3459]",
-            "fetchByName(Wren Halloway+recommendation) [3100]",
+            "fetchByName(Wren Kesterly+recommendation) [3100]",
             "fetchByName(Ed Correia+recommendation) [2303]",
             "fetchByName(Joan Callahan+recommendation) [1263]",
-            "fetchByName(Mabel Bridgewater+recommendation) [741]"
+            "fetchByName(Marianne Winslow+recommendation) [741]"
           ]
         },
         {
@@ -99,7 +99,7 @@
           "marks": [
             "fetchByName(kaori_suzuki) [\"kaori_suzuki\"]",
             "fetchByName(kirsten_cadwell) [\"kirsten_cadwell\"]",
-            "fetchByName(wren_halloway) [\"wren_halloway\"]",
+            "fetchByName(wren_kesterly) [\"wren_kesterly\"]",
             "fetchByName(ed_correium) [\"ed_correium\"]",
             "fetchByName(joan_callahan) [\"joan_callahan\"]"
           ]
@@ -244,7 +244,7 @@
           "calls": 2,
           "marks": [
             "fetchByName(Conflict_Done_Well+Online_Classes) [\"online_class\"]",
-            "fetchByName(Wren Halloway+CV) [\"cv\"]"
+            "fetchByName(Wren Kesterly+CV) [\"cv\"]"
           ]
         },
         {
@@ -254,7 +254,7 @@
           "calls": 2,
           "marks": [
             "fetchByName(Conflict_Done_Well+Online_Classes) [15113,35336]",
-            "fetchByName(Wren Halloway+CV) [3100,4167]"
+            "fetchByName(Wren Kesterly+CV) [3100,4167]"
           ]
         },
         {
@@ -264,7 +264,7 @@
           "calls": 2,
           "marks": [
             "fetchByName(Conflict_Done_Well+Online_Classes) [35337]",
-            "fetchByName(Wren Halloway+CV) [22647]"
+            "fetchByName(Wren Kesterly+CV) [22647]"
           ]
         },
         {
@@ -274,7 +274,7 @@
           "calls": 2,
           "marks": [
             "fetchByName(Conflict_Done_Well+Online_Classes) [35336]",
-            "fetchByName(Wren Halloway+CV) [4167]"
+            "fetchByName(Wren Kesterly+CV) [4167]"
           ]
         },
         {
@@ -595,7 +595,7 @@
           "calls": 237,
           "marks": [
             "fetchByName(admin) [\"admin\"]",
-            "fetchByName(ABCglobal) [\"ab_cglobal\"]",
+            "fetchByName(ZQRglobal) [\"ab_cglobal\"]",
             "fetchByName(Professional Materials) [\"professional_material\"]",
             "fetchByName(BW Press) [\"bw_press\"]",
             "fetchByName(BW links) [\"bw_link\"]"
@@ -665,7 +665,7 @@
             "fetchByName(Roundtable+April 13th) [\"april_13th\"]",
             "fetchByName(Roundtable+May 18th) [\"may_18th\"]",
             "fetchByName(Roundtable+July 20th) [\"july_20th\"]",
-            "fetchByName(Casey Morgan+videos) [\"video\"]"
+            "fetchByName(Riley Ellery+videos) [\"video\"]"
           ]
         },
         {
@@ -677,7 +677,7 @@
             "fetchByName(Roundtable+March 9th) [17559,19335]",
             "fetchByName(Roundtable+April 13th) [17559,19337]",
             "fetchByName(Roundtable+May 18th) [17559,19488]",
-            "fetchByName(Casey Morgan+videos) [393,1833]",
+            "fetchByName(Riley Ellery+videos) [393,1833]",
             "fetchByName(Intellectual Property+Index) [23615,28237]"
           ]
         },
@@ -690,7 +690,7 @@
             "fetchByName(Roundtable+March 9th) [19335]",
             "fetchByName(Roundtable+April 13th) [19337]",
             "fetchByName(Roundtable+May 18th) [19488]",
-            "fetchByName(Casey Morgan+videos) [1833]",
+            "fetchByName(Riley Ellery+videos) [1833]",
             "fetchByName(Intellectual Property+Index) [28237]"
           ]
         },
@@ -702,9 +702,9 @@
           "marks": [
             "fetchByName(Process Arts+overview) [22065]",
             "fetchByName(Aikido and Attention+member content+sign-in only) [15964]",
-            "fetchByName(Casey Morgan+bio) [13229]",
-            "fetchByName(Casey Morgan+Musings) [2975]",
-            "fetchByName(Casey Morgan+Project(s) Organizing) [1638]"
+            "fetchByName(Riley Ellery+bio) [13229]",
+            "fetchByName(Riley Ellery+Musings) [2975]",
+            "fetchByName(Riley Ellery+Project(s) Organizing) [1638]"
           ]
         },
         {
@@ -716,7 +716,7 @@
             "fetchByName(Roundtable+March 9th) [19037]",
             "fetchByName(Roundtable+April 13th) [19332]",
             "fetchByName(Roundtable+May 18th) [19489]",
-            "fetchByName(Casey Morgan+videos) [23464]",
+            "fetchByName(Riley Ellery+videos) [23464]",
             "fetchByName(Intellectual Property+Index) [28238]"
           ]
         },
@@ -897,7 +897,7 @@
           "calls": 2,
           "marks": [
             "phase:render [\"aikido_a_peace_practice\",\"bw_guideline\"]",
-            "phase:render [\"wagn_skype_w_ethan20100726\",\"wagn_skype_w_ethan20100727\"]"
+            "phase:render [\"qagn_skype_w_ethan20100726\",\"qagn_skype_w_ethan20100727\"]"
           ]
         },
         {
@@ -906,8 +906,8 @@
           "consumerFrames": [],
           "calls": 2,
           "marks": [
-            "phase:render [\"wagn_decko_dev\"]",
-            "phase:render [\"culturesmith_com_wagn_free_aiki_dojo\"]"
+            "phase:render [\"qagn_decko_dev\"]",
+            "phase:render [\"culturesmith_com_qagn_free_aiki_dojo\"]"
           ]
         },
         {
@@ -1712,7 +1712,7 @@
           "marks": [
             "fetchByName(*recent settings+*self+*content options) [23808,264]",
             "fetchByName(*recent settings+*self+*content options) [23809,86]",
-            "fetchByName(Casey Morgan+musings+*self+*content options) [3057,264]",
+            "fetchByName(Riley Ellery+musings+*self+*content options) [3057,264]",
             "fetchByName(Person+musings+*type plus right+*content options) [4,2975]",
             "fetchByName(musings+*right+*content options) [2975,260]"
           ]
@@ -1737,10 +1737,10 @@
           "calls": 24,
           "marks": [
             "fetchByName(RichText+description) [3928]",
-            "fetchByName(Casey Morgan+bio) [26026]",
-            "fetchByName(Casey Morgan+Description) [2259]",
-            "fetchByName(Casey Morgan+Musings) [3057]",
-            "fetchByName(Casey Morgan+Pages) [792]"
+            "fetchByName(Riley Ellery+bio) [26026]",
+            "fetchByName(Riley Ellery+Description) [2259]",
+            "fetchByName(Riley Ellery+Musings) [3057]",
+            "fetchByName(Riley Ellery+Pages) [792]"
           ]
         },
         {
@@ -1749,11 +1749,11 @@
           "consumerFrames": [],
           "calls": 24,
           "marks": [
-            "fetchByName(Casey Morgan+bio) [\"bio\"]",
-            "fetchByName(Casey Morgan+Company) [\"company\"]",
-            "fetchByName(Casey Morgan+Skills) [\"skill\"]",
-            "fetchByName(Casey Morgan+Musings) [\"musing\"]",
-            "fetchByName(Casey Morgan+Pages) [\"page\"]"
+            "fetchByName(Riley Ellery+bio) [\"bio\"]",
+            "fetchByName(Riley Ellery+Company) [\"company\"]",
+            "fetchByName(Riley Ellery+Skills) [\"skill\"]",
+            "fetchByName(Riley Ellery+Musings) [\"musing\"]",
+            "fetchByName(Riley Ellery+Pages) [\"page\"]"
           ]
         },
         {
@@ -1788,11 +1788,11 @@
           "consumerFrames": [],
           "calls": 20,
           "marks": [
-            "fetchByName(Casey Morgan+videos) [\"video\"]",
+            "fetchByName(Riley Ellery+videos) [\"video\"]",
             "fetchByName(MNv+Instructor Training) [\"m_nv\"]",
             "fetchByName(MNv+Instructor Training) [\"instructor_training\"]",
-            "fetchByName(Martial Nonviolence+Improvisation) [\"improvisation\"]",
-            "fetchByName(Martial Nonviolence+Related Reading) [\"related_reading\"]"
+            "fetchByName(Martial Concordance+Improvisation) [\"improvisation\"]",
+            "fetchByName(Martial Concordance+Related Reading) [\"related_reading\"]"
           ]
         },
         {
@@ -1817,10 +1817,10 @@
           "consumerFrames": [],
           "calls": 16,
           "marks": [
-            "fetchByName(Casey Morgan+videos) [393,1833]",
+            "fetchByName(Riley Ellery+videos) [393,1833]",
             "fetchByName(MNv+Instructor Training) [1205,22621]",
-            "fetchByName(Martial Nonviolence+Improvisation) [577,29424]",
-            "fetchByName(Martial Nonviolence+Related Reading) [577,23539]",
+            "fetchByName(Martial Concordance+Improvisation) [577,29424]",
+            "fetchByName(Martial Concordance+Related Reading) [577,23539]",
             "fetchByName(Intellectual Property+Index) [23615,28237]"
           ]
         },
@@ -1830,11 +1830,11 @@
           "consumerFrames": [],
           "calls": 16,
           "marks": [
-            "fetchByName(Casey Morgan+videos) [1833]",
+            "fetchByName(Riley Ellery+videos) [1833]",
             "fetchByName(MNv+Instructor Training) [1205]",
             "fetchByName(MNv+Instructor Training) [22621]",
-            "fetchByName(Martial Nonviolence+Improvisation) [29424]",
-            "fetchByName(Martial Nonviolence+Related Reading) [23539]"
+            "fetchByName(Martial Concordance+Improvisation) [29424]",
+            "fetchByName(Martial Concordance+Related Reading) [23539]"
           ]
         },
         {
@@ -1843,10 +1843,10 @@
           "consumerFrames": [],
           "calls": 15,
           "marks": [
-            "fetchByName(Casey Morgan+videos) [23464]",
+            "fetchByName(Riley Ellery+videos) [23464]",
             "fetchByName(MNv+Instructor Training) [22622]",
-            "fetchByName(Martial Nonviolence+Improvisation) [29425]",
-            "fetchByName(Martial Nonviolence+Related Reading) [23540]",
+            "fetchByName(Martial Concordance+Improvisation) [29425]",
+            "fetchByName(Martial Concordance+Related Reading) [23540]",
             "fetchByName(Intellectual Property+Index) [28238]"
           ]
         },
@@ -1869,11 +1869,11 @@
           "consumerFrames": [],
           "calls": 10,
           "marks": [
-            "fetchByName(Casey Morgan+bio) [13229]",
-            "fetchByName(Casey Morgan+Musings) [2975]",
-            "fetchByName(Casey Morgan+Pages) [668]",
-            "fetchByName(Casey Morgan+Project(s) Organizing) [1638]",
-            "fetchByName(Casey Eli+Emerson Projects) [586]"
+            "fetchByName(Riley Ellery+bio) [13229]",
+            "fetchByName(Riley Ellery+Musings) [2975]",
+            "fetchByName(Riley Ellery+Pages) [668]",
+            "fetchByName(Riley Ellery+Project(s) Organizing) [1638]",
+            "fetchByName(Riley Eli+Emerson Projects) [586]"
           ]
         },
         {
@@ -1882,7 +1882,7 @@
           "consumerFrames": [],
           "calls": 4,
           "marks": [
-            "fetchByName(martial_nonviolence+description) [1003]",
+            "fetchByName(martial_concordance+description) [1003]",
             "fetchByName(*recent_setting+*self) [23809]",
             "fetchByName(musing+*right) [2976]",
             "fetchByName(core_project+*right) [509]"
@@ -2067,7 +2067,7 @@
           "consumerFrames": [],
           "calls": 1,
           "marks": [
-            "phase:render [\"associative_inquiry\",\"process_art\",\"healing_friction\",\"martial_nonviolence\",\"t"
+            "phase:render [\"associative_inquiry\",\"process_art\",\"healing_friction\",\"martial_concordance\",\"t"
           ]
         },
         {

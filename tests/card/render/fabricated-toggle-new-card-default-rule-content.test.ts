@@ -28,7 +28,7 @@
 //
 // The NON-toggle keep is intentionally untouched by the fix this pin
 // accompanies: structured virtual bodies (the BWjournal +Body titled slot,
-// the PCTS+legacy RichText child) still render their *structure template --
+// the ZQVT+legacy RichText child) still render their *structure template --
 // guarded by structured-child-typed-view.test.ts and the nest-miss
 // unknown-view-selection corpus replay.
 

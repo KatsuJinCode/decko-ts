@@ -6,7 +6,7 @@
 //
 // Families pinned here (its committed seam):
 //   A1  uri.rb:63-68+86-89 trailing punctuation re-emitted after the
-//       anchor (sage pettibone / Dan Williams oracle: morgan.com</a>.)
+//       anchor (sage pettibone / Dan Williams oracle: ellery.com</a>.)
 //   A2a uri.rb:53-55 context_ok? anchors REJECTED_PREFIX at $ - a URL in
 //       the LABEL of an authored <a> autolinks (USABP nested-anchor oracle)
 //       while a URI inside a quoted attribute stays verbatim
@@ -16,15 +16,15 @@ import { expandContentLinks } from "../../../src/card/render/format.js";
 describe("autolink seams pins (captured oracle bytes)", () => {
   it("A1: re-emits the chopped trailing period after the anchor", () => {
     // oracle: sage pettibone content view - "reserved to the Commons are"
-    // follows the morgan.com anchor WITH its period (uri.rb:88
+    // follows the ellery.com anchor WITH its period (uri.rb:88
     // `"#{link}#{@trailing_punctuation}"`).
     const out = expandContentLinks(
-      "Originated at http://morgan.com. Also originated and reserved to the Commons",
+      "Originated at http://ellery.com. Also originated and reserved to the Commons",
       undefined,
       undefined,
     );
     expect(out).toBe(
-      'Originated at <a target="_blank" class="external-link" href="http://morgan.com">http://morgan.com</a>. Also originated and reserved to the Commons',
+      'Originated at <a target="_blank" class="external-link" href="http://ellery.com">http://ellery.com</a>. Also originated and reserved to the Commons',
     );
   });
 

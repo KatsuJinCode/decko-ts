@@ -7089,19 +7089,19 @@
         "shard": "shard-000002.jsonl",
         "area": "render-engine",
         "id": "corpus:2866:render:closed",
-        "first": "FAIL corpus:2866:render:closed (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"skhgbaimnpl-qeqxf-closed-view\" class=\"ca...\n  sizes: expected 76 bytes, actual 2561 bytes"
+        "first": "FAIL corpus:2866:render:closed (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"skhhbqimnpl-qeqxf-closed-view\" class=\"ca...\n  sizes: expected 76 bytes, actual 2561 bytes"
       },
       {
         "shard": "shard-000002.jsonl",
         "area": "render-engine",
         "id": "corpus:2866:render:content",
-        "first": "FAIL corpus:2866:render:content (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"skhgbaimnpl-qeqxf-content-view\" class=\"c...\n  sizes: expected 76 bytes, actual 1683 bytes"
+        "first": "FAIL corpus:2866:render:content (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"skhhbqimnpl-qeqxf-content-view\" class=\"c...\n  sizes: expected 76 bytes, actual 1683 bytes"
       },
       {
         "shard": "shard-000002.jsonl",
         "area": "render-engine",
         "id": "corpus:2866:render:open",
-        "first": "FAIL corpus:2866:render:open (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"skhgbaimnpl-qeqxf-open-view\" class=\"card...\n  sizes: expected 76 bytes, actual 4265 bytes"
+        "first": "FAIL corpus:2866:render:open (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"skhhbqimnpl-qeqxf-open-view\" class=\"card...\n  sizes: expected 76 bytes, actual 4265 bytes"
       },
       {
         "shard": "shard-000002.jsonl",
@@ -7845,13 +7845,13 @@
         "shard": "shard-000002.jsonl",
         "area": "render-engine",
         "id": "corpus:3142:render:closed",
-        "first": "FAIL corpus:3142:render:closed (render-engine)\n  handler raised Date::Error: invalid date but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <div id=\"glifkzbcgbaoosgohtqjd-evog-closed-view\"...\n  actual excerpt:   CAPTURE_ERROR: Date::Error: invalid date\n  sizes: expected 2681 bytes, actual 40 bytes"
+        "first": "FAIL corpus:3142:render:closed (render-engine)\n  handler raised Date::Error: invalid date but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <div id=\"glifkzbchbqoosgohtqjd-evog-closed-view\"...\n  actual excerpt:   CAPTURE_ERROR: Date::Error: invalid date\n  sizes: expected 2681 bytes, actual 40 bytes"
       },
       {
         "shard": "shard-000002.jsonl",
         "area": "render-engine",
         "id": "corpus:3142:render:title",
-        "first": "FAIL corpus:3142:render:title (render-engine)\n  handler raised Date::Error: invalid date but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <span class=\"card-title\" title=\"glifkzbcgbaoosgo...\n  actual excerpt:   CAPTURE_ERROR: Date::Error: invalid date\n  sizes: expected 106 bytes, actual 40 bytes"
+        "first": "FAIL corpus:3142:render:title (render-engine)\n  handler raised Date::Error: invalid date but the fixture expects a successful result\n  first difference at code-unit offset 0 (byte offset 0): expected \"<\" but got \"C\"\n  expected excerpt: <span class=\"card-title\" title=\"glifkzbchbqoosgo...\n  actual excerpt:   CAPTURE_ERROR: Date::Error: invalid date\n  sizes: expected 106 bytes, actual 40 bytes"
       },
       {
         "shard": "shard-000002.jsonl",
@@ -10563,7 +10563,7 @@
         "shard": "shard-000002.jsonl",
         "area": "render-engine",
         "id": "corpus:3703:render:closed",
-        "first": "FAIL corpus:3703:render:closed (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"kuybhxshhkktpgnpctsyvbwlstcit-closed-vie...\n  sizes: expected 76 bytes, actual 2367 bytes"
+        "first": "FAIL corpus:3703:render:closed (render-engine)\n  first difference at code-unit offset 1 (byte offset 1): expected \"s\" but got \"d\"\n  expected excerpt: <span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   <div id=\"kuybhxshhkktpgnzqvtyvbwlstcit-closed-vie...\n  sizes: expected 76 bytes, actual 2367 bytes"
       },
       {
         "shard": "shard-000002.jsonl",

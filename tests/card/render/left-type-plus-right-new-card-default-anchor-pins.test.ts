@@ -46,10 +46,10 @@
 // byte probe at this commit (PASS, byte-identical after slot-id
 // normalization):
 //   page  recapture-raw-shard-000022 Soma+tags:page
-//   page  recapture-raw-shard-000024 Morgan+Vacations:page
-//   page  recapture-raw-shard-000024 Morgan+Vacations+Pages:page
+//   page  recapture-raw-shard-000024 Ellery+Vacations:page
+//   page  recapture-raw-shard-000024 Ellery+Vacations+Pages:page
 //   view  recapture-raw-shard-000022 Soma+tags:open
-//   view  recapture-raw-shard-000024 Morgan+Vacations+Pages:open
+//   view  recapture-raw-shard-000024 Ellery+Vacations+Pages:open
 // The captured fragments are TYPE_PLUS_RIGHT-rich_text-aikido and
 // TYPE_PLUS_RIGHT-rich_text-20180623_0728, in a List-typed context; the
 // pre-fix engine emitted TYPE_PLUS_RIGHT-list-... for both.
@@ -111,7 +111,7 @@ async function seedDeck(): Promise<void> {
   // -- case 1: a NEW left (no stored row for the left name) -----------------
   // `soma base+tags` is List-typed and nests `tic+aikido`; the target card
   // is not a stored row, so its own left `tic` is a new card too. This is
-  // the exact corpus shape of the Soma / Morgan clusters.
+  // the exact corpus shape of the Soma / Ellery clusters.
   await seedCard(s, { id: 300, name: "soma base", typeId: T_RICH });
   await seedCard(s, { id: 301, name: "tags", typeId: T_RICH });
   await seedCard(s, {

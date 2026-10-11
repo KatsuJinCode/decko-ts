@@ -93,7 +93,7 @@ tests/card/render/bootstrap-code-file-pages.test.ts:3:// the byte evidence (tmp/
 tests/card/render/cardtype-add-button-page-interface-parity.test.ts:33:// The expected bytes are the raw-oracle page-lane shards under
 tests/card/render/cardtype-add-button-page-interface-parity.test.ts:34:// tmp/raw-ground-truth/expected-v2/page-lane/ (gitignored, copied into
 tests/card/render/cardtype-add-button-page-interface-parity.test.ts:3:// page-lane yardstick.
-tests/card/render/carrierwave-cloud-filename-derivation.test.ts:30:// ORACLE ACCEPTANCE BYTES: Jacob Benedetti page (expected-v2 page-lane
+tests/card/render/carrierwave-cloud-filename-derivation.test.ts:30:// ORACLE ACCEPTANCE BYTES: Jonas Verhoeven page (expected-v2 page-lane
 tests/card/render/code-highlighting/coderay-to-unix-crlf.test.ts:24:// the span-stripped form of the frozen oracle page-lane capture's <pre>
 tests/card/render/code-highlighting/highlighter-seams-h1-h2-oracle-pins.test.ts:5://   oracle   tmp/raw-ground-truth/expected-v2/view-lane recapture shards
 tests/card/render/code-highlighting/html-scanner-span-fidelity.test.ts:39:// oracle for card 22747 (tmp/raw-ground-truth/expected-v2/page-lane/
@@ -117,7 +117,7 @@ tests/card/render/focal-denial-page-subset.ts:2:// population: a fixed, determin
 tests/card/render/focal-denial-page-subset.ts:41: *  3,069-entry class — every ~n-th page-lane loud entry with at most 6 per
 tests/card/render/focal-denial-page-subset.ts:7:// The corpus holds 3,069 such pages (every page-lane entry whose
 tests/card/render/format-families-oracle.test.ts:9:// proof lives in brandonDojoTech/tmp/wrong-goal-hunt/surfaces-batch1-lane.md).
-tests/card/render/gemclose-head-family-candidate-pages-dump-probe.test.ts:3:// pages the page-lane carries (FrAi+*right+*head, GBA+*right+*head,
+tests/card/render/gemclose-head-family-candidate-pages-dump-probe.test.ts:3:// pages the page-lane carries (MoKi+*right+*head, HBQ+*right+*head,
 tests/card/render/gemclose-residual-three-page-engine-dump-probe.test.ts:32:/** The three residual pages, named by the replays-adjudication lane's
 tests/card/render/gemclose-residual-three-page-engine-dump-probe.test.ts:4:// (tmp/wrong-goal-hunt/replays-adjudication-lane.md verdict table, b2 sweep)
 tests/card/render/haml-file-views-registration-safety.test.ts:31:// (tmp/wrong-goal-hunt/mod-views-a-lane.md, batch 3). `:core` is the most
@@ -264,7 +264,7 @@ tests/card/render/structure-universe-junction-key.test.ts:9:// incl. the type_pl
 tests/card/render/structured-child-typed-view.test.ts:1:// Structured/missing-child typed-view regression (the structchild lane, worktree
 tests/card/render/structured-child-typed-view.test.ts:20://    concrete_patterns[1..]). Oracle pin (expected-v2 page-lane
 tests/card/render/structured-child-typed-view.test.ts:2:// decko-ts-lane-structchild). The class: a nest whose target has NO row but
-tests/card/render/template-link-set-name-composition.test.ts:1:// D2 lane: DeckoName#fieldName's Cardish overload — WAGN's Array#to_name is
+tests/card/render/template-link-set-name-composition.test.ts:1:// D2 lane: DeckoName#fieldName's Cardish overload — QAGN's Array#to_name is
 tests/card/render/title-in-context-relative-name.test.ts:21://   tmp/raw-ground-truth/expected-v2/page-lane/
 tests/card/render/title-in-context-relative-name.test.ts:22://   dual-lane-validation-2026-09-25.jsonl — and there the slot CARRIES
 tests/card/render/unknown-nest-blank-reference.test.ts:13:// denied-nest lane (tmp/wrong-goal-hunt/fix-denied-nest-bare-dot-lane.md),

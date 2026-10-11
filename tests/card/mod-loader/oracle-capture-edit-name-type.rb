@@ -13,7 +13,7 @@
 # Records to <script-repo>/fixtures/captured/edit-name-type.json:
 # 1. For each target card (the basic RichText "Oracle Basics" and the
 #    deck-level "Home" - the SAME two targets the edit-forms capture used)
-#    and each actor (Decko Bot = signed-in admin, Sara = signed-in
+#    and each actor (Decko Bot = signed-in admin, Tova = signed-in
 #    non-admin member, Anonymous): the rendered bytes of :edit_name,
 #    :name_form, :name_formgroup, :edit_name_row, :edit_type,
 #    :edit_type_form, :type_formgroup, :board_type_formgroup.
@@ -55,7 +55,7 @@ TARGETS = [
   { name: "Oracle Basics", label: "basic_note" },
   { name: "Home",          label: "deck_level" }
 ].freeze
-ACTORS = %w[bot sara anonymous].freeze
+ACTORS = %w[bot tova anonymous].freeze
 VIEWS  = %w[edit_name name_form name_formgroup edit_name_row
             edit_type edit_type_form type_formgroup
             board_type_formgroup].freeze
@@ -83,11 +83,11 @@ end
 def as_actor(actor)
   case actor
   when "bot"   then Card::Auth.signin(Card::DeckoBotID)
-  when "sara"
-    sara = Card["Sara"]
-    raise "Sara account card missing" unless sara
+  when "tova"
+    tova = Card["Tova"]
+    raise "Tova account card missing" unless tova
 
-    Card::Auth.signin(sara.id)
+    Card::Auth.signin(tova.id)
   when "anonymous" then Card::Auth.signin(Card::AnonymousID)
   end
   yield
@@ -105,7 +105,7 @@ def action_count
   ActiveRecord::Base.connection.select_value("SELECT COUNT(*) FROM card_actions").to_i
 end
 
-results = { "actors_note" => "bot=Decko Bot(admin) sara=Sara(non-admin member) anonymous=Anonymous",
+results = { "actors_note" => "bot=Decko Bot(admin) tova=Tova(non-admin member) anonymous=Anonymous",
             "normalizations" => {
               "data-card-id" => "RANDOMIZED",
               "data-select2-id" => "SELECT2",
@@ -147,7 +147,7 @@ stale = ActiveRecord::Base.connection.select_value(
 )
 conflict = { "last_action_id" => last_id.to_i,
              "stale_action_id_known" => !stale.nil? }
-as_actor("sara") do
+as_actor("tova") do
   basic.last_action_id_before_edit = stale
   basic.valid?
   conflict["errors_conflict"] = (basic.errors[:conflict][0, 300] rescue nil)

@@ -16,8 +16,8 @@
 //
 //   LEGITIMATELY-ADMITTED family (the 9 green guards that motivated
 //   8f8f9ca): `*all+*all+*follow`,
-//   `Don't Wait For The Study+*self+Casey Morgan+*follow`,
-//   `Make Contact+*self+Casey Morgan+*follow` (view:closed,
+//   `Don't Wait For The Study+*self+Riley Ellery+*follow`,
+//   `Make Contact+*self+Riley Ellery+*follow` (view:closed,
 //   view:open, page each). Ruby admits all three (preference? holds: trunk
 //   Set-typed; preferer codename "all" / User-typed).
 //
@@ -100,8 +100,8 @@ const OVER_ADMITTED_NAMES = [
  *  {closed, open, page}); 8f8f9ca's own receipt names them. */
 const GUARD_NAMES = [
   "*all+*all+*follow",
-  "Don't Wait For The Study+*self+Casey Morgan+*follow",
-  "Make Contact+*self+Casey Morgan+*follow",
+  "Don't Wait For The Study+*self+Riley Ellery+*follow",
+  "Make Contact+*self+Riley Ellery+*follow",
 ];
 
 function partsOf(name) {

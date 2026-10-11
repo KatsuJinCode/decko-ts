@@ -1,6 +1,6 @@
 // gemclose-head-family-candidate-pages-dump-probe.test.ts -- the gem-anchored-
 // closure port's flip-candidate probe: renders the four FURTHER *head-family
-// pages the page-lane carries (FrAi+*right+*head, GBA+*right+*head,
+// pages the page-lane carries (MoKi+*right+*head, HBQ+*right+*head,
 // *head+*self, *head+*right) so the suite can adjudicate whether the
 // Right::Head/Self::Head core overrides moved them onto the oracle bytes.
 // Diagnostic only (dumps bytes; asserts presence) -- env-gated like the
@@ -24,7 +24,7 @@ const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
 const OUT_DIR = path.join(REPO_ROOT, "tmp", "gemclose-probe");
 const PROBE_REQUESTED = process.env.GEMCLOSE_PROBE === "1";
 
-const PAGES = ["FrAi+*right+*head", "GBA+*right+*head", "*head+*self", "*head+*right"];
+const PAGES = ["MoKi+*right+*head", "HBQ+*right+*head", "*head+*self", "*head+*right"];
 
 function safeFileName(name: string): string {
   return name.replaceAll("*", "STAR").replaceAll("+", "P").replaceAll(" ", "_").replaceAll("/", "_");

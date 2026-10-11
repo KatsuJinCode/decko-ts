@@ -55,5 +55,5 @@
     "attribution": "Ruby's ORDER BY declares no tie-break (sql_statement/order.rb builds 'ORDER BY <field> <dir>' only), so the NULL-key tier's order is the live DB's filesort plan emission — stable across three years (2023-capture == 2026-live byte-equal) but not derivable from the Ruby sources. The port's id-asc tie-breaker is measured-correct on the somatic JOIN shape (sql.ts:421-453 records it as the somatic first-diff fix), so changing it globally is falsified-in-general; a Pointer-shaped special case would encode a MySQL plan artifact as a spec.",
     "verdict": "ATTRIBUTED, NOT FIXED — no honest engine change moves this page; the simple-name tier and the set already match live."
   },
-  "simpleTier": "both sides key-ASC over lowercased keys (77 *home, 38283 *Opportunities, 37623 Aikido 2.0, 19343 Casey Morgan, 38729 EricZ, 34936 martialnonviolence) — already matching; the engine's first-20 SQL rows are 20 junctions because the raw executeQuery ran WITHOUT the permission options the render's runSearch adds"
+  "simpleTier": "both sides key-ASC over lowercased keys (77 *home, 38283 *Undertakings, 37623 Aikido 2.0, 19343 Riley Ellery, 38729 EricZ, 34936 martialnonviolence) — already matching; the engine's first-20 SQL rows are 20 junctions because the raw executeQuery ran WITHOUT the permission options the render's runSearch adds"
 }

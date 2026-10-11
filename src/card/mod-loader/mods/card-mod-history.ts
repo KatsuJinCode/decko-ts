@@ -910,8 +910,8 @@ export async function actionFromId(
  *  unsorted statement), so the row order is the engine's join order -
  *  SQLite's DISTINCT-over-join emits first occurrence in the c0 scan, i.e.
  *  cards rowid order. The live probe confirms that reading: the deck's only
- *  multi-updater card (1222, "Sara Test Card", updated by Decko Bot id 1
- *  and John id 1231) returned [Decko Bot, John] - ascending id. The port
+ *  multi-updater card (1222, "Tova Test Card", updated by Decko Bot id 1
+ *  and Jonas id 1231) returned [Decko Bot, Jonas] - ascending id. The port
  *  pins that order explicitly so the result is deterministic rather than
  *  plan-dependent. */
 export async function updaterOf(

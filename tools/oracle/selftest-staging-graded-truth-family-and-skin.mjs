@@ -12,7 +12,7 @@
 //      set. The oracle Family page (expected-v2 page-lane id 568) renders
 //      FIVE search-result items (CM 20101222+Associations+tags,
 //      CM 20110109+Associations+tags, tracked item test+associations+tags,
-//      Morgan Library+Associations+tags, Schema) -- the "19 items"
+//      Ellery Library+Associations+tags, Schema) -- the "19 items"
 //      figure in the M5 narrative was the ref_type-L ROW census, not the
 //      oracle's rendered item count. The page-render seating itself is
 //      reported informationally: 4 of the 5 rows are junction children whose

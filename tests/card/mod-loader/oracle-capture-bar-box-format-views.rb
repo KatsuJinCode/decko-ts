@@ -8,7 +8,7 @@
 #     <repo>/tests/card/mod-loader/oracle-capture-bar-box-format-views.rb
 #
 # Records to <lane-worktree>/fixtures/captured/bar-box-format-views.json:
-# 1. For each target and each actor (Decko Bot = signed-in admin, Sara =
+# 1. For each target and each actor (Decko Bot = signed-in admin, Tova =
 #    signed-in non-admin member, Anonymous - the SAME three actors the
 #    edit-name-type capture used): the rendered bytes of the twenty set/all
 #    views (bar_menu, bar_body, closed_bar, accordion_bar, open_bar,
@@ -49,7 +49,7 @@ REPO_ROOT = File.expand_path("../../..", __dir__)
 OUT_PATH  = File.join(REPO_ROOT, "fixtures", "captured", "bar-box-format-views.json")
 PIN_DIR   = "CAPTURE_DIR"
 
-ACTORS = %w[bot sara anonymous].freeze
+ACTORS = %w[bot tova anonymous].freeze
 
 # the twenty set/all views, on both RichText targets
 RICHTEXT_VIEWS = %w[bar_menu bar_body closed_bar accordion_bar open_bar
@@ -78,11 +78,11 @@ end
 def as_actor(actor)
   case actor
   when "bot"   then Card::Auth.signin(Card::DeckoBotID)
-  when "sara"
-    sara = Card["Sara"]
-    raise "Sara account card missing" unless sara
+  when "tova"
+    tova = Card["Tova"]
+    raise "Tova account card missing" unless tova
 
-    Card::Auth.signin(sara.id)
+    Card::Auth.signin(tova.id)
   when "anonymous" then Card::Auth.signin(Card::AnonymousID)
   end
   yield
@@ -110,7 +110,7 @@ def action_count
 end
 
 results = {
-  "actors_note" => "bot=Decko Bot(admin) sara=Sara(non-admin member) anonymous=Anonymous",
+  "actors_note" => "bot=Decko Bot(admin) tova=Tova(non-admin member) anonymous=Anonymous",
   "normalizations" => {
     "data-slot-id" => "RANDOMIZED",
     "creator_credit relative age (time_ago_in_words)" => "TIME_AGO"

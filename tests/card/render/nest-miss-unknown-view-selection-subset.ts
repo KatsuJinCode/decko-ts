@@ -14,7 +14,7 @@
 export const NEST_MISS_PAGE_SUBSET: readonly string[] = [
   // missing-slot, Project cardtype (19): the +discussion titled-view
   "Associative Inquiry",
-  "Center for Embodied Change",
+  "Center for Systems Change",
   "the reference deck",
   "Healing Friction",
   "NXDD",
@@ -48,6 +48,6 @@ export const NEST_MISS_PAGE_SUBSET: readonly string[] = [
   "July 4th",
   // phantom-slot outliers (3)
   "*all+*head",
-  "PCTS+*self+*head",
-  "Learning Pool+training+Notes",
+  "ZQVT+*self+*head",
+  "Practice Pool+training+Notes",
 ];

@@ -51,16 +51,16 @@ beforeAll(async () => {
   await seedCard(s, { id: 145, name: "*disabled roles", codename: "disabled_roles", typeId: 14 });
 
   // users + content cards
-  await seedCard(s, { id: 300, name: "Casey", typeId: 3 });
-  // a deletion candidate: a card whose LEFT is Casey (the closure search:
-  // left: id, not: {right: :account}) - "Casey+Notebook"
+  await seedCard(s, { id: 300, name: "Riley", typeId: 3 });
+  // a deletion candidate: a card whose LEFT is Riley (the closure search:
+  // left: id, not: {right: :account}) - "Riley+Notebook"
   await seedCard(s, { id: 201, name: "Notebook" });
   await seedCard(s, {
-    id: 200, name: "Casey+Notebook", leftId: 300, rightId: 201, dbContent: "notes",
+    id: 200, name: "Riley+Notebook", leftId: 300, rightId: 201, dbContent: "notes",
   });
-  // the +*account right card of Casey
+  // the +*account right card of Riley
   await seedCard(s, {
-    id: 320, name: "Casey+*account", leftId: 300, rightId: 142, typeId: 14,
+    id: 320, name: "Riley+*account", leftId: 300, rightId: 142, typeId: 14,
   });
   // a role card (Role-typed) for the link_with_checkbox probe
   await seedCard(s, { id: 400, name: "Helper", typeId: 6 });
@@ -125,7 +125,7 @@ describe("card-mod-account form views through the loader (lane-follow)", () => {
     const e = await loadMod();
     e.pageSession = { signedIn: true, actorId: 300 };
     const html = await e.render("Helper", "link_with_checkbox");
-    // role_checkbox: subformat("Casey+*disabled roles").card_form :update
+    // role_checkbox: subformat("Riley+*disabled roles").card_form :update
     // wrapping [check_box_tag("add_item", "400", true, class: "_edit-item"),
     // render_link]. The roles card is unseeded -> its items are empty ->
     // disabled? false -> name add_item, checked.
@@ -141,16 +141,16 @@ describe("card-mod-account form views through the loader (lane-follow)", () => {
     const s = storage!;
     const e = await loadMod();
     e.pageSession = { signedIn: true, actorId: 300 };
-    const html = await e.render("Casey+*account", "closure");
+    const html = await e.render("Riley+*account", "closure");
     expect(html).toContain(`id="account-closure"`);
     expect(html).toContain(`<h2>Close Account</h2>`);
     expect(html).toContain(`<strong>Warning:</strong>`);
     expect(html).toContain("The following cards will be permanently deleted:");
-    // the deletion walk: cards whose left is Casey except +*account rights
-    expect(html).toContain(`>Casey+Notebook</a>`);
+    // the deletion walk: cards whose left is Riley except +*account rights
+    expect(html).toContain(`>Riley+Notebook</a>`);
     // the confirm button: data-confirm = t(:account_confirm_delete_account,
-    // accounted: "Casey") with the %{accounted} interpolation
-    expect(html).toContain(`data-confirm="Are you CERTAIN you want to PERMANENTLY delete the account associated with Casey?"`);
+    // accounted: "Riley") with the %{accounted} interpolation
+    expect(html).toContain(`data-confirm="Are you CERTAIN you want to PERMANENTLY delete the account associated with Riley?"`);
     expect(html).toContain(`data-method="delete"`);
     expect(html).toContain(`rel="nofollow"`);
     expect(html).toContain(`>Permanently Close Account</a>`);

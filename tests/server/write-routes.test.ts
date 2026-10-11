@@ -545,7 +545,7 @@ describe("the *signin update IS the login action (card-mod-account set/self/sign
     // .rb:6-9). No account cards exist in this seed deck -> the Ruby
     // failure ladder path; assert the FAILURE shape here (422, the
     // abort-failure UserError status) and the full success shape in the
-    // edit-session replay (the captured Sara sign-in).
+    // edit-session replay (the captured Tova sign-in).
     const res = await call(baseUrl, "POST", "/update/*signin", {
       form: {
         "card[subcards][+*email][content]": "nobody@example.com",

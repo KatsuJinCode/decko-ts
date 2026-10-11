@@ -1,5 +1,5 @@
 // Autolink two-page probe: render its two pages (11251 ANGELS,
-// 18560 Chloe Pallister) over the raw corpus and dump the engine state
+// 18560 Delia Rosenquist) over the raw corpus and dump the engine state
 // the phantom-item dispatch and the autolink depend on. PROBE ONLY —
 // not a gate; skipped unless AUTOLINK_TWO_PAGE_PROBE=1.
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
@@ -31,7 +31,7 @@ const SHARDS_PRESENT = existsSync(PAGE_LANE_DIR);
 
 const PAGES = [
   { shard: "recapture-raw-shard-000007.jsonl", id: 11251, name: "IT'S ALL ABOUT ANGELS by Daniel Ferreira" },
-  { shard: "recapture-raw-shard-000013.jsonl", id: 18560, name: "Chloe Pallister" },
+  { shard: "recapture-raw-shard-000013.jsonl", id: 18560, name: "Delia Rosenquist" },
 ];
 
 function loadOracleEntry(shard: string, id: number): { page_html?: string; layout?: string | null } {
@@ -108,7 +108,7 @@ describe("autolink two-page probe", () => {
       // +musings host.
       const phantomKey =
         "kimberly_sensei_do_not_contribute_directly_to_example.com_at_this_time";
-      const phantomHostKey = "chloe_pallister+musing";
+      const phantomHostKey = "delia_rosenquist+musing";
       const engine = storage.engine as unknown as {
         pointerItemVerdict?: (
           hostKey: string,

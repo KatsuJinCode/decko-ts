@@ -67,8 +67,8 @@ export const CENSUS_SEARCH_PAGE_SUBSET: CensusSubsetEntry[] = [
   { phase: "002", id: 8672, name: "Mitsugi Saotome - Aikido Principles+*self" },
   { phase: "002", id: 8919, name: "Joosten - Nonviolence and the Child+*self" },
   { phase: "002", id: 9285, name: "Aikido Transforming Youth - Montreaux+*self" },
-  { phase: "003", id: 10597, name: "GBA+*right+*layout+*self" },
-  { phase: "003", id: 11287, name: "Pacific Coast Theological Society - Call for Papers for 2012 April 13-14th+*self" },
+  { phase: "003", id: 10597, name: "HBQ+*right+*layout+*self" },
+  { phase: "003", id: 11287, name: "Harbour Shore Theological Society - Call for Papers for 2012 April 13-14th+*self" },
   { phase: "004", id: 12399, name: "20120418+CM+RVW" },
   { phase: "004", id: 13264, name: "20120708+CM+Time Tracking" },
   { phase: "004", id: 13330, name: "20120711+CM+Time Tracking" },
@@ -96,7 +96,7 @@ export const CENSUS_SEARCH_PAGE_SUBSET: CensusSubsetEntry[] = [
   { phase: "009", id: 23215, name: "David L Miller at The Minnesota Seminar in Jungian Studies - Mything the Study of Myth 20150509-10" },
   { phase: "009", id: 24567, name: "Olivia Quimby - How Meditation Placebos And Virtual Reality Help Power Mind Over Body" },
   { phase: "017", id: 40062, name: "ecosystem" },
-  { phase: "017", id: 40381, name: "Learning Pool+Slack Channel naming conventions most in use+*self" },
+  { phase: "017", id: 40381, name: "Practice Pool+Slack Channel naming conventions most in use+*self" },
   { phase: "018", id: 43485, name: "Artificial Intelligence+anon_exchange_02+*self" },
 ];
 

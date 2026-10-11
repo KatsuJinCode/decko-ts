@@ -6,7 +6,7 @@
 // (fixtures/captured/edit-views.json, captured from the live decko-0.20.0
 // oracle app by tests/card/mod-loader/oracle-capture-edit-views.rb for the
 // SAME two targets ("Oracle Basics" id 605, "Home" id 521) and three actors
-// (bot = signed-in admin, sara = signed-in member, anonymous) as the
+// (bot = signed-in admin, tova = signed-in member, anonymous) as the
 // edit-forms / edit-name-type captures, plus the unsaved new-card surface
 // (Card.new type_id: RichTextID, blank name - render only) recorded under
 // new_card).
@@ -37,15 +37,15 @@
 //
 // Rule-card update stand-in (disclosure): guide.rb:27-32 prepends the
 // guide rule card's edit link only when guide_card.ok?(:update). The
-// oracle's sara arm renders NO link: the deck denies a plain member update
+// oracle's tova arm renders NO link: the deck denies a plain member update
 // on the rule card "*all+*guide" even though *all+*update grants "Anyone
 // Signed In" (probed 2026-09-29: every specific candidate rule is NIL and
-// sara still fails ok?(:update) - Ruby's rule-card protection lives
+// tova still fails ok?(:update) - Ruby's rule-card protection lives
 // outside the candidate walk). The engine's verdict walk does not model
 // that protection, so the harness seeds the SELF-scoped rule
 // "*all+*guide+*update" -> [[Administrator]]: the walk then answers false
-// for sara/anonymous and true for the bot stand-in (Auth.always_ok?) -
-// the same bot/sara split the oracle captured, through the engine's real
+// for tova/anonymous and true for the bot stand-in (Auth.always_ok?) -
+// the same bot/tova split the oracle captured, through the engine's real
 // verdict algebra.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -256,7 +256,7 @@ beforeAll(async () => {
   s.fetcher.installNameEnvironment();
   await s.fetcher.codenames.ensureLoaded();
 
-  // the create-rule surface (bot=28 / sara=20 createable cardtypes).
+  // the create-rule surface (bot=28 / tova=20 createable cardtypes).
   // The bot codename is the STORED spelling the permission machinery
   // matches (read-rules.ts DECKOBOT_CODENAME "decko_bot" - codename.rb:
   // 107-110 derives Card::DeckoBotID from the stored codename; seeding the
@@ -380,18 +380,18 @@ beforeAll(async () => {
   await seedCard(s, { id: 147, name: "*by_name", codename: "by_name" });
   await seedCard(s, { id: 148, leftId: 2, rightId: 147, name: "RichText+*type+by_name" });
 
-  // ---- the follow world (the captured follow_section arms): sara follows
+  // ---- the follow world (the captured follow_section arms): tova follows
   // EVERY card via her *all set preference (followed? true for both
   // targets, "following" verb); the bot follows nothing ("follow" verb);
-  // 1 follower each (sara). The per-card advanced rule cards are ABSENT
+  // 1 follower each (tova). The per-card advanced rule cards are ABSENT
   // (wanted-card). The +*followers junctions EXIST (known-card).
-  await seedCard(s, { id: 583, name: "Sara" });
+  await seedCard(s, { id: 583, name: "Tova" });
   await seedCard(s, { id: 150, name: "*follow", codename: "follow", typeId: 14 });
   await seedCard(s, { id: 151, name: "*followers", codename: "followers" });
-  await seedCard(s, { id: 160, leftId: 10, rightId: 583, name: "*all+Sara" });
+  await seedCard(s, { id: 160, leftId: 10, rightId: 583, name: "*all+Tova" });
   await seedCard(s, { id: 161, leftId: 160, rightId: 150, dbContent: "[[*always]]" });
   // the +*followers junctions the followers pills link (known-card)
-  await seedCard(s, { id: 162, leftId: 583, rightId: 150, name: "Sara+*follow" });
+  await seedCard(s, { id: 162, leftId: 583, rightId: 150, name: "Tova+*follow" });
   await seedCard(s, { id: 152, leftId: 605, rightId: 151, name: "Oracle Basics+*followers" });
   await seedCard(s, { id: 153, leftId: 521, rightId: 151, name: "Home+*followers" });
 
@@ -430,7 +430,7 @@ beforeAll(async () => {
   // the rule-card update stand-in (see the module doc's disclosure): the
   // Right-pattern set card "*guide+*right" (Set-typed - the who_can join
   // reads sets.type_id) + its *update rule -> [[Administrator]]
-  // reproduces the captured bot/sara split through the engine's verdict
+  // reproduces the captured bot/tova split through the engine's verdict
   // walk (the Right pattern is in the update candidates for the junction
   // "*all+*guide")
   await seedCard(s, { id: 118, name: "*right", codename: "right", typeId: 14 });
@@ -561,14 +561,14 @@ describe("card-mod-edit EDIT-VIEWS lane", () => {
     expect(readFormHtml).toBe("");
   });
 
-  it("WITH the mod: sara stand-in (plain member) - member verdicts split the arms like the oracle", async () => {
+  it("WITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle", async () => {
     const s = storage!;
     saraEngine = new RenderEngine(new FetchEngine(s.counting));
     saraEngine.viewer = { signedIn: true, actorId: 583 };
     saraEngine.pageSession = { signedIn: true, actorId: 583 }; // the follow seam's Auth.current
     await warmEngine(saraEngine);
 
-    const basic = FIXTURE.targets.basic_note.views.sara;
+    const basic = FIXTURE.targets.basic_note.views.tova;
     for (const view of ALL_VIEWS) {
       if (view === "edit_structure") continue;
       if ((BOARD_PINNED_VIEWS as readonly string[]).includes(view)) continue; // board fixture
@@ -577,7 +577,7 @@ describe("card-mod-edit EDIT-VIEWS lane", () => {
     }
     for (const view of BOTH_TARGET_VIEWS) {
       const html = normalize(await saraEngine.render("Home", view));
-      expect(html).toBe(FIXTURE.targets.deck_level.views.sara[view]);
+      expect(html).toBe(FIXTURE.targets.deck_level.views.tova[view]);
     }
   });
 
@@ -627,8 +627,8 @@ describe("card-mod-edit EDIT-VIEWS lane", () => {
     }
   });
 
-  it("WITH the mod: sara stand-in - the board family matches the oracle bytes", async () => {
-    const basic = BOARD_FIXTURE.targets.basic_note.views.sara;
+  it("WITH the mod: tova stand-in - the board family matches the oracle bytes", async () => {
+    const basic = BOARD_FIXTURE.targets.basic_note.views.tova;
     for (const view of BOARD_PINNED_VIEWS) {
       const html = normalize(await saraEngine!.render("Oracle Basics", view));
       expect(html).toBe(basic[view]);
@@ -652,7 +652,7 @@ describe("card-mod-edit EDIT-VIEWS lane", () => {
     // the deck - the known branch needs the set card warmed in the render
     // map; Basics' set card is fetched new and pins byte-exact) stay
     // oracle-recorded - the notes are in the receipt's stage-3/4 sections.
-    for (const actor of ["bot", "sara", "anonymous"] as const) {
+    for (const actor of ["bot", "tova", "anonymous"] as const) {
       expect(
         BOARD_FIXTURE.targets.basic_note.views[actor].engage_tab,
       ).toBeDefined();

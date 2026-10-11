@@ -6921,7 +6921,7 @@ var RenderFormat = class _RenderFormat {
    *  ensurePointerItemVerdicts fills once per item key GLOBALLY (first fold
    *  wins). An item line that appears on many hosts therefore inherits
    *  whichever host the run touched first: `mytho-psychology` sits on ~30
-   *  corpus cards and under Metashamanic+Core Project the nest read is true
+   *  corpus cards and under Quicksilver+Core Project the nest read is true
    *  (Project/398) while the global entry said denied, rendering bar_left
    *  as a quiet denial where the oracle renders the card title. Probed:
    *  cold isDenied false -> full bar; warm isDenied true -> two denied
@@ -6994,7 +6994,7 @@ var RenderFormat = class _RenderFormat {
   }
   /** R16 batch 2: the focal (main) denial — html/error.rb:203-208
    *  loud_denial + :194-198 with_frame, byte-pinned by the 2,835-page
-   *  oracle class (a named corpus page / CM 20100614 / Martial Nonviolence Public
+   *  oracle class (a named corpus page / CM 20100614 / Martial Concordance Public
    *  Module 01 page captures):
    *
    *  loud_denial: `voo.hide :menu; frame { [wrap_with(:h1, "Sorry!"),
@@ -7801,8 +7801,8 @@ ${body}</div>`;
    *  `[[Target|` opener is spanned forward to the first `]]` in a later
    *  text piece, the pieces between render as the label, and the whole
    *  goes through renderLinkChunk. Live receipt:
-   *  `[[/wagn/Latest_news_items.rss|{{feed icon|...}}]]` ->
-   *  `<a class="internal-link" href="/wagn/Latest_news_items.rss">` +
+   *  `[[/qagn/Latest_news_items.rss|{{feed icon|...}}]]` ->
+   *  `<a class="internal-link" href="/qagn/Latest_news_items.rss">` +
    *  expanded feed-icon slot + `</a>` (live-wire Latest_News/blog). */
   /**
    * content.rb:20-27 `content_nest` — the chunk-level dispatch every
@@ -7964,9 +7964,9 @@ ${body}</div>`;
    * strips the leading slash; contextualize_path re-roots it). The label
    * is the ALREADY-RENDERED bytes (link.rb:47 render_obj ran first), so a
    * nest label lands inside the anchor expanded. Live receipts:
-   * `<a class="internal-link" href="/wagn/Latest_news_items.rss">…` (feed
+   * `<a class="internal-link" href="/qagn/Latest_news_items.rss">…` (feed
    * icon wrap) and `<a class="internal-link" href="/account/signup">sign-in
-   * account</a>` (live Casey bio; identical bytes in the recapture
+   * account</a>` (live Riley bio; identical bytes in the recapture
    * oracle).
    *
    * Name targets (link.rb:85-86 + 71-75) render view :link on the target
@@ -8138,7 +8138,7 @@ ${body}</div>`;
    * (chunk/reference.rb#referee_name: the authored mark absolutized against
    * the referencing card), so both corpus spellings land on the head card's
    * key: `{{:head|core}}` (card 34754 `*all+*head`) and `{{*head|core}}`
-   * (card 34758 `PCTS+*self+*head`, oracle view-lane
+   * (card 34758 `ZQVT+*self+*head`, oracle view-lane
    * recapture-raw-shard-000029 views.content — pre 2441 B / 2447 B against
    * the port's pre 0 B).
    *
@@ -11502,10 +11502,10 @@ var HelpRulesResolver = class {
    *  zero the engine's own count SQL returns.
    *
    *  HONEST LIMIT on the predicate's shape. The two sibling entries
-   *  (`Don't Wait For The Study+*self+Casey Morgan+*follow`,
-   *  `Make Contact+*self+Casey Morgan+*follow`) satisfy
+   *  (`Don't Wait For The Study+*self+Riley Ellery+*follow`,
+   *  `Make Contact+*self+Riley Ellery+*follow`) satisfy
    *  valid_preferer? through the OTHER arm (their `self[-2]` is
-   *  `Casey Morgan`, card 393, type 4 = the `user` codename), but
+   *  `Riley Ellery`, card 393, type 4 = the `user` codename), but
    *  their `name[0..-3]` is a junction with no Set-typed row in the corpus, so
    *  preference?'s third clause cannot be evaluated true from the shipped
    *  artifacts. Ruby nonetheless served both the identical setting_link (the
@@ -19318,7 +19318,7 @@ function barDivHtml(ctx) {
     // slot wrap) and TWICE here. The oracle's own bar divs pin the
     // two-level form — recapture-raw-shard-000004 id 8460 (a personal
     // blog's +*self): `data-card-name='Test Person&amp;#39;s Blog+*self+*layout'`,
-    // and id 12195 (media+GBA+youtube videos) pins five such bars.
+    // and id 12195 (media+HBQ+youtube videos) pins five such bars.
     // Do NOT drop this h() thinking it is the double-escape: the
     // double-escape is the Haml pass, which emitHamlAttrs owns.
     "data-card-name": h(slotCardname(card)),
@@ -21933,7 +21933,7 @@ var RenderEngine = class {
    *  one host's fold must never answer another host's item slot — the
    *  per-item-only keying let a pointer host that resolves Person
    *  (weekday_morning_usual+owner) pre-empt the RVW List's untyped BasicCs
-   *  verdict and render Morgan readable where the oracle denies.
+   *  verdict and render Ellery readable where the oracle denies.
    *  Cleared on resetCaches(). */
   pointerItemVerdicts = /* @__PURE__ */ new Map();
   /** Item keys whose verdict already seeded the deck-global verdict maps
@@ -22572,7 +22572,7 @@ var RenderEngine = class {
    *  exist) render the plain quiet denial span (SMD exp @8350, PdG exp
    *  @8515-8987 — and the live Task card Merchandise denies as a real
    *  card), while the simple-named denied phantoms (the view-lane census,
-   *  133 entries — Test Person 01, Regina Chatham, Mabel Bridgewater, all
+   *  133 entries — Test Person 01, Nadine Corliss, Marianne Winslow, all
    *  BasicCs/RichText/Practice-typed) render the mini_bar wrap with the
    *  two-span body: name.simple? short-circuits virtual? to false
    *  (states.rb:45) whatever their type.
@@ -23451,7 +23451,7 @@ var RenderEngine = class {
    * verdict pass over every prepared card (the skip-if-set guard inside
    * ensureVerdicts makes this a no-op for already-judged cards — only
    * warm-up enrichments made after the main render's pass get judged
-   * here). The layout subtree's denied items (e.g. the *Opportunities
+   * here). The layout subtree's denied items (e.g. the *Undertakings
    * dropdown's read-denied rows) must render the quiet denial span exactly
    * like the capture; without this refresh a warm-enriched card has no
    * verdict and renders content instead.
@@ -23810,7 +23810,7 @@ var RenderEngine = class {
    *  (or static help popover) links cards no {{nest}} reference reaches
    *  emitted wanted-card for existing cards — 15 pass-15 dump entries
    *  (10x the *content options popover's [[List]]/[[Pointer]]/[[Search]],
-   *  5x card-body links like Dawn Emerson's [[Bluevolution]]).
+   *  5x card-body links like Vera Prescott's [[Bluevolution]]).
    *
    *  Harvest (memory only): the [[target]] matches of every prepared card's
    *  dbContent not yet scanned (once per engine per card), plus the rendered
@@ -24317,7 +24317,7 @@ var RenderEngine = class {
    *  renderUnknownPointerListItem right before the phantom's nest renders,
    *  so the inner bar views see THIS host's fold rather than a foreign
    *  host's earlier global seeding of the same item name (the
-   *  Metashamanic+Core Project mytho-psychology poisoning: a foreign
+   *  Quicksilver+Core Project mytho-psychology poisoning: a foreign
    *  untyped BasicCs fold seated denied; this host's Project-typed fold
    *  reads allowed — the oracle renders the item bar). */
   seatPhantomReadVerdict(key, denied) {
@@ -24352,7 +24352,7 @@ var RenderEngine = class {
    * walk) typed every host-typed phantom BasicCs, and BasicCs+*type+*read
    * = "Anyone Signed In" denied Anonymous where Ruby's walk on the REAL
    * type falls through to *all+*read = "Anyone" — the Kimberly
-   * Richardson / Jacob Benedetti+musings divergence (captured oracle
+   * Richardson / Jonas Verhoeven+musings divergence (captured oracle
    * renders the full bar body for both). The default-template walk stays
    * as the fallback for hosts that resolve no item type, exactly
    * Card.new's ensure_type_id.
@@ -25926,7 +25926,7 @@ var RenderEngine = class {
       // pattern/all.rb#patterns: a NEW card's safe_set_keys drops the SELF
       // token. record.isNew is false for every stored row (byte-neutral
       // there) and true for the fetch placeholders — the virtual-card hits
-      // (the structured/missing children: PCTS+legacy class) whose captured
+      // (the structured/missing children: ZQVT+legacy class) whose captured
       // slots read "ALL ALL_PLUS TYPE-<t> RIGHT-<r> TYPE_PLUS_RIGHT-<l>-<r>"
       // with no SELF.
       setKeys: safeSetKeys({
@@ -26051,7 +26051,7 @@ var RenderEngine = class {
           // statement (`refer_to: "_left"`, `_self`, `_right`, `_N`) resolves
           // against the blank context to the unresolvable-name sentinel — the
           // query returns zero rows even with every name key resolvable
-          // (2026-09-25 Casey_Morgan +Project(s) Participating "0
+          // (2026-09-25 Riley_Ellery +Project(s) Participating "0
           // results" defect 2; ParseOptions.context, src/cql/ast.ts).
           context: card.name.s,
           // sync resolver over the prefetched id map (module doc), falling

@@ -108,7 +108,7 @@ async function bootDeck(env: Env): Promise<Deck> {
   // Rails deck's config/initializers/inflections.rb runs." This worker is
   // a deck-serving origin and it did not, so every key it derived was the
   // gem default instead of the deck's: `Anonymous` keyed `anonymou`,
-  // `SCarol` keyed `_carol`, `Casey's` keyed `casey_`, `delete this`
+  // `SCarol` keyed `_carol`, `Riley's` keyed `riley_`, `delete this`
   // keyed `delete_thi` (three uncountables, oracle-deck-inflections.ts
   // :44-50). Those keys ride into the rendered slot class tokens
   // (`SELF-anonymous-bar-view` vs `SELF-anonymou-bar-view`,

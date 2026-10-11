@@ -37,7 +37,7 @@ const PROBE_REQUESTED = process.env.GEMCLOSE_PROBE === "1";
  *  nest-miss sweep (its tmp/nest-sel-replay/sweep-results.jsonl):
  *  GIV missing the *referred_to_by content-view slot; the two *head rule
  *  pages with phantom rule bars. */
-const PAGES = ["GIV-the god of intimate violence", "*all+*head", "PCTS+*self+*head"];
+const PAGES = ["GIV-the god of intimate violence", "*all+*head", "ZQVT+*self+*head"];
 
 function safeFileName(name: string): string {
   return name.replaceAll("*", "STAR").replaceAll("+", "P").replaceAll(" ", "_").replaceAll("/", "_");
@@ -84,7 +84,7 @@ describe("gem-anchored closure: three residual pages, engine byte dump", () => {
         // The typeCode dump: the dispatch runs when typeCode === "setting";
         // record what the enriched render cards actually carry.
         const typeDump: Record<string, unknown> = {};
-        for (const cardName of ["*all+*head", "*head", "PCTS+*self+*head"]) {
+        for (const cardName of ["*all+*head", "*head", "ZQVT+*self+*head"]) {
           const rc = storage.engine.fetchRenderCard(cardName);
           typeDump[cardName] =
             rc === undefined

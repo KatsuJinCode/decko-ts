@@ -3,7 +3,7 @@
 // The bug this pins: read-rules.ts resolved the always_ok? bot by the
 // codename "deckobot", but Ruby decks store the bot's codename as
 // "decko_bot" (card-1.110.0 mod/core/data/real.yml:17-19 — name
-// "Decko Bot", codename decko_bot; recode.yml:8 records the wagn_bot →
+// "Decko Bot", codename decko_bot; recode.yml:8 records the qagn_bot →
 // decko_bot rename). Ruby never looks the codename up by an alternate
 // spelling: codename.rb:107-110 derives the constant FROM the stored
 // codename — `Card.const_get_or_set("#{codename.to_s.camelize}ID")` —

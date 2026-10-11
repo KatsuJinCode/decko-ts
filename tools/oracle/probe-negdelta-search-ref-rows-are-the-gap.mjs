@@ -35,7 +35,7 @@
 // USAGE (from the worktree root)
 //   node tools/oracle/probe-negdelta-search-ref-rows-are-the-gap.mjs \
 //     --shard recapture-raw-shard-000008.jsonl \
-//     --names "media+GBA+YouTube Browser" [--out tmp/negdelta-refrows-probe]
+//     --names "media+HBQ+YouTube Browser" [--out tmp/negdelta-refrows-probe]
 
 import { register } from "node:module";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
@@ -126,8 +126,8 @@ storageA.close();
 //
 // Derived, not hardcoded: every card in the deck whose content names a
 // `referred_to_by` target, resolved through the raw corpus, plus the
-// referee_id its own reference rows point at. For the GBA family this is
-// card 12195 (media+GBA+youtube videos), the plain content list card the
+// referee_id its own reference rows point at. For the HBQ family this is
+// card 12195 (media+HBQ+youtube videos), the plain content list card the
 // two search cards query.
 
 console.log("PROBE: referers the search cards query, and the rows the corpus holds");

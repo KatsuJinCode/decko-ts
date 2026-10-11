@@ -1,6 +1,6 @@
 // The unknown pointer/list item's read verdict must be computed on the
 // phantom's REAL type — the HOST's item_type_name — not the *all+*default
-// template walk's type (the p20-autolink port's Chloe Pallister fix,
+// template walk's type (the p20-autolink port's Delia Rosenquist fix,
 // corpus page 18560).
 //
 // Ruby truth (card-mod-collection-0.20.0 set/all/item.rb):
@@ -22,10 +22,10 @@
 // grants "Anyone Signed In", denying Anonymous, so the two-span denied
 // body rendered where the captured oracle renders the FULL bar body
 // (bar-body/card-title/bar-menu) for both exemplars:
-//   * 18560 Chloe Pallister — item "Kimberly Sensei does not
+//   * 18560 Delia Rosenquist — item "Kimberly Sensei does not
 //     contribute directly to the reference deck at this time" (host
 //     +musings, item type consideration; oracle shard-000013)
-//   * 14546 Jacob Benedetti+musings — same shape (shard-000010)
+//   * 14546 Jonas Verhoeven+musings — same shape (shard-000010)
 // The verdict and the rendered identity were computed from DIFFERENT
 // types — the slot carried consideration (phantomIdentity, hostItemType
 // wins) while the verdict typed BasicCs. This test pins them to the same

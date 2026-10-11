@@ -281,11 +281,11 @@ describe("six-mail oracles (real Ruby ActionMailer bytes, test delivery)", () =>
   }
 
   function followNotice(followedSet: string): FollowNotice {
-    return { follower: "Sara", followedSet, followOption: "*always" };
+    return { follower: "Tova", followedSet, followOption: "*always" };
   }
 
   function followAct(cardName: string, verb: "created" | "updated" | "deleted"): FollowNoticeAct {
-    return { userName: "John", verb, cardName };
+    return { userName: "Jonas", verb, cardName };
   }
 
   // The stock template's view placeholders, resolved per scenario (the
@@ -293,16 +293,16 @@ describe("six-mail oracles (real Ruby ActionMailer bytes, test delivery)", () =>
   // owns the anchor/row bytes — the canvas pins those views).
   const BOT = "no-reply@decko.org";
   const JOHN_LINK =
-    '<a class="known-card" href="/John"><span class="card-title" title="John">John</span></a>';
-  const UNFOLLOW_HEAD = '/update/Sara+*follow?card%5Bsubcards%5D%5B';
+    '<a class="known-card" href="/Jonas"><span class="card-title" title="Jonas">Jonas</span></a>';
+  const UNFOLLOW_HEAD = '/update/Tova+*follow?card%5Bsubcards%5D%5B';
   const ROW = "  new content: row8 update v2\n";
   const UNFOLLOW = (rule: string): string => `${UNFOLLOW_HEAD}${rule}%5D=%2Anever`;
   const liRow = (): string => "<li>  new content: row8 update v2</li>\n";
 
   it("watcher-on-type notify email (stock follower_notification_email)", () => {
-    const rule = 'Basic%2B%2Atype%2BSara%2B%2Afollow';
+    const rule = 'Basic%2B%2Atype%2BTova%2B%2Afollow';
     const sent = renderMail(
-      stockTemplate("sara@example.com"),
+      stockTemplate("tova@example.com"),
       followNotice("Basic+*type"),
       followAct("Oracle Follow Card", "updated"),
       {
@@ -336,9 +336,9 @@ describe("six-mail oracles (real Ruby ActionMailer bytes, test delivery)", () =>
     // the deleted card's list_of_changes is EMPTY (the delete action
     // carries no value rows) and its history anchor degrades to the bare
     // verb word (no history page) — both pinned by the oracle bytes.
-    const rule = 'Basic%2B%2Atype%2BSara%2B%2Afollow';
+    const rule = 'Basic%2B%2Atype%2BTova%2B%2Afollow';
     const sent = renderMail(
-      stockTemplate("sara@example.com"),
+      stockTemplate("tova@example.com"),
       followNotice("Basic+*type"),
       followAct("Oracle Delete Card", "deleted"),
       {
@@ -368,9 +368,9 @@ describe("six-mail oracles (real Ruby ActionMailer bytes, test delivery)", () =>
   });
 
   it("includer/template notify email (one act, act-card context)", () => {
-    const rule = 'Oracle+Recipe+Card%2Bingredient%2B%2Aself%2BSara%2B%2Afollow';
+    const rule = 'Oracle+Recipe+Card%2Bingredient%2B%2Aself%2BTova%2B%2Afollow';
     const sent = renderMail(
-      stockTemplate("sara@example.com"),
+      stockTemplate("tova@example.com"),
       followNotice("Oracle Recipe Card+ingredient+*self"),
       followAct("Oracle Recipe Card", "updated"),
       {

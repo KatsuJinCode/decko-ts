@@ -21,7 +21,7 @@
  *  the denial frame fires when the main verdict resolves at sync-render
  *  time — these pages' closures do not trip the prepare-crash class). */
 export const FOCAL_DENIAL_EXEMPLARS: Array<{ name: string; id: number }> = [
-  { name: "ABCglobal 20100722 Camille Dahlgren Casey", id: 1177 },
+  { name: "ZQRglobal 20100722 Corinne Hallberg Riley", id: 1177 },
   { name: "Azzia Sample", id: 1345 },
   { name: "CM 20100704 Itdepends Day", id: 870 },
   { name: "20260412+CM+Time Tracking", id: 52658 },
@@ -31,9 +31,9 @@ export const FOCAL_DENIAL_EXEMPLARS: Array<{ name: string; id: number }> = [
  *  the over-deny control — the port must keep rendering their bodies and
  *  must not start denying them. */
 export const READABLE_CONTROLS: Array<{ name: string; id: number }> = [
-  { name: "Casey Morgan", id: 393 },
+  { name: "Riley Ellery", id: 393 },
   { name: "the reference deck", id: 637 },
-  { name: "Martial Nonviolence", id: 577 },
+  { name: "Martial Concordance", id: 577 },
 ];
 
 /** The report-only census: 42 stratified loud-denial pages + the two
@@ -45,16 +45,16 @@ export const FOCAL_DENIAL_CENSUS_SUBSET: Array<{
   id: number;
   boundary?: boolean;
 }> = [
-  { name: "ABCglobal 20100722 Camille Dahlgren Casey", id: 1177 },
+  { name: "ZQRglobal 20100722 Corinne Hallberg Riley", id: 1177 },
   { name: "rename", id: 719 },
   { name: "Lost - thoughts", id: 1424 },
   { name: "CM 20110109", id: 3361 },
   { name: "*now", id: 4036 },
   { name: "CM 20110629", id: 4147 },
   { name: "Living in Spin", id: 10042 },
-  { name: "Aiki Development Group", id: 10239 },
+  { name: "Kendo Study Circle", id: 10239 },
   { name: "CM 20111106", id: 10388 },
-  { name: "SGo Training Journal 20111021", id: 10190 },
+  { name: "Rvx Training Journal 20111021", id: 10190 },
   { name: "20120418+CM+RVW", id: 12399 },
   { name: "20120712+CM+Time Tracking", id: 13347 },
   { name: "20120815+CM+Time Tracking", id: 14179 },
@@ -63,7 +63,7 @@ export const FOCAL_DENIAL_CENSUS_SUBSET: Array<{
   { name: "20121129+CM+Time Tracking", id: 15688 },
   { name: "20121224+CM+Time Tracking", id: 15948 },
   { name: "20130430+CM+RVW", id: 16695 },
-  { name: "Pontual Dissertation", id: 17068 },
+  { name: "Pellam Dissertation", id: 17068 },
   { name: "20140131+CM+RVW", id: 18747 },
   { name: "20140409+CM+RVW", id: 19287 },
   { name: "20141027+CM+RVW", id: 21685 },
@@ -71,27 +71,27 @@ export const FOCAL_DENIAL_CENSUS_SUBSET: Array<{
     name: "MNv+ITM+Preliminary Exercises+2-2 Preparing the Bodymind+2-2-3 Go - Stop (Hajime - Yame)",
     id: 21337,
   },
-  { name: "Holland Service", id: 22475 },
+  { name: "Marlow Service", id: 22475 },
   { name: "20150609+CM+RVW", id: 23492 },
   { name: "MNv leadership training - Flight Deck 20150521", id: 23369 },
-  { name: "Spa Finder gift certificate use", id: 25749 },
+  { name: "Bath Guide gift certificate use", id: 25749 },
   { name: "Social Media Schedule converted to Google Sheet", id: 26828 },
-  { name: "Wren Halloway connection", id: 27562 },
+  { name: "Wren Kesterly connection", id: 27562 },
   { name: "RWE TFD Comm Gen Admin", id: 29231 },
-  { name: "Morgan+Family Business+Financial+FTB", id: 30062 },
+  { name: "Ellery+Family Business+Finance+LTC", id: 30062 },
   { name: "USABP Presentation 20181102", id: 31223 },
-  { name: "Jesuit Alfred Conquest Position", id: 31719 },
-  { name: "Essilor Manager Corporate Partnerships", id: 32713 },
-  { name: "The Center for American and International Law - President", id: 32689 },
-  { name: "St Marks Upper School History and English Teacher", id: 33973 },
+  { name: "Jesuit Orson Peverell Position", id: 31719 },
+  { name: "Iveron Optics Manager Corporate Partnerships", id: 32713 },
+  { name: "The Center for Regional Studies - President", id: 32689 },
+  { name: "St Aldwyn Upper School History and English Teacher", id: 33973 },
   {
-    name: "Deloitte-Senior Manager-Enabling Areas Learning and Development E20NATSSRMJM101-HRL6",
+    name: "Quillon-Senior Manager-Enabling Areas Learning and Development E20NATSSRMJM101-HRL6",
     id: 34901,
   },
-  { name: "Morgan+Family Business+Financial+TWC", id: 36154 },
-  { name: "US Census Employment+Clerk+Grievance", id: 36855 },
+  { name: "Ellery+Family Business+Finance+MDR", id: 36154 },
+  { name: "US Census Position+Clerk+Review", id: 36855 },
   { name: "Create PM paper slips and print", id: 37751 },
-  { name: "USPS Employment", id: 39755 },
+  { name: "USPS Position", id: 39755 },
   { name: "Ireland 20220731-0807", id: 41774 },
   { name: "20120122+CM+RVW", id: 11179, boundary: true },
   { name: "CM 20111201", id: 10623, boundary: true },

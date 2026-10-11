@@ -17,24 +17,24 @@
       "delivered": [
         {
           "from": "no-reply@decko.org",
-          "html_body": "<!DOCTYPE html>\n<html>\n  <head>\n    <meta http-equiv=\"Content-type\" content=\"text/html;charset=UTF-8\"/>\n    <style></style>\n  </head>\n  <body class=\"d0-email-body\">\n    <p>\n  <a class=\"known-card\" href=\"/Oracle_Delete_Card\"><span class=\"card-title\" title=\"Oracle Delete Card\">Oracle Delete Card</span></a> was just <a href=\"/Oracle_Delete_Card?view=history\">deleted</a> \n  by <a class=\"known-card\" href=\"/John\"><span class=\"card-title\" title=\"John\">John</span></a>\n</p>\n<blockquote></blockquote>\n<p></p>\n\n<p>\n  You received this email because you're following <strong>all \"Basics\"</strong>.\n</p>\n\n<p>\n  <em>\n    <a href=\"/update/Sara+*follow?card%5Bsubcards%5D%5BBasic%2B%2Atype%2BSara%2B%2Afollow%5D=%2Anever\">Unfollow</a> to stop receiving these emails.\n  </em>\n</p>\n  </body>\n</html>\n",
-          "subject": "John deleted \"Oracle Delete Card\"",
-          "text_body": "\"Oracle Delete Card\" was just deleted by John.\n\n\n\n\n\nSee the card: /Oracle_Delete_Card\n\nYou received this email because you're following \"all \"Basics\"\".\n\nUse this link to unfollow /update/Sara+*follow?card%5Bsubcards%5D%5BBasic%2B%2Atype%2BSara%2B%2Afollow%5D=%2Anever",
-          "to": "sara@example.com"
+          "html_body": "<!DOCTYPE html>\n<html>\n  <head>\n    <meta http-equiv=\"Content-type\" content=\"text/html;charset=UTF-8\"/>\n    <style></style>\n  </head>\n  <body class=\"d0-email-body\">\n    <p>\n  <a class=\"known-card\" href=\"/Oracle_Delete_Card\"><span class=\"card-title\" title=\"Oracle Delete Card\">Oracle Delete Card</span></a> was just <a href=\"/Oracle_Delete_Card?view=history\">deleted</a> \n  by <a class=\"known-card\" href=\"/Jonas\"><span class=\"card-title\" title=\"Jonas\">Jonas</span></a>\n</p>\n<blockquote></blockquote>\n<p></p>\n\n<p>\n  You received this email because you're following <strong>all \"Basics\"</strong>.\n</p>\n\n<p>\n  <em>\n    <a href=\"/update/Tova+*follow?card%5Bsubcards%5D%5BBasic%2B%2Atype%2BTova%2B%2Afollow%5D=%2Anever\">Unfollow</a> to stop receiving these emails.\n  </em>\n</p>\n  </body>\n</html>\n",
+          "subject": "Jonas deleted \"Oracle Delete Card\"",
+          "text_body": "\"Oracle Delete Card\" was just deleted by Jonas.\n\n\n\n\n\nSee the card: /Oracle_Delete_Card\n\nYou received this email because you're following \"all \"Basics\"\".\n\nUse this link to unfollow /update/Tova+*follow?card%5Bsubcards%5D%5BBasic%2B%2Atype%2BTova%2B%2Afollow%5D=%2Anever",
+          "to": "tova@example.com"
         }
       ],
       "input": {
         "act": {
-          "actor": "John",
+          "actor": "Jonas",
           "card": "Oracle Delete Card",
           "verb": "deleted"
         },
         "follow_rule": {
-          "name": "Basic+*type+Sara+*follow",
+          "name": "Basic+*type+Tova+*follow",
           "option": "*always",
           "set_card": "Basic+*type"
         },
-        "follower": "Sara",
+        "follower": "Tova",
         "template_codename": "follower_notification_email",
         "template_fields": {
           "from": "Decko Bot",
@@ -44,32 +44,32 @@
         }
       },
       "seed_log": {
-        "act": "John deleted Oracle Delete Card (stash + notify_followers_after_delete)"
+        "act": "Jonas deleted Oracle Delete Card (stash + notify_followers_after_delete)"
       }
     },
     "includer_template_notify": {
       "delivered": [
         {
           "from": "no-reply@decko.org",
-          "html_body": "<!DOCTYPE html>\n<html>\n  <head>\n    <meta http-equiv=\"Content-type\" content=\"text/html;charset=UTF-8\"/>\n    <style></style>\n  </head>\n  <body class=\"d0-email-body\">\n    <p>\n  <a class=\"known-card\" href=\"/Oracle_Recipe_Card\"><span class=\"card-title\" title=\"Oracle Recipe Card\">Oracle Recipe Card</span></a> was just <a href=\"/Oracle_Recipe_Card?view=history\"><a rel=\"nofollow\" class=\"last-edited slotter\" href=\"/Oracle_Recipe_Card/history\" data-remote=\"true\">edited</a></a> \n  by <a class=\"known-card\" href=\"/John\"><span class=\"card-title\" title=\"John\">John</span></a>\n</p>\n<blockquote><li>  new content: row8 update v2</li>\n</blockquote>\n<p></p>\n\n<p>\n  You received this email because you're following <strong>Oracle Recipe Card+ingredient</strong>.\n</p>\n\n<p>\n  <em>\n    <a href=\"/update/Sara+*follow?card%5Bsubcards%5D%5BOracle+Recipe+Card%2Bingredient%2B%2Aself%2BSara%2B%2Afollow%5D=%2Anever\">Unfollow</a> to stop receiving these emails.\n  </em>\n</p>\n  </body>\n</html>\n",
-          "subject": "John updated \"Oracle Recipe Card\"",
-          "text_body": "\"Oracle Recipe Card\" was just updated by John.\n\n  new content: row8 update v2\n\n\n\n\nSee the card: /Oracle_Recipe_Card\n\nYou received this email because you're following \"Oracle Recipe Card+ingredient\".\n\nUse this link to unfollow /update/Sara+*follow?card%5Bsubcards%5D%5BOracle+Recipe+Card%2Bingredient%2B%2Aself%2BSara%2B%2Afollow%5D=%2Anever",
-          "to": "sara@example.com"
+          "html_body": "<!DOCTYPE html>\n<html>\n  <head>\n    <meta http-equiv=\"Content-type\" content=\"text/html;charset=UTF-8\"/>\n    <style></style>\n  </head>\n  <body class=\"d0-email-body\">\n    <p>\n  <a class=\"known-card\" href=\"/Oracle_Recipe_Card\"><span class=\"card-title\" title=\"Oracle Recipe Card\">Oracle Recipe Card</span></a> was just <a href=\"/Oracle_Recipe_Card?view=history\"><a rel=\"nofollow\" class=\"last-edited slotter\" href=\"/Oracle_Recipe_Card/history\" data-remote=\"true\">edited</a></a> \n  by <a class=\"known-card\" href=\"/Jonas\"><span class=\"card-title\" title=\"Jonas\">Jonas</span></a>\n</p>\n<blockquote><li>  new content: row8 update v2</li>\n</blockquote>\n<p></p>\n\n<p>\n  You received this email because you're following <strong>Oracle Recipe Card+ingredient</strong>.\n</p>\n\n<p>\n  <em>\n    <a href=\"/update/Tova+*follow?card%5Bsubcards%5D%5BOracle+Recipe+Card%2Bingredient%2B%2Aself%2BTova%2B%2Afollow%5D=%2Anever\">Unfollow</a> to stop receiving these emails.\n  </em>\n</p>\n  </body>\n</html>\n",
+          "subject": "Jonas updated \"Oracle Recipe Card\"",
+          "text_body": "\"Oracle Recipe Card\" was just updated by Jonas.\n\n  new content: row8 update v2\n\n\n\n\nSee the card: /Oracle_Recipe_Card\n\nYou received this email because you're following \"Oracle Recipe Card+ingredient\".\n\nUse this link to unfollow /update/Tova+*follow?card%5Bsubcards%5D%5BOracle+Recipe+Card%2Bingredient%2B%2Aself%2BTova%2B%2Afollow%5D=%2Anever",
+          "to": "tova@example.com"
         }
       ],
       "input": {
         "act": {
-          "actor": "John",
+          "actor": "Jonas",
           "card": "Oracle Recipe Card",
           "subcard": "Oracle Recipe Card+ingredient",
           "verb": "updated"
         },
         "follow_rule": {
-          "name": "Oracle Recipe Card+ingredient+*self+Sara+*follow",
+          "name": "Oracle Recipe Card+ingredient+*self+Tova+*follow",
           "option": "*always",
           "set_card": "Oracle Recipe Card+ingredient+*self"
         },
-        "follower": "Sara",
+        "follower": "Tova",
         "template_codename": "follower_notification_email",
         "template_fields": {
           "from": "Decko Bot",
@@ -79,7 +79,7 @@
         }
       },
       "seed_log": {
-        "act": "John updated Oracle Recipe Card subcard +ingredient v1->v2 (one act)"
+        "act": "Jonas updated Oracle Recipe Card subcard +ingredient v1->v2 (one act)"
       }
     },
     "password_reset_email": {
@@ -140,24 +140,24 @@
       "delivered": [
         {
           "from": "no-reply@decko.org",
-          "html_body": "<!DOCTYPE html>\n<html>\n  <head>\n    <meta http-equiv=\"Content-type\" content=\"text/html;charset=UTF-8\"/>\n    <style></style>\n  </head>\n  <body class=\"d0-email-body\">\n    <p>\n  <a class=\"known-card\" href=\"/Oracle_Follow_Card\"><span class=\"card-title\" title=\"Oracle Follow Card\">Oracle Follow Card</span></a> was just <a href=\"/Oracle_Follow_Card?view=history\"><a rel=\"nofollow\" class=\"last-edited slotter\" href=\"/Oracle_Follow_Card/history\" data-remote=\"true\">edited</a></a> \n  by <a class=\"known-card\" href=\"/John\"><span class=\"card-title\" title=\"John\">John</span></a>\n</p>\n<blockquote><li>  new content: row8 update v2</li>\n</blockquote>\n<p></p>\n\n<p>\n  You received this email because you're following <strong>all \"Basics\"</strong>.\n</p>\n\n<p>\n  <em>\n    <a href=\"/update/Sara+*follow?card%5Bsubcards%5D%5BBasic%2B%2Atype%2BSara%2B%2Afollow%5D=%2Anever\">Unfollow</a> to stop receiving these emails.\n  </em>\n</p>\n  </body>\n</html>\n",
-          "subject": "John updated \"Oracle Follow Card\"",
-          "text_body": "\"Oracle Follow Card\" was just updated by John.\n\n  new content: row8 update v2\n\n\n\n\nSee the card: /Oracle_Follow_Card\n\nYou received this email because you're following \"all \"Basics\"\".\n\nUse this link to unfollow /update/Sara+*follow?card%5Bsubcards%5D%5BBasic%2B%2Atype%2BSara%2B%2Afollow%5D=%2Anever",
-          "to": "sara@example.com"
+          "html_body": "<!DOCTYPE html>\n<html>\n  <head>\n    <meta http-equiv=\"Content-type\" content=\"text/html;charset=UTF-8\"/>\n    <style></style>\n  </head>\n  <body class=\"d0-email-body\">\n    <p>\n  <a class=\"known-card\" href=\"/Oracle_Follow_Card\"><span class=\"card-title\" title=\"Oracle Follow Card\">Oracle Follow Card</span></a> was just <a href=\"/Oracle_Follow_Card?view=history\"><a rel=\"nofollow\" class=\"last-edited slotter\" href=\"/Oracle_Follow_Card/history\" data-remote=\"true\">edited</a></a> \n  by <a class=\"known-card\" href=\"/Jonas\"><span class=\"card-title\" title=\"Jonas\">Jonas</span></a>\n</p>\n<blockquote><li>  new content: row8 update v2</li>\n</blockquote>\n<p></p>\n\n<p>\n  You received this email because you're following <strong>all \"Basics\"</strong>.\n</p>\n\n<p>\n  <em>\n    <a href=\"/update/Tova+*follow?card%5Bsubcards%5D%5BBasic%2B%2Atype%2BTova%2B%2Afollow%5D=%2Anever\">Unfollow</a> to stop receiving these emails.\n  </em>\n</p>\n  </body>\n</html>\n",
+          "subject": "Jonas updated \"Oracle Follow Card\"",
+          "text_body": "\"Oracle Follow Card\" was just updated by Jonas.\n\n  new content: row8 update v2\n\n\n\n\nSee the card: /Oracle_Follow_Card\n\nYou received this email because you're following \"all \"Basics\"\".\n\nUse this link to unfollow /update/Tova+*follow?card%5Bsubcards%5D%5BBasic%2B%2Atype%2BTova%2B%2Afollow%5D=%2Anever",
+          "to": "tova@example.com"
         }
       ],
       "input": {
         "act": {
-          "actor": "John",
+          "actor": "Jonas",
           "card": "Oracle Follow Card",
           "verb": "updated"
         },
         "follow_rule": {
-          "name": "Basic+*type+Sara+*follow",
+          "name": "Basic+*type+Tova+*follow",
           "option": "*always",
           "set_card": "Basic+*type"
         },
-        "follower": "Sara",
+        "follower": "Tova",
         "template_codename": "follower_notification_email",
         "template_fields": {
           "from": "Decko Bot",
@@ -167,7 +167,7 @@
         }
       },
       "seed_log": {
-        "act": "John updated Oracle Follow Card v1->v2 (notify_followers_after_save)"
+        "act": "Jonas updated Oracle Follow Card v1->v2 (notify_followers_after_save)"
       }
     },
     "welcome_email": {
@@ -198,19 +198,19 @@
     }
   },
   "seed_log": {
-    "Basic+*type+Sara+*follow": "present",
+    "Basic+*type+Tova+*follow": "present",
     "Jane Oracle Signup": "Sign up + approve_with_verification (trigger arm)",
     "Jane Oracle Signup prior rows": "hard-deleted 5",
     "Jane Oracle Signup+*account": "created directly (with +*email)",
-    "John": "present",
-    "John+*account+*email": "created directly (john@example.com)",
-    "Oracle Delete Card": "created-by-john",
+    "Jonas": "present",
+    "Jonas+*account+*email": "created directly (jonas@example.com)",
+    "Oracle Delete Card": "created-by-jonas",
     "Oracle Follow Card": "present",
     "Oracle Recipe Card": "present",
     "Oracle Recipe Card+ingredient rule": "present",
     "Rose Oracle": "present",
-    "Sara": "present",
-    "email-debris john@example.com": "purged 1",
+    "Tova": "present",
+    "email-debris jonas@example.com": "purged 1",
     "follower_notification_email": "restored-stock",
     "follower_notification_email.before": "follower notification email+*from,follower notification email+*html message,follower notification email+*subject,follower notification email+*text message"
   }

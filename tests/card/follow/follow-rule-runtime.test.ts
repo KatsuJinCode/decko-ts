@@ -50,8 +50,8 @@ beforeAll(async () => {
   // the User cardtype card (codename "user" — the preference SQL's
   // users.type_id join key, rule/preference_cache.rb) + users
   await seedCard(s, { id: 3, name: "User", codename: "user", typeId: 13 });
-  await seedCard(s, { id: 300, name: "Casey", typeId: 3 });
-  await seedCard(s, { id: 301, name: "Sara", typeId: 3 });
+  await seedCard(s, { id: 300, name: "Riley", typeId: 3 });
+  await seedCard(s, { id: 301, name: "Tova", typeId: 3 });
 
   // a followed card + its set
   await seedCard(s, { id: 200, name: "Make Contact", dbContent: "contact body" });
@@ -64,36 +64,36 @@ beforeAll(async () => {
     typeId: 13,
   });
 
-  // Casey's follow preference on that set: [[*always]]
-  // (4-part preference name "Make Contact+*self+Casey+*follow")
+  // Riley's follow preference on that set: [[*always]]
+  // (4-part preference name "Make Contact+*self+Riley+*follow")
   await seedCard(s, {
     id: 220,
-    name: "Make Contact+*self+Casey+*follow",
+    name: "Make Contact+*self+Riley+*follow",
     leftId: 215,
     rightId: 110,
     typeId: 14,
     dbContent: "*always",
   });
-  // the 3-part left "Make Contact+*self+Casey"
+  // the 3-part left "Make Contact+*self+Riley"
   await seedCard(s, {
     id: 215,
-    name: "Make Contact+*self+Casey",
+    name: "Make Contact+*self+Riley",
     leftId: 210,
     rightId: 300,
     typeId: 14,
   });
 
-  // Sara follows the same set with [[*never]]
+  // Tova follows the same set with [[*never]]
   await seedCard(s, {
     id: 216,
-    name: "Make Contact+*self+Sara",
+    name: "Make Contact+*self+Tova",
     leftId: 210,
     rightId: 301,
     typeId: 14,
   });
   await seedCard(s, {
     id: 221,
-    name: "Make Contact+*self+Sara+*follow",
+    name: "Make Contact+*self+Tova+*follow",
     leftId: 216,
     rightId: 110,
     typeId: 14,
@@ -145,8 +145,8 @@ describe("follow option list (lib/card/follow_option.rb + set/self/*.rb)", () =>
 
 describe("follow rule name construction (set/all/follow.rb + set/type/set.rb)", () => {
   it("builds [set, user, *follow] names (type/set.rb:19-21)", () => {
-    expect(followRuleNameFor("Make Contact+*self", "Casey")).toBe(
-      "Make Contact+*self+Casey+*follow",
+    expect(followRuleNameFor("Make Contact+*self", "Riley")).toBe(
+      "Make Contact+*self+Riley+*follow",
     );
   });
 
@@ -163,17 +163,17 @@ describe("follow rule name construction (set/all/follow.rb + set/type/set.rb)", 
 
 describe("follow rule read walk (followed_by.rb + rule.rb preference_names)", () => {
   it("reads the set names a user holds follow preferences for (rule.rb:39-45)", async () => {
-    const names = await preferenceNamesForUser(storage!.fetcher, "Casey");
-    expect(names).toContain("Make Contact+*self+Casey+*follow");
+    const names = await preferenceNamesForUser(storage!.fetcher, "Riley");
+    expect(names).toContain("Make Contact+*self+Riley+*follow");
   });
 
   it("walks the first applicable follow-rule option (followed_by.rb:39-43)", async () => {
     const s = storage!;
     const card = await s.fetcher.fetchByName("Make Contact");
     const alwaysOption = await followRuleOptionFor(s.fetcher, card!, 300);
-    expect(alwaysOption).toBe("*always"); // Casey: *always applies
+    expect(alwaysOption).toBe("*always"); // Riley: *always applies
     const neverOption = await followRuleOptionFor(s.fetcher, card!, 301);
-    expect(neverOption).toBeNull(); // Sara: *never test returns false (self/never.rb:5)
+    expect(neverOption).toBeNull(); // Tova: *never test returns false (self/never.rb:5)
   });
 
   it("answers followedByUser from the preference walk (followed_by.rb:8-10)", async () => {

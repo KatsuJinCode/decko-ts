@@ -134,7 +134,7 @@ storageA.close();
 // own card_references rows where the page card is EITHER side. Both directions
 // matter -- `referred_to_by` is a referee-side join, `refer_to` is a
 // referer-side join, and the two probes above showed both shapes in this
-// family (somatic/Archetypal reverse, media+GBA+youtube videos forward).
+// family (somatic/Archetypal reverse, media+HBQ+youtube videos forward).
 
 const pageIds = new Map();
 for (const line of entries) {

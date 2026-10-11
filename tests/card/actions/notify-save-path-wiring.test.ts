@@ -51,19 +51,19 @@ async function freshWithHook(): Promise<{
       followers: fixedFollowerResolver([
         {
           followerId: 12,
-          followerName: "Sara",
-          followerEmail: "sara@example.com",
+          followerName: "Tova",
+          followerEmail: "tova@example.com",
           followedSetName: "Watched Card+*followed",
           followOption: "always",
         },
       ]),
       template: deckEmailTemplateResolver(f.storage.engine),
-      authAs: fixedAuthAs({ id: 12, name: "Sara", email: "sara@example.com" }),
+      authAs: fixedAuthAs({ id: 12, name: "Tova", email: "tova@example.com" }),
         defaultFrom: "no-reply@decko.org",
     }),
   ];
   const engine = new CardActionEngine(f.storage.engine, {
-    actor: { id: 7, name: "John" },
+    actor: { id: 7, name: "Jonas" },
     integrationHooks: hooks,
     notifyTransport: transport,
   });
@@ -104,7 +104,7 @@ describe("save-path notify wiring (CardActionEngine -> integration hooks)", () =
     })();
     const transport = new CaptureTransport();
     const engine = new CardActionEngine(f.storage.engine, {
-      actor: { id: 7, name: "John" },
+      actor: { id: 7, name: "Jonas" },
       notifyTransport: transport,
     });
     const created = await engine.createCard({ name: "Plain Card", content: "x" });
@@ -121,9 +121,9 @@ describe("save-path notify wiring (CardActionEngine -> integration hooks)", () =
     await engine.updateCard({ cardId: created.cardId, content: "second" });
     const mails = transport.captured();
     expect(mails.length).toBe(1);
-    expect(mails[0]?.to).toBe("sara@example.com");
+    expect(mails[0]?.to).toBe("tova@example.com");
     expect(mails[0]?.subject).toBe("Watched Card+*followed on always");
-    expect(mails[0]?.textBody).toBe("Hi! Sara — Watched Card+*followed changed.");
+    expect(mails[0]?.textBody).toBe("Hi! Tova — Watched Card+*followed changed.");
     f.storage.close();
   });
 

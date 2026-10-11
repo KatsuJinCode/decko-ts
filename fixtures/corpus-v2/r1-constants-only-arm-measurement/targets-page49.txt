@@ -18,16 +18,16 @@ page	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+im
 page	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+image05+discussion	page
 page	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+image06+discussion	page
 page	recapture-raw-shard-000012.jsonl	Very Rosie July 4 in 2013+Gallery10vert+image07+discussion	page
-page	recapture-raw-shard-000013.jsonl	Morgan	page
+page	recapture-raw-shard-000013.jsonl	Ellery	page
 page	recapture-raw-shard-000016.jsonl	Guns	page
 page	recapture-raw-shard-000016.jsonl	Project+Task+*type plus right	page
 page	recapture-raw-shard-000017.jsonl	Message+Conversation+*type plus right	page
-page	recapture-raw-shard-000018.jsonl	Casey feedback+discussion	page
+page	recapture-raw-shard-000018.jsonl	Riley feedback+discussion	page
 page	recapture-raw-shard-000019.jsonl	A Taste of Your Own Medicine The Problematic Nature of Revenge+discussion	page
 page	recapture-raw-shard-000029.jsonl	*all+*head	page
 page	recapture-raw-shard-000029.jsonl	Administrator+Dashboard	page
 page	recapture-raw-shard-000029.jsonl	Help Desk	page
-page	recapture-raw-shard-000029.jsonl	PCTS+*self+*head	page
+page	recapture-raw-shard-000029.jsonl	ZQVT+*self+*head	page
 page	recapture-raw-shard-000029.jsonl	Pointer	page
 page	recapture-raw-shard-000029.jsonl	Shark	page
 page	recapture-raw-shard-000039.jsonl	Caroline Quimby 20230902+discussion	page

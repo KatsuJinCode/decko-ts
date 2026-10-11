@@ -511,7 +511,7 @@ async function canReadByRuleLookupDepth(
     // own permission walk (left_permission_rule_id :66-72). Without this the
     // walk evaluates viewer membership in the DELEGATING rule's grants — a
     // _left rule names no party, so every id-less compound child under it
-    // (the structured/missing children: PCTS+legacy class) denied where
+    // (the structured/missing children: ZQVT+legacy class) denied where
     // Ruby's delegation reaches the left card's own rule (the corpus
     // `*all plus+*read -> _left` chain ends at *all+*read = Anyone).
     if (

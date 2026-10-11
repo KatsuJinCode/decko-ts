@@ -43,7 +43,7 @@ import { query, pipelineEndpoint } from "./probe-trial-account-schema.mjs";
 const CREDS_PATH = "C:/localProjects/brandonDojoTech/library/data/creds";
 export const HOLDER_NAME = "AuthedParityProbe";
 const HOLDER_KEY = "authedparityprobe";
-const EMAIL = "authed-parity-probe@casey-dojo.invalid";
+const EMAIL = "authed-parity-probe@riley-dojo.invalid";
 const PASSWORD = "AuthedParityProbe-PW-1";
 const SALT = "b7f3c1a90d2e4865";
 const TTL_SECONDS = 24 * 60 * 60;

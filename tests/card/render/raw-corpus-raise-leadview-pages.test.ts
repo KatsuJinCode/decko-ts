@@ -72,7 +72,7 @@ const CLASS1_EXEMPLARS = [
   { id: 34188, name: "20190319" },
   { id: 40454, name: "20220323" },
   { id: 45385, name: "CB_role+*members" },
-  { id: 45371, name: "Morgan Family+*members" },
+  { id: 45371, name: "Ellery Family+*members" },
 ] as const;
 
 /** The lead-view pages: full-page byte-exact for Anyone; the two pages

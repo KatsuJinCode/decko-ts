@@ -8,11 +8,11 @@
 // The *head setting card's own core renders the RENDER ROOT's head tag.
 // A head RULE whose dbContent is the codename inclusion `{{:head|core}}`
 // (card 34754 `*all+*head`) or `{{*head|core}}` (card 34758
-// `PCTS+*self+*head`) reaches that view through set/right/head.rb:16-18
+// `ZQVT+*self+*head`) reaches that view through set/right/head.rb:16-18
 //   view :core { process_content ::CodeRay.scan(render_raw, :html).div }
 // whose <pre> therefore carries the expanded head bytes. The bare
 // single-card VIEW LANE never seated the head bytes, so the pre was empty.
-// The literal-content sibling (34764 `FrAi+*right+*head`) nests nothing and
+// The literal-content sibling (34764 `MoKi+*right+*head`) nests nothing and
 // was byte-equal through the same path - that is why the divergence looked
 // inclusion-specific.
 //
@@ -49,8 +49,8 @@ const SHARD_DIR = RAW_CORPUS_VIEW_LANE_DIR;
 const PROBE_CARDS = [
   // [id, name, the views the oracle captured, pin?]
   { id: 34754, name: "*all+*head", views: ["content", "open"], pin: true },
-  { id: 34758, name: "PCTS+*self+*head", views: ["content", "open"], pin: true },
-  { id: 34764, name: "FrAi+*right+*head", views: ["content"], pin: true },
+  { id: 34758, name: "ZQVT+*self+*head", views: ["content", "open"], pin: true },
+  { id: 34764, name: "MoKi+*right+*head", views: ["content"], pin: true },
   // the :template-nest-mode carve-out: the nest must stay LITERAL. 2575 is
   // byte-equal and is pinned as the control that the carve-out preserves.
   { id: 2575, name: "home-layout", views: ["content"], pin: true },
@@ -105,7 +105,7 @@ function preOf(s: string): string {
   return a === -1 || b === -1 ? "<NO PRE>" : s.slice(a + 5, b);
 }
 
-describe("D3 empty-CodeRay head family (*all+*head / PCTS+*self+*head :core)", () => {
+describe("D3 empty-CodeRay head family (*all+*head / ZQVT+*self+*head :core)", () => {
   it(
     "the inclusion-carrying head rules carry the resolved head inside their CodeRay pre",
     { timeout: 1_800_000 },

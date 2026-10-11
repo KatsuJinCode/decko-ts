@@ -14,7 +14,7 @@
 // - script_options_search "*script+*right+*content options" 304 (Search,
 //   empty arm -> the 37B no-search-results div)
 // - input_type_rule_pointer "*input type+*right+*input type" 152
-//   (Pointer, 1 unresolved item "radio"; bot 9933B, sara/anon 8632B)
+//   (Pointer, 1 unresolved item "radio"; bot 9933B, tova/anon 8632B)
 // - shark_members_list "Shark+*members" 193 (List, 0 items -> 2994B)
 // - search_anchor_star_search "*search" 100 (results_for_keyword renders
 //   "" here; on 275/304 the oracle RAISES UserError because the view is
@@ -31,8 +31,8 @@
 // below rides DECKOBOT_CODENAME, the deck's STORED bot codename, exactly
 // as Ruby derives DeckoBotID from the stored codename via camelize,
 // codename.rb:107-110; the former restated "deckobot" literal matched no
-// row and actor 1 silently lost the always-ok short-circuit), sara =
-// signed-in non-admin (actorId 1217, the oracle deck's Sara id,
+// row and actor 1 silently lost the always-ok short-circuit), tova =
+// signed-in non-admin (actorId 1217, the oracle deck's Tova id,
 // permissionless on this deck's rules), anonymous = default engine.
 //
 // A first-diff is a REAL finding: the expectation is the captured oracle
@@ -131,7 +131,7 @@ beforeAll(async () => {
   // the unknown item "radio" renders RichText-typed (data-card-type-id="2")
   // from *all+*default (type_id 2), its FULL bar for every actor
   // (*all+*read -> [[Anyone]]), and the unknown-link only for bot
-  // (*all+*create -> [[Administrator]]; Sara is a plain member - no role
+  // (*all+*create -> [[Administrator]]; Tova is a plain member - no role
   // membership rows - and anonymous carries only the Anyone party).
   await seedCard(s, { id: 2, name: "RichText", codename: "basic", typeId: 3, typeName: "Cardtype" });
   await seedCard(s, { id: 1, name: "Decko Bot", codename: DECKOBOT_CODENAME, typeId: 2 });
@@ -298,7 +298,7 @@ beforeAll(async () => {
   s.engine.viewer = { signedIn: true, actorId: 1 }; // bot stand-in (always-ok)
   await loader.installInto(modEngineHost(s.engine, s.fetcher));
   saraEngine = new RenderEngine(new FetchEngine(s.counting));
-  saraEngine.viewer = { signedIn: true, actorId: 1217 }; // the deck's Sara
+  saraEngine.viewer = { signedIn: true, actorId: 1217 }; // the deck's Tova
   await loader.installInto(modEngineHost(saraEngine, s.fetcher));
   anonymousEngine = new RenderEngine(new FetchEngine(s.counting));
   await loader.installInto(modEngineHost(anonymousEngine, s.fetcher));
@@ -320,13 +320,13 @@ describe("oracle-pinned search/list bytes (fixtures/captured/search-list-views.j
   for (const [label, targetName] of Object.entries(TARGET_NAMES)) {
     const target = FIXTURE.targets[label];
     for (const view of Object.keys(target.views.bot)) {
-      it(`${targetName} (${label}): :${view} matches the oracle bytes (bot + sara + anonymous)`, async () => {
+      it(`${targetName} (${label}): :${view} matches the oracle bytes (bot + tova + anonymous)`, async () => {
         const s = storage!;
         const mismatches: string[] = [];
 
         const arms: Array<[string, RenderEngine]> = [
           ["bot", s.engine],
-          ["sara", saraEngine!],
+          ["tova", saraEngine!],
           ["anonymous", anonymousEngine!],
         ];
         for (const [actor, engine] of arms) {
