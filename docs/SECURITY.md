@@ -20,8 +20,9 @@ GitHub Security Advisory channel on **the repository this project is developed i
 `Security` tab, "Report a vulnerability". That is this project's own repository, so an
 advisory filed against a repository you do not hold is not a second channel: there is no
 email fallback. Include the request or content that triggers the problem and what you
-observed. Where the same flaw exists in Ruby Decko, it is reported to upstream privately as
-well, before this port is published.
+observed. Because of the nature of a security concern, a flaw that exists in Ruby Decko is
+not disclosed here until a private channel is established to disclose it
+responsibly.
 
 ## Deployment obligations the port does not meet for you
 
@@ -104,7 +105,7 @@ default, and a deployment that is publicly reachable should not inherit it silen
 
 | | |
 |---|---|
-| **Ruby** | Ruby Decko 0.20.0 does not enforce the authorization check on an account holder's name change: a signed-in actor who may update the card can rename another user's account holder, changing the identity the account, its follow preferences and its inbound references answer to. That is a vulnerability in Ruby Decko, not behaviour this port reproduces. It will be reported to upstream privately before this port is published, and the mechanism, the affected upstream files and their line numbers are withheld here until upstream has shipped a fix. |
+| **Ruby** | Ruby Decko 0.20.0 does not enforce the authorization check on an account holder's name change: a signed-in actor who may update the card can rename another user's account holder, changing the identity the account, its follow preferences and its inbound references answer to. That is a vulnerability in Ruby Decko, not behaviour this port reproduces. Because of the nature of this security concern, it will not be disclosed here until a private channel is established to disclose it responsibly; the mechanism, the affected upstream files and their line numbers are withheld until that disclosure can happen responsibly. |
 | **Port** | `assertMayRenameAccountHolder` (`src/card/actions/card-action-engine.ts:1045`) implements the check's evident intent: an account holder's name change is refused before anything is written, with Ruby's own error (`NAME: cannot rename Account Holder`, HTTP 422), unless the actor is the account holder or a member of Help Desk. Those two cases are the whole allowance — administrators are not among them, and the check has no always-allow arm. |
 | **Why** | Renaming another user's account holder acts against that user: it takes over the name their session, notification mail and references answer to, and Ruby's missing guard leaves it to the deck's ordinary update rule, which on a default deck any signed-in user passes. |
 | **Compatibility** | A rename Ruby accepts, the port refuses; nothing else changes, because the port's allowance (own account, Help Desk) is the check's evident intent. On a clean deck Ruby's rename succeeds and cascades — its later notification mails name the renamed follow rule, and its action ids run one ahead — so the difference reaches 37 of the 90 side-effects battery steps. On production decks Ruby crashes mid-rename before the divergence can show (a second Ruby defect, in the same authorization area, withheld here on the same terms as the one above), which is why the production grade was 90 of 90 with seven declared pins (`tools/parity-side-effects/scenarios.json`). The crash depends on production deck state and does not reproduce on a clean deck, so three of the seven production pins do not transfer to it. |
