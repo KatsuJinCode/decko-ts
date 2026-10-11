@@ -1348,10 +1348,15 @@ export const editView: ViewFn = ({ fmt, voo }) => {
   voo.showViz("help");
   voo.hide("save_button");
   voo.classUp("help-text", "alert alert-info"); // frame_help with_class_up
+  // The edit view declares unknown: true (edit_content.rb:28): its whole
+  // body — the inline edit_form included — renders for an unknown card as
+  // the create form. The nested edit_form render rides that decision (the
+  // opts' unknown leg answers the nested altered_view), so the modal's
+  // body renders the form instead of the :unknown substitution.
   const body = modSlotWrap(
     { fmt, voo },
     "edit",
-    [fmt.renderView("help"), fmt.renderView("edit_form")].join("\n"),
+    [fmt.renderView("help"), fmt.renderView("edit_form", { unknown: "edit_form" })].join("\n"),
   );
   let out = "<div class='modal fade _modal-slot' id='modal-container' role='dialog'>\n";
   out += "<!-- /, \"data-backdrop\": \"static\"} -->\n";
@@ -2697,7 +2702,10 @@ function boardParts(ctx: ViewContext): string {
   return output([
     fmt.renderView("help"),
     fmt.renderView("edit_name_row", { home_view: "edit_name_row" }),
-    fmt.renderView("edit_form"),
+    // The edit view's own unknown: true covers its inline body: the nested
+    // edit_form render rides the parent's decision (the opts' unknown leg
+    // answers the nested altered_view) instead of substituting :unknown.
+    fmt.renderView("edit_form", { unknown: "edit_form" }),
   ]);
 }
 
