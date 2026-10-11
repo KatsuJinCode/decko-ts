@@ -4473,7 +4473,36 @@ export class RenderEngine implements RenderEngineLike {
       this.taskState = viewTaskStateFromResults(results, this.readPermission);
     }
     for (const name of misses) {
-      const defaulted = this.newCardDefaultType(name);
+      // The fetch-miss card's type follows the NEST-FETCH semantics, not the
+      // Card.new template chain: the nest pipeline (format/nest/fetch.rb
+      // new_card) constructs the miss like Card.fetch's new card under the
+      // page's render context, and the capture pins the result — the
+      // mythicity-research page's {{+Gallery10}} miss (the +research
+      // structure's nest, structure rule 655 Research+*type+*structure) is
+      // typed RichText (data-card-type-id 3): the left card
+      // mythicity_research is Research-typed, and Ruby's dup_structure walk
+      // for the *default-typed dup lands on the LEFT TYPE's *structure rule
+      // (research+gallery10+*type plus right+*structure is absent; the TYPE
+      // rule 655 exists and is RichText-typed), whose own type_id (3)
+      // becomes type_id_from_template's answer. Typing through
+      // newCardDefaultType WITHOUT the left's type name instead walks the
+      // TPR anchor on the registry's RichText fallback into
+      // RichText+Gallery10+*type plus right+*structure (10525, HTML-typed)
+      // and seats HTML — whose *type+*create rule (6553, "Shark") denies a
+      // member the capture permits (the *all plus+*create "_left" chain to
+      // *all+*update "Anyone Signed In"). leftTypeName is the same
+      // quick_type(left) input seatAbsentRoot passes. (The unknown-view
+      // family this closes: the 69 member page rows + Guns /
+      // Perennial Wisdom Tradition / Work Week — the 21c92f3e fix's
+      // dispatch, which never reached the integration line.)
+      let leftTypeName: string | undefined;
+      if (name.isCompound && name.leftName !== undefined) {
+        const left = await this.fetcher.fetchByName(name.leftName.s, { skipVirtual: true });
+        if (left?.typeId !== undefined && left.typeId !== null) {
+          leftTypeName = (await this.fetcher.fetchById(left.typeId, { skipModules: true }))?.name?.s;
+        }
+      }
+      const defaulted = this.newCardDefaultType(name, leftTypeName);
       const input = {
         name,
         isNew: true,
