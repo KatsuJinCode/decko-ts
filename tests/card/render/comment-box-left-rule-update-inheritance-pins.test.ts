@@ -80,7 +80,7 @@ describe("comment box: the _left update-rule inheritance walk", () => {
       setDeploymentFollowLiveConfig({
         serializerEra: "live",
         defaultHtmlViewNest: "content",
-        mainStylesheetRevisionDigits: "1790384218",
+        mainStylesheetRevisionDigits: "0000000001",
         footerDeckoVersion: "0.19.1",
         recaptchaSiteKey: "6LSYNTHETICLIVEKEY00000000000000000000AA",
         deckoRootUrl: "https://example.com/",

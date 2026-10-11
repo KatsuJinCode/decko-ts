@@ -33,7 +33,7 @@
 //      src URL (jquery sha256, jquery-ujs/ace/select2 sha512 — live head,
 //      12/12 pages), inserted into the emitted remote script tags;
 //    - `mainStylesheetRevisionDigits`: the compiled-CSS attachment revision
-//      component the live deployment serves (`/files/45514/1790384218.css`,
+//      component the live deployment serves (`/files/45514/0000000001.css`,
 //      byte-level capture vs the SassC compile 2026-09-26) — rewritten in the
 //      main stylesheet tag and the decko.cssPath script variable, both of
 //      which derive from the same *style asset output attachment;
@@ -104,7 +104,7 @@ export const LIVE_DEPLOYMENT_CONSTANTS: Omit<DeploymentFollowLiveConfig, "serial
     "https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.1/js/select2.full.min.js":
       "sha512-Y4+u+T/6DpDb2AkTrxs3eJiN9o/u+l8pLNt0lSRKnJe2wIDVCwd7N8afy+70Pmr5FtmoX5IXmwK6H7Jlb8Nx8A==",
   },
-  mainStylesheetRevisionDigits: "1790384218",
+  mainStylesheetRevisionDigits: "0000000001",
   footerDeckoVersion: "0.19.1",
   recaptchaSiteKey: "6LSYNTHETICLIVEKEY00000000000000000000AA",
   deckoRootUrl: "https://culturesmith.com/",

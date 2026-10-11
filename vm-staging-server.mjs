@@ -352,8 +352,8 @@ const COMPILED_ASSETS_DIR =
   process.env.COMPILED_ASSETS_DIR ?? "/opt/decko-bunny-render/oracle-assets";
 
 // URL → compiled filename. Both asset cards have one canonical URL on the
-// page (the layout shell links /files/~45514/1790384218.css and
-// /files/~50617/1768074298.js). The action_id segment is the deck's
+// page (the layout shell links /files/~45514/0000000001.css and
+// /files/~50617/0000000002.js). The action_id segment is the deck's
 // bucket revision; the bucket it ships against is the same one we mirror
 // to disk here. We treat the (cardId, ext) tuple as the key — the action
 // id is preserved verbatim in the served URL.
@@ -1201,23 +1201,23 @@ const SELF_POINTER_ID = 264; // *self set pointer (corpus)
 // codename `slate_skin_customized`, type_id 33929 bootswatch_skin). Its
 // asset output is card id 45514; the corpus stores the OLDER revision in
 // db_content ("(my_bucket)/45514/1786554352.css"), but the revision live
-// actually serves is 1790384218 (12/12 live pages:
-// `/files/45514/1790384218.css` — audit A-2). Byte receipt (2026-09-26):
-// live 1790384218.css EQUALS our SassC compile of the deck's current
+// actually serves is 0000000001 (12/12 live pages:
+// `/files/45514/0000000001.css` — audit A-2). Byte receipt (2026-09-26):
+// live 0000000001.css EQUALS our SassC compile of the deck's current
 // skin with live's asset-host setting applied — `url(/mod/…)` →
 // `url(https://culturesmith.com/mod/…)` (16 font/image URLs;
 // `cmp` clean, 372,356 bytes). The VM's oracle-assets/all-style.css
 // carries that transform.
-const MAIN_CSS_URL = `${SPACES_HOST}/files/45514/1790384218.css`;
+const MAIN_CSS_URL = `${SPACES_HOST}/files/45514/0000000001.css`;
 // *all+*script (rule id 20616) asset output is card id 50617.
-const MAIN_JS_URL = `${SPACES_HOST}/files/50617/1768074298.js`;
+const MAIN_JS_URL = `${SPACES_HOST}/files/50617/0000000002.js`;
 
 // Style-mod file cards (their CSS asset outputs); see card-mod-assets'
 // :remote_style_tags. The card-mod-asset compiled bytes are also bucket
 // references — there is no compiled CSS in the scrubbed corpus. The
 // routes below serve what's available.
 const STYLE_MOD_ASSETS = [
-  `${SPACES_HOST}/files/45514/1790384218.css`,
+  `${SPACES_HOST}/files/45514/0000000001.css`,
 ];
 
 // All asset output cards the corpus references (type_id 18, db_content
@@ -1643,10 +1643,10 @@ async function safeRenderSetting(name, preferredView, fallbackView) {
 // `(my_bucket)/<id>/<fileId>.jpg` shape, so the live URL is
 // `<SPACES_HOST>/files/<id>/<fileId>-small.jpg` — the size suffix `-small`
 // for the logo and favicon matches the live deck's recorded URLs:
-//   http://s3.amazonaws.com//files/79/3643-small.jpg   (logo, recorded as
+//   http://s3.amazonaws.com//files/79/0000000003-small.jpg   (logo, recorded as
 //                                                      src on the nav-logo
 //                                                      <img>, oracle:80:47)
-//   http://s3.amazonaws.com//files/103/3649-small.jpg (favicon, recorded as
+//   http://s3.amazonaws.com//files/103/0000000004-small.jpg (favicon, recorded as
 //                                                      <link rel="shortcut
 //                                                      icon> href,
 //                                                      oracle:80:8)
@@ -1660,8 +1660,8 @@ async function ensureBootValues() {
   if (siteTitleLoaded !== null) return siteTitleLoaded;
   const result = {
     siteTitle: SITE_TITLE_DEFAULT,
-    logoUrl: `${SPACES_HOST}/files/79/3643-small.jpg`,
-    faviconUrl: `${SPACES_HOST}/files/103/3649-small.jpg`,
+    logoUrl: `${SPACES_HOST}/files/79/0000000003-small.jpg`,
+    faviconUrl: `${SPACES_HOST}/files/103/0000000004-small.jpg`,
   };
   try {
     const { rows } = await driver.query(
@@ -2434,7 +2434,7 @@ async function renderDeckoErrorPage(cardName, kind) {
 //      engine's imageCdnHost seam (render.imageCdnHost above), so only
 //      the capture-env forms remain to rewrite.
 //   2. Stylesheet revision (audit A-2): live serves
-//      /files/45514/1790384218.css (byte receipt vs our SassC compile);
+//      /files/45514/0000000001.css (byte receipt vs our SassC compile);
 //      the corpus row stores the OLDER 1786554352 revision, which the
 //      engine resolves from *all+*style+*asset output. Pinned on both the
 //      stylesheet link and decko.cssPath.
@@ -2450,7 +2450,7 @@ async function renderDeckoErrorPage(cardName, kind) {
 //      `</html>\n`; the engine's page string ends at `</html>`.
 const SERVED_ASSET_HOST_PREFIX = "http://s3.amazonaws.com//files/";
 const SERVED_CSS_REVISION = "45514/1786554352.css";
-const SERVED_CSS_REVISION_LIVE = "45514/1790384218.css";
+const SERVED_CSS_REVISION_LIVE = "45514/0000000001.css";
 // A-4 integrity values, verbatim from the live head bytes (12/12 pages).
 const SERVED_SCRIPT_INTEGRITY = [
   {
@@ -3032,7 +3032,7 @@ async function handleAssetFile(pathname) {
       `/* decko-ts staging: serving the SCSS source for card ${MAIN_SKIN_CARD_ID} ` +
       `(slate skin customized) at /files/~${cardId}/${actionId}.${ext}. ` +
       `The compiled CSS bytes live in the live deck's cloud bucket ` +
-      `(live serves /files/45514/1790384218.css; the corpus row still ` +
+      `(live serves /files/45514/0000000001.css; the corpus row still ` +
       `stores the older 1786554352 revision) and are not in the scrubbed corpus. */\n`;
     return {
       status: 200,

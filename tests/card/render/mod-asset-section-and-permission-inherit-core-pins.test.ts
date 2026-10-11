@@ -221,8 +221,8 @@ describe("a Mod card's Scripts section is gated on the +*script child card (type
     // way, fitting a four-file local group from
     // tmp/serializer-followup/probe-green5/expected--mod_shades__page.html.
     // That file is a live recapture of the production site 44.3 days after
-    // this yardstick's capture (DigitalOcean CSS 1790384218 = 2026-09-26 vs
-    // this capture's s3 CSS 1786554352 = 2026-08-12), not the graded
+    // this yardstick's capture (a DigitalOcean CSS compile of 2026-09-26 vs
+    // this capture's s3 CSS of 2026-08-12), not the graded
     // expected-v2 corpus it was cited as. Adjudicated and repaired
     // 2026-10-04; see an internal work log
     expect(

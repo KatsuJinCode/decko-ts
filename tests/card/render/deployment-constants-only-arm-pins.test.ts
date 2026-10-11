@@ -104,7 +104,7 @@ describe("deployment constants-only arm: default OFF", () => {
 describe("deployment constants-only arm: the preset arms the constants", () => {
   it("the preset carries the live SRI map, css revision, footer, recaptcha key and rootUrl", () => {
     setDeploymentFollowLiveConfig(LIVE_DEPLOYMENT_CONSTANTS);
-    expect(LIVE_DEPLOYMENT_CONSTANTS.mainStylesheetRevisionDigits).toBe("1790384218");
+    expect(LIVE_DEPLOYMENT_CONSTANTS.mainStylesheetRevisionDigits).toBe("0000000001");
     expect(LIVE_DEPLOYMENT_CONSTANTS.footerDeckoVersion).toBe("0.19.1");
     expect(LIVE_DEPLOYMENT_CONSTANTS.recaptchaSiteKey).toBe(
       "6LSYNTHETICLIVEKEY00000000000000000000AA",
@@ -131,14 +131,14 @@ describe("deployment constants-only arm: the preset arms the constants", () => {
   it("the compiled-CSS revision rewrites the stylesheet only, never the .js asset", () => {
     setDeploymentFollowLiveConfig(LIVE_DEPLOYMENT_CONSTANTS);
     expect(applyDeploymentCssRevision(FROZEN_CSS)).toBe(
-      "https://production-storage.r1.cdn.objectstore.example/files/45514/1790384218.css",
+      "https://production-storage.r1.cdn.objectstore.example/files/45514/0000000001.css",
     );
     expect(
       applyDeploymentCssRevision(
-        "https://production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
+        "https://production-storage.r1.cdn.objectstore.example/files/50617/0000000002.js",
       ),
     ).toBe(
-      "https://production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
+      "https://production-storage.r1.cdn.objectstore.example/files/50617/0000000002.js",
     );
   });
 
