@@ -19,7 +19,18 @@ flawless production run, per the proposal's question 3 recommendation).
 
 The parity grade of record is the public synthetic deck, graded by the
 reference harness and reproducible from this repository
-([reference-harness/SPEC.md](reference-harness/SPEC.md)): rendering
+([reference-harness/SPEC.md](reference-harness/SPEC.md)). **Last measured
+2026-10-10** by running the harness and the grader against the committed
+`reference-harness/fixtures/synthetic-v1` fixture:
+
+```bash
+node reference-harness/runner/run.mjs --adapter reference-harness/adapters/ts/adapter.json \
+     --fixture reference-harness/fixtures/synthetic-v1 --out <resultsDir>
+node reference-harness/runner/grade.mjs --fixture reference-harness/fixtures/synthetic-v1 \
+     --actual <resultsDir>
+```
+
+That run produced: rendering
 1,754 of 1,754, semantics 2,389 of 2,389, persistence 16 of 16, side
 effects 19 of 19 (16 write answers plus three sign-in answers — the
 public scenarios include no sign-out), read-writes 8 of 8. The public
@@ -33,7 +44,12 @@ to this grade. The larger figures under
 [Migration status](#migration-status) — the with-mods corpus replay —
 are historical: they were measured on an earlier revision of the engine,
 on 2026-09-23, against a corpus that is not redistributable and cannot be
-reproduced from this repository. The current tree is verified by the test
+reproduced from this repository. A disclosed subset of that historical
+corpus's expectations (13 of them) was re-anchored to bytes fetched from the
+live 0.19.1 site rather than to the 0.20.0 oracle, so those rows measure
+agreement with a live site and not with the oracle the rest of the corpus was
+captured from — see [docs/parity-method.md](docs/parity-method.md), "The
+thirteen live expectations". The current tree is verified by the test
 suite and by byte identity on a fixed set of 40 pages across every serving
 path, not by a second full grade.
 
@@ -262,14 +278,22 @@ refused with a reason, never deleted.
   parses: `fixtures/deploy-teardown/`.
 - `src/server/` — host-facing layer: SQL/blob driver interface, adapters
   (Cloudflare D1, libSQL-over-HTTP, local SQLite), schema row types.
-- `src/card/` — the card engine core ported from the Ruby card gem:
-  name algebra, fetch/cache, history, sets/patterns, rendering, the mod
-  loader with per-card MRO view dispatch (`src/card/mod-loader/`).
+- `src/card/` — the card engine core, ported from the Ruby card gem: name
+  algebra, fetch/cache, history, sets/patterns, rendering, the mod loader with
+  per-card MRO view dispatch (`src/card/mod-loader/`). The layout is
+  TypeScript-idiomatic and is **not** a directory-for-directory mirror of
+  `card/lib/card/`: a few directories correspond (`name/`, `fetch/`, `auth/`),
+  the rest are named for the concept they carry, and views are one flat
+  name→function registry rather than a per-directory table. Follow the per-file
+  upstream citation in each module's own header to find the Ruby original — see
+  [decision 0008](docs/decisions/0008-view-registry-and-directory-layout.md).
 - `src/cql/` — Card Query Language: parser, AST, SQL translation, execution.
 - `db/` — schema (SQLite-compatible DDL derived from the production MySQL
   schema: `db/schema.sqlite.sql` for fresh D1s) and seed (`db/seed.sql`).
-- `tools/oracle/` — the Ruby oracle harness: a local decko app + capture
-  scripts that record Ruby behavior into `fixtures/captured/`.
+- `tools/oracle/` — internal Ruby oracle tooling: a local decko app plus the
+  capture scripts that record Ruby behavior into `fixtures/captured/`. It is
+  how the expected bytes were produced; the public, reproducible harness is
+  `reference-harness/` (below).
 - `tools/migrate/` — the generalized dump importer (Ruby deck dump →
   decko-ts storage), proven on a 1.2 GB production dump.
   `node tools/migrate/migrate.mjs --dump deck.sql --out deck.sqlite --files <the Ruby deck's files directory> --verify --strict`
@@ -285,6 +309,10 @@ refused with a reason, never deleted.
   are the executable specification).
 - `tests/` — vitest suites per subsystem (card, cql, server, deploy,
   migrate, testing, tools) plus worker/Miniflare smoke tests.
+- `reference-harness/` — the **public** parity harness: the synthetic `v1`
+  deck fixture, the expected bytes, the TypeScript adapter and the
+  run/grade commands ([SPEC.md](reference-harness/SPEC.md)). Reproducible from
+  a clean clone with only Node installed.
 - `docs/` — port tracker, per-stream notes, publication plan.
 
 ## Test status
@@ -308,7 +336,13 @@ budgets are green solo (warm
 `benchmarks/results/perf/render-perf.json`).
 
 `npm test` runs the card-engine suite (the largest tree); the full tree
-runs with `npx vitest run`. Round trips per render are pinned by the
+runs with `npx vitest run`. The freshness proof that a committed write is
+visible to the next request on every serving path is its own command —
+`npm run test:no-caching-freshness`
+(`tests/deploy/no-caching-synthetic.test.ts`, measured at 7.8 s alone) — and a
+stage of `npm run release-check`. It is not inside `npm test` because that
+command already costs about 155 s on this tree, and because a deploy-suite
+proof does not belong to a card-only script. Round trips per render are pinned by the
 measured law ([docs/scaling-comparison-deep-nesting.md](docs/scaling-comparison-deep-nesting.md),
 reproducible with `tests/card/render/deep-nesting-trip-attribution.test.ts`):
 a cold render costs four fixed round trips plus one per nesting level below
