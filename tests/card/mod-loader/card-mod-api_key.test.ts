@@ -426,9 +426,11 @@ describe("card-mod-api_key view bodies", () => {
     const { ctx } = makeCtx(fmt, "generate_button");
     const out = view.viewFn(ctx);
     expect(out).toContain('id="new_card"');
-    expect(out).toContain('class="card-form slotter"');
+    // card_form_html_opts: the autosave class rides the ACTION (:update) —
+    // the graded corpus row (a new +*api key card's generate form) still
+    // carries it; the _method spoof stays persistence-gated.
+    expect(out).toContain('class="card-form slotter autosave"');
     expect(out).not.toContain('name="_method"');
-    expect(out).not.toContain("autosave");
   });
 
   it(":generate_button's button label flips on content (api_key.rb:100-102)", () => {
@@ -550,12 +552,17 @@ describe("card-mod-api_key view bodies", () => {
     const emptyFmt = new StubFmt({ name: { s: "Joe User+*api key" }, dbContent: "" });
     const { ctx: emptyCtx } = makeCtx(emptyFmt, "core");
     const emptyOut = view.viewFn(emptyCtx);
+    // The api-key-top DIV renders unconditionally (core.haml's template
+    // line is not behind the guard) — only the inner `= render
+    // core_top_view` line sits behind `card.content.present?`. The graded
+    // corpus row (Ada Admin's blank +*api key) pins the empty top div.
     expect(emptyOut).toBe(
       `<div class='api-key-core p-1'>\n` +
+        `<div class='api-key-top d-flex my-2 py-3 border-bottom justify-content-between w-100'>\n</div>\n` +
         `<div class='api-key-buttons d-flex my-2 py-3 justify-content-between w-100'>\n` +
         `[rendered:buttons]\n</div>\n</div>\n`,
     );
-    expect(emptyOut).not.toContain("api-key-top");
+    expect(emptyOut).not.toContain("api-key-current");
     // The buttons section renders :buttons which delegates to
     // :generate_button; the stub records those calls.
     expect(emptyFmt.getRenderCalls()).toEqual(["buttons"]);

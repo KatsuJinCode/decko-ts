@@ -925,7 +925,41 @@ export class RenderFormat {
   modalNestView(view: string, nestCard: RenderCard = this.card): string {
     if (this.nestMode === "template") return "template_nest";
     if (this.nestMode === "compact") return this.viewInCompactMode(view, nestCard);
+    if (this.nestMode === "edit") return this.viewInEditMode(view, nestCard);
     return view;
+  }
+
+  /**
+   * nesting/mode.rb:62-68 `view_in_edit_mode`: a nest rendered under nest
+   * mode :edit substitutes to :edit_in_form (the field-editor form the
+   * structured-form family renders) unless the view hides in edit mode —
+   * mode.rb:73-77 `view_setting(:perms, view) == :none || card.structure ||
+   * card.key.blank?` — in which case :blank (the nil view; output drops it).
+   * The graded corpus pins both arms: the board/edit_nests field nests all
+   * substitute to :edit_in_form (the Topic template's {{+summary}} under
+   * the board's with_nest_mode :edit renders the field formgroup), while
+   * the Topic template's {{+tags|link}} (link is perms :none) renders
+   * nothing.
+   */
+  private viewInEditMode(view: string, nestCard: RenderCard): string {
+    if (this.hideViewInEditMode(view, nestCard)) return "blank";
+    return "edit_in_form";
+  }
+
+  private hideViewInEditMode(view: string, nestCard: RenderCard): boolean {
+    if (PERMS_NONE_VIEWS.has(view)) return true; // view_setting(:perms, view) == :none
+    if (
+      this.engine.structureRuleForSync?.({
+        name: nestCard.name.s,
+        id: nestCard.id,
+        typeId: nestCard.typeId,
+        typeName: nestCard.typeName,
+        isNew: nestCard.record.isNew === true,
+      }) !== undefined
+    ) {
+      return true; // card.structure — not yet nesting structures
+    }
+    return nestCard.key === ""; // card.key.blank? (eg {{_self|type}} on new cards)
   }
 
   /**
@@ -1919,6 +1953,11 @@ export class RenderFormat {
     // card — the nest target — because Ruby runs modal_nest_view on the
     // subformat (nest.rb:21); the mode it consults is this format's.
     const view = this.modalNestView(requestedView, effectiveCard);
+    // mode.rb:64's :blank substitute renders NOTHING — the graded board
+    // fieldset carries no slot at all for the {{+tags|link}} nest whose
+    // :link view hides in edit mode (no wrap, no slot div, no bytes — the
+    // nest join's separator only).
+    if (view === "blank") return "";
     if (ENGINE_NEST_TRACE) {
       console.log("ENGINE-NEST", JSON.stringify({ requested: requestedView, view, card: effectiveCard?.name?.s, unknown: effectiveCard?.unknown, nestName: nest.name }));
     }

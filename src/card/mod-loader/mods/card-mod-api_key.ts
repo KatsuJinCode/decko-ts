@@ -70,6 +70,7 @@
 //     not exercised in the headless render path
 
 import type { ViewContext, ViewFn } from "../../render/format.js";
+import { DeckoName } from "../../name.js";
 import type {
   DeckoModManifest,
   ModEventFn,
@@ -215,13 +216,15 @@ function cardTokenPath(urlKey: string): string {
  *   - the `= render_buttons` line's callee is a set-DSL view (Ruby method
  *     body, no trailing newline), so no blank line appears there. */
 const coreView: ViewFn = (ctx) => {
-  const card = ctx.fmt.card;
-  let top = "";
-  if (card.dbContent.length > 0) {
-    top =
-      `<div class='api-key-top d-flex my-2 py-3 border-bottom justify-content-between w-100'>\n` +
-      `${ctx.fmt.renderView(coreTopView())}\n</div>\n`;
+  // core.haml: the api-key-top DIV renders UNCONDITIONALLY — only the
+  // inner `= render core_top_view` line is behind the
+  // `card.content.present?` guard. The graded corpus row (Ada Admin's
+  // blank +*api key) pins the empty top div.
+  let top = `<div class='api-key-top d-flex my-2 py-3 border-bottom justify-content-between w-100'>\n`;
+  if (ctx.fmt.card.dbContent.length > 0) {
+    top += `${ctx.fmt.renderView(coreTopView())}\n`;
   }
+  top += `</div>\n`;
   const buttons =
     `<div class='api-key-buttons d-flex my-2 py-3 justify-content-between w-100'>\n` +
     `${ctx.fmt.renderView("buttons")}\n</div>\n`;
@@ -306,8 +309,11 @@ const generateButtonView: ViewFn = (ctx) => {
   const spoof = isNew
     ? ""
     : `<input type="hidden" name="_method" value="patch" autocomplete="off" />`;
+  // card_form_html_opts (form.rb:218-224): the autosave class rides the
+  // ACTION (:update) — NOT the record's persistence; the graded row's
+  // new-card form still carries it (id stays new_card, no _method spoof).
   const opener =
-    `<form class="card-form slotter${isNew ? "" : " autosave"}" id="${formId}"` +
+    `<form class="card-form slotter autosave" id="${formId}"` +
     ` action="${cardUpdatePath(ctx.fmt.urlKey())}" accept-charset="UTF-8"` +
     ` data-remote="true" method="post">` +
     `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />${spoof}`;
@@ -348,10 +354,17 @@ const tokenJsonView: ViewFn = (ctx) => {
  *  composed from the account + the *api_key right). */
 const apiKeyView: ViewFn = (ctx) => {
   const childName = `${ctx.fmt.card.name.s}+*api key`;
+  // field_nest's auto-title (nesting.rb:39-40): `opts[:title] ||=
+  // field.cardname.vary("capitalized")` — the :api_key SYMBOL resolves
+  // through the codename table to the setting card's own name ("*api
+  // key"), and vary("capitalized") leaves it unchanged. The graded row's
+  // slot JSON carries "title":"*api key" and the titled header renders it
+  // verbatim (the explicit title's absolute form is itself).
+  const title = DeckoName.parse(childName).tag;
   return ctx.fmt.nest({
     syntax: `{{${childName}|titled}}`,
     name: childName,
-    options: { view: "titled", extra: {} },
+    options: { view: "titled", title, extra: {} },
     comment: undefined,
   });
 };

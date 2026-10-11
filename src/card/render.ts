@@ -1664,6 +1664,21 @@ export class RenderEngine implements RenderEngineLike {
       await this.warmSkinParentPointer(name);
       await this.warmCustomizedName(name);
     }
+    // The ACCOUNT-FAMILY warm (the setup view's explicit-edit fields): a
+    // User-typed rendered card's setup/account surfaces read the +*account
+    // field card and ITS field rows (+*email / +*password / +*salt /
+    // +*status) synchronously (card-mod-account account_formgroups'
+    // subformat + the before hook's edit_structure tuples → the multi-card
+    // edit's field fabrications resolve real rows). The prefetch closure
+    // chases neither (the fields are data-driven, not content nests). A
+    // User-typed card with no account family rows warms nothing
+    // (prepareItemForRender undefined on every miss).
+    if (record.typeId !== undefined && this.peekCodenameById?.(record.typeId) === "user") {
+      await this.prepareItemForRender(`${name.s}+*account`);
+      for (const accountChild of ["+*email", "+*password", "+*salt", "+*status"]) {
+        await this.prepareItemForRender(`${name.s}+*account${accountChild}`);
+      }
+    }
     // p20-help-content warm (the setting-page core's synchronous reads):
     // a SETTING-typed rendered card's core (views.ts settingCoreHtml)
     // reads the *all+<setting> rule card synchronously — the rule_help

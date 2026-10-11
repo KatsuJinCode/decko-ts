@@ -299,14 +299,14 @@ const passwordInputView: ViewFn = (ctx) => {
     typeof voo.opts["form_name_prefix"] === "string"
       ? (voo.opts["form_name_prefix"] as string)
       : "card";
-  const idPrefix = namePrefix === "card" ? "card" : namePrefix.replace(/\]/g, "").replace(/[\[+]/g, "_");
+  const idPrefix = namePrefix === "card" ? "card" : namePrefix.replace(/\]/g, "").replace(/[^-a-zA-Z0-9:.]/g, "_");
   const autocomplete =
     fmt.parent?.card.name.s === "*signin+*account" ? "on" : "off";
   return (
     `<input class="d0-card-content _pw-input form-control" placeholder="Password" autocomplete="${autocomplete}" type="password" name="${namePrefix}[content]" id="${idPrefix}_content" />\n` +
     `<span class='_toggle-password visibility-icon _pw-text-area'>\n` +
     `<i class="_toggle-pw-visibility notranslate material-icons">visibility_off</i>\n` +
-    `</span>`
+    `</span>\n`
   );
 };
 
@@ -1150,21 +1150,26 @@ const setupView: ViewFn = (ctx) => {
     // voo.help = haml :setup_help (the oracle's helpBytes line)
     voo.liveHelp = SETUP_HELP_BYTES;
     // Auth.as_bot { setup_form } - frame_and_form :create over the body
-    // (the as_bot widening rides the seeded grants)
-    const body = output([
-      setupHiddenFields(ctx),
-      str(fmt.renderView("name_formgroup")),
-      // account_formgroups (the walk; the +email/+password field cards'
-      // editors render through the subformat's nest machinery under the
-      // inherited nest_mode :edit)
-      accountFormgroups(ctx),
-      // setup_form_buttons (user.rb:35-39): button_formgroup { setup_button }
-      // - setup_button = submit_button text "Set up", disable_with
-      // "Setting up" (form_elements.rb:59-66; the pinned bootstrap shape)
-      `<div class="form-group button-form-group"><button name="button" type="submit" data-disable-with="Setting up" class="btn btn-primary">Set up</button></div>`,
-    ]);
-    const form = createCardBodyShell(ctx, { body });
-    return framedView(ctx, "setup", () => form);
+    // (the as_bot widening rides the seeded grants). The body renders
+    // INSIDE the frame's block: frame.rb:21's add_name_context runs before
+    // the body (the graded field slots carry name_context), so the
+    // account field renders must build after it.
+    return framedView(ctx, "setup", () => {
+      const body = output([
+        setupHiddenFields(ctx),
+        str(fmt.renderView("name_formgroup")),
+        // account_formgroups (the walk; the +email/+password field cards'
+        // editors render through the subformat's nest machinery under the
+        // inherited nest_mode :edit)
+        accountFormgroups(ctx),
+        // setup_form_buttons (user.rb:35-39): button_formgroup { setup_button }
+        // - setup_button = submit_button text "Set up", disable_with
+        // "Setting up" (form_elements.rb:59-66; the pinned bootstrap shape)
+        `<div class="form-group button-form-group"><button name="button" type="submit" data-disable-with="Setting up" class="btn btn-primary">Set up</button></div>`,
+      ]);
+      const form = createCardBodyShell(ctx, { body });
+      return form;
+    });
   });
 };
 
