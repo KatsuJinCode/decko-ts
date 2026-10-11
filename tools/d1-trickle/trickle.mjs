@@ -12,12 +12,12 @@
 // wrangler's login, so a run cannot land on an account nobody named. Secrets
 // are never printed; error text is masked.
 //
-// Examples (see brandonDojoTech recovery/CLOUDFLARE-HOSTING.md):
-//   node tools/d1-trickle/trickle.mjs plan --source deck.sqlite3 --state tmp/d1-trickle/casey \
+// Examples (see the operator runbook):
+//   node tools/d1-trickle/trickle.mjs plan --source deck.sqlite3 --state tmp/d1-trickle/riley \
 //        --closures tmp/d1-trickle/closures.jsonl --pool page-sample-pool.txt
-//   node tools/d1-trickle/trickle.mjs run --state tmp/d1-trickle/casey --target d1 \
-//        --creds-file <file> --token-key CASEY_CF_API_TOKEN --account-key CASEY_CF_ACCOUNT_ID \
-//        --database-name decko-casey
+//   node tools/d1-trickle/trickle.mjs run --state tmp/d1-trickle/riley --target d1 \
+//        --creds-file <file> --token-key RILEY_CF_API_TOKEN --account-key RILEY_CF_ACCOUNT_ID \
+//        --database-name decko-riley
 //   node tools/d1-trickle/trickle.mjs run --state tmp/d1-trickle/local --target miniflare --persist tmp/d1-trickle/local/d1
 
 import { readPagePool } from "./deck-source.mjs";
@@ -73,7 +73,7 @@ async function main() {
     const target = need("target");
     const dryRun = flag("dry-run");
     let exec;
-    if (target === "miniflare") exec = await MiniflareD1Executor.open({ persistDir: need("persist"), dbName: arg("database-name", "decko-casey-trial") });
+    if (target === "miniflare") exec = await MiniflareD1Executor.open({ persistDir: need("persist"), dbName: arg("database-name", "decko-trial-deployment") });
     else if (target === "d1") exec = dryRun && !arg("creds-file") ? { accountUsageToday: async () => undefined, close: async () => {} } : await cloudflare(true);
     else throw new Error("--target is miniflare or d1");
     try {
@@ -94,7 +94,7 @@ async function main() {
     }
   } else if (cmd === "verify") {
     const target = need("target");
-    const exec = target === "miniflare" ? await MiniflareD1Executor.open({ persistDir: need("persist"), dbName: arg("database-name", "decko-casey-trial") }) : await cloudflare(true);
+    const exec = target === "miniflare" ? await MiniflareD1Executor.open({ persistDir: need("persist"), dbName: arg("database-name", "decko-trial-deployment") }) : await cloudflare(true);
     try {
       const r = await verifyAll(need("state"), exec);
       console.log(JSON.stringify(r, null, 1));

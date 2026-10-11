@@ -68,7 +68,7 @@ const FROZEN_RAILS =
 
 // The frozen capture-era main-stylesheet attachment (the corpus's own digits).
 const FROZEN_CSS =
-  "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/45514/1786554352.css";
+  "https://source-deck-production-storage.r1.cdn.objectstore.example/files/45514/1786554352.css";
 
 afterEach(() => {
   setDeploymentFollowLiveConfig(undefined);
@@ -107,7 +107,7 @@ describe("deployment constants-only arm: the preset arms the constants", () => {
     expect(LIVE_DEPLOYMENT_CONSTANTS.mainStylesheetRevisionDigits).toBe("1790384218");
     expect(LIVE_DEPLOYMENT_CONSTANTS.footerDeckoVersion).toBe("0.19.1");
     expect(LIVE_DEPLOYMENT_CONSTANTS.recaptchaSiteKey).toBe(
-      "6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW",
+      "6LSYNTHETICLIVEKEY00000000000000000000AA",
     );
     expect(LIVE_DEPLOYMENT_CONSTANTS.deckoRootUrl).toBe("https://culturesmith.com/");
     expect(LIVE_DEPLOYMENT_CONSTANTS.defaultHtmlViewNest).toBe("content");
@@ -131,21 +131,21 @@ describe("deployment constants-only arm: the preset arms the constants", () => {
   it("the compiled-CSS revision rewrites the stylesheet only, never the .js asset", () => {
     setDeploymentFollowLiveConfig(LIVE_DEPLOYMENT_CONSTANTS);
     expect(applyDeploymentCssRevision(FROZEN_CSS)).toBe(
-      "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/45514/1790384218.css",
+      "https://source-deck-production-storage.r1.cdn.objectstore.example/files/45514/1790384218.css",
     );
     expect(
       applyDeploymentCssRevision(
-        "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/50617/1768074298.js",
+        "https://source-deck-production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
       ),
     ).toBe(
-      "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/50617/1768074298.js",
+      "https://source-deck-production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
     );
   });
 
   it("footer version, recaptcha key, rootUrl and default_html_view read live", () => {
     setDeploymentFollowLiveConfig(LIVE_DEPLOYMENT_CONSTANTS);
     expect(footerDeckoVersion()).toBe("0.19.1");
-    expect(recaptchaSiteKey()).toBe("6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW");
+    expect(recaptchaSiteKey()).toBe("6LSYNTHETICLIVEKEY00000000000000000000AA");
     expect(deckoRootUrl()).toBe("https://culturesmith.com/");
     expect(deploymentDefaultHtmlViewNest()).toBe("content");
   });

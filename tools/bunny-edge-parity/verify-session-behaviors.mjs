@@ -25,7 +25,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { query, pipelineEndpoint } from "./probe-trial-account-schema.mjs";
 import { createHash } from "node:crypto";
 
-const EDGE = "https://decko-edge-wm2um.bunny.run";
+const EDGE = "https://decko-edge-synthetic.bunny.run";
 // The deployment target is operator input, never committed to the public
 // tree: the tool refuses to run rather than default to an unnamed deploy.
 function requireEnv(name) {

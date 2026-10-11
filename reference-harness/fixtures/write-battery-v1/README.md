@@ -75,11 +75,11 @@ build path recorded above and in `MANIFEST.json`'s `provenance` is the stock
 oracle (`reference-harness/oracle/build-deck.sh`, then `seed.rb`) against
 decko 0.20.0 / card 1.110.0, and that path does not create another
 application's schema. The committed deck file nevertheless carried eight empty
-`library_*` tables belonging to a private reading-assistant application
-(`library_assistant_decisions`, `library_assistant_interactions`,
-`library_assistant_learner_levels`, `library_assistant_threads`,
-`library_audit_log`, `library_feature_events`, `library_lib_settings`,
-`library_proposals`) whose presence the recorded build does not explain — so
+`private_table_*` tables belonging to a private application that runs on the
+same engine (`private_table_1`, `private_table_2`,
+`private_table_3`, `private_table_4`,
+`private_table_5`, `private_table_6`, `private_table_7`,
+`private_table_8`) whose presence the recorded build does not explain — so
 the committed deck was not a byte-reproducible output of the recorded path. They
 are not part of the battery: every one is empty, nothing in this repository
 creates or reads them, and no recording touches them.

@@ -7,7 +7,7 @@
 // read its database endpoint ONLY from dashboard-injected secrets
 // (BUNNY_DATABASE_URL / BUNNY_DATABASE_AUTH_TOKEN, then the repo-historical
 // BUNNY_DB_URL / BUNNY_DB_TOKEN) — names the management API never exposes,
-// which made repointing the serving database (decko-edge -> restore-decko)
+// which made repointing the serving database (decko-edge -> restore-deck-synthetic)
 // a secrets round-trip. The resolution now checks the PLAIN edge-script
 // variable pair DECKO_DB_URL / DECKO_DB_TOKEN FIRST (settable through the
 // management API by name), falling back to the two secret pairs unchanged.
@@ -23,7 +23,7 @@ import {
 } from "../../deploy/bunny-worker-src/bunny-edge-engine-handler.js";
 
 const PLAIN = {
-  DECKO_DB_URL: "libsql://01M42NF3NVDXEXCC43AWKF3F84-restore-decko.lite.bunnydb.net/",
+  DECKO_DB_URL: "libsql://01SYNTHETICULID0000000000000-restore-deck-synthetic-synthetic.lite.bunnydb.net/",
   DECKO_DB_TOKEN: "plain-token",
 };
 const SECRETS = {

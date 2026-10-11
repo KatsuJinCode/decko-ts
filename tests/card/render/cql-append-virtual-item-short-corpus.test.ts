@@ -3,7 +3,7 @@
 // on the key-repaired deck.
 //
 // `Collection+Item+*type plus right+*structure` is the search
-// `{"type":"Item", ..., "append":"short"}`, so the `Morgan` collection
+// `{"type":"Item", ..., "append":"short"}`, so the `Ellery` collection
 // lists the virtual `<item>+short` cards. Their template is
 // `Item+short+*type plus right+*structure` (HTML-typed):
 //   - the virtual card's type is the structure rule card's (type.rb
@@ -46,7 +46,7 @@ describeIfCorpus("search append: virtual <item>+short cards", () => {
 
   beforeAll(async () => {
     // the grade boot's asset-host seam (image srcs in the page body)
-    setDeploymentCloudAssetHost("https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com");
+    setDeploymentCloudAssetHost("https://source-deck-production-storage.r1.cdn.objectstore.example");
     const idLister = new Database(RAW_CORPUS_DB, { readonly: true });
     const ids = (
       idLister.prepare("SELECT id FROM cards WHERE trash = 0 ORDER BY id").all() as Array<{ id: number }>
@@ -61,12 +61,12 @@ describeIfCorpus("search append: virtual <item>+short cards", () => {
     storage?.close();
   });
 
-  it("Morgan page matches the corpus of record", async () => {
-    const html = await storage!.engine.renderPage("Morgan");
+  it("Ellery page matches the corpus of record", async () => {
+    const html = await storage!.engine.renderPage("Ellery");
     expect(html).toContain(
       'class="card-slot content-view ALL ALL_PLUS TYPE-html RIGHT-short TYPE_PLUS_RIGHT-item-short d0-card-content"',
     );
     expect(html).toContain('<h2><a class="known-card" href="/Oregon_Thanksgiving_HDW_TL_20131128_3417"><span class="card-title" title=""></span></a></h2>');
-    expect(compareNormalized(expectedPage("Morgan"), html).equal).toBe(true);
+    expect(compareNormalized(expectedPage("Ellery"), html).equal).toBe(true);
   }, 300_000);
 });

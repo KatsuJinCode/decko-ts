@@ -697,8 +697,8 @@ describe("card-mod-recaptcha pure semantics: config/late/recaptcha.rb + set/self
   // the gem hardcodes; the port takes it as injected configuration, so the
   // pair lives here (test configuration), not in src/.
   const DEV_DEFAULTS = {
-    site_key: "6Lc3c-EoAAAAALnzfnHIWb5Rqy-rNui8l8qsguYG",
-    secret_key: "6Lc3c-EoAAAAAEg9K_IAUNgx73eTbtBucCGnOQqf",
+    site_key: "6LSYNTHETICCAPTUREKEY000000000000000000B",
+    secret_key: "6LSYNTHETICSECRETKEY0000000000000000000C",
   };
 
   it("RECAPTCHA_DEPRECATED_CONFIG_NAMES mirrors @deprecated (config/late/recaptcha.rb:16-19)", () => {

@@ -39,7 +39,7 @@ describeIfCorpus("preference rule bar", () => {
   let storage: RenderTestStorage | undefined;
 
   beforeAll(async () => {
-    setDeploymentCloudAssetHost("https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com");
+    setDeploymentCloudAssetHost("https://source-deck-production-storage.r1.cdn.objectstore.example");
     const idLister = new Database(RAW_CORPUS_DB, { readonly: true });
     const ids = (
       idLister.prepare("SELECT id FROM cards WHERE trash = 0 ORDER BY id").all() as Array<{ id: number }>

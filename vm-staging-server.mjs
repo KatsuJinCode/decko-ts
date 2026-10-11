@@ -257,17 +257,17 @@ const sharedStore = {
 //
 // The deck's stored image URLs (corpus `db_content` on image cards) point at
 // the deck's original S3 bucket, but the live deck's CDN is now fronting
-// files from the Spaces bucket culturesmith-production-storage at the same
+// files from the Spaces bucket source-deck-production-storage at the same
 // path scheme (`/files/<cardId>/<fileId>-<size>.<ext>`).
 //
 // A-1 (round 10, assumption audit): every asset URL on every live page uses
 // the `.cdn.` Spaces subdomain —
-// `https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com`
+// `https://source-deck-production-storage.r1.cdn.objectstore.example`
 // (12/12 live pages: JS, CSS, favicon, logo, and every content image; e.g.
 // Home.html `src="…cdn…/files/27689/135167-large.jpg"`). The previous
 // non-cdn host form was derived from a 2026-09-25 200-OK curl receipt, not
 // from the live page bytes — the live bytes never name that host.
-const SPACES_HOST = "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com";
+const SPACES_HOST = "https://source-deck-production-storage.r1.cdn.objectstore.example";
 
 // DECKO_DECK_PROFILE=stock serves any deck the way stock Decko serves it,
 // for a fresh deck rather than the production deck this host was tuned on:
@@ -1180,7 +1180,7 @@ const FOOTER_SETTING_NAME = "*footer";
 //
 // Rule shapes present in this corpus:
 //   1. Direct junction:        left_id = <card>,        right_id = 255
-//      — covers rules like PCTS+*layout, caseymorgan+*layout
+//      — covers rules like ZQVT+*layout, rileyellery+*layout
 //   2. Junction-of-junction:   left_id = <card>+*self,   right_id = 255
 //      — the *self junction (left=<card>, right=264) is a 2-level indirection
 //      for cards whose layout rule was authored as <card>+*self+*layout
@@ -1652,7 +1652,7 @@ async function safeRenderSetting(name, preferredView, fallbackView) {
 //                                                      oracle:80:8)
 // Both URLs return 200 image/jpeg on the Spaces host; the LIVE page
 // bytes name the .cdn. host form
-// (culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com —
+// (source-deck-production-storage.r1.cdn.objectstore.example —
 // audit A-1), which is what SPACES_HOST now builds.
 const SITE_TITLE_DEFAULT = "Culturesmith";
 let siteTitleLoaded = null;
@@ -1741,13 +1741,13 @@ async function resolveCardStoredName(slugName) {
 // Menu source: `*main menu` (id 22752, type Pointer, db_content a wiki-
 // link list). Each line `[[*X|label]]` becomes either a dropdown parent
 // (when `*X` is itself a Pointer card with sub-items) or a flat link.
-// `*Opportunities` (id 38283, Pointer, db_content list of items with
+// `*Undertakings` (id 38283, Pointer, db_content list of items with
 // `*dropdown divider` markers) becomes the dropdown child list.
 //
 // Nav fix (round 9):
 //   - Skip external URL entries ("https://…|Label") so the dropdown
 //     does not emit `<a href="/https://…">` — the malformed `/https://`
-//     href the live deck drops. The corpus's *Opportunities carries one
+//     href the live deck drops. The corpus's *Undertakings carries one
 //     such entry ("https://culturesmith.com/card/new|New Card"); the
 //     live capture omits it.
 //   - Skip "Adminu" specifically (the live deck shows the trailing
@@ -1787,7 +1787,7 @@ async function renderNavbarLinks(boot) {
         } else if (child.kind === "external") {
           // Drop external entries (the live deck omits them; the deck's
           // anonymous user gets a denied span for them instead). The
-          // corpus's *Opportunities contains
+          // corpus's *Undertakings contains
           // "https://culturesmith.com/card/new|New Card" — the live
           // capture skips this line.
           continue;
@@ -1815,7 +1815,7 @@ async function renderNavbarLinks(boot) {
       // live bytes: `…divider"></div>\n<span class="denied">`.)
       parts.push(`<span class="denied"><!-- Sorry, you don't have permission (read) --></span>`);
       // Item separator is the content's own "\r\n" (*main menu db_content is
-      // "[[*Opportunities|Opportunities]]\r\n[[*search|Changes]]"; live serves
+      // "[[*Undertakings|Opportunities]]\r\n[[*search|Changes]]"; live serves
       // "…</div></li></li>\r\n<li class=\"nav-item\">…Changes" — live-fresh
       // 404/500 captures, 2026-09-27). A plain "\n" here was the last whole-
       // page byte delta on every served page.
@@ -1862,7 +1862,7 @@ function parseWikiLinkList(content) {
 // Parse a Pointer dropdown card's db_content. Each line is either a card
 // name (with optional URL suffix for URL items), `*dropdown divider`, or
 // a wiki-link-style `[[http://…|label]]` for external entries. The
-// corpus's *Opportunities (id 38283) db_content lists each item as a
+// corpus's *Undertakings (id 38283) db_content lists each item as a
 // bare name (Make Contact, Aikido 2, …) with `*dropdown divider` markers.
 function parseDropdownList(content) {
   const out = [];
@@ -2001,10 +2001,10 @@ async function renderFooterContent() {
 // the main slot. The body's `{{:header|core}}`, `{{_main|<view>}}`,
 // `{{:footer|content}}`, and `{{*foot|core}}` tokens are substituted;
 // everything around them (body tag attributes, article/footer wrappers,
-// the bare `<div>` of caseymorgan-layout) is the layout's own bytes.
+// the bare `<div>` of rileyellery-layout) is the layout's own bytes.
 // Default Layout's body yields the standard
 // `  <header>…  <article …><div id="main">…</article>  <footer …>`
-// chrome; caseymorgan-layout's body yields Recommendations' bare
+// chrome; rileyellery-layout's body yields Recommendations' bare
 // `<body >\n<div><div id="main">…</div>\n<p></p>` shell with NO
 // header/nav/footer (live Recommendations.html). The outer card-slot
 // nesting follows the layout's mainView exactly as before (open view's
@@ -2052,7 +2052,7 @@ async function wrapWithLayout(cardName, viewHtml, layout, pageOpts = {}) {
   // A-6/A-11 (round 10): the page SHELL is built from the resolved
   // layout's BODY — the per-card layout rule drives the whole document,
   // not just the main slot. Live Recommendations (layout
-  // `caseymorgan-layout`, body `<body >\n<div>{{_main|content}}</div>
+  // `rileyellery-layout`, body `<body >\n<div>{{_main|content}}</div>
   // \n<p>{{*foot|core}}</p>\n</body>`) serves NO header/nav/footer/
   // article chrome — its shell is `<body >` + `<div><div id="main">…`.
   // Default Layout's body (`<body class="d-flex flex-column h-100">…`)
@@ -2092,7 +2092,7 @@ async function wrapWithLayout(cardName, viewHtml, layout, pageOpts = {}) {
   const renderedInner = layoutInner
     .replace(/\{\{:header\|core\}\}/g, () => headerHtml)
     .replace(/\{\{:footer\|content\}\}/g, () => footerHtml)
-    // Live receipt: the caseymorgan-layout `<p>{{*foot|core}}</p>`
+    // Live receipt: the rileyellery-layout `<p>{{*foot|core}}</p>`
     // renders `<p></p>` for the anonymous viewer (Recommendations.html
     // tail) — the nest contributes zero bytes, so substitute "".
     .replace(/\{\{\*foot\|core\}\}/g, () => "")

@@ -41,7 +41,7 @@ const ONE_TRIP_TABLE_REFERENCE =
   /\bone_trip_(edges|page_closure|page_rules|search_results|search_nests|meta)\b/;
 
 /** Serving-DB posture: ATTACH is rejected at the parser (SQL_PARSE_ERROR,
- *  probed live 2026-10-05 against restore-decko with the seat's own statement
+ *  probed live 2026-10-05 against restore-deck-synthetic with the seat's own statement
  *  shape, both config values — MATERIALIZED-STORE §6.1); everything else
  *  passes through to the corpus. Every statement is recorded BEFORE the
  *  decision so the pin can see an attempted ATTACH. */

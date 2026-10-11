@@ -89,7 +89,7 @@ describeOrSkipLoud(!(process.env.MISSING_CARD_INCLUSION_ANCHOR_PINS === "1" && e
         "../../../src/card/render/views.js"
       );
       setDeploymentCloudAssetHost(
-        "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com",
+        "https://source-deck-production-storage.r1.cdn.objectstore.example",
       );
       storage = await createRawStructureSeededStorage(new Set(everyLiveId));
       storage.fetcher.installNameEnvironment();

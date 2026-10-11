@@ -28,7 +28,7 @@
 import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { readFile as rf } from "node:fs/promises";
 
-const EDGE = "https://decko-edge-wm2um.bunny.run";
+const EDGE = "https://decko-edge-synthetic.bunny.run";
 // The deployment target is operator input, never committed to the public
 // tree: the tool refuses to run rather than default to an unnamed deploy.
 function requireEnv(name) {
@@ -100,10 +100,10 @@ const URLS = [
   { path: "/Role", label: "readable-role" },
   { path: "/Cardtype", label: "readable-cardtype" },
   { path: "/Person", label: "readable-person" },
-  { path: "/Casey Morgan", label: "readable-person-1" },
+  { path: "/Riley Ellery", label: "readable-person-1" },
   { path: "/Jordan Sample", label: "readable-person-2" },
   { path: "/Bridget Castellan", label: "readable-person-3" },
-  { path: "/Casey Morgan/content", label: "readable-person-1-content" },
+  { path: "/Riley Ellery/content", label: "readable-person-1-content" },
   { path: "/Jordan Sample/content", label: "readable-person-2-content" },
   { path: "/Search", label: "readable-search" },
   { path: "/Search/content", label: "readable-search-content" },

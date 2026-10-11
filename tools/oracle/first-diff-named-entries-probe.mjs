@@ -85,7 +85,7 @@ const { setDeploymentCloudAssetHost } = await import(
   pathToFileURL(path.join(REPO, "src", "card", "render", "views.ts")).href
 );
 const DEPLOYMENT_CLOUD_ASSET_HOST =
-  "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com";
+  "https://source-deck-production-storage.r1.cdn.objectstore.example";
 setDeploymentCloudAssetHost(DEPLOYMENT_CLOUD_ASSET_HOST);
 
 // The same deployment's serializer + head constants (serializer-follow-live
@@ -113,7 +113,7 @@ setDeploymentFollowLiveConfig({
   },
   mainStylesheetRevisionDigits: "1790384218",
   footerDeckoVersion: "0.19.1",
-  recaptchaSiteKey: "6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW",
+  recaptchaSiteKey: "6LSYNTHETICLIVEKEY00000000000000000000AA",
   deckoRootUrl: "https://culturesmith.com/",
 });
 

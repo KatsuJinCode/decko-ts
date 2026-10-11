@@ -2,12 +2,12 @@
 // seam. Until this module is activated by DECKO_SMTP_PASS, delivery stays
 // NOOP (transport.ts default) — nothing mails without an app password.
 //
-// PROVIDER: Proton Business (https://proton.me/support/smtp-submission):
-// host smtp.protonmail.ch, port 587, STARTTLS, AUTH PLAIN or LOGIN,
+// PROVIDER: the operator mail provider (submission docs at the provider site):
+// host smtp.mail-synthetic.example, port 587, STARTTLS, AUTH PLAIN or LOGIN,
 // password = an SMTP token (app password) generated at Settings → IMAP/SMTP
 // → SMTP tokens — NOT the mailbox password; the From address must respect
 // the token address's domain (SPF/DKIM/DMARC). Implicit TLS (Ruby
-// :tls/:ssl, port 465) is deliberately NOT implemented — Proton submission
+// :tls/:ssl, port 465) is deliberately NOT implemented — submission on this port
 // is 587 STARTTLS; add it if a future provider needs it.
 //
 // RUBY PARITY — this is the port of Mail::SMTP (mail-2.9.1
@@ -56,7 +56,7 @@
 // ENV CONTRACT — how credentials reach this module: process env only; no
 // credentials live in this repo.
 //
-//   DECKO_SMTP_HOST=smtp.protonmail.ch        # default; only override for tests
+//   DECKO_SMTP_HOST=smtp.mail-synthetic.example        # default; only override for tests
 //   DECKO_SMTP_PORT=587                       # default
 //   DECKO_SMTP_USER=<mailbox address the SMTP token belongs to>
 //   DECKO_SMTP_PASS=<SMTP token>              # activation gate: unset = NOOP
@@ -74,18 +74,18 @@ import { NoopTransport } from "./transport.js";
 
 /** Submission config. Mirrors Mail::SMTP's settings (see file header). */
 export interface SmtpTransportOptions {
-  /** Ruby :address. Default "smtp.protonmail.ch" (Proton, verified 2026-09-29). */
+  /** Ruby :address. Default "smtp.mail-synthetic.example" (verified 2026-09-29). */
   readonly host?: string;
-  /** Ruby :port. Default 587 (Proton submission; only port Proton supports). */
+  /** Ruby :port. Default 587 (submission on this port; only port this provider supports). */
   readonly port?: number;
   /** Ruby :domain — the EHLO argument. Default "localhost.localdomain" (Ruby DEFAULTS). */
   readonly heloDomain?: string;
-  /** Ruby :user_name. The Proton address the SMTP token belongs to. */
+  /** Ruby :user_name. The the provider address the SMTP token belongs to. */
   readonly user?: string;
   /** Ruby :password. The SMTP token (app password). NEVER logged, never
    *  committed — it reaches this code only through the environment. */
   readonly pass?: string;
-  /** Ruby :authentication. Default "plain" (Proton supports PLAIN + LOGIN). */
+  /** Ruby :authentication. Default "plain" (this provider supports PLAIN + LOGIN). */
   readonly auth?: "plain" | "login";
   /** Ruby :enable_starttls. Default "auto" (Ruby's fallback); "always" throws
    *  when the server does not advertise STARTTLS rather than send plaintext. */
@@ -100,10 +100,10 @@ export interface SmtpTransportOptions {
   readonly readTimeoutMs?: number;
 }
 
-const DEFAULT_HOST = "smtp.protonmail.ch";
+const DEFAULT_HOST = "smtp.mail-synthetic.example";
 const DEFAULT_PORT = 587;
 const DEFAULT_HELO = "localhost.localdomain";
-const DEFAULT_FROM = "no-reply@culturesmith.com";
+const DEFAULT_FROM = "no-reply@source-deck.example";
 const DEFAULT_TIMEOUT_MS = 5000;
 const DEFAULT_STARTTLS: "always" | "auto" | false = "auto";
 
@@ -616,7 +616,7 @@ export function transportFromEnv(env: NodeJS.ProcessEnv = process.env): NotifyTr
   if (pass === undefined || pass.length === 0) return new NoopTransport();
   if (env.DECKO_SMTP_USER === undefined || env.DECKO_SMTP_USER.length === 0) {
     throw new Error(
-      "DECKO_SMTP_PASS is set but DECKO_SMTP_USER is missing — refusing to start with half-configured mail (set DECKO_SMTP_USER to the token's Proton address)",
+      "DECKO_SMTP_PASS is set but DECKO_SMTP_USER is missing — refusing to start with half-configured mail (set DECKO_SMTP_USER to the token's mailbox address)",
     );
   }
   const opts = smtpOptionsFromEnv(env);

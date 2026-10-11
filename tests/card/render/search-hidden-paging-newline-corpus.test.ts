@@ -4,7 +4,7 @@
 // search_result_list is `with_paging { wrap_with :div, … }`, and with_paging
 // is `output [list, render_paging]`. When the nest hides :paging,
 // render_paging answers nil, output compacts it, and nothing is joined after
-// the list. media+GBA+YouTube Browser nests its two video searches with
+// the list. media+HBQ+YouTube Browser nests its two video searches with
 // `hide:paging`; the engine always added the newline (2 bytes).
 //
 // Gate: opt-in via HIDDEN_PAGING_REPLAY=1 (needs the key-repaired bench,
@@ -38,7 +38,7 @@ describeIfCorpus("search list with hidden paging", () => {
   let storage: RenderTestStorage | undefined;
 
   beforeAll(async () => {
-    setDeploymentCloudAssetHost("https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com");
+    setDeploymentCloudAssetHost("https://source-deck-production-storage.r1.cdn.objectstore.example");
     const idLister = new Database(RAW_CORPUS_DB, { readonly: true });
     const ids = (
       idLister.prepare("SELECT id FROM cards WHERE trash = 0 ORDER BY id").all() as Array<{ id: number }>
@@ -53,8 +53,8 @@ describeIfCorpus("search list with hidden paging", () => {
     storage?.close();
   });
 
-  it("media+GBA+YouTube Browser page matches the corpus of record", async () => {
-    const html = await storage!.engine.renderPage("media+GBA+YouTube Browser");
-    expect(compareNormalized(expectedPage("media+GBA+YouTube Browser"), html).equal).toBe(true);
+  it("media+HBQ+YouTube Browser page matches the corpus of record", async () => {
+    const html = await storage!.engine.renderPage("media+HBQ+YouTube Browser");
+    expect(compareNormalized(expectedPage("media+HBQ+YouTube Browser"), html).equal).toBe(true);
   }, 300_000);
 });

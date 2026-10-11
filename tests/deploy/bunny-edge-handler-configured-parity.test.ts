@@ -165,7 +165,7 @@ describe("bunny edge engine handler — a CONFIGURED deployment serves its own d
     // type's class chip and type attrs, the configured footer version pin,
     // and the configured asset host.
     expect(body).toContain(`TYPE-basic_c`);
-    expect(body).toContain(`data-card-type-id="22281"`);
+    expect(body).toContain(`data-card-type-id="72281"`);
     expect(body).toContain(`Decko v0.19.1`);
     expect(body).toContain(PRODUCTION_DECK_SERVED_DELTAS.assetHost!);
   });

@@ -26,7 +26,7 @@
     "db_path": "db/development.sqlite3",
     "db_size_bytes": 4751360,
     "decko_gem": "0.20.0",
-    "host": "Jace2",
+    "host": "capture-host-synthetic",
     "live_cards_in_db_after_cleanup": 617,
     "os": "x64-mingw-ucrt",
     "rails": "7.2.3.2",

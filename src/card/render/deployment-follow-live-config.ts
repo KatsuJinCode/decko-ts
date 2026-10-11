@@ -40,7 +40,8 @@
 //    - `footerDeckoVersion`: the footer credit version string the *version
 //      codename renders ("Decko v0.19.1" live vs the card gem's "0.20.0");
 //    - `recaptchaSiteKey`: the live env recaptcha site key the comment-box
-//      form emits (live 6LeRJb4U... vs the capture-era 6Lc3c-Eo...).
+//      form emits (the live deployment's own key vs the capture-era key both
+//      deployments carry here as synthetic placeholders).
 
 export interface DeploymentFollowLiveConfig {
   serializerEra?: "live";
@@ -105,7 +106,7 @@ export const LIVE_DEPLOYMENT_CONSTANTS: Omit<DeploymentFollowLiveConfig, "serial
   },
   mainStylesheetRevisionDigits: "1790384218",
   footerDeckoVersion: "0.19.1",
-  recaptchaSiteKey: "6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW",
+  recaptchaSiteKey: "6LSYNTHETICLIVEKEY00000000000000000000AA",
   deckoRootUrl: "https://culturesmith.com/",
   defaultHtmlViewNest: "content",
 };

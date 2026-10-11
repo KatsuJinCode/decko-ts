@@ -411,7 +411,7 @@ node reference-harness/runner/manifest.mjs expected reference-harness/fixtures/s
   made is `synthetic-v1` on 2026-10-10
   (`reference-harness/corpus/drop-private-app-tables-from-fixture-decks.mjs`,
   described under `provenance.repin` in that fixture's `expected/MANIFEST.json`);
-  it dropped eight empty `library_*` tables of another application that rode
+  it dropped eight empty `private_table_*` tables of another application that rode
   along in the deck file, and the grade re-run against the re-pinned fixture is
   the 1,754 / 1,754 renders and 2,388 semantics operations the
   [coverage inventory](../docs/coverage-inventory.md) quotes.

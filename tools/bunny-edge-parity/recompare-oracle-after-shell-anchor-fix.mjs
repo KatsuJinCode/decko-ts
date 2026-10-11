@@ -24,7 +24,7 @@
 import { readFileSync, writeFileSync, existsSync, readdirSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 
-const EDGE = "https://decko-edge-wm2um.bunny.run";
+const EDGE = "https://decko-edge-synthetic.bunny.run";
 // The deployment target is operator input, never committed to the public
 // tree: the tool refuses to run rather than default to an unnamed deploy.
 function requireEnv(name) {

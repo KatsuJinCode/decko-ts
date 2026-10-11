@@ -23,12 +23,12 @@ import type { ServedEnvironmentDeltas } from "../../../deploy/bunny-worker-src/b
 
 /** The asset host the production deck serves /files/ URLs from. */
 export const PRODUCTION_ASSET_HOST =
-  "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com";
+  "https://source-deck-production-storage.r1.cdn.objectstore.example";
 
 /** The compiled CSS revision the production deck stores vs. the revision it
  *  serves (the corpus row stores the older one). */
-export const PRODUCTION_CSS_REVISION_FROM = "45514/1786554352.css";
-export const PRODUCTION_CSS_REVISION_TO = "45514/1790384218.css";
+export const PRODUCTION_CSS_REVISION_FROM = "51201/1610000001.css";
+export const PRODUCTION_CSS_REVISION_TO = "51201/1610000002.css";
 
 /** The remote script tags the production deck's error chrome carries, with
  *  the SRI hashes that deployment's CDN requires — configuration, because a
@@ -76,31 +76,31 @@ export const PRODUCTION_DECK_SERVED_DELTAS: ServedEnvironmentDeltas = {
     to: PRODUCTION_CSS_REVISION_TO,
   },
   scriptIntegrity: PRODUCTION_SCRIPT_INTEGRITY,
-  notFoundType: { id: "22281", name: "BasicCs", classToken: "basic_c" },
-  footerCardId: "22749",
+  notFoundType: { id: "72281", name: "BasicCs", classToken: "basic_c" },
+  footerCardId: "72749",
   footerTypeId: "50",
   footerTypeName: "HTML",
-  allCardId: 274,
-  layoutPointerId: 255,
-  pointerTypeId: 34843,
+  allCardId: 9274,
+  layoutPointerId: 9255,
+  pointerTypeId: 94843,
   mainCssUrl: `${PRODUCTION_ASSET_HOST}/files/${PRODUCTION_CSS_REVISION_TO}`,
-  mainJsUrl: `${PRODUCTION_ASSET_HOST}/files/50617/1768074298.js`,
-  logoUrl: `${PRODUCTION_ASSET_HOST}/files/79/3643-small.jpg`,
-  faviconUrl: `${PRODUCTION_ASSET_HOST}/files/103/3649-small.jpg`,
-  siteTitleDefault: "Culturesmith",
-  rootUrl: "https://culturesmith.com/",
+  mainJsUrl: `${PRODUCTION_ASSET_HOST}/files/60311/1610000003.js`,
+  logoUrl: `${PRODUCTION_ASSET_HOST}/files/61002/1610000004-small.jpg`,
+  faviconUrl: `${PRODUCTION_ASSET_HOST}/files/61003/1610000005-small.jpg`,
+  siteTitleDefault: "SourceDeck",
+  rootUrl: "https://source-deck.example/",
   // The engine's own card_url origin (Ruby's Cardio.config.deck_origin,
   // no trailing slash) — the same site identity rootUrl carries with its
   // slash, fed to the render engine through setDeckEnvironment at boot.
-  deckOrigin: "https://culturesmith.com",
+  deckOrigin: "https://source-deck.example",
   headScripts: PRODUCTION_HEAD_SCRIPTS,
-  phantomType: { typeId: 22281, typeName: "BasicCs", typeKey: "basic_c" },
+  phantomType: { typeId: 72281, typeName: "BasicCs", typeKey: "basic_c" },
 };
 
 /** The phantom type as the ENGINE's own config field takes it (the boot
  *  copies the deployment's phantomType onto render.phantomItemType). */
 export const PRODUCTION_PHANTOM_ITEM_TYPE = {
-  typeId: 22281,
+  typeId: 72281,
   typeName: "BasicCs",
   typeKey: "basic_c",
 };

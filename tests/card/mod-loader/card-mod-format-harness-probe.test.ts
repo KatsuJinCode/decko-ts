@@ -170,7 +170,7 @@ describe("card-mod-format harness probe: view :demo (the wave-1 oracle replay)",
     const options = listLine!.codenames!
       .map((c) => `<option${c === "core" ? ' selected="selected"' : ""} value="${c}">${c}</option>`)
       .join("\n");
-    const key = "6Lc3c-EoAAAAALnzfnHIWb5Rqy-rNui8l8qsguYG";
+    const key = "6LSYNTHETICCAPTUREKEY000000000000000000B";
     const expected =
       `<form class="card-form slotter" id="edit_card_30" data-recaptcha="on" action="/Sample_Basic" accept-charset="UTF-8" data-remote="true" method="post">` +
       `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +

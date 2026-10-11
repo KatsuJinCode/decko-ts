@@ -6,7 +6,7 @@
 //   - 4 mixed18 route-outs booked to perm (an internal work log
 //     round-3 ledger: "the perm regions remain route-out (perm-allow family,
 //     as pinned by the dead agents)" on BW Oversight+ARCHETYPALLY, Starhawk,
-//     Emery Lockhart, Jacob Benedetti; the mixed18 engine commits are
+//     Emery Lockhart, Jonas Verhoeven; the mixed18 engine commits are
 //     NOT in this base -- 38ba98e/8991ee9 are not ancestors of b2f4700 -- so
 //     these pages carry their full diff here, of which this suite owns the
 //     permission-shaped regions);
@@ -16,7 +16,7 @@
 //   - 3 layout pages the mm-whitespace port left with a `{{*foot|core}}` nest
 //     rendering as its literal text where the oracle renders the read-denied
 //     span (an internal work log leftovers: home-layout,
-//     caseymorgan-layout, Golden_Bears_Aikido_at_UC_Berkeley main layout).
+//     rileyellery-layout, Golden_Bears_Aikido_at_UC_Berkeley main layout).
 //
 // Block 1 (report-only): renders each page over the full-deck corpus seed,
 // writes exp/act pairs + a JSONL line (byte-exact, code units, first-diff
@@ -50,7 +50,7 @@ import { setDeploymentCloudAssetHost } from "../../../src/card/render/views.js";
 // the lane base f9d81361 (scratch baseline worktree, same 236-byte host
 // delta) — this suite simply predates the binding contract's enforcement.
 const SPACES_HOST =
-  "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com";
+  "https://source-deck-production-storage.r1.cdn.objectstore.example";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
@@ -66,12 +66,12 @@ const LANE_PAGES = [
   { name: "BW Oversight+ARCHETYPALLY", routedBy: "mixed18-r3 route-out (perm regions)" },
   { name: "Emery Lockhart", routedBy: "mixed18-r3 route-out (perm regions)" },
   { name: "Starhawk", routedBy: "mixed18-r3 route-out (perm regions)" },
-  { name: "Jacob Benedetti", routedBy: "mixed18-r3 route-out (perm regions)" },
+  { name: "Jonas Verhoeven", routedBy: "mixed18-r3 route-out (perm regions)" },
   { name: "Administrator", routedBy: "mm-roleviews leftover 5 (:configs grouping)" },
   { name: "Administrator+Dashboard", routedBy: "mm-roleviews leftover 5 (:configs grouping)" },
   { name: "Help Desk", routedBy: "mm-roleviews leftover 5 (:configs grouping)" },
   { name: "home-layout", routedBy: "mm-whitespace leftover ({{*foot|core}} literal)" },
-  { name: "caseymorgan-layout", routedBy: "mm-whitespace leftover ({{*foot|core}} literal)" },
+  { name: "rileyellery-layout", routedBy: "mm-whitespace leftover ({{*foot|core}} literal)" },
   {
     name: "Golden_Bears_Aikido_at_UC_Berkeley main layout",
     routedBy: "mm-whitespace leftover ({{*foot|core}} literal)",
@@ -81,7 +81,7 @@ const LANE_PAGES = [
 /** Pages flipped byte-exact by this suite, pinned hard after the flip. */
 const FLIPPED_PAGES: ReadonlyArray<string> = [
   "home-layout",
-  "caseymorgan-layout",
+  "rileyellery-layout",
   "Golden_Bears_Aikido_at_UC_Berkeley main layout",
 ];
 
@@ -216,8 +216,8 @@ describe(
         const oracleByPage = loadOraclePageEntries([...FLIPPED_PAGES]);
         const storage = await seedRawCorpusStorage();
         setDeploymentCloudAssetHost(SPACES_HOST);
-        // The *Opportunities dropdown's dropped join slot (relaunch #5
-        // verdict, full-capture survey): the deck navbar's *Opportunities
+        // The *Undertakings dropdown's dropped join slot (relaunch #5
+        // verdict, full-capture survey): the deck navbar's *Undertakings
         // menu (card 38283) carries a raw item that is no card reference
         // ("https://example.com/card/new|New Card") between the second
         // *dropdown divider and the read-denied tail item. Ruby's item join
@@ -249,7 +249,7 @@ describe(
               diff.equal,
               `${name}: flipped page regressed (exp ${diff.expectedCodeUnits} / act ${diff.actualCodeUnits}` +
                 `${diff.firstDifference ? `, first diff at ${diff.firstDifference.codeUnitOffset}` : ""}` +
-                `; the only folded shape is the counted *Opportunities join-slot generation skew)`,
+                `; the only folded shape is the counted *Undertakings join-slot generation skew)`,
             ).toBe(true);
           }
         } finally {

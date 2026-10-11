@@ -82,7 +82,7 @@ describe("comment box: the _left update-rule inheritance walk", () => {
         defaultHtmlViewNest: "content",
         mainStylesheetRevisionDigits: "1790384218",
         footerDeckoVersion: "0.19.1",
-        recaptchaSiteKey: "6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW",
+        recaptchaSiteKey: "6LSYNTHETICLIVEKEY00000000000000000000AA",
         deckoRootUrl: "https://example.com/",
       });
 
@@ -100,7 +100,7 @@ describe("comment box: the _left update-rule inheritance walk", () => {
       try {
         const expectedForm = kaylaCommentBoxBytes();
         expect(expectedForm).toContain("Joan_Callahan_20230902+discussion");
-        expect(expectedForm).toContain("6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW");
+        expect(expectedForm).toContain("6LSYNTHETICLIVEKEY00000000000000000000AA");
 
         // THE PIN: the inherited-grant form renders (RED at base: the
         // engine's _left-less walk denies update, the gate blanks the box).

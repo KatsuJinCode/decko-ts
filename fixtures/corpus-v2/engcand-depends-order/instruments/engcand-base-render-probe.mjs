@@ -37,7 +37,7 @@ const { setDeploymentFollowLiveConfig } = await import(
   pathToFileURL(path.join(REPO, "src", "card", "render", "deployment-follow-live-config.ts")).href
 );
 setDeploymentCloudAssetHost(
-  "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com",
+  "https://source-deck-production-storage.r1.cdn.objectstore.example",
 );
 
 const GRADED_ARM_FIVE_CONSTANTS = {
@@ -53,7 +53,7 @@ const GRADED_ARM_FIVE_CONSTANTS = {
   },
   mainStylesheetRevisionDigits: "1790384218",
   footerDeckoVersion: "0.19.1",
-  recaptchaSiteKey: "6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW",
+  recaptchaSiteKey: "6LSYNTHETICLIVEKEY00000000000000000000AA",
   deckoRootUrl: "https://culturesmith.com/",
 };
 

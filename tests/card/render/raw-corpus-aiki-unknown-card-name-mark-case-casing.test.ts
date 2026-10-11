@@ -106,7 +106,7 @@ describeOrSkipLoud(!CORPUS_PRESENT, "tests/card/render/raw-corpus-aiki-unknown-c
     // The graded runner's config: the asset host only
     // (tools/oracle/dual-lane-direct-runner-core.ts:539-544).
     setDeploymentCloudAssetHost(
-      "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com",
+      "https://source-deck-production-storage.r1.cdn.objectstore.example",
     );
     // The boot the grade did: every non-trashed live id seeded, the name
     // environment installed, the lexicon warmed over the whole deck

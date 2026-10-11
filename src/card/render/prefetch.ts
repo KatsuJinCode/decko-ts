@@ -846,7 +846,7 @@ async function driveClosure(
   /** Names retired for good, keyed by the same string `pending` holds.
    *  A name lands here when one of its side keys is EMPTY: `cards` carries
    *  no row with key = '' (measured on the trial-deck mirror and the
-   *  restore-decko snapshot — `SELECT COUNT(*) FROM cards WHERE key = ''`
+   *  restore-deck-synthetic snapshot — `SELECT COUNT(*) FROM cards WHERE key = ''`
    *  = 0; the `key IS NULL` rows are side-less junctions that a
    *  `COLLATE NOCASE IN (...)` list never matches anyway), so the name can
    *  NEVER resolve through the row path. Before the fold such a name stayed
@@ -885,7 +885,7 @@ async function driveClosure(
         // ("~861" — a TRASHED row the pointer/list item enrichment resolves
         // through the async lexicon's no-trash-filter read, lexicon.rb
         // #id_to_lex) must skip the reference, never unwind the whole
-        // prepare (the CB_role / Morgan Family +*members pages). The
+        // prepare (the CB_role / Ellery Family +*members pages). The
         // render's item path reports true fetch misses.
         let name: DeckoName;
         try {
@@ -1732,7 +1732,7 @@ export async function prefetchWarmupClosure(
         // a bare view rendered before the first
         // page render prepared the layout's *header/*main menu cards as
         // one-level template references; this break then ate the scan of
-        // *main menu, the navbar's [[*Opportunities]] chunk stayed
+        // *main menu, the navbar's [[*Undertakings]] chunk stayed
         // unprepared, and every subsequently rendered page lost the menu
         // items to the unknown-card substitution. Continue instead: the
         // next iteration's drain removes each prepared name from the

@@ -9,7 +9,7 @@
   "engine": "ts-decko-ts",
   "status": "PENDING",
   "environment": {
-    "host": "Jace2",
+    "host": "capture-host-synthetic",
     "os": "win32",
     "osVersion": "v24.19.0",
     "cpuModel": "Intel(R) Core(TM) i7-14700F",

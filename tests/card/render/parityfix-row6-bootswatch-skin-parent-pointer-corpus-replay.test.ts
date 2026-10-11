@@ -183,7 +183,7 @@ describeOrSkipLoud(!REPLAY || !CORPUS_PRESENT, "tests/card/render/parityfix-row6
       );
       const views = await import("../../../src/card/render/views.js");
       views.setDeploymentCloudAssetHost(
-        "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com",
+        "https://source-deck-production-storage.r1.cdn.objectstore.example",
       );
       const Database = (await import("better-sqlite3")).default;
       const idLister = new Database(RAW_CORPUS_DB, { readonly: true });

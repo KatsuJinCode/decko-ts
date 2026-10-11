@@ -10,7 +10,7 @@
   "engine_commit": "6ad3b7c5",
   "engine_branch": "cf-merge-2026-10-07",
   "environment": {
-    "host": "Jace2",
+    "host": "capture-host-synthetic",
     "os": "win32",
     "osVersion": "Microsoft Windows [Version 10.0.26200.9457]",
     "node": "v24.19.0",

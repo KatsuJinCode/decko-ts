@@ -76,10 +76,10 @@ describe("deployment follow-live config: frozen default preserved", () => {
     );
     expect(
       applyDeploymentCssRevision(
-        "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com/files/45514/1786554352.css",
+        "https://source-deck-production-storage.r1.cdn.objectstore.example/files/45514/1786554352.css",
       ),
     ).toBe(
-      "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com/files/45514/1786554352.css",
+      "https://source-deck-production-storage.r1.cdn.objectstore.example/files/45514/1786554352.css",
     );
     expect(footerDeckoVersion()).toBeUndefined();
     expect(recaptchaSiteKey()).toBeUndefined();
@@ -203,18 +203,18 @@ describe("deployment follow-live config: live head constants", () => {
     setDeploymentFollowLiveConfig({ mainStylesheetRevisionDigits: "1790384218" });
     expect(
       applyDeploymentCssRevision(
-        "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com/files/45514/1786554352.css",
+        "https://source-deck-production-storage.r1.cdn.objectstore.example/files/45514/1786554352.css",
       ),
     ).toBe(
-      "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com/files/45514/1790384218.css",
+      "https://source-deck-production-storage.r1.cdn.objectstore.example/files/45514/1790384218.css",
     );
     // the script asset's revision is NOT the stylesheet's — untouched.
     expect(
       applyDeploymentCssRevision(
-        "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com/files/50617/1768074298.js",
+        "https://source-deck-production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
       ),
     ).toBe(
-      "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com/files/50617/1768074298.js",
+      "https://source-deck-production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
     );
     // the fog double-slash form (unset asset host) rewrites the same way.
     expect(
@@ -225,15 +225,15 @@ describe("deployment follow-live config: live head constants", () => {
   it("footer version + recaptcha site key read through the config", () => {
     setDeploymentFollowLiveConfig({
       footerDeckoVersion: "0.19.1",
-      recaptchaSiteKey: "6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW",
+      recaptchaSiteKey: "6LSYNTHETICLIVEKEY00000000000000000000AA",
     });
     setDeploymentFollowLiveConfig({
       footerDeckoVersion: "0.19.1",
-      recaptchaSiteKey: "6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW",
+      recaptchaSiteKey: "6LSYNTHETICLIVEKEY00000000000000000000AA",
       deckoRootUrl: "https://example.com/",
     });
     expect(footerDeckoVersion()).toBe("0.19.1");
-    expect(recaptchaSiteKey()).toBe("6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW");
+    expect(recaptchaSiteKey()).toBe("6LSYNTHETICLIVEKEY00000000000000000000AA");
     expect(deckoRootUrl()).toBe("https://example.com/");
   });
 

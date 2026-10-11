@@ -1,5 +1,5 @@
 {
-  "target": "https://decko-edge-wm2um.bunny.run",
+  "target": "https://decko-edge-synthetic.bunny.run",
   "release_id": "redacted",
   "script_id": "redacted",
   "account": "trial",
@@ -41,8 +41,8 @@
       }
     },
     {
-      "path": "/Casey Morgan",
-      "name": "Casey Morgan",
+      "path": "/Riley Ellery",
+      "name": "Riley Ellery",
       "view": "open",
       "anon_status": 200,
       "authed_status": 200,

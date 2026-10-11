@@ -7,7 +7,7 @@
 // THE MAPPING (derived from data, never guessed -- census:
 // close-71-lane.md step 3; exactly one prefix form exists on each side):
 //   FROM (frozen):  http://s3.amazonaws.com//files/
-//   TO   (live):    https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/
+//   TO   (live):    https://source-deck-production-storage.r1.cdn.objectstore.example/files/
 // Tails (<id>/<name>.<ext>) are carried through unchanged; the replacement
 // is a pure byte-level prefix substitution (it cannot touch line endings,
 // so CRLF-per-line discipline holds by construction).
@@ -71,7 +71,7 @@ const SHARD_RE = /^recapture-raw-shard-\d{6}\.jsonl$/;
 // ---------- the mapping (both directions, exact forms from the census) ----------
 const S3_PREFIX = "http://s3.amazonaws.com//files/";
 const DO_PREFIX =
-  "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/";
+  "https://source-deck-production-storage.r1.cdn.objectstore.example/files/";
 
 const sha256 = (s) => createHash("sha256").update(s).digest("hex");
 const fail = (msg) => {

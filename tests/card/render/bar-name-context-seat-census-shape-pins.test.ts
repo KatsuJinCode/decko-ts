@@ -6,12 +6,12 @@
 // part-filtered context on EVERY pointer-item bar whose name shares ANY part
 // with the view-lane root. The graded view-lane capture (pre-era1658 vintage,
 // view digest 08c5a287…) pins name_context on only 5 entries' item bars in the
-// whole corpus (12 slots: Guns:open, Morgan+Vacations+Pages:open,
+// whole corpus (12 slots: Guns:open, Ellery+Vacations+Pages:open,
 // democracy+tags:open, Wikirate:open, Work Week:open) and pins ctx-LESS on
 // every other pointer-item bar — 2,535 of them (own census,
 // tmp/the seat-fix instruments/). The share-any-part gate over-fires: 71 the regression family
 // regression entries fail with `,"name_context":"<ctx>"` inserted exactly
-// where the corpus has `}` (e.g. Casey Morgan+Pages:open offset
+// where the corpus has `}` (e.g. Riley Ellery+Pages:open offset
 // 18417).
 //
 // THE CORPUS'S OWN DISTRIBUTION IS NOT DERIVABLE FROM KEY GEOMETRY ALONE — it
@@ -24,8 +24,8 @@
 //                  work_week ⊂ work_week-anon_exchange_01)
 //                OR the item's shared prefix with the root diverges into a
 //                  rule part (democracy+*referred_to_by under democracy+tag)
-//   ctx absent   ⟺ otherwise (Casey Morgan+video under
-//                  Casey Morgan+Pages: shares part 1 only, divergent
+//   ctx absent   ⟺ otherwise (Riley Ellery+video under
+//                  Riley Ellery+Pages: shares part 1 only, divergent
 //                  part is not a rule name; Rights under Rights+copyleft+tags:
 //                  item is a prefix of the root; mod: format+*script under
 //                  *all+*script: no shared prefix)
@@ -69,8 +69,8 @@ import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
  *  insertion as the FIRST difference (the regression family 5e603ba4-full-fails.json).
  *  Full-parity, not window pins: equal is the grade's own judgment. */
 const CTX_LESS_PINS: Array<[string, string]> = [
-  ["Casey Morgan+Pages", "open"],
-  ["Martial Nonviolence+Pages", "open"],
+  ["Riley Ellery+Pages", "open"],
+  ["Martial Concordance+Pages", "open"],
   ["Artificial Intelligence+Replacement+Documents", "open"],
   ["*all+*script", "open"],
 ];
@@ -119,7 +119,7 @@ describeOrSkipLoud(!(process.env.BAR_NAME_CONTEXT_SEAT_CENSUS_PINS === "1" && ex
         "../../../src/card/render/views.js"
       );
       setDeploymentCloudAssetHost(
-        "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com",
+        "https://source-deck-production-storage.r1.cdn.objectstore.example",
       );
 
       storage = await createRawStructureSeededStorage(new Set(everyLiveId));

@@ -129,7 +129,7 @@ you'll need").
    **Credentials caveat:** the script no longer falls back to the
    production-account creds file. If you get no credentials, it exits 2 and
    says so. That is deliberate — a trial import must not be able to silently
-   write to Casey's account.
+   write to Riley's account.
 
 6. Check the row landed: the database dashboard, or
    `GET https://<script-hostname>/_status` once published (§4).
@@ -174,7 +174,7 @@ deploy suites configure when they assert that deck's served bytes.
 
 ```json
 {
-  "assetHost": "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com",
+  "assetHost": "https://source-deck-production-storage.r1.cdn.objectstore.example",
   "footerVersionPin": "0.19.1",
   "stylesheetRevisionFrom": "45514/1786554352.css",
   "stylesheetRevisionTo": "45514/1790384218.css",
@@ -187,10 +187,10 @@ deploy suites configure when they assert that deck's served bytes.
   "notFoundType": { "id": "22281", "name": "BasicCs", "classToken": "basic_c" },
   "footerCardId": "22749", "footerTypeId": "50", "footerTypeName": "HTML",
   "allCardId": 274, "layoutPointerId": 255, "pointerTypeId": 34843,
-  "mainCssUrl": "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/45514/1790384218.css",
-  "mainJsUrl": "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/50617/1768074298.js",
-  "logoUrl": "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/79/3643-small.jpg",
-  "faviconUrl": "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/103/3649-small.jpg",
+  "mainCssUrl": "https://source-deck-production-storage.r1.cdn.objectstore.example/files/45514/1790384218.css",
+  "mainJsUrl": "https://source-deck-production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
+  "logoUrl": "https://source-deck-production-storage.r1.cdn.objectstore.example/files/79/3643-small.jpg",
+  "faviconUrl": "https://source-deck-production-storage.r1.cdn.objectstore.example/files/103/3649-small.jpg",
   "siteTitleDefault": "Culturesmith",
   "rootUrl": "https://culturesmith.com/",
   "deckOrigin": "https://culturesmith.com",

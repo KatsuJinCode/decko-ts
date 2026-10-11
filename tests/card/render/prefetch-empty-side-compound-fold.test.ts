@@ -10,7 +10,7 @@
 // 1. DeckoName.parse("+Organizer(s)") yields left.key === "" -- the name
 //    algebra's empty side before the plus. Probe-verified against
 //    src/card/name.ts at this tree.
-// 2. `cards` carries NO row with key = '' (measured on the restore-decko
+// 2. `cards` carries NO row with key = '' (measured on the restore-deck-synthetic
 //    snapshot: `SELECT COUNT(*) FROM cards WHERE key = ''` = 0; the
 //    15,727 `key IS NULL` rows are the side-less junctions, which an
 //    `IN (...)` list never matches anyway). So an empty key is a PROVABLE

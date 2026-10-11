@@ -2,7 +2,7 @@
   "lane": "trial scrub quiescence (fixed eight-regex scrubber vs quiescent corpus-scale trial decko-edge)",
   "date": "2026-10-02",
   "worktree_branch_at_commit": "lane-scrub-date-shapes (worktree shared with concurrent lanes; explicit paths only)",
-  "target": "TRIAL https://decko-edge-wm2um.bunny.run, script 93646, DB decko-edge",
+  "target": "TRIAL https://decko-edge-synthetic.bunny.run, script 93646, DB decko-edge",
   "context_correction": "the 2,519 seeds / 15,877-closure figures in the ask were a mid-import 36k snapshot; corpus-load-lane.md:106-109,185-186,262-263 records the load-time scrub completing (3,791 seeds, 28,159 deleted) to exactly the quiescent state; this lane is the third idempotent verification plus the row-level proof",
   "census_before": { "cards": 21670, "live": 19476, "trashed": 2194, "refs": 48525, "dangling_refs": 0, "classifier_matches_8regex": 0, "junction_closure": 0 },
   "scrub_run_1": { "tool": "tmp/content-sync-rehearsal/scrub-trial-decko-edge-in-place.mjs", "classifier": "eight-regex (concurrent scrub-shapes-lane on-disk edit, self-test passed)", "refs_pull_fit": true, "seeds": 0, "deletion_set": 0, "cards_removed": 0, "refs_removed": 0, "post_classifier_matches": 0, "post_dangling": 0, "exit": 0 },

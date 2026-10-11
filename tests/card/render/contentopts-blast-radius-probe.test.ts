@@ -38,7 +38,7 @@ const PAGE_NAMES = [
   "mod: rules", "mod: script", "mod: search", "mod: session", "mod: style",
   "mod: tabs",
   "*input type+*right", "Administrator", "Archetypal", "Family", "Christmas",
-  "*search", "*input type+*right+*content options", "Morgan",
+  "*search", "*input type+*right+*content options", "Ellery",
   "Project+Task+*type plus right", "Message+Conversation+*type plus right",
   "Administrator+Dashboard", "Help Desk", "Pointer", "Shark",
   "mod: tinymce editor",
@@ -62,7 +62,7 @@ describeOrSkipLoud(!(process.env.CONTENTOPTS_BLAST_PROBE === "1" && existsSync(R
         "../../../src/card/render/views.js"
       );
       setDeploymentCloudAssetHost(
-        "https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com",
+        "https://source-deck-production-storage.r1.cdn.objectstore.example",
       );
       storage = await createRawStructureSeededStorage(new Set(everyLiveId));
       storage.fetcher.installNameEnvironment();

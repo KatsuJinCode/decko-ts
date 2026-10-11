@@ -73,7 +73,7 @@ const FROZEN_RAILS =
 
 // The frozen capture-era main-stylesheet attachment (the corpus's own digits).
 const FROZEN_CSS =
-  "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/45514/1786554352.css";
+  "https://source-deck-production-storage.r1.cdn.objectstore.example/files/45514/1786554352.css";
 
 /** The five fields the graded arm installs. Named here, not in the test bodies,
  *  so a sixth addition to the arm has to edit this list to stay green. */
@@ -101,7 +101,7 @@ describe("graded arm: the R1 type CAN express five-without-the-sixth", () => {
     const handBuiltFive: Omit<DeploymentFollowLiveConfig, "serializerEra"> = {
       mainStylesheetRevisionDigits: "1790384218",
       footerDeckoVersion: "0.19.1",
-      recaptchaSiteKey: "6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW",
+      recaptchaSiteKey: "6LSYNTHETICLIVEKEY00000000000000000000AA",
       deckoRootUrl: "https://culturesmith.com/",
     };
     expect(Object.hasOwn(handBuiltFive, "defaultHtmlViewNest")).toBe(false);
@@ -170,21 +170,21 @@ describe("graded arm: the FIVE constants still arm", () => {
   it("the compiled-CSS revision rewrites the stylesheet, never the .js asset", () => {
     setDeploymentFollowLiveConfig(GRADED_ARM_DEPLOYMENT_CONSTANTS);
     expect(applyDeploymentCssRevision(FROZEN_CSS)).toBe(
-      "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/45514/1790384218.css",
+      "https://source-deck-production-storage.r1.cdn.objectstore.example/files/45514/1790384218.css",
     );
     expect(
       applyDeploymentCssRevision(
-        "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/50617/1768074298.js",
+        "https://source-deck-production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
       ),
     ).toBe(
-      "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/50617/1768074298.js",
+      "https://source-deck-production-storage.r1.cdn.objectstore.example/files/50617/1768074298.js",
     );
   });
 
   it("footer version, recaptcha key and rootUrl read live", () => {
     setDeploymentFollowLiveConfig(GRADED_ARM_DEPLOYMENT_CONSTANTS);
     expect(footerDeckoVersion()).toBe("0.19.1");
-    expect(recaptchaSiteKey()).toBe("6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW");
+    expect(recaptchaSiteKey()).toBe("6LSYNTHETICLIVEKEY00000000000000000000AA");
     expect(deckoRootUrl()).toBe("https://culturesmith.com/");
   });
 

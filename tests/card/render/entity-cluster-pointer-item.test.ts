@@ -98,7 +98,7 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
       PRODUCTION_PHANTOM_ITEM_TYPE,
     );
     expect(body).toMatch(/<div class='bar [^']*TYPE-basic_c[^']*with-bar-menu/);
-    expect(body).toContain("data-card-type-id='22281'");
+    expect(body).toContain(`data-card-type-id='${PRODUCTION_PHANTOM_ITEM_TYPE.typeId}'`);
     expect(body).toContain("data-card-type-name='BasicCs'");
     expect(body).not.toContain("TYPE-consideration");
     expect(body).not.toContain("data-card-type-id='2979'");

@@ -4492,7 +4492,7 @@ var RenderFormat = class _RenderFormat {
    *  ensurePointerItemVerdicts fills once per item key GLOBALLY (first fold
    *  wins). An item line that appears on many hosts therefore inherits
    *  whichever host the run touched first: `mytho-psychology` sits on ~30
-   *  corpus cards and under Metashamanic+Core Project the nest read is true
+   *  corpus cards and under Quicksilver+Core Project the nest read is true
    *  (Project/398) while the global entry said denied, rendering bar_left
    *  as a quiet denial where the oracle renders the card title. Probed:
    *  cold isDenied false -> full bar; warm isDenied true -> two denied
@@ -4565,7 +4565,7 @@ var RenderFormat = class _RenderFormat {
   }
   /** R16 batch 2: the focal (main) denial — html/error.rb:203-208
    *  loud_denial + :194-198 with_frame, byte-pinned by the 2,835-page
-   *  oracle class (a named corpus page / CM 20100614 / Martial Nonviolence Public
+   *  oracle class (a named corpus page / CM 20100614 / Martial Concordance Public
    *  Module 01 page captures):
    *
    *  loud_denial: `voo.hide :menu; frame { [wrap_with(:h1, "Sorry!"),
@@ -5371,8 +5371,8 @@ ${body}</div>`;
    *  `[[Target|` opener is spanned forward to the first `]]` in a later
    *  text piece, the pieces between render as the label, and the whole
    *  goes through renderLinkChunk. Live receipt:
-   *  `[[/wagn/Latest_news_items.rss|{{feed icon|...}}]]` ->
-   *  `<a class="internal-link" href="/wagn/Latest_news_items.rss">` +
+   *  `[[/qagn/Latest_news_items.rss|{{feed icon|...}}]]` ->
+   *  `<a class="internal-link" href="/qagn/Latest_news_items.rss">` +
    *  expanded feed-icon slot + `</a>` (live-wire Latest_News/blog). */
   /**
    * content.rb:20-27 `content_nest` — the chunk-level dispatch every
@@ -5534,9 +5534,9 @@ ${body}</div>`;
    * strips the leading slash; contextualize_path re-roots it). The label
    * is the ALREADY-RENDERED bytes (link.rb:47 render_obj ran first), so a
    * nest label lands inside the anchor expanded. Live receipts:
-   * `<a class="internal-link" href="/wagn/Latest_news_items.rss">…` (feed
+   * `<a class="internal-link" href="/qagn/Latest_news_items.rss">…` (feed
    * icon wrap) and `<a class="internal-link" href="/account/signup">sign-in
-   * account</a>` (live Casey bio; identical bytes in the recapture
+   * account</a>` (live Riley bio; identical bytes in the recapture
    * oracle).
    *
    * Name targets (link.rb:85-86 + 71-75) render view :link on the target
@@ -5708,7 +5708,7 @@ ${body}</div>`;
    * (chunk/reference.rb#referee_name: the authored mark absolutized against
    * the referencing card), so both corpus spellings land on the head card's
    * key: `{{:head|core}}` (card 34754 `*all+*head`) and `{{*head|core}}`
-   * (card 34758 `PCTS+*self+*head`, oracle view-lane
+   * (card 34758 `ZQVT+*self+*head`, oracle view-lane
    * recapture-raw-shard-000029 views.content — pre 2441 B / 2447 B against
    * the port's pre 0 B).
    *
@@ -13984,7 +13984,7 @@ function templateLinkSetNameFromParts(base, nestName) {
   }
   return name.fieldName({ codename: "right" });
 }
-var RECAPTCHA_SITE_KEY = "6Lc3c-EoAAAAALnzfnHIWb5Rqy-rNui8l8qsguYG";
+var RECAPTCHA_SITE_KEY = "6LSYNTHETICCAPTUREKEY000000000000000000B";
 var commentBoxBaseView = ({ fmt }) => {
   const card = fmt.card;
   if (fmt.engine.taskAllowed?.(card, "update") !== true) return "";
@@ -15165,7 +15165,7 @@ function barDivHtml(ctx) {
     // slot wrap) and TWICE here. The oracle's own bar divs pin the
     // two-level form — recapture-raw-shard-000004 id 8460 (a personal
     // blog's +*self): `data-card-name='Test Person&amp;#39;s Blog+*self+*layout'`,
-    // and id 12195 (media+GBA+youtube videos) pins five such bars.
+    // and id 12195 (media+HBQ+youtube videos) pins five such bars.
     // Do NOT drop this h() thinking it is the double-escape: the
     // double-escape is the Haml pass, which emitHamlAttrs owns.
     "data-card-name": h(slotCardname(card)),

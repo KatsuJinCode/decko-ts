@@ -10,7 +10,7 @@ import { recaptchaSiteKey } from "./deployment-follow-live-config.js";
 
 /** The capture-era recaptcha site key (public: it ships in served HTML; the
  *  comment box in views.ts carries the same value). */
-const CAPTURE_RECAPTCHA_SITE_KEY = "6Lc3c-EoAAAAALnzfnHIWb5Rqy-rNui8l8qsguYG";
+const CAPTURE_RECAPTCHA_SITE_KEY = "6LSYNTHETICCAPTUREKEY000000000000000000B";
 
 /** set/all/demo.rb:23-25 demo_view - `Env.params[:demo_view] || :core`.
  *  The headless render has no Env.params surface (flashView's disclosed

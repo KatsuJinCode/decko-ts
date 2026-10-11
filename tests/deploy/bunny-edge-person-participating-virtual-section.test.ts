@@ -2,7 +2,7 @@
 // lane's person-page parity defect pinned through the REAL production boot.
 //
 // DEFECT (2026-10-03, lane-p2-person-section): on the deployed edge
-// (decko-edge-wm2um.bunny.run), the person page /Casey_Morgan is
+// (decko-edge-synthetic.bunny.run), the person page /Riley_Ellery is
 // missing the whole "+Project(s) Participating" section live renders (the
 // 171px height delta; deliverables/screenshot-proof/crop-person-bottom-
 // {live,edge}.png in brandonDojoTech). The junction row is TRASHED in the
@@ -165,12 +165,12 @@ function personPageDeckRows(): SeedRow[] {
     },
 
     // -- the person card and its REAL child junction (the control)
-    { id: 393, name: "Casey Morgan", typeId: 4, dbContent: "<p>And here we are.</p>" },
+    { id: 393, name: "Riley Ellery", typeId: 4, dbContent: "<p>And here we are.</p>" },
     { id: 1638, name: "Project(s) Organizing", typeId: 2 },
     { id: 1743, leftId: 393, rightId: 1638, typeId: 47, dbContent: "Guardians of Peace" },
 
     // -- the virtual Participating junction: set chain + Search rule, NO row
-    //    for "Casey Morgan+Project(s) Participating" itself
+    //    for "Riley Ellery+Project(s) Participating" itself
     { id: 418, name: "Project(s) Participating", typeId: 2 },
     { id: 420, leftId: 4, rightId: 418, typeId: 52 },
     { id: 421, leftId: 420, rightId: 262, typeId: 52 },
@@ -187,7 +187,7 @@ function personPageDeckRows(): SeedRow[] {
     //    Ruby yardstick)
     { id: 685, name: "mythosynth", typeId: 398, dbContent: "<p>mythosynth body</p>" },
     { id: 406, name: "Participant(s)", typeId: 2 },
-    { id: 690, leftId: 685, rightId: 406, typeId: 47, dbContent: "Casey Morgan" },
+    { id: 690, leftId: 685, rightId: 406, typeId: 47, dbContent: "Riley Ellery" },
   ];
 }
 
@@ -213,14 +213,14 @@ describe("bunny edge boot renders the person page's virtual +Project(s) Particip
       await driver.query(
         `INSERT INTO card_references (referer_id, referee_key, referee_id, ref_type, is_present)
          VALUES (?, ?, ?, ?, NULL)`,
-        [690, "casey_morgan", 393, "L"],
+        [690, "riley_ellery", 393, "L"],
       );
 
       // The REAL production boot (the entry's bootDeck delegates here);
       // first engine in the process, exactly like the entry.
       const deck = await bootCorpusDeckEngines(driver);
       const response = await handleEngineRequest(
-        edgeGet("/Casey_Morgan"),
+        edgeGet("/Riley_Ellery"),
         deck,
       );
       expect(response.status).toBe(200);
@@ -234,10 +234,10 @@ describe("bunny edge boot renders the person page's virtual +Project(s) Particip
 
       // THE SECTION: the virtual junction renders as the structured
       // titled Search slot the Ruby yardstick carries (expected-v2
-      // page-lane, name "Casey Morgan").
+      // page-lane, name "Riley Ellery").
       expect(html).toContain("TYPE_PLUS_RIGHT-person-project_s_participating");
       expect(html).toContain('data-card-type-name="Search"');
-      expect(html).toContain("casey_morgan-project_s_participating-titled-view");
+      expect(html).toContain("riley_ellery-project_s_participating-titled-view");
       // ... and the search finds the referring project (the CQL runs with
       // the junction's own name context, _left -> the person).
       expect(html).toContain("mythosynth");

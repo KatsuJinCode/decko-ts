@@ -143,7 +143,7 @@ describe("+*referred_to_by: the search result set over the corpus graph", () => 
         defaultHtmlViewNest: "content",
         mainStylesheetRevisionDigits: "1790384218",
         footerDeckoVersion: "0.19.1",
-        recaptchaSiteKey: "6LeRJb4UAAAAANqYxbHo_VwgJY9aWwieAp6493sW",
+        recaptchaSiteKey: "6LSYNTHETICLIVEKEY00000000000000000000AA",
         deckoRootUrl: "https://example.com/",
       });
 
@@ -171,7 +171,7 @@ describe("+*referred_to_by: the search result set over the corpus graph", () => 
           "CM 20101222+Associations+tags",
           "BW_20110109+Associations+tags",
           "tracked item test+associations+tags",
-          "Morgan Library+Associations+tags",
+          "Ellery Library+Associations+tags",
           "Schema",
         ]);
         const engineNames = itemNames(region);
@@ -182,7 +182,7 @@ describe("+*referred_to_by: the search result set over the corpus graph", () => 
           "CM 20101222+Associations+tags",
           "CM 20110109+Associations+tags",
           "tracked item test+associations+tags",
-          "Morgan Library+Associations+tags",
+          "Ellery Library+Associations+tags",
           "Schema",
         ]);
 

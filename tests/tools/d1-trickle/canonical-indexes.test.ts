@@ -27,7 +27,7 @@ describe("D1 trickle schema carries the canonical serving-path indexes", () => {
       const path = join(dir, "snapshot.sqlite3");
       // A snapshot built from the canonical DDL as it stood before the
       // serving-path indexes: those four lines removed, and the since-retired
-      // cards_trash_index present (restore-decko's state before 2026-10-07).
+      // cards_trash_index present (restore-deck-synthetic's state before 2026-10-07).
       let ddl = readFileSync(join(REPO, "db", "schema.sqlite.sql"), "utf8");
       for (const name of SERVING) ddl = ddl.replace(new RegExp(`^CREATE INDEX "${name}".*$`, "m"), "");
       const w = new DatabaseSync(path);

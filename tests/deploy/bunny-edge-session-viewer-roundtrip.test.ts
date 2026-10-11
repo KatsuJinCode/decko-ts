@@ -221,7 +221,7 @@ async function seedMinimal(storage: RenderTestStorage): Promise<void> {
   await seedCard(storage, { id: 22746, name: "*all+*layout", leftId: RULES.all, rightId: 601, typeId: 52, dbContent: "Default Layout" });
   await seedCard(storage, { id: 22747, name: "Default Layout", typeId: 50, dbContent: `<body class="d-flex flex-column h-100">\n  <header>{{:header|core}}</header>\n  <article class="container flex-shrink-0" role="main">{{_main|titled}}</article>\n  <footer class="footer mt-auto py-3">{{:footer|content}}</footer>\n</body>` });
   await seedCard(storage, { id: 22748, name: "*header", codename: "header", typeId: 50, dbContent: `<nav class="navbar navbar-expand-lg"><a class="navbar-brand" href="/">Site</a></nav>` });
-  await seedCard(storage, { id: 22749, name: "*footer", codename: "footer", typeId: 50, dbContent: `<footer class="footer mt-auto py-3"><a href="/:latest">Decko v</a></footer>` });
+  await seedCard(storage, { id: 72749, name: "*footer", codename: "footer", typeId: 50, dbContent: `<footer class="footer mt-auto py-3"><a href="/:latest">Decko v</a></footer>` });
   await seedCard(storage, { id: RULES.home, name: "Home", typeId: 2, dbContent: "hello" });
 }
 
@@ -296,7 +296,7 @@ async function seedViewerSensitive(storage: RenderTestStorage): Promise<void> {
   });
   await seedCard(storage, { id: 22747, name: "Default Layout", typeId: 50, dbContent: `<body class="d-flex flex-column h-100">\n  <header>{{:header|core}}</header>\n  <article class="container flex-shrink-0" role="main">{{_main|titled}}</article>\n  <footer class="footer mt-auto py-3">{{:footer|content}}</footer>\n</body>` });
   await seedCard(storage, { id: 22748, name: "*header", codename: "header", typeId: 50, dbContent: `<nav class="navbar navbar-expand-lg"><a class="navbar-brand" href="/">Site</a></nav>` });
-  await seedCard(storage, { id: 22749, name: "*footer", codename: "footer", typeId: 50, dbContent: `<footer class="footer mt-auto py-3"><a href="/:latest">Decko v</a></footer>` });
+  await seedCard(storage, { id: 72749, name: "*footer", codename: "footer", typeId: 50, dbContent: `<footer class="footer mt-auto py-3"><a href="/:latest">Decko v</a></footer>` });
 }
 
 // ---------------------------------------------------------------------------
@@ -324,14 +324,20 @@ describe("edge read path — the anonymous bytes do not move", () => {
 
   it("the fixture is the shell-lane capture, not a freshly minted copy", () => {
     // Guards against someone regenerating the fixture from drifting code
-    // and calling it a pin. 4550 bytes / this digest = the edge-site-shell
+    // and calling it a pin. 4544 bytes / this digest = the edge-site-shell
     // lane's capture (2026-10-02): the full page shell over the same deck
     // shape the first capture (3015 bytes, sha256 7247d8fd…, the
     // pre-session-wiring bare shell, still in the tree as
     // edge-anonymous-read-baseline-home.html) pinned.
-    expect(ANON_BASELINE.length).toBe(4550);
+    //
+    // The byte count and digest were re-anchored when the deployment's asset
+    // host, root URL and footer card id became synthetic placeholders (review
+    // round 5, finding 5). The capture is the same capture — only the
+    // site-identifying values moved. The seed uses the synthetic footer card
+    // id so the served body carries it too.
+    expect(ANON_BASELINE.length).toBe(4547);
     expect(createHash("sha256").update(ANON_BASELINE).digest("hex")).toBe(
-      "acb46ae38acfccb7efb0779eb2c2b854cd7d437c2bcb06dfef790278cad5d9be",
+      "fa2f9f1bbdcf74f742226bc1bc916d7309294d985f7907df4bd0220f3fdfa6b3",
     );
   });
 

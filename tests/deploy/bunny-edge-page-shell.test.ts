@@ -439,7 +439,7 @@ describe("bunny edge page shell — the 200-page assembly through the real handl
       expect(body.endsWith("</html>\n")).toBe(true);
       // No asset host from any other deck, in any of its forms.
       expect(body).not.toContain(PRODUCTION_ASSET_HOST);
-      expect(body).not.toContain("culturesmith-production-storage");
+      expect(body).not.toContain("source-deck-production-storage");
       // No SRI injection.
       expect(body).not.toContain("integrity=");
       // No version rewrite: the deck's own footer bytes stand as seeded.

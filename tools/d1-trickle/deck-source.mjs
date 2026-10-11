@@ -22,7 +22,7 @@ export const ROWS_NEVER_COPIED = new Set(["sessions", "auth_sessions", "decko_ed
  *  one_trip_page_closure, ...), stored render plans and page closures that
  *  the Bunny edge recorded. They are a cache, and the anonymous page path
  *  never reads them (the 40 gate pages render byte-identically on a deck
- *  without them). About 242,000 rows on restore-decko on 2026-10-07. */
+ *  without them). About 242,000 rows on restore-deck-synthetic on 2026-10-07. */
 export function rowsNeverCopied(table) {
   return ROWS_NEVER_COPIED.has(table) || /^one_trip_/.test(table);
 }

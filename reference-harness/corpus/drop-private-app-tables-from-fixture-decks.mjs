@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// drop-private-app-tables-from-fixture-decks.mjs -- remove the `library_*`
-// tables of a private reading-assistant application from the two committed
+// drop-private-app-tables-from-fixture-decks.mjs -- remove the
+// `private_table_*` tables of a private application from the two committed
 // reference-harness fixture decks, and VACUUM each deck.
 //
 // How the two committed decks were seeded: by the stock oracle, the same path
@@ -14,8 +14,8 @@
 // That recorded path does not create another application's schema, and the
 // reference oracle is stock: `reference-harness/SPEC.md` section 5.
 //
-// What the committed deck files actually carry is eight empty `library_*`
-// tables belonging to a private reading-assistant application, which rode
+// What the committed deck files actually carry is eight empty `private_table_*`
+// tables belonging to a private application that runs on the same engine, which rode
 // along in them and which nothing in this repository creates or reads: the
 // graded surface (render, semantics and scenario answers, and per-step row
 // deltas over Decko's own card tables) never touches them, and every one of
@@ -27,7 +27,7 @@
 //
 //   node reference-harness/corpus/drop-private-app-tables-from-fixture-decks.mjs
 //
-// SAFETY: a `library_*` table that is NOT empty aborts the whole run before
+// SAFETY: a `private_table_*` table that is NOT empty aborts the whole run before
 // any deck is modified -- these tables are dropped only where they are
 // provably empty, never as a data operation.
 //
@@ -59,11 +59,11 @@ for (const deck of DECKS) {
   const db = new DatabaseSync(deck);
   try {
     const tables = db
-      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'library\\_%' ESCAPE '\\' ORDER BY name")
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'private\\_table\\_%' ESCAPE '\\' ORDER BY name")
       .all()
       .map((r) => r.name);
     if (tables.length === 0) {
-      console.log(`${deck}: no library_* tables, nothing to do`);
+      console.log(`${deck}: no private_table_* tables, nothing to do`);
       continue;
     }
     for (const table of tables) {
@@ -80,7 +80,7 @@ for (const deck of DECKS) {
     // carrying a file its manifest does not list.
     db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
     db.exec("VACUUM");
-    console.log(`${deck}: dropped ${tables.length} empty library_* tables (${tables.join(", ")}) and vacuumed`);
+    console.log(`${deck}: dropped ${tables.length} empty private_table_* tables (${tables.join(", ")}) and vacuumed`);
   } finally {
     db.close();
   }
