@@ -1528,8 +1528,21 @@ const setModules: ModSetModuleFile[] = [
           // dispatched view is all/html/views' wrap arm, registered in
           // its own set module below (allHtmlViewsOneLineContentView).
           // Same later-module-wins shape as :titled above.
-          { view: "labeled_content", viewFn: labeledContentView },
-          { view: "titled_content", viewFn: titledContentView },
+          // set/all/base.rb:101-103 `view :labeled_content, unknown:
+          // :mini_unknown` and :105-107 `view :titled_content, unknown:
+          // :blank` — the `unknown:` setting travels WITH the view
+          // declaration, so it belongs in this registration's config. These
+          // two rows were registered with no config, and a loader-bound
+          // engine reads `setting :unknown` through the per-card chain walk
+          // (format.ts viewForUnknown -> loader.viewUnknownSettingForCard),
+          // where a set module that declared the view WITHOUT the setting
+          // does not answer: the walk fell through to the compiled
+          // all-set table with allSetOnly=true, dropped these two rows, and
+          // the substitution never happened. An absent Cardtype's
+          // `{{+description|lead}}` nest rendered the real description view
+          // (or "") where Ruby renders its `:unknown` create-link span.
+          { view: "labeled_content", viewFn: labeledContentView, config: { unknown: "mini_unknown" } },
+          { view: "titled_content", viewFn: titledContentView, config: { unknown: "blank" } },
           { view: "blank", viewFn: blankView, config: { perms: "none" } },
           // NOT registered: :titled. Ruby's All::Base body (base.rb:120-122)
           // is the BARE "name + blank line + core" — but that body never
