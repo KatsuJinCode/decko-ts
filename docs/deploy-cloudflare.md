@@ -34,9 +34,13 @@ process runs with an empty configuration home, no API token and the
 off the machine and lists the attempts in the result. It prints a JSON result
 and exits 0 only when every step passed.
 
-**A button deploy is read-only.** You can browse and fetch card records;
-every write verb answers `403` and the engine is never called. Two opt-in
-variables turn the write surface on; see [operations.md](operations.md).
+**A button deploy is read-only.** You can browse and fetch card records; every
+write verb answers `403` and no card row is written. The one exception is
+sign-in: `POST /update/*signin` still dispatches while the write path is off
+and still records a session row, because a session is not a card — Ruby decko
+never gates sign-in behind a deploy flag, and neither does this port. Two
+opt-in variables turn the card write surface on; see
+[operations.md](operations.md).
 Write-enabled D1 is for evaluation and single-user use, not a supported
 multiuser deployment: D1 has no interactive transactions, so while a save
 runs a concurrent reader can see its partial rows, and a save that fails

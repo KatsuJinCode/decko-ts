@@ -51,8 +51,23 @@
 // ---------------------------------------------------------------------------
 // THE DEFAULT POSTURE, STATED PLAINLY
 // ---------------------------------------------------------------------------
-// DECKO_WRITE_PATH unset  ->  every non-GET/HEAD verb answers 403 and the
-//                            engine is never called. GET/HEAD is untouched.
+// DECKO_WRITE_PATH unset  ->  every non-GET/HEAD verb that is NOT the login
+//                            action answers 403, and no card row is written.
+//                            GET/HEAD is untouched. The login action is the
+//                            ONE exception and it is not a card write:
+//                            POST /update/*signin still dispatches and still
+//                            INSERTs an auth_sessions row, because sign-in
+//                            mints a session, not a card, and Ruby decko
+//                            never gates it behind a deploy flag. Pinned
+//                            while DISARMED by
+//                            tests/deploy/deploy-worker-write-surface.test.ts
+//                            ("signs a real account in while DISARMED
+//                            (the login-action exemption)", which asserts the
+//                            minted auth_sessions row) and on the button's
+//                            real deployment by
+//                            tests/exercise/deploy-9.test.ts. "Read-only"
+//                            means NO CARD WRITES -- it never meant the
+//                            engine is not called.
 // DECKO_FIRST_RUN unset   ->  /setup does not exist; it renders whatever the
 //                            read path renders today (the card named "setup",
 //                            or the existing 404 — unchanged either way).

@@ -37,16 +37,30 @@ export async function sha256Hex(input: string): Promise<string> {
  * Constant-time equality over byte arrays: the loop always runs over the
  * LONGER input's length and accumulates the XOR of every byte pair into a
  * single flag, so the work done does not vary with where (or whether) the
- * inputs differ. Shorter input reads are zero-padded. Length itself is not
- * treated as a secret (callers hash fixed-length digests before comparing).
+ * inputs differ.
+ *
+ * LENGTH IS COMPARED EXPLICITLY, and it is the one thing this function is
+ * allowed to branch on. The loop alone would not be sufficient: it
+ * zero-pads the shorter input, so `constantTimeEqual("x", "x\0")` would XOR
+ * 0x78 against 0x78 and 0x00 against 0x00, accumulate a diff of 0, and
+ * report two different secrets as equal. Every real caller compares
+ * fixed-length material (a SHA-256 digest, a base64-encoded digest), so the
+ * check is belt-and-braces — but a comparator whose failure mode is
+ * "accepts a prefix" is the wrong default for secret material, whatever the
+ * current callers happen to pass. Comparing the lengths first makes unequal
+ * lengths return false without pretending to have run the loop.
  *
  * Implemented in TS rather than node:crypto.timingSafeEqual because (a) that
  * function throws on length mismatch and (b) it does not exist in workers —
  * the edge targets this repo deploys to.
  */
 export function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  // Folded into the returned value, not tested first, so a length mismatch
+  // still costs the full loop below — the only early exit is the comparison
+  // of two lengths, which reveals nothing an attacker could not learn from a
+  // boolean result.
+  let diff = a.length === b.length ? 0 : 1;
   const length = Math.max(a.length, b.length);
-  let diff = 0;
   for (let i = 0; i < length; i++) {
     const byteA = i < a.length ? a[i] : 0;
     const byteB = i < b.length ? b[i] : 0;

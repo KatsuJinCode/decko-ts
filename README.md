@@ -106,8 +106,10 @@ Four cards, already there, that you can read:
 
 You can browse every card and follow the inclusions, and you can ask for any
 card as JSON. **You cannot create or edit cards from the deployed demo**: the
-Worker this button ships reads, and has no write path — that is a deliberate
-boundary, not a missing feature. The database is yours, so you can add cards
+Worker this button ships reads, and has no card-write path — that is a
+deliberate boundary, not a missing feature. (Sign-in is the one thing that
+still works: `POST /update/*signin` records a session row, because a session
+is not a card.) The database is yours, so you can add cards
 to it yourself with the CLI, or extend `worker.ts` to write; the engine's
 write path (rules, history, saves) is where the real product starts, and it is
 not what this button turns on.
@@ -115,12 +117,15 @@ not what this button turns on.
 ### Turning the write path on (opt in, off by default)
 
 A deploy from the button is **read-only**: it can show every card and answer
-JSON for any of them, and it will refuse every attempt to change anything with
-a plain `403`. The Worker does have a full write path — sign-in with a real
+JSON for any of them, and it will refuse every attempt to change a card with
+a plain `403`. Sign-in is the deliberate exception — `/_signin` is not served
+until you arm the write path, but a `POST /update/*signin` reaches the engine
+either way and records a session row. The Worker does have a full write path —
+sign-in with a real
 D1-backed session, a first-run setup window, and card create / update / delete
 — but it is switched off unless you set one of two values in `wrangler.toml`
 and redeploy. Nothing is on unless you turn it on, and no secret is involved:
-`DECKO_WRITE_PATH = "1"` turns on sign-in and card writes, and
+`DECKO_WRITE_PATH = "1"` turns on card writes (and the sign-in form's route),
 `DECKO_FIRST_RUN = "1"` opens `/setup`, the one-time window that creates your
 deck's first account (it needs the write path as well, because creating that
 account is itself a card write, and it closes by itself once the account

@@ -11,7 +11,7 @@
   "cloudflare": {
     "bindings": {
       "DB": {
-        "description": "Your deck. The deploy creates this D1 database for you and fills it with the core schema plus a small 4-card demo deck (`Home`, `Hello World`, `About`). Read-only in the demo — the Worker never writes to it."
+        "description": "Your deck. The deploy creates this D1 database for you and fills it with the core schema plus a small 4-card demo deck (`Home`, `Hello World`, `About`). Read-only in the demo — the Worker never writes a CARD to it (sign-in still records a session row)."
       }
     }
   },

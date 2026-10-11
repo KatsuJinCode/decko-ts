@@ -105,12 +105,23 @@ function rubyCensus(): RubyCensus {
 // below throws ENOENT and the suite fails red on a host it has never
 // supported. Skip loudly instead — the fixture records a machine-specific
 // compile verification against that gem checkout.
-const GEM_TREE_PRESENT = existsSync(GEM_PATH);
+//
+// THE GATE CHECKS THE DIRECTORY THE WALK ACTUALLY READS, NOT ITS PARENT.
+// Checking existsSync(GEM_PATH) alone was not enough: rbFiles() below walks
+// join(GEM_PATH, "set"), and the oracle is handed GEM_PATH as its root. A
+// gem checkout present but without its `set/` subdirectory — a partial gem
+// install, an interrupted copy, a stub directory — passes an
+// existsSync(GEM_PATH) gate and then dies in readdirSync with ENOENT. That is
+// a red suite on a host the gate was written to protect, and the failure
+// names a missing directory rather than the missing prerequisite, so it reads
+// as a real defect. Both paths are checked here, and the `set/` requirement is
+// the stronger of the two (it implies the gem directory exists).
+const GEM_TREE_PRESENT = existsSync(join(GEM_PATH, "set"));
 
 describeOrSkipLoud(
   !GEM_TREE_PRESENT,
   "tests/tools/mod-porting-harness/format-census-view-set.test.ts",
-  `the recorded gem tree is present at ${GEM_PATH} — the fixture records a machine-specific compile verification: the view census is mined from the oracle machine's card-mod-format checkout at an absolute path, absent here`,
+  `the recorded gem tree is present at ${join(GEM_PATH, "set").replaceAll("\\", "/")} — the fixture records a machine-specific compile verification: the view census is mined from the oracle machine's card-mod-format checkout at an absolute path, absent here`,
 )("card-mod-format view census == Ruby's view set", () => {
   const ruby = rubyCensus();
   const setFiles = rbFiles(join(GEM_PATH, "set"));

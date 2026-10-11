@@ -15,7 +15,45 @@ Each exception is an *approved security divergence*: it is listed below with wha
 
 ## Reporting a vulnerability
 
-Please report suspected vulnerabilities privately rather than in a public issue, through a [GitHub Security Advisory](https://github.com/decko-commons/decko-ts/security/advisories/new) or by email to the maintainers (address to be published here before the first public release — placeholder, not yet live). Include the request or content that triggers the problem and what you observed. Where the same flaw exists in Ruby Decko, we also report it upstream.
+Please report suspected vulnerabilities privately rather than in a public issue, through a
+[GitHub Security Advisory](https://github.com/KatsuJinCode/decko-ts/security/advisories/new) on
+this repository. Include the request or content that triggers the problem and what you observed.
+Where the same flaw exists in Ruby Decko, we also report it upstream.
+
+(The advisory link is this repository's own — `KatsuJinCode/decko-ts`, the repository this
+project is developed in. An advisory filed against a repository you do not hold is not
+deliverable, so there is no email fallback: the GitHub channel above is the channel.)
+
+## Deployment obligations the port does not meet for you
+
+These are properties of a running deployment rather than divergences from Ruby, so they are
+not on the approved-divergence list above. They are stated here because a reader deciding
+whether to expose a deck publicly has to know them, and because the port's own defaults do
+not supply them.
+
+### Sign-in has no rate limiting and no lockout, on any host
+
+There is no attempt counter, no per-account or per-IP throttle, no delay after a failure and
+no lockout, in the sign-in path or anywhere else. Every `POST /update/*signin` runs the
+password check, and a wrong password costs the caller one PBKDF2 derivation and the operator
+nothing. This is true of every host — Node, Cloudflare Workers and Bunny alike — because the
+engine contains no rate-limiting code to configure; a search of `src/` for a rate limit, a
+lockout or an attempt counter returns nothing. Ruby Decko does not do this either, so this is
+parity, not a regression; but parity with a brute-forceable default is still a brute-forceable
+default, and a deployment that is publicly reachable should not inherit it silently.
+
+- **What an operator does instead:** apply their edge provider's throttling in front of the
+  deck (Cloudflare WAF rate-limiting rules, Bunny's equivalent, or a reverse proxy). The
+  engine offers no hook of its own for this, so there is nothing to switch on here — it has to
+  happen at the edge.
+- **The one built-in lever is the cost of an attempt.** `DECKO_PASSWORD_PBKDF2_ITERATIONS`
+  (approved divergence 2 above) sets how expensive each guess is. Raising it makes online
+  guessing slower in proportion, and it is the only in-process control the port offers. It is
+  bounded by the runtime: Cloudflare's production Workers runtime refuses PBKDF2 above 100,000
+  iterations, so a Workers deployment cannot push the cost arbitrarily high and must rely on
+  the edge for the rest.
+- **Not covered by either:** a distributed attack spread across many source addresses is a
+  problem only edge throttling addresses, since nothing in the engine counts per IP at all.
 
 ## Approved divergences
 
@@ -58,10 +96,10 @@ Please report suspected vulnerabilities privately rather than in a public issue,
 | | |
 |---|---|
 | **Ruby** | Password digests are compared with `==`, whose running time depends on where the strings first differ. |
-| **Port** | Password digests and hashes, session tokens and signed-token signatures are compared with a constant-time comparison (`src/card/auth/session-token.ts`), which runs over the whole input whatever it contains. |
+| **Port** | Password digests and hashes, session tokens and signed-token signatures are compared with a constant-time comparison (`src/card/auth/session-token.ts`), which runs over the whole input whatever it contains. The comparison folds the two lengths in as well: the byte loop zero-pads the shorter input, so without an explicit length check a shorter value matching the longer one's prefix would compare **equal** (every padded position XORs 0 against 0). Length is the one thing the comparison branches on, and comparing two lengths reveals nothing a boolean result did not. |
 | **Why** | A timing difference can leak a secret one character at a time to a patient remote attacker. |
 | **Compatibility** | None: the results are identical, only the timing differs. |
-| **Tests** | `tests/card/auth/session-token.test.ts` covers the comparison; `password-hash.test.ts` and `signin.test.ts` cover its use for passwords. |
+| **Tests** | `tests/card/auth/session-token.test.ts` covers the comparison, including the padded-prefix case the length check exists for (`[1,2,3]` against `[1,2,3,0,0,0]`, and `"x"` against `"x\0"` through the string path); `password-hash.test.ts` and `signin.test.ts` cover its use for passwords. |
 
 ### 5. An account holder's name may be changed only by its holder or Help Desk
 

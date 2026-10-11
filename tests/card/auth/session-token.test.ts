@@ -67,6 +67,34 @@ describe("constantTimeEqual", () => {
     expect(constantTimeEqual(longer, shorter)).toBe(false);
   });
 
+  // The padding case a diff-only loop gets WRONG. The test above passed even
+  // with that defect, because the extra byte was non-zero and so contributed
+  // to the diff. Zero bytes do not: under a pure XOR-over-max-length loop a
+  // shorter input matching the longer input's PREFIX compares EQUAL, because
+  // every padded position XORs 0 against 0. This is the case the explicit
+  // length-equality check exists to catch.
+  it("rejects a length mismatch whose extra bytes are all zero (the padded-prefix case)", () => {
+    const prefix = new Uint8Array([1, 2, 3]);
+    const prefixPlusZeros = new Uint8Array([1, 2, 3, 0, 0, 0]);
+    expect(constantTimeEqual(prefix, prefixPlusZeros)).toBe(false);
+    expect(constantTimeEqual(prefixPlusZeros, prefix)).toBe(false);
+  });
+
+  it("rejects a length mismatch on the string path too", () => {
+    // tokensEqual encodes to UTF-8, so "x" vs "x\0" is one byte against two
+    // with a NUL tail — the padded-prefix shape above, at the layer every
+    // session-token and password-digest comparison actually uses.
+    expect(tokensEqual("x", "x\0")).toBe(false);
+    expect(tokensEqual("x\0", "x")).toBe(false);
+    expect(tokensEqual("", "x")).toBe(false);
+    expect(tokensEqual("x", "")).toBe(false);
+  });
+
+  it("still accepts equal-length inputs that differ only in a trailing byte", () => {
+    expect(constantTimeEqual(new Uint8Array([1, 2, 3]), new Uint8Array([1, 2, 4]))).toBe(false);
+    expect(constantTimeEqual(new Uint8Array([1, 2, 3]), new Uint8Array([1, 2, 3]))).toBe(true);
+  });
+
   it("treats two empty buffers as equal", () => {
     expect(constantTimeEqual(new Uint8Array(0), new Uint8Array(0))).toBe(true);
   });
