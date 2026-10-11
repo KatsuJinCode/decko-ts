@@ -620,14 +620,22 @@ const rawView: ViewFn = ({ fmt }) => fmt.renderRaw();
 /** set/all/base.rb:101-103 view :labeled_content, unknown: :mini_unknown:
  *  `render_core`. The base body is the core view's bytes; the
  *  unknown-card substitution routes unknown cards to :mini_unknown.
- *  In the engine the core view is registered separately; this port
- *  just runs the core (renderCore would call into HTML_VIEWS.core, so
- *  the headless port calls renderView("core")). */
-const labeledContentView: ViewFn = ({ fmt }) => fmt.renderView("core");
+ *
+ *  `render_core` is Ruby's METHOD DELEGATION (method_delegation.rb:41-47
+ *  -> `api_render` :14-18 -> `render!`), not a plain dispatch: it opens
+ *  its own `wrap_and_render` rescue (format/render.rb:7-14, :96-100), so
+ *  a raising core returns the quiet render-error span on a nested format
+ *  and only re-raises on the focal (depth-0) one. `renderDelegated` is
+ *  that seam. Calling `renderView` here instead skipped the rescue scope
+ *  entirely and let the error escape the whole nest chain — the too-deep
+ *  chain of the corpus rendered as a thrown adapter error instead of the
+ *  quiet span Ruby emits inside the twentieth card's own view. */
+const labeledContentView: ViewFn = ({ fmt }) => fmt.renderDelegated("core");
 
 /** set/all/base.rb:105-107 view :titled_content, unknown: :blank:
- *  `render_core`. Same body as :labeled_content. */
-const titledContentView: ViewFn = ({ fmt }) => fmt.renderView("core");
+ *  `render_core`. Same body as :labeled_content, same method-delegation
+ *  seam (see above). */
+const titledContentView: ViewFn = ({ fmt }) => fmt.renderDelegated("core");
 
 /** set/all/base.rb:109-111 view :blank, perms: :none:
  *  the literal empty string. (HTML_VIEWS already has a blankView; this
@@ -678,11 +686,13 @@ const htmlLabeledView: ViewFn = (ctx) => (ENGINE_LABELED === undefined ? "" : EN
 const compactMissingView: ViewFn = ({ fmt }) =>
   `<span class="text-muted">${h(fmt.card.name.from(...fmt.contextNames))}</span>`;
 
-/** set/all/error.rb:6-8 view :unknown, perms: :none, cache: :never:
- *  the literal empty string. The HTML override
- *  (set/all/html/error.rb:10-12) wraps in a createable link; the
- *  BASE view is bare "". */
-const unknownView: ViewFn = () => "";
+/** set/all/error.rb:6-8 view :unknown, perms: :none, cache: :never: the
+ *  literal empty string, OVERRIDDEN by the html block's createable link
+ *  (set/all/html/error.rb:10-12) — which is the body that reaches the wire
+ *  and the one registered on All::Error below. The bare "" was the body
+ *  registered here until the html-block override was found missing; it is
+ *  kept as a named local only if a caller needs the base-format arm again
+ *  (no surface renders the base format's :unknown). */
 
 /** set/all/error.rb:10-12 view :server_error, perms: :none:
  *  `t(:format_server_error)`. The headless engine has no i18n;
@@ -1520,8 +1530,21 @@ const setModules: ModSetModuleFile[] = [
           // dispatched view is all/html/views' wrap arm, registered in
           // its own set module below (allHtmlViewsOneLineContentView).
           // Same later-module-wins shape as :titled above.
-          { view: "labeled_content", viewFn: labeledContentView },
-          { view: "titled_content", viewFn: titledContentView },
+          // set/all/base.rb:101-103 `view :labeled_content, unknown:
+          // :mini_unknown` and :105-107 `view :titled_content, unknown:
+          // :blank` — the `unknown:` setting travels WITH the view
+          // declaration, so it belongs in this registration's config. These
+          // two rows were registered with no config, and a loader-bound
+          // engine reads `setting :unknown` through the per-card chain walk
+          // (format.ts viewForUnknown -> loader.viewUnknownSettingForCard),
+          // where a set module that declared the view WITHOUT the setting
+          // does not answer: the walk fell through to the compiled
+          // all-set table with allSetOnly=true, dropped these two rows, and
+          // the substitution never happened. An absent Cardtype's
+          // `{{+description|lead}}` nest rendered the real description view
+          // (or "") where Ruby renders its `:unknown` create-link span.
+          { view: "labeled_content", viewFn: labeledContentView, config: { unknown: "mini_unknown" } },
+          { view: "titled_content", viewFn: titledContentView, config: { unknown: "blank" } },
           { view: "blank", viewFn: blankView, config: { perms: "none" } },
           // NOT registered: :titled. Ruby's All::Base body (base.rb:120-122)
           // is the BARE "name + blank line + core" — but that body never
@@ -1641,7 +1664,16 @@ const setModules: ModSetModuleFile[] = [
       html: {
         views: [
           { view: "compact_missing", viewFn: compactMissingView, config: { perms: "none" } },
-          { view: "unknown", viewFn: unknownView, config: { perms: "none", cache: "never" } },
+          // set/all/html/error.rb:10-12 REOPENS this module's html format
+          // block and overrides `view :unknown` with the createable link;
+          // the BASE block's body (error.rb:6-8) is the bare "". The html
+          // block is the one that reaches the wire, so that is the body
+          // registered here - without it the per-card chain walk answered
+          // the bare "" and every unknown-card substitution rendered
+          // nothing where Ruby renders its create-link span. The body is
+          // HTML_VIEWS["unknown"], the flat table's own identical
+          // html/error.rb:10-12 body, so the two surfaces cannot drift.
+          { view: "unknown", viewFn: HTML_VIEWS["unknown"]!, config: { perms: "none", cache: "never" } },
           { view: "server_error", viewFn: serverErrorView, config: { perms: "none" } },
           { view: "denial", viewFn: denialView, config: { perms: "none" } },
           { view: "not_found", viewFn: notFoundView, config: { perms: "none" } },
@@ -1660,8 +1692,18 @@ const setModules: ModSetModuleFile[] = [
     // (BetterErrors is never loaded) and would otherwise show internals; the
     // port deliberately renders :server_error in its place, with no modal
     // wrap, so the two give the same bytes (render/debug-server-error.ts).
-    // The file's other html views (:unknown, :mini_unknown,
-    // :compact_missing, :conflict, :errors) are served by the base table.
+    //
+    // :unknown is ALSO declared in this html block (set/all/html/error.rb
+    // :10-12) and OVERRIDES the base block's literal "" (error.rb:6-8). It
+    // is registered on the All::Error entry's own html block ABOVE rather
+    // than here, because Ruby's set/all/html/error.rb REOPENS All::Error's
+    // html format block - it is not a set module of its own - while this
+    // port's setPath keys a module by camelizing the path
+    // (mod-registrar.ts#setModuleShortname), so a row registered under the
+    // path "all/html/error" would land on a separate All::Html::Error
+    // module no card's set keys name. The same nested-path limitation is
+    // what keeps card-mod-bootstrap's :bar_bottom unregistered, per that
+    // function's KNOWN DIVERGENCE note.
     setPath: "all/html/error",
     formats: {
       html: {

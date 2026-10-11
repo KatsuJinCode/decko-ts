@@ -279,13 +279,21 @@ const passwordCoreView: ViewFn = () => "<em>encrypted</em>";
 /** set/self/signin.rb:139-142 view :open_content (html block): literally
  *  `_render_core` - the html format's `_render_<view>` machinery
  *  (mod/format.rb#render_view) delegates to the requested view in this
- *  format. The TS equivalent is ctx.fmt.renderView("core"). The Ruby
- *  comment ("annoying step designed to avoid table of contents. sigh") is
- *  the bug-bridge for the set-based TOC walk; the bytes are the ones
- *  _render_core would have returned, which on *signin is the plain
+ *  format. `_render_core` is Ruby's method delegation
+ *  (format/method_delegation.rb:41-47 `method_missing` -> :14-18
+ *  `api_render` -> `render!`), which opens its OWN `wrap_and_render`
+ *  rescue scope (format/render.rb:7-14, :96-100): an error raised inside
+ *  the delegated core becomes that render's RETURN VALUE on a nested
+ *  format (the quiet render-error span, labelled "(core view)"), and only
+ *  the depth-0 focal format re-raises (error.rb:65-73). `renderDelegated`
+ *  is that seam; plain `renderView` is not, and using it here let an
+ *  error escape a whole nest chain instead of rendering as the quiet span.
+ *  The Ruby comment ("annoying step designed to avoid table of contents.
+ *  sigh") is the bug-bridge for the set-based TOC walk; the bytes are the
+ *  ones _render_core would have returned, which on *signin is the plain
  *  processContent(renderRaw) path (no Search/pointer/list/set/Date/CodeRay
  *  branch fires for typeId: 14 settings). */
-const openContentView: ViewFn = (ctx) => ctx.fmt.renderView("core");
+const openContentView: ViewFn = (ctx) => ctx.fmt.renderDelegated("core");
 
 // set/self/signin.rb:134-137 view :title (`voo.title ||=
 // t(:account_sign_in_title)`) - NOT registered here: the headless view-surface

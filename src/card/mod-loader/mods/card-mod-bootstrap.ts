@@ -755,8 +755,14 @@ const oneLineContentView: ViewFn = (_ctx) => "";
  *  `pattern + num_set_parts` segments), which is the whole fix; that
  *  divergence is measured, scoped and left for its own change in
  *  mod-registrar.ts#setModuleShortname's KNOWN DIVERGENCE note. The SAME
- *  blocker holds :bar_left and the skin-set half of :core. */
-const barBottomView: ViewFn = ({ fmt }) => `<code>${fmt.renderView("core")}</code>`;
+ *  blocker holds :bar_left and the skin-set half of :core.
+ *
+ *  `render_core` here is Ruby's method delegation (method_delegation.rb:41-47
+ *  -> `api_render` :14-18 -> `render!`), which opens its own
+ *  `wrap_and_render` rescue (format/render.rb:7-14, :96-100) — a raising
+ *  core returns the quiet span on a nested format. `renderDelegated` is
+ *  that seam; plain `renderView` is not. */
+const barBottomView: ViewFn = ({ fmt }) => `<code>${fmt.renderDelegated("core")}</code>`;
 
 export { barBottomView };
 
