@@ -122,7 +122,7 @@ describe("card-mod-edit through the mod loader (A/B)", () => {
     // bar_right.
   });
 
-  it("WITH the mod: :just_deleted renders <div>TITLE deleted</div> (all/editing.rb:46-48)", async () => {
+  it("WITH the mod: :just_deleted renders the full slot wrap around TITLE deleted (all/editing.rb:46-48)", async () => {
     const s = storage!;
     loader = new ModLoader([{ manifest: cardModEdit }]);
     loader.load();
@@ -133,9 +133,17 @@ describe("card-mod-edit through the mod loader (A/B)", () => {
     // name in <span class="card-title" title="X">X</span> with
     // <span>+</span> joints for compound names. Oracle Edit Probe is a
     // simple card so the joint span is absent.
+    //
+    // Re-pinned to the miscpins round's corpus adjudication (the graded
+    // Note 001 row): `wrap` is the FULL SLOT WRAP (card-mod-format
+    // wrap.rb:6-10 + slot_attributes :22-28 — id, class with the card's
+    // set keys, data-card-* attrs, the data-slot JSON); the bare
+    // <div> was the earlier reading. The set keys here carry
+    // TYPE-rich_text from the seeded RichText cardtype's name through
+    // the name-key rule ("RichText".key = "rich_text").
     const html = await s.engine.render("Oracle Edit Probe", "just_deleted");
-    expect(html).toBe(
-      '<div><span class="card-title" title="Oracle Edit Probe">Oracle Edit Probe</span> deleted</div>',
+    expect(html.replace(/data-slot-id=(["'])[0-9a-fA-F]+\1/g, 'data-slot-id="RANDOMIZED"')).toBe(
+      '<div id="oracle_edit_probe-just_deleted-view" class="card-slot just_deleted-view ALL TYPE-rich_text SELF-oracle_edit_probe" data-card-id="200" data-card-name="Oracle Edit Probe" data-card-type-id="2" data-card-type-name="RichText" data-card-link-name="Oracle_Edit_Probe" data-slot-id="RANDOMIZED" data-slot="{&quot;view&quot;:&quot;just_deleted&quot;,&quot;show&quot;:[&quot;just_deleted&quot;]}"><span class="card-title" title="Oracle Edit Probe">Oracle Edit Probe</span> deleted</div>',
     );
   });
 

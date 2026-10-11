@@ -136,7 +136,11 @@ describe("flat-record format-scope census (composed deck)", () => {
     // icon-only createable link) alongside :unknown's html arm.
     // Abstract 30 -> 33, the same branch: Abstract::Items' :nav_item,
     // Abstract::List's :radio and Abstract::Script's :javascript_include_tag.
-    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(154);
+    // 154 -> 158 (the miscpins lane's notification-views round, 2026-10-11):
+    // All::Notify::BaseViews registers :list_of_changes and :subedits on
+    // base, and All::Notify::HtmlViews registers both on html — four more
+    // base-kind rows. Measured on the merged tree.
+    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(158);
     expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(33);
   });
 
@@ -169,7 +173,7 @@ describe("flat-record format-scope census (composed deck)", () => {
     ]);
   });
 
-  it("flat feeders span more than one key for exactly five views", () => {
+  it("flat feeders span more than one key for exactly seven views", () => {
     // Where the flat record's last-wins ORDER picks between formats at
     // all. The winners after the filter are Ruby's html/base arms (the
     // loader-level probe below pins them by identity).
@@ -188,11 +192,13 @@ describe("flat-record format-scope census (composed deck)", () => {
       "count: All::Item:html | Abstract::Search:base | Abstract::Search:html",
       "last_action: All::EmailText:email_text | All::History::Views:html",
       "last_action_verb: All::History::Views:html | All::Notify::BaseViews:base",
+      "list_of_changes: All::Notify::BaseViews:base | All::Notify::HtmlViews:html",
+      "subedits: All::Notify::BaseViews:base | All::Notify::HtmlViews:html",
       "unknown: All::Error:html | All::EmailHtml:email_html | All::EmailText:email_text",
     ]);
   });
 
-  it("the empty-setKeys fallback set spans more than one key for exactly five views", () => {
+  it("the empty-setKeys fallback set spans more than one key for exactly seven views", () => {
     // Surface 2 (the abstract pseudo-pattern arm, mod-loader.ts
     // viewChain's tokens.length === 0 branch): the arm returns EVERY
     // module that registered the view - any kind, any format key. Over
@@ -216,6 +222,8 @@ describe("flat-record format-scope census (composed deck)", () => {
       "count",
       "last_action",
       "last_action_verb",
+      "list_of_changes",
+      "subedits",
       "unknown",
     ]);
   });

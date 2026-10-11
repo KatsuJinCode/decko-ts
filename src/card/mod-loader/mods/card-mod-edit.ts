@@ -1218,7 +1218,6 @@ function fieldEditorInMultiCard(
   // {title: "email"}), which render_title's voo.title arm picks up.
   const explicitTitle = options["title"] !== undefined ? String(options["title"]) : undefined;
   // wrap_editor_in_multi_card (:113-119): formgroup render_title ... -
-  // wrap_editor_in_multi_card (:113-119): formgroup render_title ... -
   // formgroup (formgroup.rb:20-43): wrap_with :div, formgroup_div_args
   // (class ["form-group", classy("card-editor") + add_junction_class].join;
   // data-card-id on a real card; data-card-name + data-card-link-name),
@@ -2103,12 +2102,17 @@ function guideText(ctx: ViewContext): string {
  *  to :rule_edit (card-mod-rules-0.20.0 set/rule/editor.rb:60-61), so the
  *  link target is the RULE editor: the captured href is
  *  "/*all+*guide/rule_edit" (path mark keeps the star name verbatim).
- *  The taskAllowed gate mirrors card-mod-help.ts#prependGuideEditLink. */
+ *  The taskAllowed gate mirrors card-mod-help.ts#prependGuideEditLink and
+ *  reads the seam's deny-by-default posture (render-seam.ts: a verdict the
+ *  engine has not established denies): the link wraps only on an
+ *  AFFIRMATIVE update verdict — the captured fixture pins it for the
+ *  always-ok bot and its absence for the sara/anonymous arms
+ *  (fixtures/captured/edit-views.json, guide_tab/overlay_guide). */
 function prependGuideEditLink(ctx: ViewContext, text: string): string {
   const guideCard = guideRuleCard(ctx);
   if (guideCard === undefined) return text;
   const taskAllowed = ctx.fmt.engine.taskAllowed?.(guideCard, "update");
-  if (taskAllowed !== undefined && taskAllowed === false) return text;
+  if (taskAllowed !== true) return text;
   const editLink =
     `<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip"` +
     ` data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg"` +

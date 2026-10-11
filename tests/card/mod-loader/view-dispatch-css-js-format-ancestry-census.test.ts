@@ -184,7 +184,7 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
     const counts = new Map<string, number>();
     for (const e of entries) counts.set(e.formatKey, (counts.get(e.formatKey) ?? 0) + 1);
     expect([...counts.entries()].sort()).toEqual([
-      ["base", 7],
+      ["base", 9],
       ["email_html", 2],
       ["email_text", 3],
       // fold-10 union measurement: the signin fix pick (4d7b008) landed its
@@ -232,7 +232,7 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // page's own renders dispatch the keyword header composed with the
       // card list); still no new format key and no css/scss row. Measured
       // on the merged tree.
-      ["html", 359],
+      ["html", 361],
 
       ["js", 2],
       ["json", 3],
@@ -268,13 +268,15 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
     ]);
   });
 
-  it("composed-deck census: the base-kind base-keyed rows are exactly follow's three notify views", () => {
+  it("composed-deck census: the base-kind base-keyed rows are exactly follow's five notify views", () => {
     // The email-text-remainders port's tail row, re-measured (the four
     // OTHER base-keyed rows are abstract-kind search rows, a different
     // dispatch arm). Shared by html and css/js chains alike — the
     // both-ways-green rows. Wave-1's follow family added :subedit_notice
     // + :follower to the same base-keyed all/notify/base_views module
-    // (all/notify/base_views.rb's bare `format do` block).
+    // (all/notify/base_views.rb's bare `format do` block); the miscpins
+    // lane's notification-views round adds :list_of_changes + :subedits
+    // on the same module. Measured on the merged tree.
     const entries = censusEntries();
     expect(
       entries
@@ -284,7 +286,9 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
     ).toEqual([
       "follow all/notify/base_views :follower",
       "follow all/notify/base_views :last_action_verb",
+      "follow all/notify/base_views :list_of_changes",
       "follow all/notify/base_views :subedit_notice",
+      "follow all/notify/base_views :subedits",
     ]);
   });
 });

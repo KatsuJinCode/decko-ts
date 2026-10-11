@@ -293,8 +293,10 @@ export function createFormShell(
   // Quinn Contractor card) names the form edit_card_<id> and sends the
   // _method=patch spoof, exactly like an update form — the graded setup
   // row pins both. The :new family renders NEW records and keeps the
-  // new_card/post shape.
-  const persisted = ctx.fmt.card.id !== undefined;
+  // new_card/post shape. The bunny /new/:type route renders a virtual new
+  // card with NO render format at all ({} as ViewContext) — no format, no
+  // persisted record, so the absent card answers the :new shape.
+  const persisted = ctx.fmt?.card?.id !== undefined;
   return cardFormShell(ctx, {
     formClass: "card-form slotter",
     id: persisted ? `edit_card_${ctx.fmt.card.id}` : "new_card",

@@ -6615,7 +6615,7 @@ const listOfChangesView: ViewFn = () => "";
  *  notification_act; wrap_subedits { ... } end`. perms :none means no
  *  permission gate, so the body always runs on the page path — and the
  *  body returns NIL there (`card.acts.last` is nil for a card with no
- *  acts). Ruby's nil does NOT reach the page as "": a nest is a
+ *  acts). Ruby's nil does NOT reach a page as "": a nest is a
  *  Content::Chunk, and `Chunk::Abstract#result` (content/chunk/abstract.rb)
  *  is `burn_read || @process_chunk || @processed || @text` — with
  *  `@processed` nil (`Chunk::Nest#process_chunk` assigns whatever
@@ -6623,12 +6623,13 @@ const listOfChangesView: ViewFn = () => "";
  *  AUTHORED SYNTAX. So `{{_|subedits}}` renders as the literal
  *  `{{_|subedits}}`. Oracle-pinned: the follower notification email's
  *  html message shows `<p>{{_|subedits}}</p>` and its text message shows
- *  a bare `{{_|subedits}}` line. The engine's content loop
- *  (render/format.ts#processContent) appends `this.nest(...)` as a
- *  string, so this body re-emits the authored syntax rather than
- *  changing that shared signature — the fallback is reproduced HERE,
- *  scoped to this one view, instead of ported engine-wide. */
-const subeditsView: ViewFn = () => "{{_|subedits}}";
+ *  a bare `{{_|subedits}}` line. The nil fall-through now lives at the
+ *  chunk dispatch itself (render/format.ts contentNest -> nest's
+ *  authoredText arm, the composed answer to the miscpins wave-2
+ *  registrations shadowing this flat arm), so the body answers the raw
+ *  nil like Ruby's — a top-level render to_s's it to "" exactly as the
+ *  corpus's headless subedits op pins. */
+const subeditsView: ViewFn = () => null;
 
 /** card-mod-follow set/all/notify/base_views.rb:33-40
  *  `view :followed, perms: :none, compact: true` —

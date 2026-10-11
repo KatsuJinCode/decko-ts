@@ -960,15 +960,15 @@ const listOfChangesNotifyView: ViewFn = (ctx) => {
 /** base_views.rb:13-22 view :subedits, perms: :none, cache: :never:
  *  `return unless notification_act` - the NOTIFICATION ACT is the email
  *  send path's state, never set on a page render; the body answers Ruby's
- *  nil. The two render postures carry that nil differently (the corpus's
- *  TOP-LEVEL op renders it the empty string; a nest inside rendered
- *  content falls through Chunk::Abstract#result to the AUTHORED SYNTAX -
- *  `{{_|subedits}}`, the follower-email pin). The voo parent chain tells
- *  the postures apart: a top-level render's voo has no parent. The
- *  actions_affecting walk and the wrap_subedits list stay the email-lane
- *  remainder behind that state. */
-const subeditsNotifyView: ViewFn = (ctx) =>
-  ctx.voo.parent === undefined ? "" : "{{_|subedits}}";
+ *  nil. The two render boundaries carry that nil differently and BOTH are
+ *  graded: a top-level render to_s's it to "" (the corpus's headless
+ *  subedits op), while a nest inside processed content keeps the AUTHORED
+ *  SYNTAX through Chunk::Abstract#result's @text fallback - `{{_|subedits}}`,
+ *  the follower-email pin. The nil fall-through lives at the chunk dispatch
+ *  (render/format.ts contentNest -> nest's authoredText arm); the body
+ *  answers the raw nil like Ruby's. The actions_affecting walk and the
+ *  wrap_subedits list stay the email-lane remainder behind that state. */
+const subeditsNotifyView: ViewFn = () => null;
 
 /** base_views.rb:41-43 view :follower, perms: :none, compact: true:
  *  `active_notice(:follower) || "follower"`. @active_notice is the

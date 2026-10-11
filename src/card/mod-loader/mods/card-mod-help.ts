@@ -288,15 +288,19 @@ function guideText(ctx: ViewContext): string {
  *  guide_card.ok?(:update)`. The TS port consults taskAllowed on the
  *  engine (the same seam viewPermissionDenial uses for :read, format.ts
  *  via view-permissions); update permission here is checked through the
- *  engine's optional taskAllowed hook (unified :update gate). When the
- *  update task is denied, the d-none span wrapping is skipped, exactly
+ *  engine's optional taskAllowed hook (unified :update gate). The seam is
+ *  deny-by-default (render-seam.ts: a verdict the engine has not
+ *  established denies), so the d-none span wraps only on an AFFIRMATIVE
+ *  update verdict — the captured fixture pins the link for the always-ok
+ *  bot and its absence for the sara/anonymous arms
+ *  (fixtures/captured/edit-views.json, guide_tab/overlay_guide) — exactly
  *  like help.rb's `card.help_rule_card&.ok?(:read)` gate on
  *  wrap_help_text. */
 function prependGuideEditLink(ctx: ViewContext, text: string): string {
   const guideCard = guideRuleCard(ctx);
   if (guideCard === undefined) return text;
   const taskAllowed = ctx.fmt.engine.taskAllowed?.(guideCard, "update");
-  if (taskAllowed !== undefined && taskAllowed === false) return text;
+  if (taskAllowed !== true) return text;
   // guide.rb:30 nests the guide card with view: :edit_link; the guide card
   // is a Rule-typed card and the Rule set overrides edit_link_view to
   // :rule_edit (card-mod-rules-0.20.0 set/rule/editor.rb:60-61), so the

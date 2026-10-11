@@ -1846,7 +1846,7 @@ export class RenderFormat {
    * %i[closed edit].member?(view) ? :open : view`), then render in a
    * subformat with fresh voo state.
    */
-  nest(nest: ParsedNest): string {
+  nest(nest: ParsedNest, authoredText?: string): string {
     if (nest.comment !== undefined) return nest.comment; // content.rb#content_nest passthrough
     // nesting.rb:12-13 `return "" if nest_invisible?` — the elision gate
     // runs before ANY nest processing (no fetch, no view resolution): once
@@ -2040,7 +2040,19 @@ export class RenderFormat {
     // exception bypasses it.
     let rendered: string;
     try {
-      rendered = str(sub.renderView(view, viewOpts));
+      const raw = sub.renderView(view, viewOpts);
+      if (raw === null && authoredText !== undefined) {
+        // Chunk::Abstract#result (content/chunk/abstract.rb): `burn_read ||
+        // @process_chunk || @processed || @text` — a chunk-level nest whose
+        // view body answered Ruby nil keeps its AUTHORED SYNTAX (@text).
+        // Top-level renders to_s the same nil to "" (the corpus's headless
+        // subedits op pins exactly that); the chunk posture is the
+        // follower-email pin (<p>{{_|subedits}}</p>). The authored text
+        // bypasses count_chars — Ruby's count rides the subformat's render,
+        // which produced nil.
+        return authoredText;
+      }
+      rendered = str(raw);
     } catch (error) {
       if (!this.nestQuietErrors) throw error;
       rendered = quietRenderError(error, card, view, this);
@@ -2850,9 +2862,13 @@ export class RenderFormat {
    * The label arm (link.rb:113-122 re-parses a link label as Content) runs
    * the same dispatch, which is why the caller uses this for both.
    */
-  private contentNest(piece: { nest?: ParsedNest }): string {
+  private contentNest(piece: { text: string; nest?: ParsedNest }): string {
     if (this.isMainNest(piece)) return this.mainNest(piece);
-    return this.nest(piece.nest as ParsedNest);
+    // The authored bracket text rides along: this IS the chunk dispatch
+    // (chunk/nest.rb:73), so a view body that answers Ruby nil keeps the
+    // AUTHORED SYNTAX here (Chunk::Abstract#result's @text fallback) where
+    // every programmatic nest str()s the same nil to "".
+    return this.nest(piece.nest as ParsedNest, piece.text);
   }
 
   processContent(

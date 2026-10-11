@@ -83,7 +83,7 @@ import type { ViewResult } from "../../render/format.js";
 // to invent Voo API to exist at all. Documented, not faked.
 
 import type { RenderCard, RenderFormat, ViewContext, ViewFn } from "../../render/format.js";
-import { rubyBacktraceError, UnsupportedViewError } from "../../render/format.js";
+import { rubyBacktraceError, str, UnsupportedViewError } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
 import { emitAttrs, h, newSlotId, slotOptionsJson } from "../../render/slot-html.js";
 import { CqlBadQuery } from "../../../cql/ast.js";
@@ -962,7 +962,7 @@ const cardModSearch: DeckoModManifest = {
             // → the card list / count / error dispatch).
             {
               view: "core",
-              viewFn: (ctx) => resultsForKeywordView(ctx) + ctx.fmt.renderView("card_list"),
+              viewFn: (ctx) => str(resultsForKeywordView(ctx)) + str(ctx.fmt.renderView("card_list")),
               config: { cache: "never" },
             },
           ],
