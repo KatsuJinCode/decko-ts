@@ -1,0 +1,1080 @@
+{
+  "fixture": "synthetic-v1",
+  "fixture_digest": "7a96292d07200136b2de4f9727d9f2aafed105a79d37d8f834ac1788dd1f823b",
+  "actual": "C:\\localProjects\\decko-ts-r7fix-ruby\\recovery-scratch\\runs\\ruby-3.2.11",
+  "expected": "C:\\localProjects\\decko-ts-r7fix-ruby\\reference-harness\\fixtures\\synthetic-v1\\expected",
+  "oracle": {
+    "variant": "stock",
+    "patches": [],
+    "engine": null
+  },
+  "engine": {
+    "ready": true,
+    "protocol": 1,
+    "engine": "decko-ruby",
+    "version": {
+      "decko": "0.20.0",
+      "card": "1.110.0"
+    }
+  },
+  "adapter_checkout": {
+    "commit": "24baad1076221f58cf8a66cc10a3ad19928ff903",
+    "dirty": false
+  },
+  "verdict": "pass",
+  "problems": [],
+  "partial": [],
+  "warnings": [],
+  "summary": {
+    "rendering": {
+      "graded": 1754,
+      "pass": 1754,
+      "fail": 0,
+      "oracle_errors": 0,
+      "missing": 0,
+      "groups": {
+        "page / anonymous": {
+          "graded": 292,
+          "pass": 292
+        },
+        "view / anonymous": {
+          "graded": 292,
+          "pass": 292
+        },
+        "page / member": {
+          "graded": 292,
+          "pass": 292
+        },
+        "view / member": {
+          "graded": 292,
+          "pass": 292
+        },
+        "page / admin": {
+          "graded": 292,
+          "pass": 292
+        },
+        "view / admin": {
+          "graded": 292,
+          "pass": 292
+        },
+        "after write": {
+          "graded": 2,
+          "pass": 2
+        }
+      },
+      "rate": 100
+    },
+    "semantics": {
+      "graded": 2389,
+      "pass": 2389,
+      "fail": 0,
+      "oracle_errors": 0,
+      "missing": 0,
+      "groups": {
+        "card": {
+          "graded": 292,
+          "pass": 292
+        },
+        "sets": {
+          "graded": 290,
+          "pass": 290
+        },
+        "rule": {
+          "graded": 870,
+          "pass": 870
+        },
+        "perm": {
+          "graded": 876,
+          "pass": 876
+        },
+        "search": {
+          "graded": 36,
+          "pass": 36
+        },
+        "name": {
+          "graded": 24,
+          "pass": 24
+        },
+        "after write": {
+          "graded": 1,
+          "pass": 1
+        }
+      },
+      "rate": 100
+    },
+    "persistence": {
+      "graded": 16,
+      "pass": 16,
+      "fail": 0,
+      "oracle_errors": 0,
+      "missing": 0,
+      "groups": {
+        "write create": {
+          "graded": 8,
+          "pass": 8
+        },
+        "write update": {
+          "graded": 6,
+          "pass": 6
+        },
+        "write delete": {
+          "graded": 2,
+          "pass": 2
+        }
+      },
+      "rate": 100
+    },
+    "side_effects": {
+      "graded": 19,
+      "pass": 19,
+      "fail": 0,
+      "oracle_errors": 0,
+      "missing": 0,
+      "groups": {
+        "write create": {
+          "graded": 8,
+          "pass": 8
+        },
+        "write update": {
+          "graded": 6,
+          "pass": 6
+        },
+        "write delete": {
+          "graded": 2,
+          "pass": 2
+        },
+        "sign-in": {
+          "graded": 3,
+          "pass": 3
+        }
+      },
+      "rate": 100
+    }
+  },
+  "read_writes": {
+    "graded": 8,
+    "pass": 8,
+    "fail": 0,
+    "failures": []
+  },
+  "other_tables": {
+    "graded": 12,
+    "pass": 12,
+    "declared": 0,
+    "fail": 0,
+    "failures": []
+  },
+  "other_table_writes": [
+    {
+      "id": "create-note-as-member#1",
+      "expected": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "cards",
+              "seq": 911
+            },
+            {
+              "name": "card_actions",
+              "seq": 997
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "cards",
+              "seq": 910
+            },
+            {
+              "name": "card_actions",
+              "seq": 996
+            },
+            {
+              "name": "card_acts",
+              "seq": 105614
+            }
+          ]
+        }
+      },
+      "actual": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "cards",
+              "seq": 911
+            },
+            {
+              "name": "card_actions",
+              "seq": 997
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "cards",
+              "seq": 910
+            },
+            {
+              "name": "card_actions",
+              "seq": 996
+            },
+            {
+              "name": "card_acts",
+              "seq": 105614
+            }
+          ]
+        }
+      },
+      "verdict": "pass"
+    },
+    {
+      "id": "create-topic-with-fields-as-admin#1",
+      "expected": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "cards",
+              "seq": 913
+            },
+            {
+              "name": "card_actions",
+              "seq": 999
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            },
+            {
+              "name": "card_references",
+              "seq": 1090
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "cards",
+              "seq": 910
+            },
+            {
+              "name": "card_actions",
+              "seq": 996
+            },
+            {
+              "name": "card_acts",
+              "seq": 105614
+            },
+            {
+              "name": "card_references",
+              "seq": 1085
+            }
+          ]
+        }
+      },
+      "actual": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "cards",
+              "seq": 913
+            },
+            {
+              "name": "card_actions",
+              "seq": 999
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            },
+            {
+              "name": "card_references",
+              "seq": 1090
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "cards",
+              "seq": 910
+            },
+            {
+              "name": "card_actions",
+              "seq": 996
+            },
+            {
+              "name": "card_acts",
+              "seq": 105614
+            },
+            {
+              "name": "card_references",
+              "seq": 1085
+            }
+          ]
+        }
+      },
+      "verdict": "pass"
+    },
+    {
+      "id": "update-content-adds-link#1",
+      "expected": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "card_actions",
+              "seq": 997
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            },
+            {
+              "name": "card_references",
+              "seq": 1087
+            },
+            {
+              "name": "card_changes",
+              "seq": 21
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "card_actions",
+              "seq": 996
+            },
+            {
+              "name": "card_acts",
+              "seq": 105614
+            },
+            {
+              "name": "card_references",
+              "seq": 1085
+            },
+            {
+              "name": "card_changes",
+              "seq": 14
+            }
+          ]
+        }
+      },
+      "actual": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "card_actions",
+              "seq": 997
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            },
+            {
+              "name": "card_references",
+              "seq": 1087
+            },
+            {
+              "name": "card_changes",
+              "seq": 21
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "card_actions",
+              "seq": 996
+            },
+            {
+              "name": "card_acts",
+              "seq": 105614
+            },
+            {
+              "name": "card_references",
+              "seq": 1085
+            },
+            {
+              "name": "card_changes",
+              "seq": 14
+            }
+          ]
+        }
+      },
+      "verdict": "pass"
+    },
+    {
+      "id": "update-topic-as-member#1",
+      "expected": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "card_actions",
+              "seq": 997
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            },
+            {
+              "name": "card_references",
+              "seq": 1088
+            },
+            {
+              "name": "card_changes",
+              "seq": 21
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "card_actions",
+              "seq": 996
+            },
+            {
+              "name": "card_acts",
+              "seq": 105614
+            },
+            {
+              "name": "card_references",
+              "seq": 1085
+            },
+            {
+              "name": "card_changes",
+              "seq": 14
+            }
+          ]
+        }
+      },
+      "actual": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "card_actions",
+              "seq": 997
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            },
+            {
+              "name": "card_references",
+              "seq": 1088
+            },
+            {
+              "name": "card_changes",
+              "seq": 21
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "card_actions",
+              "seq": 996
+            },
+            {
+              "name": "card_acts",
+              "seq": 105614
+            },
+            {
+              "name": "card_references",
+              "seq": 1085
+            },
+            {
+              "name": "card_changes",
+              "seq": 14
+            }
+          ]
+        }
+      },
+      "verdict": "pass"
+    },
+    {
+      "id": "update-topic-as-member#2",
+      "expected": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "card_actions",
+              "seq": 998
+            },
+            {
+              "name": "card_acts",
+              "seq": 105616
+            },
+            {
+              "name": "card_changes",
+              "seq": 28
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "card_actions",
+              "seq": 997
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            },
+            {
+              "name": "card_changes",
+              "seq": 21
+            }
+          ]
+        }
+      },
+      "actual": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "card_actions",
+              "seq": 998
+            },
+            {
+              "name": "card_acts",
+              "seq": 105616
+            },
+            {
+              "name": "card_changes",
+              "seq": 28
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "card_actions",
+              "seq": 997
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            },
+            {
+              "name": "card_changes",
+              "seq": 21
+            }
+          ]
+        }
+      },
+      "verdict": "pass"
+    },
+    {
+      "id": "rename-referenced-tag#1",
+      "expected": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "card_actions",
+              "seq": 997
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            },
+            {
+              "name": "card_references",
+              "seq": 1099
+            },
+            {
+              "name": "card_changes",
+              "seq": 21
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "card_actions",
+              "seq": 996
+            },
+            {
+              "name": "card_acts",
+              "seq": 105614
+            },
+            {
+              "name": "card_references",
+              "seq": 1085
+            },
+            {
+              "name": "card_changes",
+              "seq": 14
+            }
+          ]
+        }
+      },
+      "actual": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "card_actions",
+              "seq": 997
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            },
+            {
+              "name": "card_references",
+              "seq": 1099
+            },
+            {
+              "name": "card_changes",
+              "seq": 21
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "card_actions",
+              "seq": 996
+            },
+            {
+              "name": "card_acts",
+              "seq": 105614
+            },
+            {
+              "name": "card_references",
+              "seq": 1085
+            },
+            {
+              "name": "card_changes",
+              "seq": 14
+            }
+          ]
+        }
+      },
+      "verdict": "pass"
+    },
+    {
+      "id": "delete-note#1",
+      "expected": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "card_actions",
+              "seq": 997
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            },
+            {
+              "name": "card_changes",
+              "seq": 21
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "card_actions",
+              "seq": 996
+            },
+            {
+              "name": "card_acts",
+              "seq": 105614
+            },
+            {
+              "name": "card_changes",
+              "seq": 14
+            }
+          ]
+        }
+      },
+      "actual": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "card_actions",
+              "seq": 997
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            },
+            {
+              "name": "card_changes",
+              "seq": 21
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "card_actions",
+              "seq": 996
+            },
+            {
+              "name": "card_acts",
+              "seq": 105614
+            },
+            {
+              "name": "card_changes",
+              "seq": 14
+            }
+          ]
+        }
+      },
+      "verdict": "pass"
+    },
+    {
+      "id": "delete-topic-with-fields#1",
+      "expected": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "card_actions",
+              "seq": 1000
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            },
+            {
+              "name": "card_changes",
+              "seq": 42
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "card_actions",
+              "seq": 996
+            },
+            {
+              "name": "card_acts",
+              "seq": 105614
+            },
+            {
+              "name": "card_changes",
+              "seq": 14
+            }
+          ]
+        }
+      },
+      "actual": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "card_actions",
+              "seq": 1000
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            },
+            {
+              "name": "card_changes",
+              "seq": 42
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "card_actions",
+              "seq": 996
+            },
+            {
+              "name": "card_acts",
+              "seq": 105614
+            },
+            {
+              "name": "card_changes",
+              "seq": 14
+            }
+          ]
+        }
+      },
+      "verdict": "pass"
+    },
+    {
+      "id": "create-memo-member-then-read-denied-anonymous#1",
+      "expected": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "cards",
+              "seq": 911
+            },
+            {
+              "name": "card_actions",
+              "seq": 997
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "cards",
+              "seq": 910
+            },
+            {
+              "name": "card_actions",
+              "seq": 996
+            },
+            {
+              "name": "card_acts",
+              "seq": 105614
+            }
+          ]
+        }
+      },
+      "actual": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "cards",
+              "seq": 911
+            },
+            {
+              "name": "card_actions",
+              "seq": 997
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "cards",
+              "seq": 910
+            },
+            {
+              "name": "card_actions",
+              "seq": 996
+            },
+            {
+              "name": "card_acts",
+              "seq": 105614
+            }
+          ]
+        }
+      },
+      "verdict": "pass"
+    },
+    {
+      "id": "create-tag-as-member#1",
+      "expected": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "cards",
+              "seq": 911
+            },
+            {
+              "name": "card_actions",
+              "seq": 997
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "cards",
+              "seq": 910
+            },
+            {
+              "name": "card_actions",
+              "seq": 996
+            },
+            {
+              "name": "card_acts",
+              "seq": 105614
+            }
+          ]
+        }
+      },
+      "actual": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "cards",
+              "seq": 911
+            },
+            {
+              "name": "card_actions",
+              "seq": 997
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "cards",
+              "seq": 910
+            },
+            {
+              "name": "card_actions",
+              "seq": 996
+            },
+            {
+              "name": "card_acts",
+              "seq": 105614
+            }
+          ]
+        }
+      },
+      "verdict": "pass"
+    },
+    {
+      "id": "create-compound-on-new-left#1",
+      "expected": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "cards",
+              "seq": 913
+            },
+            {
+              "name": "card_actions",
+              "seq": 999
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "cards",
+              "seq": 910
+            },
+            {
+              "name": "card_actions",
+              "seq": 996
+            },
+            {
+              "name": "card_acts",
+              "seq": 105614
+            }
+          ]
+        }
+      },
+      "actual": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "cards",
+              "seq": 913
+            },
+            {
+              "name": "card_actions",
+              "seq": 999
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "cards",
+              "seq": 910
+            },
+            {
+              "name": "card_actions",
+              "seq": 996
+            },
+            {
+              "name": "card_acts",
+              "seq": 105614
+            }
+          ]
+        }
+      },
+      "verdict": "pass"
+    },
+    {
+      "id": "update-then-render#1",
+      "expected": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "card_actions",
+              "seq": 997
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            },
+            {
+              "name": "card_changes",
+              "seq": 21
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "card_actions",
+              "seq": 996
+            },
+            {
+              "name": "card_acts",
+              "seq": 105614
+            },
+            {
+              "name": "card_changes",
+              "seq": 14
+            }
+          ]
+        }
+      },
+      "actual": {
+        "sqlite_sequence": {
+          "inserted": [
+            {
+              "name": "card_actions",
+              "seq": 997
+            },
+            {
+              "name": "card_acts",
+              "seq": 105615
+            },
+            {
+              "name": "card_changes",
+              "seq": 21
+            }
+          ],
+          "updated": [],
+          "deleted": [
+            {
+              "name": "card_actions",
+              "seq": 996
+            },
+            {
+              "name": "card_acts",
+              "seq": 105614
+            },
+            {
+              "name": "card_changes",
+              "seq": 14
+            }
+          ]
+        }
+      },
+      "verdict": "pass"
+    }
+  ],
+  "failures": {
+    "rendering": [],
+    "semantics": [],
+    "persistence": [],
+    "side_effects": []
+  },
+  "graded_at": "2026-10-11T19:04:04.136Z"
+}
