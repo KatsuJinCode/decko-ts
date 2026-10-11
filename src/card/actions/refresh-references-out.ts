@@ -84,9 +84,16 @@ export async function refreshReferencesOut(
 ): Promise<void> {
   // delete_references_out (all.rb:48; reference_events.rb:63-65).
   await driver.query("DELETE FROM card_references WHERE referer_id = ?", [refererId]);
+  // set/type/search_type.rb:6 `def chunk_list; :query; end` — a Search
+  // referer's content parses QueryReference chunks ONLY (lib/card/content/
+  // chunk/query_reference.rb: quoted strings after :, , or [ that are not
+  // query keywords, reference_code "Q"); every other referer parses the
+  // link/nest chunks (all.rb:56-58 each_reference_out).
   const rows = (await isListCard(driver, refererId))
     ? await createListReferencesOut(driver, lexicon, refererId, refererName, content)
-    : await createReferencesOut(lexicon, refererId, refererName, content);
+    : (await isSearchCard(driver, refererId))
+      ? await createQueryReferencesOut(lexicon, refererId, refererName, content)
+      : await createReferencesOut(lexicon, refererId, refererName, content);
   // Reference.insert_in_slices (all.rb:61, reference.rb:19-23): bulk
   // insert in ref-hash order; 5000-row slices kept for fidelity.
   for (let slice = 0; slice < rows.length; slice += 5000) {
@@ -211,6 +218,81 @@ async function listCardItemNames(
     [refererId],
   );
   return items.rows.map((r) => String(r.name));
+}
+
+/** set/type/search_type.rb:6 — the Search cardtype's chunk_list :query: the
+ *  referer's content parses QueryReference chunks. Same type-codename read
+ *  shape as isListCard. */
+async function isSearchCard(
+  driver: SQLDatabaseDriver,
+  refererId: number,
+): Promise<boolean> {
+  const row = (
+    await driver.query<{ codename: string | null }>(
+      `SELECT t.codename AS codename FROM cards c JOIN cards t ON t.id = c.type_id WHERE c.id = ?`,
+      [refererId],
+    )
+  ).rows[0];
+  return row?.codename === "search_type";
+}
+
+// --- QueryReference chunks (query_reference.rb) -----------------------------
+
+/** query.rb:49-76 — Card::Query::MODIFIERS + OPERATORS + @attributes +
+ *  CONJUNCTIONS keys and %w[desc asc count]: the quoted strings these name
+ *  are query SYNTAX, not card references (query_reference.rb:69-78
+ *  keyword?). */
+const QUERY_KEYWORDS: ReadonlySet<string> = new Set(
+  [
+    // MODIFIERS (query.rb:70)
+    "conj", "return", "index", "sort_by", "sort_as", "sort_dir", "sort", "dir",
+    "group", "limit", "offset",
+    // OPERATORS (query.rb:73-77)
+    "!=", "=", "=~", "<", ">", "in", "~", "is", "eq", "gt", "lt", "match",
+    "ne", "not in", "is not", "!",
+    // @attributes (query.rb:49-65): basic, relational, plus_relational,
+    // conjunction, custom, ignore, deprecated groups.
+    "id", "name", "key", "type_id", "content", "left_id", "right_id",
+    "codename", "read_rule_id", "created_at", "updated_at", "creator_id",
+    "updater_id", "type", "part", "left", "right", "editor_of", "edited_by",
+    "last_editor_of", "last_edited_by", "creator_of", "created_by",
+    "updater_of", "updated_by", "link_to", "linked_to_by", "include",
+    "included_by", "nest", "nested_by", "refer_to", "referred_to_by",
+    "member_of", "member", "found_by", "not", "sort", "match", "name_match",
+    "complete", "plus", "left_plus", "right_plus", "and", "or", "all", "any",
+    "compound", "prepend", "append", "vars", "view", "params", "size",
+    // the trailing literals (query.rb:76):
+    "desc", "asc", "count",
+  ].map((k) => k.replace(/ /g, "_").toLowerCase()),
+);
+
+/** query_reference.rb:47-52 — the registered grammar: a quoted string whose
+ *  preceding character is a colon, comma, or square bracket (Ruby's
+ *  prefix_re lookbehind). */
+const QUERY_REFERENCE_STICKY = /(?<=[:,\[])\s*"([^"]+)"/g;
+
+/** create_references_out over a Search referer's content: each non-keyword
+ *  quoted value interprets as a "Q" reference (query_reference.rb:106
+ *  reference_code) through the SAME interpret_reference dedupe machinery
+ *  (all.rb:80-96). */
+async function createQueryReferencesOut(
+  lexicon: ReferenceLexicon,
+  refererId: number,
+  refererName: DeckoName,
+  content: string | null | undefined,
+): Promise<ReferenceRow[]> {
+  if (content === null || content === undefined || content === "") return [];
+  const refHash = new Map<string, { refereeId: number | undefined; refTypes: string[] }>();
+  QUERY_REFERENCE_STICKY.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = QUERY_REFERENCE_STICKY.exec(content)) !== null) {
+    const name = match[1] ?? "";
+    // query_reference.rb:75-78 keyword?: the text with spaces underscored
+    // and downcased is a query keyword -> syntax, not a reference.
+    if (QUERY_KEYWORDS.has(name.replace(/ /g, "_").toLowerCase())) continue;
+    await interpretReference(lexicon, refHash, name, "Q", refererName);
+  }
+  return referenceValuesArray(refHash, refererId);
 }
 
 /** all.rb:80-86 interpret_reference + :88-96 with_normalized_referee. */

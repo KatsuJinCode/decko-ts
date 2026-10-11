@@ -603,12 +603,6 @@ const TYPE_FORMAT_INPUT_TYPE: Readonly<
   html: { method: "ace_editor", aceMode: "html" },
   markdown: { method: "ace_editor", aceMode: "markdown" },
   json: { method: "ace_editor", aceMode: "json" },
-  // card-mod-search set/type/search_type.rb:1 `include_set Type::Json` —
-  // the Search type inherits the Json type's input override
-  // (card-mod-format set/type/json.rb:32-40 input_type :ace_editor +
-  // ace_mode :json; the graded edit_nests row pins the All Topics editor
-  // as the ace json textarea).
-  search_type: { method: "ace_editor", aceMode: "json" },
   number: { method: "text_field" },
   phrase: { method: "text_field" },
   uri: { method: "text_field" },
@@ -618,6 +612,16 @@ const TYPE_FORMAT_INPUT_TYPE: Readonly<
   // sets, so both type codes answer the list editor.
   pointer: { method: "list" },
   list: { method: "list" },
+  // card-mod-search set/type/search_type.rb:1 `include_set Type::Json` —
+  // the Search cardtype's set rides the Json set's html input override
+  // (card-mod-format set/type/json.rb:32-40 input_type :ace_editor +
+  // ace_mode :json) — the graded edit_nests row pins the All Topics
+  // editor as the ace json textarea, and the pointer-input journeys'
+  // /card/new?type=Search form pins it likewise (rows 5, data-ace-mode
+  // "json", id "card_content") where the rich_text fall-through
+  // rendered the tinymce textarea and the editor fill came back
+  // <p>-wrapped. (Both merge lines landed the same entry; composed.)
+  search_type: { method: "ace_editor", aceMode: "json" },
 };
 
 /** all/editor.rb:9-11 input_type_from_rule:
@@ -1394,16 +1398,28 @@ export const contentFormgroupsView: ViewFn = (ctx) => {
 export const editFormView: ViewFn = ({ fmt, voo }) => {
   voo.showViz("edit_type_row"); // the view body's voo.show :edit_type_row
   voo.hide("edit_type_row"); // edit_form's own hide - first-write no-op
+  // edit_content.rb:2-7 view :edit_form, wrap: :slot: `voo.show
+  // :edit_type_row; with_nest_mode :edit do edit_form end` — the form's
+  // renders run under nest mode :edit (the field editors substitute) the
+  // same way the :edit view wraps them; the nested same-mode wrap when
+  // both run is Ruby's own shape (mode.rb's same-value fast path).
   const form =
     `<form class="card-form slotter autosave" id="edit_card_${fmt.card.id}"` +
     ` data-slot-selector="modal-origin" data-slot-error-selector=".card-slot"` +
     ` action="/update/${fmt.urlKey()}" accept-charset="UTF-8" data-remote="true" method="post">` +
     `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
     `<input type="hidden" name="_method" value="patch" autocomplete="off" />` +
-    output([
-      undefined, // edit_view_hidden (editing.rb:35-36, the override stub)
-      fmt.renderView("edit_type_row", { home_view: "edit_type_row" }),
-      fmt.renderView("content_formgroups"),
+    fmt.withNestMode("edit", () =>
+      output([
+        undefined, // edit_view_hidden (editing.rb:35-36, the override stub)
+      // The form body's renders are UNDERSCORE calls in Ruby
+      // (edit_content.rb:20-22 `_render_edit_type_row`,
+      // `_render_content_formgroups`): skip_perms rides the render args
+      // (method_delegation.rb:54), so the nested form machinery renders
+      // AS REQUESTED on an unknown card — the type row and the field
+      // editors where the :unknown substitution stood.
+      fmt.renderView("edit_type_row", { home_view: "edit_type_row", skip_perms: true }),
+      fmt.renderView("content_formgroups", { skip_perms: true }),
       // _render(voo.buttons_view || :edit_buttons) - the METHOD_MISSING
       // delegation (method_delegation.rb:41-47 -> api_render -> render!),
       // whose own wrap_and_render rescue (render.rb:96-100) makes the quiet
@@ -1412,8 +1428,16 @@ export const editFormView: ViewFn = ({ fmt, voo }) => {
       // (the edit_buttons raise, deleteButton's reproduced upstream failure)
       // while the form around it completes. renderDelegated is that seam;
       // the no-raise renders are byte-identical through it.
-      fmt.renderDelegated(voo.opts["buttons_view"] === undefined ? "edit_buttons" : String(voo.opts["buttons_view"])),
-    ]) +
+      // `_render(voo.buttons_view || :edit_buttons)` — the underscore lane
+      // again: skip_perms rides the delegation (the buttons render as
+      // themselves on an unknown card; the new-card Delete drop is
+      // deleteButton's own card.real? arm, form_buttons.rb:55).
+      fmt.renderDelegated(
+        voo.opts["buttons_view"] === undefined ? "edit_buttons" : String(voo.opts["buttons_view"]),
+        { skip_perms: true },
+      ),
+      ])
+    ) +
     `</form>`;
   return modSlotWrap({ fmt, voo }, "edit_form", form);
 };
@@ -1494,10 +1518,29 @@ export const editView: ViewFn = ({ fmt, voo }) => {
   voo.showViz("help");
   voo.hide("save_button");
   voo.classUp("help-text", "alert alert-info"); // frame_help with_class_up
+  // The edit view declares unknown: true (edit_content.rb:28): its whole
+  // body renders for an unknown card as the create form. The body's renders
+  // are UNDERSCORE calls in Ruby (`_render :help`, `_render_edit_form`,
+  // edit_content.rb:36) — method_delegation.rb:17 RENDER_METHOD_RE's leading
+  // underscore sets render_args' skip_perms (:54), and permission.rb:26
+  // `altered_view` answers `return if skip_check?` BEFORE alter_unknown, so
+  // the body renders AS REQUESTED on the unknown card: no :unknown
+  // substitution anywhere under the edit view (the pinned
+  // denied-member-delete modal: the create-form bytes, the type row and the
+  // buttons included).
   const body = modSlotWrap(
     { fmt, voo },
     "edit",
-    [fmt.renderView("help"), fmt.renderView("edit_form")].join("\n"),
+    // edit_content.rb:33-39 view :edit: `with_nest_mode :edit do voo.show
+    // :help; voo.hide :save_button; wrap(true) { [frame_help,
+    // _render_edit_form] } end` — the WHOLE body renders under nest mode
+    // :edit, so the structured form's field nests substitute to the field
+    // editors (mode.rb's view_in_edit_mode through multiCardEdit's mode
+    // gate). Without the wrap the fields render their normal-mode slots
+    // (the titled/content shapes) and no editor exists on the edit page.
+    fmt.withNestMode("edit", () =>
+      [fmt.renderView("help", { skip_perms: true }), fmt.renderView("edit_form", { skip_perms: true })].join("\n"),
+    ),
   );
   let out = "<div class='modal fade _modal-slot' id='modal-container' role='dialog'>\n";
   out += "<!-- /, \"data-backdrop\": \"static\"} -->\n";
@@ -2378,12 +2421,19 @@ function captchaRuleSeedFor(ctx: ViewContext): string | undefined {
  *  "" STAYS in output() (Ruby "" is truthy - the trailing empty line
  *  inside the d-flex div on guide-less decks). */
 function createFormWithAlertGuide(ctx: ViewContext): string {
-  const fields = ctx.fmt.renderView("new_fields", {
-    buttons_view: ctx.voo.opts["buttons_view"],
-    // the nest's type opt (the image-typed new cards) inherits to the
-    // new_fields render — new_type_prompt? reads it there (new.rb:142-144).
-    type: ctx.voo.opts["type"],
-  });
+  // new.rb:35-41 with_create_context wraps its yield in `with_nest_mode
+  // :edit` — the structured create form's field nests (the /new/Topic
+  // {{+summary}} family) substitute to the field editors exactly as the
+  // :edit surfaces do; without the wrap they render their normal-mode
+  // slots and the form carries no editor.
+  const fields = ctx.fmt.withNestMode("edit", () =>
+    ctx.fmt.renderView("new_fields", {
+      buttons_view: ctx.voo.opts["buttons_view"],
+      // the nest's type opt (the image-typed new cards) inherits to the
+      // new_fields render — new_type_prompt? reads it there (new.rb:142-144).
+      type: ctx.voo.opts["type"],
+    }),
+  );
   return (
     `<div class="d-flex justify-content-between">` +
     output([fields, ctx.voo.show("guide") ? alertGuide(ctx) : undefined]) +
@@ -2948,8 +2998,13 @@ function boardParts(ctx: ViewContext): string {
   voo.classUp("help-text", "alert alert-info"); // frame_help's with_class_up
   return output([
     fmt.renderView("help"),
-    fmt.renderView("edit_name_row", { home_view: "edit_name_row" }),
-    fmt.renderView("edit_form"),
+    // board_parts' renders are UNDERSCORE calls in Ruby (editing.rb:38-42,
+    // `_render_edit_name_row`, `_render_edit_form`): method_delegation.rb:54
+    // render_args sets skip_perms for the underscore prefix, so the whole
+    // board body renders AS REQUESTED on an unknown card — the name row and
+    // the form where the :unknown substitution stood.
+    fmt.renderView("edit_name_row", { home_view: "edit_name_row", skip_perms: true }),
+    fmt.renderView("edit_form", { skip_perms: true }),
   ]);
 }
 

@@ -206,6 +206,14 @@ import type {
 import { isEditConflict } from "../mod-loader/mods/card-mod-history.js";
 import { expireRuleResolutionCache } from "../permissions/read-rules.js";
 
+/** A card's reference FINALIZE events, stashed by createInWriter when the
+ *  caller passes deferFinalize (the deferred-reference-finalize seam). The
+ *  thunks shape matches runFinalizeEvents'. */
+interface DeferredReferenceFinalize {
+  card?: ModEventCard;
+  thunks?: ReadonlyArray<readonly [string, () => Promise<void>]>;
+}
+
 /** The attachment mounts by type codename — the two sets that include
  *  Abstract::Attachment and therefore run its events: `attachment :file`
  *  (card-mod-carrierwave set/type/file.rb:1, File cards codename `file`)
@@ -761,6 +769,10 @@ export class CardActionEngine {
           sub.attachment === undefined &&
           (sub.subcards === undefined || Object.keys(sub.subcards).length === 0);
         if (blankNoop) continue;
+        // The subcard's own reference FINALIZE defers until after its own
+        // subcards save below — Ruby's stage order again (the subcard's
+        // finalize stage follows its whole store stage).
+        const subReferenceFinalize: DeferredReferenceFinalize = {};
         const created = await this.createInWriter(
           writer,
           {
@@ -777,7 +789,7 @@ export class CardActionEngine {
             ...(sub.history === false ? { history: false } : {}),
             ...(sub.passwordEncrypted === true ? { passwordEncrypted: true } : {}),
           },
-          { isActCard: false },
+          { isActCard: false, deferFinalize: subReferenceFinalize },
         );
         // a history-less card records no action (actionId 0): it is not a
         // subaction of the act
@@ -811,6 +823,8 @@ export class CardActionEngine {
           created.actionId,
           saved,
         );
+        // FINALIZE (after the store stage): the deferred reference events.
+        await this.runDeferredReferenceFinalize(subReferenceFinalize);
       }
     }
     // delete_children (trash.rb:46-57) fires on EVERY :delete save — also on
@@ -1498,10 +1512,20 @@ export class CardActionEngine {
     await assertStyleCompilerFor(this.styleAssetContext(actingId), name, typeId);
     const writer = this.newWriter(actingId);
     let result: ActionResult;
+    // The act card's reference FINALIZE defers until after the subcard
+    // stores: Ruby's finalize stage runs after the whole store stage
+    // (director/phases.rb storage_phase — store, then finalize), and the
+    // subcards save inside that store stage (director/store.rb:37-58), so
+    // the reference walk's Lexicon.id resolves every card created earlier
+    // in the SAME act (the structured create's +summary: the walk answers
+    // its id, no partial arm). The deferred body runs below, after the last
+    // store-stage write of the act.
+    const referenceFinalize: DeferredReferenceFinalize = {};
     try {
       result = await this.createInWriter(writer, input, {
         isActCard: true,
         resolvedTypeId: typeId,
+        deferFinalize: referenceFinalize,
       });
     } catch (error) {
       await this.dropUnfilledActions(writer);
@@ -1515,6 +1539,9 @@ export class CardActionEngine {
     if (subResults.length > 0) {
       finalResult = { ...result, subactions: [...result.subactions, ...subResults] };
     }
+    // FINALIZE (after the store stage): the deferred reference events —
+    // Ruby's ordering (see the defer note above).
+    await this.runDeferredReferenceFinalize(referenceFinalize);
     // II (director.rb:26): the integration phase runs after the save's
     // transaction commits (after_commit :integration_phase, director/
     // phases.rb:4), and the integrate seam runs BEFORE the notify hooks
@@ -1560,7 +1587,17 @@ export class CardActionEngine {
   private async createInWriter(
     writer: ActWriter,
     input: CreateCardInput,
-    opts: { isActCard: boolean; resolvedTypeId?: number },
+    opts: {
+      isActCard: boolean;
+      resolvedTypeId?: number;
+      /** When provided, the card's reference FINALIZE events (the
+       *  refresh_references_out/in built-ins) are not run inline; the box
+       *  receives them and the caller runs runDeferredReferenceFinalize
+       *  after the act's store-stage writes complete — Ruby's stage order
+       *  (director/phases.rb: store, then finalize; the subcards save
+       *  inside the store stage). */
+      deferFinalize?: DeferredReferenceFinalize;
+    },
   ): Promise<ActionResult> {
     const name = DeckoName.parse(input.name ?? "");
     // A +*password card's content is validated and stored encrypted (the
@@ -1793,7 +1830,9 @@ export class CardActionEngine {
       // built-ins when their names are registered; the revival's
       // refresh_references_in is a :create save, so only the map_referees
       // arm runs either way (the unmap arm needs action == :update).
-      await this.runFinalizeEvents(
+      // With deferFinalize the events are STASHED for the caller (the
+      // deferred-reference-finalize seam — see the fresh-create arm).
+      const revivalFinalizeCard = (): ModEventCard =>
         this.eventCard({
           name,
           id: trashed.id,
@@ -1808,24 +1847,29 @@ export class CardActionEngine {
             "trash",
             ...((input.content ?? null) !== (trashed.db_content ?? null) ? ["db_content"] : []),
           ],
-        }),
+        });
+      const revivalFinalizeThunks: ReadonlyArray<readonly [string, () => Promise<void>]> = [
         [
-          [
-            "refresh_references_out",
-            () =>
-              this.maybeRefreshReferencesOut({
-                cardId: trashed.id,
-                name,
-                contentBefore: trashed.db_content,
-                contentAfter: input.content ?? null,
-              }),
-          ],
-          [
-            "refresh_references_in",
-            () => refreshReferencesIn(this.fetch.driver, trashed.id, name.key),
-          ],
+          "refresh_references_out",
+          () =>
+            this.maybeRefreshReferencesOut({
+              cardId: trashed.id,
+              name,
+              contentBefore: trashed.db_content,
+              contentAfter: input.content ?? null,
+            }),
         ],
-      );
+        [
+          "refresh_references_in",
+          () => refreshReferencesIn(this.fetch.driver, trashed.id, name.key),
+        ],
+      ];
+      if (opts.deferFinalize !== undefined) {
+        opts.deferFinalize.card = revivalFinalizeCard();
+        opts.deferFinalize.thunks = revivalFinalizeThunks;
+      } else {
+        await this.runFinalizeEvents(revivalFinalizeCard(), revivalFinalizeThunks);
+      }
       // FINALIZE: a revived RULE card still cascades (event
       // :cascade_read_rule, set/right/read.rb:9-14 — the revival's name is
       // changing).
@@ -1961,7 +2005,13 @@ export class CardActionEngine {
     // only when content was actually set (a nil db_content on a new row is
     // "unchanged" in Ruby's `changed: :content`); refresh_references_in is
     // a :create save, so only the map_referees arm runs either way.
-    await this.runFinalizeEvents(
+    //
+    // With deferFinalize the events are STASHED, not run: the caller runs
+    // them after the act's store-stage writes (the subcards) complete —
+    // Ruby's stage order (director/phases.rb storage_phase: store, then
+    // finalize), which is what lets the reference walk's Lexicon.id resolve
+    // the cards created earlier in the same act.
+    const referenceFinalizeCard = (): ModEventCard =>
       this.eventCard({
         name,
         id: created.cardId,
@@ -1977,24 +2027,29 @@ export class CardActionEngine {
           ...(input.attachment !== undefined || input.content != null ? ["db_content"] : []),
           ...(input.codename != null ? ["codename"] : []),
         ],
-      }),
+      });
+    const referenceFinalizeThunks: ReadonlyArray<readonly [string, () => Promise<void>]> = [
       [
-        [
-          "refresh_references_out",
-          () =>
-            this.maybeRefreshReferencesOut({
-              cardId: created.cardId,
-              name,
-              contentBefore: null,
-              contentAfter: attachmentIdentifier ?? input.content ?? null,
-            }),
-        ],
-        [
-          "refresh_references_in",
-          () => refreshReferencesIn(this.fetch.driver, created.cardId, name.key),
-        ],
+        "refresh_references_out",
+        () =>
+          this.maybeRefreshReferencesOut({
+            cardId: created.cardId,
+            name,
+            contentBefore: null,
+            contentAfter: attachmentIdentifier ?? input.content ?? null,
+          }),
       ],
-    );
+      [
+        "refresh_references_in",
+        () => refreshReferencesIn(this.fetch.driver, created.cardId, name.key),
+      ],
+    ];
+    if (opts.deferFinalize !== undefined) {
+      opts.deferFinalize.card = referenceFinalizeCard();
+      opts.deferFinalize.thunks = referenceFinalizeThunks;
+    } else {
+      await this.runFinalizeEvents(referenceFinalizeCard(), referenceFinalizeThunks);
+    }
     return {
       cardId: created.cardId,
       actionId: created.actionId,
@@ -3888,6 +3943,21 @@ export class CardActionEngine {
     }
   }
 
+  /** The deferred-reference-finalize seam's other half: run the events a
+   *  createInWriter call stashed (deferFinalize). The caller runs this
+   *  after the act's store-stage writes complete — Ruby's stage order
+   *  (director/phases.rb storage_phase: store, then finalize; the subcards
+   *  save inside the store stage), so the reference walk's Lexicon.id
+   *  resolves the cards created earlier in the SAME act (the structured
+   *  create's +summary — the walk answers its id and the partial
+   *  reference arm never fires, all.rb:84 `unless id`). An empty box (no
+   *  deferred events) is a no-op. */
+  private async runDeferredReferenceFinalize(deferred: DeferredReferenceFinalize): Promise<void> {
+    if (deferred.card !== undefined && deferred.thunks !== undefined) {
+      await this.runFinalizeEvents(deferred.card, deferred.thunks);
+    }
+  }
+
   /** The basic permission gate, sync half: anonymous actors are read-only
    *  (auth/current.rb:43-47 signed_in? = current_id != AnonymousID).
    *  No write task runs this gate for a well-formed anonymous session —
@@ -4378,8 +4448,8 @@ export class CardActionEngine {
     const setTypeId = await this.fetch.codenames.id("set");
     const settingTypeId = await this.fetch.codenames.id("setting");
     const actions = [
-      { cardId: result.cardId, actionId: result.actionId, verb: result.verb },
-      ...result.subactions.map((s) => ({ cardId: s.cardId, actionId: s.actionId, verb: s.verb })),
+      { cardId: result.cardId, actionId: result.actionId, verb: result.verb, name: result.name },
+      ...result.subactions.map((s) => ({ cardId: s.cardId, actionId: s.actionId, verb: s.verb, name: s.name })),
     ];
     for (const action of actions) {
       if (action.verb === "delete") continue;
@@ -4387,7 +4457,25 @@ export class CardActionEngine {
       if (row === undefined || row.trash === 1 || row.left_id === null || row.right_id === null) continue;
       const left = await this.fetchRowById(row.left_id);
       const right = await this.fetchRowById(row.right_id);
-      if (left === undefined || left.type_id !== setTypeId || right?.type_id !== settingTypeId || left.trash === 1) continue;
+      // Card#rule? (lib/card/rule/all.rb:33-40) — the event's set module
+      // (Set::Rule, mod/core/set_pattern/06_rule.rb pattern_applies?
+      // `card.rule?`): standard_rule? — the LEFT is Set-typed and the right
+      // a Setting — OR preference? — parts > 2, the right a Setting, and
+      // name[0..-3] (the left's own left) Set-typed. The follow family's
+      // rules are preferences ("Topic 008+*self+Ada Admin+*follow": the
+      // immediate left is the USER card; the set part sits two parts up),
+      // so the old left-must-be-a-Set gate skipped exactly those.
+      const rightIsSetting = right !== undefined && right.type_id === settingTypeId;
+      if (!rightIsSetting) continue;
+      const leftIsSet = left !== undefined && left.type_id === setTypeId;
+      if (!leftIsSet) {
+        // preference? (rule/all.rb:41-44): parts > 2 (the left is itself a
+        // compound) and name[0..-3] is Set-typed.
+        const leftRow = left !== undefined && left.left_id !== null ? await this.fetchRowById(left.left_id) : undefined;
+        if (left === undefined || left.left_id === null || leftRow === undefined || leftRow.type_id !== setTypeId) {
+          continue;
+        }
+      }
       if (action.verb === "update") {
         const changed = (
           await driver.query<{ n: number }>(
@@ -4399,14 +4487,33 @@ export class CardActionEngine {
       }
       const recent = await this.fetchRowById(recentId);
       if (recent === undefined || recent.trash === 1) continue;
-      const settingName = (await this.fetch.lexicon.name(row.right_id))?.s;
+      // `insert_item 0, name.right` — the RULE card's own right name as
+      // saved (rules.rb:3), not the setting card's stored name: the
+      // pointer-input journeys create "Tag+*right+*input_type" and the
+      // list's new lead entry is "*input_type" where the stored setting
+      // card's name is "*input type" (the old space-form entry drops —
+      // Array#delete's Card::Name == is key equality). The AUTHORED name
+      // rides the action summary (compound rows carry name NULL, and the
+      // sides resolve through the lexicon — the setting card's stored name).
+      const settingName = action.name?.rightName?.s;
       if (settingName === undefined) continue;
       const settingKey = DeckoName.parse(settingName).key;
       const items = listItemStrings(recent.db_content).filter(
         (item) => DeckoName.parse(item).key !== settingKey,
       );
       const content = [settingName, ...items].join("\n");
-      if (content === (recent.db_content ?? "")) continue;
+      if (content === (recent.db_content ?? "")) {
+        // insert_item assigned the identical list: the subcard save still
+        // runs (the director's set_stamper stamps the row — the follow
+        // journey's oracle pins the updater_id-only update) with no content
+        // change row and no reference event (changed: :content is false).
+        await driver.query("UPDATE cards SET updated_at = ?, updater_id = ? WHERE id = ?", [
+          sqlDateTime(this.clock()),
+          this.actor?.id ?? null,
+          recentId,
+        ]);
+        continue;
+      }
       await driver.query("UPDATE cards SET db_content = ?, updated_at = ?, updater_id = ? WHERE id = ?", [
         content,
         sqlDateTime(this.clock()),

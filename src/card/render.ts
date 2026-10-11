@@ -497,6 +497,13 @@ export class RenderEngine implements RenderEngineLike {
    *  nested card does not set it. Cleared when a page render starts
    *  (beginPagePrepare); read by renderPageWithStatus. */
   pageErrorStatus: number | undefined = undefined;
+  /** The page lane's body-render id_counter state, handed to the modal
+   *  renders (render_outside_of_layout's render! continues the body
+   *  render's numbering on the same root format — process_layout.rb:
+   *  44-48; the pointer-input journeys' oracle pins the continuation).
+   *  Request scope: overwritten by every page body render, read only by
+   *  that request's modal sites. */
+  pageRootIdCounter?: number;
 
   /** Open the page lane's prepare scope (see pagePrepareDepth): one clear
    *  of the sweep surface for the whole page render, its layout warm-ups

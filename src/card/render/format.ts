@@ -901,8 +901,9 @@ export class RenderFormat {
    * format's (the value the subformat inherits one line later).
    *
    * :template → :template_nest (mode.rb:47; card-mod-edit
-   * set/all/template_nest.rb re-emits the nest syntax). :edit needs the
-   * form machinery and stays unported. :compact substitutes per
+   * set/all/template_nest.rb re-emits the nest syntax). :edit substitutes
+   * per viewInEditMode (mode.rb:56-66 — the multi-card editors' field
+   * editors; the edit_nests slice). :compact substitutes per
    * viewInCompactMode below.
    *
    * COMPACT CENSUS (re-verified 2026-10-01
@@ -924,42 +925,45 @@ export class RenderFormat {
    */
   modalNestView(view: string, nestCard: RenderCard = this.card): string {
     if (this.nestMode === "template") return "template_nest";
-    if (this.nestMode === "compact") return this.viewInCompactMode(view, nestCard);
     if (this.nestMode === "edit") return this.viewInEditMode(view, nestCard);
+    if (this.nestMode === "compact") return this.viewInCompactMode(view, nestCard);
     return view;
   }
 
   /**
-   * nesting/mode.rb:62-68 `view_in_edit_mode`: a nest rendered under nest
-   * mode :edit substitutes to :edit_in_form (the field-editor form the
-   * structured-form family renders) unless the view hides in edit mode —
-   * mode.rb:73-77 `view_setting(:perms, view) == :none || card.structure ||
-   * card.key.blank?` — in which case :blank (the nil view; output drops it).
-   * The graded corpus pins both arms: the board/edit_nests field nests all
-   * substitute to :edit_in_form (the Topic template's {{+summary}} under
-   * the board's with_nest_mode :edit renders the field formgroup), while
-   * the Topic template's {{+tags|link}} (link is perms :none) renders
-   * nothing.
+   * nesting/mode.rb:56-59 `view_in_edit_mode`:
+   * `hide_view_in_edit_mode?(view) ? :blank : :edit_in_form` — a nest
+   * under an edit-mode parent (with_nest_mode :edit — the multi-card
+   * editors: :edit_nests' multi_card_edit, the structured forms) renders
+   * the nest card's :edit_in_form field editor, or :blank when the view
+   * never edits (hide_view_in_edit_mode?, mode.rb:62-66:
+   * `view_setting(:perms, view) == :none || card.structure ||
+   * card.key.blank?` — perms-:none views, a structured card's
+   * not-yet-nestable content, and keyless cards). The graded corpus pins
+   * both arms: the board/edit_nests field nests all substitute to
+   * :edit_in_form, while the Topic template's {{+tags|link}} (link is
+   * perms :none) renders nothing.
    */
   private viewInEditMode(view: string, nestCard: RenderCard): string {
-    if (this.hideViewInEditMode(view, nestCard)) return "blank";
-    return "edit_in_form";
+    return this.hideViewInEditMode(view, nestCard) ? "blank" : "edit_in_form";
   }
 
+  /** nesting/mode.rb:62-66 hide_view_in_edit_mode? — the three arms in
+   *  Ruby's order. The perms arm reads the ported view-perms registry
+   *  (the same :none resolution the unknown/denial gates read); the
+   *  structure arm is the nest TARGET's *structure rule (the same sync
+   *  walk cardStructure reads); the key arm answers blank-key cards. */
   private hideViewInEditMode(view: string, nestCard: RenderCard): boolean {
-    if (PERMS_NONE_VIEWS.has(view)) return true; // view_setting(:perms, view) == :none
-    if (
-      this.engine.structureRuleForSync?.({
-        name: nestCard.name.s,
-        id: nestCard.id,
-        typeId: nestCard.typeId,
-        typeName: nestCard.typeName,
-        isNew: nestCard.record.isNew === true,
-      }) !== undefined
-    ) {
-      return true; // card.structure — not yet nesting structures
-    }
-    return nestCard.key === ""; // card.key.blank? (eg {{_self|type}} on new cards)
+    if (resolveViewPerms(view).check === false) return true; // perms :none
+    const structure = this.engine.structureRuleForSync?.({
+      name: nestCard.name.s,
+      id: nestCard.id,
+      typeId: nestCard.typeId,
+      typeName: nestCard.typeName,
+      isNew: nestCard.record.isNew === true,
+    });
+    if (structure !== undefined) return true; // card.structure
+    return nestCard.name.s === "" || nestCard.key === ""; // card.key.blank?
   }
 
   /**
@@ -1106,6 +1110,26 @@ export class RenderFormat {
     while (root.parent !== undefined) root = root.parent;
     root.idCounter = (root.idCounter ?? 0) + 1;
     return root.idCounter;
+  }
+
+  /** The chain root's counter value after this render (the page lane
+   *  hands it to the modal render: Ruby's render_outside_of_layout runs
+   *  `render!` on the SAME root format — process_layout.rb:44-48 — so
+   *  the modal's editors continue the body's numbering; the layout's
+   *  enabled-roles checkboxes consume 1-2 before the modal editor's
+   *  3-12, the pointer-input journeys' oracle pins). */
+  exportRootIdCounter(): number | undefined {
+    let root: RenderFormat = this;
+    while (root.parent !== undefined) root = root.parent;
+    return root.idCounter;
+  }
+
+  /** The other half: a NEW root format (the page lane's modal render)
+   *  continues the body render's numbering. */
+  seedRootIdCounter(value: number | undefined): void {
+    let root: RenderFormat = this;
+    while (root.parent !== undefined) root = root.parent;
+    if (value !== undefined) root.idCounter = value;
   }
 
   /** The `read` half of the view-permission gate (format/error.rb:5-8 ok?),
@@ -1598,6 +1622,11 @@ export class RenderFormat {
     // set-scoped + all-set declarations, and the set-scoped rows are what
     // the old flat table globalized — the exact defect this replaces.
     const fromChain = this.engine.viewUnknownSettingForCard?.(this.card, requested);
+    if (typeof process !== "undefined" && process.env.HARNESS_VERDICT_TRACE === "1" && requested === "edit") {
+      console.log(
+        `[unknown-trace] card=${this.card.name.s} setKeys=${this.card.setKeys} fromChain=${String(fromChain)} loaderBound=${this.engine.modDeckBound?.()}`,
+      );
+    }
     const loaderBound = this.engine.modDeckBound?.() === true;
     const configured =
       fromChain !== undefined
