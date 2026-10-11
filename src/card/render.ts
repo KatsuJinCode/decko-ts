@@ -9298,9 +9298,19 @@ export class RenderEngine implements RenderEngineLike {
   /** Cache a prefetched record (prefetch callback) + enrich it. The record
    *  also enters the FETCH engine's cache (store.rb#update_cache? would
    *  cache it in Ruby: fresh_from_db) so the fetch ladder stays coherent
-   *  and later fetchById/fetchByName calls are cache hits. */
+   *  and later fetchById/fetchByName calls are cache hits. The staleness
+   *  keeper answers FIRST: a row composed fresh from storage must not
+   *  out-seat a pinned update_column staleness (the rename-referers oracle
+   *  freezes the pre-rename bytes across the walk's own read — Ruby's
+   *  cached card is what renders, and the pinned entry leaves only through
+   *  the card's own expire). */
   private async cacheFetchedRecord(record: CardRecord): Promise<void> {
     if (record.key === undefined || record.key === "") return;
+    const kept = this.fetcher.peekStaleCard(record.key);
+    if (kept !== undefined) {
+      await this.enrichAndStore(kept);
+      return;
+    }
     this.fetcher.writeToCache(record);
     await this.enrichAndStore(record);
   }

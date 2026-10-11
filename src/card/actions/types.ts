@@ -355,6 +355,12 @@ export interface CardActionSummary {
   /** The card's composed name after the action (best effort; undefined when
    *  the lexicon cannot resolve it, e.g. a side card was deleted). */
   name?: DeckoName;
+  /** name_before_act (lib/card/dirty.rb DirtyNames) — the composed name the
+   *  card answered to before this act, on renames. The response's expiry
+   *  fan-out needs it: Ruby's expire_names (cache/all.rb:104-108) expires
+   *  BOTH key versions via name_before_act, and the host render-map half of
+   *  that expire only reaches the names the response carries. */
+  nameBeforeAct?: DeckoName;
 }
 
 /** The result of one action request: one act, the primary card's action,

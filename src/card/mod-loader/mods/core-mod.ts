@@ -1412,14 +1412,25 @@ async function refreshReferencesOutEvent(
 
 /** reference_events.rb:6-10 update_referer_content: the referer rewrite +
  *  the descendants (rename_as_descendant :39-46). Needs name_before_act —
- *  the engine supplies it on renames (ModEventCard.nameBeforeAct). */
+ *  the engine supplies it on renames (ModEventCard.nameBeforeAct). The
+ *  ctx's engine-cache pair, when present, carries the same two arms the
+ *  built-in call passes: all.rb:15's Card[card_id] referers fetch (whose
+ *  miss warms the PRE-rewrite referer into the cache the render path
+ *  reads) and the update_column staleness pin — the rename-referers
+ *  oracle's frozen staleness, which drops only on the referer's own
+ *  expire. */
 async function updateRefererContentEvent(
   card: ModEventCard,
   _host: unknown,
   ctx: ModEventContext,
 ): Promise<void> {
   await updateRefererContent(
-    { driver: ctx.driver, lexicon: ctx.lexicon },
+    {
+      driver: ctx.driver,
+      lexicon: ctx.lexicon,
+      ...(ctx.fetchRefererCard !== undefined ? { fetchRefererCard: ctx.fetchRefererCard } : {}),
+      ...(ctx.pinStaleReferer !== undefined ? { pinStaleReferer: ctx.pinStaleReferer } : {}),
+    },
     card.id as number,
     DeckoName.parse(card.nameBeforeAct ?? card.name),
     DeckoName.parse(card.name),

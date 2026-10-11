@@ -131,12 +131,20 @@ export interface RenameSwapDeps {
    *  its FetchEngine fetch here (the same cache the render path reads);
    *  absent, the read stays a raw row query (the model-pure default). */
   fetchRefererCard?: (id: number) => Promise<CardRecord | undefined>;
+  /** The staleness pin for the update_column arm: called with the referer's
+   *  PRE-write card when the rewrite actually changes the row, so the entry
+   *  survives the freshness gate's TS-only resets and drops on the referer's
+   *  own expire (FetchEngine#pinStaleCard). Absent (the model-pure default),
+   *  there is no cache layer to keep stale and nothing is pinned. */
+  pinStaleReferer?: (card: CardRecord) => void;
 }
 
 /** The fields of a referer the rewrite touches. Ruby's referers returns
  *  Card objects (all.rb:15); the port's two sources — the raw row query and
  *  the cache-through fetch — both carry these, so the rewrite consumes the
- *  subset and never the whole row. */
+ *  subset and never the whole row. `card` is the fetched record the
+ *  cache-through source returned (undefined on the raw-row default): the
+ *  pin at the update_column arm keeps THAT record's bytes. */
 interface RefererRef {
   id: number;
   left_id: number | null;
@@ -144,6 +152,7 @@ interface RefererRef {
   name: string | null;
   db_content: string | null;
   trash: number;
+  card?: CardRecord;
 }
 
 // -----------------------------------------------------------------------
@@ -238,6 +247,7 @@ async function referersOf(
         name: card.name?.s ?? null,
         db_content: card.dbContent ?? null,
         trash: card.trash ? 1 : 0,
+        card,
       });
     } else {
       const result = await deps.driver.query<CardsRow>(
@@ -271,7 +281,12 @@ async function replaceReferences(
 /** content_quietly= (reference_events.rb:52-58): write the column only
  *  when the content actually changed (:54, the loop guard), DIRECTLY via
  *  update_column semantics (no updated_at, no act/action rows), then
- *  rebuild the referer's reference rows (:57 -> all.rb:47-50). */
+ *  rebuild the referer's reference rows (:57 -> all.rb:47-50). The pin at
+ *  the write is Ruby's state ordering: the Card[id] fetch inside referers
+ *  has already put the PRE-write card in the cache, and update_column
+ *  changes the row behind it with no expire — the engine's pin keeps that
+ *  entry alive across the freshness gate's resets so the referer renders
+ *  Ruby's stale bytes, and the referer's own expire drops it. */
 async function contentQuietlySet(
   deps: RenameSwapDeps,
   referer: RefererRef,
@@ -279,6 +294,7 @@ async function contentQuietlySet(
   newContent: string,
 ): Promise<void> {
   if (newContent === (referer.db_content ?? null)) return; // db_content_changed?
+  if (referer.card !== undefined) deps.pinStaleReferer?.(referer.card);
   await deps.driver.query("UPDATE cards SET db_content = ? WHERE id = ?", [
     newContent,
     referer.id,

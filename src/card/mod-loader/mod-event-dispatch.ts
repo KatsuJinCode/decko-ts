@@ -48,6 +48,7 @@
 
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import type { RenameSwapLexicon } from "../actions/update-referer-content.js";
+import type { CardRecord } from "../fetch/card-record.js";
 import {
   ModEventRegistry,
   type RegisteredModEvent,
@@ -186,6 +187,14 @@ export interface ModEventContext {
   /** The request-param seam (ModEventSaveInput) — present only on save
    *  paths whose action engine carries one. */
   readonly saveInput?: ModEventSaveInput;
+  /** The engine-cache pair the rename-referers staleness rides (the
+   *  update_referer_content event): all.rb:15's Card[card_id] cache-through
+   *  referers fetch, and the update_column staleness pin
+   *  (FetchEngine#pinStaleCard). Present when the save runs on an engine
+   *  whose FetchEngine the render path shares — absent in model-pure
+   *  dispatches, whose referer reads stay raw row queries. */
+  readonly fetchRefererCard?: (id: number) => Promise<CardRecord | undefined>;
+  readonly pinStaleReferer?: (card: CardRecord) => void;
 }
 
 /** Named `when:` predicates the runtime can resolve (Ruby's Symbol case of
@@ -405,14 +414,23 @@ const HOST_REQUIRED: unknown = new Proxy(
 );
 
 /** Run one director stage's events for one card save. `deps` carries the
- *  deck pair every body context wraps. Integration-stage failures are
- *  rescued into the report (card.rb:163-171); other stages propagate the
- *  first error and abandon the walk. */
+ *  driver/Lexicon pair the reference janitors take, plus (when the save
+ *  runs on an engine whose FetchEngine the render path shares) the
+ *  referer-cache pair the update_referer_content staleness rides —
+ *  forwarded into the ctx so the mod body's rewrite warms and pins exactly
+ *  like the built-in call (all.rb:15 + FetchEngine#pinStaleCard).
+ *  Integration-stage failures are rescued into the report (card.rb:163-171);
+ *  other stages propagate the first error and abandon the walk. */
 export async function runModEventStage(
   runtime: ModEventRuntime,
   stage: ModEventStage,
   card: ModEventCard,
-  deps: { driver: SQLDatabaseDriver; lexicon: RenameSwapLexicon },
+  deps: {
+    driver: SQLDatabaseDriver;
+    lexicon: RenameSwapLexicon;
+    fetchRefererCard?: (id: number) => Promise<CardRecord | undefined>;
+    pinStaleReferer?: (card: CardRecord) => void;
+  },
   saveInput?: ModEventSaveInput,
 ): Promise<ModEventStageReport> {
   const candidates = orderCandidates(stageCandidates(runtime.registry, stage));
@@ -423,6 +441,8 @@ export async function runModEventStage(
   const ctx: ModEventContext = {
     driver: deps.driver,
     lexicon: deps.lexicon,
+    ...(deps.fetchRefererCard !== undefined ? { fetchRefererCard: deps.fetchRefererCard } : {}),
+    ...(deps.pinStaleReferer !== undefined ? { pinStaleReferer: deps.pinStaleReferer } : {}),
     stage,
     skipEvent: (name) =>
       runtime.skip?.includes(name) === true || runtime.forceSkip?.includes(name) === true,

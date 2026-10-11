@@ -2861,8 +2861,12 @@ export class CardActionEngine {
                   // row behind it with no expire (reference_events.rb:52-
                   // 58). That stale entry is what serves the pre-rename
                   // bytes on the referer's next render — the
-                  // rename-referers oracle's pinned staleness.
+                  // rename-referers oracle's pinned staleness — and the
+                  // pin keeps it alive across the freshness gate's resets
+                  // (FetchEngine#pinStaleCard; the referer's own expire
+                  // drops it, so the staleness never accumulates).
                   fetchRefererCard: (id) => this.fetch.bracket(id),
+                  pinStaleReferer: (card) => this.fetch.pinStaleCard(card),
                 },
                 row.id,
                 currentName,
@@ -2930,6 +2934,10 @@ export class CardActionEngine {
       actId: saved.actId,
       verb: "update",
       name: nameAfter,
+      // name_before_act (dirty.rb) — the response's expiry fan-out expires
+      // the renamed card's BEFORE-name render-map entries with it (Ruby's
+      // expire_names covers both key versions, cache/all.rb:104-108).
+      nameBeforeAct: nameChanged ? currentName : undefined,
       subactions,
     };
   }
@@ -3779,6 +3787,16 @@ export class CardActionEngine {
       {
         driver: this.fetch.driver,
         lexicon: this.fetch.lexicon,
+        // The mod takeover of update_referer_content (core-mod's real batch)
+        // IS the mechanism on this path — the engine's built-in call stands
+        // down — so the mod body needs the same engine-cache pair the
+        // built-in passes: all.rb:15's Card[card_id] referers fetch (whose
+        // miss warms the pre-rewrite referer into the cache the render
+        // path reads) and the update_column staleness pin (the
+        // rename-referers oracle's frozen staleness, dropped only by the
+        // referer's own expire).
+        fetchRefererCard: (id) => this.fetch.bracket(id),
+        pinStaleReferer: (card) => this.fetch.pinStaleCard(card),
       },
       this.pendingSaveInput,
     );
