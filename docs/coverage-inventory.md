@@ -95,7 +95,7 @@ package does NOT measure, item 6.
   private deck.
 - **The 90-step scenario battery** (recording committed; the clean-deck
   divergence declared): `tests/tools/side-effects-scenario-battery.test.ts`
-  (in the working tree) drives the TypeScript engine through the same 90
+  drives the TypeScript engine through the same 90
   HTTP-shaped steps the production-deck measurement drove
   (`tools/parity-side-effects/`), from the committed
   `reference-harness/fixtures/write-battery-v1` deck, and compares every
@@ -104,11 +104,11 @@ package does NOT measure, item 6.
   verdicts differ at 37 of 90 steps (49 pass, 4 declared, 37 mismatched),
   36 of them traceable to one root cause, now a declared security
   divergence (`docs/SECURITY.md`, divergence 5): the port refuses to rename
-  another user's account holder where Ruby 0.20's `account_manager?` check
-  is vacuous and allows it. On the production deck that difference never
-  surfaced because Ruby crashes mid-rename there (the `valid_preferer?`
-  defect one of the 7 production pins declares); the crash does not
-  reproduce on a clean deck, so three of the seven production pins do not
+  another user's account holder where Ruby 0.20 does not enforce the check.
+  On the production deck that difference never surfaced because Ruby crashes
+  mid-rename there (a second Ruby defect one of the 7 production pins
+  declares, described on the same terms in `docs/SECURITY.md`); the crash does
+  not reproduce on a clean deck, so three of the seven production pins do not
   transfer. The divergence is declared, not adjusted away; the exact
   verdicts stay pinned step by step, and the production-deck figures remain
   the measured 83 + 7 of 90.

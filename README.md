@@ -36,11 +36,16 @@ effects 19 of 19 (16 write answers plus three sign-in answers — the
 public scenarios include no sign-out), read-writes 8 of 8. The public
 harness's normalization is exactly two rules
 ([SPEC.md](reference-harness/SPEC.md), "Normalisation"): the
-`data-slot-id` attribute mask and JSON key canonicalization; the corpus
-replay's additional normalizations (the accordion group hash, the CDN
-challenge block, the object address, the asset-host prefix, the trailing
-newline at the denied seam) belong to the historical corpus workflow, not
-to this grade. The larger figures under
+`data-slot-id` attribute mask and JSON key canonicalization. The corpus
+replay is a different instrument and takes different rules: **four**
+normalizations, and the slot-id mask is one of them (the other three are the
+accordion group hash, the Cloudflare `__CF$cv$params` challenge block and the
+`Cardio::Mod` object address), then two one-time expectation transforms applied
+upstream of the comparison (the asset-host prefix and the denied-seam
+re-anchor), then 50 live-swapped expectations. Those belong to the historical
+corpus workflow, not to this grade. The authoritative per-instrument table is
+[docs/parity-method.md](docs/parity-method.md), "Every instrument's
+normalisations, in one table". The larger figures under
 [Migration status](#migration-status) — the with-mods corpus replay —
 are historical: they were measured on an earlier revision of the engine,
 on 2026-09-23, against a corpus that is not redistributable and cannot be
@@ -284,14 +289,23 @@ refused with a reason, never deleted.
 - `src/server/` — host-facing layer: SQL/blob driver interface, adapters
   (Cloudflare D1, libSQL-over-HTTP, local SQLite), schema row types.
 - `src/card/` — the card engine core, ported from the Ruby card gem: name
-  algebra, fetch/cache, history, sets/patterns, rendering, the mod loader with
-  per-card MRO view dispatch (`src/card/mod-loader/`). The layout is
+  algebra, fetch/cache, history, sets/patterns, rendering, and the mod loader
+  (`src/card/mod-loader/`), which supplies the second of the engine's two
+  view-resolution layers (a most-specific-first walk of the card's sets) on
+  top of the flat registry. The layout is
   TypeScript-idiomatic and is **not** a directory-for-directory mirror of
   `card/lib/card/`: a few directories correspond (`name/`, `fetch/`, `auth/`),
   the rest are named for the concept they carry, and views are one flat
-  name→function registry rather than a per-directory table. Follow the per-file
+  name→function registry — there is no Ruby-style `view :name do … end` DSL
+  and nothing registers a view per set. Fidelity is not uniform either: the
+  **name layer is line-faithful** (inflection rule tables transcribed from
+  ActiveSupport, `Cardname`/`Card::Name` ported method for method), while the
+  **render/views layer is a re-implementation in Decko's vocabulary** that
+  cites the Ruby view each view came from and is held to it by byte comparison
+  against the oracle. Follow the per-file
   upstream citation in each module's own header to find the Ruby original — see
-  [decision 0008](docs/decisions/0008-view-registry-and-directory-layout.md).
+  [decision 0008](docs/decisions/0008-view-registry-and-directory-layout.md)
+  and [ARCHITECTURE.md](ARCHITECTURE.md), "How faithful each area is".
 - `src/cql/` — Card Query Language: parser, AST, SQL translation, execution.
 - `db/` — schema (SQLite-compatible DDL derived from the production MySQL
   schema: `db/schema.sqlite.sql` for fresh D1s) and seed (`db/seed.sql`).
@@ -377,7 +391,8 @@ slope at every depth up to the renderer's 20-level ceiling.
 Landed: drivers (D1/libSQL/SQLite), oracle harness, name algebra, schema,
 CQL parser + execution, history, replay harness, benchmark corpus, set-pattern
 registry, fetch/cache, renderer with batched inclusion prefetch, rule
-application, mod loading with chain-aware per-card view dispatch, request
+application, mod loading with a set-chain view-resolution layer over the flat
+view registry, request
 metrics, the perf harness, and the generalized dump importer.
 
 Full-corpus render parity (the with-mods corpus replay, 2026-09-23, measured

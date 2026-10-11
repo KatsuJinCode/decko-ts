@@ -298,16 +298,19 @@ upper bound on it.
   The direction is the part that matters, and it is not the flattering one —
   the live bytes are not a newer engine's promise, they are an older
   deployment's.
-- **Policy: the standing ruling, quoted, as the recapture-era policy it is.**
+- **Policy: the rule the capture tooling applies, quoted, as the recapture-era
+  policy it is.**
   The 37-entry tool states it in its header
   (`tools/oracle/swap-37-view-expectations-live-check-close-71.mjs:10`):
   "Per the standing ruling (live is the only benchmark) the expectation
   becomes today's live bytes." That is the policy this subsection documents,
   and the W5 tool adopted the same one ("live truth wins where the live
-  capture holds the page"). It is not a claim that live outranks the oracle
-  everywhere — each tool is a one-direction overlay that refuses on state
-  drift and records an inverse manifest, so the frozen originals stay
-  recoverable as history.
+  capture holds the page"). The ruling is the substance; the framing this
+  bullet used to carry around it — that a ruling is what made the policy — is
+  process, not a measurement claim, and the policy stands without it. It is
+  not a claim that live outranks the oracle everywhere — each tool is a
+  one-direction overlay that refuses on state drift and records an inverse
+  manifest, so the frozen originals stay recoverable as history.
 - **The live-*derived* transforms beside them carry no live page bytes.** Two
   further reversible overlays move live-derived truth into the corpus without
   fetching a body: the asset-host prefix transform (6,552 lines changed over

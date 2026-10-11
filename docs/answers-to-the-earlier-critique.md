@@ -4,9 +4,9 @@ This document answers the critique linked from issue #1282.
 
 The critique is third-party AI commentary on the original port proposal, not
 binding direction; binding direction comes from the upstream thread
-(`decko-commons/decko#1282`). Its full text is the reply the Decko lead posted on the upstream thread
-(decko-commons/decko#1282), and it is answered here point by point
-and it is answered here point by point, in its own numbering (1-21, plus its
+(`decko-commons/decko#1282`). Its full text is the reply the Decko lead posted
+on the upstream thread (decko-commons/decko#1282), and it is answered here
+point by point, in its own numbering (1-21, plus its
 closing request), from what this repository actually measures.
 
 Three verdicts are used, and they are not interchangeable:
@@ -205,15 +205,17 @@ on assertion. The authoritative table is
 the migration matrix at the top of
 [`tools/migrate/IMPORT_DECK_RECIPE.md`](../tools/migrate/IMPORT_DECK_RECIPE.md)
 carries `PostgreSQL dump | **no** | no PostgreSQL adapter or dialect translator
-exists in the tree`. The support work is tracked as
-[Decko Core: Storage — add PostgreSQL support in parallel](https://github.com/KatsuJinCode/decko-ts/issues/8)
-(the working board, docs/core/work-board.md).
+exists in the tree`. The support work is tracked on the working board as
+"Decko Core: Storage — add PostgreSQL support in parallel"
+(`docs/core/work-board.md`, issue 8 in the development repository).
 
 Two further migration facts the critique's list did not anticipate are recorded
 in [docs/SECURITY.md](SECURITY.md) "Migration compatibility at a glance": while
 Ruby still serves the deck the port must run `DECKO_PASSWORD_HASH=legacy-sha1`
-because Ruby cannot verify PBKDF2, and D1's transaction semantics differ from
-Ruby's and plain SQLite's.
+because Ruby cannot verify PBKDF2, D1's transaction semantics differ from
+Ruby's and plain SQLite's, and the port adds schema Ruby has no counterpart
+for — an `auth_sessions` table whose sessions do not carry across engines, and
+the `deck_data_version` stamp with the six triggers that advance it.
 
 ## 9. "The provider abstraction is a good idea, but 'one adapter' is naïve"
 
@@ -336,8 +338,9 @@ their skip loudly; none of their results are in the public package."
 The distinction the critique drew — a data import is not a compatibility
 migration — is exactly the distinction this repository draws, and the
 import recipe states its own limits in a compatibility matrix rather than in
-prose. Migration delivery is tracked as
-[Decko Core: Delivery — verify complete migration, one-click setup and recovery](https://github.com/KatsuJinCode/decko-ts/issues/10).
+prose. Migration delivery is tracked on the working board as "Decko Core:
+Delivery — verify complete migration, one-click setup and recovery"
+(`docs/core/work-board.md`, issue 10 in the development repository).
 
 ## 13. "The live shadow comparison idea is excellent — but difficult"
 
@@ -420,9 +423,10 @@ edge" as **not established**: "No speed run is recorded against a release
 candidate, and no response-time comparison is committed evidence anywhere in this
 repository."
 
-The roadmap item is
-[Decko Core: Evidence — measure hosting and performance claims before replacing public values](https://github.com/KatsuJinCode/decko-ts/issues/11)
-(the working board, docs/core/work-board.md). What the repository does
+The roadmap item is the working board's "Decko Core: Evidence — measure
+hosting and performance claims before replacing public values"
+(`docs/core/work-board.md`, issue 11 in the development repository). What the
+repository does
 publish on the measurement-infrastructure side is the budget harness — warm
 per-entry render time, worst-case pathological content, statement count on a
 warm render, and how many cards remain cold after prewarming — explicitly "not
@@ -488,8 +492,9 @@ Answering each against what shipped:
 7. **PostgreSQL first** — **not adopted.** The opposite decision was taken and
    is on the record: PostgreSQL support was removed as unverified rather than
    shipped on assertion ([decisions/0007](decisions/0007-atomic-saves-and-transaction-contract.md)),
-   with the migration matrix marking the source **no**. Tracked as
-   [issue 8](https://github.com/KatsuJinCode/decko-ts/issues/8). The reasoning
+   with the migration matrix marking the source **no**. Tracked as the
+   working board's storage item (`docs/core/work-board.md`, issue 8 in the
+   development repository). The reasoning
    the critique offers — "the easiest existing-data-stays-put story" — is
    correct and is the reason it is queued rather than dismissed.
 8. **Add D1 later, once the engine is PostgreSQL-independent** — partly adopted,
@@ -504,32 +509,44 @@ Answering each against what shipped:
 
 Gate by gate, against this repository:
 
-- **Gate 1 — Inventory.** Met, in the form the gate asks for.
-  [coverage-inventory.md](coverage-inventory.md) classifies every parity domain
-  by what is measured, names the instrument, names the headline figure, and then
-  has a dedicated section titled "What the public package does NOT measure" with
-  six numbered gaps and where each closes.
+- **Gate 1 — Inventory. Partial.** [coverage-inventory.md](coverage-inventory.md)
+  classifies every parity domain by what is measured, names the instrument,
+  names the headline figure, and then has a dedicated section titled "What the
+  public package does NOT measure" with six numbered gaps and where each
+  closes. Partial because that section's gaps sit inside the domains the
+  inventory claims to classify: four of its six items are missing evidence for
+  a domain the same document reports a figure for — browser journeys and jobs
+  under rendering and semantics, hosted-database writes under persistence,
+  arbitrary mods under side effects.
 - **Gate 2 — PostgreSQL compatibility.** **Not met in this release.** There is no
   PostgreSQL adapter in the tree; the support was removed as unverified
   ([decisions/0007](decisions/0007-atomic-saves-and-transaction-contract.md)).
-  Roadmap: [issue 8](https://github.com/KatsuJinCode/decko-ts/issues/8).
-- **Gate 3 — Differential test suite.** Met in the sense that the gate specifies,
-  and the repository states its own limits rather than implying otherwise. Three
-  kinds over one committed fixture, plus three public batteries that account for
-  every step ([coverage-inventory.md](coverage-inventory.md)). Browser journeys
-  are the honest gap: 51 journeys are defined as data and **no journey
-  comparison run is committed** (item 1).
+  Roadmap: the working board's storage item (`docs/core/work-board.md`,
+  issue 8 in the development repository).
+- **Gate 3 — Differential test suite. Partial.** Three kinds over one
+  committed fixture, plus three public batteries that account for every step
+  ([coverage-inventory.md](coverage-inventory.md)). Partial because the
+  browser journeys the gate's "run the real user paths" half needs exist only
+  as data: 51 journeys are defined and **no journey comparison run is
+  committed** (item 1), so nothing in this repository has diffed what a
+  browser session sees against Ruby's.
 - **Gate 4 — Nesting benchmark.** Met, with the matrix the gate asks for —
   depth 1, 2, 4, 8, 10, 16, 20 and breadth 1-200, plus whole trees — and with
   Ruby's four arms including the optimized one
   ([scaling-comparison-deep-nesting.md](scaling-comparison-deep-nesting.md)).
-- **Gate 5 — Mod compatibility.** Met as a headline number, with the
-  declaration-level caveat attached to the number itself
+- **Gate 5 — Mod compatibility. Partial.** The headline number is there (33
+  mods scanned, 29 declared-complete, 2 partial, 0 missing, 2 ignored) with
+  the declaration-level caveat attached to the number itself
   ([tools/compat-report/mod-compat-report.md](../tools/compat-report/mod-compat-report.md)).
+  Partial because the number measures declarations only: no event hook is
+  exercised, no non-HTML format is rendered, and **0% of existing Ruby mods
+  run unchanged**, which is the figure the gate actually asked for and the
+  only honest answer available ([decisions/0004](decisions/0004-mods-compiled-into-the-view-registry.md)).
 - **Gate 6 — Cloudflare prototype.** **Not met in this release.** No p50/p95,
   cold-start, CPU, D1-rows or cost measurement is committed
   ([docs/deploy-cloudflare.md](deploy-cloudflare.md), "Costs and energy").
-  Roadmap: [issue 11](https://github.com/KatsuJinCode/decko-ts/issues/11).
+  Roadmap: the working board's evidence item (`docs/core/work-board.md`,
+  issue 11 in the development repository).
 - **Gate 7 — Migration promise after the above.** Met in the negative: the
   migration promise is withdrawn rather than made
   ([coverage-inventory.md](coverage-inventory.md)).
@@ -566,15 +583,19 @@ regenerates the equivalent every time, plus an architecture map.
 
 So no reader has to infer it from the answers above:
 
-| # | Unmet | Where it is recorded | Roadmap |
+| # | Unmet | Where it is recorded | Roadmap (all on the working board, `docs/core/work-board.md`) |
 | --- | --- | --- | --- |
-| 1 | Browser journey comparisons — 51 defined, none run | `docs/coverage-inventory.md` item 1 | parity gate, [issue 4](https://github.com/KatsuJinCode/decko-ts/issues/4) |
-| 2 | Hosted-database write evidence — nothing run against a hosted service | `docs/coverage-inventory.md` item 3; [0007](decisions/0007-atomic-saves-and-transaction-contract.md) | provider, [issue 7](https://github.com/KatsuJinCode/decko-ts/issues/7) |
-| 3 | Arbitrary/existing Ruby mods — 0% execute unchanged | `docs/coverage-inventory.md` item 4; [0004](decisions/0004-mods-compiled-into-the-view-registry.md) | DSL/mods, [issue 5](https://github.com/KatsuJinCode/decko-ts/issues/5) |
-| 4 | Jobs — delayed_job unported, nothing measured | `docs/coverage-inventory.md` item 5 | parity gate, [issue 4](https://github.com/KatsuJinCode/decko-ts/issues/4) |
-| 5 | PostgreSQL adapter — removed as unverified | `tools/migrate/IMPORT_DECK_RECIPE.md`; [0007](decisions/0007-atomic-saves-and-transaction-contract.md) | storage, [issue 8](https://github.com/KatsuJinCode/decko-ts/issues/8) |
-| 6 | Response-time and CPU/cost measurements | `docs/coverage-inventory.md`; `docs/deploy-cloudflare.md` | evidence, [issue 11](https://github.com/KatsuJinCode/decko-ts/issues/11) |
+| 1 | Browser journey comparisons — 51 defined, none run | `docs/coverage-inventory.md` item 1 | parity gate, issue 4 |
+| 2 | Hosted-database write evidence — nothing run against a hosted service | `docs/coverage-inventory.md` item 3; [0007](decisions/0007-atomic-saves-and-transaction-contract.md) | provider, issue 7 |
+| 3 | Arbitrary/existing Ruby mods — 0% execute unchanged | `docs/coverage-inventory.md` item 4; [0004](decisions/0004-mods-compiled-into-the-view-registry.md) | DSL/mods, issue 5 |
+| 4 | Jobs — delayed_job unported, nothing measured | `docs/coverage-inventory.md` item 5 | parity gate, issue 4 |
+| 5 | PostgreSQL adapter — removed as unverified | `tools/migrate/IMPORT_DECK_RECIPE.md`; [0007](decisions/0007-atomic-saves-and-transaction-contract.md) | storage, issue 8 |
+| 6 | Response-time and CPU/cost measurements | `docs/coverage-inventory.md`; `docs/deploy-cloudflare.md` | evidence, issue 11 |
 | 7 | The suites that fail on a clean clone | `KNOWN_FAILURES.md` | per-suite, each row names its prerequisite |
+
+The issue numbers are those of the development repository, which is private;
+they are recorded so a reader with access can find the item, and no issue URL
+is printed because none of them resolves for a reader of this port.
 
 Every claim in this document is answerable against
 [docs/coverage-inventory.md](coverage-inventory.md). Where a figure appears

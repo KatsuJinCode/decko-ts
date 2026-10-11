@@ -15,14 +15,13 @@ Each exception is an *approved security divergence*: it is listed below with wha
 
 ## Reporting a vulnerability
 
-Please report suspected vulnerabilities privately rather than in a public issue, through a
-[GitHub Security Advisory](https://github.com/KatsuJinCode/decko-ts/security/advisories/new) on
-this repository. Include the request or content that triggers the problem and what you observed.
-Where the same flaw exists in Ruby Decko, we also report it upstream.
-
-(The advisory link is this repository's own — `KatsuJinCode/decko-ts`, the repository this
-project is developed in. An advisory filed against a repository you do not hold is not
-deliverable, so there is no email fallback: the GitHub channel above is the channel.)
+Please report suspected vulnerabilities privately rather than in a public issue, through the
+GitHub Security Advisory channel on **the repository this project is developed in** — its
+`Security` tab, "Report a vulnerability". That is this project's own repository, so an
+advisory filed against a repository you do not hold is not a second channel: there is no
+email fallback. Include the request or content that triggers the problem and what you
+observed. Where the same flaw exists in Ruby Decko, it is reported to upstream privately as
+well, before this port is published.
 
 ## Deployment obligations the port does not meet for you
 
@@ -105,10 +104,10 @@ default, and a deployment that is publicly reachable should not inherit it silen
 
 | | |
 |---|---|
-| **Ruby** | The guard against renaming an account holder never runs. `validate_account_holder_name_change` (`mod/account/set/abstract/account_holder.rb:1-5`) returns early unless `!Card::Auth.as_card.account_manager?`, and `account_manager?` (:71-73) is `own_account? \|\| parties.member?(HelpDeskID)`, where `own_account?` (:15-17) is `key == Auth.as_card.key`. Both sides are evaluated on the actor's own card, so the comparison is the actor's key against itself: it is true for every signed-in actor, the guard's condition is never met, and the error is never added. Any signed-in user who may update the card can therefore rename another user's account holder, changing the identity the account, its follow preferences and its inbound references answer to. This is an upstream Decko defect; the report upstream accompanies this release. |
-| **Port** | `assertMayRenameAccountHolder` (`src/card/actions/card-action-engine.ts:1045`) implements the check's evident intent: an account holder's name change is refused before anything is written, with Ruby's own error (`NAME: cannot rename Account Holder`, HTTP 422), unless the actor is the account holder or a member of Help Desk. Administrators are not exempt — `account_manager?` has no `always_ok?` arm. |
-| **Why** | Renaming another user's account holder acts against that user: it takes over the name their session, notification mail and references answer to, and Ruby's vacuous guard leaves it to the deck's ordinary update rule, which on a default deck any signed-in user passes. |
-| **Compatibility** | A rename Ruby accepts, the port refuses; nothing else changes, because the port's allowance (own account, Help Desk) is the check's evident intent. On a clean deck Ruby's rename succeeds and cascades — its later notification mails name the renamed follow rule, and its action ids run one ahead — so the difference reaches 37 of the 90 side-effects battery steps. On production decks Ruby crashes mid-rename before the divergence can show (`lib/card/rule/all.rb:51-54`: `valid_preferer?` dereferences a nil card while re-keying the account's follow preferences — a second Ruby defect, reported upstream with the same report), which is why the production grade was 90 of 90 with seven declared pins (`tools/parity-side-effects/scenarios.json`). The crash depends on production deck state and does not reproduce on a clean deck, so three of the seven production pins do not transfer to it. |
+| **Ruby** | Ruby Decko 0.20.0 does not enforce the authorization check on an account holder's name change: a signed-in actor who may update the card can rename another user's account holder, changing the identity the account, its follow preferences and its inbound references answer to. That is a vulnerability in Ruby Decko, not behaviour this port reproduces. It will be reported to upstream privately before this port is published, and the mechanism, the affected upstream files and their line numbers are withheld here until upstream has shipped a fix. |
+| **Port** | `assertMayRenameAccountHolder` (`src/card/actions/card-action-engine.ts:1045`) implements the check's evident intent: an account holder's name change is refused before anything is written, with Ruby's own error (`NAME: cannot rename Account Holder`, HTTP 422), unless the actor is the account holder or a member of Help Desk. Those two cases are the whole allowance — administrators are not among them, and the check has no always-allow arm. |
+| **Why** | Renaming another user's account holder acts against that user: it takes over the name their session, notification mail and references answer to, and Ruby's missing guard leaves it to the deck's ordinary update rule, which on a default deck any signed-in user passes. |
+| **Compatibility** | A rename Ruby accepts, the port refuses; nothing else changes, because the port's allowance (own account, Help Desk) is the check's evident intent. On a clean deck Ruby's rename succeeds and cascades — its later notification mails name the renamed follow rule, and its action ids run one ahead — so the difference reaches 37 of the 90 side-effects battery steps. On production decks Ruby crashes mid-rename before the divergence can show (a second Ruby defect, in the same authorization area, withheld here on the same terms as the one above), which is why the production grade was 90 of 90 with seven declared pins (`tools/parity-side-effects/scenarios.json`). The crash depends on production deck state and does not reproduce on a clean deck, so three of the seven production pins do not transfer to it. |
 | **Configuration** | None. |
 | **Tests** | `tests/tools/side-effects-scenario-battery.test.ts`: the 90-step battery on the committed synthetic deck (`reference-harness/fixtures/write-battery-v1`) pins the exact clean-deck verdicts — 49 pass, 4 declared, and the 37 steps expected under this divergence (two rename refusals, 34 cascade steps, and the closure sign-out step whose production pin does not transfer because the mails around it shifted). Any engine change at any of them fails the suite. |
 
@@ -135,6 +134,38 @@ default, and a deployment that is publicly reachable should not inherit it silen
   writes disabled or accepts that a failed save is briefly visible mid-save.
   Authoritative table:
   `docs/decisions/0007-atomic-saves-and-transaction-contract.md`.
+- **Schema the port adds on top of the Ruby deck.** A deck imported from Ruby
+  has none of the following; they arrive with the deploy migration chain, and
+  the engine reads them. The names `auth_sessions` and `deck_data_version`
+  appear nowhere in the `card` gem or in any `card-mod-*` gem, so none of
+  these objects has a Ruby counterpart:
+  - **`deploy/migrations/0003-deck-data-version-stamp.sql`** — the
+    `deck_data_version` table (`id` pinned to 1, `version`) with its seed row,
+    and **six triggers** that advance it: `AFTER INSERT`, `AFTER UPDATE` and
+    `AFTER DELETE` on `cards`, and the same three on `card_references`. The
+    render path reads the counter once per request and drops everything it
+    retained between requests when the value has moved. **A deck that has the
+    table but not the triggers reads a stamp that no write ever advances**, and
+    nothing in the engine's own read path can tell the difference — see
+    `docs/decisions/0002-request-local-state-and-one-trip-rendering.md`,
+    "What the stamp does not cover".
+  - **`deploy/migrations/0005-auth-sessions.sql`** — the `auth_sessions` table
+    (`token_hash` primary key, `account_card_id`, `created_at`, `expires_at`)
+    and its two indexes. The raw session token is never stored: the row holds
+    its SHA-256 digest and every lookup re-derives and re-compares it.
+    **Sessions do not carry across engines.** Ruby Decko has no such table and
+    keeps sessions its own way, so a session row written by one engine is not
+    read by the other: an operator who moves traffic between Ruby and this port
+    signs every user out once, at the switch.
+  - **`deploy/migrations/0008-cards-serving-path-indexes.sql`** — the four
+    serving-path indexes (`cards_name_trash_index`, `cards_right_id_trash_index`,
+    `cards_codename_present_index`, `cards_key_last_char_index`) and the
+    `DROP INDEX cards_trash_index` they replace. Index entries only: no card
+    row is read, modified or written.
+  - **`deploy/migrations/0002-card-text-binary-lookup-indexes.sql`** — two
+    BINARY-collation unique indexes on `cards` (`key`, `codename`) that let
+    the engine's case-sensitive key lookups seek instead of scanning the live
+    deck. Index entries only, same as above.
 
 ### Shadow routing never runs a write twice
 
