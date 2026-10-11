@@ -22,7 +22,7 @@
  *  time — these pages' closures do not trip the prepare-crash class). */
 export const FOCAL_DENIAL_EXEMPLARS: Array<{ name: string; id: number }> = [
   { name: "ZQRglobal 20100722 Corinne Hallberg Riley", id: 1177 },
-  { name: "Azzia Sample", id: 1345 },
+  { name: "Anya Sample", id: 1345 },
   { name: "CM 20100704 Itdepends Day", id: 870 },
   { name: "20260412+CM+Time Tracking", id: 52658 },
 ];
