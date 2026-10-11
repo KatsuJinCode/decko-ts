@@ -869,10 +869,15 @@ function accountBoardPillItem(
     ? `/${DeckoName.parse(`${cardName}+${trait}`).urlKey}/${viewSegment}`
     : `/${DeckoName.parse(`${cardName}+${trait}`).urlKey}/${viewSegment}?${query}`;
   return (
+    // board_pills.rb:35-37 wrap_each_with(:li, class: "nav-item") — the
+    // pill anchors ride the li wrapper and the known-card class (the
+    // accounted card's own traits are known); board_link_opts' remote flag
+    // lands LAST, after the href (the graded account_tab row's attr order).
+    `<li class="nav-item">` +
     `<a data-slot-selector="${h(BOARD_PILL_BASE_OPTS.slotSelector)}"` +
-    ` data-slotter-mode="override" data-remote="true" class="slotter nav-link"` +
+    ` data-slotter-mode="override" class="slotter nav-link known-card"` +
     ` data-bs-toggle="pill" data-breadcrumb="Account" data-breadcrumb-class="account"` +
-    ` data-cy="${cy}" href="${href}">${text}</a>`
+    ` data-cy="${cy}" href="${href}" data-remote="true">${text}</a></li>`
   );
 }
 

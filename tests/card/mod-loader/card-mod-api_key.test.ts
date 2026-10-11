@@ -621,17 +621,21 @@ describe("card-mod-api_key view bodies", () => {
     expect(html.get("content")).toBeDefined();
   });
 
-  it(":api_key (account.rb) nests the +*api_key child card with view :core", () => {
-    // account.rb:5-9 view :api_key: field_nest :api_key. The child is
-    // <account>+*api key; view :core.
+  it(":api_key (account.rb) nests the +*api_key child card at the default nest view (titled)", () => {
+    // account.rb:5-9 view :api_key: field_nest :api_key — the field_nest
+    // carries NO view opt, so the child renders the default nest view (the
+    // railtie :titled; the graded corpus row view:admin:Ada
+    // Admin+*account:api_key pins the titled-view slot on the +*api_key
+    // child, whose titled body embeds the api-key core — the earlier
+    // view-:core reading missed the bare field_nest's default).
     const { html } = collectViewFns(cardModApiKey);
     const view = html.get("api_key")!;
     const fmt = new StubFmt({ name: { s: "Joe User" }, dbContent: "" });
     const { ctx } = makeCtx(fmt, "api_key");
     const out = view.viewFn(ctx);
-    expect(out).toBe("[nested:Joe User+*api key|core]");
+    expect(out).toBe("[nested:Joe User+*api key|titled]");
     const calls = fmt.getNestCalls();
-    expect(calls).toEqual([{ name: "Joe User+*api key", view: "core" }]);
+    expect(calls).toEqual([{ name: "Joe User+*api key", view: "titled" }]);
   });
 });
 

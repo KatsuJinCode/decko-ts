@@ -632,7 +632,9 @@ function checkboxInputHtml(ctx: ViewContext): string {
       return (
         `<div class='pointer-checkbox'>\n` +
         `<input type="checkbox" name="pointer_checkbox-${ctx.fmt.uniqueId()}" id="${id}" value="${h(option)}" ` +
-        `class="pointer-checkbox-button "${checked}>\n` +
+        // Rails' tag :input self-closes (the graded checkbox row pins the
+        // trailing " />"; the bare ">" was the earlier capture's shape).
+        `class="pointer-checkbox-button "${checked} />\n` +
         `<label class="form-check-label" for="${id}">${optionLabelText(ctx, option)}</label>\n` +
         `</div>\n`
       );

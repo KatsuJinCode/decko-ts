@@ -340,15 +340,18 @@ const tokenJsonView: ViewFn = (ctx) => {
 /** account.rb:1-9 `card_accessor :api_key; delegate :authenticate_api_key,
  *  to: :api_key_card; format :html do view :api_key do field_nest :api_key
  *  end end`. card_accessor :api_key adds a method that returns the
- *  +*api_key child card of an account. field_nest nests that child with
- *  view :core. The TS port nests `<account>+*api key` (the child card
+ *  +*api_key child card of an account. field_nest :api_key carries NO view
+ *  opt, so the nested child renders the DEFAULT nest view (config
+ *  default_html_view, the railtie :titled — the graded corpus row pins the
+ *  titled-view slot on the +*api_key child, whose titled body embeds the
+ *  api-key core). The TS port nests `<account>+*api key` (the child card
  *  composed from the account + the *api_key right). */
 const apiKeyView: ViewFn = (ctx) => {
   const childName = `${ctx.fmt.card.name.s}+*api key`;
   return ctx.fmt.nest({
-    syntax: `{{${childName}|core}}`,
+    syntax: `{{${childName}|titled}}`,
     name: childName,
-    options: { view: "core", extra: {} },
+    options: { view: "titled", extra: {} },
     comment: undefined,
   });
 };

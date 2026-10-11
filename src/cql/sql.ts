@@ -536,8 +536,19 @@ function orderDirectivesOf(query: QueryNode, ctx: GenContext): OrderDirective[] 
       directives.push({ field: `${query.tableAlias}.read_rule_id`, dir: "asc" });
       directives.push({ field: idField, dir: "asc" });
     }
+  } else if (query.foundByResolved === true) {
+    // The found_by-constrained statements' captured emission sorts STABLE —
+    // the whole tie tier id-ASCENDING whatever the primary's direction (the
+    // graded Help Desk by-update listing: six email templates all tied on
+    // updated_at, emitted id-asc under an updated_at-desc primary). The
+    // foundByResolved flag marks the statements the executor constrained
+    // with the resolved `id IN (ids)` — the shape whose captured plan ran
+    // the stable sort.
+    directives.push({ field: idField, dir: "asc" });
   } else {
-    // Always-ok scan: the unspecified tier follows the primary's direction.
+    // The other sorted shapes' captured emission follows the primary's
+    // direction (the graded *search listing pins the id-desc tie tier under
+    // its relevance-desc primary).
     directives.push({ field: idField, dir: directives[0].dir || "asc" });
   }
   return directives;
