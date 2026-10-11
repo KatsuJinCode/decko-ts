@@ -911,11 +911,15 @@ function errorResponse(
   // "<p><strong>KEY:</strong> message</p>" per error) is the body Ruby's
   // VALIDATION failures render (422 UserError) — the ajax save's 422 lands
   // in the form's card-notice (the slotter JS), so these bytes are the
-  // whole observable difference. An AJAX permission denial on an ACT CARD
-  // (error.cardName set — the subcard-error fold names the act) renders the
-  // same alert: the follow-family unfollow link's slot swap pins the
-  // "Problems with <card>" bytes. The other families keep the audited
-  // bodies below (the 403 denial's quiet text and its diagnostic comment).
+  // whole observable difference. The compound-create side-walk fold arrives
+  // with the same class: its act.errors carry only the part-named attribute
+  // (subcards/all.rb:65-80), so error.rb:177-182 invalid_card_error_class
+  // bottoms out at base Card::Error — 422 + this alert, and the deck
+  // script's notify arm swaps it into the closest card-slot. (The ajax arm
+  // below kept the same bytes when the fold still rode the 403 class; the
+  // classification now rides the error code itself.) The other families
+  // keep the audited bodies below (the 403 denial's quiet text and its
+  // diagnostic comment).
   if (status === errorStatus("user-error")) {
     return htmlResponse(status, `Error (${error.code})`, cardErrorAlertHtml(error));
   }
