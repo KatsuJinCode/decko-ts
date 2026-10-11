@@ -17,8 +17,8 @@ The mod-compatibility boundary is its own decision record
 | Domain | What parity means | Measured by (public package) | Headline figure |
 | --- | --- | --- | --- |
 | Rendering | HTML/format output byte-identical to Ruby's | Reference-harness render ops; miniature smoke fixture; corpus replay | 1,754 / 1,754 renders byte-identical, `synthetic-v1` reference-harness grade. The with-mods corpus replay measured 167,674 / 180,442 views byte-identical (92.9%) on 2026-09-23, on an earlier revision of the engine |
-| Semantics | Names, keys, types, sets, rules, permissions, CQL answer as Ruby answers | Reference-harness semantics ops; CQL batteries in `fixtures/captured/` | 2,388 semantics operations, `synthetic-v1` fixture |
-| Persistence | The rows a write leaves behind match Ruby's, table by table | Reference-harness scenario steps (raw row deltas); the 70-step write probe on `write-battery-v1` | 16 write steps, one raw row-delta comparison each; the write probe: 70 of 70 operations' row deltas match on the committed `write-battery-v1` synthetic deck (5 of them declared deliberate differences) |
+| Semantics | Names, keys, types, sets, rules, permissions, CQL answer as Ruby answers | Reference-harness semantics ops; CQL batteries in `fixtures/captured/` | 2,389 semantics comparisons, `synthetic-v1` fixture — the fixture's `ops/semantics.jsonl` holds **2,388** lines, plus the 1 scenario step whose op is `ask`, which the grader also grades as semantics (`reference-harness/runner/grade-lib.mjs:197`). See "Why two counts of the same fixture" below |
+| Persistence | The rows a write leaves behind match Ruby's, table by table | Reference-harness scenario steps (raw row deltas); the 70-step write probe on `write-battery-v1` | 16 write steps, one raw row-delta comparison each; the write probe: **65 of 70** operations' row deltas match Ruby's byte for byte on the committed `write-battery-v1` synthetic deck, and the remaining **5 are declared deliberate differences** — 65 + 5 = 70, with **0 unexpected** |
 | Side effects | Saved/refused verdicts, errors, mail, sign-in identity match Ruby's | Reference-harness write and sign-in step answers; captured mail; the 90-step scenario battery on `write-battery-v1` | 19 comparisons: 16 write answers + 3 sign-in answers; the scenario battery: 49 of 90 steps match on the committed `write-battery-v1` synthetic deck (4 declared, 37 mismatched under the declared account-holder security divergence, `docs/SECURITY.md` divergence 5: see `tests/tools/side-effects-scenario-battery.test.ts`) |
 
 The standing test net (`tests/standing-net.json`, 68 manifest files) run
@@ -28,8 +28,30 @@ ones above.
 
 ### The public batteries, accounted
 
-Three committed batteries carry the deepest public evidence. Each accounts
+Two batteries carry the deepest evidence a clean clone can run. Each accounts
 for every step it runs: match, or a declared difference, or nothing.
+
+**Where each battery's bytes live matters to whether you can run it.** The
+reference-harness fixture is in the public package. The two probe batteries run
+on `reference-harness/fixtures/write-battery-v1`, also in the public package.
+Anything reading `fixtures/captured/` is **not** — that directory is on the
+exclusion list, so the CQL batteries and the smoke fixture named below are
+private-repository material, and their suites are excluded alongside them.
+
+### Why two counts of the same fixture
+
+`synthetic-v1` is described twice in this repository, and both numbers are
+right — they count different things, and the difference is exactly one step of
+each kind:
+
+| Figure | What it counts | Where it comes from |
+| --- | --- | --- |
+| **2,388** semantics operations, **1,752** render operations | the fixture's op files | `wc -l reference-harness/fixtures/synthetic-v1/ops/semantics.jsonl` and `ops/render.jsonl` |
+| **2,389** semantics comparisons, **1,754** renders | what the grader grades | the same ops, **plus** the scenario steps whose op is `ask` (1) and `render` (2), which `grade-lib.mjs:196-197` grades into the semantics and rendering tallies |
+
+So the harness grade is 1,754 / 1,754 and 2,389 / 2,389; the op files hold
+1,752 and 2,388. Cite the figure that names its instrument. The counting rule
+is asserted by the suite itself (`reference-harness/runner/test/normalize.test.mjs:161-165`).
 
 | Battery | Where | Steps | Accounted as |
 | --- | --- | ---: | --- |
@@ -54,24 +76,30 @@ package does NOT measure, item 6.
   byte-identical (92.9%). **That figure is not a pure Ruby-oracle grade**: 50
   of its expected entries are bytes fetched from the live 0.19.1-era site,
   not the 0.20.0 oracle — two disjoint swap sets of 13 and 37, entry keys
-  checked distinct, per-entry manifests committed. Method, the full
-  breakdown and the failure families: [parity-method.md](parity-method.md),
+  checked distinct, per-entry manifests in the private repository). Method, the
+  full breakdown and the failure families: [parity-method.md](parity-method.md),
   `tools/corpus-failure-classes/`.
-- **Miniature fixture** (committed): `fixtures/captured/smoke.json` — a small
-  seeded deck with four rendered views per card. This is what a clean clone
-  can replay.
+- **Miniature fixture** (private repository; `fixtures/captured/` is excluded
+  from the public package): `fixtures/captured/smoke.json` — a small seeded
+  deck with four rendered views per card. Its consuming suites are excluded
+  with it, so a clean clone does not replay this one.
 - **Reference harness** (committed): `reference-harness/fixtures/synthetic-v1/`
-  — 1,752 render operations against one built synthetic deck, with the Ruby
-  oracle's answers committed under `expected/`. Grading needs Node and the
-  engine, not Ruby ([../reference-harness/SPEC.md](../reference-harness/SPEC.md)).
+  — 1,752 render operations in the fixture's op file, graded as 1,754
+  comparisons once the 2 scenario render steps are included (see "Why two
+  counts of the same fixture" above), against one built synthetic deck, with
+  the Ruby oracle's answers committed under `expected/`. Grading needs Node and
+  the engine, not Ruby ([../reference-harness/SPEC.md](../reference-harness/SPEC.md)).
 
 ### Semantics
 
-- **Reference harness**: 2,388 semantics operations on the same `synthetic-v1`
-  deck — card identity, set membership, rule lookup, permission verdicts,
-  search results, name algebra — each compared against the committed oracle
-  answer.
-- **CQL batteries** (committed): `fixtures/captured/cql-basic.json` (11
+- **Reference harness**: 2,388 semantics operations in the fixture's op file
+  on the same `synthetic-v1` deck — card identity, set membership, rule
+  lookup, permission verdicts, search results, name algebra — each compared
+  against the committed oracle answer. The grade reports 2,389 comparisons
+  because the 1 scenario `ask` step is graded as semantics too (see "Why two
+  counts of the same fixture" above).
+- **CQL batteries** (private repository; `fixtures/captured/` is excluded
+  from the public package): `fixtures/captured/cql-basic.json` (11
   canonical query shapes) and `fixtures/captured/cql-mysql-match.json` (the
   `match` battery, 30 queries, captured against a MySQL-protocol server —
   see [decisions/0005](decisions/0005-cql-match-semantics.md)).
@@ -89,10 +117,19 @@ package does NOT measure, item 6.
   against the committed synthetic `write-battery-v1` deck
   (`reference-harness/fixtures/write-battery-v1`) and compares every
   operation's row delta with the Ruby oracle dumps recorded on that same
-  deck: 70 of 70 operations match, 5 of them the declared deliberate
-  differences (`docs/SECURITY.md` stored-HTML and password-storage choices,
-  two upstream Ruby defects). It runs from a clean checkout; no Ruby, no
-  private deck.
+  deck: **65 of 70 match byte for byte and 5 are declared deliberate
+  differences, 0 unexpected.** The five, as declared in
+  `reference-harness/fixtures/write-battery-v1/expected/persist-steps/deliberate-differences.json`:
+  steps **20, 22, 31** are the stored-HTML security choice (`docs/SECURITY.md`
+  divergence 1 — the port's cleaner drops a `javascript:` link target Ruby's
+  keeps), and steps **7** and **67** are two upstream Ruby defects (a trashed
+  junction revived before its part id resolves, which only inserts on the
+  oracle deck's missing `UNIQUE (left_id, right_id)` index; and a revert of a
+  rename that stores rows and then raises). Password storage is **not** among
+  the five: on this synthetic deck the probe defaults to
+  `DECKO_PASSWORD_HASH=legacy-sha1` (the deck is Ruby-built with salted SHA-1
+  digests), so steps 57 and 58 match exactly. It runs from a clean checkout; no
+  Ruby, no private deck.
 - **The 90-step scenario battery** (recording committed; the clean-deck
   divergence declared): `tests/tools/side-effects-scenario-battery.test.ts`
   drives the TypeScript engine through the same 90
@@ -140,9 +177,9 @@ Stated plainly, with where the gap closes when it closes:
 
 1. **Browser journeys.** The machinery is committed
    (`reference-harness/browser/`) and 51 journeys are defined as data
-   (`browser/journeys/synthetic-v1.json`), but no journey comparison run is
-   committed. What a browser session sees — editors, uploads, follow flows —
-   is unproven in the public package.
+   (`reference-harness/browser/journeys/synthetic-v1.json`), but no journey
+   comparison run is committed. What a browser session sees — editors, uploads,
+   follow flows — is unproven in the public package.
 2. **The default PBKDF2 password path, in the harness grade.** The public
    fixture's TS adapter pins `DECKO_PASSWORD_HASH=legacy-sha1`
    (`reference-harness/adapters/ts/adapter.ts`), because the fixture deck is

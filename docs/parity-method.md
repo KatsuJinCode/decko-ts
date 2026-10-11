@@ -51,7 +51,14 @@ create-if-missing, so a re-run converges rather than duplicating cards.
 
 ### What is captured, and what is deliberately not
 
-Two fixture sets are committed under `fixtures/captured/`:
+Three fixture sets live under `fixtures/captured/`. **None of them is in the
+public package**: `fixtures/captured/` is on the exclusion list
+(`tools/public-candidate/exclusions.txt`), because these are captured oracles
+rather than from-scratch synthetic material. They are development evidence —
+they record what Ruby produced, and the suites that read them run in the
+private repository. The public package's replayable evidence is the
+reference-harness fixture (`reference-harness/fixtures/synthetic-v1`), which
+is deliberately kept.
 
 - **`smoke.json`** — a small seeded deck plus captures of its card records,
   four rendered views per card, a read-rule result and an unknown-view error
@@ -260,7 +267,7 @@ them must not be quoted as a pure Ruby-parity figure. **50 is the sum of two
 disjoint sets, 13 and 37** — neither a sample of the live-anchored set nor an
 upper bound on it.
 
-| Swap set | Entries | Lane split | Live fetch window (all `culturesmith.com`) | Manifest (committed) |
+| Swap set | Entries | Lane split | Live fetch window (all `culturesmith.com`) | Manifest (private repo only) |
 | --- | ---: | --- | --- | --- |
 | W5 LIVE-ALIGNMENT — `tools/oracle/apply-w5-expectations-follow-live-2026-10-03.mjs` | 13 | 6 view-lane, 7 page-lane | 2026-10-04T00:39:22.105Z – 00:39:51.334Z | `fixtures/corpus-v2/w5-live-alignment-2026-10-03/w5-live-alignment-swap-manifest.json` |
 | close-71-with-live W3 show-key — `tools/oracle/swap-37-view-expectations-live-check-close-71.mjs` | 37 recorded: 33 byte changes, 4 already byte-equal to live | view-lane only — `open` 18, `closed` 16, `content` 3 | 2026-10-03T19:41:52.380Z – 19:43:11.260Z | `fixtures/corpus-v2/asset-host-follow-live-close-71/swap-manifest-37-view-expectations-2026-10-03.json` |
@@ -334,11 +341,15 @@ upper bound on it.
   `shard`, `line`, `liveUrl`, `liveFetchedAt`, and the before/after sha256
   pair), so any quoted figure can be recomputed with and without them.
 - **Where the manifests live, said precisely.** All four swap manifests are
-  committed (`git ls-files fixtures/corpus-v2/` lists 112 files, these among
-  them), so every count on this page is checkable without the corpus. The
-  corpus staging they operate on, `tmp/raw-ground-truth/expected-v2/`, is
-  **not** committed — `.gitignore:60` ignores `tmp/` — because it carries the
-  deck's real content.
+  committed in the private repository (`git ls-files fixtures/corpus-v2/`
+  lists 112 files, these among them), so every count on this page is checkable
+  there. **They are not in the public package**: `fixtures/corpus-v2/` is on
+  the exclusion list, because 50 of the entries those manifests record are
+  whole-body bytes fetched from the live site. In the public package these
+  counts are not recomputable from the tree — they are quoted measurements
+  whose instrument is described here. The corpus staging they operate on,
+  `tmp/raw-ground-truth/expected-v2/`, is likewise not committed —
+  `.gitignore:60` ignores `tmp/` — because it carries the deck's real content.
 - **What was deliberately not swapped, and why.** The W5 tool records its
   exclusions in its header: the 2 `LIVE-CONFIRMS` entries keep their oracle
   expectation (the entry fails for engine reasons, so live truth does not

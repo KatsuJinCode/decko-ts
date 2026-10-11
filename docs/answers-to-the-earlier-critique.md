@@ -4,10 +4,14 @@ This document answers the critique linked from issue #1282.
 
 The critique is third-party AI commentary on the original port proposal, not
 binding direction; binding direction comes from the upstream thread
-(`decko-commons/decko#1282`). Its full text is the reply the Decko lead posted
-on the upstream thread (decko-commons/decko#1282), and it is answered here
-point by point, in its own numbering (1-21, plus its
-closing request), from what this repository actually measures.
+(`decko-commons/decko#1282`). What the Decko lead posted on that thread was a
+**link** to the critique — a ChatGPT shared conversation titled "Decko
+TypeScript Proposal Review" — not its text. The critique's own words are
+recorded verbatim in
+[upstream-1282-external-critical-review-fulltext.md](upstream-1282-external-critical-review-fulltext.md),
+which was transcribed from that page; the answers below follow its numbering
+(1-21, plus its closing request) and are written from what this repository
+actually measures. That record is excluded from the public package.
 
 Three verdicts are used, and they are not interchangeable:
 
@@ -481,10 +485,15 @@ Answering each against what shipped:
    oracle: card 1.110.0, decko 0.20.0, Ruby 3.3 ([parity-method.md](parity-method.md),
    "The Ruby oracle").
 4. **Differential testing** — shipped, and it is the whole instrument:
-   1,752 render operations, 2,388 semantics operations, and 16 scenarios of 22
-   steps on the committed `synthetic-v1` fixture, plus three committed batteries
-   that account for every step they run
-   ([coverage-inventory.md](coverage-inventory.md)).
+   1,752 render operations and 2,388 semantics operations in the committed
+   `synthetic-v1` fixture's op files, plus 16 scenarios of 22
+   steps, plus three committed batteries
+   that account for every step they run. The grader's own tallies are one step
+   higher in each of the first two (1,754 and 2,389) because it also grades
+   the scenario steps whose op is `render` and `ask`; both numbers are right
+   and the counting rule is in
+   ([coverage-inventory.md](coverage-inventory.md), "Why two counts of the
+   same fixture").
 5. **Optimise nesting independently** — shipped, with Ruby optimized as a
    measured column (point 3).
 6. **Database/blob interfaces designed around semantics** — shipped

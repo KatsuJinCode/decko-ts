@@ -33,7 +33,12 @@ node reference-harness/runner/grade.mjs --fixture reference-harness/fixtures/syn
 That run produced: rendering
 1,754 of 1,754, semantics 2,389 of 2,389, persistence 16 of 16, side
 effects 19 of 19 (16 write answers plus three sign-in answers — the
-public scenarios include no sign-out), read-writes 8 of 8. The public
+public scenarios include no sign-out), read-writes 8 of 8. Those are the
+**grader's** tallies. The fixture's own op files hold 1,752 render and 2,388
+semantics operations; the grader also counts the scenario steps whose op is
+`render` (2) and `ask` (1), which is the whole of the difference
+([docs/coverage-inventory.md](docs/coverage-inventory.md), "Why two counts of
+the same fixture"). The public
 harness's normalization is exactly two rules
 ([SPEC.md](reference-harness/SPEC.md), "Normalisation"): the
 `data-slot-id` attribute mask and JSON key canonicalization. The corpus
@@ -312,7 +317,9 @@ refused with a reason, never deleted.
 - `tools/oracle/` — internal Ruby oracle tooling: a local decko app plus the
   capture scripts that record Ruby behavior into `fixtures/captured/`. It is
   how the expected bytes were produced; the public, reproducible harness is
-  `reference-harness/` (below).
+  `reference-harness/` (below). Note the two are different directories: the
+  harness lives in `reference-harness/`, not in `tools/oracle/`, and its
+  containerised oracle is `reference-harness/oracle/`.
 - `tools/migrate/` — the generalized dump importer (Ruby deck dump →
   decko-ts storage), proven on a 1.2 GB production dump.
   `node tools/migrate/migrate.mjs --dump deck.sql --out deck.sqlite --files <the Ruby deck's files directory> --verify --strict`

@@ -4,7 +4,12 @@
 #   docker build -t decko-reference-oracle:0.20.0 reference-harness/oracle
 #
 # The image holds no deck; the runner mounts a session directory per run.
-FROM ruby:3.3-slim
+#
+# The patch version is pinned, not just the minor: the compatibility range this
+# oracle stands behind was MEASURED on 3.3.12, so a floating `ruby:3.3-slim`
+# would let the tag move to a different 3.3.x and silently change the engine
+# the expected bytes were captured from.
+FROM ruby:3.3.12-slim
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends build-essential git libsqlite3-dev libyaml-dev imagemagick \

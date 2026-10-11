@@ -13,7 +13,7 @@ suite that passes is not listed, whatever an older copy of this file said.
 | Suite | Failing assertions | Prerequisite to green |
 |---|---|---|
 | `tests/card/content/mod-object-address-shape-parity.test.ts` | 2 of 9: "the corpus holds the one card whose record content is a Cardio::Mod address list" and "(f) every OTHER byte matches the raw corpus — address-normalized on both sides", both failing with `corpus shard-000039 must carry the Mod record content: expected undefined to be defined` | a corpus whose shard-000039 carries the Mod record card; the committed miniature corpus does not |
-| `tests/card/mod-loader/card-mod-edit-views.test.ts` | 4 of 12, all four against `fixtures/captured/edit-views.json`: "WITHOUT the mod: the 16 views are unsupported views" — the render resolves where the suite expects `UnsupportedViewError`; and three byte comparisons against the captured oracle — "WITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle", "WITH the mod: anonymous - the perms views deny quietly, the rest renders the full bytes", "WITH the mod: tova stand-in - the board family matches the oracle bytes" | **an engine fix, not a re-record.** All three byte failures are one root cause: the engine emits a guide edit-link the capture does not have — `<span class='d-none'><a … class="edit-link" … href="/*all+*guide/rule_edit">` inside `<div class="guide-text">` — on the `:overlay_guide` view of "Oracle Basics" (tova and anonymous arms) and on the board's guide view (tova). The administrator arm passes. The gate is `prependGuideEditLink` (`src/card/mod-loader/mods/card-mod-edit.ts:1568-1569`), and it can only deny: `taskAllowed?.(guideCard, "update")` returning `false` is what suppresses the link. `RenderEngine.taskAllowed` (`src/card/render.ts:6853-6856`) returns `alwaysOk` when the actor passes everything, and otherwise a lookup in `taskVerdicts` — `undefined` for any card no prepare step has computed. The guide rule card is nested, not a render root, so the lookup misses, the deny-only gate does not fire, and the link renders for every actor; that is exactly the split the output shows. The suite seeds the stand-in on purpose (a `*guide+*right` Set card plus an `*update` rule naming Administrator, `tests/card/mod-loader/card-mod-edit-views.test.ts:436-449`) so the member and anonymous arms deny, and today they do not. **This is a signed-in-editing parity regression: the captured oracle bytes are the reference, and re-recording them would overwrite the public package's only signed-in-editing evidence with the engine's current output.** Open. |
+| `tests/card/mod-loader/card-mod-edit-views.test.ts` | **Two different failures on two different trees, and only one of them is a defect.** *In the private repository* (fixture present): 4 of 12, all four against `fixtures/captured/edit-views.json` — "WITHOUT the mod: the 16 views are unsupported views" — the render resolves where the suite expects `UnsupportedViewError`; and three byte comparisons against the captured oracle — "WITH the mod: tova stand-in (plain member) - member verdicts split the arms like the oracle", "WITH the mod: anonymous - the perms views deny quietly, the rest renders the full bytes", "WITH the mod: tova stand-in - the board family matches the oracle bytes". *In the public package*: **the suite does not run at all** — `fixtures/captured/` is on the exclusion list, and the fixture is read at module scope (`tests/card/mod-loader/card-mod-edit-views.test.ts:100-104`), so it fails at import with `ENOENT: no such file or directory, open 'fixtures/captured/edit-views.json'` and reports `no tests`. Reproduced 2026-10-11 by moving the fixture aside and running the suite: `Test Files 1 failed (1)`, `Tests no tests`. | **For the public package: nothing — the suite is not evidence there and its failure is a missing fixture, not an engine defect.** For the private repository: **an engine fix, not a re-record.** All three byte failures are one root cause: the engine emits a guide edit-link the capture does not have — `<span class='d-none'><a … class="edit-link" … href="/*all+*guide/rule_edit">` inside `<div class="guide-text">` — on the `:overlay_guide` view of "Oracle Basics" (tova and anonymous arms) and on the board's guide view (tova). The administrator arm passes. The gate is `prependGuideEditLink` (`src/card/mod-loader/mods/card-mod-edit.ts:1568-1569`), and it can only deny: `taskAllowed?.(guideCard, "update")` returning `false` is what suppresses the link. `RenderEngine.taskAllowed` (`src/card/render.ts:6853-6856`) returns `alwaysOk` when the actor passes everything, and otherwise a lookup in `taskVerdicts` — `undefined` for any card no prepare step has computed. The guide rule card is nested, not a render root, so the lookup misses, the deny-only gate does not fire, and the link renders for every actor; that is exactly the split the output shows. The suite seeds the stand-in on purpose (a `*guide+*right` Set card plus an `*update` rule naming Administrator, `tests/card/mod-loader/card-mod-edit-views.test.ts:436-449`) so the member and anonymous arms deny, and today they do not. **This is a signed-in-editing parity regression: the captured oracle bytes are the reference, and re-recording them would overwrite the only signed-in-editing evidence with the engine's current output.** Open. |
 | `tests/card/mod-loader/card-mod-follow-views.test.ts` | 1 of 8: ":edit_buttons on *follow defaults is UNREACHABLE in Ruby too (self/follow_defaults.rb:49-55 — the module constant vs the singularized self-anchor token)" — expects the render to reject, as Ruby's does; the engine renders the anonymous-denial span instead | the Ruby self-anchor token behavior ported, so the view is unreachable here too; open |
 | `tools/cf-cost/measure-render-reads.test.ts` | 1 of 1: "before vs after: read accounting, byte parity, write accounting" — the 32-level chain fixture renders without its deepest content (`expected '<div id="depth_root-content-view" cla…' to contain 'The deepest content of the 32-level c…'`) | the depth-32 render fix; open |
 | `tools/oracle/verify-dual-lane.test.ts` | none — the file fails at import: `Cannot find module '../../../src/testing/replay.js' imported from tools/oracle/verify-dual-lane.test.ts`, so no test of its own runs | the test imports a module that no longer exists; rewrite it against the current replay surface or retire it; open |
@@ -24,14 +24,29 @@ A row that passes is not a known failure. These were listed before this
 re-derivation and no longer are:
 
 - **`tests/tools/shadow/migration-parity-shadow.test.mjs`** — ran THREE times
-  on 2026-10-11 (9.25 s each) and passed every time: `Test Files 1 passed (1)`,
-  no failing assertions. The entry described a *varying* subset — "3, then 6, of
-  68 across three re-runs, different names each time" — which was itself the
-  tell that the failures came from this environment rather than from the code.
-  In this environment the stub-instrument execute run produces its triage
-  artifacts and the suite is green. If it goes red again it is environment,
-  not a regression, and it belongs back in this table only with a re-run
-  record attached.
+  alone on 2026-10-11 and passed every time: `Test Files 1 passed (1)`,
+  `Tests 68 passed (68)`, no failing assertions. The entry described a
+  *varying* subset — "3, then 6, of 68 across three re-runs, different names
+  each time" — which was itself the tell that the failures came from this
+  environment rather than from the code.
+
+## Environment-flaky suites: red in a full run, green alone
+
+These are not in the table above, because a table row means a suite that fails
+on a clean clone and here does not. They fail under load and pass alone, and
+the distinction matters because the release gate runs stages that compete for
+the machine.
+
+- **`tests/tools/shadow/migration-parity-shadow.test.mjs`** —
+  **environment-flaky.** It failed in a full-tree run (the round-7 review's
+  run) and passes alone: re-run 2026-10-11 here three times,
+  `Tests 68 passed (68)` each time, no failing assertions. The failing subset
+  varied between runs and named different tests each time, which is the
+  signature of contention rather than a regression — the suite drives a stub
+  instrument that spawns processes and shares the machine with whatever else
+  is running. If a red result names this suite, re-run it alone before
+  believing it. If it goes red alone, that is a real failure and belongs in the
+  table above with a re-run record attached.
 
 ## Suites that are easy to mistake for a failure, and what they really do
 

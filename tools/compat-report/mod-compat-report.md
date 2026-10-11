@@ -1,6 +1,6 @@
 # card-mod compatibility report — decko-ts
 
-Generated: 2026-10-10T00:00:14.223Z
+Generated: 2026-10-11T22:11:19.078Z
 Gem dir:   $GEM_HOME
 Repo:      REPO_ROOT
 
@@ -13,7 +13,7 @@ Mods scanned: **33**
 - missing: **0**
 - ignored: **2** (legacy-labeled or data-only)
 
-**What these labels measure: declarations only.** "declared-complete" means the mod's view names, set modules and set patterns exist in this repository's view registry and mod loader (and, on the byte-pin criterion, that a test pins some rendered views' bytes against the Ruby oracle capture). It does NOT measure executable behavior: no event hook is exercised, no non-html format (json, css, email, rss, csv) is rendered, and every view beyond the handful the byte-pins render is unproven against Ruby's output. Where the evidence for what IS byte-proven lives: `docs/coverage-inventory.md`.
+**What these labels measure: declarations only.** "declared-complete" is a THRESHOLD, not a statement that every view is present. The generator calls a mod declared-complete when EITHER (a) at least 50% of the mod-specific html view names it declares exist in the implemented surface, AND at least 50% of the set patterns it uses are implemented, AND it has pattern-backed set modules; OR (b) it has a registered manifest plus a byte-pinned test file with 5 or more `toBe(<literal>)` pins. A mod can therefore hold the label with view names still missing — read the `covered/total` column per mod to see which. It does NOT measure executable behavior: no event hook is exercised, no non-html format (json, css, email, rss, csv) is rendered, and every view beyond the handful the byte-pins render is unproven against Ruby's output. The threshold is decision 0004's rubric, unchanged; where a figure from this report is quoted, the covered/total it rests on is quoted with it. Where the evidence for what IS byte-proven lives: `docs/coverage-inventory.md`.
 
 ## decko-ts implemented surface (truth)
 
@@ -33,10 +33,10 @@ Mods scanned: **33**
 | `card-mod-bar_and_box-0.20.0` | declared-complete | 11/11 | 0 (covered=0) | 4 (abstract=1, all=2, type=1) | 0 | 0/0 | 11 mod-specific view(s) declared: bar, bar_body, bar_bottom, bar_left, bar_menu, bar_middle, ... |
 | `card-mod-bootstrap-0.20.0` | declared-complete | 10/10 | 12 (covered=12) | 11 (abstract=4, all=2, self=2, type=2, type_plus_right=1) | 16 | 32/27 | 10 mod-specific view(s) declared: bar_bottom, bar_left, bar_middle, bar_right, carousel, customize_button, ... |
 | `card-mod-carrierwave-0.20.0` | declared-complete | 6/6 | 10 (covered=10) | 11 (abstract=2, all=1, self=5, type=3) | 7 | 36/21 | 6 mod-specific view(s) declared: content_changes, full_width, input, link_tag, preview_editor, source |
-| `card-mod-collection-0.20.0` | declared-complete | 2/3 | 2 (covered=2) | 6 (abstract=3, all=3) | 1 | 22/16 | 2 mod-specific view(s) declared: count, paging |
+| `card-mod-collection-0.20.0` | declared-complete | 2/3 | 2 (covered=2) | 6 (abstract=3, all=3) | 1 | 22/16 | 2 mod-specific view(s) declared: count, paging — 1 declared view name(s) NOT in the implemented surface: paging_urls |
 | `card-mod-comment-0.20.0` | partial | 0/0 | 7 (covered=7) | 3 (all=1, right=2) | 0 | 12/4 | mod-specific: covered=(no mod-specific views covered); missing=(no mod-specific views); pins=4/12 |
 | `card-mod-content-0.20.0` | declared-complete | 4/4 | 4 (covered=4) | 14 (abstract=7, all=3, right=2, self=2) | 7 | 16/9 | 4 mod-specific view(s) declared: bar_middle, file_size, input, one_line_content |
-| `card-mod-date-0.20.0` | declared-complete | 0/0 | 0 (covered=0) | 5 (all=1, right=2, self=1, type=1) | 0 | 32/20 | manifest + byte-pinned test (20 pins across 32 it()):  |
+| `card-mod-date-0.20.0` | declared-complete | 0/0 | 0 (covered=0) | 5 (all=1, right=2, self=1, type=1) | 0 | 32/20 | manifest + byte-pinned test (20 pins across 32 it()):  — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone |
 | `card-mod-defaults-0.20.0` | ignored | 0/0 | 0 (covered=0) | 0 () | 1 | 0/0 | ignored (legacy-labeled per upstream maintainer guidance) |
 | `card-mod-delayed_job-0.20.0` | ignored | 0/0 | 0 (covered=0) | 0 () | 2 | 0/0 | ignored (legacy-labeled per upstream maintainer guidance) |
 | `card-mod-edit-0.20.0` | declared-complete | 41/41 | 45 (covered=45) | 21 (all=15, right=2, self=1, type=3) | 0 | 9/4 | 41 mod-specific view(s) declared: board, board_type_formgroup, conflict_tracker, content_formgroup, content_formgroups, edit, ... |
@@ -45,20 +45,20 @@ Mods scanned: **33**
 | `card-mod-format-0.20.0` | declared-complete | 46/46 | 53 (covered=53) | 33 (abstract=1, all=20, right=1, self=1, type=10) | 16 | 49/8 | 46 mod-specific view(s) declared: add_button, add_link, add_url, admin, bar_right, board_link, ... |
 | `card-mod-help-0.20.0` | declared-complete | 5/5 | 5 (covered=5) | 6 (all=2, right=2, self=2) | 0 | 13/8 | 5 mod-specific view(s) declared: guide, help, help_text, lead, popover |
 | `card-mod-history-0.20.0` | declared-complete | 12/12 | 10 (covered=10) | 3 (all=3) | 12 | 40/39 | 12 mod-specific view(s) declared: act, act_legend, action_expanded, action_summary, board_act, change, ... |
-| `card-mod-integrate-0.20.0` | declared-complete | 0/0 | 0 (covered=0) | 8 (all=1, right=3, self=4) | 0 | 28/21 | manifest + byte-pinned test (21 pins across 28 it()):  |
+| `card-mod-integrate-0.20.0` | declared-complete | 0/0 | 0 (covered=0) | 8 (all=1, right=3, self=4) | 0 | 28/21 | manifest + byte-pinned test (21 pins across 28 it()):  — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone |
 | `card-mod-layout-0.20.0` | declared-complete | 24/24 | 26 (covered=26) | 23 (abstract=4, all=6, right=3, self=8, type=2) | 5 | 36/7 | 24 mod-specific view(s) declared: bar_bottom, close_modal_link, edit_inline, head_content, input, invite, ... |
 | `card-mod-list-0.20.0` | declared-complete | 5/5 | 10 (covered=10) | 16 (abstract=6, all=1, right=2, self=3, type=4) | 0 | 15/15 | 5 mod-specific view(s) declared: input, list, nest_list_input, one_line_content, view_list |
-| `card-mod-markdown-0.20.0` | declared-complete | 0/0 | 1 (covered=1) | 1 (type=1) | 0 | 14/15 | manifest + byte-pinned test (15 pins across 14 it()): core |
+| `card-mod-markdown-0.20.0` | declared-complete | 0/0 | 1 (covered=1) | 1 (type=1) | 0 | 14/15 | manifest + byte-pinned test (15 pins across 14 it()): core — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone |
 | `card-mod-permissions-0.20.0` | declared-complete | 3/3 | 4 (covered=4) | 11 (abstract=1, all=2, right=4, self=4) | 0 | 33/33 | 3 mod-specific view(s) declared: input, one_line_content, pointer_core |
-| `card-mod-recaptcha-0.20.0` | declared-complete | 0/0 | 1 (covered=1) | 8 (abstract=1, all=1, right=3, self=3) | 1 | 40/12 | manifest + byte-pinned test (12 pins across 40 it()): core |
+| `card-mod-recaptcha-0.20.0` | declared-complete | 0/0 | 1 (covered=1) | 8 (abstract=1, all=1, right=3, self=3) | 1 | 40/12 | manifest + byte-pinned test (12 pins across 40 it()): core — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone |
 | `card-mod-rules-0.20.0` | declared-complete | 34/34 | 30 (covered=30) | 24 (abstract=1, all=3, right=4, rstar=1, rule=8, self=2, type=4, type_plus_right=1) | 0 | 29/19 | 34 mod-specific view(s) declared: accordion_bar_list, accordion_rule_list, bar, bar_bottom, bar_middle, bar_right, ... |
-| `card-mod-script-0.20.0` | declared-complete | 5/6 | 6 (covered=6) | 16 (abstract=7, all=1, right=1, self=1, type=4, type_plus_right=2) | 2 | 18/15 | 5 mod-specific view(s) declared: javascript_include_tag, javascript_tags, remote_script_tags, script_calls, script_variables |
-| `card-mod-search-0.20.0` | declared-complete | 10/20 | 8 (covered=8) | 28 (abstract=6, all=1, right=17, self=2, type=2) | 1 | 28/5 | 10 mod-specific view(s) declared: add_autocomplete_item, bar, card_list, checkbox_list, count, goto_autocomplete_item, ... |
-| `card-mod-session-0.20.0` | declared-complete | 0/0 | 0 (covered=0) | 2 (all=1, type=1) | 1 | 7/5 | manifest + byte-pinned test (5 pins across 7 it()):  |
-| `card-mod-style-0.20.0` | declared-complete | 9/12 | 8 (covered=8) | 16 (abstract=7, self=2, type=5, type_plus_right=2) | 0 | 17/37 | 9 mod-specific view(s) declared: box, box_bottom, box_middle, customize_button, labeled, remote_include_tags, ... |
+| `card-mod-script-0.20.0` | declared-complete | 5/6 | 6 (covered=6) | 16 (abstract=7, all=1, right=1, self=1, type=4, type_plus_right=2) | 2 | 18/15 | 5 mod-specific view(s) declared: javascript_include_tag, javascript_tags, remote_script_tags, script_calls, script_variables — 1 declared view name(s) NOT in the implemented surface: compressed |
+| `card-mod-search-0.20.0` | declared-complete | 10/20 | 8 (covered=8) | 28 (abstract=6, all=1, right=17, self=2, type=2) | 1 | 28/5 | 10 mod-specific view(s) declared: add_autocomplete_item, bar, card_list, checkbox_list, count, goto_autocomplete_item, ... — 10 declared view name(s) NOT in the implemented surface: body, complete, fe |
+| `card-mod-session-0.20.0` | declared-complete | 0/0 | 0 (covered=0) | 2 (all=1, type=1) | 1 | 7/5 | manifest + byte-pinned test (5 pins across 7 it()):  — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone |
+| `card-mod-style-0.20.0` | declared-complete | 9/12 | 8 (covered=8) | 16 (abstract=7, self=2, type=5, type_plus_right=2) | 0 | 17/37 | 9 mod-specific view(s) declared: box, box_bottom, box_middle, customize_button, labeled, remote_include_tags, ... — 3 declared view name(s) NOT in the implemented surface: compiled, compressed, import |
 | `card-mod-tabs-0.20.0` | declared-complete | 4/4 | 4 (covered=4) | 2 (abstract=1, all=1) | 2 | 9/1 | 4 mod-specific view(s) declared: pills, pills_static, tabs, tabs_static |
 | `card-mod-tinymce_editor-0.20.0` | declared-complete | 11/11 | 12 (covered=12) | 4 (all=3, self=1) | 1 | 33/31 | 11 mod-specific view(s) declared: change_create_to_update, link_editor, modal_link_editor, modal_nest_editor, modal_nest_image, nest_content, ... |
-| `card-mod-virtual-0.20.0` | declared-complete | 0/0 | 0 (covered=0) | 1 (abstract=1) | 1 | 33/16 | manifest + byte-pinned test (16 pins across 33 it()):  |
+| `card-mod-virtual-0.20.0` | declared-complete | 0/0 | 0 (covered=0) | 1 (abstract=1) | 1 | 33/16 | manifest + byte-pinned test (16 pins across 33 it()):  — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone |
 
 ## Per-mod detail
 
@@ -198,7 +198,7 @@ Mods scanned: **33**
 ### card-mod-collection-0.20.0
 
 - **status**: `declared-complete`
-- **verdict**: 2 mod-specific view(s) declared: count, paging
+- **verdict**: 2 mod-specific view(s) declared: count, paging — 1 declared view name(s) NOT in the implemented surface: paging_urls
 - **evidence**: 2/3 html views in HTML_VIEWS∪mod-manifests (2/3 mod-specific); mod-loader pins: manifest=yes, test=22 it(), byte-pins=16
 - **mod-loader manifest**: yes (2 views registered)
 - **byte-pinned test**: yes (22 it() blocks, 16 toBe(<literal>) pins)
@@ -255,7 +255,7 @@ Mods scanned: **33**
 ### card-mod-date-0.20.0
 
 - **status**: `declared-complete`
-- **verdict**: manifest + byte-pinned test (20 pins across 32 it()): 
+- **verdict**: manifest + byte-pinned test (20 pins across 32 it()):  — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone
 - **evidence**: 1/1 html views in HTML_VIEWS∪mod-manifests (0/0 mod-specific); mod-loader pins: manifest=yes, test=32 it(), byte-pins=20
 - **mod-loader manifest**: yes (0 views registered)
 - **byte-pinned test**: yes (32 it() blocks, 20 toBe(<literal>) pins)
@@ -426,7 +426,7 @@ Mods scanned: **33**
 ### card-mod-integrate-0.20.0
 
 - **status**: `declared-complete`
-- **verdict**: manifest + byte-pinned test (21 pins across 28 it()): 
+- **verdict**: manifest + byte-pinned test (21 pins across 28 it()):  — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone
 - **evidence**: no html view declarations in this mod; mod-loader pins: manifest=yes, test=28 it(), byte-pins=21
 - **mod-loader manifest**: yes (0 views registered)
 - **byte-pinned test**: yes (28 it() blocks, 21 toBe(<literal>) pins)
@@ -483,7 +483,7 @@ Mods scanned: **33**
 ### card-mod-markdown-0.20.0
 
 - **status**: `declared-complete`
-- **verdict**: manifest + byte-pinned test (15 pins across 14 it()): core
+- **verdict**: manifest + byte-pinned test (15 pins across 14 it()): core — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone
 - **evidence**: 1/1 html views in HTML_VIEWS∪mod-manifests (0/0 mod-specific); mod-loader pins: manifest=yes, test=14 it(), byte-pins=15
 - **mod-loader manifest**: yes (1 views registered)
 - **byte-pinned test**: yes (14 it() blocks, 15 toBe(<literal>) pins)
@@ -521,7 +521,7 @@ Mods scanned: **33**
 ### card-mod-recaptcha-0.20.0
 
 - **status**: `declared-complete`
-- **verdict**: manifest + byte-pinned test (12 pins across 40 it()): core
+- **verdict**: manifest + byte-pinned test (12 pins across 40 it()): core — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone
 - **evidence**: 1/1 html views in HTML_VIEWS∪mod-manifests (0/0 mod-specific); mod-loader pins: manifest=yes, test=40 it(), byte-pins=12
 - **mod-loader manifest**: yes (1 views registered)
 - **byte-pinned test**: yes (40 it() blocks, 12 toBe(<literal>) pins)
@@ -559,7 +559,7 @@ Mods scanned: **33**
 ### card-mod-script-0.20.0
 
 - **status**: `declared-complete`
-- **verdict**: 5 mod-specific view(s) declared: javascript_include_tag, javascript_tags, remote_script_tags, script_calls, script_variables
+- **verdict**: 5 mod-specific view(s) declared: javascript_include_tag, javascript_tags, remote_script_tags, script_calls, script_variables — 1 declared view name(s) NOT in the implemented surface: compressed
 - **evidence**: 6/7 html views in HTML_VIEWS∪mod-manifests (5/6 mod-specific); mod-loader pins: manifest=yes, test=18 it(), byte-pins=15
 - **mod-loader manifest**: yes (6 views registered)
 - **byte-pinned test**: yes (18 it() blocks, 15 toBe(<literal>) pins)
@@ -578,7 +578,7 @@ Mods scanned: **33**
 ### card-mod-search-0.20.0
 
 - **status**: `declared-complete`
-- **verdict**: 10 mod-specific view(s) declared: add_autocomplete_item, bar, card_list, checkbox_list, count, goto_autocomplete_item, ...
+- **verdict**: 10 mod-specific view(s) declared: add_autocomplete_item, bar, card_list, checkbox_list, count, goto_autocomplete_item, ... — 10 declared view name(s) NOT in the implemented surface: body, complete, feed_body, feed_item_description, molecule, name_complete, name_match, search_box, ...
 - **evidence**: 13/23 html views in HTML_VIEWS∪mod-manifests (10/20 mod-specific); mod-loader pins: manifest=yes, test=28 it(), byte-pins=5
 - **mod-loader manifest**: yes (8 views registered)
 - **byte-pinned test**: yes (28 it() blocks, 5 toBe(<literal>) pins)
@@ -597,7 +597,7 @@ Mods scanned: **33**
 ### card-mod-session-0.20.0
 
 - **status**: `declared-complete`
-- **verdict**: manifest + byte-pinned test (5 pins across 7 it()): 
+- **verdict**: manifest + byte-pinned test (5 pins across 7 it()):  — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone
 - **evidence**: no html view declarations in this mod; mod-loader pins: manifest=yes, test=7 it(), byte-pins=5
 - **mod-loader manifest**: yes (0 views registered)
 - **byte-pinned test**: yes (7 it() blocks, 5 toBe(<literal>) pins)
@@ -616,7 +616,7 @@ Mods scanned: **33**
 ### card-mod-style-0.20.0
 
 - **status**: `declared-complete`
-- **verdict**: 9 mod-specific view(s) declared: box, box_bottom, box_middle, customize_button, labeled, remote_include_tags, ...
+- **verdict**: 9 mod-specific view(s) declared: box, box_bottom, box_middle, customize_button, labeled, remote_include_tags, ... — 3 declared view name(s) NOT in the implemented surface: compiled, compressed, import
 - **evidence**: 10/13 html views in HTML_VIEWS∪mod-manifests (9/12 mod-specific); mod-loader pins: manifest=yes, test=17 it(), byte-pins=37
 - **mod-loader manifest**: yes (8 views registered)
 - **byte-pinned test**: yes (17 it() blocks, 37 toBe(<literal>) pins)
@@ -673,7 +673,7 @@ Mods scanned: **33**
 ### card-mod-virtual-0.20.0
 
 - **status**: `declared-complete`
-- **verdict**: manifest + byte-pinned test (16 pins across 33 it()): 
+- **verdict**: manifest + byte-pinned test (16 pins across 33 it()):  — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone
 - **evidence**: no html view declarations in this mod; mod-loader pins: manifest=yes, test=33 it(), byte-pins=16
 - **mod-loader manifest**: yes (0 views registered)
 - **byte-pinned test**: yes (33 it() blocks, 16 toBe(<literal>) pins)
