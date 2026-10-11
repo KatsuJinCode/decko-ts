@@ -1,4 +1,4 @@
-// BUILD 5 of the one-trip lane: THE SEARCH-NEST POSTURE STORE.
+// BUILD 5 of the one-trip precompute: THE SEARCH-NEST POSTURE STORE.
 //
 // The research verdict's honest wall (§2.2): a search nest whose value is
 // computed at render time can ride a precomputed page only if its result
@@ -15,7 +15,7 @@
 // nest executes once when the closure is built (or when a write invalidates
 // it) and its result rows are stored as data. The "live" posture leaves the
 // store empty and lets the render execute the CQL per render (the current
-// engine's behavior — always fresh, more round trips). NOTHING in this lane
+// engine's behavior — always fresh, more round trips). NOTHING in this pass
 // depends on the default staying: flipping the constant flips the posture
 // for builder and invalidation alike, and both postures are pinned by
 // tests/card/one-trip/search-nest-posture.test.ts.
@@ -24,7 +24,7 @@
 // execution returns (same executor, same statement bytes, same order) —
 // pinned by the posture test. Permission-filter parity is a documented
 // limitation: the write-time executor runs with the anonymous/default
-// options this lane's probes render under; a deployment whose viewers see
+// options this pass's probes render under; a deployment whose viewers see
 // permission-filtered results must run the write-time execution under the
 // SERVING policy (SPEC: "the write-time execution runs under the same read
 // scope the read will serve").

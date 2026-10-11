@@ -1,8 +1,8 @@
-// grade10-missing-card-inclusion-anchor-pins.test.ts — the inclusion-fix
-// lane's byte pins for grade-10 entry dual-lane-page:message-000004:page
+// missing-card-inclusion-anchor-pins.test.ts — the inclusion-fix
+// lane's byte pins for the regression family entry dual-lane-page:message-000004:page
 // (family "missing-card content inclusion renders empty (no wanted-card
-// anchor)", the single-entry engine remainder grade10-remainder-attribution
-// .json:1233). Env gate INCLUSION_GRADE10_PINS=1 keeps it out of every
+// anchor)", the single-entry engine remainder the remaining-attribution note
+// .json:1233). Env gate MISSING_CARD_INCLUSION_ANCHOR_PINS=1 keeps it out of every
 // normal suite run.
 //
 // GRADED RECORD (5e603ba4-full-fails.json:1660, the captured evidence this
@@ -13,7 +13,7 @@
 // it below).
 //
 // Ruby derivation (gems at C:/Ruby33-x64, read verbatim this lane; full
-// chain in the lane receipt): the outer nest `{{+conversation|labeled|link}}`
+// chain in the lane recorded result): the outer nest `{{+conversation|labeled|link}}`
 // folds `|link` into items:{view:"link"} (chunk/nest.rb:19-49); the missing
 // +conversation renders view :labeled AS ITSELF (html/views.rb:67 `unknown:
 // :labeled`); its structure content `<p>{{_left+conversation search}}</p>...
@@ -45,7 +45,7 @@ import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 // The expected +conversation labeled slot, byte-verbatim from the corpus
 // expectation (shard 000017, occurrence at char 8736 of the local vintage —
-// the graded record's first diff at offset 8961 lands inside this slot):
+// the graded record's first differing byte at offset 8961 lands inside this slot):
 // the labeled-content column's d0-card-content div carries the class chain,
 // then the structure skeleton's first <p> with the wanted-card anchor, then
 // the second <p> EMPTY (the `{{_left+Comm|titled}}` nest has an explicit
@@ -78,7 +78,7 @@ afterAll(() => {
   storage?.close();
 });
 
-describeOrSkipLoud(!(process.env.INCLUSION_GRADE10_PINS === "1" && existsSync(RAW_CORPUS_DB)), "tests/card/render/grade10-missing-card-inclusion-anchor-pins.test.ts", "process.env.INCLUSION_GRADE10_PINS === \"1\" && existsSync(RAW_CORPUS_DB)")(
+describeOrSkipLoud(!(process.env.MISSING_CARD_INCLUSION_ANCHOR_PINS === "1" && existsSync(RAW_CORPUS_DB)), "tests/card/render/missing-card-inclusion-anchor-pins.test.ts", "process.env.MISSING_CARD_INCLUSION_ANCHOR_PINS === \"1\" && existsSync(RAW_CORPUS_DB)")(
   "grade-10 missing-card inclusion wanted-card anchor pins (message-000004)",
   () => {
     beforeAll(async () => {

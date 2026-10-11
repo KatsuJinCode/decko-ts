@@ -1,12 +1,12 @@
-// grade10-virtual-host-restricted-pair-count-pins.test.ts — the seatfix lane's
-// accordion-_count pins (grade-10 regression family 3 of 3: 4 entries).
+// virtual-host-restricted-pair-count-pins.test.ts — the the seat fix's
+// accordion-_count pins (the regression family regression family 3 of 3: 4 entries).
 //
 // THE REGRESSION. The editing group's `_count badge` reads 3 where the graded
 // corpus pins 5 on Task+*right and Task+Log Entry+*type plus right (both
 // views): census M2's restricted-pair gate
 // (visibleSettingsForGroup -> setPrototypeTypeInfo: the content_options /
 // content_option_view pair renders only for STORED or ASSIGNED prototype
-// types) excludes the pair for template-derived prototypes, and M10b's
+// types) excludes the pair for template-derived prototypes, and the census M10b arm's
 // pairStored escape cannot fire because the deck holds zero stored rule rows
 // for these sets.
 //
@@ -20,14 +20,14 @@
 // the deck carries (Message+Conversation+*type plus right) is corpus-badge-3.
 // The corpus verdicts are INVERTED relative to any 0.20 mechanism (a stored
 // *default typed List is what Ruby's restricted_to_type would WANT), so this
-// seat is a fit in the M2/M10b class — the oracle is the spec, and the corpus
+// seat is a fit in the M2/the census M10b arm class — the oracle is the spec, and the corpus
 // cost is named: no derivable rule produces the Message badge-3 bytes.
 //
 // MECHANISM OF THE FIT. The restricted pair also renders when the set's
 // prototype is template-derived AND the set's own *default rule row is absent
 // from the deck (engine.defaultRuleTypeIdForSetName undefined). Sets WITH a
 // *default row keep M2's badge-3 (Message pin below must not move); sets with
-// assigned/stored prototype types keep the M2 main path and M10b pairStored.
+// assigned/stored prototype types keep the M2 main path and the census M10b arm pairStored.
 
 import { describe, it, expect, afterAll, beforeAll } from "vitest";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -64,7 +64,7 @@ afterAll(() => {
   storage?.close();
 });
 
-describeOrSkipLoud(!(process.env.SEATFIX_GRADE10_PINS === "1" && existsSync(CORPUS) && existsSync(VIEW_DIR)), "tests/card/render/grade10-virtual-host-restricted-pair-count-pins.test.ts", "process.env.SEATFIX_GRADE10_PINS === \"1\" && existsSync(CORPUS) && existsSync(VIEW_DIR)")(
+describeOrSkipLoud(!(process.env.VIRTUAL_HOST_RESTRICTED_PAIR_COUNT_PINS === "1" && existsSync(CORPUS) && existsSync(VIEW_DIR)), "tests/card/render/virtual-host-restricted-pair-count-pins.test.ts", "process.env.VIRTUAL_HOST_RESTRICTED_PAIR_COUNT_PINS === \"1\" && existsSync(CORPUS) && existsSync(VIEW_DIR)")(
   "grade-10 count family: the restricted pair renders on *default-row-less virtual hosts",
   () => {
     const expected = new Map<string, string>();

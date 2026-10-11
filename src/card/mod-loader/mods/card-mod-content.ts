@@ -113,7 +113,7 @@ import type {
 import { superView } from "../mod-view-helpers.js";
 import { numberToHumanSize } from "./rails-number-to-human-size.js";
 
-/** The set-module event declarations (the mod-events lane, 2026-10-08):
+/** The set-module event declarations (the set-module event, 2026-10-08):
  *  stub-bodied, with the per-event reason on the declaration. Same shape
  *  as core-mod.ts's local helper. */
 function event(
@@ -347,7 +347,7 @@ const setModules: ModSetModuleFile[] = [
     // ported), format :html do block: :one_line_content (port - the
     // type : raw template), visible_cardtype_groups (not ported).
     //
-    // Events (mod-events lane 2026-10-08) — three STUBS with named
+    // Events (set-module event 2026-10-08) — three STUBS with named
     // reasons (structure.rb:25-46):
     // - update_structurees_references (:integrate, when:
     //   update_structurees_references?) re-runs update_references_out on

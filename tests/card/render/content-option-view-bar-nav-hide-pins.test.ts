@@ -1,5 +1,5 @@
-// grade10-content-option-view-bar-nav-hide-pins.test.ts — the seatfix lane's
-// hide-family pins (grade-10 regression family 2 of 3: 12 entries).
+// content-option-view-bar-nav-hide-pins.test.ts — the the seat fix's
+// hide-family pins (the regression family regression family 2 of 3: 12 entries).
 //
 // THE REGRESSION. prepareBar's rule-bar hide branch (bar_view.rb:11 `voo.hide
 // :bar_nav unless existing_rule_card`, views.ts) fires on every virtual rule
@@ -8,9 +8,9 @@
 // set, bench DB queried). The graded corpus (pre-era1658 vintage) pins the
 // *content option view rule bar with NO hide key at all in every one of its
 // 66 appearances across all 48 view shards (own census
-// tmp/seatfix-instruments/, tally `*content option view | hide=[NONE] 66x`),
+// tmp/the seat-fix instruments/, tally `*content option view | hide=[NONE] 66x`),
 // while its sibling *content options stays state-dependent (40x bar_nav,
-// 20x one_line_content, 6x none). The 12 grade-10 regression entries fail
+// 20x one_line_content, 6x none). The 12 the regression family regression entries fail
 // with `,"hide":["bar_nav"]` inserted on exactly that *content option view
 // bar (Collection+*right:content first difference offset 45993, -11 bytes).
 //
@@ -61,7 +61,7 @@ afterAll(() => {
   storage?.close();
 });
 
-describeOrSkipLoud(!(process.env.SEATFIX_GRADE10_PINS === "1" && existsSync(CORPUS) && existsSync(VIEW_DIR)), "tests/card/render/grade10-content-option-view-bar-nav-hide-pins.test.ts", "process.env.SEATFIX_GRADE10_PINS === \"1\" && existsSync(CORPUS) && existsSync(VIEW_DIR)")(
+describeOrSkipLoud(!(process.env.CONTENT_OPTION_VIEW_BAR_NAV_HIDE_PINS === "1" && existsSync(CORPUS) && existsSync(VIEW_DIR)), "tests/card/render/content-option-view-bar-nav-hide-pins.test.ts", "process.env.CONTENT_OPTION_VIEW_BAR_NAV_HIDE_PINS === \"1\" && existsSync(CORPUS) && existsSync(VIEW_DIR)")(
   "grade-10 hide family: the *content option view rule bar carries no bar_nav hide",
   () => {
     const expected = new Map<string, string>();

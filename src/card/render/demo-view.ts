@@ -1,5 +1,5 @@
 // card-mod-format set/all/demo.rb :demo, homed in the render layer so both
-// the flat view registry (render/views.ts, the loader-less page lane) and the
+// the flat view registry (render/views.ts, the loader-less page surface) and the
 // card-mod-format set/all registration dispatch the same body.
 import type { ViewContext, ViewFn } from "./format.js";
 import { h } from "./slot-html.js";

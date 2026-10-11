@@ -98,7 +98,7 @@ import {
   type ModEventRegistration,
 } from "../mod-manifest.js";
 
-/** The set-module event declarations (the mod-events lane, 2026-10-08):
+/** The set-module event declarations (the set-module event, 2026-10-08):
  *  stub-bodied, with the per-event reason on the declaration. Same shape
  *  as core-mod.ts's local helper. */
 function event(
@@ -136,7 +136,7 @@ const cardModSession: DeckoModManifest = {
       // ride the request Env / success object / controller page cycle -
       // no view registrations (see the header's NOT-ported list).
       //
-      // Events (mod-events lane 2026-10-08) — two STUBS with named
+      // Events (set-module event 2026-10-08) — two STUBS with named
       // reasons:
       // - discard_deleted_locations (:finalize, on: :delete) drops the
       //   deleted card's entries from the session location history
@@ -174,7 +174,7 @@ const cardModSession: DeckoModManifest = {
       // store_in_session: the write route answers a Session create without
       // writing (write-routes.ts isSessionTypeCreate); the content is not
       // kept, the port having no per-visitor session store.
-      // delete_in_session (mod-events lane 2026-10-08) — STUB, named
+      // delete_in_session (set-module event 2026-10-08) — STUB, named
       // remainder (session.rb:42-45): session_content = nil + abort
       // :success on a Session-card DELETE; the port has no Session-card
       // delete write path (same reason as store_in_session's route arm).

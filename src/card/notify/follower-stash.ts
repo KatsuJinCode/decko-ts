@@ -1,7 +1,7 @@
 // notify/follower-stash.ts — the per-act follower stash.
 //
 // Ruby source: card-mod-follow-0.20.0 lib/card/follower_stash.rb (the
-// whole file; the gherkin-capabilities lane's act-mail-dedupe capability).
+// whole file; the acceptance-capability port's act-mail-dedupe capability).
 //
 //   class FollowerStash
 //     def initialize card=nil ... @stash = Hash.new { |h, v| h[v] = [] };

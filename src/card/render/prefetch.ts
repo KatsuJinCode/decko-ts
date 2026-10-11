@@ -102,7 +102,7 @@ export interface PrefetchStats {
    *  ONE round trip for the engine-level state (decko-commons/decko#1282
    *  shape). */
   additionalResults?: SQLQueryResult[];
-  /** fetch-composer batch lane (V1-prefetch): type ids this prefetch's
+  /** the batched fetch composer (V1-prefetch): type ids this prefetch's
    *  compose prime already asked (one statement per prefetch, not per
    *  composeAndCache call). */
   typePrimeMemo: Set<number>;
@@ -177,7 +177,7 @@ export interface PrefetchContext {
    *  async (cache-hit fetches) and the render must not start before every
    *  card is ready. */
   cacheRecord: (record: CardRecord) => Promise<void>;
-  /** fetch-composer batch lane (V1-prefetch, 2026-10-06): cache-only record
+  /** the batched fetch composer (V1-prefetch, 2026-10-06): cache-only record
    *  write (the base flow's updateCache -> storeCard — never the render
    *  map). The type-card prime below needs it so enrichAndStore's typeId
    *  reads hit the fetch cache exactly as the base flow's own fetchById
@@ -497,7 +497,7 @@ function recordToRawRow(record: CardRecord): RawRow {
 }
 
 /**
- * fetch-composer batch lane (V1-prefetch, 2026-10-06): prime the compose
+ * the batched fetch composer (V1-prefetch, 2026-10-06): prime the compose
  * pipeline's TYPE-card reads from one chunked statement. The composer's
  * rows name their type cards by id; the per-record enrichAndStore
  * (ctx.cacheRecord) resolves each NEW typeId through retrieveFromCacheById
@@ -719,7 +719,7 @@ export async function composeAndCacheSqlRows(
 ): Promise<CardRecord[]> {
   const byId = new Map<number, CardsRow>();
   for (const row of rows) byId.set(row.id, row);
-  // fetch-composer batch lane (V1-prefetch): same type prime as
+  // the batched fetch composer (V1-prefetch): same type prime as
   // composeAndCache (a per-call memo — these single-shot callers have no
   // shared stats object; the lexicon entries make repeat calls free). The
   // caller's own row set is heldIds: the one-trip payload carries the type

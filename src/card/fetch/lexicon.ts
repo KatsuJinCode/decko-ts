@@ -23,7 +23,6 @@ import { DeckoName } from "../name.js";
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import type { CardsRow } from "../../server/schema.js";
 import { CardCache } from "./cache.js";
-import { debugFlag } from "../debug-flags.js";
 
 /** lib/card/name.rb:16-17 Name.joint; Card::Name.joint delegates to it. */
 const JOINT = DeckoName.JOINT;
@@ -152,7 +151,7 @@ export class DbLexicon {
     return this.durableIdNames.get(id);
   }
 
-  /** db-roundtrip-elimination lane (W1): record a durable id->name entry for
+  /** db round-trip elimination: record a durable id->name entry for
    *  a row the caller HOLDS (a batched warm/closure read, not an async
    *  name(id) read). Same invariant as the field doc: the entry is db truth
    *  (the row was just fetched), so the sync fallback can only gain answers
@@ -321,7 +320,7 @@ export class DbLexicon {
     return false;
   }
 
-  /** db-roundtrip-elimination lane (W2): prime one lex_to_id entry by LEX -
+  /** db round-trip elimination: prime one lex_to_id entry by LEX -
    *  the pair form (or the key form via primeIdsByKey). Writes exactly what
    *  lexToId's cacheFetch would write for the same lex - the id, or the
    *  negative (undefined) entry a junction that does not exist caches - so
@@ -334,7 +333,7 @@ export class DbLexicon {
     this.recordDurableId(lex, id);
   }
 
-  /** fetch-composer batch lane (V1, 2026-10-06): record the entries
+  /** the batched fetch composer (2026-10-06): record the entries
    *  idToLex's cacheFetch would have written, from a cards ROW the caller
    *  HOLDS (a batched wave read, not an async name(id) read). The write
    *  shape is idToLex's own (lexicon.rb#id_to_lex): String(id) -> lex (the
@@ -355,7 +354,7 @@ export class DbLexicon {
     this.recordDurableId(resolved, row.id);
   }
 
-  /** fetch-composer batch lane (V1): mirror idToLex's empty-result
+  /** the batched fetch composer: mirror idToLex's empty-result
    *  write-back for a side id the batched read proved ABSENT - cacheFetch
    *  caches `undefined` under String(id) on a miss (cache.rb#fetch: "a
    *  stored nil is a hit"), so the later name(id) answers unknown with
@@ -406,8 +405,6 @@ export class DbLexicon {
   /** lexicon.rb#name_to_lex */
   private async nameToLex(name: DeckoName): Promise<Lex | undefined> {
     if (name.isSimple) return name.s;
-    // Diagnostic trace, opt-in: DECKO_LEX_TRACE=1.
-    if (debugFlag("DECKO_LEX_TRACE") && (name.s.includes("account+email") || name.s === "Probe Signup+*account")) console.log("LEX-DEBUG", name.s, "isSimple:", name.isSimple, "left:", name.leftName?.s, "right:", name.rightName?.s);
     const leftId = await this.id(name.leftName ?? DeckoName.parse(""));
     if (leftId === undefined) return undefined;
     const rightId = await this.id(name.rightName ?? DeckoName.parse(""));
@@ -443,7 +440,7 @@ export class DbLexicon {
     return sides.join(JOINT);
   }
 
-  /** db-roundtrip-elimination lane (W2): whether a lex_to_id entry EXISTS
+  /** db round-trip elimination: whether a lex_to_id entry EXISTS
    *  for this lex - a positive id OR a stored negative ("a stored nil is a
    *  hit"). The seatNamesByWave waves use this to skip re-asking a pair or
    *  key whose answer the engine already holds - from an earlier wave OR

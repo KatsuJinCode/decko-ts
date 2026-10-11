@@ -42,7 +42,7 @@
 //      and `WritableDerivedStore` (where derived data goes); the latter
 //      exposes no content reads, so a recompute that consulted stale
 //      derived state WOULD NOT TYPE-CHECK. (The A2 incident:
-//      hop-batch-sibling-fix-lane.md:389-414.)
+//      the corresponding port note:389-414.)
 
 import type { CardsRow } from "../../server/schema.js";
 import type { RenderPlan } from "./render-plan.js";
@@ -162,7 +162,7 @@ export interface OneTripBuildReport {
  *  field fidelity the render's own reads produce — plus the per-page rule
  *  candidates and the materialized search results.
  *
- *  `renderPlan` (the inline fetch only, renderplan-replay lane): the page's
+ *  `renderPlan` (the inline fetch only, the render-plan replay): the page's
  *  PRE-COMPUTED RENDER PLAN read from one_trip_render_plans inside the
  *  seat's head statement — the exact pipeline-able statements + params the
  *  recorded build-time render asked, in call order. The gate replays it as

@@ -122,7 +122,7 @@ function stripItem(item: string): string {
  *  absolutize_contextual_parts) BEFORE the fetch. Absolute lines pass
  *  through unchanged; relative lines absolutize against the HOST card's
  *  name; SESSION-relative lines resolve through Card::Name.session
- *  (environment.ts session — "Anonymous" on the signed-out corpus lane).
+ *  (environment.ts session — "Anonymous" on the signed-out corpus surface).
  *  The captured case: signup alert email+*from's rule content carries the
  *  single item "_user", and the oracle renders the resolved Anonymous
  *  card's full bar (data-card-id 15, nest_name "Anonymous") — while an
@@ -220,7 +220,7 @@ export function isRuleCardWithPermissionRight(card: RenderCard): boolean {
  *  `"card-list card-list-#{item_view_options[:view]} pointer-list"`) and
  *  `wrap_item` (same file :28-30, `"item-#{item_view}"`) read that value.
  *
- *  ORACLE CENSUS (2026-10-02, all 48 expected-v2 view-lane shards, every
+ *  ORACLE CENSUS (2026-10-02, all 48 expected-v2 view-surface shards, every
  *  `<div class="card-list card-list-X pointer-list">` and
  *  `<div class="pointer-item item-X">` occurrence): `bar` 1,041 /
  *  `link` 6,265 / `name` 16. ALL SIXTEEN `name` entries are exactly the

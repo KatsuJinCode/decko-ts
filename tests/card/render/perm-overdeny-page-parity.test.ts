@@ -2,7 +2,7 @@
 //
 //   1. "Anonymous+*account" — the standing over-deny the perm-allow replay
 //      hard-assert block fails on alone since an earlier pass (recorded signature
-//      exp 17603 / act 14299, first diff at 8200 = the nested
+//      exp 17603 / act 14299, first differing byte at 8200 = the nested
 //      Anonymous+*account+*email labeled slot the oracle renders allowed
 //      with its mailto content).
 //   2. "signup alert email+*from" — the perm-allow-2 triage residual
@@ -22,8 +22,8 @@
 // run so a RED run carries its own attribution bytes.
 //
 // RUN (machine-local raw corpus):
-//   set P22_PERM_OVERDENY=1&& npx vitest run
-//     tests/card/render/p22-perm-overdeny-page-parity.test.ts
+//   set PERM_OVERDENY_PAGE_PARITY=1&& npx vitest run
+//     tests/card/render/perm-overdeny-page-parity.test.ts
 //     --no-file-parallelism
 //
 // The verdict-state attribution probe (report-only, no asserts) lives in
@@ -45,7 +45,7 @@ import {
   seedRawCorpusStorage,
 } from "./perm-overdeny-page-fixtures.js";
 
-const PIN_REQUESTED = process.env.P22_PERM_OVERDENY === "1";
+const PIN_REQUESTED = process.env.PERM_OVERDENY_PAGE_PARITY === "1";
 
 describe("p22 perm-overdeny page parity (the lane's two named residual pages)", () => {
   it(
@@ -53,7 +53,7 @@ describe("p22 perm-overdeny page parity (the lane's two named residual pages)", 
     { timeout: 3_600_000 },
     async (ctx) => {
       if (!PIN_REQUESTED) {
-        skipLoud(ctx, "tests/card/render/p22-perm-overdeny-page-parity.test.ts", "PIN_REQUESTED");
+        skipLoud(ctx, "tests/card/render/perm-overdeny-page-parity.test.ts", "PIN_REQUESTED");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

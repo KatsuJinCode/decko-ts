@@ -1,4 +1,4 @@
-// BUILD 1 of the one-trip lane: THE PRECOMPUTE CLOSURE BUILDER.
+// BUILD 1 of the one-trip precompute: THE PRECOMPUTE CLOSURE BUILDER.
 //
 // Given a deck (a read-only corpus driver) it derives the dependency graph
 // AS DATA — every card's include/link references parsed with the render's
@@ -13,7 +13,7 @@
 // behind the seams named in types.ts (edge derivation, rule candidate
 // enumeration, search execution).
 //
-// EMPIRICAL FOUNDATION (this lane's fact probe, committed with the RED
+// EMPIRICAL FOUNDATION (this pass's fact probe, committed with the RED
 // tests): the corpus's stored card_references table is STALE IN BOTH
 // DIRECTIONS (3,941 derived edges with no stored row; 8,187 stored rows the
 // current parse does not derive — references_expired content, trashed
@@ -110,7 +110,7 @@ export interface OneTripBuildOptions {
   ruleCandidates?: RuleCandidateEnumerator;
   /** Search-nest posture for the build (default: DEFAULT_SEARCH_NEST_POSTURE
    *  = "write-time"; "live" skips execution, leaving the store empty until
-   *  the serving lane's live path fills it). */
+   *  the serving surface's live path fills it). */
   searchNestPosture?: SearchNestPosture;
 }
 

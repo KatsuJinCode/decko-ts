@@ -175,7 +175,7 @@ export const helpTextView: ViewFn = (ctx) => wrapHelpText(ctx, helpText(ctx));
  *
  *  EXPORTED: the view is also the
  *  compiled-in HTML_VIEWS["lead"] registration (render/views.ts imports
- *  this fn). The graded page-lane harness runs the engine WITHOUT a bound
+ *  this fn). The graded page-surface harness runs the engine WITHOUT a bound
  *  mod loader, so dispatch falls to the flat record (render.ts
  *  computeResolvedView's fallback) - without the compiled-in entry every
  *  Role page's `+:description|lead` nest emitted "view (lead) not
@@ -199,7 +199,7 @@ export const leadView: ViewFn = (ctx) => {
  *  delegates to card-mod-bootstrap's popover_link helper (helper.rb:
  *  41-44) - the TS implementation is the popoverLink export from
  *  card-mod-bootstrap.ts:166 (consumed as-is per this round's bootstrap
- *  lane). _render_core in Ruby is the same dispatch as
+ *  ). _render_core in Ruby is the same dispatch as
  *  `ctx.fmt.renderView("core")` in TS (format.ts#renderView:275-275).
  *
  *  The popoverLink anchor's bytes (helper.rb:41-57):

@@ -1,6 +1,6 @@
 // The bootstrap navbar view family (card-mod-layout set/all/navbar_links.rb
 // + set/abstract/{items,list}.rb + set/self/{account_links,dropdown_divider}.rb
-// + card-mod-search set/self/search search_box) — the page-lane head chrome
+// + card-mod-search set/self/search search_box) — the page-surface head chrome
 // the Default Layout's {{:header|core}} / {{:footer|content}} nests pull in.
 //
 // Ruby scoping is per SET module; this flat registry scopes inside each view
@@ -17,8 +17,8 @@
 //   renderView unknown substitution runs first — the capture's blank
 //   dropdown rows).
 //
-// Byte shapes are pinned by the page-lane capture (the *all page header
-// block) and the expected-v2 view lane; the search box is the
+// Byte shapes are pinned by the page-surface capture (the *all page header
+// block) and the expected-v2 view surface; the search box is the
 // search_box.haml bytes (haml single-quoted div class).
 
 import { DeckoName } from "../name.js";
@@ -189,7 +189,7 @@ function navDropdown(ctx: ViewContext): string {
  *  card/new|New Card", corpus card 38283 *Opportunities) never becomes a
  *  render and its join separator vanishes with it; the same for a render
  *  that resolves to no bytes (the engine's unknown-card substitution).
- *  Live receipt: ZERO `\n\n` sequences inside any captured dropdown-menu
+ *  live capture: ZERO `\n\n` sequences inside any captured dropdown-menu
  *  block (the *Opportunities menu renders `divider + "\n" + <denied>` —
  *  the engine's kept empty row emitted `divider\n\n<denied>`, the graded
  *  +1 on every page whose nav carries that menu). */

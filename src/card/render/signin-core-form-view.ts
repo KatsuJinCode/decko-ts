@@ -10,7 +10,7 @@
 //      RichText content where production renders the login form.
 //
 // Ruby source (card-mod-account-0.20.0 set/self/signin.rb:114-125, read from
-// the downloaded gem this lane):
+// the downloaded gem this pass):
 //
 //   before :core do
 //     voo.edit_structure = [signin_field(:email), signin_field(:password)]

@@ -144,7 +144,7 @@ interface PartyRuleRow {
 /** Statement 3 (the gate)'s position in readPermissionStatements' array —
  *  every consumer that folds, splices, or replaces a single permission
  *  statement by index reads THIS constant, so reordering the array cannot
- *  silently desync a fold (one-trip build lane, 2026-10-06: the seat head's
+ *  silently desync a fold (one-trip build , $1: the seat head's
  *  gate-count column replaces this statement in the one-trip posture). */
 export const PERMISSION_GATE_COUNT_STATEMENT_INDEX = 2;
 

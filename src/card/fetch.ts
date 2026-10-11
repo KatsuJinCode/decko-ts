@@ -158,7 +158,7 @@ export class FetchEngine {
       if (isCardValue(value)) this.writeLexiconTemp(value);
     };
     // THE COLD-ISOLATE DEFAULT (parity-harness S3 fix, 2026-10-02; the
-    // codename-warmup-fix lane's 19aac91, ported to this line by the fold-11
+    // the codename warm-up fix's 19aac91, ported to this line by the fold-11
     // integrator): install the sync name environment unless a boot already
     // installed one. Ruby's ":codename" mark parse cannot fail while the row
     // exists — the codehash loads synchronously on first use
@@ -697,7 +697,7 @@ export class FetchEngine {
   }
 
   /** Re-prime the boot-lifetime state a resetCaches() wiped (the freshness
-   *  composition, per-viewer-seat lane 2026-10-06). The codename registry's
+   *  composition, the per-viewer seat 2026-10-06). The codename registry's
    *  bulk load is BOOT state (bunny-edge-deck-boot.ts and every test boot
    *  run it once, before the first render); resetCaches() clears the
    *  registry's cache and nothing re-ran the load — so every post-reset
@@ -749,7 +749,7 @@ export class FetchEngine {
       // unset — signed out it answers "Anonymous" (the Anonymous card's name,
       // auth/current.rb's current lookup), and contextual.rb#user_part
       // (cardname 0.20.0 lib/cardname/contextual.rb) substitutes it for
-      // `_user`. The engine's render surface is the signed-out corpus lane
+      // `_user`. The engine's render surface is the signed-out corpus surface
       // (render.ts: "Anonymous by default"), so the environment carries the
       // same name. UNSET was a measured divergence: the follower notification
       // pages' `{{_user|link}}` nest resolved `_user` to the literal

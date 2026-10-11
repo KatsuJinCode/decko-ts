@@ -32,7 +32,7 @@
 //   rule_based_help chain, here reimplemented with citations because
 //   card-mod-help.ts keeps those helpers module-private)
 // - set/rule/board_rules_editor.rb:13-15 :overlay_title (edit_rule_title)
-// - 2026-09-29 rules-views lane, oracle-pinned (fixtures/captured/
+// - 2026-09-29 the rules views port, oracle-pinned (fixtures/captured/
 //   rules-views.json, capture script oracle-capture-rules-views.rb,
 //   no-write proof 4945 -> 4945): set/type/set/html_views/rule_lists.rb
 //   :bar_setting_list/:pill_setting_list/:modal_pill_setting_list/
@@ -41,7 +41,7 @@
 //   set/rule/editor.rb :rule_nest_editor_link/:rule_board_link,
 //   template.rb :template_link (see the registered setModules below for
 //   the per-view citations and the shared-hash wrap/cache mechanism)
-// - 2026-09-29 rules-views increment-2 lane, oracle-pinned: set/rule/
+// - 2026-09-29 rules-views the second rules-views increment, oracle-pinned: set/rule/
 //   bar_view.rb :one_line_content/:raw_one_line_content, set/rule/
 //   board_rules_editor.rb :help_text (the Rule-set override of card-mod-
 //   help's :help_text), set/all/set_select.rb :card_select (see the
@@ -52,7 +52,7 @@
 //   include the RULE token and falls through to the existing chain
 //   entries - right/default + right/structure for :one_line_content,
 //   all/help for :help_text - for every other card. This is the masking
-//   fix the increment-1 lane deferred (see rules-views-port.md, the
+//   fix the first increment deferred (see rules-views-port.md, the
 //   open remainders bullet on :one_line_content/:raw_one_line_content/
 //   :help_text and the "find the registration path Ruby uses" note)).
 //
@@ -79,7 +79,7 @@
 //   registered rule_help viewFn's Setting branch, registered on Type::Setting
 //
 // NOT ported (honest remainder, one-word reasons; the 2026-09-29
-// rules-views lane ported the setting-list family, the pill links, the
+// rules-views port ported the setting-list family, the pill links, the
 // board tab and the template link - see the registered setModules below):
 // - :rule_edit (editor.rb:17-22) / :modal_rule (board_rules_editor.rb:8-11)
 //   / :overlay_rule (board_rules_editor.rb:2-6) / :rule_form/
@@ -88,7 +88,7 @@
 //   modal/overlay wraps, the RuleSetRadio set-selection walk and the
 //   card_form shell through the shared mod-form-substrate; oracle-pinned).
 // - :quick_edit/:quick_edit_success (quick_editor.rb) - PORTED 2026-09-29
-//   form-substrate lane (the demonstration views).
+//   the form substrate (the demonstration views).
 // - :quick_edit_setting_list/:nest_rules/:modal_nest_rules - PORTED
 //   2026-09-29 rules-views-port-3 (the quick_edit item composition; the
 //   Right-module body overrides). ALL THREE oracle-pinned: the follow-up
@@ -146,7 +146,7 @@ import type {
 } from "../mod-manifest.js";
 import { engineOwnedEvent } from "../mod-manifest.js";
 
-/** The set-module event declarations (the mod-events lane, 2026-10-08):
+/** The set-module event declarations (the set-module event, 2026-10-08):
  *  stub-bodied unless the engine owns the behavior (then engineOwnedEvent).
  *  Same shape as core-mod.ts's local helper. */
 function event(
@@ -221,7 +221,7 @@ function assertRuleCard(ctx: ViewContext, view: string): void {
  *  part-count limit, so the 2-part "*all+*head" is a rule card exactly like
  *  the 3-part preference shape). The engine hook cardMatchesRuleSet is the
  *  ported predicate (render.ts; the pre-2026-09-29 cardIsRule hook carried
- *  the 3-part-only restriction, which is why the rules-views lane needed a
+ *  the 3-part-only restriction, which is why the rules views port needed a
  *  mod-scoped 2-part arm - this guard rides the engine predicate instead of
  *  duplicating it). */
 function assertRuleSetCard(ctx: ViewContext, view: string): void {
@@ -537,7 +537,7 @@ export function ruleCoreView(ctx: ViewContext, baseCore: ViewFn): string {
  *  the body.
  *
  *  REGISTERED under setPath "rule/bar_view" (kind "nonbase") - the
- *  increment-2 lane's masking fix: card-mod-content's right/default and
+ *  the second rules-views increment's masking fix: card-mod-content's right/default and
  *  right/structure :one_line_content registrations live in viewChains at
  *  those nonbase setPaths (mod-loader.ts:284 gates kind !== "nonbase"), so
  *  registering ANOTHER nonbase chain entry here under rule/bar_view never
@@ -551,7 +551,7 @@ export function ruleCoreView(ctx: ViewContext, baseCore: ViewFn): string {
  *  the Abstract::List pointer-list override + the permission-right +
  *  structure + default + head + toggle + List/pointer item walks the
  *  captured bytes pin (rule-bar-right.ts:9-25 + 65-244). The increment-1
- *  lane's exported ruleOneLineContentView body was a simplified variant
+ *  increment's exported ruleOneLineContentView body was a simplified variant
  *  that dropped the list-pointer wrap and failed the captured *all+*read
  *  byte pin; increment-2 reaches into ruleBarRightHtml for the
  *  byte-exact path. */
@@ -570,7 +570,7 @@ export function ruleCoreView(ctx: ViewContext, baseCore: ViewFn): string {
  *
  *  EXPORTED for the stub harness (tests/card/mod-loader/
  *  card-mod-rules.test.ts's ruleOneLineContentView body assertions). The
- *  increment-2 lane registers a separate viewFn (ruleOneLineContentViewFn
+ *  increment-2 increment registers a separate viewFn (ruleOneLineContentViewFn
  *  below) under setPath "rule/bar_view" (kind "nonbase") - the masking
  *  fix; that registered viewFn delegates to ruleBarRightHtml for the
  *  byte-exact path the captured *all+*read case pins (Abstract::List
@@ -627,7 +627,7 @@ function ruleOneLineInner(ctx: ViewContext, rightSetting: string | undefined): s
   return truncatedCore(card.dbContent);
 }
 
-/** The byte-exact path the increment-2 lane registers for rule cards.
+/** The byte-exact path the second increment registers for rule cards.
  *  Delegates to ruleBarRightHtml (render/rule-bar-right.ts:266) - the same
  *  logic views.ts barRightView consumes for :bar_right, which already
  *  encodes the Abstract::List pointer-list override + the permission-right
@@ -678,7 +678,7 @@ function ruleRawOneLineInner(content: string): string {
 /** content.rb:47-49 / content.rb:43-45 - the truncate helper (helper is
  *  private to the ruleOneLineContent / ruleRawOneLineContent bodies; the
  *  same shape as the render layer's rule-bar-right.ts:37-43's
- *  truncatedCore - the increment-2 lane keeps a local copy because
+ *  truncatedCore - the second increment keeps a local copy because
  *  rule-bar-right.ts does not export truncatedCore). */
 function truncatedCore(content: string): string {
   return content.length > 60 ? `${content.slice(0, 60)}...` : content;
@@ -701,7 +701,7 @@ function truncatedCore(content: string): string {
  *  (List-typed, content "[[Anyone]]" -> the reference walk yields
  *  "Anyone"), the body emits "Anyone" (length 6, no truncate) - capture
  *  pin: `<div class="text-muted one-line">Anyone</div>`. The increment-1
- *  lane's exported body was already byte-correct for this captured case;
+ *  increment's exported body was already byte-correct for this captured case;
  *  increment-2 just lands the registration. */
 export function ruleRawOneLineContentView(ctx: ViewContext): string {
   assertRuleCard(ctx, "raw_one_line_content");
@@ -714,7 +714,7 @@ export function ruleRawOneLineContentView(ctx: ViewContext): string {
 // ---------------------------------------------------------------------------
 // set/rule/board_rules_editor.rb:17-19 - the Rule-set :help_text override
 // of card-mod-help's :help_text (cross-mod-dispatch via viewChains; the
-// 2026-09-29 increment-2 lane)
+// 2026-09-29 the second rules-views increment)
 // ---------------------------------------------------------------------------
 
 /** set/rule/board_rules_editor.rb:17-19 view :help_text:
@@ -731,7 +731,7 @@ export function ruleRawOneLineContentView(ctx: ViewContext): string {
  *
  *  REGISTERED under setPath "rule/board_rules_editor" (kind "nonbase").
  *  card-mod-help registers :help_text under setPath "all/help" (kind
- *  "base") which enters the FLAT views table - the increment-1 lane
+ *  "base") which enters the FLAT views table - the first rules-views increment
  *  called this the "global-table masking" problem. The fix: register the
  *  Rule-set variant under a nonbase setPath so it enters viewChains
  *  ONLY. The viewChain walker (mod-loader.ts:452) expands the RULE token
@@ -753,7 +753,7 @@ const ruleHelpTextView: ViewFn = (ctx) => {
 
 // ---------------------------------------------------------------------------
 // set/all/set_select.rb:20-23 view :card_select (2026-09-29 increment-2
-// lane; the related_sets + select2 timestamp-normalization port)
+// pass; the related_sets + select2 timestamp-normalization port)
 // ---------------------------------------------------------------------------
 
 /** set/all/set_select.rb:20-23 view :card_select, unknown: true,
@@ -770,14 +770,14 @@ const ruleHelpTextView: ViewFn = (ctx) => {
  *  The select tag's `data-select2-id` carries
  *  `"<safe_key>-<card_id>-<Time.now.to_i>"` (bootstrap-select widget
  *  metadata, gem-tools equivalent). The Time.now stamp is
- *  NON-deterministic across renders; the increment-2 lane freezes it
+ *  NON-deterministic across renders; the second increment freezes it
  *  to a stable token the test normalizes to TIME
  *  (fixtures/captured/rules-views.json's "select2 data-select2-id
  *  seconds suffix" -> "TIME" normalization + the test's
  *  `normalize()` regex `(data-select2-id="[^"]*-)\d+(")` -> $1TIME$2
  *  produce a stable byte-comparison surface). */
 function select2TimestampSeconds(): number {
-  // The token-runtime freeze lane's discipline (see fixtures/captured/
+  // The token-runtime freeze's discipline (see fixtures/captured/
   // rules-views.json's normalizations block): the engine emits a stable
   // timestamp seed, the test normalizes the resulting seconds suffix to
   // TIME. ANY non-empty integer the regex can replace works; the seed 0
@@ -857,7 +857,7 @@ const cardSelectView: ViewFn = (ctx) => {
 // set/type/set/html_views/rule_lists.rb + filtered_rule_lists.rb +
 // set/rule/editor.rb pill links + set/type/set/html_views/template.rb -
 // the setting-list family, the rule pill links, the board tab and the
-// template link (2026-09-29 rules-views lane; oracle-pinned against
+// template link (2026-09-29 the rules views port; oracle-pinned against
 // fixtures/captured/rules-views.json, captured by
 // tests/card/mod-loader/oracle-capture-rules-views.rb with the in-run
 // no-write proof card_actions 4945 -> 4945)
@@ -866,7 +866,7 @@ const cardSelectView: ViewFn = (ctx) => {
 import { SETTING_GROUPS, visibleGroupSettings, barSettingListBody, templateLinkView } from "../../render/views.js";
 import { buildVirtualRuleCard } from "../../render/virtual-rule-card.js";
 // h + modSlotWrap are imported at the top of the file (the merge of the
-// form-substrate lane's quick_edit section with this lane's section kept
+// the form substrate's quick_edit section with this pass's section kept
 // both import blocks; the duplicates are consolidated up top).
 
 /** The static short_help_text a setting module registered through
@@ -1226,7 +1226,7 @@ const overlayRuleListLinkView: ViewFn = (ctx) => {
  *  the setting's rule card with view :bar; the nest carries
  *  hide: ["full_name"] (the capture's bar slot hide list leads with it).
  *  p20-email-views: the BODY moved to views.ts barSettingListBody (the
- *  flat seam the loader-less graded page lane reads — the Shark page nests
+ *  flat seam the loader-less graded page surface reads — the Shark page nests
  *  this view on *all); this set-scoped registration delegates to the same
  *  function so the two surfaces cannot drift. */
 const barSettingListView: ViewFn = (ctx) => {
@@ -1520,7 +1520,7 @@ function ruleSidesStatement(setTypeId: number, settingTypeId: number): {
 }
 
 /** One batch, once per engine: every rule card enters the prepared
- *  render-card map. db-roundtrip-elimination lane (W1): the records are
+ *  render-card map. db round-trip elimination: the records are
  *  composed from the batch's OWN `SELECT c.*` rows through
  *  ModEngineHost#composeAndCacheRows (sides-before-junctions multi-pass,
  *  lexicon primed both directions, records through cacheFetchedRecord) -
@@ -1556,7 +1556,7 @@ async function prepareRuleCache(host: ModEngineHost): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// set/rule/quick_editor.rb - the quick_edit chain (the form-substrate lane's
+// set/rule/quick_editor.rb - the quick_edit chain (the form substrate's
 // demonstration views)
 // ---------------------------------------------------------------------------
 
@@ -1569,7 +1569,7 @@ function quickEditSettingTitle(ctx: ViewContext): string {
 /** editor.rb:89-91 short_help_text:
  *  `"<div class=\"help-text\">#{card.short_help_text}</div>"`. Reads the
  *  SETTING_SHORT_HELP_TEXT map above (the merge of the form-substrate
- *  lane's 2-entry Record with this lane's 11-entry Map consolidated onto
+ *  pass's 2-entry Record with this pass's 11-entry Map consolidated onto
  *  the Map - the superset; identical strings for the shared entries). */
 function quickEditShortHelpText(settingCodename: string): string {
   return `<div class="help-text">${SETTING_SHORT_HELP_TEXT.get(settingCodename) ?? ""}</div>`;
@@ -1906,7 +1906,7 @@ const quickEditSuccessView: ViewFn = (ctx) => {
 // set/rule/rule_form.rb + rule_form/{buttons,set_selection,rule_set_radio}.rb
 // + set/rule/editor.rb:17-22 :rule_edit + set/rule/board_rules_editor.rb
 // :overlay_rule/:modal_rule - the rule-editor form chain (2026-09-29
-// rules-views-port-3 lane; oracle-pinned against fixtures/captured/
+// the third rules-views port; oracle-pinned against fixtures/captured/
 // rules-views.json rule_card.views.{rule_form,rule_form_card_editor,
 // rule_edit,modal_rule,overlay_rule}, captured on the STORED *all+*read
 // rule card id 10)
@@ -2230,7 +2230,7 @@ const ruleFormCardEditorView: ViewFn = (ctx) => {
 };
 
 /** editor.rb:93-105 rules_type_formgroup (oracle-pinned 2026-09-29
- *  rules-cap lane: fixtures/captured/rules-nest-views.json
+ *  the rules capability: fixtures/captured/rules-nest-views.json
  *  type_editable_rule_card.views.rule_form_card_editor, no-write proof
  *  5018 -> 5018, rendered on the *all+*default rule card whose *default
  *  setting_opts carries rule_type_editable: true - card-mod-content
@@ -2423,7 +2423,7 @@ function overlayMenuHtml(ctx: ViewContext): string {
 // ---------------------------------------------------------------------------
 // set/type/set/html_views/filtered_rule_lists.rb :nest_rules/:modal_nest_
 // rules + set/type/set/html_views/rule_lists.rb :quick_edit_setting_list -
-// the quick-edit list family (2026-09-29 rules-views-port-3 lane; ALL
+// the quick-edit list family (2026-09-29 the third rules-views port; ALL
 // THREE oracle-pinned: quick_edit_setting_list/nest_rules against
 // fixtures/captured/rules-views.json + rules-nest-views.json, and
 // modal_nest_rules against rules-nest-views.json - the rules-cap capture,
@@ -2586,7 +2586,7 @@ const setModules: ModSetModuleFile[] = [
     // fixtures/captured/rules-views.json set_card.views.card_select).
     // set_select.rb is an ALL set module (kind "base") and the global
     // view name has no other mod registration, so the flat-table
-    // registration is safe - this is NOT the increment-1 lane's
+    // registration is safe - this is NOT the first rules-views increment's
     // global-table masking problem (that applies to the rule
     // one_line_content / help_text names whose base registrations
     // belong to other mods).
@@ -2636,7 +2636,7 @@ const setModules: ModSetModuleFile[] = [
     // src/card/set-patterns/rule-names.ts ruleSetCardName (rules.rb:12-18)
     // and ruleSettingCardName (rules.rb:36-38).
     //
-    // Event (mod-events lane 2026-10-08) — ENGINE-OWNED: the save path
+    // Event (set-module event 2026-10-08) — ENGINE-OWNED: the save path
     // moves the saved rule's setting to the top of the *recent settings
     // list (card-action-engine.ts saveRecentlyEditedSettings, citing
     // rules.rb:1-6; run on the create/update paths at :1347/:2012).
@@ -2871,7 +2871,7 @@ const setModules: ModSetModuleFile[] = [
     // the emitters above).
     // 2026-09-29 rules-views-port-3: :quick_edit_setting_list IS ported
     // now (registered below) - the quick_editor form machinery landed with
-    // the form-substrate lane and the Right-module body overrides closed
+    // the form-substrate pass and the Right-module body overrides closed
     // the empty-item question.
     setPath: "type/set/html_views/rule_lists",
     formats: {

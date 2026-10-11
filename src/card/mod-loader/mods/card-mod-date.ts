@@ -11,10 +11,10 @@
 // right/when_last_edited, self/now) as ContentFn exports
 // (whenCreatedContentFn / whenLastEditedContentFn / nowContentFn) +
 // a dateContentOverrideEntries aggregate + a wireDateContentOverrides
-// installer. The set-module content overrides are the surface this lane
+// installer. The set-module content overrides are the surface this pass
 // is responsible for; the mod-loader-stream's coordinator owns the
 // `contentOverrides` manifest field that lets the loader consume these
-// exports (lane A landed the per-set content-override registry seam +
+// exports (the set-module exports landed the per-set content-override registry seam +
 // the format.ts#renderRaw:605-609 consultation - see content-overrides.ts).
 //
 // The single html view the gem declares (:core) is already implemented
@@ -80,7 +80,7 @@
 // remain the test-facing installer (the suite's beforeAll binds a
 // standalone registry for isolation).
 //
-// HONEST REMAINDER — mod-loader surface limitations, NOT this lane's
+// HONEST REMAINDER — mod-loader surface limitations, NOT this port's
 // scope to fix:
 //   - RESOLVED: cardBelongsToSet keys the right/left patterns on the
 //     anchor (the part's name key) and the self pattern on the card's own

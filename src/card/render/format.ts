@@ -167,13 +167,13 @@ export class Voo {
    *  view/nest_name/show/home_view/name_context and NO title key. */
   liveTitle: string | undefined;
 
-  /** True ONLY for the bare view-lane ROOT render's voo (render.ts#render's
+  /** True ONLY for the bare view-surface ROOT render's voo (render.ts#render's
    *  `format.renderView(view, ...)` entry — the one call site whose
    *  `optional` render arg defaults to :show). The live serializer does not
    *  carry the root render's own enrollment (the capture-harness artifact:
    *   "root drops the
    *  requested view"), so slotOptions drops view===viewField exactly here.
-   *  Parentless does NOT mean root: the page lane's processLayoutContent
+   *  Parentless does NOT mean root: the page surface's processLayoutContent
    *  runs on the root format AFTER renderView restored this.voo, so every
    *  card-layout/body nest voo (the *footer content slot, the mod bar
    *  items) is parentless in the port while Ruby's layout nests render with
@@ -199,9 +199,9 @@ export class Voo {
     // The port carries the one heir key the captured surface provably
     // consumes: :size (the image variant — Ruby's determine_image_size reads
     // voo.size at the CORE render, one voo below the nest's content voo; a
-    // size:full nest must render -original through that hop. Live receipt:
+    // size:full nest must render -original through that hop. live capture:
     // Conflict_Done_Well 277091-original.png with data-slot "size":"full";
-    // corpus receipt: Professional Materials {{bar02|size:full}}). The
+    // corpus captures: Professional Materials {{bar02|size:full}}). The
     // remaining heir keys (main, home_view, title, variant, joint, ...)
     // stay unported — a documented remainder.
     if (parent !== undefined && opts["size"] === undefined) {
@@ -229,7 +229,7 @@ export class Voo {
     // carries title: "Discussion" and the :titled frame's header_title ->
     // :title chain reads voo.title two voo levels down (titled ->
     // header_title -> title) - the same inherit_options_from_parent! hop
-    // the size receipt describes (title.rb:30-31 standard_title =
+    // the size recorded result describes (title.rb:30-31 standard_title =
     // name_variant title_in_context(voo.title)); (2) the bar family ONE
     // voo below the nest: field_nest(view:
     // :accordion_bar, title: X) -> the accordion_bar voo carries the opt;
@@ -273,12 +273,12 @@ export class Voo {
    *  data-slot). */
   /** The view this slot's OWN optional render arg enrolled (set in
    *  processVisibility; undefined = none). Intermediate renders (bar.rb's
-   *  bar_bottom -> render :content) enroll their own view; the VIEW-LANE
+   *  bar_bottom -> render :content) enroll their own view; the VIEW-SURFACE
    *  ROOT render's enrollment is the capture-harness artifact the live
    *  serializer does not carry. */
   private optionalEnrolledView: string | undefined;
 
-  /** The viz entries that trace to the VIEW-LANE ROOT slot's optional
+  /** The viz entries that trace to the VIEW-SURFACE ROOT slot's optional
    *  enrollment - propagated transitively through the voo chain but never
    *  through an intermediate render's OWN enrollment. The live serializer
    *  drops these (Ruby-live's root render never enrolled: the harness
@@ -392,7 +392,7 @@ export class Voo {
     // show-key.md, refined by the frozen-vs-live slot census over all 37
     // swapped entries - frozen and live slot JSONs are IDENTICAL there, so
     // the rule is corpus truth for both eras):
-    //   - a ROOT slot does not emit the requested view itself (the view-lane
+    //   - a ROOT slot does not emit the requested view itself (the view-surface
     //     root render does not enroll it: mod:*:closed roots omit the key,
     //     the discussion open root carries only its body's comment_box);
     //   - a CHILD slot drops the parent-inherited entries (the parent's
@@ -405,9 +405,9 @@ export class Voo {
     // UNSET default: the engine's always-enroll + full-inheritance form
     // (the shape the pre-live engine pinned).
     //
-    // Root-drop arm: viewLaneRoot (the bare view-lane root render, the one
+    // Root-drop arm: viewLaneRoot (the bare view-surface root render, the one
     // call site whose optional render arg defaults to :show), NOT
-    // "parent === undefined" - the page lane's processLayoutContent runs on
+    // "parent === undefined" - the page surface's processLayoutContent runs on
     // the root format after renderView restored this.voo, so the card-
     // layout/body nests (the *footer content slot, the mod bar items) are
     // parentless in the port while Ruby renders them with a seated voo
@@ -607,7 +607,7 @@ export interface RenderFormatOptions {
    *  `render-error alert alert-danger` span instead of propagating
    *  (format/render.rb wrap_and_render rescue + error.rb rescue_view
    *  quiet branch). The focal (main) render still raises. Page-path only;
-   *  the bare view lane keeps the development loud behavior. */
+   *  the bare view surface keeps the development loud behavior. */
   nestQuietErrors?: boolean;
   /** maximum nest depth — Ruby Card.config.max_depth = 20
    *  (prototype/lib/cardio/railtie.rb:17; monitor_depth,
@@ -633,13 +633,13 @@ export interface RenderFormatOptions {
    *  withFormatName's re-format (the ivar survives card.format in Ruby
    *  because it lives on the card). */
   contextCard?: RenderCard;
-  /** Marks THE bare view-lane root format (render.ts#render's root — the
+  /** Marks THE bare view-surface root format (render.ts#render's root — the
    *  engine.render(card, view) entry; page.ts builds its own rootFormat
    *  without this). The census-M1 bar-seat reads it: bar-view slots nested
    *  under this root carry the root card's part-filtered name_context
-   *  (serializer-followup2-lane.md step 5 row 1 — the graded Guns:open
+   *  (the serializer follow-up note step 5 row 1 — the graded Guns:open
    *  bytes pin ctx="gun" on the item bars and ctx-less on every non-bar
-   *  slot of the same walk). Never set on the page lane. */
+   *  slot of the same walk). Never set on the page surface. */
   isViewLaneRoot?: boolean;
 }
 
@@ -748,7 +748,7 @@ export class RenderFormat {
    * long it is.
    */
   private charCount: number | undefined;
-  /** The bare view-lane root marker (RenderFormatOptions.isViewLaneRoot) —
+  /** The bare view-surface root marker (RenderFormatOptions.isViewLaneRoot) —
    *  true on exactly the engine.render root format; the census-M1 bar-seat
    *  climbs the parent chain looking for it. */
   readonly isViewLaneRoot: boolean;
@@ -1022,7 +1022,7 @@ export class RenderFormat {
    *  (Project/398) while the global entry said denied, rendering bar_left
    *  as a quiet denial where the oracle renders the card title. Probed:
    *  cold isDenied false -> full bar; warm isDenied true -> two denied
-   *  spans; per-nest verdict read:true in both (M2 receipt). */
+   *  spans; per-nest verdict read:true in both (M2 recorded result). */
   private cardReadable(): boolean {
     if (this.card.pointerItemReadVerdict === true) return true;
     return !this.engine.isDenied(this.card);
@@ -1079,7 +1079,7 @@ export class RenderFormat {
     // nest: the page card's own `content` slot (rendered by the same format
     // through the open view's bar_bottom -> render :content) carries it too.
     //
-    // ORACLE CENSUS over the sha-verified expected-v2 page lane (6588
+    // ORACLE CENSUS over the sha-verified expected-v2 page surface (6588
     // records, all 48 shards): 6583 pages have a `titled` main view and
     // emit exactly one `main:true` (the `_main` slot, which the page
     // renderer already passes explicitly — page.ts renderView opts); the
@@ -1136,8 +1136,8 @@ export class RenderFormat {
           // slot-wrapped as `<key>-denial-view` with the ORIGINAL requested
           // view still in the data-slot JSON (the 2,835-page oracle class:
           // a named corpus page, CM 20100614, ...). Non-main formats keep the quiet
-          // span (the bare view lane's pinned pointer-item surface; the
-          // view-lane capture recorded no per-view bytes for fully denied
+          // span (the bare view surface's pinned pointer-item surface; the
+          // view-surface capture recorded no per-view bytes for fully denied
           // cards, so nothing graded changes there).
           //
           // Substitution-first applies on the main format too: error.rb:27-31
@@ -1272,7 +1272,7 @@ export class RenderFormat {
    *  *recent -> "Recent Changes", *signin -> "Sign In"; base dump
    *  000003-_search-title/-closed, 000003-_recent-title,
    *  000015-_signin-title/-closed). Served in the render layer (not as
-   *  setModule registrations) because the headless view-lane engine runs
+   *  setModule registrations) because the headless view-surface engine runs
    *  with NO ModLoader bound - the same pattern as openView's discussion
    *  comment_box check. Keys are card codenames. */
   selfSetTitleOverride(): string | undefined {
@@ -1660,7 +1660,7 @@ export class RenderFormat {
    *  setting_opts registrations) ∩ (unrestricted ∨ the set prototype's type
    *  codename ∈ the registration's restricted_to_type — setting.rb:74-77
    *  applies_to_cardtype). Oracle-derived verification (845+ rule-item bars
-   *  swept from the page-lane oracle bytes, 2026-09-30):
+   *  swept from the page-surface oracle bytes, 2026-09-30):
    *  *table of contents / *comment are registered NOWHERE in the gems (no
    *  set/self/*.rb) and pin `_category-all` alone (Number page: 0 YES /
    *  4 NO); content_options / content_option_view are restricted to
@@ -1762,7 +1762,7 @@ export class RenderFormat {
         this.card.typeName,
         nest.options.extra["type"],
       );
-    // fetch.rb:47-48 new_card_args (R17): `args[:type] = view_opts[:type]`
+    // fetch.rb:47-48 new_card_args: `args[:type] = view_opts[:type]`
     // — an explicit `| type:X ` opt names the NEW card's type. An ID-LESS
     // target is the fetcher's fabricated new-card record (the FetchEngine
     // emulates Card.fetch new: {} on a miss, including the *default
@@ -1807,7 +1807,7 @@ export class RenderFormat {
       // "Su$tainability"/"Conflict_Done_Well+class_schedule"), codename-
       // RESOLVED for mark forms: DeckoName.parse resolves ":codename"
       // marks through the name environment at parse time ({{:footer}} →
-      // "*footer", the R16 page-lane pin; junction parts too — the Role
+      // "*footer", the R16 page-surface pin; junction parts too — the Role
       // template card 322's {{+:description|lead}} pins
       // nest_name "+description" in every Role page oracle: the right
       // part is the codename "description" → card 146's name, and the
@@ -1979,7 +1979,7 @@ export class RenderFormat {
     return resolveViewPerms(view).check === false;
   }
 
-  /** fetch.rb:38-49 new_card_args (R17): shape a FABRICATED new-card
+  /** fetch.rb:38-49 new_card_args: shape a FABRICATED new-card
    *  record (the FetchEngine's Card.fetch new: {} emulation — id-less,
    *  *default-template typed) the way the nest fetch would:
    *  `args[:type] = view_opts[:type]` — an explicit `| type:X ` opt names
@@ -2120,7 +2120,7 @@ export class RenderFormat {
     // TYPE_PLUS_RIGHT-rich_text-20180623_0728.
     //
     // THE LAST RESORT IS RUBY'S quick_type BODY, NOT ITS BLANK-NAME
-    // BRANCH (W2 restore lane, 2026-10-03). class_methods.rb:59-71:
+    // BRANCH (W2 restore , $1). class_methods.rb:59-71:
     //
     //     def quick_type name
     //       if name.present?
@@ -2328,7 +2328,7 @@ export class RenderFormat {
     // RIGHT SIDE is one of the four virtual-set settings is virtual and
     // therefore KNOWN, so alter_unknown never fires for it.
     //
-    // Live shape (corpus 6a44dfdc, page-lane shard 000000, card 105
+    // Live shape (corpus 6a44dfdc, page-surface shard 000000, card 105
     // `Role+*type+*default`): the `{{+description}}` nest resolves through
     // card-mod-edit set/all/template_nest.rb:5-8 to
     // `Role+description+*type plus right` — a junction with NO row in the
@@ -2381,7 +2381,7 @@ export class RenderFormat {
    *  not answer and every collection list hardcoded the html
    *  default_item_view :bar. The search card_list consumes it (the
    *  `Latest news item|item:titled` nest renders titled items) and the
-   *  slot JSON carries it (live blog receipt: "items":{"view":"titled"}
+   *  slot JSON carries it (live blog recorded result: "items":{"view":"titled"}
    *  after home_view — audit A-25). */
   private nestOptionEntries(options: NestOptions): Record<string, unknown> {
     const out: Record<string, unknown> = {};
@@ -2435,7 +2435,7 @@ export class RenderFormat {
    *  card-mod-format set/all/html.rb:17-19 `def default_nest_view;
    *  Cardio.config.default_html_view; end`. The pinned oracle's two capture
    *  environments carry DIFFERENT config values, and both are byte targets:
-   *   - lane V (bare `card.format.render(view)`, the old-capture dev boot):
+   *   - surface V (bare `card.format.render(view)`, the old-capture dev boot):
    *     no override -> the railtie default :titled
    *     (card-mod-format lib/card/mod/format.rb:2). Probe evidence:
    *     Cardio.config.default_html_view == :titled at boot; implicit nests
@@ -2444,12 +2444,12 @@ export class RenderFormat {
    *     card (22769, content "content") is DEAD in 0.20.0 — no code reads
    *     it; the earlier "live wire agrees content" justification conflated
    *     the production deck's CONFIG with a deck rule.
-   *   - lane P (the page render): the capture applies the production config
+   *   - surface P (the page render): the capture applies the production config
    *     `Cardio.config.default_html_view = :content`
-   *     (capture-dual-lane-page-and-view.rb:369 inside the config block
+   *     (capture-dual-$1page-and-view.rb:369 inside the config block
    *     whose assignment is :344, the capture's production-equivalent
    *     setting #5) — implicit nests render content-view.
-   *  The engine models the process config per render lane:
+   *  The engine models the process config per render surface:
    *  engine.defaultHtmlViewConfig() returns "content" while a page render
    *  is active (render.ts pageConfigActive) and "titled" otherwise. The
    *  202 explicit `view:` nests (skin +Image -> `nest image_card,
@@ -2472,7 +2472,7 @@ export class RenderFormat {
    *  nest resolves to :link (base.rb:35, perms :none -> the wanted-card
    *  anchor even on an unknown card), not :content (whose :unknown
    *  createable gate renders "" — the graded -216 defect,
-   *  dual-lane-page:message-000004:page). */
+   *  dual-$1page:message-000004:page). */
   private implicitNestView(): string {
     const items = this.voo?.opts["items"];
     if (items !== null && typeof items === "object") {
@@ -2491,8 +2491,8 @@ export class RenderFormat {
    * `"#{protocol}#{request&.host_with_port}"`, which is "" for a
    * requestless runner. The value is the DECK'S CONFIGURATION (review
    * round 4, finding 9): the capture script itself assigns deck_origin
-   * for the page lane (capture-dual-lane-page-and-view.rb:391-400,
-   * restored at :400; the view-function lane at :277-287 runs outside
+   * for the page surface (capture-dual-$1page-and-view.rb:391-400,
+   * restored at :400; the view-function surface at :277-287 runs outside
    * that block), and the port installs it the same way — through
    * setDeckEnvironment — never as an engine constant. See
    * render/deck-origin.ts for the oracle census.
@@ -2508,8 +2508,8 @@ export class RenderFormat {
    * (card_path, location.rb:6-16, prefixes the site root when `rel` is
    * not already rooted). Modeling BOTH halves here is what makes the
    * surface seam load-bearing: the same helper yields `/User` on the
-   * view-function lane and `https://example.com/User` on the served
-   * page, which is exactly what the frozen record pins on both lanes.
+   * view-function surface and `https://example.com/User` on the served
+   * page, which is exactly what the frozen record pins on both surfaces.
    */
   cardUrl(rel: string): string {
     if (/^https?:/.test(rel)) return rel;
@@ -2596,7 +2596,7 @@ export class RenderFormat {
    *  that chunk-level shape over the split pieces: an unterminated
    *  `[[Target|` opener is spanned forward to the first `]]` in a later
    *  text piece, the pieces between render as the label, and the whole
-   *  goes through renderLinkChunk. Live receipt:
+   *  goes through renderLinkChunk. live capture:
    *  `[[/wagn/Latest_news_items.rss|{{feed icon|...}}]]` ->
    *  `<a class="internal-link" href="/wagn/Latest_news_items.rss">` +
    *  expanded feed-icon slot + `</a>` (live-wire Latest_News/blog). */
@@ -2645,7 +2645,7 @@ export class RenderFormat {
     // chunks); :nest_only = [Nest] (nests only).
     // The bootstrap: core page's CodeRay bytes pin the css/scss half: the
     // oracle leaves every bare URL inside the highlighted output verbatim
-    // (0 bare-URL autolinks in the entire an earlier pass page-lane oracle).
+    // (0 bare-URL autolinks in the entire an earlier pass page-surface oracle).
     // MERGE composition: the compile-engines chunk-list dispatch
     // kept (code-file chunk lists never run the URI autolink pass), with
     // bar-slots V4's context arg threaded through both expansion arms so
@@ -2681,7 +2681,7 @@ export class RenderFormat {
           // these bytes WITH the backslash (render/kramdown.ts
           // kramdownToStashedHtml) exactly so this pass consumes it.
           // Corpus oracle: *structure+*right+*guide content
-          // (expected-v2/view-lane shard-000032 row 38251) renders
+          // (expected-v2/view-surface shard-000032 row 38251) renders
           // "icon ({{}})" - the braces survive, no blank-reference denial.
           out = out.slice(0, -1);
           out += piece.text;
@@ -2837,7 +2837,7 @@ export class RenderFormat {
    * target=_blank), href re-rooted for the internal form (clean_resource
    * strips the leading slash; contextualize_path re-roots it). The label
    * is the ALREADY-RENDERED bytes (link.rb:47 render_obj ran first), so a
-   * nest label lands inside the anchor expanded. Live receipts:
+   * nest label lands inside the anchor expanded. live capture:
    * `<a class="internal-link" href="/wagn/Latest_news_items.rss">…` (feed
    * icon wrap) and `<a class="internal-link" href="/account/signup">sign-in
    * account</a>` (live Casey bio; identical bytes in the recapture
@@ -2999,7 +2999,7 @@ export class RenderFormat {
    * i.e. the nearest format flagged main (process_layout.rb:19 `main!` on
    * the page's root format, or nest.rb:46 `sub.main! if view_opts[:main]`),
    * else the walk up the parent chain, else NIL. The nil arm is the frozen
-   * record's view-lane CAPTURE_ERROR for 470
+   * record's view-surface CAPTURE_ERROR for 470
    * (`NoMethodError: undefined method 'rendered' for nil`): a bare
    * `card.format.render(:content)` has no main format, so `main.rendered`
    * in main.rb:12 raises before any byte is produced.
@@ -3036,7 +3036,7 @@ export class RenderFormat {
     const main = this.main;
     if (main === undefined) {
       // main.rb:12 `main.rendered` on nil — the frozen record's own
-      // behaviour for this shape (view-lane shard-000000 entry 470:
+      // behaviour for this shape (view-surface shard-000000 entry 470:
       // CAPTURE_ERROR NoMethodError). The port raises rather than inventing
       // bytes; nestQuietErrors turns it into the quiet span upstream.
       throw mainNestWithoutMainError();
@@ -3108,7 +3108,7 @@ export class RenderFormat {
    * (chunk/reference.rb#referee_name: the authored mark absolutized against
    * the referencing card), so both corpus spellings land on the head card's
    * key: `{{:head|core}}` (card 34754 `*all+*head`) and `{{*head|core}}`
-   * (card 34758 `PCTS+*self+*head`, oracle view-lane
+   * (card 34758 `PCTS+*self+*head`, oracle view-surface
    * recapture-raw-shard-000029 views.content — pre 2441 B / 2447 B against
    * the port's pre 0 B).
    *
@@ -3187,7 +3187,7 @@ export class RenderFormat {
     // layout body never autolinks (the svg-comment URL
     // `...Sketch 46.2 (44496) - http://www.bohemiancoding.com/sketch`
     // inside every corpus layout stays plain in the oracle; the former
-    // default-list URI pass anchored it, +89 bytes on 14 page-lane
+    // default-list URI pass anchored it, +89 bytes on 14 page-surface
     // entries, probe job-1790846792533).
     //
     // D10 (fixed here): the port had a SECOND, forked walk here -
@@ -3717,7 +3717,7 @@ export interface RenderEngineLike {
    *  seat + inner-read a per-nest pair, matching Ruby's fresh phantom per
    *  Nest::Fetch#new_card. */
   seatPhantomReadVerdict?(key: string, denied: boolean): void;
-  /** p21 CQL item-typing lane: the phantom-item VIRTUAL resolution
+  /** p21 CQL the CQL item typing: the phantom-item VIRTUAL resolution
    *  (states.rb:65 known? = real? || virtual?; states.rb:44-50 virtual?
    *  = compound && structure.present?) for one UNKNOWN pointer/list item
    *  whose TYPE the seat knows (the host-resolved item type). Non-
@@ -3733,9 +3733,9 @@ export interface RenderEngineLike {
     typeId: number | undefined,
   ): { ruleKey: string; templateContent: string; typeId?: number } | undefined;
   /** The effective `Cardio.config.default_html_view` (html.rb:17-19
-   *  default_nest_view) for the CURRENT render lane: "content" while a
+   *  default_nest_view) for the CURRENT render surface: "content" while a
    *  page render is active (the production config the page capture
-   *  applies, capture-dual-lane-page-and-view.rb:344), "titled" otherwise
+   *  applies, capture-dual-$1page-and-view.rb:344), "titled" otherwise
    *  (the railtie default, mod/format.rb:2 — the bare-render capture
    *  boot). See RenderFormat.defaultNestView for the full mechanism.
    *  Optional: engines without it take the railtie "titled" fallback. */
@@ -3743,8 +3743,8 @@ export interface RenderEngineLike {
   /** The effective `Card::Env.origin` (card-1.110.0 lib/card/env/
    *  serializable.rb:20-22 `Cardio.config.deck_origin ||
    *  "#{protocol}#{request&.host_with_port}"`): the DECK'S CONFIGURED
-   *  origin (review round 4, finding 9 — the capture assigns it per lane
-   *  at capture-dual-lane-page-and-view.rb:391-400, and the port reads it
+   *  origin (review round 4, finding 9 — the capture assigns it per surface
+   *  at capture-dual-$1page-and-view.rb:391-400, and the port reads it
    *  from the same kind of configuration through setDeckEnvironment), or
    *  "" when nothing is configured (railtie default nil + a requestless
    *  runner). `card_url` interpolates it, so this is what decides
@@ -3957,11 +3957,11 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
   // card-mod-edit set/all/formgroup.rb:13 `view :read_formgroup, template:
   // :haml, unknown: true, wrap: :slot` — the p20-email-views read_form
   // field nests target virtual field cards (welcome email+*to et al.);
-  // the loader-less page lane reads this compiled row where the mod
+  // the loader-less page surface reads this compiled row where the mod
   // registry would answer (the flat readFormgroupBody in views.ts).
   { view: "read_formgroup", config: true },
-  // The board/edit flat seam's unknown:true rows (the 422 lane) — the
-  // flat view fns live in HTML_VIEWS, so the loader-less lane needs the
+  // The board/edit flat seam's unknown:true rows (the 422 surface) — the
+  // flat view fns live in HTML_VIEWS, so the loader-less path needs the
   // same `setting :unknown` answers the manifest's per-module configs
   // give the chain walk:
   // - editing.rb:3 `view :board, perms: :update, unknown: true` and
@@ -4001,7 +4001,7 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
   { view: "content_formgroup", config: true },
   { view: "input", config: true },
   // card-mod-help set/all/help.rb:14-16 `view :help_text, unknown: true,
-  // cache: :never` — an ALL-SET declaration, so the loader-less lane needs
+  // cache: :never` — an ALL-SET declaration, so the loader-less path needs
   // the same `setting :unknown` answer the manifest's config gives the
   // chain walk: a nest targeting an UNKNOWN card still dispatches
   // :help_text (alter_unknown answers nil; the view has no perms
@@ -4131,7 +4131,7 @@ function normalizeVisibilityList(value: unknown): string[] {
 
 /** card-mod-rules set/type/set/setting_categories.rb:6 COMMON_SETTINGS.
  *  EXPORTED for the flat bar_setting_list body (views.ts — the graded
- *  page-lane harness binds no loader, so the Set::Type::Set view lives on
+ *  page-surface harness binds no loader, so the Set::Type::Set view lives on
  *  the flat record; see barSettingListBody). */
 export const COMMON_SETTINGS: ReadonlySet<string> = new Set([
   "create", "read", "update", "delete", "structure", "default", "guide",
@@ -4218,7 +4218,7 @@ const RESTRICTED_TO_TYPE: ReadonlyMap<string, ReadonlySet<string>> = new Map([
  *  are a separate divergence; apply.ts rewrites the bare form, which is the
  *  oracle shape.)
  *
- *  ORACLE CENSUS (all 96 expected-v2 shards, 48 page-lane + 48 view-lane,
+ *  ORACLE CENSUS (all 96 expected-v2 shards, 48 page-surface + 48 view-surface,
  *  sha-verified copies): 145,260 `card-title` spans, 61,309 of them
  *  carrying a `+` in the title attribute — for 145,258 of the 145,260 the
  *  inner content is byte-equal to this function's output; the 2 exceptions
@@ -4274,7 +4274,7 @@ const WIKI_LINK_REGEXP =
 // and re-attaches AFTER the anchor; a remaining trailing dot strips.
 // `(?:&nbsp;)+` runs vanish from the match. Observed-form guard
 // (corpus-wide): the expected bytes carry ZERO autolinks inside an
-// existing HTML tag (0 `href="...<a` manglings across all 48 view-lane
+// existing HTML tag (0 `href="...<a` manglings across all 48 view-surface
 // shards), so the scanner skips matches between < and >.
 //
 // TRAILING WORD BOUNDARY (host + email classes; the
@@ -4314,7 +4314,7 @@ const URI_EMAIL_REGEXP = /[a-zA-Z\d](?:[-a-zA-Z\d.]*[a-zA-Z\d])?@\b/g;
 // so Ruby autolinks it (the nested-anchor oracle bytes: Sample Collective,
 // USABP's `(<a href="http://example.net/"><a target=...>`), while a URI
 // inside a quoted attribute is preceded by `="` - ends with `"` - and is
-// rejected (73 quoted src="..." regions across the view-lane oracle, ZERO
+// rejected (73 quoted src="..." regions across the view-surface oracle, ZERO
 // anchored). The unanchored port regex rejected BOTH classes; the $
 // restores Ruby's split.
 const URI_REJECTED_PREFIX = /(?:!|":|"|'|]\()$/;
@@ -4448,7 +4448,7 @@ function findUriMatch(text: string, from: number): UriMatch | undefined {
     // pages per actor: the Archetypal referer list rendered a different
     // result SET with the gate present and the capture's own set with it
     // disabled, isolate bisect probes probe-iso2/iso4), through an
-    // interaction this lane could not trace inside its box. The item is
+    // interaction this pass could not trace inside its box. The item is
     // pinned deliberate: the engine anchors the bracketed Outlook mailto
     // where the oracle keeps it plain, exactly the pre-gate bytes.
     // links.rb:65-72 resource_type runs on the RESOURCE (@link_text):
@@ -4685,17 +4685,17 @@ function linkNestCardName(
  *  working list is populated only by `add_name_context`, which the :titled
  *  view calls around its own header (context_names.rb:44-47 `naming { yield }
  *  add_name_context name`; the port's RenderFormat#addNameContext). A bare
- *  view-lane :content / :open render never calls it, so the list is empty,
+ *  view-surface :content / :open render never calls it, so the list is empty,
  *  `name_from` returns `self` (contextual.rb:46-51: `from.compact.present?`
  *  false ⇒ `return self`) and the title keeps its full name.
  *
  *  FROZEN ORACLE (the two halves of D7, entry 10488 `June Jessup+Menu`,
  *  `[[june jessup+musings]]` in its RichText body):
- *    page lane  `<span class="card-title" title="+musings">…`
- *    view lane  `<span class="card-title" title="june jessup+musings">…`
+ *    page surface  `<span class="card-title" title="+musings">…`
+ *    view surface  `<span class="card-title" title="june jessup+musings">…`
  *  for BOTH views.content and views.open. The round-trip guard in
  *  `name_from` (contextual.rb:50 `key == compressed.absolute_name(from).key`)
- *  is why the view-lane half is not "june jessup+musings" compressed
+ *  is why the view-surface half is not "june jessup+musings" compressed
  *  either: it never gets a context to compress against, and when it does get
  *  one, `from` refuses any compression that would not absolutize back.
  *
@@ -4805,7 +4805,7 @@ export function wantedHrefQuerySuffix(hrefSource: string): string {
  *  `titleContextNames` is that card's FORMAT's working context_names list,
  *  which is the input title_in_context relativizes against (see
  *  linkTitleInContext below for why the list is per-nest and why it is
- *  empty on the bare view lane). Both are optional so the nestless
+ *  empty on the bare view surface). Both are optional so the nestless
  *  to_s callers keep their current bytes. */
 export function expandWikiLinks(
   text: string,
@@ -4906,9 +4906,9 @@ export function expandWikiLinks(
     // card's stored name when the mark hit one (subformat.rb:57-61
     // subformat_card -> Card.fetch), and its context_names are the parent
     // format's working list filtered to that card's part keys
-    // (context_names.rb:20-29). Oracle entry 10488 page lane: the authored
+    // (context_names.rb:20-29). Oracle entry 10488 page surface: the authored
     // `[[june jessup+musings]]` under the page card `June Jessup+Menu`
-    // renders `title="+musings"`; the same link on the view lane keeps
+    // renders `title="+musings"`; the same link on the view surface keeps
     // `title="june jessup+musings"` because nothing called add_name_context
     // there. Entry 21923 `Task+discussion` is the second corpus instance
     // (`[[Task+*type+*structure]]` -> `+*type+*structure`).
@@ -4929,10 +4929,10 @@ export function expandWikiLinks(
     // title/display "contributing to the administration..." over the
     // underscored href. The INNER content is the joint-split title
     // (wrappedTitleInner): a junction link's anchor text carries
-    // `<span>+</span>` per joint — oracle entry 10488 view-lane `content`
+    // `<span>+</span>` per joint — oracle entry 10488 view-surface `content`
     // pin: `<a class="known-card" href="/June_Jessup+musings"><span
     // class="card-title" title="june jessup+musings">steven
-    // goldin<span>+</span>musings</span></a>` (D4), and the page-lane
+    // goldin<span>+</span>musings</span></a>`, and the page-surface
     // `+musings` half splits the SAME way
     // (`title="+musings"><span>+</span>musings`): wrapped_title splits
     // whatever title_in_context produced, so the split follows the
@@ -4969,7 +4969,7 @@ export function expandWikiLinks(
  *  objectify strips it), and the classic-layout oracle pins exactly that
  *  byte shape: `[[/ | {{*logo}}]]` in the layout source renders
  *  `<a class="internal-link" href="/">{{*logo}}</a>` INSIDE the CodeRay
- *  output (view-lane shard-000000 entry 314, content view). Returns the
+ *  output (view-surface shard-000000 entry 314, content view). Returns the
  *  piece's prefix (still plain-text) and the target for renderLinkChunk
  *  (which trims the target - objectify strips it too). */
 function matchLinkWrappedNestOpener(text: string): { prefix: string; target: string } | undefined {
@@ -4990,11 +4990,11 @@ function matchLinkWrappedNestOpener(text: string): { prefix: string; target: str
  *  RAW string BEFORE any nest chunking, and its target charset `[^\]]`
  *  admits braces — so the target is the RAW `"/new/{{_self|linkname}}"` and
  *  the oracle's href carries the braces verbatim
- *  (`expected-v2/view-lane recapture-raw-shard-000000.jsonl`,
+ *  (`expected-v2/view-surface recapture-raw-shard-000000.jsonl`,
  *  `Cardtype+*type+*default`, content + open: `<a class="internal-link"
  *  href="/new/{{_self|linkname}}">add a {{_self|name}} card</a>`). The
  *  un-spanned form leaked the whole `[[…]]` wikitext; that is the -32-byte
- *  view-lane byte-diff on this card in both views.
+ *  view-surface byte-diff on this card in both views.
  *
  *  SCOPE: the head charset excludes `{`/`}` as well as the bracket/pipe/newline
  *  set, so only a PLAIN target head opens the span. A `[[{{nest}}]]` form

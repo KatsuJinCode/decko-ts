@@ -1,7 +1,7 @@
 // The render-time ACT-SEARCH seam: the narrow, read-only data surface the
 // card-mod-history `updated_by` view reads.
 //
-// WHY THIS EXISTS (the blocker the box_bottom / mod-a receipt names): Ruby's
+// WHY THIS EXISTS (the blocker the box_bottom / mod-a recorded result names): Ruby's
 // updated_by body is `Card.search(updater_of: { id: card.id })`
 // (card-mod-history-0.20.0 set/all/history_board.rb:10-16) - a CQL search
 // that ties the cards table through card_acts and card_actions

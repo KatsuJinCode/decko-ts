@@ -436,7 +436,7 @@ export interface ModEngineHost {
    *  when the card is simple (or its lexicon entry exists); junction cards
    *  reached by id compose names from their side records. dbContent rides
    *  the record (cards.db_content) - the mod rule warms read it (the
-   *  input-remainders lane's *input type warm turns each rule's content
+   *  the input remainders's *input type warm turns each rule's content
    *  into the with_card mark fetch). */
   fetchById(id: number): Promise<
     | {
@@ -453,7 +453,7 @@ export interface ModEngineHost {
    *  render path (fetchRenderCard/isDenied/set keys) sees it. */
   cacheFetchedRecord(record: unknown): Promise<void>;
 
-  /** db-roundtrip-elimination lane (W1): compose + cache records from the
+  /** db round-trip elimination: compose + cache records from the
    *  warms' OWN `SELECT c.*` rows instead of walking each row back through
    *  fetchById (the per-row point-query storm: one idToLex + one id row per
    *  uncached row, ~170 hops per cold engine on the trial deck). Same

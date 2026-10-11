@@ -77,7 +77,7 @@ import type {
 } from "../mod-manifest.js";
 import { superView } from "../mod-view-helpers.js";
 
-/** The set-module event declarations (the mod-events lane, 2026-10-08):
+/** The set-module event declarations (the set-module event, 2026-10-08):
  *  stub-bodied, with the per-event reason on the declaration. Same shape
  *  as core-mod.ts's local helper. */
 function event(
@@ -365,7 +365,7 @@ const cardModApiKey: DeckoModManifest = {
     {
       // card-mod-api_key-0.20.0/set/right/api_key.rb
       //
-      // Events (mod-events lane 2026-10-08) — two STUBS with a shared
+      // Events (set-module event 2026-10-08) — two STUBS with a shared
       // named reason: the port has no API-key AUTH runtime
       // (Auth.find_account_by_api_key, api_key.rb:14-18 api_key_taken?,
       // and the authenticate_api_key ladder :34-45 are account-lookup

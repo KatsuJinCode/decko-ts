@@ -55,7 +55,7 @@
 //   include_set seam and a FLAT registration would hijack every card's
 //   :core; see the note on the test-context seam below; the flat record
 //   carries the same three arms through the emailScopedCoreView
-//   dispatcher for the loader-less graded lane). Its format
+//   dispatcher for the loader-less graded surface). Its format
 //   :email_html view :core (process_content render_raw) is NOT ported -
 //   the email_html format's own :core surface has no captured reader.
 // - set/right/bcc.rb, cc.rb, from.rb,    include_set + assign_type only;
@@ -228,7 +228,7 @@ const emailPageView: ViewFn = (ctx: ViewContext) => {
 /** card-mod-email-0.20.0 set/right/html_message.rb:8-10 view :content —
  *  the BODY is homed on the flat record (views.ts contentWithLinkBody, the
  *  same loader-less seam as the three :core bodies below: the graded page
- *  lane binds no loader, and the read_form field slots dispatch :content
+ *  surface binds no loader, and the read_form field slots dispatch :content
  *  on the +*html message field); this registration delegates single-source.
  *  It used to be exported but held back, because registering it made it
  *  mask the shared :content deck-wide; that masking was a dispatch defect
@@ -242,10 +242,10 @@ const contentWithLinkView: ViewFn = contentWithLinkBody;
 
 // ---------------------------------------------------------------------------
 // the Abstract::TestContext include_set seam + the message/template cores
-// (p20-email-views lane; the roleviews receipt's leftovers 1-3)
+// (the email views port; the roleviews recorded result's leftovers 1-3)
 //
 // The three html :core BODIES live in render/views.ts (htmlMessageCoreBody,
-// textMessageCoreBody, emailTemplateCoreBody) — the graded page-lane
+// textMessageCoreBody, emailTemplateCoreBody) — the graded page-surface
 // harness binds NO mod loader, so the bodies must sit on the flat record
 // the loader-less dispatch reads; the flat `core` entry there is a scope
 // dispatcher (emailScopedCoreView) whose guards reproduce the set-module
@@ -270,7 +270,7 @@ const htmlMessageCoreView: ViewFn = htmlMessageCoreBody;
  *  right/text_message and right/html_message) whose :core the abstract's
  *  contextualizing wraps; the registration was missing from this manifest
  *  while the flat record already carried the arm, so a loader-bound
- *  engine and the loader-less graded lane disagreed on the subject
+ *  engine and the loader-less graded surface disagreed on the subject
  *  field's core dispatch. */
 const subjectCoreView: ViewFn = subjectCoreBody;
 

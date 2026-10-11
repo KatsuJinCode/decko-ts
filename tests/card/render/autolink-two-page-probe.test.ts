@@ -1,7 +1,7 @@
-// lane-p20-autolink probe: render its two pages (11251 ANGELS,
+// Autolink two-page probe: render its two pages (11251 ANGELS,
 // 18560 Chloe Pallister) over the raw corpus and dump the engine state
 // the phantom-item dispatch and the autolink depend on. PROBE ONLY —
-// not a gate; skipped unless LANE_P20_AUTOLINK_PROBE=1.
+// not a gate; skipped unless AUTOLINK_TWO_PAGE_PROBE=1.
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -23,9 +23,9 @@ const PAGE_LANE_DIR = path.join(
   "expected-v2",
   "page-lane",
 );
-const OUT_DIR = path.join(REPO_ROOT, "tmp", "lane-p20-autolink-probe");
+const OUT_DIR = path.join(REPO_ROOT, "tmp", "autolink-two-page-probe");
 
-const REQUESTED = process.env.LANE_P20_AUTOLINK_PROBE === "1";
+const REQUESTED = process.env.AUTOLINK_TWO_PAGE_PROBE === "1";
 const CORPUS_PRESENT = existsSync(RAW_CORPUS_DB);
 const SHARDS_PRESENT = existsSync(PAGE_LANE_DIR);
 
@@ -49,13 +49,13 @@ function loadOracleEntry(shard: string, id: number): { page_html?: string; layou
   throw new Error(`no page-lane entry for id ${id} in ${shard}`);
 }
 
-describe("lane-p20-autolink two-page probe", () => {
+describe("autolink two-page probe", () => {
   it(
-    "renders the two lane pages and dumps engine verdict state",
+    "renders the two probe pages and dumps engine verdict state",
     { timeout: 3_600_000 },
     async (ctx) => {
       if (!REQUESTED) {
-        skipLoud(ctx, "tests/card/render/lane-p20-autolink-two-page-probe.test.ts", "REQUESTED");
+        skipLoud(ctx, "tests/card/render/autolink-two-page-probe.test.ts", "REQUESTED");
         return;
       }
       expect(CORPUS_PRESENT, `raw corpus missing: ${RAW_CORPUS_DB}`).toBe(true);

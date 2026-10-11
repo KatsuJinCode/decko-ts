@@ -36,8 +36,8 @@
 //   bytes these cards need at runtime.
 // - set/right/asset_output.rb:24-29 view :not_found + set/abstract/
 //   asset_outputter.rb:61-63 view :asset_output_url - PORTED in the
-//   cwwrite-seam lane (2026-09-28, oracle-pinned). The blockers named
-//   above moved: the files lane (80eb1b4) landed the attachment write
+//   the Cloudflare write seam (2026-09-28, oracle-pinned). The blockers named
+//   above moved: the attachment write (80eb1b4) landed the attachment write
 //   path (LocalAttachmentStore + engine attachment), so the url
 //   construction and the live-write seam are real now. See the
 //   cwwrite-seam section below the manifest.
@@ -63,7 +63,7 @@ import type {
 } from "../mod-manifest.js";
 import { engineOwnedEvent } from "../mod-manifest.js";
 
-/** The set-module event declarations (the mod-events lane, 2026-10-08):
+/** The set-module event declarations (the set-module event, 2026-10-08):
  *  stub-bodied unless the engine owns the behavior (then engineOwnedEvent).
  *  Same shape as core-mod.ts's local helper; the per-event owner or stub
  *  reason rides the declaration's comment. */
@@ -289,7 +289,7 @@ const cardModAssets: DeckoModManifest = {
       // bare engine :not_found. NOT ported from the same file:
       // followable?/ok_to_read?/history? (the read-permission and history
       // surfaces are engine-level).
-      // Event (mod-events lane 2026-10-08) — STUB, named remainder:
+      // Event (set-module event 2026-10-08) — STUB, named remainder:
       // asset_output.rb:13-17 `event :remove_codename, :prepare_to_validate,
       // on: :delete, when: :codename?` loads the attachment then strips the
       // codename so the to-be-deleted card releases it; the engine's delete
@@ -317,7 +317,7 @@ const cardModAssets: DeckoModManifest = {
       // Bookkeeping entry for the abstract file itself (basket parity, the
       // pattern other mods' abstract surfaces use).
       //
-      // Events (mod-events lane 2026-10-08) — ENGINE-OWNED: the write
+      // Events (set-module event 2026-10-08) — ENGINE-OWNED: the write
       // path's asset-event runner (src/card/actions/style-asset-events.ts)
       // executes both at their stages: update_asset_output_file via
       // attachments/asset-output-write.ts storeAssetOutput (the lock +

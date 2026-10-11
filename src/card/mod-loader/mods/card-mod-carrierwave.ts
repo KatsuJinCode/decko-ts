@@ -29,7 +29,7 @@
 // code (polymorphicSourceView / polymorphicCoreView), because the file and
 // image sets share one body each in this port.
 //
-// EVENTS (mod-events lane 2026-10-08): all Ruby event declarations are in
+// EVENTS (set-module event 2026-10-08): all Ruby event declarations are in
 // the manifest — the five abstract/attachment save events, the six
 // upload-cache lifecycle events, the two storage-type events, the
 // cloud/coded/local events, and the ten card_mount dynamic events
@@ -108,7 +108,7 @@ import type {
 import { engineOwnedEvent } from "../mod-manifest.js";
 import { numberToHumanSize } from "./rails-number-to-human-size.js";
 
-/** The set-module event declarations (the mod-events lane, 2026-10-08):
+/** The set-module event declarations (the set-module event, 2026-10-08):
  *  stub-bodied unless the engine owns the behavior (then engineOwnedEvent).
  *  Same shape as core-mod.ts's local helper; the per-event owner or stub
  *  reason rides the declaration's comment. */
@@ -229,7 +229,7 @@ function imageSource(ctx: ViewContext): string {
     // /files/<id>/<file>-<variant>.<ext> URL the live deck serves, with
     // the deck's CDN host (engine imageCdnHost) when configured and the
     // determine_image_size variant appended (full→original, absent→
-    // medium — set/type/image.rb:44-57; live receipts in views.ts
+    // medium — set/type/image.rb:44-57; live capture in views.ts
     // cloudImageUrl). The old verbatim-bucket return leaked a raw
     // "(my_bucket)/..." src live never emits (and left the raw-bucket
     // regression the unexplained-defects trace flagged once the engine
@@ -517,7 +517,7 @@ function cachedUploadCardName(ctx: ViewContext): string {
  *  attachment_size (the stored bytes; a missing size reads as the
  *  zero-byte degenerate "0 Bytes"). The hidden input's value is the
  *  selected action id — SelectedAction#last_content_action_id parsed from
- *  the identifier (set/type/file.rb:8-13, the files lane's
+ *  the identifier (set/type/file.rb:8-13, the file mod's
  *  lastContentActionIdFromIdentifier). */
 const filePreviewEditorView: ViewFn = (ctx) => {
   const card = ctx.fmt.card;
@@ -581,7 +581,7 @@ const polymorphicSourceView: ViewFn = (ctx) => {
  *  card reaching this view must answer the base core, exactly as it did
  *  before the registration existed. Routing everything non-image to the
  *  file anchor swallowed every RichText/PlainText/... card's content once
- *  the mod deck was bound at a serving surface (the edit-forms lane's
+ *  the mod deck was bound at a serving surface (the edit forms's
  *  session2-gap-8 wiring exposed it: the XHR save response's titled slot
  *  rendered title-only because the card body's :core answered ""). */
 const BASE_CORE: ViewFn | undefined = HTML_VIEWS["core"];
@@ -618,7 +618,7 @@ const cardModCarrierwave: DeckoModManifest = {
     // (:119-125) + :preview_editor (:127-129, unknown: true, cache:
     // :never). Oracle-pinned bytes; the editor context rides render opts.
     //
-    // Events (mod-events lane 2026-10-08): the five card_mount dynamic
+    // Events (set-module event 2026-10-08): the five card_mount dynamic
     // events for the :file column (lib/carrier_wave/card_mount.rb:32-53 —
     // Abstract::Attachment's included-hook extends CarrierWave::CardMount
     // onto Type::File, attachment.rb:11-13, and the mount defines these on
@@ -683,7 +683,7 @@ const cardModCarrierwave: DeckoModManifest = {
     // type/file: registered for bookkeeping, the polymorphic views
     // dispatch on typeCode.
     //
-    // Events (mod-events lane 2026-10-08): the five card_mount dynamic
+    // Events (set-module event 2026-10-08): the five card_mount dynamic
     // events for the :image column (card_mount.rb:32-53; see the type/file
     // block for the per-event disposition — identical bodies, one column
     // apart).
@@ -818,7 +818,7 @@ const cardModCarrierwave: DeckoModManifest = {
     },
 
     // ------------------------------------------------------------------
-    // The abstract/attachment set files (mod-events lane 2026-10-08).
+    // The abstract/attachment set files (set-module event 2026-10-08).
     // The events' BEHAVIOR lives in the engine's attachment save path
     // (src/card/actions/card-action-engine.ts — the E4.4.a runtime, whose
     // per-step comments cite these very events) and the local-only

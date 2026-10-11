@@ -1,5 +1,5 @@
 // The ImageCardUploader port — the image rendition/version machinery the
-// attachment save path needs (gherkin-capabilities lane; the capability the
+// attachment save path needs (the acceptance-capability port; the capability the
 // attach.feature "Uploading and changing an image" scenario pins).
 //
 // Ruby sources (card-mod-carrierwave-0.20.0 unless noted):

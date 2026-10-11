@@ -201,7 +201,7 @@
 //
 //         DECKO_WRITE_PATH=1 DECKO_FIRST_RUN=1
 //
-//   What the profile does NOT do (UPDATED, R-3b lane — this note's original
+//   What the profile does NOT do (UPDATED, the account scope pass — this note's original
 //   text read "it does not seed an account system … the engine has no
 //   mod-seeding capability to create them", which is no longer true): the
 //   engine now HAS the boot-seed capability — src/card/auth/boot-seed.ts

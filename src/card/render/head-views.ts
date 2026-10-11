@@ -204,7 +204,7 @@ export function stylesheetTagsBytes(read: HeadReadSet): string {
 /** The deployment's compiled-CSS revision digits
  *  (deployment-follow-live-config.ts mainStylesheetRevisionDigits): the
  *  live deployment recompiled the deck stylesheet and serves the new
- *  attachment revision (/files/45514/1790384218.css, byte receipt vs the
+ *  attachment revision (/files/45514/1790384218.css, byte-level capture vs the
  *  SassC compile) where the corpus pins the capture-era digits
  *  (1786554352). Rewrites ONLY the 10-digit revision component of a
  *  main-stylesheet attachment URL; UNSET = identity. Exported for the
@@ -264,7 +264,7 @@ export const HEAD_VIEWS: readonly string[] = [
  *  "(my_bucket)/103/3649.JPG" serves ".../3649-small.jpg" and the Michael
  *  Christensen `(my_bucket)/14547/61887.abr.1.doc` serves "/14547/1.doc".
  *  The stored source keeps its upload case; only the SERVED URL normalizes
- *  (the attachment-filename-case class receipt; views.ts cloudImageUrl is
+ *  (the attachment-filename-case class recorded result; views.ts cloudImageUrl is
  *  the image-side twin of this fix). The derivation lives in
  *  views.ts#derivedCloudAttachmentSource (shared with the :source/:core
  *  file arms), whose default host FOG_CLOUD_URL_HOST + "/files/" IS this

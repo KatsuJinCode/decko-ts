@@ -27,7 +27,7 @@
 //   the defaults meta-gem carries no registrations).
 //
 // core IS composed (no longer absent): `core: coreMod` is MANIFESTS' first
-// entry (lane-admincompose, composed at pass14-int) - core loads at bundle
+// entry (the admin-compose composition, composed at pass14-int) - core loads at bundle
 // index 0 and is the admin surface's registration site (the seed tables'
 // "compiled-in core" equivalence above predates composition and carries no
 // admin surface).
@@ -84,9 +84,9 @@ import cardModTinymceEditor from "./mods/card-mod-tinymce_editor.js";
 
 /** Captured names with no manifest entry in the composed deck (see the
  *  file comment for why each is absent). core is NOT here: it is composed
- *  (MANIFESTS' first entry, lane-admincompose) - pre-composition this list
+ *  (MANIFESTS' first entry, the admin-compose composition) - pre-composition this list
  *  carried "core" while the seed tables only equivalenced it, which the
- *  admin-compose receipt documented as one name too many. */
+ *  admin-compose recorded result documented as one name too many. */
 export const COMPILED_IN_OR_ABSENT_MODS = [
   "bar_and_box",
   "delayed_job",
@@ -174,7 +174,7 @@ export function portedBundleOrder(): string[] {
 }
 
 /** The 31 manifests as ModSources, in the oracle bundle order (core
- *  first - composed, lane-admincompose). */
+ *  first - composed, the admin-compose composition). */
 export function defaultDeckSources(): ModSource[] {
   return portedBundleOrder().map((name) => ({
     manifest: MANIFESTS[name]!,

@@ -66,7 +66,7 @@
 // decko-0.20.0/config/environments/cucumber.rb:27, which DISABLES
 // allow_forgery_protection), and the decko application sets no
 // load_defaults that would arm Rails' default_protect_from_forgery. The
-// receipt is the captured real session (2026-09-28): every token-less form
+// recorded result is the captured real session (2026-09-28): every token-less form
 // post — the sign-in POST, both saves, the anonymous denial — went straight
 // through to the action gates (303/200/403; no csrf meta tags in any
 // captured page). Rails' origin check (valid_request_origin?) lives inside
@@ -155,7 +155,7 @@ export interface WriteRouteRequest {
    *  hardcoded behavior, preserved for every caller that does not derive
    *  the field (engine-level tests, scheme-less hosts). This is card_url's
    *  scheme half (env/serializable.rb:19-21: "scheme+host_with_port").
-   *  (fold-10 union: the scheme-downgrade lane's field the edge-signin-form-fix
+   *  (fold-10 union: the scheme downgrade's field the edge-signin-form-fix
    *  pick consumes — the deploy lineage landed it in b0f8252.) */
   scheme?: "http" | "https";
   /** The URL query string as received ("?a=1&b=2", or "" / absent). Rails
@@ -1276,7 +1276,7 @@ async function dispatchWriteRequest(
       return handleSigninUpdate(ctx, req, json, parsed, visit);
     }
   }
-  // The AUTH-ONLY arm (edge-signin-form-fix lane, 2026-10-03): everything
+  // The AUTH-ONLY arm (the edge signin form fix, 2026-10-03): everything
   // below this line is CARD CREATE/UPDATE/DELETE — the surface a deployment
   // flag may lawfully switch off. Sign-in is not a card write (the :signin
   // event aborts the save — no card/act rows — and only mints an
@@ -1644,7 +1644,7 @@ async function dispatchWriteRequest(
   }
 }
 
-/** The AUTH-ONLY dispatch (edge-signin-form-fix lane, 2026-10-03): the
+/** The AUTH-ONLY dispatch (the edge signin form fix, 2026-10-03): the
  *  login action and NOTHING else. Resolves to handleSigninUpdate for
  *  POST /update/*signin (both the HTML 303 flavor and the .json/ajax
  *  flavor), null for every other method/path — including a card-hash update

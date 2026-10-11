@@ -110,7 +110,7 @@ export function parseOptionsWithLexicon(
 /**
  * The async half of Ruby's CQL name resolution, run before interpretation.
  *
- * Mechanism (search-parity-2 receipt, probe-verified): Ruby answers every
+ * Mechanism (search-parity-2 recorded result, probe-verified): Ruby answers every
  * CQL name value synchronously through Card::Lexicon (lib/card/query/
  * value.rb#id_from_val -> Card::Lexicon.id -> lexicon.rb#lex_to_id), which
  * is cache-first WITH a SQL fallback - so when the Temporary cache's

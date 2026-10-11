@@ -8,7 +8,7 @@
 // duties the engine cannot do for itself, the ones the entry previously
 // skipped and the screenshot lane's person-page parity defect fell out of:
 //
-//   1. THE DECK INFLECTION TABLE. The the reference deck stores card keys
+//   1. THE DECK INFLECTION TABLE. The reference deck stores card keys
 //      under three uncountable words (s / this / anonymous — see
 //      src/card/name/oracle-deck-inflections.ts for the recovered table and
 //      its provenance). Origins serving this deck MUST apply the table

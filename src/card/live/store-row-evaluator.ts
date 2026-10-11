@@ -5,7 +5,7 @@
 // node:sqlite, no SQL parser, no WebAssembly, so it runs on the edge runtime.
 // Ported from the store-evaluator prototype
 // (benchmarks/store-evaluator-prototype/store-row-evaluator.ts, branch
-// lane-store-evaluator-2026-10-06), which checked it against real SQLite on
+// store evaluator 2026 10 06), which checked it against real SQLite on
 // the trial-deck mirror: 1,172 shape checks in order, 8,150 subset checks.
 //
 // Row order is storage's, measured on the mirror deck (1,315 generated

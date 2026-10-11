@@ -1,24 +1,24 @@
-// grade10-bar-name-context-seat-census-shape-pins.test.ts — the seatfix lane's
-// name_context-family pins (grade-10 regression family 1 of 3: 71 entries).
+// bar-name-context-seat-census-shape-pins.test.ts — the the seat fix's
+// name_context-family pins (the regression family regression family 1 of 3: 71 entries).
 //
 // THE REGRESSION. The census-M1 bar-slot root-context seat (3afa8750, gated to
-// pointer/list item bars by the relnames lane 89faf7b3) seats the root card's
+// pointer/list item bars by the the relnames capture 89faf7b3) seats the root card's
 // part-filtered context on EVERY pointer-item bar whose name shares ANY part
 // with the view-lane root. The graded view-lane capture (pre-era1658 vintage,
 // view digest 08c5a287…) pins name_context on only 5 entries' item bars in the
 // whole corpus (12 slots: Guns:open, Morgan+Vacations+Pages:open,
 // democracy+tags:open, Wikirate:open, Work Week:open) and pins ctx-LESS on
 // every other pointer-item bar — 2,535 of them (own census,
-// tmp/seatfix-instruments/). The share-any-part gate over-fires: 71 grade-10
+// tmp/the seat-fix instruments/). The share-any-part gate over-fires: 71 the regression family
 // regression entries fail with `,"name_context":"<ctx>"` inserted exactly
 // where the corpus has `}` (e.g. Casey Morgan+Pages:open offset
 // 18417).
 //
 // THE CORPUS'S OWN DISTRIBUTION IS NOT DERIVABLE FROM KEY GEOMETRY ALONE — it
-// is warm-cache request history (the relnames lane receipted the same class).
+// is warm-cache request history (the the relnames capture recorded the same class).
 // The corpus distribution that IS derivable, measured over every bar-view
 // pointer-item slot in all 48 view shards (2,547 rows,
-// tmp/seatfix-instruments/seatfix-extends-or-rstar-predicate-test.mjs):
+// tmp/the seat-fix instruments/the seat-fix predicate test):
 //   ctx present  ⟺ the item EXTENDS a single-part root (gun ⊂ gun-rifle,
 //                  wikirate ⊂ wikirate-intro_to_the_project,
 //                  work_week ⊂ work_week-anon_exchange_01)
@@ -31,7 +31,7 @@
 //                  *all+*script: no shared prefix)
 //   FP on passing entries 0; FP on the 71 regression entries 0; the only
 //   corpus disagreements are 3 already-failing Vacations bars and 2
-//   already-failing bootstrap-skin bars (named in the seatfix receipt).
+//   already-failing bootstrap-skin bars (named in the seatfix recorded result).
 //
 // These pins hold BOTH directions on the graded corpus bytes: the 71-class
 // entries render ctx-less EQUAL (RED pre-fix: the ctx insertion is the first
@@ -66,7 +66,7 @@ import { RAW_CORPUS_DB, createRawStructureSeededStorage } from "./raw-corpus-see
 import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 /** The 71-class pins: each was graded failing at this tip with the ctx
- *  insertion as the FIRST difference (grade10 5e603ba4-full-fails.json).
+ *  insertion as the FIRST difference (the regression family 5e603ba4-full-fails.json).
  *  Full-parity, not window pins: equal is the grade's own judgment. */
 const CTX_LESS_PINS: Array<[string, string]> = [
   ["Casey Morgan+Pages", "open"],
@@ -91,7 +91,7 @@ afterAll(() => {
   storage?.close();
 });
 
-describeOrSkipLoud(!(process.env.SEATFIX_GRADE10_PINS === "1" && existsSync(CORPUS) && existsSync(VIEW_DIR)), "tests/card/render/grade10-bar-name-context-seat-census-shape-pins.test.ts", "process.env.SEATFIX_GRADE10_PINS === \"1\" && existsSync(CORPUS) && existsSync(VIEW_DIR)")(
+describeOrSkipLoud(!(process.env.BAR_NAME_CONTEXT_SEAT_CENSUS_PINS === "1" && existsSync(CORPUS) && existsSync(VIEW_DIR)), "tests/card/render/bar-name-context-seat-census-shape-pins.test.ts", "process.env.BAR_NAME_CONTEXT_SEAT_CENSUS_PINS === \"1\" && existsSync(CORPUS) && existsSync(VIEW_DIR)")(
   "grade-10 name_context family: the bar-seat seats only the corpus's extending/rule-divergent item bars",
   () => {
     const expected = new Map<string, string>();

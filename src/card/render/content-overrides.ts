@@ -82,7 +82,7 @@ export function toPointerContent(items: readonly string[]): string {
  * "text field"), card-mod-ace_editor set/all/ace_editor.rb:1 ("ace editor"),
  * card-mod-date set/all/calendar.rb:1 ("calendar"), card-mod-tinymce_editor
  * set/all/tinymce_editor.rb:2 ("tinymce editor"). The order below is the
- * captured order (the record expectation in view-lane shard-000007).
+ * captured order (the record expectation in view-surface shard-000007).
  */
 export function listInputOptionsContent(): string {
   return toPointerContent([

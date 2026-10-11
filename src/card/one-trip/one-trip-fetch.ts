@@ -1,4 +1,4 @@
-// BUILD 2 of the one-trip lane: THE ONE-TRIP FETCH.
+// BUILD 2 of the one-trip precompute: THE ONE-TRIP FETCH.
 //
 // ONE statement returns EVERYTHING the page render needs: the recursive
 // phase walks the derived edge graph from the page card to its whole
@@ -38,7 +38,7 @@ export const DERIVED_STORE_ATTACH = "one_trip";
 /** The DECKO_ONE_TRIP_STORE sentinel for the MATERIALIZED shape: the
  *  one_trip_* tables live IN the serving database (no side file exists to
  *  attach). This is the shape the serving DB requires — observed verbatim
- *  2026-10-05 (cold-latency-rig-lane.md MATERIALIZED-STORE §6.1): the
+ *  2026-10-05 (the corresponding port note MATERIALIZED-STORE §6.1): the
  *  serving DB's SQL parser rejects ATTACH for ANY value (SQL_PARSE_ERROR),
  *  so an attached side file cannot exist there; the 98,915 derived rows sit
  *  IN the serving DB, dormant until the code reads them inline. */
@@ -244,7 +244,7 @@ members(id) AS (
 }
 
 /** The page's recorded render plan rides the head as one small JSON value
- *  (renderplan-replay lane): the plan rows live in one_trip_render_plans
+ *  (the render-plan replay): the plan rows live in one_trip_render_plans
  *  (written at store-build time by the recorder), read here in seq order.
  *  A typical page's plan is ~110-300 small entries — tens of KB — two
  *  orders of magnitude under the ~5 MB single-value wall (§6.3). */
@@ -254,7 +254,7 @@ export const ONE_TRIP_RENDER_PLAN_MAX_BYTES = 2_000_000;
  *  rule candidates and search results (small aggregates), the V2
  *  materialization of the page's WHOLE member id list as one small sorted
  *  JSON array (id ascending, so the client's windows are contiguous keyset
- *  ranges), and — the STAMP-AS-COLUMN lane (2026-10-06, spec §c + §a.4) —
+ *  ranges), and — the stamp-as-column change (2026-10-06, spec §c + §a.4) —
  *  two zero-bind GATE columns the render would otherwise pay live trips
  *  for:
  *
@@ -266,7 +266,7 @@ export const ONE_TRIP_RENDER_PLAN_MAX_BYTES = 2_000_000;
  *  (`v.version ... v.id`), NOT the gate statement's text: the freshness
  *  predicates (isFreshnessStampRead — recorder, classifier, router guard)
  *  must keep matching exactly the gate's own statement and nothing else
- *  ("one shape, one predicate", r5 adjudication). This fetch executes on the
+ *  ("one shape, one predicate", review pass 5). This fetch executes on the
  *  router's BASE connection, never through the armed plan.
  *
  *  `permission_gate_json` — read-rules.ts statement 3 (the hasReadRules /
@@ -367,7 +367,7 @@ interface InlineHeadRow {
 
 /** The head statement's gate columns, parsed. The seat's freshness +
  *  permission consumers read these INSTEAD of issuing the stamp read and
- *  the gate-count statement as trips of their own (stamp-as-column lane). */
+ *  the gate-count statement as trips of their own (the stamp-as-column change). */
 export interface InlineHeadGateMeta {
   /** deck_data_version as of this statement's snapshot; undefined only when
    *  the stamp row is missing (the consumer falls back to the loud live
@@ -422,7 +422,7 @@ export function renderPlanFromHeadCell(
  *  one_trip_* tables in this database, no ATTACH) and return the assembled
  *  bundle DOCUMENT TEXT plus the page's recorded render plan (read from the
  *  same head statement — one round trip carries both; renderplan-replay
- *  lane). Byte-equal to the single-row statement's document (pinned on the
+ *  ). Byte-equal to the single-row statement's document (pinned on the
  *  corpus). V2: discovery ONCE (the head materializes the member id list),
  *  then flat keyset slices over that list. V3: the whole seat rides the
  *  MINIMUM wire round trips on the hrana pipeline transport — 1 head query
@@ -453,7 +453,7 @@ export async function fetchPageBundleInlineParts(
     throw new Error(`one-trip inline fetch: no head row for page ${pageName}`);
   }
   const plan = readPlans ? renderPlanFromHeadCell(headRow.plan_json ?? null, pageKey) : undefined;
-  // THE GATE COLUMNS (stamp-as-column lane): parsed here, beside the plan —
+  // THE GATE COLUMNS (the stamp-as-column change): parsed here, beside the plan —
   // one statement carried the payload, the stamp, and the gate count.
   const rawVersion = headRow.deck_data_version;
   const gateMeta: InlineHeadGateMeta = {
@@ -546,7 +546,7 @@ export function inlineBundleFromParts(
 /** Fetch the page's whole working set INLINE. Chunked on the wire (WALL 2),
  *  ATTACH-free (WALL 1); consumes the SAME document shape as the attached
  *  single-row fetch, plus the page's recorded render plan (renderplan-replay
- *  lane — the gate replays it as ONE batch and arms the driver seam). */
+ *  $1 the gate replays it as ONE batch and arms the driver seam). */
 export async function fetchPageBundleInline(
   driver: SQLDatabaseDriver,
   pageName: string,

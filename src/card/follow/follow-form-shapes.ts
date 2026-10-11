@@ -6,7 +6,7 @@
 //                        html: {class: "card-form"[+" slotter"][+" autosave"
 //                        on :update]}, remote: true))
 //   the <form> bytes     card-mod-edit.ts's CAPTURED edit-form opener (the
-//                        edit lane's oracle bytes): action, accept-charset,
+//                        the edit views' oracle bytes): action, accept-charset,
 //                        data-remote, method, the utf8 check + the _method
 //                        patch spoof
 //   hidden_field_tag     actionview-7.2.3.2 form_tag_helper.rb:264 defaults

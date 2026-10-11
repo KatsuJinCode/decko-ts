@@ -1,6 +1,6 @@
 # decko-ts — one-click Cloudflare Workers + D1 deploy
 
-The M2 harness: a [decko-ts](../README.md) engine, a
+The one-click deploy target: a [decko-ts](../README.md) engine, a
 synthetic demo deck, and this directory. One Worker, one D1 database, no
 other resources. Everything in this directory is self-contained — the
 local proof runs the real workerd via miniflare with NO Cloudflare account

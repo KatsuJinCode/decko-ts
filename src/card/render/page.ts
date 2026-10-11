@@ -76,7 +76,7 @@ import { debugFlag } from "../debug-flags.js";
 
 /** The production `Cardio.config.default_html_view`: :content (the page
  *  capture's production-equivalent setting 5, documented at
- *  capture-dual-lane-page-and-view.rb:314 and assigned at :344; every
+ *  capture-dual-$1page-and-view.rb:314 and assigned at :344; every
  *  live-wire page renders implicit child nests as content-views). This is
  *  PROCESS CONFIG the capture flips around the page render — modeled by
  *  engine.runWithPageConfig wrapping renderPageBytes, so
@@ -156,7 +156,7 @@ interface PageLayout {
  * format/render.rb:60-64).
  *
  * `historyParams` is THE PAGE-PATH SEAM for the history views (the
- * p2-history-seam lane, 2026-10-03 — edge-site-shell residual #3): the
+ * the history seam, 2026-10-03 — edge-site-shell residual #3): the
  * Card::Env.params equivalents Ruby's history views read at render time
  * (HistoryRenderParams — act_id/action_id/page/...), carried THROUGH the
  * page-path routing. It threads into the prepare render below, whose
@@ -174,7 +174,7 @@ export async function renderPageBytes(
   historyParams?: HistoryRenderParams,
 ): Promise<string> {
   // The page capture wraps `fmt.show(nil, {})` in the production config
-  // (capture-dual-lane-page-and-view.rb:369, inside the config block at
+  // (capture-dual-$1page-and-view.rb:369, inside the config block at
   // :368-370; its settings are assigned at :343-344). The engine models
   // that with the pageConfigActive flag:
   // every nest resolved inside this call (including the prepare render's)
@@ -243,7 +243,7 @@ async function renderPageBytesWithPageConfig(
   requestedView?: string,
   historyParams?: HistoryRenderParams,
 ): Promise<string> {
-  // THE PAGE LANE'S SWEEP-SURFACE scope (renderSeats' doc): the layout
+  // THE PAGE SURFACE'S SWEEP-SURFACE scope (renderSeats' doc): the layout
   // warm-ups below seat AROUND the inner render() — one clear here puts the
   // whole page's seats (main closure + layout closure) in this page render's
   // sweep surface, and the next page's render starts from an empty one (the
@@ -378,7 +378,7 @@ async function renderPageBytesWithPageConfigInner(
   // -> format.page -> show(view)); otherwise the layout's {{_main|view}}
   // chunk names the main view; render_with_layout falls back to
   // default_page_view (= default_nest_view = Cardio.config.default_html_view,
-  // :content in production) when the layout carries no view. The page lane's
+  // :content in production) when the layout carries no view. The page surface's
   // config is active here, so the accessor answers "content".
   const mainView = requestedView ?? layout.mainViewRaw ?? engine.defaultHtmlViewConfig();
 
@@ -504,7 +504,7 @@ async function renderPageBytesWithPageConfigInner(
   // `{{_L|configs}}` nests) reads the core mod's admin runtime state (mod
   // cards + the *update-rule role walk) — state whose build is ASYNC while
   // the view body is SYNC. A loader-bound boot builds it in the mod
-  // prepareEngine; this page lane binds NO loader, so when the prepared
+  // prepareEngine; this page surface binds NO loader, so when the prepared
   // closure actually dispatches the view (any prepared card's content
   // carries a `|configs` nest opt, or the main view IS configs), build it
   // here, once per engine, before the sync render. Pages that never reach
@@ -514,7 +514,7 @@ async function renderPageBytesWithPageConfigInner(
   }
 
   // THE LATE-SEAT STRUCTURE SWEEP (T1-1 sweepproof) — main-body boundary:
-  // the prepare render's tail warms and the page lane's own seat paths after
+  // the prepare render's tail warms and the page surface's own seat paths after
   // it (warmupLayoutReferences, prepareNestClosureSearches) seat cards the
   // prepare render's two structure passes never saw. Process every seat of
   // this page BEFORE the main body dispatch reads their content. See
@@ -569,7 +569,7 @@ async function renderPageBytesWithPageConfigInner(
     },
     // show_with_page_layout's render! carries NO optional render opt — the
     // main slot's captured data-slot has no "show" viz (unlike the bare
-    // view lane where format.render pins show:[view]). null = no viz (a
+    // view surface where format.render pins show:[view]). null = no viz (a
     // JS default parameter would revive "show" on undefined).
     null,
   );
@@ -639,7 +639,7 @@ async function renderPageBytesWithPageConfigInner(
       : codeDefaultLayoutInterior(rootFormat);
 
   // show.rb: the :html_page wrapper (head + interior). Byte shape pinned by
-  // the page-lane capture: the wrapper heredoc's 6/8/10-space indentation is
+  // the page-surface capture: the wrapper heredoc's 6/8/10-space indentation is
   // part of the served bytes on every captured page, and the heredoc's
   // closing line ends with a newline — BOTH golden families (the
   // authenticated set and the dual-lane anonymous pages) end
@@ -1159,12 +1159,12 @@ async function scriptVariablesTag(engine: RenderEngine): Promise<string> {
   // card_path "" -> relative_url_root + "/"). Env.origin is PER RENDER
   // (card/lib/card/env/serializable.rb:20-22: Cardio.config.deck_origin ||
   // "#{protocol}#{request&.host_with_port}"), and this builder is reached on
-  // BOTH surfaces since the bare-view-lane fix (render.ts:1385 seats this
+  // BOTH surfaces since the bare-view-surface fix (render.ts:1385 seats this
   // same headContent for an unseated root whose content nests the head
-  // card's :core). The page lane runs it under runWithPageConfig
+  // card's :core). The page surface runs it under runWithPageConfig
   // (renderPageBytes, page.ts:130-142) with the capture's
-  // deck_origin = "https://example.com" (capture-dual-lane-page-and-view
-  // .rb:343); the VIEW lane runs it with the railtie default
+  // deck_origin = "https://example.com" (capture-dual-$1page-and-view
+  // .rb:343); the VIEW surface runs it with the railtie default
   // (card/lib/cardio/railtie.rb:28 config.deck_origin = nil) and no
   // controller (card/lib/card/env.rb:17), so origin is "" and card_url("")
   // is the bare "/". engine.envOriginConfig() is that per-surface value
@@ -1252,8 +1252,8 @@ export function applyScriptIntegrity(tags: string): string {
 
 /** The page-path cloud attachment resolution: attachment URLs inside the
  *  assembled interior (header logo, image cores) must resolve to the
- *  absolute fog URL exactly like the head pieces; the bare view lane keeps
- *  the raw "(bucket)/..." bytes (different capture env — the view-lane
+ *  absolute fog URL exactly like the head pieces; the bare view surface keeps
+ *  the raw "(bucket)/..." bytes (different capture env — the view-surface
  *  contract). Runs LAST so nested view output is covered wholesale.
  *  The prefix reads the process-wide deployment asset host when set (the
  *  graded environment's setting, mirroring Ruby's process-wide storage

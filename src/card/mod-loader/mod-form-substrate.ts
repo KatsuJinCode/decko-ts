@@ -1,7 +1,7 @@
 // The Rails form-builder substrate for mod ports: the byte emitters the
 // ported form views compose, extracted so mods OTHER than card-mod-edit can
 // drive the same shapes (the rules-views, tinymce-views and edit-remainders
-// lanes all documented the same blocker: card_form / button_formgroup /
+// passes all documented the same blocker: card_form / button_formgroup /
 // standard_save_button / create_form existed only as module-private
 // card-mod-edit.ts functions, unreachable from other mods' view bodies).
 //
@@ -302,8 +302,8 @@ export function createFormShell(
 
 // ---------------------------------------------------------------------------
 // round 2 (form-substrate-2): the rule_form family's primitives - the
-// behaviors the two landed receipts (rules-views-port-3.md,
-// rules-cap-lane.md) named as the open form-parity arms. Everything here is
+// behaviors the two recorded results (rules-views-port-3.md,
+// the corresponding port note) named as the open form-parity arms. Everything here is
 // oracle-pinned by fixtures/captured/form-substrate-2.json
 // (oracle-capture-form-substrate-2.rb, no-write proof card_actions
 // 5018 -> 5018).

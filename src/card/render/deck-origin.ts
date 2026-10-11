@@ -24,15 +24,15 @@
 // deployment's pages carried that site's origin in `decko.rootUrl`, the
 // :url views and the email links. Ruby has no such constant: the capture
 // script itself ASSIGNS the origin as configuration
-// (capture-dual-lane-page-and-view.rb:391-400 —
+// (capture-dual-$1page-and-view.rb:391-400 —
 // `Cardio.config.deck_origin = "https://culturesmith.com"` inside the
-// page-lane block, restored in its ensure). The two capture lanes
+// page-surface block, restored in its ensure). The two capture surfaces
 // photographed two CONFIGURATION states, not two surface rules:
 //
-//   1. SERVED PAGE (page lane): deck_origin SET (:391-400). Oracle:
-//      `decko.rootUrl='https://culturesmith.com/'` on 6588/6588 page-lane
+//   1. SERVED PAGE (page surface): deck_origin SET (:391-400). Oracle:
+//      `decko.rootUrl='https://culturesmith.com/'` on 6588/6588 page-surface
 //      rows.
-//   2. VIEW FUNCTION (view lane): deck_origin back to nil (:348 restore)
+//   2. VIEW FUNCTION (view surface): deck_origin back to nil (:348 restore)
 //      and `Card::Env.reset` (:439) left no controller — `Env.origin ==
 //      ""`. Oracle: `decko.rootUrl='/'` (cards 34754 / 34758).
 //
@@ -50,14 +50,14 @@
 //
 // UNSET, the answer is "" on BOTH surfaces — Ruby's requestless form
 // (railtie.rb:28 nil + env.rb:17-19 no controller), and the shape the
-// view lane pins. A deck that configures nothing serves relative URLs;
+// view surface pins. A deck that configures nothing serves relative URLs;
 // no byte carries anyone's private identity. The replay suites that pin
 // the capture-era page bytes install the capture's configuration value
 // through this same seam — the value lives in the tests' fixture
 // configuration and the excluded runbook, never in src/.
 //
 // The `pageSurface` argument of `envOriginForSurface` stays because the
-// accessor is lane-shaped (render.ts#envOriginConfig reads it inside
+// accessor is shaped (render.ts#envOriginConfig reads it inside
 // `runWithPageConfig`), but with the constant gone the answer no longer
 // depends on it: configuration answers both surfaces, exactly as Ruby's
 // `deck_origin` does, and "" answers both when nothing is configured.
@@ -66,14 +66,14 @@
  *  (cardio/railtie.rb:28) with no request (`protocol` and
  *  `request&.host_with_port` both nil, env.rb:17-19). `card_url "User"`
  *  is then `"" + card_path("User")` = `"/User"` (location.rb:19-21
- *  + :6-16) — the shape the view-lane oracle pins. */
+ *  + :6-16) — the shape the view-surface oracle pins. */
 export const NO_REQUEST_ORIGIN = "";
 
 /** `Card::Env.origin` (serializable.rb:20-22): the deck's configured
  *  origin — `Cardio.config.deck_origin`, installed through
  *  `setDeckEnvironment` — or the requestless "" when nothing is
  *  configured. The `pageSurface` flag is accepted for call-site
- *  compatibility (render.ts#envOriginConfig passes the lane flag) but no
+ *  compatibility (render.ts#envOriginConfig passes this pass flag) but no
  *  longer selects a value: configuration answers both surfaces, exactly
  *  as Ruby's `deck_origin` does, and "" answers both when nothing is
  *  configured. */

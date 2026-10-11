@@ -2,9 +2,9 @@
 // wrangler.toml `main` ships — the Deploy-to-Cloudflare button's surface)
 // and deploy/worker.ts (deploy/wrangler.toml's harness). The twins drifted
 // once already — the button shipped a blanket-500 catch while deploy/
-// worker.ts mapped missing cards 404, and the deploy-button lane's live
+// worker.ts mapped missing cards 404, and the deploy button's live
 // test-deploy caught it (commit 90d5f31 on the public lineage; the audit
-// lane receipt an internal work log ASSIGNMENT 2 lists
+// recorded result an internal work log ASSIGNMENT 2 lists
 // the full divergence inventory). This module is the part of that surface
 // BOTH entries must answer IDENTICALLY, extracted so they cannot drift
 // again; tests/deploy/worker-twins-shared-surface-parity.test.ts drives

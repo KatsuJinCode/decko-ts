@@ -3,7 +3,7 @@
 // census can be compared slot-by-slot against BOTH oracles (the committed
 // fixture and the graded expected-v2 view lane).
 //
-// Env-gated (RELNAMES_DUMP=1) so it never runs inside the standing net.
+// Env-gated (RELNAMES_BAR_TITLE_SLOT_CENSUS=1) so it never runs inside the standing net.
 // Writes to an internal work log
 import { describe, it, afterAll, expect } from "vitest";
 import Database from "better-sqlite3";
@@ -144,12 +144,12 @@ function slotCensus(html: string): string[] {
   return out;
 }
 
-describe("relnames lane probe: engine bar-title slot census", () => {
+describe("relnames engine bar-title slot census", () => {
   // skipIf, not an in-body expect: the probe is env-gated, so without
-  // RELNAMES_DUMP=1 it must SKIP. The first cut asserted the env inside the
+  // RELNAMES_BAR_TITLE_SLOT_CENSUS=1 it must SKIP. The first cut asserted the env inside the
   // body, which turned the skip into a standing-net FAILURE — caught by
   // net job-1791129726236-79fb68b5 (1 failed | 93 passed | 2 skipped).
-  itOrSkipLoud(process.env.RELNAMES_DUMP !== "1", "tests/card/render/relnames-lane-bar-title-slot-census-dump.test.ts", "not (process.env.RELNAMES_DUMP !== \"1\")")(
+  itOrSkipLoud(process.env.RELNAMES_BAR_TITLE_SLOT_CENSUS !== "1", "tests/card/render/relnames-bar-title-slot-census.test.ts", "not (process.env.RELNAMES_BAR_TITLE_SLOT_CENSUS !== \"1\")")(
     "dumps the engine's own bytes per target surface",
     { timeout: 600_000 },
     async () => {

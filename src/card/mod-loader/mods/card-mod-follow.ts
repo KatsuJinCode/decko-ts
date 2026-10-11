@@ -57,15 +57,15 @@
 // - set/self/follow_fields.rb:1 setting_opts group: :other, position: 5,
 //   rule_type_editable: false. Ported.
 //
-// NOT ported (honest remainder, updated lane follow2 2026-09-29):
+// NOT ported (honest remainder, updated the follow read path 2026-09-29):
 // - all/follow/followed_by + follower_ids: the READ half the views need
 //   IS ported now (src/card/follow/follow-rule-walk.ts reusing the notify
-//   lane's algebra from src/card/notify/follower-resolver.ts) INCLUDING
+//   pass's algebra from src/card/notify/follower-resolver.ts) INCLUDING
 //   the *nests arm of followed_field? (the inclusion search through
-//   card_references, lane follow2); the WRITE halves that remain are the
-//   follower_ids CACHE (Card.cache / Rails.cache) and the notify lane's
+//   card_references, the follow read path); the WRITE halves that remain are the
+//   follower_ids CACHE (Card.cache / Rails.cache) and the notify module's
 //   own indirect-follower walk (follower-resolver.ts's header gap - the
-//   notify lane reads this same machinery through its own port).
+//   notify module reads this same machinery through its own port).
 // - follow_link.rb modal_link (:14-22): the data-bs-toggle/data-bs-target
 //   modal machinery (bootstrap-modal surface).
 // - all/follow/follow_link_views.rb format :json view :follow_status
@@ -78,7 +78,7 @@
 //   :subedits, :followed, :unfollow_url): the notification EMAIL-template
 //   surface - the bodies read active_notice inherited from the email render
 //   context, Action.value walks, and card_url (all named by the token-runtime
-//   receipt too); the write-path events are the notify stream's.
+//   recorded result too); the write-path events are the notify stream's.
 //   Wave-1 (2026-10-03): :subedit_notice + :follower ARE PORTED now (the
 //   manifest's base-format registrations - subedit_notice through the
 //   history seam, follower the page arm).
@@ -156,7 +156,7 @@
 //   on the right/following registration; :core's tabs + nest arms ride
 //   the same seams) and the suggestions arm of the editor walk
 //   (follow_editor_helper.rb:83-90, Card[:follow_suggestions] merge)
-//   IS PORTED now (lane follow2 - the seam's suggestedFollowingRuleOptions
+//   IS PORTED now (the follow read path - the seam's suggestedFollowingRuleOptions
 //   + mergeOptionHashes, gated on current_user?; the set-only suggestion
 //   arm stays unported: Ruby's a_set_only_suggestion yields to a no-block
 //   call site and raises LocalJumpError as written).
@@ -198,7 +198,7 @@ import {
 } from "../mod-manifest.js";
 import { followOptionDescription } from "../../follow/follow-options.js";
 
-/** The set-module event declarations (the mod-events lane, 2026-10-08):
+/** The set-module event declarations (the set-module event, 2026-10-08):
  *  stub-bodied, with the per-event reason on the declaration. Same shape
  *  as core-mod.ts's local helper. */
 function event(
@@ -343,7 +343,7 @@ const confirmUpdateAllView: ViewFn = () =>
   ` This may take a while. </p></div>`;
 
 // ===========================================================================
-// lane-follow (2026-09-28): the follow views whose bodies the follow-rule
+// the follow views port (2026-09-28): the follow views whose bodies the follow-rule
 // read/walk + the form shapes + the actor-session seam render. Every body
 // below cites its gem lines; the bytes are RENDERED-UNPINNED (the capture
 // corpus carries no Ruby-oracle bytes for any follow view name - verified
@@ -781,7 +781,7 @@ function nameBeforeAction(
 }
 
 /** base_views.rb:6-11 view :list_of_changes' BODY (the rows only - the
- *  registered flat-record :list_of_changes keeps the email lane's page-arm
+ *  registered flat-record :list_of_changes keeps the email views' page-arm
  *  contract; THIS walk is the subedit_notice body's internal
  *  render_list_of_changes dispatch, Ruby-true through the seam). */
 function listOfChangesRowsFrom(
@@ -1206,7 +1206,7 @@ const cardModFollow: DeckoModManifest = {
       // Registered under the manifest's documented "base" format key
       // (mod-manifest.ts:286-288) and surfaced through the anchorless
       // chain walk's base tail (mod-loader.ts viewChain) - the
-      // email-text-remainders lane, 2026-10-01. The email mod's
+      // the email text remainders, 2026-10-01. The email mod's
       // email_text :last_action DELEGATES to this verb
       // (email_text.rb:12 `_render_last_action_verb`; see
       // card-mod-email.ts emailTextLastActionView for the full chain
@@ -1222,7 +1222,7 @@ const cardModFollow: DeckoModManifest = {
       // unregistered here: :list_of_changes/:subedits/:followed/
       // :unfollow_url read the notification_act / active_notice state
       // the email-delivery path sets up (rails-runtime; the flat record
-      // carries the ported bodies where they exist - the email lane's
+      // carries the ported bodies where they exist - the email views'
       // pinned page-arm contracts).
       setPath: "all/notify/base_views",
       formats: {
@@ -1282,7 +1282,7 @@ const cardModFollow: DeckoModManifest = {
       // both the Self set and the Right set define it; here the
       // method lives on the Right side and is not view-portable.
       setPath: "right/follow",
-      // cache_expired_for_new_preference (mod-events lane 2026-10-08) —
+      // cache_expired_for_new_preference (set-module event 2026-10-08) —
       // STUB with an architecture reason (right/follow.rb:7-9): the body
       // is Card.follow_caches_expired (clears the FOLLOWER_IDS +
       // preference caches); the port's follower resolution
@@ -1347,7 +1347,7 @@ const cardModFollow: DeckoModManifest = {
     {
       // card-mod-follow-0.20.0/set/right/follow_fields.rb - assign_type
       // :list + event :follow_fields_changed.
-      // Event (mod-events lane 2026-10-08) — STUB, same architecture
+      // Event (set-module event 2026-10-08) — STUB, same architecture
       // reason as right/follow's cache_expired_for_new_preference
       // (follow_fields.rb:3-5: the body is Card.follow_caches_expired;
       // the port resolves followers fresh per call).
@@ -1408,7 +1408,7 @@ const cardModFollow: DeckoModManifest = {
       // FollowDefaults constant; the capture is cited in the honest
       // remainder above. The port's raise is Ruby-true.
       setPath: "self/follow_defaults",
-      // update_follow_rules (mod-events lane 2026-10-08) — STUB, named
+      // update_follow_rules (set-module event 2026-10-08) — STUB, named
       // remainder (self/follow_defaults.rb:17-30, the card's own header
       // says DEPRECATED): the triggered body rewrites every user's follow
       // rule for the listed sets (Auth.as_bot bulk Card.search + per-user

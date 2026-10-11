@@ -61,7 +61,7 @@ export function htmlEscapeExceptQuotes(s: string): string {
 
 /** The wiki-link card-title attribute's escape (title.rb wrapped_title):
  *  the oracle escapes &, >, <, and double quotes but leaves SINGLE quotes
- *  raw — the Nicole Le'Strix pin (page-lane shard-000010, Archetypal role
+ *  raw — the Nicole Le'Strix pin (page-surface shard-000010, Archetypal role
  *  playing discussion on Facebook Aug 2012, offset 10190: the wanted-card
  *  attribute reads title="Nicole Le'Strix" with the raw apostrophe where
  *  h() would emit &#39;). Same four-entity table as h() minus the

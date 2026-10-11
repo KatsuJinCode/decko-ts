@@ -36,7 +36,7 @@ function wrapText(text: string, style: string | undefined): string {
  *
  *  The inline styles are the alpha stylesheet's GROUP-SCOPED rules
  *  (coderay-1.1.3 styles/alpha.rb) - the oracle bytes pin them
- *  (view-lane shard-000028 *Ace 33795, 2026-10-01):
+ *  (view-surface shard-000028 *Ace 33795, 2026-10-01):
  *    `.key { color: #606 }`                (alpha.rb:97)  - key group span
  *    `.key .delimiter { color: #404 }`     (alpha.rb:99)  - key quotes
  *    `.key .char { color: #60f }`          (alpha.rb:98)  - key escapes

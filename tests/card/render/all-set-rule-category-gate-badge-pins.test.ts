@@ -1,15 +1,15 @@
-// grade10-all-set-rule-category-gate-badge-pins.test.ts — the allsetfix lane's
-// rule-category accordion pins for the ALL-pattern set card (grade-10 family:
-// 3 entries, persisting, NOT part of the seatfix lane's 87).
+// all-set-rule-category-gate-badge-pins.test.ts — the the all-pattern rule-category fix's
+// rule-category accordion pins for the ALL-pattern set card (the regression family family:
+// 3 entries, persisting, NOT part of the the seat fix's 87).
 //
-// THE FAILURES (grade10-run-artifacts/5e603ba4-full-fails.json, engine commit
+// THE FAILURES (the captured failing run (5e603ba4), engine commit
 // 5e603ba4): the *all rule-category accordion's editing group reads
 // `_count badge` 5 where the graded corpus pins 3 —
-//   dual-lane-view:*all:render:content  first diff at 30215: expected 3 got 5
+//   dual-lane-view:*all:render:content  first differing byte at 30215: expected 3 got 5
 //                                       (expected 54734 B, actual 60265 B)
-//   dual-lane-view:*all:render:open     first diff at 32281: expected 3 got 5
+//   dual-lane-view:*all:render:open     first differing byte at 32281: expected 3 got 5
 //                                       (expected 56828 B, actual 62359 B)
-//   dual-lane-page:*all:page            first diff at 37974: expected 3 got 5
+//   dual-lane-page:*all:page            first differing byte at 37974: expected 3 got 5
 //                                       (expected 68893 B, actual 74492 B)
 //
 // THE RUBY DERIVATION (pinned verbatim from the recorded port citations — the
@@ -23,19 +23,19 @@
 // set module, so with no override the predicates are FALSE for every
 // prototype: visible_settings can never admit the restricted pair. On the
 // ALL-pattern set card *all the corpus confirms the Ruby verdict (badge 3),
-// and the pair gets in ONLY through the pairStored arm of seatfixPairVisible
+// and the pair gets in ONLY through the pairStored arm of seatPairVisible
 // (the deck holds the stored `*all+*content option view` cascade rule 277, so
-// ruleByCodename carries content_option_view and the M10b/seatfix stored-pair
+// ruleByCodename carries content_option_view and the the census M10b arm/seatfix stored-pair
 // escape re-admits what restricted_to_type rejected).
 //
-// RELATION TO THE SEATFIX LANE (a9b7b55f, receipt an internal work log
+// RELATION TO THE SEATFIX LANE (a9b7b55f, recorded result an internal work log
 // seatfix-lane.md): its badge-5 family (Task+*right, Task+Log Entry+*type
-// plus right) is a RECEIPTED FIT — "No 0.20 mechanism produces the
-// distribution ... the corpus is the spec". This lane's *all bytes are the
+// plus right) is a recorded FIT — "No 0.20 mechanism produces the
+// distribution ... the corpus is the spec". This pass's *all bytes are the
 // opposite direction and MATCH the Ruby derivation, so the fix is scoped to
 // the anchorless set cards (all / rstar / all_plus) where corpus and Ruby
 // agree; the template-derived and pairStored arms for anchored sets are
-// untouched and the seatfix suite (SEATFIX_GRADE10_PINS=1) must stay green.
+// untouched and the seatfix suite (the seat-fix suite enabled) must stay green.
 
 import { describe, it, expect, afterAll, beforeAll } from "vitest";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -77,7 +77,7 @@ afterAll(() => {
   storage?.close();
 });
 
-describeOrSkipLoud(!(process.env.ALLSETFIX_GRADE10_PINS === "1" && existsSync(CORPUS) && existsSync(VIEW_DIR)), "tests/card/render/grade10-all-set-rule-category-gate-badge-pins.test.ts", "process.env.ALLSETFIX_GRADE10_PINS === \"1\" && existsSync(CORPUS) && existsSync(VIEW_DIR)")(
+describeOrSkipLoud(!(process.env.ALLSET_RULE_CATEGORY_GATE_BADGE_PINS === "1" && existsSync(CORPUS) && existsSync(VIEW_DIR)), "tests/card/render/all-set-rule-category-gate-badge-pins.test.ts", "process.env.ALLSET_RULE_CATEGORY_GATE_BADGE_PINS === \"1\" && existsSync(CORPUS) && existsSync(VIEW_DIR)")(
   "grade-10 *all family: the ALL-pattern set card's rule-category accordion never renders the restricted pair",
   () => {
     const expected = new Map<string, string>();
@@ -141,7 +141,7 @@ describeOrSkipLoud(!(process.env.ALLSETFIX_GRADE10_PINS === "1" && existsSync(CO
       // GRADED RECORD (the fails-JSON first-diff evidence): expected side
       // 68893 B, badge digit "3" at code-unit offset 37974, no badge 5; the
       // graded actual side was 74492 B (badge 5) — pair delta 5599 B at
-      // 5e603ba4. THIS BASE (a9b7b55f) carries the seatfix lane's receipted
+      // 5e603ba4. THIS BASE (a9b7b55f) carries the the seat fix's recorded
       // deltas on this page: pre-fix measured 74932 B (graded + 440), of
       // which 40 B sat inside the pair lis this lane removes — post-fix
       // measured 69293 B (graded + 400 residual) with the badge digit at

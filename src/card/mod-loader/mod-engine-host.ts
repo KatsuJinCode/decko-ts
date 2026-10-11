@@ -57,7 +57,7 @@ export function modEngineHost(
         cacheFetchedRecord(record: CardRecord): Promise<void>;
       }).cacheFetchedRecord(record as CardRecord);
     },
-    // db-roundtrip-elimination lane (W1): the warms' own-rows composer.
+    // db round-trip elimination: the warms' own-rows composer.
     // prefetch.ts composeAndCacheSqlRows over the engine's own cache write
     // seam; the driver + lexicon come from the fetcher, the same objects the
     // fetch ladder would have used, so the records are value-identical to

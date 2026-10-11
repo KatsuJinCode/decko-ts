@@ -27,14 +27,14 @@
 //        ungated moves ~2,393 passing entries).
 //
 // 2. The head/body constants — the LIVE deployment's byte-verbatim values
-//    (vm-staging-server.mjs derived constants; the edge-site-shell lane's
-//    compiled-assets receipt):
+//    (vm-staging-server.mjs derived constants; the edge site shell's
+//    compiled-assets recorded result):
 //    - `scriptIntegrityBySrc`: SRI integrity attribute per remote script
 //      src URL (jquery sha256, jquery-ujs/ace/select2 sha512 — live head,
 //      12/12 pages), inserted into the emitted remote script tags;
 //    - `mainStylesheetRevisionDigits`: the compiled-CSS attachment revision
 //      component the live deployment serves (`/files/45514/1790384218.css`,
-//      byte receipt vs the SassC compile 2026-09-26) — rewritten in the
+//      byte-level capture vs the SassC compile 2026-09-26) — rewritten in the
 //      main stylesheet tag and the decko.cssPath script variable, both of
 //      which derive from the same *style asset output attachment;
 //    - `footerDeckoVersion`: the footer credit version string the *version
@@ -56,9 +56,9 @@ export interface DeploymentFollowLiveConfig {
    *  card-mod-format set/all/html.rb:17-19's default_nest_view reads for
    *  every nest WITHOUT an explicit view; railtie default :titled,
    *  mod/format.rb:2). The live deck configures :content — capture
-   *  receipt: every live-wire page renders implicit child nests as
+   *  recorded result: every live-wire page renders implicit child nests as
    *  content-view (blog.html latest_news-content-view), and the GRADED
-   *  corpus's view lane agrees: children:open (recapture-raw-shard-000025)
+   *  corpus's view surface agrees: children:open (recapture-raw-shard-000025)
    *  renders the implicit {{_self+*referred_to_by}} nest as content-view
    *  where the engine's railtie-default arm rendered titled-view. UNSET =
    *  the railtie default the bare-render capture pinned
@@ -77,8 +77,8 @@ let config: DeploymentFollowLiveConfig | undefined;
  *  have opposite blast radii on the graded corpus. The constants are a
  *  DEPLOYMENT property: the port serves example.com at Decko v0.19.1,
  *  so the version constants must match it. The serializer era is a CORPUS
- *  property: the ~3,624 frozen-form view-lane entries pin the capture-era
- *  emission form, and arming the era flips them RED (view187-lane.md step 4's
+ *  property: the ~3,624 frozen-form view-surface entries pin the capture-era
+ *  emission form, and arming the era flips them RED (the view-187 note step 4's
  *  two-era census). A deployment that wants the first must not reach the
  *  second by accident, so the preset's TYPE omits `serializerEra`: spreading
  *  it arms the constants and provably not the era.
@@ -119,8 +119,8 @@ export const LIVE_DEPLOYMENT_CONSTANTS: Omit<DeploymentFollowLiveConfig, "serial
  *  automatically, and one that updates a value the six does not carry cannot
  *  be picked up at all, which is the point.
  *
- *  WHY THE SIXTH IS EXCLUDED, measured (r1-constants-arm-lane.md step 3):
- *    - `defaultHtmlViewNest` is the ONLY one of the six that moves view-lane
+ *  WHY THE SIXTH IS EXCLUDED, measured (the round-1 constants note step 3):
+ *    - `defaultHtmlViewNest` is the ONLY one of the six that moves view-surface
  *      bytes. Per-field isolation put 100% of the 28-of-78 view83 movement on
  *      it alone, and the other five moved zero view bytes, alone or together
  *      (same sha as UNSET).
@@ -133,7 +133,7 @@ export const LIVE_DEPLOYMENT_CONSTANTS: Omit<DeploymentFollowLiveConfig, "serial
  *
  *  So this is the smallest-blast-radius form that still arms everything the
  *  corpus is measured to demand, and it keeps the graded arm out of the view
- *  lane entirely — the lane R2 is normalizing in the canonical corpus.
+ *  surface entirely — this pass R2 is normalizing in the canonical corpus.
  *  REVISIT ONLY IF GRADE EVIDENCE DEMANDS IT: the exclusion is a measured
  *  judgement about the corpus as it stands, not a permanent claim that the
  *  sixth field is wrong.
@@ -201,7 +201,7 @@ export function deckoRootUrl(): string | undefined {
 
 /** The deployment's default_html_view value, or undefined (the railtie
  *  default :titled the bare-render capture pinned). Read through
- *  RenderEngine.defaultHtmlViewConfig AFTER the page lane's own
+ *  RenderEngine.defaultHtmlViewConfig AFTER the page surface's own
  *  pageConfigActive arm. */
 export function deploymentDefaultHtmlViewNest(): string | undefined {
   return config?.defaultHtmlViewNest;

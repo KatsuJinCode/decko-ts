@@ -40,8 +40,8 @@
 // - :nest_list_input (set/type/nest_list.rb:21-23, cache: :never)
 // - the type set modules (type/link_list.rb, type/nest_list.rb) register
 //   their :input overrides with the shared :input dispatcher as the body
-// - :view_list (set/abstract/01_list.rb:39-44) - PORTED by the mod-views-b
-//   lane (2026-09-28, rendered-unpinned: no oracle capture exists for it).
+// - :view_list (set/abstract/01_list.rb:39-44) - PORTED by the second
+//   mod-views batch (2026-09-28, rendered-unpinned: no oracle capture exists for it).
 //   Its five sections render :content with the item view overridden to
 //   bar/box/closed/titled/labeled. NAMED GAP inside it: this engine has no
 //   :box or :labeled view, so those two sections fall through the loader
@@ -1095,8 +1095,8 @@ const validateItemUniqueness: ModEventFn = (_card, host) => {
 
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
-// set/abstract/01_list.rb:39-44 - view :view_list (ported by the mod-views-b
-// lane, 2026-09-28; rendered-unpinned - no oracle capture exists for it)
+// set/abstract/01_list.rb:39-44 - view :view_list (ported by the second
+// mod-views batch, 2026-09-28; rendered-unpinned - no oracle capture exists for it)
 //
 //   format :html do
 //     view :view_list do

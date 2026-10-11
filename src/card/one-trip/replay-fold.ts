@@ -1,4 +1,4 @@
-// THE PLAN-REPLAY FOLD (fold-plan-replay lane, 2026-10-06): the per-read-
+// THE PLAN-REPLAY FOLD (the plan-replay fold, 2026-10-06): the per-read-
 // class merged statement that collapses a render plan's replay batch.
 //
 // THE MECHANISM, and why it is SQL rather than protocol:
@@ -7,7 +7,7 @@
 // per-execute server cost each (deliverables/FOLD-MECHANISM-RESEARCH-2026-10-05
 // §1, verified against the vendored @libsql/hrana-client 0.10.0 surface and
 // the public HRANA_3 spec). The measured edge term is ~55 ms per statement
-// (gate2-request-trace-lane.md, the deployed /Aikido ledger), so the cost is
+// (the gate-2 request trace note, the deployed /Aikido ledger), so the cost is
 // STATEMENT COUNT, not POST count. The collapse therefore has to happen
 // inside the SQL layer, and SQLite already has the shape: bind a JSON array
 // as ONE parameter, expand it with `json_each`, join `cards` on BINARY
@@ -29,7 +29,7 @@
 //     predicate, re-expressed as an EXISTS over the bound list. Same rows.
 //   - The per-entry row ORDER is pinned by an explicit ORDER BY that the
 //     per-class entry declares; `tests/card/one-trip/replay-fold-exactness
-//     .test.ts` and the lane's harness prove the decomposition equals the
+//     .test.ts` and this pass's harness prove the decomposition equals the
 //     original per-entry execution row-for-row, order included.
 //   - A class whose binds are not canonical lowercase keys, or whose SQL
 //     text does not match a known shape, is NOT folded. It rides the
@@ -61,7 +61,7 @@ export const FOLD_TAG_COLUMN = "__fold_g";
 export const FOLD_NAMESPACE = "__fold_";
 /** The side-key arm's per-row match keys: which bound l-key / r-key each j
  *  row matched. The drift arm index uses them to answer a SMALLER side-key
- *  ask from a recorded superset entry's rows (driftfix lane). */
+ *  ask from a recorded superset entry's rows (the drift-arm fix). */
 export const FOLD_LEFT_KEY_COLUMN = "__fold_lk";
 export const FOLD_RIGHT_KEY_COLUMN = "__fold_rk";
 /** The ordinal column for families whose source statement can return the
@@ -165,7 +165,7 @@ const OR_PAIR_TERM = "(j.left_id = ? AND j.right_id = ?)";
  *  differs in any other way fails the exact reconstruction, so the class
  *  does not match and the entry rides the ladder unchanged.
  *
- *  THE 2-PAIR REFUSAL (driftfix lane, 2026-10-06 — measured, Peace_Practices
+ *  THE 2-PAIR REFUSAL (the drift-arm fix, 2026-10-06 — measured, Peace_Practices
  *  plan entry #91): SQLite answers a two-term OR chain with the multi-index
  *  OR plan, whose row order is BRANCH order, not id order (ids 19825, 12796
  *  vs the merged arm's id-ordered 12796, 19825). Three or more terms tip the
@@ -183,7 +183,7 @@ function isOrPairShape(sql: string, params: unknown[]): boolean {
 }
 /** The side-key join shape: the DISTINCT junction read through BOTH sides'
  *  key IN-lists (the largest unfurled residual of the giant fold, now folded
- *  by the driftfix lane). The arm keeps the source's own DISTINCT semantics
+ *  by the the drift-arm fix). The arm keeps the source's own DISTINCT semantics
  *  per (l-key, r-key) combination and lets decompose collapse the rows back
  *  to DISTINCT j.* per entry. Whitespace-tolerant: the recorder captured this
  *  shape multi-line (`\n  JOIN cards l ...`), which is exactly why it never
@@ -351,7 +351,7 @@ export const FOLD_SHAPES: readonly FoldShape[] = [
       `FROM json_each(?) AS g CROSS JOIN json_each(g.value) AS k CROSS JOIN cards c ` +
       `ON c."key" = k.value AND c.trash = 0 ORDER BY ${FOLD_TAG_COLUMN}`,
   },
-  // THE SIDE-KEY JOIN (driftfix lane, 2026-10-06) — the giant fold's largest
+  // THE SIDE-KEY JOIN (the drift-arm fix, 2026-10-06) — the giant fold's largest
   // unfurled residual, now an arm. The source's L x R pair product is NOT
   // materialized: both sides expand from the ONE flat bind via two json_each
   // scans over the same entry array (first half = l keys, second half = r
@@ -584,7 +584,7 @@ export function decomposeMergedRows(
 }
 
 // ---------------------------------------------------------------------------
-// THE DRIFT ARM INDEX (driftfix lane, 2026-10-06)
+// THE DRIFT ARM INDEX (the drift-arm fix, 2026-10-06)
 //
 // THE REGRESSION: the four drift pages (Aikido_2, Aikido_in_Education,
 // Peace_Practices, Laundry) fell from 5 to 14-30 trips on the assembled tree

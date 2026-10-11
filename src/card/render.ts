@@ -166,7 +166,7 @@ const HISTORY_SEAM_VIEWS = new Set([
   // prepared act bundle (notification_action's card.last_action / Action
   // .fetch walk over the changed fields — set/all/notify/base_views.rb:
   // 25-31 + 84-96 + 121-123; the sibling :list_of_changes stays gated out,
-  // its flat-record page arm is the email lane's pinned contract).
+  // its flat-record page arm is the email views' pinned contract).
   "subedit_notice",
 ]);
 import type {
@@ -261,7 +261,7 @@ export { HTML_VIEWS };
  *  path — because the storage layer is the one place all committed writes
  *  cross. The render entry reads it ONCE per request and calls
  *  resetCaches() when it moved: no staleness window, no post-revocation
- *  leak (delivery contract:79). Warm-render cost: exactly ONE statement.
+ *  leak (requirement:79). Warm-render cost: exactly ONE statement.
  *  Exported for the freshness suite's statement-identity pin. */
 export const DECK_DATA_VERSION_STATEMENT =
   'SELECT "version" FROM "deck_data_version" WHERE "id" = 1';
@@ -429,7 +429,7 @@ export class RenderEngine implements RenderEngineLike {
    *  synchronously (everything in it was prefetched/enriched). */
   private renderCards = new Map<string, RenderCard>();
 
-  /** THE SWEEP SURFACE (the sweep-cascade cut, warmflood-sweep-cut-lane
+  /** THE SWEEP SURFACE (the sweep-cascade cut, the warmflood sweep-cut note
    *  2026-10-06): the keys seated during the CURRENT render call. Every
    *  prepare sweep that walks the whole render-card map is bounded to this
    *  set, and this set is cleared at the start of each render call (and by
@@ -451,7 +451,7 @@ export class RenderEngine implements RenderEngineLike {
    *  while the warm render's sweeps find nothing new to chase. */
   private renderSeats = new Set<string>();
 
-  /** The page lane's prepare marker: renderPageBytes seats the layout
+  /** The page surface's prepare marker: renderPageBytes seats the layout
    *  closure AROUND its inner render() call, and those seats belong to the
    *  PAGE render's surface — not to whatever render() runs next. While set,
    *  render() does not clear renderSeats (renderPageBytes cleared it once,
@@ -466,7 +466,7 @@ export class RenderEngine implements RenderEngineLike {
    *  (beginPagePrepare); read by renderPageWithStatus. */
   pageErrorStatus: number | undefined = undefined;
 
-  /** Open the page lane's prepare scope (see pagePrepareDepth): one clear
+  /** Open the page surface's prepare scope (see pagePrepareDepth): one clear
    *  of the sweep surface for the whole page render, its layout warm-ups
    *  included. Pair with endPagePrepare in a finally block. */
   beginPagePrepare(): void {
@@ -683,7 +683,7 @@ export class RenderEngine implements RenderEngineLike {
    *  summary_omits_content? BEFORE rendering the summary (Ruby reads nil),
    *  later renders of the same action see the rendered state (the capture
    *  pins both shapes). Engine-lifetime = the Action-record lifetime for
-   *  the bare-view lane; resetCaches() clears it with the rest. */
+   *  the bare view path; resetCaches() clears it with the rest. */
   readonly historyDiffMemo = new Map<number, import("./history/content-diff.js").ContentDiff>();
   /** The deck's CDN/asset host for carrierwave cloud images (A-30 — see
    *  RenderEngineLike.imageCdnHost). Host-deployment config; undefined =
@@ -880,19 +880,19 @@ export class RenderEngine implements RenderEngineLike {
    *  outside the pointer-item slot — keep their pre-change bytes). Cleared on
    *  resetCaches(). */
   private pointerItemGlobalVerdictDone = new Set<string>();
-  /** The modeled `Cardio.config.default_html_view` render lane (R17, A-36
+  /** The modeled `Cardio.config.default_html_view` render surface (R17, A-36
    *  correction): "content" while a PAGE render is active — the production
    *  config value the page capture applies
-   *  (capture-dual-lane-page-and-view.rb:314, the capture's
+   *  (capture-dual-$1page-and-view.rb:314, the capture's
    *  production-equivalent setting #5) — "titled" otherwise, the railtie
    *  default
    *  (card-mod-format lib/card/mod/format.rb:2) under which the BARE render
-   *  capture (lane V, the old-capture dev boot) ran. Ruby reads process
+   *  capture (surface V, the old-capture dev boot) ran. Ruby reads process
    *  config per call (html.rb:17-19), never a deck rule; the corpus's
    *  `*all+*default html view` rule card 22769 is dead in 0.20.0. The flag
    *  is byte-safe across interleaved renders because resolveView memoizes
    *  VIEW FUNCTIONS, never rendered bytes. Not cached: the flag toggles per
-   *  render lane. */
+   *  render surface. */
   private pageConfigActive = false;
   /** The help-rule resolver (menu popover content) — attached once per
    *  engine by installHelpRules; its deck-wide batch runs once in the
@@ -960,10 +960,10 @@ export class RenderEngine implements RenderEngineLike {
   private async renderHeld(cardName: string, view: string, params: HistoryRenderParams): Promise<string> {
     // THE SWEEP SURFACE reset: this render's sweeps chase only what THIS
     // render seats (the sweep-cascade cut — renderSeats' doc). The page
-    // lane clears once for the whole page render (beginPagePrepare), so
+    // it clears once for the whole page render (beginPagePrepare), so
     // its inner render() leaves the layout warm-ups' seats in scope.
     if (this.pagePrepareDepth === 0) this.renderSeats.clear();
-    // THE ONE-TRIP SEAT (stamp-as-column lane, 2026-10-06 — spec §c): moved
+    // THE ONE-TRIP SEAT (the stamp-as-column change, 2026-10-06 — spec §c): moved
     // ABOVE the freshness gate because on this posture the seat's HEAD
     // statement IS the render's stamp read — deck_data_version rides the
     // head as a column of the same snapshot that carries the plan payload
@@ -980,7 +980,7 @@ export class RenderEngine implements RenderEngineLike {
             lastSeenVersion: this.deckDataVersion,
             onStampMove: async (observed) => {
               this.resetCaches();
-              // The one-trip SEAT STATE is cache state too (per-viewer-seat lane,
+              // The one-trip SEAT STATE is cache state too (the per-viewer seat,
               // 2026-10-06): the armed plan's in-memory results and the seating
               // memo predate the moved stamp. Left armed/memoized, this render
               // answers matched reads from pre-move rows and the seat never
@@ -992,7 +992,7 @@ export class RenderEngine implements RenderEngineLike {
               // under any future reset path that loses the in-reset one.)
               this.fetcher.replayRouter.disarmRenderPlan();
               invalidateSeatedPagePayloads(this.fetcher);
-              // The BOOT-LIFETIME state is cache state too (same lane): the reset
+              // The BOOT-LIFETIME state is cache state too (same pass): the reset
               // wiped the codename registry's bulk load, and without this re-prime
               // the post-reset render degrades to per-lookup live name reads
               // (measured: 340 trips vs the 7-trip seated floor — worse than the
@@ -1004,7 +1004,7 @@ export class RenderEngine implements RenderEngineLike {
           })
         : undefined;
     seat = await runSeat();
-    // Freshness gate (delivery contract:79): any render that could serve
+    // Freshness gate (requirement:79): any render that could serve
     // warm bytes reads the deck's committed-write stamp FIRST and clears
     // every derived cache when a committed write moved it. On the one-trip
     // path the seat's head column already carried that live stamp (and ran
@@ -1035,7 +1035,7 @@ export class RenderEngine implements RenderEngineLike {
         // payload).
         await this.fetcher.reprimeBootState();
         this.deckDataVersion = observed;
-        // THE SAME-RENDER RE-SEAT (the seat lane's recomposition contract,
+        // THE SAME-RENDER RE-SEAT (the seat seat's recomposition contract,
         // pinned by signed-in-seat-posture): the invalidated payload
         // belonged to the pre-move state, so re-seat from the store as it
         // now stands — the baseline adopted above is the fresh comparison
@@ -1053,8 +1053,8 @@ export class RenderEngine implements RenderEngineLike {
     // or ZERO on the one-trip path: the seat's head column already carried
     // the committed-write stamp this render (the same row this probe reads),
     // so a warm boot's probe consumes the column and the boot's only trips
-    // are the bundle's (the stamp-as-column lane folds the probe, one-trip
-    // build lane 2026-10-06). Only on this engine's FIRST render, and only
+    // are the bundle's (the stamp-as-column pass folds the probe, one-trip
+    // build change, $1). Only on this engine's FIRST render, and only
     // once the process already holds a boot bundle to compare against: with
     // nothing to compare, a probe cannot hit, so a process's first engine
     // reads the boot read-set from storage exactly as it always has and pays
@@ -1100,7 +1100,7 @@ export class RenderEngine implements RenderEngineLike {
     // once per engine, never per warm render. The codename codehash (the
     // rule? predicate's type-id source) folds into the same batch.
     const permissionCold = this.readPermission === undefined;
-    // THE GATE-COUNT ARM (stamp-as-column lane): when the seat's head
+    // THE GATE-COUNT ARM (the stamp-as-column change): when the seat's head
     // carried the permission gate-count's row (statement index
     // PERMISSION_GATE_COUNT_STATEMENT_INDEX — a zero-bind, viewer-
     // independent statement, spec §a.4's "settings count" arm), that slot
@@ -1175,7 +1175,7 @@ export class RenderEngine implements RenderEngineLike {
         // (R17 removed the *default html view universe that rode slot +2:
         // Ruby's default_nest_view reads process CONFIG — html.rb:17-19 —
         // never a deck rule; the engine models it as the pageConfigActive
-        // lane flag instead.)
+        // pass flag instead.)
         ...(structureCold
           ? [structureRuleUniverseStatement(), defaultRuleUniverseStatement()]
           : []),
@@ -1206,7 +1206,7 @@ export class RenderEngine implements RenderEngineLike {
         // note). Parsed by parseDeckDataVersion right after the batch —
         // its index is the one below, a function of every conditional
         // above it (recomputed for the composed batch in the
-        // lineage-reconciliation lane).
+        // the lineage reconciliation).
         ...(stampCold
           ? [{ sql: DECK_DATA_VERSION_STATEMENT, params: [] as unknown[] }]
           : []),
@@ -1276,8 +1276,8 @@ export class RenderEngine implements RenderEngineLike {
       // stamp rides LAST in the composed batch, so its index is everything
       // the parsers above occupy: permission + codename + both universes +
       // template type-name + head read-set (index recomputed for the
-      // composed batch in the lineage-reconciliation lane; the freshness
-      // lane's original +2 counted only the two universe statements). A
+      // composed batch in the lineage reconciliation; the freshness
+      // pass's original +2 counted only the two universe statements). A
       // boot-cache hit splices the bundle's rows into the head slot but does
       // not move the stamp's index (the splice preserves slot order).
       if (stampCold) {
@@ -1393,7 +1393,7 @@ export class RenderEngine implements RenderEngineLike {
     // walk (the ref walk skips empty keys)  their deck-constant verdict
     // seats under the "" key (see the method doc).
     await this.seatBlankKeyReadVerdict();
-    // THE RECOMPOSITION REFILL RESIDUAL (measured, sweep-cut lane
+    // THE RECOMPOSITION REFILL RESIDUAL (measured, the recomposition sweep
     // 2026-10-06): on the first render after a committed-write reset the
     // refill runs raw (the plan is legitimately disarmed by the reset per
     // the stamp-read-vs-plan pin) and its solo tail lives in the SEAT
@@ -1408,8 +1408,8 @@ export class RenderEngine implements RenderEngineLike {
     // driver-level CTEs (resolveRuleRowsByRuleKeys / resolveRuleIdsByRule
     // Keys) that never needed the seats, and the wave's own composer IS the
     // solo-tail issuer. Closing pin 2 needs the fetch layer's seat pipeline
-    // to resolve row names in batched vehicles — a fetch/lexicon-lane
-    // refactor, recorded OPEN-BLOCKED in warmflood-sweep-cut-lane.md.
+    // to resolve row names in batched vehicles — a fetch/lexicon pass
+    // refactor, recorded OPEN-BLOCKED in the warmflood sweep-cut note.md.
     // Read-permission verdicts for the closure MUST be computed BEFORE
     // prepareSearches — the Ruby render path short-circuits denied cards
     // before the Search card's JSON.parse (corpus:34 *children+*right+
@@ -1456,9 +1456,9 @@ export class RenderEngine implements RenderEngineLike {
     // +discussion cores inside :open/:content bodies render the form only
     // on a POSITIVE update verdict, and the generic task warm above is
     // view-gated (viewRequiresTask) - warm the discussion cards here (the
-    // page lane runs the same warm at page.ts; census M8: the graded
+    // page surface runs the same warm at page.ts; census M8: the graded
     // Joan_Callahan_20230902+discussion:open pair renders the
-    // inherited-grant form on THIS lane).
+    // inherited-grant form on THIS pass).
     await this.ensureDiscussionUpdateVerdicts();
     // The type editor's select (auth/permissions.rb:18-26 createable_types):
     // precomputed for the views whose body reaches it so the sync render
@@ -1471,7 +1471,7 @@ export class RenderEngine implements RenderEngineLike {
     // The create verdicts of the root's unknown nest targets (the :unknown
     // view's createable gate).
     await this.seatUnknownNestCreateVerdicts(record);
-    // db-roundtrip-elimination lane (W2b + W3b): prime the derived state
+    // db round-trip elimination: prime the derived state
     // the SYNC render resolves by name at view time - every prepared
     // record's TYPE card (the enrichAndStore type reads) and the rule
     // candidates the view-time resolvers walk (resolveOptionsCard /
@@ -1555,7 +1555,7 @@ export class RenderEngine implements RenderEngineLike {
       // queries are legal, and the synchronous customize_button view
       // reads the answer out of memory.
       await this.warmCustomizedName(name);
-      // Row 6 (adjudicate-10-rows-lane.md): the `+parent` warm above asks for
+      // Row 6 (the corresponding port note): the `+parent` warm above asks for
       // the pointer BY NAME, and the pointer is not nameable. `parent` is a
       // card_accessor TRAIT (bootswatch_skin.rb:37), so Ruby's `card.parent`
       // is `parent_skin_card` (bootswatch_skin.rb:57-59) - a CODENAME-keyed
@@ -1971,7 +1971,7 @@ export class RenderEngine implements RenderEngineLike {
     // guard hit instead of depending on fallback-round ordering.
     const format = new RenderFormat(rootCard, this, {
       maxDepth: RUBY_MAX_DEPTH,
-      // THE bare view-lane root (render.ts renders nothing else at this
+      // THE bare view-surface root (render.ts renders nothing else at this
       // entry; page.ts builds its own rootFormat without the marker). The
       // census-M1 bar-seat climbs the parent chain for this flag.
       isViewLaneRoot: true,
@@ -1980,7 +1980,7 @@ export class RenderEngine implements RenderEngineLike {
     // for the RENDER ROOT (`nest root.card, view: :head`, escape_in_main at
     // :27-29). The page path has always seated them before the main render
     // (render/page.ts:294 headContent -> seatPageHead); the BARE single-card
-    // view lane did not, so the Self::Head core answered "" and the
+    // view surface did not, so the Self::Head core answered "" and the
     // inclusion-carrying head rules' CodeRay <pre> came out EMPTY where the
     // oracle carries the page's own head block (m4verify D3: card 34754
     // `*all+*head` views.content, pre 0 B vs the oracle's 2441 B).
@@ -2082,10 +2082,10 @@ export class RenderEngine implements RenderEngineLike {
     // skin/setting warms, the link-target sweep, the follow/rule warms) —
     // process this render's late seats BEFORE the sync dispatch reads their
     // content. See applyLateSeatStructureContent's doc.
-    // A bare view render (the view lane) reaching a Role dashboard's
-    // `{{_L|configs}}` nest needs the admin runtime the page lane builds in
+    // A bare view render (the view surface) reaching a Role dashboard's
+    // `{{_L|configs}}` nest needs the admin runtime the page surface builds in
     // page.ts before its own sync render; same gate, once per engine. The
-    // page lane's inner render leaves it to page.ts.
+    // page surface's inner render leaves it to page.ts.
     if (
       this.pagePrepareDepth === 0 &&
       (view === "configs" || this.renderClosureNeedsCoreAdminRuntime())
@@ -2094,15 +2094,15 @@ export class RenderEngine implements RenderEngineLike {
     }
     await this.applyLateSeatStructureContent();
     if (FORM_VIEW_PATTERN.test(view)) await this.seatLastActionIds();
-    // db-roundtrip-elimination lane (W2b + W3b): prime the derived state
+    // db round-trip elimination: prime the derived state
     // Ruby render(view, opts): the render's view opts ride the voo (the
     // form-substrate-2 modal hidden-header arm reaches the wrap
     // gates through params.viewOpts; undefined for every prior caller -
     // the {} pass-through is byte-identical). The 4th arg marks THE bare
-    // view-lane root render: this entry's optional render arg defaults to
+    // view-surface root render: this entry's optional render arg defaults to
     // :show (method_delegation.rb#optional_render_opt), and the live
     // serializer omits exactly that enrollment from the root slot - the
-    // page-lane and nest renders pass their own optional explicitly and are
+    // page-surface and nest renders pass their own optional explicitly and are
     // NOT roots (format.ts#slotOptions root-drop arm reads this flag).
     const baseHtml =
       this.skipSyncRender?.() === true ? "" : format.renderView(view, params.viewOpts ?? {}, "show", true);
@@ -2140,7 +2140,7 @@ export class RenderEngine implements RenderEngineLike {
    * :html_page wrapper, production default_nest_view=:content and quiet
    * nested-error semantics). The full mechanism port lives in
    * src/card/render/page.ts; the preparation reuses render() so the bare
-   * and page lanes share one prepare path. Throws UnknownLayoutError (the
+   * and page surfaces share one prepare path. Throws UnknownLayoutError (the
    * captured "unknown layout card" UserError sentinel) for layout names
    * that resolve to no card/built-in layout.
    */
@@ -2476,7 +2476,7 @@ export class RenderEngine implements RenderEngineLike {
     this.helpResolver = undefined;
     this.lastPrefetch = undefined;
     // The set-once WARM MARKERS complete the same rule (per-viewer-seat
-    // lane, 2026-10-06 — landed at 7fa6a045; the warmflood-fix lane ports
+    // , $1 — landed at 7fa6a045; the warmflood-fix pass ports
     // the block, and this assembly carries it via the warmflood merge).
     // Each marker records "this fold already ran this engine lifetime" on
     // the deck-is-static assumption a stamp move breaks; its fold's
@@ -2554,10 +2554,10 @@ export class RenderEngine implements RenderEngineLike {
 
   /**
    * RenderEngineLike#defaultHtmlViewConfig — the modeled
-   * `Cardio.config.default_html_view` for the CURRENT render lane (R17
+   * `Cardio.config.default_html_view` for the CURRENT render surface (R17
    * A-36 correction; see the pageConfigActive field doc and
    * format.ts#defaultNestView): "content" while a page render is active
-   * (the production config, capture-dual-lane-page-and-view.rb:369),
+   * (the production config, capture-dual-$1page-and-view.rb:369),
    * "titled" otherwise (the railtie default, mod/format.rb:2, under which
    * the bare-render capture ran — probe-pinned by
    * r17-nest-default-view-probe.rb: Cardio.config.default_html_view ==
@@ -2565,11 +2565,11 @@ export class RenderEngine implements RenderEngineLike {
    *
    * A deployment that SETS the config rides the follow-live seam
    * (deploymentDefaultHtmlViewNest): the live deck configures :content on
-   * BOTH lanes — the graded corpus's view lane carries it (children:open,
+   * BOTH surfaces — the graded corpus's view surface carries it (children:open,
    * recapture-raw-shard-000025: the implicit {{_self+*referred_to_by}}
    * nest renders content-view where the railtie-default arm rendered
-   * titled-view), the same deck state the live pages' page-lane bytes
-   * prove (capture receipt #5, blog.html latest_news-content-view).
+   * titled-view), the same deck state the live pages' page-surface bytes
+   * prove (capture record #5, blog.html latest_news-content-view).
    */
   defaultHtmlViewConfig(): string {
     if (this.pageConfigActive) return pageDefaultHtmlView();
@@ -2578,7 +2578,7 @@ export class RenderEngine implements RenderEngineLike {
 
   /**
    * RenderEngineLike#envOriginConfig — the modeled `Card::Env.origin` for
-   * the CURRENT render lane (card-1.110.0 lib/card/env/serializable.rb:
+   * the CURRENT render surface (card-1.110.0 lib/card/env/serializable.rb:
    * 20-22 `Cardio.config.deck_origin || "#{protocol}#{request&
    * host_with_port}"`). The value is the DECK'S CONFIGURATION (review
    * round 4, finding 9): `deck_origin` installed through
@@ -2589,12 +2589,12 @@ export class RenderEngine implements RenderEngineLike {
    * runner, env.rb:17-19). `card_url` (env/location.rb:19-21) is
    * `"#{Env.origin}#{card_path rel}"`, so the empty origin yields the
    * bare rooted path. The capture photographed the two CONFIGURATION
-   * states: the page lane set deck_origin
-   * (capture-dual-lane-page-and-view.rb:391-400 — 6588/6588 page rows
-   * carry its `decko.rootUrl`), the view lane rendered outside that
+   * states: the page surface set deck_origin
+   * (capture-dual-$1page-and-view.rb:391-400 — 6588/6588 page rows
+   * carry its `decko.rootUrl`), the view surface rendered outside that
    * block with a controller-less `Card::Env.reset` (:439 — 4 view rows
-   * carry `decko.rootUrl='/'`). The lane flag stays lane-shaped here,
-   * but the VALUE follows configuration, not the lane.
+   * carry `decko.rootUrl='/'`). The pass flag stays shaped here,
+   * but the VALUE follows configuration, not this pass.
    */
   envOriginConfig(): string {
     return envOriginForSurface(this.pageConfigActive);
@@ -2616,7 +2616,7 @@ export class RenderEngine implements RenderEngineLike {
       // The help resolver installs on the VIEW path's prepare (render()
       // below); the PAGE path bypasses render(), so install here too —
       // once per engine (the canary guard inside prepare makes the second
-      // call a no-op). Without this the graded page lane rendered every
+      // call a no-op). Without this the graded page surface rendered every
       // menu popover as the &nbsp; placeholder where Ruby resolved help
       // (26 oracle pages carry real help text; the
       // three +*variables pages pin the resolved bytes).
@@ -2625,7 +2625,7 @@ export class RenderEngine implements RenderEngineLike {
       // set (help-popover.ts settingRuleCountsStatement — the port of the
       // Card.search read filter). An UNRESOLVED readPermission degrades that
       // filter to the read_rule_id-IS-NULL branch, and every corpus *head
-      // rule carries a stored read_rule_id — the page lane rendered
+      // rule carries a stored read_rule_id — the page surface rendered
       // "(0 head rules)" where the oracle pins "(2 head rules)" (the
       // *all+*head / PCTS+*self+*head nest-miss pages). The VIEW path folds
       // the state earlier in render() (the permissionCold pass) before its
@@ -2731,7 +2731,7 @@ export class RenderEngine implements RenderEngineLike {
    *  2081 Tracked Item+*type+*structure / 21905 Task+*type+*structure
    *  exist) render the plain quiet denial span (SMD exp @8350, PdG exp
    *  @8515-8987 — and the live Task card Merchandise denies as a real
-   *  card), while the simple-named denied phantoms (the view-lane census,
+   *  card), while the simple-named denied phantoms (the view-surface census,
    *  133 entries — Test Person 01, Regina Chatham, Mabel Bridgewater, all
    *  BasicCs/RichText/Practice-typed) render the mini_bar wrap with the
    *  two-span body: name.simple? short-circuits virtual? to false
@@ -2741,7 +2741,7 @@ export class RenderEngine implements RenderEngineLike {
    *  (templating.rb:25-27 — for these phantoms RichText, whose
    *  +*type+*structure rule is absent), so a literal reading does not
    *  reach virtual? for the SMD/PdG phantoms; the capture deck's runtime
-   *  (not runnable on this machine — the p20-perm-residuals receipt)
+   *  (not runnable on this machine — the p20-perm-residuals recorded result)
    *  demonstrably answers known? for them. The engine seats the decision
    *  on the corpus-consistent reading — compound name + a *structure rule
    *  resolves for the phantom's OWN type — which reproduces every pinned
@@ -2858,7 +2858,7 @@ export class RenderEngine implements RenderEngineLike {
       // HTML+*type+*create (rule 6553, "Shark") — the oracle's
       // [Shark] create/delete rows for that set page.
       //
-      // leftTypeName (tpr-regression-fix lane, 2026-10-02): Ruby's dup is a
+      // leftTypeName (the typeprint regression fix, 2026-10-02): Ruby's dup is a
       // real `dup` of the prototype Card, so it keeps @supercard/@superleft —
       // and the *structure walk's TPR anchor reads
       // `left_type(card) = card.superleft&.type_name`
@@ -3051,8 +3051,8 @@ export class RenderEngine implements RenderEngineLike {
    *  passes (the prepare flow's only structure processors) run BEFORE the
    *  render tail's late seat paths — enrichPointerListItemsClosure, the
    *  asset/skin/setting warms, enrichLinkTargetsForKnownClass, the follow/
-   *  rule warms (bare lane), warmupLayoutReferences and
-   *  prepareNestClosureSearches (page lane). A card seated by any of them
+   *  rule warms (bare surface), warmupLayoutReferences and
+   *  prepareNestClosureSearches (page surface). A card seated by any of them
    *  joins renderSeats but no structure pass of its seat render ever sees
    *  it: enrichAndStore seats only on map INSERT (the existing-key guard),
    *  so no later render re-seats it, and closureSurface's BFS walks only
@@ -3070,9 +3070,9 @@ export class RenderEngine implements RenderEngineLike {
    *  cards — the sweep cut froze the map at the byte closure — so the
    *  one-trip warm posture is untouched).
    *
-   *  Call sites = every prepare lane's last point before a sync dispatch:
-   *  render() (the bare view lane, after the follow/rule warms), and the
-   *  page lane's two dispatch boundaries (before the main body render and
+   *  Call sites = every prepare pass's last point before a sync dispatch:
+   *  render() (the bare view surface, after the follow/rule warms), and the
+   *  page surface's two dispatch boundaries (before the main body render and
    *  before the layout content render — the layout warm-ups seat between
    *  the two). */
   async applyLateSeatStructureContent(): Promise<void> {
@@ -3217,7 +3217,7 @@ export class RenderEngine implements RenderEngineLike {
           if (!foundKeys.has(missKey)) this.structureRefMisses.add(missKey);
         }
       }
-      // db-roundtrip-elimination lane (W2a): the compound refs resolve in
+      // db round-trip elimination: the compound refs resolve in
       // BATCHED rounds (the driveClosure statement shapes) instead of one
       // full fetch-ladder walk per name - the census measured this loop as
       // the render path's single largest point-query family (up to ~550
@@ -3246,7 +3246,7 @@ export class RenderEngine implements RenderEngineLike {
   }
 
   /**
-   * db-roundtrip-elimination lane (W2b + W3b): prime the derived state the
+   * db round-trip elimination: prime the derived state the
    * sync render resolves by name at view time, in batched waves:
    *
    *   1. TYPE CARDS - one chunked IN-list over every prepared record's
@@ -3293,7 +3293,7 @@ export class RenderEngine implements RenderEngineLike {
           params: chunk,
         });
       }
-      // W4 batch fusion (net-reds-fixforward lane): the type prime no longer
+      // W4 batch fusion (the round-trip reduction fix): the type prime no longer
       // spends its own round trip before the candidate seat. When the seat
       // will run, the statements ride seatNamesByWave's FIRST batch as its
       // preamble - one round trip carries the priming rows AND the wave's
@@ -3342,7 +3342,7 @@ export class RenderEngine implements RenderEngineLike {
         const rows = (await this.fetcher.driver.batch(typeStatements)).flatMap(
           (result) => (result.rows as CardsRow[]) ?? [],
         );
-        // fetch-composer batch lane (V1): the type rows' own compose needs
+        // the batched fetch composer: the type rows' own compose needs
         // (their sides, their type cards) prime from the held rows the same
         // way the wave's rows do — this standalone arm measured 5
         // idToLex + 6 row-by-id solos post-reset before the prime.
@@ -3360,7 +3360,7 @@ export class RenderEngine implements RenderEngineLike {
   }
 
   /**
-   * db-roundtrip-elimination lane (W2a): seat ABSOLUTE names into the
+   * db round-trip elimination: seat ABSOLUTE names into the
    * render-card map in BATCHED rounds - the driveClosure statement shapes
    * (prefetch.ts) over this engine's render-card map as the known-set:
    *
@@ -3409,7 +3409,7 @@ export class RenderEngine implements RenderEngineLike {
       if (this.renderCards.has(key) || this.structureRefMisses.has(key)) continue;
       pending.add(raw);
     }
-    // ENGINE-LIFETIME ask memory (db-roundtrip-elimination lane): every
+    // ENGINE-LIFETIME ask memory (db round-trip elimination): every
     // question one wave asked the database, this engine never re-asks. The
     // deck is static per engine lifetime (the same contract
     // pointerListHostsDone and prefetch.ts's scannedKeys document), so a
@@ -3432,7 +3432,7 @@ export class RenderEngine implements RenderEngineLike {
     const callAskedPairs = new Set<string>();
     const callAnsweredSimple = new Set<string>();
     const callAnsweredPairs = new Set<string>();
-    // W4 batch fusion (net-reds-fixforward lane): a caller's preamble
+    // W4 batch fusion (the round-trip reduction fix): a caller's preamble
     // statements (the W2b type-card prime) ride the FIRST round's batch -
     // one round trip carries the priming rows and the wave's own asks. The
     // preamble rows flow through the same compose/write/seat pipeline as the
@@ -3464,7 +3464,7 @@ export class RenderEngine implements RenderEngineLike {
         const right = name.rightName;
         if (!name.isCompound || left === undefined || right === undefined) {
           const key = name.key;
-          // fetch-composer batch lane (2026-10-06): the OLD gate skipped the
+          // the batched fetch composer (2026-10-06): the OLD gate skipped the
           // ask whenever the LEXICON held any entry for the key — but a lex
           // entry is not a seated record: lexToId's side resolutions write
           // `L-<key> -> id` without ever fetching the row, and the wave's
@@ -3526,8 +3526,8 @@ export class RenderEngine implements RenderEngineLike {
         } else {
           // a compound side is not seated yet: resolve the sides first.
           nextRound.push(left.s, right.s);
-          // fetch-composer batch lane (2026-10-06): re-pend the name itself.
-          // MEASURED CONVERGENCE GAP (this lane's attribution): the old push
+          // the batched fetch composer (2026-10-06): re-pend the name itself.
+          // MEASURED CONVERGENCE GAP (this pass's attribution): the old push
           // resolved the sides but never re-asked the PARENT, so the
           // parent's own pair existence was left to the caller's first
           // id() walk — one solo pair probe per 3-level name (the residual
@@ -3611,7 +3611,7 @@ export class RenderEngine implements RenderEngineLike {
       const rows = (await this.fetcher.driver.batch(statements)).flatMap(
         (result) => (result.rows as CardsRow[]) ?? [],
       );
-      // fetch-composer batch lane (V1): the rows in hand carry everything
+      // the batched fetch composer: the rows in hand carry everything
       // the per-row compose pipeline is about to ask one row at a time
       // (sides' idToLex reads, type-card reads, left-side row reads).
       // Prime from the held rows + one id IN read for the residue BEFORE
@@ -3705,7 +3705,7 @@ export class RenderEngine implements RenderEngineLike {
       const rows = (await this.fetcher.driver.batch(preamble)).flatMap(
         (result) => (result.rows as CardsRow[]) ?? [],
       );
-      // fetch-composer batch lane (V1): same in-hand prime as the round
+      // the batched fetch composer: same in-hand prime as the round
       // loop's batch (see primeRowsForComposition).
       await this.primeRowsForComposition(rows);
       for (const row of rows as CardsRow[]) {
@@ -3722,11 +3722,11 @@ export class RenderEngine implements RenderEngineLike {
   }
 
   /**
-   * fetch-composer batch lane (V1, 2026-10-06): prime the compose
+   * the batched fetch composer (2026-10-06): prime the compose
    * pipeline's inputs from rows the wave ALREADY HOLDS, before the
    * per-row compose loop runs.
    *
-   * MEASURED MECHANISM (warmflood sweep-cut + this lane's attribution
+   * MEASURED MECHANISM (warmflood sweep-cut + this pass's attribution
    * probes): a wave-fetched junction row's composeCardRecord walks
    * composeName -> name(sideId) -> idToLex point reads (one round trip
    * per side, recursively for nested junctions), and the seat pipeline's
@@ -3760,7 +3760,7 @@ export class RenderEngine implements RenderEngineLike {
    */
   private async primeRowsForComposition(rows: CardsRow[]): Promise<void> {
     if (rows.length === 0) return;
-    // r6-edge-regression lane (2026-10-06): the residue reads below had NO
+    // the edge regression fixes (2026-10-06): the residue reads below had NO
     // ask memory — every wave call re-collected every side/type id not in
     // ITS OWN rows and re-batched it, so the sweepproof late-seat sweep's
     // added wave traffic multiplied the SAME per-id reads (Home measured
@@ -3917,7 +3917,7 @@ export class RenderEngine implements RenderEngineLike {
    *     CDW_Host+management guard-population walks true — Ruby's wanted-card
    *     render), so seating the computed verdict reproduces Ruby for BOTH
    *     directions at once: BW's leaves deny through 6569 "_left" -> left
-   *     11201 (EXISTS — the prior receipt's absent-left claim is
+   *     11201 (EXISTS — the prior recorded result's absent-left claim is
    *     falsified) -> BW Oversight+*self+*read 10577 (role list, no
    *     Anonymous); CDW_Host+management allows through its 6568-chain
    *     left. (The whole-population fear is answered by
@@ -4315,7 +4315,7 @@ export class RenderEngine implements RenderEngineLike {
   /** Complete the permission state from folded batch results, or run the
    *  standalone batch (warm-closure first render). Once per engine.
    *  `seatGateRows` is the seat head's gate-count column result (the
-   *  stamp-as-column lane): when present, that statement is spliced in at
+   *  the stamp-as-column change): when present, that statement is spliced in at
    *  its index and never issued — on the standalone-batch path the batch
    *  then carries only the remaining statements, and on a plan-armed render
    *  the router answers those, so the batch's live discharge is empty and
@@ -4698,7 +4698,7 @@ export class RenderEngine implements RenderEngineLike {
    *  So the cache entry is keyed (shared, unchanged) while the object a
    *  fetch HANDS BACK carries the mark that named it. That is the whole
    *  semantic, and it belongs at the fetch - not at the name layer. A prior
-   *  lane ported it at format.ts#nest instead (dddb01cd, reverted forward-
+   *  pass ported it at format.ts#nest instead (dddb01cd, reverted forward-
    *  only by fbb6eda3); the nest is the one consumer that must not carry it,
    *  because a `{{`_}}` / `{{_self}}` nest resolves its target from the
    *  CONTEXT card and never reaches this function at all (format.ts:1601,
@@ -4760,7 +4760,7 @@ export class RenderEngine implements RenderEngineLike {
    *     `Inflector#underscore`, cardname lib/cardname.rb:106-116), so a
    *     map hit is re-checked against the seat's STORED name
    *     (`card.name.s`) before it counts. A fold-only hit is not
-   *     existence; that is precisely the trap the negdelta lane's
+   *     existence; that is precisely the trap the negative-delta change's
    *     `Lexicon#peekId` arm fell into.
    *  2. ONE point query against the stored name - `WHERE name = ? AND
    *     trash = 0`, the `trash = false unless look_in_trash` default of
@@ -4786,7 +4786,7 @@ export class RenderEngine implements RenderEngineLike {
    *
    *  SCOPE OF THE CHANGE: the verdict never enters renderCards. Seating a
    *  not-really-warm card there would change what every sync surface can
-   *  see - the blast radius the negdelta lane refused to take without a
+   *  see - the blast radius the the negative-delta change refused to take without a
    *  full-canvas grade. This arm feeds exactly one decision: the
    *  customize_button's proposed new card name. */
   async cardExists(name: string): Promise<boolean> {
@@ -4806,7 +4806,7 @@ export class RenderEngine implements RenderEngineLike {
     return (await this.fetcher.fetchByName(parsed)) !== undefined;
   }
 
-  /** Row 6 (adjudicate-10-rows-lane.md) - the bootswatch skin's `+parent`
+  /** Row 6 (the corresponding port note) - the bootswatch skin's `+parent`
    *  POINTER, resolved the way Ruby resolves it.
    *
    *  `card.parent?` is bootswatch_skin.rb:57-59's
@@ -4914,7 +4914,7 @@ export class RenderEngine implements RenderEngineLike {
    *  customize_button ViewFn. Undefined = never warmed (an engine that did
    *  not run the prepare phase for this card, or a skin nested into a render
    *  rather than being the root); the view falls back to the render-card
-   *  map exactly as it did before this lane. */
+   *  map exactly as it did before this pass. */
   peekCustomizedName(skinName: string): string | undefined {
     return this.customizedNameBySkinKey.get(DeckoName.parse(skinName).key)?.name;
   }
@@ -5031,7 +5031,7 @@ export class RenderEngine implements RenderEngineLike {
       collectLinkTargetNames(staticHelp, targets);
     }
     let seated = false;
-    // db-roundtrip-elimination lane (W3a): the harvested targets seat in
+    // db round-trip elimination: the harvested targets seat in
     // ONE batched wave (seatNamesByWave, the driveClosure shapes) before
     // the ladder loop; the loop below stays for its exact hit/miss
     // bookkeeping (unknown flags, wanted-card pins) and now answers from
@@ -5117,10 +5117,10 @@ export class RenderEngine implements RenderEngineLike {
 
   /** The core mod's admin runtime (mod-core's prepareAdminRuntime: the
    *  mod cards, the *update-rule role walk) built lazily for engines with
-   *  NO bound loader — the graded page-lane harness shape, where the mod
+   *  NO bound loader — the graded page-surface harness shape, where the mod
    *  prepareEngine never ran and the :configs view would otherwise read an
    *  empty admin universe. Sync view
-   *  bodies cannot await a build, so the page lane calls this from the
+   *  bodies cannot await a build, so the page surface calls this from the
    *  async prepare (gated by renderClosureNeedsCoreAdminRuntime) BEFORE
    *  the sync render dispatches. Once per engine (the flag; resetCaches
    *  re-arms). */
@@ -5460,7 +5460,7 @@ export class RenderEngine implements RenderEngineLike {
         if (this.fetchRenderCard(t) === undefined) need.add(t);
       }
     }
-    // db-roundtrip-elimination lane (W3a): batch-seat the type-option
+    // db round-trip elimination: batch-seat the type-option
     // targets before the ladder loop (same wave contract as the other
     // prepare sweeps).
     if (need.size > 0) {
@@ -5477,13 +5477,13 @@ export class RenderEngine implements RenderEngineLike {
    *  pointerListHostsDone shape: the deck is static, so a later render's
    *  pass cannot find a new answer for a name it already asked about. */
   private templateLinkJunctionTargetsDone = new Set<string>();
-  /** db-roundtrip-elimination lane: the waves' ENGINE-LIFETIME ask memory
+  /** db round-trip elimination: the waves' ENGINE-LIFETIME ask memory
    *  (see seatNamesByWave) - every simple key and id pair any wave asked
    *  the database, so warm renders' waves re-ask nothing and the
    *  warm-zero query-shape pins hold. */
   private waveAskedSimpleKeys?: Map<string, string>;
   private waveAskedPairs?: Map<string, { leftId: number; rightId: number; lex: Lex }>;
-  /** r6-edge-regression lane (2026-10-06): the composition primer's own
+  /** the edge regression fixes (2026-10-06): the composition primer's own
    *  ask memory — every side/type id primeRowsForComposition ever batched,
    *  so a later wave call (the sweepproof late-seat sweep adds them)
    *  re-asks nothing. Same contract and same resetCaches clearing as the
@@ -5493,7 +5493,7 @@ export class RenderEngine implements RenderEngineLike {
    *  the same engine-lifetime memory. A join miss converts to a pair-id ask
    *  (askedPairs) on the retry round, so this set never blocks that. */
   private waveAskedSideKeyPairs = new Set<string>();
-  /** db-roundtrip-elimination lane: type-card ids the W3b priming already
+  /** db round-trip elimination: type-card ids the W3b priming already
    *  seated - the priming pass's IN-list runs once per id per engine. */
   private typeCardsPrimed = new Set<number>();
   /** Root card keys whose rule-candidate set the W2b priming already
@@ -5613,7 +5613,7 @@ export class RenderEngine implements RenderEngineLike {
         this.templateLinkJunctionTargetsDone.add(composed.key);
       }
     }
-    // db-roundtrip-elimination lane (W3a): batch-seat the junction targets
+    // db round-trip elimination: batch-seat the junction targets
     // before the ladder loop (same wave contract as the other sweeps).
     if (need.size > 0) {
       await this.seatNamesByWave([...need]);
@@ -5744,9 +5744,9 @@ export class RenderEngine implements RenderEngineLike {
     const MAX_ROUNDS = RUBY_MAX_DEPTH;
     for (let round = 0; round < MAX_ROUNDS; round++) {
       let grew = false;
-      // fetch-composer batch lane (V2+V3, 2026-10-06): the round's hosts'
+      // the batched fetch composer (V2+V3, 2026-10-06): the round's hosts'
       // asks ride ONE merged wave before any per-host work runs. MEASURED
-      // MECHANISM (this lane's attribution, post-reset): the per-host
+      // MECHANISM (this pass's attribution, post-reset): the per-host
       // waves cost one round trip each (~25 arms on the Home page), and
       // the hosts' own ladders (resolveHostItemTypeName's findRule walk
       // over ruleNamesForCard("*content options") candidates) resolved
@@ -6093,7 +6093,7 @@ export class RenderEngine implements RenderEngineLike {
     return undefined;
   }
 
-  /** fetch-composer batch lane (V2): the option-rule candidate names the
+  /** the batched fetch composer: the option-rule candidate names the
    *  host's item-type walk resolves through findRule — the same pure,
    *  sync list ruleNamesForCard emits, so the merged pre-pass wave can
    *  seat (or negatively prime) the whole family before the per-host
@@ -6117,7 +6117,7 @@ export class RenderEngine implements RenderEngineLike {
     return out;
   }
 
-  /** fetch-composer batch lane (V2): the cql :type names the hosts' item-
+  /** the batched fetch composer: the cql :type names the hosts' item-
    *  type walks resolve (itemTypeIdOf's Search/Set arm -> cqlItemTypeId's
    *  fetchByName), collected MEMORY-ONLY from options cards the merged
    *  wave just seated — so the type-card fetches ride the same wave
@@ -6228,7 +6228,7 @@ export class RenderEngine implements RenderEngineLike {
    *  true fetch misses. */
   /** The pointer/list host's item names (the exact transform
    *  enrichPointerListItems renders from). Extracted verbatim for the
-   *  closure's merged-wave pre-pass (fetch-composer batch lane V3), which
+   *  closure's merged-wave pre-pass (the batched fetch composer V3), which
    *  must collect the SAME names the per-host pass would ask. */
   private pointerItemNamesOf(card: RenderCard): string[] {
     // A set module's `def content` override replaces the stored items
@@ -6270,7 +6270,7 @@ export class RenderEngine implements RenderEngineLike {
   private async enrichPointerListItems(card: RenderCard): Promise<void> {
     const items = this.pointerItemNamesOf(card);
     const missNames: string[] = [];
-    // db-roundtrip-elimination lane (W3a): the card's item names seat in
+    // db round-trip elimination: the card's item names seat in
     // ONE batched wave before the per-item ladder loop (the census's
     // biggest prepareItemForRender family - up to ~230 point-query hops
     // per page on the pointer-heavy probe pages). The loop below keeps its
@@ -8300,7 +8300,7 @@ export class RenderEngine implements RenderEngineLike {
         // compound *dummy+*dummy lands on *all plus+*default (rule 17827,
         // RichText-typed) → the *default walk hits RichText+*type+*default
         // (rule 21450) — the "RichText : <em>empty</em>" row.
-        // (Supersedes the bar-slots lane note: the *star rows do NOT all
+        // (Supersedes the bar-slots pass note: the *star rows do NOT all
         // resolve at the *all+<setting> level — the read row resolves at
         // BasicCs+*type+*read through the typed prototype.)
         const protoName =
@@ -8416,7 +8416,7 @@ export class RenderEngine implements RenderEngineLike {
    *  and the bar_menu's new-card create/edit label split. The corpus's
    *  `mod: format+*style` (left "mod: format" is Mod-typed, NOT a Set) is
    *  NOT a rule card — the oracle pins its bar WITHOUT `_rule-item`
-   *  (dual-lane-view:style: mods:render:open). */
+   *  (dual-$1view:style: mods:render:open). */
   cardMatchesRuleSet(card: RenderCard): boolean {
     const ids = this.ruleTypeIds;
     if (ids === undefined || ids.setting === undefined || ids.set === undefined) {
@@ -8775,7 +8775,7 @@ export class RenderEngine implements RenderEngineLike {
       // RELATIVE references resolve contextually here too (the referencing
       // card is the resolution context - the same semantics the sync nest
       // dispatch and prepareNestClosureSearches use). cardReferenceKeys
-      // skips them, which is exactly the view-lane gap this loop closes:
+      // skips them, which is exactly the view-surface gap this loop closes:
       // children's content `<p>{{_self+*referred_to_by}}</p>` carries a
       // RELATIVE reference to its search card, so the search never joined
       // the walk, never pre-executed, and the dispatched card_list read
@@ -8786,7 +8786,7 @@ export class RenderEngine implements RenderEngineLike {
       // search_with_params INSIDE the view dispatch (see the
       // prepareNestClosureSearches doc's Ruby-parity note), so every
       // readable search the render will read executes before the bytes
-      // complete - on every lane, not just the page lane.
+      // complete - on every surface, not just the page surface.
       for (const ref of referencedNames(card.dbContent)) {
         // Other references were walked through cardReferenceKeys above; they
         // are resolved here only for the VirtualSearch family check below.

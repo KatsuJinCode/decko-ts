@@ -42,16 +42,16 @@
 // LOUD, NOT SILENT. A database with no deck_data_version throws here rather
 // than rendering: a skipped check is a silent staleness window, and this
 // module's entire safety argument rests on the check running. Same convention
-// as the freshness lane that owns the stamp (d19ec179).
+// as the freshness stamp that owns the stamp (d19ec179).
 
 import type { SQLDatabaseDriver, SQLQueryResult } from "../../server/driver.js";
 
 /** The content-version read: one PK point SELECT, the exact statement the
- *  freshness lane's render gate pays (d19ec179, src/card/render.ts
+ *  freshness stamp's render gate pays (d19ec179, src/card/render.ts
  *  DECK_DATA_VERSION_STATEMENT). Carried here as its own constant because
  *  that commit is not on this branch; the two MUST stay byte-equal or the
  *  boot cache and the render gate would disagree about what "unchanged"
- *  means. The composition seam is named in the receipt. */
+ *  means. The composition seam is named in the recorded result. */
 import { currentRequestContext } from "../request-context.js";
 
 export const BOOT_VERSION_STATEMENT =

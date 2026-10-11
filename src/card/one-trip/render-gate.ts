@@ -1,5 +1,5 @@
 // THE CONFIG-GATED RENDER-PATH WIRING for the one-trip payload
-// (one-trip-integration lane, 2026-10-03).
+// (the one-trip integration, 2026-10-03).
 //
 // Default OFF: the deployed render path is byte-for-byte unchanged unless
 // the operator sets DECKO_ONE_TRIP=1. When the gate is ON, a page render
@@ -41,7 +41,7 @@ import { seatPageBundle } from "./page-bundle-adapter.js";
 import { debugFlag, envValue } from "../debug-flags.js";
 
 /** The config gate. Default OFF: no env var, no payload, zero new trips,
- *  zero new statements — the deployed default this lane promised. */
+ *  zero new statements — the deployed default this pass promised. */
 export function oneTripWantsPayload(): boolean {
   return debugFlag("DECKO_ONE_TRIP");
 }
@@ -53,7 +53,7 @@ export function oneTripWantsPayload(): boolean {
  *  materialized shape — the one_trip_* tables IN the serving database. The
  *  sentinel is load-bearing on the serving DB: its SQL parser rejects ATTACH
  *  for ANY value (observed verbatim 2026-10-05, SQL_PARSE_ERROR —
- *  cold-latency-rig-lane.md MATERIALIZED-STORE §6.1), and its per-value size
+ *  the corresponding port note MATERIALIZED-STORE §6.1), and its per-value size
  *  limit rejects the single-row bundle for template-scale pages (§6.3), so
  *  the inline posture skips the ATTACH entirely and fetches the one_trip_*
  *  tables UNQUALIFIED on the same connection, in bounded chunks assembled
@@ -73,7 +73,7 @@ const seatedPages = new WeakMap<FetchEngine, Set<string>>();
 
 /**
  * Drop the seating memo for one fetcher (the freshness composition,
- * per-viewer-seat lane 2026-10-06): a moved deck_data_version stamp means
+ * the per-viewer seat 2026-10-06): a moved deck_data_version stamp means
  * every seated page's snapshot and every armed plan's in-memory results
  * predate the current deck state. The render's freshness gate calls this
  * alongside resetCaches() and replayRouter.disarmRenderPlan() so the next
@@ -87,7 +87,7 @@ export function invalidateSeatedPagePayloads(fetcher: FetchEngine): void {
 }
 
 /** The freshness context the render entry hands the seat (stamp-as-column
- *  lane, 2026-10-06, spec §c): the engine's last-seen committed-write
+ *  , $1, spec §c): the engine's last-seen committed-write
  *  version and the stamp-move branch. The seat's HEAD statement reads
  *  deck_data_version in the SAME statement as the payload — current-at-read,
  *  one snapshot, consistent by construction — so the seat is the render
@@ -123,7 +123,7 @@ let warnedMisconfiguration = false;
 /**
  * Seat the page's one-trip payload if (and only if) the gate is ON and the
  * store can serve it. Called at the top of RenderEngine.render — BEFORE the
- * freshness gate since the stamp-as-column lane: the head IS the render's
+ * freshness gate since the stamp-as-column change: the head IS the render's
  * stamp read on this posture. The render's own first read (fetchByName)
  * then answers from the seated cache. NEVER throws into the render path:
  * every failure mode falls back to the unchanged normal path.
@@ -176,7 +176,7 @@ export async function seatOneTripPayloadForRender(
     // The INLINE posture fetches parts once: the assembled bundle AND
     // the head's gate columns (stamp + gate count — the seat's zero-trip
     // gate reads). The ATTACHED posture (the side-store shape, local
-    // lanes only) carries no gate columns — its head statement does not
+    // surfaces only) carries no gate columns — its head statement does not
     // have them — so gateMeta stays undefined and the render entry falls
     // back to its own live reads.
     let bundle: import("./types.js").PageBundle;
@@ -216,7 +216,7 @@ export async function seatOneTripPayloadForRender(
     // only — see page-bundle-adapter.ts); the fetcher satisfies the
     // structural RenderEngineLike.
     await seatPageBundle(fetcher, fetcher, bundle);
-    // THE RENDERPLAN REPLAY (renderplan-replay lane): the inline fetch
+    // THE RENDERPLAN REPLAY (the render-plan replay): the inline fetch
     // carried the page's pre-computed render plan (one_trip_render_plans,
     // read inside the seat's head — no extra trip). Replay it as ONE
     // batch and arm the engine's driver seam: every subsequent render
@@ -228,7 +228,7 @@ export async function seatOneTripPayloadForRender(
     // authoritative.
     if (plan === undefined) plan = bundle.renderPlan;
     if (plan !== undefined && plan.entries.length > 0) {
-      // THE DRIFT ARM INDEX rides the same replay (driftfix lane): the
+      // THE DRIFT ARM INDEX rides the same replay (the drift-arm fix): the
       // per-bind-value answer index for the drift classes, built from the
       // very results this replay arms. A drifted IN-list ask (mid-flight
       // cache evolution regrouped the binds) composes its answer from the

@@ -21,7 +21,7 @@
 // NOT ported (honest remainder):
 // - set/all/comment.rb:14-19 attr_writer :comment_author + the reader's
 //   SESSION-STICKY arm — `Env.session[:comment_author] = comment_author`
-//   PORTED 2026-10-02 (the mod-porting-harness lane, oracle-verified):
+//   PORTED 2026-10-02 (the mod porting harness, oracle-verified):
 //   ModEventSaveInput.session carries the session store (the caller owns
 //   the bag across saves — Ruby's Env.session), the event writes the
 //   card-level resolved author BEFORE the blank-comment return (the
@@ -257,7 +257,7 @@ const discussionTitledContentView: ViewFn = (ctx) => {
 // ---------------------------------------------------------------------------
 
 const discussionCoreView: ViewFn = (ctx) => {
-  // layout-whitespace lane (2026-09-29): Ruby is
+  // the layout whitespace fix (2026-09-29): Ruby is
   //   output [super(), render_comment_box(optional: :hide)]
   // (set/right/discussion.rb:8-10), and output
   // (card-1.110.0 lib/card/format/content.rb:68-70) joins with "\n" —
@@ -266,8 +266,8 @@ const discussionCoreView: ViewFn = (ctx) => {
   // +discussion pages fail by exactly that missing "\n" (e.g. corpus
   // 10375 Occupy oracle offset 26,405).
   //
-  // board-stage3 lane (2026-09-29) composition correction: since the
-  // layout-whitespace lane landed the discussion branch INSIDE the base
+  // the board stage-3 composition (2026-09-29) composition correction: since the
+  // the layout whitespace fix landed the discussion branch INSIDE the base
   // coreView (views.ts - the loader-less verifier path dispatches no
   // set-scoped override, so the base owns the emulation), this override's
   // BASE_CORE capture IS that same wrapper. Appending the box HERE on top

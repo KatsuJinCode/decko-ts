@@ -38,15 +38,15 @@
 // type/signup/views, type/user, type_plus_right/cardtype/account,
 // type_plus_right/role/members, type_plus_right/user/email (carries :raw).
 //
-// NOT ported (honest remainder, updated lane-follow 2026-09-28):
+// NOT ported (honest remainder, updated the follow views port 2026-09-28):
 // - signin reset_password_success + edit_buttons ARE PORTED now
-//   (lane-follow; the frame helper's full chrome - header/panel - is
+//   (the follow views port; the frame helper's full chrome - header/panel - is
 //   DISCLOSED remainder inside resetPasswordSuccessView's comment: the
 //   body renders in the standard slot wrap).
 // - signin edit (:154-157): the base :edit form super() target is
 //   card-mod-edit's (still unported); reset_password_voo's
 //   edit_structure rides the same machinery.
-// - signin core IS PORTED now (edge-signin-form-fix lane 2026-10-03 —
+// - signin core IS PORTED now (the edge signin form fix 2026-10-03 —
 //   signinCoreView, the sign-in form against the live-wire oracle; the
 //   multi-card editor machinery its Ruby body rides stays unported, so
 //   the emitter reproduces the captured shape directly, deriving the
@@ -67,9 +67,9 @@
 //   (follow-form-shapes.ts followPath), perms :delete in the view config.
 //   The deletion ORDER is search order (rowid) - Ruby CQL's default sort
 //   is by name; no oracle capture exists to split the two orderings at
-//   corpus sizes (DISCLOSED in the receipt follow-rule-walk.md).
+//   corpus sizes (DISCLOSED in the recorded result follow-rule-walk.md).
 // - right/account verify_url/reset_password_url: rails (card_url + the
-//   async-HMAC x sync-ViewFn boundary the token-runtime receipt names).
+//   async-HMAC x sync-ViewFn boundary the token-runtime recorded result names).
 //   The Auth::Token half of the gap CLOSED 2026-09-28:
 //   src/card/auth/token.ts is a byte-parity port of
 //   card-1.110.0/lib/card/auth/token.rb pinned against the real jwt gem's
@@ -79,7 +79,7 @@
 //   the secret or the token — it is that a ViewFn is SYNCHRONOUS
 //   (src/card/render/format.ts:291) while HMAC is async, plus the
 //   card_url/path/haml/perms machinery these two views wrap. That is the
-//   same structural boundary lane-asyncview owns for the five head views.
+//   same structural boundary the async view work owns for the five head views.
 //   The URL BUILDER half CLOSED 2026-09-29:
 //   src/card/auth/account-verify-reset-flows.ts buildAccountTokenUrl is the
 //   token_url port (path.rb action_base + the activesupport-verified
@@ -94,7 +94,7 @@
 // - abstract/account_holder account_tab/configs/account_details_items:
 //   rails (board_pill_sections, Auth.as_bot, all_admin_configs_grouped_by)
 // - user setup: rails (needs_setup?, Auth.as_bot, frame_and_form)
-// - type/role link_with_checkbox IS PORTED now (lane-follow; the
+// - type/role link_with_checkbox IS PORTED now (the follow views port; the
 //   disabled_roles subformat card_form + the check_box_tag shape from
 //   form_tag_helper.rb:455-460; the actor comes from the seam session).
 //   configs (:12-24): rails (all_admin_configs_grouped_by - the core
@@ -163,7 +163,7 @@ import {
   type ModSetModuleFile,
 } from "../mod-manifest.js";
 
-/** The set-module event declarations below (the mod-events lane,
+/** The set-module event declarations below (the set-module event,
  *  2026-10-08): a stub-bodied declaration unless the engine has no
  *  counterpart (then `engineOwnedEvent` - the behavior lives in engine
  *  code, the declaration only records Ruby's set membership + metadata).
@@ -237,7 +237,7 @@ const tokenExpiryView: ViewFn = () =>
  *     account_field_nest(:password, "password")]` — an array body, so
  *  output() joins the parts with a newline (content.rb:70-73,
  *  Array.wrap(content).flatten.compact.join "\n" — the join the
- *  head/header lane pinned). account_field_nest (views.rb:55-57) is
+ *  head/header port pinned). account_field_nest (views.rb:55-57) is
  *  `field_nest field, title: title, view: :labeled`; nesting.rb:27-31
  *  field_nest resolves `card.name.field(field)` (the LEFT card's child —
  *  the +*account junction's fields live on its left, the member card) and
@@ -288,10 +288,10 @@ const passwordCoreView: ViewFn = () => "<em>encrypted</em>";
 const openContentView: ViewFn = (ctx) => ctx.fmt.renderView("core");
 
 // set/self/signin.rb:134-137 view :title (`voo.title ||=
-// t(:account_sign_in_title)`) - NOT registered here: the headless view-lane
+// t(:account_sign_in_title)`) - NOT registered here: the headless view-surface
 // grading engine runs with NO ModLoader bound, so a setModule registration
 // never dispatches. The bytes are served by the render layer's
-// SELF_SET_TITLE_OVERRIDES branch (views.ts, rule-tooltips lane
+// SELF_SET_TITLE_OVERRIDES branch (views.ts, the rule tooltips
 // 2026-09-29) - the same headless pattern as openView's discussion
 // comment_box check.
 
@@ -976,7 +976,7 @@ const signupContentFormgroupsView: ViewFn = (ctx) => {
  *  The tuple's relative marks normalize through the edit mod's walk
  *  (card.name.field over the +*account card -> "<card>+*account+email").
  *  The dispatch rides superView to the edit mod's contentFormgroupsView
- *  (the multi-card walk the mod-completion-100 lane ported there). */
+ *  (the multi-card walk the the mod-completion pass ported there). */
 const accountBeforeContentFormgroupsView: ViewFn = (ctx) => {
   ctx.voo.opts["edit_structure"] = [
     ["+email", { title: "email" }],
@@ -1270,7 +1270,7 @@ const setModules: ModSetModuleFile[] = [
     // set/right/email.rb:5 `assign_type :phrase` (advanced_api.rb:5-8 —
     // the trait's cards are Phrase-typed; the +*account page's phantom
     // +*password field slot pins type-id 52 Phrase).
-    // Events (mod-events lane 2026-10-08): the three email validations run
+    // Events (set-module event 2026-10-08): the three email validations run
     // inside src/card/auth/account-fields.ts planAccountFields —
     // normalizeEmail is downcase_email (:29-32) then validate_email's strip
     // (:7-9); emailIsValid is validate_email's grammar (:10-13);
@@ -1296,7 +1296,7 @@ const setModules: ModSetModuleFile[] = [
     // password field — a labeled render shows the "encrypted" stand-in,
     // never the hash). Still unported: the input_type/autocomplete?
     // helpers (edit-form machinery).
-    // Events (mod-events lane 2026-10-08): the four password events run in
+    // Events (set-module event 2026-10-08): the four password events run in
     // account-fields.ts passwordErrors (validate_password_length :30-35 +
     // validate_password_chars :37-47 — PASSWORD_REGEX and the requirement
     // labels are that module's constants) and encryptPassword
@@ -1353,12 +1353,12 @@ const setModules: ModSetModuleFile[] = [
     // :core (template :haml), :open, :title, :open_content,
     // :one_line_content, :reset_password_success, :edit, :edit_buttons
     // + helper methods. Ported: :core (signin.rb:119-125, the sign-in
-    // form — edge-signin-form-fix lane 2026-10-03; without it the
+    // form — the edge signin form fix 2026-10-03; without it the
     // /*signin titled body rendered the card's EMPTY RichText content and
     // the edge cached the heading-only page), open_content (the
     // _render_core delegation - delegates to :core via
     // ctx.fmt.renderView("core")) and one_line_content (the empty body).
-    // Events (mod-events lane 2026-10-08): the four signin events run in
+    // Events (set-module event 2026-10-08): the four signin events run in
     // src/card/auth/signin.ts — authenticate_or_abort + the error ladder
     // (:42-84) is the signin event's body (signin.rb:10-12); signin_success
     // (:15-17, abort after success, no row write) and signout (:19-23,
@@ -1430,7 +1430,7 @@ const setModules: ModSetModuleFile[] = [
     // whose own module lacks the view expands to the modules nested under
     // it).
     setPath: "type/signup",
-    // Events (mod-events lane 2026-10-08; signup.rb:20-38). Engine
+    // Events (set-module event 2026-10-08; signup.rb:20-38). Engine
     // ownership: the approval ladder is account-verify-reset-flows.ts —
     // auto_approve_with_verification (:20-22, when: :can_approve?) runs on
     // the CREATE path (request_verification: +*status "unverified" +
@@ -1478,7 +1478,7 @@ const setModules: ModSetModuleFile[] = [
     // (account_formgroups + multi_card_editor), :new_buttons
     // (standard_create_button + invite_button), :core haml override (the
     // signup_line + account_lines template that would shadow the R17
-    // ported core). surfaces-batch2 lane, 2026-09-30.
+    // ported core). the second surfaces batch, 2026-09-30.
     // Wave-1 (2026-10-03): :new + :new_buttons join - the title composition
     // (the invitation arm the disclosed admin-approval basis leaves
     // unreachable) + superView to the edit mod's live :new, and the
@@ -1488,7 +1488,7 @@ const setModules: ModSetModuleFile[] = [
     // opts; the +*account card's own registration carries the before hook)
     // over the signup card's empty multi_card_editor? arm; the walk itself
     // lives on the edit mod's contentFormgroupsView (the explicit
-    // edit_structure arm the lane ported there). The oracle:
+    // edit_structure arm this pass ported there). The oracle:
     // account-walk-views.rb signup_content_formgroups_walk.
     setPath: "type/signup/views",
     formats: {
@@ -1509,7 +1509,7 @@ const setModules: ModSetModuleFile[] = [
   {
     // set/type/user.rb:7-48 format :html do block - view :setup
     // (unknown: true, perms: :needs_setup?, cache: :never) + helpers.
-    // NOT PORTED (the named remainder, wave-1 receipt): the view is
+    // NOT PORTED (the named remainder, wave-1 recorded result): the view is
     // double-gated - perms :needs_setup? is a DECK-STATE census predicate
     // (Card::Auth.needs_setup? = zero non-shipped +*account junctions) the
     // sync view gate cannot answer without a prepared census verdict seam,
@@ -1539,7 +1539,7 @@ const setModules: ModSetModuleFile[] = [
   {
     // set/type_plus_right/role/members.rb:1-7 include_set Abstract::IdList,
     // assign_type :list, event :update_role_cache. No views.
-    // Event (mod-events lane 2026-10-08) — STUB with an engine-architecture
+    // Event (set-module event 2026-10-08) — STUB with an engine-architecture
     // reason, not an omission: Ruby's body refreshes a CACHE
     // (Self::Role.update_rolehash(left.id, item_ids), members.rb:5-7) that
     // read-time permission checks consult. The port derives the role lists

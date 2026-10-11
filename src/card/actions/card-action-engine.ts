@@ -3008,7 +3008,7 @@ export class CardActionEngine {
   private async deleteCardInner(input: DeleteCardInput): Promise<ActionResult | null> {
     // The anonymous-delete arm: ok_to_delete? (permissions.rb:155-157
     // `permit :delete`) has NO signed-in clause — the chain rules it
-    // identically to create/update. Corpus adjudication (a probe against
+    // identically to create/update. Corpus review (a probe against
     // the capture corpus): 8 trashed cards with updater_id = the anonymous
     // codename card (id 15) — the trash save re-stamps updater_id
     // (set_stamper, account.rb:20-23), so those rows are anonymous-actor

@@ -197,7 +197,7 @@ export function defaultRuleUniverseStatement(): SQLStatement {
  * The TYPE-NAME read for both template universes in ONE self-contained
  * statement: every *default/*structure rule card's type_id joined to its
  * type card's name. Rides the SAME cold prelude batch as the two universe
- * statements (rule-defaults lane, 2026-10-02): newCardDefaultType's
+ * statements (the rule defaults, 2026-10-02): newCardDefaultType's
  * dup_structure leg (templating.rb:61-65 — a *structure rule card can
  * BECOME the new-card template, contributing ITS type_id) must answer the
  * winning rule card's type NAME synchronously, so the names load with the
@@ -340,14 +340,14 @@ export function resolveStructuredContent(
  * is a documented remainder
  *
  * `setModuleOverride` is the set-module CODE content override (the port of
- * Ruby's singleton-class `def content` hook — set-override-fidelity lane
+ * Ruby's singleton-class `def content` hook — the set-module override fidelity work
  * 2026-10-03; resolution = src/card/set-module-content-overrides.ts). In Ruby
  * the singleton ancestors precede the Card class, so an applicable set
  * module's `def content` shadows this ENTIRE method (structured_content
  * included) for every card.content caller — the corpus record capture
  * photographs card.content, so the override must answer here first. Undefined
  * (no wired module matches) falls through unchanged, byte-identical to the
- * pre-lane behavior.
+ * pre-change behavior.
  *
  * `recordDbContent` is the card's own stored db_content (undefined/null
  * alike); the returned string is what RenderCard.dbContent carries for the

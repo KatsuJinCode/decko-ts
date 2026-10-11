@@ -1,4 +1,4 @@
-// THE RENDER-PLAN RECORDER (renderplan-replay lane, 2026-10-05): the
+// THE RENDER-PLAN RECORDER (the render-plan replay, 2026-10-05): the
 // store-build-time half of the record-and-replay render. For each page the
 // store materializes, this module renders the page ONCE through the real
 // engine — the one-trip gate ON in the EXACT SERVING POSTURE
@@ -136,7 +136,7 @@ export async function recordRenderPlansForPages(
       };
       report.pages[pageName] = page;
       if (pageId === undefined || pageId <= 0) continue;
-      // RENDER PLAN-BLIND (r5 assembly lane, 2026-10-06 — re-recording
+      // RENDER PLAN-BLIND (r5 assembly , $1 — re-recording
       // defect): the capture render must ask the page's TRUE cold ask set,
       // but this deck may already carry plan rows for the page (a
       // re-record, or a partial earlier build). The seat reads the plan

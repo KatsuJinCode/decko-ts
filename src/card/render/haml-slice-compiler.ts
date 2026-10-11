@@ -34,7 +34,7 @@
 // algorithm (haml-5.2.2/lib/haml/attribute_builder.rb:3-60), both of which
 // are data about HTML/Haml rather than about any deck template.
 //
-// NOT PORTED (see the UNPORTED list in the receipt): the :markdown filter and
+// NOT PORTED (see the UNPORTED list in the recorded result): the :markdown filter and
 // Ruby's own SyntaxError text for a malformed multi-line `- if` condition.
 // Both are declared, not silently skipped - the test asserts the declared
 // list rather than quietly narrowing the gate.
@@ -51,7 +51,7 @@ export class HamlCompileError extends Error {
 
 /** Raised when the template uses a Ruby expression the subset evaluator does
  *  not model. Distinct from HamlCompileError: this is OUR boundary, not
- *  Haml's, and the receipt must be able to say so. */
+ *  Haml's, and the recorded result must be able to say so. */
 export class HamlUnsupportedError extends Error {
   constructor(
     message: string,

@@ -66,9 +66,9 @@
 //     (formats.html.views: [] - the set-module basket bookkeeping Ruby keeps
 //     via the source_location walk) EXCEPT all/reference_editor/link_editor,
 //     which registers the two link-editor views ported 2026-09-29 (the
-//     tinymce-views-port lane, below).
+//     the TinyMCE views port, below).
 //
-// PORTED 2026-09-29 (the tinymce-views-port lane; oracle-pinned by
+// PORTED 2026-09-29 (the TinyMCE views port; oracle-pinned by
 // fixtures/captured/tinymce-editor-views.json, captured live by
 // tests/card/mod-loader/oracle-capture-tinymce-editor-views.rb with the
 // in-run no-write proof card_actions 4929 -> 4929):
@@ -567,7 +567,7 @@ export class LinkParser {
 
 // ---------------------------------------------------------------------------
 // set/all/reference_editor/link_editor.rb - the :link_editor html views
-// (ported 2026-09-29, the tinymce-views-port lane; oracle-pinned by
+// (ported 2026-09-29, the TinyMCE views port; oracle-pinned by
 // fixtures/captured/tinymce-editor-views.json)
 // ---------------------------------------------------------------------------
 
@@ -768,7 +768,7 @@ const TINYMCE_HELP_TEXT =
 
 // ---------------------------------------------------------------------------
 // set/all/reference_editor/nest_image.rb - :new_image_buttons (the
-// form-substrate lane)
+// the form substrate)
 // ---------------------------------------------------------------------------
 
 /** nest_image.rb:21-24 view :new_image_buttons:
@@ -788,18 +788,18 @@ const newImageButtonsView: ViewFn = (ctx) =>
   );
 
 // ---------------------------------------------------------------------------
-// mod-completion-100 lane (2026-10-03): the census chrome views
+// the mod-completion pass (2026-10-03): the census chrome views
 // :nest_editor/:modal_nest_editor/:nest_image/:modal_nest_image plus the
 // :nest_content/:new_image dispatches - PORTED through the harness with the
 // LIVE-VERIFIED static-ruby oracle
 // (ruby-oracles/card-mod-tinymce_editor/reference-editor-chrome-views.rb:
 // the gems' verbatim source + real Haml 5.2.2 + real ActionView 7.2.4 + real
 // cardname + real Card::Tab under ruby.exe 3.3.12; the params-ABSENT arms are
-// byte-exact substrings of the prior lane's live capture
+// byte-exact substrings of the prior pass's live capture
 // fixtures/captured/tinymce-editor-views.json, no_write_proof actions
 // 4929 -> 4929). The probe: card-mod-tinymce-editor-harness-probe.test.ts.
 //
-// THE PARAMS SEAM (named in the lane receipt): the chrome's snippet state is
+// THE PARAMS SEAM (named in the recorded result): the chrome's snippet state is
 // request-param driven (tm_snippet_raw / tinymce_id / tm_snippet_start /
 // index). The headless render engine models no request params (the
 // documented convention), so the REGISTERED views below render the
@@ -826,7 +826,7 @@ const NEST_VIEW_LIST = [
 /** all_views (card-mod-format set/all/demo.rb:40-42): the union of the view
  *  names declared across the html format class's ancestor format modules -
  *  the LIVE Ruby view registry read, uniq, sorted. THE RECORDED FACT: the
- *  prior lane's live capture helper_facts.all_views (191 names,
+ *  prior pass's live capture helper_facts.all_views (191 names,
  *  no_write_proof actions 4929 -> 4929), the same recorded-capture-constant
  *  basis as head-views.ts's REMOTE_STYLE_TAG; the oracle cross-checks the
  *  list against helper_facts.all_views_count before every capture. The
@@ -1871,7 +1871,7 @@ const cardModTinymceEditor: DeckoModManifest = {
     {
       // card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_image.rb
       // - the html views :nest_image/:modal_nest_image/:new_image are the
-      // unported remainder (blockers A/D of the tinymce-views lane:
+      // unported remainder (blockers A/D of the TinyMCE views port:
       // all_views + the create_form chain on the upload tab);
       // :new_image_buttons (nest_image.rb:21-24) is PORTED - registered in
       // the html block below (button_formgroup + standard_save_button(

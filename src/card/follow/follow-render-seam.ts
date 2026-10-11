@@ -108,7 +108,7 @@ export interface FollowRenderBundle {
    *  Auth.as_bot { Card.search left: id, not: {right: :account} }) — the
    *  accounted user's cards minus the +*account rights, search order
    *  (rowid; Ruby CQL default sort is by name — the seed decks' names sort
-   *  identically at the sizes the corpus carries; DISCLOSED in the receipt:
+   *  identically at the sizes the corpus carries; DISCLOSED in the recorded result:
    *  no oracle bytes exist to split the two orderings). */
   readonly closureDeletions: readonly { readonly name: string }[];
   /** Wave-1 rule_editor inputs (right/following.rb:32-38). The APPLIED
@@ -422,7 +422,7 @@ async function resolveSession(
 }
 
 /** The bundle builder RenderEngine.render calls when
- *  FOLLOW_SEAM_VIEWS.has(view). Read-only SELECTs through the notify lane's
+ *  FOLLOW_SEAM_VIEWS.has(view). Read-only SELECTs through the notify module's
  *  rule algebra; no writes; permission semantics unchanged (the standard
  *  view gate runs on the render root before any view body executes). */
 export async function prepareFollowRender(
@@ -462,7 +462,7 @@ export async function prepareFollowRender(
     if (session !== undefined) {
       // followed? (followed_by.rb:1-9): the actor's follow preference
       // applies to the card's set chain - the same walk the count runs,
-      // asked for the actor's id. (followRuleOptionFor's notify-lane walk
+      // asked for the actor's id. (followRuleOptionFor's notify-module walk
       // answers the SELF-set preference only; the *all-covering
       // preference the oracle deck carries is the count walk's shape.)
       followed = users.has(session.actorId);

@@ -58,7 +58,7 @@
 //   (base.rb:97-99) is withheld per the MRO record at
 //   oneLineContentBody. ORACLE-PINNED: the captured "Oracle One Line
 //   Plain Probe" arm of fixtures/captured/layout-one-line.json (the
-//   layout-fixture-adjudication lane gem-proved those bytes derive
+//   layout fixture review gem-proved those bytes derive
 //   exactly from this arm); the standing pin lives in
 //   card-mod-format.test.ts.
 // - set/type/mod.rb:3-5 view :admin: a simple render_core
@@ -70,7 +70,7 @@
 // ported view): abstract/jsonld_support, all/base (carries the
 // name/date/content/title family), all/content (label +
 // closed_content + raw_one_line_content html overrides + smart_label
-// + hidden_content_field - both ported (smart_label lane follow2,
+// + hidden_content_field - both ported (smart_label the follow read path,
 // popoverLink anchor; hidden_content_field from a resolved
 // live-captured oracle), all/css (css format block), all/csv (csv format
 // block), all/data (data format block), all/demo (haml), all/error
@@ -106,7 +106,7 @@
 // - set/all/demo.rb :demo: rails (card_form + select_tag +
 //   options_for_select + all_admin_configs_of_category; :view_list IS
 //   PORTED - the seven demo views compose through the engine's dispatch;
-//   :demo IS PORTED now (the mod-porting wave-1 lane 2026-10-03 - the
+//   :demo IS PORTED now (the mod-porting the first porting wave 2026-10-03 - the
 //   frame composition + view_select through cardFormShell +
 //   allAdminConfigCodenamesOfCategory; gem-source-derived
 //   rendered-unpinned, the harness oracle replays the composition)
@@ -212,13 +212,13 @@ import {
 import { RenderFormat, wrappedTitleInner } from "../../render/format.js";
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import { UnsupportedViewError } from "../../render/format.js";
-// an earlier pass merge 5 resolution (read-both-sides, union): the two lanes each
+// an earlier pass merge 5 resolution (read-both-sides, union): both sides each
 // added a DIFFERENT import on the same line-region. cardtype-tpl (HEAD)
 // added `h` for its add_button producers; roleviews added `DECK_ORIGIN`
 // for its ten mod view registrations. Both symbols are used in this file
 // and neither subsumes the other, so both imports are kept rather than
 // resolving to one side. `h` here is the slot-html escape helper
-// (merge 4's lane), not the Haml attribute pass.
+// (merge 4), not the Haml attribute pass.
 // 2026-10-01: the `DECK_ORIGIN` import is GONE from
 // this file — roleviews' three `card_url` views (:url, :id_url, :url_link)
 // now read the per-render `Card::Env.origin` through the engine's surface
@@ -330,17 +330,17 @@ const linknameView: ViewFn = ({ fmt }) => fmt.urlKey();
  *  "#{protocol}#{request&.host_with_port}"`), so the SAME helper renders
  *  two shapes and the frozen record pins BOTH:
  *    - SERVED PAGE: `https://example.com/User` (signup alert email's
- *      `{{_|url}}`, page-lane shard recapture-raw-shard-000016) and
+ *      `{{_|url}}`, page-surface shard recapture-raw-shard-000016) and
  *      `https://example.com/*changed_card` (follower notification
- *      email's) — that capture sets deck_origin for the page lane only
- *      (capture-dual-lane-page-and-view.rb:343, restored at :348);
+ *      email's) — that capture sets deck_origin for the page surface only
+ *      (capture-dual-$1page-and-view.rb:343, restored at :348);
  *    - VIEW FUNCTION: `/User` — the SAME card 21792, the SAME `{{_|url}}`,
- *      in the view-lane shard of the same recapture; that lane renders
+ *      in the view-surface shard of the same recapture; that pass renders
  *      outside the production-config block (:277-287) with a
  *      controller-less `Card::Env.reset` (:439), so origin is "".
  *  The former unconditional DECK_ORIGIN could only ever produce the
  *  first shape, which is what left 21792/21796 pinned red behind an
- *  "adjudicated origin, not closable against this fixture" blocker. The
+ *  "reviewed origin, not closable against this fixture" blocker. The
  *  port now resolves the value through `fmt.cardUrl` (RenderFormat.
  *  envOrigin, the same pageConfigActive flag the :content default-nest
  *  view uses), so BOTH shapes are Ruby-true on their own surface.
@@ -363,12 +363,12 @@ const urlView: ViewFn = ({ fmt }) => fmt.cardUrl(fmt.urlKey());
  *  the blank return: Ruby's "~#{nil}" would
  *  walk the same chain to a bare "/~" URL, a Card.new edge no corpus
  *  byte exercises (replaces the
- *  bare-"~<id>" disclosed divergence, strand-fold receipt limitation 4). */
+ *  bare-"~<id>" disclosed divergence, strand-fold recorded result limitation 4). */
 const idUrlView: ViewFn = ({ fmt }) =>
   fmt.card.id === undefined ? "" : fmt.cardUrl(`~${fmt.card.id}`);
 
 /** set/all/base.rb:31-33 view :url_link, perms: :none:
- *  `link_to_resource card_url(_render_linkname)`. RE-ADJUDICATED
+ *  `link_to_resource card_url(_render_linkname)`. RE-REVIEWED
  *  (the former body emitted the bare
  *  unrooted href with an internal-link class — a base-format guess, never
  *  exercised by any fixture, standing-green only because its own pin
@@ -378,7 +378,7 @@ const idUrlView: ViewFn = ({ fmt }) =>
  *  card_url (card-1.110.0 lib/card/env/location.rb:19-21) → the
  *  SURFACE-SCOPED resource:
  *  "https://example.com/Oracle_Format_Probe" on the served page,
- *  "/Oracle_Format_Probe" on the view-function lane — Env.origin is a
+ *  "/Oracle_Format_Probe" on the view-function surface — Env.origin is a
  *  per-render value, serializable.rb:20-22; the urlView above);
  *  html link_to_resource (set/all/links.rb:127-130) → add_resource_opts
  *  (links.rb:154-157): resource_type (links.rb:67, /^https?:/) —
@@ -402,7 +402,7 @@ const idUrlView: ViewFn = ({ fmt }) =>
  *  gates target on the external type. No flat HTML_VIEWS entry
  *  exists for :url_link (loader-less dispatch raises UnsupportedViewError).
  *  The set/type/uri.rb:6-8 override (`link_to_resource _render_raw`, the
- *  card's raw href for URI-type cards) IS ported (uri-cardtype-port lane
+ *  card's raw href for URI-type cards) IS ported (the URI card type port
  *  2026-10-01) as the chain-scoped type/uri registration below — the
  *  override never reaches this body: a URI-typed card's chain walk finds
  *  Type::Uri first. */
@@ -423,7 +423,7 @@ const urlLinkView: ViewFn = ({ fmt }) => {
  *    render_title_no_link` — hrefs the card's RAW content, text is the
  *    card-title span.
  *  - :url_link (6-8) `link_to_resource _render_raw` — the override the
- *    url-link-divergence receipt named: a URI card's :url_link hrefs its
+ *    url-link-divergence recorded result named: a URI card's :url_link hrefs its
  *    own raw content instead of card_url(linkname).
  *
  *  html block (11-19): :core (12-14) `render_title_link` — renders THIS
@@ -545,7 +545,7 @@ const typeHtmlOneLineContentView: ViewFn = ({ fmt, voo }) => {
  *  links.rb:111-116 → 101-108 (rooted href via path.rb:74-77 +
  *  env/location.rb:6-15) + title.rb:19-22,39-42 (card-title span) — is
  *  what renders for every card, so the flat HTML_VIEWS entry and this
- *  registration must be the same fn (link-registration-drift lane
+ *  registration must be the same fn (the link-registration drift fix
  *  2026-10-01; the former local bodies emitted the bare-urlKey + plain-
  *  title base-format shape, the 21796 oracle's first diff @631). The
  *  urlView shared-body doctrine (:300-304). */
@@ -672,7 +672,7 @@ const htmlLabeledView: ViewFn = (ctx) => (ENGINE_LABELED === undefined ? "" : EN
  *  what the email formats override again (card-mod-email
  *  set/all/email_text.rb:6-8 and email_html.rb:38-40, both ""). 
  *  Reachable only through the compact substitution's unknown-card
- *  fallback (mode.rb:73, ported by the nest-mechanism-remainders lane):
+ *  fallback (mode.rb:73, ported by the nest-mechanism remainders):
  *  zero captured surface renders it (nest-mode-port census), so the
  *  "" → span body change is byte-neutral on the recorded corpus. */
 const compactMissingView: ViewFn = ({ fmt }) =>
@@ -714,7 +714,7 @@ const badAddressView: ViewFn = () => "format.bad_address";
  *  views :add_link, :add_button, :add_url — ported to the headless
  *  engine.
  *
- *  CORRECTED 2026-09-30 (lane mm-cardtype-tpl). This comment used to claim
+ *  CORRECTED 2026-09-30 (the mm-cardtype-tpl change). This comment used to claim
  *  "the byte equality is not the goal here, the dispatch is" and to
  *  describe the bodies as minimum-viable placeholders wrapping the card's
  *  URL-key in "a cardtype-appropriate anchor". That premise was wrong and
@@ -947,7 +947,7 @@ const labelView: ViewFn = ({ fmt }) => fmt.card.name.s.toString();
  *  (views.rb:29-32) while closed_content stays bare: the two names
  *  diverge in Ruby for every html-format card.
  *
- *  ADJUDICATED + PORTED: the
+ *  reviewed + PORTED: the
  *  former body (oneLineContentBody: raw fmt.renderRaw() hard-trimmed at
  *  60 — no strip_tags, no omission marker, raw bytes instead of the core
  *  render) diverged from content.rb:47-49 on every tag-bearing or
@@ -976,7 +976,7 @@ const labelView: ViewFn = ({ fmt }) => fmt.card.name.s.toString();
  *  38250, 38251: raw guide bytes, nests at chars 202/672 beyond the
  *  60-char window), so no recorded surface renders a nest under a
  *  compact parent and the elision has no parent to fire in. The census
- *  pins above stand; the nest-mechanism-remainders lane 2026-10-01 went
+ *  pins above stand; the nest-mechanism remainders 2026-10-01 went
  *  the further step and PORTED the compact machinery gem-derivative
  *  (mode.rb:71-84 substitution via COMPACT_TRUE_VIEWS + nesting.rb:52-63
  *  elision via charCount, format.ts) — byte-neutral on the recorded
@@ -1004,7 +1004,7 @@ const closedContentView: ViewFn = ({ fmt, voo }) => {
  *
  *  WITHHELD: the All::Content base view registration (content.rb:18-20,
  *  formerly rawOneLineContentView, registered bare under the all/content
- *  set module until the format-remainder-ports lane 2026-10-01) — Ruby's
+ *  set module until the format remainder ports 2026-10-01) — Ruby's
  *  MRO never dispatches it in the html format the engine renders: the
  *  All-set modules load in path order (base.rb < content.rb <
  *  html/views.rb) and each later module shadows the earlier same-named
@@ -1024,7 +1024,7 @@ const closedContentView: ViewFn = ({ fmt, voo }) => {
  *  captured rule-card bytes (<div class="text-muted one-line">Anyone</div>,
  *  fixtures/captured/rules-views.json rule_card/views/raw_one_line_
  *  content) ride THAT arm. This All-set arm has no captured oracle bytes
- *  (the corpus census, format-remainder-ports lane 2026-10-01: zero
+ *  (the corpus census, the format remainder ports 2026-10-01: zero
  *  raw_one_line_content entries in the expected-v2 view/page shards;
  *  the only captured bytes are the Rule::BarView arm above) — the pin is
  *  gem-derived: the wrap shape is the views.rb:24-27 wrap option, the
@@ -1117,7 +1117,7 @@ const hiddenContentFieldView: ViewFn = () =>
  *    anchor is card-mod-bootstrap's popover_link helper
  *    (set/all/bootstrap/helper.rb:41-57), reused via its popoverLink
  *    export (byte-pinned by the live oracle capture
- *    fixtures/captured/help-popover.json "rendered" and this lane's
+ *    fixtures/captured/help-popover.json "rendered" and this pass's
  *    smart-label capture). The `desc.format.render_core` half renders the
  *    description card's :core in a subformat (nesting.rb subformat shape;
  *    the parent chain carries the naming context).
@@ -1207,7 +1207,7 @@ const shortContentView: ViewFn = ({ fmt }) => {
  *  plain RichText card rendered on the live decko 0.20.0 oracle app —
  *  captured `<div class="text-muted">plain probe body</div>` (16-char
  *  content: strip_tags no-op, truncate no-op, the wrap div). The
- *  layout-fixture-adjudication lane gem-proved those bytes derive
+ *  layout fixture review gem-proved those bytes derive
  *  exactly from this arm; the standing pin is
  *  card-mod-format.test.ts's layout-one-line plain-probe test.
  *  EXPORTED for the carrierwave mod's polymorphic device guard
@@ -1243,11 +1243,11 @@ const viewListView: ViewFn = ({ fmt }) => {
 };
 
 // ---------------------------------------------------------------------------
-// set/all/demo.rb:2-7 view :demo (the mod-porting wave-1 lane, 2026-10-03)
+// set/all/demo.rb:2-7 view :demo (the mod-porting the first porting wave, 2026-10-03)
 // ---------------------------------------------------------------------------
 
 // The :demo body lives in render/demo-view.ts so the flat view registry
-// (the loader-less graded page lane: Shark's `{{:getting_started|demo}}`)
+// (the loader-less graded page surface: Shark's `{{:getting_started|demo}}`)
 // and this set/all registration share one definition.
 export { demoViewSelect } from "../../render/demo-view.js";
 import { demoView } from "../../render/demo-view.js";
@@ -1266,7 +1266,7 @@ import { demoView } from "../../render/demo-view.js";
 const adminView: ViewFn = ({ fmt }) => fmt.renderView("core");
 
 // ---------------------------------------------------------------------------
-// type/mod.rb set/type/mod: :bar_right (the admin-views-2 lane port)
+// type/mod.rb set/type/mod: :bar_right (the second admin-views port)
 // ---------------------------------------------------------------------------
 
 /** set/type/mod.rb (card-mod-format-0.20.0) view :bar_right:
@@ -1314,13 +1314,13 @@ const typeModBarRightView: ViewFn = (ctx) =>
  * the view as written never reaches that half. Same raise shape as
  * :input.
  *
- * The previous lane left these unported for that exact reason —
+ * The previous pass left these unported for that exact reason —
  * "port the views such that they raise the equivalent error the way
  * Ruby does" IS Ruby parity; the engine rendering something here
  * would be the divergence. Same precedent as card-mod-tabs
  * `:tabs_static` / `:pills_static` (NoMethodError on `args`;
  * card-mod-tabs.ts:518-525) and the json :follow_status defect class
- * on the follow lane. The parity message names the Ruby source so
+ * on the follow section. The parity message names the Ruby source so
  * a future port that substitutes "real bytes" is forced to either
  * match Ruby's RAISE or update the test with the new shape — pin,
  * don't guess.
@@ -1430,7 +1430,7 @@ const stylesheetTagsView: ViewFn = (ctx) => stylesheetTagsBytes(headReadSetFromM
  * ARE the empty string, so a skip is byte-identical there.
  *
  * Consequence to know: on this branch :head omits the :meta_tags
- * constant that the page path emits. When lane-mod-a lands, :head picks
+ * constant that the page path emits. When the first mod batch lands, :head picks
  * it up with no change here. The parity test asserts shape + the two
  * data-bearing members, NOT a whole-head literal, for exactly this
  * reason.
@@ -1493,7 +1493,7 @@ const setModules: ModSetModuleFile[] = [
     // content/labeled - the open alias is to titled and the closed
     // alias is to labeled, both pre-registered). :link/:nav_link
     // register the IMPORTED render/views.ts fns (same fns the flat
-    // HTML_VIEWS table points at; link-registration-drift lane
+    // HTML_VIEWS table points at; the link-registration drift fix
     // 2026-10-01 - see their docblock above).
     setPath: "all/base",
     formats: {
@@ -1552,9 +1552,9 @@ const setModules: ModSetModuleFile[] = [
     // and :hidden_content_field (the resolved
     // hiddenContentFieldView - the Ruby body's bytes are constant and
     // captured live from actionview-7.2.3.2; see the view body comment)
-    // AND :smart_label (lane follow2: the popover anchor rides
+    // AND :smart_label (the follow read path: the popover anchor rides
     // card-mod-bootstrap's popoverLink export, byte-pinned by the live
-    // oracle capture fixtures/captured/help-popover.json + this lane's
+    // oracle capture fixtures/captured/help-popover.json + this pass's
     // smart-label capture; the +description card is warmed per render
     // by the render.ts smart_label prepare gate).
     setPath: "all/content",
@@ -1609,7 +1609,7 @@ const setModules: ModSetModuleFile[] = [
     // set/all/demo.rb:1-44 html format block (view :demo, :view_list
     // + helpers). Ported :view_list (viewListView - the seven demo views
     // composed through the engine's own view dispatch) and :demo
-    // (demoView - the mod-porting wave-1 lane 2026-10-03: the frame
+    // (demoView - the mod-porting the first porting wave 2026-10-03: the frame
     // composition + view_select's cardFormShell/select bytes +
     // allAdminConfigCodenamesOfCategory through the core-mod admin
     // runtime; gem-source-derived rendered-unpinned - the oracle replays
@@ -1776,7 +1776,7 @@ const setModules: ModSetModuleFile[] = [
     //   :meta_tags — Haml template (meta_tags.haml); ported alongside the
     //     head/header views (card-mod-format-head-header-views.test.ts).
     //   :universal_edit_button, :rss_links — both need path(view: :edit)
-    //     / the rss_link? config + an rss_link_tag view; lane-mod-a.
+    //     / the rss_link? config + an rss_link_tag view; the first mod batch.
     // :head skips an unregistered member rather than raising (see
     // headView's comment); the page path's bytes for the two skipped
     // blank members are "" anyway.
@@ -1875,7 +1875,7 @@ const setModules: ModSetModuleFile[] = [
     // stays views-side too (the flat entry with the same gate).
     setPath: "self/home",
   },
-  // pattern: type (10 set/type/*.rb files; unported-types-audit lane
+  // pattern: type (10 set/type/*.rb files; the unported-types audit
   // 2026-10-01 census: registrations for cardtype/mod/toggle/uri +
   // toggle/html one_line_content — the engine has no per-type render
   // dispatch of its own beyond the coreView type branches named below)
@@ -1925,7 +1925,7 @@ const setModules: ModSetModuleFile[] = [
   {
     // set/type/html.rb:1-27 base block (clean_html?/diff_args + view
     // :one_line_content override + chunk_list) + html block (input_type +
-    // view :one_line_content, wrap: {}). Ported (unported-types-audit lane
+    // view :one_line_content, wrap: {}). Ported (the unported-types audit
     // 2026-10-01): :one_line_content (typeHtmlOneLineContentView above —
     // the raw_one_line_content composition, capture-proven on the
     // Right::Head sibling). NOTE: card-mod-layout ALSO carries a type/html
@@ -1948,7 +1948,7 @@ const setModules: ModSetModuleFile[] = [
     // set/type/json.rb:1-41 event :validate_json + check_json_syntax/
     // parse_content/item_names/item_values/item_value + html block
     // (view :core + input_type/ace_mode). CORRECTED (unported-types-audit
-    // lane 2026-10-01; the prior "Not ported: rails (CodeRay...)" note was
+    // pass 2026-10-01; the prior "Not ported: rails (CodeRay...)" note was
     // stale): view :core IS PORTED views-side — the engine's coreView
     // langForTypeCode branch renders highlight(raw, "json") wrapped in the
     // CodeRay DIV template (render/views.ts:1192-1209 +
@@ -1978,7 +1978,7 @@ const setModules: ModSetModuleFile[] = [
     // delegation the engine implements as fmt.renderView("core")).
     // :bar_right — the prior "no admin-config
     // surface" blocker moved: ADMIN_CONFIG + CORE_TASK_BASKET landed with
-    // the admin lanes, so the predicate list is a mirror read. The
+    // the admin sections, so the predicate list is a mirror read. The
     // registration is CHAIN-SCOPED (kind nonbase: the view lands only in
     // the per-set-module table, dispatchable by Mod-typed cards through
     // resolveView's chain walk) — the flat-masking hazard the original

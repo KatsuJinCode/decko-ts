@@ -129,7 +129,7 @@ export const MOD_CATALOG: readonly ModCatalogEntry[] = [
     name: "format",
     gemName: "card-mod-format",
     summary:
-      "The format layer: the base/abstract/html/css/csv/data/file/json/jsonld/js/rss/text/xml/yaml format classes, the name and date and content view families, the path generator, the link-to helpers, and the error / not-found / denial / server-error views. It also carries the two Cardio config keys the engine models as its render-lane switches (default_html_view, rss_enabled).",
+      "The format layer: the base/abstract/html/css/csv/data/file/json/jsonld/js/rss/text/xml/yaml format classes, the name and date and content view families, the path generator, the link-to helpers, and the error / not-found / denial / server-error views. It also carries the two Cardio config keys the engine models as its per-render switches (default_html_view, rss_enabled).",
     sourceFile: "src/card/mod-loader/mods/card-mod-format.ts",
     sourceLine: 1,
   },

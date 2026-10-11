@@ -50,7 +50,7 @@
 //
 // NOT yet ported (honest remainder, updated surfaces-batch2 2026-09-30:
 // :action_expanded, :last_action_verb and :board_act ARE ported now - see
-// the views section; board_act landed with the mod-porting wave-1 lane
+// the views section; board_act landed with the mod-porting the first porting wave
 // (2026-10-03):
 // - three html views - act_legend (bs_layout), change, last_action - plus
 //   the two json views (export.rb :history/:actions; the hash shapes are
@@ -66,7 +66,7 @@
 //   gem not installed here - grep for "def bs_layout" across the
 //   installed gems matches only the history mod's
 //   own four usages); content_legend's Card::Content::Diff chunk renderer
-//   NAMED REMAINDERS (mod-porting wave-1 lane, 2026-10-03, harness
+//   NAMED REMAINDERS (mod-porting the first porting wave, 2026-10-03, harness
 //   scorecard rows):
 //   - view :actions (export.rb:14-16, json format) - the HASH SHAPES are
 //     ported + suite-pinned (actionHashList/actHash/actionHash/changesHash,
@@ -2042,7 +2042,7 @@ const actionExpandedView: ViewFn = (ctx) => {
  *  is gem-source-derived, the same disclosed basis as the account-form
  *  pins. Ported by surfaces-batch2, 2026-09-30.
  *
- *  mm-roleviews lane (2026-09-30) — TWO notes this body earned:
+ *  the role views port (2026-09-30) — TWO notes this body earned:
  *  1. The DENIED arm IS captured. The four notification templates'
  *  `{{_|last_action_verb}}` marks render on the notification's CONTEXT
  *  card, which the anonymous capture cannot read, so perms.rb:46-48 +
@@ -2161,7 +2161,7 @@ const changeView: ViewFn = (ctx) => {
 // ---------------------------------------------------------------------------
 // set/all/history/events.rb - the event declarations (pinned to the manifest
 // events[] surface; bodies are stubs because the write path / DB seam
-// stays out of scope for this lane, mirroring the list mod's pattern for
+// stays out of scope here, mirroring the list mod's pattern for
 // its three event pins)
 // ---------------------------------------------------------------------------
 //
@@ -2223,7 +2223,7 @@ const cardModHistory: DeckoModManifest = {
       // mod-manifest.ts:151-163 now covers :initialize + :validate, and
       // the `after:` relative-ordering field (mod-manifest.ts:209-212)
       // carries the :finalize_act -> :finalize_action chain. Bodies are
-      // stubs - the write path + DB seam are out of scope for this lane.
+      // stubs - the write path + DB seam are out of scope here.
       setPath: "all/history/events",
       events: [
         // events.rb:1-7 update_ancestor_timestamps (integrate) - `ids =
@@ -2324,7 +2324,7 @@ const cardModHistory: DeckoModManifest = {
       // :last_action_verb / :act_legend / :last_action / :change — the
       // render-time query seam, src/card/history/render-seam.ts;
       // surfaces-batch3 added the ladder trio). board_act is ported on the
-      // all/history_board set below (the mod-porting wave-1 lane).
+      // all/history_board set below (the mod-porting the first porting wave).
       setPath: "all/history/views",
       formats: {
         html: {
@@ -2344,12 +2344,12 @@ const cardModHistory: DeckoModManifest = {
     },
     {
       // card-mod-history-0.20.0/set/all/history_board.rb - the board
-      // views. :board_act IS ported (the mod-porting wave-1 lane
+      // views. :board_act IS ported (the mod-porting the first porting wave
       // 2026-10-03; the BoardActRenderer chain + the overlay frame, with
       // the oracle pieces pinned by the harness capture and the frame
       // chrome gem-source-derived rendered-unpinned - see the view's
       // comment). :creator_credit and :updated_by are ported in the FLAT
-      // registry (src/card/render/views.ts, the same level the mod-a lane
+      // registry (src/card/render/views.ts, the same level the first mod batch
       // used for creator_credit).
       setPath: "all/history_board",
       formats: {

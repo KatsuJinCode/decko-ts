@@ -45,7 +45,7 @@ export interface NotifyActor {
   readonly email: string | null;
 }
 
-/** One receipt from the save path that the notify module can act on.
+/** One recorded result from the save path that the notify module can act on.
  *  Mirrors Ruby's `Card::Act.actions(false)` walk
  *  (card-mod-follow set/all/notify.rb:48-54): for each action in the
  *  just-completed act we hand the trigger the affected card + a one-line
@@ -79,7 +79,7 @@ export interface SavePathEvent {
 }
 
 /** One act's dispatch payload (the act-level seam the gherkin-
- *  capabilities lane added): Ruby's notify_followers runs ONCE per act —
+ *  the acceptance-capability port added): Ruby's notify_followers runs ONCE per act —
  *  the event is registered on every card but current_act_card? pins the
  *  firing to the act card (card-mod-follow set/all/notify.rb:8-11 +
  *  :57-61) — and notify_followers_of walks the ACT's actions through ONE

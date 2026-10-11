@@ -145,7 +145,7 @@ export function referenceErasedSlotQuotes(expected: string): boolean {
  * per-response <script> block immediately before </body> whose
  * __CF$cv$params r/t tokens are rotated per response by the edge
  * (live-check-71: present on 33 of the graded page captures; the probe-base
- * census found the block on every page-lane expectation and no view-lane
+ * census found the block on every page-surface expectation and no view-surface
  * expectation). The engine can never emit it: it is not a function of the
  * card, the deck, or the deployment - it is Cloudflare's per-request
  * challenge bootstrap. Like the accordion group hash (9f023ce), this is
@@ -182,7 +182,7 @@ export function normalizeCloudflareChallengeBlocks(html: string): string {
  * Object#to_s and prints the object's heap address. The address is a property
  * of the CAPTURE PROCESS, not of the card: it is not comparable across
  * languages and not across Ruby runs. The corpus holds 34 of them (card id
- * 45410, view-lane and page-lane recapture-raw-shard-000039.jsonl), all 16
+ * 45410, view-surface and page-surface recapture-raw-shard-000039.jsonl), all 16
  * hex digits, all distinct. So the port renders the same TEMPLATE with its
  * own genuine per-process opaque id and the VALUE is canonicalized here, on
  * BOTH sides, exactly as the slot id and the group hash are.

@@ -98,7 +98,7 @@ import { whenCreatedContentFn, whenLastEditedContentFn } from "../mod-loader/mod
 import { signupCoreHtml } from "../mod-loader/mods/card-mod-account.js";
 import { bootswatchSkinCoreHtml } from "../mod-loader/mods/card-mod-bootstrap.js";
 import { templateNestView } from "../mod-loader/mods/card-mod-edit.js";
-// The board/edit flat seam (the 422 lane): the loader-bound board bytes the
+// The board/edit flat seam (the 422 surface): the loader-bound board bytes the
 // oracle pins (fixtures/captured/board-views.json) and the edit bytes
 // (fixtures/captured/edit-forms.json) rode chain dispatch — a set/all/*
 // module's views are Ruby's BASE format class (set/format.rb:133-144
@@ -808,7 +808,7 @@ const conflictView: ViewFn = ({ fmt }) => {
  *  (Anonymous+*account: label spans title="email"/title="password", slot
  *  JSON "title":"email"/"title":"password").
  *
- *  The graded page-lane engine binds no ModLoader, so the set-module
+ *  The graded page-surface engine binds no ModLoader, so the set-module
  *  registration is dead surface here — this compiled-in branch keyed on the
  *  right::account set (the card's TAG is the *account card) is the dispatch,
  *  the account_links/signup/toggle core pattern. Ruby's set applies to the
@@ -854,7 +854,7 @@ const coreViewBase: ViewFn = (ctx) => {
   // format data/real.yml:58-66) carries content
   // `{{+:image|core}}\n<a href="http://decko.org">Decko v{{:version|core}}</a>`
   // and *footer nests `{{:credit|core}}`, so every captured page ends
-  // `<a href="http://decko.org">Decko v0.20.0</a>` (699/737 page-lane
+  // `<a href="http://decko.org">Decko v0.20.0</a>` (699/737 page-surface
   // failures in the R17 sample aggregate: engine emitted the bare
   // "Decko v" because the corpus row stores content "" — the Ruby method
   // override never materializes in the DB column).
@@ -866,7 +866,7 @@ const coreViewBase: ViewFn = (ctx) => {
   }
   // set/self/account_links.rb view :core (card-mod-layout): the logging
   // div wrapping the navbar_item_views lis (anonymous: sign_up + sign_in).
-  // The custom layouts nest {{*account links|core}} (PCTS/GBA page-lane
+  // The custom layouts nest {{*account links|core}} (PCTS/GBA page-surface
   // bytes: <div id="logging" class="logged-out"><li ...Sign up...). Set
   // -scoped in Ruby; keyed by card key here (the flat-registry seam).
   if (fmt.card.key === "*account_link") {
@@ -925,9 +925,9 @@ const coreViewBase: ViewFn = (ctx) => {
   // format (Ruby format.rb#root — the parent chain walk, not the
   // immediate parent).
   //
-  // BARE VIEW LANE FIXED 2026-10-02 (D3). This branch answered
+  // BARE VIEW SURFACE FIXED 2026-10-02. This branch answered
   // "" for an unseated root on the claim that the family nests "only
-  // fire inside their own pages". That claim was FALSE: the view-lane
+  // fire inside their own pages". That claim was FALSE: the view-surface
   // capture of 34754 `*all+*head` (recapture-raw-shard-000029 views.content,
   // oracle pre 2441 B) IS the unseated surface, and the oracle carries the
   // page’s head block there. RenderEngine#render now seats the head bytes for
@@ -1157,7 +1157,7 @@ const coreViewBase: ViewFn = (ctx) => {
     // content/open expectedBytes). Cards without any registered override
     // fall through to dbContent unchanged — the corpus suites pin those.
     // BOUNDARY: the bar-right ONE-LINE walk (rule-bar-right.ts) stays on
-    // dbContent — the fama-remainder lane's corpus-pinned count dispatch
+    // dbContent — the FAMA remainder's corpus-pinned count dispatch
     // (content-options-one-line-count-capture-state-pins.test.ts) owns
     // that surface and routes its two drifted rows to corpus arbitration.
     const items = rawItemStrings(resolveContentOverride(fmt) ?? fmt.card.dbContent)
@@ -1283,7 +1283,7 @@ const coreViewBase: ViewFn = (ctx) => {
       // image.rb determine_image_size: voo.size, then the MAIN? arm
       // (main_size :large  the page's main card renders large), then
       // default_size (:medium). Census M6: the live *favicon page pins
-      // -large while the bare view-lane :open capture pins -medium  both
+      // -large while the bare view-surface :open capture pins -medium  both
       // Ruby-correct, the main? arm was the missing branch.
       fmt.voo?.opts.size ?? (fmt.isMain ? "large" : "medium"),
       fmt.engine.imageCdnHost,
@@ -1326,7 +1326,7 @@ const coreViewBase: ViewFn = (ctx) => {
   // loader is wired, and the graded verifier/census path binds NO loader
   // (the same seam hosting the signup/toggle/plain_text/date/image/file
   // cores above), so every Markdown-typed card rendered its markdown
-  // SOURCE here (corpus population, expected-v2/view-lane 6588 rows: 4
+  // SOURCE here (corpus population, expected-v2/view-surface 6588 rows: 4
   // markdown rows, 8 kramdown-rendered views — exemplar *all+*guide :open,
   // whose oracle bytes carry `<h4 id="editing-guide">` + `<p>` wrappers
   // where the engine emitted the raw `####` source; pins:
@@ -1561,7 +1561,7 @@ const coreViewBase: ViewFn = (ctx) => {
  * body expanded against the (usually missing) field junction and rendered
  * nothing. Ruby instead renders the SET card that owns the rule through
  * `:template_link`. Live shape (corpus 6a44dfdc, page 105
- * `Role+*type+*default`, page-lane shard 000000):
+ * `Role+*type+*default`, page-surface shard 000000):
  *   oracle  `<p>{{<a rel="nofollow" class="slotter"
  *             href="/Role+description+*type_plus_right/modal_nest_rules"
  *             data-remote="true">+description</a>}}</div></p>`
@@ -1774,7 +1774,7 @@ const commentBoxBaseView: ViewFn = ({ fmt }) => {
 
 const coreView: ViewFn = (ctx) => {
   // set/self/signin.rb:119-125 view :core — the sign-in form. HEADLESS
-  // branch (the SELF_SET_TITLE_OVERRIDES pattern, edge-signin-form-fix lane
+  // branch (the SELF_SET_TITLE_OVERRIDES pattern, the edge signin form fix
   // 2026-10-03): the Self::Signin set module applies to the card NAMED
   // *signin (the codename IS the set membership), and on the mod-less edge
   // engines no manifest registration ever dispatches — without this branch
@@ -1826,7 +1826,7 @@ const coreView: ViewFn = (ctx) => {
  * the end as `data-remote`. Insertion order therefore reads
  * rel, class, href, data-remote — the order the frozen capture carries:
  * `<a rel="nofollow" class="slotter" href="/Role+description+*type_plus_right/modal_nest_rules" data-remote="true">+description</a>`
- * (corpus 6a44dfdc, page-lane shard 000000, `Role+*type+*default` 105 and
+ * (corpus 6a44dfdc, page-surface shard 000000, `Role+*type+*default` 105 and
  * `Cardtype+*type+*default` 88).
  *
  * The text is `raw` (links.rb:102 `text = raw(text || opts[:href])`), so
@@ -1868,8 +1868,8 @@ export const templateLinkView: ViewFn = (ctx) => {
 };
 
 // ---------------------------------------------------------------------------
-// the email :core family — the roleviews receipt's
-// leftovers 1-3, ported onto the flat record the graded page lane reads
+// the email :core family — the roleviews recorded result's
+// leftovers 1-3, ported onto the flat record the graded page surface reads
 // ---------------------------------------------------------------------------
 
 /** set/abstract/test_context.rb:16-18 `def test_context_card;
@@ -1996,7 +1996,7 @@ export function subjectCoreBody(ctx: ViewContext): string {
  *  The direct contentView call (not a renderView("content") re-dispatch)
  *  is Ruby's super(): one step up the MRO, immune to the dispatcher.
  *  HOMED on the flat record (the same loader-less seam as the three
- *  email :core bodies above — the graded page lane binds no loader, and
+ *  email :core bodies above — the graded page surface binds no loader, and
  *  the read_form field slots dispatch :content on the +*html message
  *  field); the mod manifest's set-scoped :content registration delegates
  *  to THIS body so the two surfaces cannot drift.
@@ -2120,8 +2120,8 @@ export function emailTemplateCoreBody(ctx: ViewContext): string {
 }
 
 /** The flat `core` entry's scope dispatcher. Ruby resolves :core per card
- *  through the set-module MRO; the graded page-lane harness binds NO mod
- *  loader (verify-dual-lane.test.ts / raw-corpus-seeding.ts — the same
+ *  through the set-module MRO; the graded page-surface harness binds NO mod
+ *  loader (verify-dual-surface.test.ts / raw-corpus-seeding.ts — the same
  *  constraint that put the `:lead`/:configs bodies here),
  *  so the three email scopes must be visible on the flat record. The
  *  guards reproduce the set-module applicability exactly:
@@ -2257,8 +2257,8 @@ export function formatImageCore(
     trimmed.startsWith("mailto:")
   ) {
     // image_tag source, alt: card.name — the captured oracle pins the
-    // Rails tag shape `alt` first with the haml-style close on BOTH lanes
-    // (expected-v2 view-lane *favicon :open; page-lane header logo).
+    // Rails tag shape `alt` first with the haml-style close on BOTH surfaces
+    // (expected-v2 view-surface *favicon :open; page-surface header logo).
     return `<img alt="${h(cardName ?? "")}" src="${h(trimmed)}" />`;
   }
   // Carrierwave storage: (bucket)/<id>/<action>.<ext> (cloud) and
@@ -2267,7 +2267,7 @@ export function formatImageCore(
   // Ruby (card-mod-carrierwave set/type/image.rb:30-37 def source)
   // resolves them via contextualize_path; we mirror the resolution
   // and append the size variant suffix.
-  // ORACLE SHAPES (expected-v2, both lanes — grep-verified 2026-09-26):
+  // ORACLE SHAPES (expected-v2, both surfaces — grep-verified 2026-09-26):
   //   cloud "(bucket)/103/3649.jpg" -> ABSOLUTE fog URL, alt first, haml
   //     close: <img alt="*favicon" src="http://s3.amazonaws.com//files/103/3649-medium.jpg" />
   //     (*favicon :open -> -medium; page header logo size:small -> -small)
@@ -2277,12 +2277,12 @@ export function formatImageCore(
   //   default size :medium (image.rb default_size; voo.size wins when set).
   // The CLOUD host is context-conditional: the capture's fog storage config
   // produced the absolute s3 fog URL (endpoint + EMPTY bucket + files path,
-  // hence the double slash), so the oracle lanes resolve there when the
+  // hence the double slash), so the oracle surfaces resolve there when the
   // engine carries no imageCdnHost; a DEPLOYED host sets imageCdnHost
   // (vm-staging-server.mjs -> the production Spaces CDN) and cloudImageUrl
   // swaps only the host, keeping the /files/<id>-<variant> path shape
-  // (round-10 live receipts). Never a bare relative form: it matched no
-  // oracle bytes on either lane.
+  // (round-10 live capture). Never a bare relative form: it matched no
+  // oracle bytes on either surface.
   if (trimmed.startsWith("(")) {
     const src = cloudImageUrl(trimmed, sizeOpt, cdnAssetHost);
     if (src === "") return "";
@@ -2322,7 +2322,7 @@ export function imageSizeVariant(sizeOpt: unknown): string {
  *  engine carries one (imageCdnHost — deck-deployment config, e.g.
  *  `https://example.com-production-storage.fra1.cdn.digitaloceanspaces.com`).
  *
- *  Live receipts (assumption-audit A-13/A-15/A-30; live-wire bytes):
+ *  live capture (assumption-audit A-13/A-15/A-30; live-wire bytes):
  *   <img alt="Casey Morgan+Image"
  *    src="https://…spaces.com/files/431/60560-medium.jpg" />
  *   <img alt="CDW_…" src="…/files/39355/277091-original.png" />
@@ -2336,11 +2336,11 @@ export function imageSizeVariant(sizeOpt: unknown): string {
 /** The capture's fog storage host for cloud attachments: endpoint + EMPTY
  *  bucket (the double slash) + the /files web path. cloudImageUrl's fallback
  *  when the engine carries no imageCdnHost — the oracle bytes pin the
- *  absolute fog form (expected-v2 both lanes: *favicon, header logo). */
+ *  absolute fog form (expected-v2 both surfaces: *favicon, header logo). */
 export const FOG_CLOUD_URL_HOST = "http://s3.amazonaws.com/";
 
 /** The deployment's cloud asset host -- Ruby's process-wide carrierwave/fog
- *  `asset_host` storage configuration (capture-dual-lane-page-and-view.rb:
+ *  `asset_host` storage configuration (capture-dual-$1page-and-view.rb:
  *  328-336 models the capture's own bucket as Cardio.config.file_buckets
  *  with `provider: "AWS", subdirectory: "files"`; a production deployment
  *  points the same storage config at its CDN host). undefined = the fog
@@ -2348,7 +2348,7 @@ export const FOG_CLOUD_URL_HOST = "http://s3.amazonaws.com/";
  *  the appended "/files/" web path is unchanged either way.
  *
  *  The live deployment (example.com) migrated its asset host to
- *  DigitalOcean Spaces FR1 (2026-10; live-check-71 lane: DO-host
+ *  DigitalOcean Spaces FR1 (2026-10; the live asset-host check: DO-host
  *  occurrences 172/34 pages, s3.amazonaws.com occurrences 0 across all 34
  *  bodies) -- so the graded environment (canvas runner + named-entry probe)
  *  sets this via setDeploymentCloudAssetHost(SPACES_HOST) and the corpus
@@ -3139,7 +3139,7 @@ function quietDenial(task: string): string {
  *  FLAT for the same loader-less seam as the email :core family above:
  *  formgroup.rb is a set/all file — in Ruby its views mix into the BASE
  *  format class every card inherits (registrar.rb:79-84), so the flat
- *  record IS its scope; the graded page lane could never see the mod
+ *  record IS its scope; the graded page surface could never see the mod
  *  registration. The mod registration (card-mod-edit.ts, all/formgroup)
  *  delegates to THIS body so the surfaces cannot drift. The unknown:true
  *  config rides the compiled UNKNOWN_VIEW_CONFIG row (format.ts) for the
@@ -3233,7 +3233,7 @@ function barSettingListItem(
 /** rule_lists.rb:11-14 view :bar_setting_list:
  *  `group = voo.filter&.to_sym || :all;
  *  category_setting_list_items(group, :bar, hide: :full_name).join("\n")`.
- *  THE BODY lives on the flat record because the graded page-lane harness
+ *  THE BODY lives on the flat record because the graded page-surface harness
  *  binds NO mod loader (the flat-record :configs seam): the Shark page's
  *  Rules sections nest `bar_setting_list` on the `*all` SET card, and the
  *  set-scoped registration (Type::Set::HtmlViews::RuleLists) is invisible
@@ -3273,7 +3273,7 @@ const barSettingListScopedView: ViewFn = (ctx) => {
 // The card-mod-email assign_type registrations (advanced_api.rb:5-8) —
 // HERE, at render-layer import, because the registry's render-side
 // consumer (render.ts newCardDefaultType's type_id_from_code arm) runs on
-// LOADER-LESS engines: the graded page-lane harness binds no mod loader,
+// LOADER-LESS engines: the graded page-surface harness binds no mod loader,
 // never imports the mod manifests, and the read_form field nests' virtual
 // cards (welcome email+*to et al.) type through this registry (the oracle
 // pins List/Phrase/PlainText on them — welcome_email.exp.html slots). The
@@ -3305,7 +3305,7 @@ registerSetTypeAssignment("Right::Status", "phrase"); // card-mod-account set/ri
 // (corpus: all 48 `+*type plus right` rows carry type_id 259), and it is
 // reached through newCardDefaultType's type_id_from_code walk (type.rb:58-66
 // `type_id_from_code || type_id_from_template`) for a nest MISS. Live shape
-// (corpus 6a44dfdc, page-lane shard 000000): card 105
+// (corpus 6a44dfdc, page-surface shard 000000): card 105
 // `Role+*type+*default`'s `{{+description}}` resolves through template_nest.rb
 // to the DANGLING junction `Role+description+*type plus right`; the oracle
 // slot carries data-card-type-id="259" data-card-type-name="Set" and the
@@ -4037,7 +4037,7 @@ function renderPointerListItem(fmt: RenderFormat, name: string, itemView: string
           ...(slotTypeName !== undefined ? { type: slotTypeName } : {}),
         },
         // relnames (2026-10-04): this IS the pointer/list item shape the
-        // census-M1 view-lane bar-context seat was fitted to — the Guns:open
+        // census-M1 view-surface bar-context seat was fitted to — the Guns:open
         // census (Weapons+rifles renders title="+Rifles", Standards stays
         // ctx-less). Every other bar nest leaves the flag off, so the seat
         // does not fire on the set card's accordion rule bars.
@@ -4065,7 +4065,7 @@ function renderPointerListItem(fmt: RenderFormat, name: string, itemView: string
         ...(slotTypeName !== undefined ? { type: slotTypeName } : {}),
       },
       // relnames (2026-10-04): this IS the pointer/list item shape the
-      // census-M1 view-lane bar-context seat was fitted to  the Guns:open
+      // census-M1 view-surface bar-context seat was fitted to  the Guns:open
       // census (Weapons+rifles renders title="+Rifles", Standards stays
       // ctx-less). Every other bar nest leaves the flag off, so the seat
       // does not fire on the set card's accordion rule bars.
@@ -4190,7 +4190,7 @@ function renderUnknownPointerListItem(
     // rule 2081 Tracked Item+*type+*structure exists; 21905 for Task)
     // render the bare span (SMD exp @8350; PdG exp @8515-8987 — the base
     // act diff was SMD 3 denials/0 bare vs oracle 2/1; PdG 9/2 vs 6/5),
-    // while the simple-named denied phantoms (the view-lane census, 133
+    // while the simple-named denied phantoms (the view-surface census, 133
     // entries: Test Person 01, Regina Chatham, Mabel Bridgewater —
     // BasicCs/RichText/Practice-typed) keep the mini_bar two-span
     // family: name.simple? short-circuits virtual? to false whatever
@@ -4201,7 +4201,7 @@ function renderUnknownPointerListItem(
     // +*type+*structure rule is absent), so a literal reading does not
     // reach virtual? for the SMD/PdG phantoms; the capture deck's
     // runtime (not runnable on this machine — the p20-perm-residuals
-    // receipt) demonstrably answers known? for them. The engine seats
+    // recorded result) demonstrably answers known? for them. The engine seats
     // the decision on the corpus-consistent reading — compound name + a
     // *structure rule resolves for the phantom's own type — which
     // reproduces every pinned surface (the four byte-exact class pages,
@@ -4362,7 +4362,7 @@ function phantomIdentity(
   // it as `*all+*default` -> 22281, and `newCardDefaultType` answers
   // {typeId: 22281, typeName: "BasicCs"} for a simple absent name once the
   // universe has loaded
-  // (tmp/lane-defaulttype/probe-default-type-universe.mjs). A hardcoded
+  // (tmp/defaulttype/probe-default-type-universe.mjs). A hardcoded
   // answer could not have produced that: the SAME walk answers RichText for
   // a COMPOUND name (below), so the family splits on the deck, not on a
   // constant.
@@ -4566,7 +4566,7 @@ function linkAnchorBody(ctx: ViewContext, extraClass: string): string {
       ? // The ATTR carries ONLY the quote escape (actionview-7.2.4
         // tag_helper.rb tag_option :322 — see titleNoLinkView's doc block);
         // the TEXT is verbatim. Oracle: the Process Arts +*referred_to_by
-        // anchor (page-lane shard-000000, offset 12658) renders
+        // anchor (page-surface shard-000000, offset 12658) renders
         // title="Pages tagged with &quot;Process Arts&quot;" with the RAW
         // quotes in the span text — `>Pages tagged with "Process Arts"<` —
         // and the +bytes family (Process Arts +10) was exactly the
@@ -4582,8 +4582,8 @@ function linkAnchorBody(ctx: ViewContext, extraClass: string): string {
   // (path.rb:107-109) carries ?card[name]=<name> (the create form's prefill;
   // Hash#to_param query form). Corpus target: the message-000004:page
   // +conversation wanted anchor — graded entry
-  // dual-lane-page:message-000004:page (expected 19129 / actual 18913;
-  // -216 = anchor + query, pinned byte-exact by the lane pin suite).
+  // dual-$1page:message-000004:page (expected 19129 / actual 18913;
+  // -216 = anchor + query, pinned byte-exact by this pass pin suite).
   // base.rb specify_type_in_link!: a wanted link whose voo names a type
   // (the list's item type folded into the item nest) adds card[type];
   // Hash#to_param sorts it after card[name].
@@ -5199,7 +5199,7 @@ const titledView: ViewFn = ({ fmt, voo }) => {
   // :titled_content for right-discussion cards — each runs
   // `voo.show :comment_box` before super(). The openView twin above
   // already open-codes it; without the same hook here the engine omits
-  // comment_box from the titled slot's show list. Live receipt
+  // comment_box from the titled slot's show list. live capture
   // (Conflict_Done_Well.html `+discussion|titled` slot):
   // show:["titled","comment_box"]. (:open_content/:titled_content are
   // omitted deliberately: their ported bodies carry no slotOptions wrap,
@@ -5296,7 +5296,7 @@ const headerTitleView: ViewFn = (ctx) => {
  *  `compact` drops nils but NOT empty strings, so a view that renders ""
  *  still leaves its join separator behind. A viz-HIDDEN menu renders NIL
  *  (View#process, view.rb:68-69) - compact drops it WITH its separator
- *  (the headerHtml doc carries the board-stage3 oracle receipt).
+ *  (the headerHtml doc carries the board-stage3 oracle recorded result).
  *
  *  This is NOT the module's internal headerHtml (views.ts's own helper, which
  *  the content/titled views call): headerWrap is the piece header.rb puts
@@ -5469,9 +5469,9 @@ function barDivHtml(ctx: ViewContext): string {
   // [[Eagle+*members]] anchor is wanted-card in the capture — the class
   // answer therefore lives ONLY here (the renderLinkChunk known arm
   // stays warm-map + peek, view-fail V4).
-  // The carve-out is TWO-PART and LEFT-SPLIT (page42 lane 2026-10-04,
+  // The carve-out is TWO-PART and LEFT-SPLIT (page42 change, $1,
   // corpus-refined): a corpus-wide census of every full-page-link pin in
-  // expected-v2 (57,463 anchors, page+view lanes) splits the 2-part
+  // expected-v2 (57,463 anchors, page+view surfaces) splits the 2-part
   // star-right compounds by their LEFT part.
   //   STAR-LEFT ("*all+*autoname", "*star+*default", ... - a rule-row name
   //   "<set-marker>+<setting>"): the corpus pins the class by STORED-ROW
@@ -6346,7 +6346,7 @@ const homeUrlView: ViewFn = ({ fmt }) => {
 // for Y</span>` where the oracle renders the view's bytes.
 //
 // MECHANISM (why the flat table, not the mod modules): the graded
-// page-lane harness binds NO mod loader, so a nest dispatches through
+// page-surface harness binds NO mod loader, so a nest dispatches through
 // HTML_VIEWS (render/format.ts's view lookup). Every view below ALREADY
 // existed as a set-scoped registration in its mod module (or, for the
 // account/follow/history families, needed only a body), so the gap was the
@@ -6367,7 +6367,7 @@ const homeUrlView: ViewFn = ({ fmt }) => {
  *  `https://example.com/User` (signup alert email) and
  *  `https://example.com/*changed_card` (follower notification email)
  *  on the served page — the page capture recapture-raw-shard-000016,
- *  whose capture sets deck_origin (capture-dual-lane-page-and-view.rb:343)
+ *  whose capture sets deck_origin (capture-dual-$1page-and-view.rb:343)
  *  — against `/User` and `/*changed_card?view=history` in the
  *  view-function capture, which renders outside that block (:277-287) with
  *  a controller-less `Card::Env.reset` (:439). The test-context card is
@@ -6639,7 +6639,7 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   text_without_nests: textWithoutNestsView,
   home_url: homeUrlView,
   // card-mod-rules set/type/set/html_views/rule_lists.rb:11-14 view
-  // :bar_setting_list — the flat seam for the loader-less graded page lane
+  // :bar_setting_list — the flat seam for the loader-less graded page surface
   // (the Shark page's Rules sections nest it on *all). The Set-typed guard
   // inside throws Ruby's own unsupported-view error for non-Set cards; the
   // set-scoped registration (Type::Set::HtmlViews::RuleLists via the rules
@@ -6648,13 +6648,13 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   // card-mod-edit set/all/formgroup.rb:13 view :read_formgroup (unknown:
   // true, wrap: :slot) — the flat seam body above; the read_form field
   // nests (the emailTemplateCoreBody walk) dispatch it on the loader-less
-  // graded lane. The unknown:true config rides the compiled
+  // graded pass. The unknown:true config rides the compiled
   // UNKNOWN_VIEW_CONFIG row (format.ts read_formgroup: true).
   read_formgroup: readFormgroupBody,
   // card-mod-help set/all/help.rb:27-30 view :lead (help.rb's own fn,
   // imported - the same single-source shape as signupCoreHtml below: the
   // mod manifest registers it under All::Help for loader-bound engines,
-  // and the graded page-lane harness, which binds NO loader, dispatches
+  // and the graded page-surface harness, which binds NO loader, dispatches
   // this flat entry. Without it every Role page's `+:description|lead`
   // nest raised "view (lead) not supported" - pass15's 34-page
   // unsupported-view class).
@@ -6668,7 +6668,7 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   configs: roleConfigsView,
   // card-mod-format set/all/demo.rb view :demo — set/all, so every card has
   // it. Shark's getting-started content nests `{{:getting_started|demo}}`;
-  // the loader-less page lane rendered "view (demo) not supported".
+  // the loader-less page surface rendered "view (demo) not supported".
   demo: demoView,
   // The email/notification family: the self-nest
   // `{{_|view}}` targets the four notification templates carry. The perms
@@ -6762,7 +6762,7 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   // chain-aware registration lives in card-mod-edit.ts (set/all/
   // template_nest); this flat entry is the headless-port fallback for
   // the same reason name/linkname/add_button are listed above: the page
-  // sweep (tmp/raw-ground-truth/scripts/verify-dual-lane.test.ts) boots
+  // sweep (the dual-surface verifier) boots
   // NO mod deck, so without a flat registration every :template-mode nest
   // raises UnsupportedViewError and the layout body renders the quiet
   // render-error span instead of its own source. The view body itself is
@@ -6779,7 +6779,7 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   // manifest (card-mod-rules.ts, setPath type/set/html_views/template)
   // registers the SAME body for the chain-aware deck.
   template_link: templateLinkView,
-  // --- the board/edit flat seam (the 422 lane) -----------------------------
+  // --- the board/edit flat seam (the 422 surface) -----------------------------
   // card-mod-edit-0.20.0 set/all/editing.rb:3 `view :board, perms: :update,
   // unknown: true, cache: :never, wrap: :board` and set/all/board.rb's
   // wrapper/grid/tab-sidebar bytes (boardView emits the wrapper itself; the
@@ -6855,7 +6855,7 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   // RULE override (card-mod-rules set/rule/board_rules_editor.rb:17-19)
   // stays chain-only (registered nonbase) and is not masked by this row.
   help_text: helpTextView,
-  // The page-lane navbar family (card-mod-layout navbar_links/nav_item/
+  // The page-surface navbar family (card-mod-layout navbar_links/nav_item/
   // nav_link_in_dropdown + card-mod-search search_box) — set-scoped inside
   // each fn; see src/card/render/navbar-views.ts.
   ...NAVBAR_VIEWS,

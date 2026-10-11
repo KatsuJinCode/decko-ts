@@ -34,7 +34,7 @@
 //                                          pattern registration order
 //                                          (= set_names order)
 //
-// ALSO ported here (2026-10-03, gherkin-port-wave lane): the
+// ALSO ported here (2026-10-03, the acceptance-capability port wave): the
 // INDIRECT/field-follower walk — follower_ids.rb:74-83 indirect walk +
 // follower_stash.rb:39-52 stash_field_followers + followed_by.rb:18-31
 // followed_field?/*nests — resolveFollowers walks the left chain through

@@ -1,4 +1,4 @@
-// THE RENDERPLAN-REPLAY ROUTER (renderplan-replay lane, 2026-10-05): the
+// THE RENDERPLAN-REPLAY ROUTER (the render-plan replay, 2026-10-05): the
 // driver-seam layer that lets a render consume a pre-computed plan's result
 // set instead of re-issuing its reads.
 //
@@ -66,7 +66,7 @@ export function isReadOnlyStatement(sql: string): boolean {
  *  is the same exclusion enforced where the plan is SERVED, so a seeded or
  *  drifted plan that does carry the entry still cannot intercept it
  *  (integration assembly r3, 2026-10-06 — the stamp-read-vs-plan pin).
- *  ONE SHAPE, ONE PREDICATE (r5 seat-merge adjudication, 2026-10-06): the
+ *  ONE SHAPE, ONE PREDICATE (review pass 5 seat merge, 2026-10-06): the
  *  shape test is the shared isFreshnessStampRead — the exact predicate the
  *  recorder filter and the classifier's "freshness-stamp" class test — so
  *  recorder, classifier, and this serve-side guard cannot disagree about
@@ -83,7 +83,7 @@ export class ReplayPlanRouter implements SQLDatabaseDriver {
    *  connection, not on the per-engine router). */
   readonly base: SQLDatabaseDriver;
   private planResults: Map<string, SQLQueryResult> | undefined;
-  /** The drift classes' per-bind-value answer index (driftfix lane): the
+  /** The drift classes' per-bind-value answer index (the drift-arm fix): the
    *  same rows the exact-(sql,params) map holds, indexed by the BINDS a
    *  recorded entry carried, so a drifted IN-list ask whose every bind is
    *  covered composes its answer instead of riding live. Cleared wherever

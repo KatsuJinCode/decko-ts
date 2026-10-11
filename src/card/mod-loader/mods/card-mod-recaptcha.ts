@@ -99,7 +99,7 @@
 //     boundary.
 //   - the format :html helper registrations hidden_form_tags (89-93) /
 //     card_form_html_opts (95-99) — PORTED 2026-10-01 (captcha-remainders
-//     lane, server-side only): the override composites below
+// pass, server-side only): the override composites below
 //     (recaptchaFormOn / recaptchaFormHtmlAttrs / recaptchaHiddenFormTags)
 //     and the emission seam at the card_form home (the form substrate's
 //     CardFormShellOpts.recaptchaTokenHtml — cardFormShell appends the
@@ -142,7 +142,7 @@ import type {
 } from "../mod-manifest.js";
 import type { ModEventContext } from "../mod-event-dispatch.js";
 
-/** The set-module event declarations (the mod-events lane, 2026-10-08):
+/** The set-module event declarations (the set-module event, 2026-10-08):
  *  stub-bodied, with the per-event reason on the declaration. Same shape
  *  as core-mod.ts's local helper. */
 function event(
@@ -781,7 +781,7 @@ const cardModRecaptcha: DeckoModManifest = {
       // The portable semantics ride the exported
       // recaptchaFieldContentError / isRecaptchaSettingChild above.
       //
-      // Events (mod-events lane 2026-10-08) — two STUBS with named
+      // Events (set-module event 2026-10-08) — two STUBS with named
       // reasons (recaptcha_setting.rb:1-9; the header's own disposition):
       // - validate_recaptcha_field (:validate, when:
       //   recaptcha_setting?) — the content-validation pure predicate IS

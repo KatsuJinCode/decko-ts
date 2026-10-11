@@ -148,7 +148,7 @@ export interface WorkersWriteRequest {
    *  captured so a redirect builder cannot hand the already-authenticated
    *  browser a scheme-downgraded Location. workerd's Request URL scheme is
    *  authoritative here. (fold-10 union: the field is the scheme-downgrade
-   *  lane's surface the edge-signin-form-fix pick consumes — 4d7b008's
+   *  pass's surface the edge-signin-form-fix pick consumes — 4d7b008's
    *  hunks read it; the deploy lineage landed it in b0f8252.) */
   readonly scheme: "http" | "https";
   /** The client ip the host captured, for card_acts
@@ -526,7 +526,7 @@ export async function handleWorkersWriteSurface(
   if (readMethod) return null;
   const originPolicy = applySecuritySettings(env);
   if (!write) {
-    // AUTH IS NOT A CARD WRITE (edge-signin-form-fix lane, 2026-10-03):
+    // AUTH IS NOT A CARD WRITE (the edge signin form fix, 2026-10-03):
     // with the write path off, the login action still dispatches —
     // /update/*signin mints an auth_sessions row and no card rows, and Ruby
     // decko never gates sign-in behind a deploy flag. The auth-only dispatch

@@ -114,8 +114,8 @@ afterAll(() => {
   storage?.close();
 });
 
-describe("R17 byte-formatting lane pins", () => {
-  it("implicit nests render titled-view on the bare lane (railtie config, not the deck rule)", async () => {
+describe("byte-formatting parity pins", () => {
+  it("implicit nests render titled-view on the bare surface (railtie config, not the deck rule)", async () => {
     const html = await storage!.engine.render("ronald test", "content");
     // The +agree nest has NO explicit view — the railtie :titled applies
     // (the deck's *all+*default html view rule would have said content).

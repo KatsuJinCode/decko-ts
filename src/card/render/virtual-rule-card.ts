@@ -64,7 +64,7 @@ const RULE_TYPE_BY_SETTING: ReadonlyMap<string, { typeId: number; typeName: stri
   ["autoname", { typeId: 52, typeName: "Phrase", typeCode: "phrase" }],
   // Corpus-wide re-measure (2026-09-27): the oracle's
   // VIRTUAL rule-bar type per setting is unanimous across every set page in
-  // both lanes (2,397-2,529 id-less bars per setting, ZERO variance —
+  // both surfaces (2,397-2,529 id-less bars per setting, ZERO variance —
   // aggregated over all 48 expected-v2 shards). The type is the ensure_type
   // chain outcome (mod/core/set/all/type.rb:58-80 ensure_type_id:
   // type_id_from_code — each_type_assigning_module_key over the card's own

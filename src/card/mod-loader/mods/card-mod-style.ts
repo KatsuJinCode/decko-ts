@@ -75,7 +75,7 @@
 //   globally (last-wins), breaking the html view for every card.
 // - views :remote_include_tags (type_plus_right/mod/style.rb:26-32) /
 //   :remote_style_tags (self/style_mods.rb:9-13) - BOTH PORTED now (the
-//   mod-porting wave-1 lane 2026-10-03): remote_include_tags reads the
+//   mod-porting the first porting wave 2026-10-03): remote_include_tags reads the
 //   deck-stored +*group remote child (the same card-surface read the
 //   script mod's port established - the deck-card route, not the
 //   manifest.yml read); the tag bytes are CAPTURE-proven (the corpus
@@ -84,7 +84,7 @@
 // - views :stylesheet_include_tag (style_group.rb:38-40,
 //   type_plus_right/mod/style.rb:20-24) / :stylesheet_path
 //   (type_plus_right/set/style.rb:28-34) - ALL THREE ARMS dispositioned
-//   (the wave-1 lane): the mod/style arm PORTED (the item nest); the
+//   (the first porting wave): the mod/style arm PORTED (the item nest); the
 //   abstract arm REGISTERED AS THE RAISING arm (its bare helper is
 //   defined in no installed gem - the Ruby body raises NoMethodError and
 //   the engine's quiet rescue emits the standard bytes); :stylesheet_path
@@ -493,7 +493,7 @@ const MOD_STYLE_GROUPS: Record<
 // ---------------------------------------------------------------------------
 // set/type_plus_right/mod/style.rb + set/self/style_mods.rb +
 // set/type_plus_right/set/style.rb - the census-missing style views
-// (the mod-porting wave-1 lane, 2026-10-03)
+// (the mod-porting the first porting wave, 2026-10-03)
 // ---------------------------------------------------------------------------
 
 /** The card's item NAMES from db_content (one per line, [[...]] stripped -
@@ -719,7 +719,7 @@ const cardModStyle: DeckoModManifest = {
       // (:9-15, scss-format), valid_file_extensions (:17-19),
       // new_asset_constants + the scss/css type constants (:21-35), html
       // view :stylesheet_include_tag (:37-41). The view IS registered
-      // (the wave-1 lane) as the RAISING arm: its bare
+      // (the first porting wave) as the RAISING arm: its bare
       // stylesheet_include_tag helper is defined in no installed gem, so
       // the Ruby body raises NoMethodError and the engine's quiet rescue
       // emits the standard bytes - the throw reproduces exactly that.
@@ -752,7 +752,7 @@ const cardModStyle: DeckoModManifest = {
       // `def dependent_asset_inputters; Card::Assets.active_theme_cards;
       // end` (:4-6) - the boot-time asset pipeline's theme walk (Rails
       // Card::Assets, card-mod-assets lib/). :remote_style_tags (:8-14)
-      // IS ported (the mod-porting wave-1 lane 2026-10-03; the item nest
+      // IS ported (the mod-porting the first porting wave 2026-10-03; the item nest
       // + present-filter + output join, oracle-pinned by the harness
       // capture + probe).
       setPath: "self/style_mods",
@@ -882,7 +882,7 @@ const cardModStyle: DeckoModManifest = {
       // Oracle-pinned byte-for-byte: mod: format :styles nests it
       // (fixtures/captured/admin-view-pins.json). :stylesheet_include_tag
       // (:20-24) and :remote_include_tags (:26-32) ARE ported (the
-      // mod-porting wave-1 lane 2026-10-03: the item nest composition and
+      // mod-porting the first porting wave 2026-10-03: the item nest composition and
       // the group-remote link tags, oracle-pinned; the abstract arm the
       // nest reaches throws the Ruby body's NoMethodError - the helper is
       // undefined in the gem universe - and the engine's quiet rescue
@@ -907,7 +907,7 @@ const cardModStyle: DeckoModManifest = {
       // :stylesheet_path (:27-34), input_type/default_item_view (:36-42),
       // themes/selectable_themes (:46-55), joined_items_content (:58-60,
       // the item-content join the scss validator reads). Constants
-      // exported above. :stylesheet_path IS ported (the wave-1 lane: the
+      // exported above. :stylesheet_path IS ported (the first porting wave: the
       // headless params absence computes the else arm -
       // card.asset_output_url - the assets suites' pinned
       // localAttachmentUrl shape; the params[:debug] arm is the named

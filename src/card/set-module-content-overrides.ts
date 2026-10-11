@@ -2,9 +2,9 @@
 // set-module `def content` hook, i.e. every answer a card's #content gives
 // from SET-MODULE CODE rather than from its DB row.
 //
-// Ruby mechanism (set-override-fidelity lane, 2026-10-03 relaunch — full
+// Ruby mechanism (the set-module override fidelity work, 2026-10-03 relaunch — full
 // derivation with file:line in WORK_DIR/
-// set-override-fidelity-lane.md, "[relaunch t1] RUBY DERIVATION COMPLETE"):
+// the set-override fidelity note, "[relaunch t1] RUBY DERIVATION COMPLETE"):
 //
 // 1. Base: Card::Content::All#content = `structured_content || standard_content`
 //    (card-1.110.0 lib/card/content/all.rb:5-7) — the row path the port's
@@ -30,13 +30,13 @@
 //    (03_type.rb).
 //
 // This module is the RESOLUTION seam the record path consults
-// (dual-lane-direct-runner-core.ts card-engine handler via
+// (dual-$1direct-runner-core.ts card-engine handler via
 // structuredCardContent's setModuleOverride parameter). It is NOT a feature
 // flag: for every wired module below, the Ruby answer IS the spec; cards
 // matching no wired module resolve undefined and fall through to the
-// unchanged row path (byte-identical to pre-lane behavior).
+// unchanged row path (byte-identical to pre-change behavior).
 //
-// Deliberately-loud divergences (each documented in the lane receipt):
+// Deliberately-loud divergences (each documented in this pass recorded result):
 // - Self::Mod: Ruby interpolates a Cardio::Mod OBJECT ("#{mod}_mod",
 //   mod/core/set/self/mod.rb:4-6) and Cardio::Mod defines no #to_s
 //   (lib/cardio/mod.rb), so Ruby emits Object#to_s — "#<Cardio::Mod:0xADDR>"
@@ -62,7 +62,7 @@
 //   "Pacific Standard Time" to the abbreviation Ruby prints ("PDT" for the
 //   corpus's September instants, "PST" for a winter one).
 //
-// Named remainders (derivation complete, NOT wired — see the receipt):
+// Named remainders (derivation complete, NOT wired — see the recorded result):
 // - Type::BootswatchSkin (card-mod-bootstrap set/type/bootswatch_skin.rb:44-48):
 //   CONTENT_PARTS assembly resolves a mod-style subtree ("style: mods" →
 //   18 "mod: X+*style" rule cards) whose ~222KB of deck scss at capture time
@@ -105,7 +105,7 @@ export { listInputOptionsContent, toPointerContent };
 /**
  * The capture instant the corpus's Self::Now record bytes photograph:
  * "Monday, September 28, 2026 03:12 PM" (tmp/raw-ground-truth/expected-v2
- * view-lane/recapture-raw-shard-000003.jsonl, *now record.content). The
+ * view-surface/recapture-raw-shard-000003.jsonl, *now record.content). The
  * %I:%M format is minute-precision, so the exact second is unobservable;
  * :00 is the canonical choice. 15:12 America/Los_Angeles = 22:12:00Z.
  */
@@ -197,7 +197,7 @@ const FOOT_CONTENT = "<!-- *foot is deprecated. please remove from layout -->";
  * the comparator masks that (normalizeModObjectAddresses).
  *
  * The corpus's own addresses are 16 lowercase hex digits, all 34 distinct
- * (expected-v2 view-lane and page-lane recapture-raw-shard-000039.jsonl, card
+ * (expected-v2 view-surface and page-surface recapture-raw-shard-000039.jsonl, card
  * id 45410, record.content), so the port holds itself to that same width.
  */
 export const CARDIO_MOD_ADDRESS_HEX_DIGITS = 16;

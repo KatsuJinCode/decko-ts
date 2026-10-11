@@ -62,9 +62,9 @@ export function modSlotWrap(
     // so the payload is the name-context-aware builder the core slotWrap
     // emits (render/views.ts), not the bare voo.slotOptions() JSON. The
     // bare form was a divergence invisible to every mod fixture pin until
-    // the graded page lane dispatched a mod-owned view (view :lead) over
+    // the graded page surface dispatched a mod-owned view (view :lead) over
     // nests WITH a live context: the Role pages' `+:description|lead`
-    // slot lost its `"name_context":"<page>"` tail (raise-leadview lane,
+    // slot lost its `"name_context":"<page>"` tail (the leading-view render change,
     // 2026-09-29). Empty initialContextNames emits no key, so the fixture
     // pins whose probes carried no context are byte-unchanged.
     "data-slot": slotOptionsWithNameContext(fmt, voo),

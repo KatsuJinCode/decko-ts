@@ -29,7 +29,7 @@
 //   Card::Auth state (signed_in? / current roles / ok? :create on new
 //   cards) and no Auth runtime exists headlessly. The FOUR LINK views
 //   (:sign_in / :sign_out / :sign_up / :invite) ARE ported by the
-//   mod-views-b lane (2026-09-28, rendered-unpinned) - their bodies are
+//   the second mod-views batch (2026-09-28, rendered-unpinned) - their bodies are
 //   plain `link_to_card` anchors, the auth state only reaches them through
 //   the `perms:` gate, and the engine's view-permission gate leaves an
 //   un-implemented method predicate unverified-ALLOWED, so the bytes are
@@ -113,7 +113,7 @@ import type { DeckoModManifest } from "../mod-manifest.js";
 import type { ModEngineHost, ModEventFn, ModEventRegistration } from "../mod-manifest.js";
 import { warmRuleCards } from "./rule-card-warm.js";
 
-/** The set-module event declarations (the mod-events lane, 2026-10-08):
+/** The set-module event declarations (the set-module event, 2026-10-08):
  *  stub-bodied, with the per-event reason on the declaration. Same shape
  *  as core-mod.ts's local helper. */
 function event(
@@ -722,7 +722,7 @@ function isSelfHeadCard(card: RenderCard): boolean {
  *  render layer's highlight(raw, "html") (code-highlighting/index.ts,
  *  byte-matched to the coderay fixtures). Registered on Right::Head ONLY:
  *  Ruby's :core for this gem lives in that one file — the seed-sweep
- *  lane's "also type/html.rb:13-17" claim misread the gem (that file's
+ *  sweep's "also type/html.rb:13-17" claim misread the gem (that file's
  *  lines 13-17 are the format-do chunk_list block; set/type/html.rb
  *  defines NO view :core), and the extra Html-type predicate arm coderayed
  *  every Html-typed card's body once the mod deck was bound at a serving
@@ -772,8 +772,8 @@ const headContentView: ViewFn = (ctx) => {
  *  The raise below is the TS port's set-scope registration guard (the
  *  set-scoped port convention; the resolution seam is mod-registrar.ts
  *  ViewRegistrationTable + the chain-aware SetModuleViewTable), kept
- *  unchanged. Corrected 2026-10-01 (the layout-fixture-adjudication
- *  lane's finding; the former "outside it Ruby's dispatch raises the
+ *  unchanged. Corrected 2026-10-01 (the layout-fixture-review
+ *  review's finding; the former "outside it Ruby's dispatch raises the
  *  unsupported-view UserError" claim misread the All-set html arm as
  *  absent - unlike :head_content, which IS exclusive to this set). */
 const rightHeadOneLineContentView: ViewFn = (ctx) => {
@@ -808,7 +808,7 @@ const headBarBottomView: ViewFn = (ctx) =>
 
 // ---------------------------------------------------------------------------
 // set/self/account_links.rb - the four account LINK views (ported by the
-// mod-views-b lane, 2026-09-28; RENDERED-UNPINNED - no oracle capture of any
+// the second mod-views batch, 2026-09-28; RENDERED-UNPINNED - no oracle capture of any
 // of them exists; the shapes below are derived from the Ruby source).
 //
 //   view :sign_up,  link_options(:show_signup_link?) do
@@ -1089,7 +1089,7 @@ const cardModLayout: DeckoModManifest = {
       // :edit_inline view (the R21 port; the role
       // checkboxes are the named remainder on the view).
       //
-      // Events (mod-events lane 2026-10-08) — two STUBS with named
+      // Events (set-module event 2026-10-08) — two STUBS with named
       // reasons (enabled_roles.rb:21-33):
       // - validate_role_enabling (:validate, on: :save) errors when the
       //   saved list enables roles the acting account does not hold
@@ -1170,7 +1170,7 @@ const cardModLayout: DeckoModManifest = {
       // cardtype set (:core view renders CodeRay-highlighted raw through
       // the base html machinery; the port's :core falls through to the
       // shared html coreView, whose template mode covers the reachable
-      // bytes). Event (mod-events lane 2026-10-08) — STUB, named
+      // bytes). Event (set-module event 2026-10-08) — STUB, named
       // remainder (layout_type.rb:7-10): re-registers the layout in
       // Card::Layout's named-layout registry on update; the engine
       // resolves layout cards fresh at render (no registry to update).

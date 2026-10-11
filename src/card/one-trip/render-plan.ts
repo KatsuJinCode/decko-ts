@@ -1,4 +1,4 @@
-// BUILD 3 of the one-trip lane: THE RENDER-PLAN RESIDUE — record and replay.
+// BUILD 3 of the one-trip precompute: THE RENDER-PLAN RESIDUE — record and replay.
 //
 // The closure cannot know everything the render asks (SPEC §"residue"):
 // search executions, engine boot folds, context-relative nests, view-time
@@ -10,13 +10,13 @@
 //
 //   - classifyResidueStatement(sql): every statement the render issues
 //     after the one-trip payload lands must map to a NAMED residue class —
-//     the class registry below is the lane's accounting of WHY each
+//     the class registry below is this pass's accounting of WHY each
 //     remaining trip exists and why the payload cannot cover it. An
 //     unclassifiable statement is a BUG in the registry (the acceptance
 //     test fails on it), never a silent cost.
 //   - recordRenderPlan / replayRenderPlan: the record-and-replay plan
 //     shape (design + pins per the mission; the render-path integration is
-//     the NEXT lane after fold-10). A recorded plan is the page's access
+//     the NEXT step after the tenth fold). A recorded plan is the page's access
 //     set in call order; a replay executes it as ONE driver.batch.
 
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../server/driver.js";
@@ -32,7 +32,7 @@ import type { DriftArmIndex } from "./replay-fold.js";
 /** The NAMED residue classes. Every class names WHO issues the statement
  *  and WHY the payload cannot cover it. This registry is the honest cost
  *  accounting the hops law wants: not "zero", "named". The shapes are the
- *  MEASURED ones (this lane's capture on the 5 probe pages); an unknown
+ *  MEASURED ones (this pass's capture on the 5 probe pages); an unknown
  *  shape is a registry bug (the acceptance test fails on it), never a
  *  silent cost. */
 export const RESIDUE_CLASSES: ReadonlyMap<string, string> = new Map([
@@ -62,11 +62,11 @@ export const RESIDUE_CLASSES: ReadonlyMap<string, string> = new Map([
   ],
   [
     "freshness-stamp",
-    "The freshness gate's per-request deck_data_version stamp read (src/card/render.ts DECK_DATA_VERSION_STATEMENT, delivery contract:79) — one PK point SELECT at every render entry; a moved stamp clears the engine's derived caches. Per-request gate state, never page data: the payload cannot cover it and a plan must not record it. (Registered as \"freshness-stamp-read\" on the pre-merge trunk; renamed to the seat lane's class name in the r5 adjudication — one registry entry, one shape predicate: isFreshnessStampRead.)",
+    "The freshness gate's per-request deck_data_version stamp read (src/card/render.ts DECK_DATA_VERSION_STATEMENT, the freshness-stamp requirement) — one PK point SELECT at every render entry; a moved stamp clears the engine's derived caches. Per-request gate state, never page data: the payload cannot cover it and a plan must not record it. (Registered as \"freshness-stamp-read\" on the pre-merge trunk; renamed to the seat's class name in review pass 5 — one registry entry, one shape predicate: isFreshnessStampRead.)",
   ],
   [
     "permission-gate-count",
-    "The read-permission state's gate counters (read-rules.ts statement 3: hasReadRules / hasCatchAllReadRule — one 0-bind COUNT over the deck's read-rule cards). Viewer-independent deck GATE state, resolved once per engine and cleared by the stamp-move reset: the one-trip seat head carries it as a zero-bind column (spec §a.4's \"settings count\" arm — stamp-as-column lane, 2026-10-06); every other posture issues it inside the cold closure batch. Never a plan entry: a plan-served gate count would be re-armed from recording-time rows after a bump's reset+re-seat and answer the permission resolver with pre-move state (the exact stale-verdict class the freshness-stamp exclusion exists for). (Was misclassified \"search-count\" by the /COUNT\\(\\*\\)/ tail until the stamp-as-column lane named it.)",
+    "The read-permission state's gate counters (read-rules.ts statement 3: hasReadRules / hasCatchAllReadRule — one 0-bind COUNT over the deck's read-rule cards). Viewer-independent deck GATE state, resolved once per engine and cleared by the stamp-move reset: the one-trip seat head carries it as a zero-bind column (spec §a.4's \"settings count\" arm — stamp-as-column change, 2026-10-06); every other posture issues it inside the cold closure batch. Never a plan entry: a plan-served gate count would be re-armed from recording-time rows after a bump's reset+re-seat and answer the permission resolver with pre-move state (the exact stale-verdict class the freshness-stamp exclusion exists for). (Was misclassified \"search-count\" by the /COUNT\\(\\*\\)/ tail until the stamp-as-column change named it.)",
   ],
   [
     "closure-prefetch-batch",
@@ -110,7 +110,7 @@ export const RESIDUE_CLASSES: ReadonlyMap<string, string> = new Map([
   ],
 ]);
 
-/** THE FRESHNESS-STAMP READ SHAPE (per-viewer-seat lane, 2026-10-06): the
+/** THE FRESHNESS-STAMP READ SHAPE (the per-viewer seat, 2026-10-06): the
  *  render entry's per-request invalidation probe (src/card/render.ts
  *  DECK_DATA_VERSION_STATEMENT). One shape, one predicate — the recorder
  *  filter (isPipelineAbleRenderStatement), the residue classifier below,
@@ -122,7 +122,7 @@ export function isFreshnessStampRead(sql: string): boolean {
   return /SELECT "version" FROM "deck_data_version" WHERE "id" = 1/i.test(sql);
 }
 
-/** THE PERMISSION GATE-COUNT SHAPE (stamp-as-column lane, 2026-10-06): the
+/** THE PERMISSION GATE-COUNT SHAPE (the stamp-as-column change, 2026-10-06): the
  *  read-permission state's gate counters (read-rules.ts statement 3). The
  *  seat head carries its row as a zero-bind column; the recorder, the
  *  classifier, and every plan consumer test THIS predicate, so the property
@@ -159,7 +159,7 @@ export function classifyResidueStatement(sql: string): string | undefined {
   // (The pre-merge trunk's wider regex branch —
   //  /FROM\s+"?deck_data_version"?\s+WHERE\s+"?id"?\s*=\s*(\?|1)\s*$/ — was
   //  collapsed into the isFreshnessStampRead guard above in the r5 seat-merge
-  //  adjudication: the engine only ever issues DECK_DATA_VERSION_STATEMENT's
+  //  review: the engine only ever issues DECK_DATA_VERSION_STATEMENT's
   //  exact "= 1" literal shape, and one shape, one predicate beats two
   //  guards of different breadth.)
   if (/rules\.id AS ruleId/i.test(sql)) return "reached-rules-cte";
@@ -230,7 +230,7 @@ export function isPipelineAbleRenderStatement(sql: string): boolean {
   if (family === undefined) {
     return /^SELECT id FROM cards WHERE name = \? AND trash = 0 LIMIT 1$/i.test(t);
   }
-  // THE FRESHNESS-STAMP EXCLUSION (per-viewer-seat lane, 2026-10-06): the
+  // THE FRESHNESS-STAMP EXCLUSION (the per-viewer seat, 2026-10-06): the
   // stamp read IS the render's invalidation probe — its result must be
   // current-at-read, never replayed. A plan that carries it arms the
   // replay router with the recording-time version, and the freshness gate
@@ -245,7 +245,7 @@ export function isPipelineAbleRenderStatement(sql: string): boolean {
   // One shape, one predicate: the router's never-serve guard tests the
   // same isFreshnessStampRead this exclusion names.
   if (isFreshnessStampRead(sql)) return false;
-  // THE GATE-COUNT EXCLUSION (stamp-as-column lane, 2026-10-06): the read-
+  // THE GATE-COUNT EXCLUSION (the stamp-as-column change, 2026-10-06): the read-
   // permission state's gate counters are engine gate state, cleared by the
   // stamp-move reset — a plan entry would be re-armed from recording-time
   // rows after a bump's reset+re-seat and answer the permission resolver
@@ -297,12 +297,12 @@ export function recordRenderPlan(
  *  to a driver's per-statement parameter ceiling is the driver's batch
  *  concern, not the plan's). Returns the driver's results in plan order.
  *
- *  THE FOLD (fold-plan-replay lane): when the plan's read classes can merge
+ *  THE FOLD (the plan-replay fold): when the plan's read classes can merge
  *  — the per-class json_each statements replay-fold.ts builds — the batch
  *  carries those instead of one statement per entry. The cost unit on the
  *  wire is the EXECUTE ENTRY, not the POST (hrana has no server-side
  *  set-based execution; the measured edge term is ~55 ms per statement,
- *  gate2-request-trace-lane.md), so collapsing 108 entries to ~30 is the
+ *  the gate-2 request trace note), so collapsing 108 entries to ~30 is the
  *  whole win. The fold is a cache-warming transformation only: the merged
  *  results are decomposed back into per-entry result sets so this function
  *  still returns one result per plan entry, in plan order, exactly as the
@@ -318,7 +318,7 @@ export async function replayRenderPlan(
   return (await replayRenderPlanWithIndex(driver, plan)).results;
 }
 
-/** The replay that ALSO builds the drift arm index (driftfix lane): the
+/** The replay that ALSO builds the drift arm index (the drift-arm fix): the
  *  per-bind-value index the armed router answers drifted IN-list asks from.
  *  The index is built from the SAME results the replay arms — ladder or
  *  folded, identical rows by the exactness contract — plus, on the folded

@@ -1,4 +1,4 @@
-// BUILD 4 of the one-trip lane: WRITE-TIME INVALIDATION (design + pins, no
+// BUILD 4 of the one-trip precompute: WRITE-TIME INVALIDATION (design + pins, no
 // render/write-path integration — the mission boundary).
 //
 // The protocol (SPEC §"invalidation", MediaWiki JobQueue / Next.js
@@ -18,7 +18,7 @@
 //      synchronously inside the write.
 //
 // THE A2 RULE IS BINDING (the in-house incident this rule exists for:
-// hop-batch-sibling-fix-lane.md:389-414 — a durable junction-pair map
+// the corresponding port note:389-414 — a durable junction-pair map
 // consulted by the write path's lexToId made an intra-act trash-and-
 // recreate resolve through STALE derived state and fail the write): the
 // derived store is READ-SCOPE ONLY for the serving path, and the recompute
@@ -100,7 +100,7 @@ export async function affectedPagesForCardWrite(inputs: {
   return result.rows.map((r) => ({ pageId: r.page_id }));
 }
 
-/** Step 2b (plan-invalidation lane, 2026-10-05): drop the recorded render
+/** Step 2b (the plan invalidation, 2026-10-05): drop the recorded render
  *  plans for the named pages.
  *
  *  THE GAP THIS CLOSES. A recorded plan (one_trip_render_plans) is a
@@ -108,11 +108,11 @@ export async function affectedPagesForCardWrite(inputs: {
  *  replays it and answers matching reads from the RECORDED RESULT SET
  *  (one-trip-fetch.ts:264-269, render-gate.ts:135-139). Before this, a
  *  recompute re-derived the closure tables and left the plan rows describing
- *  the PRE-WRITE world — so the L2 lane's 38 recorded demo pages (4,240 rows)
+ *  the PRE-WRITE world — so the L2 measurement's 38 recorded demo pages (4,240 rows)
  *  had no path to losing their truth after an edit. This deletes it.
  *
  *  DELETE, NOT RE-RECORD. Re-recording each page inline costs the whole cold
- *  render in the exact serving posture — the L2 lane measured 896,269 ms for
+ *  render in the exact serving posture — the L2 measurement recorded 896,269 ms for
  *  38 pages (~23.6 s/page) against the serving database, so a write reaching
  *  N pages would block for N x 23.6 s. Deleting returns the page to the
  *  ladder, which is the pre-plan posture: byte-identical output, more round

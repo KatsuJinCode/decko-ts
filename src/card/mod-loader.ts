@@ -79,7 +79,7 @@ import {
  *  BASE tail below, never the html chain (include_set_format_modules,
  *  format.rb:57-63, walks exactly the format_ancestry). The pre-2026-10-01
  *  set carried css/js too (the recorded modeling discrepancy the
- *  css-js-format-parents lane surveyed): zero css/js chain requests exist
+ *  css-js-format-parents survey found): zero css/js chain requests exist
  *  (the only non-html dispatch is email_text, render/views.ts:1443) and
  *  zero css-keyed registrations, so no byte rode the broader fallback —
  *  pinned by tests/card/mod-loader/
@@ -350,7 +350,7 @@ export class ModLoader {
                 // guard is tests/card/mod-loader/
                 // view-set-scope-fallback.test.ts).
                 //
-                // FORMAT SCOPING (flat-table-format-scope lane,
+                // FORMAT SCOPING (the flat-table format scoping,
                 // 2026-10-01): the flat record is the HTML-VISIBLE engine
                 // table (render.ts `this.views = HTML_VIEWS` - the same
                 // object this constructor receives), so an all-set
@@ -637,7 +637,7 @@ export class ModLoader {
     // (base/abstract/nonbase) under every manifest format key, while
     // Ruby files each module's format block under its OWN format class
     // (set/format.rb:120-144) and never mixes set scopes into one
-    // method table. The blindness is adjudicated UNOBSERVABLE on this
+    // method table. The blindness is reviewed UNOBSERVABLE on this
     // codebase and the arm is retained verbatim: safeSetKeys always
     // carries the ALL token (set-patterns/registry.ts:308-313
     // `applies: () => true`), so no src dispatch reaches it - the only
@@ -827,7 +827,7 @@ export class ModLoader {
         // register_standard_set_format; only the requested class's
         // modules reach the card's format singleton - format.rb:62-68
         // include_set_format_modules + pattern/base.rb:30-37
-        // format_module_list). The divergence is adjudicated
+        // format_module_list). The divergence is reviewed
         // UNOBSERVABLE on this codebase and the blindness is retained:
         // the census
         // (tests/card/mod-loader/
@@ -845,7 +845,7 @@ export class ModLoader {
         // views have no non-json dispatch (the route json show is the
         // format-families layer, bypassing this walk). A future
         // non-html anchored registration trips the census probe and
-        // reopens the adjudication.
+        // reopens the review.
         const code = token.toLowerCase();
         const matches = this.memoShortnamesForCode(code);
         const scoped: ViewChainEntry[] = [];
@@ -926,9 +926,9 @@ export class ModLoader {
           // X-strip until the codename-key re-key lands). Single-part
           // patterns (right/self/type) keep the batch-2 form ONLY: their
           // plural divergence (RIGHT-follower -> right/followers) is that
-          // same recorded divergence's xfailed territory with lanes' seeds
+          // same recorded divergence's xfailed territory with its own seeds
           // and expectations written against the current walk - widening
-          // those here would flip tests this lane does not own (the
+          // those here would flip tests this pass does not own (the
           // follow A/B suite's +*followers probe flipped when the plural
           // candidate reached right/followers - measured, then scoped out).
           const code = token.slice(0, dashIdx).toLowerCase();

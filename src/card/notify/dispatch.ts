@@ -64,7 +64,7 @@ export interface IntegrationDispatchInput {
  *
  *  Returns a flat list of (hook,event,status) triples for diagnostics —
  *  useful for captures and tests, harmless in production. Act-level
- *  receipts carry the act's FIRST event as their event reference. */
+ *  recorded results carry the act's FIRST event as their event reference. */
 export async function runIntegrationHooks(
   input: IntegrationDispatchInput,
 ): Promise<IntegrationHookReceipt[]> {

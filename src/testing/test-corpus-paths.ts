@@ -27,7 +27,7 @@ const PRIVATE_SHARD_DIR = path.join(REPO_ROOT, "fixtures", "corpus");
 // raw-corpus-seeding.ts's header says so explicitly, because seeding from the
 // sanitized corpus silently invalidates a raw-capture comparison. It holds the
 // dump the oracle's expected-v2 captures rendered from, plus those captures'
-// view-lane shards.
+// view-surface shards.
 const RAW_CORPUS_DIR = path.join(REPO_ROOT, "tmp", "raw-ground-truth");
 export { RAW_CORPUS_DIR };
 
@@ -35,11 +35,11 @@ export { RAW_CORPUS_DIR };
 export const RAW_CORPUS_DB_PATH = path.join(RAW_CORPUS_DIR, "bench-corpus-raw.sqlite3");
 
 /**
- * The oracle's `expected-v2/view-lane` shards — the per-card `views.content` /
+ * The oracle's `expected-v2/view-surface` shards — the per-card `views.content` /
  * `views.open` yardstick the raw-corpus probes byte-compare against. Same
  * private leg as RAW_CORPUS_DB_PATH and from the same capture, so it resolves
  * beside it. Two probes each hardcoded their own absolute copy under a
- * different per-lane worktree, both of which have since left this machine.
+ * different per-worktree, both of which have since left this machine.
  */
 export const RAW_CORPUS_VIEW_LANE_DIR = path.join(
   RAW_CORPUS_DIR,

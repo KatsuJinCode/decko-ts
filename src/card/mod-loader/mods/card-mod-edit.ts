@@ -29,7 +29,7 @@
 // _live-type-field slot variant, and the new_buttons formgroup; the
 // capture contract + normalizations live in
 // tests/card/mod-loader/oracle-capture-edit-name-type.rb), and the 16
-// views of the EDIT-VIEWS lane (fixtures/captured/edit-views.json - the
+// views of the edit-views port (fixtures/captured/edit-views.json - the
 // inline-editing surface :edit_inline/:edit_inline_buttons/:edit_row/
 // :edit_in_form, the create surface :new/:new_in_modal/:new_fields/
 // :new_type_formgroup/:simple_new/:new_in_modal_buttons, the board-tab
@@ -43,7 +43,7 @@
 //   else branch returns `"{{#{voo.nest_syntax}}}"` as a literal string, and
 //   the field-only branch calls `with_nest_mode :normal` + `nest
 //   template_link_set_name, view: :template_link` (ported by the
-//   fix-d2-dangling-description lane; `templateLinkView` itself lives in
+//   the dangling-description fix; `templateLinkView` itself lives in
 //   render/views.ts, and fix-d9-warm-map-junction-load seats the junction
 //   card that composed name resolves to — see the view fn below).
 // - set/all/editing.rb:46-48 :just_deleted - `wrap { "#{render_title}
@@ -105,7 +105,7 @@
 //   _render_content_formgroups, _render_edit_buttons, modal wrap, frame
 //   helper - rails-runtime
 // - all/edit_inline.rb :edit_inline, :edit_inline_buttons, :edit_row
-//   PORTED (edit-views lane, see above)
+//   PORTED (the edit-views port, see above)
 // - all/edit_name.rb :edit_name, :name_form PORTED (slice 4, see above);
 //   name_form/edit_name_skip_referers/edit_name_success/edit_name_buttons/
 //   rename_button inlined in the view fns
@@ -124,7 +124,7 @@
 //   through text_area_input, text_field_input, hidden_input,
 //   input_defined_by_card (with_card + nest), default_input_type,
 //   with_card (Card[] fetch), input_type_from_rule (the *input type rule
-//   read) - PORTED (input-remainders lane; :input's captured branch was
+//   read) - PORTED (the input remainders; :input's captured branch was
 //   slice 3, see above)
 // - all/form.rb:edit_in_form PORTED (the
 //   editor_in_multi_card branch; the structure/inline-nests edit_slot
@@ -149,12 +149,12 @@
 //   path_to_previous - rails-runtime (hidden_field_tag inlined above with
 //   the captured attr order; cancel_button/cancel_strategy inlined in
 //   cancelInPlaceButton)
-// - all/formgroup.rb :read_form, :read_formgroup PORTED (edit-views lane
+// - all/formgroup.rb :read_form, :read_formgroup PORTED (the edit-views port
 //   - the empty-configs branch and the haml template; the nested-field
 //   arm is the disclosed remainder); the formgroup helper chain is
 //   inlined in the :edit_in_form view fn
 // - all/new.rb :new, :new_in_modal, :simple_new, :new_fields,
-//   :new_in_modal_buttons, :new_type_formgroup PORTED (edit-views lane,
+//   :new_in_modal_buttons, :new_type_formgroup PORTED (the edit-views port,
 //   see above); the unnamed-card arms and the params surfaces
 //   (params[:name_prompt]/params[:type]) are the page layer's remainders
 //   (the oracle's new_card fixture section records the unnamed-card
@@ -789,7 +789,7 @@ export const contentFormgroupView: ViewFn = ({ fmt, voo }) => {
  *  inline_nests_editor? (voo.input_type — the *input machinery's
  *  inline_nests arm, the engine-remainder) -> multi_card_editor? (:76-80)
  *  -> in_multi_card_editor? -> single_card_edit_field. The multi-card arm
- *  is PORTED here (the mod-completion-100 lane): the explicit-edit-fields
+ *  is PORTED here (the mod-completion pass): the explicit-edit-fields
  *  walk the account family's content_formgroups ride. */
 function editSlot(ctx: ViewContext): string {
   const { fmt, voo } = ctx;
@@ -1471,7 +1471,7 @@ export const newButtonsView: ViewFn = ({ fmt, voo }) => {
 };
 
 // ---------------------------------------------------------------------------
-// the EDIT-VIEWS lane (post slice-4): the inline-editing surface, the create
+// the edit-views port (post slice-4): the inline-editing surface, the create
 // surface, the :guide_tab delegate, the structure/nests placeholders, the
 // read-form formgroups and the overlay guide. Byte shapes pinned by
 // fixtures/captured/edit-views.json (captured from the live decko-0.20.0
@@ -2086,7 +2086,7 @@ const readFormView: ViewFn = () => "";
  *  wrap: :slot - the BODY lives on the flat record now (views.ts
  *  readFormgroupBody — the loader-less seam: the
  *  set/all file is a base-format registration in Ruby, and the graded
- *  page lane's read_form field nests dispatch it without a loader); this
+ *  page surface's read_form field nests dispatch it without a loader); this
  *  registration delegates so the surfaces cannot drift. */
 const readFormgroupView: ViewFn = readFormgroupBody;
 
@@ -2174,7 +2174,7 @@ const overlayGuideView: ViewFn = (ctx) => {
  *  contributes one RegisteredSetModule to the basket regardless of its
  *  format blocks). */
 // ---------------------------------------------------------------------------
-// the BOARD lane: the board/cardboard wrapper + the tab surface (the board
+// the BOARD section: the board/cardboard wrapper + the tab surface (the board
 // substrate and the tab views whose machinery the engine already carries).
 // Byte shapes pinned by fixtures/captured/board-views.json (captured from
 // the live oracle app; tests/card/mod-loader/oracle-capture-board-views.rb).
@@ -2665,7 +2665,7 @@ export const historyTabView: ViewFn = ({ fmt, voo }) => {
 
 
 
-// --- the follow lane: follow_section + engage_tab (the follow seam) ---------
+// --- the follow section: follow_section + engage_tab (the follow seam) ---------
 
 /** card-mod-follow set/all/follow/follow_link.rb:1-96 the FollowLink base +
  *  start_follow_link.rb/stop_follow_link.rb (the two concrete classes):
@@ -2837,7 +2837,7 @@ export const engageTabView: ViewFn = (ctx) => {
   return `<div class="m-3 mt-4 _engage-tab">${output([follow, discussion])}</div>`;
 };
 
-// --- the rules lane: edit_rules (the rules accordion registry) --------------
+// --- the rules section: edit_rules (the rules accordion registry) --------------
 
 /** card-1.110.0 lib/card/setting.rb:44-49 Card::Setting.groups (the frozen
  *  group order the captured accordion carries) + the per-setting registry
@@ -2847,7 +2847,7 @@ export const engageTabView: ViewFn = (ctx) => {
  *  flags and help texts are transcribed from the oracle arm
  *  (fixtures/captured/board-views.json edit_rules - the deck's rule-card
  *  existence drives the recent flags; the common/field model is the
- *  rule-list machinery's, cited in the receipt). */
+ *  rule-list machinery's, cited in the recorded result). */
 const RULE_BOARD_SETTINGS: ReadonlyArray<
   readonly [
     string,
@@ -3193,7 +3193,7 @@ const setModules: ModSetModuleFile[] = [
   {
     // set/all/board/tab_views.rb: :engage_tab, :history_tab, :related_tab,
     // :rules_tab, :follow_section, :guide_tab + discussion_section helper.
-    // Ported (edit-views lane, oracle-verified): :guide_tab (board/
+    // Ported (the edit-views port, oracle-verified): :guide_tab (board/
     // tab_views.rb:47-49 - the render dispatch to the :guide view,
     // card-mod-help's ported view). NOT ported: :engage_tab,
     // :follow_section, :history_tab, :related_tab, :rules_tab -
@@ -3205,15 +3205,15 @@ const setModules: ModSetModuleFile[] = [
         views: [
           { view: "guide_tab", viewFn: guideTabView, config: { unknown: true } },
           // tab_views.rb:22-31 view :rules_tab, unknown: true (PORTED,
-          // board lane - the set_select card_select form; the set-list walk
+          // board section - the set_select card_select form; the set-list walk
           // cites card-mod-rules related_sets.rb + the pattern labels)
           { view: "rules_tab", viewFn: rulesTabView, config: { unknown: true } },
-          // tab_views.rb:14-19 view :related_tab (PORTED, board lane - the
+          // tab_views.rb:14-19 view :related_tab (PORTED, board section - the
           // board_pill_sections pills; RELATED_ITEMS + the three item
           // builders cited on the view fn)
           { view: "related_tab", viewFn: relatedTabView },
           // tab_views.rb:8-12 view :history_tab, wrap: :slot (PORTED,
-          // board lane - creator_credit + the act pill list through the
+          // board section - creator_credit + the act pill list through the
           // history seam; acts_board_layout cited on the view fn)
           {
             view: "history_tab",
@@ -3221,7 +3221,7 @@ const setModules: ModSetModuleFile[] = [
             config: { wrap: "slot" },
           },
           // tab_views.rb:42-44 view :follow_section, wrap: :slot, cache:
-          // :never (PORTED, follow lane - the FollowLink button group +
+          // :never (PORTED, follow section - the FollowLink button group +
           // the followers/overview pills through the follow seam)
           {
             view: "follow_section",
@@ -3230,7 +3230,7 @@ const setModules: ModSetModuleFile[] = [
           },
           // tab_views.rb:2-5 view :engage_tab (wrap div m-3 mt-4
           // _engage-tab emitted in the fn), cache: :never (PORTED, follow
-          // lane - the follow section + the +discussion field nest)
+          // section - the follow section + the +discussion field nest)
           {
             view: "engage_tab",
             viewFn: engageTabView,
@@ -3283,7 +3283,7 @@ const setModules: ModSetModuleFile[] = [
     // set/all/edit_inline.rb + edit_inline/edit_row.haml: :edit_name_row
     // PORTED (write-path slice 4, byte-verified: the Name row - plain name
     // content, :name_form edit link); :edit_inline, :edit_inline_buttons,
-    // :edit_row PORTED (edit-views lane, byte-verified against
+    // :edit_row PORTED (the edit-views port, byte-verified against
     // fixtures/captured/edit-views.json: the inline edit form - Symbol
     // :update card_form with autosave + the hidden-branch content
     // fieldset + the Save/cancel-in-place/delete button group - the
@@ -3385,7 +3385,7 @@ const setModules: ModSetModuleFile[] = [
       html: {
         views: [
           // editing.rb:3-11 view :board, perms: :update, unknown: true,
-          // cache: :never, wrap: :board (PORTED, board lane - the wrapper
+          // cache: :never, wrap: :board (PORTED, board section - the wrapper
           // bytes + the board grid + the tab sidebar are emitted in the
           // view fn; the wrap config is a declarative record)
           {
@@ -3406,7 +3406,7 @@ const setModules: ModSetModuleFile[] = [
           { view: "edit_nests", viewFn: editNestsView, config: { cache: "never" } },
           { view: "edit_structure", viewFn: editStructureView, config: { cache: "never" } },
           // editing.rb:50-52 view :edit_rules, cache: :never, unknown: true
-          // (PORTED, rules lane - the rules accordion registry over
+          // (PORTED, rules section - the rules accordion registry over
           // Card::Setting.groups; the per-setting rows transcribed from the
           // captured oracle arm)
           {
@@ -3423,7 +3423,7 @@ const setModules: ModSetModuleFile[] = [
     // input_defined_by_card, with_card, default_input_type,
     // rich_text_input, text_area_input, text_field_input, hidden_input,
     // placeholder_text.
-    // Ported (write-path slice 3 + input-remainders lane): :input - the
+    // Ported (write-path slice 3 + the input remainders): :input - the
     // captured surface's resolved branch (rich_text -> the tinymce editor
     // input), then the full try-chain: the ace/plain/hidden method arms,
     // input_type_from_rule (the *input type rule read) and
@@ -3446,7 +3446,7 @@ const setModules: ModSetModuleFile[] = [
     // :conflict_tracker ported (slice 3, the captured edit-form content
     // fieldset), :name_formgroup PORTED (slice 4, byte-verified: the Name
     // formgroup - label + the form-bound text_field with the leading-space
-    // form-control class); :edit_in_form PORTED (edit-views lane,
+    // form-control class); :edit_in_form PORTED (the edit-views port,
     // byte-verified: the editor_in_multi_card formgroup branch - title +
     // help label, the bare content editor; the structure/inline-nests
     // branches are the rails-runtime remainder, disclosed); the form/
@@ -3502,7 +3502,7 @@ const setModules: ModSetModuleFile[] = [
   },
   {
     // set/all/formgroup.rb + read_formgroup.haml: :read_formgroup and
-    // :read_form PORTED (edit-views lane, byte-verified: the haml
+    // :read_form PORTED (the edit-views port, byte-verified: the haml
     // formgroup template - title label + the slot-wrapped :content - and
     // the empty-configs branch of read_field_configs; the nested-field
     // arm is the rails-runtime remainder, disclosed). The formgroup/
@@ -3530,7 +3530,7 @@ const setModules: ModSetModuleFile[] = [
     // type form's button formgroup - standard_create_button + the
     // /<mark>/unknown cancel); :new, :new_in_modal, :simple_new,
     // :new_fields, :new_in_modal_buttons, :new_type_formgroup PORTED
-    // (edit-views lane, byte-verified against
+    // (the edit-views port, byte-verified against
     // fixtures/captured/edit-views.json: the framed create form with the
     // success[mark] hidden + the shown-help frame, the modal create form
     // with the pre-body slot JSON and the no-confirm board menu, the bare
@@ -3583,7 +3583,7 @@ const setModules: ModSetModuleFile[] = [
   },
   {
     // set/all/overlay_guide.rb + overlay_guide.haml: :overlay_guide PORTED
-    // (edit-views lane, byte-verified: the haml overlay template - the
+    // (the edit-views port, byte-verified: the haml overlay template - the
     // close link with the consumed-path href + the guide METHOD render -
     // inside the slot wrap with the _overlay d0-card-overlay card
     // nodblclick class extras; the guide helper set is inlined above,

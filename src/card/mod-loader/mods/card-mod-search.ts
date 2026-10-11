@@ -56,7 +56,7 @@
 //   methods), set/self/recent.rb, set/type/cardtype.rb,
 //   set/type/search_type.rb
 //
-// Ported by the mod-views-b lane (2026-09-28), all rendered-unpinned (no
+// Ported by the second mod-views batch (2026-09-28), all rendered-unpinned (no
 // oracle capture exists for any of them - the raw-ground-truth tree holds
 // whole-PAGE captures only):
 //   - checkbox_list       (0_search/views.rb:118-124 + checkbox_item.haml)
@@ -321,7 +321,7 @@ async function prepareSearchCounts(host: ModEngineHost): Promise<void> {
     nameToId.set(row.key, row.id);
   }
 
-  // db-roundtrip-elimination lane (W1): the records compose from the batch's
+  // db round-trip elimination: the records compose from the batch's
   // OWN rows through ModEngineHost#composeAndCacheRows - value-identical to
   // the per-row host.fetchById storm this replaces (one idToLex + one id-row
   // point query per uncached row). The composed records carry exactly the
@@ -828,10 +828,10 @@ const resultsForKeywordView: ViewFn = (ctx) => {
 // header: the :bar name belongs to card-mod-bar_and_box globally).
 // set/self/search.rb:39-42 - view :title
 //   `voo.title ||= t(:search_results_title); super()` - likewise NOT
-//   registered here: this grading surface (the headless view-lane engine)
+//   registered here: this grading surface (the headless view-surface engine)
 //   runs with NO ModLoader bound, so a setModule registration never
 //   dispatches. The bytes are served by the render layer's
-//   SELF_SET_TITLE_OVERRIDES branch (views.ts, rule-tooltips lane
+//   SELF_SET_TITLE_OVERRIDES branch (views.ts, the rule tooltips
 //   2026-09-29) instead - the same headless pattern as openView's
 //   discussion comment_box check. set/self/recent.rb:4-7 (:title,
 //   "Recent Changes") takes the same path.

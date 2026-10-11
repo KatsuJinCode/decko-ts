@@ -35,7 +35,7 @@ export interface AuthMigrationRunOptions {
 
 // The repo's db/migrations, resolved LAZILY and memoized.
 //
-// 2026-10-02 (cf-worker-write-path lane): this was a module-scope `const`. It
+// 2026-10-02 (the Cloudflare Worker write path): this was a module-scope `const`. It
 // is lazy for the same reason src/card/render/bootstrap-code-files.ts moved.
 // Evaluating `new URL(..., import.meta.url)` at IMPORT time is a module-load
 // side effect, and it throws "Invalid URL string" on any runtime whose

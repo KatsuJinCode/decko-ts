@@ -1,6 +1,6 @@
 // The asset-output WRITE seam — the port of the half of
 // card-mod-assets-0.20.0's Abstract::AssetOutputter that the read-side
-// engine could not do before the files lane landed the attachment write
+// engine could not do before the attachment write landed the attachment write
 // path:
 //
 // - asset_outputter.rb:78-82 asset_output_url:
@@ -24,7 +24,7 @@
 // The INPUT half (input_from_item_cards: the item cards' asset_input_content
 // — each inputter's format(input_format).render(input_view) render) belongs
 // to the asset-inputter machinery (Abstract::AssetInputter — the set modules
-// card-mod-assets assigns to the style/script groups), which no lane has
+// card-mod-assets assigns to the style/script groups), which nothing implements
 // ported; the seam therefore takes the ASSEMBLED CONTENT as its argument and
 // the caller owns assembly. Named remainder, not a silent gap.
 //
@@ -61,7 +61,7 @@ export function localAttachmentUrl(identifier: string | null | undefined): strin
   return trimmed;
 }
 
-/** The write surface storeAssetOutput needs: the files-lane
+/** The write surface storeAssetOutput needs: the attachment write
  *  CardActionEngine's attachment-bearing create/update, and the fetch
  *  engine's name resolution (the record carries the id + dbContent this
  *  module reads back). Structural — a test double satisfies it. */

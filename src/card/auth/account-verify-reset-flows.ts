@@ -1,8 +1,8 @@
 // The member account email-token flows: password reset + account
 // verification/activation. The port of the card-mod-account event ladder
 // that Ruby Decko builds on its Auth::Token runtime — the FLOW the token
-// runtime (src/card/auth/token.ts, lane-tokenseam) and the SMTP transport
-// (src/card/notify, lane-proton-mail) exist to serve.
+// runtime (src/card/auth/token.ts, the token runtime) and the SMTP transport
+// (src/card/notify, the SMTP transport) exist to serve.
 //
 // RUBY TRUTH — the whole flow, event by event (all citations are the
 // installed card-mod gems):
@@ -497,7 +497,7 @@ function cgiEscape(value: string): string {
  * :verify_url VIEW bodies are exactly this function's output, but a
  * ViewFn is synchronous while HMAC is not (the boundary the account mod's
  * NOT-PORTED block names), so the views cannot call it until the async
- * view lane lands. The FLOW does not have that constraint.
+ * view path exists. The FLOW does not have that constraint.
  */
 export async function buildAccountTokenUrl(
   ctx: AccountFlowContext,

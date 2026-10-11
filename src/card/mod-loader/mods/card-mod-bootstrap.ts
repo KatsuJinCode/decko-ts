@@ -124,7 +124,7 @@ import type {
   ModSetModuleFile,
 } from "../mod-manifest.js";
 
-/** The set-module event declarations (the mod-events lane, 2026-10-08):
+/** The set-module event declarations (the set-module event, 2026-10-08):
  *  stub-bodied, with the per-event reason on the declaration. Same shape
  *  as core-mod.ts's local helper. */
 function event(
@@ -468,7 +468,7 @@ function buildCustomizeButtonHref(args: {
  *  nested into a render rather than being the root), and the pre-M9
  *  render-card-map walk stands. That fallback is deliberately NOT the new
  *  gate: it is page-scoped by construction, which is the bug, and it is
- *  only reachable on surfaces this lane does not warm. */
+ *  only reachable on surfaces nothing warms. */
 function newCustomizedName(ctx: ViewContext): string {
   const card = ctx.fmt.card;
   const engine = ctx.fmt.engine;
@@ -740,7 +740,7 @@ const oneLineContentView: ViewFn = (_ctx) => "";
  *  wrap_with :code do render_core end end` — the body is a one-liner and
  *  it is correct (`wrap_with` is a verbatim tag wrapper, so
  *  `<code>#{core}</code>`), but it is NOT REGISTERED, for a reason that
- *  has nothing to do with the body or with the dispatch masking this lane
+ *  has nothing to do with the body or with the dispatch masking this port
  *  fixed. The view is declared in a set file NESTED inside the anchor's
  *  directory, and this engine derives a set module's shortname from the
  *  WHOLE path (mod-registrar.ts#setModuleShortname), so it registers as
@@ -1218,7 +1218,7 @@ const cardModBootstrap: DeckoModManifest = {
       // (bootswatchSkinCoreHtml below) is exported and views.ts calls
       // it for bootswatch_skin-typed cards.
       setPath: "type/bootswatch_skin",
-      // use_as_current_skin (mod-events lane 2026-10-08) — STUB, named
+      // use_as_current_skin (set-module event 2026-10-08) — STUB, named
       // remainder (type/bootswatch_skin.rb:180-184): the TRIGGERED
       // finalize body writes the *all+*style rule's content to this skin
       // and saves it (Card[:all, :style].content = name; save!) — a
@@ -1241,7 +1241,7 @@ const cardModBootstrap: DeckoModManifest = {
       // view :bar_left / :bar_right / :bar_bottom + view :core. The
       // :core view is template :haml (core.haml) - the HAML depends on
       // accordion_bar + field_nest + nest :content, a structured-content
-      // surface not in this port. :bar_left IS PORTED (bar-slots lane
+      // surface not in this port. :bar_left IS PORTED (the bar slots
       // 2026-09-29, byte-shaped to an earlier V6 dump) but registered in
       // the BASE views table (views.ts barLeftView) - the corpus grading
       // pipeline never binds a ModLoader, so only base-table
@@ -1347,7 +1347,7 @@ const cardModBootstrap: DeckoModManifest = {
       // set-module bookkeeping below preserves the registrar's
       // source_location walk.
       setPath: "type_plus_right/bootswatch_skin/colors",
-      // translate_variables_to_scss (mod-events lane 2026-10-08) — STUB,
+      // translate_variables_to_scss (set-module event 2026-10-08) — STUB,
       // named remainder (colors.rb:116-119 + replace_values :121+): the
       // body translates posted color-group params into SCSS variable
       // lines inside the +*colors content (variable_values_from_params

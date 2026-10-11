@@ -5,8 +5,8 @@
 // :modal_rule's wrap arm (set/rule/board_rules_editor.rb:8-11 + card-mod-
 // layout set/all/modal/modal_dialog.haml:6-13's voo.show? gates).
 //
-// These are the behaviors the two landed receipts (rules-views-port-3.md,
-// rules-cap-lane.md) named as the OPEN form-parity arms: the RuleSetRadio
+// These are the behaviors the two recorded results (rules-views-port-3.md,
+// the corresponding port note) named as the OPEN form-parity arms: the RuleSetRadio
 // narrower_warning walk (their capture's single *all option never reached
 // it) and the modal wrap's voo.show? gates for a hidden header (unreachable
 // on their surfaces). The form-substrate-2 capture
@@ -372,7 +372,7 @@ export function ruleFormHtml(ctx: ViewContext, deps: RuleFormDeps = {}): string 
  *  render_title } }) + modal.rb:54-59 current_rule_form: the body renders
  *  the :rule_form body on a SUBFORMAT of current_rule (find_existing_rule_
  *  card - rule/editor.rb:119-130: the rule card itself when it exists; the
- *  new-card arm is the rules-cap-lane.md disclosed remainder) - a fresh voo
+ *  new-card arm is the the corresponding port note disclosed remainder) - a fresh voo
  *  chain (the captured inner slot's show list is ["rule_form"] alone) with
  *  the parent format for context/nest-mode inheritance
  *  (format/nesting/subformat.rb shape) - with success_view :overlay_rule

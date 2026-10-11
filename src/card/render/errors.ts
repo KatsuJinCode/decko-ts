@@ -121,7 +121,7 @@ export const DATE_ERROR_CLASS_NAME = "Date::Error";
  *  `sub.main!`). That is a card whose content carries `{{_main}}` rendered
  *  OUTSIDE a page render — a bare `card.format.render(:content)`.
  *
- *  The frozen record has exactly this: expected-v2/view-lane shard-000000
+ *  The frozen record has exactly this: expected-v2/view-surface shard-000000
  *  entry id 470 ("AsIn Layout", whose 469-byte dbContent is a whole layout
  *  template) records
  *  `CAPTURE_ERROR: NoMethodError: undefined method 'rendered' for nil` for
@@ -179,7 +179,7 @@ export const NO_METHOD_ERROR_CLASS_NAME = "NoMethodError";
  *  Ruby ("2019-13-01", "2021-02-29", "2019-05-0" → invalid date); the
  *  UTC round-trip check below rejects the same. The an earlier pass corpus holds
  *  1,117 such date cards (shapes 99-99-99 / 9999-9-99 / 9999-9-9; the two
- *  page-lane exemplars 20190319 "19-03-19" and 20220323 "22-03-23").
+ *  page-surface exemplars 20190319 "19-03-19" and 20220323 "22-03-23").
  *  Conversely Ruby REJECTS bare-year digit strings JS accepts ("2016",
  *  "1980", "1", "0" → invalid date — verified; the old JS fallback
  *  rendered year-epoch dates for them), so any remaining all-digit
@@ -317,7 +317,7 @@ export function parseRubyDateContent(content: string): Date | null {
   // classes. Superset-of-information: no raise case is lost, the
   // gem-parseable classes survive, and the completion's today-dependence
   // reads the wall-clock seam (fillFromReferenceMonth). The corpus-uncertain White Fragility residual stays as refill2's
-  // receipt recorded it.
+  // recorded result recorded it.
   // Slash-form dates. Ruby's slashed triples are GEM-VERIFIED (ruby 3.3,
   // date gem): the FIRST component's width picks the shape.
   //   - 4-digit first -> Y/M/D ("2019/3/19" -> 2019-03-19).

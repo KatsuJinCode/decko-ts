@@ -7,8 +7,8 @@
 //
 // This file is a fresh, self-contained adapter that targets Bunny's URL
 // shape rather than reusing libsql-http internals, for two reasons:
-//   1. The task scope says other lanes own libsql-http.ts; an adapter that
-//      doesn't import it is insulated from churn in that lane.
+//   1. The task scope says libsql-http.ts is maintained separately; an adapter that
+//      doesn't import it is insulated from churn in that file.
 //   2. Bunny's auth model is "Bearer <db-access-token>" against the URL
 //      shape https://<db-id>.lite.bunnydb.net/v2/pipeline — slightly
 //      different from a generic libSQL server, and worth being explicit
@@ -98,13 +98,13 @@ export interface BunnyDbOptions {
  *  (benchmarks/cold-render/before-home.json max_ms 697.6), so 15,000 ms is a
  *  ~20x margin on the worst observed hop.
  *
- *  P1 incident 2026-10-03 (edge-incident-fix lane): at 5,000 ms the bound
+ *  P1 incident 2026-10-03 (the edge incident fix): at 5,000 ms the bound
  *  was NOT safely above every legitimate hop. Release 1126057 shipped the
  *  timeout while the render still ran whole-deck recursive walks (one
  *  measured 1.87 MB / 3.8 s warm from the edge, longer for a visitor at
  *  network distance), so real visitors blew the per-hop abort, got
  *  "Pipeline Transport failed ... signal timed out", and the site was
- *  unloadable. The query-scoping fix lands with this lane; the default
+ *  unloadable. The query-scoping fix ships with it; the default
  *  raises to 15,000 ms — above the scoped queries' worst case with
  *  headroom, below the 20,000 ms render budget the edge entry enforces over
  *  the whole chain (DEFAULT_EDGE_RENDER_BUDGET_MS) — and the edge entry

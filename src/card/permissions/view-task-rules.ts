@@ -476,7 +476,7 @@ async function applicableRule(
  *  whose "_left" content parses no party items and denies, Ruby's exact
  *  shape for the no-inheritable-rule deck).
  *
- *  Corpus receipts (2026-10-03): Joan_Callahan_20230902+discussion (45298)
+ *  corpus captures (2026-10-03): Joan_Callahan_20230902+discussion (45298)
  *  inherits through *all plus+*update (6571, "_left") to Joan Callahan
  *  20230902's *self rule 45186 ("Anyone") — the comment box renders;
  *  Klickstein continues+discussion answers from its own *self rule 9841

@@ -432,8 +432,8 @@ function scriptRuleChildrenStatement(settingTypeId: number): {
 }
 
 /** One batch, once per engine: the rule cards, their sides, and their
- *  fields enter the prepared render-card map. db-roundtrip-elimination lane
- *  (W1): records are composed from the batch's OWN `SELECT c.*` rows
+ *  fields enter the prepared render-card map. db round-trip elimination
+ *: records are composed from the batch's OWN `SELECT c.*` rows
  *  through ModEngineHost#composeAndCacheRows - value-identical to the
  *  per-row host.fetchById storm this replaces (one idToLex + one id-row
  *  point query per uncached row), same sides-before-junctions multi-pass,
@@ -813,7 +813,7 @@ const cardModScript: DeckoModManifest = {
     // (leftTypeCode set -> rule-card walk, mod -> group-remote src list)
     // and still raises for cards outside the two patterns.
     //
-    // admin-views-2 lane: view :core joins the module — Ruby hosts it on
+    // the second admin-views port: view :core joins the module — Ruby hosts it on
     // the INCLUDED Abstract::ModAssets (card-mod-assets
     // set/abstract/mod_assets.rb:171-182, the group_list haml); this set
     // module is where the +*script card's chain lands, so the render

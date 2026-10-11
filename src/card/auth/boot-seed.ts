@@ -78,7 +78,7 @@
 //
 // NAMED REMAINDERS (real.yml entries this module deliberately does NOT
 // create, each because its side cards live in OTHER mods' real.yml files —
-// outside R-3b's account scope; the row list is data, so a later lane adds
+// outside R-3b's account scope; the row list is data, so a later change adds
 // them without touching the mechanism):
 //   - the three array-name rule rows (real.yml :76-80 Role+*members+*type
 //     plus right+*update -> Help Desk; :199-201 User+*account+*type plus

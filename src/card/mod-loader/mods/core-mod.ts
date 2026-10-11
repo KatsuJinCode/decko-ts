@@ -11,7 +11,7 @@
 // carries no admin surface at all, so the core manifest is the registration
 // site these views have. The manifest IS wired into defaultDeckSources():
 // composed at pass14-int as MANIFESTS' first entry —
-// core loads at bundle index 0; the composition receipt is
+// core loads at bundle index 0; the composition recorded result is
 // . The core-mod suites load it standalone as before.
 //
 // HONESTY BOUNDARY (rendered-unpinned): no Ruby-oracle capture exists for
@@ -35,7 +35,7 @@
 // PER-EVENT BODY REMAINDERS (the other 26): the bodies need the write
 // path, the director stage runner, or the lexicon janitors — none of which
 // a declaration can carry. Named here so the merge pass can order the
-// follow-up lanes:
+// follow-up:
 //   all/autoname.rb   set_autoname — writes autoname rule content
 //                     (update_column) + pull_from_trash (write path).
 //   all/codename.rb   validate_codename (Auth.as_id permission gate),
@@ -64,7 +64,7 @@
 //   and the CHAIN dispatch (render.ts computeResolvedView) is what serves
 //   these views — set-scoped: Self::Admin only for *admin, Self::Mod only
 //   for the Mod card, Type::Mod only for mod-typed cards. The known
-//   empty-chain masking defect (mod-views-a-lane.md batch 3) is unchanged
+//   empty-chain masking defect (the corresponding port note batch 3) is unchanged
 //   engine behavior, not touched here.
 // - set/self/mod.rb's `def content` (item_codes) renders
 //   "#{mod}_mod" over Cardio.mods OBJECTS — on the oracle its bytes are
@@ -689,8 +689,8 @@ function adminRuntimeStateFor(_ctx: ViewContext) {
     : undefined;
 }
 
-/** The mod-less render path's lazy admin-runtime bind (raise-leadview lane,
- *  2026-09-29): the graded page-lane harness binds NO loader, so this mod's
+/** The mod-less render path's lazy admin-runtime bind (the leading-view render change,
+ *  2026-09-29): the graded page-surface harness binds NO loader, so this mod's
  *  prepareEngine never runs and moduleAdminHost stays unset — the
  *  type/role.rb :configs view would render "" with an empty admin universe
  *  where the oracle lists the role's configuration sections. The engine's
@@ -1045,7 +1045,7 @@ function modTasks(modname: string): string[] {
 
 // ---------------------------------------------------------------------------
 // set/type/mod.rb view :bar_right — the mod bar-right section list.
-// Landed by the bar-slots lane 2026-09-29 (view-fail class Z3: 30 oracle
+// Landed by the bar slots 2026-09-29 (view-fail class Z3: 30 oracle
 // entries — every `mod: X :closed` bar rendered an EMPTY bar-right where
 // the oracle shows the mod's section list, e.g. `cardtypes, scripts,
 // styles`). The section predicates + the oracle-pinned scripts/styles

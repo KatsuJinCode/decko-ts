@@ -159,11 +159,11 @@ export const CORE_TASK_BASKET: Record<string, AdminTaskConfig> = {
     executePolicy: () => undefined,
   },
   // card-mod-carrierwave set/self/admin.rb — basket[:tasks]
-  // [:delete_upload_tmp_files]. The bar-slots lane (2026-09-29, view-fail
+  // [:delete_upload_tmp_files]. The the bar slots (2026-09-29, view-fail
   // class Z3) landed the REGISTRATION only: the oracle pins the task's
   // EXISTENCE through the mod bar_right section list ("tasks, cardtypes,
-  // scripts, styles") and its name/title/description through the page-lane
-  // capture (expected-v2/page-lane shard-000039, mod: carrierwave :open:
+  // scripts, styles") and its name/title/description through the page-surface
+  // capture (expected-v2/page-surface shard-000039, mod: carrierwave :open:
   // task-table row "Delete upload tmp files" / "Delete upload tmp files!").
   // The EXECUTION stays a named remainder — a cron-style scheduled task
   // (the same AGENTS.md gate the carrierwave port note cites); like the
@@ -490,9 +490,9 @@ export const MOD_SPECS: Record<string, ModSpec> = {
     // exactly this text in the `mod: edit` description paragraph
     // (`<p>Edit handling</p>`) -- the 2026-09-29 yardstick vintage
     // (decko-ts-pass20-int/tmp/raw-ground-truth) and the 2026-10-05
-    // recapture (tmp/raw-ground-truth/expected-v2/page-lane), byte-for-byte
+    // recapture (tmp/raw-ground-truth/expected-v2/page-surface), byte-for-byte
     // identical on this page after the committed close-71 asset-host mapping
-    // (adjudicate-10-rows-lane.md evidence chain point 2). The previous value
+    // (the corresponding port note evidence chain point 2). The previous value
     // ("decko card editing and card type management") appears in NO capture
     // and cost the page +30 B.
     //
@@ -663,7 +663,7 @@ export function modDescription(modname: string): string | undefined {
 
 // ---------------------------------------------------------------------------
 // set/type/mod.rb view :bar_right — the mod bar-right section list.
-// Landed by the bar-slots lane 2026-09-29 (view-fail class Z3: 30 oracle
+// Landed by the bar slots 2026-09-29 (view-fail class Z3: 30 oracle
 // entries — every `mod: X :closed` bar rendered an EMPTY bar-right where
 // the oracle shows the mod's section list).
 // ---------------------------------------------------------------------------
@@ -701,9 +701,9 @@ export type ModAssetGroup = readonly [title: string, items: readonly string[]];
  *  - a headless engine has no gem filesystem, so the groups are
  *    transcribed from the DECK'S OWN RENDERED TRUTH — the `<h3>Styles</h3>`
  *    / `<h3>Scripts</h3>` sections of the 28 `mod: *` page rows in the
- *    an earlier pass page-lane yardstick — the same oracle-pinned-table pattern as
+ *    an earlier pass page-surface yardstick — the same oracle-pinned-table pattern as
  *    MOD_BAR_RIGHT_ASSETS below, and the same "expectation = the oracle
- *    bytes, never the reverse" rule the bootswatch lane applied.
+ *    bytes, never the reverse" rule the bootswatch capture applied.
  *  - CROSS-CHECK: every group is reproduced by the installed gem trees'
  *    assets directories (gems/card-mod-<name>-0.20.0/assets). Folder
  *    groups are the folder's files (account: style/account.scss +
@@ -713,7 +713,7 @@ export type ModAssetGroup = readonly [title: string, items: readonly string[]];
  *    resolve to their basenames, which is what the capture shows
  *    (bootstrap styles: `_colorpicker.scss`, `select2.css`, …).
  *
- *  KEY FORM (mm-cstructural, 2026-09-30 — a real bug this lane fixed): every
+ *  KEY FORM (mm-cstructural, 2026-09-30 — a real bug this pass fixed): every
  *  key in this table, and in MOD_BAR_RIGHT_ASSETS below, is the CODENAME
  *  stem — what `codename.to_s.gsub(/^mod_/, "")` yields (type/mod.rb:168-170),
  *  i.e. `ace_editor`, `api_key`, `bar_and_box`, `tinymce_editor` — NOT the
@@ -889,7 +889,7 @@ const MOD_ASSET_GROUPS_SRC: Readonly<
   // expected-v2 corpus. It is not. That file is a LIVE recapture of the
   // production site (taken 2026-10-03) carrying the DigitalOcean cssPath
   // files/45514/1790384218.css = 2026-09-26; the graded yardstick's
-  // page-lane/recapture-raw-shard-000043 carries the s3 cssPath
+  // page-surface/recapture-raw-shard-000043 carries the s3 cssPath
   // files/45514/1786554352.css = 2026-08-12, 44.3 days earlier. The site
   // changed in between; the yardstick did not.
   //
@@ -908,16 +908,16 @@ const MOD_ASSET_GROUPS_SRC: Readonly<
   // parent -> MOD_CHILD_ASSET_GROUPS_SRC to undefined -> "". The four
   // filenames exist nowhere in the installed gem set nor in the decko
   // distribution (archive/decko-fork-study/decko/mod: 32 mod dirs, none of
-  // them shades). Adjudicated 2026-10-04; evidence and the superseded
+  // them shades). reviewed 2026-10-04; evidence and the superseded
   // assertion: an internal work log
   style: {
     styles: [["group: local", ["jquery_ui_decko.scss", "jquery_ui_smoothness.css"]]],
   },
   tabs: { scripts: [["group: local", ["tab.js.coffee"]]] },
-  // Census M10 (serializer-followup2, the tinymce adjudication): the parent
+  // Census M10 (serializer-followup2, the tinymce review): the parent
   // page's Styles/Scripts section bodies. The graded capture 500'd the page
   // itself, but the SAME capture rendered the child cards' cores (expected-v2
-  // page-lane shard 000039 records 200/201), and the parent sections nest
+  // page-surface shard 000039 records 200/201), and the parent sections nest
   // those same cores (type/mod.rb:53-65, nest(child, view: :core)) — the
   // lists below are transcribed verbatim from those graded child bytes. The
   // crash is a separate, documented, non-corpus-derived residual (see the
@@ -1010,7 +1010,7 @@ export function modChildAssetGroups(
  *  FILE TREE (Card::Mod's script/style directories — the `mod: X+*script`
  *  and `mod: X+*style` children are directory-backed manifest cards, not
  *  stored rows: the bench deck has ZERO rows with those names; the
- *  page-lane capture pins their folder-group cores, e.g. carrierwave's
+ *  page-surface capture pins their folder-group cores, e.g. carrierwave's
  *  "group: local / upload.js.coffee" and "file.scss"). The headless port
  *  has no gem tree to walk, so this table is the ORACLE-PINNED presence
  *  set, transcribed verbatim from the deck's own script/style cardtype
@@ -1248,7 +1248,7 @@ export async function prepareAdminRuntime(host: ModEngineHost): Promise<void> {
     // settings (*title, *credit, ...), so the walk without this candidate
     // fell through to *all+*update for every one of them and the
     // type/role.rb:12-24 :configs view grouped nothing under the roles the
-    // dump's *star+*update row names (replays-adjudication lane,
+    // dump's *star+*update row names (the replay review,
     // 2026-10-01: Administrator's Configurations section was missing in
     // full).
     const starRules = await host.batch([
