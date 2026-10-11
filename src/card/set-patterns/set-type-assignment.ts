@@ -151,6 +151,15 @@ export const GEM_TYPE_ASSIGNMENTS: Readonly<Record<string, readonly (readonly [s
   script: [["Right::Script", "list"]], // set/right/script.rb:1
   search: [["Right::Count", "search_type"]], // set/right/count.rb:1
   style: [["TypePlusRight::Set::Style", "pointer"]], // set/type_plus_right/set/style.rb:3
+  // The packaged card-mod-bootstrap-0.20.0's SkinField TPR sets assign the
+  // Skin cardtype to their field cards (the reference checkout's abstract
+  // module carries no assign_type line, but the oracle's render pins it:
+  // the Corpus Skin+*stylesheets unknown-view slot carries TYPE-...skin /
+  // data-card-type-id=343 / name=Skin with no rule rows and no explicit
+  // nest type opt — the code-assignment fallback is the only source).
+  bootstrap: [
+    ["TypePlusRight::BootswatchSkin::Stylesheets", "skin"],
+  ],
 };
 
 /** Register one mod's gem assign_type lines (GEM_TYPE_ASSIGNMENTS); a key

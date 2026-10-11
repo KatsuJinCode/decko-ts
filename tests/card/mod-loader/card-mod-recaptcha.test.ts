@@ -164,7 +164,7 @@ function runCoreView(): { out: string; calls: RecordedNest[] } {
     fmt: fmt as unknown as ViewContext["fmt"],
     voo: {} as ViewContext["voo"],
   } as unknown as ViewContext;
-  return { out: (core.viewFn as ViewFn)(ctx), calls: fmt.nestCalls };
+  return { out: String((core.viewFn as ViewFn)(ctx) ?? ""), calls: fmt.nestCalls };
 }
 
 // ---------------------------------------------------------------------------

@@ -81,6 +81,7 @@
 // link bytes. No captured oracle exists for this mod's views; every expected
 // byte traces to a cited helper source or one of those two live-gem runs.
 
+import { str, type ViewResult } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
 import { emitAttrs, h } from "../../render/slot-html.js";
 import { scanNests, stripTags } from "../../render/nest-syntax.js";
@@ -161,8 +162,9 @@ function contentTag(
 
 /** output (card-1.110.0 lib/card/format/content.rb:70-73):
  *  Array.wrap(content).flatten.compact.join "\n". */
-function output(parts: (string | undefined)[]): string {
-  return parts.filter((p) => p !== undefined).join("\n");
+function output(parts: (ViewResult | undefined)[]): string {
+  // Ruby's join is to_s over the compacted array (content.rb:70-73).
+  return parts.filter((p) => p !== undefined).map(str).join("\n");
 }
 
 /** Ruby-blank (ActiveSupport String#blank?). */
@@ -284,7 +286,7 @@ const modalLinkView: ViewFn = (ctx) => {
       href: `${cardPath(fmt.urlKey())}?layout=modal`,
       "data-remote": "true",
     },
-    ctx.fmt.renderView("title"),
+    str(ctx.fmt.renderView("title")),
   );
 };
 
@@ -305,9 +307,9 @@ const modalLinkView: ViewFn = (ctx) => {
  *  plain two. */
 const modalView: ViewFn = (ctx) => {
   const { fmt, voo } = ctx;
-  const title = fmt.renderView("modal_title");
-  const menu = fmt.renderView("modal_menu");
-  const footer = fmt.renderView("modal_footer");
+  const title = str(fmt.renderView("modal_title"));
+  const menu = str(fmt.renderView("modal_menu"));
+  const footer = str(fmt.renderView("modal_footer"));
   let out = "<div class='modal fade _modal-slot' id='modal-container' role='dialog'>\n";
   out += "<!-- /, \"data-backdrop\": \"static\"} -->\n";
   out += `<div class='${modalDialogClasses(voo.opts["size"])}'>\n`;
@@ -534,7 +536,7 @@ function titleBytes(ctx: ViewContext): string {
   if (typeof label === "string" && label !== "") {
     return `<span class="card-title" title="${h(label)}">${wrappedTitleInner(h(label))}</span>`;
   }
-  return ctx.fmt.renderView("title");
+  return str(ctx.fmt.renderView("title"));
 }
 
 /** navbar_links.rb:28-30 wrap_with_nav_item: `wrap_with :li, content,

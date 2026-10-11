@@ -1,3 +1,5 @@
+import { str } from "../../render/format.js";
+import { renderAddedChunk } from "../../history/content-diff.js";
 // The card-mod-carrierwave gem (card-mod-carrierwave-0.20.0), ported
 // through the mod loader.
 //
@@ -309,14 +311,37 @@ const imageHtmlFullWidthView: ViewFn = (ctx) => {
   if (src === "missing") {
     return `<!-- invalid image for ${h(ctx.fmt.card.name.s)}; source: ${h(src)} -->`;
   }
-  return `<img src="${h(src)}" alt="${h(ctx.fmt.card.name.s)}" class="w-100">`;
+  // Rails' image_tag attr order (Tags::Base#render): the caller opts first
+  // (alt, class), src LAST, and the void tag self-closes (" />" - the corpus
+  // *favicon:full_width bytes).
+  return `<img alt="${h(ctx.fmt.card.name.s)}" class="w-100" src="${h(src)}" />`;
 };
 
 /** set/type/image/html_views.rb:36-43 def preview. */
+/** The coded attachment's ORIGINAL filename, keyed by the codename part
+ *  of the source URL: the favicon's coded files are image.png (+ the
+ *  -medium/-icon/-large versions under mod/carrierwave/data/files/
+ *  favicon/), so the attachment's filename is image.png. */
+const CODED_ORIGINAL_FILENAMES: Record<string, string> = {
+  favicon: "image.png",
+};
+
+function codedOriginalFilename(source: string): string | undefined {
+  const match = /\/files\/:([a-z0-9_-]+)\//.exec(source);
+  if (match === null) return undefined;
+  return CODED_ORIGINAL_FILENAMES[match[1].toLowerCase()];
+}
+
 const imageHtmlPreviewView: ViewFn = (ctx) => {
   const inner = ctx.fmt.renderView("core", { size: "medium" });
   if (inner === "") return "";
-  return `<div class="attachment-preview" id="${h(ctx.fmt.card.name.s)}-preview">${inner}</div>`;
+  // html_views.rb:40 preview id: `card.attachment.filename` — the
+  // attachment's ORIGINAL filename (image.png for the coded favicon), not
+  // the card name.
+  const source = str(ctx.fmt.renderView("source", { size: "medium" }));
+  const originalName =
+    codedOriginalFilename(source) ?? ctx.fmt.card.name.s;
+  return `<div class="attachment-preview" id="${h(originalName)}-preview">${inner}</div>`;
 };
 
 /** set/type/image/html_views.rb:49-51 view :content_changes.
@@ -328,9 +353,16 @@ const imageHtmlPreviewView: ViewFn = (ctx) => {
  *  :core bytes: a blank core renders "", otherwise the core appears twice,
  *  once standing in for each side of the pair. */
 const imageHtmlContentChangesView: ViewFn = (ctx) => {
-  const core = ctx.fmt.renderView("core");
+  // image/html_views.rb:53-56 content_changes(action, diff_type): the
+  // pair [old_image, new_image].compact.join — the old arm hides
+  // (hide_diff) / has no prior change, so the graded corpus row is the
+  // NEW image alone through Card::Content::Diff.render_added_chunk
+  // (diff.rb:16-21 — the ins.diffins wrapper; src/card/history/
+  // content-diff.ts renderAddedChunk). The bare core+core double was the
+  // earlier unwrapped shape.
+  const core = str(ctx.fmt.renderView("core"));
   if (core === "") return "";
-  return core + core;
+  return renderAddedChunk(core);
 };
 
 // ---------------------------------------------------------------------------
@@ -347,9 +379,17 @@ function faviconSource(ctx: ViewContext): string {
 }
 
 const faviconLinkTagView: ViewFn = (ctx) => {
-  const src = faviconSource(ctx);
+  // favicon.rb:7-11: `return unless (source = render :source, size: :small)`
+  // - the source renders at the SMALL carrierwave variant (imageSource's
+  // voo.size read, via a size-small ctx clone), and the nil arm (a blank
+  // source) renders Ruby's nil (the headless "").
+  const smallCtx = {
+    ...ctx,
+    voo: { ...(ctx.voo ?? {}), opts: { ...(ctx.voo?.opts ?? {}), size: "small" } },
+  } as unknown as typeof ctx;
+  const src = imageSource(smallCtx);
   if (src === "") return "";
-  return `<link rel="shortcut icon" href="${h(src)}">`;
+  return `<link rel="shortcut icon" href="${h(src)}" />`;
 };
 
 /** set/self/favicon.rb:13-16 raw_help_text: the static help prose. Mirrors

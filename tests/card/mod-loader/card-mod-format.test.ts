@@ -737,11 +737,9 @@ describe("card-mod-format through the mod loader (A/B)", () => {
     ).toBe("404: Bad Address");
   });
 
-  it("WITH the mod: :errors renders the 'Problem:' prefix (error.rb:28-30)", async () => {
+  it("WITH the mod: :errors answers Ruby's nil on the empty-errors early return (error.rb:53-55) - the render boundary records JSON null", async () => {
     const s = storage!;
-    expect(await s.engine.render("Oracle Format Probe", "errors")).toBe(
-      "Problem:\n\n",
-    );
+    expect(await s.engine.renderRaw("Oracle Format Probe", "errors")).toBe(null);
   });
 
   // ---- content.rb (set/all/content.rb) new views -----------------------

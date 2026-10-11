@@ -1,3 +1,4 @@
+import type { ViewResult } from "../render/format.js";
 // Shared view emitters for mod ports: the slot wrapper Ruby's `wrap: :slot`
 // view config applies (the `wrapper :slot` registration,
 // card-mod-format-0.20.0 set/all/html/wrap.rb:11-14, fed by
@@ -120,7 +121,7 @@ export function superView(
   ctx: ViewContext,
   currentModule: string,
   view: string,
-): string {
+): ViewResult {
   const loader = getDefaultModLoader();
   if (loader === undefined) return "";
   const card = ctx.fmt.card;

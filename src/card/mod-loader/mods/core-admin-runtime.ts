@@ -46,7 +46,12 @@ import type { ModEngineHost } from "../mod-manifest.js";
 
 export interface AdminRuntimeConfig {
   /** Card.config.action_mailer.perform_deliveries (self/admin.rb:21).
-   *  Rails default true; decks set it in config/application.rb. */
+   *  DECKO's OWN config hash - NOT the Rails::Application layer the
+   *  oracle's config/application.rb sets (perform_deliveries = true there)
+   *  and NOT ActionMailer::Base (harness_env.rb sets that directly): the
+   *  reference capture's *admin warning renders the no_email_delivery
+   *  item, which only fires when this flag is false - the decko default
+   *  the capture proves. */
   performDeliveries: boolean;
 
   /** Cardio.config.allow_irreversible_admin_tasks (self/admin.rb:55). */
@@ -54,7 +59,7 @@ export interface AdminRuntimeConfig {
 }
 
 const DEFAULT_ADMIN_RUNTIME_CONFIG: AdminRuntimeConfig = {
-  performDeliveries: true,
+  performDeliveries: false,
   allowIrreversibleAdminTasks: false,
 };
 

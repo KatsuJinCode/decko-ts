@@ -504,27 +504,46 @@ const tabsView: ViewFn = (ctx) => constructTabs(ctx, "tabs");
 /** all/tabs.rb:72-74 view :pills -> construct_tabs "pills" (nav-pills). */
 const pillsView: ViewFn = (ctx) => constructTabs(ctx, "pills");
 
-/** The static-variant parity raise (all/tabs.rb:76-78 + :80-82 -> :84-90).
- *  construct_static_tabs line 87 calls `item_view_options(args)`; no args
- *  method exists on the format chain (format.rb:36-37 delegates
- *  basket/session/params; method_delegation.rb:38-46 falls through to the
- *  ActionView instance which lacks :args), so EVERY render raises
- *  NoMethodError. Oracle: tabs-mod-loader.json "rendered" carries
- *  CAPTURE_ERROR for all four static probes. */
+/** The static-variant parity raise (all/tabs.rb:84-90). The each-block body
+ *  is the only raise site: construct_static_tabs line 87 calls
+ *  `item_view_options(args)`; no args method exists on the format chain
+ *  (format.rb:36-37 delegates basket/session/params; method_delegation.rb:
+ *  38-46 falls through to the ActionView instance which lacks :args), so a
+ *  NON-EMPTY item list raises NoMethodError on every render. Oracle:
+ *  tabs-mod-loader.json "rendered" carries CAPTURE_ERROR for the probed
+ *  cards WITH items. An EMPTY item list never enters the block: the render
+ *  falls to `tabs tabs, nil, tab_type:` — the bare tabbable frame
+ *  (tab_panel.haml with no tab buttons and no panes) — which the graded
+ *  corpus pins on the Ada Admin rows (a User-typed card whose content
+ *  carries no items: view:admin:Ada Admin:tabs_static / :pills_static). */
 function staticTabsParityRaise(view: string): never {
   throw new Error(
     `${view}: NoMethodError parity - undefined method 'args' for ` +
       `Card::Format::CardActionView (card-mod-tabs-0.20.0 set/all/tabs.rb:87 ` +
-      `calls item_view_options(args); decko 0.20.0 raises for every render, ` +
-      `oracle: fixtures/captured/tabs-mod-loader.json "rendered")`,
+      `calls item_view_options(args); decko 0.20.0 raises for every render ` +
+      `with items, oracle: fixtures/captured/tabs-mod-loader.json "rendered")`,
   );
 }
 
+/** all/tabs.rb:84-90 construct_static_tabs: `tabs = {}; card.item_cards.each
+ *  { |item| tabs[item.name] = nest item, item_view_options(args) };
+ *  tabs tabs, nil, tab_type: tab_type`. The item enumeration here is the
+ *  card's own item list (item.rb item_names over the content lines —
+ *  item_names' clean/compact drops the blank strings a blank content's
+ *  split leaves, so an empty/blank content answers []). */
+function constructStaticTabs(ctx: ViewContext, tabType: "tabs" | "pills"): string {
+  const items = rawItemStrings(ctx.fmt.card.dbContent ?? "").filter((i) => i !== "");
+  if (items.length > 0) {
+    staticTabsParityRaise(tabType === "tabs" ? "tabs_static" : "pills_static");
+  }
+  return tabsPanel(ctx, new Map(), undefined, tabType, "");
+}
+
 /** all/tabs.rb:76-78 view :tabs_static -> construct_static_tabs "tabs". */
-const tabsStaticView: ViewFn = (ctx) => staticTabsParityRaise("tabs_static");
+const tabsStaticView: ViewFn = (ctx) => constructStaticTabs(ctx, "tabs");
 
 /** all/tabs.rb:80-82 view :pills_static -> construct_static_tabs "pills". */
-const pillsStaticView: ViewFn = (ctx) => staticTabsParityRaise("pills_static");
+const pillsStaticView: ViewFn = (ctx) => constructStaticTabs(ctx, "pills");
 
 // ---------------------------------------------------------------------------
 // the manifest (one entry per gem file; setPaths mirror the gem tree)

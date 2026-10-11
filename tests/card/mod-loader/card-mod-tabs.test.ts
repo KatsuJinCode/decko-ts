@@ -118,6 +118,15 @@ beforeAll(async () => {
     name: "Oracle Tabs Empty Probe",
     dbContent: "no nests here",
   });
+  // The static-tabs frame arm: a card whose item_names answer [] — blank
+  // content (the Ada Admin corpus shape). item_names' clean/compact drops
+  // the blank strings the split leaves, so only a blank content renders
+  // the bare tabbable frame.
+  await seedCard(s, {
+    id: 105,
+    name: "Oracle Tabs Blank Probe",
+    dbContent: "",
+  });
 }, 60_000);
 
 afterAll(() => {
@@ -222,17 +231,39 @@ describe("card-mod-tabs through the mod loader (A/B)", () => {
     expectOracleBytes(pills, "Oracle Tabs Empty Probe#pills");
   });
 
-  it("WITH the mod: :tabs_static and :pills_static carry Ruby's NoMethodError parity raise (all/tabs.rb:87)", async () => {
+  it("WITH the mod: :tabs_static and :pills_static carry Ruby's NoMethodError parity raise on a card WITH items (all/tabs.rb:87)", async () => {
     const s = storage!;
-    // stock decko 0.20.0 raises for every static render (no `args` method
-    // on the format chain); the oracle captured CAPTURE_ERROR NoMethodError
-    // for all four static probes. The port refuses to invent bytes Ruby
-    // never produced.
+    // construct_static_tabs' each-block body is the only raise site:
+    // `item_view_options(args)` has no `args` method on the format chain,
+    // so a NON-EMPTY item list raises NoMethodError on every render (the
+    // oracle captured CAPTURE_ERROR NoMethodError for the probed cards
+    // with items).
     await expect(s.engine.render("Oracle Tabs Pointer Probe", "tabs_static")).rejects.toThrow(
       /undefined method 'args' for Card::Format::CardActionView/,
     );
     await expect(s.engine.render("Oracle Tabs Pointer Probe", "pills_static")).rejects.toThrow(
       /NoMethodError parity/,
+    );
+  });
+
+  it("WITH the mod: :tabs_static and :pills_static render the bare tabbable frame on a blank-content card (the graded corpus arm)", async () => {
+    const s = storage!;
+    // An EMPTY item list never enters the each block: `tabs({}, nil,
+    // tab_type:)` renders tab_panel.haml with no buttons and no panes.
+    // The graded corpus oracle pins these bytes on the Ada Admin rows
+    // (view:admin:Ada Admin:tabs_static / :pills_static — a User-typed
+    // card whose blank content carries no items).
+    const tabs = await s.engine.render("Oracle Tabs Blank Probe", "tabs_static");
+    expect(tabs).toBe(
+      "<div class='tabbable tab-panel' role='tabpanel'>\n" +
+        "<ul class='nav nav-tabs' role='tablist'>\n</ul>\n" +
+        "<div class='tab-content'>\n</div>\n</div>\n",
+    );
+    const pills = await s.engine.render("Oracle Tabs Blank Probe", "pills_static");
+    expect(pills).toBe(
+      "<div class='tabbable tab-panel' role='tabpanel'>\n" +
+        "<ul class='nav nav-pills' role='tablist'>\n</ul>\n" +
+        "<div class='tab-content'>\n</div>\n</div>\n",
     );
   });
 

@@ -1,3 +1,4 @@
+import { str } from "./format.js";
 // The bootstrap navbar view family (card-mod-layout set/all/navbar_links.rb
 // + set/abstract/{items,list}.rb + set/self/{account_links,dropdown_divider}.rb
 // + card-mod-search set/self/search search_box) — the page-lane head chrome
@@ -53,7 +54,7 @@ function linkTitleSpan(ctx: ViewContext): string {
   if (typeof label === "string") {
     return `<span class="card-title" title="${h(label)}">${wrappedTitleInner(h(label))}</span>`;
   }
-  return ctx.fmt.renderView("title");
+  return str(ctx.fmt.renderView("title"));
 }
 
 /** link_to_card with an extra class: `class="<given> known-card"` — the

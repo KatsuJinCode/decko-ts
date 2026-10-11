@@ -1,3 +1,4 @@
+import { str, type ViewResult } from "../render/format.js";
 // Rule-card bar-right content (card-mod-rules-0.20.0 set/rule/bar_view.rb):
 // for a card matching the *rule pattern, :bar_right nests the card's own
 // :one_line_content view, wrapped in the rule format's
@@ -132,7 +133,7 @@ function ruleOneLineContent(
   card: RenderCard,
   rightSetting: string | undefined,
   engine?: RenderEngineLike,
-  renderCoreText?: (card: RenderCard) => string,
+  renderCoreText?: (card: RenderCard) => ViewResult,
   /** bar_view.rb:63-66 rule_short_content nests the existing rule with
    *  `set_context: card.name.trunk_name` — the trunk of the BAR-RENDERED
    *  (outer, often virtual) rule card, NOT the substituted existing rule's
@@ -287,7 +288,21 @@ function ruleOneLineContent(
   // the stored RichText markup (`<p><em>…</em></p>`) never reaches the
   // one-line bytes (oracle: the AAM+*self+*help bar-right renders the
   // plain sentence, not the `<p><em>…` markup form).
-  return truncate(stripTags(coreText), ONE_LINE_CHARACTER_LIMIT);
+    // THE ONE-LINE DISPATCH (the seconds corpus is the arbiter on both
+  // arms): MARKDOWN-typed rule cards render their core (kramdown) - the
+  // *guide bars carry the RENDERED heading text ('Editing Guide', no
+  // '####'); every other rule card (the RichText *help family, 13 bars)
+  // takes the RAW arm: truncate(strip_tags(render_raw)) with render_raw
+  // the STORED bytes - the nest syntax stays authored ({{_left|name}}
+  // literal in every escaped bar) - and the ERB escape rides the
+  // wrapping interpolation (&quot;mating&quot;). Rails truncate with
+  // the omission inside the length (60 -> cut at 57 + '...'): the
+  // *children+*right+*help bar cuts exactly at "with another c".
+  if (card.typeName === "Markdown") {
+    const coreText = renderCoreText !== undefined ? renderCoreText(card) : card.dbContent;
+    return truncate(stripTags(str(coreText)), ONE_LINE_CHARACTER_LIMIT);
+  }
+  return h(truncate(stripTags(card.dbContent), ONE_LINE_CHARACTER_LIMIT));
 }
 
 /** :bar_right for a rule card ("..." when the card is not a rule card —
@@ -333,7 +348,7 @@ export function permissionInheritContentHtml(setContextTag: string | undefined):
 export function ruleBarRightHtml(
   card: RenderCard,
   engine?: RenderEngineLike,
-  renderCoreText?: (card: RenderCard) => string,
+  renderCoreText?: (card: RenderCard) => ViewResult,
 ): string {
   const setKeyTokens = card.setKeys.split(" ");
   if (!setKeyTokens.includes("RULE")) return "";

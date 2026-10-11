@@ -1,3 +1,4 @@
+import { str } from "../../render/format.js";
 // The card-mod-account gem (card-mod-account-0.20.0), ported through the
 // mod loader - the mod that adds user accounts, signin, signup, the +*account
 // cardtype, password reset, and the related closure lifecycle.
@@ -203,11 +204,14 @@ function event(
  *  stamp `exp`, so the sentence on the page and the lifetime of the link it
  *  describes cannot drift apart. The integer renders as a string (Ruby's
  *  Integer#to_s). */
-function tokenDaysValue(): string {
-  return String(DEFAULT_TOKEN_EXPIRY_SECONDS / 86400);
+function tokenDaysValue(): number {
+  return DEFAULT_TOKEN_EXPIRY_SECONDS / 86400;
 }
 
-/** set/right/account/views.rb:14-16 base body - the integer-as-string. */
+/** set/right/account/views.rb:14-16 base body - the INTEGER (the view
+ *  block's raw answer; the render boundary records it as a JSON number,
+ *  and every interpolation - the :token_expiry sentence below - to_s's
+ *  it). */
 const tokenDaysView: ViewFn = () => tokenDaysValue();
 
 /** set/right/account/views.rb:18-19 view :verify_days, :token_days
@@ -295,14 +299,14 @@ const passwordInputView: ViewFn = (ctx) => {
     typeof voo.opts["form_name_prefix"] === "string"
       ? (voo.opts["form_name_prefix"] as string)
       : "card";
-  const idPrefix = namePrefix === "card" ? "card" : namePrefix.replace(/\]/g, "").replace(/[\[+]/g, "_");
+  const idPrefix = namePrefix === "card" ? "card" : namePrefix.replace(/\]/g, "").replace(/[^-a-zA-Z0-9:.]/g, "_");
   const autocomplete =
     fmt.parent?.card.name.s === "*signin+*account" ? "on" : "off";
   return (
     `<input class="d0-card-content _pw-input form-control" placeholder="Password" autocomplete="${autocomplete}" type="password" name="${namePrefix}[content]" id="${idPrefix}_content" />\n` +
     `<span class='_toggle-password visibility-icon _pw-text-area'>\n` +
     `<i class="_toggle-pw-visibility notranslate material-icons">visibility_off</i>\n` +
-    `</span>`
+    `</span>\n`
   );
 };
 
@@ -476,18 +480,26 @@ const closureView: ViewFn = (ctx) => {
  *  :haml, served by set/abstract/closed_account.haml:
  *  ```
  *  %h2 Account Closed
+ *
  *  %p
  *    The sign-in account once associated with this card has been removed, the card
  *    has been anonymized, and its data fields have been deleted.
  *  ```
- *  HAML block-tag emission: `%h2 X` -> `<h2>X</h2>` with a trailing
- *  newline, then `%p` with whitespace-stripped text -> `<p>TEXT</p>`. The
- *  view renders bare (no slot wrap) - account_holder.rb:125 opens the
- *  `format :html do` block but carries no `wrap:` config on this view. */
+ *  HAML emission: `%h2 X` -> `<h2>X</h2>` + "\n" (the whitespace-only
+ *  source line emits nothing), `%p` opens the tag and its indented
+ *  TWO-LINE text block renders on the FOLLOWING lines with the block's
+ *  internal line breaks preserved and the shared indentation stripped, the
+ *  closing tag on its own line, one trailing newline (the corpus's
+ *  closed_account bytes: <h2>...</h2>\n<p>\n...removed, the
+ *  card\nhas been...deleted.\n</p>\n). The view renders
+ *  bare (no slot wrap) - account_holder.rb:125 opens the `format :html do`
+ *  block but carries no `wrap:` config on this view. */
 const closedAccountView: ViewFn = () =>
   "<h2>Account Closed</h2>\n" +
-  "<p>The sign-in account once associated with this card has been removed, " +
-  "the card has been anonymized, and its data fields have been deleted.</p>";
+  "<p>\n" +
+  "The sign-in account once associated with this card has been removed, the card\n" +
+  "has been anonymized, and its data fields have been deleted.\n" +
+  "</p>\n";
 
 /** set/type_plus_right/user/email.rb:1-3 `def virtual?; new?; end` -
  *  the User+email card is virtual when the card is unsaved. set/type_plus_
@@ -857,10 +869,15 @@ function accountBoardPillItem(
     ? `/${DeckoName.parse(`${cardName}+${trait}`).urlKey}/${viewSegment}`
     : `/${DeckoName.parse(`${cardName}+${trait}`).urlKey}/${viewSegment}?${query}`;
   return (
+    // board_pills.rb:35-37 wrap_each_with(:li, class: "nav-item") — the
+    // pill anchors ride the li wrapper and the known-card class (the
+    // accounted card's own traits are known); board_link_opts' remote flag
+    // lands LAST, after the href (the graded account_tab row's attr order).
+    `<li class="nav-item">` +
     `<a data-slot-selector="${h(BOARD_PILL_BASE_OPTS.slotSelector)}"` +
-    ` data-slotter-mode="override" data-remote="true" class="slotter nav-link"` +
+    ` data-slotter-mode="override" class="slotter nav-link known-card"` +
     ` data-bs-toggle="pill" data-breadcrumb="Account" data-breadcrumb-class="account"` +
-    ` data-cy="${cy}" href="${href}">${text}</a>`
+    ` data-cy="${cy}" href="${href}" data-remote="true">${text}</a></li>`
   );
 }
 
@@ -996,10 +1013,10 @@ function accountFormgroups(ctx: ViewContext): string {
   // card[subcards][+*account][subcards][+*email][content] - the recorded
   // oracle signup form pins exactly that input name.
   const accountRelative = accountCard.name.from(fmt.card.name);
-  return sub.renderView("content_formgroups", {
+  return str(sub.renderView("content_formgroups", {
     structure: "true",
     form_name_prefix: `card[subcards][${accountRelative}]`,
-  });
+  }));
 }
 
 /** set/type/signup/views.rb:11-13 view :content_formgroups:
@@ -1046,11 +1063,12 @@ const accountBeforeContentFormgroupsView: ViewFn = (ctx) => {
 };
 
 /** set/type/user/setup_help.haml (verbatim, real-Haml oracle bytes): the
- *  h3 + the pb-2 roles note; the delivery-off alert-warning block is the
- *  Card.config.action_mailer.perform_deliveries == false arm (both arms
- *  captured; the reachable arm here is the engine-config one - the headless
- *  engine models no mailer config, so the FALSE-delivery arm stays the
- *  recorded oracle line and the TRUE arm renders). */
+ *  h3 + the pb-2 roles note + the delivery-off alert-warning block. The
+ *  warning block is the Card.config.action_mailer.perform_deliveries ==
+ *  false arm — and the GRADED corpus oracle carries it (the same fact the
+ *  admin-warning row pinned in the earlier slice: the capture
+ *  environment's mailer config answers delivery-off; the corpus gate is
+ *  the arbiter, so the false-delivery arm is the rendered one). */
 const SETUP_HELP_BYTES =
   `<h3>First, set up an account.</h3>
 ` +
@@ -1059,6 +1077,14 @@ const SETUP_HELP_BYTES =
   `As the first account holder for this deck, you will automatically have several
 ` +
   `permissioned roles. You can configure these roles at any time.
+` +
+  `</div>
+` +
+  `<div class='alert-warning p-3'>
+` +
+  `WARNING: Email delivery is turned off.
+` +
+  `Change settings in config/application.rb to send sign up notifications.
 ` +
   `</div>
 `;
@@ -1072,7 +1098,10 @@ const SETUP_HELP_BYTES =
  *  oracle's hiddenFieldsBytes line (the nil-value-omits rule never fires
  *  here - every value is present). */
 function setupHiddenFields(ctx: ViewContext): string {
-  const typeId = ctx.fmt.engine.fetchRenderCard("Sign Up")?.id;
+  // Card.default_accounted_type_id — the USER cardtype's id (the graded
+  // corpus row pins card[type_id] value="18"; the earlier Sign Up read
+  // answered the signup cardtype's id).
+  const typeId = ctx.fmt.engine.fetchRenderCard("User")?.id;
   const hiddenFieldTag = (name: string, value: string): string =>
     `<input type="hidden" name="${h(name)}" id="${h(name.replace(/]/g, "").replace(/\[/g, "_"))}" value="${h(value)}" autocomplete="off" />`;
   const out = [
@@ -1109,27 +1138,38 @@ const setupView: ViewFn = (ctx) => {
     return `<span class="denied"><!-- Sorry, you don't have permission (create) --></span>`;
   }
   return fmt.withNestMode("edit", () => {
-    voo.opts["title"] = "Your deck is ready to go!"; // LOCALIZE
+    // voo.title = / voo.help = are LIVE writers (voo_api.rb:30-32
+    // define_setter) — readable through the accessor, invisible in the
+    // OWNING slot JSON; :help is an heir key, so the child help-view voo
+    // inherits it into its normalized options and ITS slot JSON carries
+    // the text (the graded corpus row pins both halves). Writing them
+    // into voo.opts serialized them on the outer setup slot too.
+    voo.liveTitle = "Your deck is ready to go!"; // LOCALIZE
     voo.showViz("help");
     voo.hide("menu");
     // voo.help = haml :setup_help (the oracle's helpBytes line)
-    voo.opts["help"] = SETUP_HELP_BYTES;
+    voo.liveHelp = SETUP_HELP_BYTES;
     // Auth.as_bot { setup_form } - frame_and_form :create over the body
-    // (the as_bot widening rides the seeded grants)
-    const body = output([
-      setupHiddenFields(ctx),
-      fmt.renderView("name_formgroup"),
-      // account_formgroups (the walk; the +email/+password field cards'
-      // editors render through the subformat's nest machinery under the
-      // inherited nest_mode :edit)
-      accountFormgroups(ctx),
-      // setup_form_buttons (user.rb:35-39): button_formgroup { setup_button }
-      // - setup_button = submit_button text "Set up", disable_with
-      // "Setting up" (form_elements.rb:59-66; the pinned bootstrap shape)
-      `<div class="form-group button-form-group"><button name="button" type="submit" data-disable-with="Setting up" class="btn btn-primary">Set up</button></div>`,
-    ]);
-    const form = createCardBodyShell(ctx, { body });
-    return framedView(ctx, "setup", () => form);
+    // (the as_bot widening rides the seeded grants). The body renders
+    // INSIDE the frame's block: frame.rb:21's add_name_context runs before
+    // the body (the graded field slots carry name_context), so the
+    // account field renders must build after it.
+    return framedView(ctx, "setup", () => {
+      const body = output([
+        setupHiddenFields(ctx),
+        str(fmt.renderView("name_formgroup")),
+        // account_formgroups (the walk; the +email/+password field cards'
+        // editors render through the subformat's nest machinery under the
+        // inherited nest_mode :edit)
+        accountFormgroups(ctx),
+        // setup_form_buttons (user.rb:35-39): button_formgroup { setup_button }
+        // - setup_button = submit_button text "Set up", disable_with
+        // "Setting up" (form_elements.rb:59-66; the pinned bootstrap shape)
+        `<div class="form-group button-form-group"><button name="button" type="submit" data-disable-with="Setting up" class="btn btn-primary">Set up</button></div>`,
+      ]);
+      const form = createCardBodyShell(ctx, { body });
+      return form;
+    });
   });
 };
 

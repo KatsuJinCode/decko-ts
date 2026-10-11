@@ -184,7 +184,8 @@ async function seededDeck(): Promise<Deck> {
 // The draft_legend view ignores its context (the Ruby body reads nothing
 // but the icon helper) - a null cast stands in for the ViewContext.
 function callView(view: ViewFn): string {
-  return view(undefined as unknown as ViewContext);
+  // ViewResult answers to_s at the test's assertion boundary.
+  return String(view(undefined as unknown as ViewContext) ?? "");
 }
 
 // ---------------------------------------------------------------------------

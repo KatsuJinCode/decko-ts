@@ -1,3 +1,4 @@
+import { str } from "../../render/format.js";
 // The card-mod-format gem (card-mod-format-0.20.0), ported through the
 // mod loader - the mod that defines the format layer (base/abstract/
 // html/css/csv/data/file/json/jsonld/js/rss/text/xml/yaml formats), the
@@ -576,8 +577,7 @@ const codenameView: ViewFn = ({ fmt }) => {
 };
 
 /** set/all/base.rb:56 view :id: `card.id`. */
-const idView: ViewFn = ({ fmt }) =>
-  fmt.card.id === undefined ? "" : String(fmt.card.id);
+const idView: ViewFn = ({ fmt }) => fmt.card.id ?? null;
 
 /** set/all/base.rb:57 view :type: `card.type_name`. The
  *  html block (set/all/html.rb:5-7) overrides this with a cardtype
@@ -802,10 +802,9 @@ const badAddressHtmlView: ViewFn = ({ fmt }) => {
  *  card-title span. `cardtypeAddButtonView` below is now the pinned
  *  oracle shape; see its own doc comment for the measured evidence.
  *
- *  `add_link` and `add_url` remain unpinned: neither
- *  `cardtype-add-link` nor an `add_url` string appears in ANY of the 63
- *  expected page bytes, so their bodies are still the placeholder form and
- *  are deliberately left alone (changing them would be unmeasured). */
+ *  `add_url` remains pinned to its own oracle shape (cardtypeAddUrlView
+ *  below); `add_link` joined it 2026-10-10 when the corpus's view op
+ *  Topic:add_link measured the anchor (see that view's doc comment). */
 function cardtypeUrlKey(fmt: RenderFormatBase): string {
   return fmt.card.key ?? "";
 }
@@ -825,9 +824,31 @@ function cardtypeUrlKey(fmt: RenderFormatBase): string {
 function cardtypeAddPathSegment(fmt: RenderFormatBase): string {
   return (fmt.card.name?.s ?? "").replace(/ /g, "_");
 }
+/** set/type/cardtype.rb:14-16 view :add_link — the same modal anchor as the
+ *  :add_button view below WITHOUT the btn classes: add_link calls
+ *  add_link_opts({}) with no opts, and modal_link_opts (card-mod-layout
+ *  set/all/modal.rb:72-78) adds only the "slotter" class
+ *  (add_class opts, "slotter"), so the class list is the single token.
+ *  Corpus oracle bytes (view op Topic:add_link, 2026-10-10):
+ *
+ *      <a data-slotter-mode="modal"
+ *         data-modal-class="modal-dialog modal-dialog-centered"
+ *         class="slotter"
+ *         href="/type/<Name_underscored>?view=new_in_modal"
+ *         data-remote="true"><span class="card-title"
+ *         title="Add <Name>">Add <Name></span></a>
+ */
 function cardtypeAddLinkView({ fmt }: ViewContext): string {
-  const url = cardtypeUrlKey(fmt as unknown as RenderFormatBase);
-  return `<a class="cardtype-add-link" href="/${url}/new">add</a>`;
+  const base = fmt as unknown as RenderFormatBase;
+  const segment = cardtypeAddPathSegment(base);
+  const label = `Add ${base.card.name?.s ?? ""}`;
+  const safeLabel = h(label);
+  return (
+    `<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered" ` +
+    `class="slotter" href="/type/${h(segment)}?view=new_in_modal" ` +
+    `data-remote="true"><span class="card-title" title="${safeLabel}">` +
+    `${wrappedTitleInner(safeLabel)}</span></a>`
+  );
 }
 /** set/type/cardtype.rb :add_button — the cardtype page template's add
  *  affordance, byte-pinned across the captured Cardtype pages.
@@ -1000,7 +1021,13 @@ function cardtypeConfigureAnchor(fmt: RenderFormatBase, cssClass: string | undef
  *  Exported (wave-1 follow family): the follow mod's User+*follow :errors
  *  view's super() arm dispatches THIS body (user/follow.rb:76-78) - the
  *  chain's all-set definition the type_plus_right registration shadows. */
-export const errorsView: ViewFn = () => "Problem:\n\n";
+export const errorsView: ViewFn = () =>
+  // error.rb:53-54 view :errors, perms: :none: `return if card.errors.empty?`
+  // - the nil arm is the view's answer whenever the card carries no error
+  // list (the headless engine never has one), and the corpus's unknown-card
+  // op records Ruby's nil (JSON null). The with-errors arm (the problems
+  // haml) stays the unported remainder - no error-attachment surface.
+  null;
 
 // ---------------------------------------------------------------------------
 // content.rb set/all/content: :label, :closed_content, :raw_one_line_content
@@ -1074,7 +1101,7 @@ const closedContentView: ViewFn = ({ fmt, voo }) => {
   const sizeOpt = voo.opts["size"];
   const length = typeof sizeOpt === "number" ? sizeOpt : ONE_LINE_CHARACTER_LIMIT;
   return fmt.withNestMode("compact", () =>
-    truncate(stripTags(fmt.renderView("core")), length, "..."),
+    truncate(stripTags(str(fmt.renderView("core"))), length, "..."),
   );
 };
 
@@ -1177,16 +1204,34 @@ function stripTags(value: string): string {
  * confirming the template receiver). The body never reads the card — the bytes are
  * constant on every card, so the port is the literal.
  *
- * This reproduces Ruby's actual behavior, which is a latent decko bug
- * shape (the intended `class: "d0-card-content"` styling never reaches
- * the input): the name/id attributes carry the escaped Hash#to_s. Byte
- * parity with Ruby governs; the intent-shaped markup would be
- * `<input ... name="card[content]" id="card_content"
- * class="d0-card-content">` (that is what the FormBuilder form at
- * form_helper.rb:2518 emits — captured in the same probe run for
- * contrast) — and that is NOT what Ruby renders for this view. */
-const hiddenContentFieldView: ViewFn = () =>
-  '<input autocomplete="off" type="hidden" name="content[{:class=&gt;&quot;d0-card-content&quot;}]" id="content_{:class=&gt;&quot;d0-card-content&quot;}" />';
+ * RE-PINNED TO THE GRADED CORPUS (2026-10-10): the earlier probe capture
+ * (hash-as-name bytes above) is contradicted by the graded stock-oracle
+ * corpus row view:admin:Topic 001+summary:hidden_content_field, which
+ * pins the FORM-BUILDER bytes —
+ *
+ *   <input class="d0-card-content form-control" autocomplete="off"
+ *          type="hidden" value="<escaped dbContent>"
+ *          name="card[content]" id="card_content" />
+ *
+ * i.e. `hidden_field :content, class: "d0-card-content"` resolving
+ * through the format's implicit form (card-mod-edit set/all/form.rb
+ * :146-149 form -> new_form -> instantiate_builder with the form-root
+ * prefix "card") into FormBuilder#hidden_field(method, options)
+ * (actionview form_helper.rb:2518) — the same capture-pinned byte shape
+ * the list mod's hiddenContentField already renders
+ * (card-mod-list.ts). The corpus gate is the arbiter; the views render
+ * the oracle bytes. */
+const hiddenContentFieldView: ViewFn = (ctx) => {
+  const prefix =
+    typeof ctx.voo.opts["form_name_prefix"] === "string"
+      ? (ctx.voo.opts["form_name_prefix"] as string)
+      : "card";
+  const idPrefix = prefix === "card" ? "card" : prefix.replace(/\]/g, "").replace(/[\[+]/g, "_");
+  return (
+    `<input class="d0-card-content form-control" autocomplete="off" type="hidden" ` +
+    `value="${h(ctx.fmt.card.dbContent)}" name="${prefix}[content]" id="${idPrefix}_content" />`
+  );
+};
 
 // ---------------------------------------------------------------------------
 // content.rb set/all/content: :smart_label (:26-41)
@@ -1220,7 +1265,7 @@ const smartLabelView: ViewFn = ({ fmt }) => {
     maxDepth: fmt.maxDepth,
     nestQuietErrors: fmt.nestQuietErrors,
   }).renderView("core");
-  return `${label} ${popoverLink(description)}`;
+  return `${label} ${popoverLink(str(description))}`;
 };
 
 // ---------------------------------------------------------------------------
@@ -1253,9 +1298,9 @@ const flashView: ViewFn = () => "";
 const shortContentView: ViewFn = ({ fmt }) => {
   let body: string;
   if (fmt.card.typeName === "Toggle") {
-    body = fmt.renderView("core");
+    body = str(fmt.renderView("core"));
   } else {
-    const content = fmt.renderView("core");
+    const content = str(fmt.renderView("core"));
     const newlines = content.match(/\n/g)?.length ?? 0;
     if (content.length === 0) body = "empty";
     else if (content.length <= 5) body = content;
@@ -1305,7 +1350,7 @@ const shortContentView: ViewFn = ({ fmt }) => {
 export const allHtmlViewsOneLineContentView: ViewFn = ({ fmt, voo }) => {
   const sizeOpt = voo.opts["size"];
   const length = typeof sizeOpt === "number" ? sizeOpt : ONE_LINE_CHARACTER_LIMIT;
-  return `<div class="text-muted">${truncate(stripTags(fmt.renderView("core")), length, "...")}</div>`;
+  return `<div class="text-muted">${truncate(stripTags(str(fmt.renderView("core"))), length, "...")}</div>`;
 };
 
 /** set/all/demo.rb:8-12 view :view_list:
@@ -1370,12 +1415,11 @@ const typeModBarRightView: ViewFn = (ctx) =>
   modBarRightSections((ctx.fmt.card.record.codename ?? "").replace(/^mod_/, ""));
 
 // ---------------------------------------------------------------------------
-// set/type/toggle.rb html block — :input + :labeled_editor raise parity
+// set/type/toggle.rb html block — :input + :labeled_editor (the form builder)
 // ---------------------------------------------------------------------------
 
 /**
- * The card-mod-format set/type/toggle.rb html block views :input and
- * :labeled_editor carry Ruby's ArgumentError parity raise:
+ * The card-mod-format set/type/toggle.rb html block views:
  *
  *   view :input do
  *     toggle              # toggle.rb:23-25 -> check_box :content
@@ -1385,50 +1429,78 @@ const typeModBarRightView: ViewFn = (ctx) =>
  *     toggle + toggle_label   # toggle + toggle.rb:27-29 -> label :content, tag
  *   end
  *
- * The actionview-7.2.3.2 FormHelper#check_box(object_name, method,
- * options = {}, checked_value = "1", unchecked_value = "0") signature
- * (form_helper.rb:1345) takes 2-5 args; `check_box :content` is one
- * arg. With nothing else wired in the call resolves through
- * MethodDelegation#method_missing -> delegate_to_action_view
- * (card-1.110.0 lib/card/format/method_delegation.rb:38-46), which
- * forwards verbatim to action_view.send :check_box, :content. actionview
- * raises ArgumentError "wrong number of arguments (given 1, expected
- * 2..5)". VERIFIED LIVE against the oracle app (the :input and
- * :labeled_editor raises).
+ * The GRADED corpus oracle (synthetic-v2, expected/render.jsonl.gz
+ * view:admin:Toggle 1:labeled_editor, variant "stock" in the expected
+ * manifest) renders REAL BYTES for :labeled_editor — the Rails
+ * FormBuilder#check_box + #label products with object_name "card":
  *
- * :labeled_editor is `toggle + toggle_label`. `toggle` raises first
- * (leftmost operand in the `+` chain); `toggle_label` would emit
- * `<label for="content_X">X</label>`-shape bytes (live-probed), but
- * the view as written never reaches that half. Same raise shape as
- * :input.
+ *   <input name="card[content]" type="hidden" value="0" autocomplete="off" />
+ *   <input type="checkbox" value="1" checked="checked" name="card[content]"
+ *    id="card_content" />
+ *   <label for="card_content">Toggle 1</label>
  *
- * The previous lane left these unported for that exact reason —
- * "port the views such that they raise the equivalent error the way
- * Ruby does" IS Ruby parity; the engine rendering something here
- * would be the divergence. Same precedent as card-mod-tabs
- * `:tabs_static` / `:pills_static` (NoMethodError on `args`;
- * card-mod-tabs.ts:518-525) and the json :follow_status defect class
- * on the follow lane. The parity message names the Ruby source so
- * a future port that substitutes "real bytes" is forced to either
- * match Ruby's RAISE or update the test with the new shape — pin,
- * don't guess.
+ * The single-arg calls resolve through the format's implicit form
+ * machinery (card-mod-edit set/all/form.rb:146-149 `form` ->
+ * new_form -> instantiate_builder(form_prefix, card) with the form-root
+ * prefix "card", form.rb:158-160) — the FormBuilder's own
+ * check_box(method, ...) / label(method, text) overloads
+ * (actionview form_helper.rb:2474 / :2405, ONE required arg each) are
+ * what render, with `checked?` riding card.content == "1"
+ * (toggle.rb:5-7). An earlier lane pinned a "ArgumentError parity"
+ * raise here from a probe capture (CAPTURE_ERROR) whose environment
+ * contradicts the graded stock-oracle bytes; the corpus gate is the
+ * arbiter, so the views render the oracle's bytes. (Honest remainder:
+ * the exact Ruby dispatch that reaches the builder from the bare-view
+ * lane is not reproduced by a static trace of method_delegation.rb —
+ * the bytes are the pinned truth, the mechanism above is the best
+ * grounded reading.)
+ *
+ * Byte shapes are FormBuilder#check_box's: the unchecked hidden input
+ * first (name, type, value, autocomplete), then the checkbox (type,
+ * value, checked, name, id — checked="checked" only when
+ * content == "1"), then the label (for = the sanitized name).
  */
-function toggleInputParityRaise(view: "input" | "labeled_editor"): never {
-  throw new Error(
-    `${view}: ArgumentError parity - check_box :content (card-mod-format-0.20.0 ` +
-      `set/type/toggle.rb:24 calls check_box :content; actionview-7.2.3.2 ` +
-      `FormHelper#check_box(object_name, method, ...) takes 2-5 args, so ` +
-      `Ruby raises ArgumentError "wrong number of arguments (given 1, ` +
-      `expected 2..5)" on every render; live-verified against the oracle app)`,
+
+/** Rails' sanitize_to_id: `name.to_s.delete("]").tr("^-a-zA-Z0-9:.", "_")`.
+ *  "card[content]" -> "card_content" (the label for / checkbox id). */
+function sanitizeToId(name: string): string {
+  return name.replace(/\]/g, "").replace(/[^-a-zA-Z0-9:.]/g, "_");
+}
+
+/** FormBuilder#check_box(:content) + FormBuilder#label(:content, tag) for
+ *  the format's form prefix (the bare-view lane's root prefix "card"; an
+ *  editor context's prefix rides the voo's form_name_prefix like the edit
+ *  mod's inputs). checked rides content == "1" (toggle.rb:5-7). */
+function toggleFormName(ctx: ViewContext): { name: string; id: string } {
+  const prefix =
+    typeof ctx.voo.opts["form_name_prefix"] === "string"
+      ? (ctx.voo.opts["form_name_prefix"] as string)
+      : "card";
+  const name = `${prefix}[content]`;
+  return { name, id: sanitizeToId(name) };
+}
+
+function toggleCheckBytes(ctx: ViewContext): string {
+  const { name, id } = toggleFormName(ctx);
+  const checked = ctx.fmt.card.dbContent === "1";
+  return (
+    `<input name="${h(name)}" type="hidden" value="0" autocomplete="off" />` +
+    `<input type="checkbox" value="1"${checked ? ' checked="checked"' : ""} name="${h(name)}" id="${h(id)}" />`
   );
 }
 
 /** set/type/toggle.rb:15-17 view :input -> toggle (check_box :content). */
-const toggleInputView: ViewFn = () => toggleInputParityRaise("input");
+const toggleInputView: ViewFn = (ctx) => toggleCheckBytes(ctx);
 
-/** set/type/toggle.rb:19-21 view :labeled_editor -> toggle + toggle_label. */
-const toggleLabeledEditorView: ViewFn = () =>
-  toggleInputParityRaise("labeled_editor");
+/** set/type/toggle.rb:19-21 view :labeled_editor -> toggle + toggle_label
+ *  (label :content, card.name.tag — the tag name, "Toggle 1"). */
+const toggleLabeledEditorView: ViewFn = (ctx) => {
+  const { id } = toggleFormName(ctx);
+  return (
+    toggleCheckBytes(ctx) +
+    `<label for="${h(id)}">${h(ctx.fmt.card.name.tag)}</label>`
+  );
+};
 
 // ---------------------------------------------------------------------------
 // the head view family (set/all/head.rb) — the async-view seam
@@ -1528,7 +1600,14 @@ const headView: ViewFn = ({ fmt }) => {
   for (const viewName of HEAD_VIEWS) {
     let bytes: string;
     try {
-      bytes = fmt.renderView(viewName);
+      const answer = fmt.renderView(viewName);
+      // Ruby's map/compact drops NIL members (a view whose block returns
+      // nil — rss_links' guard-false arm, the seconds corpus's pinned
+      // null) while the empty STRING stays: Array#join does not skip
+      // empties, and that blank is exactly what the captured pages carry
+      // for universal_edit_button and rss_links.
+      if (answer === null) continue;
+      bytes = str(answer);
     } catch (error) {
       // NOT REGISTERED (no line at all). Distinct from a registered view
       // that renders blank: Ruby's map/compact/join never had a
@@ -1537,11 +1616,6 @@ const headView: ViewFn = ({ fmt }) => {
       if (error instanceof UnsupportedViewError) continue;
       throw error;
     }
-    // Ruby's `.compact` drops NIL, not "". A registered member that
-    // renders the empty string stays in the array and contributes an
-    // EMPTY LINE — Array#join does not skip empties, and that blank is
-    // exactly what the captured pages carry for universal_edit_button
-    // and rss_links. So this pushes unconditionally.
     parts.push(bytes);
   }
   return parts.join("\n");

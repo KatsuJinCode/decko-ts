@@ -166,6 +166,14 @@ export class Voo {
    *  the consequence: the :template_link slot's data-slot carries
    *  view/nest_name/show/home_view/name_context and NO title key. */
   liveTitle: string | undefined;
+  /** voo.help = X (the same define_setter mechanics as liveTitle): a live
+   *  option readable through the accessor and INVISIBLE in the OWNING
+   *  voo's slot JSON — but an HEIR key, so the child voo a nested view
+   *  render builds inherits it into its NORMALIZED options and its slot
+   *  JSON carries it (the graded setup row: the outer setup slot's
+   *  data-slot has no help key; the inner help-view slot's data-slot
+   *  carries the help text). */
+  liveHelp: string | undefined;
 
   /** True ONLY for the bare view-lane ROOT render's voo (render.ts#render's
    *  `format.renderView(view, ...)` entry — the one call site whose
@@ -207,6 +215,21 @@ export class Voo {
     if (parent !== undefined && opts["size"] === undefined) {
       const inherited = parent.opts["size"];
       if (inherited !== undefined) this.opts["size"] = inherited;
+    }
+    // :help and :title are heir keys carried by the LIVE writers (the
+    // setup view's `voo.help = haml :setup_help` + `voo.title = ...`): the
+    // child voo inherits them into its normalized options
+    // (inherit_options_from_parent!, voo_api.rb:135-143), which is what
+    // slot_options serializes — the graded corpus pins the consequence
+    // (the child help-view slot JSON carries "help" AND "title"; the
+    // owning setup slot's JSON carries neither).
+    if (parent !== undefined && opts["help"] === undefined) {
+      const inherited = parent.liveHelp;
+      if (inherited !== undefined) this.opts["help"] = inherited;
+    }
+    if (parent !== undefined && opts["title"] === undefined && this.liveTitle === undefined) {
+      const inherited = parent.liveTitle;
+      if (inherited !== undefined) this.opts["title"] = inherited;
     }
     // :items is an heir key too (view/options/key_lists.rb
     // keymap[:both]); inherit_options_from_parent! flows it down the voo
@@ -478,7 +501,25 @@ export interface ViewContext {
   voo: Voo;
 }
 
-export type ViewFn = (ctx: ViewContext) => string;
+/** A view body's answer. Ruby's view blocks are plain methods: most return
+ *  HTML strings, but several return raw values that survive to the render
+ *  API boundary — integers (:id, the account token-days views) and nil (the
+ *  `return unless` early arms: type/mod.rb's configurations/tasks/scripts,
+ *  head.rb's :rss_links) — and the reference capture records those verbatim
+ *  (numbers as JSON numbers, nil as null). Anything interpolated INTO
+ *  another view passes through Ruby's to_s at that interpolation; only the
+ *  top-level render boundary carries the raw value. */
+export type ViewResult = string | number | null;
+
+/** Ruby's to_s at interpolation: a view answer embedded in HTML assembly
+ *  (nil.to_s is the empty string). The identity for every HTML-string view;
+ *  the coercion the interpolating sites owe once view bodies may answer
+ *  numbers/null. */
+export function str(result: ViewResult): string {
+  return result === null ? "" : String(result);
+}
+
+export type ViewFn = (ctx: ViewContext) => ViewResult;
 
 /** The menu help-popover resolver (help-popover.ts HelpRulesResolver), when
  *  a composition installed one. Optional: engines without it keep the
@@ -884,7 +925,41 @@ export class RenderFormat {
   modalNestView(view: string, nestCard: RenderCard = this.card): string {
     if (this.nestMode === "template") return "template_nest";
     if (this.nestMode === "compact") return this.viewInCompactMode(view, nestCard);
+    if (this.nestMode === "edit") return this.viewInEditMode(view, nestCard);
     return view;
+  }
+
+  /**
+   * nesting/mode.rb:62-68 `view_in_edit_mode`: a nest rendered under nest
+   * mode :edit substitutes to :edit_in_form (the field-editor form the
+   * structured-form family renders) unless the view hides in edit mode —
+   * mode.rb:73-77 `view_setting(:perms, view) == :none || card.structure ||
+   * card.key.blank?` — in which case :blank (the nil view; output drops it).
+   * The graded corpus pins both arms: the board/edit_nests field nests all
+   * substitute to :edit_in_form (the Topic template's {{+summary}} under
+   * the board's with_nest_mode :edit renders the field formgroup), while
+   * the Topic template's {{+tags|link}} (link is perms :none) renders
+   * nothing.
+   */
+  private viewInEditMode(view: string, nestCard: RenderCard): string {
+    if (this.hideViewInEditMode(view, nestCard)) return "blank";
+    return "edit_in_form";
+  }
+
+  private hideViewInEditMode(view: string, nestCard: RenderCard): boolean {
+    if (PERMS_NONE_VIEWS.has(view)) return true; // view_setting(:perms, view) == :none
+    if (
+      this.engine.structureRuleForSync?.({
+        name: nestCard.name.s,
+        id: nestCard.id,
+        typeId: nestCard.typeId,
+        typeName: nestCard.typeName,
+        isNew: nestCard.record.isNew === true,
+      }) !== undefined
+    ) {
+      return true; // card.structure — not yet nesting structures
+    }
+    return nestCard.key === ""; // card.key.blank? (eg {{_self|type}} on new cards)
   }
 
   /**
@@ -943,7 +1018,8 @@ export class RenderFormat {
       maxDepth: this.maxDepth,
       nestQuietErrors: this.nestQuietErrors,
     });
-    return sub.renderView(view, opts);
+    // the nest chunk result embeds into content: Ruby's to_s layer.
+    return str(sub.renderView(view, opts));
   }
 
   /**
@@ -1077,7 +1153,7 @@ export class RenderFormat {
     opts: Record<string, unknown> = {},
     optional: unknown = "show",
     viewLaneRoot = false,
-  ): string {
+  ): ViewResult {
     const normalized = normalizeView(view);
     // view.rb#ok_view (view.rb:86 `altered_view || requested_view`): on an
     // unknown card the view is substituted BEFORE dispatch (view/permission.rb
@@ -1123,6 +1199,19 @@ export class RenderFormat {
     this.voo = voo;
     try {
       voo.processVisibility(optional);
+      // voo_api.rb:154 process_live_options: `return :hide if
+      // hide_requested_view?` (optional? && hide?(requested_view)) — the
+      // render bails with nothing when the caller marked the REQUESTED
+      // view hidden via the optional render opt (the discussion core's
+      // render_comment_box optional: :hide — the :core view never shows
+      // :comment_box, so the box contributes nothing on every :core
+      // render, all actors; the open-family views voo.show it and keep
+      // the form).
+      if (optional !== undefined && optional !== null && voo.viz.get(normalized) === "hide") {
+        // view.rb:69 bare return — NIL, which output()'s compact drops (the
+        // discussion join loses its separator too).
+        return null;
+      }
       // view/permission.rb #altered_view (:19-23): the unknown branch ran
       // above; for KNOWN cards the view-permission gate replaces the view
       // before any hook or body runs. Task resolution (view_perms, :13-15),
@@ -1242,13 +1331,20 @@ export class RenderFormat {
       // both). The cache lives on the engine (closureWarm-style) so a
       // warm render path is zero-cost.
       const viewFn = this.engine.resolveView(this.card, effective, this.formatName);
-      if (viewFn === undefined) {
-        // render.rb#view_method + error.rb#unsupported_view_error_message
-        // (Ruby substitutes first, so an unsupported REQUESTED view on an
-        // unknown card reports the substituted view - same shape here)
-        throw new UnsupportedViewError(effective, this.card.name.s);
-      }
       try {
+        if (viewFn === undefined) {
+          // render.rb#view_method + error.rb#unsupported_view_error_message
+          // (Ruby substitutes first, so an unsupported REQUESTED view on an
+          // unknown card reports the substituted view - same shape here).
+          // The raise sits INSIDE the wrap_and_render rescue scope: Ruby's
+          // view_method runs under final_render (render.rb:36-41), called
+          // from wrap_and_render's begin (render.rb:96-100), so an
+          // unsupported view on the root render IS rescued - the quiet span
+          // is the render's value (the corpus's boxed/progress_bar/
+          // pointer_core/... rows, oracle bytes "view (X) not supported
+          // for Y").
+          throw new UnsupportedViewError(effective, this.card.name.s);
+        }
         return viewFn({ fmt: this, voo });
       } catch (error) {
         // THE ROOT'S OWN wrap_and_render rescue (format/render.rb:115-119),
@@ -1857,6 +1953,11 @@ export class RenderFormat {
     // card — the nest target — because Ruby runs modal_nest_view on the
     // subformat (nest.rb:21); the mode it consults is this format's.
     const view = this.modalNestView(requestedView, effectiveCard);
+    // mode.rb:64's :blank substitute renders NOTHING — the graded board
+    // fieldset carries no slot at all for the {{+tags|link}} nest whose
+    // :link view hides in edit mode (no wrap, no slot div, no bytes — the
+    // nest join's separator only).
+    if (view === "blank") return "";
     if (ENGINE_NEST_TRACE) {
       console.log("ENGINE-NEST", JSON.stringify({ requested: requestedView, view, card: effectiveCard?.name?.s, unknown: effectiveCard?.unknown, nestName: nest.name }));
     }
@@ -1939,7 +2040,7 @@ export class RenderFormat {
     // exception bypasses it.
     let rendered: string;
     try {
-      rendered = sub.renderView(view, viewOpts);
+      rendered = str(sub.renderView(view, viewOpts));
     } catch (error) {
       if (!this.nestQuietErrors) throw error;
       rendered = quietRenderError(error, card, view, this);
@@ -1995,7 +2096,7 @@ export class RenderFormat {
     optional: unknown = "show",
   ): string {
     try {
-      return this.renderView(view, opts, optional);
+      return str(this.renderView(view, opts, optional));
     } catch (error) {
       // error.rb:65-67 loud_error?: `focal? || raise_all_rendering_errors`.
       // The html format's focal? is show_layout? ? main? : depth.zero?
@@ -2076,9 +2177,42 @@ export class RenderFormat {
    *  TYPE-toggle chain, body "no"); RVW open's +working doc 02 item slot
    *  (TYPE_PLUS_RIGHT-list-working_doc_02 — RVW is List-typed; the
    *  fabricated shape pinned rich_text). */
+  /** Card.fetch(type_card_name) for the explicit nest type opt, with the
+   *  codename-registry fallback for type cards the cache-only fetch misses
+   *  (the Image type card in the image01 nest-miss phantom). */
+  private resolveExplicitTypeCard(name: string): RenderCard | undefined {
+    const warmed = this.engine.fetchRenderCard(name);
+    if (warmed !== undefined && warmed.id !== undefined) return warmed;
+    const id = this.engine.peekIdByCodename?.(name);
+    if (id === undefined) return undefined;
+    const typeName = this.engine.peekRegisteredNameForId?.(id);
+    const record = {
+      id,
+      name: typeName ?? name,
+      codename: name,
+      typeId: this.engine.peekIdByCodename?.("cardtype"),
+    };
+    return {
+      record: record as never,
+      name: (typeName ?? name) as never,
+      key: name,
+      typeName: typeName ?? name,
+      typeId: id,
+      typeCode: name,
+      id,
+      dbContent: "",
+      setKeys: "",
+    } as unknown as RenderCard;
+  }
+
   private withNewCardContext(target: RenderCard, nestTypeOpt?: string): RenderCard {
+    // The cache-only fetchRenderCard misses when the TYPE CARD was never
+    // warmed (the image01 nest-miss phantom: the Image type card is not in
+    // the prepared map). Ruby's Card.fetch(name, new: { type: X }) resolves
+    // the type through the codename registry — the port's peek pair is the
+    // same sync surface (Card::Codename.id + Lexicon.name).
     const explicitType =
-      nestTypeOpt !== undefined ? this.engine.fetchRenderCard(nestTypeOpt) : undefined;
+      nestTypeOpt !== undefined ? this.resolveExplicitTypeCard(nestTypeOpt) : undefined;
     const typeId = explicitType !== undefined && explicitType.id !== undefined ? explicitType.id : target.typeId;
     const typeName =
       explicitType !== undefined && explicitType.id !== undefined
@@ -2115,7 +2249,7 @@ export class RenderFormat {
         leftTypeName: this.leftTypeNameFor(target.name),
         isNew: true,
       });
-    return {
+    const out = {
       ...target,
       // content/all.rb:8-10 — an id-less warm record with content is a
       // VIRTUAL resolution (states.rb:44-50 virtual?: compound + applicable
@@ -2135,6 +2269,7 @@ export class RenderFormat {
       typeCode,
       setKeys: rebuiltSetKeys,
     };
+    return out;
   }
 
   /** The TYPE_PLUS_RIGHT anchor for a NEW compound card: Ruby's pattern
@@ -2424,6 +2559,26 @@ export class RenderFormat {
     const rightCard = rightName === undefined ? undefined : engine.fetchRenderCard(rightName.s);
     const rightCodename = rightCard?.record.codename;
     const virtualSet = rightCodename !== undefined && VIRTUAL_SET_CODENAMES.has(rightCodename);
+    // Card#type_code (mod/core set/all/type.rb:30-32) is
+    // `Card::Codename[type_id.to_i]` — the codehash answer for the card's
+    // RESOLVED type id. A new card Ruby fabricates with `new: { type: X }`
+    // (or through the *default template chain — new_card_args sets :type
+    // either way) answers its type_code like any stored card; the port's
+    // fabricated record must too. Leaving it undefined made every typeCode
+    // read on the typed phantom lie while its setKeys claimed the type: the
+    // *favicon nest editor's image01 upload-tab phantom carried
+    // setKeys "ALL TYPE-image" (so the concrete Type::Image::HtmlViews ->
+    // Type::File include dispatched File::HtmlFormat's :input, exactly
+    // Ruby's structure) but typeCode undefined, so fileInputView's
+    // `typeCode === "image"` mount check failed and the chooser rendered
+    // the FILE mount (card[file] / "Add File...") where the oracle pins
+    // card[image] / "Add Image..." (file.rb:131-138 humanizes the card's
+    // OWN attachment name). peekCodenameById IS Codename[id] (the same
+    // sync surface the prepared-card typeCode fixup uses, render.ts).
+    const typeCode =
+      defaulted?.typeId !== undefined
+        ? engine.peekCodenameById?.(defaulted.typeId)
+        : undefined;
     if (virtualSet) {
       return {
         record,
@@ -2431,7 +2586,7 @@ export class RenderFormat {
         key: name.key,
         typeName: defaulted?.typeName,
         typeId: defaulted?.typeId,
-        typeCode: undefined,
+        typeCode,
         id: undefined,
         dbContent: defaultContent ?? "",
         setKeys,
@@ -2445,7 +2600,7 @@ export class RenderFormat {
       key: name.key,
       typeName: defaulted?.typeName,
       typeId: defaulted?.typeId,
-      typeCode: undefined,
+      typeCode,
       id: undefined,
       dbContent: defaultContent ?? "",
       setKeys,
@@ -2637,7 +2792,7 @@ export class RenderFormat {
     if (sub.depth >= this.maxDepth) {
       throw new TooDeepError(); // monitor_depth, see nest()
     }
-    return sub.renderView(view, viewOpts);
+    return str(sub.renderView(view, viewOpts));
   }
 
   /** chunk/reference.rb#referee_name: the authored name absolutized against
@@ -3185,14 +3340,14 @@ export class RenderFormat {
       throw new TooDeepError(); // monitor_depth, see nest()
     }
     return this.withNestMode("normal", () =>
-      sub.renderView(this.modalNestView(view, root.card), {
+      str(sub.renderView(this.modalNestView(view, root.card), {
         ...(nest.chunkNestSyntax !== undefined ? { nest_syntax: nest.chunkNestSyntax } : {}),
         ...this.nestOptionEntries(nest.options),
         nest_name: nest.name,
         home_view: view === "closed" || view === "edit" ? "open" : view,
         main: true,
         main_view: true,
-      }),
+      })),
     );
   }
 
@@ -3359,6 +3514,27 @@ export class RenderFormat {
    *  in the loader-bound world; the headless no-loader surface reads the
    *  codename tables instead). */
   standardTitle(): string {
+    // The explicit title reads the LIVE writer through the voo chain:
+    // `voo.title = X` lands on the OWNING voo's live options, and the
+    // delegated :title render runs on a CHILD voo (render.rb with_voo) —
+    // Ruby's accessor falls through to the parent voo, so the setup
+    // frame's header renders "Your deck is ready to go!" (the graded row)
+    // while neither the owning nor the child slot JSON carries a title
+    // key. Own liveTitle first, then the parent chain, then normalized.
+    const live =
+      this.voo?.liveTitle ??
+      (() => {
+        let p = this.voo?.parent;
+        while (p !== undefined) {
+          if (p.liveTitle !== undefined) return p.liveTitle;
+          p = p.parent;
+        }
+        return undefined;
+      })();
+    if (live !== undefined && live !== "") {
+      const absolute = DeckoName.parse(live).absoluteName(this.card.name);
+      return absolute.from(...this.contextNames);
+    }
     const explicit = this.voo?.opts["title"];
     if (typeof explicit === "string" && explicit !== "") {
       // title.rb:34-37 title_in_context(voo.title): the explicit title is a
@@ -3682,6 +3858,18 @@ export interface RenderEngineLike {
    *  return an empty list (no rule rows — a degenerate Rules section
    *  still renders the h4 header + filter form, no accordion). */
   collectRules?(host: RenderCard): RenderCard[];
+  /** Rule::All#rule_card_id over the preloaded deck-wide rule cache
+   *  (lib/card/rule/cache.rb + rule/all.rb:66-74): the FIRST lookup key
+   *  whose "<key>+<setting>" the cache answers, returning the winning
+   *  rule's SET identity (cache.rb pattern_code + anchor name) so
+   *  Set#label composes without a second lookup. Consumed by
+   *  card-mod-rules setInfoHtml's find_existing_rule_card chain (the
+   *  new-rule arm's existing_rule_from_prototype walk). Optional: engines
+   *  without it render the "--" fallback (the pre-seam behavior). */
+  ruleCacheSetLabelWinner?(
+    lookupKeys: readonly string[],
+    settingCode: string,
+  ): { patternCode: string; anchorName: string | undefined } | undefined;
   /** The set's own *default rule card's TYPE ID from the preloaded
    *  full-deck *default universe (defaultRuleUniverseStatement) — the
    *  template leg's cold arm for setPrototypeTypeCode (views.ts
@@ -4862,8 +5050,14 @@ function virtualSearchCodenameResolverFor(
  *  @returns the RESOLVED target name (the codename marks folded, e.g.
  *  `:account+:right+:by_name` -> `*account+*right+by name` — the href
  *  source link_to_card receives), or undefined when the mark is not a
- *  virtual-search name and the caller's other arms decide. */
-function virtualSearchKnownName(
+ *  virtual-search name and the caller's other arms decide.
+ *
+ *  MODULE-EXPORTED for the follow views' item links (card-mod-follow.ts
+ *  followItemLink): links.rb:140-144 add_known_or_wanted_class answers
+ *  Card.known? = real? || virtual? (card core set/all/states.rb:65-67), so
+ *  a link whose target is a VirtualSearch-family name is known-card on a
+ *  row miss, exactly as the two link classifiers treat it here. */
+export function virtualSearchKnownName(
   target: string,
   engine: RenderEngineLike | undefined,
 ): string | undefined {

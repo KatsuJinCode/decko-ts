@@ -1,3 +1,4 @@
+import { str, type ViewResult } from "./format.js";
 // The page renderer: TypeScript port of the html-format show path —
 // `card.format(:html).show(nil, {})` through show_with_page_layout — the
 // live-serving page assembly the bare view-function renderer does not do.
@@ -197,9 +198,11 @@ export async function renderPageBytes(
     try {
       // (The stub engines of the edge request tests carry no unknown-card
       // create-verdict pass; the real engine always does.)
-      return typeof engine.renderWithUnknownCreateVerdicts === "function"
+      const body =
+      typeof engine.renderWithUnknownCreateVerdicts === "function"
         ? await engine.renderWithUnknownCreateVerdicts(render)
         : await render();
+      return str(body);
     } finally {
       releaseCaches();
     }
@@ -639,11 +642,11 @@ async function renderPageBytesWithPageConfigInner(
     // JS default parameter would revive "show" on undefined).
     null,
   );
-  rootFormat.rendered = await applyMainViewOverride(engine, rootCard, mainView, mainBody);
+  rootFormat.rendered = str(await applyMainViewOverride(engine, rootCard, mainView, mainBody));
   // The bare main-view lane returns HERE: show_without_page_layout renders
   // the view alone — no layout body, no layout nest warm-ups (the main
   // closure above is complete).
-  if (bareMainOpts !== undefined) return mainBody;
+  if (bareMainOpts !== undefined) return str(mainBody);
 
   // Unknown layouts raise AFTER the main render (wrap_with_wrapper ->
   // raise_wrap_error), never before — matching the capture's sentinel order.
@@ -734,11 +737,12 @@ async function applyMainViewOverride(
   engine: RenderEngine,
   rootCard: RenderCard,
   view: string,
-  baseHtml: string,
-): Promise<string> {
+  baseHtml: ViewResult,
+): Promise<ViewResult> {
   if (engine.isDenied(rootCard)) return baseHtml;
   const override = await engine.viewOverrideFor(rootCard, view);
-  return override !== undefined ? applyViewOverride(baseHtml, override) : baseHtml;
+  if (override === undefined || typeof baseHtml !== "string") return baseHtml;
+  return applyViewOverride(baseHtml, override);
 }
 
 // ---------------------------------------------------------------------------

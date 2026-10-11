@@ -288,12 +288,19 @@ export function createFormShell(
     recaptchaTokenHtml?: string;
   },
 ): string {
+  // form_for's own persistence keying: a PERSISTED record's create-action
+  // form (user.rb:29-32 setup_form's frame_and_form :create over the real
+  // Quinn Contractor card) names the form edit_card_<id> and sends the
+  // _method=patch spoof, exactly like an update form — the graded setup
+  // row pins both. The :new family renders NEW records and keeps the
+  // new_card/post shape.
+  const persisted = ctx.fmt.card.id !== undefined;
   return cardFormShell(ctx, {
     formClass: "card-form slotter",
-    id: "new_card",
+    id: persisted ? `edit_card_${ctx.fmt.card.id}` : "new_card",
     htmlAttrs: opts.htmlAttrs,
     action: "/card/create",
-    methodSpoof: null,
+    methodSpoof: persisted ? "patch" : null,
     success: opts.success,
     recaptchaTokenHtml: opts.recaptchaTokenHtml,
     body: opts.body,

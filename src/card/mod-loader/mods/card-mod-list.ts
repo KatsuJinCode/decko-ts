@@ -267,13 +267,28 @@ function ruleCard(
 
 /** options_card_name (card-mod-layout set/abstract/items/options_api.rb:51-53
  *  + 44-48): `rule_card(:content_options) || right_type_options ||
- *  Card[:all]`, url-keyed. The right-type field branch (right_type_options)
- *  is a junction-field concern no captured surface exercises; without a
- *  *content_options rule the fallback is the *all card ("*all" - the
-//  captured data-options-card bytes on every list editor row). */
+ *  Card[:all]`, url-keyed. url_key RETAINS CASE (cardname variants.rb:4-12
+ *  "URI-friendly version of name. retains case"), so the rendered value is
+ *  the name itself for these arms.
+ *
+ *  right_type_options (options_api.rb:72-74 + 76-78): when the compound
+ *  card's RIGHT is a Cardtype, the options card is
+ *  `Card.fetch [right.name, :type, :by_name]` — the right's type-set by_name
+ *  virtual search (fetch new:{} answers the virtual card, whose NAME is the
+ *  value the haml renders). The corpus pointer rows exercise this arm:
+ *  "Topic 001+Tag" (right "Tag", a Cardtype) renders
+ *  data-options-card="Tag+*type+by_name" (2026-10-10). */
 function optionsCardUrlKey(ctx: ViewContext): string {
   const rule = ruleCard(ctx, "*content_options");
   if (rule !== undefined) return rule.name.urlKey;
+  const card = ctx.fmt.card;
+  if (card.name.isCompound) {
+    const rightName = card.name.rightName?.s;
+    const right = rightName === undefined ? undefined : ctx.fmt.engine.fetchRenderCard(rightName);
+    if (right?.typeCode === "cardtype" && right.name !== undefined) {
+      return DeckoName.parse(`${right.name.s}+*type+by_name`).urlKey;
+    }
+  }
   const all = ctx.fmt.engine.fetchRenderCard("*all");
   return all?.name.urlKey ?? "*all";
 }
@@ -617,7 +632,9 @@ function checkboxInputHtml(ctx: ViewContext): string {
       return (
         `<div class='pointer-checkbox'>\n` +
         `<input type="checkbox" name="pointer_checkbox-${ctx.fmt.uniqueId()}" id="${id}" value="${h(option)}" ` +
-        `class="pointer-checkbox-button "${checked}>\n` +
+        // Rails' tag :input self-closes (the graded checkbox row pins the
+        // trailing " />"; the bare ">" was the earlier capture's shape).
+        `class="pointer-checkbox-button "${checked} />\n` +
         `<label class="form-check-label" for="${id}">${optionLabelText(ctx, option)}</label>\n` +
         `</div>\n`
       );

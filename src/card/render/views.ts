@@ -1,3 +1,4 @@
+import { str, type ViewResult } from "./format.js";
 // The html-format view registry: TypeScript ports of the view definitions the
 // captured fixtures exercise (:open, :closed, :content, :title and the
 // internal views they delegate to). Every view cites its Ruby source; the
@@ -654,17 +655,98 @@ ${fmt.renderDelegated("core")}</div>`;
   return slotWrapCommon(fmt, "content_panel", inner);
 };
 
+/** The BASE-format core (text.rb:22-24's `to_text super()` target): the
+ *  card's content rendered with base-format nest semantics —
+ *  default_nest_view is :name (nesting.rb:47-49), :link renders
+ *  "text[path]" (links.rb:10-18, the base-format link), :closed delegates
+ *  to :labeled ("name: core", base.rb:125-127), and List-family cards'
+ *  core is the items' names joined ", " (card-mod-list other_views.rb:8-11
+ *  pointer_items.join ", "). Structured cards' content is their structure
+ *  template (content/all.rb:12-14 structured_content). */
+function textFormatCoreFor(fmt: RenderFormat, depth: number): string {
+  const card = fmt.card;
+  const listFamily = card.typeCode === "pointer" || card.typeCode === "list" || card.typeCode === "list_mod";
+  if (listFamily) {
+    return rawItemStrings(card.dbContent ?? "").join(", ");
+  }
+  const structure =
+    fmt.engine.structureRuleForSync?.({
+      name: card.name.s,
+      id: card.id,
+      typeId: card.typeId,
+      typeName: card.typeName,
+      isNew: card.record.isNew === true,
+    });
+  const content = structure !== undefined ? structure.content : (card.dbContent ?? "");
+  if (depth <= 0) return content;
+  let out = "";
+  let cursor = 0;
+  for (const piece of scanNests(content)) {
+    if (piece.kind !== "nest" || piece.nest === undefined) continue;
+    const nest = piece.nest;
+    if (nest.comment !== undefined) continue;
+    const openText = `{{${nest.syntax}}}`;
+    const at = content.indexOf(openText, cursor);
+    if (at === -1) continue;
+    out += content.slice(cursor, at);
+    cursor = at + openText.length;
+    const target = DeckoName.parse(nest.name).absoluteName(card.name);
+    const view = typeof nest.options.view === "string" && nest.options.view !== "" ? nest.options.view : "name";
+    out += baseFormatNestRender(fmt, target.s, view, depth - 1);
+  }
+  if (cursor === 0) return content;
+  out += content.slice(cursor);
+  return out;
+}
+
+/** One nest's base-format render for the text core. */
+function baseFormatNestRender(
+  fmt: RenderFormat,
+  targetName: string,
+  view: string,
+  depth: number,
+): string {
+  const target = fmt.engine.fetchRenderCard(targetName) ?? fmt.newCardFor(targetName);
+  switch (view) {
+    case "name":
+      return target.name.s;
+    case "link": {
+      // base.rb:43-47 link_view -> links.rb:10-18 link_to: text[path] —
+      // the text = the target's title view (its own name here), the path =
+      // the card's absolute URL (base formats render paths absolute).
+      const text = target.name.s;
+      const url = fmt.cardUrl(DeckoName.parse(target.name.s).urlKey);
+      return text !== url ? `${text}[${url}]` : url;
+    }
+    case "closed":
+    case "labeled":
+      // base.rb:125-127 :labeled — "name: core" (the target's recursive
+      // base core)
+      return `${target.name.s}: ${textFormatCoreFor(
+        new RenderFormat(target, fmt.engine, { parent: fmt, maxDepth: fmt.maxDepth }),
+        depth,
+      )}`;
+    default:
+      return textFormatCoreFor(
+        new RenderFormat(target, fmt.engine, { parent: fmt, maxDepth: fmt.maxDepth }),
+        depth,
+      );
+  }
+}
+
 /** html/views.rb:36-40 view :content_with_title:
  *  `wrap true, title: card.format(:text).render_core do [render_menu,
  *  render_core] end`. The title value is the card's core rendered in the
  *  TEXT format (text.rb:22-24 view :core -> to_text super = the base
- *  format's core html run through to_text, text.rb:4-6: HTMLEntities.decode
- *  strip_tags(html)). The slot_attr deep-merge puts the title attribute
- *  AFTER the data attributes (slotWrap's extraAttrs). The before hook
- *  (:34) adds the d0-card-content class_up only. */
+ *  format's core, run through to_text — text.rb:4-6). The base core is
+ *  the textFormatCoreFor walk above; the earlier shape rendered the HTML
+ *  core (wrap + menu bytes leaked into the title). The slot_attr
+ *  deep-merge puts the title attribute AFTER the data attributes
+ *  (slotWrap's extraAttrs). The before hook (:34) adds the
+ *  d0-card-content class_up only. */
 const contentWithTitleView: ViewFn = ({ fmt }) => {
   const core = fmt.renderDelegated("core");
-  const title = toText(core);
+  const title = toText(textFormatCoreFor(fmt, 3));
   const inner = `${fmt.renderView("menu")}
 ${core}`;
   const voo = fmt.voo;
@@ -1827,13 +1909,17 @@ const coreView: ViewFn = (ctx) => {
     ? ctx.fmt.withNestMode("template", () => coreViewBase(ctx))
     : coreViewBase(ctx);
   if (ctx.fmt.card.name.rightName?.key !== "discussion") return base;
-  let box = "";
+  let box: string | null;
   try {
-    box = ctx.fmt.renderView("comment_box", {}, "hide");
+    // the HIDDEN arm (voo_api.rb:154's :hide bail) answers NIL — output()'s
+    // compact DROPS it, separator included (the corpus's 21-byte discussion
+    // cores end at the content, no trailing newline); the denial blank and
+    // the rendered form are Ruby-truthy strings and keep the separator.
+    box = ctx.fmt.renderView("comment_box", {}, "hide") as string | null;
   } catch {
     box = ""; // comment mod not registered: the :update-denied blank
   }
-  return base + "\n" + box;
+  return box === null ? base : base + "\n" + box;
 };
 
 /**
@@ -1954,7 +2040,7 @@ function testContextCardFor(ctx: ViewContext): ViewContext["fmt"]["card"] | unde
  *  CARD and with_context assigns/restores it around the block
  *  (contextual_content.rb:5-12, with an ensure); the port writes the
  *  format's contextCard field around the same yield shape. */
-function contextualizingTestContext(ctx: ViewContext, run: () => string): string {
+function contextualizingTestContext(ctx: ViewContext, run: () => ViewResult): ViewResult {
   if (ctx.fmt.contextCard !== undefined) return run(); // @context_card.present?
   if (ctx.voo.viz.get("test_context") === "hide") return run(); // voo.hide?
   const target = testContextCardFor(ctx);
@@ -1979,7 +2065,7 @@ function contextualizingTestContext(ctx: ViewContext, run: () => string): string
  *  card through the format's contextCard seam (format/nest/fetch.rb:12),
  *  rendering the notification's `{{_|link}}` / `{{_|last_action_verb}}` /
  *  `{{_|subedits}}` marks against `*changed card` — the oracle bytes. */
-export function htmlMessageCoreBody(ctx: ViewContext): string {
+export function htmlMessageCoreBody(ctx: ViewContext): ViewResult {
   return contextualizingTestContext(ctx, () => coreView(ctx));
 }
 
@@ -1996,7 +2082,7 @@ export function htmlMessageCoreBody(ctx: ViewContext): string {
  *  `_render_core`) — the dispatcher below routes the subject scope HERE,
  *  which without the arm fell through to the bare coreView and resolved
  *  the nests against the field card itself. */
-export function subjectCoreBody(ctx: ViewContext): string {
+export function subjectCoreBody(ctx: ViewContext): ViewResult {
   return contextualizingTestContext(ctx, () => coreView(ctx));
 }
 
@@ -2089,9 +2175,9 @@ export function contentWithLinkBody(ctx: ViewContext): string {
  *  for a nested render (set/all/error.rb:13-15) — exactly the oracle's
  *  `was just  by` double space where the html message renders the quiet
  *  span. */
-export function textMessageCoreBody(ctx: ViewContext): string {
+export function textMessageCoreBody(ctx: ViewContext): ViewResult {
   return contextualizingTestContext(ctx, () =>
-    toText(ctx.fmt.withFormatName("email_text").renderView("core")),
+    toText(str(ctx.fmt.withFormatName("email_text").renderView("core"))),
   );
 }
 
@@ -4769,7 +4855,7 @@ function cardStub(fmt: ViewContext["fmt"], view: string): string {
 function barBottomHtml(ctx: ViewContext, open: boolean): string {
   const { fmt } = ctx;
   if (!open) return cardStub(fmt, "bar_bottom");
-  return fmt.renderView("bar_bottom");
+  return str(fmt.renderView("bar_bottom"));
 }
 
 /** bar.rb#build_accordion_bar + accordion_item.haml, byte-shaped (the
@@ -4857,7 +4943,7 @@ const openView: ViewFn = (ctx) => {
 /** The generic bar_left: title.rb's :title view (bar.rb:14 `bar_left do
  *  _render_title end`). */
 function genericBarLeftHtml(ctx: ViewContext): string {
-  return ctx.fmt.renderView("title");
+  return str(ctx.fmt.renderView("title"));
 }
 
 /** card-mod-bootstrap set/type/bootswatch_skin/html_views.rb:57-63
@@ -5429,7 +5515,11 @@ const universalEditButtonView: ViewFn = (ctx) => {
  *  nil -> "". This engine registers no :rss_link_tag, so the port returns ""
  *  — which is the same bytes the page-level renderer emits for the rss slot
  *  (src/card/render/page.ts:498-499 documents the "" it joins in). */
-const rssLinksView: ViewFn = () => "";
+const rssLinksView: ViewFn = () =>
+  // head.rb:41-43: `render :rss_link_tag if rss_link?` - the guard-false arm
+  // is Ruby's NIL (the corpus records JSON null at the render boundary; the
+  // head's interpolation to_s's it to the "" the captured pages carry).
+  null;
 
 /** meta_tags.haml, byte-shaped to the HAML conventions this module already
  *  pins (views.ts:5-8: HAML templates emit SORTED single-quoted attributes;
@@ -6292,7 +6382,7 @@ function imageBoxCore(ctx: ViewContext): string {
   const rawSize = ctx.voo.opts["size"];
   const size = typeof rawSize === "string" && rawSize !== "" ? rawSize : "medium";
   const renderSize = IMAGE_BOX_SIZE_MAP[size] ?? "medium";
-  return ctx.fmt.renderView("core", { size: renderSize });
+  return str(ctx.fmt.renderView("core", { size: renderSize }));
 }
 
 /** image.rb:6-8 `view :boxed, unknown: true do image_box { |size| render_core
@@ -6702,7 +6792,7 @@ export function flatViewRefused(view: string, setKeys: string): boolean {
  *  Function declarations, so a mod module can bind them however the import
  *  graph orders evaluation. */
 export function baseTableView(view: string): ViewFn {
-  return function sharedBaseView(ctx: ViewContext): string {
+  return function sharedBaseView(ctx: ViewContext): ViewResult {
     const fn = BASE_TABLE_VIEWS[view];
     if (fn === undefined) throw new UnsupportedViewError(view, ctx.fmt.card.name.s);
     return fn(ctx);

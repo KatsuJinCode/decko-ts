@@ -145,10 +145,10 @@ class StubFmt {
   }
 
   runView(fn: ViewFn, view: string, opts: Record<string, unknown>): string {
-    return fn({
+    return String(fn({
       fmt: this as unknown as RenderFormat,
       voo: new StubVoo(view, opts) as unknown as Voo,
-    } as unknown as ViewContext);
+    } as unknown as ViewContext) ?? "");
   }
 
   nest(nest: { name: string; syntax: string; options: { view: string }; comment: undefined }): string {
@@ -686,7 +686,7 @@ describe("the exported :core override (abstract/permission.rb:14-20, not registe
 describe(":input (abstract/permission.rb:26-43)", () => {
   it("emits the hidden content field with the card content (content.rb:57-59 hidden_field)", () => {
     const fmt = new StubFmt(cardLike("*all+*read", { dbContent: "Anyone" }));
-    const out = resolveViewFn("input")!(makeCtx(fmt, "input"));
+    const out = String(resolveViewFn("input")!(makeCtx(fmt, "input")) ?? "");
     // the gem-true byte shape (the 2026-09-29 rules-views-port-3
     // oracle correction, pinned by fixtures/captured/rules-views.json
     // rule_form_card_editor): bootstrap's form-control class append
@@ -704,7 +704,7 @@ describe(":input (abstract/permission.rb:26-43)", () => {
     const fmt = new StubFmt(cardLike("*all+*read", { dbContent: "Anyone" }), {
       "*all": cardLike("*all", { typeCode: "set" }),
     });
-    const out = resolveViewFn("input")!(makeCtx(fmt, "input"));
+    const out = String(resolveViewFn("input")!(makeCtx(fmt, "input")) ?? "");
     expect(out).not.toContain("perm-inheritance");
   });
 
@@ -714,7 +714,7 @@ describe(":input (abstract/permission.rb:26-43)", () => {
     const fmt = new StubFmt(cardLike("B+*right+*read", { dbContent: "Anyone" }), {
       "B+*right": cardLike("B+*right", { typeCode: "set" }),
     });
-    const out = resolveViewFn("input")!(makeCtx(fmt, "input"));
+    const out = String(resolveViewFn("input")!(makeCtx(fmt, "input")) ?? "");
     expect(out).toContain('<div class="perm-inheritance perm-section">');
     expect(out).toContain(
       '<input type="checkbox" name="inherit" id="inherit" value="inherit" />',
@@ -806,7 +806,7 @@ describe(":input (abstract/permission.rb:26-43)", () => {
     const fmt = new StubFmt(cardLike("*all+*read", { dbContent: "u1" }), {
       "*all": cardLike("*all", { typeCode: "set" }),
     });
-    const out = resolveViewFn("input")!(makeCtx(fmt, "input"));
+    const out = String(resolveViewFn("input")!(makeCtx(fmt, "input")) ?? "");
     expect(out).toContain("perm-group");
     expect(out).not.toContain("perm-checkbox-button");
     expect(out).not.toContain("data-options-card");
@@ -839,7 +839,7 @@ describe("preparePermissionRoles (the group_options warm)", () => {
     const fmt = new StubFmt(cardLike("*all+*read", { dbContent: "" }), {
       "*all": cardLike("*all", { typeCode: "set" }),
     });
-    const out = resolveViewFn("input")!(makeCtx(fmt, "input"));
+    const out = String(resolveViewFn("input")!(makeCtx(fmt, "input")) ?? "");
     const adminIdx = out.indexOf("administrator-perm-checkbox");
     const anyoneIdx = out.indexOf("anyone-perm-checkbox");
     const signedInIdx = out.indexOf("anyone_signed_in-perm-checkbox");

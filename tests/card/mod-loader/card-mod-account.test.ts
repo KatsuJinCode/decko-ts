@@ -266,12 +266,14 @@ describe("card-mod-account through the mod loader (A/B)", () => {
     );
   });
 
-  it("WITH the mod: :closed_account renders the two-line haml HTML (abstract/account_holder.rb:126 + closed_account.haml)", async () => {
+  it("WITH the mod: :closed_account renders the haml text block (abstract/account_holder.rb:126 + closed_account.haml - the corpus byte oracle: internal line breaks preserved, shared indent stripped, the closing tag on its own line)", async () => {
     const s = storage!;
     const expected =
       "<h2>Account Closed</h2>\n" +
-      "<p>The sign-in account once associated with this card has been removed, " +
-      "the card has been anonymized, and its data fields have been deleted.</p>";
+      "<p>\n" +
+      "The sign-in account once associated with this card has been removed, the card\n" +
+      "has been anonymized, and its data fields have been deleted.\n" +
+      "</p>\n";
     expect(await renderThroughRecord(s, "Oracle Closed Probe", "closed_account")).toBe(expected);
   });
 

@@ -753,7 +753,7 @@ async function renderMarketplaceView(
   const card = await s.engine.prepareItemForRender(MARKETPLACE_CARD_NAME);
   if (card === undefined) throw new Error(`${MARKETPLACE_CARD_NAME} did not prepare`);
   const fmt = new RenderFormat(card, s.engine);
-  return fmt.renderView(view, opts);
+  return String(fmt.renderView(view, opts) ?? "");
 }
 
 /** Render the mod_detail view with the given nest options. */
