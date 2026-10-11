@@ -34,9 +34,12 @@ Everything else is built from cards:
 - **Nests** are references in content: `{{Card name}}` or
   `{{Card name|view: titled}}`. Rendering follows them recursively, each nested
   card under its own permissions, rules and view.
-- **Formats** (HTML, JSON, text, CSS, ...) each own a set of **views**. Views
-  are registered per set, so the view a card renders depends on which sets it
-  belongs to. A page is the layout card's content with the requested card
+- **Formats** (HTML, JSON, text, CSS, ...) each own a set of **views**. A view
+  is a plain function under a name — the registry is a flat
+  `Record<string, ViewFn>` — and **this port does not register views per set
+  and has no Ruby-style `view :foo do … end` DSL**; which view a card renders
+  is decided by the resolution rules under "Views are a name→function
+  registry" below. A page is the layout card's content with the requested card
   nested into it.
 
 ---
@@ -72,6 +75,20 @@ not as a mapping a reader can rely on to find the Ruby original.
 | `live/` | none | the request-local row store (see below) |
 | `one-trip/` | none | batching a page's fetches into a few round trips (see below) |
 
+**How faithful each area is, and it is not uniform.** The **name layer is
+line-faithful**: `name/inflect.ts` transcribes ActiveSupport's inflection rule
+tables rather than reimplementing them, and `name.ts` ports `Cardname` and
+`Card::Name` method for method, so a name this engine derives matches the one
+Ruby derives by the same rules rather than by an equivalent outcome. The
+**render/views layer is a re-implementation using Decko's vocabulary**: it
+speaks Decko's nouns — views, formats, slots, nests, sets — and cites the Ruby
+view each view came from, but a view here is a function in a record that
+produces the captured bytes, not Ruby HAML compiled into set-module methods.
+The port is therefore strongest where behaviour is arithmetic (names, keys,
+inflection) and is a faithful re-derivation where behaviour is markup
+(rendering), with the byte comparison against the oracle — not a structural
+correspondence — as what holds the second kind to the first one's standard.
+
 Outside `card/`:
 
 | Path | What it does |
@@ -104,8 +121,9 @@ A page request, in order:
 3. **Check permissions.** The `*read` rule for the card's sets decides whether
    the actor may see it. A denied main card renders Ruby's denial page with
    status 403.
-4. **Choose the view.** The view for the card is resolved from the sets it
-   belongs to and the format requested.
+4. **Choose the view.** The view for the card is resolved by the two layers
+   below — a flat compiled table, plus a mod loader's set chain when one is
+   bound — against the format requested.
 5. **Render and nest.** The view's output is produced; each nest repeats steps
    2 to 5 for the nested card, with its own permissions and view.
 6. **Wrap.** The layout card's content is rendered with the main card nested
@@ -198,7 +216,7 @@ for exactly what is and is not supported); see `tools/compat-report/`.
 
 **A view is a plain function under a name, not a set module.** The compiled
 table is `HTML_VIEWS: Record<string, ViewFn>`
-(`src/card/render/views.ts:6597`) — a flat map from `"title"`, `"closed"`,
+(`src/card/render/views.ts:6601`) — a flat map from `"title"`, `"closed"`,
 `"header"` and the rest to `(ctx: ViewContext) => string`
 (`src/card/render/format.ts:481`). There is no per-view class, no `View`
 module to reopen, and no Ruby-style `view :foo do ... end` block: a view is a
