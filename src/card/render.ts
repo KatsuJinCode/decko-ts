@@ -8852,8 +8852,8 @@ export class RenderEngine implements RenderEngineLike {
       }
       // Skip cards that the permission engine has already denied — Ruby
       // short-circuits the denied branches before the Search card's
-      // JSON.parse fires (corpus:34 captured as the denial span, not a
-      // CAPTURE_ERROR sentinel; view/permission.rb:46-50). The prepare phase
+      // JSON.parse fires (the denial span, not a
+      // parse-error sentinel; view/permission.rb:46-50). The prepare phase
       // must mirror that ordering: only READABLE Search cards get their
       // parse attempted (and only a readable card can ever re-raise at the
       // dispatch boundary).
@@ -8880,11 +8880,10 @@ export class RenderEngine implements RenderEngineLike {
       }
       // Date-type cards are validated at the dispatch boundary (resolveView)
       // — the walk records nothing for them: Ruby's Date.parse runs inside
-      // the dispatched view method on THAT card (corpus:1135's :open/:content
+      // the dispatched view method on THAT card (:open/:content
       // raise while :closed/:title render), never at prefetch scope. Keyed on
-      // the type card's codename (corpus:1135's type card is NAMED "evog";
-      // the typeCode gate matches the codename "date" regardless of the
-      // display name).
+      // the type card's codename (the gate matches the codename "date"
+      // regardless of the display name).
     }
   }
 
@@ -8894,9 +8893,9 @@ export class RenderEngine implements RenderEngineLike {
    *  (empty content, invalid JSON) — port parity means THROWING the same
    *  class with the same message, not swallowing the failure into an
    *  empty result list. The error class carries its Ruby class name
-   *  (render/errors.ts) so the corpus-v2 replay handler — read-only per
-   *  the stream contract — emits the exact CAPTURE_ERROR sentinel bytes
-   *  the capture recorded. */
+   *  (render/errors.ts) so the replay handler — read-only per
+   *  the stream contract — emits the exact parse-error sentinel bytes
+   *  the expected output records. */
   /** The search statement's own limit — see searchCqlLimit below. */
   /** Resolves a codename to the key of the card holding it in this deck
    *  (the VirtualSearch family's Right-pattern match). */
@@ -9016,8 +9015,8 @@ export class RenderEngine implements RenderEngineLike {
           // ensureCardId is Ruby's other half (card-1.110.0 lexicon.rb#
           // lex_to_id: cache-first WITH a synchronous SQL fallback): the
           // warm mirror cannot hold decks larger than the Temporary cache's
-          // max_keys (temporary.rb#within_key_counts resets at 10_000 - the
-          // 47k-card corpus deck resets it 10x during warmLexicon), so
+          // max_keys (temporary.rb#within_key_counts resets at 10_000 — a
+          // deck that large resets it repeatedly during warmLexicon), so
           // executeQuery pre-resolves this statement's name strings through
           // the async db-fallback walk before the sync interpretation reads
           // them. Unknown names still sentinel to -999 exactly as before.
@@ -9103,7 +9102,7 @@ export class RenderEngine implements RenderEngineLike {
       // post-filter — no denied placeholder, no backfill gap.
       if (!(await this.canReadCard(record))) continue;
       // Render-precondition guard, NOT permission: a row whose junction
-      // name cannot compose (dangling side ids; no real corpus row — the
+      // name cannot compose (dangling side ids; no real row — the
       // composition is lexicon-recursive and resolves every real junction)
       // has no name to render, link, or key a slot with. Ruby never
       // view-renders a nameless card (fetch returns nil); skipping mirrors
@@ -9179,12 +9178,14 @@ export class RenderEngine implements RenderEngineLike {
   /** Live rows whose junction side id points at no cards row still compose
    *  their names  with the EMPTY part (lexicon.ts#lexToName; lexicon.rb:
    *  11-15 + name/all.rb:16-18)  so several such rows can share ONE
-   *  composed name. The corpus's only collision class: cards 375/377/389
-   *  (lefts 374/376/388 absent, right *default) all compose "+*default"
+*  composed name. The only collision class: several rows whose lefts
+   *  are absent and whose right is *default
+   *  all compose "+*default"
    *  (junction pair-uniqueness makes dangling-side compositions the only
    *  collision source). Ruby's listing renders the shared name under its
-   *  lowest-id card  the Phrase page oracle pins card 375 (data-card-id=
-   *  "375", type List) for the row the engine's own search matches as 389.
+   *  lowest-id card, so a list-type page shows the lowest-id row's
+   *  data-card-id even where the engine's own search matched a
+   *  higher-id row.
    *  This map holds row id -> canonical (lowest-id) row id for the dangling
    *  class, built once per engine from one statement; engines that never
    *  meet a dangling row pay nothing. The swap runs BEFORE the prefetch so
