@@ -93,9 +93,9 @@ async function boot(dbPath: string, actor: { id: number; name: string }) {
 describeOrSkipLoud(
   !HAVE_DECK,
   "tests/tools/junction-create-left-inheritance.test.ts",
-  `the private editing-oracle deck is present at ${SRC} (set EDITING_DECK) — the staging-lane finding this suite pins is reproduced on that oracle deck, which a clean checkout does not carry`,
+  `the editing-oracle deck is present at ${SRC} (set EDITING_DECK) — the junction-inheritance defect this suite pins is reproduced on that deck, which a clean checkout does not carry`,
 )(
-  "junction create inherits the left card's update rule across tasks (staging lane finding)",
+  "junction create inherits the left card's update rule across tasks",
   () => {
     let driver: LocalSqliteDriver;
     let engine: CardActionEngine;

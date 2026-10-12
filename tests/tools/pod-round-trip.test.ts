@@ -27,8 +27,11 @@ import { bootDeck } from "../../src/card/pods/deck.js";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const SRC = process.env.PODS_SRC_DECK ?? path.join(REPO, "tmp/persist/pods/src.sqlite3");
+// The deck pods are eaten into. Supplied via PODS_BASE_DECK; the default is
+// the repo-local persistence workspace (tmp/ is not committed), and the
+// suite skips loudly when the file is absent.
 const BASE =
-  process.env.PODS_BASE_DECK ?? "C:/localProjects/decko-oracle-app-parity-fix/db/development.sqlite3";
+  process.env.PODS_BASE_DECK ?? path.join(REPO, "tmp/persist/oracle-base-deck.sqlite3");
 const DIR = process.env.PODS_DIR ?? path.join(REPO, "tmp/persist/pods");
 const RUBY_POD = path.join(DIR, "ruby-src.yml");
 const HAVE = existsSync(SRC) && existsSync(BASE) && existsSync(RUBY_POD);

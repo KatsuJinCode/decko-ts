@@ -123,7 +123,7 @@ describe("bunny edge page shell — CONFIGURED deltas (the production deployment
     );
   });
 
-  it("rewrites the corpus stylesheet revision to the served revision (link + cssPath)", () => {
+  it("rewrites the recorded stylesheet revision to the served revision (link + cssPath)", () => {
     const input =
       `decko.cssPath='http://s3.amazonaws.com//files/${PRODUCTION_CSS_REVISION_FROM}';`;
     expect(applyServedEnvironmentDeltas(input, DELTAS).trimEnd()).toBe(

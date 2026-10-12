@@ -2,20 +2,20 @@
 // as DECK DATA (the deck-data counterpart of src/card/name/inflect.ts's
 // applyDeckInflections seam; never import this file from src/).
 //
-// PROVENANCE. The production deck that produced the ground-truth corpus
+// PROVENANCE. The deck that produced the recorded ground truth
 // computed card keys under a non-default inflection config. Its Rails
 // initializer is not on disk (tools/oracle/decko-oracle-app ships stock
 // cardname 0.20.0 / card 1.110.0 from rubygems, no config/initializers/, no
 // inflecting mod), so the table below was RECOVERED FROM THE STORED KEYS: a
-// census of all 9,466 simple-key rows in the dual-lane capture db
-// (tmp/raw-ground-truth/capture-db-corpus-v2.sqlite3, hardlink of
-// deck-dual-lane-full/corpus-v2.sqlite3 - the db the oracle app rendered the
-// expected-v2 captures from) against the engine's gem-faithful default
-// algorithm diverges on exactly 105 rows, and every divergence is explained
-// by three words surviving singularization that the default /s$/ rule strips:
+// census of all 9,466 simple-key rows in the recorded deck database (the db
+// the oracle app rendered the recorded captures from) against the engine's
+// gem-faithful default algorithm diverges on exactly 105 rows, and every
+// divergence is explained by three words surviving singularization that the
+// default /s$/ rule strips:
 //
-//   lone "s"      "Riley's" -> riley_s   (default: riley_ - the
-//                 apostrophe split leaves an "s" part; singularize("s") = "")
+//   lone "s"      a possessive form ("<name>'s" -> <name>_s; default:
+//                 <name>_ — the apostrophe split leaves an "s" part;
+//                 singularize("s") = "")
 //   "this"        "delete this" -> delete_this (default: delete_thi)
 //   "anonymous"   Anonymous -> anonymous     (default: anonymou)
 //
