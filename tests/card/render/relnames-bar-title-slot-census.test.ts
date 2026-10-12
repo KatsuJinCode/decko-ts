@@ -1,10 +1,11 @@
-// LANE PROBE (relnames, 2026-10-04) — dumps the ENGINE's own bytes for the
-// set-card-views parity targets so the slot-level name_context / card-title
-// census can be compared slot-by-slot against BOTH oracles (the committed
-// fixture and the graded expected-v2 view lane).
+// Diagnostic probe: renders each set-card target through the engine and
+// writes a slot-level census of the name_context markers and card-title
+// spans the engine emits, so its output can be compared slot-by-slot
+// against the committed fixture.
 //
-// Env-gated (RELNAMES_BAR_TITLE_SLOT_CENSUS=1) so it never runs inside the standing net.
-// Writes to an internal work log
+// Env-gated (RELNAMES_BAR_TITLE_SLOT_CENSUS=1) so it never runs as part of
+// the standing suite. Writes the rendered HTML and the census log to an
+// output directory.
 import { describe, it, afterAll, expect } from "vitest";
 import Database from "better-sqlite3";
 import fs from "node:fs";
@@ -115,10 +116,8 @@ async function createSetCardSeededStorage(): Promise<RenderTestStorage> {
   return createCorpusSeededStorage(ids);
 }
 
-/** The slot-level census: for every card-slot div, the name_context IT
- *  carries and the card-title spans lexically inside it. Same shape as the
- *  offline analyzer (relnames-07-slot-level.cjs) so the three sources are
- *  directly comparable. */
+/** The slot-level census: for every card-slot div, the name_context it
+ *  carries and the card-title spans lexically inside it, one line per slot. */
 function slotCensus(html: string): string[] {
   const opens: Array<{ at: number; end: number; tag: string }> = [];
   const re = /<div\b[^>]*class="([^"]*\bcard-slot\b[^"]*)"[^>]*>/g;
@@ -146,9 +145,8 @@ function slotCensus(html: string): string[] {
 
 describe("relnames engine bar-title slot census", () => {
   // skipIf, not an in-body expect: the probe is env-gated, so without
-  // RELNAMES_BAR_TITLE_SLOT_CENSUS=1 it must SKIP. The first cut asserted the env inside the
-  // body, which turned the skip into a standing-net FAILURE — caught by
-  // net job-1791129726236-79fb68b5 (1 failed | 93 passed | 2 skipped).
+  // RELNAMES_BAR_TITLE_SLOT_CENSUS=1 the whole case must SKIP. Asserting
+  // the env inside the body would turn that skip into a suite failure.
   itOrSkipLoud(process.env.RELNAMES_BAR_TITLE_SLOT_CENSUS !== "1", "tests/card/render/relnames-bar-title-slot-census.test.ts", "not (process.env.RELNAMES_BAR_TITLE_SLOT_CENSUS !== \"1\")")(
     "dumps the engine's own bytes per target surface",
     { timeout: 600_000 },
@@ -179,10 +177,10 @@ describe("relnames engine bar-title slot census", () => {
         );
         report.push(...slotCensus(actual).map((line) => `  ${line}`));
 
-        // FIRST-DIFF vs the committed fixture, with the parity suite's own
-        // normalizer. This is the number the lane is graded on: where the
-        // engine's bytes first leave the fixture's, and whether any
-        // relativized card-title survives in the actual.
+        // FIRST-DIFF vs the committed fixture, using the parity suite's
+        // own normalizer: where the engine's bytes first diverge from the
+        // fixture's, and whether any relativized card-title survives in
+        // the actual output.
         const expected = fixtures.get(entry.id)?.[view];
         if (expected === undefined) continue;
         if (expected.startsWith('<span class="denied"') || expected.startsWith("CAPTURE_ERROR")) continue;
