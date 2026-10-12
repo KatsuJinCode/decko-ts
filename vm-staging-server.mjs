@@ -1024,7 +1024,7 @@ function buildForgotPasswordModalHtml(signinCardId) {
     `<input class="d0-card-content form-control" placeholder="" type="text" value="" name="card[subcards][+*email][content]" id="card_subcards___email_content" />\n` +
     `</div></div></fieldset>\n` +
     `<button name="button" type="submit" class="_close-modal-on-success btn btn-primary">Reset password</button></form>\n` +
-    `<!-- decko-ts staging render lane: live renders the full card-mod-edit ` +
+    `<!-- decko-ts staging: renders the full card-mod-edit ` +
     `form machinery here (rails remainder); this honest form posts Ruby's ` +
     `exact inputs to /update/*signin. -->\n` +
     `</div>\n` +
@@ -2645,8 +2645,8 @@ async function renderCardPage(cardName, renderEngine = render, requestedView, re
       // format (h1 header — default_header main? ? :h1 : :h2) and the
       // main-nest data-slot JSON {view, nest_name, nest_syntax, main,
       // home_view} (no "show" viz — the graded h1/h2 arm on the
-      // account-change and edit-save journeys came from this lane serving
-      // a bare non-main render). The render goes through the PAGE lane's
+      // account-change and edit-save journeys came from this staging server
+      // serving a bare non-main render). The render goes through the PAGE lane's
       // bareMainOpts seam so the full prepare sequence (the late-seat
       // structure sweep especially) seats the closure the sync main render
       // reads — the edit-nested-summary class rendered its structured body
@@ -2756,7 +2756,7 @@ async function renderCardPage(cardName, renderEngine = render, requestedView, re
     }
     // Any other render raise gets Decko's deck error page (the
     // "Wild Card! / 500 Server Error" shape).
-    // UnknownLayoutError (engine page lane: a layout name that fetches to
+    // UnknownLayoutError (a layout name that fetches to
     // neither a card layout nor a built-in code layout) lands here too —
     // the served deck shows the same Wild Card 500 shape for those pages.
     console.error(`[vm-staging] render 500 on ${cardName}: ${message}\n${error instanceof Error ? error.stack : ""}`);
@@ -3095,7 +3095,7 @@ function buildSigninSlotHtml() {
     `</div>\n` +
     `<button type="submit" class="btn btn-primary">Sign in</button>\n` +
     `</form>\n` +
-    `<!-- decko-ts staging slice-1: live renders the *signin card's own form at this route (set/self/signin.rb, rails); this staging form posts to /_signin. -->\n` +
+    `<!-- decko-ts staging: renders the *signin card's own form at this route (set/self/signin.rb, rails); this staging form posts to /_signin. -->\n` +
     `</div></div>`
   );
 }
