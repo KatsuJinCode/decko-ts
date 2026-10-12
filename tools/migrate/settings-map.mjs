@@ -7,8 +7,9 @@
 // separate side-table. A source database that still carries a `meta` /
 // `settings` / `setting` / `card_settings` table is therefore either:
 //
-//   (a) corpus-build metadata (e.g. benchmarks/corpus-v2 `meta(key,
-//       value)`: build seed, atom vocabulary size, sanitization shifts)
+//   (a) metadata about how the source snapshot itself was produced
+//       (a key/value build-manifest table: seeds, vocabularies,
+//       sanitization parameters)
 //       - NOT application state, never imported as data;
 //   (b) a pre-2014 deck that still carries settings rows - rare, would
 //       be migrated as card-like rows by the importer (handled below).
