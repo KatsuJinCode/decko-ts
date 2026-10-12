@@ -1,8 +1,7 @@
 /**
- * CQL <-> card/name stream reconciliation tests.
+ * CQL <-> card/name reconciliation tests.
  *
- * Closes the documented seam between wave-1 CQL  and
- * the landed name algebra :
+ * Pins that the CQL layer and the shipped name algebra agree:
  * 1. name -> key goes through the REAL DeckoName.key semantics (ActiveSupport
  *    singularize inflection included), replacing the no-inflection
  *    approximation of the old defaultNameToKey.
@@ -10,12 +9,9 @@
  *    cardname lib/cardname/contextual.rb#absolute), covering _main/_user/_L*R
  *    and the absolutize_extremes guard that the CQL-side approximation lacked.
  *
- * Oracle basis (live `ruby -e` against the installed gems, per the preload
- * trick
- * require "htmlentities"; require "cardname";` plus
- * cardname-0.20.0/lib/core_ext.rb, with `Cardname.params = {}` to emulate the
- * app context where `Card::Name.params` is overridden to `Card::Env.params`,
- * card-1.110.0 lib/card/name.rb#params):
+ * Ruby behavior reference (cardname 0.20.0, with `Cardname.params = {}` to
+ * emulate the app context where `Card::Name.params` is overridden to
+ * `Card::Env.params`, card-1.110.0 lib/card/name.rb#params):
  *
  *   "Magnus".to_name.key            => "magnu"
  *   "Admins".to_name.key            => "admin"
@@ -38,10 +34,10 @@
  *   "_user+_left".absolute("A+B")   => "Joe Admin+A"
  *   "_main+_right".absolute("A+B")  => "Home Page+B"
  *
- * _N ordinals and _L*R partmaps crash the UNPATCHED cardname 0.20.0 gem
- * ($LAST_MATCH_INFO is nil
- * upstream bug 1), so their values were oracle-verified by probing the gem's
- * own private methods directly (no dispatch involved):
+ * _N ordinals and _L*R partmaps hit a cardname 0.20.0 gem defect
+ * ($LAST_MATCH_INFO is nil on those code paths), so their expected values
+ * were derived by calling the gem's own private methods directly, bypassing
+ * the crashing public dispatch:
  *
  *   "A+B+C".to_name.send(:ordinal_part, 2, ctx)   => "B"
  *   "A+B+C".to_name.send(:ordinal_part, 4, ctx)   => nil  (string-length clamp)
@@ -50,7 +46,7 @@
  *
  * An ordinal that misses the context parts resolves to "" and a blank extreme
  * part then falls back to the context (absolutize_extremes) — the same chain
- * the live _main row above demonstrates.
+ * the _main example above demonstrates.
  */
 
 import { afterEach, describe, expect, it } from "vitest";
@@ -150,9 +146,9 @@ describe("relative-name absolutization via DeckoName.absolute (contextual.rb#abs
     });
 
     it("_N past the parts resolves to '' and the blank extreme falls back to the context", () => {
-      // oracle: ordinal_part(4, "A+B+C") => nil (string-length clamp quirk,
-      // ); "" extreme -> absolutize_extremes fills the
-      // context — the same chain the live _main row demonstrates.
+      // oracle: ordinal_part(4, "A+B+C") => nil (string-length clamp quirk);
+      // "" extreme -> absolutize_extremes fills the
+      // context — the same chain the _main example demonstrates.
       expect(nameCondition({ name: "_4" }, { context: "A+B+C" })).toMatchObject({ values: ["a+b+c"] });
     });
 
