@@ -3166,7 +3166,7 @@ export class RenderEngine implements RenderEngineLike {
       }
       // Simple refs: ONE batched IN-query per round (the prefetch fallback's
       // verifyClosure shape — never one query per name). Compound refs ride
-      // the fetch ladder individually (corpus templates carry simple and
+      // the fetch ladder individually (stored templates carry simple and
       // relative refs; junction template refs are rare). Genuinely missing
       // names land in structureRefMisses — unknown nest targets render as
       // unknown-card views (Ruby parity) and are never re-queried.
@@ -3877,33 +3877,29 @@ export class RenderEngine implements RenderEngineLike {
    *  type_id_from_template at new-card creation), and
    *  view/permission.rb:22 `alter_unknown || denial` consults that card's
    *  read verdict for every view whose `unknown:` config is `true` (the
-   *  view "supports unknown"). Two populations, both corpus-proven:
+*  view "supports unknown"). Two populations, both proven in practice:
    *
-   *  1. SIMPLE STARRED names (the setting-card shape — the corpus's *foot,
-   *     card 4033 trash=1): the new card's type lands on *all+*default
-   *     (rule 28, BasicCs), its read walk hits BasicCs+*type+*read (rule
-   *     22283, "Anyone Signed In") and Anonymous is denied → the quiet
-   *     denial span inside the highlighted layout source (the oracle-pinned
-   *     class).
-   *  2. COMPOUND names (the {{+field}} phantom family — BW Oversight's
-   *     {{+Human|closed}} leaves): the verdict is the LIVE RECURSIVE _left
+   *  1. SIMPLE STARRED names (the setting-card shape): the new card's type
+   *     lands on *all+*default
+   *     (BasicCs), its read walk hits BasicCs+*type+*read
+   *     ("Anyone Signed In") and Anonymous is denied → the quiet
+   *     denial span inside the highlighted layout source.
+   *  2. COMPOUND names (the {{+field}} phantom family — a composite card's
+   *     {{+Field|closed}} leaves): the verdict is the LIVE RECURSIVE _left
    *     walk (card-mod-permissions set/all/permissions.rb:55-71, read
    *     verbatim: `permission_rule_id` -> `rule(action).match?(
    *     /^\[?\[?_left\]?\]?$/)` -> `left_permission_rule_id` ->
    *     `lcard.permission_rule_id action` — the stored read_rule_id column
-   *     is never consulted). The walk itself was PROVEN verdict-correct
-   *     against the pre-change tree (env-gated probe run: BW+Human false,
-   *     the TPR virtuals false, Exhibit+Item's virtuals true, and the
-   *     CDW_Host+management guard-population walks true — Ruby's wanted-card
-   *     render), so seating the computed verdict reproduces Ruby for BOTH
-   *     directions at once: BW's leaves deny through 6569 "_left" -> left
-   *     11201 (EXISTS — the prior recorded result's absent-left claim is
-   *     falsified) -> BW Oversight+*self+*read 10577 (role list, no
-   *     Anonymous); CDW_Host+management allows through its 6568-chain
-   *     left. (The whole-population fear is answered by
+   *     is never consulted). The walk itself is verdict-correct
+   *     against Ruby's own wanted-card render, so seating the computed
+   *     verdict reproduces Ruby for BOTH
+   *     directions at once: a delegating "_left" rule reaches the left
+   *     card's own rule and denies Anonymous there, while a host whose
+   *     left chain resolves to a readable rule allows. (The
+   *     whole-population fear is answered by
    *     evidence, not scope: the walk's verdict IS Ruby's; the earlier
    *     denial came from the BasicCs-substituted verdict input, which
-     *     this seat does not use.) Seated into deniedVerdictsByKey — the
+   *     this seat does not use.) Seated into deniedVerdictsByKey — the
    *  map isDenied reads for id-less cards; pointer/list item keys keep
    *  their richer pointerItemVerdicts path (the cql item-typing unit's
    *  population). Verdict undefined (partial decks) seats ALLOWED — the
