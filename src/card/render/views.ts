@@ -1330,8 +1330,8 @@ const coreViewBase: ViewFn = (ctx) => {
   // of that template, not an engine-side addition. set/self/mod.rb's own
   // `item_codes`/`content` body yields `"#{mod}_mod"` names that resolve
   // to nothing (Cardio::Mod has no custom to_s; the stored codenames are
-  // `mod_<name>`), so the search results are the only item source the
-  // oracle bytes support.
+  // `mod_<name>`), so the search results are the only item source Ruby
+  // renders.
   //
   // The search is ALREADY pre-executed on this seam: the stored template's
   // `{{+*type+by name|content}}` reference puts the virtual search card on
@@ -1458,8 +1458,8 @@ export function isTemplatedNestsName(name: DeckoName): boolean {
  * The symbol tags go through `fieldName`'s Cardish overload because Ruby's
  * are SYMBOLS and Wagn's `Array#to_name` is `Card::Name.compose` (see
  * DeckoName#fieldName): `:type_plus_right` resolves through the codename
- * registry to the `*type plus right` card (corpus 262) and `:right` to the
- * `*right` card (corpus 260).
+ * registry to the `*type plus right` card and `:right` to the
+ * `*right` card.
  */
 export function templateLinkSetNameFromParts(
   base: DeckoName | undefined,
@@ -1478,7 +1478,7 @@ export function templateLinkSetNameFromParts(
  *  mod-layer registration at card-mod-comment.ts never dispatches; the
  *  coreView discussion join above already dispatches :comment_box on every
  *  +discussion core and caught the unregistered view into the old
- *  "" blank). Ruby's recapture semantics refute that blank: an anonymous
+ *  "" blank). Ruby's rendered-output semantics refute that blank: an anonymous
  *  viewer carries the FULL form on a +discussion core whose *self set
  *  grants Anyone the *update rule — the update-case form with
  *  data-recaptcha="on", the recaptcha script + token hidden, and the
@@ -1658,10 +1658,9 @@ const coreView: ViewFn = (ctx) => {
  * `link_to` (:99-107) assigns `opts[:href] ||= path(...)` AFTER those,
  * with `interpret_data_opts_to_link_to` (:141-147) moving `:remote` to
  * the end as `data-remote`. Insertion order therefore reads
- * rel, class, href, data-remote — the order the frozen capture carries:
+ * rel, class, href, data-remote — the served bytes' order:
  * `<a rel="nofollow" class="slotter" href="/Role+description+*type_plus_right/modal_nest_rules" data-remote="true">+description</a>`
- * (corpus 6a44dfdc, page-surface shard 000000, `Role+*type+*default` 105 and
- * `Cardtype+*type+*default` 88).
+ * (as a `Role+*type+*default` rule body's template_link renders).
  *
  * The text is `raw` (links.rb:102 `text = raw(text || opts[:href])`), so
  * the authored nest_syntax is emitted verbatim; `text || view` makes a
@@ -1685,7 +1684,7 @@ export const templateLinkView: ViewFn = (ctx) => {
   const parent = fmt.parent;
   // The assignment lands on the voo's LIVE options (voo_api.rb:30-32), not
   // `opts` — slot_options (:51-56) reads the normalized map, which is why
-  // the oracle :template_link data-slot has no "title" key. `parent.voo` is
+  // the :template_link data-slot has no "title" key. `parent.voo` is
   // always set while the parent renders (render.rb:8-13 with_voo); the
   // undefined arm is the type-level guard only.
   const parentVoo = parent?.voo;
@@ -1703,17 +1702,17 @@ export const templateLinkView: ViewFn = (ctx) => {
 
 // ---------------------------------------------------------------------------
 // the email :core family — the roleviews recorded result's
-// leftovers 1-3, ported onto the flat record the graded page surface reads
+// leftovers 1-3, ported onto the flat record the page surface reads
 // ---------------------------------------------------------------------------
 
 /** set/abstract/test_context.rb:16-18 `def test_context_card;
  *  card.left.fetch(:test_context)&.first_card; end` — the LEFT card's
- *  +*test context junction's first ITEM card. Corpus census
- *  (bench-corpus-raw.sqlite3): signup alert email's junction (left 21791)
- *  holds "User" (id 2693); follower notification email's (left 21795)
- *  holds "*changed card" (id 33822, codename changed_card);
- *  verification/password reset (21783/21787) hold "Decko Bot+*account" —
- *  a card the deck does not carry, which first_card answers with a NEW card
+ *  +*test context junction's first ITEM card: a signup alert email's
+ *  junction holds "User"; a follower notification email's
+ *  holds "*changed card"; the
+ *  verification/password reset junctions hold "Decko Bot+*account" —
+ *  a card the deck may not carry, in which case first_card answers with a
+ *  NEW card
  *  of that name (see the return below). A missing or empty junction answers
  *  undefined, and `card.with_context nil` sets nothing (the `if
  *  context_card` guard, contextual_content.rb:8). */
@@ -1793,7 +1792,7 @@ export function htmlMessageCoreBody(ctx: ViewContext): string {
  *  Abstract::TestContext include_set seam (test_context.rb:4-6
  *  `view :core, cache: :never do contextualizing { super() } end`): the
  *  subject field's content nests (`{{_user|name}} {{_|last_action_verb}}
- *  "{{_|name}}"` in the corpus templates) must resolve against the
+ *  "{{_|name}}"` in the notification templates) must resolve against the
  *  notification's test context, not the field card. super() is the base
  *  :core — here coreView, the same fallthrough the html/text message arms
  *  use. Lives beside the two message arms because the read_form field
@@ -2227,7 +2226,7 @@ function rubyExtnameFromPath(content: string): string {
 /** The stored key's own basename minus extension — the deterministic
  *  surrogate for Ruby's action_id stand-in (file_card_uploader.rb:225-227
  *  `Time.now.to_i`): when the [-2] segment is non-numeric, Ruby renders a
- *  fresh epoch filename (runtime state no capture can reproduce), so the
+ *  fresh epoch filename (runtime state a static render cannot reproduce), so the
  *  port keeps the stored name it cannot derive past. */
 function storedBaseName(content: string): string {
   const base = content.slice(content.lastIndexOf("/") + 1);
@@ -2860,8 +2859,8 @@ function renderSettingListItems(
       // (view/permission.rb:19-23 altered_view) then decides bar vs quiet
       // denial from THAT card's verdict, so a denied stored rule card
       // renders the quiet span — it must NOT fall through to a virtual
-      // (whose more general read walk would allow and render a bar the
-      // oracle never pins). The stored verdicts live in deniedVerdicts
+      // (whose more general read walk would allow and render a bar
+      // Ruby never renders). The stored verdicts live in deniedVerdicts
       // (id-keyed), filled by the ensureVerdicts pass that runs right
       // after preloadSetRules in the prepare pipeline.
       const slotHtml = fmt.nestRecord(stored, "bar", {
@@ -2927,7 +2926,7 @@ function quietDenial(task: string): string {
  *  FLAT for the same loader-less seam as the email :core family above:
  *  formgroup.rb is a set/all file — in Ruby its views mix into the BASE
  *  format class every card inherits (registrar.rb:79-84), so the flat
- *  record IS its scope; the graded page surface could never see the mod
+ *  record IS its scope; the loader-less page surface could never see the mod
  *  registration. The mod registration (card-mod-edit.ts, all/formgroup)
  *  delegates to THIS body so the surfaces cannot drift. The unknown:true
  *  config rides the compiled UNKNOWN_VIEW_CONFIG row (format.ts) for the
@@ -2990,7 +2989,7 @@ function categoryAllSettingsSortedFlat(
  *  the SETTING card's read permission; the fetch returns the STORED rule
  *  card whenever one exists, the `new: {}` virtual only on a miss. The bar
  *  items carry hide: ["full_name"] (bar_setting_list's call
- *  rule_lists.rb:13) — the oracle bar slots' hide list leads with it. */
+ *  rule_lists.rb:13) — the bar slots' hide list leads with it. */
 function barSettingListItem(
   ctx: ViewContext,
   setting: string,
@@ -3181,8 +3180,8 @@ export function visibleSettingCodenames(
 }
 
 /** Settings that declared `restricted_to_type:` in their setting_opts
- *  (the only two across the loaded mods — grep over card-1.110.0/mod +
- *  card-mod-* 2026-09-26). Values are the permitted type CODES
+ *  (the only two across the loaded mods — a survey of
+ *  card-1.110.0/mod + card-mod-*). Values are the permitted type CODES
  *  (card-mod-list set/self/content_options.rb:2 and
  *  set/self/content_option_view.rb:2: `%i[list pointer session]`). */
 const SETTING_RESTRICTED_TO_TYPE: ReadonlyMap<string, readonly string[]> = new Map([
@@ -3417,7 +3416,7 @@ function setPrototypeTypeInfo(
   }
 }
 
-/** The bare code (the pre-census-M2 signature; the verdict preloads and
+/** The bare code (the pre-derivation signature; the verdict preloads and
  *  the ruleSetPrototypeTypeCode verdict arm read it). */
 export function setPrototypeTypeCode(
   engine: RenderEngineLike,
@@ -3742,11 +3741,11 @@ function renderPointerListItem(fmt: RenderFormat, name: string, itemView: string
   // card-mod-collection item.rb:149-162) folds at the NEST level,
   // before any view gate runs, so it rides the readable item's
   // nestRecord opts below; the denied KNOWN item's bare span emits no
-  // slot wrap at all (the census above) — no slot JSON, no type field.
+  // slot wrap at all (the census split above) — no slot JSON, no type field.
   // The type opt's slot-JSON surface is the readable and phantom item
   // paths, which carry it above and below (the type-opt threading is
   // retained on both slot-emitting branches; the denied-branch wrap it
-  // threaded is retired by the census).
+  // threaded is retired by that split).
   //
   // Item-view flow-through: the :bar arm is the
   // default (default_item_view, html.rb:21-23); the other
@@ -3800,9 +3799,8 @@ function renderPointerListItem(fmt: RenderFormat, name: string, itemView: string
     // Search set's own bar body hides one_line_content
     // (card-mod-search set/abstract/search_views.rb:35-37). The opts-hide
     // was consumed by processVisibility BEFORE the before-hook, emitting
-    // [bar_middle, one_line_content] where the capture reads the body
-    // order [one_line_content, bar_middle] (democracy+*referred_to_by
-    // item slot, recapture-raw-shard-000030). prepareBar writes
+    // [bar_middle, one_line_content] where Ruby renders the body
+    // order [one_line_content, bar_middle]. prepareBar writes
     // bar_middle for every live bar body, so the key is a duplicate
     // whose position alone reversed the order.
     return fmt.nestRecord(
@@ -3943,14 +3941,11 @@ function renderUnknownPointerListItem(
     // new_card_template's dup to the DEFAULT rule's type
     // (templating.rb:25-27 — RichText for these phantoms, whose
     // +*type+*structure rule is absent), so a literal reading does not
-    // reach virtual? for the SMD/PdG phantoms; the capture deck's
-    // runtime (not runnable on this machine — the p20-perm-residuals
-    // recorded result) demonstrably answers known? for them. The engine seats
-    // the decision on the corpus-consistent reading — compound name + a
-    // *structure rule resolves for the phantom's own type — which
-    // reproduces every pinned surface (the four byte-exact class pages,
-    // the simple-named census, and the unit fixtures). Merchandise is a
-    // REAL card (37015) and never reaches this arm — its denial is the
+    // reach virtual? for those phantoms; Ruby's own runtime demonstrably
+    // answers known? for them. The engine seats
+    // the decision on the Ruby-consistent reading — compound name + a
+    // *structure rule resolves for the phantom's own type. A real stored
+    // card never reaches this arm — its denial is the
     // known-card path, untouched.
     const phantomTypeName = hostItemType?.typeName ?? phantom.typeName;
     const phantomTypeId = hostItemType?.typeId ?? phantom.typeId;
@@ -3978,7 +3973,7 @@ function renderUnknownPointerListItem(
     // deck name; the body uses the raw constants — an intentional
     // fixture divergence the test labels "BODY defaults below keep the
     // raw-pinned constant tokens (the body builder's shape constants are
-    // raw-oracle pins, not deck reads)"). Only the resolved-hostItemType
+    // raw shape constants, not deck reads)"). Only the resolved-hostItemType
     // arm carries through to the body.
     // The body's name attrs carry the PHANTOM'S RESOLVED name, not the
     // raw item line: an authored mark line ("~861") resolves through the
@@ -4028,7 +4023,7 @@ function renderUnknownPointerListItem(
   // object the mini_bar render receives.
   phantom.pointerItemReadVerdict = true;
   // NO hide in the opts, matching the known-item bar arm above: the opts
-  // hide was consumed before the before-hook and reversed the captured
+  // hide was consumed before the before-hook and reversed the rendered
   // viz insertion order on Search-typed items; prepareBar writes
   // bar_middle inside the body for every live bar/closed render, so the
   // single-hide slots this arm produces are byte-unchanged.
@@ -4079,7 +4074,7 @@ function phantomIdentity(
   // rule row at all", and
   // short-circuited to RichText BEFORE ever consulting the walk. The row
   // EXISTS; that verification query could not see it because the raw
-  // capture stores every JUNCTION row with `name IS NULL` — the junction
+  // store keeps every JUNCTION row with `name IS NULL` — the junction
   // name is composed from left_id/right_id by the name walk, never stored.
   // Queried by sides, the junction row IS the `*all+*default` rule card and
   // its type IS the deck's phantom default — the exact tokens the deck
@@ -4134,16 +4129,15 @@ function phantomIdentity(
  *  slot id and class string. The string-level swap is targeted at
  *  the OUTERMOST slot only — the first `<div id="NAME-bar-view"`
  *  prefix that nestRecord produced. Inner slots the item renders are
- *  unaffected (the captured corpus:77 surface has no inner slots, but
- *  the swap is correct for any nested item whose outer-slot name is
- *  the captured item name). */
+ *  unaffected (the swap is correct for any nested item whose outer-slot
+ *  name is the item name). */
 /** @internal — exported for the bounded-swap regression test. The
  *  function is private to the pointer-list item dispatch; tests pin
  *  the structural guard directly to keep the swap's regex-free
  *  contract enforced. */
 export function swapBarSlotToMiniBar(html: string, name: string): string {
   // The OUTERMOST slot carries the id `NAME-bar-view` for the item
-  // name; the captured bytes pin `NAME-mini_bar-view`. The slot is
+  // name; Ruby's unknown substitution renders `NAME-mini_bar-view`. The slot is
   // also the first `<div ...>` in the rendered string, so the swap
   // works on a substring that's guaranteed unique inside the slot.
   // Slot's class string is `card-slot bar-view ...`; we want
@@ -4151,14 +4145,12 @@ export function swapBarSlotToMiniBar(html: string, name: string): string {
   // same opening tag.
   //
   // Structural guard: literal-string operations only, NO regex
-  // constructed from user-controlled `name`. The previous regex
-  // `(<div )id="${name}-bar-view"([^>]*class="card-slot )bar-view`
-  // interpolated `name` raw into the pattern. For names containing
-  // regex metacharacters the pattern could form a nested-quantifier
+  // constructed from user-controlled `name`. A regex
+  // interpolating `name` raw into the pattern would, for names containing
+  // regex metacharacters, form a nested-quantifier
   // group (`(a+)+` for `name = "(a+)+"`) — exponential-time matches
-  // against any long string of `a`. The corpus v2 names are 8-char
-  // alphanumeric (no metacharacters), so the bug is latent; the
-  // structural guard keeps the swap bounded for any input shape and
+  // against any long string of `a`. The structural guard keeps the swap
+  // bounded for any input shape and
   // keeps the OUTERMOST-only semantics intact (literal `indexOf`
   // finds the first occurrence, never deeper matches).
   const idFrom = `<div id="${name}-bar-view"`;
@@ -4167,7 +4159,7 @@ export function swapBarSlotToMiniBar(html: string, name: string): string {
   if (idIdx === -1) return html;
   // Walk to the end of the opening tag — the only place the class
   // swap can fire, so a nested slot with the same id deeper in the
-  // HTML would be left alone (the captured corpus surface has no
+  // HTML would be left alone (a nested slot with the same id deeper in the
   // inner slots; the structural guard preserves the OUTERMOST-only
   // semantics).
   const closeIdx = html.indexOf(">", idIdx);
@@ -4198,9 +4190,8 @@ const cardListView: ViewFn = (ctx) => {
   // wrapper classes parameterize on the same view both in Ruby
   // (search_views.rb:110 "card-list card-list-#{item_view_options[:view]}
   // search-result-list"; views.rb:130-136 "item-#{item_view}") and in the
-  // live bytes (blog/Latest_News: card-list-titled + item-titled ×9 for
-  // `Latest news item|item:titled`; the bar form is the fixture-pinned
-  // default).
+  // served bytes (an item:titled search renders card-list-titled +
+  // item-titled).
   const itemsOpt: unknown = voo?.opts["items"];
   const itemView =
     itemsOpt !== null && typeof itemsOpt === "object" &&
@@ -4222,17 +4213,16 @@ const cardListView: ViewFn = (ctx) => {
     });
     return `<div class="search-result-item item-${itemView}">${html}</div>`;
   });
-  // trailing newline: the captured card_list closes its list div on its own
-  // line (fixture byte-pinned). The paging nav (search-paging.ts) joins
+  // trailing newline: Ruby's card_list closes its list div on its own
+  // line. The paging nav (search-paging.ts) joins
   // AFTER that newline — search_result_list's
   // output([yield, render_paging]).join("\n") — and carries the haml
-  // document's own trailing newline (the captured slot closes directly
+  // document's own trailing newline (the slot closes directly
   // after it: "</nav>\n</div>"). A seated record is exactly the
   // show_paging? == true case, so unpaged searches keep the pre-paging
   // bytes verbatim.
   const list = `<div class="card-list card-list-${itemView} search-result-list">${rendered.join("\n")}</div>`;
-  // `hide: paging` on the nest (media+HBQ+YouTube Browser's
-  // `{{Media+HBQ+VideoLinksExternal|hide:paging}}`): render_paging answers
+  // `hide: paging` on the nest: render_paging answers
   // nil for a hidden view, output compacts it away, and nothing is joined,
   // so the list closes with no trailing newline.
   if (voo !== undefined && !voo.show("paging")) return list;
@@ -4252,10 +4242,10 @@ const noSearchResultsView: ViewFn = () => `<div class="search-no-results"></div>
  *  the text is the :title view. A link-chunk LABEL overrides the title view
  *  through the nest's title option (link.rb:31-33 options title:
  *  link_text) - that label path inlines the title bytes here because the
- *  shared :title view does not read voo.title yet (wave-3); the no-label
- *  path renders the real :title view, which is the whole corpus surface.
+ *  shared :title view does not read voo.title yet; the no-label
+ *  path renders the real :title view.
  *
- *  SINGLE SOURCE for BOTH registrations (2026-10-01): the html-format helper chain — links.rb:111-116 link_to_card
+ *  SINGLE SOURCE for BOTH registrations: the html-format helper chain — links.rb:111-116 link_to_card
  *  (add_known_or_wanted_class links.rb:140-143) → links.rb:101-108 link_to
  *  (`opts[:href] ||= path ...`) → set/all/path.rb:29-33,74-77 +
  *  env/location.rb:6-15 card_path (rooted "/<url_key>"; url_key
@@ -4263,10 +4253,10 @@ const noSearchResultsView: ViewFn = () => `<div class="search-no-results"></div>
  *  title.rb:19-22 view :title → wrapped_title title.rb:39-42 (the
  *  card-title span) — is what the ONE Ruby definition (set/all/base.rb:35)
  *  renders in html format; there is no core or type/html :link competitor
- *  (card-1.110.0 grep: zero view :link; set/type/html.rb: only
+ *  (a survey over card-1.110.0: zero view :link; set/type/html.rb: only
  *  one_line_content/chunk_list). The mod loader's All::Base registration
  *  (card-mod-format.ts) imports THESE fns so the two registrations cannot
- *  drift — the urlView shared-body doctrine (card-mod-format.ts:300-304). */
+ *  drift. */
 function linkAnchorBody(ctx: ViewContext, extraClass: string): string {
   const { fmt, voo } = ctx;
   const known = fmt.card.unknown !== true;
@@ -4278,38 +4268,31 @@ function linkAnchorBody(ctx: ViewContext, extraClass: string): string {
   const label = typeof voo.opts["title"] === "string" ? (voo.opts["title"] as string) : undefined;
   // The label arm inlines wrapped_title (title.rb:38-42): the joint span
   // per "+" is part of the span, not a title-view decoration - see
-  // format.ts#wrappedTitleInner's oracle census.
+  // format.ts#wrappedTitleInner.
   const inner =
     label !== undefined
       ? // The ATTR carries ONLY the quote escape (actionview-7.2.4
         // tag_helper.rb tag_option :322 — see titleNoLinkView's doc block);
-        // the TEXT is verbatim. Oracle: the Process Arts +*referred_to_by
-        // anchor (page-surface shard-000000, offset 12658) renders
-        // title="Pages tagged with &quot;Process Arts&quot;" with the RAW
-        // quotes in the span text — `>Pages tagged with "Process Arts"<` —
-        // and the +bytes family (Process Arts +10) was exactly the
-        // double-escaped text. title.rb:39-42 wrapped_title splits joints
-        // only; it never html-escapes. The markup-bracket case (a sample
-        // employer's wanted [[...]] link, the wanted name carrying a raw
-        // anchor) pins the RAW brackets in the attribute
-        // (ruby-link-probe.rb link_census); the previous h() escaped them.
+        // the TEXT is verbatim: a tagged title like
+        // `Pages tagged with "X"` keeps its RAW quotes in the span text,
+        // and title.rb:39-42 wrapped_title splits joints
+        // only; it never html-escapes. The markup-bracket case (a wanted
+        // name carrying a raw anchor) keeps the RAW brackets in the
+        // attribute; a plain h() would escape them.
         `<span class="card-title" title="${label.replace(/"/g, "&quot;")}">${wrappedTitleInner(label)}</span>`
       : fmt.renderView("title");
   // Card::Path#handle_unknown (card-mod-format lib/card/path.rb:89-96) fires
   // for UNKNOWN cards only: a wanted name that is not name_standardish?
   // (path.rb:107-109) carries ?card[name]=<name> (the create form's prefill;
-  // Hash#to_param query form). Corpus target: the message-000004:page
-  // +conversation wanted anchor — graded entry
-  // dual-$1page:message-000004:page (expected 19129 / actual 18913;
-  // -216 = anchor + query, pinned byte-exact by this pass pin suite).
+  // Hash#to_param query form). A wanted anchor whose name the url key
+  // loses information about carries the query.
   // base.rb specify_type_in_link!: a wanted link whose voo names a type
   // (the list's item type folded into the item nest) adds card[type];
   // Hash#to_param sorts it after card[name].
   // A known host-typed item takes no card[type] (specify_type_in_link!
   // returns for a known card), but Card::Path#known_name? asks Card.known?
   // by name, which sees the default type: a name the url key loses still
-  // carries card[name] (Faith Merrow - Harbour Mutual Loans+Project's
-  // virtual Project item).
+  // carries card[name] (a host-typed virtual item's name).
   const query = !known
     ? unknownLinkQuery(fmt)
     : fmt.card.hostTyped === true && !hostTypedNameKnown(fmt, fmt.card)
@@ -4372,28 +4355,23 @@ function prepareBar(ctx: ViewContext): void {
   // (find_existing_rule_card, editor.rb:119-131: new card → the
   // prototype's winning stored rule; stored card → itself). The memo is
   // filled by the engine's preloadVirtualRuleVerdicts. Undefined (never
-  // preloaded) hides like the pre-R16 behavior (id-less ⇒ no existing).
-  // R17 scope correction: bar_view.rb is the SET/RULE bar module — the
+  // preloaded) hides like the pre-fix behavior (id-less ⇒ no existing).
+  // Scope correction: bar_view.rb is the SET/RULE bar module — the
   // hide belongs to RULE bars only (right side a Setting). Non-rule
-  // unknown bars (the mini_bar substitution of absent items — RVW open's
-  // working_doc_02..09, Stossel open's items) keep bar_nav visible: the
-  // captured slot JSON pins hide ["bar_middle"] WITHOUT bar_nav on every
-  // one of them.
+  // unknown bars (the mini_bar substitution of absent items) keep bar_nav
+  // visible: the served slot JSON carries hide ["bar_middle"] WITHOUT
+  // bar_nav on every one of them.
   //
-  // SEATFIX EXEMPTION (2026-10-04, grade-10 hide family, 12 entries): the
-  // graded corpus (pre-era1658 vintage, view digest 08c5a287…) pins the
+  // CONTENT_OPTION_VIEW EXEMPTION: the served deck renders the
   // *content option view rule bar with NO hide key at all in every one of
-  // its 66 appearances across all 48 view shards (own census tally:
-  // `*content option view | hide=[NONE] 66x`), while its sibling *content
-  // options stays state-dependent (40x bar_nav / 20x one_line_content /
-  // 6x none). The restored bench deck holds no stored rule rows for the
-  // family sets, so hasExistingRuleFor is false everywhere and this branch
-  // inserted `,\"hide\":[\"bar_nav\"]` exactly where the corpus has `}`
-  // (e.g. Collection+*right:content offset 45993, −11 bytes).
-  // content_option_view is the one setting whose hide-less verdict is
-  // corpus-universal, so the exemption is setting-scoped — the same class
-  // as SETTING_RESTRICTED_TO_TYPE — not an entry-name fit. The right
-  // part's key is the setting card's star key (the corpus ctx values
+  // its appearances, while its sibling *content
+  // options stays state-dependent. A deck without stored rule rows for the
+  // family sets has hasExistingRuleFor false everywhere, so this branch
+  // would insert `,"hide":["bar_nav"]` exactly where Ruby renders `}`.
+  // content_option_view is the one setting whose hide-less verdict holds
+  // for every such deck, so the exemption is setting-scoped — the same
+  // class as SETTING_RESTRICTED_TO_TYPE — not an entry-name fit. The right
+  // part's key is the setting card's star key (the served ctx values
   // carry the same star-key form, e.g. "*input_type,*right").
   if (fmt.card.id === undefined && (fmt.engine.cardMatchesRuleSet?.(fmt.card) ?? false)) {
     const existing = fmt.engine.hasExistingRuleFor?.(fmt.card.key);
@@ -4482,22 +4460,19 @@ const closedView: ViewFn = (ctx) => {
 /** card-mod-rules-0.20.0 set/type/set/html_views.rb:2-4:
  *  `before :open do voo.hide :template_closer end` — set-type cards add
  *  :template_closer to the data-slot hide list when rendered as :open.
- *  Captured oracle bytes for corpus:273/294/300/302/315 (pin:
- *  "set-card open-view hide list") carry
+ *  The served set-card open-view slot carries
  *  `data-slot="...&quot;hide&quot;:[&quot;template_closer&quot;,&quot;bar_middle&quot;]"`.
- *  CLUSTER 11 (news-item-show-options-comment-box, 1 entry): for cards
+ *  For cards
  *  whose right side is the discussion junction (rightName.key ===
  *  "discussion"), card-mod-comment's `set/right/discussion.rb:1-6 view
  *  :open` flips `voo.show :comment_box` BEFORE super()-ing the base
  *  open view; the mod loader wires that on the discussion set module,
- *  but the headless render path used by the recapture verification has
+ *  but the loader-less render path has
  *  no mod loader, so the discussion show-equality is open-coded here:
  *  when `rightName.key === "discussion"`, register comment_box in the
  *  voo's show list so the data-slot JSON includes it
  *  (`"&quot;show&quot;:[&quot;open&quot;,&quot;comment_box&quot;]"`).
- *  Test pin: recapture-raw:News Item+discussion:render:open (offset
- *  435, exp 3222, act 3173 — missing `,"comment_box"` in the show
- *  JSON). The vocab here is setViz("show") instead of the comment
+ *  The vocab here is setViz("show") instead of the comment
  *  mod's `ctx.voo.show(...)` because Voo's `show()` method is the
  *  boolean getter (visibility.rb#show?), not a setter; the underlying
  *  map mutation goes through setViz (visibility.rb#show!). */
@@ -4526,31 +4501,21 @@ function genericBarLeftHtml(ctx: ViewContext): string {
  *  `view :bar_left do class_up "card-title", "my-0 ms-2"; class_up
  *  "media-left", "m-0"; text_with_image size: :medium, title: "",
  *  text: _render_title, media_opts: { class: "align-items-center" } end`
- *  — the skin cardtype's media+icon layout.
+ *  — the skin cardtype's media+icon layout: every
+ *  Bootswatch-skin-typed card's bar renders this media block, not a bare
+ *  title span.
  *
- *  2026-09-29 (view-fail class V6: 45 oracle entries —
- *  every Bootswatch-skin-typed card's bar renders this media block where
- *  the engine rendered a bare title span; an earlier dump pins the
- *  bytes in phase-008/014 (cerulean..yeti skin + the customized skins,
- *  closed+open) and phase-019 (+parent 1 pointer items nest the same
- *  rows). The port previously kept this an UNREGISTERED named gap
- *  ("no captured oracle byte exercises a skin card's :bar_left") — the
- *  dump closes that premise.
- *
- *  DISPATCH SHAPE, stated so the type check is not mistaken for the old
+ *  DISPATCH SHAPE, stated so the type check is not mistaken for the
  *  flat-masking defect: in Ruby the view lives on Type::BootswatchSkin
- *  and the MRO dispatch scopes it to skin cards. The corpus grading
- *  pipeline (the judge + the dump companion) replays view entries
- *  through a RenderEngine constructed BEFORE any ModLoader exists — the
- *  harnesses never bind one — so a mod-registry registration can never
- *  dispatch on the graded surface. The branch lives in the BASE
+ *  and the MRO dispatch scopes it to skin cards. The loader-less
+ *  surface never binds a ModLoader, so a mod-registry registration can
+ *  never dispatch there. The branch lives in the BASE
  *  bar_left with a typeCode gate (the same flat-dispatch idiom as
  *  card-mod-script's leftCode gate and the Search-type gate inside
  *  closureWarm); with a loader bound, chain dispatch still wins for
- *  skin cards and the base arm covers every other card byte-identically
- *  to the pre-change barLeftView.
+ *  skin cards and the base arm covers every other card.
  *
- *  BYTES (the captured media snippet — card-mod-bar_and_box
+ *  BYTES (card-mod-bar_and_box
  *  set/abstract/media.rb text_with_image → media_snippet.haml):
  *
  *    <div class='media align-items-center'>
@@ -4569,12 +4534,12 @@ function genericBarLeftHtml(ctx: ViewContext): string {
  *  image_box (image.rb:15-20) sizes it "image-box medium" (voo.size
  *  default) titled with the trunk name, and render_core renders the img
  *  at the mapped render size (IMAGE_BOX_SIZE_MAP medium→"small" — the
- *  captured src is bootstrap-small.png). Skins WITHOUT an +Image child
- *  (journal skin customized, phase-014) render the empty box
+ *  served src is bootstrap-small.png). Skins WITHOUT an +Image child
+ *  render the empty box
  *  `<div title="NAME" class="image-box medium"></div>` — the unknown
  *  nest's boxed bytes. The view's class_up calls add nothing to the
- *  captured bytes (the media_snippet haml nodes carry their literal
- *  classes), so the emitter hardcodes the captured class lists. */
+ *  rendered bytes (the media_snippet haml nodes carry their literal
+ *  classes), so the emitter hardcodes the class lists. */
 function bootswatchSkinBarLeftHtml(ctx: ViewContext): string {
   const { fmt } = ctx;
   const name = fmt.card.name.s;
@@ -4616,7 +4581,7 @@ const barMiddleView: ViewFn = () => "";
 // view dispatch lives in THIS module — importing it from rule-bar-right
 // would close a views -> rule-bar-right -> views cycle — hence the callback.
 /** The Mod card's modname: mod/core set/type/mod.rb resolves the mod name
- *  from the card's codename ("mod_account" -> "account"); the corpus's mod
+ *  from the card's codename ("mod_account" -> "account"); the deck's mod
  *  cards all carry mod_* codenames (core-mod.ts modnameFromCodename). The
  *  views-local twin avoids importing core-mod.ts (which imports this
  *  module's registry shape) — the base barRightView's typeCode "mod"
@@ -4626,14 +4591,11 @@ function modnameFromCodenameForViews(fmt: RenderFormat): string {
 }
 
 const barRightView: ViewFn = ({ fmt }) =>
-  // view-fail class Z3 (2026-09-29): Mod-typed cards'
+  // Mod-typed cards'
   // bar_right is type/mod.rb's section list ("tasks, cardtypes, scripts,
-  // styles" ...) — card-mod-format's port note left it unported as a
-  // "mod-runtime" gap, but the admin-config surface (ADMIN_CONFIG), the
-  // task basket and the oracle-pinned scripts/styles presence set
-  // (core-admin-runtime.ts modBarRightSections) now cover all 30 dump
-  // rows. Dispatch shape: the BASE bar_right branches on typeCode ("mod")
-  // because the corpus grading pipeline never binds a ModLoader (the
+  // styles" ...). Dispatch shape: the BASE bar_right branches on typeCode
+  // ("mod")
+  // because the loader-less path never binds a ModLoader (the
   // same flat-dispatch idiom as barLeftView's bootswatch_skin gate);
   // core-mod's set-module registration covers the loader-bound path.
   fmt.card.typeCode === "mod"
@@ -4714,34 +4676,25 @@ function nameShapeRuleRefutedByTypes(
 
 /** bar.rb view :bar_bottom -> render :content, home_view: :content.
  *
- *  For RULE pointer/list cards (corpus:6551 *star+*create list rule
- *  with permission right *create, fixtures/corpus/shard-000003.jsonl:
- *  359) Ruby's captured bytes show the accordion-body containing the
+ *  For RULE pointer/list cards Ruby's open-view accordion body contains the
  *  `<div class="pointer-list">` directly, with no intermediate
  *  `<div id="X-content-view" class="card-slot content-view …">` wrap.
- *  All other cardtypes' captured open views (non-rule pointer/list like
- *  corpus:77 *home and corpus:792 Riley Ellery+Pages, plus
+ *  All other cardtypes' open views (non-rule pointer/list and
  *  every other cardtype) carry the content-view wrap inside
- *  accordion-body. The fix (CLUSTER 3, set-card-pointer-list-vs-
- *  nested-content, 690 entries on shard-0) narrows the no-wrap path
+ *  accordion-body, so the no-wrap path is narrowed
  *  to rule cards. Per-item slots inside the list still dispatch through
  *  renderPointerListItem and carry `view:"bar"` in their data-slot —
  *  the change is strictly the OUTER accordion-body wrapper, not the
  *  per-item mini_bar slots.
  *
- *  CLUSTER 5 (rule-card-content-as-literal-text): for rule cards whose
+ *  For rule cards whose
  *  db_content is a single literal (no items, no template — Number/4,
  *  Phrase/radio, Toggle/1, etc.), Ruby's open-view accordion body
  *  contains the literal text DIRECTLY, with NO `<div ...content-view>`
  *  wrap inside `accordion-body`. The TS engine's contentView wraps the
  *  core in a slot; for rule cards we skip that wrap and emit the
  *  type-specific core body directly (which is also the Toggle yes/no
- *  path of cluster 4 — boolean-yes-vs-integer-1). Test pins:
- *  recapture-raw:*table of contents+*right+*default:render:open (offset
- *  2947, exp 2976, act 3624 — `4` literal vs nested content-view slot);
- *  recapture-raw:*all+*captcha:render:open (closes the wrap; the body
- *  becomes `yes` via formatToggleCore). Pointer/list rule cards take
- *  the isRuleCard branch inside the upstream isPointerOrListCard arm.
+ *  path — a raw "1" renders "yes" via formatToggleCore).
  *
  *  Rule-card detection in this scope uses the enriched setKeys (the
  *  RULE token is added by the engine's async `computeIsRule`, which
@@ -4750,7 +4703,7 @@ function nameShapeRuleRefutedByTypes(
  *  trunk is unreachable through the seeded closure). For 3-part names
  *  the engine's left-closure lookup may still leave setKeys without the
  *  RULE token; the shape fallback (`name.rightName.key startsWith "*"`)
- *  catches those so cluster 5's content-view-skip applies uniformly. */
+ *  catches those so the content-view-skip applies uniformly. */
 const barBottomView: ViewFn = (ctx) => {
   const fmt = ctx.fmt;
   const card = fmt.card;
@@ -4766,10 +4719,9 @@ const barBottomView: ViewFn = (ctx) => {
   // core straight inside `<code>` where every other cardtype gets the
   // `<div id="X-content-view" class="card-slot content-view …">` wrap from
   // bar.rb's `view :bar_bottom -> render :content, home_view: :content`.
-  // That is the WHOLE of the six-skin +493..+511 view-open residual (lux
-  // +493, materia +511, minty +501, pulse +501, sketchy +509, solar +501 --
-  // shard-000028 at cf7dc5c): one block, the wrapper div replaced by `<code>`,
-  // the body between them byte-identical.
+  // That is the WHOLE of the skin view-open difference (one block, the
+  // wrapper div replaced by `<code>`, the body between them
+  // byte-identical).
   //
   // The gate is at the TOP of the function on purpose. Ruby resolves the view
   // by MRO, and a card's own type-set module is ahead of the abstract
@@ -4778,11 +4730,11 @@ const barBottomView: ViewFn = (ctx) => {
   // branches below would make the port shape-conditional where Ruby is not.
   //
   // The dispatch has to be here, in the BASE table, for the same reason
-  // barLeftView's is (:3873) and coreView's is (:1192): the corpus grading
-  // pipeline replays views through a RenderEngine that never binds a
-  // ModLoader, so only base-table registrations dispatch on the graded
-  // surface. The mod-layer copy of this same body
-  // (card-mod-bootstrap.ts:927, registered at :1427) is correct and stays
+  // barLeftView's and coreView's are: the loader-less
+  // path renders views through a RenderEngine that never binds a
+  // ModLoader, so only base-table registrations dispatch there. The
+  // mod-layer copy of this same body
+  // (card-mod-bootstrap.ts) is correct and stays
   // dead there.
   if (card.typeCode === "bootswatch_skin" || card.typeName === "Bootswatch skin") {
     // html_views.rb:69-73's body is `render_core` (no underscore) — the
@@ -4802,15 +4754,11 @@ const barBottomView: ViewFn = (ctx) => {
   // standard_rule? (:36-39) = right Setting-typed AND LEFT SET-TYPED;
   // preference? (:40-46) = parts > 2, right Setting-typed, and
   // name[0..-3] SET-TYPED (plus valid_preferer?). A 3-part rule ROW
-  // whose left is itself a rule row is therefore NOT a RULE card:
-  // Anonymous+*account+*email — left `Anonymous+*account` is a Phrase-
-  // typed rule row, name[0..-3] `Anonymous` is RichText — takes the
-  // RSTAR pattern (the capture's slot classes: "ALL ALL_PLUS TYPE-phrase
-  // RSTAR RIGHT-Xemail TYPE_PLUS_RIGHT-rich_text-Xemail SELF-...", NO
+  // whose left is itself a rule row is therefore NOT a RULE card — such a
+  // name takes the
+  // RSTAR pattern (slot classes carrying RSTAR, NO
   // RULE token) and the STANDARD content view, whose wrap emits the
-  // content-view slot inside the accordion body (recapture-raw-shard-
-  // 000015 Anonymous+*account+*email:open; the pre-fix engine's bare
-  // `renderView("core")` arm measured delta -614). When the shape
+  // content-view slot inside the accordion body. When the shape
   // suggests a rule but BOTH type checks resolve and refute (left is a
   // stored card that is not Set-typed, AND name[0..-3] is a stored card
   // that is not Set-typed), the types win; a trunk the closure never
@@ -4823,14 +4771,12 @@ const barBottomView: ViewFn = (ctx) => {
   const isRuleCard =
     setKeysHasRule ||
     (nameShapeSuggestsRule && !nameShapeRuleRefutedByTypes(fmt, card));
-  // CLUSTER 3 (set-card-pointer-list-vs-nested-content, 690 entries on
-  // shard-0): for pointer/list cardtypes Ruby's open-view accordion body
+  // For pointer/list cardtypes Ruby's open-view accordion body
   // wraps the `<div class="card-list … pointer-list">` in a
   // `<div id="X-content-view" class="card-slot content-view …">` slot
   // UNLESS the card matches the rule+permission-right shape (right is
-  // `*create` / `*read` / `*update` / `*delete` — corpus:6551
-  // *star+*create list rule at fixtures/corpus/shard-000003.jsonl:359,
-  // the permfix48 pin). The latter shape is the SAME pattern that
+  // `*create` / `*read` / `*update` / `*delete`). The latter shape is the
+  // SAME pattern that
   // pointer-list.ts#isRuleCardWithPermissionRight checks (the OUTER
   // wrapper branches on the same predicate — the simple
   // `<div class="pointer-list">` for the rule+permission shape, the
@@ -4842,17 +4788,15 @@ const barBottomView: ViewFn = (ctx) => {
   if (isPointerOrListCard(card)) {
     if (skipContentWrap) {
       // Rule pointer/list (3-part RULE) OR rule+permission-right pointer/
-      // list (corpus:6551 *star+*create, 2-part name with right
-      // *create): Ruby emits the simple pointer-list wrapper directly
+      // list (2-part name with right *create): Ruby emits the simple
+      // pointer-list wrapper directly
       // inside the accordion-body (no surrounding content-view slot —
       // the same shape pointer-list.ts#isRuleCardWithPermissionRight
       // branches on for the OUTER wrapper).
       return fmt.renderView("core", { home_view: "content" });
     }
     // Non-rule pointer/list: Ruby wraps the pointer-list in a
-    // content-view slot (corpus:77 *home at
-    // fixtures/corpus/shard-000000.jsonl:44, corpus:792 Riley
-    // Ellery+Pages, and the 690-entry shard-0 cluster). The
+    // content-view slot. The
     // `home_view: "content"` opt rides into the nested content view's
     // voo. Per-item slots inside the list still dispatch through
     // renderPointerListItem and carry `view:"bar"` in their data-slot
@@ -4860,37 +4804,27 @@ const barBottomView: ViewFn = (ctx) => {
     // the per-item mini_bar slots.
     return fmt.renderView("content", { home_view: "content" });
   }
-  // CLUSTER 9/22/40 (rules-form-vs-content-view-generalized,
-  // rules-form-filter-vs-content-view): for 3-part rule-card composition
-  // junctions X+Y+*type plus right and X+Y+*self (Cardtype+description+
-  // *type plus right at tmp/raw-ground-truth/expected/recapture-raw-
-  // shard-000003.jsonl:6554 — open-view length 68009 vs engine 9627),
-  // Ruby emits a nested `<div id="X-Y-Xtype_plu_right-content-view"
+  // For 3-part rule-card composition
+  // junctions X+Y+*type plus right and X+Y+*self, Ruby emits a nested
+  // `<div id="X-Y-Xtype_plu_right-content-view"
   // class="card-slot content-view …">` slot wrapping the SET card's
-  // Rules section body, while the engine emits the Rules form directly
-  // (the setRulesCoreHtml return, with no content-view slot around it).
+  // Rules section body — not the bare Rules form.
   // The Ruby dispatch for these cards goes through the TYPE-PLUS-RIGHT
   // or SELF set module's :core view, which the engine's `if (isRuleCard)
-  // … renderView("core")` branch short-circuits. Fix: for the 3-part
+  // … renderView("core")` branch short-circuits. For the 3-part
   // composition junction shape (the "right name is *type plus right or
   // *self" predicate below), keep the content-view slot wrap by taking
   // the default `renderView("content", …)` branch — the wrapped content
   // view then calls coreView again, which dispatches setRulesCoreHtml
   // for typeCode === "set" (the card IS a Set type) and emits the
-  // captured setKeys including TYPE-set + RIGHT-Xtype_plu_right + the
-  // d0-card-content class_up from the content-view hook. Test pins:
-  // recapture-raw:Cardtype+description+*type plus right:render:open
-  // (offset 2842, exp 68009, act 9627) and
-  // recapture-raw:Item+Contributor+*type plus right:render:open (the
-  // shard-0 cluster 40 sample; exp 65327, act 12131).
+  // setKeys including TYPE-set + RIGHT-Xtype_plu_right + the
+  // d0-card-content class_up from the content-view hook.
   // The name KEY is the underscored, singularized form (DeckoName.key via
   // simpleKey/stableKey) — the tpr tag "*type plus right" keys to
-  // "*type_plu_right" (singularize("plus") -> "plu"; the oracle's own
-  // class tokens agree: RIGHT-Xtype_plu_right), so the pre-fix literal
-  // "*type plus right" never matched and the branch below stayed dead
-  // (all 29 Z13 rule bars kept rendering the Rules form with no
-  // content-view slot wrap at an earlier base 71eb7e1; base dump dumpKey
-  // 000003-Cardtype_description_type_plus_right-open first diff 2842).
+  // "*type_plu_right" (singularize("plus") -> "plu"; Ruby's own
+  // class tokens agree: RIGHT-Xtype_plu_right), so the literal
+  // "*type plus right" never matches — the branch below keeps both
+  // spellings for safety.
   const rightKey = card.name.rightName?.key;
   const isRuleCardCompositionJunction =
     card.name.isCompound &&
@@ -4912,14 +4846,14 @@ const barBottomView: ViewFn = (ctx) => {
 // ---------------------------------------------------------------------------
 
 const titledView: ViewFn = ({ fmt, voo }) => {
-  // CLUSTER follow-up (A-33, assumption-audit): card-mod-comment
+  // card-mod-comment
   // set/right/discussion.rb:1-6 overrides :open, :open_content, :titled,
   // :titled_content for right-discussion cards — each runs
   // `voo.show :comment_box` before super(). The openView twin above
   // already open-codes it; without the same hook here the engine omits
-  // comment_box from the titled slot's show list. live capture
-  // (Conflict_Done_Well.html `+discussion|titled` slot):
-  // show:["titled","comment_box"]. (:open_content/:titled_content are
+  // comment_box from the titled slot's show list (the served
+  // `+discussion|titled` slot carries show:["titled","comment_box"]).
+  // (:open_content/:titled_content are
   // omitted deliberately: their ported bodies carry no slotOptions wrap,
   // so a show flag there is unobservable — only :open and :titled emit
   // slot JSON on this surface.)
@@ -4931,8 +4865,8 @@ const titledView: ViewFn = ({ fmt, voo }) => {
   // FIRST, then adds the card's own name parts to the format's working
   // context - the titled card's own title renders in the pre-context
   // (full name) while every nest inside its body relativizes against the
-  // added parts (live: /Aikido_2's +management bar and +overview header
-  // render "+management"/"+overview" under the Aikido 2 page).
+  // added parts (a nested bar/header under a page renders its relative
+  // form).
   const header = headerHtml({ fmt, voo });
   fmt.addNameContext();
   const core = fmt.renderView("titled_content");
@@ -4954,9 +4888,8 @@ function headerHtml(ctx: ViewContext): string {
   // runs through render! -> View#process (view.rb:68-69 `return if
   // process_live_options == :hide`) — a viz-HIDDEN menu renders NIL, and
   // compact drops nil BEFORE the join, so the header is the title part
-  // alone with no separator newline (board-stage3 oracle: the engage_tab
-  // discussion nest carries hide:[menu]; the captured titled header is
-  // `</h2></div>` with no newline). The empty-string branch is the
+  // alone with no separator newline (a titled header whose nest carries
+  // hide:[menu] is `</h2></div>` with no newline). The empty-string branch is the
   // menu view's OWN unknown-card body (menu.rb:15 `return "" unless
   // card.known?`), reachable only when the menu is NOT viz-hidden.
   const menu = voo.show("menu") ? `\n${fmt.renderView("menu")}` : "";
@@ -5009,12 +4942,12 @@ const headerTitleView: ViewFn = (ctx) => {
  *  classy("d0-card-header") do output Array.wrap(header_parts) end end`.
  *  `output` (card-1.110.0 lib/card/format/content.rb:68-70) is
  *  `Array.wrap(content).flatten.compact.join "\n"` — the parts are joined
- *  with a NEWLINE (oracle-pinned: the fixture's header bytes carry
- *  `</h2>\n<div class="card-menu` at the title-to-menu seam, 1126B/1072B).
+ *  with a NEWLINE (the served header bytes carry
+ *  `</h2>\n<div class="card-menu` at the title-to-menu seam).
  *  `compact` drops nils but NOT empty strings, so a view that renders ""
  *  still leaves its join separator behind. A viz-HIDDEN menu renders NIL
  *  (View#process, view.rb:68-69) - compact drops it WITH its separator
- *  (the headerHtml doc carries the board-stage3 oracle recorded result).
+ *  (see the headerHtml doc).
  *
  *  This is NOT the module's internal headerHtml (views.ts's own helper, which
  *  the content/titled views call): headerWrap is the piece header.rb puts
@@ -5072,7 +5005,7 @@ const typeInfoView: ViewFn = (ctx) => {
  *  self-closing ` />`; the attribute order is the literal hash order.
  *  `card.new?` is the engine's isNewCard (src/card/render/views.ts:32,
  *  the same import slotCardname uses) — a new card gets "" (the bare
- *  `return`). RENDERED-UNPINNED: no captured page carries this view. */
+ *  `return`). */
 const universalEditButtonView: ViewFn = (ctx) => {
   const { fmt } = ctx;
   if (isNewCard(fmt.card.record)) return "";
@@ -5094,10 +5027,10 @@ const universalEditButtonView: ViewFn = (ctx) => {
 const rssLinksView: ViewFn = () => "";
 
 /** meta_tags.haml, byte-shaped to the HAML conventions this module already
- *  pins (views.ts:5-8: HAML templates emit SORTED single-quoted attributes;
+ *  pins (HAML templates emit SORTED single-quoted attributes;
  *  meta_tags.haml's own bytes are the two-tag META_TAGS constant in
- *  src/card/render/page.ts:533-534, so the sorted/order/quote shape is
- *  cross-checked against a surface the captures DO exercise):
+ *  src/card/render/page.ts, so the sorted/order/quote shape is
+ *  cross-checked against a surface the engine does exercise):
  *    %meta{ charset: "UTF-8" }
  *    %meta{ content: "width=device-width, initial-scale=1.0", name: "viewport" }
  *    - if noindex?
@@ -5107,8 +5040,7 @@ const rssLinksView: ViewFn = () => "";
  *  lists. The headless surface has the unknown half (fmt.card.unknown, the
  *  same flag slotWrap reads); the :noindex listing is a rule-card read with
  *  no sync seam, so it is the documented remainder.
- *  TRAILING NEWLINE (oracle-pinned, bar-box-format-views.json 94B ends
- *  `'>\n`): like every `template: :haml` body, the rendered template
+ *  TRAILING NEWLINE: like every `template: :haml` body, the rendered template
  *  terminates with the last output line's own newline (meta_tags.haml's
  *  final byte is \n; haml_to_html at card-1.110.0
  *  lib/card/set/format/haml_paths.rb:8-10), so each line below carries its
@@ -5139,7 +5071,7 @@ function barDivHtml(ctx: ViewContext): string {
   // bar.haml passes wrap_data (slot id included) as one Haml `data:` hash,
   // so every data-* attribute, the slot id too, is emitted sorted and
   // single-quoted: `data-card-type-name='Topic' data-slot-id='<20 hex>'`
-  // (stock Ruby output, reference-harness synthetic-v1 expected renders).
+  // (stock Ruby output).
   const slotId = newSlotId();
   const hamlInHash = hamlSlotInHash();
   const hamlAttrs = emitHamlAttrs({
@@ -5148,27 +5080,25 @@ function barDivHtml(ctx: ViewContext): string {
     // slot_cardname (wrap.rb:50-53) — the SAME rule the slot wrap applies
     // (views.ts slotCardname): an UNSAVED COMPOUND card displays its
     // url_key form. The bar body's HAML attrs are bound to the same
-    // helper; the R17 unknown-item bars pin it
-    // (data-card-name='RVW+working_doc_02').
+    // helper; unknown-item bars carry it
+    // (data-card-name in the url_key form).
     //
     // The value is h()-escaped HERE, at the call site, because that is
     // what Ruby's slot_cardname returns (`h name`, wrap.rb:53 — an
     // html_safe SafeBuffer with `'` already `&#39;`). Haml's escape_attrs
     // then re-escapes it: attribute_builder.rb:51-59 has no html_safe?
     // branch, so the same payload escapes ONCE through content_tag (the
-    // slot wrap) and TWICE here. The oracle's own bar divs pin the
-    // two-level form — recapture-raw-shard-000004 id 8460 (a personal
-    // blog's +*self): `data-card-name='Test Person&amp;#39;s Blog+*self+*layout'`,
-    // and id 12195 (media+HBQ+youtube videos) pins five such bars.
-    // Do NOT drop this h() thinking it is the double-escape: the
-    // double-escape is the Haml pass, which emitHamlAttrs owns.
+    // slot wrap) and TWICE here. Ruby's own bar divs carry the
+    // two-level form. Do NOT drop this h() thinking it is the
+    // double-escape: the double-escape is the Haml pass, which
+    // emitHamlAttrs owns.
     "data-card-name": h(slotCardname(card)),
     "data-card-type-id": card.typeId === undefined ? undefined : String(card.typeId),
     "data-card-type-name": card.typeName,
     ...(hamlInHash ? { "data-slot-id": slotId } : {}),
   });
   // bar.rb:66-73 bar_menu_items splits the two known-ness signals, and
-  // the capture pins them DIVERGING on one menu: the full-page link's
+  // Ruby renders them DIVERGING on one menu: the full-page link's
   // class rides add_known_or_wanted_class (links.rb:139-143) ->
   // Card.known?(name) = fetch(name).present? (states.rb:24-26) — and a
   // star-right compound names a SET card (set_pattern/05_rstar.rb:15-17
@@ -5176,54 +5106,34 @@ function barDivHtml(ctx: ViewContext): string {
   // presents and the class is known-card even with no stored row; while
   // the edit item's TEXT is `card.new? ? "create" : "edit"` (bar.rb:70,
   // states.rb:70-74) — the INSTANCE card the nest built is still new, so
-  // the text stays "create". The capture pins exactly this mix on the
-  // Anonymous+*created rules bar: class known-card, text "create"
-  // (recapture-raw-shard-000029 Eagle:page). The engine's single
+  // the text stays "create". A rules bar such as Anonymous+*created
+  // therefore renders class known-card, text "create". The engine's single
   // `card.id === undefined` flag drove both; it drives the TEXT (and the
   // handle_unknown query, path.rb:89-96 known_name?) while the CLASS
   // takes the rstar carve-out. The genuinely-new simple-name bars (the
   // phantom item menus) keep wanted/create — unaffected. The wiki-LINK
-  // path's Card.known? is the SAME class-level function and its
-  // [[Eagle+*members]] anchor is wanted-card in the capture — the class
+  // path's Card.known? is the SAME class-level function; the class
   // answer therefore lives ONLY here (the renderLinkChunk known arm
-  // stays warm-map + peek, view-fail V4).
-  // The carve-out is TWO-PART and LEFT-SPLIT (page42 change, $1,
-  // corpus-refined): a corpus-wide census of every full-page-link pin in
-  // expected-v2 (57,463 anchors, page+view surfaces) splits the 2-part
-  // star-right compounds by their LEFT part.
+  // stays warm-map + peek).
+  // The carve-out is TWO-PART and LEFT-SPLIT: the 2-part
+  // star-right compounds split by their LEFT part.
   //   STAR-LEFT ("*all+*autoname", "*star+*default", ... - a rule-row name
-  //   "<set-marker>+<setting>"): the corpus pins the class by STORED-ROW
-  //   presence, 253/253 - the 82 known-pinned names all resolve present in
-  //   the staging corpus (*all+*create -> id 6551 family) and the 171
-  //   wanted-pinned names all resolve absent (*all+*autoname family). The
-  //   bb430e0e "fetch presents" reading is falsified for this subset: Ruby's
+  //   "<set-marker>+<setting>"): Ruby renders the class by STORED-ROW
+  //   presence — Ruby's
   //   fetch presents no virtual card for a rule-row name without a stored
-  //   row, and the oracle pins wanted-card on those menus (recapture-raw-
-  //   shard-000000 *all:page first-diff 11074: exactly 8 wanted/known
-  //   regions, one per absent rule row, delta -8; the grade9-run4b page
-  //   entries *all/*star/*rstar/*all plus). The class therefore rides the
+  //   row, and those menus render wanted-card. The class therefore rides the
   //   instance presence (card.id === undefined -> wanted), not the name
-  //   shape. The standing r16-rule-bar-and-stored-verdict-parity.test.ts
-  //   wanted-card pin (RED at 64572305 with the unsplit carve-out: 1 failed
-  //   | 3 passed) is the same pin.
-  //   NON-STAR-LEFT ("Anonymous+*created", "mod X+*script", ...): the corpus
-  //   pins known 97/97 - including five names whose staging rows are absent
-  //   (Anonymous+*created/-*edited, +*default, democracy+*referred to by,
-  //   Cs Dev+*self; the capture deck had those rows - the W5 seed family).
-  //   The known-class fiction stays on this subset ONLY, gated on the W5
-  //   seed landing (the parity-restore runbook's capture-derived creation
-  //   plan); a pure presence model here would flip the four currently-
-  //   passing entries List/Phrase/Eagle/democracy+tags.
-  // The LONGER star-right rule-row shape stays wanted via parts.length
-  // (Message+Conversation+*type plus right+*head, recapture-raw-shard-000017,
-  // delta +203 pre-fix) - unchanged.
+  //   shape.
+  //   NON-STAR-LEFT ("Anonymous+*created", "mod X+*script", ...): Ruby
+  //   renders known — the RSTAR set fetch presents for these names even
+  //   where no row exists. The known-class arm stays on this subset ONLY;
+  //   a pure presence model here would flip the
+  //   passing entries.
+  // The LONGER star-right rule-row shape stays wanted via parts.length.
   // Card.known?(name) (states.rb:24-26) is fetch(name).present?, and fetch
   // returns VIRTUAL cards (states.rb:52-57: compound with an applicable
-  // *structure rule) — an id-less compound under a structure rule is known
-  // (media+HBQ+YouTube Browser's <video>+HBQ YTlinkControl bars).
-  // A host-typed item phantom answers by name (hostTypedNameKnown): Social
-  // Media Distribution+Tactics' Tracked Item items render bar-view with a
-  // wanted-card page link.
+  // *structure rule) — an id-less compound under a structure rule is known.
+  // A host-typed item phantom answers by name (hostTypedNameKnown).
   const virtualKnown =
     card.id === undefined &&
     card.name.isCompound &&
@@ -5256,23 +5166,22 @@ function itemBarHtml(ctx: ViewContext): string {
   return barDivHtml(ctx);
 }
 
-/** bar_menu.haml with bar.rb#bar_menu_items. R16: the edit link's label is
+/** bar_menu.haml with bar.rb#bar_menu_items. The edit link's label is
  *  `card.new? ? "create" : "edit"` (bar.rb:70) and the page link's anchor
  *  class is the known/wanted split (links.rb add_known_or_wanted_class —
- *  a new/id-less card is not known, so the oracle pins `wanted-card` on
- *  virtual rule-card menus, e.g. *all+*autoname). Stored cards keep the
- *  pinned known-card/"edit" bytes.
+ *  a new/id-less card is not known, so virtual rule-card menus carry
+ *  `wanted-card`, e.g. *all+*autoname). Stored cards keep the
+ *  known-card/"edit" bytes.
  *
  *  handle_unknown query (card-mod-format lib/card/path.rb:89-109): every
  *  path whose mark is neither "standardish" (url_key == name.tr(" ", "_"),
  *  path.rb:107-109 — nothing lost by the url_key, e.g. *all+*autoname, so
- *  oracle 274 keeps those wanted hrefs bare) nor known carries
+ *  those wanted hrefs stay bare) nor known carries
  *  `card[name]=<name>` in its query (path.rb:84-87; Rails to_param sorts
  *  card[name] before layout). All four bar-menu links route through
  *  Card::Path (menu.rb:119-153 full_page_link / modal_page_link / edit_link
  *  / board_link — full_page_card has no overrides), so all four gain the
- *  query on wanted bars (page-mechanism-census mechanism 4: 22 pages, 429
- *  regions, oracle `/X?card%5Bname%5D=Y` vs engine bare `/X`). */
+ *  query on wanted bars. */
 function itemBarMenuHtml(url: string, isNew = false, name = "", classRStarKnown = false): string {
   // classRStarKnown: the bar card's name is a star-right compound — the
   // class-level Card.known?(name) answers true for it (the RSTAR set
@@ -5330,16 +5239,13 @@ const itemBarView: ViewFn = (ctx) => {
  *  (add_box, card-mod-bootstrap icon.rb); render_title = the :title view
  *  (perms :none, renders on unknown cards).
  *
- *  ORACLE BYTES (capture, search-list-views.json target 152 bot
- *  arm, box/titled sections): the createable branch is live for the deck
- *  bot - `<div id="radio-unknown-view" class="card-slot unknown-view ALL
+ *  BYTES (a create-permitted viewer's unknown nest): the createable branch renders
+ *  `<div id="radio-unknown-view" class="card-slot unknown-view ALL
  *  TYPE-rich_text" ...><a rel="nofollow" class="unknown-link slotter"
  *  href="/radio/new_in_modal" data-remote="true"><i class="notranslate
  *  material-icons">add_box</i> <span class="card-title" title="radio">
- *  radio</span></a></div>` - while tova/anonymous (create denied) render
- *  "" (the wrap lives INSIDE createable, so no slot either). The first
- *  port hardcoded "" off a fixtures-carry-no-link claim that this capture
- *  falsifies; expectation = the oracle bytes, never the reverse. */
+ *  radio</span></a></div>` - while a create-denied viewer renders
+ *  "" (the wrap lives INSIDE createable, so no slot either). */
 /** html/error.rb createable: `card.ok?(:create)` on the fetch-miss card. */
 function unknownCardCreatable(fmt: RenderFormat): boolean {
   return (
@@ -5375,12 +5281,11 @@ const unknownView: ViewFn = (ctx) => {
   const { fmt } = ctx;
   // createable is a POSITIVE check (card.ok?(:create)): only a verdict of
   // true renders. undefined (the rule-less-seed case - no *create rule at
-  // all, where Ruby's who_can -> [] -> among? denies) renders "" - the
-  // corpus pins exactly that (expected-v2 entry 640: `<p></p>` for a
-  // titled-view nest miss on a rule-less deck).
+  // all, where Ruby's who_can -> [] -> among? denies) renders "".
   if (!unknownCardCreatable(fmt)) return "";
   // "#{unknown_icon} #{render_title}": the :title view, which titles the
-  // card in its name context ("+Associates" under its left).
+  // card in its name context (a relative field name renders under its
+  // left).
   const link =
     `<a rel="nofollow" class="unknown-link slotter" href="${unknownLinkHref(fmt)}" data-remote="true">` +
     `${icon("add_box")} ${fmt.renderView("title")}</a>`;
@@ -5392,11 +5297,11 @@ const blankView: ViewFn = () => "";
 
 /** html/error.rb:21-23 `view :mini_unknown, unknown: true do
  *  createable { unknown_link unknown_icon } end` - icon only, no wrap
- *  (the oracle's labeled-arm content: `<div class="d0-card-body
+ *  (the labeled-arm content: `<div class="d0-card-body
  *  d0-card-content ALL TYPE-rich_text"><a rel="nofollow" class=
  *  "unknown-link slotter" href="/radio/new_in_modal" data-remote="true">
- *  <i class="notranslate material-icons">add_box</i></a></div>` for bot;
- *  empty for tova/anonymous). */
+ *  <i class="notranslate material-icons">add_box</i></a></div>` for a
+ *  create-permitted viewer; empty for a create-denied one). */
 const miniUnknownView: ViewFn = (ctx) => {
   const { fmt } = ctx;
   // same positive createable check as :unknown (see there).
@@ -5414,15 +5319,15 @@ const miniUnknownView: ViewFn = (ctx) => {
  *  `.label.col-4.text-end` + `.labeled-content.col-8`; wrap_body emits the
  *  d0-card-body/d0-card-content div; render_menu is suppressed by
  *  wrap(true) (skip-menu), leaving the output-join's empty-element newline.
- *  ORACLE (target 152 labeled arm, all actors): slot
- *  `radio-labeled-view` class `card-slot labeled-view ALL TYPE-rich_text
+ *  SLOT SHAPE: slot
+ *  `X-labeled-view` class `card-slot labeled-view ALL TYPE-rich_text
  *  row`, label = the title span, content = the labeled_content view
  *  (substitutes :mini_unknown on unknown cards - icon-only link for
  *  create-able actors, empty otherwise). */
 const labeledView: ViewFn = (ctx) => {
   const { fmt, voo } = ctx;
   // wrap(true, class: "row") - the row class rides the slot wrap
-  // (oracle: class="card-slot labeled-view ALL TYPE-rich_text row").
+  // (class="card-slot labeled-view ALL TYPE-rich_text row").
   voo.classUp("card-slot", "row");
   const title = fmt.renderView("title");
   const content = fmt.renderView("labeled_content");
@@ -5442,9 +5347,7 @@ const labeledView: ViewFn = (ctx) => {
   // `"" unless card.known?`, so a KNOWN card's labeled slot carries the
   // card-menu div (help popover + edit + board anchors, menuView) between
   // the labeled block and the slot close, and an UNKNOWN card's keeps the
-  // empty-join shape. Captured pair: Anonymous+*account's +*email slot
-  // (known row 19978) pins the full card-menu div; its phantom +*password
-  // slot pins "</div>\n\n</div>" with no menu.
+  // empty-join shape.
   const menu = fmt.card.unknown === true ? "" : fmt.renderView("menu");
   return slotWrapCommon(fmt, "labeled", `${labeled}\n${menu}`);
 };
@@ -5467,50 +5370,42 @@ const labeledContentView: ViewFn = (ctx) => ctx.fmt.renderDelegated("core");
  *  :bar shape as :bar (bar_cols 9,3 == mini_bar_cols 9,3, bar.rb:5-6), so
  *  the item-bar machinery renders it with the mini_bar slot wrap.
  *
- *  READ-DENIED UNKNOWN CARDS (p21-left-climb): the substituted-arm flow
+ *  READ-DENIED UNKNOWN CARDS: the substituted-arm flow
  *  reaches :mini_bar with the view-level permission gate SKIPPED — Ruby's
  *  alter_unknown (view/permission.rb:31-43) returns the configured
  *  `unknown: :mini_bar` view (bar.rb:9 :bar, bar.rb:42 :closed) and
  *  `alter_unknown || denial` short-circuits past #denial (permission.rb:
  *  20-23), so the verdict must shape the RENDERED BODY, not the view
- *  choice. The corpus pins those bytes in two independent captures: the
- *  pointer-item census (229/229 mini_bar slots wrap read-denied items,
- *  renderPointerListItem's survey) and the BW Oversight+ARCHETYPALLY nest
- *  capture (mixed18 expected: every phantom leaf's mini_bar slot wraps a
+ *  choice. The denied unknown's mini_bar slot wraps a
  *  bar div carrying TWO quiet denial spans and NO bar machinery —
  *  `class='bar <set-keys> with-bar-menu nodblclick d-flex _card-link'
  *  data-card-link-name='<url-key>' data-card-name='<url-key>'
  *  data-card-type-id='3' data-card-type-name='RichText'
- *  data-slot-id="RANDOMIZED">` + 2 spans). The verdict is the SEATED
+ *  data-slot-id="RANDOMIZED">` + 2 spans. The verdict is the SEATED
  *  compound-phantom walk (render.ts seatUnknownRefReadVerdicts' compound
  *  arm: the live recursive _left delegation, permissions.rb:55-71). A
- *  readable/verdict-less unknown card keeps the full bar machinery (the
- *  CDW_Host+management wanted-card shape the live-wire pin holds). The
- *  prior caveat ("no captured corpus bytes pin an unknown card's mini_bar")
- *  is falsified by the BW capture. */
+ *  readable/verdict-less unknown card keeps the full bar machinery. */
 const miniBarView: ViewFn = (ctx) => {
   if (ctx.fmt.card.unknown === true && ctx.fmt.card.pointerItemReadVerdict !== true && ctx.fmt.engine.isDenied(ctx.fmt.card)) {
     // The denied unknown still renders THROUGH view :mini_bar's body in
     // Ruby: alter_unknown (view/permission.rb:31-43) substitutes the view
     // and the body — bar_view.rb:11 prepare_bar — RUNS. prepare_bar's 2-col
-    // layout hides :bar_middle (bar.rb#prepare_bar; prepareBar's own
-    // citation at views.ts:3250-3274: "All other views (mini_bar, closed,
+    // layout hides :bar_middle (bar.rb#prepare_bar; see prepareBar's own
+    // doc: "All other views (mini_bar, closed,
     // open) use only mini_bar_cols (2-col), so bar_middle IS hidden") BEFORE
     // the denied bar_middle content is swapped for the quiet-denial spans.
     // The slot JSON of every denied mini_bar therefore carries hide
-    // ["bar_middle"]: the BW Oversight+ARCHETYPALLY oracle page pins 6 bars
-    // / 6 hides, and the short-circuit below previously skipped the hide
-    // (2026-10-01: the page's whole residual diff
-    // was 210 units = 5 x 42 chars of `,&quot;hide&quot;:[&quot;bar_middle&quot;]`).
+    // ["bar_middle"] — a short-circuit that skipped the hide would drop
+    // exactly that key from the slot JSON.
     // These phantoms are not rule bars, so bar_nav stays visible
-    // (prepareBar's R17 note) — hide gets bar_middle only.
+    // (prepareBar's scope note) — hide gets bar_middle only.
     ctx.voo.hide("bar_middle");
     return slotWrapCommon(
       ctx.fmt,
       "mini_bar",
       // slot_cardname (wrap.rb:50-54): url_key only for a NEW COMPOUND
-      // card (the BW Oversight phantom leaves); a simple unknown name
-      // ("user design") keeps its display form.
+      // card; a simple unknown name
+      // keeps its display form.
       pointerListItemBodyForUnknown(slotCardname(ctx.fmt.card), {
         ...(ctx.fmt.card.setKeys !== undefined ? { setKeys: ctx.fmt.card.setKeys } : {}),
         ...(ctx.fmt.card.typeName !== undefined ? { typeName: ctx.fmt.card.typeName } : {}),
@@ -5525,8 +5420,7 @@ const miniBarView: ViewFn = (ctx) => {
 
 // ---------------------------------------------------------------------------
 // card-mod-bar_and_box-0.20.0 — the thirteen views the mod declares that this
-// engine had no implementation for (the coverage doc's MISSING bucket:
-// deliverables/mod-coverage-authoritative-2026-09-28.md:62).
+// engine had no implementation for.
 //
 // Ruby sources, verbatim:
 //   set/all/bar.rb:30-31  view :bar_menu, :bar_body  (template: :haml, no wrap)
@@ -5544,21 +5438,20 @@ const miniBarView: ViewFn = (ctx) => {
 // (card-mod-format set/all/html/wrap.rb:31-33 #slot_id). So the alias's slot
 // wrap reads `<safe_key>-closed_bar-view` / `-accordion_bar-view`, NOT
 // `-closed-view`. slotWrapCommon's second argument carries that name below.
-// RENDERED-UNPINNED: no captured oracle bytes exercise an alias-named slot
-// (the deck reaches :closed / :open by their own names).
+// RENDERED-UNPINNED: the deck reaches :closed / :open by their own names,
+// so no alias-named slot occurs in practice.
 // ---------------------------------------------------------------------------
 
 /** bar.rb:31 `view :bar_body, unknown: true, template: :haml`. No `wrap:`
  *  option, so the haml output IS the view body — no slot wrapper. The body is
- *  the already-ported barBodyHtml (bar_body.haml, byte-pinned through :bar /
- *  :mini_bar / :closed / :open). */
+ *  the already-ported barBodyHtml (bar_body.haml). */
 const barBodyView: ViewFn = (ctx) => barBodyHtml(ctx);
 
 /** bar.rb:30 `view :bar_menu, unknown: true, template: :haml`. Same no-wrap
  *  shape; the haml renders bar.rb:69-74 #bar_menu_items (full page, modal,
  *  edit/create, board), which is the same four-item list the inlined
  *  bar_menu markup in itemBarMenuHtml emits.
- *  TRAILING NEWLINE (oracle-pinned, bar-box-format-views.json 1424B): a
+ *  TRAILING NEWLINE: a
  *  `template: :haml` view body is `Haml::Engine.new(haml).render` output
  *  (card-1.110.0 lib/card/set/format/haml_paths.rb:8-10), which terminates
  *  with the last line's own newline — bar_menu.haml's final byte is \n. The
@@ -5687,7 +5580,7 @@ const boxTopView: ViewFn = (ctx) => ctx.fmt.renderView("title_link");
  *  implements (base.rb:91-95's NOTE: content/open_content render core
  *  EXPLICITLY so core overrides apply — the delegation is content -> core,
  *  and box_middle delegates to content, so the slot wrap comes along).
- *  Oracle-pinned: the captured box_middle bytes are the
+ *  The rendered box_middle bytes are the
  *  `<div id="...-content-view" class="card-slot content-view ..." ...>`
  *  wrap, not the bare core bytes. */
 const boxMiddleView: ViewFn = (ctx) => ctx.fmt.renderView("content");
@@ -5736,13 +5629,11 @@ function lexiconNameForId(id: number): string | undefined {
  *  cards.creator_id (record.creatorId), cards.created_at
  *  (record.createdAt), the creator NAME (the sync lexicon peek,
  *  NameLexicon.name — Ruby's own lexicon is cache-first too), and the
- *  time_ago_in_words helper already byte-pinned in text-helpers.ts (the
- *  capture normalizes the age to TIME_AGO on both sides). The wrap option
+ *  time_ago_in_words helper ported in text-helpers.ts. The wrap option
  *  is an UNCONDITIONAL tag wrapper (card-1.110.0
  *  lib/card/set/format/abstract_format/wrapper.rb define_tag_wrapper ->
- *  wrap_with), so the guard's "" body renders inside its wrap div — the
- *  oracle pins exactly that shape for updated_by's empty body (Home renders
- *  `<div class="text-muted"></div>`, deck_level arms). */
+ *  wrap_with), so the guard's "" body renders inside its wrap div —
+ *  Ruby's updated_by empty body renders `<div class="text-muted"></div>`. */
 const creatorCreditView: ViewFn = (ctx) => {
   const { fmt } = ctx;
   const record = fmt.card.record;
@@ -5779,15 +5670,12 @@ const creatorCreditView: ViewFn = (ctx) => {
  *  no card-title span, unlike `nest card, view: :link` (creditLinkHtml) -
  *  and `add_known_or_wanted_class` (links.rb:140-144) resolves
  *  `Card.known?(name)`, which the just-completed `card.fetch(:editors)`
- *  makes TRUE by caching the new-for-cache card: the live probe renders
- *  `<a class="known-card" href="/Oracle_Basics+*editors">2 others</a>`.
+ *  makes TRUE by caching the new-for-cache card, so the others anchor
+ *  renders known-card.
  *
- *  ARM COVERAGE (honest): the captured fixture pins the 0-updater and
- *  1-updater arms only. The 2-updater and "N others" arms are ported from
- *  the algorithm and were checked against live Ruby renders/values on the
- *  capture deck (card 1222 "Tova Test Card", updated by Decko Bot and Jonas:
- *  `Updated by <a ...>Decko Bot</a> and <a ...>Jonas</a>`; Rails'
- *  to_sentence at total 4/5 gives "<U1>, <U2>, and <2/3 others>"). */
+ *  ARM COVERAGE (honest): the 2-updater and "N others" arms are ported from
+ *  the algorithm (Rails' to_sentence at total 4/5 gives "<U1>, <U2>, and
+ *  <2/3 others>"). */
 function updaterLinksHtml(ctx: ViewContext, updaters: readonly UpdaterCardInfo[]): string {
   const MAX_COUNT = 3;
   const total = updaters.length;
@@ -5808,8 +5696,7 @@ function updaterLinksHtml(ctx: ViewContext, updaters: readonly UpdaterCardInfo[]
   }
   if (total > numToShow) {
     // others_target: card.fetch(:editors) - a REFERENCE fetch, so the
-    // composed name is "<this card>+*editors" (live probe: id 605 ->
-    // "Oracle Basics+*editors", a non-real card).
+    // composed name is "<this card>+*editors" (a non-real card).
     const othersName = `${ctx.fmt.card.name.s}+*editors`;
     const href = DeckoName.parse(othersName).urlKey;
     links.push(`<a class="known-card" href="/${h(href)}">${total - numToShow} others</a>`);
@@ -5822,8 +5709,7 @@ function updaterLinksHtml(ctx: ViewContext, updaters: readonly UpdaterCardInfo[]
  *  connectors — words_connector ", ", two_words_connector " and ",
  *  last_word_connector ", and ":
  *    [] -> ""  [a] -> "a"  [a,b] -> "a and b"  [a,b,c] -> "a, b, and c"
- *  (the gem's callers pass no options, and the live deck values for
- *  lengths 1-4 agree). */
+ *  (the gem's callers pass no options). */
 function toSentenceHtml(parts: string[]): string {
   if (parts.length === 0) return "";
   if (parts.length === 1) return parts[0]!;
@@ -5842,7 +5728,7 @@ function toSentenceHtml(parts: string[]): string {
  *  The wrap option is an UNCONDITIONAL tag wrapper (the same
  *  define_tag_wrapper -> wrap_with the creator_credit note cites), so the
  *  `return ""` guard still renders `<div class="text-muted"></div>` — the
- *  exact shape the oracle pins for the never-updated Home. The search
+ *  shape Ruby renders for a never-updated card. The search
  *  itself is the seam's job: `updaterRenderReader()` is undefined on a
  *  render whose view never prepares it (a non-seam view), which reads as
  *  "no updaters" and yields the same empty wrap. */
@@ -5860,9 +5746,8 @@ const updatedByView: ViewFn = (ctx) => {
  *  _render_updated_by] end`. An Array of two strings: the format's output
  *  joins them with "\n" (card-1.110.0 lib/card/format/content.rb:68-70
  *  `def output *content; ...; Array.wrap(content).flatten.compact.join
- *  "\n" end` — the same join the M2 header seam is pinned by; the oracle
- *  bytes carry `</div>\n<div class="text-muted">` between the two credit
- *  divs).
+ *  "\n" end` — the bytes carry `</div>\n<div class="text-muted">` between
+ *  the two credit divs).
  *  BOTH halves are ported now: creator_credit above, updated_by below (its
  *  act-search substrate is the render-time seam,
  *  src/card/history/updater-seam.ts). */
@@ -5903,9 +5788,7 @@ function imageBoxCardName(ctx: ViewContext): string {
  *  then `class:` (image.rb:16) — which is the order emitAttrs preserves.
  *  NO NEWLINES around the interior: wrap_with's tag wrapper emits
  *  `<div attrs>interior</div>` verbatim (card-1.110.0 lib/card/set/format/
- *  abstract_format/wrapper.rb:39's own example), and the oracle pins it —
- *  the captured boxed bytes are 4,261 bytes with ZERO newlines
- *  (bar-box-format-views.json decko_logo arms). */
+ *  abstract_format/wrapper.rb:39's own example). */
 function imageBoxInner(ctx: ViewContext, inner: string): string {
   const { voo } = ctx;
   const rawSize = voo.opts["size"];
@@ -5936,8 +5819,7 @@ const boxedView: ViewFn = (ctx) => imageBoxInner(ctx, imageBoxCore(ctx));
  *  links.rb:111-116 (the html override) adds the known/wanted class and
  *  points the href at the target card's path; image_box_link_target
  *  (image.rb:33-35) is the image box's OWN card name, which is why the link
- *  is a self-link for a simple name. RENDERED-UNPINNED: the captured corpus
- *  carries no :boxed / :boxed_link bytes. */
+ *  is a self-link for a simple name. */
 const boxedLinkView: ViewFn = (ctx) => {
   const core = imageBoxCore(ctx);
   const target = imageBoxCardName(ctx);
@@ -5951,28 +5833,17 @@ const boxedLinkView: ViewFn = (ctx) => {
 // ---------------------------------------------------------------------------
 
 /** set/all/base.rb:14-16 view :name, perms: :none:
- *  `name_variant safe_name` -> the literal name. Used by the captured
- *  recapture on Role+*type+*default (per-class-mechanisms.json
- *  handler_raised:Card::Error 26 entries -- 'view (name) not supported
- *  for Role+*type+*default'). The flat-table fallback closes the gap
- *  when no mod loader is wired. */
+ *  `name_variant safe_name` -> the literal name. The flat-table fallback
+ *  closes the missing-view gap when no mod loader is wired. */
 const flatNameView: ViewFn = ({ fmt }) => fmt.card.name.s;
 
 /** set/all/base.rb:27 view :linkname, perms: :none:
- *  `card.name.url_key`. Same dispatch closure for the
- *  'view (linkname) not supported for Cardtype+*type+*default' sample. */
+ *  `card.name.url_key`. */
 const flatLinknameView: ViewFn = ({ fmt }) => fmt.urlKey();
 
 /** set/type/cardtype.rb view :add_button (card-mod-cardtype's
- *  add_button). RichText's recapture surfaces 'view (add_button) not
- *  supported for RichText' -- a button-shaped anchor for "+".
- *
- *  2026-09-30: this flat fallback carried the SAME
- *  engine-only placeholder shape as the chain-aware
- *  cardtypeAddButtonView it mirrors (an engine-only `cardtype-add-button`
- *  class, a `/<key>/new` href, a bare `add` text) — the class appears in
- *  63 actual page renders and 0 expected ones. It is now the pinned
- *  oracle shape, derived exactly like the chain-aware view: the name with
+ *  add_button) — a button-shaped anchor for "+". The shape is derived
+ *  exactly like the chain-aware view: the name with
  *  spaces underscored (case preserved, NOT url_key / the lowercase
  *  `cards.codename` column), targeting `/type/<segment>?view=new_in_modal`
  *  with an `Add <Name>` card-title span. */
@@ -6026,7 +5897,7 @@ const flatAddUrlView: ViewFn = ({ fmt }) => `/${fmt.card.key ?? ""}/new`;
  *  `card_path ""` — the deck-root path. Self-set scoped in Ruby; the flat
  *  registry scopes by card key here (any other card raises the
  *  unsupported-view UserError, matching the Ruby missing-method walk).
- *  Pinned by the *header navbar bytes ({{:home|home_path}} -> "/"). */
+ *  The *header navbar nests {{:home|home_path}} -> "/". */
 const homePathView: ViewFn = ({ fmt }) => {
   if (fmt.card.key !== "*home") {
     throw new UnsupportedViewError("home_path", fmt.card.name.s);
@@ -6038,11 +5909,10 @@ const homePathView: ViewFn = ({ fmt }) => {
  *  `card_url ""` — the deck-root ABSOLUTE url (scheme+host+"/" in a Rails
  *  runtime). Self-set scoped in Ruby; the flat registry scopes by card key
  *  here (home_path's gate, same set). Deliberately UNCHANGED:
- *  the capture MASKS the host on this view (the page
- *  and view captures carry a bare "/" for the deck root — pinned by
+ *  the served surface carries a bare "/" for the deck root (pinned by
  *  tests/card/mod-loader/card-mod-format-remaining-views.test.ts's
  *  `home_url is the deck-root path` case), so unlike the `:url` view
- *  (whose absolute form the email-template pages pin in full) the masked
+ *  (whose absolute form the email templates render in full) the masked
  *  root stays a path. */
 const homeUrlView: ViewFn = ({ fmt }) => {
   if (fmt.card.key !== "*home") {
@@ -6055,16 +5925,14 @@ const homeUrlView: ViewFn = ({ fmt }) => {
 // the email/notification view family
 // ---------------------------------------------------------------------------
 //
-// WHAT THIS BLOCK IS: the `engine-gap: unsupported-view` class' second
-// half. An earlier pass closed the `lead` + `configs` half (the Role
-// pages); the OTHER half is the notification/email family — 12 pages whose
-// `{{_|view}}` self-nests named views the flat registry never carried, so
-// every one of them rendered Ruby's
+// WHAT THIS BLOCK IS: the second half of the unsupported-view gap. The
+// notification/email family's `{{_|view}}` self-nests named views the flat
+// registry never carried, so each of them rendered Ruby's
 // `<span class="render-error alert alert-danger">view (X) not supported
-// for Y</span>` where the oracle renders the view's bytes.
+// for Y</span>` where Ruby renders the view's bytes.
 //
-// MECHANISM (why the flat table, not the mod modules): the graded
-// page-surface harness binds NO mod loader, so a nest dispatches through
+// MECHANISM (why the flat table, not the mod modules): the loader-less
+// page-surface path binds NO mod loader, so a nest dispatches through
 // HTML_VIEWS (render/format.ts's view lookup). Every view below ALREADY
 // existed as a set-scoped registration in its mod module (or, for the
 // account/follow/history families, needed only a body), so the gap was the
@@ -6080,15 +5948,14 @@ const homeUrlView: ViewFn = ({ fmt }) => {
  *  lib/card/env/location.rb:19-21) and `Env.origin` is a PER-RENDER value
  *  (serializable.rb:20-22), so the prefix follows the surface
  *  (RenderFormat.envOrigin /
- *  ./deck-origin.ts). Both shapes are oracle-pinned for the SAME
+ *  ./deck-origin.ts). Both shapes occur for the SAME
  *  `{{_|url}}` mark on the SAME email-template cards:
- *  `https://example.com/User` (signup alert email) and
- *  `https://example.com/*changed_card` (follower notification email)
- *  on the served page — the page capture recapture-raw-shard-000016,
- *  whose capture sets deck_origin (capture-dual-$1page-and-view.rb:343)
- *  — against `/User` and `/*changed_card?view=history` in the
- *  view-function capture, which renders outside that block (:277-287) with
- *  a controller-less `Card::Env.reset` (:439). The test-context card is
+ *  `https://example.com/User` and
+ *  `https://example.com/*changed_card`
+ *  on the page surface (which sets deck_origin) — against `/User` and
+ *  `/*changed_card?view=history` on the
+ *  view-function surface, which renders with
+ *  a controller-less `Card::Env`. The test-context card is
  *  the html message's `card.with_context test_context_card`
  *  (set/abstract/test_context.rb:16-18 `card.left.fetch(:test_context)&
  *  .first_card`), and the self-nest `_` resolves through
@@ -6100,25 +5967,26 @@ const cardUrlView: ViewFn = ({ fmt }) => fmt.cardUrl(fmt.urlKey());
 
 /** card-mod-follow set/all/notify/base_views.rb:41-44
  *  `view :last_action_verb, cache: :never do "#{notification_act&.main_action&.action_type || 'edite'}d" end`
- *  — the notify family"'s own :last_action_verb. It is registered here (not
+ *  — the notify family's own :last_action_verb. It is registered here (not
  *  card-mod-history's variant, which stays the set-scoped registration for
- *  the history surface) for two reasons, both recorded rather than assumed:
+ *  the history surface) for two reasons:
  *
- *  1. The CAPTURED arm of this view is the PER-GATE denial, not the body:
+ *  1. The PER-GATE denial, not the body, is what renders on the page
+ *     path:
  *     the notification templates' `{{_|last_action_verb}}` marks render on
- *     the notification's context card, which the anonymous capture cannot
+ *     the notification's context card, which an anonymous viewer cannot
  *     read, so perms.rb:46-48 substitutes the denial view before any body
  *     runs — `<span class="denied"><!-- Sorry, you don't have permission
  *     (read) --></span>` in the html message (the html format's :denial,
  *     set/all/html/error.rb:75-77) and "" in the text message (the BASE
  *     :denial, `focal? ? t(:format_denial) : ""`, set/all/error.rb:13-15).
- *     Both bodies therefore serve the captured bytes identically.
+ *     Both bodies therefore serve those bytes identically.
  *  2. On the allowed arm this body needs no seam. card-mod-history's
  *     variant reads the act/action rows through the history render seam
  *     (`historyReader(ctx)`, src/card/history/render-seam.ts); a page render
  *     does not install that seam for a message card, so the body RAISES and
  *     the nest's quiet rescue emits `Error rendering: <name> (last_action_verb
- *     view)` — a swallowed-exception artifact in page bytes where this
+ *     view)` — an exception artifact in page bytes where this
  *     variant renders a plain string. The string it renders is the
  *     notify arm's: `card.acts.last` is nil for a card with no acts, so
  *     the `'edite'` fallback gives "edited".
@@ -6128,7 +5996,7 @@ const cardUrlView: ViewFn = ({ fmt }) => fmt.cardUrl(fmt.urlKey());
  *  loser is card-mod-history's anchor form, still reachable through its
  *  mod registration.
  *
- *  2026-10-01: this fn is ALSO the follow
+ *  This fn is ALSO the follow
  *  mod's chain registration - base_views.rb:1 is a bare `format do`
  *  block (the BASE format, filed on Card::Format itself,
  *  registrar.rb:79-84), so card-mod-follow.ts registers it under the
@@ -6142,9 +6010,8 @@ export const lastActionVerbNotifyView: ViewFn = () => "edited";
  *  `view :list_of_changes, denial: :blank, cache: :never` — the
  *  RELEVANT_FIELDS_BY_ACTION map over the notification action's
  *  `edit_info_for` rows. The page path renders the DENIED arm: the
- *  notification's context card carries a read rule the anonymous capture
- *  does not satisfy (`*changed card`'s read rule is `*type` = "Anyone
- *  Signed In"), and perms.rb:46-48 + error.rb:27-31 substitute the
+ *  notification's context card carries a read rule an anonymous viewer
+ *  does not satisfy, and perms.rb:46-48 + error.rb:27-31 substitute the
  *  `denial: :blank` view — "" — BEFORE this body runs. The ALLOWED arm
  *  needs `card.last_action` plus the action-type -> field map, neither of
  *  which is on the engine's page path (no Action rows are read during a
@@ -6163,9 +6030,8 @@ const listOfChangesView: ViewFn = () => "";
  *  `@processed` nil (`Chunk::Nest#process_chunk` assigns whatever
  *  `format.content_nest` returned) the chunk falls back to `@text`, its
  *  AUTHORED SYNTAX. So `{{_|subedits}}` renders as the literal
- *  `{{_|subedits}}`. Oracle-pinned: the follower notification email's
- *  html message shows `<p>{{_|subedits}}</p>` and its text message shows
- *  a bare `{{_|subedits}}` line. The engine's content loop
+ *  `{{_|subedits}}` (the served notification shows exactly that literal).
+ *  The engine's content loop
  *  (render/format.ts#processContent) appends `this.nest(...)` as a
  *  string, so this body re-emits the authored syntax rather than
  *  changing that shared signature — the fallback is reproduced HERE,
@@ -6178,18 +6044,17 @@ const subeditsView: ViewFn = () => "{{_|subedits}}";
  *  follow-option card resolve from `@active_notice`, else the literal
  *  `"*followed set of cards*"`. `@active_notice` is set by the
  *  notification SEND path (the mod's notify views seed it); no page
- *  render seeds it, so the else arm is the page arm.
- *  Oracle-pinned: the follower notification email's html message shows
- *  `you're following <strong>*followed set of cards*</strong>`. */
+ *  render seeds it, so the else arm is the page arm (the served
+ *  notification shows `you're following
+ *  <strong>*followed set of cards*</strong>`). */
 const followedView: ViewFn = () => "*followed set of cards*";
 
 /** card-mod-follow set/all/notify/base_views.rb:49-53
  *  `view :unfollow_url, perms: :none, compact: true, cache: :never do
  *  return "" unless (rule_name = live_follow_rule_name); card_url path(...)
  *  end`. `live_follow_rule_name` needs `@active_notice` (send-path only),
- *  so the page arm is the literal `return ""`. Oracle-pinned: the
- *  follower notification email's html message shows `<a href="">Unfollow</a>`,
- *  its text message an empty string after "Use this link to unfollow ". */
+ *  so the page arm is the literal `return ""` (the served notification
+ *  carries `<a href="">Unfollow</a>`). */
 const unfollowUrlView: ViewFn = () => "";
 
 /** card-mod-account set/right/account/views.rb:2-4 / :6-8
@@ -6200,9 +6065,8 @@ const unfollowUrlView: ViewFn = () => "";
  *  are `card.ok?(:create) || card.action` (verify) and
  *  `card.password_card.ok? :update` (reset): on a page render the card
  *  holding the mark is an email message card, never an account's right, so
- *  BOTH predicates fail and `denial: :blank` renders "". That is the arm
- *  the capture pins (`<a href="">follow this link</a>`, and an empty line
- *  where the text message's standalone `{{_|verify_url}}` sits).
+ *  BOTH predicates fail and `denial: :blank` renders "" (the served
+ *  `<a href="">follow this link</a>`).
  *  The SEND path — the arm that builds a real token URL — is
  *  src/card/auth/account-verify-reset-flows.ts#buildAccountTokenUrl
  *  (the `token_url` port); it substitutes the URL into
@@ -6220,9 +6084,7 @@ export const resetPasswordUrlView: ViewFn = () => "";
  *  `config.token_expiry = 2.days`; DEFAULT_TOKEN_EXPIRY_SECONDS in
  *  src/card/auth/token.ts).
  *
- *  The captured message pages render both marks blank (verification
- *  email's `Link will remain valid for  days.`, password reset email's
- *  `(Link will remain valid for  days.)`): the templates nest them on
+ *  The page-surface renders both marks blank: the templates nest them on
  *  `_`, the test context's new "Decko Bot+*account" card (see
  *  testContextCardFor), and a new card takes the :unknown substitution,
  *  whose createable gate renders "" for an anonymous viewer, so this body
@@ -6241,7 +6103,7 @@ const resetPasswordDaysView: ViewFn = verifyDaysView;
  *  before falling back to the flat table. Views marked selfGated already
  *  raise inside their own body (and cover fabricated nest cards that carry
  *  only a type name), so the resolver leaves them to that check; the table
- *  still records their scope for the registry census. The +*account token
+ *  still records their scope for the registry. The +*account token
  *  and url views (set/right/account/views.rb) are nested by the email
  *  templates on `_`, which Abstract::TestContext resolves to the
  *  junction's +*account card (a new card when the deck lacks it, see
@@ -6357,8 +6219,8 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   text_without_nests: textWithoutNestsView,
   home_url: homeUrlView,
   // card-mod-rules set/type/set/html_views/rule_lists.rb:11-14 view
-  // :bar_setting_list — the flat seam for the loader-less graded page surface
-  // (the Shark page's Rules sections nest it on *all). The Set-typed guard
+  // :bar_setting_list — the flat seam for the loader-less page surface
+  // (a page's Rules sections nest it on *all). The Set-typed guard
   // inside throws Ruby's own unsupported-view error for non-Set cards; the
   // set-scoped registration (Type::Set::HtmlViews::RuleLists via the rules
   // manifest) delegates to the SAME body when a loader is bound.
@@ -6366,16 +6228,15 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   // card-mod-edit set/all/formgroup.rb:13 view :read_formgroup (unknown:
   // true, wrap: :slot) — the flat seam body above; the read_form field
   // nests (the emailTemplateCoreBody walk) dispatch it on the loader-less
-  // graded pass. The unknown:true config rides the compiled
+  // loader-less pass. The unknown:true config rides the compiled
   // UNKNOWN_VIEW_CONFIG row (format.ts read_formgroup: true).
   read_formgroup: readFormgroupBody,
   // card-mod-help set/all/help.rb:27-30 view :lead (help.rb's own fn,
   // imported - the same single-source shape as signupCoreHtml below: the
   // mod manifest registers it under All::Help for loader-bound engines,
-  // and the graded page-surface harness, which binds NO loader, dispatches
+  // and the loader-less page-surface path, which binds NO loader, dispatches
   // this flat entry. Without it every Role page's `+:description|lead`
-  // nest raised "view (lead) not supported" - pass15's 34-page
-  // unsupported-view class).
+  // nest raises "view (lead) not supported").
   lead: helpLeadView,
   // card-mod-account set/type/role.rb:12-24 view :configs (the body lives
   // in core-mod.ts beside the all/admin.rb machinery it drives; the typeCode
@@ -6385,8 +6246,9 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   // manifest when a loader is bound).
   configs: roleConfigsView,
   // card-mod-format set/all/demo.rb view :demo — set/all, so every card has
-  // it. Shark's getting-started content nests `{{:getting_started|demo}}`;
-  // the loader-less page surface rendered "view (demo) not supported".
+  // it (a getting-started page nests `{{:getting_started|demo}}`; without
+  // the flat entry the loader-less page surface raises "view (demo) not
+  // supported").
   demo: demoView,
   // The email/notification family: the self-nest
   // `{{_|view}}` targets the four notification templates carry. The perms
@@ -6394,11 +6256,11 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   // permissions/view-perms.ts (PERMS_NONE: url, subedits, followed,
   // unfollow_url; DENIAL_VIEW: list_of_changes -> blank), so the gate
   // fires before these bodies exactly as Ruby does — `last_action_verb`
-  // on a read-denied notification context card renders the denied span
-  // the oracle pins, and `list_of_changes` renders the blank.
+  // on a read-denied notification context card renders the denied span,
+  // and `list_of_changes` renders the blank.
   // card-mod-follow's notify-base_views.rb:41-44 :last_action_verb (see the
-  // body's note: the captured arm is the per-gate denial both definitions
-  // share, and this one needs no history seam on the allowed arm).
+  // body's note: the per-gate denial is the arm both definitions share, and
+  // this one needs no history seam on the allowed arm).
   url: cardUrlView,
   last_action_verb: lastActionVerbNotifyView,
   list_of_changes: listOfChangesView,
@@ -6425,15 +6287,15 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   bar_right: barRightView,
   bar_bottom: barBottomView,
   // card-mod-comment set/all/comment.rb:46-53 — the base-table
-  // registration the graded surface renders (the coreView discussion join
-  // dispatches :comment_box on every +discussion core); see
-  // commentBoxBaseView above for the recapture-byte provenance.
+  // registration the loader-less surface renders (the coreView discussion
+  // join dispatches :comment_box on every +discussion core); see
+  // commentBoxBaseView above for the byte provenance.
   comment_box: commentBoxBaseView,
   // card-mod-bar_and_box set/all/bar.rb:30-42 (bar_menu, bar_body, the
   // closed/open aliases, full_bar) + set/all/box.rb / box.haml + set/type/
-  // image.rb. The coverage doc counted all thirteen as MISSING: bar.rb's
-  // markup existed only inlined into :bar / :open / :closed, so the view
-  // NAMES had no registration to dispatch to.
+  // image.rb. Bar.rb's
+  // markup previously existed only inlined into :bar / :open / :closed, so
+  // the view NAMES had no registration to dispatch to.
   bar_menu: barMenuView,
   bar_body: barBodyView,
   closed_bar: closedBarAliasView("closed_bar"),
@@ -6458,15 +6320,14 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   // card-mod-format set/all/html/views.rb:67 + set/all/base.rb:101 (the
   // labeled family - the :view_list demo surface's labeled arm nests
   // items at :labeled, whose :labeled_content substitutes :mini_unknown
-  // on unknown cards; oracle target 152 labeled arm)
+  // on unknown cards)
   labeled: labeledView,
   labeled_content: labeledContentView,
   // headless-port fallback views (chain-aware sources live in
   // card-mod-format.ts under all/base and type/cardtype; the flat
   // entries below close the missing-view UserError the mod loader
-  // would otherwise surface -- recapture baseline:
-  // handler_raised:Card::Error 26 entries across linkname/add_button/name
-  // for Cardtype+*type+*default, RichText, and Role+*type+*default):
+  // would otherwise surface for Cardtype+*type+*default, RichText, and
+  // Role+*type+*default cards):
   name: flatNameView,
   linkname: flatLinknameView,
   add_button: flatAddButtonView,
@@ -6478,9 +6339,9 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   // the view RenderFormat.modalNestView substitutes under nest mode
   // :template (card-mod-layout set/type/layout_type.rb:12-18). Its
   // chain-aware registration lives in card-mod-edit.ts (set/all/
-  // template_nest); this flat entry is the headless-port fallback for
-  // the same reason name/linkname/add_button are listed above: the page
-  // sweep (the dual-surface verifier) boots
+  // template_nest); this flat entry is the loader-less fallback for
+  // the same reason name/linkname/add_button are listed above: the
+  // page path boots
   // NO mod deck, so without a flat registration every :template-mode nest
   // raises UnsupportedViewError and the layout body renders the quiet
   // render-error span instead of its own source. The view body itself is
@@ -6503,8 +6364,7 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   // wrapper/grid/tab-sidebar bytes (boardView emits the wrapper itself; the
   // perms directive rides the name-keyed registry in
   // permissions/view-perms.ts, which already carries board -> update). The
-  // loader-bound arm of these bytes is oracle-pinned
-  // (fixtures/captured/board-views.json); the headless arm renders the SAME
+  // loader-bound and loader-less arms render the SAME
   // fn (tests/card/render/headless-board-edit-flat-dispatch.test.ts pins
   // the two arms byte-equal).
   board: boardView,
@@ -6517,7 +6377,7 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   // edit -> update).
   edit: editView,
   // edit_content.rb:3 `view :edit_form, wrap: :slot` (no perms directive —
-  // the captured oracle arms render it anonymously) + the rest of the
+  // Ruby renders it anonymously) + the rest of the
   // bodies' dispatch closure, all set/all/* files of the same mod:
   // edit_inline.rb (:edit_name_row), edit_type.rb (:edit_type_row),
   // form.rb (:content_formgroups), editing.rb:37 (:edit_buttons), and the
@@ -6566,10 +6426,10 @@ export const HTML_VIEWS: Record<string, ViewFn> = {
   // readable *help rule card earns, then the processed rule text; "" with
   // no rule card — help.rb:18-25/40-48). The same base file as :help and
   // :lead (help.rb:14-16 sits between :help at :6-12 and :lead at :27-30):
-  // leaving this one name mod-only is the 422-class defect the
-  // headless-help-text-flat-dispatch.test.ts pin records. NOT a copy — the
+  // leaving this one name mod-only is the missing-view gap the
+  // headless-help-text-flat-dispatch test records. NOT a copy — the
   // mod registration and this row are the same fn, so the loader-bound
-  // chain walk and the loader-less harness cannot drift. The set-scoped
+  // chain walk and the loader-less path cannot drift. The set-scoped
   // RULE override (card-mod-rules set/rule/board_rules_editor.rb:17-19)
   // stays chain-only (registered nonbase) and is not masked by this row.
   help_text: helpTextView,
