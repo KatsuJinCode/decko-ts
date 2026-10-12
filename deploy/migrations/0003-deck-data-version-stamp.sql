@@ -23,8 +23,8 @@
 -- (the engine throws "deck_data_version unreadable"): a silently skipped
 -- check would be a silent staleness window.
 --
--- SCOPE, AND WHAT A card_actions-ONLY WRITE DOES NOT BUMP (read 2026-10-11
--- against this tree's write path; the honesty of this note matters more than
+-- SCOPE, AND WHAT A card_actions-ONLY WRITE DOES NOT BUMP (verified against
+-- this tree's write path; the honesty of this note matters more than
 -- a completeness claim it cannot earn). The triggers cover `cards` and
 -- `card_references` only. Retained render state is derived from those two
 -- tables, so the stamp's job is done. But `card_actions` is a THIRD table the
