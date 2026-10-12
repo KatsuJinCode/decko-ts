@@ -4851,7 +4851,7 @@ export class RenderEngine implements RenderEngineLike {
    *  Stored decks prove the difference: the pointer is a
    *  Pointer junction whose right_id is the card NAMED `parent 1` whose
    *  codename is `parent` - so the junction's composed name is
-   *  `journal skin customized+parent 1`, and the `<skin>+parent` name every
+   *  `<skin>+parent 1`, and the `<skin>+parent` name every
    *  view builds resolves to a DIFFERENT card literally named `parent`.
    *  A direct probe of a full deck confirms it:
    *    fetchByName("<skin>+parent")     -> undefined
@@ -5234,10 +5234,10 @@ export class RenderEngine implements RenderEngineLike {
    *  structure sweep (applyStructureContent) still substitutes every seated
    *  card's *structure template, but does not fetch and seat the cards the
    *  content references. On the normal render that walk seats every card a
-   *  seated card's content names: link targets, date cards' journal
+   *  seated card's content names: link targets, date cards' referenced
    *  junctions, and so on, most of which no view reads. In the live render
    *  each level of that chase cost a discovery pass, and the misses cost
-   *  ~18k virtual-card resolutions per pass on the deepest pages.
+   *  thousands of virtual-card resolutions per pass on the deepest pages.
    *
    *  The skipped references are remembered (skippedStructureRefs). When the
    *  synchronous render asks for one (fetchRenderCard, or the part / rule
