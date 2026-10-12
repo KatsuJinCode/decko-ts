@@ -36,11 +36,11 @@
 //                       floors, capture errors, and which staging deploy was
 //                       measured.
 //
-// PROVENANCE GATES (camera-forensics.md M1/M2 -- why this runner can no longer
-// grade "whatever is in expected-v2"): the 2026-09-29T02:43Z re-photograph was
-// silently fed a swapped corpus because copyFileSync preserves mtimes on
-// win32, staging checked presence not content, and nothing bound a photograph
-// to the corpus it photographed. Therefore:
+// PROVENANCE GATES (why this runner can no longer grade "whatever is in
+// expected-v2"): a re-photograph was once silently fed a swapped corpus
+// because copyFileSync preserves mtimes on win32, staging checked presence
+// not content, and nothing bound a photograph to the corpus it photographed.
+// Therefore:
 //   - the runner REFUSES to grade any expected-v2 tree whose manifest is
 //     missing;
 //   - ... whose two recorded corpus hashes differ (the deck moved under the
@@ -49,12 +49,11 @@
 // Exit code 4 = a provenance/capture-error refusal. A photograph without
 // matching provenance is not a photograph.
 //
-// STAGING-VERIFICATION PREFLIGHT (corpus-swap-hunt lane, 2026-09-30 -- closing
-// the window those gates left open): the 2026-09-30T03:04Z incident swapped
-// four worktrees' STAGED corpora in place (739c470e... -> 090fd7ea..., same
-// 207,228,928-byte size) in the between-runs window, where neither the M5
-// stageFile gate nor the grade-start gate runs; the swap sat undetected ~7h
-// until a grade refused it. Before this runner captures (and therefore before
+// STAGING-VERIFICATION PREFLIGHT (closing the window those gates left open):
+// an incident once swapped several worktrees' STAGED corpora in place —
+// different bytes, identical size — in the between-runs window, where neither
+// the stageFile gate nor the grade-start gate runs; the swap sat undetected
+// for hours until a grade refused it. Before this runner captures (and therefore before
 // ANY staging copy or grading minute is spent), it now hashes the staged
 // corpus tmp/raw-ground-truth/deck-recapture/corpus-v2.sqlite3 and -- when the
 // worktree already holds a capture manifest -- refuses (exit 4, full expected
@@ -65,17 +64,17 @@
 // standalone against any worktree, anytime, in seconds, via the companion
 // tool tools/verify-staged-corpus-provenance.mjs (no capture, no grade).
 //
-// M6 -- CONTENT-ADDRESSED PHOTOGRAPHS: --photograph-root <dir> copies the
+// CONTENT-ADDRESSED PHOTOGRAPHS: --photograph-root <dir> copies the
 // graded photograph (shards + manifest) into <dir>/<corpusSha8>/<runId>/ so a
 // worktree cleanup can never again take a yardstick with it. --photographs
 // <dir> grades FROM such an immutable photograph: its manifest is gated
 // against the live corpus, then its shards are projected (verified copies,
 // never moves) into the repo's expected-v2 for the verifier. Existing trees
-// are never moved by this lane; the frozen yardstick stays where it is.
+// are never moved; the frozen yardstick stays where it is.
 //
 // USAGE
 //   Full post-deploy recapture + grade (the one command):
-//     node capture-and-grade.mjs --repo C:\localProjects\decko-ts-pass13-int
+//     node capture-and-grade.mjs --repo <target-checkout>
 //   Explicit fresh recapture (archives existing shards first):
 //     node capture-and-grade.mjs --repo <repo> --fresh
 //   One-shard proof (smallest shard, no full capture):
@@ -126,13 +125,13 @@
 //                           generation; after an interrupted run, re-run with
 //                           the SAME --run-id to resume: verifier-fast skips
 //                           phases whose artifacts already parse).
-//   --staging-url <url>     default https://170.9.231.182/staging
+//   --staging-url <url>     staging origin for the gate (default compiled in
+//                           below)
 //   --staging-auth <u:p>    basic auth for the direct gate; default reads env
 //                           DUAL_LANE_STAGING_AUTH. When absent, the gate goes
-//                           over ssh (oci-agents key) and curls
-//                           127.0.0.1:3100/_status on the VM.
+//                           over ssh and curls 127.0.0.1:3100/_status on the VM.
 //   --oracle-repo <dir>     checkout holding the Ruby oracle app + corpus
-//                           (default C:\localProjects\decko-ts; used read-only).
+//                           (used read-only).
 //   --quiet                 do not forward the capture's live output lines.
 //
 // EXIT CODES: 0 pass (floors met), 1 fail, 2 stalled, 3 staging gate failed
@@ -170,9 +169,9 @@ import {
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 // dual-lane-verifier-fast.mjs is the grading engine this runner drives. It is
-// not owned by this lane; resolution order: explicit env override, next to
-// this file (the tracked home after this lane merges), then the working
-// location it lives in today (brandonDojoTech tmp).
+// not owned by this file; resolution order: explicit env override, next to
+// this file (its tracked home once merged), then the working location it
+// lives in today.
 function resolveVerifierFast() {
   const candidates = [
     process.env.DUAL_LANE_VERIFIER_FAST,
@@ -256,7 +255,7 @@ function stamp() {
 
 // ---------- floors (explicit, CLI-overridable) ----------
 
-// Defaults are the pass-13 gate: view=8030, page=2069, and a NEW capture-error
+// Defaults: view=8030, page=2069, and a capture-error
 // floor (max 3, target 0). One-shard proofs auto-relax (full-corpus floors are
 // unreachable on one shard and this corpus generation legitimately renders
 // hundreds of page CAPTURE_ERROR sentinels) unless pinned via --floors.
@@ -369,7 +368,7 @@ async function main() {
     }
   }
 
-  // M5: staging is checksum-verified. A pre-existing destination whose bytes
+  // Staging is checksum-verified. A pre-existing destination whose bytes
   // differ from the canonical source is a refused swap, never a skip.
   function stage(src, dst, label) {
     try {
@@ -555,12 +554,12 @@ async function main() {
     // with URI::InvalidURIError at boot. The proven runbook commands use
     // forward slashes -- match that shape exactly.
     //
-    // M3 (camera-forensics.md): the corpus is opened READ-ONLY. The verified
+    // The corpus is opened READ-ONLY. The verified
     // mechanism on this stack (activerecord 7.2.3.2 + sqlite3 2.9.6, both read
     // in C:/Ruby33-x64 this session) is the `readonly` connection param: the
     // resolver passes query params through verbatim into
     // SQLite3::Database.new, whose `options[:readonly]` truthiness selects
-    // SQLITE_OPEN_READONLY. (The receipt's literal "?mode=ro" form does NOT
+    // SQLITE_OPEN_READONLY. (A literal "?mode=ro" form does NOT
     // exist in the gem and would be silently ignored -- corrected here.)
     // The instrument additionally enforces and asserts PRAGMA query_only=1,
     // and the manifest's before/after corpus hash gates the result either way.
@@ -627,7 +626,7 @@ async function main() {
     });
   }
 
-  // ---------- manifest (M1 + M2) ----------
+  // ---------- manifest (corpus identity before/after) ----------
 
   function buildCaptureManifest({ corpusBefore, corpusAfter, counterBefore, counterAfter, cap, startedAt, finishedAt }) {
     return {
@@ -761,7 +760,7 @@ async function main() {
 
   const floors = resolveFloors(opts.floors, Boolean(opts.shard), log);
 
-  // The Ruby instrument to stage (M5: staged copy is sha-verified; the staged
+  // The Ruby instrument to stage (the staged copy is sha-verified; the staged
   // hash is what the manifest records, so the photograph names its camera).
   const oracleScript = resolveOracleScript(ORACLE_REPO);
   if (!oracleScript) {
@@ -773,7 +772,7 @@ async function main() {
   }
   log(`instrument: ${oracleScript}`);
 
-  // M6: content-addressed photograph location, computed as soon as the corpus
+  // Content-addressed photograph location, computed as soon as the corpus
   // hash is known. Existing photographs are never overwritten.
   let photographDir = null;
 
@@ -821,7 +820,7 @@ async function main() {
     // STAGING-VERIFICATION PREFLIGHT (see header): hash the staged corpus
     // BEFORE any staging copy runs, and -- when this worktree already holds a
     // photograph manifest -- refuse unless the bytes still match the sha that
-    // manifest binds. This is the between-runs window the 03:04Z swap used:
+    // manifest binds. This is the between-runs window the past swap used:
     // previously nothing compared the staged corpus to the photograph until
     // grade start, up to hours of capture work later.
     if (!existsSync(TARGET_DECK)) {
@@ -864,7 +863,7 @@ async function main() {
       );
     }
 
-    // M1/M2: identity of the corpus BEFORE the camera touches it.
+    // Identity of the corpus BEFORE the camera touches it.
     const counterBefore = sqliteHeaderChangeCounter(TARGET_DECK);
     log(
       `corpus: sha256=${corpusBefore.slice(0, 16)}... changeCounter=${counterBefore} (${TARGET_DECK})`,
@@ -877,7 +876,7 @@ async function main() {
     const cap = await runCapture(samplePath);
     capExit = cap.code;
 
-    // M1/M2: identity of the corpus AFTER the capture -- both recorded; they
+    // Identity of the corpus AFTER the capture -- both recorded; they
     // must be equal for this photograph to exist.
     const corpusAfter = sha256File(TARGET_DECK);
     const counterAfter = sqliteHeaderChangeCounter(TARGET_DECK);
@@ -925,7 +924,7 @@ async function main() {
     log("capture: skipped (--skip-capture) -- grading the existing expected-v2 tree");
   }
 
-  // M1: the refusal gate, verbatim from the fix recipe -- no manifest, no
+  // The refusal gate: no manifest, no
   // grade; before != after, no grade; grade-start hash != recorded hash, no
   // grade. Runs in every mode (fresh capture, re-grade, photograph
   // projection) against the tree the verifier is about to consume.
@@ -980,7 +979,7 @@ async function main() {
     }, target 0)`,
   );
 
-  // M6 write side: preserve the photograph immutably once it has passed every
+  // Write side: preserve the photograph immutably once it has passed every
   // gate. Never overwrite an existing photograph directory. The address is
   // taken from the gate-verified manifest record (gate passed, so the live
   // corpus equals it), which also makes --photograph-root work in
