@@ -4408,14 +4408,13 @@ function findUriMatch(text: string, from: number): UriMatch | undefined {
  *  19-25) applies by type_id with anchor_name = `card.type_name` - the
  *  set-module dispatch NEVER consults a codename, so `def chunk_list` in
  *  set/type/html.rb binds even when the deck's HTML cardtype card carries
- *  no codename column value (the capture deck's is exactly that shape -
- *  bar-box-format-views-seed.json html_type_card {id 39, name "HTML"} has
- *  no codename key). The port's typeCode is the codename codehash answer
+ *  no codename column value — a perfectly ordinary shape for a seeded
+ *  deck. This module's typeCode is the codename codehash answer
  *  (render.ts peekNameForId by typeId), undefined for such uncoded type
- *  cards, so the codename-only lookup answered :default and the URI pass
- *  autolinked the SVG comment URL Ruby leaves verbatim (the bar-box
- *  deck_level/box `Generator: Sketch ... bohemiancoding.com` oracle
- *  bytes). Name-key derivation mirrors Ruby's Card::Name#key (downcase,
+ *  cards, so a codename-only lookup would answer :default and the URI pass
+ *  would autolink the SVG comment URL Ruby leaves verbatim (a
+ *  deck_level/box `Generator: Sketch ... bohemiancoding.com` body).
+ *  Name-key derivation mirrors Ruby's Card::Name#key (downcase,
  *  whitespace to underscore) for these single-word type names. */
 export function rubyChunkListForCardType(
   typeCode: string | undefined,
@@ -4474,7 +4473,7 @@ export function expandContentLinks(
       // uri.rb:86-89: process_uri_chunk appends @trailing_punctuation
       // AFTER the anchor (`"#{link}#{@trailing_punctuation}"`) - the
       // source's chopped [,.)!:?] byte renders right behind `</a>` (the
-      // `source.example.org</a>.` oracle bytes) - and the SECOND trailing
+      // `source.example.org</a>.`) - and the SECOND trailing
       // dot from uri.rb:69's `sub!(/\.$/,'')` is a REAL removal, so it is
       // not re-emitted here.
       out += `<a${target}${cls} href="${h(uri.href)}">${uri.text}</a>${uri.trailing}`;
