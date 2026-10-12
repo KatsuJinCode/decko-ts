@@ -2,8 +2,8 @@
 //
 // TWO generated files, both "do not edit, edit the generator":
 //
-//  0001-schema.sql   copied from db/schema.sqlite.sql (the schema stream's
-//                    source of truth) so `wrangler d1 execute --file
+//  0001-schema.sql   copied from db/schema.sqlite.sql (the source of truth
+//                    for the schema) so `wrangler d1 execute --file
 //                    migrations/0001-schema.sql` (and `wrangler d1
 //                    migrations apply`) needs nothing outside this directory.
 //  0003-demo-seed.sql copied verbatim from db/seed.sql, the 4-card browse-only
