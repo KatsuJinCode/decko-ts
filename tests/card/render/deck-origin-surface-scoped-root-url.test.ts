@@ -2,7 +2,7 @@
 // PER-CONFIGURATION value (card_url("")), not a constant. This is the pin
 // for the origin-follows-configuration contract.
 //
-// MECHANISM (gem source, C:/localProjects/archive/decko-fork-study/decko/):
+// MECHANISM (gem source):
 //   mod/script/set/all/head_javascript.rb:33-40 `decko_script_variables`
 //     -> :35  "decko.rootUrl": card_url("")
 //   card/lib/card/env/location.rb:19-21
@@ -16,35 +16,31 @@
 //   card/lib/cardio/railtie.rb:28            config.deck_origin = nil  (default)
 //
 // So `card_url("")` is Env.origin + "/", and Env.origin is the DECK'S
-// CONFIGURED deck_origin — or the requestless
-// "" when the deck configures none and there is no controller, which is
-// exactly the view-function capture lane. The two capture lanes photograph
-// two CONFIGURATION states of the same helper:
+// CONFIGURED deck_origin — or the requestless "" when the deck configures
+// none and there is no controller. The two render surfaces exercise two
+// CONFIGURATION states of the same helper:
 //
-//   PAGE lane   `with_capture_page_bucket` assigns
-//               Cardio.config.deck_origin (capture-dual-lane-page-and-view
-//               .rb:391-400, restored at :400)
-//               -> decko.rootUrl='<origin>/'               6588/6588 rows
-//   VIEW lane   `capture_view_lane` (:277-287) renders OUTSIDE that block and
-//               `Card::Env.reset` (:439) left no controller
-//               -> decko.rootUrl='/'                       cards 34754/34758
+//   PAGE surface   the page path renders under the deck's configured
+//                  deck_origin
+//                  -> decko.rootUrl='<origin>/'
+//   VIEW surface   the view path renders OUTSIDE that configuration and
+//                  with no controller
+//                  -> decko.rootUrl='/'
 //
-// THE ENGINE USED TO answer the page lane from a hard-coded constant
-// (`DECK_ORIGIN = "https://culturesmith.com"` in render/deck-origin.ts) —
-// one private deck's identity baked into every deployment. The constant is
-// gone: the engine reads the deck's configured origin through
-// setDeckEnvironment, "" when nothing is configured, and the replay suites
-// install the capture's configuration value (the fixture
-// tests/card/fixtures/capture-page-lane-deck-origin.ts) exactly as the
-// capture script did.
+// THE ENGINE USED TO answer the page surface from a hard-coded constant
+// (DECK_ORIGIN in render/deck-origin.ts) — one private deck's identity
+// baked into every deployment. The constant is gone: the engine reads the
+// deck's configured origin through setDeckEnvironment, "" when nothing is
+// configured, and the replay suites install the configured value through
+// the shared fixture (tests/card/fixtures/capture-page-lane-deck-origin.ts).
 //
 // WHY BOTH HALVES ARE ASSERTED. A "flip" fix (always "/" or always a
 // pinned origin) would satisfy either single test and break the other; the
-// oracle pins both directions, so the pin holds both: a CONFIGURED deck
-// carries its configured origin on both lanes, an UNCONFIGURED deck carries
-// the requestless "/" on both lanes — and the value the configured deck
-// carries is THE DECK'S OWN, not the private value (asserted here with a
-// neutral origin the test configures itself).
+// recorded surface pins both directions, so the pin holds both: a
+// CONFIGURED deck carries its configured origin on both surfaces, an
+// UNCONFIGURED deck carries the requestless "/" on both surfaces — and the
+// value the configured deck carries is THE DECK'S OWN, not the private
+// value (asserted here with a neutral origin the test configures itself).
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -126,9 +122,9 @@ describe("decko.rootUrl follows the deck's configured origin (head_javascript.rb
     try {
       const page = await renderPageBytes(s.engine, "Origin Probe");
       expect(page).toContain(TEST_DECK_ROOT_URL);
-      // The negative half: the private capture-era value is NOT in the
-      // engine anymore — a deck configured with its own origin never
-      // renders another deck's.
+      // The negative half: no hard-coded private origin remains in the
+      // engine — a deck configured with its own origin never renders
+      // another deck's.
       expect(page).not.toContain("https://culturesmith.com");
     } finally {
       resetDeckEnvironmentForViewLane();
@@ -138,9 +134,8 @@ describe("decko.rootUrl follows the deck's configured origin (head_javascript.rb
   it("a deck that configures no origin carries the requestless '/' on BOTH lanes (railtie.rb:28 + env.rb:17-19)", async () => {
     const s = storage!;
     resetDeckEnvironmentForViewLane();
-    // PAGE lane, unconfigured: renderPageBytes under no origin — the
-    // requestless form (the capture's page lane always configured one, so
-    // this arm is Ruby's deck_origin-nil page shape: protocol and
+    // PAGE surface, unconfigured: renderPageBytes under no origin — the
+    // requestless form (Ruby's deck_origin-nil page shape: protocol and
     // host_with_port are what Ruby would interpolate, and this engine has
     // no controller, so "").
     const page = await renderPageBytes(s.engine, "Origin Probe");
