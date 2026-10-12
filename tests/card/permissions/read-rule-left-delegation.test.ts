@@ -217,7 +217,7 @@ describe("read-rule _left delegation (permissions.rb:55-71, read side)", () => {
   });
 });
 
-describe("set-card rules editor (the *sidebar+*self corpus shape)", () => {
+describe("set-card rules editor (the *sidebar+*self rule shape)", () => {
   let html = "";
   beforeAll(async () => {
     html = await storage!.engine.render("*sidebar+*self", "content");
@@ -267,7 +267,7 @@ describe("set-card rules editor (the *sidebar+*self corpus shape)", () => {
   });
 });
 
-describe("pointer-item denial shapes (expected-v2 census)", () => {
+describe("pointer-item denial shapes (the recorded denial census)", () => {
   it("renders a real read-denied pointer item as the bare quiet span, not a mini_bar wrap", async () => {
     const s = storage!;
     // A pointer whose items are one readable and one denied REAL row: the

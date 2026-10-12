@@ -32,7 +32,7 @@ import { scratchDir } from "../../support/scratch-dir.mjs";
 import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 describe("search-nest posture seam", () => {
-  it("defaults to write-time execution (the research verdict's recommendation)", () => {
+  it("defaults to write-time execution (the design default)", () => {
     expect(DEFAULT_SEARCH_NEST_POSTURE).toBe("write-time");
   });
 
@@ -42,7 +42,7 @@ describe("search-nest posture seam", () => {
   });
 });
 
-describeOrSkipLoud(!mirrorAvailable(), "tests/card/one-trip/search-nest-posture.test.ts", "not (!mirrorAvailable())")("search-nest write-time execution (trial-deck mirror)", () => {
+describeOrSkipLoud(!mirrorAvailable(), "tests/card/one-trip/search-nest-posture.test.ts", "not (!mirrorAvailable())")("search-nest write-time execution (local deck mirror)", () => {
   let corpusDriver: SQLDatabaseDriver;
   let sideDriver: SQLDatabaseDriver;
   let sidePath = "";

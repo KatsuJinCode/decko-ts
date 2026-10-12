@@ -37,7 +37,7 @@ import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const hasMirror = mirrorAvailable();
 
-describeOrSkipLoud(!hasMirror, "tests/card/one-trip/closure-builder.test.ts", "hasMirror")("one-trip closure builder (trial-deck mirror)", () => {
+describeOrSkipLoud(!hasMirror, "tests/card/one-trip/closure-builder.test.ts", "hasMirror")("one-trip closure builder (local deck mirror)", () => {
   let sidePath = "";
   let sideDriver: SQLDatabaseDriver;
   let corpusDriver: SQLDatabaseDriver;

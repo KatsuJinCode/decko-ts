@@ -109,7 +109,7 @@ afterAll(() => {
   ruleless?.close();
 });
 
-describe("read permission: the Anonymous viewer (the corpus actor)", () => {
+describe("read permission: the Anonymous viewer", () => {
   it("renders a card readable through *all+*read -> Anyone in full", async () => {
     const s = storage!;
     for (const view of ["open", "content", "closed", "title"]) {

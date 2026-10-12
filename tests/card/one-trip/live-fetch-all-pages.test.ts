@@ -83,7 +83,7 @@ const RENDER_PLANS_DDL =
   " params_json TEXT NOT NULL," +
   " PRIMARY KEY (page_id, seq))";
 
-describeOrSkipLoud(!hasMirror, "tests/card/one-trip/live-fetch-all-pages.test.ts", "hasMirror")("live fetch serves ALL pages with no plan-table lookup (retarget 1282)", () => {
+describeOrSkipLoud(!hasMirror, "tests/card/one-trip/live-fetch-all-pages.test.ts", "hasMirror")("live fetch serves ALL pages with no plan-table lookup", () => {
   let dir = "";
   const savedEnv = {
     gate: process.env.DECKO_ONE_TRIP,

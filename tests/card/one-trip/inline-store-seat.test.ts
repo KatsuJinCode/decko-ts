@@ -52,7 +52,7 @@ class AttachRejectingDriver implements SQLDatabaseDriver {
     if (/^\s*ATTACH\b/i.test(sql)) {
       throw new Error(
         "SQL string could not be parsed: unsupported statement: ATTACH DATABASE '...' AS one_trip " +
-          "(SQL_PARSE_ERROR — the serving DB posture this lane must work under)",
+          "(SQL_PARSE_ERROR — the serving-DB posture the engine must work under)",
       );
     }
     return this.inner.query<T>(sql, params);
@@ -94,7 +94,7 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/inline-store-seat.test.ts", 
       expect(
         attemptedAttaches,
         "the inline posture must issue NO ATTACH statement (observed serving-DB " +
-          "rejection: SQL_PARSE_ERROR for any value — MATERIALIZED-STORE §6.1)",
+          "rejection: SQL_PARSE_ERROR for any value)",
       ).toEqual([]);
 
       // PIN 2: the seat must have actually fetched — one_trip_* tables read

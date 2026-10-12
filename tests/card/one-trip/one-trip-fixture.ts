@@ -51,7 +51,7 @@ let stampedMirrorCopy: string | undefined;
 export async function stampedMirrorCopyPath(): Promise<string> {
   if (stampedMirrorCopy === undefined) {
     const dir = scratchDir("one-trip-stamped-mirror-");
-    stampedMirrorCopy = join(dir, "trial-deck-mirror-stamped.sqlite3");
+    stampedMirrorCopy = join(dir, "mirror-copy-stamped.sqlite3");
     copyFileSync(MIRROR_COPY_PATH, stampedMirrorCopy);
     const loader = new LocalSqliteDriver({ path: stampedMirrorCopy });
     await applyDeckDataVersionStampMigration(loader);
