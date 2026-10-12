@@ -29,7 +29,7 @@
 // single-quoted class attributes and one line per value) with the li/a
 // shapes from page_link_li/page_link (paging_views.rb:38-52 — Rails
 // content_tag double quotes; the a's attribute order aria-label?, class,
-// href, data-remote is the captured order). The nav carries the haml
+// href, data-remote in that order). The nav carries the haml
 // document's trailing newline; the output-join places it after the list
 // div's newline.
 
@@ -48,7 +48,7 @@ export interface SearchResultPaging {
 
 /** The card's URL path form: the name's url key ("Sign up+*type+by name" ->
  *  "Sign_up+*type+by_name" — the same form the slot's data-card-link-name
- *  carries and the oracle hrefs embed). */
+ *  carries and the hrefs embed). */
 function cardUrlPath(name: { urlKey: string }): string {
   return `/${name.urlKey}`;
 }
@@ -57,8 +57,7 @@ function cardUrlPath(name: { urlKey: string }): string {
  *  a page -> the slotter a.card-paging-link with the card's path + limit/
  *  offset params (page_link_path_args, paging_views.rb:59-61: offset =
  *  page * limit; extra_paging_path_args is empty headless — no query vars).
- *  Attribute order aria-label?, class, href, data-remote is the captured
- *  order. */
+ *  Attribute order aria-label?, class, href, data-remote. */
 function pagingItem(
   text: string,
   page: number | false,
@@ -170,8 +169,8 @@ function lastItemOnPage(count: number, offset: number, limit: number): number {
  *   </div>
  *   </nav>
  *
- * with the haml document's trailing newline after </nav> (the captured
- * bytes close the slot directly after it: "</nav>\n</div>"; the
+ * with the haml document's trailing newline after </nav> (the
+ *  bytes close the slot directly after it: "</nav>\n</div>"; the
  * show_paging? == false case renders the empty string, which is what makes
  * the unpaged card_list's output-join trailing newline the ONLY one).
  */
