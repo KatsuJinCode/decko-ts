@@ -1,38 +1,36 @@
-// apply-w5-expectations-follow-live-2026-10-03.mjs -- W5 LIVE-ALIGNMENT LANE's
-// REVERSIBLE, MANIFEST-BOUND corpus expectation swap: the 13 LIVE-DIFFERS
-// entries (6 views + 7 pages, verdicts in
-// brandonDojoTech/tmp/wrong-goal-hunt/w5-live-alignment-verdicts-2026-10-03.json)
-// get today's live bytes (fetched 2026-10-04T00:39:51Z, culturesmith.com,
-// raw captures stored verbatim — the recapture lane's own pattern, whose 77
-// swaps stored live bytes INCLUDING per-response noise) as their corpus
-// expectation.
+// apply-w5-expectations-follow-live-2026-10-03.mjs -- a REVERSIBLE,
+// MANIFEST-BOUND corpus expectation swap: the 13 swap-set entries named by an
+// external verdicts JSON (see the VERDICTS constant and USAGE below) get the
+// served site's bytes (raw captures stored verbatim, INCLUDING per-response
+// noise) as their corpus expectation.
 //
-// THE 2 LIVE-CONFIRMS entries are NOT swapped (expectation live-true: the
-// entries fail for engine reasons). The 5 record entries are NOT swapped
-// (LIVE-UNCHECKABLE: live has no record view surface — 422 "view (record) not
-// supported" x3 / 403 denial x2, live-verified this lane; the record JSON is
-// ActiveRecord metadata, not a live view). Nothing is seeded (the fabrication
-// rule: rows absent from staging stay CORPUS-ROW-MISSING).
+// Entries the verdicts JSON marks live-confirmed are NOT swapped (their
+// expectation is already live-true: the entries fail for engine reasons). The
+// 5 record entries are NOT swapped (the served site has no record view
+// surface — the requests return 422 "view (record) not supported" x3 / 403
+// denial x2; the record JSON is ActiveRecord metadata, not a rendered view).
+// Nothing is seeded (the fabrication rule: rows absent from staging stay
+// CORPUS-ROW-MISSING).
 //
-// BYTE SAFETY (the close-71 discipline, learned here the hard way): the shard
-// files are CRLF-per-line, and a parse-modify-dump write STRIPS the trailing
-// CR of every rewritten line (JSON.parse eats it as whitespace). The write is
-// therefore a BYTE-LEVEL SPLICE of exactly the value's escaped string literal
-// inside the raw line — the line ending bytes and every other field byte are
-// carried through untouched by construction. The inverse stores the ORIGINAL
-// escaped literal span and restores it verbatim (byte-exact, sha-verified).
+// BYTE SAFETY: the shard files are CRLF-per-line, and a parse-modify-dump
+// write STRIPS the trailing CR of every rewritten line (JSON.parse eats it as
+// whitespace). The write is therefore a BYTE-LEVEL SPLICE of exactly the
+// value's escaped string literal inside the raw line — the line ending bytes
+// and every other field byte are carried through untouched by construction.
+// The inverse stores the ORIGINAL escaped literal span and restores it
+// verbatim (byte-exact, sha-verified).
 //
 // Grading note: the harness normalizes data-slot-id hashes on both sides of a
 // comparison (src/testing/diff.ts SLOT_ID_PATTERN -> RANDOMIZED), so swapping
-// raw live hashes in cannot change how a comparison normalizes.
+// raw served-site hashes in cannot change how a comparison normalizes.
 //
 // MODES
 //   --validate-only  No writes. Verify every target entry's CURRENT
 //                    expectation sha matches an external anchor: the verdicts
 //                    JSON's recorded pre-swap expSha, or the committed
 //                    manifest's after (applied) / before (inversed) state.
-//   --apply          Validate the pre-state, splice the live bytes into the
-//                    named field of the named line, record per-shard
+//   --apply          Validate the pre-state, splice the saved live bytes into
+//                    the named field of the named line, record per-shard
 //                    before/after shas + per-entry provenance (live url,
 //                    fetchedAt, sha256, bytes) in the FORWARD manifest, and
 //                    the original escaped literal spans in the INVERSE
@@ -46,7 +44,7 @@
 // USAGE (from the worktree root)
 //   node tools/oracle/apply-w5-expectations-follow-live-2026-10-03.mjs \
 //     --repo <worktree-root> \
-//     --captures C:/localProjects/brandonDojoTech/tmp/wrong-goal-hunt/w5-live-alignment-captures-2026-10-03 \
+//     --captures <saved-captures-dir> \
 //     --mode validate-only|apply|inverse
 
 import { createHash } from "node:crypto";
@@ -235,7 +233,7 @@ if (MODE === "validate-only") {
 
 // ---------- mode: apply ----------
 if (MODE === "apply") {
-  // one-direction guard: refuse any entry already carrying live bytes
+  // one-direction guard: refuse any entry already carrying the swapped-in bytes
   for (const er of entryRecords) {
     if (er.beforeSha256 === er.afterSha256) fail(`${er.id} already carries the live bytes (already applied?)`);
   }
