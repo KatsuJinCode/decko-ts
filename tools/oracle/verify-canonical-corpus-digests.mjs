@@ -1,17 +1,14 @@
-// verify-canonical-corpus-digests.mjs -- re-derive the grade-#10 canonical
-// corpus digests for a given expected-v2 tree, from first principles.
+// verify-canonical-corpus-digests.mjs -- re-derive the canonical corpus
+// digests of record for a given expected-v2 tree, from first principles.
 //
-// Why this script exists (queue-repair + corpus-re-designation lane,
-// 2026-10-04): the original designation
-// (an internal work log, "Decision: option (b)")
-// named a digest CONSTRUCTION in prose -- "sha256 over sorted 'filename
-// sha256' lines" -- which is ambiguous: with or without the trailing newline,
-// and with or without the file extension in the name. The tree it designated
-// () was destroyed mid-run by the hygiene
-// remediation, so the recorded digests can no longer be recomputed from their
-// own source and the ambiguity would otherwise be unfalsifiable. This script
-// prints EVERY plausible variant so the ambiguity is settled by measurement
-// against the two digests of record, not by trusting the prose.
+// Why this script exists: the original designation named a digest
+// CONSTRUCTION in prose -- "sha256 over sorted 'filename sha256' lines" --
+// which is ambiguous: with or without the trailing newline, and with or
+// without the file extension in the name. The tree it originally designated
+// was destroyed before the digests could be recomputed from it, so the
+// ambiguity would otherwise be unfalsifiable. This script prints EVERY
+// plausible variant so the ambiguity is settled by measurement against the
+// two digests of record, not by trusting the prose.
 //
 // Read-only: hashes files, writes nothing, no network.
 //
