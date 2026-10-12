@@ -36,8 +36,7 @@ function rules(pairs: readonly (readonly [RegExp, string])[]): InflectionRule[] 
  * boot from its own config (config/initializers/inflections.rb). Two decks
  * can therefore store different keys for the same name. The engine ships the
  * DEFAULT English tables below; a deck's own amendments are DECK DATA supplied
- * at deck-boot time (the moment fixtures/corpora are seeded), never hardcoded
- * in src/.
+ * at deck-boot time, never hardcoded in src/.
  *
  * `applyDeckInflections` mirrors the additive semantics of a Rails inflections
  * block: `uncountable` words are APPENDED to the default uncountables,
@@ -201,8 +200,8 @@ let inflectionState: InflectionState = {
 
 /** Amend the process-global inflection tables with DECK DATA (Rails
  * inflections-block semantics: deck uncountables append, deck rules prepend
- * over the defaults, later definitions winning). Call once at deck-boot /
- * corpus-seed time, before any name is parsed. */
+ * over the defaults, later definitions winning). Call once at deck-boot time,
+ * before any name is parsed. */
 let lastAppliedConfig: DeckInflectionConfig | undefined;
 
 export function applyDeckInflections(config: DeckInflectionConfig): void {

@@ -2,8 +2,7 @@
 // language-neutral algorithm (deliverables/one-trip-PORTABILITY.md)
 // separable from THIS engine's specifics.
 //
-// WHY THIS FILE EXISTS (the upstreamability requirement, operator
-// 2026-10-03): Ethan's collaborators continue supporting Ruby, so these
+// WHY THIS FILE EXISTS (the upstreamability requirement): these
 // optimizations may be upstreamed to Ruby or re-implemented via the harness
 // in any language. Nothing in this layer may bake in a TypeScript idiom or
 // a SQLite dialect detail without naming the seam it sits behind. The seam
@@ -34,15 +33,16 @@
 //      names the invariants: recursion discovers ids, aggregation is
 //      non-recursive, one round trip, one document).
 //   6. PAYLOAD SEATING (engine seam): handing the fetched rows to the
-//      render path (page-bundle-adapter.ts, via the prefetch composer the
-//      waves already proved value-identical). Ruby seats through its
+//      render path (page-bundle-adapter.ts, via the prefetch composer, which
+//      is already proven value-identical). Ruby seats through its
 //      cache.write_to_cache instead.
-//   7. WRITE-SCOPE ISOLATION (the A2 rule, typed): the recompute path's
+//   7. WRITE-SCOPE ISOLATION (typed): the recompute path's
 //      parameters split the world into `ReadableCorpus` (where truth lives)
 //      and `WritableDerivedStore` (where derived data goes); the latter
 //      exposes no content reads, so a recompute that consulted stale
-//      derived state WOULD NOT TYPE-CHECK. (The A2 incident:
-//      the corresponding port note:389-414.)
+//      derived state WOULD NOT TYPE-CHECK. The rule exists because a durable
+//      junction-pair map consulted by the write path once made an intra-act
+//      trash-and-recreate resolve through stale derived state.
 
 import type { CardsRow } from "../../server/schema.js";
 import type { RenderPlan } from "./render-plan.js";
@@ -60,7 +60,7 @@ import type { RenderPlan } from "./render-plan.js";
  *    (left, *setting) — the set machinery probes that junction whenever it
  *    works with the left card, so the junction row is a data-derivable
  *    dependency of the left card ("set-anchor closure"). NOT carried by
- *    default (measured: the anchor walk is transitively the whole deck);
+ *    default (the anchor walk is transitively the whole deck);
  *    named as a data-model kind for engines whose decks stay shallow.
  *  - "item": the referer is a collection card (pointer/list/skin) and the
  *    referee is one of its content-line items, which the item machinery
@@ -162,12 +162,12 @@ export interface OneTripBuildReport {
  *  field fidelity the render's own reads produce — plus the per-page rule
  *  candidates and the materialized search results.
  *
- *  `renderPlan` (the inline fetch only, the render-plan replay): the page's
+ *  `renderPlan` (the inline fetch only): the page's
  *  PRE-COMPUTED RENDER PLAN read from one_trip_render_plans inside the
  *  seat's head statement — the exact pipeline-able statements + params the
  *  recorded build-time render asked, in call order. The gate replays it as
- *  ONE batch and arms the replay router with the results (the census's
- *  5-trip floor). `undefined` = the store carries no plan for this page;
+ *  ONE batch and arms the replay router with the results.
+ *  `undefined` = the store carries no plan for this page;
  *  the render then runs its ordinary live residue (graceful). */
 export interface PageBundle {
   pageKey: string;

@@ -2,7 +2,7 @@
 // set/all/bar.rb:2-6): the bootstrap col sizes on `.bar-left` /
 // `.bar-right` (mini-bar, two-column form). The render calls into this
 // helper from the :bar / :mini_bar / :closed / :open paths so the
-// captured bytes' col-X numbers come from data, not a literal.
+// col-X numbers come from data, not a literal.
 //
 // Ruby truth (the setting the render reads):
 //   format :html do
@@ -23,11 +23,9 @@
 //
 // Rule-card content (real `card+*mini_bar_cols` cards) is the next
 // precedence up: if a rule card exists and parses as "N, N", its content
-// wins. The corpus currently has no such rule cards (no *mini_bar_cols
-// setting card, no rule-card content; see structure-corpus-replay.test.ts
-// FOREIGN_PENDING entry for corpus:253 — the marker the byte diff
-// reports). When a future stream lands rule-card seeding for arbitrary
-// settings, the engine's prefetch can prime the cache below.
+// wins. Decks without such rule cards fall through to the set-pattern
+// override below; when rule-card seeding for arbitrary settings lands, the
+// engine's prefetch can prime the cache below.
 //
 // The setting name on the rule card is `mini_bar_cols` (the format's
 // setting declaration), not `*mini_bar_cols`; the rule-name machinery

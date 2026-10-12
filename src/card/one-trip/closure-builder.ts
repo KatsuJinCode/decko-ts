@@ -13,18 +13,17 @@
 // behind the seams named in types.ts (edge derivation, rule candidate
 // enumeration, search execution).
 //
-// EMPIRICAL FOUNDATION (this pass's fact probe, committed with the RED
-// tests): the corpus's stored card_references table is STALE IN BOTH
-// DIRECTIONS (3,941 derived edges with no stored row; 8,187 stored rows the
-// current parse does not derive — references_expired content, trashed
-// referers, renames). So the builder's parse is the authority; the stored
-// table is only corroborated against, and the agreement numbers ride the
-// build report. A deck whose write path maintains its reference table
-// freshly can skip the parse for edge reads — the spec names that option.
+// EMPIRICAL FOUNDATION: a stored card_references table drifts in BOTH
+// directions — derived edges with no stored row (references_expired content,
+// trashed referers, renames) and stored rows the current parse no longer
+// derives. So the builder's parse is the authority; the stored table is
+// only corroborated against, and the agreement counts ride the build
+// report. A deck whose write path maintains its reference table freshly can
+// skip the parse for edge reads — the spec names that option.
 //
 // READ-SCOPE: the corpus driver is only ever read here. The side store is
-// only ever written here (and by invalidation.ts's recompute). The A2 rule
-// (derived caches never consulted by the write path) is typed in
+// only ever written here (and by invalidation.ts's recompute). The rule
+// that derived caches are never consulted by the write path is typed in
 // invalidation.ts, not here.
 
 import { FetchEngine } from "../fetch.js";
@@ -409,10 +408,9 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
     await side.query("DELETE FROM one_trip_page_closure WHERE page_id = ?", [pageId]);
     await side.query("DELETE FROM one_trip_page_rules WHERE page_id = ?", [pageId]);
 
-    // the fixpoint, BOUNDED (the small-world lesson, measured: an unbounded
-    // rule-of-rule walk reaches the whole 19,482-card deck from any page —
-    // the exact whole-deck payload the research verdict rejected). Two node
-    // colors:
+    // the fixpoint, BOUNDED (the small-world lesson: an unbounded
+    // rule-of-rule walk reaches the whole deck from any page — the exact
+    // whole-deck payload the research verdict rejected). Two node colors:
     //   WHITE (full expansion): reached through CONTENT edges (include/
     //     link/side/type) or seeded — contributes content edges, rule
     //     candidates, and anchor junctions.
@@ -442,8 +440,8 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
     const recordCandidateTargets = (cardId: number, isPageCard: boolean): void => {
       // PAGE-CARD-ONLY rule expansion (measured bound): the rule lattice is
       // a small world — candidate cards' content templates reference sets
-      // whose candidates reference more templates, and the fixpoint reaches
-      // the whole deck (19,482/19,482) through the *all-hub global rules.
+      // whose candidates reference more templates, and an unbounded fixpoint
+      // reaches the whole deck through the *all-hub global rules.
       // The page card's own candidates ride the payload (its rule lookups
       // are the page-level constant); every other card's rule walk is the
       // record-and-replay plan's residue.
@@ -499,9 +497,9 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
           edge.refereeId,
           (memberDepth.get(current) ?? 0) + 1,
           // ITEM edges join GRAY (content-only): collection items render,
-          // but item-of-item recursion is the menu-graph cascade (measured:
-          // unbounded item walking reaches the whole deck through nav
-          // lists); nested collections beyond the first tier are the
+          // but item-of-item recursion is the menu-graph cascade (an
+          // unbounded item walk reaches the whole deck through nav lists);
+          // nested collections beyond the first tier are the
           // record-and-replay plan's residue. Every other content edge
           // re-whitens the target: the include/link/side/type graph is the
           // trusted fixpoint.

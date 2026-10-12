@@ -34,16 +34,16 @@
 //                                          pattern registration order
 //                                          (= set_names order)
 //
-// ALSO ported here (2026-10-03, the acceptance-capability port wave): the
-// INDIRECT/field-follower walk — follower_ids.rb:74-83 indirect walk +
-// follower_stash.rb:39-52 stash_field_followers + followed_by.rb:18-31
-// followed_field?/*nests — resolveFollowers walks the left chain through
-// followed_field? (the *follow_fields rule + the ref_type "I" inclusion
-// check) and stashes each qualifying ancestor's direct followers.
+// ALSO ported here: the INDIRECT/field-follower walk — follower_ids.rb:74-83
+// indirect walk + follower_stash.rb:39-52 stash_field_followers +
+// followed_by.rb:18-31 followed_field?/*nests — resolveFollowers walks the
+// left chain through followed_field? (the *follow_fields rule + the ref_type
+// "I" inclusion check) and stashes each qualifying ancestor's direct
+// followers.
 //
-// NOT ported here (deferred, cited for the next stream):
-//   - changes_visible? (set/right/account.rb:9-11, the follower must
-//     be able to read the card): permissions stream owns ok?(:read).
+// NOT ported here (deferred): changes_visible? (set/right/account.rb:9-11,
+// the follower must be able to read the card) — the permissions layer owns
+// ok?(:read).
 
 import type { CardRecord } from "../fetch/card-record.js";
 import type { FetchEngine } from "../fetch.js";
@@ -511,7 +511,7 @@ async function stashDirectFollowers(
       if (option === null) continue; // follower_ids.rb:109 no applicable option
       seen.add(followerId);
       const follower = await fetch.fetchById(followerId);
-      if (follower === undefined) continue; // unreachable for seeded users
+      if (follower === undefined) continue; // unreachable for a user that exists
       refs.push({
         followerId,
         followerName: follower.name?.s ?? "",
@@ -648,8 +648,7 @@ async function setCardIdForPattern(
 }
 
 /**
- * The FollowerResolver the save path uses when the host doesn't inject
- * one :
+ * The FollowerResolver the save path uses when the host doesn't inject one:
  * resolveFollowers above plus Ruby's notify-layer exclusions from
  * set/all/notify.rb:49-55 notify_followers_of — the ACTOR never gets
  * notified about their own act (`next if follower == act.actor`,
@@ -665,9 +664,8 @@ export function defaultFollowerResolver(fetch: FetchEngine): FollowerResolver {
 }
 
 /**
- * The full FollowNotifyDeps the save path builds when the host supplies
- * no hook of its own ("Save-path registration
- * line"): the rule-algebra follower resolver above, the deck-backed
+ * The full FollowNotifyDeps the save path builds when the host supplies no
+ * hook of its own: the rule-algebra follower resolver above, the deck-backed
  * email-template resolver (deck-resolvers.ts — Ruby reads
  * Card[:follower_notification_email] fresh per notification), and the
  * per-follower identity default for Ruby's `Auth.as(left.id)`
@@ -716,9 +714,9 @@ export function defaultFollowNotifyDeps(
 // Read-walk exports: the follow VIEWS walk the
 // same rule algebra the notify path resolves (follow_rule_option /
 // follow_rule_content / the preference index / the set-pattern walk).
-// The functions above were module-private for the notify stream; the
-// follow-rule read walk (src/card/follow/follow-rule-walk.ts) reuses them
-// here instead of duplicating the SQL.
+// These functions were private to this module; the follow-rule read walk
+// (src/card/follow/follow-rule-walk.ts) reuses them here instead of
+// duplicating the SQL.
 // ---------------------------------------------------------------------------
 
 export {

@@ -1,12 +1,12 @@
 /**
- * THE CARD GEM'S OWN INFLECTION INITIALIZER (neither an engine default nor
- * this deck's private data).
+ * THE CARD GEM'S OWN INFLECTION INITIALIZER (neither an engine default nor any
+ * one deck's configuration).
  *
  * The table below is a port of `card-1.110.0 config/initializers/inflections.rb`
  * — the card gem's own initializer, which EVERY Decko deck loads. It is not
- * configuration particular to one deck and not a capture of one oracle's
- * settings; the constant is named for where the rules come from, and the
- * PROVENANCE section below carries the upstream lines verbatim.
+ * configuration particular to a single deck; the constant is named for where
+ * the rules come from, and the PROVENANCE section below carries the upstream
+ * lines verbatim.
  *
  * Every deck-serving origin MUST apply this table at boot, BEFORE any name is
  * parsed or any row is primed — the same moment a Rails deck's
@@ -15,14 +15,13 @@
  *   applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);   // src/card/name/inflect.ts
  *
  * Origins that skip the boot call key parenthesized and possessive names
- * differently from the stored corpus keys: the CQL name resolver then
- * substitutes Ruby's unresolvable-name sentinel (-999) and every plus-join
- * against those junctions returns zero rows (2026-09-25 staging defect:
- * Person+Project(s) Participating sections rendered "0 results" site-wide).
- * A deck whose stored keys were written WITHOUT this table is unreachable by
- * name in Ruby as well: Card.fetch(name) and Card.exist?(name) miss every such
- * row, fetch by id still finds it, and a new card of the same name can be
- * created beside it.
+ * differently from the stored keys: the CQL name resolver then substitutes
+ * Ruby's unresolvable-name sentinel (-999), and every plus-join against those
+ * junctions returns zero rows — which is what a nest section renders as
+ * "0 results". A deck whose stored keys were written WITHOUT this table is
+ * unreachable by name in Ruby as well: Card.fetch(name) and Card.exist?(name)
+ * miss every such row, fetch by id still finds it, and a new card of the same
+ * name can be created beside it.
  *
  * PROVENANCE. This is the card gem's own initializer, which every Decko deck
  * loads: card-1.110.0 config/initializers/inflections.rb
@@ -34,8 +33,8 @@
  *   inflect.singular(/(ss)$/i, '\1')
  *   inflect.plural(/(ss)$/i, '\1')
  *
- * The three uncountables are what a census of the capture deck's stored keys
- * shows (lone "s": "Father's Day" -> father_s_day; "this": delete_this;
+ * The three uncountables are the words that show up uncounted in stored deck
+ * keys (lone "s": "Father's Day" -> father_s_day; "this": delete_this;
  * "anonymous").
  * The irregular is what keys "Graveyard" as "grave" (and leaves "Graveyards"
  * unchanged, because cardname's stable-key rule refuses a key whose own key
@@ -46,8 +45,7 @@
  * defaults at higher priority, which changes no key; they are carried so the
  * table reads like its source.
  *
- * Verification: tests/card/name/oracle-deck-inflections.test.ts, and the
- * semantics parity probe (tools/oracle/semantics-answer*.{rb,ts}).
+ * Verification: tests/card/name/oracle-deck-inflections.test.ts.
  */
 
 import type { DeckInflectionConfig } from "./inflect.js";

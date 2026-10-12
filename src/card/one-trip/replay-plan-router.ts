@@ -1,4 +1,4 @@
-// THE RENDERPLAN-REPLAY ROUTER (the render-plan replay, 2026-10-05): the
+// THE RENDERPLAN-REPLAY ROUTER: the
 // driver-seam layer that lets a render consume a pre-computed plan's result
 // set instead of re-issuing its reads.
 //
@@ -64,14 +64,13 @@ export function isReadOnlyStatement(sql: string): boolean {
  *  could serve pre-write rows forever. The recorder already keeps this
  *  class OUT of plans (render-plan.ts isPipelineAbleRenderStatement); this
  *  is the same exclusion enforced where the plan is SERVED, so a seeded or
- *  drifted plan that does carry the entry still cannot intercept it
- *  (integration assembly r3, 2026-10-06 — the stamp-read-vs-plan pin).
- *  ONE SHAPE, ONE PREDICATE (review pass 5 seat merge, 2026-10-06): the
+ *  drifted plan that does carry the entry still cannot intercept it.
+ *  ONE SHAPE, ONE PREDICATE: the
  *  shape test is the shared isFreshnessStampRead — the exact predicate the
  *  recorder filter and the classifier's "freshness-stamp" class test — so
  *  recorder, classifier, and this serve-side guard cannot disagree about
- *  what a stamp read is (the trunk form keyed the wider classify regex,
- *  whose extra breadth covered statement shapes the engine never issues). */
+ *  what a stamp read is (a wider classify regex once keyed here, whose extra
+ *  breadth covered statement shapes the engine never issues). */
 function isGateStateStatement(sql: string): boolean {
   return isFreshnessStampRead(sql);
 }
@@ -83,7 +82,7 @@ export class ReplayPlanRouter implements SQLDatabaseDriver {
    *  connection, not on the per-engine router). */
   readonly base: SQLDatabaseDriver;
   private planResults: Map<string, SQLQueryResult> | undefined;
-  /** The drift classes' per-bind-value answer index (the drift-arm fix): the
+  /** The drift classes' per-bind-value answer index: the
    *  same rows the exact-(sql,params) map holds, indexed by the BINDS a
    *  recorded entry carried, so a drifted IN-list ask whose every bind is
    *  covered composes its answer instead of riding live. Cleared wherever
@@ -155,8 +154,8 @@ export class ReplayPlanRouter implements SQLDatabaseDriver {
       isGateStateStatement(sql) ? undefined : this.planResults?.get(renderPlanResultKey(sql, params));
     if (served !== undefined) return served as SQLQueryResult<T>;
     // THE DRIFT SERVE: same rows, indexed by bind value instead of by the
-    // (sql, params) pair — the measured regression's cure. Only reads, only
-    // classes whose composition laws are measured, only provable coverage.
+    // (sql, params) pair. Only reads, only
+    // classes whose composition laws are observed, only provable coverage.
     if (this.driftIndex !== undefined && isReadOnlyStatement(sql)) {
       const composed = serveFromDriftArmIndex(this.driftIndex, sql, params);
       if (composed !== undefined) return composed as SQLQueryResult<T>;

@@ -5,12 +5,10 @@
 // set/all/permissions.rb:139-146: stored read_rule_id into
 // Auth.as_card.read_rules_hash), but ok_to_read? is not one method: thirteen
 // mod set files define their own for the cards their set matches, and set
-// modules are included so the set-specific method wins. The port's verdict
-// walk computed only the generic hash path, so every card below denied where
-// Ruby's override grants (an earlier over-deny family: Anonymous+*account,
-// Anonymous+*account+*email, MoKi+*right+*head, HBQ+*right+*head, the
-// +*self+*head virtual rule-card bars in the rules-editor navs, and 12 more
-// of the triage's permission_denied_mismatch pages).
+// modules are included so the set-specific method wins. A verdict walk that
+// computed only the generic hash path denies every card below where Ruby's
+// override grants — the account, head, and account-field populations among
+// them.
 //
 // The overrides, verbatim by gem file:
 //
@@ -54,12 +52,9 @@
 // use (post-inflection-boot), so the port's own inflection config produces
 // exactly the key set application compares — never wider, never narrower.
 //
-// Oracle proven on the capture deck (a Ruby probe run against the same
-// deck the expected renders were captured from): every named over-deny
-// card answers ok?(:read)=true in the deck Ruby rendered expected-v2
-// from, while the CONTROL (the "FOR CHILDREN'S CLASS" card — a plain
-// card with a *self rule granting five roles) stays false — the generic
-// path still denies.
+// Distinguishing signal: every named card answers ok?(:read)=true, while a
+// CONTROL card — a plain card with a *self rule granting roles but no
+// matching override — stays false, proving the generic path still denies.
 
 import { DeckoName } from "../name.js";
 import { onDeckInflectionsChanged } from "../name/inflect.js";
@@ -98,7 +93,7 @@ const OVERRIDE_MAX_DEPTH = 16;
  *  machinery so inflections (singularization, star preservation) are the
  *  SAME code path set application uses. Computed LAZILY on first use —
  *  a deck's amended inflection tables are boot-time data
- *  (applyDeckInflections at fixture/corpus seed), and a module-load
+ *  (applyDeckInflections at deck boot), and a module-load
  *  computation would freeze pre-boot tables; first use is always
  *  post-boot. Comment = the gem set card each anchor names. */
 interface OverrideKeys {
@@ -308,7 +303,7 @@ async function isHolderType(card: CardRecord, deps: IdentityOverrideDeps): Promi
  * The `!name_changed? && !type_id_changed?` guards in the gems are TRUE
  * here by construction: the render path judges FETCHED records
  * (fetch/populated cards carry no dirty name/type state), which is
- * exactly the state the captured pages' ok?(:update) ran under.
+ * exactly the state the render path's ok?(:update) runs under.
  */
 export async function updatePermissionOverride(
   name: DeckoName,
@@ -329,7 +324,7 @@ export async function updatePermissionOverride(
     // right/password.rb, right/salt.rb) — `(account_card&.own_account?
     // && clean) || super`. account_field#account_card is the LEFT only
     // when left.right_id is the *account card (account_field.rb:3-5) —
-    // a plain "Jane+*email" (left has no right) is nil -> super.
+    // a plain "<User>+*email" (left has no right) is nil -> super.
     case K.email:
     case K.password:
     case K.salt:

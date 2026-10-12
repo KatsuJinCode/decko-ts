@@ -42,14 +42,14 @@
 // LOUD, NOT SILENT. A database with no deck_data_version throws here rather
 // than rendering: a skipped check is a silent staleness window, and this
 // module's entire safety argument rests on the check running. Same convention
-// as the freshness stamp that owns the stamp (d19ec179).
+// as the freshness stamp that owns the stamp.
 
 import type { SQLDatabaseDriver, SQLQueryResult } from "../../server/driver.js";
 
 /** The content-version read: one PK point SELECT, the exact statement the
- *  freshness stamp's render gate pays (d19ec179, src/card/render.ts
+ *  freshness stamp's render gate pays (src/card/render.ts
  *  DECK_DATA_VERSION_STATEMENT). Carried here as its own constant because
- *  that commit is not on this branch; the two MUST stay byte-equal or the
+ *  the two MUST stay byte-equal or the
  *  boot cache and the render gate would disagree about what "unchanged"
  *  means. The composition seam is named in the recorded result. */
 import { currentRequestContext } from "../request-context.js";
@@ -116,8 +116,8 @@ function setSlot(bundle: BootBundle | undefined): void {
  *  plan router (`replayRouter.base`) — is that connection for identity
  *  purposes, or the cache would be cold for every FetchEngine after the one
  *  that happened to store the bundle (each FetchEngine wraps its driver in
- *  its own router; integration assembly r3, 2026-10-06, boot-cache pins PIN
- *  5). Terminal drivers expose no `base` and are their own connection. */
+ *  its own router). Terminal drivers expose no `base` and are their own
+ *  connection. */
 function bundleIdentityDriver(driver: SQLDatabaseDriver): SQLDatabaseDriver {
   const wrapper = driver as { readonly base?: SQLDatabaseDriver };
   return wrapper.base ?? driver;
@@ -135,8 +135,9 @@ function bundleIdentityDriver(driver: SQLDatabaseDriver): SQLDatabaseDriver {
  *  hit by construction, so firing it would be a pure cost: an extra statement
  *  and an extra round trip for nothing. Test suites that open a fresh
  *  `:memory:` deck per case are the visible case (a fresh driver is a fresh
- *  connection), and depth-sweep measured the regression before this gate was
- *  per-connection: round trips 5 -> 6 at every one of 32 depths, with a
+ *  connection (a fresh driver is a fresh
+ *  connection), and a depth sweep caught the regression before this gate was
+ *  made per-connection: one extra round trip at every depth, with a
  *  zero-hit probe at each. */
 export function bootCacheIsWarm(driver: SQLDatabaseDriver): boolean {
   const currentBundle = slot();

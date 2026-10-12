@@ -20,11 +20,10 @@
 //     end
 //
 // The TS port reproduces the EMAIL_FIELDS shape minus :attach (file
-// attachments ride on the FileCard machinery, which is a later stream).
+// attachments ride on the FileCard machinery, which is separate).
 // Each field value is the literal string stored on the corresponding
-// `+field` card — for the first mechanism (follow notification) the
-// subject + text_message are literal strings, no inclusions or views.
-// Inclusions are a stretch goal
+// `+field` card — for follow notification the subject and text_message are
+// literal strings, no inclusions or views. Inclusions are a stretch goal.
 
 import type { MailMessage } from "./types.js";
 
@@ -34,17 +33,17 @@ import type { MailMessage } from "./types.js";
 export interface EmailTemplate {
   /** The explicit To: field (the follower's email). Ruby passes this
    *  in via `fields[:to]`; set/right/to.rb:1-2 default-renders a list
-   *  when no override. For our first mechanism the caller owns the to. */
+   *  when no override. Here the caller owns the to. */
   readonly to: string;
   /** The From: field. Card "from" with no per-template override is the
    *  deck's Card.config.email_defaults[:from], with a "Name <email>"
    *  construction (set/type/email_template.rb:55-79). */
   readonly from: string;
   /** The Subject: field — INTERPOLATED against the active_notice hash so
-   *  follow notification subjects can read "Jonas changed Jonas Following".
-   *  Ruby's `contextual_content` walks inclusions; the first-mechanism
-   *  port uses simple {{name}} substitution (extension point for the
-   *  render module). */
+   *  a follow notification subject can read "<follower> changed <set>".
+   *  Ruby's `contextual_content` walks inclusions; this port uses simple
+   *  {{name}} substitution (the extension point the render module picks
+   *  up). */
   readonly subject: string;
   /** The plain-text body. May be empty (the renderer will skip text_body
    *  when empty and prefer html, matching body_method_and_args' html
@@ -80,20 +79,19 @@ export interface FollowNoticeAct {
 
 /** Single-pass rendering of `{{key}}` placeholders, mirroring Ruby's
  *  `contextual_content` semantics for cards that do NOT resolve to a
- *  real card name. The M6 real-oracle capture
- *  (fixtures/captured/follow-notification.json) proves the rule:
+ *  real card name:
  *
  *    subject tmpl  `{{follower}} changed {{followed_set}} on {{follow_option}}`
- *    real Ruby     `follower changed followed_set on follow_option`
- *                   (no braces; the placeholder NAME is rendered, the
+ *    Ruby output   `follower changed followed_set on follow_option`
+ *                  (no braces; the placeholder NAME is rendered, the
  *                   `{{` and `}}` are dropped)
  *    doc reference card-mod-content set/all/contextual_content.rb:13-19
- *                   + card-mod-email set/abstract/email_field.rb:22-26
- *                   (compact_missing view → default render of card-name)
+ *                  + card-mod-email set/abstract/email_field.rb:22-26
+ *                  (compact_missing view → default render of card-name)
  *
  *  `vars` maps placeholder text (including any |view suffix, verbatim) to
  *  the resolved value; an absent key renders the placeholder's BARE name
- *  (braces dropped), the captured rule.
+ *  (braces dropped).
  *
  *  The act-relative shapes the stock template carries
  *  (mod/follow/data/real.yml follower_notification_email subject
@@ -101,8 +99,8 @@ export interface FollowNoticeAct {
  *  the same map: `_|name` -> the act card's name (account.rb:18 delivers
  *  with context = act.card), `{{_|last_action_verb}}` -> the act verb
  *  (base_views.rb:45-47 last_action_verb = main action_type + "d"),
- *  `{{_user|name}}` -> the act actor's name (the resolved output the
- *  features pin: update_includers.feature:19 "Joe User created ..."). */
+ *  `{{_user|name}}` -> the act actor's name, so an update renders as
+ *  "<actor> updated "<card>"". */
 export function interpolateTemplate(
   template: string,
   vars: Readonly<Record<string, string>>,
@@ -118,20 +116,19 @@ export function interpolateTemplate(
  *  `{{_|link}}`, `{{_|url}}`, `{{_|list_of_changes}}`, `{{_|subedits}}`,
  *  `{{_|followed}}`, `{{_|unfollow_url}}` — the base_views.rb view
  *  bodies (set/all/notify/base_views.rb). Their VALUES are resolved from
- *  the act/act-stream (the render stream owns the view bytes: card
- *  links, history anchors, list rows); the mail renderer takes them
- *  per FORMAT (the same placeholder name resolves to different bytes in
- *  the text and html bodies — measured by the six-mail oracle:
- *  {{_|last_action_verb}} is the plain verb in text and the history
- *  anchor in html; the six-mail capture pins both).
+ *  the act and owned by the render layer (card links, history anchors,
+ *  list rows); the mail renderer takes them per FORMAT — the same
+ *  placeholder name resolves to different bytes in the text and html
+ *  bodies, `{{_|last_action_verb}}` being the plain verb in text and the
+ *  history anchor in html.
  *
  *  `botAccountEmail` switches the From: to Ruby's
  *  safe_from_and_reply_to! rule (email_config.rb:52-79): the template's
  *  from FIELD is rendered through the email_text address machinery
  *  FIRST, so a NAME like "Decko Bot" resolves to the named card's
  *  account email before the name-parity check — the delivered From: is
- *  the BARE address (the six-mail oracle pins exactly this for all six
- *  mails; a "Name <email>" field keeps the quoted-name form). */
+ *  the BARE address (a "Name <email>" field keeps the quoted-name
+ *  form). */
 export interface StockMailExtras {
   readonly text?: Readonly<Record<string, string>>;
   readonly html?: Readonly<Record<string, string>>;
@@ -139,14 +136,14 @@ export interface StockMailExtras {
   /** Wrap the html part in the email_document envelope (card-mod-email
    *  set/all/email_html.rb:2-14) — the stock template's html_message
    *  renders THROUGH the EmailHtmlFormat#show wrapper, never as a bare
-   *  div (the six-mail oracle pins every html body wearing it). */
+   *  div. */
   readonly wrapHtmlDocument?: boolean;
 }
 
 /** The email_document wrapper bytes (set/all/email_html.rb:2-14). The
  *  `<style>` block is the email stylesheet card's :compiled render —
- *  empty for an empty stylesheet (the capture app's state; a processor
- *  landing behind this constant changes nothing else). */
+ *  empty for an empty stylesheet; a processor landing behind this
+ *  constant changes nothing else. */
 const EMAIL_DOCUMENT_HEAD =
   '<!DOCTYPE html>\n<html>\n  <head>\n    <meta http-equiv="Content-type" content="text/html;charset=UTF-8"/>\n    <style></style>\n  </head>\n  <body class="d0-email-body">\n    ';
 const EMAIL_DOCUMENT_TAIL = "\n  </body>\n</html>\n";
@@ -194,7 +191,7 @@ export function resolveFromAddress(
 
 /** Render one MailMessage from an EmailTemplate + the active_notice
  *  substitution vars. The function is pure — no side effects, no
- *  transport call — so it can be tested against the hand-derived Ruby
+ *  transport call — so it can be tested against hand-derived Ruby
  *  output without any DB or fetch context.
  *
  *  Defaults that match Ruby when no per-template override is set
@@ -264,8 +261,8 @@ export function renderMail(
 
 /** Build a one-line plain text envelope for tests/CLI. NOT what the
  *  transport sends — transports own their own envelope. Used by the
- *  capture snapshot test to assert "everything that was rendered, in
- *  one place". */
+ *  snapshot test to assert "everything that was rendered, in one
+ *  place". */
 export function mailToString(msg: MailMessage): string {
   const headers = [
     `From: ${msg.from}`,

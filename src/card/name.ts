@@ -721,11 +721,10 @@ export class DeckoName {
     // `Cardname.new self` (cardname core_ext.rb), whose stringify JOINS an
     // array with the joint (class_methods.rb:52-58). The context list is
     // therefore ONE compound context name for the round-trip check, not a
-    // list of separate arguments. (Spreading the list here made
-    // absoluteName read only its FIRST element, so every multi-part context
-    // failed the round-trip and the title stayed the full name — live-wire
-    // mechanism 2: the +*self rule-bar pages render title="A+*self+*default"
-    // where the oracle renders title="+*default".)
+    // list of separate arguments. Passing the list through as arguments
+    // instead makes absoluteName read only its first element, so every
+    // multi-part context fails the round-trip and the un-relativized name is
+    // returned where the shortened form was wanted.
     return this.key === compressed.absoluteName(DeckoName.compose(compactFrom)).key
       ? compressed
       : this;

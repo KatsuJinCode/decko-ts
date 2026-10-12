@@ -1,19 +1,18 @@
-// THE PLAN-REPLAY FOLD (the plan-replay fold, 2026-10-06): the per-read-
+// THE PLAN-REPLAY FOLD: the per-read-
 // class merged statement that collapses a render plan's replay batch.
 //
 // THE MECHANISM, and why it is SQL rather than protocol:
 // hrana (what BunnyDB speaks over fetch) has NO server-side set-based
 // execution — a pipeline POST carries N `execute` entries and pays a
-// per-execute server cost each (deliverables/FOLD-MECHANISM-RESEARCH-2026-10-05
-// §1, verified against the vendored @libsql/hrana-client 0.10.0 surface and
-// the public HRANA_3 spec). The measured edge term is ~55 ms per statement
-// (the gate-2 request trace note, the deployed /Aikido ledger), so the cost is
+// per-execute server cost each (verified against the vendored
+// @libsql/hrana-client 0.10.0 surface and the public HRANA_3 spec). Each
+// statement therefore carries a real per-statement edge cost, so the cost is
 // STATEMENT COUNT, not POST count. The collapse therefore has to happen
 // inside the SQL layer, and SQLite already has the shape: bind a JSON array
 // as ONE parameter, expand it with `json_each`, join `cards` on BINARY
 // collation so the index seek survives. The engine already ships that exact
-// shape on the live serving DB — the seat's V2 head binds a 3,530-id member
-// list in one statement (one-trip-fetch.ts:186-197) — so this is a proven
+// shape on the live serving DB — the seat's V2 head binds its whole member
+// id list in one statement (one-trip-fetch.ts) — so this is a proven
 // mechanism, not a bet.
 //
 // WHAT THIS MODULE DOES, precisely: groups the plan's entries by READ CLASS
@@ -29,7 +28,7 @@
 //     predicate, re-expressed as an EXISTS over the bound list. Same rows.
 //   - The per-entry row ORDER is pinned by an explicit ORDER BY that the
 //     per-class entry declares; `tests/card/one-trip/replay-fold-exactness
-//     .test.ts` and this pass's harness prove the decomposition equals the
+//     .test.ts` proves the decomposition equals the
 //     original per-entry execution row-for-row, order included.
 //   - A class whose binds are not canonical lowercase keys, or whose SQL
 //     text does not match a known shape, is NOT folded. It rides the
@@ -44,8 +43,8 @@
 // SQLITE_MAX_VARIABLE_NUMBER is unknown). The OUTPUT is chunked instead, to
 // FOLD_CHUNK_GROUPS entries per statement, so a class's row mass is split
 // across a bounded number of result sets. UNION ALL is used only as the
-// per-class stitch where a class needs more than one shape; the 500-arm
-// compound-select wall (research §2 case D, measured) is never approached.
+// per-class stitch where a class needs more than one shape; the compound-
+// select arm-count wall is never approached.
 
 import type { SQLStatement } from "../../server/driver.js";
 import type { RenderPlanEntry } from "./render-plan.js";
@@ -61,7 +60,7 @@ export const FOLD_TAG_COLUMN = "__fold_g";
 export const FOLD_NAMESPACE = "__fold_";
 /** The side-key arm's per-row match keys: which bound l-key / r-key each j
  *  row matched. The drift arm index uses them to answer a SMALLER side-key
- *  ask from a recorded superset entry's rows (the drift-arm fix). */
+ *  ask from a recorded superset entry's rows. */
 export const FOLD_LEFT_KEY_COLUMN = "__fold_lk";
 export const FOLD_RIGHT_KEY_COLUMN = "__fold_rk";
 /** The ordinal column for families whose source statement can return the
@@ -165,12 +164,12 @@ const OR_PAIR_TERM = "(j.left_id = ? AND j.right_id = ?)";
  *  differs in any other way fails the exact reconstruction, so the class
  *  does not match and the entry rides the ladder unchanged.
  *
- *  THE 2-PAIR REFUSAL (the drift-arm fix, 2026-10-06 — measured, Peace_Practices
- *  plan entry #91): SQLite answers a two-term OR chain with the multi-index
- *  OR plan, whose row order is BRANCH order, not id order (ids 19825, 12796
+ *  THE 2-PAIR REFUSAL: SQLite answers a two-term OR chain with the
+ *  multi-index OR plan, whose row order is BRANCH order, not id order (ids
+ *  19825, 12796
  *  vs the merged arm's id-ordered 12796, 19825). Three or more terms tip the
  *  planner back to a full scan, which IS id order (51/52 non-empty entries
- *  measured id-ordered across the six measured pages, the one deviation this
+ *  measured id-ordered across the pages measured, the one deviation this
  *  two-term entry). The 2-value IN-list refusal's sibling: an order no rule
  *  expresses is an order the fold does not reproduce. */
 function isOrPairShape(sql: string, params: unknown[]): boolean {
@@ -182,10 +181,10 @@ function isOrPairShape(sql: string, params: unknown[]): boolean {
   return `${expected})` === sql;
 }
 /** The side-key join shape: the DISTINCT junction read through BOTH sides'
- *  key IN-lists (the largest unfurled residual of the giant fold, now folded
- *  by the the drift-arm fix). The arm keeps the source's own DISTINCT semantics
+ *  key IN-lists (the largest unfurled residual of the giant fold). The arm
+ *  keeps the source's own DISTINCT semantics
  *  per (l-key, r-key) combination and lets decompose collapse the rows back
- *  to DISTINCT j.* per entry. Whitespace-tolerant: the recorder captured this
+ *  to DISTINCT j.* per entry. Whitespace-tolerant: the recorder captures this
  *  shape multi-line (`\n  JOIN cards l ...`), which is exactly why it never
  *  met the giant fold's single-line matchers. */
 const SIDE_KEY_RE =
@@ -200,7 +199,8 @@ const CLOSURE_JSON_PROJECTION =
  *  order (the matcher order is the merge order for two shapes that could
  *  both match — none of the shapes below can). */
 export const FOLD_SHAPES: readonly FoldShape[] = [
-  // THE CLOSURE MASS — 36 of Aikido's 108 replay statements on the pin. The
+  // THE CLOSURE MASS — the largest share of a typical page's replay
+  // statements. The
   // source statements are ALREADY the json_each shape (one id list each), so
   // the fold is the nesting that makes one statement carry all of them: the
   // outer json_each names the source entry, the inner expands that entry's
@@ -351,13 +351,13 @@ export const FOLD_SHAPES: readonly FoldShape[] = [
       `FROM json_each(?) AS g CROSS JOIN json_each(g.value) AS k CROSS JOIN cards c ` +
       `ON c."key" = k.value AND c.trash = 0 ORDER BY ${FOLD_TAG_COLUMN}`,
   },
-  // THE SIDE-KEY JOIN (the drift-arm fix, 2026-10-06) — the giant fold's largest
+  // THE SIDE-KEY JOIN — the giant fold's largest
   // unfurled residual, now an arm. The source's L x R pair product is NOT
   // materialized: both sides expand from the ONE flat bind via two json_each
   // scans over the same entry array (first half = l keys, second half = r
   // keys), each side seeking `cards` by its key index and the junction by
-  // its UNIQUE (left_id, right_id) index — the CROSS JOIN planner lesson
-  // (fold-plan §3 point 3). Per-row match keys ride along (__fold_lk/rk) so
+  // its UNIQUE (left_id, right_id) index — the CROSS JOIN planner lesson.
+  // Per-row match keys ride along (__fold_lk/rk) so
  // the drift arm index can answer a SMALLER ask from a recorded superset.
   // DISTINCT over (tag, lk, rk, j.*) keeps one row per (entry, combination);
   // decompose collapses back to the source's DISTINCT j.* per entry.
@@ -365,8 +365,8 @@ export const FOLD_SHAPES: readonly FoldShape[] = [
   // Refusals: binds not canonical lowercase (the BINARY-join collation
   // precondition, shared with cards-key-multi), an odd bind count, or fewer
   // than THREE binds on a side — the 2-value order artifact generalized to
-  // both halves (measured: every non-id-ordered side-key entry on the six
-  // measured pages has a side with exactly two binds).
+  // both halves (every non-id-ordered side-key entry observed has a side with
+  // exactly two binds).
   {
     family: "side-key-join",
     nested: true,
@@ -584,17 +584,14 @@ export function decomposeMergedRows(
 }
 
 // ---------------------------------------------------------------------------
-// THE DRIFT ARM INDEX (the drift-arm fix, 2026-10-06)
+// THE DRIFT ARM INDEX
 //
-// THE REGRESSION: the four drift pages (Aikido_2, Aikido_in_Education,
-// Peace_Practices, Laundry) fell from 5 to 14-30 trips on the assembled tree
-// because the live render's key-multi / side-key / or-chain IN-list binds
-// depend on mid-flight cache evolution; a bind set that differs from record
-// time misses the armed map's exact (sql, params) key and the statement
-// rides live in a small batch. Measured record-vs-live shapes: the recorded
-// ask `IN ("", "", "", "", "", "joan_callahan", "recommendation")` comes back
-// live as `IN ("joan_callahan", "recommendation")` — the SAME question with
-// the cache-warmed holes gone.
+// THE PROBLEM: the live render's key-multi / side-key / or-chain IN-list
+// binds depend on mid-flight cache evolution; a bind set that differs from
+// record time misses the armed map's exact (sql, params) key and the
+// statement rides live in a small batch, so a page that used to serve in a
+// handful of trips falls back to many. The recorded ask and the live ask are
+// the SAME question with the cache-warmed holes removed from the IN-list.
 //
 // THE CURE (spec §2): the drift classes' answers are indexed by BIND VALUE,
 // not by (sql, params) pair. A drifted ask whose every bind is covered by
@@ -605,17 +602,16 @@ export function decomposeMergedRows(
 // requires ("a hit returns the rows the database itself returned for that
 // statement against this deck" — extended to "that question's binds").
 //
-// THE MEASURED LAWS each composition rule rests on (driftfix offline
-// experiments 02/03/04/05, deck `arch-demo-45p-freshness-stamped`):
+// THE OBSERVED LAWS each composition rule rests on:
 //   - key IN-lists with 3+ binds return rows in card-id order; exactly-2
 //     binds are a planner artifact (the giant fold's refusal, preserved) —
 //     drifted 2-value asks ride live, never served.
-//   - OR-chains: same law on PAIR count (the 2-pair refusal, new — measured
-//     Peace_Practices #91); 1-pair and 3+-pair asks compose id-ordered.
+//   - OR-chains: same law on PAIR count (the 2-pair refusal); 1-pair and
+//     3+-pair asks compose id-ordered.
 //   - side-key asks: a live ask whose left keys are a subset of some
 //     recorded entry's left keys AND whose right keys are a subset of that
 //     SAME entry's right keys composes order-exact (id-sorted, deduped) —
-//     21/21 covered asks on Aikido_2. Cross-entry unions are NOT provable
+//     every covered ask observed did. Cross-entry unions are NOT provable
 //     from binds alone and are never served.
 //   - LIMIT 1 point asks serve the id-ordered first row (the MIN-id row the
 //     limit returns on the key index).
@@ -637,7 +633,7 @@ export function classifyDriftServeClass(sql: string, params: unknown[]): DriftSe
   if (KEY_POINT_RE.test(t) && params.length === 1 && allStringsLowercase(params)) return "key-point";
   // the exactly-2-bind IN-list refusal is a SERVING rule too: SQLite's
   // two-way IN order is a planner artifact and the composition cannot
-  // reproduce it (measured: both serving order-mismatches were 2-value).
+  // reproduce it (both serving order-mismatches observed were 2-value).
   if (KEY_MULTI_RE.test(t) && params.length > 0 && params.length !== 2 && allStringsLowercase(params)) {
     return "key-multi";
   }

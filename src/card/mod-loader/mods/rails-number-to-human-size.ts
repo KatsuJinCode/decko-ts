@@ -3,10 +3,10 @@
 // helper ActiveSupport::NumberHelper#number_to_human_size; decko's
 // attachment views call it for file/image sizes).
 //
-// The byte shapes are oracle-pinned (card-mod-cwwrite-output-seam.test.ts
-// runs the ladder against a live capture): 3 significant digits, trailing
-// zeros stripped, "Bytes" pluralized below 1024 with the singular
-// "1 Byte", units KB/MB/GB/TB at 1024 boundaries:
+// Sizes below 1024 render as a whole byte count followed by "Bytes", except
+// that a lone byte reads "1 Byte". Past that, each 1024 step promotes the
+// unit through KB, MB, GB and TB, and the mantissa carries three significant
+// digits with any trailing fractional zeros dropped:
 // {"0":"0 Bytes","1":"1 Byte","512":"512 Bytes","1023":"1023 Bytes",
 //  "1024":"1 KB","1025":"1 KB","1234":"1.21 KB","1536":"1.5 KB",
 //  "9999":"9.76 KB","10000":"9.77 KB","1048576":"1 MB","1572864":"1.5 MB",
