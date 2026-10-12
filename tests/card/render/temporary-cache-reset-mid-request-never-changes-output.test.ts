@@ -10,16 +10,13 @@
 // an entry the reset dropped became a NameNotFoundError and an "Error
 // rendering" span.
 //
-// The page that showed it: "Wagneer" on the trial deck (recovery/poc/
-// WRITEUP.md round 9). Its `+*members` pointer stores `~23595` and `~34374`
-// as item lines; the request read enough names that the 10,000-key cache
-// reset four times, id 34374's entry went with it, and the page rendered
-// `Error rendering: Wagneer+*members (core view)` where the person bars
-// belong. Measured on the trial-deck mirror: the engine at 7bc63c1c renders
-// 16,568 bytes with the error span; with the reset held for the request it
-// renders the 21,361-byte page with both bars.
+// The defect page's shape: a card whose `+*members` pointer stores `~id`
+// item lines; the request read enough names that the 10,000-key cache reset
+// mid-request, one member id's entry went with it, and the page rendered
+// `Error rendering: <card>+*members (core view)` where the person bars
+// belong.
 //
-// The pin renders the Wagneer page shape on two engines over the same deck:
+// The pin renders that page shape on two engines over the same deck:
 // one with the cache cap at Ruby's default and one with a cap so small that
 // the reset fires on nearly every write of the request. The two pages must
 // be byte-identical and must carry both person bars. Without the request
@@ -46,8 +43,8 @@ import {
 } from "./render-test-storage.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
-const MEMBER_ONE = { id: 23595, name: "Wagneer Member One" };
-const MEMBER_TWO = { id: 34374, name: "Johannes Ernst" };
+const MEMBER_ONE = { id: 23595, name: "Sample Member One" };
+const MEMBER_TWO = { id: 34374, name: "Sample Member Two" };
 const QAGNEER_ID = 34370;
 const MEMBERS_TAG_ID = 908;
 
@@ -61,7 +58,7 @@ async function storageWithCap(maxTemporaryCacheKeys: number): Promise<RenderTest
   return { engine: new RenderEngine(fetcher), fetcher, counting, close: () => driver.close() };
 }
 
-/** The Wagneer page shape: the layout trio + cardtypes every page render
+/** The sample page shape: the layout trio + cardtypes every page render
  *  resolves, the page, its `+*members` pointer with `~id` item lines, and
  *  the two member cards. */
 async function seedWagneerDeck(s: RenderTestStorage): Promise<void> {
@@ -77,13 +74,13 @@ async function seedWagneerDeck(s: RenderTestStorage): Promise<void> {
   await seedCard(s, { id: 907, name: "*tiny_mce", codename: "tiny_mce", typeId: 2 });
   await seedCard(s, { id: 910, leftId: 900, rightId: 901, typeId: 2, dbContent: "Probe Layout" });
   await seedCard(s, { id: 911, name: "Probe Layout", typeId: 2, dbContent: "{{_main|titled}}" });
-  await seedCard(s, { id: QAGNEER_ID, name: "Wagneer", typeId: 2, dbContent: "{{+*members}}" });
+  await seedCard(s, { id: QAGNEER_ID, name: "Sample Page", typeId: 2, dbContent: "{{+*members}}" });
   await seedCard(s, { id: MEMBERS_TAG_ID, name: "*members", codename: "members", typeId: 2 });
   await seedCard(s, {
     id: 34371,
     leftId: QAGNEER_ID,
     rightId: MEMBERS_TAG_ID,
-    name: "Wagneer+*members",
+    name: "Sample Page+*members",
     typeId: 5,
     dbContent: `~${MEMBER_ONE.id}\n~${MEMBER_TWO.id}`,
   });
@@ -110,16 +107,16 @@ async function renderWagneer(
   await seedWagneerDeck(s);
   s.fetcher.installNameEnvironment();
   if (opts.withoutDurableRecord) {
-    // The engine the trial-deck defect was measured on read only the live
-    // cache for some seated entries. Removing the durable id/name record
-    // leaves the cache itself as the only thing the synchronous readers
-    // have, which is exactly what the request hold must protect.
+    // An engine reading only the live cache for some seated entries:
+    // removing the durable id/name record leaves the cache itself as the
+    // only thing the synchronous readers have, which is exactly what the
+    // request hold must protect.
     vi.spyOn(s.fetcher.lexicon, "peekDurableName").mockReturnValue(undefined);
     vi.spyOn(s.fetcher.lexicon, "peekDurableId").mockReturnValue(undefined);
   }
   const temp = s.fetcher.lexiconCache.temp as TemporaryCache;
   const before = temp.resetCount;
-  const html = await renderPageBytes(s.engine, "Wagneer");
+  const html = await renderPageBytes(s.engine, "Sample Page");
   return { html, resets: temp.resetCount - before };
 }
 
@@ -129,7 +126,7 @@ afterEach(() => {
   for (const s of opened.splice(0)) s.close();
 });
 
-describe("a Temporary-cache reset in the middle of a request never changes the page (Wagneer)", () => {
+describe("a Temporary-cache reset in the middle of a request never changes the page (sample page)", () => {
   it("renders the member bars, byte-identical to an engine whose cache never fills", async () => {
     const roomy = await renderWagneer(1_000_000);
     expect(roomy.html).toContain(`data-card-name="${MEMBER_TWO.name}"`);
