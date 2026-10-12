@@ -1,7 +1,7 @@
 // dual-lane-direct-driver.artifacts-reuse-guard.test.mjs -- regression
 // coverage for the driver's artifacts-directory reuse guard.
 //
-// THE COLLISION (measured, canvas-rerun lane): the driver labels its workers
+// THE COLLISION (measured): the driver labels its workers
 // w0..wN by QUEUE INDEX and the runner writes
 // <label>-{aggregate,view,page}.json unconditionally, so a second driver
 // invocation into the same --artifacts dir silently overwrote the first
