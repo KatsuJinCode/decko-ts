@@ -5032,9 +5032,8 @@ export class RenderEngine implements RenderEngineLike {
    *  codename memo is the existence truth, query-free); everything else
    *  rides prepareItemForRender — fetch + enrich + memoize, so the sync
    *  anchor reads the REAL record (href carries the stored name's casing,
-   *  the corpus's [[narrative]] -> /Narrative shape). Fetch misses leave
-   *  the anchor wanted-card: the oracle's own wanted pins (People Green)
-   *  must not flip.
+   *  so a `[[narrative]]` link renders `/Narrative`). Fetch misses leave
+   *  the anchor wanted-card: Ruby's own wanted pins must not flip.
    *
    *  Cost: zero statements on renders whose surfaces carry no new
    *  unresolvable link targets (the depth-sweep chain, the prelude pins);
@@ -5098,13 +5097,13 @@ export class RenderEngine implements RenderEngineLike {
    *  codenames through `codenameToName` (core-mod.ts nestItemHtml), and
    *  Ruby's nest resolves a SYMBOL argument with `Card.fetch` (an
    *  existing-card fetch), so the slot's `nest_name` is the codename card's
-   *  AUTHORED name — the oracle's `nest_name: Role`, not the yml's `role`
+   *  AUTHORED name — `nest_name: Role`, not the yml's `role`
    *  (format/nest.rb:28 `view_opts[:nest_name] ||= card.name`). Without the
    *  runtime the map is empty, the raw codename is nested, and the slot JSON
    *  disagrees. The Depends-on section is deliberately NOT in this class:
    *  `card_mods` yields STRINGS (type/mod.rb:222-226), and a String argument
    *  takes nest/fetch.rb:31-33's `new_card` branch, which keeps the literal
-   *  (`mod_-account`) — which is what the oracle shows. So the trigger is
+   *  (`mod_-account`) — which is what the rendered slot shows. So the trigger is
    *  Mod-TYPED, not "the page nests a mod". */
   renderClosureNeedsCoreAdminRuntime(): boolean {
     for (const card of this.renderCards.values()) {
