@@ -476,13 +476,12 @@ async function applicableRule(
  *  whose "_left" content parses no party items and denies, Ruby's exact
  *  shape for the no-inheritable-rule deck).
  *
- *  corpus captures (2026-10-03): Joan_Callahan_20230902+discussion (45298)
- *  inherits through *all plus+*update (6571, "_left") to Joan Callahan
- *  20230902's *self rule 45186 ("Anyone") — the comment box renders;
- *  Klickstein continues+discussion answers from its own *self rule 9841
- *  before any _left; Perennial/Work Week/MNv discussions recurse to lefts
- *  with no *update rule, land back on 6571 from a simple card, and deny
- *  (their graded blanks). */
+ *  Worked examples: a compound card under a "*all plus+*update" rule whose
+ *  content is "_left" inherits the left card's own *self rule — that is the
+ *  case that makes a comment box render. A card whose own *self rule
+ *  resolves first answers from it and never reaches the _left branch; and
+ *  discussions whose lefts carry no *update rule recurse back to the
+ *  anchorless rule from a simple card and deny. */
 async function applicableRuleId(
   fetcher: FetchEngine,
   card: PatternCardInput,
