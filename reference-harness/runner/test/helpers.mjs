@@ -40,7 +40,7 @@ export function makeFixture(root) {
   db.exec("CREATE TABLE cards (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, updated_at TEXT)");
   db.exec("INSERT INTO cards (name, updated_at) VALUES ('Alpha', '2026-09-19 12:00:00'), ('Beta', '2026-09-19 12:00:00')");
   // A table outside Decko's card tables, so a write that touches it records an
-  // `other_tables` delta the grader grades (finding 5).
+  // `other_tables` delta for the grader to check.
   db.exec("CREATE TABLE sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT)");
   db.close();
   const jsonl = (rows) => rows.map((r) => JSON.stringify(r)).join("\n") + "\n";
