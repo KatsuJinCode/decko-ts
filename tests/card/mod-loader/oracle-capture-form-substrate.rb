@@ -1,14 +1,13 @@
-# oracle-capture-form-substrate.rb - oracle capture for the form-machinery-
-# substrate lane: the byte chains the blocked views ride, rendered on rule
-# cards whose editor input is the ACE branch (not the permissions perm-editor,
-# not the carrierwave upload):
+# oracle-capture-form-substrate.rb - renders the byte chains the mod's
+# form views ride, on rule cards whose editor input is the ACE branch (not
+# the permissions perm-editor, not the carrierwave upload):
 #
-# 1. rule_card views on "*all+*head" (id 49, HTML-typed - Type::Html
+# 1. rule_card views on "*all+*head" (HTML-typed - Type::Html
 #    html-format input_type :ace_editor, card-mod-format set/type/html.rb:20)
-#    and "*all+*guide" (id 95, Markdown-typed - card-mod-markdown
+#    and "*all+*guide" (Markdown-typed - card-mod-markdown
 #    set/type/markdown.rb:20-24, ace_mode :markdown):
 #    :quick_edit + :quick_edit_success (card-mod-rules set/rule/quick_editor.rb
-#    :2-8) - the demonstration views of the substrate lane. Their chains are
+#    :2-8) - the demonstration views this fixture pins. Their chains are
 #    quick_edit.haml -> quick_form (card_form :update, quick_editor.rb:14-23)
 #    -> quick_editor -> rule_content_formgroup -> content_formgroup
 #    (card-mod-edit set/all/form.rb:16-18) -> content_field -> input
@@ -19,16 +18,16 @@
 # 2. image_card views on the deck's first real Image-typed card:
 #    :new_image_buttons (card-mod-tinymce_editor set/all/nest_image.rb:21-24)
 #    - button_formgroup + standard_save_button(no_origin_update: true), the
-#    oracle pin of the BUTTON substrate (the view body only fires on a KNOWN
+#    pin of the BUTTON substrate (the view body only fires on a KNOWN
 #    card; on a new card the render is the unknown-view substitution).
 # 3. helper facts the substrate implementation reads:
 #    - Cardio.config.rich_text_editor (the default input branch)
 #    - each rule card's last_action_id (the undo link's revert_actions value;
 #      deck data, normalized out of the pins)
-#    - the capture deck's *recent settings pointer content (the
+#    - the deck's *recent settings pointer content (the
 #      categories walk's recent membership - setting_categories.rb:43-45;
 #      deck data, seeded in the TS tests)
-# 4. The no-write proof: card_actions count before and after; the capture
+# 4. The no-write proof: card_actions count before and after; the script
 #    performs ZERO card writes (render only).
 #
 # Run (from tools/oracle/decko-oracle-app):
