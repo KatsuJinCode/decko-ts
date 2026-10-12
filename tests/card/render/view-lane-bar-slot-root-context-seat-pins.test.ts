@@ -1,30 +1,18 @@
-// Pins for the view-lane BAR-slot root-context seat — the serializer-followup2
-// census mechanism M1 (Guns:open, -165).
+// Pins for the view-lane BAR-slot root-context seat (or rather its absence):
+// the reference behavior is that every view=bar slot nested under the
+// view-lane root card carries NO name_context and renders its title
+// ABSOLUTE, while every NON-bar slot on the same view-lane render (+tags
+// mini_bar view=closed, +Description view=content, the +Articles
+// view=open slot, the root :open slot itself) also carries no name_context.
 //
-// Census bytes (tmp/serializer-followup/probe-green5 expected--Guns__open.html):
-// every view=bar slot nested under the view-lane root card carries
-// `,&quot;name_context&quot;:&quot;gun&quot;` (the ROOT card's part key,
-// filtered to the bar card's own parts) and renders its title RELATIVE
-// (title="+rifles"), while every NON-bar slot on the same view-lane render
-// (+tags mini_bar view=closed, +Description view=content, the +Articles
-// view=open slot, the root :open slot itself) carries NO name_context —
-// on BOTH sides. The engine reproduces the ctx-less slots today and omits
-// the bar-seat: expected Guns+rifles slot ends
-// `"home_view&quot;:&quot;bar&quot;,&quot;name_context&quot;:&quot;gun&quot;}`
-// where the engine emits `"home_view&quot;:&quot;bar&quot;}` and renders the
-// absolute title (title="Guns+rifles").
-//
-// Ruby grounding (census, serializer-followup2-lane.md step 5 row 1): the
-// 0.20 walk has NO context seat on the accordion :open chain (bar.rb:40
-// build_accordion_bar -> wrap; the only cold add_name_context sites are the
-// titled naming, frames, the edit views, nest_editor, rss), so the shape is
-// fitted to the graded bytes — the same fitting class as Voo.viewLaneRoot.
-// The seat is scoped to view === "bar" slots under a format-chain view-lane
-// root, so the page lane (titled naming seat, already correct) is untouched,
-// and the part filter (root parts ∩ bar parts, relevant_context_names
-// semantics, context_names.rb:26-29) keeps non-containing bars ctx-less
-// (Guns census control: the children:open referer bars render ctx-less and
-// must stay that way).
+// Ruby grounding: the 0.20 walk has NO context seat on the accordion :open
+// chain (bar.rb:40 build_accordion_bar -> wrap; the only cold
+// add_name_context sites are the titled naming, frames, the edit views,
+// nest_editor, rss). A root-context seat for bar slots had no Ruby
+// grounding and was REMOVED — fitted behavior without a mechanism. The
+// part filter idea (root parts ∩ bar parts, relevant_context_names
+// semantics, context_names.rb:26-29) is what Ruby's REAL seats (the
+// titled naming) apply; bar slots get none of it.
 
 import { describe, it, expect, afterAll } from "vitest";
 import {
@@ -39,28 +27,22 @@ afterAll(() => {
   storage?.close();
 });
 
-/** Seed the Guns shape: the ROOT card "Weapons" IS the List host (the graded
- *  Guns:open shape — the corpus entry renders "Guns" itself, a single-part
- *  List-class host, whose item bars "Guns+rifles"/"Guns+pistols" carry
- *  name_context "gun" while the control item "Standards" stays ctx-less).
+/** Seed the root-as-host shape: the ROOT card "Weapons" IS the List host
+ *  (a single-part List-class host whose item bars are the pinned surface,
+ *  with the control item "Standards").
  *
- *  SEATFIX CORRECTION (2026-10-04, lane-seatfix-2026-10-04): this suite
- *  previously rendered "Weapons+articles" (the +articles child) as the view
- *  root — a junction HOST card whose items share only the host's FIRST part.
- *  The graded corpus pins that shape ctx-LESS: it is the tags/+Pages class,
- *  the exact shape of the 71 grade-10 name_context regressions the seatfix
- *  lane's census-shaped gate fixes (measured over every bar-view
- *  pointer-item slot in all 48 view shards, 2,547 rows — the corpus seats
- *  item bars only under single-part roots the item extends, or on
- *  rule-part divergence). The synthetic render was updated to the graded
- *  Guns:open root-as-host shape; the seat's fitted behavior on THAT shape
- *  is unchanged. */
+ *  HISTORY: this suite previously rendered "Weapons+articles" (the
+ *  +articles child) as the view root — a junction HOST card whose items
+ *  share only the host's FIRST part. That shape is pinned ctx-LESS (the
+ *  tags/+Pages class): the synthetic render was updated to the
+ *  root-as-host shape; the assertions below pin the current behavior on
+ *  THAT shape. */
 async function seedDeck(): Promise<RenderTestStorage> {
   storage = await createRenderTestStorage();
   await seedCard(storage, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
   await seedCard(storage, { id: 3, name: "List", codename: "list", typeId: 2 });
   await seedCard(storage, { id: 4, name: "RichText", codename: "rich_text", typeId: 2 });
-  // The ROOT is the List host (Guns:open shape): single-part root whose
+  // The ROOT is the List host (root-as-host shape): single-part root whose
   // content lists the item bars.
   await seedCard(storage, {
     id: 20,
@@ -82,14 +64,11 @@ describe("view-lane bar slots carry no fitted root-context seat (Guns:open shape
   it(
     "item bars under the view-lane root carry no name_context and render absolute titles",
     async () => {
-      // CORPUS-OF-RECORD CORRECTION (2026-10-06): the seat this pin used to
-      // require was fitted to an older capture (view digest 08c5a287). The
-      // corpus of record (the 2026-10-06 recapture on the graded deck)
-      // carries name_context on 0 of 2,264 view-lane pointer-item and
-      // search-result bars outside the titled +*referred_to_by results
-      // (Guns:open's Guns+rifles reads `"home_view":"bar"}` and
-      // title="Guns+rifles"), and the seat had no Ruby grounding: the 0.20
-      // accordion :open chain adds no name context. The seat is removed.
+      // CORRECTION: the seat this pin used to require had no Ruby
+      // grounding — the 0.20 accordion :open chain adds no name context —
+      // and the reference behavior carries name_context on no view-lane
+      // pointer-item or search-result bars outside the titled
+      // +*referred_to_by results. The seat is removed.
       const s = await seedDeck();
       const html = await s.engine.render("Weapons", "open");
       expect(html).not.toContain("&quot;name_context&quot;:&quot;weapon&quot;");
@@ -104,8 +83,8 @@ describe("view-lane bar slots carry no fitted root-context seat (Guns:open shape
       const s = await seedDeck();
       const html = await s.engine.render("Weapons", "open");
       // The Standards bar's JSON closes after home_view — no name_context.
-      // (safe_key singularizes: the corpus pins id="gun-rifle-bar-view" for
-      // Guns+rifles, so Standards' own slot id is standard-bar-view.)
+      // (safe_key singularizes the item key, so Standards' own slot id is
+      // standard-bar-view.)
       expect(html).toContain('id="standard-bar-view"');
       const standardsRegion = html.slice(
         html.indexOf('id="standard-bar-view"'),
@@ -122,8 +101,7 @@ describe("view-lane bar slots carry no fitted root-context seat (Guns:open shape
       const s = await seedDeck();
       const html = await s.engine.render("Weapons", "open");
       // The ROOT open slot closes without a name_context member (the slot
-      // JSON reads the initial context, pre-seat — census: the Guns root
-      // :open slot carries none on either side).
+      // JSON reads the initial context, pre-seat).
       const rootSlot = html.slice(0, html.indexOf('class="card-slot'));
       expect(rootSlot).not.toContain("&quot;name_context&quot;");
       // Bar-slot count sanity: three item bars render.
