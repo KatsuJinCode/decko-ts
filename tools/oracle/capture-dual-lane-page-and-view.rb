@@ -170,26 +170,25 @@ end
 #      nothing here fails the capture loudly.
 raw_connection = ActiveRecord::Base.connection.raw_connection
 if raw_connection.respond_to?(:readonly?) && !raw_connection.readonly?
-  puts "M3 WARNING: corpus connection did NOT open READONLY " \
+  puts "WARNING: corpus connection did NOT open READONLY " \
        "(DATABASE_URL should carry ?readonly=true); relying on PRAGMA query_only"
 end
 ActiveRecord::Base.connection.execute("PRAGMA query_only = 1")
 query_only = ActiveRecord::Base.connection.select_value("PRAGMA query_only")
 unless query_only.to_i == 1
   raise "REFUSING: corpus connection is writable (PRAGMA query_only=" \
-        "#{query_only.inspect}); the capture must photograph a read-only corpus " \
-        "(camera-forensics.md M3)"
+        "#{query_only.inspect}); the capture must photograph a read-only corpus"
 end
 write_refused = false
 begin
   ActiveRecord::Base.connection.execute("UPDATE cards SET id = id WHERE 0")
 rescue ActiveRecord::StatementInvalid, SQLite3::Exception => e
   write_refused = true
-  puts "M3 write probe: write refused as required (#{e.class})"
+  puts "write probe: write refused as required (#{e.class})"
 end
 unless write_refused
   raise "REFUSING: corpus connection executed a write (UPDATE ... WHERE 0 was " \
-        "not refused); the capture must be read-only (camera-forensics.md M3)"
+        "not refused); the capture must be read-only"
 end
 
 # ---- frozen clock -------------------------------------------------------------
@@ -473,8 +472,8 @@ puts "mode: #{SAMPLE_PATH ? "SAMPLE (#{SAMPLE_PATH})" : 'FULL (disputed set)'}"
 puts "output: #{PAGE_DIR}"
 puts "output: #{VIEW_DIR}"
 puts "capture_boot_pid=#{$$}"
-puts "M3 corpus read-only: PRAGMA query_only=1 enforced (DATABASE_URL readonly)"
-puts "M4 clock frozen at #{CaptureFrozenClock::FROZEN_EPOCH.utc.iso8601} for every photographed card"
+puts "corpus read-only: PRAGMA query_only=1 enforced (DATABASE_URL readonly)"
+puts "clock frozen at #{CaptureFrozenClock::FROZEN_EPOCH.utc.iso8601} for every photographed card"
 
 started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 

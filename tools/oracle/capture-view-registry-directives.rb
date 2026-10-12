@@ -176,7 +176,7 @@ end
 
 payload = {
   "capture" => "view-registry-directives",
-  "purpose" => "contract R3.1.a/R3.1.b/R3.4.b: live html view registry - " \
+  "purpose" => "photograph the running app's html view registry: " \
                "directive table (perms/denial/unknown), view_method callables, " \
                "skip_perms + underscore render forms, denial substitution",
   "ruby_truth" => {
