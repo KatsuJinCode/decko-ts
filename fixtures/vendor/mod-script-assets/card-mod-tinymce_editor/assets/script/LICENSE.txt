@@ -34,8 +34,8 @@ body itself is kept separately as `./License-lgpl-2.1.txt` so the terms are
 readable without this note. `License-lgpl-2.1.txt` is the standard GNU LGPL
 version 2.1 text (504 lines: preamble, TERMS AND CONDITIONS, END OF TERMS
 AND CONDITIONS, and the "How to apply these terms to your new libraries"
-appendix), copied verbatim from the TinyMCE distribution the Ruby oracle's
-deck vendors.
+appendix), copied verbatim out of a locally vendored TinyMCE distribution
+rather than fetched from upstream while this file was written.
 
 What LGPL-2.1 obliges a recipient to do
 ---------------------------------------
