@@ -1,5 +1,5 @@
 # style-tag-views.rb — static-ruby oracle capture for card-mod-style's
-# census-missing views :remote_include_tags (type_plus_right/mod/style.rb:
+# views :remote_include_tags (type_plus_right/mod/style.rb:
 # 26-32), :remote_style_tags (self/style_mods.rb:8-14),
 # :stylesheet_include_tag (type_plus_right/mod/style.rb:20-24) and
 # :stylesheet_path (type_plus_right/set/style.rb:28-33).
@@ -8,13 +8,11 @@
 # Stubs, each documented:
 #
 #   tag              - Rails TagHelper#tag (tag_helper.rb:132-168): a
-#                      content-less tag self-closes " />" only via
-#                      content_tag absence... the captured BYTES pin the
-#                      shape: <link href="..." media="all" rel="stylesheet"
-#                      type="text/css" /> (fixtures/captured corpus pages'
-#                      head - the same bytes REMOTE_STYLE_TAG carries in
-#                      src/card/render/head-views.ts, cross-checked in this
-#                      script against that constant's url).
+#                      content-less tag self-closes " />" with the
+#                      attributes in the caller's hash order — the same
+#                      shape REMOTE_STYLE_TAG carries in
+#                      src/card/render/head-views.ts, which this script
+#                      cross-checks against its own tag bytes.
 #   group_remote     - the deck-stored +*group remote child's content
 #                      (card-mod-assets set/right/group_remote.rb:25-31):
 #                      one remote src per line. card-mod-script.ts's port
@@ -79,8 +77,8 @@ module HTML
   def self.escape_attr(v)
     v.to_s.gsub(/[&<>"]/) { |c| TAG_ESCAPE[c] }
   end
-  # Rails TagHelper#tag - the void/link shape the CAPTURED corpus pages pin
-  # (self-closing " />", attrs in the caller's hash order)
+  # Rails TagHelper#tag - the void/link shape (self-closing " />",
+  # attrs in the caller's hash order)
   def self.tag(name, attrs = {})
     attr_str = attrs.map { |k, v| %(#{k}="#{escape_attr(v)}") }.join(" ")
     "<#{name} #{attr_str} />"
@@ -217,8 +215,8 @@ end
 # --- drive the scenarios -----------------------------------------------------
 
 # The deck's documented mod-style state: the style mod's remote group
-# carries the Material Icons stylesheet (the captured corpus bytes), the
-# bootstrap mod's remote group is empty.
+# carries the Material Icons stylesheet, the bootstrap mod's remote
+# group is empty.
 style_mod_card = ItemCardDouble.new(NameString.new("mod: style"),
                                     group_remote_content:
                                       "https://fonts.googleapis.com/css2?family=Material+Icons",
@@ -235,8 +233,8 @@ remote_tags_1 = Array(fmt1.nest(style_mod_card, view: :remote_include_tags)).joi
 raise "tag bytes drifted: #{remote_tags_1.inspect}" unless remote_tags_1 ==
   '<link href="https://fonts.googleapis.com/css2?family=Material+Icons" media="all" rel="stylesheet" type="text/css" />'
 
-# the CAPTURED constant cross-check: the corpus-pinned bytes
-# (src/card/render/head-views.ts REMOTE_STYLE_TAG - the deck's pinned gems)
+# cross-check against the TS constant: src/card/render/head-views.ts's
+# REMOTE_STYLE_TAG must carry byte-identical link markup
 captured_constant = File.read(head_views_ts)[/<link href="https:\/\/fonts\.googleapis\.com[^"]*" media="all" rel="stylesheet" type="text\/css" \/>/]
 raise "captured constant not found" unless captured_constant
 raise "oracle bytes != captured constant" unless remote_tags_1 == captured_constant
