@@ -1,4 +1,4 @@
-// RED-FIRST PINS, plan-invalidation lane (2026-10-05).
+// RED-FIRST PINS (plan invalidation).
 //
 // THE MECHANISM UNDER PIN. A recorded render plan
 // (one_trip_render_plans, keyed (page_id, seq)) is a transcript of the
@@ -7,34 +7,34 @@
 // and replays it as one batch, so every render read whose (sql, params)
 // matches an entry is answered from the RECORDED RESULT SET with zero round
 // trips (render-gate.ts:135-139). The plan is therefore true only as of the
-// moment it was recorded. Before this lane, NOTHING bound a content write to
+// moment it was recorded. Before this mechanism, NOTHING bound a content write to
 // a plan's death: invalidation.ts re-derived the closure tables and left the
 // plan rows describing the pre-write world, so an edit to an included card
 // left the page replaying a transcript of stale state at full speed.
 //
 // THE COST THAT DECIDED THE SHAPE. Re-recording inline is correct but the
 // recorder renders each page once through the whole engine in the exact
-// serving posture (render-plan-recorder.ts:117-186) — the L2 lane measured
-// 896,269 ms for 38 pages (~23.6 s/page) against the serving database. A
-// write that reaches N pages would block for N x 23.6 s. So this lane DELETES
+// serving posture (render-plan-recorder.ts:117-186) — measured at
+// ~23.6 s/page against the serving database. A
+// write that reaches N pages would block for N x 23.6 s. So this mechanism DELETES
 // the affected plans instead: the page falls back to the ladder until it is
-// re-recorded. That is the pre-plan posture, which the L2 lane proved is
-// byte-identical (§4.2: bytes OFF == AFTER on 5/5 pages) — so the cost of
+// re-recorded. That is the pre-plan posture, which is proven
+// byte-identical (bytes OFF == AFTER on all probe pages) — so the cost of
 // this mechanism is trips, never bytes.
 //
-// THE CLAUSE THAT MAKES IT TOTAL. The drop is NOT closure-only. 38 of the 45
+// THE CLAUSE THAT MAKES IT TOTAL. The drop is NOT closure-only. Most
 // plan-bearing pages were recorded for pages the store never materialized
-// (l2-plan-recording-lane.md §1: "the plan lookup is keyed by card id, not by
-// the materialized store ... a page the one_trip_* store never materialized
-// still gets a plan"). The reverse-closure lookup cannot NAME such a page —
+// (the plan lookup is keyed by card id, not by
+// the materialized store — a page the one_trip_* store never materialized
+// still gets a plan). The reverse-closure lookup cannot NAME such a page —
 // it has no one_trip_page_closure row — so a closure-only drop would leave
-// the majority of the corpus stale forever, silently. Hence the conservative
+// the majority of the deck's pages stale forever, silently. Hence the conservative
 // second clause: a page that CARRIES A PLAN but has NO CLOSURE ROW cannot be
 // proven unaffected by any write, so it is dropped too. Over-invalidation is
 // the correct bias here: it costs trips, and the alternative is stale bytes.
 //
-// WHY A TRIGGER. The same argument the freshness lane made for
-// deck_data_version (d19ec179): a committed write is authoritative regardless
+// WHY A TRIGGER. The same argument the freshness stamp makes: a committed
+// write is authoritative regardless
 // of which stream, process or connection issued it. There is no application
 // write path to hook — invalidation.ts has zero production callers today
 // (grep over src/ + tests/: only its own test) — so an application-level drop
@@ -56,10 +56,10 @@ interface Row {
   [column: string]: unknown;
 }
 
-/** The freshness lane's committed-write stamp, BYTE-VERBATIM from
- *  d19ec179:db/schema.sqlite.sql (extracted to
+/** The committed-write stamp DDL, BYTE-VERBATIM from
+ *  db/schema.sqlite.sql (extracted to
  *  tests/card/one-trip/fixtures-deck-data-version-d19ec179.sql, not
- *  re-typed, so this suite pins the REAL trigger text rather than my
+ *  re-typed, so this suite pins the REAL trigger text rather than a
  *  reproduction of it).
  *
  *  It is installed here so this suite pins the COMPOSITION the ask asks for:
@@ -88,7 +88,7 @@ const DECK_DATA_VERSION_DDL = splitSqlStatements(
  *   Page C (id c) — MATERIALIZED, the edited leaf
  *   Page D (id d) — MATERIALIZED, closure reaches E only -> UNAFFECTED
  *   Page U (id u) — UNMATERIALIZED: carries a plan, has NO closure row
- *                    (the L2 lane's 38-page class)
+ *                    (the unmaterialized-plan class)
  */
 async function makeInlineDeck(): Promise<{ deck: SQLDatabaseDriver; ids: Record<string, number> }> {
   const deck = new LocalSqliteDriver({ path: ":memory:" });
@@ -99,14 +99,13 @@ async function makeInlineDeck(): Promise<{ deck: SQLDatabaseDriver; ids: Record<
   for (const statement of splitSqlStatements(ddl)) {
     await deck.query(statement, []);
   }
-  // The freshness lane's stamp — installed BEFORE the plan triggers so the
+  // The freshness stamp — installed BEFORE the plan triggers so the
   // composition is exercised by the same writes the plan pins assert on.
-  // Lineage-reconciliation lane (2026-10-06): db/schema.sqlite.sql NOW
-  // carries these very triggers (the freshness branch is merged into this
-  // line), so a plain re-install collides with "trigger ... already
-  // exists". The fixture text stays BYTE-VERBATIM; the installation is
-  // collision-tolerant — on a schema without the stamp (the pre-merge
-  // posture this fixture was extracted for) every statement applies; on
+  // db/schema.sqlite.sql NOW
+  // carries these very triggers, so a plain re-install collides with
+  // "trigger ... already exists". The fixture text stays BYTE-VERBATIM; the
+  // installation is collision-tolerant — on a schema without the stamp
+  // every statement applies; on
   // the merged schema they are already present and no-op. The 11-trigger
   // composition count below pins the same union either way.
   for (const statement of DECK_DATA_VERSION_DDL) {
@@ -237,8 +236,8 @@ describe("plan invalidation: a committed content write drops the plans it can fa
   });
 
   it("drops the UNMATERIALIZED page's plan — the class a closure lookup cannot name", async () => {
-    // Page U carries a plan but has NO one_trip_page_closure row (the L2
-    // lane's 38-page class). No reverse-closure query can reach it, so it is
+    // Page U carries a plan but has NO one_trip_page_closure row (the
+    // unmaterialized-plan class). No reverse-closure query can reach it, so it is
     // only dropped by the conservative clause.
     const surviving = await planPages(deck);
     expect(
@@ -266,7 +265,7 @@ describe("plan invalidation: a committed content write drops the plans it can fa
   });
 
   it("COMPOSITION: the freshness stamp still moves on the same writes", async () => {
-    // The ask's third RED pin. Both mechanisms are installed on the same two
+    // Both mechanisms are installed on the same two
     // tables; neither may displace the other. deck_data_version bumped on the
     // writes above; a further write must bump it again while ALSO dropping
     // the plans.
