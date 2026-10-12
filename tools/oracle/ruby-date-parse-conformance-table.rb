@@ -1,10 +1,10 @@
 # ruby-date-parse-conformance-table.rb — THE GEM RUN the date-parse class
-# needed. Runs the SAME ::Date.parse the Date cardtype calls
-# (mod/date/set/type/date.rb:6-8, `::Date.parse(card.content).strftime
-# "%B %-d, %Y"`) over a systematic family and emits a JSON conformance
-# table: input -> {parsed, iso, rendered} or {parsed:false, error}.
+# needed. Runs the SAME ::Date.parse the Date cardtype performs
+# (`::Date.parse(card.content).strftime "%B %-d, %Y"`) over a systematic
+# family and emits a JSON conformance table: input -> {parsed, iso,
+# rendered} or {parsed:false, error}.
 #
-#   ruby tmp/addressed-wave1/ruby-date-parse-conformance-table.rb > table.json
+#   ruby tools/oracle/ruby-date-parse-conformance-table.rb > table.json
 #
 # WHY A TABLE AND NOT A HEURISTIC. The engine's parseRubyDateContent had two
 # corpus-visible disagreements with the gem, in OPPOSITE directions, and a
@@ -16,10 +16,10 @@ require "json"
 
 inputs = []
 
-# 1. the corpus's own unusual shapes (bench-corpus-raw.sqlite3 type_id=17)
+# 1. the corpus's own unusual shapes (Date-typed rows, type_id=17)
 inputs.concat([
-  "1981-10",   # card 13903  - the 2-component dashed one
-  "20-0405",   # card 35469  - day + zone, NO month, NO year
+  "1981-10",   # the 2-component dashed one
+  "20-0405",   # day + zone, NO month, NO year
   "2016", "1980", "1", "0", "123", "12",   # bare-digit heuristics
   "09/10/2021 8:01 AM", "05/18/2023 12:00 AM",
   "<p>{{+date}}</p>", "",
@@ -28,7 +28,7 @@ inputs.concat([
 # 2. the compact YYYYMMDD family
 ["20190319", "20220323", "20161231", "20190101"].each { |s| inputs << s }
 
-# 3. the dashed Y-M-D family the corpus's 4045 cards carry
+# 3. the dashed Y-M-D family
 ["18-12-22", "2010-7-19", "999-1-1", "38-12-31", "39-01-01", "68-05-05",
  "69-1-1", "2019-13-01", "2021-02-29", "2019-05-0", "2019-03-19",
  "2020-02-29", "2024-02-29", "0001-01-01", "9999-12-31"].each { |s| inputs << s }
