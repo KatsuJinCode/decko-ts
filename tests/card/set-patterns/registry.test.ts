@@ -1,10 +1,9 @@
 /**
  * Registry-table tests: registration order, per-pattern options, module-level
  * accessors. Every expectation cites its Ruby source (file#method) and, where
- * marked ORACLE, the captured live-decko output in
- * set-pattern-oracle-capture.json (probe 1) / set-pattern-oracle-capture2.json
- * (probe 2), produced by set-pattern-oracle-probe*.rb against
- * card-1.110.0 / decko-0.20.0.
+ * marked ORACLE, the captured reference-decko output in the committed
+ * set-pattern-oracle-capture.json / set-pattern-oracle-capture2.json
+ * fixtures (card-1.110.0 / decko-0.20.0).
  */
 
 import { describe, expect, it } from "vitest";
