@@ -3,8 +3,9 @@
 // Every datum in this file is invented for it: the probe table and columns,
 // the card name, the card body and the write. The deck they run against is
 // reference-harness/fixtures/synthetic-v1, the stock Ruby Decko deck the
-// reference harness commits so anyone can boot the engine without local data.
-// Nothing here reads a private capture, a hosted service or the network.
+// reference harness commits so anyone can boot the engine without local
+// data. Everything here runs against committed fixtures: no outside data,
+// no hosted service, no network.
 //
 // The boot helpers are the committed ones, not new machinery:
 //
