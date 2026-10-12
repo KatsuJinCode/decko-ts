@@ -53,8 +53,8 @@ beforeAll(async () => {
   // bootstraps Anyone Signed In; account_holder.rb:31-37 passes every
   // actor) models an
   // update-authorized editor — the actor the wiki-link body belongs to.
-  // Deliberately NO *create rule: the :unknown arm pins "the captured-deck
-  // shape: createable is denied" below, which a create grant would flip.
+  // Deliberately NO *create rule: the :unknown arm pins the deny-create
+  // shape below, which a create grant would flip.
   // Scoped to this file.
   await seedCard(s, { id: 501, name: "*update", codename: "update", typeId: 14 });
   await seedCard(s, { id: 502, name: "Anyone", codename: "anyone" });
@@ -175,7 +175,7 @@ describe("card-mod-format header/html/head — six missing views (rendered-unpin
     // flag the slot wrap already reads); the :noindex listing half is the
     // documented remainder (a rule-card read with no sync seam).
     const unknown = await s.engine.render("Header Probe", "unknown");
-    expect(unknown).toBe(""); // the captured-deck shape: createable is denied
+    expect(unknown).toBe(""); // create is denied, so the denial renders empty
     // an unknown card rendered as a nest target noindexes
     const nested = await s.engine.render("Header Probe", "title_no_link");
     expect(nested).toContain("Header Probe");
