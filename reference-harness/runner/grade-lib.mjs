@@ -24,14 +24,19 @@ export const EXIT = { pass: 0, fail: 1, invalid: 2, partial: 2 };
  * `allowPartial` lets a run with a --filter/--limit selection or missing kinds
  * be graded on what it holds, for development; its verdict is "partial",
  * never "pass".
+ * `classTokenOrder` applies the harness's N3 rule (class tokens inside a
+ * `class` attribute compared as a set). It is on by default and is recorded in
+ * the report; `false` grades with N3 off, which is how the raw class-token
+ * order counts on its own is measured.
  * `declaredOtherTables` is the declared-difference record for write steps'
  * changes outside Decko's card tables, keyed on step id then table name:
- * `{ "create-then-render#1": { sessions: "why the engine's row differs" } }`.
+ * `{ "create-then-render#1": { "sessions": "why the engine's row differs" } }`.
  * A difference named here is graded as declared (recorded, with its why, in
  * the report); every other difference fails the grade.
  */
-export function gradeRun({ fixture, actual, expected, allowPartial = false, declaredOtherTables = {} }) {
+export function gradeRun({ fixture, actual, expected, allowPartial = false, classTokenOrder = true, declaredOtherTables = {} }) {
   const declared = validateDeclaredOtherTables(declaredOtherTables);
+  const normalizeOptions = { classTokenOrder };
   const fixtureDir = path.resolve(fixture);
   const actualDir = path.resolve(actual);
   const expectedDir = path.resolve(expected ?? path.join(fixtureDir, "expected"));
@@ -174,7 +179,7 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, decl
   for (const [id, e] of exp.render) {
     if (!selected("render", id)) continue;
     const [view, actor] = id.split(":");
-    grade("rendering", `${view === "page" ? "page" : "view"} / ${actor}`, id, wrap(e, normalizeRender), wrap(act.render.get(id), normalizeRender));
+    grade("rendering", `${view === "page" ? "page" : "view"} / ${actor}`, id, wrap(e, (r) => normalizeRender(r, normalizeOptions)), wrap(act.render.get(id), (r) => normalizeRender(r, normalizeOptions)));
   }
   for (const [id, e] of exp.semantics) {
     if (!selected("semantics", id)) continue;
@@ -193,7 +198,7 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, decl
       const op = steps[i];
       const id = `${sid}#${i + 1}`;
       const actStep = a?.steps?.[i];
-      if (op.op === "render") grade("rendering", "after write", id, wrap(step, normalizeRender), wrap(actStep, normalizeRender));
+      if (op.op === "render") grade("rendering", "after write", id, wrap(step, (r) => normalizeRender(r, normalizeOptions)), wrap(actStep, (r) => normalizeRender(r, normalizeOptions)));
       else if (op.op === "ask") grade("semantics", "after write", id, wrap(step, ident), wrap(actStep, ident));
       else {
         // A write's or sign-in's answer is its side effect: saved or refused,
@@ -230,6 +235,7 @@ export function gradeRun({ fixture, actual, expected, allowPartial = false, decl
     problems,
     partial: allowPartial ? partial : [],
     warnings,
+    normalization: ["N1", "N2", ...(classTokenOrder ? ["N3"] : [])],
     summary,
     read_writes: readWrites,
     other_tables: otherTables,

@@ -9,7 +9,15 @@ is measured where, with counts, and what the public package does not measure
 at all — is inventoried in [coverage-inventory.md](coverage-inventory.md).
 
 The oracle is card 1.110.0 and decko 0.20.0 on Ruby 3.3. Everything below
-that says "Ruby" means that version.
+that says "Ruby" means that version. It also means that **environment**: the
+committed expected outputs were captured on Windows (`ruby 3.3.12
+[x64-mingw-ucrt]`), and Ruby's own operating system decides some output bytes
+— the class-token order inside a `class` attribute is the one that moves.
+Three normalisations absorb what an environment legitimately changes, and
+nothing else does ([reference-harness/SPEC.md](../reference-harness/SPEC.md)
+§4, [tools/ruby-version-variance/](../tools/ruby-version-variance/)). A Ruby
+patch-version range measured on one operating system says nothing about a
+capture on another.
 
 ---
 
@@ -95,7 +103,7 @@ instrument is named first and its rules second.
 
 | Instrument | Rules | Where each is defined |
 | --- | --- | --- |
-| **Public reference harness** (N1/N2) | **2**: N1 masks the `data-slot-id` attribute **value** (quote style kept); N2 is a canonical form — JSON object key order never counts, array order always does. Nothing else. | `reference-harness/runner/normalize.mjs:25` (`SLOT_ID`), `:51` (`normalizeHtml`/N1), `:189` (`stable`/N2). Spec: `reference-harness/SPEC.md` §4. |
+| **Public reference harness** (N1/N2/N3) | **3**: N1 masks the `data-slot-id` attribute **value** (quote style kept); N2 is a canonical form — JSON object key order never counts, array order always does; N3 is a canonical form — inside a real `class` attribute the class tokens are compared as a **set** (both sides sorted; the token set, the count and the tokens themselves all still count, only the order is canonicalised). Nothing else. | `reference-harness/runner/normalize.mjs:26` (`SLOT_ID`), `:56` (`normalizeHtml`/N1+N3), `:205` (`sortClassTokens`/N3), `:225` (`stable`/N2). Spec: `reference-harness/SPEC.md` §4. |
 | **Oracle-replay comparator** | **3** replay-legitimate normalizations, applied to **both** sides by `normalizeForReplay` in this order: (1) `data-slot-id` → `RANDOMIZED`; (2) accordion group hash → `HASH`; (3) `Cardio::Mod` object address → `ADDRESS`. | `src/testing/diff.ts:225` (`normalizeForReplay`, the compare seam); the three rules at `:1-20` (rule 1), `:90` (`ACCORDION_GROUP_HASH_PATTERN`), `:201` (`MOD_OBJECT_ADDRESS_PATTERN`). |
 | **Historical corpus replay** | **4 normalizations** (the three above **plus** the Cloudflare `__CF$cv$params` challenge-script block, removed from both sides) **+ 2 expectation transforms applied once, upstream of the comparison** (the s3→DigitalOcean-Spaces asset-host prefix; the denied-seam blank-line re-anchor) **+ the 50 live-swapped expectations** from the subsection above (13 + 37, two disjoint swap sets). | Normalizations: `src/testing/diff.ts:165` (`CF_CHALLENGE_BLOCK_PATTERN`, the fourth; applied in `normalizeForReplay` at `:227`). Transforms: `tools/oracle/apply-asset-host-follow-live-close-71.mjs` (asset host) and `tools/oracle/denied-seam-reanchor-page-lane-expectations.mjs` (denied seam). Live swap: the "live-anchored expectations" subsection above, manifests under `fixtures/corpus-v2/w5-live-alignment-2026-10-03/` and `fixtures/corpus-v2/asset-host-follow-live-close-71/`. |
 

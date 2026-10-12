@@ -8,12 +8,13 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, it } from "node:test";
 import { gradeRun } from "../grade-lib.mjs";
-import { normalizeHtml, normalizeRender, sameJson } from "../normalize.mjs";
+import { normalizeHtml, normalizeRender, sameJson, sortClassTokens } from "../normalize.mjs";
 import { HARNESS } from "./helpers.mjs";
 
 const slot = "0123456789abcdef0123";
 const other = "fedcba9876543210fedc";
 const same = (a, b) => normalizeHtml(a) === normalizeHtml(b);
+const sameNoClassOrder = (a, b) => normalizeHtml(a, { classTokenOrder: false }) === normalizeHtml(b, { classTokenOrder: false });
 
 describe("N1: slot ids, the one mask", () => {
   it("masks a 20-hex slot id in either quote style", () => {
@@ -133,12 +134,73 @@ describe("removed rules: these now count", () => {
   });
 });
 
-describe("N2: key order, the one canonical form", () => {
+describe("N2: key order, a canonical form", () => {
   it("object key order never counts; array order always does", () => {
     assert.ok(sameJson({ a: 1, b: { c: 2, d: 3 } }, { b: { d: 3, c: 2 }, a: 1 }));
     assert.ok(!sameJson({ names: ["A", "B"] }, { names: ["B", "A"] }));
     assert.ok(!sameJson({ a: 1 }, { a: "1" }), "type counts");
     assert.ok(!sameJson({ a: null }, {}), "a null field is not an absent one");
+  });
+});
+
+describe("N3: class-token order, a canonical form", () => {
+  it("compares class tokens as a set, in either quote style", () => {
+    assert.ok(same(`<div class="card-new card-abstract">x</div>`, `<div class="card-abstract card-new">x</div>`));
+    assert.ok(same(`<div class='b a c'>x</div>`, `<div class='a b c'>x</div>`));
+    assert.ok(!same(`<div class="a b">x</div>`, `<div class='a b'>x</div>`), "the quote character is kept, exactly as N1 keeps it");
+  });
+
+  it("the token set, the count and the tokens themselves all still count", () => {
+    assert.ok(!same(`<div class="a b">x</div>`, `<div class="a b c">x</div>`), "a missing token");
+    assert.ok(!same(`<div class="a b">x</div>`, `<div class="a b b">x</div>`), "a repeated token");
+    assert.ok(!same(`<div class="a b">x</div>`, `<div class="a B">x</div>`), "token case");
+    assert.ok(!same(`<div class="a b">x</div>`, `<div class="">x</div>`), "an emptied value");
+    assert.ok(!same(`<div class="a b">x</div>`, `<div class="a b c">x</div>`), "a different set, not an order");
+  });
+
+  it("only a real class attribute token is reordered", () => {
+    assert.ok(!same(`<p>class="b a"</p>`, `<p>class="a b"</p>`), "element text is content, not an attribute");
+    assert.ok(!same(`<!-- class="b a" -->`, `<!-- class="a b" -->`), "inside a comment");
+    assert.ok(!same(`<div title='class="b a"'>x</div>`, `<div title='class="a b"'>x</div>`), "inside another attribute's value");
+    assert.ok(!same(`<script>var c = "b a";</script>`, `<script>var c = "a b";</script>`), "inside a script body");
+    assert.ok(!same(`<div data-class="b a">x</div>`, `<div data-class="a b">x</div>`), "an attribute whose name merely ends in class");
+    assert.ok(!same(`<div class=b a>x</div>`, `<div class=a b>x</div>`), "an unquoted value");
+  });
+
+  it("the attribute name itself, and everything around it, still count", () => {
+    assert.ok(!same(`<div class="b a">x</div>`, `<div CLASS="a b">x</div>`), "attribute name case is a byte difference in the tag");
+    assert.ok(same(`<div id="q" class="b a" data-x="1">x</div>`, `<div id="q" class="a b" data-x="1">x</div>`));
+    assert.ok(!same(`<div class="b a" data-x="1">x</div>`, `<div class="b a" data-x="2">x</div>`), "a difference beside the class still counts");
+    assert.ok(!same(`<div class="b a">y</div>`, `<div class="a b">z</div>`), "a difference in the element content still counts");
+  });
+
+  it("class is matched case-insensitively, as HTML attribute names are", () => {
+    assert.ok(same(`<div CLASS="b a">x</div>`, `<div CLASS="a b">x</div>`));
+    assert.ok(same(`<div Class="b a">x</div>`, `<div Class="a b">x</div>`));
+  });
+
+  it("a closing tag's text is never touched", () => {
+    assert.equal(normalizeHtml(`</div class="b a">`), `</div class="b a">`);
+  });
+
+  it("with the rule off, class-token order is compared byte for byte", () => {
+    assert.ok(!sameNoClassOrder(`<div class="card-new card-abstract">x</div>`, `<div class="card-abstract card-new">x</div>`));
+    assert.ok(sameNoClassOrder(`<div class="a b">x</div>`, `<div class="a b">x</div>`));
+    assert.ok(sameNoClassOrder(`<div data-slot-id="${slot}">x</div>`, `<div data-slot-id="${other}">x</div>`), "N1 is unaffected");
+  });
+
+  it("a value with one token, none, or unusual whitespace", () => {
+    assert.equal(sortClassTokens(""), "");
+    assert.equal(sortClassTokens("solo"), "solo");
+    assert.equal(sortClassTokens("  a  b  "), "a b", "separator runs collapse");
+    assert.equal(sortClassTokens("a\nb"), "a b", "a newline separator is a separator, not content");
+    assert.equal(sortClassTokens("b a a"), "b a a", "a repeated token leaves the value exactly as it is");
+  });
+
+  it("normalizeRender applies N3 to the html of a render result only", () => {
+    assert.deepEqual(normalizeRender({ html: `<i class="b a"></i>`, status: 200 }), { html: `<i class="a b"></i>`, status: 200 });
+    assert.deepEqual(normalizeRender({ html: `<i class="b a"></i>`, status: 200 }, { classTokenOrder: false }), { html: `<i class="b a"></i>`, status: 200 });
+    assert.ok(!sameJson(normalizeRender({ html: `<i class="a b"></i>`, status: 200 }), normalizeRender({ html: `<i class="a b"></i>`, status: 404 })));
   });
 });
 
@@ -163,5 +225,20 @@ describe("synthetic-v1: the masks are the measured nondeterminism", () => {
     assert.equal(report.summary.persistence.graded, 16);
     assert.equal(report.summary.side_effects.graded, 19);
     assert.equal(report.read_writes.graded, 8);
+  });
+
+  it("a grade names the normalisation rules it ran under", () => {
+    assert.deepEqual(gradeRun({ fixture, actual: path.join(fixture, "expected") }).normalization, ["N1", "N2", "N3"]);
+    assert.deepEqual(gradeRun({ fixture, actual: path.join(fixture, "expected"), classTokenOrder: false }).normalization, ["N1", "N2"]);
+  });
+
+  it("N3 changes nothing on the committed expected bytes, which are already in sorted class-token order", () => {
+    // The committed expected outputs were captured on Windows. The engine that
+    // matched them byte for byte is graded unchanged by N3, so the rule only
+    // ever has to carry a DIFFERENT environment's ordering (tools/ruby-version-variance/).
+    const on = gradeRun({ fixture, actual: path.join(fixture, "expected") });
+    const off = gradeRun({ fixture, actual: path.join(fixture, "expected"), classTokenOrder: false });
+    assert.equal(off.verdict, "pass", "the expected outputs also pass with N3 off, so N3 hides nothing here");
+    assert.equal(on.summary.rendering.pass, off.summary.rendering.pass);
   });
 });

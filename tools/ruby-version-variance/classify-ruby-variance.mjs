@@ -1,17 +1,32 @@
 #!/usr/bin/env node
 // Classifies the differences between two stock-oracle runs on one fixture, so
-// the Ruby-version variance the release claim rests on is a MEASURED number
-// with a named class per difference, not an assertion.
+// the oracle variance the release claim rests on is a MEASURED number with a
+// named class per difference, not an assertion.
 //
 //   node classify-ruby-variance.mjs <runA> <runB> [--json <out.json>]
 //
+// WHICH AXIS THIS MEASURES. Each run's run-meta.json names the environment it
+// was captured in (the Ruby oracle's ready line records ruby, ruby_platform
+// and ruby_engine, which run.mjs copies into runs.<kind>.engine). Read them
+// and the report says which axis the two runs differ on. The finding that
+// matters for the public claim is the ENVIRONMENT axis: two Rubies of the same
+// version on different operating systems. The Ruby-version axis (3.2 vs 3.3 on
+// the same OS) was measured too and differs only in slot ids, which N1 already
+// masks — that is why a version-range claim measured on one OS says nothing
+// about a capture on another.
+//
 // It reuses the harness's own normalizer (reference-harness/runner/normalize.mjs)
 // so "equal after the harness's masks" means exactly what SPEC.md section 4
-// means, and applies the harness's N1 slot-id mask. On top of that it
-// classifies each remaining difference:
+// means. It applies N1 (the slot-id mask) and N3 (class tokens compared as a
+// set), then classifies each remaining difference:
 //   class-token-order  a class attribute whose token SET is equal but whose
-//                      token ORDER differs (the reviewer's reported class)
+//                      token ORDER differs (the environment-variance class)
 //   anything else      reported as UNCLASSIFIED, loudly, with a sample
+//
+// Because N3 is applied before classification, an N3-order difference is
+// counted in `equal_after_N1_N3` rather than as a class_token_order item; the
+// class_token_order counts below come from comparing the RAW class values,
+// which is what shows the size of the order-only difference.
 //
 // Exit 0 when every difference is a class-token-order, 1 otherwise.
 
@@ -32,6 +47,46 @@ const read = (dir, kind) => {
   const text = existsSync(f) ? readFileSync(f, "utf8") : gunzipSync(readFileSync(f + ".gz")).toString("utf8");
   return text.split("\n").filter((l) => l.trim()).map((l) => JSON.parse(l));
 };
+
+/** The environment a run was captured in: the adapter's ready line, which the
+ * runner copies into run-meta.json under runs.<kind>.engine. The Ruby oracle
+ * records ruby / ruby_platform / ruby_engine there. */
+function environmentOf(dir) {
+  const file = path.join(dir, "run-meta.json");
+  if (!existsSync(file)) return null;
+  let meta;
+  try {
+    meta = JSON.parse(readFileSync(file, "utf8"));
+  } catch {
+    return null;
+  }
+  const engine = meta?.runs?.render?.engine ?? meta?.runs?.semantics?.engine ?? null;
+  const v = engine?.version ?? {};
+  return {
+    engine: engine?.engine ?? null,
+    ruby: v.ruby ?? null,
+    platform: v.ruby_platform ?? null,
+    ruby_engine: v.ruby_engine ?? null,
+    decko: v.decko ?? null,
+    card: v.card ?? null,
+  };
+}
+
+/** What the two runs differ ON, from their own recorded environments. */
+function axisBetween(a, b) {
+  if (!a || !b) return { axis: "unknown", detail: "a run does not record its environment (run-meta.json has no ready line)" };
+  if (!a.ruby || !b.ruby) {
+    return { axis: "unknown", detail: `a run predates the environment recording (ruby: ${a.ruby ?? "?"} vs ${b.ruby ?? "?"})` };
+  }
+  const axes = [];
+  if (a.ruby !== b.ruby) axes.push("ruby version");
+  if (a.platform !== b.platform) axes.push("operating system / platform");
+  if (!axes.length) return { axis: "same environment", detail: `${a.ruby} on ${a.platform}` };
+  return {
+    axis: axes.join(" + "),
+    detail: `${a.ruby} on ${a.platform} vs ${b.ruby} on ${b.platform}`,
+  };
+}
 
 /** Every tag's class attribute value, in order, as [tagIndex, tokens]. */
 function classAttributes(html) {
@@ -76,18 +131,33 @@ function withoutClassValues(html) {
   return html.replace(/(\sclass=(["']))[^"']*\2/g, '$1__CLASS__$2');
 }
 
+const envA = environmentOf(a);
+const envB = environmentOf(b);
+const axis = axisBetween(envA, envB);
+
 const report = {
   runs: { a: path.resolve(a), b: path.resolve(b) },
+  environments: { a: envA, b: envB },
+  axis,
   kinds: {},
   class_token_order: { items: 0, tags_reordered: 0 },
   unclassified: [],
 };
 let anyUnclassified = 0;
 
+/** The line under a given normalisation: render/scenario HTML normalised, every
+ *  other kind raw. */
+const normed = (line, kind, options) =>
+  kind === "render"
+    ? { ...line, result: normalizeRender(line.result, options) }
+    : kind === "scenarios"
+      ? { ...line, steps: line.steps.map((s) => ({ ...s, result: normalizeRender(s.result, options) })) }
+      : line;
+
 for (const kind of ["render", "semantics", "scenarios"]) {
   const Aline = read(a, kind);
   const Bline = read(b, kind);
-  const k = { items: Aline.length, equal_raw: 0, equal_after_N1: 0, class_token_order: 0, unclassified: 0 };
+  const k = { items: Aline.length, equal_raw: 0, equal_after_N1: 0, equal_after_N1_N3: 0, class_token_order: 0, unclassified: 0 };
   if (Aline.length !== Bline.length) {
     report.unclassified.push(`${kind}: runs hold different item counts (${Aline.length} vs ${Bline.length})`);
     anyUnclassified++;
@@ -97,18 +167,28 @@ for (const kind of ["render", "semantics", "scenarios"]) {
     const y = Bmap.get(x.id);
     if (!y) continue;
     if (JSON.stringify(x) === JSON.stringify(y)) { k.equal_raw++; continue; }
-    const norm = (line) =>
-      kind === "render"
-        ? { ...line, result: normalizeRender(line.result) }
-        : kind === "scenarios"
-          ? { ...line, steps: line.steps.map((s) => ({ ...s, result: normalizeRender(s.result) })) }
-          : line;
-    if (JSON.stringify(norm(x)) === JSON.stringify(norm(y))) { k.equal_after_N1++; continue; }
+    // N1 alone: what the two runs agree on once the random slot ids are masked.
+    if (JSON.stringify(normed(x, kind, { classTokenOrder: false })) === JSON.stringify(normed(y, kind, { classTokenOrder: false }))) {
+      k.equal_after_N1++;
+      continue;
+    }
+    // N1 + N3: the harness's full normalisation, which is what the grader applies.
+    // An item that only reaches equality here differs by class-token order and
+    // nothing else — that is the environment-variance class, counted.
+    if (JSON.stringify(normed(x, kind)) === JSON.stringify(normed(y, kind))) {
+      k.equal_after_N1_N3++;
+      k.class_token_order++;
+      report.class_token_order.items++;
+      continue;
+    }
 
     if (kind === "render") {
-      const reordered = classOrderOnly(norm(x).result.html, norm(y).result.html);
+      // Raw HTML, N1 masked only, so the class values still hold their own order.
+      const ha = normed(x, kind, { classTokenOrder: false }).result.html;
+      const hb = normed(y, kind, { classTokenOrder: false }).result.html;
+      const reordered = classOrderOnly(ha, hb);
       // Belt and braces: with class values erased the two must be identical.
-      if (reordered && withoutClassValues(norm(x).result.html) === withoutClassValues(norm(y).result.html)) {
+      if (reordered && withoutClassValues(ha) === withoutClassValues(hb)) {
         k.class_token_order++;
         report.class_token_order.items++;
         report.class_token_order.tags_reordered += reordered.length;
@@ -124,13 +204,14 @@ for (const kind of ["render", "semantics", "scenarios"]) {
   report.kinds[kind] = k;
 }
 
+console.log(`axis: ${axis.axis} (${axis.detail})`);
 for (const [kind, k] of Object.entries(report.kinds)) {
   console.log(
-    `${kind.padEnd(10)} ${k.items} items: ${k.equal_raw} identical raw, ${k.equal_after_N1} equal after the N1 slot mask, ` +
-    `${k.class_token_order} class-token-order, ${k.unclassified} UNCLASSIFIED`
+    `${kind.padEnd(10)} ${k.items} items: ${k.equal_raw} identical raw, ${k.equal_after_N1} equal after N1, ` +
+    `${k.equal_after_N1_N3} equal after N1+N3 (of which ${k.class_token_order} needed N3), ${k.unclassified} UNCLASSIFIED`
   );
 }
-console.log(`class-token-order totals: ${report.class_token_order.items} items, ${report.class_token_order.tags_reordered} tags reordered`);
+console.log(`class-token-order totals: ${report.class_token_order.items} items needed N3 to reconcile, ${report.class_token_order.tags_reordered} tags reordered where a raw-order check was possible`);
 for (const u of report.unclassified) console.log(`UNCLASSIFIED: ${JSON.stringify(u).slice(0, 500)}`);
 if (jsonOut) writeFileSync(jsonOut, JSON.stringify(report, null, 2) + "\n");
 process.exit(anyUnclassified ? 1 : 0);

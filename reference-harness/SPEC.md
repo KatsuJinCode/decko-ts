@@ -186,7 +186,11 @@ claims completion. Each record names: `started`, `finished`, `complete`,
 fixture's count) and `ops_run`, the adapter's name, its ready line
 (`engine`), its source checkout (`adapter_checkout`: commit and whether it had
 uncommitted changes), and the fixture digest the run used with any
-disagreement between the fixture and its manifest (`fixture_problems`). A read
+disagreement between the fixture and its manifest (`fixture_problems`). The
+ready line is where the environment a capture ran in is recorded: the Ruby
+oracle names `ruby`, `ruby_platform` and `ruby_engine` there, so a set of
+recorded bytes always carries the interpreter and platform that produced it
+(section 4, N3). A read
 kind also records `session_writes`: every row of every table the session
 changed, raw. A run that ends because the adapter exited is incomplete.
 
@@ -281,6 +285,26 @@ Two kinds of rule, applied to both sides before comparison, and nothing else:
    attribute tokens. Ruby Decko draws slot ids at random per render.
 2. **N2 (canonical form).** JSON object key order never counts; array order
    always does.
+3. **N3 (canonical form).** Inside a real `class` attribute — in attribute
+   position, as for N1, so element text, comments, another attribute's value
+   and raw text bodies are untouched — the class tokens are compared as a set:
+   both sides are read as their whitespace-separated tokens and sorted. The
+   token set, the token count and the tokens themselves all still count; a
+   different set is a different attribute, and only the order is canonicalised.
+   The whitespace between tokens is the attribute's separator rather than
+   content, so runs of it collapse to one space, and the quote character is
+   kept exactly as N1 keeps it.
+
+   The rule exists because Ruby's own environment decides the order: stock
+   Linux Ruby and stock Windows Ruby emit the same tokens in a different
+   order (section 5, "The oracle's environment is part of the contract"). The
+   committed expected outputs were captured on Windows, where the order is
+   already the sorted order the engine emits, so N3 changes nothing about
+   them; it is what lets a Linux capture be graded against the same fixture.
+
+   `grade.mjs --no-class-token-order` grades with N3 off, which is how the raw
+   class-token order counts on its own. Every report names the rules it ran
+   under in `normalization`.
 
 Everything else is compared exactly: every byte of HTML, every field of a
 write answer (the new card's id and every byte of mail text included), every
@@ -294,6 +318,12 @@ ids: 9,061 of 9,061 slot ids differ, and nothing else does. The result is in
 the expected outputs' manifest (`provenance.nondeterminism`), and a test
 checks that it covers exactly the masks `normalize.mjs` applies. A new mask
 needs the same evidence on the fixture that needs it.
+
+N3 is not a mask and needs no nondeterminism evidence — it erases nothing,
+and it canonicalises rather than hides. Its evidence is the environment
+comparison of section 5 instead: the class-token order is what changes
+between two Rubies of the same version on different operating systems, and
+nothing else does.
 
 Rules the first version applied and no longer does, because no oracle run
 varies in them: hexadecimal object addresses (never present in any recorded
@@ -329,6 +359,37 @@ behave as one served request), `capture` (records mail instead of sending
 it), `platform` (a host workaround that reaches no recorded byte), `fixture`
 (a fixture data choice applied through Decko's own write path), and `patch`
 (changes what Decko does). The stock oracle has no `patch` entry.
+
+### The oracle's environment is part of the contract
+
+Ruby Decko is the oracle, and **the operating system it runs on is part of
+what the oracle is**. The same Decko at the same version renders the same
+answers on stock Windows and on stock Linux **except** for the order of the
+tokens inside a `class` attribute. Measured on `synthetic-v1`: of the
+fixture's 1,752 render operations, **678** differ that way and **nothing else
+differs** — every semantics operation and every scenario is byte-identical
+after N1. (`tools/ruby-version-variance/evidence/class-order-linux-vs-committed.json`.)
+
+This is why a capture records its environment. `oracle/adapter.rb` puts
+`ruby`, `ruby_platform` and `ruby_engine` in its ready line, which
+`run.mjs` copies into `run-meta.json` under `runs.<kind>.engine`, so every set
+of recorded answers names the interpreter and platform behind it.
+
+The committed `synthetic-v1` expected outputs were captured on **Windows**
+(`ruby 3.3.12 [x64-mingw-ucrt]`), which is why the TS engine matched them byte
+for byte and why N3 changes nothing about them. A capture on Linux Ruby is the
+same fixture with the class-token order in the other order; N3 is what lets
+the two be compared.
+
+Note what a Linux capture does **not** give you for free: the deck it builds
+is a different fixture. Decko's compiled asset files concatenate their parts
+in a different order on Linux, so `deck/deck.sqlite3` and `deck/files/*` hash
+differently and the fixture digest changes. Under this section's versioning
+rule that is a new fixture name (`synthetic-v2`) with its own capture, not a
+recapture of `synthetic-v1` — so the Linux answers were compared answer by
+answer with the classifier rather than graded. What the engine must reproduce
+is the answers modulo the three named normalisations, not one operating
+system's choice of token order.
 
 ### Stock and patched expectations
 
