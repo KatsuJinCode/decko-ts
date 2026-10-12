@@ -3409,7 +3409,7 @@ export interface RenderEngineLike {
   virtualLeftTypeName?(name: DeckoName): string | undefined;
   /** Enrich + memoize a card by name for an on-demand render path
    *  (the pointer/list core view reads items by name from db_content;
-   *  the captured corpus bytes always resolve these to real cards, but
+   *  the rendered bytes always resolve these to real cards, but
    *  the items are not always reachable from the closure walk the
    *  prefetch uses — an item referenced by plain text in db_content is
    *  not in the reference closure). Returns the enriched RenderCard or
@@ -3476,7 +3476,7 @@ export interface RenderEngineLike {
   /** card-mod-rules set/type/set.rb #prototype.type_id's codename for a
    *  RULE card's set — the visible_settings input the categories machinery
    *  filters the restricted settings (content_options / content_option_view)
-   *  by. Delegates to the SAME oracle-verified port the set-page board's
+   *  by. Delegates to the SAME port the set-page board's
    *  restricted-setting filter runs (views.ts setPrototypeTypeCode). See
    *  RenderEngine#ruleSetPrototypeTypeCode. Optional: engines without it
    *  answer the restricted-settings recent arm as not-allowed (never
@@ -3523,10 +3523,10 @@ export interface RenderEngineLike {
   /** Synchronous render-card lookup BY ID - the render-card map is keyed
    *  by key, so this walks the map the same way findSettingCard does. The
    *  set-card Rules section's virtual rule-card construction resolves the
-   *  DECK's type card at the corpus-pinned template id through this
+   *  DECK's type card at the template id through this
    *  (virtual-rule-card.ts deckTypeCard): Ruby prints type_name/type_code
    *  of the deck's card at that id, and the deck's names are what the
-   *  corpus oracle bytes carry. Optional; engines without it keep the
+   *  emitted bytes carry. Optional; engines without it keep the
    *  map's raw-deck literal (the documented degradation). */
   findRenderCardById?(id: number): RenderCard | undefined;
   /** card-mod-rules set/type/setting.rb#set_classes_with_rules: for a
@@ -3541,27 +3541,25 @@ export interface RenderEngineLike {
    *  `show: [:full_name]` for the anchorless cases, where Ruby
    *  collapses the per-pattern group into a single full-name row).
    *  Optional; engines without it fall through to the raw-content
-   *  dump (the pre-round-8 shape, the 3,612-line *read oracle ->
-   *  empty content-view gap). */
+   *  dump (the simpler shape: a *read card renders an empty content-view
+   *  rather than its grouped rules). */
   setClassesWithRules?(host: RenderCard): SettingClassWithRules[];
   /** THE SELF/HEAD CORE SEAM read (render.ts preparedHeadBytesFor): the
    *  prepare-phase head bytes for THIS render's root card, undefined when
    *  the render is not a *head surface (or the engine predates the seam —
    *  the stub harnesses). Optional like every engine hook here. */
   preparedHeadBytesFor?(rootKey: string): string | undefined;
-  /** Round 9 (the new-child template type): the *default rule card's type
+  /** The new-child template type: the *default rule card's type
    *  for a nest-miss child NAME — the port of Ruby's new-card type
    *  resolution. Chain: format/nest/fetch.rb#new_card -> Card.fetch new:
    *  -> mod/core/set/all/type.rb:78-80 type_id_from_template ->
    *  `template&.type_id`, where for a NEW card the template is the
    *  *default rule card (card-mod-content set/all/templating.rb
-   *  new_card_template). The raw-oracle pins the rendered bytes: absent
-   *  "+Discussion" nest children carry data-card-type-id=3 RichText (the
-   *  discussion+*right+*default rule card's own type) and absent "+tags"
-   *  closed children carry TYPE-list (raw-oracle 9625/13421/14382 open
-   *  views; live blog.html/Latest_News.html render the same shape).
-   *  Optional; engines without it build type-less unknown cards (the
-   *  pre-round-9 shape). */
+   *  new_card_template). This is what puts the type on the rendered
+   *  bytes: absent "+Discussion" nest children carry data-card-type-id=3
+   *  RichText (the discussion+*right+*default rule card's own type) and
+   *  absent "+tags" closed children carry TYPE-list.
+   *  Optional; engines without it build type-less unknown cards. */
   newCardDefaultType?(
     name: DeckoName,
     leftTypeName?: string,
@@ -3570,8 +3568,8 @@ export interface RenderEngineLike {
    *  *default rule card's db_content for a nest-miss new card
    *  (default_content = template&.db_content, mod/core set/all/content.rb:
    *  26-28). The SAME rule newCardDefaultType reads the type from.
-   *  p20-nest-selection: an earlier class pins the applied form — the
-   *  oracle's +discussion titled body is `discussion+*right+*default`'s
+   *  The applied form: a +discussion titled body is
+   *  `discussion+*right+*default`'s
    *  `<p> </p>` x2 verbatim. Optional; engines without it keep the
    *  new-child dbContent "". */
   newCardDefaultContent?(name: DeckoName): string | undefined;
@@ -3592,8 +3590,8 @@ export interface RenderEngineLike {
   /** The precomputed permission verdicts for one UNKNOWN pointer/list item
    *  (the fetch-miss item lines the prepare phase's pointer walk found):
    *  `read` = canReadByRuleLookup on the phantom's pattern input (the
-   *  oracle's radio item renders the FULL bar while the corpus's denied
-   *  phantoms render the two-span body - the split IS Ruby's read rule),
+   *  oracle's radio item renders the FULL bar while a denied
+   *  phantom renders the two-span body - the split IS Ruby's read rule),
    *  `create` = taskVerdictForCard(:create) (the unknown/mini_unknown
    *  views' createable gate, html/error.rb:19-21). Keyed per
    *  (RENDERING HOST key, item key): Ruby builds the fetch-miss phantom
@@ -3632,17 +3630,17 @@ export interface RenderEngineLike {
   ): { ruleKey: string; templateContent: string; typeId?: number } | undefined;
   /** The effective `Cardio.config.default_html_view` (html.rb:17-19
    *  default_nest_view) for the CURRENT render surface: "content" while a
-   *  page render is active (the production config the page capture
-   *  applies, capture-dual-$1page-and-view.rb:344), "titled" otherwise
-   *  (the railtie default, mod/format.rb:2 — the bare-render capture
-   *  boot). See RenderFormat.defaultNestView for the full mechanism.
+   *  page render is active (the production config a page host applies),
+   *  "titled" otherwise (the railtie default, mod/format.rb:2 — the
+   *  requestless boot). See RenderFormat.defaultNestView for the full
+   *  mechanism.
    *  Optional: engines without it take the railtie "titled" fallback. */
   defaultHtmlViewConfig?(): string;
   /** The effective `Card::Env.origin` (card-1.110.0 lib/card/env/
    *  serializable.rb:20-22 `Cardio.config.deck_origin ||
    *  "#{protocol}#{request&.host_with_port}"`): the DECK'S CONFIGURED
-   *  origin (the capture assigns it per surface
-   *  at capture-dual-$1page-and-view.rb:391-400, and the port reads it
+   *  origin (a page host assigns it per surface,
+   *  and this reads it
    *  from the same kind of configuration through setDeckEnvironment), or
    *  "" when nothing is configured (railtie default nil + a requestless
    *  runner). `card_url` interpolates it, so this is what decides
@@ -3668,7 +3666,7 @@ export interface RenderEngineLike {
    *  The image core resolves `(bucket)/<id>/<file>.<ext>` content to
    *  `<host>/files/<id>/<file>-<variant>.<ext>`; when undefined the same
    *  /files shape renders host-relative. Deck-deployment config (Ruby's
-   *  fog bucket host), never derivable from the corpus. */
+   *  fog bucket host), never derivable from the card data. */
   readonly imageCdnHost?: string | undefined;
   /** The deck's phantom (unknown pointer/list item) type identity — the deck
    *  config form of Ruby's `*all+*default` template type (see
