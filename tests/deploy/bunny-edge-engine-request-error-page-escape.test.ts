@@ -2,27 +2,27 @@
 // render-error message interpolated into the error page must go through
 // escapeHtml.
 //
-// The vuln this pins shut (edge-escape-completion lane, 2026-10-02): the
-// request core's catch (deploy/bunny-worker-src/bunny-edge-engine-request.ts
+// The vuln this pins shut: the request core's catch
+// (deploy/bunny-worker-src/bunny-edge-engine-request.ts
 // handleEngineRequest) interpolated the raw error message into
 // `<pre>${message}</pre>` — and the message embeds the requested card name
 // (real throw site src/card/render.ts:706-708, "card not found:
 // ${cardName}"; unsupported-view shape src/card/render.ts:18), which
 // parsePath decoded out of the URL path — so a crafted URL path like
-// /Foo%3Cscript%3Ealert(1)%3C%2Fscript%3E injected live markup into the
+// /Foo%3Cscript%3Ealert(1)%3C%2Fscript%3E injects live markup into the
 // 404/422/500 page. This is the extracted-core copy of the same hole
-// 70d2042 closed in the pre-split entry (lane-postfix-canvas,
-// tests/deploy/bunny-edge-engine-error-page-escape.test.ts); the escape
+// closed in the pre-split entry
+// (tests/deploy/bunny-edge-engine-error-page-escape.test.ts); the escape
 // convention mirrors the CF worker's errorPage -> escapeHtml
 // (deploy/worker.ts:310-316, 321-322).
 //
 // The `<h1>` half of the fix wraps the mapper's title variable, whose
 // values are the three static classifications ("Card not found" /
 // "Unsupported view" / "Render error") — byte-parity with the CF worker's
-// errorPage and 70d2042's entry fix, defense against a future dynamic
-// title. The falsifiable payload is the message half, asserted below.
+// errorPage, defense against a future dynamic title. The falsifiable
+// payload is the message half, asserted below.
 //
-// Driven through the REAL handler (the ed13852 pin's seam): the 404 case
+// Driven through the REAL handler: the 404 case
 // runs the production RenderEngine + FetchEngine over the in-memory sqlite
 // deck, so the pin covers the real throw site through the catch to the
 // response. The 422/500 cases stub only the engine's throw because the
@@ -57,11 +57,10 @@ function realDeck(storage: RenderTestStorage) {
 }
 
 /** A deck whose page entry throws the given error; used where the thing
- *  under test is the escaping of a MESSAGE, not the engine. Since the
- *  edge-site-shell lane (2026-10-02) the 200-path's render entry is
- *  renderPageBytes, whose first statement wraps the page assembly in
- *  engine.runWithPageConfig — so the stub throws there and the message
- *  reaches the same escaping catch unchanged. */
+ *  under test is the escaping of a MESSAGE, not the engine. The 200-path's
+ *  render entry is renderPageBytes, whose first statement wraps the page
+ *  assembly in engine.runWithPageConfig — so the stub throws there and the
+ *  message reaches the same escaping catch unchanged. */
 function deckWhoseRenderThrows(storage: RenderTestStorage, error: unknown) {
   return {
     fetcher: storage.fetcher,
@@ -93,10 +92,10 @@ describe("bunny edge engine request core — error page HTML escaping", () => {
       expect(res.status).toBe(404);
       expect(res.headers.get("Content-Type")).toContain("text/html");
       const body = await res.text();
-      // The payload lands as TEXT, not markup. (p2-error-shell lane,
-      // 2026-10-03: this storage seeds no default layout, so the 404 is the
-      // staging builder's minimal not-found stub; the chrome's crafted-name
-      // escape is pinned in tests/deploy/bunny-edge-error-page.test.ts.)
+      // The payload lands as TEXT, not markup. This storage seeds no
+      // default layout, so the 404 is the builder's minimal not-found stub;
+      // the chrome's crafted-name escape is pinned in
+      // tests/deploy/bunny-edge-error-page.test.ts.
       expect(body).toContain(
         "card not found: Foo&lt;script&gt;alert(1)&lt;/script&gt;",
       );
@@ -142,10 +141,10 @@ describe("bunny edge engine request core — error page HTML escaping", () => {
       const res = await handleEngineRequest(edgeGet("/Home"), deck);
       expect(res.status).toBe(500);
       const body = await res.text();
-      // p2-error-shell lane (2026-10-03): the 500 is Decko's Wild Card page
+      // The 500 is Decko's Wild Card page
       // in the full chrome — the original render message appears NOWHERE
       // when the chrome can build. This storage seeds no default layout, so
-      // the staging builder's fallback stub answers, and its <pre> carries
+      // the builder's fallback stub answers, and its <pre> carries
       // the BUILDER's own failure message (the staging host catches inside
       // renderDeckoErrorPage, vm-staging-server.mjs:1530-1547) — escaped,
       // which is the escape convention this pin guards on this surface.
