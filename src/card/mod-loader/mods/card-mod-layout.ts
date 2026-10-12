@@ -5,8 +5,8 @@
 // card-mod-layout-0.20.0/): 23 set files (patterns abstract/all/right/self/
 // type), 5 lib/ files (the Card::Layout support class), 3 haml templates, 3
 // event hooks, config/admin.yml + locales, data/ seeds, and NO mod.yml
-// (verified by find - the registration surface is admin.yml only). The T6
-// compat report pins 2/25 html views covered (bar_bottom + core, in the
+// (verified by find - the registration surface is admin.yml only). Of the
+// 25 html views the gem declares, 2 were already covered (bar_bottom + core, in the
 // render layer); this port registers 16 of the 23 missing view names.
 //
 // SET-SCOPED DISPATCH: the loader's view table is FLAT (one fn per view name,
@@ -28,8 +28,7 @@
 // - set/self/account_links.rb :my_card + :core - both bodies branch on
 //   Card::Auth state (signed_in? / current roles / ok? :create on new
 //   cards) and no Auth runtime exists headlessly. The FOUR LINK views
-//   (:sign_in / :sign_out / :sign_up / :invite) ARE ported by the
-//   the second mod-views batch (2026-09-28, rendered-unpinned) - their bodies are
+//   (:sign_in / :sign_out / :sign_up / :invite) ARE ported - their bodies are
 //   plain `link_to_card` anchors, the auth state only reaches them through
 //   the `perms:` gate, and the engine's view-permission gate leaves an
 //   un-implemented method predicate unverified-ALLOWED, so the bytes are
@@ -77,8 +76,8 @@
 // modal_link attribute orders were rendered through the REAL
 // actionview-7.2.3.2 TagHelper, pinning ActiveSupport reverse_merge!'s
 // defaults-first order (reverse_merge.rb:6-18) and Rails' in-place :data
-// flattening - the same order the captured corpus pins on the :menu help
-// link bytes. No captured oracle exists for this mod's views; every expected
+// flattening - the same order the :menu help
+// link bytes carry. Every expected
 // byte traces to a cited helper source or one of those two live-gem runs.
 
 import { str, type ViewResult } from "../../render/format.js";
@@ -114,7 +113,7 @@ import type { DeckoModManifest } from "../mod-manifest.js";
 import type { ModEngineHost, ModEventFn, ModEventRegistration } from "../mod-manifest.js";
 import { warmRuleCards } from "./rule-card-warm.js";
 
-/** The set-module event declarations (the set-module event, 2026-10-08):
+/** The set-module event declarations:
  *  stub-bodied, with the per-event reason on the declaration. Same shape
  *  as core-mod.ts's local helper. */
 function event(
@@ -137,7 +136,7 @@ const baseBarBottom: ViewFn = HTML_VIEWS["bar_bottom"];
  *  "material-icons") + the material map entries icon.rb:1-38 (close: :close,
  *  help: :help, modal: :fullscreen, new_window: :close_fullscreen). icon_lookup
  *  (icon.rb:143-152) resolves these keys in the material basket; unknown keys
- *  pass through (:151). The byte shape the corpus pins via the :menu view. */
+ *  pass through (:151). The byte shape the :menu view renders. */
 const MATERIAL_ICONS: Readonly<Record<string, string>> = {
   close: "close",
   help: "help",
@@ -340,8 +339,8 @@ const modalView: ViewFn = (ctx) => {
  *  flattens the :data hash IN PLACE (actionview-7.2.3.2 tag_helper.rb
  *  tag_options :data branch). Attribute order: tabindex, data-bs-toggle,
  *  data-bs-trigger, data-bs-content, data-bs-placement, class, href - the
- *  order the captured corpus pins on the :menu help link (the same
- *  popover_opts chain) and the live actionview gem reproduced. The text is
+ *  order the :menu help link carries (the same
+ *  popover_opts chain) and the live actionview gem reproduces. The text is
  *  the help-rule chain - fmt.menuHelpContentBytes() is that chain's port
  *  (help-popover.ts); the raw "&nbsp;" attribute-escapes to &amp;nbsp;. */
 function overlayHelpLinkAttrs(fmt: ViewContext["fmt"]): Record<string, string | number | undefined> {
@@ -367,7 +366,7 @@ function overlayHelpLinkAttrs(fmt: ViewContext["fmt"]): Record<string, string | 
  *  `opts[:href] ||= path opts.delete(:path)` evaluates its right side ONLY
  *  when href is unset - with the guide branch's href preset, the :path key
  *  is never deleted and Rails content_tag renders it as the literal first
- *  attribute (the oracle pins `<a path="#" tabindex=...`). The no-guide
+ *  attribute (the emitted anchor opens `<a path="#" tabindex=...`). The no-guide
  *  branch keeps the delete: href=nil there, so path("#") becomes href="#"
  *  and no path attribute renders. */
 function overlayHelpLinkGuideAttrs(fmt: ViewContext["fmt"]): Record<string, string | number | undefined> {
@@ -733,14 +732,14 @@ function isSelfHeadCard(card: RenderCard): boolean {
  *  render_raw, :html).div) - the html scanner's DIV template is the
  *  render layer's highlight(raw, "html") (code-highlighting/index.ts,
  *  byte-matched to the coderay fixtures). Registered on Right::Head ONLY:
- *  Ruby's :core for this gem lives in that one file — the seed-sweep
- *  sweep's "also type/html.rb:13-17" claim misread the gem (that file's
+ *  Ruby's :core for this gem lives in that one file — an "also
+ *  type/html.rb:13-17" reading misreads the gem (that file's
  *  lines 13-17 are the format-do chunk_list block; set/type/html.rb
- *  defines NO view :core), and the extra Html-type predicate arm coderayed
- *  every Html-typed card's body once the mod deck was bound at a serving
- *  surface (the session2-gap-8 wiring exposed it: the
- *  page chrome's {{:header|core}} nest — the *header card, Html-typed —
- *  rendered the navbar as CodeRay source). An Html-typed card's :core
+ *  defines NO view :core), and an extra Html-type predicate arm would
+ *  coderay every Html-typed card's body once the mod deck is bound at a
+ *  serving surface (e.g. the page chrome's {{:header|core}} nest — the
+ *  *header card, Html-typed — would render the navbar as CodeRay source).
+ *  An Html-typed card's :core
  *  dispatches to the BASE format core, the live site's own shape.
  *  self/head's :core (self/head.rb:9-17) is NOT ported (the header
  *  remainder). */
@@ -779,15 +778,11 @@ const headContentView: ViewFn = (ctx) => {
  *  not exclusive to that set: the All-set html block (card-mod-format-
  *  0.20.0 set/all/html/views.rb:29-32) defines :one_line_content for
  *  every card, so OUTSIDE Right::Head Ruby's dispatch resolves to that
- *  arm (the text-muted wrap; the plain-probe arm of fixtures/captured/
- *  layout-one-line.json captures exactly that) - it does not raise.
+ *  arm (the text-muted wrap) - it does not raise.
  *  The raise below is the TS port's set-scope registration guard (the
  *  set-scoped port convention; the resolution seam is mod-registrar.ts
  *  ViewRegistrationTable + the chain-aware SetModuleViewTable), kept
- *  unchanged. Corrected 2026-10-01 (the layout-fixture-review
- *  review's finding; the former "outside it Ruby's dispatch raises the
- *  unsupported-view UserError" claim misread the All-set html arm as
- *  absent - unlike :head_content, which IS exclusive to this set). */
+ *  unchanged - unlike :head_content, which IS exclusive to this set. */
 const rightHeadOneLineContentView: ViewFn = (ctx) => {
   const { fmt, voo } = ctx;
   if (!isRightHeadCard(fmt.card)) {
@@ -819,9 +814,8 @@ const headBarBottomView: ViewFn = (ctx) =>
   isSelfHeadCard(ctx.fmt.card) ? "" : baseBarBottom(ctx);
 
 // ---------------------------------------------------------------------------
-// set/self/account_links.rb - the four account LINK views (ported by the
-// the second mod-views batch, 2026-09-28; RENDERED-UNPINNED - no oracle capture of any
-// of them exists; the shapes below are derived from the Ruby source).
+// set/self/account_links.rb - the four account LINK views (the shapes below
+// are derived from the Ruby source).
 //
 //   view :sign_up,  link_options(:show_signup_link?) do
 //     link_to_card :signup, account_link_text(:sign_up),
@@ -874,7 +868,7 @@ const headBarBottomView: ViewFn = (ctx) =>
 // NOT PORTED from this file (named, not skipped): :my_card's ROLES arm is
 // the named remainder (the can_disable_roles? gate + the
 // interactive_roles_dropdown nest — the session roles runtime; the view
-// itself IS registered 2026-09-29, the account_dropdown arm, see the view
+// itself IS registered, the account_dropdown arm, see the view
 // block below), and the file's :core (line 8-13 -
 // `Auth.signed_in?` decides logged-in/logged-out and the body is
 // `navbar_items.join "\n"`, which nests the four link views above).
@@ -893,9 +887,9 @@ const headBarBottomView: ViewFn = (ctx) =>
  *  path(mark:) - `/<mark url key>` - with the action arms riding PATH
  *  position, not mark position: `path: {action: :new, mark: :signup}` is
  *  "/new/Sign_up" and `path: {action: :delete}` on *signin is
- *  "/delete/*signin" (path.rb:34-63: "<action>/<mark>"). The corpus view
- *  pins carry exactly these hrefs plus the known-card class (both targets
- *  exist in every deck that seeds the account mod). */
+ *  "/delete/*signin" (path.rb:34-63: "<action>/<mark>"). Both targets
+ *  exist in every deck that seeds the account mod, so the hrefs carry the
+ *  known-card class. */
 function accountLinkHref(targetUrlKey: string, action?: string): string {
   return action === undefined ? `/${h(targetUrlKey)}` : `/${h(action)}/${h(targetUrlKey)}`;
 }
@@ -946,8 +940,7 @@ const signOutView = accountLinkView("*signin", "*signin", "signout-link", "Sign 
 const inviteView = accountLinkView("Sign_up", "Sign up", "invite-link", "Invite", "new", "signed_in");
 
 // ---------------------------------------------------------------------------
-// the :my_card and :edit_inline views (the R21 port,
-// 2026-09-29 — the last two unregistered layout views)
+// the :my_card and :edit_inline views
 // ---------------------------------------------------------------------------
 
 /** account_links.rb:56-58 view :my_card (link_options perms :signed_in?,
@@ -966,7 +959,7 @@ const inviteView = accountLinkView("Sign_up", "Sign up", "invite-link", "Invite"
  *  render mutates the session card mid-request): on a page whose MAIN body
  *  already rendered the *account_links :core, this navbar nest serves the
  *  FILLED content input; on every other page this is the request's first
- *  roles-nest render and serves the blank one — both oracle-pinned. */
+ *  roles-nest render and serves the blank one. */
 const myCardView: ViewFn = (ctx) => {
   const prepared = ctx.fmt.engine.pageSessionMyCardHtml ?? "";
   ctx.fmt.engine.markSessionRolesContentFilled?.();
@@ -1106,8 +1099,8 @@ const cardModLayout: DeckoModManifest = {
     },
     {
       // card-mod-layout-0.20.0/set/self/account_links.rb - the four
-      // account LINK views plus :my_card (the R21
-      // port — the account_dropdown arm; the roles arm is the named
+      // account LINK views plus :my_card (the
+      // account_dropdown arm; the roles arm is the named
       // remainder on the view). The file's :core is NOT registered
       // (auth runtime — see the view block above; the composed
       // accountLinksCoreHtml rides navbar-views.ts's registration).
@@ -1136,10 +1129,10 @@ const cardModLayout: DeckoModManifest = {
     },
     {
       // card-mod-layout-0.20.0/set/right/enabled_roles.rb — the
-      // :edit_inline view (the R21 port; the role
+      // :edit_inline view (the role
       // checkboxes are the named remainder on the view).
       //
-      // Events (set-module event 2026-10-08) — two STUBS with named
+      // Events — two STUBS with named
       // reasons (enabled_roles.rb:21-33):
       // - validate_role_enabling (:validate, on: :save) errors when the
       //   saved list enables roles the acting account does not hold
@@ -1220,7 +1213,7 @@ const cardModLayout: DeckoModManifest = {
       // cardtype set (:core view renders CodeRay-highlighted raw through
       // the base html machinery; the port's :core falls through to the
       // shared html coreView, whose template mode covers the reachable
-      // bytes). Event (set-module event 2026-10-08) — STUB, named
+      // bytes). Event — STUB, named
       // remainder (layout_type.rb:7-10): re-registers the layout in
       // Card::Layout's named-layout registry on update; the engine
       // resolves layout cards fresh at render (no registry to update).
