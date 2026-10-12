@@ -533,11 +533,11 @@ export async function provisionDatabase({ dbUrl, dbToken, sourcePath, deck, repo
   return { migrations: plan.files, preSeedStatements: pre.applied, postSeedStatements: post.applied, seedTables: seedTables.tables };
 }
 
-/** Fail-fast source check BEFORE any account write: the engine's substrate
- *  shape requires cards.db_content (the scrubbed-corpus shape). A raw
- *  Corpus-shaped sqlite (cards.content, no db_content) imports "fine" and
- *  then 500s every render — measured live 2026-10-03, so the runner refuses
- *  it up front. better-sqlite3 is required lazily: plan mode never needs it. */
+/** Fail-fast source check BEFORE any account write. The engine's substrate
+ *  needs a cards table carrying a db_content column; a deck without one
+ *  imports without complaint and then fails every render, so the runner
+ *  refuses it here rather than after the account is half-built.
+ *  better-sqlite3 is imported lazily: PLAN mode never opens the source. */
 export async function assertSourceShape(sourcePath) {
   let Database;
   try {
