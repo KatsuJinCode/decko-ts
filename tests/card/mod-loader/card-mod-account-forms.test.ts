@@ -1,13 +1,13 @@
-// The account-side view tests assigned to the follow suite: the views whose
-// bodies need the actor session (Auth.current) + the form shapes:
+// The account-side views whose bodies need the actor session (Auth.current),
+// plus the form shapes:
 //   self/signin   :reset_password_success, :edit_buttons (card-mod-account
 //                  set/self/signin.rb:148-168)
 //   type/role     :link_with_checkbox (set/type/role.rb:8-10, 26-32)
 //   right/account :closure (set/right/account/views.rb:22 + closure.haml)
 //
-// All bytes are RENDERED-UNPINNED (no oracle captures exist for these names
-// — verified against the capture shards); expectations pin the gem-source
-// shape and claim no byte verification.
+// All bytes are RENDERED-UNPINNED: no rendered body is available to check
+// these view names against, so the expectations pin the gem-source shape
+// and claim no byte verification.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -39,9 +39,9 @@ beforeAll(async () => {
   // the Role CARDTYPE card (id 6): the link_with_checkbox probe card
   // ("Helper", typeId 6) needs its type row so the render card's typeName
   // resolves "Role" and the set keys carry the TYPE-role token the
-  // Type::Role set module dispatches through (surfaces-batch2, 2026-09-30 —
-  // the unseeded type left the token TYPELESS and the view unreachable even
-  // with the loader bound).
+  // Type::Role set module dispatches through. Without that type row the
+  // token stays TYPELESS and the view is unreachable even with the loader
+  // bound.
   await seedCard(s, { id: 6, name: "Role", codename: "role", typeId: 13 });
   await seedCard(s, { id: 141, name: "*signin", codename: "signin", typeId: 14 });
   await seedCard(s, { id: 142, name: "*account", codename: "account", typeId: 14 });
@@ -51,16 +51,16 @@ beforeAll(async () => {
   await seedCard(s, { id: 145, name: "*disabled roles", codename: "disabled_roles", typeId: 14 });
 
   // users + content cards
-  await seedCard(s, { id: 300, name: "Riley", typeId: 3 });
-  // a deletion candidate: a card whose LEFT is Riley (the closure search:
-  // left: id, not: {right: :account}) - "Riley+Notebook"
+  await seedCard(s, { id: 300, name: "Probe User", typeId: 3 });
+  // a deletion candidate: a card whose LEFT is the Probe User (the closure
+  // search: left: id, not: {right: :account}) - "Probe User+Notebook"
   await seedCard(s, { id: 201, name: "Notebook" });
   await seedCard(s, {
-    id: 200, name: "Riley+Notebook", leftId: 300, rightId: 201, dbContent: "notes",
+    id: 200, name: "Probe User+Notebook", leftId: 300, rightId: 201, dbContent: "notes",
   });
-  // the +*account right card of Riley
+  // the +*account right card of the Probe User
   await seedCard(s, {
-    id: 320, name: "Riley+*account", leftId: 300, rightId: 142, typeId: 14,
+    id: 320, name: "Probe User+*account", leftId: 300, rightId: 142, typeId: 14,
   });
   // a role card (Role-typed) for the link_with_checkbox probe
   await seedCard(s, { id: 400, name: "Helper", typeId: 6 });
@@ -80,10 +80,9 @@ async function loadMod(): Promise<RenderEngine> {
   // default (RenderFormat.renderView -> ModLoader#viewChain) — installInto
   // wires only the engine HOST (the event seam), not the view dispatch.
   // Every other loader-binding suite pairs the two (card-mod-account.test.ts
-  // loadAccountMod, mod-events suites); without the bind the mod's
+  // loadAccountMod, the mod-events suites); without the bind the mod's
   // registrations are invisible and every WITH-the-mod assertion here dies
-  // in UnsupportedViewError — the wiring bug that kept these four
-  // red (surfaces-batch2, 2026-09-30).
+  // in UnsupportedViewError.
   bindModLoaderToEngine(storage, loader);
   await loader.installInto(modEngineHost(s.engine, s.fetcher));
   engine = s.engine;
@@ -125,7 +124,7 @@ describe("card-mod-account form views through the loader (lane-follow)", () => {
     const e = await loadMod();
     e.pageSession = { signedIn: true, actorId: 300 };
     const html = await e.render("Helper", "link_with_checkbox");
-    // role_checkbox: subformat("Riley+*disabled roles").card_form :update
+    // role_checkbox: subformat("Probe User+*disabled roles").card_form :update
     // wrapping [check_box_tag("add_item", "400", true, class: "_edit-item"),
     // render_link]. The roles card is unseeded -> its items are empty ->
     // disabled? false -> name add_item, checked.
@@ -141,16 +140,17 @@ describe("card-mod-account form views through the loader (lane-follow)", () => {
     const s = storage!;
     const e = await loadMod();
     e.pageSession = { signedIn: true, actorId: 300 };
-    const html = await e.render("Riley+*account", "closure");
+    const html = await e.render("Probe User+*account", "closure");
     expect(html).toContain(`id="account-closure"`);
     expect(html).toContain(`<h2>Close Account</h2>`);
     expect(html).toContain(`<strong>Warning:</strong>`);
     expect(html).toContain("The following cards will be permanently deleted:");
-    // the deletion walk: cards whose left is Riley except +*account rights
-    expect(html).toContain(`>Riley+Notebook</a>`);
+    // the deletion walk: cards whose left is the Probe User except
+    // +*account rights
+    expect(html).toContain(`>Probe User+Notebook</a>`);
     // the confirm button: data-confirm = t(:account_confirm_delete_account,
-    // accounted: "Riley") with the %{accounted} interpolation
-    expect(html).toContain(`data-confirm="Are you CERTAIN you want to PERMANENTLY delete the account associated with Riley?"`);
+    // accounted: "Probe User") with the %{accounted} interpolation
+    expect(html).toContain(`data-confirm="Are you CERTAIN you want to PERMANENTLY delete the account associated with Probe User?"`);
     expect(html).toContain(`data-method="delete"`);
     expect(html).toContain(`rel="nofollow"`);
     expect(html).toContain(`>Permanently Close Account</a>`);

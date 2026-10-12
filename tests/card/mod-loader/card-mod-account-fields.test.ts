@@ -1,5 +1,5 @@
 // card-mod-account's remaining render half of the right/account +
-// right/password set files (surfaces-batch3):
+// right/password set files.
 //
 //   - right/account/views.rb:50-57 (html block) view :core — the account
 //     field nests: `[account_field_nest(:email, "email"),
@@ -19,21 +19,19 @@
 //   registered PASSIVE today — the manifest entry carries no views — and
 //   right/account/views carries no :core), WITH the mod they render.
 //
-// Byte basis: GEM-DERIVED (structural + locale bytes). No capture shard
-// renders +*account :core (account cards are read-denied to anonymous
-// readers, so the oracle's expected-v2 carries denial chrome for them, not
-// these bodies); right/password's "encrypted" is the gem's own en.yml
-// string, transcribed verbatim.
+// Byte basis: GEM-DERIVED (structural + locale bytes). Account cards are
+// read-denied to anonymous readers, so no rendered body of +*account :core
+// exists to check against; right/password's "encrypted" is the gem's own
+// en.yml string, transcribed verbatim.
 //
-// NAMED REMAINDERS of the same two files, NOT ported here with their
-// mechanisms (so no reader mistakes them for done):
+// NOT ported here, deliberately, each with the mechanism that blocks it:
 //   - right/account/views.rb:2-8 :verify_url / :reset_password_url — the
 //     view bodies are exactly buildAccountTokenUrl's output
 //     (src/card/auth/account-verify-reset-flows.ts:483-486), but a ViewFn
 //     is synchronous while the HMAC token encode is async — the named
 //     async-view boundary. The flows substitute their own tokens today.
 //   - right/account/views.rb:60-62 before :content_formgroups — sets
-//     voo.edit_structure for the edit-form machinery (E1's surface).
+//     voo.edit_structure for the edit-form machinery.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -71,14 +69,13 @@ beforeAll(async () => {
   await seedCard(s, { id: 130, name: "email", codename: "email", typeId: 14 });
   await seedCard(s, { id: 140, name: "password", codename: "password", typeId: 14 });
 
-  // Fields Probe Member (a User) with its account fields. DECK SHAPE
-  // (raw deck read-only SELECT, cards k JOIN k.left_id = junction): the
-  // account fields are CHILDREN OF THE +*account JUNCTION ("Riley
-  // Ellery+*account" left_id chain: +*email Phrase, +*password
-  // Phrase, +*salt/+*status PlainText) — matching field_nest's
-  // card.name.field(:email) = "<junction>+email". The plain-spelling right
-  // rows used here are KEY-EQUIVALENT to the deck's starred form (keys
-  // strip stars: "*email".key == "email".key).
+  // Fields Probe Member (a User) with its account fields. The account fields
+  // are CHILDREN OF THE +*account JUNCTION, reached down that junction's
+  // left_id chain (+*email Phrase, +*password Phrase, +*salt/+*status
+  // PlainText) — matching field_nest's card.name.field(:email) =
+  // "<junction>+email". The plain-spelling right rows used here are
+  // KEY-EQUIVALENT to the deck's starred form (keys strip stars:
+  // "*email".key == "email".key).
   await seedCard(s, { id: 120, name: "Fields Probe Member", typeId: 4, dbContent: "member body" });
   await seedCard(s, {
     id: 121,
@@ -112,13 +109,12 @@ afterAll(() => {
 });
 
 describe("card-mod-account field views (right/account :core + right/password raw/core)", () => {
-  // CORRECTED A/B (the red run itself taught this): :core is a base view on
-  // every card — without the mod the +account junction's SETTING-typed
-  // right gives the Setting cardtype's rules listing (the same probe-shape
-  // truth batch A-C recorded for Setting-typed junctions). The junction
-  // child's :raw has NO flat registration on its chain (observed: raises
-  // UnsupportedViewError) — the mod's Right::Password registration is what
-  // makes the view exist there, so the A/B for raw/core is raises → bytes.
+  // :core is a base view on every card, so WITHOUT the mod the +account
+  // junction's SETTING-typed right renders the Setting cardtype's rules
+  // listing. The junction child's :raw has NO flat registration on its
+  // chain (it raises UnsupportedViewError) — the mod's Right::Password
+  // registration is what makes the view exist there, so the A/B for
+  // raw/core is raises → bytes.
   it("WITHOUT the mod: the base bodies (setting listing; raw raises on the child)", async () => {
     const s = storage!;
     const baseAccountCore = await s.engine.render(
@@ -132,8 +128,8 @@ describe("card-mod-account field views (right/account :core + right/password raw
       s.engine.render("Fields_Probe_Member+account+password", "raw"),
     ).rejects.toThrow(UnsupportedViewError);
     // ...and :input falls through to card-mod-edit's all/editor :input,
-    // which DOES carry the content (the leak the round-9 :input
-    // registration closes — see the :input pins at the end of this file).
+    // which DOES carry the content — the leak the password :input
+    // registration closes (see the :input pins at the end of this file).
     const input = await s.engine.render(
       "Fields Probe Member+account+password",
       "input",
@@ -215,14 +211,14 @@ describe("card-mod-account field views (right/account :core + right/password raw
     );
   });
 
-  // The round-9 security pin. GET /:account+*password/input returned the
-  // stored PBKDF2 digest on the demo deck, because the right/password set
-  // registered only :raw and :core: an :input render fell through to
-  // card-mod-edit's all/editor :input, whose every arm carries the card's
-  // content (text_field's value=, the tinymce textarea's body). Ruby routes
-  // it to password_input (right/password.rb:86-88 `input_type :password`
-  // reaches editor.rb:33 `try(input_method(input_type))` FIRST), and Rails
-  // renders a password field with the value attribute always nil
+  // The security pin. GET /:account+*password/input returned the stored PBKDF2
+  // digest, because the right/password set registered only :raw and
+  // :core: an :input render fell through to card-mod-edit's all/editor
+  // :input, whose every arm carries the card's content (text_field's
+  // value=, the tinymce textarea's body). Ruby routes it to password_input
+  // (right/password.rb:86-88 `input_type :password` reaches editor.rb:33
+  // `try(input_method(input_type))` FIRST), and Rails renders a password
+  // field with the value attribute always nil
   // (Tags::PasswordField#render).
   //
   // The A/B pair below: the assertion lives in the FIRST test, the only
