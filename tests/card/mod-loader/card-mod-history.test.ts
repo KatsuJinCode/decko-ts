@@ -221,22 +221,20 @@ describe("card-mod-history manifest structure", () => {
   it("registers :draft_legend plus the seam-backed views with no view config, and :board_act (cache: never) on the history_board set", () => {
     // views.rb:24-26 `view :draft_legend do ... end` declares no settings;
     // the seam (src/card/history/render-seam.ts +
-    // RenderEngine#prepareHistoryRender) unblocked three of the eleven
-    // data-bound views (:history/:act/:action_summary - the live-oracle
-    // byte surface; :action_expanded/:last_action_verb added by
-    // surfaces-batch2 2026-09-30; :act_legend/:last_action/:change added
-    // by surfaces-batch3 2026-09-30); :board_act landed with the
-    // mod-porting wave-1 lane (2026-10-03; history_board.rb:18-26,
-    // cache: :never per the gem's declaration) on all/history_board.
+    // RenderEngine#prepareHistoryRender) backs three of the eleven
+    // data-bound views (:history/:act/:action_summary), with
+    // :action_expanded/:last_action_verb and the ladder trio
+    // :act_legend/:last_action/:change also on all/history/views;
+    // :board_act sits on all/history_board (history_board.rb:18-26,
+    // cache: :never per the gem's declaration).
     const viewsModule = (cardModHistory.setModules ?? []).find(
       (m) => m.setPath === "all/history/views",
     );
     expect(viewsModule).toBeDefined();
     const views = viewsModule!.formats?.["html"]?.views ?? [];
-    // surfaces-batch2 (2026-09-30) added :action_expanded (the capture's
-    // probe#action_expanded(update_action) pins it) and :last_action_verb
-    // (gem-source-derived); surfaces-batch3 (2026-09-30) added the ladder
-    // trio :act_legend (capture-pinned) / :last_action / :change.
+    // :action_expanded (byte-pinned against the Ruby view of the same
+    // name) and :last_action_verb (gem-source-derived), plus the ladder
+    // trio :act_legend / :last_action / :change.
     expect(views.map((v) => v.view)).toEqual([
       "draft_legend",
       "history",
