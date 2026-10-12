@@ -90,24 +90,23 @@ beforeAll(async () => {
 
   // The write-rule fallback the A/B depends on. Real decko decks bootstrap
   // *all+*update off the *all set (card-mod-permissions-0.20.0/data/real.yml
-  // :14-19, the codename-all fields block; the recorded corpus carries it as
-  // rule 6572 per tests/card/actions/actions-test-storage.ts:190-192). With
-  // NO update rule card in the seed the write verdict fail-closes —
-  // permitVerdict denies when the deck carries no rule data (Ruby who_can ->
-  // [] -> among? -> false, set/all/permissions.rb:47-49 :100-118; missing
-  // rule -> PermissionDenied, :77-85) — and comment_box's perms-update gate
-  // (view-perms.ts VIEW_PERMS_DIRECTIVES comment_box: "update", from
-  // card-mod-comment set/all/comment.rb:46) denies BEFORE view dispatch
-  // (permission.rb:19-23 altered_view runs ahead of render.rb:59-63
-  // view_method, the only UnsupportedViewError raise). A denied comment_box
-  // renders its :blank denial (DENIAL_VIEW, view-perms.ts) — the empty
-  // string the A/B saw. The suite's pins model the anonymous actor PASSING
-  // update (the author-label arm renders only for anonymous,
-  // all/comment.rb:74-77), so this fixture grants [[Anyone]] — one step
-  // wider than real.yml's Anyone Signed In default, the exact configuration
-  // where the A/B isolates view REGISTRATION rather than the permission
-  // matrix. Scoped to this file: other render suites pin anonymous DENIALS
-  // and must keep their rule-less fixture.
+  // :14-19, the codename-all fields block). With NO update rule card in the
+  // seed the write verdict fail-closes — permitVerdict denies when the deck
+  // carries no rule data (Ruby who_can -> [] -> among? -> false,
+  // set/all/permissions.rb:47-49 :100-118; missing rule -> PermissionDenied,
+  // :77-85) — and comment_box's perms-update gate (view-perms.ts
+  // VIEW_PERMS_DIRECTIVES comment_box: "update", from card-mod-comment
+  // set/all/comment.rb:46) denies BEFORE view dispatch (permission.rb:19-23
+  // altered_view runs ahead of render.rb:59-63 view_method, the only
+  // UnsupportedViewError raise). A denied comment_box renders its :blank
+  // denial (DENIAL_VIEW, view-perms.ts) — the empty string the A/B saw. The
+  // suite's pins model the anonymous actor PASSING update (the author-label
+  // arm renders only for anonymous, all/comment.rb:74-77), so this fixture
+  // grants [[Anyone]] — one step wider than real.yml's Anyone Signed In
+  // default, the exact configuration where the A/B isolates view
+  // REGISTRATION rather than the permission matrix. Scoped to this file:
+  // other render suites pin anonymous DENIALS and must keep their rule-less
+  // fixture.
   await seedCard(s, { id: 121, name: "*update", codename: "update", typeId: 14 });
   await seedCard(s, { id: 122, name: "Anyone", codename: "anyone" });
   await seedCard(s, {
@@ -133,24 +132,19 @@ describe("card-mod-comment through the mod loader (A/B)", () => {
     // successfully without the mod); only the mod-specific views that the
     // gem introduces are absent from the registry.
     //
-    // :open_content left this list on commit 7b40a70. It is
-    // declared in card-mod-format's BASE format (set/all/base.rb:93-95,
-    // `_render_core`), so it was never mod-specific — the engine just had no
-    // registration for it until the shared HTML_VIEWS table gained one. It
-    // renders now, which is the Ruby-faithful shape.
+    // :open_content left this list once the engine had no registration for
+    // it. It is declared in card-mod-format's BASE format
+    // (set/all/base.rb:93-95, `_render_core`), so it was never
+    // mod-specific. It renders now, which is the Ruby-faithful shape.
     expect(await s.engine.render("Oracle Discussion Probe+discussion", "open_content")).toBe(
       await s.engine.render("Oracle Discussion Probe+discussion", "core"),
     );
     await expectViewWithoutMod(s.engine.render("Oracle Discussion Probe+discussion", "input"), "input");
-    // :comment_box left this list on the-69-wave1-refill2 (2026-10-03).
-    // The live-oracle recapture refuted the unregistered surface's "" :
-    // the anonymous capture carries the FULL form on stored discussions
-    // (recapture-raw-shard-000005 Klickstein_continues:page, the update-
-    // case bytes with the deck's recaptcha wrap), so comment_box gained a
-    // BASE-TABLE registration (views.ts commentBoxBaseView — the same
-    // seam :open_content's own note above describes). It renders now,
-    // which is the recapture-faithful shape; the mod-layer A/B below
-    // still isolates the mod's own registration and its Rails-form bytes.
+    // :comment_box left this list once it gained a BASE-TABLE
+    // registration (views.ts commentBoxBaseView — the same seam
+    // :open_content's own note above describes). It renders now; the
+    // mod-layer A/B below still isolates the mod's own registration and its
+    // Rails-form bytes.
     expect(await s.engine.render("Oracle Comment Probe", "comment_box")).toContain(
       "comment-box nodblclick",
     );
@@ -163,11 +157,10 @@ describe("card-mod-comment through the mod loader (A/B)", () => {
     bindModLoaderToEngine(storage!, loader!);
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
-    // The mod's :comment_box serves the base table's body, the shape the
-    // live recapture pins for the anonymous viewer (recapture-raw-shard-
-    // 000005 Klickstein_continues: card_form's UPDATE branch with the
-    // recaptcha wrap, the form-control author field). The probe carries no
-    // *update rule, and this deck's no-rule update verdict allows it.
+    // The mod's :comment_box serves the base table's body: card_form's
+    // UPDATE branch with the recaptcha wrap and the form-control author
+    // field. The probe carries no *update rule, and this deck's no-rule
+    // update verdict allows it.
     const html = await s.engine.render("Oracle Comment Probe", "comment_box");
     expect(html).toContain('<div class="comment-box nodblclick">');
     expect(html).toContain('id="edit_card_210" data-recaptcha="on" action="/update/Oracle_Comment_Probe"');
