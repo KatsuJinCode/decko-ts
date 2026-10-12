@@ -127,9 +127,9 @@ describe("templateReferenceNames", () => {
   it("round 9: with a context name, plus-shaped refs absolutize against the instance", () => {
     const ctx = DeckoName.parse("Aikido Oak Cliff");
     // The chunk/reference.rb referencing-card contract: {{+image}} names
-    // <instance>+image — the key the closure walkers must prepare. Before
-    // round 9 the walkers kept the literal "+image", which matched no row
-    // and rendered every template child as the unknown-card empty slot.
+    // <instance>+image — the key the closure walkers must prepare; keeping
+    // the literal "+image" matches no row and renders every template child
+    // as the unknown-card empty slot.
     expect(templateReferenceNames("<p>{{+image|size:large}}</p>", ctx)).toEqual([
       "Aikido Oak Cliff+image",
     ]);
@@ -144,9 +144,9 @@ describe("structureRuleUniverseStatement", () => {
   it("matches rule rows by the *structure setting card's right_id (indexed, composed-key CTE)", () => {
     const statement = structureRuleUniverseStatement();
     // The rule rows match the setting card's id on right_id (indexed); each
-    // rule's composed key is built by walking UP from its set card (the
-    // speed-fix rule universe: same rows and order as composing every name
-    // in the deck, 34 ms -> 1 ms on the trial deck).
+    // rule's composed key is built by walking UP from its set card — same
+    // rows and order as composing every name in the deck, at a fraction of
+    // the cost.
     expect(statement.sql).toContain("r.right_id = (SELECT id FROM setting)");
     expect(statement.sql).toContain("up(rid, cur, suffix)");
     expect(statement.params).toEqual(["*structure", "*structure"]);
@@ -163,13 +163,11 @@ describe("structureRuleUniverseStatement", () => {
       else process.env.DECKO_LEGACY_RULE_UNIVERSE = prior;
     }
     expect(statement.sql).toContain("r.right_id = (SELECT id FROM cards");
-    // Round 9 re-pin: the composed-key side is the RECURSIVE name_walk CTE
-    // (landed for the depth-3 *type plus right universe keys — 24/139 rules
-    // composed NULL under the old flat one-junction CASE) — not the flat
-    // `sl."key" || '+' || p."key"` join this assertion pinned before that
-    // round. The statement body itself is unchanged by round 9; only the
-    // setting name is parameterized now (the same function builds the
-    // *default universe).
+    // The composed-key side is the RECURSIVE name_walk CTE (it exists for
+    // the depth-3 *type plus right universe keys, which a flat
+    // one-junction CASE composes to NULL) — not the flat
+    // `sl."key" || '+' || p."key"` join. The same function builds the
+    // *default universe.
     expect(statement.sql).toContain("WITH RECURSIVE name_walk(id, composed)");
     expect(statement.sql).toContain("COALESCE(w.composed, '') || '+' || COALESCE(r.\"key\", '')");
     // The setting name is bound as a statement parameter, not interpolated
@@ -277,56 +275,41 @@ describe("RenderEngine structured content", () => {
       const cold = fresh.counting.snapshot();
       // The prelude batch = [type row fold, set-pattern anchor priming,
       // perm x3, codehash, universe, *default universe] (the universe
-      // statements are FOLDED: +3 statements, +0 round trips). R17's A-36
-      // correction rides through the prelude in merge pass 9 prep:
+      // statements are FOLDED: +3 statements, +0 round trips).
       // default_nest_view is process config (html.rb:17-19), never a deck
-      // rule, so render.ts's fold composition no longer appends the
-      // *default_html_view universe statement - one fewer prelude statement
-      // than the cold-query port's own tree measured (14 -> 13). The
-      // remaining round trips are the root fetchByName and the view-override
-      // rule walk (this deck measured 13 statements / 8 round trips before
-      // the 2026-09-23 per-key closure rounds; 14/8 through round 10's
-      // folded *default_html_view universe; 13/6 since the 2026-09-27
-      // cold-query: the prelude batch folds the type row and the
-      // rule-walk anchor priming, so the enrich and rule-lookup point round
-      // trips became cache hits). The head read-set (2026-09-28
-      // async-view-handle) added one statement back into the SAME
-      // prelude batch (13 -> 14): card-mod-format's head views read
-      // deck-level setting cards no reference closure can reach. Round
-      // trips stay at 6. The p20-email port added TWO always-pushed,
-      // SQL-gated prelude primes (14 -> 16, round trips still 6): the
-      // +*test_context junction probe (prefetch.ts, commits 3c79ef3/
-      // d68953e/a55b477) and the nine email field-setting anchor keys
-      // (prefetch.ts, commit 76a1887). Both carry an EXISTS gate on the
-      // root's type codename = 'email_template', so non-email decks get
-      // zero rows and byte-identical renders (the 20 other tests here
-      // pass unchanged) - the pushed statement itself is what counts.
-      // The rule-defaults lane (2026-10-02) added ONE folded prelude
-      // statement (16 -> 17, round trips still 6): the template TYPE-NAME
-      // read (templateTypeNameStatement — both universes' rule-card types
-      // joined to their type cards' names). newCardDefaultType's
-      // dup_structure leg (templating.rb:61-65) answers a *structure rule
-      // card's own type and must resolve its NAME synchronously; an
-      // IN-list would need the universe rows first, so the name read is a
-      // self-contained JOIN pushed with the universes. Zero render-byte
-      // change (this deck's other tests pass unchanged).
+      // rule, so render.ts's fold composition appends no
+      // *default_html_view universe statement. The remaining round trips
+      // are the root fetchByName and the view-override rule walk: the
+      // prelude batch folds the type row and the rule-walk anchor priming,
+      // so the enrich and rule-lookup point round trips became cache hits.
+      // The head views read deck-level setting cards no reference closure
+      // can reach; their read rides the SAME prelude batch (round trips
+      // unchanged). The email support adds TWO always-pushed, SQL-gated
+      // prelude primes (prefetch.ts): the +*test_context junction probe
+      // and the email field-setting anchor keys. Both carry an EXISTS gate
+      // on the root's type codename = 'email_template', so non-email decks
+      // get zero rows and byte-identical renders - the pushed statement
+      // itself is what counts. The template TYPE-NAME read
+      // (templateTypeNameStatement — both universes' rule-card types
+      // joined to their type cards' names) folds in too:
+      // newCardDefaultType's dup_structure leg (templating.rb:61-65)
+      // answers a *structure rule card's own type and must resolve its
+      // NAME synchronously; an IN-list would need the universe rows first,
+      // so the name read is a self-contained JOIN pushed with the
+      // universes. Zero render-byte change (this deck's other tests pass
+      // unchanged).
       //
-      // 2026-10-03 net-reds-fixforward re-pin (16 -> 24 statements, 6 -> 10
-      // round trips), per-statement Ruby derivation (the waves' batched
-      // priming answers the SAME questions Ruby resolves per-card through
-      // Card::Cache - the byte oracles prove the answers; only the request
-      // batching differs):
-      //  +1  templateTypeNameStatement rides the prelude batch (the deploy
-      //      port of the rule-defaults lane's 53cc57d: type_id_from_template
-      //      reads the template rule card's own type_id AND its NAME -
-      //      templating.rb:25-27 + type.rb:78-80; the restored-side commit
-      //      re-pinned its own pins with this justification, the deploy-side
-      //      cherry-pick dropped the pin bump). +0 round trips.
-      //  +1  W2b type-card prime (one chunked IN-list over every prepared
+      // Per-statement derivation (the waves' batched priming answers the
+      // SAME questions Ruby resolves per-card through Card::Cache - only
+      // the request batching differs):
+      //  +1  templateTypeNameStatement rides the prelude batch
+      //      (type_id_from_template reads the template rule card's own
+      //      type_id AND its NAME - templating.rb:25-27 + type.rb:78-80).
+      //      +0 round trips.
+      //  +1  the type-card prime (one chunked IN-list over every prepared
       //      record's typeId - Ruby's Card#type_card quick_fetch(type_id)
       //      per prepared card, type.rb:32-35) folded INTO the first wave
-      //      batch by the net-reds-fixforward W4 fold (was its own round
-      //      trip at the waves tip; measured 11 RT there).
+      //      batch.
       //  +2  wave seating round 1 (the rule candidates of the view-time
       //      settings - resolveOptionsCard's *content options,
       //      setHostOptionsParseFailure's *help/*structure/*default; Ruby's
@@ -338,45 +321,32 @@ describe("RenderEngine structured content", () => {
       //      ladder-residue class the root composition has always paid).
       //  +2  wave seating round 2 (depth-3 junction candidates whose sides
       //      round 1 seated - "a junction's ids are the previous round's
-      //      ANSWERS", the receipt's justification class 3).
+      //      ANSWERS").
       //  +1  wave round 2's composition type fetch (same class as above).
       //  -1  REMOVED: the pre-waves rule-candidate PAIR point query
       //      (SELECT .. left_id=? AND right_id=? - Ruby's rule_card fetch
       //      by composed name): the wave seats (or negatively primes) the
       //      candidates, so the findRule ladder answers from cache.
-      //  Net statements 16 + 8 = 24 (8 additions - 1 removal + the port's
-      //  +1 counted above); net round trips 6 - 1 (removed pair point) + 4
-      //  (wave rounds 1+2 and their two composition type fetches) = 10; the
-      //  warm re-render stays 0 (ask memory + ruleCandidatesPrimedFor).
-      // Freshness lane 2026-10-05 (composed onto the deployed fold by the
-      // lineage-reconciliation lane): +1 statement (the deck_data_version
-      // stamp read folded LAST into the cold batch), +0 round trips
-      // (24 -> 25).
-      // Batched composition, 2026-10-06 (25 -> 28 statements, 10 -> 13
-      // round trips; measured with a statement log on this fixture):
-      //  +1  the compose type prime (prefetch.ts primeComposeTypeInputs)
-      //      asks the prelude type row's own type, id 2, which this
-      //      six-card deck does not have. Absent ids are deliberately left
-      //      unprimed (the fetch ladder's idToLex read has no trash filter,
-      //      so a primed miss could answer differently), so the ladder still
-      //      asks it later. On a real deck the type exists and the prime
-      //      replaces the ladder's reads.
-      //  +1  the wave re-pends a junction whose compound side was unresolved
-      //      (render.ts, fetch-composer V3) and probes the rule pair
-      //      (Page+*type, *structure) as its own batch; the old composed-key
-      //      universe statement answered it in the prelude.
-      //  +1  one more point read of the absent id 2 on the late path.
-      // A fourth extra trip (re-reading the prelude's type row, already
-      // composed and cached) was a redundancy and is fixed: composeAndCache
-      // marks every composed row as held for later type primes.
-      // The trade is deliberate: on the batch lane's own pin suite the same
-      // vehicles took a post-bump render from 182 to 91 round trips
-      // (commit 780f2a8f).
+      //  Freshness: the deck_data_version stamp read folds LAST into the
+      //  cold batch (+1 statement, +0 round trips).
+      //  Batched composition adds three: the compose type prime
+      //  (prefetch.ts primeComposeTypeInputs asks the prelude type row's
+      //  own type, id 2, which this six-card deck does not have - absent
+      //  ids are deliberately left unprimed (the fetch ladder's idToLex
+      //  read has no trash filter, so a primed miss could answer
+      //  differently), so the ladder still asks it later; on a real deck
+      //  the type exists and the prime replaces the ladder's reads); the
+      //  wave re-pends a junction whose compound side was unresolved
+      //  (render.ts, fetch-composer V3) and probes the rule pair
+      //  (Page+*type, *structure) as its own batch; and one more point
+      //  read of the absent id 2 on the late path. A fourth extra trip
+      //  (re-reading the prelude's type row, already composed and cached)
+      //  was a redundancy and is fixed: composeAndCache marks every
+      //  composed row as held for later type primes.
       expect(cold.statements).toBe(28);
       expect(cold.roundTrips).toBe(13);
       // Warm re-render: the structured pass is pure memory; the render pays
-      // exactly the freshness stamp (one statement, one round trip — the
-      // delivery-contract:79 warm-render floor).
+      // exactly the freshness stamp (one statement, one round trip).
       fresh.counting.reset();
       await fresh.engine.render("Doc1", "title");
       expect(fresh.counting.snapshot()).toEqual({ statements: 1, roundTrips: 1 });
@@ -416,12 +386,10 @@ describe("RenderEngine structured content", () => {
     //    createable { wrap { unknown_link ... } } end` with `createable =
     //    card.ok?(:create) ? yield : ""` — this deck seeds NO *create
     //    rules, so ok?(:create) is false and the nest renders "".
-    // The p20-nest-selection (9a0d5c1) retired the pre-fix GLOBAL
-    // open:true decl this test originally pinned; the corpus-proven
-    // selection is pinned independently by
-    // tests/card/render/nest-miss-unknown-view-selection-corpus-replay.
-    // The type-inheritance MECHANISM below still has its open-view pin —
-    // in the +discussion arm (the test's own cited oracle shape).
+    // (The view-selection behavior is pinned independently by
+    // tests/card/render/nest-miss-unknown-view-selection-corpus-replay
+    // .test.ts; this file's open-view pin for the type-inheritance
+    // MECHANISM lives in the +discussion arm below.)
     const fresh = await createRenderTestStorage();
     try {
       await seedCard(fresh, { id: 100, name: "Page" });
@@ -461,11 +429,11 @@ describe("RenderEngine structured content", () => {
     // The new-card template type chain: format/nest/fetch.rb#new_card ->
     // Card.fetch new: -> type_id_from_template -> template&.type_id, where
     // the template for a NEW card is the *default rule card (templating.rb
-    // new_card_template). Oracle: raw-ground-truth 9625/13421/14382 render
-    // the absent "+Discussion" child's open-view slot with
-    // data-card-type-id=3 (RichText) from the discussion+*right+*default
-    // rule card's own type. The open view renders on the unknown child
-    // because card-mod-comment set/right/discussion.rb:1-6 redeclares
+    // new_card_template). The absent "+Discussion" child's open-view slot
+    // therefore carries the discussion+*right+*default rule card's own
+    // type as its data-card-type-id/type-name. The open view renders on
+    // the unknown child because card-mod-comment
+    // set/right/discussion.rb:1-6 redeclares
     // `%i[open open_content titled titled_content].each { view viewname,
     // unknown: true }` for the RIGHT-discussion set — the port's compiled
     // UNKNOWN_VIEW_DECLS row (format.ts), dispatch via viewForUnknown.
@@ -503,11 +471,10 @@ describe("RenderEngine structured content", () => {
       // RIGHT-discussion set token the unknown:true decl rides.
       expect(html).toContain("TYPE-page");
       expect(html).toContain("RIGHT-discussion");
-      // ...and the nest resolved contextually: <instance>+discussion
-      // (round 9's absolutization), not the literal "+discussion". The
-      // NAME-FORM port's slot_cardname rule (card-mod-format wrap.rb:50-53:
-      // an UNSAVED COMPOUND card displays the url_key form — live pin
-      // Conflict_Done_Well.html) shapes the display: url_key
+      // ...and the nest resolved contextually: <instance>+discussion,
+      // not the literal "+discussion". The slot_cardname rule
+      // (card-mod-format wrap.rb:50-53: an UNSAVED COMPOUND card displays
+      // the url_key form) shapes the display: url_key
       // "Thing_Host+discussion", case kept, underscore for the space.
       expect(html).toContain('data-card-name="Thing_Host+discussion"');
       // discussion.rb:2-5 `voo.show :comment_box` before super() — the
