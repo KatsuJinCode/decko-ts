@@ -204,6 +204,15 @@ export async function renderPageBytes(
         : await render();
       return str(body);
     } finally {
+      // The request boundary's fill fold (commitSessionRolesFill): a Ruby
+      // request whose roles nest rendered leaves the fill on the session's
+      // card object for the NEXT request; the passes inside THIS request
+      // never see each other's flips (the per-pass reset at render()
+      // entry). Runs on the error path too — the mutation precedes any
+      // late render failure. Optional-call per the merge-4 precedent: the
+      // edge request tests drive the handler with stub engines that have
+      // no such fold, and a real engine always does.
+      engine.commitSessionRolesFill?.();
       releaseCaches();
     }
   } finally {

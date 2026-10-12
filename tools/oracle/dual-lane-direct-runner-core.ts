@@ -126,6 +126,9 @@ interface GradeViewerEngine {
   viewer: GradeViewer;
   pageSession: GradeViewer | undefined;
   readPermission?: { alwaysOk: boolean; parties: number[]; readableRuleIds: Set<number> };
+  /** The engine's fresh-process boundary (RenderEngine.resetRequestSession):
+   *  clears the prepared session chrome and the ensure_roles fill state. */
+  resetRequestSession?(): void;
 }
 export function gradeViewerFromEnv(raw: string | undefined): GradeViewer | undefined {
   if (raw === undefined || raw === "") return undefined;
@@ -916,8 +919,28 @@ export async function runDirectGrade(opts: DirectRunOptions): Promise<DirectRunR
 
     /** Lane P handler: the engine's page-shaped output -- the REAL page
      *  render (src/card/render/page.ts). The entry `view` input is
-     *  informational only (Ruby's show resolves the view itself). */
+     *  informational only (Ruby's show resolves the view itself).
+     *
+     *  SHARD BOUNDARY (the capture-process model, settled live 2026-10-11):
+     *  the Ruby capture rigs ran ONE process per shard file with nothing
+     *  renewed inside it, so the +*enabled_roles session card's ensure_roles
+     *  fill starts blank at each shard's first page and stays filled for
+     *  the rest of the shard (the census: 6,537 of 6,588 member pages carry
+     *  the filled navbar input; the 48 exceptions are each shard's FIRST
+     *  page — the live probe confirms the fill survives Card::Env.reset and
+     *  only Card::Cache.renew blanks it). The replay is sequential
+     *  (src/testing/replay.ts replayEntries), so the call count maps 1:1
+     *  onto pageEntryShards; at every shard change the engine's session
+     *  state resets — exactly the boundary the capture process crossed. */
+    let pageEntryIndex = 0;
+    let pageEntryShard = "";
     pageRegistry.register("render-engine", async ({ cardName }: { cardName: string }) => {
+      const shard = pageEntryShards[pageEntryIndex] ?? "";
+      pageEntryIndex += 1;
+      if (shard !== pageEntryShard) {
+        pageEntryShard = shard;
+        viewerEngine.resetRequestSession?.();
+      }
       try {
         const html = await storage.engine.renderPage(cardName);
         assertGradeViewerState(viewerEngine, gradeViewer);

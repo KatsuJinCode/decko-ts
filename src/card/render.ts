@@ -704,18 +704,35 @@ export class RenderEngine implements RenderEngineLike {
    *  my_card roles nest inside it carrying the ensure_roles value). */
   private sessionAccountLinksFilledHtml: string | undefined;
   /** The session +*enabled_roles card's content fill, the port of
-   *  set/right/enabled_roles.rb ensure_roles' ORDER SEMANTICS (probed live
-   *  against the Ruby oracle, 2026-10-10): checkbox_input calls
-   *  card.ensure_roles at EVERY roles-nest render; the card object mutates
-   *  mid-request, so the FIRST nest render of a request shows the blank
-   *  content input (the fill lands after the field is out) and every LATER
-   *  nest render of the same request reads the filled content. Ruby's fill
-   *  does not cross the request boundary (Card::Env.reset per recorded
-   *  op; the oracle's bare view ops pin blank fields), so the flag is
-   *  render-scoped: cleared at every render() entry, flipped by the view
-   *  fns AFTER they consume the roles-nest html
+   *  set/right/enabled_roles.rb ensure_roles' STATE LIFETIME (probed live
+   *  against the Ruby oracle on the real capture deck, 2026-10-11):
+   *  checkbox_input calls card.ensure_roles at EVERY roles-nest render; the
+   *  first call fills the blank session card's content AFTER the hidden
+   *  content field is emitted, so the FIRST render shows the blank input
+   *  and every later render of the same process reads the filled content.
+   *  The mutated card object lives in Card::Cache, so the fill's lifetime
+   *  is the CACHE's, not the request's: Card::Env.reset alone keeps the
+   *  filled content (probed: a post-reset page renders FILLED), and
+   *  Card::Cache.renew blanks it again (probed). The real-deck capture rig
+   *  recorded exactly that (6,537 of 6,588 member pages carry the filled
+   *  input; the 48 real-page exceptions are each capture process's FIRST
+   *  page). The flag is therefore cache-scoped: cleared by
+   *  resetRequestSession — the harness seam that stands for the Ruby rigs'
+   *  fresh-process/Cache.renew boundary — never at render() entry, and
+   *  flipped by the view fns AFTER they consume the roles-nest html
    *  (RenderEngineLike.markSessionRolesContentFilled). */
   private sessionRolesContentFilled = false;
+  /** The fill's consumption WITHIN the current render pass (render() entry
+   *  to render() exit). The page pipeline renders a page op in several
+   *  passes (the prepare render, the main re-render); Ruby serves ONE
+   *  render per request, so each pass reads the COMMITTED state and its
+   *  own consumption — never an earlier pass's flip (the synthetic
+   *  corpus's single-nest pages pin the navbar UNFILLED even though the
+   *  prepare pass already consumed the nest; the real corpus's pages
+   *  after the first pin FILLED from the committed state). Folded into
+   *  the committed flag at the request boundary
+   *  (commitSessionRolesFill, renderPageBytes' finally). */
+  private sessionRolesFillConsumedThisPass = false;
   private sessionAccountLinksHasRoles = false;
 
   /** The render-time history seam bundle (src/card/history/render-seam.ts):
@@ -1205,9 +1222,17 @@ export class RenderEngine implements RenderEngineLike {
     this.requestNewCard = params.newCard;
     this.renderSearch = params.search;
     this.renderSearchFocalKey = name.key;
-    // The ensure_roles fill is per-request (see the field note): a fresh
-    // render starts with the session card's blank content.
-    this.sessionRolesContentFilled = false;
+    // The fill's PER-PASS consumption state resets here: a render() call is
+    // one Ruby request-shaped pass (the page pipeline runs several passes
+    // per page op — the prepare render and the main re-render — and Ruby
+    // has exactly ONE render per request, so each pass must start from the
+    // COMMITTED fill state, never from the previous pass's flip). The
+    // committed state itself is NOT cleared here: its lifetime is the card
+    // cache's (the field note's live-oracle probe: Card::Env.reset alone
+    // keeps the filled content; only the harness's Cache.renew boundary —
+    // resetRequestSession — blanks it). commitSessionRolesFill folds the
+    // pass's consumption into the committed state at the request boundary.
+    this.sessionRolesFillConsumedThisPass = false;
 
     // Read-permission preparation (see src/card/permissions/). On a cold
     // render the state resolution rides the prefetch batch (one round trip
@@ -7370,9 +7395,10 @@ export class RenderEngine implements RenderEngineLike {
     }
   }
 
-  /** Card::Env.reset's session half: a host whose sessions are per request
-   *  (the reference harness's recorder resets the environment before every
-   *  recorded request) clears the prepared chrome and the ensure_roles fill
+  /** The harness's fresh-process boundary (the Ruby rigs' Cache.renew): a
+   *  host whose sessions are per request (the reference harness's recorder
+   *  renews Card::Cache before every recorded op — harness_env.rb
+   *  begin_request!) clears the prepared chrome and the ensure_roles fill
    *  state, so the next render is the session's FIRST render — the roles
    *  dropdown's content input blank, the account links re-prepared. The
    *  pageSession itself stays; the caller re-signs in through it. */
@@ -7384,7 +7410,27 @@ export class RenderEngine implements RenderEngineLike {
     this.sessionRolesDropdownHtml = undefined;
     this.sessionAccountLinksFilledHtml = undefined;
     this.sessionRolesContentFilled = false;
+    this.sessionRolesFillConsumedThisPass = false;
     this.sessionAccountLinksHasRoles = false;
+  }
+
+  /** The request boundary's fold (renderPageBytes' finally): a Ruby request
+   *  whose roles nest rendered leaves the fill committed on the session's
+   *  card object — the next request (and every later page of the process,
+   *  the real capture rigs' filled-everywhere posture) reads it. The
+   *  passes INSIDE this request model the one Ruby render and never see
+   *  each other's flips; this fold is where the flip becomes cache state. */
+  commitSessionRolesFill(): void {
+    if (this.sessionRolesFillConsumedThisPass) this.sessionRolesContentFilled = true;
+  }
+
+  /** The fill state the serving sites read: the committed card-cache state
+   *  OR this pass's own consumption (ensure_roles' mid-request mutation —
+   *  a nest rendered after the first one in the SAME Ruby request reads
+   *  the filled content; the synthetic corpus's page:member:*account
+   *  links pins exactly that body-blank/navbar-filled pair). */
+  private get sessionRolesFillVisible(): boolean {
+    return this.sessionRolesContentFilled || this.sessionRolesFillConsumedThisPass;
   }
 
   /** RenderEngineLike.pageSessionAccountLinksHtml — the prepared signed-in
@@ -7393,7 +7439,7 @@ export class RenderEngine implements RenderEngineLike {
    *  this render has already shown the roles nest once (ensure_roles'
    *  mid-request mutation; see the field note). */
   get pageSessionAccountLinksHtml(): string | undefined {
-    return this.sessionRolesContentFilled
+    return this.sessionRolesFillVisible
       ? (this.sessionAccountLinksFilledHtml ?? this.sessionAccountLinks)
       : this.sessionAccountLinks;
   }
@@ -7403,7 +7449,7 @@ export class RenderEngine implements RenderEngineLike {
    *  the FILLED variant once this render has already shown the roles nest
    *  once (ensure_roles' mid-request mutation; see the field note). */
   get pageSessionMyCardHtml(): string | undefined {
-    return this.sessionRolesContentFilled ? (this.sessionMyCardHtmlFilled ?? this.sessionMyCardHtml) : this.sessionMyCardHtml;
+    return this.sessionRolesFillVisible ? (this.sessionMyCardHtmlFilled ?? this.sessionMyCardHtml) : this.sessionMyCardHtml;
   }
 
   /** RenderEngineLike.pageSessionRolesDropdownHtml. */
@@ -7418,7 +7464,7 @@ export class RenderEngine implements RenderEngineLike {
    *  nest render of the same request serves the filled content input.
    *  A no-op unless the session's chrome carries the roles nest. */
   markSessionRolesContentFilled(): void {
-    if (this.sessionAccountLinksHasRoles) this.sessionRolesContentFilled = true;
+    if (this.sessionAccountLinksHasRoles) this.sessionRolesFillConsumedThisPass = true;
   }
 
   /** Prepare the signed-in account-links chrome for the page session — the
