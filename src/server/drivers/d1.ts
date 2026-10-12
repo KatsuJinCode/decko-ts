@@ -1,6 +1,4 @@
 // CloudflareD1Adapter — SQLDatabaseDriver over a Cloudflare D1 binding.
-// Part of the storage-driver foundation (upstream proposal
-// decko-commons/decko#1282).
 //
 // The engine never imports vendor SDKs (see src/server/driver.ts), so this
 // file declares the D1 API structurally instead of importing
