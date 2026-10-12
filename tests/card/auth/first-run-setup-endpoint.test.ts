@@ -8,21 +8,18 @@
 // POST /setup died as `actor *anonymous may not create card setup` (403)
 // while every module test stayed green.
 //
-// Ruby oracle: decko has no /setup route — the setup journey rides the
-// ordinary write through mark interpretation
-// (decko-0.20.0 lib/card_controller/mark.rb:28-33 `implicit_mark`:
-// `when initial_setup? ... prepare_setup_card!`, :56-63). The port's
-// equivalent is routing-order: under first-run conditions the write branch
-// YIELDS /setup to the first-run surface, whose census
-// (card-1.110.0 lib/card/auth/setup.rb:33-52 needs_setup?) is the security
-// boundary — an existing deck never becomes setuptable.
+// The reference deck has no /setup route — the setup journey rides the
+// ordinary write through mark interpretation (`when initial_setup? ...
+// prepare_setup_card!`). The equivalent here is routing order: under
+// first-run conditions the write branch YIELDS /setup to the first-run
+// surface, whose census (needs_setup?, prototype/lib/card/auth/setup.rb) is
+// the security boundary — an existing deck never becomes setuptable.
 //
 // Fresh-deck fixture: db/schema.sqlite.sql applied to an empty sqlite file
 // (0 card rows). With DECKO_FIRST_RUN=1 + DECKO_WRITE_PATH=1 the server's
-// boot-seed wire seeds the deck at boot (Ruby card:setup = db:setup —
-// mod/core/lib/tasks/card.rake:4-6, db/seeds.rb:3), which is what makes the
-// census computable and the one-click deployment path real: schema -> seed
-// -> GET the form -> POST the owner -> sign in.
+// boot-seed wire seeds the deck at boot (schema init, then seed), which is
+// what makes the census computable and the one-click deployment path real:
+// schema -> seed -> GET the form -> POST the owner -> sign in.
 
 import { spawn, type ChildProcess } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync } from "node:fs";
@@ -159,7 +156,7 @@ describe("first-run /setup through the booted staging server (fresh-deck one-cli
       body: new URLSearchParams({ email: OWNER_EMAIL, password: OWNER_PASSWORD }).toString(),
       redirect: "manual",
     });
-    // RED at base: the write branch answered 403
+    // Without the first-run routing the write branch answers 403
     // (`actor *anonymous may not create card setup`) before this request
     // could reach the first-run surface.
     console.log('PROBE-SETUP:', post.status, (await post.text()).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').slice(0, 260));
@@ -167,7 +164,7 @@ describe("first-run /setup through the booted staging server (fresh-deck one-cli
     expect(post.headers.get("location")).toBe(`${firstRun?.baseUrl}/_signin`);
 
     // The journey's end state is real THROUGH THE SERVER: the just-created
-    // owner signs in on the slice-1 surface.
+    // owner signs in on the sign-in surface.
     const signin = await fetch(`${firstRun?.baseUrl}/_signin`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
