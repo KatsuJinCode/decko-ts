@@ -782,16 +782,26 @@ export async function createOwnerAccount(
     });
     // setup_first_user (user.rb:59-64, :finalize, when: :setup? — this whole
     // function runs only when the setup window is open, the port's
-    // `when: :setup?`): subcard [role, :members] content = name, over
+    // `when: :setup?`): subcard [role, :*members] content = name, over
     // basket[:roles_for_first_user] %i[help_desk shark administrator]
     // (user.rb:3), in basket order; plus the signup_alert_email+to subcard
     // (user.rb:60). Ruby's subcard write is create-or-update (Card.create
     // on an existing name updates) — the concurrent-setup pin
     // (first-run-setup.test.ts "two creates issued CONCURRENTLY") needs
     // that tolerance too, so the writes go through ensureCard.
+    //
+    // The setting is `*members`, NOT `members`. Ruby's rolehash hangs off
+    // `right_id: MembersID` — the `*members` SETTING's id
+    // (card-mod-account set/self/role.rb:33-40), which is what
+    // fetch_roles reads to decide whether this user holds the role
+    // (src/card/permissions/read-rules.ts:72 MEMBERS_CODENAME="members",
+    // :247). `+members` is a different card — a plain subcard of the role
+    // named after the codename, which no permission statement consults — so
+    // writing the owner there left the owner in no role at all and never an
+    // admin. The star is the whole fix.
     await ensureCard(engine, "signup alert email+to", ownerName);
     for (const role of ["Help Desk", "Shark", "Administrators"]) {
-      await ensureCard(engine, `${role}+members`, ownerName);
+      await ensureCard(engine, `${role}+*members`, ownerName);
     }
     return {
       ok: true,

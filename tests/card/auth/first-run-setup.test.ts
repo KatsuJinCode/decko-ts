@@ -597,6 +597,50 @@ describe("createOwnerAccount — the happy path", () => {
     render.close();
   });
 
+  it("puts the owner in each first-user role's *members setting, not a +members subcard", async () => {
+    armDemoProfile();
+    const { driver, render } = await fixture();
+    const outcome = await createOwnerAccount(
+      { driver, fetcher: render.fetcher, now: () => new Date("2026-10-02T05:30:57Z") },
+      { email: "owner@example.com", password: "Abcdef1!" },
+    );
+    expect(outcome.ok, JSON.stringify(outcome)).toBe(true);
+
+    // The setting Ruby's rolehash hangs off is `*members`
+    // (card-mod-account set/self/role.rb:33-40, right_id: MembersID) —
+    // read-rules.ts:247 builds the actor's roles from exactly those rows.
+    // A write to `+members` lands on a card no permission statement reads,
+    // so the owner held no role and was never an admin.
+    //
+    // Compound rows carry name = NULL, so resolve structurally: the row is
+    // (role card) x (the `*members` setting card). The setting is created
+    // here as a plain card, so it is matched by NAME, not by codename.
+    for (const role of ["Help Desk", "Shark", "Administrators"]) {
+      const starred = await driver.query<{ db_content: string | null }>(
+        `SELECT c.db_content FROM cards c
+           JOIN cards l ON l.id = c.left_id
+           JOIN cards r ON r.id = c.right_id
+          WHERE l.name = ? AND r.name = '*members' AND c.trash = 0`,
+        [role],
+      );
+      expect(starred.rows.length, `${role}+*members is missing`).toBe(1);
+      expect(starred.rows[0]?.db_content).toBe("owner");
+
+      // And the wrong card is no longer written at all: no row joins this
+      // role to a plain `members` card.
+      const unstarred = await driver.query<{ id: number }>(
+        `SELECT c.id FROM cards c
+           JOIN cards l ON l.id = c.left_id
+           JOIN cards r ON r.id = c.right_id
+          WHERE l.name = ? AND r.name = 'members' AND c.trash = 0`,
+        [role],
+      );
+      expect(unstarred.rows.length, `${role}+members must not exist`).toBe(0);
+    }
+
+    render.close();
+  });
+
   it("de-duplicates a derived owner name instead of raising a name collision the human cannot act on", async () => {
     armDemoProfile();
     const { driver, render } = await fixture();
