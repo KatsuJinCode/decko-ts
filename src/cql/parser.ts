@@ -1,15 +1,17 @@
 /**
  * CQL parser: CQL statement (JSON-ish hash or shorthand) -> QueryNode AST.
  *
- * A line-by-line port of card-1.110.0 interpretation:
- *   lib/card/query.rb                          (attribute/operator tables)
- *   lib/card/query/card_query/normalization.rb (clause/value normalization)
- *   lib/card/query/card_query/interpretation.rb (dispatch)
- *   lib/card/query/card_query/{relational,reference,match}_attributes.rb
- *   lib/card/query/card_query/{conjunctions,custom,sorting,found_by}.rb
- *   lib/card/query/abstract_query{,/query_helper,/tie}.rb
- *   lib/card/query/{value,value/match_value}.rb
- * Each ported behavior cites its Ruby method.
+ * Interpretation runs in three stages, and the section markers below follow
+ * them: NORMALIZATION turns a raw clause into a normalized hash (clauses that
+ * are not objects become `{ id: ... }`, `$vars` are substituted, relative
+ * names are absolutized against the query context); DISPATCH routes each
+ * normalized key by its attribute class (basic / relational / plus_relational
+ * / conjunction / custom / ignored / deprecated); and RELATIONAL, CONJUNCTION,
+ * TIE and MATCH sections below build the subqueries those routes ask for.
+ *
+ * Nothing here touches the database — the parser's whole job is to produce a
+ * QueryNode tree that src/cql/sql.ts can render. That separation is what lets
+ * a statement be re-rendered for a paging count with different mods.
  */
 
 import {
@@ -46,8 +48,8 @@ import {
 } from "./normalize.js";
 
 /**
- * query.rb Card::Query @attributes — key -> attribute type, built with the
- * exact membership lists of the Ruby hash.
+ * Every attribute key CQL understands, grouped by how interpretation routes
+ * it. A key not in this table is a bad query.
  */
 const ATTRIBUTE_LISTS = {
   basic: [
@@ -109,7 +111,8 @@ const ATTRIBUTES: Record<string, AttributeType> = {};
   ([type, keys]) => keys.forEach((key) => (ATTRIBUTES[key] = type)),
 );
 
-/** Interpretation#as_list_of_ids? key prefix */
+/** Keys whose values are card-reference lists eligible for the id-set
+ *  shortcut below rather than a subquery. */
 const ID_LIST_KEY_RE = /^(refer|nest|include|link|member)/;
 
 interface ParsedValue {
@@ -144,8 +147,8 @@ class CqlParser {
     if (isPlainObject(statement)) {
       const hash = { ...statement };
 
-      // AbstractQuery#initialize — init_instance_vars :context, :superquery,
-      // :fasten, :negate; init_root_vars consumes vars/table_suffix (root only)
+      // The root query's own instance state: context, superquery, fasten,
+      // negate. vars and table_suffix are root-only and consumed here.
       const context = takeKey(hash, "context");
       takeKey(hash, "superquery");
       takeKey(hash, "fasten");
@@ -157,8 +160,8 @@ class CqlParser {
         this.vars = vars as Record<string, string | number | null | undefined>;
       }
 
-      // Run#alter_results? reads statement[:prepend]/[:append] after SQL has
-      // run; they are ignored keys for interpretation but kept for callers.
+      // prepend/append are read after the SQL has run, by result shaping.
+      // Interpretation ignores them but carries them through for that caller.
       const prepend = takeKey(hash, "prepend");
       const append = takeKey(hash, "append");
       root.statementExtras = {
@@ -168,14 +171,14 @@ class CqlParser {
 
       this.interpret(root, hash);
     } else {
-      // shorthand clause (Integer/String) -> { id: ... } via clause_to_hash
+      // A bare Integer or String is shorthand for `{ id: ... }`.
       root.context = this.opts.context ?? "";
       this.interpret(root, statement);
     }
     return root;
   }
 
-  // ---- query construction (AbstractQuery#initialize + QueryHelper#table_alias) ----
+  // ---- query construction (node + table alias) ----
 
   private newQuery(
     kind: QueryKind,
@@ -213,16 +216,18 @@ class CqlParser {
     return node;
   }
 
-  /** Tie#inherit_fasten: skip :direct superqueries */
+  /** Inherit the fasten mode from the nearest ancestor that has one: a direct
+ *  superquery never carries its own mode to pass down. */
   private inheritFasten(parent: QueryNode): Fasten {
     let node: QueryNode | null = parent;
     while (node !== null && node.fasten === "direct") node = this.parents.get(node) ?? null;
     return node === null ? "join" : node.fasten;
   }
 
-  // ---- normalization (CardQuery::Normalization) ----
+  // ---- normalization ----
 
-  /** Normalization#normalize_clause: clause_to_hash + normalize_value (skip :return) */
+  /** Coerce a clause to a hash, then normalize every value in it. `return`
+   *  is passed through untouched — it is a view spec, not a card value. */
   private interpret(query: QueryNode, clause: unknown): void {
     let hash: Record<string, unknown>;
     if (isPlainObject(clause)) {
@@ -230,7 +235,7 @@ class CqlParser {
     } else if (typeof clause === "number" && Number.isInteger(clause)) {
       hash = { id: clause };
     } else if (typeof clause === "string") {
-      // String -> { id: Card::Lexicon.id(clause) || -2 }
+      // A bare String is an id lookup; -2 is the "unresolved" sentinel.
       hash = { id: this.opts.resolveCardId?.(clause) ?? -2 };
     } else {
       throw new CqlBadQuery(`Invalid clause: ${inspect(clause)}`);
@@ -243,18 +248,19 @@ class CqlParser {
   private normalizeValue(val: unknown, context: string): unknown {
     if (typeof val === "string") return this.normalizeStringValue(val, context);
     if (Array.isArray(val)) return val.map((v) => this.normalizeValue(v, context));
-    // OK_VALUE_CLASSES: Integer, Float, Hash, Symbol, booleans, nil, relation
+    // Numbers, booleans, nil and nested objects pass through as-is.
     if (val === null || typeof val === "number" || typeof val === "boolean" || isPlainObject(val)) {
       return val;
     }
     throw new CqlBadQuery(`Invalid value type: ${typeof val} (${inspect(val)})`);
   }
 
-  /** Normalization#normalize_string_value */
+  /** A whole-string `$name` substitutes the variable's value, trimmed; a
+   *  value carrying a contextual marker is absolutized against the context. */
   private normalizeStringValue(val: string, context: string): string {
     const varMatch = /^\$(\w+)$/.exec(val);
     if (varMatch) {
-      // string_value_from_var: @vars[name].to_s.strip (missing -> "")
+      // A missing var is an empty string, not an error.
       const raw = this.vars[varMatch[1] ?? ""];
       return String(raw ?? "").trim();
     }
@@ -264,16 +270,17 @@ class CqlParser {
     return val;
   }
 
-  // ---- interpretation dispatch (CardQuery::Interpretation) ----
+  // ---- interpretation dispatch ----
 
   private interpretItem(query: QueryNode, key: string, val: unknown): void {
-    // interpret_as_content?: operator key that is not an attribute ("match"
-    // IS an attribute, so it routes to the attribute handler instead)
+    // An operator key that is not an attribute becomes a content condition.
+    // "match" is the one name that is both, and it routes to the attribute
+    // handler instead.
     if (key in OPERATORS && !ATTRIBUTES[key]) {
       this.addCondition(query, "content", this.buildValue([key, this.normalizeValue(val, query.context)]));
       return;
     }
-    // interpret_as_modifier?: modifier key with a non-Hash value
+    // A modifier key with a non-Hash value is a mod, not an attribute clause.
     if ((MODIFIERS as readonly string[]).includes(key) && !isPlainObject(val)) {
       this.interpretModifier(query, key, val);
       return;
@@ -281,14 +288,14 @@ class CqlParser {
     this.interpretAttributes(query, key, val);
   }
 
-  /** Interpretation#interpret_modifier: values stringified (arrays kept) */
+  /** Mod values are stringified; an array stays an array. */
   private interpretModifier(query: QueryNode, key: string, val: unknown): void {
     const mods: Mods = query.mods;
     const list = Array.isArray(val) ? val.map(String) : [String(val)];
     switch (key) {
       case "conj":
-        // Conjunctions#current_conjunction reads mods[:conj]; we keep the
-        // effective value on the node itself
+        // The effective conjunction is kept on the node itself, since every
+        // later join decision reads it from there.
         query.conj = String(val);
         break;
       case "return":
@@ -331,7 +338,6 @@ class CqlParser {
     }
     switch (type) {
       case "basic":
-        // INTERPRET_METHOD[:basic] = :add_condition
         this.addCondition(query, key, this.buildValue(val));
         break;
       case "relational":
@@ -345,8 +351,7 @@ class CqlParser {
         this.conjoin(query, val, CONJUNCTIONS[key] ?? "and");
         break;
       case "custom":
-        // Custom#compound: "left_id IS #{'NOT' if val} NULL" (Ruby emits a
-        // double space in the false branch; normalized here)
+        // `compound` is a raw null test on left_id, optionally negated.
         query.conditions.push({ kind: "raw", sql: `left_id IS ${val ? "NOT " : ""}NULL` });
         break;
       case "ignore":
@@ -357,9 +362,9 @@ class CqlParser {
     }
   }
 
-  // ---- values (Card::Query::Value) ----
+  // ---- values ----
 
-  /** Value#initialize: parse_value + canonicalize_operator */
+  /** Turn a raw attribute value into an operator plus its operands. */
   private buildValue(rawvalue: unknown): ParsedValue {
     if (Array.isArray(rawvalue)) {
       return this.parseArrayValue(rawvalue);
@@ -370,7 +375,7 @@ class CqlParser {
     return { op: "=", values: [assertSimpleValue(rawvalue)] };
   }
 
-  /** Value#parse_array_value */
+  /** An array value leads with an optional operator word. */
   private parseArrayValue(array: unknown[]): ParsedValue {
     const rest = [...array];
     let op = "in";
@@ -382,14 +387,15 @@ class CqlParser {
     return { op, values };
   }
 
-  /** Value#canonicalize_operator */
+  /** Every operator the tables can produce must be one SQL can render. */
   private canonicalizeOperator(op: string): void {
     if (!Object.values(OPERATORS).includes(op)) {
       throw new CqlBadQuery(`Invalid operator: ${op}`);
     }
   }
 
-  /** QueryHelper#add_condition + Value#to_sql dispatch */
+  /** Attach a parsed value to the query, choosing the match shape or the
+   *  plain value shape. */
   private addCondition(query: QueryNode, field: string, value: ParsedValue): void {
     if (value.op === "~") {
       // MatchValue: term parsed from the joined values; field stays the
@@ -415,9 +421,9 @@ class CqlParser {
   }
 
   /**
-   * Value#standard_sql: values of `name` conditions are mapped to key form
-   * ("Joe Admin" -> "joe_admin") for every non-match operator. (The match
-   * operator branches to MatchValue before this and keeps its own mapping.)
+   * Values of a `name` condition are mapped to key form ("Joe Admin" ->
+   * "joe_admin") for every operator except match, which keeps its own
+   * mapping because it also matches against content.
    */
   private standardizeValues(
     field: string,
@@ -432,12 +438,12 @@ class CqlParser {
     return values;
   }
 
-  /** Value#standardize_field */
+  /** Map a CQL field name to its physical column, refusing unsafe names. */
   private standardizeField(field: string): string {
     return field in SQL_FIELD ? SQL_FIELD[field] : safeSql(field);
   }
 
-  // ---- relational dispatch (Interpretation#relate + relate_multi_value) ----
+  // ---- relational dispatch ----
 
   private relate(query: QueryNode, key: string, val: unknown, opts?: { multiple?: boolean }): void {
     const multiple = opts?.multiple ?? Array.isArray(val);
@@ -448,7 +454,8 @@ class CqlParser {
     }
   }
 
-  /** Interpretation#relate_compound */
+  /** A plus_relational value is multi-valued only when it really is — an array
+   *  of values, or one that leads with a conjunction word. */
   private relateCompound(query: QueryNode, key: string, val: unknown): void {
     const hasMultipleValues =
       Array.isArray(val) &&
@@ -456,7 +463,10 @@ class CqlParser {
     this.relate(query, key, val, { multiple: hasMultipleValues });
   }
 
-  /** Interpretation#relate_multi_value */
+  /** Fan a multi-valued relational attribute out. A leading conjunction word
+   *  picks how the remaining values combine: the same conjunction as the
+   *  query is ANDed straight into this query's conditions, a different one
+   *  becomes a subquery. */
   private relateMultiValue(query: QueryNode, key: string, val: unknown[]): void {
     const items = [...val];
     let conj = "and";
@@ -476,12 +486,13 @@ class CqlParser {
     return conj === "or" && ID_LIST_KEY_RE.test(key) && this.listOfIds(val);
   }
 
-  /** Tie#list_of_ids? */
+  /** Every value resolves to an id. */
   private listOfIds(val: unknown[]): boolean {
     return val.every((v) => this.idFromVal(v) !== null);
   }
 
-  /** Tie#id_from_val */
+  /** Resolve one value to a card id, or null when it is not id-able. An
+   *  unresolvable name gets -999, the never-matching sentinel. */
   private idFromVal(val: unknown): number | null {
     if (typeof val === "number" && Number.isInteger(val)) return val;
     if (typeof val === "string") return this.opts.resolveCardId?.(val) ?? -999;
@@ -499,7 +510,7 @@ class CqlParser {
   }
 
   private readonly relationalHandlers: Record<string, AttributeHandler> = {
-    // RelationalAttributes (restrict-able)
+    // Attributes whose value restricts a card column directly.
     type: (q, val) => this.restrict(q, "type_id", val),
     left: (q, val) => this.restrict(q, "left_id", val),
     right: (q, val) => this.restrict(q, "right_id", val),
@@ -507,7 +518,7 @@ class CqlParser {
     created_by: (q, val) => this.restrict(q, "creator_id", val),
 
     part: (q, val) => {
-      // part = any(left: val, right: val.clone)
+      // `part: X` means left is X OR right is X.
       this.relationalHandlers.any(q, { left: val, right: val });
     },
 
@@ -524,23 +535,23 @@ class CqlParser {
       this.relationalHandlers.any(q, { left_plus: val, right_plus: val });
     },
 
-    // Conjunctions#all/#any (+ and/or aliases)
+    // Grouping attributes; "and"/"or" are aliases for "all"/"any".
     all: (q, val) => this.conjoin(q, val, "and"),
     and: (q, val) => this.conjoin(q, val, "and"),
     any: (q, val) => this.conjoin(q, val, "or"),
     or: (q, val) => this.conjoin(q, val, "or"),
 
     not: (q, val) => {
-      // Conjunctions#not: tie :card, val, { id: :id }, { negate: true }
+      // `not: X` is a negated tie on card id.
       this.tie(q, "card", val, { from: "id", to: "id" }, { negate: true });
     },
 
-    // MatchAttributes
+    // The three match attributes.
     match: (q, val) => this.matchAttribute(q, val),
     complete: (q, val) => this.completeAttribute(q, val),
     name_match: (q, val) => this.nameMatchAttribute(q, val),
 
-    // ReferenceAttributes#define_reference_method table
+    // Reference attributes, generated from the REFERENCE_ATTRIBUTES table.
     ...Object.fromEntries(
       Object.entries(REFERENCE_ATTRIBUTES).map(([name, spec]) => [
         name,
@@ -556,11 +567,11 @@ class CqlParser {
     ),
 
     member_of: (q, val) => {
-      // ReferenceAttributes#member_of
+      // `member_of: X` is membership expressed as an inbound reference.
       this.interpret(q, { referred_to_by: { left: val, right: { codename: "members" } } });
     },
     member: (q, val) => {
-      // ReferenceAttributes#member needs Card::RoleID (codename constant)
+      // `member` needs the role card's id, resolved from its codename.
       const roleId = this.opts.resolveCodename?.("role");
       if (roleId === undefined || roleId === null) {
         throw new CqlBadQuery(
@@ -574,16 +585,17 @@ class CqlParser {
     },
 
     found_by: (q, val) => {
-      // FoundBy#found_by — the value rides to execution (execute.ts
-      // resolveFoundByConditions resolves the target card's cql_hash and
-      // translates to the id-set constraint); interpretation records it.
+      // The value rides to execution: execute.ts's resolveFoundByConditions
+      // resolves the target card's own statement and translates it to the
+      // id-set constraint. Interpretation only records it.
       q.conditions.push({ kind: "foundBy", value: val });
     },
 
     sort: (q, val) => this.sortAttribute(q, val),
   };
 
-  /** Tie#restrict: id-able values become conditions, others tie a subquery */
+  /** Restrict a card column: an id-able value becomes a condition, anything
+   *  else ties a subquery. */
   private restrict(query: QueryNode, idField: string, val: unknown): void {
     const id = this.idFromVal(val);
     if (id !== null) {
@@ -601,11 +613,13 @@ class CqlParser {
     this.tie(query, "action", { [action]: val }, { to: "card_id" });
   }
 
-  /** RelationalAttributes#junction + junction_val */
+  /** A junction ties a subquery that must satisfy the part clause and, when
+   *  given, a second junction clause. */
   private junction(query: QueryNode, val: unknown, side: string, field: string): void {
     const [partClause, junctionClause] = Array.isArray(val) ? [val[0], val[1] ?? {}] : [val, {}];
-    // clause_to_hash(junction_clause).merge(side => part_clause); the part
-    // wins when the junction clause uses the same side key (oracle-verified)
+    // The junction clause is normalized, then the part clause is merged in on
+    // its own side. The part wins when the junction clause uses that same
+    // side key.
     const merged = {
       ...this.interpretToHash(junctionClause, query.context),
       [side]: partClause,
@@ -613,12 +627,12 @@ class CqlParser {
     this.tie(query, "card", merged, { to: field });
   }
 
-  // ---- conjunctions (CardQuery::Conjunctions) ----
+  // ---- conjunctions ----
 
   private conjoin(query: QueryNode, val: unknown, conj: string): void {
     const sub = this.newQuery("card", { fasten: "direct", conj }, query);
     query.subqueries.push(sub);
-    // Conjunctions#conjoinable_val
+    // A single Hash value conjoins as its own key/value pairs.
     const items = Array.isArray(val)
       ? val
       : Object.entries(this.interpretToHash(val, query.context)).map(([k, v]) => ({ [k]: v }));
@@ -627,7 +641,7 @@ class CqlParser {
     }
   }
 
-  // ---- ties (AbstractQuery::Tie) ----
+  // ---- ties ----
 
   private tie(
     query: QueryNode,
@@ -643,7 +657,8 @@ class CqlParser {
 
     switch (sub.fasten) {
       case "join": {
-        // Tie#tie_with_join; Join#side -> left_join?
+        // An OR-conjoined or negated tie must be a LEFT join: an inner join would
+        // drop the outer rows that have no match.
         const side: "LEFT" | undefined = query.conj === "or" || sub.negate ? "LEFT" : undefined;
         const join: JoinNode = {
           side,
@@ -655,8 +670,9 @@ class CqlParser {
           to: sub,
         };
         if (sub.negate) {
-          // Tie#negate_join: explicit conditions move into the ON clause and
-          // the superquery gains "<sub>.<to> is null"
+          // A negated join puts its conditions in the ON clause and adds
+          // an is-null test on the superquery — that is what makes the
+          // negation survive the join.
           sub.conditionsOnJoin = true;
           query.conditions.push({
             kind: "raw",
@@ -667,13 +683,13 @@ class CqlParser {
         break;
       }
       case "in":
-        // Tie#tie_with_in — the subquery's return becomes the to-field and
-        // the in-field is remembered for Where#in_condition
+        // An "in" tie becomes a subselect: its return becomes the compared
+        // field, and the in-field is remembered for the WHERE walk.
         sub.mods.return = mergedFields.to;
         sub.mods.inField = `${query.tableAlias}.${mergedFields.from}`;
         break;
       case "exist":
-        // Tie#tie_with_exist — rendered from the subqueries walk
+        // An "exist" tie needs nothing here; it renders from the subqueries walk.
         break;
       case "direct":
         // conditions render through the subqueries walk; joins hoist at render
@@ -683,9 +699,8 @@ class CqlParser {
   }
 
   // ---- per-kind clause interpretation for subqueries ----
-  // ReferenceQuery (reference_query.rb), ActionQuery (action_query.rb),
-  // ActQuery (act_query.rb) interpret their own clause keys; card subqueries
-  // use the regular interpretation.
+  // Reference, action and act subqueries each accept their own clause keys;
+  // card subqueries use the regular interpretation.
 
   private interpretSubqueryClause(query: QueryNode, clause: unknown): void {
     if (query.kind === "card") {
@@ -705,15 +720,14 @@ class CqlParser {
   }
 
   private interpretReferenceKey(query: QueryNode, key: string, val: unknown): void {
-    // ReferenceQuery#referer/#referee -> add_conditions(outfield, hash)
+    // `referer`/`referee` become conditions on referer_id/referee_id.
     const outfield = key === "referer" ? "referer_id" : key === "referee" ? "referee_id" : null;
     if (!outfield || !isPlainObject(val)) {
       throw new CqlBadQuery(`Invalid attribute: ${key}`);
     }
     const reftype = val["reftype"];
     const card = val["card"];
-    // ReferenceQuery#add_reftype_condition — single reftype "=", several "IN"
-    // (uppercase, interpolated directly by Ruby)
+    // A single reftype is an equality; several are an IN.
     if (reftype !== undefined && reftype !== null && reftype !== "") {
       const letters = (Array.isArray(reftype) ? reftype : [reftype]).map(String);
       query.conditions.push({
@@ -726,21 +740,23 @@ class CqlParser {
     this.addOutfieldCondition(query, outfield, card);
   }
 
-  /** ReferenceQuery#add_outfield_condition */
+  /** Constrain one side of the reference: `_none` tests absence, an id-able
+   *  card becomes a condition, anything else ties a subquery. */
   private addOutfieldCondition(query: QueryNode, outfield: string, outcard: unknown): void {
     const idOp = this.opAndIdOrIdsFromVal(outcard);
     if (outcard === "_none") {
-      // ReferenceQuery#non_outfield
+      // `_none` is spelled as an explicit not-present marker.
       query.conditions.push({ kind: "value", field: "is_present", op: "=", values: [0] });
     } else if (idOp) {
-      // ReferenceQuery#outfield_id
+      // An id-able value constrains the column directly.
       query.conditions.push({ kind: "value", field: outfield, op: idOp.op, values: idOp.ids });
     } else {
       this.tie(query, "card", outcard, { from: outfield });
     }
   }
 
-  /** Tie#op_and_id_or_ids_from_val — null when val is not (a list of) ids */
+  /** The operator and ids a value implies, or null when it is not (a list of)
+   *  ids and therefore needs a subquery. */
   private opAndIdOrIdsFromVal(val: unknown): { op: string; ids: number[] } | null {
     const single = this.idFromVal(val);
     if (single !== null) return { op: "=", ids: [single] };
@@ -771,7 +787,7 @@ class CqlParser {
     }
   }
 
-  /** ActionQuery#add_update_condition: "#{fld :action_type} = 1" */
+  /** "last edited by" means the update action specifically — action_type 1. */
   private addUpdateCondition(query: QueryNode): void {
     query.conditions.push({ kind: "raw", sql: `${query.tableAlias}.action_type = 1` });
   }
@@ -792,11 +808,11 @@ class CqlParser {
     }
   }
 
-  // ---- match attributes (CardQuery::MatchAttributes) ----
+  // ---- match attributes ----
 
-  /** MatchAttributes#match: term matched against name OR content */
+  /** `match: X` is an OR over name and content. */
   private matchAttribute(query: QueryNode, val: unknown): void {
-    // val.present? — false and "" are blank in Rails
+    // Blank values (false, "", null) contribute no condition.
     if (val === null || val === undefined || val === "" || val === false) return;
     const conditions: ConditionNode[] = (["name", "content"] as const).map((field) => {
       const parsed = this.buildValue(["match", val]);
@@ -811,10 +827,11 @@ class CqlParser {
         prefix,
       };
     });
-    query.conditions.push({ kind: "group", conj: "or", conditions }); // or_join
+    query.conditions.push({ kind: "group", conj: "or", conditions });
   }
 
-  /** MatchAttributes#name_match */
+  /** `name_match: X` is the name-only half of `match`, still excluding
+   *  nameless cards. */
   private nameMatchAttribute(query: QueryNode, val: unknown): void {
     if (val !== null && val !== undefined && val !== "" && val !== false) {
       this.addCondition(query, "name", this.buildValue(["match", val]));
@@ -822,11 +839,13 @@ class CqlParser {
     this.nameNotNull(query);
   }
 
-  /** MatchAttributes#complete */
+  /** `complete: X` is a prefix match on the key; a compound name recurses
+   *  into each of its parts. */
   private completeAttribute(query: QueryNode, val: unknown): void {
     const name = String(val);
     if (name.includes("+")) {
-      // MatchAttributes#complete_compound
+      // A compound name splits at the last joint; the left side is matched as
+      // written and the right side recurses.
       const parts = name.split("+");
       const left = parts.slice(0, -1).join("+");
       const right = parts.at(-1) ?? "";
@@ -842,25 +861,26 @@ class CqlParser {
     this.nameNotNull(query);
   }
 
-  /** MatchAttributes#name_not_null */
+  /** Every name-match attribute excludes nameless (compound) cards. */
   private nameNotNull(query: QueryNode): void {
     query.conditions.push({ kind: "raw", sql: `${query.tableAlias}.key IS NOT NULL` });
   }
 
-  // ---- sorting (CardQuery::Sorting) ----
+  // ---- sorting ----
 
-  /** CardQuery#full?: the root query whose return is not "count" */
+  /** A query is "full" when it is the root and is not asking for a count. */
   private isFull(query: QueryNode): boolean {
     return this.rootNode === query && query.mods.return !== "count";
   }
 
-  /** Sorting#sort — the `sort` attribute with a Hash value */
+  /** The `sort` attribute with a Hash value. */
   private sortAttribute(query: QueryNode, val: unknown): void {
     if (!this.isFull(query)) return; // eg, no sorting on simple count queries
     if (!isPlainObject(val)) {
       throw new CqlBadQuery(`Invalid clause: ${inspect(val)}`);
     }
-    // Sorting#interpret_sort_hash
+    // "item" names the join side and "return" the sort column; both are
+    // consumed here and the rest is interpreted as the join's clause.
     const spec = { ...val };
     const item = spec["item"] !== undefined ? String(spec["item"]) : "left";
     const sortField = spec["return"] !== undefined ? String(spec["return"]) : "db_content";
@@ -868,21 +888,21 @@ class CqlParser {
     delete spec["return"];
 
     if (sortField === "count") {
-      // Sorting#sort_by_count dispatches to sort_by_count_<item>; only
-      // sort_by_count_referred_to exists (experimental; double-nested
-      // subselect shape) — deferred
+      // Sorting by a reference count needs a nested subselect per item;
+      // that path is not implemented here.
       throw new CqlBadQuery(
         `sorting by #count/${item} not yet implemented (deferred; Ruby Sorting#sort_by_count_${item})`,
       );
     }
     const joinField = SORT_BY_ITEM_JOIN_MAP[item];
     if (!joinField) {
-      // Guard, not a deferral: every join item with a ported path is in the
-      // map above ("sort": item-join ported; the
-      // documented deferral is the #count sort, raised before this line).
+      // A guard, not a deferral: every join item this module supports is
+      // in the map above. The one unimplemented sort — by count — was
+      // already refused on the line above.
       throw new CqlBadQuery(`sorting by #join/${item} not yet implemented`);
     }
-    // Sorting#sort_by_item_join -> join_cards(side LEFT, conditions_on_join)
+    // The join is always a LEFT join whose conditions ride in the ON
+    // clause, so rows with no sort partner survive the join.
     const sub = this.newQuery("card", {}, query);
     query.subqueries.push(sub);
     const join: JoinNode = {
