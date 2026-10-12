@@ -1,5 +1,5 @@
-// page-path-help-rule-count-anonymous-viewer.test.ts -- the p22-rules-table
-// port's red-first pin for the head-rule popover count on the PAGE path.
+// page-path-help-rule-count-anonymous-viewer.test.ts -- pin for the
+// head-rule popover count on the PAGE path.
 //
 // MECHANISM (traced): the rule-card help popover's setting_link text
 // "(N <setting> rules)" (card-mod-rules set/rule/board_rules_editor.rb:21-27)
@@ -13,13 +13,11 @@
 //
 // THE DEFECT: the PAGE path (runWithPageConfig) installed the help resolver
 // BEFORE the permission state was folded (render()'s permissionCold pass runs
-// later on that path), so the corpus page lane rendered "(0 head rules)"
-// where the oracle pins "(2 head rules)" on the *all+*head and
-// ZQVT+*self+*head pages (p21-fix-toggle gate-5 residuals). Corpus facts
-// (raw-corpus probes, tmp-lane-p22-rulestable/probe-raw-head-count.mjs):
-// *head (id 4034) carries 4 live rules — 2 stored under read rule 6568 (which
-// grants [[Anyone]], so the anonymous capture viewer reads them) and 2 under
-// read rule 22283 (not anonymous-readable) — the oracle's 2, not 0, not 4.
+// later on that path), so the page lane rendered "(0 head rules)"
+// where Ruby pins "(2 head rules)". The mirrored shape: *head
+// carries 4 live rules — 2 stored under an [[Anyone]]-readable read rule
+// and 2 under a read rule that is not anonymous-readable — so Ruby's
+// count is 2, not 0, not 4.
 //
 // This fixture mirrors exactly that shape: 4 *head rules, 2 anonymous-readable
 // (via the *all+*read -> [[Anyone]] grant), 2 stored under a
@@ -61,16 +59,16 @@ async function seedDeck(): Promise<void> {
   await seedCard(s, { id: 20, name: "*read", codename: "read", typeId: SETTING_TYPE_ID });
   await seedCard(s, { id: 50, leftId: 10, rightId: 20, typeId: LIST_TYPE_ID, dbContent: "[[Anyone]]" });
   await seedReference(s, 50, 6, "anyone");
-  // A signed-in-only read rule (the corpus's 22283 shape): Dummy+*right set.
+  // A signed-in-only read rule: Dummy+*right set.
   await seedCard(s, { id: 45, name: "Dummy", codename: "dummy" });
   await seedCard(s, { id: 40, name: "*right", codename: "right", typeId: SETTING_TYPE_ID });
   await seedCard(s, { id: 46, leftId: 45, rightId: 40, typeId: SET_TYPE_ID });
   await seedCard(s, { id: 52, leftId: 46, rightId: 20, typeId: LIST_TYPE_ID, dbContent: "[[Anyone Signed In]]" });
   await seedReference(s, 52, 7, "anyone_signed_in");
-  // THE FOUR *head RULES (the corpus's *head population, mirrored):
+  // THE FOUR *head RULES:
   // 2 stored under the readable read rule (read_rule_id 50) — the page root
   // *all+*head plus one more set's head rule — and 2 under the signed-in-only
-  // rule (read_rule_id 52). The oracle count for the anonymous viewer: 2.
+  // rule (read_rule_id 52). Ruby's count for the anonymous viewer: 2.
   await seedCard(s, {
     id: 71, leftId: 10, rightId: 28, typeId: RICH_TYPE_ID,
     readRuleId: 50, readRuleClass: "*all", dbContent: "<p>all head rule</p>",
@@ -100,7 +98,7 @@ async function seedDeck(): Promise<void> {
   await seedCard(s, { id: 94, name: "*favicon", codename: "favicon", typeId: SETTING_TYPE_ID });
   await seedCard(s, { id: 95, name: "*ace", codename: "ace", typeId: SETTING_TYPE_ID });
   await seedCard(s, { id: 97, name: "*tiny mce", codename: "tiny_mce", typeId: SETTING_TYPE_ID });
-  // The corpus page renders the rule card through a CARD layout whose main
+  // The rule card renders through a CARD layout whose main
   // nest is titled ("Default Layout", {{_main|titled}}) — the titled view's
   // d0-card-header carries the card-menu with the help popover. Mirror it.
   await seedCard(s, { id: 33, name: "*layout", codename: "layout", typeId: SETTING_TYPE_ID });
