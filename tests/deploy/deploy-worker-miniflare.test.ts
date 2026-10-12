@@ -38,6 +38,9 @@ interface Chunk {
 }
 
 let mf: Miniflare | undefined;
+/** The bundled worker, kept module-scoped so the /__metrics gate suite below can
+ *  boot a SECOND miniflare over the same bytes with a METRICS_TOKEN binding. */
+let bundle = "";
 let adapter: CloudflareD1Adapter | undefined;
 
 beforeAll(async () => {
@@ -64,7 +67,7 @@ beforeAll(async () => {
   const outputs = (
     Array.isArray(viteResult) ? viteResult : [viteResult]
   ) as unknown as Array<{ output: Chunk[] }>;
-  const bundle =
+  bundle =
     outputs[0]?.output.find((chunk) => chunk.type === "chunk")?.code ?? "";
 
   // Bundle hygiene: the Web-standard claim is executable for EVERY node:
@@ -343,13 +346,45 @@ describe("deploy worker under miniflare (workerd + local D1)", () => {
     expect(response.status).toBe(200);
     const result = (await response.json()) as {
       rows: Array<{ id: number; name: string | null }>;
-      sql: string;
     };
     // Nine Notes: ids 10-15 (plain) + 16-18 (junction rows, NULL names).
     expect(result.rows.map((row) => row.id).sort((a, b) => a - b)).toEqual([
       10, 11, 12, 13, 14, 15, 16, 17, 18,
     ]);
-    expect(result.sql).toContain("ORDER BY");
+    // The 200 body is the RESULT, not the statement (round-9 fix: the route
+    // used to echo the generated SQL and its bound params, handing any
+    // caller the table shape, the aliasing convention, the viewer's bound
+    // permission filter and every resolved id the query touched).
+    expect(Object.keys(result).sort()).toEqual(["rows"]);
+  });
+
+  it("POST /api/query never echoes the generated statement or its params", async () => {
+    // Same route, asserted on the RAW bytes rather than the parsed object,
+    // because the leak was textual: a `sql` key carrying "SELECT c0.* FROM
+    // cards c0 WHERE ..." tells a caller the table shape and the aliasing
+    // convention even when every row is redacted. (`read_rule_id` is NOT
+    // asserted absent: it is a real COLUMN of the cards rows the endpoint
+    // legitimately returns, and this test's earlier draft confused the two.)
+    const response = await fetchPath("/api/query", {
+      method: "POST",
+      body: JSON.stringify({ cql: { type: "Note", sort: "name" } }),
+      headers: { "Content-Type": "application/json" },
+    });
+    const text = await response.text();
+    expect(text).not.toContain('"sql"');
+    expect(text).not.toContain('"params"');
+    expect(text).not.toContain("SELECT ");
+    expect(text).not.toContain(" FROM cards");
+  });
+
+  it("GET /__metrics is not there at all unless a METRICS_TOKEN binding exists", async () => {
+    // The deployed default (this Miniflare instance binds no METRICS_TOKEN):
+    // 404, not 403 — an unauthenticated caller should not learn that the
+    // route exists, let alone what the isolate's request counts, wall-time
+    // percentiles and D1 row accounting say about the deck.
+    const anonymous = await fetchPath("/__metrics");
+    expect(anonymous.status).toBe(404);
+    expect(await anonymous.text()).not.toContain("card_count");
   });
 
   it("POST /api/query resolves name conditions and count returns", async () => {
@@ -459,5 +494,71 @@ describe("deploy worker under miniflare (workerd + local D1)", () => {
     // A readable card still serves its record (the gate is per-card).
     const home = await fetchPath("/Home.json");
     expect(home.status).toBe(200);
+  });
+});
+
+// The gate's other two arms need the BINDING, and miniflare's `bindings`
+// option is a constructor setting (its per-request counterpart is not
+// supported by dispatchFetch), so this is a second instance over the SAME
+// bundle. Only /__metrics is exercised — the point is the gate, not the deck.
+describe("/__metrics with a METRICS_TOKEN binding (the gate's other arms)", () => {
+  let gated: Miniflare | undefined;
+
+  beforeAll(async () => {
+    gated = new Miniflare(
+      convertV4MiniflareOptions({
+        modules: true,
+        script: bundle,
+        d1Databases: { DB: "decko-deploy-proof-gated" },
+        bindings: { METRICS_TOKEN: "operator-secret" },
+      }),
+    );
+  }, 180_000);
+
+  afterAll(async () => {
+    await gated?.dispose();
+  });
+
+  async function gatedFetch(pathAndQuery: string, headers?: Record<string, string>): Promise<Response> {
+    return (await gated!.dispatchFetch(
+      `https://decko-demo.test${pathAndQuery}`,
+      headers === undefined ? undefined : ({ method: "GET", headers } as never),
+    )) as unknown as Response;
+  }
+
+  it("403s a request with no token — the operator who bound it wants it reachable, just not to strangers", async () => {
+    const response = await gatedFetch("/__metrics");
+    expect(response.status).toBe(403);
+    expect((await response.json() as { error?: string }).error).toBe("metrics token required");
+  });
+
+  it("403s a request with the wrong token", async () => {
+    const response = await gatedFetch("/__metrics", {
+      "X-Decko-Metrics-Token": "not-the-token",
+    });
+    expect(response.status).toBe(403);
+  });
+
+  it("answers the aggregate to the right token", async () => {
+    const response = await gatedFetch("/__metrics", {
+      "X-Decko-Metrics-Token": "operator-secret",
+    });
+    expect(response.status).toBe(200);
+    // The AggregateMetrics shape worker-metrics.ts#416-438 builds.
+    const body = (await response.json()) as Record<string, unknown>;
+    for (const key of [
+      "sinceIso", "requestCount", "queryCount", "rowsRead", "rowsWritten",
+      "wallMs", "cpuMs", "memory", "recent",
+    ]) {
+      expect(body, key).toHaveProperty(key);
+    }
+    // The /__metrics request itself is counted, which is what makes the
+    // routeTag("/__metrics") arm worth having.
+    expect(typeof body.requestCount).toBe("number");
+  });
+
+  it("does not accept the token in a query parameter (URLs land in logs and Referer headers)", async () => {
+    const response = await gatedFetch("/__metrics?token=operator-secret");
+    expect(response.status).toBe(403);
   });
 });

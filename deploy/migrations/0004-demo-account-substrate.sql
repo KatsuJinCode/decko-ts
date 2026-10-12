@@ -42,15 +42,26 @@
 --     overrides the accessors: `def account; nil; end` /
 --     `def account?; false; end`. Only Decko Bot's junction ships.
 --
+-- THE READ RULES THAT MAKE BLOCK B SAFE ARE NOT HERE, and that is now a
+-- NAMED GAP rather than an omission. Without them an anonymous requester
+-- could read the owner's pbkdf2 digest, its salt and its email address —
+-- verified in workerd on the demo deck, on the page path and on
+-- /api/query — because a deck with no catch-all read rule has
+-- hasCatchAllReadRule=false, which switches off BOTH the HTML rule walk
+-- (canReadByRuleLookupDepth, read-rules.ts:480, whose undefined verdict the
+-- caller reads as ALLOWED) and the CQL permission filter (render.ts
+-- cqlPermissionOptions). The rules themselves are card-mod-account-0.20.0
+-- data/real.yml's own `:right + *read: [:help_desk]` fields, and they ship
+-- in migrations/0009-demo-account-read-rules.sql. They cannot live here:
+-- each one is a card_references row pointing at the Help Desk role, and
+-- the roles arrive with 0006, which runs AFTER this file.
+--
 -- NOT INCLUDED, and why (also recorded in the lane receipt):
---   * the `*all+*read` read rule (cards_010). Signin and first-run issue no
---     SQL naming read_rule_class or read_rule_id — `grep -rn read_rule
---     src/card/auth/ src/server/first-run-routes.ts` returns ZERO hits — and
---     an absent read rule is already this deck's state (0003's four cards and
---     all fifteen of deploy/seed/seed.sql carry NULL, and they render).
---     Stamping the rule onto existing cards is the one thing this lane is
---     forbidden to do.
---   * roles, signup, email verification, `*account settings`, `*roles`,
+--   * the account read rules — see the paragraph above; they ship in 0009.
+--   * roles: `Role`, `*members`, Anyone, Anyone Signed In, Administrator,
+--     Eagle, Shark, Help Desk (real.yml:4-68). They ship in
+--     migrations/0006-demo-role-substrate.sql, which owns them.
+--   * signup, email verification, `*account settings`, `*roles`,
 --     `*signin`, the email templates. None is read by the census, the create,
 --     or signinAccount.
 --

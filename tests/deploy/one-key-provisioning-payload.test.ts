@@ -327,9 +327,13 @@ describe("the engine schema a provisioned deck gets", () => {
       "0003-demo-seed.sql",
       "0004-demo-account-substrate.sql",
       "0006-demo-role-substrate.sql",
+      "0009-demo-account-read-rules.sql",
     ]);
     // The split is about content: the demo files write cards rows, the
-    // engine files never do.
+    // engine files never do. 0009 is on the demo side for a second reason
+    // beyond its cards rows: its card_references rows are the rule parties,
+    // and `INSERT[^;]*INTO cards` does not match them — which is why this
+    // test is about the CARDS table specifically and not "writes rows".
     for (const f of demo) expect(readFileSync(join(MIGRATIONS, f), "utf8")).toMatch(/INSERT[^;]*INTO\s+"?cards"?/i);
     for (const f of engine) expect(readFileSync(join(MIGRATIONS, f), "utf8")).not.toMatch(/INSERT[^;]*INTO\s+"?cards"?\s/i);
   });

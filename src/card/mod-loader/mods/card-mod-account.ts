@@ -278,6 +278,54 @@ const passwordRawView: ViewFn = () => "encrypted";
  *  config.wrap field is declaration-only today). */
 const passwordCoreView: ViewFn = () => "<em>encrypted</em>";
 
+/**
+ * set/all/password_input.rb:2-4 + set/all/password_input.haml:2-4 — the
+ * password field the `+*password` set's editor renders:
+ *
+ *     = password_field :content, class: "d0-card-content _pw-input",
+ *                                        placeholder: "Password",
+ *                                        autocomplete: "off"
+ *
+ * and set/right/password.rb:86-88 (html block) `def input_type; :password;
+ * end` is what routes the `:input` view here: card-mod-edit's all/editor.rb
+ * :32-36 `try(input_method(input_type))` reaches `password_input` FIRST, ahead
+ * of `input_defined_by_card` and the rich-text default.
+ *
+ * WHY THIS VIEW IS A SECURITY VIEW, not a form byte. Rails renders a password
+ * field with NO value attribute, always: Tags::PasswordField#render
+ * (actionview-7.2.3.2/lib/action_view/helpers/tags/password_field.rb:5-9)
+ * opens with `@options = { value: nil }.merge!(@options)`, and
+ * TagBuilder#tag_options drops nil-valued attributes. Every other input arm
+ * in all/editor.rb DOES carry the content — text_field_input (:51-53),
+ * text_area_input (:46-49), hidden_input (:55-57), the tinymce textarea
+ * (:42-44) — so a `+*password` card that fell through to one of them put the
+ * stored PBKDF2 DIGEST in the HTML attribute/element body. The demo-deck
+ * adversarial finding (GET /victim+*account+*password/input returned the
+ * digest) is that fall-through, and this view is the fix.
+ *
+ * BYTE BASIS: gem-derived, like passwordRawView above. The attribute order is
+ * Rails', derived from the two helpers above rather than guessed:
+ *   - `bootstrap_options` (card-mod-bootstrap set/all/bootstrap/form.rb:22-25)
+ *     appends " form-control" to the caller's class;
+ *   - `{ value: nil }.merge!(caller opts)` puts a nil `value` FIRST, then
+ *     class, placeholder, autocomplete;
+ *   - TextField#render (tags/text_field.rb:7-14) appends `type` (already
+ *     absent, so `||= field_type` -> "password"), leaves the nil `value` in
+ *     place, and calls `add_default_name_and_id` LAST — so name and id are the
+ *     final two attributes.
+ * tag_options then skips the nil `value`, which is the whole point: the
+ * attribute is absent, not empty.
+ *
+ * NAMED REMAINDER of the haml, disclosed not ported: the second line,
+ * `%span._toggle-password.visibility-icon._pw-text-area` + its
+ * `icon_tag :hide_password` (the show/hide-password affordance). Its bytes
+ * come from the material-icons ligature set, which this port carries no
+ * capture of; it carries no card content, so the leak this view closes does
+ * not depend on it. */
+const passwordInputView: ViewFn = () =>
+  '<input class="d0-card-content _pw-input form-control" placeholder="Password" ' +
+  'autocomplete="off" type="password" name="card[content]" id="card_content" />';
+
 /** set/self/signin.rb:139-142 view :open_content (html block): literally
  *  `_render_core` - the html format's `_render_<view>` machinery
  *  (mod/format.rb#render_view) delegates to the requested view in this
@@ -1304,8 +1352,14 @@ const setModules: ModSetModuleFile[] = [
     // wrap: :em renders raw; helper methods input_type/autocomplete?).
     // surfaces-batch3: BOTH views ported (the visible half of every
     // password field — a labeled render shows the "encrypted" stand-in,
-    // never the hash). Still unported: the input_type/autocomplete?
-    // helpers (edit-form machinery).
+    // never the hash).
+    // 2026-10-11 (round-9 fix): the THIRD view ported, :input — the one the
+    // `input_type :password` override (:86-88) routes the editor to, and the
+    // one whose absence let the PBKDF2 digest reach the page. See
+    // passwordInputView for the byte derivation and the Rails
+    // value-always-nil mechanism. Still unported: the `autocomplete?`
+    // helper (password.rb:90-94), whose only arm beyond "off" is a HACK for
+    // the *signin form.
     // Events (set-module event 2026-10-08): the four password events run in
     // account-fields.ts passwordErrors (validate_password_length :30-35 +
     // validate_password_chars :37-47 — PASSWORD_REGEX and the requirement
@@ -1337,6 +1391,16 @@ const setModules: ModSetModuleFile[] = [
         views: [
           { view: "raw", viewFn: passwordRawView },
           { view: "core", viewFn: passwordCoreView },
+          // :input — the valueless password field (see passwordInputView).
+          // Registered HERE, on the right/password set, so it wins over
+          // card-mod-edit's all/editor :input for every +*password card: the
+          // set module's registration is the nearer one in the format's view
+          // chain, which is exactly how Ruby's include_set + the
+          // `input_type :password` override reach password_input before
+          // editor.rb's try-chain resolves it. `unknown`/`cache` repeat
+          // editor.rb:32's own directives, because this registration
+          // REPLACES that view for this set rather than adding a new one.
+          { view: "input", viewFn: passwordInputView, config: { unknown: true, cache: "never" } },
         ],
       },
     },

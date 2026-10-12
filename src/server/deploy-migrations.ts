@@ -74,6 +74,16 @@ export const DEPLOY_MIGRATION_ORDER: readonly DeployMigration[] = [
   // backfill as "0007-deck-data-version-stamp.sql" (see the alias below), and
   // a second 0007 would make their ledgers ambiguous to read.
   { filename: "0008-cards-serving-path-indexes.sql", number: "0008" },
+  // The demo deck's account read rules — the `*all+*read` catch-all and the
+  // five `<field>+*right+*read` grants that keep an anonymous requester out
+  // of somebody's password digest, salt and email address. It sorts after
+  // 0006 because every one of its rows is a card_references entry whose
+  // referee is the Help Desk role, and 0006 is what creates that role: applied
+  // earlier, the references would name a referee that does not exist,
+  // read_rule_cache would join nothing, and a catch-all rule granting nobody
+  // would deny the whole deck. 0009 rather than 0007 because 0007 is reserved
+  // above.
+  { filename: "0009-demo-account-read-rules.sql", number: "0009" },
 ];
 
 /** The stamp backfill's current (trunk-lineage) filename. */

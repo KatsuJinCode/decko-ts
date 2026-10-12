@@ -21,6 +21,9 @@
 //   POST /api/query     -> { "cql": <CQL JSON> } body -> CQL result JSON
 //   GET  /_status        -> engine + database health JSON
 //   GET  /__metrics      -> per-isolate request/SQL/D1-rows aggregate
+//                           (GATED: 404 unless the METRICS_TOKEN binding is
+//                           set, 403 without the matching X-Decko-Metrics-Token
+//                           header — see metricsAuthorized)
 //
 // Static assets (/assets/*, /robots.txt) never reach this file: the wrangler
 // [assets] directory configured in wrangler.oneclick.toml serves them from
@@ -60,6 +63,38 @@ import {
 /** Bindings declared in wrangler.toml ([[d1_databases]]). */
 interface Env {
   DB: D1DatabaseLike;
+  /** OPTIONAL secret binding. /__metrics answers only when this is bound and
+   *  the request carries the matching token (see metricsAuthorized). Absent
+   *  is the deployed default — the route is not merely empty, it is not
+   *  there. */
+  METRICS_TOKEN?: string;
+}
+
+/** The header the /__metrics gate reads. A query parameter is deliberately
+ *  NOT accepted: tokens in a URL land in access logs, browser history and
+ *  Referer headers, which is the reason the header form exists. */
+const METRICS_TOKEN_HEADER = "x-decko-metrics-token";
+
+/** Constant-time-ish string comparison. Not cryptographic and does not claim
+ *  to be: the token is an operator secret compared inside a Worker, and the
+ *  real defence is that the binding is absent by default. The length check
+ *  short-circuits before the loop so a wrong-length token costs nothing. */
+function tokenMatches(expected: string, presented: string): boolean {
+  if (expected.length !== presented.length) return false;
+  let diff = 0;
+  for (let i = 0; i < expected.length; i += 1) {
+    diff |= expected.charCodeAt(i) ^ presented.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+/** Whether this request may read the isolate metrics. Both halves are
+ *  required: the binding must exist AND the request must present it. */
+function metricsAuthorized(request: Request, env: Env): boolean {
+  const expected = env.METRICS_TOKEN;
+  if (expected === undefined || expected === "") return false;
+  const presented = request.headers.get(METRICS_TOKEN_HEADER);
+  return presented !== null && tokenMatches(expected, presented);
 }
 
 /** Per-isolate measurement for the Gate-6 set: request wall-time histogram,
@@ -617,8 +652,21 @@ async function apiQuery(request: Request, deck: Deck): Promise<Response> {
       parse: { resolveCardId: deck.resolveCardId },
       alwaysOk: permission.alwaysOk,
       readRuleIds: permission.readRuleIds,
+      excludedRightIds: permission.excludedRightIds,
     });
-    return jsonResponse(200, result);
+    // THE SQL LEAVES. The 200 body is the result and the result ONLY. The
+    // generator's statement text used to ride alongside it, which handed an
+    // anonymous caller the table shape, the aliasing convention, the bound
+    // permission filter and every resolved id the query touched — none of
+    // which the caller sent. Ruby's search API answers rows, and a
+    // statement echo is a debugging affordance that does not belong on a
+    // public route. The statement is still recorded where it belongs: the
+    // per-isolate metrics recorder (worker-metrics.ts observeQuery), which
+    // is gated rather than public.
+    const { sql: _statement, params: _bound, ...payload } = result;
+    void _statement;
+    void _bound;
+    return jsonResponse(200, payload);
   } catch (error) {
     if (error instanceof CqlBadQuery) {
       return jsonResponse(400, { error: "bad CQL statement", message: error.message });
@@ -693,6 +741,22 @@ export default {
     }
 
     if (pathname === "/__metrics") {
+      // GATED (round-9 fix). The aggregate is an operational readout —
+      // per-route request counts, wall-time percentiles, D1 rows read and
+      // written — and it was served to anyone who asked. It is not card
+      // content, so the read-permission gate does not apply to it and never
+      // will; it needs its own door.
+      //   * No METRICS_TOKEN binding (the deployed default) -> 404. Not 403:
+      //     an unauthenticated caller should not learn that the route
+      //     exists, let alone what it measures.
+      //   * Binding present, token wrong or absent -> 403, which does say
+      //     the route exists — correct, because the operator who bound the
+      //     token wanted it reachable, just not to strangers.
+      if (!metricsAuthorized(request, env)) {
+        return env.METRICS_TOKEN === undefined || env.METRICS_TOKEN === ""
+          ? errorPage(404, "Not found", "No route for " + pathname)
+          : jsonResponse(403, { error: "metrics token required" });
+      }
       if (request.method !== "GET") return jsonResponse(405, { error: "method not allowed" });
       return jsonResponse(200, recorder().getAggregate());
     }
