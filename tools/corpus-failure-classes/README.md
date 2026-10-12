@@ -29,6 +29,6 @@ shape covers, and one representative per shape.
 
 (see the script header for its arguments and corpus path).
 
-Earlier per-run variants of the census (named for the fix round they
-measured) were removed as duplicates of this canonical file; their
-content remains in git history if a comparison is ever needed.
+Earlier per-run variants of the census were removed as duplicates of
+this canonical file; their content remains in git history if a
+comparison is ever needed.
