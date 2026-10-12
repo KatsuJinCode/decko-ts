@@ -32,8 +32,8 @@
 //                      render_core
 //                    end
 //
-// MECHANISM (gem source, REPO_ROOT/archive/decko-fork-study/decko/):
-// every `render!` is independently rescued — card/lib/card/format/render.rb
+// MECHANISM (gem source): every `render!` is independently rescued —
+// card/lib/card/format/render.rb
 // :7-14 and :96-100 (`wrap_and_render ... rescue StandardError => e;
 // rescue_view e, view`), reached from a view body's `render_core` /
 // `_render_core` through method_delegation.rb:41-47 method_missing ->
@@ -44,14 +44,10 @@
 // is depth (error.rb:65-73 + subformat.rb:41-43): quiet at depth > 0, which
 // every nest here is.
 //
-// THE ORACLE. No captured corpus page requests :open_content /
-// :titled_content / :labeled_content / a raising skin :bar_bottom through
-// these bodies (open_content is documented RENDERED-UNPINNED at its old
-// site) — these pins are gem-construction pins, not byte pins: they hold the
-// port to Ruby's rescue-scope SHAPE so the next corpus entry that reaches
-// one of these bodies renders the wrapped/labelled bytes by construction.
-// The wired bodies changed no measured byte: the 31-entry probe set of the
-// open-clusters lane re-run at this tip moves nothing (receipt step 8).
+// These pins hold the port to Ruby's rescue-scope SHAPE: no recorded page
+// renders these bodies, so they are construction pins, not byte pins — a
+// future render that reaches one of these bodies produces the
+// wrapped/labelled bytes by construction.
 
 import { describe, it, expect } from "vitest";
 import { createRenderTestStorage, seedCard, type RenderTestStorage } from "./render-test-storage.js";
@@ -69,7 +65,7 @@ async function seed(): Promise<RenderTestStorage> {
   await seedCard(storage, { id: 91, name: "Bootswatch skin", codename: "bootswatch_skin", typeId: 2 });
   await seedCard(storage, { id: 500, name: DATE_CARD, typeId: 90, dbContent: "1980" });
   await seedCard(storage, { id: 501, name: SKIN_CARD, typeId: 91, dbContent: "{}" });
-  // Hosts: one per pinned view (the prior lane's host/nest fixture shape).
+  // Hosts: one per pinned view.
   await seedCard(storage, {
     id: 510, name: "host open content", typeId: 2, dbContent: `{{${DATE_CARD}|open_content}}`,
   });
