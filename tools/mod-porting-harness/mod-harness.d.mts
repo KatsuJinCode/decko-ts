@@ -2,10 +2,9 @@
 // is the implementation; this file exists so tsc (NodeNext) can type the
 // imports tests make of the enumerators. Declaration-only, no behavior.
 //
-// Added by the r2-phantom-rows lane (2026-10-06) so
-// tests/tools/mod-porting-harness/format-census-view-set.test.ts can assert
-// `mineViews` against the Ruby-truth oracle directly rather than through the
-// committed surface.json artifact.
+// Present so tests/tools/mod-porting-harness/format-census-view-set.test.ts
+// can import `mineViews` with types and assert against the Ruby-truth
+// oracle directly rather than through the committed surface.json artifact.
 
 export interface MinedView {
   name: string;
