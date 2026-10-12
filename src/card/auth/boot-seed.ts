@@ -1,11 +1,9 @@
-// The boot-seed capability (R-3b, OPERATOR-SCOPE-RULINGS-2026-10-05.md §R-3,
-// ruled IN by OPERATOR-DESK-RESOLUTIONS-2026-10-06.md): create the
-// account-system cards a fresh deck needs, so a newly provisioned deck is
-// bootstrapped in actor.ts:50's sense — Anonymous/DeckoBot resolvable — and
-// the permission system's role/account cards exist. Before this module the
-// engine's own source stated the gap: first-run-setup.ts's deploy-profile
-// note ("the engine has no mod-seeding capability to create them") and the
-// account_system_absent gate reason.
+// The boot-seed capability: create the account-system cards a fresh deck
+// needs, so a newly provisioned deck is bootstrapped in actor.ts:50's sense —
+// Anonymous/DeckoBot resolvable — and the permission system's role/account
+// cards exist. Before this module the engine's own source stated the gap:
+// first-run-setup.ts's deploy-profile note ("the engine has no mod-seeding
+// capability to create them") and the account_system_absent gate reason.
 //
 // ---------------------------------------------------------------------------
 // WHAT IS RUBY HERE (read before changing anything)
@@ -127,9 +125,9 @@ export interface CoreFixtureSeedCard {
 
 /** mod/core/data/fixtures/real/cards.yml — the 11 cards of the real-pod
  *  fixture, in fixture order. Junction rows (10, 11) store sides only: the
- *  fixture carries no name/key for them (the 2020 convention — the corpus
- *  seeding note in tests/card/render/render-test-storage.ts cites the same
- *  migration). Card 1 IS Decko Bot (seed.rb:106-108's author). */
+ *  fixture carries no name/key for them (the 2020 convention, since retired
+ *  by the junction migration). Card 1 IS Decko Bot (seed.rb:106-108's
+ *  author). */
 export const CORE_FIXTURE_SEED_CARDS: readonly CoreFixtureSeedCard[] = [
   { id: 1, name: "Decko Bot", key: "decko_bot", codename: "decko_bot", leftId: null, rightId: null, typeId: 2, dbContent: "" },
   { id: 2, name: "RichText", key: "rich_text", codename: "basic", leftId: null, rightId: null, typeId: 3, dbContent: "" },

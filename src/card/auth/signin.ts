@@ -11,14 +11,10 @@
 //     and Card::Auth.password_valid? (auth.rb:27-29) is exact string
 //     equality against that digest:
 //         account.password == encrypt(password, account.salt)
-//     The corpus confirms the storage shape: every one of the real deck's
-//     236 +*account+*password cards stores a 40-char lowercase hex string
-//     (SHA-1 hex), zero bcrypt-shaped ($2a$/$2b$) values (probed read-only,
-//     2026-09-27; pinned by tests/card/auth/corpus-password-format.test.ts).
+//     So a +*account+*password card holds a 40-char lowercase hex string
+//     (SHA-1 hex), never a bcrypt-shaped ($2a$/$2b$) value.
 //     Column convention: this module queries the ENGINE-standard
-//     cards.db_content (src/server/schema.ts TABLES.cards); the python-built
-//     local benchmark corpora name that column `content` instead, so corpus
-//     tests reading those files carry their own raw SQL.
+//     cards.db_content (src/server/schema.ts TABLES.cards).
 //     `account.password` / `account.salt` are card_accessors over the
 //     +*account junction's children (set/right/account.rb:5-8), i.e. the
 //     cards named <Holder>+*account+*password and ...+*salt.

@@ -28,14 +28,9 @@
 //     port decision, and a deployment that wants a different one passes
 //     `tokenExpirySeconds`.
 //
-// FAITHFULNESS, ITEM BY ITEM (each pinned by tests/card/auth/token.test.ts
-// against bytes the real jwt gem produced — see
-// fixtures/captured/auth-token.json and tools/oracle/auth_token_capture.rb).
-// THAT PIN IS DEVELOPMENT EVIDENCE, NOT PART OF THE PUBLIC PACKAGE: both the
-// fixture's directory (fixtures/captured/) and the suite are on the public
-// candidate's exclusion list, so in a clean clone this module ships without
-// the byte pin and without the suite that checks it. The claims below are
-// transcribed from the gem's source, not recomputed there.
+// FAITHFULNESS, ITEM BY ITEM (each transcribed from the jwt gem's source,
+// so a jwt upgrade shows up as a diff here rather than as a silent byte
+// change).
 //
 //   * algorithm HS256 — jwt.rb:35 `def encode(payload, key, algorithm = 'HS256', ...)`
 //     with no algorithm argument at token.rb:13.
@@ -109,8 +104,8 @@ export interface TokenRuntimeConfig {
   readonly secret: string;
   /** Card.config.token_expiry in seconds; defaults to the railtie's 2 days. */
   readonly tokenExpirySeconds?: number;
-  /** Epoch seconds. Defaults to the wall clock; tests pin it to the
-   *  oracle's frozen instant so `expiration` reproduces captured bytes. */
+  /** Epoch seconds. Defaults to the wall clock; a caller that needs a
+   *  reproducible `expiration` pins it (tests fix the instant). */
   readonly now?: () => number;
 }
 
@@ -367,8 +362,9 @@ function verifyClaims(
  * payload), and only then the claims verifier, which is the first code that
  * parses the payload. A port that parses both segments up front reports a
  * forger's broken payload as 'Invalid segment encoding' where Ruby reports
- * 'Signature verification failed' — the oracle's tampered-payload case
- * caught exactly that, and the difference is not cosmetic: the first
+ * 'Signature verification failed' — a token whose signature was tampered
+ * with and whose payload segment is corrupt is exactly that case, and the
+ * difference is not cosmetic: the first
  * message tells an attacker which part of their forgery to fix.
  */
 export async function decodeAuthToken(
@@ -386,8 +382,8 @@ export async function decodeAuthToken(
     const segments = token.split(".");
     if (segments.length !== 3) {
       if (segments.length === 2) {
-        // "aaa.bbb": the header parse is what fails, which is why the oracle
-        // measured 'Invalid segment encoding' rather than the segment count.
+        // "aaa.bbb": the header parse is what fails, which is why the result
+        // is 'Invalid segment encoding' rather than the segment count.
         if (parseJsonSegment(segments[0]!) === null) return SEGMENT_ENCODING;
         return WRONG_ALGORITHM;
       }
