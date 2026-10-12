@@ -20,9 +20,7 @@
 // The single html view the gem declares (:core) is already implemented
 // in the engine's core view (src/card/render/views.ts#coreView + the
 // `typeName === "Date"` branch's formatDateCore at views.ts:235-248 -
-// `::Date.parse(card.content).strftime "%B %-d, %Y"`). The
-// mod-compat-report.json verdict for this gem is "1/1 html views in
-// HTML_VIEWS (0/0 mod-specific)" and "htmlViewsMissing": [], so the
+// `::Date.parse(card.content).strftime "%B %-d, %Y"`), so the
 // faithful move is to NOT register :core here - a mod-side registration
 // would shadow the engine's correct impl (the mod-registrar's
 // last-wins rule, loader.ts:199 `this.views.register(view.view,
@@ -294,10 +292,9 @@ export const whenLastEditedContentFn: ContentFn = (fmt) => {
   if (updatedAt === undefined || updatedAt === "") {
     // The render-engine's prepared render-card mapping reads the
     // card_record's updatedAt as "" when the row was warmed from a
-    // source that did not populate the column (the seedCard's explicit
-    // SQL string "2026-09-19 00:00:00.000" is what's stored; the
-    // engine reads "" back via the prefetch path - same value the engine
-    // surfaces for the other virtual right cards' left sides today).
+    // source that did not populate the column (the prefetch path
+    // carries whatever the row holds, and an unset column surfaces as
+    // "").
     // Return "" (the same bytes Ruby produces when left.real? is true
     // but the stored timestamp is unset).
     return "";
