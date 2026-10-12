@@ -1,8 +1,7 @@
 // LibSass as a child process: the ScssCompiler a Node host passes to the
-// write engines. The program is tools/libsass/sassc-stdin.c built against the
-// LibSass sources the Ruby oracle compiles with (tools/libsass/build-native.mjs):
-// it reads SCSS on stdin and writes CSS on stdout with the options
-// SassC::Engine uses for a string template.
+// write engines. The program is tools/libsass/sassc-stdin.c, built from the
+// LibSass sources by tools/libsass/build-native.mjs: it reads SCSS on stdin
+// and writes CSS on stdout with the options a string-template compile uses.
 //
 // node:child_process is reached through process.getBuiltinModule at call
 // time, so importing this module adds no node: import to a bundle; on a
