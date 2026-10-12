@@ -11,10 +11,10 @@ require File.join(APP_ROOT, "config", "environment")
 require "colorize"
 String.include Colorize::ClassMethods
 
-# Load each loaded mod's data/real.yml into the LOCAL COPY. This is the
-# same loader `decko update` uses (Cardio::Mod::Eat); the deck copy shipped
-# with the rendering corpus was seeded before the account mods contributed
-# their real data, so sign-in / signup / reset cards do not exist in it.
+# Eat each loaded mod's data/real.yml into the LOCAL COPY so the deck gains
+# the sign-in / signup / reset cards the account mods declare; a deck built
+# by the plain setup path has none of them. This is the same loader
+# `decko update` uses (Cardio::Mod::Eat).
 mod_names = Cardio.mods.map { |m| m.respond_to?(:name) ? m.name : m.to_s }
 loaded = []
 mod_names.each do |m|
