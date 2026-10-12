@@ -4,14 +4,17 @@
 // and parsePath decodes the URL path, so a crafted name must land in
 // <title> as text, not markup.
 //
-// The vuln this pins shut (edge-escape-completion lane, 2026-10-02):
-// layoutPage interpolated `${title}` raw, so BOTH edges sharing this shell
-// were affected — the root worker's own 200-page (worker.ts render path)
-// and the Bunny edge engine's 200-page
-// (deploy/bunny-worker-src/bunny-edge-engine-request.ts handleEngineRequest's
-// render branch) — via a percent-encoded crafted URL path. The fix escapes
-// at the emitter (the layoutPage definition) with the CF worker's own
-// escapeHtml (deploy/worker.ts:310-316), covering every call site at once.
+// What this file pins shut: an older layoutPage pasted `${title}` into the
+// page without escaping, and the title text includes the decoded card name
+// taken from the URL path — so a request whose path carries a
+// percent-encoded name with markup in it produced a 200-page whose <head>
+// executed that markup. Both edges that share this shell had the same hole:
+// the root worker's render path in worker.ts, and the edge engine's render
+// branch (handleEngineRequest in
+// deploy/bunny-worker-src/bunny-edge-engine-request.ts). The escape now
+// happens once, inside layoutPage itself, using the CF worker's own
+// escapeHtml (deploy/worker.ts:310-316), so every caller of the shell is
+// covered.
 //
 // The body parameter is HTML-by-contract (call sites pass markup like
 // `<h1>Not found</h1>`), so its dynamic interpolations are escaped at their
@@ -54,14 +57,14 @@ describe("layoutPage <title> HTML escaping", () => {
   it("renders a percent-encoded crafted-name URL's 200-page with an escaped title through the real engine", async () => {
     const storage = await createRenderTestStorage();
     try {
-      // Since the edge-site-shell lane (2026-10-02) the edge 200-page is the
-      // engine's show_with_page_layout assembly (renderPageBytes): the title
-      // is page_title_tag — safe_name + *title, escaped by head-views.ts h()
-      // — not layoutPage's `${name} (${view})`. The escape PROPERTY this pin
-      // guards (a crafted URL-path name lands in <title> as text) is
-      // re-anchored to those bytes; layoutPage itself remains the error-page
-      // shell and keeps its own unit pin above. The deck seeds the codename
-      // cards the page head reads — the same minimal shell boot
+      // The edge's 200-page is not layoutPage's output: it is the engine's
+      // show_with_page_layout assembly (renderPageBytes), whose <title>
+      // comes from page_title_tag — safe_name joined with the *title card,
+      // escaped by head-views.ts h(). This second test re-anchors the same
+      // escape property (a crafted URL-path name reaches <title> as text)
+      // to those bytes; layoutPage stays the error-page shell and keeps the
+      // unit pin in the first test. The seeds below are the codename cards
+      // the page head reads, the same minimal shell boot
       // tests/deploy/bunny-edge-page-shell.test.ts pins.
       await seedCard(storage, { id: 8, name: "csvqdo", codename: "anyone", typeId: 2 });
       await seedCard(storage, { id: 15, name: "tkmbewlur", codename: "anonymous", typeId: 2 });
