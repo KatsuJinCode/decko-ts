@@ -1,19 +1,14 @@
 // The account email-token FLOW tests (src/card/auth/account-verify-reset-flows.ts):
 // request reset -> reset email (token link) -> confirm -> set new password,
-// plus the signup-arm verification/activation. Red-first per the suite
-// contract: the module under test did not exist at d6b1957 — every import
-// below is the gap this suite closes.
+// plus the signup-arm verification/activation.
 //
-// Ruby truth is cited per block; the master citations live in the module
-// header of the implementation (set/self/signin.rb send_reset_password_token,
-// right/account/events.rb reset_password + verify_and_activate,
-// right/account/views.rb token_url, right/password.rb validate/encrypt
-// events, data/real.yml template bytes).
+// Every import below is the module under test: the flows had no
+// implementation to lean on when this suite was written.
 //
 // Storage: the auth suite's in-memory core-schema storage with SYNTHETIC
-// account cards (the stream data rule — no real deck content in tests),
-// real auth migration runner, real SessionStore, CaptureTransport for the
-// mail (the mocked transport; envelope + token link bytes asserted).
+// account cards (no real deck content in tests), real auth migration runner,
+// real SessionStore, CaptureTransport for the mail (the mocked transport;
+// envelope + token link bytes asserted).
 
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -245,9 +240,8 @@ async function buildFixture(opts?: {
   return { storage, ctx, transport, tokenConfig };
 }
 
-/** The reset URL shape (token_url, views.rb:34-38 + to_param — verified
- *  against the installed activesupport): percent-encoded brackets, JWT
- *  untouched, url_key keeps case with underscores. Applied to TRIMMED
+/** The reset URL shape (token_url + to_param): percent-encoded brackets,
+ *  JWT untouched, url_key keeps case with underscores. Applied to TRIMMED
  *  lines (the text template indents the link with two spaces). */
 const URL_SHAPE =
   /^http:\/\/testdeck\.example\/update\/([^?]+)\?card%5Btrigger%5D=([a-z_]+)&token=([A-Za-z0-9\-_.]+)$/;
@@ -266,8 +260,8 @@ describe("sendResetPasswordToken (signin.rb:27-31 + helpers)", () => {
     expect(outcome.ok).toBe(true);
     if (!outcome.ok) return;
 
-    // the delivered envelope (send_account_email, right/account.rb:37-44:
-    // to = the +email content; from/subject = the template fields).
+    // the delivered envelope (send_account_email: to = the +email
+    // content; from/subject = the template fields).
     expect(f.transport.count()).toBe(1);
     const msg = f.transport.last();
     expect(msg).toBeDefined();
@@ -283,7 +277,7 @@ describe("sendResetPasswordToken (signin.rb:27-31 + helpers)", () => {
     expect(match?.[2]).toBe("reset_password");
 
     // the token decodes under the SAME secret to this holder with the
-    // railtie expiry (token.rb:10-14 + railtie.rb:12).
+    // configured expiry (token.rb:10-14).
     const claims = await decodeAuthToken(f.tokenConfig, outcome.token);
     expect(typeof claims).toBe("object");
     if (typeof claims === "string") return;
@@ -291,8 +285,7 @@ describe("sendResetPasswordToken (signin.rb:27-31 + helpers)", () => {
     expect(claims.exp).toBe(T0 + DEFAULT_TOKEN_EXPIRY_SECONDS);
 
     // the text body: template bytes with the URL + days substituted
-    // (real.yml text_message; en-dash and the odd whitespace runs are the
-    // seed's exact bytes).
+    // (en-dash and the odd whitespace runs are the seed's exact bytes).
     expect(msg?.textBody).toBe(
       `** Password reset for ${SITE_TITLE} **\n\n` +
         "Someone – you, we hope – asked to reset your password.  Please follow this link...\n\n" +
@@ -354,7 +347,7 @@ describe("sendResetPasswordToken (signin.rb:27-31 + helpers)", () => {
   });
 });
 
-// --- the link builder (views.rb:34-38) ----------------------------------------
+// --- the link builder ------------------------------------------------------
 
 describe("buildAccountTokenUrl (token_url)", () => {
   it("builds the verify link with the anonymous claim and its own trigger", async () => {
@@ -371,7 +364,7 @@ describe("buildAccountTokenUrl (token_url)", () => {
     expect(match?.[2]).toBe("verify_and_activate");
     const claims = await decodeAuthToken(f.tokenConfig, token);
     if (typeof claims === "string") return expect.fail(claims);
-    // views.rb:2-4: the verify link's extra payload rides the merge
+    // the verify link's extra payload rides the merge
     // (token.rb:11) — anonymous: true is why the authenticator binds
     // Anonymous instead of the user.
     expect(claims.anonymous).toBe(true);
@@ -395,7 +388,7 @@ describe("confirmPasswordReset (events.rb:15-17 + authenticator)", () => {
     if (!confirmation.ok) return;
     expect(confirmation.holder).toEqual({ id: JANE.id, name: JANE.name });
     expect(confirmation.accountId).toBe(JANE_JUNCTION);
-    // reset_password_success (events.rb:100-104): redirect id = the +account
+    // reset_password_success: redirect id = the +account
     // card name, view :edit.
     expect(confirmation.redirectTo).toEqual({
       name: `${JANE.name}+*account`,
@@ -423,9 +416,9 @@ describe("confirmPasswordReset (events.rb:15-17 + authenticator)", () => {
       kind: "token_invalid",
       message: "Not enough or too many segments",
     });
-    // the authenticator asymmetry: Ruby raises PermissionDenied in the
-    // controller BEFORE the event runs (rest.rb:37-47 -> token.rb:20), so
-    // the failure event's re-send never fires for decode failures.
+    // the authenticator asymmetry: PermissionDenied is raised in the
+    // controller BEFORE the event runs (token.rb:20), so the failure
+    // event's re-send never fires for decode failures.
     expect(f.transport.count()).toBe(0);
   });
 
@@ -470,9 +463,9 @@ describe("confirmPasswordReset (events.rb:15-17 + authenticator)", () => {
   it("re-sends the reset email when a valid token names a DIFFERENT account", async () => {
     const f = await buildFixture();
     // a well-formed token for SAM, presented at JANE's +account mark —
-    // Ruby's decode succeeds (the authenticator binds Sam) but
-    // verifying_token's user_id check fails (events.rb:64-73) -> the
-    // failure event re-sends to JANE (events.rb:106-109).
+    // the decode succeeds (the authenticator binds Sam) but
+    // verifying_token's user_id check fails -> the failure event re-sends
+    // to JANE.
     const samToken = await encodeAuthToken(f.tokenConfig, SAM.id);
     const confirmation = await confirmPasswordReset(
       f.ctx,
@@ -482,12 +475,12 @@ describe("confirmPasswordReset (events.rb:15-17 + authenticator)", () => {
     expect(confirmation.ok).toBe(false);
     if (confirmation.ok || confirmation.kind !== "token_account_mismatch") return;
     expect(confirmation.resent).toBe(true);
-    // the %{error_msg} is Ruby Hash#to_s of the decoded claims
-    // (events.rb:70 passes the result object into i18n).
+    // the %{error_msg} is a Hash#to_s of the decoded claims
+    // (the result object is passed straight into i18n).
     expect(confirmation.message).toMatch(
       /^Sorry, \{"user_id"=>9120, "exp"=>\d+\}\. Please check your email for a new password reset link\.$/,
     );
-    // TWO mails: the failure re-send went to JANE's address.
+    // the failure re-send went to JANE's address.
     expect(f.transport.count()).toBe(1);
     const resent = f.transport.last();
     expect(resent?.to).toBe(JANE_EMAIL);
@@ -515,7 +508,7 @@ describe("confirmPasswordReset (events.rb:15-17 + authenticator)", () => {
 describe("confirmAccountVerification (events.rb:19-24 + activate_account)", () => {
   it("activates the account, sends the welcome email, and signs the holder in", async () => {
     const f = await buildFixture();
-    // views.rb:2-4: the verify link's token carries {anonymous: true}.
+    // the verify link's token carries {anonymous: true}.
     const token = await encodeAuthToken(f.tokenConfig, JILL.id, { anonymous: true });
     const confirmation = await confirmAccountVerification(
       f.ctx,
@@ -527,7 +520,7 @@ describe("confirmAccountVerification (events.rb:19-24 + activate_account)", () =
     expect(confirmation.activated).toBe(true);
     expect(confirmation.welcomeSent).toBe(true);
     expect(confirmation.redirectTo).toEqual({ name: `${JILL.name}+*account`, view: undefined });
-    // activate_account (events.rb:40-43): the +*status child content is
+    // activate_account: the +*status child content is
     // now "active" (written under the bot actor).
     const status = f.storage.selectOne<{ db_content: string }>(
       "SELECT db_content FROM cards WHERE id = 9115",
@@ -538,7 +531,7 @@ describe("confirmAccountVerification (events.rb:19-24 + activate_account)", () =
     const actor = await f.ctx.sessions.lookupSession(confirmation.session.token);
     expect(actor).toEqual({ id: JILL.id, name: JILL.name });
     // ONE mail: the welcome email — the seed template carries no fields,
-    // so subject and body are empty (real.yml welcome_email).
+    // so subject and body are empty (the welcome_email template).
     expect(f.transport.count()).toBe(1);
     const welcome = f.transport.last();
     expect(welcome?.to).toBe(JILL_EMAIL);
@@ -556,8 +549,8 @@ describe("confirmAccountVerification (events.rb:19-24 + activate_account)", () =
     );
     expect(confirmation.ok).toBe(false);
     if (confirmation.ok || confirmation.kind !== "token_account_mismatch") return;
-    // events.rb:96-97 literal (the reset arm uses the en.yml key instead).
-    // The verify token carries {anonymous: true} (views.rb:2-4), so the
+    // the activation arm uses a literal message where the reset arm uses the
+    // en.yml key. The verify token carries {anonymous: true}, so the
     // Hash#to_s of the claims includes it in insertion order.
     expect(confirmation.message).toMatch(
       /^Sorry, \{"user_id"=>9100, "exp"=>\d+, "anonymous"=>true\}\. Please check your email for a new activation link\.$/,
@@ -591,8 +584,8 @@ describe("confirmAccountVerification (events.rb:19-24 + activate_account)", () =
       "junk.token",
     );
     // "junk.token" is a TWO-segment token: the header parse fails first
-    // (token.ts's documented segment-order — decode.rb:31-40 touches the
-    // header before the segment count can report).
+    // (token.ts's documented segment-order — the header is touched
+    // before the segment count can report).
     expect(confirmation).toEqual({
       ok: false,
       kind: "token_invalid",
@@ -618,10 +611,10 @@ describe("applyNewAccountPassword (validate/store events)", () => {
   afterEach(() => configurePasswordHashing(undefined));
 
   it("in legacy-sha1 mode writes Ruby's salted digest with the EXISTING salt", async () => {
-    // encrypt_password (right/password.rb:19-26): Auth.encrypt(content,
-    // left&.salt) — the account's EXISTING salt, NOT regenerated. The port
-    // stores exactly that when the deck keeps Ruby's format
-    // (docs/SECURITY.md, "Passwords").
+    // encrypt_password: Auth.encrypt(content, left&.salt) — the
+    // account's EXISTING salt, NOT regenerated. Exactly that is stored
+    // when the deck keeps the legacy format (docs/SECURITY.md,
+    // "Passwords").
     configurePasswordHashing({ mode: "legacy-sha1", iterations: 100_000 });
     const f = await buildFixture();
     const write = await applyNewAccountPassword(
@@ -707,7 +700,7 @@ describe("applyNewAccountPassword (validate/store events)", () => {
       message: "must contain an upper case letter and a special character (like !@$%&#)",
     });
     // three missing -> "X, Y, and Z" (consolidated_password_error_message,
-    // right/password.rb:92-99, over the config order).
+    // over the config order).
     expect(
       await applyNewAccountPassword(actorDeps, `${JANE.name}+*account`, "abcdefgh"),
     ).toMatchObject({
