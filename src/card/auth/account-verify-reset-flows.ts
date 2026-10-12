@@ -190,16 +190,14 @@ export interface AccountFlowContext {
   /** The {{:title|core}} render — the *title card's content. Resolved by
    *  the caller: the setting-card core walk is the render engine's
    *  surface, and the value for the plain case IS the *title card's
-   *  db_content (verified: corpus *title row content is the deck title
-   *  string). */
+   *  db_content. */
   readonly siteTitle: string;
   /** The DeckoBot account's email (Card[DeckoBotID].account.email). When
    *  present, the From: is resolved via Ruby's safe_from_and_reply_to!
    *  rule (card-mod-email set/type/email_template/email_config.rb:52-79):
    *  the template's "Decko Bot" from FIELD reaches the envelope as the
-   *  BARE bot address — the six-mail oracle pins this for all six mails.
-   *  Optional: without it the raw field content is kept (the prior
-   *  behavior the flow tests pin). */
+   *  BARE bot address, for every mail this module sends.
+   *  Optional: without it the raw field content is kept. */
   readonly deckoBotEmail?: string;
 }
 
@@ -539,9 +537,10 @@ async function holderIdForAccountName(
   accountName: string,
 ): Promise<number | undefined> {
   const key = DeckoName.parse(accountName).key;
-  // key OR name: the compound-card key convention varies by corpus builder
-  // (the engine-standard cards.key is populated for junctions; some
-  // fixtures leave compound rows' keys NULL with the name authoritative).
+  // key OR name: the compound-card key convention varies by how a deck was
+  // built (the engine-standard cards.key is populated for junctions; a deck
+  // seeded by another path may leave compound rows' keys NULL with the name
+  // authoritative).
   const result = await driver.query<{ left_id: number }>(
     `SELECT left_id FROM cards
      WHERE trash = 0 AND (key = ? OR name = ?) ORDER BY id LIMIT 1`,
@@ -695,9 +694,8 @@ export async function sendAccountWelcomeEmail(
  *  EmailHtmlFormat#show wrapper (format :email_html def show ->
  *  wrap_with_email_document), never as a bare div. The `<style>` block is
  *  the email_stylesheet card's :compiled render, empty for an empty
- *  stylesheet (the six-mail oracle app's state; a processor landing
- *  behind this constant changes nothing else). Byte-exact against the
- *  oracle envelopes. */
+ *  stylesheet; a stylesheet that compiles to something changes this
+ *  constant's style block and nothing else. */
 const EMAIL_DOCUMENT_HEAD =
   '<!DOCTYPE html>\n<html>\n  <head>\n    <meta http-equiv="Content-type" content="text/html;charset=UTF-8"/>\n    <style></style>\n  </head>\n  <body class="d0-email-body">\n    ';
 const EMAIL_DOCUMENT_TAIL = "\n  </body>\n</html>\n";
@@ -706,8 +704,7 @@ const EMAIL_DOCUMENT_TAIL = "\n  </body>\n</html>\n";
  *  (right/account.rb:37-44): context = the +account card, to = its +email
  *  content. The From: resolves through safe_from_and_reply_to! when the
  *  host supplies deckoBotEmail (the "Decko Bot" field becomes the bare
- *  bot address — the six-mail oracle); the html part wears the
- *  email_document wrapper (the six-mail oracle). */
+ *  bot address); the html part wears the email_document wrapper. */
 function renderAccountEmail(
   ctx: AccountFlowContext,
   template: typeof RESET_EMAIL_TEMPLATE | typeof VERIFY_EMAIL_TEMPLATE | typeof WELCOME_EMAIL_TEMPLATE,

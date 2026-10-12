@@ -14,10 +14,11 @@
 //     `Card.const_get_or_set("#{codename.to_s.camelize}ID") { id }`
 //     (codename.rb:108) — the card with codename "anonymous" defines
 //     Card::AnonymousID, codename "decko_bot" defines Card::DeckoBotID
-//     (camelize: decko_bot → "DeckoBot"). The codenames and names are deck
+//     (camelize: decko_bot → "DeckoBot", so the constant reads DeckoBotID,
+//     never DeckobotID — the stored codename carries the underscore). The
+//     codenames and names are deck
 //     data, not gem constants: mod/core/data/real.yml:17-19 seeds the bot
-//     as name "Decko Bot", codename "decko_bot" (recode.yml:8 records the
-//     wagn_bot → decko_bot rename; the codename was never "deckobot").
+//     as name "Decko Bot", codename "decko_bot".
 //
 // Engine-context mapping: the TS engine has no process-global Auth singleton
 // — the actions layer takes an explicit actor parameter — so `as`/`as_bot`

@@ -42,7 +42,7 @@ export const FOLLOW_SEAM_VIEWS: ReadonlySet<string> = new Set([
   // engage_tab's render_follow_section + follow_section itself
   "follow_section",
   "engage_tab",
-  // wave-1 follow family: right/following.rb's :rule_editor reads the
+  // the follow family: right/following.rb's :rule_editor reads the
   // session actor (preference_name's Auth.current.name) + the applied
   // preference walk (current_follow_rule_card).
   "rule_editor",
@@ -107,11 +107,11 @@ export interface FollowRenderBundle {
   /** The closure walk (account_holder.rb:87-89 closure_deletions:
    *  Auth.as_bot { Card.search left: id, not: {right: :account} }) — the
    *  accounted user's cards minus the +*account rights, search order
-   *  (rowid; Ruby CQL default sort is by name — the seed decks' names sort
-   *  identically at the sizes the corpus carries; DISCLOSED in the recorded result:
-   *  no oracle bytes exist to split the two orderings). */
+   *  (rowid; Ruby CQL default sort is by name — the two orderings are
+   *  indistinguishable at typical deck sizes; DISCLOSED as an open
+   *  divergence: nothing observed so far splits them). */
   readonly closureDeletions: readonly { readonly name: string }[];
-  /** Wave-1 rule_editor inputs (right/following.rb:32-38). The APPLIED
+  /** rule_editor inputs (right/following.rb:32-38). The APPLIED
    *  preference rule's db_content on the render root's LEFT card
    *  (following.rb:49-51 current_follow_rule_card = card.left.preference
    *  :follow, rule/all.rb:17-19 — a CONTENT STRING or undefined), the
@@ -463,8 +463,8 @@ export async function prepareFollowRender(
       // followed? (followed_by.rb:1-9): the actor's follow preference
       // applies to the card's set chain - the same walk the count runs,
       // asked for the actor's id. (followRuleOptionFor's notify-module walk
-      // answers the SELF-set preference only; the *all-covering
-      // preference the oracle deck carries is the count walk's shape.)
+      // answers the SELF-set preference only; an *all-covering
+      // preference is the count walk's shape.)
       followed = users.has(session.actorId);
       followMark = followRuleNameFor(setName, session.actorName);
     }

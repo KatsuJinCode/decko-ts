@@ -60,10 +60,9 @@ import type { PatternCardInput } from "../set-patterns/types.js";
  *  adds "<val> is not a known type." (type_id_or_error, :104-110) and
  *  assigns no type_id. ActiveRecord's valid? then CLEARS errors before the
  *  validation stages run, so that error never reaches the user: the create
- *  proceeds with the default type and an update keeps the current one
- *  (measured against the oracle: a create with type "No Such Type"
- *  answers 303 and stores a RichText card). An explicit unknown type_id is
- *  different: it is assigned, and validate_type rejects it at :validate. */
+ *  proceeds with the default type and an update keeps the current one. An
+ *  explicit unknown type_id is different: it is assigned, and validate_type
+ *  rejects it at :validate. */
 export async function knownTypeSpec<T extends TypeSpec>(fetcher: FetchEngine, spec: T): Promise<T> {
   if (spec.typeId !== undefined && spec.typeId !== 0) return spec;
   if (spec.typeCode !== undefined && (await fetcher.codenames.id(spec.typeCode)) === undefined) {
@@ -127,11 +126,11 @@ export async function resolveTypeId(
     // the new-card template is new_card_template (card-mod-content
     // set/all/templating.rb:52-59), ported in full by templateTypeId below
     // — the *default rule (templating.rb:53) AND the *structure branch
-    // (templating.rb:54 via dup_structure :61-65), so a name-scoped
-    // *default rule ("*all+*right+*default") and a governing *structure
-    // rule (the corpus's dominant class is *right-anchored, e.g.
-    // "*right+*right+*structure" on every <X>+*right rule slot) both
-    // resolve HERE, not just the global rule the old hard-coded fetch saw.
+    // (templating.rb:54 via dup_structure :61-65). Both kinds of template
+    // therefore resolve HERE rather than through the global rule alone: a
+    // name-scoped *default rule ("*all+*right+*default"), and a governing
+    // *structure rule reached through a right-anchored pattern such as
+    // "*right+*right+*structure" on an <X>+*right rule slot.
     const templateId = await templateTypeId(fetcher, spec.name);
     if (templateId !== undefined) return templateId;
   }
@@ -165,8 +164,8 @@ async function leftTypeNameOf(fetcher: FetchEngine, name: Nameish): Promise<Name
  *    cold-safe) through the ASYNC driver-backed fetch, so the walk is live
  *    on a cold engine exactly like Ruby's db-backed cache lookup; a
  *    candidate set whose anchor card does not exist yields no rule card
- *    from the fetch, matching the nil-lookup-key compaction
- *    (instance.ts#ruleLookupKey oracle). The anchorless *all candidate is
+ *    from the fetch, matching the nil-lookup-key compaction in
+ *    instance.ts#ruleLookupKey. The anchorless *all candidate is
  *    intentionally NOT walked for the RETURN value: its rule card is
  *    exactly the defaultTypeId tail (Card.default_type_id, type.rb:3-5 —
  *    the walk's most general row), reached through the caller's tail fetch.
@@ -203,16 +202,14 @@ async function leftTypeNameOf(fetcher: FetchEngine, name: Nameish): Promise<Name
  *    :structure, skip_modules: true`, NIL-ed when its db_content.strip ==
  *    "_self" — the walk does NOT continue past a _self hit) runs on the
  *    DUP. A resolved *structure rule IS the template (its type wins,
- *    type.rb:76-78); :53's *default rule is the fallback. The corpus
- *    exercises this branch: the raw deck (sha 6A44DFDC...) carries 139
- *    live *structure rule rows and 8,780 new-card names whose walks resolve
- *    one (census: tests/card/rules/structure-governance-census-probe.test.ts)
- *    — 2,164 of them with a structure type
- *    DIFFERENT from the default-leg answer. The structure walk applies the
- *    SAME rule-cache filters as the default leg: the loop-invariant :18
- *    gate on the *structure card and the per-candidate :17 Set-typed gate
- *    (zero corpus exposure — the census deck carries no decoy shape — a
- *    completeness/fidelity port exactly like the URI cardtype). Decoy
+ *    type.rb:76-78); :53's *default rule is the fallback. This branch is
+ *    not decorative: many new-card names walk to a *structure rule, and a
+ *    large share of those resolve a structure type DIFFERENT from the
+ *    default-leg answer, so folding the two legs together would change the
+ *    type assigned. The structure walk applies the SAME rule-cache filters
+ *    as the default leg: the loop-invariant :18 gate on the *structure card
+ *    and the per-candidate :17 Set-typed gate (carried for completeness,
+ *    exactly like the URI cardtype). Decoy
  *    probes in both directions live in
  *    tests/card/actions/structure-leg-rule-cache-decoy-probes.test.ts.
  *    assign_type_to? (:67-69)

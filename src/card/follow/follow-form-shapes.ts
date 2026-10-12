@@ -5,10 +5,10 @@
 //                        (hidden success tags + form_for(url: path(action),
 //                        html: {class: "card-form"[+" slotter"][+" autosave"
 //                        on :update]}, remote: true))
-//   the <form> bytes     card-mod-edit.ts's CAPTURED edit-form opener (the
-//                        the edit views' oracle bytes): action, accept-charset,
-//                        data-remote, method, the utf8 check + the _method
-//                        patch spoof
+//   the <form> bytes     card-mod-edit.ts's edit-form opener (the
+//                        bytes the edit views emit): action,
+//                        accept-charset, data-remote, method, the utf8 check
+//                        + the _method patch spoof
 //   hidden_field_tag     actionview-7.2.3.2 form_tag_helper.rb:264 defaults
 //                        {type,name,id,value} + the .update append
 //                        (autocomplete LAST) — same shape card-mod-edit.ts
@@ -116,7 +116,7 @@ export function successTags(success: Record<string, string> | undefined): string
   return hiddenTags(success, "success");
 }
 
-/** The opener card_form emits for :update — the captured edit-form bytes:
+/** The opener card_form emits for :update — the edit-form bytes:
  *  class from card_form_html_opts (form.rb:218-224: "card-form" + slotter
  *  unless redirect/no_slotter + autosave on :update), id = form_for's dom id
  *  (persisted: edit_card_<id>; a NEW record: new_card), then action (the

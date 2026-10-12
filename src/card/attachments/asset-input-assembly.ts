@@ -23,10 +23,9 @@
 //     `virtual_content -> left.assemble_asset_input_content`, and its
 //     save_virtual_content event ABORTS :success — the child never persists a
 //     row; its content is always the live (or in-process-cached) assemble of
-//     its left. Oracle-pinned by live renders of the booted oracle app
-//     (2026-09-29): every probed +*asset input child reads id=null,
-//     virtual?=true, db_content == the left's assemble bytes byte-identically
-//     (yeti skin 369,624B; all 15 mod script groups likewise).
+//     its left. That is also why a +*asset input child reports no id of its
+//     own and always reads back byte-identical to the left's assemble — for
+//     every inputter shape, mod script groups included.
 //
 // BRANCH COLLAPSE the pins force: for a non-virtual inputter,
 // `asset_input` reads the child card's content, and the child's content is
@@ -53,22 +52,20 @@
 // compiles (card-mod-script 02_coffee_script.rb:20-22) and the mod
 // asset-directory walk (card-mod-assets asset_group.rb:15-18 relative_paths,
 // asset_file.rb:5-9 paths) — none of which the headless engine carries. The
-// oracle deck's env pins compress_assets=false (card-1.110.0
-// lib/cardio/railtie.rb:35 defaults true; the live dev deck overrides —
-// its reported config carries compress_assets=false), so
+// deck's env pins compress_assets=false (card-1.110.0
+// lib/cardio/railtie.rb:35 defaults true; a deck may override it), so
 // the js compressed leaves render `"// <file name>\n" + core` unminified
 // (00_script.rb:20-22 comment_with_source + :25-27 identity compress) — but
 // the coffee/sass compiles and the directory walk still sit below them.
 // deps.renderInputView is the seam: a caller with those engines provides the
-// leaf renders; this module owns the WALK and the JOIN, which the oracle
-// byte-pins whole (fixtures/carrierwave-input-half-oracle/: the nine
-// fully-captured components and the oracle-computed 15,968B assembly).
+// leaf renders; this module owns the WALK and the JOIN, and nothing else
+// shapes the assembled bytes.
 //
 // THE VALIDATE TWIN: asset_outputter.rb:10-18 validate_asset_inputs rejects a
 // save whose items do not respond to asset_input_content
-// (`find_invalid_input`; live: creating a rule with an unknown item was
-// rejected "Content Oracle Cw Ghost is not a valid asset input card",
-// 2026-09-29). Ruby's bare input_from_item_cards raises NoMethodError for
+// (`find_invalid_input`) — creating a rule with an unknown item is refused
+// with the input's name in the message. Ruby's bare input_from_item_cards
+// raises NoMethodError for
 // such an item; the port's guard is findInvalidInput and assetInputContent
 // returns null past it (the .compact then drops it — documented divergence:
 // Ruby raises, the port relies on the same guard the save path runs).
@@ -80,7 +77,7 @@ export type AssetInputFormat = "scss" | "css" | "js";
 /** The card shape the assembly reads (a fetched record or a test double).
  *  `virtual` is Ruby's virtual? — undefined derives it as id === undefined
  *  (VirtualCache cards and the Card.new asset-file/group cards are exactly
- *  the id-less shapes; oracle: +*asset input children id=null). */
+ *  the id-less shapes). */
 export interface AssetInputCardRef {
   name: string;
   dbContent?: string | null;
@@ -231,7 +228,7 @@ export async function assetInputContent(
 /** asset_outputter.rb:16-18 find_invalid_input: the first item that does not
  *  respond to asset_input_content — the validate_asset_inputs guard
  *  (:10-14, message t(:assets_invalid_input, input_name: …)). Null = every
- *  item is an inputter (oracle: both deck outputters null). */
+ *  item is an inputter. */
 export async function findInvalidInput(
   deps: AssetInputDeps,
   outputterName: string,

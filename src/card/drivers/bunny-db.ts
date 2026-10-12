@@ -43,23 +43,20 @@
 //   - Errors carry a typed shape (status / code / statementIndex) so
 //     callers can distinguish transport failures from server-reported
 //     SQL errors.
-//   - COLD-RENDER RELIABILITY (2026-10-03, measured — see
-//     an internal work log). A cold page
-//     render on the edge is a LONG SERIAL CHAIN of pipeline POSTs: the
-//     trial edge measured 1,151 HTTP round trips (4.9 MB of database
-//     response) to produce one 76-byte page, and 814 for Home. Wall time
-//     is therefore the SUM of ~1,000-odd independent hop latencies, and
-//     this driver previously put NO upper bound on any term of that sum
-//     and NO retry on any failure:
-//       - timeoutMs was optional and the production construction sites
-//         (bunny-edge-engine-entry.ts:176, vm-staging-server.mjs) pass
-//         none, so `signal` was undefined and a single stalled POST could
-//         wait indefinitely. The only backstop was the platform killing
+//   - COLD-RENDER RELIABILITY. A cold page
+//     render on the edge is a LONG SERIAL CHAIN of pipeline POSTs — measured
+//     in the thousands of HTTP round trips, megabytes of database
+//     response, to produce a single small page. Wall time
+//     is therefore the SUM of that many independent hop latencies, and this
+//     driver must put an upper bound on every term of that sum and retry a
+//     transient failure:
+//       - without a timeout, `signal` is undefined and a single stalled POST
+//         can wait indefinitely. The only backstop is the platform killing
 //         the script, which answers with an opaque 5xx after a long wait.
-//       - a single transport failure anywhere in the chain propagated
-//         straight out of pipeline() and became a 500 error page for a
+//       - a single transport failure anywhere in the chain propagates
+//         straight out of pipeline() and becomes a 500 error page for a
 //         page that renders fine on the next attempt.
-//     Both are fixed below and are on BY DEFAULT: DEFAULT_PIPELINE_TIMEOUT_MS
+//     Both are handled below and are on BY DEFAULT: DEFAULT_PIPELINE_TIMEOUT_MS
 //     bounds every hop, and one bounded retry absorbs a transient hop.
 
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement, SQLTransactionGuarantee } from "../../server/driver.js";
@@ -93,19 +90,17 @@ export interface BunnyDbOptions {
 }
 
 /** Per-pipeline-POST abort budget when the caller names none. A healthy hop
- *  on the edge measures ~11 ms (1,151 hops in ~13 s measured live 2026-10-03),
- *  and the worst single hop in the cold-render benchmarks measured ~700 ms
- *  (benchmarks/cold-render/before-home.json max_ms 697.6), so 15,000 ms is a
- *  ~20x margin on the worst observed hop.
+ *  on the edge measures in the tens of milliseconds, and the worst single hop
+ *  observed on a cold render measured ~700 ms, so 15,000 ms is a large
+ *  margin on the worst legitimate hop.
  *
- *  P1 incident 2026-10-03 (the edge incident fix): at 5,000 ms the bound
- *  was NOT safely above every legitimate hop. Release 1126057 shipped the
- *  timeout while the render still ran whole-deck recursive walks (one
+ *  This bound is deliberately generous: an earlier, tighter value was NOT
+ *  safely above every legitimate hop. Whole-deck recursive walks (one
  *  measured 1.87 MB / 3.8 s warm from the edge, longer for a visitor at
- *  network distance), so real visitors blew the per-hop abort, got
- *  "Pipeline Transport failed ... signal timed out", and the site was
- *  unloadable. The query-scoping fix ships with it; the default
- *  raises to 15,000 ms — above the scoped queries' worst case with
+ *  network distance) blew the per-hop abort, produced
+ *  "Pipeline Transport failed ... signal timed out", and made the site
+ *  unloadable. Query scoping fixed the underlying cost; the default
+ *  stays at 15,000 ms — above the scoped queries' worst case with
  *  headroom, below the 20,000 ms render budget the edge entry enforces over
  *  the whole chain (DEFAULT_EDGE_RENDER_BUDGET_MS) — and the edge entry
  *  resolves it from DECKO_EDGE_PIPELINE_TIMEOUT_MS so it retunes without a
@@ -113,7 +108,7 @@ export interface BunnyDbOptions {
 export const DEFAULT_PIPELINE_TIMEOUT_MS = 15_000;
 
 /** One retry: a transient reset or a 5xx from the database is a single-hop
- *  event, and the chain has ~1,000 opportunities to hit one. */
+ *  event, and a cold chain has hundreds of opportunities to hit one. */
 export const DEFAULT_PIPELINE_RETRIES = 1;
 
 /** Backoff before the retry attempt. Long enough not to hammer a struggling
@@ -484,12 +479,13 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
 
   /** Send one pipeline POST and decode every response entry.
    *
-   *  ONE BOUNDED RETRY (cold-render reliability, 2026-10-03). A cold render
-   *  is ~1,000 serial hops, so the chain has ~1,000 chances to meet a single
-   *  transient event — a TCP reset, a gateway timeout, a 429. Before this,
-   *  any one of them propagated straight out and became a 500 error page for
-   *  a card that renders fine on the next attempt (the operator-visible
-   *  symptom: a 500 on first load, 200 on retry). Retried: transport
+   *  ONE BOUNDED RETRY (cold-render reliability). A cold render
+   *  is hundreds of serial hops, so the chain has that many chances to meet a
+   *  single transient event — a TCP reset, a gateway timeout, a 429. Without
+   *  this, any one of them propagated straight out and became a 500 error
+   *  page for a card that renders fine on the next attempt (the
+   *  operator-visible symptom: a 500 on first load, 200 on retry). Retried:
+   *  transport
    *  failures and HTTP 429/5xx. NOT retried: a 4xx (the request is wrong;
    *  the same request will be wrong again) and any in-band Hrana statement
    *  error (the SQL is wrong; see decodeStreamResult, which throws outside
@@ -497,7 +493,7 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
    *  that is going to fail anyway.
    */
   private async pipeline(requests: HranaPipelineRequest[]): Promise<unknown[]> {
-    // ACCEPT-ENCODING (deploy check 2026-10-06): left to the runtime, the
+    // ACCEPT-ENCODING: left to the runtime, the
     // database gateway answered with brotli, and compressing cost it about
     // 2 s per decoded MB before the first byte (a 1.77 MB answer: 3.7 s with
     // brotli, 0.9 s uncompressed, 0.5 s with gzip). Ask for gzip, or no

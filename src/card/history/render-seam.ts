@@ -45,9 +45,8 @@
 //    route, which enforces the real update rule server-side.
 // 5. ANONYMOUS - the history views declare no perms directive
 //    (views.rb:3-65), so they ride the default :read task: anonymous
-//    actors read history exactly when they read the card (the capture
-//    pinned this wiring: renders ran as Anonymous,
-//    state.anon_ok_read_probe = true).
+//    actors read history exactly when they read the card (renders run
+//    as Anonymous and succeed on an anonymously readable card).
 
 import type { HistoryActionRow, HistoryActRow, HistoryChangeRow } from "../mod-loader/mods/card-mod-history.js";
 import type { RenderCard } from "../render/format.js";

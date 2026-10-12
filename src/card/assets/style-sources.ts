@@ -1,6 +1,7 @@
 // The style SOURCE FILES a skin's stylesheet is built from, vendored from the
-// Decko gems into fixtures/vendor/ (tools/oracle/vendor-style-sources.mjs
-// copies them and checks each against the sha256 the Ruby oracle read):
+// Decko gems into fixtures/vendor/ by
+// tools/oracle/vendor-style-sources.mjs, which copies each file and records
+// the sha256 it read:
 //
 //   fixtures/vendor/mod-style-assets/manifest.json + <gem>/<path>
 //       every file a mod's `+*style` card lists through its style groups

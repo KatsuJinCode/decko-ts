@@ -5,7 +5,7 @@
 //
 //   - a JavaScript card's `+*asset input` is its js :compressed render
 //     (00_script.rb:9-12): `// <card name>\n` + the content (the compress is
-//     the identity under the oracle deck's compress_assets=false; the
+//     the identity when a deck runs with compress_assets=false; the
 //     uglifier arm throws a named error rather than storing bytes Ruby would
 //     not store — see sassc-coffeescript-compile-engines.ts);
 //   - a CoffeeScript card's is the same shape over the compiled CoffeeScript
@@ -23,8 +23,8 @@
 // The vendored mod script files (fixtures/vendor/mod-script-assets/, copied
 // and sha-checked by tools/oracle/vendor-script-sources.mjs) are the files
 // Ruby reads from its gems. The compile is the host's seam (CoffeeCompiler,
-// coffee-compiler.ts): the npm coffeescript@1.12.2 package is the compiler
-// the oracle's coffee-script-source gem bundles, byte for byte.
+// coffee-compiler.ts): the npm coffeescript@1.12.2 package is the same
+// compiler the coffee-script-source gem bundles, byte for byte.
 
 import { rawItemStrings } from "../render/pointer-list.js";
 import {

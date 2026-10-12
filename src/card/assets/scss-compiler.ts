@@ -2,11 +2,11 @@
 // .render, as card-mod-style calls it (set/abstract/01_css.rb compile: style
 // :compressed whatever style is asked for; 02_scss.rb compile_scss).
 //
-// The Ruby oracle compiles with LibSass 3.6.4 (sassc-ruby 2.4.0). Only
-// LibSass reproduces its output byte for byte: Dart Sass differs in number
+// Ruby compiles SCSS with LibSass 3.6.4 (sassc-ruby 2.4.0). Only LibSass
+// reproduces its output byte for byte: Dart Sass differs in number
 // and colour formatting, declaration order after nested rules, selector
-// order and more (measured on the 365 KB site stylesheet: 292 differing
-// regions). A host therefore passes the compiler it has:
+// order and more, so a large real-world stylesheet diverges across many
+// regions. A host therefore passes the compiler it has:
 //
 //   - Node hosts: libsassProcessCompiler (src/server/libsass-process.ts),
 //     the LibSass sources built as a program (tools/libsass/).

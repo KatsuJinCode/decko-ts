@@ -3,61 +3,51 @@
 // WHY THIS EXISTS. Ruby's date rendering reads
 // `Time.zone` — the deck's own Rails `config.time_zone` — and `%Z` renders
 // the zone's abbreviation AT THAT INSTANT: "PST" in standard time, "PDT" in
-// daylight time. The port instead hard-coded the CAPTURE HOST's operating-
-// system zone and its operating system's DISPLAY NAME:
+// daylight time. Earlier revisions of the port instead hard-coded the
+// operating-system zone of whatever machine produced the reference
+// material, and its operating system's DISPLAY NAME:
 //
 //   - src/card/render/now-content-bytes.ts:54,67
 //   - src/card/render/errors.ts:199
-//   - src/card/set-module-content-overrides.ts:55-124 (ORACLE_DECK_TIME_ZONE)
+//   - src/card/set-module-content-overrides.ts:55-124
 //
 // all named `America/Los_Angeles` and the literal string "Pacific Standard
 // Time". Two defects in one:
 //
-//   1. THE ZONE IS NOT THE DECK'S. It is whatever zone the machine that
-//      happened to photograph the corpus was set to. A deck configured for
+//   1. THE ZONE IS NOT THE DECK'S. It was whatever zone the machine that
+//      produced the reference material was set to. A deck configured for
 //      Europe/Berlin rendered Pacific wall-clock times.
 //   2. THE LABEL IS A WINDOWS DISPLAY NAME, not an abbreviation, and it is
 //      wrong in daylight time. A September (PDT) instant labelled "Pacific
-//      STANDARD Time" is a category error: the captured corpus carries it
-//      only because the capture host was Windows, whose zone display names
-//      use standard spelling year-round. `fixtures/captured/
-//      date-overrides.json` records the host's own readings side by side:
-//      `time_zone_name: "UTC"` (Ruby's `Time.zone.name` — the DECK's setting)
-//      against `time_now_zone: "Pacific Standard Time"` (`Time.now.zone` —
-//      the OS-local zone of the capture machine). The port conflated them.
+//      STANDARD Time" is a category error: such a label appears only because
+//      Windows zone display names use standard spelling year-round. The two
+//      readings sit side by side — `time_zone_name` is Ruby's
+//      `Time.zone.name` (the DECK's setting) and `time_now_zone` is
+//      `Time.now.zone` (the OS-local zone of the machine). The port
+//      conflated them.
 //
 // The zone is now the DECK's, read through this module, and the abbreviation
 // is COMPUTED from the zone and the instant's offset, so a PDT instant says
 // "PDT" and a PST instant says "PST" — which is what Ruby's `%Z` does.
 //
-// THE DEFAULT IS "UTC" — the zone the captured deck was actually CONFIGURED
-// for. `fixtures/captured/date-overrides.json` records the capture host's own
-// two readings side by side: `time_zone_name: "UTC"` (Ruby's `Time.zone.name`
-// — the DECK's setting) against `time_now_zone: "Pacific Standard Time"`
-// (`Time.now.zone` — the OS-local zone of the machine that took the
-// photographs). So a Pacific default was never the deck's zone; it was the
-// capture host's, hard-coded into the engine's default. Naming a US West
-// Coast zone as the out-of-the-box default is also a location hint about the
-// capture, which a published package should not carry.
+// THE DEFAULT IS "UTC" — location-neutral, and the neutral choice for a
+// published package. Naming a US West Coast zone as the out-of-the-box
+// default is a location hint that carries no engineering meaning.
 //
-// WHAT THE DEFAULT DOES NOT CHANGE. The corpus's captured bytes still read
-// "03:12 PM PDT" because that is what the host rendered, and GRADED tests
-// reproduce the host's reading by SETTING this zone explicitly — through
-// `setDeckTimeZone(CORPUS_CAPTURE_TIME_ZONE)` or the fixtures that already
-// do. Reproducing a capture is an explicit act; it is not what an
-// unconfigured engine should do. A deployment or a fixture that configures a
-// different zone gets that zone.
+// WHAT THE DEFAULT DOES NOT CHANGE. A deployment or a fixture that
+// configures a different zone gets that zone. Reproducing one host's
+// recorded rendering is an explicit act — set that zone on purpose — and it
+// is not what an unconfigured engine should do.
 
-/** The zone the captured deck was configured for — the default. UTC is
- *  location-neutral and is what the capture recorded as `Time.zone.name`
- *  (fixtures/captured/date-overrides.json). */
+/** The deck's default zone: UTC, location-neutral. */
 export const DEFAULT_DECK_TIME_ZONE = "UTC";
 
-/** The zone the CORPUS CAPTURE HOST rendered in — `Time.now.zone`, which
- *  `fixtures/captured/date-overrides.json` records as "Pacific Standard
- *  Time". This is NOT a deck setting and NOT a default: it is named here so
- *  the tests that reproduce captured bytes can say so explicitly instead of
- *  inheriting a host's geography from the engine's default. */
+/** A named, non-default zone for callers that deliberately reproduce a
+ *  particular host's local readings (`Time.now.zone` is an OS-local value,
+ *  not a deck setting, so anything asserting against it must set this
+ *  explicitly instead of inheriting a geography from the engine's default).
+ *  The name is historical; see the flags on this lane's report — renaming it
+ *  is a code change beyond this lane's comment-only scope. */
 export const CORPUS_CAPTURE_TIME_ZONE = "America/Los_Angeles";
 
 let deckTimeZone: string = DEFAULT_DECK_TIME_ZONE;

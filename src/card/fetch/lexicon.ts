@@ -333,7 +333,7 @@ export class DbLexicon {
     this.recordDurableId(lex, id);
   }
 
-  /** the batched fetch composer (2026-10-06): record the entries
+  /** the batched fetch composer: record the entries
    *  idToLex's cacheFetch would have written, from a cards ROW the caller
    *  HOLDS (a batched wave read, not an async name(id) read). The write
    *  shape is idToLex's own (lexicon.rb#id_to_lex): String(id) -> lex (the
@@ -417,9 +417,9 @@ export class DbLexicon {
    *  never falsy for a present id argument: a side id whose cards row is
    *  MISSING answers the EMPTY name (lexicon.rb:11-15, `(name || "").to_name`)
    *  — truthy — so the join CONTINUES with the empty part and a junction
-   *  whose side row is gone composes a "+*default"-shaped name (verified
-   *  live against the corpus deck: Lexicon.name(389) = "+*default" with
-   *  cards 388 absent). Only a NIL side id bails: lexicon.rb#name answers
+   *  whose side row is gone composes a "+*default"-shaped name (a compound
+   *  card over absent sides composes "+*default"). Only a NIL side id
+   *  bails: lexicon.rb#name answers
    *  nil for `id.present? == false` (lexicon.rb:12), making the whole
    *  composition nil. */
   /** Returns the name STRING for array lexes; for simple lexes the LEX

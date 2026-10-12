@@ -7,8 +7,8 @@
 //   asset_outputter.rb:32-34 input_from_item_cards (joint "\n"):
 //     `input_item_cards.map(&:asset_input_content).compact.join(joint)`
 //
-// where on a compress_assets=TRUE deck (the production state — cardio
-// railtie default, lib/cardio/railtie.rb:35) each item's asset_input_content
+// where on a compress_assets=TRUE deck (the cardio railtie default,
+// lib/cardio/railtie.rb:35) each item's asset_input_content
 // bottoms out in the script `:compressed` view:
 //
 //   00_script.rb:9-13  view :compressed -> js = compress(_render_core)
@@ -24,19 +24,11 @@
 // THE OUTPUT CONTRACT this module mirrors: the compiled bundle is the
 // assembled script input republished per leaf as
 // `"// <basename>\n" + Uglifier(harmony)(core)`, leaves joined "\n". The
-// `// basename` headers are line-anchored and unique in the deck's real
-// assets (oracle-verified across all 49 leaves), so the leaf split over the
-// assembled input is deterministic and the per-leaf compression is the
-// SAME function Ruby runs — running it here reproduces the production
-// bytes without the mod asset directories the assembly originally read.
-//
-// Assembled-input pin: fixtures/captured/all-script-assembled-input.js
-// (1,050,887 bytes, sha256 36a3d55df942e04f... — the LIVE
-// oracle pin of the deck's *all+*script assembled input, the same bytes the
-// production bundle was compiled from).
-// Compiled-output oracle: fixtures/captured/script-compile-oracle-leaves.json
-// (the live production bundle's per-leaf bytes — 48/49 shared leaves
-// byte-exact; the named divergences live in that fixture's _provenance).
+// `// basename` headers are line-anchored, so the leaf split over the
+// assembled input is deterministic; and because per-leaf compression is the
+// SAME function Ruby runs, compiling here reproduces the bytes the deck
+// serves without re-reading the mod asset directories the assembly started
+// from.
 //
 // The port (asset-input-assembly.ts) owns the ASSEMBLY side
 // (the mod walk + leaf renders); this module owns the COMPRESSION side of
@@ -59,7 +51,7 @@ export interface AssembledScriptLeaf {
  *  `// <something>.js.coffee` (the card names the group's walk produces —
  *  File.basename of .js/.coffee paths, script_group.rb valid_file_extensions
  *  %w[js coffee]). Line-anchored so in-code "http://..." strings and block
- *  comments never split a leaf (oracle: 49/49 real leaves split clean). */
+ *  comments never split a leaf. */
 const LEAF_HEADER = /^\/\/ (.+\.(?:js|coffee))\s*$/gm;
 
 /** Split the assembled *all+*script input into its leaves, in bundle order. */
@@ -76,8 +68,8 @@ export function splitAssembledScriptLeaves(assembled: string): AssembledScriptLe
     const end = i + 1 < headers.length ? headers[i + 1]!.idx : assembled.length;
     const leafText = assembled.slice(start, end);
     const newlineAt = leafText.indexOf("\n");
-    // A header with no body line is not a leaf header (never occurs in the
-    // oracle deck — every leaf carries its core).
+    // A header with no body line is not a leaf header (every leaf the
+    // group walk produces carries its core).
     if (newlineAt === -1) continue;
     leaves.push({
       name: headers[i]!.name,
@@ -91,7 +83,7 @@ export function splitAssembledScriptLeaves(assembled: string): AssembledScriptLe
  *  joined "\n" — 00_script.rb's comment_with_source over try_compress, with
  *  asset_group.rb's render_items_and_compress join. Each leaf compiles
  *  independently (Ruby compresses per item card, not per bundle), so mangle
- *  dictionaries restart per leaf — the oracle-verified shape. */
+ *  dictionaries restart per leaf. */
 export function compileScriptBundle(assembled: string): string {
   return splitAssembledScriptLeaves(assembled)
     .map((leaf) => `// ${leaf.name}\n${uglifyHarmonyCompile(leaf.core)}`)
