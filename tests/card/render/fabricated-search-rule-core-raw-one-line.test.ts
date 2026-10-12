@@ -1,5 +1,5 @@
-// fabricated-search-rule-core-raw-one-line.test.ts -- an earlier
-// rule-bar one-line-content red-first pin (plan §(b)).
+// fabricated-search-rule-core-raw-one-line.test.ts -- a rule-bar
+// one-line-content pin.
 //
 // The class: a Search-typed RULE card's bar-right one-line content must
 // render the RAW stored CQL source, never the executed search. Ruby seats
@@ -19,29 +19,23 @@
 // carries a THREE-part-only gate (render.ts cardIsRule:
 // `name.parts.length !== 3`), while Ruby's standard_rule?
 // (lib/card/rule/all.rb:37-44; the engine's faithful port is
-// cardMatchesRuleSet) has NO part-count limit. The corpus's named exemplar
-// -- stored rule 17743 `Exhibit+Item+*type plus right+*content options`
-// (Search-typed, db_content `{"type":"Item", "sort":"name"}`, FOUR name
-// parts) -- therefore EXECUTED its search wherever its core rendered: the
-// Exhibit+Item+*type plus right rules table rendered the one-line EMPTY
-// (the search was never pre-executed on that page, so card_list fell to
-// no_search_results whose bytes strip to ""), and the Search cardtype
-// page's member bar rendered the EXECUTED result list (probe
-// job-1790819678863-c558538f, tmp/p22-rulebar-content/results.jsonl).
-// The oracle shows the raw JSON on BOTH pages (recapture-raw-shard-000013
-// offset 53737 = the 30-byte residual; recapture-raw-shard-000000 card
-// 17743 bar; all 14 non-default Search-typed rule bars across the 48
-// oracle shards are raw -- census 2026-10-01).
+// cardMatchesRuleSet) has NO part-count limit. A FOUR-part stored Search
+// rule therefore EXECUTED its search wherever its core rendered: its set's
+// rules table rendered the one-line EMPTY (the search was never
+// pre-executed on that page, so card_list fell to no_search_results whose
+// bytes strip to ""), and the Search cardtype page's member bar rendered
+// the EXECUTED result list. The expected bytes show the raw JSON on BOTH
+// pages; every non-default Search-typed rule bar in the recorded surface
+// is raw.
 //
-// Fixture shape (corpus-equivalent, no corpus needed): the corpus's set
-// anchor `Exhibit+Item+*type plus right` is a compound anchor whose
+// Fixture shape: the mirrored set anchor is a compound anchor whose
 // prototype is List-typed (which is the only reason *content options --
 // restricted_to_type [:list, :pointer, :session], card-mod-list
 // set/self/content_options.rb:2 -- enumerates on that set's rules table
 // at all). Here: the List-typed junction "Alpha+Beta", its +*self set,
 // and the stored FOUR-part rule `Alpha+Beta+*self+*content options`
 // (Search-typed, CQL source) -- four name parts, so engine.cardIsRule's
-// 3-part gate misses it exactly like the corpus exemplar, and
+// 3-part gate misses it exactly like the mirrored exemplar, and
 // cardMatchesRuleSet (standard_rule?, any part count) is the arm that
 // must catch it.
 
@@ -75,9 +69,9 @@ async function seedDeck(): Promise<void> {
   await seedCard(s, { id: 20, name: "*read", codename: "read", typeId: SETTING_TYPE_ID });
   await seedCard(s, { id: 39, name: "*self", codename: "self", typeId: SETTING_TYPE_ID });
   await seedCard(s, { id: 86, name: "*content options", codename: "content_options", typeId: SETTING_TYPE_ID });
-  // The List-typed anchor JUNCTION + its self set: the corpus anchor
-  // `Exhibit+Item+*type plus right` is a junction (Exhibit+Item) whose
-  // prototype is List-typed, and the rule under it has FOUR name parts.
+  // The List-typed anchor JUNCTION + its self set: the mirrored anchor is
+  // a junction whose prototype is List-typed, and the rule under it has
+  // FOUR name parts.
   await seedCard(s, { id: 61, name: "Alpha", typeId: BASIC_TYPE_ID });
   await seedCard(s, { id: 60, name: "Beta", typeId: BASIC_TYPE_ID });
   await seedCard(s, { id: 66, name: "Alpha+Beta", leftId: 61, rightId: 60, typeId: LIST_TYPE_ID });
@@ -86,7 +80,7 @@ async function seedDeck(): Promise<void> {
   await seedCard(s, { id: 10, name: "*all", codename: "all", typeId: SET_TYPE_ID, dbContent: "{}" });
   await seedCard(s, { id: 50, leftId: 10, rightId: 20, dbContent: "[[Anyone]]" });
   await seedReference(s, 50, 6, "anyone");
-  // The stored FOUR-part search rule -- the corpus's row 17743 shape
+  // The stored FOUR-part search rule -- the mirrored exemplar shape
   // (Search-typed *content options rule, CQL source content).
   await seedCard(s, {
     id: 64,
@@ -105,7 +99,7 @@ async function seedDeck(): Promise<void> {
 beforeAll(async () => {
   storage = await createRenderTestStorage();
   await seedDeck();
-  // Warm the setting cards into the render-card map (the r16 fixture
+  // Warm the setting cards into the render-card map (the standard fixture
   // idiom).
   for (const name of ["*read", "*self", "*content options"]) {
     try {
@@ -128,8 +122,8 @@ describe("Search-typed rule card core renders raw (set/rule/html_views.rb:2-12)"
     const at = html.indexOf("Xcontent_option-bar-view");
     expect(at).toBeGreaterThan(-1);
     const region = html.slice(html.lastIndexOf("<div", at));
-    // The oracle's byte shape (recapture-raw-shard-000013 offset 53737,
-    // 30 bytes): the one-line div carries the raw db_content JSON.
+    // The expected byte shape: the one-line div carries the raw db_content
+    // JSON.
     expect(region).toContain(
       '<div class="text-muted one-line">{"type":"Item", "sort":"name"}</div>',
     );
