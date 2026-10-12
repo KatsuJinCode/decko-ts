@@ -64,9 +64,8 @@ const ADMINISTRATOR_CODENAME = "administrator";
  *  constant FROM the deck's STORED codename — codename.rb:107-110
  *  `Card.const_get_or_set("#{codename.to_s.camelize}ID")` — so the lookup
  *  key is the stored codename string (`decko_bot` camelize→ `DeckoBot`
- *  → `DeckoBotID`), never a guessed alternate spelling. The corpus deck
- *  stores `decko_bot` on card id 1 (named "Decko Bot 1"); the former
- *  `deckobot` constant here matched no row, so actor 1 silently lost the
+ *  → `DeckoBotID`), never a guessed alternate spelling. A former
+ *  `deckobot` spelling here matched no row, so actor 1 silently lost the
  *  always_ok short-circuit and was denied owner-only cards. */
 const DECKOBOT_CODENAME = "decko_bot";
 /** Codename of the *members setting — the joint name Ruby's rolehash hangs
@@ -99,8 +98,9 @@ export interface ReadViewer {
   readonly actorId?: number;
 }
 
-/** The signed-out corpus viewer — what every engine computed before the
- *  actor wave, and what an unresolved/expired token degrades to
+/** The signed-out corpus viewer — what the engine computes when no
+ *  session actor is available, and what an unresolved/expired token
+ *  degrades to
  *  (auth/current.rb:58-63). */
 export const ANONYMOUS_VIEWER: ReadViewer = { signedIn: false };
 
@@ -144,7 +144,7 @@ interface PartyRuleRow {
 /** Statement 3 (the gate)'s position in readPermissionStatements' array —
  *  every consumer that folds, splices, or replaces a single permission
  *  statement by index reads THIS constant, so reordering the array cannot
- *  silently desync a fold (one-trip build , $1: the seat head's
+ *  silently desync a fold (the seat head's
  *  gate-count column replaces this statement in the one-trip posture). */
 export const PERMISSION_GATE_COUNT_STATEMENT_INDEX = 2;
 
@@ -252,10 +252,10 @@ export function readPermissionStatements(viewer?: ReadViewer): SQLStatement[] {
  *    list layer itself puts them: an IdList maintains one reference row
  *    per item (ref_type "L", referee_key NULL) at save time
  *    (card-mod-list set/abstract/id_list.rb:33-47 create_references_out).
- *    The corpus deck proves the shape: every `<Role>+*members` row's
- *    reference set matches its content item count exactly, and the
- *    anonymized corpus rewrote the CONTENT while the id references
- *    survived — references are the durable id truth.
+ *    Stored decks show the shape: every `<Role>+*members` row's
+ *    reference set matches its content item count exactly, and a deck
+ *    whose content has been rewritten in place still carries the original
+ *    id references — references are the durable id truth.
  *
  * Parameterized by the actor id; rides the SAME batch as the base
  * statements (see readPermissionStatements). ORDER BY is a port-side
@@ -282,8 +282,8 @@ function rolePartyStatement(actorId: number): SQLStatement {
 }
 
 /** Parse the batch results (statements in readPermissionStatements order)
- *  for one actor's parties into the permission state. Legacy entry point —
- *  the Anonymous corpus path passes
+ *  for one actor's parties into the permission state. The corpus path
+ *  passes
  *  (results, anonymousIdFromResults(results), false). */
 export function readPermissionStateFromResults(
   results: SQLQueryResult[],
@@ -386,7 +386,8 @@ export function anonymousIdFromResults(results: SQLQueryResult[]): number | unde
 }
 
 /**
- * The Anonymous viewer's permission state — the corpus capture's actor.
+ * The Anonymous viewer's permission state — the viewer every default
+ * computation runs as.
  * Anonymous joins no roles (account_holder.rb:40 all_enabled_roles is []
  * when id == AnonymousID), so its parties are [AnyoneID, AnonymousID].
  */
@@ -455,10 +456,11 @@ const LEFT_DELEGATION_MAX_DEPTH = 16;
  *
  * Returns undefined when the deck carries NO read rule cards at all
  * (`hasReadRules: false`): every real deck bootstraps *all+*read
- * (card/auth/setup.rb:44), so this is the synthetic-seed case only, and
- * the caller treats it as ALLOWED (the documented divergence — Ruby on a
+ * (card/auth/setup.rb:44), so this is the rule-less-seed case only, and
+ * the caller treats it as ALLOWED. That is a deliberate divergence —
+ * Ruby on a
  * rule-less deck denies; matching that would deny every card of every
- * rule-less test deck, which is not the surface any oracle captures).
+ * rule-less test deck.
  * A COMPLETE deck's walk that resolves NO candidate returns false (fail
  * closed): see the tail.
  */
@@ -482,8 +484,7 @@ async function canReadByRuleLookupDepth(
   // concrete pattern (SELF) — and rule_lookup_keys then nils every anchored
   // candidate whose anchor card has no id. The virtual cards (id ===
   // undefined) are new cards by definition, so their SELF candidate —
-  // anchored on themselves — never reaches the lookup. Oracle-verified
-  // against the recapture deck:
+  // anchored on themselves — never reaches the lookup:
   // `Card.fetch("<virtual junction>").permission_rule_id(:read)` answers the
   // `*all plus+*read` rule, skipping an existing `<name>+*self+*read` rule.
   const candidates = ruleNamesForCard(
@@ -511,8 +512,8 @@ async function canReadByRuleLookupDepth(
     // own permission walk (left_permission_rule_id :66-72). Without this the
     // walk evaluates viewer membership in the DELEGATING rule's grants — a
     // _left rule names no party, so every id-less compound child under it
-    // (the structured/missing children: ZQVT+legacy class) denied where
-    // Ruby's delegation reaches the left card's own rule (the corpus
+    // (the structured/missing children) denied where
+    // Ruby's delegation reaches the left card's own rule (the
     // `*all plus+*read -> _left` chain ends at *all+*read = Anyone).
     if (
       depth < LEFT_DELEGATION_MAX_DEPTH &&
@@ -534,9 +535,9 @@ async function canReadByRuleLookupDepth(
   // (set/all/permissions.rb:139-146 read_rules_hash[nil]) — so the port
   // FAILS CLOSED (deny). The fail-open this replaced leaked card bodies
   // through the catch-all whenever a more specific rule candidate could not
-  // be evaluated (the *type plus right read rule of "+Source Content" cards
-  // granting "Anyone Signed In" never reached the verdict; the walk fell
-  // through to *all+*read and granted anonymous).
+  // be evaluated: a *type plus right read rule granting "Anyone Signed In"
+  // never reached the verdict, the walk fell
+  // through to *all+*read, and anonymous was granted.
   // Partial decks (per-shard replay seeds) simply lack the card's
   // applicable rule card, and fabricating a denial from missing data would
   // mis-deny cards the full deck renders — there the port still allows
@@ -683,8 +684,7 @@ export interface ResolvedRuleRow {
  * post-save seam (CardActionEngine.expireAfterWrite) — every committed
  * mutation routes through that method, so a save drops the universe AND
  * the content memo and the next resolution rebuilds post-save state. No
- * second invalidation path. (The performance history and measurements
- * behind this shape: .)
+ * second invalidation path.
  */
 interface RuleResolutionDriverCache {
   /** ckey -> rule card id: the full composed-key universe, built once per
@@ -781,7 +781,7 @@ const TASK_RULE_SETTING_NAMES: readonly string[] = [
  * seed the walk needs. The second seed term covers the rule cards whose
  * composed key is STORED rather than composable — a rule row with a virtual
  * left carries its full name in the `key` column and no `left_id` to walk
- * from, which is not hypothetical: the corpus deck's delegating rule
+ * from, which is not hypothetical: a delegating rule
  * `*all plus+*read` is exactly that row, and a seed of `anc` alone loses it
  * (which the delegation then resolves to the catch-all `*all+*read` and
  * allows — a fail-OPEN, caught by
@@ -794,17 +794,15 @@ const TASK_RULE_SETTING_NAMES: readonly string[] = [
  * keeps only the rule-shaped composed keys, which is the entire set of keys
  * the render path can ask for.
  *
- * Measured on the trial deck (19,482 live cards), wire and local: whole-deck
- * 19,474 rows / 1,074,532 bytes / 3,789 ms against rule-closure 1,489 rows
- * / 84,379 bytes / 384 ms, agreeing on all 1,489 rule-shaped keys (0 missing,
- * 0 disagreeing, 0 invented). See
- * benchmarks/cold-render/probe-rule-closure-statement-shapes.ts (wire) and
- * probe-rule-closure-shapes-locally.ts (plan ranking against a local mirror).
+ * Against a deck of ~19k live cards, the whole-deck walk returns ~19.5k rows
+ * and ~3.8 s; the rule-closure walk returns ~1.5k rows and ~0.4 s, agreeing
+ * on every rule-shaped key (0 missing, 0 disagreeing, 0 invented). The
+ * benchmark scripts under benchmarks/cold-render/ probe both shapes.
  *
  * The arms stay UNBOUNDED on purpose: adding `j.id IN (SELECT id FROM anc)`
- * to them is the obvious tightening and it is a trap — measured at 20-25 s
- * against this deck, worse than the 142 ms whole-deck walk it replaces,
- * because the bound re-evaluates a 12,738-row closure per recursion step.
+ * to them is the obvious tightening and it is a trap — against that deck it
+ * runs an order of magnitude slower than the whole-deck walk it replaces,
+ * because the bound re-evaluates a large closure per recursion step.
  * The seed narrowing plus the projection is what actually removes the deck.
  *
  * NOT equivalent to the whole-deck walk for arbitrary keys, and must not be
@@ -871,10 +869,10 @@ const RULE_SUFFIX_LAST_CHARS = [
 /**
  * The RULE-CLOSURE walk the render path runs: the same rows as
  * LEGACY_RULE_KEY_RULE_CLOSURE_STATEMENT, for any deck, with the arms
- * pruned to the derivations that can reach a projected row. On the local
- * mirror of the trial deck the legacy walk builds 11,477 `resolved` rows
- * (and enumerates about 14k join candidates) to keep 1,489; this one builds
- * about 3,800 from about 5k candidates, and takes about half the time.
+ * pruned to the derivations that can reach a projected row. On a local
+ * mirror of a ~19k-card deck the legacy walk builds roughly 11k `resolved`
+ * rows (enumerating about 14k join candidates) to keep ~1.5k; this one builds
+ * a third as many rows from fewer candidates, and takes about half the time.
  * benchmarks/poc-live-batch/check-rule-closure-rewrite.mjs asserts the two
  * return the same row set on a deck and on randomly perturbed copies of it.
  *
@@ -901,10 +899,10 @@ const RULE_SUFFIX_LAST_CHARS = [
  *
  * WHY THE CTEs ARE MATERIALIZED. A recursive step that joins an unindexed
  * CTE re-reads it once per queue row — the trap the legacy comment records
- * (20-25 s for `j.id IN (SELECT id FROM anc)`). Here the edge sets are
+ * (the `j.id IN (SELECT id FROM anc)` bound). Here the edge sets are
  * MATERIALIZED, so SQLite builds them once and probes them through an
- * automatic index; without the hint the same statement takes about 2 s
- * locally. Requires SQLite 3.35 or later (the MATERIALIZED keyword).
+ * automatic index; without the hint the same statement is an order of
+ * magnitude slower. Requires SQLite 3.35 or later (the MATERIALIZED keyword).
  *
  * Row ORDER is not part of the contract (the legacy statement has no
  * ORDER BY either); the check script reports whether it matched.
@@ -1026,19 +1024,19 @@ export async function resolveRuleRowsByKeys(
  * (`ruleNamesForCard(card, "*read" | "*create" | "*update" | "*delete")`
  * — canReadByRuleLookupDepth below and allTaskVerdictsForCard /
  * permitVerdict in view-task-rules.ts are the only render-path callers, and
- * their keys are pattern names by construction). Measured on a cold `Home`
- * against the trial deck: 612 resolution calls, 99 distinct keys, 99 of 99
- * ending in a task setting name. A card's composed key is therefore needed
+ * their keys are pattern names by construction). Every one of those keys on
+ * a cold render ends in a task setting name. A card's composed key is
+ * therefore needed
  * only when the card sits on a rule card's spine, and the walk only has to
  * start from the simple cards on those spines — which is the boundary the
  * whole-deck statement lacks.
  *
- * WHAT IT COSTS AND BUYS (trial deck, 19,482 live cards; wire, measured by
- * benchmarks/cold-render/probe-rule-closure-statement-shapes.ts):
- * whole-deck 19,474 rows / 1,074,532 response bytes / 3,789 ms;
- * rule-closure 1,489 rows / 84,379 response bytes / 384 ms — the SAME
- * statement count (one per driver generation), and on all 1,489 rule-shaped
- * keys the two agree exactly (0 missing, 0 disagreeing, 0 invented).
+ * WHAT IT COSTS AND BUYS: against a deck of ~19k live cards the whole-deck
+ * walk returns an order of magnitude more rows and takes about ten times as
+ * long, for the same statement count (one per driver generation) and the
+ * same answers on every rule-shaped key (0 missing, 0 disagreeing,
+ * 0 invented). The benchmark script under benchmarks/cold-render/ measures
+ * both shapes.
  *
  * The whole-deck walk stays for the write path: set-read-rule.ts's
  * `self` set-pattern member lookup resolves the anchor card's own composed
