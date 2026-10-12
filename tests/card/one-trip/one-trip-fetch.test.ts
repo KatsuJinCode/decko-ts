@@ -1,4 +1,4 @@
-// RED-first pins, BUILD 2 (the one-trip fetch):
+// RED-first pins (the one-trip fetch):
 // - ONE statement (one driver.query round trip) returns the page's whole
 //   working set as one JSON document — recursive closure phase inside, a
 //   NON-recursive JSON-aggregation outer phase (SQLite forbids aggregates
@@ -10,7 +10,8 @@
 // - the bundle carries full cards columns the adapter can seat, plus the
 //   page's rule candidates and search results sections.
 //
-// The corpus tests skip when the mirror copy is absent (fresh clones).
+// These tests skip when the shared deck database copy is absent (fresh
+// clones).
 
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
