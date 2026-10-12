@@ -1,5 +1,5 @@
-// THE HOPS GATE — one page, one database hit (operator law, 2026-10-03):
-// "one page, one database hit. If you need more than one trip to the
+// THE HOPS GATE — one page, one database hit (the project's page-render
+// law): "one page, one database hit. If you need more than one trip to the
 // database when rendering a page, you need to explain why to me. Or it's
 // illegal."
 //
@@ -16,11 +16,10 @@
 // permanent and not a lucky cold shape.
 //
 // THE ENUMERATED EXCEPTIONS (the round-trip classes a cold page render
-// legitimately spends beyond its one fused batch; each is carried with its
-// justification in an internal work log,
-// "Per-hop justifications for the final constant", awaiting operator
-// acceptance). On this fixture (nested inclusion + pointer list with an
-// unknown item + wiki link) the measured constant is 14 round trips:
+// legitimately spends beyond its one fused batch; each carries its
+// justification in this header). On this fixture (nested inclusion +
+// pointer list with an unknown item + wiki link) the measured constant is
+// 14 round trips:
 //
 //  1. THE PAGE BATCH (the law's 1): the prepare phase's closure/warm
 //     statements fuse into as few driver.batch calls as the round
@@ -34,7 +33,7 @@
 //     stratum fetched) — each round is ONE round trip carrying that
 //     round's whole statement set. O(depth) batched rounds, never
 //     per-name point queries. Cannot join into fewer statements without
-//     the whole-deck walk the scoping lane removed.
+//     the whole-deck walk the scoping design deliberately omits.
 //  3. WAVE SEATING ROUNDS: seatNamesByWave's chunked key IN-lists,
 //     side-key joins, and side-id tuple asks ride the same rounds as (2)
 //     when the round structure allows; a name whose sides resolve late
@@ -42,8 +41,8 @@
 //  4. THE LADDER RESIDUE: point queries the seating cannot predict —
 //     the root card's own key-row fetch, id-row fetches for rows the
 //     closure never seated, the idToLex name compositions on the fetch
-//     path. Distinct-per-render questions (measured: distinct == calls
-//     on every family in the probe census), so no memo helps; the waves
+//     path. Distinct-per-render questions (distinct == calls on every
+//     family measured), so no memo helps; the waves
 //     PREDICT the asks instead, and each prediction removes its ladder
 //     residue.
 //  5. VIEW-TIME RESOLVED SETTINGS + SESSION STATE: the *content options /
@@ -55,14 +54,15 @@
 // The ceiling encodes 1 + the exceptions' fixture maxima = 14. The WARM
 // re-render carries TWO documented exceptions: (a) the FRESHNESS STAMP —
 // one PK point SELECT of deck_data_version at every render entry
-// (d19ec179, 2026-10-05; render.ts DECK_DATA_VERSION_STATEMENT; the schema
-// header's "warm-render cost is ONE statement, not zero"; delivery
-// contract:79) — and (b) the LATE-SEAT TYPE ask (a type card whose holder
-// entered the prepared map after the cold render's last priming pass costs
-// its one-row ask on the next render, once per engine) — every other warm
-// question must answer from engine state.
-// Raising ANY class requires a receipt justification FIRST, then a ceiling
-// change in the SAME commit, so the law's envelope cannot drift silently.
+// (render.ts DECK_DATA_VERSION_STATEMENT; the schema header documents
+// "warm-render cost is ONE statement, not zero") — and (b) the LATE-SEAT
+// TYPE ask (a type card whose holder entered the prepared map after the
+// cold render's last priming pass costs its one-row ask on the next
+// render, once per engine) — every other warm question must answer from
+// engine state.
+// Raising ANY class requires its justification documented FIRST, then a
+// ceiling change in the SAME commit, so the law's envelope cannot drift
+// silently.
 
 import { describe, it, expect, afterAll } from "vitest";
 import {
@@ -77,8 +77,8 @@ afterAll(() => {
 });
 
 /** The law's ceiling: 1 (the page batch) + the enumerated exceptions'
- *  fixture maxima = 14. See the header — change ONLY with a receipt
- *  justification in the same commit. */
+ *  fixture maxima = 14. See the header — change ONLY with the
+ *  justification documented in the same commit. */
 const HOPS_LAW_CEILING = 14;
 
 async function seedLawFixtureDeck(s: RenderTestStorage): Promise<void> {
@@ -166,15 +166,13 @@ describe("the hops gate: one page, one database hit (plus the enumerated excepti
 
     // WARM: the law's permanence half — every question the cold render
     // asked is answered from engine state now.
-    // 2026-10-06 a1-mods-validation lane: the ceiling was 1 (the
-    // LATE-SEAT TYPE exception alone). d19ec179 (2026-10-05, B-arm freshness
-    // repair) added a second legitimate warm class: the deck_data_version
+    // The ceiling is 2, from TWO legitimate warm classes: the LATE-SEAT
+    // TYPE exception set the first ceiling, and the deck_data_version
     // stamp read at every render entry (render.ts
     // DECK_DATA_VERSION_STATEMENT; db/schema.sqlite.sql [ENGINE-FRESHNESS]
-    // header: "the render contract's warm-render cost is ONE statement, not
-    // zero"). The justification receipt is that
-    // commit; this ceiling change carries it as the law requires.
-    // More than 2 means a question is being RE-ASKED.
+    // header: "the render contract's warm-render cost is ONE statement,
+    // not zero") is the second, added by the freshness repair. More than
+    // 2 means a question is being RE-ASKED.
     storage.counting.reset();
     await storage.engine.render("law fixture page", "open");
     const warm = storage.counting.snapshot();
