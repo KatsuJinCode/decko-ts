@@ -1,4 +1,4 @@
-// Pin the anonymous actorId threading (R4 permission port seam 2): the
+// Pin the anonymous actorId threading: the
 // engine's permission state must carry the signed-out viewer's OWN card id
 // as a party — Ruby's parties are all_enabled_roles + [self]
 // (card-mod-account set/abstract/account_holder.rb:27-29) and
@@ -10,8 +10,9 @@
 // (the resolveAnonymousReadPermission pattern, src/card/permissions/
 // read-rules.ts:352-360).
 //
-// Corpus-neutral today (verified by census: 0 read rules grant the
-// anonymous party alone, 0 grant anonymous-but-not-anyone), but the parties
+// Neutral on the shipped deck's stored rules (measured: 0 read rules grant
+// the anonymous party alone, 0 grant anonymous-but-not-anyone), but the
+// parties
 // must match Ruby's for any deck whose rules grant [[Anonymous]].
 
 import { describe, expect, it } from "vitest";
