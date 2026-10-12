@@ -1,5 +1,5 @@
-// Type declarations for tools/shadow/shadow-router.mjs (stream T5's
-// shadow-compare proxy skeleton). Signatures mirror the .mjs exports;
+// Type declarations for tools/shadow/shadow-router.mjs (the shadow-compare
+// proxy skeleton). Signatures mirror the .mjs exports;
 //
 
 import type { Server } from "node:http";
