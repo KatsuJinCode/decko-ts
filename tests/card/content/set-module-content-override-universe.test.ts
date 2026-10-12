@@ -40,7 +40,13 @@
 //   "PDT" where the corpus photographed the Windows display name "Pacific
 //   Standard Time" — Ruby prints the abbreviation; that display name was the
 //   capture host's operating system leaking into the port's output.
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+import {
+  CORPUS_CAPTURE_TIME_ZONE,
+  resetDeckTimeZone,
+  setDeckTimeZone,
+} from "../../../src/card/deck-time-zone.js";
 
 import { ORACLE_BUNDLE_ORDER } from "../../../src/card/mod-loader/default-mod-deck.js";
 
@@ -70,6 +76,14 @@ function card(overrides: Partial<SetModuleContentCard>): SetModuleContentCard {
 }
 
 describe("set-module content override universe (card-level record path)", () => {
+  // These pins reproduce the CAPTURED bytes, which the capture HOST rendered
+  // in its own OS zone (fixtures/captured/date-overrides.json records that
+  // host's Time.now.zone as "Pacific Standard Time"). The engine's default is
+  // UTC — the deck's own configured zone — so reproducing the capture sets the
+  // capture zone explicitly for this file.
+  beforeEach(() => setDeckTimeZone(CORPUS_CAPTURE_TIME_ZONE));
+  afterEach(() => resetDeckTimeZone());
+
   it("Self::Now answers the capture wall clock in the deck zone (set/self/now.rb:1-3)", () => {
     setCaptureWallClock(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT);
     const answer = resolveSetModuleContent(card({}));

@@ -360,7 +360,7 @@ const titleNoLinkView: ViewFn = ({ fmt, voo }) => {
   // Oracle: a sample employer's position wanted-link span renders
   // `title="<a href=&quot;/20191213+CM+Time_Tracking+1400?view=bar&quot;>..."`
   // (Ruby probe tmp/perm/ruby-link-probe.rb, link_census) and the
-  // sample organisation anchor renders `title="...Gasshuku &amp; Benefit..."`
+  // sample organisation anchor renders `title="...Fringe &amp; Benefit..."`
   // verbatim-single-escaped from the stored name bytes. The previous
   // h() here double-escaped the derived arm's entities (`&amp;amp;`,
   // CM 20101113) and escaped the explicit arm's brackets (`&lt;`).

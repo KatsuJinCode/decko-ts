@@ -8,7 +8,7 @@
 //   A1  uri.rb:63-68+86-89 trailing punctuation re-emitted after the
 //       anchor (sample-author oracle: source.example.org</a>.)
 //   A2a uri.rb:53-55 context_ok? anchors REJECTED_PREFIX at $ - a URL in
-//       the LABEL of an authored <a> autolinks (USABP nested-anchor oracle)
+//       the LABEL of an authored <a> autolinks (nested-anchor oracle)
 //       while a URI inside a quoted attribute stays verbatim
 import { expect, it, describe } from "vitest";
 import { expandContentLinks } from "../../../src/card/render/format.js";
@@ -40,7 +40,7 @@ describe("autolink seams pins (captured oracle bytes)", () => {
   });
 
   it("A2a: autolinks a URL in the LABEL of an authored anchor (org-page oracle)", () => {
-    // oracle shard-000025 <USABP card> +discussion open:
+    // oracle shard-000025 <org page> +discussion open:
     // `or ORG (<a href="http://example.net/"><a target="_blank"
     // class="external-link" href="http://Example.net">Example.net</a></a>).`
     // The outer href's URI is context-rejected (preceded by `="` - the

@@ -4311,8 +4311,8 @@ const URI_EMAIL_REGEXP = /[a-zA-Z\d](?:[-a-zA-Z\d.]*[a-zA-Z\d])?@\b/g;
 // The $ matters exactly where the oracle autolinks INSIDE authored markup:
 // a URL in the LABEL of a literal `<a href="X">URL</a>` is preceded by
 // `">` - the two-char window CONTAINS a quote but does not END with one,
-// so Ruby autolinks it (the nested-anchor oracle bytes: Sample Collective,
-// USABP's `(<a href="http://example.net/"><a target=...>`), while a URI
+// so Ruby autolinks it (the nested-anchor oracle bytes: the synthetic deck's
+// card B's `(<a href="http://example.net/"><a target=...>`), while a URI
 // inside a quoted attribute is preceded by `="` - ends with `"` - and is
 // rejected (73 quoted src="..." regions across the view-surface oracle, ZERO
 // anchored). The unanchored port regex rejected BOTH classes; the $

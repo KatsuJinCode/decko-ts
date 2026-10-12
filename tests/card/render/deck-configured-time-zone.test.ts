@@ -25,6 +25,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+  CORPUS_CAPTURE_TIME_ZONE,
   DEFAULT_DECK_TIME_ZONE,
   deckTimeZoneName,
   formatCardDayofwkMinTz,
@@ -111,8 +112,10 @@ describe("deck time zone — the %Z label is computed, not a literal", () => {
     // the captured September bytes were labelled wrong.
     const september = new Date("2026-09-28T22:12:00Z");
     const january = new Date("2026-01-15T22:12:00Z");
-    expect(zoneAbbreviation(september, DEFAULT_DECK_TIME_ZONE)).toBe("PDT");
-    expect(zoneAbbreviation(january, DEFAULT_DECK_TIME_ZONE)).toBe("PST");
+    // The capture host's zone, named explicitly — the engine default is UTC.
+    expect(zoneAbbreviation(september, CORPUS_CAPTURE_TIME_ZONE)).toBe("PDT");
+    expect(zoneAbbreviation(january, CORPUS_CAPTURE_TIME_ZONE)).toBe("PST");
+    setDeckTimeZone(CORPUS_CAPTURE_TIME_ZONE);
     expect(formatCardDayofwkMinTz(september)).toContain(" PDT");
     expect(formatCardDayofwkMinTz(january)).toContain(" PST");
   });
@@ -128,7 +131,11 @@ describe("deck time zone — the %Z label is computed, not a literal", () => {
 
   it("the graded bytes keep their arithmetic and change only the label", () => {
     // The corpus photographed "...03:12 PM Pacific Standard Time". Same
-    // instant, same wall clock; %Z is now what Ruby prints for it.
+    // instant, same wall clock; %Z is now what Ruby prints for it. Reproducing
+    // the capture means SETTING the capture host's zone — it is not the
+    // engine's default (fixtures/captured/date-overrides.json records the
+    // deck's own Time.zone.name as "UTC").
+    setDeckTimeZone(CORPUS_CAPTURE_TIME_ZONE);
     setCaptureWallClock(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT);
     expect(nowCardContent()).toBe(ORACLE_CAPTURE_NOW_BYTES);
     expect(ORACLE_CAPTURE_NOW_BYTES).toBe("Monday, September 28, 2026 03:12 PM PDT");
@@ -136,10 +143,18 @@ describe("deck time zone — the %Z label is computed, not a literal", () => {
 });
 
 describe("deck time zone — configuration is explicit and fails loudly", () => {
-  it("the default is the graded deck's zone, and the default keeps the graded clock", () => {
+  it("the default is UTC — the deck's own zone, and no location hint", () => {
+    // fixtures/captured/date-overrides.json records time_zone_name "UTC"
+    // (the deck's setting) beside time_now_zone "Pacific Standard Time"
+    // (the capture host's OS zone). The default is the former.
     expect(deckTimeZoneName()).toBe(DEFAULT_DECK_TIME_ZONE);
+    expect(deckTimeZoneName()).toBe("UTC");
+    expect(deckTimeZoneName()).not.toBe(CORPUS_CAPTURE_TIME_ZONE);
+  });
+
+  it("an unconfigured engine renders UTC, not the capture host's geography", () => {
     setCaptureWallClock(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT);
-    expect(nowCardContent()).toBe("Monday, September 28, 2026 03:12 PM PDT");
+    expect(nowCardContent()).toBe("Monday, September 28, 2026 10:12 PM UTC");
   });
 
   it("reset restores the default", () => {
