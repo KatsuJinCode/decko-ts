@@ -285,8 +285,8 @@ const SEARCH_TYPE_CODE = "search_type";
  *  `card_accessor :parent` (a trait), and bootswatch_skin.rb:57-59's
  *  `parent_skin_card` reads that TRAIT, i.e. the subcard whose right side
  *  is this codename's card. It is a codename, never a name: the deck's
- *  parent-pointer junction has right_id 45364, the card NAMED `parent 1`
- *  (corpus). See warmSkinParentPointer. */
+ *  parent-pointer junction whose right side is the card NAMED `parent 1`.
+ *  See warmSkinParentPointer. */
 const SKIN_PARENT_TRAIT_CODENAME = "parent";
 
 /** The views whose body reaches Auth.createable_types (edit_type.rb:44-48
@@ -322,20 +322,20 @@ const PERMISSION_RIGHT_CODENAMES: ReadonlySet<string> = new Set([
   "delete",
 ]);
 // The codename the search-type type card carries in the codehash
-// (render.ts:1038 sets card.typeCode = peekNameForId(typeId)). Corpus
-// search cards have type cards whose CARD NAME is random
-// (id=101 -> type_card name="qnzkqz"), so gating on typeName silently
+// (render.ts:1038 sets card.typeCode = peekNameForId(typeId)). A
+// search card's type card can carry a CARD NAME with no semantic
+// hint, so gating on typeName silently
 // skips every such entry — the prepare phase never runs
 // runSearch and the JSON-parse BadQuery never fires. Match by codename
 // (the value the codehash lookup returns) for parity with Ruby's
 // own deck.
 const DATE_TYPE_CODE = "date";
-// The codename the date-type type card carries. Corpus date cards (id=1135
-// with content "brcvtwrvz", etc.) have type cards whose CARD NAME is
-// random ("evog"), so the typeName gate silently skipped them — the
-// prepare phase never ran the date validator and :open/:content views
-// rendered content instead of raising Date::Error (capture_error_not_raised:
-// Date bucket, 963 entries in the fresh full replay). Match by codename,
+// The codename the date-type type card carries. A date card's type
+// card can carry a CARD NAME with no
+// semantic hint, so a typeName gate silently skips those — the
+// prepare phase never runs the date validator and :open/:content views
+// render content instead of raising Date::Error (a whole bucket of
+// not-raised errors in a full replay). Match by codename,
 // independent of the type card's display name.
 
 /** The views whose Ruby view method PARSES (the lazy Search/Date raise
@@ -441,11 +441,10 @@ export class RenderEngine implements RenderEngineLike {
    *  render, so each render's chase seats (pointer items, link targets,
    *  wave seats, type-opt/template-junction targets) are the NEXT render's
    *  unprocessed surface. Their content refs then resolve one shell deeper
-   *  into the corpus's connected lattice — measured (attribution probe,
-   *  warmflood-attribution-run4/5.log): +875 / +1,325 / +1,284 fresh map
-   *  cards per warm render at 370 / 551 / 500 trips, 100% of them outside
-   *  the page's byte closure (bytes are slot-stable across map sizes 477 →
-   *  3,961, so no view ever reads them). Bounding the sweeps to the
+   *  into the deck's connected lattice — each extra shell of fresh
+   *  map cards per warm render sits entirely
+   *  outside the page's byte closure (bytes are slot-stable across the
+   *  map sizes, so no view ever reads them). Bounding the sweeps to the
    *  render's own seats keeps every byte-critical behavior (render 1 and
    *  the post-reset render seat the whole closure, surface == map there)
    *  while the warm render's sweeps find nothing new to chase. */
