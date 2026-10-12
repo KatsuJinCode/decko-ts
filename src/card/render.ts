@@ -576,7 +576,7 @@ export class RenderEngine implements RenderEngineLike {
    *  Warm re-renders of the same set host pay ONE Map lookup. Cleared on
    *  resetCaches(). */
   private setHostChainCache = new Map<string, string | undefined>();
-  /** Read-permission state for the engine's viewer (the Anonymous corpus
+  /** Read-permission state for the engine's viewer (the Anonymous
    *  actor) — the port of Auth.as_card.read_rules_hash. Resolved lazily on
    *  the first render, folded into the prefetch batch so a cold render
    *  stays ONE round trip; undefined until then. Cleared on resetCaches(). */
@@ -1370,7 +1370,7 @@ export class RenderEngine implements RenderEngineLike {
     // late seat sits in the map already (enrichAndStore's existing-key guard
     // skipped it, so it never entered renderSeats), but when THIS page nests
     // it, its structure substitution and its first processing ARE this
-    // render's byte obligation (the structure-corpus-replay drift case).
+    // render's byte obligation (the structure-replay drift case).
     // The walk is closureWarm's own BFS (nest-reference reachability over
     // the map, memory-only); chase residue of OTHER pages enters the surface
     // only when THIS render's closure reaches it, so the cascade stays cut.
@@ -4959,7 +4959,7 @@ export class RenderEngine implements RenderEngineLike {
    *  registered card NAME (link_to_card's href source, base.rb:43-47) or
    *  undefined when the name is not a live card. NULL-name junction rows
    *  stay undefined (wanted-card) — absence of knowledge never flips a
-   *  class; the corpus's People Green pin (wanted on BOTH sides) is the
+   *  class; the wanted-card pin (wanted on BOTH sides) is the
    *  guard. Regular (uncodenamed) cards resolve through the prepare-phase
    *  link-target warm pass below instead, which seats the real record. */
   peekKnownCardName(name: string): string | undefined {
@@ -5558,11 +5558,11 @@ export class RenderEngine implements RenderEngineLike {
    *    join on the NAME, never a reference lookup.
    *
    *  The port's `fetchRenderCard` is a warm-map read and its prepare walk is
-   *  driven by `card_references` rows. Corpus 6a44dfdc: 9,593 live compound
+   *  driven by `card_references` rows. Thousands of live compound
    *  rows carry `name`/`key` NULL and ZERO inbound references, so they are
-   *  never warmed. The two witnesses are 45421 (`Role+*members+*type plus
-   *  right`, page 105 `{{+*members}}`) and 6554
-   *  (`Cardtype+description+*type plus right`, page 88 `{{+description}}`)
+   *  never warmed. The two witnesses are a `Role+*members+*type plus
+   *  right` page's `{{+*members}}` nest and a
+   *  `Cardtype+description+*type plus right` page's `{{+description}}` nest
    *  — both exist, both rendered the fabricated unknown shape (no
    *  `data-card-id`, url_key `data-card-name`, no SELF set-key token).
    *
