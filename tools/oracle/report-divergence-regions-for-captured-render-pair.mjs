@@ -1,14 +1,14 @@
 // report-divergence-regions-for-captured-render-pair.mjs -- offline region
 // report for an expected/actual render pair already written by
-// probe-view-lane-byte-divergence.mjs (lane-negdelta-zero).
+// probe-view-lane-byte-divergence.mjs.
 //
 // WHAT THIS IS
 //   The grade records only the FIRST byte difference of a failing entry, and a
-//   first difference never accounts for the entry's total byte gap: the
-//   `*all+*all+*follow:closed` entry is 208 bytes short but its first
-//   difference is the 5-byte `RULE ` token, and the rest of the gap lives
-//   somewhere the grade never names. Attributing a mechanism needs EVERY
-//   region, not the first one.
+//   first difference never accounts for the entry's total byte gap: an entry
+//   can be hundreds of bytes short while its first difference is a
+//   five-character token, and the rest of the gap lives somewhere the grade
+//   never names. Attributing a mechanism needs EVERY region, not the first
+//   one.
 //
 //   This tool is the offline half of that: it re-segments an
 //   expected--*.html / actual--*.html pair the comparator's way
@@ -20,9 +20,10 @@
 //   SEGMENTATION. The walk advances BOTH cursors together over a shared
 //   prefix, then cuts at the LONGEST COMMON SUFFIX of the two remainders. A
 //   fixed-width resync search cannot work here: the two sides differ in
-//   length, so a window at the same index on each side compares bytes that are
-//   208 apart. The common-suffix cut is what a diff actually does, and it
-//   handles substitutions, insertions and deletions with one rule.
+//   length, so a window at the same index on each side compares bytes from
+//   different logical positions. The common-suffix cut is what a diff
+//   actually does, and it handles substitutions, insertions and deletions
+//   with one rule.
 //
 // USAGE (from the worktree root)
 //   node tools/oracle/report-divergence-regions-for-captured-render-pair.mjs \
