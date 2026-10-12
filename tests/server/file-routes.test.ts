@@ -670,13 +670,12 @@ describe("save enforcement", () => {
   });
 
   it("a host account NAMED *anonymous carrying a real account id acts as THAT account (LOW-1: id-keyed, auth/proxy.rb:11 + auth/current.rb:43-47)", async () => {
-    // was pinned as a name-keyed denial ("*anonymous" BY NAME was treated
-    // as the anonymous session and refused anonymous-actor) — the literal
-    // premise the LOW-1 fix removes. Ruby keys identity on the id:
+    // Ruby keys actor identity on the id, not the name:
     // `@as_id = Card.id given_user` (auth/proxy.rb:11), signed_in? is
-    // `current_id != AnonymousID` (auth/current.rb:43-47). Id 2 with any
-    // name is a SIGNED-IN account: its upload is judged by the rules (this
-    // deck's *all fallbacks grant Anyone) and attributed to id 2 itself.
+    // `current_id != AnonymousID` (auth/current.rb:43-47). So an account
+    // NAMED *anonymous carrying a real account id is a SIGNED-IN account:
+    // its upload is judged by the rules (this deck's *all fallbacks grant
+    // Anyone) and attributed to id 2 itself.
     const form = new FormData();
     form.append("file", new File([PDF_BYTES as BlobPart], "anon-acct.pdf"));
     const request = new Request("http://test.test/Anon Upload/asset", {
