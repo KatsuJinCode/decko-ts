@@ -19,7 +19,7 @@ eval(block, TOPLEVEL_BINDING, RIG) # rubocop:disable Security/Eval
 FakeCard = Struct.new(:id)
 
 class CaptureIdentityTest < Minitest::Test
-  def entry(id) = { "id" => id, "name" => "20120709+CM+Time Tracking" }
+  def entry(id) = { "id" => id, "name" => "Sample Dated Entry Card" }
 
   def test_placeholder_for_an_input_card_is_a_capture_error
     msg = capture_identity_error(entry(13_305), FakeCard.new(nil))
@@ -42,7 +42,7 @@ class CaptureIdentityTest < Minitest::Test
   def test_the_error_row_keeps_the_input_identity
     row = identity_error_row(entry(13_305), "page", "CAPTURE_ERROR: IdentityMismatch: x")
     assert_equal({ "error" => "CAPTURE_ERROR: IdentityMismatch: x", "id" => 13_305, "lane" => "page",
-                   "name" => "20120709+CM+Time Tracking" }, row)
+                   "name" => "Sample Dated Entry Card" }, row)
   end
 
   SHARD_FILTER = File.read(RIG)[/^# BEGIN shard_filter.*?^# END shard_filter$/m]
