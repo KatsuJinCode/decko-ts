@@ -1,5 +1,5 @@
 [Unit]
-Description=Bunny CDN origin for the scrubbed Culturesmith deck (BunnyDbDriver path, 127.0.0.1:3200)
+Description=Bunny CDN origin for a decko-ts deck on Bunny Database (BunnyDbDriver protocol, 127.0.0.1:3200)
 After=network-online.target
 Wants=network-online.target
 

@@ -1,9 +1,9 @@
-// deploy/bunny-origin/bunny-origin-server.mjs — Node HTTP origin for the
-// scrubbed Culturesmith deck served from Bunny Database.
+// deploy/bunny-origin/bunny-origin-server.mjs — Node HTTP origin for a
+// decko-ts deck stored in Bunny Database, fronted by a Bunny CDN pull zone.
 //
-// This is Path B of the edge-deploy lane: a read-only Node service bound
-// to 127.0.0.1:3200 on Riley's portal VM. A Bunny CDN pull zone fronts
-// it so pages are edge-cached and reachable over HTTPS.
+// A read-only Node service bound to 127.0.0.1:3200, meant to run on a small
+// VM: a Bunny CDN pull zone sits in front of it, so pages are edge-cached
+// and reachable over HTTPS.
 //
 // Why not the full decko-ts engine? The TypeScript engine depends on
 // better-sqlite3 / native modules and has to be transpiled/distributed
@@ -35,10 +35,11 @@ import http from "node:http";
 // -----------------------------------------------------------------------------
 
 const PORT = Number(process.env.BUNNY_ORIGIN_PORT ?? 3200);
-// Bind 127.0.0.1 per Path B's spec (same shape as decko-staging). The
+// Bind 127.0.0.1 by default: loopback-only is the intended posture. The
 // Bunny CDN reaches the origin via an in-VM nginx reverse proxy on a
-// public-facing port — the nginx config is in /etc/nginx/sites-enabled/
-// cs-deck-bunny-origin.conf — keeping the Node service loopback-only.
+// public-facing port — the template for that nginx config ships as
+// bunny-origin-nginx.conf.template beside this file — keeping the Node
+// service loopback-only.
 // Override via BUNNY_ORIGIN_HOST to lock it down further (it is already
 // loopback by default).
 const HOST = process.env.BUNNY_ORIGIN_HOST ?? "127.0.0.1";
