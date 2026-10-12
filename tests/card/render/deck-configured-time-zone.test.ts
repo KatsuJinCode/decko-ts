@@ -1,11 +1,11 @@
 // Rendering reads the DECK's configured time zone.
 //
 // The defect: now-content-bytes.ts, errors.ts and set-module-content-overrides.ts
-// hard-coded America/Los_Angeles — the CAPTURE HOST's operating-system zone —
-// and appended the literal Windows zone DISPLAY NAME "Pacific Standard Time",
-// which is wrong for half the year (a September instant is PDT). Ruby reads
-// `Time.zone` (the deck's own Rails config) and `%Z` renders the zone's
-// abbreviation AT THAT INSTANT.
+// hard-coded America/Los_Angeles — a recording machine's operating-system
+// zone — and appended the literal Windows zone DISPLAY NAME "Pacific
+// Standard Time", which is wrong for half the year (a September instant is
+// PDT). Ruby reads `Time.zone` (the deck's own Rails config) and `%Z`
+// renders the zone's abbreviation AT THAT INSTANT.
 //
 // What this suite pins:
 //
@@ -17,7 +17,7 @@
 //     reads PDT in September and PST in January. A zone whose offset does not
 //     change across the year reads the same label in both, which is what a
 //     computed label does and a hard-coded one cannot.
-//   - The DEFAULT is the graded deck's zone, so the graded arithmetic is
+//   - The DEFAULT is the deck's own zone, so the recorded arithmetic is
 //     untouched — only the label is now the abbreviation Ruby prints.
 //   - A partial date completes its missing month/year from "today" in the
 //     DECK's zone (errors.ts#fillFromReferenceMonth), not the host's.
@@ -109,10 +109,11 @@ describe("deck time zone — the %Z label is computed, not a literal", () => {
   it("the same zone reads PDT in September and PST in January", () => {
     // THE POINT OF THE FIX: one hard-coded string cannot be both. A Windows
     // display name is "Pacific Standard Time" in both months, which is why
-    // the captured September bytes were labelled wrong.
+    // the recorded September bytes were labelled wrong.
     const september = new Date("2026-09-28T22:12:00Z");
     const january = new Date("2026-01-15T22:12:00Z");
-    // The capture host's zone, named explicitly — the engine default is UTC.
+    // The recorded-zone constant, named explicitly — the engine default is
+    // UTC.
     expect(zoneAbbreviation(september, CORPUS_CAPTURE_TIME_ZONE)).toBe("PDT");
     expect(zoneAbbreviation(january, CORPUS_CAPTURE_TIME_ZONE)).toBe("PST");
     setDeckTimeZone(CORPUS_CAPTURE_TIME_ZONE);
@@ -130,11 +131,10 @@ describe("deck time zone — the %Z label is computed, not a literal", () => {
   });
 
   it("the graded bytes keep their arithmetic and change only the label", () => {
-    // The corpus photographed "...03:12 PM Pacific Standard Time". Same
-    // instant, same wall clock; %Z is now what Ruby prints for it. Reproducing
-    // the capture means SETTING the capture host's zone — it is not the
-    // engine's default (fixtures/captured/date-overrides.json records the
-    // deck's own Time.zone.name as "UTC").
+    // The recorded bytes read "...03:12 PM Pacific Standard Time". Same
+    // instant, same wall clock; %Z is now what Ruby prints for it.
+    // Reproducing them means SETTING the recorded machine's zone — it is
+    // not the engine's default (the deck's own Time.zone.name is "UTC").
     setDeckTimeZone(CORPUS_CAPTURE_TIME_ZONE);
     setCaptureWallClock(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT);
     expect(nowCardContent()).toBe(ORACLE_CAPTURE_NOW_BYTES);
@@ -144,9 +144,9 @@ describe("deck time zone — the %Z label is computed, not a literal", () => {
 
 describe("deck time zone — configuration is explicit and fails loudly", () => {
   it("the default is UTC — the deck's own zone, and no location hint", () => {
-    // fixtures/captured/date-overrides.json records time_zone_name "UTC"
-    // (the deck's setting) beside time_now_zone "Pacific Standard Time"
-    // (the capture host's OS zone). The default is the former.
+    // The deck's configured setting is time_zone_name "UTC"; the recording
+    // machine's OS zone ("Pacific Standard Time") is a different value. The
+    // default is the former.
     expect(deckTimeZoneName()).toBe(DEFAULT_DECK_TIME_ZONE);
     expect(deckTimeZoneName()).toBe("UTC");
     expect(deckTimeZoneName()).not.toBe(CORPUS_CAPTURE_TIME_ZONE);
@@ -205,7 +205,7 @@ describe("deck time zone — a partial date completes from today in the DECK's z
     const tokyo = parseRubyDateContent("20-0405");
     expect(tokyo).not.toBeNull();
     // Tokyo's "today" is already October 1, so the day-only date completes
-    // into OCTOBER. Under the hard-coded capture-host zone this deck would
+    // into OCTOBER. Under the old hard-coded recording zone this deck would
     // have rendered September 20 — the defect this pins.
     expect(tokyo!.toISOString().slice(0, 10)).toBe("2026-10-20");
   });
