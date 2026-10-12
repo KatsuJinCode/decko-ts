@@ -1,7 +1,7 @@
 // Pointer / List cardtype content rendering (card-mod-list-0.20.0
 // set/type/pointer.rb + set/type/list.rb + set/abstract/01_list/html_views.rb).
 //
-// Ruby truth (the path the captured corpus bytes pin):
+// Ruby truth:
 //   Abstract::List#standard_pointer_core (html_views.rb:6-13) wraps the
 //   pointer/list core in `<div class="card-list card-list-#{item_view}
 //   pointer-list">` and renders items via standard_pointer_items ->
@@ -10,37 +10,29 @@
 //   (card-mod-list set/abstract/01_list/html_views.rb:28-30:
 //   `<div class="pointer-item item-#{item_view}">…</div>`).
 //
-//   The captured slot id for the inner item is `${name}-mini_bar-view`
+//   The inner item's slot id is `${name}-mini_bar-view`
 //   (not `${name}-bar-view` as the source ruby's :bar view definition
 //   might suggest). The slot's class includes `mini_bar-view`; the
 //   data-slot's view field is `bar`. The two diverge because the list
 //   rendering path produces the slot with a bar-shaped data-slot.
-//   The port reproduces that shape so the captured bytes match — slot
+//   The port reproduces that shape — slot
 //   id and class use "mini_bar", data-slot's view is "bar", everything
 //   else is the bar.haml body.
 //
-// OUTER WRAPPER DIVERGENCE (pin: corpus:6551 capture, a *star+*create rule
-// card with right *create, shard-000003.jsonl:359): Ruby's
+// OUTER WRAPPER DIVERGENCE: Ruby's
 // standard_pointer_core emits `<div class="pointer-list">` (no
 // card-list-bar prefix) when the parent card matches the *rule pattern
 // AND the right name is one of the permission settings (*create, *read,
 // *update, *delete). All other pointer/list cards (non-rule, or rule
 // with non-permission setting like *layout) emit the full prefix
-// `<div class="card-list card-list-bar pointer-list">`. Survey of the
-// corpus's 168 OUTER-family failure entries (shard-000003 corpus:6551
-// through corpus:7118) confirms every one is a rule card whose right is
-// one of those four permission settings.
+// `<div class="card-list card-list-bar pointer-list">`.
 //
-// INNER ITEM DIVERGENCE (pin: corpus:77 capture, *home pointer card with
-// content "yzzw", shard-000000.jsonl:44): Ruby's nest machinery produces
+// INNER ITEM DIVERGENCE: Ruby's nest machinery produces
 // the mini_bar slot wrap even when the inner item is unknown/phantom,
-// and renders a bar-shaped body with denied spans inside. The captured
-// oracle for every phantom item in the corpus has the SAME type info
-// (type_name "BasicCs", type_id 22281 — merge census corrected
-// the earlier "swtktey" mis-survey, which matched no oracle bytes) —
-// this is the corpus's default type card for phantom items. The port
-// reproduces the shape so the captured bytes match. Real, non-phantom
-// items would render through fmt.nestRecord with the actual item
+// and renders a bar-shaped body with denied spans inside. The deck's
+// default type card supplies the phantom item's type info (see the
+// PhantomItemType doc below); the port reproduces Ruby's shape. Real,
+// non-phantom items render through fmt.nestRecord with the actual item
 // card's type info.
 //
 // Truth sources:
@@ -68,8 +60,7 @@ import { hamlSlotInHash } from "./haml-slot-style.js";
  *  the suffix of the per-item wrapper class (`item-${view}`). */
 const POINTER_LIST_ITEM_VIEW = "bar";
 /** The slot id/class for an item rendered through the pointer/list path.
- *  The captured corpus bytes (corpus:77, all pointer/list content/open
- *  entries in the v2 corpus) use `${name}-mini_bar-view` here while the
+ *  It is `${name}-mini_bar-view` while the
  *  data-slot's view field is `bar` (see POINTER_LIST_ITEM_VIEW). */
 const POINTER_LIST_ITEM_SLOT_VIEW = "mini_bar";
 
@@ -78,11 +69,8 @@ const POINTER_LIST_ITEM_SLOT_VIEW = "mini_bar";
  *  cardtype, the third cardtype that inherits the same core:
  *  card-mod-style-0.20.0 set/type/skin.rb:3 `include_set List` puts
  *  Type::Skin on the SAME Abstract::List module, so a Skin card's html
- *  :core renders the identical card-list pointer-list wrapper
- *  (pass15 page triage: all four Skin-typed pages — "classic skin",
- *  "customized classic skin", "bootstrap default skin",
- *  "classic bootstrap skin+*stylesheets" — oracle-render the
- *  pointer-list where the engine dumped raw text). BootswatchSkin is
+ *  :core renders the identical card-list pointer-list wrapper.
+ *  BootswatchSkin is
  *  deliberately ABSENT: its type module (card-mod-bootstrap
  *  set/type/bootswatch_skin.rb) does NOT include List — its content is
  *  the CONTENT_PARTS method join and its page core is the bootstrap
@@ -102,7 +90,7 @@ export function isPointerOrListCard(card: RenderCard): boolean {
  *  (card-mod-list set/all/item.rb#raw_item_strings): content.to_s.split(/\n+/),
  *  each item stripped of [[ / ]] brackets and surrounding whitespace.
  *  Empty / whitespace-only items survive the split and pass through
- *  verbatim (the corpus's single-line "yzzw" content yields ["yzzw"]). */
+ *  verbatim. */
 export function rawItemStrings(content: string): string[] {
   return content
     .toString()
@@ -122,12 +110,10 @@ function stripItem(item: string): string {
  *  absolutize_contextual_parts) BEFORE the fetch. Absolute lines pass
  *  through unchanged; relative lines absolutize against the HOST card's
  *  name; SESSION-relative lines resolve through Card::Name.session
- *  (environment.ts session — "Anonymous" on the signed-out corpus surface).
- *  The captured case: signup alert email+*from's rule content carries the
- *  single item "_user", and the oracle renders the resolved Anonymous
- *  card's full bar (data-card-id 15, nest_name "Anonymous") — while an
- *  unresolved literal "_user" collides with the User cardtype's key
- *  ("user") and renders THAT card's denial.
+ *  (environment.ts session — "Anonymous" when signed out).
+ *  A relative item like "_user" must therefore resolve to the session
+ *  user's card: an unresolved literal "_user" would collide with the
+ *  User cardtype's key ("user") and render THAT card's denial.
  *
  *  Tolerance matches the sync render path's other mark parses: an
  *  unresolvable ID/codename mark throws at DeckoName.parse; the raw line
@@ -138,9 +124,8 @@ export function resolvePointerItemName(item: string, hostName: DeckoName): strin
     const parsed = DeckoName.parse(item);
     // item.rb clean_item_name absolutizes every line; an absolute name only
     // changes there when a blank extreme takes the context
-    // (contextual.rb absolutize_extremes): "Ellery Family+" under
-    // "Faith Merrow - Harbour Mutual Loans+Project" names
-    // "Ellery Family+Faith Merrow - Harbour Mutual Loans+Project".
+    // (contextual.rb absolutize_extremes): "Alpha Family+" under
+    // "Beta Project" names "Alpha Family+Beta Project".
     const parts = parsed.parts;
     const blankExtreme = parts.length > 1 && (parts[0] === "" || parts[parts.length - 1] === "");
     if (parsed.isAbsolute && !blankExtreme) return item;
@@ -153,9 +138,7 @@ export function resolvePointerItemName(item: string, hostName: DeckoName): strin
 /** The four permission settings whose right name (the bare setting codename
  *  without the leading `*`) causes Ruby's standard_pointer_core to emit
  *  the simple `<div class="pointer-list">` outer wrapper rather than
- *  `<div class="card-list card-list-bar pointer-list">`. Empirically
- *  pinned by the corpus's 168 OUTER-family failure entries (shard-000003
- *  corpus:6551-7118, all rule cards with right in this set). */
+ *  `<div class="card-list card-list-bar pointer-list">`. */
 const PERMISSION_RIGHT_NAMES: ReadonlySet<string> = new Set([
   "create",
   "read",
@@ -175,8 +158,7 @@ export function isPermissionRightSetting(rightSetting: string | undefined): bool
 
 /** Whether a card is a rule card (compound name `<left>+*<right>`)
  *  whose right's bare setting codename is one of the four permission
- *  settings. Pinned by the corpus's OUTER-family failures
- *  (corpus:6551-7118). Ruby's standard_pointer_core emits the simpler
+ *  settings. Ruby's standard_pointer_core emits the simpler
  *  `<div class="pointer-list">` wrapper for these cards and the full
  *  `card-list card-list-bar pointer-list` prefix for everything else
  *  (non-pointer/list cards, non-rule cards, and rule cards with a
@@ -218,18 +200,7 @@ export function isRuleCardWithPermissionRight(card: RenderCard): boolean {
  *  `standard_pointer_core`'s wrapper class
  *  (decko/mod/list set/abstract/01_list/html_views.rb:6-13,
  *  `"card-list card-list-#{item_view_options[:view]} pointer-list"`) and
- *  `wrap_item` (same file :28-30, `"item-#{item_view}"`) read that value.
- *
- *  ORACLE CENSUS (2026-10-02, all 48 expected-v2 view-surface shards, every
- *  `<div class="card-list card-list-X pointer-list">` and
- *  `<div class="pointer-item item-X">` occurrence): `bar` 1,041 /
- *  `link` 6,265 / `name` 16. ALL SIXTEEN `name` entries are exactly the
- *  eight `*X+*Y+*input type` cards x {content, open} —
- *  `*style+*right`, `Collection+*right`, `*script+*right`,
- *  `Project+*right`, `*follow+*right`, `*debugger+*self`,
- *  `*layout+*right`, `Topic+*right`. No other card in the capture renders
- *  this view, so the gate is a name shape with a census behind it, not a
- *  guess. */
+ *  `wrap_item` (same file :28-30, `"item-#{item_view}"`) read that value. */
 const INPUT_TYPE_RIGHT_KEY = "*input_type";
 
 /** Whether the pointer/list HOST's html default item view is `:name`
@@ -243,10 +214,9 @@ export function isInputTypeRuleCard(card: RenderCard): boolean {
 }
 
 /** The pointer/list content view body. For non-rule-permission cards the
- *  outer wrapper reads `<div class="card-list card-list-bar pointer-list">`
- *  (corpus:77 *home pointer card, shard-000000:44 — full prefix). For
- *  rule cards with a permission right (corpus:6551 *star+*create list
- *  rule, shard-000003:359) the wrapper is just `<div class="pointer-list">`
+ *  outer wrapper reads `<div class="card-list card-list-bar pointer-list">`.
+ *  For
+ *  rule cards with a permission right the wrapper is just `<div class="pointer-list">`
  *  — no card-list-bar prefix. Each item is wrapped in
  *  `<div class="pointer-item item-bar">` (the default_item_view is :bar,
  *  card-mod-format set/all/html.rb:21-23) and renders through
@@ -263,30 +233,24 @@ export function pointerListCoreHtml(
    *  offset 0 / limit 0). Call sites that hand over an ALREADY-LIMITED item
    *  list (the Mod cardtype page's pre-executed type-member search seat)
    *  pass the seated full count here so `count > POINTER_PAGING_LIMIT`
-   *  fires and the context renders "of <full count>" — corpus pin:
-   *  Mod page 20 pointer-items + "1 - 20 of 36" nav. Absent, count stays
+   *  fires and the context renders "of <full count>". Absent, count stays
    *  filtered.length (every existing call site: unpaginated content). */
   countOverride?: number,
 ): string {
   const filtered = items.filter((s) => s.length > 0);
-  // view-fail class V8 (view-fail dump classes "V8 oracle paginates set
-  // members; engine renders unpaginated nested bars", 8 entries): Ruby's
-  // pointer core runs INSIDE with_paging (html_views.rb:6-13
+  // Ruby's pointer core runs INSIDE with_paging (html_views.rb:6-13
   // standard_pointer_core -> paging_views.rb:20-25 with_paging) — the item
   // list is sliced to limit/offset and a paging nav follows the card-list
-  // div whenever show_paging? holds. Headless render (the bare-view judge):
-  // no Env params and no voo CQL, so contextual_param falls through to
+  // div whenever show_paging? holds. Headless render: no Env params and
+  // no voo CQL, so contextual_param falls through to
   // default_limit 20 (card-mod-list set/abstract/01_list/other_views.rb:3-5)
   // and offset 0 (paging.rb:8-10). show_paging? (paging_views.rb:2-9):
   // limit >= 1, NOT fewer_results_than_limit? (offset 0 and limit > count),
   // and limit < count — i.e. the nav appears exactly when count > 20.
-  // (Merge note: the earlier LIST-typed-only scoping of the same
-  // mechanism is superseded here — its own html_views.rb citation wraps
-  // ALL pointer/list cores, and the corpus's paged POINTER cores pin the
-  // general shape: Martial Concordance+Pages, Practice Pool+training+Notes,
-  // *recent settings, AI+Replacement+Documents. Its CB_role+*members
-  // LIST-core oracle is covered by this same arm — the nav emitter is
-  // byte-identical for the headless page-0 case.)
+  // The mechanism wraps ALL pointer/list cores, not only LIST-typed
+  // cards: the html_views.rb citation covers every pointer/list core,
+  // paged POINTER cores and LIST cores alike — the nav emitter is
+  // byte-identical for the headless page-0 case.
   const count = countOverride ?? filtered.length;
   const paged =
     parent.name !== undefined && count > POINTER_PAGING_LIMIT;
@@ -303,29 +267,21 @@ export function pointerListCoreHtml(
   //     wrapper's closing `</div>`, producing the trailing sequence
   //     `</div>\n</div></div></div>\n</div>` — the inner pointer-item
   //     close is followed by `\n</div>` for the pointer-list, then `\n</div>`
-  //     for the outer content-view slot wrap. Pinned at corpus:77 (shard
-  //     -000000.jsonl, *home pointer card). The famfix48 family
-  //     (unclassified:L/~/exp=\n/act=<, 208 sample / 1,399 population)
-  //     depended on this trailing `\n`.
+  //     for the outer content-view slot wrap.
   //
   //   * simple pointer-list wrapper (`<div class="pointer-list">…</div>`)
   //     used for rule cards whose right is one of *create / *read /
-  //     *update / *delete (isRuleCardWithPermissionRight, see lines 98-135
-  //     and the OUTER-family survey at line 30): the wrapper's inner is
+  //     *update / *delete (isRuleCardWithPermissionRight): the wrapper's inner is
   //     closed INLINE with the pointer-item wrap's `</div>` and the outer
-  //     content-view slot wrap's `</div>`, producing the captured oracle's
+  //     content-view slot wrap's `</div>`, producing
   //     `</div></div></div></div></div>` — five closes inline, only the
   //     first preceded by `\n` (from the phantom body at
-  //     pointerListItemBodyForUnknown line 262). Pinned by corpus:6551
-  //     *star+*create list rule (shard-000003.jsonl:359).
+  //     pointerListItemBodyForUnknown line 262).
   //
-  // The two wrappers MUST diverge on the trailing newline: an earlier
-  // revision applied the card-list-bar `\n` to BOTH branches and that is
-  // the permfix48 unclassified:L/~/exp=</act=\n family (369 sample,
-  // 2,308 population, 368 with expected_size - actual_size = 1 + the
-  // corpus:755 pagination compound case). Adding the newline back only
-  // on the card-list-bar branch keeps the famfix48 family green and
-  // collapses the permfix48 family.
+  // The two wrappers MUST diverge on the trailing newline: applying the
+  // card-list-bar `\n` to BOTH branches changes every simple-wrapper
+  // render's byte shape (an extra `\n` before the slot close). Keeping the
+  // newline on the card-list-bar branch only reproduces both Ruby shapes.
   //
   // The paging nav rides ONLY the card-list wrapper branch: those are the
   // renders whose Ruby path is standard_pointer_core's with_paging. The
@@ -334,11 +290,7 @@ export function pointerListCoreHtml(
   // output-join "\n" (card-1.110.0 lib/card/format/content.rb:70-73
   // `output` joins the array with "\n") supplies the separator the
   // unpaginated wrapper's trailing "\n" carried, and the nav's own trailing
-  // "\n" keeps the slot-close shape (`</nav>\n</div>` — dump-pinned:
-  // phase-000 000000-Martial_Concordance_Pages-content,
-  // phase-017 000034-Practice_Pool_training_Notes-content/-open,
-  // phase-009 000018-_recent_settings-content,
-  // phase-018 000037-Artificial_Intelligence_Replacement_Documents).
+  // "\n" keeps the slot-close shape (`</nav>\n</div>`).
   const ruleShape = isRuleCardWithPermissionRight(parent);
   const wrapper = ruleShape
     ? `<div class="pointer-list">${inner}</div>`
@@ -361,8 +313,7 @@ const POINTER_PAGING_WINDOW = 5;
 const POINTER_PAGING_MAX_PAGES = 100;
 
 /** The `view :paging` nav bytes (card-mod-collection set/abstract/paging/
- *  paging.haml, rendered when show_paging? holds). Byte-pinned against the
- *  an earlier pass dump pairs quoted at pointerListCoreHtml — single-quoted class
+ *  paging.haml, rendered when show_paging? holds). Single-quoted class
  *  attributes (the deck's HAML attr wrapper), the lis on ONE line
  *  (`= paging_links.join`), and the paging-context numbers one per line
  *  (one haml expression per line). Headless current_page is always 0
@@ -373,7 +324,7 @@ const POINTER_PAGING_MAX_PAGES = 100;
  *    (PAGE_LI_CLASS :current -> "page-item active");
  *  - » next_page is always truthy (show_paging? implies total_pages >= 1)
  *    -> the anchor form carrying aria-label="Next" FIRST (Rails attr order
- *    over the merged options hash, dump-pinned).
+ *    over the merged options hash).
  *  The paging-context reads offset+1, last_item_on_page
  *  (min(count, offset+limit), paging.rb:47-49), count_with_params. */
 function pointerPagingNav(parent: RenderCard, count: number): string {
@@ -423,26 +374,22 @@ function pointerPagingNav(parent: RenderCard, count: number): string {
  *  `<div class="pointer-item item-#{item_view}">…</div>`.
  *  Ruby's html format default_item_view is :bar (card-mod-format
  *  set/all/html.rb#default_item_view). The class therefore reads
- *  `pointer-item item-bar` (captured bytes for every pointer/list
- *  sibling); the :view_list demo surface passes the arm's view
- *  (01_list.rb:39-44 mutates voo.items[:view] per arm) and the class
- *  follows (oracle target 152: item-box / item-titled / item-labeled). */
+ *  `pointer-item item-bar`; a caller overriding the item view
+ *  (01_list.rb:39-44 mutates voo.items[:view] per arm) changes the class
+ *  with it (item-box / item-titled / item-labeled). */
 function itemWrap(name: string, inner: string, itemView: string = POINTER_LIST_ITEM_VIEW): string {
   return `<div class="pointer-item item-${itemView}">${inner}</div>`;
 }
 
 /** The phantom item's TYPE identity (id, display name, class-chip key).
  *
- *  WHY IT IS A DECK CONFIGURATION AND NOT A CONSTANT: these three values
- *  used to be hard-coded here (22281 / "BasicCs" /
- *  "basic_c", pinned from the captured corpus — the census behind them:
- *  256 denied mini_bar bodies, 248 carrying data-card-type-name="BasicCs"
- *  with type id 22281). But in Ruby this identity is the DECK's own
+ *  WHY IT IS A DECK CONFIGURATION AND NOT A CONSTANT: in Ruby this
+ *  identity is the DECK's own
  *  `*all+*default` template type — `Card.fetch(name, new: {})` resolves
  *  type_id through that deck's rule row (states.rb:44-50 + the *default
- *  template chain) — so it differs per deck, and hard-coding one deck's
- *  made every other deck's unknown pointer items render another deck's type
- *  chip and data-card-type-* attributes.
+ *  template chain) — so it differs per deck. Hard-coding one deck's
+ *  values made every other deck's unknown pointer items render another
+ *  deck's type chip and data-card-type-* attributes.
  *
  *  It is engine configuration now (RenderEngineLike.phantomItemType, beside
  *  imageCdnHost — same "host-deployment config, undefined = stock shape"
@@ -457,21 +404,20 @@ export type { PhantomItemType } from "./format.js";
 
 /** The mini_bar slot wrap for one pointer/list item: slot id ends in
  *  `mini_bar-view`, slot classes include `mini_bar-view`, and the
- *  data-slot's `view` field is `bar` (matches the captured corpus
- *  bytes for every pointer/list content-item slot).
+ *  data-slot's `view` field is `bar`.
  *
  *  `slotTypeName` is the HOST's item_type_name (card-mod-collection
  *  item.rb:157-162 determine_item_view_options_type folds
  *  `options[:type] = card.item_type_name` into the item nest; the value
  *  rides voo.slot_options into the slot JSON). undefined = no host item
- *  type — the type-less JSON the captured bytes pin.
+ *  type — the type-less slot JSON.
  *
  *  Why not slotWrap + itemBarView? slotWrap uses one view name for
  *  both the slot id AND the data-slot's view field (both come from
- *  the same `view` argument); the captured bytes need them to
+ *  the same `view` argument); this path needs them to
  *  diverge — slot id `mini_bar`, data-slot view `bar`. Building the
- *  slot element directly is the smallest divergence that matches the
- *  pinned bytes (the inner bar.haml body is provided by the caller —
+ *  slot element directly is the smallest divergence that matches Ruby
+ *  (the inner bar.haml body is provided by the caller —
  *  for known cards via fmt.nestRecord; for unknown cards via the
  *  phantom body below). */
 export function pointerListItemSlot(
@@ -514,18 +460,17 @@ function phantomSetKeys(phantomType: PhantomItemType | undefined): string {
   return phantomType === undefined ? "ALL" : `ALL TYPE-${phantomType.typeKey}`;
 }
 
-/** The bar.haml-shaped body for an UNKNOWN/phantom pointer/list item.
- *  Captured oracle (corpus:77 inner yzzw; corpus:400 inner yqwnywnhs;
- *  corpus:6551 inner irjkznnbpewjpr; …): a `<div class="bar ALL
- *  TYPE-basic_c with-bar-menu nodblclick d-flex _card-link">` whose
+/** The bar.haml-shaped body for an UNKNOWN/phantom pointer/list item:
+ *  a `<div class="bar ALL TYPE-<typeKey> with-bar-menu nodblclick d-flex
+ *  _card-link">`-shaped element (when the deck configures a phantom type)
+ *  whose
  *  body is two `<span class="denied">` markers (bar_left view denial +
  *  bar_right view denial — both go through viewPermissionDenial before
- *  the view function runs; the captured shape replaces the full
- *  bar.haml body with the two denied spans). No bar-body row, no menu
- *  items — Ruby's bar.haml in the mini_bar context for an unknown card
- *  emits only the denied spans. The phantom's type info (BasicCs /
- *  22281, class chip basic_c) is the corpus's default phantom type (see
- *  PHANTOM_TYPE_NAME above).
+ *  the view function runs, so the full
+ *  bar.haml body collapses to the two denied spans). No bar-body row, no
+ *  menu items — Ruby's bar.haml in the mini_bar context for an unknown card
+ *  emits only the denied spans. The phantom's type info comes from the
+ *  deck configuration (see the PhantomItemType doc).
  *
  *  Ruby's nest machinery wraps the denied body inside the mini_bar
  *  slot wrap regardless of whether the inner card is read-denied — the
@@ -550,27 +495,20 @@ export function pointerListItemBodyForUnknown(
   const setKeys = identity?.setKeys ?? phantomSetKeys(deckPhantomType);
   const typeName = identity?.typeName ?? deckPhantomType?.typeName;
   const typeId = identity?.typeId ?? deckPhantomType?.typeId;
-  // The attr pair is the deck-wide oracle shape (every shard's inner
-  // bodies: `data-card-link-name='<url-key>' data-card-name='<name>'`,
-  // e.g. shard-000024's "Riley_Ellery"/"Riley Ellery")
+  // The attr pair shape: `data-card-link-name='<url-key>'`
+  // `data-card-name='<name>'`
   // — the LINK attr is the url-key form, the NAME attr the display form.
-  // The resolved-mark pin (CB_role+*members' ~861
-  // line: the rendered bar "ANON-350cb08c081a" / "ANON_350cb08c081a") is
-  // the same rule — parse resolves, urlKey slugs. This parse can raise
+  // A resolved session-relative mark follows the same rule — parse
+  // resolves, urlKey slugs. This parse can raise
   // only for a mark the name environment cannot resolve, and the phantom
   // path already parsed this exact string in phantomPointerListItem
   // before reaching the body, so no new throw surface.
   // data-card-link-name carries the name's url_key form (whitespace runs
   // fold to ONE underscore, case preserved — links.rb:75-80 link_to_card's
   // mark path, the same urlKey every other link-name emitter uses:
-  // barDivHtml views.ts, pointerListItemSlot, boxView). The oracle pins it
-  // on the phantom/denied body too (V12 exemplar Banana+Person open:
-  // data-card-link-name='Test_Person_01' over data-card-name='Test Person
-  // 01'; Z4 exemplar Testing Requirements+Pages open:
-  // data-card-link-name='6th_Kyu_Requirements' over the raw double-space
-  // '6th Kyu  Requirements'; an earlier Skin
-  // pages' multi-word phantom items, "simple skin" -> simple_skin — the
-  // same urlKey derivation). data-card-name keeps slotCardname's rule:
+  // barDivHtml views.ts, pointerListItemSlot, boxView). Multi-word names
+  // show the folding ("Simple Skin" -> simple_skin); data-card-name keeps
+  // slotCardname's rule:
   // the raw stored/authored name (these phantoms are simple names).
   //
   // This body is the bar.haml SHAPE, so its data attrs cross the same
@@ -580,10 +518,7 @@ export function pointerListItemBodyForUnknown(
   // because that is what Ruby's slot_cardname returns (wrap.rb:50-54).
   // Routing the four attrs through the shared emitter instead of
   // hand-interpolating them keeps the denied body and the live bar on one
-  // contract; the rendered bytes are unchanged for every name the corpus
-  // pins (no denied bar in the captured corpus carries an apostrophe, so
-  // the two-level `&amp;#39;` form this makes possible is read off the
-  // shared template, not off a captured denied bar).
+  // contract.
   const safeLinkName = DeckoName.parse(name).urlKey;
   // The slot id rides the same Haml `data:` hash, so it is single-quoted
   // like the other four (stock Ruby's bar.haml passes wrap_data — slot id
@@ -607,13 +542,13 @@ export function pointerListItemBodyForUnknown(
 }
 
 /** The data-slot JSON for an item rendered through the pointer/list path.
- *  Keys must appear in the slot-html.ts#SLOT_KEYS order so the captured
- *  byte shape matches (the corpus's slot-html.ts ordering: view, then
+ *  Keys must appear in the slot-html.ts#SLOT_KEYS order
+ *  (view, then
  *  nest_name, then show, then hide, then home_view, then the host's
  *  item `type` — keymap "both" order, item.rb:157-162's type value). */
 function itemDataSlotJson(nestName: string, typeName?: string): string {
   // slot-html.ts#htmlEscapeExceptQuotes: only & ' > < need escaping for
-  // single-quote contexts; the captured bytes use double quotes outside,
+  // single-quote contexts; the attribute is emitted inside double quotes,
   // so a " inside the JSON body would need to be escaped there — the
   // JSON keys here are literal ASCII with no embedded quotes, so the
   // single-pass escape is enough.
@@ -653,9 +588,8 @@ export function phantomPointerListItem(
   const typeName = typed?.typeName ?? deckPhantomType?.typeName;
   const typeId = typed?.typeId ?? deckPhantomType?.typeId;
   // Typed identities carry the type's KEY form in the class chain — the
-  // captured oracle pins `card-slot mini_bar-view ALL TYPE-place` for the
-  // rule-typed unknown items (Free Aiki Dojo+Central Places, shard-000024:
-  // "The Flight Deck" et al.). The no-host-identity arm uses the deck's
+  // class reads `card-slot mini_bar-view ALL TYPE-<key>` for the
+  // rule-typed unknown items. The no-host-identity arm uses the deck's
   // configured phantom type's key (the *all+*default template's own class
   // token), and with no configured type the chip is absent entirely.
   const setKeys =
