@@ -41,7 +41,8 @@ export interface EngineChecksResult {
 
 /** The verify.mjs engineChecks hook: spot-render N cards through the real
  *  RenderEngine, resolve junctions through the real Lexicon, and
- *  byte-compare Ruby-captured fixtures when the migrated deck has them.
+ *  byte-compare content and rendered views against the repo's committed
+ *  fixture expectations when the migrated deck has the fixture cards.
  *  Content-free: ids, hashes, counts — never migrated card names/content. */
 export function engineChecks(ctx: {
   driver: LocalSqliteToolDriver;

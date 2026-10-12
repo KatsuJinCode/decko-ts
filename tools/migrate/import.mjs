@@ -1,6 +1,5 @@
 // import.mjs — stream a parsed mysqldump into a decko-ts SQLite database.
 //
-// M4 migration tool (port-tracker stream 14, decko-commons/decko#1282).
 // Data-faithful by contract: every row lands with its original id, its
 // original column values (including trash=1 rows and NULL junctions), and
 // no editorial transforms. The decko-ts fetch layer (src/card/fetch) owns
@@ -28,7 +27,7 @@
 // file. This importer executes the CREATE TABLE statements first, imports
 // everything, then applies the CREATE INDEX statements — bulk load without
 // per-row index maintenance is the standard order-of-magnitude win on
-// multi-million-row tables (card_references: 6.3M production rows).
+// multi-million-row tables.
 
 import { createHash } from "node:crypto";
 import { createReadStream, existsSync, readFileSync, readdirSync } from "node:fs";
@@ -616,7 +615,7 @@ export async function importDump(opts) {
   // Indexes after the bulk load (see module doc).
   for (const statement of schema.createIndexes) await createUnlessExists(driver, statement);
   // Planner statistics, after the rows are in and after the indexes exist.
-  // ANALYZE writes only sqlite_stat1, never a corpus row.
+  // ANALYZE writes only sqlite_stat1 and touches no deck table.
   await driver.query("ANALYZE", []);
   // [ENGINE-FRESHNESS] stamp triggers + row LAST — after the bulk load, so
   // the per-row trigger fire never happens during import (see

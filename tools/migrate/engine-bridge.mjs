@@ -27,9 +27,9 @@
 //          recorded as a boolean, not asserted, since non-text cardtypes
 //          legitimately render transformed content).
 //       3. FIXTURE COMPARISON: when the migrated deck contains the cards
-//          named in fixtures/captured/smoke.json (the Ruby oracle's
-//          captured deck), byte-compare content and rendered views against
-//          the Ruby capture. For an arbitrary migrated deck the fixture
+//          named in the repo's committed fixture expectations,
+//          byte-compare content and rendered views against the values
+//          recorded there. For an arbitrary migrated deck the fixture
 //          cards are absent and this reports cardsPresent: 0, honestly.
 //
 //   - deriveKeyWithEngine(name) — DeckoName.parse(name).key, the real
@@ -38,8 +38,8 @@
 //     The tools never reimplement this algorithm.
 //
 // CONTENT RULE: everything returned here is ids, counts, hashes, and the
-// repo's own synthetic fixture names ("Oracle ..." — already committed in
-// fixtures/captured). No migrated card names or content leave this module.
+// repo's own synthetic fixture names. No migrated card names or content
+// leave this module.
 
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -63,7 +63,7 @@ function deckInflectionsActive() {
  *  key-repair hook, under the deployed deck's inflection table
  *  (src/card/name/oracle-deck-inflections.ts) exactly as a serving boot
  *  applies it. Without the table, names containing "Anonymous", "this" or a
- *  lone "s" ("Participant(s)", "Riley's") get keys no serving engine or
+ *  lone "s" ("Participant(s)", "today's") get keys no serving engine or
  *  Ruby deck looks up, and those cards become unreachable by name. */
 export function deriveKeyWithEngine(name) {
   if (!deckInflectionsActive()) applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
@@ -161,7 +161,7 @@ export async function engineChecks({ driver, spotCount, seed }) {
     }
   }
 
-  // --- 3. Ruby-captured fixture comparison (when the deck has them) ------
+  // --- 3. committed-fixture comparison (when the deck has them) ----------
   const fixtures = {
     source: "fixtures/captured/smoke.json",
     cardsPresent: 0,

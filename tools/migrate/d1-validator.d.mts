@@ -5,7 +5,7 @@
 import type { SQLDatabaseDriver } from "../../src/server/driver.js";
 
 /** Output tables whose drift is reported but not validated (documented
- *  out-of-scope for the M5 importer validation pass). */
+ *  out-of-scope for the importer's validation pass). */
 export const OUT_OF_SCOPE: readonly string[];
 
 export function countTable(

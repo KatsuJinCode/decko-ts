@@ -9,7 +9,7 @@
 //
 // The generalized SQLite-source path faces a related but distinct case:
 // the SOURCE may not carry the name/key columns at all (a slimmed
-// schema, or a sanitized corpus), or it may carry them but NULL for
+// schema, or a sanitized source dump), or it may carry them but NULL for
 // junction cards. The fetch layer's Lexicon walk still reconstructs the
 // name at read time IF left_id/right_id are present. When they are
 // absent too, the importer needs to INVENT the composed string from the
@@ -26,7 +26,7 @@
 //      surface as unresolved, not a hang). When both sides resolve to a
 //      composed string, the result IS the name/key.
 //
-//   3. SETTINGS-IGNORE: settings-shaped rows (corpus metadata) never
+//   3. SETTINGS-IGNORE: settings-shaped rows (build-time metadata) never
 //      produce a name; the importer skips them entirely (handled in
 //      schema-map, not here).
 //

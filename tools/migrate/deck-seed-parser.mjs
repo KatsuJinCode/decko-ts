@@ -1,7 +1,8 @@
-// deck-seed-parser.mjs — streaming parser for the "deck INSERT" format used
-// by anonymized corpus seeds and similar decko data dumps.
+// deck-seed-parser.mjs — streaming parser for the "deck INSERT" format:
+// a flat, one-INSERT-per-statement dump shape (explicit column list, no
+// DDL, no dump-tool markers) that some decko export passes produce.
 //
-// The M5 productized importer (tools/migrate/import-deck.mjs) accepts three
+// The productized importer (tools/migrate/import-deck.mjs) accepts three
 // source shapes:
 //   * SQLite file       -> generalized-import.mjs (already streaming)
 //   * mysqldump text    -> parse-dump.mjs (mysqldump grammar)
@@ -21,7 +22,7 @@
 // This is a SUBSET of the mysqldump grammar that the existing
 // parse-dump.mjs already handles (it accepts the explicit-column-list
 // variant). The reason this module exists is:
-//   (1) the anonymized corpus-v2 seed is NOT a mysqldump file (no
+//   (1) the deck-INSERT shape is NOT a mysqldump file (no
 //       backticks, no /*!40000 markers, no CREATE TABLE) - parse-dump
 //       would treat it as an unknown shape and refuse to walk it;
 //   (2) a smaller, statement-bounded parser is faster on the
