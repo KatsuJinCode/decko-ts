@@ -1,4 +1,4 @@
-// R4 — the ALTERNATE GET route grammar, exercised through the REAL
+// The ALTERNATE GET route grammar, exercised through the REAL
 // deploy/worker.ts fetch handler (the same module wrangler bundles). The
 // production handler is driven in-process here, against the same schema +
 // seed the deploy uses, through a D1-shaped shim over the local sqlite
