@@ -100,8 +100,8 @@
 #   corpus-v2.sqlite3, and only (a) at the canonical
 #   tmp/raw-ground-truth/deck/ location, or (b) wherever DUAL_LANE_DB points
 #   (explicitly set -- the isolated-copy convention used while a verifier
-#   round holds the original sqlite). M3 additionally requires the connection
-#   to be read-only and proves it (PRAGMA query_only + write probe).
+#   round holds the original sqlite). The connection must additionally be
+#   read-only, and the script proves it (PRAGMA query_only + write probe).
 #
 # FULL RUN (from tools/oracle/decko-oracle-app):
 #   RAILS_ENV=development \
@@ -158,7 +158,7 @@ unless File.dirname(connected_file) == CANONICAL_DECK_DIR || ENV["DUAL_LANE_DB"]
         "isolated corpus copy"
 end
 
-# ---- M3: read-only corpus, enforced and proven -------------------------------
+# ---- read-only corpus, enforced and proven -------------------------------
 # The runner opens the corpus with DATABASE_URL ...?readonly=true
 # (SQLITE_OPEN_READONLY via SQLite3::Database.new options[:readonly]). That
 # flag is boot-time protection; here, inside the guard, it is PROVEN:
@@ -192,7 +192,7 @@ unless write_refused
         "not refused); the capture must be read-only (camera-forensics.md M3)"
 end
 
-# ---- M4: frozen clock --------------------------------------------------------
+# ---- frozen clock -------------------------------------------------------------
 # travel_to pins Time.now (and Date/DateTime) to FROZEN_EPOCH for the duration
 # of each card's photograph; travel_back restores between cards. The epoch is
 # a constant chosen once (the corpus generation date at noon UTC) and never
@@ -221,11 +221,10 @@ end
 # BEGIN frozen_date_parse (evaluated by capture-frozen-date-parse.test.rb)
 # travel_to stubs Date.today, but Date.parse completes a partial date (no year,
 # or no year and month) inside C (date_core.c rt_complete_frags calls
-# date_s_today directly), which reads the real wall clock. So
-# `Date.parse("20-0405")` (card-mod-date set/type/date.rb view :core; card
-# 35469) photographed the capture day's month ("October 20, 2026" on a
-# 2026-10-06 capture) while every other clock-bearing byte showed the frozen
-# epoch. While the clock is frozen, Date.parse completes the civil shapes the
+# date_s_today directly), which reads the real wall clock. A corpus card whose
+# view renders a partial date would thus photograph the capture day's month
+# while every other clock-bearing byte showed the frozen epoch. While the
+# clock is frozen, Date.parse completes the civil shapes the
 # C code completes from today -- {mday}, {mon}, {mon, mday} -- from the stubbed
 # Date.today instead, exactly as rt_complete_frags does (leading missing civil
 # fields from today, trailing ones default to 1). Any other partial shape that
@@ -282,7 +281,7 @@ end
 # ---- normalize / serialize helpers (identical to the old capture) -----------
 SLOT_ID_RE = /data-slot-id=(["'])\h+\1/.freeze
 # Slot ids are stored exactly as Ruby wrote them (value and quote style);
-# graders mask the random value at compare time (reference-harness N1).
+# graders mask the random value at compare time.
 def normalize(html)
   html
 end
@@ -350,28 +349,25 @@ end
 #      card-1.110.0/lib/cardio/railtie.rb:38; card-1.110.0's
 #      config/environments/development.rb:39 sets it true and this capture
 #      boots RAILS_ENV=development). Without the flip, a nested view error
-#      re-raises page-wide instead of rendering the quiet inline
-#      `<span class="render-error">Error rendering: ...</span>` live serves
-#      (verified in tmp/live-wire/blog.html:400);
+#      re-raises page-wide instead of producing the quiet inline
+#      `<span class="render-error">Error rendering: ...</span>` the serving
+#      path renders;
 #   3. `Rails.env = "production"` while the page renders: html error.rb:91
 #      `show_all_errors? = Auth.always_ok? || Rails.env.development?` — under
 #      development the quiet error span carries an admin backtrace tooltip
-#      live anonymous visitors never see. The only other render-path gate on
+#      an anonymous visitor never sees. The only other render-path gate on
 #      Rails.env is a dev-only StUb debug log (no byte effect);
-#   4. `Cardio.config.deck_origin = "https://culturesmith.com"`: Env.origin
+#   4. `Cardio.config.deck_origin` is set to the serving origin: Env.origin
 #      (used by card_url for decko.rootUrl and every absolute URL in page
-#      bytes) falls back to deck_origin when there is no request; the
-#      production deck serves with that origin (live-wire bytes:
-#      decko.rootUrl='https://culturesmith.com/');
+#      bytes) falls back to deck_origin when there is no request, and the
+#      expectations must carry the same origin the served pages carry;
 #   5. `Cardio.config.default_html_view = :content`: html default_nest_view
 #      (set/all/html.rb:17) reads this config for every nest WITHOUT an
 #      explicit view. The railtie default (card-mod-format mod/format.rb:2)
-#      is :titled, but every live-wire page renders implicit child nests as
-#      content-view (e.g. blog.html `latest_news-content-view`), proving the
-#      production deck configures :content. This single config explains the
-#      old "child nests render titled while live renders content" incident;
-#      the TS engine's defaultNestView() returning "titled" (format.ts:605)
-#      is pinned to the same railtie default and is wrong against live;
+#      is :titled, but the serving deck's pages render implicit child nests
+#      as content-view, so that deck configures :content; the TS engine's
+#      defaultNestView() returning "titled" (format.ts:605) carries the
+#      railtie default and does not match this deck's configuration;
 #   6. the previous values are restored before the next card's lane V so
 #      lane V stays byte-identical to the old capture's environment.
 def with_capture_page_bucket
@@ -446,8 +442,7 @@ end
 # being captured does not hold that card, Card.fetch can still return a
 # not-found placeholder (id nil) or a different card, and rendering it would
 # record the placeholder's bytes as the expected output for a card the graded
-# deck does hold (grade-11 seam-clean: 2,555 page rows). Such a row is a
-# capture error, never an expectation.
+# deck does hold. Such a row is a capture error, never an expectation.
 def capture_identity_error(entry, card)
   want = entry["id"]
   return nil if want.nil? || card.nil? || card.id == want
@@ -519,7 +514,7 @@ shards.keys.sort.each do |shard_name|
   File.open(tmp_page, "w") do |pf|
     File.open(tmp_view, "w") do |vf|
       slice.each do |entry|
-        # M4: the whole photograph of this card -- Env reset, record read,
+        # The whole photograph of this card -- Env reset, record read,
         # lane V renders, lane P render -- happens under the frozen clock.
         CaptureFrozenClock.with_frozen_clock do
           Card::Env.reset
