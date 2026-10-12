@@ -4214,17 +4214,16 @@ export class RenderEngine implements RenderEngineLike {
    *    RIGHT-Xfollow TYPE_PLUS_RIGHT-rich_text-Xfollow SELF-Xall-Xall-Xfollow'`
    * and the engine emitted the same list WITHOUT ` RULE`.
    *
-   * CORRECTION (oracle-pinned by
-   * fixtures/captured/form-substrate.json rule_card_head/guide): the
+   * CORRECTION: the
    * 2-part restriction below was WRONG against Ruby — standard_rule?
    * (all.rb:37-44) has NO part-count limit; the 2-part "*all+*head" is a
    * rule card exactly like the 3-part preference shape, and the async
    * computeIsRule already implements the 2-part arm (its `else if (leftRecord
    * !== undefined ...)` branch). The sync twin's `parts.length === 2 ->
    * false` dropped the RULE token from every 2-part rule card's repaired
-   * set keys, and quick_edit (the first view to pin a 2-part rule card's
-   * SLOT classes — the link views carry no slot wrap) exposed it: the
-   * capture pins `... RSTAR RULE RIGHT-Xhead ...`.
+   * set keys, and quick_edit (the first view to expose a 2-part rule card's
+   * SLOT classes — the link views carry no slot wrap) showed it: the
+   * repaired set keys lost the RULE token the view's slot classes need.
    */
   /** Whether every part computeIsRuleSync reads is in the render map, so
    *  its `false` is an answer rather than a gap: the right part, the left
@@ -4270,11 +4269,10 @@ export class RenderEngine implements RenderEngineLike {
       // preference? (all.rb:42-48) — `name[0..-3]` is Set-typed, then
       // valid_preferer? (all.rb:50-52): the `[-2]` part is User-typed, or
       // that part's codename is "all". The async twin's predicate, read
-      // off the render-card map instead of the fetch ladder. Corpus
-      // evidence for both preferer clauses: `*all` is card 274, type 259
-      // (Set) = the trunk, codename "all" = the codename clause;
-      // `Riley Ellery` is card 393, type 4 (codename "user") =
-      // the User clause.
+      // off the render-card map instead of the fetch ladder. Both preferer
+      // clauses are exercised by stored decks: the `*all` Set-typed trunk
+      // carries codename "all" (the codename clause), and a user card
+      // carries the User type (the User clause).
       const trunkKey = DeckoName.parse(name.parts.slice(0, -2).join("+")).key;
       if (trunkKey === "") return false;
       const trunkCard = this.peekPrepared(trunkKey);
@@ -5898,9 +5896,7 @@ export class RenderEngine implements RenderEngineLike {
         // walk's type (BasicCs here), and BasicCs+*type+*read = "Anyone
         // Signed In" denied Anonymous — rendering the two-span denied body
         // for exactly the host-typed unknown items Ruby renders the full
-        // bar for (Delia Rosenquist id 18560, Jonas Verhove+musings
-        // id 14546; the captured oracle renders bar-body/card-title/
-        // bar-menu for both).
+        // bar for (bar-body/card-title/bar-menu).
         await this.resolveHostItemTypeName(card);
         await this.enrichPointerListItems(card);
         this.pointerListHostsDone.add(card.key);
@@ -5975,9 +5971,9 @@ export class RenderEngine implements RenderEngineLike {
    * the verdict from newCardDefaultType alone (the *all+*default template
    * walk) typed every host-typed phantom BasicCs, and BasicCs+*type+*read
    * = "Anyone Signed In" denied Anonymous where Ruby's walk on the REAL
-   * type falls through to *all+*read = "Anyone" — the Kimberly
-   * Richardson / Jonas Verhove+musings divergence (captured oracle
-   * renders the full bar body for both). The default-template walk stays
+   * type falls through to *all+*read = "Anyone" — the divergence where
+   * Ruby renders the full bar body and the port rendered a denied body.
+   * The default-template walk stays
    * as the fallback for hosts that resolve no item type, exactly
    * Card.new's ensure_type_id.
    *
@@ -5985,11 +5981,11 @@ export class RenderEngine implements RenderEngineLike {
    * fetch (Nest::Fetch#new_card -> Card.fetch name, new: new_card_args),
    * so the same unknown item name under two hosts renders TWO verdicts —
    * each nest's own fold. The verdicts are therefore keyed
-   * `"${host.key}|${itemKey}"`; a host that resolves Person
-   * (weekday_morning_usual+owner) must not pre-empt the RVW List's
-   * untyped BasicCs verdict for the same item (probe p21b: RVW's oracle
-   * renders the two-span denied body — its item_type_name is nil — while
-   * the foreign host's Person fold rendered readable). The deck-global
+   * `"${host.key}|${itemKey}"`; a host that resolves a typed
+   * collection must not pre-empt an untyped sibling host's
+   * BasicCs verdict for the same item — the untyped host's
+   * item_type_name is nil, so Ruby renders the two-span denied body there
+   * while the typed host's fold renders readable. The deck-global
    * verdict maps keep the FIRST computation per item (the pre-keying
    * seeding semantics; pointerItemGlobalVerdictDone), so consumers outside
    * the pointer-item slot keep their pre-change bytes.
@@ -6040,17 +6036,17 @@ export class RenderEngine implements RenderEngineLike {
       // is Ruby's bare Card.new ensure_type_id verdict for the name. A
       // HOST-TYPED computation is per-context in Ruby (each nest constructs
       // its own phantom, Nest::Fetch#new_card) and must neither poison nor
-      // consume the global slot: Quicksilver+Core Project's unknown list
-      // item mytho-psychology resolved Project-typed (readable via *all+*read
-      // "Anyone") while an earlier render in the same boot seated the global
+      // consume the global slot: an unknown list
+      // item that resolves Project-typed (readable via *all+*read
+      // "Anyone") would otherwise be shadowed when an earlier render in the
+      // same boot seated the global
       // map from a different host's computation (denied) — the nest's view
       // gate then read the poisoned entry and emitted two quiet denial spans
-      // where the oracle renders the item bar (recapture-raw-shard-000000,
-      // Quicksilver+Core Project :open, -1605 bytes). Only the untyped walk
+      // where the item bar belongs. Only the untyped walk
       // may claim pointerItemGlobalVerdictDone, so an untyped computation
-      // that arrives later still seeds the global maps (the RVW p21b case:
-      // its nil-item-type BasicCs denial must land no matter which
-      // host-typed fold ran first).
+      // that arrives later still seeds the global maps — its
+      // nil-item-type BasicCs denial must land no matter which
+      // host-typed fold ran first.
       if (hostItemType === undefined && !this.pointerItemGlobalVerdictDone.has(key)) {
         this.pointerItemGlobalVerdictDone.add(key);
         this.deniedVerdictsByKey.set(key, read === false);
