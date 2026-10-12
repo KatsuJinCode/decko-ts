@@ -1,24 +1,21 @@
 /**
  * CQL AST -> parameterized SQL for SQLite.
  *
- * Walks the QueryNode tree exactly the way card-1.110.0's SqlStatement
- * (+ sql_statement/joins.rb, where.rb, order.rb) walks the Ruby query
- * objects: SqlStatement#build (select/from/joins/where/group/order/limit),
- * Joins#join_clause, Where#explicit_conditions/#implicit_conditions,
- * Order#order_directives.
+ * Walks the QueryNode tree in the order a SELECT is built: select list,
+ * FROM, joins, WHERE, GROUP BY, ORDER BY, LIMIT — then WHERE (explicit then
+ * implicit conditions), JOINS (the query's own joins plus the joins its
+ * direct subqueries share its alias with), and ORDER BY (directives plus
+ * the tie-breaker, which has its own reasoning below).
  *
- * Divergences from the Ruby SQL text (all documented in
- * ):
- * - every user value becomes a `?` placeholder (Ruby inlines quoted
- *   literals); params are ordered by first appearance in the SQL text
- * - whitespace is canonical (single spaces; Ruby emits e.g. "LIMIT  10 ",
- *   a doubled slot for the SQL comment, and "count( distinct ...)")
- * - the permission condition is optional (Ruby always applies the current
- *   user's read rules); pass { alwaysOk: false, readRuleIds } to reproduce it
- * - `match` renders `field REGEXP ?`, the token card-1.110.0's ActiveRecord
- *   patch (config/initializers/02_patches/active_record.rb) generates for
- *   both MySQL and SQLite; SQLite has no built-in REGEXP — the FTS5 decision
- *   is deferred (wave 2), see the notes
+ * How this SQL differs from the query-object rendering it replaces:
+ * - every user value becomes a `?` placeholder rather than an inlined
+ *   quoted literal; params are ordered by first appearance in the SQL text
+ * - whitespace is canonical (single spaces between clauses, no padding)
+ * - the permission condition is optional; pass { alwaysOk: false,
+ *   readRuleIds } to render it
+ * - `match` renders `field REGEXP ?`, which SQLite has no built-in
+ *   function for — see src/cql/sqlite-regexp.ts for the local registration
+ *   and SqlOptions.matchPostFilter for the edge path
  */
 
 import { CqlBadQuery, ConditionNode, JoinNode, QueryNode } from "./ast.js";
@@ -27,10 +24,9 @@ import { escapeRegexpCharacters, safeSql } from "./normalize.js";
 
 export interface SqlOptions {
   /**
-   * true (default) skips the read-rule permission condition, matching Ruby
-   * when Auth.always_ok? is true. false adds
+   * true (default) skips the read-rule permission condition. false adds
    * `<alias>.read_rule_id IN (...)` from `readRuleIds` (an empty list renders
-   * the Ruby sentinel `IN (1)`).
+   * the sentinel `IN (1)`).
    */
   alwaysOk?: boolean;
   readRuleIds?: number[];
@@ -39,26 +35,24 @@ export interface SqlOptions {
    * renders `<alias>.right_id NOT IN (?, ...)`.
    *
    * This is the narrowing half of a scoped permission answer, and it exists
-   * because `alwaysOk` is all-or-nothing. Where#permission_conditions has no
-   * equivalent — Ruby either has the viewer's read rules or is always_ok —
-   * so this option is a PORT-SIDE seam, not a Ruby translation: the caller
-   * (RenderEngine#cqlPermissionOptions) uses it to keep the rule-less
-   * allowance from reaching the account field cards, where "no rule to
-   * evaluate" must not read as "readable to everyone". An empty or absent
-   * list renders nothing.
+   * because `alwaysOk` is all-or-nothing. A caller needs both halves at once:
+   * a viewer who is allowed everything is still not allowed everything. This
+   * is that seam — RenderEngine#cqlPermissionOptions uses it to keep a
+   * rule-less allowance from reaching the account field cards, where "no
+   * rule to evaluate" must not read as "readable to everyone". An empty or
+   * absent list renders nothing.
    */
   excludedRightIds?: number[];
   /**
-   * REGEXP-on-edge mode ("The REGEXP decision"
-   * the decided JS-side post-filter): REGEXP-shaped `match` conditions are
-   * OMITTED from the generated SQL and re-applied by the executor in JS
-   * (execute.ts) with the same compile logic as sqlite-regexp.ts. The
-   * `=term`-on-name shape (exact key equality) is portable SQL and stays.
-   * While set, a root query with a dropped match renders
-   * `LIMIT POSTFILTER_ROW_CAP` instead of the statement's own limit/offset —
-   * filtering after LIMIT would truncate before matching, and the executor
-   * applies the user limit/offset in JS after the filter. Groups whose
-   * children all drop render as "" (never "()").
+   * REGEXP-on-edge mode (the decided JS-side post-filter): REGEXP-shaped
+   * `match` conditions are OMITTED from the generated SQL and re-applied by
+   * the executor in JS (execute.ts) with the same compile logic as
+   * sqlite-regexp.ts. The `=term`-on-name shape (exact key equality) is
+   * portable SQL and stays. While set, a root query with a dropped match
+   * renders `LIMIT POSTFILTER_ROW_CAP` instead of the statement's own
+   * limit/offset — filtering after LIMIT would truncate before matching, and
+   * the executor applies the user limit/offset in JS after the filter. Groups
+   * whose children all drop render as "" (never "()").
    */
   matchPostFilter?: boolean;
 }
@@ -132,17 +126,18 @@ interface GenContext {
   options: SqlOptions;
 }
 
-/** SqlStatement#build / #to_s */
+/** Render one query to its SELECT statement. */
 function renderQuery(query: QueryNode, ctx: GenContext, isRoot: boolean): string {
   // (the post-filter limit branch below uses the same collector the
   // executor filters with, so SQL and JS agree on what was dropped)
   const alias = query.tableAlias;
-  const full = isRoot && query.mods.return !== "count"; // CardQuery#full?
+  const full = isRoot && query.mods.return !== "count"; // the root, not counting
 
-  // Order#order_directives (full queries only; fields feed the select list)
+  // Order directives: full queries only, and their fields feed the select
+  // list as well as the ORDER BY.
   const orderDirectives = full ? orderDirectivesOf(query, ctx) : [];
 
-  // SqlStatement#fields
+  // The select list.
   const parts: string[] = [fullField(alias, query.mods.return)];
   for (const directive of orderDirectives) parts.push(directive.field);
 
@@ -155,8 +150,8 @@ function renderQuery(query: QueryNode, ctx: GenContext, isRoot: boolean): string
     orderDirectives.length > 0
       ? `ORDER BY ${orderDirectives.map((d) => (d.dir ? `${d.field} ${d.dir}` : d.field)).join(", ")}`
       : "";
-  // SqlStatement#limit_and_offset: LIMIT only when limit > 0; OFFSET only
-  // with LIMIT (Ruby quirk: offset without limit renders nothing)
+  // LIMIT renders only when limit > 0, and OFFSET renders only alongside a
+  // LIMIT — an offset on its own has nothing to count from.
   let limitSql = "";
   if (full) {
     // Post-filter mode bounds the superset fetch with the row cap instead of
@@ -202,7 +197,9 @@ function hasRootRegexpMatch(query: QueryNode): boolean {
   return collectMatchPostFilters(query).length > 0;
 }
 
-/** SqlStatement#full_field */
+/** The select expression for a `return` spec. An underscore-prefixed return
+ *  is an internal field name, not a user-facing projection, and renders the
+ *  whole card row. */
 function fullField(alias: string, ret: string | undefined): string {
   const field = ret === undefined || /^_\w+/.test(ret) ? "card" : ret;
   switch (field) {
@@ -223,7 +220,7 @@ function fullField(alias: string, ret: string | undefined): string {
   }
 }
 
-// ---- WHERE (SqlStatement::Where) ----
+// ---- WHERE ----
 
 function renderWhere(query: QueryNode, ctx: GenContext): string {
   const explicit = explicitConditions(query, ctx);
@@ -232,18 +229,19 @@ function renderWhere(query: QueryNode, ctx: GenContext): string {
   return chunks.length > 0 ? `WHERE ${chunks.join(" AND ")}` : "";
 }
 
-/** Where#explicit_conditions + #conditions_from + #format_conditions */
+/** Conditions the statement actually asked for: this query's own, plus the
+ *  subquery conditions that render inline rather than in the ON clause. */
 function explicitConditions(query: QueryNode, ctx: GenContext): string {
   const list: string[] = query.conditions.map((condition) => renderCondition(condition, query, ctx));
   for (const sub of query.subqueries) {
     if (sub.conditionsOnJoin) continue; // rendered in the owning join's ON
     switch (sub.fasten) {
       case "exist":
-        // Where#exist_condition
+        // An "exist" subquery is an EXISTS test over the rendered subselect.
         list.push(`${sub.negate ? "NOT " : ""}EXISTS (${renderQuery(sub, ctx, false)})`);
         break;
       case "in":
-        // Where#in_condition (field recorded by Tie#tie_with_in)
+        // An "in" subquery compares against its recorded in-field.
         list.push(
           `${sub.mods.inField ?? `${sub.tableAlias}.id`} ${sub.negate ? "NOT " : ""}IN (${renderQuery(sub, ctx, false)})`,
         );
@@ -256,14 +254,17 @@ function explicitConditions(query: QueryNode, ctx: GenContext): string {
   return formatConditionList(list, query.conj);
 }
 
-/** Where#format_conditions */
+/** Parenthesize a condition list under its conjunction; a single condition
+ *  needs no parentheses. */
 function formatConditionList(list: string[], conj: string): string {
   if (list.length === 0) return "";
   if (list.length === 1) return list[0];
   return `(${list.join(` ${conj.toUpperCase()} `)})`;
 }
 
-/** Where#implicit_conditions: trash + permissions, card queries only */
+/** Conditions the statement never asked for but that must hold anyway:
+ *  trashed cards are invisible, and the viewer's read rules decide the rest.
+ *  Card queries only — reference/action/act rows have no trash column. */
 function implicitConditions(query: QueryNode, ctx: GenContext): string {
   if (query.kind !== "card") return "";
   const chunks = [`${query.tableAlias}.trash is false`];
@@ -283,7 +284,9 @@ function implicitConditions(query: QueryNode, ctx: GenContext): string {
       chunks.push(`${query.tableAlias}.read_rule_id IN (${readRuleIds.map(() => "?").join(",")})`);
       ctx.params.push(...readRuleIds);
     } else {
-      // Where#permission_conditions: empty rule list -> sentinel "1"
+      // No rule ids at all is not "no filter": it renders a sentinel rule id
+      // that matches nothing, so the query returns nothing rather than
+      // everything.
       chunks.push(`${query.tableAlias}.read_rule_id IN (1)`);
     }
   }
@@ -299,15 +302,16 @@ function renderCondition(condition: ConditionNode, query: QueryNode, ctx: GenCon
       if (condition.values.length === 1 && !LIST_OPS.has(condition.op)) {
         return `${fieldSql} ${condition.op} ${renderScalar(condition.values[0], ctx)}`;
       }
-      // Value#sqlize_array: list ops always group ("in ('5')"); other ops
-      // collapse single values to scalars
+      // List operators always render their group (an `in` with one value is
+      // still `in (?)`); other operators collapse a lone value to a scalar.
       return `${fieldSql} ${condition.op} (${condition.values
         .map((v) => renderScalar(v, ctx))
         .join(",")})`;
     }
     case "match": {
-      // MatchValue#match_sql: "=term" on name -> exact key comparison;
-      // otherwise REGEXP with the term (escaped unless "~~" prefix)
+      // "=term" on name is an exact key comparison — the name was already
+      // keyed. Everything else is REGEXP, with the term escaped unless the
+      // "~~" prefix asked for it raw.
       if (condition.prefix === "=" && condition.cqlField === "name") {
         return `${alias}.key = ${placeholder(ctx, condition.termKey)}`;
       }
@@ -320,15 +324,14 @@ function renderCondition(condition: ConditionNode, query: QueryNode, ctx: GenCon
       return `${alias}.${condition.field} REGEXP ${placeholder(ctx, value)}`;
     }
     case "like":
-      // MatchAttributes#complete: "#{alias}.key LIKE '#{key}%'"
+      // `complete` is a prefix match on the key column.
       return `${alias}.key LIKE ${placeholder(ctx, `${condition.value}%`)}`;
     case "raw":
       return condition.sql;
     case "group":
-      // MatchAttributes#or_join — always parenthesized. In post-filter mode
-      // every child may drop (a {match: v} or-group is all-match); a fully
-      // dropped group renders "" — never "()" — so the executor's WHERE
-      // stays valid (SqlOptions.matchPostFilter doc).
+      // A group is always parenthesized. In post-filter mode every child may
+      // drop; a fully dropped group renders "" — never "()" — so the
+      // executor's WHERE stays valid (SqlOptions.matchPostFilter doc).
       if (ctx.options.matchPostFilter === true) {
         const rendered = condition.conditions
           .map((c) => renderCondition(c, query, ctx))
@@ -340,18 +343,16 @@ function renderCondition(condition: ConditionNode, query: QueryNode, ctx: GenCon
         .map((c) => renderCondition(c, query, ctx))
         .join(` ${condition.conj.toUpperCase()} `)})`;
     case "foundBy":
-      // The refusal surfaces as BadQuery (Card::Error::BadQuery's port), not
-      // a generic error. found_by is RESOLVED before generation:
-      // execute.ts#resolveFoundByConditions translates every foundBy
-      // condition into the equivalent id-set constraint (the port of
-      // card-1.110.0 lib/card/query/card_query/found_by.rb). Reaching this
-      // case means an unhandled shape survived the resolution pass — a loud
-      // backstop, never a silent empty. (Historical note: this case was the
-      // wave-1 blanket refusal "deferred to wave 2"; through the deploy
-      // worker's /api/query a plain Error fell into the 500 "CQL execution
-      // failed" branch while every other bad statement answered 400 "bad
-      // CQL" — so the backstop stays a CqlBadQuery, probe
-      // api-query-found-by-refused.)
+      // found_by is RESOLVED before generation: execute.ts's
+      // resolveFoundByConditions translates every foundBy condition into the
+      // equivalent id-set constraint. Reaching this case means an unhandled
+      // shape survived that pass.
+      //
+      // The refusal must stay a CqlBadQuery, not a plain Error. Over the
+      // HTTP query endpoint a plain Error falls into the 500 "CQL execution
+      // failed" branch, while every other malformed statement answers 400
+      // "bad CQL" — so a generic error here would report a client mistake
+      // as a server fault. It is a loud backstop, never a silent empty.
       throw new CqlBadQuery(
         "found_by condition reached SQL generation unresolved (unhandled found_by shape) — execute.ts resolveFoundByConditions should have translated it",
       );
@@ -368,11 +369,12 @@ function placeholder(ctx: GenContext, value: unknown): string {
   return "?";
 }
 
-// ---- JOINS (SqlStatement::Joins) ----
+// ---- JOINS ----
 
 /**
- * Joins#joins_on_query: the query's own joins followed by the joins of its
- * :direct subqueries (transitively — those share this query's table alias).
+ * The query's own joins, followed by the joins of its direct subqueries,
+ * transitively — those share this query's table alias, so their joins have
+ * to render in the same FROM clause.
  */
 function renderedJoins(query: QueryNode): JoinNode[] {
   const joins = [...query.joins];
@@ -389,7 +391,7 @@ function collectDirectSubqueryJoins(query: QueryNode, out: JoinNode[]): void {
   }
 }
 
-/** Joins#joins / #join_clause / #subjoins */
+/** Render the join list to SQL. */
 function renderJoins(query: QueryNode, ctx: GenContext): string {
   const chunks: string[] = [];
   for (const join of renderedJoins(query)) {
@@ -404,7 +406,7 @@ function renderJoin(join: JoinNode, ctx: GenContext, chunks: string[]): void {
   const onSql = onClause(join, ctx);
 
   if (side === "LEFT" && subjoins !== "") {
-    // Joins#join_clause_parts: LEFT JOIN parenthesizes table + subjoins
+    // A LEFT JOIN whose target carries its own joins parenthesizes both.
     chunks.push(`LEFT JOIN (${join.toTable} ${join.toAlias} ${subjoins}) ON ${onSql}`);
   } else {
     chunks.push(`${side ? `${side} ` : ""}JOIN ${join.toTable} ${join.toAlias} ON ${onSql}`);
@@ -412,7 +414,8 @@ function renderJoin(join: JoinNode, ctx: GenContext, chunks: string[]): void {
   }
 }
 
-/** Joins#on_clause + #on_card_conditions */
+/** A join's ON clause: the field pairing, plus whatever the target's own
+ *  conditions contribute. */
 function onClause(join: JoinNode, ctx: GenContext): string {
   const conditions: string[] = [
     `${join.fromAlias}.${join.fromField} = ${join.toAlias}.${join.toField}`,
@@ -420,8 +423,8 @@ function onClause(join: JoinNode, ctx: GenContext): string {
   const to = join.to;
   if (to) {
     if (to.conditionsOnJoin) {
-      // on_card_conditions: explicit conditions render in ON when the join
-      // owns them (negate joins, sort joins)
+      // Explicit conditions render in ON when the join owns them — negated
+      // joins and sort joins both set conditionsOnJoin.
       const explicit = explicitConditions(to, ctx);
       if (explicit !== "") conditions.push(explicit);
     }
@@ -432,83 +435,54 @@ function onClause(join: JoinNode, ctx: GenContext): string {
   return conditions.join(" AND ");
 }
 
-// ---- ORDER BY (SqlStatement::Order) ----
+// ---- ORDER BY ----
 
 interface OrderDirective {
   field: string;
   dir: string;
 }
 
-/** Order#order_directives / #order_field / #order_dir, plus the id
- *  tie-breaker (SINGLE-TABLE scans only), shaped by the viewer.
+/** The ORDER BY directives for one query, plus the id tie-breaker.
  *
- *  WHY THE TIE-BREAKER: Ruby's ORDER BY declares no tie-break
- *  (sql_statement/order.rb builds `ORDER BY <field> <dir>` only), so tied
- *  rows come out in SQLite's unspecified tier. The captured oracle bytes
- *  embed two DIFFERENT unspecified tiers, and both are reproducible:
+ *  WHY THE TIE-BREAKER: an ORDER BY that declares no tie-break leaves the
+ *  order of tied rows to the engine, and SQLite's choice is not one thing —
+ *  it is whichever plan the query happens to get. The shapes here have three
+ *  distinct outcomes, all reproducible:
  *
- *  - Permission-filtered scans (always_ok false): the statement carries
- *    `read_rule_id IN (...)`, and the capture deck's plan rode whichever
- *    index the sort allowed. A KEY primary (sort name/alpha) rode the key
- *    index itself — the ORDER BY is satisfied without a sorter, so tied
- *    rows stay in rowid order: `c0.id asc` (the Image member search's
- *    NULL-key cohort renders in id order 217,431,...,712). Any other
- *    primary (updated_at has no satisfying plan with the filter in
- *    flight) drove the read_rule_id index — one loop per list value,
- *    rows in rowid order — feeding a stable sort: `c0.read_rule_id asc,
- *    c0.id asc`. That is the *search page (`{"match":"$keyword",
- *    "sort":"relevance"}` → `ORDER BY updated_at desc`): its 2026-09-06
- *    15:26:37 tie cohort renders 393,1001,1708,2456,26026 then the
- *    7786-rule row 1334, and the 01:14:36 cohort 3523,3526 then
- *    12221(12223) then 1823(40702) — for both signed-in members.
- *  - Always-ok scans (the Administrator captures): no permission
- *    condition, and the captured ties follow the primary's direction —
- *    the updated_at index ride backward emits id DESC under a descending
- *    primary (the Administrator *search head-20 runs
- *    26026,2456,1708,1334,1265,1001,393), forward rides emit id ASC (the
- *    `ORDER BY key asc` capture heads). The tier is pinned to the primary
- *    directive's own direction.
+ *  - Permission-filtered scan with a KEY primary: the key index satisfies
+ *    the ORDER BY outright, so no sorter runs and tied rows come back in
+ *    rowid order. A plain `id asc` tie-breaker reproduces it.
+ *  - Permission-filtered scan with any other primary: no plan satisfies the
+ *    sort with the filter in flight, so the read_rule_id index drives the
+ *    scan — one loop per list value, rowid order within each — feeding a
+ *    stable sort. That is `read_rule_id asc, id asc`.
+ *  - Always-ok scan: no permission condition, and tied rows follow the
+ *    primary's own direction, so the tie-breaker takes that direction.
  *
- *  The ported decks break ties by THEIR physical order instead: the corpus
- *  scrub carries name/key as NULL for 40,090 of 49,829 rows
- *  (seedCard writes keyColumn NULL for unnamed rows,
- *  render-test-storage.ts), so every `sort: name` search over such rows
- *  ties on the NULL-key tier and the seeded deck's insertion (BFS closure)
- *  order decides — scrambling the head-20 the html limit renders.
- *  Appending the explicit tie-breaker pins the unspecified tier to the
- *  captured semantics on any schema; queries without ties are untouched.
+ *  The tier matters more than it looks on decks that carry NULL keys for
+ *  unnamed rows: a `sort: name` search ties across that whole cohort, and
+ *  whatever the engine happens to emit decides which rows a limit renders.
+ *  Appending the explicit tie-breaker pins the tier instead of inheriting
+ *  it, on any schema. Queries with no ties are untouched.
  *
- *  WHY NOT ON JOINED STATEMENTS: with a join in the statement the
+ *  WHY NOT ON JOINED STATEMENTS: with a join in the statement, the
  *  unspecified tier is the JOIN EMISSION order — the driving table's rowid
- *  sequence — not the superquery's id column. Ruby emits `ORDER BY key`
- *  bare for the reference-tie shape (reference_attributes.rb refer_to →
- *  tie :reference … {to: :referer_id}; live oracle-app Card::Query SQL for
- *  somatic+*referred_to_by: `SELECT DISTINCT c0.* FROM cards c0 JOIN
- *  card_references cr1 ON c0.id = cr1.referer_id WHERE (cr1.ref_type IN
- *  ('L','I') AND cr1.referee_id = 1186) … ORDER BY c0.key asc`), and its
- *  captured row order is card_references-rowid order: junction rows (NULL
- *  keys, sorted first) in reference-insertion order — somatic's referrer
- *  27518 "Soma+description" whose reference row was written LAST
- *  (cr.id 6296176) renders 29th, while simple-card 37473 (real key) sorts
- *  after the whole NULL-key tier. Appending `c0.id asc` re-sorted that
- *  tier id-ascending, hoisting 27518 into head-20 slot 13 and pushing
- *  29740 off the limited listing — the somatic first-diff. better-sqlite3
- *  reproduces Ruby's emission exactly for the Ruby SQL shape (verified
- *  head-30 equal), so joined statements carry the bare Ruby ORDER BY. */
+ *  sequence — not the superquery's id column, and the joined table carries
+ *  its own rowid tier on top of that (junction rows with NULL keys sort
+ *  ahead of keyed rows, in reference-insertion order). Appending an id
+ *  tie-breaker would re-sort that tier and move rows across a limit
+ *  boundary, changing which rows a listing renders. Joined statements
+ *  therefore carry the bare ORDER BY, and the engine reproduces the
+ *  emission order for that SQL shape. */
 function orderDirectivesOf(query: QueryNode, ctx: GenContext): OrderDirective[] {
   const sortMod = query.mods.sortBy ?? query.mods.sort;
   if (!sortMod || sortMod.length === 0) {
-    // SORTLESS JOINED REFERENCE STATEMENTS (the +*members family): Ruby's
-    // statement carries no ORDER BY and the captured row order is the
-    // reference-join emission — a plan-sensitive tier that flipped between
-    // engine builds whose prepare-phase query sequences differ (the Help
-    // Desk +*members listing: verification email (21783) and password reset
-    // email (21787) tie on everything the statement orders by, and the two
-    // orders alternated deterministically with the build). Pinning the
-    // superquery's id asc makes the tier deterministic; the Help Desk
-    // capture is id-ascending, and the sorted joined shapes keep their bare
-    // Ruby ORDER BY untouched (the somatic NULL-key tier above is a SORTED
-    // statement — this arm never fires for it).
+    // A sortless joined reference statement carries no ORDER BY at all, and
+    // its row order is the reference-join emission — a tier that depends on
+    // the plan the engine picks, so it can differ between engine builds even
+    // when the statement does not. Pinning the superquery's id asc makes the
+    // tier deterministic. Sorted joined statements never reach this arm;
+    // they keep their bare ORDER BY.
     const joins = renderedJoins(query);
     if (joins.length > 0) {
       return [{ field: `${query.tableAlias}.id`, dir: "asc" }];
@@ -550,7 +524,7 @@ function orderField(query: QueryNode, token: string): string {
   return applySortAs(query, raw);
 }
 
-/** Order#order_as — CAST(field AS type) when sort_as is present */
+/** CAST(field AS type) when sort_as is present. */
 function applySortAs(query: QueryNode, field: string): string {
   const as = query.mods.sortAs;
   if (!as) return field;
@@ -558,9 +532,9 @@ function applySortAs(query: QueryNode, field: string): string {
 }
 
 /**
- * Order#order_dir. sort_dir wins over the deprecated dir; per-directive
- * entries index into the arrays; without either, DEFAULT_ORDER_DIRS (keyed
- * by the raw sort token) or "asc".
+ * A directive's direction. sort_dir wins over the deprecated dir;
+ * per-directive entries index into those arrays; with neither, the
+ * DEFAULT_ORDER_DIRS table (keyed by the raw sort token) decides, then "asc".
  */
 function orderDir(query: QueryNode, token: string, index: number): string {
   const dirs = query.mods.sortDir ?? query.mods.dir;
@@ -572,9 +546,10 @@ function orderDir(query: QueryNode, token: string, index: number): string {
 }
 
 /**
- * SqlStatement#cast_type approximation for SQLite. Ruby casts through the
- * adapter's native types (MySQL "signed", "char", ...); SQLite understands
- * INTEGER/REAL/TEXT. Unmapped values pass through safe_sql verbatim.
+ * Map a sort_as type name to a SQLite cast type. The accepted spellings are
+ * the adapter's native type names ("signed", "char", "decimal", ...);
+ * SQLite understands INTEGER/REAL/TEXT, so each maps onto one of those.
+ * Anything unmapped passes through verbatim.
  */
 function sqliteCastType(type: string): string {
   switch (type.toLowerCase()) {
