@@ -5,15 +5,15 @@
 // the read side reflect it, and watch the act/action/changes rows land.
 // Plus the write-permission walks through the HTTP layer: the three
 // ok_to_* denials, the ok_to_update? type-change clause, the cookie-session
-// transport, the *signin subcard-update login, and the LIVE response
-// shapes (303 hard redirect with absolute Location; no forgery token, with
+// transport, the *signin subcard-update login, and the response shapes
+// (303 hard redirect with absolute Location; no forgery token, with
 // the port's origin check refusing cross-site posts).
 //
 // Ruby truth under test (see the module header citations in
 // src/server/write-routes.ts): engine_routes.rb grammar, rest.rb
 // create/update/delete, permission.rb ok_to_* (403), error.rb statuses
 // (404/422), response.rb redirect_cud_success (303, card_url-absolute),
-// the LIVE decko CSRF posture (no protect_from_forgery anywhere in
+// decko's CSRF posture (no protect_from_forgery anywhere in
 // decko-0.20.0 / card-1.110.0 — the only forgery reference is
 // environments/cucumber.rb:27, which disables it), and the *signin
 // :signin event (card-mod-account set/self/signin.rb).
@@ -255,9 +255,8 @@ async function seedSideDenyDeck(s: RenderTestStorage): Promise<void> {
 describe("signed-in save over HTTP (the full write path)", () => {
   it("form update with a token session: 303 See Other, absolute Location, rows written", async () => {
     // A real decko edit form POSTs with the Rails _method override (patch).
-    // Live response shape: redirect_cud_success hard_redirects 303 with the
-    // card_url-absolute Location (response.rb:31,41; captured step-07:
-    // "http://localhost:3011/Session_Replay_Probe_G_2026_09_28").
+    // Ruby's response shape: redirect_cud_success hard_redirects 303 with
+    // the card_url-absolute Location (response.rb:31,41).
     const res = await call(baseUrl, "POST", "/Widget", {
       form: { "card[content]": "widget body v2 — saved over HTTP", _method: "patch" },
       token: joeToken,
@@ -302,9 +301,9 @@ describe("signed-in save over HTTP (the full write path)", () => {
   });
 
   it("form update with ONLY the session cookie (no token anywhere): 303, save lands", async () => {
-    // The live transport: real decko forms ride the cookie session
-    // (auth/current.rb:50-63 signin_with_session — the captured saves carry
-    // no token at all). The port reads the staging session cookie.
+    // Ruby's form transport: decko forms ride the cookie session
+    // (auth/current.rb:50-63 signin_with_session, no token involved). The
+    // port reads the staging session cookie.
     const res = await call(baseUrl, "POST", "/Widget", {
       form: { "card[content]": "cookie-session save", _method: "patch" },
       cookie: `decko_ts_session=${joeToken}`,
@@ -374,8 +373,7 @@ describe("signed-in save over HTTP (the full write path)", () => {
   it("XHR save (ajax soft redirect): 200 + rendered slot of the saved card", async () => {
     // response.rb:25-36: the ajax flavor (request.xhr? — X-Requested-With
     // XMLHttpRequest, actionpack request.rb:290-294) defaults to the SOFT
-    // redirect and re-renders through `show` (:54-62). The captured XHR
-    // save came back 200 + the card's slot (manifest step-04). Here the
+    // redirect and re-renders through `show` (:54-62). Here the
     // host hook renders the engine's open view.
     const res = await call(baseUrl, "POST", "/Widget", {
       form: { "card[content]": "xhr slot save", _method: "patch" },
@@ -423,9 +421,9 @@ describe("the permission gates through HTTP (ok_to_* walks)", () => {
 
   it("ok_to_create? denial rides the junction sides: trunk allowed, missing part denied (403)", async () => {
     // The MISSING right part resolves as a virtual new card WITH its
-    // would-be type (the HIGH-1 fix: resolveTypeId -> defaultTypeId, the
-    // *all+*default rule card's type_id = 2 here) — a "typeless part"
-    // premise would pin the pre-HIGH-1 divergence. The deny instead rides
+    // would-be type (resolveTypeId -> defaultTypeId, the
+    // *all+*default rule card's type_id = 2 here); a "typeless part"
+    // reading would deny for the wrong reason. The deny instead rides
     // the side's *star candidate: the side "*Ghost Part" is *-named ->
     // *star+*create -> [[Editor]] (Joe is not one), while the JUNCTION
     // passes permit(:create) through *rstar+*create -> [[Anyone Signed In]]
@@ -480,14 +478,11 @@ describe("anonymous and bad-token writes are denied (403, Ruby's PermissionDenie
 describe("no forgery protection (the live decko CSRF posture)", () => {
   // decko-0.20.0 / card-1.110.0 contain no protect_from_forgery call
   // anywhere; the only forgery reference in the generation is
-  // config/environments/cucumber.rb:27, which DISABLES it. The captured
-  // real session is the proof: token-less form posts go straight through
-  // to the action gates (the earlier TS HMAC-token gate + 422s modeled the
-  // Rails default, not the live app, and are gone).
+  // config/environments/cucumber.rb:27, which DISABLES it. Token-less
+  // form posts therefore go straight through to the action gates.
 
   it("form post WITHOUT an authenticity token, signed-in session: saves (303)", async () => {
-    // the captured live shape: step-07 POST /update/<probe>, no token
-    // anywhere, 303 success
+    // no token anywhere — the save succeeds
     const res = await call(baseUrl, "POST", "/Widget", {
       form: { "card[content]": "csrf-less live-shape save", _method: "patch" },
       token: joeToken,
@@ -508,7 +503,7 @@ describe("no forgery protection (the live decko CSRF posture)", () => {
   });
 
   it("form post with NO session behind it: 403 PermissionDenied (the anonymous write gate)", async () => {
-    // live step-08: the anonymous denial is Ruby's permission gate
+    // the anonymous denial is Ruby's permission gate
     // (403), not a forgery 422 — the token-less anonymous POST reaches
     // ok_to_update? and is denied there.
     const res = await call(baseUrl, "POST", "/Widget", {
@@ -521,7 +516,7 @@ describe("no forgery protection (the live decko CSRF posture)", () => {
 
   it("cross-origin form post: refused with 403 (a security divergence; Ruby saves it)", async () => {
     // Ruby's origin check lives inside the never-armed
-    // verify_authenticity_token, so live decko saves this post. The port
+    // verify_authenticity_token, so Ruby saves this post. The port
     // refuses it before any card machinery runs (docs/SECURITY.md,
     // "Cross-site requests"); tests/server/write-routes-origin.test.ts
     // covers the rule in full.
@@ -545,7 +540,7 @@ describe("the *signin update IS the login action (card-mod-account set/self/sign
     // .rb:6-9). No account cards exist in this seed deck -> the Ruby
     // failure ladder path; assert the FAILURE shape here (422, the
     // abort-failure UserError status) and the full success shape in the
-    // edit-session replay (the captured Tova sign-in).
+    // edit-session replay suite.
     const res = await call(baseUrl, "POST", "/update/*signin", {
       form: {
         "card[subcards][+*email][content]": "nobody@example.com",
@@ -584,8 +579,7 @@ describe("error shapes over HTTP", () => {
 
   it("missing card on DELETE: 422 (Card::Error::UserError)", async () => {
     // The controller fetches a NEW card for the mark and deleting a new card
-    // raises a bare UserError. Measured against the oracle by the
-    // side-effects parity harness: anonymous HTML, signed-in HTML and
+    // raises a bare UserError: anonymous HTML, signed-in HTML and
     // signed-in JSON deletes of a missing card all answer 422.
     const res = await call(baseUrl, "DELETE", "/Never Was.json", { token: joeToken });
     expect(res.status).toBe(422);
