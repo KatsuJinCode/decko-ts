@@ -1,7 +1,6 @@
-// Pins for the staging server's recaptcha host wiring. The write-route
-// recaptcha seat originally armed the guard only when a HOST passed the
-// config, and no production host did — these pins hold the env-config
-// source and the boot wiring that close that gap.
+// Pins for the staging server's recaptcha host wiring: the env-config
+// source and the boot wiring that arm the write-route recaptcha seat
+// from host environment variables.
 //
 // Two layers are pinned here, matching what can execute:
 //
