@@ -1,6 +1,6 @@
-// Gherkin step helpers for the decko-ts feature port. Each function is a
-// direct port of a Gherkin "Given/When/Then" step from the upstream
-// features (decko-commons/decko decko/features/*.feature), implemented
+// Gherkin step helpers for the feature suites. Each function mirrors a
+// Gherkin "Given/When/Then" step from the upstream
+// features, implemented
 // against the TS engine: FetchEngine, RenderEngine, CardActionEngine.
 //
 // Design notes:
@@ -11,13 +11,13 @@
 //     real Rails stack with Capybara + a browser; the engine has neither,
 //     so the helper layer is the boundary.)
 //   - "I create <Type> card <name> with content '<body>'" — the type
-//     argument is the Ruby Set signature (mod-* card-mod-.../set/type/
-//     <type>.rb#view :name) and the content argument is the body. Both
+//     argument is the type signature (mod-* set/type/<type>.rb#view :name)
+//     and the content argument is the body. Both
 //     pass through CardActionEngine.createCard.
 //   - "I go to card <name>" / "I edit <name>" — in the engine, these are
 //     fetch + render + assert against the rendered HTML. No UI driver.
-//   - Anonymous actor is enforced where Ruby does, allowed where Ruby
-//     does; the helpers default to Joe User and accept an override.
+//   - Anonymous actor is enforced where the reference does, allowed where
+//     it does; the helpers default to Joe User and accept an override.
 
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
 import { CardActionError, type Actor } from "../../../src/card/actions/index.js";
@@ -80,8 +80,8 @@ export async function closeWorld(world: GherkinWorld): Promise<void> {
 // ---------------------------------------------------------------------------
 
 /** "Given I am signed in as <actor>". The action engine's actor IS the
- *  signed-in identity; this step (re)builds the engine with that actor.
- *  Ruby: Card::Auth.current_id = ... (auth/current.rb:7-9). */
+ *  signed-in identity; this step (re)builds the engine with that actor
+ *  (Card::Auth.current_id = ...; auth/current.rb:7-9). */
 export async function givenSignedInAs(world: GherkinWorld, actor: Actor): Promise<void> {
   world.actor = actor;
   world.engine = new CardActionEngine(world.storage.fetcher, {
@@ -91,8 +91,8 @@ export async function givenSignedInAs(world: GherkinWorld, actor: Actor): Promis
   });
 }
 
-/** "Given I am signed out" — builds an engine with `null` actor. Ruby
- *  equivalent: Card::Auth.current_id = Card::AnonymousID. */
+/** "Given I am signed out" — builds an engine with `null` actor
+ *  (Card::Auth.current_id = Card::AnonymousID). */
 export async function givenSignedOut(world: GherkinWorld): Promise<void> {
   await givenSignedInAs(world, { id: -1, name: "*anonymous" });
 }
@@ -135,7 +135,7 @@ export async function whenCreateCard(
 }
 
 /** "When I create card <name> with content '<content>'" — no explicit
- *  type, falls to the *all+*default rule (default_type_id, type.rb:3-5). */
+ *  type, falls to the *all+*default rule (default_type_id). */
 export async function whenCreateSimpleCard(
   world: GherkinWorld,
   name: Nameish,
@@ -258,9 +258,9 @@ export async function thenCardTrashed(world: GherkinWorld, name: string): Promis
 
 /** "Then the card <name> should point to '<target>'" — pointer-card
  *  shape: the card's db_content encodes a reference. Mirrors the
- *  upstream pointer_inputs.feature assertions at the storage level.
- *  The TS port doesn't model the reference machinery yet, so we
- *  assert on the raw db_content. */
+ *  upstream pointer feature assertions at the storage level.
+ *  The reference machinery is not modelled here, so the
+ *  assertion reads the raw db_content. */
 export async function thenCardPointsTo(
   world: GherkinWorld,
   name: string,
@@ -281,10 +281,10 @@ export async function thenCardPointsTo(
 // Render — "When I go to card X" / "When I edit X"
 // ---------------------------------------------------------------------------
 
-/** "When I go to card <name>" — fetch + render the title view. Ruby:
- *  visit card_path (Capybara) — equivalent here to render the card and
+/** "When I go to card <name>" — fetch + render the title view. Equivalent
+ *  to a page visit: render the card and
  *  stash the HTML for the next "Then I should see" step. The default
- *  view is "titled" (card-mod-format set/all/html/views.rb). */
+ *  view is "titled". */
 export async function whenGoToCard(world: GherkinWorld, name: string, view: string = "titled"): Promise<void> {
   world.lastCard = await fetchByName(world, name);
   world.lastHtml = await world.storage.renderer.render(name, view);
@@ -292,18 +292,18 @@ export async function whenGoToCard(world: GherkinWorld, name: string, view: stri
 
 /** "When I go to new <Type>" — render an absent card, which the render
  *  engine handles with the unknown-view branch (render/views.ts
- *  unknownView — captures Ruby's "create denied" empty result). */
+ *  unknownView — captures the "create denied" empty result). */
 export async function whenGoToNew(world: GherkinWorld, typeName: string, view: string = "titled"): Promise<void> {
   const title = typeName; // the Gherkin form "new Movie" maps to name "Movie"
   await whenGoToCard(world, title, view);
 }
 
 // ---------------------------------------------------------------------------
-// Names — the DeckoName algebra ports of name-related Gherkin steps.
+// Names — the DeckoName algebra equivalents of name-related Gherkin steps.
 // ---------------------------------------------------------------------------
 
 /** "Then the name <raw> should parse to key '<key>'". Pure name algebra,
- *  no engine calls — ports the Gherkin "name" assertions to TS. */
+ *  no engine calls. */
 export function thenNameKey(raw: string, key: string): void {
   const actual = DeckoName.parse(raw).key;
   if (actual !== key) {
@@ -336,8 +336,8 @@ async function fetchByName(world: GherkinWorld, name: string): Promise<CardRecor
 }
 
 /** "I create <Type> card ..." type argument to typeCode mapping. The
- *  upstream Gherkin uses Set::Card::Phrase, Set::Card::RichText, etc.
- *  The TS port's standard deck seeds RichText with codename "basic",
+ *  upstream Gherkin names types Set::Card::Phrase-style.
+ *  The standard deck here seeds RichText with codename "basic",
  *  Cardtype with codename "cardtype" — the other codenames ("phrase",
  *  "pointer", etc.) follow the same pattern. */
 function typeNameToCode(typeName: string): string {
@@ -351,9 +351,9 @@ function typeNameToCode(typeName: string): string {
     case "Pointer":
       return "pointer";
     default:
-      // Unknown — fall back to the codename itself (Ruby accepts both
-      // names and codenames here — Set::Card::Phrase.name = "Phrase",
-      // Set::Card::Phrase.cardcode = "phrase"; the engine resolves both).
+      // Unknown — fall back to the codename itself (both
+      // names and codenames resolve — Set::Card::Phrase.name = "Phrase",
+      // Set::Card::Phrase.cardcode = "phrase").
       return typeName.toLowerCase();
   }
 }
