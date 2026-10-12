@@ -3,8 +3,8 @@
 //
 // The Ruby body is one call: `hidden_field :content, class: "d0-card-content"`.
 // Which hidden_field that resolves to, and what the 2-arg call binds, is
-// resolved from the installed gem sources and pinned to live bytes captured
-// from actionview-7.2.3.2 on Ruby 3.3.0 by the committed probe script
+// resolved from the installed gem sources and pinned against the output of
+// actionview-7.2.3.2 on Ruby 3.3.0, produced by the committed probe script
 // tests/card/mod-loader/oracle-capture-hidden-content-field-view.rb:
 //
 //  1. View bodies run with self = the HtmlFormat instance:
@@ -41,7 +41,7 @@
 //     from the stringified hash (field_name/field_id, form_tag_helper.rb:
 //     102-144), HTML-escaped by the tag builder.
 //
-// The pinned byte string below is the LIVE OUTPUT of running the real
+// The pinned byte string below is the output of running the real
 // actionview-7.2.3.2 gem with exactly the forwarded arguments
 // (tests/card/mod-loader/oracle-capture-hidden-content-field-view.rb —
 // method.source_location resolved to form_helper.rb:1214 in the same run,
@@ -60,8 +60,8 @@ import {
 } from "../../../src/card/mod-loader.js";
 import cardModFormat from "../../../src/card/mod-loader/mods/card-mod-format.js";
 
-// Live-captured Ruby bytes (actionview-7.2.3.2, Ruby 3.3.0, exact forwarded
-// arguments - see the header and the research receipt).
+// Ruby bytes captured from actionview-7.2.3.2 on Ruby 3.3.0 with the
+// exact forwarded arguments — see the header.
 const RUBY_ORACLE_BYTES =
   '<input autocomplete="off" type="hidden" name="content[{:class=&gt;&quot;d0-card-content&quot;}]" id="content_{:class=&gt;&quot;d0-card-content&quot;}" />';
 
