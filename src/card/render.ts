@@ -2447,6 +2447,7 @@ export class RenderEngine implements RenderEngineLike {
     this.ruleCache.clear();
     this.viewDispatchCache.clear();
     this.readPermission = undefined;
+    this.accountRightIds = undefined;
     this.deniedVerdicts.clear();
     this.deniedVerdictsByKey.clear();
     this.coreAdminRuntimeEnsured = false;
@@ -4656,23 +4657,87 @@ export class RenderEngine implements RenderEngineLike {
     return !denied;
   }
 
+  /**
+   * The right-part card ids the account substrate hangs its secrets on:
+   * card-mod-account-0.20.0 data/real.yml:82 (`*account`), :121 (`*email`),
+   * :132 (`*password`), :143 (`*salt`), :150 (`*status`). A junction whose
+   * right part is one of these IS a row of somebody's account: the email
+   * address, the PBKDF2 digest, the digest salt.
+   *
+   * Resolved by CODENAME the way every other account codename is resolved in
+   * this port (signin.ts resolveAccountCodenameIds, first-run-setup.ts
+   * resolveCodenameCardId) — never by a hardcoded id — and absent codenames
+   * are skipped rather than defaulted, so a deck without the account system
+   * (the 0001..0003 chain) gets an empty set and no exclusion clause. */
+  private static readonly ACCOUNT_RIGHT_CODENAMES = [
+    "account",
+    "email",
+    "password",
+    "salt",
+    "status",
+  ] as const;
+
+  private accountRightIds: number[] | undefined;
+
+  /** The account field right ids, resolved once per engine. */
+  private async accountFieldRightIds(): Promise<number[]> {
+    if (this.accountRightIds === undefined) {
+      const ids: number[] = [];
+      for (const codename of RenderEngine.ACCOUNT_RIGHT_CODENAMES) {
+        const row = await this.fetcher.driver.query<{ id: number }>(
+          `SELECT id FROM cards WHERE codename = ? AND trash = 0 ORDER BY id LIMIT 1`,
+          [codename],
+        );
+        const id = row.rows[0]?.id;
+        if (typeof id === "number") ids.push(id);
+      }
+      this.accountRightIds = ids;
+    }
+    return this.accountRightIds;
+  }
+
   /** The CQL permission filter for this engine's viewer — the shape
    *  executeQuery's SqlOptions take (sql.ts implicitConditions, the port of
    *  Where#permission_conditions). Ruby's Card::Query runs with
    *  Auth.always_ok? false, so every /api/query-shaped statement is
    *  filtered to the viewer's readable rule set; serving rows without the
-   *  filter leaks db_content the HTML views deny. The rule-less-deck
-   *  allowance mirrors canReadByRuleLookup's undefined verdict (no read
-   *  rule cards at all: nothing to filter by, everything allowed — the
-   *  same divergence the HTML verdicts document; filtering with the empty
-   *  set would deny every card and break rule-less seeds). */
-  async cqlPermissionOptions(): Promise<{ alwaysOk: boolean; readRuleIds: number[] }> {
+   *  filter leaks db_content the HTML views deny.
+   *
+   *  THE RULE-LESS ALLOWANCE, now SCOPED. This used to answer
+   *  `alwaysOk: true` — filter off — whenever the deck carried no catch-all
+   *  read rule, on the reasoning that a rule-less seed has nothing to filter
+   *  by. That reasoning is true of a deck with no ACCOUNTS and false of one
+   *  with them: "no rule to evaluate" is not "readable to everyone", and on
+   *  the shipped demo deck it answered /api/query {"right":"*password"} with
+   *  every stored digest. The allowance stays (a synthetic rule-less deck is
+   *  a real shape, and Ruby's fail-closed answer there would deny every card
+   *  and break it), but it now carries an exclusion for the account field
+   *  rows: `excludedRightIds` renders `right_id NOT IN (...)` (sql.ts
+   *  implicitConditions), so a rule-less deck serves everything EXCEPT
+   *  somebody's account fields.
+   *
+   *  A deck that DOES carry the rules (the shipped one, since
+   *  0004-demo-account-substrate.sql block C) gets the ordinary filtered
+   *  answer with no exclusion — the rules are the answer there, and adding a
+   *  second mechanism on top would be the kind of belt-and-braces that hides
+   *  a broken rule set. */
+  async cqlPermissionOptions(): Promise<{
+    alwaysOk: boolean;
+    readRuleIds: number[];
+    excludedRightIds: number[];
+  }> {
     const state = await this.ensureReadPermission();
-    if (state.alwaysOk) return { alwaysOk: true, readRuleIds: [] };
-    if (!state.hasReadRules || !state.hasCatchAllReadRule) {
-      return { alwaysOk: true, readRuleIds: [] }; // rule-less allowance
+    if (state.alwaysOk) {
+      // Ruby's own short-circuit (permissions.rb:140): the bot and
+      // administrators are never filtered, so an exclusion here would
+      // narrow Ruby's answer rather than restore it.
+      return { alwaysOk: true, readRuleIds: [], excludedRightIds: [] };
     }
-    return { alwaysOk: false, readRuleIds: [...state.readableRuleIds] };
+    if (!state.hasReadRules || !state.hasCatchAllReadRule) {
+      // The scoped rule-less allowance (see the doc comment above).
+      return { alwaysOk: true, readRuleIds: [], excludedRightIds: await this.accountFieldRightIds() };
+    }
+    return { alwaysOk: false, readRuleIds: [...state.readableRuleIds], excludedRightIds: [] };
   }
 
   // -------------------------------------------------------------------------

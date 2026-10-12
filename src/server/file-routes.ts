@@ -218,7 +218,39 @@ async function handleFileGet(
     "Content-Disposition",
     `${parsed.format === "file" ? "attachment" : "inline"}; filename="${safeFilename(card, local.ext)}"`,
   );
+  // UPLOADED-BYTES DEFENSES (round-9 fix; both are response headers on this
+  // one construction site, so neither can be bypassed by a route that forgot
+  // them).
+  //
+  // X-Content-Type-Options: nosniff — the bytes here are whatever a user
+  // uploaded, and the Content-Type is DERIVED from them
+  // (detectAttachmentContentType, the SanitizedFile order). Without nosniff
+  // the browser is free to ignore a declared type it considers wrong and
+  // sniff its own — which for an upload is the attacker choosing the parser.
+  headers.set("X-Content-Type-Options", "nosniff");
+  //
+  // Content-Security-Policy: sandbox — nosniff alone does NOT neutralize an
+  // inline text/html or image/svg+xml body: the declared type is already
+  // correct there, so there is nothing to sniff away, and script in the body
+  // runs in the DECK'S OWN ORIGIN (stored XSS against every session cookie
+  // and every card the visitor can read). `sandbox` with no allow-* token
+  // puts the response in an opaque origin: scripts do not run, forms do not
+  // submit, plugins do not load — and the SVG still renders as an image,
+  // because an <img> is a passive context. Scoped to the two types that can
+  // carry script; a PNG/JPEG/PDF response carries nothing to sandbox.
+  if (isActiveContentType(contentType)) {
+    headers.set("Content-Security-Policy", "sandbox");
+  }
   return new Response(request.method === "HEAD" ? undefined : new Uint8Array(bytes), { headers });
+}
+
+/** The served content types that can execute script in the deck's origin if
+ *  an upload puts script in them. Compared on the media type alone, so
+ *  `text/html; charset=utf-8` and `image/svg+xml` both match, and nothing
+ *  else does. */
+function isActiveContentType(contentType: string): boolean {
+  const media = contentType.split(";", 1)[0]?.trim().toLowerCase() ?? "";
+  return media === "text/html" || media === "image/svg+xml";
 }
 
 function safeFilename(card: ResolvedMark, ext: string): string {

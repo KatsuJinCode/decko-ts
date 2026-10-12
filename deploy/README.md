@@ -20,6 +20,10 @@ local proof runs the real workerd via miniflare with NO Cloudflare account
 | `migrations/0003-demo-seed.sql` | the 4-card demo deck, generated from `db/seed.sql`; this is what the ROOT `wrangler.toml` one-click chain applies |
 | `migrations/0004-demo-account-substrate.sql` | the account substrate (`*account` + its four field cards, the `User` cardtype, the Decko Bot and Anonymous actor cards, and Decko Bot's own account). Idempotent — applying it twice inserts nothing. Generated |
 | `seed-account-system.mjs` | regenerates `migrations/0004-demo-account-substrate.sql` |
+| `migrations/0006-demo-role-substrate.sql` | the role substrate (the `Role` cardtype, `*members`, and all six card-mod-account roles). Idempotent. Generated |
+| `seed-role-substrate.mjs` | regenerates `migrations/0006-demo-role-substrate.sql` |
+| `migrations/0009-demo-account-read-rules.sql` | the account read rules: the `*all+*read` catch-all (granting Anyone) plus the five `<field>+*right+*read` grants real.yml gives the Help Desk role. Without them the demo deck serves an anonymous requester the owner's password digest, salt and email address. **Applies after 0006** — every row is a `card_references` entry whose referee is the Help Desk role card, and applied earlier those references would name a referee that does not exist. Idempotent. Generated |
+| `seed-account-read-rules.mjs` | regenerates `migrations/0009-demo-account-read-rules.sql` |
 | `seed.mjs` | regenerates `seed/seed.sql` (synthetic demo deck) |
 | `seed/seed.sql` | 15 synthetic cards, < 10 KB (generated) |
 | `launch.mjs` | earlier one-command orchestrator, superseded by `scripts/deploy/one-click-deck/`; dry-run/`--local` only, carries no write-budget gate of its own |

@@ -131,6 +131,14 @@ describe("card-mod-account field views (right/account :core + right/password raw
     await expect(
       s.engine.render("Fields_Probe_Member+account+password", "raw"),
     ).rejects.toThrow(UnsupportedViewError);
+    // ...and :input falls through to card-mod-edit's all/editor :input,
+    // which DOES carry the content (the leak the round-9 :input
+    // registration closes — see the :input pins at the end of this file).
+    const input = await s.engine.render(
+      "Fields Probe Member+account+password",
+      "input",
+    );
+    expect(input).toContain("fake-hash-not-a-real-password");
   });
 
   it("WITH the mod: +*account :core renders the email+password field nests (views.rb:50-57)", async () => {
@@ -205,5 +213,60 @@ describe("card-mod-account field views (right/account :core + right/password raw
     expect(await s.engine.render("Fields_Probe_Member+account+password", "core")).toBe(
       "<em>encrypted</em>",
     );
+  });
+
+  // The round-9 security pin. GET /:account+*password/input returned the
+  // stored PBKDF2 digest on the demo deck, because the right/password set
+  // registered only :raw and :core: an :input render fell through to
+  // card-mod-edit's all/editor :input, whose every arm carries the card's
+  // content (text_field's value=, the tinymce textarea's body). Ruby routes
+  // it to password_input (right/password.rb:86-88 `input_type :password`
+  // reaches editor.rb:33 `try(input_method(input_type))` FIRST), and Rails
+  // renders a password field with the value attribute always nil
+  // (Tags::PasswordField#render).
+  //
+  // The A/B pair below: the assertion lives in the FIRST test, the only
+  // window in this file where no mod is bound (every later test installs one
+  // into the shared engine), so the pin is not vacuous.
+  it("WITH the mod: +password :input is the VALUELESS password field (password_input.haml)", async () => {
+    const s = storage!;
+    loader = new ModLoader([{ manifest: cardModAccount }]);
+    loader.load();
+    bindModLoaderToEngine(storage!, loader!);
+    await loader.installInto(modEngineHost(s.engine, s.fetcher));
+
+    const input = await s.engine.render(
+      "Fields Probe Member+account+password",
+      "input",
+    );
+    // The security assertion: the stored hash is not in the bytes, and the
+    // input carries no value attribute at all (not an empty one — Rails'
+    // tag_options drops nil-valued attributes, so `value=` must not appear).
+    expect(input).not.toContain("fake-hash-not-a-real-password");
+    expect(input).not.toMatch(/\bvalue=/);
+    // The gem's own bytes: bootstrap_options' " form-control" append, the
+    // caller's class/placeholder/autocomplete, Rails' type, then name+id.
+    expect(input).toBe(
+      '<input class="d0-card-content _pw-input form-control" placeholder="Password" ' +
+        'autocomplete="off" type="password" name="card[content]" id="card_content" />',
+    );
+  });
+
+  it("WITH the mod: the OTHER account field keeps its content-bearing input (the pin is password-specific)", async () => {
+    const s = storage!;
+    loader = new ModLoader([{ manifest: cardModAccount }]);
+    loader.load();
+    bindModLoaderToEngine(storage!, loader!);
+    await loader.installInto(modEngineHost(s.engine, s.fetcher));
+
+    // right/email.rb declares no input_type override and no input view, so
+    // an email field's :input is the editor's ordinary text field WITH its
+    // value. If this ever fails the way the password pin did, the :input
+    // registration has widened past the password set.
+    const emailInput = await s.engine.render(
+      "Fields Probe Member+account+email",
+      "input",
+    );
+    expect(emailInput).toContain("probe@example.com");
   });
 });

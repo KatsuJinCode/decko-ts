@@ -216,7 +216,15 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // Error's production :server_error (4b7b1338's error-page ruling,
       // debug_server_error's renderer twin), measured on the merged tree;
       // still no new format key and no css/scss row.
-      ["html", 355],
+      // 355 -> 356 (round-9 Cloudflare-security fix, 2026-10-11): one more
+      // html-keyed registration, card-mod-account right/password :input -
+      // the valueless password field (set/all/password_input.haml). Ruby
+      // reaches the same bytes through the `input_type :password` method
+      // override (right/password.rb:86-88) rather than a view registration,
+      // and the port carries the override by registering the view it routes
+      // to, so the census counts one row the gem files express as a method.
+      // No new format key, still zero css/scss rows.
+      ["html", 356],
 
       ["js", 2],
       ["json", 3],
