@@ -1,4 +1,4 @@
-# Read-only probe #2 (lane-admin): core mod fetch semantics + mod name order.
+# Read-only probe #2: core mod fetch semantics + mod name order.
 #   cd tools/oracle/decko-oracle-app && RAILS_ENV=development bundle exec decko runner \
 #     REPO_ROOT//tests/card/mod-loader/oracle-probe-core-mod-fetch.rb
 require "json"
