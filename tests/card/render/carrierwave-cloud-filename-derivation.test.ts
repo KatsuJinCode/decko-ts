@@ -20,21 +20,18 @@
 //    upload_dir = "#{files_base_dir}/#{id}" — the CARD-ID directory
 //    (set/abstract/attachment/paths.rb:5-12)
 //  - fog public_url = "#{asset_host}/#{encoded_path}" (carrierwave-3.1.4
-//    lib/carrierwave/storage/fog.rb:365-372); the capture's asset host
-//    (trailing slash -> the oracle's double slash) + /files/ web path is the
-//    views.ts FOG_CLOUD_URL_HOST shape already pinned for images
+//    lib/carrierwave/storage/fog.rb:365-372); the asset host (trailing
+//    slash -> the double slash in the expected URL) + /files/ web path is
+//    the views.ts FOG_CLOUD_URL_HOST shape already pinned for images
 //  - contextualize_path (html) keeps ^https?: URLs as-is
 //    (card-mod-format-0.20.0 set/all/path.rb:74-77; card-1.110.0
 //    lib/card/env/location.rb:6-16)
 //
-// ORACLE ACCEPTANCE BYTES: Jonas Verhove page (expected-v2 page-lane
-// recapture-raw-shard-000010.jsonl entry 14542, page_html offset ~12792):
-//   <a href='http://s3.amazonaws.com//files/14547/1.doc'>Download +description+CV</a>
-// rendered from card 14547 db_content `(my_bucket)/14547/61887.abr.1.doc`
-// (bench-corpus-raw.sqlite3, sha256
-// 6A44DFDC20CA941E66DA6BA08ADD7F1A5CF35EC1A3BA75CC43A70920E609440E) — the
-// filename 1.doc is the [-2] split segment; the stored key 61887.abr.1.doc
-// appears NOWHERE in the oracle page.
+// ACCEPTANCE SHAPE: a Person page's +description+CV file junction holding
+// cloud db_content `(my_bucket)/<card id>/<key>.<action>.<n>.<ext>` renders
+//   <a href='...//files/<card id>/<n>.<ext>'>Download +description+CV</a>
+// — the derived filename is the [-2] split segment; the stored key appears
+// NOWHERE in the rendered page.
 
 import { describe, expect, it } from "vitest";
 import {
@@ -86,7 +83,7 @@ describe("lastContentActionIdFromDbContent (set/type/file.rb:11-15)", () => {
 });
 
 describe("derivedCloudAttachmentSource (file_card_uploader.rb:147-153 + path.rb:41-43)", () => {
-  it("derives 1.doc from the Jonas Verhove stored key (oracle href)", () => {
+  it("derives 1.doc from the compound stored key (expected href)", () => {
     expect(derivedCloudAttachmentSource("(my_bucket)/14547/61887.abr.1.doc")).toBe(
       "http://s3.amazonaws.com//files/14547/1.doc",
     );
@@ -99,27 +96,28 @@ describe("derivedCloudAttachmentSource (file_card_uploader.rb:147-153 + path.rb:
     expect(src.startsWith("http://s3.amazonaws.com//files/14547/")).toBe(true);
   });
   it("extension-less cloud content renders no source (valid? = extension.present?)", () => {
-    // corpus cards 23981/24082 (file) + 24083/24347 (image): stored keys
-    // without a dot — Ruby's file.valid? is false and handle_source
-    // short-circuits to "" (set/type/file.rb:47-50 + file.rb:34-45).
+    // Stored keys without a dot — Ruby's file.valid? is false and
+    // handle_source short-circuits to "" (set/type/file.rb:47-50 +
+    // file.rb:34-45).
     expect(derivedCloudAttachmentSource("(my_bucket)/23981/100500")).toBe("");
   });
   it("non-numeric [-2] keeps the stored basename (deterministic stand-in surrogate)", () => {
     // Ruby: action_id_stand_in = Time.now.to_i (file_card_uploader.rb:225-227)
-    // — runtime state; the port keeps the stored name (10 corpus cards,
-    // runtime-bound in every capture).
+    // — runtime state; the port keeps the stored name, which is
+    // deterministic.
     expect(derivedCloudAttachmentSource("(my_bucket)/1490/Photo.JPG")).toBe(
       "http://s3.amazonaws.com//files/1490/Photo.jpg",
     );
   });
   it("image variants append to the DERIVED basename (full_filename versions override)", () => {
     // file_card_uploader.rb:274-281: version at the end, dash-separated —
-    // "1.doc" at -medium is "1-medium.doc", not "61887.abr.1-medium.doc".
+    // a derived "1.doc" at -medium is "1-medium.doc", never
+    // <stored-key>-medium.doc.
     expect(cloudImageUrl("(my_bucket)/14547/61887.abr.1.doc", "medium")).toBe(
       "http://s3.amazonaws.com//files/14547/1-medium.doc",
     );
   });
-  it("downcases the derived extension only (181 uppercase-ext corpus identifiers)", () => {
+  it("downcases the derived extension only", () => {
     expect(cloudImageUrl("(my_bucket)/1490/8871.JPG", "medium")).toBe(
       "http://s3.amazonaws.com//files/1490/8871-medium.jpg",
     );
@@ -135,7 +133,7 @@ describe("derivedCloudAttachmentSource (file_card_uploader.rb:147-153 + path.rb:
   });
 });
 
-describe("file :core renders the derived cloud anchor (Jonas Verhove acceptance)", () => {
+describe("file :core renders the derived cloud anchor (person-page acceptance)", () => {
   async function seedMichaelDeck(): Promise<RenderTestStorage> {
     const storage = await createRenderTestStorage();
     await seedCard(storage, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
@@ -160,14 +158,14 @@ describe("file :core renders the derived cloud anchor (Jonas Verhove acceptance)
       typeId: 2,
       dbContent: "{{_main|titled}}",
     });
-    // the REAL corpus shape (bench-corpus-raw.sqlite3 rows): the Person page
-    // nests +description (14545, RichText carrying {{+CV}}), which nests the
-    // File junction 14547 (left 14545, right "CV") holding the cloud
-    // db_content. The oracle anchor's label is the file card's name
-    // relativized against the page context: +description+CV.
+    // The reference shape: the Person page nests +description (RichText
+    // carrying {{+CV}}), which nests the File junction (left +description,
+    // right "CV") holding the cloud db_content. The anchor's label is the
+    // file card's name relativized against the page context:
+    // +description+CV.
     await seedCard(storage, {
       id: 14542,
-      name: "Jonas Verhove",
+      name: "Sample Person",
       typeId: 3,
       dbContent: "<p>{{+description}}</p>",
     });
@@ -193,7 +191,7 @@ describe("file :core renders the derived cloud anchor (Jonas Verhove acceptance)
 
   it("renders <a href='http://s3.amazonaws.com//files/14547/1.doc'>Download +description+CV</a>", async () => {
     const storage = await seedMichaelDeck();
-    const page = await renderPageBytes(storage.engine, "Jonas Verhove");
+    const page = await renderPageBytes(storage.engine, "Sample Person");
     expect(page).toContain(
       "<a href='http://s3.amazonaws.com//files/14547/1.doc'>Download +description+CV</a>\n",
     );
@@ -205,8 +203,8 @@ describe("file :core renders the derived cloud anchor (Jonas Verhove acceptance)
   it("formatFileCore derives the same anchor bytes from the same content", () => {
     expect(
       formatFileCore("(my_bucket)/14547/61887.abr.1.doc", {
-        cardName: "Jonas Verhove+description+CV",
-        contextNames: ["Jonas Verhove"],
+        cardName: "Sample Person+description+CV",
+        contextNames: ["Sample Person"],
       }),
     ).toBe("<a href='http://s3.amazonaws.com//files/14547/1.doc'>Download +description+CV</a>\n");
   });
