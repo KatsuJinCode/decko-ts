@@ -1,4 +1,4 @@
-// shadow-router.mjs — T5 of #1282: a parallel-routing HTTP proxy that
+// shadow-router.mjs — a parallel-routing HTTP proxy that
 // forwards client requests to a Ruby upstream and, for comparison, to a
 // TypeScript upstream, returns the Ruby response to the client (shadow mode
 // never affects users), and writes a JSONL comparison record to a log file.

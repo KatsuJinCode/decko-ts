@@ -1,19 +1,19 @@
-// Add the six census pins to the standing net and re-pin the skip count.
+// Add six regression-guard pin files to the standing net and re-pin the skip
+// count.
 //
 // WHY THIS SCRIPT EXISTS. A guard that is not in the net is not guarded: the
-// relnames lane established that precedent (510a603c added its two new guard
-// files in the same commit that added the shape gate they probe, and moved
-// expectedSkips 13 -> 14 with the evidence line). These six pins are the RED
-// arms of the census engine ports, and they are the only thing standing between
-// the six ported mechanisms and a silent regression.
+// standing-net manifest lists every guard file the tree carries, and a new
+// guard file lands there in the same commit that adds it, with the
+// expectedSkips count moved in step. These six pin files guard six ported
+// engine mechanisms; without a manifest entry a silent regression in them
+// would go unnoticed.
 //
-// THE SKIP ARITHMETIC, measured not guessed. Run of the six pins together with
-// no extra env: `Test Files 6 passed (6) | Tests 9 passed | 1 skipped (10)`.
-// The single skip is referred-to-by-search-result-set-corpus-replay-pins, whose
-// own contract (REPLAY_REQUESTED, 42dba231) is to SELF-SKIP without
-// REFERRED_TO_BY_RESULT_SET_REPLAY=1 rather than fail. The other five run
-// unconditionally. So expectedSkips goes 14 -> 15 and nothing else in the
-// skip classes moves.
+// THE SKIP ARITHMETIC, measured not guessed. Running the six pin files
+// together with no extra env yields exactly one skipped test: the corpus
+// replay pins file, whose own contract (REPLAY_REQUESTED) is to SELF-SKIP
+// without REFERRED_TO_BY_RESULT_SET_REPLAY=1 rather than fail. The other
+// five run unconditionally. So expectedSkips goes up by exactly one and
+// nothing else in the skip classes moves.
 //
 // The file list and the count are both rewritten from the array, so they cannot
 // drift apart, and the script refuses if the count it computes disagrees with

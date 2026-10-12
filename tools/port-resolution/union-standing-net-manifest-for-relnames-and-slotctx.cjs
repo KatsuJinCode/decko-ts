@@ -1,16 +1,18 @@
-// Union the fold line's standing-net manifest with the two in-flight lanes'
-// manifest additions, WITHOUT a hand-merge of the conflicted JSON.
+// Union three revisions' tests/standing-net.json into one manifest, WITHOUT a
+// hand-merge of the conflicted JSON.
 //
-// Sources of truth, both read from git objects (never hand-typed):
-//   HEAD:tests/standing-net.json                  the fold-13 rehearsal union (112 files)
-//   33b84fe0:tests/standing-net.json              relnames' +2 (its own line's 96 -> 98)
-//   9b7750bb:tests/standing-net.json              slot-ctx's +3 (its own line's 96 -> 99)
-// The provenance strings are lifted verbatim from those two commits' blobs, so
-// the manifest records the lanes' own wording, not a paraphrase.
+// Sources of truth, all read from git objects (never hand-typed):
+//   HEAD:tests/standing-net.json       the current manifest (112 files)
+//   rev A:tests/standing-net.json      the additions recorded under the
+//                                      relnames-source key (+2)
+//   rev B:tests/standing-net.json      the additions recorded under the
+//                                      slotctx-source key (+3)
+// The provenance strings are lifted verbatim from those two revisions' blobs,
+// so the manifest records their own wording, not a paraphrase.
 //
-// The pick in progress is 33b84fe0 (relnames +2). This script writes the
-// UNION of all five, so the two manifest commits land as ONE reconciled
-// commit rather than two that each fight the other's line numbering.
+// This script writes the UNION of all the additions, so the two manifest
+// commits land as ONE reconciled commit rather than two that each fight the
+// other's line numbering.
 const fs = require("fs");
 const cp = require("child_process");
 
@@ -36,12 +38,11 @@ for (const f of ADD) {
 }
 
 // Insertion rule, read off the manifest's OWN shape rather than assumed: the
-// array is a sorted core (indices 0..100) with every lane addition APPENDED at
-// the tail (101 machine-lane-worktree-disk-hygiene … 111 mod-object-address-
-// shape-parity). The tests/card/render/ entries are not contiguous and the
-// block is not sorted, so there is no sorted position to compute. The manifest's
-// actual convention is the tail, and that is where these five go — in the same
-// relative order slot-ctx's own final manifest (9b7750bb) lists them.
+// array is a sorted core with every later addition APPENDED at the tail. The
+// tests/card/render/ entries are not contiguous and the block is not sorted,
+// so there is no sorted position to compute. The manifest's actual convention
+// is the tail, and that is where these five go — in the same relative order
+// the slotctx source manifest lists them.
 const files = head.files.slice();
 for (const f of ADD) files.push(f);
 if (new Set(files).size !== files.length) throw new Error("duplicate entries after insert");
@@ -64,7 +65,7 @@ if (head.envGuard && typeof head.envGuard.expectedSkips === "number") {
   // NOT changed here. The skip count is a MEASUREMENT, not an arithmetic
   // consequence of the file list: the five additions carry their own
   // self-skipping behavior (the relnames census probe skips without its pin
-  // by 3867c81c's own contract). The measured value from the gate run at this
+  // by its own contract). The measured value from the gate run at this
   // tip is what lands, in its own commit, with the job id recorded.
 }
 

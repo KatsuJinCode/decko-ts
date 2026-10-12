@@ -39,10 +39,10 @@ trap 'rm -f "$DECK" "$DECK-shm" "$DECK-wal"; rm -rf "$CACHE"; [ -z "${KEEP_FILES
 # FRESH_CACHE_STEPS="<n> <m> ...": empty the card cache before these steps.
 # Ruby's rename rewrites referer content with update_column and never
 # expires the referer's cache entry, so a later request that fetches the
-# referer from the shared cache reads its pre-rename content (a Ruby
-# defect, recorded in recovery/parity-team/persistence.md). The probe resets
-# the cache before a step that would otherwise read such a stale entry, so
-# the oracle measures Ruby's logic over the stored rows, not the defect.
+# referer from the shared cache reads its pre-rename content (an upstream
+# Ruby defect). The probe resets the cache before a step that would
+# otherwise read such a stale entry, so the oracle measures Ruby's logic
+# over the stored rows, not the defect.
 FRESH_CACHE_STEPS=" ${FRESH_CACHE_STEPS:-39} "
 
 for i in $(seq "$FIRST" "$STEPS"); do

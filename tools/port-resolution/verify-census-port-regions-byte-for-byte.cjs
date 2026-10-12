@@ -1,6 +1,6 @@
-// Byte-verification of every region the census port transplanted, against the
-// DONOR commit each region came from. This is the containment proof the fold
-// window's rule demands: content comparison, never git cherry / patch-id.
+// Byte-verification of every region the port scripts transplanted, against
+// the source revision each region came from. This is the containment proof:
+// content comparison, never git cherry / patch-id.
 //
 // Run: node tools/port-resolution/verify-census-port-regions-byte-for-byte.cjs
 // Exits 1 if any region diverges or any region cannot be located.

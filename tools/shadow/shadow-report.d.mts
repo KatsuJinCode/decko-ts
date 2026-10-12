@@ -1,5 +1,5 @@
-// Type declarations for tools/shadow/shadow-report.mjs (stream T5's
-// shadow-log aggregator). Signatures mirror the .mjs exports.
+// Type declarations for tools/shadow/shadow-report.mjs (the shadow-log
+// aggregator). Signatures mirror the .mjs exports.
 
 export interface ShadowPatternStats {
   pattern: string;

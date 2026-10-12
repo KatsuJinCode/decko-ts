@@ -1,21 +1,20 @@
-// Resolve the relnames (510fd7a4) views.ts conflicts on the port branch.
+// Resolve views.ts's two pointer/list-item nest arms after a merge, taking
+// each side's winning decision.
 //
-// RECONCILIATION, recorded:
-//   HEAD (fold line) and 510fd7a4 disagree on TWO things in each of the two
-//   pointer/list item nest arms:
-//     (a) the `hide: ["bar_middle"]` opts key — 510fd7a4's side still carries
-//         it; HEAD removed it in a LATER, corpus-validated fix whose own
-//         comment cites the evidence ("the capture reads the body order
-//         [one_line_content, bar_middle] (democracy+*referred_to_by item
-//         slot, recapture-raw-shard-000030)"). HEAD WINS on this point: the
-//         removal supersedes.
-//     (b) the `{ pointerListItem: true }` 4th nestRecord argument — this IS
-//         the relnames delta (the shape gate that stops the census-M1
-//         view-lane bar-context seat firing on the set card's accordion rule
-//         bars). 510fd7a4 WINS on this point.
-//   So each arm takes HEAD's opts object verbatim and gains only the marker.
+// RECONCILIATION, recorded. The tree and the incoming revision disagree on
+// TWO things in each of the two pointer/list item nest arms:
+//   (a) the `hide: ["bar_middle"]` opts key - the incoming side still carries
+//       it; this tree removed it in a later fix validated against rendered
+//       output (a referred-to-by item slot renders one_line_content and then
+//       bar_middle, so hiding bar_middle contradicts the actual body order).
+//       THIS TREE WINS on this point: the removal supersedes.
+//   (b) the `{ pointerListItem: true }` 4th nestRecord argument - this IS
+//       the incoming revision's delta (the shape gate that stops the
+//       view-lane bar-context seat firing on the set card's accordion rule
+//       bars). THE INCOMING REVISION WINS on this point.
+// So each arm takes this tree's opts object verbatim and gains only the marker.
 //
-// Byte discipline: views.ts carries 527 deliberate CRLF carriers. This script
+// Byte discipline: views.ts carries 527 deliberate CRLF line endings. This script
 // asserts 527/527/0 before and after; it never rewrites a line it did not
 // touch.
 const fs = require("fs");
