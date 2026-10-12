@@ -32,7 +32,7 @@ local proof runs the real workerd via miniflare with NO Cloudflare account
 | `wrangler.scale.toml` | the separate scale-test Worker + D1 binding (`decko-ts-scale-test`); carries a placeholder `database_id` |
 | `cf-scale-deck/seed.sql` | the scale-test deck (2,279 cards + 531 refs), generated |
 | `bunny-worker-src/` | the Bunny.net edge variant of the same engine surface — the other edge, not Cloudflare |
-| `bunny-origin/` | VM origin for the Bunny path (server, nginx conf, systemd unit); internal tooling and not part of this repository's public tree |
+| `bunny-origin/` | the VM origin for the Bunny path (server, nginx confs, systemd unit) |
 
 ### The migration numbering, which is not a clean sequence
 
@@ -46,7 +46,7 @@ databases.
   (`DEPLOY_MIGRATION_ORDER`) pins that order. **Do not renumber either one** to
   tidy the sequence: a provisioned database has already recorded `0003` as
   applied, and changing which file that means re-runs the wrong migration.
-- **`0007` is reserved and no file carries it.** The seat-lineage provisioned
+- **`0007` is reserved and no file carries it.** Already-provisioned
   mirrors record the stamp backfill under the name
   `0007-deck-data-version-stamp.sql` (an alias the migration runner accepts, see
   `DECK_DATA_VERSION_STAMP_APPLIED_ALIASES` in

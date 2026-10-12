@@ -22,7 +22,7 @@
 --
 -- WRITE COST: each CREATE INDEX writes one index entry per cards row
 -- (~row count of the deck, one-time). Ongoing inserts write 2 extra index
--- entries per card row. Measured at corpus scale in
+-- entries per card row. Measured at full-deck scale in
 -- tools/cf-cost/measure-render-reads.test.ts (backfill section).
 -- ============================================================================
 

@@ -5,24 +5,24 @@
 // WHY THE DELTAS ARE A PARAMETER: the edge entry
 // used to wrap renders in the root worker.ts layoutPage — a bare inline-styled
 // shell with a two-link nav and no stylesheet, scripts, favicon, navbar, or
-// footer (measured live 2026-10-02: 0 <link> and 0 <script> tags vs the live
-// site's 3 and 9). The engine's OWN page entry — src/card/render/page.ts
+// footer (measured at 0 <link> and 0 <script> tags against a served site's
+// 3 and 9). The engine's OWN page entry — src/card/render/page.ts
 // renderPageBytes, the show_with_page_layout port — already assembles the
 // full page (per-card *layout rule, *header/*footer nests, html_page head
 // with favicon/stylesheet/script tags). What remains for a deployment to
-// add is whatever ITS OWN deck serves differently from the corpus capture —
-// and that is configuration, not source.
+// add is whatever ITS OWN deck serves differently from the engine's own
+// output — and that is configuration, not source.
 //
 // Every deck-specific value used to live here as a module constant, so every
-// deployment of the engine served one private deck's version string, asset
+// deployment of the engine served one specific deck's version string, asset
 // revisions and SRI hashes. They now arrive through the deltas argument
 // (bunny-edge-served-deltas.ts), EMPTY by default: a deployment that
 // configures nothing is a stock 0.20.0 deck and every delta pass below is a
-// no-op. The capture-host values that used to sit here as constants now live
-// in the operator's deployment configuration, set explicitly by the
-// production migration deployment's environment (the DECKO_SERVED_* variables
-// read by bunny-edge-served-deltas.ts), so the shipped source carries no
-// deck's identity.
+// no-op. The values that used to sit here as constants now live in the
+// operator's deployment configuration, set explicitly through the
+// deployment's environment (the DECKO_SERVED_* variables read by
+// bunny-edge-served-deltas.ts), so the shipped source carries no deck's
+// identity.
 //
 // The one delta that is NOT deck identity and therefore stays unconditional
 // is the trailing newline: it is a byte shape every served HTML document has,
@@ -46,11 +46,11 @@ export function servedAssetHost(deltas: ServedEnvironmentDeltas): string | undef
 /** The served-environment deltas this deployment applies to the engine's page
  *  bytes. Each pass is skipped when its configuration is absent, so the empty
  *  deltas object is a strict no-op:
- *   1. asset host: capture fog form -> the configured served host (both the
- *      link hrefs and the inline decko.cssPath)
- *   2. stylesheet revision: corpus-stored -> served (link + cssPath)
+ *   1. asset host: the engine's stored endpoint form -> the configured
+ *      served host (both the link hrefs and the inline decko.cssPath)
+ *   2. stylesheet revision: deck-stored -> served (link + cssPath)
  *   3. script integrity attributes
- *   4. footer version pin (the corpus *version row is empty on some decks; a
+ *   4. footer version pin (the *version row is empty on some decks; a
  *      deployment that serves a different string rewrites the deck's own
  *      credit form — both the bare `>Decko v</a>` shape and the literal
  *      version the deck's *credit content may embed)
@@ -63,11 +63,11 @@ export function applyServedEnvironmentDeltas(
 ): string {
   let body = engineHtml;
   if (deltas.assetHost !== undefined) {
-    // The engine's capture pins the fog endpoint form
+    // The engine pins the fog endpoint form
     // `http://s3.amazonaws.com//files/…`; a deployment serving from a CDN
     // rewrites it wholesale. Content images already carry the host via
     // RenderEngine#imageCdnHost (set by the entry's bootDeck), so only the
-    // capture-env forms remain to rewrite here.
+    // engine-emitted forms remain to rewrite here.
     body = body.split(SERVED_ASSET_HOST_PREFIX).join(`${deltas.assetHost}/files/`);
   }
   if (deltas.stylesheetRevision !== undefined) {
@@ -94,10 +94,10 @@ export function applyServedEnvironmentDeltas(
   return body;
 }
 
-/** The capture fog form the engine's page bytes carry (page.ts
+/** The fog endpoint form the engine's page bytes carry (page.ts
  *  CLOUD_URL_PREFIX; head-views.ts FOG_CLOUD_URL_HOST + "/files/"). This one
- *  IS engine-owned rather than deck identity: it is the shape the corpus
- *  capture emits, and the rewrite's SOURCE has to match it on any deck. */
+ *  IS engine-owned rather than deck identity: the rewrite's SOURCE has to
+ *  match the engine's own output on any deck. */
 const SERVED_ASSET_HOST_PREFIX = "http://s3.amazonaws.com//files/";
 
 /** The version string the engine's own credit module answers with
@@ -117,8 +117,7 @@ export function filesLeafVariant(leaf: string): string | undefined {
 }
 
 /** The text/plain 404 body the app serves for a /files/ id it cannot
- *  resolve — measured 2026-10-02: GET https://<deck>/files/103/3649-small.jpg
- *  -> 404, 19 bytes, text/plain, "Could not find 103." */
+ *  resolve — 19 bytes, text/plain, "Could not find <id>." */
 export function filesNotFoundBody(id: string): string {
   return `Could not find ${id}.`;
 }

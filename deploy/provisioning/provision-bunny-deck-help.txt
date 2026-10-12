@@ -47,7 +47,7 @@ WILL REFUSE (exit 2, "--"-marked reason)
   - any payload naming a protected resource (DECKO_PROTECTED_RESOURCE_NAMES,
     --protect), and --teardown of one
   - a database slug over 16 characters (Bunny's create endpoint answers
-    HTTP 500 past that, measured 2026-10-02)
+    HTTP 500 past that, measured)
   - --execute without the confirmation flag; --teardown without --yes and
     the exact name; write_path payload without --allow-write-path
   - --execute when a script/database of the same name already exists

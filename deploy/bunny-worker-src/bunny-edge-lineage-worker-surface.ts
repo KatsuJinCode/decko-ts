@@ -1,46 +1,37 @@
-// deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.ts — the deploy
-// lineage's root worker.ts URL/request surface (parsePath + PAGE_STYLE +
-// escapeHtml + layoutPage), carried VERBATIM from lane-dbroundtrip-deploy
-// tip 12bd5236 by the fold-11 integrator.
+// deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.ts — the root
+// worker.ts URL/request surface (parsePath + PAGE_STYLE + escapeHtml +
+// layoutPage) that the deployed serving path dispatches through.
 //
-// WHY THIS EXISTS: the four p2 lanes (error-shell / history-seam / person /
-// codename) were built on the deploy lineage, whose root worker.ts exports
-// escapeHtml and a two-arg parsePath(pathname, searchParams) that returns the
-// wire params (act_id / action_id / page / ...). The integration line's root
-// worker.ts evolved independently: its parsePath takes only a pathname and
-// returns no params. This shim gives the carried p2 request surface
-// (bunny-edge-engine-request.ts + bunny-edge-error-page.ts + their pin
-// files) the exact worker contract it was written and gated against.
+// WHY THIS EXISTS: two roots of worker.ts evolved independently. The deploy
+// lineage's root exports escapeHtml and a two-arg parsePath(pathname,
+// searchParams) that returns the wire params (act_id / action_id / page /
+// ...). The other root's parsePath takes only a pathname and returns no
+// params. This shim gives the request core (bunny-edge-engine-request.ts +
+// bunny-edge-error-page.ts + their pin files) the exact worker contract it
+// was written and gated against.
 //
-// THE deploy-surface-union LANE (2026-10-03) WIRED this surface: the serving
-// handler (bunny-edge-engine-handler.ts) dispatches through the carried
-// request core, whose URL grammar is THIS parsePath. Union resolution
-// (superset-of-information, recorded in
-// an internal work log): parsePath below is the
-// LINEAGE grammar PLUS the integration root worker.ts's three verified
-// upgrades, because the wired serving path must lose no capability either
-// lineage carried:
+// parsePath below is the lineage grammar PLUS the other root worker.ts's
+// three verified upgrades, because the wired serving path must lose no
+// capability either lineage carried:
 //   1. the hardened decodeName (a malformed % answers the no-route 404,
-//      never an unescaped URIError — worker-shared-surface.ts, the twins'
-//      rule; the lineage's raw decodeURIComponent threw unhandled);
-//   2. ANY-view two-segment arm (the root worker's divergence fix: Ruby's
-//      route matches any view and the ENGINE decides — engine_routes.rb:51
-//      constrains nothing; an unregistered view raises
-//      UnsupportedViewError and maps to 422; the lineage's 17-view
-//      allowlist 404'd mod-registered views this line's engine carries);
-//   3. the three-segment /:mark/view/:view arm (root worker + the CF
-//      harness's documented route).
+//      never an unescaped URIError — worker-shared-surface.ts; a raw
+//      decodeURIComponent threw unhandled);
+//   2. ANY-view two-segment arm (Ruby's route matches any view and the
+//      ENGINE decides — engine_routes.rb:51 constrains nothing; an
+//      unregistered view raises UnsupportedViewError and maps to 422; a
+//      fixed 17-view allowlist 404'd mod-registered views this engine
+//      carries);
+//   3. the three-segment /:mark/view/:view arm.
+//
 // The lineage's own additions are RETAINED: the wire-param extraction
 // (act_id/action_id/page/act_seq/action_view/hide_diff/act_context) on
-// card routes — the history views read them, every other view ignores
-// them (Rack hands the controller all params and the views pick), so the
-// extraction rides any card route. The former SUPPORTED_VIEWS allowlist
-// is retired as a strict subset of the any-view arm. escapeHtml and
-// layoutPage below remain byte-verbatim 12bd5236:worker.ts.
+// card routes — the history views read them, every other view ignores them
+// (Rack hands the controller all params and the views pick), so the
+// extraction rides any card route. The former SUPPORTED_VIEWS allowlist is
+// retired as a strict subset of the any-view arm.
 //
-// Byte-provenance of the unchanged members: escapeHtml/PAGE_STYLE/
-// layoutPage are verbatim 12bd5236:worker.ts (lines 144-151, 153-166,
-// 168-178); parsePath is the union shape documented above.
+// escapeHtml, PAGE_STYLE and layoutPage below remain byte-verbatim against
+// worker.ts; parsePath is the union shape documented above.
 
 import { decodeName, decodeViewSegment } from "../../src/server/worker-shared-surface.js";
 
@@ -81,11 +72,11 @@ function parsePath(
     return { name, view: "open" };
   }
   if (segments.length === 2 && segments[0] === "new") {
-    // THE /new/:type ARM (route-gaps lane, 2026-10-05): decko's
+    // THE /new/:type ARM: decko's
     // engine_routes.rb:22 `get "new/:type" => "card#read", view: "new"` —
-    // the card-creation route the deck's own chrome links as /new/Sign_up
+    // the card-creation route a deck's own chrome links as /new/Sign_up
     // (the *account_links navbar arm and the signin form's "...or sign up!"
-    // link; live-signin-ref.html). ROUTE PRECEDENCE: Rails matches this arm
+    // link). ROUTE PRECEDENCE: Rails matches this arm
     // before the generic :mark/:view route (engine_routes.rb:51), so
     // /new/<anything> never renders the card "new" — the same precedence
     // here, ahead of the 2-segment arm below. The route carries NO mark:

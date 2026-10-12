@@ -30,15 +30,14 @@ import { withGlobalRenderCache, type GlobalRenderCache } from "./bunny-edge-glob
  *  object. Same convention as the reader's WorkerEnv. */
 export type EdgeEnv = Record<string, string | undefined>;
 
-/** Credential name pairs accepted, PLAIN pair first (db-repoint lane,
- *  2026-10-05): DECKO_DB_URL / DECKO_DB_TOKEN are PLAIN edge-script
- *  variables — settable through the management API by name, no secrets
- *  round-trip — so the serving database can be repointed by a variables
- *  write alone. Empty/absent falls through to the secret pairs in their
- *  documented order, so an edge configured only with secrets resolves
- *  exactly as before this change. The lightweight reader
- *  (bunny-worker.ts DB_CREDENTIAL_VAR_NAMES) keeps its own order; this
- *  list is the full-engine handler's. BUNNY_DATABASE_URL /
+/** Credential name pairs accepted, PLAIN pair first: DECKO_DB_URL /
+ *  DECKO_DB_TOKEN are PLAIN edge-script variables — settable through the
+ *  management API by name, no secrets round-trip — so the serving database
+ *  can be repointed by a variables write alone. Empty/absent falls through to
+ *  the secret pairs in their documented order, so an edge configured only with
+ *  secrets resolves exactly as it did before the plain pair was accepted. The
+ *  lightweight reader (bunny-worker.ts DB_CREDENTIAL_VAR_NAMES) keeps its own
+ *  order; this list is the full-engine handler's. BUNNY_DATABASE_URL /
  *  BUNNY_DATABASE_AUTH_TOKEN are the names bunny.net writes via "Add
  *  Secrets to Edge Script"; BUNNY_DB_URL / BUNNY_DB_TOKEN are this repo's
  *  historical names. Exported for the resolution-order tests, same as the
@@ -124,13 +123,12 @@ export function getDriver(config: ResolvedDbConfig, env: EdgeEnv): SQLDatabaseDr
 
 /** THE UNION BOOT — the composition neither lineage carried alone:
  *
- *  - the carried corpus boot (bunny-edge-deck-boot.ts, the p2 lanes' tested
- *    boot): the deck inflection table applied BEFORE any name parse (the
- *    Rails-initializer moment; the graded edge cards' slot-class keys), the
- *    sync name environment install + codenames load, and the virtual-card
- *    rule universe wired over THIS boot's driver (the person-section fix —
- *    without the hook every structure-rule junction renders as missing, the
- *    measured 171px person-page drop);
+ *  - the carried deck boot (bunny-edge-deck-boot.ts): the deck inflection
+ *    table applied BEFORE any name parse (the Rails-initializer moment; the
+ *    graded edge cards' slot-class keys), the sync name environment install +
+ *    codenames load, and the virtual-card rule universe wired over THIS
+ *    boot's driver (without the hook every structure-rule junction renders as
+ *    missing);
  *  - the deck-wide lexicon prime (installDeckNameEnvironment: junction-name
  *    composition over the full trash-0 scan) is OFF unless
  *    DECKO_EDGE_NAME_SCAN=1 — it cost round trips instead of saving them
@@ -149,10 +147,10 @@ export function getDriver(config: ResolvedDbConfig, env: EdgeEnv): SQLDatabaseDr
  *  Deck, so the page path's delta pass, the /files/ route and the error
  *  pages all read the same deployment configuration. A deployment that sets
  *  nothing gets the stock (empty) deltas — no footer version rewrite, no
- *  corpus card ids, no private asset references.
+ *  deck card ids, no configured asset references.
  */
 export async function bootDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<Deck> {
-  // THE EDGE PROFILER (2026-10-05): the driver's two EXISTING instrumentation
+  // THE EDGE PROFILER: the driver's two EXISTING instrumentation
   // seams are plugged at boot — `fetchImpl` times every pipeline POST into
   // the per-isolate db ledger (the driver's only network call is the
   // pipeline POST), `queryCounter` replaces the default NO-OP counter so
@@ -169,7 +167,7 @@ export async function bootDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<
   // into a pessimization). Unarmed, the boot is byte-for-byte the deployed
   // default. The gate reads the process env (on the edge the env bag IS
   // process.env) — the same var the render path's seat check reads.
-  // bootEdgeServingEngines: the corpus boot + imageCdnHost, without the
+  // bootEdgeServingEngines: the deck boot + imageCdnHost, without the
   // deck-wide name scan unless DECKO_EDGE_NAME_SCAN=1 (see its doc).
   //
   // THE DEPLOYMENT'S SERVED DELTAS: resolved
@@ -245,8 +243,8 @@ export async function statusResponse(
         driver: host.driver,
         card_count: n,
         // Names only, never values. credential_source says WHICH KIND of
-        // variable pair supplied the endpoint (the db-repoint lane's
-        // plain-vs-secret distinction) — derivable from the names, reported
+        // variable pair supplied the endpoint (the plain-vs-secret
+        // distinction) — derivable from the names, reported
         // explicitly so post-publish verification can assert it.
         url_var: config.urlVar,
         token_var: config.tokenVar,
@@ -260,7 +258,7 @@ export async function statusResponse(
   }
 }
 
-/** ONE PROFILER SERVE SITE (edge-profiler lane, 2026-10-05): the prepared-
+/** ONE PROFILER SERVE SITE: the prepared-
  *  page cache layer — the L2 Cache API match, the L3 global render-cache
  *  lookup, their write-through stores — is what the SEAT phase times: the
  *  serve-layer wall MINUS the render closure's wall. The subtraction is

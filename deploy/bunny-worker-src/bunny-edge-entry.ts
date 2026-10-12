@@ -4,14 +4,14 @@
 // side effects: importing this file STARTS THE SERVER.
 //
 // Shape, per https://bunny.net/docs/scripting/standalone/overview.md
-// ("The serve function"), fetched 2026-10-01:
+// ("The serve function"):
 //
 //   import * as BunnySDK from "@bunny.net/edgescript-sdk";
 //   BunnySDK.net.http.serve(async (request: Request) => new Response("hi"));
 //
 // What serve() does on each runtime, read out of the published package
 // @bunny.net/edgescript-sdk@0.13.0 (npm tarball, esm/lib.mjs and
-// esm-bunny/lib.mjs, extracted to tmp/sdkpack/ during the 2026-10-01 audit):
+// esm-bunny/lib.mjs):
 //
 //   switch (runtime) {
 //     case "bunny": return Bunny.v1.serve(handler), {};
@@ -24,7 +24,7 @@
 //
 // ENVIRONMENT: process.env (Node-style) or Deno.env, per
 // https://bunny.net/docs/scripting/environment-variables.md and
-// https://bunny.net/docs/scripting/secrets.md (both fetched 2026-10-01).
+// https://bunny.net/docs/scripting/secrets.md.
 // Deno in the Bunny runtime exposes `process` (the database-connection doc
 // example at https://bunny.net/docs/database/connect/scripting.md imports
 // `node:process` and reads process.env in an Edge Script), so process.env is

@@ -1,21 +1,19 @@
 // deploy/bunny-worker-src/bunny-edge-global-render-cache.ts — the L3 GLOBAL
-// rendered-HTML tier behind the L2 regional Cache API (edge-speed-global-cache
-// lane, 2026-10-03).
+// rendered-HTML tier behind the L2 regional Cache API.
 //
 // WHY L3 EXISTS (measured + documented, not assumed): the L2 script cache
 // (bunny-edge-content-cache.ts) rides Bunny's Cache API, and Bunny documents
 // that "cache contents do not replicate outside the originating region"
-// (bunny.net/docs/scripting/cache — caching-research-fetched/
-// bunny-scripting-cache-index.md). A cold render on this edge is ~1,000-1,150
-// serial DB hops and measures 7.2-17.3 s wall (edge-incident-fix receipts,
-// 2026-10-02/03), so a FIRST-TIME visitor in any region the crawl did not
-// fill pays the full cold render no matter how thoroughly the region that
-// ran the crawl is warmed. The bar this lane serves — a first-time visitor's
-// FIRST hit on ANY public page at TTFB <= ~1.5 s — therefore needs a tier
-// every region reads: rendered public HTML stored in the trial BunnyDB,
-// reachable from every isolate over the SAME Hrana-v2 pipeline POST the
-// deck's own driver already speaks (src/card/drivers/bunny-db.ts), where a
-// healthy edge->DB hop measures ~11 ms (1,151 hops in ~13 s, live).
+// (bunny.net/docs/scripting/cache). A cold render on this edge is
+// ~1,000-1,150 serial DB hops and measures 7.2-17.3 s wall, so a
+// FIRST-TIME visitor in any region the crawl did not fill pays the full cold
+// render no matter how thoroughly the region that ran the crawl is warmed.
+// The bar this tier serves — a first-time visitor's FIRST hit on ANY public
+// page at TTFB <= ~1.5 s — therefore needs a tier every region reads:
+// rendered public HTML stored in the deck's own BunnyDB, reachable from
+// every isolate over the SAME Hrana-v2 pipeline POST the deck's own driver
+// already speaks (src/card/drivers/bunny-db.ts), where a healthy edge->DB
+// hop measures ~11 ms (1,151 hops in ~13 s).
 //
 // REQUEST PATH (as wired in bunny-edge-engine-entry.ts, anon call sites
 // only): L2 match (regional, fast) -> miss -> L3 lookup (ONE pipeline POST,
@@ -77,8 +75,7 @@ export const EDGE_GLOBAL_CACHE_DIAGNOSTIC_HEADER = "X-Decko-Edge-Global-Cache";
 /** Age stamp on hits, seconds since the row was stored. Measurement only. */
 export const EDGE_GLOBAL_CACHE_AGE_HEADER = "X-Decko-Global-Age-Seconds";
 
-/** The tier table. Created on the trial DB ahead of the deploy (edge-speed-
- *  global-cache-lane receipt) AND lazily self-healed here: a store that
+/** The tier table. Lazily self-healed on use: a store that
  *  fails with "no such table" runs the CREATE once and retries once, so a
  *  fresh database needs zero operator steps. */
 export const GLOBAL_RENDER_CACHE_TABLE = "decko_edge_render_cache";
@@ -228,7 +225,7 @@ export function getGlobalRenderCache(
   if (!globalRenderCacheArmed(env)) return undefined;
   if ("error" in config) return undefined;
   if (globalRenderCacheInstance === undefined) {
-    // THE EDGE PROFILER (2026-10-05): the tier's drivers share the timing
+    // THE EDGE PROFILER: the tier's drivers share the timing
     // fetchImpl, so the L3 lookup/store hops land in the db ledger the
     // Server-Timing header reports — one honest number for every Bunny DB
     // POST the isolate makes. Retry/timeout semantics are the tier's own

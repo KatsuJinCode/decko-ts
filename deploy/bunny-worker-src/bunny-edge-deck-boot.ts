@@ -1,24 +1,22 @@
-// bunny-edge-deck-boot.ts — the corpus deck boot the Bunny edge entry runs,
+// bunny-edge-deck-boot.ts — the deck boot the Bunny edge entry runs,
 // extracted from bunny-edge-engine-entry.ts's bootDeck so vitest can drive
 // the REAL production boot over an in-process driver (the entry itself
 // imports the Bunny Edge Scripting SDK, which the test runtime does not
 // provide — the same SDK-free split as bunny-edge-engine-request.ts).
 //
-// p2-person-section lane (2026-10-03): this boot carries the two deck-boot
-// duties the engine cannot do for itself, the ones the entry previously
-// skipped and the screenshot lane's person-page parity defect fell out of:
+// This boot carries two deck-boot duties the engine cannot do for itself, the
+// ones a bare engine construction would skip:
 //
-//   1. THE DECK INFLECTION TABLE. The reference deck stores card keys
+//   1. THE DECK INFLECTION TABLE. The deck being served stores card keys
 //      under three uncountable words (s / this / anonymous — see
 //      src/card/name/oracle-deck-inflections.ts for the recovered table and
-//      its provenance). Origins serving this deck MUST apply the table
+//      its provenance). Origins serving such a deck MUST apply the table
 //      before any name parse, exactly as a Rails deck's
 //      config/initializers/inflections.rb runs at boot. Under the gem
 //      defaults, parenthesized names key differently ("Participant(s)" keys
 //      as "participant_" under the default /s$/ strip, "participant_s" in
 //      the deck) and every CQL plus-join against those junctions resolves
-//      the wrong key (the 2026-09-25 "0 results" staging defect's boot
-//      half).
+//      the wrong key — the boot half of the staging-side "0 results" defect.
 //
 //   2. THE VIRTUAL-CARD RULE UNIVERSE. Compound names with no db row
 //      resolve as VIRTUAL cards when a *structure rule covers them
@@ -26,19 +24,12 @@
 //      src/card/fetch/virtual-cards.ts, whose header cites the whole Ruby
 //      chain). The resolution is an INJECTED hook
 //      (FetchEngine.virtualCardLookup): "wired by the storage factory, not
-//      by FetchEngine itself". The corpus deck carries such junctions
-//      TRASHED with empty content — e.g. every "Person+Project(s)
-//      Participating" junction (row 419: trash=1, RichText, empty) — while
-//      the depth-3 structure rule
-//      ((Person + Project(s) Participating) + *type plus right) + *structure
-//      (rule 422, type Search/id 30, content
-//      {"type":"project","plus":["Participant(s)",{"refer_to":"_left"}]})
-//      makes them live searcher cards. Ruby renders the section; without
-//      the hook the fetch answers "unknown", the
-//      {{+Project(s) Participating|titled}} nest renders the missing-child
-//      arm, and the whole section vanishes from every person page (the
-//      screenshot lane's 171px person-page parity defect,
-//      an internal work log).
+//      by FetchEngine itself". A deck may carry such junctions TRASHED with
+//      empty content while a depth-3 structure rule makes them live searcher
+//      cards. Ruby renders the section; without the hook the fetch answers
+//      "unknown", the {{+Project(s) Participating|titled}} nest renders the
+//      missing-child arm, and the whole section vanishes from every person
+//      page.
 //
 // The wiring mirrors deploy/worker.ts primeCqlNameResolver and
 // vm-staging-server.mjs primeEngine (the two hosts that already carry it).
@@ -72,17 +63,15 @@ export interface DeckEngines {
   render: RenderEngine;
 }
 
-/** THE ONE-TRIP BOOT CAP (lane-one-trip-serve-2026-10-04). A one-trip
- *  deployment boots the engine with the Temporary-cache reset threshold
- *  RAISED: the Ruby-parity default is 10,000 keys
- *  (src/card/fetch/cache.ts DEFAULT_MAX_TEMPORARY_CACHE_KEYS = cardio's
- *  max_temporary_cache_keys = 10_000), and seating one page payload writes
- *  ~3.5k keys on the trial deck — a multi-page session crosses the default
- *  mid-session and the wholesale reset evicts primed state, so the ON
- *  posture re-asks what the OFF posture still had. MEASURED on the serving
- *  line at the default cap (one-trip-serving-line-posture-report.json,
- *  proof run 1): ON cold exceeded OFF cold on Aikido (+77 trips), About
- *  (+266) and Eagle (+7); the module fixture measured Eagle's 1,668
+/** THE ONE-TRIP BOOT CAP. A one-trip deployment boots the engine with the
+ *  Temporary-cache reset threshold RAISED: the Ruby-parity default is 10,000
+ *  keys (src/card/fetch/cache.ts DEFAULT_MAX_TEMPORARY_CACHE_KEYS =
+ *  cardio's max_temporary_cache_keys = 10_000), and seating one page payload
+ *  writes ~3.5k keys — a multi-page session crosses the default mid-session
+ *  and the wholesale reset evicts primed state, so the ON posture re-asks
+ *  what the OFF posture still had. MEASURED on the serving line at the
+ *  default cap: ON cold exceeded OFF cold on three probe pages (+77, +266
+ *  and +7 round trips); the module fixture measured one page's 1,668
  *  seating-induced re-queries going to 0 with the raised cap
  *  (tests/card/one-trip/one-trip-fixture.ts). The cap is FetchEngine's own
  *  boot option — a boot parameter, not an engine change. The OFF-default
@@ -163,19 +152,19 @@ export async function refreshEdgeServingEngines(driver: SQLDatabaseDriver, rende
   });
 }
 
-/** THE EDGE SERVING BOOT: the corpus boot above plus the two serving
+/** THE EDGE SERVING BOOT: the deck boot above plus the two serving
  *  fields the Bunny edge handler's bootDeck has always set. One function, so
  *  the handler and the measurement harness (benchmarks/speed-ship) boot the
  *  same way.
  *
  *  The deck-wide name scan (installDeckNameEnvironment: every trash-0 row's
- *  name, about 21,700 on the trial deck, poured into the lexicon) is OFF by
- *  default. It costs round trips instead of saving them: the Temporary cache
+ *  name, about 21,700 on a deck of that size, poured into the lexicon) is OFF
+ *  by default. It costs round trips instead of saving them: the Temporary cache
  *  keeps only the last 10,000 keys of it, and the request re-reads the rest.
- *  Measured on the trial-deck mirror: dropping it changes no byte on the 40
- *  gate pages (benchmarks/speed-ship/gate.py) and removes its own statement
- *  plus the re-reads it caused. The corpus boot's own name-environment
- *  install and codename load (above) are what the sync name readers need.
+ *  Measured on a deck mirror: dropping it changes no byte on the 40 gate pages
+ *  (benchmarks/speed-ship/gate.py) and removes its own statement plus the
+ *  re-reads it caused. The deck boot's own name-environment install and
+ *  codename load (above) are what the sync name readers need.
  *  DECKO_EDGE_NAME_SCAN=1 restores the scan. */
 export async function bootEdgeServingEngines(
   driver: SQLDatabaseDriver,
@@ -213,7 +202,7 @@ export async function bootEdgeServingEngines(
     // Everything the scan's caller relied on except the scan itself: this
     // boot owns the process-global name environment at the moment it
     // returns, and the codename registry is loaded (no statement when the
-    // corpus boot already loaded it).
+    // deck boot already loaded it).
     engines.fetcher.installNameEnvironment();
     await engines.fetcher.codenames.ensureLoaded();
   }
@@ -221,14 +210,13 @@ export async function bootEdgeServingEngines(
   engines.render.phantomItemType = opts.phantomItemType;
   // The DECK's time zone. The render path's
   // timestamps read it from src/card/deck-time-zone.ts rather than from a
-  // hard-coded capture-host zone, so a deployment sets it here. Unset keeps
-  // the graded deck's zone, which is what leaves every graded byte intact
-  // while removing the dependency on the capture host's OS setting.
+  // hard-coded host zone, so a deployment sets it here. Unset keeps the
+  // graded deck's zone, which is what leaves every graded byte intact while
+  // removing the dependency on any one host's OS setting.
   if (opts.timeZone !== undefined) setDeckTimeZone(opts.timeZone);
   // THE DECK'S CONFIGURED ORIGIN: the same
-  // configuration channel the capture script used
-  // (capture-dual-lane-page-and-view.rb:391-400 assigns
-  // Cardio.config.deck_origin around the page lane). Unset, the engine
+  // configuration channel the reference recorder used (it assigns
+  // Cardio.config.deck_origin around a page run). Unset, the engine
   // renders the requestless relative form and no byte carries an origin
   // nobody configured.
   if (opts.deckOrigin !== undefined) setDeckEnvironment({ origin: opts.deckOrigin });

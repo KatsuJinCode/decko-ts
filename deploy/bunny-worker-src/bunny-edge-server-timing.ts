@@ -1,8 +1,8 @@
-// deploy/bunny-worker-src/bunny-edge-server-timing.ts — THE EDGE PROFILER
-// (edge-profiler lane, 2026-10-05): per-phase request timing surfaced on
-// EVERY response as the standard `Server-Timing` header.
+// deploy/bunny-worker-src/bunny-edge-server-timing.ts — THE EDGE PROFILER:
+// per-phase request timing surfaced on EVERY response as the standard
+// `Server-Timing` header.
 //
-// WHY THIS EXISTS (measured 2026-10-05): signed-in requests skip the
+// WHY THIS EXISTS (measured): signed-in requests skip the
 // prepared-page stores and run the full statement ladder — home 45.4 s,
 // member pages 504 at the 59 s platform wall — while anonymous prepared
 // pages serve in 0.04-0.6 s, and NOTHING on the wire said WHERE a slow
@@ -183,8 +183,8 @@ export function edgeDbTimingFetch(): typeof fetch {
 }
 
 /** Record one database round trip and its statements, measured where the
- *  round trip actually happens (cf-hosting 2026-10-07; binding-boundary
- *  counting): its wall time into the ledger,
+ *  round trip actually happens (at the binding boundary):
+ *  its wall time into the ledger,
  *  one trip, and the statements the trip physically carried. A FAILED call
  *  is recorded too — the D1 lock-state probe batch against a database
  *  without the transaction-state table is a round trip the request paid.

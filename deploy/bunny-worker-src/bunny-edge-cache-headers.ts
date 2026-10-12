@@ -4,7 +4,7 @@
 // WHY THIS EXISTS: Bunny executes a standalone edge script ONLY on cache
 // misses ("Normally edge scripts run after the cache; cached responses are
 // served without invoking the script" — bunny.net/docs/scripting/
-// before-cache.md, fetched 2026-10-02). The entry's html()/json()
+// before-cache.md). The entry's html()/json()
 // constructors emit `Cache-Control: no-store` on every response, so the CDN
 // never caches and every visitor request pays a full engine render plus 1-3
 // Bunny-DB round-trips. When the operator arms DECKO_EDGE_CACHE=1, content

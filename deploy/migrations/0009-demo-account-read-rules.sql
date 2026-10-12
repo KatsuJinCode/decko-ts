@@ -3,7 +3,7 @@
 -- Do not edit; edit the generator.
 --
 -- WHAT THIS IS: the read rules the demo deck's account substrate needs to be
--- SAFE TO SERVE. Generated 2026-10-11 after the round-8 adversarial review
+-- SAFE TO SERVE. Generated after an adversarial review
 -- reproduced, in workerd and on the demo deck with the first-run owner
 -- created, that an anonymous requester could read the owner's PBKDF2 digest,
 -- its salt and its email address — on the page path AND on /api/query.
@@ -19,7 +19,7 @@
 --
 -- THE RULES ARE THE GEM'S OWN, transcribed field for field from
 -- card-mod-account-0.20.0/data/real.yml. Each of the five field cards
--- declares `:fields: :right: :fields: :read: [:help_desk]`, which Wagn's
+-- declares `:fields: :right: :fields: :read: [:help_desk]`, which the
 -- real.yml loader materializes as `<field>+*right+*read` with content
 -- [[Help Desk]]:
 --   * `*account`  real.yml:82-94    * `*password`  real.yml:132-142

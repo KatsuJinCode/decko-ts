@@ -3,13 +3,13 @@
 //
 //   "We port your Decko site to TypeScript and tell you how many pages are not byte-identical."
 //
-// Plan: deliverables/migration-parity-tool-PLAN.md   Docs:
+// Plan: deliverables/migration-parity-tool-PLAN.md
 //
-// Status (honest): this scaffold validates inputs, prints or runs the EXISTING proven stage
-// commands, and fails with a named missing-inputs list. It does not yet run end-to-end against
-// a third-party site: stage 1's capture driver and stage 4's classifier are proven lane tooling
-// not yet moved into this repo (PLAN.md gaps G1–G5). Tracked stages (import, staging server)
-// are wired to their real, verified CLIs.
+// Status: this scaffold validates inputs, prints or runs the stage commands that already
+// exist, and fails with a named missing-inputs list. It does not yet run end-to-end against
+// a third-party site, because stage 1's capture driver and stage 4's classifier are not
+// productized into this repository (PLAN.md gaps G1-G5). The tracked stages - import and the
+// staging server - are wired to their real, verified CLIs.
 
 import { spawnSync } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
@@ -26,14 +26,12 @@ import {
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-// Proven lane tooling not yet productized (PLAN.md G2/G4): default locations
-// where the instruments live. Both are in-repo paths, so they resolve against
-// THIS checkout rather than the per-lane worktree that produced the 2026-10-02
-// oracle run -- that worktree (decko-ts-lane-final-dataset) has since been
-// removed from this machine, and the absolute default made every invocation
-// point at a directory that no longer exists. Each stays overridable through
-// its PARITY_* env var (lines 111-113), so a deliberately-chosen instrument
-// elsewhere is still reachable.
+// Default locations for the stage-1 and stage-4 instruments, which are not yet
+// productized into this repository (PLAN.md G2/G4). Both are resolved against
+// THIS checkout rather than from an absolute path, so they stay correct wherever
+// the repository is checked out. Each stays overridable through its PARITY_*
+// env var (see parseArgs), so an instrument chosen deliberately elsewhere is
+// still reachable.
 const LANE_WORKTREE_DEFAULT = path.join(
   REPO,
   "fixtures",

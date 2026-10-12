@@ -163,7 +163,7 @@ export function arrivedOverTls(request: Request, url: URL): boolean {
  * 403. The read path below this call is not imported, not consulted, and
  * not altered.
  *
- * The ONE disarm-time exception (edge-signin-form-fix lane, 2026-10-03): the
+ * The ONE disarm-time exception: the
  * login action. /update/*signin mints an auth_sessions row and no card rows
  * (the :signin event aborts the save — signin.rb:15-17), and Ruby decko
  * never gates sign-in behind a deploy flag. With DECKO_WRITE_PATH off this

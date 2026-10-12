@@ -1,8 +1,8 @@
 # Decko Core
 
-Private workspace for the runtime-independent Decko project, with TypeScript
-and first-class Ruby support as the architectural direction. The repository
-slug remains `decko-ts` while active development continues.
+Implementation workspace for the runtime-independent Decko project, with
+TypeScript as the current implementation and first-class Ruby support as the
+architectural direction.
 
 Read the [project contract and work board](docs/core/README.md) and
 [commit, push and publication gates](docs/core/governance.md). These govern
@@ -424,5 +424,5 @@ a declaration-level label, not a behavior claim; per-mod detail in
 `tools/compat-report/mod-compat-report.md`, contract boundary in
 `docs/decisions/0004-mods-compiled-into-the-view-registry.md`),
 the PostgreSQL read rung, the one-command migration launch path, and the
-publication hygiene rounds (in progress: `tools/hygiene/`). See
+publication hygiene pass (in progress: `tools/hygiene/`). See
 `docs/port-tracker.md` for the wave plan + per-stream notes.

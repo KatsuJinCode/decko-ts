@@ -10,13 +10,13 @@
 // `node deploy/launch.mjs --execute`: actually runs every step through
 // `npx wrangler`. Steps: d1 create (if absent) -> wrangler.toml is updated
 // with the printed id -> d1 execute --file migrations/0001-schema.sql -> d1
-// execute --file seed/seed.sql in CHUNKED fashion (the importer lane's
+// execute --file seed/seed.sql in CHUNKED fashion (the importer's
 // chunker, since the seed is a single INSERT run today and the chunker is
 // the same one production migrations will use when cards grow past the
 // single-batch limit) -> wrangler deploy -> smoke battery (/, /_status, one
 // .json render, one /api/query). Every step's exact command and output goes
 // to a timestamped log under deploy/logs/; the script prints a bounded tail
-// of each log to stdout (the prior round died printing a 335 KB vitest
+// of each log to stdout (an earlier run died printing a 335 KB vitest
 // dump; the bound is enforced here).
 //
 // `node deploy/launch.mjs --local`: boots miniflare (real workerd, no
@@ -29,7 +29,7 @@
 // ===================
 //
 // - No `wrangler d1 create` or `wrangler deploy` against the real account
-//   in `--local` mode (the lane rule; real-account calls only fire under
+//   in `--local` mode (real-account calls only fire under
 //   `--execute`).
 // - No place where real production-deck member content is ever
 //   introduced. The seed in deploy/seed/seed.sql is the synthetic demo
@@ -51,7 +51,7 @@
 //                    does for `--local`; that test pins every route we
 //                    smoke below.
 //
-// The chunked seed import calls the importer lane's chunker
+// The chunked seed import calls the importer's chunker
 // (tools/migrate/import.mjs#splitSqlStatements) — the same splitter the
 // migration tool uses, so a future migration that needs to apply a deck's
 // worth of inserts sees the same chunk boundaries the chunker decides
@@ -216,7 +216,7 @@ function printPlan(plan, label) {
 }
 
 // ---------------------------------------------------------------------------
-// Seed chunking — uses the importer lane's splitter verbatim so the chunk
+// Seed chunking — uses the importer's splitter verbatim so the chunk
 // boundaries on the deploy path match the chunk boundaries the migration
 // tool applies to a deck's worth of inserts.
 // ---------------------------------------------------------------------------
@@ -288,7 +288,7 @@ function preflight() {
 
 // ---------------------------------------------------------------------------
 // Log helper — every spawned step writes to a timestamped file under
-// deploy/logs/. We capture full output (a prior round died printing 335 KB
+// deploy/logs/. We capture full output (an earlier run died printing 335 KB
 // of vitest dump to the operator's terminal) and tail a bounded amount on
 // stdout. Logs are written first, then the tail is printed.
 // ---------------------------------------------------------------------------
@@ -390,8 +390,8 @@ if (flags.local) {
   if (bundle.length < 10_000) throw new Error("bundle suspiciously small (<10 KB) — worker graph did not come along");
   // Hygiene: the Web-standard claim covers EVERY node: specifier, not just
   // node:crypto — a crypto-only check let a raw "node:fs" through (hoisted
-  // from src/card/render/coded-attachment-files.ts; fixed 2026-09-29 by
-  // gating that module's fs access behind a runtime probe), and workerd
+  // from src/card/render/coded-attachment-files.ts; now gated behind a
+  // runtime probe), and workerd
   // rejects ANY node: module unless nodejs_compat is on, which this deploy
   // deliberately is not. The match is anchored to import/require syntax
   // (from "node:x" | import("node:x") | require("node:x")) so doc comments

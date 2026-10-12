@@ -16,8 +16,8 @@ tools/oracle/portable-mariadb/
 tools/oracle/mysql-server/
 tools/oracle/mysql-client-scratch/
 .tools-tmp/
-# benchmark corpus is derived from a production dump and rebuilt on demand
-# (benchmarks/sanitize_corpus.py); never committed
+# benchmark corpus is a sanitized derivative of source data that is not
+# redistributed; rebuilt on demand (benchmarks/sanitize_corpus.py); never committed
 benchmarks/corpus/
 # corpus v2 sqlite + captured oracle shards: sanitized but large and
 # rebuildable (benchmarks/corpus-v2/build_corpus_v2.py, benchmarks/capture-corpus.rb)
