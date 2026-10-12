@@ -1,4 +1,4 @@
-// RED/GREEN proof harness for the standing-net env guard (auditor finding F16).
+// RED/GREEN proof harness for the standing-net env guard.
 //
 // What this is: a self-contained node script that proves, WITHOUT running the
 // real net and WITHOUT touching the shared decko-test-queue, that
