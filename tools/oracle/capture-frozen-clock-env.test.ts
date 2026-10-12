@@ -15,7 +15,8 @@ describe("CAPTURE_FROZEN_CLOCK", () => {
   });
 
   it("renders *now at the corpus of record's rig epoch as the capture did", () => {
-    // corpus of record, view lane shard 3, `*now` record.content
+    // expectation: the `*now` card's dayofwk_min_tz rendering at the corpus's
+    // frozen rig epoch
     const instant = captureClockFromEnv("2026-09-19T12:00:00Z");
     // The capture host ran Pacific time; reproducing its bytes is an explicit
     // act now that the engine's default zone is UTC (see deck-time-zone.ts).
