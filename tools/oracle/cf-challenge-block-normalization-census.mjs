@@ -1,5 +1,5 @@
-// Census for the Cloudflare challenge-block normalization (the 9f023ce
-// discipline): two counts over the full corpus, no engine boot.
+// Census for the Cloudflare challenge-block normalization: two counts over
+// the full corpus, no engine boot.
 //
 // 1. CARRIER CENSUS: every expected-v2 shard line (view + page lanes) is
 //    scanned for the __CF$cv$params challenge block. Asserts the carrier
