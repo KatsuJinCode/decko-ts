@@ -14,10 +14,9 @@
 // body's tokens (html.rb:238-244) and the body's keyword/string tokens
 // resolve through the encoder's group-aware kind paths. Both sub-scanners
 // are ported (java-script.ts, css.ts#scanCssInto); the body's token stream
-// is no longer the single coarse :ident token the pre-2026-10-01 port
-// emitted (that divergence WAS byte-exact for identifier-only fixture
-// bodies but dropped the Classic_Layout oracle's
-// `<span style="color:#080;font-weight:bold">var</span>`).
+// is the sub-scanner's own rather than one coarse :ident token, so a `var`
+// inside a <script> body prints as
+// `<span style="color:#080;font-weight:bold">var</span>`.
 
 import { HtmlTokenEncoder } from "../encoder.js";
 import { scanJavaScriptInto } from "./java-script.js";
@@ -41,7 +40,7 @@ export function scanHtml(input: string): string {
   let plainStringContent: RegExp | undefined = undefined;
 
   // Regexes pulled from html.rb. The CDATA branch is rare in real decks;
-  // the corpus doesn't exercise it, but we keep the shape for parity.
+  // no input we render exercises it, but we keep the shape for parity.
   // NB: no `m` flag on the anchored ones - it would make `^` match line
   // starts in the *current* slice (after a `\n` in the source), so a
   // regex like /^<\// would re-match `</body>` mid-document.
