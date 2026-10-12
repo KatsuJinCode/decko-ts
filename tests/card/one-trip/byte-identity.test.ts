@@ -1,11 +1,11 @@
-// THE ACCEPTANCE PIN (one-trip implementation lane):
+// THE ACCEPTANCE PIN:
 // a test render that consumes the one-trip payload produces byte-identical
 // HTML to the current engine's output for the 5 probe pages — modulo the
 // engine's own per-render SecureRandom slot ids, which two BASELINE renders
 // of the same page also never agree on (normalizeSlotIds) — with the data
 // fetch costing EXACTLY ONE round trip, the payload seating costing ZERO
 // driver queries, and every further trip belonging to a NAMED residue class
-// (the mission's "TRIPS=1 (or the named residue constant)").
+// (the "TRIPS=1 (or the named residue constant)" requirement).
 //
 // This is also the harmlessness proof the row-set pin leans on: any rows
 // the bundle carries beyond the render's read set are proven harmless by
@@ -13,9 +13,10 @@
 //
 // The per-page measurement (baseline trips, one-trip trips, residue class
 // breakdown) is written to benchmarks/one-trip-render/one-trip-harness-
-// report.json — the lane receipt's terminal block cites it.
+// report.json.
 //
-// The corpus tests skip when the mirror copy is absent (fresh clones).
+// These tests skip when the shared deck database copy is absent (fresh
+// clones).
 
 import { writeFileSync } from "node:fs";
 import { mkdtempSync, rmSync } from "node:fs";

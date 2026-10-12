@@ -1,5 +1,4 @@
-// THE STAMP-AS-COLUMN PIN (one-trip build lane, 2026-10-06 — spec §c plus
-// the D3 floor's "count + stamp" residual).
+// THE STAMP-AS-COLUMN PIN.
 //
 // THE PROPERTY UNDER PIN. The one-trip posture's per-render gate cost is
 // zero ROUND TRIPS: the seat's HEAD statement reads deck_data_version in the
@@ -8,14 +7,14 @@
 // anyway. The stamp read and the payload rows are consistent BY
 // CONSTRUCTION (one statement, one snapshot); a committed write between
 // renders moves the version the NEXT head read sees, and the seat's own
-// move branch recomposes before seating anything (spec §c: a moved stamp
+// move branch recomposes before seating anything (a moved stamp
 // returns a moved-stamp marker, never stale rows).
 //
-// THE COUNT HALF. The D3 floor's fifth trip was ONE batch carrying the
+// THE COUNT HALF. The floor's fifth trip was ONE batch carrying the
 // permission gate-count (read-rules.ts statement 3, the hasReadRules
 // counter) + the freshness stamp — the two statements plans never absorb.
 // The head carries BOTH as columns (the gate-count is a zero-bind one-off,
-// one-trip-per-page spec §a.4's "settings count" arm), so that trip drops
+// the "settings count" arm), so that trip drops
 // 1 -> 0: with the stamp consumed from the head, the cold closure batch's
 // live discharge (the replay router forwards only unmatched members, and
 // skips the wire entirely at zero misses) carries nothing.
@@ -221,7 +220,7 @@ describeOrSkipLoud(!mirrorAvailable(), "tests/card/one-trip/stamp-as-column-seat
     // The gate state itself must be REAL: the render cannot have skipped the
     // freshness gate — an unmigrated database must throw, and a migrated one
     // must have armed the baseline (a silent skip is the staleness window the
-    // freshness lane exists to close).
+    // freshness gate exists to close).
     // (The baseline is private engine state; the observable proxy is that the
     // render SUCCEEDED on a stamped deck — the gate throws on an unstamped
     // one — plus the move detection below, which only works with a baseline.)
@@ -252,8 +251,7 @@ describeOrSkipLoud(!mirrorAvailable(), "tests/card/one-trip/stamp-as-column-seat
     // map). The move was detected through that live read and the payload
     // recomposed in-render. Exactly ONE gate stamp statement spans both
     // renders (render 2's; render 1 consumed the column — zero). Killing
-    // this last one is the full bundle statement's job (spec §a), not this
-    // lane's.
+    // this last one is the full bundle statement's job, not this pin's.
     const stampReads2 = capture.statements.filter((s) => s.sql === GATE_STAMP_SQL);
     expect(
       stampReads2.map((s) => s.sql),

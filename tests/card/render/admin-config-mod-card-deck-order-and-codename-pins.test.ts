@@ -1,10 +1,10 @@
 // admin-config-mod-card-deck-order-and-codename-pins.test.ts -- the
-// fama-remainder lane's MEMBER 3 pin (roleConfigsView over-render).
+// roleConfigsView over-render pin.
 //
 // WHAT IS PINNED
 //   Two defects in `prepareAdminRuntime`'s mod-card step
 //   (src/card/mod-loader/mods/core-admin-runtime.ts), both of which the Ruby
-//   sources and the corpus bytes independently demand:
+//   sources and the deck's own bytes demand:
 //
 //   1. ORDER.  Ruby's `all_configs` is
 //        card/mod/core/set/all/admin.rb:19-21,40-42
@@ -15,54 +15,47 @@
 //            mod_cards_with_config.map(&:admin_config_objects).flatten
 //          end
 //      so a config section's ITEM ORDER is the deck's mod-card order, not
-//      the mods' names.  The oracle pins it: the `Configurations` section of
-//      the Administrator page reads *title, *credit (mod: format, card
-//      45437), *Ace (mod: ace editor, 45475), *TinyMCE (mod: tinymce editor,
-//      45509), *home, *main menu, *getting started links (mod: defaults,
-//      45513) -- ascending card id.  Name order would have read ace editor,
-//      defaults, format, recaptcha, tinymce editor.
-//      The port sorted modCards by name; these pins hold the deck order.
+//      the mods' names: the Ruby code flattens the mod cards in deck order.
+//      Name order would read ace editor,
+//      defaults, format, recaptcha, tinymce editor; deck order reads
+//      *title, *credit (format), *Ace (ace editor), *TinyMCE (tinymce
+//      editor), *home, *main menu, *getting started links (defaults) --
+//      ascending mod-card id.
+//      The engine sorted modCards by name; these pins hold the deck order.
 //
 //   2. CODENAME.  Ruby's `modname` is the CARD's codename with the prefix
 //      stripped -- card/mod/core/set/type/mod.rb:164-166
 //          def modname
 //            codename.to_s.gsub(/^mod_/, "")
 //          end
-//      but the port derived it from the card NAME via `DeckoName#key` (the
+//      but the engine derived it from the card NAME via `DeckoName#key` (the
 //      url_key), which decays the plural gem names.  Measured over every
-//      mod card in bench-corpus-raw.sqlite3 (sha256 6a44dfdc...): the deck
+//      mod card in the deck: the deck
 //      stores `mod_defaults`, `mod_permissions`, `mod_rules`, `mod_assets`,
 //      `mod_tabs`, `mod_shades`; the key gives `mod_default`,
 //      `mod_permission`, `mod_rule`, `mod_asset`, `mod_tab`, `mod_shade`.
 //      ADMIN_CONFIG is keyed by GEM name, so the derived key silently
 //      dropped whole mods from all_configs -- `mod: defaults` resolved to
 //      "default", losing *home, *main menu and *getting started links,
-//      which are the last three items of the oracle's Administrator
+//      the last three items of the Administrator
 //      Configurations section.  (`modCardCoreHtml` already read
 //      `card.record.codename`; this was the one path that did not.)
 //
-// RED-VERIFIED by reverting each half in place (see the receipt).
+// RED-VERIFIED by reverting each half in place.
 //
 // WHAT IS NOT PINNED, AND WHY (the open remainder)
-//   The per-ROLE assignment.  Measured this lane, corpus vs oracle:
-//        role        corpus walk (Ruby-faithful)          oracle
-//        administrator  configurations 9, settings 22    configurations 7
-//        shark          cardtypes 37                     cardtypes 8,
-//                                                         settings 21,
-//                                                         configurations 1
-//        help_desk      (nothing)                        settings 1
-//   No single walk order over this corpus reproduces the oracle's split:
-//   STAR-before-TYPE (the order card/lib/card/set/pattern/all.rb:41
-//   `safe_set_keys` pins via the corpus set_keys) sends `*credit`
-//   (type HTML, `HTML+*type+*update` = Shark) to Administrator, which the
-//   oracle agrees with, but also sends `*head` / `*structure` (type Setting
-//   278, for which NO `Setting+*type+*update` row exists) to Administrator,
-//   which the oracle contradicts (Shark).  TYPE-before-STAR inverts both.
-//   The corpus carries only two relevant rules: `*star+*update` =
-//   "Administrator/Wagneer" (id 6556) and nine `<T>+*type+*update` = "Shark".
-//   The remaining over-render on the Administrator/Shark/Help Desk pages is
-//   the capture-time rule state, the same class as the pointer one-line
-//   count pin next door -- not reachable from this deck.
+//   The per-ROLE assignment. No single walk order over the stored rules
+//   reproduces the expected role-page split: STAR-before-TYPE (the order
+//   card/lib/card/set/pattern/all.rb:41 `safe_set_keys` pins) sends
+//   `*credit` (type HTML, `HTML+*type+*update` = Shark) to Administrator,
+//   which the expected output agrees with, but also sends `*head` /
+//   `*structure` (type Setting, for which NO `Setting+*type+*update` row
+//   exists) to Administrator, which the expected output contradicts (Shark).
+//   TYPE-before-STAR inverts both. The stored rule set for this class here
+//   is deliberately partial (`*star+*update` plus the per-type `*update`
+//   rules); the remaining over-render on the role pages is the serving
+//   deck's rule state -- not reachable from this fixture, the same
+//   class as the pointer one-line count pin next door.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { modEngineHost } from "../../../src/card/mod-loader/mod-engine-host.js";

@@ -17,7 +17,7 @@
 // The scope's justification, in one line: every key the render path asks
 // this resolver for is a rule candidate name, and a rule candidate name
 // always ends in a task setting name — so a composed key is needed only
-// when it can end in one. Measured on the trial deck (19,482 live cards):
+// when it can end in one. Measured on the serving deck (19,482 live cards):
 // whole-deck 19,474 rows / 1,074,532 response bytes / 3,789 ms against
 // rule-closure 1,489 rows / 84,379 bytes / 384 ms, agreeing on all 1,489
 // rule-shaped keys. The measurement is
@@ -72,7 +72,7 @@ async function seedRuleClosureDeck(): Promise<RenderTestStorage> {
   // a non-rule junction with no setting on either side
   await seedCard(storage, { id: 34, name: "left+right", leftId: 50, rightId: 51, typeId: 4 });
   // a VIRTUAL-LEFT rule card: its composed name is stored in the key column
-  // and there is no left_id to compose from. This is the corpus deck's
+  // and there is no left_id to compose from. This is the deck's
   // delegating `*all plus+*read` shape, and it is the case a seed of the
   // rule cards' side spines alone loses — the walk then misses the rule
   // entirely and the _left delegation resolves to the catch-all instead,

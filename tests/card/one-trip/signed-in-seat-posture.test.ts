@@ -1,16 +1,16 @@
-// THE SIGNED-IN SEAT POSTURE (per-viewer-seat lane, 2026-10-06): does the
+// THE SIGNED-IN SEAT POSTURE: does the
 // one-trip fast path hold when the viewer is SIGNED IN?
 //
-// The deployed edge serves signed-in requests through a per-actor
+// The edge serves signed-in requests through a per-actor
 // RenderEngine over the SHARED FetchEngine (bunny-edge-session-viewer.ts
 // ActorRenderEngines.deckFor). The seat gate (render-gate.ts
 // seatOneTripPayloadForRender) is viewer-blind — it lives inside
-// RenderEngine.render — so the pins here are the ones the lane must prove
-// or refute ON THIS LINEAGE:
+// RenderEngine.render — so the pins here are the ones to prove
+// or refute in this composed posture:
 //
 //   1. SEAT + PLAN PIN — a signed-in render of a planned page seats the
 //      bundle AND arms the recorded plan (fetcher.replayRouter.armed), in
-//      the INLINE serving posture (the deployed shape; the serving SQL
+//      the INLINE serving posture (the serving SQL
 //      parser rejects ATTACH), byte-identical to the signed-in ladder
 //      (gate OFF), and plan-replay class (strictly fewer trips).
 //   2. VERSION-MOVE RECOMPOSITION — after a committed-write version bump
@@ -21,22 +21,20 @@
 //      gate's resetCaches() — the render recomposes by re-running the live
 //      ladder over emptied caches with NO seat fetch (measured: 86 trips,
 //      0 data-fetch trips) and would answer matched reads from the stale
-//      armed map. This pin is the lane's RED.
+//      armed map. This pin is RED at base.
 //
-// Fixture: a WRITABLE tmp copy of the trial-deck mirror with the freshness
-// migration (deploy/migrations/0003-deck-data-version-stamp.sql — the
-// assembly's canonical stamp migration; the seat lineage's copy was numbered
-// 0007 with a byte-identical body, unified to 0003 in the r5 merge) applied —
-// the circulating mirror copies predate the stamp and this lineage's render
+// Fixture: a WRITABLE tmp copy of the shared deck database with the freshness
+// migration (deploy/migrations/0003-deck-data-version-stamp.sql) applied —
+// circulating copies predate the stamp and the render
 // path fails loudly without it. The store is materialized INLINE into that
 // copy (the chunked-fetch recipe) and the plan is recorded at the exact
 // serving posture, seeded raw into one_trip_render_plans (the
 // renderplan-replay-trip-profile recipe, signed-in variant).
 //
-// SCOPE NOTE (the honest boundary this test does NOT pin): a raw SQL edit
+// SCOPE NOTE (the boundary this test does NOT pin): a raw SQL edit
 // without the write path's store recompute (invalidation.ts) leaves the
 // STORE's snapshot rows stale by contract — the serving-side duty this
-// lane owns is that a moved stamp invalidates the SEAT STATE (memo + armed
+// file owns is that a moved stamp invalidates the SEAT STATE (memo + armed
 // plan); the store rebuild belongs to the write-path integration.
 
 import { copyFileSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
@@ -142,7 +140,7 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/signed-in-seat-posture.test.
     sideDir = scratchDir("perviewer-seat-");
     workDbPath = join(sideDir, "mirror-migrated-inline.sqlite3");
     copyFileSync(MIRROR_COPY_PATH, workDbPath);
-    // The freshness stamp (this lineage's render path fails loudly without
+    // The freshness stamp (the render path fails loudly without
     // it), applied to the writable copy — the migration is additive and
     // order-safe by design (IF NOT EXISTS / INSERT OR IGNORE).
     rawDb = new Database(workDbPath);
@@ -152,8 +150,8 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/signed-in-seat-posture.test.
       | undefined;
     expect(typeof stamp?.version).toBe("number");
 
-    // The side store: built from the MIGRATED copy (this lineage's own
-    // truth), one page (the pin's scope), then materialized INLINE into
+    // The side store: built from the MIGRATED copy (the serving truth),
+    // one page (the pin's scope), then materialized INLINE into
     // the working copy (the chunked-fetch recipe, verbatim).
     const corpus = new LocalSqliteDriver({ path: workDbPath, readonly: true });
     sidePath = join(sideDir, "one-trip-closure-side.sqlite3");
@@ -381,7 +379,7 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/signed-in-seat-posture.test.
   }, 300_000);
 
   it("logs the lane's measurement lines", async () => {
-    // The receipt quotes these; vitest prints stdout verbatim.
+    // Measured values printed for the run log; vitest prints stdout verbatim.
     for (const m of measurements) {
       console.log(
         `SIGNED-IN-SEAT ${m.label}: trips=${m.trips} seatFetchStmts=${m.seatFetchStmts} ` +

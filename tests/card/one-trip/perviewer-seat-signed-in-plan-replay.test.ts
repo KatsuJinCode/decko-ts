@@ -1,10 +1,10 @@
-// THE PER-VIEWER-SEAT LANE'S PIN (lane-perviewer-seat-2026-10-06):
+// THE PER-VIEWER-SEAT PIN:
 // a SIGNED-IN render of a PLANNED page must seat and complete in the
 // plan-replay shape, byte-identical to the signed-in ladder.
 //
-// WHY THIS PIN EXISTS (the live measurement it answers, edge release
-// 1137028): anonymous prepared pages serve in 0.04-0.6 s; the signed-in
-// HOME seat serves in 0.18 s; but a signed-in member page measured 9.0 s —
+// WHY THIS PIN EXISTS: anonymous prepared pages serve in 0.04-0.6 s; the
+// signed-in HOME seat serves in 0.18 s; but a signed-in member page measured
+// 9.0 s —
 // the unseated-ladder class. The dispatch hypothesis was that the edge's
 // per-viewer branch (bunny-edge-engine-handler.ts:465-474, perViewer:true)
 // skips the one-trip gate. The code trace says it cannot: the seat runs
@@ -23,7 +23,7 @@
 // The harness is the renderplan-replay trip-profile pin's shape
 // (same build → record → seed → render recipe), with the REPLAY and the
 // OFF-baseline renders both carrying the signed-in viewer (actor 583, the
-// deck's no-role member — the same actor the live battery used).
+// deck's no-role member).
 
 import { copyFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -64,12 +64,10 @@ import { describeOrSkipLoud } from "../../support/describe-with-corpus.js";
 
 const PAGE = "Home";
 /** The signed-in viewer the pin renders as: actor 583, the deck's no-role
- *  member (card-mod-edit-forms.test.ts:395's "no role membership") — the
- *  live battery's own account class. */
+ *  member (card-mod-edit-forms.test.ts:395's "no role membership"). */
 const ACTOR_ID = 583;
-/** The composed signed-in ceiling, MEASURED on this lineage (this pin never
- *  completed pre-fixture-fix — the 8 it speculated was never observed). The
- *  anonymous core is 4 since the stamp-as-column lane (boot + seat head +
+/** The composed signed-in ceiling, MEASURED. The
+ *  anonymous core is 4 (boot + seat head +
  *  chunk batch + replay batch; the count+stamp trip died into the head's
  *  zero-bind columns); the signed-in render adds the MEASURED per-viewer
  *  residue, every statement of it structurally per-viewer SQL: the
@@ -77,7 +75,7 @@ const ACTOR_ID = 583;
  *  rule set>) — a different viewer binds a different list and MUST go live;
  *  a plan serving them cross-viewer would leak another viewer's readable
  *  rows) + the help resolver's per-setting count batch (the signed-in
- *  popover surface). Measured ledger (2026-10-06, this file's log lines):
+ *  popover surface). Measured ledger (this file's log lines):
  *  9 trips, plan hit ratio 0.988, unexplained 0, bytes identical to the
  *  signed-in ladder. */
 const SIGNED_IN_FLOOR_TRIPS = 9;
@@ -146,11 +144,10 @@ async function buildAndSeedInlineStore(
   mirror.close();
   copyFileSync(corpusPath, inlineDbPath);
   const loadDb = new LocalSqliteDriver({ path: inlineDbPath });
-  // The freshness stamp (this lineage's render entry fails loudly without
+  // The freshness stamp (the render entry fails loudly without
   // it, and the stamp-move pin below UPDATEs the version row): applied to
   // the working copy the way a provisioned database is — migration 0003,
-  // additive and order-safe (the seat posture fixture's own recipe;
-  // 5023337f unified the seat lineage's 0007 reference onto this file).
+  // additive and order-safe.
   await applyDeckDataVersionStampMigration(loadDb);
   for (const statement of ONE_TRIP_SIDE_DDL) {
     await loadDb.query(statement, []);
@@ -194,12 +191,12 @@ async function recordAndSeedPlan(inlineDbPath: string): Promise<RenderPlanEntry[
   ).entries;
   expect(planEntries.length, "the recorded plan must be non-trivial").toBeGreaterThan(20);
   // THE DELIBERATE LEGACY MEMBER (the router-guard pin's posture): a store
-  // built by a recorder predating the acfb1977 exclusion carries the
+  // built by an older recorder carries the
   // freshness-stamp read as a plan row. The current filter can no longer
   // harvest it from a live capture (the gate's stamp statement rides zero
-  // live trips since the stamp-as-column lane — the head column replaced
+  // live trips — the head column replaced
   // it), so the legacy member is seeded EXPLICITLY, as the exact (sql,
-  // params) a pre-fix store carried, and the pin proves the router never
+  // params) such a store carried, and the pin proves the router never
   // serves it.
   const seededEntries: RenderPlanEntry[] = [
     ...planEntries,
@@ -231,7 +228,7 @@ async function recordAndSeedPlan(inlineDbPath: string): Promise<RenderPlanEntry[
  *  (bunny-edge-session-viewer.ts:183,193-195): fresh RenderEngine over the
  *  shared fetcher, viewer + pageSession set BEFORE the first render.
  *  Returns the capture driver EXPLICITLY — FetchEngine.driver is the replay
- *  router (b28e82fe), so the trip ledger lives on the capture the engine
+ *  router, so the trip ledger lives on the capture the engine
  *  was booted over, not on fetcher.driver. */
 async function bootSignedInEngine(
   inlineDbPath: string,
@@ -278,8 +275,8 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/perviewer-seat-signed-in-pla
       const planEntries = await recordAndSeedPlan(inlineDbPath);
 
       // ---- the SIGNED-IN LADDER (the BEFORE measurement: gate OFF) -------
-      // A fresh engine, no payload, full cold closure — the 9.0 s live
-      // class. Both viewer fields set exactly as the edge sets them
+      // A fresh engine, no payload, full cold closure — the unseated class
+      // the pin answers. Both viewer fields set exactly as the edge sets them
       // (bunny-edge-session-viewer.ts:193-195).
       delete process.env.DECKO_ONE_TRIP;
       delete process.env.DECKO_ONE_TRIP_STORE;
@@ -312,14 +309,12 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/perviewer-seat-signed-in-pla
       ).toBe(normalizeSlotIds(ladderHtml));
 
       // THE PER-VIEWER RESIDUE MEASUREMENT (the hit ratio): every
-      // covered-family live read beyond the plan, classified. Logged ALWAYS
-      // (the receipt's measurement), then pinned. The plan fold's OWN merged
+      // covered-family live read beyond the plan, classified. Logged ALWAYS,
+      // then pinned. The plan fold's OWN merged
       // statements (replay-fold's per-class json_each shapes) are allowed
       // alongside the plan entries: they execute inside the replay batch and
       // decompose back to per-entry rows — plan transport, not live residue
-      // (the same allowance the renderplan-replay trip-profile pin makes;
-      // this pin predates the fold and never ran on this lineage until the
-      // fixture fix, so the allowance lands with its first real run).
+      // (the same allowance the renderplan-replay trip-profile pin makes).
       const planKeys = new Set(
         planEntries.map((e) => `${e.sql}::${JSON.stringify(e.params)}`),
       );
@@ -359,8 +354,7 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/perviewer-seat-signed-in-pla
             `${s.sql.slice(0, 140)} | params=${JSON.stringify(s.params).slice(0, 80)}`,
         );
       }
-      // The live (non-covered-family) statements too — the full trip ledger
-      // for the receipt's before/after accounting.
+      // The live (non-covered-family) statements too — the full trip ledger.
       const liveNotCovered = seated.statements.filter(
         (s) => !isPipelineAbleRenderStatement(s.sql),
       );
@@ -399,16 +393,16 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/perviewer-seat-signed-in-pla
   );
 
   it("a stamp-carrying seeded plan never absorbs the freshness stamp read: a version move is detected and the engine recomposes", async () => {
-    // THE ROUTER-GUARD PIN (per-viewer-seat lane, 2026-10-06): the plan
+    // THE ROUTER-GUARD PIN: the plan
     // seeded above DELIBERATELY carries the freshness-stamp member (its
-    // local filter predates the acfb1977 exclusion — the legacy-store
+    // local filter predates the exclusion — the legacy-store
     // posture). The record-time filter cannot retroactively fix such a
     // store; the property must hold at the ONE seam every posture flows
     // through: ReplayPlanRouter never serves a stamp read from the armed
-    // map. Measured failure this guards (base numbers, 2026-10-06): with
+    // map. The failure this guards: with
     // the stamp absorbed, the gate reads the recorded version forever — no
     // move detected, no reset, no re-seat, and the map serves pre-edit rows
-    // indefinitely (397-trip live residue on the next render).
+    // indefinitely (hundreds of live residue trips on the next render).
     dir = scratchDir("perviewer-seat-stamp-guard-");
     const inlineDbPath = await buildAndSeedInlineStore(dir);
     const planEntries = await recordAndSeedPlan(inlineDbPath);

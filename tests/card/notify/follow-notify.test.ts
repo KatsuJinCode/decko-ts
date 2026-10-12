@@ -1,5 +1,5 @@
 // tests/card/notify/follow-notify.test.ts — the follow-notification
-// trigger against a captured scenario.
+// trigger.
 //
 // What this test proves:
 //   - buildFollowNotifyHook() fires once per SavePathEvent in the act,
@@ -37,7 +37,7 @@ const ACTOR: NotifyActor = { id: 7, name: "Test Bot", email: "bot@example.com" }
 
 function makeEvent(partial: Partial<SavePathEvent> = {}): SavePathEvent {
   return {
-    card: { id: 12, name: "Jonas Following+lens", leftName: "Jonas Following", rightName: "lens", type: null, content: null, trashed: false },
+    card: { id: 12, name: "Sample User Following+lens", leftName: "Sample User Following", rightName: "lens", type: null, content: null, trashed: false },
     verb: "update",
     actId: 1,
     actionId: 1,
@@ -58,10 +58,7 @@ const TEMPLATE = {
 // `contextual_content` semantics (card-mod-content
 // set/all/contextual_content.rb:13-19 — walks inclusions; when the
 // key does not resolve to a real card, the literal name is rendered
-// with `{{` and `}}` stripped). The captured fixture proves it:
-// fixtures/captured/follow-notification.json delivered[0].subject
-// is "follower changed followed_set on follow_option" and
-// delivered[0].text_body is "Hi! follower changed followed_set."
+// with `{{` and `}}` stripped).
 
 describe("notify/follow-notify (first-mechanism port)", () => {
   let transport: CaptureTransport;
@@ -72,8 +69,8 @@ describe("notify/follow-notify (first-mechanism port)", () => {
 
   it("renders one mail per follower with a populated email", async () => {
     const followers: FollowerRef[] = [
-      { followerId: 11, followerName: "Jonas", followerEmail: "jonas@example.com", followedSetName: "Jonas Following", followOption: "always" },
-      { followerId: 12, followerName: "Tova", followerEmail: "tova@example.com", followedSetName: "Jonas Following", followOption: "always" },
+      { followerId: 11, followerName: "Sample User", followerEmail: "sample-user@example.com", followedSetName: "Sample User Following", followOption: "always" },
+      { followerId: 12, followerName: "Other User", followerEmail: "other-user@example.com", followedSetName: "Sample User Following", followOption: "always" },
     ];
     const hook = buildFollowNotifyHook({
       followers: fixedFollowerResolver(followers),
@@ -86,17 +83,17 @@ describe("notify/follow-notify (first-mechanism port)", () => {
 
     expect(transport.count()).toBe(2);
     expect(transport.captured().map((m) => m.to)).toEqual([
-      "jonas@example.com",
-      "tova@example.com",
+      "sample-user@example.com",
+      "other-user@example.com",
     ]);
-    // Interpolation semantics (post-wiring, 2026-09-22): the notice values
+    // Interpolation semantics: the notice values
     // are the RESOLVED set — `{{follower}}` renders the follower's name,
     // `{{followed_set}}` the set name, `{{follow_option}}` the option.
-    // The captured fixture's LITERAL output is the UNRESOLVED branch
-    // (empty vars), pinned by mail.test.ts's empty-vars test.
+    // The UNRESOLVED branch (empty vars) is
+    // pinned by mail.test.ts's empty-vars test.
     expect(transport.captured().map((m) => m.subject)).toEqual([
-      "Jonas changed Jonas Following on always",
-      "Tova changed Jonas Following on always",
+      "Sample User changed Sample User Following on always",
+      "Other User changed Sample User Following on always",
     ]);
     expect(transport.captured().map((m) => m.tags?.trigger)).toEqual([
       "follow_notification",
@@ -106,8 +103,8 @@ describe("notify/follow-notify (first-mechanism port)", () => {
 
   it("skips followers without an email (matches Ruby's `return unless email.present?`)", async () => {
     const followers: FollowerRef[] = [
-      { followerId: 11, followerName: "Jonas", followerEmail: null, followedSetName: "Jonas Following", followOption: "always" },
-      { followerId: 12, followerName: "Tova", followerEmail: "tova@example.com", followedSetName: "Jonas Following", followOption: "always" },
+      { followerId: 11, followerName: "Sample User", followerEmail: null, followedSetName: "Sample User Following", followOption: "always" },
+      { followerId: 12, followerName: "Other User", followerEmail: "other-user@example.com", followedSetName: "Sample User Following", followOption: "always" },
     ];
     const hook = buildFollowNotifyHook({
       followers: fixedFollowerResolver(followers),
@@ -119,12 +116,12 @@ describe("notify/follow-notify (first-mechanism port)", () => {
     await hook.fire(makeEvent(), { transport });
 
     expect(transport.count()).toBe(1);
-    expect(transport.captured()[0].to).toBe("tova@example.com");
+    expect(transport.captured()[0].to).toBe("other-user@example.com");
   });
 
   it("skips when the act is silent (Ruby's @silent_change true)", async () => {
     const followers: FollowerRef[] = [
-      { followerId: 11, followerName: "Jonas", followerEmail: "jonas@example.com", followedSetName: "Jonas Following", followOption: "always" },
+      { followerId: 11, followerName: "Sample User", followerEmail: "sample-user@example.com", followedSetName: "Sample User Following", followOption: "always" },
     ];
     const hook = buildFollowNotifyHook({
       followers: fixedFollowerResolver(followers),
@@ -140,7 +137,7 @@ describe("notify/follow-notify (first-mechanism port)", () => {
 
   it("skips when the actor is *Decko Bot (Ruby's notable_change?: auth != DeckoBot)", async () => {
     const followers: FollowerRef[] = [
-      { followerId: 11, followerName: "Jonas", followerEmail: "jonas@example.com", followedSetName: "Jonas Following", followOption: "always" },
+      { followerId: 11, followerName: "Sample User", followerEmail: "sample-user@example.com", followedSetName: "Sample User Following", followOption: "always" },
     ];
     const hook = buildFollowNotifyHook({
       followers: fixedFollowerResolver(followers),
@@ -160,7 +157,7 @@ describe("notify/follow-notify (first-mechanism port)", () => {
 
   it("fires on the delete path (notify_followers_after_delete, notify.rb:25-27)", async () => {
     const followers: FollowerRef[] = [
-      { followerId: 11, followerName: "Jonas", followerEmail: "jonas@example.com", followedSetName: "Jonas Following", followOption: "always" },
+      { followerId: 11, followerName: "Sample User", followerEmail: "sample-user@example.com", followedSetName: "Sample User Following", followOption: "always" },
     ];
     const hook = buildFollowNotifyHook({
       followers: fixedFollowerResolver(followers),
@@ -188,7 +185,7 @@ describe("notify/follow-notify (first-mechanism port)", () => {
   it("skips when all template fields are empty (unconfigured deck)", async () => {
     const hook = buildFollowNotifyHook({
       followers: fixedFollowerResolver([
-        { followerId: 11, followerName: "Jonas", followerEmail: "jonas@example.com", followedSetName: "Jonas Following", followOption: "always" },
+        { followerId: 11, followerName: "Sample User", followerEmail: "sample-user@example.com", followedSetName: "Sample User Following", followOption: "always" },
       ]),
       template: fixedTemplateResolver({ ...TEMPLATE, subject: "", textBody: "" }),
       authAs: fixedAuthAs(ACTOR),
@@ -201,7 +198,7 @@ describe("notify/follow-notify (first-mechanism port)", () => {
 
   it("sends zero messages when the default transport is NoopTransport", async () => {
     const followers: FollowerRef[] = [
-      { followerId: 11, followerName: "Jonas", followerEmail: "jonas@example.com", followedSetName: "Jonas Following", followOption: "always" },
+      { followerId: 11, followerName: "Sample User", followerEmail: "sample-user@example.com", followedSetName: "Sample User Following", followOption: "always" },
     ];
     const hook = buildFollowNotifyHook({
       followers: fixedFollowerResolver(followers),
@@ -217,19 +214,17 @@ describe("notify/follow-notify (first-mechanism port)", () => {
   });
 
   it("captures the full mail bytes end-to-end (the byte-parity headline)", async () => {
-    // M6 byte-parity headline. The expected output is taken from the
-    // captured fixture (fixtures/captured/follow-notification.json
-    // delivered[0]) — the REAL bytes a real Decko card-mod-follow /
-    // card-mod-email / card-mod-account deck produced for the same
-    // template + active_notice values. The earlier hand-derived
-    // expected bytes ("Jonas changed Jonas Following on always") were
-    // wrong: Ruby's `contextual_content` walks inclusions against the
-    // live card tree, and when the placeholder's key does not
-    // resolve to a real card the literal name is rendered with the
-    // braces stripped (card-mod-content set/all/contextual_content.rb
-    // + card-mod-email set/abstract/email_field.rb:22-26).
+    // The expected output exercises Ruby's
+    // `contextual_content` semantics (card-mod-content
+    // set/all/contextual_content.rb + card-mod-email
+    // set/abstract/email_field.rb:22-26): Ruby's `contextual_content`
+    // walks inclusions against the live card tree, and when the
+    // placeholder's key does not resolve to a real card the literal name
+    // is rendered with the braces stripped — so with the test's
+    // non-card placeholder values the subject renders the template's
+    // placeholders RESOLVED to the notice values below.
     const followers: FollowerRef[] = [
-      { followerId: 11, followerName: "Jonas", followerEmail: "jonas@example.com", followedSetName: "Jonas Following", followOption: "always" },
+      { followerId: 11, followerName: "Sample User", followerEmail: "sample-user@example.com", followedSetName: "Sample User Following", followOption: "always" },
     ];
     const hook = buildFollowNotifyHook({
       followers: fixedFollowerResolver(followers),
@@ -241,16 +236,16 @@ describe("notify/follow-notify (first-mechanism port)", () => {
     await hook.fire(makeEvent(), { transport });
     const mail = transport.last();
     expect(mail).toBeDefined();
-    expect(mail!.to).toBe("jonas@example.com");
+    expect(mail!.to).toBe("sample-user@example.com");
     expect(mail!.from).toBe("deck@example.com");
     expect(mail!.subject).toBe(
-      "Jonas changed Jonas Following on always",
+      "Sample User changed Sample User Following on always",
     );
-    expect(mail!.textBody).toBe("Hi! Jonas changed Jonas Following.");
+    expect(mail!.textBody).toBe("Hi! Sample User changed Sample User Following.");
     expect(mail!.tags).toMatchObject({
       trigger: "follow_notification",
-      follower: "Jonas",
-      followed_set: "Jonas Following",
+      follower: "Sample User",
+      followed_set: "Sample User Following",
       follow_option: "always",
     });
   });

@@ -1,5 +1,4 @@
-// tests/card/notify/mail.test.ts — mail rendering against the REAL
-// captured bytes (M6 stream).
+// tests/card/notify/mail.test.ts — mail rendering.
 //
 // What this test proves:
 //   1. interpolateTemplate() with a triple of placeholders
@@ -15,32 +14,17 @@
 //      with the `{{` and `}}` stripped. The TS port mirrors that
 //      "treats it as a literal name" semantics (card-mod-content
 //      set/all/contextual_content.rb + card-mod-email
-//      set/abstract/email_field.rb:22-26).
-//   3. The captured output proves this:
+//      set/abstract/email_field.rb:22-26). The unresolved branch's
+//      output shape:
 //        subject: "follower changed followed_set on follow_option"
 //        textBody: "Hi! follower changed followed_set."
-//      (fixtures/captured/follow-notification.json — captured by
-//      tools/oracle/follow_capture.rb against a real Decko
-//      card-mod-follow / card-mod-email / card-mod-account deck).
 //
 // What this test CANNOT prove:
 //   - that the FULL ActionMailer rendering pipeline produces the same
 //     MIME-encoded bytes. The TS port stops at MailMessage; the
 //     transport is responsible for envelope serialization. The capture
 //     transport is byte-stable on the structured shape, not on the
-//     RFC-822 wire form (Ruby uses the Mail gem's encoder; a future
-//     capture will swap both to a shared envelope if needed).
-//
-// Earlier note (M1-M5): the TS port's `interpolateTemplate` used to
-// substitute placeholders with values from the active_notice hash and
-// the tests asserted the substituted form. The M6 stream's real-oracle
-// capture forced a correction: Ruby does NOT substitute — it walks
-// inclusions and renders the placeholder name as a literal when the
-// key does not resolve to a card. The hand-derived byte-parity claim
-//  was wrong about the
-// contextual_content behavior in the dev-DB scenario; the captured
-// fixture (fixtures/captured/follow-notification.json) is now the
-// byte-parity ground truth.
+//     RFC-822 wire form (Ruby uses the Mail gem's encoder).
 
 import { describe, expect, it } from "vitest";
 import {
@@ -52,7 +36,7 @@ import {
 } from "../../../src/card/notify/mail.js";
 
 const TEMPLATE: EmailTemplate = {
-  to: "tova@example.com",
+  to: "sample-user@example.com",
   from: "no-reply@decko.org",
   subject: "{{follower}} changed {{followed_set}} on {{follow_option}}",
   textBody: "Hi! {{follower}} changed {{followed_set}}.",
@@ -61,11 +45,11 @@ const TEMPLATE: EmailTemplate = {
 // The notice values model Ruby's contextual_content RESOLUTION OUTCOME:
 // Ruby walks each inclusion against the live card tree — a resolvable
 // placeholder renders what it points at, an unresolvable one renders the
-// literal name with braces stripped (the captured fixture pins the
-// unresolvable branch: fixtures/captured/follow-notification.json).
+// literal name with braces stripped (the unresolvable branch is pinned
+// by the empty-vars test below).
 const NOTICE: FollowNotice = {
-  follower: "Tova",
-  followedSet: "Jonas Following",
+  follower: "Sample User",
+  followedSet: "Sample User Following",
   followOption: "always",
 };
 
@@ -75,19 +59,17 @@ describe("interpolateTemplate (real-oracle semantics)", () => {
       interpolateTemplate(
         "{{follower}} :: {{followed_set}} :: {{follow_option}}",
         {
-          follower: "Tova",
-          followed_set: "Jonas Following",
+          follower: "Sample User",
+          followed_set: "Sample User Following",
           follow_option: "always",
         },
       ),
-    ).toBe("Tova :: Jonas Following :: always");
+    ).toBe("Sample User :: Sample User Following :: always");
   });
 
   it("drops the {{ }} braces and renders the placeholder name verbatim when the key is NOT resolved (matches the captured fixture)", () => {
-    // The captured subject was "follower changed followed_set on
-    // follow_option" (fixtures/captured/follow-notification.json
-    // delivered[0].subject): in the capture deck those inclusions did not
-    // resolve to cards, so Ruby emitted the literal names, braces
+    // In a deck where those inclusions do not resolve to cards, Ruby
+    // emits the literal names, braces
     // stripped, literal text preserved.
     expect(
       interpolateTemplate(
@@ -118,15 +100,12 @@ describe("renderMail (first-mechanism email — bytes match the captured fixture
     // (card-mod-follow set/right/account.rb:17-19). The TS port
     // expects the template to already carry that target — the caller
     // (the trigger) is responsible for copying it onto the template
-    // before renderMail() runs. The capture's literal value
-    // (fixtures/captured/follow-notification.json delivered[0].to)
-    // is "tova@example.com" because the test template's +*to at
-    // capture time was set to that literal.
-    expect(mail.to).toBe("tova@example.com");
+    // before renderMail() runs.
+    expect(mail.to).toBe("sample-user@example.com");
   });
 
   it("from is the literal from the template", () => {
-    // Captured: "no-reply@decko.org" — Card::Mailer.new_mail
+    // The from value: Card::Mailer.new_mail
     // effective_from with no email_defaults configured falls through
     // to Card[DeckoBotID].account.email (lib/card/mailer.rb +
     // set/type/email_template.rb safe_from_and_reply_to!).
@@ -136,17 +115,17 @@ describe("renderMail (first-mechanism email — bytes match the captured fixture
   it("subject substitutes the resolved inclusions (renderMail models the notice as the resolved set)", () => {
     // TEMPLATE.subject uses the three placeholders; with the notice
     // values as the resolved set, renderMail substitutes them. The
-    // capture's literal variant is the UNRESOLVED branch, pinned by the
+    // UNRESOLVED branch is pinned by the
     // empty-vars interpolateTemplate test above.
     expect(mail.subject).toBe(
-      "Tova changed Jonas Following on always",
+      "Sample User changed Sample User Following on always",
     );
   });
 
   it("text body substitutes the resolved inclusions", () => {
-    // The capture's literal body ("Hi! follower changed followed_set.")
-    // pinned the unresolved branch; with resolution, the values render.
-    expect(mail.textBody).toBe("Hi! Tova changed Jonas Following.");
+    // The unresolved branch renders the literal names; with resolution,
+    // the values render.
+    expect(mail.textBody).toBe("Hi! Sample User changed Sample User Following.");
   });
 
   it("does not emit an htmlBody when the template omits one", () => {
@@ -158,8 +137,8 @@ describe("renderMail (first-mechanism email — bytes match the captured fixture
     // via tags. Downstream transports (Postmark, SES) use these.
     expect(mail.tags).toEqual({
       trigger: "follow_notification",
-      follower: "Tova",
-      followed_set: "Jonas Following",
+      follower: "Sample User",
+      followed_set: "Sample User Following",
       follow_option: "always",
     });
   });
@@ -170,7 +149,7 @@ describe("renderMail (first-mechanism email — bytes match the captured fixture
       NOTICE,
     );
     expect(mailWithHtml.htmlBody).toBe(
-      "<p>Hi! Tova changed Jonas Following.</p>",
+      "<p>Hi! Sample User changed Sample User Following.</p>",
     );
   });
 
@@ -187,11 +166,11 @@ describe("mailToString (one-line envelope for snapshots/tests)", () => {
   it("includes From / To / Subject / body in that order", () => {
     const text = mailToString(renderMail(TEMPLATE, NOTICE));
     expect(text).toContain("From: no-reply@decko.org");
-    expect(text).toContain("To: tova@example.com");
+    expect(text).toContain("To: sample-user@example.com");
     expect(text).toContain(
-      "Subject: Tova changed Jonas Following on always",
+      "Subject: Sample User changed Sample User Following on always",
     );
-    expect(text).toContain("\nHi! Tova changed Jonas Following.");
+    expect(text).toContain("\nHi! Sample User changed Sample User Following.");
     expect(text.indexOf("From:")).toBeLessThan(text.indexOf("To:"));
     expect(text.indexOf("To:")).toBeLessThan(text.indexOf("Subject:"));
   });

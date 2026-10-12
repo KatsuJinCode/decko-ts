@@ -4,8 +4,9 @@
 //   tests/fixtures/pods/psych-stress.yml / .json — tools/persistence/psych-stress.rb:
 //     ~100 strings covering every quoting, escaping and wrapping rule, dumped
 //     by Psych 5.1.2 as pod-shaped hashes.
-//   tests/fixtures/pods/oracle-deck-after-probe.ruby.yml — `decko sow -c '{}'`
-//     of the oracle deck after the persistence op list (674 cards), through
+//   tests/fixtures/pods/oracle-deck-after-probe.ruby.yml — a Ruby-sown deck
+//     pod (674 cards) produced by `decko sow -c '{}'` plus the persistence
+//     op list, through
 //     tools/persistence/pod-sow.rb.
 // Each must survive read -> write byte for byte, and the stress strings,
 // written from their JSON source, must equal Psych's bytes.

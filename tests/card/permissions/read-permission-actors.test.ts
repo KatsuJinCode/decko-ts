@@ -35,7 +35,8 @@
 //   25  Role R1+*members leftId 20 rightId 14   - members: Alice (31)
 //   26  Role R2+*members leftId 21 rightId 14   - members: Bob (32) + a
 //                                                 NULL referee row (the
-//                                                 corpus's unresolved shape)
+//                                                 unresolved-row shape a
+//                                                 real deck carries)
 //   27  Administrator+*members leftId 8 rightId 14 - members: Carol (33)
 //   31  Alice  (member of R1)
 //   32  Bob    (member of R2)
@@ -109,7 +110,7 @@ async function seedActorDeck(s: RenderTestStorage): Promise<void> {
   await seedCard(s, { id: 27, name: "Administrator+*members", leftId: 8, rightId: 14 });
   await seedReference(s, 25, ALICE, null);
   await seedReference(s, 26, BOB, null);
-  await seedReference(s, 26, null, null); // unresolved member (corpus shape)
+  await seedReference(s, 26, null, null); // unresolved member (a real deck's shape)
   await seedReference(s, 27, CAROL, null);
   // The account holders.
   await seedCard(s, { id: ALICE, name: "Alice" });
@@ -187,7 +188,7 @@ describe("read permission actors: role parties (the fetch_roles port)", () => {
   });
 
   it("a NULL referee row in a member list fabricates no role", async () => {
-    // Bob's list carries an unresolved member row (the corpus's shape);
+    // Bob's list carries an unresolved member row (a real deck's shape);
     // the statement filters referee_id IS NOT NULL, so Bob's parties are
     // exactly his real membership.
     const state = await stateFor(signedIn(BOB));
@@ -222,13 +223,13 @@ describe("read permission actors: role parties (the fetch_roles port)", () => {
     expect(canReadByStoredRule(43, state)).toBe(true);
   });
 
-  it("Anonymous stays exactly the corpus viewer (parties [Anyone, Anonymous], no alwaysOk)", async () => {
+  it("Anonymous stays exactly the deck's anonymous viewer (parties [Anyone, Anonymous], no alwaysOk)", async () => {
     const results = await storage!.counting.batch(readPermissionStatements(ANONYMOUS_VIEWER));
     expect(results.length).toBe(3);
-    // The corpus viewer: the engine (render.ts#ensureReadPermission) supplies
+    // The anonymous viewer: the engine (render.ts#ensureReadPermission) supplies
     // the Anonymous card's id from the batch — parties [Anyone, Anonymous].
-    const corpusViewer: ReadViewer = { signedIn: false, actorId: ANONYMOUS_CARD };
-    const state = readPermissionStateFromViewerResults(results, corpusViewer);
+    const anonViewer: ReadViewer = { signedIn: false, actorId: ANONYMOUS_CARD };
+    const state = readPermissionStateFromViewerResults(results, anonViewer);
     expect(state.parties).toEqual([5, ANONYMOUS_CARD]);
     expect(state.alwaysOk).toBe(false);
     expect([...state.readableRuleIds].sort((a, b) => a - b)).toEqual([40]);

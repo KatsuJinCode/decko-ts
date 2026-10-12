@@ -1,14 +1,10 @@
-// attachment-served-filename-extension-case.test.ts -- the cd-smalls suite's
-// RED pin for the attachment-filename-case class (7 pages, an earlier pass content-div
-// subclass "attachment-filename-case", receipt REPO_DIR
-// an internal work log):
+// attachment-served-filename-extension-case.test.ts -- the RED pin for the
+// attachment-filename-case class (uppercase-extension sources whose served
+// URL must lowercase):
 //
-//   The 7 pages' ONLY diff region is an img src extension case: the engine
-//   serves ".../8871-medium.JPG" where the oracle serves
-//   ".../8871-medium.jpg" (Iris McGinnis 1490/8871, soul 18898/81618,
-//   Rowan Lokhart 10011/38377, Brian Ahlgren 10065/38821,
-//   Pacifica Graduate Institute 12002/51511-large, Martha Ostrand
-//   14812/63653, Kelly Zeller 18149/79523-large).
+//   The class's ONLY diff region is an img src extension case: the engine
+//   serves ".../8871-medium.JPG" where Ruby serves
+//   ".../8871-medium.jpg".
 //
 //   Ruby mechanism: the served filename is built by the decko uploader, and
 //   its extension is DOWNCASED unconditionally --
@@ -35,26 +31,24 @@ import { cloudImageUrl, formatImageCore } from "../../../src/card/render/views.j
 import { cloudAttachmentUrl } from "../../../src/card/render/head-views.js";
 
 describe("attachment served-filename extension case (uploader extension.downcase)", () => {
-  // The oracle bytes for the 7 class pages, byte-for-byte (expected-v2
-  // page-lane; the sources are the cards.content rows in
-  // bench-corpus-raw.sqlite3).
+  // The expected bytes, byte-for-byte: the sources are deck cards.content
+  // rows shaped like these.
   it.each([
-    // Iris McGinnis: card 1490 source "(my_bucket)/1490/8871.JPG"
+    // an uppercase-extension source: "(my_bucket)/1490/8871.JPG"
     ["(my_bucket)/1490/8871.JPG", "medium", "http://s3.amazonaws.com//files/1490/8871-medium.jpg"],
-    // soul: card 18898, source ".../81618.JPG"
+    // another uppercase-extension source: ".../81618.JPG"
     ["(my_bucket)/18898/81618.JPG", "medium", "http://s3.amazonaws.com//files/18898/81618-medium.jpg"],
-    // Rowan Lokhart: card 10011, ".../38377.JPG"
+    // ".../38377.JPG"
     ["(my_bucket)/10011/38377.JPG", "medium", "http://s3.amazonaws.com//files/10011/38377-medium.jpg"],
-    // Brian Ahlgren: card 10065, ".../38821.JPG"
+    // ".../38821.JPG"
     ["(my_bucket)/10065/38821.JPG", "medium", "http://s3.amazonaws.com//files/10065/38821-medium.jpg"],
-    // Martha Ostrand: card 14812, ".../63653.JPG"
+    // ".../63653.JPG"
     ["(my_bucket)/14812/63653.JPG", "medium", "http://s3.amazonaws.com//files/14812/63653-medium.jpg"],
-    // Pacifica Graduate Institute: card 12002, ".../51511.JPG" at size large
+    // ".../51511.JPG" at size large
     ["(my_bucket)/12002/51511.JPG", "large", "http://s3.amazonaws.com//files/12002/51511-large.jpg"],
-    // Kelly Zeller - Dallas 2013: card 18149, ".../79523.JPG" large
+    // ".../79523.JPG" large
     ["(my_bucket)/18149/79523.JPG", "large", "http://s3.amazonaws.com//files/18149/79523-large.jpg"],
-    // already-lowercase sources stay byte-identical (the 1000+ pins that
-    // pass today must not move)
+    // already-lowercase sources stay byte-identical
     ["(my_bucket)/103/3649.jpg", "medium", "http://s3.amazonaws.com//files/103/3649-medium.jpg"],
   ])(
     "cloud source %s at size %s serves %s",

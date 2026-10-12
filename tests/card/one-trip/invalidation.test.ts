@@ -1,15 +1,15 @@
-// RED-first pins, BUILD 4 (invalidation design, A2 rule binding):
+// RED-first pins (invalidation design, the read-scope rule binding):
 // - write-time fan-out recomputes the closure for the AFFECTED pages only
 //   (reverse closure lookup over the edge data);
-// - the A2 rule is binding: the derived store is READ-SCOPE ONLY — the
-//   recompute path reads the CORPUS and writes the side store through the
+// - the read-scope rule is binding: the derived store is READ-SCOPE ONLY — the
+//   recompute path reads the DECK and writes the side store through the
 //   builder's write API, and the recompute path never consults the side
 //   store's DATA (a canary query log proves it);
 // - the reader seam (fetchPageBundle / seatPageBundle) exposes no write
 //   capability over the derived store.
 //
 // Runs on a synthetic fixture deck (in-memory sqlite, core schema + seeded
-// cards): no corpus needed, no fresh-clone skips.
+// cards): no shared deck database needed, no fresh-clone skips.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -29,7 +29,8 @@ interface Row {
 }
 
 /** A logging driver: records every statement so a scope canary can assert
- *  WHERE the recompute path read from (A2: never the derived store). */
+ *  WHERE the recompute path read from (the read-scope rule: never the
+ *  derived store). */
 class LoggingDriver implements SQLDatabaseDriver {
   readonly log: { sql: string; params: unknown[] }[] = [];
   constructor(private readonly inner: SQLDatabaseDriver) {}
@@ -140,7 +141,7 @@ describe("invalidation: write-time fan-out (synthetic fixture deck)", () => {
       pageIds: [ids["Page B"]],
       pageNames: new Map([[ids["Page B"], "Page B"]]),
     });
-    // A2 canary: the recompute may WRITE the side store (edge/closure
+    // read-scope canary: the recompute may WRITE the side store (edge/closure
     // tables) but must never READ the derived store's data tables.
     const dataReads = loggingSide.log.filter(
       (entry) =>

@@ -205,7 +205,7 @@ describe("ok_to_<task>? verdicts (permissions.rb:105-157)", () => {
   });
 
   it("denies every task on a rule-less deck (who_can -> [] -> among? -> false)", async () => {
-    // MEDIUM-2 fix (verdict-semantics 2026-10-01): the pre-fix port
+    // The pre-fix engine
     // degraded to undefined-allow here; Ruby fail-closes — permitted? ->
     // who_can -> [] -> among? -> false (permissions.rb:100-118), and a
     // missing rule outright raises ("RULE missing. should not be

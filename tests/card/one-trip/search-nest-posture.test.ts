@@ -1,14 +1,14 @@
-// RED-first pins, BUILD 5 (search-nest posture switch):
+// RED-first pins (search-nest posture switch):
 // - the posture lives behind ONE config seam;
-// - the DEFAULT is "write-time" (the research verdict's recommendation for
-//   this read-mostly deck — the operator rules the default later; this pin
+// - the DEFAULT is "write-time" (the chosen default for
+//   this read-mostly deck; this pin
 //   documents the chosen default, it does not foreclose the other posture);
 // - BOTH postures are exercised: write-time execution stores the result
 //   rows as data; live posture defers to render-time execution;
 // - the stored rows equal what the live CQL execution returns (result-set
 //   identity between the postures).
 //
-// Uses the trial-deck mirror when present; the posture-shape pins run on a
+// Uses the shared deck database copy when present; the posture-shape pins run on a
 // synthetic fixture deck regardless.
 
 import { mkdtempSync, rmSync } from "node:fs";

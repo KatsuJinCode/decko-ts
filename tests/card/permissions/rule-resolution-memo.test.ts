@@ -182,11 +182,11 @@ describe("the write path invalidates the rule-resolution memo", () => {
         [JOE.id],
       );
 
-      // THE DRIVER UNDER PROOF (core reds lane re-anchor, 2026-10-06): the
+      // THE DRIVER UNDER PROOF: the
       // wiring proof must resolve through the driver the ENGINE expires —
-      // this file's original form resolved through the RAW storage.driver,
-      // which stopped being the engine's driver when b28e82fe
-      // (renderplan-replay lane, 2026-10-05) made FetchEngine.driver the
+      // an earlier form of this test resolved through the RAW storage.driver,
+      // which stopped being the engine's driver once
+      // FetchEngine.driver became the
       // ReplayPlanRouter ("every engine read flows through the replay
       // router"; the raw driver is only reachable around the engine). The
       // production pairing is single-keyed: the render path's resolver
@@ -194,8 +194,7 @@ describe("the write path invalidates the rule-resolution memo", () => {
       // write path's resolver (card-action-engine.ts readRuleDeps passes
       // this.fetch.driver) and the expire seam (expireAfterWrite passes
       // this.fetch.driver) all use the SAME object — storage.engine.driver.
-      // RED-first proven on both trees: this test passed 6/6 at b28e82fe^
-      // and fails exactly from b28e82fe onward. The memo contract itself
+      // The memo contract itself
       // (WeakMap keyed on the engine's driver) is unchanged; Ruby's
       // contract — a committed save invalidates cached rule lookups
       // (Card::Cache expiry on save) — is what the engine must keep

@@ -1,19 +1,19 @@
-// Regression tests for the permission-verdict port mechanisms (the
-// permission_denied_mismatch class on the dual-lane exam):
+// Regression tests for the permission-verdict mechanisms (the
+// permission-denial mismatch class):
 //
 // 1. THE "_left" RULE-CONTENT DELEGATION on the READ side. Ruby's
 //    permission_rule_id (card-mod-permissions-0.20.0 set/all/permissions.rb:
 //    55-71): a COMPOUND card whose first applicable read rule's content is
 //    "_left" (regex /^\[?\[?_left\]?\]?$/) reads through its LEFT card's
-//    permission rule, recursively. This corpus runs on it: "*all plus+*read"
+//    permission rule, recursively. This deck runs on it: "*all plus+*read"
 //    = "_left" is the deck's most-precedence compound-wide rule, so every
 //    compound card without a more specific rule inherits its left chain —
 //    virtual rule cards under a set inherit the set card's, the set card
 //    inherits the anchor's. The pre-fix read walk (canReadByRuleLookup)
 //    resolved "*all plus+*read" and keyed the verdict on THAT rule's own
 //    referenced party (the "_left" name), denying exactly the cards Ruby
-//    allows (1,723+ view-lane flips; the *sidebar+*self rules editor alone
-//    carries 20 wrongly-denied bars).
+//    allows (the *sidebar+*self rules editor alone carries 20 wrongly-denied
+//    bars).
 //
 // 2. THE SET-CARD RULES-EDITOR preloads. preloadSetRules early-returned
 //    when the set card stored NO live rule children (the common case),
@@ -50,7 +50,7 @@
 //   17 *all plus       codename all_plus
 //   20 Anyone Signed In codename anyone_signed_in
 //   21 *all plus+*read [[_left]]                        - delegates LEFT
-//   22 _left           (the reference target of rule 21, as in the corpus)
+//   22 _left           (the reference target of rule 21)
 //   30 Parent Thing    typeId 4 read_rule_id 8          - readable anchor
 //   31 Parent Thing+child (left 30 right 32, NO stored rule) - ALLOWED via
 //                        the _left delegation (pre-fix: denied)
@@ -62,8 +62,8 @@
 //   37 Locked Parent+*self+*read [[Role A]]
 //   40 *sidebar
 //   42 *sidebar+*self  (left 40 right 16, type Set, NO rule children)
-//   50-70 the 21 setting cards the corpus carries (content_options /
-//         content_option_view are absent from the corpus deck)
+//   50-70 the 21 setting cards the deck carries (content_options /
+//         content_option_view are absent from the deck)
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -105,8 +105,8 @@ async function seedDeck(s: RenderTestStorage): Promise<void> {
   await seedCard(s, { id: 8, leftId: 1, rightId: 3, dbContent: "[[Anyone]]" });
   await seedReference(s, 8, 5, "anyone");
   // *all plus+*read -> [[_left]] : EVERY compound card's most-precedence
-  // common rule delegates to its left chain (the corpus's *all plus+*read
-  // id 6569 is exactly this shape, content "_left").
+  // common rule delegates to its left chain (the deck-wide *all plus+*read
+  // is exactly this shape, content "_left").
   await seedCard(s, { id: 21, leftId: 17, rightId: 3, dbContent: "[[_left]]" });
   await seedCard(s, { id: 22, name: "_left" });
   await seedReference(s, 21, 22, "_left");
@@ -134,8 +134,8 @@ async function seedDeck(s: RenderTestStorage): Promise<void> {
     dbContent: "locked child body",
   });
 
-  // The set card "*sidebar+*self" with NO stored rule children (the corpus's
-  // id 315 shape) + the 21 setting cards the deck carries.
+  // The set card "*sidebar+*self" with NO stored rule children (a real
+  // deck's no-rule-children shape) + the 21 setting cards the deck carries.
   await seedCard(s, { id: 40, name: "*sidebar" });
   await seedCard(s, { id: 42, leftId: 40, rightId: 16, typeId: SET_TYPE_ID });
   const settings: Array<[number, string, string]> = [
@@ -164,10 +164,10 @@ async function seedDeck(s: RenderTestStorage): Promise<void> {
   ];
   for (const [id, name, codename] of settings) await seedSetting(s, id, name, codename);
   // *structure rules deny for Anonymous deck-wide: *structure+*right+*read
-  // -> [[Anyone Signed In]] (the corpus's rule id 22417). The *right pattern
+  // -> [[Anyone Signed In]]. The *right pattern
   // precedes *all plus in candidate precedence, so the *structure bar's
-  // walk resolves THIS rule (not the _left delegator) and denies — matching
-  // the captured oracle's single denied bar in the templating group.
+  // walk resolves THIS rule (not the _left delegator) and denies — the
+  // templating group's single denied bar.
   await seedCard(s, { id: 72, leftId: 50, rightId: 18, typeId: SET_TYPE_ID });
   await seedCard(s, { id: 71, leftId: 72, rightId: 3, dbContent: "[[Anyone Signed In]]" });
   await seedReference(s, 71, 20, "anyone_signed_in");

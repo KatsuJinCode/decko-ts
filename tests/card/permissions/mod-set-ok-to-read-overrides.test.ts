@@ -29,12 +29,12 @@
 // own_email? (right/email.rb:45-47): `name.part_names[0].key ==
 // Auth.as_card.key` -- no AccountHolder requirement.
 //
-// Ruby oracle, confirmed against the capture deck directly:
-// Anonymous+*account (stored rule grants Help Desk only) ok?(:read)=true;
-// Anonymous+*account+*email (stored rule idem) true; MoKi+*right+*head /
-// HBQ+*right+*head (stored "Anyone Signed In" rule) true; the CONTROL FOR
-// CHILDREN'S CLASS (plain card, *self rule granting five roles)
-// ok?(:read)=false -- the generic path still denies.
+// Ruby verdicts: Anonymous+*account with a stored rule granting only
+// another party still reads (own_account? grants the holder) =true;
+// Anonymous+*account+*email (stored rule idem) true via own_email?;
+// right/*head compounds under an anyone-signed-in stored rule true; and a
+// plain card whose *self rule grants other parties stays false -- the
+// generic path still denies.
 //
 // SAFETY (the suite contract): every branch here is a verbatim port of the
 // cited gem file. The overrides only ever fire for the exact set populations
@@ -166,7 +166,7 @@ async function seedDeck(s: RenderTestStorage): Promise<void> {
     typeId: BASIC_TYPE_ID,
   });
 
-  // Anonymous's own account family (the capture deck's over-deny pages).
+  // Anonymous's own account family (the over-deny class).
   await seedCard(s, {
     id: 42, leftId: 6, rightId: 60, dbContent: "anon account row",
     readRuleId: 37, readRuleClass: "*right",
@@ -299,7 +299,7 @@ describe("unconditional-true read overrides (head/script/enabled_roles, layout+s
 });
 
 describe("account-family read overrides (card-mod-account)", () => {
-  // p22-permover: the +*account card's :content dispatches the mod's core
+  // The +*account card's :content dispatches the mod's core
   // view (set/right/account/views.rb:50-53 — the two labeled account-field
   // nests, ported onto the base coreView keyed on the right::account set),
   // so the stored db_content row ("anon account row" et al.) is no longer
@@ -423,8 +423,8 @@ describe("self-set read overrides (version/signin/account_links)", () => {
     const s = storage!;
     // The verdict is this lane's subject. The BYTES are signin.rb's own
     // :core override (card-mod-account set/self/signin.rb:119-125 — the
-    // sign-in form; edge-signin-form-fix lane 2026-10-03 ported it and the
-    // html :content view wraps core, so the form is the readable body here
+    // sign-in form; the html :content view wraps core, so the form is the
+    // readable body here
     // in Ruby too) — rendered, not the denial span, and not the seeded
     // dbContent either.
     const html = await s.engine.render("*signin", "content");
@@ -473,7 +473,7 @@ describe("virtual rule cards under a readable set (the FOR CHILDREN'S CLASS+*sel
 
   it("renders the +*head virtual rule bar where the generic walk denies", () => {
     // The bar's data-card-name attribute carries the CANONICAL name shape
-    // (spaces -> underscores), as in the corpus navs.
+    // (spaces -> underscores), as in the deck's rendered navs.
     const headIdx = html.indexOf('data-card-name="Readable_Doc+*self+*head"');
     expect(headIdx).toBeGreaterThan(-1);
     // The li OPENING immediately before the head bar carries the rendered
@@ -522,8 +522,9 @@ describe("update-task overrides (the universal_edit_button family)", () => {
   it("defers, without raising, for an account field whose +*account card does not resolve (deliberate)", async () => {
     // Ruby's Abstract::AccountField#account_card reads `left.right_id`; when
     // the "<holder>+*account" left does not resolve, left is nil and ok?
-    // raises NoMethodError (the semantics census's four account fields of
-    // one user). The port does not copy the crash: it gives the answer Ruby
+    // raises NoMethodError (the upstream behavior for the account fields of
+    // a user without a resolvable account card). The engine does not copy the
+    // crash: it gives the answer Ruby
     // intends for a field with no account card, super (the generic
     // permission check), for update and for read alike.
     expect(await updateOverride("Ghost Holder+*account+*email")).toBeUndefined();

@@ -11,14 +11,13 @@
 // module is filed under its own format class; an email_text registration
 // never enters the html method table).
 //
-// The collision census (job-1790889062171, format-one-line-wrap lane
-// receipt) names the same-token collisions this file pins:
+// The collision census names the same-token collisions this file pins:
 //   compact_missing {All::Error, All::EmailHtml, All::EmailText}
 //   unknown         {All::Error, All::EmailHtml, All::EmailText}
 //   last_action     {All::EmailText, All::History::Views}
 //   one_line_content {All::Html::Views} (+ Type::Image on image cards)
 //
-// Adjudication against the gems (which module Ruby wins with):
+// Resolution against the gems (which module Ruby wins with):
 //   compact_missing/unknown  html       -> All::Error        (error.rb:1-8,
 //                                bare `format do` -> the base format class;
 //                                the email registrations are invisible to
@@ -34,8 +33,7 @@
 //   last_action              email_text -> All::EmailText      (email_text.rb:
 //                                10-13 — the real _render_last_action_verb
 //                                delegation; the verb is card-mod-follow's
-//                                base-format notify arm, email-text-
-//                                remainders 2026-10-01)
+//                                base-format notify arm)
 //   one_line_content         html       -> non-image cards: All::Html::Views'
 //                                wrap arm (html/views.rb:29-32); image
 //                                cards: the Type::Image icon core
@@ -76,7 +74,7 @@ function normalize(html: string): string {
 
 // ---------------------------------------------------------------------------
 // one_line_content: All::Html::Views, and Type::Image on image cards
-// (oracle mod order: format before carrierwave — default-mod-deck.ts)
+// (mod order: format before carrierwave — default-mod-deck.ts)
 // ---------------------------------------------------------------------------
 
 describe("one_line_content same-token order (format + carrierwave mods)", () => {
@@ -95,7 +93,7 @@ describe("one_line_content same-token order (format + carrierwave mods)", () => 
     // typeCode === "image" via peekNameForId (the carrierwave suite's
     // *logo recipe)
     await seedCard(s, { id: 19, name: "*image", codename: "image", typeId: 2 });
-    // plain probe: the wrap arm's short body (fmtoneline oracle bytes)
+    // plain probe: the wrap arm's short body
     await seedCard(s, {
       id: 300,
       name: "Dispatch Order Plain Probe",
@@ -139,7 +137,7 @@ describe("one_line_content same-token order (format + carrierwave mods)", () => 
   });
 
   it("non-image cards render the all-set wrap arm", async () => {
-    // html/views.rb:29-32 wrap arm bytes (the fmtoneline oracle pin) — no
+    // html/views.rb:29-32 wrap arm bytes — no
     // image bytes may reach a non-image card.
     const html = await storage!.engine.render(
       "Dispatch Order Plain Probe",
@@ -152,7 +150,7 @@ describe("one_line_content same-token order (format + carrierwave mods)", () => 
     // set/type/image.rb:17-20 `format do view :one_line_content do
     // _render_core size: :icon end` — the img tag the icon-size core
     // renders for a web-URL source (web URLs stay raw; Rails image_tag
-    // puts alt before src, the captured shape).
+    // puts alt before src).
     const html = await storage!.engine.render(
       "Dispatch Order Image Probe",
       "one_line_content",
@@ -175,7 +173,7 @@ describe("one_line_content same-token order (format + carrierwave mods)", () => 
 // ---------------------------------------------------------------------------
 // the trios: compact_missing/unknown {All::Error, All::EmailHtml,
 // All::EmailText} and last_action {All::EmailText, All::History::Views}
-// (oracle mod order: format, email, history, follow — default-mod-deck.ts)
+// (mod order: format, email, history, follow — default-mod-deck.ts)
 // ---------------------------------------------------------------------------
 
 describe("compact_missing/unknown/last_action same-token order (format + email + history + follow mods)", () => {
@@ -240,9 +238,9 @@ describe("compact_missing/unknown/last_action same-token order (format + email +
       { manifest: cardModFormat },
       { manifest: cardModEmail },
       { manifest: cardModHistory },
-      // the real deck order (default-mod-deck.ts:96-120) continues with
+      // the composed-deck order (default-mod-deck.ts:96-120) continues with
       // follow AFTER history - the base-format notify verb registration
-      // (all/notify/base_views, the email-text-remainders port) rides it
+      // (all/notify/base_views) rides it
       { manifest: cardModFollow },
     ]);
     loader.load();
@@ -310,8 +308,7 @@ describe("compact_missing/unknown/last_action same-token order (format + email +
   });
 
   it("email_text :last_action dispatches All::EmailText and renders the verb (email_text.rb:10-13)", async () => {
-    // the repaired body (email-text-remainders, 2026-10-01): the
-    // registered fn IS the real `_render_last_action_verb` (email_text.rb:
+    // the registered fn IS the real `_render_last_action_verb` (email_text.rb:
     // 12) - the underscore render (skip_perms: true, method_delegation.rb:
     // 6-18) delegating to the last_action_verb dispatch. The verb
     // EmailTextFormat sees is card-mod-follow's BASE-format notify arm
@@ -322,8 +319,8 @@ describe("compact_missing/unknown/last_action same-token order (format + email +
     // format-scoped away. The chain answers: own-format registrations
     // first (none for the verb in email_text), then the BASE tail
     // (mod-loader.ts viewChain) headed by the follow module - NOT the
-    // flat record, whose format-blind last-wins used to serve history's
-    // html verb here (the leak the first run of this pin caught). The
+    // flat record, whose format-blind last-wins serves history's
+    // html verb, which is exactly what this pin must not answer. The
     // probe card's last act is an UPDATE act; the notify arm is act-blind
     // on the render path, so the bytes are 'edite'+'d' - NOT the history
     // anchor's edited-link and NOT the update-act's "updated".
@@ -350,11 +347,9 @@ describe("compact_missing/unknown/last_action same-token order (format + email +
   });
 
   it("compact_missing renders the html title span and the email_text empty body", async () => {
-    // html renders the text-muted title span (set/all/html/error.rb:33-35
-    // — re-pinned by nest-mechanism-remainders 2026-10-01 when the
-    // compact substitution's :compact_missing fallback, mode.rb:73, was
-    // ported and the registered html arm replaced the former base-arm ""
-    // body); email_text keeps its own "" body (email_text.rb:6-8) through
+    // html renders the text-muted title span (set/all/html/error.rb:33-35,
+    // the compact substitution's :compact_missing fallback, mode.rb:73);
+    // email_text keeps its own "" body (email_text.rb:6-8) through
     // the format-aware chain — the format correction moves the MODULE, and
     // the html body change is the only byte delta.
     expect(

@@ -39,7 +39,7 @@ const ACTOR: NotifyActor = { id: 7, name: "Test Bot", email: "bot@example.com" }
 
 function makeEvent(partial: Partial<SavePathEvent> = {}): SavePathEvent {
   return {
-    card: { id: 12, name: "Jonas Following+lens", leftName: "Jonas Following", rightName: "lens", type: null, content: null, trashed: false },
+    card: { id: 12, name: "Sample User Following+lens", leftName: "Sample User Following", rightName: "lens", type: null, content: null, trashed: false },
     verb: "update",
     actId: 1,
     actionId: 1,
@@ -115,7 +115,7 @@ describe("runIntegrationHooks", () => {
   it("fires every hook for every notable event", async () => {
     const hook1 = buildFollowNotifyHook({
       followers: fixedFollowerResolver([
-        { followerId: 11, followerName: "Jonas", followerEmail: "jonas@example.com", followedSetName: "Jonas Following", followOption: "always" },
+        { followerId: 11, followerName: "Sample User", followerEmail: "sample-user@example.com", followedSetName: "Sample User Following", followOption: "always" },
       ]),
       template: fixedTemplateResolver({
         to: "x", from: "y", subject: "s", textBody: "b",
@@ -149,7 +149,7 @@ describe("runIntegrationHooks", () => {
   it("skips events whose notable predicate rejects them", async () => {
     const silentHook = buildFollowNotifyHook({
       followers: fixedFollowerResolver([
-        { followerId: 11, followerName: "Jonas", followerEmail: "jonas@example.com", followedSetName: "Jonas Following", followOption: "always" },
+        { followerId: 11, followerName: "Sample User", followerEmail: "sample-user@example.com", followedSetName: "Sample User Following", followOption: "always" },
       ]),
       template: fixedTemplateResolver({
         to: "x", from: "y", subject: "s", textBody: "b",
@@ -180,7 +180,7 @@ describe("runIntegrationHooks", () => {
     };
     const goodHook = buildFollowNotifyHook({
       followers: fixedFollowerResolver([
-        { followerId: 11, followerName: "Jonas", followerEmail: "jonas@example.com", followedSetName: "Jonas Following", followOption: "always" },
+        { followerId: 11, followerName: "Sample User", followerEmail: "sample-user@example.com", followedSetName: "Sample User Following", followOption: "always" },
       ]),
       template: fixedTemplateResolver({
         to: "x", from: "y", subject: "s", textBody: "b",
@@ -211,9 +211,9 @@ describe("savePathEventFromAction / expandActionResultToSavePathEvents", () => {
     actionId: 100,
     actId: 5,
     verb: "update",
-    name: DeckoName.parse("Jonas Following+lens"),
+    name: DeckoName.parse("Sample User Following+lens"),
     subactions: [
-      { cardId: 13, actionId: 101, verb: "update", name: DeckoName.parse("Jonas Following+lens+price") },
+      { cardId: 13, actionId: 101, verb: "update", name: DeckoName.parse("Sample User Following+lens+price") },
     ],
   };
 
@@ -224,8 +224,8 @@ describe("savePathEventFromAction / expandActionResultToSavePathEvents", () => {
     expect(events[1].actId).toBe(5);
     expect(events[0].actionId).toBe(100);
     expect(events[1].actionId).toBe(101);
-    expect(events[0].card?.name).toBe("Jonas Following+lens");
-    expect(events[1].card?.name).toBe("Jonas Following+lens+price");
+    expect(events[0].card?.name).toBe("Sample User Following+lens");
+    expect(events[1].card?.name).toBe("Sample User Following+lens+price");
   });
 
   it("emits isDeletePath=true when verb is delete", () => {

@@ -3,8 +3,8 @@
 // Ruby's `super()` in a view body delegates to the next set module's
 // SAME view (view_definition.rb:18-21, the chain walks via Ruby's MRO:
 // set/format.rb:146-150 + format.rb:62-68). The TS port exposes this
-// through the superView helper (mod-view-helpers.ts:104-138); the
-// three concrete porting-batch failures motivate the test:
+// through the superView helper (mod-view-helpers.ts:104-138); three
+// concrete failure shapes the flat table had motivate the test:
 //
 //   1. card-mod-api_key set/right/api_key.rb:73-75: :titled/:titled_
 //      content/:content delegate to the parent set's same view via
@@ -199,7 +199,7 @@ describe("superView - Ruby's super() in view bodies (view_definition.rb:18-21)",
     delete HTML_VIEWS["input"];
   });
 
-  // ---- (1) card-mod-api_key porting-batch failure -----------------------
+  // ---- (1) card-mod-api_key failure shape ------------------------------
 
   it("api_key's :titled super() resolves to card-mod-format's :titled", () => {
     loader = new ModLoader(
@@ -242,7 +242,7 @@ describe("superView - Ruby's super() in view bodies (view_definition.rb:18-21)",
     expect(superView(ctx, "Right::ApiKey", "content")).toBe("format:content");
   });
 
-  // ---- (3) card-mod-bootstrap porting-batch failure ---------------------
+  // ---- (3) card-mod-bootstrap failure shape ----------------------------
 
   it("bootstrap's :input super() resolves to the type-default :input", () => {
     loader = new ModLoader(

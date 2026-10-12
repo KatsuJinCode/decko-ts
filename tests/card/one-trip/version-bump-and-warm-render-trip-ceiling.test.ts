@@ -1,6 +1,4 @@
-// THE TRIP-CEILING PINS for the recomposition trip-flood (warmflood-fix lane,
-// 2026-10-06 — spec: REPO_DIR an internal work log
-// tripflood-red-pin-spec.md; mechanism: tripflood-recomposition-fix-design.md).
+// THE TRIP-CEILING PINS for the recomposition trip-flood.
 //
 // WHAT THIS PINS: the ROUND-TRIP CEILING of the two postures the warm-render
 // trip-flood lives in —
@@ -12,7 +10,7 @@
 //   PIN 2 (recomposition ceiling): after a committed-write version bump (the
 //     triggers' exact effect), the SAME warm engine's next render costs
 //     ≤ 25 trips with ≤ 12 live pair-exists probes, bytes stable. The flood
-//     mechanism (design doc F2/F3): resetCaches() wipes the fetcher's caches
+//     mechanism: resetCaches() wipes the fetcher's caches
 //     and the render-card map but leaves the wave's ENGINE-LIFETIME ask
 //     memory set, so the wave muzzles itself ("already asked") over wiped
 //     answers and the walk falls to solo point reads — the plan cannot help
@@ -21,20 +19,19 @@
 //   PIN 3 (warm-render ceiling, no bump anywhere): two more renders of the
 //     same page on the same engine, NO version move anywhere, cost ≤ 25
 //     trips each and NON-WORSENING. This pin exists because the flood is NOT
-//     bump-caused (design doc §0: the reset in a bump actually LOWERS the
+//     bump-caused (the reset in a bump actually LOWERS the
 //     next render's cost); a reset-completeness patch alone turns pin 2
 //     green while the user-visible disease — every warm render of a planned
 //     page on a warm signed-in engine — persists and escalates. Pin 3 is the
 //     pin that keeps a partial fix from shipping as "the flood is fixed".
 //
-// MEASURED CONSTANTS this pin was calibrated against (design lane's probe,
-// probe.render3-one-time-check.mts, engine at 7fa6a045, same fixture recipe):
+// MEASURED CONSTANTS this pin was calibrated against (same fixture recipe):
 //   render 1 fresh seated ............ 7 trips, plan armed
 //   render 1b warm, no bump ......... 398 trips, 185 live pair probes, 0/185 plan members
 //   render 1c warm, no bump ......... 576 trips
 //   bump → render 2 ................. 341 trips, 295 live pair probes (325 issued, 30 plan members)
 //   render 3/4 warm, no bump ........ 1262 / 3510 trips (escalating)
-// On the composed trunk the absolute numbers may shift (the parityfixes and
+// On the composed trunk the absolute numbers may shift (later fixes and
 // the replay fold change some arms) — the GUARD (pin 1) re-derives the floor
 // and the BOUNDS (25 / 12) are absolute, ~3.5x the measured floor and ~14x
 // under the smallest measured flood arm. If the trunk's render-1 floor
@@ -51,7 +48,7 @@
 // the bytes, these assertions must be the red ones, not the trip ones.
 //
 // Fixture: the signed-in seat posture's recipe — a writable tmp copy of the
-// trial-deck mirror, the deck_data_version stamp migration applied, the side
+// shared deck database, the deck_data_version stamp migration applied, the side
 // store built for ["Home"] and materialized INLINE (DECKO_ONE_TRIP=1,
 // DECKO_ONE_TRIP_STORE=inline, no ATTACH), the plan recorded at the exact
 // serving posture with an anonymous capture render (freshness-stamp excluded
@@ -155,7 +152,7 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/version-bump-and-warm-render
     sideDir = scratchDir("warmflood-ceiling-");
     workDbPath = join(sideDir, "mirror-migrated-inline.sqlite3");
     copyFileSync(MIRROR_COPY_PATH, workDbPath);
-    // The deck_data_version stamp: this lineage's render path fails loudly
+    // The deck_data_version stamp: the render path fails loudly
     // without it. Applied to the writable copy (order-safe, additive).
     {
       const migrate = new LocalSqliteDriver({ path: workDbPath });
@@ -367,7 +364,7 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/version-bump-and-warm-render
   }, 600_000);
 
   it("logs the lane's measurement lines", async () => {
-    // The receipt quotes these; vitest prints stdout verbatim.
+    // Measured values printed for the run log; vitest prints stdout verbatim.
     for (const m of measurements) {
       console.log(
         `TRIP-CEILING ${m.label}: trips=${m.trips} stmts=${m.stmts} pairProbes=${m.pairProbes} seatFetches=${m.seatFetches}`,

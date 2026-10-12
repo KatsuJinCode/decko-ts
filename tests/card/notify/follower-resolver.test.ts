@@ -4,7 +4,7 @@
 // seeded the same way notify-save-path-wiring.test.ts seeds junction rows
 // and rule cards).
 //
-// Covered here (the brief's four, plus the precedence cases Ruby's walk
+// Covered here (the four core cases, plus the precedence cases Ruby's walk
 // defines):
 //   - an *always follower resolves, with Ruby's set name + option strings
 //   - an *never follower is excluded
@@ -74,7 +74,7 @@ const ID = {
 /** The codename + user + follow-rule minimum a follower-resolution test
  *  needs on top of seedStandardDeck: the Setting/User type cards (Set
  *  comes from the fixture itself), the *follow setting, the four option
- *  cards, the *self/*type pattern cards, Joe + Tova as User-typed cards
+ *  cards, the *self/*type pattern cards, Joe + Sample User as User-typed cards
  *  with +*account+*email children, and set rows typed Set (as Ruby's
  *  PreferenceCache SQL requires — rule/preference_cache.rb:17
  *  `sets.type_id = SetID`). */
@@ -96,7 +96,7 @@ async function seedFollowDeck(storage: ActionsTestStorage): Promise<StandardFixt
   // the path card-mod-follow set/right/account.rb:3's card_accessor :email
   // defines on the +*account card).
   await seedCard(storage, { id: ID.joeUser, name: "Joe User", typeId: ID.user });
-  await seedCard(storage, { id: ID.tova, name: "Tova", typeId: ID.user });
+  await seedCard(storage, { id: ID.tova, name: "Sample User", typeId: ID.user });
   await seedCard(storage, { id: ID.joeAccount, leftId: ID.joeUser, rightId: ID.account });
   await seedCard(storage, {
     id: ID.joeEmail,
@@ -109,7 +109,7 @@ async function seedFollowDeck(storage: ActionsTestStorage): Promise<StandardFixt
     id: ID.saraEmail,
     leftId: ID.saraAccount,
     rightId: ID.email,
-    dbContent: "tova@example.com",
+    dbContent: "sample-user@example.com",
   });
 
   // The followed card and its *self set row.
@@ -379,7 +379,7 @@ describe("follower-resolver (card-mod-follow rule algebra against real rows)", (
 
   it("*created matches only the creator; *edited matches actors of the card's acts", async () => {
     const { storage, f } = await freshDeck();
-    // Make Tova the creator of Watched Card (seedCard writes creator_id 1).
+    // Make Sample User the creator of Watched Card (seedCard writes creator_id 1).
     await storage.driver.query("UPDATE cards SET creator_id = ? WHERE id = ?", [
       ID.tova,
       ID.watchedCard,
@@ -398,7 +398,7 @@ describe("follower-resolver (card-mod-follow rule algebra against real rows)", (
       joinId: 482,
       prefId: 483,
     });
-    // Before Joe edits: only Tova's *created matches (Joe is not yet an
+    // Before Joe edits: only Sample User's *created matches (Joe is not yet an
     // editor; editor_of finds actors of the card's acts).
     const before = await resolveFollowers(
       f.engine,
@@ -430,7 +430,7 @@ describe("follower-resolver (card-mod-follow rule algebra against real rows)", (
 describe("default save-path wiring (engine without integrationHooks)", () => {
   it("resolves real followers and mails them through the deck template", async () => {
     const { storage, f } = await freshDeck();
-    // Tova follows Watched Card+*self with *always.
+    // Sample User follows Watched Card+*self with *always.
     await seedFollowRule(storage, {
       setId: ID.watchedSelfSet,
       userId: ID.tova,
@@ -441,24 +441,24 @@ describe("default save-path wiring (engine without integrationHooks)", () => {
     await seedTemplateCards(storage);
     const transport = new CaptureTransport();
     // NO integrationHooks: the built-in follow hook with the real
-    // follower resolver runs (notify-port-notes.md "save-path
-    // registration line": integrationHooks ?? [followHook]).
+    // follower resolver runs (the engine options resolve
+    // integrationHooks ?? [followHook]).
     const engine = new CardActionEngine(f.engine, {
-      actor: { id: 11, name: "Jonas" },
+      actor: { id: 11, name: "Joe User" },
       notifyTransport: transport,
     });
     await engine.updateCard({ cardId: ID.watchedCard, content: "second" });
     const mails = transport.captured();
     expect(mails).toHaveLength(1);
-    expect(mails[0]?.to).toBe("tova@example.com");
+    expect(mails[0]?.to).toBe("sample-user@example.com");
     expect(mails[0]?.subject).toBe("Watched Card+*self on *always");
-    expect(mails[0]?.textBody).toBe("Hi! Tova — Watched Card+*self changed.");
+    expect(mails[0]?.textBody).toBe("Hi! Sample User — Watched Card+*self changed.");
     storage.close();
   });
 
   it("excludes the acting follower from the default resolution (notify.rb:51)", async () => {
     const { storage, f } = await freshDeck();
-    // SARA both acts and follows — Ruby's notify_followers_of skips
+    // Sample User both acts and follows — Ruby's notify_followers_of skips
     // `follower == act.actor` (set/all/notify.rb:51).
     await seedFollowRule(storage, {
       setId: ID.watchedSelfSet,
@@ -469,7 +469,7 @@ describe("default save-path wiring (engine without integrationHooks)", () => {
     });
     const transport = new CaptureTransport();
     const engine = new CardActionEngine(f.engine, {
-      actor: { id: ID.tova, name: "Tova" },
+      actor: { id: ID.tova, name: "Sample User" },
       notifyTransport: transport,
     });
     await engine.updateCard({ cardId: ID.watchedCard, content: "self-edit" });
@@ -481,7 +481,7 @@ describe("default save-path wiring (engine without integrationHooks)", () => {
     const refs = await resolveFollowers(
       f.engine,
       ID.watchedCard,
-      makeEvent(ID.tova, "Tova", ID.watchedCard),
+      makeEvent(ID.tova, "Sample User", ID.watchedCard),
     );
     expect(refs).toHaveLength(1);
     expect(refs[0]?.followerId).toBe(ID.tova);
@@ -489,7 +489,7 @@ describe("default save-path wiring (engine without integrationHooks)", () => {
     // ... while the default resolver applies the notify-layer exclusion:
     const defaulted = await defaultFollowerResolver(f.engine)(
       ID.watchedCard,
-      makeEvent(ID.tova, "Tova", ID.watchedCard),
+      makeEvent(ID.tova, "Sample User", ID.watchedCard),
     );
     expect(defaulted).toEqual([]);
     storage.close();
@@ -500,12 +500,12 @@ describe("default save-path wiring (engine without integrationHooks)", () => {
     await seedTemplateCards(storage);
     const transport = new CaptureTransport();
     const engine = new CardActionEngine(f.engine, {
-      actor: { id: 11, name: "Jonas" },
+      actor: { id: 11, name: "Joe User" },
       followerResolver: fixedFollowerResolver([
         {
           followerId: 12,
-          followerName: "Tova",
-          followerEmail: "tova@example.com",
+          followerName: "Sample User",
+          followerEmail: "sample-user@example.com",
           followedSetName: "Watched Card+*followed",
           followOption: "always",
         },
