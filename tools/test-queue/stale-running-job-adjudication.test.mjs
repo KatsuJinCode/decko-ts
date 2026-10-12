@@ -1,6 +1,5 @@
 // stale-running-job-adjudication.test.mjs -- coverage for the runner's
-// --adjudicate-stale path, the code that repaired the wedged shared queue on
-// 2026-10-04 (an internal work log).
+// --adjudicate-stale path, the repair for the wedged shared queue.
 //
 // THE DEFECT UNDER TEST. run-test-queue-runner.mjs claims a job by renaming
 // pending/<id>.job.json -> running/<id>.job.json, then drains only from
@@ -8,8 +7,7 @@
 // submit-test-job.mjs findDuplicate() scans RUNNING as well as PENDING, so the
 // strand poisons the next identical submission: the submitter is handed the
 // dead job id and waitForResult() blocks for timeoutMin + 2 minutes for a
-// result that can never be written. Five such strands were measured on the
-// real queue, claimed by runner pids 39872/55908/42416/58764, all long dead.
+// result that can never be written.
 //
 // WHAT IS ASSERTED HERE (each case gets its own scratch DECKO_TEST_QUEUE_DIR,
 // so the real shared queue is never touched and no vitest run happens):
@@ -224,8 +222,8 @@ describe("test-queue --adjudicate-stale", () => {
   it("takes over a dead runner's lock (the stale-lock path the readme documents)", () => {
     const s = makeScene("deadlock");
     try {
-      // PID 72392 is the runner the 2026-10-04 wedge was reported against;
-      // tasklist confirmed it is gone. A dead lock is taken over, not refused.
+      // A lock naming a pid that is not alive is taken over, not refused.
+      // The pid only has to be dead: liveness is checked, never signalled.
       writeFileSync(
         path.join(s.queueDir, "runner.lock"),
         JSON.stringify({ pid: 72392, startedAt: "2026-10-02T03:59:00.000Z" }),
