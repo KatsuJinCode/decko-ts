@@ -1,5 +1,5 @@
-# oracle-capture-help-mod.rb - oracle capture for the card-mod-help loader
-# port (decko-ts stream S3, mod loading).
+# oracle-capture-help-mod.rb - renders the card-mod-help loader surfaces
+# for byte fixtures (mod loading).
 #
 # Run (from tools/oracle/decko-oracle-app):
 #   RAILS_ENV=development bundle exec decko runner \
@@ -7,7 +7,7 @@
 #
 # Records to fixtures/captured/help-mod-loader.json:
 # 1. mod load order as Cardio::Mod::Dirs assembled it (core mods, gem mods,
-#    deck dirs) - the load-order oracle for src/card/mod-loader.ts
+#    deck dirs) - the load order src/card/mod-loader.ts mirrors
 # 2. the pattern registration table + grouped_codes (SetLoader's load groups)
 # 3. the Card::Setting registry state (setting_opts registrations from
 #    card-mod-help's set/self files: *help, *guide)
@@ -15,13 +15,13 @@
 #    (Card::Set::All::Help::HtmlFormat#_view_help et al., with source
 #    locations proving which file defined them)
 # 5. rendered bytes for two probe cards' :help / :help_text / :lead / :content
-#    views - the byte oracle for the TS-side A/B test
+#    views - the bytes the TS-side A/B test pins
 #
 # Determinism contract (mirrors tools/oracle/capture.rb): output JSON is
 # pretty-printed with deeply sorted keys + trailing newline; the random
 # data-slot-id attribute is normalized to a placeholder; probe seed cards are
-# created-if-missing and DELETED (trashed) after capture so the shared oracle
-# DB returns to its prior state (a re-run of capture.rb stays byte-stable).
+# created-if-missing and DELETED (trashed) after the run so the shared DB
+# returns to its prior state (a re-run of this script stays byte-stable).
 
 require "json"
 
@@ -190,9 +190,9 @@ Card::Auth.as_bot do
     end
   end
 end
-# NO card_count field: the oracle DB is shared with other streams'
-# benchmarks, so a card count is racy harness telemetry, not mod-mechanism
-# oracle data. Everything this fixture records is order/registry/render
+# NO card_count field: the DB is shared with other concurrent runs, so a
+# card count is racy harness telemetry, not mod-mechanism data. Everything
+# this fixture records is order/registry/render
 # state the mod loader must reproduce.
 
 # ---- write ------------------------------------------------------------------

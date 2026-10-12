@@ -1,27 +1,23 @@
-// The core mod's admin surface (card-1.110.0 mod/core): the 13 missing view
-// names the authoritative coverage doc counts
-// (deliverables/mod-coverage-authoritative-2026-09-28.md:91 — "admin
-// :core/:warning, mod :roles, type/mod's 10 config views") as 18 view
-// registrations across three set files (set/self/admin.rb 2, set/self/mod.rb
-// 5, set/type/mod.rb 11).
+// The core mod's admin surface (card-1.110.0 mod/core): 13 view names
+// ("admin :core/:warning, mod :roles, type/mod's 10 config views") as 18
+// view registrations across three set files (set/self/admin.rb 2,
+// set/self/mod.rb 5, set/type/mod.rb 11).
 //
 // Why this file lives in mod-loader/: the views are registered by a MOD
-// MANIFEST (the core mod's own, ported here for the first time — the seed
-// layer carries no admin surface), so the mod-loader suite is the suite
-// whose failure set the coverage suites compare batch over batch.
+// MANIFEST (the core mod's own - the seed layer carries no admin surface),
+// so the mod-loader suite is the suite that owns their registration
+// behavior.
 //
-// HONESTY BOUNDARY, per the byte-first rule: the pinned Ruby-oracle
-// captures under tmp/raw-ground-truth carry NO bytes for any of these
-// names. Every expectation below is derived from the GEM SOURCES (cited
-// per assertion at card-1.110.0 mod/core set/...) plus the two read-only
-// oracle probes this suite ran for the STRUCTURAL facts no source file
-// carries (basket insertion order, spec.files emptiness, config defaults,
-// mod-card names, role-grouping shapes — tests/card/mod-loader/
-// oracle-probe-core-admin-facts.rb + oracle-probe-core-mod-fetch.rb,
-// outputs in the receipt). These views are RENDERED-UNPINNED: the
-// tests prove each name dispatches (was UnsupportedViewError before this
-// port) and carries the structure the gem sources mandate; no byte
-// verification against a Ruby capture is claimed anywhere.
+// HONESTY BOUNDARY: no pinned page bytes back any of these names. Every
+// expectation below is derived from the GEM SOURCES (cited per assertion at
+// card-1.110.0 mod/core set/...) plus the two read-only structural probes
+// for the facts no source file carries (basket insertion order, spec.files
+// emptiness, config defaults, mod-card names, role-grouping shapes -
+// tests/card/mod-loader/oracle-probe-core-admin-facts.rb +
+// oracle-probe-core-mod-fetch.rb). These views are RENDERED-UNPINNED: the
+// tests prove each name dispatches (UnsupportedViewError without the mod)
+// and carries the structure the gem sources mandate; no byte verification
+// against a Ruby render is claimed anywhere.
 //
 // The accordion collapse-id embeds Ruby's String#hash of the group title
 // (set/all/admin.rb:96 `context: title.hash`) — per-process SipHash, the
@@ -127,9 +123,8 @@ const ALL_THIRTEEN = [
 describe("core mod admin surface — dispatch (the 13 coverage-doc names)", () => {
   it("WITHOUT the mod: :core on *admin renders the base core view, not the admin task table", async () => {
     const s = storage!;
-    // the pre-port state the coverage doc rows (mod-coverage-authoritative
-    // -2026-09-28.md:91) records: ":core name renders the base core view,
-    // not the admin core". The base core view renders the card's content.
+    // without the mod, :core on *admin renders the base core view, not the
+    // admin core: the base core view renders the card's content.
     const html = await s.engine.render("*admin", "core");
     expect(html).not.toContain("task=clear_cache");
   });
@@ -153,8 +148,8 @@ describe("core mod admin surface — dispatch (the 13 coverage-doc names)", () =
     }
     // type/mod.rb's eleven views on a mod card. (The other two of the 13 —
     // :warning and :roles — belong to self/admin.rb and self/mod.rb's set
-    // anchors above; since the chain-scoped dispatch landed, rendering them
-    // on a mod card raises UnsupportedViewError exactly like Ruby — a view
+    // anchors above; rendering them on a mod card raises
+    // UnsupportedViewError exactly like Ruby — a view
     // defined on Self::Admin / Self::Mod does not answer a Type::Mod card.)
     const TYPE_MOD_ELEVEN = [
       "core", "description", "settings", "cardtypes", "configurations",
@@ -175,24 +170,16 @@ describe("set/self/admin.rb — view :core (the task table)", () => {
     const html = normalize(await s.engine.render("*admin", "core"));
     // task_table (set/abstract/task_table.rb:10-15): one bootstrap table,
     // header Task/Description, one row per task in basket insertion order.
-    // The order is the oracle-probed load order (all/trash.rb's
-    // empty_trash first, then self/admin.rb's merges, then the later mods'):
-    // probe-1 basket_task_keys_in_order = [empty_trash, clear_cache,
-    // regenerate_assets, delete_upload_tmp_files].
+    // The order is the probed load order (all/trash.rb's empty_trash first,
+    // then self/admin.rb's merges, then the later mods') — the
+    // oracle-probe-core-admin-facts.rb basket_task_keys_in_order fact:
+    // [empty_trash, clear_cache, regenerate_assets, delete_upload_tmp_files].
     //
-    // mm-cstructural (2026-09-30): the fourth row is card-mod-carrierwave's
-    // contribution, and this pin used to stop at three — the previous
-    // comment even flagged the omission ("not this manifest's"). That was a
-    // REAL divergence, not a scoping choice: basket[:tasks] is a single
-    // global basket every mod's set modules merge into, so the row renders
-    // on the oracle. The row text is ORACLE-PINNED, not invented: the
-    // `mod: carrierwave` page's Tasks section in an earlier page-lane
-    // yardstick carries exactly
-    //   <tr><td><a class="known-card" href="/update/*admin?task=
-    //    delete_upload_tmp_files">Delete upload tmp files</a></td>\n
-    //    <td>Delete upload tmp files!</td></tr>
-    // and the strings are card-mod-carrierwave-0.20.0
-    // config/locales/en.yml:18-19. Before those locale keys were added the
+    // The fourth row is card-mod-carrierwave's contribution: basket[:tasks]
+    // is a single global basket every mod's set modules merge into, so the
+    // *admin table carries the carrierwave task row. The row text comes
+    // from the gem locale file card-mod-carrierwave-0.20.0
+    // config/locales/en.yml:18-19; before those locale keys were added the
     // row rendered "Translation missing: en.carrierwave_task_…".
     const expected =
       `<table class="table"><thead><tr><th>Task</th>\n` +
@@ -232,8 +219,9 @@ describe("set/self/admin.rb — view :warning (the warning alert)", () => {
     const html = await s.engine.render("*admin", "warning");
     // Derivation, all cited:
     // - self/admin.rb:20-22 no_email_delivery? reads Card.config.action_mailer
-    //   .perform_deliveries (the oracle deck sets it false in
-    //   config/application.rb:19 — probe-1 config_perform_deliveries: false).
+    //   .perform_deliveries (the deck's config/application.rb:19 sets it
+    //   false — the oracle-probe-core-admin-facts.rb
+    //   config_perform_deliveries fact).
     // - self/admin.rb:76-80 no_email_delivery_message = t :core_admin_email_off,
     //   path: "config/application.rb" (mod/core config/locales/en.yml:40-41).
     // - warning_alert (self/admin.rb:71-74) = alert(:warning, true) —
@@ -244,9 +232,8 @@ describe("set/self/admin.rb — view :warning (the warning alert)", () => {
     //   close button (alert.rb:17-20, hash insertion order: type,
     //   data-bs-dismiss, class, aria-label).
     // - warning_alert.haml bytes: the %h5 + indented text line emits
-    //   newlines around the title (`<h5>\nAdministrator Warning\n</h5>` —
-    //   ORACLE-CORRECTED 2026-09-29, fixtures/captured/
-    //   admin-views-2-oracle.json) + list_tag warnings (bootstrap
+    //   newlines around the title (`<h5>\nAdministrator Warning\n</h5>`)
+    //   + list_tag warnings (bootstrap
     //   helper.rb:20-31, plain <ul>/<li>).
     const expected =
       `<div class="alert alert-warning alert-dismissible " role="alert">` +
@@ -273,10 +260,11 @@ describe("set/type/mod.rb — the per-mod views on mod: core", () => {
     // type/mod.rb:7-19 render_section_views over the nine section views,
     // .select { card.send("#{name}?") }, joined "<br/>". For core's
     // admin.yml (config/admin.yml: cardtypes.admin [mod user setting
-    // cardtype]) with spec nil (probe-2 mod_core_fetch.spec_nil: true):
+    // cardtype]) with spec nil (oracle-probe-core-mod-fetch.rb
+    // mod_core_fetch.spec_nil):
     // description? is always true (type/mod.rb:122-124) but description is
-    // nil (t :core_mod_description with default nil — probe-2
-    // mod_core_description: null) -> "<p></p>" (Rails content_tag :p, nil);
+    // nil (t :core_mod_description with default nil — the same probe's
+    // mod_core_description fact) -> "<p></p>" (Rails content_tag :p, nil);
     // settings?/configurations?/views? false (no yml keys); styles?/scripts?
     // false (no +style/+script children); depends_on? false (nil spec);
     // cardtypes? and tasks? true.
@@ -304,7 +292,8 @@ describe("set/type/mod.rb — the per-mod views on mod: core", () => {
 
   it(":description renders the spec-derived text; the locale key wins when present", async () => {
     const s = storage!;
-    // mod: core: no spec (probe-2), no locale key -> nil -> <p></p>
+    // mod: core: no spec (the core-mod-fetch probe's
+    // mod_core_fetch.spec_nil), no locale key -> nil -> <p></p>
     expect(await s.engine.render("mod: core", "description")).toBe("<p></p>");
     // mod: format: spec.summary "format" is the default, but the
     // format mod's en.yml carries format_mod_description: "Format mod"
@@ -316,8 +305,9 @@ describe("set/type/mod.rb — the per-mod views on mod: core", () => {
   it(":tasks renders the basket tasks selected by the mod's own name", async () => {
     const s = storage!;
     const html = normalize(await s.engine.render("mod: core", "tasks"));
-    // type/mod.rb:46-51 — card.tasks selects basket[:tasks] by mod; probe-2
-    // mod_core_tasks: [empty_trash, clear_cache, regenerate_assets].
+    // type/mod.rb:46-51 — card.tasks selects basket[:tasks] by mod; the
+    // core-mod-fetch probe's mod_core_tasks fact:
+    // [empty_trash, clear_cache, regenerate_assets].
     expect(html).toBe(
       `<p><h3>Tasks</h3><table class="table"><thead><tr><th>Task</th>\n` +
       `<th>Description</th></tr></thead>\n<tbody>` +
@@ -337,9 +327,9 @@ describe("set/type/mod.rb — the per-mod views on mod: core", () => {
 
   it(":gem_info renders nothing for the core mod (no Gem::Specification)", async () => {
     const s = storage!;
-    // type/mod.rb:67-68 `return unless card.mod&.spec` — probe-2:
-    // mod_core_fetch.spec_nil: true (the core mod is the card gem's own
-    // mod dir; Bundler gives it no separate specification).
+    // type/mod.rb:67-68 `return unless card.mod&.spec` — the core-mod-fetch
+    // probe's mod_core_fetch.spec_nil fact (the core mod is the card gem's
+    // own mod dir; Bundler gives it no separate specification).
     expect(await s.engine.render("mod: core", "gem_info")).toBe("");
   });
 });
@@ -365,15 +355,16 @@ describe("set/type/mod.rb — the spec-backed views on mod: format", () => {
     const s = storage!;
     const html = normalize(await s.engine.render("mod: format", "gem_info"));
     // type/mod.rb:67-83. The property list for card-mod-format
-    // (specifications/card-mod-format-0.20.0.gemspec), Ruby Array#to_s for
+    // (the card-mod-format-0.20.0 gemspec), Ruby Array#to_s for
     // the array-valued authors/email:
     //   "name: card-mod-format" ... "description: " (empty, trailing space)
-    // probe-1 gem_info_properties shows the exact rendering for the sibling
-    // account gem; the files accordion is EMPTY (probe-1 date_spec.files:
-    // [] — installed mod gemspecs carry no file list), depends_on names
+    // the core-admin-facts probe's first_mod_card.gem_info_properties fact
+    // shows the exact rendering for the sibling account gem; the files
+    // accordion is EMPTY (the same probe's date_spec.files: [] — installed
+    // mod gemspecs carry no file list), depends_on names
     // carry the gem's card-mod-* dependencies through card_mods'
-    // name[8..] slice (type/mod.rb:222-226 — "mod_-<name>", the observed
-    // probe-1 shape for account: ["mod_-edit", ...]).
+    // name[8..] slice (type/mod.rb:222-226 — "mod_-<name>", the probe's
+    // observed shape for account: ["mod_-edit", ...]).
     expect(html).toContain(`<h3>Gem info</h3>`);
     expect(html).toContain(`<li class="list-group-item">name: card-mod-format</li>`);
     // specifications/card-mod-format-0.20.0.gemspec s.summary = "format"
@@ -426,10 +417,9 @@ describe("set/self/mod.rb — the global views on the Mod card", () => {
     // (category, mod)["cardtypes"].map { list_section(mod.name, codename
     // SYMBOLS) }.join("<br/>")] — the array view body joins with "\n".
     expect(html.startsWith(`<h1>cardtypes</h1>\n`)).toBe(true);
-    // the section title is the MOD's registry name (mod.name — "core";
-    // ORACLE-CORRECTED 2026-09-29: the prior derivation used the mod CARD
-    // name; the capture pins `<h3>core</h3>` — admin-view-pins.json
-    // mod_cardtype_card :tasks)
+    // the section title is the MOD's registry name (mod.name — "core"), not
+    // the mod CARD's name (the oracle-probe-core-admin-facts.rb
+    // mod_cardtype_card fact records the card's own name)
     expect(html).toContain(`<h3>core</h3>`);
     // symbol items resolve through the codename registry: :cardtype ->
     // the Cardtype card's bar
@@ -447,7 +437,7 @@ describe("set/self/mod.rb — the global views on the Mod card", () => {
     // the engine's unknown-card shape, not a task table. The task TABLE is
     // the self/admin and type/mod :tasks surface, which carry the basket.
     expect(html.startsWith(`<h1>tasks</h1>\n`)).toBe(true);
-    expect(html).toContain(`<h3>core</h3>`); // the mod name (oracle-corrected)
+    expect(html).toContain(`<h3>core</h3>`); // the mod's registry name
     expect(html).toContain(`empty_trash`);
     expect(html).toContain(`clear_cash`);
     expect(html).not.toContain(`task=clear_cache`);
@@ -466,21 +456,20 @@ describe("set/self/mod.rb — the global views on the Mod card", () => {
 `);
     const configHtml = normalize(await s.engine.render("Mod", "configurations"));
     expect(configHtml.startsWith(`<h1>configurations</h1>\n`)).toBe(true);
-    expect(configHtml).toContain(`<h3>format</h3>`); // the mod name (oracle-corrected)
+    expect(configHtml).toContain(`<h3>format</h3>`); // the mod's registry name
   });
 });
 
 describe("core mod admin runtime — the engine-config reads the views need", () => {
   it("exposes the task basket in probed load order with the probed flags", async () => {
-    // probe-1 basket_tasks: empty_trash (core, irreversible TRUE),
-    // clear_cache (core), regenerate_assets (core), delete_upload_tmp_files
-    // (carrierwave) — the first four of basket_task_keys_in_order.
+    // the oracle-probe-core-admin-facts.rb basket_tasks fact: empty_trash
+    // (core, irreversible TRUE), clear_cache (core), regenerate_assets
+    // (core), delete_upload_tmp_files (carrierwave) — the first four of its
+    // basket_task_keys_in_order fact.
     //
-    // mm-cstructural (2026-09-30): the fourth key was already in the basket
-    // before this suite; the pin listed three and the comment called the
-    // fourth "not in this manifest". It is in the same global basket (every
-    // mod's set modules merge into basket[:tasks]), which is why the *admin
-    // task table renders the row. The key ORDER is unchanged by this suite.
+    // All four keys sit in the same global basket (every mod's set modules
+    // merge into basket[:tasks]), which is why the *admin task table
+    // renders the carrierwave row; the key order here is the probed one.
     const { CORE_TASK_BASKET } = await import(
       "../../../src/card/mod-loader/mods/core-mod.js"
     );
@@ -500,7 +489,8 @@ describe("core mod admin runtime — the engine-config reads the views need", ()
     const { CORE_WARNING_BASKET } = await import(
       "../../../src/card/mod-loader/mods/core-mod.js"
     );
-    // self/admin.rb:14; recaptcha_config_issues (probe-1) is
+    // self/admin.rb:14; recaptcha_config_issues (present in the
+    // core-admin-facts probe's basket_warnings fact) is
     // card-mod-recaptcha's contribution.
     expect(CORE_WARNING_BASKET).toEqual(["no_email_delivery"]);
   });

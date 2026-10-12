@@ -1,8 +1,7 @@
 // The Number and JSON cardtypes' save-time validations (card-mod-format
 // set/type/number.rb :validate_number, set/type/json.rb :validate_json),
-// pinned against fixtures captured from Ruby: Kernel#Float acceptance under
-// Ruby 3.3, and JSON.parse error messages under json 3.0.2 (the oracle
-// bundle's pin).
+// pinned against fixtures derived from Ruby: Kernel#Float acceptance under
+// Ruby 3.3, and JSON.parse error messages under json 3.0.2.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {

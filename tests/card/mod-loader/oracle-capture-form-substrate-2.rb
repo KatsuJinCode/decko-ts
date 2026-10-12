@@ -1,10 +1,8 @@
-# oracle-capture-form-substrate-2.rb - oracle capture for the form-substrate-2
-# lane: the rule_form / board_rule_set_selection / RuleSetRadio chain the two
-# landed receipts (rules-views-port-3.md, rules-cap-lane.md) left as the open
-# form-parity arms:
+# oracle-capture-form-substrate-2.rb - renders the rule_form /
+# board_rule_set_selection / RuleSetRadio chain's open form-parity arms:
 #
 # 1. :rule_form (card-mod-rules set/rule/rule_form.rb:2-13) on
-#    "*account+*right+*read" (id 208) - the deck's richest set_options walk
+#    "*account+*right+*read" - the deck's richest set_options walk
 #    (5 candidates: the rule's own :current set, four broader sets of which
 #    three render RuleSetRadio's narrower_warning_message arm and *all renders
 #    the literal warning) - and on "*all plus+*read" - the 2-candidate walk
@@ -22,7 +20,7 @@
 #    block (title + modal-menu) is ABSENT from the bytes while the body
 #    carries the single-candidate rule_form.
 #
-# The no-write proof: card_actions count before and after; the capture
+# The no-write proof: card_actions count before and after; the script
 # performs ZERO card writes (render only).
 #
 # Run (from tools/oracle/decko-oracle-app):
@@ -87,7 +85,7 @@ results = {
 }
 
 # --- the walk's set-label facts (the TS side resolves them through the
-# --- pattern registry; these are the capture deck's cross-check values) ----
+# --- pattern registry; these are the deck's cross-check values) ------------
 
 ["*account+*right", "*rstar", "RichText+*type", "*all plus", "*all",
  "*email+*right"].each do |set_name|

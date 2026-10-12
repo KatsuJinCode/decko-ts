@@ -1,21 +1,21 @@
-# oracle-capture-board-views.rb - oracle capture for the card-mod-edit
-# BOARD family (the capture's second stage: the board/cardboard wrapper + the
-# tab surface): :board, :cardboard, :engage_tab, :follow_section,
-# :history_tab, :related_tab, :rules_tab, :edit_rules.
+# oracle-capture-board-views.rb - renders the card-mod-edit BOARD family
+# (the board/cardboard wrapper + the tab surface): :board, :cardboard,
+# :engage_tab, :follow_section, :history_tab, :related_tab, :rules_tab,
+# :edit_rules.
 #
 # Run (from tools/oracle/decko-oracle-app):
 #   RAILS_ENV=development bundle exec decko runner \
 #     <repo>/tests/card/mod-loader/oracle-capture-board-views.rb
 #
-# Records to <script-repo>/fixtures/captured/board-views.json:
-# 1. For each target card ("Oracle Basics" / "Home" - the same two targets
-#    as the edit-views capture) and each actor (bot / tova / anonymous):
+# Records to fixtures/captured/board-views.json:
+# 1. For each target card (the two RichText targets in TARGETS - the same
+#    two as the edit-views capture) and each actor (bot / tova / anonymous):
 #    the rendered bytes of the 8 views. :board is perms :update - anonymous
-#    records the denial exactly as the previous captures did; :edit_rules
+#    records the denial; :edit_rules
 #    has no perms directive but nests the current set card's
 #    :board_rules_tab (the rules accordion), which is where its byte weight
 #    lives.
-# 2. Probes the visibility machinery the board reads (for the receipt):
+# 2. The visibility machinery the board reads:
 #    show_guide_tab? / show_engage_tab? / show_discussion? /
 #    default_board_tab per target per actor, plus the visible tab list.
 # 3. The no-write proof: card_actions count unchanged across every render.

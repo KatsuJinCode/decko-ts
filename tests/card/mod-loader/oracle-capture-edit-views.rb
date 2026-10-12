@@ -1,5 +1,5 @@
-# oracle-capture-edit-views.rb - oracle capture for the card-mod-edit
-# EDIT-VIEWS (the 16 views ported after the edit2 slice 3/4):
+# oracle-capture-edit-views.rb - renders the card-mod-edit
+# EDIT-VIEWS (16 views):
 # the inline-editing surface (:edit_inline, :edit_inline_buttons, :edit_row,
 # :edit_in_form), the create surface (:new, :new_in_modal,
 # :new_in_modal_buttons, :new_fields, :new_type_formgroup, :simple_new),
@@ -12,11 +12,11 @@
 #   RAILS_ENV=development bundle exec decko runner \
 #     <repo>/tests/card/mod-loader/oracle-capture-edit-views.rb
 #
-# Records to <script-repo>/fixtures/captured/edit-views.json:
-# 1. For each target card (the basic RichText "Oracle Basics" and the
+# Records to fixtures/captured/edit-views.json:
+# 1. For each target card (the basic RichText probe card and the
 #    deck-level "Home" - the SAME two targets the edit-forms and
 #    edit-name-type captures used) and each actor (Decko Bot = signed-in
-#    admin, Tova = signed-in non-admin member, Anonymous): the rendered
+#    admin, a signed-in non-admin member account, Anonymous): the rendered
 #    bytes of all 16 views above.
 #    The perms-:update views (:edit_inline, :edit_in_form) and the
 #    perms-:create views (:new, :new_in_modal, :new_fields, :simple_new)
@@ -33,12 +33,12 @@
 #    name) and the modal title resolves new_in_modal_title to the "New"
 #    title. Recorded per actor under new_card.views.
 # 3. The no-write proof: the card_actions count before and after the whole
-#    capture (every render above, on every target, every actor). The
-#    capture performs ZERO card writes: no Card.create/update/save on any
+#    run (every render above, on every target, every actor). The
+#    script performs ZERO card writes: no Card.create/update/save on any
 #    card; the new-card arms render unsaved Card instances only.
 #
-# Targets are EXISTING cards ("Oracle Basics" id 605, "Home" id 521 - both
-# seeded by the oracle smoke seed).
+# Targets are EXISTING cards on the deck the script runs against (see
+# TARGETS).
 #
 # Determinism contract (mirrors oracle-capture-edit-name-type.rb): output
 # JSON is pretty-printed with deeply sorted keys + a trailing newline; the
@@ -178,7 +178,7 @@ results["no_write_proof"] = {
 FileUtils.mkdir_p(File.dirname(OUT_PATH))
 File.write(OUT_PATH, JSON.pretty_generate(deep_sort(results)) + "\n")
 
-# Pin the oracle bytes beside the receipt (raw captures for reference).
+# Write the same bytes to CAPTURE_DIR when it exists (raw copies for reference).
 if File.directory?(PIN_DIR)
   File.write(File.join(PIN_DIR, "edit-views-oracle.json"),
              JSON.pretty_generate(deep_sort(results)) + "\n")

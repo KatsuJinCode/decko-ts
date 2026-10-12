@@ -1,16 +1,16 @@
-// The nine small mods' event declarations (the mod-events lane,
-// 2026-10-08): the recount's remaining unported events after the account
-// and carrierwave ports — assets (5), content (3), layout (3), session
-// (3), follow (3), recaptcha (2), api_key (2), bootstrap (2), rules (1).
+// Event declarations for the nine small mods: assets (5), content (3),
+// layout (3), session (3), follow (3), recaptcha (2), api_key (2),
+// bootstrap (2), rules (1) - every event these mods ship.
 //
-// Proof shape (per mod):
+// Shape (per mod):
 //   WITHOUT the mod: a mod-less loader's event registry holds none of the
-//     names (the declarations are the port; removing them fails here).
+//     names (the declarations live in the manifests; a bare loader fails
+//     here).
 //   WITH the mod: the names declare from their gem set files with the
 //     gem's verbatim metadata. Engine-owned events cite the engine
 //     runner at the declaration; stubs carry per-event reasons there.
 //   BEHAVIOR: recaptcha's validate_recaptcha_field pure predicate
-//     (recaptchaFieldContentError — the portable half the manifest's
+//     (recaptchaFieldContentError - the portable half the manifest's
 //     header names) is pinned against the Ruby grammar.
 
 import { describe, it, expect, afterAll } from "vitest";

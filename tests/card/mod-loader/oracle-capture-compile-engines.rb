@@ -1,5 +1,6 @@
-# oracle-capture-compile-engines.rb - oracle capture for the compile-engines
-# substrate lane: the SassC compile path (card-mod-style set/abstract/01_css.rb
+# oracle-capture-compile-engines.rb - renders the compile-engine surfaces
+# for byte fixtures: the SassC compile path (card-mod-style
+# set/abstract/01_css.rb
 # compress/compile + 02_scss.rb compile_scss), the CoffeeScript compile
 # (card-mod-script set/abstract/02_coffee_script.rb:20-22) and the mod
 # asset-dir walk (card-mod-assets set/abstract/asset_group.rb relative_paths,
@@ -16,7 +17,8 @@
 #    under false the js compressed view is identity compress, 00_script.rb:25-27).
 # 2. compile_pins - REAL deck asset sources (the gem mod files the deck's
 #    stylesheets/scripts are built from) with Ruby's compiled bytes through
-#    the exact ported surface: SassC::Engine.new(source, style:
+#    the exact surfaces the TS port mirrors: SassC::Engine.new(source,
+#    style:
 #    :compressed).render (the css compress quirk - BOTH compress? arms run
 #    :compressed because compile ignores its _style param, 01_css.rb:63-73),
 #    SassC style :expanded (02_scss.rb:12-14 compile_scss default),
@@ -36,7 +38,7 @@
 #    (Ruby's Dir.glob answer for folder groups / manifest_group_items for
 #    manifest groups) + the item cards' name/type/content decomposition
 #    (asset_group.rb:15-18 -> new_asset_file_card).
-# 5. no_write_proof - Card::Action count before/after the whole capture
+# 5. no_write_proof - Card::Action count before/after the whole run
 #    (the virtual-card walk creates no rows).
 #
 # Determinism contract (mirrors oracle-capture-content-inputs.rb): output

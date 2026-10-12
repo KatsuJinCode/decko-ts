@@ -1,6 +1,6 @@
 # Derives the AUTOCOMPLETE editor bytes the select-editor suite pins
 # (card-mod-list-select-editor.test.ts, the :autocomplete arm) by RUNNING
-# the on-disk gems the decko oracle itself runs: haml-5.2.2 +
+# the pinned gem versions locally: haml-5.2.2 +
 # actionview-7.2.3.2 (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/).
 #
 # The template is card-mod-search-0.20.0 set/all/autocomplete/

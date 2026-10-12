@@ -1,27 +1,26 @@
 // The card-mod-tinymce_editor mod loader test.
 //
-// The gem (card-mod-tinymce_editor-0.20.0) ports three surfaces headlessly:
+// The gem (card-mod-tinymce_editor-0.20.0) contributes three surfaces
+// this suite exercises headlessly:
 //
 //   1. the two format :js views of set/all/reference_editor/nest_image.rb
-//      (:change_create_to_update :41-43, :open_nest_editor :45-50) - proven
+//      (:change_create_to_update :41-43, :open_nest_editor :45-50) - run
 //      A/B through the mod loader against a seeded probe card, byte-exact;
-//   2. set/self/tiny_mce.rb's raw_help_text heredoc (:2-6) - proven through
-//      the Card::Setting registry port (both Self and Right halves,
-//      setting.rb:112-114);
+//   2. set/self/tiny_mce.rb's raw_help_text heredoc (:2-6) - read back
+//      through the Card::Setting registry implementation (both Self and
+//      Right halves, setting.rb:112-114);
 //   3. the gem's two parser classes - lib/card/reference/nest_parser.rb
 //      (Card::Reference::NestParser) and set/all/reference_editor/
 //      link_editor/link_parser.rb (LinkParser, a `#! no set module`
-//      helper) - proven as pure string->object semantics against the Ruby
-//      source line by line.
+//      helper) - checked as pure string->object semantics against the
+//      Ruby source line by line.
 //
-// The remaining 9 html views the compat report lists
-// (tools/compat-report/mod-compat-report.json#card-mod-tinymce_editor-0.20.0
-// htmlViewsMissingNames) depend on the card-mod-bootstrap helper layer
+// The gem's other 9 html views need the card-mod-bootstrap helper layer
 // (icon_tag/link_to/text_field_tag/tabs/button_formgroup), the
 // create/edit-form machinery, and the request-params surface - none of
-// which exist in the headless engine. They stay unported (documented in
-// the port file header); the set modules still register passively, which
-// the basket assertions below pin.
+// which exists in the headless engine. They stay out of the TS mod (the
+// mod file header documents that); the set modules still register
+// passively, which the basket assertions below pin.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -317,28 +316,26 @@ describe("card-mod-tinymce_editor through the mod loader (A/B)", () => {
     const s = storage!;
     loader = new ModLoader([{ manifest: cardModTinymceEditor }]);
     loader.load();
-    // BIND the loader to the engine (flat-table-format-scope,
-    // 2026-10-01): the suite's pre-fix pins rode the format-blind flat
-    // seam through the SHARED HTML_VIEWS object with NO loader bound
-    // (engine.modLoader stayed undefined, so renderView never walked a
-    // chain). The format-scoped dispatch the flipped pins assert needs
-    // the chain: bindModLoaderToEngine wires engine.modLoader + the
-    // process default (render-test-storage.ts:143-149), the same seam
-    // the card-mod-email/card-mod-search A/B suites use.
+    // BIND the loader to the engine: format-scoped dispatch needs the
+    // chain. With no loader bound (engine.modLoader stays undefined),
+    // renderView never walks a chain and every view resolves through the
+    // SHARED HTML_VIEWS object alone, which cannot express per-format
+    // views. bindModLoaderToEngine wires engine.modLoader + the process
+    // default (render-test-storage.ts:143-149), the same seam the
+    // card-mod-email/card-mod-search A/B suites use.
     bindModLoaderToEngine(storage, loader);
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
-    // FORMAT SCOPING (flat-table-format-scope, 2026-10-01): the view
-    // lives in set/all/reference_editor/nest_image.rb:41-43's
+    // FORMAT SCOPING: the view lives in
+    // set/all/reference_editor/nest_image.rb:41-43's
     // `format :js` block - register_all_set_format files it under
     // JsFormat (set/format.rb:137-139; registrar.rb:79-84 mixes it into
     // THAT class only), so an HTML-format render has no method and
-    // raises unsupported-view. The pin used to receive the js bytes
-    // through the format-blind FLAT last-wins seam (the flat record now
-    // admits only html/base keys - mod-loader.ts registration seam; the
-    // census probe view-dispatch-flat-record-format-scope-census.test.ts
-    // pins the measured foreign rows). The js dispatch itself renders
-    // the bytes through the owning format class below.
+    // raises unsupported-view. The flat last-wins record admits only
+    // html/base keys (mod-loader.ts registration seam; the census test
+    // view-dispatch-flat-record-format-scope-census.test.ts pins the
+    // rows the flat record holds for other formats). The js dispatch
+    // itself renders the bytes through the owning format class below.
     await expect(
       s.engine.render("TinyMCE Probe", "change_create_to_update"),
     ).rejects.toThrow(UnsupportedViewError);
@@ -356,11 +353,11 @@ describe("card-mod-tinymce_editor through the mod loader (A/B)", () => {
 
   it("WITH the mod: the html format REJECTS :open_nest_editor; the js format emits the strip_heredoc'd JS (nest_image.rb:45-50)", async () => {
     const s = storage!;
-    // FORMAT SCOPING (flat-table-format-scope, 2026-10-01): the
+    // FORMAT SCOPING: the
     // second `format :js` view of nest_image.rb (45-50) - same
     // JsFormat-only filing as :change_create_to_update above; the html
-    // pin used to ride the flat seam and now raises unsupported-view,
-    // with the js dispatch holding the bytes through the owning class.
+    // format render raises unsupported-view, with the js dispatch
+    // holding the bytes through the owning class.
     await expect(
       s.engine.render("TinyMCE Probe", "open_nest_editor"),
     ).rejects.toThrow(UnsupportedViewError);
@@ -385,13 +382,13 @@ describe("card-mod-tinymce_editor through the mod loader (A/B)", () => {
     const report = loader!.load();
     expect(report.registeredViews).toContain("change_create_to_update");
     expect(report.registeredViews).toContain("open_nest_editor");
-    // the two js views plus the tinymce-views-port's two html link
-    // editors (link_editor, modal_link_editor - see
+    // the two js views plus the two html link editors this mod carries
+    // (link_editor, modal_link_editor - see
     // card-mod-tinymce-editor-views.test.ts for their byte pins), the
-    // form-substrate suite's :new_image_buttons port (nest_image.rb:21-24),
-    // and the mod-completion-100 lane's six census views (nest_editor,
+    // :new_image_buttons view (nest_image.rb:21-24 - see the
+    // form-substrate suite), and the six editor views (nest_editor,
     // modal_nest_editor, nest_content, nest_image, modal_nest_image,
-    // new_image - the harness probe card-mod-tinymce-editor-harness-probe
+    // new_image - card-mod-tinymce-editor-harness-probe
     // .test.ts pins their bytes; count: 5 + 6 = 11)
     expect(report.registeredViews).toContain("new_image_buttons");
     expect(report.registeredViews).toContain("nest_editor");

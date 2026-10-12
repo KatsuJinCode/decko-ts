@@ -1,7 +1,7 @@
-// Views the edge now serves through the mod deck's chain answer what the
-// captured pages pin: the chain's registrations share the base table's
-// bodies where the two had drifted, and the views that were missing from the
-// chain are registered on their Ruby sets.
+// Views the edge serves through the mod deck's chain: where the chain's
+// registrations and the base table had drifted, they now share the same
+// bodies, and views that were absent from the chain are registered on
+// their Ruby sets.
 
 import { describe, expect, it } from "vitest";
 import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck.js";

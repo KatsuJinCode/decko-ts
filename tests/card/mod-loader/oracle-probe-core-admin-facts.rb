@@ -1,8 +1,8 @@
-# Read-only structural probe for the core-mod admin surface lane
-# (lane-admin). Verifies the facts the transcription needs, against the live
-# oracle deck. Renders NOTHING and writes no card rows; the only disk effect
-# is Rails' own tmp/cache population (the established capture instrument's
-# routine behavior, cleared between runs).
+# Read-only structural probe for the core-mod admin surface: verifies the
+# facts the TS transcription needs, against the decko app this repo's
+# fixtures are rendered from. Renders NOTHING and writes no card rows; the
+# only disk effect is Rails' own tmp/cache population (cleared between
+# runs).
 #
 # Run:
 #   cd tools/oracle/decko-oracle-app && RAILS_ENV=development bundle exec decko runner \

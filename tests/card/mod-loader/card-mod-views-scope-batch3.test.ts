@@ -1,52 +1,49 @@
-// Batch 3 turned into a REGRESSION GUARD rather than three ports, and this
-// file is the reason that was the right call.
+// A REGRESSION GUARD, not a view suite: registering three more gem views
+// here was tried and rejected because the registrations corrupted the
+// engine for every card - measured, not assumed.
 //
-// Three missing views in A are one-liners that port perfectly:
+// The three views in question are one-liners in the gem tree:
 //   card-mod-bootstrap set/type/bootswatch_skin/html_views.rb:59-61
 //     view :bar_right do # customize_button end          -> body ""
 //   card-mod-bootstrap set/type/bootswatch_skin/html_views.rb:63-67
 //     view :bar_bottom do wrap_with :code { render_core } end -> <code>CORE</code>
 //   card-mod-email set/right/html_message.rb:8-10 + content_with_link.haml
 //     view :content do haml :content_with_link, simple_core: super() end
-// All three were written. All three registrations were then REMOVED, because
-// registering them corrupts the engine for every card — and that was
-// MEASURED, not assumed:
 //
-//   with card-mod-email loaded, a plain RichText card's :content flipped from
-//     <div id="plain_probe-content-view" class="card-slot content-view ...">plain body</div>
-//   to the email's
-//     <div class='simple-core'>...
-//   :content is the engine's main content renderer. That is a whole-engine
-//   regression from one mod-registration line.
+// With card-mod-email loaded, a plain RichText card's :content flips from
+//   <div id="plain_probe-content-view" class="card-slot content-view ...">plain body</div>
+// to the email's
+//   <div class='simple-core'>...
+// :content is the engine's main content renderer, so that is a
+// whole-engine regression from one mod-registration line.
 //
 // MECHANISM, traced end to end (the top of it reads like it should be safe,
-// which is exactly why the measurement was worth taking):
-//   1. the live dispatch IS chain-aware — RenderEngine#computeResolvedView
+// which is exactly why the measurement is worth having):
+//   1. the dispatch IS chain-aware - RenderEngine#computeResolvedView
 //      (src/card/render.ts:867-889) asks
 //      `loader.viewChain(card.setKeys, view, format)` and only falls through
 //      to the shared `this.views[view]` when no chain entry matches;
 //   2. but ViewRegistrationTable#chainFor
 //      (src/card/mod-loader/mod-registrar.ts:465-467) has an empty-chain
-//      fallback — "when cardChain is empty, the walker falls back to every
+//      fallback - "when cardChain is empty, the walker falls back to every
 //      registering set module in load order (the 'no set applies' case, where
 //      the only matches are from set/all/* modules)";
 //   3. the CODE behind that sentence is registeringModulesFor
-//      (mod-registrar.ts:441-447), which scans the whole `order` array — it
+//      (mod-registrar.ts:441-447), which scans the whole `order` array - it
 //      does NOT filter to set/all/*, despite the comment saying so;
 //   4. so a card whose set chain does not resolve to the override's module
 //      shortname takes the fallback and picks the override up anyway.
 //
-// So the warning already in card-mod-format.ts's header ("registering
+// The warning already in card-mod-format.ts's header ("registering
 // :bar_right here would MASK the engine's barRightView for every card") is
-// CORRECT, and I was wrong to read render.ts's top half as refuting it. The
-// fix belongs in chainFor's fallback, not in registering around it.
+// correct; render.ts's top half does not refute it. The fix belongs in
+// chainFor's fallback, not in registering around it.
 //
-// WHAT THIS FILE ASSERTS, then: with both mods loaded, the shared views still
-// render the shared bytes. That is the property that just broke, and it is
-// worth a test whether or not this suite ends up landing the three views.
-// The moment chainFor's fallback is narrowed, the three registrations can go
-// in (the ported email body is exported from card-mod-email.ts) and these
-// assertions become the before/after pair that proves the narrowing worked.
+// WHAT THIS FILE ASSERTS: with both mods loaded, the shared views still
+// render the shared bytes. The moment chainFor's fallback is narrowed, the
+// three registrations can go in (the email body is exported from
+// card-mod-email.ts) and these assertions become the before/after pair
+// that proves the narrowing worked.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {

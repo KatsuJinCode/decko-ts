@@ -1,16 +1,14 @@
 // The composed default deck (src/card/mod-loader/default-mod-deck.ts):
-// all 31 ported card-mod manifests (core composed, lane-admincompose),
-// wired into one loader in the oracle deck's captured bundle order
-// (fixtures/captured/help-mod-loader.json "mods"), with the deck-boot seam
-// binding the process-wide defaults.
+// all 31 deck card-mod manifests (core composed), wired into one loader in
+// the recorded bundle order the source file carries, with the deck-boot
+// seam binding the process-wide defaults.
 //
-// The order expectation is the capture, not a hand-written list: the test
-// compares the loader's resolved order against portedBundleOrder() AND
-// spot-checks its head/tail against the capture's index sequence. The
-// registration-count expectations are derived FROM the manifests
-// themselves, so a mod adopting the content-override/events manifest
-// fields (the activation round's work) grows the numbers without editing
-// this suite.
+// The order expectation is the recorded bundle order, not a hand-written
+// list: the test compares the loader's resolved order against
+// portedBundleOrder() AND spot-checks its head/tail against the recorded
+// index sequence. The registration-count expectations are derived FROM the
+// manifests themselves, so a mod adopting the content-override/events
+// manifest fields grows the numbers without editing this suite.
 
 import { describe, expect, it, afterAll } from "vitest";
 import {
@@ -42,7 +40,7 @@ describe("default-mod-deck: oracle bundle order", () => {
   it("carries the captured resolve order (34 names, 3 without manifests)", () => {
     expect(ORACLE_BUNDLE_ORDER).toHaveLength(34);
     expect(ORACLE_BUNDLE_ORDER[0]).toBe("core");
-    // the capture's tail: recaptcha, tinymce_editor, defaults (indexes 31-33)
+    // the recorded order's tail: recaptcha, tinymce_editor, defaults (indexes 31-33)
     expect(ORACLE_BUNDLE_ORDER.slice(-3)).toEqual([
       "recaptcha",
       "tinymce_editor",
@@ -57,8 +55,8 @@ describe("default-mod-deck: oracle bundle order", () => {
   it("restricts to exactly the 31 ported mods, preserving capture order", () => {
     const order = portedBundleOrder();
     expect(order).toHaveLength(31);
-    // head: core (the capture's index 0, composed) + collection..help is
-    // the capture's indexes 1-7 verbatim
+    // head: core (index 0, composed) + collection..help at indexes 1-7
+    // verbatim
     expect(order.slice(0, 8)).toEqual([
       "core",
       "collection",
@@ -69,8 +67,8 @@ describe("default-mod-deck: oracle bundle order", () => {
       "permissions",
       "help",
     ]);
-    // every ported name is in the capture; every capture name that is not
-    // ported is one of the documented three
+    // every TS-deck name is in the recorded bundle order; every recorded
+    // name absent from the deck is one of the documented three
     for (const name of order) {
       expect(ORACLE_BUNDLE_ORDER).toContain(name);
     }

@@ -1,33 +1,31 @@
-# oracle-capture-bar-box-format-views.rb - oracle capture for the
-# unpinned-view-captures lane, LANE A: the twenty set/all bar_and_box +
-# card-mod-format views the mod-views lanes ported rendered-unpinned, plus
-# the two Image-type-only box views on a real Image card.
+# oracle-capture-bar-box-format-views.rb - renders the twenty set/all
+# bar_and_box + card-mod-format views plus the two Image-type-only box
+# views on a real Image card, and records their bytes as fixture JSON.
 #
 # Run (from tools/oracle/decko-oracle-app):
 #   RAILS_ENV=development bundle exec decko runner \
 #     <repo>/tests/card/mod-loader/oracle-capture-bar-box-format-views.rb
 #
-# Records to <lane-worktree>/fixtures/captured/bar-box-format-views.json:
-# 1. For each target and each actor (Decko Bot = signed-in admin, Tova =
-#    signed-in non-admin member, Anonymous - the SAME three actors the
-#    edit-name-type capture used): the rendered bytes of the twenty set/all
-#    views (bar_menu, bar_body, closed_bar, accordion_bar, open_bar,
-#    expanded_bar, full_bar, box, box_top, box_middle, box_bottom,
-#    title_link, title_no_link, open_content, header, header_title,
-#    type_info, universal_edit_button, rss_links, meta_tags) on the two
-#    RichText targets, and boxed/boxed_link (+ type_info) on the Image
-#    target.
+# Records to fixtures/captured/bar-box-format-views.json:
+# 1. For each target and each actor (Decko Bot = signed-in admin, a
+#    signed-in non-admin member account, Anonymous - the SAME three actors
+#    the edit-name-type capture used): the rendered bytes of the twenty
+#    set/all views (bar_menu, bar_body, closed_bar, accordion_bar,
+#    open_bar, expanded_bar, full_bar, box, box_top, box_middle,
+#    box_bottom, title_link, title_no_link, open_content, header,
+#    header_title, type_info, universal_edit_button, rss_links, meta_tags)
+#    on the two RichText targets, and boxed/boxed_link (+ type_info) on
+#    the Image target.
 # 2. set_scoping_probes: the dispatch boundary bytes - boxed/boxed_link
 #    raise Card::Error::UserError on a RichText card (set/type/image.rb is
 #    not in a RichText card's chain).
 # 3. The no-write proof: card_actions count before and after the whole
-#    capture. The capture performs ZERO card writes.
+#    run. The script performs ZERO card writes.
 #
-# Targets (all existing cards; ids verified by probes 1-4 recorded in
-# WORK_DIR/unpinned-view-captures.md):
-#   basic_note  "Oracle Basics" id 605 RichText (the edit2 target)
-#   deck_level  "Home"          id 521 RichText (the edit2 target)
-#   decko_logo  "Decko logo"    id 291 Image    (the deck's Image card)
+# Targets (all existing cards on the deck the script runs against):
+#   basic_note  a RichText probe card
+#   deck_level  the deck's Home page
+#   decko_logo  the deck's Image card
 # Target metadata (id, key, name, type, db_content, created_at) is recorded
 # so the TS fixture can seed byte-identical cards; Home's nest target
 # ("Getting started") is recorded too.
@@ -37,7 +35,7 @@
 # random slot id is normalized to a placeholder. ADDITION for this surface:
 # the creator-credit relative age ("... </a> 9 days ago") is masked to
 # TIME_AGO - time_ago_in_words(card.created_at) is wall-clock-relative by
-# design and would drift between capture runs. A re-run must produce
+# design and would drift between runs. A re-run must produce
 # byte-identical JSON. Views whose Ruby render returns raw nil (type_info
 # and rss_links on RichText cards - html.rb:10 `return unless
 # card.type_code != :basic`, and head.rb's rss_link? guard) are recorded as

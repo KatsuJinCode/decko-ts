@@ -1,5 +1,5 @@
-# oracle-capture-api-key-views.rb - oracle capture for the card-mod-api_key
-# superView trio (set/right/api_key.rb:73-75).
+# oracle-capture-api-key-views.rb - renders the card-mod-api_key
+# superView trio (set/right/api_key.rb:73-75) for the byte fixtures.
 #
 # Run (from tools/oracle/decko-oracle-app):
 #   RAILS_ENV=development bundle exec decko runner \
@@ -7,11 +7,11 @@
 #
 # Records to fixtures/captured/api-key-views.json:
 # 1. The three superView-trio views (:titled, :titled_content, :content)
-#    rendered on a probe card with the +*api_key right - the byte proof
-#    that set/right/api_key.rb:73-75's super() chain dispatch equals the
-#    parent set's SAME view (Ruby's super() walks MRO; the api_key set's
-#    body just delegates). The probe must carry the +*api_key right so
-#    Right::ApiKey is in its set_keys chain.
+#    rendered on a probe card with the +*api_key right - the rendered
+#    proof that set/right/api_key.rb:73-75's super() chain dispatch equals
+#    the parent set's SAME view (Ruby's super() walks MRO; the api_key
+#    set's body just delegates). The probe must carry the +*api_key right
+#    so Right::ApiKey is in its set_keys chain.
 # 2. The set-module view registrations Right::ApiKey contributed
 #    (Card::Set::Right::ApiKey::HtmlFormat#_view_titled et al., with
 #    source locations proving which gem file defined them) - the
@@ -24,7 +24,7 @@
 # is pretty-printed with deeply sorted keys + trailing newline; the
 # random data-slot-id attribute is normalized to a placeholder; the
 # probe seed cards are created-if-missing and DELETED (trashed) after
-# capture so the shared oracle DB returns to its prior state.
+# the run so the shared DB returns to its prior state.
 
 require "json"
 
@@ -171,9 +171,8 @@ Card::Auth.as_bot do
     end
   end
 end
-# NO card_count field: the oracle DB is shared with other streams'
-# benchmarks, so a card count is racy harness telemetry, not mod-
-# mechanism oracle data.
+# NO card_count field: the DB is shared with other concurrent runs, so a
+# card count is racy harness telemetry, not mod-mechanism data.
 
 # ---- write ------------------------------------------------------------------
 File.write(OUT_PATH, JSON.pretty_generate(deep_sort(payload)) + "\n")

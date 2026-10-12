@@ -1,5 +1,5 @@
-# oracle-capture-layout-one-line.rb - oracle capture for the card-mod-layout
-# :one_line_content view (set/right/head.rb:12-14).
+# oracle-capture-layout-one-line.rb - renders the card-mod-layout
+# :one_line_content view (set/right/head.rb:12-14) for byte fixtures.
 #
 # Run (from tools/oracle/decko-oracle-app):
 #   RAILS_ENV=development bundle exec decko runner \
@@ -39,8 +39,8 @@
 # Determinism contract (mirrors tools/oracle/capture.rb): output JSON is
 # pretty-printed with deeply sorted keys + trailing newline; the random
 # data-slot-id attribute is normalized to a placeholder; the probe cards are
-# created-if-missing and DELETED (trashed) after capture so the shared oracle
-# DB returns to its prior state (a re-run of capture.rb stays byte-stable).
+# created-if-missing and DELETED (trashed) after the run so the shared DB
+# returns to its prior state (a re-run of this script stays byte-stable).
 #
 # Probe cards (rule cards live at "<left>+*head" - their right part is the
 # *head card, the Right::Head set anchor):
@@ -86,10 +86,10 @@ SEEDS = [
   { name: "#{PROBE_MIXED}+*head", type: "Basic", content: MIXED_TEXT }
 ].freeze
 
-# Render targets: list of (name, view) pairs - the simplest shape, the
-# one the byte oracle pins. The :one_line_content view's `voo.size` option
+# Render targets: list of (name, view) pairs - the simplest shape, the one
+# this fixture pins. The :one_line_content view's `voo.size` option
 # (content.rb:51-53) is exercised in the TS-side test (card-mod-layout
-# test.ts) only; the oracle is the base behavior (60-char limit, no opts).
+# test.ts) only; this script pins the base behavior (60-char limit, no opts).
 RENDER_TARGETS = [
   ["#{PROBE_LONG}+*head",  :one_line_content],
   ["#{PROBE_SHORT}+*head", :one_line_content],
@@ -227,9 +227,9 @@ Card::Auth.as_bot do
     end
   end
 end
-# NO card_count field: the oracle DB is shared with other streams'
-# benchmarks, so a card count is racy harness telemetry, not mod-mechanism
-# oracle data. Everything this fixture records is order/registry/render
+# NO card_count field: the DB is shared with other concurrent runs, so a
+# card count is racy harness telemetry, not mod-mechanism data. Everything
+# this fixture records is order/registry/render
 # state the mod loader must reproduce.
 
 # ---- write ------------------------------------------------------------------

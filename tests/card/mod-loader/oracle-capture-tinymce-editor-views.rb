@@ -1,7 +1,6 @@
-# oracle-capture-tinymce-editor-views.rb - oracle capture for the
-# card-mod-tinymce_editor-0.20.0 html editor views (the 9-view block the
-# mod-coverage recount 2026-09-29 marks as the last completely-untouched
-# mod: set/all/reference_editor/link_editor.rb:2-12,
+# oracle-capture-tinymce-editor-views.rb - renders the
+# card-mod-tinymce_editor-0.20.0 html editor views for byte fixtures
+# (set/all/reference_editor/link_editor.rb:2-12,
 # nest_editor.rb:10-28, nest_image.rb:2-25).
 #
 # Run (from tools/oracle/decko-oracle-app):
@@ -12,7 +11,7 @@
 # 1. the set-module view registrations the tinymce_editor mod contributes
 #    (the three reference_editor format modules' _view_<name> methods, with
 #    source locations proving which gem file defined them - the pin links
-#    the live render to the gem file)
+#    the render to the gem file)
 # 2. the editor chrome's helper facts the TS port must reproduce:
 #    - format.view_list (nest_editor_options.rb:43 unshifts it into the
 #      View select; demo.rb:14-16 is the only definition in the bundle)
@@ -37,8 +36,8 @@
 # Determinism contract (mirrors oracle-capture-help-popover.rb): output JSON
 # is pretty-printed with deeply sorted keys + trailing newline; the random
 # data-slot-id attribute is normalized to a placeholder; probe seed cards
-# are created-if-missing and DELETED (trashed) after capture so the shared
-# oracle DB returns to its prior state. The render phase is proven
+# are created-if-missing and DELETED (trashed) after the run so the shared
+# DB returns to its prior state. The render phase is proven
 # write-free with the card_actions count (before == after).
 
 require "json"

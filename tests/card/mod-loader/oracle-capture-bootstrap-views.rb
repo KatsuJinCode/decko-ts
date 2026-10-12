@@ -1,5 +1,5 @@
-# oracle-capture-bootstrap-views.rb - oracle capture for the card-mod-bootstrap
-# loader port (decko-ts mod-port stream, card-mod-bootstrap-0.20.0).
+# oracle-capture-bootstrap-views.rb - renders the card-mod-bootstrap
+# views this fixture pins (card-mod-bootstrap-0.20.0).
 #
 # Run (from tools/oracle/decko-oracle-app):
 #   RAILS_ENV=development RUBY_DLL_PATH=REPO_ROOT/decko-ts/tools/oracle/mysql-client-scratch/lib \
@@ -9,12 +9,12 @@
 # Records to fixtures/captured/bootstrap-views.json:
 # 1. the :carousel view bytes (set/all/bootstrap/carousel.rb:2-8 wrapping
 #    lib/card/bootstrap/component/carousel.rb:16-79) for a list card with
-#    3 image items - the byte oracle for the TS-side A/B test that pins the
+#    3 image items - the bytes the TS-side A/B test pins: the
 #    carousel SHIM's div.carousel.slide + indicators + items + controls
 #    structure
 # 2. the :customize_button view bytes
 #    (set/type/bootswatch_skin/html_views.rb:24-48) on a bootswatch_skin
-#    card with no +parent subcard - the byte oracle that pins what
+#    card with no +parent subcard - the bytes that pin what
 #    Card::Path#render + link_to_card emit for path: { action: :create,
 #    card: new_skin_path_args(new_name) }, class: "btn btn-sm
 #    btn-outline-primary me-2"
@@ -22,8 +22,8 @@
 # Determinism contract (mirrors oracle-capture-list-mod.rb): output JSON is
 # pretty-printed with deeply sorted keys + trailing newline; the random
 # data-slot-id attribute is normalized to a placeholder; probe seed cards are
-# created-if-missing and DELETED (trashed) after capture so the shared oracle
-# DB returns to its prior state.
+# created-if-missing and DELETED (trashed) after the run so the shared DB
+# returns to its prior state.
 
 require "json"
 
@@ -142,9 +142,8 @@ Card::Auth.as_bot do
     end
   end
 end
-# NO card_count field: the oracle DB is shared with other streams'
-# benchmarks, so a card count is racy harness telemetry, not mod-mechanism
-# oracle data.
+# NO card_count field: the DB is shared with other concurrent runs, so a
+# card count is racy harness telemetry, not mod-mechanism data.
 
 # ---- write ------------------------------------------------------------------
 File.write(OUT_PATH, JSON.pretty_generate(deep_sort(payload)) + "\n")

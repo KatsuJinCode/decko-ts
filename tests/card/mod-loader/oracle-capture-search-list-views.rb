@@ -1,44 +1,43 @@
-# oracle-capture-search-list-views.rb - oracle capture for the
-# unpinned-view-captures lane, LANE B: the five mod-views-b views
-# (search :checkbox_list, search :results_for_keyword, list :view_list)
-# the mod-views lanes ported rendered-unpinned.
+# oracle-capture-search-list-views.rb - renders the search/list views this
+# fixture pins: search :checkbox_list, search :results_for_keyword,
+# list :view_list.
 #
 # Run (from tools/oracle/decko-oracle-app):
 #   RAILS_ENV=development bundle exec decko runner \
 #     <repo>/tests/card/mod-loader/oracle-capture-search-list-views.rb
 #
-# Records to <lane-worktree>/fixtures/captured/search-list-views.json:
-# 1. For each target and each actor (Decko Bot = signed-in admin, Tova =
-#    signed-in non-admin member, Anonymous - the SAME three actors the
-#    edit-name-type capture used):
+# Records to fixtures/captured/search-list-views.json:
+# 1. For each target and each actor (Decko Bot = signed-in admin, a
+#    signed-in non-admin member account, Anonymous - the SAME three actors
+#    the edit-name-type capture used):
 #    - checkbox_list + results_for_keyword on two Search-typed cards:
-#      the populated arm (card 275 "Cardtype+*type+*content options",
-#      cql roles-minus-codename, 4 real role items) and the empty arm
-#      (card 304 "*script+*right+*content options", cql type-in
-#      JavaScript/CoffeeScript, 0 items -> the bare no-search-results div).
-#    - view_list on two List-family cards: the populated arm (card 152
-#      "*input type+*right+*input type", Pointer-typed, 1 item "radio")
-#      and the empty arm (card 193 "Shark+*members", List-typed, 0 items).
+#      the populated arm (role options search, cql roles-minus-codename,
+#      4 real role items) and the empty arm (script options search, cql
+#      type-in JavaScript/CoffeeScript, 0 items -> the bare
+#      no-search-results div).
+#    - view_list on two List-family cards: the populated arm (the
+#      *input type rule pointer, Pointer-typed, 1 item "radio") and the
+#      empty arm (a members list, List-typed, 0 items).
 # 2. Per-item metadata (id, key, name, type, codename, db_content) for
 #    every search/list item, so the TS fixture can seed byte-identical
 #    cards (the checkbox_item/subformat wrap bytes carry each item's
 #    data-card-id, type name, and SELF-<codename> set class).
 # 3. set_scoping_probes: results_for_keyword raises Card::Error::UserError
-#    on the "Search" CARDTYPE card (id 98, Type::Cardtype - NOT a member of
+#    on the "Search" CARDTYPE card (Type::Cardtype - NOT a member of
 #    the search chain that carries the view) and checkbox_list raises on a
 #    plain RichText card.
 # 4. The no-write proof: card_actions count before and after the whole
-#    capture. The capture performs ZERO card writes.
+#    run. The script performs ZERO card writes.
 #
-# Target ids verified by probes 1-4 recorded in
-# WORK_DIR/unpinned-view-captures.md.
+# Target ids are fixed in TARGETS below and verified at run time (the
+# script raises on a missing or trashed target).
 #
 # Determinism contract (mirrors oracle-capture-edit-name-type.rb): output
 # JSON is pretty-printed with deeply sorted keys + a trailing newline; the
 # random slot id is normalized to a placeholder. A re-run must produce
-# byte-identical JSON. (The creator-credit TIME_AGO mask of the A
-# capture has no counterpart here: none of these views renders a relative
-# time.)
+# byte-identical JSON. (The creator-credit TIME_AGO mask of the
+# bar-box-format capture has no counterpart here: none of these views
+# renders a relative time.)
 
 require "json"
 
@@ -119,7 +118,7 @@ TARGETS = [
   { id: 193, label: "shark_members_list",   views: %w[view_list] },
   # the Self::Search ANCHOR card: results_for_keyword renders ONLY here -
   # plain Search-typed cards DENY it (see set_scoping_probes + the DENIED
-  # entries on 275/304); probe 1 rendered "" on this card
+  # entries on the two option-search targets)
   { id: 100, label: "search_anchor_star_search", views: %w[results_for_keyword] }
 ].freeze
 

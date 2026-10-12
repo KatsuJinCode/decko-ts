@@ -1,5 +1,5 @@
-# oracle-capture-tabs-mod.rb - oracle capture for the card-mod-tabs loader
-# port (decko-ts mod-port stream, card-mod-tabs-0.20.0).
+# oracle-capture-tabs-mod.rb - renders the card-mod-tabs loader surfaces
+# for byte fixtures (card-mod-tabs-0.20.0).
 #
 # Run (from tools/oracle/decko-oracle-app):
 #   RAILS_ENV=development RUBY_DLL_PATH=REPO_ROOT/decko-ts/tools/oracle/mysql-client-scratch/lib \
@@ -13,7 +13,7 @@
 # 2. the probe card's REAL format-class view-config methods (_view_tabs__cache
 #    etc.) - the dispatch chain the renders actually resolve through
 # 3. rendered bytes for probe cards' :tabs / :pills / :tabs_static /
-#    :pills_static views - the byte oracle for the TS-side A/B test. A
+#    :pills_static views - the bytes the TS-side A/B test pins. A
 #    content probe (nest chunks in db_content -> construct_tabs lazy tabs),
 #    a no-options content probe, a pointer probe (item_cards -> the static
 #    variants; ALSO pins what construct_tabs does with nest-free content),
@@ -22,8 +22,8 @@
 # Determinism contract (mirrors oracle-capture-list-mod.rb): output JSON is
 # pretty-printed with deeply sorted keys + trailing newline; the random
 # data-slot-id attribute is normalized to a placeholder; probe seed cards are
-# created-if-missing and DELETED (trashed) after capture so the shared oracle
-# DB returns to its prior state.
+# created-if-missing and DELETED (trashed) after the run so the shared DB
+# returns to its prior state.
 
 require "json"
 
