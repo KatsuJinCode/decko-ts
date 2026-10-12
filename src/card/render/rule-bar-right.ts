@@ -21,9 +21,9 @@
 //
 // Raw/content caveat: Ruby's :raw view reads db_content, while the port's
 // RenderCard.dbContent carries structured content once a *structure rule
-// mutates it (render.ts applyStructureContent). No corpus rule card is
-// structure-governed (checked 2026-09-22), so dbContent == raw for every
-// pinned case; a future stream seeding governed rule cards owes the split.
+// mutates it (render.ts applyStructureContent). No rule card is
+// structure-governed today, so dbContent == raw for every
+// rendered case; a future host seeding governed rule cards owes the split.
 
 import type { RenderCard, RenderEngineLike } from "./format.js";
 import { DeckoName } from "../name.js";
@@ -54,30 +54,24 @@ function typeLink(card: RenderCard): string {
  *  emits a `<div class="pointer-list">` wrapper (NOT the full
  *  `card-list card-list-bar pointer-list` content-view wrapper) with
  *  each item rendered as `<div class="pointer-item item-link"><a
- *  class="wanted-card" href="/NAME">…title…</a></div>`. Pinned by
- *  corpus:6560 (*star+*delete, type list, dbContent "uflluwkwvaenx") —
- *  the rule's bar-right captured bytes show this exact wrapper shape,
- *  and the regression pins in tests/card/render/nest-item-and-one-line-limit
- *  encode the same shape: pointer/list-typed rule cards whose right
+ *  class="wanted-card" href="/NAME">…title…</a></div>`. A `*star+*delete`
+ *  rule card (type list) renders this exact wrapper shape, and so do the
+ *  regression pins in tests/card/render/nest-item-and-one-line-limit:
+ *  pointer/list-typed rule cards whose right
  *  setting is one of the four permission rights (*create/*read/*update/
  *  *delete) wrap in `<div class="pointer-list">…<div class=
  *  "pointer-item item-link">…</div></div>` regardless of the item
  *  count (single or multi).
  *
- *  CLUSTER 6 RECONCILIATION (2026-09-25, round 4 pin-reconciler): the
- *  two oracles agree on *star+*delete (fixture corpus:6560 wrapped;
- *  raw recapture-raw-shard-000003:15 ALSO wrapped, content drift
- *  "uflluwkwvaenx"→"Administrator" is anonymization only) — and the
- *  raw oracle emits the bar_right as bare literal text for rule cards
- *  whose right is NOT a permission right (*all+*layout "Default
- *  Layout"; *layout+*right+*content options '{"type": "Layout"}' —
- *  recapture-raw-shard-000000:4,14). The dispatch therefore gates the
+ *  BUT NOT EVERY POINTER/LIST RULE CARD WRAPS. For a rule card whose right
+ *  is NOT a permission right the bar_right is bare literal text — e.g.
+ *  *all+*layout "Default Layout", or *layout+*right+*content options
+ *  '{"type": "Layout"}'. The dispatch therefore gates the
  *  wrapper on isRuleCardWithPermissionRight (pointer-list.ts:129):
  *  permission-right rule cards wrap, all other pointer/list rule
- *  cards render truncatedCore literal text. Closes the 3 cluster-6
- *  entries; moves zero pins. The earlier single-item-collapse fix was
- *  WRONG — it would also un-wrap *star+*delete, which the raw oracle
- *  pins as wrapped. */
+ *  cards render truncatedCore literal text. A blanket wrap is wrong in the
+ *  same way a blanket collapse is wrong: each is right for one shape and
+ *  wrong for the other. */
 function pointerListOneLineContent(
   card: RenderCard,
   engine?: RenderEngineLike,
@@ -154,17 +148,16 @@ function ruleOneLineContent(
     // the RAW stored bytes, nests UNPROCESSED (render_raw, not render_core).
     // The right-set declaration beats the rule module's (the rule pattern
     // is the generic right-side set; right/head is that set for *head).
-    // Pinned by the oracle: AAM+*self+*head (HTML-typed, content
-    // "{{:head|core}}") bar-right renders the literal nest string.
+    // A HTML-typed `AAM+*self+*head` card (content
+    // "{{:head|core}}") renders the literal nest string.
     return truncate(stripTags(card.dbContent), ONE_LINE_CHARACTER_LIMIT);
   }
   // Toggle-type cards: the compact-mode one_line_content routes through
   // the card's content view (card-mod-toggle set/type/toggle.rb), which
   // renders the truthy/falsy display string ("yes" / "no") rather than
-  // the raw dbContent. Captured oracle for recapture-raw:*all+*captcha
-  // shows `yes` for dbContent "1" (cluster 4 — boolean-yes-vs-integer-1
-  // — closes via this branch; the bar_right path was the last divergence
-  // after the barBottomView body fix).
+  // the raw dbContent: an `*all+*captcha` card with dbContent "1" renders
+  // `yes` (boolean-yes-vs-integer-1 — the bar_right path was the last
+  // divergence after the barBottomView body fix).
   if (card.typeCode === "toggle") {
     const normalized = (card.dbContent ?? "").trim().toLowerCase();
     if (normalized === "0" || normalized === "false" || normalized === "" || normalized === "no") {
@@ -174,7 +167,7 @@ function ruleOneLineContent(
   }
   // Abstract::List overrides :one_line_content for pointer/list cards —
   // but only rule cards whose right setting is a permission right wrap
-  // (see the CLUSTER 6 RECONCILIATION doc above); non-permission rule
+  // (see the wrap-gating doc above); non-permission rule
   // cards take the Abstract::List METHOD path (below).
   if (isPointerOrListCard(card)) {
     // card-mod-permissions-0.20.0 set/abstract/permission.rb:98-105
@@ -183,9 +176,8 @@ function ruleOneLineContent(
     // "_left", Ruby renders the bar_right as
     // `<span class="inherit-perm">Inherit from left card</span>` — the
     // pointer list of explicit names is replaced with the inheritance
-    // marker (the upstream left card's permission verdict wins). Pinned
-    // at recapture-raw:*read:render:open:_all_plus+Xread where the
-    // bar_right body shows exactly this span. Emitted ahead of the
+    // marker (the upstream left card's permission verdict wins). A
+    // `*read` right on a read-permission rule renders exactly this span. Emitted ahead of the
     // pointerListOneLineContent branch because that branch would
     // otherwise render an empty pointer-list wrapper (raw items = []
     // for dbContent "_left" — that string isn't a comma-separated
@@ -203,13 +195,12 @@ function ruleOneLineContent(
       // existing rule's own set (the stored winner often lives under a
       // broader set; its trunk tag decided this branch wrongly and every
       // *self-set rule list rendered "Inherit from left card" where the
-      // oracle renders "Inherit"). The self-set context renders the LINKS
+      // correct answer is "Inherit". The self-set context renders the LINKS
       // form ("Inherit ( party, party )", permission.rb:114-120) whose
       // who_can walk RESCUES to bare "Inherit" (permission.rb:121); any
       // other set context renders "Inherit from left card". The engine has
       // no who_can party walk, so the self-set context always lands on the
-      // rescue form — the exact bytes the corpus pinned (the Anonymous
-      // viewer's walk raised at capture time the same way).
+      // rescue form — which is exactly the marker to emit.
       return permissionInheritContentHtml(setContextTag);
     }
     if (isPermissionRightSetting(rightSetting)) {
@@ -219,28 +210,25 @@ function ruleOneLineContent(
     // METHOD one_line_content (card-mod-list-0.20.0 set/abstract/
     // 01_list/html_views.rb:99-105): count == 1 -> card.first_name —
     // the single item string, byte-identical to the literal dbContent
-    // the captured pins carry (*all+*layout "Default Layout") — while
+    // (*all+*layout "Default Layout") — while
     // count != 1 -> short_content (card-mod-format-0.20.0 set/all/html/
     // views.rb:92-100) -> short_content_items: "#{count} #{'item'.
-    // pluralize count}" — the compact "N items" one-line. Pinned by the
-    // oracle: AAM+*self+*script (List, count 16) bar-right renders
-    // `16 items` (recapture-raw-shard-000003, AAM+*self:content offset
-    // 31086), and the gem probe tails-one-line-dispatch-probe.rb
-    // reproduced both forms against the capture deck (*all+*create
-    // count 1 -> the single-item anchor form is the PERMISSION module's
-    // view, *all+*script count 16 -> "16 items").
+    // pluralize count}" — the compact "N items" one-line. A List-typed
+    // `AAM+*self+*script` card with 16 items renders
+    // `16 items`; a count-1 card takes the single-item anchor form instead
+    // (that is the PERMISSION module's view, not this one).
     // item_strings reads card.content, which a set module's `def content`
     // shadows (listItemContentOverride: *input type+*right+*content
     // options counts its 11-item catalog, not the stored "overridden").
     const items = rawItemStrings(listItemContentOverride(card) ?? card.dbContent).filter(
       (s) => s.length > 0,
     );
-    // view-fail class V9 (2026-09-29): count != 1 renders
+    // count != 1 renders
     // the "N items" one-line INCLUDING 0 — card-mod-list
     // set/abstract/01_list/html_views.rb:99-105 short_content →
-    // short_content_items has no lower bound, and the oracle pins "0 items"
-    // on the Doctor Myth+*self+*layout rule row (phase-002 dump) where the
-    // old `> 1` gate fell through to the empty first-name path.
+    // short_content_items has no lower bound, so "0 items" is a real
+    // answer on an empty list rule row; a `> 1` gate would fall through
+    // to the empty first-name path there.
     if (items.length !== 1) {
       return `${items.length} items`;
     }
@@ -248,14 +236,14 @@ function ruleOneLineContent(
     // item_names ABSOLUTIZES every item against the list card's own name
     // (item.rb:15-22 -> clean_item_name item.rb:258-268:
     // `context ||= context_card.name; item.absolute_name context`), so the
-    // single-item form is the RESOLVED name, not the raw string. Oracle:
-    // the *on create page's rule 21805 ("#<Card[set:259]Tracked Item+*type
-    // +*on create", List-typed, content "_left+email config") renders its
+    // single-item form is the RESOLVED name, not the raw string: a
+    // Tracked-Item List-typed rule on an *on create page with content
+    // "_left+email config" renders its
     // bar-right one-line as "#<Card[set:259]Tracked Item+*type+email
     // config" — the item's `_left` resolved against the rule card's own
     // left — where the raw dbContent form dropped the resolution.
-    // Absolute items are their own absolutization, so the captured
-    // "*all+*layout" single-item pin ("Default Layout") is unchanged.
+    // Absolute items are their own absolutization, so the
+    // "*all+*layout" single-item answer ("Default Layout") is unchanged.
     let firstName: string;
     try {
       firstName = DeckoName.parse(card.dbContent ?? "")
@@ -285,7 +273,7 @@ function ruleOneLineContent(
   // set/all/content.rb:47-49 `truncate strip_tags(render_core)` — Rails
   // truncate semantics with one_line_character_limit = 60 (content.rb:1);
   // the stored RichText markup (`<p><em>…</em></p>`) never reaches the
-  // one-line bytes (oracle: the AAM+*self+*help bar-right renders the
+  // one-line bytes (an `AAM+*self+*help` bar-right renders the
   // plain sentence, not the `<p><em>…` markup form).
   return truncate(stripTags(coreText), ONE_LINE_CHARACTER_LIMIT);
 }
@@ -319,9 +307,8 @@ function ruleOneLineContent(
  *  tag against `Card[:self].key`; the self-set context renders the LINKS
  *  form (permission.rb:114-120), whose who_can walk RESCUES to a bare
  *  marker (permission.rb:121). The engine has no who_can party walk, so
- *  the self-set context always lands on the rescue form — the exact
- *  bytes the corpus pinned, because the Anonymous viewer's walk raised
- *  at capture time the same way. Every other context is the plain
+ *  the self-set context always lands on the rescue form — which is
+ *  exactly the marker to emit. Every other context is the plain
  *  string. */
 export function permissionInheritContentHtml(setContextTag: string | undefined): string {
   if (setContextTag === "*self" || setContextTag === "self") {
@@ -345,9 +332,9 @@ export function ruleBarRightHtml(
   // rows; for virtual rule cards the prototype's winning stored rule (the
   // engine memoizes the walk; explicitly false = none → one_line_content's
   // `return render_mini_unknown unless existing_rule_card` renders a blank
-  // bar-right — the oracle's *all+*autoname bar pins `bar-right …>\n\n</div>`
+  // bar-right — an *all+*autoname bar emits `bar-right …>\n\n</div>`
   // with no one-line div at all). undefined (engine absent or the setting
-  // never preloaded) keeps the pre-R16 own-content behavior.
+  // never preloaded) keeps the own-content behavior.
   let oneLineCard = card;
   if (card.id === undefined && engine?.hasExistingRuleFor?.(card.key) === false) {
     return "";
