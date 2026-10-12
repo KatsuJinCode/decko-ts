@@ -1,5 +1,5 @@
 // Shared seeding for the *structure-template corpus replay: extends the
-// PROVEN permission-corpus seeding (shard rows + the read-rule universe +
+// permission-corpus seeding (shard rows + the read-rule universe +
 // codename cards + the transitive side/type closure) with everything the
 // structured-content mechanism reads:
 //   - every live *structure rule card (the rule universe: right_id = the
@@ -40,8 +40,8 @@ export type { ShardLine };
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(HERE, "..", "..", "..");
-// The committed miniature shard by default; the private shard pair only
-// under the explicit DECKO_TS_CORPUS_V2 opt-in (test-corpus-paths.ts).
+// The committed miniature shard by default; the DECKO_TS_CORPUS_V2 opt-in
+// switches the shard paths (test-corpus-paths.ts).
 export const SHARD_PATH = SHARD_000000_PATH;
 
 /** Codename cards the rule? predicate compares against (render.ts
@@ -68,9 +68,9 @@ const CORPUS_ROW_COLUMNS =
   `read_rule_id, read_rule_class`;
 
 /**
- * The structure-pending classification set — the EXACT oracle the corpus
- * replay driver uses (replay-shard.bench.ts): the stored content of every
- * live *structure rule card. A captured record whose content equals one of
+ * The structure-pending classification set — the same set the corpus replay
+ * driver uses (replay-shard.bench.ts): the stored content of every
+ * non-trash *structure rule card. A record whose content equals one of
  * these strings is Ruby's structured_content (the rule template), not
  * db_content.
  */
