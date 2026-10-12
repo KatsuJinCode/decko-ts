@@ -1,26 +1,25 @@
-// Port the serializer line's census M2 + M2-refit engine change onto the fold
-// line's src/card/render/views.ts. Donor state: 43d55e80 (the M2-refit tip).
+// Apply the setting-group prototype-type-derivation gate onto
+// src/card/render/views.ts as a byte splice from a source revision
+// (DONOR_REPO / DONOR_REV below).
 //
-// WHAT THIS IS. Two serializer commits land here as ONE change, deliberately:
-//   448f74f5 (M2 GREEN) folded a blanket SETTING_NEVER_VISIBLE drop into
-//   visibleSettingsForGroup; 43d55e80 (M2 refit) RETIRED that fold and replaced
-//   it with a prototype-type-derivation gate (setPrototypeTypeInfo's
-//   `templateDerived`). The intermediate M2 state never survived its own
-//   refit, so porting it would be porting a state the donor line itself
-//   abandoned. The net effect of M2 + M2-refit is the 43d55e80 state, and that
-//   is what this script writes. Both commits' RED pins are the same file and
-//   are already in the tree at their 43d55e80 (final) content.
+// WHAT THIS IS. The gate retires the blanket SETTING_NEVER_VISIBLE drop in
+// visibleSettingsForGroup and replaces it with setPrototypeTypeInfo's
+// `templateDerived` check. The change landed upstream in two steps - a
+// blanket-fold state, then the gate that retired it - and only the final
+// state is written here: porting the intermediate one would be porting a
+// state the source line itself abandoned. The net effect is the source
+// revision's final text, and that is what this script writes.
 //
-// WHY BYTE SPLICE, NOT A PICK. views.ts carries 527 deliberate CRLF carriers;
-// a whole-file write collapses them. This script asserts 527/527/0 before AND
-// after and refuses to write otherwise. Every replaced string below was read
-// off this fold base first (views.ts:3006-3018 and 3069-3201) and every
-// replacement string is the donor's bytes.
+// WHY BYTE SPLICE, NOT A WHOLE-FILE WRITE. views.ts carries 527 deliberate
+// CRLF line endings; a whole-file write collapses them. This script asserts
+// 527/527/0 before AND after and refuses to write otherwise. Every replaced
+// string below was read off this tree's file first (views.ts:3006-3018 and
+// 3069-3201) and every replacement string is the source revision's bytes.
 //
-// WHAT IS DELIBERATELY NOT TAKEN. SETTING_NEVER_VISIBLE itself survives on the
-// fold base and is still consumed by visibleGroupSettings (the mod-file
-// accordion + bar_setting_list flat seam). The refit retires only its use
-// inside visibleSettingsForGroup; the donor keeps both, and so does this.
+// WHAT IS DELIBERATELY NOT TAKEN. SETTING_NEVER_VISIBLE itself survives on
+// this tree and is still consumed by visibleGroupSettings (the mod-file
+// accordion + bar_setting_list flat seam). The gate retires only its use
+// inside visibleSettingsForGroup; the source keeps both, and so does this.
 const fs = require("fs");
 const { execFileSync } = require("child_process");
 
@@ -74,8 +73,8 @@ const R1_OLD = [
   "  });",
 ].join("\n");
 
-// lifted verbatim from the donor, contiguous from the prototypeCode binding to
-// the filter's close
+// R1_NEW is not spelled out here: it is sliced from the source revision at
+// runtime, contiguous from the prototypeCode binding to the filter's close
 const r1Start = donor.indexOf(
   "  const { code: prototypeCode, templateDerived } = setPrototypeTypeInfo(engine, setCard);",
 );
@@ -112,10 +111,10 @@ function functionBody(s, head) {
   throw new Error("unbalanced braces");
 }
 
-// The fold base's region-2 text is the pre-refit one-liner-signature form. A
-// re-run of this script finds it absent (the wrapper's signature is
+// The tree's region-2 text may still be the pre-change one-line-signature
+// form. A re-run of this script finds it absent (the wrapper's signature is
 // multi-line), so the extraction and the cross-check below are conditional on
-// the fold form still being present.
+// that form still being present.
 const foldFormPresent = s.includes(R2_OLD_HEAD);
 const foldFn = foldFormPresent ? functionBody(s, R2_OLD_HEAD) : "";
 if (foldFormPresent && foldFn.length < 5000) {
@@ -124,10 +123,10 @@ if (foldFormPresent && foldFn.length < 5000) {
 
 const DONOR_SIG = "function setPrototypeTypeInfo(\n  engine: RenderEngineLike,";
 const DONOR_DOC = "/** The prototype-type resolution WITH its derivation";
-// The function text starts at its doc block, not its signature: the refit
-// introduces the M2 derivation block between the fold line's existing
-// "Oracle-verified" block and the new signature, and that block is part of
-// the change. The brace walk is anchored on the SIGNATURE'S CLOSE (which is
+// The function text starts at its doc block, not its signature: the change
+// inserts the derivation doc block between the tree's existing doc block and
+// the new signature, and that block is part of the change. The brace walk is
+// anchored on the SIGNATURE'S CLOSE (which is
 // where the body's opening `{` is), because a walk anchored mid-signature
 // would count the return-type literal's braces and never close.
 const DONOR_WALK_FROM = "): { code: string | undefined; templateDerived: boolean } {";
@@ -135,10 +134,10 @@ const donorSigAt = donor.indexOf(DONOR_SIG);
 if (donorSigAt < 0) throw new Error("region 2: donor signature not found");
 const donorDocAt = donor.lastIndexOf(DONOR_DOC, donorSigAt);
 if (donorDocAt < 0) throw new Error("region 2: donor doc block not found");
-// The replacement text runs from the M2 doc block (which the refit inserts
-// between the fold line's "Oracle-verified" block and the new signature)
+// The replacement text runs from the inserted doc block (which sits between
+// the tree's existing doc block and the new signature)
 // through the function's closing brace, so the whole transplanted region is
-// contiguous donor bytes.
+// contiguous source-revision bytes.
 const donorWalkAt = donor.indexOf(DONOR_WALK_FROM);
 if (donorWalkAt < 0) throw new Error("region 2: donor signature tail not found");
 const donorTail = functionBody(donor, DONOR_WALK_FROM);
@@ -174,12 +173,12 @@ if (
   );
 }
 
-// Cross-check, stated as the property I actually need: the fold function's
-// BODY must be the donor function's BODY modulo its return statements and
-// nothing else. The two heads legitimately differ (the refit adds a doc block
-// and a return type and drops `export`), so the comparison is on the body only.
-// If the fold line had drifted into this function since the serializer line
-// forked, this fires rather than clobbering fold-line work.
+// Cross-check, stated as the property I actually need: the tree function's
+// BODY must be the source function's pre-change BODY modulo its return
+// statements and nothing else. The two heads legitimately differ (the change
+// adds a doc block and a return type and drops `export`), so the comparison
+// is on the body only. If the tree had drifted in this function since the
+// source was taken, this fires rather than clobbering tree work.
 const donorBody = donorFn.slice(
   donorFn.indexOf(DONOR_WALK_FROM) + DONOR_WALK_FROM.length,
   donorFn.lastIndexOf("}"),
@@ -228,9 +227,9 @@ if (s.includes(DONOR_REGION_2)) {
 }
 
 // ---- post-conditions ------------------------------------------------------
-// The donor keeps setPrototypeTypeInfo MODULE-PRIVATE and re-exports the
-// pre-M2 signature as setPrototypeTypeCode; the post-conditions assert that
-// shape, not an export that the donor never had.
+// The source keeps setPrototypeTypeInfo MODULE-PRIVATE and re-exports the
+// older bare-code signature as setPrototypeTypeCode; the post-conditions
+// assert that shape, not an export that the source never had.
 if (s.includes("SETTING_NEVER_VISIBLE.has(codename)) return false;")) {
   throw new Error("post-condition: the retired blanket fold is still present");
 }
@@ -246,9 +245,9 @@ if (!s.includes("return setPrototypeTypeInfo(engine, setCard).code;")) {
 if (!s.includes("export function setPrototypeTypeCode(")) {
   throw new Error("post-condition: the verdict-preload export was lost");
 }
-// visibleGroupSettings must STILL consume SETTING_NEVER_VISIBLE - the refit
+// visibleGroupSettings must STILL consume SETTING_NEVER_VISIBLE - the change
 // retires only the visibleSettingsForGroup use, and dropping the other one
-// would be a fold-line regression the donor never made.
+// would be a regression the source never made.
 if (!s.includes("!SETTING_NEVER_VISIBLE.has(codename)")) {
   throw new Error("post-condition: visibleGroupSettings lost its SETTING_NEVER_VISIBLE filter - the donor keeps it");
 }
