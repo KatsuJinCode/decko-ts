@@ -3027,7 +3027,7 @@ export class RenderEngine implements RenderEngineLike {
    * thousands of microtask hops, and tens of seconds of wall clock on a
    * large deck for nothing in the result).
    */
-  /** THE LATE-SEAT STRUCTURE SWEEP (T1-1 sweepproof, 2026-10-06): one final
+  /** THE LATE-SEAT STRUCTURE SWEEP: one final
    *  applyStructureContent pass immediately before a sync render dispatch.
    *
    *  Mechanism the sweep cut left open: applyStructureContent's two inline
@@ -3447,7 +3447,7 @@ export class RenderEngine implements RenderEngineLike {
         const right = name.rightName;
         if (!name.isCompound || left === undefined || right === undefined) {
           const key = name.key;
-          // the batched fetch composer (2026-10-06): the OLD gate skipped the
+          // the batched fetch composer: the OLD gate skipped the
           // ask whenever the LEXICON held any entry for the key — but a lex
           // entry is not a seated record: lexToId's side resolutions write
           // `L-<key> -> id` without ever fetching the row, and the wave's
@@ -3509,8 +3509,8 @@ export class RenderEngine implements RenderEngineLike {
         } else {
           // a compound side is not seated yet: resolve the sides first.
           nextRound.push(left.s, right.s);
-          // the batched fetch composer (2026-10-06): re-pend the name itself.
-          // MEASURED CONVERGENCE GAP (this pass's attribution): the old push
+          // the batched fetch composer: re-pend the name itself.
+          // MEASURED CONVERGENCE GAP: the old push
           // resolved the sides but never re-asked the PARENT, so the
           // parent's own pair existence was left to the caller's first
           // id() walk — one solo pair probe per 3-level name (the residual
@@ -3705,7 +3705,7 @@ export class RenderEngine implements RenderEngineLike {
   }
 
   /**
-   * the batched fetch composer (2026-10-06): prime the compose
+   * the batched fetch composer: prime the compose
    * pipeline's inputs from rows the wave ALREADY HOLDS, before the
    * per-row compose loop runs.
    *
@@ -3743,7 +3743,7 @@ export class RenderEngine implements RenderEngineLike {
    */
   private async primeRowsForComposition(rows: CardsRow[]): Promise<void> {
     if (rows.length === 0) return;
-    // the edge regression fixes (2026-10-06): the residue reads below had NO
+    // the edge regression fixes: the residue reads below had NO
     // ask memory — every wave call re-collected every side/type id not in
     // ITS OWN rows and re-batched it, so the sweepproof late-seat sweep's
     // added wave traffic multiplied the SAME per-id reads (Home measured
@@ -4101,9 +4101,9 @@ export class RenderEngine implements RenderEngineLike {
    *  up for every fabricated blank-key card. The view decides whether the
    *  denial SURFACES: `unknown:`-capable views (template_nest under
    *  template mode; board_link) take the alter_unknown||denial arm and
-   *  render the 76-byte quiet span (corpus 636 + 38250, both re-proven
-   *  live 2026-10-03); plain views substitute :unknown whose createable
-   *  gate renders "" (corpus 10488, live re-proven same session).
+   *  render the 76-byte quiet span; plain views substitute :unknown whose
+   *  createable
+   *  gate renders "".
    *  Seated beside seatUnknownRefReadVerdicts (same prepare phase, same
    *  newCardDefaultType input recipe), keyed "" - the walk itself skips
    *  blank keys (its `parsed.key === ""` guard), so this is the one seat
@@ -4407,7 +4407,7 @@ export class RenderEngine implements RenderEngineLike {
   }
 
   /**
-   * Page-render recovery seam (2026-09-29): resolve the
+   * Page-render recovery seam: resolve the
    * read-permission state and judge every prepared card when the prepare
    * render died BEFORE the folded batch landed. The page path catches
    * prepare errors and continues (nested-raise semantics), but the sync
@@ -4858,23 +4858,17 @@ export class RenderEngine implements RenderEngineLike {
    *  `parent_skin_card&.real?`, and `parent` is a card_accessor TRAIT
    *  (bootswatch_skin.rb:37) - so the subcard is found through the CODENAME
    *  registry, by the (left_id, codename-id) side pair. It is NOT a name.
-   *  The deck proves the difference: the pointer is corpus card 45365, a
-   *  Pointer junction with left_id 34179 (`journal skin customized`) and
-   *  right_id 45364 - the card NAMED `parent 1` whose codename is `parent` -
-   *  content "journal skin", with card_references row referer 45365 ->
-   *  referee_key journal_skin. So the junction's composed name is
+   *  Stored decks prove the difference: the pointer is a
+   *  Pointer junction whose right_id is the card NAMED `parent 1` whose
+   *  codename is `parent` - so the junction's composed name is
    *  `journal skin customized+parent 1`, and the `<skin>+parent` name every
-   *  view builds resolves to the junction (34179, 38357) instead: corpus
-   *  38357 is a DIFFERENT card literally named `parent`.
-   *
-   *  MEASURED (tmp/parityfixes-work/probe-skin-parent-pointer.mjs, the
-   *  47,235-card raw corpus):
-   *    fetchByName("journal skin customized+parent")    -> undefined
-   *    fetchByName("journal skin customized+parent 1")  -> id 45365, Pointer,
-   *                                                       content "journal skin"
-   *  which is why every skin page took the parent-less branch and the capture
-   *  carries `Inherit from:` + a known-card link to the parent theme instead
-   *  (+232 B on `journal skin customized`).
+   *  view builds resolves to a DIFFERENT card literally named `parent`.
+   *  A direct probe of a full deck confirms it:
+   *    fetchByName("<skin>+parent")     -> undefined
+   *    fetchByName("<skin>+parent 1")   -> the Pointer junction,
+   *                                      content "<skin>"
+   *  which is why every skin page takes the parent-less branch and renders
+   *  `Inherit from:` + a known-card link to the parent theme instead.
    *
    *  WHY AN ALIAS SEAT. The pointer is seated under its OWN canonical name
    *  (the db's, `<skin>+parent 1`) and then aliased under the requested
@@ -5109,7 +5103,7 @@ export class RenderEngine implements RenderEngineLike {
    *  ensureCoreAdminRuntime): pages that never reach the view pay zero
    *  queries, so the query-count gates stay untouched.
    *
-   *  MOD PAGES (mm-cstructural, 2026-09-30): a Mod-typed card's :core also
+   *  MOD PAGES: a Mod-typed card's :core also
    *  reads the admin runtime — the Cardtypes accordion nests admin.yml
    *  codenames through `codenameToName` (core-mod.ts nestItemHtml), and
    *  Ruby's nest resolves a SYMBOL argument with `Card.fetch` (an
@@ -5528,7 +5522,7 @@ export class RenderEngine implements RenderEngineLike {
    *  warm-zero query-shape pins hold. */
   private waveAskedSimpleKeys?: Map<string, string>;
   private waveAskedPairs?: Map<string, { leftId: number; rightId: number; lex: Lex }>;
-  /** the edge regression fixes (2026-10-06): the composition primer's own
+  /** the edge regression fixes: the composition primer's own
    *  ask memory — every side/type id primeRowsForComposition ever batched,
    *  so a later wave call (the sweepproof late-seat sweep adds them)
    *  re-asks nothing. Same contract and same resetCaches clearing as the
@@ -5789,10 +5783,10 @@ export class RenderEngine implements RenderEngineLike {
     const MAX_ROUNDS = RUBY_MAX_DEPTH;
     for (let round = 0; round < MAX_ROUNDS; round++) {
       let grew = false;
-      // the batched fetch composer (V2+V3, 2026-10-06): the round's hosts'
-      // asks ride ONE merged wave before any per-host work runs. MEASURED
-      // MECHANISM (this pass's attribution, post-reset): the per-host
-      // waves cost one round trip each (~25 arms on the Home page), and
+      // the batched fetch composer: the round's hosts'
+      // asks ride ONE merged wave before any per-host work runs. THE
+      // MECHANISM: the per-host
+      // waves cost one round trip each, and
       // the hosts' own ladders (resolveHostItemTypeName's findRule walk
       // over ruleNamesForCard("*content options") candidates) resolved
       // one pair probe per candidate solo — 44 of the post-bump render's
@@ -8356,7 +8350,7 @@ export class RenderEngine implements RenderEngineLike {
         // (set/all/type.rb:58-80 type_id_from_template → mod/content
         // set/all/templating.rb:52-59 new_card_template: the *default rule
         // walk on the typeless prototype; no *structure rule intervenes on
-        // any relevant set — checked 2026-10-02).
+        // any relevant set).
         const defaultType = this.newCardDefaultType(parsed);
         return {
           name: parsed,
