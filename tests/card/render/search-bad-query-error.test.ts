@@ -2,21 +2,12 @@
 // the card's content (card-mod-search-0.20.0 set/abstract/cql_search.rb
 // #parse_json_cql). On JSON::ParserError Ruby raises
 // `Card::Error::BadQuery, "Invalid JSON search query: #{query}"` and the
-// html :open / :content views surface that raise verbatim. The corpus
-// capture pins the exact sentinel bytes in
-// fixtures/corpus/shard-000000.jsonl:
-//   - id=77 (*home, content="yzzw") views.open   -> CAPTURE_ERROR: Card::Error::BadQuery: Invalid JSON search query: fr
-//   - id=101 (wrjuvyhaoiwnvvnblfl, content="jjmdu...") views.open/content -> same class
-//   - id=274 (*all) views.open/content -> same class
-//   - id=305 (*help+*right) views.open/content -> same class
-//   - id=470 (ppqhuslzzya) views.open/content -> same class
-//   - id=817 (zbxggwfbwlmurtwz) views.open/content -> same class (long query)
+// html :open / :content views surface that raise verbatim.
 //
-// The replay handler (benchmarks/corpus-v2/replay-shard.bench.ts — read-only
-// per the stream contract) emits the CAPTURE_ERROR sentinel from
-// `error.constructor.name`; the port must raise a class whose
-// `constructor.name` is literally "Card::Error::BadQuery" and whose
-// message echoes the raw query — exactly what Ruby recorded.
+// The error class must carry the Ruby literal name: a consumer comparing
+// `error.constructor.name` must see exactly "Card::Error::BadQuery", and
+// the message must echo the raw query verbatim — the Ruby parity contract
+// this file pins.
 
 import { describe, expect, it } from "vitest";
 import {
@@ -31,16 +22,15 @@ describe("Card::Error::BadQuery — search-card JSON parse failure (M4)", () => 
   // ----- the class itself ---------------------------------------------------
 
   it("class name is the Ruby literal 'Card::Error::BadQuery'", () => {
-    // Pinned against the corpus CAPTURE_ERROR sentinel prefix — the
-    // replay handler compares this string verbatim.
+    // The Ruby-literal class name is load-bearing: name-based error
+    // matching compares this string verbatim.
     expect(BadQueryError.name).toBe(BAD_QUERY_CLASS_NAME);
     expect(BAD_QUERY_CLASS_NAME).toBe("Card::Error::BadQuery");
   });
 
   it("constructor.name matches the corpus sentinel's class prefix", () => {
     const err = badQuery("yzzw");
-    // The replay handler reads err.constructor.name (benchmarks/corpus-v2/
-    // replay-shard.bench.ts render handler fallback path) — that must be
+    // Consumers read err.constructor.name — that must be
     // the Ruby class string, not the TS-local binding name.
     expect(err.constructor.name).toBe("Card::Error::BadQuery");
     expect(err.name).toBe("Card::Error::BadQuery");
@@ -67,10 +57,9 @@ describe("Card::Error::BadQuery — search-card JSON parse failure (M4)", () => 
   it("rendering :open of a Search-type card with non-JSON content raises BadQueryError", async () => {
     const storage = await createRenderTestStorage();
     try {
-      // The corpus card id=77: name "*home", codename "home", type_id
-      // pointing at a non-JSON Search. The capture recorded the raise on
-      // its :open view (which delegates to :core -> :card_list ->
-      // executeSearch -> runSearch).
+      // A Search-typed card (*home) whose content is not JSON. The raise
+      // happens on its :open view (which delegates to :core -> :card_list
+      // -> executeSearch -> runSearch).
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
       await seedCard(storage, { id: 98, name: "Search", codename: "search_type", typeId: 2 });
       await seedCard(storage, {
@@ -97,9 +86,9 @@ describe("Card::Error::BadQuery — search-card JSON parse failure (M4)", () => 
   });
 
   it("rendering :content of a Search-type card with non-JSON content raises BadQueryError", async () => {
-    // Corpus pin: id=101 / id=274 / id=305 — both :open AND :content
-    // views surface the raise (the :content view delegates to :core ->
-    // :card_list -> executeSearch, identical code path to :open).
+    // Both :open AND :content views surface the raise (the :content view
+    // delegates to :core -> :card_list -> executeSearch, identical code
+    // path to :open).
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
@@ -154,8 +143,8 @@ describe("Card::Error::BadQuery — search-card JSON parse failure (M4)", () => 
 
   it("valid JSON search content renders without raising (sanity check)", async () => {
     // Pin that the new validation ONLY fires on parse failures — valid
-    // CQL JSON must still render normally (the captured smoke fixture
-    // oracle-replay.test.ts covers the happy path).
+    // CQL JSON must still render normally (the happy path is covered by
+    // oracle-replay.test.ts).
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
@@ -175,39 +164,33 @@ describe("Card::Error::BadQuery — search-card JSON parse failure (M4)", () => 
     }
   });
 
-  // ----- corpus-shaped fixture: search-type card name is NOT "Search" ------
+  // ----- fixture: the search-type card's name is NOT "Search" --------------
   //
   // The unit fixtures above seed the Search type card with `name: "Search"`
-  // — the original (reverted) gate `card.typeName === "Search"` matched
-  // them and hid the bug from the test bed. The corpus capture records
-  // search-type cards with a different type card name: corpus:101's record
-  // pins `"type":"qnzkqz","type_code":"search_type"` — the type card is
-  // named "qnzkqz" but its codename is "search_type". This fixture
-  // reproduces that shape so the codename-keyed gate is locked by the
-  // parity: a future revert to typeName would leave corpus-shaped search
-  // cards silently un-parsed (the 3,122-entry BadQuery bucket the
-  // diagnose finds). Same class of fix as date-error.test.ts (the date
-  // fixture pins type card name "evog" / codename "date").
+  // — the (reverted) gate `card.typeName === "Search"` matched them and hid
+  // the bug from the test bed. A search-type card's type card can carry any
+  // NAME; the codename ("search_type") is what identifies the cardtype.
+  // These fixtures reproduce that shape so the codename-keyed gate is
+  // locked: a future revert to a typeName comparison would leave search
+  // cards whose type card is not named "Search" silently un-parsed (their
+  // content would never reach JSON.parse). Same class of fix as
+  // date-error.test.ts.
 
   it("rendering :open of a Search-type card whose type card name is NOT 'Search' still raises BadQueryError (corpus:101 corpus-shaped fixture)", async () => {
-    // Corpus pin: id=101 (wrjuvyhaoiwnvvnblfl, content
-    // "jjmduarnmhbvnahsoeyvmxkpec") type="qnzkqz" type_code="search_type"
-    // — the type card's NAME is the random string "qnzkqz", but its
-    // codename (the codehash lookup) is "search_type". The prepare
-    // phase's Search gate (render.ts:1100) was previously keyed on
-    // typeName === "Search", which silently skipped this corpus entry,
-    // and JSON.parse was never called on the content — the BadQuery
-    // sentinel was never raised (3,122 captures hit this bucket).
+    // A search-type card whose type card's NAME is a random string, NOT
+    // "Search", while its codename (the codehash lookup) is
+    // "search_type". The prepare phase's Search gate (render.ts:1100)
+    // was previously keyed on typeName === "Search", which silently
+    // skipped such cards — JSON.parse was never called on the content
+    // and BadQuery was never raised.
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
-      // The corpus-shaped type card: name="qnzkqz" (NOT "Search"),
-      // codename="search_type".
+      // The type card: its NAME is a random string (NOT "Search"),
+      // its codename is "search_type".
       await seedCard(storage, { id: 30, name: "qnzkqz", codename: "search_type", typeId: 2 });
-      // The simple card shape whose :open view raises — mirrors id=101's
-      // content. The content MUST be raw non-JSON so JSON.parse throws,
-      // matching the corpus content "jjmduarnmhbvnahsoeyvmxkpec" shape
-      // (random alphabetic).
+      // The simple card shape whose :open view raises. The content MUST
+      // be raw non-JSON so JSON.parse throws (random alphabetic text).
       await seedCard(storage, {
         id: 101,
         name: "wrjuvyhaoiwnvvnblfl",
@@ -233,12 +216,11 @@ describe("Card::Error::BadQuery — search-card JSON parse failure (M4)", () => 
   });
 
   it("rendering :content of a Search-type card whose type card name is NOT 'Search' still raises BadQueryError (corpus:101 :content view)", async () => {
-    // Same corpus-shaped type card (qnzkqz / search_type) + content
-    // shape, but the :content view is also captured as
-    //   CAPTURE_ERROR: Card::Error::BadQuery: Invalid JSON search query: jjmdu...
-    // for id=101 (the corpus pins both views). The :content view
-    // dispatches through :core -> :card_list -> executeSearch, the same
-    // path :open takes, so the codename-keyed gate fires here too.
+    // The same type-card shape (non-"Search" name / "search_type"
+    // codename) and content shape, but through the :content view. The
+    // :content view dispatches through :core -> :card_list ->
+    // executeSearch, the same path :open takes, so the codename-keyed
+    // gate fires here too.
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
@@ -266,11 +248,10 @@ describe("Card::Error::BadQuery — search-card JSON parse failure (M4)", () => 
   });
 
   it("rendering :closed and :title of a Search-type card with non-JSON content does NOT raise (capture census: 105/105 real bytes)", async () => {
-    // Corpus arbiter (R4 lazy-parse seam): across all 105 corpus search-type
-    // cards, :closed and :title captured REAL bytes (105/105 each) while
-    // :open/:content captured CAPTURE_ERROR on the 24 invalid-content cards.
-    // Ruby parses only the result-rendering views; the raise lives at the
-    // dispatch boundary (engine.resolveView), view-gated on :open/:content.
+    // The lazy-parse seam: :closed and :title render REAL bytes without
+    // parsing, while :open/:content raise on invalid content. Ruby parses
+    // only the result-rendering views; the raise lives at the dispatch
+    // boundary (engine.resolveView), view-gated on :open/:content.
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
@@ -299,13 +280,12 @@ describe("Card::Error::BadQuery — search-card JSON parse failure (M4)", () => 
   });
 
   it("a search-TYPE rule card (right part a setting) with non-JSON content does NOT raise on :open (capture census: rule search cards render real bytes)", async () => {
-    // Corpus arbiter (R4 lazy-parse seam, rule asymmetry): search-type RULE
-    // cards — 3-part name, right part a setting ("*layout+*right+*content
-    // options", corpus:316/571/9610) — captured REAL :open/:content bytes
-    // (48 *content options + 27 *structure rules, zero CAPTURE_ERROR), while
-    // every CAPTURE_ERROR search card is non-rule. Ruby's dispatched view for
-    // a rule card is not the cardtype's parse view, so the boundary skips
-    // rule cards (computeIsRuleSync). Non-rule search cards still raise.
+    // The lazy-parse seam's rule asymmetry: search-type RULE cards —
+    // 3-part name, right part a setting (the "*layout+*right+*content
+    // options" shape) — render REAL :open/:content bytes, while every
+    // raising search card is non-rule. Ruby's dispatched view for a rule
+    // card is not the cardtype's parse view, so the boundary skips rule
+    // cards (computeIsRuleSync). Non-rule search cards still raise.
     const storage = await createRenderTestStorage();
     try {
       await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
@@ -337,7 +317,7 @@ describe("Card::Error::BadQuery — search-card JSON parse failure (M4)", () => 
         typeId: 30, // search TYPE card: the cardtype is search, the SET says rule
         dbContent: "lkxchgttdixjvgdasd",
       });
-      // The rule card renders (no parse) — the corpus shape.
+      // The rule card renders (no parse).
       const openHtml = await storage.engine.render("Lesson+*right+*content_options", "open");
       expect(typeof openHtml).toBe("string");
       expect(openHtml).not.toContain("CAPTURE_ERROR");
@@ -360,13 +340,13 @@ describe("Card::Error::BadQuery — search-card JSON parse failure (M4)", () => 
     }
   });
 
-  // ----- the corpus-v2 replay sentinel contract ----------------------------
+  // ----- the raising-sentinel byte contract -------------------------------
 
   it("the raised error reproduces the exact CAPTURE_ERROR sentinel bytes the corpus:77 capture recorded", () => {
-    // Direct byte-equality pin: corpus:77:open expected
+    // Direct byte-equality pin: the harness composes its raising sentinel
+    // as `CAPTURE_ERROR: <constructor.name>: <message>`, so the raised
+    // error must compose byte-exact into that shape:
     //   CAPTURE_ERROR: Card::Error::BadQuery: Invalid JSON search query: fr
-    // (the corpus id=77 capture's stored content was "fr"; the TS port
-    // raises with whatever raw content it sees, byte-exact).
     const err = badQuery("fr");
     const sentinel = `CAPTURE_ERROR: ${err.constructor.name}: ${err.message}`;
     expect(sentinel).toBe(
