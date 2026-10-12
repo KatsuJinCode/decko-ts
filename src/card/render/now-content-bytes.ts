@@ -3,15 +3,14 @@
 //
 // The en.yml:29 format string is '%A, %B %d, %Y %I:%M %p %Z'. Both the
 // WALL-CLOCK ZONE and the %Z LABEL now come from the deck's configured time
-// zone (src/card/deck-time-zone.ts), not from the capture host's operating
+// zone (src/card/deck-time-zone.ts), not from the host's operating
 // system: the zone the instant is rendered in is the deck's, and the
 // abbreviation is computed from that zone and offset, so a daylight-time
-// instant reads "PDT" where it used to read the Windows display name
-// "Pacific Standard Time" (see that module's header for why the display
-// name was wrong half the year). The instant
-// comes from the injectable capture wall clock (the graded corpus freezes
-// it; CAPTURE_FROZEN_CLOCK=2026-09-19T12:00:00Z renders "Saturday,
-// September 19, 2026 05:00 AM PDT" in the graded deck's zone).
+// instant reads "PDT" rather than a host display name like
+// "Pacific Standard Time" (see that module's header for why a display
+// name is wrong half the year). The instant
+// comes from the injectable wall clock, so a host that freezes the clock
+// gets that frozen instant.
 //
 // This is a leaf module on purpose: the loader-less render boot carries no
 // content-override registry (the mod-loader composition is not loaded
@@ -20,8 +19,8 @@
 // render path (format.ts renderRaw) consulting that table directly would
 // close an import cycle. The renderRaw consult names this module instead;
 // the rest of the SELF_MODULE_CHAINS rows (version/alerts/foot/mod/
-// bootstrap_*) stay unwired — the graded corpus renders those cards'
-// stored dbContent bytes and only *now is pinned virtual.
+// bootstrap_*) stay unwired — those cards'
+// stored dbContent bytes pass through, and only *now is virtual.
 
 import { cardWallClockNow } from "../wall-clock.js";
 import { deckTimeZoneName, formatCardDayofwkMinTz } from "../deck-time-zone.js";
@@ -51,7 +50,7 @@ const MONTH_NAMES = [
   "December",
 ] as const;
 
-/** The Self::Now content bytes at the current capture wall-clock instant, in
+/** The Self::Now content bytes at the current wall-clock instant, in
  *  the DECK's configured zone. */
 export function nowCardContent(): string {
   return formatCardDayofwkMinTz(cardWallClockNow(), deckTimeZoneName());
