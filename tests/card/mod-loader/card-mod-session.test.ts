@@ -1,26 +1,25 @@
-// The card-mod-session mod loader test: the mod loaded through the loader
-// registers its two set modules (all/location_history, type/session) and
-// contributes ZERO views - the compat report's entry for this gem declares
-// htmlViewsDeclared: 0 / htmlViewsMissingNames: [] (its only format block
-// is a before :core hook, not a view), so the mod must leave the render
-// path byte-identical. The lib config value
-// (lib/card/mod/session.rb's allow_anonymous_cookies) is proven against
-// its Ruby line; the set/type/session.rb card-method overrides have no TS
-// attach surface (see the mod source's NOT-ported list) and are not
-// transcribed as standalone stubs.
+// Loader test for the card-mod-session mod. The session mod declares two
+// set modules - all/location_history (base bucket) and type/session
+// (nonbase) - and no HTML views at all: its single format block is a
+// before :core hook rather than a view, so a load must leave the render
+// path byte-identical. The exported ALLOW_ANONYMOUS_COOKIES constant
+// carries the same value the decko gem hardcodes in
+// lib/card/mod/session.rb. The set/type/session.rb card-method overrides
+// have nothing to attach to in the TS mod and are intentionally absent.
 //
-// Proof shape (A/B on the loader tables, not on views - there are none):
-//   WITHOUT the mod load: the set-module basket carries no session entries
-//     and the loader has not touched the live views record.
-//   WITH the mod load: the basket records All::LocationHistory (base
-//     bucket) and Type::Session (nonbase), the load report lists zero
-//     registered views, the views record's key set is unchanged, and a
-//     Session-typed card's :content render is unchanged.
+// The tests run as an A/B pair over the loader's own tables (there are no
+// views to A/B):
+//   - without the load, the set-module basket has no session entries and
+//     the in-memory HTML_VIEWS record is untouched;
+//   - with the load, the basket holds both modules in their buckets, the
+//     load report lists zero registered views, the HTML_VIEWS key set is
+//     unchanged, and a Session-typed card still renders :content as the
+//     baseline bytes.
 //
-// Probe cards (mirroring the gem's data/real.yml:1-4 seed shape):
+// Probe cards echo the decko gem's data/real.yml seeds:
 //   - Cardtype (id 5) - the cardtype cardtype
 //   - Session (id 80, codename "session", typeId 5) - the Session
-//     cardtype card data/real.yml seeds
+//     cardtype itself
 //   - Test Session Card (id 81, typeId 80) - a session-typed probe card
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
