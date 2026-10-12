@@ -2,24 +2,22 @@
  * SQLite REGEXP user-defined function for CQL `match` queries.
  *
  * WHY THIS EXISTS: the SQL generator (src/cql/sql.ts) renders CQL `match`
- * as `field REGEXP ?` — the token card-1.110.0's ActiveRecord patch
- * (config/initializers/02_patches/active_record.rb) generates for MySQL.
- * SQLite has no built-in REGEXP operator function: `X REGEXP Y` compiles,
- * but the call fails at run time with "no such function: REGEXP" unless a
- * `regexp(Y, X)` function is registered on the connection. This module is
- * that registration for the LOCAL path (better-sqlite3). The edge path
- * (D1/libSQL: no UDFs possible) is decided but not implemented here — see
- *  ("REGEXP on the edge").
+ * as `field REGEXP ?`, which is the MySQL-shaped token. SQLite has no
+ * built-in REGEXP operator function: `X REGEXP Y` compiles, but the call
+ * fails at run time with "no such function: REGEXP" unless a `regexp(Y, X)`
+ * function is registered on the connection. This module is that registration
+ * for the LOCAL path (better-sqlite3). The edge path (D1/libSQL: no UDFs
+ * possible) is decided but not implemented here.
  *
  * SEMANTICS — case-insensitive by default, matching MySQL REGEXP (ICU in
  * MySQL 8, Henry Spencer in 5.x; both case-fold ASCII by default; the
  * decko keys the queries usually hit are downcased anyway). PATTERN
  * FLAVOR: the generator emits two shapes —
- *   1. escaped literals (MatchValue#escape_regexp_characters backslashes
- *      every non-word char): JS non-unicode RegExp accepts these verbatim
- *      as Annex-B identity/syntax escapes (`\ `, `\-`, `\.` all match the
+ *   1. escaped literals (escape_regexp_characters backslashes every
+ *      non-word char): JS non-unicode RegExp accepts these verbatim as
+ *      Annex-B identity/syntax escapes (`\ `, `\-`, `\.` all match the
  *      literal character) — runtime-verified on node 24;
- *   2. raw `~~` passthrough patterns (user-authored Ruby/MySQL regexps):
+ *   2. raw `~~` passthrough patterns (user-authored MySQL regexps):
  *      common syntax (classes, anchors, quantifiers, alternation) is
  *      flavor-compatible; the MySQL-only constructs (POSIX bracket
  *      classes, [[:<:]]/[[:>:]] word boundaries) are TRANSLATED to JS
@@ -44,8 +42,7 @@ const patternCache = new Map<string, RegExp | null>();
 
 /** The POSIX bracket classes MySQL's regex accepts and JS does not — the
  *  translation table (docs/decisions/0005-cql-match-semantics.md "Decision" item 1: the
- *  ASCII-faithful members; MariaDB's ICU spellings beyond these were not
- *  exercised by the capture battery). Each replacement carries its own
+ *  ASCII-faithful members). Each replacement carries its own
  *  brackets (the POSIX spelling `[[:alpha:]]` is a COMPLETE class, not a
  *  class body). The `[[..]]` bracket-colon-bracket shape cannot occur in a
  *  JS-meaningful pattern otherwise, so a plain global replace is total. */
@@ -62,7 +59,7 @@ const POSIX_CLASS_TRANSLATIONS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\[\[:xdigit:\]\]/g, "[0-9A-Fa-f]"],
   // MySQL 5.x word boundaries (MariaDB accepts, MySQL 8 ICU errors —
   // server-side variance documented in the decision); JS \b is the same
-  // ASCII word-boundary notion for the patterns the battery pins.
+  // ASCII word-boundary notion for these patterns.
   [/\[\[:<:\]\]/g, "\\b"],
   [/\[\[:>:\]\]/g, "\\b"],
 ];
@@ -94,9 +91,8 @@ function compileOrNull(source: string, flags: string): RegExp | null {
  *  pattern cannot compile — the UDF and the post-filter executor TURN THAT
  *  INTO A THROWN ERROR ("invalid REGEXP pattern"), per
  *  docs/decisions/0005-cql-match-semantics.md "Decision" item 2: anything still
- *  untranslated must throw (a query that fails is debuggable; a query that
- *  silently drops rows is corruption — the three captured silent
- *  no-matches were exactly that failure shape). Shared with the
+ *  untranslated must throw, because a query that fails is debuggable while a
+ *  query that silently drops rows is corruption. Shared with the
  *  post-filter executor (executeQuery's REGEXP-on-edge fallback runs the
  *  SAME compile logic — one matching implementation, per
  *  docs/decisions/0005-cql-match-semantics.md). */

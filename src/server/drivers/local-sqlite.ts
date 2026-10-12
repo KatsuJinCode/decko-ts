@@ -1,6 +1,5 @@
 // Reference SQLDatabaseDriver over better-sqlite3 — the dev/test workhorse
-// for decko-ts. Part of the storage-driver foundation (upstream proposal
-// decko-commons/decko#1282).
+// for decko-ts.
 //
 // better-sqlite3 is synchronous under the hood; the async signatures of
 // SQLDatabaseDriver are satisfied with resolved promises. Everything runs on
@@ -20,7 +19,7 @@ import Database from "better-sqlite3";
  *
  * Why a local interface instead of growing the shared ambient shim: the
  * module declaration for better-sqlite3 lives in tests/schema/
- * better-sqlite3.d.ts (schema stream, `export =` style), and TypeScript
+ * better-sqlite3.d.ts (an `export =` style declaration), and TypeScript
  * does not merge a second `declare module` block into an `export =`
  * declaration — verified with a minimal repro. prepare()'s result is
  * therefore narrowed through this interface at the single boundary below.
@@ -40,8 +39,8 @@ export interface BetterSqlite3Statement {
  *  it runs fn inside BEGIN/COMMIT/ROLLBACK — an exception rolls back and
  *  rethrows (runtime-verified). `function(name[, options], fn)` is
  *  better-sqlite3 Database#function (scalar SQL function registration),
- *  added by the CQL execution stream: the REGEXP UDF for CQL match queries
- *  needs the underlying handle, which the driver deliberately does not
+ *  added for the REGEXP UDF that CQL match queries need: registering it
+ *  requires the underlying handle, which the driver deliberately does not
  *  expose. Runtime-verified on
  *  better-sqlite3 13.0.3 / SQLite 3.53.4, Windows, node 24. */
 export interface BetterSqlite3Database {
@@ -79,8 +78,8 @@ export class LocalSqliteDriver implements SQLDatabaseDriver {
    *  re-plans the multi-KB recursive walk twice per render. SQLite handles
    *  schema-change invalidation of a live sqlite3_stmt itself, and the
    *  cache's lifetime is this driver's handle, so there is no staleness
-   *  window. Measured 2026-09-22: the dominant per-render fixed cost on the
-   *  corpus deck. */
+   *  window. Without it, statement parsing and planning for the multi-KB
+   *  recursive walk is the dominant per-render fixed cost. */
   private readonly stmtCache = new Map<string, BetterSqlite3Statement>();
 
   constructor(options: LocalSqliteDriverOptions = {}) {
@@ -171,12 +170,10 @@ export class LocalSqliteDriver implements SQLDatabaseDriver {
   }
 
   /** Register a scalar SQL function on the underlying handle — the narrow,
-   *  additive extension the CQL execution stream needs for its REGEXP UDF
-   *  (registerSqliteRegexpFunction in src/cql/sqlite-regexp.ts; rationale
-   *  Nothing
-   *  about existing behavior changes; callers that never register a
-   *  function are unaffected. Must be called before the first statement
-   *  referencing the function is prepared. */
+   *  additive extension CQL's REGEXP UDF needs (registerSqliteRegexpFunction
+   *  in src/cql/sqlite-regexp.ts). Nothing about existing behavior changes;
+   *  callers that never register a function are unaffected. Must be called
+   *  before the first statement referencing the function is prepared. */
   registerFunction(
     name: string,
     fn: (...args: unknown[]) => unknown,

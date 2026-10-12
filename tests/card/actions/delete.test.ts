@@ -1,6 +1,6 @@
 // Action-layer tests — DELETE (Card#delete! = trash flip): action typing,
-// the protected-card guard, the child cascade, and idempotency. Ruby cites
-// inline; Synthetic fixtures only.
+// the protected-card guard, the child cascade, and idempotency. Upstream
+// source is cited inline; synthetic fixtures only.
 
 import { describe, expect, it } from "vitest";
 import { CardActionError } from "../../../src/card/actions/index.js";
@@ -111,7 +111,7 @@ describe("deleteCard — child cascade (delete_children, trash.rb:52-59)", () =>
     expect(actions).toHaveLength(3);
     expect(actions[0]).toMatchObject({ card_id: f.joeCard.id, action_type: 2 });
     // every child's super_action_id points at its DIRECT parent's action
-    // (super_action = @supercard.current_action — events.rb:85-92)
+    // (super_action = the supercard's current action — events.rb:85-92)
     expect(actions[1]).toMatchObject({
       card_id: junction.id,
       action_type: 2,
@@ -144,8 +144,8 @@ describe("deleteCard — child cascade (delete_children, trash.rb:52-59)", () =>
     const engine = actionEngine(f.storage);
     const result = await engine.deleteCard({ cardId: f.joeCard.id });
     // RichText itself survives (it is a PART), but the junction is deleted
-    // without its own codename check — Ruby: director/store.rb:70-73
-    // (`@card.save! validate: false, as_subcard: true`)
+    // without its own codename check — the store stage saves subcards with
+    // validate: false (director/store.rb:70-73)
     expect(result?.subactions).toHaveLength(1);
     const junction = await f.storage.selectOne<Row>(
       "SELECT trash FROM cards WHERE left_id = ? AND right_id = ?",

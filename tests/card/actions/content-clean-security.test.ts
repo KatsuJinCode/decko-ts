@@ -1,19 +1,20 @@
 // The stored-HTML cleaner against hostile and malformed input.
 //
-// The port's cleaner deliberately differs from Ruby's (docs/SECURITY.md,
-// "Stored HTML"): Ruby's keeps script-capable URLs, rebuilds event-handler
-// attributes from malformed values, and can leave a fragment that runs into
-// the surrounding page. This corpus pins three things:
+// This cleaner deliberately differs from the upstream cleaner (docs/SECURITY.md,
+// "Stored HTML"): the upstream one keeps script-capable URLs, rebuilds
+// event-handler attributes from malformed values, and can leave a fragment
+// that runs into the surrounding page. This suite pins three things:
 //
 //   1. No hostile input survives: the cleaned output passes an independent
 //      browser-tokenizer check (html-safety-verifier.ts), alone and when the
 //      page or another card's content follows it.
-//   2. The verifier is not vacuous: Ruby's own output fails it on the inputs
-//      that motivated the change.
-//   3. Ordinary content is stored byte for byte as Ruby stores it.
+//   2. The verifier is not vacuous: the upstream cleaner's own output fails
+//      it on the inputs that motivated the change.
+//   3. Ordinary content is stored byte for byte as the upstream cleaner
+//      stores it.
 //
 // The hostile cases follow the OWASP XSS Filter Evasion Cheat Sheet, plus the
-// regex-specific cases found while replacing Ruby's algorithm.
+// regex-specific cases found while replacing the upstream algorithm.
 
 import { describe, expect, it } from "vitest";
 import {
@@ -122,7 +123,7 @@ const OWASP: string[] = [
 /** Cases aimed at this cleaner's own structure: Ruby's regexes, the comment
  *  pass, the fragment's boundary with the page, and URL decoding. */
 const TARGETED: string[] = [
-  // The review's two reproductions.
+  // The two reproductions that motivated the stricter cleaner.
   `<a href="javascript:alert(1)">click</a>`,
   `<img src=x"onerror="alert(1)>`,
   // An unterminated quote that Ruby closes early.
@@ -333,8 +334,8 @@ const ORDINARY: string[] = [
   `<td colspan="2" scope="row" style="width: 10px;" data-mce-style="width: 10px;">cell</td>`,
 ];
 
-/** Where Ruby stores something other than what the author wrote, the port
- *  stores what the author wrote. */
+/** Where the upstream cleaner stores something other than what the author
+ *  wrote, this cleaner stores what the author wrote. */
 const RUBY_MISREADS: Array<[string, string, string]> = [
   // Ruby's search for `style=` matches inside `data-mce-style=`.
   [

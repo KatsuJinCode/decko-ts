@@ -1,7 +1,7 @@
 // Stored-state rules the persistence parity probe (tests/tools/
-// persist-write-probe.test.ts against the Ruby oracle) found the engine
-// missing. Each test pins one rule on the synthetic action fixture, so the
-// rule stays guarded where the oracle deck is not available.
+// persist-write-probe.test.ts) found the engine missing. Each test pins one
+// rule on the synthetic action fixture, so the rule stays guarded everywhere
+// the probe's richer deck is not available.
 
 import { describe, expect, it } from "vitest";
 import {
@@ -20,7 +20,7 @@ async function fresh() {
 }
 
 describe("persistence parity — stored state of a create", () => {
-  it("a create without content stores \"\", never NULL (set_content, content.rb:1-5)", async () => {
+  it("a create without content stores \"\", never NULL (set_content)", async () => {
     const f = await fresh();
     const engine = actionEngine(f.storage);
     const { cardId } = await engine.createCard({ name: "Empty One" });

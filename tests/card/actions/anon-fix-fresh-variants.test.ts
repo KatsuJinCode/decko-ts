@@ -1,16 +1,18 @@
 // Anonymous-write bypass probes — FRESH-VARIANT attacks against the six
-// anonymous-write fixes. The redteam's own 13 probes live in
+// anonymous-write fixes. The base probes live in
 // anon-redteam-probes.test.ts; EVERY test here is a NEW attack those probes
 // never ran, aimed at each fix itself. A passing assertion pins the fixed
 // engine's answer (deny / allow direction as the arm states); a failing
 // assertion is a BYPASS finding.
 //
-// Arms: HIGH-1 (side would-be type: *default template chain + type
-// codename assignment), HIGH-2 (depth 5/6/7 + protected MIDDLE parts),
-// MEDIUM-2 (single real-account party deck), MEDIUM-4 (left-part rename =
-// the *type plus right anchor), MEDIUM-1 (draft under the ROUTE-SEAT
-// config shape — default rule walk, no captchaRuleContent override),
-// LOW-1 (id-keyed actor on update+delete, both confusion directions).
+// Arms (the HIGH-n / MEDIUM-n / LOW-n labels match the test names below and
+// in anon-redteam-probes.test.ts): HIGH-1 (side would-be type: *default
+// template chain + type codename assignment), HIGH-2 (depth 5/6/7 +
+// protected MIDDLE parts), MEDIUM-2 (single real-account party deck),
+// MEDIUM-4 (left-part rename = the *type plus right anchor), MEDIUM-1
+// (draft under the route's own config shape — default rule walk, no
+// captchaRuleContent override), LOW-1 (id-keyed actor on update+delete,
+// both confusion directions).
 
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -76,7 +78,7 @@ async function seedSignupTrunk(s: ActionsTestStorage): Promise<void> {
 }
 
 /** Depth deck: *all+*create -> Anyone, *star+*create -> Editor, nothing
- *  else — identical shape to the redteam's seedDepthDeck. */
+ *  else — identical shape to anon-redteam-probes' seedDepthDeck. */
 async function seedDepthDeck(): Promise<ActionsTestStorage> {
   const s = await createActionsTestStorage();
   await seedSkeleton(s, 42);
@@ -143,7 +145,7 @@ async function seedSingleAccountDeck(): Promise<ActionsTestStorage> {
 
 /** MEDIUM-4 left-part deck: junction anchors differ by the LEFT part's
  *  TYPE through the *type plus right pattern (anchor = left's type + the
- *  right part; the port has no *left pattern): "Rich Text+Plain" -> Anyone,
+ *  right part; there is no *left pattern): "Rich Text+Plain" -> Anyone,
  *  "Blue Type+Plain" -> Editor. Rename = left part swap. Renames target
  *  names no seeded junction holds (validate_uniqueness_of_name must not
  *  fire before the permission verdict). */
@@ -184,9 +186,9 @@ async function seedLeftRenameDeck(): Promise<ActionsTestStorage> {
   return s;
 }
 
-/** MEDIUM-1 deck (seedDraftDeck shape) + the ROUTE-SEAT arming card: the
+/** MEDIUM-1 deck (seedDraftDeck shape) + the route-config arming card: the
  *  *all+*captcha RULE card (content "1") that arms the guard through the
- *  engine's DEFAULT rule walk — the staging seat never sets
+ *  engine's DEFAULT rule walk — the staging host never sets
  *  captchaRuleContent (staging-server-recaptcha-env-config.ts:30). */
 async function seedDraftDeck(withCaptchaRule: boolean): Promise<ActionsTestStorage> {
   const s = await createActionsTestStorage();
@@ -256,12 +258,12 @@ function stubVerify(body: unknown): {
   };
 }
 
-/** The ROUTE-SEAT engine shape: recaptcha config WITHOUT captchaRuleContent
- *  (the seat never sets it — the deck's own rule walk arms the guard) plus
- *  a runtime whose registry carries the :recaptcha event. The serving seat
- *  itself composes the whole deck through the deck-boot seam
- *  (write-routes.ts servingModEventRuntime -> defaultDeckEventRuntime,
- *  E-16); this helper is the minimal engine-boundary equivalent - the guard
+/** The route-config engine shape: recaptcha config WITHOUT captchaRuleContent
+ *  (the route never sets it — the deck's own rule walk arms the guard) plus
+ *  a runtime whose registry carries the :recaptcha event. The serving write
+ *  path composes the whole deck through the deck-boot seam
+ *  (write-routes.ts servingModEventRuntime -> defaultDeckEventRuntime);
+ *  this helper is the minimal engine-boundary equivalent - the guard
  *  needs the event registered and the predicates resolvable, which the
  *  recaptcha-only loader supplies. */
 function routeSeatEngine(
@@ -491,7 +493,7 @@ describe("secverify MEDIUM-4: a rename that swaps the LEFT part is judged under 
 });
 
 // -----------------------------------------------------------------------
-// MEDIUM-1 fresh variant: the draft seam under the ROUTE-SEAT config shape
+// MEDIUM-1 fresh variant: the draft seam under the route's own config shape
 // -----------------------------------------------------------------------
 
 describe("secverify MEDIUM-1: the draft seam under the route-seat config (default rule walk arms the guard)", () => {

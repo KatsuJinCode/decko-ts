@@ -2,8 +2,7 @@
 // follows the provider-adapter requirement in docs/README.md:
 // declare transaction/isolation, rollback, search, collation, generated-ID,
 // time and resource-limit behavior, and reject unsupported operations
-// explicitly rather than silently weakening semantics. Upstream proposal:
-// decko-commons/decko#1282.
+// explicitly rather than silently weakening semantics.
 //
 // Rules: the engine never imports vendor SDKs. Adapters implement this
 // interface per provider (D1, libSQL-over-HTTP, ...). Every adapter passes
@@ -49,8 +48,8 @@ export interface SQLDatabaseDriver {
    * TransactionLockTimeoutError.
    *
    * Absent on drivers that cannot make a unit of work atomic (read-only
-   * capture drivers). The write path refuses to save through such a
-   * driver rather than save non-atomically.
+   * drivers). The write path refuses to save through such a driver rather
+   * than save non-atomically.
    */
   transaction?<R>(work: () => Promise<R>): Promise<R>;
   /** What transaction() actually guarantees on this adapter. Present

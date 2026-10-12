@@ -1,27 +1,21 @@
-// The host-side half of Ruby's post-save expiry: after a successful write,
-// every render engine holding the saved card's pre-save state must drop it.
+// Post-save expiry: after a successful write, every render engine holding
+// the saved card's pre-save state must drop it.
 //
-// Ruby mechanism (the semantics this seam implements): Card#expire runs in
-// the after_commit integration phase — card-1.110.0
-// lib/card/director/phases.rb:3 (after_commit :integration_phase) and :54
-// (`@card.expire unless Cardio.delaying?`) — i.e. expiry rides EVERY
-// committed save, unconditional on request format or response shape. What
-// expire covers is Cache::All#expire (lib/card/cache/all.rb:17-24):
-// expire_views, expire_names, expire_id, expire_left. The TS model layer
-// ports that per save (card-action-engine.ts expireAfterWrite ->
-// FetchEngine#expireCard), but that only reaches the fetch-layer card
-// cache on the shared FetchEngine. The per-engine enriched render-card maps
-// are a TS render-perf structure with no Ruby counterpart (render.ts
-// "Save-side invalidation" note on expireRenderCard): Ruby's expired Card
-// objects simply re-fetch, while a warm RenderEngine re-renders from its
-// renderCards map (closureWarm is map-presence-only, render.ts closureWarm)
-// until expireRenderCard drops the key. The host must therefore expire
-// those maps explicitly for the boot engine and every signed-in engine.
+// WHY THE HOST HAS TO DO IT. Expiry rides every committed save — it does not
+// depend on request format or response shape — and the model layer already
+// runs it per save (card-action-engine.ts expireAfterWrite ->
+// FetchEngine#expireCard). But that only reaches the fetch-layer card cache
+// on the shared FetchEngine. The per-engine enriched render-card maps are a
+// render-performance structure with a second failure mode: a cache that
+// holds a pre-save Card simply re-fetches when invalidated, whereas a warm
+// RenderEngine re-renders straight from its renderCards map
+// (closureWarm is map-presence-only) and will keep serving those bytes until
+// expireRenderCard drops the key. Nothing else drops it, so the host has to
+// expire those maps explicitly — for the boot engine and for every
+// signed-in engine.
 //
-// Extracted from the deployed dispatch (vm-staging-server.mjs post-write
-// block) so the gate under test IS the gate the server runs; the deployed
-// block's Location-header gate is replaced by the mutation point's
-// expiryName (see expireRenderCachesAfterSave).
+// This is the same gate the server runs, extracted so the gate under test IS
+// the gate in production.
 
 import type { FetchEngine } from "../card/fetch.js";
 import type { WriteRouteResponse } from "./write-routes.js";
@@ -30,13 +24,11 @@ import type { WriteRouteResponse } from "./write-routes.js";
  *  boot (anonymous) render engine, and every per-actor signed-in render
  *  engine. Structural: RenderEngine satisfies the engine shape as-is. */
 export interface RenderCacheEngines {
-  /** FetchEngine#expireName drops the fetched-card cache entry
-   *  (cache/card_class.rb#expire). */
+  /** FetchEngine#expireName drops the fetched-card cache entry. */
   fetcher: FetchEngine;
-  /** The boot render engine (vm-staging-server.mjs `render`). */
+  /** The boot (anonymous) render engine. */
   renderEngine: { expireRenderCard(name: string): void };
-  /** The per-actor signed-in render engines
-   *  (vm-staging-server.mjs signedInEngines). */
+  /** The per-actor signed-in render engines. */
   signedInEngines: Iterable<{ expireRenderCard(name: string): void }>;
 }
 

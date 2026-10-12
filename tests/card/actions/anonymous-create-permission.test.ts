@@ -1,26 +1,19 @@
 // The anonymous-create permission arm (the captcha guard's missing
-// reach): Ruby's create permission chain has NO signed-in clause — an
-// anonymous session's Auth.as_id IS the Anonymous card
-// (card-1.110.0 lib/card/auth/current.rb:7-9 + lib/card/auth/proxy.rb:33-35)
-// and ok_to_create? (card-mod-permissions set/all/permissions.rb:120-125)
+// reach): the create permission chain has NO signed-in clause — an
+// anonymous session's Auth.as_id IS the Anonymous card, and ok_to_create?
 // runs for it exactly as for any other actor: permit(:create) ->
-// permitted? (:105-110) -> Auth.as_card.among? who_can(:create), where
-// among? (card-mod-account set/abstract/account_holder.rb:31-37) passes
+// permitted? -> Auth.as_card.among? who_can(:create), where among? passes
 // when the rule's item ids include AnyoneID or the actor's own id
-// (Anonymous's parties are just itself — :40 all_enabled_roles is []).
+// (Anonymous's parties are just itself — all_enabled_roles is []).
 //
-// The arm is corpus-proven, not hypothetical: the recorded site's own
-// history carries 694 cards with creator_id = the anonymous codename card
-// (id 15 in bench-corpus-v2), 86 of them of type Signup — whose
-// "kfnvyby+*type+*create" rule (id 6580, the recorded NAME this suite's
-// deck mirrors) grants Anyone (its card_references row: referee_id 8,
-// the codename-anyone card). Until this arm, the engine's write path was
-// signed-in-only (types.ts Actor doc) and the captcha guard's
-// !Auth.signed_in? arm (card-mod-recaptcha set/all/recaptcha.rb:16-23) was
-// seam-proven but unreachable through the public engine — the
-// not-started-closure lane's named remainder (a).
+// The arm is not hypothetical: a real deck's history carries hundreds of
+// cards whose creator is the anonymous codename card, many of type Signup —
+// whose "<signup name>+*type+*create" rule grants Anyone. Until this arm,
+// the engine's write path was signed-in-only and the captcha guard's
+// !Auth.signed_in? arm was seam-proven but unreachable through the public
+// engine.
 //
-// Deck layout (mirrors the recorded signup arm; ids arbitrary):
+// Deck layout (mirrors that signup arm; ids arbitrary):
 //    1 *all      codename all    typeId 2 (Set)
 //    2 Set       codename set
 //    4 *create   codename create
@@ -29,9 +22,9 @@
 //    8 *type     codename type
 //   10 *all+*create  left 1 right 4 [[Editor]]   - fallback: members only
 //   11 Anonymous codename anonymous      - the acting card (Auth.as_card)
-//   12 Signup                           - the recorded signup type card
+//   12 Signup                           - the signup type card
 //   13 Signup+*type left 12 right 8 typeId 2 (Set)
-//   14 Signup+*type+*create left 13 right 4 [[Anyone]]  - recorded rule 6580
+//   14 Signup+*type+*create left 13 right 4 [[Anyone]]  - the granting rule
 //   15 *captcha codename captcha         - the guard's codename check
 
 import { describe, expect, it } from "vitest";
@@ -79,7 +72,7 @@ async function seedReference(
 }
 
 /** The deck of the module doc. `signupRuleParty` is who
- *  Signup+*type+*create grants — Anyone for the recorded-shape arms,
+ *  Signup+*type+*create grants — Anyone for the open-signup arms,
  *  Editor for the closed-signup deny arms. */
 async function seedSignupDeck(
   signupRuleParty: { id: number; key: string },
@@ -136,8 +129,8 @@ async function asError(p: Promise<unknown>): Promise<CardActionError> {
   )) as CardActionError;
 }
 
-describe("anonymous create rides the create RULE check (Ruby has no signed-in clause)", () => {
-  it("allows the recorded signup arm (Signup+*type+*create -> Anyone) and records the act under the Anonymous card", async () => {
+describe("anonymous create rides the create RULE check (no signed-in clause)", () => {
+  it("allows the open-signup arm (Signup+*type+*create -> Anyone) and records the act under the Anonymous card", async () => {
     const s = await seedSignupDeck(ANYONE);
     const engine = anonEngine(s);
     const result = await engine.createCard({ name: "Sign Me Up", typeId: 12, content: "hi" });
@@ -152,8 +145,8 @@ describe("anonymous create rides the create RULE check (Ruby has no signed-in cl
       "SELECT actor_id FROM card_acts WHERE card_id = ?",
       [result.cardId],
     );
-    // assign_actor: the act's actor_id IS the Anonymous card (the corpus's
-    // creator_id=15 rows are exactly this shape)
+    // assign_actor: the act's actor_id IS the Anonymous card (a real deck's
+    // anonymous-created rows are exactly this shape)
     expect(act?.actor_id).toBe(11);
   });
 
@@ -168,9 +161,9 @@ describe("anonymous create rides the create RULE check (Ruby has no signed-in cl
   });
 
   it("keys the session by ID, not by name: an actor NAMED *anonymous with an account id acts as THAT account", async () => {
-    // LOW-1 fix (verdict-semantics lane 2026-10-01): the prior pin here
-    // asserted the name-keyed behavior — any actor named "*anonymous"
-    // wrote as the Anonymous card. Ruby's identity is the id (`@as_id =
+    // Identity is the ID, not the name: the earlier pin here asserted the
+    // name-keyed behavior — any actor named "*anonymous" wrote as the
+    // Anonymous card. The engine's identity is the id (`@as_id =
     // Card.id given_user`, auth/proxy.rb:11; signed_in? = current_id !=
     // AnonymousID, auth/current.rb:43-47); only the real Anonymous card
     // (id 11) is the anonymous session.
@@ -216,9 +209,9 @@ describe("anonymous create through the captcha guard, end-to-end at the engine s
     );
     expect(err.code).toBe("recaptcha");
     expect(err.message).toBe("Looks like you are not a human");
-    // the siteverify query rode the Ruby transport shape (recaptcha.rb:41-44)
+    // the siteverify query rode the transport shape recaptcha.rb:41-44 defines
     expect(stub.calls[0]?.query).toEqual({ secret: "s", response: "tok-1" });
-    // the guard was ON: !signed_in? — the arm this lane opens (the walk
+    // the guard was ON: !signed_in? — the arm this suite opens (the walk
     // rejects with the refusal, so the stage report does not record it)
     // the refusal is whole: no card, no act
     expect(await s.count("cards")).toBe(12);

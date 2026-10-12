@@ -1,58 +1,47 @@
-// The multipart/form-data parser for the write surface — Rack 2.2.24's
-// Rack::Multipart parse semantics over the raw request bytes (the port of
-// the layer Ruby runs before card params exist: Rack::Request#POST ->
-// Rack::Multipart.extract_multipart).
+// The multipart/form-data parser for the write surface: the parse happens
+// over raw request bytes, at the layer before any card params exist.
 //
-// Ruby truth (rack-2.2.24, installed gem, file:line checked):
-//   - The boundary comes off the Content-Type header: MULTIPART =
-//     %r{\Amultipart/.*?boundary(\s*)="?([^";,]+)"}ni (rack/multipart.rb:24).
-//   - Each part is `--<boundary>` CRLF, a MIME head ending at CRLFCRLF
-//     (parser.rb @head_regex /(.*?\r\n)\r\n/m), then the body up to the
-//     CRLF that precedes the next boundary delimiter.
-//   - The part NAME rides Content-Disposition's name= token
-//     (MULTIPART_CONTENT_DISPOSITION, rack/multipart.rb:31), dequoted
-//     through Rack::Auth::Digest::Params::dequote (parser.rb:316-318).
-//   - A FILENAME attribute makes the part a file part
-//     (parser.rb:157-159 TempfilePart); the data params carry the client
-//     filename's BASENAME — `fn = filename.split(/[\/\\]/).last`
-//     (parser.rb:141-145, the IE full-path defense).
-//   - A part with filename == "" contributes NOTHING:
-//     `if filename == "" ... return` (parser.rb:131-135) — the browser's
-//     no-file-chosen file input.
-//   - A part with no filename is a text part; its body is a UTF-8 string
-//     (tag_multipart_encoding, parser.rb:433+).
-//   - Params assemble IN ORDER through Rack::Utils.normalize_params, and
-//     a repeated scalar key is LAST-WINS (`params[k] = v`,
-//     rack/query_parser.rb:142) — the file_chooser form's hidden
-//     card[file]="" is overwritten by the file part that preceded it
-//     whenever a file was chosen.
-//   - Malformed bodies raise EOFError("bad content body")
-//     (parser.rb:300,311) — a 500 class in Ruby, not a card validation.
+// The wire format's rules this parser implements:
+//   - The boundary comes off the Content-Type header as the first
+//     `boundary` parameter, read through its closing quote, `;` or `,`.
+//   - Each part is `--<boundary>` CRLF, a MIME head ending at CRLFCRLF,
+//     then the body up to the CRLF that precedes the next delimiter.
+//   - The part NAME rides Content-Disposition's `name=` token, dequoted.
+//   - A FILENAME attribute makes the part a file part, and only its
+//     BASENAME is kept — `filename.split(/[\/\\]/).last`, so a client that
+//     sends a full path cannot smuggle one through.
+//   - A part with filename == "" contributes NOTHING — that is the
+//     browser's no-file-chosen file input.
+//   - A part with no filename is a text part, decoded as UTF-8.
+//   - Malformed bodies (no boundary, unterminated final part) throw
+//     Error("bad content body"), which is a 500 class, not a card
+//     validation: a body that does not parse says nothing about the card.
 //
-// The port keeps the body BYTE-EXACT for file parts (offsets computed in
-// a binary string view where 1 char == 1 byte) and decodes text parts as
-// UTF-8 (lossy on invalid bytes — Ruby keeps invalid bytes in the string;
-// the difference is unobservable through the blank?/save surface). The
-// ORDERED part list is the return value: last-wins belongs to the
-// consumer walking the list (the same order Rack's normalize_params
-// applies).
+// File bodies stay BYTE-EXACT (offsets are computed in a binary string
+// view where 1 char == 1 byte); text parts are decoded as UTF-8, lossy on
+// invalid bytes, a difference unobservable through the blank?/save surface.
+//
+// The ORDERED part list is the return value. Duplicate keys are NOT
+// collapsed here: last-wins belongs to the consumer walking the list, so
+// the file_chooser form's hidden card[file]="" is overwritten by the file
+// part that preceded it whenever a file was chosen.
 
-/** One parsed file part (a Rack UploadedFile's shape: basename, declared
- *  content type, bytes). */
+/** One parsed file part: the part name, the client filename's basename, the
+ *  declared content type, and the bytes. */
 export interface MultipartFilePart {
   kind: "file";
   /** The Content-Disposition name (e.g. "card[file]"). */
   name: string;
-  /** The client filename's basename (parser.rb:141-145). */
+  /** The client filename's basename. */
   filename: string;
   /** The part's declared Content-Type, or null when the head carries
-   *  none (Rack passes it through untyped; CarrierWave's SanitizedFile
-   *  detection chain consumes it downstream). */
+   *  none — it is passed through untyped, for the upload-type detection
+   *  chain downstream. */
   contentType: string | null;
   bytes: Uint8Array;
 }
 
-/** One parsed text part (Rack's BufferPart — a UTF-8 string body). */
+/** One parsed text part: a UTF-8 string body. */
 export interface MultipartTextPart {
   kind: "text";
   name: string;
@@ -61,16 +50,15 @@ export interface MultipartTextPart {
 
 export type MultipartPart = MultipartFilePart | MultipartTextPart;
 
-/** The fallback name Rack gives a part with no name attribute:
- *  `filename || "#{content_type || 'text/plain'}[]"` (parser.rb:320-322).
- *  The deck's forms always name their parts; the fallback exists for
- *  parity with malformed-but-parseable bodies. */
+/** The fallback name a part with no name attribute gets:
+ *  `filename || "#{content_type || 'text/plain'}[]"`. The deck's forms
+ *  always name their parts; the fallback exists for malformed-but-parseable
+ *  bodies. */
 const TEXT_PLAIN = "text/plain";
 
-/** Parse one multipart/form-data body into its ordered parts.
- *  Throws Error("bad content body") on the Rack EOFError paths (missing
- *  boundary / unterminated final part) — the caller surfaces it as the
- *  500 class Ruby's EOFError takes, never as a card validation. */
+/** Parse one multipart/form-data body into its ordered parts. Throws
+ *  Error("bad content body") when the body does not parse — the caller
+ *  surfaces that as the 500 class it is, never as a card validation. */
 export function parseMultipartForm(body: Uint8Array, contentTypeHeader: string): MultipartPart[] {
   const boundary = boundaryOf(contentTypeHeader);
   if (boundary === null || boundary === "") {
@@ -83,8 +71,7 @@ export function parseMultipartForm(body: Uint8Array, contentTypeHeader: string):
   const delimiter = `--${boundary}`;
   const parts: MultipartPart[] = [];
 
-  // FAST_FORWARD: everything before the first boundary delimiter is
-  // preamble (parser.rb:284-299).
+  // Everything before the first boundary delimiter is preamble.
   let pos = text.indexOf(delimiter);
   if (pos === -1) throw new Error("bad content body");
   pos += delimiter.length;
@@ -104,12 +91,12 @@ export function parseMultipartForm(body: Uint8Array, contentTypeHeader: string):
     const name = dispositionName(head);
     const filename = dispositionFilename(head);
     const contentType = headContentType(head);
-    // parser.rb:320-322: name falls back to filename or the content-type
-    // array form.
+    // The part's name falls back to its filename, then to the
+    // content-type array form.
     const partName = name !== undefined && name !== "" ? name : (filename ?? `${contentType ?? TEXT_PLAIN}[]`);
 
     if (filename !== undefined) {
-      if (filename === "") continue; // parser.rb:131-135 — no file chosen
+      if (filename === "") continue; // no file chosen
       parts.push({
         kind: "file",
         name: partName,
@@ -128,15 +115,15 @@ export function parseMultipartForm(body: Uint8Array, contentTypeHeader: string):
   return parts;
 }
 
-/** MULTIPART (rack/multipart.rb:24): the first boundary parameter of the
- *  content type, through its closing quote / `;` / `,`. */
+/** The first `boundary` parameter of the content type, read through its
+ *  closing quote / `;` / `,`. */
 function boundaryOf(contentTypeHeader: string): string | null {
   const match = /multipart\/.*?boundary\s*="?([^";,]+)"?/i.exec(contentTypeHeader);
   return match === null ? null : match[1];
 }
 
-/** MULTIPART_CONTENT_DISPOSITION (rack/multipart.rb:31) + dequote
- *  (parser.rb:316-318): the name= token or double-quoted string. */
+/** The part's name: the `name=` token on the disposition line, or its
+ *  double-quoted string form. */
 function dispositionName(head: string): string | undefined {
   const match =
     /Content-Disposition:[^:]*;\s*name=("(?:\\"|[^"])*"|[^\s()<>,;:\\"/[\]?=]+)/i.exec(head);
@@ -144,10 +131,10 @@ function dispositionName(head: string): string | undefined {
   return dequote(match[1]);
 }
 
-/** get_filename (parser.rb:402-432): the BROKEN fallback arm
- *  (rack/multipart.rb:26) — a filename= token or quoted string on the
- *  disposition line; surrounding quotes stripped, `\"` unescaped
- *  (parser.rb:426-428's `filename !~ /\\[^\\"]/` guard). */
+/** The part's filename: the `filename=` token or its quoted string on the
+ *  disposition line. Surrounding quotes are stripped and `\"` unescaped,
+ *  but only when the value carries no other backslash escape — a Windows
+ *  path like C:\dir\f.txt must survive intact. */
 function dispositionFilename(head: string): string | undefined {
   const match =
     /Content-Disposition:\s*[^\s()<>,;:\\"/[\]?=]+\s*.*;\s*filename=("(?:\\"|[^"])*"|[^\s()<>,;:\\"/[\]?=]+)/i.exec(
@@ -161,8 +148,8 @@ function dispositionFilename(head: string): string | undefined {
   return filename;
 }
 
-/** Rack::Auth::Digest::Params::dequote: strip one pair of surrounding
- *  quotes, unescape backslash escapes inside them. */
+/** Strip one pair of surrounding quotes, unescape backslash escapes
+ *  inside them. */
 function dequote(value: string): string {
   if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
     return value.slice(1, -1).replace(/\\"/g, '"').replace(/\\\\/g, "\\");
@@ -170,15 +157,14 @@ function dequote(value: string): string {
   return value;
 }
 
-/** MULTIPART_CONTENT_TYPE (rack/multipart.rb:30): the part head's
- *  Content-Type line, when present. */
+/** The part head's Content-Type line, when present. */
 function headContentType(head: string): string | null {
   const match = /Content-Type: (.*)\r\n/i.exec(head.endsWith("\r\n") ? head : `${head}\r\n`);
   return match === null ? null : match[1].trim();
 }
 
-/** parser.rb:141-145: the client path's basename — Windows backslash
- *  paths and Unix paths both reduce to the final segment. */
+/** The client path's basename — Windows backslash paths and Unix paths both
+ *  reduce to the final segment. */
 function basenameOfClientPath(filename: string): string {
   const segments = filename.split(/[/\\]/);
   return segments[segments.length - 1];

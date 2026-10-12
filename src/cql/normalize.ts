@@ -1,11 +1,9 @@
 /**
- * Value-normalization helpers for the CQL port.
+ * Value-normalization helpers for CQL.
  *
- * All behavior is ported from card-1.110.0 + cardname-0.20.0 (cited per
- * function). Name-key generation and relative-name absolutization delegate to
- * the landed card/name stream (`src/card/name.ts`, DeckoName), which carries
- * the full ActiveSupport inflections and the contextual layer; see the
- * reconciliation section
+ * Name-key generation and relative-name absolutization delegate to the card
+ * name stream (`src/card/name.ts`, DeckoName), which owns the inflections and
+ * the contextual layer; these helpers are the thin CQL-shaped surface over it.
  */
 
 import { DeckoName } from "../card/name.js";
@@ -13,11 +11,11 @@ import { getNameEnvironment } from "../card/name/environment.js";
 import { CqlBadQuery } from "./ast.js";
 import { SAFE_SQL_RE } from "./constants.js";
 
-/** Ruby's `\W` (ASCII): every char outside [A-Za-z0-9_] */
+/** ASCII non-word: every character outside [A-Za-z0-9_] */
 const NON_WORD_RE = /[^A-Za-z0-9_]/g;
 
 /**
- * MatchValue#parse_match_term_and_prefix: split "=~/~"-prefixed match values.
+ * Split a "=~/~"-prefixed match value into its prefix and term.
  * "~~term" -> raw regexp passthrough; "=term" -> exact; "~term"/"term" -> plain.
  */
 export function parseMatchTermAndPrefix(raw: string): { prefix: string; term: string } {
@@ -27,31 +25,30 @@ export function parseMatchTermAndPrefix(raw: string): { prefix: string; term: st
 }
 
 /**
- * MatchValue#escape_regexp_characters: every non-word character is
- * backslash-escaped so the term matches literally (unless the "~~" prefix
- * bypassed this).
+ * Escape a term so it matches literally: every non-word character is
+ * backslash-escaped (unless the "~~" prefix bypassed this).
  */
 export function escapeRegexpCharacters(term: string): string {
   return term.replace(NON_WORD_RE, "\\$&");
 }
 
 /**
- * Normalization#normalize_string_value: `$var` replacement happens in the
- * parser (needs vars). Values containing a word-boundary underscore are
- * absolutized against the context (Cardname#absolute).
+ * Marker for a value that has to be absolutized against the query context.
+ * `$var` replacement happens in the parser (it needs the vars map); this
+ * pattern only decides whether a relative-name lookup is coming.
  */
 export const NEEDS_ABSOLUTIZE_RE = /\b_/;
 
 /**
- * cardname-0.20.0 lib/cardname/contextual.rb RELATIVE_REGEXP, made
- * case-insensitive to mirror the per-part branches of
- * `absolutize_contextual_parts` (/^_user$/i, /^_left$/i, ...). Used only to
- * decide when a missing-context warning applies; the actual absolutization is
- * DeckoName's.
+ * Does this name contain a contextual part at all? The pattern is
+ * case-insensitive because every part form is matched case-insensitively;
+ * it is used ONLY to decide whether a missing-context warning can apply.
+ * The actual absolutization is DeckoName's.
  */
 const CONTEXTUAL_FORM_RE = /\b_(?:left|right|whole|self|user|main|\d+|L*R?)\b/i;
 
-/** one part of a contextual name, matched like absolutize_contextual_parts */
+/** One part of a contextual name — same alternation, anchored to the whole
+ *  part so a part is either entirely contextual or not contextual at all. */
 const CONTEXTUAL_PART_RE = /^_(left|right|whole|self|user|main|\d+|L*R?)$/i;
 
 function rubyBlank(value: string): boolean {
@@ -59,27 +56,23 @@ function rubyBlank(value: string): boolean {
 }
 
 /**
- * Normalization#normalize_string_value (card-1.110.0
- * lib/card/query/card_query/normalization.rb:57): `val.to_name.absolute(context)`.
+ * Absolutize a possibly-relative name against the query's context.
  *
- * Delegates to the landed name layer (`DeckoName.absolute`, port of cardname
- * lib/cardname/contextual.rb#absolute), so all relative forms now resolve for
- * real: _self/_whole/_, _left (context trunk), _right (context tag), _N
- * ordinals, _L*R partmaps, _user (Card::Name.session) and _main
- * (Card::Env.params[:main_name]) via the injectable NameEnvironment, plus the
- * absolutize_extremes blank-extreme guard (contextual.rb#absolutize_extremes).
+ * Delegates to the name layer (`DeckoName.absolute`), so all relative forms
+ * resolve for real: _self/_whole/_, _left (context trunk), _right (context
+ * tag), _N ordinals, _L*R partmaps, _user (the session name) and _main (the
+ * environment's main name) via the injectable NameEnvironment, plus the
+ * blank-extreme guard that falls an extreme part back to the context.
  *
- * Additive, non-fatal diagnostics (Ruby resolves silently): a warning is
- * emitted via `onWarning` when a contextual part cannot resolve to anything
- * meaningful in the current environment -
+ * The warnings are additive and non-fatal — absolutization succeeds either
+ * way. `onWarning` fires when a contextual part cannot resolve to anything
+ * meaningful in the current environment:
  * - a context-dependent part (_self/_left/_right/_N/_L*R) with a blank
- *   context (AbstractQuery#context defaults to "" at the root,
- *   abstract_query.rb:73),
- * - `_user` with no session name in the NameEnvironment (Ruby leaves the part
- *   in place when `Card::Name.session` is nil),
- * - `_main` with no main name in the NameEnvironment (Ruby resolves to ""
- *   via `Card::Env.params[:main_name]`; a blank extreme part then falls back
- *   to the context per absolutize_extremes — verified live).
+ *   context (a query with no context starts from ""),
+ * - `_user` with no session name in the NameEnvironment (the part is left
+ *   in place),
+ * - `_main` with no main name in the NameEnvironment (it resolves to "",
+ *   so a blank extreme part falls back to the context).
  */
 export function absolutizeName(
   name: string,
@@ -126,29 +119,23 @@ function warnUnresolvedContextualParts(
 }
 
 /**
- * Cardname#key via the real name layer (this is what Ruby's CQL code calls:
- * `v.to_name.key` — card-1.110.0 lib/card/query/value.rb#standard_sql:29,
- * `match_term.to_name.key` — lib/card/query/value/match_value.rb#exact_name_match:25,
- * `val.to_name.key` — lib/card/query/card_query/match_attributes.rb#complete:26;
- * `String#to_name` is `Card::Name.new` per
- * config/initializers/01_core_extensions/object.rb).
+ * The default name -> key mapping, delegated to the name layer
+ * (`DeckoName.parse(name).key`). Every CQL site that needs a key — a
+ * standard_sql value, an exact name match, a `complete` match attribute —
+ * funnels through here so they cannot drift apart.
  *
- * Delegates to `DeckoName.parse(name).key` (port of Cardname#key via
- * variants.rb#stable_key + ActiveSupport inflections): downcase,
- * space/separator -> underscore, HTML entity decoding, AND the
- * singularize inflection ("Magnus" -> "magnu", "Admins" -> "admin",
- * "Octopi" -> "octopus" — all live-oracle-verified against cardname 0.20.0).
- * Mark strings resolve exactly as Ruby's `Card::Name.new` does: an
- * unresolvable "~<id>" / ":<codename>" mark raises NameNotFoundError /
- * CodenameNotFoundError from the name layer (lib/card/name.rb#bad_mark).
- * `ParseOptions.nameToKey` still overrides this for callers that want a
- * different key source.
+ * The key is: downcase, space/separator -> underscore, HTML entity decoding,
+ * AND the singularize inflection ("Magnus" -> "magnu", "Admins" -> "admin",
+ * "Octopi" -> "octopus"). Mark strings resolve through the name layer:
+ * an unresolvable "~<id>" / ":<codename>" mark raises NameNotFoundError /
+ * CodenameNotFoundError. `ParseOptions.nameToKey` still overrides this for
+ * callers that want a different key source.
  */
 export function defaultNameToKey(name: string): string {
   return DeckoName.parse(name).key;
 }
 
-/** Query.safe_sql (query.rb): raises on characters outside the allowed set */
+/** Refuse text carrying characters outside the allowed set. */
 export function safeSql(text: string): string {
   const txt = String(text);
   if (SAFE_SQL_RE.test(txt)) {
@@ -158,9 +145,9 @@ export function safeSql(text: string): string {
 }
 
 /**
- * Value#parse_simple_value: strings and integers pass; nil passes; anything
- * else (floats, booleans, hashes...) raises. (Symbols cannot arrive over
- * JSON and are treated as strings by callers before this point.)
+ * Strings, integers and nil pass; anything else (floats, booleans, hashes...)
+ * raises. (Symbols cannot arrive over JSON and are treated as strings by
+ * callers before this point.)
  */
 export function assertSimpleValue(value: unknown): string | number | null {
   if (typeof value === "string") return value;

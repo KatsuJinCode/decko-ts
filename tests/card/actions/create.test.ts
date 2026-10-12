@@ -194,14 +194,14 @@ describe("createCard — junction create (compound names)", () => {
       db_content: "mix",
     });
     // the side "banana" did not exist: it became a subcard create in the
-    // SAME act (prepare_new_side, name_events.rb:118-125)
+    // SAME act (prepare_new_side)
     const right = await f.storage.selectOne<Row>("SELECT * FROM cards WHERE key = ?", ["banana"]);
     expect(right).toMatchObject({ name: "banana", left_id: null });
     expect(card.right_id).toBe((right as { id: number }).id);
 
     // one act; junction is the act card; TWO actions: junction, then side.
     // The junction's action row is saved before its side subcards are
-    // stored (the Ruby oracle's action ids put the junction first), while
+    // stored (the recorded action ids put the junction first), while
     // the side's CARD row is inserted first (the junction needs its id).
     const acts = await f.storage.selectAll<Row>("SELECT * FROM card_acts");
     expect(acts).toHaveLength(1);
@@ -212,7 +212,7 @@ describe("createCard — junction create (compound names)", () => {
     expect(actions[1]).toMatchObject({ card_id: (right as { id: number }).id, action_type: 0 });
     expect((right as { id: number }).id).toBeLessThan(result.cardId);
     // side subcard's super_action_id = the junction's action
-    // (super_action = @supercard.current_action — events.rb:85-92)
+    // (super_action = the supercard's current action)
     expect(actions[1]).toMatchObject({ super_action_id: actions[0].id });
     expect(result.subactions).toHaveLength(1);
     expect(result.subactions[0]).toMatchObject({ cardId: (right as { id: number }).id });

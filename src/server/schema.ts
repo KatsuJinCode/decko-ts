@@ -1,19 +1,17 @@
-// Row types and table/column inventory for the CORE decko schema, derived
-// from the production MySQL schema (db/schema.mysql-reference.sql) and
-// hand-converted to SQLite in db/schema.sqlite.sql. Field names, order, and
-// nullability mirror the MySQL CREATE TABLE statements exactly. Full mapping
-// rationale
+// Row types and table/column inventory for the CORE decko schema. The
+// reference DDL is db/schema.mysql-reference.sql; db/schema.sqlite.sql is
+// what this engine actually runs against. Field names, order, and
+// nullability mirror the CREATE TABLE statements exactly.
 //
 // Conventions:
-// * Field names are snake_case, matching the SQL column names and the Ruby
-//   ActiveRecord attribute names (parity with the oracle matters more than
-//   TS style; the TABLES constant carries the field->column mapping seam if
-//   a divergence is ever needed).
+// * Field names are snake_case, matching the SQL column names. The TABLES
+//   constant carries the field->column mapping seam so a divergence never
+//   has to be a rename.
 // * Datetimes are `string` — stored as UTC "YYYY-MM-DD HH:MM:SS[.ffffff]" TEXT
 //   (see db/schema.sqlite.sql header).
-// * MySQL tinyint(1) booleans are `0 | 1` — the storage shape SQLite hands
-//   back; the engine layer maps to/from `boolean` like ActiveRecord does.
-// * `| null` exactly where the MySQL column is nullable (DEFAULT NULL).
+// * Booleans are `0 | 1` — the storage shape SQLite hands back; the engine
+//   layer maps to and from `boolean`.
+// * `| null` exactly where the column is nullable (DEFAULT NULL).
 
 /** UTC datetime stored as TEXT in ActiveRecord's form ("YYYY-MM-DD HH:MM:SS", plus ".ffffff" when the microseconds are not zero). */
 export type SQLDateTime = string;
@@ -84,7 +82,7 @@ export interface CardReferencesRow {
   is_present: number | null;
 }
 
-/** Legacy pre-1.14 revisions; still populated in production. [CORE] */
+/** Legacy pre-1.14 revisions; still populated on existing databases. [CORE] */
 export interface CardRevisionsRow {
   id: number;
   created_at: SQLDateTime;
@@ -119,7 +117,7 @@ export interface DelayedJobsRow {
   updated_at: SQLDateTime | null;
 }
 
-/** ActiveRecord::SessionStore sessions. [RAILS-INFRA] */
+/** Browser sessions. [RAILS-INFRA] */
 export interface SessionsRow {
   id: number;
   session_id: string | null;
@@ -140,7 +138,7 @@ export interface ArInternalMetadataRow {
   updated_at: SQLDateTime;
 }
 
-/** decko Cardio::Migration::Transform bookkeeping. No id column. [RAILS-INFRA] */
+/** Content-transform migration bookkeeping. No id column. [RAILS-INFRA] */
 export interface TransformMigrationsRow {
   version: string | null;
 }
@@ -150,14 +148,14 @@ export interface TransformMigrationsRow {
  *  (db/schema.sqlite.sql, the [ENGINE-FRESHNESS] block) and read ONCE per
  *  render request by the render path's freshness gate
  *  (src/card/render.ts DECK_DATA_VERSION_STATEMENT). [ENGINE-FRESHNESS] —
- *  engine-owned table, not production MySQL truth. */
+ *  engine-owned table, not part of the reference DDL. */
 export interface DeckDataVersionRow {
   id: number;
   version: number;
 }
 
 // ---------------------------------------------------------------------------
-// TABLES — the table + column inventory the schema layer and wave-2 fetch
+// TABLES — the table + column inventory the schema layer and the fetch
 // layer build SQL from. Field names are identical to column names today;
 // the mapping seam exists so a divergence never has to be a rename.
 // ---------------------------------------------------------------------------

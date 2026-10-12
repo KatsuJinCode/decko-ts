@@ -1,19 +1,19 @@
 /**
  * CQL execution: parse -> generateSql -> driver -> typed results.
  *
- * The closed loop over the wave-1 generator: a CQL
- * statement becomes parameterized SQLite SQL, runs through the storage
- * driver seam (src/server/driver.ts SQLDatabaseDriver — LocalSqliteDriver
- * locally, D1/libSQL adapters at the edge), and comes back as typed rows.
+ * The closed loop over the SQL generator: a CQL statement becomes
+ * parameterized SQLite SQL, runs through the storage driver seam
+ * (src/server/driver.ts SQLDatabaseDriver — LocalSqliteDriver locally,
+ * D1/libSQL adapters at the edge), and comes back as typed rows.
  *
- * Result shaping mirrors Ruby Run#alter_result to the extent SQL allows:
- * `return: "count"` collapses to the integer (Ruby casts the single count
- * row); card/raw selects return full card rows (CardsRow from
- * src/server/schema.ts). Projection returns (`name`, `content`, `type_id`,
- * ...) come back as the DB reports them — single-column row objects.
- * Name RECONSTRUCTION for compound cards (name is NULL in storage; Ruby
- * rebuilds "left+right" from left_id/right_id recursively in Card#name /
- * Run#alter_result) needs the card/name stream and is deferred — documented
+ * Result shaping goes as far as SQL allows: `return: "count"` collapses to
+ * the integer the single count row carries; card/raw selects return full card
+ * rows (CardsRow from src/server/schema.ts). Projection returns (`name`,
+ * `content`, `type_id`, ...) come back as the DB reports them —
+ * single-column row objects. Name RECONSTRUCTION for compound cards is out
+ * of scope here: the name column is NULL for every compound row and the
+ * name has to be rebuilt from left_id/right_id, which needs the card/name
+ * stream this module does not have.
  *
  *
  * REGEXP: match queries need the UDF from ./sqlite-regexp.js on local
@@ -42,8 +42,9 @@ import { compileMatchPattern } from "./sqlite-regexp.js";
 /**
  * Execution-time options. Names in CQL (type: "User", part: "Home",
  * edited_by: "Joe Admin") resolve to ids DURING interpretation, so the
- * parse-time resolvers must flow through the execution entry — Ruby reads
- * them from Card::Lexicon / Card::Codename globals; the port injects them.
+ * parse-time resolvers must flow through the execution entry rather than
+ * being reachable from a module-level registry: the caller that owns the
+ * lexicon hands them in on every call.
  */
 export interface CqlExecuteOptions extends SqlOptions {
   /** ParseOptions for interpretation: vars, context, resolveCardId,
@@ -66,7 +67,7 @@ export interface CqlExecutionResult<Row = CardsRow> {
   rows: Row[];
 }
 
-/** `return: "count"` collapses to a single integer (Run#alter_result). */
+/** `return: "count"` collapses to a single integer instead of a row array. */
 export interface CqlCountResult {
   sql: string;
   params: unknown[];
@@ -77,24 +78,23 @@ export type CqlQueryResult = CqlExecutionResult<CardsRow> | CqlCountResult;
 
 /**
  * Parse options whose `resolveCardId` answers through the fetch layer's
- * DbLexicon — the same name->lex->id walk Ruby's Card::Lexicon.id performs
- * for every CQL name value (type/left/right/created_by restrict values,
- * string clauses; compound "A+B" names resolve recursively through their
- * side cards' ids, so the cards.name column never enters the path — that
- * column is NULL for compound rows since the 2020 Lexicon migration).
+ * DbLexicon — a name->lex->id walk run for every CQL name value
+ * (type/left/right/created_by restrict values, string clauses; compound
+ * "A+B" names resolve recursively through their side cards' ids, so the
+ * cards.name column never enters the path — that column is NULL for
+ * compound rows).
  *
  * DbLexicon's read path (peekId) is synchronous over cache-warm entries
  * only: warm first (await lexicon.name(id) over the deck's ids, or
  * FetchEngine#warmLexicon), then parse. A cold or unknown name yields
- * undefined and the parser falls back to Ruby's sentinels (-999 in
- * Tie#id_from_val, -2 in clause_to_hash) — an unresolvable name matches
- * nothing, exactly as in Ruby.
+ * undefined and the parser falls back to its sentinels (-999 for a
+ * relational value, -2 for a clause) — an unresolvable name matches
+ * nothing.
  *
- * Ruby's own path has no "warm first" precondition because Lexicon.id
- * falls back to SQL synchronously; `ensureCardId` (wired here to
- * DbLexicon.id) restores that fallback through the pre-parse pass in
- * executeQuery, so a warm wiped by the Temporary cache's max_keys reset
- * heals instead of resolving "unknown" for a real card.
+ * `ensureCardId` (wired here to DbLexicon.id) supplies the async half: it is
+ * cache-first WITH a database fallback, and executeQuery runs it over every
+ * card name the statement carries before parsing. That way a warm entry lost
+ * to a cache eviction heals instead of resolving "unknown" for a real card.
  */
 export function parseOptionsWithLexicon(
   lexicon: DbLexicon,
@@ -108,30 +108,29 @@ export function parseOptionsWithLexicon(
 }
 
 /**
- * The async half of Ruby's CQL name resolution, run before interpretation.
+ * The async half of CQL name resolution, run before interpretation.
  *
- * Mechanism (search-parity-2 recorded result, probe-verified): Ruby answers every
- * CQL name value synchronously through Card::Lexicon (lib/card/query/
- * value.rb#id_from_val -> Card::Lexicon.id -> lexicon.rb#lex_to_id), which
- * is cache-first WITH a SQL fallback - so when the Temporary cache's
- * max_keys reset (cache/temporary.rb#within_key_counts, default 10_000
- * keys) wipes warmed entries mid-boot on any deck larger than the cap,
- * Ruby re-reads them from the database and no search ever notices. The
- * port's interpretation resolves through the sync warm-cache mirror
- * (DbLexicon.peekId), which deliberately has no db fallback, so on a
- * 47,235-live-card deck the warm's own ~94k writes reset the mirror 10
- * times and every name but the last-warmed tail resolves "unknown" (the
- * 47 census search pages rendering search-no-results; production escapes
- * only via the out-of-band full-deck key map in deploy/worker.ts#
- * primeCqlNameResolver). This pass performs Ruby's fallback leg in the
- * async phase the port has: every card-name string the statement carries
- * resolves through ParseOptions.ensureCardId (DbLexicon.id - the same
- * cache-first-with-fallback walk), and the resolved L- entries land in
- * the same cache peekId reads. parseCql runs immediately after with no
- * intervening cache writes, so interpretation sees warm entries for
- * exactly the names it asks about. Without `ensureCardId` this is a
- * no-op; names that fail to resolve (or throw) stay the interpreter's
- * business (Ruby's -999/-2 sentinels, unchanged).
+ * Mechanism: interpretation resolves name values through DbLexicon.peekId,
+ * a synchronous mirror over cache-warm entries that deliberately has no
+ * database fallback — it is a mirror, not a lookup path. That mirror is
+ * bounded: a cache whose entry cap is exceeded resets and drops its warmed
+ * contents. On a deck whose warm-up writes more keys than the cap holds, the
+ * reset happens DURING the warm, so the mirror ends the warm holding only
+ * the tail of what was written, and every name the statement asks about
+ * outside that tail reads as "unknown". The visible result is a search that
+ * matches nothing while the deck plainly has matching cards.
+ *
+ * This pass closes that gap in the phase where a database read is
+ * affordable: it walks every card-name string the statement can hand the
+ * interpreter and resolves it through ParseOptions.ensureCardId (DbLexicon.id
+ * — cache-first WITH a fallback), which repopulates the very entries peekId
+ * reads. parseCql runs immediately afterwards with no intervening cache
+ * writes, so interpretation sees a warm entry for each name it asks about,
+ * including every name the reset had dropped.
+ *
+ * Without `ensureCardId` this is a no-op. Names that fail to resolve, or
+ * that throw while resolving, stay the interpreter's business — it applies
+ * the same sentinels it always has.
  */
 async function ensureStatementCardNamesCached(
   cqlQuery: unknown,
@@ -174,14 +173,14 @@ async function ensureStatementCardNamesCached(
 
 /**
  * Every string the statement could hand the resolveCardId sites (parser.ts
- * interpret / interpretToHash bare-string clauses, Tie#id_from_val string
- * restrict values). Generous by design: a string the interpreter never
- * asks about costs one cached negative lookup; a string it DOES ask about
- * must be warm. Relative references ("_left", "+right") and $vars are
- * skipped - the interpreter absolutizes them from the context, never
- * through the card-name resolver; `return`/`sort`/`dir` carry view and
- * ordering specs, not card names. Conjunction item strings ("and"/"or")
- * resolve to one negative lookup per deck, accepted for the coverage.
+ * interpret / interpretToHash bare-string clauses and string restrict
+ * values). Generous by design: a string the interpreter never asks about
+ * costs one cached negative lookup; a string it DOES ask about must be warm.
+ * Relative references ("_left", "+right") and $vars are skipped — the
+ * interpreter absolutizes them from the context, never through the card-name
+ * resolver; `return`/`sort`/`dir` carry view and ordering specs, not card
+ * names. Conjunction item strings ("and"/"or") resolve to one negative
+ * lookup per deck, accepted for the coverage.
  */
 export function collectCardNameValues(value: unknown, out: Set<string> = new Set()): Set<string> {
   if (typeof value === "string") {
@@ -212,8 +211,7 @@ export function collectCardNameValues(value: unknown, out: Set<string> = new Set
  * filter. Match shapes inside SUBSELECTS cannot post-filter (a JS row
  * filter cannot re-apply subselect membership) and refuse loudly as
  * CqlBadQuery. `found_by` conditions resolve to id-set constraints before
- * generation (resolveFoundByConditions — the port of card-1.110.0
- * lib/card/query/card_query/found_by.rb); any foundBy node that still
+ * generation (resolveFoundByConditions); any foundBy node that still
  * reaches the generator is an unhandled shape and refuses loudly there
  * (sql.ts's foundBy case).
  */
@@ -318,8 +316,8 @@ function applyMatchFilters(rows: CardsRow[], filters: ConditionNode[]): CardsRow
 
 /** The statement's own limit/offset, applied AFTER the JS filter (they must
  *  not stay in the SQL — filtering after LIMIT would truncate before
- *  matching). Ruby quirks hold: limit <= 0 means unlimited; offset counts
- *  from the filtered set. */
+ *  matching). A limit of zero or less means unlimited; offset counts from
+ *  the filtered set. */
 function applyPostFilterLimitOffset(
   rows: CardsRow[],
   mods: { limit?: string; offset?: string },
@@ -339,10 +337,9 @@ function toIntOrZero(value: string | undefined): number {
 }
 
 /**
- * Execute a statement AS a count query (Ruby Card.count semantics): the
- * return mod is forced to "count", which also skips limit/order/group
- * (CardQuery#full?). Use for "how many cards match" regardless of any
- * return the statement itself declares.
+ * Execute a statement AS a count query: the return mod is forced to
+ * "count", which also skips limit/order/group. Use for "how many cards
+ * match" regardless of any return the statement itself declares.
  */
 export async function executeCount(
   driver: SQLDatabaseDriver,
@@ -420,67 +417,55 @@ async function executeCountPostFiltered(
 }
 
 // ---------------------------------------------------------------------------
-// found_by resolution (the wave-2 unit; card-1.110.0
-// lib/card/query/card_query/found_by.rb)
+// found_by resolution
 //
-// Ruby's found_by val (found_by.rb:6-10) resolves the value to card(s) and
-// merges each found card's cql_hash into the query as a fasten: :direct
-// subquery (found_by.rb:14-16) — the outer query's rows must satisfy the
-// found statement, with the found card's OWN name as the subquery's context
-// (found_by.rb:15). Because that context is fixed per query (never per
-// outer row), the subquery is uncorrelated and the id-set translation is
-// exact: run the found statement standalone for ids and constrain the outer
-// query with `id IN (ids)` — one ANDed constraint per found card, matching
-// Ruby's one subquery per card.
+// `found_by` names another card and constrains the outer query to the rows
+// that found card itself selects. The found card's context is its own name
+// — fixed for the whole query, never varying per outer row — so the
+// constraint is uncorrelated and translates exactly into an id set: run the
+// found statement standalone for ids, then constrain the outer query with
+// `id IN (ids)`, one ANDed constraint per found card.
 //
-// The value forms (found_by.rb:27-39):
-//  - Hash -> Query.run(val), and each RESULT card's cql_hash becomes a
-//    subquery — the double indirection is not exercised by any census page
-//    and refuses with a named error.
-//  - string / array of strings -> Card.fetch value.to_name.absolute(context)
-//    (found_by.rb:35-39; `_left` -> context.trunk, cardname-0.20.0
-//    lib/cardname/contextual.rb:110). A missing fetch returns a new
-//    non-Search card whose try(:cql_hash) is nil -> BadQuery.
+// The value forms:
+//  - Hash -> run the hash as a query, and each RESULT card's own statement
+//    becomes a further subquery. That double indirection is refused with a
+//    named error rather than approximated.
+//  - string / array of strings -> the referenced card, absolutized against
+//    the outer query's context (`_left` becomes the context's trunk). A
+//    reference that names no fetchable card is a bad query.
 //
-// found_by_statement (found_by.rb:18-25) is the found card's cql_hash; the
-// card must RESPOND to cql_hash. In the gems that response set is:
-// Type::SearchType (card-mod-search set/type/search_type.rb includes
-// Abstract::CqlSearch), Type::Cardtype (card-mod-search set/type/cardtype.rb
-// — cql_content { type_id: id, sort_by: :name }), and Type::Set
-// (card-mod-rules set/type/set.rb:1 includes Type::SearchType). For
-// Set-typed cards the cql_content is usually CODE-DEFINED, never parsed
-// from the (often empty) db content: card-mod-rules set/right/{type,self,
-// right,type_plus_right}.rb define cql_content for every card tagged
-// *type / *self / *right / *type plus right. This is the corpus trio's
-// exact shape: `Sign up+*type+by name` -> found_by "_left" ->
-// `Sign up+*type` (Set-typed, empty content) -> cql_content
-// { type: "_left" } -> context `Sign up+*type` absolutizes `_left` to
-// `Sign up` -> the Sign up-typed cards.
+// A found card's statement comes from the card TYPE, not only from its
+// stored content. The types that carry a statement are search_type (parse
+// the stored CQL JSON), cardtype (the fixed statement { type_id: id,
+// sort_by: "name" }), and set. For set-typed targets the statement is
+// usually CODE-DEFINED, keyed by the codename of the target's RIGHT part,
+// and never read from the (often empty) stored content — see
+// FOUNDBY_RIGHT_CODENAME_CQL. A worked shape: a search card
+// `Sign up+*type+by name` does `found_by "_left"`, which absolutizes to
+// `Sign up+*type`; that target is set-typed with empty content, so its
+// statement is the `*type` override { type: "_left" }, which under context
+// `Sign up+*type` resolves `_left` to `Sign up` and selects the cards of
+// that type.
 //
-// Subquery mods (the found statement's own return/limit/offset/sort family)
-// do not drive a direct-fastened subquery in Ruby (the root query owns
-// limit_and_offset and the ORDER clause), so the standalone id run strips
-// them.
+// The found statement's own return/limit/offset/sort mods do not drive the
+// id run: the root query owns paging and ORDER, so a subquery's mods are
+// not part of what it selects.
 // ---------------------------------------------------------------------------
 
-/** Type-set codenames whose cards respond to cql_hash. */
+/** Type-set codenames whose cards carry a statement. */
 const FOUNDBY_CQL_TYPES = new Set(["search_type", "cardtype", "set"]);
 
-/** cql_content overrides keyed by the target's RIGHT part's codename
- *  (card-mod-rules set/right/*.rb — the VirtualSet modules). */
+/** Statements defined by code, keyed by the target's RIGHT part's
+ *  codename — the right-set variants each have their own fixed query. */
 const FOUNDBY_RIGHT_CODENAME_CQL: Record<string, Record<string, unknown>> = {
-  // set/right/type.rb:5-7
   type: { type: "_left" },
-  // set/right/self.rb:5-7
   self: { name: "_left" },
-  // set/right/right.rb:5-7
   right: { right: "_left" },
-  // set/right/type_plus_right.rb:5-7
   "type plus right": { left: { type: "_LL" }, right: "_LR" },
 };
 
-/** Runaway recursion cap (Ruby has none; the port refuses a runaway chain
- *  loudly instead of blowing the stack). */
+/** Runaway recursion cap. An unterminated found_by chain is refused loudly
+ *  here instead of blowing the stack. */
 const FOUNDBY_MAX_DEPTH = 8;
 
 /** Never-matching sentinel id for an empty found set (ids are positive in
@@ -517,8 +502,8 @@ async function resolveFoundByConditions(
 }
 
 /** One foundBy condition -> the ANDed id-set constraints for its target
- *  card(s) (found_by.rb:7-8 iterates the found cards; each becomes its own
- *  subquery, so multiple targets intersect). */
+ *  card(s). Each found card becomes its own subquery, so multiple targets
+ *  intersect. */
 async function resolveFoundByCondition(
   driver: SQLDatabaseDriver,
   condition: Extract<ConditionNode, { kind: "foundBy" }>,
@@ -536,9 +521,9 @@ async function resolveFoundByCondition(
   const constraints: ConditionNode[] = [];
   for (const value of values) {
     if (value !== null && typeof value === "object") {
-      // found_by.rb:28-30 — a Hash value runs Query.run(val) and each RESULT
-      // card's cql_hash becomes a subquery. No census page exercises the
-      // shape; refuse it by name rather than approximating it.
+      // A Hash value runs as a query and each RESULT card's own statement
+      // becomes a subquery of its own. Refuse it by name rather than
+      // approximating a shape that is not exercised.
       throw new CqlBadQuery(
         `found_by hash values (Query.run + result-card cql_hash subqueries) are not supported: ${JSON.stringify(value)}`,
       );
@@ -548,9 +533,8 @@ async function resolveFoundByCondition(
         `invalid found_by value: ${JSON.stringify(value)} (expected a card name or a list of names)`,
       );
     }
-    // found_by.rb:37 — value.to_name.absolute(context): the found_by
-    // reference resolves against THIS query's context (the search card's
-    // name; QueryNode.context is AbstractQuery#context).
+    // The reference resolves against THIS query's context (the search
+    // card's own name, carried on QueryNode.context).
     const targetName = absolutizeName(value, node.context);
     const statement = await foundByTargetStatement(driver, targetName, options);
     constraints.push({
@@ -564,15 +548,14 @@ async function resolveFoundByCondition(
 }
 
 function invalidFoundByCard(name: string, typeName: string): CqlBadQuery {
-  // found_by.rb:23-25's exact message shape.
   return new CqlBadQuery(
     `"found_by" value must be valid Search, but ${name} is a ${typeName}`,
   );
 }
 
 /** The target card's id: the caller's async db-fallback resolver
- *  (ParseOptions.ensureCardId — Card::Lexicon.id's cache-first-with-fallback
- *  walk, junction-aware), then the sync mirror. Without either resolver the
+ *  (ParseOptions.ensureCardId — a cache-first-with-fallback walk that
+ *  follows junctions), then the sync mirror. Without either resolver the
  *  found_by reference cannot be resolved — refuse by name, never silently. */
 async function foundByTargetCardId(
   name: string,
@@ -599,7 +582,7 @@ async function foundByTargetCardId(
   return undefined;
 }
 
-/** One cards row by id (Card.fetch's non-trashed read). */
+/** One live (non-trashed) cards row by id. */
 async function fetchCardRowById(
   driver: SQLDatabaseDriver,
   id: number,
@@ -625,16 +608,17 @@ async function fetchCodenameById(
   return result.rows[0]?.codename ?? undefined;
 }
 
-/** found_by_statement (found_by.rb:18-20): the found card's cql_hash — the
- *  responding-types check plus the code-defined cql_content overrides.
- *  `Card.fetch(name, new: {})` (found_by.rb:37) NEVER misses: for a name
- *  with no row it fabricates a card whose set modules come from the NAME
- *  (decko's pattern-card typing) — for a right part tagged *type / *self /
- *  *right / *type plus right the fabricated card is Set-typed and the same
- *  right-set cql_content override applies (the PlainText census page's
- *  `PlainText+*type` target has no corpus row and still resolves
- *  {type: "_left"}). Any other fabricated shape has the deck-default type
- *  (Basic — try(:cql_hash) nil) and takes the :22-25 BadQuery. */
+/** The found card's statement: the type check, then either a code-defined
+ *  override or the card's stored CQL content.
+ *
+ *  A found_by reference NEVER misses outright. When no card row carries the
+ *  name, a card is still fabricated from the NAME ITSELF — pattern-card
+ *  typing means a right part tagged `*type` / `*self` / `*right` /
+ *  `*type plus right` produces a set-typed fabricated card, and the same
+ *  right-part override that would apply to a stored card applies here. So a
+ *  `PlainText+*type` target with no row still resolves { type: "_left" }.
+ *  Any other fabricated shape gets the deck's default card type, which
+ *  carries no statement, and is a bad query. */
 async function foundByTargetStatement(
   driver: SQLDatabaseDriver,
   targetName: string,
@@ -645,30 +629,27 @@ async function foundByTargetStatement(
   if (row !== undefined) {
     const typeCodename = await fetchCodenameById(driver, row.type_id);
     if (!FOUNDBY_CQL_TYPES.has(typeCodename ?? "")) {
-      // found_by.rb:22-25 — try(:cql_hash) is nil for every other type.
+      // Every other type carries no statement at all.
       throw invalidFoundByCard(targetName, typeCodename ?? "unknown");
     }
     if (typeCodename === "cardtype") {
-      // card-mod-search set/type/cardtype.rb:4-6 cql_content:
-      // { type_id: id, sort_by: :name }
+      // A cardtype target selects exactly itself, ordered by name.
       return { type_id: row.id, sort_by: "name" };
     }
     if (typeCodename === "set") {
       const override = await foundByRightCodenameOverride(driver, row.right_id);
       if (override !== undefined) return override;
-      // No code override: CqlSearch#cql_content parses the db content
-      // (cql_search.rb:8-12) with :29-38's exact BadQuery shapes.
+      // No code override: the stored content is the statement.
       return parseFoundByContentCql(row.db_content ?? "");
     }
-    // search_type: cql_hash = cql_content = parse_json_cql(content)
-    // (cql_search.rb:3-12, :29-38).
+    // search_type: the stored content is the statement.
     return parseFoundByContentCql(row.db_content ?? "");
   }
   // No row: the fabricated pattern card. The right part's codename decides.
   const fabricated = await foundByFabricatedStatement(driver, targetName, options);
   if (fabricated !== undefined) return fabricated;
-  // A fabricated non-pattern card has the deck-default type (Basic) —
-  // found_by.rb:22-25.
+  // A fabricated non-pattern card carries the deck's default card type,
+  // which has no statement.
   throw invalidFoundByCard(targetName, "Basic");
 }
 
@@ -685,10 +666,9 @@ async function foundByRightCodenameOverride(
 }
 
 /** The fabricated-card arm: resolve the target's RIGHT part by name; when
- *  its codename carries a right-set cql_content override, that hash is the
- *  fabricated Set-typed card's cql_hash. `X+*type` splits at the LAST joint
- *  (Cardname#left_name/right_name), so the right of "PlainText+*type" is
- *  "*type". */
+ *  its codename carries a right-set override, that hash is the statement of
+ *  the fabricated set-typed card. A name splits at its LAST joint, so the
+ *  right of "PlainText+*type" is "*type". */
 async function foundByFabricatedStatement(
   driver: SQLDatabaseDriver,
   targetName: string,
@@ -701,9 +681,10 @@ async function foundByFabricatedStatement(
   return foundByRightCodenameOverride(driver, rightId);
 }
 
-/** cql_search.rb:29-38 parse_json_cql — Ruby's exact BadQuery messages for
- *  the empty and unparseable shapes; a non-Hash parse RESULT crashes Ruby
- *  unrescued at :11 symbolize_keys, mirrored as a plain Error. */
+/** The card's stored CQL JSON. The empty and unparseable shapes are bad
+ *  queries in their own right, named as such; a parse result that is not an
+ *  object at all is a plain Error — the statement has to be a map before it
+ *  can be interpreted, and this is the point where that stops being true. */
 function parseFoundByContentCql(content: string): Record<string, unknown> {
   if (content === "") {
     throw new CqlBadQuery("can't run search with empty content");
@@ -721,10 +702,10 @@ function parseFoundByContentCql(content: string): Record<string, unknown> {
 }
 
 /** Run the found statement standalone for its id set, in the found card's
- *  own name context (found_by.rb:15 context: card.name). Paging/sort mods
- *  are stripped — a direct-fastened subquery's mods do not drive the root
- *  query's SQL (the root owns limit_and_offset and ORDER). Nested found_by
- *  inside the found statement resolves recursively. */
+ *  own name as the context. Paging/sort mods are stripped — a subquery's
+ *  mods do not drive the root query's SQL (the root owns limit_and_offset
+ *  and ORDER). Nested found_by inside the found statement resolves
+ *  recursively. */
 async function runFoundByTargetIds(
   driver: SQLDatabaseDriver,
   statement: Record<string, unknown>,

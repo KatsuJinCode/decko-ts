@@ -1,8 +1,8 @@
-// The oracle replay engine: replays captured fixture entries through
-// per-area handlers registered by the engine streams, byte-diffs actual vs
-// expected (slot-id normalized on both sides), and produces a structured
-// report. Areas without a registered handler report PENDING - a missing
-// stream is a status, never a failure.
+// The replay engine: replays recorded fixture entries through per-area
+// handlers registered by the engine streams, byte-diffs actual vs expected
+// (slot-id normalized on both sides), and produces a structured report.
+// Areas without a registered handler report PENDING - a missing stream is a
+// status, never a failure.
 //
 // This module references the engine streams by INTERFACE ONLY: handlers are
 // plain functions registered here, no imports of src/card, src/cql, or any
@@ -48,8 +48,8 @@ const FIXTURES_DIR = path.resolve(
  * - json: canonicalized (deeply key-sorted, compact) then compared
  *   (name-engine / card-engine / rules-engine objects, cql-engine arrays).
  * - error: rebuilt as the recorded sentinel
- *   `CAPTURE_ERROR: <ruby class>: <message>` and compared as bytes.
- *   errorClass is the FULL Ruby class name (e.g. "Card::Error::UserError"),
+ *   `CAPTURE_ERROR: <error class>: <message>` and compared as bytes.
+ *   errorClass is the FULL class name (e.g. "Card::Error::UserError"),
  *   because the sentinel bytes are the parity target.
  */
 export type HandlerOutcome =
@@ -201,8 +201,8 @@ function smokeEntries(fixture: SmokeFixture, kind: string): ReplayEntry[] {
     expected: fixture.read_rule,
   });
   // smoke.cql_search is validated by the schema but deliberately NOT
-  // flattened: capture.rb recorded bare Card.search results without the
-  // canonical query JSON, so there is no handler input to replay.
+  // flattened: the recorder stored bare search results without the canonical
+  // query JSON, so there is no handler input to replay.
   return entries;
 }
 

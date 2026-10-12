@@ -10,8 +10,9 @@
 //     save, map_referees (lib/card/reference.rb:26-28) backfills
 //     referee_id on EVERY row keyed to the card's key — "L", "I", "P"
 //     alike (no ref_type filter); the unmap_referees arm (:31-33) needs
-//     action == :update && skip_update_referers? and is out of the
-//     engine's reach (no skip machinery) until the skip stream.
+//     action == :update && skip_update_referers? and is out of THIS
+//     module's reach (the engine-level skip machinery is covered in
+//     event-seam-save-path.test.ts).
 //   - event :update_referer_content (reference_events.rb:7-10):
 //     referers.each { |r| r.replace_references name_before_act, name }
 //     (replace_references :48-50 -> content_quietly= :52-58 -> direct
@@ -30,10 +31,11 @@
 //     :151-162 (self-reference rename leaves content alone — no self
 //     rows exist, all.rb:93), :166-170 (nest updates), :69-73 (picks up
 //     new references = map_referees backfill).
-//   - Divergences (documented in update-referer-content.ts): Ruby rebuilds
-//     explicit-resource links and comment nests into corrupted forms on
-//     swap (nil @name -> "[[|text]]"/"{{}}"); this port preserves them
-//     byte-identically, and the tests below LOCK that preservation.
+//   - Divergences (documented in update-referer-content.ts): the upstream
+//     swap rebuilds explicit-resource links and comment nests into
+//     corrupted forms (nil @name -> "[[|text]]"/"{{}}"); this engine
+//     preserves them byte-identically, and the tests below LOCK that
+//     preservation.
 
 import { describe, expect, it } from "vitest";
 import {
@@ -151,7 +153,7 @@ describe("rename rewrites referer content (update_referer_content port)", () => 
     storage.close();
   });
 
-  it("leaves explicit-resource links and comment nests byte-identical (port divergence)", async () => {
+  it("leaves explicit-resource links and comment nests byte-identical (deliberate divergence)", async () => {
     const storage = await createActionsTestStorage();
     await seedStandardDeck(storage);
     const engine = actionEngine(storage);
@@ -164,9 +166,9 @@ describe("rename rewrites referer content (update_referer_content port)", () => 
 
     await engine.updateCard({ cardId: blue.cardId, name: "Red" });
 
-    // Ruby's unconditional rebuild would corrupt these to
+    // The upstream unconditional rebuild would corrupt these to
     // "[[|site]]"/"{{}}" (nil @name; link.rb:35-40, nest.rb:77-81);
-    // this port preserves them and still swaps the real reference.
+    // this engine preserves them and still swaps the real reference.
     await expect(contentOf(storage, referer.cardId)).resolves.toBe(
       "go [[https://x.example|site]] and {{#quiet}} and [[Red]]",
     );

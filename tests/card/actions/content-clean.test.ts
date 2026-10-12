@@ -1,8 +1,8 @@
-// Card::Content.clean! (card-1.110.0 lib/card/content/clean.rb). The first
-// expectation is the Ruby oracle's stored content for the same input
-// (persistence probe step 20, RichText and PlainText alike), except for the
-// declared security difference: the port drops the javascript: link target
-// Ruby keeps (docs/SECURITY.md; content-clean-security.test.ts).
+// Card content cleaning. The first expectation is the historically stored
+// content for the same input (persistence probe step 20, RichText and
+// PlainText alike), except for the declared security difference: this engine
+// drops the javascript: link target the old cleaner kept (docs/SECURITY.md;
+// content-clean-security.test.ts).
 
 import { describe, expect, it } from "vitest";
 import { cleanContent, rubyCleanContent } from "../../../src/card/actions/content-clean.js";
@@ -12,11 +12,11 @@ describe("cleanContent", () => {
     const input =
       '<p onclick="x()">hi</p><script>bad()</script><b>ok</b>' +
       '<a href="javascript:evil()">l</a><div class="c" style="color:red">d</div>';
-    // The Ruby oracle's stored content.
+    // The historically stored content.
     expect(rubyCleanContent(input)).toBe(
       '<p>hi</p> bad() <b>ok</b><a href="javascript:evil()">l</a><div style="color:red">d</div>',
     );
-    // The port's: the same, without the script-capable link target.
+    // This engine's: the same, without the script-capable link target.
     expect(cleanContent(input)).toBe(
       '<p>hi</p> bad() <b>ok</b><a>l</a><div style="color:red">d</div>',
     );
@@ -28,7 +28,7 @@ describe("cleanContent", () => {
     );
   });
 
-  it("keeps a multi-line comment, as Ruby's `.` does not cross newlines", () => {
+  it("keeps a multi-line comment, as the regex `.` does not cross newlines", () => {
     expect(cleanContent("a<!--\nb-->c")).toBe("a<!--\nb-->c");
   });
 

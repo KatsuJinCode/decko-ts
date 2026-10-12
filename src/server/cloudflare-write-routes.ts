@@ -7,18 +7,17 @@
 // WHAT THIS FILE IS, AND WHAT IT IS NOT
 // ---------------------------------------------------------------------------
 // It is a HOST ADAPTER and nothing else. Every behavior below is already
-// implemented and already Ruby-cited in three engine modules, none of which
-// this file changes:
+// implemented in three engine modules, none of which this file changes:
 //
 //   src/server/write-routes.ts       the CUD grammar + the *signin update
 //   src/card/auth/session-store.ts   token -> actor over auth_sessions
 //   src/server/first-run-routes.ts   GET/POST /setup
 //
-// What is NEW here, and is NEW-not-Ruby, is the Workers-shaped plumbing:
-// turning a Web `Request` into the `WriteRouteRequest` those modules take,
-// turning their `WriteRouteResponse` back into a `Response` with
-// `Set-Cookie` on it, and the two `[vars]` gates. No URL grammar, no
-// validation ladder, no response shape is invented here.
+// What is new here is the Workers-shaped plumbing: turning a Web `Request`
+// into the `WriteRouteRequest` those modules take, turning their
+// `WriteRouteResponse` back into a `Response` with `Set-Cookie` on it, and
+// the two `[vars]` gates. No URL grammar, no validation ladder, no response
+// shape is invented here.
 //
 // ---------------------------------------------------------------------------
 // THE TWO GATES, AND WHY THEY ARE [vars] AND NOT process.env
@@ -31,16 +30,15 @@
 // armed surface on the very next call.
 //
 // On Workers those values arrive as BINDINGS on `env`, not as process.env
-// entries. The Cloudflare nodejs_compat documentation
-// (https://developers.cloudflare.com/workers/runtime-apis/nodejs/, fetched
-// 2026-10-02) lists "Process: supported" and says NOTHING about process.env
-// mirroring [vars] — so this host does not assume it. `syncGateToProcessEnv`
-// below ASSIGNS the binding's value into process.env, and the one thing this
-// file relies on is the proven part: process.env exists and is a mutable
-// object on workerd under compatibility_flags = ["nodejs_compat"] (the flag
-// wrangler.toml already sets). Measured by
-// tests/deploy/deploy-worker-write-surface.test.ts, which runs the real
-// worker.js bundle in workerd and asserts `firstRunEnabled()` flipped.
+// entries. The Cloudflare nodejs_compat documentation lists
+// "Process: supported" and says NOTHING about process.env mirroring [vars] —
+// so this host does not assume it. `syncGateToProcessEnv` below ASSIGNS the
+// binding's value into process.env, and the one thing this file relies on is
+// the proven part: process.env exists and is a mutable object on workerd under
+// compatibility_flags = ["nodejs_compat"] (the flag wrangler.toml already
+// sets). Measured by tests/deploy/deploy-worker-write-surface.test.ts, which
+// runs the real worker.js bundle in workerd and asserts `firstRunEnabled()`
+// flipped.
 //
 // If that assignment ever stops taking on a future runtime, the failure is
 // LOUD, not silent: `handleFirstRunRequest` would answer null, and
@@ -57,9 +55,8 @@
 //                            ONE exception and it is not a card write:
 //                            POST /update/*signin still dispatches and still
 //                            INSERTs an auth_sessions row, because sign-in
-//                            mints a session, not a card, and Ruby decko
-//                            never gates it behind a deploy flag. Pinned
-//                            while DISARMED by
+//                            mints a session, not a card. Pinned while
+//                            DISARMED by
 //                            tests/deploy/deploy-worker-write-surface.test.ts
 //                            ("signs a real account in while DISARMED
 //                            (the login-action exemption)", which asserts the
@@ -101,9 +98,8 @@ import { coffeeNpmCompiler } from "./coffee-npm-compiler.js";
 
 /** The subset of the Workers `env` this surface reads. The D1 binding is the
  *  one the deploy already provisions; the two flags are optional [vars]. */
-/** The two gate flags alone — the shape a host that owns its own DB binding
- *  passes (the edge-signin-session surface reads only these; fold-10 union
- *  export matching the deploy lineage's edge-signin-form-fix shape). */
+/** The gate flags alone — the shape a host that owns its own DB binding
+ *  passes (the edge-signin-session surface reads only these). */
 export interface WriteSurfaceFlags {
   /** "1" opens the /setup window (first-run-routes.ts:97, :145). */
   readonly DECKO_FIRST_RUN?: string;
@@ -111,7 +107,7 @@ export interface WriteSurfaceFlags {
    *  including absent, is off. */
   readonly DECKO_WRITE_PATH?: string;
   /** Password storage (auth/password-hash.ts): "pbkdf2" (default) or
-   *  "legacy-sha1" for a deck Ruby Decko also serves. */
+   *  "legacy-sha1" for a deck an older engine also serves. */
   readonly DECKO_PASSWORD_HASH?: string;
   /** PBKDF2 iterations for new password hashes (default 600,000, or the
    *  runtime's limit: 100,000 on Cloudflare Workers). */
@@ -164,12 +160,9 @@ export interface WorkersWriteRequest {
   /** The scheme the CLIENT used — the same evidence as {@link secure},
    *  captured so a redirect builder cannot hand the already-authenticated
    *  browser a scheme-downgraded Location. workerd's Request URL scheme is
-   *  authoritative here. (fold-10 union: the field is the scheme-downgrade
-   *  pass's surface the edge-signin-form-fix pick consumes — 4d7b008's
-   *  hunks read it; the deploy lineage landed it in b0f8252.) */
+   *  authoritative here. */
   readonly scheme: "http" | "https";
-  /** The client ip the host captured, for card_acts
-   *  (director/class_methods.rb:27-29 via write-routes.ts:137-139). */
+  /** The client ip the host captured, for the card_acts write. */
   readonly ipAddress?: string;
 }
 
@@ -187,10 +180,9 @@ export interface WorkersWriteResponse {
  *  first-run-routes.ts:92-95 uses so it can never collide with a card mark. */
 export const WORKERS_SIGNIN_PATH = "/_signin";
 
-/** The captured sign-in form's action (write-routes.ts:613-624: the real
- *  oracle form posts to /update/*signin with _method=patch and the subcard
- *  grammar). encodeURIComponent leaves "*" alone, so the literal path
- *  matches. */
+/** The action the sign-in form posts to: /update/*signin, with _method=patch
+ *  and the subcard grammar write-routes.ts:613-624 consumes.
+ *  encodeURIComponent leaves "*" alone, so the literal path matches. */
 const SIGNIN_FORM_ACTION = "/update/*signin";
 
 // ---------------------------------------------------------------------------
@@ -216,7 +208,7 @@ const edgeCoffeeCompiler = coffeeNpmCompiler();
 
 /** Is the write path armed? The [vars] value is authoritative; the engine
  *  modules' own process.env read is the fallback for a host that sets it
- *  there instead (the Node staging host, vm-staging-server.mjs:906). */
+ *  there instead (the Node staging host). */
 export function writePathArmed(env: WriteSurfaceFlags): boolean {
   if (typeof env.DECKO_WRITE_PATH === "string") return env.DECKO_WRITE_PATH === "1";
   return false;
@@ -327,9 +319,8 @@ export function toWebResponse(
 // ---------------------------------------------------------------------------
 
 /** Entity-escape a string landing in an HTML text or attribute slot. The
- *  body is verbatim worker.ts's escapeHtml (the deploy lineage's 5dd6ab0
- *  fix, carried through 12bd5236) — the same four entities in the same
- *  order, so every HTML emitter in the repo escapes identically. */
+ *  body is verbatim worker.ts's escapeHtml — the same four entities in the
+ *  same order, so every HTML emitter in the repo escapes identically. */
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -355,12 +346,10 @@ export function plainText(status: number, title: string, message: string): Worke
   };
 }
 
-/** The default-off answer for any non-GET/HEAD verb. 403 is the class Ruby
- *  itself uses for a write the actor may not make: `class PermissionDenied <
- *  UserError; self.status_code = 403` (card-1.110.0/lib/card/error.rb:103-105,
- *  verified in the gem tree). Here the actor is the deployment's own posture,
- *  not a person, but the class is the same one a reader of Ruby's own error
- *  table would expect. */
+/** The default-off answer for any non-GET/HEAD verb. 403 is the right class
+ *  here: the actor refusing the write is the deployment's own posture rather
+ *  than a person, but "not permitted" is still what happened, and a 500 would
+ *  report a deliberate policy as a fault. */
 function writePathOffResponse(): WorkersWriteResponse {
   return plainText(
     403,
@@ -372,22 +361,20 @@ function writePathOffResponse(): WorkersWriteResponse {
 
 /** GET /_signin — the minimal honest sign-in form.
  *
- *  NEW PRODUCT SURFACE, NOT RUBY. Live decko renders the *signin card's OWN
- *  form at this route (card-mod-account-0.20.0/set/self/signin.rb:4 "/:signin
- *  (core view) gives the login ui"); this port's card views are byte-parity
- *  surface and the account-mod form views are unported rails, so serving the
- *  real card view would change rendered bytes. The staging host serves the
- *  same kind of stand-in (vm-staging-server.mjs:2649-2672, "this staging form
- *  posts to /_signin").
+ *  This is a stand-in surface, not the *signin card's own view. A full
+ *  engine renders the sign-in card's own form at this route; the card views
+ *  here are byte-parity surface and the account form views are not part of
+ *  that surface, so serving the real view would change rendered bytes for
+ *  every page that includes one. The staging host serves the same kind of
+ *  stand-in.
  *
  *  What is NOT invented: the form's action, verb, hidden fields and field
- *  names are the captured oracle grammar — `card[subcards][+*email][content]`
- *  and `card[subcards][+*password][content]` posted to /update/*signin with
- *  _method=patch and success[redirect]=true&success[mark]=*previous, which is
- *  exactly what write-routes.ts:613-671 already consumes. The engine's
- *  signin_success aborts the save (set/self/signin.rb:14-16) and the
- *  controller redirects to *previous (signin.rb:170-173), so this form
- *  changes no engine behavior at all. */
+ *  names are the grammar write-routes.ts:613-671 already consumes —
+ *  `card[subcards][+*email][content]` and
+ *  `card[subcards][+*password][content]` posted to /update/*signin with
+ *  _method=patch and success[redirect]=true&success[mark]=*previous. The
+ *  engine's signin_success aborts the save and the controller redirects to
+ *  *previous, so this form changes no engine behavior at all. */
 export function signinFormPage(): WorkersWriteResponse {
   const field = (label: string, id: string, name: string, type: string): string =>
     `<p><label for="${id}">${label}</label><br>` +
@@ -409,10 +396,10 @@ export function signinFormPage(): WorkersWriteResponse {
   };
 }
 
-/** GET /setup — delegated whole to first-run-routes.ts. The census, the form
- *  bytes, the 404-when-closed and the 422 validation ladder are all that
- *  module's; this host only supplies the driver and the fetcher, which are
- *  the two seams its FirstRunRouteContext asks for (first-run-routes.ts:127-134). */
+/** GET /setup — delegated whole to first-run-routes.ts. The form bytes, the
+ *  404-when-closed and the 422 validation ladder are all that module's; this
+ *  host only supplies the driver and the fetcher, which are the two seams
+ *  its FirstRunRouteContext asks for (first-run-routes.ts:127-134). */
 async function mountFirstRun(
   ctx: WorkersWriteContext,
   driver: SQLDatabaseDriver,
@@ -461,10 +448,9 @@ async function mountWrite(
       fetcher: ctx.fetcher,
       ipAddress: req.ipAddress,
       originPolicy,
-      // The ajax soft redirect (response.rb:54-62) re-renders the SAVED card
-      // through the host's render engine. Ruby's order is expiry first, then
-      // the re-render (cache/all.rb) — without it the slot render would read
-      // the pre-save warm maps (post-save-cache-expiry.ts:9-19).
+      // The ajax soft redirect re-renders the SAVED card through the host's
+      // render engine. Expiry must come first — without it the slot render
+      // reads the pre-save warm maps (post-save-cache-expiry.ts).
       renderSlot: async (name) => {
         ctx.fetcher.expireName(name);
         ctx.renderEngine.expireRenderCard(name);
@@ -506,11 +492,10 @@ async function mountWrite(
   };
 }
 
-/** Ruby's expiry rides every committed save (card-1.110.0
- *  lib/card/director/phases.rb:3, :54); the port models it on the shared
- *  FetchEngine and the host must drop the render-side warm maps the fetch
- *  layer cannot reach (post-save-cache-expiry.ts:12-19). Keyed on
- *  expiryName, never on the response shape. */
+/** Expiry rides every committed save. The engine models it on the shared
+ *  FetchEngine; the host must also drop the render-side warm maps the fetch
+ *  layer cannot reach (post-save-cache-expiry.ts). Keyed on expiryName,
+ *  never on the response shape. */
 function expireAfterSave(ctx: WorkersWriteContext, expiryName: string | undefined): void {
   if (expiryName === undefined || expiryName === "") return;
   expireRenderCachesAfterSave(
@@ -565,13 +550,12 @@ export async function handleWorkersWriteSurface(
   if (readMethod) return null;
   const originPolicy = applySecuritySettings(env);
   if (!write) {
-    // AUTH IS NOT A CARD WRITE (the edge signin form fix, 2026-10-03):
-    // with the write path off, the login action still dispatches —
-    // /update/*signin mints an auth_sessions row and no card rows, and Ruby
-    // decko never gates sign-in behind a deploy flag. The auth-only dispatch
-    // resolves to handleSigninUpdate for POST /update/*signin and null for
-    // everything else, so every card create/update/delete keeps the exact
-    // off-response it has always answered here.
+    // AUTH IS NOT A CARD WRITE: with the write path off, the login action
+    // still dispatches — /update/*signin mints an auth_sessions row and no
+    // card rows. The auth-only dispatch resolves to handleSigninUpdate for
+    // POST /update/*signin and null for everything else, so every card
+    // create/update/delete keeps the exact off-response it has always
+    // answered here.
     const auth = await handleAuthOnlyRequest(
       {
         driver: resolveDriver(ctx, env),
@@ -607,11 +591,10 @@ export function applySecuritySettings(env: WriteSurfaceFlags): OriginPolicy {
 }
 
 /** The D1 adapter for the write path. CloudflareD1Adapter is a stateless
- *  wrapper over the binding (drivers/d1.ts:55-61), so building it per request
- *  shares nothing with the host's read adapter and warms nothing. (fold-10
- *  union: DB is optional in the env bag the edge-signin-session surface
- *  passes — a flags-only host supplies ctx.driver; neither is the write
- *  path's own named error, per the deploy lineage's shape.) */
+ *  wrapper over the binding (drivers/d1.ts), so building it per request shares
+ *  nothing with the host's read adapter and warms nothing. DB is optional in
+ *  the env bag this takes: a flags-only host supplies ctx.driver, and
+ *  neither being present is the write path's own named error. */
 function resolveDriver(ctx: WorkersWriteContext, env: WriteSurfaceFlags & { readonly DB?: D1DatabaseLike }): SQLDatabaseDriver {
   if (ctx.driver !== undefined) return ctx.driver;
   if (env.DB === undefined) {
