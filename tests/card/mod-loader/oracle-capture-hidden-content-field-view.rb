@@ -1,4 +1,4 @@
-# Live oracle probe: what does ActionView 7.2.3.2 emit for the exact call
+# Derivation probe: what does ActionView 7.2.3.2 emit for the exact call
 # Card::Format::MethodDelegation forwards for card-mod-format
 # set/all/content.rb:57-59 view :hidden_content_field?
 #
