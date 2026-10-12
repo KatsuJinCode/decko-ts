@@ -8,26 +8,13 @@
 //   reached from Scanner.normalize (scanner.rb:51-63) and applied on EVERY
 //   scan at scanner.rb:137 `super self.class.normalize(code)`.
 //
-// This is the seam behind an earlier "layout-whitespace" page class (60
-// pages). The 5 CodeRay-highlighted Layout card bodies are stored with CRLF
-// line endings; the html scanner's `/\s+/m` (scanners/html.rb:101) matches
-// the CRLF PAIR as one `:space` token, and the encoder escape table
-// (encoders/html.rb:139) maps every control code in 0x0B-0x1F to a literal
-// space - 0x0D (`\r`) included. Without `to_unix` the engine therefore emits
-// " \n" where the oracle emits "\n": one extra space per line inside the
-// <pre> block. No fixture under fixtures/captured/coderay/ contains a CR,
-// which is why the byte-identity suite could not see it; the oracle page
-// captures are the only ground truth for this behavior.
-//
-// The body below is the VERBATIM `content` of corpus card 12392 (`MoKi
-// layout`, read from bench-corpus-raw.sqlite3), and the expected string is
-// the span-stripped form of the frozen oracle page-lane capture's <pre>
-// block - so a regression fails on the real bytes, not on a hand-written
-// paraphrase. The 5 pages of the class are MoKi layout (12392), Classic
-// Layout (314), home-layout, rileyellery-layout, and
-// Golden_Bears_Aikido_at_UC_Berkeley main layout; their stored bodies
-// carry 7/43/5/3/17 CRLF respectively, and the engine emitted exactly that
-// many extra spaces before the fix.
+// Mechanism: CRLF-ended Layout card bodies go through the html scanner,
+// whose `/\s+/m` (scanners/html.rb:101) matches the CRLF PAIR as one
+// `:space` token, and the encoder escape table (encoders/html.rb:139) maps
+// every control code in 0x0B-0x1F to a literal space - 0x0D (`\r`)
+// included. Without `to_unix` the engine therefore emits " \n" where the
+// reference emits "\n": one extra space per line inside the <pre> block.
+// LF-only fixtures cannot catch it; only CRLF-ended bodies do.
 
 import { describe, expect, it } from "vitest";
 
@@ -47,12 +34,12 @@ function preBlock(html: string): string {
 }
 
 describe("code highlighting: coderay to_unix (CRLF -> LF at the scan dispatch)", () => {
-  // --- the pure function: the raw bytes of card 12392, verbatim ---------
+  // --- the pure function: a CRLF-ended layout body ----------------------
   const FRAI_RAW =
     '<body id={{_MAIN|name}} align="center">\r\n{{MoKi_menus|naked}}\r\n\r\n' +
     '<div align="center" id="primary"> \r\n{{_main|naked}}\r\n</div>\r\n\r\n</body>';
 
-  // Span-stripped <pre> from the frozen oracle capture for `MoKi layout`.
+  // Span-stripped <pre> from the reference render for that body.
   // Note `primary&quot;&gt; \n`: the AUTHORED space before the newline is
   // kept, which is the discriminating byte - a fix that trimmed all
   // whitespace would lose it, and a fix that kept the CR would add a space
@@ -69,7 +56,7 @@ describe("code highlighting: coderay to_unix (CRLF -> LF at the scan dispatch)",
 
   it("emits no space before the newline that followed a CRLF", () => {
     const pre = logical(preBlock(highlight(FRAI_RAW, "html")));
-    // 7 CRLF in the body; the oracle capture has exactly ONE " \n", the
+    // 7 CRLF in the body; the expected string has exactly ONE " \n", the
     // authored space on the `<div ...> \r\n` line.
     expect(pre.split("\n").length - 1).toBe(7);
     expect(pre.match(/ \n/g) ?? []).toHaveLength(1);
