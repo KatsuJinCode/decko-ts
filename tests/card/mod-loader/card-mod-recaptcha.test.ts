@@ -19,19 +19,18 @@
 //     the live HTML_VIEWS record would also route the CHILD cards' :core
 //     renders through the mod's override (Ruby scopes it to
 //     Self::RecaptchaSettings), so a live A/B of the composed bytes would
-//     exercise the dispatch coarseness, not the mod's semantics. The
-//     corpus never rendered this view either (fixtures/corpus only carries
-//     denied closed/content/open/title bytes for id 24539), so structural
+//     exercise the dispatch coarseness, not the mod's semantics. No
+//     rendered bytes of this view exist to pin against either, so structural
 //     + target-live tests are the headless bar - exactly the api_key
 //     precedent (card-mod-api_key.test.ts:31-37).
 //   - LOADER REGISTRATIONS (basket, settings registry, load report) run
 //     through ModLoader on a CLONED views record (card-mod-api_key.test.ts
 //     :266 precedent) so the live HTML_VIEWS record is never mutated.
-//   - RUBY-ORACLE PINS: the regex anchors, the to_f/to_sym parsing
+//   - RUBY-RUNTIME PINS: the regex anchors, the to_f/to_sym parsing
 //     semantics, and the capitalize variants were pinned against Ruby 3.3
 //     via the committed probe tests/card/mod-loader/
 //     oracle-capture-recaptcha-semantics.rb (card-mod-recaptcha-0.20.0's
-//     own patterns); the tests below carry the oracle values in their
+//     own patterns); the tests below carry those values in their
 //     comments.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -94,7 +93,7 @@ beforeAll(async () => {
   await seedCard(s, { id: 41, name: "secret key", codename: "secret_key" });
 
   // data/real.yml:15-16 - the *recaptcha settings card (codename
-  // recaptcha_settings; the corpus pins its type_code as basic, id 24539).
+  // recaptcha_settings, type_code basic).
   // Its dbContent marks the WITHOUT-mod :core render.
   await seedCard(s, {
     id: 24539,
@@ -290,7 +289,7 @@ describe("card-mod-recaptcha setting_opts (set/self/captcha.rb:1-5)", () => {
 
   it("registers *captcha into the permission group at slot 5, leaving Ruby's nil holes (setting.rb:101-110)", () => {
     // Loading ALONE: slots 1-4 are unoccupied -> nil holes, the entry at
-    // index 4 (the same shape the help-mod oracle pinned for its group).
+    // index 4 (the same shape the help-mod suite pins for its group).
     const record = { ...HTML_VIEWS };
     const loader = new ModLoader([{ manifest: cardModRecaptcha }], record);
     loader.load();
@@ -667,8 +666,8 @@ describe("card-mod-recaptcha pure semantics: set/abstract/recaptcha_setting.rb",
     expect(recaptchaFieldContentError("ünicode")).toBe("invalid key");
   });
 
-  it("the ^...$ anchors are LINE anchors, matching Ruby's Onigmo semantics (oracle-pinned)", () => {
-    // Ruby oracle (tests/card/mod-loader/oracle-capture-recaptcha-semantics.rb,
+  it("the ^...$ anchors are LINE anchors, matching Ruby's Onigmo semantics (Ruby-3.3-probed)", () => {
+    // Ruby (tests/card/mod-loader/oracle-capture-recaptcha-semantics.rb,
     // Ruby 3.3):
     //   /^[a-zA-Z0-9\-_]*$/.match?("ok\nbad!")  => true
     //   /^[a-zA-Z0-9\-_]*$/.match?("\nok\n")    => true
@@ -727,7 +726,7 @@ describe("card-mod-recaptcha pure semantics: config/late/recaptcha.rb + set/self
     expect(usingDefaults(null, DEV_DEFAULTS.site_key)).toBe(false);
     // line 34 `Cardio.config.recaptcha_site_key == @defaults[:site_key]` with
     // no default injected: an absent resolution still compares equal
-    // (nil == nil) - the capture deck stores no +*site key content, so the
+    // (nil == nil), so the
     // warning fires with no injection.
     expect(usingDefaults(undefined)).toBe(true);
   });
