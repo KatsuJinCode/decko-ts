@@ -74,7 +74,7 @@ async function main() {
     const config = join(scratch, "wrangler.toml");
     writeFileSync(
       config,
-      fillConfig(readFileSync(resolve(REPO, "deploy/cf-brandon/wrangler.toml"), "utf8"), {
+      fillConfig(readFileSync(resolve(REPO, "deploy/cf-trial/wrangler.toml"), "utf8"), {
         workerName,
         databaseName,
         databaseId: dbs[0].uuid,
