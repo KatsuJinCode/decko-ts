@@ -1,6 +1,6 @@
 // The core mod (card-1.110.0 mod/core) — the 34th mod, ported here for its
-// ADMIN SURFACE: the 13 view names the authoritative coverage doc counts
-// missing (deliverables/mod-coverage-authoritative-2026-09-28.md:91 —
+// ADMIN SURFACE: the 13 view names the coverage inventory counts missing
+// (docs/coverage-inventory.md —
 // "admin :core/:warning, mod :roles, type/mod's 10 config views"), which
 // are 18 view registrations across three set files (set/self/admin.rb 2,
 // set/self/mod.rb 5, set/type/mod.rb 11), plus the mod's 31 set-module
@@ -10,22 +10,23 @@
 // the engine's seed tables" — default-mod-deck.ts's pre-composition stance)
 // carries no admin surface at all, so the core manifest is the registration
 // site these views have. The manifest IS wired into defaultDeckSources():
-// composed at pass14-int as MANIFESTS' first entry —
-// core loads at bundle index 0; the composition recorded result is
-// . The core-mod suites load it standalone as before.
+// MANIFESTS' first entry —
+// core loads at bundle index 0. The core-mod suites load it standalone as
+// before.
 //
-// HONESTY BOUNDARY (rendered-unpinned): no Ruby-oracle capture exists for
+// HONESTY BOUNDARY: no Ruby-oracle bytes exist for
 // any of these views. Bytes derive from the gem sources, cited inline per
 // emitter; the two read-only oracle probes
 // (tests/card/mod-loader/oracle-probe-core-admin-facts.rb,
 // oracle-probe-core-mod-fetch.rb) verified the STRUCTURAL facts sources
 // cannot carry (basket insertion order, spec emptiness, config defaults,
-// role-grouping shapes). No byte verification against a capture is claimed.
+// role-grouping shapes). No byte verification against oracle output is
+// claimed.
 //
 // THE EXECUTION REMAINDER (events): the ModEventFn execution seam is WIRED
 // (mod-event-dispatch.ts — the stage walk + the save path's modEvents
-// runtime, card-action-engine.ts). The FIRST REAL BATCH is the five
-// reference janitors (all/reference_events.rb), whose bodies delegate to
+// runtime, card-action-engine.ts). The events with real bodies are the
+// five reference janitors (all/reference_events.rb), whose bodies delegate to
 // the engine's port modules and TAKE OVER the engine's built-in janitor
 // calls when their names are registered at the runtime. event :admin_tasks
 // keeps its ported task-runner (runTaskFromTaskBasket below) exercised by
@@ -64,11 +65,11 @@
 //   and the CHAIN dispatch (render.ts computeResolvedView) is what serves
 //   these views — set-scoped: Self::Admin only for *admin, Self::Mod only
 //   for the Mod card, Type::Mod only for mod-typed cards. The known
-//   empty-chain masking defect (the corresponding port note batch 3) is unchanged
+//   empty-chain masking defect is unchanged
 //   engine behavior, not touched here.
 // - set/self/mod.rb's `def content` (item_codes) renders
 //   "#{mod}_mod" over Cardio.mods OBJECTS — on the oracle its bytes are
-//   object-inspect strings with memory addresses (probe-2
+//   object-inspect strings with memory addresses (the oracle's
 //   mod_cardtype_card.content), i.e. unreproducible. NOT ported; the Mod
 //   card's :content keeps stored-content behavior. Same for
 //   set/self/version.rb's Cardio::Version.release content override and
@@ -328,7 +329,7 @@ function accordionSectionsHtml(
  *  accordion_item.haml template, byte-shaped (open=false, data=nil,
  *  subheader=nil arms; haml emits single-quoted attrs alphabetically, the
  *  hash class before the selector classes, one newline per template line
- *  — the same shapes the corpus-pinned accordionBarHtml emitter carries). */
+ *  — the same shapes the pinned accordionBarHtml emitter carries). */
 function accordionItemHtml(args: {
   title: string;
   subheader: string | undefined;
@@ -690,8 +691,8 @@ function adminRuntimeStateFor(_ctx: ViewContext) {
     : undefined;
 }
 
-/** The mod-less render path's lazy admin-runtime bind (the leading-view render change,
- *  2026-09-29): the graded page-surface harness binds NO loader, so this mod's
+/** The mod-less render path's lazy admin-runtime bind: the page-surface
+ *  render harness binds NO loader, so this mod's
  *  prepareEngine never runs and moduleAdminHost stays unset — the
  *  type/role.rb :configs view would render "" with an empty admin universe
  *  where the oracle lists the role's configuration sections. The engine's
@@ -720,7 +721,7 @@ export function bindModuleAdminHost(host: ModEngineHost): void {
  *  Set scope: the view anchors on Type::Role only — any other card's
  *  dispatch is Ruby's own missing-method unsupported-view error
  *  (format/render.rb #unsupported_view_error_message), thrown here so the
- *  flat-registry dispatch (the mod-less graded harness) reproduces the
+ *  flat-registry dispatch (the mod-less page-surface harness) reproduces the
  *  same raise a mod-chain walk would never reach for non-Role cards. The
  *  typeCode is the codehash's answer ("role"), the same predicate the
  *  chain's pattern_applies folds into set membership.
@@ -728,20 +729,20 @@ export function bindModuleAdminHost(host: ModEngineHost): void {
  *  NAMED REMAINDER: the ROLE → items
  *  derivation below follows the gem source verbatim (admin.rb:36-38
  *  responsible_role = the *update rule candidate walk self → star → type
- *  → all over the deck's rows). Over the graded corpus seed
- *  (bench-corpus-raw.sqlite3) that walk groups every star-named setting
+ *  → all over the deck's rows). Over the reference seed deck that walk
+ *  groups every star-named setting
  *  under the *star+*update items ("Administrator", "Wagneer") — while the
- *  captured oracle pages distribute the same settings across DIFFERENT
+ *  oracle's rendered pages distribute the same settings across DIFFERENT
  *  role pages (Help Desk's page shows *help/*account/Sign up; Shark's
  *  shows *structure/*default/*content options; Administrator's shows the
- *  configurations list). The capture deck's live rule state at capture
- *  time therefore differed from the corpus dump's rows (the dump and the
- *  capture diverged; verified against the gem source rule-cache/
- *  set-pattern code and the corpus rows both directions). The view shape
+ *  configurations list). The oracle deck's live rule state at render
+ *  time therefore differed from the seed rows (verified against the gem
+ *  source rule-cache/
+ *  set-pattern code and the seed rows both directions). The view shape
  *  (section wrappers, closed_bar item nesting, cardtypes accordion) is
- *  byte-pinned by the oracle; the per-role grouping needs the capture-time
- *  rule state and remains the open work, with the yardstick bytes as
- *  spec. */
+ *  byte-pinned by the oracle; the per-role grouping needs the oracle
+ *  deck's live rule state and remains the open work, with the oracle
+ *  bytes as spec. */
 export const roleConfigsView: ViewFn = (ctx) => {
   const card = ctx.fmt.card;
   if (card.typeCode !== "role") {
@@ -819,7 +820,7 @@ const adminWarningView: ViewFn = (ctx) => {
       // card-mod-recaptcha set/self/admin.rb:3-5 recaptcha_config_issues?
       // + :7-22 recaptcha_config_issues_message (the hosted branch — the
       // headless engine has no request, so Card::Env.localhost? is false
-      // exactly as in the capture runner).
+      // exactly as in the oracle runner).
       if (recaptchaConfigIssuesOn(ctx)) {
         warnings.push(recaptchaConfigIssuesHtml(ctx));
       }
@@ -839,7 +840,7 @@ function deckWarningList(): string[] {
  *  site key resolves through recaptcha_setting_value's precedence (card
  *  content -> config -> deprecated -> default), and an absent +*site key
  *  child lands on the DEFAULT — using_defaults? true, the warning fires
- *  (the oracle deck's state: the capture runner has no stored +*site key
+ *  (the oracle deck's state: no stored +*site key
  *  card content differing from the default). */
 function recaptchaConfigIssuesOn(ctx: ViewContext): boolean {
   const card = ctx.fmt.engine.fetchRenderCard("*recaptcha settings+*site key");
@@ -913,16 +914,16 @@ function warningAlertHtml(warnings: string[]): string {
 /** type/mod.rb:7-19 view :core — render_section_views over the nine
  *  section predicates, compacted, joined "<br/>".
  *
- *  EXPORTED for the loader-less graded
- *  dispatch. The set/module registration below is dead surface on the
- *  corpus grading path — the verifier replays through a RenderEngine that
+ *  EXPORTED for the loader-less page-surface
+ *  dispatch. The set-module registration below is dead surface on that
+ *  path — the page-surface render replays through a RenderEngine that
  *  never binds a ModLoader, the same seam that hosts the signup/toggle/
  *  markdown/image cores. Before this export the Mod cardtype's :core was
- *  therefore NEVER dispatched on the graded surface and every `mod: X` page
+ *  therefore NEVER dispatched on that surface and every `mod: X` page
  *  rendered an EMPTY d0-card-body: the titled view's core fell through to
  *  the base core, which process_contents an empty db_content (the mod
  *  cards carry no stored content — their body IS the section list).
- *  Measured on the pinned corpus: 27 of the c-structural pages carried
+ *  Measured on the reference deck: 27 pages carried
  *  the empty body. The base
  *  coreView's `typeCode === "mod"` branch (views.ts) calls THIS function
  *  — the same composition the set-module view runs, so both dispatch
@@ -1049,13 +1050,13 @@ function modTasks(modname: string): string[] {
 
 // ---------------------------------------------------------------------------
 // set/type/mod.rb view :bar_right — the mod bar-right section list.
-// Landed by the bar slots 2026-09-29 (view-fail class Z3: 30 oracle
-// entries — every `mod: X :closed` bar rendered an EMPTY bar-right where
+// Oracle-pinned over the full set of `mod: X :closed` bars (every one
+// rendered an EMPTY bar-right where
 // the oracle shows the mod's section list, e.g. `cardtypes, scripts,
 // styles`). The section predicates + the oracle-pinned scripts/styles
 // presence table live in core-admin-runtime.ts (modBarRightSections —
 // shared with the BASE barRightView in views.ts, which is the surface the
-// corpus grading pipeline actually dispatches: it never binds a
+// page-surface render actually dispatches: it never binds a
 // ModLoader). Registered here too for the Ruby-shaped loader-bound path.
 // ---------------------------------------------------------------------------
 
@@ -1066,7 +1067,7 @@ const typeModBarRightView: ViewFn = (ctx) =>
 
 /** type/mod.rb:53-58 view :styles — fetch(:style) child, nested :core.
  *
- *  mm-cstructural (2026-09-30): the child is a VIRTUAL card (card-mod-assets
+ *  The child is a VIRTUAL card (card-mod-assets
  *  set/type/mod.rb:14 `Card.fetch [name, asset_type], new: { type: :list }`)
  *  whose `:core` comes from `Abstract::ModAssets` — card-mod-style
  *  set/type_plus_right/mod/style.rb:5 `include_set Abstract::ModAssets` —
@@ -1089,24 +1090,24 @@ const typeModBarRightView: ViewFn = (ctx) =>
  *
  *  and `styles?` (type/mod.rb:110-116) is `fetch(:style).present?` — the
  *  same test. So the SECTION is present exactly when the `mod: X+*script`
- *  child card is there, which is a CORPUS ROW, not a table entry. Measured
- *  against tmp/raw-ground-truth/bench-corpus-raw.sqlite3, the two disagree:
+ *  child card is there, which is a STORED ROW, not a table entry. Measured
+ *  against the reference deck, the two disagree:
  *
- *    - `shades` HAS a `mod: shades+*script` row (id 49309, List, with
- *      `mod: shades+*script+*asset output` id 49310 under it) and NO entry
+ *    - `shades` HAS a `mod: shades+*script` row (List, with
+ *      a `mod: shades+*script+*asset output` child under it) and NO entry
  *      in MOD_ASSET_GROUPS_SRC, so the engine omitted the section and
- *      rendered a bare `<p></p>` where the capture carries
- *      `<p></p><br/><p><h3>Scripts</h3></p>` (recapture-raw-shard-000043
- *      `mod: shades:page`, -28 — the whole delta is that section).
+ *      rendered a bare `<p></p>` where the oracle renders
+ *      `<p></p><br/><p><h3>Scripts</h3></p>` (the whole delta is that
+ *      section).
  *    - `ace_editor` and `bar_and_box` have NO `+*script` row but DO have
- *      pinned script groups, so switching the predicate to the corpus row
+ *      pinned script groups, so switching the predicate to the stored row
  *      alone would DELETE sections those pages currently render and pass.
  *
  *  So the section is present when EITHER source says the child exists, and
  *  the BODY is the pinned group list when the table has one. The body is
- *  empty in the shades case because the graded corpus carries no asset
+ *  empty in the shades case because the deck carries no asset
  *  FILE rows for that gem — `sectionHtml(title, "")` is exactly
- *  `<p><h3>Scripts</h3></p>`, which is what the capture holds.
+ *  `<p><h3>Scripts</h3></p>`, which is what the oracle renders.
  *
  *  This also puts `childCard` (defined below for precisely this purpose and
  *  dead until now) to work. */
@@ -1117,7 +1118,7 @@ const typeModStylesView: ViewFn = (ctx) => modAssetSection(ctx, "style", "Styles
 const typeModScriptsView: ViewFn = (ctx) => modAssetSection(ctx, "script", "Scripts");
 
 /** The shared styles/scripts section (type/mod.rb:56-65). See
- *  typeModStylesView above for why presence is the union of the corpus
+ *  typeModStylesView above for why presence is the union of the stored
  *  child card and the pinned group table. */
 function modAssetSection(
   ctx: ViewContext,
@@ -1127,7 +1128,7 @@ function modAssetSection(
   const groups = modAssetGroups(modnameFromCodename(ctx.fmt.card.record.codename ?? ""), tag);
   if (groups === undefined || groups.length === 0) {
     // type/mod.rb:55-56 (scripts) / 41-43 (styles): the early-return quotes -
-    // the absent-child arm is Ruby's NIL (the corpus's mod: help :scripts op
+    // the absent-child arm is Ruby's NIL (the oracle's mod: help :scripts op
     // records JSON null at the render boundary; the section-list core's
     // compaction drops it like any nil section).
     return childCard(ctx, tag) !== undefined ? sectionHtml(title, "") : null;
@@ -1165,16 +1166,17 @@ const typeModDependsOnView: ViewFn = (ctx) => {
 /** type/mod.rb:130-132 depends_on — card_mods over the spec's runtime
  *  dependencies: card-mod-* gem names map to "mod_#{name[8..]}" — the
  *  gem's own off-by-one slice ("card-mod-email"[8..] = "-email" ->
- *  "mod_-email"), probe-1 verified.
+ *  "mod_-email"), oracle-verified.
  *
- *  ORDER AND MEMBERSHIP (2026-10-06): the corpus of record, captured with
+ *  ORDER AND MEMBERSHIP: the reference deck, rendered with
  *  the installed 0.20 gems, lists every mod page's dependencies in gem-name
  *  order (22 of 22 pages) with the installed gemspecs' membership, so
  *  dependsOn sorts. The gemspec files declare another order on five mods
- *  (account, bootstrap, edit, email, list); the spec the capture app reads
- *  hands them over sorted. The 2026-10-04 live-site capture showed the
- *  declaration order instead, with the live 0.19-era membership; the two
- *  references disagree, and the port follows the corpus of record. Pin:
+ *  (account, bootstrap, edit, email, list); the spec the oracle app reads
+ *  hands them over sorted. The live production site (an older 0.19-era
+ *  state) showed the
+ *  declaration order instead; the two
+ *  references disagree, and the port follows the reference deck. Pin:
  *  tests/card/render/mod-depends-on-declaration-order-pins.test.ts. */
 function dependsOn(spec: { deps: string[] } | undefined): string[] | undefined {
   if (spec === undefined) return undefined;
@@ -1186,8 +1188,8 @@ function dependsOn(spec: { deps: string[] } | undefined): string[] | undefined {
 }
 
 /** type/mod.rb:67-83 view :gem_info — the seven properties, then the
- *  files and depends-on accordions. Returns nil without a spec (probe-2:
- *  the core mod's spec is nil). */
+ *  files and depends-on accordions. Returns nil without a spec (the
+ *  oracle: the core mod's spec is nil). */
 const typeModGemInfoView: ViewFn = (ctx) => {
 
   const modname = modnameFromCodename(ctx.fmt.card.record.codename ?? "");
@@ -1229,7 +1231,8 @@ const typeModGemInfoView: ViewFn = (ctx) => {
 };
 
 /** Ruby Array#to_s (inspect brackets) — the interpolation shape for the
- *  array-valued spec properties (probe-1 gem_info_properties). */
+ *  array-valued spec properties (oracle-verified against the gem_info
+ *  properties). */
 function rubyToS(items: string[]): string {
   return `[${items.map((item) => JSON.stringify(item)).join(", ")}]`;
 }
@@ -1633,7 +1636,7 @@ const coreMod: DeckoModManifest = {
     },
     {
       // mod/core/set/all/reference_events.rb — the five reference janitors.
-      // THE FIRST REAL BATCH: all five carry REAL bodies (the engine's own
+      // These are the events with REAL bodies (the engine's own
       // port modules); when these names are registered at the save path's
       // modEvents runtime, the engine's built-in janitor calls stand down
       // and these bodies ARE the mechanism (card-action-engine.ts
@@ -1838,11 +1841,10 @@ const coreMod: DeckoModManifest = {
             { view: "gem_info", viewFn: typeModGemInfoView },
             { view: "depends_on", viewFn: typeModDependsOnView },
             { view: "views", viewFn: typeModViewsView },
-            // type/mod.rb view:bar_right (class
-            // Z3) — registered here on the type/mod module; the corpus
-            // grading pipeline never binds a ModLoader, so this
-            // registration alone does not dispatch there. See the base
-            // barRightView in views.ts for the graded surface.
+            // type/mod.rb view:bar_right — registered here on the type/mod
+            // module; the page-surface render never binds a ModLoader, so
+            // this registration alone does not dispatch there. See the base
+            // barRightView in views.ts for that surface.
             { view: "bar_right", viewFn: typeModBarRightView },
           ],
         },
