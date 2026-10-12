@@ -325,10 +325,10 @@ const PERMISSION_RIGHT_CODENAMES: ReadonlySet<string> = new Set([
 // (render.ts:1038 sets card.typeCode = peekNameForId(typeId)). Corpus
 // search cards have type cards whose CARD NAME is random
 // (id=101 -> type_card name="qnzkqz"), so gating on typeName silently
-// skips every corpus-shaped entry — the prepare phase never runs
+// skips every such entry — the prepare phase never runs
 // runSearch and the JSON-parse BadQuery never fires. Match by codename
-// (the value the codehash lookup returns) for parity with the captured
-// Ruby deck.
+// (the value the codehash lookup returns) for parity with Ruby's
+// own deck.
 const DATE_TYPE_CODE = "date";
 // The codename the date-type type card carries. Corpus date cards (id=1135
 // with content "brcvtwrvz", etc.) have type cards whose CARD NAME is
@@ -723,7 +723,7 @@ export class RenderEngine implements RenderEngineLike {
    *  set/abstract/attachment/01_storage_type.rb:75-79
    *  storage_type_from_config): the attachment-storage default the deck is
    *  configured with. Read LIVE by the file :input view's no_upload? gate
-   *  (web.rb:1-3); undefined = the deck default :local (the oracle's
+   *  (web.rb:1-3); undefined = the deck default :local (Ruby's
    *  config_file_storage_default). Host-deployment config. */
   fileStorage: "local" | "web" | "cloud" | "coded" | undefined = undefined;
   /** Codename ids the rule? predicate compares against (SettingID/SetID/
@@ -800,8 +800,8 @@ export class RenderEngine implements RenderEngineLike {
   /** composed *default rule key -> the rule card's db_content (the
    *  content/all.rb:17-19 standard_content's
    *  new_card branch — a nest-miss new card's content IS the *default
-   *  rule's content; the oracle's associative_inquiry-discussion-titled-view
-   *  body is discussion+*right+*default's `<p> </p>` x2 verbatim). Parsed
+   *  rule's content; discussion+*right+*default's body renders as
+   *  `<p> </p>` twice, verbatim). Parsed
    *  from the SAME universe rows the types ride (structureUniverseFromResults
    *  over the default result). Cleared on resetCaches(). */
   private defaultRuleContents: Map<string, string | null> | undefined;
@@ -937,7 +937,8 @@ export class RenderEngine implements RenderEngineLike {
 
   /**
    * Render one view of one card to HTML bytes. Throws UnsupportedViewError
-   * for views outside the ported registry (the captured sentinel contract).
+   * for views outside the ported registry (the unsupported-view
+   *  sentinel contract).
    */
   async render(cardName: string, view: string, params: HistoryRenderParams = {}): Promise<string> {
     // One render is one request: hold the Temporary caches so no
@@ -1631,8 +1632,8 @@ export class RenderEngine implements RenderEngineLike {
     // Ruby's nest does a live fetch; the sync ViewFn reads the
     // render-card map, so the children ride the prepare phase — one
     // conditional fetch per skin card in the prepared closure (the root
-    // skin itself, plus skin cards NESTED into the render — the oracle's
-    // +parent 1 pointer items nest skin bars, phase-019). The prefetch
+    // skin itself, plus skin cards NESTED into the render — a
+    // `+parent 1` pointer item nests skin bars). The prefetch
     // closure chases neither: the bar_left nest is view-time, so no
     // card_references row names the image. Skins without an +Image child
     // fetch nothing (the boxed unknown-nest bytes are name-shaped).
@@ -1698,10 +1699,10 @@ export class RenderEngine implements RenderEngineLike {
     // +account junction child synchronously (account_holder.rb:11-13
     // `account? = account.real?`) and its +*email child for the
     // verification_sent_line (views.rb:63-67). The trait fetch composes
-    // the STAR name — oracle probe r17-junction-fetch-probe.rb:
-    // card.account -> id 46002 name "ronald joseph+*account" (right 100 =
-    // *account), Card.fetch("ronald joseph+account") is nil, and the tag
-    // card "account" does not exist. Neither child is reachable from the
+    // the STAR name: `card.account` resolves the junction
+    // row whose right side is the *account card, while
+    // `Card.fetch("<user>+account")` is nil and a
+    // tag card "account" does not exist. Neither child is reachable from the
     // reference closure (the signup content names only its template
     // nests), so they enrich here, in the async prepare phase — the same
     // sync-fetch gap the pointer-item walk closes. Both calls tolerate
@@ -1731,8 +1732,8 @@ export class RenderEngine implements RenderEngineLike {
       // The enriched children landed AFTER both ensureVerdicts passes, so
       // deniedVerdicts has no entry for their ids and isDenied() would
       // return gate-open false for the +*email child — the verification
-      // email would LEAK (Ruby's ok?(:read) denies Anonymous; the oracle
-      // carries zero verification lines). Re-run the verdict pass; the
+      // email would LEAK (Ruby's ok?(:read) denies Anonymous, so no
+      // verification line renders). Re-run the verdict pass; the
       // skip-if-set guard makes it a no-op for every card already judged
       // (the same defect class and fix shape as the pointer-item and
       // help-rules re-passes above).
@@ -1807,9 +1808,9 @@ export class RenderEngine implements RenderEngineLike {
       // AFTER the last verdict pass above, so deniedVerdicts has no
       // entry for their ids and isDenied() returned gate-open false —
       // the setting list rendered a BAR for every stored rule card whose
-      // stored read rule denies (e.g. *all+*default, read_rule_id 22283 =
+      // stored read rule denies (e.g. *all+*default, whose stored rule is
       // "BasicCs+*type+*read" → "Anyone Signed In" → Anonymous denied;
-      // the oracle pins the quiet span, the engine pinned the bar).
+      // the quiet span is correct there, not the bar).
       // The children are List/Pointer-typed rule cards whose ITEMS (the
       // rule's grant parties, e.g. "Anyone Signed In" inside *all+*read)
       // also only reach renderCards through the enrichment walk — without
