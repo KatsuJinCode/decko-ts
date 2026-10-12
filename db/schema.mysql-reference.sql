@@ -1,10 +1,10 @@
 -- ============================================================================
 -- schema.mysql-reference.sql
 --
--- VERBATIM extraction of the CREATE TABLE statements from the production
--- the reference deck mysqldump:
---   a private production dump (not distributed)
---   (mysqldump 10.13, MySQL 8.0.39 dump of server 8.0.45, 1.2 GB)
+-- VERBATIM extraction of the CREATE TABLE statements from the mysqldump of
+-- the deck this schema was converted from: a private production dump (not
+-- distributed)
+-- (mysqldump 10.13, MySQL 8.0.39 dump of server 8.0.45, 1.2 GB)
 --
 -- This file is the COMPARISON REFERENCE for db/schema.sqlite.sql. It is not
 -- executable here; it records the production truth that the SQLite DDL was
@@ -260,7 +260,7 @@ CREATE TABLE `transform_migrations` (
 --   the application layer, standard for this codebase's ActiveRecord era.
 -- - No FULLTEXT or SPATIAL indexes exist in the core schema.
 -- - No site-custom ("deck") tables and no mod-created tables exist in the
---   the reference deck production dump. Extension points observed elsewhere:
+--   reference deck production dump. Extension points observed elsewhere:
 --   card-mod-delayed_job consumes delayed_jobs; the Rails session store
 --   consumes sessions; the card gem's stale site dump additionally showed
 --   a legacy `users` table (dropped in production by the 2014
