@@ -6040,9 +6040,9 @@ export class RenderEngine implements RenderEngineLike {
    * 2. Pointer/list host: set/abstract/items.rb:5-11 — the options card's
    *    item_type_id, where options_card (card-mod-layout
    *    set/abstract/items/options_api.rb) = `rule_card(:content_options) ||
-   *    right_type_options || Card[:all]`. The corpus's *content options
-   *    rules are Search-typed JSON specs (`{"type": "person"}` — rule rows
-   *    410/498/501 et al.), so the recursion lands in branch 1.
+   *    right_type_options || Card[:all]`. A deck's *content options
+   *    rules are commonly Search-typed JSON specs (`{"type": "person"}`),
+   *    so the recursion lands in branch 1.
    * 3. Everything else (and the *all fallback, a non-list card): the
    *    generic item_type_id (item.rb:90-92) returns nil through
    *    no_item_type_recursion (item.rb:221-225) — the port short-circuits
@@ -6060,9 +6060,9 @@ export class RenderEngine implements RenderEngineLike {
       resolved = await this.itemTypeIdOf(host, new Set([host.key]));
     } catch (err) {
       // The cql parse of the options card's content raises BadQuery in
-      // Ruby. At this PREPARE seam the view is not known yet — the corpus
-      // contract (options-card-cql-parse-boundary.test.ts) keeps the
-      // render-time raise view-conditional (:open only, permitted host),
+      // Ruby. At this PREPARE seam the view is not known yet — the
+      // render-time raise is deliberately view-conditional (:open only,
+      // permitted host),
       // so the closure degrades to no-item-type and lets the boundary
       // machinery own the raise. The raw deck's option specs are valid
       // JSON (the *all fallback content is "{}"), so this branch is the
@@ -6088,7 +6088,7 @@ export class RenderEngine implements RenderEngineLike {
     visiting: Set<string>,
   ): Promise<{ typeName: string; typeId: number } | undefined> {
     // cql_search.rb:14-19 (Search/Set sets; overrides Abstract::Items for
-    // those cardtypes — the corpus's options rules resolve here).
+    // those cardtypes — those are where options rules resolve).
     if (
       card.typeCode === SEARCH_TYPE_CODE ||
       card.typeCode === SET_TYPE_CODE ||
@@ -7389,8 +7389,8 @@ export class RenderEngine implements RenderEngineLike {
    *  over the generic permit(:update) verdict exactly as Ruby's set
    *  modules shadow Set::All#ok_to_update? (permissions.rb:148). The
    *  page head's universal_edit_button (perms :update) consumes this —
-   *  the oracle renders "Edit this page!" on the viewer's own account
-   *  cards where the generic walk alone denies. */
+   *  the viewer's own account
+   *  cards render "Edit this page!" where the generic walk alone denies. */
   private async applyUpdateOverride(
     card: RenderCard,
     verdicts: { update: boolean | undefined; create: boolean | undefined; delete: boolean | undefined },
