@@ -24,7 +24,7 @@ import { ANONYMOUS_VIEWER, type ReadViewer } from "../permissions/index.js";
  *
  * Engine hookup: RenderEngine resolves the permission state lazily on the
  * first render; hand this viewer to the engine before that first render
- * (the field default keeps the corpus viewer byte-identical).
+ * (the field's own default is the anonymous viewer).
  */
 export async function viewerFromToken(
   driver: SQLDatabaseDriver,

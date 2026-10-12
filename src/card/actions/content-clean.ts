@@ -36,7 +36,7 @@
 //
 // Ordinary content is therefore stored byte for byte as Ruby stores it; only
 // content whose Ruby cleaning would be unsafe or malformed differs. The
-// regression corpus is tests/card/actions/content-clean-security.test.ts.
+// regression suite is tests/card/actions/content-clean-security.test.ts.
 //
 // The port keeps Ruby's regex semantics where JavaScript's differ:
 // - `^` in Ruby always matches at any line start, so the patterns that use
@@ -102,9 +102,9 @@ const STYLE_ATTRIBUTES: ReadonlySet<string> = new Set(["style", "data-mce-style"
  * URL schemes a stored link or image may use. Anything without a scheme
  * (relative paths, `#anchors`, `?queries`, `//host` URLs) is allowed. Every
  * scheme here only navigates, dials, or opens another application; none can
- * run script in the deck's origin. The list covers every scheme with a
- * legitimate use found in the stored content of a real 19,000-card deck
- * (http, https, mailto, tel, skype) plus common equivalents.
+ * run script in the deck's origin. The list covers the schemes that turn up
+ * in real decks (http, https, mailto, tel, skype) plus their common
+ * equivalents.
  */
 export const ALLOWED_URL_SCHEMES: ReadonlySet<string> = new Set([
   "http", "https", "mailto", "tel", "sms", "ftp", "skype", "callto", "webcal",
@@ -583,7 +583,7 @@ export function cleanContent(input: string): string {
 }
 
 /** Ruby's cleaner exactly as card-1.110.0 runs it, unsafe output included.
- *  Kept for the parity harness and the regression corpus, which measure
+ *  Kept for the parity harness and the regression suite, which measure
  *  where the port's output differs; never used to store content. */
 export function rubyCleanContent(input: string): string {
   const tagged = input

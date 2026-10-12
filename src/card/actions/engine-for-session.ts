@@ -1,5 +1,6 @@
-// The request-level composition the two landed streams meet at: a bearer
-// session token becomes an Actor, and the Actor drives a CardActionEngine.
+// The request-level composition where the session side and the action-engine
+// side meet: a bearer session token becomes an Actor, and that Actor drives a
+// CardActionEngine.
 // This is the module an HTTP layer (or the deploy worker) calls per write
 // request — Ruby's shape is `Auth.current_id` being read inside the save
 // path (auth/current.rb:7-9); here the engine is constructed per request

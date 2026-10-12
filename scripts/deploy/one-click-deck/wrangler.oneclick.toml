@@ -8,11 +8,11 @@
 # in the engine graph (node:crypto) is replaced at bundle time by the [alias]
 # shim (same shape as deploy/wrangler.toml).
 #
-# [assets] ships the compiled skin (all-style.css + all-script.js, sha256-
-# matched to the render VM's oracle-assets) plus decko-config.js and
-# robots.txt. The assets layer serves them BEFORE the worker runs, so asset
-# requests cost zero D1 reads and zero D1 writes; crawler traffic is turned
-# away by robots.txt instead of burning the read budget.
+# [assets] ships the compiled skin (all-style.css + all-script.js) plus
+# decko-config.js and robots.txt. The assets layer serves them BEFORE the
+# worker runs, so asset requests cost zero D1 reads and zero D1 writes;
+# crawler traffic is turned away by robots.txt instead of burning the read
+# budget.
 
 name = "decko-one-click-demo"
 main = "../../../deploy/worker.ts"

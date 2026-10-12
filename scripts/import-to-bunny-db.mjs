@@ -13,20 +13,19 @@
 //                    whole-deck import is the default only when omitted)
 //   --tables a,b     only these tables (default: every non-sqlite table)
 //   --source PATH    source sqlite file
-//                    (default tmp/raw-ground-truth/deck/corpus-v2-scrubbed.sqlite3)
 //   --creds PATH     KEY=VALUE file to read BUNNY_DB_URL / BUNNY_DB_TOKEN from
 //   --chunk-size N   rows per pipeline POST (max 500)
 //   --schema-only    create tables, import no rows
 //   --data-only      skip the schema phase (target already has the schema)
 //   --dry-run        count and report, issue no writes
 //
-// CREDENTIALS, in resolution order (2026-10-01 change):
+// CREDENTIALS, in resolution order:
 //   1. BUNNY_DB_URL / BUNNY_DB_TOKEN environment variables
 //   2. --creds <path>
-//   3. (nothing — the script exits 2 with the message below)
-// Credentials are never defaulted to any particular account: a trial-account
-// import must not be able to silently write to a production account. Pass
-// --creds explicitly if you mean a particular file.
+//   3. neither — the script exits 2 with the message below
+// Nothing here falls back to a particular account's stored credentials: a
+// small-scale trial import must not be able to silently write to a production
+// account. Pass --creds explicitly when you mean a particular file.
 
 import Database from 'better-sqlite3';
 import { readFileSync, existsSync } from 'node:fs';
