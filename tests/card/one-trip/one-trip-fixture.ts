@@ -1,18 +1,18 @@
-// Test fixture for the one-trip implementation lane: the shared boot for
-// every test that needs the trial-deck mirror (the 19,482-card corpus) or a
+// Test fixture for the one-trip suites: the shared boot for
+// every test that needs the shared deck database copy or a
 // trip-counting driver.
 //
-// WHAT THIS IS: the same boot the db-roundtrip elimination lane's probes use
+// WHAT THIS IS: the same boot the round-trip-elimination probes use
 // (LocalSqliteDriver -> FetchEngine -> RenderEngine, render(name, "open",
 // {})) plus a capturing driver that counts ROUND TRIPS (one driver.query or
 // one driver.batch call each) and records every statement's result rows so
 // the render's true cards-row read set is observable.
 //
-// The mirror COPY lives at benchmarks/one-trip-render/
-// trial-deck-mirror-readonly-copy.sqlite3 (gitignored; built once from the
-// db-roundtrip worktree's mirror via the backup API — the original is never
+// The COPY lives at benchmarks/one-trip-render/
+// trial-deck-mirror-readonly-copy.sqlite3 (gitignored; built once
+// via the backup API — the original is never
 // opened writable). Tests that need it skip when the copy is absent so a
-// fresh clone without the corpus still runs the rest of the suite.
+// fresh clone without the deck database still runs the rest of the suite.
 
 import { copyFileSync, existsSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -25,7 +25,7 @@ import { RenderEngine } from "../../../src/card/render.js";
 import { applyDeckDataVersionStampMigration } from "./apply-deck-data-version-stamp-migration.js";
 import { scratchDir } from "../../support/scratch-dir.mjs";
 
-/** The 5 probe pages the lane receipt and the mission name. */
+/** The 5 probe pages. */
 export const PROBE_PAGES = ["Home", "Aikido", "About", "Eagle", "Taking_Stock"] as const;
 
 export const MIRROR_COPY_PATH = fileURLToPath(
@@ -36,17 +36,17 @@ export const mirrorAvailable = (): boolean => existsSync(MIRROR_COPY_PATH);
 
 let stampedMirrorCopy: string | undefined;
 
-/** A stamp-migrated copy of the trial-deck mirror, created once per test
- *  process (lineage-reconciliation lane, 2026-10-06).
+/** A stamp-migrated copy of the shared deck database, created once per test
+ *  process.
  *
  *  WHY: the composed render engine reads deck_data_version at every render
- *  entry and fails LOUDLY on an unmigrated database BY DESIGN (delivery
- *  contract:79 — a silently skipped check is a silent staleness window; the
- *  throw lives in RenderEngine#readDeckDataVersion). The shared mirror
- *  predates the stamp schema and is NEVER opened writable, so any engine
+ *  entry and fails LOUDLY on an unmigrated database BY DESIGN (a silently
+ *  skipped check is a silent staleness window; the
+ *  throw lives in RenderEngine#readDeckDataVersion). The shared
+ *  mirror predates the stamp schema and is NEVER opened writable, so any engine
  *  booted for a render must run against this migrated copy (migration 0003,
  *  order-safe; adds no render bytes, so byte-identity pins compare like
- *  with like). Corpus/builder reads that never boot a render engine may keep
+ *  with like). Deck/builder reads that never boot a render engine may keep
  *  using MIRROR_COPY_PATH directly. */
 export async function stampedMirrorCopyPath(): Promise<string> {
   if (stampedMirrorCopy === undefined) {
