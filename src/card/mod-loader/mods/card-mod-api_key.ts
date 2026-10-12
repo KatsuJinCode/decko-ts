@@ -78,9 +78,8 @@ import type {
 } from "../mod-manifest.js";
 import { superView } from "../mod-view-helpers.js";
 
-/** The set-module event declarations (the set-module event, 2026-10-08):
- *  stub-bodied, with the per-event reason on the declaration. Same shape
- *  as core-mod.ts's local helper. */
+/** The set-module event declarations: stub-bodied, with the per-event
+ *  reason on the declaration. Same shape as core-mod.ts's local helper. */
 function event(
   decl: Omit<ModEventRegistration, "fn"> & { fn?: ModEventFn },
 ): ModEventRegistration {
@@ -142,9 +141,8 @@ function coreTopView(): "current" {
  *  `name="card[trigger]"`, and hidden_field_tag (form_tag_helper.rb:264
  *  shape: type, name, id, value, autocomplete LAST) derives the dom id with
  *  `sanitize_to_id` - `name.delete("]").tr("^-a-zA-Z0-9:.", "_")` - so
- *  "card[trigger]" becomes "card_trigger". The captured bytes carry
- *  id="card_trigger" (fixtures/captured/api-key-views.json, probe
- *  "Oracle ApiKey Account+*api key"). */
+ *  "card[trigger]" becomes "card_trigger" and the emitted tag reads
+ *  id="card_trigger". */
 function generateButtonHiddenTags(): string {
   return (
     `<input type="hidden" name="card[trigger]" id="card_trigger"` +
@@ -167,10 +165,9 @@ function generateButtonSituation(): "primary" {
 
 /** The form's POST action: `card_form :update` (card-mod-format set/all/
  *  form.rb:193-224) renders the UPDATE path for the card - `path(action:
- *  :update)` per lib/card/path.rb:34-63, i.e. `/update/<url_key>`. The
- *  captured bytes carry `/update/Oracle_ApiKey_Account+*api_key` (the
- *  card's url_key, case preserved - path.rb:56-59 interpret_mark ->
- *  url_key). */
+ *  :update)` per lib/card/path.rb:34-63, i.e. `/update/<url_key>` with
+ *  the card's url_key, case preserved - path.rb:56-59 interpret_mark ->
+ *  url_key. */
 function cardUpdatePath(urlKey: string): string {
   return `/update/${urlKey}`;
 }
@@ -205,21 +202,20 @@ function cardTokenPath(urlKey: string): string {
  *  buttons section renders unconditionally (the generate button is shown
  *  even when no key exists yet - that's the "Generate API Key" branch).
  *
- *  BYTES (Haml's emit rules, read off the captured oracle rather than
- *  assumed - fixtures/captured/api-key-views.json "…#titled_content"):
+ *  BYTES (Haml's emit rules):
  *   - Haml writes STATIC attribute values with single quotes (the dynamic
  *     `= text_field_tag` output keeps its own double quotes)
  *   - every template line is newline-terminated, including the last
  *   - a `= render X` line appends its own newline AFTER X's output, so a
- *     nested template that already ends in "\n" produces the blank line the
- *     capture shows between the current-api-key div and the top's close
+ *     nested template that already ends in "\n" produces a blank line
+ *     between the current-api-key div and the top's close
  *   - the `= render_buttons` line's callee is a set-DSL view (Ruby method
  *     body, no trailing newline), so no blank line appears there. */
 const coreView: ViewFn = (ctx) => {
   // core.haml: the api-key-top DIV renders UNCONDITIONALLY — only the
   // inner `= render core_top_view` line is behind the
-  // `card.content.present?` guard. The graded corpus row (Ada Admin's
-  // blank +*api key) pins the empty top div.
+  // `card.content.present?` guard, so a blank +*api key value yields an
+  // empty top div.
   let top = `<div class='api-key-top d-flex my-2 py-3 border-bottom justify-content-between w-100'>\n`;
   if (ctx.fmt.card.dbContent.length > 0) {
     top += `${ctx.fmt.renderView(coreTopView())}\n`;
@@ -243,8 +239,8 @@ const coreView: ViewFn = (ctx) => {
  *  readonly="readonly" /> in the helper's own attribute order (type, name,
  *  id, value, extras LAST - form_tag_helper.rb:264). The template's
  *  single-quoted div/label and its line newlines are Haml's, per coreView's
- *  byte note; the capture confirms all three (value order, quote style,
- *  the label text on its own line). */
+ *  byte note; all three apply here (value order, quote style, the label
+ *  text on its own line). */
 const currentView: ViewFn = (ctx) => {
   const card = ctx.fmt.card;
   const value = card.dbContent;
@@ -295,13 +291,13 @@ const buttonsView: ViewFn = (ctx) => ctx.fmt.renderView("generate_button");
  *  "edit_card_<id>" persisted / "new_card" unsaved), the utf8 enqueuer and
  *  the `_method=patch` spoof (the PERSISTED-record quirk) all come from the
  *  shared helper - the same shape card-mod-comment emits for its
- *  :comment_box and the same bytes the oracle capture carries.
+ *  :comment_box.
  *
  *  The view's own array rides output()'s "\n" join (form.rb:198 `hidden +
  *  output(yield(cform))`), which is the newline between the last hidden
  *  input and the submit button. submit_button (form_elements.rb:59-64)
  *  emits name "button", the type, the data-disable-with, and the
- *  bootstrapified class LAST - the captured attribute order. */
+ *  bootstrapified class LAST, in that order. */
 const generateButtonView: ViewFn = (ctx) => {
   const card = ctx.fmt.card;
   const isNew = card.id === undefined;
@@ -310,8 +306,8 @@ const generateButtonView: ViewFn = (ctx) => {
     ? ""
     : `<input type="hidden" name="_method" value="patch" autocomplete="off" />`;
   // card_form_html_opts (form.rb:218-224): the autosave class rides the
-  // ACTION (:update) — NOT the record's persistence; the graded row's
-  // new-card form still carries it (id stays new_card, no _method spoof).
+  // ACTION (:update) — NOT the record's persistence; an unsaved new-card
+  // form still carries it (id stays new_card, no _method spoof).
   const opener =
     `<form class="card-form slotter autosave" id="${formId}"` +
     ` action="${cardUpdatePath(ctx.fmt.urlKey())}" accept-charset="UTF-8"` +
@@ -348,8 +344,7 @@ const tokenJsonView: ViewFn = (ctx) => {
  *  end end`. card_accessor :api_key adds a method that returns the
  *  +*api_key child card of an account. field_nest :api_key carries NO view
  *  opt, so the nested child renders the DEFAULT nest view (config
- *  default_html_view, the railtie :titled — the graded corpus row pins the
- *  titled-view slot on the +*api_key child, whose titled body embeds the
+ *  default_html_view, the railtie :titled — whose titled body embeds the
  *  api-key core). The TS port nests `<account>+*api key` (the child card
  *  composed from the account + the *api_key right). */
 const apiKeyView: ViewFn = (ctx) => {
@@ -357,9 +352,9 @@ const apiKeyView: ViewFn = (ctx) => {
   // field_nest's auto-title (nesting.rb:39-40): `opts[:title] ||=
   // field.cardname.vary("capitalized")` — the :api_key SYMBOL resolves
   // through the codename table to the setting card's own name ("*api
-  // key"), and vary("capitalized") leaves it unchanged. The graded row's
-  // slot JSON carries "title":"*api key" and the titled header renders it
-  // verbatim (the explicit title's absolute form is itself).
+  // key"), and vary("capitalized") leaves it unchanged, so the titled
+  // header renders "*api key" verbatim (the explicit title's absolute
+  // form is itself).
   const title = DeckoName.parse(childName).tag;
   return ctx.fmt.nest({
     syntax: `{{${childName}|titled}}`,
@@ -381,7 +376,7 @@ const cardModApiKey: DeckoModManifest = {
     {
       // card-mod-api_key-0.20.0/set/right/api_key.rb
       //
-      // Events (set-module event 2026-10-08) — two STUBS with a shared
+      // Events — two STUBS with a shared
       // named reason: the port has no API-key AUTH runtime
       // (Auth.find_account_by_api_key, api_key.rb:14-18 api_key_taken?,
       // and the authenticate_api_key ladder :34-45 are account-lookup
