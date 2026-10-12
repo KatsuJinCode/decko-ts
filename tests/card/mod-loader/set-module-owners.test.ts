@@ -1,6 +1,6 @@
-// set-module-owners.test.ts — the set module that owns a view, as Ruby's
-// method resolution picks it, for the cases the semantics census found
-// owned by a different module:
+// set-module-owners.test.ts — which set module owns each view when Ruby's
+// method resolution decides, focused on the ownership assignments that are
+// easy to get wrong:
 //
 //   - set modules are keyed by the anchor's CODENAME (set/pattern/base.rb
 //     module_key, anchor_codenames): a Person-typed card whose type codename
