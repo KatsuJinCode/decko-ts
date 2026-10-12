@@ -34,8 +34,7 @@
 //       add_to_trash -> update!, and event :recaptcha carries no `on:`
 //       clause, recaptcha.rb:50), DeleteCardInput carries recaptchaToken
 //       (types.ts) and the DELETE wire plumbs it (write-routes.ts delete
-//       leg). The it.fails remainder marker is unwrapped; this arm is the
-//       pin's green refusal form.
+//       leg).
 //   (5) DELETE, armed + human verdict -> the delete LANDS (303, trash flip,
 //       updater_id = the Anonymous card) with the stub called exactly once
 //       (siteverify action "delete" — recaptcha.rb:38 matches the trash
@@ -49,10 +48,9 @@
 //       and cannot hold both verdicts in one deck. ARM 5 IS ITS MIRROR: on
 //       the granted twin the identical armed shape + human token rides to
 //       siteverify exactly once and 303s the trash flip, so the 403 is
-//       provably the permission's verdict, not the guard's. (Until this arm
-//       permission-outranks-captcha on delete was structural only —
+//       provably the permission's verdict, not the guard's. (Structurally,
 //       assertCanWrite at card-action-engine.ts:1629 precedes
-//       prepareRecaptchaSaveInput at :1649 — plus the UNARMED 403s, the
+//       prepareRecaptchaSaveInput at :1649; the UNARMED 403s are the
 //       anonymous-permission-pins arm (c).)
 //   (8) UPDATE, ARMED + the *all+*update rule DENYING the actor
 //       ([[Editor]], the anonymous-permission-pins arm (b) deny shape) +
@@ -63,11 +61,7 @@
 //       both verdicts in one deck). ARM 2 IS ITS MIRROR: on the granted
 //       twin the identical armed shape + human token rides to siteverify
 //       exactly once and 200s the save, so the 403 is provably the
-//       permission's verdict, not the guard's. (The verb-symmetry gap this
-//       file closes: until this arm the update verb had
-//       no ARMED+denied pin — the UNARMED 403s of the
-//       anonymous-permission-pins arm (b) were the only update-denied
-//       evidence.)
+//       permission's verdict, not the guard's.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import http from "node:http";
@@ -489,12 +483,11 @@ describe("armed route pins: UPDATE through the production recaptcha seat (no mod
 
 describe("armed route pins: DELETE through the production recaptcha seat (no module mock)", () => {
   // THE DELETE GUARD PIN: the delete path
-  // now prepares the guard snapshot (deleteCard ->
+  // prepares the guard snapshot (deleteCard ->
   // prepareRecaptchaSaveInput, card-action-engine.ts — Ruby's delete! IS
   // an update save with trash: true, trash.rb:11-21, and event :recaptcha
   // has no `on:` clause, recaptcha.rb:50) and the wire plumbs the token
-  // (write-routes.ts delete leg). The marker is unwrapped per the house
-  // it.fails convention; this test is the green delete-refusal arm.
+  // (write-routes.ts delete leg).
   it("(4) armed + failed verify: the delete is refused whole — 422 recaptcha shape, the token rode to siteverify once, zero rows", async () => {
     // the .json flavor — arm (1)'s shape: the refusal's error BODY is
     // asserted, and the JSON error shape (error.rb:21 UserError -> 422)
@@ -564,12 +557,11 @@ describe("armed route pins: DELETE through the production recaptcha seat (no mod
 });
 
 describe("armed route pins: DELETE where the RULE denies the actor (permission outranks the guard on the delete verb)", () => {
-  // THE PERMISSION-FIRST PIN: until this arm
-  // permission-outranks-captcha on delete was structural only — deleteCard
+  // THE PERMISSION-FIRST PIN: deleteCard
   // runs assertCanWrite(card, "delete") at card-action-engine.ts:1629
   // BEFORE prepareRecaptchaSaveInput at :1649 (Ruby's chain order,
-  // permissions.rb:155-157 before the :validate stage) — plus the UNARMED
-  // 403s (the anonymous-permission-pins arm (c)). End-to-end: on the ARMED
+  // permissions.rb:155-157 before the :validate stage); the UNARMED
+  // 403s are the anonymous-permission-pins arm (c). End-to-end: on the ARMED
   // denied twin, a token-present delete 403s from the permission walk with
   // the guard never consulted. ARM 5 is the mirror half: same armed shape,
   // same anonymous session, token present — on the GRANTED deck it rides to
@@ -604,19 +596,18 @@ describe("armed route pins: DELETE where the RULE denies the actor (permission o
 });
 
 describe("armed route pins: UPDATE where the RULE denies the actor (permission outranks the guard on the update verb)", () => {
-  // THE VERB-SYMMETRY PIN:
-  // arm 7 pinned permission-outranks-captcha on the DELETE verb; the update
-  // verb had the same structural ordering — updateCard runs
+  // THE VERB-SYMMETRY PIN: the update verb's
+  // twin of arm 7 — updateCard runs
   // assertCanWrite(card, "update") at card-action-engine.ts:1018 BEFORE
   // prepareRecaptchaSaveInput at :1152 (Ruby's chain order,
-  // permissions.rb:148-153 before the :validate stage) — but no ARMED+denied
-  // end-to-end pin. End-to-end here: on the ARMED update-denied twin, a
-  // token-present update 403s from the permission walk with the guard never
-  // consulted. ARM 2 is the mirror half: same armed shape, same anonymous
-  // session, token present — on the GRANTED deck it rides to siteverify
-  // exactly once and 200s the save, so this 403 is provably the
-  // permission's verdict and not the guard's (the guard's refusal is 422 —
-  // errorStatus's fall-through, write-routes.ts:558-562 — never 403).
+  // permissions.rb:148-153 before the :validate stage). End-to-end here: on
+  // the ARMED update-denied twin, a token-present update 403s from the
+  // permission walk with the guard never consulted. ARM 2 is the mirror
+  // half: same armed shape, same anonymous session, token present — on the
+  // GRANTED deck it rides to siteverify exactly once and 200s the save, so
+  // this 403 is provably the permission's verdict and not the guard's (the
+  // guard's refusal is 422 — errorStatus's fall-through,
+  // write-routes.ts:558-562 — never 403).
   it("(8) armed + rule-DENIED update + token present: 403 permission-denied from the walk — zero siteverify calls, content unchanged, zero act rows", async () => {
     // the .json mark — arm (7)'s shape: the JSON error body is what
     // carries {code, message} (errorResponse's json arm, write-routes.ts
