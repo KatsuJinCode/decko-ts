@@ -79,13 +79,13 @@ Concretely:
 
 3. **Which one the grade exercises is a fact about the harness, and it is
    stated rather than assumed.** `modDeckBound()` is
-   `this.modLoader !== undefined` (`src/card/render.ts:2304`). The corpus
-   runner never binds one — it builds its engine and registers replay
-   handlers, not a mod deck — so **the graded corpus figure measures the flat
+   `this.modLoader !== undefined` (`src/card/render.ts:2304`). The replay
+   harness never binds one — it builds its engine and registers replay
+   handlers, not a mod deck — so **the graded replay figure measures the flat
    table**. The Bunny host does bind one, at boot and before the render
    engine is constructed (`deploy/bunny-worker-src/bunny-edge-deck-boot.ts:113`),
    so **the deployed engine exercises both layers**. A view that resolves
-   only through the chain is therefore not something the corpus figure
+   only through the chain is therefore not something the graded replay
    covers, and no figure in this repository should be read as covering one.
    The single exception is `ensureCoreAdminRuntime`, which builds the core
    mod's admin runtime lazily for loader-less engines and says so at
@@ -120,21 +120,21 @@ Concretely:
 
 **A view's byte-level proof comes from a capture that rendered it, and a
 graded figure covers the flat table.** The two together are the strongest
-statement available: a view that a corpus figure covers is proven, but only
+statement available: a view that a graded replay figure covers is proven, but only
 because the figure ran with no loader bound, which is exactly the layer that
 table defines. A view proven through the chain alone has no equivalent
 figure, and a deployment-only view's proof is a capture the public package
 does not ship.
 
-**A reader can no longer assume that a passing corpus figure covers what a
+**A reader can no longer assume that a passing graded replay covers what a
 deployed deck renders.** The gap is narrow — the chain falls through to the
 same compiled table for everything the table defines — but it is real, and it
 is now written down rather than implied either way.
 
 **Save-time event declarations are not behaviour.** A declaration at
 `:after_integrate` or `:integrate_with_delay` is recorded and inspectable and
-is not dispatched; the corpus grade cannot see one at all, because a graded
-replay never runs the save path. Where a suite claims a save-time effect, it
+is not dispatched; the graded replay cannot see one at all, because it never
+runs the save path. Where a suite claims a save-time effect, it
 is either running the path itself or asserting on a declaration — and those
 are different claims.
 
