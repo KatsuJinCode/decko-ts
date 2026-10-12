@@ -31,15 +31,13 @@
 //
 // MEASUREMENT, NOT ASSUMPTION. Every pin reports the exact SQL the counting
 // driver saw, classified into the three boot families by SQL text (the same
-// by-text classification the trip census uses,
-// an internal work log §2.2), plus both count axes: the
-// statement axis and the round-trip axis (CountingRenderDriver counts a
-// batch as ONE round trip and N statements).
+// by-text classification the trip-attribution suite uses), plus both count
+// axes: the statement axis and the round-trip axis (CountingRenderDriver
+// counts a batch as ONE round trip and N statements).
 //
 // ISOLATION. One temp directory per pin group, removed in afterAll after the
 // borrowing handles close (Windows EPERM on an open SQLite file). All fixture
-// content is synthetic (the render stream's DATA RULE, mirroring the other
-// suites in this directory).
+// content is synthetic, mirroring the other suites in this directory.
 
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -243,7 +241,7 @@ async function seedBootDeck(rt: BootDeck, body: string): Promise<void> {
   });
 }
 
-// --- the three boot families, classified the way the trip census does ------
+// --- the three boot families, classified the way the trip-attribution suite does ---
 
 const CODEHASH_SQL = "SELECT id, codename, name, left_id, right_id FROM cards WHERE codename IS NOT NULL";
 
@@ -286,10 +284,9 @@ function classifyBootReads(deck: BootDeck): BootReadSet {
 
 /** Every rendered slot carries a per-render `data-slot-id` nonce, so two
  *  engines rendering the same card can never be byte-equal as-is. Slot-
- *  normalize that one attribute before the byte contract is judged — the
- *  same normalization the gate2 byte contract uses (10/10 slot-normalized-
- *  identical, an internal work log). Everything
- *  else in the bytes is compared verbatim. */
+ *  normalize that one attribute before the byte contract is judged —
+ *  the slot nonce is the only attribute that differs between two renders
+ *  of the same card. Everything else in the bytes is compared verbatim. */
 function slotNormalized(html: string): string {
   return html.replace(/data-slot-id=(["'])[0-9a-f]{20}\1/g, 'data-slot-id="<nonce>"');
 }
@@ -336,7 +333,7 @@ describe("engine boot read-set: cold boot reads, warm boot at the same content v
       ORIGINAL_BODY,
     );
     // Reported, not asserted against a magic number: the exact statement
-    // inventory of a cold boot is the receipt's measurement.
+    // inventory of a cold boot is the measurement itself.
     console.log(
       `PIN1 cold boot: bootReadSet=${reads.total} (codehash ${reads.codehash.length}, ` +
         `typeNames ${reads.typeNames.length}, headReads ${reads.headReads.length}) ` +
@@ -363,16 +360,15 @@ describe("engine boot read-set: cold boot reads, warm boot at the same content v
    *   engine 3+ -- the probe reports the version the bundle carries: served,
    *               0 of the boot read-set.
    *
-   * COMPOSED-POSTURE ARITHMETIC (integration assembly r3, 2026-10-06). This
-   * file was written on a lineage without the freshness gate. On the composed
-   * tree EVERY boot here is a cold-closure render of a fresh engine, and the
-   * freshness gate's FIRST-render baseline (stampCold) folds ONE
-   * deck_data_version read into the cold batch — the same statement text the
-   * probe issues, so it lands in the same `version` capture bucket. Every
-   * version-count pin below is the probe count + 1 baseline; the DELTA
-   * between a bundle-less boot (probe 0) and a bundled boot (probe 1) is
-   * still exactly 1, so the pins still fail if the probe fires without a
-   * bundle or fails to fire with one.
+   * VERSION-COUNT ARITHMETIC on the current tree. Every boot here is a
+   * cold-closure render of a fresh engine, and the freshness gate's
+   * FIRST-render baseline (stampCold) folds ONE deck_data_version read into
+   * the cold batch — the same statement text the probe issues, so it lands
+   * in the same `version` capture bucket. Every version-count pin below is
+   * the probe count + 1 baseline; the DELTA between a bundle-less boot
+   * (probe 0) and a bundled boot (probe 1) is still exactly 1, so the pins
+   * still fail if the probe fires without a bundle or fails to fire with
+   * one.
    */
   async function bootUntilVersioned(): Promise<BootReadSet[]> {
     const reads: BootReadSet[] = [];
@@ -503,12 +499,11 @@ describe("engine boot read-set: cold boot reads, warm boot at the same content v
 
   it("PIN 5 -- the CENSUS-SHAPED posture: a new engine AND a new fetcher, same connection", async () => {
     // Every pin above reuses the deck's fetcher, which is the deploy's shape
-    // (ActorRenderEngines holds one base fetcher for the isolate). The trip
-    // census measured the OTHER posture -- "fresh driver + FetchEngine +
-    // RenderEngine per page" (an internal work log §2.1) --
-    // which is what the roadmap's cluster-5 row (5-6 statements per cold
-    // engine) counts. This pin measures the same posture through the cache, so
-    // the receipt's before/after numbers are comparable with the census.
+    // (ActorRenderEngines holds one base fetcher for the isolate). The other
+    // posture -- "fresh driver + FetchEngine + RenderEngine per page" -- is
+    // what the cold-engine cost figures (5-6 statements per cold engine) are
+    // taken over. This pin measures the same posture through the cache, so
+    // the before/after numbers are comparable.
     //
     // A fresh FETCHER matters: it is a fresh codehash registry, so the
     // codename codehash is a real statement for it rather than an already-
@@ -574,7 +569,7 @@ describe("engine boot read-set: cold boot reads, warm boot at the same content v
     ).toBe(2);
 
     // Remove the stamp table from the committed database. This is the
-    // unmigrated database the freshness lane's schema header warns about.
+    // unmigrated database the schema's freshness notes warn about.
     // The six bump triggers on cards / card_references SURVIVE the drop (they
     // belong to those tables), so re-creating the table restores the stamp
     // whole.
