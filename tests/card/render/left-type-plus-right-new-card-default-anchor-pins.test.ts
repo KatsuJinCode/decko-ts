@@ -2,7 +2,7 @@
 // TYPE_PLUS_RIGHT anchor of a card whose LEFT is not a stored card is
 // Card's DEFAULT type, never the nesting context card's type.
 //
-// MECHANISM (gem source, REPO_ROOT/archive/decko-fork-study/decko/):
+// MECHANISM (gem source):
 //
 //   card/lib/card/set/pattern/class_methods.rb:59-71 is the whole rule —
 //
@@ -42,17 +42,11 @@
 // whenever a new left was nested from inside a differently-typed context,
 // and the slot's `TYPE_PLUS_RIGHT-` fragment took the context's type.
 //
-// ORACLE PINS — the frozen expected-v2 bytes, each reproduced by a solo
-// byte probe at this commit (PASS, byte-identical after slot-id
-// normalization):
-//   page  recapture-raw-shard-000022 Soma+tags:page
-//   page  recapture-raw-shard-000024 Ellery+Vacations:page
-//   page  recapture-raw-shard-000024 Ellery+Vacations+Pages:page
-//   view  recapture-raw-shard-000022 Soma+tags:open
-//   view  recapture-raw-shard-000024 Ellery+Vacations+Pages:open
-// The captured fragments are TYPE_PLUS_RIGHT-rich_text-aikido and
-// TYPE_PLUS_RIGHT-rich_text-20180623_0728, in a List-typed context; the
-// pre-fix engine emitted TYPE_PLUS_RIGHT-list-... for both.
+// PINNED SHAPES — the fragments below reproduce the defect's real
+// shapes: a NOT-STORED left nested from a List-typed context anchors
+// TYPE_PLUS_RIGHT-rich_text-..., and a STORED left anchors its own
+// type's fragment; the pre-fix engine emitted TYPE_PLUS_RIGHT-list-...
+// for all of them.
 //
 // The stored-left arms are pinned so the fix cannot be satisfied by always
 // answering "RichText": a STORED left keeps its OWN type (the RVW shape
@@ -61,7 +55,7 @@
 // FIXTURE SHAPE. The right parts are plain words, not `+set` cards: the
 // seeded-junction walk does not resolve a `+`-prefixed right part through
 // `fetchByName`, and the mechanism under test is the TYPE_PLUS_RIGHT anchor,
-// not the name algebra. The corpus shape that matters is preserved exactly —
+// not the name algebra. The shape that matters is preserved exactly —
 // a List-typed compound host whose content nests a NOT-STORED compound card.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -110,8 +104,7 @@ async function seedDeck(): Promise<void> {
 
   // -- case 1: a NEW left (no stored row for the left name) -----------------
   // `soma base+tags` is List-typed and nests `tic+aikido`; the target card
-  // is not a stored row, so its own left `tic` is a new card too. This is
-  // the exact corpus shape of the Soma / Ellery clusters.
+  // is not a stored row, so its own left `tic` is a new card too.
   await seedCard(s, { id: 300, name: "soma base", typeId: T_RICH });
   await seedCard(s, { id: 301, name: "tags", typeId: T_RICH });
   await seedCard(s, {
@@ -167,8 +160,8 @@ describe("left_type's last fallback is Card's DEFAULT type, not the context card
   it("a NEW left nested from a LIST context anchors TYPE_PLUS_RIGHT-rich_text", async () => {
     const html = await storage!.engine.render("soma base+tags", "content");
     expect(html, "the anchored slot must render").toMatch(/card-slot/);
-    // The `bar` view's own name suffix is part of the tag, exactly as the
-    // corpus's `TYPE_PLUS_RIGHT-rich_text-aikido` slot reads.
+    // The `bar` view's own name suffix is part of the tag:
+    // TYPE_PLUS_RIGHT-rich_text-aikido_bar.
     expect(html, "quick_type's new-card default is RichText").toContain(
       "TYPE_PLUS_RIGHT-rich_text-aikido_bar",
     );
