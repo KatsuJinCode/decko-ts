@@ -1,8 +1,8 @@
 // Open the TS engine over a real deck file: the fetch layer with the
-// deck's composed names in its lexicon, the oracle deck's inflections, the
-// structure-rule universe, and (optionally) a CardActionEngine acting as a
-// given account on a fixed clock. Used by the pods command line and the
-// persistence tools' tests.
+// deck's composed names in its lexicon, the card gem's initializer
+// inflections, the structure-rule universe, and (optionally) a
+// CardActionEngine acting as a given account on a fixed clock. Used by the
+// pods command line and the persistence tools' tests.
 
 import { LocalSqliteDriver } from "../../server/drivers/local-sqlite.js";
 import { FetchEngine } from "../fetch.js";
