@@ -1,12 +1,11 @@
 // deploy/bunny-worker-src/bunny-edge-error-page.ts — the edge's full-chrome
 // error pages, ported from the staging host's error builder.
 //
-// WHY THIS EXISTS (p2-error-shell lane, 2026-10-03 — named residual #2 of
-// the edge-site-shell lane): the edge answered card 404s, render 500s, and
+// WHY THIS EXISTS: the edge answered card 404s, render 500s, and
 // render-budget 503s with the bare worker.ts layoutPage shell (measured at
-// the deploy-lineage tip 12bd523: card 404 = 749 B, 0 <link>, 0 <script>,
-// no <nav>, no footer) while the live deck serves Decko's full-chrome error
-// pages. The staging host's builder (vm-staging-server.mjs:1339-1549 and its
+// one point in the edge's history: card 404 = 749 B, 0 <link>, 0 <script>,
+// no <nav>, no footer) while a deployed deck serves Decko's full-chrome
+// error pages. The staging host's builder (vm-staging-server.mjs:1339-1549 and its
 // helper chain) is the Ruby-faithful ground truth; this module carries that
 // builder's byte shape, with the platform deltas named inline:
 //
@@ -14,9 +13,9 @@
 //     built exactly as the staging host builds them (renderDeckoErrorPage,
 //     vm-staging-server.mjs:1497-1549): the deck's default layout body drives
 //     the whole page shell, *header/*footer nest into it through literal
-//     reads + token substitution, and the error body region is the
-//     live-captured slot HTML (the not_found slot with the noindex head
-//     line; the "Wild Card!" deck error block).
+//     reads + token substitution, and the error body region is the recorded
+//     slot HTML (the not_found slot with the noindex head line; the
+//     "Wild Card!" deck error block).
 //   - The budget 503 has NO staging shape (the deadline is an edge concept),
 //     so its BODY REGION is the edge's own Slow-render text re-homed into
 //     the same chrome; the Retry-After / X-Decko-Edge-Budget / no-store
@@ -32,7 +31,7 @@
 // NAMED DEVIATIONS from the staging builder (byte-neutral):
 //   - resolveCardStoredName: staging scans `SELECT name FROM cards WHERE
 //     trash = 0` (a whole-deck row walk — the pattern the edge's
-//     query-scoping incident removed); the edge resolves the stored name
+//     query scoping avoids); the edge resolves the stored name
 //     through the deck's own FetchEngine#fetchByName (one targeted query,
 //     the Ruby-faithful name-key resolution). Only the server_error title
 //     consumes it; the not_found title comes from the URL display form +
@@ -61,7 +60,7 @@ import { EMPTY_SERVED_DELTAS, type ServedEnvironmentDeltas } from "./bunny-edge-
 export interface ErrorPageDeck {
   fetcher: FetchEngine;
   /** The deployment's served-environment deltas (deployment configuration,
-   *  EMPTY by default). Every corpus card id, asset URL and version pin this
+   *  EMPTY by default). Every deck card id, asset URL and version pin this
    *  chrome used to hard-code reads through here — see
    *  bunny-edge-served-deltas.ts and the module header's finding-9 note. */
   servedDeltas?: ServedEnvironmentDeltas;
@@ -84,11 +83,11 @@ interface ErrorPageDriver {
 // ---------------------------------------------------------------------------
 //
 // Every value in this block used to be a module constant pinned from one
-// private deck's live bytes, so every deployment served that deck's card ids,
-// asset URLs and version string. Each is now a field on the deployment's
+// specific deck, so every deployment served that deck's card ids, asset URLs
+// and version string. Each is now a field on the deployment's
 // ServedEnvironmentDeltas (bunny-edge-served-deltas.ts), EMPTY by default:
 //
-//   notFoundType / allCardId / layoutPointerId / pointerTypeId  the corpus
+//   notFoundType / allCardId / layoutPointerId / pointerTypeId  the deck
 //     card ids the chrome's not_found slot and default-layout lookup read.
 //     Unset, the not_found slot renders with NO type chip and NO type
 //     attributes, and the default-layout lookup has no ids to query with —
@@ -107,7 +106,7 @@ interface ErrorPageDriver {
 /** Grace bound for the budget-503 chrome build (module header): when the
  *  render budget fired because the database is slow or dead, the error page
  *  itself must not become a second long wait. Past the grace the builder's
- *  fallback (the bare pre-lane page) answers. Named here so the caller's
+ *  fallback (the bare stub page) answers. Named here so the caller's
  *  contract is greppable. */
 export const EDGE_ERROR_PAGE_GRACE_MS = 5_000;
 
@@ -380,8 +379,8 @@ async function renderNavbarLinks(deck: ErrorPageDeck): Promise<string> {
         }
       }
       parts.push(`<span class="denied"><!-- Sorry, you don't have permission (read) --></span>`);
-      // The "\r\n" separator is the live byte shape (live-fresh error
-      // captures, 2026-09-27; vm-staging-server.mjs:952-957).
+      // The "\r\n" separator is the byte shape the staging host emits
+      // (vm-staging-server.mjs:952-957).
       parts.push(`</div></li></li>\r\n`);
     } else {
       const hrefKey = item.target.replace(/ /g, "_").replace(/\$/g, "_");
@@ -396,14 +395,14 @@ async function renderNavbarLinks(deck: ErrorPageDeck): Promise<string> {
 
 /** The footer content: *credit_image + the version pin, wrapped in the
  *  Xfooter content-view slot (vm-staging-server.mjs:1081-1120). Single
- *  escape only on the slot JSON — the live byte form. */
+ *  escape only on the slot JSON — the byte form the staging host emits. */
 async function renderFooterContent(deck: ErrorPageDeck): Promise<string> {
   const creditImage = await fetchCardDbContent(deck, "*credit_image");
   // The footer version pin is deployment configuration. With no
   // pin configured the credit block prints the deck's own stored bytes and
   // makes no version claim of its own.
   const version = deltasOf(deck).footerVersionPin;
-  // The corpus's *credit_image db_content ends "</svg>\n"; strip the
+  // The *credit_image card's db_content ends "</svg>\n"; strip the
   // trailing newline so the template's own "\n" supplies the one live
   // serves (vm-staging-server.mjs:1093-1098).
   const svg = (creditImage.length > 0 ? creditImage : "").replace(/\n$/, "");
@@ -539,10 +538,10 @@ function notFoundSlotOptionsJson(): string {
   });
 }
 
-/** The main-slot bytes for the not_found page — the live capture's slot div,
+/** The main-slot bytes for the not_found page — the staging host's slot div,
  *  verbatim except the per-name fields and the per-request slot id
  *  (vm-staging-server.mjs:1393-1426). escapeHtml single-escapes the slot
- *  JSON's quotes — the live byte form. */
+ *  JSON's quotes — the byte form the staging host emits. */
 function buildNotFoundSlotHtml(
   deck: ErrorPageDeck,
   displayName: string,
@@ -674,8 +673,9 @@ async function wrapWithLayout(
   const renderedInner = layoutInner
     .replace(/\{\{:header\|core\}\}/g, () => headerHtml)
     .replace(/\{\{:footer\|content\}\}/g, () => footerHtml)
-    // The rileyellery-layout `<p>{{*foot|core}}</p>` renders `<p></p>`
-    // for the anonymous viewer — the nest contributes zero bytes.
+    // A `<p>{{*foot|core}}</p>` nest in the layout renders `<p></p>` for
+    // the anonymous viewer — the nest contributes zero bytes — so the shell
+    // builder strips it rather than leaving an empty paragraph.
     .replace(/\{\{\*foot\|core\}\}/g, () => "")
     .replace(
       /\{\{_main(?:\s*\|\s*([A-Za-z0-9_]+))?\}\}/g,
@@ -783,7 +783,7 @@ interface FullChromeErrorPageOptions {
   /** A complete extra <head> line incl. its trailing "\n". */
   headExtraLine?: string;
   cardName: string;
-  /** The pre-lane/fallback document, served whenever the chrome cannot be
+  /** The bare fallback document, served whenever the chrome cannot be
    *  built (missing layout, failing reads) or the grace is lost. */
   fallbackHtml: string;
   /** Grace bound in ms; <= 0 or undefined = unbounded build. */
