@@ -67,7 +67,6 @@ the class-token-order class is a finding, not a rounding error.
   and compare.
 - `adapter-ruby32.json`, `rebuild-ruby32-native-extensions.sh` — the Ruby 3.2
   adapter and the native-extension rebuild it needs on this machine.
-<<<<<<< HEAD
 - `evidence/` — the recorded comparisons.
 
 ## Reproducing the Linux capture
@@ -102,6 +101,3 @@ Docker is not installed on this machine, so the pinned `ruby:3.3.12-slim`
 image could not be used; the capture ran on Ubuntu's `ruby 3.3.8` inside WSL2
 instead. The recorded environment is in the run's `run-meta.json`, which is
 the point of recording it.
-=======
-- `evidence/` — the recorded comparisons.
->>>>>>> r9fix/gates

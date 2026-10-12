@@ -19,15 +19,20 @@
 //       that could not start) as INCOMPLETE, never as pass;
 //   (d) exits non-zero only for NEW failures or INCOMPLETE mandatory
 //       evidence — the accepted baseline is exactly that, accepted;
-//   (e) prints one summary table and names where the full logs are.
+//   (e) prints one summary table and names where the full logs are;
+//   (f) checks the tree for unresolved merge markers BEFORE any stage runs,
+//       because that is the one defect no stage here can see: every other
+//       stage reports test verdicts, and no test greps a README for `<<<<<<<`.
 //
 // SOURCES OF TRUTH, deliberately not prose: vitest runs with a JSON reporter
 // alongside the default one, and classification reads the JSON (file paths
 // and per-test verdicts), never the rendered summary. node --test is read
-// from its spec reporter's stable counters. Stages and their order are the
-// npm script's, unchanged: test (card) -> test:deploy -> test:drivers ->
-// test:shadow -> test:reference-harness -> test:persistence-probe, plus the
-// no-caching freshness stage appended below.
+// from its spec reporter's stable counters. The conflict-marker check reads
+// file bytes directly — there is no reporter to ask. Stages and their order
+// are the npm script's, unchanged: test (card) -> test:deploy ->
+// test:drivers -> test:shadow -> test:reference-harness ->
+// test:persistence-probe, plus the no-caching freshness stage appended below
+// and the conflict-marker pre-flight ahead of them.
 //
 // WHY no-caching is its OWN stage and not part of `npm test` (review finding
 // 16). tests/deploy/no-caching-synthetic.test.ts is the PUBLIC proof that a
@@ -42,7 +47,7 @@
 // neither `npm test`'s scope nor its runtime changes.
 
 import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import process from "node:process";
@@ -50,6 +55,65 @@ import process from "node:process";
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const VITEST = join(REPO_ROOT, "node_modules", "vitest", "vitest.mjs");
 const KNOWN_FAILURES = join(REPO_ROOT, "KNOWN_FAILURES.md");
+
+/** Directories that are never shipped and never scanned for merge damage:
+ *  git's own internals, installed dependencies, and this repo's scratch. */
+const UNSCANNED_DIRS = new Set([".git", "node_modules", "tmp", "dist", "coverage", ".wrangler"]);
+
+// A git conflict marker is EXACTLY seven characters: `<<<<<<< label`,
+// `=======`, `>>>>>>> label`. The seven-character anchor is load-bearing and
+// is not cosmetic. A looser `^=======` matches 17 files in this tree that are
+// not conflicted at all — the `======...=====` banner rules in the vendored
+// LICENSE.txt files under fixtures/vendor/, and the `======== PLAN ========`
+// separators in the provisioning scripts — so a loose check reports a clean
+// tree as broken and gets disabled, which is worse than having none. `=======`
+// must therefore be whole-line: exactly seven `=` and nothing after.
+// Measured on this tree: the loose form hits 17 files, the anchored form 0.
+const CONFLICT_MARKER = /^(?:<<<<<<<(?: .*)?|=======|>>>>>>>(?: .*)?)$/;
+
+/** Every text file under REPO_ROOT that git is currently tracking, plus
+ *  untracked files — an unresolved conflict is uncommitted by definition, so
+ *  an index-only read would miss exactly the case this checks for. Binary
+ *  files are skipped by extension so a .png or .sqlite3 is never decoded. */
+const TEXT_EXTENSIONS = new Set([
+  ".md", ".txt", ".mjs", ".js", ".cjs", ".ts", ".tsx", ".json", ".jsonl",
+  ".yml", ".yaml", ".sh", ".rb", ".sql", ".css", ".html", ".mjs", ".vue",
+]);
+
+function conflictMarkers() {
+  const found = [];
+  const walk = (dir) => {
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return; // unreadable directory is not evidence of anything
+    }
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        if (!UNSCANNED_DIRS.has(entry.name)) walk(join(dir, entry.name));
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      if (!TEXT_EXTENSIONS.has(entry.name.slice(entry.name.lastIndexOf(".")).toLowerCase())) continue;
+      let text;
+      try {
+        if (statSync(join(dir, entry.name)).size > 4_000_000) continue;
+        text = readFileSync(join(dir, entry.name), "utf8");
+      } catch {
+        continue;
+      }
+      const lines = text.split("\n");
+      for (let i = 0; i < lines.length; i += 1) {
+        if (CONFLICT_MARKER.test(lines[i].replace(/\r$/, ""))) {
+          found.push(`${relative(REPO_ROOT, join(dir, entry.name)).replaceAll("\\", "/")}:${i + 1}`);
+        }
+      }
+    }
+  };
+  walk(REPO_ROOT);
+  return found;
+}
 
 /** The stages, in the npm script's order. Each command is argv — node is
  *  spawned directly, no shell, so the runner is identical on Windows and
@@ -191,9 +255,47 @@ function classify(outcome, ran, known) {
 }
 
 const known = knownFailureSuites();
+
+// Merge damage is checked FIRST and runs even if every other stage fails,
+// because it costs milliseconds and it is the one failure mode that makes the
+// rest of the report meaningless: a shipped `<<<<<<< HEAD` in a doc is not a
+// red suite, it is a file that was never finished. Two docs shipped that way
+// (docs/parity-method.md and tools/ruby-version-variance/README.md, both left
+// by the r9fix/gates merge), and nothing caught them, because every stage
+// here reports on test VERDICTS and no test reads a README for conflict
+// markers. Resolving them by hand is not the fix; this is.
+const markers = conflictMarkers();
+const markerRow = {
+  stage: "conflict-markers",
+  result: markers.length === 0 ? "PASS" : "NEW",
+  reason: markers.length === 0 ? "no unresolved merge markers" : `${markers.length} unresolved merge marker(s)`,
+  failed: markers,
+  known: [],
+  counts: null,
+  seconds: 0,
+};
+
+// `--markers-only` runs the pre-flight alone and stops. It exists so the
+// merge-damage check is runnable in isolation for the cost it actually is —
+// this is a filesystem walk, tens of milliseconds — rather than only ever
+// being reachable behind four minutes of test stages. The flag changes what
+// runs; it never changes what the gate concludes.
+if (process.argv.includes("--markers-only")) {
+  if (markers.length > 0) {
+    console.log(`Release check — merge damage: ${markers.length} unresolved marker(s)`);
+    for (const m of markers) console.log(`  ${m}`);
+    process.exitCode = 1;
+  } else {
+    console.log("Release check — merge damage: clean, no unresolved conflict markers.");
+  }
+  process.exit(process.exitCode ?? 0);
+}
+
+if (markers.length > 0) console.log(`\nUnresolved merge markers:\n${markers.map((m) => `  ${m}`).join("\n")}\n`);
+
 const logDir = mkdtempSync(join(process.env.TEMP ?? process.env.TMP ?? "/tmp", "decko-release-check-"));
-const rows = [];
-let newStages = 0;
+const rows = [markerRow];
+let newStages = markers.length > 0 ? 1 : 0;
 let incompleteStages = 0;
 let baselineStages = 0;
 
