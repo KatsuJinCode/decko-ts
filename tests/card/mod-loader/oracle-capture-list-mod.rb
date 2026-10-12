@@ -1,12 +1,12 @@
-# oracle-capture-list-mod.rb - oracle capture for the card-mod-list loader
-# port (decko-ts mod-port stream, card-mod-list-0.20.0).
+# oracle-capture-list-mod.rb - renders the card-mod-list loader surfaces
+# for byte fixtures (card-mod-list-0.20.0).
 #
 # Run (from tools/oracle/decko-oracle-app):
 #   RAILS_ENV=development RUBY_DLL_PATH=REPO_ROOT/decko-ts/tools/oracle/mysql-client-scratch/lib \
 #     bundle exec decko runner REPO_ROOT/decko-ts/tests/card/mod-loader/oracle-capture-list-mod.rb
 #
 # Records to fixtures/captured/list-mod-loader.json:
-# 1. mod load order / pattern codes / grouped codes (same bookkeeping oracle
+# 1. mod load order / pattern codes / grouped codes (same bookkeeping
 #    as oracle-capture-help-mod.rb, for cross-checking loader parity)
 # 2. the Card::Setting registry state card-mod-list's setting_opts files
 #    contribute (self/content_options.rb, self/content_option_view.rb):
@@ -18,14 +18,14 @@
 # 4. the list_input_options basket state (set/all/supports_content_options.rb
 #    + card-mod-edit editor.rb both write it)
 # 5. rendered bytes for probe cards' :one_line_content / :view_list / :input /
-#    :list / :nest_list_input / :content / :core views - the byte oracle for
-#    the TS-side A/B test
+#    :list / :nest_list_input / :content / :core views - the bytes the
+#    TS-side A/B test pins
 #
 # Determinism contract (mirrors oracle-capture-help-mod.rb): output JSON is
 # pretty-printed with deeply sorted keys + trailing newline; the random
 # data-slot-id attribute is normalized to a placeholder; probe seed cards are
-# created-if-missing and DELETED (trashed) after capture so the shared oracle
-# DB returns to its prior state.
+# created-if-missing and DELETED (trashed) after the run so the shared DB
+# returns to its prior state.
 
 require "json"
 
@@ -229,9 +229,8 @@ Card::Auth.as_bot do
     end
   end
 end
-# NO card_count field: the oracle DB is shared with other streams'
-# benchmarks, so a card count is racy harness telemetry, not mod-mechanism
-# oracle data.
+# NO card_count field: the DB is shared with other concurrent runs, so a
+# card count is racy harness telemetry, not mod-mechanism data.
 
 # ---- write ------------------------------------------------------------------
 File.write(OUT_PATH, JSON.pretty_generate(deep_sort(payload)) + "\n")
