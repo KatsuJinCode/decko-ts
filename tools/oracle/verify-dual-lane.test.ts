@@ -4,11 +4,11 @@
 // tools/oracle/capture-dual-lane-page-and-view.rb):
 //
 //   VIEW lane  -- tmp/raw-ground-truth/expected-v2/view-lane/*.jsonl
-//       Same comparison as verify-recapture-raw.test.ts: engine view-function
-//       output vs the bare `card.format.render(view)` bytes (schema identical
-//       to the old expected/ shards plus a lane:"view" field). This number
-//       tracks the old exam (baseline ~7,001-7,002 / 10,274: 6,588 records +
-//       3,686 renders). Never live-page parity.
+//       Same comparison shape as the repo's earlier per-render verifier:
+//       engine view-function output vs the bare `card.format.render(view)`
+//       bytes (schema identical to the old expected/ shards plus a
+//       lane:"view" field). This number tracks the old exam's baseline.
+//       Never live-page parity.
 //
 //   PAGE lane  -- tmp/raw-ground-truth/expected-v2/page-lane/*.jsonl
 //       Engine page-shaped output vs the live-serving page bytes
@@ -42,12 +42,12 @@
 //   coverage, never silently dropped. A mid-capture run still yields numbers.
 //
 // BLIND-SPOT FIX: whole-line CAPTURE_ERROR entries (Card.fetch returned nil)
-// are COUNTED AND REPORTED per lane (the old verifier silently skipped 26 of
-// them). Lane V counts them without grading (the runbook pins lane V
-// byte-identity to the old shards; its per-view sentinels ARE graded as
-// today). Lane P both counts AND grades them -- an error sentinel is a valid
-// expected outcome there: an engine that renders a page where the oracle
-// raised (or vice versa) is a class-1 parity failure, not a skip.
+// are COUNTED AND REPORTED per lane (the earlier verifier silently skipped
+// them). Lane V counts them without grading (lane V is pinned byte-identical
+// to the old shards; its per-view sentinels ARE graded as today). Lane P both
+// counts AND grades them -- an error sentinel is a valid expected outcome
+// there: an engine that renders a page where the oracle raised (or vice
+// versa) is a class-1 parity failure, not a skip.
 //
 // NOT GRADED (metadata reported instead): lane P's layout/layout_rule/
 // layout_main_view/format_main pin WHICH layout produced the bytes. The
@@ -61,7 +61,7 @@
 // version footer) and post-snapshot live content edits. The live-wire
 // comparers exist only as instrument validation.
 //
-// CANONICAL HOME (instrument-reliability lane, 2026-10-01): this spec is the
+// CANONICAL HOME: this spec is the
 // ground-truth measuring instrument and is TRACKED at
 // tools/oracle/verify-dual-lane.test.ts -- the same tracked-instrument home
 // pattern as the Ruby capture instrument. The copy in this directory is a
@@ -74,8 +74,8 @@
 //
 // Run (hold tmp/slice-replay.lock):
 //   DUAL_LANE_REPORT_ONLY=1 npx vitest run tmp/raw-ground-truth/scripts/verify-dual-lane.test.ts
-//   DUAL_LANE_FILES=recapture-raw-shard-000047.jsonl npx vitest run ...   # one shard
-//   DUAL_LANE_REPORT_ONLY= npx vitest run ...                             # hard gate
+//   DUAL_LANE_FILES=<shard>.jsonl npx vitest run ...   # one shard
+//   DUAL_LANE_REPORT_ONLY= npx vitest run ...          # hard gate
 
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -106,9 +106,9 @@ import {
 } from "../../../src/card/set-module-content-overrides.js";
 
 // The capture-deck wall clock — the same pin the graded runner applies
-// (dual-lane-direct-runner-core.ts module scope; set-override-fidelity lane
-// 2026-10-03). Both record paths must answer Self::Now with the captured
-// instant for byte parity against the corpus expectations.
+// (dual-lane-direct-runner-core.ts module scope). Both record paths must
+// answer Self::Now with the captured instant for byte parity against the
+// corpus expectations.
 setCaptureWallClock(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT);
 import { createRawStructureSeededStorage, RAW_CORPUS_DB } from "./raw-corpus-seeding.js";
 
@@ -121,10 +121,9 @@ const OUT_DIR = path.join(REPO_ROOT, "tmp", "raw-ground-truth", "enumeration");
 const OUT_FILE = path.join(OUT_DIR, "dual-lane-verification-aggregate.json");
 
 const SHARD_RE = /^recapture-raw-shard-\d{6}\.jsonl$/;
-/** Production resolves Cardio.config.default_html_view = :content (runbook
- *  section "five production-equivalent settings", item 5). Fallback main view
- *  for page-lane capture-error lines, where the oracle never resolved a main
- *  nest view. */
+/** Production resolves Cardio.config.default_html_view = :content. Fallback
+ *  main view for page-lane capture-error lines, where the oracle never
+ *  resolved a main nest view. */
 const PRODUCTION_DEFAULT_MAIN_VIEW = "content";
 
 const REPORT_ONLY =
@@ -232,10 +231,10 @@ function loadLane<T extends { lane: string }>(p: string, lane: string): LoadedLa
   return result;
 }
 
-/** Failure-signature classification. The first two branches and the last
- *  three mirror verify-recapture-raw.test.ts verbatim so lane-V signatures
- *  stay comparable with the old per-class-mechanisms data; the page-shape
- *  branch is new and page-lane-only. */
+/** Failure-signature classification. The branches mirror the repo's earlier
+ *  per-render verifier verbatim so lane-V signatures stay comparable with
+ *  the old per-class-mechanisms data; the page-shape branch is new and
+ *  page-lane-only. */
 function classifyFailure(first: string, expectedExcerpt: string, actualExcerpt: string): string {
   if (first.includes("fixture expects a raised error (CAPTURE_ERROR sentinel)")) {
     const m = /expected excerpt: CAPTURE_ERROR: ([^:]+):/.exec(first);
@@ -371,8 +370,8 @@ describe("dual-lane ground-truth verification", () => {
           for (const line of loaded.lines) {
             // Whole-line capture error (Card.fetch returned nil in the
             // oracle): COUNTED AND REPORTED, never silently skipped. Lane V
-            // counts without grading (runbook pins lane V byte-identity to
-            // the old shards; per-view sentinels below ARE graded).
+            // counts without grading (lane V is pinned byte-identical to the
+            // old shards; per-view sentinels below ARE graded).
             if (line.error !== undefined && line.record === undefined && line.views === undefined) {
               viewCaptureErrorLines += 1;
               continue;
@@ -471,15 +470,13 @@ describe("dual-lane ground-truth verification", () => {
         );
       }
 
-      // instrument-reliability lane (2026-10-01): ONE Date.now() pair around
-      // the per-phase seed/warm block, closing the split gap in
-      // profile-full-checker-2026-10-01.md §6 -- the per-phase fixed cost
-      // (full-corpus re-seed + per-id lexicon warm) was bounded <=6% of
-      // compute by a kill at 21.3s, never measured. The phase wall clock is
-      // the driver's DONE line; wall minus this line's ms is the render+boot
-      // upper bound, and this line vs the phase START separates seed/warm
-      // from boot. Printed on stdout so the driver's output relay captures it
-      // verbatim in verifier-fast.log.
+      // ONE Date.now() pair around the per-phase seed/warm block. The
+      // per-phase fixed cost (full-corpus re-seed + per-id lexicon warm) was
+      // previously unmeasured. The phase wall clock is the driver's DONE
+      // line; wall minus this line's ms is the render+boot upper bound, and
+      // this line vs the phase START separates seed/warm from boot. Printed
+      // on stdout so the driver's output relay captures it verbatim in
+      // verifier-fast.log.
       const seedWarmT0 = Date.now();
       const idLister = new Database(RAW_CORPUS_DB, { readonly: true });
       const everyLiveId = (
@@ -536,8 +533,8 @@ describe("dual-lane ground-truth verification", () => {
             const isSimple = card.name === undefined || card.name.isSimple;
             // The set-module content override — the same resolution the graded
             // runner performs (dual-lane-direct-runner-core.ts card-engine
-            // handler; set-override-fidelity lane 2026-10-03). Both record
-            // paths must resolve card.content identically.
+            // handler). Both record paths must resolve card.content
+            // identically.
             const partCodenames: Array<string | null> = [];
             {
               let cur = card;
