@@ -75,8 +75,8 @@
 //   (card-mod-edit.ts), is_structure?/structure/structure_rule_card
 //   (rules/structure.ts persisted walk; fetch/virtual-cards.ts fetch-side
 //   virtual walk), template/new_card_template/dup_structure
-//   (actions/type-resolution.ts — both new-card template legs; the corpus
-//   census behind the structure leg:
+//   (actions/type-resolution.ts — both new-card template legs; the
+//   structure leg's coverage:
 //   tests/card/rules/structure-governance-census-probe.test.ts)
 // - set/abstract/lock.rb methods (lock/lock_cache_key/locked?/lock!/
 //   unlock!): cache-machinery (Card.cache, not ported)
@@ -113,7 +113,7 @@ import type {
 import { superView } from "../mod-view-helpers.js";
 import { numberToHumanSize } from "./rails-number-to-human-size.js";
 
-/** The set-module event declarations (the set-module event, 2026-10-08):
+/** The set-module event declarations:
  *  stub-bodied, with the per-event reason on the declaration. Same shape
  *  as core-mod.ts's local helper. */
 function event(
@@ -347,7 +347,7 @@ const setModules: ModSetModuleFile[] = [
     // ported), format :html do block: :one_line_content (port - the
     // type : raw template), visible_cardtype_groups (not ported).
     //
-    // Events (set-module event 2026-10-08) — three STUBS with named
+    // Events — three STUBS with named
     // reasons (structure.rb:25-46):
     // - update_structurees_references (:integrate, when:
     //   update_structurees_references?) re-runs update_references_out on
