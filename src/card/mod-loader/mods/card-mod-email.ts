@@ -9,9 +9,8 @@
 // patterns, 1 HAML template (right/html_message/content_with_link.haml),
 // and 2 lib files (the email_text/email_html format class registrations).
 //
-// The compat report (tools/compat-report/mod-compat-report.json entry for
-// card-mod-email-0.20.0) lists the mod-specific views NOT covered by the
-// compiled-in HTML_VIEWS as `compact_missing` and `email_page`. The
+// Two mod-specific views are NOT covered by the
+// compiled-in HTML_VIEWS: `compact_missing` and `email_page`. The
 // `compact_missing` redefinition lives in set/all/email_text.rb (format
 // :email_text) and set/all/email_html.rb (format :email_html); both are
 // `view :compact_missing do "" end` - the empty-body override of the core
@@ -55,9 +54,9 @@
 //   include_set seam and a FLAT registration would hijack every card's
 //   :core; see the note on the test-context seam below; the flat record
 //   carries the same three arms through the emailScopedCoreView
-//   dispatcher for the loader-less graded surface). Its format
+//   dispatcher for the loader-less engine surface). Its format
 //   :email_html view :core (process_content render_raw) is NOT ported -
-//   the email_html format's own :core surface has no captured reader.
+//   the email_html format's own :core surface has no reader here.
 // - set/right/bcc.rb, cc.rb, from.rb,    include_set + assign_type only;
 //   subject.rb, to.rb                    no views (the assign_type lines
 //                                        ride the setModules' assignsType
@@ -81,10 +80,8 @@
 //   which use Auth.as, format_opts.merge format: :email_text,
 //   field_card.account&.email - account ladder + Auth.as are not ported)
 // - set/type/email_template/html.rb:     view :core = render_read_form IS
-//   ported (below - the explicit edit_fields arm; live-probed:
-//   normalized_edit_field_config(:to) == ["welcome email+*to",
-//   {:title=>"welcome email+*to"}]). edit_fields itself is the EMAIL_FIELDS
-//   constant + [:test_context] (html.rb:2-4).
+//   ported (below - the explicit edit_fields arm: the EMAIL_FIELDS
+//   constant + [:test_context], html.rb:2-4).
 // - lib/card/format/email_html_format.rb: format-class registration
 //   (`@@aliases["email"] = "email_html"`, view_caching? false). The TS
 //   engine has no format-class surface; the html-side alias is the
@@ -135,7 +132,7 @@ const emailTextCompactMissingView: ViewFn = () => "";
  *  :never: `_render_last_action_verb` - the underscore render (card core
  *  format/method_delegation.rb:6-18 RENDER_METHOD_RE: the leading
  *  underscore -> render_args sets skip_perms: true). WHAT THE VERB
- *  RENDERS (full chain, read 2026-10-01): _render_last_action_verb is
+ *  RENDERS (full chain): _render_last_action_verb is
  *  render!(:last_action_verb, skip_perms: true); the view method lookup
  *  is respond_to?(:_view_last_action_verb) on the format instance
  *  (format/render.rb:68-78 view_method/supports_view?). The HISTORY
@@ -169,14 +166,12 @@ const emailTextCompactMissingView: ViewFn = () => "";
  *  viewChain) and email_text is not html-descended (no html-chain
  *  fallback - HTML_DESCENDED_FORMATS).
  *
- *  Byte census (2026-10-01, sha-verified corpus copy 6A44DFDC...):
- *  13,176 captured oracle entries, ZERO render :last_action in any
- *  format - the four entries carrying "last_action" bytes are the
- *  follower notification email template's authored
- *  `{{_|last_action_verb}}` source; 42 entries carry the html
- *  :last_action span (the history surface, which stays). The bytes
- *  are therefore GEM-SOURCE-DERIVED (RENDERED-UNPINNED), the same
- *  disclosed basis as the history mod's :last_action arm. */
+ *  BASIS: the bytes are GEM-SOURCE-DERIVED - no shipped render surface
+ *  exercises the email_text :last_action view (the deck's own
+ *  notification email template only AUTHORS `{{_|last_action_verb}}`
+ *  source, it does not render this view), so the delegation follows the
+ *  gem source chain documented above (the same disclosed basis as the
+ *  history mod's :last_action arm). */
 const emailTextLastActionView: ViewFn = (ctx: ViewContext) =>
   ctx.fmt.renderView("last_action_verb", { skip_perms: true });
 
@@ -221,9 +216,8 @@ const emailPageView: ViewFn = (ctx: ViewContext) => {
   // that rescue is QUIET (html_format.rb:16-18 focal? = main? = false), so a
   // raising core becomes the delegated render's VALUE (the verbatim
   // unknown-codename span) and the :email_document wrapper still completes
-  // around it - the oracle's 271-byte email_page with the span inside the
-  // body. The former bare renderView call let the error escape to the root's
-  // rescue, which dropped the wrapper.
+  // around it (the span inside the body). The former bare renderView call
+  // let the error escape to the root's rescue, which dropped the wrapper.
   const core = ctx.fmt.renderDelegated("core");
   // Wrap: :email_document substitutes INTERIOR with the interior bytes
   // (wrap.rb#interior, the heredoc interpolation pattern in
@@ -236,7 +230,7 @@ const emailPageView: ViewFn = (ctx: ViewContext) => {
 
 /** card-mod-email-0.20.0 set/right/html_message.rb:8-10 view :content —
  *  the BODY is homed on the flat record (views.ts contentWithLinkBody, the
- *  same loader-less seam as the three :core bodies below: the graded page
+ *  same loader-less seam as the three :core bodies below: the engine's page
  *  surface binds no loader, and the read_form field slots dispatch :content
  *  on the +*html message field); this registration delegates single-source.
  *  It used to be exported but held back, because registering it made it
@@ -251,10 +245,10 @@ const contentWithLinkView: ViewFn = contentWithLinkBody;
 
 // ---------------------------------------------------------------------------
 // the Abstract::TestContext include_set seam + the message/template cores
-// (the email views port; the roleviews recorded result's leftovers 1-3)
+// (the email views port)
 //
 // The three html :core BODIES live in render/views.ts (htmlMessageCoreBody,
-// textMessageCoreBody, emailTemplateCoreBody) — the graded page-surface
+// textMessageCoreBody, emailTemplateCoreBody) — the engine's page-surface
 // harness binds NO mod loader, so the bodies must sit on the flat record
 // the loader-less dispatch reads; the flat `core` entry there is a scope
 // dispatcher (emailScopedCoreView) whose guards reproduce the set-module
@@ -279,7 +273,7 @@ const htmlMessageCoreView: ViewFn = htmlMessageCoreBody;
  *  right/text_message and right/html_message) whose :core the abstract's
  *  contextualizing wraps; the registration was missing from this manifest
  *  while the flat record already carried the arm, so a loader-bound
- *  engine and the loader-less graded surface disagreed on the subject
+ *  engine and the loader-less dispatch disagreed on the subject
  *  field's core dispatch. */
 const subjectCoreView: ViewFn = subjectCoreBody;
 
@@ -313,8 +307,8 @@ const setModules: ModSetModuleFile[] = [
     // mixed onto the three concrete including modules (the include_set
     // seam; see the htmlMessageCoreView registration below and views.ts's
     // contextualizingTestContext). The format :email_html :core
-    // (process_content render_raw) is NOT ported - no captured reader of
-    // the email_html :core surface.
+    // (process_content render_raw) is NOT ported - no reader of
+    // the email_html :core surface in the port.
     setPath: "abstract/test_context",
   },
   // pattern: all
@@ -420,14 +414,13 @@ const setModules: ModSetModuleFile[] = [
     // :content_with_link, simple_core: super()).
     //
     // :content IS a shared view name (the engine's main content
-    // renderer), and this registration was held back for one measured
+    // renderer), and this registration was held back for one
     // reason: with the mod loaded, a plain RichText card's :content
-    // flipped from
-    //   <div id="plain_probe-content-view" class="card-slot content-view ...">
+    // flipped from the standard content slot markup
     // to the email's
     //   <div class='simple-core'>...
     // THE MASKING IS FIXED and the fix is in the dispatch, not here (the
-    // measurement and the two fallbacks that caused it are traced in
+    // two fallbacks that caused it are traced in
     // tests/card/mod-loader/view-set-scope-fallback.test.ts). Ruby scopes
     // this view to cards carrying a *html_message right: the module goes
     // to Set.modules[:nonbase_format] and only a card whose own pattern
@@ -467,7 +460,7 @@ const setModules: ModSetModuleFile[] = [
   {
     // set/type/email_template/html.rb - format :html edit_fields +
     // view :core = render_read_form. BOTH ported (emailTemplateCoreView
-    // above; the explicit edit_fields arm, live-probed).
+    // above; the explicit edit_fields arm).
     setPath: "type/email_template/html",
     formats: {
       html: {
