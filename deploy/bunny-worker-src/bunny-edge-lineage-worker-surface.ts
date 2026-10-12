@@ -72,11 +72,11 @@ function parsePath(
     return { name, view: "open" };
   }
   if (segments.length === 2 && segments[0] === "new") {
-    // THE /new/:type ARM (route-gaps lane, 2026-10-05): decko's
+    // THE /new/:type ARM: decko's
     // engine_routes.rb:22 `get "new/:type" => "card#read", view: "new"` —
-    // the card-creation route the deck's own chrome links as /new/Sign_up
+    // the card-creation route a deck's own chrome links as /new/Sign_up
     // (the *account_links navbar arm and the signin form's "...or sign up!"
-    // link; live-signin-ref.html). ROUTE PRECEDENCE: Rails matches this arm
+    // link). ROUTE PRECEDENCE: Rails matches this arm
     // before the generic :mark/:view route (engine_routes.rb:51), so
     // /new/<anything> never renders the card "new" — the same precedence
     // here, ahead of the 2-segment arm below. The route carries NO mark:
