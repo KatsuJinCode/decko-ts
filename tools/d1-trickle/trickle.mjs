@@ -12,13 +12,13 @@
 // wrangler's login, so a run cannot land on an account nobody named. Secrets
 // are never printed; error text is masked.
 //
-// Examples (see the operator runbook):
-//   node tools/d1-trickle/trickle.mjs plan --source deck.sqlite3 --state tmp/d1-trickle/riley \
-//        --closures tmp/d1-trickle/closures.jsonl --pool page-sample-pool.txt
-//   node tools/d1-trickle/trickle.mjs run --state tmp/d1-trickle/riley --target d1 \
-//        --creds-file <file> --token-key RILEY_CF_API_TOKEN --account-key RILEY_CF_ACCOUNT_ID \
-//        --database-name decko-riley
-//   node tools/d1-trickle/trickle.mjs run --state tmp/d1-trickle/local --target miniflare --persist tmp/d1-trickle/local/d1
+// Examples:
+//   node tools/d1-trickle/trickle.mjs plan --source deck.sqlite3 --state <state-dir> \
+//        --closures closures.jsonl --pool page-sample-pool.txt
+//   node tools/d1-trickle/trickle.mjs run --state <state-dir> --target d1 \
+//        --creds-file <file> --token-key <TOKEN_KEY_NAME> --account-key <ACCOUNT_ID_KEY_NAME> \
+//        --database-name <db-name>
+//   node tools/d1-trickle/trickle.mjs run --state <state-dir> --target miniflare --persist <d1-dir>
 
 import { readPagePool } from "./deck-source.mjs";
 import { makePlan, runImport, status, verifyAll, DEFAULT_FIXED_PAGES } from "./importer.mjs";

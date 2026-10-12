@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// tools/d1-trickle/measure.mjs — measure pages on a D1-backed Worker, either
+// tools/d1-trickle/measure.mjs — measure pages on a D1-backed Worker: either
 // the built bundle running locally in workerd (Miniflare) over a local D1, or
 // a deployed URL (Cloudflare or Bunny), one request at a time.
 //
@@ -7,11 +7,13 @@
 //              --out <dir> [--ref <dir>] --pages "/,/About" | --manifest <state>/manifest.json
 //   Remote:  node tools/d1-trickle/measure.mjs --base-url https://x.workers.dev --out <dir> [--ref <dir>] --pages ...
 //
-// Per page, one JSON line: status, Server-Timing (db, stmt, render, total),
-// wall time at this machine, bytes, and — with --ref — whether the body is
-// byte-identical to <ref>/<file>.html with only data-slot-id masked.
-// Remote requests carry a unique query string so no cache can answer.
-// The local run reads the Worker's variables from deploy/cf-brandon/wrangler.toml.
+// Each page yields one JSON line: status, the Server-Timing breakdown (db,
+// stmt, render, total), wall time on this machine, byte count, and — with
+// --ref — whether the body is byte-identical to <ref>/<file>.html once
+// data-slot-id attributes are masked. Remote requests carry a unique query
+// string so no cache can answer. The local run takes its Worker variable
+// bindings from the repo's committed deploy wrangler.toml (the default of
+// the --wrangler option below).
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";

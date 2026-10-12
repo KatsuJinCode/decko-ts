@@ -3,10 +3,10 @@
 // import plan, the daily write budget, and the manifest of complete pages.
 // No I/O here except what callers pass in, so every rule is unit-tested.
 
-/** D1 limits the batching respects (Cloudflare docs, "D1 Limits"; cited in
- *  brandonDojoTech recovery/CLOUDFLARE-HOSTING.md). The statement cap is
- *  100 KB; 90,000 bytes leaves room for the INSERT head. Bound parameters
- *  are capped at 100 per statement. */
+/** Statement sizing follows Cloudflare's published D1 limits ("D1 Limits"
+ *  in the Cloudflare docs). The hard statement cap is 100 KB, so statements
+ *  are packed to 90,000 bytes to leave room for the INSERT head; the 100
+ *  bound-parameter cap per statement is enforced by the packer too. */
 export const D1_MAX_STATEMENT_BYTES = 100_000;
 export const DEFAULT_STATEMENT_BYTES = 90_000;
 export const D1_MAX_BOUND_PARAMS = 100;

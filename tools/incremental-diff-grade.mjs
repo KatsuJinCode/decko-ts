@@ -26,9 +26,7 @@
 //   call-graph mapping exists in this repo. A view-name->module shortcut would
 //   be unsound through nested content and is deliberately not attempted.
 //
-// REUSE CONTRACT (Bazel exact-reuse + TurboSnap global invalidation; adopted
-//   by lane delta-hardening 2026-10-01 over the earlier shard-byte-only keying;
-//   design source: the incremental-verification research receipt 2026-10-01)
+// REUSE CONTRACT (Bazel exact-reuse + TurboSnap global invalidation)
 //   Each shard's baseline record carries inputHash = sha256 over its INPUT
 //   TUPLE: the shard's per-lane entry bytes (which literally carry the entry
 //   list + their input content + the frozen-capture bytes), the source-tree
@@ -51,15 +49,14 @@
 // PROVENANCE (same gates as the full grader, plus one it lacks)
 //   - the capture-manifest gate runs VERBATIM
 //     (verifyManifestForGrading from ./capture-manifest-provenance.mjs):
-//     no manifest, no grade; before != after, no grade; live
-//     deck-recapture/corpus-v2.sqlite3 differing from the recorded hash, no
-//     grade. Exit 4.
+//     no manifest, no grade; before != after, no grade; the manifest-gate
+//     corpus file differing from the recorded hash, no grade. Exit 4.
 //   - PLUS the binding the full grader never records: the baseline pins
 //     sha256(bench-corpus-raw.sqlite3) -- the file the verifying engine
-//     ACTUALLY renders from (measured 2026-09-30 in pass19-int: the manifest
-//     binds deck-recapture/corpus-v2.sqlite3 = 739c470e..., while the engine
-//     seed reads bench-corpus-raw.sqlite3 = 6a44dfdc..., a different file).
-//     Changed engine-input corpus = exit 4 refusal.
+//     ACTUALLY renders from. The manifest binds one corpus file while the
+//     engine seed reads another (the two role-named paths in the constants
+//     below are different files), so the manifest hash alone proves less
+//     than a grade needs. Changed engine-input corpus = exit 4 refusal.
 //
 // BASELINE (what gets cached)
 //   tmp/diff-grade-baselines/<corpusSha8>/<baselineId>/baseline.json,
@@ -84,25 +81,24 @@
 //   rendered by at most one child per run) and reduced to {ids, sigs, totals}
 //   for the baseline (the merge step).
 //
-//   --runner direct (added 2026-10-01, directrun-integration-seams lane)
-//   swaps WHICH child does that grading, not what it grades: the direct
-//   grade runner (tools/oracle/dual-lane-direct-runner.mjs) takes the same
-//   DUAL_LANE_FILES shard and the same DUAL_LANE_REPORT_ONLY=1, writes the
-//   enumeration aggregate to the SAME path this tool already validates
-//   (enumerationOutFile above) in the SAME shape -- viewLane.aggregate.files
+//   --runner direct swaps WHICH child does that grading, not what it grades:
+//   the direct grade runner (tools/oracle/dual-lane-direct-runner.mjs) takes
+//   the same DUAL_LANE_FILES shard and the same DUAL_LANE_REPORT_ONLY=1,
+//   writes the enumeration aggregate to the SAME path this tool already
+//   validates (enumerationOutFile above) in the SAME shape -- viewLane.aggregate.files
 //   / pageLane.aggregate.files are the fields the per-child validation
 //   below reads, and the direct runner's aggregate carries them because it
 //   is the instrument's aggregate, not a re-derivation -- and exits with the
 //   instrument's codes. The per-child validation, the mtime probe, the
 //   one-retry-on-refused-aggregate rule, the deadline and its kill, and the
 //   merge below are unchanged code in both modes: swapping the child is
-//   only sound if the receipt the swap is judged by does not move, and this
-//   is that receipt. Why the swap is worth making is the grade-hours
-//   autopsy (a per-child test-framework boot, and one shard per child by
-//   construction); the direct runner's aggregate is proven byte-identical
-//   to the vitest instrument's by tools/oracle/dual-lane-direct-parity-
-//   gate.mjs, which is what makes "the same receipt" a claim rather than a
-//   hope.
+//   only sound if the aggregate artifact the swap is judged by does not
+//   move, and this is that artifact. What makes the swap worth its cost is
+//   the measured price of a per-child test-framework boot, one shard per
+//   child by construction; the direct runner's aggregate is proven
+//   byte-identical to the vitest instrument's by tools/oracle/dual-lane-
+//   direct-parity-gate.mjs, which is what makes "the same artifact" a
+//   claim rather than a hope.
 //
 //   BOUNDED CONCURRENCY (--concurrency N, default 1 = the soak-proven
 //   sequential mode, unchanged): N>=2 runs up to N children through a worker
@@ -434,7 +430,7 @@ function shardBytesHashes(repo, name) {
  *  `(cached)` hit. Floors/heap/deadline are excluded on purpose: they gate the
  *  RUN, not any entry's verdict.
  *
- *  WHY protocolSha256 IS CONDITIONAL (directrun-integration-seams lane):
+ *  WHY protocolSha256 IS CONDITIONAL:
  *  `specRelPath` names the instrument, and the source-tree hash covers the
  *  spec's bytes (DEFAULT_SPEC is in SOURCE_SEAM_FILES). Under --runner vitest
  *  that is the whole story. Under --runner direct the spec is NOT what graded

@@ -38,7 +38,8 @@ fmt = Card.new(name: "haml slice group list probe", type: "RichText").format(:ht
 result["haml_to_html_owner"] = fmt.method(:haml_to_html).source_location
 result["list_group_owner"] = fmt.method(:list_group).source_location
 
-# ---- the real (title, items) pairs, harvested from the live deck ---------
+# ---- the real (title, items) pairs, read from the oracle deck's own ------
+# ---- style/script asset cards (plus synthetic EDGE cases below) ----------
 harvested = []
 asset_cards = []
 Card.where(trash: false).to_a.map { |r| r.name }.each do |cname|

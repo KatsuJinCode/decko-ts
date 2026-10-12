@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Hygiene round 2 gate B: docs link integrity. Every relative markdown link
-// and local image reference in tracked .md files must resolve to a tracked
-// file (or an intentionally-gitignored receipts path, whitelisted below).
+// Docs link integrity gate: every relative markdown link and local image
+// reference in tracked .md files must resolve to a tracked file (or an
+// intentionally-gitignored rebuildable-artifacts path, whitelisted below).
 // Absolute URLs are not checked. Re-runnable; exit 1 on broken links.
 
 import { readFileSync, existsSync } from "node:fs";

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Hygiene round 2 gate A: incomplete-work scan. Finds TODO/FIXME/XXX/HACK,
-// stub and not-implemented markers in tracked source, and classifies each
-// as documented (tracker reference or deliberate deferral) or bare debt.
+// Incomplete-work scan: finds TODO/FIXME/XXX/HACK, stub and not-implemented
+// markers in tracked source, and classifies each as documented (tracker
+// reference or deliberate deferral) or bare debt.
 // Re-runnable; writes the full list to tools/hygiene/out/todos-<ts>.json.
 // Exit code is always 0 — this gate REPORTS, the human pass decides.
 

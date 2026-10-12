@@ -1,17 +1,23 @@
 #!/usr/bin/env node
-// tools/d1-trickle/cf-deploy.mjs — deploy (or check) the D1-backed Worker on
-// an account named by an API token and account id from a credentials file.
+// Deploys the D1-backed Worker to one specific Cloudflare account without
+// any interactive `wrangler login`. The account is addressed through two
+// values read out of a credentials file (an API token and an account id,
+// each located by a key name given on the command line):
 //
-//   node tools/d1-trickle/cf-deploy.mjs --creds-file <file> --token-key RILEY_CF_API_TOKEN \
-//        --account-key RILEY_CF_ACCOUNT_ID --database-name decko-riley \
-//        [--worker-name decko-riley] [--set VAR=value ...] [--dry-run]
+//   node tools/d1-trickle/cf-deploy.mjs --creds-file <file> \
+//        --token-key <TOKEN_KEY_NAME> --account-key <ACCOUNT_ID_KEY_NAME> \
+//        --database-name <db-name> [--worker-name <worker>] \
+//        [--set VAR=value ...] [--dry-run]
 //
-// It runs `wrangler deploy` with CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID
-// set for that one child process, so wrangler uses exactly that account and
-// never its own login. The config it deploys is a copy of
-// deploy/cf-brandon/wrangler.toml with the database id looked up on that
-// account, the Worker name, and any --set variables filled in; the copy lives
-// in a scratch folder removed on exit. The token is never printed.
+// How it works: the tool resolves the named D1 database on that account to
+// its id, renders a one-off wrangler.toml from the template the repo keeps
+// under deploy/ (name, bundle entry, database name/id, and any --set vars
+// substituted), writes it to a temp directory, and spawns `wrangler deploy`
+// against it — with CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID exported
+// into that child process only, so the host's own wrangler login state is
+// never consulted. --dry-run forwards wrangler's dry-run flag. Child output
+// is passed through a secret mask, the token itself is never logged, and
+// the temp directory is deleted when the run ends.
 
 import { spawn } from "node:child_process";
 import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
