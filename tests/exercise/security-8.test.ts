@@ -8,11 +8,10 @@
 // below is invented. Nothing here is deck content, a real credential, or a
 // real address; credentials are minted per run by
 // src/testing/generated-credentials.js so no literal can be mistaken for a
-// secret. No network, no hosted service, no private fixture: the deck is the
-// auth suite's in-memory core-schema database
+// secret. The deck is the auth suite's in-memory core-schema database
 // (tests/card/auth/auth-test-storage.ts) brought up through the repository's
 // own boot-seed capability (src/card/auth/boot-seed.ts), and the stored-HTML
-// cleaner is a pure function.
+// cleaner is a pure function — no network, no hosted service.
 //
 // THE OWASP CORPUS RUNS HERE. The first claim's exercise names the corpus in
 // tests/card/actions/content-clean-security.test.ts, so that module is
