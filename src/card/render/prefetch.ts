@@ -896,7 +896,7 @@ async function driveClosure(
   // Contextual collection from COMPOSED records. A row-scanned ref
   // like `{{+image}}` parses as the literal key "+image" (no row carries it),
   // so every template child / plus-child nest fell out of the closure and the
-  // render's nest fetch missed the cache — the live-wire gap (children of
+  // render's nest fetch missed the cache (children of
   // type+*structure pages rendered as unknown-card empty slots even when the
   // child rows existed). Ruby absolutizes each reference against the
   // REFERENCING card at process time (chunk/reference.rb; cited in

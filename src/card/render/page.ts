@@ -72,7 +72,7 @@ import { debugFlag } from "../debug-flags.js";
 // configured shape).
 
 /** The production `Cardio.config.default_html_view`: :content (every
- *  live-wire page renders implicit child nests as content-views). This is
+ *  served page renders implicit child nests as content-views). This is
  *  PROCESS CONFIG production sets around the page render — modeled by
  *  engine.runWithPageConfig wrapping renderPageBytes, so
  *  RenderFormat.defaultNestView reads "content" for every nest inside the

@@ -500,7 +500,7 @@ export interface HelpRulesApi {
    *  24-28) is this chain over the RULE card, and the setting-card core
    *  (set/type/setting.rb:59-61 -> the *all rule's rule_help) resolves it
    *  for the *all+<setting> rule card on the render layer's loader-less
-   *  dispatch (p20-help-content). */
+   *  dispatch). */
   ruleBasedHelpForCard(fmt: RenderFormat, card: RenderCard): string;
 }
 
@@ -1112,7 +1112,7 @@ export class RenderFormat {
         });
         if (denial !== undefined) {
           this.noteFocalDenial(voo);
-          // R16 batch 2: error.rb:27-31 view_for_denial substitutes the
+          // error.rb:27-31 view_for_denial substitutes the
           // configured denial VIEW (:denial), and html/error.rb:75-77
           // `view :denial do focal? ? loud_denial : quiet_denial end` —
           // the FOCAL (main, root) denial is the LOUD denial frame,
@@ -2039,8 +2039,8 @@ export class RenderFormat {
     // defect the virtualLeftTypeName line exists to fix.
     //
     // OBSERVED SHAPES: a junction nested from a List parent reads
-    // TYPE_PLUS_RIGHT-rich_text-aikido, and a dated-image junction nested
-    // from a RichText parent reads TYPE_PLUS_RIGHT-rich_text-20180623_0728.
+    // TYPE_PLUS_RIGHT-rich_text-<left-key>, and a dated-image junction nested
+    // from a RichText parent reads TYPE_PLUS_RIGHT-rich_text-<image-name>.
     //
     // THE LAST RESORT IS RUBY'S quick_type BODY, NOT ITS BLANK-NAME
     // BRANCH (W2 restore , $1). class_methods.rb:59-71:
@@ -2433,12 +2433,12 @@ export class RenderFormat {
     opts: Record<string, unknown> = {},
     nest: { pointerListItem?: boolean } = {},
   ): string {
-    // R17 (new_card_args supercard merge): an ID-LESS NEW target is the
+    // new_card_args supercard merge: an ID-LESS NEW target is the
     // FetchEngine's fabricated new-card record — its set-pattern chain
     // lacks the supercard context, so rebuild it with THIS card as the
     // parent (same shaping nest() applies; item.rb nest_item's path).
     // The isNew gate excludes VIRTUAL cards (id-less code-backed records —
-    // the R16 virtual rule cards) whose dbContent and set keys are their
+    // the virtual rule cards) whose dbContent and set keys are their
     // OWN, never a fabricated template's: the rule-set membership check
     // (right side a Setting) keeps every virtual rule card's isRule-enriched
     // set keys and rule content intact.
@@ -3470,8 +3470,8 @@ export interface RenderEngineLike {
    *  answer the restricted-settings recent arm as not-allowed (never
    *  allowed). */
   ruleSetPrototypeTypeCode?(card: RenderCard): string | undefined;
-  /** view/permission.rb:38 `setting :unknown` for THIS card: the p20-nest-
-   *  selection fix replaces the flat by-view-name lookup with the card's
+  /** view/permission.rb:38 `setting :unknown` for THIS card: the per-card-
+   *  set resolution replaces the flat by-view-name lookup with the card's
    *  own set chain (loader.viewUnknownSettingForCard -> viewChain(setKeys,
    *  view) entries, first DEFINED `unknown` config wins — Ruby's method
    *  lookup takes the most specific set module that defined
@@ -3725,7 +3725,7 @@ export interface SettingClassWithRules {
  *  `_view_<view>__unknown` setting methods). Values: `true` renders the
  *  requested view as-is; a symbol names the substituted view.
  *
- *  PER-CARD-SET RESOLUTION (the p20-nest-selection fix): Ruby resolves
+ *  PER-CARD-SET RESOLUTION (the per-card-set resolution): Ruby resolves
  *  `setting :unknown` through the CARD'S SET CHAIN — render.rb:55-57
  *  `try Card::Set::Format.view_setting_method_name(view, setting)` dispatches
  *  on the card's format class, so only the set modules THAT MATCH THIS CARD
@@ -3836,7 +3836,7 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
   // form for an actor who may create it.
   { view: "comment_box", config: true },
   // card-mod-edit set/all/formgroup.rb:13 `view :read_formgroup, template:
-  // :haml, unknown: true, wrap: :slot` — the p20-email-views read_form
+  // :haml, unknown: true, wrap: :slot` — the email read_form
   // field nests target virtual field cards (welcome email+*to et al.);
   // the loader-less page surface reads this compiled row where the mod
   // registry would answer (the flat readFormgroupBody in views.ts).

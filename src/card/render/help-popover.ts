@@ -318,7 +318,7 @@ export class HelpRulesResolver implements HelpRulesApi {
   /** The HelpRulesApi member: the same chain for an arbitrary card — the
    *  rule_help alert's body (card-mod-rules set/rule/editor.rb:24-28
    *  rule_based_help over the rule card) and the setting-card core's
-   *  *all-rule help (p20-help-content's loader-less dispatch). */
+   *  *all-rule help (the loader-less dispatch). */
   ruleBasedHelpForCard(fmt: RenderFormat, card: RenderCard): string {
     return this.ruleBasedHelp(fmt, card);
   }
