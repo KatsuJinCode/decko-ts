@@ -7,13 +7,18 @@
 //
 //   node reference-harness/runner/grade.mjs --fixture <fixtureDir> \
 //        --actual <resultsDir> [--expected <expectedDir>] [--report <report.json>] \
-//        [--declared-other-tables <declared.json>] [--allow-partial]
+//        [--declared-other-tables <declared.json>] [--allow-partial] [--no-class-token-order]
 //
 // --declared-other-tables names a JSON map, keyed on step id then table name,
 //   of write-step differences outside the card tables an engine is known to
 //   make: { "create-then-render#1": { "sessions": "the engine keeps its own
 //   session rows" } }. A declared difference is graded as declared and does
 //   not fail; an undeclared one fails the grade.
+//
+// --no-class-token-order grades with the harness's N3 rule off, so class
+//   tokens inside a `class` attribute are compared byte for byte
+//   (SPEC.md section 4). N3 is on by default, and every report names the
+//   rules it was graded under.
 //
 // Exit status: 0 every item matches; 1 a complete, valid run with failures;
 // 2 not a grade (the run is incomplete, names another fixture, lacks its
@@ -29,7 +34,7 @@ const args = {};
 for (let i = 0; i < argv.length; i++) {
   if (!argv[i].startsWith("--")) throw new Error(`unexpected argument ${argv[i]}`);
   const key = argv[i].slice(2);
-  if (key === "allow-partial") args[key] = true;
+  if (key === "allow-partial" || key === "no-class-token-order") args[key] = true;
   else args[key] = argv[++i];
 }
 for (const required of ["fixture", "actual"]) if (!args[required]) throw new Error(`--${required} is required`);
@@ -39,7 +44,14 @@ if (args["declared-other-tables"]) {
   declaredOtherTables = JSON.parse(readFileSync(args["declared-other-tables"], "utf8"));
 }
 
-const report = gradeRun({ fixture: args.fixture, actual: args.actual, expected: args.expected, allowPartial: Boolean(args["allow-partial"]), declaredOtherTables });
+const report = gradeRun({
+  fixture: args.fixture,
+  actual: args.actual,
+  expected: args.expected,
+  allowPartial: Boolean(args["allow-partial"]),
+  classTokenOrder: !args["no-class-token-order"],
+  declaredOtherTables,
+});
 report.graded_at = new Date().toISOString();
 if (args.report) writeFileSync(args.report, JSON.stringify(report, null, 2) + "\n");
 
@@ -53,6 +65,7 @@ if (report.verdict === "invalid") {
   process.exit(EXIT.invalid);
 }
 if (report.verdict === "partial") console.log(`PARTIAL RUN, not a grade: ${report.partial.join("; ")}`);
+console.log(`normalization: ${report.normalization.join(", ")}`);
 for (const k of KINDS) {
   const s = report.summary[k];
   console.log(`${k.padEnd(13)} ${String(s.pass).padStart(5)} / ${String(s.graded).padEnd(5)} ${s.rate === null ? "-" : s.rate + "%"}` +

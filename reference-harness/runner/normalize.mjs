@@ -5,7 +5,8 @@
 //   between two runs of the same oracle on the same fixture, and it is as
 //   narrow as that field's exact shape. There is one: N1.
 // - A canonical form compares the same value in another encoding and erases
-//   nothing: N2, JSON key order.
+//   nothing: N2, JSON key order, and N3, class-token order inside a `class`
+//   attribute.
 //
 // Every rule has tests (runner/test/normalize.test.mjs) that a nearby
 // meaningful change still fails.
@@ -47,8 +48,12 @@ const isNameChar = (c) => /[A-Za-z0-9:_-]/.test(c);
  * kept. Everything else is returned byte for byte: element text, comments,
  * quoted attribute values and script/style bodies are never masked, even when
  * they contain text shaped like the attribute.
+ *
+ * `classTokenOrder` (N3) is applied in the same walk and on the same
+ * narrowness terms: only a real `class` attribute token, never element text,
+ * a comment, another attribute's value or a raw text body.
  */
-export function normalizeHtml(html) {
+export function normalizeHtml(html, { classTokenOrder = true } = {}) {
   if (typeof html !== "string") return html;
   let out = "";
   let i = 0;
@@ -104,7 +109,7 @@ export function normalizeHtml(html) {
     }
     const tagEnd = j >= html.length ? html.length : j + 1;
     const tagText = html.slice(i, tagEnd);
-    out += closing ? tagText : maskSlotIdAttributes(tagText);
+    out += closing ? tagText : normalizeTagAttributes(tagText, classTokenOrder);
     i = tagEnd;
     // A raw text element's body is text, not markup: copied verbatim,
     // whatever it contains. xmp closes like the others, at its end tag;
@@ -127,10 +132,10 @@ export function normalizeHtml(html) {
   return out;
 }
 
-/** Masks the `data-slot-id` attribute values inside one tag's text. Walks the
- *  attribute region the way the HTML tokenizer does — names, `=`, quoted or
- *  unquoted values — and copies every byte it does not mask. */
-function maskSlotIdAttributes(tagText) {
+/** Applies N1 and N3 inside one tag's text. Walks the attribute region the way
+ *  the HTML tokenizer does — names, `=`, quoted or unquoted values — and copies
+ *  every byte neither rule rewrites. */
+function normalizeTagAttributes(tagText, classTokenOrder) {
   let out = "";
   let k = 1; // past `<`
   while (k < tagText.length && !isWhitespace(tagText[k]) && tagText[k] !== ">" && tagText[k] !== "/") k++;
@@ -164,12 +169,15 @@ function maskSlotIdAttributes(tagText) {
     if (q === '"' || q === "'") {
       const closeQ = tagText.indexOf(q, v + 1);
       const value = closeQ === -1 ? tagText.slice(v + 1) : tagText.slice(v + 1, closeQ);
+      // `class` is matched case-insensitively, as HTML attribute names are.
+      const isClass = name.toLowerCase() === "class";
       const masked = name === "data-slot-id" && /^[0-9a-f]{20}$/.test(value);
-      out += q + (masked ? "SLOT" : value) + (closeQ === -1 ? "" : q);
+      const ordered = isClass && classTokenOrder ? sortClassTokens(value) : value;
+      out += q + (masked ? "SLOT" : ordered) + (closeQ === -1 ? "" : q);
       k = closeQ === -1 ? tagText.length : closeQ + 1;
     } else {
-      // An unquoted value: never masked (the mask's shape needs quotes), so
-      // a 20-hex unquoted slot id still counts.
+      // An unquoted value: never masked (the mask's shape needs quotes) and
+      // never reordered, so an unquoted slot id or class list still counts.
       let u = v;
       while (u < tagText.length && !isWhitespace(tagText[u]) && tagText[u] !== ">") u++;
       out += tagText.slice(v, u);
@@ -179,9 +187,37 @@ function maskSlotIdAttributes(tagText) {
   return out;
 }
 
-/** A render result: its HTML normalised by N1, every other field as is. */
-export function normalizeRender(result) {
-  return result && typeof result === "object" && typeof result.html === "string" ? { ...result, html: normalizeHtml(result.html) } : result;
+/**
+ * N3. The class-token order of a `class` attribute's value, compared as a SET.
+ *
+ * Ruby's own environment puts the same tokens in a different order on stock
+ * Linux than on stock Windows (the committed expected bytes were captured on
+ * Windows; the class-token order is the only thing that differs — see
+ * tools/ruby-version-variance/). The token set, the count and the tokens
+ * themselves all still count; only the order is canonicalised, and it is
+ * canonicalised to the sorted order so the comparison erases nothing.
+ *
+ * The whitespace between tokens is HTML's class-value separator, not content,
+ * so runs of it collapse to one space. Every other byte of the value is kept,
+ * and the value is returned unchanged when sorting would alter it in any way
+ * beyond order (an empty value, or one token, needs no rewrite).
+ */
+export function sortClassTokens(value) {
+  const tokens = value.split(/[ \t\n\r\f]+/).filter((t) => t !== "");
+  if (tokens.length < 2) return value;
+  const sorted = [...tokens].sort();
+  // A repeated token is content (two engines that emit one are not the same),
+  // so a value whose tokens are not distinct is left exactly as it is.
+  if (new Set(tokens).size !== tokens.length) return value;
+  const out = sorted.join(" ");
+  return out === value ? value : out;
+}
+
+/** A render result: its HTML normalised by N1 and N3, every other field as is.
+ *  `classTokenOrder: false` grades with N3 off (the evidence for the rule, and
+ *  what the raw class-token order is on its own). */
+export function normalizeRender(result, options) {
+  return result && typeof result === "object" && typeof result.html === "string" ? { ...result, html: normalizeHtml(result.html, options) } : result;
 }
 
 /** N2. Stable JSON: object keys sorted, so key order never counts. Array
