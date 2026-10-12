@@ -21,8 +21,7 @@
 //   data/real.yml                 - Session cardtype + *recent settings
 //                                   seeds
 //
-// The compat report (tools/compat-report/mod-compat-report.json, entry
-// gem === "card-mod-session-0.20.0") declares ZERO html views for this gem
+// The gem's declared view count is ZERO
 // (htmlViewsDeclared: 0, htmlViewsMissingNames: []) - its only format block
 // is a before :core HOOK, not a view. So the port's units are the two set
 // modules and the semantics that survive a headless engine:
@@ -68,7 +67,7 @@
 //   event :delete_in_session, :prepare_to_store, on: :delete
 //   (session_content = nil; abort :success) - the save/delete event cycle
 //   does not exist in the TS port (the write path is the actions layer's
-//   CardActionEngine, another stream); `abort :success` is Rails' throw
+//   CardActionEngine); `abort :success` is Rails' throw
 //   :success control flow
 // - set/type/session.rb:1 include_set Pointer - the include chain has no
 //   manifest slot (same as card-mod-api_key's include_set
@@ -89,7 +88,7 @@
 //   deck management) has no TS consumer
 // - data/real.yml:1-7 (Session cardtype seed) + :10-20 (*recent settings
 //   seed; its :type is even commented out in the gem) - seed files are the
-//   test stream's job; the test below seeds the same Session cardtype card
+//   test; the test below seeds the same Session cardtype card
 
 import {
   engineOwnedEvent,
@@ -98,8 +97,8 @@ import {
   type ModEventRegistration,
 } from "../mod-manifest.js";
 
-/** The set-module event declarations (the set-module event, 2026-10-08):
- *  stub-bodied, with the per-event reason on the declaration. Same shape
+/** The set-module event declarations: stub-bodied, with the per-event
+ *  reason on the declaration. Same shape
  *  as core-mod.ts's local helper. */
 function event(
   decl: Omit<ModEventRegistration, "fn"> & { fn?: ModEventFn },
@@ -136,8 +135,7 @@ const cardModSession: DeckoModManifest = {
       // ride the request Env / success object / controller page cycle -
       // no view registrations (see the header's NOT-ported list).
       //
-      // Events (set-module event 2026-10-08) — two STUBS with named
-      // reasons:
+      // Events — two STUBS with named reasons:
       // - discard_deleted_locations (:finalize, on: :delete) drops the
       //   deleted card's entries from the session location history
       //   (configure_successful_deletion needs the delete-success
@@ -174,7 +172,7 @@ const cardModSession: DeckoModManifest = {
       // store_in_session: the write route answers a Session create without
       // writing (write-routes.ts isSessionTypeCreate); the content is not
       // kept, the port having no per-visitor session store.
-      // delete_in_session (set-module event 2026-10-08) — STUB, named
+      // delete_in_session — STUB, named
       // remainder (session.rb:42-45): session_content = nil + abort
       // :success on a Session-card DELETE; the port has no Session-card
       // delete write path (same reason as store_in_session's route arm).
