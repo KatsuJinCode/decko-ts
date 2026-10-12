@@ -4,17 +4,15 @@
 // WHY THIS FILE EXISTS. The assembled trunk carries TWO migrations numbered
 // 0003 — `0003-deck-data-version-stamp.sql` (trunk's stamp backfill for
 // already-provisioned databases) and `0003-demo-seed.sql` (the generated
-// demo deck, deploy/sync-migrations.mjs:38). The seat branch had numbered the
+// demo deck, deploy/sync-migrations.mjs:38). A parallel branch had numbered the
 // same stamp backfill 0007 (its lineage never had the demo-seed 0003), so
 // provisioned databases exist whose applied-migration ledgers carry
 // "0007-deck-data-version-stamp.sql" while this trunk's directory carries
-// "0003-deck-data-version-stamp.sql" (seat-branch-merge-map.md §2; the r5
-// assembly receipt escalated the collision to the deploy/edge lane).
+// "0003-deck-data-version-stamp.sql".
 //
 // The deploy chain's runner is EXTERNAL (package.json:18,
 // `wrangler d1 migrations apply`, migrations_dir at wrangler.toml:104), and
-// its behavior was verified first-hand at wrangler 4.148.0 --local (probe
-// receipt: an internal work log §1): it
+// its behavior was verified first-hand at wrangler 4.148.0 --local: it
 // enumerates *.sql in lexical filename order, records full filenames in
 // d1_migrations, dedupes by exact filename, silently ignores recorded names
 // that no longer match a file, and re-runs any file whose name is not
