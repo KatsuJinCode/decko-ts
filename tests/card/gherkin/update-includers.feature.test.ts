@@ -1,9 +1,8 @@
-// Gherkin port — update_includers.feature (decko-commons/decko
-// decko/features/update_includers.feature, "Updates for Children of watched
+// The update_includers feature ("Updates for Children of watched
 // cards", 6 active scenarios).
 //
 // The upstream scenarios are @javascript @delayed-jobs browser flows; this
-// port executes each scenario's business behavior against the notify
+// suite executes each scenario's business behaviour against the notify
 // machinery: the save path's default follow-notify hook (the engine
 // installs it on every non-anonymous save), the rule-algebra follower walk
 // (notify/follower-resolver.ts — direct AND indirect), and the deck-backed
@@ -28,9 +27,8 @@ import {
   type NotifyWorld,
 } from "./gherkin-notify-steps.js";
 
-/** '"<user>" should be notified that "<subject>"'
- *  (email_steps.rb:196-206): one mail to the user's address whose subject
- *  contains the fragment. */
+/** '"<user>" should be notified that "<subject>"': one mail to the user's
+ *  address whose subject contains the fragment. */
 function thenNotified(nw: NotifyWorld, user: { name: string; email: string }, subjectFragment: string): void {
   const hit = nw.transport
     .captured()
@@ -43,7 +41,7 @@ function thenNotified(nw: NotifyWorld, user: { name: string; email: string }, su
   }
 }
 
-/** "Then No notification should be sent" (email_steps.rb:208-211): the
+/** "Then No notification should be sent": the
  *  transport's total is unchanged since the baseline. */
 function expectNoNewMail(nw: NotifyWorld, baseline: number): void {
   if (nw.transport.count() !== baseline) {
@@ -76,7 +74,7 @@ async function givenBackground(): Promise<{ nw: NotifyWorld; baseline: number }>
   return { nw, baseline: nw.transport.count() };
 }
 
-describe("Gherkin port: update_includers.feature / Updates for Children of watched cards", () => {
+describe("update_includers.feature / Updates for Children of watched cards", () => {
   let nw: NotifyWorld;
 
   // ---------------------------------------------------------------------
@@ -98,8 +96,7 @@ describe("Gherkin port: update_includers.feature / Updates for Children of watch
     // fields = *nests, the stock default) and includes +author, so both
     // of ULYSSES's direct watchers (Joe Admin via Book+*type, Joe Camel
     // via Ulysses+*self) are stashed (follower_ids.rb:74-83 +
-    // follower_stash.rb:39-52).
-    thenNotified(nw, { name: "Joe Admin", email: "joe@admin.com" }, `Joe User created "Ulysses+Author"`);
+    // follower_stash.rb:39-52).    thenNotified(nw, { name: "Joe Admin", email: "joe@admin.com" }, `Joe User created "Ulysses+Author"`);
     // upstream: And Joe Camel should be notified that
     // 'Joe User created "Ulysses+Author"'
     thenNotified(nw, { name: "Joe Camel", email: "joe@camel.com" }, `Joe User created "Ulysses+Author"`);
@@ -113,7 +110,7 @@ describe("Gherkin port: update_includers.feature / Updates for Children of watch
     // upstream: Then Joe Camel should be notified that
     // 'Joe Admin updated "Ulysses+Author"' — Joe Admin is himself a
     // watcher (Book+*type) but never gets mail for his own act
-    // (notify.rb:51 `next if follower == act.actor`).
+    // (notify.rb:51: skip when the follower IS the actor).
     thenNotified(nw, { name: "Joe Camel", email: "joe@camel.com" }, `Joe Admin updated "Ulysses+Author"`);
     expect(
       nw.transport.captured().some((m) => m.to === "joe@admin.com" && m.subject.includes(`Joe Admin updated`)),
@@ -162,10 +159,10 @@ describe("Gherkin port: update_includers.feature / Updates for Children of watch
     const bg = await givenBackground();
     nw = bg.nw;
 
-    // the templated Book card, in the port's declared setup shape (header
+    // the templated Book card, in the declared setup shape (header
     // note): upstream creates "Book card Bros Krmzv with plusses" through
-    // the Book+*type+*structure template; the port carries the template
-    // body as the card's own content so the *nests walk has the same
+    // the Book+*type+*structure template; here the template
+    // body is the card's own content so the *nests walk has the same
     // inclusion references to read.
     // upstream: When I create Book card "Bros Krmzv" with plusses
     // |author|illustrator| |Dostoyevsky|Manet| — ONE form submission = ONE
@@ -185,11 +182,11 @@ describe("Gherkin port: update_includers.feature / Updates for Children of watch
     expect(await nw.world.storage.fetcher.fetchByName("Bros Krmzv+author")).toBeDefined();
     expect(await nw.world.storage.fetcher.fetchByName("Bros Krmzv+illustrator")).toBeDefined();
     // Then Joe Admin should be notified that 'Joe User created
-    // "Bros Krmzv"' (ONCE) — Ruby's act is ONE act with several actions
+    // "Bros Krmzv"' (ONCE) — the act is ONE act with several actions
     // and FollowerStash dedupes the act's followers across all its
     // actions (follower_stash.rb:10-28 + notify.rb:38-46/49-55), so Joe
-    // Admin gets exactly one mail, about the ACT (act.card = Bros Krmzv —
-    // account.rb:18; main_action = the act card's own create, act.rb).
+    // Admin gets exactly one mail, about the ACT (act.card = Bros Krmzv;
+    // main_action = the act card's own create).
     // The direct walk (Bros Krmzv via Book+*type) and the indirect walks
     // (each plus's field walk through Bros Krmzv's watchers) stash the
     // same follower ONCE.
@@ -246,16 +243,16 @@ describe("Gherkin port: update_includers.feature / Updates for Children of watch
         "+flavor": { content: "sweet" },
       },
     });
-    // upstream: And Joe Camel is watching "Banana+color+*self" (the
-    // SINGULAR upstream uses — color, not colors; the port keeps the
-    // scenario's own spelling). ONE watch covers both spellings: the key
+    // upstream: When Joe Camel is watching "Banana+color+*self" (the
+    // SINGULAR upstream uses — color, not colors; the scenario's own
+    // spelling is kept). ONE watch covers both spellings: the key
     // algebra CONVERGES "Banana+color" and "Banana+colors" — Cardname#key
     // simple_key runs every word through stable_key (cardname.rb:106-117),
     // whose uninflect default is :singularize with stabilize=false
     // (cardname.rb:34-35; variants.rb:56-62 keeps the original word when
     // singularizing is not stable), and name equality is key equality
-    // (cardname.rb:78-86). In Ruby too, watching "Banana+color+*self"
-    // watches the card this port saves as "Banana+colors".
+    // (cardname.rb:78-86). Watching "Banana+color+*self"
+    // therefore watches the card saved as "Banana+colors" too.
     await givenWatching(nw.world, "Joe Camel", "Banana+color+*self");
     const afterWatch = nw.transport.count();
 
@@ -263,7 +260,7 @@ describe("Gherkin port: update_includers.feature / Updates for Children of watch
     // |spotted|mushy| — the MULTIEDIT: one act naming the MAIN card. The
     // act card is Banana (its own content doesn't change, so its action
     // is absent and the act's main_action falls to the act's first action
-    // — mod/history lib/card/act.rb main_action = action_on(card_id) ||
+    // — lib/card/act.rb main_action = action_on(card_id) ||
     // actions.first); last_action_verb = main_action.action_type + "d"
     // (base_views.rb:44-46). Then Joe Camel should be notified that
     // 'Joe User updated "Banana"' — ONCE: FollowerStash dedupes the act's
@@ -284,7 +281,7 @@ describe("Gherkin port: update_includers.feature / Updates for Children of watch
 
     // upstream: When Joe Camel is watching "Banana+*self" / And I edit
     // "Banana" with plusses |green|mushy| (colors green CHANGES; flavor
-    // mushy is unchanged — no action, events.rb:34-37) / Then 'Joe User
+    // mushy is unchanged — a no-op save writes no action) / Then 'Joe User
     // updated "Banana"' — still ONE mail: the self watch and the field
     // walk stash the same follower once.
     await givenWatching(nw.world, "Joe Camel", "Banana+*self");
@@ -302,7 +299,7 @@ describe("Gherkin port: update_includers.feature / Updates for Children of watch
     // upstream: Given a clear email queue / And I edit "Banana" with
     // plusses |green|mushy| (the SAME values as the previous edit) /
     // Then No notification should be sent — every save in the act is a
-    // no-op (events.rb:34-37): no action, no act, no hook, no mail.
+    // no-op: no action, no act, no hook, no mail.
     const baseline = nw.transport.count();
     await nw.engine.updateCard({
       cardId: banana.cardId,
