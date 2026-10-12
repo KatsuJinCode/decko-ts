@@ -305,8 +305,9 @@ describe("set/type/mod.rb — the per-mod views on mod: core", () => {
   it(":tasks renders the basket tasks selected by the mod's own name", async () => {
     const s = storage!;
     const html = normalize(await s.engine.render("mod: core", "tasks"));
-    // type/mod.rb:46-51 — card.tasks selects basket[:tasks] by mod; probe-2
-    // mod_core_tasks: [empty_trash, clear_cache, regenerate_assets].
+    // type/mod.rb:46-51 — card.tasks selects basket[:tasks] by mod; the
+    // core-mod-fetch probe's mod_core_tasks fact:
+    // [empty_trash, clear_cache, regenerate_assets].
     expect(html).toBe(
       `<p><h3>Tasks</h3><table class="table"><thead><tr><th>Task</th>\n` +
       `<th>Description</th></tr></thead>\n<tbody>` +
@@ -326,9 +327,9 @@ describe("set/type/mod.rb — the per-mod views on mod: core", () => {
 
   it(":gem_info renders nothing for the core mod (no Gem::Specification)", async () => {
     const s = storage!;
-    // type/mod.rb:67-68 `return unless card.mod&.spec` — probe-2:
-    // mod_core_fetch.spec_nil: true (the core mod is the card gem's own
-    // mod dir; Bundler gives it no separate specification).
+    // type/mod.rb:67-68 `return unless card.mod&.spec` — the core-mod-fetch
+    // probe's mod_core_fetch.spec_nil fact (the core mod is the card gem's
+    // own mod dir; Bundler gives it no separate specification).
     expect(await s.engine.render("mod: core", "gem_info")).toBe("");
   });
 });
