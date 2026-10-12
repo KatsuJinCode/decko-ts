@@ -1,5 +1,4 @@
-// typescript-source-loader.mjs -- 2026-10-01 direct grade runner support
-// (direct-runner-builder lane).
+// typescript-source-loader.mjs -- support for the direct grade runner.
 //
 // WHAT THIS IS
 //   The measuring instrument (tools/oracle/verify-dual-lane.test.ts) is a
@@ -42,10 +41,10 @@
 //   `src/card/auth/migrations.ts:37`, and
 //   `src/card/assets/uglify-harmony-compile-engine.ts:47` do the same. A
 //   bundle was built and MEASURED to get this wrong: rolldown rewrote
-//   `import.meta.url` to the OUTPUT file's URL and RAW_CORPUS_DB came back as
-//   `REPO_ROOT\tmp\raw-ground-truth\bench-corpus-raw.sqlite3` -- a path
-//   that does not exist. Per-file loading keeps every module at its real path,
-//   so those derivations are untouched.
+//   `import.meta.url` to the OUTPUT file's URL and RAW_CORPUS_DB came back
+//   resolved under the output location instead of the repo root -- a path
+//   that does not exist. Per-file loading keeps every module at its real
+//   path, so those derivations are untouched.
 //
 // COST (measured, not estimated)
 //   transformWithOxc on the two files above: 4 ms and 1 ms. A transform cache
