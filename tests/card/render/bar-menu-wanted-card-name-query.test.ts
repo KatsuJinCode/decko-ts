@@ -1,18 +1,18 @@
-// Test for page-mechanism-census mechanism 4 (2026-09-29): bar-menu
-// links on wanted bars drop the `card[name]` query the oracle emits.
+// Bar-menu links on wanted (unknown) bars must carry Ruby's
+// `card[name]=<name>` query.
 //
-// Ruby mechanism: Card::Path#handle_unknown (card-mod-format-0.20.0
-// lib/card/path.rb:89-109) — a path mark that is neither standardish
-// (url_key == name.tr(" ", "_"), path.rb:107-109) nor known carries
-// `card[name]=<name>` in its query (path.rb:84-87, Rails to_param). All four
-// bar-menu links route through Card::Path (card-mod-format
-// set/all/html/menu.rb:119-153 full_page_link / modal_page_link / edit_link /
-// board_link), so all four gain the query on unknown bars.
+// Ruby mechanism: Card::Path#handle_unknown (lib/card/path.rb:89-109) — a
+// path mark that is neither standardish (url_key == name.tr(" ", "_"),
+// path.rb:107-109) nor known carries `card[name]=<name>` in its query
+// (path.rb:84-87, Rails to_param). All four bar-menu links route through
+// Card::Path (set/all/html/menu.rb:119-153 full_page_link /
+// modal_page_link / edit_link / board_link), so all four gain the query
+// on unknown bars.
 //
-// Oracle bytes: census page 7797 (`Sample-card 111+*self`,
-// tmp/census/phase-002/pages/7797-*.exp.html) and census page 274 (`*all`,
-// phase-000/pages/274-*.exp.html — the standardish negative: wanted
-// `*all+*autoname` hrefs stay bare).
+// The rendered cases below pin both sides of handle_unknown: a
+// non-standardish wanted name (`Sample-card 111+*self`, whose dashes the
+// url_key keeps) gains the query, while a standardish wanted name
+// (`*all+*autoname`) stays bare.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -58,10 +58,10 @@ async function seedDeck(): Promise<void> {
   // Readable grant: *all+*read -> [[Anyone]].
   await seedCard(s, { id: 50, leftId: 10, rightId: 20, typeId: LIST_TYPE_ID, dbContent: "[[Anyone]]" });
   await seedReference(s, 50, 6, "anyone");
-  // The target card (census 7797's anchor card, dashes make the name
-  // non-standardish: url_key underscores what tr(" ", "_") keeps) + its
-  // stored +*self set card, so `Sample-card 111+*self` renders the rule
-  // list with wanted `+*self+*setting` bars.
+  // The target card (dashes make the name non-standardish: url_key
+  // underscores what tr(" ", "_") keeps) + its stored +*self set card, so
+  // `Sample-card 111+*self` renders the rule list with wanted
+  // `+*self+*setting` bars.
   await seedCard(s, { id: 80, name: "Sample-card 111", typeId: RICH_TYPE_ID, dbContent: "jerk notes" });
   await seedCard(s, { id: 81, leftId: 80, rightId: 39, typeId: SET_TYPE_ID });
   await seedCard(s, { id: 39, name: "*self", codename: "self", typeId: SETTING_TYPE_ID });
@@ -104,8 +104,8 @@ describe("bar-menu links on wanted bars carry Ruby's handle_unknown card[name] q
   it("keeps known-card menu hrefs bare (known_name? short-circuits, path.rb:98-100)", async () => {
     const html = await storage!.engine.render("Sample-card 111+*self", "content");
     // The stored +*self card is known — no link to it picks up the query.
-    // (Known-bar menu bytes are separately pinned by the R16 suite; this
-    // render only exercises the rule list.)
+    // (Known-bar menu bytes are pinned by their own suite; this render
+    // only exercises the rule list.)
     expect(html).not.toContain("/Sample_card_111+*self?card%5B");
     expect(html).not.toContain("/Sample_card_111+*self/edit?card%5B");
   });
@@ -114,7 +114,7 @@ describe("bar-menu links on wanted bars carry Ruby's handle_unknown card[name] q
     const html = await storage!.engine.render("*all", "content");
     // `*all+*autoname`.url_key == `*all+*autoname`.tr(" ", "_") — the
     // url_key loses nothing, so Ruby emits no card[name] even though the
-    // bar is wanted (oracle 274: href="/*all+*autoname", bare).
+    // bar is wanted: the href stays bare.
     expect(html).toContain('href="/*all+*autoname"');
     expect(html).not.toContain("*all+*autoname?card%5B");
     expect(html).not.toContain("*all+*help?card%5B");
