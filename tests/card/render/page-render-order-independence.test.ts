@@ -1,8 +1,7 @@
 // Page renders are order-independent: a page's bytes must equal the bytes a
 // CLEAN engine produces for the same page alone, no matter which renders
 // preceded it on the same engine (Ruby resolves every request fresh — the
-// parity contract; the 2026-09-29 page-mechanism census proved the
-// first-render-wins engine state drives entire verifier phases to zero).
+// parity contract; first-render-wins engine state breaks it).
 //
 // The mechanism this pins: the page path's layout warm-up
 // (prefetchWarmupClosure) walks a worklist whose collect step skips names
@@ -13,9 +12,9 @@
 // warm-up builds zero statements — and its no-fetch branch breaks the loop
 // before the promised next drain ever runs. The break eats the reference
 // BFS: cards reachable only through a warm-but-unscanned card's content
-// (the navbar menu's items, in the corpus repro) stay unprepared, and the
+// (the navbar menu's items, in the repro) stay unprepared, and the
 // synchronous nest renders the unknown-card substitution for them — the
-// census's vanished-navbar signature.
+// vanished-navbar signature.
 //
 // This deck reproduces that shape minimally: "Structured Card" (governed by
 // a *structure rule) template-references "Header Card" and "Menu Card";
@@ -136,19 +135,19 @@ function cleanEngineOver(storage: RenderTestStorage): RenderEngine {
 describe("page render order independence (first-render-wins state leak)", () => {
   it("renders the page identically whether or not a bare view rendered first", async () => {
     const storage = await seedWarmupDeck();
-    // Engine A: a bare view first - the grading instrument's view lane runs
-    // before its page lane, exactly the census's poisoning order.
+    // Engine A: a bare view first - a view render preceding the page render
+    // is the poisoning order.
     await storage.engine.render("Structured Card", "titled");
     const pageAfterBareRender = await renderPageBytes(storage.engine, "Probe Page");
 
-    // Engine B: the same page on a clean engine - the oracle-equivalent
-    // bytes the page must equal regardless of render history.
+    // Engine B: the same page on a clean engine - the bytes the page must
+    // equal regardless of render history.
     const clean = cleanEngineOver(storage);
     const cleanPage = await renderPageBytes(clean, "Probe Page");
 
     // Both engines must render the navbar item for Deep Card - reachable
     // only through scanning Menu Card, so a warm-up that stops early loses
-    // it to the unknown-card slot (the census's vanished-navbar signature).
+    // it to the unknown-card slot (the vanished-navbar signature).
     expect(cleanPage).toContain(">Deep</span>");
     expect(pageAfterBareRender).toContain(">Deep</span>");
     // The contract: byte equality with the clean engine's page.
@@ -156,9 +155,9 @@ describe("page render order independence (first-render-wins state leak)", () => 
   });
 
   it("renders the page identically when the page render runs first", async () => {
-    // Control: a page-first engine matches the clean engine (the census's
-    // "a page render first does not poison anything" half). Must hold both
-    // before and after the fix.
+    // Control: a page-first engine matches the clean engine (a page render
+    // first does not poison anything). Must hold both before and after the
+    // fix.
     const storage = await seedWarmupDeck();
     const first = await renderPageBytes(storage.engine, "Probe Page");
     const clean = cleanEngineOver(storage);
