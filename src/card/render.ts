@@ -8304,16 +8304,16 @@ export class RenderEngine implements RenderEngineLike {
         // 04_star.rb:9-11 {name: "*dummy"}. The prior arm collapsed
         // star/rstar/all_plus into the NAMELESS prototype (only *all+X
         // candidates) — that shape contradicts both the Ruby walk and the
-        // byte oracle: star's prototype *dummy is SIMPLE, so the *default
+        // rendered bytes: star's prototype *dummy is SIMPLE, so the *default
         // template walk skips compound-only *all plus (02_all_plus.rb:1
         // `@@options = { compound_only: true }`) and lands on *all+*default
-        // (rule 28, BasicCs-typed) → the *read walk then hits
-        // BasicCs+*type+*read (rule 22283, "Anyone Signed In") — the exact
-        // *star read-row oracle bytes (shard 3, [Anyone_Signed_In] href)
+        // (BasicCs-typed) → the *read walk then hits
+        // BasicCs+*type+*read ("Anyone Signed In") — exactly
+        // the *star read-row bytes ([Anyone_Signed_In] href)
         // the nameless walk missed with *all+*read "Anyone". rstar's
-        // compound *dummy+*dummy lands on *all plus+*default (rule 17827,
-        // RichText-typed) → the *default walk hits RichText+*type+*default
-        // (rule 21450) — the "RichText : <em>empty</em>" row.
+        // compound *dummy+*dummy lands on *all plus+*default (RichText-
+        // typed) → the *default walk hits RichText+*type+*default
+        // — the "RichText : <em>empty</em>" row.
         // (Supersedes the bar-slots pass note: the *star rows do NOT all
         // resolve at the *all+<setting> level — the read row resolves at
         // BasicCs+*type+*read through the typed prototype.)
@@ -8367,10 +8367,10 @@ export class RenderEngine implements RenderEngineLike {
         const parsed = DeckoName.parse(`*dummy+${anchorName}`);
         // 07_right.rb:18-20 {name: "*dummy+anchor"}; the type rides the
         // template chain (type.rb:58-80): Recommendations+*right resolves
-        // News Item (rule 11377's own type), putting the TYPE candidate
-        // News Item+*type+*create (rule 14192, "Administrator\r\nTeam")
+        // News Item (its own rule's type), putting the TYPE candidate
+        // News Item+*type+*create ("Administrator\r\nTeam")
         // ahead of *all plus+*create — the exact winner the
-        // Recommendations+*right oracle pins (pointer-list [Administrator,
+        // Recommendations+*right pointer-list pins ([Administrator,
         // Team]). typeName MUST ride along: the type pattern's anchor name
         // reads it (03_type.rb:15-17 anchor_name = card.type_name) — a
         // typeId without typeName built the broken "+*type+*create"
@@ -8398,9 +8398,9 @@ export class RenderEngine implements RenderEngineLike {
         // type always runs ensure_type_id (type.rb:58-66
         // type_id_from_code || type_id_from_template) — the *default template
         // walk (newCardDefaultType), which for RichText+Recommendations
-        // resolves News Item (rule 11377) and puts the TYPE candidate
-        // News Item+*type+*create (rule 14192, [Administrator, Team]) ahead
-        // of *all plus+*create — the oracle's create-row bytes for BOTH the
+        // resolves News Item and puts the TYPE candidate
+        // News Item+*type+*create ([Administrator, Team]) ahead
+        // of *all plus+*create — the create-row bytes for BOTH the
         // Recommendations+*right and RichText+Recommendations+*type plus
         // right set pages. The prior anchor-type stamp (RichText) built the
         // wrong prototype type and the walk fell through to *all plus+*create
@@ -8429,8 +8429,7 @@ export class RenderEngine implements RenderEngineLike {
    *  bar_view.rb:2-3's three-column bar_cols (5,4,3) with bar_middle kept,
    *  and the bar_menu's new-card create/edit label split. The corpus's
    *  `mod: format+*style` (left "mod: format" is Mod-typed, NOT a Set) is
-   *  NOT a rule card — the oracle pins its bar WITHOUT `_rule-item`
-   *  (dual-$1view:style: mods:render:open). */
+   *  NOT a rule card — its bar renders WITHOUT `_rule-item`. */
   cardMatchesRuleSet(card: RenderCard): boolean {
     const ids = this.ruleTypeIds;
     if (ids === undefined || ids.setting === undefined || ids.set === undefined) {
