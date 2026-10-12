@@ -89,7 +89,7 @@ import { str } from "../../render/format.js";
 //   one named query, one card, no query string.
 // - events :detect_conflict body (errors.add + I18n) and :rollback_actions
 //   body (process_revert_actions drives update! + abort :success) - the
-//   error / abort pipeline is a later wave; edit_conflict? (the
+//   error / abort pipeline stays out of scope here; edit_conflict? (the
 //   detect_conflict guard) IS ported here. ALL SIX event declarations
 //   pin into the manifest events[] surface (the fn bodies are stubs -
 //   see the events-block header below).
@@ -929,8 +929,8 @@ export async function updaterOf(
  *  last_action_id_before_edit.to_i != last_action_id && (la = last_action)
  *  && la.act.actor_id != Auth.current_id`. The :detect_conflict event body
  *  (events.rb:19-22, errors.add :conflict with locale key
- *  history_error_not_latest_revision) is not ported - the error pipeline is
- *  a later wave. */
+ *  history_error_not_latest_revision) is not ported - the error pipeline
+ *  stays out of scope here. */
 export async function isEditConflict(
   driver: SQLDatabaseDriver,
   cardId: number,
