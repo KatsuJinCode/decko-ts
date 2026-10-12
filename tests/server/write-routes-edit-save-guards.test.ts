@@ -1,4 +1,4 @@
-// The two edit-save guards that ride the (now landed) HTTP write path:
+// The two edit-save guards on the HTTP write path:
 // the stale-revision detector (E8, the conflict tracker's save validation)
 // and the draft save (E7, the autosave POST).
 //
@@ -26,10 +26,6 @@
 //      HTTP shape: a UserError (validation) is 422 - card-1.110.0
 //      lib/card/error.rb:21 (the module header's status table), the same
 //      status the other validation rejections already use.
-//      ORACLE: fixtures/captured/edit-forms.json conflict_probe - captured
-//      by tests/card/mod-loader/oracle-capture-edit-forms.rb (validation-only
-//      probe, actions 4881 -> 4881): errors_conflict == ["changes not based
-//      on latest revision"], no_write_proof true, valid_after_conflict true.
 //
 // E7 - card-1.110.0 mod/core/set/all/content.rb:8-15
 //      `event :save_draft, :store, on: :update, when: :draft? do
@@ -198,13 +194,13 @@ describe("E8 - the stale-revision detector on the save path (detect_conflict)", 
       annToken,
     );
     expect(conflicted.status).toBe(422);
-    // the FORM flavor answers the shared validation-error page carrying the
-    // oracle's message (write-routes errorResponse -> htmlResponse
+    // the FORM flavor answers the shared validation-error page carrying
+    // Ruby's message (write-routes errorResponse -> htmlResponse
     // "Error (conflict)" + the escaped message in a <pre>)
     expect(conflicted.body).toContain("Error (conflict)");
     expect(conflicted.body).toContain("<pre>changes not based on latest revision</pre>");
-    // events.rb:19-22 aborts the save before persistence (the oracle's
-    // conflict_probe: actions 4881 -> 4881, no_write_proof true).
+    // events.rb:19-22 aborts the save before persistence: no new action
+    // rows, content unchanged.
     expect(await actionRows()).toEqual(before);
     expect(await dbContent()).toBe(beforeContent);
   });
