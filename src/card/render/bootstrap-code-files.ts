@@ -17,9 +17,8 @@
 //
 // The rendered surface this feeds is the html :core's
 // `CodeRay.scan(_render_raw, :css).div` (card-mod-style
-// set/abstract/01_css.rb:35-40) - an earlier page triage's two SCSS pages
-// ("bootstrap: core" = 1.84MB of highlighted output, "bootstrap: functions"
-// = 122KB) whose engine renders were EMPTY: the engine had no accessor,
+// set/abstract/01_css.rb:35-40) - two SCSS pages whose engine renders were
+// EMPTY: the engine had no accessor,
 // so renderRaw hit the empty stored row.
 //
 // The scss sources are vendored byte-identically from the
@@ -35,9 +34,9 @@
 // the built-in default registry and silently unport the cards for
 // loader-less consumers.
 
-// 2026-10-01: the Node reads reach fs through a
+// The Node reads reach fs through a
 // RUNTIME process.getBuiltinModule probe instead of import statements —
-// the move coded-attachment-files.ts made 2026-09-29 — because this module
+// the same move coded-attachment-files.ts made — because this module
 // sits in the deploy/worker.ts bundle graph (render.ts -> format.ts ->
 // content-overrides.ts -> here) and that deploy is Web-standard-only
 // (deploy/wrangler.toml deliberately has no nodejs_compat). A static
@@ -45,7 +44,7 @@
 // vite or wrangler, and workerd rejects the script at load with
 // `No such module "node:fs"` — the boot failure the miniflare deploy proof
 // (tests/deploy/deploy-worker-miniflare.test.ts) guards at its bundle
-// assertion. The lazy directory move below (2026-10-02)
+// assertion. The lazy directory move below
 // fixed module INIT on workerd; the probe fixes module LOAD.
 
 import type { RenderFormat } from "./format.js";
@@ -81,7 +80,7 @@ function nodeFsOrNull(): NodeSyncFs | undefined {
 
 // The vendored-scss directory, resolved LAZILY and memoized.
 //
-// 2026-10-02: this used to be a module-scope
+// This used to be a module-scope
 // `const`. That is a module-LOAD side effect, and it crashes a Cloudflare
 // Workers runtime before the first request is ever served:
 //
@@ -91,8 +90,8 @@ function nodeFsOrNull(): NodeSyncFs | undefined {
 // be an ABSOLUTE url. In Node — and in wrangler's own bundle — it is a file:
 // URL and the resolution succeeds. Under workerd, where the Worker module is
 // loaded from a bare module path, import.meta.url is not absolute, `new URL`
-// has no valid base, and the whole Worker fails to START. Measured on
-// miniflare 5's workerd while proving the write surface. Pre-existing, not
+// has no valid base, and the whole Worker fails to START. Reproduced on
+// miniflare's workerd. Pre-existing, not
 // introduced here: the same module-scope line is in the bundle of worker.js
 // at the base commit, and the deploy/worker.ts graph
 // carries the same hazard.
