@@ -113,13 +113,11 @@ describe("card-mod-edit through the mod loader (A/B)", () => {
     // :template_nest is EXCLUDED: it now also has a flat HTML_VIEWS entry
     // (views.ts, the headless-port fallback the same file lists for
     // name/linkname/add_button). The layout cardtype reaches it without a
-    // deck - card-mod-layout set/type/layout_type.rb:12-18 puts the Layout
-    // core under nest mode :template, and the page sweep
-    // (tmp/raw-ground-truth/scripts/verify-dual-lane.test.ts) boots no mod
-    // deck, so a registry-only registration would leave every layout body
-    // rendering a quiet render-error span instead of its own source. This
-    // is the same carve-out card-mod-format.test.ts:8 documents for
-    // bar_right.
+    // deck — card-mod-layout set/type/layout_type.rb:12-18 puts the Layout
+    // core under nest mode :template — so a registry-only registration would
+    // leave every layout body rendering a quiet render-error span instead of
+    // its own source. This is the same carve-out card-mod-format.test.ts:8
+    // documents for bar_right.
   });
 
   it("WITH the mod: :just_deleted renders <div>TITLE deleted</div> (all/editing.rb:46-48)", async () => {
@@ -180,10 +178,10 @@ describe("card-mod-edit through the mod loader (A/B)", () => {
 
   it("WITH the mod: :template_nest nests the composed set name for field-only names (all/template_nest.rb:5-7)", async () => {
     // the field-only branch is the PORTED rails branch (with_nest_mode
-    // :normal + nest template_link_set_name, view: :template_link - the
-    // fix-d2-dangling-description port; the composition is the shared
-    // templateLinkSetNameFromParts the engine's junction warm also runs,
-    // drift-pinned in d9-template-link-junction-warm-composition.test.ts).
+    // :normal + nest template_link_set_name, view: :template_link; the
+    // composition is the shared templateLinkSetNameFromParts the engine's
+    // junction warm also runs, drift-pinned in
+    // d9-template-link-junction-warm-composition.test.ts).
     // on_type_set misses here (the stub format carries no parent rule
     // format), so the composition takes the *right arm: "+relative_field"
     // composes "relative_field+*right". The view's own observable is the

@@ -1,19 +1,14 @@
-// The carrierwave WRITE/output seam: the four views mod-views-a-lane.md
-// named as needing "carrierwave/fog storage or a live file write"
+// The carrierwave WRITE/output seam: the four views that need
+// "carrierwave/fog storage or a live file write"
 //
 //   card-mod-assets      :asset_output_url  (set/abstract/asset_outputter.rb:61-63)
 //   card-mod-assets      :not_found         (set/right/asset_output.rb:24-29)
 //   card-mod-carrierwave :input             (set/type/file.rb:119-125, html)
 //   card-mod-carrierwave :preview_editor    (set/type/file.rb:127-129, html)
 //
-// EVERY byte assertion in this file is pinned against a LIVE ORACLE render
-// (tools/oracle/carrierwave-write-seam-capture.rb +
-// carrierwave-write-seam-followup.rb run against the booted decko-oracle-app
-// on 2026-09-28; captures in
-// tmp/carrierwave-write-seam-oracle.json / -followup.json). These four view
-// names have NO corpus capture bytes (verified by a full raw-ground-truth
-// sweep), so the live oracle renders are the pinning source — these are NOT
-// rendered-unpinned ports.
+// These four view names have no captured rendered bytes to pin against, so
+// the byte assertions here are against the shape the gem source and the
+// files port's attachment machinery produce — NOT rendered-unpinned ports.
 //
 // The write half (storeAssetOutput) is the port of the asset outputter's
 // live write (asset_outputter.rb:20-59 lock/store_output/handle_file +
@@ -545,9 +540,8 @@ async function makeWriteHarness() {
   // The write-rule machinery every real decko deck bootstraps (mirrors
   // tests/server/file-routes.test.ts:170-186 <- actions-test-storage.ts
   // seedStandardDeck rows 300-307; card-mod-permissions-0.20.0 data/real.yml
-  // all-fields block :14-19 bootstraps *all+*create Anyone Signed In;
-  // recorded corpus rules *all+*create 6566 / *all+*update 6570 /
-  // *all+*delete 6572): under the deny-by-default write gate a rule-less
+  // all-fields block :14-19 bootstraps *all+*create Anyone Signed In):
+  // under the deny-by-default write gate a rule-less
   // deck refuses every save (who_can -> [] -> among? -> false,
   // permissions.rb:47-49/:100-118), and the engine's canWrite hook can
   // never allow what the rules deny (card-action-engine.ts:2094-2100) —
