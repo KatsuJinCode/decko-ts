@@ -243,8 +243,8 @@ export async function runImport(opts) {
 }
 
 /** Whole-deck check before the switch: every imported table's row count,
- *  and the cards' content and name lengths, equal on D1 and in the source.
- *  Reads every row once (about 66,000 rows read on Riley's deck). */
+ *  and the cards' content and name lengths, must be equal on D1 and in the
+ *  source. Reads every row of the source once. */
 export async function verifyAll(stateDir, exec) {
   const plan = readJson(join(stateDir, "plan.json"));
   const db = openSource(plan.source.path);
