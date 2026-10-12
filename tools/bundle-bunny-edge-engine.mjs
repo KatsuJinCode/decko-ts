@@ -11,10 +11,12 @@
 //                                              POST /compute/script/{id}/code
 //
 // Entry: deploy/bunny-worker-src/bunny-edge-engine-entry.ts — RenderEngine +
-// FetchEngine over BunnyDbDriver, routing through worker.ts's parsePath and
-// wrapping renders in worker.ts's layoutPage. See that file's header for the
-// runtime contract and the node: import inventory with each import's
-// dependency status.
+// FetchEngine over BunnyDbDriver, routing through the lineage surface's
+// parsePath (deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.ts —
+// the Bunny lineage's independently-evolved route grammar, not worker.ts's)
+// and wrapping renders in the lineage surface's layoutPage. See that file's
+// header for the runtime contract and the node: import inventory with each
+// import's dependency status.
 //
 // EXTERNAL BY DESIGN, same as the reader build: "@bunny.net/edgescript-sdk"
 // stays a bare import (the platform resolves it at run time; inlining would

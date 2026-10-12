@@ -93,8 +93,8 @@ import { json, type Deck } from "./bunny-edge-engine-request.js";
 
 /**
  * The sign-out route. The `/_*` namespace, deliberately outside the
- * card-mark grammar (worker.ts parsePath) so no card can ever be named
- * this — the same convention WORKERS_SIGNIN_PATH uses
+ * card-mark grammar (the lineage surface's parsePath) so no card can ever
+ * be named this — the same convention WORKERS_SIGNIN_PATH uses
  * (cloudflare-write-routes.ts). Mirrors vm-staging-server.mjs's `/_signout`
  * exactly, so the staging host and the edge share one operator mental
  * model for "leave".
