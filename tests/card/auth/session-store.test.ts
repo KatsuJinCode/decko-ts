@@ -1,8 +1,6 @@
 // SessionStore tests against REAL storage: in-memory better-sqlite3 with the
 // CORE schema (db/schema.sqlite.sql) plus the auth layer's own migration
 // (db/migrations/001-auth-sessions.sql) applied through the real runner.
-// Each expectation cites the Ruby file:method it derives from; the full
-//
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {

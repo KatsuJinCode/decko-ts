@@ -275,8 +275,8 @@ describe("script assets on the write path", () => {
       { cardId: created.cardId, actionId: created.actionId, verb: "create" },
     ]);
 
-    // the asset input: `// <card name>\n` + the content (00_script.rb
-    // comment_with_source over the identity compress)
+    // the asset input: `// <card name>\n` + the content (the
+    // comment_with_source wrapper over the identity compress)
     probeCardId = created.cardId;
     expect(await virtualOf(probeCardId)).toBe("// Probe Script\nwindow.parityProbe = 1;\n");
     // the card's create was the only action; the output card untouched

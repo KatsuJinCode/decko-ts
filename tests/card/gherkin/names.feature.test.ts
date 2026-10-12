@@ -1,14 +1,14 @@
-// Gherkin port — name algebra slice.
+// The name algebra slice.
 //
-// Upstream: decko-commons/decko/decko/features/*.feature does not have a
-// dedicated name.feature, but EVERY feature exercises the name layer
-// (every card name like "Duck Soup", "Movie+*type+*structure",
-// "color+*right+*default" goes through Cardname.parse). These specs port
+// No upstream feature file is dedicated to name algebra, but EVERY feature
+// exercises the name layer (every card name like "Duck Soup",
+// "Movie+*type+*structure",
+// "color+*right+*default" goes through Cardname.parse). These specs pin
 // the name-algebra assertions that the upstream scenarios implicitly
-// require, against the TS DeckoName port (src/card/name.ts).
+// require, against src/card/name.ts (Deckoname).
 //
-// Ruby references: cardname 0.20.0 lib/cardname.rb + lib/cardname/*.rb,
-// card-1.110.0 lib/card/name.rb + lib/card/name/name_variants.rb.
+// References: prototype/lib/cardname.rb + prototype/lib/cardname/*.rb,
+// prototype/lib/card/name.rb + prototype/lib/card/name/name_variants.rb.
 
 import { describe, it } from "vitest";
 import { DeckoName } from "../../../src/card/name.js";
@@ -18,7 +18,7 @@ import {
   thenNameKey,
 } from "./gherkin-steps.js";
 
-describe("Gherkin port: card name algebra (every feature file)", () => {
+describe("card name algebra (every feature file)", () => {
   // Simple names — the common case
   it("conflict.feature — 'Duck Soup' parses with a simple key", () => {
     thenNameKey("Duck Soup", "duck_soup");
@@ -89,12 +89,12 @@ describe("Gherkin port: card name algebra (every feature file)", () => {
     thenNameIsSimple("a test file");
   });
 
-  it("attach.feature — 'Vignesh has a complicated relationship' parses simply", () => {
-    // The DeckoName port applies Ruby's inflect rules — "has" is not
+  it("attach.feature — a multi-word card name parses simply", () => {
+    // DeckoName applies the inflect rules — "has" is not
     // singularized to "ha", but the plural-stem rule does trim some
     // suffixes. Assert isSimple rather than the exact key, which is
     // an inflect detail tracked in tests/card/name/name-port.test.ts.
-    thenNameIsSimple("Vignesh has a complicated relationship");
+    thenNameIsSimple("A card with a complicated relationship");
   });
 
   // Pointer-input compound names
@@ -110,8 +110,8 @@ describe("Gherkin port: card name algebra (every feature file)", () => {
   // Update-includers feature
   it("update_includers.feature — 'Ulysses+Author' is compound", () => {
     thenNameIsCompound("Ulysses+Author");
-    // The DeckoName port applies Ruby's plural-stem rule to "Ulysses"
-    // (singularizes to "ulyss"); the + author suffix is preserved.
+    // The plural-stem rule singularizes "Ulysses" to "ulyss"; the
+    // + author suffix is preserved.
     // Assert the structural property (compound), not the inflect detail.
   });
 

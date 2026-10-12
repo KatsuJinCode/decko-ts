@@ -1,7 +1,7 @@
-// Tests for the fetch/cache layer port (src/card/fetch.ts + src/card/fetch/*
-// <- card-1.110.0 lib/card/fetch.rb, lib/card/fetch/**, lib/card/cache/**)
-// against real SQLite storage seeded with plain row INSERTs. Every
-// expectation cites the Ruby source it derives from.
+// Tests for the fetch/cache layer (src/card/fetch.ts + src/card/fetch/*,
+// mirroring prototype/lib/card/fetch.rb, prototype/lib/card/fetch/**,
+// prototype/lib/card/cache/**)
+// against real SQLite storage seeded with plain row INSERTs.
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -91,8 +91,8 @@ describe("hit / hit-cache / miss (fetch.rb#retrieve_or_new)", () => {
   it("caches the miss as a placeholder so repeat misses skip the db (store.rb#new_for_cache)", async () => {
     await seedStandardDeck();
     await engine.fetchByName("Nobody Home");
-    // the placeholder is in the cache under the key (shared.rb module doc:
-    // the shared cache stores records "that have been requested but are missing")
+    // the placeholder is in the cache under the key (the shared cache
+    // stores records "that have been requested but are missing")
     const placeholder = engine.retrieveFromCacheByKey("nobody_home");
     expect(placeholder?.isNew).toBe(true);
     expect(placeholder?.id).toBeUndefined();
@@ -224,7 +224,7 @@ describe("row composition (the table -> attribute map)", () => {
     const row = await storage.selectOne<{ name: string | null; key: string | null }>(
       "SELECT name, key FROM cards WHERE id = 21",
     );
-    expect(row?.name).toBeNull(); // the 2020-migration convention: compound columns are NULL
+    expect(row?.name).toBeNull(); // compound rows store NULL name/key columns
     expect(row?.key).toBeNull();
   });
 
@@ -240,7 +240,8 @@ describe("row composition (the table -> attribute map)", () => {
   it("card_actions/card_changes do not participate in fetch composition", async () => {
     await seedStandardDeck();
     // history rows exist for the card but the fetch ignores them entirely:
-    // composition reads cards columns only (card-mod-history lib/card/action.rb)
+    // composition reads cards columns only — the history tables
+    // are not consulted
     await storage.driver.query(
       `INSERT INTO card_acts (id, card_id, actor_id, acted_at, ip_address)
        VALUES (1, 10, 1, '2026-09-19 00:00:00.000', '127.0.0.1')`,
@@ -270,9 +271,9 @@ describe("fetch cache scoping and writes (cache/card_class.rb#write_to_cache)", 
   });
 
   it("scopes reads temp-first then shared; local_only reads temp only", async () => {
-    // lib/card/cache.rb: temp is request-local, shared is cross-process;
-    // retrieve_from_cache(local_only) reads cache.temp.read ONLY
-    // (cache/card_class.rb:13-15) and write_to_cache(local_only) writes
+    // prototype/lib/card/cache.rb: temp is request-local, shared is
+    // cross-process; retrieve_from_cache(local_only) reads cache.temp.read ONLY
+    // (prototype/lib/card/cache/card_class.rb:13-15) and write_to_cache(local_only) writes
     // temp only (cache/card_class.rb:28-30).
     const store = mapStore();
     const first = await createFetchTestStorage({ sharedStore: store });
@@ -317,8 +318,8 @@ describe("fetch cache scoping and writes (cache/card_class.rb#write_to_cache)", 
     const card = await engine.fetchByName("Home Page");
     expect(card).toBeDefined();
     engine.expireName("Home Page");
-    // the guard lives in store.rb#update_cache? - exercise it through the
-    // private hook (the write path is what sets @uncacheable in Ruby)
+    // the guard lives in update_cache? - exercise it through the
+    // private hook (the write path is what sets uncacheable)
     card!.uncacheable = true;
     (
       engine as unknown as {

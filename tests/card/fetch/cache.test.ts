@@ -1,7 +1,6 @@
-// Unit tests for the two-level fetch cache port
-// (src/card/fetch/cache.ts <- card-1.110.0 lib/card/cache.rb,
-// cache/temporary.rb, cache/shared.rb). Every expectation cites the Ruby
-// file/method it derives from.
+// Unit tests for the two-level fetch cache
+// (src/card/fetch/cache.ts, mirroring prototype/lib/card/cache.rb,
+// prototype/lib/card/cache/temporary.rb, prototype/lib/card/cache/shared.rb).
 
 import { describe, expect, it } from "vitest";
 import {

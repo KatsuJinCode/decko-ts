@@ -1,15 +1,12 @@
-// Gherkin port — card CRUD slice.
+// The card CRUD feature suite: conflict.feature (card create / update /
+// delete) and structure.feature (cardtype, templated card). The original
+// feature files need a real Rails stack with Capybara + a browser; this
+// suite executes the same business behaviour against the TS engine
+// (CardActionEngine + FetchEngine) with vitest.
 //
-// Upstream: decko-commons/decko/decko/features/conflict.feature (card
-// create / update / delete) and structure.feature (cardtype, templated
-// card). Both feature files require a real Rails stack with Capybara +
-// a browser; this port executes the same business behavior against the
-// TS engine (CardActionEngine + FetchEngine) with vitest.
-//
-// Each "it" header carries the upstream scenario name so the link to
-// the source feature is obvious from the spec alone. The `// upstream`
-// comment at each step names the corresponding Ruby step exactly as it
-// appears in decko-commons/decko.
+// Each "it" header carries the upstream scenario name so the link to the
+// source feature is obvious from the spec alone. The `// upstream` comment at
+// each step names the corresponding step verbatim.
 
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -73,8 +70,8 @@ describe("Gherkin port: card create/read/update/delete (conflict.feature + struc
     // Here we simulate the same divergent edit pattern in the same
     // engine: actor A saves A's content, actor B saves B's content, both
     // succeed (the engine records each as a separate act). The
-    // CONFLICT-detection layer is downstream of this port (see
-    // ); what the engine proves is that both
+    // CONFLICT-detection layer is downstream of this engine; what the
+    // engine proves is that both
     // acts persisted independently.
     world = await freshWorld();
     await givenExtendedDeck(world);
@@ -96,12 +93,11 @@ describe("Gherkin port: card create/read/update/delete (conflict.feature + struc
     await whenCreateCard(world, "Phrase", "Duck Soup", "Laurel and Hardy");
     // upstream: When I edit "Duck Soup" setting content to "Stan Laurel"
     await whenSetContent(world, "Duck Soup", "Stan Laurel");
-    // Same edit again — events.rb:34-37 returns null (no-op save).
+    // Same edit again — the save returns null (no-op save).
     await whenSetContent(world, "Duck Soup", "Stan Laurel");
     await thenCardContains(world, "Duck Soup", "Stan Laurel");
     // Sanity: the engine recorded only ONE update action for the change,
-    // not two — proves the no-op branch (actions-port-notes.md section
-    // 1.3).
+    // not two — proves the no-op branch.
     expect(await world.storage.count("card_actions")).toBe(2); // 1 create + 1 update
   });
 

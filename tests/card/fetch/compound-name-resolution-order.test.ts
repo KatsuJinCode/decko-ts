@@ -1,21 +1,21 @@
 // Fetch by id and by name for compound rows the lexicon cannot reach by
-// name, pinned to Ruby Decko's observed behaviour (card-1.110.0, measured
-// against the capture deck on a cold cache in both orders).
+// name, pinned to the reference implementation's observed behaviour —
+// measured on a cold cache in both lookup orders.
 //
-// Ruby resolves a compound NAME only through its side ids
-// (lexicon.rb#name_to_lex -> [left_id, right_id] -> lex_to_id, trash: false).
+// A compound NAME resolves only through its side ids
+// (lexicon#name_to_lex -> [left_id, right_id] -> lex_to_id, trash: false).
 // Two kinds of live row are therefore unreachable by name:
 //   - a legacy row whose compound name is stored in the name column with no
 //     left_id/right_id (no row matches the side-id pair);
 //   - a row with a trashed side (the side's lex_to_id answers nil).
-// Fetch by ID reads the row directly (retrieve.rb#retrieve_from_db) and
-// finds both. But a by-name miss caches a new-card placeholder under the
-// name's key (store.rb#new_for_cache), and fetch by id checks the cache by
-// that key first (cache/card_class.rb#retrieve_from_cache_by_id), so after a
-// by-name miss Card[id] answers nil as well. The answer for these rows
-// depends on which lookup ran first. This is a Ruby defect; the port
-// reproduces it deliberately so both engines answer the same questions the
-// same way, cache state for cache state.
+// Fetch by ID reads the row directly (retrieve_from_db) and finds both. But a
+// by-name miss caches a new-card placeholder under the name's key
+// (new_for_cache), and fetch by id checks the cache by that key first
+// (retrieve_from_cache_by_id), so after a by-name miss Card[id] answers nil as
+// well. The answer for these rows depends on which lookup ran first. That is
+// a defect in the reference implementation, reproduced here deliberately so
+// both engines answer the same questions the same way, cache state for cache
+// state.
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createFetchTestStorage, seedCard, type FetchTestStorage } from "./fetch-test-storage.js";

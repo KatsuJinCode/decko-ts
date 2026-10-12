@@ -1,13 +1,12 @@
 // Test storage for the auth-layer tests: a thin better-sqlite3
 // SQLDatabaseDriver over an in-memory database loaded with the CORE schema
 // (db/schema.sqlite.sql), synthetic account cards, and the auth layer's own
-// migration applied through the real runner. All card content is SYNTHETIC
-// (the stream data rule: no real deck content in tests).
+// migration applied through the real runner. All card content is SYNTHETIC —
+// no real deck content in tests.
 //
-// Lives INSIDE tests/card/auth per the stream boundaries — same pattern as
-// tests/card/history/history-test-storage.ts, which documents why these
-// tests narrow the better-sqlite3 surface locally instead of growing the
-// shared ambient shim.
+// Lives INSIDE tests/card/auth next to its consumers, matching
+// tests/card/history/history-test-storage.ts: each suite narrows the
+// better-sqlite3 surface locally instead of growing a shared ambient shim.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

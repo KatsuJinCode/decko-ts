@@ -1,61 +1,48 @@
 // The Self::Mod record view reaches byte parity through a DOCUMENTED
-// NORMALIZATION, not an exception: the port renders Ruby's exact
-// Object#to_s template and the replay comparator canonicalizes the address on
-// both sides. Lane: mod-address-normalization, 2026-10-04.
+// NORMALIZATION, not an exception: the renderer emits the reference
+// implementation's exact Object#to_s template and the replay comparator
+// canonicalizes the address on both sides.
 //
-// WHY THE ADDRESS EXISTS AT ALL. card-1.110.0
-// mod/core/set/self/mod.rb:4-6 is
+// WHY THE ADDRESS EXISTS AT ALL. The mod view renders its loaded mods as
 //
 //     Cardio.mods.map do |mod|
 //       "#{mod}_mod"
 //     end
 //
-// `mod` is a Cardio::Mod OBJECT, and Cardio::Mod defines no #to_s
-// (lib/cardio/mod.rb:47-88 — initialize/mod_card_name/codename/subpath/
-// tmp_dir/ensure_card/required_path; `grep -rn "def to_s" lib/cardio/`
-// returns exactly one hit, module_template.rb:23, a different class). So the
-// interpolation falls through to Object#to_s and Ruby prints
-// "#<Cardio::Mod:0xADDR>_mod" with a heap address. mod.rb:9-11 then maps
-// item_codes to cardnames and calls to_pointer_content (config/initializers/
-// 01_core_extensions/array.rb:4-12), which only strips a leading "[[" and a
-// trailing "]]" — neither is present, so all 34 lines survive byte-for-byte.
+// `mod` is an OBJECT whose class defines no #to_s, so the interpolation falls
+// through to Object#to_s and prints "#<Cardio::Mod:0xADDR>_mod" with a heap
+// address. The item codes are then mapped to cardnames and passed through
+// to_pointer_content, which only strips a leading "[[" and a trailing "]]" —
+// neither is present, so every line survives byte for byte.
 //
-// WHY THE VALUE CANNOT BE COMPARED. The address is a property of the capture
-// process's heap, not of the card. It is not comparable across languages and
-// not across Ruby runs. The pinned corpus bytes (tmp/raw-ground-truth/
-// expected-v2/view-lane/recapture-raw-shard-000039.jsonl, entry id 45410,
-// name "Mod") hold 34 such addresses, 16 hex digits each, all 34 distinct.
-// Therefore the port emits a GENUINE per-process opaque id of the same shape,
-// and src/testing/diff.ts#normalizeModObjectAddresses canonicalizes the hex on
+// WHY THE VALUE CANNOT BE COMPARED. The address is a property of the
+// rendering process's heap, not of the card. It is not comparable across
+// languages and not across runs. The expected bytes hold 34 such addresses,
+// 16 hex digits each, all 34 distinct. So the renderer emits a GENUINE
+// per-process opaque id of the same shape, and
+// src/testing/diff.ts#normalizeModObjectAddresses canonicalizes the hex on
 // BOTH sides of the comparison. The shape is spec; the value is not.
 //
 // WHAT THIS FILE PINS (the pass-iff contract). The entry passes if and only
-// if all six hold, and this file FAILS if the port drops the address, malforms
-// it, reorders or duplicates a line, adds a trailing newline, or drifts any
-// other byte:
+// if all six hold, and this file FAILS if the renderer drops the address,
+// malforms it, reorders or duplicates a line, adds a trailing newline, or
+// drifts any other byte:
 //
-//   (a) 34 lines                          (the capture deck's loaded mods)
+//   (a) 34 lines                          (the deck's loaded mods)
 //   (b) all 34 lines distinct
 //   (c) mod-name ordering matches         (ORACLE_BUNDLE_ORDER, line for line)
 //   (d) no trailing newline               (1,291 chars, 33 separators)
-//   (e) every line is the Ruby template with a well-formed hex id
-//   (f) every OTHER byte matches the raw corpus, address-normalized
+//   (e) every line is the reference template with a well-formed hex id
+//   (f) every OTHER byte matches, address-normalized
 //
 // (e) is deliberately STRICTER than the comparator's own pattern, exactly as
 // SLOT_ID_PATTERN is (src/testing/diff.ts:28-36): a malformed id must not be
-// able to hide behind the normalization mask. The corpus's ids are 16 hex
-// digits, so the pin holds the port to 16.
+// able to hide behind the normalization mask. The expected ids are 16 hex
+// digits, so the pin holds the renderer to 16.
 //
-// BLAST RADIUS, measured not assumed: `grep -roF '#<Cardio::Mod:0x'` over the
-// whole expected-v2 tree (96 .jsonl files, 116 files total) returns 68
-// occurrences in exactly 2 files — view-lane and page-lane
-// recapture-raw-shard-000039.jsonl — and exactly ONE entry in each, both card
-// id 45410 ("Mod"). `grep -rohE '#<[A-Za-z_:]+'` over the same tree returns
-// `#<Cardio::Mod:` and nothing else, and `grep -rohE '0x[0-9a-f]{4,}'`
-// returns 68 — the same 68 addresses. So the normalization is anchored on a
-// construct that occurs nowhere else in the corpus and cannot mask any other
-// diff. The page-lane entry's page_html (62,290 bytes) does NOT contain the
-// construct, so that lane's Mod:page failure is unrelated and unmoved.
+// The normalization is anchored on a construct that appears nowhere else in
+// the rendered bytes, so it cannot mask any other diff; the anchored form is
+// pinned by the "normalization is anchored" case below.
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -89,7 +76,7 @@ const VIEW_LANE_SHARD = path.join(
 /** The one line template Ruby prints: "#<Cardio::Mod:0x" + hex + ">" + "_mod". */
 const RUBY_LINE_TEMPLATE = /^#<Cardio::Mod:0x([0-9a-f]{16})>_mod$/;
 
-/** The corpus's own ids, measured: 16 lowercase hex digits every time. */
+/** 16 lowercase hex digits — the shape every rendered id carries. */
 const HEX_DIGITS = 16;
 
 const EXPECTED_CHARS = 1291;
@@ -102,8 +89,8 @@ interface ModRecordLine {
   record?: { content?: string };
 }
 
-/** The raw expected record.content for card id 45410, read from the corpus
- *  with no transform in between — the pin's ground truth. */
+/** The raw expected record.content, read from the pinned shard with no
+ *  transform in between — the comparison's ground truth. */
 function loadCorpusModRecordContent(): string | undefined {
   if (!existsSync(VIEW_LANE_SHARD)) return undefined;
   for (const line of readFileSync(VIEW_LANE_SHARD, "utf8").split("\n")) {
@@ -116,13 +103,15 @@ function loadCorpusModRecordContent(): string | undefined {
 
 const CORPUS_CONTENT = loadCorpusModRecordContent();
 
-/** The gate, named. The corpus lives under `tmp/`, which is gitignored, so on
+/** The gate, named. The expected bytes live under `tmp/`, which is
+ *  gitignored, so on
  *  a clean clone the shard is absent and CORPUS_CONTENT is undefined.
  *
- *  Only TWO of this file's nine tests need the corpus — the provenance guard
- *  and the byte comparison (f). The other seven evaluate the port's own output
+ *  Only TWO of this file's nine tests need those bytes — the provenance guard
+ *  and the byte comparison (f). The other seven evaluate the renderer's own
+ *  output
  *  against constants declared above, and they guard real engine behaviour with
- *  no corpus present. So the gate skips the two that cannot be evaluated and
+ *  no shard present. So the gate skips the two that cannot be evaluated and
  *  leaves the seven running: skipping the whole describe would have turned a
  *  clean clone's 7 passes into 7 skips and thrown away coverage for nothing.
  *  See docs/TESTING.md. */
@@ -136,7 +125,7 @@ const corpusIt = itOrSkipLoud(
 
 describe("Self::Mod record view: the Ruby Object#to_s address shape (mod/core/set/self/mod.rb:4-6)", () => {
   corpusIt("the corpus holds the one card whose record content is a Cardio::Mod address list", () => {
-    // Provenance guard: if the corpus ever stops carrying these bytes this file
+    // Provenance guard: if the shard ever stops carrying these bytes this file
     // has nothing to pin and must fail loudly rather than pass vacuously.
     expect(CORPUS_CONTENT, "corpus shard-000039 must carry the Mod record content").toBeDefined();
     const lines = (CORPUS_CONTENT as string).split("\n");
@@ -170,8 +159,8 @@ describe("Self::Mod record view: the Ruby Object#to_s address shape (mod/core/se
   it("the address is a genuine per-process opaque id, not a constant", () => {
     // The value is NOT spec and must not be pretended to be: it just has to be
     // a real per-object identity that is not a fixed placeholder repeated 34
-    // times. Asserted as "34 distinct ids drawn from the 16-hex-digit space",
-    // which is the same claim the corpus makes about Ruby's own addresses.
+    // times. Asserted as "34 distinct ids drawn from the 16-hex-digit space" —
+    // the same shape the rendered bytes carry.
     const lines = modItemCodesContent().split("\n");
     const ids = lines.map((line) => (RUBY_LINE_TEMPLATE.exec(line) as RegExpExecArray)[1]);
     expect(new Set(ids).size).toBe(EXPECTED_LINES);
@@ -180,12 +169,12 @@ describe("Self::Mod record view: the Ruby Object#to_s address shape (mod/core/se
   });
 
   it("(c) the mod-name ordering matches the captured bundle order, line for line", () => {
-    // The corpus bytes carry NO mod names — Object#to_s prints the address, not
+    // The rendered bytes carry NO mod names — Object#to_s prints the address, not
     // the name — so ordering cannot be read off the rendered content at all.
-    // The port therefore reports which mod produced which object
+    // The renderer therefore reports which mod produced which object
     // (capturedModObjects), and THIS is the assertion that makes order
-    // load-bearing: it binds emitted line i to ORACLE_BUNDLE_ORDER[i]. Measured:
-    // a mutation that reverses ORACLE_BUNDLE_ORDER, or swaps two adjacent mods,
+    // load-bearing: it binds emitted line i to ORACLE_BUNDLE_ORDER[i]. A
+    // mutation that reverses ORACLE_BUNDLE_ORDER, or swaps two adjacent mods,
     // is caught here and nowhere else.
     const mods = capturedModObjects();
     expect(mods).toHaveLength(ORACLE_BUNDLE_ORDER.length);
@@ -194,8 +183,7 @@ describe("Self::Mod record view: the Ruby Object#to_s address shape (mod/core/se
     // And the rendered lines are those same objects, in that same order: the
     // address on line i is the identity of the mod named at position i. The
     // renderer is exercised through the same pure function the record path
-    // calls, so this binds order to the bytes the corpus will be compared
-    // against.
+    // calls, so this binds order to the bytes that get compared.
     const lines = modItemCodesContentForMods(mods).split("\n");
     expect(lines).toHaveLength(mods.length);
     for (const [index, mod] of mods.entries()) {
@@ -216,8 +204,8 @@ describe("Self::Mod record view: the Ruby Object#to_s address shape (mod/core/se
     // Full-string equality, so ANY drift outside the address is a failure.
     expect(normalizedActual).toBe(normalizedExpected);
     // The mask must be the ONLY thing that changed on the expected side: the
-    // normalized bytes are exactly the corpus bytes with each of the 34 address
-    // spans replaced by the placeholder, and no other edit.
+    // normalized bytes are exactly the original bytes with each of the 34
+    // address spans replaced by the placeholder, and no other edit.
     const addresses = expected.match(/#<Cardio::Mod:0x[0-9a-f]+>/g) ?? [];
     expect(addresses).toHaveLength(EXPECTED_LINES);
     expect(normalizedExpected).toBe(

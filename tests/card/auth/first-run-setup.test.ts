@@ -1,27 +1,26 @@
 // The first-run journey (src/card/auth/first-run-setup.ts +
 // src/server/first-run-routes.ts): the create-owner happy path, the
-// window-closed path, and the disabled-by-default path, plus the Ruby
-// citations each pins.
+// window-closed path, and the disabled-by-default path.
 //
-//   card-1.110.0/lib/card/auth/setup.rb:33-52          the census
-//   card-mod-account-0.20.0/set/type/user.rb:50-57     the create-side abort
-//   card-mod-account-0.20.0/data/real.yml:82-151       the account card shape
-//   card-mod-account-0.20.0/set/right/{email,password,salt}.rb  the field events
+//   prototype/lib/card/auth/setup.rb:33-52      the census
+//   the create-side abort (the User type's setup hook)
+//   the account card shape (the account mod's seed)
+//   the email/password/salt field events
 //
 // Storage: the render suite's in-memory core-schema storage (it carries BOTH
 // the driver and a FetchEngine over the same database, which is what the
 // create needs — it runs a real CardActionEngine). All seeded content is
-// SYNTHETIC, per the stream data rule.
+// SYNTHETIC.
 //
 // The load-bearing fixture detail: the fixture seeds the bot-CREATED
-// +*account rows a REAL RUBY DECK ships with (auth/setup.rb:44, "every deck
+// +*account rows a real deck ships with (auth/setup.rb:44, "every deck
 // starts with two accounts: DeckoBot and Anonymous", both authored by the
-// seeder as Card::DeckoBotID — cardio/seed.rb:106-108). This port's own
-// shipped seeds carry no `*account` codename at all (the
-// "account_system_absent" test below measures exactly that on both of them),
-// so the fixture supplies the rows to stand in for a real deck's. A census
-// test without them would pass on a plain COUNT(*) and prove nothing about
-// the `creator_id <> DeckoBotID` arm.
+// seeder as Card::DeckoBotID). This tree's own shipped seeds carry no
+// `*account` codename at all (the "account_system_absent" test below
+// measures exactly that on both of them), so the fixture supplies the rows
+// to stand in for a real deck's. A census test without them would pass on
+// a plain COUNT(*) and prove nothing about the `creator_id <> DeckoBotID`
+// arm.
 
 import { afterEach, describe, expect, it } from "vitest";
 import type { SQLDatabaseDriver } from "../../../src/server/driver.js";
@@ -128,9 +127,8 @@ async function seedAccountSystem(
   driver: SQLDatabaseDriver,
   opts: { trashedAccount?: boolean } = {},
 ): Promise<void> {
-  // card-mod-account data/real.yml:82-151 — the five codename cards the
-  // account shape is built from, plus the two system actors every deck has
-  // (auth/setup.rb:44).
+  // the five codename cards the account shape is built from, plus the
+  // two system actors every deck has (auth/setup.rb:44).
   await insertCodename(driver, IDS.account, "account", "*account");
   await insertCodename(driver, IDS.email, "email", "*email");
   await insertCodename(driver, IDS.password, "password", "*password");
@@ -158,9 +156,9 @@ async function seedAccountSystem(
   );
   // The two shipped accounts. The DeckoBot and Anonymous CARDS are the
   // codename rows just inserted (Card::AnonymousID / Card::DeckoBotID are
-  // const_get_or_set'd from those codenames, codename.rb:108 — a card, not a
-  // separate row), so only their `+*account` junctions are added here, both
-  // authored by the seeder as the bot (cardio/seed.rb:106-108).
+  // const_get_or_set'd from those codenames, codename.rb:108 — a card, not
+  // a separate row), so only their `+*account` junctions are added here,
+  // both authored by the seeder as the bot.
   await insertJunction(driver, { id: 9101, holderId: BOT.id, holderName: BOT.name, creatorId: BOT.id });
   await insertJunction(driver, { id: 9102, holderId: ANON.id, holderName: ANON.name, creatorId: BOT.id });
   if (opts.trashedAccount === true) {
@@ -214,8 +212,7 @@ function armDemoProfile(): void {
  * (left_id, right_id) pair.
  *
  * NOT by name: the engine writes compound rows with name = NULL and a
- * populated cards.key (verified by dumping the created table — rows 9010-9014
- * came back name=null, left/right populated). account-verify-reset-flows.ts's
+ * populated cards.key. account-verify-reset-flows.ts's
  * holderIdForAccountName notes the same convention. The right_id is the
  * codename card's id, which is what makes this a named field read.
  */
@@ -232,7 +229,7 @@ async function selectField(
 }
 
 // ---------------------------------------------------------------------------
-// 1. THE CENSUS — Ruby Card::Auth.needs_setup?
+// 1. THE CENSUS — needs_setup?
 // ---------------------------------------------------------------------------
 
 describe("the census (auth/setup.rb:33-52)", () => {
@@ -241,7 +238,8 @@ describe("the census (auth/setup.rb:33-52)", () => {
     const ids = await resolveAccountCodenameIds(driver);
     expect(ids).not.toBeNull();
     // Two `+*account` rows exist; the census still reads 0 because
-    // `creator_id: ["ne", Card::DeckoBotID]` (setup.rb:43-46) excludes them.
+    // `creator_id: ["ne", Card::DeckoBotID]` (auth/setup.rb:43-46) excludes
+    // them.
     const rows = await driver.query<{ n: number }>(
       "SELECT COUNT(*) AS n FROM cards WHERE right_id = ?",
       [IDS.account],
@@ -271,11 +269,12 @@ describe("the census (auth/setup.rb:33-52)", () => {
   });
 
   it("excludes the SHIPPED accounts by HOLDER, and counts everything else — auth/setup.rb:44", async () => {
-    // The gem's own comment states the rule in full: "every deck starts with
-    // two accounts: DeckoBot and Anonymous". Ruby's CQL proxies for it with
-    // `creator_id: ["ne", Card::DeckoBotID]` (setup.rb:43-46); this port
-    // counts on the HOLDER instead, because its engine has one actor where Ruby
-    // splits authority (as_id) from authorship (current_id) — see
+    // The reference's own rule is stated in full: "every deck starts with
+    // two accounts: DeckoBot and Anonymous". Its CQL proxies for that with
+    // `creator_id: ["ne", Card::DeckoBotID]` (auth/setup.rb:43-46); this
+    // census counts on the HOLDER instead, because this engine has one actor
+    // where that implementation splits authority (as_id) from authorship
+    // (current_id) — see
     // countUserAccounts's header for the whole mechanism. What matters is that
     // the two shipped rows are excluded and a human row is not.
     const { driver, render } = await fixture();
@@ -295,11 +294,11 @@ describe("the census (auth/setup.rb:33-52)", () => {
   });
 
   it("counts an account the SETUP FLOW created, which is the bug the holder rule exists to fix", async () => {
-    // Ruby's literal CQL cannot see this row: the port's engine stamps a
-    // bot-authored create with the bot's id (one actor, where Ruby splits
-    // as_id from current_id), so the `creator_id <> DeckoBotID` filter
-    // (setup.rb:43-46) would read zero and the window would never close.
-    // The holder rule sees it.
+    // The literal CQL filter cannot see this row: this engine stamps
+    // a bot-authored create with the bot's id (one actor, where the reference
+    // splits as_id from current_id), so `creator_id <> DeckoBotID`
+    // (auth/setup.rb:43-46) would read zero and the window would never
+    // close. The holder rule sees it.
     armDemoProfile();
     const { driver, render } = await fixture();
     const outcome = await createOwnerAccount(
@@ -402,7 +401,7 @@ describe("disabled by default", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 3. WINDOW CLOSED — Ruby user.rb:51
+// 3. WINDOW CLOSED — the create-side abort
 // ---------------------------------------------------------------------------
 
 describe("window closed (user.rb:51 `abort :failure unless Auth.needs_setup?`)", () => {
@@ -425,8 +424,9 @@ describe("window closed (user.rb:51 `abort :failure unless Auth.needs_setup?`)",
   });
 
   it("the create refuses a second owner even when the form is posted directly", async () => {
-    // Load-bearing: user.rb:51 runs as an EVENT `before: :check_permissions`,
-    // so the gate is not a view permission a crafted post can walk around.
+    // Load-bearing: the create-side abort runs as an EVENT
+    // `before: :check_permissions`, so the gate is not a view permission a
+    // crafted post can walk around.
     armDemoProfile();
     const { driver, render } = await fixture();
     await insertHolder(driver, 9600, "Real User");
@@ -477,13 +477,13 @@ describe("the create-time validation ladders", () => {
     expect(normalizeNewAccountEmail("   ")).toMatchObject({
       ok: false,
       reason: "email_blank",
-      message: "can't be blank", // en.yml:7
+      message: "can't be blank",
     });
-    // email.rb:11's own regex: the domain needs a dotted suffix.
+    // the email event's own regex: the domain needs a dotted suffix.
     expect(normalizeNewAccountEmail("owner@example")).toMatchObject({
       ok: false,
       reason: "email_invalid",
-      message: "must be valid address", // en.yml:8
+      message: "must be valid address",
     });
   });
 
@@ -492,10 +492,10 @@ describe("the create-time validation ladders", () => {
     expect(checkNewAccountPassword("Ab1!")).toMatchObject({
       ok: false,
       reason: "password_too_short",
-      message: "must be 8 characters or longer", // en.yml:20
+      message: "must be 8 characters or longer",
     });
-    // right/password.rb:36-49 + :92-99 — the config'd list in order,
-    // consolidated "X, Y, and Z" / "X and Y" / "X".
+    // the config'd list in order, consolidated "X, Y, and Z" / "X and Y" /
+    // "X".
     expect(checkNewAccountPassword("abcdefgh")).toMatchObject({
       ok: false,
       reason: "password_missing_char_types",
@@ -530,17 +530,17 @@ describe("createOwnerAccount — the happy path", () => {
       return;
     }
 
-    // (a) the name is derived from the address's local part (NEW — Ruby's
-    //     setup form has a real name field, user.rb:24).
+    // (a) the name is derived from the address's local part — the
+    //     reference's own setup form takes a real name field instead.
     expect(outcome.owner.name).toBe("owner");
     // (b) the stored address is the downcased, stripped one.
     expect(outcome.email).toBe("owner@example.com");
-    // (c) the salt is a 40-char lowercase hex — the shape right/salt.rb:6
-    //     produces and every real deck's +*salt carries.
+    // (c) the salt is a 40-char lowercase hex — the shape every real
+    //     deck's +*salt carries.
     expect(outcome.salt).toMatch(/^[0-9a-f]{40}$/);
 
-    // (d) the account subtree, in the shape right/account.rb:20-26 describes
-    //     and signin.ts:169-184 reads: the junction (left = the User card,
+    // (d) the account subtree, in the shape signin.ts:169-184 reads: the
+    //     junction (left = the User card,
     //     right = the *account card) plus four field children. Addressed
     //     structurally — the engine writes compound rows with name = NULL.
     const junction = await driver.query<{ id: number; left_id: number; right_id: number }>(
@@ -550,8 +550,7 @@ describe("createOwnerAccount — the happy path", () => {
     expect(Number(junction.rows[0]?.id ?? 0)).toBe(outcome.accountId);
     expect(Number(junction.rows[0]?.left_id ?? 0)).toBe(outcome.owner.id);
     expect(Number(junction.rows[0]?.right_id ?? 0)).toBe(IDS.account);
-    // The holder is User-typed: set/all/account.rb:3-5
-    // `default_accounted_type_id` = UserID, posted by user.rb:42.
+    // The holder is User-typed: `default_accounted_type_id` = UserID.
     const holder = await driver.query<{ type_id: number }>(
       "SELECT type_id FROM cards WHERE id = ?",
       [outcome.owner.id],
@@ -560,7 +559,7 @@ describe("createOwnerAccount — the happy path", () => {
 
     expect(await selectField(driver, outcome.accountId, IDS.email)).toBe("owner@example.com");
     expect(await selectField(driver, outcome.accountId, IDS.salt)).toBe(outcome.salt);
-    // (e) set_default_status's "active" fallback arm (events.rb:7-9) — the
+    // (e) set_default_status's "active" fallback arm — the
     //     owner is born signable, which is the whole point of the journey.
     expect(await selectField(driver, outcome.accountId, IDS.status)).toBe("active");
 
@@ -574,9 +573,10 @@ describe("createOwnerAccount — the happy path", () => {
     expect((await checkPassword(storedPassword, "Abcdef1!", outcome.salt)).ok).toBe(true);
     expect(storedPassword).not.toBe(await sha1Hex(`${outcome.salt}--Abcdef1!--`));
 
-    // (g) THE ACCEPTANCE CRITERION OF THE FIX: the brand-new owner signs in
-    //     through the EXISTING signin flow, unchanged. Before this fix a new
-    //     user could never sign in at all — both seeds create zero accounts.
+    // (g) the whole point of the journey: the brand-new owner signs in
+    //     through the EXISTING signin flow, unchanged. Both shipped seeds
+    //     create zero accounts, so without the create the journey would
+    //     dead-end at sign-in.
     const sessions = new SessionStore({ driver });
     const signedIn = await signinAccount(driver, sessions, "Owner@Example.COM", "Abcdef1!");
     expect(signedIn.ok).toBe(true);
@@ -606,8 +606,7 @@ describe("createOwnerAccount — the happy path", () => {
     );
     expect(outcome.ok, JSON.stringify(outcome)).toBe(true);
 
-    // The setting Ruby's rolehash hangs off is `*members`
-    // (card-mod-account set/self/role.rb:33-40, right_id: MembersID) —
+    // The setting the role hash hangs off is `*members` (right_id: MembersID) —
     // read-rules.ts:247 builds the actor's roles from exactly those rows.
     // A write to `+members` lands on a card no permission statement reads,
     // so the owner held no role and was never an admin.
@@ -786,12 +785,12 @@ describe("the /setup route", () => {
     );
     expect(response?.status).toBe(200);
     expect(response?.headers["Content-Type"]).toBe("text/html; charset=utf-8");
-    // Minimal: exactly the two fields the fix's contract names.
+    // Minimal: exactly the two fields the form carries.
     expect(response?.body).toContain('name="email"');
     expect(response?.body).toContain('name="password"');
     expect(response?.body).toContain('action="/setup"');
     expect(response?.body).toContain('method="post"');
-    // user.rb:36 `submit_button text: "Set up"` — Ruby's own words.
+    // `submit_button text: "Set up"` — the reference's own words.
     expect(response?.body).toContain(">Set up</button>");
     // No card-hash grammar: this form posts to the route, not to a card.
     expect(response?.body).not.toContain("card[subcards]");

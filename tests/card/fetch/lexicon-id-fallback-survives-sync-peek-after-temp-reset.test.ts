@@ -1,22 +1,21 @@
-// The sync-peek negative-materialization hazard (search-parity-2 follow-up
-// unit 3, demonstrated end-to-end on 10 census pages by the search-final
-// work): the Temporary cache's max-keys reset (card-1.110.0
-// lib/card/cache/temporary.rb#within_key_counts, default 10_000 keys) evicts
-// warm L-<key> entries mid-render; a subsequent SYNC peek (DbLexicon.peekId,
-// documented cache-only, no db fallback) went through CardCache.read -
-// temp.fetch(key) { shared.read(key) } - which MATERIALIZES the miss as a
-// stored nil. Ruby's cache.rb#read has the same shape, but Ruby never reads
-// the Lexicon cache over cold keys: every Ruby lexicon reader is
-// cache.fetch-shaped (lexicon.rb#lex_to_id/#id_to_lex), so a stored nil in
-// Ruby always means "the db said no". The port's peek is an extra reader
-// Ruby does not have, and its materialized nil poisons the async fallback:
-// DbLexicon.id -> lex_to_id's cacheFetch then sees temp.exist(key) true and
-// answers the stored nil WITHOUT the SQL query - "unknown" for a card the
-// db has, which Ruby's synchronous SQL fallback never answers. On the census
-// corpus this turned <host>+*referred_to_by / <host>+*type+by_name searches
-// into search-no-results on 10 named pages (money 18253, politics 2154, ...).
+// The sync-peek negative-materialization hazard: the Temporary cache's
+// max-keys reset (prototype/lib/card/cache/temporary.rb#within_key_counts,
+// default 10_000 keys) evicts warm L-<key> entries mid-render; a subsequent
+// SYNC peek (DbLexicon.peekId, documented cache-only, no db fallback) went
+// through CardCache.read - temp.fetch(key) { shared.read(key) } - which
+// MATERIALIZES the miss as a stored nil. The reference implementation's
+// cache.rb#read has the same shape, but it never reads the Lexicon cache over
+// cold keys: every lexicon reader there is cache.fetch-shaped
+// (lexicon.rb#lex_to_id/#id_to_lex), so a stored nil always means "the db said
+// no". A sync peek is an extra reader with no counterpart there, and its
+// materialized nil poisons the async fallback: DbLexicon.id -> lex_to_id's
+// cacheFetch then sees temp.exist(key) true and answers the stored nil
+// WITHOUT the SQL query — "unknown" for a card the db has, which the
+// synchronous SQL fallback never answers. In practice that turned
+// name-scoped searches into search-no-results on any page whose lexicon keys
+// had been evicted.
 //
-// Ruby parity contract pinned here:
+// Parity contract pinned here:
 // 1. a peek miss (eviction or cold entry) must NOT become a stored negative;
 // 2. the async id() fallback leg still resolves from the db after the peek;
 // 3. a REAL db negative (lex_to_id's fetch block ran the SQL) IS still
@@ -42,32 +41,31 @@ afterEach(() => {
 
 describe("DbLexicon sync peek after a Temporary reset (stored nil vs evicted entry)", () => {
   it("peekId of an evicted-but-existing name must not poison the async id() db fallback", async () => {
-    await seedCard(storage, { id: 583, name: "Bridget Castellan" });
+    await seedCard(storage, { id: 583, name: "Neutral Placeholder" });
     const lexicon = storage.engine.lexicon;
 
     // warm: the entry the 10k-key reset wipes mid-render
-    expect(await lexicon.id("Bridget Castellan")).toBe(583);
-    expect(lexicon.peekId("Bridget Castellan")).toBe(583);
+    expect(await lexicon.id("Neutral Placeholder")).toBe(583);
+    expect(lexicon.peekId("Neutral Placeholder")).toBe(583);
 
-    // force the eviction the Temporary max-keys reset performs (the same
-    // state the census render is in after warmLexicon: entry gone, db row
-    // still there)
+    // force the eviction the Temporary max-keys reset performs: the entry is
+    // gone, the db row still there
     lexicon.cache.temp.reset();
     expect(lexicon.cache.temp.read("L-david_william")).toBeUndefined();
 
     // the sync peek: cache-only by contract, answers undefined on the miss
-    expect(lexicon.peekId("Bridget Castellan")).toBeUndefined();
+    expect(lexicon.peekId("Neutral Placeholder")).toBeUndefined();
     // THE HAZARD: the miss is an EVICTION, not an answer - the peek must
-    // not materialize a stored negative Ruby could only have via a real
-    // SQL negative
+    // not materialize a stored negative, which would otherwise be reachable
+    // only through a real SQL negative
     expect(lexicon.cache.temp.exist("L-david_william")).toBe(false);
 
-    // Ruby's fallback leg: Lexicon.id falls through to SQL on a plain miss
+    // the fallback leg: Lexicon.id falls through to SQL on a plain miss
     // (lexicon.rb#lex_to_id cache.fetch compute) - it must not answer the
     // peek's materialized nil
-    expect(await lexicon.id("Bridget Castellan")).toBe(583);
+    expect(await lexicon.id("Neutral Placeholder")).toBe(583);
     // and the sync peek reads warm again
-    expect(lexicon.peekId("Bridget Castellan")).toBe(583);
+    expect(lexicon.peekId("Neutral Placeholder")).toBe(583);
   });
 
   it("a peek of an evicted COMPOUND name poisons neither its sides nor its key", async () => {

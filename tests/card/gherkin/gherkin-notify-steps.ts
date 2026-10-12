@@ -1,8 +1,7 @@
-// Gherkin step helpers for update_includers.feature (decko-commons/decko
-// decko/features/update_includers.feature, "Updates for Children of watched
-// cards"). Each function is the port of one upstream step (the feature file
-// + edit_steps.rb's "is watching" + email_steps.rb's notification
-// assertions), executed against the notify machinery the engine owns: the
+// Gherkin step helpers for the update_includers feature ("Updates for
+// Children of watched
+// cards"). Each function mirrors one upstream step, executed against the
+// notify machinery the engine owns: the
 // save path's default follow-notify hook (card-action-engine.ts
 // dispatchSavePathIntegrations), the rule-algebra follower walk
 // (notify/follower-resolver.ts — direct + indirect), and the deck-backed
@@ -110,9 +109,9 @@ export function givenSignedInAs(nw: NotifyWorld, actor: Actor): void {
  *  - the Set/Setting/User cardtype codename cards (the preference SQL's
  *    join keys — follower-resolver.ts preferenceRows),
  *  - the follow settings and options (*follow, *follow fields, *always,
- *    *never, *created, *edited — card-mod-follow data/real.yml codenames),
+ *    *never, *created, *edited — the follow machinery's codenames),
  *  - the *all+*follow fields default rule with content "*nests"
- *    (card-mod-follow data/real.yml: the stock deck's default — every
+ *    (the stock deck's default — every
  *    card's included fields are followed),
  *  - the Book cardtype (update_includers.feature:11 "I create Book card
  *    Ulysses"),
@@ -135,15 +134,15 @@ export async function givenNotifyDeck(world: GherkinWorld): Promise<void> {
   // the set-pattern codename cards the walked sets point at.
   await seedCard(s, { id: NOTIFY_IDS.self, name: "*self", codename: "self", typeId: NOTIFY_IDS.setting });
   await seedCard(s, { id: NOTIFY_IDS.type, name: "*type", codename: "type", typeId: NOTIFY_IDS.setting });
-  // the follow settings + options (card-mod-follow data/real.yml).
+  // the follow settings + options.
   await seedCard(s, { id: NOTIFY_IDS.follow, name: "*follow", codename: "follow", typeId: NOTIFY_IDS.setting });
   await seedCard(s, { id: NOTIFY_IDS.followFields, name: "*follow fields", codename: "follow_fields", typeId: NOTIFY_IDS.setting });
   await seedCard(s, { id: NOTIFY_IDS.always, name: "*always", codename: "always", typeId: NOTIFY_IDS.setting });
   await seedCard(s, { id: NOTIFY_IDS.never, name: "*never", codename: "never", typeId: NOTIFY_IDS.setting });
   await seedCard(s, { id: NOTIFY_IDS.created, name: "*created", codename: "created", typeId: NOTIFY_IDS.setting });
   await seedCard(s, { id: NOTIFY_IDS.edited, name: "*edited", codename: "edited", typeId: NOTIFY_IDS.setting });
-  // the stock default: *all+*follow fields = *nests (card-mod-follow
-  // data/real.yml) — every card's INCLUDED fields are followed. Set-typed
+  // the stock default: *all+*follow fields = *nests — every card's
+  // INCLUDED fields are followed. Set-typed
   // row (left = the *all card id 7, right = the setting), typeId = the
   // Set codename card's id (the preference/rule SQL's sets.type_id key).
   await seedCard(s, {
@@ -153,9 +152,9 @@ export async function givenNotifyDeck(world: GherkinWorld): Promise<void> {
     typeId: NOTIFY_IDS.set,
     dbContent: "*nests",
   });
-  // the follower notification email template — the real.yml seed's
-  // subject/text bytes (the shapes interpolateTemplate resolves:
-  // {{_user|name}} / {{_|last_action_verb}} / {{_|name}}).
+  // the follower notification email template — the subject/text
+  // shapes interpolateTemplate resolves:
+  // {{_user|name}} / {{_|last_action_verb}} / {{_|name}}.
   await seedCard(s, {
     id: NOTIFY_IDS.template,
     name: "follower notification email",
@@ -219,8 +218,7 @@ export async function givenNotifyDeck(world: GherkinWorld): Promise<void> {
 
 /** The delivery target for one user: the +*account junction + its +*email
  *  child (notify/follower-resolver.ts followerEmail reads
- *  <name>+*account+*email; card-mod-follow set/right/account.rb:2
- *  `return unless email.present?`). */
+ *  <name>+*account+*email; empty emails deliver to no one). */
 export async function givenUserEmail(
   world: GherkinWorld,
   userName: string,
@@ -244,7 +242,7 @@ export async function givenUserEmail(
   });
 }
 
-/** "Given <user> is watching '<set>'" (edit_steps.rb:5-11): the follow
+/** "Given <user> is watching '<set>'": the follow
  *  preference card <set>+<user>+*follow with content "[[*always]]" — the
  *  link-bracket form the step writes. The card tree is
  *  <set>+<user> (left = the set card, right = the user) and

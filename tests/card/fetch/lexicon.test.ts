@@ -1,6 +1,5 @@
-// Tests for the DB-backed lexicon port (src/card/fetch/lexicon.ts <-
-// card-1.110.0 lib/card/lexicon.rb) against real SQLite storage. Every
-// expectation cites the Ruby method it derives from.
+// Tests for the DB-backed lexicon (src/card/fetch/lexicon.ts, mirroring
+// prototype/lib/card/fetch/lexicon.rb) against real SQLite storage.
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -74,8 +73,7 @@ describe("DbLexicon.name (lexicon.rb#name)", () => {
   it("composes the EMPTY part when a side ROW is missing (lex_to_name's `name side_id or return` + Lexicon.name's `(name || '').to_name`)", async () => {
     // junction row pointing at a nonexistent right card (broken lexicon):
     // Lexicon.name(999) answers "" for the missing row (lexicon.rb:11-15 —
-    // `(name || "").to_name` is TRUTHY, verified live: Lexicon.name(389) =
-    // "+*default" against the corpus deck with card 388 absent), so the
+    // `(name || "").to_name` is TRUTHY, so the
     // `or return` guard PASSES and the empty right part joins
     // (lexicon.rb:43-47): "Left Part" + joint + "" = "Left Part+".
     // Only a NIL side id bails the whole composition to nil
@@ -118,7 +116,7 @@ describe("DbLexicon caching (Card::Cache[Lexicon])", () => {
   it("writeTemp mirrors id->name and lex->id into the temp cache (lexicon.rb#write_to_temp_cache)", async () => {
     const lexicon = storage.engine.lexicon;
     lexicon.writeTemp(77, undefined, "mirrored_card");
-    // the lex->id entry serves id() straight from cache - exactly Ruby's
+    // the lex->id entry serves id() straight from cache - the
     // "temp cache ahead of the database" semantics (cache.rb module doc);
     // no db row exists, so nothing else is known
     expect(await storage.engine.lexicon.id("mirrored_card")).toBe(77);

@@ -1,12 +1,11 @@
-// Gherkin port — attach.feature (decko-commons/decko
-// decko/features/attach.feature, "File Upload", 7 scenarios).
+// The attach.feature suite ("File Upload", 7 scenarios).
 //
 // The upstream scenarios are @javascript Capybara flows over the upload
-// form; this port executes each scenario's business behavior against the
+// form; this suite executes each scenario's business behaviour against the
 // attachment write path (CardActionEngine attachment events +
-// LocalAttachmentStore — card-mod-carrierwave's mount machinery, the same
+// LocalAttachmentStore — the mount machinery, the same
 // path the /files POST route drives). Per-scenario state is named in each
-// it() header: GREEN (the engine behavior covers the scenario) or
+// it() header: GREEN (the engine behaviour covers the scenario) or
 // NOT-PORTABLE-TODAY with the missing capability named.
 //
 // Named boundary (test setup, consistent with the other slices): the
@@ -308,7 +307,7 @@ describe("Gherkin port: attach.feature / File Upload", () => {
     aw = await freshAttachmentWorld();
     // upstream: /new Cardtype "complicated_card"; HTML card
     // "complicated card+*type+*structure" "{{+image}}{{+description}}";
-    // /new complicated_card "Vignesh has a complicated relationship";
+    // /new complicated_card "A card with a complicated relationship";
     // upload image.png into the field; Submit; see an image of size
     // medium type png.
     await aw.engine.createCard({ name: "complicated_card", typeCode: "cardtype" });
@@ -316,10 +315,10 @@ describe("Gherkin port: attach.feature / File Upload", () => {
       name: "complicated card+*type+*structure",
       content: "{{+image}}{{+description}}",
     });
-    await aw.engine.createCard({ name: "Vignesh has a complicated relationship" });
+    await aw.engine.createCard({ name: "A card with a complicated relationship" });
     // The form's field upload: the +image subcard save with the attachment.
     const identifier = await whenUploadFile(aw, {
-      name: "Vignesh has a complicated relationship+image",
+      name: "A card with a complicated relationship+image",
       bytes: PNG_BYTES,
       originalFilename: "image.png",
       typeCode: "image",
@@ -336,18 +335,18 @@ describe("Gherkin port: attach.feature / File Upload", () => {
       name: "complicated card+*type+*structure",
       content: "{{+Image}}{{+description}}",
     });
-    await aw.engine.createCard({ name: "Vignesh has a complicated relationship" });
+    await aw.engine.createCard({ name: "A card with a complicated relationship" });
     await whenUploadFile(aw, {
-      name: "Vignesh has a complicated relationship+Image",
+      name: "A card with a complicated relationship+Image",
       bytes: PNG_BYTES,
       originalFilename: "image.png",
       typeCode: "image",
     });
-    // upstream: And I edit "Vignesh has a complicated relationship" /
+    // upstream: And I edit "A card with a complicated relationship" /
     // And I upload the image "image2.jpg" / ... / Then I should see file
     // "image2.jpg ..." — the field update.
     const card = await aw.world.storage.fetcher.fetchByName(
-      "Vignesh has a complicated relationship+Image",
+      "A card with a complicated relationship+Image",
     );
     const update = await aw.engine.updateCard({
       cardId: card!.id!,
@@ -368,24 +367,24 @@ describe("Gherkin port: attach.feature / File Upload", () => {
       name: "complicated card+*type+*structure",
       content: "{{+Image}}{{+description}}",
     });
-    await aw.engine.createCard({ name: "Vignesh has a complicated relationship" });
+    await aw.engine.createCard({ name: "A card with a complicated relationship" });
     const identifier = await whenUploadFile(aw, {
-      name: "Vignesh has a complicated relationship+Image",
+      name: "A card with a complicated relationship+Image",
       bytes: PNG_BYTES,
       originalFilename: "image.png",
       typeCode: "image",
     });
     const fieldCard = await aw.world.storage.fetcher.fetchByName(
-      "Vignesh has a complicated relationship+Image",
+      "A card with a complicated relationship+Image",
     );
     expect(fieldCard).toBeDefined();
-    // upstream: And I edit "Vignesh has a complicated relationship" /
+    // upstream: And I edit "A card with a complicated relationship" /
     // And I press "Save and Close" (no new upload) / Then I should see
     // "+Image" / And I should see an image ... — the save WITHOUT the
     // field: the main card updates; the +Image subcard's stored file and
     // identifier are untouched.
     const main = await aw.world.storage.fetcher.fetchByName(
-      "Vignesh has a complicated relationship",
+      "A card with a complicated relationship",
     );
     await aw.engine.updateCard({ cardId: main!.id!, content: "" });
     const field = await aw.world.storage.selectOne<{ db_content: string | null }>(

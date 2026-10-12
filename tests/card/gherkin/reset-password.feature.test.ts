@@ -1,18 +1,16 @@
-// Gherkin port — reset_password.feature (decko-commons/decko
-// decko/features/reset_password.feature, Scenario: Resetting password).
+// The reset_password feature (Scenario: Resetting password).
 //
 // The upstream scenario is a browser flow (modal forms, "I open the email",
-// "I click the first link"); this port executes the same business behavior
+// "I click the first link"); this suite executes the same business behaviour
 // against the auth engine surfaces (account-verify-reset-flows.ts +
 // signin.ts) over the gherkin storage world. Each step's upstream wording is
 // preserved in the comments.
 //
-// NAMED DEVIATION (test setup, not engine behavior): the upstream password
+// NAMED DEVIATION (test setup, not engine behaviour): the upstream password
 // literals "joe_pass_reset" / "wanna_pass" / "newb_pass" do not satisfy the
-// mod-default password policy this engine ports verbatim
+// default password policy this engine implements verbatim
 // (account_password_requirements %i[lower upper special_char number] —
-// card-mod-account lib/card/mod/account.rb:2-3, ported in
-// account-verify-reset-flows.ts:224-236). The port's feature decks keep the
+// account-verify-reset-flows.ts:224-236). The feature decks here keep the
 // upstream password SHAPES ("joe_pass" fixtures are seeded directly, the
 // submitted new passwords add the missing character classes) because the
 // policy configuration surface itself is not yet portable. The reset flow's
@@ -35,7 +33,7 @@ import {
 import type { AccountFlowWorld } from "./gherkin-account-steps.js";
 import { isPbkdf2Hash } from "../../../src/card/auth/password-hash.js";
 
-describe("Gherkin port: reset_password.feature / Resetting password", () => {
+describe("reset_password.feature / Resetting password", () => {
   let flow: AccountFlowWorld;
 
   afterEach(async () => {
@@ -63,7 +61,7 @@ describe("Gherkin port: reset_password.feature / Resetting password", () => {
 
     // upstream: When I open the email / And I click the first link in the
     // email / Then I should see "Joe User" — the confirm arm issues the
-    // session for the holder (events.rb:15-17 + authenticator).
+    // session for the holder.
     const confirm = await whenFollowMailLink(flow, "reset_password");
     if (!confirm.ok) throw new Error(`confirm failed: ${JSON.stringify(confirm)}`);
     expect(confirm.holder.name).toBe("Joe User");
@@ -75,7 +73,8 @@ describe("Gherkin port: reset_password.feature / Resetting password", () => {
     const write = await whenApplyNewPassword(flow, confirm.holder, "Joe_pass_reset1!");
     if (!write.ok) throw new Error(`password write failed: ${write.reason}`);
     expect(write.ok).toBe(true);
-    // The port stores a PBKDF2 hash (docs/SECURITY.md, "Passwords").
+    // Newly set passwords are stored as a PBKDF2 hash
+    // (docs/SECURITY.md, "Passwords").
     expect(isPbkdf2Hash(write.digest ?? "")).toBe(true);
 
     // upstream: When I go to the homepage / And I follow "Sign out" /

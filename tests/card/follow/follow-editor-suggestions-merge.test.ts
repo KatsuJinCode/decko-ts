@@ -1,9 +1,8 @@
-// The follow-editor suggestions merge (the follow port's named remainder):
-// card-mod-follow-0.20.0 set/type_plus_right/user/follow/
-// follow_editor_helper.rb:83-90 suggested_following_rule_options_hash reads
+// The follow-editor suggestions merge: the suggested_following_rule_options
+// helper reads
 // card.suggestions (user/follow.rb:21-23: Card[:follow_suggestions]&.
-// item_names || [] - the "follow suggestions" codename card's items,
-// data/real.yml:37-41) and folds each suggestion into the editor's current
+// item_names || [] - the "follow suggestions" codename card's items)
+// and folds each suggestion into the editor's current
 // rule/options hash through merge_option_hashes (:63-70): a suggestion
 // whose rule key is already held appends its option (uniq, existing order
 // first); the remaining suggestions become NEW editor rows appended after
@@ -17,9 +16,6 @@
 // suggested_follow_option (:101-106) resolves the option by NAME then by
 // CODENAME and falls back to *always unless the card is a follow option
 // (set/all/follow.rb:14-16: its codename is in FollowOption.codenames).
-//
-// RED state: followEditorRows renders the empty suggestions arm only - the
-// opts parameter and the merge walk do not exist.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -63,7 +59,7 @@ beforeAll(async () => {
 
   // users
   await seedCard(s, { id: 3, name: "User", codename: "user", typeId: 13 });
-  await seedCard(s, { id: 300, name: "Riley", typeId: 3 });
+  await seedCard(s, { id: 300, name: "Fixture Actor", typeId: 3 });
 
   // set cards
   await seedCard(s, { id: 200, name: "Make Contact", dbContent: "contact body" });
@@ -81,13 +77,13 @@ beforeAll(async () => {
   // the NOT-a-set suggestion target
   await seedCard(s, { id: 540, name: "Not A Set", typeId: 2 });
 
-  // Riley's held follow rule: [[*always]] on Make Contact+*self
+  // The actor's held follow rule: [[*always]] on Make Contact+*self
   await seedCard(s, {
-    id: 215, name: "Make Contact+*self+Riley", leftId: 210, rightId: 300, typeId: 14,
+    id: 215, name: "Make Contact+*self+Fixture Actor", leftId: 210, rightId: 300, typeId: 14,
   });
   await seedCard(s, {
     id: 220,
-    name: "Make Contact+*self+Riley+*follow",
+    name: "Make Contact+*self+Fixture Actor+*follow",
     leftId: 215, rightId: 110, typeId: 14,
     dbContent: "*always",
   });
@@ -100,7 +96,7 @@ afterAll(() => {
 describe("follow-editor suggestions merge (follow_editor_helper.rb:83-90)", () => {
   it("merges suggestions into the follow tab rows when the trunk IS the session actor", async () => {
     const s = storage!;
-    const { following } = await followEditorRows(s.fetcher, "Riley", {
+    const { following } = await followEditorRows(s.fetcher, "Fixture Actor", {
       sessionId: 300,
       trunkId: 300,
     });
@@ -109,7 +105,7 @@ describe("follow-editor suggestions merge (follow_editor_helper.rb:83-90)", () =
     // uniq drops it
     expect(following).toEqual([
       {
-        ruleCardName: "Make Contact+*self+Riley+*follow",
+        ruleCardName: "Make Contact+*self+Fixture Actor+*follow",
         option: "*always",
         ruleSetName: "Make Contact+*self",
       },
@@ -119,14 +115,14 @@ describe("follow-editor suggestions merge (follow_editor_helper.rb:83-90)", () =
       // does not exist; the new card's name is the key), option *created
       // resolved through the *created card
       {
-        ruleCardName: "deck+*type+riley+*follow",
+        ruleCardName: "deck+*type+fixture_actor+*follow",
         option: "*created",
         ruleSetName: "Deck+*type",
       },
       // the bogus option name falls back to *always (suggested_follow_option
       // :101-106); the Soda+*self rule row, same new-card shape
       {
-        ruleCardName: "soda+*self+riley+*follow",
+        ruleCardName: "soda+*self+fixture_actor+*follow",
         option: "*always",
         ruleSetName: "Soda+*self",
       },
@@ -135,7 +131,7 @@ describe("follow-editor suggestions merge (follow_editor_helper.rb:83-90)", () =
 
   it("skips suggestions whose set side is not a Set-typed card (valid_set_card :117-120)", async () => {
     const s = storage!;
-    const { following } = await followEditorRows(s.fetcher, "Riley", {
+    const { following } = await followEditorRows(s.fetcher, "Fixture Actor", {
       sessionId: 300,
       trunkId: 300,
     });
@@ -146,15 +142,15 @@ describe("follow-editor suggestions merge (follow_editor_helper.rb:83-90)", () =
 
   it("merges NOTHING when the trunk is not the session actor (current_user? user/follow.rb:25-27)", async () => {
     const s = storage!;
-    const { following } = await followEditorRows(s.fetcher, "Riley", {
-      sessionId: 301, // Tova is signed in; the rendered trunk is Riley
+    const { following } = await followEditorRows(s.fetcher, "Fixture Actor", {
+      sessionId: 301, // a different user is signed in; the rendered trunk is the actor
       trunkId: 300,
     });
     // the held rules render (any viewer sees the editor rows) but the
     // suggestions arm contributes nothing
     expect(following).toEqual([
       {
-        ruleCardName: "Make Contact+*self+Riley+*follow",
+        ruleCardName: "Make Contact+*self+Fixture Actor+*follow",
         option: "*always",
         ruleSetName: "Make Contact+*self",
       },
@@ -163,10 +159,10 @@ describe("follow-editor suggestions merge (follow_editor_helper.rb:83-90)", () =
 
   it("merges NOTHING without an options bag (the pre-merge call shape stays valid)", async () => {
     const s = storage!;
-    const { following } = await followEditorRows(s.fetcher, "Riley");
+    const { following } = await followEditorRows(s.fetcher, "Fixture Actor");
     expect(following).toEqual([
       {
-        ruleCardName: "Make Contact+*self+Riley+*follow",
+        ruleCardName: "Make Contact+*self+Fixture Actor+*follow",
         option: "*always",
         ruleSetName: "Make Contact+*self",
       },
@@ -186,17 +182,17 @@ describe("follow-editor suggestions merge (follow_editor_helper.rb:83-90)", () =
         "Not A Set+*always",
       ].join("\n"),
     ]);
-    const { following } = await followEditorRows(s.fetcher, "Riley", {
+    const { following } = await followEditorRows(s.fetcher, "Fixture Actor", {
       sessionId: 300,
       trunkId: 300,
     });
     const held = following.find(
-      (row) => row.ruleCardName === "Make Contact+*self+Riley+*follow",
+      (row) => row.ruleCardName === "Make Contact+*self+Fixture Actor+*follow",
     );
     expect(held?.option).toBe("*always");
     const heldOptions = following
       .filter(
-        (row) => row.ruleCardName === "Make Contact+*self+Riley+*follow",
+        (row) => row.ruleCardName === "Make Contact+*self+Fixture Actor+*follow",
       )
       .map((row) => row.option);
     expect(heldOptions).toEqual(["*always", "*created"]);

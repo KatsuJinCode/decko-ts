@@ -1,13 +1,12 @@
 // Gherkin step helpers for the account-flow features (reset_password.feature,
-// signup.feature, setup.feature). Each function is the port of one upstream
-// Given/When/Then step (decko-commons/decko decko/features/*.feature +
-// features/step_definitions/account_steps.rb + email_steps.rb), executed
-// against the auth engine surfaces the account stream owns:
+// signup.feature, setup.feature). Each function mirrors one upstream
+// Given/When/Then step, executed
+// against the auth engine surfaces:
 // account-verify-reset-flows.ts, first-run-setup.ts, signin.ts — over the
 // SAME gherkin world (gherkin-storage.ts) the crud/views slices use.
 //
 // The browser shell (modal forms, "Save and Close", page banners) is out of
-// scope by the same boundary the other slices document: the business behavior
+// scope by the same boundary the other slices document: the business behaviour
 // of each step is the engine call, and the "Then I should see" assertions
 // read the engine-observable state that banner content would have rendered.
 
@@ -39,8 +38,8 @@ import { installGherkinNameEnvironment, seedCard, TYPE_IDS, type GherkinTestStor
 // ids — disjoint from the standard deck's 1..309 range
 // ---------------------------------------------------------------------------
 
-/** The account-system cards this deck seeds (card-mod-account
- *  data/real.yml: names, codenames; *title carries the deck title). */
+/** The account-system cards this deck seeds (names, codenames; *title
+ *  carries the deck title). */
 export const ACCOUNT_IDS = {
   account: 320,
   email: 321,
@@ -57,7 +56,7 @@ export const ACCOUNT_IDS = {
   helpDesk: 332,
 } as const;
 
-/** The deck title the Ruby features run under — reset_password.feature:17
+/** The deck title the account features run under — reset_password.feature:17
  *  expects the mail subject "reset password for My Deck", which the
  *  engine's reset template renders from {{:title|core}}. */
 export const GHERKIN_DECK_TITLE = "My Deck";
@@ -71,8 +70,8 @@ export const JOE_ADMIN: Actor = { id: 1, name: "Joe Admin" };
 export const JOE_USER: Actor = { id: 9, name: "Joe User" };
 export const JOE_CAMEL: Actor = { id: 12, name: "Joe Camel" };
 
-/** The fixed salt timestamp (right/salt.rb:6's hexdigest-of-timestamp
- *  shape; any 40-hex value satisfies the digest input's contract). */
+/** The fixed salt timestamp (the hexdigest-of-timestamp shape; any 40-hex
+ *  value satisfies the digest input's contract). */
 const SALT_TS = "--2026-10-03 00:00:00 UTC--";
 
 // ---------------------------------------------------------------------------
@@ -124,7 +123,7 @@ export async function givenAccountSystemDeck(
   const { world } = flow;
   await givenStandardDeck(world);
   const s = world.storage;
-  // card-mod-account data/real.yml: the setting/right codename cards.
+  // card-mod-account's setting/right codename cards.
   await seedCard(s, { id: ACCOUNT_IDS.account, name: "*account", codename: "account", typeId: TYPE_IDS.cardtype });
   await seedCard(s, { id: ACCOUNT_IDS.email, name: "*email", codename: "email", typeId: TYPE_IDS.cardtype });
   await seedCard(s, { id: ACCOUNT_IDS.password, name: "*password", codename: "password", typeId: TYPE_IDS.phrase });
@@ -135,10 +134,9 @@ export async function givenAccountSystemDeck(
   // the two shipped system actors (auth/setup.rb:44): DeckoBot + Anonymous.
   await seedCard(s, { id: ACCOUNT_IDS.deckoBot, name: "Decko Bot", codename: "decko_bot" });
   await seedCard(s, { id: ACCOUNT_IDS.anonymous, name: "*anonymous", codename: "anonymous" });
-  // the accounted cardtypes the flows create under (user.rb:50-57's default
-  // accounted type; signup.rb the Signup cardtype) and the roles the setup
-  // path grants the first user (user.rb:3 roles_for_first_user
-  // %i[help_desk shark administrator]).
+  // the accounted cardtypes the flows create under (the default
+  // accounted type; the Signup cardtype) and the roles the setup
+  // path grants the first user (help_desk, shark, administrator).
   await seedCard(s, { id: ACCOUNT_IDS.user, name: "User", codename: "user", typeId: TYPE_IDS.cardtype });
   await seedCard(s, { id: ACCOUNT_IDS.signup, name: "Signup", codename: "signup", typeId: TYPE_IDS.cardtype });
   // the Pointer cardtype the signup Background's permission rule needs
@@ -152,7 +150,7 @@ export async function givenAccountSystemDeck(
   await installGherkinNameEnvironment(s);
 
   // upstream: "There is a user named Joe User in the test data with the
-  // email joe@user.com" — password joe_pass (account_steps.rb:19). Skipped
+  // email joe@user.com" — password joe_pass. Skipped
   // for the setup deck (the census must read zero).
   if (opts.joePassword !== undefined) {
     await givenUserWithAccount(flow, {
@@ -165,13 +163,11 @@ export async function givenAccountSystemDeck(
 }
 
 /** One accounted user: the holder card + the +*account subtree the flows
- *  read (right/account.rb:24-26 accounted = left; the four field children
- *  real.yml seeds). The password content is the salted digest —
- *  right/password.rb:19-26 encrypt_password (`Auth.encrypt content, salt`,
- *  the salt from right/salt.rb:6's hexdigest shape).
+ *  read (the four field children). The password content is the salted
+ *  digest (`Auth.encrypt content, salt`).
  *
  * ROW-SHAPE NOTE: the compound rows are inserted with their NAME column
- * populated (the auth stream's own fixture convention,
+ * populated (the auth fixtures' own convention,
  * account-verify-reset-flows.test.ts insertCompoundCard) because the auth
  * layer's read SQL requires it (loadAccountByJunctionId returns undefined
  * on a null junction name, account-verify-reset-flows.ts:360). The action
@@ -195,8 +191,7 @@ export async function givenUserWithAccount(
 
 /** The auth fixture's compound-row INSERT (simple: name+key; compound:
  *  name + left_id/right_id) — the shape loadAccountByJunctionId reads.
- *  Returns the inserted row's id. */
-async function insertNamedCompound(
+ *  Returns the inserted row's id. */async function insertNamedCompound(
   s: GherkinTestStorage,
   opts: { name: string; leftId?: number; rightId?: number; typeId?: number; dbContent?: string },
 ): Promise<number> {
@@ -234,7 +229,7 @@ async function insertNamedCompound(
 
 /** "I enter 'joe@user.com' into '*email' in modal / And I press 'Reset
  *  password'" (reset_password.feature:14-15) — the reset request submit
- *  (signin.rb:27-31 + helpers, ported as sendResetPasswordToken). */
+ *  (sendResetPasswordToken). */
 export async function whenRequestPasswordReset(
   flow: AccountFlowWorld,
   email: string,
@@ -247,7 +242,7 @@ export async function whenRequestPasswordReset(
 
 /** "I open the email / And I click the first link in the email"
  *  (reset_password.feature:19-20) — the link lands on
- *  /update/:mark?card[trigger]=...&token=... (token_url, views.rb:34-38);
+ *  /update/:mark?card[trigger]=...&token=... (token_url);
  *  the click is the trigger request the confirm functions verify. */
 export async function whenFollowMailLink(
   flow: AccountFlowWorld,
@@ -266,7 +261,7 @@ export async function whenFollowMailLink(
 
 /** "I enter 'joe_pass_reset' into '*password' in modal / And I press 'Save
  *  and Close'" (reset_password.feature:23-24) — the +*account edit form's
- *  password write (right/password.rb's validate/store events, ported as
+ *  password write (the validate/store events, applied as
  *  applyNewAccountPassword under the signed-in holder). */
 export async function whenApplyNewPassword(
   flow: AccountFlowWorld,
@@ -286,14 +281,14 @@ export async function whenApplyNewPassword(
 }
 
 /** "And I follow 'Sign out'" (reset_password.feature:28) — the :signout
- *  event port; the session token is the flow's last-issued one. */
+ *  event; the session token is the flow's last-issued one. */
 export async function whenSignOut(flow: AccountFlowWorld, sessionToken: string): Promise<boolean> {
   return signoutAccount(flow.sessions, sessionToken);
 }
 
 /** "And I follow 'Sign in' / And I enter <email> into '*email' / And I
  *  enter <password> into '*password' / And I press 'Sign in'" — the
- *  :signin event port (signin.rb:12-19). */
+ *  :signin event. */
 export async function whenSignIn(
   flow: AccountFlowWorld,
   identifier: string,
@@ -305,11 +300,11 @@ export async function whenSignIn(
 /** "I fill in 'card_name' with 'Wanna B' / And I enter 'wanna@decko.org'
  *  into '*email' / And I enter 'wanna_pass' into '*password' / And I press
  *  'Submit'" (signup.feature:23-26) — the signup form's create, submitted
- *  signed out (signup.feature:18). The Ruby write shape (mod/account
- *  set/type/signup.rb): the Signup-typed holder + the +*account children;
- *  auto_approve_with_verification (:31-33) + request_verification (:48-52)
+ *  signed out (signup.feature:18). The write shape: the Signup-typed holder
+ *  + the +*account children;
+ *  auto_approve_with_verification + request_verification
  *  write the account status "unverified" and trigger
- *  send_verification_email (right/account/events.rb:32-35) — the send this
+ *  send_verification_email — the send this
  *  step makes at the same point. */
 export async function whenSubmitSignup(
   flow: AccountFlowWorld,
@@ -333,23 +328,22 @@ export async function whenSubmitSignup(
       },
     },
   });
-  // auto_approve_with_verification (signup.rb:31-33): the Background's
+  // auto_approve_with_verification: the Background's
   // User+*type+*create = [[Anyone]] lets the submitter approve, so the
-  // account starts "unverified" (request_verification, :48-52).
+  // account starts "unverified" (request_verification).
   const status = await world.storage.fetcher.fetchByName(`${form.name}+*account+*status`);
   if (status?.dbContent !== "unverified") {
     throw new Error(`signup status is ${status?.dbContent ?? "missing"}, expected unverified`);
   }
-  // trigger_event! :send_verification_email (signup.rb:52).
+  // trigger_event! :send_verification_email.
   const send = await sendAccountVerificationToken(flow.ctx, `${form.name}+*account`);
   if (!send.ok) throw new Error(`verification email failed: ${send.reason}: ${send.message}`);
 }
 
 /** "I fill in 'card_name' with 'The Newber' / And I enter 'newb@decko.org'
  *  into '*email' / And I enter 'newb_pass' into '*password' / And I press
- *  'Set up'" (setup.feature:13-16) — the setup form submit (user.rb:9-30
- *  setup view; the create carries the submitted name and grants the first
- *  user the basket roles, ported inside createOwnerAccount). */
+ *  'Set up'" (setup.feature:13-16) — the setup form submit (the create
+ *  carries the submitted name and grants the first user the basket roles). */
 export async function whenRunSetup(
   flow: AccountFlowWorld,
   form: { name: string; email: string; password: string },
@@ -367,7 +361,7 @@ export async function whenRunSetup(
 // ---------------------------------------------------------------------------
 
 /** '"joe@user.com" should receive an email with subject ...'
- *  (reset_password.feature:17; email_steps.rb:196-206's subject match). */
+ *  (reset_password.feature:17; the subject match). */
 export function thenMailWithSubject(flow: AccountFlowWorld, subjectFragment: string): void {
   const hit = flow.transport.captured().find((m) => m.subject.includes(subjectFragment));
   if (hit === undefined) {

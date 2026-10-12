@@ -1,7 +1,6 @@
 // Action-layer tests — SAVE/UPDATE (Card#update!): content changes, no-op
 // saves, renames (simple + junction rewire), rename guards, trash-name
-// obstacles, and cycle rejection. Ruby cites inline; trail in
-// . Synthetic fixtures only.
+// obstacles, and cycle rejection. Synthetic fixtures only.
 
 import { describe, expect, it } from "vitest";
 import { DeckoName } from "../../../src/card/name.js";
@@ -58,9 +57,9 @@ describe("updateCard — content saves", () => {
     const acts = await f.storage.selectAll<Row>("SELECT * FROM card_acts");
     expect(acts).toHaveLength(1);
     expect(acts[0]).toMatchObject({ card_id: f.joeCard.id, actor_id: JOE.id });
-    // store_card_changes (events.rb:102-106): only changed fields, after-values
+    // store_card_changes: only changed fields, after-values
     expect(await changesFor(f, (actions[0] as { id: number }).id)).toEqual([
-      { field: 2, value: "v2" }, // db_content = TRACKED_FIELDS[2] (change.rb:25)
+      { field: 2, value: "v2" }, // db_content = TRACKED_FIELDS[2]
     ]);
   });
 
@@ -70,8 +69,8 @@ describe("updateCard — content saves", () => {
     const result = await engine.updateCard({ cardId: f.joeCard.id, content: "v1" }); // unchanged
     expect(result).toBeNull();
     expect(await f.storage.count("card_actions")).toBe(0);
-    // finalize_act still saves the act for the act card (the Ruby oracle's
-    // persistence probe shows the empty act row).
+    // finalize_act still saves the act for the act card — the empty act row
+    // is persisted even though no card_action was recorded.
     const acts = await f.storage.selectAll<Record<string, unknown>>("SELECT card_id FROM card_acts");
     expect(acts).toEqual([{ card_id: f.joeCard.id }]);
     const card = await cardRow(f, f.joeCard.id);
@@ -106,7 +105,7 @@ describe("updateCard — simple rename", () => {
     const actions = await f.storage.selectAll<Row>("SELECT * FROM card_actions");
     expect(actions).toHaveLength(1);
     expect(await changesFor(f, (actions[0] as { id: number }).id)).toEqual([
-      { field: 0, value: "Souffle" }, // name only — key is not in TRACKED_FIELDS (change.rb:25)
+      { field: 0, value: "Souffle" }, // name only — key is not in TRACKED_FIELDS
     ]);
     // the old name is gone from the live namespace; fetch reflects it
     await expect(f.engine.fetchByName("Pudding")).resolves.toBeUndefined();
@@ -151,8 +150,8 @@ describe("updateCard — simple rename", () => {
     const obstacle = await seedCard(f.storage, { name: "Souffle", trash: true });
     await engine.updateCard({ cardId: f.joeCard.id, name: "Souffle" });
 
-    // obstacle renamed "<name>*trash" (name_events.rb:76-81), same act,
-    // own action without super_action_id (@supercard nil)
+    // obstacle renamed "<name>*trash", same act, own action
+    // without super_action_id (@supercard nil)
     await expect(cardRow(f, obstacle.id)).resolves.toMatchObject({
       name: "Souffle*trash",
       trash: 1,
@@ -177,10 +176,9 @@ describe("updateCard — simple rename", () => {
 
     await engine.updateCard({ cardId: f.joeCard.id, name: "Cake" });
 
-    // the junction ROW is untouched (virtual names —
-    // 20200718051236_compound_names_do_not_store_name_and_key.rb; only
-    // caches/lexicon entries refresh, rename_as_descendant
-    // reference_events.rb:40-47)
+    // the junction ROW is untouched (virtual names — junction rows store
+    // no name/key columns); only caches/lexicon entries refresh,
+    // rename_as_descendant
     const junctionRowAfter = await cardRow(f, junction.id);
     expect(junctionRowAfter).toEqual(junctionRowBefore);
     const actions = await f.storage.selectAll<Row>("SELECT * FROM card_actions");
@@ -229,10 +227,9 @@ describe("updateCard — junction rewire", () => {
     // warm the descendant composition before the rename
     await expect(f.engine.fetchByName("Pudding+banana")).resolves.toMatchObject({ id: junction.id });
     const engine = actionEngine(f.storage);
-    // renaming Pudding to "Pudding+x" makes its own id the LEFT side. Ruby
-    // does not reject this shape ("renames simple card to its own child",
-    // name_events_spec.rb:43-45): prepare_obstructed_side (name_events.rb:
-    // 144-150) clears the renaming row and the side becomes a FRESH subcard
+    // renaming Pudding to "Pudding+x" makes its own id the LEFT side. That
+    // shape is not rejected: prepare_obstructed_side
+    // clears the renaming row and the side becomes a FRESH subcard
     // in the same act, so the cycle guard must not fire on the direct self
     // side.
     const result = await engine.updateCard({ cardId: f.joeCard.id, name: "Pudding+x" });
@@ -263,7 +260,7 @@ describe("updateCard — junction rewire", () => {
 
     // Lexicon end state: the old key answers the fresh side, the compound
     // name answers the renamed row, and the descendant junction composes
-    // through the renamed row (reference_events.rb:40-47).
+    // through the renamed row.
     expect(await f.engine.lexicon.id("pudding+x")).toBe(f.joeCard.id);
     expect(await f.engine.lexicon.id("pudding")).toBe(leftId);
     expect((await f.engine.lexicon.name(f.joeCard.id))?.s).toBe("Pudding+x");
