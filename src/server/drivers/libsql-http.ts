@@ -1,6 +1,5 @@
 // LibSqlHttpAdapter — SQLDatabaseDriver speaking Hrana v2 (JSON encoding)
-// over HTTP, the wire protocol libSQL/Turso servers expose. Part of the
-// storage-driver foundation (upstream proposal decko-commons/decko#1282).
+// over HTTP, the wire protocol libSQL/Turso servers expose.
 //
 // Wire contract, verified against the reference implementation shipped in
 // this repo's dependency tree (@libsql/hrana-client lib-esm/shared/
