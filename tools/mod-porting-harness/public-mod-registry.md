@@ -2,7 +2,7 @@
 
 Generated 2026-10-03T21:43:56.326Z by tools/mod-porting-harness/mod-harness.mjs registry
 
-Ruling: every PUBLIC mod ported, behavior-validated. Private mods are the only exclusion (none in the installed gem set — every row's public evidence names its gem).
+Scope: every public mod is ported and behavior-validated; private mods are the only permitted exclusion. None of the installed gems is site-private — every row's evidence names its gem.
 
 **35 ported / 0 unported / 0 private-unknown** across 35 mods.
 
@@ -10,7 +10,7 @@ Ruling: every PUBLIC mod ported, behavior-validated. Private mods are the only e
 
 **Harness coverage of the registry:** 10 of 35 rows carry a harness scorecard; the other 25 are cited on compat-report evidence only and are the next surface/capture/verify runs to make.
 
-Re-measurement cite: mod-coverage-remeasure 2026-10-03 (tree 0287dab): 377 declared views / 174 byte-pinned / 354 render-at-all / 23 missing; 28 of 34 mods with zero missing views.
+View census cited by the re-measure column: 377 declared views / 174 byte-pinned / 354 render-at-all / 23 missing; 28 of 34 mods with zero missing views.
 
 | mod | status | re-measure missing views | harness scorecard | evidence |
 |-----|--------|-------------------------:|-------------------|----------|
@@ -26,8 +26,8 @@ Re-measurement cite: mod-coverage-remeasure 2026-10-03 (tree 0287dab): 377 decla
 | `card-mod-comment` | ported | 0 | 1/9 validated | harness scorecard, 0 RED: 1/9 harness-oracle-validated, 8 pinned by the mod's standing suite (see tools/mod-porting-harness/reports/card-mod-comment/scorecard.md) |
 | `card-mod-content` | ported | 0 | not harness-validated yet | 4 mod-specific view(s) ported: bar_middle, file_size, input, one_line_content |
 | `card-mod-date` | ported | 0 | not harness-validated yet | manifest + byte-pinned test (20 pins across 32 it()):  |
-| `card-mod-defaults` | ported | 0 | not harness-validated yet | legacy-labeled per upstream (#1282): ignored (legacy-labeled per upstream maintainer guidance); nothing to port |
-| `card-mod-delayed_job` | ported | 0 | not harness-validated yet | legacy-labeled per upstream (#1282): ignored (legacy-labeled per upstream maintainer guidance); nothing to port |
+| `card-mod-defaults` | ported | 0 | not harness-validated yet | legacy-labeled upstream: ignored (data/backend-only per upstream maintainer guidance); nothing to port |
+| `card-mod-delayed_job` | ported | 0 | not harness-validated yet | legacy-labeled upstream: ignored (data/backend-only per upstream maintainer guidance); nothing to port |
 | `card-mod-edit` | ported | 0 | not harness-validated yet | 41 mod-specific view(s) ported: board, board_type_formgroup, conflict_tracker, content_formgroup, content_formgroups, edit, ... |
 | `card-mod-email` | ported | 0 | not harness-validated yet | 2 mod-specific view(s) ported: compact_missing, email_page |
 | `card-mod-follow` | ported | 4 | 4/96 validated | harness scorecard, 0 RED: 4/96 harness-oracle-validated, 57 pinned by the mod's standing suite, 35 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/report |
@@ -52,4 +52,4 @@ Re-measurement cite: mod-coverage-remeasure 2026-10-03 (tree 0287dab): 377 decla
 
 ## Private-unknown evidence policy
 
-A mod is marked `private-unknown` only with evidence that its source is site-private (not published). The installed `card-mod-*` gem set is public by construction (published gems with LICENSE files — the same frozen set the license audit read), so no row carries private-unknown here. The TS-only marketplace row cites its no-gem status.
+A mod is marked `private-unknown` only with evidence that its source is site-private (not published). The installed `card-mod-*` gem set is public by construction (published gems with LICENSE files), so no row carries private-unknown here. The TS-only marketplace row cites its no-gem status.
