@@ -19,8 +19,7 @@
 //
 // Nothing is recorded and nothing is predicted from a previous request: the
 // ring is computed from rows this request has already read. The store and the
-// exact-statement memo die with the request. Ported from the proof of concept
-// (decko-poc-live-batch benchmarks/poc-live-batch/live-store-render.ts).
+// exact-statement memo die with the request.
 
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../server/driver.js";
 import { referencedNames } from "../render/nest-syntax.js";
@@ -253,8 +252,8 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
           this.ruleSetsAsked.add(k);
           need.ruleSets.set(k, [anchor, code]);
         };
-        // A type card's own *self set is rarely read (its rules come through
-        // the *type set of the cards of that type): measured 1 of 38 read.
+        // A type card's own *self set is rarely read: its rules arrive
+        // through the *type set of the cards of that type instead.
         const typeRow = r.type_id != null ? (this.store.rowById(r.type_id) as { codename?: string | null } | undefined) : undefined;
         if (typeRow?.codename !== "cardtype") add(r.id, "self");
         add(r.type_id, "type");
@@ -331,9 +330,9 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
   }
 
   /** The *all and *all plus set cards, once the store knows their ids and
-   *  only once per request: every rule under them arrives whole (23 rows,
-   *  under 1 KB of content on this deck; every page's rule walk reads
-   *  several of them). DECKO_LIVE_ALL_RULES=0 off. */
+   *  only once per request: every rule under them arrives whole, because the
+   *  sets are small and every page's rule walk reads several of them.
+   *  DECKO_LIVE_ALL_RULES=0 off. */
   private globalRulesSent = new Set<string>();
   private firstTripDone = false;
   private globalRuleSets(): number[] {
@@ -570,7 +569,7 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
     };
     const widening = st.wideningStatements(w, this.identityRing);
     const exact = [...need.exact.entries()].filter(([k]) => !this.exact.has(k));
-    // Search companions (round 9 step 1): for every search statement in this
+    // Search companions: for every search statement in this
     // trip, the rows its results lead to (each result row, its type, its left
     // and right parts) ride the SAME trip, so the engine's follow-up read of
     // the result rows answers from the store instead of costing a level.
