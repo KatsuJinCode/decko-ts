@@ -4259,10 +4259,10 @@ interface UriMatch {
  *     attribute). A context-rejected candidate CONSUMES its whole span -
  *     the span becomes plain interval text and scanning resumes at its
  *     end, so nothing inside it (the www.youtube.com host inside the
- *     rejected https:// URI of the What Do We Need To Know?+discussion
- *     oracle) is ever reconsidered. The former engine guard that skipped
- *     "URIs inside HTML tags" was a corpus approximation of exactly this
- *     mechanism and is gone: the rejected-prefix rule IS Ruby's rule. */
+ *     rejected https:// URI of a "+discussion" nest
+ *     ) is ever reconsidered. A guard that skipped
+ *     "URIs inside HTML tags" would be an approximation of exactly this
+ *     mechanism; the rejected-prefix rule IS Ruby's rule. */
 function findUriMatch(text: string, from: number): UriMatch | undefined {
   const prefixes: Array<[RegExp, "scheme" | "host" | "email", string]> = [
     [URI_SCHEME_REGEXP, "scheme", ""],
@@ -4309,7 +4309,7 @@ function findUriMatch(text: string, from: number): UriMatch | undefined {
     // raw span, prepend excluded) takes ONLY the punctuation chop. The
     // anchor's href is @link_text but its TEXT is process_text, which is
     // @link_text for the Uri class yet the chopped @text for Host/EmailUri
-    // — so the host-span oracle's bare-host span
+    // — so the host-span bare-host span
     // `sample-host.example/resources.)` renders the DOT inside the anchor
     // text (`...resources.</a>)`) while the href drops it. The earlier
     // single-chunk form dropped the dot from both.
@@ -4329,25 +4329,23 @@ function findUriMatch(text: string, from: number): UriMatch | undefined {
       pos = end;
       continue;
     }
-    // REVERTED (2026-10-09): the uri.rb:72-77 `rescue ::URI::Error` port —
+    // NOT IMPLEMENTED: the uri.rb:72-77 `rescue ::URI::Error` port —
     // a URI.parse-invalid chunk (brackets/braces/angle quotes and bad
     // percent escapes, boundary probed against the 3.3.0 gem's RFC3986
-    // parser) rendered as verbatim @text — reproduced the depth-psychology
-    // oracle's plain-text `[mailto:reader@sample-site.example]`
-    // but destabilized the +*referred_to_by search-result family (44
-    // pages per actor: the Archetypal referer list rendered a different
-    // result SET with the gate present and the capture's own set with it
-    // disabled, isolate bisect probes probe-iso2/iso4), through an
-    // interaction this pass could not trace inside its box. The item is
+    // parser) rendered as verbatim @text. That reproduced a plain-text
+    // `[mailto:reader@sample-site.example]` correctly but destabilized the
+    // +*referred_to_by search-result family (44
+    // pages per actor: the referer list rendered a different
+    // result SET with the gate present and the same set with it
+    // disabled), through an interaction that could not be traced. The item is
     // pinned deliberate: the engine anchors the bracketed Outlook mailto
-    // where the oracle keeps it plain, exactly the pre-gate bytes.
+    // where Ruby keeps it plain, which is the plain-text bytes.
     // links.rb:65-72 resource_type runs on the RESOURCE (@link_text):
     // a colonless chunk ("file", "mailto" — the scheme colon was chopped
     // as trailing punctuation) matches NO rule, so no class attribute.
-    // The previous `chunk.slice(0, chunk.indexOf(":"))` turned -1 into a
-    // last-char chop and emitted the engine-only `fil-link`/`mailt-link`
-    // classes (several publisher, bookseller and bookstore
-    // capture sites).
+    // A `chunk.slice(0, chunk.indexOf(":"))` form would turn -1 into a
+    // last-char chop and emit engine-only `fil-link`/`mailt-link`
+    // classes.
     const schemeResourceType =
       /^https?:/.test(chunk)
         ? "external-link"
