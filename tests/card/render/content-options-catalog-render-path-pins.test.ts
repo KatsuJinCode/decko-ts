@@ -1,10 +1,9 @@
-// content-options-catalog-render-path-pins.test.ts -- the contentopts lane's
-// RED pin for the two grade-10 view entries
-// `*input type+*right+*content options:render:content` / `:render:open`
-// (recapture-raw-shard-000007; grade10-run-artifacts/5e603603ba4-full-fails).
+// content-options-catalog-render-path-pins.test.ts -- pin for the two render
+// view entries of `*input type+*right+*content options:render:content` /
+// `:render:open`.
 //
-// MECHANISM (verified against the installed gems under C:/Ruby33-x64):
-// the Ruby card `*input type+*right+*content options` carries the set-module
+// MECHANISM (verified against the installed gems): the Ruby card
+// `*input type+*right+*content options` carries the set-module
 // content override card-mod-list-0.20.0
 // set/self/input_type/right/content_options.rb:3-5
 //   `def content; basket[:list_input_options].to_pointer_content; end`
@@ -17,34 +16,27 @@
 // Ruby's set-module `def content` shadows db_content for EVERY caller
 // (the singleton-class include chain), so the pointer-list item walk
 // (standard_pointer_core -> listing_list) renders the catalog, not the
-// stored row. The corpus's capture deck photographs exactly that: the
-// shard-000007 record for card 11745 carries the 11-item content while the
-// bench-corpus-raw.sqlite3 row (id 11745, name NULL) stores "overridden" --
-// the seeded placeholder (card-mod-edit-0.20.0 data/real.yml seeds the same
-// card's content_options field with `:content: overridden`).
+// stored row: the deck's stored row is the placeholder "overridden" while
+// the rendered card carries the 11-item catalog.
 //
-// THE PORT GAP: the TS render path's pointer-list arm reads
+// THE GAP THIS PIN CLOSED: the TS render path's pointer-list arm reads
 // `fmt.card.dbContent` directly (views.ts coreViewBase), and the
-// render-path ContentOverrideRegistry has no registration for this card --
-// so the engine renders ONE item ("overridden") where the corpus holds the
-// 11-item catalog (expectedBytes content 10699 vs actual 1470, open 13851
-// vs 4621). The record path already resolves the catalog through
+// render-path ContentOverrideRegistry had no registration for this card --
+// so the engine rendered ONE item ("overridden") where the catalog holds
+// eleven. The record path already resolves the catalog through
 // resolveSetModuleContent (SELF_MODULE_CHAINS "input_type+right+content_options"),
-// which is why the record entry passes while the render entries fail.
+// which is why the record entry passed while the render entries failed.
 //
-// RED here = the render-path registry answers undefined for the card.
-// The port registers listInputOptionsContent() under the card's key-form
-// self setPath and the pointer-list arm consults the registry before
-// dbContent -- GREEN = the registry answers the catalog bytes.
+// The render-path registry answers undefined for the card unless
+// registered; the port registers listInputOptionsContent() under the card's
+// key-form self setPath and the pointer-list arm consults the registry
+// before dbContent.
 //
 // BOUNDARY (do not widen): the bar-right one-line count for this card
-// ("overridden" vs the oracle's "11 items") is the fama-remainder lane's
-// corpus-pinned unit
-// (content-options-one-line-count-capture-state-pins.test.ts) -- that lane
-// measured the 667-row count dispatch arm and routed the 2 drifted rows to
-// corpus arbitration. This lane's engine change is scoped to the
-// pointer-list ITEM SOURCE only; rule-bar-right's one-line walk stays on
-// dbContent and its two page-lane rows stay in the arbitration families.
+// ("overridden" vs "11 items") is pinned by its own suite
+// (content-options-one-line-count-capture-state-pins.test.ts). This file's
+// engine change is scoped to the pointer-list ITEM SOURCE only;
+// rule-bar-right's one-line walk stays on dbContent.
 
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
@@ -135,9 +127,9 @@ describeOrSkipLoud(!(existsSync(`${GEMS}/card-mod-list-0.20.0`)), "tests/card/re
 /** A minimal render-format stub for the registry walk: cardBelongsToSet's
  *  self arm reads card.name.key; the right/type arms read isCompound /
  *  rightName.key / typeName. The catalog card is Pointer-typed, compound,
- *  right *content options. The KEY is the decko singularized form the
- *  corpus record carries ("content options" -> "content_option" -- the
- *  same inflection the bootstrap_self keys document). */
+ *  right *content options. The KEY is the decko singularized form
+ *  ("content options" -> "content_option" -- the same inflection the
+ *  bootstrap_self keys document). */
 function catalogCardFormat(): RenderFormat {
   return {
     card: {
@@ -184,7 +176,7 @@ describe("the render-path content override registry", () => {
   });
 });
 
-/** ContentFn contract shape check for the registration this lane adds: the
+/** ContentFn contract shape check for the registration: the
  *  fn receives the format and returns final bytes (ignoring it is fine --
  *  the catalog is card-independent, exactly like the Ruby body which reads
  *  only the basket). */
