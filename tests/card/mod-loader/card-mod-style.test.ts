@@ -1,14 +1,13 @@
 // The card-mod-style mod loader test: the mod loaded through the loader
-// registers the three headlessly-portable html views from the compat
-// report's missing list (box_bottom, box_middle, customize_button - the
-// Abstract::SkinBox bodies that are complete without another gem), all
-// sixteen gem-tree set modules, and the *style setting_opts. Each view
-// proves its Ruby-source semantics against a probe deck with Skin,
-// BootswatchSkin and plain cards.
+// registers the three html views it carries (box_bottom, box_middle,
+// customize_button - the Abstract::SkinBox bodies that are complete
+// without another gem), all sixteen gem-tree set modules, and the *style
+// setting_opts. Each view proves its Ruby-source semantics against a
+// probe deck with Skin, BootswatchSkin and plain cards.
 //
-// Proof shape (A/B per ported view, the card-mod-help test's shape):
+// Shape (A/B per view):
 //   WITHOUT the mod: the view raises UnsupportedViewError on every probe
-//     (render.rb#view_method - the views do not exist on the live
+//     (render.rb#view_method - the views do not exist on the in-memory
 //     registry).
 //   WITH the mod: Skin/BootswatchSkin cards render the SkinBox bodies
 //     (skin_box.rb:8/:10-12/:14-16); non-Skin cards keep raising the
@@ -28,17 +27,16 @@
 //     (card-mod-bootstrap set/type/bootswatch_skin.rb:30)
 //   - Plain Page (id 1171, RichText) - outside the SkinBox sets
 //
-// The remaining eight missing views (box, compiled, compressed, import,
-// remote_include_tags, remote_style_tags,
-// stylesheet_include_tag, stylesheet_path) are NOT ported - each is
-// documented with a one-word reason in the mod file's header (super
-// chain into card-mod-bar_and_box; SassC compilation; css/scss-format
+// The gem's remaining style views (box, compiled, compressed, import,
+// remote_include_tags, remote_style_tags, stylesheet_include_tag,
+// stylesheet_path) are NOT carried by this mod's SkinBox work - the mod
+// file's header documents each one's disposition in a word (super chain
+// into card-mod-bar_and_box; SassC compilation; css/scss-format
 // dispatch the flat html table cannot express; the Rails mod-manifest /
-// asset-output-url data sources) and asserted ABSENT here: loading the
-// mod registers exactly the four views above (the three skin_box ones
-// plus type_plus_right/mod/style.rb's :core, the Abstract::ModAssets
-    // group-list render ported and oracle-pinned),
-// no more.
+// asset-output-url data sources). This file asserts the load registers
+// exactly the views the mod carries - the three skin_box ones plus
+// type_plus_right/mod/style.rb's :core (the Abstract::ModAssets
+// group-list render Ruby hosts on the included module) - no more.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -123,17 +121,15 @@ describe("card-mod-style through the mod loader (A/B)", () => {
   it("WITHOUT the mod: the MOD-ONLY view raises UnsupportedViewError on every probe", async () => {
     const s = storage!;
     // :customize_button is genuinely mod-only (card-mod-bootstrap
-    // set/type/bootswatch_skin/html_views.rb:24-26) and still raises without
+    // set/type/bootswatch_skin/html_views.rb:24-26) and raises without
     // the mod.
     //
-    // :box_bottom / :box_middle are NOT on this list.
-    // The premise underneath them — "the engine has no base box-family
-    // views" — is false: the box family
-    // (card-mod-bar_and_box set/all/box.rb + box.haml) is registered in the
-    // shared HTML_VIEWS table. They render for ANY card now, which is the
-    // Ruby-faithful shape:
-    // in Ruby the box family comes from the bar_and_box mod, not from
-    // card-mod-style, so nothing has to be loaded for it to exist.
+    // :box_bottom / :box_middle are a different case: they render for ANY
+    // card here, and that is the Ruby-faithful shape — in Ruby the box
+    // family comes from the bar_and_box mod (card-mod-bar_and_box
+    // set/all/box.rb + box.haml), not from card-mod-style, so the family
+    // is already registered in the shared HTML_VIEWS table and nothing
+    // has to be loaded for it to exist.
     for (const name of ["Alpha Skin", "Plain Page"]) {
       await expect(s.engine.render(name, "customize_button")).rejects.toThrow(
         UnsupportedViewError,
@@ -170,18 +166,16 @@ describe("card-mod-style through the mod loader (A/B)", () => {
       "Self::StyleMods",
     ]);
     // the registered views, in the loader's walk order: skin_box.rb's
-    // declaration order (:8, :10, :14 - box (:2) is in viewsMissing) first
-    // (Abstract::SkinBox walks in the abstract group), then
-    // abstract/style_group.rb's :stylesheet_include_tag (the wave-1
-    // raising arm), then type_plus_right/mod/style.rb's
-    // (:core, :stylesheet_include_tag, :remote_include_tags - the wave-1
-    // ports), then type_plus_right/set/style.rb's :stylesheet_path (the
-    // wave-1 else-arm port), then self/style_mods.rb's :remote_style_tags
-    // (the wave-1 nest port). The :core citation stands (the
-    // Abstract::ModAssets group-list render Ruby hosts on the included
-    // module - card-mod-assets set/abstract/mod_assets.rb:171-182 via
-    // mod/style.rb:4-5; oracle-pinned byte-for-byte through mod:
-    // format :styles in fixtures/captured/admin-view-pins.json).
+    // declaration order (:8, :10, :14 - the gem's box view at :2 is
+    // deliberately absent here) first (Abstract::SkinBox walks in the
+    // abstract group), then abstract/style_group.rb's
+    // :stylesheet_include_tag, then type_plus_right/mod/style.rb's
+    // (:core, :stylesheet_include_tag, :remote_include_tags), then
+    // type_plus_right/set/style.rb's :stylesheet_path, then
+    // self/style_mods.rb's :remote_style_tags. The :core citation stands
+    // (the Abstract::ModAssets group-list render Ruby hosts on the
+    // included module - card-mod-assets set/abstract/mod_assets.rb:171-182
+    // via mod/style.rb:4-5).
     expect(report.registeredViews).toEqual([
       // stylesheet_include_tag registers ONCE (the loader's
       // registeredViews is name-keyed; the abstract module walks first)
@@ -288,9 +282,9 @@ describe("card-mod-style through the mod loader (A/B)", () => {
 
   it("WITH the mod: :box_bottom on a Skin card renders the empty string (skin_box.rb:8 + box_bottom.haml:1)", async () => {
     const s = storage!;
-    // the haml template is the single comment `-#TODO`; comments emit no
-    // bytes (Haml::Engine.new('-#TODO').render == "", oracle run against
-    // the installed haml gem) - the view body is ""
+    // the haml template is the single comment `-#TODO`; Haml renders
+    // comments to zero bytes (a `-#TODO`-only template renders as ""),
+    // so the view body is ""
     const html = await s.engine.render("Alpha Skin", "box_bottom");
     expect(html).toBe("");
   });
@@ -406,19 +400,16 @@ describe("card-mod-style through the mod loader (A/B)", () => {
   });
 
   it("WITH the mod: the three non-portable missing views stay UNREGISTERED", () => {
-    // the compat report's htmlViewsMissingNames minus the views ported
-    // elsewhere AND minus the four the wave-1 lane registered
-    // (remote_include_tags / remote_style_tags / stylesheet_include_tag /
-    // stylesheet_path - each documented in the mod file header with its
-    // disposition). "box" is not on this list: the box family is
-    // card-mod-bar_and_box's (set/all/box.rb, box.haml), never card-mod-
-    // style's, and it is registered in the shared table. The style header's
-    // premise — "the engine has no base box-family views" — is false for it;
-    // these are the ones still genuinely absent.
-    // "labeled" is not on this list: the name is
+    // the gem's html views this test pins as still UNREGISTERED:
+    // compiled, compressed, import (the mod file header documents every
+    // gem view this mod does not carry with its disposition). "box" is
+    // not among them: the box family is card-mod-bar_and_box's
+    // (set/all/box.rb, box.haml), never card-mod-style's, and it is
+    // registered in the shared table - these three are the ones still
+    // genuinely absent.
+    // "labeled" is not among them either: the name is
     // registered by the CORE format layer (card-mod-format set/all/html/
-    // views.rb:67 view :labeled - ported for the :view_list labeled arm,
-    // byte-pinned by fixtures/captured/search-list-views.json target 152);
+    // views.rb:67 view :labeled);
     // card-mod-style itself still registers no :labeled of its own.
     const views = loader!.viewsTable();
     for (const name of [
@@ -499,8 +490,7 @@ describe("card-mod-style through the mod loader (A/B)", () => {
     expect(typeof (await s.engine.render("Alpha Skin", "box_bottom"))).toBe("string");
     expect(typeof (await s.engine.render("Alpha Skin", "box_middle"))).toBe("string");
     // a fresh load() reproduces the same registrations (idempotence) -
-    // the registered views (see the load() pin above for the walk order
-    // and the wave-1 ports)
+    // the registered views (see the load() pin above for the walk order)
     const report = loader!.load();
     expect(report.registeredViews).toEqual([
       // stylesheet_include_tag registers ONCE (the loader's
