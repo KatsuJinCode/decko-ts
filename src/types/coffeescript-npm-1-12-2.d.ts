@@ -4,16 +4,12 @@
 // export is the CoffeeScript compiler object. Only the surface the compile
 // engines use is declared.
 //
-// Version provenance: the oracle deck compiles through the Ruby
-// coffee-script 2.4.1 gem wrapping coffee-script-source **1.12.2** - the
-// SAME compiler the npm `coffeescript@1.12.2` package ships. Byte parity is
-// capture-verified (tests/card/mod-loader/compile-engines-pin.test.ts,
-// fixtures/captured/compile-engines.json).
+// Version provenance: 1.12.2 is the version the asset pipeline expects, so
+// compiled output does not shift under an unrelated dependency bump.
 declare module "coffeescript" {
   /** CoffeeScript.compile(script, options) - compiles CoffeeScript source to
-   *  JavaScript. `bare` (the Ruby wrapper's no_wrap:) omits the
-   *  safety-var wrapper / function envelope. Throws SyntaxError with a
-   *  .location on compile errors. */
+   *  JavaScript. `bare` omits the safety-var wrapper / function envelope.
+   *  Throws SyntaxError with a .location on compile errors. */
   export function compile(
     script: string,
     options?: { bare?: boolean },
