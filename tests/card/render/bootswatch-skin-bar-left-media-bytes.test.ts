@@ -1,15 +1,14 @@
-// bar-slots (2026-09-29, view-fail class V6): the Bootswatch-skin
-// cardtype's bar_left renders the media+icon layout — card-mod-bootstrap
-// set/type/bootswatch_skin/html_views.rb:57-63 (text_with_image →
-// media_snippet.haml) — where the engine used to render a bare title span.
-// The expected bytes are an earlier dump's oracle region for `cerulean
-// skin :closed` (phase-008/html/000017-cerulean_skin-closed.expected.html,
-// first-diff offset 848) verbatim: the media block with the +Image child's
-// :boxed nest (coded content → /files/:codename+:image/bootstrap-small.png,
-// IMAGE_BOX_SIZE_MAP medium→small) over the media-text title span.
+// The Bootswatch-skin cardtype's bar_left renders the media+icon layout —
+// card-mod-bootstrap set/type/bootswatch_skin/html_views.rb:57-63
+// (text_with_image → media_snippet.haml) — where a bare title span would
+// otherwise render. The expected bytes below are the reference render's
+// bar-left region for a skin card in the :closed view, verbatim: the media
+// block with the +Image child's :boxed nest (coded content →
+// /files/:codename+:image/bootstrap-small.png, IMAGE_BOX_SIZE_MAP
+// medium→small) over the media-text title span.
 //
 // The dispatch is the BASE bar_left with a typeCode gate (views.ts
-// bootswatchSkinBarLeftHtml): the corpus grading pipeline replays views
+// bootswatchSkinBarLeftHtml): the reference-render harness replays views
 // through a RenderEngine that never binds a ModLoader, so only base-table
 // registrations dispatch on the graded surface.
 
@@ -39,9 +38,8 @@ async function seedDeck(): Promise<void> {
   await seedCard(s, { id: 20, name: "*read", codename: "read", typeId: 2 });
   await seedCard(s, { id: 50, leftId: 10, rightId: 20, dbContent: "[[Anyone]]" });
   await seedReference(s, 50, 6, "anyone");
-  // The skin card + its coded +Image child (the corpus rows: cerulean
-  // skin id 22774 type 33929; cerulean skin+Image id 22850 content
-  // ":cerulean_skin+:image/bootstrap.png").
+  // The skin card + its coded +Image child, mirroring the reference deck's
+  // shape (a skin row plus an Image-typed child holding coded content).
   await seedCard(s, { id: 22774, name: "cerulean skin", typeId: 33929, dbContent: "[[themeless bootstrap skin]]" });
   await seedCard(s, {
     id: 22850,
@@ -51,11 +49,10 @@ async function seedDeck(): Promise<void> {
     typeId: 19,
     dbContent: ":cerulean_skin+:image/bootstrap.png",
   });
-  // A skin WITHOUT an +Image child (the journal-skin-customized shape,
-  // phase-014: the empty image-box bytes). The corpus's Image+*right+*default
-  // rule (id 217, Image-typed) types the absent +Image as an Image, whose
-  // :boxed is `unknown: true`: the box renders, with the unknown view (empty
-  // for this anonymous viewer) inside.
+  // A skin WITHOUT an +Image child (the empty image-box shape). The deck's
+  // Image+*right+*default rule (id 217, Image-typed) types the absent +Image
+  // as an Image, whose :boxed is `unknown: true`: the box renders, with the
+  // unknown view (empty for this anonymous viewer) inside.
   await seedCard(s, { id: 260, name: "*right", codename: "right", typeId: 1 });
   await seedCard(s, { id: 318, name: "*default", codename: "default", typeId: 2 });
   await seedCard(s, { id: 216, leftId: 19, rightId: 260 });
@@ -92,7 +89,7 @@ describe("bootswatch_skin bar_left: the media+icon layout", () => {
   it("renders the dumped oracle bar-left bytes for a skin with an +Image child", async () => {
     const html = await storage!.engine.render("cerulean skin", "closed");
     const region = barLeftRegion(html);
-    // The an earlier pass dump's oracle bytes (phase-008 cerulean skin closed),
+    // The reference render's bar-left bytes for a closed skin card,
     // from `<div class='bar-left col-9'>` through the media block close.
     expect(region).toBe(
       `<div class='bar-left col-9'>\n` +
