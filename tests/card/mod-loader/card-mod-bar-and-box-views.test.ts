@@ -9,15 +9,15 @@
 // the view NAMES had nothing to dispatch to. The file sits beside the
 // other mod-view pin suites it shares fixtures and conventions with.
 //
-// HONESTY BOUNDARY, byte-first: the pinned Ruby-oracle captures carry NO
-// bytes for :bar_body,
+// HONESTY BOUNDARY, byte-first: no captured rendered body exists for
+// :bar_body,
 // :bar_menu, the four bar aliases, :full_bar, the box family, :boxed,
 // :boxed_link, :title_link, :title_no_link or :open_content. Every
 // expectation below is therefore asserted against the GEM SOURCE shape
 // (card-mod-bar_and_box-0.20.0
 // set/all/bar.rb, bar_body.haml, bar_menu.haml, box.rb, box.haml,
 // set/type/image.rb; card-mod-format-0.20.0 set/all/title.rb,
-// set/all/base.rb), not against a Ruby capture. These views are
+// set/all/base.rb), not against a capture. These views are
 // RENDERED-UNPINNED. What the tests do prove is that each name dispatches
 // (was UnsupportedViewError before this port) and that the bytes carry the
 // structure the gem source mandates, with the exact class lists, the alias
@@ -76,7 +76,8 @@ afterAll(() => {
 });
 
 /** Every view this file covers: the thirteen bar_and_box declarations the
- *  coverage doc counted missing, plus the three format views. */
+ *  shared render table had no implementation for, plus the three format
+ *  views. */
 const BOX_AND_BAR_VIEWS = [
   "bar_body",
   "bar_menu",
@@ -223,8 +224,8 @@ describe("card-mod-bar_and_box — the thirteen missing views (rendered-unpinned
     expect(html).toMatch(/data-slot-id='[0-9a-f]{20}'/);
     expect(html.split("\n")[0]).not.toContain("data-slot=");
     // box_middle renders the slot-wrapped :content view inside the box
-    // (box.rb:9-11) — the content-view slot frame is the corpus-pinned
-    // nested-content shape.
+    // (box.rb:9-11) — the content-view slot frame is the nested-content
+    // shape.
     expect(html).toContain('id="box_probe-content-view"');
     // voo.hide :menu (box.rb:2) makes the `= render :menu` after box_top
     // (box.haml:7) render empty — the hidden view's bytes, not the menu
@@ -243,11 +244,8 @@ describe("card-mod-bar_and_box — the thirteen missing views (rendered-unpinned
     // box.rb:5-7 `view :box_top do render_title_link end`
     expect(top).toBe(link);
     // box.rb:9-11 `view :box_middle do _render_content end` — the body is
-    // the :content view, NOT :core; the old `middle == core` pin cited
-    // _render_content and then asserted core equality, its own citation
-    // falsified. :content is the slot-wrapped core (the corpus-pinned
-    // nested-content frame), so the middle bytes carry the content-view
-    // slot wrap around the core body.
+    // the :content view, NOT :core; :content is the slot-wrapped core, so
+    // the middle bytes carry the content-view slot wrap around the core body.
     const middle = await s.engine.render("Box Probe", "box_middle");
     expect(middle).toContain('id="box_probe-content-view"');
     expect(middle).toContain('class="card-slot content-view');
@@ -264,9 +262,7 @@ describe("card-mod-bar_and_box — the thirteen missing views (rendered-unpinned
     // div class "text-muted"). The wrap option is an UNCONDITIONAL tag
     // wrapper (card-1.110.0 lib/card/set/format/abstract_format/wrapper.rb
     // define_tag_wrapper), so the guards' "" bodies still render their wrap
-    // divs — the oracle pins exactly that empty-wrap shape for updated_by
-    // (Home renders `<div class="text-muted"></div>`, deck_level arms).
-    // The Box Probe seed carries no creator_id and no updater acts, so
+    // divs. The Box Probe seed carries no creator_id and no updater acts, so
     // both bodies take their guard arms and the footer is the two empty
     // wraps — the same disclosed empty-in-wrap shape views.ts ports.
     expect(await s.engine.render("Box Probe", "box_bottom")).toBe(
