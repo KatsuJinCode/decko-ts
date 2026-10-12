@@ -3,14 +3,14 @@
 // set/all/html/header.rb, set/all/html.rb, set/all/html/head.rb
 // (+ meta_tags.haml).
 //
-// Same honesty boundary as the sibling bar/box test: the pinned Ruby-oracle
-// captures under tmp/raw-ground-truth carry no bytes for :header,
+// Same honesty boundary as the sibling bar/box test: no captured rendered
+// body exists for :header,
 // :header_title, :type_info, :universal_edit_button, :rss_links or
 // :meta_tags, so every expectation here is asserted against the GEM SOURCE
 // (card-mod-format-0.20.0). Where a
-// surface IS captured elsewhere, the test says so and cross-checks: the
+// surface IS pinned elsewhere, the test says so and cross-checks: the
 // meta_tags bytes are the META_TAGS constant in src/card/render/page.ts,
-// which the page captures do exercise, so those two bytes are pinned twice
+// which the page renderer exercises, so those two bytes are pinned twice
 // by construction.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
@@ -36,22 +36,22 @@ beforeAll(async () => {
   // WHERE codename = 'set')`; the proven fixture shape is
   // card-mod-comment.test.ts:48 and file-routes.test.ts:161-165). Without
   // it the subquery is NULL, the batch is empty, and every write verdict
-  // fail-closes regardless of the fallback rule below (probe-verified
-  // 2026-10-01: batch rows [] -> universal_edit_button rendered its blank
-  // denial even with *all+*update seeded).
+  // fail-closes regardless of the fallback rule below (a missing batch
+  // means universal_edit_button renders its blank denial even with
+  // *all+*update seeded).
   await seedCard(s, { id: 13, name: "*set", codename: "set", typeId: 13 });
   await seedCard(s, { id: 500, name: "Header Probe", dbContent: "probe body" });
 
   // The write-rule fallback the universal_edit_button pin needs — UPDATE
-  // ONLY (the card-mod-comment recipe, 9b8a80a, narrowed): the Ruby view
+  // ONLY: the Ruby view
   // declares `denial: :blank, perms: :update`
   // (card-mod-format-0.20.0 set/all/html/head.rb:46), so a rule-less deck
   // fail-closes the verdict (who_can -> [] -> among? -> false,
   // card-mod-permissions set/all/permissions.rb:47-49/:100-118) and the
   // view rendered its blank denial instead of the head.rb:47-52 link body
   // the pin asserts. Granting *all+*update -> [[Anyone]] (real.yml :14-19
-  // bootstraps Anyone Signed In; recorded corpus rule 6570;
-  // account_holder.rb:31-37 passes every actor) models an
+  // bootstraps Anyone Signed In; account_holder.rb:31-37 passes every
+  // actor) models an
   // update-authorized editor — the actor the wiki-link body belongs to.
   // Deliberately NO *create rule: the :unknown arm pins "the captured-deck
   // shape: createable is denied" below, which a create grant would flip.
@@ -107,14 +107,11 @@ describe("card-mod-format header/html/head — six missing views (rendered-unpin
     const s = storage!;
     // header.rb:4-6 header_wrap [render_header_title, render_menu];
     // header.rb:8-12 wrap_with :div, class: classy("d0-card-header") do
-    // output Array.wrap(header_parts) end.
-    // CORRECTED 2026-09-30 (surfaces-batch2): the former "joins with NO
-    // separator" comment misread output() — card-1.110.0
-    // lib/card/format/content.rb:70-73 is `Array.wrap(content)
-    // .flatten.compact.join "\n"`: the parts join with a NEWLINE (the same
+    // output Array.wrap(header_parts) end. output() is
+    // card-1.110.0 lib/card/format/content.rb:70-73: `Array.wrap(content)
+    // .flatten.compact.join "\n"` — the parts join with a NEWLINE (the same
     // join the discussion core's separator pin cites). The engine's \n
-    // between header_title and menu is the Ruby shape; this test's
-    // no-newline expectation was the divergence.
+    // between header_title and menu is the Ruby shape.
     const html = await s.engine.render("Header Probe", "header");
     const title = await s.engine.render("Header Probe", "header_title");
     const menu = await s.engine.render("Header Probe", "menu");
@@ -160,14 +157,11 @@ describe("card-mod-format header/html/head — six missing views (rendered-unpin
     const s = storage!;
     // meta_tags.haml:1-2. The two tags are byte-identical to the META_TAGS
     // constant (src/card/render/head-views.ts:181, joined into the page
-    // head at page.ts:628 — the page captures DO exercise the shape, the
-    // trailing newline arriving from the page's own .join("\n")).
-    // CORRECTED 2026-09-30 (surfaces-batch2): the template TERMINATES
+    // head at page.ts:628 — the trailing newline arriving from the page's
+    // own .join("\n")). The template TERMINATES
     // with the last line's own newline — meta_tags.haml's final byte is \n
     // and haml_to_html (card-1.110.0 lib/card/set/format/haml_paths.rb:8-10)
-    // keeps it — oracle-pinned (fixtures bar-box-format-views.json: the 94B
-    // meta_tags render ends `'>\n`). The former no-trailing-newline
-    // expectation was the divergence.
+    // keeps it, so the render ends `'>\n`.
     expect(await s.engine.render("Header Probe", "meta_tags")).toBe(
       "<meta charset='UTF-8'>\n" +
         "<meta content='width=device-width, initial-scale=1.0' name='viewport'>\n",
