@@ -11,7 +11,7 @@
 // wall time at this machine, bytes, and — with --ref — whether the body is
 // byte-identical to <ref>/<file>.html with only data-slot-id masked.
 // Remote requests carry a unique query string so no cache can answer.
-// The local run reads the Worker's variables from deploy/cf-riley/wrangler.toml.
+// The local run reads the Worker's variables from deploy/cf-brandon/wrangler.toml.
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -66,7 +66,7 @@ let close = async () => {};
 if (argv.includes("--local")) {
   const { Miniflare, convertV4MiniflareOptions } = await import("miniflare");
   const bundle = readFileSync(resolve(arg("bundle", "deploy/dist/cf-edge-engine.bundle.js")), "utf8");
-  const vars = tomlVars(readFileSync(resolve(arg("wrangler", "deploy/cf-riley/wrangler.toml")), "utf8"));
+  const vars = tomlVars(readFileSync(resolve(arg("wrangler", "deploy/cf-brandon/wrangler.toml")), "utf8"));
   const mf = new Miniflare(
     convertV4MiniflareOptions({
       modules: [{ type: "ESModule", path: "worker.mjs", contents: bundle }],

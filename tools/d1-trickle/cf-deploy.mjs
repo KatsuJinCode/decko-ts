@@ -9,7 +9,7 @@
 // It runs `wrangler deploy` with CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID
 // set for that one child process, so wrangler uses exactly that account and
 // never its own login. The config it deploys is a copy of
-// deploy/cf-riley/wrangler.toml with the database id looked up on that
+// deploy/cf-brandon/wrangler.toml with the database id looked up on that
 // account, the Worker name, and any --set variables filled in; the copy lives
 // in a scratch folder removed on exit. The token is never printed.
 
@@ -68,7 +68,7 @@ async function main() {
     const config = join(scratch, "wrangler.toml");
     writeFileSync(
       config,
-      fillConfig(readFileSync(resolve(REPO, "deploy/cf-riley/wrangler.toml"), "utf8"), {
+      fillConfig(readFileSync(resolve(REPO, "deploy/cf-brandon/wrangler.toml"), "utf8"), {
         workerName,
         databaseName,
         databaseId: dbs[0].uuid,
