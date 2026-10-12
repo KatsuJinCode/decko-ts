@@ -93,6 +93,30 @@ What this directory is, and which upstream commit it came from, is
 | Component | Version | License | License text |
 | --- | --- | --- | --- |
 | LibSass (as bundled by the `sassc-ruby` gem, `sassc` 2.4.0) | 3.6.4 | MIT, "Copyright (C) 2012-2016 by the Sass Open Source Foundation" | `tools/libsass/libsass/LICENSE`, with `PROVENANCE.md` beside it |
+| utf8-cpp (the UTF-8 iterator headers LibSass's `Sass::UTF_8` namespace uses) | as vendored by LibSass 3.6.4 | **BSL-1.0** (Boost Software License 1.0), "Copyright 2006 Nemanja Trifunovic" | the full BSL-1.0 grant and disclaimer is reproduced verbatim in the header of `tools/libsass/libsass/src/utf8.h`, beside the code it covers |
+
+### Third-party code ported into `src/` — from upstreams other than Decko
+
+The inventory above covers components redistributed as separate files. These
+are different: each is third-party code **ported into this project's own
+source**, so its license text travels with the port rather than beside a
+vendored copy. Following the same rule stated for Decko itself above — a port
+carries its upstream copyright and remains under its upstream license —
+each is recorded here with the upstream file it was ported from. The port
+record for every one is the header of the file named, not this table.
+
+| Component | Version | License | Ported into | Upstream source named by the port's own header |
+| --- | --- | --- | --- | --- |
+| kramdown (the Markdown-subset converter) | 2.5.2 | MIT, "Copyright (C) 2009-2013 Thomas Leitner" | `src/card/render/kramdown.ts` | kramdown 2.5.2 converter (the `COPYING` file in the kramdown gem) |
+| CodeRay (the syntax highlighter's token-colour tables) | 1.1.3 | MIT (`MIT-LICENSE` in the coderay gem) | `src/card/render/code-highlighting/alpha-style.ts` | `alpha.rb` `TOKEN_COLORS`, transcribed verbatim (stated at that file's line 26) |
+| ActiveSupport (the default English inflection tables) | 7.2.3.2 | MIT, "Copyright (c) David Heinemeier Hansson" | `src/card/name/inflect.ts` | activesupport 7.2.3.2 `lib/active_support/inflections.rb` |
+| Rails / ActiveSupport (`number_to_human_size`) | not stated in the port's own header | MIT (same grant and copyright line as above) | `src/card/mod-loader/mods/rails-number-to-human-size.ts` | ActionView `number_helper.rb`, the `ActiveSupport::NumberHelper#number_to_human_size` helper |
+| Haml (the attribute-rendering algorithm) | 5.2.2 | MIT | `src/card/render/haml-slice-compiler.ts` | haml-5.2.2 `lib/haml/attribute_builder.rb:3-60` |
+
+All five are MIT or BSL-1.0, so none of them adds a redistribution
+constraint beyond carrying the notice. **utf8-cpp is BSL-1.0, not MIT** — the
+distinction matters only for attribution, and the grant text is reproduced in
+`utf8.h` itself.
 
 ### `fixtures/vendor/` — the vendored Ruby mod asset trees
 

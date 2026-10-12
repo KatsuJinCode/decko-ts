@@ -94,8 +94,8 @@ const FIXTURE_PATH = path.join(REPO_ROOT, "tmp", "edit-session-replay-fixture.sq
 // The test-issued demo credential (prep-edit-session-capture.rb issued it
 // into the disposable demo DB via the account mod's own encrypt_password
 // event; the demo DB holds no other HTTP-workable password).
-const SARA_EMAIL = "tova@example.com";
-const SARA_PASSWORD = "Capture-Probe-2026!";
+const TOVA_EMAIL = "tova@example.com";
+const TOVA_PASSWORD = "Capture-Probe-2026!";
 
 interface CapturedRow {
   [key: string]: number | string | null;
@@ -207,7 +207,7 @@ async function frontDoorSignin(): Promise<string> {
   const res = await fetch(`${baseUrl}/_signin`, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded; charset=UTF-8" },
-    body: formBody({ identifier: SARA_EMAIL, password: SARA_PASSWORD }),
+    body: formBody({ identifier: TOVA_EMAIL, password: TOVA_PASSWORD }),
   });
   expect(res.status).toBe(200);
   const payload = (await res.json()) as { ok: boolean; name: string };
@@ -432,8 +432,8 @@ describeIfFixture(
       const step = manifest.steps.find((s) => s.step === "step-02-signin-post");
       const params = { ...(step?.request.params ?? {}) } as Record<string, string>;
       // the manifest redacts the password; the real request carried it
-      params["card[subcards][+*email][content]"] = SARA_EMAIL;
-      params["card[subcards][+*password][content]"] = SARA_PASSWORD;
+      params["card[subcards][+*email][content]"] = TOVA_EMAIL;
+      params["card[subcards][+*password][content]"] = TOVA_PASSWORD;
       // host-swapped replay: same request shape, Origin rewritten to the
       // replay server's own base (the captured Origin pointed at the Rails
       // oracle's host).
@@ -454,7 +454,7 @@ describeIfFixture(
       const signed = await fetch(`${baseUrl}/_signin`, {
         method: "POST",
         headers: { "content-type": "application/x-www-form-urlencoded; charset=UTF-8" },
-        body: formBody({ identifier: SARA_EMAIL, password: SARA_PASSWORD }),
+        body: formBody({ identifier: TOVA_EMAIL, password: TOVA_PASSWORD }),
       });
       expect(signed.status).toBe(200);
       const payload = (await signed.json()) as { ok: boolean; name: string };

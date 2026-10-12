@@ -562,21 +562,25 @@ function inventoryModPins(gemName) {
 // classification
 // ---------------------------------------------------------------------------
 
-// Legacy-labeled mods per upstream maintainer guidance (decko-commons#1282
-// thread). Determined conservatively: only mods with NO set/ tree (so porting
-// them is vacuous - no set modules / no views to port) AND a clearly
-// config-only or backend-only lib/ are flagged. Mods with non-trivial set/
-// trees are NOT in this set, even if their lib/ is a thin config wrapper,
-// because the set/ tree represents undeclared code that should show up as
-// missing/partial in the report. See docs/decisions/0004-mods-compiled-into-the-view-registry.md for the
-// evidence trail and the upstream-thread citations.
+// Mods with no set/ tree and a config-only or backend-only lib/: there is
+// nothing for this engine to port, so they are not evaluated here at all.
+// The label says exactly that.
+//
+// It does NOT say "legacy". An earlier version of this file labelled these
+// "ignored (legacy-labeled per upstream maintainer guidance)" and cited
+// docs/decisions/0004-mods-compiled-into-the-view-registry.md as the
+// evidence trail. That record carries no such guidance and no
+// upstream-thread citation for it - the only thing it establishes is that
+// this repository contains hand-ports of the site's own mods, which is a
+// different claim. So the label claimed a receipt that does not exist.
+// Anyone who wants these evaluated needs a ported surface to evaluate; the
+// honest report row is "unported (not evaluated)".
 const LEGACY_MODS = new Set([
   // delayed_job: backend-only (lib/card/mod/delayed_job.rb + a single
-  // integration helper); no set/ at all - explicitly "legacy backend".
+  // integration helper); no set/ at all.
   "card-mod-delayed_job-0.20.0",
   // defaults: pure data seeding (17 transform files), no set/, no lib/
-  // ruby beyond the mod entry point - data-only, porting it is a data
-  // load not a set/view port.
+  // ruby beyond the mod entry point - data-only.
   "card-mod-defaults-0.20.0",
 ]);
 
@@ -587,7 +591,7 @@ function classify(inv, surface, pins) {
   if (LEGACY_MODS.has(gem)) {
     return {
       status: "ignored",
-      verdict: "ignored (legacy-labeled per upstream maintainer guidance)",
+      verdict: "unported (not evaluated)",
       evidence: "no meaningful set/ tree; config-only or backend-only gem",
     metrics: {
       htmlViewsDeclared: 0,
@@ -830,7 +834,7 @@ function renderMd(report) {
     `- missing: **${byStatus.missing}**`,
   );
   lines.push(
-    `- ignored: **${byStatus.ignored}** (legacy-labeled or data-only)`,
+    `- ignored: **${byStatus.ignored}** (not ported, so not evaluated)`,
   );
   lines.push("");
   lines.push(
@@ -903,7 +907,7 @@ function renderMd(report) {
   lines.push("- **declared-complete**: either (a) >=50% of the MOD-SPECIFIC html view NAMES the mod declares exist in the implemented surface AND >=50% of the patterns the mod uses are implemented AND the mod has pattern-backed set modules; OR (b) the mod has a registered manifest under `src/card/mod-loader/mods/` AND a byte-pinned test under `tests/card/mod-loader/` with >=5 `toBe(<literal>)` assertions (the verification round's criterion). Neither branch renders the mod end to end: (a) compares names, (b) pins the bytes of the views its tests render only.");
   lines.push("- **partial**: some declarations (any html view name present, or >=50% pattern coverage, or lib/ + permissions, or a manifest + partial pin file), but not enough for declared-complete.");
   lines.push("- **missing**: zero coverage.");
-  lines.push("- **ignored**: legacy-labeled per upstream (decko-commons#1282 thread) or data/transform-only with no set/ tree.");
+  lines.push("- **ignored**: not ported, and therefore not evaluated here - data/transform-only or backend-only gems with no set/ tree, so there is no set module or view to compare against the implemented surface.");
   lines.push("");
   lines.push("NOT measured by any label above: whether event hooks fire, whether");
   lines.push("non-html formats (json, css, email, rss, csv) render, and whether any");

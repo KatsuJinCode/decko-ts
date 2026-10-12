@@ -16,7 +16,7 @@
 
 name = "decko-one-click-demo"
 main = "../../../deploy/worker.ts"
-compatibility_date = "2026-09-01"
+compatibility_date = "2026-08-01"
 
 [alias]
 "node:crypto" = "../../../deploy/shims/node-crypto-shim.ts"
