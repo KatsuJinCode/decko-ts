@@ -2,9 +2,8 @@
  * Per-pattern semantics - one describe per registered pattern (registration
  * order: lookup order, most specific first). Table-driven; every expectation
  * cites its Ruby source (file#method) and, where marked ORACLE, the captured
- * live-decko output (set-pattern-oracle-capture.json = probe 1,
- * set-pattern-oracle-capture2.json = probe 2; generators:
- * set-pattern-oracle-probe*.rb against card-1.110.0 / decko-0.20.0).
+ * reference-decko output (the committed set-pattern-oracle-capture.json /
+ * set-pattern-oracle-capture2.json fixtures; card-1.110.0 / decko-0.20.0).
  */
 
 import { describe, expect, it } from "vitest";
