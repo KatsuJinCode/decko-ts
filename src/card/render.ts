@@ -5936,9 +5936,9 @@ export class RenderEngine implements RenderEngineLike {
    *  renderUnknownPointerListItem right before the phantom's nest renders,
    *  so the inner bar views see THIS host's fold rather than a foreign
    *  host's earlier global seeding of the same item name (the
-   *  Quicksilver+Core Project mytho-psychology poisoning: a foreign
-   *  untyped BasicCs fold seated denied; this host's Project-typed fold
-   *  reads allowed — the oracle renders the item bar). */
+   *  poisoning case: a foreign
+   *  untyped BasicCs fold seats denied; this host's Project-typed fold
+   *  reads allowed — so the item bar renders). */
   seatPhantomReadVerdict(key: string, denied: boolean): void {
     this.deniedVerdictsByKey.set(key, denied);
   }
@@ -6347,17 +6347,16 @@ export class RenderEngine implements RenderEngineLike {
         if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
           // Ruby's Lexicon.name(id) reads rows WITHOUT a trash filter
           // (lexicon.rb#id_to_lex), so a `~id` item pointing at a TRASHED
-          // member card still RESOLVES to its name there (CB_role /
-          // Ellery Family +*members: their item ids are trashed
-          // rows, never warmed by warmLexicon's live-id pour and carrying
-          // no card_references rows for the seed closure). The async
+          // member card still RESOLVES to its name there — trashed
+          // member rows are never warmed by warmLexicon's live-id pour and
+          // carry no card_references rows for the seed closure. The async
           // lexicon IS that db fallback: resolve, record the durable name
           // (the sync boundary's next parse then succeeds), and let the
           // item render through the unknown-item path — Ruby's own
           // Card.fetch does NOT return the trashed row (retrieve.rb:24
           // trash = false unless look_in_trash), so the record stays
-          // unknown and the oracle pins the denied unknown-item bar with
-          // the resolved name. A true db miss keeps the phantom fallback
+          // unknown and the denied unknown-item bar renders
+          // with the resolved name. A true db miss keeps the phantom fallback
           // with the authored mark.
           const idMatch = /^~(\d+)$/.exec(name.trim());
           if (idMatch !== null) {
@@ -6486,16 +6485,16 @@ export class RenderEngine implements RenderEngineLike {
     // part to its codename. Without these the _category-* class chain
     // is empty (bar_view.rb:10 + editor.rb:54-58).
     await this.preloadAllSettingCards();
-    // The virtual rule cards' type cards (the corpus-pinned ensure_type
+    // The virtual rule cards' type cards (the ensure_type
     // outcomes - virtual-rule-card.ts RULE_TYPE_BY_SETTING) must be in
     // the render-card map before the SYNC Rules-section render resolves
     // each virtual's typeName/typeCode from the DECK
     // (buildVirtualRuleCard's deckTypeCard lookup): Ruby's template walk
     // resolves the rule's type to an ID and then prints the deck card AT
-    // that id, so the served deck's type names are what the oracle bytes
-    // carry (corpus:268 and recapture-shard-000000.jsonl *captcha+*right
-    // read TYPE-gwtx / data-card-type-name="gwtx" for the *head
-    // virtuals). Same preload contract as the settings walk above; fetch
+    // that id, so the served deck's type names are what the rendered bytes
+    // carry — a *captcha+*right read must show TYPE-<name> and
+    // data-card-type-name="<name>" for the *head
+    // virtuals. Same preload contract as the settings walk above; fetch
     // is cache-first, so warm renders add zero queries.
     for (const preloadTypeId of RULE_TYPE_IDS_FOR_PRELOAD) {
       const typeRecord = await this.fetcher.fetchById(preloadTypeId);
@@ -7350,10 +7349,10 @@ export class RenderEngine implements RenderEngineLike {
       if (card.id === undefined) {
         // A PHANTOM +discussion (the engage_tab's not-yet-existing child):
         // Ruby's perms :update on a new card consults the CREATE
-        // permission (the board fixture's arms are the oracle: tova -
-        // whose only grant is the *all+*create rule "Anyone Signed In" -
+        // permission — a signed-in actor whose only grant is the *all+*create
+        // rule "Anyone Signed In"
         // renders the comment form; anonymous, excluded by that rule,
-        // renders the blank). Only the create field is stored: every
+        // renders the blank. Only the create field is stored: every
         // other consumer of this map keeps its undefined for a card with
         // no row.
         const verdicts = await allTaskVerdictsForCard(
@@ -8050,13 +8049,10 @@ export class RenderEngine implements RenderEngineLike {
     if (resolved === undefined && card.name.isCompound) {
       // right_type_options: right part is a cardtype -> the by-name
       // virtual card stops the chain (see itemOptionsParseFailure).
-      // Per the recapture 2026-09-24 probe: the peekNameForId check fires
-      // for the Cardtype cardtype ITSELF (right whose TYPE has codename
-      // "cardtype") and for *right (right whose TYPE swtktey is a
-      // cardtype but anonymized). The full Ruby's "right's TYPE is a
+      // The full Ruby's "right's TYPE is a
       // cardtype" check (peekNameForId(peekId(rightType.type_id)) ===
-      // "cardtype") is more permissive and gates ~898 entries that the
-      // corpus pins as BadQuery raises — Ruby gates only the codename'd
+      // "cardtype") is more permissive and gates entries that
+      // must stay BadQuery raises — Ruby gates only the codename'd
       // cardtype card (right.type_code == "cardtype"), which is the
       // peekNameForId check below. Keep the original check; the C1 fix
       // attempt lives on in tests/card/render for future repair.
@@ -8117,8 +8113,8 @@ export class RenderEngine implements RenderEngineLike {
       // if it's a search-type rule (the rules editor's nested render
       // triggers Abstract::CqlSearch#item_type_id on the rule itself,
       // NOT on the rule's options_card chain). Set-typed rules are
-      // skipped: the recapture's 676 set-host sentinels all carry
-      // search-type terminals (jjmd, kwnd), never the *all "fr"
+      // skipped: the observed set-host raising cases all carry
+      // search-type terminals, never the *all "fr"
       // fallback. The first rule whose content parses-failure raises
       // with that content; pointer/list rules recurse into THEIR
       // options chain (rare in practice).
@@ -8151,20 +8147,21 @@ export class RenderEngine implements RenderEngineLike {
       }
     }
 
-    // Recent_settings chain (recapture 2026-09-24 REVERT): the original
-    // check is restored. The 1012 handler_raised FP class (the set-host
-    // chain change's stated motivation) traced to a too-broad itemOptions-
+    // Recent_settings chain: the original
+    // check is restored. The false-positive class that the set-host
+    // chain change's removal targeted (set hosts reported as raising when
+    // Ruby does not) traced to a too-broad itemOptions-
     // ParseFailure fallback that fired for set hosts whose right's TYPE
     // is a cardtype — exactly the case the C1 fix above (peekNameForId →
     // typeCode === CARDTYPE_TYPE_CODE) is supposed to gate before the
     // walk falls through. With the C1 fix in place, the right walk stops
     // at the right_type_options gate for those entries; the recent_
     // settings card's bad JSON then ONLY fires for the set hosts whose
-    // right's TYPE is NOT a cardtype (the corpus parity set — Ruby
+    // right's TYPE is NOT a cardtype (the parity set — Ruby
     // captures BadQuery for these). Returning to the recent_settings
     // check restores those set-host raises without re-introducing the
-    // 1012 FP class (the C1 fix prevents the right walk from falling
-    // through to *all for the FP entries).
+    // false positives (the C1 fix prevents the right walk from falling
+    // through to *all for those entries).
     const recentRuleRecord = await this.fetcher.fetchByName("*recent settings+*self+*content options");
     if (recentRuleRecord !== undefined && recentRuleRecord.name !== undefined) {
       const recentRule = await this.enrichAndStore(recentRuleRecord);
@@ -8190,8 +8187,8 @@ export class RenderEngine implements RenderEngineLike {
    *  The set-host gate's parse site: the rules editor's nested render
    *  consults Abstract::CqlSearch#item_type_id on the rule card
    *  directly (cql_search.rb:14-18) -- not via the rule's options_card
-   *  chain. Set-type rules are NOT parsed: the recapture's 676 set-host
-   *  sentinels all carry search-type terminals (jjmd, kwnd), never the
+   *  chain. Set-type rules are NOT parsed: the observed set-host
+   *  raising cases all carry search-type terminals, never the
    *  *all "fr" fallback; the pointer/list gate handles *all as a
    *  terminal separately. Returns the failing content ("" for the
    *  empty-query branch) or undefined when the rule isn't search-typed
