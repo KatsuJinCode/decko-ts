@@ -1,4 +1,4 @@
-// Surface 2 — minimal I18n port.
+// The minimal I18n layer.
 // Validates the YAML loader + lookup + interpolation + missing-key
 // behavior + pluralization + Date localize the render layer needs to
 // close the locale-token divergences in card-mod-format.ts.
@@ -203,8 +203,9 @@ describe("t - translation lookup", () => {
   });
 
   it("leaves literal %% as a single %", () => {
-    // None of the captured en.yml files use %%, but the Ruby interpolation
-    // supports it (i18n/interpolate/ruby.rb). Verify the port does too.
+    // The locale files the mods ship do not use %%, but the Ruby
+    // interpolation supports it (i18n/interpolate/ruby.rb). Verify the port
+    // does too.
     loadLocaleFromString("en", "en:\n  pct: \"100%% done\"\n");
     expect(t("pct")).toBe("100% done");
   });

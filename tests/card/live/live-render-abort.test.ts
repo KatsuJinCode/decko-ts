@@ -1,6 +1,6 @@
 // A live render whose request budget fired must stop sending statements:
 // the edge answers 503 and an abandoned render would otherwise keep loading
-// the database (recovery/DEPLOY-CHECK-26a0ee1.md, "The 45 s budget").
+// the database. The budget the edge enforces is 45 s.
 import { describe, expect, it } from "vitest";
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../../src/server/driver.js";
 import { LiveRenderAborted, LiveStoreDriver } from "../../../src/card/live/live-store-driver.js";
