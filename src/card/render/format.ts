@@ -4284,15 +4284,16 @@ export interface SettingClassWithRules {
  *  `_view_<view>__unknown` setting methods). Values: `true` renders the
  *  requested view as-is; a symbol names the substituted view.
  *
- *  PER-CARD-SET RESOLUTION (the p20-nest-selection fix): Ruby resolves
+ *  PER-CARD-SET RESOLUTION: Ruby resolves
  *  `setting :unknown` through the CARD'S SET CHAIN — render.rb:55-57
  *  `try Card::Set::Format.view_setting_method_name(view, setting)` dispatches
  *  on the card's format class, so only the set modules THAT MATCH THIS CARD
  *  contribute. A flat view-name table cannot answer both directions of the
- *  nest-selection class at once: it globalized the discussion right's
- *  `open: true` (making every unknown-card `|open` nest render — the 10
- *  Research phantom `+Articles` slots) and had no `titled` answer (the 19
- *  Project `+discussion|titled` slots substituted to :unknown and vanished).
+ *  nest-selection problem at once: it globalized the discussion right's
+ *  `open: true` (making every unknown-card `|open` nest render — phantom
+ *  open slots on pages that never configured them) and had no `titled`
+ *  answer (the same pages' `+discussion|titled` slots substituted to
+ *  :unknown and vanished).
  *  The decls below therefore carry the SET TOKENS the declaring module's set
  *  matches (`setKeys` membership; undefined = an all-set declaration that
  *  reaches every card, the set/all/* bucket Ruby mixes into the base format
