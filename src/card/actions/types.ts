@@ -14,13 +14,13 @@ import type { CardRecord } from "../fetch/card-record.js";
 /** The account performing an action. `null` means "no signed-in account" —
  *  Ruby's Card::Auth.current_id falling back to Card::AnonymousID
  *  (auth/current.rb:7-9). Anonymous sessions act AS the anonymous codename
- *  card through the write verdict: all three write tasks are rule-checked
- *  (Ruby's permission chain has no signed-in clause for create, update, or
- *  delete — card-mod-permissions set/all/permissions.rb:120-125/:148-153/
- *  :155-157; the recorded site's 694 creator_id=15 cards, 1,808 live
- *  updater_id=15 cards, and 8 trashed updater_id=15 cards prove the
- *  arms). Only a deck that cannot form the anonymous codename card (a
- *  fragment seed) keeps the legacy signed-in-only rejection. */
+ *  card through the write verdict: all three write tasks are rule-checked,
+ *  because Ruby's permission chain has no signed-in clause for create,
+ *  update, or delete (card-mod-permissions set/all/permissions.rb
+ *  :120-125 / :148-153 / :155-157 — each arm falls through to the rule
+ *  walk rather than short-circuiting on the session). Only a deck that
+ *  cannot form the anonymous codename card (a fragment seed) keeps the
+ *  legacy signed-in-only rejection. */
 export interface Actor {
   id: number;
   name: string;
