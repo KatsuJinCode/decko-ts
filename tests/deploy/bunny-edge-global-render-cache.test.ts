@@ -6,10 +6,10 @@
 // substituted with a fetchImpl fake that answers protocol-shaped pipeline
 // responses (the same Hrana-v2 decode shapes src/card/drivers/bunny-db.ts
 // pins), so these tests prove the decision logic — hit/miss/store/bypass/
-// self-heal/epoch — with no network. The live armed behavior on the trial
-// edge is asserted through the X-Decko-Edge-Global-Cache diagnostic header
-// by the measurement runs (edge-speed-global-cache-lane receipt); these
-// tests pin the contract that observation checks against.
+// self-heal/epoch — with no network. The module labels its decisions on the
+// X-Decko-Edge-Global-Cache diagnostic header, which is what an armed live
+// edge can be checked against; these tests pin the contract that
+// observation checks against.
 
 import { describe, expect, it } from "vitest";
 
