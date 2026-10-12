@@ -1,39 +1,26 @@
-// M9 — Card.exist? for html_views.rb:4-11 `new_customized_name`.
+// Card.exist? for html_views.rb:4-11 `new_customized_name`.
 //
-// The gate this file pins is the ONE the negdelta lane left as a KNOWN GAP:
-// `newCustomizedName` answered "does this card exist?" from
-// `engine.fetchRenderCard(name)`, which is the PREFETCH NEST-CLOSURE's reach,
-// not the deck. A bootswatch skin's `<skin> customized` sibling is referenced
-// by nothing on the skin page, so it is never seated in the render-card map
-// and the gate read "free" for every skin in the deck.
+// `newCustomizedName` has to answer "does this card exist?" against the
+// DECK. Answering it from `engine.fetchRenderCard(name)` only reaches what
+// the PREFETCH NEST-CLOSURE seated, and a bootswatch skin's `<skin>
+// customized` sibling is referenced by nothing on the skin page — so that
+// reach reports "free" for every skin that does have a sibling, and Ruby
+// would have emitted a suffixed name instead.
 //
-// The oracle says otherwise, and the rule is a corpus census rather than an
-// inference. From `tmp/raw-ground-truth/expected-v2/page-lane/*.jsonl`, the
-// 20 bootswatch skin pages and their `card%5Bname%5D=` parameter:
+// The rule the port follows (html_views.rb:4-11): while a
+// "<skin> customized" card exists, keep appending the numeric suffix —
+// html_views.rb:8-9 walks String#next! so a collided candidate becomes
+// "... customized 2".
 //
-//   22774 cerulean skin  -> cerulean+skin+customized       (bare)
-//   22794 journal skin   -> journal+skin+customized+1      (SUFFIXED)
-//   22818 slate skin     -> slate+skin+customized+1        (SUFFIXED)
-//   cosmo / cyborg / darkly / flatly / lumen / sandstone / simplex /
-//   spacelab / superhero / united / yeti / lux / materia / minty /
-//   pulse / sketchy / solar -> <skin>+skin+customized       (bare)
+// The third deck below exists because the existence answer has to be
+// EXACT on the stored name: the canonical key folds casing, so any
+// key-shaped lookup cannot distinguish a stored "Skin Customized" from a
+// query for "skin customized".
 //
-// and from the corpus (`SELECT id,name,key,trash FROM cards WHERE type_id=33929`):
-//
-//   34179 "journal skin customized"  trash=0
-//   34530 "litera skin customized"   trash=0
-//   38274 "slate skin customized"    trash=0
-//
-// The two SUFFIXED skin pages are exactly two of the three skins that have a
-// customized card. `litera skin` (33872) is not in the oracle expected set, so
-// it is unobservable there — the deck shapes below stand in for it, so this
-// file pins all three customized-card shapes, not just the two the capture
-// happens to carry.
-//
-// PIN CONVENTION (this lane's): every pin below is RED-verified — each is run
-// against the pre-fix tree first and MUST fail, then run against the fix.
-// The pins that are ALSO expected to pass pre-fix (the case-falsifier
-// regression guards) are marked and are checked as "must stay green".
+// PIN CONVENTION: every pin below is RED-verified — each is run against the
+// pre-fix tree first and MUST fail, then run against the fix. The pins that
+// are ALSO expected to pass pre-fix (the case-falsifier regression guards)
+// are marked and are checked as "must stay green".
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -51,7 +38,7 @@ import { DeckoName } from "../../../src/card/name.js";
  *  needs to reach the nested `set/type/bootswatch_skin/html_views.rb` module
  *  (the same shape card-mod-bootstrap.test.ts:100-105 seeds), and seeded as
  *  a codename so `peekCodenameById(record.typeId)` admits the probes into
- *  the bootswatch family warm where the M9 existence walk runs. */
+ *  the bootswatch family warm where the existence walk runs. */
 const BOOTSWATCH_SKIN_TYPE_ID = 500;
 
 let storage: RenderTestStorage | undefined;
@@ -72,9 +59,8 @@ beforeAll(async () => {
     dbContent: "",
   });
 
-  // ---- deck A: the SUFFIXED shapes (the M9 gap itself) --------------------
-  // "Journal Skin" + its customized sibling at the corpus's stored casing
-  // (lowercase c), exactly like corpus 34179 next to 22794.
+  // ---- deck A: the SUFFIXED shapes (the existence gap itself) ---------------
+  // "journal skin" + its customized sibling, stored in lowercase.
   await seedCard(s, {
     id: 1100,
     name: "journal skin",
@@ -87,7 +73,7 @@ beforeAll(async () => {
     typeId: BOOTSWATCH_SKIN_TYPE_ID,
     dbContent: "journal scss v2",
   });
-  // "Slate Skin" + its customized sibling (corpus 38274 next to 22818).
+  // "slate skin" + its customized sibling.
   await seedCard(s, {
     id: 1102,
     name: "slate skin",
@@ -100,10 +86,9 @@ beforeAll(async () => {
     typeId: BOOTSWATCH_SKIN_TYPE_ID,
     dbContent: "slate scss v2",
   });
-  // "Litera Skin" + its customized sibling (corpus 34530 next to 33872). The
-  // corpus DOES have this card; the oracle capture has no `litera skin` page,
-  // so the port's answer here is unverified against bytes and is pinned from
-  // the rule instead.
+  // "litera skin" + its customized sibling. No rendered body exists for
+  // this skin, so the port's answer here is pinned from the rule rather
+  // than against bytes.
   await seedCard(s, {
     id: 1104,
     name: "litera skin",
@@ -161,7 +146,7 @@ beforeAll(async () => {
   // Customized" (capital C). The canonical key folds both to
   // "cerulean_case_skin_customized", so any key/lexicon-folded existence
   // answer says TRUE here and the view would render "... customized 1" —
-  // which is the negdelta lane's falsifier, verbatim.
+  // the wrong name.
   await seedCard(s, {
     id: 1300,
     name: "Cerulean Case Skin",
@@ -219,8 +204,8 @@ async function renderCustomizeButton(name: string): Promise<string> {
 
 describe("M9 — Card.exist? drives new_customized_name (card-mod-bootstrap)", () => {
   // -------------------------------------------------------------------------
-  // RED before the fix (the page-scoped map gate answered "free" for all of
-  // these), GREEN after.
+  // The page-scoped map gate answered "free" for all of these before the
+  // existence query landed.
   // -------------------------------------------------------------------------
   it("suffixes the journal skin whose customized card exists (corpus 34179 -> oracle 22794)", async () => {
     const html = await renderCustomizeButton("journal skin");
@@ -250,10 +235,10 @@ describe("M9 — Card.exist? drives new_customized_name (card-mod-bootstrap)", (
   });
 
   // -------------------------------------------------------------------------
-  // BARE CONTROLS — these are the eighteen other oracle skin pages. They were
-  // green before the fix by accident; they must still be green after, and they
-  // are the guard that the new live query did not start suffixing skins whose
-  // customized card does not exist.
+  // BARE CONTROLS — a customized sibling that does not exist must leave the
+  // name bare. These were green before the fix as well, and they are the
+  // guard that the existence query did not start suffixing skins whose
+  // customized card is absent.
   // -------------------------------------------------------------------------
   it("leaves a skin with no customized sibling bare (bare control)", async () => {
     const html = await renderCustomizeButton("cerulean skin");
@@ -287,7 +272,7 @@ describe("M9 — RenderEngine#cardExists is an EXACT stored-name query", () => {
     // key-shaped existence lookup — `Lexicon#peekId`, a case-folded
     // render-card-map read, Ruby's own `Card.exist?` (see the header block)
     // — says TRUE for both spellings below and cannot tell them apart. The
-    // M9 gate is exact on the STORED name precisely so it can.
+    // The existence gate is exact on the STORED name precisely so it can.
     expect(DeckoName.parse("Cerulean Case Skin customized").key).toBe(
       DeckoName.parse("Cerulean Case Skin Customized").key,
     );

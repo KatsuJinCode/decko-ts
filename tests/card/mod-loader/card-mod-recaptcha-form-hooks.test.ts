@@ -20,7 +20,7 @@
 // card_form, form.rb:193-240) emits the token bytes at Ruby's
 // `hidden + output(yield(cform))` position (form.rb:195) via
 // CardFormShellOpts.recaptchaTokenHtml. The browser recaptcha.js.coffee
-// stays OUT of scope (the standing P6 decision gate) - these are the
+// stays OUT of scope (a standing decision) - these are the
 // SERVER-side bytes only.
 
 import { describe, expect, it } from "vitest";

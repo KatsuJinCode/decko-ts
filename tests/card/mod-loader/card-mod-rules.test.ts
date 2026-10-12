@@ -3,8 +3,8 @@
 // overlay_title), records all 31 gem-tree set modules in the baskets, and
 // warms the rule cache so the rule_help dispatch resolves its rule cards
 // synchronously. Each view proves its Ruby-source semantics against a probe
-// deck (no captured oracle exists for this mod - fixtures/captured has no
-// rules file - so the bytes are pinned against the Ruby sources cited in
+// deck (no rendered bytes exist for this mod's views - the bytes are pinned
+// against the Ruby sources cited in
 // card-mod-rules.ts, the same A/B shape the help mod's test established).
 //
 // Proof shape (A/B per ported view):
@@ -24,7 +24,7 @@
 //   - "RichText+*self+*help" (24) - a THREE-part rule card (set
 //     "RichText+*self", setting *help): the live engine's rule? predicate
 //     (render.ts cardIsRule) classifies 3-part rule names, matching the
-//     corpus shapes the render layer pinned; the help rule card
+//     shapes the render layer pins; the help rule card
 //     "*all+*help" (22) resolves through the *all candidate of the
 //     rule_names walk (lib/card/rule/all.rb:9-15).
 //   - "Cardtype" (30) - the Self::Cardtype probe for :grouped_list.
@@ -219,11 +219,10 @@ describe("card-mod-rules through the mod loader (A/B)", () => {
     // set (*help+*right), whose raw_help_text mattr serves the registered
     // help text (card-1.110.0 lib/card/setting.rb:112-114 puts the SAME
     // string on the Self and Right set modules), so the REGISTRY operand
-    // answers before the *help rule card is consulted. p20-help-content
-    // re-pinned this A/B: the old expectation ("Broad help text…", the
-    // *all+*help rule card's content) encoded card-mod-rules.ts's
-    // help-rule-card-only simplification, contradicting the chain the
-    // help-content receipt pins.
+    // answers before the *help rule card is consulted. The expectation is
+    // the registry operand's bytes, NOT the *all+*help rule card's content
+    // — a help-rule-card-only reading of the body would contradict the
+    // chain above.
     const html = await s.engine.render("RichText+*self+*help", "rule_help");
     expect(html).toBe(
       `<div class="alert alert-info rule-instruction"><a target="_blank" class="external-link" href="http://decko.org/custom_help_text">Help text</a> people will see when editing.</div>`,

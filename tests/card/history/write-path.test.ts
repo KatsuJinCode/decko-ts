@@ -110,7 +110,7 @@ describe("createCard", () => {
     // create); trash forced false (trash.rb:23-27 event :manage_trash);
     // never-written columns stay NULL (no writer exists for
     // current_revision_id in card-1.110.0 — lib/cardio/seed.rb:86 is the
-    // only reference; read_rule_* / references_expired are other streams).
+    // only reference; nothing writes read_rule_* or references_expired).
     const card = cardRow(f.storage, cardId) as Record<string, unknown>;
     expect(card).toMatchObject({
       name: "Hello World",

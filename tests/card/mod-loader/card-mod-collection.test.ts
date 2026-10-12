@@ -161,8 +161,8 @@ describe("card-mod-collection through the mod loader", () => {
     it("the mod's name / gemName / group match the card-mod-collection-0.20.0 manifest", () => {
       expect(cardModCollection.name).toBe("collection");
       expect(cardModCollection.gemName).toBe("card-mod-collection");
-      // card-mod-collection ships as a gem (default-load path); the T6
-      // verdict's verdict surfaces list it among the gem-defaults group.
+      // card-mod-collection ships as a gem (default-load path), so the
+      // group is "gem-defaults".
       expect(cardModCollection.group).toBe("gem-defaults");
     });
   });
@@ -342,8 +342,8 @@ describe("card-mod-collection through the mod loader", () => {
       loader!.reset();
 
       const after = loader!.viewsTable();
-      // HTML_VIEWS has neither in its baseline (the T6 verdict named
-      // them as the missing entries), so reset() REMOVES both views.
+      // HTML_VIEWS has neither in its baseline, so reset() REMOVES both
+      // views.
       expect(after["count"]).toBeUndefined();
       expect(after["paging"]).toBeUndefined();
     });

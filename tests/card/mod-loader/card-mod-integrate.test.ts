@@ -33,7 +33,8 @@
 //   - the per-card deliver: deliverers (email, notifications, ...) are
 //     unported - the events pass a documented NO_OP_DELIVER; the rule
 //     walk + recursed-item expansion run for real.
-//   - render: nothing - the T6 verdict declares 0 html views for this gem.
+//   - render: nothing - the compat report (tools/compat-report/
+//     mod-compat-report.json) declares 0 html views for this gem.
 
 import { describe, it, expect, afterEach } from "vitest";
 import { ModLoader } from "../../../src/card/mod-loader.js";
@@ -91,7 +92,8 @@ describe("card-mod-integrate manifest structure", () => {
   });
 
   it("declares exactly the eight set files the gem's set/ tree ships", () => {
-    // T6 verdict (mod-compat-report.json, gem === card-mod-integrate-0.20.0):
+    // the compat report (tools/compat-report/mod-compat-report.json,
+    // gem === card-mod-integrate-0.20.0):
     // setModules 8, patternsUsed [all, right, self]. Order mirrors Ruby's
     // SetLoader walk: pattern groups (all first), then path-sorted files.
     const paths = (cardModIntegrate.setModules ?? []).map((m) => m.setPath);

@@ -1,9 +1,9 @@
 // Test storage for the history write-path tests: a thin better-sqlite3
 // SQLDatabaseDriver + the CORE schema from db/schema.sqlite.sql, all
-// in-memory. Lives INSIDE tests/card/history per the stream boundaries (the
-// src/server/drivers/ stream owns the reference adapters); this file only
-// needs the same runtime-verified better-sqlite3 members local-sqlite.ts
-// uses (reader/run/all/transaction), plus exec() for the DDL.
+// in-memory. It belongs beside the tests that use it rather than under
+// src/server/drivers/, because it needs only the same runtime-verified
+// better-sqlite3 members local-sqlite.ts uses (reader/run/all/transaction),
+// plus exec() for the DDL.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";

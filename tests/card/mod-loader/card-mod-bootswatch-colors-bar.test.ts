@@ -1,17 +1,15 @@
-// The type_plus_right/bootswatch_skin/colors bar arm (surfaces-batch3
-// port): view :bar_middle (colors.rb:102-122) — the fixed colorpicker
-// heredoc literal — registered so a "*colors card under a bootswatch_skin
-// left" dispatches it through the TYPE_PLUS_RIGHT-bootswatch_skin-Xcolor
-// set-key token (the surfaces2 X-star-marker strip's anchor-path
-// expansion).
+// The type_plus_right/bootswatch_skin/colors bar arm: view :bar_middle
+// (colors.rb:102-122) — the fixed colorpicker heredoc literal — registered
+// so a "*colors card under a bootswatch_skin left" dispatches it through
+// the TYPE_PLUS_RIGHT-bootswatch_skin-Xcolor set-key token.
 //
 // Byte basis: GEM-TRANSCRIBED — the heredoc literal is the gem's own fixed
-// bytes; no capture shard renders a skin *colors card's bar_middle (the
-// expected-v2 accordion nests carry hide: bar_middle in their slot opts).
+// bytes; no rendered body of a skin's *colors card's bar_middle exists (the
+// accordion nests carry hide: bar_middle in their slot opts).
 //
-// NAMED REMAINDERS of the same file (NOT ported): view :input +
-// view :core (colors.rb:74-100 — the colorpicker editor + palette haml
-// templates; they need card.colors' SCSS-parse machinery) and the
+// NOT ported from the same file: view :input + view :core (colors.rb:74-100
+// — the colorpicker editor + palette haml templates; they need
+// card.colors' SCSS-parse machinery) and the
 // `before :bar_right do voo.show :edit_button end` hook (colors.rb:88-90;
 // no before-view hook surface).
 
@@ -39,10 +37,10 @@ beforeAll(async () => {
   await seedCard(s, { id: 13, name: "*set", codename: "set", typeId: 13 });
   await seedCard(s, { id: 14, name: "*setting", codename: "setting", typeId: 14 });
   // the *colors setting + a real junction (the set anchor needs the
-  // starred right card). NO *all+*read rule — the S4 deck proved junction
-  // roots render allowed under the rule-less default, and a mis-resolved
-  // read rule denies them (the anonymous verdict's rule walk needs the
-  // full party machinery these probe decks don't carry).
+  // starred right card). NO *all+*read rule — junction roots render allowed
+  // under the rule-less default, and a mis-resolved read rule denies them
+  // (the anonymous rule walk needs the full party machinery these probe
+  // decks don't carry).
   await seedCard(s, { id: 40, name: "*colors", codename: "colors", typeId: 14 });
   await seedCard(s, { id: 30, name: SKIN, typeId: 22 });
   await seedCard(s, {

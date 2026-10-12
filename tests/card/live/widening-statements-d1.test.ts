@@ -1,11 +1,10 @@
 // The live store's widening statements, at their widest, must run on
 // Cloudflare D1 (workerd's local D1 here), whose SQLite refuses a compound
 // SELECT of more than five terms, and must return what SQLite returns for the
-// same statement. Before the compound split, a page's first-trip widening
-// (rule sets, *type plus right sets, whole lefts, whole left keys, pairs,
-// side keys) put up to eleven terms in `fs` and six in `seed`: replayed on
-// local D1, about a quarter of the statements of the 40 gate pages were
-// rejected with "too many terms in compound SELECT".
+// same statement. A page's first-trip widening (rule sets, *type plus right
+// sets, whole lefts, whole left keys, pairs, side keys) puts up to eleven
+// terms in `fs` and six in `seed`, so each has to be split before it can run
+// there.
 
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { DatabaseSync } from "node:sqlite";

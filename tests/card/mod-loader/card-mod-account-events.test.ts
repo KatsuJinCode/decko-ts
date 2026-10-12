@@ -1,15 +1,14 @@
-// The card-mod-account event chain (the mod-events lane, 2026-10-08):
-// every Ruby set-module event the coverage recount mines (30 names,
-// deliverables/mod-coverage-authoritative-2026-09-28.md, card-mod-account
-// events column "30 / 0") declares into the mod's manifest with the gem's
-// stage/trigger/changed/when/after metadata, plus the three DYNAMIC
-// declarations the recount's literal `event :name` regex cannot see
+// The card-mod-account event chain: every event the mod's gem set files
+// declare into the mod's manifest, carrying the gem's stage, trigger,
+// changed, when and after metadata verbatim, plus the three DYNAMIC
+// declarations a literal `event :name` scan cannot see
 // (right/account/events.rb:32-35 builds `event :"send_#{email}"` for
 // password_reset_email / verification_email / welcome_email).
 //
 // Proof shape:
 //   WITHOUT the mod: a mod-less loader's event registry holds none of the
-//     30 names (the declarations are the port; removing them fails here).
+//     30 static names (the declarations are the port; removing them fails
+//     here).
 //   WITH the mod: all names declare from their gem set files; the
 //     metadata is verbatim per the gem sources; the engine-owned bodies
 //     the declarations record are pinned against the Ruby sources
@@ -43,8 +42,7 @@ function declaredEvents(): Array<{ setPath: string; modName: string } & Record<s
   return out;
 }
 
-/** The recount's 30 names (the events recount instrument over the
- *  pinned gems, mod-events lane re-run 2026-10-08). */
+/** The 30 event names the account gem declares across its set files. */
 const RECOUNT_30 = [
   "act_as_current_for_integrate_stage",
   "activate_account",

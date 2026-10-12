@@ -1,4 +1,4 @@
-// The bootswatch_skin starred-anchor family (surfaces-batch3):
+// The bootswatch_skin starred-anchor family:
 //   - the skin :core (card-mod-bootstrap set/type/bootswatch_skin/
 //     html_views.rb:28, template :haml = core.haml) — the skin
 //     configuration page;
@@ -7,25 +7,16 @@
 //     media/media_snippet.haml), :bar_right (the empty body), :bar_bottom
 //     (the <code> wrap).
 //
-// ORACLE BYTES: expected-v2 view-lane (pass17-int tmp, read-only) — the
-// raw-deck oracle rendered 22 Bootswatch skin cards' :content/:closed/:open.
-// The registrar's KNOWN DIVERGENCE note named exactly these views as the
-// nested-set-file shortname divergence's victims; the surfaces2
-// X-star-marker strip (its first commit) makes the registrations
-// dispatchable. No fresh oracle capture: every byte below comes from the
-// existing capture files (no oracle app boot, no NO-WRITE proof needed).
+// DECK SHAPE: the probe skin has ONE child row, +Image (type Image,
+// content ":media_probe_skin+:image/bootstrap.png"); it has NO
+// +*colors/+*variables/+*stylesheets rows — Ruby renders those field nests
+// as FABRICATED pattern-typed cards (fetch new: {} + the TYPE_PLUS_RIGHT
+// *default rule types them SCSS), and renders NO third accordion for
+// :stylesheets at all. The probe reproduces that shape.
 //
-// DECK SHAPE (raw deck, read-only SELECTs): cerulean skin (22774) has ONE
-// child row, +Image (22850, type Image, content
-// ":cerulean_skin+:image/bootstrap.png"); it has NO +*colors/+*variables/
-// +*stylesheets rows — Ruby renders those field nests as FABRICATED
-// pattern-typed cards (fetch new: {} + the TYPE_PLUS_RIGHT *default rule
-// types them SCSS), and renders NO third accordion for :stylesheets at all
-// (the capture carries exactly two). The probe reproduces that shape.
-//
-// NAMED SEAM (not this family's defect): a programmatic field_nest target
-// that exists as a ROW (the +Image card) renders through the render-side
-// fetch cache — the test warms it through the engine's own enrichment hook
+// NOT this family's defect: a programmatic field_nest target that exists as
+// a ROW (the +Image card) renders through the render-side fetch cache — the
+// test warms it through the engine's own enrichment hook
 // (prepareItemForRender), the same seam a page render's prefetch would
 // drive; the fabricated nests need no warming.
 
@@ -95,30 +86,26 @@ afterAll(() => {
 describe("bootswatch_skin family (skin :core + the media bar_left)", () => {
   it("WITHOUT the mod: the flat arm is the bar-slots lane's base-table skin family", async () => {
     const s = storage!;
-    // SUPERSEDED-PREMISE NOTE (surfaces-strand-fold fold, 2026-10-01): at
-    // this strand's fork the flat arm rendered "" and the mod view differed.
-    // The bar-slots suite has since landed the family on the BASE table
+    // The family lives on the BASE table
     // (tests/card/render/bootswatch-skin-bar-left-media-bytes.test.ts;
-    // views.ts bootswatchSkinBarLeftHtml) so the LOADER-LESS grading
-    // pipeline dispatches it — the flat :core now renders the skin
-    // configuration skeleton with no ModLoader bound at all.
+    // views.ts bootswatchSkinBarLeftHtml), so the LOADER-LESS pipeline
+    // dispatches it — the flat :core renders the skin configuration
+    // skeleton with no ModLoader bound at all.
     const flatCore = await s.engine.render(SKIN, "core");
     expect(flatCore).toContain("Use as current");
     expect(flatCore).toContain("Skin configuration");
     // bar_right: the flat arm for a non-rule card is empty (the same bytes
-    // the mod view emits — the coincidence the registrar note records).
+    // the mod view emits).
     expect(await s.engine.render(SKIN, "bar_right")).toBe("");
-    // bar_bottom: the flat arm IS the <code> wrap. Re-pinned by the core
-    // reds lane (2026-10-06): the negative assertion here predates
-    // f1286ad6 (2026-10-02), which landed the skin override on the BASE
-    // table's bar_bottom (views.ts barBottomView's bootswatch_skin gate)
-    // so the loader-less grading pipeline dispatches it — the same
-    // base-table landing this file's own superseded-premise note already
-    // records for :core and bar_left. Ruby resolves bar_bottom by MRO
-    // with the type-set module ahead of bar.rb, so a bootswatch_skin
-    // card renders `wrap_with :code { render_core }` REGARDLESS of loader
-    // binding (card-mod-bootstrap set/type/bootswatch_skin/html_views.rb:
-    // 69-73) — the WITH-mod test below pins the identical bytes.
+    // bar_bottom: the flat arm IS the <code> wrap. The skin override sits
+    // on the BASE table's bar_bottom (views.ts barBottomView's
+    // bootswatch_skin gate), so the loader-less pipeline dispatches it —
+    // the same base-table landing as :core and bar_left. Ruby resolves
+    // bar_bottom by MRO with the type-set module ahead of bar.rb, so a
+    // bootswatch_skin card renders `wrap_with :code { render_core }`
+    // REGARDLESS of loader binding
+    // (card-mod-bootstrap set/type/bootswatch_skin/html_views.rb:69-73) —
+    // the WITH-mod test below pins the identical bytes.
     const bareBarBottom = await s.engine.render(SKIN, "bar_bottom");
     expect(bareBarBottom.startsWith("<code>")).toBe(true);
   });
@@ -130,9 +117,9 @@ describe("bootswatch_skin family (skin :core + the media bar_left)", () => {
     // programmatic media nest's target is a real row outside the closure)
     await s.engine.prepareItemForRender(`${SKIN}+Image`);
     const html = await s.engine.render(SKIN, "closed");
-    // media_snippet.haml bytes (the cerulean :closed capture pins the
-    // shape): the static haml classes, the UNWRAPPED boxed image, the
-    // medium-box/small-file variant pair, the bare media-text title span.
+    // media_snippet.haml bytes: the static haml classes, the UNWRAPPED
+    // boxed image, the medium-box/small-file variant pair, the bare
+    // media-text title span.
     expect(html).toContain("<div class='media align-items-center'>");
     expect(html).toContain("<div class='media-left'>");
     expect(html).toContain(`<div title="${SKIN}" class="image-box medium">`);
@@ -142,7 +129,7 @@ describe("bootswatch_skin family (skin :core + the media bar_left)", () => {
     expect(html).toContain("<div class='media-body-medium media-body'>");
     expect(html).toContain("<div class='media-text'>");
     expect(html).toContain(`<span class="card-title" title="${SKIN}">${SKIN}</span>`);
-    // the class_up calls never reach the bytes (capture-proven)
+    // the class_up calls never reach the bytes
     expect(html).not.toContain("media-left m-0");
     expect(html).not.toContain("card-title my-0 ms-2");
   });
@@ -152,11 +139,11 @@ describe("bootswatch_skin family (skin :core + the media bar_left)", () => {
     await installLoader();
     await s.engine.prepareItemForRender(`${SKIN}+Image`);
     const html = await s.engine.render(SKIN, "core");
-    // the Use as current anchor (the current_skin? false arm) — capture bytes
+    // the Use as current anchor (the current_skin? false arm)
     expect(html).toContain(
       `<a class="btn btn-sm btn-outline-primary me-2 known-card" href="/update/Media_Probe_Skin?card%5Btrigger%5D=use_as_current_skin">Use as current</a>`,
     );
-    // no +parent row -> the customize arm (the ported view's captured bytes)
+    // no +parent row -> the customize arm
     expect(html).toContain(
       `<a class="btn btn-sm btn-outline-primary me-2 wanted-card"`,
     );
@@ -170,19 +157,16 @@ describe("bootswatch_skin family (skin :core + the media bar_left)", () => {
     expect(html).toContain("<h5 class='mt-4'>\nSkin configuration\n</h5>");
     expect(html).toContain("<div class='small mb-3'>\nfrom simplest to most advanced\n</div>");
     expect(html).toContain("<div class='accordion'>");
-    // the accordion wrapper + the three field_nest call sites. NAMED SEAM
-    // (the receipt records it with the capture cite): the deck has NO
-    // +*colors/+*variables/+*stylesheets rows (raw-deck SELECT — cerulean's
-    // only child is +Image), and the capture's Ruby renders the first two
-    // as FABRICATED pattern-typed new-card accordions (SCSS-typed via the
-    // TYPE_PLUS_RIGHT *default rule, codename-corrected slot names like
-    // "cerulean_skin+*colors") and NOTHING for :stylesheets. The port's
-    // fabricated-nest arm renders the empty string for all three (the
-    // engine's unknown-nest rendering — the same arm S4's field_nest find
-    // names), so the accordion carries the wrapper and empty slots here.
-    // The full fabricated-accordion bytes are the new-card nest machinery's
-    // named gap, not this view's body (whose anchors/skeleton ARE pinned
-    // capture-byte-exact above).
+    // the accordion wrapper + the three field_nest call sites. The deck has NO
+    // +*colors/+*variables/+*stylesheets rows (the probe skin's only child is
+    // +Image), and Ruby renders the first two as FABRICATED pattern-typed
+    // new-card accordions (SCSS-typed via the TYPE_PLUS_RIGHT *default rule,
+    // codename-corrected slot names like "media_probe_skin+*colors") and
+    // NOTHING for :stylesheets. The port's fabricated-nest arm renders the
+    // empty string for all three (the engine's unknown-nest rendering), so
+    // the accordion carries the wrapper and empty slots here. The full
+    // fabricated-accordion bytes are the new-card nest machinery's named
+    // gap, not this view's body (whose anchors/skeleton ARE pinned above).
     expect(html).toContain("<div class='accordion'>");
   });
 

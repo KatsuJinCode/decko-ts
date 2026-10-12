@@ -5,9 +5,8 @@
 // Proof shape:
 //   - The manifest has the ONE set module with portable html views
 //     (set/right/group_remote.rb), and that module's :html format registers
-//     exactly the two gem-specific views the T6 verdict names
-//     (metrics.htmlViewsMissingNames = ["javascript_include_tag",
-//     "stylesheet_include_tag"]).
+//     exactly the two gem-specific views it declares
+//     (javascript_include_tag, stylesheet_include_tag).
 //   - The registered view functions emit the same per-URL byte strings
 //     Ruby's asset_tag_helper.rb#javascript_include_tag / tag "link"
 //     produce for a remote URL (no asset-pipeline digest lookup).
@@ -48,11 +47,10 @@ function ctxForUrls(urls: string): ViewContext {
   };
 }
 
-/** Pull the mod-registered view function out of the CHAIN table.
- *  CORRECTED 2026-09-28: both views are declared on
- *  set/right/group_remote.rb, a nonbase set, so they are registered
- *  against that set module rather than written into the base-format
- *  record the engine falls through to (the deck-wide masking defect). */
+/** Pull the mod-registered view function out of the CHAIN table. Both views
+ *  are declared on set/right/group_remote.rb, a nonbase set, so they are
+ *  registered against that set module rather than written into the
+ *  base-format record the engine falls through to. */
 function viewFor(name: string): ViewFn {
   const fn = loader!.viewChainTable().viewFor("Right::GroupRemote", name);
   if (fn === undefined) throw new Error(`view not registered: ${name}`);
@@ -61,18 +59,13 @@ function viewFor(name: string): ViewFn {
 
 describe("card-mod-assets mod loader", () => {
   describe("manifest shape (set/right/group_remote.rb setModule entries)", () => {
-    // cwwrite-seam (2026-09-28): the manifest grew the right/asset_output
-    // :not_found gate, the abstract/asset_outputter bookkeeping entry, and the
+    // The manifest carries six set modules: the right/asset_output
+    // :not_found gate, the abstract/asset_outputter bookkeeping entry, the
     // type_plus_right/set/{style,script} :asset_output_url registrations (the
     // concrete includers of the abstract, where the TS pattern surface can
-    // dispatch it). The group_remote entries below are unchanged; these three
-    // assertions updated to the new premise (the 5-entry manifest), the way
-    // the repair commit corrected stale premises toward the ported
-    // truth.
-    // (2026-10-08, mod-events lane: the manifest grew to six — the
-    // abstract/asset_inputter set module joined, carrying the two asset
-    // input events' declarations; the gem tree has the file, so the
-    // basket now mirrors the gem exactly.)
+    // dispatch it), and abstract/asset_inputter, which carries the two asset
+    // input events' declarations. The gem tree has every one of these
+    // files, so the basket mirrors the gem exactly.
     it("registers the six set modules: group_remote + the cwwrite-seam asset-output surfaces + asset_inputter", () => {
       expect(cardModAssets.setModules).toBeDefined();
       expect(cardModAssets.setModules?.length).toBe(6);
@@ -125,18 +118,18 @@ describe("card-mod-assets mod loader", () => {
   });
 
   describe("the mod loader registers the views under its SET MODULE", () => {
-    // CORRECTED 2026-09-28. These two views are declared
-    // on set/right/group_remote.rb — a NONBASE set. Ruby keeps a nonbase
-    // set's format module in Set.modules[:nonbase_format]
-    // (set/format.rb:146-150), which a card reaches only through its own
-    // pattern module keys (pattern/all.rb:49-55, pattern/base.rb:35-38),
-    // NOT through the base format class. The flat record the engine falls
-    // through to IS that base format class, so writing a set-scoped view
-    // into it is the deck-wide masking defect: one
-    // registration answered for cards that are not in the set.
+    // These two views are declared on set/right/group_remote.rb — a NONBASE
+    // set. Ruby keeps a nonbase set's format module in
+    // Set.modules[:nonbase_format] (set/format.rb:146-150), which a card
+    // reaches only through its own pattern module keys
+    // (pattern/all.rb:49-55, pattern/base.rb:35-38), NOT through the base
+    // format class. The flat record the engine falls through to IS that base
+    // format class, so writing a set-scoped view into it is the deck-wide
+    // masking defect: one registration answered for cards that are not in
+    // the set.
     //
-    // The view is still REGISTERED — the assertion moved from the flat
-    // record to the chain table, not from asserted to unasserted.
+    // The views are still REGISTERED — the assertion reads the chain table,
+    // not the flat record.
     it("registers :javascript_include_tag and :stylesheet_include_tag on Right::GroupRemote", () => {
       const chain = loader!.viewChainTable();
       expect(typeof chain.viewFor("Right::GroupRemote", "javascript_include_tag")).toBe("function");
@@ -227,10 +220,9 @@ describe("card-mod-assets mod loader", () => {
 
   describe("the mod loader's reset() drops the mod's set-module registrations", () => {
     it("removes both views from the chain table after reset()", () => {
-      // CORRECTED 2026-09-28: the registrations live on
-      // the Right::GroupRemote set module, not on the shared base-format
-      // record, so reset() clears the chain table (the same
-      // restore-the-pre-load-state contract, one table over).
+      // The registrations live on the Right::GroupRemote set module, not on
+      // the shared base-format record, so reset() clears the chain table
+      // (the same restore-the-pre-load-state contract, one table over).
       const chain = loader!.viewChainTable();
       expect(typeof chain.viewFor("Right::GroupRemote", "javascript_include_tag")).toBe("function");
       expect(typeof chain.viewFor("Right::GroupRemote", "stylesheet_include_tag")).toBe("function");

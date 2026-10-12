@@ -1,5 +1,5 @@
 // The event :recaptcha validate wiring (card-mod-recaptcha-0.20.0
-// set/all/recaptcha.rb:50-55) — the A9 surface, ported through the
+// set/all/recaptcha.rb:50-55), ported through the
 // mod-event seam (the add_comment pattern, card-mod-comment-save-event.test.ts).
 //
 // Ruby:

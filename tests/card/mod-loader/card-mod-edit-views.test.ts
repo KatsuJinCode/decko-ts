@@ -2,27 +2,28 @@
 // slices 3/4 (the inline-editing surface, the create surface, the board-tab
 // :guide_tab delegate, the structure/nests placeholders, the read-form
 // formgroups and the overlay guide), rendered through the real RenderEngine
-// and byte-compared against the captured oracle
-// (fixtures/captured/edit-views.json, captured from the live decko-0.20.0
-// oracle app by tests/card/mod-loader/oracle-capture-edit-views.rb for the
-// SAME two targets ("Oracle Basics" id 605, "Home" id 521) and three actors
-// (bot = signed-in admin, tova = signed-in member, anonymous) as the
-// edit-forms / edit-name-type captures, plus the unsaved new-card surface
+// and byte-compared against the recorded fixtures
+// (board-views.json / edit-views.json, produced by
+// tests/card/mod-loader/oracle-capture-edit-views.rb for the SAME two
+// targets ("Oracle Basics" id 605, "Home" id 521) and three fixture actor
+// keys ("bot" = signed-in admin, "tova" = signed-in member, "anonymous")
+// as the
+// edit-forms / edit-name-type records, plus the unsaved new-card surface
 // (Card.new type_id: RichTextID, blank name - render only) recorded under
 // new_card).
 //
-// Capture normalizations (applied to BOTH sides - identical masks):
+// Fixture normalizations (applied to BOTH sides - identical masks):
 // - data-slot-id -> RANDOMIZED (SecureRandom.hex(10), wrap.rb:45);
 // - data-card-id -> RANDOMIZED (seed state);
 // - data-select2-id -> SELECT2 (the "<unique_id>-<epoch>" live-type marker);
 // - the conflict-tracker hidden value -> ACTION_ID (seed state).
 //
-// Disclosed remainders (oracle arms recorded in the fixture, NOT pinned
+// Disclosed remainders (recorded arms in the fixture, NOT pinned
 // here - each needs machinery this port does not claim):
 // - :edit_structure - Ruby itself RAISES on a structure-less card
 //   ("undefined method `gsub' for nil" - editing.rb:54-65 `return unless
 //   card.structure` answers nil and the render pipeline chokes on it; the
-//   capture records the NoMethodError arm). The port returns "" (the view
+//   fixture records the NoMethodError arm). The port returns "" (the view
 //   is unreachable without structure in practice); the structure branch
 //   (nest card.structure_rule_card, view: :edit) is the remainder.
 // - Home's :edit_nests / :read_form - the nest-bearing arms render the
@@ -32,21 +33,20 @@
 //   process Home's nests (the full welcome page) - the engine's nest
 //   machinery, exercised by other suites; pinned on "Oracle Basics" only.
 // - The new-card surface (name-prompt arm) - the engine cannot render an
-//   unnamed card; the oracle arms are recorded under new_card for the suite
+//   unnamed card; the arms are recorded under new_card for the suite
 //   that ports the unnamed-card render path.
 //
 // Rule-card update stand-in (disclosure): guide.rb:27-32 prepends the
 // guide rule card's edit link only when guide_card.ok?(:update). The
-// oracle's tova arm renders NO link: the deck denies a plain member update
+// member arm records NO link: the deck denies a plain member update
 // on the rule card "*all+*guide" even though *all+*update grants "Anyone
-// Signed In" (probed 2026-09-29: every specific candidate rule is NIL and
-// tova still fails ok?(:update) - Ruby's rule-card protection lives
+// Signed In" (Ruby's rule-card protection lives
 // outside the candidate walk). The engine's verdict walk does not model
 // that protection, so the harness seeds the SELF-scoped rule
 // "*all+*guide+*update" -> [[Administrator]]: the walk then answers false
-// for tova/anonymous and true for the bot stand-in (Auth.always_ok?) -
-// the same bot/tova split the oracle captured, through the engine's real
-// verdict algebra.
+// for the member/anonymous and true for the admin stand-in
+// (Auth.always_ok?) - the same admin/member split the fixtures record,
+// through the engine's real verdict algebra.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { expectViewWithoutMod } from "../../support/native-views.js";
@@ -76,9 +76,10 @@ import cardModMarkdown from "../../../src/card/mod-loader/mods/card-mod-markdown
 import cardModHistory from "../../../src/card/mod-loader/mods/card-mod-history.js";
 import cardModComment from "../../../src/card/mod-loader/mods/card-mod-comment.js";
 
-/** The captured-oracle fixtures this suite reads at module scope.
+/** The recorded fixtures this suite reads at module scope.
  *
- *  They live under `fixtures/captured/`, which is on the public candidate's
+ *  They live under the captured-fixtures directory the constants below point
+ *  at, which is on the public candidate's
  *  exclusion list, so on a clean clone they are ABSENT. Reading one unguarded
  *  threw ENOENT during import — before any describe existed to skip — and the
  *  run reported a failed suite with `no tests`, which reads as an engine
@@ -90,7 +91,7 @@ const BOARD_FIXTURE_PATH = fileURLToPath(new URL("board-views.json", CAPTURED_DI
 const EDIT_FIXTURE_PATH = fileURLToPath(new URL("edit-views.json", CAPTURED_DIR));
 const CAPTURES_PRESENT = existsSync(BOARD_FIXTURE_PATH) && existsSync(EDIT_FIXTURE_PATH);
 
-/** The board-family fixture (fixtures/captured/board-views.json): the 8
+/** The board-family fixture: the 8
  *  board-suite views per actor per target + the visibility probes +
  *  no_write_proof. Absent on a clean clone; the suite skips, see CAPTURES_PRESENT. */
 const BOARD_FIXTURE = CAPTURES_PRESENT ? JSON.parse(readFileSync(BOARD_FIXTURE_PATH, "utf8")) : undefined;
@@ -235,7 +236,7 @@ beforeAll(async () => {
   const s = storage;
 
   // ---- the shared edit-surface world (mirrors card-mod-edit-forms.test.ts)
-  // The bot card's name is the ORACLE deck's ("Decko Bot" - the captured
+  // The bot card's name matches the recorded fixtures ("Decko Bot" - the
   // creator_credit/act-pill bytes carry that name; the alternate
   // "Decko Bot 1" spelling is the edit-forms harness's).
   await seedCard(s, { id: 2, name: "RichText", typeId: 9 });
@@ -269,13 +270,12 @@ beforeAll(async () => {
   s.fetcher.installNameEnvironment();
   await s.fetcher.codenames.ensureLoaded();
 
-  // the create-rule surface (bot=28 / tova=20 createable cardtypes).
-  // The bot codename is the STORED spelling the permission machinery
+  // the create-rule surface (the admin sees 28 createable cardtypes, the
+  // member 20). The bot codename is the STORED spelling the permission machinery
   // matches (read-rules.ts DECKOBOT_CODENAME "decko_bot" - codename.rb:
   // 107-110 derives Card::DeckoBotID from the stored codename; seeding the
   // alternate "deckobot" spelling silently loses the always_ok
-  // short-circuit - the standing failure the pristine-base edit-forms bot
-  // suite demonstrates).
+  // short-circuit).
   await seedCard(s, { id: 1, name: "Decko Bot", codename: "decko_bot" });
   await seedCard(s, { id: 9, name: "Cardtype", codename: "cardtype", typeId: 9 });
   await seedCard(s, { id: 15, name: "*create", codename: "create", typeId: 14 });
@@ -331,9 +331,8 @@ beforeAll(async () => {
   }
 
   // ---- the board-suite seeds -----------------------------------------------
-  // the *all+*default rule the oracle deck carries (oracle development
-  // sqlite card id 11: left_id 7 *all + right_id 8 *default, type_id 2
-  // RichText - verified live 2026-09-29, Card.new("Oracle
+  // the *all+*default rule a real deck carries (left_id *all + right_id
+  // *default, RichText-typed - Card.new("Oracle
   // Basics+discussion").type_id == 2 through new_card_template's
   // rule_card(:default) first-candidate walk). The engage_tab discussion
   // nest renders the UNKNOWN +discussion child through that default:
@@ -341,7 +340,7 @@ beforeAll(async () => {
   // slot loses TYPE-rich_text + data-card-type-*.
   await seedCard(s, { id: 130, name: "*default", codename: "default", typeId: 14 });
   await seedCard(s, { id: 131, leftId: 10, rightId: 130, typeId: 2 });
-  // created_at = 10 days ago (the captured creator_credit phrase
+  // created_at = 10 days ago (the recorded creator_credit phrase
   // "10 days ago" - time_ago_in_words buckets a 10-day distance stably for
   // the whole test day). The seed default is overridden per card.
   const tenDaysAgo = new Date(Date.now() - 10 * 24 * 3600 * 1000)
@@ -355,7 +354,7 @@ beforeAll(async () => {
   await s.counting.query(`UPDATE cards SET created_at = ? WHERE id = 605`, [
     tenDaysAgo,
   ]);
-  // Home is ~1 year old in the oracle deck (the captured creator_credit
+  // Home is ~1 year old (the recorded creator_credit
   // phrase "about 1 year"); 370 days rounds to the 1-year bucket stably
   await s.counting.query(`UPDATE cards SET created_at = ? WHERE id = 521`, [
     new Date(Date.now() - 370 * 24 * 3600 * 1000)
@@ -363,11 +362,12 @@ beforeAll(async () => {
       .replace("T", " ")
       .slice(0, 19),
   ]);
-  // the acts the history_tab pills read (ids exactly as captured):
+  // the acts the history_tab pills read (ids exactly as the fixtures
+  // record them):
   // Oracle Basics 105329 create (10 days ago) + 109527/109528 updates
   // (1 day ago); Home 105328 create (10 days ago)
   await seedAct(s, { id: 105329, cardId: 605, actorId: 1, actedAt: tenDaysAgo });
-  // Home's act is ~1 year old in the oracle deck (the captured pill
+  // Home's act is ~1 year old (the recorded pill
   // phrase "about 1 year ago")
   const yearAgo = new Date(Date.now() - 370 * 24 * 3600 * 1000)
     .toISOString()
@@ -393,10 +393,10 @@ beforeAll(async () => {
   await seedCard(s, { id: 147, name: "*by_name", codename: "by_name" });
   await seedCard(s, { id: 148, leftId: 2, rightId: 147, name: "RichText+*type+by_name" });
 
-  // ---- the follow world (the captured follow_section arms): tova follows
-  // EVERY card via her *all set preference (followed? true for both
-  // targets, "following" verb); the bot follows nothing ("follow" verb);
-  // 1 follower each (tova). The per-card advanced rule cards are ABSENT
+  // ---- the follow world (the recorded follow_section arms): the member
+  // follows EVERY card via her *all set preference (followed? true for both
+  // targets, "following" verb); the admin follows nothing ("follow" verb);
+  // 1 follower each. The per-card advanced rule cards are ABSENT
   // (wanted-card). The +*followers junctions EXIST (known-card).
   await seedCard(s, { id: 583, name: "Tova" });
   await seedCard(s, { id: 150, name: "*follow", codename: "follow", typeId: 14 });
@@ -408,10 +408,10 @@ beforeAll(async () => {
   await seedCard(s, { id: 152, leftId: 605, rightId: 151, name: "Oracle Basics+*followers" });
   await seedCard(s, { id: 153, leftId: 521, rightId: 151, name: "Home+*followers" });
 
-  // the self-set junctions the edit_rules known branch reads (the oracle
-  // deck: Home+*self EXISTS - the known branch; Oracle Basics+*self does
+  // the self-set junctions the edit_rules known branch reads (in a real
+  // deck Home+*self EXISTS - the known branch; Oracle Basics+*self does
   // NOT - the fetched-new branch). *self is id 11 in this deck (id 8 is
-  // *type - the stage-6/7 "fetch defect" was this seed gap).
+  // *type - the seed gap that once looked like a fetch defect).
   await seedCard(s, {
     id: 157,
     leftId: 521,
@@ -424,8 +424,8 @@ beforeAll(async () => {
   // *guide setting card (the [[*guide]] link target in the guide text and
   // the rule junction's right side; codename registry reads cards.codename)
   await seedCard(s, { id: 15 + 100, name: "*guide", codename: "guide", typeId: 14 });
-  // the *all+*guide rule card - Markdown-typed, raw content probed from the
-  // oracle deck 2026-09-29 (the captured guide bytes are its markdown core)
+  // the *all+*guide rule card - Markdown-typed, its raw content the deck's
+  // own default guide text (the recorded guide bytes are its markdown core)
   await seedCard(s, {
     id: 120,
     leftId: 10,
@@ -443,7 +443,7 @@ beforeAll(async () => {
   // the rule-card update stand-in (see the module doc's disclosure): the
   // Right-pattern set card "*guide+*right" (Set-typed - the who_can join
   // reads sets.type_id) + its *update rule -> [[Administrator]]
-  // reproduces the captured bot/tova split through the engine's verdict
+  // reproduces the recorded admin/member split through the engine's verdict
   // walk (the Right pattern is in the update candidates for the junction
   // "*all+*guide")
   await seedCard(s, { id: 118, name: "*right", codename: "right", typeId: 14 });
@@ -492,22 +492,20 @@ describeOrSkipLoud(
     loader.load();
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
     for (const view of ALL_VIEWS) {
-      // p20-email-views: read_formgroup NO LONGER raises loader-less —
+      // read_formgroup NO LONGER raises loader-less —
       // the body lives on the flat record (views.ts readFormgroupBody,
       // UNKNOWN_VIEW_CONFIG row) because formgroup.rb is a set/all file
       // (a base-format registration in Ruby, registrar.rb:79-84) and the
-      // graded page-lane harness binds no loader while the EmailTemplate
+      // loader-less page harness binds no loader while the EmailTemplate
       // read_form nests dispatch this view on every field slot. The seam
-      // arm below pins the render. Same move the roleviews suite made for
-      // the raise-leadview :lead/:configs flats (c52669f) and this suite
-      // made for bar_setting_list (e45fc71).
+      // arm below pins the render.
       if (view === "read_formgroup") continue;
       await expectViewWithoutMod(s.engine.render("Oracle Basics", view), view);
     }
-    // p20-email-views seam arm: the flat read_formgroup renders WITHOUT the
+    // seam arm: the flat read_formgroup renders WITHOUT the
     // mod — the slot-wrapped form-group whose content slot carries the
     // card's :content (the WITH-mod arms below pin the byte shape against
-    // the captured oracle).
+    // the recorded fixtures).
     const readFormgroupHtml = await s.engine.render("Oracle Basics", "read_formgroup");
     expect(readFormgroupHtml).toContain(`read_formgroup-view`);
     expect(readFormgroupHtml).toContain(`read-formgroup-content`);
@@ -571,7 +569,7 @@ describeOrSkipLoud(
     // the disclosed remainders: :edit_nests renders the frame with an
     // EMPTY body where Ruby renders the nested editors; :read_form renders
     // "" where Ruby renders the nested read_formgroups (the fixture holds
-    // the oracle truth for both)
+    // the recorded truth for both)
     const nestsHtml = normalize(await botEngine.render("Home", "edit_nests"));
     expect(nestsHtml).toContain('card-body card-text"></div>');
     const readFormHtml = await botEngine.render("Home", "read_form");
@@ -637,8 +635,7 @@ describeOrSkipLoud(
       expect(html).toBe(basic[view]);
     }
     for (const view of BOARD_PINNED_VIEWS) {
-      // stage 9: the seed gap fixed (the Home+*self junction row was never
-      // seeded; *self is id 11) - the known branch pins now
+      // the Home+*self junction row is seeded, so the known branch pins
       const html = normalize(await botEngine!.render("Home", view));
       expect(html).toBe(BOARD_FIXTURE.targets.deck_level.views.bot[view]);
     }
@@ -668,7 +665,7 @@ describeOrSkipLoud(
     // comment_box nest) and edit_rules' Home arm (the set card EXISTS in
     // the deck - the known branch needs the set card warmed in the render
     // map; Basics' set card is fetched new and pins byte-exact) stay
-    // oracle-recorded - the notes are in the receipt's stage-3/4 sections.
+    // fixture-recorded - this test only asserts the recorded arms exist.
     for (const actor of ["bot", "tova", "anonymous"] as const) {
       expect(
         BOARD_FIXTURE.targets.basic_note.views[actor].engage_tab,
@@ -682,8 +679,8 @@ describeOrSkipLoud(
   });
 
   it("the recorded new-card surface carries the name-prompt arm (fixture record)", () => {
-    // The engine cannot render an unnamed card; the oracle arms under
-    // new_card record the /new/:type surface (Card.new, blank name):
+    // The engine cannot render an unnamed card; the recorded arms under
+    // new_card hold the /new/:type surface (Card.new, blank name):
     // :new_fields renders the name formgroup + the name_prompt hidden.
     const fields = FIXTURE.new_card.views.bot.new_fields;
     expect(fields).toContain('name="name_prompt"');

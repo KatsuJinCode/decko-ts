@@ -2,45 +2,38 @@
 // card-mod-history `updated_by` view it feeds
 // (card-mod-history-0.20.0 set/all/history_board.rb:10-16, :76-99).
 //
-// Why this file exists next to the oracle-pinned bar/box suite: that suite
-// pins the BYTES of the 0-updater and 1-updater arms on two capture
-// targets. This file pins the seam CONTRACT the bytes depend on - the
-// query's filters, the DISTINCT, the view gate, and the arms the capture
-// has no bytes for (2 updaters, 4+ "N others").
+// Where the sibling bar/box suite pins the BYTES of the 0-updater and
+// 1-updater arms, this file pins the seam CONTRACT those bytes depend on —
+// the query's filters, the DISTINCT, the view gate, and the arms beyond
+// one updater (2 updaters, 4+ "N others").
 //
 // Every expectation here is derived from Ruby, not from this port:
 //
-// - the SQL shape: printed live from the capture deck with a read-only
-//   decko runner probe (tools/oracle/decko-oracle-app, the sqlite rung the
-//   capture ran on; card_actions 4928 before and after):
-//     SELECT DISTINCT c0.* FROM cards c0
-//     JOIN card_acts cx1 ON c0.id = cx1.actor_id
-//     JOIN card_actions cn2 ON cx1.id = cn2.card_act_id
-//     JOIN cards c3 ON cn2.card_id = c3.id AND c3.trash is false
-//     WHERE (cn2.action_type = 1 AND c3.id = '605') AND c0.trash is false
-//   (updater_of -> tie_act -> ActQuery#update_action_on ->
+// - the SQL shape (updater_of -> tie_act -> ActQuery#update_action_on ->
 //   ActionQuery#update_action_on = action_type 1; the chain is
 //   card-1.110.0 lib/card/query/card_query/relational_attributes.rb:32-34,
 //   82-84; lib/card/query/act_query.rb:17-19;
 //   lib/card/query/action_query.rb:26-33, and TYPE_OPTIONS
 //   %i[create update delete] (card-mod-history lib/card/action.rb:42) with
-//   `action_type=` writing the index (action.rb:89-91) -> update IS 1).
-// - the DISTINCT: the capture deck's "Oracle Basics" has TWO update actions
-//   by the SAME actor (actions 4973 and 4974, acts 109527 and 109528) and
-//   `Card.search(updater_of: {id: 605})` returned exactly ONE updater.
-// - the multi-updater sentence: the deck's only multi-updater card (1222
-//   "Tova Test Card", updated by Decko Bot id 1 and Jonas id 1231) renders
-//   `Updated by <a ...>Decko Bot</a> and <a ...>Jonas</a>`; Rails'
+//   `action_type=` writing the index (action.rb:89-91) -> update IS 1):
+//     SELECT DISTINCT c0.* FROM cards c0
+//     JOIN card_acts cx1 ON c0.id = cx1.actor_id
+//     JOIN card_actions cn2 ON cx1.id = cn2.card_act_id
+//     JOIN cards c3 ON cn2.card_id = c3.id AND c3.trash is false
+//     WHERE (cn2.action_type = 1 AND c3.id = '605') AND c0.trash is false
+// - the DISTINCT: one card with TWO update actions by the SAME actor
+//   yields exactly ONE updater row.
+// - the multi-updater sentence: two DISTINCT updaters render
+//   `Updated by <a ...>A</a> and <a ...>B</a>`; Rails'
 //   to_sentence (activesupport-7.2.3.2 conversions.rb) gives
 //   [] -> "", [a] -> "a", [a,b] -> "a and b", [a,b,c] -> "a, b, and c".
 // - the "N others" arm: updater_links with max_count 3 shows
 //   3 - 1 = 2 links plus link_to_card(card.fetch(:editors), "N others"),
-//   whose rendered bytes the same live probe printed:
-//   `<a class="known-card" href="/Oracle_Basics+*editors">2 others</a>`.
+//   whose href keeps the reference's literal `*`, unescaped:
+//   `<a class="known-card" href="/<card>+*editors">2 others</a>`.
 //
 // NO-WRITE: this harness is the direct-INSERT seeding path (no engine
-// writes); the probe that produced the deck facts asserted card_actions
-// 4928 -> 4928.
+// writes).
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -92,20 +85,19 @@ beforeAll(async () => {
   // STORED deck codename ("decko_bot", real.yml:17-19; codename.rb:107-110
   // derives DeckoBotID from the stored string) — never a restated literal
   await seedCard(s, { id: BOT, name: "Decko Bot", codename: DECKOBOT_CODENAME });
-  await seedCard(s, { id: JOHN, name: "Jonas" });
+  await seedCard(s, { id: JOHN, name: "Editor Two" });
   await seedCard(s, { id: 2, name: "RichText", codename: "basic", typeId: 3, typeName: "Cardtype" });
 
-  // 100: never updated (create only) - the capture's Home shape
+  // 100: never updated (create only)
   await seedCard(s, { id: 100, name: "Never Updated", typeId: 2, typeName: "RichText", creatorId: BOT });
   await seedUpdate(s, 100, BOT, 1000, 10000, 0);
 
-  // 101: TWO update acts by the SAME actor - the capture's Oracle Basics
-  // shape, and the DISTINCT proof
+  // 101: TWO update acts by the SAME actor - the DISTINCT proof
   await seedCard(s, { id: 101, name: "Twice Updated", typeId: 2, typeName: "RichText", creatorId: BOT });
   await seedUpdate(s, 101, BOT, 1001, 10001, 1);
   await seedUpdate(s, 101, BOT, 1002, 10002, 1);
 
-  // 102: two DISTINCT updaters - the deck's card 1222 shape
+  // 102: two DISTINCT updaters
   await seedCard(s, { id: 102, name: "Two Updaters", typeId: 2, typeName: "RichText", creatorId: BOT });
   await seedUpdate(s, 102, BOT, 1003, 10003, 1);
   await seedUpdate(s, 102, JOHN, 1004, 10004, 1);
@@ -211,7 +203,7 @@ describe("act-search seam: the render-time gate", () => {
 
 describe("updated_by view bytes (history_board.rb:10-16, :76-99)", () => {
   /** The wrap div's inner HTML - box_bottom's other half (creator_credit)
-   *  is pinned by the oracle suite. */
+   *  is pinned by the sibling bar/box suite. */
   function updatedBy(name: string): Promise<string> {
     return storage!.engine.render(name, "updated_by");
   }
@@ -227,9 +219,9 @@ describe("updated_by view bytes (history_board.rb:10-16, :76-99)", () => {
   });
 
   it("joins two updaters with to_sentence's two_words_connector", async () => {
-    // live Ruby, deck card 1222: "Updated by <a>Decko Bot</a> and <a>Jonas</a>"
+    // Ruby: "Updated by <a>Decko Bot</a> and <a>Editor Two</a>"
     expect(await updatedBy("Two Updaters")).toBe(
-      `<div class="text-muted">Updated by ${link("Decko Bot")} and ${link("Jonas")}</div>`,
+      `<div class="text-muted">Updated by ${link("Decko Bot")} and ${link("Editor Two")}</div>`,
     );
   });
 
@@ -241,8 +233,7 @@ describe("updated_by view bytes (history_board.rb:10-16, :76-99)", () => {
     // updater_links: number_of_updaters_to_show(5, 3) = 2, then
     // link_to_card(card.fetch(:editors), "3 others") and
     // to_sentence's last_word_connector ", and ". The href keeps the
-    // reference's literal `*` — the live probe printed
-    // href="/Oracle_Basics+*editors", unescaped.
+    // reference's literal `*`, unescaped.
     expect(await updatedBy("Five Updaters")).toBe(
       `<div class="text-muted">Updated by ${link("Actor 0")}, ${link("Actor 1")}, and ` +
         `<a class="known-card" href="/Five_Updaters+*editors">3 others</a></div>`,

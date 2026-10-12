@@ -139,8 +139,7 @@ describe("contextualizePath (file_card_uploader.rb doc lines 88-117)", () => {
     // filename = action_id + extension from db_content
     // (file_card_uploader.rb:147-153 + set/type/file.rb:11-15): the
     // [-2] [/.] segment of "(my_bucket)/1/2.png" is "2", so the URL is
-    // the fog public_url of files/1/2.png — NOT the stored key verbatim
-    // (the Jonas Verhove oracle anchor pins the derivation).
+    // the fog public_url of files/1/2.png — NOT the stored key verbatim.
     expect(contextualizePath("(my_bucket)/1/2.png")).toBe(
       "http://s3.amazonaws.com//files/1/2.png",
     );
@@ -159,10 +158,8 @@ describe("file :core (set/type/file.rb:24-28 + core.haml:1)", () => {
     // core.haml: %a{ href: source } = t :carrierwave_download, title:
     // title_in_context(voo.title) — HAML attr_wrapper apostrophe, label
     // "Download " + the context-relativized name (out of context: the
-    // full card name). Raw-oracle pin: the quote-style exemplars
-    // (Werkshop Museum / Damon K Fairhurst pages).
-    // local_url names the CARD's own id (paths.rb file_id) — this context's
-    // card is id 1.
+    // full card name). local_url names the CARD's own id (paths.rb
+    // file_id) — this context's card is id 1.
     const html = fileCoreView(makeCtx("~7/act_42.png"));
     expect(html).toBe("<a href='/files/~1/act_42.png'>Download TestCard</a>\n");
   });
@@ -188,13 +185,13 @@ describe("image :core (set/type/image/html_views.rb:5-11)", () => {
   });
   it("returns empty string for blank src (set/type/file.rb:34-45 handle_source short-circuit)", () => {
     // set/type/file.rb:34-45 handle_source short-circuits blank src to ""
-    // (the content-view wrapper renders an empty body, e.g. corpus:79 *logo
-    // with dbContent that does not match any storage prefix).
+    // (the content-view wrapper renders an empty body for an image-typed
+    // card whose dbContent does not match any storage prefix).
     expect(imageHtmlCoreView(makeCtx("", { name: "BlankImg" }))).toBe("");
     // Non-blank content that fails storage-type recognition still yields
     // blank src (storageTypeFromContent returns "unknown" ->
     // contextualizePath returns ""). The card name MUST NOT leak into the
-    // rendered body - this is the captured shape from corpus:79 *logo.
+    // rendered body — the wrapper's body stays empty.
     expect(imageHtmlCoreView(makeCtx("janmbtckiogaqbhlewfngdc", { name: "*logo" }))).toBe("");
   });
   it("the missing-sentinel branch is unreachable headless: dbContent missing takes the blank-src arm (with_valid_source, html_views.rb:13-34)", () => {
@@ -412,26 +409,25 @@ describe("card-mod-carrierwave through the mod loader", () => {
   });
 
   // -----------------------------------------------------------------------
-  // corpus:79 *logo shape (bucket: card_name_leaked_as_text_inside_content_view_after_data_attr)
+  // The blank-src bucket: card_name_leaked_as_text_inside_content_view_after_data_attr
   //
-  // The captured fixture is an image-typed card with dbContent that does
-  // NOT match any storage-type prefix (not http(s), not ~, not :, not
-  // (bucket)). Ruby's set/type/file.rb:34-45 handle_source short-circuits
-  // to "" on blank src; the html view returns an empty body inside the
-  // content-view wrapper. The pre-fix TS port emitted the invalid-image
-  // HTML comment (with the card name interpolated) which leaked the name
-  // into the wrapper body. Pinning the bytes here collapses the bucket
-  // for any future regression of the same shape.
+  // An image-typed card whose dbContent matches NO storage-type prefix (not
+  // http(s), not ~, not :, not (bucket)) leaves Ruby's set/type/file.rb:34-45
+  // handle_source short-circuiting to ""; the html view returns an empty
+  // body inside the content-view wrapper. The pre-fix TS port emitted the
+  // invalid-image HTML comment (with the card name interpolated) which
+  // leaked the name into the wrapper body. Pinning the bytes here collapses
+  // the bucket for any future regression of the same shape.
   // -----------------------------------------------------------------------
 
-  // 2026-10-06 a1-mods-validation lane: this pin was previously inverted
-  // (it.fails) against the nested set-file registration divergence
+  // This pin was previously inverted (it.fails) against the nested
+  // set-file registration divergence
   // (known-divergences-from-ruby.md). The divergence's render half was
-  // closed by commit 1ec27612 item (4) — "blank-src short-circuits to
-  // empty string like Ruby handle_source" (corpus-proven, 2,205 entries) —
-  // and both :core and :full_width now resolve, so the inversion went
-  // stale: it contradicted the Ruby original (html_views.rb:13-34 blank-src
-  // arm renders empty). assertions kept as a positive pin.
+  // closed — "blank-src short-circuits to empty string like Ruby
+  // handle_source" — and both :core and :full_width now resolve, so the
+  // inversion went stale: it contradicted the Ruby original (html_views.rb:
+  // 13-34 blank-src arm renders empty). The assertions are kept as a
+  // positive pin.
   it("renders a blank-src image card's :core as empty body (corpus:79 *logo shape)", async () => {
     const s = storage!;
     // The image type card needs a codename so the render engine resolves

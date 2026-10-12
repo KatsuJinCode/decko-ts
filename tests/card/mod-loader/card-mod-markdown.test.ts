@@ -237,8 +237,8 @@ describe("card-mod-markdown through the mod loader (A/B)", () => {
     // The loader-less base core no longer raw-passes Markdown-typed cards:
     // coreViewBase dispatches typeCode "markdown" through the same
     // kramdownToStashedHtml + processContent composition the set module
-    // registers (the graded verifier/census path binds NO mod loader, so
-    // the base seam is where the corpus-exercised dispatch lives - the
+    // registers (the verifier path binds NO mod loader, so the base seam
+    // is where the exercised dispatch lives — the
     // same precedent as the signup/toggle/plain_text/date/image/file
     // cores). The pre-seam raw-passthrough expectation belonged to the
     // world where the kramdown core existed ONLY behind the loader.
@@ -297,10 +297,10 @@ describe("card-mod-markdown through the mod loader (A/B)", () => {
   it("reset() drops the set-module override; the base markdown dispatch keeps the same bytes", async () => {
     // After reset() the Type::Markdown set-module registration is gone
     // (the registration assertions above cover that), but the loader-less
-    // base core now carries the identical kramdown dispatch (kramdown
-    // seam change), so the rendered bytes are the kramdown bytes in BOTH
+    // base core now carries the identical kramdown dispatch, so the
+    // rendered bytes are the kramdown bytes in BOTH
     // dispatch worlds - which is exactly the loader-bound/loader-less
-    // byte parity the corpus path requires.
+    // byte parity the graded verifier path requires.
     const s = storage!;
     loader!.reset();
     const html = await s.engine.render("Markdown Probe", "core");

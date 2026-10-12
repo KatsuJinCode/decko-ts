@@ -116,15 +116,14 @@ describe("card-mod-email through the mod loader (A/B)", () => {
 
   it("WITH the mod: the html format REJECTS :compact_missing; the email_text format renders the empty string (set/all/email_text.rb:6-8)", async () => {
     const s = storage!;
-    // FORMAT SCOPING (flat-table-format-scope, 2026-10-01): the
-    // empty-string body lives in the email_text FORMAT block
-    // (email_text.rb:5-8) - EmailTextFormat's method table only. This
+    // The empty-string body lives in the email_text FORMAT block
+    // (email_text.rb:5-8) — EmailTextFormat's method table only. This
     // suite loads NO format mod (all/error.rb's html :compact_missing is
     // absent), so Ruby's html render has no method and raises
-    // unsupported-view; the pin used to receive the email_text arm's ""
-    // through the format-blind FLAT last-wins seam (the flat record now
-    // admits only html/base keys - mod-loader.ts registration seam, the
-    // census probe pins the measured rows). The email_text dispatch
+    // unsupported-view; a format-blind flat last-wins registration would
+    // leak the email_text arm's "" into html renders (the flat record now
+    // admits only html/base keys — mod-loader.ts registration seam, with
+    // the census probe pinning the measured rows). The email_text dispatch
     // itself renders "" through the owning format class below.
     await expect(s.engine.render("Oracle Email Probe", "compact_missing")).rejects.toThrow(
       UnsupportedViewError,
@@ -136,23 +135,20 @@ describe("card-mod-email through the mod loader (A/B)", () => {
 
   it("WITH the mod: the html format REJECTS :last_action; the email_text format renders the verb (set/all/email_text.rb:10-12)", async () => {
     const s = storage!;
-    // the body is the real `_render_last_action_verb` delegation
-    // (email-text-remainders, 2026-10-01): the verb dispatch answers
-    // the base-format notify verb - card-mod-follow set/all/notify/
-    // base_views.rb:44-46's `'edite'd` fallback -> "edited" (render path
-    // reads no act rows; the engine's compiled-in base verb entry carries
-    // it here where the follow mod is not loaded).
+    // the body is the real `_render_last_action_verb` delegation:
+    // the verb dispatch answers the base-format notify verb — card-mod-follow
+    // set/all/notify/base_views.rb:44-46's `'edite'd` fallback -> "edited"
+    // (the render path reads no act rows; the engine's compiled-in base
+    // verb entry carries it here where the follow mod is not loaded).
     //
-    // FORMAT SCOPING (flat-table-format-scope, 2026-10-01): Ruby
-    // files this all-set registration under EmailTextFormat
-    // (set/format.rb:137-139 keyed on the class define_on_format
-    // resolved; registrar.rb:79-84 mixes it into that class only), so an
-    // HTML-format render never sees it - render.rb#view_method finds no
-    // _view_last_action on HtmlFormat and raises unsupported-view. The
-    // pin used to ride the format-blind FLAT last-wins seam ("edited"
-    // through an html render - the email-remainders receipt's recorded
-    // remaining defect); the flat record now admits only html/base keys
-    // (mod-loader.ts registration seam; the census probe
+    // FORMAT SCOPING: Ruby files this all-set registration under
+    // EmailTextFormat (set/format.rb:137-139 keyed on the class
+    // define_on_format resolved; registrar.rb:79-84 mixes it into that
+    // class only), so an HTML-format render never sees it — render.rb#
+    // view_method finds no _view_last_action on HtmlFormat and raises
+    // unsupported-view. A format-blind flat last-wins registration would
+    // hand "edited" to an html render; the flat record now admits only
+    // html/base keys (mod-loader.ts registration seam; the census probe
     // view-dispatch-flat-record-format-scope-census.test.ts pins the
     // measured foreign rows). The delegation itself is proven through the
     // format class that owns it: the chainorder suite pins

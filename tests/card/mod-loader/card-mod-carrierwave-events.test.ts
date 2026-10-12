@@ -1,9 +1,7 @@
-// The card-mod-carrierwave event chain (the mod-events lane, 2026-10-08):
-// every Ruby set-module event declares into the manifest — the 19 literal
-// `event :name` declarations the recount mines (deliverables/
-// mod-coverage-authoritative-2026-09-28.md, the events column) plus the
-// TEN concrete events the gem's card_mount template loads at runtime
-// (lib/carrier_wave/card_mount.rb:32-53 — `event :store_#{column}_event`
+// The card-mod-carrierwave event chain: every event the Ruby set modules
+// declare into the manifest — the 19 literal `event :name` declarations
+// plus the TEN concrete events the gem's card_mount template loads at
+// runtime (lib/carrier_wave/card_mount.rb:32-53 — `event :store_#{column}_event`
 // etc., one set per attachment column, so 5 names x {file, image}).
 //
 // Proof shape:
@@ -12,9 +10,8 @@
 //   WITH the mod: all names declare from their gem set files with the
 //     gem's verbatim metadata (stage/trigger/when/after/skip/priority);
 //     the engine-owned bodies are cited at the declarations and their
-//     observable halves are pinned by the attachment save suite (the
-//     E4.4.a conformance battery) — this file pins the DECLARATION
-//     surface that makes the recount's events column true.
+//     observable halves are pinned by the attachment save suite — this
+//     file pins the DECLARATION surface those bodies hang off.
 
 import { describe, it, expect, afterAll } from "vitest";
 import { ModLoader } from "../../../src/card/mod-loader.js";
@@ -33,8 +30,8 @@ function declaredEvents(): Array<{ setPath: string } & Record<string, unknown>> 
   return out;
 }
 
-/** The recount's 19 literal names (the 2026-10-08 instrument run; the
- *  five card_mount templates moved to ruby.dynamicEventTemplates). */
+/** The 19 literal `event :name` declarations the carrierwave set files
+ *  make. The five card_mount templates moved to ruby.dynamicEventTemplates. */
 const LITERAL_19 = [
   "assign_attachment_on_create",
   "assign_attachment_on_update",

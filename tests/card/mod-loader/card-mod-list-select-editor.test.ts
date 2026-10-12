@@ -57,11 +57,12 @@
 //   .map(&:to_s) (:812-820); option_value_selected? = Array(selected)
 //   .include? value (:808-810) - exact string match against the option VALUE.
 //
-// NOT ORACLE-CAPTURED, and why: no card in the pinned oracle deck carries an
+// NO RENDERED BYTES EXIST, and why: no card in the reference deck carries an
 // `*input_type` rule naming select or multiselect (the only input_type rule
 // in db/development.sqlite3 is the empty set card id 149 - the checkbox
 // suite's probe, read-only). The bytes below are pinned against the REAL
-// ActionView 7.2.3.2 gems on disk (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/):
+// ActionView 7.2.3.2 gems on disk
+// (the local Ruby gems directory):
 // the two select_tag shapes were DERIVED BY RUNNING the gems
 // (options_for_select + select_tag, select_input_options' exact argument
 // shapes), not hand-written - the run's output is the expected bytes with

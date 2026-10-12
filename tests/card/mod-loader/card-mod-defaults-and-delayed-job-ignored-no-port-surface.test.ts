@@ -2,18 +2,15 @@
 // the tree and the installed Ruby originals.
 //
 // WHY THIS FILE EXISTS
-// The A1 mods ledger (deliverables/A1-MODS-COVERAGE-AUDIT-2026-10-05.md rows
-// 13-14) records card-mod-defaults and card-mod-delayed_job as
-// PORTED-UNVALIDATED whose ported evidence is the registry statusEvidence
-// "legacy-labeled per upstream (#1282): ignored ... nothing to port". No
-// behavior suite can exist for them because the port surface is empty — but
-// an empty surface with NO test is exactly the shape the A1 ruling calls a
-// validation GAP. This file closes that gap the only honest way: it pins the
-// CLAIM itself. The claim has three verifiable legs:
-//   1. the installed Ruby originals (C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems,
-//      the same trees the registry's publicEvidence names) carry NO set/
-//      directory — no set modules, no views, no events. Verified by
-//      inspection 2026-10-06 by the a1-mods-validation lane:
+// The mod registry records card-mod-defaults and card-mod-delayed_job as
+// PORTED with the statusEvidence "legacy-labeled per upstream (#1282):
+// ignored ... nothing to port". No behavior suite can exist for them because
+// the port surface is empty — but an empty surface with NO test is exactly
+// the shape that leaves a validation gap. This file closes that gap the only
+// honest way: it pins the CLAIM itself. The claim has three verifiable legs:
+//   1. the installed Ruby originals (the same trees the registry's
+//      publicEvidence names) carry NO set/ directory — no set modules, no
+//      views, no events. Verified by inspection:
 //      card-mod-defaults-0.20.0 = config/admin.yml + data fixtures/files +
 //      a one-line mod definition (lib/card/mod/defaults.rb:
 //      "Cardio::Railtie.config.seed_mods.unshift :defaults");
@@ -25,8 +22,8 @@
 //      neither name appears);
 //   3. the registry itself records both rows as compatStatus "ignored" /
 //      manifest false — the port claim and the tree agree.
-// The jobs side of delayed_job is separately carried as behavior-inventory
-// row A1-E-14 / scope decision SD-5 (operator ruling), not here.
+// The jobs side of delayed_job is carried by the behavior inventory, not
+// here.
 
 import { describe, it, expect } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
