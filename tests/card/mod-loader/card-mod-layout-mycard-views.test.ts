@@ -1,16 +1,14 @@
-// The R21 close-out: :my_card (set/self/account_links.rb:56-58) and
+// :my_card (set/self/account_links.rb:56-58) and
 // :edit_inline (set/right/enabled_roles.rb:26-43) — the last two
 // unregistered layout views — are REGISTERED, and their bytes compose from
-// the same golden-backed builder the signed-in navbar renders.
+// the same byte-backed builder the signed-in navbar renders.
 //
 // Byte provenance: the account_dropdown arm and the :edit_inline
 // pointer-checkbox-list wrapper compose the SAME btn-group the signed-in
-// navbar renders (the authenticated goldens pin every capture's navbar
-// block). The ROLES interior (can_disable_roles?'s
+// navbar renders. The ROLES interior (can_disable_roles?'s
 // interactive_roles_dropdown arm and the account_dropdown_role_items
 // checkboxes) is the named remainder on the views — the port's page
-// session carries no roles runtime, and no golden pins it (the capture
-// sessions hold none).
+// session carries no roles runtime, and no pinned page exercises it.
 //
 // Render-level dispatch of the Self-set views rides the codename-key
 // chain-walk divergence (known-divergences-from-ruby.md; the inverted
