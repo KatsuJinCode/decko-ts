@@ -17,25 +17,24 @@
 //      by tag; the next read rebuilds lazily (ISR shape). Nobody rebuilds
 //      synchronously inside the write.
 //
-// THE A2 RULE IS BINDING (the in-house incident this rule exists for:
-// the corresponding port note:389-414 — a durable junction-pair map
-// consulted by the write path's lexToId made an intra-act trash-and-
-// recreate resolve through STALE derived state and fail the write): the
-// derived store is READ-SCOPE ONLY for the serving path, and the recompute
-// path must never CONSULT it for truth. The rule is enforced here BY
-// TYPES: `WritableDerivedStore` (what a recompute may do to the side db)
-// exposes write operations and metadata counters only — it has no method
-// that RETURNS content-derived data. A recompute that tried to resolve
-// card identity or content through the derived store WOULD NOT COMPILE.
-// (Runtime canary: tests/card/one-trip/invalidation.test.ts logs every
-// statement the recompute issues against the side store and fails on any
-// SELECT against the data tables.)
+// THE DERIVED-STORE RULE IS BINDING (it exists because a durable
+// junction-pair map consulted by the write path's lexToId made an
+// intra-act trash-and-recreate resolve through STALE derived state and fail
+// the write): the derived store is READ-SCOPE ONLY for the serving path,
+// and the recompute path must never CONSULT it for truth. The rule is
+// enforced here BY TYPES: `WritableDerivedStore` (what a recompute may do to
+// the side db) exposes write operations and metadata counters only — it has
+// no method that RETURNS content-derived data. A recompute that tried to
+// resolve card identity or content through the derived store WOULD NOT
+// COMPILE. (Runtime canary: tests/card/one-trip/invalidation.test.ts logs
+// every statement the recompute issues against the side store and fails on
+// any SELECT against the data tables.)
 //
-// At this deck's scale (19,482 cards, writes rare through a controlled
-// path) the pragmatic recompute strategy is whole-affected-subtree
-// rebuild; the SPEC names the incremental delta (monotonic cross-product
-// for insertions, DRed or subtree recompute for deletions) as the
-// production shape a write-path integration would adopt.
+// At a deck of this scale, with writes rare and arriving through a
+// controlled path, the pragmatic recompute strategy is whole-affected-
+// subtree rebuild; the SPEC names the incremental delta (monotonic
+// cross-product for insertions, DRed or subtree recompute for deletions) as
+// the production shape a write-path integration would adopt.
 
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import { buildOneTripClosure } from "./closure-builder.js";
@@ -48,11 +47,11 @@ export interface ReadableCorpus {
 }
 
 /** The recompute path's view of the derived store: WRITE-ONLY over the
- *  data tables plus metadata reads. This is the A2 seam — deliberately NOT
- *  a SQLDatabaseDriver, so a recompute cannot SELECT derived rows even by
- *  accident. (Invalidate-the-artifact reads — "does page X have a stored
- *  closure?" — are metadata; they ride metaTableExists below, not the data
- *  tables.) */
+ *  data tables plus metadata reads. This is the derived-store seam —
+ *  deliberately NOT a SQLDatabaseDriver, so a recompute cannot SELECT
+ *  derived rows even by accident. (Invalidate-the-artifact reads — "does
+ *  page X have a stored closure?" — are metadata; they ride
+ *  metaTableExists below, not the data tables.) */
 export interface WritableDerivedStore {
   /** Execute a store-mutating statement (INSERT/DELETE/DDL). No reads. */
   execute(sql: string, params: unknown[]): Promise<{ changes: number }>;
@@ -100,23 +99,22 @@ export async function affectedPagesForCardWrite(inputs: {
   return result.rows.map((r) => ({ pageId: r.page_id }));
 }
 
-/** Step 2b (the plan invalidation, 2026-10-05): drop the recorded render
- *  plans for the named pages.
+/** Step 2b: drop the recorded render plans for the named pages.
  *
  *  THE GAP THIS CLOSES. A recorded plan (one_trip_render_plans) is a
  *  transcript of the statements one page's cold render issued; the serve path
  *  replays it and answers matching reads from the RECORDED RESULT SET
- *  (one-trip-fetch.ts:264-269, render-gate.ts:135-139). Before this, a
- *  recompute re-derived the closure tables and left the plan rows describing
- *  the PRE-WRITE world — so the L2 measurement's 38 recorded demo pages (4,240 rows)
- *  had no path to losing their truth after an edit. This deletes it.
+ *  (one-trip-fetch.ts:264-269, render-gate.ts:135-139). Without this, a
+ *  recompute re-derives the closure tables and leaves the plan rows
+ *  describing the PRE-WRITE world — so recorded pages had no path to losing
+ *  their truth after an edit. This deletes it.
  *
- *  DELETE, NOT RE-RECORD. Re-recording each page inline costs the whole cold
- *  render in the exact serving posture — the L2 measurement recorded 896,269 ms for
- *  38 pages (~23.6 s/page) against the serving database, so a write reaching
- *  N pages would block for N x 23.6 s. Deleting returns the page to the
- *  ladder, which is the pre-plan posture: byte-identical output, more round
- *  trips. The cost of this mechanism is trips, never bytes.
+ *  DELETE, NOT RE-RECORD. Re-recording each page inline costs a whole cold
+ *  render in the exact serving posture, which is tens of seconds per page
+ *  against the serving database, so a write reaching N pages would block for
+ *  N times that. Deleting returns the page to the ladder, which is the
+ *  pre-plan posture: byte-identical output, more round trips. The cost of
+ *  this mechanism is trips, never bytes.
  *
  *  THE TRIGGER SIBLING. ONE_TRIP_PLAN_INVALIDATION_TRIGGER_DDL
  *  (side-db-schema.ts) fires the same DELETE from the storage layer, so it
@@ -155,14 +153,14 @@ export async function invalidateRenderPlansForPages(inputs: {
  *  so the edge rebuild here also lands the new edges — the two steps
  *  converge.
  *
- *  A2: `store` is a WritableDerivedStore — the recompute cannot read
- *  derived data even if its author wanted to. */
+ *  `store` is a WritableDerivedStore — the recompute cannot read derived
+ *  data even if its author wanted to. */
 export async function recomputeClosuresForPages(inputs: {
   corpus: ReadableCorpus;
   side: WritableDerivedStore;
   pageIds: readonly number[];
   /** page id -> page name (the write path knows it; the store must not be
-   *  consulted for it — that would be an A2 violation). */
+   *  consulted for it — that would break the derived-store rule). */
   pageNames: Map<number, string>;
   /** The live edges the parse just produced (step 1's output). When
    *  omitted, the recompute derives edges from the corpus itself. */
@@ -177,7 +175,8 @@ export async function recomputeClosuresForPages(inputs: {
   const sideAsBuilderStore = {
     query: async <T = unknown>(sql: string, params: unknown[]): Promise<{ rows: T[] }> => {
       // The builder's DDL/meta writes route through here. Reads against the
-      // derived store would violate A2 — so this adapter REFUSES SELECTs.
+      // derived store would break the read-scope rule — so this adapter
+      // REFUSES SELECTs.
       if (/^\s*(select|with)/i.test(sql)) {
         throw new Error(
           "A2 VIOLATION GUARD: the invalidation recompute attempted to READ the derived store",
