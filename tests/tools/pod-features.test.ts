@@ -85,8 +85,8 @@ const SOW_CASES: { file: string; opts: SowOptions }[] = [
 ];
 
 /** The stored files under a deck files directory: "<card>/<file>" and the
- *  SHA-1 of every file but the image versions (the encoder's bytes, measured
- *  by the side-effects report). */
+ *  SHA-1 of every file but the image versions (their bytes come from each
+ *  side's own image encoder, so they are not comparable). */
 function storedFiles(root: string): { file: string; sha1: string | null }[] {
   const out: { file: string; sha1: string | null }[] = [];
   for (const dir of readdirSync(root).sort()) {
