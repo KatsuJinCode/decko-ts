@@ -139,15 +139,13 @@ describe("compareNormalized (both sides normalized, then exact bytes)", () => {
   });
 });
 
-// The two fragments below are the REAL bytes the canvas capture and the engine
-// emitted for the `mod: core` page entry at 35ca70a, taken verbatim from the
-// first-diff probe's own output pair
-// (/tmp/longtail-firstdiff/probe-batch4/
-//  {expected,actual}--mod_core__page.html). Both are 329 bytes; the only
-// difference between them is the accordion group token, in BOTH positions the
-// engine emits it (the `data-bs-target='#...'` fragment and the `id='...'`
-// attribute). 97674992 is Ruby's String#hash("Admin") from the capture
-// process; 63116079 is core-mod.ts stringHash("Admin") from the engine.
+// The two fragments below are a real-shaped byte pair for the `mod: core`
+// page's accordion band: both are 329 bytes and the ONLY difference between
+// them is the accordion group token, in BOTH positions the engine emits it
+// (the `data-bs-target='#...'` fragment and the `id='...'` attribute).
+// 97674992 is Ruby's String#hash("Admin"), which Ruby seeds per process;
+// 63116079 is core-mod.ts stringHash("Admin"). A comparator cannot pin a
+// per-process value, so it must mask the token instead.
 const MOD_CORE_EXPECTED_ACCORDION =
   "<div class='accordion-item'>\n<h2 class='accordion-header nodblclick w-100'>\n<button class='collapsed accordion-button' data-bs-target='#card-mod_core-97674992-collapse-id' data-bs-toggle='collapse' type='button'>\nAdmin\n</button>\n</h2>\n<div class='accordion-collapse collapse' id='card-mod_core-97674992-collapse-id'>\n<div class='";
 const MOD_CORE_ACTUAL_ACCORDION =
@@ -222,10 +220,10 @@ describe("compareNormalized judges the mod:<x>:page accordion band", () => {
   });
 
   it("closes the -8..+4 digit-count band: a 9-digit capture token vs a 7-digit engine token", () => {
-    // mod: format's shape - a 9-digit capture token against a 7-digit engine
-    // token is the whole of that entry's delta. This synthetic pair carries the
-    // token twice, so it measures -4; the recorded -8 is the same rule across
-    // the page's four occurrences plus its sign positions.
+    // mod: format's shape - a 9-digit token against a 7-digit token is the
+    // whole of that entry's delta. This synthetic pair carries the token
+    // twice, so it measures -4; the same arithmetic across a full page
+    // (four occurrences plus their sign positions) measures -8.
     const expected = "<div data-bs-target='#card-mod_format-660361415-collapse-id' id='card-mod_format-660361415-collapse-id'>";
     const actual = "<div data-bs-target='#card-mod_format-2603341-collapse-id' id='card-mod_format-2603341-collapse-id'>";
     const strict = byteDiff(expected, actual);
@@ -244,7 +242,8 @@ describe("compareNormalized judges the mod:<x>:page accordion band", () => {
 
   it("still fails when the ENGINE omits the hashed accordion the capture emitted", () => {
     // Masking must not manufacture agreement across a structural difference:
-    // the capture's token becomes HASH, the engine has no accordion at all.
+    // the expected side's token becomes HASH, the other side has no
+    // accordion at all.
     const diff = compareNormalized(
       "<div data-bs-target='#card-mod_core-97674992-collapse-id'><p>group</p></div>",
       "<div class='card-slot'><p>group</p></div>"
@@ -270,8 +269,8 @@ describe("normalizeSlotIds keeps its documented recording-layer contract", () =>
 
 
 describe("normalizeCloudflareChallengeBlocks (the CF challenge-block mask)", () => {
-  // The real block shape from the graded page captures (938 bytes on every
-  // carrier; r/t are the per-response tokens, held here as obvious
+  // The real Cloudflare challenge-block shape (900+ bytes on every page
+  // that carries it; r/t are the per-response tokens, held here as obvious
   // placeholders -- the mask keys on the __CF$cv$params anchor, not on
   // their values).
   const CF_BLOCK =
@@ -283,7 +282,7 @@ describe("normalizeCloudflareChallengeBlocks (the CF challenge-block mask)", () 
     // RAW bytes differ (the block is 900+ bytes the engine never emits)...
     expect(byteDiff(engine, live, 20).equal).toBe(false);
     // ...the compare seam masks them (compareNormalized applies
-    // normalizeForReplay to both sides), which is what the canvas grade reads.
+    // normalizeForReplay to both sides), so the comparison sees equal bytes.
     expect(compareNormalized(engine, live).equal).toBe(true);
     // the pure mask is idempotent and a no-op on block-free bytes.
     expect(normalizeCloudflareChallengeBlocks(engine)).toBe(engine);
