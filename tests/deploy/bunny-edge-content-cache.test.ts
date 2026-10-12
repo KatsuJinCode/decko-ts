@@ -4,10 +4,10 @@
 // Scope: everything verifiable offline. The runtime Cache API is substituted
 // with an in-memory fake implementing the same match/put surface, so these
 // tests prove the decision logic (hit/miss/store/bypass/unavailable) without
-// any runtime or network. The live armed behavior on the trial edge is
-// asserted through the X-Decko-Edge-Cache diagnostic header by the
-// measurement runs (this lane's receipt); these tests pin what the module
-// must do so the live observation has an unambiguous contract to check.
+// any runtime or network. The module labels its decisions on the
+// X-Decko-Edge-Cache diagnostic header, which is what an armed live edge can
+// be checked against; these tests pin what the module must do so that
+// observation has an unambiguous contract to check.
 
 import { describe, expect, it } from "vitest";
 
