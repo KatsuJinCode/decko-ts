@@ -1,5 +1,5 @@
-// Pins for the Bunny edge's FULL PAGE SHELL (edge-site-shell lane,
-// 2026-10-02): the served-environment deltas of bunny-edge-page-shell.ts,
+// Pins for the Bunny edge's FULL PAGE SHELL: the served-environment deltas
+// of bunny-edge-page-shell.ts,
 // the 200-page assembly through the REAL handler — renderPageBytes + deltas,
 // the same call the entry makes — and the /files/<id>/<leaf> attachment
 // route.
@@ -10,30 +10,27 @@
 // SRI hashes. This suite pins BOTH halves of that change:
 //
 //   - UNCONFIGURED (the default): a stock 0.20.0 deck. No version rewrite,
-//     no corpus stylesheet revision, no injected SRI — the engine's own
+//     no stylesheet-revision rewrite, no injected SRI — the engine's own
 //     bytes pass through untouched apart from the trailing newline every
 //     served HTML document carries. That is the regression guard: no deck's
 //     private identity can leak into a deployment that configured nothing.
 //   - CONFIGURED: the production migration deployment's deltas
 //     (fixtures/production-deck-served-deltas.ts — the same values its
-//     runbook sets), which apply exactly and reproduce the live bytes this
-//     lane originally measured.
+//     runbook sets), which apply exactly and reproduce the production
+//     deployment's served bytes.
 //
-// The shell the configured deployment buys, measured against the live site
-// 2026-10-02 (example.com/Home, browser-UA fetch, 22,975 bytes): favicon
-// link, Material-Icons stylesheet, compiled site CSS at the live Spaces CDN
-// URL, five remote scripts WITH integrity hashes, the main decko script,
-// decko.* script variables, the *header navbar, the *footer credit — every
-// one absent from the pre-lane edge (0 <link> / 0 <script> tags, no
-// <nav>/<footer>).
+// The shell the configured deployment buys: favicon
+// link, Material-Icons stylesheet, compiled site CSS at the configured
+// Spaces CDN URL, five remote scripts WITH integrity hashes, the main decko
+// script, decko.* script variables, the *header navbar, the *footer credit —
+// every one absent from the bare layoutPage shell.
 //
 // The 200-pin's deck seeds the codename cards the page head reads
 // (*title, *favicon) and the code-default layout nests (:header, :sidebar,
 // :footer) — a deck missing a codename raises CodenameNotFoundError in the
 // page path (Ruby's Card[:codename] returns nil there; the port's
-// mark-parse raises — an engine-lane residual, not a shell concern: the
-// trial deck carries the full corpus codename set, measured via the live
-// edge's /api/card/*title).
+// mark-parse raises — a rendering-engine concern, not a shell concern: a
+// real deck carries the full codename set).
 
 import { describe, expect, it } from "vitest";
 
@@ -150,10 +147,9 @@ describe("bunny edge page shell — CONFIGURED deltas (the production deployment
   });
 
   it("pins the footer version through the literal form a *credit embeds", () => {
-    // Live proof on release 1126050: the edge printed "Decko v0.20.0" (the
-    // deck's *credit content carries the version literally) where the site
-    // prints 0.19.1 — the bare-form rewrite no-ops on this shape, so the
-    // configured pin rewrites the literal form too.
+    // The deck's *credit content can carry the version literally where the
+    // site prints the pinned version — the bare-form rewrite no-ops on this
+    // shape, so the configured pin rewrites the literal form too.
     expect(
       applyServedEnvironmentDeltas(`<a href="http://decko.org">Decko v0.20.0</a>`, DELTAS).trimEnd(),
     ).toBe(`<a href="http://decko.org">Decko v0.19.1</a>`);
@@ -297,14 +293,12 @@ describe("bunny edge page shell — the /files/ helpers", () => {
 });
 
 /** The minimal full-shell deck: the codename cards the page head reads,
- *  the CARD LAYOUT the real deck resolves (the corpus *all+*layout rule ->
+ *  the CARD LAYOUT a real deck resolves (the *all+*layout rule ->
  *  "Default Layout", whose body nests {{:header|core}} / {{_main|titled}} /
- *  {{:footer|content}} — the same shape the live edge's /api/card/Default
- *  Layout carries), plus a readable Home card. The card-layout path is the
- *  one the trial deck takes (measured: Default Layout id 22747 exists on
- *  the edge); the engine's code-default fallback never warms its codename
- *  nests (page.ts warmUpLayoutNests runs for card layouts only), so the
- *  pin seeds the real shape, not the fallback. */
+ *  {{:footer|content}}), plus a readable Home card. The card-layout path is
+ *  the path a real deck takes; the engine's code-default fallback never
+ *  warms its codename nests (page.ts warmUpLayoutNests runs for card
+ *  layouts only), so the pin seeds the real shape, not the fallback. */
 async function seedShellDeck(storage: RenderTestStorage): Promise<void> {
   // The read-rule party math (AnyoneID=8, AnonymousID=15) — the same
   // minimal anonymous boot the error-mapping pin uses.
@@ -334,7 +328,7 @@ async function seedShellDeck(storage: RenderTestStorage): Promise<void> {
   await seedCard(storage, { id: 600, name: "*all", codename: "all", typeId: 52 });
   await seedCard(storage, { id: 601, name: "*layout", codename: "layout", typeId: 52 });
   // The deck's layout rule and the Default Layout card it names — the
-  // corpus shape (the layout body's main chunk is {{_main|titled}}).
+  // reference shape (the layout body's main chunk is {{_main|titled}}).
   await seedCard(storage, {
     id: 22746,
     name: "*all+*layout",
@@ -430,8 +424,8 @@ describe("bunny edge page shell — the 200-page assembly through the real handl
       });
       expect(res.status).toBe(200);
       const body = await res.text();
-      // The engine's own full page shell is still assembled (this lane's
-      // real work) — what is absent is ANOTHER DECK'S identity.
+      // The engine's own full page shell is still assembled — what is
+      // absent is ANOTHER DECK'S identity.
       expect(body).toContain(`<html class="h-100">`);
       expect(body).toContain(`<title>Home - Test Site</title>`);
       expect(body).toContain(`<nav class="navbar navbar-expand-lg">`);
