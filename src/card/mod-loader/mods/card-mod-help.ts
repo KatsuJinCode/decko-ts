@@ -80,7 +80,7 @@ function helpRuleCard(ctx: ViewContext): ReturnType<ViewContext["fmt"]["engine"]
 
 /** help.rb:36-38 raw_help_text: `card.try(:raw_help_text) ||
  *  card.help_rule_card&.content`. The static setting-level defs the first
- *  operand serves are set-module methods this surface's probe cards do not
+ *  operand serves are set-module methods ordinary cards do not
  *  carry (they live in the settings' self/right sets); undefined falls to
  *  the rule card's content. */
 function rawHelpText(ctx: ViewContext): string | undefined {
