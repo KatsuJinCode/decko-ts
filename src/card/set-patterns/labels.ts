@@ -6,7 +6,7 @@
  * set/type/set.rb#label passes anchor_name). Patterns that define no
  * generic_label fall back to `label nil` (lib/card/set/pattern/
  * class_methods.rb#generic_label), which is why e.g. the *rule generic label
- * equals its label ("All rule cards") - oracle-verified.
+ * equals its label ("All rule cards").
  *
  * Note: short_label appends a plain "s" ("Books"), it does not pluralize
  * through the inflector - the source is a string interpolation.
@@ -86,7 +86,7 @@ export function rightGenericLabel(): string {
 /**
  * 08_type_plus_right.rb: label %(All "+#{name.tag}" cards on "#{name.left}"
  * cards). The anchor is a two-part name "Type+Field"; a one-part anchor
- * yields left "" (oracle: label("Book") => 'All "+Book" cards on "" cards').
+ * yields left "" (label("Book") => 'All "+Book" cards on "" cards').
  */
 export function typePlusRightLabel(anchor: string | undefined): string {
   const { tag, left } = tagAndLeft(anchor);

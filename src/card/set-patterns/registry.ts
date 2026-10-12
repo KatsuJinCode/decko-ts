@@ -20,11 +20,9 @@
  *   [self, type_plus_right, right, rule, rstar, star, type, all_plus, all]
  *
  * This is the lookup/precedence order: rule lookups and set-module inclusion
- * walk most-specific-first. Oracle-verified (live decko 0.20.0 runner,
- * tests/card/set-patterns/set-pattern-oracle-capture.json):
- *   concrete codes == ["self", "type_plus_right", "right", "rule", "rstar",
- *                      "star", "type", "all_plus", "all"]
- *   ids == [27, 25, 26, 24, 23, 22, 21, 20, 7]  (deck-specific card ids)
+ * walk most-specific-first. Verified against a running deck (decko 0.20.0),
+ * whose concrete codes are exactly the list above, with deck-specific card
+ * ids [27, 25, 26, 24, 23, 22, 21, 20, 7].
  *
  * Only card-1.110.0's core mod ships set_pattern files; none of the installed
  * card-mod-* gems add one (checked: no set_pattern dirs in the gems).
@@ -181,8 +179,8 @@ export const PATTERN_TABLE: readonly PatternSpec[] = Object.freeze([
     applies: (card) => defaultApplies(true, card),
     // 08_type_plus_right.rb#anchor_name: "#{left_type(card)}+#{card.name.tag}"
     // left_type: card.superleft&.type_name || quick_type(left_name); quick_type
-    // yields "RichText" for blank AND unknown names (new-card default type) -
-    // oracle: new "Zz Probe New+field" -> anchor "RichText+field".
+    // yields "RichText" for blank AND unknown names (new-card default type),
+    // so a new "<x>+field" card anchors "RichText+field".
     anchorName: (card) => {
       const leftType =
         card.leftTypeName == null
@@ -340,7 +338,7 @@ export function patternCodes(): string[] {
  * Pattern.ids (lib/card/set/pattern.rb#ids): `concrete.map(&:pattern_id)`
  * where pattern_id = pattern_code.card_id - the pattern CARD's id, resolved
  * through the codename registry (ClassMethods#pattern_id:
- * `pattern_code.card_id`). Deck-specific (oracle deck: self=27,
+ * `pattern_code.card_id`). Deck-specific: on one measured deck self=27,
  * type_plus_right=25, right=26, rule=24, rstar=23, star=22, type=21,
  * all_plus=20, all=7). Codes without a registered id yield undefined.
  */
@@ -353,7 +351,7 @@ export function patternIds(
 /**
  * Pattern.grouped_codes (lib/card/set/pattern.rb#grouped_codes): codes in
  * LOAD order, grouped as [:all], [:abstract], then the nonbase codes
- * reversed (lookup order reversed = load order). Oracle-verified:
+ * reversed (lookup order reversed = load order):
  *   [["all"], ["abstract"], ["all_plus", "type", "star", "rstar", "rule",
  *    "right", "type_plus_right", "self"]]
  */

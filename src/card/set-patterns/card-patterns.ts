@@ -50,7 +50,7 @@ export function ruleLookupKeysForCard(card: PatternCardInput): string[] {
 
 /**
  * Set::Pattern::All#safe_set_keys: `patterns.map(&:safe_key).reverse * " "` -
- * most-general first (oracle: "ALL TYPE-rich_text SELF-oracle_basic").
+ * most-general first (e.g. "ALL TYPE-rich_text SELF-basic").
  */
 export function safeSetKeysForCard(card: PatternCardInput): string {
   return patternsForCard(card)
