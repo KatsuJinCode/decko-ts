@@ -1,16 +1,15 @@
 // vm-staging-server.mjs — Node HTTP staging copy of the decko-ts
 // engine, served from a configurable asset directory so a developer can click
 // through real pages in a browser while parity work continues.
-// Read-only browse PLUS the write-path
-// slice-1 sign-in surface (2026-09-27): no editing, no search. Every
-// anonymous GET byte is unchanged — the sign-in endpoints are additive.
+// Read-only browse PLUS a session sign-in surface: no editing, no search.
+// Every anonymous GET byte is unchanged — the sign-in endpoints are additive.
 //
 // Routes (the engine-canonical surface, mirrors deploy/worker.ts):
 //   GET /                 -> render "Home" card page (HTML, full shell)
 //   GET /_status          -> engine + database health JSON
-//   GET /_signin          -> the staging sign-in form page (slice-1,
-//                            Default Layout chrome; live renders the
-//                            *signin card's own form at this route —
+//   GET /_signin          -> the staging sign-in form page
+//                            (Default Layout chrome; the served deck renders
+//                            the *signin card's own form at this route —
 //                            set/self/signin.rb — which the TS engine
 //                            cannot render: the account-mod form views
 //                            are unported rails)
@@ -21,21 +20,21 @@
 //                                   in the scrubbed corpus — these routes
 //                                   serve what's available so the layout
 //                                   references resolve rather than 404).
-//   POST /_signin         -> slice-1 sign-in: identifier (email or name)
+//   POST /_signin         -> staging sign-in: identifier (email or name)
 //                            + password, verified against the corpus's
 //                            real +*account+*password digests (Ruby's
 //                            salted SHA-1, Card::Auth.encrypt
 //                            auth.rb:36-39 — NOT bcrypt); issues a
 //                            session cookie on success
-//   POST /_signout        -> slice-1 sign-out: revokes the presented
+//   POST /_signout        -> staging sign-out: revokes the presented
 //                            session (card-mod-account's :signout event
 //                            semantics, set/self/signin.rb:25-29)
-//   POST /_reset-request  -> lane-reset-flows: the :send_reset_password_token
+//   POST /_reset-request  -> the :send_reset_password_token
 //                            event (set/self/signin.rb:27-31) — email in,
 //                            reset email with the token link out (transport
 //                            NOOP unless DECKO_MAIL_CAPTURE=1, which also
 //                            exposes GET /_mail-log to drain the capture)
-//   GET  /update/<mark>   -> lane-reset-flows: the EMAILED LINK consumption
+//   GET  /update/<mark>   -> the EMAILED LINK consumption
 //        ?card[trigger]=     (set/right/account/views.rb:34-38 token_url;
 //        reset_password|     Ruby consumes it via engine_routes' explicit
 //        verify_and_activate GET alternative into card#update) — the JWT
@@ -43,23 +42,24 @@
 //                            +account edit view on success. Scoped to
 //                            exactly this trigger+token shape; every other
 //                            GET stays read-only (write-routes' posture).
-//   POST /_account-password -> lane-reset-flows: the +account edit form
+//   POST /_account-password -> the +account edit form
 //                            submit's staging endpoint (the +*password
 //                            validate/store events, set/right/password.rb)
 //                            — session cookie required, writes the member's
 //                            own digest
-//   anything else         -> Decko's full-chrome error pages (live-shape,
-//                             2026-09-26): an unresolved card name gets the
+//   anything else         -> Decko's full-chrome error pages: an unresolved
+//                             card name gets the
 //                             not_found page (404, Default Layout chrome,
 //                             "Not Found" frame, noindex head meta); a
 //                             raising render gets the deck error page
 //                             (500, "Wild Card! / 500 Server Error").
 //
-// Session surface (slice-1): the presented session token renders GET
+// Session surface: the presented session token renders GET
 // pages AS THAT ACCOUNT — render.viewer is set from the token
 // (render-viewer-for-session.ts; an unknown/expired/revoked token degrades
 // to the Anonymous viewer exactly like auth/current.rb:58-63). Anonymous
-// requests render through the SAME engine instance as before this slice,
+// requests render through the SAME engine instance as before the session
+// surface existed,
 // untouched. Signed-in requests use a per-actor RenderEngine (the render
 // caches memoize permission state — render.ts's viewer field must be set
 // before an engine's first render). Two engines are kept; a third account
@@ -75,26 +75,22 @@
 // GET but /_signin fails loudly at boot. Give the server a writable COPY
 // of the corpus; the read-only GET paths still never write card data.
 //
-// PAGE PATH (r18): pages render through the ENGINE's page entry
+// PAGE PATH: pages render through the ENGINE's page entry
 // (dist/src/card/render/page.js renderPageBytes — the show_with_page_layout
 // port: per-card *layout rule walk, main! render, layout-body processing,
-// html_page head). The round-9/10 origin-side byte-surgery bridges
-// (stripOpenViewWrapper, convertOuterToTitledShape,
-// convertNestedTitledViewsToContentView, postProcessImageCards,
-// postProcessWikiLinks, postProcessSearchCards) are RETIRED — every engine
-// page-lane fix (sentinels, nitpicks context chain, searchctx, R16 bars,
-// the R18 item:titled heir-key fix) reaches the wire the moment it lands
-// in the engine. What this file still owns is the SERVED ENVIRONMENT
-// (applyServedEnvironmentDeltas): the live-receipted deltas between the
-// engine's pinned capture environment and the served deck — the Spaces
-// asset host (audit A-1), the live CSS revision (A-2), the CDN script
-// integrity attributes (A-4), the "Decko v0.19.1" footer pin (the corpus's
-// *version db_content is empty; live prints 0.19.1), and the trailing
-// newline after </html>. Error pages keep the literal-substitution shell
-// (wrapWithLayout) — the not_found shape is byte-pinned from live.
+// html_page head). This origin deliberately applies NO byte surgery of its
+// own on the page path — any fix the engine lands reaches the wire
+// immediately. What this file still owns is the SERVED ENVIRONMENT
+// (applyServedEnvironmentDeltas): the deployment deltas between the
+// engine's pinned environment and the served deck — the Spaces
+// asset host, the served CSS revision, the CDN script
+// integrity attributes, the "Decko v0.19.1" footer pin (the corpus's
+// *version db_content is empty; the served deck prints 0.19.1), and the
+// trailing newline after </html>. Error pages keep the literal-substitution
+// shell (wrapWithLayout) — their shape is pinned to the served bytes.
 //
 // Shell context: the page wraps the rendered card view through the deck's
-// "Default Layout" (id 22747, codename `default_layout`). The layout body
+// "Default Layout" (codename `default_layout`). The layout body
 // is `<header>...</header> <article ...>{{_main|titled}}</article>
 // <footer>...</footer>`; the *header and *footer setting cards carry the
 // navbar / credit markup the layout nests. The outer HTML doc
@@ -116,7 +112,7 @@ import { DeckoName } from "./dist/src/card/name.js";
 import { applyDeckInflections } from "./dist/src/card/name/inflect.js";
 import { CARD_GEM_INITIALIZER_INFLECTIONS } from "./dist/src/card/name/oracle-deck-inflections.js";
 import { sqliteRegexpUdf } from "./dist/src/cql/sqlite-regexp.js";
-// The first-run journey (first-run-experience lane): Ruby's
+// The first-run journey: Ruby's
 // Card::Auth.needs_setup? census + the owner create, as a separate HTTP
 // surface. Off unless DECKO_FIRST_RUN=1 - handleFirstRunRequest returns null
 // for every request when the flag is unset, so the unarmed staging server
@@ -126,7 +122,7 @@ import { firstRunEnabled, handleFirstRunRequest, SETUP_PATH } from "./dist/src/s
 // "Cross-site requests"): DECKO_ORIGIN_CHECK / DECKO_TRUSTED_ORIGINS, read at boot.
 import { checkRequestOrigin, CROSS_ORIGIN_MESSAGE, defaultOriginPolicy } from "./dist/src/server/request-origin.js";
 const ORIGIN_POLICY = defaultOriginPolicy();
-// The boot-seed capability (R-3b lane): Cardio::Seed.load + card:eat's
+// The boot-seed capability: Cardio::Seed.load + card:eat's
 // account-system surface, so a FRESH (empty) deck boots bootstrapped —
 // Anonymous/DeckoBot resolvable and the role/account cards present. Ruby
 // seeds at install time right after schema init (card.rake:4-6 card:setup =
@@ -136,9 +132,9 @@ import { bootstrapFreshDeck } from "./dist/src/card/auth/boot-seed.js";
 import { createVirtualCardLookup } from "./dist/src/card/fetch/virtual-cards.js";
 import { newSlotId } from "./dist/src/card/render/slot-html.js";
 import { renderPageBytes, renderPageWithStatus } from "./dist/src/card/render/page.js";
-// The compiled *all+*script bundle (tinymce-assets lane): the OUTPUT side of
+// The compiled *all+*script bundle: the OUTPUT side of
 // Ruby's script-asset pipeline — per-leaf comment_with_source +
-// Uglifier(harmony) compression, oracle-verified byte parity (see
+// Uglifier(harmony) compression (see
 // src/card/assets/compiled-script-bundle.ts).
 import { compileScriptBundle } from "./dist/src/card/assets/compiled-script-bundle.js";
 // The deck-boot seam (default-mod-deck.ts): loads the composed 31-mod deck
@@ -149,10 +145,9 @@ import { compileScriptBundle } from "./dist/src/card/assets/compiled-script-bund
 // mod-registered view — the whole card-mod-edit form chain (:edit,
 // :edit_form, :edit_buttons, :input, ...), history, rules, account forms —
 // raises UnsupportedViewError at the serving surface even though the views
-// are ported and byte-pinned at the engine level (the edit-forms lane's
-// session2-gap-8 mechanism: ?view=edit answered 422 where live shows 200).
+// themselves are ported.
 import { defaultDeckLoader } from "./dist/src/card/mod-loader/default-mod-deck.js";
-// Write path (write-path slice 2): the whole write surface lives in its own
+// Write path: the whole write surface lives in its own
 // module — see src/server/write-routes.ts for the grammar/auth/CSRF sources.
 import {
   handleWriteRequest,
@@ -161,13 +156,13 @@ import {
   sessionCookieHeader,
   clearedSessionCookieHeader,
 } from "./dist/src/server/write-routes.js";
-// The recaptcha seat's host-config source (staging-seat-wiring lane): reads
+// The recaptcha seat's host-config source: reads
 // the DECKO_RECAPTCHA_* environment keys into the WriteRouteContext.recaptcha
 // seat (write-routes.ts). Undefined until ops sets the keys — INERT by
 // default; the rule walk and the real siteverify GET stay the engine's
 // defaults. Key NAMES only here; no key VALUES live in this repo.
 import { recaptchaConfigFromHostEnv } from "./dist/src/server/staging-server-recaptcha-env-config.js";
-// The attachment storage seam (uploads2 lane): new uploads land as
+// The attachment storage seam: new uploads land as
 // files/<cardId>/<actionId><ext> under DECKO_FILES_DIR — Ruby's
 // Card.paths["files"] port (card-mod-carrierwave paths.rb:14-17) — and
 // serve through the local fallback in handleAssetFile below.
@@ -180,7 +175,7 @@ import {
   structureUniverseFromResults,
   structureRuleTypesFromResults,
 } from "./dist/src/card/rules/structure.js";
-// Write-path slice-1: session-backed sign-in. The auth store lives in the
+// Write path, session-backed sign-in: the auth store lives in the
 // same sqlite file (auth_sessions table, runAuthMigrations at boot) and the
 // per-request token picks the render engine whose viewer is that account
 // (RenderEngine.viewer, the seam  wires —
@@ -193,7 +188,7 @@ import {
   signoutAccount,
 } from "./dist/src/card/auth/index.js";
 
-// The member account email-token flows (lane-reset-flows): request reset ->
+// The member account email-token flows: request reset ->
 // reset email (token link) -> confirm -> set new password, plus the signup
 // arm's verify/activate. Ruby sources: card-mod-account set/self/signin.rb
 // (send_reset_password_token), set/right/account/events.rb
@@ -220,14 +215,14 @@ import {
 // this call the engine computes `participant_` where the corpus stores
 // `participant_s` ("Participant(s)"), the CQL name resolver falls back to
 // Ruby's -999 sentinel, and every plus-join on those junctions ("+Project(s)
-// Participating" sections, "+Participant(s)" children) returns zero rows
-// (2026-09-25 staging "0 results" defect 1). applyDeckInflections also drops
+// Participating" sections, "+Participant(s)" children) returns zero rows.
+// applyDeckInflections also drops
 // the DeckoName parse cache, so the keys primed below (primeEngine's
 // keyToId / idToName maps) are computed under the deck table.
 applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
 
 // ---------------------------------------------------------------------------
-// Lexicon / codename cache backing store (origin-side round 8 wiring)
+// Lexicon / codename cache backing store
 // ---------------------------------------------------------------------------
 //
 // The deck has 49,829 cards in `cards`. The engine's two `CardCache`
@@ -252,21 +247,19 @@ const sharedStore = {
 };
 
 // ---------------------------------------------------------------------------
-// Live image host (Spaces) + size options
+// Image host (Spaces) + size options
 // ---------------------------------------------------------------------------
 //
 // The deck's stored image URLs (corpus `db_content` on image cards) point at
-// the deck's original S3 bucket, but the live deck's CDN is now fronting
-// files from the Spaces bucket production-storage at the same
-// path scheme (`/files/<cardId>/<fileId>-<size>.<ext>`).
+// the deck's original S3 bucket, but the served deck fronts files from the
+// Spaces bucket at the same path scheme
+// (`/files/<cardId>/<fileId>-<size>.<ext>`).
 //
-// A-1 (round 10, assumption audit): every asset URL on every live page uses
-// the `.cdn.` Spaces subdomain —
-// `https://production-storage.r1.cdn.objectstore.example`
-// (12/12 live pages: JS, CSS, favicon, logo, and every content image; e.g.
-// Home.html `src="…cdn…/files/27689/135167-large.jpg"`). The previous
-// non-cdn host form was derived from a 2026-09-25 200-OK curl receipt, not
-// from the live page bytes — the live bytes never name that host.
+// Every asset URL on the served pages uses the `.cdn.` Spaces subdomain
+// (`https://production-storage.r1.cdn.objectstore.example`) for JS, CSS,
+// favicon, logo, and every content image alike. SPACES_HOST below is that
+// host; an earlier non-cdn host form was wrong — the served pages never
+// name it.
 const SPACES_HOST = "https://production-storage.r1.cdn.objectstore.example";
 
 // DECKO_DECK_PROFILE=stock serves any deck the way stock Decko serves it,
@@ -326,9 +319,8 @@ async function serveModPublicFile(pathname) {
     return htmlResponse(404, "<h1>Not found</h1>", "Not found");
   }
 }
-// (r18: DEFAULT_IMAGE_SIZE retired with the origin image passes — image
-// size variants resolve inside the engine's image views via the nest's
-// size option / imageCdnHost.)
+// (Image size variants resolve inside the engine's image views via the
+// nest's size option / imageCdnHost — no origin-side image handling.)
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -336,7 +328,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 // Compiled-asset directory
 // ---------------------------------------------------------------------------
 //
-// The compile lane produces real SassC-compiled CSS and Uglifier-compressed
+// The compile step produces real SassC-compiled CSS and Uglifier-compressed
 // JS bytes for the deck's two main asset cards. We serve those bytes when
 // present on disk so the CDN-fronted pages receive compiled styling and
 // script (not the deck's SCSS source / *script manifest), and fall back to
@@ -344,10 +336,9 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 // fallback keeps the honest `X-Decko-Asset-Note` header so a missing deploy
 // is observable, not silent.
 //
-// Default location: the committed captured-assets fixture dir, which
-// is the bunny-render service's working directory. Override with
+// Default location: the deployed compiled-assets directory. Override with
 // `COMPILED_ASSETS_DIR=/path` for local testing. Files inside the repo
-// stay out of this path; deployment scp's the compile outputs here.
+// stay out of this path; deployment copies the compile outputs here.
 const COMPILED_ASSETS_DIR =
   process.env.COMPILED_ASSETS_DIR ?? "/opt/decko-bunny-render/oracle-assets";
 
@@ -363,7 +354,7 @@ const COMPILED_ASSET_FILES = {
 };
 
 // ---------------------------------------------------------------------------
-// The compiled *all+*script bundle (tinymce-assets lane)
+// The compiled *all+*script bundle
 // ---------------------------------------------------------------------------
 //
 // Ruby serves the deck's main JavaScript from the STORED bytes of the
@@ -376,14 +367,11 @@ const COMPILED_ASSET_FILES = {
 //
 //   1. The deck's main script output card resolves by codename (*all+*script
 //      rule's +*asset output child), not hardcoded ids — the same query
-//      answers the corpus deck (50617) and the oracle deck (307).
+//      answers any deck's layout.
 //   2. Its bytes come from the deployed compiled-assets directory when the
-//      compile lane put them there, else the in-process compile of the
-//      PINNED assembled input (fixtures/captured/all-script-assembled-input.js,
-//      the cwinput lane's live pin sha 36a3d55d..., through
-//      compiled-script-bundle.ts — 48/49 shared leaves byte-identical to the
-//      live production bundle; divergences named in
-//      fixtures/captured/script-compile-oracle-leaves.json), else the honest
+//      compile step put them there, else the in-process compile of the
+//      PINNED assembled input (the fixture path ASSEMBLED_SCRIPT_FIXTURE
+//      below, through compiled-script-bundle.ts), else the honest
 //      uncompiled-manifest fallback below.
 //
 // Every flavor names itself in the X-Decko-Asset-* headers. The compile is
@@ -420,7 +408,7 @@ let compiledBundlePromise; // Promise<{bytes, note, source} | null>, memoized
 function compiledMainScriptBundle() {
   if (compiledBundlePromise === undefined) {
     compiledBundlePromise = (async () => {
-      // 1. the deployed compiled bytes (the compile lane's scp output)
+      // 1. the deployed compiled bytes (the compile step's output)
       const deployedPath = path.join(COMPILED_ASSETS_DIR, "all-script.js");
       try {
         const bytes = await fs.readFile(deployedPath);
@@ -485,11 +473,10 @@ console.log(`[vm-staging] port: ${port}`);
 // Engine boot
 // ---------------------------------------------------------------------------
 
-// The write path (write-path slice 2) writes card/act/action/changes rows
+// The write path writes card/act/action/changes rows
 // through THIS driver, so when DECKO_WRITE_PATH=1 the browse driver must
 // open writable — the boot default (readonly pure-browse) made every routed
-// write die with SQLITE_READONLY inside ActWriter.batch (observed live in
-// the session-replay2 lane: the routed update crashed the process). The
+// write die with SQLITE_READONLY inside ActWriter.batch. The
 // read-only GET paths still never write card data either way.
 const driver = new LocalSqliteDriver({ path: dbPath, readonly: !writePathEnabled() });
 // CQL match queries compile SQL `field REGEXP ?`; SQLite has no built-in
@@ -499,7 +486,7 @@ const driver = new LocalSqliteDriver({ path: dbPath, readonly: !writePathEnabled
 driver.registerFunction("regexp", sqliteRegexpUdf, { deterministic: true });
 
 // ---------------------------------------------------------------------------
-// Slice-1 auth boot
+// Auth boot
 // ---------------------------------------------------------------------------
 //
 // The corpus driver above stays READ-ONLY and is the only driver the GET
@@ -511,7 +498,7 @@ driver.registerFunction("regexp", sqliteRegexpUdf, { deterministic: true });
 // loudly at boot — that is the deployment contract: give the server a
 // writable copy of the corpus.
 const authDriver = new LocalSqliteDriver({ path: dbPath, readonly: false });
-// The attachment store (uploads2 lane): Ruby's files dir —
+// The attachment store: Ruby's files dir —
 // Card.paths["files"] = the deck root's files/ (card-mod-carrierwave
 // paths.rb:14-17 files_base_dir). The staging corpus's HISTORICAL
 // attachments are cloud-hosted (the bucket front handles them); this dir
@@ -531,10 +518,10 @@ const scssCompiler =
     : undefined;
 // The CoffeeScript compiler the script asset events use (JavaScript and
 // CoffeeScript asset inputs, the site script): the npm coffeescript package,
-// the compiler the oracle's coffee-script-source gem bundles. This host is a
+// the compiler the Ruby app's coffee-script-source gem bundles. This host is a
 // Node host, so it always has it.
 const coffeeCompiler = coffeeNpmCompiler();
-// staging-seat-wiring lane: the recaptcha guard's host config, read ONCE at
+// The recaptcha guard's host config, read ONCE at
 // boot from the environment (DECKO_RECAPTCHA_SITE_KEY / _SECRET_KEY, plus
 // optional _MINIMUM_SCORE / _VERIFY_URL — see the env-config module header).
 // Undefined until ops sets the keys: the composition below then carries NO
@@ -549,7 +536,7 @@ const recaptchaConfig = recaptchaConfigFromHostEnv(process.env);
 await runAuthMigrations(authDriver, { migrationsDir: path.join(HERE, "db", "migrations") });
 
 // ---------------------------------------------------------------------------
-// Boot-seed (R-3b lane): a FRESH deck seeds itself at boot.
+// Boot-seed: a FRESH deck seeds itself at boot.
 // ---------------------------------------------------------------------------
 //
 // Ruby's order is card:setup = db:setup — schema create+load THEN seed
@@ -576,7 +563,7 @@ if (firstRunEnabled() && writePathEnabled()) {
 const sessions = new SessionStore({ driver: authDriver });
 
 // ---------------------------------------------------------------------------
-// Account email-token flows boot (lane-reset-flows)
+// Account email-token flows boot
 // ---------------------------------------------------------------------------
 //
 // The flows read card rows through the writable auth driver (the same file
@@ -737,19 +724,17 @@ function withSessionCookie(response, sessionToken) {
 }
 
 function accountFlowErrorResponse(outcome, accountMark) {
-  // Render polish (2026-09-29): the failure pages carry the deck's Default
-  // Layout chrome the way live does — the bare h1/pre stubs this arm used
-  // to emit read as a different site. Oracle bytes:
-  // an internal work log (live decko-0.20.0 oracle
-  // app, captured 2026-09-29).
+  // The failure pages carry the deck's Default
+  // Layout chrome; the bare h1/pre stubs this arm used
+  // to emit read as a different site.
   if (outcome.kind === "token_invalid") {
     return renderAccountFlowDenialPage();
   }
   if (outcome.kind === "account_not_found") {
     // Ruby: a VALID token with a missing mark — the authenticator passes,
     // card#update's fetch raises NotFound -> the not_found page (format/
-    // error.rb view :not_found, 404). The established chromed builder
-    // (error-pages lane) already byte-matches that view.
+    // error.rb view :not_found, 404). The chromed builder below renders
+    // exactly that view.
     return renderDeckoErrorPage(accountMark, "not_found");
   }
   // The validation-failure arm (token mismatch; the failure event already
@@ -765,9 +750,9 @@ function accountFlowErrorResponse(outcome, accountMark) {
 }
 
 // ---------------------------------------------------------------------------
-// Account-flow PAGE chrome (render polish, 2026-09-29). The reset/verify
-// surfaces serve the deck's Default Layout wrapper with the oracle main-slot
-// bytes. Captures: an internal work log
+// Account-flow PAGE chrome. The reset/verify
+// surfaces serve the deck's Default Layout wrapper around hand-built
+// main-slot HTML.
 // ---------------------------------------------------------------------------
 
 /** Rails' html_escape (the h() the alert bodies go through): also folds
@@ -814,9 +799,8 @@ async function renderChromedAccountFlowPage(mainSlotHtml, opts) {
  *  card — empty name/title/data attrs, default RichText type keys, and the
  *  no-task denial message "sign in or sign up to do that." (card-mod-format
  *  set/all/html/error.rb:191-229 loud_denial + loud_denial_message with
- *  @denied_task unset -> t(:format_to_do_that)). Oracle:
- *  oracle-reset-link-garbage.html main slot. Status stays 403 (the
- *  PermissionDenied status the prior lane pinned). */
+ *  @denied_task unset -> t(:format_to_do_that)). Status stays 403 — the
+ *  PermissionDenied status. */
 function buildAccountFlowDenialSlotHtml() {
   const slotJson =
     `{"view":"denial","nest_name":"_main","nest_syntax":"_main|titled",` +
@@ -841,8 +825,8 @@ function buildAccountFlowDenialSlotHtml() {
 
 async function renderAccountFlowDenialPage() {
   const boot = await ensureBootValues();
-  // Ruby titles the empty-card denial with the bare site title (oracle:
-  // <title>My Deck</title>).
+  // Ruby titles the empty-card denial with the bare site title (the
+  // <title> carries no card name).
   return renderChromedAccountFlowPage(buildAccountFlowDenialSlotHtml(), {
     status: 403,
     titleText: boot.siteTitle,
@@ -853,10 +837,9 @@ async function renderAccountFlowDenialPage() {
  *  main slot (no card-frame wrap) — format/error.rb view :errors
  *  (standard_errors: alert "warning" + class_up card-error-msg; the
  *  heading t(:format_problems_name); each error
- *  `<p><strong>ATTRIBUTE:</strong> h(message)</p>`). Oracle:
- *  oracle-reset-request-unknown.html article region (note the class list's
- *  two spaces between alert-dismissible and card-error-msg — the
- *  class_up join is part of the bytes). */
+ *  `<p><strong>ATTRIBUTE:</strong> h(message)</p>`). Note the class list's
+ *  two spaces between alert-dismissible and card-error-msg below — the
+ *  class_up join produces exactly that, and the bytes are the contract. */
 function buildAccountFlowAlertSlotHtml(cardDisplayName, attributeLabel, message) {
   return (
     `<div class="alert alert-warning alert-dismissible  card-error-msg" role="alert">` +
@@ -873,7 +856,7 @@ async function renderAccountFlowAlertPage(status, cardDisplayName, attributeLabe
     {
       status,
       // Ruby titles the failed-update render with the updated card's name
-      // (oracle: <title>*signin - My Deck</title>).
+      // (the <title> is "<card name> - <site title>").
       titleText: `${cardDisplayName} - ${boot.siteTitle}`,
     },
   );
@@ -881,9 +864,8 @@ async function renderAccountFlowAlertPage(status, cardDisplayName, attributeLabe
 
 /** set/self/signin.rb:148-151 view :reset_password_success —
  *  `frame { t :account_check_email }` on the *signin card, titled "Sign
- *  In" (account_sign_in_title, the :title override at :134-137). Oracle:
- *  oracle-reset-password-success-page.html main slot. DISCLOSED omissions
- *  (the same treatment the sign-in form page's frame has): the
+ *  In" (account_sign_in_title, the :title override at :134-137). Deliberate
+ *  omissions (the same treatment the sign-in form page's frame has): the
  *  card-menu popover/edit/board links inside the frame header are the
  *  card-mod-format menu machinery (rails remainder). */
 function buildResetPasswordSuccessSlotHtml(signinCardId) {
@@ -916,16 +898,15 @@ async function renderResetPasswordSuccessPage() {
 }
 
 /** GET /*signin?view=edit (and /*signin/edit) — the FORGOT PASSWORD page
- *  (set/self/signin.rb:154-163 view :edit). Live renders the requested
- *  edit view INSIDE the page's modal container while the main article
- *  stays the titled sign-in form (oracle oracle-signin-edit.html: the
- *  article region is byte-identical to /*signin; the modal rides after
- *  </footer>). The modal shell bytes are oracle-verbatim; the form inside
+ *  (set/self/signin.rb:154-163 view :edit). The served deck renders the
+ *  requested edit view INSIDE the page's modal container while the main
+ *  article stays the titled sign-in form; the modal rides after
+ *  </footer>. The modal shell reproduces that shape; the form inside
  *  is the honest stand-in posting Ruby's EXACT inputs (the full
  *  card-mod-edit form machinery — data-remote/autosave, the type row, the
- *  nested help slot — is the named rails remainder, card-mod-account.ts
+ *  nested help slot — is unported rails, card-mod-account.ts
  *  NOT-PORTED block; the modal-header board link is menu machinery,
- *  omitted with the same disclosure as the sign-in page's frame). */
+ *  omitted like the sign-in page's frame). */
 function buildForgotPasswordModalHtml(signinCardId) {
   const slotJson =
     `{"view":"edit","hide":["help","save_button"],"main":true,"main_view":true,` +
@@ -979,7 +960,7 @@ async function renderForgotPasswordPage() {
 
 /** POST /update/*signin with card[trigger]=send_reset_password_token — the
  *  forgot-password form's submit (set/self/signin.rb:27-31
- *  send_reset_password_token over HTTP). Response mapping is the oracle's:
+ *  send_reset_password_token over HTTP). Response mapping follows Ruby:
  *  success 303 See Other -> the absolute reset_password_success URL
  *  (Ruby's redirect_to after abort :success, success view reset_password_success,
  *  empty body); validation failures 422 + the errors alert page. A POST
@@ -987,8 +968,7 @@ async function renderForgotPasswordPage() {
  *  through the *signin event machinery (the :signin event — the sign-in
  *  POST lives at /_signin on this surface), so the request delegates to
  *  the general write path with the pre-read body — the exact dispatch it
- *  got before this handler existed (the edit-session replay's captured
- *  sign-in POST rides it). */
+ *  got before this handler existed. */
 async function handleForgotPasswordSubmit(req, startedAt = Date.now()) {
   let raw;
   try {
@@ -1031,8 +1011,7 @@ async function handleForgotPasswordSubmit(req, startedAt = Date.now()) {
     return renderAccountFlowAlertPage(422, "*signin", attributeLabel, outcome.message);
   }
   // Ruby's success redirect: 303 See Other to the absolute
-  // reset_password_success URL (captured: Location:
-  // http://localhost:3011/*signin/reset_password_success, 0-byte body).
+  // reset_password_success URL with an empty body.
   const host = String(req.headers.host ?? "").trim();
   const origin = host !== "" ? `http://${host}` : ensureBootValuesOrigin();
   return {
@@ -1114,10 +1093,9 @@ function handleMailLog() {
 // deployment cannot sign under a known key. It is handed to the engines as
 // RenderEngine.tokenConfig and is never written to the repo or to a log
 // line. Declared here — not with the other secrets below — because the
-// boot sequence reads TOKEN_CONFIG immediately after engine construction.
-// (This is the lane-tokenconfig-tdz reorder carried by lane-reset-flows:
-// the declare-below layout was a top-level use-before-declaration boot
-// crash from d6b1957 onward; the flows' endpoints need a booting server.)
+// boot sequence reads TOKEN_CONFIG immediately after engine construction;
+// declaring it below that first reader was a top-level use-before-declaration
+// boot crash.
 const TOKEN_SECRET =
   process.env.DECKO_TOKEN_SECRET ?? crypto.randomBytes(32).toString("hex");
 
@@ -1136,11 +1114,10 @@ const render = new RenderEngine(fetcher);
 // The Auth::Token signing secret (TOKEN_CONFIG above), same host-deployment
 // config shape as imageCdnHost on the next lines.
 render.tokenConfig = TOKEN_CONFIG;
-// Round-10 engineFix gap 1, wired at merge pass 2: the engine's
-// imageCdnHost is host-deployment config (RenderEngineLike.imageCdnHost;
-// undefined = host-relative /files URLs). The live deck serves carrierwave
-// cloud attachments from the .cdn. Spaces subdomain — SPACES_HOST above
-// (live Home.html receipt: src="…cdn…/files/27689/135167-large.jpg").
+// The engine's imageCdnHost is host-deployment config
+// (RenderEngineLike.imageCdnHost; undefined = host-relative /files URLs).
+// The deck serves carrierwave cloud attachments from the .cdn. Spaces
+// subdomain — SPACES_HOST above.
 render.imageCdnHost = STOCK_DECK ? undefined : SPACES_HOST;
 if (STOCK_DECK) render.renderAbsentCards = true;
 
@@ -1154,7 +1131,7 @@ const OPEN_VIEW = "open";
 await primeEngine(fetcher);
 
 // ---------------------------------------------------------------------------
-// Layout / asset URLs (from the discovery lane's corpus query)
+// Layout / asset URLs
 // ---------------------------------------------------------------------------
 //
 // The default layout rule is *all+layout (card id 275) → "Default Layout"
@@ -1180,34 +1157,28 @@ const FOOTER_SETTING_NAME = "*footer";
 //
 // Rule shapes present in this corpus:
 //   1. Direct junction:        left_id = <card>,        right_id = 255
-//      — covers rules like ZQVT+*layout, rileyellery+*layout
+//      — covers plain <card>+*layout rules
 //   2. Junction-of-junction:   left_id = <card>+*self,   right_id = 255
 //      — the *self junction (left=<card>, right=264) is a 2-level indirection
 //      for cards whose layout rule was authored as <card>+*self+*layout
-//      (the Home+*layout rule is one of these, junction id 34831 with
-//      left=2664, right=255, db="Home Layout 1"; 2664 itself is a junction
-//      left=80 [Home], right=264 [*self]).
 //   3. *all+*layout fallback:  left_id = 274 (*all),     right_id = 255
 //      — the catch-all rule (rule id 275, db="Default Layout").
 //
-// No type-based `+*type+*layout` rules exist in this corpus (verified by
-// querying right_id=*type against the layout-name set: 0 rows). Only the
+// No type-based `+*type+*layout` rules exist in this corpus, so only the
 // exact rule + the *all fallback need to be implemented.
 const LAYOUT_POINTER_ID = 255; // *layout set pointer (corpus)
 const ALL_CARD_ID = 274; // *all card id (corpus)
 const SELF_POINTER_ID = 264; // *self set pointer (corpus)
 
-// *all+*style (rule id 17467) → "slate skin customized" (card id 38274,
-// codename `slate_skin_customized`, type_id 33929 bootswatch_skin). Its
+// *all+*style → "slate skin customized" (card id 38274,
+// codename `slate_skin_customized`, bootswatch_skin type). Its
 // asset output is card id 45514; the corpus stores the OLDER revision in
-// db_content ("(my_bucket)/45514/9999999999.css"), but the revision live
-// actually serves is 0000000001 (12/12 live pages:
-// `/files/45514/0000000001.css` — audit A-2). Byte receipt (2026-09-26):
-// live 0000000001.css EQUALS our SassC compile of the deck's current
-// skin with live's asset-host setting applied — `url(/mod/…)` →
-// `url(https://culturesmith.com/mod/…)` (16 font/image URLs;
-// `cmp` clean, 372,356 bytes). The VM's oracle-assets/all-style.css
-// carries that transform.
+// db_content ("(my_bucket)/45514/9999999999.css"), but the revision the
+// served deck actually serves is 0000000001. The served stylesheet EQUALS
+// our SassC compile of the deck's current skin with the asset-host setting
+// applied — mod-relative `url(/mod/…)` font/image URLs rewritten to the
+// asset host — and that transformed compile is what the deployed
+// compiled-assets directory carries.
 const MAIN_CSS_URL = `${SPACES_HOST}/files/45514/0000000001.css`;
 // *all+*script (rule id 20616) asset output is card id 50617.
 const MAIN_JS_URL = `${SPACES_HOST}/files/50617/0000000002.js`;
@@ -1228,8 +1199,8 @@ const ASSET_OUTPUT_FILE_CARD_IDS = [];
 async function primeEngine(engine) {
   // 1. Codenames (small, one statement).
   await engine.codenames.ensureLoaded();
-  // 1b. Codename defensive registration (round 8, set-500-codename family):
-  // the corpus-v2 anonymizer leaves `type` / `by_name` / `members` rows
+  // 1b. Codename defensive registration: the corpus
+  // leaves `type` / `by_name` / `members` rows
   // with the codename column set on the canonical ids 266/184/98, but the
   // engine's sync `peekId` consults a memoized codehash — if a future
   // scrubbed corpus drops any of those rows' codename columns, the
@@ -1307,10 +1278,10 @@ async function primeEngine(engine) {
       fetcher.lexicon.write(row.id, name, row.name);
     }
   }
-  // 4. Virtual-card rule universe (round 8, wikirate-tag-404 family): the
+  // 4. Virtual-card rule universe: the
   //    storage factory's responsibility per
   //    src/card/fetch/virtual-cards.ts:44-49. Without this hook,
-  //    `Wikirate+*right` and similar compound names that resolve only
+  //    `<card>+*right`-style compound names that resolve only
   //    through the structure rule walk return undefined from
   //    `FetchEngine.fetchByName` and the serving path turns that into a
   //    404. The seed statement + helpers come from
@@ -1322,7 +1293,7 @@ async function primeEngine(engine) {
       ruleTypeIds: structureRuleTypesFromResults(universeResult),
     });
   }
-  // 5. Cold-start warm render (round 8, coldstart-500 Fix A): the engine's
+  // 5. Cold-start warm render: the engine's
   //    render closureWarm path runs once per restart; without a warm pass
   //    the first request to /help walks the cold prefetch + structured
   //    template loop and may throw `codename doesn't exist` on a `:members`
@@ -1634,26 +1605,20 @@ async function safeRenderSetting(name, preferredView, fallbackView) {
 // yields once; an additional yield at module scope was racing the gate's
 // SIGTERM-driven shutdown against libuv's handle cleanup, tripping the
 // assertion at src/win/async.c:94 (`!(handle->flags & UV_HANDLE_CLOSING)`).
-// The fallback value matches the captured oracle (oracle:80-Home.html:4) so
+// The fallback value matches the served deck's site title so
 // the very first request served before the lazy init completes still
 // renders the correct title.
 //
 // The favicon and logo URLs are derived from the corpus image-card records
 // (id 103 = *favicon, id 79 = *logo). Their db_content carries the
 // `(my_bucket)/<id>/<fileId>.jpg` shape, so the live URL is
-// `<SPACES_HOST>/files/<id>/<fileId>-small.jpg` — the size suffix `-small`
-// for the logo and favicon matches the live deck's recorded URLs:
-//   http://s3.amazonaws.com//files/79/0000000003-small.jpg   (logo, recorded as
-//                                                      src on the nav-logo
-//                                                      <img>, oracle:80:47)
-//   http://s3.amazonaws.com//files/103/0000000004-small.jpg (favicon, recorded as
-//                                                      <link rel="shortcut
-//                                                      icon> href,
-//                                                      oracle:80:8)
-// Both URLs return 200 image/jpeg on the Spaces host; the LIVE page
-// bytes name the .cdn. host form
-// (production-storage.r1.cdn.objectstore.example —
-// audit A-1), which is what SPACES_HOST now builds.
+// `<SPACES_HOST>/files/<id>/<fileId>-small.jpg` — the `-small` size suffix
+// matches the URLs the served deck's nav-logo <img> and favicon <link>
+// carry:
+//   /files/79/0000000003-small.jpg   (logo)
+//   /files/103/0000000004-small.jpg  (favicon)
+// Both return 200 image/jpeg on the Spaces host; SPACES_HOST is the .cdn.
+// host form the served pages actually name.
 const SITE_TITLE_DEFAULT = "Culturesmith";
 let siteTitleLoaded = null;
 async function ensureBootValues() {
@@ -1676,7 +1641,7 @@ async function ensureBootValues() {
         }
       }
       // *favicon (id 103) and *logo (id 79): confirm the file id in their
-      // db_content matches the recorded oracle URLs. If the corpus shape
+      // db_content matches the hard-coded URLs above. If the corpus shape
       // has changed (different file id, missing record), keep the
       // hard-coded URLs as the documented fallback — the Spaces host
       // returns 200 for these specific file ids at this host.
@@ -1693,11 +1658,9 @@ async function ensureBootValues() {
 // ---------------------------------------------------------------------------
 //
 // The deck stores cards with names that may differ in case from the URL
-// slug (e.g. /Basic -> "basic", /help -> "Help"). The page title in the
-// oracle reads "<card.name> - <*title>": "basic - the reference deck" on
-// /Basic (oracle:39120-Basic.html:4) and "Help - the reference deck" on /help
-// (oracle:3531-help.html:4). Use cards.name verbatim from the corpus so
-// the title matches the oracle per page.
+// slug (e.g. /Basic -> "basic", /help -> "Help"). The page title is
+// "<card.name> - <*title>", built from the card's STORED name verbatim so
+// the title casing matches what the deck serves for each page.
 //
 // Card names are case-insensitive in the deck (Card::Name#key is the
 // downcase-and-underscore form). Match on lowercased comparison so
@@ -1705,11 +1668,10 @@ async function ensureBootValues() {
 // the "basic" card (stored lowercase).
 async function resolveCardStoredName(slugName) {
   try {
-    // The deck stores names with spaces ("Make Contact"); URL slugs use
-    // underscores ("Make_Contact"). Normalize both sides so the equality
+    // The deck stores names with spaces; URL slugs use underscores.
+    // Normalize both sides so the equality
     // matches regardless of which form the caller used, and also drop a
-    // trailing "?" the deck tolerates in some stored names (e.g. the
-    // "What Do We Need To Know?" card on URL slug "What_Do_We_Need_To_Know").
+    // trailing "?" some stored names carry that their URL slug omits.
     const norm = (s) => s.replace(/[_ ]/g, " ").replace(/\?$/, "").toLowerCase();
     const want = norm(slugName);
     const { rows } = await driver.query(
@@ -1735,27 +1697,25 @@ async function resolveCardStoredName(slugName) {
 // `{{:search|search_box}}`, and `{{:account_links|navbar_links}}` tokens.
 // The engine's read-only permission layer denies per-card reads, so
 // these tokens land in the literal *header HTML. We render them from
-// the corpus records directly so the navbar matches the captured oracle
-// shape (oracle:80-Home.html:42-81).
+// the corpus records directly so the navbar matches the served shape.
 //
-// Menu source: `*main menu` (id 22752, type Pointer, db_content a wiki-
+// Menu source: the *main menu card (type Pointer, db_content a wiki-
 // link list). Each line `[[*X|label]]` becomes either a dropdown parent
 // (when `*X` is itself a Pointer card with sub-items) or a flat link.
-// `*Undertakings` (id 38283, Pointer, db_content list of items with
+// The dropdown child card (Pointer, db_content list of items with
 // `*dropdown divider` markers) becomes the dropdown child list.
 //
-// Nav fix (round 9):
+// Behaviors matched to the served deck:
 //   - Skip external URL entries ("https://…|Label") so the dropdown
 //     does not emit `<a href="/https://…">` — the malformed `/https://`
-//     href the live deck drops. The corpus's *Undertakings carries one
-//     such entry ("https://culturesmith.com/card/new|New Card"); the
-//     live capture omits it.
-//   - Skip "Adminu" specifically (the live deck shows the trailing
-//     denied span instead of rendering Adminu, which exists in the
-//     corpus but is not anonymous-readable).
+//     href the served deck does not produce (it renders a denied span
+//     for those entries instead).
+//   - Skip the specific nav entry named below that the served deck
+//     denies anonymous readers of: the trailing denied span is rendered
+//     in its place.
 //   - Replace spaces AND "$" with "_" in the rendered href so
-//     `Su$tainability` lands at `/Su_tainability` (the deck's
-//     Card::Name#to_url_key behavior — the live capture's recorded URL).
+//     "$"-bearing names land at the underscored URL (the deck's
+//     Card::Name#to_url_key behavior).
 async function renderNavbarLinks(boot) {
   const mainMenuContent = await fetchCardDbContent("*main menu");
   const items = parseWikiLinkList(mainMenuContent);
@@ -1768,13 +1728,13 @@ async function renderNavbarLinks(boot) {
     if (item.target.startsWith("*") && isPointer) {
       // Pointer with children — render as dropdown.
       //
-      // A-17 (round 10): the live decko navbar_links view DOUBLE-WRAPS
-      // the dropdown li — the main-nav bytes on every captured page are
+      // The served deck's navbar_links view DOUBLE-WRAPS
+      // the dropdown li — the main-nav bytes are
       // `<ul class="navbar-nav"><li class="nav-item"><li class="nav-item
       // dropdown">…</span></div></li></li>`: a stray empty
       // `<li class="nav-item">` precedes the dropdown li and the pair
-      // closes `</li></li>`. Each dropdown child and the divider div
-      // are followed by a newline (help.html main-nav lines).
+      // closes `</li></li>`. Reproduce that shape; each dropdown child
+      // and the divider div are followed by a newline.
       const childContent = await fetchCardDbContent(item.target);
       const children = parseDropdownList(childContent);
       parts.push(
@@ -1785,22 +1745,18 @@ async function renderNavbarLinks(boot) {
         if (child.kind === "divider") {
           parts.push(`<div class="dropdown-divider"></div>\n`);
         } else if (child.kind === "external") {
-          // Drop external entries (the live deck omits them; the deck's
-          // anonymous user gets a denied span for them instead). The
-          // corpus's *Undertakings contains
-          // "https://culturesmith.com/card/new|New Card" — the live
-          // capture skips this line.
+          // Drop external entries: the served deck omits them for the
+          // anonymous viewer (they render as a denied span instead).
           continue;
         } else if (child.target === "Adminu") {
-          // The live deck shows the denied span instead of rendering
-          // the Adminu link for anonymous users. Drop the entry; the
-          // denied span appended after the loop is the live-capture
-          // shape.
+          // The served deck shows the denied span instead of rendering
+          // this entry for anonymous users (it is not anonymous-readable;
+          // matched by name below). Drop the entry; the denied span
+          // appended after the loop is the served shape.
           continue;
         } else {
           // Card::Name#to_url_key: spaces become underscores; "$" is
-          // not a URL-safe character and the deck slugs it to "_" so
-          // `Su$tainability` lands at `/Su_tainability`.
+          // not a URL-safe character and the deck slugs it to "_" as well.
           const childKey = child.target
             .replace(/ /g, "_")
             .replace(/\$/g, "_");
@@ -1809,16 +1765,13 @@ async function renderNavbarLinks(boot) {
           );
         }
       }
-      // The deck's recorded oracle closes the dropdown with a denied
+      // The served deck closes the dropdown with a denied
       // permission marker for the trailing card; preserve that shape.
-      // (The newline before it comes from the trailing child's own \n —
-      // live bytes: `…divider"></div>\n<span class="denied">`.)
+      // (The newline before it comes from the trailing child's own \n.)
       parts.push(`<span class="denied"><!-- Sorry, you don't have permission (read) --></span>`);
-      // Item separator is the content's own "\r\n" (*main menu db_content is
-      // "[[*Undertakings|Opportunities]]\r\n[[*search|Changes]]"; live serves
-      // "…</div></li></li>\r\n<li class=\"nav-item\">…Changes" — live-fresh
-      // 404/500 captures, 2026-09-27). A plain "\n" here was the last whole-
-      // page byte delta on every served page.
+      // Item separator is the content's own "\r\n": the menu content's
+      // CRLF line endings must survive into the output — a plain "\n"
+      // here shifted every subsequent byte of the served page.
       parts.push(`</div></li></li>\r\n`);
     } else {
       // Flat link: any non-Pointer target becomes a nav-link.
@@ -1861,9 +1814,9 @@ function parseWikiLinkList(content) {
 
 // Parse a Pointer dropdown card's db_content. Each line is either a card
 // name (with optional URL suffix for URL items), `*dropdown divider`, or
-// a wiki-link-style `[[http://…|label]]` for external entries. The
-// corpus's *Undertakings (id 38283) db_content lists each item as a
-// bare name (Make Contact, Aikido 2, …) with `*dropdown divider` markers.
+// a wiki-link-style `[[http://…|label]]` for external entries. Dropdown
+// cards list each item as a bare card name with `*dropdown divider`
+// marker lines between groups.
 function parseDropdownList(content) {
   const out = [];
   if (typeof content !== "string") return out;
@@ -1922,8 +1875,8 @@ async function fetchCardByName(name) {
 
 // Extract the view name from a layout body's `{{_main|<view>}}` nest.
 // Returns "content" if the nest is missing or unparseable (the deck's
-// most common default; the live deck's Default Layout uses "titled" and
-// Home Layout 1 uses "content" — both produce parseable nests, so this
+// most common default; the corpus's layouts name their views explicitly
+// and both produce parseable nests, so this
 // fallback only fires when the layout body is unknown / missing).
 function parseMainViewFromLayoutBody(body) {
   if (typeof body !== "string" || body.length === 0) return "content";
@@ -1934,32 +1887,26 @@ function parseMainViewFromLayoutBody(body) {
 
 // The deck's *footer nests `{{+:image|core}}` (the credit SVG) and
 // `<a href="http://decko.org">Decko v{{:version|core}}</a>`. The
-// credit_image (id 34776, db_content a 5390-byte SVG block) is the
-// rendered SVG; the version string is "0.19.1" (the live capture's
-// printed bytes, oracle:80-Home.html:223). The deck wraps the rendered
+// credit_image card's db_content is the rendered SVG; the version string
+// is pinned below. The deck wraps the rendered
 // body in a card-slot content-view div whose data-slot JSON names the
 // :footer|content nest_syntax the layout chain uses to insert the
-// footer setting card (card id 22749). Reproduce that wrapper so the
-// served page matches the live capture byte-for-byte: every footer in
-// this corpus uses the live shape `card-slot content-view ALL TYPE-html
-// STAR SELF-Xfooter d0-card-content` with the credit row inline.
+// footer setting card. Reproduce that wrapper so the
+// served page matches the served shape: every footer in
+// this corpus uses the `card-slot content-view ALL TYPE-html
+// STAR SELF-Xfooter d0-card-content` shape with the credit row inline.
 async function renderFooterContent() {
   const creditImage = await fetchCardDbContent("*credit_image");
-  // Version receipt (audit A-18, round 10): the live pages print
-  // "Decko v0.19.1" — this is a LIVE-byte receipt, identical on all 11
-  // captured pages that carry a footer. The recapture ORACLE
-  // (tmp/raw-ground-truth/oracle-pages/80-Home.html) prints
-  // "Decko v0.20.0" instead and the decko-ts corpus's *version card says
-  // 0.20.0 — neither is the served target; the earlier comment citing
-  // "oracle:80-Home.html:223" for 0.19.1 was a wrong-target citation
-  // that would invite "correcting" this constant to the oracle's value.
-  // Do not: the live bytes are the contract here.
+  // The version is deliberately pinned to "0.19.1" — the value the
+  // served deck prints — even though the decko-ts corpus's *version card
+  // says 0.20.0 and stock Decko 0.20.0 would print that. This constant is
+  // the SERVED value, not the corpus value; do not "correct" it to the
+  // corpus's number.
   const version = "0.19.1";
-  // The corpus's *credit_image db_content ends "</svg>\n" (trailing newline
-  // the import carried; live's served bytes have a single "\n" between the
-  // SVG close and the decko.org link — live-fresh captures, 2026-09-27:
-  // "</svg>\n<a href=…"). Strip the content's trailing newline so the
-  // template's own "\n" supplies the one live serves.
+  // The corpus's *credit_image db_content ends "</svg>\n" (a trailing
+  // newline the import carried). The template below supplies exactly one
+  // "\n" between the SVG close and the decko.org link, so strip the
+  // content's trailing newline to avoid doubling it.
   const svg = (creditImage.length > 0 ? creditImage : "").replace(/\n$/, "");
   const body =
     `<div class="d-flex justify-content-center align-items-center">\n` +
@@ -1975,11 +1922,10 @@ async function renderFooterContent() {
     home_view: "content",
   };
   return (
-    // Single escape only: escapeHtml turns each `"` into `&quot;` — the live
-    // byte form (live-fresh error captures, 2026-09-27). The previous
-    // `.replace(/"/g, "&quot;")` before escapeHtml double-escaped the `&`
-    // (`&amp;quot;`), +4 bytes per quote — +80 bytes on every served page,
-    // the entire net whole-page delta vs live's error pages.
+    // Single escape only: escapeHtml turns each `"` into `&quot;`.
+    // Pre-replacing quotes with `.replace(/"/g, "&quot;")` before
+    // escapeHtml double-escapes the `&` (`&amp;quot;`), +4 bytes per
+    // quote on every served page — a past whole-page corruption bug.
     `<div id="Xfooter-content-view" class="card-slot content-view ALL TYPE-html STAR SELF-Xfooter d0-card-content" data-card-id="22749" data-card-name="*footer" data-card-type-id="50" data-card-type-name="HTML" data-card-link-name="*footer" data-slot-id="33f1de3d32299e8ffeb8" data-slot="${escapeHtml(JSON.stringify(slot))}">${body}</div>`
   );
 }
@@ -1990,36 +1936,29 @@ async function renderFooterContent() {
 // Layout rule resolution (parity with Ruby's set-rule lookup):
 //   1. Most specific rule: a junction whose right_id = *layout (255)
 //      and whose left_id is either the card itself or the card's
-//      Card+*self junction (the *self indirection for the Home+*layout
-//      family of rules — see LAYOUT_POINTER_ID / SELF_POINTER_ID docs).
+//      Card+*self junction (the *self indirection — see
+//      LAYOUT_POINTER_ID / SELF_POINTER_ID docs).
 //   2. Fallback: *all+*layout (the catch-all rule, db_content "Default
-//      Layout"). Every card in this corpus falls back here unless it
-//      has a specific rule (Home falls back? no, Home has Home+*layout
-//      → "Home Layout 1").
+//      Layout"). Every card falls back here unless it has a specific
+//      rule.
 //
-// A-6 (round 10): the layout BODY drives the whole page SHELL, not just
+// The layout BODY drives the whole page SHELL, not just
 // the main slot. The body's `{{:header|core}}`, `{{_main|<view>}}`,
 // `{{:footer|content}}`, and `{{*foot|core}}` tokens are substituted;
-// everything around them (body tag attributes, article/footer wrappers,
-// the bare `<div>` of rileyellery-layout) is the layout's own bytes.
-// Default Layout's body yields the standard
-// `  <header>…  <article …><div id="main">…</article>  <footer …>`
-// chrome; rileyellery-layout's body yields Recommendations' bare
-// `<body >\n<div><div id="main">…</div>\n<p></p>` shell with NO
-// header/nav/footer (live Recommendations.html). The outer card-slot
-// nesting follows the layout's mainView exactly as before (open view's
-// inner view = content for Home Layout 1, titled for Default Layout).
-// `pageOpts` (optional, error-page lane only — the 12 good pages never pass
+// everything around them (body tag attributes, article/footer wrappers)
+// is the layout's own bytes. A layout body without the header/footer
+// nests yields a bare shell with NO header/nav/footer. The outer
+// card-slot nesting follows the layout's mainView.
+// `pageOpts` (optional, error pages only — regular pages never pass
 // it, and the defaults keep their bytes identical):
 //   headExtraLine — a complete extra <head> line (with its trailing "\n")
 //     emitted between the viewport meta and the blank line before the
-//     favicon link. Live's not_found page inserts
-//     `<meta content='noindex' name='robots'>` there (live_Community_Building
-//     .html head vs live_Introduction.html head: the noindex line is the
-//     only head delta between the two error shapes).
+//     favicon link. The served not_found page inserts
+//     `<meta content='noindex' name='robots'>` there — the noindex line
+//     is the only head difference between the two error shapes.
 //   titleText — the full "<name> - <site title>" string. Error pages for
 //     names with no stored card row carry the URL display form
-//     ("Community Building - the reference deck"), which resolveCardStoredName
+//     (underscores folded to spaces), which resolveCardStoredName
 //     cannot produce (it returns the raw slug on a miss).
 async function wrapWithLayout(cardName, viewHtml, layout, pageOpts = {}) {
   const boot = await ensureBootValues();
@@ -2040,32 +1979,31 @@ async function wrapWithLayout(cardName, viewHtml, layout, pageOpts = {}) {
   // Substitute the literal tokens in *header. Each token has a clear
   // handler (see substituteHeaderTokens for the full list).
   const headerHtml = await substituteHeaderTokens(rawHeaderHtml, boot);
-  // r18: the round-9/10 body post-passes (suppressed-heading no-op,
-  // postProcessWikiLinks) are retired with the bridge family. The error
-  // pages' main-slot HTML is hand-built above (buildNotFoundSlotHtml /
-  // buildServerErrorSlotHtml) and carries no [[...]] tokens, so both
-  // passes were identity functions here.
+  // The error pages' main-slot HTML is hand-built above
+  // (buildNotFoundSlotHtml / buildServerErrorSlotHtml) and carries no
+  // [[...]] tokens or heading quirks, so no body post-processing is
+  // needed here.
   const bodyProcessed = viewHtml;
   const pageTitle = pageOpts.titleText ?? `${storedName} - ${boot.siteTitle}`;
   const cssUrl = MAIN_CSS_URL;
   const jsUrl = MAIN_JS_URL;
-  // A-6/A-11 (round 10): the page SHELL is built from the resolved
+  // The page SHELL is built from the resolved
   // layout's BODY — the per-card layout rule drives the whole document,
-  // not just the main slot. Live Recommendations (layout
-  // `rileyellery-layout`, body `<body >\n<div>{{_main|content}}</div>
-  // \n<p>{{*foot|core}}</p>\n</body>`) serves NO header/nav/footer/
-  // article chrome — its shell is `<body >` + `<div><div id="main">…`.
-  // Default Layout's body (`<body class="d-flex flex-column h-100">…`)
+  // not just the main slot. A layout whose body carries only the main
+  // nest serves NO header/nav/footer/article chrome — its shell is
+  // `<body >` + `<div><div id="main">…`. Default Layout's body
+  // (`<body class="d-flex flex-column h-100">…`)
   // produces the standard header/article/footer chrome from the same
   // substitution rules. The layout-body indentation (2-space header/
-  // article/footer) is part of the bytes and supplies A-5's shapes.
+  // article/footer) is part of the bytes and is preserved as-is.
   //
-  // A-5 (round 10): the live document shell is INDENTED — the first
-  // bytes of every live capture are
+  // The served document shell is INDENTED — the first
+  // bytes of every served page are
   // `      <!DOCTYPE HTML>\n      <html class="h-100">\n        <head>\n          <title>…`
   // (6/6/8/10 spaces), the head closes at 8 spaces, and the body tag
   // sits at 8 spaces with a flush `</body>` and a 6-space `</html>`.
-  // The indentation is part of the served bytes (12/12 live pages).
+  // The indentation is part of the served bytes and is reproduced
+  // verbatim below.
   if (typeof layout?.layoutBody !== "string" || layout.layoutBody.length === 0) {
     throw new Error(
       `layout body missing or empty for card ${cardName} (layout: ${layout?.layoutName ?? "unresolved"}); ` +
@@ -2087,14 +2025,14 @@ async function wrapWithLayout(cardName, viewHtml, layout, pageOpts = {}) {
   }
   const layoutInner = layout.layoutBody.slice(bodyOpenEnd, bodyCloseStart);
   // Replacer functions (not replacement strings) so card content that
-  // contains "$" sequences (e.g. Su$tainability) can never be read as
+  // contains "$" sequences can never be read as
   // special replacement patterns.
   const renderedInner = layoutInner
     .replace(/\{\{:header\|core\}\}/g, () => headerHtml)
     .replace(/\{\{:footer\|content\}\}/g, () => footerHtml)
-    // Live receipt: the rileyellery-layout `<p>{{*foot|core}}</p>`
-    // renders `<p></p>` for the anonymous viewer (Recommendations.html
-    // tail) — the nest contributes zero bytes, so substitute "".
+    // A layout body that nests `<p>{{*foot|core}}</p>`
+    // renders `<p></p>` for the anonymous viewer — the nest contributes
+    // zero bytes, so substitute "".
     .replace(/\{\{\*foot\|core\}\}/g, () => "")
     .replace(
       /\{\{_main(?:\s*\|\s*([A-Za-z0-9_]+))?\}\}/g,
@@ -2120,11 +2058,10 @@ async function wrapWithLayout(cardName, viewHtml, layout, pageOpts = {}) {
     `<link media="all" rel="stylesheet" type="text/css" href="${escapeHtml(cssUrl)}" />\n` +
     `\n` +
     `<!-- mod: format (remote) -->\n` +
-    // A-4 (round 10): live loads the four CDN scripts WITH the
-    // integrity attributes below (Home.html head, 12/12 pages) —
-    // jquery sha256, jquery-ujs/ace/select2 sha512 — and sets
-    // decko.rootUrl to the absolute origin `https://culturesmith.com/`
-    // (the previous `'/'` came from a wrong target).
+    // The served deck loads the four CDN scripts WITH the
+    // integrity attributes below — jquery sha256, jquery-ujs/ace/select2
+    // sha512 — and sets decko.rootUrl to the deployed site's absolute
+    // origin (a relative `'/'` is the wrong shape).
     `<script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0="></script>\n` +
     `<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-ujs/1.2.3/rails.min.js" crossorigin="anonymous" integrity="sha512-yDJWVxuRSkQa1u9/Zif6Gh93Gk0Urboz98JLEPcERMQ+pTHz/c27d0Xz08G+lgutFyKklB9UILtnhG6bth6B4A==" referrerpolicy="no-referrer"></script>\n` +
     `<!-- mod: ace editor (remote) -->\n` +
@@ -2179,19 +2116,17 @@ async function substituteHeaderTokens(headerHtml, boot) {
   // 5) Search box: rendered <form>. The deck's *header nests the
   // {{:search|search_box}} token inside a wrapping div; we emit only
   // the inner form so the wrapping div in *header still frames it
-  // exactly as the oracle does (oracle:80-Home.html:71-74).
+  // exactly as the served page does.
   out = out.replace(
     /\{\{:search\|search_box\}\}/g,
     `<div class='d0-search-box'>\n` +
       `<form role="search" class="search-box-form" action="/*search" accept-charset="UTF-8" method="get"><input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" /><input type="text" name="query[keyword]" id="query_keyword" class="_search-box search-box form-control w-100" autocomplete="off" data-completepath="/*search/search_box_complete.json" placeholder="Search" /></form>\n` +
-      // Live's search_box view closes with its own newline (live bytes:
-      // "</form>\n</div>\n</div>\n        <ul" — the second </div> is the
-      // *header wrapper's); without it the two closes join and the served
-      // page carries "</div></div>\n" where live has "</div>\n</div>\n".
+      // The search_box view closes with its own newline; without it the
+      // form's </div> and the *header wrapper's </div> join onto one line
+      // and every later byte of the page shifts.
       `</div>\n`,
   );
-  // 6) Account links: Sign up / Sign in <ul> matching the oracle shape
-  // (oracle:80-Home.html:75-76).
+  // 6) Account links: Sign up / Sign in <ul> matching the served shape.
   out = out.replace(
     /\{\{:account_links\|navbar_links\}\}/g,
     `<ul class="navbar-nav"><li class="nav-item"><a class="nav-link signup-link known-card" href="/new/Sign_up">Sign up</a></li>\n` +
@@ -2201,37 +2136,35 @@ async function substituteHeaderTokens(headerHtml, boot) {
 }
 
 // ---------------------------------------------------------------------------
-// Decko error pages (live error-surface parity, 2026-09-26)
+// Decko error pages (full-chrome error surfaces)
 // ---------------------------------------------------------------------------
 //
-// Live serves two full-chrome Decko error surfaces and the bare stubs this
-// server used to emit for them read as a different site. Both shapes are
-// built from the live captures, not reconstructed from Decko source:
+// The bare stubs this
+// server used to emit for error renders read as a different site, so both
+// served error shapes are reproduced here:
 //
-//   not_found  — for a requested name with no card row. Live receipt:
-//   an internal work log (2026-09-26,
-//   13,715B): Default Layout chrome + main slot
+//   not_found  — for a requested name with no card row. Default Layout
+//   chrome + main slot
 //   `<div id="<key>-not_found-view" class="card-slot not_found-view ALL
 //   TYPE-basic_c" …>` with h1 "Not Found" and "Could not find <Name>.
 //   Please sign in or sign up to create it.", plus
 //   `<meta content='noindex' name='robots'>` in the head and the title
-//   "<Name> - the reference deck" in the URL display form (underscores become
+//   "<Name> - <site title>" in the URL display form (underscores become
 //   spaces). Decko mechanism: format/error.rb page_view_for_unknown →
 //   :not_found with root.error_status = 404 (prototype/lib/card/format/
 //   error.rb:49-55), so the response status stays 404.
 //
-//   server_error — for a page whose render raises (non fetch miss). Live
-//   receipt: captures/live_Introduction.html (2026-09-26, 12,784B):
+//   server_error — for a page whose render raises (non fetch miss).
 //   Default Layout chrome + `<div class='border border-danger text-center
 //   p-3'>` with h1 "Wild Card!", h2 "500 Server Error", h4 "Yuck, sorry
 //   about that." — Decko's deck error page. No noindex meta. Status 500.
 //
 // The not-found card's type constants (id 22281, name "BasicCs", class
-// token "basic_c") are pinned from the live bytes, not derived: the type a
-// fresh Decko card gets comes from the *all+*default rule, and the scrubbed
-// corpus's copy of that rule is empty (cards.id 28, db_content "" — same
-// scrub policy that emptied *all+*layout's neighbors). The live bytes are
-// the contract, the same policy as the "Decko v0.19.1" footer pin.
+// token "basic_c") are pinned to the served bytes, not derived: the type a
+// fresh Decko card gets comes from the *all+*default rule, and this
+// corpus's copy of that rule is empty (cards.id 28, db_content "").
+// The served bytes are the contract here, the same policy as the
+// "Decko v0.19.1" footer pin.
 const NOT_FOUND_DEFAULT_TYPE = {
   id: "22281",
   name: "BasicCs",
@@ -2241,7 +2174,7 @@ const NOT_FOUND_DEFAULT_TYPE = {
 // The not_found outer slot's data-slot JSON: exactly what a Default Layout
 // page's main slot carries (the layout nests {{_main|titled}}; the view
 // redirect to not_found changes only the slot's id/class, not the nest
-// options live records). Key order matches SLOT_KEYS order on live.
+// options). Key order matches the served slot JSON's key order.
 function notFoundSlotOptionsJson() {
   return JSON.stringify({
     view: "titled",
@@ -2255,12 +2188,11 @@ function notFoundSlotOptionsJson() {
   });
 }
 
-// The main-slot bytes for the not_found page: the live capture's slot div,
-// verbatim except the per-name fields (id prefix, data-card-name, em, url
-// key) and the per-request slot id (SecureRandom hex, normalized in every
-// replay comparison). escapeHtml turns the JSON's `"` into `&quot;`
-// (single-escaped, the live byte form; the footer's `&amp;quot;` shape is a
-// pre-existing page-wide delta this must not copy).
+// The main-slot bytes for the not_found page: the served slot div's
+// shape, verbatim except the per-name fields (id prefix, data-card-name,
+// em, url key) and the per-request slot id. escapeHtml turns the JSON's
+// `"` into `&quot;` (single-escaped — do not double-escape; the footer's
+// `&amp;quot;` shape is a page-wide corruption this must not copy).
 function buildNotFoundSlotHtml(displayName, nameKey, urlKey) {
   const slotJson = notFoundSlotOptionsJson();
   return (
@@ -2291,7 +2223,7 @@ function buildNotFoundSlotHtml(displayName, nameKey, urlKey) {
 }
 
 // The main-slot bytes for the server-error page: Decko's deck error block,
-// byte-verbatim from live_Introduction.html (article region). No card-slot
+// verbatim to the served shape. No card-slot
 // wrap, no name interpolation inside the block — the requested name shows
 // only in the <title>.
 function buildServerErrorSlotHtml() {
@@ -2307,18 +2239,17 @@ function buildServerErrorSlotHtml() {
 }
 
 // URL display form for a name with no stored card row: Decko's URL
-// semantics fold "_" to " " (live receipt: /Community_Building renders
-// "Community Building" in the title, data-card-name, and em). Only for
+// semantics fold "_" to " " in displayed names. Only for
 // error pages — existing cards always display their stored name.
 function urlDisplayNameForSlug(slugName) {
   return slugName.replace(/_/g, " ");
 }
 
 // Resolve *all+*layout (the deck-wide Default Layout rule) without a card
-// context. The error surfaces are laid out by the deck's default layout on
-// live — the not_found capture's data-slot records
+// context. The error surfaces are laid out by the deck's default layout —
+// the served not_found slot records
 // `"layout":"Default Layout"` even though the page's own resolution may
-// have picked a specific (or failed) layout before the error. Live-page
+// have picked a specific (or failed) layout before the error. Page
 // layout resolution itself rides the engine's page entry (renderPageBytes
 // -> resolvePageLayout, the rule_card(:layout) walk); this literal-query
 // form exists only for the error shells.
@@ -2356,7 +2287,7 @@ async function resolveDefaultLayout() {
   };
 }
 
-// Build and return one of the two live error shapes. Any failure inside the
+// Build and return one of the two served error shapes. Any failure inside the
 // builder falls back to the previous minimal stubs so the server's error
 // path can never 500 a second time into the handler.
 async function renderDeckoErrorPage(cardName, kind) {
@@ -2376,8 +2307,7 @@ async function renderDeckoErrorPage(cardName, kind) {
       };
     } else {
       // Existing-card render failures keep the stored-name title the same
-      // way the good pages do (live's /Introduction error page titles
-      // "Introduction - the reference deck").
+      // way the regular pages do.
       viewHtml = buildServerErrorSlotHtml();
       pageOpts = {};
     }
@@ -2414,44 +2344,45 @@ async function renderDeckoErrorPage(cardName, kind) {
 }
 
 // ---------------------------------------------------------------------------
-// Served-environment deltas (r18) — the deck-deployment bytes the engine's
-// page lane intentionally does NOT own.
+// Served-environment deltas — the deck-deployment bytes the engine's
+// page path intentionally does NOT own.
 //
-// renderPageBytes pins the 2026-09-25 dual-lane CAPTURE environment
-// (page.ts header: "The page-lane JSONL bytes are the contract"): fog
+// renderPageBytes pins the engine's fixed environment (see
+// src/card/render/page.ts): fog
 // attachment URLs at `http://s3.amazonaws.com//files/`, the corpus-stored
-// stylesheet revision, the capture's remote-script manifest (no integrity
-// attributes), and no trailing newline. The SERVED deck differs from that
-// capture in five live-receipted ways, and those deltas are THIS origin's
-// deployment config (they already lived here before r18 — SPACES_HOST,
-// MAIN_CSS_URL — and stay here so the engine's capture contract survives
+// stylesheet revision, the remote-script manifest without integrity
+// attributes, and no trailing newline. The SERVED deck differs from that
+// pinned environment in five ways, and those deltas are THIS origin's
+// deployment config (they live here — SPACES_HOST,
+// MAIN_CSS_URL — so the engine's pinned contract survives
 // untouched):
 //
-//   1. Asset host (audit A-1): every live asset URL uses the .cdn. Spaces
-//      subdomain (12/12 live pages) — the engine's capture pins the fog
+//   1. Asset host: every served asset URL uses the .cdn. Spaces
+//      subdomain — the engine pins the fog
 //      endpoint form `http://s3.amazonaws.com//files/...`. Rewritten
 //      wholesale; content images already carry the Spaces host via the
 //      engine's imageCdnHost seam (render.imageCdnHost above), so only
-//      the capture-env forms remain to rewrite.
-//   2. Stylesheet revision (audit A-2): live serves
-//      /files/45514/0000000001.css (byte receipt vs our SassC compile);
+//      the pinned forms remain to rewrite.
+//   2. Stylesheet revision: the served deck serves
+//      /files/45514/0000000001.css (equal to our SassC compile of the
+//      skin with the asset-host rewrite applied);
 //      the corpus row stores the OLDER 9999999999 revision, which the
 //      engine resolves from *all+*style+*asset output. Pinned on both the
 //      stylesheet link and decko.cssPath.
-//   3. CDN script integrity attributes (audit A-4): live loads jquery /
-//      jquery-ujs / ace / select2 WITH the sha256/sha512 integrity hashes
-//      (12/12 live pages); the engine's pinned manifest omits them.
-//   4. Footer version pin: live prints "Decko v0.19.1" (identical on all
-//      captured pages carrying a footer); the corpus's *version row is
-//      EMPTY (nitpicks-lane defect-2 receipt: a corpus data gap, not an
+//   3. CDN script integrity attributes: the served deck loads jquery /
+//      jquery-ujs / ace / select2 WITH the sha256/sha512 integrity hashes;
+//      the engine's pinned manifest omits them.
+//   4. Footer version pin: the served deck prints "Decko v0.19.1"; the
+//      corpus's *version row is
+//      EMPTY (a corpus data gap, not an
 //      engine defect), so the engine's footer nest renders bare
 //      `>Decko v</a>`. The pin restores the served byte.
-//   5. Trailing newline: live and every previously served page end
+//   5. Trailing newline: every served page ends
 //      `</html>\n`; the engine's page string ends at `</html>`.
 const SERVED_ASSET_HOST_PREFIX = "http://s3.amazonaws.com//files/";
 const SERVED_CSS_REVISION = "45514/9999999999.css";
 const SERVED_CSS_REVISION_LIVE = "45514/0000000001.css";
-// A-4 integrity values, verbatim from the live head bytes (12/12 pages).
+// The script integrity attributes, verbatim as the served head carries them.
 const SERVED_SCRIPT_INTEGRITY = [
   {
     src: `<script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous"></script>`,
@@ -2474,26 +2405,27 @@ function applyServedEnvironmentDeltas(engineHtml) {
   // A stock deck is served exactly as the engine renders it.
   if (STOCK_DECK) return engineHtml;
   let body = engineHtml;
-  // 1. Asset host: capture fog form -> the served .cdn. Spaces host. The
+  // 1. Asset host: the engine's fog-endpoint form -> the served .cdn.
+  //    Spaces host. The
   //    engine's CLOUD_URL_PREFIX already carries the "files/" web path, so
   //    the replacement re-adds it.
   body = body.split(SERVED_ASSET_HOST_PREFIX).join(`${SPACES_HOST}/files/`);
-  // 2. Stylesheet revision: corpus-stored -> live-served (link + cssPath).
+  // 2. Stylesheet revision: corpus-stored -> served (link + cssPath).
   body = body.split(SERVED_CSS_REVISION).join(SERVED_CSS_REVISION_LIVE);
   // 3. Script integrity attributes.
   for (const { src, withIntegrity } of SERVED_SCRIPT_INTEGRITY) {
     body = body.split(src).join(withIntegrity);
   }
-  // 4. Footer version pin (corpus *version row is empty; live prints
-  //    0.19.1 — the wrapWithLayout-era receipt above renderFooterContent).
+  // 4. Footer version pin (the corpus *version row is empty; the served
+  //    value is pinned above renderFooterContent).
   body = body.split(`>Decko v</a>`).join(`>Decko v0.19.1</a>`);
-  // 5. Trailing newline after </html> (live byte shape).
+  // 5. Trailing newline after </html> (served byte shape).
   if (!body.endsWith("\n")) body += "\n";
   return body;
 }
 
 // renderEngine defaults to the module's anonymous engine — every
-// pre-slice caller is byte-identical. Signed-in requests pass the actor's
+// pre-existing caller is byte-identical. Signed-in requests pass the actor's
 // engine (engineForActor below) so the page renders under that account's
 // read rules (render.ts viewer seam; permission state memoizes per engine,
 // which is why actors get their own instance instead of a shared mutable
@@ -2550,15 +2482,13 @@ async function renderCardPage(cardName, renderEngine = render, requestedView, re
         body: html,
       };
     }
-    // r18: the ENGINE assembles the page — the show_with_page_layout port
+    // The ENGINE assembles the page — the show_with_page_layout port
     // (per-card *layout rule, main! render, layout-body processing through
-    // the engine's own nest pipeline, html_page head). The round-9/10
-    // origin-side open-view surgery / outer-titled fabrication /
-    // nested-titled conversion / image passes / wiki-link expansion /
-    // search bridge are retired: the engine's page lane produces those
-    // bytes natively (and has, since the page-lane + nitpicks + searchctx
-    // + R16/R17 lanes). Only the served-environment deltas above are
-    // applied to the engine's output.
+    // the engine's own nest pipeline, html_page head). No origin-side
+    // open-view surgery, outer-titled fabrication, nested-titled
+    // conversion, image passes, wiki-link expansion, or search bridge:
+    // the engine produces those bytes natively. Only the
+    // served-environment deltas above are applied to the engine's output.
     // requestedView = the ?view=/ ?v= query param (rest.rb view_from_params:
     // the requested view is the root show view). An unported view raises
     // the engine's UnsupportedViewError — Ruby's unsupported-view UserError
@@ -2601,37 +2531,37 @@ async function renderCardPage(cardName, renderEngine = render, requestedView, re
       );
     }
     if (/^card not found: /.test(message)) {
-      // Live serves Decko's full-chrome not_found page for unresolved names
-      // (live_Community_Building.html receipt) — not a bare stub. Status
+      // The served deck answers unresolved names with Decko's full-chrome
+      // not_found page — not a bare stub. Status
       // stays 404 (format/error.rb page_status_for_unknown).
       return renderDeckoErrorPage(cardName, "not_found");
     }
-    // Any other render raise gets Decko's deck error page (live
-    // live_Introduction.html receipt: "Wild Card! / 500 Server Error").
+    // Any other render raise gets Decko's deck error page (the
+    // "Wild Card! / 500 Server Error" shape).
     // UnknownLayoutError (engine page lane: a layout name that fetches to
     // neither a card layout nor a built-in code layout) lands here too —
-    // live serves the same Wild Card 500 shape for those pages.
+    // the served deck shows the same Wild Card 500 shape for those pages.
     return renderDeckoErrorPage(cardName, "server_error");
   }
 }
 
 // ---------------------------------------------------------------------------
-// The BARE VIEW lane (view-lane shadow support, 2026-10-03): GET /<name>?view=<view>
+// The BARE VIEW lane: GET /<name>?view=<view>
 // renders RenderEngine.render(name, view) — the exact (card, view) path the
-// corpus replay grades (src/testing/replay.ts render-engine handler) and the
-// dual-lane capture recorded. Deliberately NOT renderCardPage: no layout
+// corpus replay grades (src/testing/replay.ts render-engine handler).
+// Deliberately NOT renderCardPage: no layout
 // chrome, no html_page head, and none of applyServedEnvironmentDeltas (those
 // are PAGE-lane deployment config; the bare view lane's byte contract is the
-// capture environment — development default nest view :titled, raw
+// engine's pinned environment — development default nest view :titled, raw
 // (bucket)/... attachment bytes).
 //
 // A render raise emits the corpus CAPTURE_ERROR sentinel BYTES at status 200
 // (the replay convention compares sentinel strings as bytes, no status
-// semantics) — with the ENGINE's own error class naming, not Ruby's taxonomy.
-// Base-vs-candidate comparison stays exact (both sides use the same mapping);
-// a corpus-recaptured REFERENCE for a raising view records the Ruby class
-// name and will not byte-match the engine sentinel — the named fidelity
-// limit documented in the shadow report's limitations.
+// semantics) — with the ENGINE's own error class naming, not Ruby's
+// taxonomy. Base-vs-candidate comparison stays exact (both sides use the
+// same mapping); a Ruby-side reference for a raising view records the Ruby
+// class name and will not byte-match the engine sentinel — a known fidelity
+// limit of the bare-view comparison.
 // ---------------------------------------------------------------------------
 async function renderCardView(cardName, view, renderEngine = render) {
   const headers = {
@@ -2710,7 +2640,7 @@ async function status() {
 // {action_id}{ext}` (card-mod-carrierwave local_url construction). The
 // engine's engine_routes.rb matches `files/:mark/:rev_id(-:size).:format`
 // with `:mark = ~{file_id}` and `:rev_id = action_id`. We accept the
-// shape the live deck would emit.
+// shape the served deck would emit.
 //
 // For the two main asset cards (45514 / 50617), if a SassC/Uglifier-
 // compiled file exists under COMPILED_ASSETS_DIR (e.g.
@@ -2723,7 +2653,7 @@ async function status() {
 // observable, not silent.
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
-// Slice-1 session surface: cookie helpers, per-actor render engines,
+// Session surface: cookie helpers, per-actor render engines,
 // POST /_signin, POST /_signout, and the GET sign-in form page.
 // ---------------------------------------------------------------------------
 
@@ -2855,8 +2785,8 @@ async function handleSignout(req) {
   return authJsonResponse(200, { ok: true, revoked }, { "Set-Cookie": clearedSessionCookieHeader() });
 }
 
-// The sign-in form page: live renders the *signin card's OWN form at this
-// route (set/self/signin.rb format :html core view — card_form +
+// The sign-in form page: the served deck renders the *signin card's OWN
+// form at this route (set/self/signin.rb format :html core view — card_form +
 // email/password fields); the TS engine cannot render it (the account-mod
 // form views are unported rails, card-mod-account.ts header), so the
 // staging surface serves this minimal honest form posting to /_signin.
@@ -2905,9 +2835,9 @@ async function renderSigninPage() {
   };
 }
 
-// The sign-in routes. /​*signin is LIVE's route shape (the nav's Sign in
-// link points there, byte-matched to the live captures); /_signin is the
-// staging-slice alias named alongside the POST endpoints.
+// The sign-in routes. /*signin is the served deck's route shape (the nav's
+// Sign in link points there); /_signin is the
+// staging alias named alongside the POST endpoints.
 const SIGNIN_PAGE_PATHS = new Set(STOCK_DECK ? ["/_signin"] : ["/_signin", "/*signin", "/*signin/titled"]);
 
 // The forgot-password form's submit route: Ruby's own card_form :update
@@ -2924,11 +2854,11 @@ async function handleAssetFile(pathname) {
   const actionId = Number(actionIdStr);
   const extLower = ext.toLowerCase();
   const fileCard = fileCardsById.get(cardId);
-  // Compiled bytes first: when the compile lane has produced a SassC-
-  // compiled CSS / Uglifier-compressed JS file for this (cardId, ext)
+  // Compiled bytes first: when a SassC-
+  // compiled CSS / Uglifier-compressed JS file exists for this (cardId, ext)
   // pair and it's on disk in COMPILED_ASSETS_DIR, serve those bytes
   // verbatim with the right Content-Type. This is what the page's
-  // <link>/<script> tags actually expect — the live deck receives the
+  // <link>/<script> tags actually expect — the deployed deck receives the
   // bucket-hosted compiled output. If the file is missing, fall through
   // to the SCSS-source / manifest paths below with their honest note
   // headers.
@@ -2964,13 +2894,13 @@ async function handleAssetFile(pathname) {
       }
     }
   }
-  // Local uploads (uploads2 lane): a NEW upload's identifier is
+  // Local uploads: a NEW upload's identifier is
   // ~<cardId>/<actionId><ext> with its bytes under DECKO_FILES_DIR (Ruby's
   // files_base_dir scheme, paths.rb:10-17). The card row is the
   // authority: when its CURRENT db_content names exactly the requested
   // (cardId, actionId, ext) as a local identifier, the local file wins —
   // this is how a just-uploaded file serves before any bucket copy exists
-  // (the live deck serves these through the same local_url form).
+  // (the served deck uses the same local_url form).
   {
     const row = fileCard ?? (
       await driver.query("SELECT db_content FROM cards WHERE id = ? AND trash = 0", [cardId])
@@ -3049,7 +2979,7 @@ async function handleAssetFile(pathname) {
   // Main script + every other JS asset card. The deck's MAIN script (the
   // *all+*script+*asset output card this URL names) serves the COMPILED
   // bundle — the deployed compile bytes when present, else the in-process
-  // compile of the pinned assembled input (the tinymce-assets lane's output
+  // compile of the pinned assembled input (the compile pipeline's output
   // contract; the note header names the flavor). Other JS asset cards keep
   // the honest uncompiled-manifest fallback.
   if (extLower === "js") {
@@ -3111,22 +3041,22 @@ async function handleAssetFile(pathname) {
   };
 }
 
-// The sign-in POST endpoints (the staging-slice names).
+// The sign-in POST endpoints (the staging aliases).
 const SIGNIN_POST_PATHS = new Set(["/_signin", "/_signout"]);
 
-// The account-flow POST endpoints (lane-reset-flows staging surface):
+// The account-flow POST endpoints (the account-flow staging surface):
 // the reset request and the password set. The reset LINK itself is a GET
 // to /update/<mark> handled by parseAccountFlowLink before any of this.
 const ACCOUNT_POST_PATHS = new Set(["/_reset-request", "/_account-password"]);
 
 // ---------------------------------------------------------------------------
-// Write-path dispatch (write-path slice 2)
+// Write-path dispatch
 // ---------------------------------------------------------------------------
-
+//
 // The Auth::Token secret (TOKEN_SECRET/TOKEN_CONFIG) is declared beside the
 // engine boot above, which reads it first. The write path carries no CSRF
-// secret: live decko arms no forgery protection (the write-routes module
-// header cites the sources and the captured session), so the earlier
+// secret: the served decko arms no forgery protection (the write-routes
+// module header cites the sources), so the earlier
 // DECKO_CSRF_SECRET HMAC machinery is gone.
 
 /** Bridge the node request to the write-routes module. Returns the write
@@ -3134,11 +3064,11 @@ const ACCOUNT_POST_PATHS = new Set(["/_reset-request", "/_account-password"]);
  *  caller falls through to its 405). The renderSlot hook lets the ajax
  *  soft redirect (response.rb:54-62) render through the ACTOR's own
  *  engine — the same per-actor engines the GET surface uses. The optional
- *  pre-read body is lane-reset-flows' form-handler seam: the account-flow
+ *  pre-read body is the account-flow form-handler seam: the account-flow
  *  POST handlers parse the body once and hand it here so the write-path
  *  delegation never re-reads the consumed stream.
  *
- *  uploads2 lane: the RAW bytes ride along as bodyBytes — the multipart
+ *  Uploads: the RAW bytes ride along as bodyBytes — the multipart
  *  upload grammar parses the byte stream (Rack's rack.input), which a
  *  utf8 string round-trip would corrupt for binary payloads. */
 async function dispatchWriteRequest(req, pathname, preReadBody) {
@@ -3165,7 +3095,7 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
       attachmentStore,
       ...(scssCompiler === undefined ? {} : { scssCompiler }),
       coffeeCompiler,
-      // staging-seat-wiring lane: the recaptcha seat, composed only when the
+      // The recaptcha seat, composed only when the
       // boot-time env read produced a config — the conditional spread keeps
       // the unarmed context byte-identical (the seat's own discipline,
       // write-routes.ts:154-168). The config passes through UNCHANGED; the
@@ -3200,8 +3130,7 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
 }
 
 /**
- * Bridge one first-run request to the first-run-routes module (
- * first-run-experience lane).
+ * Bridge one first-run request to the first-run-routes module.
  *
  * The body is read here, once, and handed down - the same seam
  * dispatchWriteRequest uses for a pre-read body, so neither surface
@@ -3251,11 +3180,11 @@ async function dispatchFirstRunRequest(req, pathname, startedAt) {
  *  write-path delegation applies the same discipline. */
 async function applyWriteResponseTail(writeResponse, startedAt, method, pathname) {
   // The expiry half delegates to the module-extracted, tested successor of
-  // the inline block this tail was carved from (lane-cache-expiry,
-  // pass14-int): the gate is the mutation point's expiryName — stamped on
+  // the inline block this tail was carved from: the gate is the mutation
+  // point's expiryName — stamped on
   // EVERY success flavor — never the Location header, which only the HTML
-  // flavor carries (staging receipt staging-save-e2e.md FINDING 2026-09-29:
-  // a Location gate let JSON saves expire nothing and left warm engines
+  // flavor carries (a Location gate let JSON saves expire nothing and left
+  // warm engines
   // serving pre-save pages). Same expiry fan-out the main write branch
   // runs; the forgot-password write-path delegation shares it.
   expireRenderCachesAfterSave(
@@ -3303,8 +3232,8 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  // Slice-1: resolve the session cookie ONCE per request, before any
-  // render. A request with no cookie takes the exact pre-slice path (the
+  // Resolve the session cookie ONCE per request, before any
+  // render. A request with no cookie takes the exact pre-session path (the
   // shared anonymous engine). A cookie that fails to resolve — unknown,
   // expired, revoked, dead account card — renders as Anonymous
   // (auth/current.rb:58-63, never an error and never a half-privileged
@@ -3339,11 +3268,11 @@ const server = http.createServer(async (req, res) => {
       // /setup exactly as before.
       (firstRunEnabled() && pathname === SETUP_PATH))
   ) {
-    // Slice-1 sign-in/sign-out + lane-reset-flows + first-run setup POSTs:
+    // Sign-in/sign-out + account-flow + first-run setup POSTs:
     // fall through to the shared dispatch chain below (handleSignin/
     // handleSignout/handleResetRequest/handleAccountPassword/
     // handleForgotPasswordSubmit/handleFirstRunRequest). They take
-    // precedence over the write-path marks — staging-slice endpoints are
+    // precedence over the write-path marks — staging endpoints are
     // not card marks.
   } else if (parseAccountFlowLink(pathname, url.searchParams) !== null) {
     // The emailed reset/verify link arriving with a verb-explicit POST/
@@ -3351,7 +3280,7 @@ const server = http.createServer(async (req, res) => {
     // Consumed here — ahead of the write-path dispatch — because the link
     // is authenticator-token traffic, not a session-CSRF form post.
   } else {
-    // Write path (write-path slice 2): all write logic lives in
+    // Write path: all write logic lives in
     // dist/src/server/write-routes.js — this file only dispatches. Opt-in
     // via DECKO_WRITE_PATH=1 AND a writable DB boot (this server's default
     // boot is readonly pure-browse; unset keeps the historical 405s).
@@ -3363,19 +3292,15 @@ const server = http.createServer(async (req, res) => {
         // director/phases.rb:54 after_commit -> cache/all.rb:17-24 expire).
         // The write engine runs on its own per-request fetcher, so the
         // boot-time render engine's cache must be expired explicitly —
-        // otherwise the next page render serves the pre-save row (observed
-        // live: session-replay2 lane step-05 read stale content after a
-        // successful save). The gate keys on the successful-mutation
-        // point's expiryName (successResponse stamps it on EVERY success
-        // flavor — including lane-edit-divergences' ajax 200 slot, which
-        // carries no Location) — NOT on the Location header, which only the
-        // HTML flavor carries: a Location gate let JSON saves expire nothing
-        // and left warm engines serving pre-save pages (staging receipt
-        // staging-save-e2e.md FINDING 2026-09-29). This is the module-
-        // extracted form (lane-cache-expiry, pass14-int) of the lane's
-        // inline expiry block — same expiry fan-out (fetcher + boot render
-        // engine + every signed-in engine), the module is its tested
-        // successor.
+        // otherwise the next page render serves the pre-save row. The gate
+        // keys on the successful-mutation point's expiryName (stamped on
+        // EVERY success flavor, including the ajax 200 slot which carries
+        // no Location) — NOT on the Location header, which only the HTML
+        // flavor carries: a Location gate let JSON saves expire nothing
+        // and left warm engines serving pre-save pages. This is the
+        // module-extracted form of the inline expiry block — same expiry
+        // fan-out (fetcher + boot render engine + every signed-in engine);
+        // the module is its tested successor.
         expireRenderCachesAfterSave(
           {
             fetcher,
@@ -3410,7 +3335,7 @@ const server = http.createServer(async (req, res) => {
         (SIGNIN_POST_PATHS.has(pathname) ||
           ACCOUNT_POST_PATHS.has(pathname) ||
           pathname === FORGOT_PASSWORD_SUBMIT_PATH ||
-          // the first-run setup post (first-run-experience lane). Guarded by
+          // the first-run setup post. Guarded by
           // firstRunEnabled() INSIDE the module, so with the flag unset this
           // clause is false and the 405 posture is byte-identical to before.
           (firstRunEnabled() && pathname === SETUP_PATH))
@@ -3439,7 +3364,7 @@ const server = http.createServer(async (req, res) => {
     } else if (req.method === "POST" && pathname === FORGOT_PASSWORD_SUBMIT_PATH) {
       response = await handleForgotPasswordSubmit(req, startedAt);
     } else if (firstRunEnabled() && (req.method === "GET" || req.method === "POST") && pathname === SETUP_PATH) {
-      // The first-run journey (first-run-experience lane). NEW surface, off
+      // The first-run journey. NEW surface, off
       // unless DECKO_FIRST_RUN=1: with the flag unset this branch is never
       // reached, /setup falls through to the card renderer exactly as before,
       // and no existing route, view or rendered byte changes. The census
@@ -3527,24 +3452,23 @@ const server = http.createServer(async (req, res) => {
     } else if (!pathname.slice(1).includes("/")) {
       const name = decodeName(pathname.slice(1));
       // View-lane dispatch: a non-empty ?view= query renders the BARE view
-      // (renderCardView above); its absence or emptiness keeps the proven
-      // page path byte-identical. The query is the dispatch key (the corpus
+      // (renderCardView above); its absence or emptiness keeps the page
+      // path byte-identical. The query is the dispatch key (the corpus
       // URL convention "/<name>?view=<view>"), not the request headers.
       //
-      // FOLD-12 UNION ADJUDICATION (lane-fold12-2026-10-03): the bare view
+      // Two byte contracts meet here and both hold: the bare view
       // lane answers a RAISING render with the CAPTURE_ERROR sentinel at
       // status 200 — the shadow parity stage's byte-comparison semantics —
-      // but the graded/session surface pins Ruby's unsupported-view shape
-      // (422, format/render.rb:60-64 via error.rb:21; live-verified 422
-      // view-not-supported by the w5-live-alignment lane) in the
+      // but the session surface pins Ruby's unsupported-view shape
+      // (422, format/render.rb:60-64 via error.rb:21) in the
       // standing-net member tests/server/edit-session-replay.test.ts
-      // ("unported view names 422 and deep paths 404"). Both contracts hold
-      // by scoping the sentinel lane to the process that asks for it: the
-      // shadow tool sets DECKO_SHADOW_VIEW_LANE=1 on the servers it spawns
-      // (bin/migration-parity-shadow.mjs); every other boot — the graded
-      // pins, the session-replay surface, default staging — keeps the
-      // pre-view-lane fall-through to renderCardPage, whose unsupported-view
-      // answer is the pinned 422.
+      // ("unported view names 422 and deep paths 404"). The contracts are
+      // reconciled by scoping the sentinel behavior to the process that asks
+      // for it: the shadow tool sets DECKO_SHADOW_VIEW_LANE=1 on the servers
+      // it spawns (bin/migration-parity-shadow.mjs); every other boot — the
+      // pinned tests, the session-replay surface, default staging — keeps
+      // the fall-through to renderCardPage, whose unsupported-view
+      // answer is the 422.
       const requestedView = url.searchParams.get("view");
       const shadowViewLane = process.env.DECKO_SHADOW_VIEW_LANE === "1";
       if (name === undefined || name === "") {
@@ -3566,9 +3490,8 @@ const server = http.createServer(async (req, res) => {
       // the named view, exactly what the ?view= param does via
       // view_from_params):
       //   line 51: get ":mark/:view(.:format)" => "card#read"  (the
-      //     "super-lazy" form — and the form the live page chrome's own
-      //     edit links emit: href="/Aikido_2/edit" in the authenticated
-      //     captures, member.Aikido_2.html / admin.Home.html);
+      //     "super-lazy" form — and the form the page chrome's own
+      //     edit links emit: href="/<card>/<view>");
       //   line 24: get ":mark/view/:view(.:format)" (the API-doc form);
       //   line 25: get "card/:view(/:mark(.:format))", view restricted to
       //     new|edit (the legacy explicit form — "/card/:name/edit").
