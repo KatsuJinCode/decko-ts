@@ -1,5 +1,5 @@
-// RED-first pins, BUILD 1 (the precompute closure builder):
-// - the builder writes a SIDE database (never the corpus file) holding the
+// RED-first pins (the precompute closure builder):
+// - the builder writes a SIDE database (never the deck database file) holding the
 //   include-edge graph and per-page transitive closures;
 // - the edges come from the REAL parser's content scan (the empirical
 //   finding: the stored card_references table is stale in both directions,
@@ -10,7 +10,8 @@
 //   alternative was measured and rejected);
 // - the build report records the edge agreement against card_references.
 //
-// The corpus tests skip when the mirror copy is absent (fresh clones).
+// These tests skip when the shared deck database copy is absent (fresh
+// clones).
 
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -101,7 +102,7 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/closure-builder.test.ts", "h
   });
 
   it("probe-page closures cover the content-reachable rows up to the NAMED residue constant", async () => {
-    // THE PIN (the honest form the measurements forced, twice):
+    // THE PIN:
     //
     // 1. The closure must carry the derivable dependency classes — nests,
     //    links, junction sides, types, collection items, the page's rule
@@ -112,7 +113,7 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/closure-builder.test.ts", "h
     //    link-label resolutions, cross-search-reachable collections) —
     //    derivable only by re-implementing the render's view logic, which
     //    the portability requirement forbids baking into the builder.
-    // 2. That residue is a BOUNDED FRACTION (the mission's "documented
+    // 2. That residue is a BOUNDED FRACTION (a "documented
     //    small constant"), asserted here and reported per page. The
     //    byte-identity test proves the residue costs no bytes; the record-
     //    and-replay plan is its steady-state answer.
@@ -158,7 +159,7 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/closure-builder.test.ts", "h
   it("records the card_references edge agreement in the build report", () => {
     expect(report.edgeAgreement.storedInclusionRows).toBeGreaterThan(0);
     expect(report.edgeAgreement.parsedEdges).toBeGreaterThan(0);
-    // the empirical finding this lane proved: the stored table is stale in
+    // the empirical finding: the stored table is stale in
     // BOTH directions — the report carries the numbers so the portability
     // spec's "parse is the authority" rule is data-backed
     expect(
