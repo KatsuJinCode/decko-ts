@@ -1,6 +1,5 @@
 // capture-oracle-upload-file-tree.mjs -- read-only capture of the Ruby
-// oracle deck's CarrierWave upload storage tree (the E4.4.a file-side
-// oracle the fork recount named as missing).
+// oracle deck's CarrierWave upload storage tree (the file-side oracle).
 //
 // What it captures:
 //   1. every file under the oracle app's `files/` store dir and `tmp/files/`
