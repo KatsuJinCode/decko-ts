@@ -221,7 +221,7 @@ export async function verifyMigration(opts) {
   const cards = tables["cards"] ?? null;
   const allParity = Object.values(tables).every((t) => t.countParity && t.checksumParity !== false);
   const report = {
-    tool: "decko-ts migrate (M4)",
+    tool: "decko-ts migrate",
     timestamp: new Date().toISOString(),
     dump: { file: basename(opts.dumpPath), bytes: importStats.bytesRead },
     import: {
@@ -269,6 +269,6 @@ export const OUT_OF_SCOPE = [
   "rails sessions: the sessions table imports as-is if present but is inert in decko-ts (no Rails session store)",
   "background jobs: delayed_jobs rows import as-is but are stale queue state, not source of truth",
   "site-custom tables: any table outside the 12 core tables is skipped and reported in skippedTables",
-  "ruby code assets: set modules, HAML views, and mod files are code, not data; behavior parity is the decko-ts mod layer's job (wave 3)",
+  "ruby code assets: set modules, HAML views, and mod files are code, not data; behavior parity is the decko-ts mod layer's job",
   "search/caches: card_virtuals is a materialized cache and imports only for id fidelity; treat it as stale",
 ];

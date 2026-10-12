@@ -32,11 +32,11 @@ import { writeFileSync } from "node:fs";
 
 export const OUT_OF_SCOPE = [
   "attachments/files: uploaded files live on disk/object storage, never inside the import - re-attach separately",
-  "user credentials/accounts: account rows import as cards, but password/login behavior belongs to the decko-ts account layer (future wave)",
+  "user credentials/accounts: account rows import as cards, but password/login behavior belongs to the decko-ts account layer",
   "rails sessions: the sessions table imports as-is if present but is inert in decko-ts (no Rails session store)",
   "background jobs: delayed_jobs rows import as-is but are stale queue state, not source of truth",
   "site-custom tables: any table outside the core 12 is skipped and reported in skippedTables",
-  "ruby code assets: set modules, HAML views, and mod files are code, not data; behavior parity is the decko-ts mod layer's job (wave 3)",
+  "ruby code assets: set modules, HAML views, and mod files are code, not data; behavior parity is the decko-ts mod layer's job",
   "search/caches: card_virtuals is a materialized cache and imports only for id fidelity; treat it as stale",
 ];
 
@@ -187,7 +187,7 @@ export async function buildReport({
     orphans.leftCount === 0 &&
     orphans.rightCount === 0;
   return {
-    tool: "decko-ts import-deck (M5)",
+    tool: "decko-ts import-deck",
     timestamp: new Date().toISOString(),
     source: {
       path: sourcePath,

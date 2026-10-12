@@ -56,7 +56,7 @@ function usage(exitCode = 0) {
     "Source (exactly one):",
     "  --source <file>      Ruby decko SQLite database to import (read-only)",
     "  --dump <file>        mysqldump text (Ruby decko mysql-format dump)",
-    "  --seed <file>        deck INSERT-format text (anonymized corpus seed shape)",
+    "  --seed <file>        deck INSERT-format text (the seed file's INSERT shape)",
     "",
     "Output:",
     "  --out-dir <dir>      Directory to write chunk-NNN.sql files into",
@@ -549,25 +549,25 @@ if (opts.apply) {
 if (stagingStats.skippedDuplicates !== undefined) {
   report.skippedDuplicates = stagingStats.skippedDuplicates;
   report.warnings.push(
-    `deduped ${Object.values(stagingStats.skippedDuplicates).reduce((a, b) => a + b, 0)} rows whose id collided with a previously-ingested row in the same table (corpus-v2 sanitization artifact)`,
+    `deduped ${Object.values(stagingStats.skippedDuplicates).reduce((a, b) => a + b, 0)} rows whose id collided with a previously-ingested row in the same table (a sanitization artifact of the source deck)`,
   );
 }
 if (stagingStats.nulledKeyDuplicates !== undefined) {
   report.nulledKeyDuplicates = stagingStats.nulledKeyDuplicates;
   report.warnings.push(
-    `nulled key on ${Object.values(stagingStats.nulledKeyDuplicates).reduce((a, b) => a + b, 0)} rows whose key collided with a previously-ingested row in the same table (corpus-v2 sanitization artifact; the rows still land)`,
+    `nulled key on ${Object.values(stagingStats.nulledKeyDuplicates).reduce((a, b) => a + b, 0)} rows whose key collided with a previously-ingested row in the same table (a sanitization artifact of the source deck; the rows still land)`,
   );
 }
 if (stagingStats.nulledLRDuplicates !== undefined) {
   report.nulledLRDuplicates = stagingStats.nulledLRDuplicates;
   report.warnings.push(
-    `nulled right_id on ${Object.values(stagingStats.nulledLRDuplicates).reduce((a, b) => a + b, 0)} rows whose (left_id, right_id) collided (corpus-v2 has many duplicate junction sides across revisions; the rows still land)`,
+    `nulled right_id on ${Object.values(stagingStats.nulledLRDuplicates).reduce((a, b) => a + b, 0)} rows whose (left_id, right_id) collided (the source deck carries duplicate junction sides across revisions; the rows still land)`,
   );
 }
 if (stagingStats.nulledCodenameDuplicates !== undefined) {
   report.nulledCodenameDuplicates = stagingStats.nulledCodenameDuplicates;
   report.warnings.push(
-    `nulled codename on ${Object.values(stagingStats.nulledCodenameDuplicates).reduce((a, b) => a + b, 0)} rows whose codename collided (corpus-v2 sanitization artifact)`,
+    `nulled codename on ${Object.values(stagingStats.nulledCodenameDuplicates).reduce((a, b) => a + b, 0)} rows whose codename collided (a sanitization artifact of the source deck)`,
   );
 }
 writeReport(report, reportPath);
