@@ -78,7 +78,7 @@ account. You need no terminal, no Node install, and no Cloudflare setup first.
 What the button deploys is a **read-only four-card demo deck**; a writable deck
 takes the steps in [docs/deploy-cloudflare.md](docs/deploy-cloudflare.md).
 
-[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/KatsuJinCode/decko-ts)
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/KatsuJinCode/decko-ts-public)
 
 ### What you see, step by step
 
@@ -260,8 +260,8 @@ node scripts/deploy/one-click-teardown.mjs -c deploy/wrangler.scale.toml
 
 Some deploys have no config file to point at. The frozen demo pair — the
 Worker `decko-ts-demo` and the D1 database `decko-ts-demo-db`, which holds the
-partial ~1.2M-row import and whose names live only in `deploy/cleanup.mjs` and
-`docs/one-click-cf-deploy-inventory.md` — has no committed wrangler config, so
+partial ~1.2M-row import and whose names live in `deploy/cleanup.mjs` — has no
+committed wrangler config, so
 `--config` has nothing to read. Name the pair directly instead:
 `--worker-name decko-ts-demo --db-name decko-ts-demo-db`. Without `--config`,
 no config file is consulted at all, and everything else — the read-only list,
