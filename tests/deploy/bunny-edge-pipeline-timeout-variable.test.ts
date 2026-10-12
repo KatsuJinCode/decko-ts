@@ -1,13 +1,12 @@
-// The per-pipeline timeout variable (P1 incident 2026-10-03,
-// edge-incident-fix lane): deploy/bunny-worker-src/bunny-edge-engine-request.ts
+// The per-pipeline timeout variable:
+// deploy/bunny-worker-src/bunny-edge-engine-request.ts
 // — EDGE_PIPELINE_TIMEOUT_ENV_VAR / resolveEdgePipelineTimeoutMs — and the
 // raised default in src/card/drivers/bunny-db.ts —
 // DEFAULT_PIPELINE_TIMEOUT_MS.
 //
-// WHAT HAPPENED: release 1126057 shipped the cold-render safety bounds (a
-// 5,000 ms per-pipeline abort) while the render still ran whole-deck
-// recursive walks (one measured 1.87 MB / 3.8 s warm from the edge, longer
-// for a visitor at network distance). Real visitors' hops legitimately
+// WHAT HAPPENED: the cold-render safety bounds shipped a 5,000 ms
+// per-pipeline abort while the render still ran whole-deck recursive walks
+// (multi-megabyte, multi-second builds). Real visitors' hops legitimately
 // exceeded the 5 s bound, the abort surfaced as "Pipeline Transport failed
 // ... signal timed out", and the site was unloadable — reproducible on
 // every refresh.
@@ -21,7 +20,7 @@
 //     platform's. Red if anyone raises the hop default past the budget.
 //  3. The resolver fails SAFE: absent, empty, whitespace, unparseable, and
 //     negative all keep the measured default; a typo in the edge variable
-//     must not turn into "no per-hop bound" (the pre-lane behavior).
+//     must not turn into "no per-hop bound" (the previous behavior).
 //  4. An explicit "0" passes 0 through, which the driver maps to "no abort
 //     signal" — the operator's rollback that needs no republish.
 //  5. The driver default and the resolver default CANNOT DRIFT: a driver
