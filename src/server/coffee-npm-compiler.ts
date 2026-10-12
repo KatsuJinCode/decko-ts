@@ -1,7 +1,6 @@
-// Node-host CoffeeScript compiler: the npm coffeescript@1.12.2 package, the
-// same compiler the Ruby oracle's coffee-script-source 1.12.2 gem bundles
-// (the Ruby wrapper maps no_wrap: to the JS compiler's {bare:} option —
-// src/card/mod-loader/sassc-coffeescript-compile-engines.ts, oracle-pinned).
+// Node-host CoffeeScript compiler: the npm coffeescript@1.12.2 package,
+// pinned to the version the asset pipeline expects so compiled output does
+// not shift under an unrelated dependency bump.
 //
 // The compile is synchronous (the npm compile is); a host without a Node
 // module system never imports this file — the engine receives the compiler
