@@ -20,9 +20,9 @@ export interface CqlTestStorage {
   close(): void;
 }
 
-/** Fresh in-memory database + FetchEngine, schema loaded, REGEXP UDF
- *  registered (the local-driver bootstrap the execution contract requires,
- *). */
+/** Fresh in-memory database + FetchEngine; schema loaded; REGEXP UDF
+ *  registered, as the execution contract's local-driver bootstrap
+ *  requires. */
 export async function createCqlTestStorage(): Promise<CqlTestStorage> {
   const driver = new LocalSqliteDriver({ path: ":memory:" });
   const ddl = readFileSync(`${REPO_ROOT}db/schema.sqlite.sql`, "utf8");
@@ -50,38 +50,33 @@ export interface CqlSeedCard {
 }
 
 // ---------------------------------------------------------------------------
-// The oracle capture deck, modeled.
+// The capture deck this suite replays against, modeled as seed rows.
 //
-// fixtures/captured/cql-basic.json was recorded against a FRESH decko app
-// (618 cards: decko's standard seed + the Oracle cards smoke.json captures).
-// The replay cannot ship that whole deck, so this seed models the cards the
-// captured queries actually touch, with their REAL capture-deck ids and
-// junction structure (read from tools/oracle/decko-oracle-app read-only,
-// 2026-09-20). Two properties are load-bearing for byte-parity:
+// A full decko seed deck is far larger than any replay needs, so this seed
+// models exactly the cards the replayed queries touch, keeping the
+// reference deck's ids and junction structure. Two properties are
+// load-bearing for byte-parity:
 //
 // 1. ID RELATIVE ORDER of the NULL-key (compound) cards. `sort: "name"`
 //    orders by the `key` column; SQLite sorts NULL keys first in ASC (last
-//    in DESC) with rowid tie-breaks - the same engine the oracle ran on.
-//    The captured limit windows depend on it and are reproduced exactly:
+//    in DESC) with rowid tie-breaks. The asserted limit windows depend on
+//    it and are reproduced exactly:
 //      created_by_bot (limit 5) -> compounds 10, 11, 14, 19, 29 (the five
-//      lowest-id compounds in the whole real deck; every later real
-//      compound sorts behind the window, so omitting it cannot change the
-//      captured set);
+//      lowest-id compounds in the deck; every later compound sorts behind
+//      the window, so omitting it cannot change the expected set);
 //      not_cardtypes (limit 3) / type_limit (limit 2) -> Search compounds
 //      157, 160, 163 (ASC NULLs first, id order);
 //      type_dir_desc (DESC) -> oracle_search 614 > card_with_account 278 >
 //      *search 100 (NULLs last).
-//    Runtime-verified against the oracle app's own SQLite engine with the
-//    same ORDER BY shapes before this seed was written.
 //
-// 2. The Search-type set is modeled COMPLETELY (all 13 real Search cards,
-//    ids 100-614), so the type-filtered windows see the full real set, not
-//    a pruned one.
+// 2. The Search-type set is modeled COMPLETELY (all 13 Search cards,
+//    ids 100-614), so the type-filtered windows see the full set, not a
+//    pruned one.
 //
 // Ids are never compared (the replay compares name sets); non-modeled
-// standard-deck cards cannot enter any captured window (above). Contents
+// standard-deck cards cannot enter any asserted window (above). Contents
 // are kept only for the smoke cards (all match_sentinel needs); standard
-// cards' db_content is NULL, which no captured result depends on.
+// cards' db_content is NULL, which no asserted result depends on.
 // ---------------------------------------------------------------------------
 export const ORACLE_DECK_CARDS: CqlSeedCard[] = [
   // decko's type cards (real ids/codenames; Cardtype-typed per the real deck)
@@ -139,8 +134,8 @@ export const ORACLE_DECK_CARDS: CqlSeedCard[] = [
   { id: 352, name: "*style+*right+*content options", leftId: 350, rightId: 60, typeId: 98 },
   { id: 487, name: "*recent settings+*self+*content options", leftId: 484, rightId: 60, typeId: 98 },
   { id: 614, name: "Oracle Search", typeId: 98, dbContent: '{"left":"Oracle Junction","sort":"name"}' },
-  // the captured smoke cards (ids/contents per fixtures/captured/smoke.json;
-  // real type ids: Set=5, List=4)
+  // the smoke fixture cards (contents the match queries assert against;
+  // type ids: Set=5, List=4)
   { id: 605, name: "Oracle Basics", typeId: 2, dbContent: "A plain basic card for oracle capture." },
   { id: 606, name: "Oracle Junction", typeId: 2, dbContent: "Junction parent card." },
   { id: 607, name: "child_one", typeId: 2 },
@@ -160,10 +155,10 @@ export const ORACLE_DECK_CARDS: CqlSeedCard[] = [
   { id: 617, name: "Oracle Restricted+*self+*read", leftId: 616, rightId: 9, typeId: 4, dbContent: "Administrator" },
 ];
 
-/** Seed the modeled oracle capture deck. Every row is bot-created
- *  (creator_id/updater_id 1 = Decko Bot, the real deck's state; capture.rb
- *  seeds under Auth.as_bot and the standard seed is bot-created too),
- *  non-trashed, with fixed timestamps (no captured query reads time). */
+/** Seed the modeled capture deck. Every row is bot-created
+ *  (creator_id/updater_id 1 = Decko Bot, matching the standard seed's
+ *  convention), non-trashed, with fixed timestamps (no replayed query
+ *  reads time). */
 export async function seedOracleCaptureDeck(storage: CqlTestStorage): Promise<void> {
   const insert =
     "INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id, " +

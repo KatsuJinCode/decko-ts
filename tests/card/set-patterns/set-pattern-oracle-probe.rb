@@ -1,6 +1,8 @@
-# set-pattern-oracle-probe.rb - read-only probe of the set-pattern registry
-# for the decko-ts set-patterns port (wave 2 stream 9). No writes, no saves:
-# fetches and in-memory Card.new only. Its output is committed verbatim as
+# set-pattern-oracle-probe.rb - prints the set-pattern registry of a decko
+# (Ruby) application as JSON, as reference data for this repository's
+# set-pattern implementation. Read-only by construction: it only calls
+# Card.fetch and builds unsaved Card.new instances, so running it cannot
+# modify the database. The printed JSON is checked in verbatim as
 # set-pattern-oracle-capture.json next to this file.
 #
 # Run (from tools/oracle/decko-oracle-app):

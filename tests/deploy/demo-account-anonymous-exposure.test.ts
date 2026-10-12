@@ -3,7 +3,7 @@
 // signed in - on EITHER read surface the shipped Cloudflare Worker exposes:
 // the rendered page path (GET /:mark/:view) and the CQL API (POST /api/query).
 //
-// WHY THIS FILE EXISTS (round-8 adversarial review, verified in workerd with
+// WHY THIS FILE EXISTS (found by adversarial review, verified in workerd with
 // DECKO_FIRST_RUN=1 DECKO_WRITE_PATH=1 after setup):
 //   * GET /victim+*account+*password/input returned the pbkdf2 digest,
 //   * GET /victim+*account+*salt returned the salt,
@@ -36,7 +36,7 @@
 //     matter which surface leaked it, and no assertion can pass by matching
 //     something the test itself wrote.
 //
-// NOT IN tests/standing-net.json — recorded in the receipt.
+// Not part of tests/standing-net.json (this suite is offline-only).
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -75,7 +75,7 @@ const CHAIN = [
 
 const OWNER_EMAIL = "victim@demo.invalid";
 const OWNER_PASSWORD = "Demo-Setup-1";
-/** The setup form's card[name] field (user.rb:14) - the reviewer's /victim. */
+/** The setup form's card[name] field (user.rb:14) — the /victim card name. */
 const OWNER_NAME = "victim";
 
 /** The D1 binding the worker expects, backed by the local sqlite driver.

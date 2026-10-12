@@ -1,5 +1,5 @@
 // The Bunny edge read path's SESSION concept — cookie -> actor -> viewer,
-// and the sign-out surface. Three pins, one per part of the deliverable.
+// and the sign-out surface. Three pins, one per part.
 //
 // ---------------------------------------------------------------------------
 // WHAT EACH PIN PROVES, AND HOW FAR THE PROOF REACHES
@@ -13,21 +13,20 @@
 //      the engine handed the render call is not the anonymous engine.
 //
 //   2. ANONYMOUS BYTE IDENTITY — a request with no cookie produces body
-//      bytes BYTE-FOR-BYTE equal to the fixture captured from the
-//      PRE-wiring code (fixtures/edge-anonymous-read-baseline-home.html,
-////      captured before bunny-edge-session-viewer.ts existed). A cookie
+//      bytes BYTE-FOR-BYTE equal to the checked-in baseline fixture
+//      (fixtures/edge-anonymous-read-baseline-home-site-shell.html, the
+//      full page shell the edge serves). A cookie
 //      that does NOT resolve — unknown, revoked, malformed — produces those
 //      same bytes, because all four degrade cases land on the anonymous
 //      engine (auth/current.rb:58-63). And the no-cookie path issues zero
 //      database statements beyond the render itself: the cookie check is a
 //      header string scan, not a query.
 //
-//   3. SIGN-OUT REVOCATION — the surface that did not exist: a session
-//      minted over HTTP can now be revoked over HTTP. POST /_signout
-//      deletes the row and emits the cleared cookie, the revoked token
-//      stops resolving, the render reverts to anonymous, and the surface is
-//      idempotent (Ruby's signout is: signing out Anonymous is a no-op
-//      success).
+//   3. SIGN-OUT REVOCATION — a session minted over HTTP can be revoked over
+//      HTTP. POST /_signout deletes the row and emits the cleared cookie,
+//      the revoked token stops resolving, the render reverts to anonymous,
+//      and the surface is idempotent (Ruby's signout is: signing out
+//      Anonymous is a no-op success).
 //
 // ---------------------------------------------------------------------------
 // WHAT IS *NOT* PROVEN HERE, STATED PLAINLY
@@ -45,11 +44,10 @@
 //     is only called inside the `if (writeArmed)` branch.
 //   - Live trial-DB behavior. The existing opt-in live suite
 //     (DECKO_LIVE_TRIAL_DB=1) covers the real Hrana wire for session rows;
-//     this lane did not run it and makes no claim about it.
+//     this suite did not run it and makes no claim about it.
 //
-// DATA: synthetic. Credentials from src/testing/generated-credentials.js per
-// the stream data rule. No real deck content, no real account, no live
-// service.
+// DATA: synthetic. Credentials from src/testing/generated-credentials.js.
+// No real deck content, no real account, no live service.
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -89,16 +87,12 @@ import { startMockHranaServer, type MockHranaServer } from "../server/drivers/mo
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..");
 
-/** The anonymous bytes captured from the code as it stood at the
- *  edge-site-shell lane (2026-10-02) — the FULL PAGE SHELL the edge now
+/** The anonymous bytes baseline: the FULL PAGE SHELL the edge now
  *  serves (renderPageBytes + served deltas) over the same minimal deck the
- *  first capture used. The pin compares the live body to this file exactly —
- *  not to a substring, not to a hash, to the bytes. (Capture history: the
- *  pre-session-wiring capture — 3015 bytes, sha256 7247d8fd…, file
- *  edge-anonymous-read-baseline-home.html — pinned the bare layoutPage
- *  shell the session lane had to not move; the shell lane intentionally
- *  moved those bytes — that is its mission — so the baseline re-anchors
- *  here, and the old fixture stays in the tree as that lane's receipt.) */
+ *  earlier bare-shell baseline used. The pin compares the live body to this
+ *  file exactly — not to a substring, not to a hash, to the bytes. (The
+ *  bare-shell fixture, edge-anonymous-read-baseline-home.html, stays in the
+ *  tree as the earlier surface's baseline.) */
 const ANON_BASELINE = readFileSync(
   path.join(REPO_ROOT, "tests/deploy/fixtures/edge-anonymous-read-baseline-home-site-shell.html"),
   "utf8",
@@ -185,8 +179,8 @@ function onlyInsideSlotIdRuns(a: string, b: string, offsets: number[]): boolean 
   return offsets.every((i) => inRun(a, i) && inRun(b, i));
 }
 
-/** The minimal deck the byte-identity fixture was captured against — plus,
- *  since the edge-site-shell lane, the codename cards the page head reads
+/** The minimal deck the byte-identity baseline was built against — plus
+ *  the codename cards the page head reads
  *  (*title, *favicon, :ace, :tiny_mce) and the card layout the page
  *  resolves (*all+*layout -> Default Layout with :header/:footer): the page
  *  path is the engine's show_with_page_layout assembly and its head reads
@@ -308,8 +302,8 @@ describe("edge read path — the anonymous bytes do not move", () => {
   beforeAll(async () => {
     storage = await createRenderTestStorage();
     await seedMinimal(storage);
-    // The baseline's deck configuration: the
-    // shell-lane capture was taken with the deck's origin configured, and
+    // The baseline's deck configuration: the baseline was taken with the
+    // deck's origin configured, and
     // the origin is DEPLOYMENT CONFIGURATION now (the engine constant is
     // gone). This suite boots its deck by hand — bypassing bootDeck's
     // served-deltas wiring — so it installs the configuration its own
@@ -322,18 +316,17 @@ describe("edge read path — the anonymous bytes do not move", () => {
     storage.close();
   });
 
-  it("the fixture is the shell-lane capture, not a freshly minted copy", () => {
+  it("the fixture is the pinned baseline, not a freshly minted copy", () => {
     // Guards against someone regenerating the fixture from drifting code
-    // and calling it a pin. 4544 bytes / this digest = the edge-site-shell
-    // lane's capture (2026-10-02): the full page shell over the same deck
-    // shape the first capture (3015 bytes, sha256 7247d8fd…, the
-    // pre-session-wiring bare shell, still in the tree as
-    // edge-anonymous-read-baseline-home.html) pinned.
+    // and calling it a pin. This digest is the full page shell over the
+    // same deck shape the bare-shell fixture
+    // (edge-anonymous-read-baseline-home.html) pinned before the shell
+    // upgrade.
     //
     // The byte count and digest were re-anchored when the deployment's asset
-    // host, root URL and footer card id became synthetic placeholders (review
-    // round 5, finding 5). The capture is the same capture — only the
-    // site-identifying values moved. The seed uses the synthetic footer card
+    // host, root URL and footer card id became synthetic placeholders. The
+    // capture is the same capture — only the site-identifying values moved.
+    // The seed uses the synthetic footer card
     // id so the served body carries it too.
     expect(ANON_BASELINE.length).toBe(4547);
     expect(createHash("sha256").update(ANON_BASELINE).digest("hex")).toBe(
@@ -447,19 +440,12 @@ describe("edge read path — a signed-in viewer reads DIFFERENT bytes than an an
 
     // THE ACTOR HALF IS SKIPPED, NOT FIXED, NOT WEAKENED. The assertion the
     // original pin carried — the signed-in actor's body contains "hello" —
-    // fails IDENTICALLY on the pristine deploy lineage tip 42b608b with ZERO
-    // source changes, verified two ways during the edge-site-shell lane
-    // (2026-10-02): (1) this exact seed universe + ActorRenderEngines +
-    // engine.render("Home", "open") on the untouched
-    // REPO_ROOT/ worktree renders the
-    // "Sorry, you don't have permission" denial, no "hello"; (2) the
-    // verbatim 42b608b copy of this test file, run unmodified on a fresh
-    // worktree at the same tip, fails the same assertion. The signed-in
-    // party grant (Home+*read -> Anyone Signed In) does not resolve to
-    // content in the rule-verdict machinery (src/card/permissions/
-    // read-rules.ts) on this seed universe — a port-lineage finding, outside
-    // the shell lane's scope, and not this lane's regression. Re-enable this
-    // half when the verdict machinery finding closes.
+    // fails on the seed universe below with ZERO source changes. The
+    // signed-in party grant (Home+*read -> Anyone Signed In) does not
+    // resolve to content in the rule-verdict machinery (src/card/permissions/
+    // read-rules.ts) on this seed universe — a known finding, tracked
+    // separately. Re-enable this half when the verdict-machinery finding
+    // closes.
     const actorBody = await (await handleEngineRequest(edgeGet("/Home"), actorDeck)).text();
     expect(actorBody === anonBody).toBe(false);
   });
@@ -557,7 +543,7 @@ describe("edge read path — a signed-in viewer reads DIFFERENT bytes than an an
  *  (db/schema.sqlite.sql, [ENGINE-FRESHNESS]) and a naive split tears each one
  *  in half; the real Bunny wire reports that as "incomplete input"
  *  (SQLITE_ERROR), which is how this helper was found to be wrong.
- *  Kept in lockstep with the render and fetch streams' splitters. */
+ *  Kept in lockstep with the sibling render and fetch splitters. */
 function sqlStatements(file: string): string[] {
   const ddl = readFileSync(path.join(REPO_ROOT, file), "utf8").replace(/--[^\n]*/g, "");
   const statements: string[] = [];

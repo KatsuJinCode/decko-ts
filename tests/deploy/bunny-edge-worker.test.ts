@@ -192,9 +192,9 @@ describe("bunny edge worker — routes", () => {
         created_at: "2026-01-01 00:00:00",
         updated_at: "2026-01-02 00:00:00",
       },
-      "Riley+*account+*password": {
+      "Sample User+*account+*password": {
         id: 77,
-        name: "Riley+*account+*password",
+        name: "Sample User+*account+*password",
         key: null,
         codename: null,
         type_id: 1002,
@@ -205,9 +205,9 @@ describe("bunny edge worker — routes", () => {
         created_at: "2026-01-03 00:00:00",
         updated_at: "2026-01-04 00:00:00",
       },
-      "Riley+*account+*salt": {
+      "Sample User+*account+*salt": {
         id: 78,
-        name: "Riley+*account+*salt",
+        name: "Sample User+*account+*salt",
         key: null,
         codename: null,
         type_id: 1003,
@@ -218,15 +218,15 @@ describe("bunny edge worker — routes", () => {
         created_at: "2026-01-03 00:00:00",
         updated_at: "2026-01-04 00:00:00",
       },
-      "Riley+*account+*email": {
+      "Sample User+*account+*email": {
         id: 79,
-        name: "Riley+*account+*email",
+        name: "Sample User+*account+*email",
         key: null,
         codename: null,
         type_id: 1004,
         left_id: 5,
         right_id: 11,
-        db_content: "riley@example.com",
+        db_content: "sample.user@example.com",
         trash: 0,
         created_at: "2026-01-03 00:00:00",
         updated_at: "2026-01-04 00:00:00",
@@ -235,7 +235,7 @@ describe("bunny edge worker — routes", () => {
 
     const DIGEST = "9f2c1a0b4d3e5f60718293a4b5c6d7e8f90112233";
     const SALT = "5c4d3f2e1a0b998877665544332211ffeeddccbb";
-    const EMAIL = "riley@example.com";
+    const EMAIL = "sample.user@example.com";
 
     for (const [cardName, row] of Object.entries(ACCOUNT_HOLDER)) {
       const storedContent = String(row.db_content);
@@ -334,11 +334,12 @@ describe("bunny edge worker — routes", () => {
   });
 
   it("a multi-segment path is a card NAME, so it 404s as a card, not as a route", async () => {
-    // Actual behaviour, unchanged from the Sept entry: everything after the
-    // first slash is the card name, so "/a/b/c" looks up the card "a/b/c".
-    // The handler's trailing `No route for <path>` 404 branch is therefore
-    // unreachable (cardName is only ever null for a ".json" path, which is
-    // handled earlier) — recorded in the receipt, not changed here.
+    // Actual behaviour, unchanged from the original entry: everything after
+    // the first slash is the card name, so "/a/b/c" looks up the card
+    // "a/b/c". The handler's trailing `No route for <path>` 404 branch is
+    // therefore unreachable (cardName is only ever null for a ".json" path,
+    // which is handled earlier) — recorded here as actual behavior, not
+    // changed.
     const db = mockDb();
     const res = await handleRequest(get("/a/b/c"), TRIAL_ENV, db.factory);
     expect(res.status).toBe(404);

@@ -3,13 +3,13 @@
 // — the handler carries its OWN copy of the pair list, separate from the
 // lightweight reader's bunny-worker.ts, so this file pins THIS copy).
 //
-// Why these exist (db-repoint lane, 2026-10-05): the deployed edge worker
-// read its database endpoint ONLY from dashboard-injected secrets
+// WHY: the deployed edge worker read its database endpoint ONLY from
+// dashboard-injected secrets
 // (BUNNY_DATABASE_URL / BUNNY_DATABASE_AUTH_TOKEN, then the repo-historical
 // BUNNY_DB_URL / BUNNY_DB_TOKEN) — names the management API never exposes,
-// which made repointing the serving database (decko-edge -> restore-deck-synthetic)
-// a secrets round-trip. The resolution now checks the PLAIN edge-script
-// variable pair DECKO_DB_URL / DECKO_DB_TOKEN FIRST (settable through the
+// which made repointing the serving database a secrets round-trip. The
+// resolution now checks the PLAIN edge-script variable pair
+// DECKO_DB_URL / DECKO_DB_TOKEN FIRST (settable through the
 // management API by name), falling back to the two secret pairs unchanged.
 // These tests pin the ORDER — plain wins, secrets remain the fallback in
 // their documented order, and a half-set pair still errors by name — plus

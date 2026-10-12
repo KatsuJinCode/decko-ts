@@ -2,8 +2,7 @@
 // card-1.110.0 mod/core/set/all/type.rb's ensure_type_id (type.rb:58-66)
 // and its type_id_from_code walk (:68-76) for the engine's create path.
 //
-// Ruby chain (every test cites its file:line; full trail in
-// ):
+// Ruby chain (each stage annotated with the Ruby file:line it comes from):
 //
 //   1. Card.create! -> Director.run -> super.initialize -> handle_type
 //      (mod/core/set/all/initialize.rb:51-55) -> ensure_type_id

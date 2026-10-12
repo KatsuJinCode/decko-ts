@@ -205,9 +205,8 @@ async function seedDeck(): Promise<void> {
     readRuleId: IDS_RULE.governedReadRule, readRuleClass: "*self",
   });
 
-  // CREATE universe for /new/Sign_up: the *all fallback denies anonymous
-  // (the mirror deck's rule 6566 shape); Sign up+*type+*create grants
-  // Anyone (rule 6580) — the rule the second scenario flips.
+  // CREATE universe for /new/Sign_up: the *all fallback denies anonymous;
+  // Sign up+*type+*create grants Anyone — the rule the second scenario flips.
   await insertCard({
     id: IDS_RULE.catchAllCreate, name: null, key: keyOf("*all+*create"),
     leftId: IDS_RULE.all, rightId: IDS_RULE.create, dbContent: "[[Anyone Signed In]]",

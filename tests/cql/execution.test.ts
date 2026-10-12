@@ -5,8 +5,8 @@
  * seed universe.
  *
  * Coverage mirrors the SQL families the generator emits (see
- *  and tests/cql/sql-generation.test.ts for the
- * oracle-verified shapes these statements render to): basic field filters,
+ * tests/cql/sql-generation.test.ts for the reference shapes these
+ * statements render to): basic field filters,
  * name/key conditions, match via the REGEXP UDF, conjunction groups, not,
  * junction/plus conditions, card_references joins, editor/act chains,
  * sort/limit/offset, and count semantics.
@@ -240,7 +240,7 @@ let driver: LocalSqliteDriver;
  *  that only knows semicolons tears each body in half and SQLite reports the
  *  fragment as "incomplete input". Inside a trigger body the `;` belongs to
  *  the body's own statement and the body ends at the bare word END — the same
- *  contract every other stream's splitter implements (kept in lockstep with
+ *  contract the sibling splitters implement (kept in lockstep with
  *  tests/card/render/render-test-storage.ts and
  *  tests/card/fetch/fetch-test-storage.ts). The DDL otherwise has no
  *  semicolons inside comments or values. */
@@ -720,8 +720,7 @@ describe("REGEXP without the UDF: the JS post-filter fallback (the REGEXP decisi
 });
 
 describe("deferred keys surface honestly at execution time", () => {
-  // Re-pinned by an earlier integration (lane-cql-found-by): the wave-2
-  // deferral is gone — string found_by values resolve via
+  // String found_by values resolve at execution via
   // resolveFoundByConditions. The unsupported hash-value shape refuses
   // loudly at execution (execute.ts), never a silent empty.
   it("found_by's unsupported hash-value shape refuses loudly at execution", async () => {

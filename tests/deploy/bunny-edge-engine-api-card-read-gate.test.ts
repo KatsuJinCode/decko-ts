@@ -1,22 +1,21 @@
 // The Bunny edge engine request core's /api/card/<name> READ GATE
-// (deploy/bunny-worker-src/bunny-edge-engine-request.ts, the 2026-10-02
-// api-leak fix): the JSON branch previously served db_content_preview for
-// ANY existing card, bypassing the read rule the render path enforces
-// (verified live on the trial edge: a *self-read-restricted journal card
-// rendered its denial span while /api/card/<name> returned its restricted
-// body anonymously). The gate runs the SAME anonymous verdict the render
+// (deploy/bunny-worker-src/bunny-edge-engine-request.ts). The JSON branch
+// previously served db_content_preview for ANY existing card, bypassing the
+// read rule the render path enforces: a *self-read-restricted card rendered
+// its denial span while /api/card/<name> returned its restricted body to an
+// anonymous request. The gate runs the SAME anonymous verdict the render
 // path enforces (RenderEngine's default viewer, src/card/render.ts:419-421)
 // BEFORE the response body is built: canReadByStoredRule on the stored
-// cards.read_rule_id, canReadByRuleLookup (the live walk) for rows without
-// one. A denial answers 403 with no content fields.
+// cards.read_rule_id, canReadByRuleLookup (the runtime walk) for rows
+// without one. A denial answers 403 with no content fields.
 //
 // Driven through the REAL handler over the in-memory sqlite deck
 // (tests/card/render/render-test-storage.js), so the pin covers the full
 // production chain: resolveAnonymousReadPermission's statements, the stored
 // read_rule_id lookup, the walk (including its *type candidate, which needs
-// the type NAME the fix fetches by typeId), and the response shapes.
+// the type NAME the gate fetches by typeId), and the response shapes.
 //
-// Deck shape mirrors the corpus-proven seeding idiom of
+// Deck shape mirrors the seeding idiom of
 // tests/card/permissions/decko-bot-codename-always-ok-regression.test.ts
 // (set junction → rule junction → seedReference to the granted party →
 // private card carrying the rule id).
@@ -148,7 +147,7 @@ describe("bunny edge engine /api/card read gate (the api-leak fix)", () => {
       );
       expect(res.status).toBe(403);
       const body = await res.text();
-      expect(body).toContain("permission denied"); // unified contract: the CF worker's cardRecordJson shape (deploy/worker.ts:469-492); the redeploy lane's original wording was "read denied"
+      expect(body).toContain("permission denied"); // unified contract: the CF worker's cardRecordJson shape (deploy/worker.ts:469-492)
       expect(body).not.toContain("db_content_preview");
       expect(body).not.toContain("TOPSECRET-CONTENT");
     } finally {

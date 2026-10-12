@@ -2,8 +2,8 @@
 // migration chain: 0001 schema -> 0002 indexes -> 0003 demo seed -> 0004
 // account substrate, then census -> /setup create-owner -> signinAccount.
 //
-// WHY THIS FILE EXISTS. The first-run port (35e7b93,
-// docs/operations.md) built /setup and named the blocker it could
+// WHY THIS FILE EXISTS. The first-run work (docs/operations.md) built /setup
+// and named the blocker it could
 // not code around: the shipped content chain carries no account system, so
 // setupWindowState answers `account_system_absent`, /setup 404s with "This
 // deck has no account system", and signin has no actor cards. The engine has
@@ -14,7 +14,7 @@
 // WHAT IS PROVEN, and against which Ruby source:
 //
 //   1. CONTROL: on 0001..0003 alone the window reports `account_system_absent`
-//      — the exact blocker the suite was handed, reproduced rather than
+//      — the exact blocker, reproduced rather than
 //      asserted from the error string.
 //   2. 0004 makes the account codenames resolve (card-mod-account-0.20.0
 //      data/real.yml:80-151, the `*account` right card and its four field
@@ -40,7 +40,7 @@
 // in migration order, and the engine then opens that same file through the
 // real LocalSqliteDriver. Nothing about the data is hand-assembled in TS.
 //
-// NOT IN tests/standing-net.json — recorded in the receipt.
+// Not part of tests/standing-net.json (this suite is offline-only).
 
 import { DatabaseSync } from "node:sqlite";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
@@ -103,7 +103,7 @@ function armDemoProfile(): void {
 /**
  * Build a temp database with the migration chain applied, using node:sqlite.
  *
- * `withSubstrate: false` reproduces the blocker the suite was handed — the
+ * `withSubstrate: false` reproduces the original blocker — the
  * 0001..0003 chain exactly as it shipped — which is the control the journey
  * proof needs.
  */

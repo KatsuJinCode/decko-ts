@@ -1,12 +1,12 @@
 /**
  * SQL generation tests: QueryNode AST -> parameterized SQLite SQL.
  *
- * Every expected SQL string was captured from the REAL card-1.110.0 code by
- * loading lib/card/query/** standalone with a stubbed Card/ActiveRecord
- * environment and running Card::Query.new(statement).sql ("live oracle").
- * The port parameterizes values (the oracle inlines quoted literals) and
- * normalizes whitespace (the oracle emits comment-slot double spaces and
- * "LIMIT  10 " quirks) — the oracle output is quoted per case with those
+ * Every expected SQL string was recorded from the REAL card-1.110.0 code:
+ * lib/card/query/** loaded standalone with a stubbed Card/ActiveRecord
+ * environment, run through Card::Query.new(statement).sql. The port
+ * parameterizes values (the Ruby code inlines quoted literals) and
+ * normalizes whitespace (the Ruby output emits comment-slot double spaces
+ * and "LIMIT  10 " quirks) — the Ruby output is quoted per case with those
  * two mechanical differences applied.
  */
 
@@ -157,21 +157,17 @@ describe("limit / offset / count quirks", () => {
 describe("sorting", () => {
   // Every SINGLE-TABLE ORDER BY carries a viewer-shaped tie-breaker
   // (sql.ts orderDirectivesOf): Ruby declares none, so the unspecified tier
-  // is plan-shaped, and the captured oracle bytes embed two shapes.
-  // Permission-filtered scans drove the capture deck's read_rule_id index
-  // (one loop per list value, rowid order within), so their ties resolve
-  // `c0.read_rule_id asc, c0.id asc` — the signed-in *search page's
-  // updated_at-desc tie cohorts. Always-ok scans carry no permission
-  // condition and their captured ties follow the primary's direction: id
-  // DESC under a descending primary (the Administrator *search head-20),
-  // id ASC under an ascending one (the `ORDER BY key asc` capture heads).
+  // is plan-shaped — it depends on how SQLite walks the table — and the
+  // reference rendering embeds two distinct shapes.
+  // Permission-filtered scans (read_rule_id IN lists) walk one loop per
+  // list value in rowid order, so their ties resolve
+  // `c0.read_rule_id asc, c0.id asc`. Always-ok scans carry no permission
+  // condition and their ties follow the primary's direction: id DESC under
+  // a descending primary, id ASC under an ascending one.
   // JOINED statements never take the tie-breaker: with a join in flight
   // the unspecified tier is the JOIN EMISSION order (the driving table's
   // rowid sequence), and appending `c0.id asc` re-sorts that tier away
-  // from production bytes — the somatic *referred_to_by listing rendered
-  // referrer 27518 in slot 13 instead of slot 29 (its card_references row
-  // was inserted last, cr.id 6296176), pushing 29740 off the limit-20
-  // listing (refer-to-composition).
+  // from the reference rendering.
   it("ORDER_MAP mapping and default dir [oracle: sort: 'update' -> ORDER BY c0.updated_at desc]", () => {
     expect(sql({ sort: "update" }).sql).toBe(
       "SELECT c0.*, c0.updated_at, c0.id FROM cards c0 WHERE c0.trash is false ORDER BY c0.updated_at desc, c0.id desc",
@@ -525,9 +521,8 @@ describe("statement shorthand", () => {
   });
 });
 
-// Re-pinned by an earlier integration (lane-cql-found-by): found_by
-// resolves at execution now; the generator case is the loud backstop for
-// shapes resolveFoundByConditions did not translate.
+// found_by resolves at execution now; the generator case is the loud
+// backstop for shapes resolveFoundByConditions did not translate.
 describe("found_by (generator backstop)", () => {
   it("generateSql's backstop refuses unresolved found_by shapes with an explicit error", () => {
     expect(() => sql({ found_by: { id: 5 } })).toThrow(/found_by condition reached SQL generation unresolved/);
@@ -542,7 +537,7 @@ describe("oracle-pinned edge cases", () => {
   it("nil name renders IS NULL (divergence: Ruby 1.110 emits broken 'c0.key is ()')", () => {
     // oracle: {name: nil} -> WHERE c0.key is () AND c0.trash is false
     // (Array.wrap(nil) collapses to [] and sqlize emits "()" — invalid SQL).
-    // The port renders the sane NULL comparison; flagged in the notes.
+    // The port renders the sane NULL comparison instead.
     expect(sql({ name: null as unknown as string }).sql).toContain("c0.key is NULL");
   });
 

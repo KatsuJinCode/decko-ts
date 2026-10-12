@@ -81,8 +81,8 @@ async function bootWorker(vars: Record<string, string>): Promise<{
   //    divergence, not a wrangler behaviour).
   //    inlineDynamicImports is part of "the way wrangler bundles it":
   //    wrangler's esbuild bundle has no code splitting, so a dynamic import
-  //    in the worker graph (write-routes' seat import of the deck-boot seam,
-  //    E-16) is INLINED into the single file - while Rollup's default splits
+  //    in the worker graph (write-routes' deferred import of the deck-boot
+  //    seam) is INLINED into the single file - while Rollup's default splits
   //    it into a second chunk, which both broke the single-chunk pick below
   //    and booted workerd on a chunk with no default export
   //    ("Incorrect type for map entry ..." at startup).
@@ -181,7 +181,7 @@ async function bootWorker(vars: Record<string, string>): Promise<{
   // "getaddrinfo ENOTFOUND decko-demo.test". The work had actually run
   // (the owner account existed on the retry, which then correctly 404'd the
   // closed window). Asserting a 303 means asking for the 303, not for
-  // wherever it points. MEASURED: see the receipt.
+  // wherever it points.
   const fetch = async (path: string, init?: Record<string, unknown>): Promise<Response> =>
     (await mf.dispatchFetch(`https://decko-demo.test${path}`, {
       redirect: "manual",
@@ -190,7 +190,7 @@ async function bootWorker(vars: Record<string, string>): Promise<{
   return { fetch, adapter, dispose: async () => { await mf.dispose(); } };
 }
 
-/** The captured oracle form's grammar: card[subcards][+*email][content] and
+/** The reference form's grammar: card[subcards][+*email][content] and
  *  card[subcards][+*password][content] posted to /update/*signin with
  *  _method=patch and success[redirect]=true&success[mark]=*previous
  *  (write-routes.ts:613-624). */
@@ -247,7 +247,7 @@ describe("worker.ts write surface — the two [vars] gates, on workerd", () => {
     });
 
     it("leaves every existing read-only route byte-unchanged", async () => {
-      // The routes the worker entry shipped before this port. If a gate leaked into
+      // The routes the worker entry shipped before the write surface. If a gate leaked into
       // the read path, these move.
       const home = await booted.fetch("/");
       expect(home.status, await home.clone().text()).toBe(200);
@@ -284,7 +284,7 @@ describe("worker.ts write surface — the two [vars] gates, on workerd", () => {
     });
 
     // -----------------------------------------------------------------
-    // edge-signin-form-fix lane (2026-10-03): AUTH IS NOT A CARD WRITE.
+    // AUTH IS NOT A CARD WRITE.
     // The login action dispatches at EVERY flag state — Ruby decko never
     // gates sign-in behind a deploy flag (set/self/signin.rb:6 "/update/
     // :signin is the login action"; the :signin event aborts the save, so

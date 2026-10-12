@@ -24,8 +24,8 @@
 //                  deploy/migrations/0005-auth-sessions.sql
 //   The live test (opt-in) swaps only the mock for the real Bunny trial DB.
 //
-// DATA: synthetic. Credentials come from src/testing/generated-credentials.ts,
-// per the stream data rule — no real deck content, no real account.
+// DATA: synthetic. Credentials come from src/testing/generated-credentials.ts —
+// no real deck content, no real account.
 //
 // NOT PROVEN HERE, and why:
 //   - The Bunny EDGE SCRIPT runtime itself (workerd vs Bunny's isolate) is
@@ -33,8 +33,8 @@
 //     runtime — Web Request/Response, process.env, no D1 binding — holds,
 //     and that the seam it depends on is the real driver.
 //   - The real deploy is gated off by default; the live trial-DB test
-//     writes and deletes exactly one auth_sessions row and never touches
-//     Riley's account.
+//     writes and deletes exactly one auth_sessions row and never touches an
+//     existing account.
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -61,7 +61,7 @@ import { describeOrSkipLoud } from "../support/describe-with-corpus.js";
 
 const REPO_ROOT = path.resolve(import.meta.dirname, "..", "..");
 
-// The captured sign-in form's grammar (write-routes.ts:613-624): the two
+// The sign-in form's grammar (write-routes.ts:613-624): the two
 // subcard fields plus the Rails method-override and success fields. Posting
 // anything else would not reach the :signin branch at all.
 const SIGNIN_PATH = "/update/*signin";
@@ -160,7 +160,7 @@ async function seedSyntheticAccount(driver: BunnyDbDriver): Promise<void> {
   await insertCompoundCard(driver, 9105, `${HOLDER.name}+*account+*status`, JUNCTION_ID, IDS.status, "active");
 }
 
-/** The captured oracle form, verbatim in shape. `extraHeaders` lets a test
+/** The reference sign-in form, verbatim in shape. `extraHeaders` lets a test
  *  add proxy evidence (x-forwarded-proto) on top of the form headers. */
 function signinFormRequest(
   email: string,
@@ -238,8 +238,7 @@ describe("Bunny edge sign-in + sessions over the real BunnyDbDriver", () => {
     // WriteRouteRequest.scheme): the request URL is https, so the 303
     // points back at https. The pre-fix behavior answered http:// here — a
     // scheme DOWNGRADE on an HTTPS-only edge, served on the same response
-    // that had already set the hardened Secure cookie (the receipt's open
-    // item, closed 2026-10-02).
+    // that had already set the hardened Secure cookie.
     expect(response!.headers.get("Location")).toBe("https://edge.example/");
 
     // The cookie: HttpOnly + SameSite=Lax + Max-Age (write-routes.ts:223-228)
@@ -371,15 +370,15 @@ describe("Bunny edge sign-in + sessions over the real BunnyDbDriver", () => {
   });
 
   it("UNARMED: the login action STILL dispatches (auth is not a card write); every other route keeps the null fall-through", async () => {
-    // REVISED by the edge-signin-form-fix lane (2026-10-03). The pre-lane
-    // pin asserted null for EVERY verb while disarmed — the exact posture
-    // the lane exists to change: a trial edge with DECKO_WRITE_PATH="0"
-    // could not sign anyone in. Ruby decko never gates the login action
-    // behind a deploy flag (set/self/signin.rb:6 "/update/:signin is the
-    // login action"; the :signin event aborts the save — no card/act rows,
-    // only an auth_sessions row). The disarm-time cost boundary moved WITH
-    // the behavior: the mount now spends its queries ONLY on the auth route;
-    // every other non-read verb still returns null with zero statements.
+    // REVISED: the original pin asserted null for EVERY verb while
+    // disarmed — the exact posture this change fixes: a trial edge with
+    // DECKO_WRITE_PATH="0" could not sign anyone in. Ruby decko never gates
+    // the login action behind a deploy flag (set/self/signin.rb:6
+    // "/update/:signin is the login action"; the :signin event aborts the
+    // save — no card/act rows, only an auth_sessions row). The disarm-time
+    // cost boundary moved WITH the behavior: the mount now spends its
+    // queries ONLY on the auth route; every other non-read verb still
+    // returns null with zero statements.
     const unarmed: BunnyEdgeEnv = { DECKO_FIRST_RUN: "0" };
     expect(bunnyEdgeWriteArmed(unarmed)).toBe(false);
 
@@ -596,8 +595,8 @@ describeOrSkipLoud(!LIVE, "tests/deploy/bunny-edge-signin-session-roundtrip.test
       timeoutMs: 20_000,
     });
     // Every count here is a single read. This test asserts nothing about the
-    // deck's shape — it RECORDS it, so the receipt can state exactly which
-    // half of the round-trip the live run covers instead of guessing.
+    // deck's shape — it RECORDS it, so the live run's coverage is stated
+    // exactly instead of guessed.
     const cards = await live.query<{ n: number }>(
       "SELECT COUNT(*) AS n FROM cards WHERE trash = 0",
       [],

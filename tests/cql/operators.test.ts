@@ -1,12 +1,12 @@
 /**
  * Operator/value-level tests for the CQL port.
  *
- * Each expectation was verified against the REAL card-1.110.0 code by loading
- * lib/card/query/{value,value/match_value}.rb with a stubbed query object and
- * an ActiveRecord sqlite3 connection ("live oracle"); the oracle SQL shape is
- * noted per case. The TS port parameterizes values (? placeholders) where the
- * Ruby oracle inlines quoted literals — the structural shape (field, operator
- * token, grouping) is the parity surface.
+ * The `oracle` field on each case records the SQL that card-1.110.0's Ruby
+ * Value classes (lib/card/query/{value,value/match_value}.rb) emit for the
+ * same input, recorded by running that Ruby code against a stubbed query
+ * object and a scratch sqlite3 connection. The TS port parameterizes values
+ * (? placeholders) where the Ruby code inlines quoted literals — the
+ * structural shape (field, operator token, grouping) is the parity surface.
  */
 
 import { describe, expect, it } from "vitest";

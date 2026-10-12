@@ -1,30 +1,29 @@
-// bunny-edge-person-participating-real-deck-replay.test.ts -- the mission
-// proof on the REAL production deck: the deployed edge's own boot
-// (bootCorpusDeckEngines) over the trial-deck mirror (the db the staging
-// bundle ships, db_content schema), rendering /Riley_Ellery
-// through handleEngineRequest, checked against the RUBY yardstick
-// (expected-v2 page-lane, the verbatim oracle capture rendered from this
-// corpus).
+// bunny-edge-person-participating-real-deck-replay.test.ts -- renders a real
+// production deck's person page through the deployed edge's own boot
+// (bootCorpusDeckEngines) and checks the "+Project(s) Participating"
+// titled-search section against the Ruby-rendered expected page for the
+// same deck.
 //
-// p2-person-section lane (2026-10-03). The synthetic pin
+// The synthetic pin
 // (bunny-edge-person-participating-virtual-section.test.ts) proves the boot
-// mechanism; THIS block proves it on the 47k-card production deck where the
-// defect was found: junction 419 trashed, rule 422 alive, section rendered.
+// mechanism; THIS block proves it on the full production deck where the
+// defect was found: a trashed junction, an alive rule, the section still
+// rendered.
 //
 // Byte bar: the section's slot + rows must exist verbatim; the FULL-page
-// byteDiff against the yardstick is REPORTED (evidence line) but not
-// hard-asserted equal -- Riley's page carries the corpus' known
-// link-query-dropped class (focal-denial-page-corpus-replay.test.ts header:
-// the wanted-card href loses its ?card[name]= query, a graded-corpus
-// divergence family outside this lane's contract).
+// byteDiff against the expected page is REPORTED (evidence line) but not
+// hard-asserted equal -- the page carries the known link-query-dropped
+// class (focal-denial-page-corpus-replay.test.ts header: the wanted-card
+// href loses its ?card[name]= query), a known divergence family outside
+// this suite's contract.
 //
 // RUN (machine-local mirror + shard; one whole-deck boot, ~1-2 min):
 //   P2_PERSON_REALDECK=1 NODE_OPTIONS=--max-old-space-size=4096 \
 //   npx vitest run tests/deploy/bunny-edge-person-participating-real-deck-replay.test.ts \
 //     --no-file-parallelism
 //
-// Outside a machine with the mirror + shard (paths below, both
-// lane-provisioned copies), the block skips.
+// Outside a machine with the mirror + shard files this file points at, the
+// block skips.
 
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -111,15 +110,16 @@ describe("person page +Project(s) Participating section on the REAL production d
       expect(response.status).toBe(200);
       const actual = await response.text();
 
-      // THE SECTION -- the screenshot lane's finding, closed on the real deck.
+      // THE SECTION — the finding this suite exists to verify, on the real
+      // deck.
       expect(actual).toContain(SECTION_MARKERS.slotClass);
       expect(actual).toContain(SECTION_MARKERS.typeName);
       expect(actual).toContain(SECTION_MARKERS.slotId);
       expect(actual).toContain("mythosynth");
       expect(actual).toContain("NXDD");
 
-      // Yardstick evidence: the section markers exist on the RUBY side too,
-      // and the full-page byte diff is reported (not gated -- the known
+      // Expected-page evidence: the section markers exist on the Ruby side
+      // too, and the full-page byte diff is reported (not gated -- the known
       // link-query-dropped class rides this page; see file header).
       const expected = await loadYardstick();
       expect(expected, "yardstick page_html for Riley Ellery").toBeDefined();
@@ -138,7 +138,7 @@ describe("person page +Project(s) Participating section on the REAL production d
       expect(normalizedExpected).toContain(SECTION_MARKERS.slotId);
 
       // Probe artifact (P2_PERSON_REALDECK_PROBE=1): both pages + the
-      // first-diff context, for the receipt's divergence characterization.
+      // first-diff context, for divergence characterization.
       if (process.env.P2_PERSON_REALDECK_PROBE === "1") {
         const { mkdirSync, writeFileSync } = await import("node:fs");
         const outDir = path.join(REPO_ROOT, "tmp", "p2-person-section");

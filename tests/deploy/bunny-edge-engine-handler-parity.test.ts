@@ -1,10 +1,10 @@
 // Third-twin parity — the Bunny Edge full-engine handler
-// (deploy/bunny-worker-src/bunny-edge-engine-handler.ts) driven IN-PROCESS
-// for the first time. The entry (bunny-edge-engine-entry.ts) calls
-// BunnySDK.net.http.serve at module scope with an edge-runtime-only SDK
-// that is not installed here, so until the 2026-10-03 extraction this
-// surface had ZERO test coverage; the inflection-boot pin could only read
-// its source (see that file's stated constraint).
+// (deploy/bunny-worker-src/bunny-edge-engine-handler.ts) driven IN-PROCESS.
+// The entry (bunny-edge-engine-entry.ts) calls BunnySDK.net.http.serve at
+// module scope with an edge-runtime-only SDK that is not installed here, so
+// before the handler was extracted from the entry this surface had ZERO test
+// coverage; the inflection-boot pin could only read its source (see that
+// file's stated constraint).
 //
 // The DB seam needs no production change: BunnyDbDriver speaks Hrana v2
 // over plain fetch (src/card/drivers/bunny-db.ts), so the test stubs
@@ -15,14 +15,14 @@
 // the first request — so the stub must be installed before the first
 // request, which beforeAll guarantees.
 //
-// Ruby truth under test (same cites as the twin parity suite):
+// Ruby truth under test (same cites as the twin parity suites):
 //   - prototype/lib/card/error.rb:21 Card::Error base status_code = 422
 //     (UserError inherits; :88-89 NotFound 404; :46-51 ServerError 500)
 //   - src/card/name/errors.ts the mark errors are the NotFound family
 //   - the shared surface: src/server/worker-shared-surface.ts mapRenderError
 //     is what BOTH Cloudflare twins answer with; the third twin must not
 //     drift (it shared root's catch shape and carried the same missing-404
-//     defect the deploy-button lane fixed everywhere else).
+//     defect since fixed everywhere else).
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -123,18 +123,18 @@ beforeAll(async () => {
       await driver.query(statement, []);
     }
   }
-  // The page shell's rows (deploy-surface-union re-anchor, 2026-10-03): the
-  // wired serving path is the engine's OWN page assembly (renderPageBytes —
-  // the per-card *layout rule, the *header/*footer nests, the html_page
-  // head), whose layout machinery resolves exactly these rows. The demo seed
-  // predates the page path: without them the code-default-layout interior
-  // raises on the first codename-mark nest (CodenameNotFoundError: header —
-  // the p2-codename lane's recorded boundary: body-mark parses in
-  // format.ts resolveNestName are outside the head-guard's scope), and Ruby
-  // answers an error page for such a deck the same way (wrap_and_render ->
-  // rescue_view). The row set mirrors tests/deploy/bunny-edge-error-page.ts
-  // seedShellHeadDeck (the page-head codename cards, *all+*layout ->
-  // Default Layout with a body, *header, *footer) over the demo schema.
+  // The page shell's rows: the wired serving path is the engine's OWN page
+  // assembly (renderPageBytes — the per-card *layout rule, the
+  // *header/*footer nests, the html_page head), whose layout machinery
+  // resolves exactly these rows. The demo seed predates the page path:
+  // without them the code-default-layout interior raises on the first
+  // codename-mark nest (CodenameNotFoundError: header — the recorded
+  // boundary: body-mark parses in format.ts resolveNestName are outside the
+  // head-guard's scope), and Ruby answers an error page for such a deck the
+  // same way (wrap_and_render -> rescue_view). The row set mirrors
+  // tests/deploy/bunny-edge-error-page.ts seedShellHeadDeck (the page-head
+  // codename cards, *all+*layout -> Default Layout with a body, *header,
+  // *footer) over the demo schema.
   const T = "2026-09-20 00:00:00.000";
   const insert = (values: string): string =>
     `INSERT OR IGNORE INTO cards (\n` +
@@ -190,8 +190,8 @@ describe("bunny edge engine handler — the shared read surface", () => {
     // THE UNCONFIGURED CASE, and the regression
     // guard for the defect itself: with no deltas in the environment the
     // builder has no layout-rule anchors to resolve this deck's Default
-    // Layout with, so its documented fallback answers — and no corpus card
-    // id, private asset URL or version pin from another deck reaches it.
+    // Layout with, so its documented fallback answers — and no other deck's
+    // card id, private asset URL or version pin reaches it.
     //
     // This runs FIRST in the suite on purpose. The handler memoizes ONE deck
     // per isolate (`deckPromise` in bunny-edge-engine-handler.ts), and the
@@ -233,13 +233,13 @@ describe("bunny edge engine handler — the shared read surface", () => {
     const response = await get("/~999999");
     expect(response.status).toBe(404);
     const body = await response.text();
-    // deploy-surface-union re-anchor: the 404 answer is the not_found
-    // surface (the full chrome when the deck carries a Default Layout, the
-    // builder's minimal stub otherwise — this fixture has both states
-    // across its cards). The invariant is the STATUS (the NotFound family,
-    // error.rb:88-89 — the union's mapRenderError classification) and the
-    // requested mark reaching the answer; the bare <h1>Card not found</h1>
-    // byte this pin used to hold belonged to the pre-union bare surface.
+    // The 404 answer is the not_found surface (the full chrome when the
+    // deck carries a Default Layout, the builder's minimal stub otherwise —
+    // this fixture has both states across its cards). The invariant is the
+    // STATUS (the NotFound family, error.rb:88-89 — the shared
+    // mapRenderError classification) and the requested mark reaching the
+    // answer; the bare <h1>Card not found</h1> byte this pin used to hold
+    // belonged to the older bare surface.
     expect(body).toContain("999999");
   });
 
@@ -266,10 +266,10 @@ describe("bunny edge engine handler — the shared read surface", () => {
   });
 
   it("a read-denied card 403s on /api/card instead of serving db_content (permissions.rb:139-146)", async () => {
-    // The F3 denial fixture (mirror of tests/deploy/deploy-worker-miniflare.test.ts).
-    // deploy-surface-union: the shared base rows (*read/*all/Set/*self) are
-    // INSERT OR IGNORE — the page-shell fixture above now seeds *all, and the
-    // rule machinery needs one canonical row per name/key/codename:
+    // The denial fixture (mirror of tests/deploy/deploy-worker-miniflare.test.ts).
+    // The shared base rows (*read/*all/Set/*self) are
+    // INSERT OR IGNORE — the page-shell fixture above now seeds *all, and
+    // the rule machinery needs one canonical row per name/key/codename:
     // codename carriers, a probe card, its *self set, a *read rule granting
     // NOBODY (no card_references rows).
     const T = "2026-09-20 00:00:00.000";
@@ -302,8 +302,8 @@ describe("bunny edge engine handler — the shared read surface", () => {
     // The twins' shared-surface rule (worker-shared-surface.ts decodeName):
     // decodeURIComponent must never escape the handler — root answers
     // 400 {"error":"empty card name"}; the third twin must not throw
-    // unhandled where the twins refuse safely (the A2 classified
-    // edge-of-edge divergence is the STATUS, never an escaped throw).
+    // unhandled where the twins refuse safely (the divergence is the
+    // STATUS, never an escaped throw).
     const response = await get("/api/card/%zz");
     expect(response.status).toBe(400);
     const body = (await response.json()) as { error?: string };

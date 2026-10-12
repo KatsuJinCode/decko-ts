@@ -1,4 +1,4 @@
-// divergent-16 #8 / #9 (2026-10-02): EVERY deck-serving origin applies the
+// EVERY deck-serving origin applies the
 // deck's inflection table at boot, before any name is parsed.
 //
 // MECHANISM. `src/card/name/oracle-deck-inflections.ts` is DECK DATA, not
@@ -11,30 +11,23 @@
 //     applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
 //
 // The table is three uncountables (`s`, `this`, `anonymous`;
-// oracle-deck-inflections.ts:53-55) recovered from the deck's 9,466 stored
-// keys: `Anonymous` -> `anonymous` (default `anonymou`), `SCarol` ->
-// `s_carol` (default `_carol`), `Riley's` -> `riley_s` (default
-// `riley_`), `delete this` -> `delete_this` (default `delete_thi`).
+// oracle-deck-inflections.ts:53-55) recovered from the deck's stored keys:
+// `Anonymous` -> `anonymous` (default `anonymou`), `SCarol` ->
+// `s_carol` (default `_carol`), `delete this` -> `delete_this` (default
+// `delete_thi`).
 //
 // WHY IT IS A RENDER DEFECT AND NOT ONLY A LOOKUP DEFECT. The derived key
 // rides straight into the slot class tokens every card emits, so an origin
-// that skips the boot renders the wrong BYTES for the two graded edge
-// cards in the divergent-16 sample:
-//   signup alert email :: content        SELF-anonymous-bar-view
-//                                         vs SELF-anonymou-bar-view  (-3 B)
-//   Dungeons and Dragons+SCarol :: open  RIGHT-s_carol / SELF-...-s_carol
-//                                         vs ..._carol              (-12 B)
-// Both were classified ENGINE DEFECT by the divergent-16 triage lane
-// (an internal work log §4 rows 8 and 9), and
-// §6 of that receipt proves the derivation flips when the table is applied.
+// that skips the boot renders the wrong BYTES for every card whose key the
+// table changes (an `anonymou`-keyed slot class versus `anonymous`, an
+// `s_carol` versus `_carol`).
 //
 // WHICH ORIGINS. Two ship:
 //   deploy/worker.ts                              (Cloudflare Workers)
 //   deploy/bunny-worker-src/bunny-edge-engine-entry.ts (Bunny Edge Script)
 // Both constructed `new FetchEngine(driver)` and went straight to the
 // lexicon warm / name-environment install. Neither applied the table, so
-// neither derived a single deck-correct key. The Bunny entry is the origin
-// behind the graded edge origin `https://edge.culturesmith.com`.
+// neither derived a single deck-correct key.
 //
 // WHAT IS PINNED HERE, AND WHY TWO KINDS OF ASSERTION.
 //  - The behavioural half drives the REAL deploy/worker.ts fetch handler
@@ -77,12 +70,11 @@ const ORIGINS = [
     keyDerivationSite: 'keyToId.set(DeckoName.parse(name).key, row.id)',
   },
   {
-    // The boot module, not the handler: the boot moved twice — to
-    // bunny-edge-engine-handler.ts (2026-10-03, worker-twins audit lane),
-    // then to bunny-edge-deck-boot.ts (the p2-person-section lane's SDK-free
-    // boot extraction; the deploy-surface-union lane wired the serving
-    // handler through it, so the boot module is where the Bunny origin's
-    // inflection application lives). The handler delegates
+    // The boot module, not the handler: the boot moved to
+    // bunny-edge-engine-handler.ts, then to bunny-edge-deck-boot.ts (the
+    // SDK-free boot extraction; the serving handler is wired through it, so
+    // the boot module is where the Bunny origin's inflection application
+    // lives). The handler delegates
     // bootCorpusDeckEngines; the entry is the SDK registration shim only.
     file: "deploy/bunny-worker-src/bunny-edge-deck-boot.ts",
     keyDerivationSite: "new FetchEngine(driver)",
