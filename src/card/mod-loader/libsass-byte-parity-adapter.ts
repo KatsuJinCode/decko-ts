@@ -1,11 +1,10 @@
 // The libsass 3.6.4 byte-parity adapter: transforms OUR compiler's (dart sass)
-// CSS output into the byte conventions the oracle libsass 3.6.4 emits, so the
-// ENGINE's output itself is byte-identical with the deck's SassC renders
+// CSS output into the byte conventions libsass 3.6.4 emits, so the ENGINE's
+// output itself is byte-identical with the deck's SassC renders
 // (tests/card/mod-loader/compile-engines-pin.test.ts pins the bytes).
 //
-// Ground truth (dual-probe measured against the REAL engines:
-// dart sass 1.105.0 in node vs libsass 3.6.4 via the installed sassc-2.4.0
-// gem; plus the oracle fixture fixtures/captured/compile-engines.json):
+// Ground truth: dart sass 1.105.0 in node against libsass 3.6.4 via the
+// installed sassc-2.4.0 gem, run side by side over the same stylesheets.
 //
 // For plain-CSS value tokens libsass is AUTHORED-TEXT-PRESERVING
 // (`0.50px` stays `0.50px`, `1e3px` stays `1e3px`, `#AAAAAA` keeps case,
@@ -41,12 +40,11 @@
 // engines keep rule order (they do; both drop only empty rules, and an empty
 // rule carries no values).
 //
-// Residuals (each enumerated against the oracle-pinned corpus):
-// computed values with no source-resolvable literal (e.g. a variable-carried
-// negative whose authored form libsass strips but dart writes `-0.x`), dart's
-// calc elision of single-value calcs (`calc( 100% )` -> `100%`, wrapper lost),
-// and syntax-error message bytes. None is reachable from the oracle-pinned
-// corpus.
+// Residuals: computed values with no source-resolvable literal (e.g. a
+// variable-carried negative whose authored form libsass strips but dart writes
+// `-0.x`), dart's calc elision of single-value calcs (`calc( 100% )` ->
+// `100%`, wrapper lost), and syntax-error message bytes. The pinned
+// byte-parity suite exercises none of them.
 
 /** CSS named colors (CSS Color Module keyword set) mapped to their sRGB hex,
  *  so an output keyword restores the authored token for the same color value
@@ -637,11 +635,11 @@ function reorderSelectorPass(css: string): string {
 // ---------------------------------------------------------------------------
 
 /** Does the declaration value starting at `from` contain a decko `[[...]]`
- *  nest? Oracle mechanism (measured, smoothness `background: #cccccc url([[..]])`
- *  -> libsass emits `#ccc`): a nest drags the whole value through libsass's
+ *  nest? The mechanism: a nest drags the whole value through libsass's
  *  string-schema path, where color tokens lose their authored display form
- *  and emit canonically shortest - which is what dart already emits. Colors
- *  in such values must NOT be restored. */
+ *  and emit canonically shortest (`background: #cccccc url([[..]])` comes
+ *  back as `#ccc`) - which is what dart already emits. Colors in such values
+ *  must NOT be restored. */
 function valueContainsDeckoNest(css: string, from: number): boolean {
   let i = from;
   while (i < css.length) {

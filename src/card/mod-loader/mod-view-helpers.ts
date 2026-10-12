@@ -62,16 +62,15 @@ export function modSlotWrap(
     // wrap.rb:63-79 applies to EVERY slot wrap — the mod views included —
     // so the payload is the name-context-aware builder the core slotWrap
     // emits (render/views.ts), not the bare voo.slotOptions() JSON. The
-    // bare form was a divergence invisible to every mod fixture pin until
-    // the graded page surface dispatched a mod-owned view (view :lead) over
-    // nests WITH a live context: the Role pages' `+:description|lead`
-    // slot lost its `"name_context":"<page>"` tail (the leading-view render change,
-    // 2026-09-29). Empty initialContextNames emits no key, so the fixture
-    // pins whose probes carried no context are byte-unchanged.
+    // bare form drops the `name_context` key, and that only shows up on a
+    // mod-owned view rendered over nests that carry a live context; a mod
+    // view over context-free nests is byte-identical either way, which is
+    // why the difference stays invisible until such a view is dispatched.
+    // Empty initialContextNames emits no key at all.
     "data-slot": slotOptionsWithNameContext(fmt, voo),
-    // the wrap-call data attrs land AFTER the slot payload (the captured
-    // board slot: data-slot-id, data-slot, data-breadcrumb,
-    // data-breadcrumb-class)
+    // the wrap-call data attrs land AFTER the slot payload, matching the
+    // core slot's attribute order (data-slot-id, data-slot, then the
+    // wrap-call's own attributes)
     ...extraData,
   });
   return `<div${attrs}>${inner}</div>`;

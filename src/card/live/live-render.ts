@@ -8,8 +8,7 @@
 // dropped before every pass and after the request, and the name memos live
 // in this request's scope only.
 //
-// How a page is found (the proof of concept's rounds 3-8,
-// an internal write-up):
+// How a page is found:
 //
 //   COLLECT MODE. The reference-chasing warm-ups are off. Each pass renders
 //   on a FRESH engine and records every card its synchronous render asked
@@ -52,12 +51,12 @@ export interface LiveRenderOptions {
   requestedView?: string;
   historyParams?: HistoryRenderParams;
   /** Collect pass 2 recording more than this many questions switches the
-   *  request to full speculation (the POC's 60; default here: never; env
-   *  DECKO_LIVE_AUTO_THRESHOLD overrides). */
+   *  request to full speculation. Unset here means never switch, so the choice
+   *  stays with the caller; env DECKO_LIVE_AUTO_THRESHOLD overrides. */
   autoThreshold?: number;
   /** In the speculation branch: a pass recording at most this many reads
-   *  makes the next pass block on them (the POC's 11; default here 0 = off;
-   *  env DECKO_LIVE_AUTO_TAIL overrides). */
+   *  makes the next pass block on them. Unset here means no blocking tail;
+   *  env DECKO_LIVE_AUTO_TAIL overrides. */
   autoTail?: number;
   /** Blocking round trips a tail pass may pay before it turns speculative
    *  (default: no limit). */
@@ -132,8 +131,8 @@ async function renderPass(
     render.warmupChaseOff = true;
     render.demandSeeds = [...collect.seeds];
     render.demandRecorder = collect.asked;
-    // Round 9 step 2: collect passes skip the prepare walks of a read-denied
-    // root (its hidden body's items and links are never rendered).
+    // Collect passes skip the prepare walks of a read-denied root (its hidden
+    // body's items and links are never rendered).
     render.skipDeniedRootWalks = true;
     // Junction sides the demand-seed warm-up composes through are prepared,
     // not scanned: scanning them chased their whole content closure, one
@@ -166,19 +165,16 @@ export async function liveRenderPage(
 ): Promise<LiveRenderResult> {
   const env = typeof process !== "undefined" ? process.env : undefined;
   // Narrow ring by default (DECKO_LIVE_RING_ALL=1 widens it). In collect
-  // mode the all-rows ring saves 0-4 trips but fetches ~18k rows instead of
-  // ~10k; on the 40 gate pages local wall at 0 ms is median 304 ms narrow
-  // against 586 ms wide.
+  // mode the all-rows ring saves a few trips but fetches roughly twice the
+  // rows, and the wider fetch costs more than the trips it saves.
   const ringAll = opts.ringAll ?? env?.DECKO_LIVE_RING_ALL === "1";
   // Compact result encoding: on by default (DECKO_LIVE_COMPACT=0 turns it
   // off). Ring neighbours travel WHOLE by default; DECKO_LIVE_IDENTITY_RING=1
-  // sends them as identity rows. Identity rows cut a page's database bytes
-  // about in half but cost 2 more round trips at the median (7 more on
-  // Pattern), because the render then reads many of them whole. They paid
-  // off while the database answered brotli at about 2.2 s per MB; since the
-  // driver asks for gzip, a trip costs about 50 ms and the bytes little, so
-  // the trips dominate (40 gate pages at 50 ms per trip in workerd: median
-  // 835 -> 693 ms, slowest 2,223 -> 1,529 ms; trips 9/10/22 -> 7/8/15).
+  // sends them as identity rows. Identity rows halve a page's database
+  // bytes, but they cost extra round trips, because the render then has to
+  // read many of those rows whole. Which side wins depends on what a trip
+  // costs against what a byte costs; against the gzip transport the driver
+  // asks for, a trip dominates, so whole rows are the default.
   const live = new LiveStoreDriver(base, {
     ringAll,
     signal: opts.signal,
@@ -186,17 +182,16 @@ export async function liveRenderPage(
     identityRing: env?.DECKO_LIVE_IDENTITY_RING === "1",
   });
   const passes: LivePassReport[] = [];
-  // Default: never switch (collect mode throughout). With lazy structure
-  // references collect mode needs the fewest trips and the least CPU on the
-  // 40 gate pages (7-12 trips, median 8; speculation from pass 3: 7-19),
-  // because the speculation branch's warm-up chase keeps discovering
-  // site-wide link chains one level per pass.
+  // Default: never switch, so the request stays in collect mode throughout.
+  // With lazy structure references collect mode needs both the fewest trips
+  // and the least CPU here, because the speculation branch's warm-up chase
+  // keeps discovering site-wide link chains one level per pass.
   const threshold =
     opts.autoThreshold ??
     (env?.DECKO_LIVE_AUTO_THRESHOLD !== undefined ? Number(env.DECKO_LIVE_AUTO_THRESHOLD) : Number.POSITIVE_INFINITY);
-  // Default 0 (no blocking tail): with lazy structure references a blocking
-  // pass pays one sequential round trip per fetch-ladder step of the walks
-  // it runs eagerly (Marie Mardini 26 trips against 12 without it).
+  // Default 0, meaning no blocking tail. With lazy structure references a
+  // blocking pass pays one sequential round trip per fetch-ladder step of the
+  // walks it runs eagerly, which is far worse than the trips it saves.
   const tail = opts.autoTail ?? (env?.DECKO_LIVE_AUTO_TAIL !== undefined ? Number(env.DECKO_LIVE_AUTO_TAIL) : 0);
   const tailTrips = opts.autoTailTrips === undefined || opts.autoTailTrips < 0 ? undefined : opts.autoTailTrips;
   const seeds = new Set<string>();

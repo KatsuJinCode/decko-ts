@@ -1,29 +1,33 @@
 // src/card/live/compact-rows.ts
 //
-// COMPACT RESULT ENCODING for the live render's reads. The Hrana wire format
-// tags every cell ({"type":"integer","value":"123"}), so a 7-column identity
-// row costs ~250 bytes and a full `cards` row ~600 bytes before its content.
-// On the real database each MB of response costs about 2 s
-// (recovery/DEPLOY-CHECK-de14230a.md), so the live render asks the server to
-// encode rows as JSON arrays instead, and decodes them here into exactly the
-// row objects the plain statement would have produced.
+// COMPACT ROW ENCODING for the live render's reads. The Hrana wire format types
+// every cell, so a value arrives wrapped — {"type":"integer","value":"123"} —
+// and a seven-column identity row spends about 250 bytes on that scaffolding
+// while a full cards row spends about 600 before any of its own content.
+// Payload is the scarce resource on a live read: a megabyte of response costs
+// seconds of wall clock. So the server is asked to serialize each row as a
+// JSON array instead, and this module rebuilds the row objects, producing
+// exactly what the plain statement would have produced.
 //
-// Two forms:
-//   - aggregate: ONE row, ONE text cell holding a JSON array of row arrays.
-//     Row order is not guaranteed by SQL, so it is used only where order does
-//     not matter: the request store's own fetches (it indexes rows by id).
-//   - per row: the original statement as a CTE with renamed columns, one
-//     output row per original row, one text cell each. Same plan, same row
-//     order as the original statement. Used for the engine's own statements.
+// Two shapes, differing in what they promise about row order:
+//   - aggregate: one row, whose single text cell holds a JSON array of row
+//     arrays. SQLite does not promise an aggregate's input order, so this
+//     shape is used only where order carries no meaning — the request store's
+//     own fetches, which address rows by id.
+//   - per row: the statement is wrapped as a CTE over renamed columns, giving
+//     one output row per input row, each holding one text cell. Same plan,
+//     same row order as the plain statement. This is the shape the engine's own
+//     order-sensitive statements use.
 //
-// FIDELITY. A decoded value must equal what the bunny driver decodes from
-// the plain statement's Hrana cells: integers (safe range) as numbers, text as
-// strings, NULL as null. Anything else is refused and the caller sends the
-// plain statement instead: a non-safe-integer number (a REAL, or an integer
-// beyond 2^53, whose JSON text would not round-trip), a nested array or object
-// (a JSON-subtyped value), a BLOB (the server's json_array raises an error).
-// A statement whose projection cannot be named with certainty is never
-// encoded. A refusal costs one extra round trip, never a byte.
+// FIDELITY. A decoded value must equal what the bunny driver decodes from the
+// plain statement's Hrana cells: integers within the safe range as numbers,
+// text as strings, NULL as null. Everything else is refused, and the caller
+// sends the plain statement instead. The refusals are a number that is not a
+// safe integer (a REAL, or an integer past 2^53 — neither survives JSON text
+// unchanged), a nested array or object (a JSON-subtyped value), and a BLOB
+// (the server's json_array rejects it). A statement whose projection cannot
+// be named with certainty is never encoded in the first place. A refusal
+// spends one extra round trip; it never spends a byte of payload.
 
 import type { SQLStatement } from "../../server/driver.js";
 import { CARDS_COLUMNS } from "./store-row-evaluator.js";

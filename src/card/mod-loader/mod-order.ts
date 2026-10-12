@@ -17,12 +17,10 @@
 //   does not exist raises "mod not found" at construction (mod.rb:88-95).
 //
 // The gem ORDER is the deck's Bundler resolve order - a dependency-closure
-// order, NOT name-sorted (oracle capture fixtures/captured/help-mod-loader
-// .json "mods": collection, content, format, list, markdown, permissions,
-// help, ... - card-mod-help loads after its markdown/permissions
-// dependencies). Bundler's resolve is the deck's input, so the TS port
-// takes the gem order as INPUT (the ordered list from the deck's bundle),
-// exactly like Ruby takes it from Bundler.definition.specs
+// order, NOT name-sorted: card-mod-help loads after the markdown and
+// permissions it depends on, not before them. Bundler's resolve is the deck's
+// input, so the TS port takes the gem order as INPUT (the ordered list from
+// the deck's bundle), exactly like Ruby takes it from Bundler.definition.specs
 // (class_methods.rb:61-65).
 //
 // CARD_MODS=none: Cardio::Mod.load returns before Loader.load_mods

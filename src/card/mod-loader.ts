@@ -78,12 +78,13 @@ import { registerModRuleSeed } from "./mod-loader/mod-rule-seeds.js";
  *  from html — CssFormat and JsFormat subclass Format DIRECTLY
  *  (css_format.rb:6, js_format.rb:6) — so a css/js chain miss reaches the
  *  BASE tail below, never the html chain (include_set_format_modules,
- *  format.rb:57-63, walks exactly the format_ancestry). The pre-2026-10-01
- *  set carried css/js too (the recorded modeling discrepancy the
- *  css-js-format-parents survey found): zero css/js chain requests exist
- *  (the only non-html dispatch is email_text, render/views.ts:1443) and
- *  zero css-keyed registrations, so no byte rode the broader fallback —
- *  pinned by tests/card/mod-loader/
+ *  format.rb:57-63, walks exactly the format_ancestry). The set as it stood
+ *  before this scoping was applied also carried css/js, on the model that any
+ *  format could reopen the html table; that model is wrong for a format that
+ *  does not descend from html. Narrowing the set costs nothing observable:
+ *  zero css/js chain requests exist (the only non-html dispatch is email_text,
+ *  render/views.ts:1443) and zero css-keyed registrations, so no byte rode
+ *  the broader fallback — pinned by tests/card/mod-loader/
  *  view-dispatch-css-js-format-ancestry-census.test.ts. email_text
  *  (EmailTextFormat < TextFormat < Format) does NOT descend; its chain
  *  misses reach the base record, never the html chain. */
@@ -345,14 +346,13 @@ export class ModLoader {
                 // Card::Set::Pattern::All#set_format_modules
                 // (pattern/all.rb:49-55) keyed on that card's OWN
                 // pattern module keys - writing one into the shared
-                // base record made it the fallthrough for EVERY card
-                // (measured: set/right/html_message's :content replaced
-                // the engine's main content renderer deck-wide; the
-                // guard is tests/card/mod-loader/
-                // view-set-scope-fallback.test.ts).
+                // base record made it the fallthrough for EVERY card:
+                // set/right/html_message's :content replaced the engine's
+                // main content renderer deck-wide. The guard is
+                // tests/card/mod-loader/view-set-scope-fallback.test.ts.
                 //
-                // FORMAT SCOPING (the flat-table format scoping,
-                // 2026-10-01): the flat record is the HTML-VISIBLE engine
+                // FORMAT SCOPING (the flat-table format scoping): the flat record is the
+                // HTML-VISIBLE engine
                 // table (render.ts `this.views = HTML_VIEWS` - the same
                 // object this constructor receives), so an all-set
                 // registration lands here only under Ruby's html-visible
@@ -406,7 +406,7 @@ export class ModLoader {
                 // registration from a set-scoped one.
                 this.viewChains.register(shortname, view.view, view.viewFn, kind, formatKey);
                 this.viewConfigs.register(view.view, view.config);
-                // p20-nest-selection: keep the config under its set module
+                // Keep the config under its set module
                 // too — the per-card `unknown:` setting resolution walks
                 // the card's chain and needs each module's OWN declaration
                 // (the flat byView record cannot answer per card).
@@ -691,8 +691,7 @@ export class ModLoader {
     // format_ancestry). css/js do NOT descend — CssFormat/JsFormat
     // subclass Format directly (css_format.rb:6, js_format.rb:6) — so a
     // css/js chain miss skips this arm and lands on the BASE tail below
-    // (the survey fix, 2026-10-01; the
-    // census probe pins that no css/js chain request exists to observe
+    // (the census probe pins that no css/js chain request exists to observe
     // the change). EmailTextFormat < TextFormat < Format
     // (email_text_format.rb) likewise never sees the html method table,
     // so an email_text chain miss must reach the BASE (flat) record, not
@@ -885,28 +884,27 @@ export class ModLoader {
           // class). Expand to every REGISTERED shortname whose setPath sits
           // under the token's pattern/anchor path, in load order - same
           // lookup-decides discipline as the anchorless expansion, scoped
-          // to the anchored prefix. (The rules mod's setting-list family -
-          // type/set/html_views/rule_lists - was unreachable before this
-          // expansion: the d6b1957 tree's own set_label/input chain misses
-          // were the same gap.)
+          // to the anchored prefix. This expansion is what makes the rules
+          // mod's setting-list family - type/set/html_views/rule_lists -
+          // reachable at all; without it the set_label and input chain
+          // misses there were the same gap.
           //
-          // STAR-MARKER STRIP (surfaces-batch2, 2026-09-30): a starred
-          // anchor's safe key prefixes X ("*account" -> "Xaccount"), but
-          // the gem's set-file PATH carries the plain anchor
-          // (set/right/account/views.rb -> "right/account/views") - the
-          // prefix comparison compared "right/Xaccount/" against
-          // "right/account/" and never matched, so every nested set file
-          // under a starred anchor (right/account/views' token_days family
-          // + closure) was unreachable - the exact gap the token-view
-          // it.fails markers pinned. The setPath side never carries X, so
-          // the comparison uses the stripped form.
+          // STAR-MARKER STRIP: a starred anchor's safe key
+          // prefixes X ("*account" -> "Xaccount"), but the gem's set-file
+          // PATH carries the plain anchor (set/right/account/views.rb ->
+          // "right/account/views"). Comparing the raw token would put
+          // "right/Xaccount/" against "right/account/" and never match, so
+          // every nested set file under a starred anchor (right/account/views'
+          // token_days family and its closure) would be unreachable. The
+          // setPath side never carries X, so the comparison uses the
+          // stripped form.
           //
-          // COMPOUND-ANCHOR STRIP (surfaces-batch3, 2026-09-30): the X
-          // marker sits on EACH STARRED SEGMENT of the anchor, not only on
-          // the first - the TYPE_PLUS_RIGHT pattern's token anchor is
-          // "<left type>-X<right>" ("TYPE_PLUS_RIGHT-bootswatch_skin-Xcolor"),
-          // whose set path is "type_plus_right/bootswatch_skin/colors". A
-          // leading-only strip left that prefix comparison broken
+          // COMPOUND-ANCHOR STRIP: the X marker sits on EACH STARRED
+          // SEGMENT of the anchor, not only on the first - the
+          // TYPE_PLUS_RIGHT pattern's token anchor is "<left type>-X<right>"
+          // ("TYPE_PLUS_RIGHT-bootswatch_skin-Xcolor"), whose set path is
+          // "type_plus_right/bootswatch_skin/colors". Stripping only a
+          // leading marker left that prefix comparison broken
           // ("bootswatch_skin-Xcolor" vs "bootswatch_skin/colors"), so the
           // whole type_plus_right/* starred family (colors' bar_middle, the
           // set/script and set/style arms) stayed unreachable. The strip
@@ -914,7 +912,7 @@ export class ModLoader {
           // are the starred ones; the type segment never carries X, and
           // stripping nothing from it is a no-op).
           //
-          // SINGULAR/PLURAL + PATH-SEGMENT CANDIDATES (surfaces-batch3):
+          // SINGULAR/PLURAL + PATH-SEGMENT CANDIDATES:
           // scoped to the TYPE_PLUS_RIGHT pattern - the one installed
           // pattern whose anchor has MULTIPLE parts, which changes both
           // spellings: the token anchor "bootswatch_skin-Xcolor" maps to
@@ -925,13 +923,11 @@ export class ModLoader {
           // ("colors.rb" - the registrar's KNOWN DIVERGENCE #1
           // singularization, worked around here at the same level as the
           // X-strip until the codename-key re-key lands). Single-part
-          // patterns (right/self/type) keep the batch-2 form ONLY: their
-          // plural divergence (RIGHT-follower -> right/followers) is that
-          // same recorded divergence's xfailed territory with its own seeds
-          // and expectations written against the current walk - widening
-          // those here would flip tests this pass does not own (the
-          // follow A/B suite's +*followers probe flipped when the plural
-          // candidate reached right/followers - measured, then scoped out).
+          // patterns (right/self/type) keep the singularized form ONLY:
+          // their plural divergence (RIGHT-follower -> right/followers) is
+          // that same recorded divergence's xfailed territory, with its own
+          // seeds and expectations written against the current walk -
+          // widening those here would flip tests this code does not own.
           const code = token.slice(0, dashIdx).toLowerCase();
           const strippedAnchor = token
             .slice(dashIdx + 1)
@@ -1116,8 +1112,8 @@ export class ModLoader {
     return this.viewConfigs.configFor(view);
   }
 
-  /** view/permission.rb:38 `setting :unknown` for ONE card — the per-card
-   *  half of the p20-nest-selection fix. Walks the card's own view chain
+  /** view/permission.rb:38 `setting :unknown` for ONE card. Walks the card's
+   *  own view chain
    *  (viewChain: the same MRO walk the dispatcher uses, most-specific set
    *  first) and answers the first chain entry whose set module CARRIES an
    *  `unknown` config for the view. Ruby dispatches

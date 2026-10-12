@@ -3,18 +3,12 @@
 // The request store's local answerer: the certified `cards` lookup shapes,
 // evaluated in plain JavaScript over the rows ONE request has fetched. No
 // node:sqlite, no SQL parser, no WebAssembly, so it runs on the edge runtime.
-// Ported from the store-evaluator prototype
-// (benchmarks/store-evaluator-prototype/store-row-evaluator.ts, branch
-// store evaluator 2026 10 06), which checked it against real SQLite on
-// the trial-deck mirror: 1,172 shape checks in order, 8,150 subset checks.
 //
-// Row order is storage's, measured on the mirror deck (1,315 generated
-// parameter sets): every multi-row shape comes back in ascending rowid order
-// whatever order the parameters arrive in, except two-term IN/OR shapes,
-// which SQLite compiles into a MULTI-INDEX OR and emits in term order (the
-// junction OR-chain at exactly two arms) or index-key order (a bare
-// two-element BINARY `key IN (?, ?)`). That is a planner choice, not a
-// guarantee; the byte gate is what holds it.
+// ROW ORDER IS STORAGE'S ORDER. Every multi-row shape comes back in ascending
+// rowid order whatever order the parameters arrive in, with two exceptions,
+// both of them planner choices rather than guarantees: a two-arm junction
+// OR-chain, and a bare two-element BINARY `key IN (?, ?)`. Each is handled
+// explicitly in evaluate() below.
 //
 // Completeness (which questions may be answered locally at all) is not
 // decided here; it stays in request-store.ts. An unrecognized statement
@@ -45,8 +39,8 @@ export type CardRow = Record<string, unknown>;
 
 /** ASCII-only case fold: exactly what SQLite's built-in NOCASE collation does.
  *  `String.prototype.toLowerCase` is NOT this — it also folds Latin-1 and
- *  Greek and CJK, and the deck has 13 keys with non-ASCII bytes
- *  (`hei_wa_do_平和道`, `rent_café_term_of_service`, ...). */
+ *  Greek and CJK, so a key such as "Rent_Café_Term_Of_Service" would fold
+ *  differently here than in a real NOCASE comparison. */
 export function foldNoCase(s: string): string {
   let out = "";
   for (let i = 0; i < s.length; i++) {
@@ -168,10 +162,9 @@ const ID_ONLY = ["id"] as const;
 const STAR = null;
 
 /**
- * The certified family test. Mirrors `needsOf()` (request-store.ts:57-95) case
- * for case and regex for regex; the store-internal accessor statements the proof
- * of concept runs through `prep()` rather than `answer()` are added here because
- * the evaluator has to answer those too on the edge.
+ * The certified family test. Mirrors request-store.ts's `needsOf()` case for
+ * case and regex for regex. The store-internal accessor statements are here too,
+ * because the evaluator has to answer those as well as the engine's shapes.
  */
 export function classifyShape(sql: string): Classified {
   const s = norm(sql);
@@ -197,8 +190,9 @@ export function classifyShape(sql: string): Classified {
     const arms = (s.match(/\(j\.left_id = \?/g) ?? []).length;
     return { shape: "S7-pair-or-chain", columns: STAR, trashFiltered: true, arms };
   }
-  // Exact regexes from request-store.ts:77 and :81 — copied, not re-derived, so
-  // the certified family cannot drift between the store and this evaluator.
+  // The S8 and S9 regexes, taken verbatim from request-store.ts's `needsOf()`
+  // rather than re-derived, so the certified family cannot drift between the
+  // store and this evaluator.
   if (
     /^SELECT (\*|id, key) FROM cards WHERE ("key" COLLATE NOCASE|key COLLATE NOCASE|key) IN \((\?(, ?)?)+\) AND trash = 0$/.test(
       s,
@@ -225,7 +219,8 @@ export function classifyShape(sql: string): Classified {
     const nl = (m[1]?.match(/\?/g) ?? []).length;
     return { shape: "S10-sidekey-join", columns: STAR, trashFiltered: true, leftParamCount: nl };
   }
-  // store-internal accessors, answered through prep() in the proof of concept
+  // store-internal accessors: the shapes the store asks the evaluator on its
+  // own behalf
   if (s === "SELECT * FROM cards WHERE id = ?") {
     return { shape: "X-row-by-id", columns: STAR, trashFiltered: false };
   }
@@ -238,8 +233,8 @@ export function classifyShape(sql: string): Classified {
   return { shape: "UNRECOGNIZED", columns: STAR, trashFiltered: false };
 }
 
-/** Rows in ascending rowid order: the order every multi-row shape gets from real
- *  storage on the mirror deck, whatever order the parameters arrive in. */
+/** Rows in ascending rowid order: the order storage returns multi-row shapes
+ *  in, whatever order the parameters arrive in. */
 function byRowId(rows: CardRow[]): CardRow[] {
   return rows.sort((a, b) => Number(a.id) - Number(b.id));
 }
@@ -274,7 +269,7 @@ export class StoreRowEvaluator {
   rowsSeated = 0;
 
   /** Seat one fetched row. Returns false when its id was already seated, which
-   *  mirrors `RequestStore.addRow` (request-store.ts:134-146). */
+   *  mirrors `RequestStore.addRow`. */
   seat(raw: CardRow): boolean {
     const id = asNumeric(raw.id);
     if (typeof id !== "number" || !Number.isSafeInteger(id)) return false;
@@ -330,8 +325,8 @@ export class StoreRowEvaluator {
     return this.rowsById.size;
   }
 
-  /** `(sql, params) -> rows`, the same contract as `RequestStore.answer`
-   *  (request-store.ts:211). Returns `undefined` for a shape this evaluator does
+  /** `(sql, params) -> rows`, the same contract as `RequestStore.answer`.
+   *  Returns `undefined` for a shape this evaluator does
    *  not implement, which the caller must send to storage. */
   evaluate(sql: string, params: readonly unknown[]): CardRow[] | undefined {
     const c = classifyShape(sql);
@@ -374,9 +369,9 @@ export class StoreRowEvaluator {
         return [{ id }];
       }
       case "S7-pair-or-chain": {
-        // Row order is storage's, and storage's changes at exactly two arms
-        // (probe-row-order-at-scale.mjs): MULTI-INDEX OR emits in arm order,
-        // every other arm count falls back to a rowid-ordered search.
+        // Row order is storage's, and storage's changes at exactly two arms:
+        // MULTI-INDEX OR emits in arm order, every other arm count falls back
+        // to a rowid-ordered search.
         const out: CardRow[] = [];
         const seen = new Set<number>();
         for (let i = 0; i + 1 < params.length; i += 2) {
@@ -396,7 +391,6 @@ export class StoreRowEvaluator {
       case "S8-key-in": {
         const out: CardRow[] = [];
         // `x IN (a, a, b)` returns `a` ONCE: SQLite treats the IN list as a set.
-        // Found by check-store-evaluator-order.mjs phase A (the [dup] param sets).
         const seen = new Set<number>();
         for (const p of params) {
           const id = this.lookupKey(p, c.nocase === true);
@@ -410,10 +404,8 @@ export class StoreRowEvaluator {
         // STORAGE'S ORDER, AND IT IS NOT ROWID ORDER HERE. With EXACTLY TWO
         // elements, SQLite compiles `key IN (?, ?)` into a MULTI-INDEX OR over
         // `cards_key_binary_index` and emits rows in INDEX-KEY order; at three
-        // elements and up it prefers a scan and returns rowid order. Measured
-        // over 400 two-key sets, 186 of which separate the two orders: key order
-        // won every one of them. The NOCASE spelling never takes this path —
-        // the deck has no NOCASE key index (see probe-storage-row-order.mjs),
+        // elements and up it prefers a scan and returns rowid order. The NOCASE
+        // spelling never takes this path — there is no NOCASE index on `key`,
         // so `COLLATE NOCASE IN (?, ?)` still scans and stays rowid-ordered.
         if (c.nocase !== true && params.length === 2) {
           out.sort((a, b) => binaryCompare(asText(a.key) ?? "", asText(b.key) ?? ""));
