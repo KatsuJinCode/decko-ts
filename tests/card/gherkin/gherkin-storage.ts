@@ -1,11 +1,10 @@
-// Test storage for the Gherkin feature port: a real in-memory SQLite
+// Test storage for the Gherkin feature suites: a real in-memory SQLite
 // database (the LocalSqliteDriver), the core schema loaded, and the three
 // engines the Gherkin steps exercise (FetchEngine, RenderEngine,
-// CardActionEngine). Mirrors the storage style of tests/card/render/
-// render-test-storage.ts and tests/card/actions/actions-test-storage.ts
-// without crossing those streams.
+// CardActionEngine). Same storage style as tests/card/render/
+// render-test-storage.ts and tests/card/actions/actions-test-storage.ts.
 //
-// Synthetic content only (DATA RULE). All fixture cards are seeded by the
+// Synthetic content only. All fixture cards are seeded by the
 // spec via the step helpers, not by this module — it owns the engines.
 
 import { readFileSync } from "node:fs";
@@ -19,12 +18,12 @@ import { RenderEngine } from "../../../src/card/render.js";
 import type { Actor } from "../../../src/card/actions/types.js";
 
 /** Quote-aware `--` comment stripping + ";" split (the same splitter as the
- *  fetch and render storage streams — the DDL carries no ";" inside
+ *  fetch and render test storage — the DDL carries no ";" inside
  *  literals). Trigger-aware since the deck_data_version freshness stamp
- *  (db/schema.sqlite.sql, [ENGINE-FRESHNESS]): a CREATE TRIGGER body carries
+ *  (db/schema.sqlite.sql): a CREATE TRIGGER body carries
  *  ";" before its closing "END;" — while inside a body, ";" does not
  *  terminate the statement and the body ends at the bare word END. Kept in
- *  lockstep with the render and fetch streams' copies. */
+ *  lockstep with the render and fetch copies. */
 
 export function splitSqlStatements(ddl: string): string[] {
   const statements: string[] = [];
@@ -114,7 +113,7 @@ export async function createGherkinTestStorage(): Promise<GherkinTestStorage> {
 }
 
 /** Type-card codename -> id mapping for the synthetic deck. Mirrors the
- *  Ruby mod-* seed (cards.yml) and the standard deck seeded in the
+ *  mod-* seed (cards.yml) and the standard deck seeded in the
  *  action tests (actions-test-storage.ts:175-205). */
 export const TYPE_IDS = {
   richText: 2,
@@ -127,8 +126,8 @@ export const TYPE_IDS = {
  *  the action layer tests use (actions-test-storage.ts:64). */
 export const JOE_ACTOR: Actor = { id: 9, name: "Joe User" };
 
-/** Direct INSERT seed (mirrors the fetch and action stream's helpers —
- *  the write path is its own stream). Simple cards carry name + key;
+/** Direct INSERT seed (mirrors the fetch and action suites' helpers —
+ *  the write path is exercised elsewhere). Simple cards carry name + key;
  *  compound cards carry NULL name/key with left_id/right_id. */
 export async function seedCard(
   storage: GherkinTestStorage,
@@ -215,7 +214,7 @@ export async function seedStandardDeck(storage: GherkinTestStorage): Promise<voi
     typeId: TYPE_IDS.cardtype,
   });
   await seedCard(storage, { leftId: 7, rightId: 8, typeId: TYPE_IDS.richText });
-  // the write-rule machinery every real decko deck bootstraps (mirrors
+  // the write-rule machinery every real deck bootstraps (mirrors
   // actions-test-storage.ts seedStandardDeck rows 300-307): under the
   // deny-by-default write gate a rule-less deck refuses every save
   // (who_can -> [] -> among? -> false, permissions.rb:47-49/:100-118) —
@@ -238,10 +237,9 @@ export async function seedStandardDeck(storage: GherkinTestStorage): Promise<voi
   // The codename cards the template link-set junction enrichment resolves
   // (render.ts#enrichTemplateLinkSetJunctions -> render/views.ts
   // #templateLinkSetNameFromParts): the non-type-set arm composes
-  // `<field>+*right` (:right, card-mod-edit template_nest.rb:29, corpus 260)
-  // and the type-set arm composes `<type>+<field>+*type plus right`
-  // (:type_plus_right, template_nest.rb:27, corpus 262). Both are setting
-  // cards every real decko deck seeds; without their codename rows the
+  // `<field>+*right` (:right) and the type-set arm composes
+  // `<type>+<field>+*type plus right` (:type_plus_right). Both are setting
+  // cards every real deck seeds; without their codename rows the
   // registry lookup raises CodenameNotFoundError and every render of a
   // structure card fails (name.ts#fromCardish).
   await seedCard(storage, { id: 308, name: "*right", codename: "right" });
@@ -253,8 +251,9 @@ export async function seedStandardDeck(storage: GherkinTestStorage): Promise<voi
  *  server installs — fetch.ts#installNameEnvironment) and prime the codename
  *  registry from the rows just seeded. The DeckoName codename-tag resolution
  *  the render layer performs (fieldName({codename})) reads this registry
- *  synchronously; without it the port raises CodenameNotFoundError where Ruby
- *  answers from its loaded codehash (codename.rb#load_codehash). Called at
+ *  synchronously; without it the lookup raises CodenameNotFoundError where
+ *  the reference implementation answers from its loaded codehash
+ *  (codename.rb#load_codehash). Called at
  *  the end of every seed function so the registry always reflects the deck
  *  the scenario just built. */
 export async function installGherkinNameEnvironment(storage: GherkinTestStorage): Promise<void> {
