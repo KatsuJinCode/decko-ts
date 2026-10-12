@@ -1,13 +1,14 @@
-// Pin the haml-slice oracle captures into fixtures/captured/haml-slice/.
+// Pin the haml-slice oracle captures as deterministic JSON fixtures.
 //
 // Inputs (both written by the Ruby probes in tools/haml-slice/, run against
-// the live Rails oracle at tools/oracle/decko-oracle-app):
-//   tmp/haml-slice/group-list-oracle.json  - group_list.haml rendered through
-//       the deck's OWN Card::Format#haml_to_html
-//   tmp/haml-slice/haml-semantics.json     - 59 Haml 5.2.2 engine cases
+// the Rails oracle app under tools/oracle/decko-oracle-app):
+//   - the group-list oracle JSON: group_list.haml rendered through the deck's
+//     OWN Card::Format#haml_to_html
+//   - the Haml 5.2.2 semantics JSON: 59 engine cases
 //
-// Output: fixtures/captured/haml-slice/{assets-core-group-list.json,
-// haml-5.2.2-semantics.json} - pretty-printed, deeply sorted keys.
+// Both are re-serialized pretty-printed with keys sorted at every depth, into
+// the two fixture files this script writes under its OUT directory (the
+// captured-fixtures location named by the constants below).
 //
 // Usage: node tools/haml-slice/pin-haml-slice-oracle-fixtures.mjs
 
