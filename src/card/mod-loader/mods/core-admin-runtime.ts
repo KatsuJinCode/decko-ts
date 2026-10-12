@@ -49,9 +49,9 @@ export interface AdminRuntimeConfig {
    *  DECKO's OWN config hash - NOT the Rails::Application layer the
    *  oracle's config/application.rb sets (perform_deliveries = true there)
    *  and NOT ActionMailer::Base (harness_env.rb sets that directly): the
-   *  reference capture's *admin warning renders the no_email_delivery
+   *  oracle's *admin warning renders the no_email_delivery
    *  item, which only fires when this flag is false - the decko default
-   *  the capture proves. */
+   *  the oracle output proves. */
   performDeliveries: boolean;
 
   /** Cardio.config.allow_irreversible_admin_tasks (self/admin.rb:55). */
@@ -102,11 +102,12 @@ export const CORE_ADMIN_LOCALE = {
   core_task_clear_cache_description: "Clear Cache!",
   core_task_regenerate_assets_link_text: "Regenerate Assets",
   core_task_regenerate_assets_description: "Regen!",
-  // mm-cstructural (2026-09-30): the 4th basket task
-  // (delete_upload_tmp_files, mod: carrierwave) rendered
-  // "Translation missing: en.carrierwave_task_delete_upload_tmp_files_link_text"
-  // on the `mod: carrierwave` page where the oracle shows the gem's string.
-  // card-mod-carrierwave-0.20.0 config/locales/en.yml:18-19. Its
+  // The 4th basket task (delete_upload_tmp_files, mod: carrierwave) needs
+  // its task-table strings here: without them the `mod: carrierwave` page
+  // renders "Translation missing:
+  // en.carrierwave_task_delete_upload_tmp_files_link_text" where the oracle
+  // shows the gem's string (card-mod-carrierwave-0.20.0
+  // config/locales/en.yml:18-19). Its
   // sibling `carrierwave_task_move_files_*` keys are COMMENTED OUT in that
   // file (en.yml:14-15) and the task is not in the basket, so they stay out.
   carrierwave_task_delete_upload_tmp_files_link_text: "Delete upload tmp files",
@@ -164,11 +165,11 @@ export const CORE_TASK_BASKET: Record<string, AdminTaskConfig> = {
     executePolicy: () => undefined,
   },
   // card-mod-carrierwave set/self/admin.rb — basket[:tasks]
-  // [:delete_upload_tmp_files]. The the bar slots (2026-09-29, view-fail
-  // class Z3) landed the REGISTRATION only: the oracle pins the task's
+  // [:delete_upload_tmp_files]. The bar_right view port landed the
+  // REGISTRATION only: the oracle pins the task's
   // EXISTENCE through the mod bar_right section list ("tasks, cardtypes,
-  // scripts, styles") and its name/title/description through the page-surface
-  // capture (expected-v2/page-surface shard-000039, mod: carrierwave :open:
+  // scripts, styles") and its name/title/description through the oracle's
+  // page surface (the mod: carrierwave :open
   // task-table row "Delete upload tmp files" / "Delete upload tmp files!").
   // The EXECUTION stays a named remainder — a cron-style scheduled task
   // (the same AGENTS.md gate the carrierwave port note cites); like the
@@ -295,8 +296,8 @@ export const ADMIN_CONFIG: Record<string, AdminConfig> = {
   layout: {
     settings: ["layout", "head"],
     cardtypes: { styling: ["layout_type"] },
-    // mm-cstructural (2026-09-30): the `views` category was dropped from
-    // this transcription, so the `mod: layout` page rendered its Views
+    // The `views` category was initially dropped from this transcription,
+    // which made the `mod: layout` page render its Views
     // section as "Depends on" (the section list ran description →
     // … → depends_on with views absent, per type/mod.rb:7-19's predicate
     // list). card-mod-layout-0.20.0 config/admin.yml:6-7 `views: [modal_link]`.
@@ -369,7 +370,7 @@ export const MOD_SPEC_SHARED = {
 
 /** card-1.110.0's own specification — the CORE mod's spec is the card
  *  gem's, but Cardio::Mod.fetch("core").spec answers nil on the oracle
- *  (probe-2 mod_core_fetch.spec_nil: true — Dirs gives the core mod no
+ *  (Dirs gives the core mod no
  *  Bundler spec), so type/mod.rb's spec-backed views render nothing for
  *  mod: core. Kept here for provenance; NOT served as core's spec. */
 export const CARD_GEM_SPEC = {
@@ -389,8 +390,8 @@ export const MOD_SPECS: Record<string, ModSpec> = {
     version: "0.20.0",
     summary: "Email-based account handling for decko cards",
     description: "",
-    // The installed 0.20 gemspec's dependencies (the corpus of record's
-    // mod: account lists all five; core-mod.ts dependsOn orders them).
+    // The installed 0.20 gemspec's dependencies (the oracle's
+    // mod: account page lists them; core-mod.ts dependsOn orders them).
     deps: ["card", "card-mod-email", "card-mod-permissions", "card-mod-list", "card-mod-integrate", "card-mod-edit"],
   },
   ace_editor: {
@@ -490,16 +491,11 @@ export const MOD_SPECS: Record<string, ModSpec> = {
   edit: {
     gem: "card-mod-edit",
     version: "0.20.0",
-    // "Edit handling" is the CAPTURE-attested string, not a transcription of
-    // a gemspec line: two independent Ruby captures of the live deck render
-    // exactly this text in the `mod: edit` description paragraph
-    // (`<p>Edit handling</p>`) -- the 2026-09-29 yardstick vintage
-    // (decko-ts-pass20-int/tmp/raw-ground-truth) and the 2026-10-05
-    // recapture (tmp/raw-ground-truth/expected-v2/page-surface), byte-for-byte
-    // identical on this page after the committed close-71 asset-host mapping
-    // (the corresponding port note evidence chain point 2). The previous value
-    // ("decko card editing and card type management") appears in NO capture
-    // and cost the page +30 B.
+    // "Edit handling" is the oracle-attested string, not a transcription of
+    // a gemspec line: the live deck's `mod: edit` page renders exactly this
+    // text in its description paragraph (`<p>Edit handling</p>`). The
+    // previous value ("decko card editing and card type management") appears
+    // in no oracle output.
     //
     // PROVENANCE NOT RE-DERIVED: card-mod-edit is NOT installed in this
     // worktree, so which *.gemspec supplies this string was NOT determined
@@ -508,7 +504,7 @@ export const MOD_SPECS: Record<string, ModSpec> = {
     summary: "Edit handling",
     description: "",
     // Live order: the oracle's mod: edit page renders mod: list then
-    // mod: rules (mm-cstructural's 2026-09-30 measurement, kept as the pin).
+    // mod: rules (the pin).
     deps: ["card", "card-mod-list", "card-mod-rules"],
   },
   email: {
@@ -655,7 +651,7 @@ export const MOD_DESCRIPTION_KEYS: Record<string, string> = {
 };
 
 /** type/mod.rb:162-166 description: the locale key, else the spec default
- *  (description when present, else summary), else nil (probe-2:
+ *  (description when present, else summary), else nil (the oracle's
  *  mod_core_description is null for the spec-less core mod). */
 export function modDescription(modname: string): string | undefined {
   const localeKey = MOD_DESCRIPTION_KEYS[modname];
@@ -667,10 +663,10 @@ export function modDescription(modname: string): string | undefined {
 }
 
 // ---------------------------------------------------------------------------
-// set/type/mod.rb view :bar_right — the mod bar-right section list.
-// Landed by the bar slots 2026-09-29 (view-fail class Z3: 30 oracle
-// entries — every `mod: X :closed` bar rendered an EMPTY bar-right where
-// the oracle shows the mod's section list).
+// set/type/mod.rb view :bar_right — the mod bar-right section list
+// (oracle-pinned over the full set of `mod: X :closed` bars, every one of
+// which rendered an EMPTY bar-right where the oracle shows the mod's
+// section list before this port).
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
@@ -695,30 +691,30 @@ export type ModAssetGroup = readonly [title: string, items: readonly string[]];
  *    the group_list haml — NOT the pointer-list core a bare List-typed
  *    child would render. That is why the oracle's Styles section is
  *    `<p><h3>Styles</h3><p><h5>group: local</h5><ul class="list-group">…`
- *    and not a card-list. (Before the mm-cstructural fix the engine
+ *    and not a card-list. (Before this fix the engine
  *    resolved the child as a Settings pointer list and rendered
  *    `<div class="card-list card-list-bar pointer-list"></div>`.)
  *  - the child is fetched VIRTUAL — card-mod-assets set/type/mod.rb:14
  *    `Card.fetch [name, asset_type], new: { type: :list }` — so its content
- *    is the mod gem's `assets/<subpath>` tree, not a DB row. The raw corpus
- *    has ZERO rows named `mod: X+*style` / `+*script` (measured: 0 children
+ *    is the mod gem's `assets/<subpath>` tree, not a DB row. The deck
+ *    stores ZERO rows named `mod: X+*style` / `+*script` (measured: 0 children
  *    under `mod: account`).
  *  - a headless engine has no gem filesystem, so the groups are
  *    transcribed from the DECK'S OWN RENDERED TRUTH — the `<h3>Styles</h3>`
  *    / `<h3>Scripts</h3>` sections of the 28 `mod: *` page rows in the
- *    an earlier pass page-surface yardstick — the same oracle-pinned-table pattern as
+ *    oracle's page-surface output — the same oracle-pinned-table pattern as
  *    MOD_BAR_RIGHT_ASSETS below, and the same "expectation = the oracle
- *    bytes, never the reverse" rule the bootswatch capture applied.
+ *    bytes, never the reverse" rule.
  *  - CROSS-CHECK: every group is reproduced by the installed gem trees'
  *    assets directories (gems/card-mod-<name>-0.20.0/assets). Folder
  *    groups are the folder's files (account: style/account.scss +
  *    script/toggle_visibility.js.coffee); manifest groups are the yml keys
  *    with `remote:` first (mod_assets.rb:174-175 pushes the remote group
  *    before the manifest groups), and the `../../vendor/…` manifest paths
- *    resolve to their basenames, which is what the capture shows
+ *    resolve to their basenames, which is what the oracle shows
  *    (bootstrap styles: `_colorpicker.scss`, `select2.css`, …).
  *
- *  KEY FORM (mm-cstructural, 2026-09-30 — a real bug this pass fixed): every
+ *  KEY FORM: every
  *  key in this table, and in MOD_BAR_RIGHT_ASSETS below, is the CODENAME
  *  stem — what `codename.to_s.gsub(/^mod_/, "")` yields (type/mod.rb:168-170),
  *  i.e. `ace_editor`, `api_key`, `bar_and_box`, `tinymce_editor` — NOT the
@@ -727,7 +723,7 @@ export type ModAssetGroup = readonly [title: string, items: readonly string[]];
  *  undefined on every lookup: measured on the `mod: defaults` page, the
  *  nested `mod: ace editor` / `api key` / `bar and box` bars rendered an
  *  EMPTY bar-right where the oracle shows `configurations, scripts` /
- *  `styles` / `scripts, styles` (earlier dump, 3 of the 26 bar-right rows
+ *  `styles` / `scripts, styles` (3 of the 26 bar-right rows
  *  on that one page), and their own pages dropped the Styles/Scripts
  *  sections. The other 29 mods are unaffected — no other gem stem contains
  *  an underscore or a space. */
@@ -887,47 +883,34 @@ const MOD_ASSET_GROUPS_SRC: Readonly<
     scripts: [["group: local", ["autocomplete.js.coffee", "search_box.js.coffee"]]],
   },
   // NO `shades` entry, deliberately, and the absence is the pinned state.
-  // Census M5 (serializer-followup2, 0377f4d3) added one — a four-file local
-  // group (decko_logo.js, decko_org.js.coffee, snap.js, snap_svg.js) —
-  // transcribed from tmp/serializer-followup/probe-green5/
-  // expected--mod_shades__page.html, which it cited as the graded
-  // expected-v2 corpus. It is not. That file is a LIVE recapture of the
-  // production site (taken 2026-10-03) carrying the DigitalOcean cssPath
-  // files/45514/0000000001.css, a 2026-09-26 compile; the graded
-  // yardstick's
-  // page-surface/recapture-raw-shard-000043 carries the s3 cssPath
-  // files/45514/9999999999.css — the capture-era compile, 44.3 days
-  // earlier. The site changed in between; the yardstick did not.
-  //
-  // The graded bytes: 49308 "mod: shades" main-slot card body is
-  // `<p></p><br/><p><h3>Scripts</h3></p>` (section present, body EMPTY) and
-  // 49309 "mod: shades+*script" is the empty string. Ruby derives both with
-  // no shades gem among the 32 installed card-mod-* gems —
+  // Ruby derives an empty Scripts section body for `mod: shades` with no
+  // shades gem among the 32 installed card-mod-* gems —
   // mod_assets.rb:57-59 assets_path nil -> :24-30 folder_group_card nil ->
   // :15-22 local_group_cards [] -> :171-181 haml :group_list, groups: []
   // -> group_list.haml's all-body `each` renders ""; type/mod.rb:7-13/:22-24
   // joins it after the empty description's `<p></p>` with "<br/>".
   //
-  // So the section is emitted by the union predicate's OTHER half (the
-  // corpus child row, type/mod.rb:115-117 `scripts?` = `fetch(:script)
+  // The section is emitted by the union predicate's OTHER half (the
+  // deck child row, type/mod.rb:115-117 `scripts?` = `fetch(:script)
   // .present?`) with an EMPTY body, and `modChildAssetGroups` falls through
-  // parent -> MOD_CHILD_ASSET_GROUPS_SRC to undefined -> "". The four
-  // filenames exist nowhere in the installed gem set nor in the decko
-  // distribution (archive/decko-fork-study/decko/mod: 32 mod dirs, none of
-  // them shades). reviewed 2026-10-04; evidence and the superseded
-  // assertion: an internal work log
+  // parent -> MOD_CHILD_ASSET_GROUPS_SRC to undefined -> "". An earlier
+  // (superseded) version of this table carried a four-file local group
+  // (decko_logo.js, decko_org.js.coffee, snap.js, snap_svg.js) transcribed
+  // from a non-oracle page; those four filenames exist nowhere in the
+  // installed gem set nor in the decko distribution (the reference decko
+  // checkout: 32 mod dirs, none of them shades), and the oracle's own
+  // `mod: shades` page shows the empty body this absence reproduces.
   style: {
     styles: [["group: local", ["jquery_ui_decko.scss", "jquery_ui_smoothness.css"]]],
   },
   tabs: { scripts: [["group: local", ["tab.js.coffee"]]] },
-  // Census M10 (serializer-followup2, the tinymce review): the parent
-  // page's Styles/Scripts section bodies. The graded capture 500'd the page
-  // itself, but the SAME capture rendered the child cards' cores (expected-v2
-  // page-surface shard 000039 records 200/201), and the parent sections nest
+  // The parent page's Styles/Scripts section bodies for this mod. The
+  // oracle 500s the parent page itself, but the SAME oracle run rendered
+  // the child cards' cores, and the parent sections nest
   // those same cores (type/mod.rb:53-65, nest(child, view: :core)) — the
-  // lists below are transcribed verbatim from those graded child bytes. The
-  // crash is a separate, documented, non-corpus-derived residual (see the
-  // mod-tinymce-style-script-group-pins.test.ts header).
+  // lists below are transcribed verbatim from those child bytes. The
+  // crash is a separate, documented, non-oracle-derived residual (see the
+  // test suite's harness-probe headers).
   tinymce_editor: {
     styles: [["group: local", ["nest_editor.scss"]]],
     scripts: [
@@ -965,13 +948,13 @@ export function modAssetGroups(
  *  the Abstract::ModAssets cards — card-mod-style set/type_plus_right/mod/
  *  style.rb + card-mod-script set/type_plus_right/mod/script.rb, both
  *  include_set Abstract::ModAssets) render but the PARENT table above
- *  never carried: the parent's Styles/Scripts sections are the Z3-pinned
+ *  never carried: the parent's Styles/Scripts sections are the pinned
  *  section list, which shows NEITHER for tinymce_editor even though its
  *  assets/script + assets/style folders hold a group's files each
  *  (mod_assets.rb:20-27 folder_group_card — no manifest.yml, so the single
  *  folder group "local" lists the directory alphabetically; verified
  *  against the installed gem tree, 8 script files + nest_editor.scss).
- *  transcribed from the captured child page bytes, which list the child
+ *  transcribed from the oracle's child page bytes, which list the child
  *  folder groups and no parent group. */
 const MOD_CHILD_ASSET_GROUPS_SRC: Readonly<
   Record<string, readonly ModAssetGroup[]>
@@ -995,12 +978,12 @@ const MOD_CHILD_ASSET_GROUPS_SRC: Readonly<
 };
 
 /** The Abstract::ModAssets child card's groups for one mod stem + subpath:
- *  the parent-section table first (the same manifest truth mm-cstructural
- *  pinned — the child core and the parent section render the SAME
+ *  the parent-section table first (the same manifest truth — the child core
+ *  and the parent section render the SAME
  *  group_list bytes), then the child-only folder-group supplement. A mod
  *  in neither table (e.g. shades, whose gem ships no assets/ directory at
  *  all) returns undefined -> the child core is the empty group_list, the
- *  oracle's empty card-content (page 49309 mod: shades+*script). */
+ *  oracle's empty card-content for mod: shades+*script. */
 export function modChildAssetGroups(
   modname: string,
   subpath: "style" | "script",
@@ -1016,22 +999,22 @@ export function modChildAssetGroups(
  *  FILE TREE (Card::Mod's script/style directories — the `mod: X+*script`
  *  and `mod: X+*style` children are directory-backed manifest cards, not
  *  stored rows: the bench deck has ZERO rows with those names; the
- *  page-surface capture pins their folder-group cores, e.g. carrierwave's
+ *  oracle's page surface pins their folder-group cores, e.g. carrierwave's
  *  "group: local / upload.js.coffee" and "file.scss"). The headless port
  *  has no gem tree to walk, so this table is the ORACLE-PINNED presence
  *  set, transcribed verbatim from the deck's own script/style cardtype
- *  default-content templates (bench-corpus-raw nameless template rows id
- *  20616 = the 16 script mods, id 33922 = the 18 style mods — the same
+ *  default-content templates (the 16 script mods and the 18 style mods'
+ *  nameless default rows — the same
  *  directory truth the deck itself pins) and cross-checked against all
- *  30 Z3 dump rows: every mod's section list below reproduces the oracle
- *  bar_right string exactly.
+ *  30 oracle bar_right rows: every mod's section list below reproduces the
+ *  oracle bar_right string exactly.
  *
- *  mm-cstructural: MOD_ASSET_GROUPS above is the SAME truth with the
+ *  MOD_ASSET_GROUPS above is the SAME truth with the
  *  contents, so the presence set is derived from it and a mod absent from
  *  that table has no scripts/styles section. `tinymce_editor` and `shades`
  *  keep their explicit flags — neither ships a Styles/Scripts section on
- *  any captured mod page, so their bar_right presence is pinned by the 30
- *  Z3 rows alone. */
+ *  any oracle mod page, so their bar_right presence is pinned by the 30
+ *  oracle rows alone. */
 const MOD_BAR_RIGHT_ASSETS: Readonly<Record<string, { scripts?: boolean; styles?: boolean }>> = {
   account: { scripts: true, styles: true },
   ace_editor: { scripts: true },
@@ -1066,8 +1049,8 @@ const MOD_BAR_RIGHT_ASSETS: Readonly<Record<string, { scripts?: boolean; styles?
 };
 
 /** type/mod.rb view :bar_right's section list — the mod's present
- *  sections, comma-joined. Oracle-pinned order over all 30 dump rows
- *  (the only total order the 30 strings admit): tasks < settings <
+ *  sections, comma-joined. Oracle-pinned order (the only total order the
+ *  section strings admit): tasks < settings <
  *  configurations < cardtypes < scripts < styles. recaptcha ("settings,
  *  configurations, scripts") pins settings before configurations; format
  *  pins configurations before cardtypes; carrierwave/core pin tasks
@@ -1179,10 +1162,10 @@ export async function prepareAdminRuntime(host: ModEngineHost): Promise<void> {
   //    end
   //  and all_configs (admin.rb:40-42) `.map(&:admin_config_objects).flatten`
   //  it in SEARCH order, so the section's item order IS the deck's mod-card
-  //  order. The corpus pins that order: the oracle's Administrator
-  //  `Configurations` section reads *title, *credit (mod: format, id 45437),
-  //  *Ace (mod: ace editor, 45475), *TinyMCE (mod: tinymce editor, 45509),
-  //  *home / *main menu / *getting started links (mod: defaults, 45513) —
+  //  order. The oracle pins that order: the Administrator
+  //  `Configurations` section reads *title, *credit (mod: format),
+  //  *Ace (mod: ace editor), *TinyMCE (mod: tinymce editor),
+  //  *home / *main menu / *getting started links (mod: defaults) —
   //  ascending card id. The name sort this replaced ordered that same list
   //  ace editor, defaults, format, recaptcha, tinymce editor, which is
   //  what the rendered bytes showed.
@@ -1254,9 +1237,8 @@ export async function prepareAdminRuntime(host: ModEngineHost): Promise<void> {
     // settings (*title, *credit, ...), so the walk without this candidate
     // fell through to *all+*update for every one of them and the
     // type/role.rb:12-24 :configs view grouped nothing under the roles the
-    // dump's *star+*update row names (the replay review,
-    // 2026-10-01: Administrator's Configurations section was missing in
-    // full).
+    // *star+*update rule names (without it, Administrator's
+    // Configurations section was missing in full).
     const starRules = await host.batch([
       {
         sql:
