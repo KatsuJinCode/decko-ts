@@ -255,7 +255,7 @@ for (const table of tables) {
   // added or removed) is an observation, not an obligation: the Ruby deck
   // carried the table and wrote nothing to it, so a final deck without the
   // table matches the recording (the fixture decks dropped their empty
-  // private-app library_* tables after that recording was made). Only an
+  // private_table_* tables after that recording was made). Only an
   // entry that records nothing is skipped this way; any recorded row makes
   // the table's absence a mismatch.
   if (t === undefined && r !== undefined && !r.portOnly) {
