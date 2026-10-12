@@ -1,8 +1,7 @@
 #!/usr/bin/env ruby
-# Stream M1 (coderay-highlighting) oracle-bytes capture.
-# Calls CodeRay.scan(content, :LANG).div directly on the same content
-# strings the corpus cards store. Saves the resulting HTML to
-# fixtures/captured/coderay/<filename>.html.
+# Coderay-highlighting oracle-bytes capture.
+# Calls CodeRay.scan(content, :LANG).div directly on each case's stored
+# content string. Saves the resulting HTML gate files.
 #
 # Run from anywhere — paths are absolute.
 
