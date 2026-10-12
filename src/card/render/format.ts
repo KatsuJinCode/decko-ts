@@ -3130,37 +3130,34 @@ export class RenderFormat {
    *  wins (title.rb:6-8 standard_title = name_variant title_in_context(
    *  voo.title); the html title_in_context marks explicit titles html_safe
    *  - title.rb:25-26 "escape titles generated from card names, but not
-   *  those set explicitly" - so they render UNESCAPED). Corpus pressure
-   *  zero corpus nests carry a |title: param, so
+   *  those set explicitly" - so they render UNESCAPED). No nest carries a
+   *  |title: param here, so
    *  the only opt-carrying surfaces are the bootswatch skin field_nests
    *  (card-mod-bootstrap set/type/bootswatch_skin/core.haml field_nest
    *  title: opts).
    *
-   *  2026-09-29 (view-fail class Z10): settings with an
-   *  I18n display title render THAT title
-   *  (Card::Setting#title — the `setting_title.<codename>` locale keys;
-   *  attribution training-data, the corpus pins the surface bytes) — the
-   *  oracle renders `<span class="card-title" title="Search Results">
-   *  Search Results</span>` for the *search card's :title/:closed views
-   *  where the engine rendered the raw "*search" name. Only the codenames
-   *  the corpus pins carry entries (the oracle renders RAW names for
-   *  every other setting-codename card it captures — *style, *structure,
-   *  *on create, the *read/*create rule rows — so an I18n-table miss falls
-   *  through to the plain name, byte-identical to the pre-change
-   *  behavior). The swap keys on the RESOLVED title name being a simple
+   *  Settings with an I18n display title render THAT title
+   *  (Card::Setting#title — the `setting_title.<codename>` locale keys): the
+   *  *search card's :title/:closed views render
+   *  `<span class="card-title" title="Search Results">
+   *  Search Results</span>` where the raw "*search" name would otherwise
+   *  show. Only the codenames the table carries are swapped; every other
+   *  setting-codename card renders its raw name — *style, *structure,
+   *  *on create, the *read/*create rule rows — so a table miss falls
+   *  through to the plain name, byte-identical to no override at
+   *  all. The swap keys on the RESOLVED title name being a simple
    *  star card whose codename is in the table (a rule row like *content
    *  options+*right+*default is a junction — never simple — and keeps its
    *  rule name).
    *
-   *  Merge note (an earlier pass): both merge parents landed the SAME three codenames —
-   *  this Z10 table (keyed on the resolved name's codename, here) and
-   *  views.ts SELF_SET_TITLE_OVERRIDES (keyed on the rendered card's
-   *  codename, consulted first at the view layer) carry identical values
-   *  ("Search Results" / "Sign In" / "Recent Changes"); whichever fires
-   *  first emits the same bytes, and the Ruby mechanism covers both
-   *  (the self-set views' `voo.title ||= t(...)` arrives HERE as voo.title
-   *  in the loader-bound world; the headless no-loader surface reads the
-   *  codename tables instead). */
+   *  Two tables, one answer: this one (keyed on the resolved name's
+   *  codename, here) and views.ts SELF_SET_TITLE_OVERRIDES (keyed on the
+   *  rendered card's codename, consulted first at the view layer) carry
+   *  identical values ("Search Results" / "Sign In" / "Recent Changes");
+   *  whichever fires first emits the same bytes, and the Ruby mechanism
+   *  covers both (the self-set views' `voo.title ||= t(...)` arrives HERE as
+   *  voo.title in the loader-bound world; the headless no-loader surface
+   *  reads the codename tables instead). */
   standardTitle(): string {
     const explicit = this.voo?.opts["title"];
     if (typeof explicit === "string" && explicit !== "") {
@@ -3170,8 +3167,8 @@ export class RenderFormat {
       // the result html_safe, which skips the h() ESCAPE but not the
       // relativization — so an explicit COMPOUND title whose parts the
       // context supplies renders in the relative form ("welcome email+*to"
-      // under the welcome-email page renders "+*to", the read_form
-      // field-title oracle bytes), while simple titles round-trip verbatim.
+      // under the welcome-email page renders "+*to"), while simple titles
+      // round-trip verbatim.
       const absolute = DeckoName.parse(explicit).absoluteName(this.card.name);
       return absolute.from(...this.contextNames);
     }
@@ -3208,11 +3205,10 @@ export class RenderFormat {
  *  src/card/render.ts). Kept as an interface so views.ts and format.ts never
  *  import the engine concrete class - mirrors the harness's interface-only
  *  rule in spirit. */
-/** 2026-09-29 (view-fail class Z10): the setting display
- *  titles the oracle pins (see RenderFormat#standardTitle's doc block).
- *  The three entries are the corpus's only I18n-covered settings; every
- *  other captured setting-codename card renders its raw name, so a miss
- *  here falls through to the plain name (pre-change bytes). */
+/** The setting display titles (see RenderFormat#standardTitle's doc block).
+ *  These three are the only I18n-covered settings here; every other
+ *  setting-codename card renders its raw name, so a miss here falls
+ *  through to the plain name. */
 const SETTING_DISPLAY_TITLES: Readonly<Record<string, string>> = {
   search: "Search Results",
   signin: "Sign In",
@@ -3271,10 +3267,10 @@ export interface RenderEngineLike {
    *  (the base format view wins - view_definition.rb:18-21).
    *
    *  When no loader is registered, the lookup is byte-identical to
-   *  `this.views[view]` — the captured 1080-test render surface stays
-   *  green. With a loader registered, the chain walker honors Ruby's
+   *  `this.views[view]`. With a loader registered, the chain walker honors
+   *  Ruby's
    *  per-card MRO so the LAST mod that registers a view does NOT
-   *  hijack every card (the recaptcha/api_key :content probe).
+   *  hijack every card (a recaptcha/api_key :content case).
    *
    *  Format inheritance (css/js/rss fall back to the html chain when
    *  their chain is empty - AbstractFormat#format blocks reopen the
@@ -3297,13 +3293,12 @@ export interface RenderEngineLike {
    *  customize_button ViewFn to read. The view cannot query: this pipeline
    *  dispatches sync ViewFns over a prepared map, and a bootswatch skin's
    *  customized sibling is never in that page's nest closure — the
-   *  render-card-map-only gate is what produced the M9 residual (journal /
-   *  slate skin pages render the bare name where the oracle emits `+1`).
+   *  render-card-map-only gate is what produced the residual: journal /
+   *  slate skin pages rendered the bare name where `+1` is correct.
    *
    *  Optional: undefined = not warmed for this card (an engine with no
    *  prepare phase, or a skin nested into a render rather than being the
-   *  root). The view then falls back to the render-card map, which is
-   *  exactly its pre-M9 behaviour. */
+   *  root). The view then falls back to the render-card map. */
   peekCustomizedName?(name: string): string | undefined;
   /** Search execution for Search-type cores (see views.ts card_list). */
   executeSearch(fmt: RenderFormat): RenderCard[];
@@ -3364,9 +3359,8 @@ export interface RenderEngineLike {
    *  - the loud-denial copy (html/error.rb:215-222 `when Auth.signed_in?`).
    *  Live serving has session == viewer (viewerFromToken resolves both from
    *  the same token), so engines that don't split the axes stay correct by
-   *  omitting this field: undefined = signed-out chrome (the corpus surface,
-   *  byte-identical to the pre-session render). The capture instrument
-   *  splits the axes (Card::Auth.as(actor) inside a bot session) and sets
+   *  omitting this field: undefined = signed-out chrome. An engine that
+   *  splits the axes (Card::Auth.as(actor) inside a bot session) sets
    *  this explicitly. */
   readonly pageSession?: ReadViewer;
   /** The signed-in *account_links navbar items (the <li> list), prepared on
