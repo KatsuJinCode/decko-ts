@@ -1,22 +1,20 @@
 // Cold page render: the LAYOUT body's nest targets and their content
 // references must warm with the REFERENCING card as the relative-name
-// context (nitpicks defect 2 companion fix).
+// context.
 //
-// Failure shape (observed on the real /Aikido_Oak_Cliff cold render, the
-// operator's "page ends early" class): *footer nests {{:credit|core}};
+// Failure shape (the "page ends early" class): *footer nests {{:credit|core}};
 // *credit's content nests {{+:image|core}} - a junction row
 // (*credit+*image) whose db row stores a NULL key column. warmUpLayoutNests
 // resolved every reference against the PAGE name, so the +image reference
-// warmed as "Aikido Oak Cliff+image" (a spurious name), the real sync nest
+// warmed as "<page>+image" (a spurious name), the real sync nest
 // fetch (fetchRenderCard, prepared-cards-only) missed the junction, and
 // the cold page's footer rendered the svg nest EMPTY. A second (warm)
 // render was full. The fix carries each queued name's referencing card
 // through the worklist; this test pins the cold render byte.
 //
-// The live receipt: fresh capture an internal work log
-// live-fresh-Aikido_Oak_Cliff.html renders the full b&w_logo svg inside
-// the *footer credit nest; the pre-fix cold page rendered
-// `<svg ...>\n  \n<a ...>Decko v</a>` with the svg body gone.
+// The pre-fix cold page rendered
+// `<svg ...>\n  \n<a ...>Decko v</a>` with the svg body gone; Ruby renders
+// the full svg inside the *footer credit nest.
 
 import { describe, expect, it } from "vitest";
 import { renderPageBytes } from "../../../src/card/render/page.js";
