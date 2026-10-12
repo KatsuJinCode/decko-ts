@@ -695,7 +695,7 @@ export class RenderEngine implements RenderEngineLike {
    *  `*all+*default` template type —
    *  `Card.fetch(name, new: {})`, whose type_id comes from the deck's rule
    *  row (states.rb:44-50 + the *default template chain). It is a property
-   *  of the DECK, not of the engine: one corpus's `*all+*default` names a
+   *  of the DECK, not of the engine: one deck's `*all+*default` may name a
    *  BasicCs type card, and hard-coding that id/name/key made every other
    *  deck's unknown items render another deck's type chip and data attrs.
    *
@@ -1653,9 +1653,9 @@ export class RenderEngine implements RenderEngineLike {
       // pass after help-rules; ensureVerdicts' skip-if-set guard
       // (line 733) means this is a no-op for cards already judged — it
       // only fills verdicts for the help-rules batch's newly-enriched cards.
-      // Closes the corpus-wide permission_denied_sentinel_replaced_with
-      // _placeholder growth that permfix48 surfaced (+238 on the slice,
-      // +487 corpus-wide across 489a22c's readableRuleIds filter side).
+      // Closes the permission_denied_sentinel_replaced_with
+      // _placeholder growth this path surfaced — denied cards rendering
+      // as placeholder content across the whole deck.
       await this.ensureVerdicts();
     }
 
@@ -1742,9 +1742,9 @@ export class RenderEngine implements RenderEngineLike {
     // NEW card's type when the target is missing (nest/fetch.rb:47-48
     // new_card_args) — but buildUnknownNestCard resolves the type card
     // SYNCHRONOUSLY from the warm map, and the type card ("Toggle", the
-    // +agree nest opt of every Sign up card; corpus-wide the only two
-    // type-opt shapes are `+agree | type:Toggle` ×94 and
-    // `*signup+*subject|type:Phrase` ×1) is referenced by an OPT, never by
+    // +agree nest opt of every Sign up card; a deck carries only a couple
+    // of distinct type-opt shapes, e.g. `+agree | type:Toggle` and
+    // `*signup+*subject|type:Phrase`) is referenced by an OPT, never by
     // content, so the reference closure never prepares it. Walk the
     // prepared closure once per render and enrich every distinct type-opt
     // target that is not warm yet. Cheap: the content quick-skip
@@ -2721,13 +2721,11 @@ export class RenderEngine implements RenderEngineLike {
    *  written retypes new_card_template's dup to the DEFAULT rule's type
    *  (templating.rb:25-27 — for these phantoms RichText, whose
    *  +*type+*structure rule is absent), so a literal reading does not
-   *  reach virtual? for the SMD/PdG phantoms; the capture deck's runtime
-   *  (not runnable on this machine — the p20-perm-residuals recorded result)
-   *  demonstrably answers known? for them. The engine seats the decision
-   *  on the corpus-consistent reading — compound name + a *structure rule
-   *  resolves for the phantom's OWN type — which reproduces every pinned
-   *  surface (the four byte-exact class pages + the simple-named census +
-   *  the unit fixtures). */
+   *  reach virtual? for these phantoms; Ruby's own
+   *  runtime demonstrably answers known? for them. The engine seats the decision
+   *  on the reading that reproduces Ruby for every case observed —
+   *  compound name + a *structure rule
+   *  resolves for the phantom's OWN type. */
   phantomVirtualStructure(
     name: DeckoName,
     typeName: string | undefined,
@@ -4322,8 +4320,8 @@ export class RenderEngine implements RenderEngineLike {
     // parties. ANONYMOUS_VIEWER carries no actorId, so resolve it from this
     // batch's codename rows — exactly what resolveAnonymousReadPermission
     // does (read-rules.ts:352-360) — instead of dropping the [AnonymousID]
-    // party. Corpus-neutral today (verified: 0 read rules grant the
-    // anonymous party, 0 grant anonymous-but-not-anyone), but the parties
+    // party. Neutral for the decks in play (no read rule grants the
+    // anonymous party, and none grants anonymous-but-not-anyone), but the parties
     // must match Ruby's for any deck whose rules grant [[Anonymous]].
     const viewer: ReadViewer =
       this.viewer.signedIn === true
