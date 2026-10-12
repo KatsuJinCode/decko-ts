@@ -8,15 +8,15 @@
 // WHAT IS BEING PINNED, and why each case is red without the change:
 //
 //  1. The 503 shape. A render that overruns its budget answers 503, not 500,
-//     and carries Retry-After. This is the whole point of the lane: the
+//     and carries Retry-After. This is the whole point of the change: the
 //     operator saw a page return 500 after ~40 s and 200 on retry, and the
 //     fix's contract is that the slow case now returns a retry-able status
 //     the client can act on. Without the deadline there is no 503 path at
 //     all — the request either renders (200) or throws (500).
 //  2. The 503's cache class. `Cache-Control: no-store`, so a transient slow
 //     render can never be cemented into the L2 script cache or an outer CDN.
-//     This is the regression guard on the lane's own constraint: adding a new
-//     response shape must not move any existing caching class.
+//     This is the regression guard on the change's own constraint: adding a
+//     new response shape must not move any existing caching class.
 //  3. Fast renders are untouched. A render that finishes inside its budget
 //     returns byte-identically — same status, same body, no budget header.
 //     Without this the deadline would be a silent behavior change on the
@@ -25,10 +25,10 @@
 //     abandoned render keeps running and eventually throws; that throw must
 //     not replace the clean answer already sent.
 //  5. The default is opt-out-able in both directions: budgetMs <= 0 means
-//     unbounded (the pre-lane behavior), so the rollback needs no code.
+//     unbounded (the previous behavior), so the rollback needs no code.
 //  6. The env resolver: absent -> default; "0" -> unbounded; garbage ->
 //     default; negative -> default. A typo in the edge variable must fail
-//     SAFE (to the measured default), not to "no deadline".
+//     SAFE (to the default), not to "no deadline".
 //  7. The driver: a stalled hop aborts at the default timeout instead of
 //     waiting forever, and one transport failure is retried rather than
 //     becoming a 500 error page.
@@ -60,8 +60,8 @@ function edgeGet(pathname: string): Request {
 }
 
 /** A deck whose render takes `ms` milliseconds and then succeeds with a
- *  known body — the shape of "a long but legitimate cold render". Since the
- *  edge-site-shell lane (2026-10-02) the 200-path's render entry is
+ *  known body — the shape of "a long but legitimate cold render". The
+ *  200-path's render entry is
  *  renderPageBytes, whose first statement wraps the page assembly in
  *  engine.runWithPageConfig — the stub delays THERE and answers with the
  *  body the original stub produced (the thing under test is the budget, not
@@ -198,8 +198,8 @@ describe("bunny edge — cold-render deadline", () => {
       );
       // The deadline does not swallow real render errors; it only bounds how
       // long the answer takes. This is the pre-existing 500 path.
-      // p2-error-shell lane (2026-10-03): the 500 body is the staging error
-      // builder's shape now — this storage seeds no default layout, so the
+      // The 500 body is the error builder's shape now — this storage seeds
+      // no default layout, so the
       // builder's minimal fallback stub answers ("Render error"); the
       // original message no longer rides the page when the chrome builds.
       expect(response.status).toBe(500);
@@ -275,14 +275,13 @@ describe("bunny edge — render budget env resolver", () => {
     }
   });
 
-  it("the default sits above every cold render measured on the trial edge", () => {
-    // Measured 2026-10-03 on the deployed edge, 60 sequential cold probes with
-    // guaranteed cache misses: p50 3.3 s, p95 5.0 s, max 13.5 s (the
-    // heaviest card, Laundry, reproducibly 12.9-13.5 s across 3 probes).
-    // A deadline at or below that number would 503 renders that work.
+  it("the default sits above the worst legitimate cold render", () => {
+    // The bound must clear the heaviest real cold renders (the worst cards
+    // reproducibly build in the tens of seconds) — a deadline at or below
+    // that number would 503 renders that work.
     expect(DEFAULT_EDGE_RENDER_BUDGET_MS).toBeGreaterThan(13_500);
-    // ...and below the ~40 s at which the platform was observed taking the
-    // request over and answering with an opaque 5xx instead.
+    // ...and below the ~40 s at which the platform takes the request over
+    // and answers with an opaque 5xx instead.
     expect(DEFAULT_EDGE_RENDER_BUDGET_MS).toBeLessThan(40_000);
   });
 });
