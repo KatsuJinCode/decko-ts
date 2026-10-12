@@ -7,8 +7,8 @@
 // Web-standard Request/Response only — no Node APIs on this path. The one
 // Node import inside the engine graph (node:crypto in
 // src/card/render/slot-html.ts) is routed around at bundle time by the
-// [alias] table in wrangler.toml -> shims/node-crypto-shim.ts; reported,
-// not edited, per stream boundaries.
+// [alias] table in wrangler.toml -> shims/node-crypto-shim.ts; src/ is left
+// untouched and the import is reported there instead.
 //
 // Routes (the whole surface):
 //   GET  /              -> render the "Home" card, :open view (HTML)
@@ -135,7 +135,7 @@ function getDeck(env: Env): Promise<Deck> {
 async function bootDeck(env: Env): Promise<Deck> {
   // THE CARD GEM'S INFLECTION INITIALIZER, APPLIED BEFORE ANY NAME IS PARSED.
   //
-  // `CARD_GEM_INITIALIZER_INFLECTIONS` ports the card gem's own
+  // `CARD_GEM_INITIALIZER_INFLECTIONS` is the card gem's own
   // config/initializers/inflections.rb (src/card/name/oracle-deck-inflections.ts
   // :1-13), and its own header is the rule this call is the first
   // instance of: "Every deck-serving origin MUST apply this table at boot,
@@ -143,11 +143,11 @@ async function bootDeck(env: Env): Promise<Deck> {
   // Rails deck's config/initializers/inflections.rb runs." This worker is
   // a deck-serving origin and it did not, so every key it derived was the
   // gem default instead of the deck's: `Anonymous` keyed `anonymou`,
-  // `SCarol` keyed `_carol`, `Riley's` keyed `riley_`, `delete this`
+  // `Team's Notes` keyed `team__note`, `delete this`
   // keyed `delete_thi` (three uncountables, oracle-deck-inflections.ts
   // :44-50). Those keys ride into the rendered slot class tokens
-  // (`SELF-anonymous-bar-view` vs `SELF-anonymou-bar-view`,
-  // `RIGHT-s_carol` vs `RIGHT-_carol`), so the divergence is visible in the
+  // (`SELF-anonymous-bar-view` vs `SELF-anonymou-bar-view`), so the divergence
+  // is visible in the
   // card BYTES, not only in lookups.
   //
   // The call is idempotent (it swaps an immutable table snapshot and drops
@@ -182,8 +182,8 @@ function observeDriverQueries(driver: CloudflareD1Adapter, recorder: MetricsReco
       // Exact iff the D1 adapter surfaced the provider's own counters
       // (drivers/d1.ts maps meta.rows_read / meta.rows_written); an
       // absent number leaves the recorder's ESTIMATE tally governing.
-      // The two fields were missing here and only surfaced when this lane's
-      // R4 route test made the worker part of the tsc program (tsconfig's
+      // The two fields were missing here and only surfaced once the route
+      // tests made the worker part of the tsc program (tsconfig's
       // include list has no deploy/**; nothing under src/ tests/ benchmarks/
       // imported the worker before).
       exact: typeof result.rowsRead === "number",
@@ -223,15 +223,16 @@ function routeTag(pathname: string, method: string): MetricsRoute {
 //
 // CQL's name-valued conditions (type: "Note", left: "Demo Guide", ...) are
 // interpreted to ids during parsing via a SYNCHRONOUS resolver
-// (ParseOptions.resolveCardId — the port of Card::Lexicon.id). Without one,
+// (ParseOptions.resolveCardId — the equivalent of Card::Lexicon.id). Without one,
 // a name condition collapses to the Ruby -999 sentinel and silently matches
 // nothing (src/cql/parser.ts idFromVal). The render path primes its own
 // idsByKey map during prefetch; /api/query has no prefetch, so this entry
 // primes an equivalent map once per isolate.
 //
 // Budget honesty: this loads the id/name/left_id/right_id of EVERY
-// non-trashed card. For a demo deck (16 rows) that is one cheap query; at
-// corpus scale (47k cards) it would be megabytes of isolate memory. A
+// non-trashed card. For a demo deck (16 rows) that is one cheap query; on a
+// large deck (tens of thousands of cards) it would be megabytes of isolate
+// memory. A
 // production entry would swap in a real sync-lexicon strategy — documented
 // in docs/deploy-cloudflare.md, deliberately not improvised here.
 
@@ -311,12 +312,13 @@ async function primeCqlNameResolver(
       fetcher.lexicon.write(row.id, name, row.name);
     }
   }
-  // Virtual-card rule universe (round 8, wikirate-tag-404 family): the
+  // Virtual-card rule universe: the
   // storage factory's responsibility per
   // src/card/fetch/virtual-cards.ts:44-49. Without this hook, compound
   // names that resolve only through the structure rule walk return
   // undefined from `FetchEngine.fetchByName` and the serving path 404s
-  // them even when the live deck has the rule (e.g. Wikirate+*right).
+  // them even when the stored deck carries the rule (e.g. a compound name
+  // reachable only through a `+*right` rule row).
   {
     const [universeResult] = await driver.batch([structureRuleUniverseStatement()]);
     fetcher.virtualCardLookup = createVirtualCardLookup(fetcher, {
@@ -334,16 +336,15 @@ async function primeCqlNameResolver(
 const HOME_CARD_NAME = "Home";
 const OPEN_VIEW = "open";
 
-/** The static-asset head tags, in the same order and shape a real decko page
- *  serves (receipt: REPO_DIR/an internal work log head section):
- *  viewport meta, the Material Icons font stylesheet, the compiled decko skin
- *  stylesheet, then the script tags — jQuery + jquery-ujs from the same CDNs
- *  the live page uses (the compiled all-script.js BUNDLES jquery-ui and
+/** The static-asset head tags, in the same order and shape a decko page
+ *  serves: viewport meta, the Material Icons font stylesheet, the compiled
+ *  decko skin stylesheet, then the script tags — jQuery + jquery-ujs from CDNs
+ *  (the compiled all-script.js BUNDLES jquery-ui and
  *  bootstrap but NOT jQuery itself; without jQuery loaded first, jquery-ui's
  *  factory throws and nothing after it in the bundle registers), the compiled
  *  decko JS bundle next, the per-deck config after it. `defer` preserves
  *  document execution order, so the config assignments land after decko.js
- *  has defined the global — the same effective order as the live page's
+ *  has defined the global — the same effective order as a decko page's
  *  inline config block, without blocking first paint. The files ride the
  *  wrangler [assets] directory
  *  (scripts/deploy/one-click-deck/demo-static-assets/): the assets layer
@@ -423,7 +424,7 @@ type ParsedRoute =
  *  - `new/:type` (line 22) builds a NEW card of a type (mark.rb:38-44
  *    `view_does_not_require_name?` -> ViewOpts.unknown_ok[view]); it needs
  *    the new-card view machinery this shell has no loader for.
- *  - `type/:type` (line 23) renders the type's Search card (R6's page);
+ *  - `type/:type` (line 23) renders the type's Search card;
  *    the CF shell has no search-card route.
  *  - `card/:view(/:mark)` (line 25) is legacy and Ruby CONSTRAINS its view
  *    to /new|edit/ — both of which need the same new/edit machinery as the
@@ -478,8 +479,7 @@ async function renderCardPage(
 ): Promise<Response> {
   try {
     const view = await deck.render.render(cardName, requestedView, params);
-    // Body wrapper = the live decko page shell (receipt:
-    // REPO_DIR/an internal work log line 81): everything visible
+    // Body wrapper = the decko page shell: everything visible
     // rides inside <article class="container flex-shrink-0" role="main"> —
     // the decko page gutter. Without it, anything the shell emits as a
     // direct body child (here the record-JSON/status menu line) sits at
@@ -489,7 +489,7 @@ async function renderCardPage(
     // <p> renders flush against the viewport edge, visually clipped
     // between the card's bottom border and the background. The menu line
     // is a shell affordance, not a card-menu, so it rides the same
-    // guttered container as the card (live shape: nothing user-visible is
+    // guttered container as the card (nothing user-visible is
     // bare in the body). The .card-view div stays the test hook.
     return htmlResponse(
       200,
@@ -522,8 +522,8 @@ async function cardRecordJson(deck: Deck, cardName: string): Promise<Response> {
     return jsonResponse(404, { error: "card not found", name: cardName });
   }
   // The read gate: this route previously served db_content for cards the
-  // HTML views replace with the denial span (the probe battery's batch-05
-  // KNOWN HOLE). Ruby's GET of a denied card renders the denial
+  // HTML views replace with the denial span. Ruby's GET of a denied card
+  // renders the denial
   // (ok_to_read? fails, set/all/permissions.rb:139-146); the JSON surface
   // answers 403 without the protected fields. The verdict comes from the
   // same engine state the HTML path judges with (RenderEngine#canReadCard).
@@ -533,23 +533,19 @@ async function cardRecordJson(deck: Deck, cardName: string): Promise<Response> {
   if (!readable) {
     return jsonResponse(403, { error: "permission denied", name: cardName });
   }
-  // The 200 body is the RUBY JSON-FORMAT SHAPE (surfaces-batch1 lane,
-  // 2026-09-29): the json format's show default :molecule —
+  // The 200 body is the RUBY JSON-FORMAT SHAPE: the json format's show
+  // default :molecule —
   // atom + items + links + ancestors + html_url + type nest + timestamps,
   // wrapped by page_details (url + requested_at), pretty-printed. The
-  // engine-side byte pins are tests/card/render/format-families-oracle.test.ts
-  // (fresh oracle capture, fixtures/oracle-surfaces/json.jsonl). The fork's
-  // former engine-record shape (snake_case row dump) was the R3 inventory
-  // divergence; the record row remains available over /api/query.
+  // engine-side byte pins are tests/card/render/format-families-oracle.test.ts.
+  // The former engine-record shape (snake_case row dump) diverged from that
+  // molecule; the record row remains available over /api/query.
   //
-  // 2026-10-02 (deploy-miniflare lane): no urlBase override. The capture's
-  // paths are RELATIVE ("/Home" — the runner oracle had no request host,
+  // No urlBase override: the format renders RELATIVE paths ("/Home" —
   // format-families.ts FormatShowOptions.urlBase's documented default ""),
-  // and the miniflare deploy proof pins the captured shape. The former
-  // `urlBase: new URL(request.url).origin` prefix produced
-  // "https://<host>/Home" — a shape this port's own capture never
-  // recorded — and made the proof's molecule.url pin unpassable since the
-  // pin was written (6ad17162).
+  // and the miniflare deploy proof pins that shape. A
+  // `urlBase: new URL(request.url).origin` prefix would produce
+  // "https://<host>/Home", which the proof's molecule.url pin rejects.
   try {
     const body = await renderFormatShow(formatEngineSurface(deck), cardName, "json");
     return new Response(body, {
@@ -573,8 +569,8 @@ function formatEngineSurface(deck: Deck): FormatEngineSurface {
 }
 
 /** The `/:mark.csv` and `/:mark.rss` route arms (engine_routes.rb:22
- *  `get "/:mark(.:format)" => "card#read"`; the format families are the
- *  surfaces-batch1 lane's P10/P11 ports, oracle-pinned in
+ *  `get "/:mark(.:format)" => "card#read"`; the format families are
+ *  byte-pinned in
  *  tests/card/render/format-families-oracle.test.ts). */
 async function cardFormatShow(
   deck: Deck,
@@ -598,9 +594,9 @@ async function cardFormatShow(
   try {
     const body = await renderFormatShow(formatEngineSurface(deck), cardName, format, {
       // rss_enabled: Cardio.config default FALSE (lib/card/mod/format.rb:4);
-      // the fork carries no config override surface yet. No urlBase
-      // override either (see cardRecordJson): the capture's paths are
-      // relative and the deploy proof pins the captured shape.
+      // this engine carries no config override surface yet. No urlBase
+      // override either (see cardRecordJson): the format renders relative
+      // paths and the deploy proof pins that shape.
       rssEnabled: false,
     });
     const contentType =
@@ -642,7 +638,7 @@ async function apiQuery(request: Request, deck: Deck): Promise<Response> {
     // readable-rule state, so a stale isolate would filter rows by the
     // pre-revocation rule set.
     await deck.render.ensureFreshness();
-    // Permission filter (the port of Where#permission_conditions): without
+    // Permission filter (the equivalent of Where#permission_conditions): without
     // it the API returns db_content for cards the HTML views deny — the
     // same leak the record-JSON route had. The generator renders
     // `read_rule_id IN (...)` from the viewer's readable rule set, exactly
@@ -741,7 +737,7 @@ export default {
     }
 
     if (pathname === "/__metrics") {
-      // GATED (round-9 fix). The aggregate is an operational readout —
+      // GATED. The aggregate is an operational readout —
       // per-route request counts, wall-time percentiles, D1 rows read and
       // written — and it was served to anyone who asked. It is not card
       // content, so the read-permission gate does not apply to it and never
@@ -799,7 +795,7 @@ export default {
 
     // GET /:card-name.csv / .rss — the csv/rss format shows (the same
     // `get "/:mark(.:format)"` route arm; the format URLs stay in the
-    // capture's relative shape — see cardRecordJson's 2026-10-02 note).
+    // relative shape the byte pins expect — see cardRecordJson).
     const csvSuffix = pathname.endsWith(".csv");
     const rssSuffix = !csvSuffix && pathname.endsWith(".rss");
     if (csvSuffix || rssSuffix) {
@@ -818,7 +814,7 @@ export default {
     // space within a part ("/Demo%20Guide+Section%20One"). No slashes in
     // this surface.
     //
-    // The ALTERNATE GET routes (R4) extend the same dispatch to the
+    // The ALTERNATE GET routes extend the same dispatch to the
     // multi-segment forms Ruby's engine_routes.rb declares:
     //   get ":mark/view/:view(.:format)" => "card#read"  (line 24)
     //   get ":mark/:view(.:format)"        => "card#read"  (line 51)
@@ -831,7 +827,7 @@ export default {
     // purpose: a filter would silently answer 200-with-empty for a view
     // Ruby cannot render either.
     //
-    // The ?view=/?v= QUERY param (R4's named remainder) rides the same
+    // The ?view=/?v= QUERY param rides the same
     // card#read contract: the bare /:mark arm is show(nil), so
     // render_page's `view ||= view_from_params` (rest.rb:96, 100-103) fills
     // the view from the query - first non-blank of params[:view],
