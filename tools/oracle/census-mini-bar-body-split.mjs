@@ -2,9 +2,9 @@
 // inner-body split, and of what discriminates the two bodies.
 //
 // WHY THIS IS
-//   M2 (Quicksilver+Core Project, corpus card id 802): the oracle renders the
-//   FULL bar.haml body inside the mini_bar slot for the wanted card
-//   `mytho-psychology` (Project-typed, id 398), while the port renders the
+//   On the probed corpus host the oracle renders the
+//   FULL bar.haml body inside the mini_bar slot for a wanted pointer item
+//   (a Project-typed card), while the port renders the
 //   two-span denied body. The outer slot wrap is byte-identical on both sides,
 //   so the decision is the INNER BODY only.
 //
