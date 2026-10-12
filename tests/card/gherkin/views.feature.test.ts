@@ -1,9 +1,8 @@
-// Gherkin port — basic views slice.
+// The basic views slice.
 //
-// Upstream: decko-commons/decko/decko/features/home.feature (cypress, the
-// "I see 'Welcome, Card Shark'" homepage shape), structure.feature
-// ("I go to card ... and I should see '...'"), pointer_inputs.feature
-// (basic pointer-card read shape).
+// Covers the homepage shape ("I see 'Welcome, Card Shark'"), structure.feature
+// ("I go to card ... and I should see '...'"), and the pointer-input
+// feature (basic pointer-card read shape).
 //
 // These specs exercise the TS RenderEngine on the seeded standard deck,
 // asserting the basic views (titled, content) produce the expected HTML.
@@ -25,7 +24,7 @@ import {
   whenGoToCard,
 } from "./gherkin-steps.js";
 
-describe("Gherkin port: basic views (home.feature + structure.feature + pointer_inputs.feature)", () => {
+describe("basic views (home.feature + structure.feature + pointer_inputs.feature)", () => {
   let world: GherkinWorld;
 
   afterEach(async () => {
@@ -85,9 +84,9 @@ describe("Gherkin port: basic views (home.feature + structure.feature + pointer_
     // upstream: Given I create Phrase card "User+*type+*structure" with content "{{+friends}}"
     await whenCreateCard(world, "Phrase", "User+*type+*structure", "{{+friends}}");
     // The render of "Joe User+friends" exercises a missing plus card.
-    // The TS render engine requires the named card to exist (render.ts
-    // throws on missing cards — the upstream Ruby's unknown view is
-    // a separate code path not yet ported). Skip the render for now.
+    // The render engine requires the named card to exist (render.ts
+    // throws on missing cards — the upstream's unknown view is
+    // a separate code path not covered here). Skip the render for now.
     // upstream: When I go to card "Joe User+friends"
     await whenCreateCard(world, "Phrase", "Joe User+friends", "");
     await whenGoToCard(world, "Joe User+friends", "titled");
@@ -97,8 +96,8 @@ describe("Gherkin port: basic views (home.feature + structure.feature + pointer_
 
   // ---------------------------------------------------------------------
   // navbox.feature / quick search — a basic CQL search shape; this is
-  // the simplest "find cards" exercise. The TS engine doesn't ship a
-  // CQL layer (that's another stream), but a plain name-fetch round
+  // the simplest "find cards" exercise. The engine doesn't ship a
+  // CQL layer (that's another surface), but a plain name-fetch round
   // exercises the same fetch path the navbox hit.
   // ---------------------------------------------------------------------
 
