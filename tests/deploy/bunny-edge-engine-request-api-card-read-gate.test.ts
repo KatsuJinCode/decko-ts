@@ -1,13 +1,11 @@
 // Pin for the bunny edge engine request core's /api/card/<name> read gate
-// (deploy/bunny-worker-src/bunny-edge-engine-request.ts, the api-leak-fix
-// lane, 2026-10-02).
+// (deploy/bunny-worker-src/bunny-edge-engine-request.ts).
 //
 // THE HOLE: the route answered fetchByName directly and returned
 // db_content_preview — 200 JSON carrying the card's stored content — for
 // cards the HTML render path DENIES (the quiet denial span replaces the
-// whole view). Verified live on the deployed edge: GET /api/card/Taking%20Stock
-// answered 200 with 200 chars of the denied card's content while
-// GET /Taking%20Stock rendered "Sorry, you don't have permission (read)".
+// whole view). A read-restricted card could thus be read anonymously
+// through the JSON route while the HTML route rendered its denial span.
 //
 // THE CONTRACT (the CF worker's record-JSON route, the same hole closed
 // there first): deploy/worker.ts cardRecordJson:469-492 — a missing card is
@@ -21,7 +19,7 @@
 // permission suite (tests/card/permissions/read-permission.test.ts)
 // establishes: a stored-rule denial (*all+*read -> Anyone readable;
 // Basic+*type+*read -> Role A denied for Anonymous), a stored-rule
-// allowance, a missing card, and the live-walk denial (no stored
+// allowance, a missing card, and the runtime-walk denial (no stored
 // read_rule_id; the rule walk finds the *type rule first -> denied).
 
 import { describe, expect, it } from "vitest";
