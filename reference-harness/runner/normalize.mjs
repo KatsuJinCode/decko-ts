@@ -84,7 +84,7 @@ export const SLOT_ID = /(?<=\s)data-slot-id=(["'])[0-9a-f]{20}\1/g;
 // tokenizer never leaves the plaintext state, so everything from `<plaintext>`
 // to EOF is displayed text (a `</plaintext>` look-alike is text too, as is a
 // self-closing slash). Everything between the open tag and the end of the
-// body is compared byte for byte. (Review round 3, finding 6: inside xmp and
+// body is compared byte for byte. (Inside xmp and
 // plaintext, a `data-slot-id="…"` look-alike is VISIBLE text, never an
 // attribute, so it must not be masked — and no other rule applies there.)
 const RAW_TEXT_ELEMENTS = new Set(["script", "style", "textarea", "title", "xmp"]);
