@@ -4,13 +4,12 @@
 // follower_notification_email children (deckEmailTemplateResolver) and
 // whose mail lands in the injected CaptureTransport.
 //
-// Proven here (the wiring
-// registration line"):
+// Proven here:
 //   - no integrationHooks configured -> saves dispatch nothing (engine
 //     behavior unchanged for every pre-existing caller);
 //   - hooks configured -> updating a followed card fires the hook once
 //     with the deck-resolved template bytes (the interpolation vars the
-//     first mechanism supports: {{follower}}, {{followed_set}},
+//     mechanism supports: {{follower}}, {{followed_set}},
 //     {{follow_option}} — mail.ts renderMail);
 //   - an anonymous actor dispatches nothing (notifications carry the
 //     acting user; anonymous writes throw before any dispatch).
@@ -73,7 +72,7 @@ async function freshWithHook(): Promise<{
 /** The template triple, seeded as REAL rows: the setting cards (*subject,
  *  *text message, *html message) + the junction children under `follower
  *  notification email` (junction rows carry NULL name + side ids — the
- *  child names M6's real capture proved). */
+ *  shape real junction children carry). */
 async function seedTemplateCards(f: StandardFixture): Promise<void> {
   await seedCard(f.storage, { id: 556, name: "follower notification email", typeId: 2 });
   await seedCard(f.storage, { id: 557, name: "*subject", typeId: 2 });
