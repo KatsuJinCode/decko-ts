@@ -1,7 +1,7 @@
-// Escape-family suite: the two over-escaping sites an earlier triage's
-// "double-escape" class resolves to (58 page-lane fails at 017b182; the
-// class also contains pointer-item-shape and help-content pages a pure
-// escaping fix cannot flip -- see the receipt).
+// Escape-family suite: the two over-escaping sites behind the recorded
+// double-escape divergence class (the class also contains
+// pointer-item-shape and help-content pages a pure escaping fix cannot
+// flip).
 //
 // Mechanism 1 -- URI-autolink LABEL (card-mod-content chunk/uri.rb):
 //   Uri#process_uri_chunk -> format.link_to_resource @link_text, process_text
@@ -10,8 +10,7 @@
 //   The href is NOT safe: Rails tag_helper escapes option values with
 //   ERB::Util.html_escape, so authored `&amp;` entities in the stored URL
 //   double to `&amp;amp;` in the href while the label keeps the authored
-//   bytes. Exemplar (sample council - benefits, page-lane): oracle
-//   `href="...com_content&amp;amp;view=..."` + label
+//   bytes. Expected: `href="...com_content&amp;amp;view=..."` + label
 //   `...com_content&amp;view=...`; the engine emitted `&amp;amp;` in BOTH.
 //
 // Mechanism 2 -- menu popover data-bs-title (card-mod-format
@@ -20,14 +19,14 @@
 //   name_parts_links joins link_to_card part anchors whose bodies are the
 //   RAW name (html link_to: `text = raw(text || opts[:href])`; no text arg
 //   -> the name string, raw-marked). The anchor's attribute value escapes
-//   that composite ONCE (ERB::Util.html_escape). Oracle pin (Mikko's
-//   Blog+*self page-lane): data-bs-title unescapes to
-//   `<a class="known-card" href="/Mikko_s_Blog">Mikko's Blog</a>+...` --
-//   the apostrophe appears exactly once, as `&#39;` in the attribute
+//   that composite ONCE (ERB::Util.html_escape). Expected: the
+//   data-bs-title unescapes to
+//   `<a class="known-card" href="/Someones_Blog">Someone's Blog</a>+...` --
+//   an apostrophe appears exactly once, as `&#39;` in the attribute
 //   bytes. The engine built the title with an h()-escaped body and then
-//   h()-escaped the composite, emitting `Mikko&amp;#39;s Blog`.
+//   h()-escaped the composite, emitting `Someone&amp;#39;s Blog`.
 //
-// Regression guards (the task's both-directions rule): the hrefs and the
+// Regression guards (both directions): the hrefs and the
 // attribute boundary keep escaping -- a RAW `&`/`'`/`<` in content or a
 // name still produces the single-escaped attribute bytes, and authored
 // entities never get UNescaped.
@@ -76,8 +75,8 @@ async function seedEscapeProbeDeck(pageContent: string): Promise<RenderTestStora
 
 describe("URI-autolink anchors escape the href once and the label verbatim", () => {
   it("authored &amp; entities: href doubles once, label keeps authored bytes", async () => {
-    // The sample council - benefits exemplar shape: the stored Source
-    // content carries HTML-escaped query separators.
+    // The exemplar shape: the stored Source content carries HTML-escaped
+    // query separators.
     const storage = await seedEscapeProbeDeck(
       "Read http://www.example.org/imc/index.php?option=com_content&amp;view=article&amp;id=334 today.",
     );
@@ -128,9 +127,9 @@ describe("URI-autolink anchors escape the href once and the label verbatim", () 
 
 describe("menu popover data-bs-title escapes the composite exactly once", () => {
   it("part anchor bodies are raw pre-attribute: apostrophe shows as &#39; once", async () => {
-    // The Mikko's Blog+*self exemplar shape: a compound name with an
-    // apostrophe renders the menu help popover; the data-bs-title value
-    // unescapes to `<a ...>Mikko's Blog</a>+...` (raw bodies, one
+    // The exemplar shape: a compound name with an apostrophe renders the
+    // menu help popover; the data-bs-title value unescapes to
+    // `<a ...>Name's Blog</a>+...` (raw bodies, one
     // attribute-level escape).
     const storage = await seedEscapeProbeDeck("Body text.");
     await seedCard(storage, { id: 920, name: "*self", codename: "self", typeId: 2 });

@@ -1,13 +1,10 @@
 // The compact nest-mode mechanism, ported gem-derivative with fixture-less
-// pins (nest-mechanism-remainders 2026-10-01).
+// pins.
 //
-// Two mechanisms live under nesting/mode.rb's :compact state, and NEITHER
-// has a single captured byte on the recorded surface (nest-mode-port census
-// 2026-10-01, re-verified on the sha-verified 6a44dfdc dump copy + the 97
-// expected-v2 shards: every captured one-line render is a raw or nest-free
-// arm; closed_content: zero entries). So the pins here are derived from the
-// gems, not from the corpus — the same convention as the URI/one_line
-// precedent for corpus-absent machinery:
+// Two mechanisms live under nesting/mode.rb's :compact state, and neither
+// is exercised by recorded one-line renders (every recorded one-line render
+// is a raw or nest-free arm), so the pins here are derived from the gems
+// directly:
 //
 // 1. THE SUBSTITUTION. card-1.110.0 lib/card/format/nesting/mode.rb:71-74
 //    view_in_compact_mode: a nest rendered under a compact parent gets its
@@ -30,7 +27,7 @@
 //    suppresses later siblings, it never truncates the one being rendered.
 //
 // Ruby facts each assertion pins are named inline. All cards are seeded
-// test-storage cards; nothing here reads the corpus.
+// test-storage cards.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 

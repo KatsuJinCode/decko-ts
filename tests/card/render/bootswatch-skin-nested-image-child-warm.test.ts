@@ -1,32 +1,29 @@
-// mopup-shark-m9 (2026-10-02): a bootswatch_skin that is NESTED into another
-// card's render must carry its +Image child, on a COLD engine.
+// A bootswatch_skin that is NESTED into another card's render must carry its
+// +Image child, on a COLD engine.
 //
-// THE DEFECT (measured on the real corpus, not reasoned about)
-//   `journal skin customized+parent 1:open`, `litera skin customized+parent 1:
-//   open` and `slate skin customized+parent 1:open` (expected-v2 view lane,
-//   shard-000039) render the EMPTY image-box
-//     <div title="journal skin" class="image-box medium"></div>
-//   where the oracle carries
-//     <div title="journal skin" class="image-box medium"><img alt="journal skin+Image" src="/files/:journal_skin+:image/bootstrap-small.png" /></div>
-//   — 86 / 84 / 82 bytes short. The same three entries render byte-EXACT when
-//   the same process happens to have rendered the skin card as a root earlier,
-//   which is why the full-canvas grade's verdict on them moved between the
-//   W=3 and W=6 runs without any byte of engine change.
+// THE DEFECT
+//   A host card whose pointer content names a skin rendered the EMPTY
+//   image-box
+//     <div title="skin" class="image-box medium"></div>
+//   where the reference render carries
+//     <div title="skin" class="image-box medium"><img alt="skin+Image" src="/files/:skin+:image/bootstrap-small.png" /></div>
+//   The same host rendered byte-EXACT when the same process had already
+//   rendered the skin card as a root earlier — the failure depended on warm
+//   state, not on any byte of engine logic between runs.
 //
 // THE MECHANISM
 //   bootswatchSkinBarLeftHtml (src/card/render/views.ts) reads the skin's
 //   image child synchronously:
 //     fmt.engine.fetchRenderCard(`${name}+Image`)
-//   The child is a NULL-NAMED left/right junction (corpus row 22846: left
-//   22794, right 19, content ":journal_skin+:image/bootstrap.png"; corpus-wide
-//   zero rows carry `+Image` in a name), so nothing in the nest-syntax
-//   reference closure seats it. The V6 scan in src/card/render.ts
-//   (warmNestedSkinImages) fetches it by DERIVED compound name — which works —
-//   but it walks renderCards as the prepare phase finds it, and a skin reached
-//   through a pointer/list item is not seated yet: the scan sees mapSize=10
-//   holding only the host's sibling skin, and enrichPointerListItemsClosure
-//   then grows the map to 211 with the nested skin in it. The view-time read
-//   misses and the empty box ships.
+//   The child is a NULL-NAMED left/right junction (a junction reached only
+//   through its derived `<skin>+Image` name), so nothing in the nest-syntax
+//   reference closure seats it. The warmNestedSkinImages scan in
+//   src/card/render.ts fetches it by DERIVED compound name — which works —
+//   but it walks renderCards as the prepare phase finds it, and a skin
+//   reached through a pointer/list item is not seated yet: the scan sees the
+//   map holding only the host's sibling skin, and
+//   enrichPointerListItemsClosure then grows the map with the nested skin
+//   afterwards. The view-time read misses and the empty box ships.
 //
 // THE FIX
 //   Call warmNestedSkinImages a second time, after
@@ -54,10 +51,9 @@ import {
   type RenderTestStorage,
 } from "./render-test-storage.js";
 
-/** The three skins, their coded image junctions, and a pointer host that
- *  names one of them. Shaped on the corpus rows: skin 22794, image junction
- *  22846 (left 22794 / right 19), pointer-item junction 45365 (left 34179 /
- *  right 45364, db_content "journal skin"). */
+/** The skin, its coded image junction, and a pointer host that names the
+ *  skin: a skin row, an Image-typed left/right junction under it, and a
+ *  Pointer-typed host whose db_content names the skin. */
 const HOST = "journal skin customized";
 const SKIN = "journal skin";
 const IMAGE = `${SKIN}+Image`;
@@ -96,7 +92,7 @@ async function seedDeck(): Promise<void> {
     typeId: 19,
     dbContent: ":journal_skin+:image/bootstrap.png",
   });
-  // The corpus's Image+*right+*default rule (id 217, Image-typed) types the
+  // The deck's Image+*right+*default rule (id 217, Image-typed) types the
   // bare skin's absent +Image as an Image, whose :boxed is `unknown: true`.
   await seedCard(s, { id: 260, name: "*right", codename: "right", typeId: 1 });
   await seedCard(s, { id: 318, name: "*default", codename: "default", typeId: 2 });
@@ -146,8 +142,8 @@ describe("bootswatch_skin nested through a pointer item seats its +Image child",
   it("(4) control: the read is by DERIVED compound key, not by stored name", async () => {
     const s = storage!;
     // A stored name that differs only in case derives to the same key, so the
-    // seated junction answers both spellings — the exactness question the M9
-    // name gate raised does not arise on this read path.
+    // seated junction answers both spellings — the read is by derived key,
+    // and an exactness question about stored name forms does not arise here.
     const byKey = s.engine.fetchRenderCard(IMAGE);
     expect(byKey).toBeDefined();
     expect(byKey!.name.s).toBe(IMAGE);

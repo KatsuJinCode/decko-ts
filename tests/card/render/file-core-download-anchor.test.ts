@@ -1,5 +1,4 @@
-// Escape-family lane, quote-style class (9 page-lane fails at 017b182):
-// the FILE cardtype's html :core view.
+// The FILE cardtype's html :core view.
 //
 // Ruby chain: card-mod-carrierwave set/type/file.rb -- the html-format
 // core view is set/type/file/core.haml:
@@ -7,21 +6,17 @@
 //       = t :carrierwave_download, title: title_in_context(voo.title)
 //   - config/locales/en.yml:5 `carrierwave_download: Download %{title}`
 //   - title_in_context (card-1.110.0 lib/card/format/context_names.rb:49-55)
-//   - relativizes the card name against the format's context names, so the
-//     file card `Daniel Ferreira+description+bio` nested inside the Paula
-//     Craig page labels `Download +description+bio`.
+//   - relativizes the card name against the format's context names, so a
+//     file card `Person+description+bio` nested inside the Person page
+//     labels `Download +description+bio`.
 //   - HAML renders attributes with the apostrophe attr_wrapper by default,
 //     so the anchor is `<a href='SOURCE'>Download TITLE</a>`.
 //
 // The engine emitted `<a href="SOURCE">SOURCE</a>` (label = the URL,
-// double-quoted href) -- the exact quote-style diff on all 9 exemplars
-// (Werkshop Museum `Download +Documents`, Damon K Fairhurst
-// `Download +description+bio`, June Pemberton `Download +description+resume`,
-// Windows - JS / Daniel Ferreira considerations `Download +doc version`,
-// Depth Psychology `Download +File`).
+// double-quoted href) -- the exact quote-style diff on the affected pages.
 //
 // Blank source still renders "" (file.rb:34-45 handle_source short
-// circuit) -- the corpus's 319 anonymized file cards pin that arm.
+// circuit) -- the deck's anonymized file cards pin that arm.
 
 import { describe, expect, it } from "vitest";
 import { renderPageBytes } from "../../../src/card/render/page.js";
@@ -67,7 +62,7 @@ describe("file-type core view renders the carrierwave download anchor", () => {
       typeId: 3,
       dbContent: "{{+Documents|core}}",
     });
-    // junction rows resolve through left_id/right_id (the corpus schema's
+    // junction rows resolve through left_id/right_id (the deck schema's
     // compound shape): the right-part card carries the name column.
     await seedCard(storage, { id: 14712, name: "Documents", typeId: 2 });
     await seedCard(storage, {

@@ -12,22 +12,21 @@
 // D9 defect: fabricated unknown card, no data-card-id). The two directions are
 // pinned separately below so a drift names itself.
 //
-// The corpus witness the composition exists for (sha-verified corpus
-// 6A44DFDC…, page-lane shard 000000):
-//   page 105 `Role+*type+*default`, content `<p>{{+*members}}</p>`
-//     -> on_type_set base `Role` (the trunk `Role+*type`'s left, id 7)
-//     -> compose `Role+*members` (id 45420)
-//     -> +`*type plus right` (id 262) = `Role+*members+*type plus right`
-//     -> corpus junction 45421 EXISTS; the oracle carries
-//        data-card-id="45421" and the SELF set-key token.
-//   page 88 `Cardtype+*type+*default`, content `<p>{{+description}}</p>`
-//     -> base `Cardtype` (id 5)
-//     -> compose `Cardtype+description` (id 180)
-//     -> junction 6554 EXISTS; the oracle carries data-card-id="6554".
-// The same page 105's `{{+description}}` composes `Role+description+*type plus
-// right`, which has NO row (225 + 262 is absent) — so the oracle renders that
-// one as an unknown card, which is why the warm pass must seat a junction only
-// when one actually exists.
+// The composition the share exists for, on a type-set template page:
+//   page `Role+*type+*default`, content `<p>{{+*members}}</p>`
+//     -> on_type_set base `Role` (the trunk `Role+*type`'s left)
+//     -> compose `Role+*members`
+//     -> +`*type plus right` = `Role+*members+*type plus right`
+//     -> that junction EXISTS in the deck; the rendered nest carries its
+//        data-card-id and the SELF set-key token.
+//   page `Cardtype+*type+*default`, content `<p>{{+description}}</p>`
+//     -> base `Cardtype`
+//     -> compose `Cardtype+description`
+//     -> that junction EXISTS too.
+// The same `Role` template's `{{+description}}` composes
+// `Role+description+*type plus right`, which has NO row — so the rendered
+// nest is an unknown card, which is why the warm pass must seat a junction
+// only when one actually exists.
 import { afterEach, describe, expect, it } from "vitest";
 import { DeckoName } from "../../../src/card/name.js";
 import { setNameEnvironment } from "../../../src/card/name/environment.js";
@@ -93,7 +92,7 @@ describe("D9 template-link junction composition (the view/warm shared function)"
     expect(nest.fieldOnly).toBe(true);
     expect(templateLinkSetNameFromParts(base, nest).s).toBe("Role+*members+*type plus right");
     // the key the render map is read by, and the id-lookup form the
-    // Lexicon path resolves through (lexicon.rb:112-128, left 45420 x right 262)
+    // Lexicon path resolves through (lexicon.rb:112-128)
     expect(templateLinkSetNameFromParts(base, nest).key).toBe("role+*member+*type_plu_right");
   });
 
@@ -190,7 +189,7 @@ describe("D9 template-link junction composition (the view/warm shared function)"
     // Abstract::TemplatedNests; the :template nest mode (and therefore the
     // :template_nest composition) is entered only for those right tags. The
     // engine's junction warm sweeps the whole prepared closure, so this gate
-    // is what keeps it off the other ~47k deck cards.
+    // is what keeps the sweep off every non-templated card in the deck.
     expect(isTemplatedNestsName(DeckoName.parse("Role+*type+*default"))).toBe(true);
     expect(isTemplatedNestsName(DeckoName.parse("Role+*type+*structure"))).toBe(true);
     expect(isTemplatedNestsName(DeckoName.parse("Contributor+Dashboard"))).toBe(false);

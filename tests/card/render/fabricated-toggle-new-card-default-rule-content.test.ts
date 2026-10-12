@@ -1,36 +1,30 @@
-// fabricated-toggle-new-card-default-rule-content.test.ts -- the corpus
+// fabricated-toggle-new-card-default-rule-content.test.ts -- the
 // *structure-template vs *default-content pin for a TOGGLE-TYPED fabricated
-// new-card record (the p21 fix-toggle Group A regression, 98 entries).
+// new-card record.
 //
-// MECHANISM (probe-proven by the p21-view-regression-attribution work,
-// an internal work log, and re-derived
-// here against the frozen corpus): the corpus's `agree+*right` set (set card
-// 17693) carries TWO rules --
-//   - `agree+*right+*structure` (rule 28589, RichText-typed, template
-//     `<p>{{Intellectual Property+Statement}}</p>`), and
-//   - `agree+*right+*default` (rule 17695, Toggle-typed, content `0`).
-// Zero `+agree` cards exist anywhere in the corpus. When a Sign up person
-// page nests `{{+agree | type:Toggle }}` (Ron Huggins id 29677 and 48 more
-// pages), the nest fetch misses, the FetchEngine's virtual resolution
-// (states.rb:44-50) fills dbContent with the *structure TEMPLATE, and
-// RenderFormat#withNewCardContext re-types the record with the explicit opt.
-// With the R17 dbContent-keep in place the toggle core
+// MECHANISM: an `agree+*right` set carries TWO rules --
+//   - `agree+*right+*structure` (RichText-typed, a truthy template), and
+//   - `agree+*right+*default` (Toggle-typed, content `0`).
+// Zero `+agree` cards exist in the deck. When a Sign up person page nests
+// `{{+agree | type:Toggle }}`, the nest fetch misses, the FetchEngine's
+// virtual resolution (states.rb:44-50) fills dbContent with the *structure
+// TEMPLATE, and RenderFormat#withNewCardContext re-types the record with
+// the explicit opt. With the dbContent-keep chain in place the toggle core
 // (formatToggleCore, views.ts) formats the truthy template -> "yes" where
-// the oracle renders "no" (+1 byte on every graded Sign up person page's
-// +agree slot, content+open pairs; 49 pages x 2 = the 98 regressed entries).
+// the expected byte is "no" (+1 byte on the +agree slot of every affected
+// Sign up person page, content+open pairs).
 //
-// The oracle byte is the ground truth: the toggle-typed fabricated record
-// renders the *default rule's content ('0' -> "no"), never the *structure
-// template. This pin seeds the corpus's rule pair so the fixture deck
-// reproduces what the r17 fixture deck lacked (an `agree+*right+*structure`
-// row) -- exactly why the r17 "Toggle body 'no'" pin stayed green while the
-// corpus regressed.
+// The expected byte is the ground truth: the toggle-typed fabricated
+// record renders the *default rule's content ('0' -> "no"), never the
+// *structure template. This pin seeds BOTH rules of the pair so the
+// fixture deck reproduces the shape an earlier fixture deck lacked (an
+// `agree+*right+*structure` row) -- exactly why the earlier "Toggle body
+// 'no'" pin stayed green while the shaped decks regressed.
 //
 // The NON-toggle keep is intentionally untouched by the fix this pin
-// accompanies: structured virtual bodies (the BWjournal +Body titled slot,
-// the ZQVT+legacy RichText child) still render their *structure template --
-// guarded by structured-child-typed-view.test.ts and the nest-miss
-// unknown-view-selection corpus replay.
+// accompanies: structured virtual bodies still render their *structure
+// template -- guarded by structured-child-typed-view.test.ts and the
+// nest-miss unknown-view-selection replay.
 
 import { describe, expect, it } from "vitest";
 import {
@@ -53,8 +47,8 @@ async function seedCorpusRuleShapedDeck(): Promise<RenderTestStorage> {
   const storage = await createRenderTestStorage();
   const seed = (opts: SeedOptions) => seedCard(storage, opts);
 
-  // Anchor + type cards (ids mirror r17-byte-formatting-parity's deck where
-  // the two decks share rows: Set=1, *structure=5, *right=6, RichText=4,
+  // Anchor + type cards (ids mirror the byte-formatting-parity suite's deck
+  // where the two decks share rows: Set=1, *structure=5, *right=6, RichText=4,
   // Basic=9, *all=10, Sign up=12, *read=20, *default=21, Toggle=51).
   seed({ id: 1, name: "Set", codename: "set", typeId: 1 });
   seed({ id: 4, name: "RichText", codename: "rich_text" });
@@ -73,12 +67,11 @@ async function seedCorpusRuleShapedDeck(): Promise<RenderTestStorage> {
   seed({ id: 30, name: "*all+*read", leftId: 10, rightId: 20, typeId: 2, dbContent: "anyone" });
   await seedReference(storage, 30, 7, "anyone");
 
-  // The corpus's rule chain under `agree+*right` (corpus set card 17693,
-  // left 17692 `agree`, right *right): BOTH rules a new `X+agree` child
+  // The rule chain under `agree+*right`: BOTH rules a new `X+agree` child
   // resolves under.
   seed({ id: 17692, name: "agree", typeId: 9 });
   seed({ id: 17693, name: "agree+*right", leftId: 17692, rightId: 6, typeId: 1 });
-  // Rule 17695: the *default rule card -- Toggle-typed (the type new cards
+  // The *default rule card -- Toggle-typed (the type new cards
   // under it inherit), content "0".
   seed({
     id: 17695,
@@ -88,7 +81,7 @@ async function seedCorpusRuleShapedDeck(): Promise<RenderTestStorage> {
     typeId: 51,
     dbContent: "0",
   });
-  // Rule 28589: the *structure rule card -- RichText-typed, the template.
+  // The *structure rule card -- RichText-typed, the truthy template.
   seed({
     id: 28589,
     name: "agree+*right+*structure",
@@ -98,14 +91,14 @@ async function seedCorpusRuleShapedDeck(): Promise<RenderTestStorage> {
     dbContent: "<p>{{Intellectual Property+Statement}}</p>",
   });
 
-  // The Sign up host (corpus id 29677, self-signed-up like the graded
-  // person pages), nesting +agree typed by the opt -- the corpus row's
-  // content verbatim. NO `Ron Huggins+agree` row -- the corpus carries
-  // zero +agree cards. (Bare lane: the implicit nest view is :titled, whose
-  // d0-card-body embeds the toggle core -- the graded diff region's shape.)
+  // The Sign up host (self-signed-up), nesting +agree typed by the opt.
+  // NO `<host>+agree` row -- the shaped deck carries zero +agree cards,
+  // which is what makes the record fabricated. (Bare surface: the implicit
+  // nest view is :titled, whose d0-card-body embeds the toggle core -- the
+  // diff region's shape.)
   seed({
     id: 29677,
-    name: "Ron Huggins",
+    name: "Sample Member",
     typeId: 12,
     creatorId: ANON_ID,
     createdAt: "2023-11-18 16:24:47",
@@ -129,7 +122,7 @@ describe("toggle-typed fabricated new-card content (corpus rule pair 28589/17695
   it("renders the *default rule's '0' as the toggle core 'no', never the *structure template's truthy 'yes'", async () => {
     const storage = await seedCorpusRuleShapedDeck();
     try {
-      const html = await storage.engine.render("Ron Huggins", "content");
+      const html = await storage.engine.render("Sample Member", "content");
       // The fabricated +agree record is typed by the nest's type opt (the
       // R17 chain) -- pins that the test exercises the fabricated-record
       // path, not an accidentally known-card path.

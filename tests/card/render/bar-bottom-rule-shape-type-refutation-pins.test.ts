@@ -3,7 +3,7 @@
 // view's bar_bottom renders the STANDARD content view, whose wrap emits
 // the content-view slot inside the accordion body.
 //
-// MECHANISM (gem source, REPO_ROOT/archive/decko-fork-study/decko/):
+// MECHANISM (reference gem source):
 //
 //   Ruby's RULE set pattern is pattern_applies? -> card.rule?
 //   (card/mod/core/set_pattern/06_rule.rb:16) and
@@ -21,31 +21,23 @@
 //   Anonymous+*account+*email: right `*email` IS Setting-typed, but the
 //   left `Anonymous+*account` is a Phrase-typed RULE ROW (not a Set) and
 //   name[0..-3] `Anonymous` is RichText (not a Set) — BOTH arms fail, so
-//   the card takes the RSTAR pattern (the capture's slot classes: "ALL
-//   ALL_PLUS TYPE-phrase RSTAR RIGHT-Xemail TYPE_PLUS_RIGHT-rich_text-
-//   Xemail SELF-anonymous-Xaccount-Xemail", NO RULE token). bar.rb:30-33
-//   `view :bar_bottom do view = :content; render view, home_view: view end`
-//   and html/views.rb:10-18 `view :content do wrap do ... end end` — the
-//   wrap ALWAYS emits the slot (html/wrap.rb:6-13 method_wrap, :22-26
-//   slot_attributes). The captured bytes:
-//   recapture-raw-shard-000015 Anonymous+*account+*email:open carries
-//     <div id="anonymous-Xaccount-Xemail-content-view" class="card-slot
-//     content-view ... d0-card-content" ...><a class="email-link"
-//     href="mailto:noreply@qagn.org">noreply@qagn.org</a></div>
+//   the card takes the RSTAR pattern, and RSTAR's bar_bottom is
+//   bar.rb:30-33 `view :bar_bottom do view = :content; render view,
+//   home_view: view end`, while html/views.rb:10-18 `view :content do
+//   wrap do ... end end` — the wrap ALWAYS emits the slot (html/wrap.rb:
+//   6-13 method_wrap, :22-26 slot_attributes). The pinned assertion below
+//   matches the content-view slot markup emitted around the mailto anchor
 //   inside the accordion body.
 //
 // THE DEFECT. barBottomView's rule detection fell back to the NAME SHAPE
 // ("3 parts whose right starts with *") whenever the setKeys RULE token
 // was absent — which every 3-part rule-shape row matches, regardless of
-// the card TYPES rule? reads. The email card took the bare
-// `renderView("core")` arm: the anchor rendered with no content-view slot
-// (solo probe delta -614). THE FIX: the shape guess yields when BOTH
-// Ruby arms are refuted by RESOLVED rows (left is a stored non-Set card
-// AND name[0..-3] is a stored non-Set card — views.ts
-// nameShapeRuleRefutedByTypes); trunks the closure never reached keep
-// the guess. Solo probe: FAIL -614 with the shape guess, PASS
-// byte-identical with the refutation (same-tree revert = file overwrite,
-// no git).
+// the card TYPES rule? reads. The email card then took the bare
+// `renderView("core")` arm: the anchor rendered with no content-view slot.
+// THE FIX: the shape guess yields when BOTH Ruby arms are refuted by
+// RESOLVED rows (left is a stored non-Set card AND name[0..-3] is a stored
+// non-Set card — views.ts nameShapeRuleRefutedByTypes); trunks the closure
+// never reached keep the guess.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -118,9 +110,9 @@ describe("a rule row whose left is a rule row is RSTAR, not RULE (rule/all.rb:33
     const html = await storage!.engine.render(EMAIL_ROW, "open");
     // html/views.rb:10-18's wrap ran: the content-view slot exists, with
     // the d0-card-content class_up the content view's before hook adds.
-    // (The slot id's safe-key spelling is this fixture deck's own — the
-    // corpus's is anonymous-Xaccount-Xemail — so the assertion keys on
-    // the class + the card-name data attribute, not the id.)
+    // (The slot id's safe-key spelling is this fixture deck's own, so the
+    // assertion keys on the class + the card-name data attribute, not the
+    // id.)
     const slotIdAt = html.indexOf('-Xemail-content-view"');
     expect(slotIdAt, "the email card's content-view slot renders").toBeGreaterThanOrEqual(0);
     // emitAttrs emits id before class: the slot's own class sits FORWARD

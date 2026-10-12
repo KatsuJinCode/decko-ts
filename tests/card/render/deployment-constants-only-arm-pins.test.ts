@@ -1,22 +1,22 @@
-// Pins for the DEPLOYMENT CONSTANTS-ONLY arm (R1) — the graded environment's
-// LIVE head/body deployment values, armed through the existing
-// setDeploymentFollowLiveConfig seam WITHOUT the live serializer era.
+// Pins for the DEPLOYMENT CONSTANTS-ONLY arm — the deployment head/body
+// constants, armed through the existing setDeploymentFollowLiveConfig seam
+// WITHOUT the live serializer era.
 //
 // WHY THIS FILE EXISTS
 //   The follow-live config carries two INDEPENDENT axes on one object: the
 //   live serializer era (the conditional data-slot `show` key + the live
 //   class-token order) and the live head/body deployment constants (SRI,
 //   compiled-CSS revision digits, footer version, recaptcha site key, decko
-//   rootUrl, default_html_view). R1 arms the SECOND without the FIRST.
+//   rootUrl, default_html_view). This arm enables the SECOND without the
+//   FIRST.
 //
-//   The two axes have opposite blast radii on the graded corpus, and the
-//   difference is the whole point of the split:
-//     - the constants move the 49 page-lane head entries, a deployment
-//       property (the port serves the live site; the version constants must
-//       match it);
-//     - the serializer era moves ~3,624 currently-passing view-lane entries
-//       RED (view187-lane.md step 4's two-era census) — a CORPUS property,
-//       because those entries pin the frozen-era emission form.
+//   The two axes have opposite blast radii, and the difference is the whole
+//   point of the split:
+//     - the constants move the page-lane head entries, a deployment
+//       property (the deployment serves the live site; the version
+//       constants must match it);
+//     - the serializer era would move the frozen-era view-lane entries RED
+//       — those entries pin the frozen-era emission form.
 //
 //   So "arm the constants" must be expressible as an arm that CANNOT reach
 //   the serializer era. That is what LIVE_DEPLOYMENT_CONSTANTS is: a preset
@@ -28,12 +28,12 @@
 // WHAT IT LOCKS
 //   1. DEFAULT OFF: with no config set, every constant reads undefined, the
 //      byte transforms are identity, and the data-slot `show` key
-//      always-enrolls the requested view (the frozen-corpus form).
+//      always-enrolls the requested view (the frozen form).
 //   2. THE PRESET ARMS THE CONSTANTS: SRI lands after crossorigin/before
 //      referrerpolicy on the 4 CDN scripts; the compiled-CSS revision
 //      rewrites the 10-digit main-stylesheet component (and leaves the .js
-//      asset revision alone); footer 0.19.1; the live recaptcha key; the
-//      live rootUrl; default_html_view content.
+//      asset revision alone); footer 0.19.1; the recaptcha key; the rootUrl;
+//      default_html_view content.
 //   3. THE SERIALIZER STAYS FROZEN under that arm — the discriminating
 //      half: `serializerFollowsLive()` is false, a plain closed root still
 //      always-enrolls `show:["closed"]` (the live era OMITS the key there),
@@ -59,14 +59,13 @@ import {
   serializerFollowsLive,
 } from "../../../src/card/render/deployment-follow-live-config.js";
 
-// The frozen capture-era remote script tags (page.ts REMOTE_SCRIPT_TAGS
-// bytes, the form the corpus pins).
+// The frozen remote script tags (page.ts REMOTE_SCRIPT_TAGS bytes).
 const FROZEN_JQUERY =
   `<script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous"></script>`;
 const FROZEN_RAILS =
   `<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-ujs/1.2.3/rails.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>`;
 
-// The frozen capture-era main-stylesheet attachment (the corpus's own digits).
+// The frozen main-stylesheet attachment.
 const FROZEN_CSS =
   "https://production-storage.r1.cdn.objectstore.example/files/45514/9999999999.css";
 
@@ -161,8 +160,8 @@ describe("deployment constants-only arm: the serializer era stays FROZEN", () =>
     // The live era's discriminating case (serializer-follow-live
     // deployment-config.test.ts:88-98): a closed root whose show list names
     // only its own view emits NO show key at all. Under the constants-only
-    // arm that omission must NOT happen — the ~3,624 frozen-form corpus
-    // entries depend on the always-enroll form.
+    // arm that omission must NOT happen — the frozen emission form depends
+    // on the always-enroll behavior.
     setDeploymentFollowLiveConfig(LIVE_DEPLOYMENT_CONSTANTS);
     const closed = new Voo(undefined, "closed", {}, true);
     closed.processVisibility("show");

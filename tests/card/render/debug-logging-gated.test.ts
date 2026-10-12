@@ -3,9 +3,8 @@
 // format.ts printed an `ENGINE-NEST` line for every nest and lexicon.ts a
 // `LEX-DEBUG` line for account-email names on every render, unconditionally:
 // dozens of stdout lines per page. They are now gated behind
-// DECKO_ENGINE_NEST_TRACE=1 (read once at module load, the same gate the
-// speed-ship lane landed) and DECKO_LEX_TRACE=1 (read per call), both off by
-// default.
+// DECKO_ENGINE_NEST_TRACE=1 (read once at module load) and DECKO_LEX_TRACE=1
+// (read per call), both off by default.
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { itOrSkipLoud } from "../../support/describe-with-corpus.js";
 import {

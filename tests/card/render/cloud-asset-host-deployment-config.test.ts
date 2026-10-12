@@ -1,19 +1,16 @@
-// Pin for the deployment cloud asset host (close-71-with-live lane).
+// Pin for the deployment cloud asset host.
 //
 // WHAT IT LOCKS
 //   1. DEFAULT: with no deployment host set, every cloud attachment URL the
-//      engine derives carries the capture's fog form
+//      engine derives carries the fog form
 //      `http://s3.amazonaws.com//files/<id>/<leaf>` — byte-identical to the
-//      pre-config engine (the Ruby default the oracle bytes pin; the graded
-//      corpus freezes that form on 6,552 expectation lines).
+//      pre-config engine (the Ruby default).
 //   2. DEPLOYMENT OVERRIDE: setDeploymentCloudAssetHost(SPACES_HOST) flips
 //      every emission site that has no per-engine imageCdnHost to the
-//      DigitalOcean Spaces form live serves
-//      (`https://production-storage.r1.cdn.objectstore
-//      .com/files/<id>/<leaf>` — live-check-71: DO 34/34 pages, s3 = 0
-//      occurrences). The per-engine imageCdnHost keeps precedence where a
-//      caller passes it, so the edge deployment's existing per-engine
-//      setting still wins at the sites that read it.
+//      DigitalOcean Spaces form (`https://<spaces host>/files/<id>/<leaf>`).
+//      The per-engine imageCdnHost keeps precedence where a caller passes
+//      it, so the edge deployment's existing per-engine setting still wins
+//      at the sites that read it.
 //   3. IDENTITY: unset again, the fog form returns exactly (the override is
 //      a process-wide test/deployment setting; afterEach restores it so no
 //      other suite ever sees it).
@@ -38,7 +35,7 @@ afterEach(() => {
 describe("deployment cloud asset host", () => {
   it("defaults to the fog form byte-exactly (Ruby default preserved)", () => {
     expect(getDeploymentCloudAssetHost()).toBeUndefined();
-    // The corpus attachment identifier shape: (bucket)/<id>/<stored>.<ext>;
+    // The attachment identifier shape: (bucket)/<id>/<stored>.<ext>;
     // the derived filename is the [-2] [/.] split segment (1.doc).
     expect(derivedCloudAttachmentSource("(my_bucket)/14547/61887.abr.1.doc")).toBe(
       `${FOG_PREFIX}14547/1.doc`,
@@ -60,7 +57,7 @@ describe("deployment cloud asset host", () => {
     );
     // The css/js mod-asset emission path rides the same helper through
     // cloudAttachmentUrl: the deck's compiled asset output content
-    // "(my_bucket)/45514/9999999999.css" -> the live DO form.
+    // "(my_bucket)/45514/9999999999.css" -> the Spaces form.
     expect(cloudAttachmentUrl("(my_bucket)/45514/9999999999.css")).toBe(
       `${DO_PREFIX}45514/9999999999.css`,
     );

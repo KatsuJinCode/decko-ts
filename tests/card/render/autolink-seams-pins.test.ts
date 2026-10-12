@@ -1,14 +1,13 @@
-// autolink-seams-pins.test.ts -- the autolink seam's committed pin tests
-// (branch lane-autolink over 9d72e74, 2026-10-01). Every expected byte below
-// is quoted from the CAPTURED oracle bytes (expected-v2 view-lane shards;
-// probe dumps tmp/lane-autolink-hl-probe in the worktree) - never
-// hand-written to force green.
+// autolink-seams-pins.test.ts -- pin tests for the autolink seam. Each
+// expected string below is the exact output the autolinker must produce for
+// that input, pinned as a literal so a refactor cannot silently reshape the
+// emitted markup.
 //
-// Families pinned here (its committed seam):
+// Families pinned here:
 //   A1  uri.rb:63-68+86-89 trailing punctuation re-emitted after the
-//       anchor (sample-author oracle: source.example.org</a>.)
+//       anchor (source.example.org</a>.)
 //   A2a uri.rb:53-55 context_ok? anchors REJECTED_PREFIX at $ - a URL in
-//       the LABEL of an authored <a> autolinks (nested-anchor oracle)
+//       the LABEL of an authored <a> autolinks (nested-anchor case)
 //       while a URI inside a quoted attribute stays verbatim
 import { expect, it, describe } from "vitest";
 import { expandContentLinks } from "../../../src/card/render/format.js";
@@ -40,12 +39,11 @@ describe("autolink seams pins (captured oracle bytes)", () => {
   });
 
   it("A2a: autolinks a URL in the LABEL of an authored anchor (org-page oracle)", () => {
-    // oracle shard-000025 <org page> +discussion open:
-    // `or ORG (<a href="http://example.net/"><a target="_blank"
-    // class="external-link" href="http://Example.net">Example.net</a></a>).`
-    // The outer href's URI is context-rejected (preceded by `="` - the
-    // $-anchored REJECTED_PREFIX) and stays verbatim; the LABEL text is
-    // preceded by `">` - not $-rejected - so the HostUri chunk autolinks it.
+    // An authored <a> whose LABEL contains a bare URL: the outer href's URI
+    // is preceded by `="` - the $-anchored REJECTED_PREFIX - so it stays
+    // verbatim, while the label text is preceded by `">`, which is not
+    // rejected, so the HostUri chunk autolinks the label into a nested
+    // anchor.
     const out = expandContentLinks(
       'or ORG (<a href="http://example.net/">Example.net</a>). He is a fellow',
       undefined,

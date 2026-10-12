@@ -1,6 +1,6 @@
 // Surface 1 — per-set content-override registry.
 // Validates the seam the mod loader uses to substitute a registered
-// ContentFn for a card's dbContent at renderRaw time. The corpus suites
+// ContentFn for a card's dbContent at renderRaw time. The render suites
 // under tests/card/render/ pin the bytes for cards WITHOUT an override;
 // this suite exercises the OVERRIDE path.
 

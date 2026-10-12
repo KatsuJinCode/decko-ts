@@ -1,10 +1,10 @@
-// Stream M1 (coderay-highlighting) byte-identity tests.
+// Coderay-highlighting byte-identity tests.
 //
-// Each fixture under fixtures/captured/coderay/ was produced by
-// `CodeRay.scan(card-content, :LANG).div` on the local Ruby oracle (the
-// gem at coderay-1.1.3, the card-mod-format/layout/style cardtypes). The
-// port's job is to reproduce those bytes exactly for every card the
-// corpus seeds; this file is the gate.
+// Each HTML fixture read by loadOracle below was produced by
+// `CodeRay.scan(card-content, :LANG).div` on a local Ruby reference (the
+// gem at coderay-1.1.3, the card-mod-format/layout/style cardtypes). This
+// port must reproduce those bytes exactly for every seeded card; this file
+// is the gate.
 
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -26,11 +26,9 @@ import { coderayEscape } from "../../../../src/card/render/code-highlighting/esc
 import { ALPHA_STYLES } from "../../../../src/card/render/code-highlighting/alpha-style.js";
 import { PRIVATE_SHARD_DIR_PATH } from "../../../../src/testing/test-corpus-paths.js";
 
-// Private shard pair, resolved through the 46a05a64 test-corpus-paths
-// contract (repo-relative, gitignored, machine-local). Provisioning command:
-// benchmarks/corpus-v2/reconstruct-coderay-byte-identity-shard-pair.mjs —
-// see README-coderay-byte-identity-shard-pair-provisioning.md next to it.
-// Missing shards fail LOUDLY below (ENOENT) — never a skip.
+// The shard directory is repo-relative, gitignored, and machine-local —
+// provisioned out of band. Its absence is an environment gap, not a suite
+// condition: missing shards fail LOUDLY below (ENOENT) — never a skip.
 const FIXTURES = PRIVATE_SHARD_DIR_PATH;
 const CAPTURED = resolve(
   fileURLToPath(new URL("../../../..", import.meta.url)),
@@ -66,8 +64,8 @@ function loadContent(shard: string, cardId: number): string {
 }
 
 function loadOracle(fixture: string): string {
-  // The Ruby capture script wrote a trailing newline; readFileSync preserves
-  // it so we can byte-compare directly.
+  // The generating Ruby script wrote a trailing newline; readFileSync
+  // preserves it so we can byte-compare directly.
   return readFileSync(resolve(CAPTURED, `${fixture}.html`), "utf8");
 }
 

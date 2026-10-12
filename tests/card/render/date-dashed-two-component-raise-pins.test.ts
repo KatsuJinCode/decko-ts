@@ -2,21 +2,15 @@
 // Date content that is not the Y-M-D triple RAISES, exactly as Ruby's
 // Date.parse raises.
 //
-// GEM VERIFICATION (this lane, 2026-10-03): Ruby 3.3
-// (C:/Ruby33-x64, `ruby tmp/the-69-wave1-refill2/date-parse-conformance.rb`)
-// ran Date.parse over EVERY Date-typed corpus card (4,021 rows,
-// tmp/the-69-wave1-refill2/date-contents.json -> date-parse-ruby33.tsv).
-// The dashed shapes the corpus carries are 3-component Y-M-D (4,013 rows,
-// all parse, engine agrees on every one) and ONE 2-component row:
+// GEM VERIFICATION: Ruby 3.3's Date.parse was run over every Date-typed
+// card's content in the deck. The dashed shapes the deck carries are
+// 3-component Y-M-D (all parse; the engine agrees on every shape) and
+// ONE 2-component row:
 //
-//   13903  "1981-10"  (Stanley Pranin - Introduction to the Omoto Religion
-//                      +Date)  ->  RAISE Date::Error
+//   "1981-10"  (a Date-typed junction card)  ->  RAISE Date::Error
 //
-// whose captured page (recapture-raw-shard-000009, solo probe) renders the
-// (core view) render-error span — Ruby raises, the capture agrees, and the
-// engine now raises with it (solo probe FAIL -123 with the pre-fix accept,
-// PASS byte-identical with the raise; same-tree revert = file overwrite,
-// no git).
+// whose rendered page carries the (core view) render-error span — Ruby
+// raises, and the engine now raises with it.
 //
 // THE DEFECT. parseRubyDateContent's three explicit branches (compact
 // YYYYMMDD, dashed Y-M-D, slashed) matched nothing for "1981-10", and the
@@ -24,18 +18,14 @@
 // Ruby raises. The fix blocks every dashed all-numeric shape whose
 // component count is not exactly the Y-M-D triple.
 //
-// THE REMAINDER, recorded (this pin does NOT claim these):
-//   35469 "20-0405" (White Fragility …+Date): the CAPTURE renders
-//         "September 20, 2026" while Ruby 3.3 parses "October 20, 2026" —
-//         the capture-era Ruby's reading is not derivable from any Ruby
-//         this machine can run; engine keeps the raise (+101 residual).
-//         CORPUS-UNCERTAIN.
-//   37752 "03/01/2021", 38903 "09/10/2021 8:01 AM", 44574 "05/18/2023
-//         12:00 AM": slash-form D/M semantics Ruby 3.3 applies and the
-//         engine does not port — none of the three cards sits on a graded
-//         page of the 31-entry set this lane probes.
-// Conformance tally post-fix: 4,016 of 4,021 agree outright; the 5
-// buckets above are the entire remainder.
+// THE REMAINDER, recorded as known-divergent (this pin does NOT claim
+// these):
+//   "20-0405" (a Date card whose recorded render disagrees with any
+//         runnable Ruby's reading of the same bytes): the engine keeps the
+//         raise — the recorded reading is not derivable from any Ruby this
+//         port can run against.
+//   "03/01/2021", "09/10/2021 8:01 AM", "05/18/2023 12:00 AM": slash-form
+//         D/M semantics Ruby 3.3 applies and the engine does not port.
 
 import { describe, it, expect } from "vitest";
 import { parseRubyDateContent } from "../../../src/card/render/errors.js";
@@ -47,7 +37,7 @@ describe("dashed all-numeric Date content that is not Y-M-D raises (gem-verified
   });
 
   it("the 3-component dashed shapes the corpus parses keep parsing", () => {
-    // 4,013 agreeing rows are represented by their shape exemplars:
+    // The agreeing dashed shapes are pinned by their shape exemplars:
     // padded, unpadded-month, and the two-digit-year window (the
     // errors.ts doc's own exemplar "19-03-19" -> March 19, 2019).
     expect(parseRubyDateContent("2010-07-31")?.getUTCDate()).toBe(31);

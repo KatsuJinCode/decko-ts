@@ -1,32 +1,25 @@
 // Pointer/list item inner body identity: when the host's item_type_name
 // resolves to a non-BasicCs type, the inner `<div class="bar ...">` body
 // of an UNKNOWN read-denied item must carry that host type (its
-// data-card-type-id/name and ALL TYPE-* class chip), not the corpus's
-// default phantom fallback (22281 BasicCs / basic_c).
+// data-card-type-id/name and ALL TYPE-* class chip), not the deck's
+// configured phantom fallback (BasicCs / basic_c).
 //
-// Bug shape (mechanism-census mechanism (f) "unresolved
-// content-divergence with an entity-named-card cluster"; sampled
-// examples id 14546 "Sample Person A+musings", id 15261 "Sample Person
-// B+Project(s) Organizing", id 16122 "Sample Person C+musings",
-// id 14329 "Sample Person D+musings", id 12 "Sign up", id 22 "PlainText",
-// id 827 "VPX", id 35864 "Sample Person E Sample Person F Sample Place Dojo",
-// id 40381 "Practice Pool+Slack Channel naming conventions most in use+*self",
-// id 43485 "Artificial Intelligence+anon_exchange_02+*self", id 49305
-// "mod: account+*script" — pages whose names share an entity cluster
-// because the +musings / +rvw / +Sign up / etc family all funnel through
-// this code path):
+// Bug shape: an unresolved content divergence on a cluster of
+// entity-named pages whose pointer/list items are unknown and
+// read-denied — every page in that cluster funnels through this code
+// path:
 //
 //   <div id="<item>-mini_bar-view" class="card-slot mini_bar-view ALL TYPE-consideration"
 //        data-card-type-id="2979" data-card-type-name="consideration"
 //        data-slot="...&quot;type&quot;:&quot;consideration&quot;}">
-//     <!-- ORACLE inner body uses the host's item type: -->
+//     <!-- EXPECTED inner body uses the host's item type: -->
 //     <div class='bar ALL TYPE-consideration with-bar-menu nodblclick d-flex _card-link'
 //          data-card-type-id='2979' data-card-type-name='consideration'>
 //       <!-- bar-left with the card-title span (the readable-item bar.haml body) -->
 //     </div>
 //   </div>
 //
-//   <!-- ENGINE inner body uses the corpus's default phantom type: -->
+//   <!-- DEFECTIVE inner body uses the default phantom type: -->
 //   <div class='bar ALL TYPE-basic_c with-bar-menu nodblclick d-flex _card-link'
 //        data-card-type-id='22281' data-card-type-name='BasicCs'>
 //     <span class="denied">...</span>
@@ -43,10 +36,10 @@
 // outer right and the inner wrong.
 //
 // This is a same-tree, same-DB, single-engine-byte diff: fixing the
-// inner body identity chain flips the captured oracle bytes byte-exact
-// for every entity-cluster +musings / +rvw / etc page in the 36
-// content-divergence population whose only divergence was the inner
-// TYPE-* class chip + data-card-type-* attrs on the inner bar div.
+// inner body identity chain flips the expected bytes byte-exact for
+// every page in the content-divergence population whose only divergence
+// was the inner TYPE-* class chip + data-card-type-* attrs on the inner
+// bar div.
 
 import { describe, it, expect, afterAll } from "vitest";
 import { pointerListItemBodyForUnknown } from "../../../src/card/render/pointer-list.js";
@@ -90,8 +83,8 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
   it("unit: no identity -> the DECK's configured phantom type (the no-host-type fallback pin)", () => {
     // The fallback is the deck's own `*all+*default` template type, which is
     // deployment CONFIGURATION rather than an
-    // engine constant. This case hands the builder the production deck's
-    // configured type and pins that those bytes still come out right.
+    // engine constant. This case hands the builder the deck's configured
+    // phantom type and pins that those bytes still come out right.
     const body = pointerListItemBodyForUnknown(
       "phantom item",
       undefined,
@@ -133,7 +126,7 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
     expect(body).not.toContain("data-card-type-id='22281'");
   });
 
-  it("unit: with Project identity -> inner body carries Project (Emery Lokhart sample)", () => {
+  it("unit: with Project identity -> inner body carries Project (Project-typed sample)", () => {
     const identity = { typeName: "Project", typeId: 398, setKeys: "ALL TYPE-project" };
     const body = pointerListItemBodyForUnknown("Improving Project Success through Myth Discovery", identity);
     expect(body).toMatch(/<div class='bar [^']*TYPE-project[^']*with-bar-menu/);
@@ -145,9 +138,8 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
   // -------------------------------------------------------------------------
   // INTEGRATION: pin the FULL render path through a host whose
   // *content_options rule card carries {"type":"consideration"} — the
-  // shape the corpus's +musings / +RVW / +Project(s) Organizing
-  // entity-cluster families exercise. RED until views.ts:1588 passes
-  // the phantom's identity to pointerListItemBodyForUnknown.
+  // unknown read-denied pointer/list-item shape. RED until views.ts:1588
+  // passes the phantom's identity to pointerListItemBodyForUnknown.
   // -------------------------------------------------------------------------
   it(
     "integration: a List host with consideration item_type renders its UNKNOWN item's inner body with consideration (not BasicCs)",
@@ -156,10 +148,10 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
       await seedCardtypes(storage);
       await seedSettings(storage);
       // The consideration cardtype — what the host's cql-typed
-      // *content_options rule points at (matches corpus id 2979).
+      // *content_options rule points at.
       await seedCard(storage, { id: 2979, name: "consideration", typeId: 5 });
-      // The host list card (matches the corpus's "<person name>+musings"
-      // shape — type 47 List, one item that does NOT exist in the deck).
+      // The host list card (a type-47 List whose one item does NOT exist in
+      // the deck).
       await seedCard(storage, {
         id: 99146,
         name: "entity cluster host",
@@ -176,9 +168,8 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
         typeId: 259,
       });
       // The host's *content_options rule card carrying
-      // {"type":"consideration"} — the corpus's cql-item-type spec
-      // shape (e.g. rules 410/498/501 in corpus-v2). The cql-item-type-id
-      // walk (render.ts:2211-2234) parses this and returns
+      // {"type":"consideration"} — the cql-item-type spec shape. The
+      // cql-item-type-id walk (render.ts:2211-2234) parses this and returns
       // { typeName: "consideration", typeId: 2979 }.
       await seedCard(storage, {
         id: 99148,
@@ -202,10 +193,9 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
 
       // INNER body identity: the bar div must carry the host type attrs
       // (data-card-type-id/name and ALL TYPE-consideration class chip),
-      // not the corpus's default phantom BasicCs/22281/basic_c pin. The
-      // mismatch is the mechanism (f) "unresolved content-divergence
-      // with an entity-named-card cluster" — the inner body had
-      // TYPE-basic_c / data-card-type-id='22281' / data-card-type-name='BasicCs'.
+      // not the deck's default phantom BasicCs/22281/basic_c. The
+      // mismatch was the unresolved content divergence — the inner body
+      // had TYPE-basic_c / data-card-type-id='22281' / data-card-type-name='BasicCs'.
       expect(html).toMatch(/<div class='bar [^']*TYPE-consideration[^']*with-bar-menu/);
       expect(html).toContain("data-card-type-id='2979'");
       expect(html).toContain("data-card-type-name='consideration'");
@@ -215,19 +205,17 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
     },
   );
   // -------------------------------------------------------------------------
-  // INTEGRATION (p21 CQL item-typing): a COMPOUND unknown item whose
+  // INTEGRATION (CQL item-typing): a COMPOUND unknown item whose
   // host item type carries a TYPE-LEVEL *structure rule is VIRTUAL
   // (states.rb:44-50 virtual? = compound && structure.present?) hence
   // KNOWN (states.rb:65) - Ruby's alter_unknown returns early and the
   // denial runs on the requested :bar view itself: the plain quiet denial
-  // span, NO mini_bar wrap. Corpus: the SMD/PdG Tactics phantoms (typed
-  // Tracked Item via the *content options rule 10280; structure rule 2081
-  // Tracked Item+*type+*structure exists) render
-  // `<div class="pointer-item item-bar"><span class="denied">` in the raw
-  // oracle (exp @8350 / @8515-8987) where the engine's mini_bar two-span
-  // body was the port's base act diff. The SIMPLE-named fixture above
-  // stays on the mini_bar arm: name.simple? short-circuits virtual?
-  // whatever the type (states.rb:45).
+  // span, NO mini_bar wrap. A phantom typed Tracked Item via a *content
+  // options rule, with a Tracked Item+*type+*structure rule present,
+  // renders `<div class="pointer-item item-bar"><span class="denied">` in
+  // the expected bytes where the engine's mini_bar two-span body was the
+  // defect. The SIMPLE-named fixture above stays on the mini_bar arm:
+  // name.simple? short-circuits virtual? whatever the type (states.rb:45).
   // -------------------------------------------------------------------------
   it(
     "integration: a COMPOUND unknown item whose host item type has a type-level *structure rule renders the bare quiet denial span (virtual/known, no mini_bar wrap)",
@@ -235,8 +223,8 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
       storage = await createRenderTestStorage();
       await seedCardtypes(storage);
       await seedSettings(storage);
-      // The Tracked Item cardtype (corpus id 2079) + its TYPE-LEVEL
-      // *structure rule (corpus rule 2081, set card "Tracked Item+*type").
+      // The Tracked Item cardtype + its TYPE-LEVEL *structure rule (set
+      // card "Tracked Item+*type").
       await seedCard(storage, { id: 2079, name: "Tracked Item", typeId: 5 });
       await seedCard(storage, { id: 710, name: "*type", typeId: 2 });
       await seedCard(storage, { id: 2080, name: "Tracked Item+*type", leftId: 2079, rightId: 710, typeId: 259 });
@@ -250,11 +238,9 @@ describe("entity-cluster phantom pointer/list item: inner body carries host item
       });
       await seedCard(storage, { id: 709, name: "*structure", typeId: 2 });
       // The host list card with a *content options rule typing its items
-      // Tracked Item (the corpus's Tactics+*right+*content options 10280
-      // shape: the host is COMPOUND with right part "Tactics", so the
-      // rule walk's RIGHT-pattern candidate finds the rule) and one
-      // COMPOUND item that does not exist (the corpus's "Conflict Done
-      // Well+Online Classes+SMD" shape).
+      // Tracked Item (the host is COMPOUND with right part "Tactics", so
+      // the rule walk's RIGHT-pattern candidate finds the rule) and one
+      // COMPOUND item that does not exist.
       await seedCard(storage, { id: 99245, name: "Tactics", typeId: 2 });
       await seedCard(storage, {
         id: 99247,
