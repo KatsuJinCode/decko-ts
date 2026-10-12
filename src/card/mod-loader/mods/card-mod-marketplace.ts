@@ -1,6 +1,6 @@
 // card-mod-marketplace - the marketplace rendered as a mod.
 //
-// THE PRODUCT RULING (2026-10-01). The marketplace is ITSELF a mod:
+// THE PRODUCT RULING. The marketplace is ITSELF a mod:
 // a browsable catalog rendered as cards, covering the built-in mods. v1
 // catalogs what the deck already carries; runtime installation of NEW
 // third-party code is V2. The v2 SEAM already exists and is cited, not
@@ -21,9 +21,9 @@
 // manifests are transcribed from) carries no marketplace. Every registration
 // below is NEW, not Ruby, and is labeled as such at each declaration. Nothing
 // here mirrors a Ruby file: no file:line from any reference gem is claimed,
-// and no oracle pins it.
+// and no rendered reference covers it.
 //
-// THE PARITY ARGUMENT (why zero pinned bytes move). This mod is NOT in the
+// THE PARITY ARGUMENT (why the shipped byte shapes are untouched). This mod is NOT in the
 // composed default deck (default-mod-deck.ts MANIFESTS - deliberately; the
 // census test below is the reason). It is loaded only when a host adds it to
 // a loader's ModSource[]. Two further properties keep it inert even then:
@@ -34,7 +34,7 @@
 //      reaches that module through the ALL token every card carries
 //      (render/set-keys.ts safeSetKeys), and only for a card that IS in the
 //      marketplace set. The frozen deck carries no `*marketplace` card, so
-//      no pinned render ever dispatches these views.
+//      no shipped render ever dispatches these views.
 //
 //   2. The two view names (`marketplace`, `mod_detail`) are NEW. The flat
 //      html record the loader writes (mod-loader.ts:374-379) is keyed by
@@ -45,8 +45,8 @@
 //      .test.ts:113-114 pins 143 base + 28 abstract rows.
 //
 // The card name is `*marketplace` - a NEW name the frozen deck never
-// carries, so a new view rides a new card name, which is what keeps every
-// pinned byte where it was.
+// carries, so a new view rides a new card name, which keeps every shipped
+// byte shape where it was.
 //
 // WHAT THE VIEWS SHOW, AND WHERE EACH NUMBER COMES FROM. Two sources sit on
 // one card, and the card says which is which:
@@ -372,7 +372,8 @@ export function installNote(surface: ModRegistrationSurface, kind: ModInstallKin
 
 /** The catalog body: one card per mod the loaded deck contains.
  *
- *  NEW bytes - no oracle pins this view, so nothing here is a port and no
+ *  NEW bytes - no rendered reference covers this view, so nothing here is a
+ *  port and no
  *  byte here is compared to Ruby. The shape is the deck's own card markup (a
  *  div per entry, the deck's class vocabulary) so the catalog reads as cards
  *  in a deck that styles cards, and the escaping is the shared `h()`
@@ -650,7 +651,8 @@ function applySection(
 // ---------------------------------------------------------------------------
 
 /** card-mod-marketplace's manifest. NEW - there is no marketplace gem; the
- *  reference gems carry no such mod and no oracle pins any of it.
+ *  reference gems carry no such mod and no rendered reference covers any of
+ *  it.
  *
  *  One set file, `all/marketplace`, carrying the two views. The set path is
  *  the all/ pattern because the catalog is a per-DECK surface, and the view
