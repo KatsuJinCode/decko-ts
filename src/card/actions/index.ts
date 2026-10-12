@@ -1,5 +1,10 @@
-// The write-path action layer (Set / Save / Update / Delete). See
-//  for the Ruby grounding.
+// The write-path action layer (Set / Save / Update / Delete). The Ruby
+// grounding is per-behaviour and lives with the behaviour:
+// name-validation.ts (the save-time name events), list-content.ts (content
+// assigned to a card in a list set), refresh-references-in.ts and
+// refresh-references-out.ts (the two directions of the reference table), and
+// junction-cycle-detection.ts (self-ancestor rejection, including the Ruby
+// divergence it deliberately introduces).
 
 export { CardActionEngine, type CardActionEngineOptions } from "./card-action-engine.js";
 export {

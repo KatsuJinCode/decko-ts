@@ -27,7 +27,7 @@
 // - Cache maintenance after every save: lib/card/director/phases.rb:56-57
 //   (`@card.expire` in integration_phase's ensure) -> cache/all.rb:17-24.
 //
-// Deliberately NOT built here (later streams, per the port tracker):
+// Deliberately NOT built here:
 // rule-based default content and templates, the ancestor-timestamp id feed
 // (update_ancestor_timestamps), subcard staging beyond side creation /
 // trash-obstacle renames / child deletion cascades.
@@ -219,8 +219,7 @@ const ATTACHMENT_MOUNTS: Readonly<Record<string, string>> = {
 /** I18n :history_error_not_latest_revision - card-mod-history-0.20.0
  *  config/locales/en.yml:2, "changes not based on latest revision". The
  *  message detect_conflict puts on the card's :conflict error
- *  (set/all/history/events.rb:20); the byte is the ORACLE's
- *  (fixtures/captured/edit-forms.json conflict_probe errors_conflict). */
+ *  (set/all/history/events.rb:20); the byte is the reference's. */
 const HISTORY_ERROR_NOT_LATEST_REVISION = "changes not based on latest revision";
 
 /** The janitor behaviors whose built-in call sites STAND DOWN when the
@@ -798,13 +797,12 @@ export class CardActionEngine {
   // last_content_action_id, set/type/file.rb:8-13) resolves the bytes of
   // exactly the revision that stored them.
   //
-  // DISCLOSED (code-read, not oracle-captured — no CarrierWave capture
-  // exists; the oracle harness performs read-side captures only, see
-  // ): the change row of an update save carries
-  // the FINAL identifier here; Ruby's intermediate dance around the column
-  // write cannot be byte-verified without an oracle capture. The FINAL
-  // observable state (column + identifier parse + stored path + comment)
-  // is the pinned contract.
+  // DISCLOSED (code-read, not verified against the reference — the
+  // reference harness exercises read paths only, and no CarrierWave run
+  // records a write): the change row of an update save carries the FINAL
+  // identifier here; Ruby's intermediate dance around the column write
+  // cannot be byte-verified. The FINAL observable state (column +
+  // identifier parse + stored path + comment) is the pinned contract.
   // -----------------------------------------------------------------------
 
   /** Store one upload's bytes and rewrite the just-written rows to the
@@ -1285,11 +1283,10 @@ export class CardActionEngine {
     // signed-in clause. An anonymous session's Auth.as_id IS the Anonymous
     // card (auth/current.rb:7-9 + auth/proxy.rb:33-35), and ok_to_create?
     // (card-mod-permissions set/all/permissions.rb:120-125) runs for it
-    // exactly as for any other actor. The recorded site's own history is
-    // the proof the arm is live: 694 cards with creator_id = the anonymous
-    // codename card (id 15), 86 of them Signup — whose
-    // kfnvyby+*type+*create rule (6580) grants Anyone (its card_references
-    // row: referee_id 8). The acting id is the signed-in account or the
+    // exactly as for any other actor. That the arm is live is not in doubt:
+    // anonymous-created cards exist, and the *type+*create rules that grant
+    // Anyone are what make them creatable. The acting id is the signed-in
+    // account or the
     // Anonymous card; the RULE check (assertCanWrite) then decides
     // allow/deny. Only a deck that cannot even form the anonymous actor
     // (no anonymous codename card — a fragment seed; Ruby could not form
@@ -1863,9 +1860,8 @@ export class CardActionEngine {
     // The anonymous-update arm: same chain as create — ok_to_update?
     // (permissions.rb:148-153 permit(:update) + the type-change clause)
     // has NO signed-in clause; an anonymous session's Auth.as_id IS the
-    // Anonymous card (auth/current.rb:7-9 + proxy.rb:33-35). The recorded
-    // site's history proves the arm live: 1,808 live cards with
-    // updater_id = the anonymous codename card (id 15). Only a fragment
+    // Anonymous card (auth/current.rb:7-9 + proxy.rb:33-35). That the arm
+    // is live is not in doubt: anonymous-updated cards exist. Only a fragment
     // seed (no anonymous codename card to act as) keeps the legacy
     // signed-in-only rejection.
     const actingId = await this.actingIdForWrite();
@@ -2626,9 +2622,9 @@ export class CardActionEngine {
    *  the save began at a revision that is no longer current AND the card's
    *  last action belongs to somebody else. Ruby raises it as a VALIDATION
    *  error (`errors.add :conflict, I18n.t(:history_error_not_latest_revision)`)
-   *  on the :validate stage, so nothing persists - the oracle probe
-   *  (fixtures/captured/edit-forms.json conflict_probe) records the message
-   *  "changes not based on latest revision" with card_actions 4881 -> 4881.
+   *  on the :validate stage, so nothing persists - the reference records the
+   *  message "changes not based on latest revision" with the action's
+   *  revision unchanged.
    *
    *  The comparison rides the ported guard `isEditConflict`
    *  (card-mod-history.ts, events.rb:65-72 verbatim), whose three clauses
@@ -3014,11 +3010,10 @@ export class CardActionEngine {
   private async deleteCardInner(input: DeleteCardInput): Promise<ActionResult | null> {
     // The anonymous-delete arm: ok_to_delete? (permissions.rb:155-157
     // `permit :delete`) has NO signed-in clause — the chain rules it
-    // identically to create/update. Corpus review (a probe against
-    // the capture corpus): 8 trashed cards with updater_id = the anonymous
-    // codename card (id 15) — the trash save re-stamps updater_id
-    // (set_stamper, account.rb:20-23), so those rows are anonymous-actor
-    // writes on end-trashed cards. Fragment seed keeps the legacy rejection.
+    // identically to create/update. A trash save re-stamps updater_id
+    // (set_stamper, account.rb:20-23), so an end-trashed card carries the
+    // anonymous codename card as its updater. Fragment seed keeps the legacy
+    // rejection.
     const actingId = await this.actingIdForWrite();
     if (actingId === undefined) this.assertWritable();
     // The execution seam's initialize stage (director.rb:14 — VI). Core's
@@ -3425,8 +3420,9 @@ export class CardActionEngine {
    * `self.content =` mutation can land on the pending write; the
    * post-persist walk then sees when-false via commentApplied.
    *
-   * The oracle capture (fixtures/oracle-surfaces/comment.jsonl) pins the
-   * appended bytes: "content\n<hr>\n<p>lines…</p>\n<div
+   * The reference pins the appended bytes
+   * (fixtures/oracle-surfaces/card-mod-comment.harness.jsonl):
+   * "content\n<hr>\n<p>lines…</p>\n<div
    * class="w-comment-author">AUTHOR.....YYYY-MM-DD HH:MM:SS UTC</div>".
    */
   private async applyAddComment(
@@ -3643,8 +3639,8 @@ export class CardActionEngine {
 
   private anonymousActorIdPromise: Promise<number | undefined> | undefined;
 
-  /** The anonymous codename card's id (the corpus's 694 creator_id=15 rows
-   *  are that card's writes). Memoized: codenames are immutable within an
+  /** The anonymous codename card's id — the card an unauthenticated write is
+   *  stamped with. Memoized: codenames are immutable within an
    *  engine instance. */
   private anonymousActorId(): Promise<number | undefined> {
     this.anonymousActorIdPromise ??= Promise.resolve(
@@ -3977,8 +3973,7 @@ export class CardActionEngine {
    *  updateCardInner / deleteCard) so an anonymous-session write records
    *  the act under the Anonymous card's id (Ruby: the act's actor_id is
    *  Auth.as_id, which IS AnonymousID when signed out —
-   *  auth/current.rb:7-9; the corpus's creator_id=15 rows and its
-   *  1,808 live + 8 trashed updater_id=15 rows). Undefined
+   *  auth/current.rb:7-9). Undefined
    *  actingId means the fragment-seed callers whose actor must be a
    *  signed-in account (assertWritable has already run for them). */
   private newWriter(actingId?: number): ActWriter {
@@ -4369,8 +4364,7 @@ export class CardActionEngine {
   /** reference_events.rb:40-47 rename_as_descendant: every DESCENDANT of a
    *  renamed card re-expires and updates its Lexicon entry — its composed
    *  name changed virtually while its row stayed untouched. No row writes
-   *  happen here (that is the post-2020 junction-truth answer; see
-   *). */
+   *  happen here: that is the post-2020 junction-truth answer. */
   private async refreshDescendantCaches(rootId: number): Promise<void> {
     const visited = new Set<number>([rootId]);
     let frontier = [rootId];
