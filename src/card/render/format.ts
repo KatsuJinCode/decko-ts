@@ -521,8 +521,8 @@ export interface HelpRulesApi {
  *               Rails runtime; card-mod-edit's own views are out of scope
  *               for the engine port).
  *  - "compact"  view_in_compact_mode - PORTED (mode.rb:71-84 substitution
- *               + nesting.rb:52-63 elision;
- *               2026-10-01 — see the modalNestView docblock).
+ *               + nesting.rb:52-63 elision — see the modalNestView
+ *               docblock).
  */
 export type NestMode = "normal" | "template" | "edit" | "compact";
 
@@ -603,10 +603,9 @@ export interface RenderFormatOptions {
   /** maximum nest depth — Ruby Card.config.max_depth = 20
    *  (prototype/lib/cardio/railtie.rb:17; monitor_depth,
    *  prototype/lib/card/format/error.rb:32-38). An earlier revision carried
-   *  decko's old 42 default; the vendored prototype pins 20 and the
-   *  adversarial probe battery graded the divergence (self-inclusion,
+   *  decko's old 42 default; the vendored prototype pins 20 (self-inclusion,
    *  cycle-two, nest-of-cycle all 500 at the old guard where Ruby renders
-   *  the too-deep UserError at 20). Aligned 2026-09-24. */
+   *  the too-deep UserError at 20). */
   maxDepth?: number;
   /** THIS format's format class name ("html" default). Ruby: `card.format
    *  :email_text` builds an EmailTextFormat (email_text_format.rb:
@@ -626,11 +625,10 @@ export interface RenderFormatOptions {
   contextCard?: RenderCard;
   /** Marks THE bare view-surface root format (render.ts#render's root — the
    *  engine.render(card, view) entry; page.ts builds its own rootFormat
-   *  without this). The census-M1 bar-seat reads it: bar-view slots nested
+   *  without this). The bar-seat read uses it: bar-view slots nested
    *  under this root carry the root card's part-filtered name_context
-   *  (the serializer follow-up note step 5 row 1 — the graded Guns:open
-   *  bytes pin ctx="gun" on the item bars and ctx-less on every non-bar
-   *  slot of the same walk). Never set on the page surface. */
+   *  while every non-bar slot of the same walk stays ctx-less. Never set
+   *  on the page surface. */
   isViewLaneRoot?: boolean;
 }
 
@@ -1093,10 +1091,9 @@ export class RenderFormat {
       // engine state (zero queries here): read through isDenied's verdict
       // map, non-read tasks through the optional isTaskDenied hook (the
       // first ported non-read view is :universal_edit_button, perms :update
-      // since 2026-09-28 — the ensureTaskVerdicts prepare step precomputes
+      // — the ensureTaskVerdicts prepare step precomputes
       // its verdicts when the requested view needs them; an absent
-      // hook leaves those views unverified-allowed, per
-      // ).
+      // hook leaves those views unverified-allowed).
       if (this.card.unknown !== true) {
         const denial = viewPermissionDenial(normalized, {
           renderOpts: opts,
@@ -1372,7 +1369,7 @@ export class RenderFormat {
    *  to_task)` — en.yml: `format_need_permission_task: "You need permission
    *  %{task}."` with format_denied_task "to %{denied_task} this" (the read
    *  task) = the plain STRING "You need permission to read this." inside
-   *  the wrap div (golden: `<h1>Sorry!</h1>\n<div>You need permission to
+   *  the wrap div (`<h1>Sorry!</h1>\n<div>You need permission to
    *  read this.</div>`). The signed-out branch is sign_in_or_up_links,
    *  whose own inner div nests inside the wrap. */
   private loudDenialMessageHtml(deniedTask: string): string {
@@ -1902,7 +1899,7 @@ export class RenderFormat {
    * the denial branch: `normalized_options[:skip_perms] ||
    * view_perms == :none` (permission.rb:25-27). Resolution sources match
    * viewPermissionDenial's (resolveViewPerms — the same registry the
-   * read-permission wave's denial gate reads).
+   * read-permission denial gate reads).
    */
   private unknownGateSkip(view: string, opts: Record<string, unknown>): boolean {
     if (renderOptSkipPerms(opts)) return true;
@@ -2773,19 +2770,19 @@ export class RenderFormat {
     // against the referencing card (`[[_left|{{_left+image}}]]` inside the
     // virtual `<item>+short` names `<item>`), as the plain link pass does.
     const named = this.engine.fetchRenderCard(absolutizeWikiTarget(target, this.card.name));
-    // view-fail class V4: a map miss is NOT absence — Ruby's Card.known?
+    // A map miss is NOT absence — Ruby's Card.known?
     // (links.rb:140-144) is a live fetch. The codename registry's loaded
     // memo confirms codenamed cards (the static help popover's
     // [[List]]/[[Pointer]]/[[Search]]) query-free; the prepare-phase
     // link-target warm pass seats regular cards so this miss arm rarely
-    // fires for them. Absence stays wanted-card (the People Green pin).
+    // fires for them. Absence stays wanted-card.
     let known = named !== undefined && named.unknown !== true;
     // view :link renders on the TARGET CARD (base.rb:35-46 link_view ->
     // link_to_card card.name, _render_title): the href carries the
     // RESOLVED card's name while the label/title keep the authored link
     // text. Every case-differing known-card anchor hrefs the real name in
     // both directions ([[narrative]] -> /Narrative,
-    // [[Aikido]] -> /aikido for a lowercase-stored card).
+    // [[My Card]] -> /my_card for a lowercase-stored card).
     let hrefSource = known && named?.name !== undefined ? named.name.s : target;
     if (named === undefined) {
       const peeked = this.engine.peekKnownCardName?.(target);
@@ -2815,12 +2812,12 @@ export class RenderFormat {
     // Card::Path#handle_unknown (card-mod-format path.rb:89-96): a wanted
     // mark whose name is not name_standardish? (path.rb:107-109) carries
     // ?card[name]=<name> (query, path.rb:84-87) — e.g. the href
-    // `/mytho_psychology?card%5Bname%5D=mytho-psychology`. Standardish
-    // wanted names (People_Green) stay bare.
+    // `/my_name?card%5Bname%5D=my-name` (dash name). Standardish
+    // wanted names (space-only names) stay bare.
     //
     // THE COMPARISON IS AGAINST THE RESOLVED NAME, not the authored mark.
     // Comparing `hrefSource` instead would, for a codename mark, compare its
-    // urlKey (`Eagle+*members`) against the UNRESOLVED `Eagle+:members` —
+    // urlKey (`Page+*members`) against the UNRESOLVED `Page+:members` —
     // two different spellings of one name, so the test could never be
     // satisfied and the query fired on every codename-marked wanted link.
     // The href beside it is already built from the resolved url_key, so the
@@ -3099,14 +3096,12 @@ export class RenderFormat {
     // masks each `\{\{[^}]*\}\}` run with x's to find that pipe, and
     // `objectify` (link.rb:113-122) re-parses the label as Content when it
     // carries a nest. A layout body with a nest INSIDE a link label
-    // therefore rendered as literal `[[/ |` + nest + `]]` on that path.
-    // Witness: layout card 2347 `Golden_Bears_Aikido_at_UC_Berkeley main layout`
-    // emits `<div>[[/ |{{HBQ logo - admin area}}]]</div>` on page 1316, and
-    // layout 2339 on page 2333; both should render
+    // therefore renders as literal `[[/ |` + nest + `]]` on that path;
+    // the correct output is
     // `<a class="internal-link" href="/">` + rendered nest + `</a>`.
-    // Five layout cards carry the shape; none carries an EscapedLiteral
-    // `\{\{`, so folding the two walks together is byte-identical everywhere
-    // else.
+    // Folding the two walks together is byte-identical everywhere
+    // else: layout bodies carrying this shape carry no EscapedLiteral
+    // `\{\{`.
     return this.processContent(content, "references");
   }
 
@@ -3115,8 +3110,8 @@ export class RenderFormat {
    *  (`title.from(*context_names)` - DeckoName#from strips the leading
    *  parts the context supplies and round-trip-verifies the compression),
    *  HTML-escaped (the html-format override h()s the result). In the page's
-   *  own context a junction slot ("Aikido 2+management" under the Aikido 2
-   *  page) displays as the relative "+management"; the same card rendered
+   *  own context a junction slot ("Page+management" under the Page
+   *  card) displays as the relative "+management"; the same card rendered
    *  out of context keeps the full name.
    *
    *  voo.title: an EXPLICIT title option
@@ -3272,7 +3267,7 @@ export interface RenderEngineLike {
   resolveView(card: RenderCard, view: string, format?: string): ViewFn | undefined;
   /** Cache-first card resolution (fetch ladder; prefetch made this free). */
   fetchRenderCard(name: string): RenderCard | undefined;
-  /** view-fail class V4 (links.rb:140-144 add_known_or_wanted_class): the
+  /** Knownness (links.rb:140-144 add_known_or_wanted_class): the
    *  live-existence truth for a fetchRenderCard MISS — the codename
    *  registry's loaded codehash memo confirms codenamed cards
    *  ([[List]]/[[Pointer]]/[[Search]], the static help-text targets)
@@ -3511,7 +3506,7 @@ export interface RenderEngineLike {
    *  lookup is cache-hit and synchronous (peekNameForId path). Optional;
    *  engines without it skip virtual rule-card construction and the
    *  missing-setting rows fall through to quietDenial (the pre-fix
-   *  behavior, deep-read-rule-deny cluster 14). */
+   *  behavior). */
   findSettingCard?(codename: string): RenderCard | undefined;
   /** Synchronous render-card lookup BY ID - the render-card map is keyed
    *  by key, so this walks the map the same way findSettingCard does. The
@@ -4016,8 +4011,8 @@ function normalizeVisibilityList(value: unknown): string[] {
 // ---------------------------------------------------------------------------
 
 /** card-mod-rules set/type/set/setting_categories.rb:6 COMMON_SETTINGS.
- *  EXPORTED for the flat bar_setting_list body (views.ts — the graded
- *  page-surface harness binds no loader, so the Set::Type::Set view lives on
+ *  EXPORTED for the flat bar_setting_list body (views.ts — the loader-less
+ *  page-surface path binds no loader, so the Set::Type::Set view lives on
  *  the flat record; see barSettingListBody). */
 export const COMMON_SETTINGS: ReadonlySet<string> = new Set([
   "create", "read", "update", "delete", "structure", "default", "guide",
@@ -4608,9 +4603,9 @@ function linkTitleInContext(
  *  `?card%5Bname%5D=<name>` (Hash#to_param), letting the create form
  *  prefill the intended name. Known cards and standardish names emit the
  *  bare url_key path. E.g. a wanted-card href
- *  `/mytho_psychology?card%5Bname%5D=mytho-psychology` (dash name —
- *  url_key strips non-OK4KEY bytes, so NOT standardish); the wanted
- *  [[People Green]] case stays bare (People_Green IS standardish).
+ *  `/my_name?card%5Bname%5D=my-name` (dash name —
+ *  url_key strips non-OK4KEY bytes, so NOT standardish); a standardish
+ *  wanted name (spaces only) stays bare.
  *  Returns "" when the mark carries no query bytes (unparseable marks keep
  *  the plain-underscore fallback href). */
 export function wantedHrefQuerySuffix(hrefSource: string): string {
@@ -4620,14 +4615,14 @@ export function wantedHrefQuerySuffix(hrefSource: string): string {
   // and path.rb:64-69 interpret_mark yields that Card::Name[] — whose
   // per-part resolution turns a codename mark into its star name (name.ts
   // parse: ":members" -> "*members" through the codename registry) — so
-  // "Eagle+:members" tests as "Eagle+*members", whose "*" IS in OK4KEY
+  // "Page+:members" tests as "Page+*members", whose "*" IS in OK4KEY
   // (cardname.rb:37 `OK4KEY_RE = '\p{Word}\*'`; url_key, variants.rb
   // :8-13) — standardish, BARE href. An authored
-  // `[[Eagle+:members|Eagle users]]` (no `Eagle+*members` row exists) renders
-  // `/Eagle+*members` with no query: testing the UNRESOLVED mark form would
+  // `[[Page+:members|Page users]]` (no `Page+*members` row exists) renders
+  // `/Page+*members` with no query: testing the UNRESOLVED mark form would
   // see ":" (not OK4KEY) and append the create query. A dash name
-  // keeps its query ("-" is not OK4KEY: url_key "mytho_psychology"
-  // != "mytho-psychology") and People_Green stays bare
+  // keeps its query ("-" is not OK4KEY: url_key "my_name"
+  // != "my-name") and a space-only name stays bare
   // (path.rb's own doc example).
   try {
     const parsed = DeckoName.parse(hrefSource);
@@ -4665,8 +4660,8 @@ export function wantedHrefQuerySuffix(hrefSource: string): string {
     const resolved = parsed.parts.join(DeckoName.JOINT);
     if (parsed.urlKey === resolved.replace(/ /g, "_")) return "";
     // The query carries the RESOLVED name too — path.rb:89-96 assigns the
-    // same Cardname to `opts[:card][:name]` that it tested. The mindfulness
-    // pin is unaffected: `mytho_psychology` has no codename mark, so its
+    // same Cardname to `opts[:card][:name]` that it tested. A plain
+    // dash-name mark is unaffected: it has no codename mark, so its
     // resolved and authored spellings are the same string.
     return `?card%5Bname%5D=${cgiEscape(resolved)}`;
   } catch {
@@ -4727,10 +4722,10 @@ export function expandWikiLinks(
     // referee_name); the label/title keep the authored bytes.
     const fetchTarget = absolutizeWikiTarget(targetTrimmed, context);
     const namedLink = engine?.fetchRenderCard(fetchTarget);
-    // view-fail class V4: same live-existence arm as renderLinkChunk — a
+    // Same live-existence arm as renderLinkChunk — a
     // map miss consults the codename registry's memo (peekKnownCardName)
     // before declaring the anchor wanted-card. Absence stays wanted (the
-    // a personal card's `[[People Green]]` pin below is the guard). `let`:
+    // no-row case below is the guard). `let`:
     // the peek arm below reassigns (bar-slots merge obligation kept).
     let known = namedLink !== undefined && namedLink.unknown !== true;
     // The href carries the RESOLVED card's name (view :link on the target
@@ -4750,8 +4745,8 @@ export function expandWikiLinks(
     let href: string;
     try {
       // link_to_card's mark path (links.rb:75-80) — the name's url_key
-// form: spaces fold to underscores, `$` folds too (e.g.
-/Martial_Concordance, /Su_tainability).
+      // form: spaces fold to underscores, `$` folds to an underscore too
+      // (a name like "Su tainability" hrefs "/Su_tainability").
       href = `/${DeckoName.parse(hrefSource).urlKey}`;
     } catch (err) {
       if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
@@ -4763,8 +4758,8 @@ export function expandWikiLinks(
     // Card::Path#handle_unknown (card-mod-format path.rb:89-96) — same
     // wanted-mark query as renderLinkChunk above (a dash-name mark).
     if (!known) href += wantedHrefQuerySuffix(hrefSource);
-    // a personal card's content, `[[People Green]]` renders WANTED-card (no
-    // such row exists in the deck; the warm-map answer is the byte-match).
+    // For a card absent from the deck, `[[Some Name]]` renders WANTED-card
+    // (the warm-map answer is the byte-match).
     // A hardcoded known-card would be wrong (every name link would claim
     // known).
     // link.rb#options: `title: link_text || @name.to_name.fully_stripped` —
