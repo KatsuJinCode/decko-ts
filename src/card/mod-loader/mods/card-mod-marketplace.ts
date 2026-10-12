@@ -42,7 +42,7 @@
 //      The census that counts flat-feeding rows walks defaultDeckSources()
 //      and is untouched by a mod that is not in it -
 //      tests/card/mod-loader/view-dispatch-flat-record-format-scope-census
-//      .test.ts:113-114 pins 143 base + 28 abstract rows.
+//      .test.ts:113-114 asserts 143 base + 28 abstract rows.
 //
 // The card name is `*marketplace` - a NEW name the frozen deck never
 // carries, so a new view rides a new card name, which keeps every shipped
