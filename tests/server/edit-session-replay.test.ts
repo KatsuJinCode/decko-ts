@@ -1,63 +1,18 @@
-// Replays the captured REAL Rails editing session (session-replay2,
-// 2026-09-28) against the TypeScript write path, and diffs the resulting
-// card/act/action/changes rows against the captured DB state.
+// Replays a recorded Rails editing session against the TypeScript write
+// path and diffs the resulting card/act/action/changes rows against the
+// rows the manifest records for each step.
 //
-// The oracle capture lives OUTSIDE this repo (machine-local artifact):
-//   CAPTURE_DIR\edit-session\
-//   manifest.json = per-step request/params, response status+sha256+bytes,
-//   and the raw act/action/changes rows written after each state change
-//   (the G-series run: probe card "Session Replay Probe G 2026-09-28",
-//   signed-in member Tova id 1217, anonymous denial on the protected probe).
-// Overridable with DECKO_TS_EDIT_SESSION_CAPTURES. The fixture DB is a
-// DISPOSABLE COPY of the oracle app's development.sqlite3 (env
+// The recording lives OUTSIDE this repo (machine-local artifact), located
+// by DECKO_TS_EDIT_SESSION_CAPTURES: its manifest.json holds per-step
+// request params, response status + sha256 + byte count, and the raw
+// act/action/changes rows written after each state change. The fixture DB
+// is a DISPOSABLE COPY of the source app's development.sqlite3 (env
 // DECKO_TS_ORACLE_DB), rebuilt by every run via the sqlite backup API (so
-// WAL content comes along), then rolled back to the pre-session state using
-// the manifest's captured row ids: the two save acts/actions/changes are
-// deleted and the probe card's content is restored from its own create-action
-// change row. The copy is the only thing this test ever writes to.
-//
-// LIVE SHAPES being replayed (manifest.json, G run):
-//   step-02 POST /update/*signin   -> 303 (form POST with card[subcards]
-//        params; NO csrf token anywhere — the live decko-0.20.0 app emits no
-//        csrf meta tags and enforces no forgery protection)
-//   step-04 POST /update/<probe>   -> 200 + slot fragment (data-remote XHR
-//        flavor; Accept: text/javascript, X-Requested-With) — act actor 1217,
-//        action type 1 (update), one change row field 2 (db_content)
-//   step-07 POST /update/<probe>   -> 303 redirect (plain HTML form flavor;
-//        token-less like every live form) — second act/action/change;
-//        probe db_content = EDIT TWO bytes; cards.updater_id 1217
-//   step-08 POST /update/<protected> anonymous -> 403, ZERO new rows
-//
-// DIVERGENCES CLOSED relative to the 2026-09-28 pins (edit-divergences):
-//   * CSRF posture: the TS HMAC-token gate is GONE — live decko arms no
-//     forgery protection (decko-0.20.0/card-1.110.0 carry no
-//     protect_from_forgery; the only reference is environments/cucumber.rb:27
-//     which DISABLES it), so token-less form posts save (303/200) and the
-//     anonymous denial lands as Ruby's 403 PermissionDenied (step-08).
-//   * Cookie-session write transport: writes authenticate token-first, else
-//     from the session cookie (rest.rb:37-40 + auth/current.rb:50-63) — the
-//     captured cookie-only saves now replay on their own transport.
-//   * Redirect status: 303 with card_url-absolute Location (response.rb:31,41
-//     — captured: "http://localhost:3011/..."), not 302 relative.
-//   * XHR saves answer the ajax SOFT redirect: 200 + the saved card's slot
-//     (response.rb:36,54-62), not the hard redirect.
-//   * The *signin subcard update IS the login action: the captured
-//     card[subcards][+*email][content] grammar signs in, issues the session
-//     cookie, aborts the save (zero rows), and 303s to *previous
-//     (signin.rb:10-23,171; location_history.rb:6-9).
-//   * The ?view= param is honored on the page surface (rest.rb
-//     view_from_params): a ported view renders that view; a view the TS
-//     engine has not ported raises Ruby's unsupported-view UserError 422
-//     (format/render.rb:60-64, error.rb:21).
-//   * The edit/history VIEW PORT (edit-forms, 2026-09-29): the views
-//     were already ported and byte-pinned at the engine level (slices 3/4 +
-//     the substrate); the SERVING surface ran on the seed html views only —
-//     the process never loaded the mod deck, so every mod-registered view
-//     raised UnsupportedViewError (the session2-gap-8 mechanism). The server
-//     now boots through the deck-boot seam (defaultDeckLoader) and carries
-//     the :mark/:view path grammar (engine_routes.rb:51/24/25), so step-03
-//     (?view=edit) and step-06 (?view=history) render the live 200 shapes
-//     and the chrome's /<mark>/edit links resolve.
+// WAL content comes along), then rolled back to the pre-session state
+// using the manifest's recorded row ids: the session's acts/actions/
+// changes are deleted and the probe card's content is restored from its
+// own create-action change row. The copy is the only thing this test ever
+// writes to.
 
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
@@ -76,14 +31,9 @@ const DEFAULT_CAPTURES =
 const CAPTURES_DIR = process.env.DECKO_TS_EDIT_SESSION_CAPTURES ?? DEFAULT_CAPTURES;
 const MANIFEST_PATH = path.join(CAPTURES_DIR, "manifest.json");
 
-// The oracle app's development.sqlite3 lives at this path IN whichever
-// checkout the oracle app is — tools/oracle/decko-oracle-app/ is in the repo.
-// It used to be spelled as the absolute
-// `REPO_ROOT/decko-ts/tools/oracle/decko-oracle-app/db/development.sqlite3`;
-// that checkout still exists on this machine but no longer carries the oracle
-// app (MISSING 2026-10-06), so the default pointed at nothing while reading as
-// a valid default. Resolved relative to this file instead; DECKO_TS_ORACLE_DB
-// still overrides for a deliberately-chosen oracle deck.
+// The source app's development.sqlite3, resolved relative to this file so
+// the default stays valid wherever the repo is checked out;
+// DECKO_TS_ORACLE_DB overrides for a deliberately-chosen source deck.
 const DEFAULT_ORACLE = fileURLToPath(
   new URL("../../tools/oracle/decko-oracle-app/db/development.sqlite3", import.meta.url),
 );
@@ -91,9 +41,8 @@ const ORACLE_DB = process.env.DECKO_TS_ORACLE_DB ?? DEFAULT_ORACLE;
 
 const FIXTURE_PATH = path.join(REPO_ROOT, "tmp", "edit-session-replay-fixture.sqlite3");
 
-// The test-issued demo credential (prep-edit-session-capture.rb issued it
-// into the disposable demo DB via the account mod's own encrypt_password
-// event; the demo DB holds no other HTTP-workable password).
+// The source demo database's own test-issued credential; it holds no
+// other HTTP-workable password.
 const TOVA_EMAIL = "tova@example.com";
 const TOVA_PASSWORD = "Capture-Probe-2026!";
 
@@ -160,7 +109,7 @@ async function reserveEphemeralPort(): Promise<number> {
   });
 }
 
-/** Form-encodes a captured params hash. */
+/** Form-encodes a params hash from the manifest. */
 function formBody(params: Record<string, string>): string {
   return new URLSearchParams(params).toString();
 }
@@ -201,8 +150,8 @@ async function post(
   };
 }
 
-/** Signs Tova in through the staging front door and returns the raw session
- *  token from the issued cookie. */
+/** Signs the demo member in through the staging front door and returns the
+ *  raw session token from the issued cookie. */
 async function frontDoorSignin(): Promise<string> {
   const res = await fetch(`${baseUrl}/_signin`, {
     method: "POST",
@@ -233,11 +182,11 @@ function dumpRows(): {
       global_last_act_before: floorAct,
       global_last_action_before: floorAction,
     } = manifest.db_baseline;
-    // floors mirror the capture driver: only rows the REPLAY session wrote.
-    // The acts dump is scoped to the session's OWN actions (the acts belong
-    // to the probe/protected cards' actions above the floor) — the oracle
-    // demo DB keeps living after the capture, and a global id-floor dump
-    // would sweep unrelated post-capture activity into the comparison.
+    // Only rows the replayed session wrote are compared: the acts dump is
+    // scoped to the session's OWN actions (the acts belong to the probe/
+    // protected cards' actions above the floor) — the source database keeps
+    // accumulating rows, and a global id-floor dump would sweep unrelated
+    // activity into the comparison.
     const acts = db
       .prepare(
         `SELECT * FROM card_acts WHERE id > ? AND id IN
@@ -266,9 +215,9 @@ function dumpRows(): {
 }
 
 /** Comparable projection of the act/action/changes rows: values only, ids and
- *  clock fields stripped (write-conformance-notes.md conventions: compared by
- *  count + ordering + content). The ip column is kept separately because the
- *  live oracle records NULL there while the TS engine records an address. */
+ *  clock fields stripped — compared by count + ordering + content. The ip
+ *  column is kept separately because the source engine records NULL there
+ *  while the TS engine records an address. */
 function projectWriteRows(rows: {
   card_acts: CapturedRow[];
   card_actions: CapturedRow[];
@@ -423,25 +372,23 @@ describeIfFixture(
     });
 
     it("step-02 exact shape: POST /update/*signin signs Tova in (303 to *previous, cookie, zero rows)", async () => {
-      // LIVE (manifest step-02): 303, Location http://localhost:3011/, empty
-      // body. Ruby: the :signin event (signin.rb:10-12) authenticates the
+      // Ruby: the :signin event (signin.rb:10-12) authenticates the
       // +*email/+*password subcard contents, signin_success aborts the save
-      // (:15-17 — no card rows), and the controller hard-redirects 303 to
-      // *previous (signin.rb:171) — the fresh session history's "/"
-      // (location_history.rb:6-9).
+      // (signin.rb:15-17 — no card rows), and the controller hard-redirects
+      // 303 to *previous (signin.rb:171), the fresh session history's first
+      // entry (location_history.rb:6-9).
       const step = manifest.steps.find((s) => s.step === "step-02-signin-post");
       const params = { ...(step?.request.params ?? {}) } as Record<string, string>;
       // the manifest redacts the password; the real request carried it
       params["card[subcards][+*email][content]"] = TOVA_EMAIL;
       params["card[subcards][+*password][content]"] = TOVA_PASSWORD;
       // host-swapped replay: same request shape, Origin rewritten to the
-      // replay server's own base (the captured Origin pointed at the Rails
-      // oracle's host).
+      // replay server's own base rather than the one the manifest recorded.
       const res = await post("/update/*signin", params, {
         origin: baseUrl,
         accept: BROWSER_FORM_ACCEPT,
       });
-      expect(res.status).toBe(303); // live: 303 (hard redirect to *previous)
+      expect(res.status).toBe(303); // hard redirect to *previous
       expect(res.location).toBe(`${baseUrl}/`); // card_url absolute; *previous = "/" fresh
       expect(res.setCookie).toContain("decko_ts_session="); // Auth.signin bound the session
       // the aborted save wrote zero card rows
@@ -466,21 +413,17 @@ describeIfFixture(
     });
 
     it("step-03 shape: ?view=edit renders the live edit-form page (LIVE: 200, 23,628B)", async () => {
-      // LIVE (manifest step-03): 200, the full edit form page (23,628B).
-      // The edit view chain (:edit -> :edit_form -> :input) is ported and
-      // byte-pinned at the engine level (card-mod-edit-forms.test.ts against
-      // fixtures/captured/edit-forms.json); the deck-boot wiring
-      // (defaultDeckLoader in vm-staging-server.mjs) makes the mod-registered
-      // views visible to the SERVING surface, which previously answered the
-      // seed-only UnsupportedViewError 422 — the session2-gap-8 mechanism
-      // this suite closed. Ruby's unsupported-view UserError 422
-      // (format/render.rb:60-64, error.rb:21) now fires only for genuinely
-      // unported names (asserted in the routes test below).
+      // The edit view chain (:edit -> :edit_form -> :input) is registered by
+      // the edit-forms mod; the deck-boot wiring (defaultDeckLoader in
+      // vm-staging-server.mjs) is what makes mod-registered views visible to
+      // the SERVING surface — without it the seed-only view registry answers
+      // UnsupportedViewError 422. Ruby's unsupported-view UserError 422
+      // (format/render.rb:60-64, error.rb:21) fires only for genuinely
+      // unregistered names (asserted in the routes test below).
       const res = await get(`/Session_Replay_Probe_G_2026-09-28?view=edit`, sessionCookie);
       expect(res.status).toBe(200);
-      // the edit form the browser round-trips — the captured :edit modal
-      // grammar (fixtures/captured/edit-forms.json :edit bytes): the
-      // /update/<mark> action with the _method patch spoof, the conflict
+      // the edit form the browser round-trips — the :edit modal grammar:
+      // the /update/<mark> action with the _method patch spoof, the conflict
       // tracker hidden field, the content textarea, the modal
       // Save-and-Close submit + the data-bs-dismiss cancel button
       expect(res.body).toContain(`action="/update/Session_Replay_Probe_G_2026_09_28"`);
@@ -494,7 +437,7 @@ describeIfFixture(
     });
 
     it("step-03 routing proof: a PORTED view (?view=titled) renders that view (200)", async () => {
-      // the positive half of the closure: the param drives the render.
+      // the positive half: the param drives the render.
       const res = await get(`/Session_Replay_Probe_G_2026-09-28?view=titled`, sessionCookie);
       expect(res.status).toBe(200);
       expect(res.body).toContain("Session Replay Probe G 2026-09-28");
@@ -502,8 +445,7 @@ describeIfFixture(
 
     it("the edit URL forms the live chrome emits render the same edit page (engine_routes.rb:51,25)", async () => {
       // The signed-in page chrome's edit links carry the two-segment path
-      // form (href="/Aikido_2/edit" — the authenticated captures,
-      // member.Aikido_2.html / admin.Home.html). Ruby routes:
+      // form. Ruby routes:
       //   config/engine_routes.rb:51  get ":mark/:view(.:format)" => "card#read"
       //   :24                          get ":mark/view/:view(.:format)"
       //   :25                          get "card/:view(/:mark)", view: new|edit
@@ -531,15 +473,13 @@ describeIfFixture(
     });
 
     it("the main script asset URL serves the COMPILED bundle with the tinymce editor entrypoints (tinymce-assets lane)", { timeout: 900_000 }, async () => {
-      // LIVE serves /files/~<id>/<rev>.js from the *all+*script+*asset
-      // output file card's stored bytes — the production compile of the
+      // Ruby serves /files/~<id>/<rev>.js from the *all+*script+*asset
+      // output file card's stored bytes — the compiled form of the
       // *all+*script manifest (asset_outputter.rb:20-25; the script
       // :compressed view's Uglifier(harmony) arm under compress_assets=true).
-      // The oracle deck's output card is 307 (db_content "~307/1790061390.js").
-      // The staging server now mirrors that OUTPUT contract: the output card
+      // The staging server mirrors that OUTPUT contract: the output card
       // resolves by codename and the compiled bytes are produced in process
-      // from the pinned assembled input (compiled-script-bundle.ts — 48/49
-      // shared leaves byte-identical to the live production bundle), so the
+      // from the pinned assembled input (compiled-script-bundle.ts), so the
       // rich-text editor's initialization entrypoints exist in the served
       // bytes instead of the uncompiled manifest text.
       const res = await fetch(`${baseUrl}/files/~307/1790061390.js`, {
@@ -574,10 +514,9 @@ describeIfFixture(
     });
 
     it("step-04 exact shape: cookie-only token-less XHR save — 200 slot, rows byte-exact", async () => {
-      // LIVE (manifest step-04): 200 + the saved card's slot fragment
-      // (data-remote XHR flavor). Ruby: the ajax flavor soft-redirects
-      // (response.rb:36) and re-renders through `show` (:54-62); no forgery
-      // gate exists (module header), so the token-less cookie post saves.
+      // Ruby: the ajax flavor soft-redirects (response.rb:36) and
+      // re-renders through `show` (response.rb:54-62); no forgery gate
+      // exists (module header), so the token-less cookie post saves.
       const step = manifest.steps.find((s) => s.step === "step-04-save-rev2");
       const params = { ...(step?.request.params ?? {}) } as Record<string, string>;
       const res = await post(
@@ -595,12 +534,13 @@ describeIfFixture(
       expect(res.body).toContain("titled");
       expect(res.body).toContain("EDIT ONE");
 
-      // row parity vs the captured step-04 db_after
+      // row parity vs the manifest's step-04 db_after
       const rows = dumpRows();
       const projected = projectWriteRows(rows);
       expect(projected.acts).toEqual([[manifest.db_baseline.probe_card_id, 1217]]);
-      // live recorded ip_address "::1" (the Rails oracle's loopback); the
-      // staging dispatch writes the v4 loopback literal for these replays
+      // the manifest records the source run's ip_address ("::1", the Rails
+      // oracle's loopback); the staging dispatch writes the v4 loopback
+      // literal for these replays
       expect(projected.actIps).toEqual(["127.0.0.1"]);
       expect(projected.actions).toEqual([[manifest.db_baseline.probe_card_id, 1, null, 0]]);
       const capturedChange = step?.db_after?.card_changes[0];
@@ -612,17 +552,16 @@ describeIfFixture(
 
     it("step-05 parity: read view carries the new content", async () => {
       const res = await get("/Session_Replay_Probe_G_2026-09-28", sessionCookie);
-      // LIVE: 200 with EDIT ONE visible in the rendered page.
+      // 200 with EDIT ONE visible in the rendered page.
       expect(res.status).toBe(200);
       expect(res.body).toContain("EDIT ONE");
       expect(res.body).not.toContain("revision one");
     });
 
     it("step-06 shape: ?view=history renders the live history page (LIVE: 200, 23,174B)", async () => {
-      // LIVE (manifest step-06): 200, the decko history page (23,174B).
-      // The :history view is ported (card-mod-history.ts, views.rb:4-9) and
-      // reaches the serving surface through the same deck-boot wiring as
-      // step-03; the previous 422 pin encoded the seed-only serving state.
+      // The :history view is registered by the history mod
+      // (card-mod-history.ts, views.rb:4-9) and reaches the serving surface
+      // through the same deck-boot wiring as step-03.
       const res = await get(`/Session_Replay_Probe_G_2026-09-28?view=history`, sessionCookie);
       expect(res.status).toBe(200);
       // the history view's act-listing machinery (act_listing.rb:20-26
@@ -635,14 +574,13 @@ describeIfFixture(
     });
 
     it("step-07 rows: cookie-only plain-form save reaches revision 3 byte-exactly (303)", async () => {
-      // LIVE (manifest step-07): 303, Location http://localhost:3011/<mark>.
       // Plain HTML form flavor: redirect_cud_success hard-redirects 303
-      // (response.rb:31) with the card_url-absolute Location (:41).
+      // (response.rb:31) with the card_url-absolute Location (response.rb:41).
       const step = manifest.steps.find((s) => s.step === "step-07-save-rev3");
       const params = { ...(step?.request.params ?? {}) } as Record<string, string>;
-      // the captured conflict tracker carried the LIVE action id; the TS
-      // replay must carry the TS action id written by save 1 (same role:
-      // the id the edit form's hidden field showed at save time)
+      // the manifest's conflict tracker carries the action id from the
+      // source run; the replay must carry the TS action id written by save 1
+      // (same role: the id the edit form's hidden field showed at save time)
       params["card[last_action_id_before_edit]"] = String(tsAction1Id);
       const res = await post("/update/Session_Replay_Probe_G_2026_09_28", params, {
         origin: baseUrl,
@@ -652,7 +590,7 @@ describeIfFixture(
       expect(res.status).toBe(303);
       expect(res.location).toBe(`${baseUrl}/Session_Replay_Probe_G_2026-09-28`);
 
-      // row parity vs the captured step-07 db_after (two saves total)
+      // row parity vs the manifest's step-07 db_after (two saves total)
       const rows = dumpRows();
       const projected = projectWriteRows(rows);
       expect(projected.acts).toEqual([
@@ -679,9 +617,9 @@ describeIfFixture(
     });
 
     it("step-08 parity: anonymous token-less POST hits Ruby's permission gate (403, zero rows)", async () => {
-      // LIVE: 403 — the live app has no CSRF layer, so the anonymous post
-      // reaches ok_to_update? and is denied there (PermissionDenied, 403).
-      // The TS gate order now matches: no forgery gate, permission denial.
+      // Ruby has no CSRF layer, so the anonymous post reaches
+      // ok_to_update? and is denied there (PermissionDenied, 403). The TS
+      // gate order matches: no forgery gate, permission denial.
       const step = manifest.steps.find((s) => s.step === "step-08-anon-denied");
       const params = { ...(step?.request.params ?? {}) } as Record<string, string>;
       const res = await post(
