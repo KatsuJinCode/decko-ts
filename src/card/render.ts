@@ -156,13 +156,13 @@ const HISTORY_SEAM_VIEWS = new Set([
   "last_action_verb",
   "conflict",
   "history_tab",
-  // surfaces-batch3 (2026-09-30): the ladder trio reads the same prepared
+  // the ladder trio reads the same prepared
   // act bundle (:act_legend's helpers + :last_action's last_act walk and
   // :change's composition over it — card-mod-history views.rb:15-53).
   "act_legend",
   "last_action",
   "change",
-  // wave-1 follow family: base_views.rb's :subedit_notice reads the same
+  // follow family: base_views.rb's :subedit_notice reads the same
   // prepared act bundle (notification_action's card.last_action / Action
   // .fetch walk over the changed fields — set/all/notify/base_views.rb:
   // 25-31 + 84-96 + 121-123; the sibling :list_of_changes stays gated out,
@@ -429,13 +429,13 @@ export class RenderEngine implements RenderEngineLike {
    *  synchronously (everything in it was prefetched/enriched). */
   private renderCards = new Map<string, RenderCard>();
 
-  /** THE SWEEP SURFACE (the sweep-cascade cut, the warmflood sweep-cut note
-   *  2026-10-06): the keys seated during the CURRENT render call. Every
+  /** THE SWEEP SURFACE: the keys seated during
+   *  the CURRENT render call. Every
    *  prepare sweep that walks the whole render-card map is bounded to this
    *  set, and this set is cleared at the start of each render call (and by
    *  resetCaches()).
    *
-   *  MEASURED MECHANISM IT CUTS: the sweeps' done-sets (structureProcessed,
+   *  MECHANISM IT CUTS: the sweeps' done-sets (structureProcessed,
    *  pointerListHostsDone, linkScanDoneKeys, ...) are engine-lifetime, but
    *  every sweep seats new cards AFTER the other sweeps' last pass of the
    *  render, so each render's chase seats (pointer items, link targets,
@@ -963,7 +963,7 @@ export class RenderEngine implements RenderEngineLike {
     // it clears once for the whole page render (beginPagePrepare), so
     // its inner render() leaves the layout warm-ups' seats in scope.
     if (this.pagePrepareDepth === 0) this.renderSeats.clear();
-    // THE ONE-TRIP SEAT (the stamp-as-column change, 2026-10-06 — spec §c): moved
+    // THE ONE-TRIP SEAT (the stamp-as-column change, spec §c): moved
     // ABOVE the freshness gate because on this posture the seat's HEAD
     // statement IS the render's stamp read — deck_data_version rides the
     // head as a column of the same snapshot that carries the plan payload
@@ -980,12 +980,12 @@ export class RenderEngine implements RenderEngineLike {
             lastSeenVersion: this.deckDataVersion,
             onStampMove: async (observed) => {
               this.resetCaches();
-              // The one-trip SEAT STATE is cache state too (the per-viewer seat,
-              // 2026-10-06): the armed plan's in-memory results and the seating
+              // The one-trip SEAT STATE is cache state too: the armed
+              // plan's in-memory results and the seating
               // memo predate the moved stamp. Left armed/memoized, this render
               // answers matched reads from pre-move rows and the seat never
-              // re-fetches (measured at base: 397 live trips, 0 seat fetches,
-              // partial stale-arm answers). Dropped here, the seat completes its
+              // re-fetches — hundreds of live trips with no seat fetch and
+              // partial stale-arm answers. Dropped here, the seat completes its
               // recomposition from the store as it now stands. (The explicit
               // disarm is redundant with FetchEngine.resetCaches()'s own disarm
               // — kept: it is what the seat posture pin observes, and it holds
@@ -994,10 +994,10 @@ export class RenderEngine implements RenderEngineLike {
               invalidateSeatedPagePayloads(this.fetcher);
               // The BOOT-LIFETIME state is cache state too (same pass): the reset
               // wiped the codename registry's bulk load, and without this re-prime
-              // the post-reset render degrades to per-lookup live name reads
-              // (measured: 340 trips vs the 7-trip seated floor — worse than the
-              // 177-trip fresh ladder, because a fresh boot re-primes and this
-              // path did not). One batched statement, once per version move.
+              // the post-reset render degrades to per-lookup live name reads —
+              // orders of magnitude worse than the seated floor, and worse than a
+              // fresh boot, because a fresh boot re-primes and this
+              // path did not. One batched statement, once per version move.
               await this.fetcher.reprimeBootState();
               this.deckDataVersion = observed;
             },
@@ -8661,14 +8661,13 @@ export class RenderEngine implements RenderEngineLike {
    *  parser - the same one the render uses). Nest view options ride the
    *  reference text ("*head|core") but the RESOLVED card is the part before
    *  the pipe; keeping the suffix made closureWarm miss every template
-   *  reference and forced cold closure walks for cards nesting them
-   *  (26/1000 shard-0 cards cold after prewarm, render-perf harness).
+   *  reference and forced cold closure walks for cards nesting them.
    *
-   *  Round 9: every non-underscore ref is ABSOLUTIZED against the card's
+   *  Every non-underscore ref is ABSOLUTIZED against the card's
    *  own name (chunk/reference.rb referencing-card contract) — the same
    *  contextual resolution applyStructureContent's ref walk and the
    *  prefetch's record collect use. A card's `{{+image}}` checks
-   *  `<card>+image` in the render-card map; the pre-round-9 literal
+   *  `<card>+image` in the render-card map; the literal
    *  "+image" key matched no prepared card, but the walkers' bogus miss
    *  landed in structureRefMisses so warm detection only stayed stable by
    *  accident of the shared bogus key.
@@ -8758,9 +8757,8 @@ export class RenderEngine implements RenderEngineLike {
       // pattern/all.rb#patterns: a NEW card's safe_set_keys drops the SELF
       // token. record.isNew is false for every stored row (byte-neutral
       // there) and true for the fetch placeholders — the virtual-card hits
-      // (the structured/missing children: ZQVT+legacy class) whose captured
-      // slots read "ALL ALL_PLUS TYPE-<t> RIGHT-<r> TYPE_PLUS_RIGHT-<l>-<r>"
-      // with no SELF.
+      // whose slot classes read "ALL ALL_PLUS TYPE-<t> RIGHT-<r>
+      // TYPE_PLUS_RIGHT-<l>-<r>" with no SELF.
       setKeys: safeSetKeys({
         name,
         typeId,
@@ -9013,10 +9011,10 @@ export class RenderEngine implements RenderEngineLike {
         // system). This is Ruby's ordering: Card::Query applies the current
         // user's read rules at the relation level (Where#
         // permission_conditions) BEFORE limit_and_offset closes the window,
-        // so an unreadable card never occupies a result slot. The pre-fix
+        // so an unreadable card never occupies a result slot. The earlier
         // permissionless search let a denied card consume slot 2 of the
-        // corpus news listing and pushed readable rank-11 out of the LIMIT 9
-        // window entirely (trace tenth-item-trace.md bug 1).
+        // news listing and pushed a readable rank-11 result out of the
+        // LIMIT 9 window entirely.
         ...(await this.cqlPermissionOptions()),
         parse: {
           // The search runs in the search card's OWN name context (Ruby:
@@ -9029,8 +9027,8 @@ export class RenderEngine implements RenderEngineLike {
           // statement (`refer_to: "_left"`, `_self`, `_right`, `_N`) resolves
           // against the blank context to the unresolvable-name sentinel — the
           // query returns zero rows even with every name key resolvable
-          // (2026-09-25 Riley_Ellery +Project(s) Participating "0
-          // results" defect 2; ParseOptions.context, src/cql/ast.ts).
+          // — a nested "Participating" nest then renders "0
+          // results"; see ParseOptions.context, src/cql/ast.ts.
           context: card.name.s,
           // sync resolver over the prefetched id map (module doc), falling
           // back to the deck lexicon — Ruby answers every CQL name->id
