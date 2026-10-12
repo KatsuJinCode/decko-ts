@@ -1,14 +1,13 @@
-// dual-lane-direct-scaling-probe.mjs -- 2026-10-01 direct grade runner
-// scaling probe (direct-runner-builder lane).
+// dual-lane-direct-scaling-probe.mjs -- direct grade runner scaling probe.
 //
 // THE ASSUMPTION BEING TESTED
-//   grade-hours-autopsy-lane.md projects the whole-canvas grade at
+//   The whole-canvas grade was projected at
 //   W = 8 / 12 / 16 workers by dividing the derived 6,991-7,381 s of
-//   render-only compute by W, and marks the division UNVALIDATED in its
-//   Limitations #1: "no >2-worker run exists on record ... All W=8/12/16
+//   render-only compute by W, and that division was explicitly left
+//   UNVALIDATED ("no >2-worker run exists on record ... All W=8/12/16
 //   projections divide by W and assume compute-bound behavior holds (SQLite
-//   readonly contention, memory bandwidth unmeasured)." Every downstream
-//   number in the Two-Minute-Design section rests on that division.
+//   readonly contention, memory bandwidth unmeasured)"). Every downstream
+//   worker-count number rests on that division.
 //
 //   This probe measures it instead of assuming it. Same canvas at several
 //   worker counts, wall clock recorded, speedup and efficiency derived.
@@ -18,7 +17,7 @@
 //   same shards, so the comparison isolates parallelism: same bytes of work,
 //   N ways. The per-worker fixed cost (Node boot, corpus open, full re-seed,
 //   lexicon warm) is REPORTED SEPARATELY rather than netted out, because it
-//   is exactly the term the redesign claims to shrink (24 fixed boots -> W),
+//   is exactly the term this design shrinks (24 fixed boots -> W),
 //   and folding it into "efficiency" would hide both effects.
 //
 //   Machine state (cores, free RAM) is sampled per point. A scaling number
@@ -81,7 +80,7 @@ const opts = parseArgs(process.argv.slice(2));
 const points = [];
 
 /** Free RAM in bytes, from the same OS the run is on. Reported per point:
- *  the runbook's worker gate is a free-memory gate, and a scaling curve
+ *  the worker gate is a free-memory gate, and a scaling curve
  *  collected across different memory pressure is not one measurement. */
 function freeBytes() {
   return os.freemem();
