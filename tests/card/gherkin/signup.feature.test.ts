@@ -1,20 +1,19 @@
-// Gherkin port — signup.feature (decko-commons/decko
-// decko/features/signup.feature, Scenario: Signing up (without approval)
+// The signup feature (Scenario: Signing up (without approval)
 // and then signing out and back in — the file's only active scenario).
 //
-// The upstream scenario is a browser flow; this port executes the same
-// business behavior against the auth engine surfaces
+// The upstream scenario is a browser flow; this suite executes the same
+// business behaviour against the auth engine surfaces
 // (account-verify-reset-flows.ts's verify+activate arm + the signup
 // create-side verification send) over the gherkin storage world.
 //
-// NAMED DEVIATIONS (test setup, not engine behavior):
+// NAMED DEVIATIONS (test setup, not engine behaviour):
 //  1. The Background's captcha edit ("I edit 'Sign up+*type+*captcha' /
-//     I uncheck 'Content'") is a structural no-op here: the port's
+//     I uncheck 'Content'") is a structural no-op here: the
 //     recaptcha guard is off unless the host configures keys
 //     (card-action-engine.ts recaptcha option — recaptcha_keys? false,
 //     recaptcha.rb:46-48), which is exactly the state that edit produces.
 //  2. The upstream password literal "wanna_pass" does not satisfy the
-//     mod-default policy the engine ports verbatim (see
+//     default policy the engine implements verbatim (see
 //     reset-password.feature.test.ts's header note); the submitted password
 //     keeps the shape and adds the missing character classes.
 
@@ -33,7 +32,7 @@ import {
   type AccountFlowWorld,
 } from "./gherkin-account-steps.js";
 
-describe("Gherkin port: signup.feature / Signing up (without approval)", () => {
+describe("signup.feature / Signing up (without approval)", () => {
   let flow: AccountFlowWorld;
 
   afterEach(async () => {
@@ -84,7 +83,7 @@ describe("Gherkin port: signup.feature / Signing up (without approval)", () => {
 
     // upstream: When I open the email / And I click the first link in the
     // email / Then I should see "Wanna B" / And "Wanna B" should be signed
-    // in — verify_and_activate (events.rb:19-24): status -> "active", the
+    // in — verify_and_activate: status -> "active", the
     // holder signed in.
     const confirm = await whenFollowMailLink(flow, "verify_and_activate");
     if (!confirm.ok) throw new Error(`activation failed: ${JSON.stringify(confirm)}`);
