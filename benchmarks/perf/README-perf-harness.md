@@ -8,8 +8,8 @@ against the previous round.
 
 ## Why this exists
 
-The render-fix stream (2026-09-20, see [`docs/render-fix-notes.md`](../../docs/render-fix-notes.md))
-closed the uniform-slow-corpus-render defect — pre-fix worst entry 172 s,
+The render-fix stream (2026-09-20) closed the uniform-slow-corpus-render
+defect — pre-fix worst entry 172 s,
 post-fix worst 697.8 ms, full shard-0 average ~199 ms. That gave the engine
 its first measured baseline. The standing question the next round needs to
 answer is: **did the next change regress anything?** Without a named
@@ -48,9 +48,8 @@ record — the warm path the engine should hold.
 **Budget: < 25 ms/entry** (average over pass-2).
 
 The engine's own constant-shape promise is that a warm render is map
-lookups + HTML assembly. The render-fix-notes measurement
-([render-fix-notes.md#result-post-fix-measurement](../../docs/render-fix-notes.md))
-recorded 199 ms/entry average over the full shard-0 cold path; the warm
+lookups + HTML assembly. The render-fix stream's post-fix measurement
+recorded a 199 ms/entry average over the full shard-0 cold path; the warm
 path is at least an order of magnitude cheaper. 25 ms/entry is the upper
 bound that catches "closure fell back to JS" regressions without being so
 tight it flaked on CI.
