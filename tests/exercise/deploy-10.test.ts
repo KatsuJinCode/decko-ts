@@ -423,15 +423,20 @@ describe("coverage gap: background jobs", () => {
   });
 
   it(
-    "Jobs. The delayed-job backend is legacy-labeled and unported (the compatibility report marks `card-mod-delayed_job` ignored). No background job behavior is measured. -- the committed compatibility report labels it ignored, and a card create the Ruby engine would have enqueued dispatches nothing and executes nothing: the deck's background queue stays empty, no job table grows, and nothing runs afterwards",
+    "Jobs. The delayed-job backend is not evaluated (the compatibility report marks `card-mod-delayed_job` status ignored, verdict `unported (not evaluated)`). No background job behavior is measured. -- the committed compatibility report labels it unported and not evaluated, and a card create the Ruby engine would have enqueued dispatches nothing and executes nothing: the deck's background queue stays empty, no job table grows, and nothing runs afterwards",
     async () => {
-      // --- the committed report labels it ignored ----------------------------
+      // --- the committed report labels it unported --------------------------
       const markdown = readFileSync(join(REPO_ROOT, "tools", "compat-report", "mod-compat-report.md"), "utf8");
       const row = markdown.split("\n").find((line) => line.includes("| `card-mod-delayed_job-"));
       expect(row).toBeDefined();
       expect((row as string).split("|").map((cell) => cell.trim())).toContain("ignored");
-      // The report says why.
-      expect(markdown).toContain("ignored (legacy-labeled per upstream maintainer guidance)");
+      // The report says why. The verdict is "unported (not evaluated)": the
+      // earlier "legacy-labeled per upstream maintainer guidance" wording
+      // claimed a maintainer receipt this repo cannot produce, so the label
+      // was narrowed to what is actually verifiable — the gem was not
+      // evaluated. The STATUS is still `ignored`, which is what line 432
+      // pins.
+      expect(markdown).toContain("unported (not evaluated)");
 
       const report = JSON.parse(readFileSync(join(REPO_ROOT, "tools", "compat-report", "mod-compat-report.json"), "utf8")) as {
         mods: {

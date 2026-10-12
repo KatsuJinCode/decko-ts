@@ -15,7 +15,11 @@ committed expected outputs were captured on Windows (`ruby 3.3.12
 — the class-token order inside a `class` attribute is the one that moves.
 Three normalisations absorb what an environment legitimately changes, and
 nothing else does ([reference-harness/SPEC.md](../reference-harness/SPEC.md)
+<<<<<<< HEAD
 §4, [tools/ruby-version-variance/](../tools/ruby-version-variance/)). A Ruby
+=======
+§4, [tools/ruby-version-variance/README.md](../tools/ruby-version-variance/README.md)). A Ruby
+>>>>>>> r9fix/gates
 patch-version range measured on one operating system says nothing about a
 capture on another.
 

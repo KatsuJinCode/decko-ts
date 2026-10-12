@@ -34,17 +34,22 @@
 //      card (:12-13) and all six roles (:18-23, :24-29, :30-41, :42-46,
 //      :47-57, :58-68) — and every role's type_id is the Role cardtype's id,
 //      which is the relation the rolehash search keys on.
-//   3. A signed-in viewer's parties now carry Anyone and Anyone Signed In
-//      before any membership exists: the role surface RESOLVES.
+//   3. A signed-in viewer's parties carry Anyone and Anyone Signed In, PLUS
+//      the roles first-run setup granted the owner: Administrator (1212),
+//      Shark (1214) and Help Desk (1215), the three of roles_for_first_user
+//      (user.rb:3). The role surface RESOLVES, and the owner's permission
+//      state already answers always_ok? before this suite grants anything.
 //   4. THE GRANT. The port DOES have a role-grant path and this file pins it:
-//      creating the card `Administrator+*members` with a link to the owner
+//      creating the card `Administrator+*members` with a link to an actor
 //      through the real CardActionEngine writes the `<Role>+*members` junction
 //      AND the card_references row the rolehash reads
 //      (src/card/actions/refresh-references-out.ts:75-101 / :121-139, the port
-//      of lib/card/reference/all.rb:47-50 / :54-62), and the owner's
+//      of lib/card/reference/all.rb:47-50 / :54-62), and that actor's
 //      permission state flips `alwaysOk` false -> true — the port of
 //      auth/permissions.rb:8-13 `always_ok?` -> account_holder.rb:63-65
-//      `role? AdministratorID`.
+//      `role? AdministratorID`. The actor is a SECOND account, not the owner:
+//      setup grants the owner, so the owner has no false-before-state left to
+//      demonstrate a flip from.
 //   5. THE GRANT IS SCOPED. An actor that is not in the member list does NOT
 //      get alwaysOk, and the signed-out Anonymous viewer is unaffected — so the
 //      substrate did not open a hole.
@@ -81,6 +86,7 @@ import { LocalSqliteDriver } from "../../src/server/drivers/local-sqlite.js";
 import { FetchEngine } from "../../src/card/fetch.js";
 import { createOwnerAccount, runAuthMigrations } from "../../src/card/auth/index.js";
 import { CardActionEngine } from "../../src/card/actions/card-action-engine.js";
+import { CardActionError } from "../../src/card/actions/types.js";
 import {
   type ReadPermissionState,
   readPermissionStateFromViewerResults,
@@ -243,15 +249,73 @@ const OWNER_PASSWORD = "Demo-Setup-1";
  * `[[Link]]` content form the port's reference path understands, standing in
  * for Ruby's IdList `~<id>` pointer form, whose write path is not ported
  * (card-mod-list.ts:1024-1031).
+ *
+ * CREATE-OR-UPDATE, because that is what Ruby's grant is. `Card.create` on
+ * an existing name UPDATES (first-run-setup.ts:784-789 says so in as many
+ * words, which is why setup's own membership writes go through `ensureCard`).
+ * A create-only helper stopped working the moment first-run setup started
+ * writing `<role>+*members` for real: it now answers "name is already taken"
+ * for Administrator on a deck where setup already granted it. Falling back to
+ * an update keeps this helper a faithful stand-in for the one write path Ruby's
+ * `add_item` drives.
  */
 async function grantRole(d: Deck, roleName: string, memberName: string): Promise<number> {
   const bot = await d.bot();
   const engine = new CardActionEngine(d.fetcher, { actor: bot });
-  const card = await engine.createCard({
-    name: `${roleName}+*members`,
-    content: `[[${memberName}]]`,
+  const name = `${roleName}+*members`;
+  try {
+    const card = await engine.createCard({ name, content: `[[${memberName}]]` });
+    return card.cardId;
+  } catch (error) {
+    if (!(error instanceof CardActionError) || error.code !== "name-conflict") throw error;
+    // The junction is stored the way Decko stores EVERY junction: `name`
+    // holds only the codename half (`*members`) and the full name lives in
+    // the left/right pair, so it is found by that pair and not by the string
+    // the create was asked for.
+    const role = await d.driver.query<{ id: number }>(
+      "SELECT id FROM cards WHERE name = ? AND trash = 0",
+      [roleName],
+    );
+    const existing = await d.driver.query<{ id: number }>(
+      "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0",
+      [role.rows[0]?.id, await d.idForCodename("members")],
+    );
+    const cardId = existing.rows[0]?.id;
+    if (cardId === undefined) throw error;
+    // The update answers the same card it was handed, so the id is the one
+    // already known; the null branch is the type system's, not a real state.
+    const updated = await engine.updateCard({ cardId, content: `[[${memberName}]]` });
+    if (updated === null) throw error;
+    return updated.cardId;
+  }
+}
+
+/**
+ * A SECOND signed-in account, which first-run setup does NOT make an
+ * administrator.
+ *
+ * `createOwnerAccount` cannot mint it — its (0) gate is `needs_setup?`, the
+ * census of `+*account` junctions, and the owner's own create closes that
+ * window (first-run-setup.ts:674-678). So this creates the same two cards the
+ * setup path creates — a User-typed holder and its `+*account` junction — by
+ * the same route, `CardActionEngine` under the Decko Bot actor, which is how
+ * `createOwnerAccount` builds them (first-run-setup.ts:735-761). The junction
+ * carries its `+*email` because the account field is `require_field :email`
+ * (set/right/account.rb:8): a User-typed card with no email fails validation
+ * with "Email required" (card-action-engine.ts:1693-1696). The password
+ * subcard is not minted — nothing here signs this actor in, and the role walk
+ * reads role membership, not credentials.
+ */
+async function createSecondAccount(d: Deck, name: string): Promise<{ id: number; name: string }> {
+  const bot = await d.bot();
+  const engine = new CardActionEngine(d.fetcher, { actor: bot });
+  const userTypeId = await d.idForCodename("user");
+  const holder = await engine.createCard({ name, typeId: userTypeId });
+  await engine.createCard({
+    name: `${name}+*account`,
+    subcards: { "+*email": { content: `${name}@demo.invalid` } },
   });
-  return card.cardId;
+  return { id: holder.cardId, name };
 }
 
 describe("the deploy demo deck's role surface (0001 -> 0004 + 0006)", () => {
@@ -350,7 +414,7 @@ describe("the deploy demo deck's role surface (0001 -> 0004 + 0006)", () => {
     d.close();
   });
 
-  it("a signed-in viewer's parties now carry Anyone and Anyone Signed In before any membership", async () => {
+  it("a signed-in viewer's parties carry Anyone and Anyone Signed In, plus the roles first-run setup granted the owner", async () => {
     armDemoProfile();
     const d = await deck();
     const owner = await createOwner(d);
@@ -359,23 +423,50 @@ describe("the deploy demo deck's role surface (0001 -> 0004 + 0006)", () => {
     // read-rules.ts:320-322 puts Anyone first and Anyone Signed In second.
     // The CONTROL above is the point of this test: on 0004 that list was
     // [ownerId] alone.
+    //
+    // THE THREE IDS AFTER Anyone Signed In ARE SETUP'S, NOT THIS SUITE'S.
+    // First-run setup puts the first user into roles_for_first_user
+    // (user.rb:3) — Help Desk, Shark, Administrators — by writing each
+    // role's `*members` SETTING (card-mod-account set/self/role.rb:33-40),
+    // and migration 0006 gives those three roles ids 1212 (Administrator,
+    // :168-172), 1214 (Shark, :193-197) and 1215 (Help Desk, :205-209).
+    // The rolehash reads exactly those rows (read-rules.ts:247-248), so they
+    // are in the party list. Eagle (1213) is absent for the same reason the
+    // owner is not an Eagle: nothing granted it.
+    //
+    // This list USED to stop at the owner, and that was the bug: setup wrote
+    // its membership to `<role>+members` — a plain subcard of the role named
+    // after the codename, which no permission statement consults — so the
+    // owner held no role at all. The CONTROL's deck is unaffected and is
+    // still the honest contrast: it has no roles to grant.
     expect(state.parties).toEqual([
       await d.idForCodename("anyone"),
       await d.idForCodename("anyone_signed_in"),
+      await d.idForCodename("administrator"),
+      await d.idForCodename("shark"),
+      await d.idForCodename("help_desk"),
       owner.id,
     ]);
-    // No membership yet, so the Administrator arm is still false.
-    expect(state.alwaysOk).toBe(false);
+    // And with Administrator in the list, the Administrator arm of always_ok?
+    // (read-rules.ts:305, :314-318) now answers — for the owner, from setup.
+    expect(state.alwaysOk).toBe(true);
     d.close();
   });
 
-  it("THE GRANT: adding the owner to Administrator+*members flips alwaysOk through the real engine", async () => {
+  it("THE GRANT: adding a SECOND actor to Administrator+*members flips alwaysOk through the real engine — the owner is already an administrator from setup", async () => {
     armDemoProfile();
     const d = await deck();
     const owner = await createOwner(d);
-    expect((await d.readState({ signedIn: true, actorId: owner.id })).alwaysOk).toBe(false);
+    // The owner IS an administrator before this test grants anything: setup
+    // writes its Administrator membership (user.rb:3), so the old version's
+    // `alwaysOk === false` before-state no longer exists for the owner. That
+    // is asserted here rather than worked around, and the flip is then
+    // demonstrated on an actor setup does NOT touch.
+    expect((await d.readState({ signedIn: true, actorId: owner.id })).alwaysOk).toBe(true);
+    const visitor = await createSecondAccount(d, "visitor");
+    expect((await d.readState({ signedIn: true, actorId: visitor.id })).alwaysOk).toBe(false);
 
-    const memberCardId = await grantRole(d, "Administrator", owner.name);
+    const memberCardId = await grantRole(d, "Administrator", visitor.name);
 
     // The engine wrote BOTH halves of the row the rolehash reads:
     //   * the `<Role>+*members` junction — left = the role card, right = the
@@ -400,7 +491,7 @@ describe("the deploy demo deck's role surface (0001 -> 0004 + 0006)", () => {
     // And the permission state now says what Ruby's always_ok? says
     // (auth/permissions.rb:8-13 -> account_holder.rb:63-65
     // `all_enabled_roles.include? AdministratorID`).
-    const after = await d.readState({ signedIn: true, actorId: owner.id });
+    const after = await d.readState({ signedIn: true, actorId: visitor.id });
     expect(after.alwaysOk).toBe(true);
     expect(after.parties).toContain(await d.idForCodename("administrator"));
     d.close();
@@ -409,8 +500,12 @@ describe("the deploy demo deck's role surface (0001 -> 0004 + 0006)", () => {
   it("THE GRANT IS SCOPED: an actor outside the member list gets nothing, and Anonymous is unaffected", async () => {
     armDemoProfile();
     const d = await deck();
-    const owner = await createOwner(d);
-    await grantRole(d, "Administrator", owner.name);
+    await createOwner(d);
+    // Granted to the visitor, not to the owner: setup already put the owner in
+    // Administrator, so the owner can no longer stand in for "an actor outside
+    // the member list" — it is the one actor guaranteed to be inside it.
+    const visitor = await createSecondAccount(d, "visitor");
+    await grantRole(d, "Administrator", visitor.name);
 
     // A second signed-in actor that is NOT in the member list.
     const bot = await d.bot();
@@ -447,11 +542,18 @@ describe("the deploy demo deck's role surface (0001 -> 0004 + 0006)", () => {
     // (real.yml:42-46 — the always_ok? arms are the DeckoBot actor and the
     // Administrator role only, read-rules.ts:317-318). This pins that the port
     // does not treat every role as administrator.
+    //
+    // The actor is the visitor, not the owner, and that is now load-bearing
+    // rather than incidental: the owner IS an administrator from setup, so a
+    // test run against the owner could not distinguish "Eagle granted no
+    // always_ok?" from "Administrator already had it". Against the visitor,
+    // who holds no role at all, the assertion means what it says.
     armDemoProfile();
     const d = await deck();
-    const owner = await createOwner(d);
-    await grantRole(d, "Eagle", owner.name);
-    const state = await d.readState({ signedIn: true, actorId: owner.id });
+    await createOwner(d);
+    const visitor = await createSecondAccount(d, "visitor");
+    await grantRole(d, "Eagle", visitor.name);
+    const state = await d.readState({ signedIn: true, actorId: visitor.id });
     expect(state.parties).toContain(await d.idForCodename("eagle"));
     expect(state.alwaysOk).toBe(false);
     d.close();
@@ -470,11 +572,14 @@ describe("the deploy demo deck's role surface (0001 -> 0004 + 0006)", () => {
     expect(twiceCount).toBe(31);
 
     // And the deck is still fully functional after the second application: the
-    // owner creates, the role grants, and the permission state agrees.
-    const owner = await createOwner(twice);
-    expect((await twice.readState({ signedIn: true, actorId: owner.id })).alwaysOk).toBe(false);
-    await grantRole(twice, "Administrator", owner.name);
-    expect((await twice.readState({ signedIn: true, actorId: owner.id })).alwaysOk).toBe(true);
+    // owner creates, the role grants, and the permission state agrees. The
+    // grant runs on the visitor for the same reason the sibling tests do —
+    // setup already made the owner an administrator.
+    await createOwner(twice);
+    const visitor = await createSecondAccount(twice, "visitor");
+    expect((await twice.readState({ signedIn: true, actorId: visitor.id })).alwaysOk).toBe(false);
+    await grantRole(twice, "Administrator", visitor.name);
+    expect((await twice.readState({ signedIn: true, actorId: visitor.id })).alwaysOk).toBe(true);
     twice.close();
   });
 });

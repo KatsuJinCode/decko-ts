@@ -1,6 +1,6 @@
 {
   "runs": {
-    "a": "/mnt/c/localProjects/decko-ts-r9fix-oracle/reference-harness/fixtures/synthetic-v1/expected",
+    "a": "the lane worktree's reference-harness/fixtures/synthetic-v1/expected",
     "b": "/root/oracle-linux/compare/linux-ruby33"
   },
   "environments": {

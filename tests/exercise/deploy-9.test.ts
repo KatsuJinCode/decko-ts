@@ -167,12 +167,24 @@ const OWNER_EMAIL = "buttonowner@decko-exercise.test";
 const OWNER_NAME = "buttonowner";
 const OWNER_PASSWORD = "Exercise-Deploy-1!";
 
-// The save the claim-2 halves attempt, byte for byte. Nothing about the
-// request changes between the refusal and the success; only deck content.
+// The saves the claim-2 halves attempt. Nothing about the REQUESTS changes
+// between the refusal and the success — only which actor makes them and
+// what deck content exists. ANON_SAVE_BODY carries a different body so the
+// second half's success is visible as a CONTENT change and not merely as a
+// redirect: the first half's owner save already wrote SAVE_BODY's text.
 const TARGET_CARD = "Hello World";
 const SAVE_BODY = new URLSearchParams({
   "card[content]": "an exercise body written from the deploy write path",
 }).toString();
+const ANON_SAVE_BODY = new URLSearchParams({
+  "card[content]": "a body an anonymous actor wrote once the deck allowed it",
+}).toString();
+/** The party the added right covers: migration 0006's `Anyone` role
+ *  (real.yml:18-23), the party every actor matches. */
+const ANYONE_PARTY = "Anyone";
+/** How the engine names an actor that is nobody (src/card/actions/types.ts:36
+ *  ANONYMOUS_ACTOR_NAME). A request with no session cookie resolves to it. */
+const ANONYMOUS_ACTOR = "*anonymous";
 
 async function cardContent(adapter: CloudflareD1Adapter, name: string): Promise<string | null> {
   const rows = await adapter.query<{ db_content: string | null }>(
@@ -377,7 +389,7 @@ describe("the 0004 demo deck ships no write rights, and sign-in stores only a di
     }
   }, 180_000);
 
-  it("\"the demo deck that migration 0004 seeds ships no create / update / delete rights at all, so the engine's permission walk refuses every save with a 403, correctly, for everybody including you\" — the signed-in owner's card update is refused with 403 and no row written, and the identical save succeeds once the right exists as deck content", async () => {
+  it("\"the demo deck that migration 0004 seeds ships no create / update / delete rights at all, so the engine's permission walk refuses every save with a 403, correctly, for everybody who is not already an administrator\" — the setup owner, who IS an administrator, saves successfully; an anonymous save on the same armed deployment is refused with 403 and no row written; and the anonymous save succeeds once the right exists as deck content", async () => {
     const b = armed!;
     const sessionCookie = cookie ?? (await signIn(b));
 
@@ -390,26 +402,79 @@ describe("the 0004 demo deck ships no write rights, and sign-in stores only a di
       expect(Number(found.rows[0]?.n ?? 0), `the 0004 deck must ship no *${codename} right`).toBe(0);
     }
 
-    // --- HALF ONE: the save is refused, and nothing is written -----------
+    // --- HALF ONE, the OWNER: the save SUCCEEDS --------------------------
     const countsBefore = await writeRowCounts(b.adapter);
     const contentBefore = await cardContent(b.adapter, TARGET_CARD);
     expect(contentBefore, "the demo deck's own seeded body").toBeTruthy();
 
-    const refused = await b.fetch(`/${TARGET_CARD.replace(/ /g, "%20")}`, {
+    const saved = await b.fetch(`/${TARGET_CARD.replace(/ /g, "%20")}`, {
       method: "PUT",
       headers: { "Content-Type": "application/x-www-form-urlencoded", Cookie: sessionCookie },
       body: SAVE_BODY,
     });
+    expect(saved.status, await saved.clone().text()).toBe(303);
+    // The save landed, and it landed once: the body the request carried is
+    // now the card's body, and exactly one new revision row was added for
+    // it. An update writes a revision, not a card, so the card count is
+    // unchanged while the revision and act counts each grew by one.
+    expect(await cardContent(b.adapter, TARGET_CARD)).toBe(
+      new URLSearchParams(SAVE_BODY).get("card[content]"),
+    );
+    // ...and it landed ONCE. An update writes its audit rows, not a card: the
+    // card count is unchanged (no stray duplicate) and each of the act /
+    // action / change tables gained exactly one row.
+    //
+    // `card_revisions` is deliberately NOT asserted. It is declared in
+    // src/server/schema.ts and no code path inserts into it, so a revision
+    // count says nothing about whether this save happened.
+    const countsAfterSave = await writeRowCounts(b.adapter);
+    expect(countsAfterSave.cards).toBe(countsBefore.cards);
+    expect(countsAfterSave.card_acts).toBe(countsBefore.card_acts + 1);
+    expect(countsAfterSave.card_actions).toBe(countsBefore.card_actions + 1);
+    expect(countsAfterSave.card_changes).toBe(countsBefore.card_changes + 1);
+
+    // THIS ASSERTION CHANGED, and the cause is a fixed bug rather than a
+    // loosened test. The old version of this half asserted 403 and its
+    // comment explained it as "a property of the seeded DECK CONTENT, not of
+    // the write path" — true of the symptom, wrong about the cause: the deck
+    // refused because the owner held no role, and the owner held no role
+    // because first-run setup wrote its membership to `<role>+members`
+    // instead of the `<role>+*members` SETTING the permission walk reads
+    // (read-rules.ts:247-248). Ruby's setup_first_user puts the first user
+    // into roles_for_first_user (user.rb:3) — Help Desk, Shark,
+    // Administrators — through each role's `*members` setting
+    // (card-mod-account set/self/role.rb:33-40). The port's owner is an
+    // administrator too now, so ok_to_create?/ok_to_update? finds a rule
+    // that allows it and the save returns Ruby's success redirect.
+    //
+    // What it now proves about the wiring, which is this file's subject, is
+    // strictly more than before: the request left the Worker, matched the
+    // update route, carried the D1-backed session, resolved it to the OWNER
+    // card (not Anonymous), reached the engine's rule walk, and came back
+    // with the row committed.
+
+    // --- HALF ONE, the STRANGER: the identical verb is still refused ------
+    // The refusal guarantee is not weakened by the half above; it moves to
+    // the actor the claim was always about. A deploy is read-only FOR
+    // STRANGERS: an anonymous PUT on this same armed deployment reaches the
+    // engine (it is not the write-path gate above — that one is unarmed) and
+    // is refused, naming the actor it resolved to.
+    const contentAfterOwnerSave = await cardContent(b.adapter, TARGET_CARD);
+    const refused = await b.fetch(`/${TARGET_CARD.replace(/ /g, "%20")}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: SAVE_BODY,
+    });
     const refusalBody = await refused.text();
     expect(refused.status, refusalBody).toBe(403);
-    // The ENGINE refused, naming the actor the session resolved to — the
-    // owner, not Anonymous. This is the 403 the claim is about, and it is
-    // distinguishable from the deployment's write-off gate above.
+    // The ENGINE refused. Distinguishable from the deployment's write-off
+    // gate, which answers before the engine's route table runs at all.
     expect(refusalBody).not.toContain("Writes are off on this deployment");
     expect(refusalBody).toMatch(/may not (create|update|delete) card/i);
-    expect(refusalBody).toContain(OWNER_NAME);
-    expect(await writeRowCounts(b.adapter)).toEqual(countsBefore);
-    expect(await cardContent(b.adapter, TARGET_CARD)).toBe(contentBefore);
+    expect(refusalBody).toContain(ANONYMOUS_ACTOR);
+    // And it wrote nothing: not one row, and not one byte of the card.
+    expect(await writeRowCounts(b.adapter)).toEqual(countsAfterSave);
+    expect(await cardContent(b.adapter, TARGET_CARD)).toBe(contentAfterOwnerSave);
 
     // --- ADD THE RIGHT AS DECK CONTENT ------------------------------------
     // What README.md:127-131 says is missing: "adding that permission is
@@ -420,6 +485,15 @@ describe("the 0004 demo deck ships no write rights, and sign-in stores only a di
     // card, and the reference naming who the right covers. The rule's
     // content is the party link, the durable row the permission walk reads
     // (view-task-rules.ts:99-116, who_can -> card_references).
+    //
+    // WHO THE RIGHT COVERS. The old version of this block named the OWNER,
+    // and its second half then re-signed-in as the owner to attempt the save.
+    // That was a demonstration of nothing once the setup owner became an
+    // administrator: its save would succeed with or without this rule. The
+    // party is now `Anyone` — the party every actor matches, the anonymous
+    // one included — and the second half attempts the save as the actor that
+    // was refused above. So what flips between the halves is the DECK
+    // CONTENT and nothing else, which is the claim this half exists to make.
     const ids = await b.adapter.query<{ setting: number; all: number; setType: number }>(
       `SELECT
          (SELECT id FROM cards WHERE codename = 'set' AND trash = 0 ORDER BY id LIMIT 1) AS setType,
@@ -428,10 +502,14 @@ describe("the 0004 demo deck ships no write rights, and sign-in stores only a di
       [],
     );
     const { setType, all } = ids.rows[0]!;
-    const owner = await b.adapter.query<{ key: string | null }>(
-      "SELECT key FROM cards WHERE id = ?",
-      [ownerCardId],
+    // `Anyone` — migration 0006's role card (deploy/migrations/
+    // 0006-demo-role-substrate.sql:144-148, real.yml:18-23). Looked up by
+    // codename so the row cannot drift from the deck's own ids.
+    const anyone = await b.adapter.query<{ id: number; key: string | null }>(
+      "SELECT id, key FROM cards WHERE codename = 'anyone' AND trash = 0",
+      [],
     );
+    expect(anyone.rows[0], "0006 must ship the Anyone party").toBeDefined();
     const stamp = "2026-10-10 00:00:00.000";
     const newSettingId = 9001;
     const newRuleId = 9002;
@@ -448,38 +526,45 @@ describe("the 0004 demo deck ships no write rights, and sign-in stores only a di
         created_at, updated_at, creator_id, updater_id, read_rule_class, read_rule_id,
         references_expired, trash, type_id, db_content)
        VALUES (?, NULL, NULL, NULL, ?, ?, NULL, ?, ?, ?, ?, NULL, NULL, NULL, 0, ?, ?)`,
-      [newRuleId, all, newSettingId, stamp, stamp, ownerCardId, ownerCardId, setType, `[[${OWNER_NAME}]]`],
+      [newRuleId, all, newSettingId, stamp, stamp, ownerCardId, ownerCardId, setType, `[[${ANYONE_PARTY}]]`],
     );
     await b.adapter.query(
       `INSERT INTO card_references (referer_id, referee_key, referee_id, ref_type, is_present)
        VALUES (?, ?, ?, 'L', NULL)`,
-      [newRuleId, owner.rows[0]?.key ?? OWNER_NAME, ownerCardId],
+      [newRuleId, anyone.rows[0]?.key ?? ANYONE_PARTY, anyone.rows[0]!.id],
     );
     expect(setType).toBeGreaterThan(0);
 
-    // --- HALF TWO: the IDENTICAL save, on a fresh isolate over the same D1.
+    // --- HALF TWO: the ANONYMOUS save, on a fresh isolate over the same D1.
     // A redeploy is the honest way to be sure the rule universe is rebuilt:
     // the engine memoizes it per driver generation and only expires it after
-    // a save it performed (read-rules.ts:724-733).
+    // a save it performed (read-rules.ts:724-733). No cookie this time, so
+    // the actor is the same one the first half was refused for.
     await armed!.dispose();
     armed = undefined;
     const rebooted = await bootWorker({ DECKO_WRITE_PATH: "1" }, { persistPath, migrate: false });
     try {
-      const freshCookie = await signIn(rebooted);
       const saved = await rebooted.fetch(`/${TARGET_CARD.replace(/ /g, "%20")}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/x-www-form-urlencoded", Cookie: freshCookie },
-        body: SAVE_BODY,
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: ANON_SAVE_BODY,
       });
       const savedBody = await saved.text();
       expect(saved.status, savedBody).toBe(303);
       expect(saved.headers.get("set-cookie")).toBeNull();
-      // The save landed: the card now carries the body this file invented.
+      // The save landed: the card now carries the body this file invented —
+      // a body DIFFERENT from the owner's, so this is a real change and not a
+      // re-save of what was already there.
       expect(await cardContent(rebooted.adapter, TARGET_CARD)).toBe(
-        new URLSearchParams(SAVE_BODY).get("card[content]"),
+        new URLSearchParams(ANON_SAVE_BODY).get("card[content]"),
       );
-      const acts = await rebooted.adapter.query<{ n: number }>("SELECT COUNT(*) AS n FROM card_acts", []);
-      expect(Number(acts.rows[0]?.n ?? 0)).toBeGreaterThan(countsBefore.card_acts);
+      const afterAnon = await writeRowCounts(rebooted.adapter);
+      expect(afterAnon.card_acts).toBe(countsAfterSave.card_acts + 1);
+      // Cards grew by exactly TWO since the owner's save, and both are the
+      // deck content this test inserted above (the `*update` setting and the
+      // `*all+*update` rule). The anonymous save itself created nothing — an
+      // update edits, it does not add.
+      expect(afterAnon.cards).toBe(countsAfterSave.cards + 2);
     } finally {
       await rebooted.dispose();
     }
