@@ -1,13 +1,12 @@
 // Unit tests for the sign-in flow (src/card/auth/signin.ts): the salted
-// SHA-1 password verification (Ruby Card::Auth.encrypt, auth.rb:36-39 —
-// deliberately NOT bcrypt), the authenticate error ladder (card-mod-account
-// set/self/signin.rb:12-15, :42-56), the :signin/:signout event semantics
-// over the real SessionStore, and the "sign-in writes no card rows" pin
-// (signin_success "do not save card", signin.rb:17-19).
+// SHA-1 password verification (Card::Auth.encrypt, auth.rb:36-39 —
+// deliberately NOT bcrypt), the authenticate error ladder, the
+// :signin/:signout event semantics over the real SessionStore, and the
+// "sign-in writes no card rows" pin (signin_success "do not save card").
 //
 // Storage: the auth suite's in-memory core-schema storage with SYNTHETIC
-// account cards (the stream data rule — no real deck content in tests),
-// brought up through the real auth migration runner.
+// account cards — no real deck content in tests — brought up through the
+// real auth migration runner.
 
 import { createHash } from "node:crypto";
 import {
@@ -54,8 +53,7 @@ const EMAIL = generatedEmail("joe");
 const SALT = "SALT";
 const PASSWORD = generatedPassword("signin");
 // Digest::SHA1.hexdigest(`${SALT}--${PASSWORD}--`) over the generated pair,
-// computed at module load (the pre-miniature era precomputed it for a
-// hardcoded literal pair).
+// computed at module load rather than hardcoded for a literal pair.
 const DIGEST = createHash("sha1").update(`${SALT}--${PASSWORD}--`).digest("hex");
 
 const TS = "2026-09-20 11:00:00.000";
@@ -291,8 +289,8 @@ describe("authenticateAccount (the :signin event's authenticate half)", () => {
   });
 
   it("verifies against an empty salt when the +*salt card is absent (auth.rb:38 nil interpolation)", async () => {
-    // Ruby: "a lot of existing accounts without a salt" (right/password.rb
-    // encrypt_password comment); "#{salt}--" with nil salt is "--".
+    // "a lot of existing accounts without a salt" — so
+    // "#{salt}--" with a nil salt is "--".
     const storage = await buildStorage({
       withSalt: false,
       storedDigest: createHash("sha1").update(`--${PASSWORD}--`).digest("hex"),
@@ -335,7 +333,7 @@ describe("signinAccount / signoutAccount (the :signin and :signout events over t
       if (!outcome.ok) return;
       expect(outcome.actor).toEqual({ id: HOLDER.id, name: HOLDER.name });
       // The only write is the auth_sessions row — signin_success aborts the
-      // save ("do not save card", signin.rb:17-19).
+      // save ("do not save card").
       const cardsAfter = storage.selectOne<{ n: number }>(
         "SELECT COUNT(*) AS n FROM cards",
       )?.n;
@@ -375,8 +373,8 @@ describe("signinAccount / signoutAccount (the :signin and :signout events over t
       expect(await sessions.lookupSession(outcome.session.token)).not.toBeNull();
       expect(await signoutAccount(sessions, outcome.session.token)).toBe(true);
       expect(await sessions.lookupSession(outcome.session.token)).toBeNull();
-      // Signing out Anonymous is a no-op success in Ruby; the port reports
-      // "nothing revoked" instead of throwing.
+      // Signing out Anonymous is a no-op success upstream; here it
+      // reports "nothing revoked" instead of throwing.
       expect(await signoutAccount(sessions, outcome.session.token)).toBe(false);
       expect(await signoutAccount(sessions, null)).toBe(false);
       expect(await signoutAccount(sessions, "")).toBe(false);
