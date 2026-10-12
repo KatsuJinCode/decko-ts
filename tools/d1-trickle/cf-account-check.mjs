@@ -1,12 +1,14 @@
 #!/usr/bin/env node
-// tools/d1-trickle/cf-account-check.mjs — read-only look at the Cloudflare
-// account named by an API token and account id from a credentials file:
-// whether the token is valid, the account's name, its D1 databases, its
-// Workers scripts and subdomain, and its plan subscriptions where the token
-// may read them. Changes nothing; prints no secret.
+// tools/d1-trickle/cf-account-check.mjs — read-only inspection of the
+// Cloudflare account a credentials file points at. Given the creds file
+// plus the two key names to look up in it (an API token and an account
+// id), this verifies the token and reports what the token can read: the
+// account name and type, its D1 databases, its Workers scripts and
+// subdomain, and its plan subscriptions. Nothing is mutated, and secrets
+// never reach the output — error strings are masked before printing.
 //
 //   node tools/d1-trickle/cf-account-check.mjs --creds-file <file> \
-//        --token-key RILEY_CF_API_TOKEN --account-key RILEY_CF_ACCOUNT_ID
+//        --token-key <TOKEN_KEY_NAME> --account-key <ACCOUNT_ID_KEY_NAME>
 
 import { D1HttpExecutor, readCredsFile, maskSecrets } from "./executors.mjs";
 
