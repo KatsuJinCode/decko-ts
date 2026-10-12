@@ -7856,11 +7856,10 @@ export class RenderEngine implements RenderEngineLike {
   /** Synchronous render-card lookup BY ID - the map is keyed by key;
    *  this walks it the same way findSettingCard does. The set-card Rules
    *  section's virtual rule cards resolve the DECK's type card at the
-   *  corpus-pinned template id through this (virtual-rule-card.ts
+   *  resolved template id through this (virtual-rule-card.ts
    *  deckTypeCard): Ruby prints the type name/code of the deck's card at
    *  that id, so the virtual's TYPE- fragment and data-card-type-name
-   *  read the SERVED deck's names (the sanitized corpus names
-   *  codename-html card 50 "gwtx"). */
+   *  read the SERVED deck's names. */
   findRenderCardById(id: number): RenderCard | undefined {
     for (const card of this.renderCards.values()) {
       if (card.id === id) return card;
@@ -7889,10 +7888,9 @@ export class RenderEngine implements RenderEngineLike {
       if (!card.name.isCompound) continue;
       if (card.name.rightName?.key !== hostKey) continue;
       // Ruby's cql runs under the viewer's read rules — a read-denied
-      // rule never reaches the row list (corpus 21805
-      // "#<Card[set:259]Tracked Item+*type+*on create": its *read is
-      // "Anyone Signed In" (rule 22283), so the oracle's *on create page
-      // shows ONE *type-class bar although the row exists).
+      // rule never reaches the row list (a "*on create" rule whose
+      // *read is "Anyone Signed In" shows ONE *type-class bar on its page
+      // although the row exists).
       if (this.isDenied(card)) continue;
       const leftKey = card.name.leftName?.key;
       if (leftKey === undefined) continue;
@@ -7926,10 +7924,10 @@ export class RenderEngine implements RenderEngineLike {
       if (rules === undefined || rules.length === 0) continue;
       // setting.rb:38 rules_for_set_class's `sort_by: %w[content name]`:
       // within one set class the rows order by db_content bytes, then
-      // name. Oracle: the *on create *type class renders
-      // "#<Card[set:259]Tracked Item+*type+*on create" (rule 21805,
-      // content "_left+email config", "_"<"s") ahead of
-      // "Sign up+*type+*on create" (21799, "signup alert email"), where
+      // name. Concretely: the *on create *type class renders
+      // "#<Card[set:...]Tracked Item+*type+*on create"
+      // (content "_left+email config", "_"<"s") ahead of
+      // "Sign up+*type+*on create" (content "signup alert email"), where
       // the map-order walk put Sign up first.
       rules.sort((a, b) => {
         const ca = a.dbContent ?? "";
