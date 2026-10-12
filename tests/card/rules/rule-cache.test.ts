@@ -1,5 +1,5 @@
 // Rule::Cache port tests — the STORAGE side of the codename-form rule cache
-// (recount statement S2.4.c: card-1.110.0 lib/card/rule/cache.rb#lookup_key).
+// (card-1.110.0 lib/card/rule/cache.rb#lookup_key).
 //
 // Ruby builds the deck-wide rule lookup hash by joining rule/set/setting
 // rows in SQL and mapping each row to the key
@@ -16,11 +16,11 @@
 // the same rows.
 //
 // ORACLE anchor: tests/card/set-patterns/set-pattern-oracle-capture.json
-// rule_name_check.rule_lookup_key_sample — 12 real entries Ruby's own
-// Card::Rule::Cache held on the live oracle deck ("all+read" => 10,
+// rule_name_check.rule_lookup_key_sample — 12 entries from Ruby's own
+// Card::Rule::Cache, captured in the committed fixture ("all+read" => 10,
 // "46+self+read" => 48, ...). The seeds below reproduce that deck's
 // codename-relevant rows with the sample's own ids, so the built hash must
-// contain every oracle pair verbatim.
+// contain every sample pair verbatim.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync } from "node:fs";
@@ -48,7 +48,7 @@ const ORACLE_CAPTURE = JSON.parse(
   rule_name_check: { rule_lookup_key_sample: Record<string, number> };
 };
 
-/** The 12 key->rule-id pairs the live Ruby cache held (capture1 sample). */
+/** The 12 key->rule-id pairs in Ruby's captured cache sample (the fixture). */
 const ORACLE_SAMPLE = ORACLE_CAPTURE.rule_name_check.rule_lookup_key_sample;
 
 let storage: RenderTestStorage | undefined;
