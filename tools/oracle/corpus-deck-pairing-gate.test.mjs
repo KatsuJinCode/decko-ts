@@ -1,10 +1,10 @@
 // corpus-deck-pairing-gate.test.mjs -- the gate refuses a corpus captured on
 // another deck than the graded one, and passes a paired corpus.
 //
-// The defect it guards (grade-11 seam-clean, 2026-10-05): 2,555 page rows were
-// captured as not-found placeholders (id nil) and 114 as "Card.fetch returned
-// nil" because the capture deck lacked cards the graded deck holds; the grade
-// scored them as engine byte-diffs. Each test below builds a three-card deck
+// The defect it guards: page rows captured as not-found placeholders (id nil)
+// and as "Card.fetch returned nil" because the capture deck lacked cards the
+// graded deck holds; the grade scored them as engine byte-diffs. Each test
+// below builds a three-card deck
 // and a one-shard corpus in a temp dir (removed in finally) and runs the gate
 // as the fire script does, so the exit code and marker are what is asserted.
 //
@@ -197,7 +197,7 @@ test("checkDeckIdentity: no deck sha in the provenance is UNVERIFIED, never PAIR
 // --names-and-keys: a graded deck staged with the capture deck's key repair must
 // carry the capture deck's names and keys row for row. The rich fixture's graded
 // deck keeps keys in raw name form ("Alpha") while the capture deck carries the
-// runtime form ("alpha"), as the bench and the capture deck of record do.
+// runtime form ("alpha"), as the bench and the capture deck do.
 test("--names-and-keys refuses a graded deck whose keys are not the capture deck's", () => {
   const f = richFixture(allPaired());
   try {
