@@ -1,7 +1,7 @@
-# oracle-capture-smart-label.rb - oracle capture for the card-mod-format
-# set/all/content.rb:26-41 view :smart_label (label_with_description
-# render_label, label_description - the popover_link composition the
-# follow-and-label-completions lane ports).
+# oracle-capture-smart-label.rb - renders the card-mod-format
+# set/all/content.rb:26-41 view :smart_label for byte fixtures
+# (label_with_description, render_label, label_description - the
+# popover_link composition).
 #
 # Run (from tools/oracle/decko-oracle-app):
 #   RAILS_ENV=development bundle exec decko runner \
@@ -10,24 +10,24 @@
 # Records to fixtures/captured/smart-label.json:
 # 1. the set-module view registration the card-mod-format set/all/content.rb
 #    `format do` block contributes for :smart_label (with source location
-#    proving set/all/content.rb defined it - the byte oracle pin links the
-#    live render to the gem file)
+#    proving set/all/content.rb defined it - the pin links the render to
+#    the gem file)
 # 2. rendered bytes for two probe cards' :smart_label views - one WITH a
 #    +description card (the label + popover anchor over the description
 #    core) and one WITHOUT (the bare-label arm, label_with_description's
 #    nil-description branch); plus the WITH-probe's :label view (the label
-#    arm alone). The byte oracle for the TS-side test pinning
+#    arm alone). The bytes the TS-side test pins against
 #    card-mod-format.ts#smartLabelView.
 #
 # Determinism contract (mirrors oracle-capture-help-popover.rb): output JSON
 # is pretty-printed with deeply sorted keys + trailing newline; probe seed
-# cards are created-if-missing and DELETED (trashed) after capture so the
-# shared oracle DB returns to its prior state (a re-run stays byte-stable).
+# cards are created-if-missing and DELETED (trashed) after the run so the
+# shared DB returns to its prior state (a re-run stays byte-stable).
 #
 # No-write proof: Card::Action.count is snapshotted after seeding and again
 # after every render; renders are read-only and the count must not move
-# (the seed/trash phases are create/revert cleanup around the capture, not
-# part of it).
+# (the seed/trash phases are create/revert cleanup around the render phase,
+# not part of it).
 
 require "json"
 
@@ -151,9 +151,8 @@ Card::Auth.as_bot do
     end
   end
 end
-# NO card_count field: the oracle DB is shared with other streams'
-# benchmarks, so a card count is racy harness telemetry, not mod-mechanism
-# oracle data.
+# NO card_count field: the DB is shared with other concurrent runs, so a
+# card count is racy harness telemetry, not mod-mechanism data.
 
 # ---- write ------------------------------------------------------------------
 File.write(OUT_PATH, JSON.pretty_generate(deep_sort(payload)) + "\n")
