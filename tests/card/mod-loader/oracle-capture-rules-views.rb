@@ -1,5 +1,5 @@
-# oracle-capture-rules-views.rb - oracle capture for the rules-views-port
-# lane: the card-mod-rules set-card list views (set/type/set/html_views/
+# oracle-capture-rules-views.rb - renders the card-mod-rules set-card list
+# views (set/type/set/html_views/
 # rule_lists.rb, filtered_rule_lists.rb, setting_filter.rb), the rule-set
 # link views (set/rule/editor.rb pill_rule_link family), the board_rules_
 # editor views, and the quick_edit chain (set/rule/quick_editor.rb), plus
@@ -9,7 +9,7 @@
 #   RAILS_ENV=development bundle exec decko runner \
 #     <repo>/tests/card/mod-loader/oracle-capture-rules-views.rb
 #
-# Records to <lane-worktree>/fixtures/captured/rules-views.json:
+# Records to fixtures/captured/rules-views.json:
 # 1. set_card views: rendered on "*all" (Set-typed - set/type/set modules).
 #    Includes one filtered render (bar_setting_list filter: "common") - the
 #    voo.filter read rule_lists.rb:12 (`voo.filter&.to_sym || :all`).
@@ -21,7 +21,7 @@
 # 4. setting_registry: Card::Setting.groups' visible codenames per group and
 #    the *all prototype's visible_setting_codenames (the walks the list
 #    views render; the TS port's registry is diffed against these).
-# 5. The no-write proof: card_actions count before and after. The capture
+# 5. The no-write proof: card_actions count before and after. The script
 #    performs ZERO card writes (render only).
 #
 # Determinism contract (mirrors oracle-capture-bar-box-format-views.rb):
