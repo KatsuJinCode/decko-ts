@@ -5,31 +5,26 @@
 // :modal_rule's wrap arm (set/rule/board_rules_editor.rb:8-11 + card-mod-
 // layout set/all/modal/modal_dialog.haml:6-13's voo.show? gates).
 //
-// These are the behaviors the two recorded results (rules-views-port-3.md,
-// the corresponding port note) named as the OPEN form-parity arms: the RuleSetRadio
-// narrower_warning walk (their capture's single *all option never reached
-// it) and the modal wrap's voo.show? gates for a hidden header (unreachable
-// on their surfaces). The form-substrate-2 capture
-// (fixtures/captured/form-substrate-2.json, oracle-capture-form-substrate-
-// 2.rb, no-write proof card_actions 5018 -> 5018) pins both arms on live
-// renders: *account+*right+*read's 5-candidate set walk (four radios in
-// non-*all :current/:overwritten states - the narrower_warning_message's
-// @narrower_rules entries are ALL "" (the uncapitalized_label shadowing bug
-// set/type/set.rb:43, already documented in set-name.ts), so the captured
-// warnings read "for ." / "for  and ." / "for , , and .") and modal_rule
-// with hide: :modal_header.
+// Two arms here are the ones the rule-form port left open: the RuleSetRadio
+// narrower_warning walk, and the modal wrap's voo.show? gates for a hidden
+// header. Both are pinned on live renders: a set walk with five candidates
+// (four radios in non-*all :current/:overwritten states - the
+// narrower_warning_message's @narrower_rules entries are ALL "" (the
+// uncapitalized_label shadowing bug, set/type/set.rb:43, already documented
+// in set-name.ts), so the warnings read "for ." / "for  and ." /
+// "for , , and .") and modal_rule with hide: :modal_header.
 //
 // EXPORTED-UNREGISTERED: the views are NOT added to card-mod-rules'
-// setModules - the rules-views tree (a3b674c, the integration line)
-// owns the registrations and its own oracle pins for these view names; a
-// second registration here would collide at the merge. The composition
-// functions are the merge-ready bodies (the registering tree binds them
-// through the same manifest shape the tests use - the byte contract does
-// not change with the registration home). The one disclosed seam: the
-// rule_form_card_editor section (rulesTypeFormgroup + rule_content_formgroup
-// -> the perm-editor :input chain) resolves through renderView when the
-// consuming tree registers it (a3b674c's chain expansion); callers on trees
-// without that registration inject the section's bytes (the tests do).
+// setModules - the rules-views composition owns the registrations and its
+// own pins for these view names, and a second registration here would
+// collide at the merge. The composition functions are the merge-ready
+// bodies (the registering tree binds them through the same manifest shape
+// the tests use - the byte contract does not change with the registration
+// home). The one disclosed seam: the rule_form_card_editor section
+// (rulesTypeFormgroup + rule_content_formgroup -> the perm-editor :input
+// chain) resolves through renderView when the consuming tree registers it;
+// callers on trees without that registration inject the section's bytes
+// (the tests do).
 
 import { h } from "../render/slot-html.js";
 import { RenderFormat, Voo, type ViewContext, type ViewFn } from "../render/format.js";
@@ -61,20 +56,20 @@ type SetState = "current" | "overwritten" | "available";
 export interface RuleFormDeps {
   /** the deck's default type NAME - Card.new's type for the walk's
    *  prototype (set/type/set.rb:73-79 set_prototype; the type is deck data,
-   *  like the *recent settings membership - the capture deck's default is
-   *  RichText, which is why every walk candidate list carries
-   *  RichText+*type). */
+   *  like the *recent settings membership). A deck whose default type is
+   *  RichText - the common case - therefore has RichText+*type in every walk
+   *  candidate list. */
   prototypeTypeName?: string;
   /** the default type card's ID - the *type pattern applies on typeId
    *  (03_type.rb pattern_applies?); the engine's fetchRenderCard is
    *  cache-only, so callers supply the seeded id (deck data). */
   prototypeTypeId?: number;
-  /** the rule_form_card_editor section's bytes for trees without the
-   *  a3b674c registration (the disclosed seam). */
+  /** the rule_form_card_editor section's bytes for trees that do not
+   *  register that view (the disclosed seam). */
   editorHtml?: string;
   /** the success view (rule_form.rb:16 @success_view ||= :open for the
    *  view arm; modal.rb:55 current_rule_form passes :overlay_rule - the
-   *  captured modal body's success[view] value). */
+   *  modal body's success[view] value). */
   successView?: string;
   /** the existence resolver for the walk's Card.exist? checks and the
    *  links' known/wanted classes (links.rb:140-143) - deck data, like the
@@ -147,8 +142,8 @@ function setOptionsWalk(
 
 /** links.rb:140-143 add_known_or_wanted_class - Card.known?(mark) =
  *  fetch(mark).present?; the anchor href rides the url_key (spaces to
- *  underscores, case and stars kept - variants.rb #url_key; the captured
- *  "*all plus+*read" em link reads href="/*all_plus+*read"). */
+ *  underscores, case and stars kept - variants.rb #url_key; so
+ *  "*all plus+*read" links as href="/*all_plus+*read"). */
 function urlKeyOf(name: string): string {
   return name.replace(/ /g, "_");
 }
@@ -232,9 +227,9 @@ function ruleSetRadioHtml(
  *  wrap_with :div, class "set-list _set-editor" { wrap_with :div, class
  *  "col-xs-6 mt-3 mb-5" { rule_set_options.reverse.map { RuleSetRadio...
  *  .html narrower } } } - the REVERSED walk renders broadest-first, and the
- *  @narrower_rules accumulator shared across the radios fills in that order
- *  (the capture's message sizes: 1 at the first :overwritten radio, then
- *  2, then 3). */
+ *  @narrower_rules accumulator shared across the radios fills in that order,
+ *  so the first :overwritten radio's message names one rule, the next two,
+ *  the next three. */
 function boardRuleSetSelectionHtml(
   fmt: RenderFormat,
   deps: RuleFormDeps,
@@ -322,7 +317,7 @@ function editRuleButtonsHtml(
  *  default). The haml template's divs carry single-quoted attrs, the Rails
  *  helpers double quotes. The editor section dispatches
  *  renderView("rule_form_card_editor") when the consuming tree registers
- *  it (a3b674c); callers without it inject the section's bytes. */
+ *  it; callers without it inject the section's bytes. */
 export function ruleFormHtml(ctx: ViewContext, deps: RuleFormDeps = {}): string {
   const fmt = ctx.fmt;
   // rule_form.rb:15-24 prepare_rule_form_options + :66-71 edit_rule_success:
@@ -372,8 +367,8 @@ export function ruleFormHtml(ctx: ViewContext, deps: RuleFormDeps = {}): string 
  *  render_title } }) + modal.rb:54-59 current_rule_form: the body renders
  *  the :rule_form body on a SUBFORMAT of current_rule (find_existing_rule_
  *  card - rule/editor.rb:119-130: the rule card itself when it exists; the
- *  new-card arm is the the corresponding port note disclosed remainder) - a fresh voo
- *  chain (the captured inner slot's show list is ["rule_form"] alone) with
+ *  new-card arm is a disclosed remainder) - a fresh voo chain (the inner
+ *  slot's show list is ["rule_form"] alone) with
  *  the parent format for context/nest-mode inheritance
  *  (format/nesting/subformat.rb shape) - with success_view :overlay_rule
  *  and the view's own slot wrap (Ruby's subformat.rule_form call runs the
@@ -382,7 +377,7 @@ export function ruleFormHtml(ctx: ViewContext, deps: RuleFormDeps = {}): string 
  *  wrapper div, modal.rb:24), footer = render(:modal_footer) (the Close
  *  button), no size opt (the default "modal-dialog modal-dialog-centered"),
  *  and the voo.show? gates for header/menu (modal_dialog.haml:6-13 - the
- *  capture's hide: :modal_header arm pins the header ABSENT). The haml
+ *  hide: :modal_header arm leaves the header ABSENT). The haml
  *  template's output carries the trailing newline. deps.editorHtmlFor is
  *  the disclosed editor seam (see RuleFormDeps.editorHtml). */
 export function modalRuleHtml(
@@ -393,7 +388,7 @@ export function modalRuleHtml(
   // format/nesting/subformat.rb subformat(card): a new format on the same
   // card whose parent is this format (nest-mode inheritance) and whose voo
   // state is fresh. The voo's viz carries the requested view (renderView's
-  // process_visibility first-touch - the captured inner slot's show list is
+  // process_visibility first-touch - the inner slot's show list is
   // ["rule_form"]).
   const sub = new RenderFormat(fmt.card, fmt.engine, { parent: fmt, maxDepth: fmt.maxDepth });
   const subVoo = new Voo(undefined, "rule_form", {});
