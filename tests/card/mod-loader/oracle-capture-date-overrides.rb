@@ -1,5 +1,5 @@
-# oracle-capture-date-overrides.rb - oracle capture for the card-mod-date
-# set-module def content overrides (set/right/when_created.rb:7-11,
+# oracle-capture-date-overrides.rb - renders the card-mod-date
+# set-module def content overrides for byte fixtures (set/right/when_created.rb:7-11,
 # set/right/when_last_edited.rb:7-11, set/self/now.rb:1-3).
 #
 # Run (from tools/oracle/decko-oracle-app):
@@ -10,7 +10,7 @@
 # 1. The I18n.t('time.formats.card_dayofwk_min_tz') format string from
 #    card-1.110.0 config/locales/en.yml:29 - the exact strftime spec the
 #    mod's three def content overrides apply via I18n.localize
-# 2. The oracle app's timezone state - Time.zone.name (Rails app zone,
+# 2. The app's timezone state - Time.zone.name (Rails app zone,
 #    which governs left.created_at / left.updated_at's ActiveSupport::
 #    TimeWithZone), ENV['TZ'], and Time.now.zone (the system local zone
 #    that I18n.localize(Time.now, ...) reads) - the TS test reads these
@@ -20,10 +20,10 @@
 #      - "Oracle Date Probe A+*when created"  (created_at = UTC midnight)
 #      - "Oracle Date Probe A+*when last edited" (updated_at = UTC 14:30)
 #      - "Oracle Date Probe B+*when created"  (created_at = UTC noon)
-#    These are the byte oracle for the TS-side A/B test (the right set
+#    These are the bytes the TS-side A/B test pins (the right set
 #    modules' def content - when_created.rb:7-11, when_last_edited.rb:7-11)
 # 4. The raw :raw bytes for "*now" - the self/now.rb:1-3 def content
-#    output (the localized Time.now at capture-time; non-deterministic
+#    output (the localized Time.now at render time; non-deterministic
 #    by nature - the TS test asserts the format's SHAPE, not bytes)
 # 5. Direct I18n.localize bytes for the seed timestamps via three routes -
 #    the mod's actual line `I18n.localize(left.created_at, format:
@@ -34,8 +34,8 @@
 #
 # Determinism contract (mirrors tools/oracle/capture.rb): output JSON is
 # pretty-printed with deeply sorted keys + trailing newline; the probe
-# seed cards are created-if-missing and DELETED (trashed) after capture
-# so the shared oracle DB returns to its prior state (a re-run stays
+# seed cards are created-if-missing and DELETED (trashed) after the run
+# so the shared DB returns to its prior state (a re-run stays
 # byte-stable for the rule-card bytes; the *now bytes are non-
 # deterministic by nature - the TS test asserts the shape regex).
 
@@ -144,7 +144,7 @@ Card::Auth.as_bot do
 end
 
 # ---- direct I18n.localize bytes (the mod's actual line) ---------------------
-# This proves formatDayofwkMinTz's output against the LIVE I18n bytes for
+# This proves formatDayofwkMinTz's output against the actual I18n bytes for
 # the SAME input timestamps, for the three known timestamps.
 payload["direct_i18n_localize"] = {
   "left_created_at_utc_midnight" => I18n.localize(
@@ -159,7 +159,7 @@ payload["direct_i18n_localize"] = {
   "time_now_at_capture"          => I18n.localize(Time.now, format: :card_dayofwk_min_tz)
 }
 
-# ---- rendered :core bytes for the junction rule cards (the byte oracle) -----
+# ---- rendered :core bytes for the junction rule cards (the pinned bytes) -----
 views = {}
 RULE_PROBES.each do |rp|
   rule_name = "#{rp[:left]}+#{rp[:suffix]}"
