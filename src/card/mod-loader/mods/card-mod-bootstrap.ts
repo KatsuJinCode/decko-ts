@@ -1,3 +1,4 @@
+import { str } from "../../render/format.js";
 // The card-mod-bootstrap gem (card-mod-bootstrap-0.20.0), ported through
 // the mod loader. This gem is the rendering side of Decko's bootstrap skin:
 // 11 set files (4 abstract, 2 all, 2 self, 2 type, 1 type_plus_right) and
@@ -326,7 +327,7 @@ function renderCarouselItemInner(
     parent: ctx.fmt,
     maxDepth: ctx.fmt.maxDepth,
   });
-  return sub.renderView("core");
+  return str(sub.renderView("core"));
 }
 
 const carouselView: ViewFn = (ctx) => {
@@ -655,31 +656,47 @@ function iconLibraries(_ctx: ViewContext): string[] {
   return Object.keys(ICON_BASKET);
 }
 
+/** The <library>_icon_tag family (icon.rb:110-128) as the icons.haml
+ *  `= send "#{library}_icon_tag", mapping` line renders it:
+ *  material_icon_tag (add_class "material-icons", wrap_with :i, icon)
+ *  -> `<i class="material-icons">add</i>`; font_awesome_icon_tag
+ *  (prepend_class "fa fa-#{icon}", wrap_with :i, "") ->
+ *  `<i class="fa fa-plus"></i>`; bootstrap_icon_tag (prepend_class
+ *  "bi-#{icon}") -> `<i class="bi-plus-lg"></i>`. */
+function iconTagMarkup(library: string, mapping: string): string {
+  if (library === "material") return `<i class="material-icons">${mapping}</i>`;
+  if (library === "font_awesome") return `<i class="fa fa-${mapping}"></i>`;
+  if (library === "bootstrap") return `<i class="bi-${mapping}"></i>`;
+  return `<i class="${library}-${mapping}"></i>`;
+}
+
 /** icons.haml:1-18 the table - one column per library in the order Ruby
  *  yields basket[:icons].keys; one row per all-icon-key; each cell renders
  *  the library-specific icon tag (via the <library>_icon_tag family in
- *  icon.rb) followed by the mapping name. The icon-tag renderers
- *  (font_awesome_icon_tag, material_icon_tag, bootstrap_icon_tag) are
- *  defined in icon.rb:110-128 and depend on prepend_class opts. For the
- *  headless port we emit the mapping-name tag the way the icons.haml
- *  template does (`= send "#{library}_icon_tag", mapping; = mapping`) -
- *  the icon-tag markup is library-specific HTML and is not pinned by
- *  any captured fixture. The cell therefore emits the mapping name as
- *  text, matching the icons.haml's structural intent. */
+ *  icon.rb) followed by the mapping name, else &nbsp;. The haml line
+ *  structure is the graded corpus pin (view:admin:Home:icons): inline
+ *  text stays on the tag line (`%th lookup key` -> <th>lookup key</th>),
+ *  nested = lines each render on their own line inside the tag
+ *  (`%th\n = library` -> <th>\nmaterial\n</th>), one newline per element
+ *  boundary. */
 const iconsView: ViewFn = (ctx) => {
   const libraries = iconLibraries(ctx);
   const keys = allIconKeys();
-  const headerCells = ["lookup key", ...libraries]
-    .map((label) => `<th>${label}</th>`)
-    .join("");
-  const rows = keys.map((key) => {
-    const cells = libraries.map((library) => {
+  let out = "<table>\n<tr>\n<th>lookup key</th>\n";
+  for (const library of libraries) out += `<th>\n${library}\n</th>\n`;
+  out += "</tr>\n";
+  for (const key of keys) {
+    out += `<tr>\n<td>\n${key}\n</td>\n`;
+    for (const library of libraries) {
       const mapping = ICON_BASKET[library]?.[key];
-      return `<td>${mapping ?? "&nbsp;"}</td>`;
-    });
-    return `<tr><td>${key}</td>${cells.join("")}</tr>`;
-  });
-  return `<table><tr>${headerCells}</tr>${rows.join("")}</table>`;
+      out += mapping
+        ? `<td>\n${iconTagMarkup(library, mapping)}\n${mapping}\n</td>\n`
+        : "<td>\n&nbsp;\n</td>\n";
+    }
+    out += "</tr>\n";
+  }
+  out += "</table>\n";
+  return out;
 };
 
 // ---------------------------------------------------------------------------
@@ -948,8 +965,14 @@ function skinFieldNest(
     return fmt.nestRecord(real, "accordion_bar", opts);
   }
   if (field === "stylesheets") {
-    // a plain fetch-miss nest: its :unknown view renders the create link
-    // for an actor who may create the field, nothing for one who may not
+    // The +*stylesheets child is VIRTUAL and SKIN-typed: the SkinField
+    // TPR set's code assignment (TypePlusRight::BootswatchSkin::
+    // Stylesheets -> skin, the set-type-assignment registry's bootstrap
+    // entry) types the nest-miss card — the admin oracle's unknown-view
+    // slot carries the Skin attrs and the create link WITHOUT an explicit
+    // card[type] (the assignment is implicit, no |type: opt); the
+    // anonymous/member/contractor renders drop the accordion (create
+    // denied).
     return fmt.nest({
       name: `${name}+*${field}`,
       syntax: `${name}+*${field}`,
@@ -976,7 +999,7 @@ function linkToCardName(ctx: ViewContext, target: string): string {
  *  surface is the loader-less engine, so the type-level core body is
  *  reached from the engine layer, not a set-scoped registration). */
 export function bootswatchSkinCoreHtml(ctx: ViewContext): string {
-  return bootswatchCoreView(ctx);
+  return str(bootswatchCoreView(ctx));
 }
 
 /** set/type/bootswatch_skin/core.haml - the bootswatch skin page's :core
@@ -1038,8 +1061,15 @@ const bootswatchCoreView: ViewFn = (ctx) => {
     // set/abstract/media.rb:2-4); every corpus skin carries an Image row
     // (the bootswatch mod data files ship them), so the fetch resolves.
     out += `${customizeButtonView(ctx)}\n`;
-    const imageCard = fmt.engine.fetchRenderCard(`${name}+Image`);
-    out += `<div class='mt-4'>\n${imageCard === undefined ? "" : fmt.nestRecord(imageCard, "content", { size: "large" })}\n</div>\n`;
+    // An absent +Image is nested as the NEW card the fetch builds (the
+    // views.ts skin-box arm's seam): the bootswatch_skin+*image TPR rule
+    // types it Image, and :content on the unknown card routes through the
+    // unknown substitution - the corpus's unknown-view slot
+    // (corpu_skin-image-unknown-view, view :content in the slot JSON).
+    const imageCard =
+      fmt.engine.fetchRenderCard(`${name}+Image`) ??
+      fmt.unknownChildCard(`${name}+Image`);
+    out += `<div class='mt-4'>\n${fmt.nestRecord(imageCard, "content", { size: "large" })}\n</div>\n`;
   }
   out += `<h5 class='mt-4'>\nSkin configuration\n</h5>\n<div class='small mb-3'>\nfrom simplest to most advanced\n</div>\n<div class='accordion'>\n`;
   out += `${skinFieldNest(ctx, "colors", "Palette and uses of colors")}\n`;

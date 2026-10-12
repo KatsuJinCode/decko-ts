@@ -297,33 +297,34 @@ describe("card-mod-bootstrap through the mod loader", () => {
       // icon.rb:1-81 basket[:icons] carries material (37 keys), font_awesome
       // (33 keys), and bootstrap (9 keys). The union of keys is ~40; the
       // test pins a few representative rows instead of the full enumeration.
+      // The haml line structure is the graded corpus pin
+      // (view:admin:Home:icons): inline text stays on the tag line, nested
+      // `=` lines render on their own lines inside the tag.
       const s = storage!;
       const html = await s.engine.render("Icon Reference", "icons");
       // icons.haml:2-7 the <table><tr><th>... header row.
-      expect(html).toMatch(/^<table>/);
-      expect(html).toContain("<th>lookup key</th>");
+      expect(html).toMatch(/^<table>\n<tr>\n<th>lookup key<\/th>\n/);
       // The 3 library columns, in basket insertion order.
-      expect(html).toContain("<th>material</th>");
-      expect(html).toContain("<th>font_awesome</th>");
-      expect(html).toContain("<th>bootstrap</th>");
+      expect(html).toContain("<th>\nmaterial\n</th>\n");
+      expect(html).toContain("<th>\nfont_awesome\n</th>\n");
+      expect(html).toContain("<th>\nbootstrap\n</th>\n");
     });
 
     it("renders each icon key as a row, with the library-specific mapping", async () => {
       // icon.rb:137 all_icon_keys unions every key across every library.
       // For "plus": material -> "add", font_awesome -> "plus",
-      // bootstrap -> "plus-lg" (icon.rb:4, 41, 71).
+      // bootstrap -> "plus-lg" (icon.rb:4, 41, 71). The cells carry the
+      // <library>_icon_tag markup followed by the mapping name (the graded
+      // corpus row pins the tag bytes).
       const s = storage!;
       const html = await s.engine.render("Icon Reference", "icons");
       const plusRow = extractRow(html, "plus");
-      expect(plusRow).not.toBeNull();
-      const cells = plusRow!.match(/<td>([^<]*)<\/td>/g);
-      expect(cells).not.toBeNull();
-      // Three library cells (plus the leading <td>plus</td>).
-      expect(cells!.length).toBe(4);
-      expect(cells![0]).toBe("<td>plus</td>");
-      expect(cells![1]).toBe("<td>add</td>");
-      expect(cells![2]).toBe("<td>plus</td>");
-      expect(cells![3]).toBe("<td>plus-lg</td>");
+      expect(plusRow).toBe(
+        "<tr>\n<td>\nplus\n</td>\n" +
+          '<td>\n<i class="material-icons">add</i>\nadd\n</td>\n' +
+          '<td>\n<i class="fa fa-plus"></i>\nplus\n</td>\n' +
+          '<td>\n<i class="bi-plus-lg"></i>\nplus-lg\n</td>\n</tr>',
+      );
     });
 
     it("renders &nbsp; for keys absent from a library", async () => {
@@ -333,12 +334,12 @@ describe("card-mod-bootstrap through the mod loader", () => {
       const s = storage!;
       const html = await s.engine.render("Icon Reference", "icons");
       const row = extractRow(html, "full_page");
-      expect(row).not.toBeNull();
-      const cells = row!.match(/<td>([^<]*)<\/td>/g);
-      expect(cells).not.toBeNull();
-      expect(cells![1]).toBe("<td>open_in_full</td>");
-      expect(cells![2]).toBe("<td>&nbsp;</td>");
-      expect(cells![3]).toBe("<td>&nbsp;</td>");
+      expect(row).toBe(
+        "<tr>\n<td>\nfull_page\n</td>\n" +
+          '<td>\n<i class="material-icons">open_in_full</i>\nopen_in_full\n</td>\n' +
+          "<td>\n&nbsp;\n</td>\n" +
+          "<td>\n&nbsp;\n</td>\n</tr>",
+      );
     });
   });
 
@@ -839,7 +840,7 @@ function extractRow(html: string, key: string): string | null {
   const rows = html.match(/<tr>[\s\S]*?<\/tr>/g);
   if (rows === null) return null;
   for (const row of rows) {
-    if (row.startsWith(`<tr><td>${key}</td>`)) return row;
+    if (row.startsWith(`<tr>\n<td>\n${key}\n</td>`)) return row;
   }
   return null;
 }

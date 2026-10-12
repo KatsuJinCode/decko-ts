@@ -187,6 +187,24 @@ describe("deploy worker route grammar — the alternate GET views (R4)", () => {
     const record = (await response.json()) as { name: string; type_name: string | null };
     expect(record.name).toBe("Home");
   });
+
+  it("GET /:mark/:view.json strips the format suffix and dispatches the json-format view (the navbox typeahead's surface)", async () => {
+    // Ruby route line 51: get ":mark/:view(.:format)" => "card#read" — the
+    // former parser kept the literal suffix ("core.json" as the view name),
+    // so the demo engine answered unsupported-view for the typeahead's
+    // own surface. The route surgery asserts the ENGINE dispatch: the
+    // request reaches the engine's json-format view render (its 200 bytes,
+    // or Ruby's 422 unsupported-view plain text for a view the json format
+    // does not carry) — never the html page shell, and never a
+    // literal-suffix view name.
+    const response = await get("/About/core.json");
+    expect([200, 422]).toContain(response.status);
+    const contentType = response.headers.get("Content-Type") ?? "";
+    expect(contentType.startsWith("text/html")).toBe(false);
+    if (response.status === 200) {
+      expect(contentType).toContain("application/json");
+    }
+  });
 });
 
 describe("deploy worker route grammar — the ?view= query param (R4's named remainder)", () => {

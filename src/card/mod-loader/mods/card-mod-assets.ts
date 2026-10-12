@@ -54,6 +54,7 @@
 //   with the views they target.
 
 import type { ViewContext, ViewFn } from "../../render/format.js";
+import { rubyInspectionAddress } from "../../render/format.js";
 import { localAttachmentUrl } from "../../attachments/asset-output-write.js";
 import { superView } from "../mod-view-helpers.js";
 import type {
@@ -76,13 +77,14 @@ function event(
 // ---------------------------------------------------------------------------
 // The asset OUTPUT url + the right/asset_output :not_found gate
 // (set/abstract/asset_outputter.rb:61-63, set/right/asset_output.rb:19-34).
-// Oracle-pinned by live renders of the booted oracle app.
+// Oracle-pinned by live renders of the booted oracle app and by the stock
+// synthetic-v2 capture.
 // ---------------------------------------------------------------------------
 
 /** The `+*asset output` child of a card, fetched through the engine's
  *  render-card cache. Ruby's card_accessor generates asset_output_card
- *  (fetch-or-new); a missing child reads as undefined here and the views
- *  render the Ruby new-card shape (file&.url -> nil -> ""). */
+ *  (fetch-or-new); a missing child reads as undefined here and the live
+ *  write branch renders the Ruby new-card shape (file&.url -> nil -> ""). */
 function fetchAssetOutputCard(ctx: ViewContext): { dbContent: string } | undefined {
   const card = ctx.fmt.card;
   const childName = `${card.name.s}+*asset output`;
@@ -92,18 +94,51 @@ function fetchAssetOutputCard(ctx: ViewContext): { dbContent: string } | undefin
   return engine.fetchRenderCard?.(childName);
 }
 
-/** asset_outputter.rb:61-63 view :asset_output_url -> asset_output_url
- *  (:78-82) = `asset_output_card.file&.url`. The local-identifier url is
- *  the oracle-pinned "/files/~<card>/<action><ext>" (localAttachmentUrl —
- *  the tilde MARK form, FileCardUploader::Path#local_url). A missing child
- *  renders "" (Ruby: file&.url on a new card -> nil). NOTE: Ruby's bare
- *  `asset_output_url` call inside the view body raises NoMethodError
- *  through the format's ActionView delegation (captured in the oracle
- *  JSON); the card-level method's bytes are the view's intent and this
- *  port. */
-const assetOutputUrlView: ViewFn = (ctx) => {
+/** The CARD-level method port (asset_outputter.rb:78-82):
+ *
+ *     def asset_output_url
+ *       # ensure_asset_output
+ *       asset_output_card.file&.url # (:default, timestamp: false)
+ *     end
+ *
+ * The local-identifier url is the oracle-pinned "/files/~<card>/<action><ext>"
+ * (localAttachmentUrl — the tilde MARK form, FileCardUploader::Path#
+ * local_url); a missing child is Ruby's `file&.url` on a new card -> nil,
+ * which the caller renders as "". The right/asset_output :not_found live
+ * branch reaches this surface — Ruby's `outputter.update_asset_output_live`
+ * runs it with self = the CARD, so the bare `asset_output_url` inside
+ * resolves as a card method (unlike the VIEW body's bare call, which lands
+ * on the format — see assetOutputUrlView). */
+function cardAssetOutputUrl(ctx: ViewContext): string {
   const child = fetchAssetOutputCard(ctx);
   return localAttachmentUrl(child?.dbContent ?? "");
+}
+
+/** asset_outputter.rb:61-63 view :asset_output_url:
+ *
+ *     view :asset_output_url do
+ *       asset_output_url
+ *     end
+ *
+ * The view block's self is the FORMAT, not the card, so the bare call hits
+ * the format's method_missing (card format/method_delegation.rb:41-47);
+ * the name is not render-shaped, so the delegation lands on the ActionView
+ * context (:73 delegate_to_action_view -> CardActionView), which carries
+ * no such helper — NoMethodError "undefined method `asset_output_url' for
+ * #<Card::Format::CardActionView:0x...>". That raise IS the view's stock
+ * behavior: the synthetic-v2 oracle pins it on
+ * view:admin:*all+*script:asset_output_url (and the cwwrite lane's own
+ * view_*_asset_output_url captures carry the rescued span), so the port
+ * raises it; the receiver inspection address is the engine's derived
+ * stand-in (rubyInspectionAddress — N5 blanks the hex on both sides).
+ * The CARD-level method keeps its port in cardAssetOutputUrl, which the
+ * :not_found live branch calls. */
+const assetOutputUrlView: ViewFn = (ctx) => {
+  throw new Error(
+    "undefined method `asset_output_url' for #<Card::Format::CardActionView:" +
+      rubyInspectionAddress(ctx.fmt.card.id) +
+      ">",
+  );
 };
 
 /** The Abstract::AssetOutputter membership check behind
@@ -140,11 +175,11 @@ function leftIsAssetOutputter(ctx: ViewContext): boolean {
  *  since a ViewFn is synchronous). When the rendered card IS the
  *  `+*asset output` child, the url reads from the card's own db_content
  *  (the child exists by definition); from the outputter's side it reads
- *  through the child fetch (assetOutputUrlView). The 302 is root-format
- *  response state (the engine has no root.error_status surface — same
- *  remainder as :bad_address). A non-outputter left delegates via super()
- *  to the chain's next :not_found (oracle not_found_super: the standard
- *  not_found shape). */
+ *  through the card-level method port (cardAssetOutputUrl). The 302 is
+ *  root-format response state (the engine has no root.error_status
+ *  surface — same remainder as :bad_address). A non-outputter left
+ *  delegates via super() to the chain's next :not_found (oracle
+ *  not_found_super: the standard not_found shape). */
 const assetOutputNotFoundView: ViewFn = (ctx) => {
   if (!leftIsAssetOutputter(ctx)) {
     return superView(ctx, "Right::AssetOutput", "not_found");
@@ -153,7 +188,7 @@ const assetOutputNotFoundView: ViewFn = (ctx) => {
   if (card.name.s.endsWith("+*asset output")) {
     return localAttachmentUrl(card.dbContent);
   }
-  return assetOutputUrlView(ctx);
+  return cardAssetOutputUrl(ctx);
 };
 
 

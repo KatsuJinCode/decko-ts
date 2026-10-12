@@ -1,3 +1,4 @@
+import { str } from "../render/format.js";
 // The rule_form view family composed over the form substrate: :rule_form
 // (card-mod-rules set/rule/rule_form.rb:2-13), its board_rule_set_selection /
 // RuleSetRadio walk (set/rule/rule_form/set_selection.rb:2-21 + the
@@ -408,9 +409,9 @@ export function modalRuleHtml(
   return (
     modalDialogWrap({
       show: (view: string) => voo.show(view),
-      titleHtml: fmt.renderView("title"),
-      menuHtml: voo.show("modal_menu") ? fmt.renderView("modal_menu") : undefined,
-      footerHtml: fmt.renderView("modal_footer"),
+      titleHtml: str(fmt.renderView("title")),
+      menuHtml: voo.show("modal_menu") ? str(fmt.renderView("modal_menu")) : undefined,
+      footerHtml: str(fmt.renderView("modal_footer")),
       bodyHtml,
     }) + "\n"
   );

@@ -45,6 +45,21 @@ describe("worker URL parser (worker entry parsePath)", () => {
     expect(parsePath("/Home/menu")).toEqual({ name: "Home", view: "menu" });
   });
 
+  it("routes /<mark>/<view>.json to the json-format dispatch (the .:format suffix is the VIEW segment's, not the name's)", () => {
+    // The navbox typeahead's live-suggestions endpoint:
+    // data-completepath="/*search/search_box_complete.json" on every page.
+    // The former parser kept the literal suffix — the view name answered
+    // unsupported-view with ".json" baked in.
+    expect(parsePath("/*search/search_box_complete.json")).toEqual({
+      name: "*search",
+      view: "search_box_complete",
+      format: "json",
+    });
+    expect(parsePath("/Home/core.json")).toEqual({ name: "Home", view: "core", format: "json" });
+    // the bare two-segment form stays the html-format read
+    expect(parsePath("/*search/search_box_complete")).toEqual({ name: "*search", view: "search_box_complete" });
+  });
+
   it("routes /<name>/view/<view> (engine_routes.rb:24)", () => {
     expect(parsePath("/Home/view/closed")).toEqual({ name: "Home", view: "closed" });
   });

@@ -10,6 +10,10 @@
 //                               an engine with its own bookkeeping table would
 //   FAKE_MODE=crash-after:<n>   exits without answering request n+1
 //   FAKE_MODE=wrong-html:<card> renders that card with different content
+//   FAKE_MODE=upstream-error:<card>   that card raises the recorded upstream failure
+//   FAKE_MODE=wrong-message:<card>    that card raises the same class, another message
+//   FAKE_MODE=wrong-class:<card>      that card raises another class, same message
+//   FAKE_MODE=capture-fault:<card>    that card records the capture-side fault sentinel
 
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -29,9 +33,23 @@ const insertCard = (name) => {
   return Number(r.lastInsertRowid);
 };
 
+// The recorded upstream failure the error-row tests capture and reproduce:
+// the class named as Ruby names its own (namespaced), as a captured oracle
+// record holds it. The engine-shaped variants carry the same failure named
+// by the host language's convention, or a genuinely different failure.
+const failureAnswers = {
+  "upstream-error": { class: "Card::Error::CodenameNotFound", message: "unknown codename: test_context" },
+  "engine-error": { class: "CodenameNotFoundError", message: "unknown codename: test_context" },
+  "wrong-message": { class: "Card::Error::CodenameNotFound", message: "a different fault" },
+  "wrong-class": { class: "SomeOtherFaultError", message: "unknown codename: test_context" },
+  "capture-fault": { class: "CAPTURE_ERROR", message: "CAPTURE_ERROR: FakeError: the capture machinery threw" },
+};
+
 function answer(req) {
   switch (req.op) {
     case "render": {
+      const failMode = Object.keys(failureAnswers).find((m) => mode === `${m}:${req.card}`);
+      if (failMode) throw Object.assign(new Error(failureAnswers[failMode].message), { harnessClass: failureAnswers[failMode].class });
       if (mode === "read-writes") insertCard(`read write ${served}`);
       if (mode === "step-read-writes" && sawWrite && !wroteInScenario) {
         insertCard("written by a read");
@@ -68,7 +86,7 @@ for await (const line of lines) {
   try {
     emit({ id: req.id, ok: true, result: answer(req) });
   } catch (error) {
-    emit({ id: req.id, ok: false, error: { class: "FakeError", message: error.message } });
+    emit({ id: req.id, ok: false, error: { class: error.harnessClass ?? "FakeError", message: error.message } });
   }
 }
 db.close();

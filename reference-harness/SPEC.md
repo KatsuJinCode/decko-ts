@@ -231,8 +231,20 @@ Each item is compared with the expected outputs after normalisation
 group (page or view and actor; question type; write action). Scenario steps
 are graded on every kind they exercise: a write's answer is a side-effect
 item, its `rows` a persistence item, a render or question after a write a
-rendering or semantics item. An item whose oracle answer was an adapter error
-is reported as an oracle error and not graded.
+rendering or semantics item.
+
+An item whose oracle answer is itself a failure is graded on what kind of
+thing the oracle recorded. A capture-side fault (the `CAPTURE_ERROR` sentinel
+the capture scripts record when their own machinery threw) says nothing about
+the site: it is reported as an oracle capture fault and not graded. A recorded
+upstream failure - the oracle raised while serving, and its capture holds the
+error record - is the upstream behavior the port must reproduce: the engine's
+answer must be the same failure under N7 (the class's host naming
+canonicalized) with the message byte-exact, and a match is counted as a
+**reproduced upstream failure**, its own success category (the operator's
+ruling: where the original is broken and the copy breaks the same way, that
+is the port succeeding). Any other answer on such an item - a different
+failure, or a render where the oracle failed - fails it.
 
 **Reads write only what the oracle's reads wrote.** Each read session's
 `session_writes`, and each non-write scenario step's `rows` and
@@ -270,6 +282,28 @@ above, run with `node --test "reference-harness/runner/test/*.test.mjs"`.
 
 Two kinds of rule, applied to both sides before comparison, and nothing else:
 
+1. **N1.** `data-slot-id="<hex>"` becomes `data-slot-id="SLOT"`: slot ids are
+   random per render in every engine.
+2. **N2.** `0x` followed by 8 to 16 hex digits becomes `0xADDR`: a
+   host-language object address printed into an error message.
+3. **N3.** In a write result, the new card is compared by name (its id is a
+   row id, compared by persistence), and mail text loses trailing spaces per
+   line, CRLF line ends and surrounding blank lines.
+4. **N4.** In a row delta, rows the step created get symbolic ids (a card by
+   its full name, any other row by table and creation order) and every column
+   pointing at them is rewritten the same way; timestamps are compared as
+   instants. Rows that existed before the step keep their ids, because both
+   engines start from the same deck file.
+5. **N5.** JSON object key order never counts; array order always does.
+6. **N6.** `127.0.0.1:<port>` becomes `127.0.0.1:PORT`: each engine server
+   answers on a fresh per-journey port, so an absolute URL the deck itself
+   builds (a mail body's card link) carries a port that is random per run on
+   both engines. The host and scheme stay exact.
+The seconds-corpus instrument (section 4's later subsections) carries its
+own rule namespace — its N3 (the collapse-id canonical form) and its N5
+(the dawn-pass plan) are THAT instrument's rules, not the journeys
+comparator's N1-N6 above. The two vocabularies coexist:
+
 - A **mask** erases a value. It is allowed only for a field shown to vary
   between two complete runs of the same oracle on the same fixture, and only
   in that field's exact shape.
@@ -306,6 +340,70 @@ Two kinds of rule, applied to both sides before comparison, and nothing else:
    class-token order counts on its own. Every report names the rules it ran
    under in `normalization`.
 
+4. **N4 (canonical form over a volatile value).** In rendered HTML, the
+   numeric context of a `card-<safe-key>-<n>-collapse-id` token — the
+   accordion collapse id `admin.rb:96` seeds with Ruby's `title.hash` — is
+   replaced per html string by `N4#k` in first-appearance order, so the
+   accordion button's `data-bs-target` and its panel `id` must still agree.
+   Ruby hashes strings with a per-process seed; the digits are process noise.
+   The literal contexts (`files`, `depends_on`, view names) hold no digits
+   and never match.
+5. **N5 (canonical form over a capture-clock value).** In rendered HTML, a
+   relative-time span — a Rails `time_ago_in_words` phrase
+   (`date_helper.rb:95-165`, within its table's bounds: minutes 1-44, hours
+   1-24, days 1-30, months 1-12, years 1+, singular and plural, with the
+   `about`/`over`/`almost` qualifiers) — is replaced by the single
+   placeholder `N5#elapsed`. The oracle's words are a pure function of the
+   fixture clock the harness freezes (`oracle/lib/harness_env.rb`
+   `freeze_clock!`, `travel_to` the fixture clock for the whole process), so
+   a card built moments before the capture reads "less than a minute"
+   forever; an engine's live clock reads "20 days" for the same stored
+   timestamp, and no two engine runs agree either. The span's presence,
+   position and every surrounding byte still count: anchors are compared
+   exactly, so a real content change beside a span, a tail present on one
+   side only, or a different sentence shape still fails. Absolute dates
+   (`2026-09-19`) are NOT spans and stay exact — a date view is an encoding
+   the engine must get right, not clock noise.
+7. **N7 (canonical form over capture-host content).** In rendered HTML,
+   inside a render-error span's `title` attribute that begins with the Ruby
+   debug page marker (`&lt;h3&gt;Error message (visible to admin only)
+   &lt;/h3&gt;`), absolute paths (drive-letter, forward or back slashes) and
+   hexadecimal heap addresses become `N7#path` / `N7#addr`. The debug pages
+   embed the capture host's backtrace frames — the Ruby install, gem home
+   and harness checkout of the machine that recorded the capture — which
+   are that machine's filesystem, not the oracle's semantics; a frame path
+   token ends at its `:line:` separator. Every byte outside such a title,
+   and the error message inside it, still count. (Written when the engine
+   did not raise where the oracle raises; the raise posture has since made
+   the engine emit the same debug page, and N6 below now carries the frame
+   layer.)
+6. **N6 (canonical form over the host VM's stack identity).** In rendered
+   HTML, inside a render-error span's debug-page title, every backtrace
+   frame line within the div that follows the message paragraph — the
+   `<br>\n`-separated lines Ruby's `exception.backtrace * "<br>\n"` embeds —
+   becomes the single placeholder `N6#frame`. The two sides run different
+   languages: the oracle's frames are Ruby's (`path:line:in \`method'`,
+   boot-inclusive — dozens of frames from the capture process's startup
+   up), the engine's are V8's (`at fn (file:///path:line:col)`). A frame
+   line's text is the host VM's identity — language, paths, boot history —
+   in the same class as N7's capture-host content; nothing in the oracle's
+   semantics lives in it. The frame COUNT becomes the checkable invariant:
+   the `<br>`-separated structure inside the div stays compared, so a side
+   emitting a different number of its own frames still fails, as do the
+   heading, the error message and every byte outside the div.
+8. **N8 (canonical form over the host language's class naming).** On an
+   operation whose recorded result IS the failure (section 3, "What the
+   grader compares"), the error record's class name canonicalizes to its
+   name proper: the terminal `::` segment of the Ruby path
+   (`Card::Error::CodenameNotFound` -> `CodenameNotFound`), with one
+   trailing `Error` suffix — the JS subclass convention
+   (`CodenameNotFoundError` -> `CodenameNotFound`) — dropped from either
+   side. A class name is the host language's identity in the same class as
+   N7's and N6's content: no port can emit the other language's naming.
+   Everything else in the record counts: the message compares byte-exact,
+   and a different name proper is a different failure, which fails the
+   item.
+
 Everything else is compared exactly: every byte of HTML, every field of a
 write answer (the new card's id and every byte of mail text included), every
 column of every row (ids and timestamps as stored).
@@ -317,7 +415,43 @@ two complete stock-oracle runs differ in 1,351 of 4,156 items, all in slot
 ids: 9,061 of 9,061 slot ids differ, and nothing else does. The result is in
 the expected outputs' manifest (`provenance.nondeterminism`), and a test
 checks that it covers exactly the masks `normalize.mjs` applies. A new mask
-needs the same evidence on the fixture that needs it.
+needs the same evidence on the fixture that needs it. For `synthetic-v2`'s
+N3: two stock-oracle processes run over every op of that fixture that
+carries the token (30 of 2,557, 84 tokens; the capture commands are in
+`benchmarks/seconds-corpus/collapse-id-nondeterminism-evidence.md`) differ
+in 84 of 84 collapse ids and 442 of 442 slot ids, and in nothing else
+(0 unexplained). N4 and N5 are canonical forms over values that do NOT vary
+between two runs of the oracle on one machine — the frozen clock and the
+capture host's filesystem are constant within a capture — so their evidence
+shape is different: the committed capture bytes themselves carry the
+volatility (the oracle's frozen-clock spans, the capture host's absolute
+paths in the debug pages), and the measurement is over oracle-vs-engine
+pairs on the fixture. For `synthetic-v2`: 22 of 2,557 oracle ops carry a
+relative-time span ("less than a minute" ×179, "2 days" ×1); the four ops
+whose only divergence was the span grade identical after N4 and no
+identical op breaks; 8 ops carry the debug page (554 path tokens, 2 heap
+addresses) and at its original commit N5 closed no op — the six debug rows
+were structural then (the engine did not raise where the oracle raises);
+the raise posture closed that layer and N6 above now carries the frame
+layer. Full procedure,
+commands and counts in
+`benchmarks/seconds-corpus/capture-clock-and-debug-span-canonicalization-evidence.md`.
+N6's evidence shape is N4/N5's (the committed capture bytes carry the
+host-VM identity; the measurement is over oracle-vs-engine pairs): at the
+raise posture the 8 oracle debug pages carry 51-63 Ruby frames against the
+engine's 8-10 V8 frames (Node's `Error.stackTraceLimit` caps at 10), so the
+frame count — the invariant N6 checks — is the six raise-posture rows'
+recorded residual
+(`benchmarks/seconds-corpus/backtrace-frame-canonicalization-evidence.md`).
+N7's evidence is the failure records themselves (the oracle's capture bytes
+carry the raise; the measurement is over oracle-vs-engine pairs): 24 of the
+oracle's 2,581 render operations record the upstream raise
+`Card::Error::CodenameNotFound: unknown codename: test_context` (six
+email/codename-bearing cards x four actors) — previously tallied as oracle
+errors and left ungraded — and the engine raises `CodenameNotFoundError`
+with the byte-same message on all 24, so after N7 all 24 grade as reproduced
+upstream failures
+(`benchmarks/seconds-corpus/upstream-failure-classification-evidence.md`).
 
 N3 is not a mask and needs no nondeterminism evidence — it erases nothing,
 and it canonicalises rather than hides. Its evidence is the environment

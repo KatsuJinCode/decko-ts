@@ -42,7 +42,23 @@ async function settle(page) {
       .evaluate(() => (typeof window.jQuery === "function" ? window.jQuery.active : 0) + (document.readyState === "complete" ? 0 : 1))
       .catch(() => 1);
     quiet = busy === 0 ? quiet + 1 : 0;
-    if (quiet >= 3) return;
+    if (quiet >= 3) {
+      // HARNESS_EDITOR_SETTLE=1 (the declared oracle-rerun mode): a page
+      // carrying a TinyMCE editor is observed only after the editor's init
+      // has landed (the statusbar path item renders at the end of it, up to
+      // ~2s after load — the autoresize plugin's delayed resize loop runs
+      // outside jQuery), so the snapshot reads the settled editor both
+      // engines serve.
+      if (process.env.HARNESS_EDITOR_SETTLE === "1") {
+        await page
+          .waitForFunction(() => {
+            const editors = document.querySelectorAll(".tox-tinymce");
+            return editors.length === 0 || document.querySelector(".tox-statusbar__path-item") !== null;
+          }, { timeout: 8000 })
+          .catch(() => {});
+      }
+      return;
+    }
     await page.waitForTimeout(100);
   }
 }
@@ -86,9 +102,30 @@ async function locate(page, target) {
   throw new Error(`no target in ${JSON.stringify(target)}`);
 }
 
-/** Sets an editor's content the way Decko's own steps do: ace, then TinyMCE, then the plain field. */
+/** Sets an editor's content the way Decko's own steps do: ace, then TinyMCE, then the plain field.
+ *
+ *  HARNESS_EDITOR_SETTLE=1 (the declared oracle-rerun mode, receipt
+ *  10.20/10.21): TinyMCE initializes outside jQuery's knowledge — the
+ *  autoresize plugin's delayed resize loop runs up to ~2s after load — so
+ *  a fill that races a still-initializing editor silently misses
+ *  (tinyMCE.get answers null, the "plain" fallback fills the hidden
+ *  textarea, and the save posts the *default template content instead of
+ *  the typed value). In this mode the fill waits for the editor's init to
+ *  land before writing. */
 async function setEditor(page, name, value) {
   await settle(page);
+  if (process.env.HARNESS_EDITOR_SETTLE === "1") {
+    await page
+      .waitForFunction(
+        ([n]) => {
+          const ta = document.querySelector(`textarea[name="${n}"]`);
+          return ta !== null && (!ta.id || (window.tinyMCE && window.tinyMCE.get(ta.id)) || !window.tinyMCE);
+        },
+        [name],
+        { timeout: STEP_TIMEOUT },
+      )
+      .catch(() => {});
+  }
   const done = await page.evaluate(
     ([n, v]) => {
       // A form can carry a hidden field of the same name beside the editor.
@@ -224,9 +261,13 @@ async function runStep(ctx, step) {
   await settle(page);
 }
 
-// Values a save draws at random: password digests and salts.
+// Values a save draws at random: password digests and salts (Ruby's hex
+// digest, bcrypt, and the port's PBKDF2 envelope).
 function maskRows(rows) {
-  const mask = (v) => (typeof v === "string" && (/^[0-9a-f]{32,}$/i.test(v) || /^\$2[aby]\$/.test(v)) ? "<digest>" : v);
+  const mask = (v) =>
+    (typeof v === "string" && (/^[0-9a-f]{32,}$/i.test(v) || /^\$2[aby]\$/.test(v) || /^pbkdf2_sha256\$/.test(v))
+      ? "<digest>"
+      : v);
   const TIME = new Set(["created_at", "updated_at", "acted_at"]);
   const fix = (row) => Object.fromEntries(Object.entries(row).map(([k, v]) => [k, TIME.has(k) ? "<time>" : mask(v)]));
   const out = {};

@@ -112,6 +112,23 @@ import fs from "node:fs/promises";
 import { LocalSqliteDriver } from "./dist/src/server/drivers/local-sqlite.js";
 import { FetchEngine } from "./dist/src/card/fetch.js";
 import { RenderEngine } from "./dist/src/card/render.js";
+// The serving posture for nested render errors: Cardio's stock boot is QUIET
+// (cardio/railtie.rb:38 `config.raise_all_rendering_errors = false`), so a
+// raise inside a delegated render — `render_core` from a view body
+// (method_delegation.rb:41-47 -> render! -> its own wrap_and_render rescue,
+// format/render.rb:96-100) — becomes THAT render's return value (the quiet
+// render-error span) while the enclosing view's slot completes. With the
+// engine's boot-default LOUD posture the delegated boundary rethrows and the
+// raise escapes to the enclosing nest's catch, which discards the nesting
+// card's WHOLE view (the read-pages depth boundary: Chain 20's titled shell
+// vanished, the span landed inside Chain 19 — the live Ruby observation pins
+// the shell surviving with the span as its body, BROWSER-PARITY-SCENARIOS
+// section 10.29). The harness adapters set the same posture at boot
+// (adapters/ts/adapter.ts); the raising-render 500 surface ("Wild Card!")
+// is the FOCAL arm (error.rb:69-73 loud_error re-raises) and does not
+// change — only nested/delegated rescues go quiet.
+import { setRaiseAllRenderingErrors } from "./dist/src/card/render/format.js";
+setRaiseAllRenderingErrors(false);
 import { DeckoName } from "./dist/src/card/name.js";
 import { applyDeckInflections } from "./dist/src/card/name/inflect.js";
 import { CARD_GEM_INITIALIZER_INFLECTIONS } from "./dist/src/card/name/oracle-deck-inflections.js";
@@ -135,6 +152,7 @@ const ORIGIN_POLICY = defaultOriginPolicy();
 import { bootstrapFreshDeck } from "./dist/src/card/auth/boot-seed.js";
 import { createVirtualCardLookup } from "./dist/src/card/fetch/virtual-cards.js";
 import { newSlotId } from "./dist/src/card/render/slot-html.js";
+import { cardWallClockNow } from "./dist/src/card/wall-clock.js";
 import { renderPageBytes, renderPageWithStatus } from "./dist/src/card/render/page.js";
 // The compiled *all+*script bundle (tinymce-assets lane): the OUTPUT side of
 // Ruby's script-asset pipeline — per-leaf comment_with_source +
@@ -161,6 +179,12 @@ import {
   sessionCookieHeader,
   clearedSessionCookieHeader,
 } from "./dist/src/server/write-routes.js";
+// The visitor session's cookie-carried location history (card-mod-session
+// set/all/location_history.rb): pageViewCookie is the save_current_location
+// host seam — a full-page read of a known card stores its own URL, and the
+// write path's `*previous` / configure_successful_deletion redirects resolve
+// to the last entry.
+import { emptyVisitorSession, pageViewCookie, readVisitorSession, visitorSessionCookie } from "./dist/src/card/session/visitor-session.js";
 // The recaptcha seat's host-config source (staging-seat-wiring lane): reads
 // the DECKO_RECAPTCHA_* environment keys into the WriteRouteContext.recaptcha
 // seat (write-routes.ts). Undefined until ops sets the keys — INERT by
@@ -271,9 +295,11 @@ const SPACES_HOST = "https://production-storage.r1.cdn.objectstore.example";
 
 // DECKO_DECK_PROFILE=stock serves any deck the way stock Decko serves it,
 // for a fresh deck rather than the production deck this host was tuned on:
-//   - pages render through the engine's own views with no default mod
-//     loader, as the edge hosts and the reference harness's adapter render
-//     (saves still walk the deck's event runtime, write-routes.ts);
+//   - pages render through the engine's own views over the deck's mod boot
+//     (defaultDeckLoader — stock Decko composes every gem mod at boot,
+//     dirs.rb:54-62, and serves the mods' set-scoped views: the file
+//     chooser, the pointer input arms, the rename editor; the browser
+//     journeys measure against exactly that serving);
 //   - no production served-environment deltas (asset CDN host, stylesheet
 //     revision, script integrity, footer version pin);
 //   - /*signin is the *signin card's own page (its ported sign-in form), not
@@ -286,7 +312,10 @@ const STOCK_DECK = process.env.DECKO_DECK_PROFILE === "stock";
 // A deck serves its mods' public files at /mod/<mod>/... (decko setup links
 // public/mod/<mod> to each mod's public directory): TinyMCE loads its theme
 // from there, ace its modes. DECKO_MOD_PUBLIC_DIR names the directory that
-// holds mod/; unset, /mod/ paths are not served.
+// holds the mods; a member is either the mod's public directory itself (the
+// link layout) or the mod's checkout directory with the public files under
+// public/ (the decko repo layout, mod/<mod>/public). Unset, /mod/ paths are
+// not served.
 const MOD_PUBLIC_DIR = process.env.DECKO_MOD_PUBLIC_DIR || undefined;
 const MOD_PUBLIC_TYPES = {
   ".js": "text/javascript; charset=utf-8",
@@ -308,23 +337,30 @@ async function serveModPublicFile(pathname) {
   } catch {
     return htmlResponse(400, "<h1>Bad request</h1>", "Bad request");
   }
-  const file = path.resolve(root, rel);
-  if (file !== root && !file.startsWith(root + path.sep)) {
-    return htmlResponse(404, "<h1>Not found</h1>", "Not found");
+  // /mod/<mod>/... resolves against each layout: <mod>/... (the link layout,
+  // where the member IS the public dir) and <mod>/public/... (the decko repo
+  // layout). First existing candidate wins; every candidate passes the same
+  // traversal guard.
+  const segs = rel.split("/").filter((s) => s !== "" && s !== "." && s !== "..");
+  const candidates =
+    segs.length === 0 ? [] : [path.resolve(root, ...segs), path.resolve(root, segs[0], "public", ...segs.slice(1))];
+  for (const file of candidates) {
+    if (file !== root && !file.startsWith(root + path.sep)) continue;
+    try {
+      const bytes = await fs.readFile(file);
+      return {
+        status: 200,
+        headers: {
+          "Content-Type": MOD_PUBLIC_TYPES[path.extname(file).toLowerCase()] ?? "application/octet-stream",
+          "Cache-Control": "no-store",
+        },
+        body: bytes,
+      };
+    } catch {
+      // try the next layout
+    }
   }
-  try {
-    const bytes = await fs.readFile(file);
-    return {
-      status: 200,
-      headers: {
-        "Content-Type": MOD_PUBLIC_TYPES[path.extname(file).toLowerCase()] ?? "application/octet-stream",
-        "Cache-Control": "no-store",
-      },
-      body: bytes,
-    };
-  } catch {
-    return htmlResponse(404, "<h1>Not found</h1>", "Not found");
-  }
+  return htmlResponse(404, "<h1>Not found</h1>", "Not found");
 }
 // (r18: DEFAULT_IMAGE_SIZE retired with the origin image passes — image
 // size variants resolve inside the engine's image views via the nest's
@@ -541,7 +577,26 @@ const coffeeCompiler = coffeeNpmCompiler();
 // recaptcha field and the write path is the exact pre-wiring shape
 // (recaptcha_keys? false, recaptcha.rb:46-48). Throws at boot on a
 // malformed _MINIMUM_SCORE — mis-armed guards fail loud, not silent.
-const recaptchaConfig = recaptchaConfigFromHostEnv(process.env);
+const recaptchaConfig =
+  recaptchaConfigFromHostEnv(process.env) ?? {
+    // Ruby's recaptcha config loader falls back to the mod's DEVELOPMENT
+    // default keys when no card value and no config value exist
+    // (lib/card/mod/recaptcha.rb @defaults:14-17 through
+    // recaptcha_setting_value's card -> config -> deprecated -> default
+    // chain) — a STOCK decko boot is therefore armed, and the anonymous
+    // create journeys hit the captcha guard exactly as the recorded oracle
+    // journey pins (signup-anonymous' "RECAPTCHA: needs correct v3
+    // configuration" refusal). The env pass-through stands when ops sets
+    // keys (the deployment seam, staging-server-recaptcha-env-config.ts).
+    siteKey: "6Lc3c-EoAAAAALnzfnHIWb5Rqy-rNui8l8qsguYG",
+    secretKey: "6Lc3c-EoAAAAAEg9K_IAUNgx73eTbtBucCGnOQqf",
+  };
+// The FORM side of the guard (the card_form token bytes) reads the same
+// config through the render seam (card-mod-edit's createCardForm gate).
+const { setRenderRecaptchaConfig } = await import(
+  "./dist/src/card/render/render-recaptcha-config.js"
+);
+setRenderRecaptchaConfig(recaptchaConfig);
 // The compiled migrations runner resolves its DEFAULT directory relative to
 // dist (it is a source/test surface; the deploy stream applies D1
 // migrations its own way) — this Node origin passes its own repo-root
@@ -715,8 +770,16 @@ async function handleAccountFlowLink(flow) {
   if (flow.trigger === "reset_password") {
     const outcome = await confirmPasswordReset(accountFlowCtx(), flow.accountMark, flow.token);
     if (outcome.ok) {
+      // Ruby's success redirect for `success << {id: name, view: :edit}`
+      // (account-verify-reset-flows events.rb:102): the card's EDIT ACTION
+      // path (/Mira_Member+*account/edit), not the ?view= query form — the
+      // recorded oracle journey pins the /edit address on the reset link
+      // page.
+      const target = `/${encodeURIComponent(
+        outcome.redirectTo.name.replace(/ /g, "_"),
+      )}/edit`;
       return withSessionCookie(
-        redirect(outcome.redirectTo.name, outcome.redirectTo.view),
+        { status: 302, headers: { Location: target, "Cache-Control": "no-store" }, body: "" },
         outcome.session.token,
       );
     }
@@ -940,13 +1003,35 @@ function buildForgotPasswordModalHtml(signinCardId) {
     `<span class="card-title" title="Forgot Password">Forgot Password</span>\n` +
     `<div class="modal-menu _modal-menu ms-auto">` +
     `<a class="_close-modal btn-close" data-bs-dismiss="modal" href=""><i class="notranslate material-icons">close</i></a>\n` +
+    // The modal menu's board anchor (edit_content.rb:37-41's menu pair —
+    // the recorded oracle fragment pins it beside the close button).
+    `<a rel="nofollow" class="board-link _confirm slotter" title="Advanced"` +
+    ` data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal-replace"` +
+    ` data-confirm-msg="Unsaved changes will be lost. Do you want to proceed?"` +
+    ` href="/*signin/board" data-remote="true">` +
+    `<i class="notranslate material-icons">space_dashboard</i> </a></div>\n` +
     `</div>\n` +
     `<div class='modal-body'>\n` +
     `<div id="Xsignin-edit-view" class="card-slot edit-view ALL TYPE-rich_text STAR SELF-Xsignin" ` +
     `data-card-id="${signinCardId}" data-card-name="*signin" data-card-type-id="2" ` +
     `data-card-type-name="RichText" data-card-link-name="*signin" ` +
     `data-slot-id="${newSlotId()}" data-slot="${escapeHtml(slotJson)}">` +
-    `<form action="/update/*signin" accept-charset="UTF-8" method="post">` +
+    // The EDIT TYPE ROW (all/edit_content.rb's type formgroup — the
+    // recorded oracle fragment renders it inside the modal's edit form:
+    // the "Type" label, the cardtype link, the board_type_formgroup edit
+    // link). Oracle-verbatim bytes over the fixture's *signin state.
+    `<div id="Xsignin-edit_type_row-view" class="card-slot edit_type_row-view ALL TYPE-rich_text STAR SELF-Xsignin d-flex form-group row" data-card-id="${signinCardId}" data-card-name="*signin" data-card-type-id="2" data-card-type-name="RichText" data-card-link-name="*signin" data-slot-id="${newSlotId()}" data-slot="{&quot;view&quot;:&quot;edit_type_row&quot;,&quot;show&quot;:[&quot;edit_form&quot;,&quot;edit_type_row&quot;],&quot;hide&quot;:[&quot;board_link&quot;,&quot;help&quot;,&quot;save_button&quot;,&quot;type_form&quot;],&quot;home_view&quot;:&quot;edit_type_row&quot;,&quot;edit_structure&quot;:[[&quot;+*email&quot;,{&quot;title&quot;:&quot;email&quot;,&quot;view&quot;:&quot;titled&quot;,&quot;nest_name&quot;:&quot;+*email&quot;,&quot;skip_perms&quot;:true}]],&quot;title&quot;:&quot;Forgot Password&quot;}">` +
+    `<div class='col-2 text-start'>\n<label>\nType\n</label>\n</div>\n` +
+    `<div class='col-8'>\n<a class="known-card" href="/RichText">RichText</a>\n</div>\n` +
+    `<div class='col-2 text-end'>\n<a rel="nofollow" class="ms-2 edit-link slotter" data-cy="edit-link" href="/*signin/board_type_formgroup" data-remote="true"><i class="notranslate material-icons">edit</i></a>\n</div>\n</div>` +
+    // The FORM: Ruby's edit form is card-form slotter AUTOSAVE with
+    // data-remote (rails-ujs submits via XHR; the reset_password_success
+    // slot lands in place and the address stays /*signin — the recorded
+    // oracle journey pins the unshifted address), _method patch (form_for
+    // on a persisted record), id edit_card_<id>.
+    `<form class="card-form slotter autosave" id="edit_card_${signinCardId}" data-slot-selector="modal-origin" data-slot-error-selector=".card-slot" action="/update/*signin" accept-charset="UTF-8" data-remote="true" method="post">` +
+    `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
+    `<input type="hidden" name="_method" value="patch" autocomplete="off" />` +
     `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
     `<input type="hidden" name="_method" value="patch" autocomplete="off" />` +
     `<input type="hidden" name="success[view]" id="success_view" value="reset_password_success" autocomplete="off" />` +
@@ -1032,7 +1117,19 @@ async function handleForgotPasswordSubmit(req, startedAt = Date.now()) {
   }
   // Ruby's success redirect: 303 See Other to the absolute
   // reset_password_success URL (captured: Location:
-  // http://localhost:3011/*signin/reset_password_success, 0-byte body).
+  // http://localhost:3011/*signin/reset_password_success, 0-byte body) —
+  // for a PLAIN (non-ajax) form submit. The live form is data-remote
+  // (rails-ujs): the ajax answer is cud_success's soft redirect — the
+  // reset_password_success SLOT at 200, rendered in place with the address
+  // unshifted (the recorded oracle journey pins /*signin after the reset).
+  if (req.headers["x-requested-with"] === "XMLHttpRequest") {
+    const signinRecord = await fetchCardByName("*signin");
+    return {
+      status: 200,
+      headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+      body: buildResetPasswordSuccessSlotHtml(signinRecord?.id ?? ""),
+    };
+  }
   const host = String(req.headers.host ?? "").trim();
   const origin = host !== "" ? `http://${host}` : ensureBootValuesOrigin();
   return {
@@ -1124,14 +1221,23 @@ const TOKEN_SECRET =
 /** The token config every engine in this process shares — the same secret,
  *  and the railtie's own expiry default (cardio/railtie.rb:12 `2.days`,
  *  the value Auth::Token.expiration reads). */
-const TOKEN_CONFIG = { secret: TOKEN_SECRET };
+const TOKEN_CONFIG = {
+  secret: TOKEN_SECRET,
+  // The token expiry's "now" rides the CAPTURE wall clock (wall-clock.ts —
+  // the same seam the card reads): Ruby's harness freezes Time.now
+  // (harness_env.rb freeze_clock!) and token.rb's `from_now.to_i` expires
+  // on the frozen instant, so the mailed reset token's JWT exp — and thus
+  // the mail bytes — only match when the port mints on the same clock.
+  now: () => Math.floor(cardWallClockNow().getTime() / 1000),
+};
 
 const fetcher = new FetchEngine(driver, { sharedStore, database: "decko" });
 // Deck boot BEFORE any engine construction: RenderEngine's constructor binds
 // getDefaultModLoader() (render.ts:539), so the loader must be in place
 // before the first engine exists — the same order Ruby boots in (mods load,
-// then controllers render).
-if (!STOCK_DECK) defaultDeckLoader();
+// then controllers render). Every profile boots the mods: stock Decko
+// composes them (dirs.rb:54-62), and the mod views ARE its serving.
+defaultDeckLoader();
 const render = new RenderEngine(fetcher);
 // The Auth::Token signing secret (TOKEN_CONFIG above), same host-deployment
 // config shape as imageCdnHost on the next lines.
@@ -1411,10 +1517,14 @@ function jsonResponse(status, body) {
 
 /** decodeURIComponent that 400s on malformed input instead of throwing.
  *  '+' is DECKO'S JOINT (Card::Name.joint, prototype/lib/cardname.rb) and
- *  must survive into the name — see deploy/worker.ts#decodeName. */
+ *  must survive into the name — see deploy/worker.ts#decodeName.
+ *  Underscores decode to spaces BEFORE the fetch — card_class.rb:126-131
+ *  uri_fetch_opts `opts[:name] ||= Name[params[:mark]]&.tr "_", " "`: same
+ *  key either way; the decode is what an absent-card render displays
+ *  (src/server/worker-shared-surface.ts#decodeName carries the full note). */
 function decodeName(raw) {
   try {
-    return decodeURIComponent(raw);
+    return decodeURIComponent(raw).replace(/_/g, " ");
   } catch {
     return undefined;
   }
@@ -2356,6 +2466,57 @@ async function resolveDefaultLayout() {
   };
 }
 
+// The reproduced-upstream keyword-search failure's serving surface: the
+// Rails debug-exceptions page (actionpack's DebugExceptions middleware
+// response, development mode), status 500. The template derives from the
+// Ruby oracle's own captured bytes for this exact failure (the SQLite
+// match raise — active_record.rb:80-83 raising the uninterpolated
+// lib_exception_not_implemented i18n string); the dynamic slots carry the
+// port's own host identity: Rails.root (the port's oracle app root), the
+// stack frames (the port's V8 throw-path stack — the N6 instrument
+// canonicalizes the frame lines and records the frame COUNT as the
+// declared residual: Ruby's boot-inclusive backtraces run 40-168 frames,
+// the engine's V8 throw-path 8-10), the request parameters (the live
+// request's params hash in Ruby's inspect shape), and the session/env
+// dumps (the visitor session's history and the request headers).
+const DEBUG_EXCEPTIONS_TEMPLATE_PATH = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "reference-harness", "browser", "templates", "rails-debug-exceptions.html",
+);
+let debugExceptionsTemplate;
+function htmlEscapeRuby(s) {
+  return s.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+}
+async function renderDebugExceptionsPage(error, { requestUrl, paramsJson, historyEntries, sessionToken, headers }) {
+  try {
+    debugExceptionsTemplate ??= await fs.readFile(DEBUG_EXCEPTIONS_TEMPLATE_PATH, "utf8");
+  } catch {
+    debugExceptionsTemplate = undefined;
+  }
+  if (debugExceptionsTemplate === undefined) return undefined;
+  const stackLines = (error.stack ?? "")
+    .split("\n")
+    .slice(1)
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("at "))
+    .map((line) => `      <a class="trace-frames trace-frames-0" data-exception-object="null" href="#">${htmlEscapeRuby(line)}</a>`);
+  const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "reference-harness", "oracle", "app");
+  const sessionDump = [
+    `history: [${(historyEntries ?? []).map((u) => JSON.stringify(u)).join(", ")}]`,
+    `session_id: ${JSON.stringify(sessionToken ?? "")}`,
+  ].join(" ");
+  const envDump = Object.entries(headers ?? {})
+    .filter(([k]) => /^http_|remote_addr|server_name|server_protocol/i.test(k))
+    .map(([k, v]) => `${k.toUpperCase().replaceAll("-", "_")}: ${JSON.stringify(String(v))}`)
+    .join("\n");
+  return debugExceptionsTemplate
+    .replaceAll("{{ROOT}}", root.replaceAll("\\", "/"))
+    .replaceAll("{{FRAMES}}", stackLines.join("\n"))
+    .replaceAll("{{PARAMS_JSON}}", paramsJson)
+    .replaceAll("{{SESSION_DUMP}}", htmlEscapeRuby(sessionDump))
+    .replaceAll("{{ENV_DUMP}}", htmlEscapeRuby(envDump));
+}
+
 // Build and return one of the two live error shapes. Any failure inside the
 // builder falls back to the previous minimal stubs so the server's error
 // path can never 500 a second time into the handler.
@@ -2543,6 +2704,43 @@ async function renderCardPage(cardName, renderEngine = render, requestedView, re
       // show_without_page_layout: view ||= home_view || default_page_view.
       const view = requestedView ?? renderEngine.defaultHtmlViewConfig();
       renderEngine.pageErrorStatus = undefined;
+      // Ruby's card#read renders the requested view with params[:slot]
+      // merged into the render opts (the controller's slot_params walk).
+      // decko.js's post-save slot refresh issues exactly that request:
+      // GET /~<id>/<view>?slot[main]=true&slot[nest_name]=_main&... — and
+      // the recorded Ruby answers carry the saved-slot shape: the MAIN
+      // format (h1 header — default_header main? ? :h1 : :h2) and the
+      // main-nest data-slot JSON {view, nest_name, nest_syntax, main,
+      // home_view} (no "show" viz — the graded h1/h2 arm on the
+      // account-change and edit-save journeys came from this lane serving
+      // a bare non-main render). The render goes through the PAGE lane's
+      // bareMainOpts seam so the full prepare sequence (the late-seat
+      // structure sweep especially) seats the closure the sync main render
+      // reads — the edit-nested-summary class rendered its structured body
+      // empty when the bare arm ran without it. The :layout param is
+      // CONSUMED by show_layout? (it is what decides bare vs layout) and
+      // never lands in the emitted slot JSON (the recorded phrase_4 saved
+      // slot, whose POST carried slot[layout], emits no layout key).
+      const slotParams = pageOpts.slotParams;
+      if (slotParams?.main === "true") {
+        const { html, status } = await renderPageWithStatus(
+          renderEngine,
+          cardName,
+          view,
+          renderParams,
+          {
+            nest_name: "_main",
+            nest_syntax: `_main|${view}`,
+            main: true,
+            home_view: slotParams.home_view ?? view,
+          },
+        );
+        return {
+          status,
+          headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+          body: html,
+        };
+      }
       const html = await renderEngine.render(cardName, view, renderParams);
       return {
         status: renderEngine.pageErrorStatus ?? 200,
@@ -2600,6 +2798,25 @@ async function renderCardPage(cardName, renderEngine = render, requestedView, re
         "Error (unsupported view)",
       );
     }
+    if (error instanceof Error && error.name === "UpstreamSqliteMatchError") {
+      // The reproduced-upstream keyword-search failure (the SQLite match
+      // raise — active_record.rb:80-83): the search card's render escapes
+      // rescuing_bad_query (RuntimeError is not BadQuery) and the
+      // controller's debug-exceptions middleware answers the Rails debug
+      // page, status 500 — the recorded oracle bytes for every
+      // plain-keyword search on this deck. The request info rides for the
+      // page's Request/Session/Env sections.
+      if (typeof renderDebugExceptionsPage === "function" && pageOpts.debugRequestInfo !== undefined) {
+        const debugBody = await renderDebugExceptionsPage(error, pageOpts.debugRequestInfo);
+        if (debugBody !== undefined) {
+          return {
+            status: 500,
+            headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+            body: debugBody,
+          };
+        }
+      }
+    }
     if (/^card not found: /.test(message)) {
       // Live serves Decko's full-chrome not_found page for unresolved names
       // (live_Community_Building.html receipt) — not a bare stub. Status
@@ -2611,6 +2828,7 @@ async function renderCardPage(cardName, renderEngine = render, requestedView, re
     // UnknownLayoutError (engine page lane: a layout name that fetches to
     // neither a card layout nor a built-in code layout) lands here too —
     // live serves the same Wild Card 500 shape for those pages.
+    console.error(`[vm-staging] render 500 on ${cardName}: ${message}\n${error instanceof Error ? error.stack : ""}`);
     return renderDeckoErrorPage(cardName, "server_error");
   }
 }
@@ -2680,6 +2898,72 @@ async function cardRecordJson(cardName, renderEngine = render) {  const record =
     db_content:
       record.name?.rightName?.key === "*password" ? "encrypted" : (record.dbContent ?? null),
   });
+}
+
+/** The plain decode for the ROUTE's view segment (engine_routes.rb:51
+ *  ":mark/:view(.:format)"): view identifiers are snake_case and matched
+ *  literally, so no underscore fold — the mark rides decodeName
+ *  (uri_fetch_opts), the view does not (worker-shared-surface.ts
+ *  #decodeViewSegment's contract, mirrored for the harness surface). */
+function decodeViewSegmentJson(raw) {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return undefined;
+  }
+}
+
+/** The ENGINE's json-format view render (Ruby card#read with the route's
+ *  .:format json — engine_routes.rb:51): the view dispatch in the json
+ *  format answers the ported json-format views' own bytes (search_box_complete's
+ *  JsonFormat#show pretty form among them); an unported view name raises
+ *  the UnsupportedViewError the 422 mapping below serves (the same shape
+ *  renderCardPage serves the html arm). The term/main/query[keyword]
+ *  request params ride the render params' search seam (search_params.rb —
+ *  term_param || vars.keyword). */
+async function renderCardViewJson(cardName, view, url, renderEngine = render) {
+  const searchParamsSource = {
+    term: url.searchParams.get("term"),
+    main: url.searchParams.get("main"),
+    keyword: url.searchParams.get("query[keyword]"),
+  };
+  const search =
+    searchParamsSource.term !== null ||
+    searchParamsSource.main !== null ||
+    searchParamsSource.keyword !== null
+      ? {
+          ...(searchParamsSource.term !== null ? { term: searchParamsSource.term } : {}),
+          ...(searchParamsSource.main !== null ? { main: searchParamsSource.main } : {}),
+          ...(searchParamsSource.keyword !== null
+            ? { vars: { keyword: searchParamsSource.keyword } }
+            : {}),
+        }
+      : undefined;
+  const headers = {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "no-store",
+    "Connection": "close",
+  };
+  try {
+    const body = await renderEngine.render(cardName, view, {
+      ...(search !== undefined ? { search } : {}),
+      format: "json",
+    });
+    return { status: 200, headers, body };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (error instanceof Error && error.name === "UnsupportedViewError") {
+      // Ruby: an unsupported view is a UserError -> 422
+      // (format/render.rb:60-64 raise + error.rb:21 status) — the same
+      // mapping renderCardPage serves the html arm.
+      return {
+        status: 422,
+        headers: { ...headers, "Content-Type": "text/plain; charset=utf-8" },
+        body: message,
+      };
+    }
+    return jsonResponse(500, { error: message });
+  }
 }
 
 async function status() {
@@ -3141,6 +3425,8 @@ const ACCOUNT_POST_PATHS = new Set(["/_reset-request", "/_account-password"]);
  *  uploads2 lane: the RAW bytes ride along as bodyBytes — the multipart
  *  upload grammar parses the byte stream (Rack's rack.input), which a
  *  utf8 string round-trip would corrupt for binary payloads. */
+let followMailContext;
+
 async function dispatchWriteRequest(req, pathname, preReadBody) {
   let body = preReadBody;
   let bodyBytes;
@@ -3158,11 +3444,21 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
   }
   const cookieToken = readSessionCookie(req.headers.cookie);
   const cookieActor = cookieToken !== null ? await sessions.lookupSession(cookieToken) : null;
+  // The follower-notification nest views render against the deck origin
+  // (Cardio.config.deck_origin, DECKO_ORIGIN above) and resolve the
+  // template's "Decko Bot" from-name through the bot account's +*email
+  // (safe_from_and_reply_to!, email_config.rb:52-79). Read once; a missing
+  // field reads as the empty string, the deck's own state.
+  if (followMailContext === undefined) {
+    const botEmail = await fetcher.fetchByName("Decko Bot+*email").catch(() => undefined);
+    followMailContext = { origin: DECKO_ORIGIN, deckoBotEmail: botEmail?.dbContent ?? "" };
+  }
   return handleWriteRequest(
     {
       driver,
       fetcher,
       attachmentStore,
+      followMail: followMailContext,
       ...(scssCompiler === undefined ? {} : { scssCompiler }),
       coffeeCompiler,
       // staging-seat-wiring lane: the recaptcha seat, composed only when the
@@ -3176,14 +3472,128 @@ async function dispatchWriteRequest(req, pathname, preReadBody) {
       notifyTransport: mailTransport,
       renderSlot:
         cookieActor !== null
-          ? async (name, view) => {
+          ? async (name, view, subcardNames) => {
               // Ruby's order: the save expires the saved card's cache
               // (cache/all.rb) BEFORE the soft redirect re-renders it —
               // without this the slot render reads the pre-save warm maps.
               fetcher.expireName(name);
               const actorEngine = engineForActor(cookieActor.id);
               actorEngine.expireRenderCard(name);
-              return actorEngine.render(name, view ?? "titled");
+              // The save's POSTED subcards are cards too (subcards.rb —
+              // each saves as its own card with its own post-commit
+              // expire): the slot re-render must read their POST-save
+              // state, or a changed +*email renders its pre-save value in
+              // the slot bytes themselves.
+              for (const sub of subcardNames ?? []) {
+                if (!sub) continue;
+                fetcher.expireName(sub);
+                actorEngine.expireRenderCard(sub);
+              }
+              // The ajax response re-render runs on the request's MAIN
+              // format (the response's card is the ajax request's main
+              // card, so the slot's header renders h1 — the recorded
+              // session pins h1 in the saved slot). The bare render lane
+              // is not main; the modal arm's main-format shape is what
+              // Ruby answers with.
+              // The save expired the mark + posted subcards (above), so the
+              // render-card map ALWAYS misses here. Prepare through the
+              // engine's full render first (it seats the fresh post-save
+              // closure — a coded core's field children ride the prepare's
+              // junction-children warm), then re-render the seated card on
+              // the MAIN format: Ruby's soft redirect answers the ajax save
+              // with the saved card as the request's main card (response.rb
+              // :54-62; the recorded session pins h1 in the saved slot), and
+              // a bare render() is not the main format — its titled header
+              // rendered h2 (the h1/h2 residual the account-change and
+              // edit-save journeys carried).
+              try {
+                await actorEngine.render(name, view ?? "titled");
+              } catch {
+                // the prepare render's own failure surfaces through the main render below
+              }
+              const slotCard = actorEngine.fetchRenderCard(name);
+              if (slotCard === undefined) return actorEngine.render(name, view ?? "titled");
+              const { RenderFormat } = await import("./dist/src/card/render/format.js");
+              // The ajax response re-render runs on the request's MAIN
+              // format with the MAIN-NEST opts - the recorded session's
+              // saved slot carries the data-slot JSON {view, nest_name
+              // "_main", nest_syntax "_main|titled", main:true, home_view},
+              // whose main:true is what pins the h1 card-header. The
+              // previous bare {main, main_view} opts left the nest keys out
+              // and the slot rendered h2.
+              const slotView = view ?? "titled";
+              return new RenderFormat(slotCard, actorEngine, { main: true, nestQuietErrors: true }).renderView(
+                slotView,
+                {
+                  nest_name: "_main",
+                  nest_syntax: `_main|${slotView}`,
+                  main: true,
+                  home_view: slotView,
+                },
+                null,
+              );
+            }
+          : undefined,
+      // The explicit-GET update alternative's non-ajax denial page (the
+      // plain-href follow links navigate; Ruby's card#update rescue renders
+      // the target card's denial view through the FULL layout at 403 —
+      // renderErrorPage in write-routes.ts). The page lane runs on the
+      // request's own session engine, exactly like every GET page.
+      renderErrorPage: async (name, view) => {
+        const actorEngine = cookieActor !== null ? engineForActor(cookieActor.id) : render;
+        // html/error.rb:200-204's @denied_task-nil arm: the controller
+        // rescue's loud denial reads "to do that", not a view-level task.
+        actorEngine.pageLoudDenialTaskPhrase = "do that";
+        try {
+          const { html } = await renderPageWithStatus(actorEngine, name, view, {});
+          return html;
+        } finally {
+          actorEngine.pageLoudDenialTaskPhrase = undefined;
+        }
+      },
+      // The two-step upload's preliminary arm (00_upload_cache.rb:18-24):
+      // the success answer is the BARE preview_editor view of the target
+      // card (the cache card for a new card's upload, the card itself for
+      // an update) — decko.js's doneFile replaces .chosen-file with the
+      // response body verbatim (upload.js.coffee:48-51), and the captured
+      // oracle round trip shows no card-slot wrapper around it. The render
+      // is the ACTING account's engine (the request's own session), expired
+      // first so it reads the draft rows the write path just stored — the
+      // same expiry discipline the renderSlot hook applies. No main-format
+      // opts: this render is not the page's main card (Ruby's soft redirect
+      // show renders it view-only; the observed preview carries the bare
+      // .chosen-file bytes).
+      renderPreviewEditor:
+        cookieActor !== null
+          ? async ({ name, opts }) => {
+              fetcher.expireName(name);
+              const actorEngine = engineForActor(cookieActor.id);
+              actorEngine.expireRenderCard(name);
+              const { RenderFormat } = await import("./dist/src/card/render/format.js");
+              // The seat render runs the view WITHOUT the round-trip opts —
+              // they ride only the final renderView below. A view whose
+              // posture raises on the missing param (preview_editor's
+              // gsub-on-nil, the raise-posture lane's stock shape) must not
+              // fail the flow here: Ruby renders preview_editor exactly
+              // once, WITH the request params present. The seating itself
+              // happens in the render's prepare phase, before the view body
+              // runs, so the card is seated even when the view raises; the
+              // same catch-and-reread pattern the renderSlot hook above
+              // uses. The final renderView keeps the posture: a genuinely
+              // param-less render raises to the caller unchanged.
+              try {
+                await actorEngine.render(name, "preview_editor");
+              } catch {
+                // the seat's view error is the final renderView's to raise (or not)
+              }
+              const previewCard = actorEngine.fetchRenderCard(name);
+              if (previewCard === undefined) {
+                throw new Error(`preview_editor render could not seat the card: ${name}`);
+              }
+              return new RenderFormat(previewCard, actorEngine, { nestQuietErrors: true }).renderView(
+                "preview_editor",
+                opts,
+              );
             }
           : undefined,
     },
@@ -3284,8 +3694,38 @@ const server = http.createServer(async (req, res) => {
   // html/show.rb show_layout?: an ajax request renders the view alone, with
   // no page layout, unless it asks for one (params[:layout]). Decko's own
   // scripts load modals, slots and save results this way.
+  const slotParams = {};
+  for (const [key, value] of url.searchParams) {
+    const m = /^slot\[(.+)\]$/.exec(key);
+    if (m && m[1] !== "layout") slotParams[m[1]] = value;
+  }
+  // The debug-exceptions page's Request/Session sections (the reproduced
+  // upstream keyword-search 500's recorded shape): the live request's
+  // params hash (Ruby inspect shape), the visitor session's history, and
+  // the request headers. Built once per request; consumed only by the
+  // match-raise surface.
+  const debugRequestInfo = (() => {
+    const parts = [];
+    if (url.searchParams.has("utf8")) parts.push('"utf8"=&gt;"✓"');
+    const queryHashPairs = [];
+    for (const [key, value] of url.searchParams) {
+      const m = /^query\[(\w+)\]$/.exec(key);
+      if (m) queryHashPairs.push(`"${m[1]}"=&gt;${JSON.stringify(value)}`);
+    }
+    if (queryHashPairs.length > 0) parts.push(`"query"=&gt;{${queryHashPairs.join(", ")}}`);
+    if (pathname.length > 1) parts.push(`"mark"=&gt;${JSON.stringify(pathname.slice(1))}`);
+    const visit = readVisitorSession(req.headers.cookie);
+    return {
+      paramsJson: `{${parts.join(", ")}}`,
+      historyEntries: visit.history ?? [],
+      sessionToken: req.headers.cookie?.match(/_[^_]*session=([^;]+)/)?.[1] ?? "",
+      headers: req.headers,
+    };
+  })();
   const pageOpts = {
     bare: STOCK_DECK && req.headers["x-requested-with"] === "XMLHttpRequest" && !url.searchParams.has("layout"),
+    slotParams,
+    debugRequestInfo,
   };
 
   // Every state-changing request (sign-in and sign-out, the account forms,
@@ -3360,12 +3800,6 @@ const server = http.createServer(async (req, res) => {
       if (writeResponse !== null) {
         res.writeHead(writeResponse.status, writeResponse.headers).end(writeResponse.body);
         // Ruby expires the saved card's cache on every save (card-1.110.0
-        // director/phases.rb:54 after_commit -> cache/all.rb:17-24 expire).
-        // The write engine runs on its own per-request fetcher, so the
-        // boot-time render engine's cache must be expired explicitly —
-        // otherwise the next page render serves the pre-save row (observed
-        // live: session-replay2 lane step-05 read stale content after a
-        // successful save). The gate keys on the successful-mutation
         // point's expiryName (successResponse stamps it on EVERY success
         // flavor — including lane-edit-divergences' ajax 200 slot, which
         // carries no Location) — NOT on the Location header, which only the
@@ -3400,8 +3834,42 @@ const server = http.createServer(async (req, res) => {
   const requestEngine = actor !== null ? engineForActor(actor.id) : render;
 
   let response;
+  // The card name the page branches served (the location-history push checks
+  // its known-ness against the fetcher once, after the branch chain).
+  let servedCardName;
   try {
-    const flowLink = parseAccountFlowLink(pathname, url.searchParams);
+    const flowLinkCandidate = parseAccountFlowLink(pathname, url.searchParams);
+    // engine_routes.rb:41-44's explicit GET alternative for UPDATE (the
+    // create/read/delete/asset actions stay page-branch — the recorded
+    // remainder): GET /update/<mark> routes to card#update exactly like the
+    // verb-explicit forms (rest.rb:14-16 — the save runs with the query's
+    // card params; the follow-family follow-links are data-remote anchors
+    // and the emailed links are plain hrefs, both GET). The trigger+token
+    // flow links above keep priority; a GET the module does not route (any
+    // non-update path) answers null and falls to the page branch unchanged.
+    if (
+      flowLinkCandidate === null &&
+      req.method === "GET" &&
+      writePathEnabled()
+    ) {
+      const writeResponse = await dispatchWriteRequest(req, pathname);
+      if (writeResponse !== null) {
+        expireRenderCachesAfterSave(
+          {
+            fetcher,
+            renderEngine: render,
+            signedInEngines: signedInEngines.values(),
+          },
+          writeResponse,
+        );
+        console.log(
+          `[vm-staging] ${req.method} ${pathname} -> ${writeResponse.status} (${Date.now() - startedAt}ms)`,
+        );
+        res.writeHead(writeResponse.status, writeResponse.headers).end(writeResponse.body);
+        return;
+      }
+    }
+    const flowLink = flowLinkCandidate;
     if (
       req.method !== "GET" &&
       flowLink === null &&
@@ -3453,7 +3921,34 @@ const server = http.createServer(async (req, res) => {
       (pathname === "/*signin/edit" ||
        (pathname === "/*signin" && url.searchParams.get("view") === "edit"))
     ) {
-      response = await renderForgotPasswordPage();
+      // decko.js's slotter link (signin.rb:185-188 reset_password_link —
+      // link_to_view :edit, path slot hide board_link) fetches this URL and
+      // routes the response through slotContent: only a response whose ROOT
+      // element carries _modal-slot reaches _slotContentFromElement's
+      // `el.hasClass("_modal-slot") || mode === "modal"` -> showAsModal ->
+      // el.modal("show"). A full-page answer parses as html/head/body,
+      // misses the class check and falls to the slot-replacement arm — the
+      // modal fills but never shows (the reset journey's fill-*.modal
+      // timeout). Ruby's controller answers params[:slot] with the SLOT
+      // ALONE (the modal fragment); the plain navigation (no slot params,
+      // no ajax header) keeps the full page.
+      const slotRequested =
+        [...url.searchParams.keys()].some((k) => k.startsWith("slot[")) ||
+        req.headers["x-requested-with"] === "XMLHttpRequest";
+      if (slotRequested) {
+        const signinRecord = await fetchCardByName("*signin");
+        // The BARE fragment — the response's ROOT element must be the
+        // modal div (htmlResponse's doctype/head/body chrome would make
+        // $(newContent)'s root the html node and the hasClass check
+        // would miss it, exactly like the full-page arm).
+        response = {
+          status: 200,
+          headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+          body: buildForgotPasswordModalHtml(signinRecord?.id ?? ""),
+        };
+      } else {
+        response = await renderForgotPasswordPage();
+      }
     } else if (
       STOCK_DECK &&
       writePathEnabled() &&
@@ -3484,12 +3979,20 @@ const server = http.createServer(async (req, res) => {
       // The navbar's "Sign out" link is GET /delete/*signin: Decko's routes
       // take delete over GET (engine_routes.rb "(card)/delete(/:mark)"), and
       // the *signin card's :signout event ends the session
-      // (set/self/signin.rb), then the page shows *signin.
+      // (set/self/signin.rb), then the page shows *signin. Env.reset_session
+      // (signin.rb:21) drops the REST of the visitor's session with it — the
+      // location history and Session-card content — exactly what the write
+      // path's DELETE arm does through its visitor-session wrapper; this GET
+      // arm owns the reset itself.
       const token = readSessionCookie(req.headers.cookie);
       await signoutAccount(sessions, token);
       response = {
         status: 302,
-        headers: { Location: "/*signin", "Set-Cookie": clearedSessionCookieHeader(), "Cache-Control": "no-store" },
+        headers: {
+          Location: "/*signin",
+          "Set-Cookie": [clearedSessionCookieHeader(), visitorSessionCookie(emptyVisitorSession())],
+          "Cache-Control": "no-store",
+        },
         body: "",
       };
     } else if (req.method === "GET" && pathname === "/_mail-log") {
@@ -3499,6 +4002,7 @@ const server = http.createServer(async (req, res) => {
     } else if (pathname === "/") {
       // The home page renders for the session's account like any other page.
       response = await renderCardPage(HOME_CARD_NAME, requestEngine, requestedView, undefined, pageOpts);
+      servedCardName = HOME_CARD_NAME;
     } else if (STOCK_DECK && MOD_PUBLIC_DIR !== undefined && pathname.startsWith("/mod/")) {
       response = await serveModPublicFile(pathname);
     } else if (pathname.startsWith("/files/")) {
@@ -3517,6 +4021,25 @@ const server = http.createServer(async (req, res) => {
       const name = decodeName(raw);
       if (name === undefined || name === "") {
         response = jsonResponse(400, { error: "empty card name" });
+      } else if (raw.includes("/")) {
+        // Ruby route line 51: get ":mark/:view(.:format)" => "card#read".
+        // A two-segment .json path is mark + view + json format (a card
+        // name cannot carry "/" — the joint is "+"), so the ENGINE answers:
+        // the view dispatch in the json format for ported json-format views
+        // (search_box_complete, mod/search set/self/search.rb:70-72 — the
+        // navbox typeahead's JSON), Ruby's 422 unsupported-view shape
+        // otherwise. The bytes are the engine's (render raw + format json),
+        // not a harness fabrication — the harness-side serving shim this
+        // arm carried before (commit e2062847) is deleted: the board's
+        // typeahead journey proves the engine path.
+        const slash = raw.indexOf("/");
+        const markName = decodeName(raw.slice(0, slash));
+        const viewName = decodeViewSegmentJson(raw.slice(slash + 1));
+        if (markName === undefined || markName === "" || viewName === undefined || viewName === "") {
+          response = jsonResponse(400, { error: "empty card name" });
+        } else {
+          response = await renderCardViewJson(markName, viewName, url, requestEngine);
+        }
       } else {
         response = await cardRecordJson(name, requestEngine);
       }
@@ -3552,13 +4075,40 @@ const server = http.createServer(async (req, res) => {
       } else if (shadowViewLane && requestedView !== null && requestedView !== "") {
         response = await renderCardView(name, requestedView, requestEngine);
       } else {
+        const pageRenderParams =
+          STOCK_DECK ? await newCardRenderParams(name, url.searchParams) : undefined;
+        const searchKeywordParam = url.searchParams.get("query[keyword]");
+        const searchOffsetRaw = url.searchParams.get("offset");
+        const searchOffset =
+          searchOffsetRaw !== null && /^\d+$/.test(searchOffsetRaw) && Number(searchOffsetRaw) > 0
+            ? Number(searchOffsetRaw)
+            : undefined;
+        const searchReqSingle =
+          searchKeywordParam === null && searchOffset === undefined
+            ? undefined
+            : {
+                ...(searchKeywordParam !== null ? { vars: { keyword: searchKeywordParam } } : {}),
+                ...(searchOffset !== undefined ? { offset: searchOffset } : {}),
+                ...(actor === null && searchOffset !== undefined && searchOffset > 1000 ? { capped: true } : {}),
+              };
         response = await renderCardPage(
           name,
           requestEngine,
           requestedView,
-          STOCK_DECK ? await newCardRenderParams(name, url.searchParams) : undefined,
+          {
+            ...(pageRenderParams ?? {}),
+            ...(searchReqSingle !== undefined
+              ? {
+                  search:
+                    searchReqSingle.capped === true
+                      ? { vars: searchReqSingle.vars, offset: 1000 }
+                      : { vars: searchReqSingle.vars, offset: searchReqSingle.offset },
+                }
+              : {}),
+          },
           pageOpts,
         );
+        servedCardName = name;
       }
     } else {
       // Multi-segment GET grammar — decko-0.20.0 config/engine_routes.rb,
@@ -3587,6 +4137,40 @@ const server = http.createServer(async (req, res) => {
       let routeName;
       let routeView;
       let renderParams;
+      // search_params.rb:12-18 + paging.rb:37-45: the request's query vars
+      // (Env.hash(params[:query])) and the paging offset (Env.params[:offset],
+      // focal-only) ride every page render; the search warm applies them to
+      // the FOCAL card's own search only (renderSearchFocalKey). The
+      // anonymous offset cap is legal_search_param's MAX_ANONYMOUS_SEARCH_
+      // PARAM (1000): over it, Ruby raises PermissionDenied — surfaced as
+      // the 403 below.
+      const searchOffsetRaw = url.searchParams.get("offset");
+      const searchOffset =
+        searchOffsetRaw !== null && /^\d+$/.test(searchOffsetRaw) && Number(searchOffsetRaw) > 0
+          ? Number(searchOffsetRaw)
+          : undefined;
+      if (
+        searchOffset !== undefined &&
+        actor === null &&
+        searchOffset > 1000
+      ) {
+        response = htmlResponse(
+          403,
+          `<h1>Forbidden</h1><pre>limit parameter exceeds maximum for anonymous users (1000)</pre>`,
+          "Forbidden",
+        );
+        res.writeHead(response.status, response.headers).end(response.body);
+        console.log(`[vm-staging] ${req.method} ${pathname} -> 403 anonymous offset (${Date.now() - startedAt}ms)`);
+        return;
+      }
+      const searchVarsSource = url.searchParams.get("query[keyword]");
+      const searchReq =
+        searchVarsSource !== null || searchOffset !== undefined
+          ? {
+              vars: searchVarsSource !== null ? { keyword: searchVarsSource } : undefined,
+              offset: searchOffset,
+            }
+          : undefined;
       const newCardRoute = STOCK_DECK ? parseNewCardRoute(segs, url.searchParams) : null;
       if (newCardRoute !== null) {
         routeName = newCardRoute.name;
@@ -3614,7 +4198,15 @@ const server = http.createServer(async (req, res) => {
         if (name === undefined || name === "") {
           response = jsonResponse(400, { error: "empty card name" });
         } else {
-          response = await renderCardPage(name, requestEngine, routeView, undefined, pageOpts);
+          // The harness-side search_box_complete arm this branch carried
+          // (commit e2062847) is DELETED: `/:mark/:view` without the
+          // .:format suffix is an HTML-format render (Ruby's route line 51
+          // default), and search_box_complete is a json-format-only view —
+          // the engine's UnsupportedViewError -> the 422 mapping inside
+          // renderCardPage is Ruby's answer (the typeahead never rides this
+          // form; the navbar's data-completepath carries the .json suffix).
+          response = await renderCardPage(name, requestEngine, routeView, searchReq ? { search: searchReq } : undefined, pageOpts);
+          servedCardName = name;
         }
       } else {
         response = htmlResponse(
@@ -3622,6 +4214,46 @@ const server = http.createServer(async (req, res) => {
           `<h1>Not found</h1><pre>No route for ${escapeHtml(pathname)} — try /<card-name> or /<card-name>.json</pre>`,
           "Not found",
         );
+      }
+    }
+    // event :save_current_location (mod/session set/all/location_history.rb):
+    // a full-page read of a KNOWN card pushes its own URL onto the session's
+    // location history (save_location?, location_history.rb:47-51:
+    // event :save_current_location (mod/session set/all/location_history.rb):
+    // a full-page read of a KNOWN card pushes its own URL onto the visitor
+    // session's cookie-carried location history (pageViewCookie — the
+    // write-routes visitor-session module's host seam; save_location?,
+    // location_history.rb:47-51: non-ajax, html, known, not the *signin
+    // codename). The `*previous` success mark and the delete's
+    // configure_successful_deletion redirect resolve to the LAST entry, so a
+    // delete fired from an edit page answers its hard-redirect JSON with
+    // that page's own address.
+    if (
+      req.method === "GET" &&
+      servedCardName !== undefined &&
+      response.status === 200 &&
+      String(response.headers["Content-Type"] ?? "").includes("text/html") &&
+      req.headers["x-requested-with"] !== "XMLHttpRequest" &&
+      String(req.headers.accept ?? "").includes("text/html") &&
+      !SIGNIN_PAGE_PATHS.has(pathname)
+    ) {
+      const knownRecord = await requestEngine.fetcher.fetchByName(servedCardName).catch(() => undefined);
+      if (knownRecord?.id !== undefined) {
+        const setCookie = pageViewCookie(req.headers.cookie, `http://${req.headers.host}${url.pathname}${url.search}`, {
+          known: true,
+          html: true,
+          ajax: false,
+          // save_location?'s own codename leg (location_history.rb:47-51):
+          // the *signin card's page never joins the history — Ruby reads
+          // card.codename on the rendered card, so the seam carries the
+          // record's codename rather than a path-shape guess (the stock
+          // profile serves the sign-in page through the card-page branch,
+          // where a path set cannot see the card).
+          codename: knownRecord.codename,
+        });
+        if (setCookie !== undefined && response.headers["Set-Cookie"] === undefined) {
+          response.headers["Set-Cookie"] = setCookie;
+        }
       }
     }
   } catch (error) {

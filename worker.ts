@@ -45,9 +45,11 @@ import {
   decodeName,
   historyViewParams,
   installDeckNameEnvironment,
+  jsonViewSearchParams,
   mapRenderError,
   publicDbContent,
   queryViewFromUrl,
+  decodeViewSegment,
 } from "./src/server/worker-shared-surface.js";
 
 interface Env {
@@ -136,7 +138,7 @@ function getDeck(env: Env): Promise<Deck> {
 // matches any view and the ENGINE decides.
 
 type ParsedPath =
-  | { name: string; view?: string }
+  | { name: string; view?: string; format?: "json" }
   | { kind: "api" }
   | { kind: "notFound" };
 
@@ -165,11 +167,20 @@ function parsePath(pathname: string): ParsedPath {
   }
   if (segments.length === 2) {
     const name = decodeName(segments[0]!);
-    const view = decodeName(segments[1]!);
+    // Ruby route line 51: get ":mark/:view(.:format)" => "card#read" — the
+    // .:format suffix is part of the VIEW segment (the navbox typeahead's
+    // search_box_complete.json: view search_box_complete, format json), not
+    // the card name. The view identifier is snake_case and matched
+    // literally (decodeViewSegment — no underscore fold; the mark rides
+    // decodeName). A suffixed path dispatches the view in the json format;
+    // the bare form stays the html-format read.
+    const rawView = segments[1]!;
+    const isJson = rawView.endsWith(".json");
+    const view = decodeViewSegment(isJson ? rawView.slice(0, -".json".length) : rawView);
     if (name === undefined || view === undefined || name === "" || view === "") {
       return { kind: "notFound" };
     }
-    return { name, view };
+    return isJson ? { name, view, format: "json" } : { name, view };
   }
   return { kind: "notFound" };
 }
@@ -344,6 +355,26 @@ export default {
     try {
       const deck = await getDeck(env);
       const view = parsed.view ?? queryViewFromUrl(url) ?? "open";
+      if (parsed.format === "json") {
+        // Ruby route line 51 with the .:format json suffix: the view
+        // dispatch in the json format (the navbox typeahead's
+        // search_box_complete among them; an unregistered view raises the
+        // UnsupportedViewError the status table maps to 422). The
+        // request-term seam rides the search params (search_params.rb:
+        // term_param || vars.keyword).
+        const search = jsonViewSearchParams(url.searchParams);
+        const body = await deck.render.render(parsed.name, view, {
+          ...(search !== undefined ? { search } : {}),
+          format: "json",
+        });
+        return new Response(body, {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            "Cache-Control": "no-store",
+          },
+        });
+      }
       const htmlBody = await deck.render.render(
         parsed.name,
         view,
@@ -359,6 +390,18 @@ export default {
       // deploy-button verification lane caught it live (the public
       // lineage's 90d5f31); the mapping is now shared code, not a twin.
       const mapped = mapRenderError(message);
+      if (parsed.format === "json") {
+        // The json dispatch answers the mapped status in the staging's
+        // shape: the 422 unsupported-view body is plain text (Ruby's
+        // rendered error), everything else the structured json error.
+        if (mapped.status === 422) {
+          return new Response(message, {
+            status: 422,
+            headers: { "Content-Type": "text/plain; charset=utf-8" },
+          });
+        }
+        return json(mapped.status, { error: mapped.title, message });
+      }
       // title AND message are entity-escaped at the emitter (the deploy
       // entry's errorPage does the same): the message can embed the raw
       // requested view or card name (format.ts UnsupportedViewError —

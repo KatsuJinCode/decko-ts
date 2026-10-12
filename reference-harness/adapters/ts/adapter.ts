@@ -12,6 +12,7 @@ import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck
 import { getDefaultModLoader } from "../../../src/card/mod-loader.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
 import { RenderEngine } from "../../../src/card/render.js";
+import { setRaiseAllRenderingErrors } from "../../../src/card/render/format.js";
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
 import type { CreateCardInput, UpdateCardInput } from "../../../src/card/actions/types.js";
 import { DeckoName } from "../../../src/card/name.js";
@@ -52,6 +53,8 @@ import { readPermissionOverride, updatePermissionOverride } from "../../../src/c
 import { executeCount, executeQuery, parseOptionsWithLexicon } from "../../../src/cql/execute.js";
 import { CaptureTransport } from "../../../src/card/notify/transport.js";
 import { authenticateAccount } from "../../../src/card/auth/signin.js";
+import { actorBot } from "../../../src/card/auth/actor.js";
+import { setPreparedSetupVerdict } from "../../../src/card/auth/first-run-setup-verdict-seam.js";
 import { applyDeckInflections } from "../../../src/card/name/inflect.js";
 import { CARD_GEM_INITIALIZER_INFLECTIONS } from "../../../src/card/name/oracle-deck-inflections.js";
 
@@ -75,6 +78,10 @@ setDeckEnvironment({
   origin: spec.environment?.origin,
   defaultHtmlView: spec.environment?.default_html_view,
 });
+// The capture contract (the fixtures' MANIFEST "production render-error
+// semantics" line): Cardio.config.raise_all_rendering_errors = false with
+// Rails.env production - nested view errors render inline, no debug detail.
+setRaiseAllRenderingErrors(false);
 
 const out = process.stdout;
 const emit = (obj: unknown): void => {
@@ -133,7 +140,43 @@ async function boot(): Promise<void> {
     contents: structureUniverseFromResults(universe),
     ruleTypeIds: structureRuleTypesFromResults(universe),
   });
+  // The setup view's perms predicate census (Card::Auth.needs_setup?,
+  // auth/setup.rb:33-40 user_account_count.zero?) — the sync view gate
+  // reads the prepared verdict seam; this adapter boot is the producer.
+  await prepareSetupVerdictSeam();
   engines.clear();
+}
+
+/** The raw census, without the first-run deploy gates (the seam's contract:
+ *  Ruby's view gate is purely the census). The predicate is Ruby's OWN
+ *  (auth/setup.rb:44-49 user_account_cql): every +*account junction whose
+ *  CREATOR is not DeckoBot — the synthetic decks seed every junction
+ *  (holders included) with creator_id = the bot, so the holder-side
+ *  exclusion the deploy census uses would miscount them as real accounts. */
+async function prepareSetupVerdictSeam(): Promise<void> {
+  try {
+    const [bot, accountRow] = await Promise.all([
+      actorBot(driver),
+      driver.query<{ id: number }>(
+        "SELECT id FROM cards WHERE codename = 'account' AND trash = 0 ORDER BY id LIMIT 1",
+        [],
+      ),
+    ]);
+    const accountId = accountRow.rows[0]?.id;
+    if (accountId === undefined) {
+      setPreparedSetupVerdict({ open: false, accountCount: undefined });
+      return;
+    }
+    const result = await driver.query<{ n: number }>(
+      `SELECT COUNT(*) AS n FROM cards
+       WHERE right_id = ? AND trash = 0 AND (creator_id IS NULL OR creator_id != ?)`,
+      [accountId, bot.id],
+    );
+    const count = Number(result.rows[0]?.n ?? 0);
+    setPreparedSetupVerdict({ open: count === 0, accountCount: count });
+  } catch {
+    setPreparedSetupVerdict({ open: false });
+  }
 }
 
 async function actorRecord(actor: string | undefined): Promise<CardRecord | undefined> {

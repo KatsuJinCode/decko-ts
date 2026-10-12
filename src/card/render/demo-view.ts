@@ -1,3 +1,4 @@
+import { str } from "./format.js";
 // card-mod-format set/all/demo.rb :demo, homed in the render layer so both
 // the flat view registry (render/views.ts, the loader-less page surface) and the
 // card-mod-format set/all registration dispatch the same body.
@@ -100,7 +101,7 @@ export const demoView: ViewFn = (ctx) => {
     `<h2 class="${voo.classy("d0-card-header-title")}">${fmt.renderView("title")}</h2>\n` +
     `${fmt.renderView("menu")}</div>`;
   // demo.rb:25-29 view_demo's wrap(true) slot layer
-  const demoInner = modSlotWrap(ctx, "demo", fmt.renderView(DEMO_VIEW_DEFAULT));
+  const demoInner = modSlotWrap(ctx, "demo", str(fmt.renderView(DEMO_VIEW_DEFAULT)));
   const demoDiv = `<div class="demo-slot">${demoInner}</div>`; // wrap_with(:div, ..., class: "demo-slot")
   const body = `${demoViewSelect(ctx)}\n${demoDiv}`; // output([view_select, demo_div])
   const panel =

@@ -12,7 +12,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { gunzipSync } from "node:zlib";
-import { SLOT_ID, normalizeRender, sameJson } from "./normalize.mjs";
+import { COLLAPSE_ID, RELATIVE_TIME, SLOT_ID, normalizeErrorRecord, normalizeRender, sameJson } from "./normalize.mjs";
 
 const [a, b, ...rest] = process.argv.slice(2);
 const jsonOut = rest[0] === "--json" ? rest[1] : null;
@@ -32,8 +32,79 @@ const slotValues = (value) => {
   if (value !== null && typeof value === "object") return Object.values(value).flatMap(slotValues);
   return [];
 };
+/** Every collapse id N3 matches in any string of a recorded line, in order. */
+const collapseValues = (value) => {
+  if (typeof value === "string") return [...value.matchAll(COLLAPSE_ID)].map((m) => m[0]);
+  if (value !== null && typeof value === "object") return Object.values(value).flatMap(collapseValues);
+  return [];
+};
+/** Every relative-time span N4 matches in any string of a recorded line, in order. */
+const relativeTimeValues = (value) => {
+  if (typeof value === "string") return [...value.matchAll(RELATIVE_TIME)].map((m) => m[0]);
+  if (value !== null && typeof value === "object") return Object.values(value).flatMap(relativeTimeValues);
+  return [];
+};
+/** Every capture-host path or heap address N5 matches inside a debug-page
+ *  title in any string of a recorded line, in order. */
+const debugTitle = (s) => {
+  const out = [];
+  // (Fix 2026-10-10: the committed regex held an unterminated group - the
+  // module could not load; the capture group is the title body, m[1].)
+  for (const m of s.matchAll(/title="(\s*&lt;h3&gt;Error message \(visible to admin only\)&lt;\/h3&gt;[\s\S]*?)"/g)) out.push(m[1]);
+  return out;
+};
+const captureHostValues = (value) => {
+  if (typeof value === "string")
+    return debugTitle(value).flatMap((t) => [
+      ...[...t.matchAll(/\b[A-Za-z]:[/\\][^\s<>&":]+/g)].map((m) => m[0]),
+      ...[...t.matchAll(/0x[0-9a-fA-F]{6,16}/g)].map((m) => m[0]),
+    ]);
+  if (value !== null && typeof value === "object") return Object.values(value).flatMap(captureHostValues);
+  return [];
+};
+/** Every backtrace frame line N6 matches in any string of a recorded line,
+ *  in order: the `<br>`-separated segments inside a debug-page title's
+ *  backtrace div (the div that follows the message paragraph). */
+const frameLineValues = (value) => {
+  if (typeof value === "string")
+    return debugTitle(value).flatMap((t) => {
+      const m = t.match(/&lt;\/p&gt;\s*&lt;div&gt;([\s\S]*?)&lt;\/div&gt;/);
+      return m && m[1] !== "" ? m[1].split(/&lt;br&gt;\n/) : [];
+    });
+  if (value !== null && typeof value === "object") return Object.values(value).flatMap(frameLineValues);
+  return [];
+};
 
-const result = { runs: [path.resolve(a), path.resolve(b)], kinds: {}, masks: { N1: { matched_pairs: 0, differing_pairs: 0 } }, unexplained: [] };
+const maskAccounting = (result, nameA, nameB) => {
+  const counts = (line) => ({
+    N1: slotValues(line),
+    N3: collapseValues(line),
+    N4: relativeTimeValues(line),
+    N5: captureHostValues(line),
+    N6: frameLineValues(line),
+  });
+  const a = counts(nameA);
+  const b = counts(nameB);
+  for (const rule of ["N1", "N3", "N4", "N5", "N6"]) {
+    result.masks[rule].matched_pairs += Math.min(a[rule].length, b[rule].length);
+    a[rule].forEach((v, i) => {
+      if (b[rule][i] !== undefined && b[rule][i] !== v) result.masks[rule].differing_pairs++;
+    });
+  }
+};
+
+const result = {
+  runs: [path.resolve(a), path.resolve(b)],
+  kinds: {},
+  masks: {
+    N1: { matched_pairs: 0, differing_pairs: 0 },
+    N3: { matched_pairs: 0, differing_pairs: 0 },
+    N4: { matched_pairs: 0, differing_pairs: 0 },
+    N5: { matched_pairs: 0, differing_pairs: 0 },
+    N6: { matched_pairs: 0, differing_pairs: 0 },
+  },
+  unexplained: [],
+};
 for (const kind of ["render", "semantics", "scenarios"]) {
   const A = read(a, kind);
   const B = read(b, kind);
@@ -46,17 +117,18 @@ for (const kind of ["render", "semantics", "scenarios"]) {
       k.raw_equal++;
       continue;
     }
-    const va = slotValues(x);
-    const vb = slotValues(y);
-    result.masks.N1.matched_pairs += Math.min(va.length, vb.length);
-    va.forEach((v, i) => { if (vb[i] !== undefined && vb[i] !== v) result.masks.N1.differing_pairs++; });
-    // Masked as the grader masks: render HTML by N1, everything else raw.
+    maskAccounting(result, x, y);
+    // Masked as the grader masks: render HTML by N1+N3+N4+N5+N6, an error
+    // record's class by N7 (any kind records failures), everything else raw.
+    const withError = (line) => (line.error !== undefined ? { ...line, error: normalizeErrorRecord(line.error) } : line);
     const norm = (line) =>
-      kind === "render"
-        ? { ...line, result: normalizeRender(line.result) }
-        : kind === "scenarios"
-          ? { ...line, steps: line.steps.map((s) => ({ ...s, result: normalizeRender(s.result) })) }
-          : line;
+      withError(
+        kind === "render"
+          ? { ...line, result: normalizeRender(line.result) }
+          : kind === "scenarios"
+            ? { ...line, steps: line.steps.map((s) => ({ ...s, result: normalizeRender(s.result) })) }
+            : line,
+      );
     if (sameJson(norm(x), norm(y))) k.equal_after_masks++;
     else {
       k.unexplained++;
@@ -69,7 +141,15 @@ for (const kind of ["render", "semantics", "scenarios"]) {
 for (const [kind, k] of Object.entries(result.kinds)) {
   console.log(`${kind.padEnd(10)} ${k.items} items: ${k.raw_equal} identical, ${k.equal_after_masks} equal after masks, ${k.unexplained} unexplained`);
 }
-console.log(`N1 slot ids: ${result.masks.N1.differing_pairs} of ${result.masks.N1.matched_pairs} paired values differ between the runs`);
+const pairLine = (rule, label) => {
+  const m = result.masks[rule];
+  return `${rule} ${label}: ${m.differing_pairs} of ${m.matched_pairs} paired values differ between the runs`;
+};
+console.log(pairLine("N1", "slot ids"));
+console.log(pairLine("N3", "collapse ids"));
+console.log(pairLine("N4", "relative-time spans"));
+console.log(pairLine("N5", "capture-host tokens in debug titles"));
+console.log(pairLine("N6", "backtrace frame lines"));
 for (const u of result.unexplained) console.log(`unexplained: ${u}`);
 if (jsonOut) writeFileSync(jsonOut, JSON.stringify(result, null, 2) + "\n");
 process.exit(result.unexplained.length ? 1 : 0);

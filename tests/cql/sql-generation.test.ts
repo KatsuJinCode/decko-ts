@@ -236,11 +236,18 @@ describe("sorting", () => {
 
 describe("plus relational", () => {
   it("right_plus with a string part [oracle: JOIN cards c1 ON c0.id = c1.left_id ... c1.right_id = '-999']", () => {
-    // tie-tier pins: 4e2463bf pins the sortless-joined emission to id asc (graded Ruby-matching); e9eb6f20/07e4c1df shape the sorted-viewer tiers
+    // JUNCTION ties keep Ruby's bare statement (no ORDER BY): the captured
+    // tier is the plan's join emission - the corpus's "Cards with accounts"
+    // search ({"right_plus": ":account"}, sortless) captured the
+    // cards_right_id_index ride on the subquery (232,18,1,611,617,913),
+    // which the blanket id-asc pin (4e2463bf) re-sorted to 1,18,232,...
+    // and the seconds-corpus oracle bytes falsified. Reference joins and
+    // lookup ties (subquery joined by its id) keep the id-asc pin; the
+    // sorted-viewer tiers are e9eb6f20/07e4c1df's.
     expect(sql({ type: "Search", right_plus: "*title" })).toEqual({
       sql:
-        "SELECT DISTINCT c0.*, c0.id FROM cards c0 JOIN cards c1 ON c0.id = c1.left_id AND c1.trash is false " +
-        "WHERE (c0.type_id = ? AND c1.right_id = ?) AND c0.trash is false ORDER BY c0.id asc",
+        "SELECT DISTINCT c0.* FROM cards c0 JOIN cards c1 ON c0.id = c1.left_id AND c1.trash is false " +
+        "WHERE (c0.type_id = ? AND c1.right_id = ?) AND c0.trash is false",
       params: [-999, -999],
     });
   });
@@ -250,21 +257,24 @@ describe("plus relational", () => {
     //   JOIN cards c1 ON c0.id = c1.left_id AND c1.trash is false
     //   JOIN cards c2 ON c1.right_id = c2.id AND c2.trash is false
     //   WHERE (c1.type_id = '-999' AND c2.codename = 'point') AND c0.trash is false
-    // tie-tier pins: 4e2463bf pins the sortless-joined emission to id asc (graded Ruby-matching); e9eb6f20/07e4c1df shape the sorted-viewer tiers
+    // The statement's OWN joins are the junction tie (c1); c2 rides as c1's
+    // subjoin, so the junction exemption fires and the tier stays the bare
+    // emission order (see the right_plus-with-a-string-part note).
     expect(sql({ right_plus: [{ codename: "point" }, { type: "Number" }] })).toEqual({
       sql:
-        "SELECT DISTINCT c0.*, c0.id FROM cards c0 " +
+        "SELECT DISTINCT c0.* FROM cards c0 " +
         "JOIN cards c1 ON c0.id = c1.left_id AND c1.trash is false " +
         "JOIN cards c2 ON c1.right_id = c2.id AND c2.trash is false " +
-        "WHERE (c1.type_id = ? AND c2.codename = ?) AND c0.trash is false ORDER BY c0.id asc",
+        "WHERE (c1.type_id = ? AND c2.codename = ?) AND c0.trash is false",
       params: [-999, "point"],
     });
   });
 
   it("left_plus ties on right_id [oracle]", () => {
-    // tie-tier pins: 4e2463bf pins the sortless-joined emission to id asc (graded Ruby-matching); e9eb6f20/07e4c1df shape the sorted-viewer tiers
+    // Junction tie: bare Ruby statement, the emission tier (see the
+    // right_plus-with-a-string-part note).
     expect(sql({ left_plus: "*x" }).sql).toBe(
-      "SELECT DISTINCT c0.*, c0.id FROM cards c0 JOIN cards c1 ON c0.id = c1.right_id AND c1.trash is false WHERE c1.left_id = ? AND c0.trash is false ORDER BY c0.id asc",
+      "SELECT DISTINCT c0.* FROM cards c0 JOIN cards c1 ON c0.id = c1.right_id AND c1.trash is false WHERE c1.left_id = ? AND c0.trash is false",
     );
   });
 });

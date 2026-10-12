@@ -1,3 +1,6 @@
+import { str, type ViewResult } from "../../render/format.js";
+import { ONE_LINE_CHARACTER_LIMIT, truncate } from "../../render/text-helpers.js";
+import { stripTags } from "../../render/nest-syntax.js";
 // The card-mod-rules gem (card-mod-rules-0.20.0), ported through the mod
 // loader - the mod that turns rule cards and set cards into a configurable
 // surface: the rule bar family, the rule editor views, the set card's Rules
@@ -133,7 +136,10 @@ import { DeckoName } from "../../name.js";
 import { PATTERN_TABLE, findPattern } from "../../set-patterns/registry.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import { labelForParsedSet, parseSetName } from "../../set-patterns/set-name.js";
+import { setNamesForCard, ruleLookupKeysForCard } from "../../set-patterns/card-patterns.js";
 import { cardFormShell, submitButton } from "../mod-form-substrate.js";
+import { typeField, typeFormgroup } from "./card-mod-edit.js";
+import { cardWallClockNow } from "../../wall-clock.js";
 import { getDefaultModLoader } from "../../mod-loader.js";
 import { modSlotWrap } from "../mod-view-helpers.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
@@ -516,7 +522,7 @@ export function ruleCoreView(ctx: ViewContext, baseCore: ViewFn): string {
   if (typeCode === "search_type" || ctx.fmt.card.typeName === "Search") {
     return ctx.fmt.renderRaw();
   }
-  return baseCore(ctx);
+  return str(baseCore(ctx));
 }
 
 // ---------------------------------------------------------------------------
@@ -623,6 +629,11 @@ function ruleOneLineInner(ctx: ViewContext, rightSetting: string | undefined): s
   }
   if (rightSetting === "*structure") {
     return `${card.typeName ?? ""} : ${card.dbContent}`;
+  }
+  // the same dispatch as rule-bar-right.ts: Markdown renders its core,
+  // everything else the raw+escape arm.
+  if (card.typeName !== "Markdown") {
+    return h(truncate(stripTags(card.dbContent), ONE_LINE_CHARACTER_LIMIT));
   }
   return truncatedCore(card.dbContent);
 }
@@ -777,78 +788,66 @@ const ruleHelpTextView: ViewFn = (ctx) => {
  *  `normalize()` regex `(data-select2-id="[^"]*-)\d+(")` -> $1TIME$2
  *  produce a stable byte-comparison surface). */
 function select2TimestampSeconds(): number {
-  // The token-runtime freeze's discipline (see fixtures/captured/
-  // rules-views.json's normalizations block): the engine emits a stable
-  // timestamp seed, the test normalizes the resulting seconds suffix to
-  // TIME. ANY non-empty integer the regex can replace works; the seed 0
-  // keeps the captured fixture's slot-id analogy (RANDOMIZED).
-  return 0;
+  // Ruby's stamp is `Time.now.to_i` (set_select.rb's set_select_tag), which
+  // under the oracle harness's frozen clock (harness_env.rb freeze_clock!)
+  // is the capture clock's seconds - 1789819200 in the seconds corpus. The
+  // port answers through the engine wall-clock seam, which IS that frozen
+  // clock: test-stable (the rules-views test normalizes the seconds suffix
+  // to TIME) and corpus-exact (the increment-2 seed 0 predates the corpus
+  // rows and byte-mismatched every select2 id the rules mod emitted).
+  return Math.floor(cardWallClockNow().getTime() / 1000);
 }
 
-/** set/all/set_select.rb:49-57 set_list: `Card.search(left_id: id,
- *  type_id: SetID).map(&:name)` (the type filter excludes List-typed rule
- *  cards like *all+*read - only Set-typed rule cards contribute options).
- *  Returns the distinct right tag names from the walked cards
- *  (`"+#{tag_name}"` option value prefix per the rule_select_tag
- *  convention). */
-function relatedSetsRightNames(card: RenderCard, engine: RenderFormat["engine"]): string[] {
-  const out: string[] = [];
-  const seen = new Set<string>();
-  // engine.collectRules (render.ts:3086) walks every rule card whose left
-  // is `card`. The capture filter (type_id == SetID) is applied here.
-  const rules = engine.collectRules?.(card) ?? [];
-  for (const rule of rules) {
-    if (rule.typeId !== 5 && rule.typeCode !== "set") continue;
-    const rightName = rule.name.rightName?.s;
-    if (rightName === undefined) continue;
-    if (seen.has(rightName)) continue;
-    seen.add(rightName);
-    out.push(rightName);
-  }
-  return out;
-}
-
-/** One <option> row: the right tag's "+tag_name" value + the SETTING
- *  card's label as display text. An unset (no content) setting card
- *  renders the empty display (capture: "The card """ for *self). */
-function cardSelectOptionBytes(rightName: string, engine: RenderFormat["engine"]): string {
-  const settingCard = engine.fetchRenderCard(rightName);
-  // set_select.rb's option_for_set: `set_card ? set_card.label :
-  // "The card \"#{name}\""`. The capture pins empty between the quotes
-  // for *self (the setting card exists but has no label - the test seed
-  // gives *self an empty dbContent). The escape (`&quot;`) is the
-  // ERB::Util.html_escape applied to the label by content_tag.
-  const label = settingCard?.dbContent ?? "";
-  return `<option value="+${rightName}">The card &quot;${h(label)}&quot;</option>`;
+/** set/all/related_sets.rb:1-7 related_sets(with_self) - "the sets users
+ *  may configure from the current card": name+:self always (with_self),
+ *  name+:right only when the card is known? && simple? (states.rb known? =
+ *  real? || virtual?; a compound card's Right set is not a related set).
+ *  The set cards need no fetch: a pattern name answers virtually, and both
+ *  bytes the option list needs (Set#label, name.url_key) are name-level
+ *  (set/type/set.rb label through the pattern registry). */
+function relatedSetsNames(card: RenderCard): string[] {
+  const sets = [`${card.name.s}+*self`];
+  const known = card.unknown !== true;
+  if (known && !card.name.isCompound) sets.push(`${card.name.s}+*right`);
+  return sets;
 }
 
 const cardSelectView: ViewFn = (ctx) => {
-  // The filter form's action and the empty fixed-slot div come from
-  // set_select_tag + the format's wrapping form_tag (Rails form_tag
-  // defaults - the headless port's action / method / slot-selector /
-  // class / data-remote attrs mirror the captured bytes exactly).
+  // set_select.rb:27-35 set_select_tag: `cards.map(&:label_and_url_key)`
+  // (set/type/set.rb:111-113 - [Set#label, name.url_key] pairs),
+  // `options.unshift("")` for the placeholder, then options_for_select -
+  // `<option value="URL_KEY">LABEL</option>` rows (labels and attribute
+  // values ERB-escaped), the empty placeholder row first. The corpus's
+  // Topic 001 answers its two stored-or-virtual set cards: Topic_001+*self
+  // (label `The card "Topic 001"`) and Topic_001+*right (label
+  // `All "+Topic 001" cards`).
   const card = ctx.fmt.card;
-  const rightNames = relatedSetsRightNames(card, ctx.fmt.engine);
-  const options = [
-    `<option value=""></option>`,
-    ...rightNames.map((name) => cardSelectOptionBytes(name, ctx.fmt.engine)),
-  ].join("\n");
-  // select2 data-select2-id: `<safe_key>-<card_id>-<seconds>` (Time.now
-  // stamp). The seconds are non-deterministic in Ruby; the test freezes
-  // the value to a stable token the normalize() regex rewrites to TIME.
-  const select2Id =
-    `${card.name.safeKey}-${card.id ?? 0}-${select2TimestampSeconds()}`;
-  return (
+  const setOptions = relatedSetsNames(card).map((setName) => {
+    const parsed = parseSetName(setName);
+    const label = labelForParsedSet(parsed);
+    return `<option value="${h(DeckoName.parse(setName).urlKey)}">${h(label)}</option>`;
+  });
+  const options = [`<option value=""></option>`, ...setOptions].join("\n");
+  // set_select_tag's data-select2-id: `#{unique_id}-#{Time.now.to_i}`
+  // (content.rb:66-70 unique_id = safe_key + the format-chain id counter;
+  // Time.now through the engine wall clock - see select2TimestampSeconds).
+  const select2Id = `${ctx.fmt.uniqueId()}-${select2TimestampSeconds()}`;
+  // set_select.rb:20 view :card_select, wrap: :slot - the corpus op pins the
+  // slot wrap around the filter form (wrap.rb wrap_classes: "card-slot
+  // card_select-view" + the set keys, the standard slot data attrs).
+  return modSlotWrap(
+    ctx,
+    "card_select",
     `<form role="filter" data-slot-selector=".card-slot._fixed-slot" class="nodblclick slotter"` +
-    ` action="/?view=filtered_accordion_rule_list" accept-charset="UTF-8" data-remote="true" method="get">` +
-    `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
-    `<select name="mark" id="mark" class="_submit-on-select form-control _close-rule-overlay-on-select"` +
-    ` data-minimum-results-for-search="Infinity" data-placeholder="Select set"` +
-    ` data-select2-id="${select2Id}">` +
-    options +
-    `</select>` +
-    `<div class="card-slot _fixed-slot"></div>` +
-    `</form>`
+      ` action="/?view=filtered_accordion_rule_list" accept-charset="UTF-8" data-remote="true" method="get">` +
+      `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
+      `<select name="mark" id="mark" class="_submit-on-select form-control _close-rule-overlay-on-select"` +
+      ` data-minimum-results-for-search="Infinity" data-placeholder="Select set"` +
+      ` data-select2-id="${select2Id}">` +
+      options +
+      `</select>\n` +
+      `<div class="card-slot _fixed-slot"></div>` +
+      `</form>`,
   );
 };
 
@@ -1365,7 +1364,7 @@ function filteredRuleList(
   filterView: string,
   selectedCategory: string,
   mark: string | undefined,
-  listBody: (ctx: ViewContext) => string,
+  listBody: ViewFn,
 ): string {
   return `${settingFilter(ctx, filterView, selectedCategory, mark)}\n${listBody(ctx)}`;
 }
@@ -1671,19 +1670,49 @@ function quickForm(ctx: ViewContext): string {
   });
 }
 
+/** The set-module visible_cardtype_groups overrides the rule editors' type
+ *  fields render (edit_type.rb:86-102 grouped_types reads the format's
+ *  override; the base table lives in card-mod-edit.ts):
+ *
+ *  - Right::Default (card-mod-content set/right/default.rb:34-38):
+ *    GROUP.slice("Text","Data","Upload") + Organize
+ *    [List, Pointer, Link list, Nest list] (no Search).
+ *  - Right::Structure (card-mod-content set/right/structure.rb:18-22):
+ *    GROUP.slice("Text") + Organize [Search, Nest list]. */
+const RIGHT_DEFAULT_CARDTYPE_GROUPS: Readonly<Record<string, readonly string[]>> = {
+  Text: ["RichText", "PlainText", "Markdown", "Phrase", "HTML"],
+  Data: ["Number", "Toggle", "Date", "URI"],
+  Upload: ["File", "Image"],
+  Organize: ["List", "Pointer", "Link list", "Nest list"],
+};
+const RIGHT_STRUCTURE_CARDTYPE_GROUPS: Readonly<Record<string, readonly string[]>> = {
+  Text: ["RichText", "PlainText", "Markdown", "Phrase", "HTML"],
+  Organize: ["Search", "Nest list"],
+};
+
 /** The quick_editor method dispatch (see quickForm's citations): the
  *  Right-module overrides for *default/*help rule cards, the Rule set's
  *  rule_content_formgroup otherwise. */
 function quickEditorBody(ctx: ViewContext, setting: string | undefined): string {
   const { fmt } = ctx;
   if (setting === "default") {
-    // card-mod-content set/right/default.rb:16-24
+    // card-mod-content set/right/default.rb:16-24 quick_editor:
+    // `wrap_type_formgroup { type_field class: "type-field rule-type-field
+    // _submit-on-select" } + wrap_content_formgroup { text_field :content,
+    // class: "d0-card-content _submit-after-typing" }` - the type_field
+    // option list is edit_type.rb's grouped table under Right::Default's
+    // visible_cardtype_groups override (default.rb:34-38: GROUP.slice
+    // "Text","Data","Upload" + Organize [List, Pointer, Link list,
+    // Nest list] - no Search).
     const typeGroup =
       `<div class="form-group type-formgroup"${formgroupCardAttrs(fmt)}>` +
       `<label for="card_type">Type</label>\n` +
       `<div class="editor type-editor">` +
-      `<select name="card[type]" id="card_type" class="type-field rule-type-field _submit-on-select form-control" data-select2-id="${typeFieldSelect2Id(ctx)}">` +
-      `<option selected="selected" value="${h(fmt.card.typeName ?? "")}">${h(fmt.card.typeName ?? "")}</option></select>\n` +
+      typeField(ctx, {
+        cls: "type-field rule-type-field _submit-on-select",
+        groups: RIGHT_DEFAULT_CARDTYPE_GROUPS,
+      }) +
+      `\n` +
       `<input type="hidden" name="assign" id="assign" value="true" autocomplete="off" /></div></div>`;
     const contentGroup =
       `<div class="form-group card-editor"${formgroupCardAttrs(fmt)}>` +
@@ -1704,7 +1733,7 @@ function quickEditorBody(ctx: ViewContext, setting: string | undefined): string 
       `<input value="${h(fmt.card.dbContent)}" class="d0-card-content _submit-after-typing form-control" type="text" name="card[content]" id="card_content" /></div></div>`
     );
   }
-  return fmt.renderView("content_formgroup", { hide: ["conflict_tracker"] });
+  return str(fmt.renderView("content_formgroup", { hide: ["conflict_tracker"] }));
 }
 
 /** The formgroup div's data attrs (formgroup.rb:35-43 formgroup_div_args:
@@ -1718,18 +1747,6 @@ function formgroupCardAttrs(fmt: ViewContext["fmt"]): string {
     attrs.push(`data-card-link-name="${h(fmt.urlKey())}"`);
   }
   return attrs.length === 0 ? "" : ` ${attrs.join(" ")}`;
-}
-
-/** type_field's select2 id: `<safe_key>-<n>-<Time.now.to_i>` - the
- *  unique_id CONSUMES the shared format-chain counter (edit_type.rb:47
- *  calls unique_id; content.rb:60-70), so the NEXT unique_id consumer in
- *  the same render continues from n+1 (the captured rule_form_card_editor
- *  on *all+*default: the type field's select2 id is Xall-Xdefault-1-TIME
- *  and the content textarea's id is Xall-Xdefault-2). The seconds suffix
- *  is frozen to 0 and the test normalizes it to TIME (the card_select
- *  precedent). */
-function typeFieldSelect2Id(ctx: ViewContext): string {
-  return `${ctx.fmt.uniqueId()}-0`;
 }
 
 /** quick_editor.rb:31-38 undo_button:
@@ -1773,28 +1790,45 @@ function undoButton(ctx: ViewContext): string {
  *  exposes stored rules only. */
 function setInfoHtml(ctx: ViewContext, notifyChange: boolean): string {
   const { fmt } = ctx;
-  // find_existing_rule_card&.left&.label || "--" (editor.rb:119-130): for a
-  // NEW (virtual) rule card existing_rule_from_prototype resolves no stored
-  // rule -> "--" (the captured *help item's set-info); for a STORED rule
-  // card the card is itself, so left is the rule SET card and label is
-  // set/type/set.rb:38-41's label (setCardLabel's machinery - "*all"
-  // labels "All cards").
+  // set_info.haml: `card.find_existing_rule_card&.left&.label || "--"`
+  // (editor.rb:119-130). For a STORED rule card find_existing_rule_card is
+  // the card itself, so left is the rule SET card and label is
+  // set/type/set.rb:38-41's label - subclass_for_set.label(anchor_name),
+  // the pattern through the TAG card's codename (parseSetName - the
+  // codename registry; an anchored set card's row carries no codename of
+  // its own, so the resolution is name-level in every case). For a NEW
+  // rule card existing_rule_from_prototype (rules.rb:85-90) walks
+  // set_prototype.rule_card(setting) - the rule-cache lookup over the
+  // set PATTERN's prototype card's rule_lookup_keys (rule/all.rb
+  // rule_card_id -> rule_id_lookup); the winner's SET label is the text,
+  // no winner is Ruby's nil arm (the "--" literal - every corpus
+  // quick-edit setting without a stored rule).
   const isNew = fmt.card.id === undefined || fmt.card.unknown === true;
   const setName = fmt.card.name.leftName;
-  // set/type/set.rb:38-41 label through the SET CARD's record codename
-  // (findPattern - the same Card::Codename answer labelForParsedSet's
-  // peek-lexicon route gives, without depending on the lexicon cache being
-  // primed at this point in the chain)
-  const setCardRecord =
-    setName !== undefined ? fmt.engine.fetchRenderCard(setName.s) : undefined;
-  const patternCode =
-    setCardRecord === undefined || setCardRecord.unknown === true
-      ? undefined
-      : setCardRecord.record.codename;
-  const label =
-    !isNew && setName !== undefined && patternCode !== undefined
-      ? (findPattern(patternCode)?.label(setCardRecord?.name.leftName?.s) ?? "")
-      : "";
+  let label = "";
+  if (setName !== undefined) {
+    if (!isNew) {
+      const parsed = parseSetName(setName.s);
+      label =
+        parsed.spec !== undefined
+          ? (parsed.spec.label(parsed.anchorName?.s) ?? "")
+          : "";
+    } else {
+      const settingCodename = ruleSettingCodename(ctx);
+      const prototypeInput = prototypePatternInput(ctx, setName.s);
+      const winner =
+        settingCodename !== undefined && prototypeInput !== undefined
+          ? fmt.engine.ruleCacheSetLabelWinner?.(
+              ruleLookupKeysForCard(prototypeInput),
+              settingCodename,
+            )
+          : undefined;
+      label =
+        winner !== undefined
+          ? (findPattern(winner.patternCode)?.label(winner.anchorName) ?? "")
+          : "";
+    }
+  }
   const inner =
     `<div class='form-group form-control-feedback'>\n` +
     `<label>\nSet\n</label>\n` +
@@ -1930,8 +1964,9 @@ function icon(name: string, extraClass?: string): string {
 
 /** output (card-1.110.0 lib/card/format/content.rb:70-73): compact + "\n".
  *  join. */
-function outputJoin(parts: (string | undefined)[]): string {
-  return parts.filter((p) => p !== undefined).join("\n");
+function outputJoin(parts: (ViewResult | undefined)[]): string {
+  // Ruby's join is to_s over the compacted array (content.rb:70-73).
+  return parts.filter((p) => p !== undefined).map(str).join("\n");
 }
 
 /** link_to_card's attribute shape for the target: icon/link carriers -
@@ -1998,37 +2033,133 @@ function boardRuleSetSelection(ctx: ViewContext): string {
   );
 }
 
+/** Rule::All#preference? (rule/all.rb:42-48 + :51-54): parts > 2 AND the
+ *  tag card is Setting-typed AND name[0..-3] is Set-typed AND the [-2]
+ *  part (the preference's user) is User-typed or *all (valid_preferer?).
+ *  A three-part Set+Setting RULE name ("Topic+*type+*structure") fails the
+ *  Set-typed arm ("Topic" is a Cardtype) — a bare parts-count test
+ *  misroutes every standard rule into the preference walk. The Set-typed
+ *  check resolves the warmed row first and falls back to the NAME (a
+ *  set part parses to a registered pattern exactly when it is a Set card
+ *  the pattern registry knows - set/type/set.rb subclass_for_set rides the
+ *  TAG's codename, no row needed); the preferer check is warmed-row only. */
+function isPreferenceRuleName(ctx: ViewContext): boolean {
+  const name = ctx.fmt.card.name;
+  const parts = name.partNames;
+  if (parts.length <= 2) return false;
+  const engine = ctx.fmt.engine;
+  const setPart = parts.slice(0, -2).map((p) => p.s).join("+");
+  const setCard = engine.fetchRenderCard(setPart);
+  const setTyped = setCard !== undefined && setCard.unknown !== true
+    ? setCard.typeCode === "set"
+    : parseSetName(setPart).spec !== undefined;
+  if (!setTyped) return false;
+  const preferer = parts[parts.length - 2];
+  if (preferer.key === "all") return true;
+  const prefererCard = engine.fetchRenderCard(preferer.s);
+  return prefererCard !== undefined && prefererCard.unknown !== true &&
+    prefererCard.typeCode === "user";
+}
+
+/** The set's Set#prototype card as a PatternCardInput (set/type/set.rb:90-93
+ *  `Card.fetch opts[:name], new: opts`): the STORED anchor when the name
+ *  exists (Mira Member is a real User: her prototype keeps the Self set in
+ *  its set_names), a new card built from the pattern's prototype_args
+ *  otherwise (the Type pattern's {type: anchor} args carry no name: a
+ *  nameless new Topic-typed card). Undefined when the set's pattern is not
+ *  registered (subclass_for_set nil - Ruby raises there; the callers treat
+ *  it as no prototype). */
+function prototypePatternInput(
+  ctx: ViewContext,
+  setName: string,
+): PatternCardInput | undefined {
+  const parsed = parseSetName(setName);
+  const protoArgs = parsed.spec?.prototypeArgs(parsed.anchorName?.s);
+  if (protoArgs === undefined) return undefined;
+  if (protoArgs.name !== undefined) {
+    const stored = ctx.fmt.engine.fetchRenderCard(protoArgs.name);
+    if (stored !== undefined && stored.unknown !== true) {
+      return {
+        name: stored.name.s,
+        typeName: stored.typeName,
+        typeId: stored.id,
+      };
+    }
+    return { name: protoArgs.name, isNew: true, typeName: protoArgs.type };
+  }
+  const typeName = protoArgs.type ?? "";
+  const typeCard = ctx.fmt.engine.fetchRenderCard(typeName);
+  const typeId =
+    typeCard !== undefined && typeCard.unknown !== true
+      ? typeCard.id
+      : DeckoName.parse(typeName).cardId;
+  return { name: "", isNew: true, typeName, typeId };
+}
+
+/** rules.rb:76-80 set_option_candidates: the prototype card's set_names
+ *  (the candidate sets, specific-first). */
+function prototypeSetCandidates(ctx: ViewContext, setName: string): string[] {
+  const input = prototypePatternInput(ctx, setName);
+  return input !== undefined ? setNamesForCard(input) : ["*all"];
+}
+
 /** rules.rb:57-63 set_options + :76-104 the walk: candidates = the rule
- *  set's prototype's set_names, sliced from the rule's OWN set's position
- *  (`candidates[first..]` - rules.rb:78-80 first_set_option_index: a rule
- *  can move ITSELF or to any BROADER set, never to a narrower one); each
- *  candidate pairs with :current/:overwritten/:available (rules.rb:88-100
- *  state_of_set: the FIRST candidate with an existing rule is :current,
- *  later existing ones :overwritten, the rest :available). The prototype
- *  (set/type/set.rb:90-92) is a NEW card of the set's prototype type - a
- *  new card's set names are the type set + *all, specific-first (the live
- *  probe: *all's prototype is a new RichText card, set_names
- *  ["RichText+*type", "*all"]). rule_user_setting_name (rules.rb:44-50)
- *  is the rule's tag for non-preference rules. */
+ *  set's prototype's set_names (set_prototype = trunk.prototype, the set
+ *  PATTERN's prototype_args card - type.rb {type: anchor}, self.rb {name:
+ *  anchor}), sliced from the rule's OWN set's position (`candidates[first..]`
+ *  - rules.rb:78-80 first_set_option_index: a rule can move ITSELF or to any
+ *  BROADER set, never to a narrower one; a NEW rule card slices from 0);
+ *  each candidate pairs with :current/:overwritten/:available (rules.rb:88-100
+ *  state_of_set: the FIRST candidate with an existing rule is :current, later
+ *  existing ones :overwritten, the rest :available - Card.exist? is the
+ *  STORED-row check, so a candidate whose rule card is absent stays
+ *  :overwritten when a narrower candidate had one).
+ *
+ *  For a PREFERENCE rule the prototype is the SET part's own prototype
+ *  (`self[0..-3].prototype` - for a Self-set `Mira Member+*self` the
+ *  prototype is a new card named after the anchor, typed as the anchor
+ *  card, whose set_names are the SELF set, the type set, *all -
+ *  specific-first) and every candidate composes with the rule's
+ *  user-setting name (`Ada Admin+*follow` - the corpus rule_form pin's
+ *  three radio values). The radio ids carry the SHARED format id counter
+ *  (content.rb unique_id - the tinymce textarea consumed -2- earlier in
+ *  the same render) and Time.now.to_i (cardWallClockNow - the capture
+ *  clock's epoch 1789819200 in the corpus bytes). */
 function ruleSetOptionsRadios(ctx: ViewContext): string {
   const { fmt } = ctx;
   const ruleCard = fmt.card;
-  const setName = ruleCard.name.leftName;
-  const prototypeType = prototypeDefaultTypeCode(ctx);
-  const candidates: string[] = [];
-  if (prototypeType !== undefined && prototypeType !== "basic") {
-    // the type set's name: "<TypeName>+*type" (pattern.rb Type#set_name)
-    const typeName = defaultRuleTypeName(ctx, prototypeType);
-    if (typeName !== undefined) candidates.push(`${typeName}+*type`);
+  const parts = ruleCard.name.partNames;
+  const settingCodename = ruleSettingCodename(ctx) ?? "";
+  const tag = `*${settingCodename}`;
+  const isPreference = isPreferenceRuleName(ctx);
+  const userSettingName = isPreference
+    ? `${DeckoName.parse(parts[parts.length - 2].s).s}+${tag}`
+    : tag;
+  let candidates: string[];
+  if (isPreference) {
+    // rules.rb:48-50 set_prototype for preference rules: the SET part's
+    // own prototype (`self[0..-3]`)
+    candidates = prototypeSetCandidates(
+      ctx,
+      parts.slice(0, -2).map((p) => p.s).join("+"),
+    );
+  } else {
+    // rules.rb:72-75 set_prototype: trunk.prototype - the rule set's own
+    // PATTERN's prototype card
+    const setName = ruleCard.name.leftName;
+    if (setName === undefined) return "";
+    candidates = prototypeSetCandidates(ctx, setName.s);
   }
-  candidates.push("*all");
-  const ruleSetKey = setName?.key ?? "";
-  const first = candidates.findIndex((c) => DeckoName.parse(c).key === ruleSetKey);
+  const ruleSetKey = isPreference
+    ? DeckoName.parse(parts.slice(0, -2).map((p) => p.s).join("+")).key
+    : (ruleCard.name.leftName?.key ?? "");
+  const first = ruleCard.id === undefined || ruleCard.unknown === true
+    ? 0 // rules.rb:78-80 first_set_option_index: a new rule slices from 0
+    : candidates.findIndex((c) => DeckoName.parse(c).key === ruleSetKey);
   const sliced = first === -1 ? candidates : candidates.slice(first);
-  const userSettingName = `*${ruleSettingCodename(ctx) ?? ""}`;
   const radios: string[] = [];
   let existingRules = 0;
-  for (const [setNameStr, state] of sliced
+  for (const [candidateSetName, state] of sliced
     .map((c) => {
       const ruleName = `${c}+${userSettingName}`;
       const existing = fmt.engine.fetchRenderCard(ruleName);
@@ -2043,9 +2174,9 @@ function ruleSetOptionsRadios(ctx: ViewContext): string {
       return [c, state] as [string, string];
     })
     .reverse()) {
-    radios.push(ruleSetRadioHtml(ctx, setNameStr, state));
+    radios.push(ruleSetRadioHtml(ctx, candidateSetName, state, userSettingName));
   }
-  return radios.join("");
+  return radios.join("\n");
 }
 
 /** The set's prototype default card's type code (set/type/set.rb:95-101
@@ -2077,39 +2208,56 @@ function defaultRuleTypeName(ctx: ViewContext, typeCode: string): string | undef
  *  class: "form-check-input", id: @id) - Rails Tags::RadioButton#render:
  *  the caller options in position (warning, class, id), then type/value
  *  set, name appended LAST; @id (:19) = "#{unique_id}-#{Time.now.to_i}" -
- *  the seconds are nondeterministic (the port freezes unique_id's rand to
- *  1 and the seconds to 0; the test normalizes both sides to TIME, the
- *  select2 precedent); label (:40-50): the set card's label, the
- *  "(current)" extra_info for the :current state wrapped in <em>, and the
- *  set link (link_to_card target: "decko_set"); warning (:57-62): the
- *  *all literal, else the narrower-rules walk (unpinned - the capture's
- *  single *all option never reaches it; the narrower_warning machinery is
- *  the cited remainder). */
-function ruleSetRadioHtml(ctx: ViewContext, setName: string, state: string): string {
+ *  the SHARED format id counter (content.rb:66-70: the tinymce textarea
+ *  consumed -2- earlier in the same render, so the radios answer -3-, -4-,
+ *  ...; Time.now through the engine wall clock - the corpus bytes carry the
+ *  capture clock's epoch 1789819200); label (:40-50): the set card's label,
+ *  the extra_info (:current "(current)", :overwritten/:exists the set+
+ *  setting rule card link, target: "_blank", the known/wanted class riding
+ *  the rule card's known? verdict), and the set link (link_to_card target:
+ *  "decko_set"); warning (:57-62): the *all literal, else the
+ *  narrower-rules walk (unpinned - the corpus radios never reach it). */
+function ruleSetRadioHtml(
+  ctx: ViewContext,
+  setName: string,
+  state: string,
+  userSettingName: string,
+): string {
   const { fmt } = ctx;
-  const tag = `*${ruleSettingCodename(ctx) ?? ""}`;
-  const radioText = `${setName}+${tag}`;
-  const id = `${fmt.card.name.safeKey}-1-0`;
+  const radioText = `${setName}+${userSettingName}`;
+  // set_set_radio.rb:19 @id: unique_id (the format's shared counter) plus
+  // Time.now.to_i (cardWallClockNow - the corpus bytes carry 1789819200)
+  const epochSeconds = Math.floor(cardWallClockNow().getTime() / 1000);
+  const id = `${fmt.uniqueId()}-${epochSeconds}`;
   const isCurrent = state === "current";
   const warning =
     setName === "*all" ? "This rule will affect all cards! Are you sure?" : "";
   const labelClasses =
     `set-label${isCurrent ? " current-set-label" : ""}`;
-  // set/type/set.rb:38-41 label - through the fetched SET CARD's record
-  // codename (the peek-lexicon route labelForParsedSet takes is not primed
-  // this early in the rule_form chain; the record codename is the same
-  // Card::Codename answer, DB-backed)
-  const setCardRecord = fmt.engine.fetchRenderCard(setName);
-  const patternCode =
-    setCardRecord === undefined || setCardRecord.unknown === true
-      ? undefined
-      : setCardRecord.record.codename;
-  const anchor = setCardRecord?.name.leftName?.s;
-  const setLabel =
-    patternCode !== undefined
-      ? (findPattern(patternCode)?.label(anchor) ?? "")
-      : "";
-  const text = isCurrent ? `${setLabel} <em>(current)</em>` : setLabel;
+  // set/type/set.rb:38-41 label - subclass_for_set.label(anchor_name) - the
+  // pattern resolves through the TAG card's codename (parseSetName - the
+  // codename registry; an anchored set card's row carries no codename of
+  // its own, so the walk is name-level in every case).
+  const parsed = parseSetName(setName);
+  const setLabel = parsed.spec !== undefined
+    ? (parsed.spec.label(parsed.anchorName?.s) ?? "")
+    : "";
+  // rule_set_radio.rb:40-50 extra_info: :current renders the literal;
+  // :overwritten/:exists link the set+setting rule card with the
+  // known/wanted class from its own known? verdict (the corpus's
+  // *all+*structure is neither real nor virtual -> wanted-card).
+  let extraInfo = "";
+  if (isCurrent) {
+    extraInfo = " <em>(current)</em>";
+  } else if (state === "overwritten" || state === "exists") {
+    const ruleName = `${setName}+${userSettingName}`;
+    const ruleCardRecord = fmt.engine.fetchRenderCard(ruleName);
+    const known = ruleCardRecord !== undefined && ruleCardRecord.unknown !== true;
+    extraInfo =
+      ` <em><a target="_blank" class="${known ? "known-card" : "wanted-card"}"` +
+      ` href="/${h(DeckoName.parse(ruleName).urlKey)}">(${h(state)})</a></em>`;
+  }
+  const text = `${setLabel}${extraInfo}`;
   return (
     `<div class="form-check">` +
     `<input${warning === "" ? "" : ` warning="${h(warning)}"`} class="form-check-input" id="${h(id)}" type="radio" value="${h(radioText)}" name="card[name]" />\n` +
@@ -2149,14 +2297,29 @@ function editRuleButtons(ctx: ViewContext, formType: string): string {
       ? `<button name="button" type="button" data-bs-dismiss="modal" data-cy="close-modal" class="btn-sm btn btn-secondary">Cancel</button>`
       : `<button name="button" type="button" class="_close-overlay btn-sm btn-sm btn btn-secondary" data-bs-dismiss="overlay">Cancel</button>`;
   const settingTitle = ruleSettingCodename(ctx) ?? "";
-  const confirmMsg = `Are you sure you want to delete the *${settingTitle} rule for everything?`;
+  // buttons.rb:36-43 - the confirm names the rule set's follow_label
+  // (editor.rb:93-95 card.rule_set.follow_label): Set#follow_label
+  // (mod/follow set/type/set.rb:9-15) is the pattern's short_label of the
+  // set anchor - the Type pattern's is `all "#{anchor}s"` (03_type.rb:7-9,
+  // the corpus's all &quot;Topics&quot;), *all's short_label "everything"
+  // (01_all.rb:6-8).
+  const ruleSetName = fmt.card.name.leftName;
+  const ruleSetParsed = ruleSetName !== undefined ? parseSetName(ruleSetName.s) : undefined;
+  const followLabel = ruleSetParsed?.spec !== undefined
+    ? (ruleSetParsed.spec.shortLabel(ruleSetParsed.anchorName?.s) ?? "")
+    : "";
+  const confirmMsg = `Are you sure you want to delete the *${settingTitle} rule for ${followLabel}?`;
   const del = (
     `<span class="rule-delete-section">` +
     `<a confirm="${h(confirmMsg)}" data-slotter-mode="silent-success"` +
     ` class="_close-${formType}-on-success slotter btn btn-outline-danger ms-auto"` +
     ` data-confirm="${h(confirmMsg)}" href="/delete/${h(fmt.urlKey())}?" data-remote="true">Delete</a></span>`
   );
-  return `<div class="button-area">${outputJoin([save, saveAndClose, cancel, del])}</div>`;
+  // buttons.rb:23 edit_rule_delete_button - `return if card.new_card?`: a
+  // NEW rule has nothing to delete (the corpus follow rule_form pin's
+  // button area ends at Cancel)
+  const parts2 = fmt.card.id === undefined ? [save, saveAndClose, cancel] : [save, saveAndClose, cancel, del];
+  return `<div class="button-area">${outputJoin(parts2)}</div>`;
 }
 
 /** rule_form.rb:56-64 edit_rule_form + :66-69 rule_form_args: the
@@ -2166,10 +2329,16 @@ function editRuleButtons(ctx: ViewContext, formType: string): string {
  *  the substrate's cardFormShell is the card_form port. The body is the
  *  rule_form.haml walk (:2-13 render :rule_form_card_editor inline - the
  *  SAME voo, so the child slot's show list accumulates
- *  ["rule_form","rule_form_card_editor"], the captured pair). */
+ *  ["rule_form","rule_form_card_editor"], the captured pair). The dom id
+ *  is form_for's (new_card for an id-less card). The
+ *  data-update-foreign-slot render opt carries the follow mod's
+ *  rule_form_args override (right/follow.rb:119-121 - the follow rule's
+ *  form hooks the follow_section foreign slot) through the same opt
+ *  channel rule_form's success_view/form_type/rule_context ride. */
 function editRuleForm(ctx: ViewContext): string {
   const { fmt } = ctx;
   const success = editRuleSuccessHash(ctx);
+  const foreignSlot = ctx.voo.opts["data_update_foreign_slot"];
   const body =
     `<div class='guide-line rule-section mt-4'>\n<h5>\n<div class='guide-line-number'>1</div>\nDefine rule\n</h5>\n` +
     fmt.renderView("rule_form_card_editor") +
@@ -2182,10 +2351,17 @@ function editRuleForm(ctx: ViewContext): string {
     `\n</div>\n</div>\n`;
   return cardFormShell(ctx, {
     formClass: "card-rule-form card-form slotter",
-    id: `edit_card_${fmt.card.id}`,
-    htmlAttrs: [["data-slotter-mode", "update-origin"]],
+    id: fmt.card.id === undefined ? "new_card" : `edit_card_${fmt.card.id}`,
+    htmlAttrs:
+      typeof foreignSlot === "string"
+        ? [["data-slotter-mode", "update-origin"], ["data-update-foreign-slot", foreignSlot]]
+        : [["data-slotter-mode", "update-origin"]],
     action: "/card/update",
-    methodSpoof: "patch",
+    // Rails form_for infers PATCH from the record's persistence: a persisted
+    // rule card emits the _method patch spoof, a new one posts plain (the
+    // corpus follow rule_form pin: the new-card form carries no spoof - the
+    // same semantics the quick_editor's shell applies)
+    methodSpoof: fmt.card.id === undefined ? null : "patch",
     success: success,
     body: body,
   });
@@ -2235,17 +2411,21 @@ const ruleFormCardEditorView: ViewFn = (ctx) => {
  *  5018 -> 5018, rendered on the *all+*default rule card whose *default
  *  setting_opts carries rule_type_editable: true - card-mod-content
  *  set/self/default.rb:1): the wrap_type_formgroup + type_field shape
- *  (editor.rb:96-104). The href reads success[:id] - edit_rule_success
- *  (rule_form.rb:69-71) carries ONLY :mark/:view, so the :id read is nil
- *  on EVERY surface and the captured query is the constant
- *  "assign=true&mark=" after the path-segment view
- *  (path(mark: nil, view: :rule_form_card_editor, assign: true) on the
- *  format's own card). select_tag attr order: name, id, then the opts
+ *  (editor.rb:96-104) through the shared edit_type port (typeFormgroup).
+ *  The href reads success[:id] - edit_rule_success (rule_form.rb:69-71)
+ *  carries ONLY :mark/:view, so the :id read is nil on EVERY surface and
+ *  the captured query is the constant "assign=true&mark=" after the
+ *  path-segment view. select_tag attr order: name, id, then the opts
  *  hash - href, class (bootstrap appends " form-control"), data-remote,
  *  and type_field's merged data-select2-id LAST (edit_type.rb:46-47);
- *  the option list is simple_type_field_options' single selected current
- *  type; wrap_type_formgroup appends the assign hidden field
- *  (edit_type.rb:64-68, output-joined "\n"). */
+ *  the option list is edit_type.rb type_field_options under the rule
+ *  card's right-set visible_cardtype_groups override (Right::Default for
+ *  *default rules, Right::Structure for *structure rules,
+ *  Right::ContentOptions for *content_options rules, the base table
+ *  otherwise) - the corpus's rule-form ops render the multi-group
+ *  optgroup lists there (2026-10-10), the rules-cap capture's
+ *  single-option select is the same code's simple arm at its capture
+ *  deck's createable state. */
 function rulesTypeFormgroup(ctx: ViewContext): string | undefined {
   const setting = ruleSettingCodename(ctx);
   const registry = setting === undefined
@@ -2253,15 +2433,25 @@ function rulesTypeFormgroup(ctx: ViewContext): string | undefined {
     : getDefaultModLoader()?.settingsRegistry().findByCodename(setting);
   if (registry === undefined || !registry.ruleTypeEditable) return undefined;
   const href = `/${ctx.fmt.urlKey()}/rule_form_card_editor?assign=true&mark=`;
-  const typeName = ctx.fmt.card.typeName ?? "";
-  return (
-    `<div class="form-group type-formgroup"${formgroupCardAttrs(ctx.fmt)}>` +
-    `<label for="card_type">Type</label>\n` +
-    `<div class="editor type-editor">` +
-    `<select name="card[type]" id="card_type" href="${h(href)}" class="type-field rule-type-field _live-type-field form-control" data-remote="true" data-select2-id="${typeFieldSelect2Id(ctx)}">` +
-    `<option selected="selected" value="${h(typeName)}">${h(typeName)}</option></select>\n` +
-    `<input type="hidden" name="assign" id="assign" value="true" autocomplete="off" /></div></div>`
-  );
+  return typeFormgroup(ctx, {
+    href,
+    cls: "type-field rule-type-field _live-type-field",
+    groups: ruleTypeGroups(setting),
+    hrefFirst: true,
+  });
+}
+
+/** The rule editor's visible_cardtype_groups override by the rule card's
+ *  right codename (the set-module overrides; see
+ *  RIGHT_DEFAULT_CARDTYPE_GROUPS above and card-mod-content
+ *  set/right/content_options.rb:22-24). Undefined = the base GROUP table. */
+function ruleTypeGroups(
+  setting: string | undefined,
+): Readonly<Record<string, readonly string[]>> | undefined {
+  if (setting === "default") return RIGHT_DEFAULT_CARDTYPE_GROUPS;
+  if (setting === "structure") return RIGHT_STRUCTURE_CARDTYPE_GROUPS;
+  if (setting === "content_options") return { Organize: ["List", "Pointer", "Search"] };
+  return undefined;
 }
 
 /** editor.rb:17-22 view :rule_edit, cache: :never, unknown: true, wrap:
@@ -2405,7 +2595,7 @@ const overlayRuleView: ViewFn = (ctx) => {
  *  menu. */
 function overlayMenuHtml(ctx: ViewContext): string {
   const { fmt } = ctx;
-  const helpContent = h(fmt.renderView("help_text"));
+  const helpContent = h(str(fmt.renderView("help_text")));
   const helpLink =
     `<a path="#" tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus"` +
     ` data-bs-content="${helpContent}" data-bs-placement="left"` +
@@ -2514,7 +2704,7 @@ function quickEditSettingListItem(ctx: ViewContext, setting: string): string {
  *  the chain); the nest_rules slot wrap (wrap: :slot, no class) wraps it. */
 const nestRulesView: ViewFn = (ctx) => {
   assertSetCard(ctx, "nest_rules");
-  const body = ctx.fmt.renderView("quick_edit_setting_list");
+  const body = str(ctx.fmt.renderView("quick_edit_setting_list"));
   return modSlotWrap(ctx, "nest_rules", body);
 };
 

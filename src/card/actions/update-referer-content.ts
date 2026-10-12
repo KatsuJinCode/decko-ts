@@ -11,7 +11,17 @@
 // - referers (lib/card/reference/all.rb:13-15 via Card#references_in,
 //   lib/card.rb:169): rows whose referee_id is this card's id, mapped to
 //   referer cards, ids uniq'd in first-occurrence order; trashed/missing
-//   referers drop out (Card[id] is nil for them -> Array#compact).
+//   referers drop out (Card[id] is nil for them -> Array#compact). The
+//   Card[id] mapping is a CACHE-THROUGH fetch, and that is load-bearing:
+//   on a miss it writes the referer's PRE-rewrite card to Card::Cache, and
+//   replace_references' update_column below then rewrites the row behind
+//   that cache with no expire — the referer's next render serves the
+//   pre-rename content (the rename-referers oracle freezes exactly this
+//   staleness: Note 001's page shows the old name as a wanted link while
+//   its reference rows are already rewritten). The engine passes its
+//   FetchEngine fetch as deps.fetchRefererCard; staleness clears the way
+//   Ruby's clears it — the next legitimate write to the referer expires
+//   the entry (after_commit expire) and the render serves fresh.
 // - replace_references (reference_events.rb:48-50):
 //   `self.content_quietly = swap_names(old_name, new_name) unless structure`
 //   — the `structure` gate skips cards whose content is inherited from a
@@ -39,11 +49,10 @@
 //     ({{#...}} — nest.rb:20-21 never sets @name) would rebuild to
 //     "{{}}". Both are Ruby data-corruption warts, not behaviors the
 //     parity corpus asserts; the divergences are recorded here and in the
-//     task report. QueryReference chunks (CQL, chunk/query_reference.rb
-//     :86-89) ARE ported: swap_name (:86-89) replaces the name reference
-//     and rebuilds the chunk as the quoted swapped name, no absolutizing —
-//     `"#{@name}"` — which is what the harness's rename-referenced-tag step
-//     records on a saved search's "refer_to" target.
+//     task report. QueryReference chunks (chunk/query_reference.rb,
+//     ref_type "Q" — the quoted names in JSON/CQL content) swap in the
+//     gaps between the L/I chunks (swapQueryReferencesInGap); the
+//     rename-referers journey's JSON card pins the arm.
 // - content_quietly= (reference_events.rb:52-58): assign the content; if
 //   the db_content column actually changed (the loop guard, :54), write the
 //   column DIRECTLY (`update_column` — no validations, no callbacks, no
@@ -83,6 +92,7 @@ import { NameNotFoundError, CodenameNotFoundError } from "../name/errors.js";
 import { stripTags } from "../render/nest-syntax.js";
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import type { CardsRow } from "../../server/schema.js";
+import type { CardRecord } from "../fetch/card-record.js";
 import {
   dividerIndex,
   EXPLICIT_LINK,
@@ -110,6 +120,39 @@ export interface RenameSwapLexicon extends ReferenceLexicon {
 export interface RenameSwapDeps {
   driver: SQLDatabaseDriver;
   lexicon: RenameSwapLexicon;
+  /** Ruby's `Card[card_id]` inside referers (all.rb:15) — the cache-through
+   *  fetch of each referer. The fetch is what freezes the staleness the
+   *  rename-referers oracle pins: on a cache miss it reads the referer's
+   *  PRE-rewrite row and writes it to the shared cache (write_to_cache),
+   *  and replace_references' subsequent `update_column` (content_quietly=,
+   *  reference_events.rb:52-58) changes the row BEHIND that cache with no
+   *  expire — so the referer's next render serves the pre-rename content
+   *  until a legitimate write to the referer expires it. The engine passes
+   *  its FetchEngine fetch here (the same cache the render path reads);
+   *  absent, the read stays a raw row query (the model-pure default). */
+  fetchRefererCard?: (id: number) => Promise<CardRecord | undefined>;
+  /** The staleness pin for the update_column arm: called with the referer's
+   *  PRE-write card when the rewrite actually changes the row, so the entry
+   *  survives the freshness gate's TS-only resets and drops on the referer's
+   *  own expire (FetchEngine#pinStaleCard). Absent (the model-pure default),
+   *  there is no cache layer to keep stale and nothing is pinned. */
+  pinStaleReferer?: (card: CardRecord) => void;
+}
+
+/** The fields of a referer the rewrite touches. Ruby's referers returns
+ *  Card objects (all.rb:15); the port's two sources — the raw row query and
+ *  the cache-through fetch — both carry these, so the rewrite consumes the
+ *  subset and never the whole row. `card` is the fetched record the
+ *  cache-through source returned (undefined on the raw-row default): the
+ *  pin at the update_column arm keeps THAT record's bytes. */
+interface RefererRef {
+  id: number;
+  left_id: number | null;
+  right_id: number | null;
+  name: string | null;
+  db_content: string | null;
+  trash: number;
+  card?: CardRecord;
 }
 
 // -----------------------------------------------------------------------
@@ -173,25 +216,46 @@ async function rewriteReferersOf(
 }
 
 /** all.rb:13-15 + lib/card.rb:169 — the referers of one card: rows whose
- *  referee_id is the card's id, uniq'd by referer in first-occurrence
- *  order (Ruby's references.map(&:referer_id).uniq), mapped to LIVE cards
- *  (trash = 0; trashed/missing drop out via Array#compact, all.rb:23). */
+ *  referee_id is the card's id, uniq'd by referer in first-occurrence order
+ *  (Ruby's references.map(&:referer_id).uniq), mapped to LIVE cards
+ *  (trash = 0; trashed/missing drop out via Array#compact, all.rb:23). The
+ *  card mapping is `Card[card_id]` — a CACHE-THROUGH fetch (deps
+ *  .fetchRefererCard): its miss path writes the referer's pre-rewrite card
+ *  into the shared cache, which is the mechanism that leaves the referer
+ *  serving stale content after the update_column write behind it. */
 async function referersOf(
   deps: RenameSwapDeps,
   cardId: number,
-): Promise<CardsRow[]> {
+): Promise<RefererRef[]> {
   const grouped = await deps.driver.query<{ referer_id: number; first_row_id: number }>(
     `SELECT referer_id, MIN(id) AS first_row_id FROM card_references
      WHERE referee_id = ? GROUP BY referer_id ORDER BY first_row_id`,
     [cardId],
   );
-  const referers: CardsRow[] = [];
+  const referers: RefererRef[] = [];
   for (const { referer_id } of grouped.rows) {
-    const result = await deps.driver.query<CardsRow>(
-      "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
-      [referer_id],
-    );
-    if (result.rows[0] !== undefined) referers.push(result.rows[0]);
+    if (deps.fetchRefererCard !== undefined) {
+      // all.rb:15 Card[card_id]: cache first, then the row (trash = 0 in
+      // the db arm — retrieve.rb:28-33 — matches the raw query below; the
+      // compact drops the trashed/missing).
+      const card = await deps.fetchRefererCard(referer_id);
+      if (card === undefined || card.trash || card.id === undefined) continue;
+      referers.push({
+        id: card.id,
+        left_id: card.leftId ?? null,
+        right_id: card.rightId ?? null,
+        name: card.name?.s ?? null,
+        db_content: card.dbContent ?? null,
+        trash: card.trash ? 1 : 0,
+        card,
+      });
+    } else {
+      const result = await deps.driver.query<CardsRow>(
+        "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        [referer_id],
+      );
+      if (result.rows[0] !== undefined) referers.push(result.rows[0]);
+    }
   }
   return referers;
 }
@@ -201,7 +265,7 @@ async function referersOf(
  *  (:49) has no true case in this port — see the module header. */
 async function replaceReferences(
   deps: RenameSwapDeps,
-  referer: CardsRow,
+  referer: RefererRef,
   nameBeforeAct: DeckoName,
   name: DeckoName,
 ): Promise<void> {
@@ -217,14 +281,20 @@ async function replaceReferences(
 /** content_quietly= (reference_events.rb:52-58): write the column only
  *  when the content actually changed (:54, the loop guard), DIRECTLY via
  *  update_column semantics (no updated_at, no act/action rows), then
- *  rebuild the referer's reference rows (:57 -> all.rb:47-50). */
+ *  rebuild the referer's reference rows (:57 -> all.rb:47-50). The pin at
+ *  the write is Ruby's state ordering: the Card[id] fetch inside referers
+ *  has already put the PRE-write card in the cache, and update_column
+ *  changes the row behind it with no expire — the engine's pin keeps that
+ *  entry alive across the freshness gate's resets so the referer renders
+ *  Ruby's stale bytes, and the referer's own expire drops it. */
 async function contentQuietlySet(
   deps: RenameSwapDeps,
-  referer: CardsRow,
+  referer: RefererRef,
   refererName: DeckoName,
   newContent: string,
 ): Promise<void> {
   if (newContent === (referer.db_content ?? null)) return; // db_content_changed?
+  if (referer.card !== undefined) deps.pinStaleReferer?.(referer.card);
   await deps.driver.query("UPDATE cards SET db_content = ? WHERE id = ?", [
     newContent,
     referer.id,
@@ -239,7 +309,10 @@ async function contentQuietlySet(
 /** swap_names (all.rb:65-71): swap every Reference chunk and re-serialize.
  *  Chunks that carry no reference (explicit-resource links, comment nests)
  *  stay untouched — see the module header for the divergence from Ruby,
- *  which rebuilds them into corrupted forms. */
+ *  which rebuilds them into corrupted forms. The QueryReference chunks
+ *  (chunk/query_reference.rb — the quoted names in JSON/CQL content,
+ *  ref_type "Q") swap in the same walk: the rename-referers journey's JSON
+ *  card ({"link_to":"Topic 001"}) pins the Q arm. */
 export function swapNames(
   content: string | null | undefined,
   oldName: DeckoName,
@@ -271,9 +344,9 @@ function swapChunkText(
 ): string {
   try {
     if (chunk.refType === "Q") {
-      // QueryReference#swap_name (query_reference.rb:86-89): the parsed name
-      // swaps (replace_name_reference, reference.rb:30-35 — key comparison,
-      // NO absolutizing) and the chunk rebuilds as the quoted swapped name.
+      // QueryReference#swap_name (query_reference.rb:86-89): the quoted
+      // name runs Name#swap; the chunk rebuilds as "#{@name}" (the quotes
+      // re-emitted around the swapped name).
       const swapped = DeckoName.parse(chunk.inner).swap(oldName, newName);
       return `"${swapped.s}"`;
     }
@@ -424,10 +497,11 @@ async function rewriteDescendantReferers(
 
 /** The composed name of a row — lib/card/name/all.rb:12-14 (compound names
  *  compose through the Lexicon; simple cards read the column), the same
- *  resolution card-action-engine.ts uses. */
+ *  resolution card-action-engine.ts uses. Accepts the structural subset the
+ *  referer rewrite carries (full CardsRow descendants satisfy it too). */
 async function composedNameOf(
   deps: RenameSwapDeps,
-  row: CardsRow,
+  row: RefererRef,
 ): Promise<DeckoName | undefined> {
   if (row.left_id !== null && row.left_id !== undefined) {
     const composed = await deps.lexicon.composeName(row.left_id, row.right_id);

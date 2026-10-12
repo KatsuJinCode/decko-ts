@@ -9,7 +9,7 @@
 // host's captured mail, drained, as [{to, subject, text}]).
 
 import http from "node:http";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -42,12 +42,22 @@ process.env.DECKO_FILES_DIR = process.env.HARNESS_FILES;
 process.env.DECKO_ORIGIN = `http://127.0.0.1:${port}`;
 process.env.COMPILED_ASSETS_DIR = process.env.HARNESS_FILES;
 process.env.DECKO_TOKEN_SECRET = "browser-scenarios-fixture-secret";
+// Passwords ride the Ruby-beside-the-port mode (password-hash.ts): the
+// fixture deck stores Ruby's SHA-1 digests, the harness deck is shared with
+// the Ruby oracle, and the port's PBKDF2 upgrade at sign-in would write row
+// deltas Ruby never writes. Ruby-side parity is the engine behavior under
+// test; the production PBKDF2 default is a host decision, not an engine one.
+process.env.DECKO_PASSWORD_HASH = "legacy-sha1";
 // A fresh deck served as stock Decko serves it (see vm-staging-server.mjs).
 process.env.DECKO_DECK_PROFILE = "stock";
 // The mods' public files (TinyMCE's theme, ace's modes): the same files the
-// Ruby oracle app serves from public/mod/<mod>, which `decko setup` links to
-// each card-mod gem's public directory.
-process.env.DECKO_MOD_PUBLIC_DIR ??= path.join(repo, "reference-harness", "oracle", "app", "public");
+// Ruby oracle app serves from public/mod/<mod> (decko setup links each mod's
+// public directory). run-all forwards its --decko checkout here; a direct run
+// falls back to the machine's decko checkout when it carries mod/.
+const DECKO_CHECKOUT_WITH_MODS = "C:/localProjects/decko-ruby-perf";
+process.env.DECKO_MOD_PUBLIC_DIR ??= existsSync(path.join(DECKO_CHECKOUT_WITH_MODS, "mod"))
+  ? DECKO_CHECKOUT_WITH_MODS
+  : path.join(repo, "reference-harness", "oracle", "app", "public");
 
 const realCreateServer = http.createServer;
 http.createServer = (...args) => {

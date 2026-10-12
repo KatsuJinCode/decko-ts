@@ -93,6 +93,7 @@ function oracleCtx(): ChromeContext {
     leftType: CARD_TYPE,
     idCounter: { n: 0 },
     nest: (target, view) => `%%NEST_SEAM[${target}|view: ${view}]%%`,
+    forceShowContentTab: () => {},
     wrap: () => `%%WRAP_SEAM[slot]%%`,
   };
 }
@@ -316,7 +317,7 @@ describe("card-mod-tinymce_editor harness probe: the ported views through the en
     expect(modalHtml).not.toContain("<modal>");
   });
 
-  it("renders :new_image through the engine - the create-form shell + the live-pinned success tags", async () => {
+  it("renders :new_image through the engine - the UPDATE-form shape for the stored probe card (Ruby create_form on a stored card: edit_card_<id> + _method=patch, action :create) + the live-pinned success tags", async () => {
     const s = storage!;
     const html = await s.engine.render("image01", "new_image");
     expect(html).toContain(`name="success[tinymce_id]"`);
@@ -324,8 +325,11 @@ describe("card-mod-tinymce_editor harness probe: the ported views through the en
     expect(html).toContain(`name="success[id]" id="success_id" value="image02"`);
     expect(html).toContain(`name="success[slot][show]" id="success_slot_show" value="preview_redirect"`);
     // the full create_form body rides the dispatch (new.rb:43-49): the form
-    // tag + the new-fields walk + the voo.buttons_view buttons
-    expect(html).toContain(`<form class="card-form slotter" id="new_card" action="/card/create"`);
+    // tag (the STORED-card shape: edit_card_<id> + the _method patch spoof,
+    // exactly the corpus favicon's new_image bytes at edit_card_294) + the
+    // new-fields walk + the voo.buttons_view buttons
+    expect(html).toContain(`<form class="card-form slotter" id="edit_card_901" action="/card/create"`);
+    expect(html).toContain(`<input type="hidden" name="_method" value="patch" autocomplete="off" />`);
     expect(html).toContain("_update-history-pills"); // new_image_buttons
   });
 });

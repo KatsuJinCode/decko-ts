@@ -212,10 +212,19 @@ const emailDocumentWrapper =
   '  <body class="d0-email-body">' + "\n" +
   "    INTERIOR\n" +
   "  </body>\n" +
-  "</html>";
+  "</html>\n";
 
 const emailPageView: ViewFn = (ctx: ViewContext) => {
-  const core = ctx.fmt.renderView("core");
+  // Ruby's body is `render_core` (set/all/email_html.rb:11-13) - a
+  // method_missing api_render delegation whose render! opens its OWN
+  // wrap_and_render rescue scope (render.rb:96-100). In the serving posture
+  // that rescue is QUIET (html_format.rb:16-18 focal? = main? = false), so a
+  // raising core becomes the delegated render's VALUE (the verbatim
+  // unknown-codename span) and the :email_document wrapper still completes
+  // around it - the oracle's 271-byte email_page with the span inside the
+  // body. The former bare renderView call let the error escape to the root's
+  // rescue, which dropped the wrapper.
+  const core = ctx.fmt.renderDelegated("core");
   // Wrap: :email_document substitutes INTERIOR with the interior bytes
   // (wrap.rb#interior, the heredoc interpolation pattern in
   // set/all/email_html.rb:11). The heredoc is squiggly (<<~), so the

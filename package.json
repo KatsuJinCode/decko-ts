@@ -16,8 +16,13 @@
     }
   },
   "scripts": {
-    "test": "vitest run tests/card/",
-    "test:deploy": "vitest run tests/deploy/",
+    "test": "node tools/test-gates.mjs run correctness",
+    "test:merge": "node tools/test-gates.mjs run full",
+    "test:capacity": "node tools/test-gates.mjs run capacity",
+    "test:deploy": "node tools/test-gates.mjs run deploy",
+    "test:parity": "node tools/test-gates.mjs run parity",
+    "test:harness": "node tools/test-gates.mjs run harness",
+    "test:gates": "node tools/test-gates.mjs list && node tools/test-gates.mjs check",
     "test:drivers": "vitest run tests/server/drivers/",
     "test:shadow": "vitest run tests/tools/shadow/",
     "test:reference-harness": "node --test \"reference-harness/runner/test/*.test.mjs\"",
@@ -37,7 +42,7 @@
     "@types/node": "^26.6.2",
     "better-sqlite3": "^13.0.3",
     "esbuild": "^0.28.2",
-    "miniflare": "^5.20260918.0-alpha",
+    "miniflare": "^5.20261006.1-alpha",
     "typescript": "^7.0.2",
     "vitest": "^5.0.1"
   },

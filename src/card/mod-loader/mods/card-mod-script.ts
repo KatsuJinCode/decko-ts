@@ -61,10 +61,17 @@
 //   does not give. The compat report's viewsByFormat.html entry for
 //   "compressed" is a parser artifact; the only Ruby definition is the js
 //   one.
-// - the html :core override (00_script.rb:73-76, CodeRay-highlighted div):
-//   the T6 verdict counts :core as covered by the engine's core view, and a
-//   byte-port of CodeRay's js tokenizer (span color classes) is not
-//   headlessly reproducible with a JS highlighter.
+// - the html :core override (00_script.rb:73-76, CodeRay-highlighted div)
+//   IS ported: java_script cards reach it through the langForTypeCode
+//   dispatch (views.ts core branch, renderRaw -> highlight(:js) ->
+//   processContent with the family's :nest_only chunk list). The byte-port
+//   runs on the code-highlighting module's java_script scanner (the same
+//   state machine the html scanner delegates <script> bodies to); the
+//   pre-2026-10 "not headlessly reproducible" verdict was overturned when
+//   that module landed. coffee_script's html :core is NOT this file's
+//   highlight path (Abstract::CoffeeScript's base-format view :core compiles
+//   first - 02_coffee_script.rb:23-25); it stays unported, unexercised by
+//   the corpus.
 // - lib/cardio/utils/ansi2_html.rb: consumed only by the
 //   validate_javascript_syntax error message (type/java_script.rb:8) - no
 //   reachable consumer headlessly.
@@ -220,14 +227,23 @@ function javascriptTag(content: string): string {
  *    true.) */
 function deckoScriptVariables(ctx: ViewContext): string {
   const lines: string[] = [];
-  lines.push(`decko.rootUrl='${deckoRootUrl() ?? "/"}';`);
+  // card_url("") = Env.origin + card_path("": the VIEW lane runs the
+  // railtie default (deck_origin nil) UNLESS the harness set the deck
+  // origin (the corpus's deck.example) — engine.envOriginConfig() is the
+  // per-surface value (the page path's scriptVariablesTag precedent).
+  const rootUrl = deckoRootUrl() ?? `${ctx.fmt.engine.envOriginConfig?.() ?? ""}/`;
+  lines.push(`decko.rootUrl='${rootUrl}';`);
   lines.push("decko.doubleClick='signed_in';");
   const styleRule = paramOrRuleCard(ctx, "style");
   if (styleRule !== undefined) {
     const cssPath = ctx.fmt.nestRecord(styleRule, "stylesheet_path");
     lines.push(`decko.cssPath='${applyDeploymentCssRevision(cssPath)}';`);
   }
-  lines.push(`decko.signed_in=${false};`);
+  // Auth.signed_in? (auth/current.rb) — the PAGE CHROME session
+  // (engine.pageSession), not the read-verdict actor; undefined = signed
+  // out (the anonymous surface's false, byte-identical). The corpus's
+  // admin ops carry the signed-in session -> true.
+  lines.push(`decko.signed_in=${ctx.fmt.engine.pageSession?.signedIn === true};`);
   return lines.join("\n") + "\n";
 }
 
@@ -267,9 +283,40 @@ const javascriptTagsView: ViewFn = (ctx) => {
  *  push at load time (oracle deck: setAceConfig, setTinyMCEConfig). The
  *  headless basket is empty -> only the trigger line, joined as the single
  *  element. */
+/** Rails escape_javascript (action_view/helpers/javascript_helper.rb
+ *  JAVASCRIPT_ESCAPE_MAP order): \\ -> \\\\, </ -> <\\/, newlines -> \\n,
+ *  " -> \\", ' -> \\', \` -> \\`, $ -> \\$.
+ *  (The page path's copy — page.ts escapeJavascript — is module-private;
+ *  same bytes.) */
+function escapeJavascript(js: string): string {
+  return js
+    .replace(/\\/g, "\\\\")
+    .replace(/<\//g, "<\\/")
+    .replace(/\r\n/g, "\\n")
+    .replace(/\r/g, "\\n")
+    .replace(/\n/g, "\\n")
+    .replace(/"/g, '\\"')
+    .replace(/'/g, "\\'")
+    .replace(/`/g, "\\`")
+    .replace(/\$/g, "\\$");
+}
+
+/** head_javascript.rb:25-27 view :script_calls: the mod script_calls
+ *  basket — ace editor pushes setAceConfig over the *ace global setting's
+ *  content; tinymce_editor pushes setTinyMCEConfig over *tiny_mce — then
+ *  trigger_slot_ready, joined "\n\n" inside the CDATA script. The configs
+ *  are the two setting cards' contents through escape_javascript (the
+ *  sync card-surface read; the corpus's *ace / *tiny_mce rows hold the
+ *  captured config JSONs). */
 const scriptCallsView: ViewFn = (ctx) => {
-  void ctx;
-  return javascriptTag(TRIGGER_SLOT_READY);
+  const ace = ctx.fmt.engine.fetchRenderCard("*Ace")?.dbContent ?? "";
+  const tinymce = ctx.fmt.engine.fetchRenderCard("*tinyMCE")?.dbContent ?? "";
+  const configs = [
+    `decko.setAceConfig('${escapeJavascript(ace)}')`,
+    `decko.setTinyMCEConfig('${escapeJavascript(tinymce)}')`,
+    TRIGGER_SLOT_READY,
+  ].join("\n\n");
+  return javascriptTag(configs);
 };
 
 /** view :javascript_include_tag - three Ruby definitions merged into the
@@ -344,18 +391,50 @@ function remoteScriptTagsOfRuleCard(ctx: ViewContext): string {
  *  `<script src="..."></script>` (the captured tags' extra attributes come
  *  from the manifest config hashes - filesystem state, see the header).
  *  No group remote card or empty list -> "". */
+/** The mods' manifest.yml "remote" groups (mod_assets.rb
+ *  manifest_group_items, dig("remote","items")) in the capture's tag bytes:
+ *  the tag attributes are each manifest item's config hash minus integrity
+ *  (the capture's script tags carry crossorigin / referrerpolicy only).
+ *  Keyed by the mod card's left name — the same data page.ts's
+ *  REMOTE_SCRIPT_TAGS pins for the page head, this table serves the view
+ *  lane's per-mod blocks. */
+const MOD_REMOTE_SCRIPT_TAGS: Record<string, string[]> = {
+  "mod: format": [
+    `<script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous"></script>`,
+    `<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-ujs/1.2.3/rails.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>`,
+  ],
+  "mod: ace editor": [
+    `<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.18.0/ace.min.js" crossorigin="anonymous"></script>`,
+  ],
+  "mod: bootstrap": [
+    `<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.1/js/select2.full.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>`,
+    `<script src="https://kit.fontawesome.com/1366963381.js" crossorigin="anonymous"></script>`,
+  ],
+};
+
 function remoteScriptTagsOfModCard(ctx: ViewContext): string {
   const card = ctx.fmt.card;
   const leftKey = card.name.leftName?.key;
   if (leftKey === undefined) return "";
   const groupRemote = ctx.fmt.engine.fetchRenderCard(`${leftKey}+*group remote`);
   const content = groupRemote?.dbContent;
-  if (content === undefined || content === "") return "";
-  return content
-    .split("\n")
-    .filter((src) => src !== "")
-    .map((src) => `<script src="${src}"></script>`)
-    .join("\n");
+  if (content !== undefined && content !== "") {
+    return content
+      .split("\n")
+      .filter((src) => src !== "")
+      .map((src) => `<script src="${src}"></script>`)
+      .join("\n");
+  }
+  // The +*group remote cards are VIRTUAL: Ruby synthesizes them at boot
+  // from each mod's assets/script/manifest.yml "remote" group
+  // (mod_assets.rb manifest_group_items dig("remote","items")) — the
+  // corpus deck stores no rows. The pinned manifests (format: jquery +
+  // jquery-ujs; ace editor: ace; bootstrap: select2 + fontawesome-kit)
+  // are static CDN state; the tag attributes are the manifest config
+  // hashes minus integrity (the capture's tags carry crossorigin /
+  // referrerpolicy only).
+  const pinned = MOD_REMOTE_SCRIPT_TAGS[card.name.leftName?.s ?? ""];
+  return pinned === undefined ? "" : pinned.join("\n");
 }
 
 /** view :remote_script_tags - the two type_plus_right layers. Ruby defines
@@ -452,8 +531,18 @@ async function prepareScriptRules(host: ModEngineHost): Promise<void> {
     const resultRows = (result as { rows: Record<string, unknown>[] } | undefined)?.rows ?? [];
     rows.push(...resultRows);
   }
-  if (rows.length === 0) return;
-  await host.composeAndCacheRows(rows);
+  if (rows.length > 0) await host.composeAndCacheRows(rows);
+  // The script_calls basket's two config sources (the *Ace / *tinyMCE
+  // global setting cards): the views read them through the sync
+  // card-surface fetch, so they enter the prepared map here
+  // (fetchByName warms the fetch cache; cacheFetchedRecord seats the
+  // enriched render-card row the sync surface reads).
+  for (const name of ["*Ace", "*tinyMCE"]) {
+    const record = (await host.fetchByName?.(name)) as { id?: number | null } | null | undefined;
+    if (record !== undefined && record !== null && record.id !== undefined && record.id !== null) {
+      await host.cacheFetchedRecord(record);
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

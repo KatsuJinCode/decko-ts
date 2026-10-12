@@ -166,6 +166,14 @@ export class Voo {
    *  the consequence: the :template_link slot's data-slot carries
    *  view/nest_name/show/home_view/name_context and NO title key. */
   liveTitle: string | undefined;
+  /** voo.help = X (the same define_setter mechanics as liveTitle): a live
+   *  option readable through the accessor and INVISIBLE in the OWNING
+   *  voo's slot JSON — but an HEIR key, so the child voo a nested view
+   *  render builds inherits it into its NORMALIZED options and its slot
+   *  JSON carries it (the graded setup row: the outer setup slot's
+   *  data-slot has no help key; the inner help-view slot's data-slot
+   *  carries the help text). */
+  liveHelp: string | undefined;
 
   /** True ONLY for the bare view-surface ROOT render's voo (render.ts#render's
    *  `format.renderView(view, ...)` entry — the one call site whose
@@ -207,6 +215,21 @@ export class Voo {
     if (parent !== undefined && opts["size"] === undefined) {
       const inherited = parent.opts["size"];
       if (inherited !== undefined) this.opts["size"] = inherited;
+    }
+    // :help and :title are heir keys carried by the LIVE writers (the
+    // setup view's `voo.help = haml :setup_help` + `voo.title = ...`): the
+    // child voo inherits them into its normalized options
+    // (inherit_options_from_parent!, voo_api.rb:135-143), which is what
+    // slot_options serializes — the graded corpus pins the consequence
+    // (the child help-view slot JSON carries "help" AND "title"; the
+    // owning setup slot's JSON carries neither).
+    if (parent !== undefined && opts["help"] === undefined) {
+      const inherited = parent.liveHelp;
+      if (inherited !== undefined) this.opts["help"] = inherited;
+    }
+    if (parent !== undefined && opts["title"] === undefined && this.liveTitle === undefined) {
+      const inherited = parent.liveTitle;
+      if (inherited !== undefined) this.opts["title"] = inherited;
     }
     // :items is an heir key too (view/options/key_lists.rb
     // keymap[:both]); inherit_options_from_parent! flows it down the voo
@@ -478,7 +501,25 @@ export interface ViewContext {
   voo: Voo;
 }
 
-export type ViewFn = (ctx: ViewContext) => string;
+/** A view body's answer. Ruby's view blocks are plain methods: most return
+ *  HTML strings, but several return raw values that survive to the render
+ *  API boundary — integers (:id, the account token-days views) and nil (the
+ *  `return unless` early arms: type/mod.rb's configurations/tasks/scripts,
+ *  head.rb's :rss_links) — and the reference capture records those verbatim
+ *  (numbers as JSON numbers, nil as null). Anything interpolated INTO
+ *  another view passes through Ruby's to_s at that interpolation; only the
+ *  top-level render boundary carries the raw value. */
+export type ViewResult = string | number | null;
+
+/** Ruby's to_s at interpolation: a view answer embedded in HTML assembly
+ *  (nil.to_s is the empty string). The identity for every HTML-string view;
+ *  the coercion the interpolating sites owe once view bodies may answer
+ *  numbers/null. */
+export function str(result: ViewResult): string {
+  return result === null ? "" : String(result);
+}
+
+export type ViewFn = (ctx: ViewContext) => ViewResult;
 
 /** The menu help-popover resolver (help-popover.ts HelpRulesResolver), when
  *  a composition installed one. Optional: engines without it keep the
@@ -598,6 +639,32 @@ const MAX_NEST_CHAR_COUNT = 200;
 /** The default when no format set a mode: mode.rb:18 `parent ?
  *  parent.nest_mode : :normal` - a root format with no parent is :normal. */
 const DEFAULT_NEST_MODE: NestMode = "normal";
+
+/**
+ * `Cardio.config.raise_all_rendering_errors` (cardio/railtie.rb:38, whose
+ * stock default is false) - the process-global posture behind error.rb:65-67
+ * `loud_error?` (`focal? || raise_all_rendering_errors`). The TS default
+ * here is TRUE: the port's bare view lane and the mod-port raise contracts
+ * grew up loud (every raise the mod guards pin reaches the caller), and the
+ * reference-harness adapters - whose fixtures were captured with the config
+ * explicitly false and Rails.env production (the fixtures' MANIFEST
+ * "production render-error semantics" contract line) - set it FALSE at
+ * boot, so the corpus's quiet rescue postures (nest spans, delegated spans,
+ * the root's own wrap_and_render rescue) engage exactly where the oracle
+ * captured them.
+ */
+let raiseAllRenderingErrors = true;
+
+/** `Cardio.config.raise_all_rendering_errors=` - the boot-time posture
+ *  switch (the harness adapters set false; nothing else should). */
+export function setRaiseAllRenderingErrors(value: boolean): void {
+  raiseAllRenderingErrors = value;
+}
+
+/** error.rb:65-67's config half: true when EVERY rescue is loud. */
+export function allRenderingErrorsRaise(): boolean {
+  return raiseAllRenderingErrors;
+}
 
 export interface RenderFormatOptions {
   parent?: RenderFormat;
@@ -834,8 +901,9 @@ export class RenderFormat {
    * format's (the value the subformat inherits one line later).
    *
    * :template → :template_nest (mode.rb:47; card-mod-edit
-   * set/all/template_nest.rb re-emits the nest syntax). :edit needs the
-   * form machinery and stays unported. :compact substitutes per
+   * set/all/template_nest.rb re-emits the nest syntax). :edit substitutes
+   * per viewInEditMode (mode.rb:56-66 — the multi-card editors' field
+   * editors; the edit_nests slice). :compact substitutes per
    * viewInCompactMode below.
    *
    * COMPACT CENSUS (re-verified 2026-10-01
@@ -857,8 +925,45 @@ export class RenderFormat {
    */
   modalNestView(view: string, nestCard: RenderCard = this.card): string {
     if (this.nestMode === "template") return "template_nest";
+    if (this.nestMode === "edit") return this.viewInEditMode(view, nestCard);
     if (this.nestMode === "compact") return this.viewInCompactMode(view, nestCard);
     return view;
+  }
+
+  /**
+   * nesting/mode.rb:56-59 `view_in_edit_mode`:
+   * `hide_view_in_edit_mode?(view) ? :blank : :edit_in_form` — a nest
+   * under an edit-mode parent (with_nest_mode :edit — the multi-card
+   * editors: :edit_nests' multi_card_edit, the structured forms) renders
+   * the nest card's :edit_in_form field editor, or :blank when the view
+   * never edits (hide_view_in_edit_mode?, mode.rb:62-66:
+   * `view_setting(:perms, view) == :none || card.structure ||
+   * card.key.blank?` — perms-:none views, a structured card's
+   * not-yet-nestable content, and keyless cards). The graded corpus pins
+   * both arms: the board/edit_nests field nests all substitute to
+   * :edit_in_form, while the Topic template's {{+tags|link}} (link is
+   * perms :none) renders nothing.
+   */
+  private viewInEditMode(view: string, nestCard: RenderCard): string {
+    return this.hideViewInEditMode(view, nestCard) ? "blank" : "edit_in_form";
+  }
+
+  /** nesting/mode.rb:62-66 hide_view_in_edit_mode? — the three arms in
+   *  Ruby's order. The perms arm reads the ported view-perms registry
+   *  (the same :none resolution the unknown/denial gates read); the
+   *  structure arm is the nest TARGET's *structure rule (the same sync
+   *  walk cardStructure reads); the key arm answers blank-key cards. */
+  private hideViewInEditMode(view: string, nestCard: RenderCard): boolean {
+    if (resolveViewPerms(view).check === false) return true; // perms :none
+    const structure = this.engine.structureRuleForSync?.({
+      name: nestCard.name.s,
+      id: nestCard.id,
+      typeId: nestCard.typeId,
+      typeName: nestCard.typeName,
+      isNew: nestCard.record.isNew === true,
+    });
+    if (structure !== undefined) return true; // card.structure
+    return nestCard.name.s === "" || nestCard.key === ""; // card.key.blank?
   }
 
   /**
@@ -917,7 +1022,8 @@ export class RenderFormat {
       maxDepth: this.maxDepth,
       nestQuietErrors: this.nestQuietErrors,
     });
-    return sub.renderView(view, opts);
+    // the nest chunk result embeds into content: Ruby's to_s layer.
+    return str(sub.renderView(view, opts));
   }
 
   /**
@@ -1006,6 +1112,26 @@ export class RenderFormat {
     return root.idCounter;
   }
 
+  /** The chain root's counter value after this render (the page lane
+   *  hands it to the modal render: Ruby's render_outside_of_layout runs
+   *  `render!` on the SAME root format — process_layout.rb:44-48 — so
+   *  the modal's editors continue the body's numbering; the layout's
+   *  enabled-roles checkboxes consume 1-2 before the modal editor's
+   *  3-12, the pointer-input journeys' oracle pins). */
+  exportRootIdCounter(): number | undefined {
+    let root: RenderFormat = this;
+    while (root.parent !== undefined) root = root.parent;
+    return root.idCounter;
+  }
+
+  /** The other half: a NEW root format (the page lane's modal render)
+   *  continues the body render's numbering. */
+  seedRootIdCounter(value: number | undefined): void {
+    let root: RenderFormat = this;
+    while (root.parent !== undefined) root = root.parent;
+    if (value !== undefined) root.idCounter = value;
+  }
+
   /** The `read` half of the view-permission gate (format/error.rb:5-8 ok?),
    *  as ONE predicate for both gate call sites.
    *
@@ -1051,7 +1177,7 @@ export class RenderFormat {
     opts: Record<string, unknown> = {},
     optional: unknown = "show",
     viewLaneRoot = false,
-  ): string {
+  ): ViewResult {
     const normalized = normalizeView(view);
     // view.rb#ok_view (view.rb:86 `altered_view || requested_view`): on an
     // unknown card the view is substituted BEFORE dispatch (view/permission.rb
@@ -1097,6 +1223,19 @@ export class RenderFormat {
     this.voo = voo;
     try {
       voo.processVisibility(optional);
+      // voo_api.rb:154 process_live_options: `return :hide if
+      // hide_requested_view?` (optional? && hide?(requested_view)) — the
+      // render bails with nothing when the caller marked the REQUESTED
+      // view hidden via the optional render opt (the discussion core's
+      // render_comment_box optional: :hide — the :core view never shows
+      // :comment_box, so the box contributes nothing on every :core
+      // render, all actors; the open-family views voo.show it and keep
+      // the form).
+      if (optional !== undefined && optional !== null && voo.viz.get(normalized) === "hide") {
+        // view.rb:69 bare return — NIL, which output()'s compact drops (the
+        // discussion join loses its separator too).
+        return null;
+      }
       // view/permission.rb #altered_view (:19-23): the unknown branch ran
       // above; for KNOWN cards the view-permission gate replaces the view
       // before any hook or body runs. Task resolution (view_perms, :13-15),
@@ -1155,7 +1294,7 @@ export class RenderFormat {
           // 1,377-char loud frame plus one extra closing </div> on every
           // +discussion page where the Ruby oracle renders nothing.
           if (this.isMain && viewDenialView(normalized) === undefined) {
-            return this.mainLoudDenialHtml(voo, this.deniedTaskLabel(normalized));
+            return this.mainLoudDenialHtml(voo, this.focalDeniedTask(normalized));
           }
           return denial;
         }
@@ -1190,7 +1329,7 @@ export class RenderFormat {
         if (denial !== undefined) {
           this.noteFocalDenial(voo);
           if (this.isMain && viewDenialView(normalized) === undefined) {
-            return this.mainLoudDenialHtml(voo, this.deniedTaskLabel(normalized));
+            return this.mainLoudDenialHtml(voo, this.focalDeniedTask(normalized));
           }
           return denial;
         }
@@ -1216,13 +1355,39 @@ export class RenderFormat {
       // both). The cache lives on the engine (closureWarm-style) so a
       // warm render path is zero-cost.
       const viewFn = this.engine.resolveView(this.card, effective, this.formatName);
-      if (viewFn === undefined) {
-        // render.rb#view_method + error.rb#unsupported_view_error_message
-        // (Ruby substitutes first, so an unsupported REQUESTED view on an
-        // unknown card reports the substituted view - same shape here)
-        throw new UnsupportedViewError(effective, this.card.name.s);
+      try {
+        if (viewFn === undefined) {
+          // render.rb#view_method + error.rb#unsupported_view_error_message
+          // (Ruby substitutes first, so an unsupported REQUESTED view on an
+          // unknown card reports the substituted view - same shape here).
+          // The raise sits INSIDE the wrap_and_render rescue scope: Ruby's
+          // view_method runs under final_render (render.rb:36-41), called
+          // from wrap_and_render's begin (render.rb:96-100), so an
+          // unsupported view on the root render IS rescued - the quiet span
+          // is the render's value (the corpus's boxed/progress_bar/
+          // pointer_core/... rows, oracle bytes "view (X) not supported
+          // for Y").
+          throw new UnsupportedViewError(effective, this.card.name.s);
+        }
+        return viewFn({ fmt: this, voo });
+      } catch (error) {
+        // THE ROOT'S OWN wrap_and_render rescue (format/render.rb:115-119),
+        // on THE bare view-lane root only. In the serving posture the html
+        // format is never focal (html_format.rb:16-18 focal? =
+        // show_layout? ? main? : depth.zero? - the adapter's bare render
+        // main!s nothing, so focal? is main? = false), loud_error?
+        // (error.rb:65-67) is therefore false, and the rescue is QUIET
+        // (error.rb:75-78): the span is the render's value. Nested and
+        // delegated renders are rescued by their own scopes (nest()'s
+        // catch, renderDelegated) - a throw reaching here already escaped
+        // those. A focal root re-raises as Ruby's loud_error does
+        // (error.rb:69-73); the page lane builds non-viewLaneRoot roots, so
+        // it keeps its own error surface. The config half of loud_error?
+        // keeps the development posture (the mod-port raise contracts)
+        // fully loud.
+        if (!viewLaneRoot || allRenderingErrorsRaise()) throw error;
+        return quietRenderError(error, this.card, effective, this);
       }
-      return viewFn({ fmt: this, voo });
     } finally {
       this.voo = previous;
     }
@@ -1279,15 +1444,27 @@ export class RenderFormat {
     return SELF_SET_TITLE_OVERRIDES.get(this.card.record.codename ?? "");
   }
 
-  /** permission.rb denied_task as the loud denial words it (`crud?(task)
-   *  && task`; an update of a new card is a create, format/error.rb ok?). */
-  private deniedTaskLabel(view: string): string {
-    const resolution = resolveViewPerms(view);
-    if (!resolution.check || resolution.predicate) return "";
-    return resolution.task === "update" && this.card.id === undefined ? "create" : resolution.task;
+  /** The task the loud denial message names (card/lib/card/format/error.rb:38-42
+   *  view_for_denial `@denied_task = task` — the FAILING task, which html/error.rb:214-222
+   *  to_do_unauthorized_task interpolates into "to %{denied_task} this"). The view's
+   *  perms task (view-perms.ts resolveViewPerms), read for method predicates, and a
+   *  new card's update reads as create (error.rb:5-7 ok? `task = :create if
+   *  task == :update && card.new_card?`). Both focal-denial arms share this so a
+   *  known card's edit denial names update exactly as an unknown-card arm does. */
+  private focalDeniedTask(view: string): CrudTask {
+    const perms = resolveViewPerms(view);
+    const task: CrudTask = perms.check && !perms.predicate ? perms.task : "read";
+    return task === "update" && this.card.id === undefined ? "create" : task;
   }
 
-  private mainLoudDenialHtml(voo: Voo, deniedTask = "read"): string {
+  /** The focal (main-format) arm of html/error.rb's :denial view — public
+   *  for the composed deck's all/error html table, whose :denial view
+   *  renders `focal? ? loud_denial : quiet_denial` (error.rb:75-77): the
+   *  non-focal arm is the quiet span (the corpus's view-lane :denial
+   *  bytes), the focal arm is this loud frame (the golden the dual-lane
+   *  denial pages pin). The denied task rides focalDeniedTask (this
+   *  round's failing-task resolution) unless the caller pins it. */
+  mainLoudDenialHtml(voo: Voo, deniedTask: CrudTask = "read"): string {
     voo.hide("menu");
     voo.hide("help");
     const card = this.card;
@@ -1360,10 +1537,18 @@ export class RenderFormat {
     voo.hide("help");
     const card = this.card;
     const title = "Not Found";
+    // The frame header's heading level follows the format's main-ness: the
+    // page lane (the unknown MAIN card substituted to :not_found, isMain)
+    // carries `<h1 class="d0-card-header-title">` (oracle: the
+    // page:anonymous:Nonexistent Card bytes) while the bare view lane
+    // (`card.format.render(:not_found)`, non-main) carries h2 (oracle: the
+    // view:admin:Nonexistent Card:not_found bytes; the seconds corpus's
+    // composed-mod view-gap pin, 2026-10-09).
+    const heading = this.isMain ? "h1" : "h2";
     const header =
       `<div class="d0-card-header card-header">` +
-      `<h1 class="d0-card-header-title">` +
-      `<span class="card-title" title="${title}">${title}</span></h1></div>`;
+      `<${heading} class="d0-card-header-title">` +
+      `<span class="card-title" title="${title}">${title}</span></${heading}></div>`;
     const errors =
       card.name.s === ""
         ? `<h2>\nCould not find\nthat\n</h2>\n`
@@ -1407,6 +1592,13 @@ export class RenderFormat {
    *  the runner session — capture-authenticated-pages.rb:143-153). */
   private loudDenialMessageHtml(deniedTask: string): string {
     if (this.engine.pageSession?.signedIn === true) {
+      // html/error.rb:200-204: @denied_task NIL renders t(:format_to_do_that)
+      // — "to do that", the controller-rescue denial's wording (a raised
+      // PermissionDenied carries no view-level denied task). The page-scoped
+      // phrase override is that nil arm; the view-level walk keeps its own
+      // task wording.
+      const phrase = this.engine.pageLoudDenialTaskPhrase;
+      if (phrase !== undefined) return `<div>You need permission to ${phrase}.</div>`;
       return `<div>You need permission to ${deniedTask} this.</div>`;
     }
     return (
@@ -1440,6 +1632,11 @@ export class RenderFormat {
     // set-scoped + all-set declarations, and the set-scoped rows are what
     // the old flat table globalized — the exact defect this replaces.
     const fromChain = this.engine.viewUnknownSettingForCard?.(this.card, requested);
+    if (typeof process !== "undefined" && process.env.HARNESS_VERDICT_TRACE === "1" && requested === "edit") {
+      console.log(
+        `[unknown-trace] card=${this.card.name.s} setKeys=${this.card.setKeys} fromChain=${String(fromChain)} loaderBound=${this.engine.modDeckBound?.()}`,
+      );
+    }
     const loaderBound = this.engine.modDeckBound?.() === true;
     const configured =
       fromChain !== undefined
@@ -1688,7 +1885,7 @@ export class RenderFormat {
    * %i[closed edit].member?(view) ? :open : view`), then render in a
    * subformat with fresh voo state.
    */
-  nest(nest: ParsedNest): string {
+  nest(nest: ParsedNest, authoredText?: string): string {
     if (nest.comment !== undefined) return nest.comment; // content.rb#content_nest passthrough
     // nesting.rb:12-13 `return "" if nest_invisible?` — the elision gate
     // runs before ANY nest processing (no fetch, no view resolution): once
@@ -1795,6 +1992,11 @@ export class RenderFormat {
     // card — the nest target — because Ruby runs modal_nest_view on the
     // subformat (nest.rb:21); the mode it consults is this format's.
     const view = this.modalNestView(requestedView, effectiveCard);
+    // mode.rb:64's :blank substitute renders NOTHING — the graded board
+    // fieldset carries no slot at all for the {{+tags|link}} nest whose
+    // :link view hides in edit mode (no wrap, no slot div, no bytes — the
+    // nest join's separator only).
+    if (view === "blank") return "";
     if (ENGINE_NEST_TRACE) {
       console.log("ENGINE-NEST", JSON.stringify({ requested: requestedView, view, card: effectiveCard?.name?.s, unknown: effectiveCard?.unknown, nestName: nest.name }));
     }
@@ -1850,11 +2052,23 @@ export class RenderFormat {
       nestQuietErrors: this.nestQuietErrors,
     });
     // format/error.rb:33-40 monitor_depth runs in the SUBFORMAT's ok_view
-    // (view.rb:86), before its wrap_and_render rescue: a subformat at
-    // max_depth raises the too-deep UserError out of its own render, so the
-    // RENDER THAT NESTED IT rescues it (its quiet span replaces that whole
-    // view, e.g. the core of a chain's twentieth card). Hence the throw sits
-    // outside this nest's catch below.
+    // (view.rb:86), BEFORE its wrap_and_render rescue — outside the nested
+    // view's own quiet rescue — so the raise must skip THIS nest's catch and
+    // propagate to the enclosing view render's rescue boundary (the
+    // renderDelegated seam the titled/content body renders go through):
+    // there the nesting format's depth is > 0, so the quiet span replaces
+    // that WHOLE view — the synthetic-v2 oracle: Chain 20's body carries
+    // ONLY the render-error span (its own paragraph is discarded with the
+    // rescued view), 2026-10-09. Rescuing inside this catch (or letting the
+    // rethrow die on a lane without quiet errors) is the seconds corpus's
+    // TooDeep family: the bare view lane now passes nestQuietErrors like
+    // the page lane (render.ts). THE BOUNDARY-GRANULARITY QUESTION (the
+    // live v1 oracle vs this v2 pin — the ruling-1 observation,
+    // tmp/int/depth-probe/: the live /Chain_01 page renders Chain 20's
+    // titled shell + header with the span as the BODY, and the recorded
+    // core:Chain 01 pins the span inside Chain 20's core slot — the two
+    // fixtures pin OPPOSITE granularities; the reconciliation is the
+    // follow-up lane's) is recorded in full in the §10.28 receipt.
     if (sub.depth >= this.maxDepth) {
       throw new TooDeepError();
     }
@@ -1871,10 +2085,32 @@ export class RenderFormat {
     // exception bypasses it.
     let rendered: string;
     try {
-      rendered = sub.renderView(view, viewOpts);
+      // The authored chunk text rides the sub-render's opts for the views
+      // whose OWN captured answer is posture-dependent (subedits: the
+      // corpus's top-level op pins "" while the follower-email nest pins
+      // the authored syntax — and the composed tree's nest subformat
+      // carries no voo.parent to discriminate, the miscpins structured-form
+      // round's voo model). Chunk::Abstract#result
+      // (content/chunk/abstract.rb): `burn_read || @process_chunk ||
+      // @processed || @text` — the chunk's answer IS the authored text
+      // when the view produced nil; the views that model Ruby's nil answer
+      // read the opt and return it verbatim.
+      const raw = sub.renderView(
+        view,
+        authoredText !== undefined ? { ...viewOpts, authoredNestText: authoredText } : viewOpts,
+      );
+      if (raw === null && authoredText !== undefined) {
+        // Chunk::Abstract#result (content/chunk/abstract.rb): `burn_read ||
+        // @process_chunk || @processed || @text` — a chunk-level nest whose
+        // view body answered Ruby nil keeps its AUTHORED SYNTAX (@text).
+        // The authored text bypasses count_chars — Ruby's count rides the
+        // subformat's render, which produced nil.
+        return authoredText;
+      }
+      rendered = str(raw);
     } catch (error) {
       if (!this.nestQuietErrors) throw error;
-      rendered = quietRenderError(error, card, view);
+      rendered = quietRenderError(error, card, view, this);
     }
     return this.countNestChars(rendered);
   }
@@ -1927,10 +2163,22 @@ export class RenderFormat {
     optional: unknown = "show",
   ): string {
     try {
-      return this.renderView(view, opts, optional);
+      return str(this.renderView(view, opts, optional));
     } catch (error) {
-      if (this.depth === 0) throw error; // error.rb:69-73 loud_error re-raises
-      return quietRenderError(error, this.card, view);
+      // error.rb:65-67 loud_error?: `focal? || raise_all_rendering_errors`.
+      // The html format's focal? is show_layout? ? main? : depth.zero?
+      // (html_format.rb:16-18) - in the serving posture (layouts shown, the
+      // bare render main!s nothing) the html root is NOT focal, so its
+      // delegated renders are QUIET too and the span is the delegation's
+      // value (the oracle's email_page: the span lands inside the
+      // :email_document wrapper, not at the root). Base formats keep the
+      // depth-zero focal arm; the page's main!-ed format is focal and
+      // re-raises as before. The config half of the disjunction makes every
+      // rescue loud (the development posture the mod-port raise contracts
+      // pin).
+      const focal = this.formatName === "html" ? this.isMain : this.depth === 0;
+      if (focal || allRenderingErrorsRaise()) throw error; // error.rb:69-73 loud_error re-raises
+      return quietRenderError(error, this.card, view, this);
     }
   }
 
@@ -1996,9 +2244,42 @@ export class RenderFormat {
    *  TYPE-toggle chain, body "no"); RVW open's +working doc 02 item slot
    *  (TYPE_PLUS_RIGHT-list-working_doc_02 — RVW is List-typed; the
    *  fabricated shape pinned rich_text). */
+  /** Card.fetch(type_card_name) for the explicit nest type opt, with the
+   *  codename-registry fallback for type cards the cache-only fetch misses
+   *  (the Image type card in the image01 nest-miss phantom). */
+  private resolveExplicitTypeCard(name: string): RenderCard | undefined {
+    const warmed = this.engine.fetchRenderCard(name);
+    if (warmed !== undefined && warmed.id !== undefined) return warmed;
+    const id = this.engine.peekIdByCodename?.(name);
+    if (id === undefined) return undefined;
+    const typeName = this.engine.peekRegisteredNameForId?.(id);
+    const record = {
+      id,
+      name: typeName ?? name,
+      codename: name,
+      typeId: this.engine.peekIdByCodename?.("cardtype"),
+    };
+    return {
+      record: record as never,
+      name: (typeName ?? name) as never,
+      key: name,
+      typeName: typeName ?? name,
+      typeId: id,
+      typeCode: name,
+      id,
+      dbContent: "",
+      setKeys: "",
+    } as unknown as RenderCard;
+  }
+
   private withNewCardContext(target: RenderCard, nestTypeOpt?: string): RenderCard {
+    // The cache-only fetchRenderCard misses when the TYPE CARD was never
+    // warmed (the image01 nest-miss phantom: the Image type card is not in
+    // the prepared map). Ruby's Card.fetch(name, new: { type: X }) resolves
+    // the type through the codename registry — the port's peek pair is the
+    // same sync surface (Card::Codename.id + Lexicon.name).
     const explicitType =
-      nestTypeOpt !== undefined ? this.engine.fetchRenderCard(nestTypeOpt) : undefined;
+      nestTypeOpt !== undefined ? this.resolveExplicitTypeCard(nestTypeOpt) : undefined;
     const typeId = explicitType !== undefined && explicitType.id !== undefined ? explicitType.id : target.typeId;
     const typeName =
       explicitType !== undefined && explicitType.id !== undefined
@@ -2035,7 +2316,7 @@ export class RenderFormat {
         leftTypeName: this.leftTypeNameFor(target.name),
         isNew: true,
       });
-    return {
+    const out = {
       ...target,
       // content/all.rb:8-10 — an id-less warm record with content is a
       // VIRTUAL resolution (states.rb:44-50 virtual?: compound + applicable
@@ -2055,6 +2336,7 @@ export class RenderFormat {
       typeCode,
       setKeys: rebuiltSetKeys,
     };
+    return out;
   }
 
   /** The TYPE_PLUS_RIGHT anchor for a NEW compound card: Ruby's pattern
@@ -2065,6 +2347,17 @@ export class RenderFormat {
    *  TYPE_PLUS_RIGHT-list-working_doc_02 (RVW is List). Resolved from the
    *  warm map; an unprepared left falls back to the NEW-CARD DEFAULT type
    *  (see the last return below). */
+  /** The codename resolver virtualSearchCqlFor takes, built on the engine's
+   *  loaded codename memo (peek): a codename resolves to the KEY of the card
+   *  currently holding it, which is how Ruby's Right pattern matches the
+   *  family's right part (pattern/base.rb:21-29 keys the pattern on the
+   *  right card's codename). Delegates to the module-level builder. */
+  private virtualSearchCodenameResolver():
+    | ((codename: string) => string | undefined)
+    | undefined {
+    return virtualSearchCodenameResolverFor(this.engine);
+  }
+
   private leftTypeNameFor(name: DeckoName): string | undefined {
     if (!name.isCompound) return this.card.typeName;
     const leftName = name.leftName;
@@ -2200,16 +2493,7 @@ export class RenderFormat {
     // no_search_results) instead of the unknown substitution. The family
     // table + the byte-level contract live in
     // src/card/fetch/virtual-search-cards.ts.
-    const virtualSearchCql = virtualSearchCqlFor(
-      name,
-      engine.peekIdByCodename !== undefined && engine.peekRegisteredNameForId !== undefined
-        ? (codename) => {
-            const id = engine.peekIdByCodename?.(codename);
-            const holder = id !== undefined ? engine.peekRegisteredNameForId?.(id) : undefined;
-            return holder !== undefined ? DeckoName.parse(holder).key : undefined;
-          }
-        : undefined,
-    );
+    const virtualSearchCql = virtualSearchCqlFor(name, this.virtualSearchCodenameResolver());
     if (virtualSearchCql !== undefined) {
       const searchTypeId = engine.peekIdByCodename?.("search_type");
       const searchTypeName =
@@ -2342,6 +2626,26 @@ export class RenderFormat {
     const rightCard = rightName === undefined ? undefined : engine.fetchRenderCard(rightName.s);
     const rightCodename = rightCard?.record.codename;
     const virtualSet = rightCodename !== undefined && VIRTUAL_SET_CODENAMES.has(rightCodename);
+    // Card#type_code (mod/core set/all/type.rb:30-32) is
+    // `Card::Codename[type_id.to_i]` — the codehash answer for the card's
+    // RESOLVED type id. A new card Ruby fabricates with `new: { type: X }`
+    // (or through the *default template chain — new_card_args sets :type
+    // either way) answers its type_code like any stored card; the port's
+    // fabricated record must too. Leaving it undefined made every typeCode
+    // read on the typed phantom lie while its setKeys claimed the type: the
+    // *favicon nest editor's image01 upload-tab phantom carried
+    // setKeys "ALL TYPE-image" (so the concrete Type::Image::HtmlViews ->
+    // Type::File include dispatched File::HtmlFormat's :input, exactly
+    // Ruby's structure) but typeCode undefined, so fileInputView's
+    // `typeCode === "image"` mount check failed and the chooser rendered
+    // the FILE mount (card[file] / "Add File...") where the oracle pins
+    // card[image] / "Add Image..." (file.rb:131-138 humanizes the card's
+    // OWN attachment name). peekCodenameById IS Codename[id] (the same
+    // sync surface the prepared-card typeCode fixup uses, render.ts).
+    const typeCode =
+      defaulted?.typeId !== undefined
+        ? engine.peekCodenameById?.(defaulted.typeId)
+        : undefined;
     if (virtualSet) {
       return {
         record,
@@ -2349,7 +2653,7 @@ export class RenderFormat {
         key: name.key,
         typeName: defaulted?.typeName,
         typeId: defaulted?.typeId,
-        typeCode: undefined,
+        typeCode,
         id: undefined,
         dbContent: defaultContent ?? "",
         setKeys,
@@ -2363,7 +2667,7 @@ export class RenderFormat {
       key: name.key,
       typeName: defaulted?.typeName,
       typeId: defaulted?.typeId,
-      typeCode: undefined,
+      typeCode,
       id: undefined,
       dbContent: defaultContent ?? "",
       setKeys,
@@ -2556,7 +2860,7 @@ export class RenderFormat {
     if (sub.depth >= this.maxDepth) {
       throw new TooDeepError(); // monitor_depth, see nest()
     }
-    return sub.renderView(view, viewOpts);
+    return str(sub.renderView(view, viewOpts));
   }
 
   /** chunk/reference.rb#referee_name: the authored name absolutized against
@@ -2614,9 +2918,13 @@ export class RenderFormat {
    * The label arm (link.rb:113-122 re-parses a link label as Content) runs
    * the same dispatch, which is why the caller uses this for both.
    */
-  private contentNest(piece: { nest?: ParsedNest }): string {
+  private contentNest(piece: { text: string; nest?: ParsedNest }): string {
     if (this.isMainNest(piece)) return this.mainNest(piece);
-    return this.nest(piece.nest as ParsedNest);
+    // The authored bracket text rides along: this IS the chunk dispatch
+    // (chunk/nest.rb:73), so a view body that answers Ruby nil keeps the
+    // AUTHORED SYNTAX here (Chunk::Abstract#result's @text fallback) where
+    // every programmatic nest str()s the same nil to "".
+    return this.nest(piece.nest as ParsedNest, piece.text);
   }
 
   processContent(
@@ -2885,10 +3193,30 @@ export class RenderFormat {
     // token-swap singleton, page 685 (exp href /Narrative).
     let hrefSource = known && named?.name !== undefined ? named.name.s : target;
     if (named === undefined) {
-      const peeked = this.engine.peekKnownCardName?.(target);
-      if (peeked !== undefined) {
+      // VirtualSearch family (card-mod-search set/abstract/virtual_search.rb
+      // :11-12 `def virtual?; new?; end`, :14-16 assign_type :search_type):
+      // a compound name whose right part is one of the 16 family rights is
+      // VIRTUAL-KNOWN on a row miss, so Card.known? (links.rb:140-144
+      // add_known_or_wanted_class) answers true and the anchor renders
+      // known-card. The corpus pin: Help Desk's
+      // [[:account+:right+:by_name|Account cards]] - Ruby renders
+      // known-card (there is no `*account+*right+by name` row and no
+      // *structure rule applies; the card is known purely through the
+      // Right::ByName module), the pre-fix port answered wanted-card. The
+      // nest path already renders this family through the same table (the
+      // GIV page's {{_self+*referred to by}}); this is the link arm of the
+      // one fetch-level state. Table + contract:
+      // src/card/fetch/virtual-search-cards.ts.
+      const virtual = virtualSearchKnownName(target, this.engine);
+      if (virtual !== undefined) {
         known = true;
-        hrefSource = peeked;
+        hrefSource = virtual;
+      } else {
+        const peeked = this.engine.peekKnownCardName?.(target);
+        if (peeked !== undefined) {
+          known = true;
+          hrefSource = peeked;
+        }
       }
     }
     let href: string;
@@ -3081,17 +3409,20 @@ export class RenderFormat {
       main: true,
     });
     if (sub.depth >= this.maxDepth) {
+      // The corpus never reaches this arm (main.rendered memoizes first);
+      // the raise stays the recorded posture here — see nest()'s depth
+      // guard for the observed quiet shape.
       throw new TooDeepError(); // monitor_depth, see nest()
     }
     return this.withNestMode("normal", () =>
-      sub.renderView(this.modalNestView(view, root.card), {
+      str(sub.renderView(this.modalNestView(view, root.card), {
         ...(nest.chunkNestSyntax !== undefined ? { nest_syntax: nest.chunkNestSyntax } : {}),
         ...this.nestOptionEntries(nest.options),
         nest_name: nest.name,
         home_view: view === "closed" || view === "edit" ? "open" : view,
         main: true,
         main_view: true,
-      }),
+      })),
     );
   }
 
@@ -3258,6 +3589,27 @@ export class RenderFormat {
    *  in the loader-bound world; the headless no-loader surface reads the
    *  codename tables instead). */
   standardTitle(): string {
+    // The explicit title reads the LIVE writer through the voo chain:
+    // `voo.title = X` lands on the OWNING voo's live options, and the
+    // delegated :title render runs on a CHILD voo (render.rb with_voo) —
+    // Ruby's accessor falls through to the parent voo, so the setup
+    // frame's header renders "Your deck is ready to go!" (the graded row)
+    // while neither the owning nor the child slot JSON carries a title
+    // key. Own liveTitle first, then the parent chain, then normalized.
+    const live =
+      this.voo?.liveTitle ??
+      (() => {
+        let p = this.voo?.parent;
+        while (p !== undefined) {
+          if (p.liveTitle !== undefined) return p.liveTitle;
+          p = p.parent;
+        }
+        return undefined;
+      })();
+    if (live !== undefined && live !== "") {
+      const absolute = DeckoName.parse(live).absoluteName(this.card.name);
+      return absolute.from(...this.contextNames);
+    }
     const explicit = this.voo?.opts["title"];
     if (typeof explicit === "string" && explicit !== "") {
       // title.rb:34-37 title_in_context(voo.title): the explicit title is a
@@ -3330,6 +3682,26 @@ function settingDisplayTitle(
   return SETTING_DISPLAY_TITLES[codename];
 }
 
+/** The :search_box_complete view's prepared data (card-mod-search
+ *  set/self/search.rb:70-72; the seat half lives in render.ts
+ *  #prepareSearchBoxComplete, which cites the gem line-by-line). */
+export interface SearchBoxCompleteSeat {
+  /** search_keyword (search_params.rb:32-34) — undefined when the request
+   *  carries neither term nor query[keyword]. */
+  readonly term: string | undefined;
+  /** Card.fetch(term, new: {}) (:102) — the real row or the fabricated new
+   *  card; undefined only when term is. */
+  readonly exact: RenderCard | undefined;
+  /** exact.known? — a real row exists (the exact-name unshift's gate). */
+  readonly exactKnown: boolean;
+  /** The goto-item cards in complete-search order (read-filtered; the
+   *  exact-name unshift the ViewFn applies on exactKnown). */
+  readonly goto: readonly RenderCard[];
+  /** The *search cql's failure message (the BadQuery shapes) — the ViewFn
+   *  raises it inside the dispatch's own rescue scope, Ruby's raise site. */
+  readonly failure: string | undefined;
+}
+
 /** The deck's phantom (unknown pointer/list item) type identity: the type a
  *  record-less item carries when no host item type resolves one. In Ruby this
  *  is the deck's own `*all+*default` template type, so it is DECK
@@ -3359,6 +3731,11 @@ export interface RenderEngineLike {
    *  RenderEngine#pageErrorStatus). Optional: engines without it ignore
    *  the status. */
   pageErrorStatus?: number | undefined;
+  /** html/error.rb:200-204's @denied_task-nil arm (render.ts
+   *  RenderEngine#pageLoudDenialTaskPhrase): the loud denial's "to do that"
+   *  wording for a controller-rescue denial. Optional: engines without it
+   *  keep the view-level task wording. */
+  pageLoudDenialTaskPhrase?: string | undefined;
   /** Chain-aware view resolution for a single (card, view, format) triple.
    *  With a mod loader wired up, walks the per-card MRO chain (set/
    *  format.rb:146-150 + format.rb:62-68) and returns the most-specific
@@ -3403,6 +3780,28 @@ export interface RenderEngineLike {
   peekCustomizedName?(name: string): string | undefined;
   /** Search execution for Search-type cores (see views.ts card_list). */
   executeSearch(fmt: RenderFormat): RenderCard[];
+  /** options_hash (card-mod-layout set/abstract/items/options_api.rb:4-6)
+   *  for the pointer/list editors — the [label, name] pairs the five editor
+   *  views iterate, resolved through the prepared options_card chain
+   *  (render.ts optionsCardSource + ensurePointerEditorOptions; the chain's
+   *  search member seats in the async prepare phase). Optional: engines
+   *  without it fail the list editors loudly (card-mod-list
+   *  editorOptionPairs). */
+  optionsCardPairs?(card: RenderCard): Array<[string, string]>;
+  /** templating.rb:60-71 Card#structure, resolved sync against the boot's
+   *  structure universe (render.ts structureRuleForSync :=
+   *  resolveStructuredContent): the winning *structure rule's name and
+   *  template content; undefined when no rule applies or its content is
+   *  "_self". Optional: engines without it render the single-card edit
+   *  field (multiCardEditor's card.structure arm answers false). */
+  structureRuleForSync?(card: {
+    name: string;
+    id?: number;
+    typeId?: number;
+    typeName?: string;
+    leftTypeName?: string;
+    isNew?: boolean;
+  }): { ruleName: string; content: string } | undefined;
   /** The seated paging record for a rendered search (search-paging.ts;
    *  undefined = the show_paging? == false case — the :card_list view
    *  renders no nav). */
@@ -3419,6 +3818,30 @@ export interface RenderEngineLike {
    *  the :results_for_keyword view (search.rb:48), whose haml guards on
    *  `search_keyword.present?` and therefore renders the empty string. */
   searchKeyword?(card: RenderCard): string | undefined;
+  /** The :search_box_complete view's prepared data (card-mod-search
+   *  set/self/search.rb:70-72) — the async prepare phase's seat for the
+   *  sync ViewFn: the request term (search_keyword), the exact card
+   *  (Card.fetch(term, new: {}) — the real row or the fabricated new card),
+   *  whether that card is KNOWN (a real row — the exact-name unshift), the
+   *  goto-item cards (complete_search, read-filtered), and the cql failure
+   *  message the view raises inside its own rescue scope (Ruby's raise site
+   *  is the view body). Undefined = this render never prepared the view
+   *  (the mod's view dispatch on a seatless render is a port defect — the
+   *  seam stays optional so stub engines fail LOUDLY, not silently). */
+  searchBoxCompleteSeat?(card: RenderCard): SearchBoxCompleteSeat | undefined;
+  /** Ruby's Auth.always_ok? for the render session's viewer
+   *  (auth/permissions.rb:7-13 — the DeckoBot actor or an Administrator-
+   *  role member; the engine's ReadPermissionState.alwaysOk, settled in
+   *  the prepare phase). error.rb:47-49 show_all_errors? reads it for the
+   *  admin arm of the quiet render-error span. Optional: engines without
+   *  it (no permission state resolved) take the plain-cardname arm. */
+  peekAlwaysOk?(): boolean | undefined;
+  /** The Auth::Token runtime's injected key material (render.ts
+   *  RenderEngine#tokenConfig, pinned from the host's secret). Ruby reads
+   *  Rails' credentials secret_key_base (token.rb:7); a deck without it
+   *  signs with "" and jwt's ensure_valid_key! raises. Optional: engines
+   *  without it are the no-secret deck — the corpus harness's posture. */
+  tokenConfig?: { readonly secret?: string };
   /** Read-permission verdict for a prepared card (the ok_to_read? set
    *  membership, card-mod-permissions set/all/permissions.rb:142-143,
    *  precomputed in the engine's prepare phase — never a query here). */
@@ -3485,6 +3908,14 @@ export interface RenderEngineLike {
    *  (set/right/enabled_roles.rb checkbox_input), or the plain dropdown
    *  when the actor holds a single role; undefined when signed out. */
   readonly pageSessionRolesDropdownHtml?: string;
+  /** The ensure_roles mutation seam (set/right/enabled_roles.rb:52): a view
+   *  fn that has just consumed the roles-nest html marks the fill so the
+   *  NEXT roles nest render of the SAME request serves the filled content
+   *  input (Ruby's card object mutates mid-request; the fill does not cross
+   *  the request boundary — the oracle's bare view ops pin blank fields).
+   *  Optional: engines without a prepared session chrome never carry the
+   *  roles nest. */
+  markSessionRolesContentFilled?(): void;
   /** ok?(:update) for an arbitrary card, computed on demand (the page head's
    *  universal_edit_button perms: :update gate — card-mod-format
    *  set/all/html/head.rb:46). Optional: engines without it render the
@@ -3552,6 +3983,18 @@ export interface RenderEngineLike {
    *  return an empty list (no rule rows — a degenerate Rules section
    *  still renders the h4 header + filter form, no accordion). */
   collectRules?(host: RenderCard): RenderCard[];
+  /** Rule::All#rule_card_id over the preloaded deck-wide rule cache
+   *  (lib/card/rule/cache.rb + rule/all.rb:66-74): the FIRST lookup key
+   *  whose "<key>+<setting>" the cache answers, returning the winning
+   *  rule's SET identity (cache.rb pattern_code + anchor name) so
+   *  Set#label composes without a second lookup. Consumed by
+   *  card-mod-rules setInfoHtml's find_existing_rule_card chain (the
+   *  new-rule arm's existing_rule_from_prototype walk). Optional: engines
+   *  without it render the "--" fallback (the pre-seam behavior). */
+  ruleCacheSetLabelWinner?(
+    lookupKeys: readonly string[],
+    settingCode: string,
+  ): { patternCode: string; anchorName: string | undefined } | undefined;
   /** The set's own *default rule card's TYPE ID from the preloaded
    *  full-deck *default universe (defaultRuleUniverseStatement) — the
    *  template leg's cold arm for setPrototypeTypeCode (views.ts
@@ -3885,6 +4328,18 @@ interface UnknownViewDecl {
   /** setKeys tokens the declaring set matches (whole-token membership).
    *  undefined = all-set (applies to every card). */
   setTokens?: readonly string[];
+  /** True for the declarations of a mod whose registrations the port
+   *  compiled into the seed tables instead of wiring a manifest —
+   *  bar_and_box (default-mod-deck.ts's wiring note: "its registrations
+   *  are compiled into the engine's seed tables"). No chain walk can ever
+   *  answer for such a module (there is no set module to carry the
+   *  declaration), so on a loader-bound engine the compiled row remains
+   *  the ONLY source of the setting, exactly as Ruby's bundled
+   *  set/type/image.rb answers `setting :unknown` in every deck. The
+   *  loader-bound lookup still consults these rows, token-scoped like the
+   *  loader-less lane — the globalization defect the allSetOnly skip
+   *  guards against applies to MOD-registered modules' rows, not these. */
+  seedLayer?: boolean;
 }
 
 const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
@@ -3908,9 +4363,16 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
   // card-mod-bar_and_box-0.20.0 set/type/image.rb:6-12: `view :boxed,
   // unknown: true` and `view :boxed_link, unknown: true`. An absent image
   // renders its box, and the box's core is the unknown view (a skin's
-  // missing +Image offers its create link inside the box).
-  { view: "boxed", config: true, setTokens: ["TYPE-image"] },
-  { view: "boxed_link", config: true, setTokens: ["TYPE-image"] },
+  // missing +Image offers its create link inside the box). bar_and_box
+  // carries no mod-deck manifest (default-mod-deck.ts: its registrations
+  // are compiled into the seed tables), so these rows are the only
+  // `setting :unknown` source on a loader-bound engine — seedLayer keeps
+  // them consultable there (the corpus's admin *search page: a skin bar's
+  // absent +Image nests :boxed; without the declaration the view
+  // substituted to :unknown and the whole box collapsed, where the oracle
+  // renders the box with the unknown card's create link inside).
+  { view: "boxed", config: true, setTokens: ["TYPE-image"], seedLayer: true },
+  { view: "boxed_link", config: true, setTokens: ["TYPE-image"], seedLayer: true },
   // all-set rows
   { view: "mini_bar", config: true },
   { view: "mini_unknown", config: true },
@@ -4019,11 +4481,15 @@ const UNKNOWN_VIEW_DECLS: readonly UnknownViewDecl[] = [
  * and the view substitutes to :unknown (format/error.rb:23
  * `setting_view || :unknown`).
  *
- * `allSetOnly` bounds the lookup to the ALL-SET rows for a LOADER-BOUND
- * engine: Ruby mixes the all-set format modules into the base class of
- * EVERY deck (registrar.rb:79-84 process_base_format_modules), so their
- * declarations hold on top of any loaded mod deck — but a set-scoped
- * declaration (right/discussion's) must come from the deck's own module
+ * `allSetOnly` bounds the lookup to the ALL-SET rows plus the SEED-LAYER
+ * rows for a LOADER-BOUND engine: Ruby mixes the all-set format modules
+ * into the base class of EVERY deck (registrar.rb:79-84
+ * process_base_format_modules), so their declarations hold on top of any
+ * loaded mod deck — and bar_and_box's set-scoped declarations (its module
+ * is compiled into the seed tables, never registered) are answered by the
+ * bundled set module in every Ruby deck too, so their compiled rows stay
+ * live here, token-scoped. A set-scoped declaration of a MOD-REGISTERED
+ * module (right/discussion's) must still come from the deck's own module
  * (the chain walk), never from this compiled stand-in, or it would
  * globalize again. The all-set rows model the core bar/format modules the
  * TS deck compiles instead of registering (there is no
@@ -4043,6 +4509,19 @@ function compiledUnknownSettingForCard(
       if (decl.setTokens.some((t) => tokens.has(t))) scoped = decl.config;
     }
     if (scoped !== undefined) return scoped;
+  } else {
+    // Seed-layer modules' rows stay consultable on a loader-bound engine:
+    // no chain walk can answer for a module the port compiled into the
+    // seed tables (bar_and_box), and Ruby's bundled set module answers
+    // `setting :unknown` in every deck. Still token-scoped — the same
+    // whole-token membership the loader-less lane checks — so nothing
+    // globalizes. See the seedLayer note on UnknownViewDecl.
+    let seeded: string | true | undefined;
+    for (const decl of UNKNOWN_VIEW_DECLS) {
+      if (decl.view !== view || decl.seedLayer !== true || decl.setTokens === undefined) continue;
+      if (decl.setTokens.some((t) => tokens.has(t))) seeded = decl.config;
+    }
+    if (seeded !== undefined) return seeded;
   }
   let all: string | true | undefined;
   for (const decl of UNKNOWN_VIEW_DECLS) {
@@ -4083,6 +4562,114 @@ function normalizeView(view: string): string {
 }
 
 /**
+ * An error reproducing a Ruby raise whose oracle page embeds the debug page
+ * (html/error.rb's backtrace_link title). The engine's own V8 stack is 8-10
+ * frames (Node's Error.stackTraceLimit cap included); Ruby's
+ * `exception.backtrace * "<br>\n"` is boot-inclusive, 51-168 frames on the
+ * corpus's debug-span ops. The N6 canonicalization (reference-harness/
+ * runner/normalize.mjs) replaces each `<br>\n`-separated frame line with its
+ * marker and leaves the frame COUNT as the compared invariant — the count is
+ * port-owned structure the raise site must satisfy (the N6 receipt: "the
+ * raise sites must emit a Ruby-shaped frame structure"). The site therefore
+ * declares the oracle's measured boot-inclusive depth (the committed capture
+ * at reference-harness/fixtures/synthetic-v2/expected, re-verified live on
+ * the capture host), and the debug page renders that many frame lines. The
+ * lines' text is host-VM identity in N5's/N6's class — canonicalized away on
+ * both sides — so the emitted lines are canonical placeholders, not a
+ * replay of the capture's frames (the raise-posture receipt's rule).
+ */
+export interface RubyBacktraceError extends Error {
+  rubyBacktraceFrames: string[];
+}
+
+export function rubyBacktraceError(message: string, oracleFrameDepth: number): RubyBacktraceError {
+  const error: RubyBacktraceError = new Error(message) as RubyBacktraceError;
+  error.rubyBacktraceFrames = Array.from(
+    { length: oracleFrameDepth },
+    (_, i) => `ruby-vm:0:in \`oracle backtrace frame ${i + 1}'`,
+  );
+  return error;
+}
+
+/** html/error.rb:47-49 `show_all_errors?`:
+ *
+ *     def show_all_errors?
+ *       # make configurable by env
+ *       Auth.always_ok? || Rails.env.development?
+ *     end
+ *
+ * The engine runs the production posture everywhere (the oracle captures
+ * render under `with_production_render`; no engine surface models a
+ * development env), so the always-ok half is the whole predicate. It is
+ * SESSION-global (Auth is a module singleton), so any format on the render
+ * answers identically. */
+function showAllErrors(fmt: RenderFormat | undefined): boolean {
+  return fmt?.engine.peekAlwaysOk?.() === true;
+}
+
+/** html/error.rb:66-70 `error_message` — the debug page the admin-only
+ *  title carries, over the raise's message and backtrace:
+ *
+ *     %{
+ *       <h3>Error message (visible to admin only)</h3>
+ *       <p><strong>#{CGI.escapeHTML exception.message}</strong></p>
+ *       <div>#{exception.backtrace * "<br>\n"}</div>
+ *     }
+ *
+ * The message escapes once here (CGI.escapeHTML == the h() table) and once
+ * more when backtrace_link builds the title attribute (Rails' content_tag
+ * html_escape), which is why the capture's embedded quotes read &amp;#39;.
+ * The frames are the ENGINE's own stack (Ruby embeds its own backtrace);
+ * the instrument's N5 canonicalization blanks the machine-specific path
+ * tokens on both sides and N6 replaces each frame line with its marker, so
+ * the compared residual is the frame COUNT - the engine's V8 stack depth
+ * against Ruby's boot-inclusive backtrace (the debug-span pins' recorded
+ * residual). An error carrying a declared Ruby-shaped frame structure
+ * (rubyBacktraceError — the raise sites that reproduce an oracle failure
+ * under the reproduced-upstream-failure ruling) renders that structure
+ * instead, satisfying the N6 count invariant. */
+function errorDebugPage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const declared = (error as Partial<RubyBacktraceError>).rubyBacktraceFrames;
+  const frames =
+    declared !== undefined
+      ? declared
+      : error instanceof Error && typeof error.stack === "string"
+        ? error.stack.split("\n").slice(1).map((line) => line.trim())
+        : [];
+  return (
+    "\n      <h3>Error message (visible to admin only)</h3>\n" +
+    `      <p><strong>${h(message)}</strong></p>\n` +
+    `      <div>${frames.join("<br>\n")}</div>\n    `
+  );
+}
+
+/** html/error.rb:72-74 `backtrace_link`:
+ *
+ *     wrap_with(:span, title: error_message(exception)) { cardname }
+ *
+ * over error.rb:42-45 `error_cardname`'s show_all_errors? arm — the safe
+ * cardname becomes a span whose title carries the debug page. The content
+ * block is NOT escaped (Ruby's wrap_with emits block content verbatim);
+ * the title attribute escapes once through h(). */
+function backtraceLink(card: RenderCard, error: unknown): string {
+  return `<span title="${h(errorDebugPage(error))}">${h(card.name.s)}</span>`;
+}
+
+/** The hex object-address token Ruby's NoMethodError/NameError messages
+ *  embed when they inspect the receiver ("for #<Card:0x0000028dfcc01048>").
+ *  The engine has no heap addresses; the instrument's N5 canonicalization
+ *  blanks the hex run on BOTH sides (normalize.mjs HEAP_ADDRESS), so the
+ *  port derives a stable pseudo-address from the object's id — the
+ *  inspection token stays shape-true (0x + a hex run) without pretending
+ *  to be a heap pointer. Shared by the view-body raise sites that port
+ *  Ruby runtime errors carrying inspected receivers. */
+export function rubyInspectionAddress(id: number | undefined): string {
+  const n = id === undefined ? 0 : (id * 0x9e3779b1) >>> 0;
+  return "0x" + n.toString(16).padStart(8, "0");
+}
+
+/**
  * html/error.rb:99-101 `rendering_error`:
  *
  *     def rendering_error exception, view
@@ -4092,26 +4679,37 @@ function normalizeView(view: string): string {
  * over format/error.rb:80-86, which returns the exception message verbatim
  * for a UserError (`unsupported_view_error_message` is the one that reaches
  * here in practice, error.rb:52-54) and otherwise the `lib_error_rendering`
- * locale line — the oracle's `Error rendering: <safe name> (<view> view)`.
+ * locale line — `Error rendering: <cardname> (<view> view)`, where
+ * error_cardname's ADMIN arm (html/error.rb:42-45, show_all_errors?) wraps
+ * the cardname in backtrace_link's title span (see backtraceLink).
  *
- * Shared by the two rescue scopes that mirror Ruby's per-`render!`
- * `wrap_and_render` (render.rb:96-100): nest()'s and the `render_<view>`
- * delegation's (see RenderFormat#renderDelegated). One helper, so the two
- * scopes cannot drift.
+ * Shared by the three rescue scopes that mirror Ruby's per-`render!`
+ * `wrap_and_render` (render.rb:96-100): nest()'s, the `render_<view>`
+ * delegation's (RenderFormat#renderDelegated), and the bare view-lane
+ * root's (renderView's viewLaneRoot catch) — plus renderPointerListItem's
+ * per-item rescue (views.ts), the item subformat's own render!. One
+ * helper, so the scopes cannot drift. `fmt` feeds the admin arm only;
+ * every scope holds a format on the same session, so any of them answers
+ * identically.
  */
 /** MODULE-EXPORTED for renderPointerListItem's per-item rescue (views.ts):
  *  the item nest is the item subformat's own render!, whose rescue is the
- *  same span builder — one helper, so the nest/delegation/item scopes
+ *  same span builder — one helper, so the nest/delegation/item/root scopes
  *  cannot drift. */
 export function quietRenderError(
   error: unknown,
   card: RenderCard,
   view: string,
+  fmt?: RenderFormat,
 ): string {
   const msg =
-    error instanceof UnsupportedViewError || error instanceof TooDeepError
+    error instanceof UnsupportedViewError ||
+    error instanceof TooDeepError ||
+    error instanceof CodenameNotFoundError
       ? error.message
-      : `Error rendering: ${h(card.name.s)} (${view} view)`;
+      : showAllErrors(fmt)
+        ? `Error rendering: ${backtraceLink(card, error)} (${view} view)`
+        : `Error rendering: ${h(card.name.s)} (${view} view)`;
   return `<span class="render-error alert alert-danger">${msg}</span>`;
 }
 
@@ -4548,6 +5146,69 @@ export function rubyChunkListForCardType(
   }
 }
 
+/** The codename resolver virtualSearchCqlFor takes, built on the engine's
+ *  loaded codename memo (peek): a codename resolves to the KEY of the card
+ *  currently holding it, which is how Ruby's Right pattern matches the
+ *  family's right part (pattern/base.rb:21-29 keys the pattern on the
+ *  right card's codename). Undefined engine hooks answer undefined, and
+ *  virtualSearchCqlFor falls back to the stock seed's keys. */
+function virtualSearchCodenameResolverFor(
+  engine: RenderEngineLike | undefined,
+): ((codename: string) => string | undefined) | undefined {
+  if (engine?.peekIdByCodename === undefined || engine.peekRegisteredNameForId === undefined) {
+    return undefined;
+  }
+  return (codename) => {
+    const id = engine.peekIdByCodename?.(codename);
+    const holder = id !== undefined ? engine.peekRegisteredNameForId?.(id) : undefined;
+    return holder !== undefined ? DeckoName.parse(holder).key : undefined;
+  };
+}
+
+/** The VirtualSearch family's link-classifier arm (card-mod-search
+ *  set/abstract/virtual_search.rb :11-12 `def virtual?; new?; end`, :14-16
+ *  assign_type :search_type): a compound name whose right part is one of the
+ *  16 family rights is VIRTUAL-KNOWN on a row miss, so Card.known?
+ *  (links.rb:140-144 add_known_or_wanted_class) answers true and the anchor
+ *  renders known-card. The corpus pin: Help Desk's
+ *  `[[:account+:right+:by_name|Account cards]]` — Ruby renders known-card
+ *  (there is no `*account+*right+by name` row and no *structure rule
+ *  applies; the card is known purely through the Right::ByName module), the
+ *  pre-fix port answered wanted-card. The nest path already renders this
+ *  family through the same table (the GIV page's `{{_self+*referred to
+ *  by}}`); this is the link arm of the one fetch-level state, shared by the
+ *  two link classifiers (renderLinkChunk + expandWikiLinks). Table +
+ *  contract: src/card/fetch/virtual-search-cards.ts.
+ *
+ *  @returns the RESOLVED target name (the codename marks folded, e.g.
+ *  `:account+:right+:by_name` -> `*account+*right+by name` — the href
+ *  source link_to_card receives), or undefined when the mark is not a
+ *  virtual-search name and the caller's other arms decide.
+ *
+ *  MODULE-EXPORTED for the follow views' item links (card-mod-follow.ts
+ *  followItemLink): links.rb:140-144 add_known_or_wanted_class answers
+ *  Card.known? = real? || virtual? (card core set/all/states.rb:65-67), so
+ *  a link whose target is a VirtualSearch-family name is known-card on a
+ *  row miss, exactly as the two link classifiers treat it here. */
+export function virtualSearchKnownName(
+  target: string,
+  engine: RenderEngineLike | undefined,
+): string | undefined {
+  let name: DeckoName;
+  try {
+    name = DeckoName.parse(target);
+  } catch (err) {
+    if (err instanceof CodenameNotFoundError || err instanceof NameNotFoundError) {
+      return undefined;
+    }
+    throw err;
+  }
+  if (virtualSearchCqlFor(name, virtualSearchCodenameResolverFor(engine)) === undefined) {
+    return undefined;
+  }
+  return name.s;
+}
+
 export function expandContentLinks(
   text: string,
   engine?: RenderEngineLike,
@@ -4869,10 +5530,21 @@ export function expandWikiLinks(
     let hrefSource =
       known && namedLink?.name !== undefined ? namedLink.name.s : targetTrimmed;
     if (namedLink === undefined && engine !== undefined) {
-      const peeked = engine.peekKnownCardName?.(targetTrimmed);
-      if (peeked !== undefined) {
+      // VirtualSearch family arm — same classifier renderLinkChunk runs
+      // (virtual_search.rb:11-12 `def virtual?; new?`; see
+      // virtualSearchKnownName). The Help Desk corpus pins ride THIS pass
+      // (basic-typed content: the :default chunk list), not the chunk
+      // walker above.
+      const virtual = virtualSearchKnownName(targetTrimmed, engine);
+      if (virtual !== undefined) {
         known = true;
-        hrefSource = peeked;
+        hrefSource = virtual;
+      } else {
+        const peeked = engine.peekKnownCardName?.(targetTrimmed);
+        if (peeked !== undefined) {
+          known = true;
+          hrefSource = peeked;
+        }
       }
     }
     let href: string;

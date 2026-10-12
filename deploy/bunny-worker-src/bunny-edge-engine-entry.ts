@@ -15,9 +15,10 @@
 // WHAT MAKES THIS "THE FULL ENGINE" (vs the reader in bunny-worker.ts):
 //   - RenderEngine + FetchEngine (src/card/render.ts + src/card/fetch.ts) —
 //     the same objects worker.ts boots on Cloudflare Workers, with the same
-//     URL dispatch (parsePath, imported from worker.ts so the entries
-//     cannot drift) and the same full layout shell (layoutPage, likewise
-//     imported).
+//     URL dispatch (parsePath, carried by the lineage surface the
+//     engine-request dispatch imports — bunny-edge-lineage-worker-surface.ts
+//     — the entries' shared route grammar) and the same full layout shell
+//     (layoutPage, likewise imported).
 //   - The database seam is BunnyDbDriver
 //     (src/card/drivers/bunny-db.ts): Hrana v2 over plain fetch against the
 //     Bunny Database /v2/pipeline endpoint — no npm client, no node builtins

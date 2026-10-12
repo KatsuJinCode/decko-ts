@@ -43,6 +43,7 @@ import { renderPageWithStatus } from "../../src/card/render/page.js";
 import { liveRenderPage } from "../../src/card/live/live-render.js";
 import { requestContextAvailable, runInRequestContext } from "../../src/card/request-context.js";
 import { getNameEnvironment } from "../../src/card/name/environment.js";
+import { jsonViewSearchParams } from "../../src/server/worker-shared-surface.js";
 import { bootEdgeServingEngines } from "./bunny-edge-deck-boot.js";
 import { derivedCloudAttachmentSource } from "../../src/card/render/views.js";
 import type { HistoryRenderParams } from "../../src/card/history/render-seam.js";
@@ -446,6 +447,56 @@ async function dispatchEngineRequest(
   }
 
   const parsed = parsePath(url.pathname, url.searchParams);
+
+  // THE JSON-FORMAT VIEW DISPATCH (route line 51's .:format suffix — the
+  // navbox typeahead's search_box_complete.json surface, the merge-57 route
+  // surgery carried to this lineage): the ENGINE's view dispatch in the
+  // json format — the ported json-format views' own bytes, Ruby's 422
+  // unsupported-view otherwise. The request-term seam rides the search
+  // params (search_params.rb: term_param || vars.keyword). The isolate
+  // discipline mirrors the page arm: live-context renders when a request
+  // context is available, the isolate lock (with the name-environment
+  // handback) otherwise.
+  if (!("kind" in parsed) && parsed.format === "json") {
+    const search = jsonViewSearchParams(url.searchParams);
+    const renderJsonView = async () =>
+      (await source.deck()).render.render(parsed.name, parsed.view, {
+        ...(search !== undefined ? { search } : {}),
+        format: "json",
+      });
+    let body: string;
+    try {
+      body = requestContextAvailable()
+        ? await runInRequestContext(getNameEnvironment(), renderJsonView)
+        : await withIsolateRenderLock(async () => {
+            try {
+              return await renderJsonView();
+            } finally {
+              (await source.deck()).fetcher.installNameEnvironment?.();
+            }
+          });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      // The 422 unsupported-view case stays the edge's own bare shape
+      // (UnsupportedViewError's message, src/card/render.ts:18); the shared
+      // mapRenderError table classifies the rest (NotFound -> 404, else 500).
+      const mapped = mapRenderError(message);
+      if (mapped.status === 422) {
+        return new Response(message, {
+          status: 422,
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        });
+      }
+      return json(mapped.status, { error: mapped.title, message });
+    }
+    return new Response(body, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
+      },
+    });
+  }
 
   if ("kind" in parsed) {
     if (parsed.kind === "new") {

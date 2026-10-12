@@ -1,3 +1,4 @@
+import { str, type ViewResult } from "./format.js";
 // The page renderer: TypeScript port of the html-format show path —
 // `card.format(:html).show(nil, {})` through show_with_page_layout — the
 // live-serving page assembly the bare view-function renderer does not do.
@@ -172,6 +173,7 @@ export async function renderPageBytes(
   cardName: string,
   requestedView?: string,
   historyParams?: HistoryRenderParams,
+  bareMainOpts?: Record<string, unknown>,
 ): Promise<string> {
   // The page capture wraps `fmt.show(nil, {})` in the production config
   // (capture-dual-$1page-and-view.rb:369, inside the config block at
@@ -192,14 +194,27 @@ export async function renderPageBytes(
     const releaseCaches =
       typeof engine.fetcher?.holdTemporaryCaches === "function" ? engine.fetcher.holdTemporaryCaches() : () => {};
     const render = () =>
-      engine.runWithPageConfig(() => renderPageBytesWithPageConfig(engine, cardName, requestedView, historyParams));
+      engine.runWithPageConfig(() =>
+        renderPageBytesWithPageConfig(engine, cardName, requestedView, historyParams, bareMainOpts),
+      );
     try {
       // (The stub engines of the edge request tests carry no unknown-card
       // create-verdict pass; the real engine always does.)
-      return typeof engine.renderWithUnknownCreateVerdicts === "function"
+      const body =
+      typeof engine.renderWithUnknownCreateVerdicts === "function"
         ? await engine.renderWithUnknownCreateVerdicts(render)
         : await render();
+      return str(body);
     } finally {
+      // The request boundary's fill fold (commitSessionRolesFill): a Ruby
+      // request whose roles nest rendered leaves the fill on the session's
+      // card object for the NEXT request; the passes inside THIS request
+      // never see each other's flips (the per-pass reset at render()
+      // entry). Runs on the error path too — the mutation precedes any
+      // late render failure. Optional-call per the merge-4 precedent: the
+      // edge request tests drive the handler with stub engines that have
+      // no such fold, and a real engine always does.
+      engine.commitSessionRolesFill?.();
       releaseCaches();
     }
   } finally {
@@ -217,8 +232,9 @@ export async function renderPageWithStatus(
   cardName: string,
   requestedView?: string,
   historyParams?: HistoryRenderParams,
+  bareMainOpts?: Record<string, unknown>,
 ): Promise<{ html: string; status: number }> {
-  const html = await renderPageBytes(engine, cardName, requestedView, historyParams);
+  const html = await renderPageBytes(engine, cardName, requestedView, historyParams, bareMainOpts);
   return { html, status: engine.pageErrorStatus ?? 200 };
 }
 
@@ -242,6 +258,7 @@ async function renderPageBytesWithPageConfig(
   cardName: string,
   requestedView?: string,
   historyParams?: HistoryRenderParams,
+  bareMainOpts?: Record<string, unknown>,
 ): Promise<string> {
   // THE PAGE SURFACE'S SWEEP-SURFACE scope (renderSeats' doc): the layout
   // warm-ups below seat AROUND the inner render() — one clear here puts the
@@ -259,6 +276,8 @@ async function renderPageBytesWithPageConfig(
       cardName,
       requestedView,
       historyParams,
+      false,
+      bareMainOpts,
     );
   } finally {
     engine.endPagePrepare();
@@ -297,15 +316,34 @@ async function renderOutsideOfLayout(
   view: string,
   historyParams?: HistoryRenderParams,
 ): Promise<string> {
-  const body = await renderPageBytesWithPageConfigInner(engine, cardName, undefined, historyParams, true);
-  const status = engine.pageErrorStatus;
-  let record = await engine.fetcher.fetchByName(cardName);
+  const found = await engine.fetcher.fetchByName(cardName);
+  // RenderEngine#renderAbsentCards: the controller's Card.fetch with the
+  // request's new-card arguments. The unknown MAIN-card page branch
+  // (card-mod-format set/all/html/error.rb:81-86 page_view_for_unknown):
+  // an unknown card whose actor may create renders the :new page at the
+  // requested address (status 200) — the create form a browser lands on
+  // when a deleted card's address reloads — with the requested view riding
+  // the modal on that same new card. Without create permission the
+  // card-not-found raise stands (page_status_for_unknown's 404).
+  let record = (found === undefined || found.isNew === true) && engine.renderAbsentCards
+    ? await engine.fetcher.fetchByName(cardName, { new: historyParams?.newCard ?? {} })
+    : found;
   if (record !== undefined && record.id === undefined && cardName.includes("_")) {
     record = (await engine.fetcher.fetchByName(cardName.replace(/_/g, " "))) ?? record;
   }
   if (record === undefined || record.name === undefined) {
     throw new Error(`card not found: ${cardName}`);
   }
+  const body = await renderPageBytesWithPageConfigInner(
+    engine,
+    cardName,
+    // page_view_for_unknown: the unknown card's page view is :new (the
+    // create form); a known card keeps its layout's own main view.
+    record.isNew === true ? "new" : undefined,
+    historyParams,
+    true,
+  );
+  const status = engine.pageErrorStatus;
   try {
     await engine.render(record.name.s, view, historyParams);
   } catch {
@@ -313,8 +351,18 @@ async function renderOutsideOfLayout(
   }
   const rootCard = engine.fetchRenderCard(record.name.s);
   if (rootCard === undefined) throw new Error(`render card not prepared: ${record.name.s}`);
+  if (record.isNew === true && !engine.unknownCardCreatable(rootCard)) {
+    // page_status_for_unknown: no create permission answers the not_found
+    // page (404), not the create form.
+    throw new Error(`card not found: ${cardName}`);
+  }
   engine.pageErrorStatus = status;
   const modalFormat = new RenderFormat(rootCard, engine, { main: true, nestQuietErrors: true });
+  // render_outside_of_layout's `render!` runs on the SAME root format
+  // (process_layout.rb:44-48): the modal's editors continue the body's
+  // id_counter numbering (the layout's enabled-roles checkboxes consume
+  // 1-2 first; the pointer-input journeys' oracle pins 3-12).
+  modalFormat.seedRootIdCounter(engine.pageRootIdCounter);
   // The body's main view ran on the same Ruby format; a titled or labeled
   // main view left @content_body set for the denial frame's body.
   const layout = await resolvePageLayout(engine, record);
@@ -332,6 +380,15 @@ async function renderPageBytesWithPageConfigInner(
   // render_outside_of_layout renders the body with `render_with_layout nil,
   // layout, {}`: no main_render_args, so the main slot carries no main_view
   outsideOfLayout = false,
+  // THE AJAX SLOT-REFRESH OPTS (the bare main-view lane): when present, the
+  // main view renders with THESE opts and the layout wrap is skipped —
+  // show_without_page_layout's `render view, slot_params` (the decko.js
+  // post-save slot refresh GET /~<id>/<view>?slot[main]=true&... whose
+  // recorded answer is the saved-slot shape: the main format + the main-nest
+  // data-slot JSON). The full page warm sequence below still runs: the sync
+  // main render's prepare needs every seat the layout lane seats (the
+  // late-seat structure sweep especially — a structured body's field rows).
+  bareMainOpts?: Record<string, unknown>,
 ): Promise<string> {
   // process_layout.rb: main! (the root format is the main format) then
   // page_layout — the *layout rule walk happens BEFORE the main render.
@@ -363,14 +420,14 @@ async function renderPageBytesWithPageConfigInner(
     // then render it on a main format (focal: a denial is the loud one).
     await engine.render(record.name.s, requestedView, historyParams);
     const modalRoot = engine.fetchRenderCard(record.name.s);
-    const modal =
-      modalRoot === undefined
-        ? ""
-        : new RenderFormat(modalRoot, engine, { main: true, nestQuietErrors: true }).renderView(
-            requestedView,
-            { main: true, main_view: true },
-            null,
-          );
+    let modal = "";
+    if (modalRoot !== undefined) {
+      const modalFormat = new RenderFormat(modalRoot, engine, { main: true, nestQuietErrors: true });
+      // render_outside_of_layout's `render!` runs on the SAME root format
+      // (process_layout.rb:44-48): the modal continues the body's numbering.
+      modalFormat.seedRootIdCounter(engine.pageRootIdCounter);
+      modal = str(modalFormat.renderView(requestedView, { main: true, main_view: true }, null));
+    }
     return body.includes("</body>") ? body.replace("</body>", () => `${modal}</body>`) : body + modal;
   }
 
@@ -380,7 +437,23 @@ async function renderPageBytesWithPageConfigInner(
   // default_page_view (= default_nest_view = Cardio.config.default_html_view,
   // :content in production) when the layout carries no view. The page surface's
   // config is active here, so the accessor answers "content".
-  const mainView = requestedView ?? layout.mainViewRaw ?? engine.defaultHtmlViewConfig();
+  // An unknown MAIN card (a trashed or never-existing name) substitutes the
+  // requested view with :new — card-mod-format set/all/html/error.rb:81-86
+  // page_view_for_unknown (`ok?(:create) ? :new : super`): the create form
+  // is the page a deleted card's address reloads to (?view=edit). The
+  // substitution needs a REQUESTED view (an absent one keeps the layout's
+  // own main — the null the query parser hands down is normalized here);
+  // the create-permission gate rides the rendered card below
+  // (unknownCardCreatable: no permission — or a render too denied to seat
+  // the card — re-raises the not-found raise, page_status_for_unknown's
+  // 404).
+  const recordIsNew = record.isNew === true;
+  const requestedSubstituted =
+    recordIsNew && requestedView != null && requestedView !== "new";
+  const mainView =
+    recordIsNew && requestedSubstituted
+      ? "new"
+      : (requestedView ?? layout.mainViewRaw ?? engine.defaultHtmlViewConfig());
 
   // The main render + the full prepare sequence (permission state, search
   // parse gates, structure universe...) — the identical preparation and
@@ -404,6 +477,16 @@ async function renderPageBytesWithPageConfigInner(
     // below reads it. undefined passes through render()'s own `= {}`
     // default, so non-history pages are untouched.
     await engine.render(record.name.s, mainView, historyParams);
+    if (recordIsNew && requestedSubstituted) {
+      // page_status_for_unknown: the :new substitution renders only when the
+      // actor may create (card-mod-format html/error.rb:85-86); without it —
+      // or when the denial left no seated card at all — the not-found raise
+      // stands (the host answers the 404 page).
+      const substitutedRoot = engine.fetchRenderCard(record.name.s);
+      if (substitutedRoot === undefined || !engine.unknownCardCreatable(substitutedRoot)) {
+        throw new Error(`card not found: ${cardName}`);
+      }
+    }
   } catch (error) {
     prepareError = error as Error;
   }
@@ -559,21 +642,27 @@ async function renderPageBytesWithPageConfigInner(
   const skipSync = engine.skipSyncRender?.() === true;
   const mainBody = skipSync ? "" : rootFormat.renderView(
     mainView,
-    {
-      nest_name: "_main",
-      ...(layout.mainNestSyntax !== undefined ? { nest_syntax: layout.mainNestSyntax } : {}),
-      main: true,
-      home_view: mainView,
-      ...(outsideOfLayout ? {} : { main_view: true }),
-      layout: layout.layoutName,
-    },
+    bareMainOpts !== undefined
+      ? { ...bareMainOpts, view: mainView }
+      : {
+          nest_name: "_main",
+          ...(layout.mainNestSyntax !== undefined ? { nest_syntax: layout.mainNestSyntax } : {}),
+          main: true,
+          home_view: mainView,
+          ...(outsideOfLayout ? {} : { main_view: true }),
+          layout: layout.layoutName,
+        },
     // show_with_page_layout's render! carries NO optional render opt — the
     // main slot's captured data-slot has no "show" viz (unlike the bare
     // view surface where format.render pins show:[view]). null = no viz (a
     // JS default parameter would revive "show" on undefined).
     null,
   );
-  rootFormat.rendered = await applyMainViewOverride(engine, rootCard, mainView, mainBody);
+  rootFormat.rendered = str(await applyMainViewOverride(engine, rootCard, mainView, mainBody));
+  // The bare main-view lane returns HERE: show_without_page_layout renders
+  // the view alone — no layout body, no layout nest warm-ups (the main
+  // closure above is complete).
+  if (bareMainOpts !== undefined) return str(mainBody);
 
   // Unknown layouts raise AFTER the main render (wrap_with_wrapper ->
   // raise_wrap_error), never before — matching the capture's sentinel order.
@@ -637,6 +726,12 @@ async function renderPageBytesWithPageConfigInner(
     : layout.kind === "card"
       ? rootFormat.processLayoutContent(layout.layoutCardContent ?? "")
       : codeDefaultLayoutInterior(rootFormat);
+  // The body render's id_counter state (the layout's unique_id consumers —
+  // the enabled-roles checkboxes included) is what the modal render
+  // continues: Ruby's render_outside_of_layout `render!` runs on the SAME
+  // root format (process_layout.rb:44-48). The page lane hands the value
+  // to its modal sites through the engine's request-scope state.
+  engine.pageRootIdCounter = rootFormat.exportRootIdCounter();
 
   // show.rb: the :html_page wrapper (head + interior). Byte shape pinned by
   // the page-surface capture: the wrapper heredoc's 6/8/10-space indentation is
@@ -664,11 +759,12 @@ async function applyMainViewOverride(
   engine: RenderEngine,
   rootCard: RenderCard,
   view: string,
-  baseHtml: string,
-): Promise<string> {
+  baseHtml: ViewResult,
+): Promise<ViewResult> {
   if (engine.isDenied(rootCard)) return baseHtml;
   const override = await engine.viewOverrideFor(rootCard, view);
-  return override !== undefined ? applyViewOverride(baseHtml, override) : baseHtml;
+  if (override === undefined || typeof baseHtml !== "string") return baseHtml;
+  return applyViewOverride(baseHtml, override);
 }
 
 // ---------------------------------------------------------------------------
@@ -774,7 +870,7 @@ function scanWarmDepsUncached(
   const context = card.name.s;
   const isItems = card.typeCode === "pointer" || card.typeCode === "list";
   const items = (): string[] =>
-    card.dbContent
+    (card.dbContent ?? "")
       .split(/\n+/)
       .map((s) => s.replace(/\[\[|\]\]/g, "").trim())
       .filter((s) => s !== "");
@@ -788,7 +884,7 @@ function scanWarmDepsUncached(
     // A Link list is a dropdown too (Abstract::Items), whose items come from
     // its [[target|label]] chunks; explicit URL targets need no card.
     if (card.typeCode === "link_list") {
-      for (const m of card.dbContent.matchAll(/\[\[([^\][\n]+?)\]\]/g)) {
+      for (const m of (card.dbContent ?? "").matchAll(/\[\[([^\][\n]+?)\]\]/g)) {
         const target = (m[1] ?? "").split("|")[0]?.trim() ?? "";
         if (target !== "" && !/^(\/|https?:|mailto:)/.test(target)) leaves.push({ name: target, context });
       }
@@ -796,7 +892,7 @@ function scanWarmDepsUncached(
     return { refs, leaves };
   }
 
-  for (const piece of scanNests(card.dbContent)) {
+  for (const piece of scanNests(card.dbContent ?? "")) {
     const nest = piece.nest;
     if (nest === undefined || nest.comment !== undefined) continue;
     refs.push({ name: nest.name, context, mode: nestWarmMode(nest.options.view) });
@@ -804,7 +900,7 @@ function scanWarmDepsUncached(
   // A card rendered through :navbar_links nests each [[link]] target with
   // view :nav_item; anywhere else a [[link]] is an existence-only anchor
   // (renderLinkChunk's known/wanted class), so its target is a leaf.
-  for (const m of card.dbContent.matchAll(/\[\[([^\][\n]+?)\]\]/g)) {
+  for (const m of (card.dbContent ?? "").matchAll(/\[\[([^\][\n]+?)\]\]/g)) {
     const target = (m[1] ?? "").split("|")[0]?.trim() ?? "";
     if (target === "") continue;
     if (!LINKS_ARE_LEAVES) refs.push({ name: target, context });

@@ -225,7 +225,7 @@ describeOrSkipLoud(!HAVE_MIRROR, "tests/deploy/no-caching-decision-state.test.ts
   }, 120_000);
 });
 
-describeOrSkipLoud(!HAVE_MIRROR || !existsSync(GATE_PAGES), "tests/deploy/no-caching-decision-state.test.ts", "not (!HAVE_MIRROR || !existsSync(GATE_PAGES))")("marker-edit proof across the 40 gate pages", () => {
+describeOrSkipLoud(!HAVE_MIRROR || !existsSync(GATE_PAGES), "tests/deploy/no-caching-decision-state.test.ts", "not (!HAVE_MIRROR || !existsSync(GATE_PAGES))")("marker-edit proof across the gate pages", () => {
   let env: Env | undefined;
   beforeAll(async () => {
     env = await openEnv();
@@ -255,6 +255,12 @@ describeOrSkipLoud(!HAVE_MIRROR || !existsSync(GATE_PAGES), "tests/deploy/no-cac
       if (!ok) failures.push(page);
     }
     expect(failures).toEqual([]);
-    expect(pages.length).toBe(40);
+    // The page list source of record is the committed fixture: the worktree
+    // list the gate kit and this test consume must equal it exactly.
+    expect(pages).toEqual(
+      readFileSync(join(process.cwd(), "fixtures", "edge-byte-gate-pages.txt"), "utf8")
+        .split(/\r?\n/)
+        .filter(Boolean),
+    );
   }, 600_000);
 });

@@ -162,6 +162,12 @@ export interface UpdateCardInput {
 export interface SavedAction {
   actId: number;
   actionId: number;
+  /** The act row already existed when this operation began (the act card's
+   *  bare finalize_act row, or an earlier operation of the same save). A
+   *  history-less save's cleanup may drop the act it lazily created with
+   *  its own action — Ruby's history-less saves create no act at all — but
+   *  never one that predates the operation (events.rb:48-50 keeps it). */
+  actPreexisted?: boolean;
 }
 
 export interface CreatedCard extends SavedAction {
@@ -238,6 +244,12 @@ export class ActWriter {
   private readonly clock: () => Date;
   private actCardId: number | undefined;
   private actId: number | null = null;
+  /** Whether the act row already existed when the current operation began.
+   *  Snapshotted at each public operation's entry; the reserved-create fill
+   *  reads reserveCreateAction's snapshot (reserve + fill are ONE logical
+   *  operation — the reserve may have lazily inserted the act itself). */
+  private opActPreexisted = false;
+  private reserveOpActPreexisted = false;
 
   constructor(options: ActWriterOptions) {
     this.driver = options.driver;
@@ -255,6 +267,11 @@ export class ActWriter {
 
   async createCard(input: CreateCardInput): Promise<CreatedCard> {
     this.assertNameKeyConvention(input.name, input.key, input.left_id, input.right_id);
+    // A reserved fill continues reserveCreateAction's operation: its
+    // snapshot decides, not this call's entry state.
+    if (input.reservedActionId === undefined) {
+      this.opActPreexisted = this.actId !== null;
+    }
     const ts = sqlDateTime(this.clock());
     const trash: SQLBoolean = 0; // event :manage_trash forces trash false on create
     // (mod/core/set/all/trash.rb:23-27); revival from trash reuses the old
@@ -288,27 +305,8 @@ export class ActWriter {
     );
 
     if (input.history === false) {
-      // no action, no act row of its own; actionId 0 marks "none recorded".
-      // A compound create reserves its own action row before the sides exist
-      // (reserveAction); with history off that reservation must be undone —
-      // Ruby records no action rows at all for a history? false field.
-      if (input.reservedActionId !== undefined) {
-        await this.driver.query("DELETE FROM card_actions WHERE id = ? AND card_id IS NULL", [
-          input.reservedActionId,
-        ]);
-      }
-      const actId = this.actId ?? 0;
-      if (actId !== 0) {
-        const left = (
-          await this.driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM card_actions WHERE card_act_id = ?", [
-            actId,
-          ])
-        ).rows[0];
-        if (Number(left?.n ?? 0) === 0) {
-          await this.driver.query("DELETE FROM card_acts WHERE id = ?", [actId]);
-        }
-      }
-      return { cardId, actId, actionId: 0 };
+      // no action, no act row of its own; actionId 0 marks "none recorded"
+      return { cardId, actId: this.actId ?? 0, actionId: 0, actPreexisted: this.opActPreexisted };
     }
     const stmts: SQLStatement[] = [];
     const actIdSelect = this.pushClearDraftsAndAct(stmts, cardId, ts);
@@ -343,7 +341,12 @@ export class ActWriter {
     }
 
     await this.finalizeActCard(cardId, this.isActCardOp(cardId, input.isActCard));
-    return { cardId, actId: this.requireActId(actId), actionId: requireId(actionId) };
+    return {
+      cardId,
+      actId: this.requireActId(actId),
+      actionId: requireId(actionId),
+      actPreexisted: this.opActPreexisted,
+    };
   }
 
   /** Reserve this act's next action row for a create whose card row cannot
@@ -354,6 +357,8 @@ export class ActWriter {
    *  subcards store). The reserved row carries the act and the create type;
    *  createCard({ reservedActionId }) fills in the card. */
   async reserveCreateAction(): Promise<number> {
+    this.reserveOpActPreexisted = this.actId !== null;
+    this.opActPreexisted = this.reserveOpActPreexisted;
     const ts = sqlDateTime(this.clock());
     const stmts: SQLStatement[] = [];
     const actIdSelect = this.actId === null ? this.pushInsertAct(stmts, null, ts) : undefined;
@@ -374,6 +379,7 @@ export class ActWriter {
   // -----------------------------------------------------------------------
 
   async updateCard(input: UpdateCardInput): Promise<SavedAction | null> {
+    this.opActPreexisted = this.actId !== null;
     let changed =
       input.changedFields !== undefined
         ? ALL_TRACKED_WRITE_ORDER.filter((f) => input.changedFields!.includes(f))
@@ -425,7 +431,7 @@ export class ActWriter {
       const stmts: SQLStatement[] = [];
       this.pushUpdateCardsRow(stmts, input, changed, ts);
       await this.driver.batch(stmts);
-      return { actId: this.actId ?? 0, actionId: 0 };
+      return { actId: this.actId ?? 0, actionId: 0, actPreexisted: this.opActPreexisted };
     }
 
     // Pre-reads (single-writer assumption as in ActiveRecord; the values are
@@ -511,6 +517,7 @@ export class ActWriter {
     const saved = {
       actId: this.requireActId(actId),
       actionId: input.reservedActionId ?? requireId(actionId),
+      actPreexisted: this.opActPreexisted,
     };
     const updateResult = results[updateCardsIndex];
     if (updateResult.rowsAffected !== 1) {
@@ -529,7 +536,18 @@ export class ActWriter {
    *  with the original filename as its comment and the change rows that
    *  store_card_changes writes, then aborts — the cards row is untouched.
    *  `changes` receives the new action id (the stored file's identifier
-   *  carries it). */
+   *  carries it).
+   *
+   *  The ACT row carries card_id NULL: Ruby's director builds every act as
+   *  `Card::Act.new ip_address: Env.ip` (director/class_methods.rb:27-28)
+   *  and only `finalize_act` (history/events.rb:55-57) stamps the acting
+   *  card's id on it — an event the preliminary save never reaches, because
+   *  prepare_attachment aborts :success at :prepare_to_validate. The oracle
+   *  rows pin the shape (upload-remove-preview-admin: card_acts #1
+   *  card_id null beside card_actions #1 card_id 295, the cache card). The
+   *  ACTION is filed on `cardId` — the draft card itself
+   *  (00_upload_cache.rb:17 `@current_action.update! draft: true,
+   *  card_id: card_id`). */
   async recordUploadDraft(input: {
     cardId: number;
     actionType: "create" | "update";
@@ -538,7 +556,7 @@ export class ActWriter {
   }): Promise<SavedAction> {
     const ts = sqlDateTime(this.clock());
     const stmts: SQLStatement[] = [];
-    const actIdSelect = this.actId === null ? this.pushInsertAct(stmts, input.cardId, ts) : undefined;
+    const actIdSelect = this.actId === null ? this.pushInsertAct(stmts, null, ts) : undefined;
     const actionIdSelect = this.pushInsertAction(stmts, {
       cardId: input.cardId,
       superActionId: null,
@@ -640,6 +658,8 @@ export class ActWriter {
     actionType: "create" | "update";
     superActionId?: number | null;
   }): Promise<number> {
+    this.reserveOpActPreexisted = this.actId !== null;
+    this.opActPreexisted = this.reserveOpActPreexisted;
     const stmts: SQLStatement[] = [];
     const actIdSelect =
       this.actId === null ? this.pushInsertAct(stmts, null, sqlDateTime(this.clock())) : undefined;

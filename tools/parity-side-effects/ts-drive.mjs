@@ -203,6 +203,11 @@ function filesList() {
   const out = [];
   const walk = (d) => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
+      // The tmp partition is the two-step upload's cache
+      // (00_upload_cache.rb files_base_dir("tmp")): Ruby's drive keeps that
+      // cache outside its files scan (the work dir's cache/ sibling), so the
+      // TypeScript side's cache partition is not deck files either.
+      if (d === FILES && e.name === "tmp") continue;
       const p = join(d, e.name);
       if (e.isDirectory()) walk(p);
       else {

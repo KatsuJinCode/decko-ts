@@ -1,3 +1,4 @@
+import type { ViewResult } from "../../render/format.js";
 // The card-mod-markdown gem (card-mod-markdown-0.20.0), ported through the
 // mod loader.
 //
@@ -88,7 +89,7 @@ const priorCore: ViewFn =
  *  in the Type::Markdown set take the kramdown path, everything else falls
  *  back to the base core method (the ancestor-chain lookup). No view config
  *  - Ruby declares `view :core` with no options. */
-const markdownCoreView: ViewFn = (ctx: ViewContext): string => {
+const markdownCoreView: ViewFn = (ctx: ViewContext): ViewResult => {
   if (ctx.fmt.card.typeName !== "Markdown") return priorCore(ctx);
   return markdownCore(ctx);
 };

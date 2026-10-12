@@ -1,3 +1,4 @@
+import { str } from "./format.js";
 // The bootstrap navbar view family (card-mod-layout set/all/navbar_links.rb
 // + set/abstract/{items,list}.rb + set/self/{account_links,dropdown_divider}.rb
 // + card-mod-search set/self/search search_box) — the page-surface head chrome
@@ -53,7 +54,7 @@ function linkTitleSpan(ctx: ViewContext): string {
   if (typeof label === "string") {
     return `<span class="card-title" title="${h(label)}">${wrappedTitleInner(h(label))}</span>`;
   }
-  return ctx.fmt.renderView("title");
+  return str(ctx.fmt.renderView("title"));
 }
 
 /** link_to_card with an extra class: `class="<given> known-card"` — the
@@ -83,6 +84,15 @@ const navbarLinksView: ViewFn = (ctx) => {
     // dropped).
     const prepared = ctx.fmt.engine.pageSessionAccountLinksHtml;
     if (prepared !== undefined) {
+      // The prepared string embeds the my_card roles nest whose render is
+      // ensure_roles' mutation point — consuming it marks the fill for the
+      // rest of the process (the same consume-then-mark the :core arm
+      // carries; the Default Layout's navbar dispatches through THIS view,
+      // so without the mark here a signed-in page's roles form never
+      // flips to the filled variant and every page after the first renders
+      // the blank content input the real captures only pin on each
+      // capture process's first page).
+      ctx.fmt.engine.markSessionRolesContentFilled?.();
       return `<ul class="navbar-nav">${fillUniqueIds(prepared, fmt)}</ul>`;
     }
     const links = [
@@ -289,10 +299,18 @@ export const NAVBAR_VIEWS: Record<string, ViewFn> = {
  *  items (the same navbar_items the :navbar_links view renders — Ruby's
  *  navbar_items METHOD is shared by both views); otherwise the sign_up +
  *  sign_in pair (my_card/sign_out are signed_in?-gated with denial :blank —
- *  dropped from the compact). */
+ *  dropped from the compact).
+ *
+ *  The prepared items embed the my_card roles nest, whose edit_inline render
+ *  is where Ruby's ensure_roles mutates the session card (set/right/
+ *  enabled_roles.rb:52) — so consuming the prepared items here marks the
+ *  fill for the REST of this request: this core render (the page's MAIN
+ *  body, rendered before the layout) serves the blank content input the
+ *  oracle pins, and the navbar's later roles nest serves the filled one. */
 export function accountLinksCoreHtml(ctx: ViewContext): string {
   const prepared = ctx.fmt.engine.pageSessionAccountLinksHtml;
   if (prepared !== undefined) {
+    ctx.fmt.engine.markSessionRolesContentFilled?.();
     return `<div id="logging" class="logged-in">${fillUniqueIds(prepared, ctx.fmt)}</div>`;
   }
   const links = [

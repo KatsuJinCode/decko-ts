@@ -192,3 +192,11 @@ GPL's section 6 is the same copy-and-modify mechanism. TinyMCE is also
 available from Tiny under a commercial license; choosing that arm is a
 licensing decision for whoever redistributes the package, not a code change,
 because the vendored bytes are identical either way.
+
+### `vendor/libsass-wasm/` — the Sass compiler's WebAssembly build
+
+The LibSass sources covered under `tools/libsass/libsass/` above, compiled to
+the WebAssembly module the edge write surfaces load. The directory carries the
+MIT license text and the provenance of those sources beside the built module
+(`vendor/libsass-wasm/LICENSE`, `vendor/libsass-wasm/PROVENANCE.md`); MIT is
+compatible with this project's GPL-3.0-or-later terms.

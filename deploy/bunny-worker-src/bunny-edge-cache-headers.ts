@@ -74,8 +74,9 @@ export function edgeCacheTtlSeconds(env: EdgeEnv): number {
 export type EdgeCacheClass = "content-html" | "content-json" | "uncacheable";
 
 /** Classify a served response by request path and status. Paths mirror the
- *  entry's route table (and worker.ts parsePath, which the entry imports so
- *  the two cannot drift): /_status is answered before this module is
+ *  entry's route table (and the lineage surface's parsePath, which the
+ *  engine-request dispatch imports so the two cannot drift): /_status is
+ *  answered before this module is
  *  consulted, but classified uncacheable here anyway for defense in depth. */
 export function edgeRouteCacheClass(
   pathname: string,

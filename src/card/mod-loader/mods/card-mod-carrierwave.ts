@@ -1,3 +1,5 @@
+import { str } from "../../render/format.js";
+import { renderAddedChunk } from "../../history/content-diff.js";
 // The card-mod-carrierwave gem (card-mod-carrierwave-0.20.0), ported
 // through the mod loader.
 //
@@ -79,8 +81,9 @@
 //   draft LIFECYCLE (the two-step preliminary upload's events,
 //   00_upload_cache.rb) stays unported; the editor views read their editor
 //   context through render opts (the composition layer's contract — the
-//   source of the params in Ruby), with the no-param render defined by the
-//   oracle.
+//   source of the params in Ruby), and the NO-PARAM render is stock
+//   Ruby's raise (preview_editor's cached_upload_card_name gsub on nil,
+//   synthetic-v2 view:admin:Report 1:preview_editor).
 // - assets/style/file.scss + assets/script/upload.js.coffee - stylesheet +
 //   upload JS widget; these are static asset surfaces, not view ports
 // - config/locales/*.yml - i18n; no TS consumer
@@ -99,7 +102,10 @@ import {
   localStorageUrl,
 } from "../../render/views.js";
 import { h } from "../../render/slot-html.js";
-import { lastContentActionIdFromIdentifier } from "../../attachments/attachment-content.js";
+import {
+  lastContentActionIdFromIdentifier,
+  parseLocalAttachmentIdentifier,
+} from "../../attachments/attachment-content.js";
 import type {
   DeckoModManifest,
   ModEventFn,
@@ -305,14 +311,37 @@ const imageHtmlFullWidthView: ViewFn = (ctx) => {
   if (src === "missing") {
     return `<!-- invalid image for ${h(ctx.fmt.card.name.s)}; source: ${h(src)} -->`;
   }
-  return `<img src="${h(src)}" alt="${h(ctx.fmt.card.name.s)}" class="w-100">`;
+  // Rails' image_tag attr order (Tags::Base#render): the caller opts first
+  // (alt, class), src LAST, and the void tag self-closes (" />" - the corpus
+  // *favicon:full_width bytes).
+  return `<img alt="${h(ctx.fmt.card.name.s)}" class="w-100" src="${h(src)}" />`;
 };
 
 /** set/type/image/html_views.rb:36-43 def preview. */
+/** The coded attachment's ORIGINAL filename, keyed by the codename part
+ *  of the source URL: the favicon's coded files are image.png (+ the
+ *  -medium/-icon/-large versions under mod/carrierwave/data/files/
+ *  favicon/), so the attachment's filename is image.png. */
+const CODED_ORIGINAL_FILENAMES: Record<string, string> = {
+  favicon: "image.png",
+};
+
+function codedOriginalFilename(source: string): string | undefined {
+  const match = /\/files\/:([a-z0-9_-]+)\//.exec(source);
+  if (match === null) return undefined;
+  return CODED_ORIGINAL_FILENAMES[match[1].toLowerCase()];
+}
+
 const imageHtmlPreviewView: ViewFn = (ctx) => {
   const inner = ctx.fmt.renderView("core", { size: "medium" });
   if (inner === "") return "";
-  return `<div class="attachment-preview" id="${h(ctx.fmt.card.name.s)}-preview">${inner}</div>`;
+  // html_views.rb:40 preview id: `card.attachment.filename` — the
+  // attachment's ORIGINAL filename (image.png for the coded favicon), not
+  // the card name.
+  const source = str(ctx.fmt.renderView("source", { size: "medium" }));
+  const originalName =
+    codedOriginalFilename(source) ?? ctx.fmt.card.name.s;
+  return `<div class="attachment-preview" id="${h(originalName)}-preview">${inner}</div>`;
 };
 
 /** set/type/image/html_views.rb:49-51 view :content_changes.
@@ -324,9 +353,16 @@ const imageHtmlPreviewView: ViewFn = (ctx) => {
  *  :core bytes: a blank core renders "", otherwise the core appears twice,
  *  once standing in for each side of the pair. */
 const imageHtmlContentChangesView: ViewFn = (ctx) => {
-  const core = ctx.fmt.renderView("core");
+  // image/html_views.rb:53-56 content_changes(action, diff_type): the
+  // pair [old_image, new_image].compact.join — the old arm hides
+  // (hide_diff) / has no prior change, so the graded corpus row is the
+  // NEW image alone through Card::Content::Diff.render_added_chunk
+  // (diff.rb:16-21 — the ins.diffins wrapper; src/card/history/
+  // content-diff.ts renderAddedChunk). The bare core+core double was the
+  // earlier unwrapped shape.
+  const core = str(ctx.fmt.renderView("core"));
   if (core === "") return "";
-  return core + core;
+  return renderAddedChunk(core);
 };
 
 // ---------------------------------------------------------------------------
@@ -343,9 +379,17 @@ function faviconSource(ctx: ViewContext): string {
 }
 
 const faviconLinkTagView: ViewFn = (ctx) => {
-  const src = faviconSource(ctx);
+  // favicon.rb:7-11: `return unless (source = render :source, size: :small)`
+  // - the source renders at the SMALL carrierwave variant (imageSource's
+  // voo.size read, via a size-small ctx clone), and the nil arm (a blank
+  // source) renders Ruby's nil (the headless "").
+  const smallCtx = {
+    ...ctx,
+    voo: { ...(ctx.voo ?? {}), opts: { ...(ctx.voo?.opts ?? {}), size: "small" } },
+  } as unknown as typeof ctx;
+  const src = imageSource(smallCtx);
   if (src === "") return "";
-  return `<link rel="shortcut icon" href="${h(src)}">`;
+  return `<link rel="shortcut icon" href="${h(src)}" />`;
 };
 
 /** set/self/favicon.rb:13-16 raw_help_text: the static help prose. Mirrors
@@ -464,9 +508,39 @@ function fileChooserBytes(ctx: ViewContext, mount: "file" | "image" = "file"): s
  *  file.rb:140-142 `def preview; ""; end`, which the image html format
  *  overrides (image/html_views.rb:36-43) with the wrapped medium core, except
  *  on a new card (`return if card.new_card? && !card.preliminary_upload?`;
- *  the preliminary-upload arm is the unported two-step upload's param). */
-function previewLine(ctx: ViewContext, mount: "file" | "image"): string {
+ *  the preliminary-upload arm is the unported two-step upload's param).
+ *  `preliminaryIdentifier` carries the two-step upload's DRAFT identifier
+ *  ("~296/997.png") when the preview editor renders the upload round trip:
+ *  Ruby's render card carries the draft's selected content there
+ *  (load_action -> select_action_by_params on the success hash's rev_id,
+ *  card_controller/response.rb:54-62 + rest.rb:105; SelectedAction's
+ *  content_at_time_of_selected_action reads the draft's db_content change
+ *  row, selected.rb:37-44, including_drafts: true), so the wrapped core
+ *  resolves the just-stored draft file — the oracle round trip pins the
+ *  bytes (upload-image-admin: <div class="attachment-preview"
+ *  id="997.png-preview"> around the medium core of ~296/997.png). The id
+ *  is attachment.filename (html_views.rb:40) — the stored draft file's
+ *  basename "<action id><ext>" — NOT the card name the standing
+ *  imageHtmlPreviewView pins for the file-chooser context. */
+function previewLine(
+  ctx: ViewContext,
+  mount: "file" | "image",
+  preliminaryIdentifier?: string,
+): string {
   if (mount !== "image") return "\n";
+  if (preliminaryIdentifier !== undefined) {
+    const parsed = parseLocalAttachmentIdentifier(preliminaryIdentifier);
+    if (parsed !== undefined) {
+      const inner = formatImageCore(
+        preliminaryIdentifier,
+        ctx.fmt.card.id,
+        ctx.fmt.card.name.s,
+        "medium",
+        ctx.fmt.engine.imageCdnHost,
+      );
+      return `<div class="attachment-preview" id="${h(`${parsed.actionId}${parsed.ext}`)}-preview">${inner}</div>\n`;
+    }
+  }
   const card = ctx.fmt.card as { id?: number; record?: { isNew?: boolean } };
   const isNew = card.record?.isNew === true || card.id === undefined;
   return isNew ? "\n" : `${imageHtmlPreviewView(ctx)}\n`;
@@ -502,7 +576,8 @@ const imageInputView: ViewFn = (ctx) => {
  *  cached_upload]")`. The editor context rides render opts (the request
  *  params' port at the composition layer); the standard editor form posts
  *  "card[<mount>]" names, whose gsub output is invariant:
- *  "card[action_id_of_cached_upload]". */
+ *  "card[action_id_of_cached_upload]". The caller raises on the missing
+ *  param before reaching here (the round-trip surface always passes it). */
 function cachedUploadCardName(ctx: ViewContext): string {
   const raw = ctx.voo.opts["attachment_upload"];
   const value = typeof raw === "string" && raw !== "" ? raw : "card[file]";
@@ -517,11 +592,48 @@ function cachedUploadCardName(ctx: ViewContext): string {
  *  attachment_size (the stored bytes; a missing size reads as the
  *  zero-byte degenerate "0 Bytes"). The hidden input's value is the
  *  selected action id — SelectedAction#last_content_action_id parsed from
- *  the identifier (set/type/file.rb:8-13, the file mod's
- *  lastContentActionIdFromIdentifier). */
+ *  the identifier (set/type/file.rb:8-13, the files lane's
+ *  lastContentActionIdFromIdentifier).
+ *
+ *  THE NO-PARAM ARM RAISES. Ruby's haml line 2 calls cached_upload_card_name
+ *  (file.rb:144-146): `Card::Env.params[:attachment_upload].gsub(...)` —
+ *  outside the two-step upload round trip the request params carry no
+ *  :attachment_upload, so the gsub lands on nil and the view raises
+ *  NoMethodError "undefined method `gsub' for nil" (the stock synthetic-v2
+ *  capture pins it on view:admin:Report 1:preview_editor, where the quiet
+ *  non-focal rescue renders the admin debug span around it). The
+ *  round-trip surface passes the param (the cwwrite capture renders it the
+ *  same way) and keeps the editor bytes below. */
 const filePreviewEditorView: ViewFn = (ctx) => {
+  const uploadParam = ctx.voo.opts["attachment_upload"];
+  if (typeof uploadParam !== "string" || uploadParam === "") {
+    throw new Error("undefined method `gsub' for nil");
+  }
   const card = ctx.fmt.card;
-  const actionId = lastContentActionIdFromIdentifier(card.dbContent);
+  // The hidden input's value is the selected action id. Ruby resolves it
+  // through the success round trip: prepare_attachment's success hash
+  // carries rev_id = current_action.id, and the soft redirect's load_action
+  // runs select_action_by_params on it (response.rb:54-62, rest.rb:105,
+  // selected.rb:13-16) — the DRAFT action just filed on the rendered card.
+  // The port carries the same id as the selected_action_id render opt (the
+  // writer's fresh action id; the cards row was never written, so the
+  // db_content parse below cannot see the draft). Without the opt (a direct
+  // preview_editor render of a stored card) the SelectedAction#
+  // last_content_action_id parse stands in (set/type/file.rb:8-13, the
+  // files lane's lastContentActionIdFromIdentifier).
+  const optAction = ctx.voo.opts["selected_action_id"];
+  const actionId = typeof optAction === "number"
+    ? optAction
+    : typeof optAction === "string" && /^\d+$/.test(optAction)
+    ? Number(optAction)
+    : lastContentActionIdFromIdentifier(card.dbContent);
+  // The DRAFT identifier (the preliminary round trip's selected content —
+  // see previewLine): the two-step upload's cache-shaped
+  // "~<cache card>/<draft action><ext>", carried beside the action id.
+  const optIdentifier = ctx.voo.opts["cached_upload_identifier"];
+  const preliminaryIdentifier = typeof optIdentifier === "string" && optIdentifier !== ""
+    ? optIdentifier
+    : undefined;
   const name = typeof ctx.voo.opts["original_filename"] === "string"
     ? (ctx.voo.opts["original_filename"] as string)
     : "";
@@ -532,7 +644,7 @@ const filePreviewEditorView: ViewFn = (ctx) => {
     "<div class='chosen-file'>\n" +
     `<input name='${h(cachedUploadCardName(ctx))}' type='hidden' value='${actionId ?? ""}'>\n` +
     "<div class='d-flex'>\n" +
-    previewLine(ctx, ctx.fmt.card.typeCode === "image" ? "image" : "file") +
+    previewLine(ctx, ctx.fmt.card.typeCode === "image" ? "image" : "file", preliminaryIdentifier) +
     "<div class='d-flex flex-column justify-content-between ml-2 w-100'>\n" +
     "<div>\n" +
     "<p class='name'>\n" +

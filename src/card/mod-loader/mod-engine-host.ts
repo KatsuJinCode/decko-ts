@@ -48,6 +48,7 @@ export function modEngineHost(
     batch: (statements) => fetcher.driver.batch([...statements]),
     codenames: fetcher.codenames,
     fetchById: (id: number) => fetcher.fetchById(id),
+    fetchByName: (name: string) => fetcher.fetchByName(name),
     // render.ts cacheFetchedRecord (private): writes the fetch cache + the
     // enriched render-card map - the only write path into the sync render
     // surface.

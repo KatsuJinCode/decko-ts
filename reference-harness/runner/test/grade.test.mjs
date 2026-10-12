@@ -10,7 +10,7 @@ import path from "node:path";
 import { after, before, describe, it } from "node:test";
 import { gradeRun } from "../grade-lib.mjs";
 import { writeExpectedManifest } from "../manifest.mjs";
-import { HARNESS, copyDir, gradeCli, makeCapturedFixture, readJson, runFake, scratch, writeJson } from "./helpers.mjs";
+import { HARNESS, copyDir, gradeCli, makeCapturedFixture, makeFixture, readJson, runFake, scratch, writeJson } from "./helpers.mjs";
 
 let tmp;
 let fixture;
@@ -442,6 +442,89 @@ describe("synthetic-v1: the reviewer's controls on the published fixture", () =>
       assert.match(cli.stdout, /verdict: fail/);
     } finally {
       t.cleanup();
+    }
+  });
+});
+
+describe("recorded upstream failures: the oracle raised while serving", () => {
+  // A fixture whose oracle capture holds the recorded upstream failure on
+  // both Alpha renders (page and core), captured from the fake adapter in
+  // its upstream-error mode - the class named as a captured Ruby record
+  // names it.
+  let t;
+  let fixture;
+  before(() => {
+    t = scratch();
+    fixture = makeFixture(t.dir);
+    const expected = path.join(fixture, "expected");
+    const cap = runFake(fixture, expected, { mode: "upstream-error:Alpha" });
+    assert.equal(cap.status, 0, cap.stderr);
+    writeExpectedManifest(fixture, expected);
+  });
+  after(() => t.cleanup());
+
+  it("the same failure reproduced failure-for-failure is a reproduced upstream failure, a success", () => {
+    const dir = path.join(t.dir, "reproduced");
+    assert.equal(runFake(fixture, dir, { mode: "upstream-error:Alpha" }).status, 0);
+    const report = gradeRun({ fixture, actual: dir });
+    assert.deepEqual(report.problems, []);
+    assert.equal(report.verdict, "pass");
+    assert.equal(report.summary.rendering.fail, 0);
+    assert.equal(report.summary.rendering.reproduced_upstream_failures, 2, "both Alpha renders");
+    assert.equal(report.summary.rendering.pass, 2, "Beta and the render step still match");
+    const row = report.reproduced.rendering[0];
+    assert.equal(row.oracle.class, "Card::Error::CodenameNotFound");
+    assert.equal(row.engine.class, "Card::Error::CodenameNotFound");
+    assert.equal(gradeCli(["--fixture", fixture, "--actual", dir]).status, 0);
+  });
+
+  it("the failure named by each host language's convention is still one failure (N7)", () => {
+    const dir = path.join(t.dir, "host-named");
+    assert.equal(runFake(fixture, dir, { mode: "engine-error:Alpha" }).status, 0);
+    const report = gradeRun({ fixture, actual: dir });
+    assert.equal(report.verdict, "pass");
+    assert.equal(report.summary.rendering.reproduced_upstream_failures, 2);
+    const row = report.reproduced.rendering[0];
+    assert.equal(row.oracle.class, "Card::Error::CodenameNotFound");
+    assert.equal(row.engine.class, "CodenameNotFoundError");
+  });
+
+  it("a different failure on a row the oracle fails is a divergence, not a reproduction", () => {
+    const dir = path.join(t.dir, "different-failure");
+    assert.equal(runFake(fixture, dir, { mode: "wrong-message:Alpha" }).status, 0);
+    const report = gradeRun({ fixture, actual: dir });
+    assert.equal(report.verdict, "fail");
+    assert.equal(report.summary.rendering.fail, 2);
+    assert.equal(report.summary.rendering.reproduced_upstream_failures, 0);
+    assert.ok(report.failures.rendering.every((f) => /reproduced a different failure/.test(f.reason)), report.failures.rendering.map((f) => f.reason).join("; "));
+  });
+
+  it("rendering a result where the oracle failed does not reproduce it", () => {
+    const dir = path.join(t.dir, "not-reproduced");
+    assert.equal(runFake(fixture, dir).status, 0);
+    const report = gradeRun({ fixture, actual: dir });
+    assert.equal(report.verdict, "fail");
+    assert.equal(report.summary.rendering.fail, 2);
+    assert.ok(report.failures.rendering.every((f) => /upstream failure not reproduced/.test(f.reason)));
+  });
+
+  it("a capture-side fault sentinel is not a recorded failure: it stays ungraded", () => {
+    const s = scratch();
+    try {
+      const sentinelFixture = makeFixture(s.dir);
+      const expected = path.join(sentinelFixture, "expected");
+      const cap = runFake(sentinelFixture, expected, { mode: "capture-fault:Alpha" });
+      assert.equal(cap.status, 0, cap.stderr);
+      writeExpectedManifest(sentinelFixture, expected);
+      const dir = path.join(s.dir, "actual");
+      assert.equal(runFake(sentinelFixture, dir).status, 0);
+      const report = gradeRun({ fixture: sentinelFixture, actual: dir });
+      assert.equal(report.verdict, "pass", "the sentinel rows are skipped, not failed");
+      assert.equal(report.summary.rendering.oracle_errors, 2);
+      assert.equal(report.summary.rendering.graded, 2, "only the non-sentinel renders grade");
+      assert.equal(report.summary.rendering.reproduced_upstream_failures, 0);
+    } finally {
+      s.cleanup();
     }
   });
 });

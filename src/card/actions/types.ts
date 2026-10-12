@@ -71,18 +71,24 @@ export class CardActionError extends Error {
    *  not the lower-case form of the shown key (an error class name such as
    *  "UserError"). The JSON errors view reports this hash. */
   readonly errorsByAttribute?: Readonly<Record<string, string>>;
+  /** The saved card's name — the errors view's heading source
+   *  (error.rb:56-62 voo.title = t(:format_problems_name, cardname:
+   *  card.name)). Absent when the throw site has no card context. */
+  readonly cardName?: string;
 
   constructor(
     code: CardActionErrorCode,
     message: string,
     userMessage?: string,
     errorsByAttribute?: Readonly<Record<string, string>>,
+    cardName?: string,
   ) {
     super(message);
     this.name = "CardActionError";
     this.code = code;
     if (userMessage !== undefined) this.userMessage = userMessage;
     if (errorsByAttribute !== undefined) this.errorsByAttribute = errorsByAttribute;
+    if (cardName !== undefined) this.cardName = cardName;
   }
 }
 
@@ -118,6 +124,16 @@ export interface AttachmentInput {
    *  the request params carry no uploaded-file object, so Ruby's delayed
    *  integrate stage (the follower notice) is not dropped. */
   fromCachedUpload?: boolean;
+  /** Coded file storage (storage_type: :coded — card-mod-carrierwave
+   *  set/abstract/attachment/coded.rb): the file is kept in the named
+   *  mod's data/files directory, not the deck's, and the card's content
+   *  becomes the coded identifier `:<codename parts>/<mod><ext>`. Presence
+   *  marks the save as coded; `mod` is the mod the file belongs to, absent
+   *  when the save carries none (Ruby's validate_coded_storage_type then
+   *  refuses: "mod argument needed to save card as coded"). `decko eat`
+   *  sets it for a pod item with storage_type :coded
+   *  (Eat::Edibles#handle_attachments). */
+  coded?: { mod?: string };
 }
 
 /** One subcard in a multi-card save (Card::Subcards — card/lib/card/
@@ -184,6 +200,16 @@ export interface CreateCardInput extends TypeSpec {
    *  undefined on a guarded save (the verify posts response: nil and the
    *  endpoint answers "missing-input-response"). */
   recaptchaToken?: string;
+  /** card[action_id_of_cached_upload] — the two-step upload's final save
+   *  (00_upload_cache.rb:2 attr_accessor via Rails assign_attributes;
+   *  save_preliminary_upload? :84-86). The preview_editor round trip's
+   *  hidden input: the cached DRAFT action whose stored file becomes this
+   *  save's attachment (assign_attachment_on_create :27-34 — the draft's
+   *  comment becomes the action comment, the cache bytes move to the
+   *  card's files, and the integrate phase deletes the draft action + its
+   *  cache file while the act survives, :51-57). Undefined on every save
+   *  without the upload detour. */
+  actionIdOfCachedUpload?: number | string;
 }
 
 /** Card#update! arguments. All fields optional; a save that changes nothing
@@ -233,6 +259,13 @@ export interface UpdateCardInput extends TypeSpec {
    *  (card-mod-recaptcha set/all/recaptcha.rb:41-44, 57-66). Same shape as
    *  the create-side field. */
   recaptchaToken?: string;
+  /** card[action_id_of_cached_upload] on an update — the two-step upload's
+   *  replace arm (00_upload_cache.rb:36-42 assign_attachment_on_update):
+   *  the cached draft's file (stored under the card's own files dir) is
+   *  read back with the draft action selected, its comment becomes the new
+   *  action's comment, and the integrate phase deletes the draft action +
+   *  its stored file while the act survives (:66-72). */
+  actionIdOfCachedUpload?: number | string;
   /** Work the request triggered for this save's :integrate stage
    *  (`trigger: :required` events such as send_verification_email and
    *  send_welcome_email): run after the save's rows are written and before
@@ -322,6 +355,12 @@ export interface CardActionSummary {
   /** The card's composed name after the action (best effort; undefined when
    *  the lexicon cannot resolve it, e.g. a side card was deleted). */
   name?: DeckoName;
+  /** name_before_act (lib/card/dirty.rb DirtyNames) — the composed name the
+   *  card answered to before this act, on renames. The response's expiry
+   *  fan-out needs it: Ruby's expire_names (cache/all.rb:104-108) expires
+   *  BOTH key versions via name_before_act, and the host render-map half of
+   *  that expire only reaches the names the response carries. */
+  nameBeforeAct?: DeckoName;
 }
 
 /** The result of one action request: one act, the primary card's action,

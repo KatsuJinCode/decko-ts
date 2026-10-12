@@ -1,10 +1,11 @@
 node_modules/
 dist/
-# The vendored Ruby-mod asset trees are tracked byte-for-byte (the asset
-# suites digest them against Ruby-recorded pins), so their dist/ leaves are
-# un-ignored below the bare rule above.
+# The vendored asset sources are committed content (the sha256-pinned copy of
+# what the Decko gems ship; tests/card/assets pins them). A bare `dist/` rule
+# silently excluded everything under any dist/ DIRECTORY inside that tree —
+# card-mod-bootstrap's select2 dist was missing from fresh checkouts for it
+# (the build machine's untracked copy masked the gap). Re-include the tree.
 !fixtures/vendor/**/dist/
-!fixtures/vendor/**/dist/**
 *.log
 tools/oracle/decko-oracle-app/
 # MySQL rung of the oracle harness (docs/parity-method.md): portable
@@ -44,16 +45,6 @@ tools/corpus-anonymizer/out/
 *.sqlite3
 *.sqlite
 !fixtures/test-corpus/test-corpus.sqlite3
-# WAL-mode sidecars: opening a WAL database - even read-only - creates them
-# beside it, and a read-only connection cannot remove them on close. The
-# committed fixture manifests list no such files, so a stray sidecar would
-# make every later manifest check report "fixture file not in its manifest";
-# suites copy a committed deck to scratch before opening it (see
-# tests/exercise/parity-1.test.ts readDeckMix). Generated residue, never committed.
-*.sqlite3-shm
-*.sqlite3-wal
-*.sqlite-shm
-*.sqlite-wal
 
 # build/dev-server output + scratch
 dist-ts/
@@ -85,3 +76,4 @@ scripts/deploy/one-click-deck/out/
 /tmp-edge-bench/
 /tmp-lane-cssparity/
 /.zcode/
+vitest.gate.generated.ts

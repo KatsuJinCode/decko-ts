@@ -13,9 +13,7 @@
 // - ref_type codes: "L" link (card-mod-content-0.20.0
 //   lib/card/content/chunk/link.rb:10,17-19), "I" inclusion (inherited
 //   Abstract#reference_code, card-1.110.0 lib/card/content/chunk/
-//   abstract.rb:30-32), "P" partial (all.rb:10 PARTIAL_REF_CODE), "Q" query
-//   (chunk/query_reference.rb:91-93 — the quoted names inside CQL query
-//   content, e.g. the "refer_to" targets of a saved search).
+//   abstract.rb:30-32), "P" partial (all.rb:10 PARTIAL_REF_CODE).
 // - interpretation (all.rb:80-96): skip nil referees; canonicalize the
 //   referee key; skip self-references (referee_key == the referer's key);
 //   resolve referee_id via Lexicon.id (unknown -> nil).
@@ -50,46 +48,6 @@ export { listItemStrings };
 
 /** all.rb:10 PARTIAL_REF_CODE. */
 const PARTIAL_REF_CODE = "P";
-
-/** QueryReference#reference_code (chunk/query_reference.rb:91-93). */
-export const QUERY_REF_CODE = "Q";
-
-/** QueryReference's QUERY_KEYWORDS (chunk/query_reference.rb:22-30):
- *  Card::Query::MODIFIERS.keys + OPERATORS.keys + Query.attributes.keys
- *  (query.rb:49-79 — the @attributes hash is built with each_with_object,
- *  so its keys are the FLATTENED attribute list) + CONJUNCTIONS.keys +
- *  %w[desc asc count]. A quoted string whose tr(" ", "_").downcase form is
- *  in this set is an operator/attribute name, not a card reference. */
-const QUERY_KEYWORDS: ReadonlySet<string> = new Set([
-  // query.rb:86-88 MODIFIERS
-  "conj", "return", "index", "sort_by", "sort_as", "sort_dir", "sort", "dir",
-  "group", "limit", "offset",
-  // query.rb:89-94 OPERATORS
-  "!=", "=", "=~", "<", ">", "in", "~", "is", "eq", "gt", "lt", "match", "ne",
-  "not in", "is not", "!",
-  // query.rb:49-79 @attributes, flattened (basic + relational +
-  // plus_relational + conjunction + custom + ignore + deprecated)
-  "id", "name", "key", "type_id", "content", "left_id", "right_id", "codename",
-  "read_rule_id", "created_at", "updated_at", "creator_id", "updater_id",
-  "type", "part", "left", "right", "editor_of", "edited_by", "last_editor_of",
-  "last_edited_by", "creator_of", "created_by", "updater_of", "updated_by",
-  "link_to", "linked_to_by", "include", "included_by", "nest", "nested_by",
-  "refer_to", "referred_to_by", "member_of", "member", "found_by", "not",
-  "name_match", "complete", "plus", "left_plus", "right_plus", "compound",
-  "prepend", "append", "vars", "view", "params", "size",
-  // query.rb:81 CONJUNCTIONS
-  "any", "or", "all", "and",
-  // query.rb:28 the order/count words
-  "desc", "asc", "count",
-]);
-
-/** query_reference.rb:67-71 keyword?: `QUERY_KEYWORDS.include?
- *  str.tr(" ", "_").downcase` — spaces become underscores BEFORE the
- *  downcased compare, so a name like "Not In" is NOT a keyword (the set
- *  entry keeps its space, the tested string never does). */
-function queryKeyword(name: string): boolean {
-  return QUERY_KEYWORDS.has(name.split(" ").join("_").toLowerCase());
-}
 
 /** The subset of DbLexicon the reference path needs (all.rb:95
  *  Lexicon.id). Structural type keeps this module decoupled from the
@@ -126,9 +84,16 @@ export async function refreshReferencesOut(
 ): Promise<void> {
   // delete_references_out (all.rb:48; reference_events.rb:63-65).
   await driver.query("DELETE FROM card_references WHERE referer_id = ?", [refererId]);
+  // set/type/search_type.rb:6 `def chunk_list; :query; end` — a Search
+  // referer's content parses QueryReference chunks ONLY (lib/card/content/
+  // chunk/query_reference.rb: quoted strings after :, , or [ that are not
+  // query keywords, reference_code "Q"); every other referer parses the
+  // link/nest chunks (all.rb:56-58 each_reference_out).
   const rows = (await isListCard(driver, refererId))
-    ? await createListReferencesOut(lexicon, refererId, refererName, content)
-    : await createReferencesOut(lexicon, refererId, refererName, content);
+    ? await createListReferencesOut(driver, lexicon, refererId, refererName, content)
+    : (await isSearchCard(driver, refererId))
+      ? await createQueryReferencesOut(lexicon, refererId, refererName, content)
+      : await createReferencesOut(lexicon, refererId, refererName, content);
   // Reference.insert_in_slices (all.rb:61, reference.rb:19-23): bulk
   // insert in ref-hash order; 5000-row slices kept for fidelity.
   for (let slice = 0; slice < rows.length; slice += 5000) {
@@ -197,8 +162,16 @@ async function createReferencesOut(
 /** A list card's references (Abstract::List#each_reference_out,
  *  card-mod-list-0.20.0 set/abstract/01_list.rb:53-57): every item name,
  *  absolutized against the card's own name (item_names -> clean_item_name,
- *  card-mod-collection set/all/item.rb:15-22, :258-267), as a link ("L"). */
+ *  card-mod-collection set/all/item.rb:15-22, :258-267), as a link ("L").
+ *
+ * A CARDTYPE-typed list card's item names are the SEARCH's (card-mod-search
+ * set/type/cardtype.rb includes Abstract::CqlSearch — its cql_content is
+ * `{type_id: <the card's own id>, sort_by: :name}` — and 0_search's
+ * item_names overrides Abstract::Items'), so the walk references every live
+ * card OF the cardtype, not the stored content: saving the Mod card
+ * references all 36 "mod: x" cards (oracle: leftover probe step 5). */
 async function createListReferencesOut(
+  driver: SQLDatabaseDriver,
   lexicon: ReferenceLexicon,
   refererId: number,
   refererName: DeckoName,
@@ -206,7 +179,8 @@ async function createListReferencesOut(
 ): Promise<ReferenceRow[]> {
   const refHash = new Map<string, { refereeId: number | undefined; refTypes: string[] }>();
   const idRows: ReferenceRow[] = [];
-  for (const item of listItemStrings(content)) {
+  const items = await listCardItemNames(driver, refererId) ?? listItemStrings(content);
+  for (const item of items) {
     // An "~<id>" item (an id list's storage): Ruby's name for it has no key,
     // so the row carries the id and a NULL referee_key.
     const markedId = idMarkOf(item);
@@ -223,6 +197,102 @@ async function createListReferencesOut(
     await interpretReference(lexicon, refHash, name, "L", refererName);
   }
   return [...idRows, ...referenceValuesArray(refHash, refererId)];
+}
+
+/** The item names a list card's walk walks: the cardtype search's results
+ *  for a Cardtype-typed card (see createListReferencesOut), else the stored
+ *  content's items (undefined -> the caller uses the content). */
+async function listCardItemNames(
+  driver: SQLDatabaseDriver,
+  refererId: number,
+): Promise<string[] | undefined> {
+  const row = (
+    await driver.query<{ codename: string | null }>(
+      `SELECT t.codename AS codename FROM cards c JOIN cards t ON t.id = c.type_id WHERE c.id = ?`,
+      [refererId],
+    )
+  ).rows[0];
+  if (row?.codename !== "cardtype") return undefined;
+  const items = await driver.query<{ name: string }>(
+    "SELECT name FROM cards WHERE type_id = ? AND trash = 0",
+    [refererId],
+  );
+  return items.rows.map((r) => String(r.name));
+}
+
+/** set/type/search_type.rb:6 — the Search cardtype's chunk_list :query: the
+ *  referer's content parses QueryReference chunks. Same type-codename read
+ *  shape as isListCard. */
+async function isSearchCard(
+  driver: SQLDatabaseDriver,
+  refererId: number,
+): Promise<boolean> {
+  const row = (
+    await driver.query<{ codename: string | null }>(
+      `SELECT t.codename AS codename FROM cards c JOIN cards t ON t.id = c.type_id WHERE c.id = ?`,
+      [refererId],
+    )
+  ).rows[0];
+  return row?.codename === "search_type";
+}
+
+// --- QueryReference chunks (query_reference.rb) -----------------------------
+
+/** query.rb:49-76 — Card::Query::MODIFIERS + OPERATORS + @attributes +
+ *  CONJUNCTIONS keys and %w[desc asc count]: the quoted strings these name
+ *  are query SYNTAX, not card references (query_reference.rb:69-78
+ *  keyword?). */
+const QUERY_KEYWORDS: ReadonlySet<string> = new Set(
+  [
+    // MODIFIERS (query.rb:70)
+    "conj", "return", "index", "sort_by", "sort_as", "sort_dir", "sort", "dir",
+    "group", "limit", "offset",
+    // OPERATORS (query.rb:73-77)
+    "!=", "=", "=~", "<", ">", "in", "~", "is", "eq", "gt", "lt", "match",
+    "ne", "not in", "is not", "!",
+    // @attributes (query.rb:49-65): basic, relational, plus_relational,
+    // conjunction, custom, ignore, deprecated groups.
+    "id", "name", "key", "type_id", "content", "left_id", "right_id",
+    "codename", "read_rule_id", "created_at", "updated_at", "creator_id",
+    "updater_id", "type", "part", "left", "right", "editor_of", "edited_by",
+    "last_editor_of", "last_edited_by", "creator_of", "created_by",
+    "updater_of", "updated_by", "link_to", "linked_to_by", "include",
+    "included_by", "nest", "nested_by", "refer_to", "referred_to_by",
+    "member_of", "member", "found_by", "not", "sort", "match", "name_match",
+    "complete", "plus", "left_plus", "right_plus", "and", "or", "all", "any",
+    "compound", "prepend", "append", "vars", "view", "params", "size",
+    // the trailing literals (query.rb:76):
+    "desc", "asc", "count",
+  ].map((k) => k.replace(/ /g, "_").toLowerCase()),
+);
+
+/** query_reference.rb:47-52 — the registered grammar: a quoted string whose
+ *  preceding character is a colon, comma, or square bracket (Ruby's
+ *  prefix_re lookbehind). */
+const QUERY_REFERENCE_STICKY = /(?<=[:,\[])\s*"([^"]+)"/g;
+
+/** create_references_out over a Search referer's content: each non-keyword
+ *  quoted value interprets as a "Q" reference (query_reference.rb:106
+ *  reference_code) through the SAME interpret_reference dedupe machinery
+ *  (all.rb:80-96). */
+async function createQueryReferencesOut(
+  lexicon: ReferenceLexicon,
+  refererId: number,
+  refererName: DeckoName,
+  content: string | null | undefined,
+): Promise<ReferenceRow[]> {
+  if (content === null || content === undefined || content === "") return [];
+  const refHash = new Map<string, { refereeId: number | undefined; refTypes: string[] }>();
+  QUERY_REFERENCE_STICKY.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = QUERY_REFERENCE_STICKY.exec(content)) !== null) {
+    const name = match[1] ?? "";
+    // query_reference.rb:75-78 keyword?: the text with spaces underscored
+    // and downcased is a query keyword -> syntax, not a reference.
+    if (QUERY_KEYWORDS.has(name.replace(/ /g, "_").toLowerCase())) continue;
+    await interpretReference(lexicon, refHash, name, "Q", refererName);
+  }
+  return referenceValuesArray(refHash, refererId);
 }
 
 /** all.rb:80-86 interpret_reference + :88-96 with_normalized_referee. */
@@ -317,106 +387,87 @@ export interface ReferenceChunk {
   start: number;
   end: number;
   /** The raw inner text between the delimiters (link.rb `match[1]`,
-   *  nest.rb `match[1]`, query_reference.rb `match[1]`): the swap rebuild
-   *  re-derives target|text / the quoted name from it. */
+   *  nest.rb `match[1]`): the swap rebuild re-derives target|text from it. */
   inner: string;
 }
 
 /** Ruby full_res, anchored at the prefix position (parser.rb:37-43 slices
  *  from the prefix and full_matches with \A; the `y` flag reproduces that
  *  anchoring). link.rb:14 /\A\[\[([^\]]+)\]\]/; nest.rb:13
- *  /\A\{\{([^{}]*)\}\}/; query_reference.rb:38 /\A\s*"([^"]+)"/ — the
- *  query chunk's prefix is a LOOKBEHIND (':', ',' or '[' at :33), so the
- *  chunk span starts at the whitespace/quote AFTER that character. */
+ *  /\A\{\{([^{}]*)\}\}/. */
 const LINK_FULL_STICKY = /\[\[([^\]]+)\]\]/y;
 const NEST_FULL_STICKY = /\{\{([^{}]*)\}\}/y;
-const QUERY_FULL_STICKY = /\s*"([^"]+)"/y;
 /** link.rb:105 — the nest spans divider_index masks. */
 const NEST_SPAN = /\{\{[^{}]*\}\}/g;
 /** link.rb:82 — %r{^(/|https?:|mailto:)} explicit-resource targets. */
 export const EXPLICIT_LINK = /^(\/|https?:|mailto:)/;
-/** query_reference.rb:33 — the lookbehind characters a query chunk's quote
- *  must follow: `(?<=[:,\[])\s*"`. */
-const QUERY_PREFIX_CHARS: ReadonlySet<string> = new Set([":", ",", "["]);
+/** query_reference.rb :46-50 — the QueryReference prefix (a quote preceded
+ *  by `:`, `,` or `[` — the lookbehind does not consume) and its full match
+ *  (:47-48 \A\s*"([^"]+)"). The chunk text starts at the opening quote.
+ *  GLOBAL, not sticky: the prefix is searched forward through the content
+ *  (Ruby's content.index(prefix_re, position)), unlike the bracket prefixes
+ *  whose indexOf already answers the position. */
+const QUERY_PREFIX_GLOBAL = /(?<=[:,\[])\s*"([^"]+)"/g;
 
-/** The next query-chunk candidate start at or after `from`: the position
- *  just after a ':', ',' or '[' whose tail matches QUERY_FULL_STICKY.
- *  -1 when none. (Ruby's regex engine scans the same shape; the lookbehind
- *  character itself is not part of the chunk.) */
-function nextQueryChunkStart(content: string, from: number): number {
-  for (let start = Math.max(from, 1); start < content.length; start++) {
-    if (!QUERY_PREFIX_CHARS.has(content[start - 1])) continue;
-    QUERY_FULL_STICKY.lastIndex = start;
-    if (QUERY_FULL_STICKY.exec(content) !== null) return start;
-  }
-  return -1;
-}
-
-/** The parser walk (parser.rb:45-59): leftmost [[ or {{ or query prefix
- *  wins; its full regex consumes through the closer; a failed full match
- *  advances one character (parser.rb:53). A query candidate whose captured
- *  name is a query KEYWORD is no chunk at all (query_reference.rb:58-65
- *  full_match returns nil) — the walk advances one character. */
+/** The parser walk (parser.rb:45-59): leftmost [[ or {{ prefix wins; its
+ *  full regex consumes through the closer; a failed full match advances
+ *  one character (parser.rb:53). The QueryReference prefix competes in the
+ *  same leftmost walk (a quote after :/,/[ in the plain text — inside a
+ *  [[...]]/{{...}} token the bracket prefix consumed it first). */
 export function scanReferenceChunks(content: string): ReferenceChunk[] {
   const chunks: ReferenceChunk[] = [];
   let position = 0;
   while (position < content.length) {
     const linkIdx = content.indexOf("[[", position);
     const nestIdx = content.indexOf("{{", position);
-    const queryIdx = nextQueryChunkStart(content, position);
-    const candidates: Array<[number, () => ReferenceChunk | undefined]> = [];
-    if (linkIdx !== -1) {
-      candidates.push([linkIdx, () => {
-        LINK_FULL_STICKY.lastIndex = linkIdx;
-        const m = LINK_FULL_STICKY.exec(content);
-        if (m === null) return undefined;
-        return {
+    QUERY_PREFIX_GLOBAL.lastIndex = position;
+    const queryMatch = QUERY_PREFIX_GLOBAL.exec(content);
+    const queryIdx = queryMatch === null ? -1 : queryMatch.index;
+    if (linkIdx === -1 && nestIdx === -1 && queryIdx === -1) break;
+    const idx = Math.min(
+      ...[linkIdx, nestIdx, queryIdx].filter((i) => i !== -1),
+    );
+    let matched: ReferenceChunk | undefined;
+    if (idx === linkIdx) {
+      LINK_FULL_STICKY.lastIndex = idx;
+      const m = LINK_FULL_STICKY.exec(content);
+      if (m !== null) {
+        matched = {
           refereeName: linkRefereeName(m[1] ?? ""),
           refType: "L",
-          start: linkIdx,
-          end: linkIdx + m[0].length,
+          start: idx,
+          end: idx + m[0].length,
           inner: m[1] ?? "",
         };
-      }]);
-    }
-    if (nestIdx !== -1) {
-      candidates.push([nestIdx, () => {
-        NEST_FULL_STICKY.lastIndex = nestIdx;
-        const m = NEST_FULL_STICKY.exec(content);
-        if (m === null) return undefined;
-        return {
+        position = idx + m[0].length;
+      }
+    } else if (idx === nestIdx) {
+      NEST_FULL_STICKY.lastIndex = idx;
+      const m = NEST_FULL_STICKY.exec(content);
+      if (m !== null) {
+        matched = {
           refereeName: nestRefereeName(m[1] ?? ""),
           refType: "I",
-          start: nestIdx,
-          end: nestIdx + m[0].length,
+          start: idx,
+          end: idx + m[0].length,
           inner: m[1] ?? "",
         };
-      }]);
+        position = idx + m[0].length;
+      }
+    } else {
+      matched = {
+        // query_reference.rb :76-78 interpret: @name = match[1] (the quoted
+        // text; Name[] canonicalization happens in the reference walk).
+        refereeName: queryMatch![1] ?? "",
+        refType: "Q",
+        start: idx,
+        end: idx + queryMatch![0].length,
+        inner: queryMatch![1] ?? "",
+      };
+      position = idx + queryMatch![0].length;
     }
-    if (queryIdx !== -1) {
-      candidates.push([queryIdx, () => {
-        QUERY_FULL_STICKY.lastIndex = queryIdx;
-        const m = QUERY_FULL_STICKY.exec(content)!;
-        const name = m[1] ?? "";
-        // query_reference.rb:58-65: a keyword name is no chunk — the walk
-        // advances one character (undefined match, position idx + 1).
-        if (queryKeyword(name)) return undefined;
-        return {
-          refereeName: name,
-          refType: "Q",
-          start: queryIdx,
-          end: queryIdx + m[0].length,
-          inner: name,
-        };
-      }]);
-    }
-    if (candidates.length === 0) break;
-    candidates.sort((a, b) => a[0] - b[0]);
-    const [idx, build] = candidates[0];
-    const matched = build();
     if (matched !== undefined) {
       chunks.push(matched);
-      position = matched.end;
     } else {
       position = idx + 1; // bogus prefix (parser.rb:53)
     }

@@ -86,6 +86,7 @@
 import type { DeckoModManifest, ModEngineHost, ModEventCard, ModEventContext, ModEventFn, ModEventRegistration } from "../mod-manifest.js";
 import { serializerFollowsLive } from "../../render/deployment-follow-live-config.js";
 import { UnsupportedViewError } from "../../render/format.js";
+import { str, type ViewResult } from "../../render/format.js";
 import type { ViewContext, ViewFn } from "../../render/format.js";
 import {
   emitAttrs,
@@ -932,8 +933,8 @@ export const modCardCoreHtml: ViewFn = (ctx) => {
   const modname = modnameFromCodename(card.record.codename ?? "");
   const config = ADMIN_CONFIG[modname];
   const spec = MOD_SPECS[modname];
-  const sections: Array<string | undefined> = [];
-  const present: Array<() => string | undefined> = [
+  const sections: Array<ViewResult | undefined> = [];
+  const present: Array<() => ViewResult | undefined> = [
     // description (description? is constant true, type/mod.rb:122-124)
     () => typeModDescriptionView(ctx),
     () => (adminSettingList(config) === undefined ? undefined : typeModSettingsView(ctx)),
@@ -953,10 +954,11 @@ export const modCardCoreHtml: ViewFn = (ctx) => {
     // render_section_views does `.compact.join "<br/>"`); a section that
     // rendered to the empty string would contribute a stray `<br/>`.
     const body = render();
-    sections.push(body === "" ? undefined : body);
+    sections.push(body === "" || body === null ? undefined : body);
   }
   return sections
-    .filter((s): s is string => s !== undefined)
+    .filter((s): s is Exclude<ViewResult, undefined> => s !== undefined)
+    .map((section) => str(section))
     .join("<br/>");
 };
 
@@ -1016,7 +1018,8 @@ const typeModConfigurationsView: ViewFn = (ctx) => {
 
   const config = ADMIN_CONFIG[modnameFromCodename(ctx.fmt.card.record.codename ?? "")];
   const configurations = config?.configurations;
-  if (configurations === undefined || Array.isArray(configurations)) return "";
+  // type/mod.rb:38 `return unless card.configurations` - Ruby's nil.
+  if (configurations === undefined || Array.isArray(configurations)) return null;
   return Object.entries(configurations)
     .map(([category, names]) =>
       listSectionHtml(`${capitalize(category)} Configuration`, names, ctx),
@@ -1030,7 +1033,8 @@ const typeModTasksView: ViewFn = (ctx) => {
 
   const modname = modnameFromCodename(ctx.fmt.card.record.codename ?? "");
   const tasks = modTasks(modname);
-  if (tasks.length === 0) return "";
+  // type/mod.rb:47-48 `return unless tasks.present?` - Ruby's nil.
+  if (tasks.length === 0) return null;
   const selected: Record<string, AdminTaskConfig> = {};
   for (const task of tasks) selected[task] = CORE_TASK_BASKET[task]!;
   return sectionHtml("Tasks", taskTableHtml(ctx, selected));
@@ -1119,13 +1123,14 @@ function modAssetSection(
   ctx: ViewContext,
   tag: "style" | "script",
   title: string,
-): string {
+): ViewResult {
   const groups = modAssetGroups(modnameFromCodename(ctx.fmt.card.record.codename ?? ""), tag);
   if (groups === undefined || groups.length === 0) {
-    // No pinned group list: render the section only if the corpus says the
-    // child card exists, and with an empty body, because the graded corpus
-    // carries no asset file rows to list.
-    return childCard(ctx, tag) !== undefined ? sectionHtml(title, "") : "";
+    // type/mod.rb:55-56 (scripts) / 41-43 (styles): the early-return quotes -
+    // the absent-child arm is Ruby's NIL (the corpus's mod: help :scripts op
+    // records JSON null at the render boundary; the section-list core's
+    // compaction drops it like any nil section).
+    return childCard(ctx, tag) !== undefined ? sectionHtml(title, "") : null;
   }
   return sectionHtml(title, modAssetGroupsCoreHtml(groups));
 }
@@ -1407,14 +1412,25 @@ async function refreshReferencesOutEvent(
 
 /** reference_events.rb:6-10 update_referer_content: the referer rewrite +
  *  the descendants (rename_as_descendant :39-46). Needs name_before_act —
- *  the engine supplies it on renames (ModEventCard.nameBeforeAct). */
+ *  the engine supplies it on renames (ModEventCard.nameBeforeAct). The
+ *  ctx's engine-cache pair, when present, carries the same two arms the
+ *  built-in call passes: all.rb:15's Card[card_id] referers fetch (whose
+ *  miss warms the PRE-rewrite referer into the cache the render path
+ *  reads) and the update_column staleness pin — the rename-referers
+ *  oracle's frozen staleness, which drops only on the referer's own
+ *  expire. */
 async function updateRefererContentEvent(
   card: ModEventCard,
   _host: unknown,
   ctx: ModEventContext,
 ): Promise<void> {
   await updateRefererContent(
-    { driver: ctx.driver, lexicon: ctx.lexicon },
+    {
+      driver: ctx.driver,
+      lexicon: ctx.lexicon,
+      ...(ctx.fetchRefererCard !== undefined ? { fetchRefererCard: ctx.fetchRefererCard } : {}),
+      ...(ctx.pinStaleReferer !== undefined ? { pinStaleReferer: ctx.pinStaleReferer } : {}),
+    },
     card.id as number,
     DeckoName.parse(card.nameBeforeAct ?? card.name),
     DeckoName.parse(card.name),

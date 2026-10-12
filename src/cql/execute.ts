@@ -510,6 +510,7 @@ async function resolveFoundByConditions(
       options,
       depth,
     );
+    root.foundByResolved = true;
     root.conditions.splice(i, 1, ...replacements);
     i += replacements.length - 1;
   }

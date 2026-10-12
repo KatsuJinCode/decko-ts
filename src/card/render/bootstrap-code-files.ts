@@ -49,6 +49,7 @@
 // fixed module INIT on workerd; the probe fixes module LOAD.
 
 import type { RenderFormat } from "./format.js";
+import { edgeAssetSources } from "../../../vendor/edge-bootstrap-scss-snapshot.js";
 
 /** Structural slice of "node:fs" the reads use. Declared locally — never
  *  imported — so this module emits no node: specifier into any bundle. */
@@ -171,19 +172,42 @@ const BOOTSTRAP_CORE_FILES: readonly string[] = [
   "utilities/_api.scss",
 ];
 
-/** OverrideCodeFile#content: the files joined with "\n". Throws on a
- *  runtime with no filesystem — the deploy target never renders these
- *  cards, and a silent empty-string substitute would fake Ruby's bytes. */
+/** OverrideCodeFile#content: the files joined with "\n". On a Node host the
+ *  files come from the vendored tree; on an edge runtime, from the generated
+ *  snapshot of the same tree (vendor/edge-asset-source-snapshot.js) — the
+ *  skin assembly reads these cards on the write path. A file in neither
+ *  place is an error, never a silent empty-string substitute.
+ *
+ *  The fs probe alone no longer proves a real filesystem: workerd's
+ *  nodejs_compat layer (compatibility date 2026-09-01) answers
+ *  process.getBuiltinModule("node:fs") with a virtual fs, and on that host
+ *  the directory resolution throws anyway (bootstrapScssDirectory's
+ *  `new URL` needs an absolute import.meta.url, which workerd does not
+ *  provide). So the fs branch runs only when the directory actually
+ *  resolves AND holds the first file; every other host reads the embedded
+ *  snapshot — same bytes, and a file missing from BOTH places still
+ *  throws. */
 function loadStylesheets(files: readonly string[]): string {
   const fs = nodeFsOrNull();
-  if (fs === undefined) {
-    throw new Error(
-      "bootstrap code-file content needs a Node filesystem (vendored fixtures/vendor/bootstrap-scss/); this runtime has none",
-    );
+  if (files.length > 0 && fs !== undefined) {
+    let base: URL | undefined;
+    try {
+      base = bootstrapScssDirectory();
+    } catch {
+      base = undefined;
+    }
+    if (base !== undefined && (fs.existsSync === undefined || fs.existsSync(new URL(files[0]!, base)))) {
+      return files.map((f) => fs.readFileSync(new URL(f, base!), "utf8")).join("\n");
+    }
   }
-  const base = bootstrapScssDirectory();
   return files
-    .map((f) => fs.readFileSync(new URL(f, base), "utf8"))
+    .map((f) => {
+      const embedded = edgeAssetSources[`bootstrap-scss/${f}`];
+      if (embedded === undefined) {
+        throw new Error(`vendored bootstrap scss not found in the edge snapshot: bootstrap-scss/${f}`);
+      }
+      return embedded;
+    })
     .join("\n");
 }
 

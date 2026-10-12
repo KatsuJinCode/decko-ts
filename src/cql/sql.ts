@@ -498,20 +498,43 @@ interface OrderDirective {
 function orderDirectivesOf(query: QueryNode, ctx: GenContext): OrderDirective[] {
   const sortMod = query.mods.sortBy ?? query.mods.sort;
   if (!sortMod || sortMod.length === 0) {
-    // SORTLESS JOINED REFERENCE STATEMENTS (the +*members family): Ruby's
-    // statement carries no ORDER BY and the captured row order is the
-    // reference-join emission — a plan-sensitive tier that flipped between
-    // engine builds whose prepare-phase query sequences differ (the Help
-    // Desk +*members listing: verification email (21783) and password reset
-    // email (21787) tie on everything the statement orders by, and the two
-    // orders alternated deterministically with the build). Pinning the
-    // superquery's id asc makes the tier deterministic; the Help Desk
-    // capture is id-ascending, and the sorted joined shapes keep their bare
-    // Ruby ORDER BY untouched (the somatic NULL-key tier above is a SORTED
-    // statement — this arm never fires for it).
+    // SORTLESS JOINED STATEMENTS. Ruby's statement carries no ORDER BY and
+    // the captured row order is the JOIN EMISSION order - the plan's
+    // driving-table sequence, reproducible by emitting Ruby's bare
+    // statement (node:sqlite reproduces Ruby's emission for the Ruby SQL
+    // shape on the same database file). Two captured families still carry
+    // the id-asc determinism pin, and the shapes are distinguishable by
+    // their join fields:
+    //
+    // - REFERENCE-join statements (card_references joins; the +*members
+    //   family): the tie tier flipped between engine builds whose
+    //   prepare-phase query sequences differ (the Help Desk +*members
+    //   listing: verification email (21783) and password reset email
+    //   (21787)); the Help Desk capture is id-ascending.
+    // - LOOKUP ties (the subquery joined by its id - the type tie's
+    //   `c0.type_id = c1.id`): the captured emission is the superquery's
+    //   rowid ride (one sub row, main rows in type_id-index order =
+    //   id asc; sql-generation.test.ts pins the graded shape).
+    //
+    // JUNCTION ties are the third shape, and the bare statement is theirs:
+    // right_plus/left_plus traverse a SUB-ROW SET (JOIN cards ON
+    // c0.id = c1.left_id), and the corpus's "Cards with accounts" search
+    // ({"right_plus": ":account"}, sortless) captured the emission order
+    // 232,18,1,611,617,913 - the cards_right_id_index ride on the
+    // subquery (right rows 239,244,249,612,618,914), which the previous
+    // blanket id-asc pin re-sorted to 1,18,232,... (the
+    // search-result-composition family's divergence). Sorted joined
+    // shapes keep their bare Ruby ORDER BY untouched either way.
     const joins = renderedJoins(query);
     if (joins.length > 0) {
-      return [{ field: `${query.tableAlias}.id`, dir: "asc" }];
+      const junctionTie = joins.every(
+        (j) =>
+          j.toTable === "cards" &&
+          j.fromField === "id" &&
+          (j.toField === "left_id" || j.toField === "right_id"),
+      );
+      if (!junctionTie) return [{ field: `${query.tableAlias}.id`, dir: "asc" }];
+      return [];
     }
     return [];
   }
@@ -537,8 +560,19 @@ function orderDirectivesOf(query: QueryNode, ctx: GenContext): OrderDirective[] 
       directives.push({ field: `${query.tableAlias}.read_rule_id`, dir: "asc" });
       directives.push({ field: idField, dir: "asc" });
     }
+  } else if (query.foundByResolved === true) {
+    // The found_by-constrained statements' captured emission sorts STABLE —
+    // the whole tie tier id-ASCENDING whatever the primary's direction (the
+    // graded Help Desk by-update listing: six email templates all tied on
+    // updated_at, emitted id-asc under an updated_at-desc primary). The
+    // foundByResolved flag marks the statements the executor constrained
+    // with the resolved `id IN (ids)` — the shape whose captured plan ran
+    // the stable sort.
+    directives.push({ field: idField, dir: "asc" });
   } else {
-    // Always-ok scan: the unspecified tier follows the primary's direction.
+    // The other sorted shapes' captured emission follows the primary's
+    // direction (the graded *search listing pins the id-desc tie tier under
+    // its relevance-desc primary).
     directives.push({ field: idField, dir: directives[0].dir || "asc" });
   }
   return directives;

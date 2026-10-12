@@ -321,6 +321,14 @@ export interface ModSetModuleFile {
    *  type_id_from_template`). */
   readonly assignsType?: string;
 
+  /** The file's mod data rule seeds (data/real.yml rule rows the gem ships;
+   *  card-mod-recaptcha data/real.yml's *captcha toggles are the ported
+   *  case). Registered into the mod rule-seed registry (mod-rule-seeds.ts)
+   *  at load; the form-side recaptcha gate reads them synchronously (the
+   *  validate side stays storage-only — mod-rule-seeds.ts' header records
+   *  why). */
+  readonly ruleSeeds?: readonly Readonly<{ name: string; content: string }>[];
+
   /** the file's `basket[:tasks][:name] = {...}` declarations
    *  (set/self/admin.rb in card-mod-carrierwave; the registrar's basket
    *  machinery, lib/card/set/basket.rb). The loader collects them in load
@@ -419,6 +427,10 @@ export interface DeckoModManifest {
 export interface ModEngineHost {
   /** Cache-first render-card resolution (the sync render-path surface). */
   fetchRenderCard(name: string): unknown;
+
+  /** Fetch one card by NAME (the fetch ladder's by-name arm; the warms
+   *  that seat named setting cards through cacheFetchedRecord). */
+  fetchByName?(name: string): Promise<unknown | undefined>;
 
   /** Read-permission verdict for a prepared card (ok_to_read? set membership). */
   isDenied(card: unknown): boolean;

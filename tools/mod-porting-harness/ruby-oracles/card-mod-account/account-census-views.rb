@@ -315,14 +315,16 @@ emit(behaviorId: "view:new_buttons",
 # Scenario 5: view :edit (signin.rb:154-157, the FORGOT-PASSWORD form) -
 # the reset_password_voo contract (:159-163: title ||= t(:account_forgot_
 # password); edit_structure = [signin_field(:email)]; hide :help) + the
-# Auth.as_bot { super() } dispatch. signin_field (:198-202): the "+email"
-# field nest tuple.
+# Auth.as_bot { super() } dispatch. signin_field (:198-202): the field nest
+# tuple - the SYMBOL :email stars the mark through the codename lookup
+# (runtime-probed: "".to_name.field(:email) == "+*email"; the earlier
+# hand-derived "+email" here missed the star).
 emit(behaviorId: "view:edit",
      kind: "view-fragment",
      scenario: "signin_edit_reset_password_voo",
      gemSource: "set/self/signin.rb:154-157 + 159-163 + 198-202 (signin_field :email) + en.yml:16",
      title: EN["account_forgot_password"],
-     editStructure: ["+email"],
+     editStructure: ["+*email"],
      editStructureOpts: { title: "email", view: "titled", skip_perms: true },
      hide: ["help"],
      dispatch: "Auth.as_bot { super() } -> card-mod-edit set/all/edit.rb view :edit")

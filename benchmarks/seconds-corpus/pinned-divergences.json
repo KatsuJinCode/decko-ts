@@ -1,0 +1,644 @@
+{
+ "format": "seconds-corpus-pinned-divergences/2",
+ "note": "Two sections, the operator's 2026-10-10 ruling. `pins`: TRUE DIVERGENCES, remaining port work - operations where the engine's bytes differ from the oracle's recorded bytes, each pinned with its first-difference evidence and its row_kind (99 divergences on working pages; 8 rows whose oracle capture is itself a failure page, named with their failure kind). A pin is a port gap to CLOSE, not an intent to differ: when a fix lands, delete its pins and the gate tightens automatically. Any diff on an op NOT listed here fails the gate. `reproduced_upstream_failures`: REPRODUCED UPSTREAM FAILURES, successes of the port - operations whose oracle answer is a recorded failure that the engine reproduces failure-for-failure under the same byte-identity bar (N7 class naming, byte-exact message). Both directions are enforced: a listed row that stops reproducing, or a reproduced row missing from the ledger, fails the gate.",
+ "reproduced_upstream_failures": [
+  {
+   "op": "page:anonymous:Cohort Welcome",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / anonymous",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:member:Cohort Welcome",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / member",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:contractor:Cohort Welcome",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / contractor",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:admin:Cohort Welcome",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / admin",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:anonymous:welcome email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / anonymous",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:member:welcome email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / member",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:contractor:welcome email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / contractor",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:admin:welcome email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / admin",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:anonymous:password reset email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / anonymous",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:member:password reset email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / member",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:contractor:password reset email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / contractor",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:admin:password reset email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / admin",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:anonymous:follower notification email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / anonymous",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:member:follower notification email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / member",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:contractor:follower notification email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / contractor",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:admin:follower notification email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / admin",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:anonymous:verification email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / anonymous",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:member:verification email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / member",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:contractor:verification email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / contractor",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:admin:verification email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / admin",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:anonymous:signup alert email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / anonymous",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:member:signup alert email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / member",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:contractor:signup alert email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / contractor",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  },
+  {
+   "op": "page:admin:signup alert email",
+   "family": "reproduced-upstream-failure:codename-not-found",
+   "group": "page / admin",
+   "failure": {
+    "kind": "upstream raise: the card references codename 'test_context', which stock Ruby's codename table does not define (Card::CodenameNotFound), so the page render raises for every actor - the original site's own failure, recorded by the capture and reproduced failure-for-failure by the engine",
+    "oracle": {
+     "class": "Card::Error::CodenameNotFound",
+     "message": "unknown codename: test_context"
+    },
+    "engine": {
+     "class": "CodenameNotFoundError",
+     "message": "unknown codename: test_context"
+    }
+   },
+   "recorded": "2026-10-10 upstream-failure-classification lane, from the after-instrument grade report at this tip. Previously tallied as an oracle error and left ungraded; under the operator's ruling it is a REPRODUCED UPSTREAM FAILURE - a success of the port, counted in its own category. Verified every run failure-for-failure: the class's host naming canonicalized under N7, the message byte-exact. A run where the row stops reproducing (the engine renders a page, or fails differently) fails the gate."
+  }
+ ],
+ "pins": [
+  {
+   "op": "page:member:*account links",
+   "family": "composed-mod-view-gap",
+   "group": "page / member",
+   "evidence": {
+    "firstDiffAt": 15804,
+    "expected": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><div class=\\\"btn-group\\\"><a id=\\\"my-ca",
+    "actual": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" value=\\\"Anyone Signed In\\nMember\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><di"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "page:admin:*account links",
+   "family": "composed-mod-view-gap",
+   "group": "page / admin",
+   "evidence": {
+    "firstDiffAt": 15919,
+    "expected": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><div class=\\\"btn-group\\\"><a id=\\\"my-ca",
+    "actual": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" value=\\\"Anyone Signed In\\nAdministrator\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-lis"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "page:member:*header",
+   "family": "composed-mod-view-gap",
+   "group": "page / member",
+   "evidence": {
+    "firstDiffAt": 10856,
+    "expected": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" value=\\\"Anyone Signed In\\nMember\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><di",
+    "actual": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><div class=\\\"btn-group\\\"><a id=\\\"my-ca"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "page:admin:*header",
+   "family": "composed-mod-view-gap",
+   "group": "page / admin",
+   "evidence": {
+    "firstDiffAt": 10949,
+    "expected": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" value=\\\"Anyone Signed In\\nAdministrator\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-lis",
+    "actual": "content form-control\\\" autocomplete=\\\"off\\\" type=\\\"hidden\\\" name=\\\"card[content]\\\" id=\\\"card_content\\\" /><div class=\\\"pointer-checkbox-list\\\"><div class=\\\"btn-group\\\"><a id=\\\"my-ca"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:Report 1:preview_editor",
+   "family": "render-error-panel: the backtrace div's frame COUNT differs under N6 (Ruby boot-inclusive backtrace vs the engine's own V8 stack)",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 420,
+    "expected": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;",
+    "actual": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;/div&gt;\\n    \\\">Report 1</span> (preview_editor view)</span>\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/). Under N6 the div's residual is the frame count: 60 Ruby frames (oracle backtrace) vs 8 V8 frames (engine stack).",
+   "row_kind": "upstream-failure page",
+   "failure_kind": "same raise posture as debug_server_error: byte-same message, N6 frame-count residual",
+   "ruled": "necessary divergence — the N6 frame-count residual (Ruby boot-inclusive backtraces vs the engine's V8 stacks), closed as port work per operator ruling 2026-10-10; graded and byte-checked here, not remaining work"
+  },
+  {
+   "op": "view:admin:Note 001:debug_server_error",
+   "family": "render-error-panel: the backtrace div's frame COUNT differs under N6 (Ruby boot-inclusive backtrace vs the engine's own V8 stack)",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 445,
+    "expected": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;",
+    "actual": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;/div&gt;\\n    \\\">Note 001</span> (debug_server_error view)</span>\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/). Under N6 the div's residual is the frame count: 51 Ruby frames (oracle backtrace) vs 8 V8 frames (engine stack).",
+   "row_kind": "upstream-failure page",
+   "failure_kind": "the oracle's own render raises (uninitialized constant BetterErrors) and the recorded page is the raise's debug page; the engine raises the same NameError with the byte-same message - the residual is the backtrace div's frame count (N6)",
+   "ruled": "necessary divergence — the N6 frame-count residual (Ruby boot-inclusive backtraces vs the engine's V8 stacks), closed as port work per operator ruling 2026-10-10; graded and byte-checked here, not remaining work"
+  },
+  {
+   "op": "view:admin:Ada Admin+*account:verify_url",
+   "family": "render-error-panel: the backtrace div's frame COUNT differs under N6 (Ruby boot-inclusive backtrace vs the engine's own V8 stack)",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 445,
+    "expected": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;",
+    "actual": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;/div&gt;\\n    \\\">Ada Admin+*account</span> (verify_url view)</span>\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/). Under N6 the div's residual is the frame count: 63 Ruby frames (oracle backtrace) vs 10 V8 frames (engine stack).",
+   "row_kind": "upstream-failure page",
+   "failure_kind": "same raise posture as debug_server_error: byte-same message, N6 frame-count residual",
+   "ruled": "necessary divergence — the N6 frame-count residual (Ruby boot-inclusive backtraces vs the engine's V8 stacks), closed as port work per operator ruling 2026-10-10; graded and byte-checked here, not remaining work"
+  },
+  {
+   "op": "view:admin:Ada Admin+*account:reset_password_url",
+   "family": "render-error-panel: the backtrace div's frame COUNT differs under N6 (Ruby boot-inclusive backtrace vs the engine's own V8 stack)",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 445,
+    "expected": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;",
+    "actual": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;/div&gt;\\n    \\\">Ada Admin+*account</span> (reset_password_url view)</span>\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/). Under N6 the div's residual is the frame count: 63 Ruby frames (oracle backtrace) vs 10 V8 frames (engine stack).",
+   "row_kind": "upstream-failure page",
+   "failure_kind": "same raise posture as debug_server_error: byte-same message, N6 frame-count residual",
+   "ruled": "necessary divergence — the N6 frame-count residual (Ruby boot-inclusive backtraces vs the engine's V8 stacks), closed as port work per operator ruling 2026-10-10; graded and byte-checked here, not remaining work"
+  },
+  {
+   "op": "view:admin:Ada Admin+*account:closure",
+   "family": "render-error-panel: the backtrace div's frame COUNT differs under N6 (Ruby boot-inclusive backtrace vs the engine's own V8 stack)",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 464,
+    "expected": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;",
+    "actual": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;/div&gt;\\n    \\\">Ada Admin+*account</span> (closure view)</span>\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/). Under N6 the div's residual is the frame count: 59 Ruby frames (oracle backtrace) vs 8 V8 frames (engine stack).",
+   "row_kind": "upstream-failure page",
+   "failure_kind": "same raise posture as debug_server_error: byte-same message, N6 frame-count residual",
+   "ruled": "necessary divergence — the N6 frame-count residual (Ruby boot-inclusive backtraces vs the engine's V8 stacks), closed as port work per operator ruling 2026-10-10; graded and byte-checked here, not remaining work"
+  },
+  {
+   "op": "view:admin:All Topics:search_count",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 9,
+    "expected": "{\"html\":\"[#<Card#655[:605](Topic 001){set_mods_loaded}, #<Card#659[:605](Topic 002){set_mods_loaded}, #<Card#663[:605](Topic 003)",
+    "actual": "{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible "
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:All Topics:paging",
+   "family": "composed-mod-view-gap",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 9,
+    "expected": "{\"html\":\"<nav class='nav justify-content-between align-items-center'>\\n<ul class='pagination paging'>\\n<li class=\\\"page-item\\\"><d",
+    "actual": "{\"html\":\"\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/).",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "view:admin:*all+*script:asset_output_url",
+   "family": "render-error-panel: the backtrace div's frame COUNT differs under N6 (Ruby boot-inclusive backtrace vs the engine's own V8 stack)",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 482,
+    "expected": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;",
+    "actual": "br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;br&gt;\\nN6#frame&lt;/div&gt;\\n    \\\">*all+*script</span> (asset_output_url view)</span>\"}"
+   },
+   "recorded": "2026-10-10 re-adjudicated at n6-backtrace-canonicalization tip (rebased onto int-100 98596a07: raise-posture via the line's own merge 6b9972cf + styleform closures + the fixture phrase-codename fix; rules N4/N5/N6; the after-N6 gate run; oracle bytes committed under reference-harness/fixtures/synthetic-v2/expected/). Under N6 the div's residual is the frame count: 53 Ruby frames (oracle backtrace) vs 8 V8 frames (engine stack).",
+   "row_kind": "upstream-failure page",
+   "failure_kind": "same raise posture as debug_server_error: byte-same message, N6 frame-count residual",
+   "ruled": "necessary divergence — the N6 frame-count residual (Ruby boot-inclusive backtraces vs the engine's V8 stacks), closed as port work per operator ruling 2026-10-10; graded and byte-checked here, not remaining work"
+  },
+  {
+   "op": "page:anonymous:*search",
+   "family": "search-cluster: the *search page's bytes under the vars plumbing and the paging offset",
+   "group": "page / anonymous",
+   "evidence": {
+    "firstDiffAt": 11679,
+    "expected": "rd-body d0-card-content ALL TYPE-search STAR SELF-Xsearch\\\">\\n<div class=\\\"card-list card-list-bar search-result-list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"decko_b",
+    "actual": "rd-body d0-card-content ALL TYPE-search STAR SELF-Xsearch\\\"><div class=\\\"card-list card-list-bar search-result-list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"decko_bot"
+   },
+   "recorded": "2026-10-11 re-opened by merge 48's search cluster (the vars plumbing: the request's query vars ride the render params into the search warm — search_params.rb:12-18 — and the paging offset windows the item search, paging.rb:37-45): the *search page's rendered bytes moved from merge 31's byte-identical closure; the search journeys the cluster closes grade green (navbox-cql-member, navbox-paging, search-filtered-anonymous, search-card-pages — §10.22). Owned by the search surface.",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "page:member:*search",
+   "family": "search-cluster: the *search page's bytes under the vars plumbing and the paging offset",
+   "group": "page / member",
+   "evidence": {
+    "firstDiffAt": 14343,
+    "expected": "rd-body d0-card-content ALL TYPE-search STAR SELF-Xsearch\\\">\\n<div class=\\\"card-list card-list-bar search-result-list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"decko_b",
+    "actual": "rd-body d0-card-content ALL TYPE-search STAR SELF-Xsearch\\\"><div class=\\\"card-list card-list-bar search-result-list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"decko_bot"
+   },
+   "recorded": "2026-10-11 re-opened by merge 48's search cluster (the vars plumbing: the request's query vars ride the render params into the search warm — search_params.rb:12-18 — and the paging offset windows the item search, paging.rb:37-45): the *search page's rendered bytes moved from merge 31's byte-identical closure; the search journeys the cluster closes grade green (navbox-cql-member, navbox-paging, search-filtered-anonymous, search-card-pages — §10.22). Owned by the search surface.",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "page:contractor:*search",
+   "family": "search-cluster: the *search page's bytes under the vars plumbing and the paging offset",
+   "group": "page / contractor",
+   "evidence": {
+    "firstDiffAt": 12212,
+    "expected": "rd-body d0-card-content ALL TYPE-search STAR SELF-Xsearch\\\">\\n<div class=\\\"card-list card-list-bar search-result-list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"decko_b",
+    "actual": "rd-body d0-card-content ALL TYPE-search STAR SELF-Xsearch\\\"><div class=\\\"card-list card-list-bar search-result-list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"decko_bot"
+   },
+   "recorded": "2026-10-11 re-opened by merge 48's search cluster (the vars plumbing: the request's query vars ride the render params into the search warm — search_params.rb:12-18 — and the paging offset windows the item search, paging.rb:37-45): the *search page's rendered bytes moved from merge 31's byte-identical closure; the search journeys the cluster closes grade green (navbox-cql-member, navbox-paging, search-filtered-anonymous, search-card-pages — §10.22). Owned by the search surface.",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "page:admin:*search",
+   "family": "search-cluster: the *search page's bytes under the vars plumbing and the paging offset",
+   "group": "page / admin",
+   "evidence": {
+    "firstDiffAt": 14454,
+    "expected": "rd-body d0-card-content ALL TYPE-search STAR SELF-Xsearch\\\">\\n<div class=\\\"card-list card-list-bar search-result-list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"note-Xt",
+    "actual": "rd-body d0-card-content ALL TYPE-search STAR SELF-Xsearch\\\"><div class=\\\"card-list card-list-bar search-result-list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"note-Xtyp"
+   },
+   "recorded": "2026-10-11 re-opened by merge 48's search cluster (the vars plumbing: the request's query vars ride the render params into the search warm — search_params.rb:12-18 — and the paging offset windows the item search, paging.rb:37-45): the *search page's rendered bytes moved from merge 31's byte-identical closure; the search journeys the cluster closes grade green (navbox-cql-member, navbox-paging, search-filtered-anonymous, search-card-pages — §10.22). Owned by the search surface.",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "core:admin:*search",
+   "family": "search-cluster: the *search page's bytes under the vars plumbing and the paging offset",
+   "group": "view / admin",
+   "evidence": {
+    "firstDiffAt": 9,
+    "expected": "{\"html\":\"\\n<div class=\\\"card-list card-list-bar search-result-list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"note-Xt",
+    "actual": "{\"html\":\"<div class=\\\"card-list card-list-bar search-result-list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"note-Xtyp"
+   },
+   "recorded": "2026-10-11 re-opened by merge 48's search cluster (the vars plumbing: the request's query vars ride the render params into the search warm — search_params.rb:12-18 — and the paging offset windows the item search, paging.rb:37-45): the *search page's rendered bytes moved from merge 31's byte-identical closure; the search journeys the cluster closes grade green (navbox-cql-member, navbox-paging, search-filtered-anonymous, search-card-pages — §10.22). Owned by the search surface.",
+   "row_kind": "working-page divergence"
+  },
+  {
+   "op": "core:anonymous:*search",
+   "family": "search-cluster: the *search page's bytes under the vars plumbing and the paging offset",
+   "group": "view / anonymous",
+   "evidence": {
+    "firstDiffAt": 9,
+    "expected": "{\"html\":\"\\n<div class=\\\"card-list card-list-bar search-result-list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"decko_b",
+    "actual": "{\"html\":\"<div class=\\\"card-list card-list-bar search-result-list\\\"><div class=\\\"search-result-item item-bar\\\"><div id=\\\"decko_bot"
+   },
+   "recorded": "2026-10-11 re-opened by merge 48's search cluster (the vars plumbing: the request's query vars ride the render params into the search warm — search_params.rb:12-18 — and the paging offset windows the item search, paging.rb:37-45): the *search page's rendered bytes moved from merge 31's byte-identical closure; the search journeys the cluster closes grade green (navbox-cql-member, navbox-paging, search-filtered-anonymous, search-card-pages — §10.22). Owned by the search surface.",
+   "row_kind": "working-page divergence"
+  }
+ ]
+}

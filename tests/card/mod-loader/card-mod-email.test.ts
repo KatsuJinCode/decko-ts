@@ -106,10 +106,12 @@ describe("card-mod-email through the mod loader (A/B)", () => {
     const html = await s.engine.render("Oracle Email Probe", "email_page");
     expect(html.startsWith("<!DOCTYPE html>\n<html>\n  <head>\n")).toBe(true);
     // After </style>\n  </head>\n  <body class="d0-email-body">\n the
-    // core slot begins; the closing is </body>\n</html> with no extra
-    // trailing newline (the heredoc body has no trailing newline after
-    // </html>).
-    expect(html.endsWith("</body>\n</html>")).toBe(true);
+    // core slot begins; the closing is </body>\n</html>\n - the heredoc
+    // terminator sits on its own line, so the squiggly heredoc's value
+    // KEEPS the newline after </html> (the oracle's 271-byte email_page
+    // for welcome email ends "</html>\n" - the render-panels lane's byte
+    // adjudication against reference-harness/fixtures/synthetic-v2).
+    expect(html.endsWith("</body>\n</html>\n")).toBe(true);
   });
 
   it("WITH the mod: the html format REJECTS :compact_missing; the email_text format renders the empty string (set/all/email_text.rb:6-8)", async () => {

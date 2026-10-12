@@ -184,17 +184,24 @@
 //   these set modules but the methods are not callable in a headless
 //   engine (they describe the type-mod surface for the live editor)
 
-import type { ViewContext, ViewFn } from "../../render/format.js";
+import { rubyBacktraceError, type ViewContext, type ViewFn } from "../../render/format.js";
 import { serializerFollowsLive } from "../../render/deployment-follow-live-config.js";
 import { DeckoName } from "../../name.js";
 import { emitAttrs, h, newSlotId, slotOptionsJson } from "../../render/slot-html.js";
+import { RenderFormat, str, type ViewResult } from "../../render/format.js";
 import { modSlotWrap } from "../mod-view-helpers.js";
-import { createFormShell } from "../mod-form-substrate.js";
+import { createFormShell, successTags } from "../mod-form-substrate.js";
 import { readFormgroupBody, templateLinkSetNameFromParts } from "../../render/views.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
-import { parseNestOptions } from "../../render/nest-syntax.js";
-import { timeAgoInWords } from "./card-mod-history.js";
+import { parseNestOptions, scanNests } from "../../render/nest-syntax.js";
+import { virtualSearchCqlFor } from "../../fetch/virtual-search-cards.js";
+import { safeSetKeys } from "../../render/set-keys.js";
+import { getNameEnvironment } from "../../name/environment.js";
+import { modRuleSeedContentForCandidate } from "../mod-rule-seeds.js";
+import { renderRecaptchaConfig } from "../../render/render-recaptcha-config.js";
+import { recaptchaFormOn, recaptchaHiddenFormTags } from "./card-mod-recaptcha.js";
+import { timeAgoInWords, actSummaryBadge } from "./card-mod-history.js";
 import { ruleSidesStatement } from "./rule-card-warm.js";
 import { cardWallClockNow } from "../../wall-clock.js";
 import type {
@@ -214,9 +221,12 @@ import type {
  *  a blank line); empty STRINGS are Ruby-truthy and stay (they would join
  *  as empty lines). The forms surface has no empty-string members, but the
  *  compaction contract is kept exact. */
-function output(parts: (string | undefined | null)[]): string {
+function output(parts: (ViewResult | undefined)[]): string {
+  // Ruby's join is to_s over the compacted array (content.rb:70-73) - the
+  // per-part str() once view bodies may answer numbers/null.
   return parts
-    .filter((part): part is string => part !== undefined && part !== null)
+    .filter((part): part is Exclude<ViewResult, null> => part !== undefined && part !== null)
+    .map(str)
     .join("\n");
 }
 
@@ -344,21 +354,24 @@ export const templateNestView: ViewFn = (ctx) => {
 };
 
 /** all/editing.rb:46-48 :just_deleted, unknown: true: `wrap { "#{render_
-//  title} deleted" }`. `wrap` (voo_api.rb:167-177) is `<div>X</div>` -
-//  no attrs, no class. `render_title` is the title view, ported in
-//  src/card/render/views.ts#titleView (card-mod-format set/all/title.rb).
-//  unknown: true means a deleted card whose view substitution routed
-//  here - the nest that fired the delete action (format/nest/fetch.rb)
-//  receives `<div><span class="card-title" title="X">X</span>
-//  deleted</div>`. The title view runs through the format's normal
-//  voo machinery, so an unknown card still gets the title span (no
-//  read-permission denial: :just_deleted is `perms: :none`-implicit
-//  because the unknown-card substitution routes to it before the
-//  read-permission check, view/permission.rb#skip_check? for
-//  unknown-card substitutions). */
-const justDeletedView: ViewFn = ({ fmt }) => {
+ *  title} deleted" }`. `wrap` (card-mod-format set/all/html/wrap.rb:6-10
+ *  + slot_attributes :22-28) is the FULL SLOT WRAP: id
+ *  `<safe-key>-just_deleted-view`, class "card-slot just_deleted-view"
+ *  + the card's set keys, the data-card-* attrs and the data-slot JSON
+ *  ({view: just_deleted, show:[just_deleted]}). The graded corpus pins
+ *  the wrap on the Note 001 row (a bare `<div>` was the earlier
+ *  reading). `render_title` is the title view, ported in
+ *  src/card/render/views.ts#titleView (card-mod-format set/all/title.rb).
+ *  unknown: true means a deleted card whose view substitution routed
+ *  here. The title view runs through the format's normal voo machinery,
+ *  so an unknown card still gets the title span (no read-permission
+ *  denial: :just_deleted is `perms: :none`-implicit because the
+ *  unknown-card substitution routes to it before the read-permission
+ *  check, view/permission.rb#skip_check? for unknown-card
+ *  substitutions). */
+const justDeletedView: ViewFn = ({ fmt, voo }) => {
   const title = fmt.renderView("title");
-  return `<div>${title} deleted</div>`;
+  return modSlotWrap({ fmt, voo }, "just_deleted", `${title} deleted`);
 };
 
 // ---------------------------------------------------------------------------
@@ -409,6 +422,18 @@ function modalCancelButton(): string {
   return `<button name="button" type="button" data-bs-dismiss="modal" data-cy="close-modal" class="cancel-button btn btn-secondary">Cancel</button>`;
 }
 
+/** The `structure_rule_card` fetch posture (templating.rb:44-47:
+ *  `rule_card :structure, skip_modules: true`): the card instances that
+ *  fetch returns never get their set modules included (card/fetch/
+ *  results.rb:11 `card.include_set_modules unless skip_modules?`), so the
+ *  rule-set card methods the render calls on that instance downstream are
+ *  ABSENT. The engine's cards carry every set semantic by construction; this
+ *  registry marks the instances standing for Ruby's module-less ones, so the
+ *  affected rule-set method ports reproduce the absence (the delete_confirm
+ *  raise below; the rule set's help override is absent with it, which the
+ *  engine's help view already models by not porting an override). */
+const structureRuleFetchInstances = new WeakSet<object>();
+
 /** all/form_buttons.rb:56-77 delete_button + delete_button_opts +
  *  delete_confirm + delete_success (NOT main? branch - the engine render
  *  surface is non-focal; the main? branch is the page layer's remainder):
@@ -416,9 +441,36 @@ function modalCancelButton(): string {
  *  "Are you sure you want to delete #{safe_name}?"; path action :delete,
  *  success {view: :just_deleted}; remote. link_to (links.rb) appends href
  *  then data-remote LAST; the success hash rides the query string
- *  Rails-deep-encoded (success[view]=just_deleted percent-encoded). */
+ *  Rails-deep-encoded (success[view]=just_deleted percent-encoded).
+ *
+ *  On a card whose instance came from the structure_rule_card fetch (the
+ *  skip_modules posture above) the Rule set's delete_confirm override runs
+ *  instead (rule_form/buttons.rb:32-40, the rule card's format) and its
+ *  `setting = card.rule_setting_name` (rules.rb:36-38) MISSES - ActiveRecord's
+ *  attribute method_missing chain raises NoMethodError "undefined method
+ *  `rule_setting_name' for an instance of Card". The reproduced upstream
+ *  failure ruling: the oracle's answer for view:admin:Topic 001:edit_structure
+ *  embeds the quiet render-error span carrying that debug page (168
+ *  boot-inclusive Ruby frames in the committed capture at
+ *  reference-harness/fixtures/synthetic-v2/expected, re-verified live on the
+ *  capture host). The same override on a NON-flagged rule card works - the
+ *  oracle's rule_edit page renders the delete button with the rule confirm
+ *  text (the rule form's own edit_rule_buttons chain, a card fetched without
+ *  skip_modules) - so the flag decides, exactly the upstream instance
+ *  posture; the declared frame structure carries the oracle's measured
+ *  boot-inclusive depth (rubyBacktraceError, the N6 frame-count port-work
+ *  statement). */
 function deleteButton(fmt: ViewContext["fmt"]): string | undefined {
   if (fmt.card.id === undefined) return undefined; // `return unless card.real?`
+  if (
+    structureRuleFetchInstances.has(fmt.card) &&
+    (fmt.engine.cardMatchesRuleSet?.(fmt.card) ?? false)
+  ) {
+    throw rubyBacktraceError(
+      "undefined method `rule_setting_name' for an instance of Card",
+      168,
+    );
+  }
   const name = h(fmt.card.name.s);
   return `<a class="slotter btn btn-outline-danger ms-auto" data-confirm="Are you sure you want to delete ${name}?" href="/delete/${fmt.urlKey()}?success%5Bview%5D=just_deleted" data-remote="true">Delete</a>`;
 }
@@ -507,10 +559,29 @@ export const editTypeRowView: ViewFn = ({ fmt, voo }) => {
  *  fields carry autocomplete="off" (form_tag_helper.rb:309
  *  hidden_field_tag = text_field_tag(..., type: :hidden,
  *  autocomplete: "off")); the attribute order is the captured one. */
-export const conflictTrackerView: ViewFn = ({ fmt }) => {
+export const conflictTrackerView: ViewFn = ({ fmt, voo }) => {
   if (fmt.card.id === undefined) return ""; // `return unless card&.real?`
   const value = fmt.card.record.currentRevisionId;
-  return `<input class="current_revision_id form-control" autocomplete="off" type="hidden" value="${value ?? ""}" name="card[last_action_id_before_edit]" id="card_last_action_id_before_edit" />`;
+  // hidden_field :last_action_id_before_edit — the name rides the form
+  // builder's prefix (form.rb:147-160 form_prefix: "card" for the form's
+  // own card, "card[subcards][+summary]" for a structured-form field — the
+  // graded board fieldset pins the prefixed names).
+  const prefix =
+    typeof voo.opts["form_name_prefix"] === "string" && voo.opts["form_name_prefix"] !== ""
+      ? (voo.opts["form_name_prefix"] as string)
+      : "card";
+  const name = `${prefix}[last_action_id_before_edit]`;
+  // Rails sanitize_to_id: delete("]") then tr("^-a-zA-Z0-9:.", "_") — the
+  // starred marks' * lands as _ (the graded setup row pins
+  // card_subcards___account_subcards___email_last_action_id_before_edit).
+  const id = name.replace(/\]/g, "").replace(/[^-a-zA-Z0-9:.]/g, "_");
+  // Rails' tag helper SKIPS nil values (tag_helper.rb:298) — a card with
+  // no actions has last_action_id nil and the value attribute vanishes
+  // (the graded setup row's +*password field: no value attr at all).
+  const valueAttr = value === undefined || value === null
+    ? ""
+    : ` value="${h(String(value))}"`;
+  return `<input class="current_revision_id form-control" autocomplete="off" type="hidden"${valueAttr} name="${h(name)}" id="${h(id)}" />`;
 };
 
 /** The TYPE-set format-helper input_type overrides - Ruby's set-module MRO
@@ -535,6 +606,21 @@ const TYPE_FORMAT_INPUT_TYPE: Readonly<
   phrase: { method: "text_field" },
   uri: { method: "text_field" },
   plain_text: { method: "text_area" },
+  // card-mod-list set/abstract/01_list/html_views.rb:40-42 default_input_type
+  // :list — the abstract is included in both the Pointer and the List type
+  // sets, so both type codes answer the list editor.
+  pointer: { method: "list" },
+  list: { method: "list" },
+  // card-mod-search set/type/search_type.rb:1 `include_set Type::Json` —
+  // the Search cardtype's set rides the Json set's html input override
+  // (card-mod-format set/type/json.rb:32-40 input_type :ace_editor +
+  // ace_mode :json) — the graded edit_nests row pins the All Topics
+  // editor as the ace json textarea, and the pointer-input journeys'
+  // /card/new?type=Search form pins it likewise (rows 5, data-ace-mode
+  // "json", id "card_content") where the rich_text fall-through
+  // rendered the tinymce textarea and the editor fill came back
+  // <p>-wrapped. (Both merge lines landed the same entry; composed.)
+  search_type: { method: "ace_editor", aceMode: "json" },
 };
 
 /** all/editor.rb:9-11 input_type_from_rule:
@@ -674,6 +760,16 @@ function inputDefinedByCard(
 export const inputView: ViewFn = (ctx) => {
   const { fmt, voo } = ctx;
   const content = h(fmt.card.dbContent ?? "");
+  // form.rb:147-160 form_prefix: the Rails builder's name prefix — "card"
+  // for the form's own card (simple_form?), "card[subcards][+summary]" for a
+  // field card rendered inside a multi-card edit form
+  // (edit_in_form_prefix: "#{parent.form_prefix}[subcards][#{card.name.from
+  // form_context.card.name}]", form.rb:160). The structured-form field
+  // editors carry it through the nest opts (card-mod-edit multiCardEdit).
+  const namePrefix = typeof voo.opts["form_name_prefix"] === "string"
+    ? (voo.opts["form_name_prefix"] as string)
+    : "card";
+  const idPrefix = namePrefix === "card" ? "card" : namePrefix.replace(/\]/g, "").replace(/[^-a-zA-Z0-9:.]/g, "_");
   const vooInputType = voo.opts["input_type"];
   const typeArm =
     vooInputType !== undefined && typeof vooInputType === "string"
@@ -686,28 +782,60 @@ export const inputView: ViewFn = (ctx) => {
   const inputType =
     typeArm?.method ?? inputTypeFromRule(inputTypeRuleContent(ctx));
   const method = inputType ?? "rich_text"; // default_input_type (:38-40)
+  if (method === "pointer" || method === "list") {
+    // card-mod-list set/abstract/01_list/html_views.rb:32-57 view :input =
+    // `_render_hidden_content_field + super()` — the hidden content field
+    // (content.rb:57-59 hidden_field :content, class d0-card-content) then
+    // list_input: ul.pointer-list-editor.pointer-list-ul with one
+    // pointer-li per items_for_input item (item_names; EMPTY lists render
+    // one blank row — items_for_input's `items.empty? ? [""] : items`) and
+    // the _pointer-item-add button. The item inputs are text_field_tag
+    // "pointer_item" (class pointer-item-text form-control, the options
+    // card for the autocomplete, placeholder ""), the handle/remove/add
+    // icons the material-icons set.
+    const items = content === "" ? [""] : content.split("\n").filter((s) => s !== "");
+    const itemRows = (items.length > 0 ? items : [""])
+      .map(
+        (item) =>
+          `<li class="pointer-li mb-1">\n` +
+          `  <span class="input-group">\n` +
+          `    <span class="input-group-text handle"><i class="material-icons notranslate">reorder</i></span>\n` +
+          `    <input class="pointer-item-text form-control" data-options-card="" placeholder="" type="text" value="${h(item)}" name="pointer_item" id="pointer_item" />\n` +
+          `    <button class="pointer-item-delete btn btn-secondary" type="button"><i class="material-icons notranslate">remove</i></button>\n` +
+          `  </span>\n` +
+          `</li>`,
+      )
+      .join("\n");
+    return (
+      `<input class="d0-card-content form-control" autocomplete="off" type="hidden" value="${content}" name="${namePrefix}[content]" id="${idPrefix}_content" />\n` +
+      `<ul class="pointer-list-editor pointer-list-ul">\n${itemRows}\n</ul>\n` +
+      `<span class="input-group">\n` +
+      `  <button class="_pointer-item-add btn btn-secondary" type="submit"><i class="material-icons notranslate">add</i>add another</button>\n` +
+      `</span>`
+    );
+  }
   if (method === "ace_editor") {
     const mode = typeArm?.aceMode ?? "html"; // ace_editor.rb:18-20 default
-    return `<textarea rows="5" class="d0-card-content ace-editor-textarea form-control" data-ace-mode="${mode}" name="card[content]" id="card_content">\n${content}</textarea>`;
+    return `<textarea rows="5" class="d0-card-content ace-editor-textarea form-control" data-ace-mode="${mode}" name="${namePrefix}[content]" id="${idPrefix}_content">\n${content}</textarea>`;
   }
   if (method === "rich_text" || method === "tinymce_editor") {
     // rich_text_input (:42-44) -> the configured editor (tinymce on the
     // oracle deck); "tinymce_editor" (rule value "tinymce editor") lands
     // on the same tinymce_editor_input bytes (tinymce_editor.rb:9-13)
     const id = fmt.uniqueId();
-    return `<textarea rows="3" class="tinymce-textarea d0-card-content form-control" id="${id}" name="card[content]">\n${content}</textarea>`;
+    return `<textarea rows="3" class="tinymce-textarea d0-card-content form-control" id="${id}" name="${namePrefix}[content]">\n${content}</textarea>`;
   }
   if (method === "text_field") {
     // editor.rb:51-53 text_field_input: class classy("d0-card-content") +
     // bootstrap form-control + placeholder "" (placeholder_text :59-62);
     // the opt's hash position is before Rails' generated attrs
     // (text_field_tag: caller options first, type/value/name/id appended)
-    return `<input class="d0-card-content form-control" placeholder="" type="text" value="${content}" name="card[content]" id="card_content" />`;
+    return `<input class="d0-card-content form-control" placeholder="" type="text" value="${content}" name="${namePrefix}[content]" id="${idPrefix}_content" />`;
   }
   if (method === "text_area") {
     // editor.rb:46-49 text_area_input: rows 5, class d0-card-content,
     // data-card-type-code (the codename)
-    return `<textarea rows="5" class="d0-card-content form-control" data-card-type-code="${fmt.card.typeCode ?? ""}" name="card[content]" id="card_content">\n${content}</textarea>`;
+    return `<textarea rows="5" class="d0-card-content form-control" data-card-type-code="${fmt.card.typeCode ?? ""}" name="${namePrefix}[content]" id="${idPrefix}_content">\n${content}</textarea>`;
   }
   if (method === "hidden") {
     // editor.rb:55-57 via input_method(:55): input_type "hidden" builds the
@@ -717,14 +845,14 @@ export const inputView: ViewFn = (ctx) => {
     // bootstrap form-control append, then hidden_field_tag's
     // autocomplete="off" + type="hidden" (caller opts first, generated
     // attrs after - the captured conflict_tracker order)
-    return `<input class="d0-card-content form-control" autocomplete="off" type="hidden" value="${content}" name="card[content]" id="card_content" />`;
+    return `<input class="d0-card-content form-control" autocomplete="off" type="hidden" value="${content}" name="${namePrefix}[content]" id="${idPrefix}_content" />`;
   }
   // try() missed - input_defined_by_card (:18-30), else the default arm
   const definedByCard = inputDefinedByCard(ctx, inputType);
   if (definedByCard !== undefined) return definedByCard;
   // rich_text default: the tinymce arm (the captured edit-form bytes)
   const id = fmt.uniqueId();
-  return `<textarea rows="3" class="tinymce-textarea d0-card-content form-control" id="${id}" name="card[content]">\n${content}</textarea>`;
+  return `<textarea rows="3" class="tinymce-textarea d0-card-content form-control" id="${id}" name="${namePrefix}[content]">\n${content}</textarea>`;
 };
 
 /** all/form.rb:79-85 content_field: `with_nest_mode :normal { output
@@ -795,22 +923,52 @@ function editSlot(ctx: ViewContext): string {
   const { fmt, voo } = ctx;
   if (multiCardEditor(ctx)) return multiCardEdit(ctx, true);
   if (voo.show("type_formgroup") || voo.show("name_formgroup"))
-    return fmt.renderView("content_formgroup");
+    return str(fmt.renderView("content_formgroup"));
   return `<div class="editor content-editor">${contentField({ fmt, voo })}</div>`;
 }
 
 /** form.rb:76-80 multi_card_editor?: `voo.structure || voo.edit_structure ||
  *  card.structure || edit_fields?` — edit_fields? (:83-84) reads edit_fields
  *  = voo.edit_structure (chunk.rb:38-39), so the voo arms subsume it.
- *  card.structure (the *structure rule read) is nil on every surface the
- *  engine reaches (the structure-rule editors stay the disclosed
- *  remainder). */
+ *  card.structure (templating.rb:69-71) answers the *structure rule card
+ *  unless its content is "_self". */
 function multiCardEditor(ctx: ViewContext): boolean {
   const { voo } = ctx;
   return (
     voo.opts["structure"] !== undefined ||
-    voo.opts["edit_structure"] !== undefined
+    voo.opts["edit_structure"] !== undefined ||
+    cardStructure(ctx) !== undefined
   );
+}
+
+/** templating.rb:60-66 structure_rule_card + :69-71 Card#structure, through
+ *  the engine's sync structure universe (render.ts structureRuleForSync —
+ *  the same resolveStructuredContent walk the core-view substitution runs;
+ *  the "_self" arm answers undefined there). The rule card itself is in no
+ *  render closure on a new/edit page, so a fetchRenderCard walk misses it. */
+function cardStructure(
+  ctx: ViewContext,
+): { ruleName: string; content: string } | undefined {
+  const card = ctx.fmt.card;
+  // NO unknown? guard: a NEW card is unknown? (states.rb#unknown? =
+  // !real?) and its structure template is exactly what /new/:type renders
+  // (templating.rb:14-19 new_card_template - the /new/Topic form's own
+  // structured fields). The type pattern's anchor is card.type_name
+  // (03_type.rb#anchor_name); a new card's record may carry only the
+  // typeId, so compose the name the engine's id map holds
+  // (quick_fetch(type_id)&.name).
+  const typeName =
+    card.typeName ??
+    (card.typeId !== undefined
+      ? ctx.fmt.engine.peekNameForId?.(card.typeId)
+      : undefined);
+  return ctx.fmt.engine.structureRuleForSync?.({
+    name: card.name.s,
+    id: card.id,
+    typeId: card.typeId,
+    typeName,
+    isNew: card.record.isNew === true,
+  });
 }
 
 /** form.rb:115-122 multi_card_edit: `field_configs = edit_field_configs
@@ -819,42 +977,351 @@ function multiCardEditor(ctx: ViewContext): boolean {
  *  "\n"`. The EXPLICIT arm (chunk.rb:57-61 explicit_edit_fields_config +
  *  :81-100 normalized_edit_field_config) walks voo.edit_structure's tuples:
  *  the mark normalizes to card.name.field(cardish) unless absolute/compound,
- *  the title defaults to the mark's name. The IMPLICIT arm (the content's
- *  nest-chunk walk) is the engine's disclosed chunk-enumerator gap — the
- *  configs answer [] and the structure_link bytes render (the same basis
- *  editNestsView pins). */
+ *  the title defaults to the mark's name. The IMPLICIT arm (chunk.rb:63-70
+ *  implicit_edit_fields_config: the STRUCTURE card's own nest chunks in
+ *  content order) is the browser-journeys lane's port: the walk reads the
+ *  structure rule card's content nests (nest-syntax scanNests), each config
+ *  [nest_name, chunk options]. */
 function multiCardEdit(ctx: ViewContext, fieldsOnly: boolean): string {
   const { fmt, voo } = ctx;
   const editStructure = voo.opts["edit_structure"] as
     | Array<[string, Record<string, unknown>]>
     | undefined;
-  const fieldConfigs: Array<[string, Record<string, unknown>]> = (
-    editStructure ?? []
-  ).map(([cardish, options]) => {
-    const opts = { ...(options ?? {}) };
-    const fieldMark = normalizedEditFieldMark(fmt, cardish, opts);
-    if (opts["title"] === undefined) opts["title"] = fieldMark;
-    return [fieldMark, opts] as [string, Record<string, unknown>];
-  });
+  let fieldConfigs: Array<[string, Record<string, unknown>]>;
+  if (editStructure !== undefined) {
+    fieldConfigs = editStructure.map(([cardish, options]) => {
+      const opts = { ...(options ?? {}) };
+      const fieldMark = normalizedEditFieldMark(fmt, cardish, opts);
+      if (opts["title"] === undefined) opts["title"] = fieldMark;
+      return [fieldMark, opts] as [string, Record<string, unknown>];
+    });
+  } else {
+    // chunk.rb:33-35 nest_chunks: `content ||= _render_raw` — a STRUCTURED
+    // card's raw content is its structure template's (the authored nests
+    // the board/edit_in_form rows walk); an unstructured card's own content
+    // (edit_nests' Search Page: the authored {{All Topics|open}} family —
+    // multi_card_edit consults card.structure nowhere).
+    const structure = cardStructure(ctx);
+    const sourceContent =
+      structure !== undefined ? structure.content : (fmt.card.dbContent ?? "");
+    fieldConfigs = implicitFieldConfigs(fmt, sourceContent, fieldsOnly);
+  }
   if (fieldConfigs.length === 0) return structureLink();
-  void fieldsOnly;
-  // Ruby's `nest name, options || {}` carries the title opt only - the VIEW
-  // resolves through the nest machinery (implicit_nest_view under the
-  // ambient nest mode; setup's with_nest_mode :edit chain renders the field
-  // cards' edit_in_form, a normal-mode walk renders their default view)
+  // Ruby's `nest name, options || {}` renders each field through the NEST
+  // machinery; the mode decides the nested view. Under nest_mode :edit
+  // (the board/edit_nests/edit_inline surfaces — mode.rb:64-68
+  // view_in_edit_mode) every nest substitutes to the field card's
+  // :edit_in_form, whose editor_in_multi_card wraps the field formgroup —
+  // the port renders that formgroup directly, seated with the field card
+  // facts the nest fetch would build (the set-type assignment walk below).
+  // In NORMAL mode (the :edit_in_form and :content_formgroups views' own
+  // multi_card_edit) the AUTHORED opts render: the Topic template's
+  // {{+summary}} becomes the titled slot, the Sign up template's
+  // {{+:description|content}} the content slot (the graded rows).
+  if (fmt.nestMode === "edit") {
+    return fieldConfigs
+      .map(([name, options]) => fieldEditorInMultiCard(ctx, name, options))
+      .join("\n");
+  }
   return fieldConfigs
     .map(([name, options]) => {
-      const { title, ...rest } = options;
-      const __n = fmt.nest({
-        syntax: `{{${name}|title:${String(title ?? "")}}}`,
-        name,
-        options: { title: String(title ?? ""), ...rest, extra: {} },
-        comment: undefined,
-      });
-      console.log("NEST-DEBUG", name, JSON.stringify(__n.slice(0, 90)), ctx.fmt.nestMode);
-      return __n;
+      const opts = { ...(options ?? {}) };
+      const view = typeof opts["view"] === "string" ? opts["view"] : "";
+      const optList = view !== "" ? `|${view}` : "";
+      return str(
+        fmt.nest({
+          syntax: `{{${name}${optList}}}`,
+          name,
+          options: { view: view !== "" ? view : undefined, extra: {} },
+          comment: undefined,
+          chunkNestSyntax: `${name}${optList}`,
+        }),
+      );
     })
     .join("\n");
+}
+
+/** chunk.rb:63-70 implicit_edit_fields_config: the structure card's nest
+ *  chunks (each_nested_chunk fields: FIELDS_ONLY, uniq: true, virtual:
+ *  true), each [chunk.options[:nest_name], chunk.options]. `##` comment
+ *  nests vanish (nest.rb#interpret) and never reach the configs.
+ *  fields_only (chunk.rb:33-35 field_chunks) keeps only DIRECT fields of
+ *  the form card (field_name? = name.field_of? card.name); the virtual
+ *  drop is process_nested_chunk's `return if virtual` (chunk.rb:99-101) —
+ *  a nest whose target is a VirtualSearch-family card (the Sign up
+ *  template's {{+:type+:by_name|content}}, by-name right) is skipped
+ *  entirely when the walk runs virtual: true, which both callers do. */
+function implicitFieldConfigs(
+  fmt: ViewContext["fmt"],
+  structureContent: string,
+  fieldsOnly: boolean,
+): Array<[string, Record<string, unknown>]> {
+  const configs: Array<[string, Record<string, unknown>]> = [];
+  const seen = new Set<string>([fmt.card.key]);
+  for (const piece of scanNests(structureContent)) {
+    if (piece.kind !== "nest" || piece.nest === undefined) continue;
+    const nest = piece.nest;
+    if (nest.comment !== undefined) continue; // '#' visible / '##' vanishing comments
+    const target = DeckoName.parse(nest.name).absoluteName(fmt.card.name);
+    if (fieldsOnly && !target.fieldOf(fmt.card.name.s)) continue; // field_chunks
+    if (seen.has(target.key)) continue; // uniq_chunks
+    seen.add(target.key);
+    if (virtualSearchCqlFor(target) !== undefined) continue; // process_virtual_chunk
+    configs.push([nest.name, { ...nest.options } as Record<string, unknown>]);
+  }
+  return configs;
+}
+
+/** The perms:none views (mode.rb:73-74 hide_view_in_edit_mode? arm 1: a
+ *  nest whose requested view carries `perms: :none` renders :blank in edit
+ *  mode). The corpus's graded surface reaches exactly :link
+ *  (mod/format set/all/base.rb:35 `view :link, compact: true, perms:
+ *  :none`) — the Topic structure rule's `{{+tags|link}}` field. */
+const EDIT_HIDDEN_VIEWS = new Set(["link"]);
+
+/** form.rb:105-119 editor_in_multi_card + wrap_editor_in_multi_card, as the
+ *  field nest's edit-mode render: the formgroup
+ *  `formgroup render_title, input: "content", help: true, class:
+ *  classy("card-editor")` around `[content_field,
+ *  form.hidden_field(:type_id) if card.new_card?]`. The nest's requested
+ *  view rides first: a view hidden in edit mode (mode.rb:73-77) renders
+ *  :blank — nothing. */
+function fieldEditorInMultiCard(
+  ctx: ViewContext,
+  name: string,
+  options: Record<string, unknown>,
+): string {
+  const { fmt } = ctx;
+  const requestedView = options["view"];
+  if (typeof requestedView === "string" && EDIT_HIDDEN_VIEWS.has(requestedView)) {
+    return "";
+  }
+  const fieldName = DeckoName.parse(name).absoluteName(fmt.card.name);
+  // nest (chunk rendering) fetches the field card with `new: {}` — a miss
+  // builds the NEW field card (never a raise); its type defaults to the
+  // tag card's type when the tag exists, and a full fabricated record
+  // otherwise (nestRecord reads target.record.isNew - an empty object
+  // here was the +*account edit form's 500).
+  const known =
+    fmt.engine.fetchRenderCard(fieldName.key) ??
+    fmt.engine.fetchRenderCard(fieldName.s);
+  const tagCard = known ?? fmt.engine.fetchRenderCard(fieldName.tag ?? fieldName.s);
+  // THE NEW FIELD CARD'S TYPE IS ENSURE_TYPE_ID'S FULL WALK (type.rb:58-66
+  // `type_id_from_code || type_id_from_template`), not the tag card's:
+  // the assignment arm first (mod/core/set/all/type.rb:69-76 — for a
+  // compound card each assigns_type pattern (07_right.rb:3
+  // `assigns_type: true` on the right pattern) consults
+  // Card::Set::Type.assignment (set/type.rb:5-6, filled by the mods'
+  // `assign_type :foo` boot lines, advanced_api.rb:5-8); the account
+  // family's rights all call `assign_type :phrase` (right/email.rb:5,
+  // right/password.rb:3, right/salt.rb:3, right/status.rb:4), so a NEW
+  // +*email field is PHRASE-typed at form time and its editor is the
+  // plain text input — not the tag RichText type's tinymce textarea), THEN
+  // the template arm (type.rb:78-80 type_id_from_template: the *default
+  // rule card IS the template, its own type_id answers — on the synthetic
+  // deck related+*right+*default is Pointer-typed, so the board-page edit
+  // form's NEW +related field renders the pointer-list editor where the
+  // tag "related" card's RichText typed it into a tinymce). The engine's
+  // newCardDefaultType is that whole walk (render.ts, rule/all.rb
+  // first-hit over the *default universe); the tag card's type stays the
+  // port's no-rule last resort (Ruby's miss answers the *all+*default
+  // type — the tag fallback approximates it without a query).
+  const env = getNameEnvironment();
+  const leftName = fieldName.leftName;
+  const leftTypeName =
+    (leftName !== undefined ? fmt.engine.fetchRenderCard(leftName.s)?.typeName : undefined) ??
+    fmt.card.typeName;
+  const defaulted = fmt.engine.newCardDefaultType?.(fieldName, leftTypeName);
+  const fieldTypeId = defaulted?.typeId ?? tagCard?.typeId;
+  const fieldTypeName = defaulted?.typeName ?? tagCard?.typeName;
+  const fieldCard = known ??
+    ({
+      ...(tagCard ?? {}),
+      name: fieldName,
+      key: fieldName.key,
+      unknown: true,
+      record: {
+        id: undefined,
+        codename: undefined,
+        leftId: undefined,
+        rightId: tagCard?.id,
+        typeId: fieldTypeId,
+        dbContent: undefined,
+        trash: false,
+        creatorId: undefined,
+        updaterId: undefined,
+        createdAt: undefined,
+        updatedAt: undefined,
+        currentRevisionId: undefined,
+        readRuleClass: undefined,
+        readRuleId: undefined,
+        referencesExpired: undefined,
+        name: fieldName,
+        key: fieldName.key,
+        isNew: true,
+        fromTrash: false,
+        uncacheable: false,
+      },
+      id: undefined,
+      dbContent: "",
+      typeName: fieldTypeName,
+      typeId: fieldTypeId,
+      typeCode:
+        fieldTypeId !== undefined
+          ? (env?.codename?.nameForId(fieldTypeId) ?? tagCard?.typeCode)
+          : tagCard?.typeCode,
+      // THE JUNCTION'S OWN KEYS (RIGHT-Xemail etc.), not the tag card's:
+      // the tag *email card's keys carry SELF-Xemail and no RIGHT- token,
+      // so a tag-derived chain never sees the right-set modules the field
+      // card belongs to. Ruby's new-card patterns (pattern/all.rb:40-42)
+      // drop the self pattern and key the junction + right patterns off
+      // the field name; safeSetKeys is the engine's own new-card
+      // computation. leftTypeName undefined = the left card has no row yet
+      // (Ruby's quick_type default, pattern/class_methods.rb:59-71).
+      setKeys: safeSetKeys({
+        name: fieldName,
+        typeId: fieldTypeId,
+        typeName: fieldTypeName,
+        leftTypeName: undefined,
+        isNew: true,
+      }),
+    } as ViewContext["fmt"]["card"]);
+  // edit_in_form_prefix (form.rb:160): the subcard's input names ride the
+  // parent form's prefix + [subcards][<field relative to the form card>].
+  // A STRUCTURE-context subform render (account_formgroups'
+  // `_render :content_formgroups, structure: true` on the +*account card
+  // inside the signup card's form) carries the parent form's prefix in the
+  // voo: Rails' fields_for nests the subform under
+  // card[subcards][+*account], so the +*email field's input is
+  // card[subcards][+*account][subcards][+*email][content] - the recorded
+  // oracle signup form pins exactly that name.
+  const parentPrefix =
+    typeof ctx.voo.opts["form_name_prefix"] === "string"
+      ? (ctx.voo.opts["form_name_prefix"] as string)
+      : undefined;
+  const relative = fieldName.from(fmt.card.name);
+  // THE FORM PREFIX IS FIELD-GATED: a DIRECT FIELD of the form card nests
+  // its inputs under [subcards][<relative>] (the graded board fieldset:
+  // card[subcards][+summary][content]); a NON-field nest the edit-mode walk
+  // renders (edit_nests' {{All Topics|open}} on the Search Page) edits the
+  // target card's own content through the BASE form prefix (the graded
+  // Search Page row: label for="card_content", name card[content]).
+  const isDirectField = fieldName.fieldOf(fmt.card.name.s);
+  const prefix =
+    parentPrefix !== undefined && isDirectField
+      ? `${parentPrefix}[subcards][${relative}]`
+      : isDirectField
+        ? `card[subcards][${relative}]`
+        : (parentPrefix ?? "card");
+  // wrap_editor_in_multi_card's formgroup title is render_title - the field
+  // card's name as the nest shows it, RELATIVE to the form card (the Ruby
+  // observations pin "+summary", never "Topic 002+summary" - the nest's
+  // title_in_context renders the junction's last part with the plus). The
+  // explicit-edit arm's tuples carry the title (the account before-hook's
+  // {title: "email"}), which render_title's voo.title arm picks up.
+  const explicitTitle = options["title"] !== undefined ? String(options["title"]) : undefined;
+  // wrap_editor_in_multi_card (:113-119): formgroup render_title ... -
+  // formgroup (formgroup.rb:20-43): wrap_with :div, formgroup_div_args
+  // (class ["form-group", classy("card-editor") + add_junction_class].join;
+  // data-card-id on a real card; data-card-name + data-card-link-name),
+  // then [formgroup_label(input, title, help: true), editor_wrap(:content)
+  // { content_field }] — the pair joined "\n" (output), the label's own
+  // parts (title span + help slot) joined "\n" inside form.label, the
+  // editor div carrying output([conflict_tracker, input,
+  // hidden_field(:type_id) if new]) and the formgroup closing with no
+  // newline after the editor div (the graded board fieldset pins the whole
+  // shape). The field editor is the FORM'S WRITING SURFACE: Ruby renders it
+  // for whoever may fill the parent form (the save rides the parent's
+  // permission), and the field's own read rule never gates the editor —
+  // a Pointer-typed field's *type read rule ("Help Desk") would deny the
+  // member the editor Ruby's form shows. skip_perms scopes that to the
+  // structured-form field editors only.
+  const contentFieldHtml = fmt.nestRecord(fieldCard, "input", {
+    form_name_prefix: prefix,
+    skip_perms: true,
+  });
+  const conflictHtml = fmt.nestRecord(fieldCard, "conflict_tracker", {
+    form_name_prefix: prefix,
+  });
+  // formgroup_help(true): class_up "help-text" "help-block" + _render_help
+  // — the field card's help view slot INSIDE the label (the graded rows:
+  // show [edit_in_form, help], the empty body a help-rule-less field
+  // renders). formgroup_help is a DELEGATED render on the field's format
+  // (render :help — no nest machinery, so the slot JSON carries no
+  // nest_name). The slot's home_view is the FIELD NEST's requested view
+  // before the mode substitution (nest.rb:24 home_view ||= closed/edit ?
+  // open : view): the authored view for an opted nest ({{+related|closed}}
+  // -> open), the default nest view for an option-less one ({{+summary}} ->
+  // titled; the graded rows pin both).
+  const authoredView = typeof options["view"] === "string" ? options["view"] : undefined;
+  const fieldHomeView =
+    authoredView === "closed" || authoredView === "edit"
+      ? "open"
+      : (authoredView ?? fmt.defaultNestView());
+  const fieldSub = new RenderFormat(fieldCard, fmt.engine, {
+    parent: fmt,
+    maxDepth: fmt.maxDepth,
+    nestQuietErrors: fmt.nestQuietErrors,
+  });
+  const helpHtml = str(
+    fieldSub.renderView(
+      "help",
+      explicitTitle !== undefined
+        ? // the explicit-edit tuple's title is an HEIR key: the child help
+          // voo inherits it and the slot JSON serializes it (the graded
+          // setup row pins "title":"email" on the help slot).
+          { form_name_prefix: prefix, show: "edit_in_form", home_view: fieldHomeView, title: explicitTitle }
+        : { form_name_prefix: prefix, show: "edit_in_form", home_view: fieldHomeView },
+    ),
+  );
+  const hiddenTypeId =
+    fieldCard.id === undefined
+      ? `<input type="hidden" name="${prefix}[type_id]" id="${prefix.replace(/\]/g, "").replace(/[^-a-zA-Z0-9:.]/g, "_")}_type_id" autocomplete="off" />`
+      : "";
+  // the row's junction class token is the TAG's SAFE KEY (star -> X: the
+  // bridge addresses `.RIGHT-Xpassword input.d0-card-content`; Ruby's
+  // RIGHT-Xemail row on the +*account page pins the same mapping)
+  const tagSafe = DeckoName.parse(fieldName.tag ?? fieldName.s).safeKey;
+  // add_junction_class (form.rb:250-254): `return unless card.name.compound?`
+  // — a SIMPLE nest target (edit_nests' All Topics) carries no RIGHT- token.
+  const junctionClass = fieldName.isCompound ? ` RIGHT-${tagSafe}` : "";
+  const attrs = emitAttrs({
+    class: `form-group card-editor${junctionClass}`,
+    "data-card-id": fieldCard.id === undefined ? undefined : String(fieldCard.id),
+    "data-card-name": h(fieldName.s),
+    "data-card-link-name": h(DeckoName.parse(fieldName.s).urlKey),
+  });
+  // formgroup_label: `form.label input||:content, raw(parts.join("\n"))` —
+  // Rails derives the label's for from the input's NAME
+  // (sanitize_to_id("card[subcards][+summary]_content") ->
+  // "card_subcards__summary_content"; the graded board fieldset pins the
+  // sanitized ids). The title rides render_title (the field's own title
+  // view — wrapped_title's span, the context-relativized name) unless the
+  // explicit-edit tuple carried one (the account before-hook's
+  // {title: "email"} rides the field render's voo.title).
+  // Rails sanitize_to_id: delete("]") then tr("^-a-zA-Z0-9:.", "_") — the
+  // starred marks' * lands as _ too (the graded setup row pins
+  // card_subcards___account_subcards___email_content).
+  const labelForId = `${prefix}_content`
+    .replace(/\]/g, "")
+    .replace(/[^-a-zA-Z0-9:.]/g, "_");
+  const titleSpan = str(
+    fieldSub.renderView(
+      "title",
+      explicitTitle !== undefined
+        ? { title: explicitTitle, form_name_prefix: prefix }
+        : { form_name_prefix: prefix },
+    ),
+  );
+  const label =
+    `<label for="${labelForId}">` +
+    output([titleSpan, helpHtml]) +
+    `</label>`;
+  const editor =
+    `<div class="editor content-editor">` +
+    output([conflictHtml, contentFieldHtml, hiddenTypeId || undefined]) +
+    `</div>`;
+  return `<div${attrs}>${label}\n${editor}</div>`;
 }
 
 /** chunk.rb:91-100 normalized_edit_field_mark: the mark is the cardish when
@@ -930,18 +1397,46 @@ export const contentFormgroupsView: ViewFn = (ctx) => {
 export const editFormView: ViewFn = ({ fmt, voo }) => {
   voo.showViz("edit_type_row"); // the view body's voo.show :edit_type_row
   voo.hide("edit_type_row"); // edit_form's own hide - first-write no-op
+  // edit_content.rb:2-7 view :edit_form, wrap: :slot: `voo.show
+  // :edit_type_row; with_nest_mode :edit do edit_form end` — the form's
+  // renders run under nest mode :edit (the field editors substitute) the
+  // same way the :edit view wraps them; the nested same-mode wrap when
+  // both run is Ruby's own shape (mode.rb's same-value fast path).
   const form =
     `<form class="card-form slotter autosave" id="edit_card_${fmt.card.id}"` +
     ` data-slot-selector="modal-origin" data-slot-error-selector=".card-slot"` +
     ` action="/update/${fmt.urlKey()}" accept-charset="UTF-8" data-remote="true" method="post">` +
     `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
     `<input type="hidden" name="_method" value="patch" autocomplete="off" />` +
-    output([
-      undefined, // edit_view_hidden (editing.rb:35-36, the override stub)
-      fmt.renderView("edit_type_row", { home_view: "edit_type_row" }),
-      fmt.renderView("content_formgroups"),
-      fmt.renderView(voo.opts["buttons_view"] === undefined ? "edit_buttons" : String(voo.opts["buttons_view"])),
-    ]) +
+    fmt.withNestMode("edit", () =>
+      output([
+        undefined, // edit_view_hidden (editing.rb:35-36, the override stub)
+      // The form body's renders are UNDERSCORE calls in Ruby
+      // (edit_content.rb:20-22 `_render_edit_type_row`,
+      // `_render_content_formgroups`): skip_perms rides the render args
+      // (method_delegation.rb:54), so the nested form machinery renders
+      // AS REQUESTED on an unknown card — the type row and the field
+      // editors where the :unknown substitution stood.
+      fmt.renderView("edit_type_row", { home_view: "edit_type_row", skip_perms: true }),
+      fmt.renderView("content_formgroups", { skip_perms: true }),
+      // _render(voo.buttons_view || :edit_buttons) - the METHOD_MISSING
+      // delegation (method_delegation.rb:41-47 -> api_render -> render!),
+      // whose own wrap_and_render rescue (render.rb:96-100) makes the quiet
+      // span the delegation's VALUE on a nested format: the oracle's
+      // edit_structure page embeds the span where the buttons would render
+      // (the edit_buttons raise, deleteButton's reproduced upstream failure)
+      // while the form around it completes. renderDelegated is that seam;
+      // the no-raise renders are byte-identical through it.
+      // `_render(voo.buttons_view || :edit_buttons)` — the underscore lane
+      // again: skip_perms rides the delegation (the buttons render as
+      // themselves on an unknown card; the new-card Delete drop is
+      // deleteButton's own card.real? arm, form_buttons.rb:55).
+      fmt.renderDelegated(
+        voo.opts["buttons_view"] === undefined ? "edit_buttons" : String(voo.opts["buttons_view"]),
+        { skip_perms: true },
+      ),
+      ])
+    ) +
     `</form>`;
   return modSlotWrap({ fmt, voo }, "edit_form", form);
 };
@@ -1022,10 +1517,29 @@ export const editView: ViewFn = ({ fmt, voo }) => {
   voo.showViz("help");
   voo.hide("save_button");
   voo.classUp("help-text", "alert alert-info"); // frame_help with_class_up
+  // The edit view declares unknown: true (edit_content.rb:28): its whole
+  // body renders for an unknown card as the create form. The body's renders
+  // are UNDERSCORE calls in Ruby (`_render :help`, `_render_edit_form`,
+  // edit_content.rb:36) — method_delegation.rb:17 RENDER_METHOD_RE's leading
+  // underscore sets render_args' skip_perms (:54), and permission.rb:26
+  // `altered_view` answers `return if skip_check?` BEFORE alter_unknown, so
+  // the body renders AS REQUESTED on the unknown card: no :unknown
+  // substitution anywhere under the edit view (the pinned
+  // denied-member-delete modal: the create-form bytes, the type row and the
+  // buttons included).
   const body = modSlotWrap(
     { fmt, voo },
     "edit",
-    [fmt.renderView("help"), fmt.renderView("edit_form")].join("\n"),
+    // edit_content.rb:33-39 view :edit: `with_nest_mode :edit do voo.show
+    // :help; voo.hide :save_button; wrap(true) { [frame_help,
+    // _render_edit_form] } end` — the WHOLE body renders under nest mode
+    // :edit, so the structured form's field nests substitute to the field
+    // editors (mode.rb's view_in_edit_mode through multiCardEdit's mode
+    // gate). Without the wrap the fields render their normal-mode slots
+    // (the titled/content shapes) and no editor exists on the edit page.
+    fmt.withNestMode("edit", () =>
+      [fmt.renderView("help", { skip_perms: true }), fmt.renderView("edit_form", { skip_perms: true })].join("\n"),
+    ),
   );
   let out = "<div class='modal fade _modal-slot' id='modal-container' role='dialog'>\n";
   out += "<!-- /, \"data-backdrop\": \"static\"} -->\n";
@@ -1090,11 +1604,31 @@ export function framedView(
   const body = bodyFn();
   // header.rb:22 default_header: `main? ? :h1 : :h2`.
   const tag = fmt.isMain ? "h1" : "h2";
+  // header.rb:5-12 view :header: `header_wrap [render_header_title,
+  // render_menu]` — output() JOINS the parts with "\n" and COMPACTS the
+  // hidden menu's NIL (the render pipeline's hide bail, view.rb:69 bare
+  // return) but keeps the menu's EMPTY-STRING arms (the denial-:blank /
+  // unknown-card "" — a string, not nil), so a hidden-menu frame ends at
+  // the title tag with no newline (the graded setup row) while the
+  // unknown-card frames keep the title's trailing newline (the graded
+  // Nonexistent Card rows).
+  const titleTag = `<${tag} class="${voo.classy("d0-card-header-title")}">${fmt.renderView("title")}</${tag}>`;
+  const menuRendered = fmt.renderView("menu");
   const header =
     `<div class="${voo.classy("d0-card-header")}">` +
-    `<${tag} class="${voo.classy("d0-card-header-title")}">${fmt.renderView("title")}</${tag}>\n` +
-    `${fmt.renderView("menu")}</div>`;
-  const frameHelp = voo.show("help") ? fmt.renderView("help") : undefined; // nil: hidden
+    (menuRendered === null ? titleTag : `${titleTag}\n${str(menuRendered)}`) +
+    `</div>`;
+  // frame.rb:33-36 frame_help: `with_class_up "help-text", "alert
+  // alert-info" do _render :help end` — the class_up rides the render and
+  // is restored after (with_class_up's scope).
+  let frameHelp: ViewResult | undefined;
+  if (voo.show("help")) {
+    const prevAlert = voo.classUps.get("help-text");
+    voo.classUp("help-text", "alert alert-info");
+    frameHelp = fmt.renderView("help");
+    if (prevAlert === undefined) voo.classUps.delete("help-text");
+    else voo.classUps.set("help-text", prevAlert);
+  }
   const panel =
     `<div class="${voo.classy("d0-card-frame")}">` +
     output([
@@ -1302,9 +1836,24 @@ const CARDTYPE_GROUP_MAP: ReadonlySet<string> = new Set(
  *  board_type_formgroup (:24-31) passes href/class _live-type-field/
  *  data-remote before add_class appends type-field (the captured order:
  *  name, id, href, class, data-remote, data-select2-id). */
-function typeField(
+/** MODULE-EXPORTED for the rules mod's rule-form type editors
+ *  (card-mod-rules.ts quickEditorBody + rulesTypeFormgroup): those render
+ *  the same edit_type.rb type_field with the set-module
+ *  visible_cardtype_groups overrides. */
+export function typeField(
   ctx: ViewContext,
-  opts: { href?: string; cls?: string },
+  opts: {
+    href?: string;
+    cls?: string;
+    /** The set-module override of All::CardtypeGroups::GROUP (the
+     *  visible_cardtype_groups overrides: Right::Default, Right::Structure,
+     *  Right::ContentOptions). Omitted = the base GROUP table. */
+    groups?: Readonly<Record<string, readonly string[]>>;
+    /** select_tag caller-opts order: href before class (the rule-form
+     *  editors' captured order). Default: class before href when a cls
+     *  opt is present, href-only otherwise. */
+    hrefFirst?: boolean;
+  },
 ): string {
   const { fmt } = ctx;
   const createable = fmt.createableTypes();
@@ -1320,21 +1869,39 @@ function typeField(
     createableSet.add(current);
   }
   const select2Id = `${fmt.uniqueId()}-${Math.floor(cardWallClockNow().getTime() / 1000)}`; // Time.now through the engine wall clock
-  let out = "";
-  for (const [group, types] of Object.entries(CARDTYPE_GROUPS)) {
+  // edit_type.rb:86-102 grouped_types: the groups table (the caller's
+  // override or the base GROUP) walked in order; standard groups
+  // materialize ONLY when a member passes raw_type_options (the hash
+  // assignment inside the loop), Custom is ASSIGNED unconditionally
+  // (:96-98) and renders as an EMPTY optgroup in the base table.
+  // type_field_options (:68-80): ONE materialized group answers the SIMPLE
+  // arm (options_for_select flat, no optgroup - the rules-cap capture's
+  // single-option rule editors); two or more answer the MULTI arm
+  // (grouped_options_for_select, one <optgroup label> per group, options
+  // joined "\n" INSIDE, no separator BETWEEN groups).
+  const groups = opts.groups ?? CARDTYPE_GROUPS;
+  const materialized: Array<[string, readonly string[]]> = [];
+  for (const [group, types] of Object.entries(groups)) {
     const items =
       group === "Custom"
         ? createable.filter((t) => !CARDTYPE_GROUP_MAP.has(t))
         : types.filter((t) => createableSet.has(t));
-    if (group !== "Custom" && items.length === 0) continue;
-    out += `<optgroup label="${group}">${items
-      .map(
-        (t) =>
-          `<option${t === current ? ` selected="selected"` : ""} value="${t}">${t}</option>`,
-      )
-      .join("\n")}</optgroup>`;
+    if (group === "Custom" || items.length > 0) materialized.push([group, items]);
   }
-  const href = opts.href === undefined ? "" : ` href="${opts.href}"`;
+  const optionHtml = (t: string): string =>
+    `<option${t === current ? ` selected="selected"` : ""} value="${t}">${t}</option>`;
+  let out: string;
+  if (materialized.length === 1) {
+    out = materialized[0]![1].map(optionHtml).join("\n");
+  } else {
+    out = materialized
+      .map(([group, items]) => `<optgroup label="${group}">${items.map(optionHtml).join("\n")}</optgroup>`)
+      .join("");
+  }
+  // Rails' tag helper html-escapes every attribute value (tag_options'
+  // ERB::Util.html_escape): the rule editors' href query "assign=true&mark="
+  // renders as "...assign=true&amp;mark=" (the corpus rule-form ops).
+  const href = opts.href === undefined ? "" : ` href="${h(opts.href)}"`;
   const live = opts.href === undefined ? "" : ` data-remote="true"`;
   // the class composition: the helper chain (board/type formgroups)
   // prepend "_live-type-field " via the href arm; the :new_type_formgroup
@@ -1352,11 +1919,16 @@ function typeField(
       : opts.href !== undefined
         ? `_live-type-field type-field`
         : `type-field`;
+  // select_tag's caller-opts order: class-first is the DEFAULT (the
+  // :new_type_formgroup variant's captured order with a cls+href caller);
+  // hrefFirst gives the helper-chain order (the rule-form editors'
+  // captured order: name, id, href, class, data-remote, data-select2-id).
   const head =
-    opts.cls !== undefined
-      ? `<select name="card[type]" id="card_type" class="${classBase} form-control"${href}`
-      : `<select name="card[type]" id="card_type"${href}` +
-        ` class="${classBase} form-control"`;
+    opts.hrefFirst === true
+      ? `<select name="card[type]" id="card_type"${href} class="${classBase} form-control"`
+      : opts.cls !== undefined
+        ? `<select name="card[type]" id="card_type" class="${classBase} form-control"${href}`
+        : `<select name="card[type]" id="card_type"${href} class="${classBase} form-control"`;
   return (
     head +
     live +
@@ -1380,9 +1952,18 @@ function typeField(
  *  the helper's add_class - the captured order "type-field _live-type-
  *  field slotter form-control"; the bootstrap FIELD_HELPERS wrapper always
  *  appends " form-control"). */
-function typeFormgroup(
+/** MODULE-EXPORTED for the rules mod's rule editors (card-mod-rules.ts
+ *  rulesTypeFormgroup): the wrap_type_formgroup shape with the caller's
+ *  href/class/groups opts. */
+export function typeFormgroup(
   ctx: ViewContext,
-  opts: { href?: string; cls?: string },
+  opts: {
+    href?: string;
+    cls?: string;
+    /** the set-module visible_cardtype_groups override (see typeField). */
+    groups?: Readonly<Record<string, readonly string[]>>;
+    hrefFirst?: boolean;
+  },
 ): string {
   const { fmt } = ctx;
   const card = fmt.card;
@@ -1413,7 +1994,9 @@ const typeFormgroupView: ViewFn = (ctx) => typeFormgroup(ctx, {});
  *  the assign flag + the Rails-deep-encoded slot show query (the captured
  *  bytes: /<mark>/edit_form?assign=true&amp;slot%5Bshow%5D%5B%5D=type_form). */
 const boardTypeFormgroupView: ViewFn = (ctx) => {
-  const href = `/${ctx.fmt.urlKey()}/edit_form?assign=true&amp;slot%5Bshow%5D%5B%5D=type_form`;
+  // the RAW query ("&"); typeField's tag-helper escape renders the &amp;
+  // (the captured bytes: /<mark>/edit_form?assign=true&amp;slot...)
+  const href = `/${ctx.fmt.urlKey()}/edit_form?assign=true&slot%5Bshow%5D%5B%5D=type_form`;
   return modSlotWrap(
     ctx,
     "board_type_formgroup",
@@ -1444,7 +2027,7 @@ const editTypeFormView: ViewFn = ({ fmt, voo }) => {
  *  the inner slot wrap rides (the captured framed bytes carry the
  *  edit_type_form slot div, its show list accumulated with edit_type). */
 const editTypeView: ViewFn = (ctx) =>
-  framedView(ctx, "edit_type", () => ctx.fmt.renderView("edit_type_form"));
+  framedView(ctx, "edit_type", () => str(ctx.fmt.renderView("edit_type_form")));
 
 /** new.rb:162-166 view :new_buttons: button_formgroup {
  *  [standard_create_button, standard_cancel_button(href:
@@ -1561,12 +2144,17 @@ function guideText(ctx: ViewContext): string {
  *  to :rule_edit (card-mod-rules-0.20.0 set/rule/editor.rb:60-61), so the
  *  link target is the RULE editor: the captured href is
  *  "/*all+*guide/rule_edit" (path mark keeps the star name verbatim).
- *  The taskAllowed gate mirrors card-mod-help.ts#prependGuideEditLink. */
+ *  The taskAllowed gate mirrors card-mod-help.ts#prependGuideEditLink and
+ *  reads the seam's deny-by-default posture (render-seam.ts: a verdict the
+ *  engine has not established denies): the link wraps only on an
+ *  AFFIRMATIVE update verdict — the captured fixture pins it for the
+ *  always-ok bot and its absence for the sara/anonymous arms
+ *  (fixtures/captured/edit-views.json, guide_tab/overlay_guide). */
 function prependGuideEditLink(ctx: ViewContext, text: string): string {
   const guideCard = guideRuleCard(ctx);
   if (guideCard === undefined) return text;
   const taskAllowed = ctx.fmt.engine.taskAllowed?.(guideCard, "update");
-  if (taskAllowed !== undefined && taskAllowed === false) return text;
+  if (taskAllowed !== true) return text;
   const editLink =
     `<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip"` +
     ` data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg"` +
@@ -1704,7 +2292,7 @@ function newViewName(ctx: ViewContext): string | undefined {
  *  "card[type_id]", card.type_id. */
 function newViewType(ctx: ViewContext): string {
   // `_render_new_type_formgroup`: the underscore skips the unknown check.
-  if (newTypePrompt(ctx)) return ctx.fmt.renderView("new_type_formgroup", { skip_perms: true });
+  if (newTypePrompt(ctx)) return str(ctx.fmt.renderView("new_type_formgroup", { skip_perms: true }));
   return hiddenFieldTag("card[type_id]", String(ctx.fmt.card.typeId ?? ""));
 }
 
@@ -1724,7 +2312,7 @@ function newViewTitle(ctx: ViewContext): string {
 /** new.rb:89-91 new_in_modal_title:
  *  `new_name_prompt? ? new_view_title : render_title`. */
 function newInModalTitle(ctx: ViewContext): string {
-  return newNamePrompt(ctx) ? newViewTitle(ctx) : ctx.fmt.renderView("title");
+  return newNamePrompt(ctx) ? newViewTitle(ctx) : str(ctx.fmt.renderView("title"));
 }
 
 /** new.rb:93-95 new_success: `{ mark: card.rule(:thanks) || "_self" }` -
@@ -1750,15 +2338,79 @@ function createCardForm(
   // form_for on a NEW record (the absent card a page offers to create):
   // Rails names the form "new_card" and sends a plain post, no _method.
   const persisted = ctx.fmt.card.id !== undefined;
+  // THE RECAPTCHA TOKEN BYTES (set/all/recaptcha.rb:89-93
+  // hidden_form_tags override — `return super unless recaptcha?(opts);
+  // super + recaptcha_token(action)`): EVERY card_form carries them when
+  // the guard is on — Ruby's format-module override shadows the base
+  // hidden_form_tags for the whole app, and the recorded oracle signup
+  // form is armed on the mod's seeded toggles (data/real.yml) + the
+  // development default keys (lib/card/mod/recaptcha.rb @defaults). The
+  // port's form consumers hand the token bytes to the form builder through
+  // this gate: the config is the host's render-side seam
+  // (render-recaptcha-config.ts — the SAME object the write path's guard
+  // runs on), the rule content rides the mod rule seeds (mod-rule-seeds.ts
+  // — the validate side resolves the same answer from storage, where the
+  // boot seeds the gems' rows), and
+  // the auth operands are the request render's (anonymous, not always_ok,
+  // a set-up deck).
+  const recaptchaConfig = renderRecaptchaConfig();
+  const recaptchaOnForm =
+    recaptchaConfig !== undefined &&
+    recaptchaFormOn(
+      {
+        siteKey: recaptchaConfig.siteKey,
+        secretKey: recaptchaConfig.secretKey,
+        envController: true,
+        signedIn: ctx.fmt.engine.viewer?.signedIn === true,
+        alwaysOk: false,
+        needsSetup: false,
+        captchaRuleContent: captchaRuleSeedFor(ctx),
+      },
+      undefined,
+    );
+  const effectiveSuccessTags = recaptchaHiddenFormTags(
+    successTags,
+    recaptchaOnForm,
+    "create",
+    recaptchaConfig?.siteKey ?? "",
+  );
+  // card_form_html_opts's override (set/all/recaptcha.rb:95-99): the form
+  // carries data-recaptcha="on" when the guard is on — the recaptcha
+  // script's submit handler (assets/script/recaptcha.js.coffee:3-6) keys
+  // on exactly this attribute to set the posted token.
+  const effectiveFormAttrs =
+    formAttrs + (recaptchaOnForm ? ` data-recaptcha="on"` : "");
   return (
-    `<form class="card-form slotter" id="${persisted ? `edit_card_${ctx.fmt.card.id}` : "new_card"}"${formAttrs}` +
+    `<form class="card-form slotter" id="${persisted ? `edit_card_${ctx.fmt.card.id}` : "new_card"}"${effectiveFormAttrs}` +
     ` action="/card/create" accept-charset="UTF-8" data-remote="true" method="post">` +
     `<input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" />` +
     (persisted ? `<input type="hidden" name="_method" value="patch" autocomplete="off" />` : "") +
-    successTags +
+    effectiveSuccessTags +
     body +
     `</form>`
   );
+}
+
+/** rule(:captcha) for the rendered card, from the mod rule seeds (the sync
+ *  read the form render needs; the storage rows win on a real deck — see
+ *  mod-rule-seeds.ts' precedence note). Undefined when no seed names the
+ *  card's candidates (rule/all.rb's nil -> Card::Rule.toggle false). */
+function captchaRuleSeedFor(ctx: ViewContext): string | undefined {
+  const card = ctx.fmt.card;
+  const candidates = ruleNamesForCard(
+    {
+      name: card.name?.s ?? "",
+      isNew: card.id === undefined,
+      typeId: card.typeId,
+      typeName: card.typeName,
+    },
+    "*captcha",
+  );
+  for (const candidate of candidates) {
+    const seeded = modRuleSeedContentForCandidate(candidate);
+    if (seeded !== undefined) return seeded;
+  }
+  return undefined;
 }
 
 /** new.rb:71-75 create_form_with_alert_guide:
@@ -1768,9 +2420,19 @@ function createCardForm(
  *  "" STAYS in output() (Ruby "" is truthy - the trailing empty line
  *  inside the d-flex div on guide-less decks). */
 function createFormWithAlertGuide(ctx: ViewContext): string {
-  const fields = ctx.fmt.renderView("new_fields", {
-    buttons_view: ctx.voo.opts["buttons_view"],
-  });
+  // new.rb:35-41 with_create_context wraps its yield in `with_nest_mode
+  // :edit` — the structured create form's field nests (the /new/Topic
+  // {{+summary}} family) substitute to the field editors exactly as the
+  // :edit surfaces do; without the wrap they render their normal-mode
+  // slots and the form carries no editor.
+  const fields = ctx.fmt.withNestMode("edit", () =>
+    ctx.fmt.renderView("new_fields", {
+      buttons_view: ctx.voo.opts["buttons_view"],
+      // the nest's type opt (the image-typed new cards) inherits to the
+      // new_fields render — new_type_prompt? reads it there (new.rb:142-144).
+      type: ctx.voo.opts["type"],
+    }),
+  );
   return (
     `<div class="d-flex justify-content-between">` +
     output([fields, ctx.voo.show("guide") ? alertGuide(ctx) : undefined]) +
@@ -1784,7 +2446,7 @@ function createFormWithAlertGuide(ctx: ViewContext): string {
  *  wrap.rb:6-9), so the slot JSON is frozen pre-body (the captured
  *  standalone arm: show:[new_fields] only, the body's visible? writes
  *  excluded). The port freezes the wrap first and splices the body in. */
-const NEW_FIELDS_SENTINEL = "\u0000new_fields-body\u0000";
+export const NEW_FIELDS_SENTINEL = "\u0000new_fields-body\u0000";
 export const newFieldsView: ViewFn = (ctx) => {
   const open = modSlotWrap(ctx, "new_fields", NEW_FIELDS_SENTINEL, "w-100");
   const body = output([
@@ -1873,6 +2535,19 @@ export function createFormDataShell(
   });
 }
 
+/** create_form's UPDATE-shape arm (Ruby's create_form on a STORED card:
+ *  card.new_card? is false, so form_for names the form edit_card_<id>
+ *  and adds the _method=patch spoof while the action stays :create - the
+ *  favicon's new_image op renders exactly this shape on the stored
+ *  *favicon card). The recaptcha gate rides createCardForm like the
+ *  create arm's. */
+export function updateFormDataShell(
+  ctx: ViewContext,
+  formOpts: { success?: Record<string, unknown> },
+): string {
+  withCreateContext(ctx);
+  return createCardForm(ctx, "", successTags(formOpts.success), createFormWithAlertGuide(ctx));
+}
 /** form.rb:186-200 card_form(:create, form_opts) with a CALLER body - the
  *  frame_and_form chain's inner shell (user.rb:29-32 setup_form:
  *  frame_and_form :create { [hidden fields, name formgroup,
@@ -1962,7 +2637,10 @@ const editInlineButtonsView: ViewFn = ({ fmt, voo }) =>
     { fmt, voo },
     output([
       standardSaveButton(voo),
-      cancelInPlaceButton(fmt),
+      // cancel_button's `return unless voo.show? :cancel_button`
+      // (form_elements.rb:68-70) — the nest_content known arm's
+      // `voo.hide! :cancel_button` drops the anchor (the graded row).
+      voo.show("cancel_button") ? cancelInPlaceButton(fmt) : undefined,
       deleteButton(fmt),
     ]),
   );
@@ -2035,7 +2713,16 @@ const editRowView: ViewFn = ({ fmt, voo }) => {
  *  (form.rb:20-24 view :edit_in_form), in_multi_card_editor? answers
  *  first. add_junction_class (:250-254) class_ups RIGHT-<tag safe_key>
  *  for compound cards. */
-const editInFormView: ViewFn = ({ fmt, voo }) => {
+const editInFormView: ViewFn = (ctx) => {
+  const { fmt, voo } = ctx;
+  // form.rb:26-30 view :edit_in_form: reset_form (per-render form state);
+  // @in_multi_card_editor = true; edit_slot — whose CASE order puts
+  // multi_card_editor? FIRST: a structured card (Topic 001, the graded
+  // row — Topic+*type+*structure) renders multi_card_edit(true), its
+  // template's authored nests in NORMAL nest mode (the titled slot the
+  // oracle pins); the formgroup below is the in_multi_card_editor arm
+  // (a non-structured card's :edit_in_form render).
+  if (multiCardEditor(ctx)) return multiCardEdit(ctx, true);
   if (fmt.card.name.isCompound) {
     // form.rb:250-254 add_junction_class
     voo.classUp("card-editor", `RIGHT-${fmt.card.name.rightName?.safeKey ?? ""}`);
@@ -2109,26 +2796,76 @@ function structureLink(): string {
 
 /** editing.rb:67-73 view :edit_nests, cache: :never:
  *  `frame do with_nest_mode :edit do multi_card_edit end end` - the frame
- *  machinery (framedView: hides :help first - the captured slot carries
- *  hide:[help]); multi_card_edit (form.rb:115-122) with EMPTY field
- *  configs answers structure_link. Nest-free cards (the captured
- *  "Oracle Basics" arm) pin these bytes; nest-bearing cards render the
- *  nested editors (nest + nest_mode :edit + sub-form prefixes -
- *  rails-runtime remainder; the captured Home arm is recorded in the
- *  fixture, the port answers "" there, disclosed). */
+ *  machinery (framedView: hides :help first); multi_card_edit (form.rb
+ *  :115-122) with fields_only NIL walks the card's OWN content nests
+ *  UNFILTERED (edit_field_configs(nil) — no field_chunks tier; the Search
+ *  Page's authored {{All Topics|open}} family nests all render), uniq'd,
+ *  virtual-dropped. Under nest_mode :edit every nest substitutes to the
+ *  target's :edit_in_form (mode.rb:64-68) — the graded Search Page row
+ *  renders the All Topics field formgroup. Nest-free cards answer
+ *  structure_link (the captured "Oracle Basics" arm). */
 const editNestsView: ViewFn = (ctx) =>
   framedView(ctx, "edit_nests", () =>
-    contentHasRealNest(ctx.fmt) ? "" : structureLink(),
+    ctx.fmt.withNestMode("edit", () => {
+      const body = multiCardEdit(ctx, false);
+      return body;
+    }),
   );
 
 /** editing.rb:54-65 view :edit_structure, cache: :never:
  *  `return unless card.structure; nest card.structure_rule_card, view:
- *  :edit`. On a structure-less card Ruby's body answers NIL and the render
- *  pipeline RAISES ("undefined method `gsub' for nil" - the captured arm
- *  records the NoMethodError; the view is unreachable without structure in
- *  practice - every caller guards). The port answers ""; the structure
- *  branch (nest the structure rule card's :edit) is the remainder. */
-const editStructureView: ViewFn = () => "";
+ *  :edit`. The structure resolution walks the card's set candidates over the
+ *  SEATED render cards (the inputTypeRuleContent idiom - ruleNamesForCard +
+ *  fetchRenderCard, the render.ts warm seats the candidates for this view),
+ *  NOT the engine's structure universe: on a warm-closure engine the
+ *  universe never loads (the mod prepare seats the closure before the first
+ *  render, so the cold batch's parseStructureContents never runs), and the
+ *  seated walk answers without it. The FIRST EXISTING candidate wins, the
+ *  structure_rule_card arms nil it (content null, or "_self" after Ruby's
+ *  strip - templating.rb:44-47's ternary); those arms keep the disclosed
+ *  "" stub (the corpus's only :edit_structure op renders a structured card
+ *  whose rule content is neither).
+ *
+ *  The nest target is the STRUCTURE RULE CARD the way Ruby fetches it:
+ *  `rule_card :structure, skip_modules: true` (templating.rb:44-47) -
+ *  card/fetch/results.rb:11 includes set modules `unless skip_modules?`, so
+ *  THAT instance never carries the Rule set's card methods. Rendering the
+ *  full :edit view on it runs into the missing methods downstream: the rule
+ *  set's delete_confirm override calls `card.rule_setting_name` and the call
+ *  raises (deleteButton - the reproduced upstream failure, the quiet
+ *  render-error span the oracle's page embeds; the same missing-module
+ *  posture leaves the rule card's help slot EMPTY - the rule set's
+ *  raw_help_text override is absent with it, which this engine's help view
+ *  already answers). The flag rides the card instance (structureRuleFetch
+ *  Instances); the nest itself is nestRecord, whose viewOpts add the
+ *  captured data-slot's nest_name and home_view:"open" (nest.rb
+ *  prepare_view_and_opts! + the :edit home_view rule). */
+const editStructureView: ViewFn = (ctx) => {
+  const card = ctx.fmt.card;
+  const input: PatternCardInput = {
+    name: card.name.s,
+    id: card.id,
+    typeId: card.typeId,
+    typeName: card.typeName,
+  };
+  if (card.name.isCompound) {
+    const leftKey = card.name.leftName?.key;
+    const left =
+      leftKey !== undefined ? ctx.fmt.engine.fetchRenderCard(leftKey) : undefined;
+    input.leftTypeName = left?.typeName;
+  }
+  for (const candidate of ruleNamesForCard(input, "*structure")) {
+    const ruleCard = ctx.fmt.engine.fetchRenderCard(candidate);
+    if (ruleCard === undefined) continue; // no rule at this pattern
+    const content = ruleCard.dbContent;
+    if (content !== undefined && content.trim() === "_self") {
+      return ""; // structure_rule_card nils the "_self" rule (templating.rb:46); the null-content arm keeps the stub too
+    }
+    structureRuleFetchInstances.add(ruleCard);
+    return ctx.fmt.nestRecord(ruleCard, "edit");
+  }
+  return ""; // `return unless card.structure` - the structure-less stub arm
+};
 
 /** board/tab_views.rb:47-49 view :guide_tab, unknown: true:
  *  `render_guide` - the render dispatch to the :guide view (card-mod-help
@@ -2260,8 +2997,13 @@ function boardParts(ctx: ViewContext): string {
   voo.classUp("help-text", "alert alert-info"); // frame_help's with_class_up
   return output([
     fmt.renderView("help"),
-    fmt.renderView("edit_name_row", { home_view: "edit_name_row" }),
-    fmt.renderView("edit_form"),
+    // board_parts' renders are UNDERSCORE calls in Ruby (editing.rb:38-42,
+    // `_render_edit_name_row`, `_render_edit_form`): method_delegation.rb:54
+    // render_args sets skip_perms for the underscore prefix, so the whole
+    // board body renders AS REQUESTED on an unknown card — the name row and
+    // the form where the :unknown substitution stood.
+    fmt.renderView("edit_name_row", { home_view: "edit_name_row", skip_perms: true }),
+    fmt.renderView("edit_form", { skip_perms: true }),
   ]);
 }
 
@@ -2285,16 +3027,23 @@ function boardParts(ctx: ViewContext): string {
 const BOARD_BODY_SENTINEL = "\u0000board-body\u0000";
 function boardBody(ctx: ViewContext, view: "board" | "cardboard"): string {
   const { fmt, voo } = ctx;
-  fmt.addNameContext();
-  voo.showViz("help");
-  // the wrapper's modal-dialog class_up + modal_footer hide! land AFTER
-  // this slot froze (the captured interior JSON carries neither; the
-  // sidebar's carries both) - boardView writes them between the halves
-  const open = modSlotWrap(ctx, view, BOARD_BODY_SENTINEL, "", {
-    "data-breadcrumb": "Editing",
-    "data-breadcrumb-class": "edit",
+  // editing.rb:4-10 with_nest_mode :edit wraps the WHOLE body — the edit
+  // form's field nests (the Topic template's {{+summary}} family) render
+  // through mode.rb's view_in_edit_mode (every nest view substitutes to
+  // the field card's :edit_in_form formgroup; the perms-:none :link nest
+  // renders blank), so the mode IS byte-effective here.
+  return fmt.withNestMode("edit", () => {
+    fmt.addNameContext();
+    voo.showViz("help");
+    // the wrapper's modal-dialog class_up + modal_footer hide! land AFTER
+    // this slot froze (the captured interior JSON carries neither; the
+    // sidebar's carries both) - boardView writes them between the halves
+    const open = modSlotWrap(ctx, view, BOARD_BODY_SENTINEL, "", {
+      "data-breadcrumb": "Editing",
+      "data-breadcrumb-class": "edit",
+    });
+    return open.split(BOARD_BODY_SENTINEL).join(boardParts(ctx));
   });
-  return open.split(BOARD_BODY_SENTINEL).join(boardParts(ctx));
 }
 
 const boardBodyView: ViewFn = (ctx) => boardBody(ctx, "board");
@@ -2384,7 +3133,19 @@ function visibleBoardTabs(ctx: ViewContext): ReadonlyArray<readonly [string, str
  *  the viewer's signed-in state (the new discussion card's update verdict
  *  is the *all+*update walk; see the disclosure above). */
 function showDiscussionTab(ctx: ViewContext): boolean {
-  return ctx.fmt.engine.viewer?.signedIn === true;
+  // tab_visibility.rb:36-50: discussion_card answers NIL for a new card
+  // and for a card that IS a discussion card (compound && tag ==
+  // discussion), and show_discussion? is that card's ok?(update when the
+  // phantom is new, else read). The graded corpus row
+  // Topic 001+discussion:engage_tab pins the discussion-card arm: the
+  // card's own tag IS discussion, so discussion_section contributes
+  // nothing and the tab ends at the follow section.
+  const { fmt } = ctx;
+  if (fmt.engine.viewer?.signedIn !== true) return false;
+  if (fmt.card.id === undefined) return false; // new_card?
+  const name = fmt.card.name;
+  if (name.isCompound && name.tagKey === "discussion") return false;
+  return true;
 }
 
 function boardTabsView(ctx: ViewContext): string {
@@ -2435,7 +3196,7 @@ function boardTabsView(ctx: ViewContext): string {
   // active tab), then the wrap freezes the sidebar slot POST-body (the
   // captured sidebar JSON carries edit_type_row + the modal_footer hide)
   const activeContent =
-    activeView === "" ? "" : fmt.renderView(activeView);
+    activeView === "" ? "" : str(fmt.renderView(activeView));
   return modSlotWrap(ctx, "board", tabPanel.replace(BOARD_TABS_SENTINEL, activeContent));
 }
 
@@ -2522,8 +3283,8 @@ function pillCyKey(text: string): string {
   return table[text] ?? "rich_text_card";
 }
 
-function boardPillItem(text: string, markUrlKey: string): string {
-  const cy = `${pillCyKey(text)}-pill`;
+function boardPillItem(text: string, markUrlKey: string, cyKey?: string): string {
+  const cy = `${cyKey ?? pillCyKey(text)}-pill`;
   return (
     `<li class="nav-item">` +
     `<a data-slot-selector="${BOARD_SLOT_SELECTOR_ESC}" data-slotter-mode="override"` +
@@ -2554,14 +3315,27 @@ export const relatedTabView: ViewFn = ({ fmt }) => {
     }),
   ]);
   // related_by_type_items (related_section.rb:31-33): the absolute
-  // "<Type>+*type+by_name" mark
+  // "<Type>+*type+by_name" mark. The pill's data-cy keys on the CARD'S OWN
+  // TYPE ("Topic cards" -> topic_card-pill; the graded corpus row pins
+  // topic_card on the Topic 001 card — the hardcoded rich_text_card
+  // fallback was the RichText label only).
   const typeName = fmt.card.typeName ?? "";
+  // Rails' underscore (ActiveSupport Inflector.underscore): CamelCase runs
+  // split before the downcase — "RichText" -> "rich_text", "Topic" ->
+  // "topic" (the captured rich_text_card-pill pins the split).
+  const typeCode =
+    fmt.card.typeCode ??
+    typeName
+      .replace(/([A-Z])/g, "_$1")
+      .replace(/^_/, "")
+      .toLowerCase();
   sections.push([
     "by type",
     [
       boardPillItem(
         `${typeName} cards`,
         DeckoName.parse(`${typeName}+*type+by_name`).urlKey,
+        `${typeCode}_card`,
       ),
     ],
   ]);
@@ -2629,18 +3403,18 @@ export const historyTabView: ViewFn = ({ fmt, voo }) => {
               ),
             );
       const ago = agoDate === undefined ? "" : `${timeAgoInWords(agoDate)} ago`;
-      // summary: the act's action on THIS card (act.rb:97-101 action_on);
-      // action_type is the STORED integer (action.rb:89-91: create=0,
-      // update=1, delete=2)
-      const action = reader?.actionOn(Number(act.id), fmt.card.id as number);
-      const iconByType: Record<number, string> = {
-        0: "add_circle",
-        1: "edit",
-        2: "delete",
-      };
-      const actionType = action === undefined ? 1 : Number(action.action_type);
-      const iconName = iconByType[actionType] ?? "edit";
-      const summary = `<i class="notranslate material-icons">${iconName}</i><small> </small>`;
+      // summary: ActRenderer#summary (act_renderer.rb:37-41 + 96-103) - the
+      // act's APPROVED ACTIONS' per-type icons, the same composition the
+      // accordion's header badge renders (actSummaryBadge). NOT
+      // act.action_on(card.id): the on-this-card lookup is
+      // last_action_verb's mechanism - a family act (+summary, +tags)
+      // carries no action on the render root, and the earlier lookup
+      // defaulted every non-root pill to the edit icon where the corpus
+      // oracle pins add_circle for all four Topic 001 pills.
+      const summary =
+        reader === undefined
+          ? ""
+          : actSummaryBadge(reader, reader.actionsOfAct(Number(act.id)));
       const title =
         `<div class="me-2">#${thisSeq} ${h(actorName)} <small>${ago}</small></div>` +
         `<div class="ms-auto act-summary">${summary}</div>`;
@@ -2677,8 +3451,11 @@ export const historyTabView: ViewFn = ({ fmt, voo }) => {
  *  path (follow_link.rb:66-69): mark = follow_set_card.follow_rule_name
  *  (Auth.current.name), action :update, success {mark: card.name, view:
  *  :follow_section}, card {content: "[[*always]]" / "[[*never]]"} - the
- *  Rails to_query encodings (spaces +, brackets/star %XX). */
-function followButton(
+ *  Rails to_query encodings (spaces +, brackets/star %XX). Shared with the
+ *  follow mod's :follow_button view (the SAME FollowLink#button bytes -
+ *  the standalone view renders the identical anchor, the oracle pins
+ *  both). */
+export function followButton(
   bundle: { session: { actorName: string } | undefined; followed: boolean; followLabel: string },
   cardName: string,
 ): string {
@@ -2695,7 +3472,11 @@ function followButton(
   const verb = start ? "follow" : "following";
   const option = start ? "always" : "never";
   const hover = start ? "" : ` data-hover-text="unfollow"`;
-  const successMark = cardName.replace(/ /g, "+");
+  // Rails' query-value encoding (CGI.escape): spaces render "+" and a
+  // literal "+" renders "%2B" — "Topic 001+discussion" lands as
+  // "Topic+001%2Bdiscussion" (the graded corpus pins the mark's %2B; the
+  // previous space-only rewrite left the junction plus raw).
+  const successMark = cardName.replace(/ /g, "\u0000").replace(/\+/g, "%2B").replace(/\u0000/g, "+");
   const href =
     `/update/${ruleName}` +
     `?card%5Bcontent%5D=%5B%5B%2A${option}%5D%5D` +
@@ -2858,7 +3639,7 @@ const RULE_BOARD_SETTINGS: ReadonlyArray<
     "templating",
     [
       ["structure", "structure", "structure", "all recent common", "control card's content / structure"],
-      ["default", "default", "default", "all field common", "type/content template for new cards"],
+      ["default", "default", "default", "all field recent common", "type/content template for new cards"],
       ["autoname", "autoname", "autoname", "all", ""],
     ],
   ],
@@ -3010,14 +3791,17 @@ const editRulesView: ViewFn = (ctx) => {
   // set-keys extra (SELF-home-Xself) and the data-card-id; Basics' set
   // card is fetched NEW (no id, the base keys only)
   const setRecord = fmt.engine.fetchRenderCard(setName);
-  // The base keys and the type identity below are the CAPTURE DECK's data,
-  // transcribed: "5"/"Set" is the oracle deck's Set type card row, and the
-  // TYPE_PLUS_RIGHT-rich_text token is the captured *type plus right set
-  // key of the captured card's left type - deck data the byte pins
-  // (fixtures/captured/edit-views.json) reproduce verbatim, not resolved
-  // structure.
+  // The base keys: the set card "X+*self" is a TYPE_PLUS_RIGHT-set member
+  // whose left-type token derives from the FORM CARD's own type (the
+  // graded Topic 001 row pins topic-Xself — Topic-typed left; the captured
+  // Basics fixture pins rich_text-Xself — RichText-typed left). The Set
+  // type identity ("5"/"Set") stays the deck's Set type card row.
+  const leftTypeCode =
+    fmt.card.typeCode ??
+    fmt.card.typeName?.toLowerCase().replace(/\s+/g, "_") ??
+    "rich_text";
   const setKeys =
-    "ALL ALL_PLUS TYPE-set RSTAR RIGHT-Xself TYPE_PLUS_RIGHT-rich_text-Xself" +
+    `ALL ALL_PLUS TYPE-set RSTAR RIGHT-Xself TYPE_PLUS_RIGHT-${leftTypeCode}-Xself` +
     (setRecord !== undefined
       ? ` SELF-${setRecord.name.safeKey}`
       : "");
@@ -3034,7 +3818,9 @@ const editRulesView: ViewFn = (ctx) => {
     (setRecord !== undefined && setRecord.id !== undefined
       ? ` data-card-id="${setRecord.id}"`
       : "") +
-    ` data-card-name="${h(DeckoName.parse(setName).urlKey)}"` +
+    // data-card-name carries the card's NAME (the graded row:
+    // "Topic 001+*self"); the link-name stays the url key.
+    ` data-card-name="${h(setName)}"` +
     // the capture deck's Set type card (id 5) - deck data, byte-pinned
     ` data-card-type-id="5" data-card-type-name="Set"` +
     ` data-card-link-name="${h(DeckoName.parse(setName).urlKey)}"` +

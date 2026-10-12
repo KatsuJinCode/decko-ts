@@ -201,7 +201,11 @@ describeIfCorpus("reset-flow staging endpoints (booted server, disposable corpus
     expect(confirmResponse.status, await confirmResponse.text()).toBe(302);
     const location = confirmResponse.headers.get("location") ?? "";
     expect(decodeURIComponent(location)).toContain(fixture.accountMark);
-    expect(location).toContain("view=edit");
+    // Ruby's success redirect for `success << {id: name, view: :edit}`
+    // (account-verify-reset-flows events.rb:102) is the card's EDIT ACTION
+    // path (/Mira_Member+*account/edit), not the ?view= query form — the
+    // recorded oracle journey pins the /edit address on the reset link page.
+    expect(decodeURIComponent(location).endsWith("/edit")).toBe(true);
     const setCookie = confirmResponse.headers.get("set-cookie") ?? "";
     expect(setCookie).toContain("decko_ts_session=");
     const sessionCookie = /decko_ts_session=[^;]+/.exec(setCookie)?.[0] ?? "";

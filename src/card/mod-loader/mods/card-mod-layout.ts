@@ -81,6 +81,7 @@
 // link bytes. No captured oracle exists for this mod's views; every expected
 // byte traces to a cited helper source or one of those two live-gem runs.
 
+import { str, type ViewResult } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
 import { emitAttrs, h } from "../../render/slot-html.js";
 import { scanNests, stripTags } from "../../render/nest-syntax.js";
@@ -161,8 +162,9 @@ function contentTag(
 
 /** output (card-1.110.0 lib/card/format/content.rb:70-73):
  *  Array.wrap(content).flatten.compact.join "\n". */
-function output(parts: (string | undefined)[]): string {
-  return parts.filter((p) => p !== undefined).join("\n");
+function output(parts: (ViewResult | undefined)[]): string {
+  // Ruby's join is to_s over the compacted array (content.rb:70-73).
+  return parts.filter((p) => p !== undefined).map(str).join("\n");
 }
 
 /** Ruby-blank (ActiveSupport String#blank?). */
@@ -284,7 +286,7 @@ const modalLinkView: ViewFn = (ctx) => {
       href: `${cardPath(fmt.urlKey())}?layout=modal`,
       "data-remote": "true",
     },
-    ctx.fmt.renderView("title"),
+    str(ctx.fmt.renderView("title")),
   );
 };
 
@@ -305,9 +307,9 @@ const modalLinkView: ViewFn = (ctx) => {
  *  plain two. */
 const modalView: ViewFn = (ctx) => {
   const { fmt, voo } = ctx;
-  const title = fmt.renderView("modal_title");
-  const menu = fmt.renderView("modal_menu");
-  const footer = fmt.renderView("modal_footer");
+  const title = str(fmt.renderView("modal_title"));
+  const menu = str(fmt.renderView("modal_menu"));
+  const footer = str(fmt.renderView("modal_footer"));
   let out = "<div class='modal fade _modal-slot' id='modal-container' role='dialog'>\n";
   out += "<!-- /, \"data-backdrop\": \"static\"} -->\n";
   out += `<div class='${modalDialogClasses(voo.opts["size"])}'>\n`;
@@ -360,9 +362,17 @@ function overlayHelpLinkAttrs(fmt: ViewContext["fmt"]): Record<string, string | 
  *  data-slotter-mode after the existing keys; overlay_menu_link's add_class
  *  appends "text-muted p-1 ms-1" and the slotter class IN PLACE in the
  *  class value). href = path(mark: card, view: :overlay_guide) =
- *  "/<url_key>/overlay_guide" (lib/card/path.rb:35-39 mark/view base). */
+ *  "/<url_key>/overlay_guide" (lib/card/path.rb:35-39 mark/view base).
+ *  path "#": popover_opts seeded opts with path: "#", and html links.rb:102
+ *  `opts[:href] ||= path opts.delete(:path)` evaluates its right side ONLY
+ *  when href is unset - with the guide branch's href preset, the :path key
+ *  is never deleted and Rails content_tag renders it as the literal first
+ *  attribute (the oracle pins `<a path="#" tabindex=...`). The no-guide
+ *  branch keeps the delete: href=nil there, so path("#") becomes href="#"
+ *  and no path attribute renders. */
 function overlayHelpLinkGuideAttrs(fmt: ViewContext["fmt"]): Record<string, string | number | undefined> {
   return {
+    path: "#",
     ...overlayHelpLinkAttrs(fmt),
     class: "help-link ps-1 _popover_link slotter text-muted p-1 ms-1",
     href: `${cardPath(fmt.urlKey())}/overlay_guide`,
@@ -376,8 +386,10 @@ function overlayHelpLinkGuideAttrs(fmt: ViewContext["fmt"]): Record<string, stri
  *  opts = help_popover_opts; add_open_guide_opts opts (fires only when
  *  card.guide_card resolves - see guideCard below); overlay_menu_link :help,
  *  opts. smart_link_to sees no :view/:card/:resource key (links.rb:55-61) ->
- *  link_to -> href as above (the guide branch's :href pre-empts the path-#
- *  default, links.rb:102 `||=`). */
+ *  link_to - the guide branch carries popover_opts' path "#" through as a
+ *  literal attribute (links.rb:102 ||= never deletes it; see
+ *  overlayHelpLinkGuideAttrs); the no-guide branch deletes it into
+ *  href="#". */
 const overlayHelpLinkView: ViewFn = ({ fmt }) =>
   contentTag("a", guideCard(fmt) === undefined
     ? { ...overlayHelpLinkAttrs(fmt), class: `${overlayHelpLinkAttrs(fmt)["class"]} text-muted p-1 ms-1`, href: "#" }
@@ -524,7 +536,7 @@ function titleBytes(ctx: ViewContext): string {
   if (typeof label === "string" && label !== "") {
     return `<span class="card-title" title="${h(label)}">${wrappedTitleInner(h(label))}</span>`;
   }
-  return ctx.fmt.renderView("title");
+  return str(ctx.fmt.renderView("title"));
 }
 
 /** navbar_links.rb:28-30 wrap_with_nav_item: `wrap_with :li, content,
@@ -875,14 +887,17 @@ const headBarBottomView: ViewFn = (ctx) =>
 // the bytes for a signed-OUT reader.
 // ---------------------------------------------------------------------------
 
-/** DeckoName.url_key for the account cards these views link to. `signin` /
- *  `signup` are the codename'd account cards; their url_key is the
- *  lowercase form (nothing to escape), so the engine's urlKey is the same
- *  string. `action` is the trailing path segment `path({action: :new,
- *  mark: :signup})` produces. */
-function accountCardHref(name: string, action?: string): string {
-  const urlKey = DeckoName.parse(name).urlKey;
-  return action === undefined ? `/${h(urlKey)}` : `/${h(urlKey)}/${h(action)}`;
+/** The link targets are the CODENAME cards' NAMES (account_links.rb:34-53:
+ *  link_to_card :signup / :signin - Card::Name[:signup] is the "Sign up"
+ *  card, :signin the *signin card) and the href is link_to_card's
+ *  path(mark:) - `/<mark url key>` - with the action arms riding PATH
+ *  position, not mark position: `path: {action: :new, mark: :signup}` is
+ *  "/new/Sign_up" and `path: {action: :delete}` on *signin is
+ *  "/delete/*signin" (path.rb:34-63: "<action>/<mark>"). The corpus view
+ *  pins carry exactly these hrefs plus the known-card class (both targets
+ *  exist in every deck that seeds the account mod). */
+function accountLinkHref(targetUrlKey: string, action?: string): string {
+  return action === undefined ? `/${h(targetUrlKey)}` : `/${h(action)}/${h(targetUrlKey)}`;
 }
 
 /** links.rb:140-144 add_known_or_wanted_class: `Card.known?(name)`. The
@@ -893,22 +908,42 @@ function knownOrWantedClass(fmt: RenderFormat, name: string): string {
   return fmt.engine.fetchRenderCard(name) === undefined ? "wanted-card" : "known-card";
 }
 
+/** account_links.rb:29-31 link_options perms - the method-predicate gates.
+ *  The denial is :blank ("" for a gate failure). The signed-in read is the
+ *  chrome session (Auth.current - the same seam follow_section's
+ *  show_follow? reads); show_signup_link? (:90-92) is not_signed_in? &&
+ *  Card.new(type: :signup).ok?(:create) - the create check stays the
+ *  documented-allowed remainder (an unimplemented predicate leaves the
+ *  view allowed), the sign-in state decides. */
+function accountLinkGate(ctx: ViewContext, requires: "signed_in" | "not_signed_in"): string | undefined {
+  const signedIn = ctx.fmt.engine.viewer?.signedIn === true;
+  if (requires === "signed_in" && !signedIn) return "";
+  if (requires === "not_signed_in" && signedIn) return "";
+  return undefined;
+}
+
 function accountLinkView(
-  target: string,
+  targetUrlKey: string,
+  knownName: string,
   linkClass: string,
   text: string,
   action?: string,
+  requires?: "signed_in" | "not_signed_in",
 ): ViewFn {
   return (ctx) => {
-    const cls = `nav-link ${linkClass} ${knownOrWantedClass(ctx.fmt, target)}`;
-    return `<a class="${h(cls)}" href="${h(accountCardHref(target, action))}">${h(text)}</a>`;
+    if (requires !== undefined) {
+      const denial = accountLinkGate(ctx, requires);
+      if (denial !== undefined) return denial;
+    }
+    const cls = `nav-link ${linkClass} ${knownOrWantedClass(ctx.fmt, knownName)}`;
+    return `<a class="${h(cls)}" href="${h(accountLinkHref(targetUrlKey, action))}">${h(text)}</a>`;
   };
 }
 
-const signInView = accountLinkView("signin", "signin-link", "Sign in");
-const signUpView = accountLinkView("signup", "signup-link", "Sign up", "new");
-const signOutView = accountLinkView("signin", "signout-link", "Sign out", "delete");
-const inviteView = accountLinkView("signup", "invite-link", "Invite", "new");
+const signInView = accountLinkView("*signin", "*signin", "signin-link", "Sign in", undefined, "not_signed_in");
+const signUpView = accountLinkView("Sign_up", "Sign up", "signup-link", "Sign up", "new", "not_signed_in");
+const signOutView = accountLinkView("*signin", "*signin", "signout-link", "Sign out", "delete", "signed_in");
+const inviteView = accountLinkView("Sign_up", "Sign up", "invite-link", "Invite", "new", "signed_in");
 
 // ---------------------------------------------------------------------------
 // the :my_card and :edit_inline views (the R21 port,
@@ -925,8 +960,18 @@ const inviteView = accountLinkView("signup", "invite-link", "Invite", "new");
  *  more than one current role and the *enabled_roles codename exists, the
  *  interactive_roles_dropdown nest of +*enabled_roles in :edit_inline.
  *  Signed-out or unprepared sessions render "" (the denial :blank shape).
- */
-const myCardView: ViewFn = (ctx) => fillUniqueIds(ctx.fmt.engine.pageSessionMyCardHtml ?? "", ctx.fmt);
+ *
+ *  Consuming the prepared body marks the ensure_roles fill for the rest of
+ *  the request (set/right/enabled_roles.rb:52 — the roles nest's edit_inline
+ *  render mutates the session card mid-request): on a page whose MAIN body
+ *  already rendered the *account_links :core, this navbar nest serves the
+ *  FILLED content input; on every other page this is the request's first
+ *  roles-nest render and serves the blank one — both oracle-pinned. */
+const myCardView: ViewFn = (ctx) => {
+  const prepared = ctx.fmt.engine.pageSessionMyCardHtml ?? "";
+  ctx.fmt.engine.markSessionRolesContentFilled?.();
+  return fillUniqueIds(prepared, ctx.fmt);
+};
 
 /** right/enabled_roles.rb:26-43 — view :edit_inline (perms :none, unknown:
  *  true, cache: :never, wrap: :slot, super()) whose checkbox_input override
@@ -936,12 +981,17 @@ const myCardView: ViewFn = (ctx) => fillUniqueIds(ctx.fmt.engine.pageSessionMyCa
  *  The port composes the account_dropdown from the prepared session state
  *  (pageSessionRolesDropdownHtml: the role checkboxes, every one checked,
  *  because ensure_roles fills the session card's blank content with every
- *  current role); a signed-out engine composes the Anonymous-actor shape. */
+ *  current role); a signed-out engine composes the Anonymous-actor shape.
+ *  This IS the ensure_roles mutation point (checkbox_input's first line),
+ *  so consuming the prepared state marks the fill for the rest of the
+ *  request. */
 const enabledRolesEditInlineView: ViewFn = (ctx) => {
   // A session actor with roles: the role-checkbox dropdown; otherwise the
   // plain account dropdown.
+  const prepared = ctx.fmt.engine.pageSessionRolesDropdownHtml;
+  if (prepared !== undefined) ctx.fmt.engine.markSessionRolesContentFilled?.();
   const sessionHtml =
-    ctx.fmt.engine.pageSessionRolesDropdownHtml ??
+    prepared ??
     myCardDropdownInnerHtml(
       "Anonymous",
       { actor: true, accountSettings: false, signin: true },

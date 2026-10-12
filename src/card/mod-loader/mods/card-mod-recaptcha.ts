@@ -650,10 +650,13 @@ function fieldNest(ctx: ViewContext, field: string): string {
 
 /** recaptcha_settings.rb:11-13 view :core:
  *  `[field_nest(:site_key), field_nest(:secret_key)]` - the array renders
- *  joined with no separator. No view config (no unknown/cache/wrap on the
- *  Ruby `view :core` call). */
+ *  through the output join (content.rb:70-72 `Array.wrap(content).flatten
+ *  .compact.join "\\n"`), one newline between the two field nests (the
+ *  oracle's core bytes: `</div>\\n<div id="Xrecaptcha_setting-secret_key...`,
+ *  the seconds corpus's composed-mod view-gap family, 2026-10-09). No view
+ *  config (no unknown/cache/wrap on the Ruby `view :core` call). */
 const recaptchaSettingsCoreView: ViewFn = (ctx) =>
-  [fieldNest(ctx, "site key"), fieldNest(ctx, "secret key")].join("");
+  [fieldNest(ctx, "site key"), fieldNest(ctx, "secret key")].join("\n");
 
 // ---------------------------------------------------------------------------
 // event :recaptcha (set/all/recaptcha.rb:50-55) — the A9 port through the
@@ -707,13 +710,29 @@ export async function recaptchaEventFn(
   if (rec === undefined) return;
   const config = handleRecaptchaConfigErrors(rec.token);
   if (config.kind === "add-error") {
-    throw new CardActionError("recaptcha", config.message ?? "");
+    // errors.add "recaptcha", "needs correct v3 configuration" — the errors
+    // view's alert carries "Problems with <card name>" (error.rb:56-62
+    // voo.title) over "<KEY>: <message>" (standard_errors), so the throw
+    // carries the userMessage split and the acting card's name.
+    throw new CardActionError(
+      "recaptcha",
+      config.message ?? "",
+      `RECAPTCHA: ${config.message ?? ""}`,
+      undefined,
+      card.name,
+    );
   }
   if (config.kind === "card-error") {
     // Ruby raises Card::Error (not a validation error) — the port carries
     // the message on the engine's own CardActionError; write-routes maps
     // it by code like every other refusal.
-    throw new CardActionError("recaptcha", config.message ?? "");
+    throw new CardActionError(
+      "recaptcha",
+      config.message ?? "",
+      `RECAPTCHA: ${config.message ?? ""}`,
+      undefined,
+      card.name,
+    );
   }
   rec.markUsed(); // recaptcha.rb:52 — BEFORE the verify (:71 skips the next)
   const body = await rec.verify(rec.guard.verifyUrl, {
@@ -734,7 +753,13 @@ export async function recaptchaEventFn(
     // add_recaptcha_errors (:25-33): one errors.add per code (or the single
     // default). The ActiveRecord failure carries them as a list — the port
     // joins one line per added error.
-    throw new CardActionError("recaptcha", verdict.errorMessages.join("\n"));
+    throw new CardActionError(
+      "recaptcha",
+      verdict.errorMessages.join("\n"),
+      `RECAPTCHA: ${verdict.errorMessages.join("\n")}`,
+      undefined,
+      card.name,
+    );
   }
 }
 
@@ -814,6 +839,14 @@ const cardModRecaptcha: DeckoModManifest = {
       // / handleRecaptchaConfigErrors / validateRecaptcha /
       // recaptchaTokenHtml above. No views declared.
       setPath: "all/recaptcha",
+      // data/real.yml:6-13 — the mod's seeded captcha toggles (*all+*captcha
+      // '1' and *signup+*type+*captcha '1'): a stock deck boots with the
+      // captcha guard ON for anonymous creates, and the recorded oracle
+      // signup journey pins the armed refusal. Registered into the mod
+      // rule-seed registry (mod-rule-seeds.ts) for the form-side gate's
+      // synchronous read; the validate side resolves the same answer from
+      // storage, where the serving boot seeds these rows.
+      ruleSeeds: [{ name: "signup+*type+*captcha", content: "1" }],
       events: [
         {
           event: "recaptcha",

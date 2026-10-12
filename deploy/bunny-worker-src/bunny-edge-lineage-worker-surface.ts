@@ -42,13 +42,13 @@
 // layoutPage are verbatim 12bd5236:worker.ts (lines 144-151, 153-166,
 // 168-178); parsePath is the union shape documented above.
 
-import { decodeName } from "../../src/server/worker-shared-surface.js";
+import { decodeName, decodeViewSegment } from "../../src/server/worker-shared-surface.js";
 
 function parsePath(
   pathname: string,
   searchParams?: URLSearchParams,
 ):
-  | { name: string; view: string; params?: Record<string, string> }
+  | { name: string; view: string; params?: Record<string, string>; format?: "json" }
   | { kind: "new"; typeName: string }
   | { kind: "api" }
   | { kind: "notFound" } {
@@ -98,19 +98,34 @@ function parsePath(
   }
   if (segments.length === 2) {
     const name = decodeName(segments[0]!);
-    const view = decodeName(segments[1]!);
+    // The view is a snake_case identifier matched literally — the fold is
+    // uri_fetch_opts' for NAMES; a folded view misses the registered-view
+    // table (action_summary -> "action summary" answered the 422).
+    // Ruby route line 51: get ":mark/:view(.:format)" => "card#read" — the
+    // .:format suffix is part of the VIEW segment (the navbox typeahead's
+    // search_box_complete.json: view search_box_complete, format json), not
+    // the card name. A suffixed path dispatches the view in the json
+    // format; the bare form stays the html-format read.
+    const rawView = segments[1]!;
+    const isJson = rawView.endsWith(".json");
+    const view = decodeViewSegment(isJson ? rawView.slice(0, -".json".length) : rawView);
     if (name === undefined || view === undefined || name === "" || view === "") {
       return { kind: "notFound" };
     }
     // Any view, verbatim — the engine decides (root worker's rule): an
     // unregistered view raises UnsupportedViewError and maps to 422.
     const params = wireParams();
-    return { name, view, ...(params !== undefined ? { params } : {}) };
+    return {
+      name,
+      view,
+      ...(params !== undefined ? { params } : {}),
+      ...(isJson ? { format: "json" as const } : {}),
+    };
   }
   if (segments.length === 3 && segments[1] === "view") {
     // The /:mark/view/:view arm (root worker + the CF harness route).
     const name = decodeName(segments[0]!);
-    const view = decodeName(segments[2]!);
+    const view = decodeViewSegment(segments[2]!);
     if (name === undefined || view === undefined || name === "" || view === "") {
       return { kind: "notFound" };
     }

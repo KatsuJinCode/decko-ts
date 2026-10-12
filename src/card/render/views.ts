@@ -1,3 +1,4 @@
+import { str, type ViewResult } from "./format.js";
 // The html-format view registry: TypeScript ports of the view definitions the
 // captured fixtures exercise (:open, :closed, :content, :title and the
 // internal views they delegate to). Every view cites its Ruby source; the
@@ -38,10 +39,12 @@ import { DeckoName } from "../name.js";
 import { CodenameNotFoundError, NameNotFoundError } from "../name/errors.js";
 import { getNameEnvironment } from "../name/environment.js";
 import { timeAgoInWords } from "./text-helpers.js";
+import { cardWallClockNow } from "../wall-clock.js";
 import { searchPagingNav } from "./search-paging.js";
 import { footerDeckoVersion, recaptchaSiteKey, serializerFollowsLive } from "./deployment-follow-live-config.js";
 import type { UpdaterCardInfo } from "../history/updater-seam.js";
 import { isNewCard } from "../fetch/card-record.js";
+import { recentChangesCoreBytes } from "../mod-loader/mods/card-mod-history.js";
 import { cgiEscape, emitAttrs, emitHamlAttrs, h, newSlotId, slotOptionsJson, slotOptionsWithNameContext } from "./slot-html.js";
 import { hamlSlotInHash } from "./haml-slot-style.js";
 import {
@@ -595,10 +598,18 @@ const helpLinkView: ViewFn = (ctx) => menuHelpAnchor(ctx);
 // :content (html/views.rb)
 // ---------------------------------------------------------------------------
 
-const contentView: ViewFn = ({ fmt }) => {
-  // wrap do [render_menu(optional: :hide), render_core, render_edit_button(...)] end
-  // both optionals are :hide in the captured context -> the body is render_core
-  // (which dispatches to the search card_list for Search-type cards).
+const contentView: ViewFn = ({ fmt, voo }) => {
+  // wrap do [render_menu(optional: :hide), render_core,
+  //          render_edit_button(optional: :hide, edit: :inline)] end
+  // `optional: :hide` seeds each member's viz HIDDEN on this voo
+  // (visibility.rb process_visibility_options via View#process), so a member
+  // renders only on an EXPLICIT show viz - explicitShow, not show() (show()
+  // answers true on no viz entry, the :show default; these members' default
+  // is :hide). view_list's `render(v, show: :menu)` (set/all/demo.rb:10) is
+  // the corpus-pinned show arm: the content arm emits the card-menu div
+  // before the core (view:admin:Topic 001:view_list). A hidden member
+  // renders NIL, and output's compact drops nil before the "\n" join
+  // (content.rb:70-73), so no separator remains.
   //
   // renderDelegated, not renderView: Ruby's `render_core` is a METHOD
   // DELEGATION (format/method_delegation.rb:41-47) that opens its own
@@ -610,7 +621,12 @@ const contentView: ViewFn = ({ fmt }) => {
   // with. See RenderFormat#renderDelegated. The corpus bytes: card 34322
   // `Maturana ...+Date` and siblings render the full `content-view` slot
   // around `Error rendering: ...+Date (core view)`.
-  return slotWrapCommon(fmt, "content", fmt.renderDelegated("core"));
+  const parts = [
+    voo.explicitShow("menu") ? fmt.renderView("menu") : undefined,
+    fmt.renderDelegated("core"),
+    voo.explicitShow("edit_button") ? fmt.renderView("edit_button", { edit: "inline" }) : undefined,
+  ].filter((p) => p !== undefined);
+  return slotWrapCommon(fmt, "content", parts.join("\n"));
 };
 
 function slotWrapCommon(fmt: ViewContext["fmt"], view: string, inner: string): string {
@@ -639,17 +655,98 @@ ${fmt.renderDelegated("core")}</div>`;
   return slotWrapCommon(fmt, "content_panel", inner);
 };
 
+/** The BASE-format core (text.rb:22-24's `to_text super()` target): the
+ *  card's content rendered with base-format nest semantics —
+ *  default_nest_view is :name (nesting.rb:47-49), :link renders
+ *  "text[path]" (links.rb:10-18, the base-format link), :closed delegates
+ *  to :labeled ("name: core", base.rb:125-127), and List-family cards'
+ *  core is the items' names joined ", " (card-mod-list other_views.rb:8-11
+ *  pointer_items.join ", "). Structured cards' content is their structure
+ *  template (content/all.rb:12-14 structured_content). */
+function textFormatCoreFor(fmt: RenderFormat, depth: number): string {
+  const card = fmt.card;
+  const listFamily = card.typeCode === "pointer" || card.typeCode === "list" || card.typeCode === "list_mod";
+  if (listFamily) {
+    return rawItemStrings(card.dbContent ?? "").join(", ");
+  }
+  const structure =
+    fmt.engine.structureRuleForSync?.({
+      name: card.name.s,
+      id: card.id,
+      typeId: card.typeId,
+      typeName: card.typeName,
+      isNew: card.record.isNew === true,
+    });
+  const content = structure !== undefined ? structure.content : (card.dbContent ?? "");
+  if (depth <= 0) return content;
+  let out = "";
+  let cursor = 0;
+  for (const piece of scanNests(content)) {
+    if (piece.kind !== "nest" || piece.nest === undefined) continue;
+    const nest = piece.nest;
+    if (nest.comment !== undefined) continue;
+    const openText = `{{${nest.syntax}}}`;
+    const at = content.indexOf(openText, cursor);
+    if (at === -1) continue;
+    out += content.slice(cursor, at);
+    cursor = at + openText.length;
+    const target = DeckoName.parse(nest.name).absoluteName(card.name);
+    const view = typeof nest.options.view === "string" && nest.options.view !== "" ? nest.options.view : "name";
+    out += baseFormatNestRender(fmt, target.s, view, depth - 1);
+  }
+  if (cursor === 0) return content;
+  out += content.slice(cursor);
+  return out;
+}
+
+/** One nest's base-format render for the text core. */
+function baseFormatNestRender(
+  fmt: RenderFormat,
+  targetName: string,
+  view: string,
+  depth: number,
+): string {
+  const target = fmt.engine.fetchRenderCard(targetName) ?? fmt.newCardFor(targetName);
+  switch (view) {
+    case "name":
+      return target.name.s;
+    case "link": {
+      // base.rb:43-47 link_view -> links.rb:10-18 link_to: text[path] —
+      // the text = the target's title view (its own name here), the path =
+      // the card's absolute URL (base formats render paths absolute).
+      const text = target.name.s;
+      const url = fmt.cardUrl(DeckoName.parse(target.name.s).urlKey);
+      return text !== url ? `${text}[${url}]` : url;
+    }
+    case "closed":
+    case "labeled":
+      // base.rb:125-127 :labeled — "name: core" (the target's recursive
+      // base core)
+      return `${target.name.s}: ${textFormatCoreFor(
+        new RenderFormat(target, fmt.engine, { parent: fmt, maxDepth: fmt.maxDepth }),
+        depth,
+      )}`;
+    default:
+      return textFormatCoreFor(
+        new RenderFormat(target, fmt.engine, { parent: fmt, maxDepth: fmt.maxDepth }),
+        depth,
+      );
+  }
+}
+
 /** html/views.rb:36-40 view :content_with_title:
  *  `wrap true, title: card.format(:text).render_core do [render_menu,
  *  render_core] end`. The title value is the card's core rendered in the
  *  TEXT format (text.rb:22-24 view :core -> to_text super = the base
- *  format's core html run through to_text, text.rb:4-6: HTMLEntities.decode
- *  strip_tags(html)). The slot_attr deep-merge puts the title attribute
- *  AFTER the data attributes (slotWrap's extraAttrs). The before hook
- *  (:34) adds the d0-card-content class_up only. */
+ *  format's core, run through to_text — text.rb:4-6). The base core is
+ *  the textFormatCoreFor walk above; the earlier shape rendered the HTML
+ *  core (wrap + menu bytes leaked into the title). The slot_attr
+ *  deep-merge puts the title attribute AFTER the data attributes
+ *  (slotWrap's extraAttrs). The before hook (:34) adds the
+ *  d0-card-content class_up only. */
 const contentWithTitleView: ViewFn = ({ fmt }) => {
   const core = fmt.renderDelegated("core");
-  const title = toText(core);
+  const title = toText(textFormatCoreFor(fmt, 3));
   const inner = `${fmt.renderView("menu")}
 ${core}`;
   const voo = fmt.voo;
@@ -997,6 +1094,20 @@ const coreViewBase: ViewFn = (ctx) => {
   //   the unported path emitted the raw apostrophes.
   if (fmt.card.typeCode === "plain_text" || fmt.card.typeName === "PlainText") {
     return fmt.processContent(h(fmt.renderRaw()));
+  }
+  // set/self/recent.rb:28-33 - the *recent card's html :core: the
+  // deck-wide recent-acts feed (recent_acts + acts_layout :absolute), a
+  // Self-set override of the search core below (self outranks
+  // Type::SearchType in the set chain; self/recent.rb:9-12 even nils
+  // cql_content with "FIXME: this should not be a CQL search card").
+  // The bytes builder (card-mod-history.ts recentChangesCoreBytes) reads
+  // the render-time history seam's DECK-WIDE reader - prepared for any
+  // core-reaching render whose root is *recent (render.ts SELF-Xrecent
+  // gate). Without the seat the view answers the search card_list the
+  // type dispatch below serves (the pre-port search-no-results bytes).
+  if (fmt.card.setKeys.split(" ").includes("SELF-Xrecent")) {
+    const reader = fmt.engine.historyRenderReader?.();
+    if (reader !== undefined) return recentChangesCoreBytes(fmt, reader);
   }
   // Match by codename (card-mod-search type card's codehash has codename
   // "search_type"); the corpus search cards have type cards whose CARD
@@ -1798,13 +1909,17 @@ const coreView: ViewFn = (ctx) => {
     ? ctx.fmt.withNestMode("template", () => coreViewBase(ctx))
     : coreViewBase(ctx);
   if (ctx.fmt.card.name.rightName?.key !== "discussion") return base;
-  let box = "";
+  let box: string | null;
   try {
-    box = ctx.fmt.renderView("comment_box", {}, "hide");
+    // the HIDDEN arm (voo_api.rb:154's :hide bail) answers NIL — output()'s
+    // compact DROPS it, separator included (the corpus's 21-byte discussion
+    // cores end at the content, no trailing newline); the denial blank and
+    // the rendered form are Ruby-truthy strings and keep the separator.
+    box = ctx.fmt.renderView("comment_box", {}, "hide") as string | null;
   } catch {
     box = ""; // comment mod not registered: the :update-denied blank
   }
-  return base + "\n" + box;
+  return box === null ? base : base + "\n" + box;
 };
 
 /**
@@ -1925,7 +2040,7 @@ function testContextCardFor(ctx: ViewContext): ViewContext["fmt"]["card"] | unde
  *  CARD and with_context assigns/restores it around the block
  *  (contextual_content.rb:5-12, with an ensure); the port writes the
  *  format's contextCard field around the same yield shape. */
-function contextualizingTestContext(ctx: ViewContext, run: () => string): string {
+function contextualizingTestContext(ctx: ViewContext, run: () => ViewResult): ViewResult {
   if (ctx.fmt.contextCard !== undefined) return run(); // @context_card.present?
   if (ctx.voo.viz.get("test_context") === "hide") return run(); // voo.hide?
   const target = testContextCardFor(ctx);
@@ -1950,7 +2065,7 @@ function contextualizingTestContext(ctx: ViewContext, run: () => string): string
  *  card through the format's contextCard seam (format/nest/fetch.rb:12),
  *  rendering the notification's `{{_|link}}` / `{{_|last_action_verb}}` /
  *  `{{_|subedits}}` marks against `*changed card` — the oracle bytes. */
-export function htmlMessageCoreBody(ctx: ViewContext): string {
+export function htmlMessageCoreBody(ctx: ViewContext): ViewResult {
   return contextualizingTestContext(ctx, () => coreView(ctx));
 }
 
@@ -1967,7 +2082,7 @@ export function htmlMessageCoreBody(ctx: ViewContext): string {
  *  `_render_core`) — the dispatcher below routes the subject scope HERE,
  *  which without the arm fell through to the bare coreView and resolved
  *  the nests against the field card itself. */
-export function subjectCoreBody(ctx: ViewContext): string {
+export function subjectCoreBody(ctx: ViewContext): ViewResult {
   return contextualizingTestContext(ctx, () => coreView(ctx));
 }
 
@@ -2060,9 +2175,9 @@ export function contentWithLinkBody(ctx: ViewContext): string {
  *  for a nested render (set/all/error.rb:13-15) — exactly the oracle's
  *  `was just  by` double space where the html message renders the quiet
  *  span. */
-export function textMessageCoreBody(ctx: ViewContext): string {
+export function textMessageCoreBody(ctx: ViewContext): ViewResult {
   return contextualizingTestContext(ctx, () =>
-    toText(ctx.fmt.withFormatName("email_text").renderView("core")),
+    toText(str(ctx.fmt.withFormatName("email_text").renderView("core"))),
   );
 }
 
@@ -2094,29 +2209,55 @@ export function textMessageCoreBody(ctx: ViewContext): string {
  *  card PROGRAMMATICALLY (no nest_syntax in the slot JSON, absolute
  *  nest_name) in :read_formgroup — the ported view
  *  (card-mod-edit.ts readFormgroupView, wrap: :slot, unknown: true). */
-const EMAIL_TEMPLATE_FIELD_TAGS = [
+/** set/type/email_template/html.rb:3 `EmailTemplate::EmailConfig::EMAIL_FIELDS
+ *  + [:test_context]` - the SYMBOL tags exactly as the gem defines them
+ *  (email_config.rb:1). */
+const EMAIL_TEMPLATE_FIELD_CODENAMES = [
   "to",
   "from",
   "cc",
   "bcc",
   "attach",
   "subject",
-  "text message",
-  "html message",
-  "test context",
+  "text_message",
+  "html_message",
+  "test_context",
 ] as const;
 
 export function emailTemplateCoreBody(ctx: ViewContext): string {
   const base = ctx.fmt.card.name.s;
-  return EMAIL_TEMPLATE_FIELD_TAGS.map((tag) => {
-    const fieldMark = `${base}+*${tag}`;
-    return ctx.fmt.nest({
-      name: fieldMark,
-      syntax: "",
-      options: { view: "read_formgroup", title: fieldMark, extra: {} },
-      comment: undefined,
-    });
-  }).join("\n");
+  // render_read_form (card-mod-edit set/all/formgroup.rb:2-7) maps
+  // read_field_configs -> edit_field_configs' explicit arm
+  // (card-mod-content set/all/chunk.rb:121-133), which resolves EVERY
+  // edit_fields SYMBOL tag through the codename table BEFORE any field nest
+  // runs: normalized_edit_field_config -> card.name.field(tag) ->
+  // Card::Name.compose -> from_cardish(Symbol) -> Codename.name!
+  // (card-1.110.0 lib/card/name.rb:77 -> codename.rb:90,160). The marks are
+  // the codenamed cards' NAMES (":to" resolves to the "*to" card, hence the
+  // starred trait form the live probe recorded); a codename the deck does
+  // not carry raises Card::Error::CodenameNotFound there - in the serving
+  // posture the html format is not focal (html_format.rb:16-18 focal? =
+  // show_layout? ? main? : depth.zero?, and the bare adapter root is never
+  // main!-ed), so the rescue is QUIET (error.rb:65-67,75-78) and the
+  // verbatim span becomes the whole read_form = the whole core (oracle
+  // synthetic-v2: the 83-byte span-only core; the former star-form STRING
+  // marks skipped the codename table entirely and rendered all nine
+  // formgroups).
+  const fieldMarks = EMAIL_TEMPLATE_FIELD_CODENAMES.map((code) => {
+    const tag = getNameEnvironment()?.codename?.name(code);
+    if (tag === undefined) throw new CodenameNotFoundError(`unknown codename: ${code}`);
+    return `${base}+${tag}`;
+  });
+  return fieldMarks
+    .map((fieldMark) =>
+      ctx.fmt.nest({
+        name: fieldMark,
+        syntax: "",
+        options: { view: "read_formgroup", title: fieldMark, extra: {} },
+        comment: undefined,
+      }),
+    )
+    .join("\n");
 }
 
 /** The flat `core` entry's scope dispatcher. Ruby resolves :core per card
@@ -2757,7 +2898,12 @@ function settingCoreHtml(ctx: ViewContext): string {
     // `</h5>` / the nest lines / `</p>`), not the single-line
     // `<p><h5>label</h5>…</p>` the old code emitted (oracle 17450:
     // `<p>\n<h5>\nall cards\n</h5>\n` … `\n</p>\n`).
-    body += `<p>\n<h5>\n${h(heading.toLowerCase())}\n</h5>\n`;
+    // The label bytes are RAW: Decko's haml helper does not escape `=`
+    // output, so the oracle prints `all "+" cards` (and the *create page's
+    // `all "*" cards` / `all "+*" cards`) with literal quotes — the
+    // h()-escaped `&quot;` form was a +10-byte first difference on every
+    // *read page and +30 on every *create page.
+    body += `<p>\n<h5>\n${heading.toLowerCase()}\n</h5>\n`;
     if (cls.anchorless) {
       // Anchorless: collapse the per-class group to ONE bar with the
       // full left name (Ruby: anchorless? rows render once with
@@ -4071,7 +4217,7 @@ function renderPointerListItem(fmt: RenderFormat, name: string, itemView: string
       { pointerListItem: true },
     );
   } catch (error) {
-    return quietRenderError(error, target, itemView);
+    return quietRenderError(error, target, itemView, fmt);
   }
 }
 
@@ -4712,7 +4858,7 @@ function cardStub(fmt: ViewContext["fmt"], view: string): string {
 function barBottomHtml(ctx: ViewContext, open: boolean): string {
   const { fmt } = ctx;
   if (!open) return cardStub(fmt, "bar_bottom");
-  return fmt.renderView("bar_bottom");
+  return str(fmt.renderView("bar_bottom"));
 }
 
 /** bar.rb#build_accordion_bar + accordion_item.haml, byte-shaped (the
@@ -4800,7 +4946,7 @@ const openView: ViewFn = (ctx) => {
 /** The generic bar_left: title.rb's :title view (bar.rb:14 `bar_left do
  *  _render_title end`). */
 function genericBarLeftHtml(ctx: ViewContext): string {
-  return ctx.fmt.renderView("title");
+  return str(ctx.fmt.renderView("title"));
 }
 
 /** card-mod-bootstrap set/type/bootswatch_skin/html_views.rb:57-63
@@ -5372,7 +5518,11 @@ const universalEditButtonView: ViewFn = (ctx) => {
  *  nil -> "". This engine registers no :rss_link_tag, so the port returns ""
  *  — which is the same bytes the page-level renderer emits for the rss slot
  *  (src/card/render/page.ts:498-499 documents the "" it joins in). */
-const rssLinksView: ViewFn = () => "";
+const rssLinksView: ViewFn = () =>
+  // head.rb:41-43: `render :rss_link_tag if rss_link?` - the guard-false arm
+  // is Ruby's NIL (the corpus records JSON null at the render boundary; the
+  // head's interpolation to_s's it to the "" the captured pages carry).
+  null;
 
 /** meta_tags.haml, byte-shaped to the HAML conventions this module already
  *  pins (views.ts:5-8: HAML templates emit SORTED single-quoted attributes;
@@ -5652,7 +5802,10 @@ function unknownLinkHref(fmt: RenderFormat): string {
   return `/${h(url)}/new_in_modal${unknownLinkQuery(fmt)}`;
 }
 
-const unknownView: ViewFn = (ctx) => {
+/** The html arm of :unknown (the bytes the corpus's unknown-card nests
+ *  carry) — exported for the composed mod deck's all/error html table,
+ *  whose previous entry was the base-format "" body. */
+export const unknownView: ViewFn = (ctx) => {
   const { fmt } = ctx;
   // createable is a POSITIVE check (card.ok?(:create)): only a verdict of
   // true renders. undefined (the rule-less-seed case - no *create rule at
@@ -5668,6 +5821,19 @@ const unknownView: ViewFn = (ctx) => {
   return slotWrapCommon(fmt, "unknown", link);
 };
 
+/** The html-format :unknown body (card-mod-format set/all/html/error.rb's
+ *  override of the base format's bare-"" :unknown — html/error.rb:15-17
+ *  `view :unknown do createable { wrap { unknown_link ... } } end`),
+ *  exported for the card-mod-format set/all/error registration: the mod
+ *  chain's set/all block answers :unknown for EVERY card on a
+ *  loader-bound engine, so it must carry this body, not the base format's
+ *  "". With the base-"" registration the composed surface rendered no
+ *  unknown link anywhere (the corpus's admin *search page: a skin bar's
+ *  absent +Image nested :boxed, whose core substitutes to :unknown — the
+ *  oracle renders the box with the create link inside, the engine an
+ *  empty box). */
+export { unknownView as htmlFormatUnknownView };
+
 /** base.rb (card-mod-format) view :blank: literally "" (base.rb:109-111). */
 const blankView: ViewFn = () => "";
 
@@ -5677,8 +5843,8 @@ const blankView: ViewFn = () => "";
  *  d0-card-content ALL TYPE-rich_text"><a rel="nofollow" class=
  *  "unknown-link slotter" href="/radio/new_in_modal" data-remote="true">
  *  <i class="notranslate material-icons">add_box</i></a></div>` for bot;
- *  empty for tova/anonymous). */
-const miniUnknownView: ViewFn = (ctx) => {
+ *  empty for sara/anonymous). */
+export const miniUnknownView: ViewFn = (ctx) => {
   const { fmt } = ctx;
   // same positive createable check as :unknown (see there).
   if (!unknownCardCreatable(fmt)) return "";
@@ -5935,12 +6101,19 @@ const boxView: ViewFn = (ctx) => {
   let out = `<div class='${voo.classy("box", card.setKeys)} card _card-link nodblclick'${dataAttrs}>\n`;
   if (voo.show("box_top")) {
     // `.card-header.text-center{class: classy("box-top")}` — a nested
-    // `= render :box_top` then `= render :menu`; the menu renders empty
-    // (hidden above), and the haml `= x` lines each contribute their own
-    // newline, so box_top and the (empty) menu are newline-separated.
+    // `= render :box_top` then `= render :menu`; the menu view was viz-HIDDEN
+    // by the body's `voo.hide :menu` above (first-write-wins: an arm that
+    // showed :menu BEFORE the body ran - view_list's `render(v, show:
+    // :menu)` - keeps the show), and the haml `= x` lines each contribute
+    // their own newline, so box_top and the menu line are newline-separated;
+    // a hidden menu renders nil and its line stays an empty newline
+    // (visibility.rb#show? on a hidden view), so the header carries box_top
+    // alone. The corpus pins the show arm: view:admin:Topic 001:view_list's
+    // box arm emits the card-menu div between box_top and </div>.
     out += `<div class='${voo.classy("box-top")} card-header text-center'>\n`;
     out += `${fmt.renderView("box_top")}\n`;
-    out += `\n</div>\n`;
+    out += voo.show("menu") ? `${fmt.renderView("menu")}\n` : "\n";
+    out += `</div>\n`;
   }
   if (voo.show("box_middle")) {
     out += `<div class='${voo.classy("box-middle")} card-body'>\n`;
@@ -6017,8 +6190,15 @@ function lexiconNameForId(id: number): string | undefined {
  *  cards.creator_id (record.creatorId), cards.created_at
  *  (record.createdAt), the creator NAME (the sync lexicon peek,
  *  NameLexicon.name — Ruby's own lexicon is cache-first too), and the
- *  time_ago_in_words helper already byte-pinned in text-helpers.ts (the
- *  capture normalizes the age to TIME_AGO on both sides). The wrap option
+ *  time_ago_in_words helper already byte-pinned in text-helpers.ts. Ruby
+ *  reads Time.now at render time; the engine's clock seam
+ *  (cardWallClockNow) is that instant - the capture harness freezes it
+ *  (deck.json clock -> setCaptureWallClock) and the corpus oracle pins the
+ *  real phrase ("less than a minute" - the fixture creator sits AT the
+ *  frozen instant; a wall-clock default answered "21 days ago"). The
+ *  captured board-views fixtures normalize the age to TIME_AGO on both
+ *  sides, so production is unchanged: unset, the seam IS the real clock.
+ *  The wrap option
  *  is an UNCONDITIONAL tag wrapper (card-1.110.0
  *  lib/card/set/format/abstract_format/wrapper.rb define_tag_wrapper ->
  *  wrap_with), so the guard's "" body renders inside its wrap div — the
@@ -6033,7 +6213,7 @@ const creatorCreditView: ViewFn = (ctx) => {
   const body =
     name === undefined || record.createdAt === undefined
       ? ""
-      : `Created by ${creditLinkHtml(name)} ${timeAgoInWords(record.createdAt)} ago`;
+      : `Created by ${creditLinkHtml(name)} ${timeAgoInWords(record.createdAt, cardWallClockNow())} ago`;
   return `<div class="text-muted creator-credit">${body}</div>`;
 };
 
@@ -6205,7 +6385,7 @@ function imageBoxCore(ctx: ViewContext): string {
   const rawSize = ctx.voo.opts["size"];
   const size = typeof rawSize === "string" && rawSize !== "" ? rawSize : "medium";
   const renderSize = IMAGE_BOX_SIZE_MAP[size] ?? "medium";
-  return ctx.fmt.renderView("core", { size: renderSize });
+  return str(ctx.fmt.renderView("core", { size: renderSize }));
 }
 
 /** image.rb:6-8 `view :boxed, unknown: true do image_box { |size| render_core
@@ -6438,7 +6618,7 @@ const listOfChangesView: ViewFn = () => "";
  *  notification_act; wrap_subedits { ... } end`. perms :none means no
  *  permission gate, so the body always runs on the page path — and the
  *  body returns NIL there (`card.acts.last` is nil for a card with no
- *  acts). Ruby's nil does NOT reach the page as "": a nest is a
+ *  acts). Ruby's nil does NOT reach a page as "": a nest is a
  *  Content::Chunk, and `Chunk::Abstract#result` (content/chunk/abstract.rb)
  *  is `burn_read || @process_chunk || @processed || @text` — with
  *  `@processed` nil (`Chunk::Nest#process_chunk` assigns whatever
@@ -6446,12 +6626,17 @@ const listOfChangesView: ViewFn = () => "";
  *  AUTHORED SYNTAX. So `{{_|subedits}}` renders as the literal
  *  `{{_|subedits}}`. Oracle-pinned: the follower notification email's
  *  html message shows `<p>{{_|subedits}}</p>` and its text message shows
- *  a bare `{{_|subedits}}` line. The engine's content loop
- *  (render/format.ts#processContent) appends `this.nest(...)` as a
- *  string, so this body re-emits the authored syntax rather than
- *  changing that shared signature — the fallback is reproduced HERE,
- *  scoped to this one view, instead of ported engine-wide. */
-const subeditsView: ViewFn = () => "{{_|subedits}}";
+ *  a bare `{{_|subedits}}` line. This flat arm answers the same
+ *  posture-dependent shape as the mod's registered arm (the corpus's
+ *  top-level subedits op records {"html":""} there, the email nest the
+ *  authored syntax): the chunk dispatch's authoredNestText opt
+ *  (render/format.ts contentNest -> nest's authoredText arm, the composed
+ *  answer to the miscpins wave-2 registrations shadowing this flat arm)
+ *  carries the chunk's @text, and every other boundary answers "". */
+const subeditsView: ViewFn = (ctx) => {
+  const authored = ctx.voo.opts["authoredNestText"];
+  return typeof authored === "string" ? authored : "";
+};
 
 /** card-mod-follow set/all/notify/base_views.rb:33-40
  *  `view :followed, perms: :none, compact: true` —
@@ -6484,13 +6669,38 @@ const unfollowUrlView: ViewFn = () => "";
  *  BOTH predicates fail and `denial: :blank` renders "". That is the arm
  *  the capture pins (`<a href="">follow this link</a>`, and an empty line
  *  where the text message's standalone `{{_|verify_url}}` sits).
- *  The SEND path — the arm that builds a real token URL — is
- *  src/card/auth/account-verify-reset-flows.ts#buildAccountTokenUrl
- *  (the `token_url` port); it substitutes the URL into
- *  the message text itself and does not render through this view, so
- *  registering the blank arm here does not touch a delivered email. */
-export const verifyUrlView: ViewFn = () => "";
-export const resetPasswordUrlView: ViewFn = () => "";
+ *
+ *  THE BODY ARM (a render that passes the perms gate — the corpus's
+ *  admin-actor bare renders of an account's +*account right): the body
+ *  runs `token_url` -> `new_token` -> `Auth::Token.encode` ->
+ *  jwt's `Hmac#ensure_valid_key!` (hmac.rb:39-40). The harness deck has no
+ *  Rails credentials secret_key_base, so the HMAC key is "" and the encode
+ *  RAISES "HMAC key cannot be empty" — the stock synthetic-v2 oracle bytes
+ *  for view:admin:Ada Admin+*account:verify_url / :reset_password_url (the
+ *  quiet non-focal rescue renders the admin debug span around them). The
+ *  key check is synchronous (it precedes any crypto), so the raise ports
+ *  in this sync ViewFn; the SUCCESS arm (a deck WITH a secret) is the
+ *  async-ViewFn boundary — the HMAC encode cannot be awaited here — and
+ *  keeps the blank arm until the async-view seam lands. The SEND path is
+ *  src/card/auth/account-verify-reset-flows.ts#buildAccountTokenUrl (the
+ *  `token_url` port); it substitutes the URL into the message text itself
+ *  and does not render through this view. */
+export const verifyUrlView: ViewFn = (ctx) => tokenUrlBody(ctx);
+export const resetPasswordUrlView: ViewFn = (ctx) => tokenUrlBody(ctx);
+
+/** The shared token_url body arm (see the two views above). */
+function tokenUrlBody(ctx: ViewContext): string {
+  const secret = ctx.fmt.engine.tokenConfig?.secret;
+  if (typeof secret !== "string" || secret === "") {
+    // jwt-2.10.3 lib/jwt/jwa/hmac.rb:40 ensure_valid_key! —
+    // `raise_verify_error!('HMAC key cannot be empty')` (jwa/signing_algorithm.rb:38
+    // raises JWT::DecodeError; the MESSAGE is what the corpus pins — the
+    // gem class is not a Decko UserError, so the quiet rescue takes the
+    // lib_error_rendering arm).
+    throw new Error("HMAC key cannot be empty");
+  }
+  return "";
+}
 
 /** card-mod-account set/right/account/views.rb:18-20 — the DEPRECATED
  *  aliases `view :verify_days, :token_days` /
@@ -6590,7 +6800,7 @@ export function flatViewRefused(view: string, setKeys: string): boolean {
  *  Function declarations, so a mod module can bind them however the import
  *  graph orders evaluation. */
 export function baseTableView(view: string): ViewFn {
-  return function sharedBaseView(ctx: ViewContext): string {
+  return function sharedBaseView(ctx: ViewContext): ViewResult {
     const fn = BASE_TABLE_VIEWS[view];
     if (fn === undefined) throw new UnsupportedViewError(view, ctx.fmt.card.name.s);
     return fn(ctx);

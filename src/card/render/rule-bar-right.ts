@@ -1,3 +1,4 @@
+import { str, type ViewResult } from "../render/format.js";
 // Rule-card bar-right content (card-mod-rules-0.20.0 set/rule/bar_view.rb):
 // for a card matching the *rule pattern, :bar_right nests the card's own
 // :one_line_content view, wrapped in the rule format's
@@ -132,7 +133,7 @@ function ruleOneLineContent(
   card: RenderCard,
   rightSetting: string | undefined,
   engine?: RenderEngineLike,
-  renderCoreText?: (card: RenderCard) => string,
+  renderCoreText?: (card: RenderCard) => ViewResult,
   /** bar_view.rb:63-66 rule_short_content nests the existing rule with
    *  `set_context: card.name.trunk_name` — the trunk of the BAR-RENDERED
    *  (outer, often virtual) rule card, NOT the substituted existing rule's
@@ -156,7 +157,12 @@ function ruleOneLineContent(
     // is the generic right-side set; right/head is that set for *head).
     // Pinned by the oracle: AAM+*self+*head (HTML-typed, content
     // "{{:head|core}}") bar-right renders the literal nest string.
-    return truncate(stripTags(card.dbContent), ONE_LINE_CHARACTER_LIMIT);
+    // The truncate is the same Rails TextHelper helper as the base arm's
+    // (escape-on-cut; see the base arm's note below): a *head one-line
+    // that fits renders raw, one that cuts renders escaped.
+    const stripped = stripTags(card.dbContent);
+    const truncated = truncate(stripped, ONE_LINE_CHARACTER_LIMIT);
+    return truncated === stripped ? truncated : h(truncated);
   }
   // Toggle-type cards: the compact-mode one_line_content routes through
   // the card's content view (card-mod-toggle set/type/toggle.rb), which
@@ -275,19 +281,101 @@ function ruleOneLineContent(
     // a NAME — no strip_tags on this branch.
     return truncate(firstName, ONE_LINE_CHARACTER_LIMIT);
   }
-  // Non-list rule cards (RichText help/guide contents, HTML, …): the
-  // base method path truncate(strip_tags(render_core)) — render_core is
-  // the card's OWN core view (mod-dispatched: Markdown cards kramdown to
-  // HTML first, RichText processed content), so the injected core render
-  // (views.ts barRightView) is the faithful input; without it (bare
-  // tests) the raw dbContent stands in.
-  const coreText = renderCoreText !== undefined ? renderCoreText(card) : card.dbContent;
-  // set/all/content.rb:47-49 `truncate strip_tags(render_core)` — Rails
-  // truncate semantics with one_line_character_limit = 60 (content.rb:1);
-  // the stored RichText markup (`<p><em>…</em></p>`) never reaches the
-  // one-line bytes (oracle: the AAM+*self+*help bar-right renders the
-  // plain sentence, not the `<p><em>…` markup form).
-  return truncate(stripTags(coreText), ONE_LINE_CHARACTER_LIMIT);
+  // Non-list rule cards: the base method path (card-mod-format
+  // set/all/content.rb:47-49 `truncate strip_tags(render_core)`).
+  //
+  // THE ESCAPE IS TRUNCATION-BOUND (settled live on both decks,
+  // 2026-10-11): the Ruby chain is Rails' TextHelper#truncate
+  // (actionview-7.2.4 text_helper.rb:122-131) — line 126 String#truncate
+  // returns the SAME string when it fits within the 60-char limit, and a
+  // NEW plain string when it cuts to 57 + "..."; line 127 then escapes
+  // the result with ERB::Util.html_escape, a NO-OP on an html_safe
+  // input. strip_tags answers html_safe (sanitize_helper.rb:134), so a
+  // one-line that FITS renders its quotes RAW and one that CUTS renders
+  // them ESCAPED. Probed: the real deck's Image help one-line (51 chars,
+  // fits) renders `click "Submit" after uploading.` raw — the capture;
+  // the fixture's mating/mates help one-lines (over the limit, cut at
+  // "with another c" / "then X") render &quot; — the recorded oracle.
+  // One Ruby method, both corpora; the seconds corpus's two escaped
+  // bars are exactly its two over-limit cards (census of the graded
+  // expected bytes: 12 one-line divs carry &quot;, all of them the cut
+  // mating/mates pair; zero raw-quote one-lines are graded there).
+  //
+  // The render_core INPUT, per type (probed live on both decks):
+  // - Markdown rule cards kramdown first (the *guide bars carry the
+  //   rendered heading text, no '####') — the injected core render is
+  //   the faithful input; without it (bare tests) the raw dbContent
+  //   stands in.
+  // - RichText/HTML rule cards: the core bytes are the stored markup with
+  //   the [[link]] chunks RESOLVED and the authored {{nest}} syntax kept
+  //   LITERAL (the real deck's *css+*self+*help core renders its
+  //   [[http://wagn.org/Skin|more]] anchor — the capture's prose "more",
+  //   the family the stored-bytes arm rendered as a bracket-link form —
+  //   while the fixture's *children+*right+*help core keeps
+  //   {{_left|name}} authored in every recorded bar). What survives the
+  //   strip_tags of the resolved anchor is exactly its TEXT (the pipe
+  //   label, else the fully-stripped target — link.rb:31-33's
+  //   link_text || fully_stripped), so the walk below replaces each
+  //   [[...]] chunk with that text and passes everything else — nests
+  //   included — through verbatim.
+  if (card.typeName === "Markdown") {
+    const coreText = renderCoreText !== undefined ? renderCoreText(card) : card.dbContent;
+    return oneLineFromStripped(stripTags(str(coreText)));
+  }
+  if (card.typeName === "Search") {
+    // card-mod-rules set/rule/html_views.rb:2-12 — the rule set's :core
+    // override renders SEARCH-typed rule cards raw ("the search doesn't
+    // work properly in the context of the rule card itself. Hence we show
+    // the query syntax and not the search result"): the stored bytes
+    // verbatim — links included ([[on]] stays authored; the real deck's
+    // *debugger+*self+*content options bar pins it, Search-typed, content
+    // "[[on]]").
+    return oneLineFromStripped(stripTags(card.dbContent ?? ""));
+  }
+  return oneLineFromStripped(stripTags(referencesOnlyCoreText(card.dbContent ?? "")));
+}
+
+/** The one-line's tail: Rails truncate with the omission inside the length
+ *  (60 -> cut at 57 + "..."), then the TextHelper escape — which lands
+ *  only on a CUT result (a fitting result stays the html_safe strip_tags
+ *  output and html_escape passes it through verbatim; see the base arm's
+ *  truncation-bound note). */
+function oneLineFromStripped(stripped: string): string {
+  const truncated = truncate(stripped, ONE_LINE_CHARACTER_LIMIT);
+  return truncated === stripped ? truncated : h(truncated);
+}
+
+/** link.rb:89-109 target_and_link_text: split at the FIRST pipe that is
+ *  not inside a {{nest}} span (objectify strips both sides). */
+function linkTargetAndLabel(rawSyntax: string): { target: string; label?: string } {
+  let divider = -1;
+  if (rawSyntax.includes("|")) {
+    let masked = rawSyntax;
+    for (const incl of rawSyntax.match(/\{\{[^}]*\}\}/g) ?? []) {
+      masked = masked.split(incl).join("x".repeat(incl.length));
+    }
+    divider = masked.indexOf("|");
+  }
+  const target = (divider === -1 ? rawSyntax : rawSyntax.slice(0, divider)).trim();
+  const label = divider === -1 ? undefined : rawSyntax.slice(divider + 1).trim() || undefined;
+  return { target, label };
+}
+
+/** The stored bytes with every [[link]] chunk replaced by the TEXT its
+ *  anchor contributes after strip_tags — the references-only content walk
+ *  the one-line's render_core rides (see the base arm's input note). A
+ *  "[[" without its closing "]]" never matches link.rb:13-15's
+ *  /\A\[\[([^\]]+)\]\]/ and passes through verbatim. */
+function referencesOnlyCoreText(raw: string): string {
+  return raw.replace(/\[\[([^\]]+)\]\]/g, (_match, syntax: string) => {
+    const { target, label } = linkTargetAndLabel(syntax);
+    if (target === "") return "";
+    if (label !== undefined) return label;
+    if (/^(\/|https?:|mailto:)/.test(target)) return target;
+    // link.rb:31-33's link_text || fully_stripped fallback (the title the
+    // :link view renders as its anchor text).
+    return DeckoName.parse(target).fullyStripped?.s ?? target;
+  });
 }
 
 /** :bar_right for a rule card ("..." when the card is not a rule card —
@@ -333,7 +421,7 @@ export function permissionInheritContentHtml(setContextTag: string | undefined):
 export function ruleBarRightHtml(
   card: RenderCard,
   engine?: RenderEngineLike,
-  renderCoreText?: (card: RenderCard) => string,
+  renderCoreText?: (card: RenderCard) => ViewResult,
 ): string {
   const setKeyTokens = card.setKeys.split(" ");
   if (!setKeyTokens.includes("RULE")) return "";

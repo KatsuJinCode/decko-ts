@@ -47,6 +47,14 @@ const DECK =
 const STAMP_MIGRATION = join(process.cwd(), "deploy", "migrations", "0003-deck-data-version-stamp.sql");
 const HAVE_DECK = existsSync(DECK);
 
+// Slot ids are SecureRandom.hex(10) fresh per render (wrap.rb wrap_data —
+// exactly Ruby's bytes; the recorded synthetic-v1 captures carry a different
+// value per capture row) and, on the stock deck, ride the Haml data hash
+// SINGLE-quoted (haml-slot-style.ts default). The freshness comparison masks
+// BOTH quote forms — the quote-agnostic mask no-caching-decision-state.test.ts
+// has carried since the slot-quote merge (8ea585e2's sweep covered that file
+// and missed this one; the stock-form flip then broke the byte-identity arm
+// on every page containing a bar).
 const SLOT = /data-slot-id=(["'])[0-9a-f]+\1/g;
 const norm = (html: string) => html.replace(SLOT, "");
 const pagePath = (name: string) => `/${encodeURIComponent(name.replace(/ /g, "_"))}`;

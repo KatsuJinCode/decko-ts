@@ -148,7 +148,12 @@ export interface ContentPiece {
   nest?: ParsedNest;
 }
 
-export function scanNests(content: string): ContentPiece[] {
+export function scanNests(content: string | undefined): ContentPiece[] {
+  // A fabricated NEW card's content is undefined until its first save
+  // (prepare_db_content's `standard_db_content || ""` stores the empty
+  // string only at write time) — the scans answer no nests for it, exactly
+  // like the empty string.
+  if (content === undefined || content === null) return [];
   // Request-scoped memo (DeckoName.requestMemo), shared by every pass of a
   // live render: the pieces are a function of the content text alone. A
   // memoized result is deep-frozen, so no caller can change what a later
@@ -229,7 +234,7 @@ function escapeHtml(s: string): string {
  *  Comment nests contribute nothing; relative references (leading "_") are
  *  reported raw for the caller to resolve (they depend on the render-time
  *  context card). */
-export function referencedNames(content: string): { name: string; relative: boolean }[] {
+export function referencedNames(content: string | undefined): { name: string; relative: boolean }[] {
   const out: { name: string; relative: boolean }[] = [];
   for (const piece of scanNests(content)) {
     const nest = piece.nest;

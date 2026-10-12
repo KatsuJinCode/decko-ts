@@ -48,6 +48,7 @@
 
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import type { RenameSwapLexicon } from "../actions/update-referer-content.js";
+import type { CardRecord } from "../fetch/card-record.js";
 import {
   ModEventRegistry,
   type RegisteredModEvent,
@@ -186,6 +187,14 @@ export interface ModEventContext {
   /** The request-param seam (ModEventSaveInput) — present only on save
    *  paths whose action engine carries one. */
   readonly saveInput?: ModEventSaveInput;
+  /** The engine-cache pair the rename-referers staleness rides (the
+   *  update_referer_content event): all.rb:15's Card[card_id] cache-through
+   *  referers fetch, and the update_column staleness pin
+   *  (FetchEngine#pinStaleCard). Present when the save runs on an engine
+   *  whose FetchEngine the render path shares — absent in model-pure
+   *  dispatches, whose referer reads stay raw row queries. */
+  readonly fetchRefererCard?: (id: number) => Promise<CardRecord | undefined>;
+  readonly pinStaleReferer?: (card: CardRecord) => void;
 }
 
 /** Named `when:` predicates the runtime can resolve (Ruby's Symbol case of
@@ -312,14 +321,30 @@ function whenConditionApplies(
 }
 
 /** set_condition_applies? (all.rb:26-29): "all/"-pattern set modules are
- *  included on every card; anything scoped consults the runtime resolver. */
-function setConditionApplies(
+ *  included on every card; anything scoped consults the runtime resolver.
+ *  The built-in fallback resolves the TYPE-scoped sets ("type/<codename>":
+ *  the card's type carries the codename — set/type/number.rb's
+ *  :validate_number and set/type/json.rb :validate_json are the registry's
+ *  type-scoped entries); a runtime that supplies its own setMember keeps
+ *  precedence. Without one of the two, a scoped event is
+ *  set-not-applicable — the silent skip that left the port creating Number
+ *  cards Ruby refuses. */
+async function setConditionApplies(
   event: RegisteredModEvent,
   runtime: ModEventRuntime,
   card: ModEventCard,
-): boolean {
+  ctx: ModEventContext | undefined,
+): Promise<boolean> {
   if (event.setPath.startsWith("all/")) return true;
-  return runtime.setMember?.(event.setPath, card) ?? false;
+  const supplied = runtime.setMember?.(event.setPath, card);
+  if (supplied !== undefined) return supplied;
+  const typeMatch = /^type\/(.+)$/.exec(event.setPath);
+  if (typeMatch === null || ctx === undefined || card.typeId === undefined) return false;
+  const codenameRow = await ctx.driver
+    .query<{ id: number }>("SELECT id FROM cards WHERE codename = ? AND trash = 0", [typeMatch[1]])
+    .then((r) => r.rows[0])
+    .catch(() => undefined);
+  return codenameRow !== undefined && card.typeId === codenameRow.id;
 }
 
 // ---------------------------------------------------------------------------
@@ -389,14 +414,23 @@ const HOST_REQUIRED: unknown = new Proxy(
 );
 
 /** Run one director stage's events for one card save. `deps` carries the
- *  deck pair every body context wraps. Integration-stage failures are
- *  rescued into the report (card.rb:163-171); other stages propagate the
- *  first error and abandon the walk. */
+ *  driver/Lexicon pair the reference janitors take, plus (when the save
+ *  runs on an engine whose FetchEngine the render path shares) the
+ *  referer-cache pair the update_referer_content staleness rides —
+ *  forwarded into the ctx so the mod body's rewrite warms and pins exactly
+ *  like the built-in call (all.rb:15 + FetchEngine#pinStaleCard).
+ *  Integration-stage failures are rescued into the report (card.rb:163-171);
+ *  other stages propagate the first error and abandon the walk. */
 export async function runModEventStage(
   runtime: ModEventRuntime,
   stage: ModEventStage,
   card: ModEventCard,
-  deps: { driver: SQLDatabaseDriver; lexicon: RenameSwapLexicon },
+  deps: {
+    driver: SQLDatabaseDriver;
+    lexicon: RenameSwapLexicon;
+    fetchRefererCard?: (id: number) => Promise<CardRecord | undefined>;
+    pinStaleReferer?: (card: CardRecord) => void;
+  },
   saveInput?: ModEventSaveInput,
 ): Promise<ModEventStageReport> {
   const candidates = orderCandidates(stageCandidates(runtime.registry, stage));
@@ -407,6 +441,8 @@ export async function runModEventStage(
   const ctx: ModEventContext = {
     driver: deps.driver,
     lexicon: deps.lexicon,
+    ...(deps.fetchRefererCard !== undefined ? { fetchRefererCard: deps.fetchRefererCard } : {}),
+    ...(deps.pinStaleReferer !== undefined ? { pinStaleReferer: deps.pinStaleReferer } : {}),
     stage,
     skipEvent: (name) =>
       runtime.skip?.includes(name) === true || runtime.forceSkip?.includes(name) === true,
@@ -432,7 +468,7 @@ export async function runModEventStage(
       skipped.push({ event: event.event, reason: "trigger" });
       continue;
     }
-    if (!setConditionApplies(event, runtime, card)) {
+    if (!(await setConditionApplies(event, runtime, card, ctx))) {
       skipped.push({ event: event.event, reason: "set-not-applicable" });
       continue;
     }

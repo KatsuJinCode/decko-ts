@@ -1,3 +1,5 @@
+import { NEW_FIELDS_SENTINEL, updateFormDataShell } from "./card-mod-edit.js";
+import { str } from "../../render/format.js";
 // The card-mod-tinymce_editor gem (card-mod-tinymce_editor-0.20.0), ported
 // through the mod loader.
 //
@@ -901,8 +903,12 @@ export interface ChromeContext {
   /** id_counter (card core format/content.rb:50-53) - fresh per format. */
   idCounter: { n: number };
   /** THE NEST SEAM: the deep engine render (the rules tab's nest_rules
-   *  view, the image tabs' new_image view). */
-  nest: (target: string, view: string) => string;
+   *  view, the image tabs' new_image view). The opts ride the nest (the
+   *  Ruby adapt arm's type: :image, hide: :guide). */
+  nest: (target: string, view: string, opts?: Record<string, unknown>) => string;
+  /** adapt_reference_editor_for_images' `voo.show! :content_tab` - the
+   *  FORCE setter records the tab in the outer slot's show list. */
+  forceShowContentTab: () => void;
   /** THE SLOT-WRAP SEAM (image_preview_tab's wrap true): the engine's slot
    *  wrapper around the nested core view - the live capture randomizes the
    *  wrapper's ids. */
@@ -1607,11 +1613,16 @@ export function nestImageChrome(
   autoname: string,
 ): string {
   const snippet = NestParser.newImage(autoname);
+  // adapt_reference_editor_for_images (nest_image.rb:33-37):
+  // `voo.show! :content_tab` (the FORCE setter - the outer slot's show
+  // list carries content_tab) + the new_image nest with type: :image and
+  // hide: :guide (the slot JSON pins both: hide [guide], type image).
+  ctx.forceShowContentTab();
   const partial =
     tabsPanel(
       ctx,
       [
-        ["upload", ctx.nest(snippet.name ?? "", "new_image")],
+        ["upload", ctx.nest(snippet.name ?? "", "new_image", { type: "image", hide: "guide", extra: { type: "image" } })],
         ["select", imageFindPartial()],
         ["options", imageOptionsPartial(snippet)],
         ["preview", ctx.wrap()],
@@ -1642,14 +1653,14 @@ export function nestImageChrome(
  *  ENGINE's real seam renders (fmt.nest dispatches the rules mod's
  *  nest_rules view and the image card's new_image view; the wrap seam is
  *  the engine's slot wrapper around the nested core view). */
-function engineChromeContext(ctx: ViewContext, imageMark: string): ChromeContext {
+function engineChromeContext(ctx: ViewContext, imageMark: string, wrapView = "nest_image"): ChromeContext {
   const { fmt } = ctx;
   return {
     cardName: fmt.card.name.s,
     cardKey: fmt.card.name.safeKey,
     leftType: fmt.card.typeName ?? "",
     idCounter: { n: 0 },
-    nest: (target, view) => {
+    nest: (target, view, opts) => {
       // the raw seam target's codename segment resolves to the card mark
       // (Array#to_name's compose routes :type_plus_right through the
       // codename table -> "*type plus right")
@@ -1657,18 +1668,29 @@ function engineChromeContext(ctx: ViewContext, imageMark: string): ChromeContext
       return fmt.nest({
         syntax: `{{${mark}|${view}}}`,
         name: mark,
-        options: { view, extra: {} },
+        options: { view, extra: {}, ...(opts ?? {}) },
         comment: undefined,
       });
     },
+    forceShowContentTab: () => ctx.voo.setViz("content_tab", "show"),
     wrap: () =>
       modSlotWrap(
         ctx,
-        "nest_image",
+        // Ruby's preview tab is `wrap true do nest ... end`
+        // (nest_editor_tabs.rb:33-37) — wrap names the slot after the
+        // CURRENT view (view_definition.rb's voo view), so the overlay arm
+        // (view :nest_image) wraps as nest_image-view and the modal arm
+        // (view :modal_nest_image) as modal_nest_image-view.
+        wrapView,
+        // image_preview_tab: `nest(snippet.name, view: :core, type: :image,
+        // hide: :guide)` — the same opts the upload tab carries (the oracle
+        // slot JSON pins "hide":["guide"],"type":"image"; the type opt also
+        // types the preview-tab image01 phantom Image, so its unknown core
+        // slot carries data-card-type-id 284, not the RichText default).
         fmt.nest({
           syntax: `{{${imageMark}|core}}`,
           name: imageMark,
-          options: { view: "core", extra: {} },
+          options: { view: "core", hide: "guide", extra: { type: "image" } },
           comment: undefined,
         }),
       ),
@@ -1704,7 +1726,7 @@ const nestImageView: ViewFn = (ctx) =>
     ctx,
     "nest_image",
     "_overlay d0-card-overlay card nodblclick",
-    nestImageChrome(engineChromeContext(ctx, "image01"), "overlay", "image01"),
+    nestImageChrome(engineChromeContext(ctx, "image01", "nest_image"), "overlay", "image01"),
   );
 
 /** view :modal_nest_image, unknown: true, cache: :never, wrap: { slot:
@@ -1714,7 +1736,7 @@ const modalNestImageView: ViewFn = (ctx) =>
     ctx,
     "modal_nest_image",
     "nodblclick",
-    nestImageChrome(engineChromeContext(ctx, "image01"), "modal", "image01"),
+    nestImageChrome(engineChromeContext(ctx, "image01", "modal_nest_image"), "modal", "image01"),
   );
 
 /** view :nest_content, perms: :create, cache: :never, unknown: true,
@@ -1742,7 +1764,7 @@ const nestContentView: ViewFn = (ctx) => {
     : (() => {
         voo.hide("cancel_button");
         return fmt.withNestMode("edit", () =>
-          modSlotWrap(ctx, "nest_content", fmt.renderView("edit_inline")),
+          modSlotWrap(ctx, "nest_content", str(fmt.renderView("edit_inline"))),
         );
       })();
   return modSlotWrap(ctx, "nest_content", inner);
@@ -1755,27 +1777,47 @@ const nestContentView: ViewFn = (ctx) => {
  *  :image, show: :preview_redirect }, id: card.autoname(card.name.next) }. */
 const newImageView: ViewFn = (ctx) => {
   const { fmt, voo } = ctx;
+  // wrap.rb:6-9: the slot attributes freeze BEFORE the view body runs -
+  // voo.buttons_view= is an IVAR (never a slot/live option; the oracle's
+  // slot JSON carries no buttons_view), so the freeze precedes the set.
+  // the image type's new-card form: help shown, the name formgroup hidden
+  // (the autonamed card) — the oracle slot pins show [new_image, help],
+  // hide [guide, name_formgroup]. The viz writes precede the slot freeze.
+  voo.showViz("help");
+  voo.hide("name_formgroup");
+  const slotOpen = modSlotWrap(ctx, "new_image", NEW_FIELDS_SENTINEL);
+  // buttons_view is an IVAR set after the freeze: the OUTER slot JSON
+  // never carries it - only the INNER new_fields slot does (the oracle
+  // pins exactly that split).
   voo.opts["buttons_view"] = "new_image_buttons";
   // card.autoname(card.name.next): the census double returns the candidate
   // unchanged on the fresh probe deck - the LIVE capture pins id "image02"
   // for the card named image01 (fixtures/captured/tinymce-editor-views.json)
   const autoname = fmt.card.name.succ().s;
-  return modSlotWrap(
-    ctx,
-    "new_image",
-    // new.rb:43-49 create_form success: {...} - the full new-fields body;
-    // the nil tinymce_id renders the VALUE-LESS success[tinymce_id] hidden
-    // tag (hidden_field_tag nil omits the value attribute) - the live bytes
-    createFormDataShell(ctx, {
-      success: {
-        tinymce_id: null,
-        view: "new_image",
-        type: "image",
-        slot: { hide: "guide", type: "image", show: "preview_redirect" },
-        id: autoname,
-      },
-    }),
-  );
+  // Ruby's create_form on a STORED card renders the UPDATE shape
+  // (edit_card_<id> + _method=patch, action :create): the favicon's
+  // new_image op runs on the stored *favicon card (294).
+  const form =
+    fmt.card.id !== undefined
+      ? updateFormDataShell(ctx, {
+          success: {
+            tinymce_id: null,
+            view: "new_image",
+            type: "image",
+            slot: { hide: "guide", type: "image", show: "preview_redirect" },
+            id: autoname,
+          },
+        })
+      : createFormDataShell(ctx, {
+          success: {
+            tinymce_id: null,
+            view: "new_image",
+            type: "image",
+            slot: { hide: "guide", type: "image", show: "preview_redirect" },
+            id: autoname,
+          },
+        });
+  return slotOpen.split(NEW_FIELDS_SENTINEL).join(form);
 };
 
 /** The chrome PROBE SURFACE: the composition cores the harness probe replays

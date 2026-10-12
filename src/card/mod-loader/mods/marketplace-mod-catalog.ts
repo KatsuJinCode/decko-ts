@@ -131,7 +131,7 @@ export const MOD_CATALOG: readonly ModCatalogEntry[] = [
     summary:
       "The format layer: the base/abstract/html/css/csv/data/file/json/jsonld/js/rss/text/xml/yaml format classes, the name and date and content view families, the path generator, the link-to helpers, and the error / not-found / denial / server-error views. It also carries the two Cardio config keys the engine models as its per-render switches (default_html_view, rss_enabled).",
     sourceFile: "src/card/mod-loader/mods/card-mod-format.ts",
-    sourceLine: 1,
+    sourceLine: 2,
   },
   {
     name: "list",
@@ -147,7 +147,7 @@ export const MOD_CATALOG: readonly ModCatalogEntry[] = [
     summary:
       "The Markdown cardtype: one set file (set/type/markdown.rb) whose :core view runs a card's content through the Markdown renderer, plus the seed card that declares the cardtype. The smallest complete mod in the deck - one cardtype, one view.",
     sourceFile: "src/card/mod-loader/mods/card-mod-markdown.ts",
-    sourceLine: 1,
+    sourceLine: 2,
   },
   {
     name: "permissions",
@@ -163,7 +163,7 @@ export const MOD_CATALOG: readonly ModCatalogEntry[] = [
     summary:
       "The help surface: the :help, :help_text and :lead views, the :guide view (which runs a card's content through Markdown), and the *help and *guide settings whose help text people see while editing. The reference port proving the loader mechanism end to end.",
     sourceFile: "src/card/mod-loader/mods/card-mod-help.ts",
-    sourceLine: 1,
+    sourceLine: 2,
   },
   {
     name: "search",
@@ -171,7 +171,7 @@ export const MOD_CATALOG: readonly ModCatalogEntry[] = [
     summary:
       "The search surface: the CQL-backed semantics behind the count views, the search-family one_line_content override, and the autocomplete item views. Twenty-nine set files, mostly under the right pattern, are where the search params and the per-right search views live.",
     sourceFile: "src/card/mod-loader/mods/card-mod-search.ts",
-    sourceLine: 1,
+    sourceLine: 2,
   },
   {
     name: "rules",
@@ -179,7 +179,7 @@ export const MOD_CATALOG: readonly ModCatalogEntry[] = [
     summary:
       "The configuration surface built on rule cards: the rule bar family, the rule editor views, the set card's Rules section, the setting categories, and the cardtype groups. Thirty-two set files, the largest set-module tree in the deck.",
     sourceFile: "src/card/mod-loader/mods/card-mod-rules.ts",
-    sourceLine: 1,
+    sourceLine: 4,
   },
   {
     name: "edit",
@@ -211,7 +211,7 @@ export const MOD_CATALOG: readonly ModCatalogEntry[] = [
     summary:
       "User accounts: signin, signup, the +*account cardtype, password reset, and the related closure lifecycle. Twenty-two set files across six patterns plus six haml templates; most of the gem is Rails-runtime machinery (the validate/encrypt/reset events, the Auth integration).",
     sourceFile: "src/card/mod-loader/mods/card-mod-account.ts",
-    sourceLine: 1,
+    sourceLine: 2,
   },
   {
     name: "history",
@@ -219,7 +219,7 @@ export const MOD_CATALOG: readonly ModCatalogEntry[] = [
     summary:
       "History tracking: the acts, actions and changes records behind a card's Recent Changes. Eleven set files under set/, twelve lib/ files, one stylesheet, and an admin config. The write side (assign_action, finalize_action, finalize_act, update_ancestor_timestamps, drafts) is ported against this gem's event file.",
     sourceFile: "src/card/mod-loader/mods/card-mod-history.ts",
-    sourceLine: 1,
+    sourceLine: 2,
   },
   {
     name: "carrierwave",
@@ -227,7 +227,7 @@ export const MOD_CATALOG: readonly ModCatalogEntry[] = [
     summary:
       "File and image attachments: mounts CarrierWave onto the File and Image sets, wires 24 event hooks (storage-type writes, file deletes, upload-cache lifecycle, public-link symlinks, cloud bucket management), and contributes the admin task table entries the ops basket reads.",
     sourceFile: "src/card/mod-loader/mods/card-mod-carrierwave.ts",
-    sourceLine: 1,
+    sourceLine: 3,
   },
   {
     name: "virtual",
@@ -275,7 +275,7 @@ export const MOD_CATALOG: readonly ModCatalogEntry[] = [
     summary:
       "The stylesheet and skin surface: the Css, Scss and Skin cardtypes, the *style setting, and the SkinBox abstract. Sixteen set files across four patterns, three validate/delete events, no lib and no set_pattern.",
     sourceFile: "src/card/mod-loader/mods/card-mod-style.ts",
-    sourceLine: 1,
+    sourceLine: 2,
   },
   {
     name: "bootstrap",
@@ -283,7 +283,7 @@ export const MOD_CATALOG: readonly ModCatalogEntry[] = [
     summary:
       "The rendering side of the bootstrap skin: eleven set files (four abstract, two all, two self, two type, one type_plus_right) and eleven haml templates, over a lib tree of sixteen files that build the modular bootstrap helper surface the set files consume. It also carries the Bootswatch skin cardtype.",
     sourceFile: "src/card/mod-loader/mods/card-mod-bootstrap.ts",
-    sourceLine: 1,
+    sourceLine: 2,
   },
   {
     name: "comment",
@@ -307,7 +307,7 @@ export const MOD_CATALOG: readonly ModCatalogEntry[] = [
     summary:
       "Following and notifications: thirty-two set files, two haml templates and two lib files, overwhelmingly Rails-runtime. The notification pipeline (silence_notifications, notify_followers_after_save, stash_followers, notify_followers_after_delete) drives the director plus the delayed_job hook plus mailer delivery; the follow rule walk uses Card.search and Rule.preference.",
     sourceFile: "src/card/mod-loader/mods/card-mod-follow.ts",
-    sourceLine: 1,
+    sourceLine: 2,
   },
   {
     name: "session",
@@ -347,7 +347,7 @@ export const MOD_CATALOG: readonly ModCatalogEntry[] = [
     summary:
       "The TinyMCE editor: eight set-module files, one no-set-module helper, one lib file and ten haml templates, with no events and no set_pattern. It contributes the nested image editor's js-format views (change_create_to_update, open_nest_editor) and the *tinyMCE setting's help text.",
     sourceFile: "src/card/mod-loader/mods/card-mod-tinymce_editor.ts",
-    sourceLine: 1,
+    sourceLine: 3,
   },
 ];
 

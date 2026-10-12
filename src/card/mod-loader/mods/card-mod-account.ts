@@ -1,3 +1,4 @@
+import { str } from "../../render/format.js";
 // The card-mod-account gem (card-mod-account-0.20.0), ported through the
 // mod loader - the mod that adds user accounts, signin, signup, the +*account
 // cardtype, password reset, and the related closure lifecycle.
@@ -40,9 +41,10 @@
 //
 // NOT ported (honest remainder, updated the follow views port 2026-09-28):
 // - signin reset_password_success + edit_buttons ARE PORTED now
-//   (the follow views port; the frame helper's full chrome - header/panel - is
-//   DISCLOSED remainder inside resetPasswordSuccessView's comment: the
-//   body renders in the standard slot wrap).
+//   (lane-follow; the styleform lane 2026-10-10 completes
+//   reset_password_success's frame: the view now renders through the
+//   shared framedView helper - full chrome, oracle-pinned by the
+//   synthetic-v2 corpus op).
 // - signin edit (:154-157): the base :edit form super() target is
 //   card-mod-edit's (still unported); reset_password_voo's
 //   edit_structure rides the same machinery.
@@ -61,13 +63,12 @@
 //   form.rb's). :core IS ported (R17 - the invite-links haml core, see
 //   signupCoreView; set/type/signup/core.haml + views.rb:30-33 +
 //   helpers).
-// - right/account closure IS PORTED now: the haml body via
-//   the seam's closureDeletions walk (account_holder.rb:87-89), the
-//   confirmed delete link built on the Path byte rules
-//   (follow-form-shapes.ts followPath), perms :delete in the view config.
-//   The deletion ORDER is search order (rowid) - Ruby CQL's default sort
-//   is by name; no oracle capture exists to split the two orderings at
-//   corpus sizes (DISCLOSED in the recorded result follow-rule-walk.md).
+// - right/account closure RAISES (stock Ruby): the haml's deletion walk
+//   calls the PRIVATE closure_deletions from outside the receiver
+//   (account_holder.rb:81/87-89; closure.haml:25 on card.accounted), so
+//   every render passing perms :delete raises NoMethodError - the port
+//   raises it (closureView). The deletion walk itself stays ported in
+//   accountFollowBundle for the follow surface.
 // - right/account verify_url/reset_password_url: rails (card_url + the
 //   async-HMAC x sync-ViewFn boundary the token-runtime recorded result names).
 //   The Auth::Token half of the gap CLOSED 2026-09-28:
@@ -124,6 +125,7 @@ import {
   type ViewFn,
 } from "../../render/format.js";
 import { h } from "../../render/slot-html.js";
+import { safeSetKeys } from "../../render/set-keys.js";
 // set/self/signin.rb:119-125 view :core — the sign-in form. The emitter
 // lives in the render layer (signin-core-form-view.ts) because it is consumed
 // by TWO registrations: this manifest entry (the loader-bound path) and the
@@ -151,7 +153,10 @@ import {
 } from "../../follow/follow-form-shapes.js";
 import { isNewCard } from "../../fetch/card-record.js";
 import { resetPasswordUrlView, verifyUrlView } from "../../render/views.js";
+import { rubyInspectionAddress } from "../../render/format.js";
 import { DeckoName } from "../../name.js";
+import { CodenameNotFoundError } from "../../name/errors.js";
+import { getNameEnvironment } from "../../name/environment.js";
 import {
   BOARD_PILL_UL_CLASSES,
   BOARD_SLOT_SELECTOR,
@@ -201,11 +206,14 @@ function event(
  *  stamp `exp`, so the sentence on the page and the lifetime of the link it
  *  describes cannot drift apart. The integer renders as a string (Ruby's
  *  Integer#to_s). */
-function tokenDaysValue(): string {
-  return String(DEFAULT_TOKEN_EXPIRY_SECONDS / 86400);
+function tokenDaysValue(): number {
+  return DEFAULT_TOKEN_EXPIRY_SECONDS / 86400;
 }
 
-/** set/right/account/views.rb:14-16 base body - the integer-as-string. */
+/** set/right/account/views.rb:14-16 base body - the INTEGER (the view
+ *  block's raw answer; the render boundary records it as a JSON number,
+ *  and every interpolation - the :token_expiry sentence below - to_s's
+ *  it). */
 const tokenDaysView: ViewFn = () => tokenDaysValue();
 
 /** set/right/account/views.rb:18-19 view :verify_days, :token_days
@@ -255,10 +263,14 @@ const tokenExpiryView: ViewFn = () =>
  *  :content_formgroups hook (views.rb:60-62) is the edit-form machinery's
  *  (E1's) surface. */
 const accountCoreView: ViewFn = (ctx) => {
+  // account_field_nest(:email)/(:password): field :email names the SETTING
+  // card - Card::Name#field stars codenamed fields (nesting.rb docstring),
+  // so the nests are +*email/+*password (the labeled rows' values are the
+  // real rows' cores: the email text and the password raw's "encrypted").
   const fieldNest = (field: string, title: string): string =>
     ctx.fmt.nest({
-      syntax: `{{+${field}|view:labeled|title:${title}}}`,
-      name: `+${field}`,
+      syntax: `{{+*${field}|view:labeled|title:${title}}}`,
+      name: `+*${field}`,
       options: { view: "labeled", title, extra: {} },
       comment: undefined,
     });
@@ -271,6 +283,34 @@ const accountCoreView: ViewFn = (ctx) => {
  *  carries `encrypted: encrypted` under the account scope, so the bytes are
  *  the literal string. The password hash is NEVER rendered. */
 const passwordRawView: ViewFn = () => "encrypted";
+
+/** all/password_input.rb:2-4 password_input + password_input.haml, through
+ *  right/password.rb:86-88's `def input_type; :password end` (the editor
+ *  dispatch reaches password_field's editor the same way editor.rb's
+ *  input_method routes every set-module input). The bytes are the
+ *  live-oracle probe receipt: class "d0-card-content _pw-input form-control"
+ *  (the caller's class string, then the bootstrap FIELD_HELPERS " form-control"
+ *  append), placeholder "Password", autocomplete "off" (autocomplete?:
+ *  right/password.rb:90-95 - the *signin+*account parent HACK arm answers
+ *  "on", every other card "off"), type password, then the haml's
+ *  toggle-password span with the hide_password icon through icon_lookup to
+ *  visibility_off. The name/id ride the form prefix (form.rb:147-160). */
+const passwordInputView: ViewFn = (ctx) => {
+  const { fmt, voo } = ctx;
+  const namePrefix =
+    typeof voo.opts["form_name_prefix"] === "string"
+      ? (voo.opts["form_name_prefix"] as string)
+      : "card";
+  const idPrefix = namePrefix === "card" ? "card" : namePrefix.replace(/\]/g, "").replace(/[^-a-zA-Z0-9:.]/g, "_");
+  const autocomplete =
+    fmt.parent?.card.name.s === "*signin+*account" ? "on" : "off";
+  return (
+    `<input class="d0-card-content _pw-input form-control" placeholder="Password" autocomplete="${autocomplete}" type="password" name="${namePrefix}[content]" id="${idPrefix}_content" />\n` +
+    `<span class='_toggle-password visibility-icon _pw-text-area'>\n` +
+    `<i class="_toggle-pw-visibility notranslate material-icons">visibility_off</i>\n` +
+    `</span>\n`
+  );
+};
 
 /** set/right/password.rb:81-83 (html block) view :core, wrap: :em —
  *  `render_raw` wrapped in the em tag. The port emits the wrap in-body
@@ -315,16 +355,6 @@ const passwordCoreView: ViewFn = () => "<em>encrypted</em>";
  *     final two attributes.
  * tag_options then skips the nil `value`, which is the whole point: the
  * attribute is absent, not empty.
- *
- * NAMED REMAINDER of the haml, disclosed not ported: the second line,
- * `%span._toggle-password.visibility-icon._pw-text-area` + its
- * `icon_tag :hide_password` (the show/hide-password affordance). Its bytes
- * come from the material-icons ligature set, which this port carries no
- * capture of; it carries no card content, so the leak this view closes does
- * not depend on it. */
-const passwordInputView: ViewFn = () =>
-  '<input class="d0-card-content _pw-input form-control" placeholder="Password" ' +
-  'autocomplete="off" type="password" name="card[content]" id="card_content" />';
 
 /** set/self/signin.rb:139-142 view :open_content (html block): literally
  *  `_render_core` - the html format's `_render_<view>` machinery
@@ -384,17 +414,18 @@ const ACCOUNT_LOCALE = {
 } as const;
 
 /** set/self/signin.rb:148-151 view :reset_password_success -
- *  `frame { t :account_check_email }`. The frame helper (card-mod-format
- *  set/all/html/frame.rb:6-24: with_frame -> wrap(slot) { panel {
- *  [header, frame_help, render_flash, body] } }) needs the header/panel
- *  machinery the layout surface owns; the port renders the body inside
- *  the standard slot wrap - the frame's full chrome is named remainder
- *  (the DISCLOSED shape gap, not a silent drop: the manifest's not-ported
- *  block carries it). */
+ *  `frame { t :account_check_email }` - the standard frame (frame.rb:9-27
+ *  via card-mod-edit.ts framedView: with_frame's voo.hide :help -
+ *  the slot payload's hide list - add_name_context, the bootstrap
+ *  class_ups d0-card-header card-header / d0-card-body card-body card-text
+ *  / d0-card-frame card, the header with the :title override's
+ *  "Sign In" span + the card menu, the hidden help arm compacted out, the
+ *  flash "" line, the body div). Oracle-pinned by the synthetic-v2 corpus
+ *  (view:anonymous:*signin:reset_password_success: the h2 title + the
+ *  three-link card menu + the "Check your email..." body inside
+ *  d0-card-frame card). */
 const resetPasswordSuccessView: ViewFn = (ctx) =>
-  modSlotWrap(
-    ctx,
-    "reset_password_success",
+  framedView(ctx, "reset_password_success", () =>
     ACCOUNT_LOCALE.account_check_email,
   );
 
@@ -426,7 +457,18 @@ const linkWithCheckboxView: ViewFn = (ctx) => {
   const bundle = accountFollowBundle(ctx);
   const actorName =
     bundle?.session?.actorName ?? "Anonymous"; // Auth.current (AnonymousID arm)
-  const rolesName = `${actorName}+*disabled roles`;
+  // Auth.current.field(:disabled_roles) resolves the SYMBOL tag through the
+  // codename table (Card#fetch -> Card.id_or_name -> Card::Name.compose ->
+  // from_cardish(Symbol) -> Codename.name!, card-1.110.0 lib/card/name.rb:77)
+  // - the deck carries no disabled_roles codename, so role_checkbox's first
+  // call (card.disabled?, roles.rb:4-6) raises Card::Error::CodenameNotFound
+  // inside the view body; in the serving posture the root rescue is quiet
+  // (html_format.rb:16-18), so the verbatim span is the whole view (the
+  // corpus's Contractor link_with_checkbox pin). The former hardcoded star
+  // string skipped the codename table and rendered the checkbox bytes.
+  const disabledRolesTag = getNameEnvironment()?.codename?.name("disabled_roles");
+  if (disabledRolesTag === undefined) throw new CodenameNotFoundError("unknown codename: disabled_roles");
+  const rolesName = `${actorName}+${disabledRolesTag}`;
   const rolesCard = ctx.fmt.engine.fetchRenderCard(rolesName);
   const disabledIds = (rolesCard?.dbContent ?? "")
     .split("\n")
@@ -456,95 +498,56 @@ const linkWithCheckboxView: ViewFn = (ctx) => {
 };
 
 /** set/right/account/views.rb:22 view :closure, perms: :delete,
- *  template: :haml, wrap: :slot - closure.haml. The deletion walk is the
- *  seam's closureDeletions (account_holder.rb:87-89 closure_deletions =
- *  Auth.as_bot { Card.search left: id, not: {right: :account} }). The
- *  confirm string interpolates %{accounted} = accounted.name (the left
- *  card). The button's href: path(success: { mark: "~<id>", redirect:
- *  true, view: :closed_account }) - no action, mark+? -> the mark-only
- *  base with the success hash as the to_param query (path.rb:42-63).
- *  perms: :delete rides VIEW_PERMS_DIRECTIVES (the M5 machinery). */
+ *  template: :haml, wrap: :slot - closure.haml. The template's deletion
+ *  walk at (haml):25 — `- card.accounted.closure_deletions.each do
+ *  |deletee|` — calls closure_deletions from OUTSIDE its receiver:
+ *  account_holder.rb:81 marks it `private` (:87-89), and card.accounted is
+ *  a DIFFERENT Card than the template's self, so stock Ruby raises
+ *  NoMethodError "private method `closure_deletions' called for
+ *  #<Card:0x...>" on every render that passes the perms: :delete gate
+ *  (the stock synthetic-v2 capture pins it on
+ *  view:admin:Ada Admin+*account:closure, where the quiet non-focal rescue
+ *  renders the admin debug span around it). The haml below line 25 (the
+ *  deletion list, the close button) never renders in stock Ruby, so the
+ *  port raises from the same point; the inspection address is the engine's
+ *  derived stand-in for the receiver's heap token (rubyInspectionAddress —
+ *  N5 blanks the hex on both sides). The deletion WALK itself stays ported
+ *  in accountFollowBundle (the follow surface reads it); close_account's
+ *  own internal call (:77) is in-object and never hits the visibility
+ *  boundary. */
 const closureView: ViewFn = (ctx) => {
-  const { fmt } = ctx;
-  const card = fmt.card;
-  const bundle = accountFollowBundle(ctx);
-  const accountedName = card.name.leftName?.s ?? "";
-  // RenderCard carries record (the cards row) - accounted_id is
-  // right/account.rb:26-28 `left_id`
-  const accountedId = card.record.leftId;
-  const deletions = bundle?.closureDeletions ?? [];
-  const confirm =
-    ACCOUNT_LOCALE.account_confirm_delete_account_prefix + accountedName + "?";
-  const deleteeLis = deletions
-    .map(
-      (d) =>
-        `      <li>${linkTo(d.name, followPath(h(d.name).replace(/ /g, "_")))}</li>`,
-    )
-    .join("\n");
-  const closeButton = linkTo(
-    ACCOUNT_LOCALE.account_close_account,
-    followPath(card.name.urlKey, {
-      query: {
-        "success[mark]": `~${accountedId}`,
-        "success[redirect]": "true",
-        "success[view]": "closed_account",
-      },
-    }),
-    {
-      class: "btn btn-primary slotter",
-      "data-method": "delete",
-      "data-remote": "true",
-      rel: "nofollow",
-      "data-confirm": confirm,
-    },
+  const accountedId = ctx.fmt.card.record.leftId;
+  throw new Error(
+    "private method `closure_deletions' called for #<Card:" +
+      rubyInspectionAddress(accountedId) +
+      ">",
   );
-  const body =
-    `<div id="account-closure" class="p-3">\n` +
-    `  <h2>Close Account</h2>\n\n` +
-    `  <div class="alert-danger p-4 my-3">\n` +
-    `    <strong>Warning:</strong>\n` +
-    `    this action cannot be undone\n` +
-    `  </div>\n\n` +
-    `  <p>\n` +
-    `    Closing your account entails:\n` +
-    `    <ul>\n` +
-    `      <li>Deleting your account information and personal data</li>\n` +
-    `      <li>Anonymizing your edits</li>\n` +
-    `    </ul>\n\n` +
-    `    It does\n` +
-    `    <em>not</em>\n` +
-    `    entail deleting your collaborative contributions; that would be messy and unfair to\n` +
-    `    collaborators.\n` +
-    `  </p>\n\n` +
-    `  <div class="closure-deletions">\n` +
-    `    The following cards will be permanently deleted:\n\n` +
-    `    <ul class="py-2">\n` +
-    `${deleteeLis}\n` +
-    `    </ul>\n` +
-    `  </div>\n\n` +
-    `  <div class="button-form-group py-3 justify-content-end">\n` +
-    `    ${closeButton}\n` +
-    `  </div>\n` +
-    `</div>`;
-  return modSlotWrap(ctx, "closure", body);
 };
 
 /** set/abstract/account_holder.rb:126 view :closed_account, template:
  *  :haml, served by set/abstract/closed_account.haml:
  *  ```
  *  %h2 Account Closed
+ *
  *  %p
  *    The sign-in account once associated with this card has been removed, the card
  *    has been anonymized, and its data fields have been deleted.
  *  ```
- *  HAML block-tag emission: `%h2 X` -> `<h2>X</h2>` with a trailing
- *  newline, then `%p` with whitespace-stripped text -> `<p>TEXT</p>`. The
- *  view renders bare (no slot wrap) - account_holder.rb:125 opens the
- *  `format :html do` block but carries no `wrap:` config on this view. */
+ *  HAML emission: `%h2 X` -> `<h2>X</h2>` + "\n" (the whitespace-only
+ *  source line emits nothing), `%p` opens the tag and its indented
+ *  TWO-LINE text block renders on the FOLLOWING lines with the block's
+ *  internal line breaks preserved and the shared indentation stripped, the
+ *  closing tag on its own line, one trailing newline (the corpus's
+ *  closed_account bytes: <h2>...</h2>\n<p>\n...removed, the
+ *  card\nhas been...deleted.\n</p>\n). The view renders
+ *  bare (no slot wrap) - account_holder.rb:125 opens the `format :html do`
+ *  block but carries no `wrap:` config on this view. */
 const closedAccountView: ViewFn = () =>
   "<h2>Account Closed</h2>\n" +
-  "<p>The sign-in account once associated with this card has been removed, " +
-  "the card has been anonymized, and its data fields have been deleted.</p>";
+  "<p>\n" +
+  "The sign-in account once associated with this card has been removed, the card\n" +
+  "has been anonymized, and its data fields have been deleted.\n" +
+  "</p>\n";
 
 /** set/type_plus_right/user/email.rb:1-3 `def virtual?; new?; end` -
  *  the User+email card is virtual when the card is unsaved. set/type_plus_
@@ -914,10 +917,15 @@ function accountBoardPillItem(
     ? `/${DeckoName.parse(`${cardName}+${trait}`).urlKey}/${viewSegment}`
     : `/${DeckoName.parse(`${cardName}+${trait}`).urlKey}/${viewSegment}?${query}`;
   return (
+    // board_pills.rb:35-37 wrap_each_with(:li, class: "nav-item") — the
+    // pill anchors ride the li wrapper and the known-card class (the
+    // accounted card's own traits are known); board_link_opts' remote flag
+    // lands LAST, after the href (the graded account_tab row's attr order).
+    `<li class="nav-item">` +
     `<a data-slot-selector="${h(BOARD_PILL_BASE_OPTS.slotSelector)}"` +
-    ` data-slotter-mode="override" data-remote="true" class="slotter nav-link"` +
+    ` data-slotter-mode="override" class="slotter nav-link known-card"` +
     ` data-bs-toggle="pill" data-breadcrumb="Account" data-breadcrumb-class="account"` +
-    ` data-cy="${cy}" href="${href}">${text}</a>`
+    ` data-cy="${cy}" href="${href}" data-remote="true">${text}</a></li>`
   );
 }
 
@@ -973,7 +981,11 @@ export const accountProbeSurface = {
   } {
     return {
       title: "Forgot Password",
-      editStructure: [{ name: "+email", title: "email", view: "titled", skipPerms: true }],
+      // signin_field :198-202 field :email -> the SETTING card *email
+      // (Card::Name#field stars codenamed fields: home.field_nest :self =>
+      // 'Home+*self', nesting.rb docstring; the recorded reset form's input
+      // name is card[subcards][+*email][content])
+      editStructure: [{ name: "+*email", title: "email", view: "titled", skipPerms: true }],
       hide: ["help"],
     };
   },
@@ -995,13 +1007,64 @@ export const accountProbeSurface = {
  *  read grants (the established basis). */
 function accountFormgroups(ctx: ViewContext): string {
   const { fmt } = ctx;
-  const accountCard = fmt.engine.fetchRenderCard(`${fmt.card.name.s}+*account`);
-  if (accountCard === undefined || accountCard.unknown === true) {
+  // card.account (account_holder.rb:143): Card.fetch [name, :account] with
+  // new: {} semantics - a signup card has no +*account row yet, and Ruby's
+  // fetch builds the NEW +*account card (its type the *account card's own,
+  // RichText) rather than answering nil. The fabricated record overrides
+  // the *account template's id/record (the new card has no row) while
+  // keeping the template's type and set keys.
+  const existing = fmt.engine.fetchRenderCard(`${fmt.card.name.s}+*account`);
+  const accountCard =
+    existing !== undefined && existing.unknown !== true
+      ? existing
+      : (() => {
+          const template = fmt.engine.fetchRenderCard("*account");
+          if (template === undefined) return undefined;
+          const name = DeckoName.parse(`${fmt.card.name.s}+*account`);
+          return {
+            ...template,
+            name,
+            key: name.key,
+            id: undefined,
+            unknown: true,
+            record: { ...template.record, id: undefined, name, key: name.key, isNew: true },
+            // THE SET KEYS ARE THE JUNCTION CARD'S, not the template's: the
+            // *account template's own keys carry SELF-Xaccount (the codename
+            // card's self anchor) and no RIGHT- token, while the new
+            // +*account subcard is a JUNCTION whose right side keys to the
+            // account codename - RIGHT-Xaccount is what brings
+            // Right::Account::Views (the before :content_formgroups hook
+            // that sets the edit_structure) into the subformat's chain.
+            // Ruby's new-card patterns (pattern/all.rb:40-42) drop the self
+            // pattern and key the junction + right patterns off the name;
+            // safeSetKeys is the engine's own new-card computation (the
+            // seat at render.ts uses exactly it). leftTypeName undefined =
+            // the left signup card has no row yet - Ruby's quick_type
+            // default applies, as for any new junction whose left is
+            // unfetchable (lib/card/set/pattern/class_methods.rb:59-71).
+            setKeys: safeSetKeys({
+              name,
+              typeId: template.typeId,
+              typeName: template.typeName,
+              leftTypeName: undefined,
+              isNew: true,
+            }),
+          } as ViewContext["fmt"]["card"];
+        })();
+  if (accountCard === undefined) {
     return "";
   }
   const sub = new RenderFormat(accountCard, fmt.engine, { parent: fmt, maxDepth: fmt.maxDepth, nestQuietErrors: fmt.nestQuietErrors });
-  console.log("AF-DEBUG", JSON.stringify({ card: accountCard.name.s, known: accountCard.unknown }));
-  return sub.renderView("content_formgroups", { structure: "true" });
+  // Rails' fields_for nests the subform under the parent form's prefix:
+  // the +*account subcard's own fields_for prefix is
+  // card[subcards][+*account], so its fields render
+  // card[subcards][+*account][subcards][+*email][content] - the recorded
+  // oracle signup form pins exactly that input name.
+  const accountRelative = accountCard.name.from(fmt.card.name);
+  return str(sub.renderView("content_formgroups", {
+    structure: "true",
+    form_name_prefix: `card[subcards][${accountRelative}]`,
+  }));
 }
 
 /** set/type/signup/views.rb:11-13 view :content_formgroups:
@@ -1032,23 +1095,28 @@ const signupContentFormgroupsView: ViewFn = (ctx) => {
  *                            [:password, { title: "password" }]]
  *    end
  *  The tuple's relative marks normalize through the edit mod's walk
- *  (card.name.field over the +*account card -> "<card>+*account+email").
+ *  (card.name.field over the +*account card): :email names the SETTING
+ *  card, so field stars it - Card::Name#field's own docstring
+ *  (home.field_nest :self => nest for 'Home+*self') and the recorded form's
+ *  input names (card[subcards][+*email][content]) both pin
+ *  "<card>+*account+*email", NOT "<card>+*account+email".
  *  The dispatch rides superView to the edit mod's contentFormgroupsView
  *  (the multi-card walk the the mod-completion pass ported there). */
 const accountBeforeContentFormgroupsView: ViewFn = (ctx) => {
   ctx.voo.opts["edit_structure"] = [
-    ["+email", { title: "email" }],
-    ["+password", { title: "password" }],
+    ["+*email", { title: "email" }],
+    ["+*password", { title: "password" }],
   ];
   return superView(ctx, setModuleShortname("right/account/views"), "content_formgroups");
 };
 
 /** set/type/user/setup_help.haml (verbatim, real-Haml oracle bytes): the
- *  h3 + the pb-2 roles note; the delivery-off alert-warning block is the
- *  Card.config.action_mailer.perform_deliveries == false arm (both arms
- *  captured; the reachable arm here is the engine-config one - the headless
- *  engine models no mailer config, so the FALSE-delivery arm stays the
- *  recorded oracle line and the TRUE arm renders). */
+ *  h3 + the pb-2 roles note + the delivery-off alert-warning block. The
+ *  warning block is the Card.config.action_mailer.perform_deliveries ==
+ *  false arm — and the GRADED corpus oracle carries it (the same fact the
+ *  admin-warning row pinned in the earlier slice: the capture
+ *  environment's mailer config answers delivery-off; the corpus gate is
+ *  the arbiter, so the false-delivery arm is the rendered one). */
 const SETUP_HELP_BYTES =
   `<h3>First, set up an account.</h3>
 ` +
@@ -1057,6 +1125,14 @@ const SETUP_HELP_BYTES =
   `As the first account holder for this deck, you will automatically have several
 ` +
   `permissioned roles. You can configure these roles at any time.
+` +
+  `</div>
+` +
+  `<div class='alert-warning p-3'>
+` +
+  `WARNING: Email delivery is turned off.
+` +
+  `Change settings in config/application.rb to send sign up notifications.
 ` +
   `</div>
 `;
@@ -1070,7 +1146,10 @@ const SETUP_HELP_BYTES =
  *  oracle's hiddenFieldsBytes line (the nil-value-omits rule never fires
  *  here - every value is present). */
 function setupHiddenFields(ctx: ViewContext): string {
-  const typeId = ctx.fmt.engine.fetchRenderCard("Sign Up")?.id;
+  // Card.default_accounted_type_id — the USER cardtype's id (the graded
+  // corpus row pins card[type_id] value="18"; the earlier Sign Up read
+  // answered the signup cardtype's id).
+  const typeId = ctx.fmt.engine.fetchRenderCard("User")?.id;
   const hiddenFieldTag = (name: string, value: string): string =>
     `<input type="hidden" name="${h(name)}" id="${h(name.replace(/]/g, "").replace(/\[/g, "_"))}" value="${h(value)}" autocomplete="off" />`;
   const out = [
@@ -1107,27 +1186,38 @@ const setupView: ViewFn = (ctx) => {
     return `<span class="denied"><!-- Sorry, you don't have permission (create) --></span>`;
   }
   return fmt.withNestMode("edit", () => {
-    voo.opts["title"] = "Your deck is ready to go!"; // LOCALIZE
+    // voo.title = / voo.help = are LIVE writers (voo_api.rb:30-32
+    // define_setter) — readable through the accessor, invisible in the
+    // OWNING slot JSON; :help is an heir key, so the child help-view voo
+    // inherits it into its normalized options and ITS slot JSON carries
+    // the text (the graded corpus row pins both halves). Writing them
+    // into voo.opts serialized them on the outer setup slot too.
+    voo.liveTitle = "Your deck is ready to go!"; // LOCALIZE
     voo.showViz("help");
     voo.hide("menu");
     // voo.help = haml :setup_help (the oracle's helpBytes line)
-    voo.opts["help"] = SETUP_HELP_BYTES;
+    voo.liveHelp = SETUP_HELP_BYTES;
     // Auth.as_bot { setup_form } - frame_and_form :create over the body
-    // (the as_bot widening rides the seeded grants)
-    const body = output([
-      setupHiddenFields(ctx),
-      fmt.renderView("name_formgroup"),
-      // account_formgroups (the walk; the +email/+password field cards'
-      // editors render through the subformat's nest machinery under the
-      // inherited nest_mode :edit)
-      accountFormgroups(ctx),
-      // setup_form_buttons (user.rb:35-39): button_formgroup { setup_button }
-      // - setup_button = submit_button text "Set up", disable_with
-      // "Setting up" (form_elements.rb:59-66; the pinned bootstrap shape)
-      `<div class="form-group button-form-group"><button name="button" type="submit" data-disable-with="Setting up" class="btn btn-primary">Set up</button></div>`,
-    ]);
-    const form = createCardBodyShell(ctx, { body });
-    return framedView(ctx, "setup", () => form);
+    // (the as_bot widening rides the seeded grants). The body renders
+    // INSIDE the frame's block: frame.rb:21's add_name_context runs before
+    // the body (the graded field slots carry name_context), so the
+    // account field renders must build after it.
+    return framedView(ctx, "setup", () => {
+      const body = output([
+        setupHiddenFields(ctx),
+        str(fmt.renderView("name_formgroup")),
+        // account_formgroups (the walk; the +email/+password field cards'
+        // editors render through the subformat's nest machinery under the
+        // inherited nest_mode :edit)
+        accountFormgroups(ctx),
+        // setup_form_buttons (user.rb:35-39): button_formgroup { setup_button }
+        // - setup_button = submit_button text "Set up", disable_with
+        // "Setting up" (form_elements.rb:59-66; the pinned bootstrap shape)
+        `<div class="form-group button-form-group"><button name="button" type="submit" data-disable-with="Setting up" class="btn btn-primary">Set up</button></div>`,
+      ]);
+      const form = createCardBodyShell(ctx, { body });
+      return form;
+    });
   });
 };
 
@@ -1391,16 +1481,15 @@ const setModules: ModSetModuleFile[] = [
         views: [
           { view: "raw", viewFn: passwordRawView },
           { view: "core", viewFn: passwordCoreView },
-          // :input — the valueless password field (see passwordInputView).
-          // Registered HERE, on the right/password set, so it wins over
-          // card-mod-edit's all/editor :input for every +*password card: the
-          // set module's registration is the nearer one in the format's view
-          // chain, which is exactly how Ruby's include_set + the
-          // `input_type :password` override reach password_input before
-          // editor.rb's try-chain resolves it. `unknown`/`cache` repeat
-          // editor.rb:32's own directives, because this registration
-          // REPLACES that view for this set rather than adding a new one.
-          { view: "input", viewFn: passwordInputView, config: { unknown: true, cache: "never" } },
+          // right/password.rb:86-88 def input_type: :password + the
+          // all/password_input set module's password_input (the haml
+          // password_field + the toggle-password span) - the editor the
+          // account form's +*password field renders. The bytes are the
+          // live-oracle probe receipt (tmp/int/probe-password-input.rb):
+          // class "d0-card-content _pw-input form-control", placeholder
+          // "Password", autocomplete "off", type password, and the
+          // visibility_off icon span.
+          { view: "input", viewFn: passwordInputView },
         ],
       },
     },

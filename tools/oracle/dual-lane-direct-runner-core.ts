@@ -81,6 +81,7 @@ import {
   resolveSetModuleContent,
   setCaptureWallClock,
 } from "../../src/card/set-module-content-overrides.js";
+import { setRaiseAllRenderingErrors } from "../../src/card/render/format.js";
 
 // The capture-deck wall clock (set-override-fidelity lane 2026-10-03): the
 // corpus's graded card.content answers include wall-clock surfaces
@@ -126,6 +127,9 @@ interface GradeViewerEngine {
   viewer: GradeViewer;
   pageSession: GradeViewer | undefined;
   readPermission?: { alwaysOk: boolean; parties: number[]; readableRuleIds: Set<number> };
+  /** The engine's fresh-process boundary (RenderEngine.resetRequestSession):
+   *  clears the prepared session chrome and the ensure_roles fill state. */
+  resetRequestSession?(): void;
 }
 export function gradeViewerFromEnv(raw: string | undefined): GradeViewer | undefined {
   if (raw === undefined || raw === "") return undefined;
@@ -900,6 +904,11 @@ export async function runDirectGrade(opts: DirectRunOptions): Promise<DirectRunR
     /** Lane V handler: bare view-function render, byte-identical flow to the
      *  old verifier. */
     const renderHandler = async ({ cardName, view }: { cardName: string; view: string }) => {
+      // The capture rig's VIEW lane ran development
+      // (raise_all_rendering_errors=true): real bytes, and renders that raise
+      // record as CAPTURE_ERROR sentinels. The engine's default posture is
+      // that development posture; the PAGE lane below flips to production.
+      setRaiseAllRenderingErrors(true);
       try {
         const html = await storage.engine.render(cardName, view);
         assertGradeViewerState(viewerEngine, gradeViewer);
@@ -916,8 +925,36 @@ export async function runDirectGrade(opts: DirectRunOptions): Promise<DirectRunR
 
     /** Lane P handler: the engine's page-shaped output -- the REAL page
      *  render (src/card/render/page.ts). The entry `view` input is
-     *  informational only (Ruby's show resolves the view itself). */
+     *  informational only (Ruby's show resolves the view itself).
+     *
+     *  SHARD BOUNDARY (the capture-process model, settled live 2026-10-11):
+     *  the Ruby capture rigs ran ONE process per shard file with nothing
+     *  renewed inside it, so the +*enabled_roles session card's ensure_roles
+     *  fill starts blank at each shard's first page and stays filled for
+     *  the rest of the shard (the census: 6,537 of 6,588 member pages carry
+     *  the filled navbar input; the 48 exceptions are each shard's FIRST
+     *  page — the live probe confirms the fill survives Card::Env.reset and
+     *  only Card::Cache.renew blanks it). The replay is sequential
+     *  (src/testing/replay.ts replayEntries), so the call count maps 1:1
+     *  onto pageEntryShards; at every shard change the engine's session
+     *  state resets — exactly the boundary the capture process crossed. */
+    let pageEntryIndex = 0;
+    let pageEntryShard = "";
     pageRegistry.register("render-engine", async ({ cardName }: { cardName: string }) => {
+      const shard = pageEntryShards[pageEntryIndex] ?? "";
+      pageEntryIndex += 1;
+      if (shard !== pageEntryShard) {
+        pageEntryShard = shard;
+        viewerEngine.resetRequestSession?.();
+      }
+      // The capture rig's PAGE lane ran production
+      // (raise_all_rendering_errors=false): nested render errors render as
+      // the quiet render-error span INSIDE the slot wrapper (the four
+      // person-card pages' date slots pin the wrapped
+      // "Error rendering: ...+Date (core view)" panel). Without this the
+      // engine's development default re-raises nested errors and nest()'s
+      // catch emits the bare unwrapped span labelled "(content view)".
+      setRaiseAllRenderingErrors(false);
       try {
         const html = await storage.engine.renderPage(cardName);
         assertGradeViewerState(viewerEngine, gradeViewer);

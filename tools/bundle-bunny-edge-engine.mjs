@@ -11,10 +11,12 @@
 //                                              POST /compute/script/{id}/code
 //
 // Entry: deploy/bunny-worker-src/bunny-edge-engine-entry.ts — RenderEngine +
-// FetchEngine over BunnyDbDriver, routing through worker.ts's parsePath and
-// wrapping renders in worker.ts's layoutPage. See that file's header for the
-// runtime contract and the node: import inventory with each import's
-// dependency status.
+// FetchEngine over BunnyDbDriver, routing through the lineage surface's
+// parsePath (deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.ts —
+// the Bunny lineage's independently-evolved route grammar, not worker.ts's)
+// and wrapping renders in the lineage surface's layoutPage. See that file's
+// header for the runtime contract and the node: import inventory with each
+// import's dependency status.
 //
 // EXTERNAL BY DESIGN, same as the reader build: "@bunny.net/edgescript-sdk"
 // stays a bare import (the platform resolves it at run time; inlining would
@@ -26,6 +28,7 @@ import { build } from "esbuild";
 import { readFileSync, writeFileSync, statSync, mkdirSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { builtinModules } from "node:module";
+import { coffeescriptNodeBuiltinStubs } from "./vendor/coffeescript-edge-bundler-stubs.mjs";
 
 const here = resolve(process.cwd());
 /** The two scripts this tool builds. The full engine script serves every
@@ -68,6 +71,12 @@ for (const target of TARGETS) {
     // inline (base64) and compiles it with WebAssembly.Module, which the
     // Deno-based edge runtime supports.
     alias: { "@cf-wasm/photon": "@cf-wasm/photon/node" },
+    // The write surface bundles the npm coffeescript package (the
+    // CoffeeScript compiler, coffee-npm-compiler.ts); its entry requires
+    // fs/vm/path for file and eval helpers compile() never touches. Stub
+    // those three for the coffeescript subtree only — the bundle's
+    // no-static-node-imports discipline stays intact.
+    plugins: [coffeescriptNodeBuiltinStubs()],
     logLevel: "info",
     metafile: true,
     // The bundle's first statement stamps when evaluation began, before any

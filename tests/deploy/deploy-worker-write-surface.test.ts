@@ -68,6 +68,17 @@ async function bootWorker(vars: Record<string, string>): Promise<{
   // 1. Bundle worker.ts exactly as wrangler does. The root wrangler.toml sets
   //    compatibility_flags = ["nodejs_compat"], so NO node: alias is declared
   //    and none is needed here; a node: import would have to work natively.
+  //    The npm coffeescript package (bundled through the write surface's
+  //    coffeeCompiler) requires fs/vm/path for its file helpers and
+  //    child_process/module for its register/fork helpers — compile() needs
+  //    none of them. Wrangler's esbuild turns those requires into a LAZY shim
+  //    that only throws if executed (dead code here), but this vite/rolldown
+  //    build emits an EAGER createRequire(import.meta.url) prologue when any
+  //    require survives, and import.meta.url is undefined on workerd — the
+  //    worker would die at boot. So this build stubs all five specifiers to
+  //    deploy/shims/coffeescript-node-builtin-stub.mjs (which wrangler.toml's
+  //    [alias] table does for fs/vm/path; the two extra here are the rolldown
+  //    divergence, not a wrangler behaviour).
   //    inlineDynamicImports is part of "the way wrangler bundles it":
   //    wrangler's esbuild bundle has no code splitting, so a dynamic import
   //    in the worker graph (write-routes' seat import of the deck-boot seam,
@@ -75,10 +86,42 @@ async function bootWorker(vars: Record<string, string>): Promise<{
   //    it into a second chunk, which both broke the single-chunk pick below
   //    and booted workerd on a chunk with no default export
   //    ("Incorrect type for map entry ..." at startup).
+  const coffeeStub = `${REPO_ROOT}deploy/shims/coffeescript-node-builtin-stub.mjs`;
+  // Rolldown's CJS interop prologue is `var __require = createRequire(
+  // import.meta.url)()` — eager, and emitted even when no require call
+  // survives the aliases. On workerd import.meta.url is undefined, so the
+  // prologue itself kills the worker at boot. Replace it with esbuild's lazy
+  // shim semantics (throw only if a require ever runs — none does), which is
+  // what the wrangler bundle this test imitates actually ships.
+  const lazyRequireShim = {
+    name: "rolldown-eager-require-shim",
+    enforce: "post" as const,
+    generateBundle(_options: unknown, bundle: Record<string, { type: string; code?: string }>) {
+      for (const chunk of Object.values(bundle)) {
+        if (chunk.type !== "chunk" || chunk.code === undefined) continue;
+        chunk.code = chunk.code
+          .replace(/^\s*import \{ createRequire \} from "node:module";\r?\n/m, "")
+          .replace(
+            /var __require = \/\* #__PURE__ \*\/ \(\(\) => createRequire\(import\.meta\.url\)\)\(\);/,
+            'var __require = (id) => { throw new Error("Dynamic require of " + id + " is not allowed (worker bundle)"); };',
+          );
+      }
+    },
+  };
   const viteResult = await build({
     configFile: false,
     logLevel: "warn",
     ssr: { noExternal: true },
+    plugins: [lazyRequireShim],
+    resolve: {
+      alias: {
+        fs: coffeeStub,
+        vm: coffeeStub,
+        path: coffeeStub,
+        child_process: coffeeStub,
+        module: coffeeStub,
+      },
+    },
     build: {
       write: false,
       minify: false,

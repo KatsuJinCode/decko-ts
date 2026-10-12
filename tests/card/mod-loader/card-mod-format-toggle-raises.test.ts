@@ -1,44 +1,35 @@
-// The two raise-parity views from card-mod-format set/type/toggle.rb's
-// html block: :input (line 15-17) + :labeled_editor (line 19-21).
+// The two form views from card-mod-format set/type/toggle.rb's html block:
+// :input (line 15-17) + :labeled_editor (line 19-21).
 //
-// PARITY RAISE — Ruby ArgumentError parity:
+// BYTE PARITY (re-pinned from an earlier raise pin):
 //
-// Both views' bodies invoke `toggle` (toggle.rb:23-25) which calls
-// `check_box :content`. The actionview FormHelper#check_box signature
-// is (object_name, method, options={}, checked_value="1",
-// unchecked_value="0") (actionview-7.2.3.2 form_helper.rb:1345, 2
-// required + 3 optional). `check_box :content` is the SINGLE-ARG call
-// — Ruby raises ArgumentError "wrong number of arguments (given 1,
-// expected 2..5)". The raise is observed fact, captured live from the
-// gem's own runtime (tests/card/mod-loader/
-// oracle-capture-format-remaining-views.rb plus an actionview probe run
-// from tools/oracle/decko-oracle-app).
+// Both views' bodies render Rails FormBuilder products:
+//   view :input do toggle end                 # check_box :content
+//   view :labeled_editor do toggle + toggle_label end
+//                                             # + label :content, card.name.tag
 //
-// :labeled_editor is `toggle + toggle_label`. `toggle` raises first;
-// `toggle_label` would emit `<label for="content_X">X</label>`-shape
-// bytes (also live-probed), but the view as written raises before that
-// half renders — `toggle` is the leftmost operand, Ruby evaluates
-// left-to-right and unwinds on the first raise.
+// The graded corpus oracle (reference-harness fixtures synthetic-v2,
+// expected/render.jsonl.gz view:admin:Toggle 1:labeled_editor — the
+// expected manifest declares oracle variant "stock") pins the
+// FormBuilder bytes with object_name "card":
 //
-// These two views were left unported for that exact reason —
-// "port the views such that they raise the equivalent error the way
-// Ruby does" IS Ruby parity; the engine rendering something would be
-// the divergence. They are registered with the parity raise,
-// closing the gap as a counted raise instead of a missing view. Same
-// precedent as card-mod-tabs `:tabs_static` / `:pills_static` (the
-// NoMethodError on `args`; card-mod-tabs.ts:518-525) and the json
-// :follow_status defect class.
+//   <input name="card[content]" type="hidden" value="0" autocomplete="off" />
+//   <input type="checkbox" value="1" checked="checked" name="card[content]"
+//    id="card_content" />
+//   <label for="card_content">Toggle 1</label>
 //
-// Proof shape (A/B):
-//   WITHOUT the mod: render :input / :labeled_editor on the seeded
-//     Toggle-typed probe card raises UnsupportedViewError (the view
-//     does not exist on the live registry).
-//   WITH the mod: both renders throw with a message that names the
-//     underlying parity failure (ArgumentError on check_box :content,
-//     via the same MethodDelegation -> actionview seam Ruby hits) so
-//     a future port that substitutes "real bytes" is forced to either
-//     match Ruby's RAISE or update this test with the new shape —
-//     pin, don't guess.
+// The calls resolve through the format's implicit form machinery
+// (card-mod-edit set/all/form.rb:146-149 form -> new_form ->
+// instantiate_builder(form_prefix, card), the form-root prefix "card");
+// the FormBuilder's own one-arg check_box(method)/label(method, text)
+// overloads (actionview form_helper.rb:2474 / :2405) render, and
+// `checked?` rides card.content == "1" (toggle.rb:5-7).
+//
+// An earlier lane pinned an "ArgumentError parity" raise here (a probe
+// capture rendered CAPTURE_ERROR, read as FormHelper#check_box's 2-arg
+// signature firing on the single-arg call). The graded stock-oracle
+// corpus contradicts that capture, and the corpus gate is the arbiter —
+// the views now render the oracle's bytes, and this file pins them.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { expectViewWithoutMod } from "../../support/native-views.js";
@@ -62,21 +53,10 @@ beforeAll(async () => {
   storage = await createRenderTestStorage();
   const s = storage;
 
-  // Toggle-typed probe card — the views live on the Type::Toggle
-  // chain, so the rendered card must reach the toggle block. The
-  // headless engine does not have a per-type Cardtype registry for
-  // the deck seeds, but the engine's :input / :labeled_editor
-  // dispatch goes through the same registry as the engine's
-  // existing Toggle core view (render/views.ts:345 — typeCode ===
-  // "toggle" || typeName === "Toggle"), so seeding typeName="Toggle"
-  // is sufficient to identify the card to the views.
-  //
-  // The mod loader, however, registers :input and :labeled_editor on
-  // the MOD's flat view table (mod-registrar.ts ViewRegistrationTable),
-  // NOT on the type chain — these two views are Type::Toggle-scoped
-  // in Ruby but flat here. So they dispatch on every card regardless
-  // of type. The seed is just a Toggle card to keep the parity
-  // honest.
+  // Toggle-typed probe card — the views live on the Type::Toggle chain,
+  // so the rendered card must reach the toggle block. Seeding
+  // typeName="Toggle" identifies the card (see the chooser-mount-era
+  // note in the git history for the flat-registry caveat).
   await seedCard(s, { id: 2, name: "Toggle", codename: "toggle" });
   await seedCard(s, {
     id: 300,
@@ -91,7 +71,7 @@ afterAll(() => {
   storage?.close();
 });
 
-describe("card-mod-format set/type/toggle — :input + :labeled_editor raise parity", () => {
+describe("card-mod-format set/type/toggle — :input + :labeled_editor bytes", () => {
   it("WITHOUT the mod: :labeled_editor raises; the compiled :input renders", async () => {
     const s = storage!;
     await expectViewWithoutMod(s.engine.render("Oracle Toggle Probe", "input"), "input");
@@ -100,36 +80,32 @@ describe("card-mod-format set/type/toggle — :input + :labeled_editor raise par
     ).rejects.toThrow(UnsupportedViewError);
   });
 
-  it("WITH the mod: :input throws Ruby's ArgumentError parity raise (check_box :content)", async () => {
+  it("WITH the mod: :input renders the FormBuilder checkbox pair (checked on content '1')", async () => {
     const s = storage!;
     loader = new ModLoader([{ manifest: cardModFormat }]);
     loader.load();
     bindModLoaderToEngine(storage!, loader!);
     await loader.installInto(modEngineHost(s.engine, s.fetcher));
 
-    // set/type/toggle.rb:15-17 + :23-25 — `toggle` calls
-    // `check_box :content`. actionview-7.2.3.2
-    // FormHelper#check_box(object_name, method, ...) takes 2-5 args;
-    // `check_box :content` is one arg. Ruby raises ArgumentError
-    // "wrong number of arguments (given 1, expected 2..5)". The
-    // port throws the same parity failure so a future port that
-    // renders bytes Ruby never produced has to update this test.
-    await expect(
-      s.engine.render("Oracle Toggle Probe", "input"),
-    ).rejects.toThrow(/ArgumentError.*check_box :content/);
+    // set/type/toggle.rb:15-17 + :23-25 — the FormBuilder#check_box pair:
+    // the unchecked hidden input (name, type, value, autocomplete), then
+    // the checkbox (type, value, checked, name, id).
+    expect(await s.engine.render("Oracle Toggle Probe", "input")).toBe(
+      '<input name="card[content]" type="hidden" value="0" autocomplete="off" />' +
+        '<input type="checkbox" value="1" checked="checked" name="card[content]" id="card_content" />',
+    );
   });
 
-  it("WITH the mod: :labeled_editor throws Ruby's ArgumentError parity raise (toggle + toggle_label)", async () => {
+  it("WITH the mod: :labeled_editor renders the checkbox pair + the tag label (the graded corpus bytes)", async () => {
     const s = storage!;
-    // set/type/toggle.rb:19-21 — `toggle + toggle_label`. `toggle`
-    // raises first (leftmost operand); `toggle_label` would emit
-    // `<label for="content_X">X</label>` (live-probed, see
-    // an internal work log row "labeled_editor"),
-    // but the view as written never reaches it. The parity raise is
-    // the same shape as :input's.
-    await expect(
-      s.engine.render("Oracle Toggle Probe", "labeled_editor"),
-    ).rejects.toThrow(/ArgumentError.*check_box :content/);
+    // set/type/toggle.rb:19-21 — toggle + toggle_label; the label rides
+    // card.name.tag. Byte-identical to the graded corpus oracle row
+    // view:admin:Toggle 1:labeled_editor.
+    expect(await s.engine.render("Oracle Toggle Probe", "labeled_editor")).toBe(
+      '<input name="card[content]" type="hidden" value="0" autocomplete="off" />' +
+        '<input type="checkbox" value="1" checked="checked" name="card[content]" id="card_content" />' +
+        "<label for=\"card_content\">Oracle Toggle Probe</label>",
+    );
   });
 
   it("WITH the mod: the mod loader's load report lists both views", () => {
@@ -138,13 +114,8 @@ describe("card-mod-format set/type/toggle — :input + :labeled_editor raise par
     expect(report.registeredViews).toContain("labeled_editor");
   });
 
-  it("WITH the mod: a Toggle card's baseline :core view still renders (the mod adds raise-parity views, it does not alter the existing toggle core)", async () => {
+  it("WITH the mod: a Toggle card's baseline :core view still renders (the mod adds the form views, it does not alter the existing toggle core)", async () => {
     const s = storage!;
-    // The engine's :core view (render/views.ts#coreView) renders the
-    // toggle's "1" -> "yes" mapping through formatToggleCore. The mod
-    // registers :input + :labeled_editor ONLY — :core stays as the
-    // engine's existing bytes, exactly like the rest of card-mod-format
-    // (the A/B shape every sibling test follows).
     expect(await s.engine.render("Oracle Toggle Probe", "core")).toBe("yes");
   });
 });

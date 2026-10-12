@@ -409,10 +409,10 @@ class StubFmt {
   renderView(view: string, _opts: Record<string, unknown> = {}): string {
     const fn = resolveViewFn(view);
     if (fn !== undefined) {
-      return fn({
+      return String(fn({
         fmt: this as unknown as RenderFormat,
         voo: new StubVoo(view) as unknown as Voo,
-      } as unknown as ViewContext);
+      } as unknown as ViewContext) ?? "");
     }
     return `[rendered:${view}]`;
   }
@@ -556,7 +556,10 @@ describe("card-mod-rules exported view bodies (stub harness)", () => {
       deck,
     );
     const out = ruleOneLineContentView(makeCtx(plainRule, "one_line_content"));
-    expect(out).toBe(`<div class="text-muted one-line">${"a".repeat(60)}...</div>`);
+    // Rails truncate: the omission rides INSIDE the length (60 -> 57 +
+    // "..."); the corpus's *children+*right+*help bar cuts at 57
+    // ("with another c").
+    expect(out).toBe(`<div class="text-muted one-line">${"a".repeat(57)}...</div>`);
   });
 
   it("ruleOneLineContentView: content of exactly 60 chars is NOT truncated (content.rb:48 truncate only when longer)", () => {

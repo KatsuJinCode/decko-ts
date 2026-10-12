@@ -39,9 +39,14 @@
 // without an upload; the success/error responses stay the shared cud
 // shapes documented below. The two-step preliminary upload flow
 // (00_upload_cache.rb — the JS editor's attachment_upload param, the
-// new_file cache card, the preview_editor round trip) is NOT this
-// surface: the direct file-part save is Ruby's own path for existing
-// cards and for creates without the cache detour.
+// new_file cache card, the preview_editor round trip) IS this surface's
+// preliminary arm: a save whose request carries attachment_upload beside
+// the file part answers handlePreliminaryUpload below (the draft write +
+// the bare preview_editor html; WriteRouteContext.renderPreviewEditor is
+// the host render seam) and the final save carries the preview's
+// card[action_id_of_cached_upload] hidden input through to the engine's
+// cached-upload attach (00_upload_cache.rb:27-43 assign_attachment_on_*)
+// and integrate-phase cache cleanup (:51-72 delete_cached_upload_file_on_*).
 //
 // Auth — card_controller/rest.rb:37-40 `Card::Auth.signin_with(**authenticators)`
 // runs as a before_action on EVERY request: authenticators are
@@ -54,26 +59,21 @@
 // to Anonymous (auth/current.rb:58-63); Anonymous writes are denied per the
 // rules (PermissionDenied, HTTP 403, exactly like Ruby).
 //
-// CSRF — a SECURITY DIVERGENCE (docs/SECURITY.md, "Cross-site requests"):
-// every write route and the sign-in action pass the same-origin check in
-// request-origin.ts (Sec-Fetch-Site, then Origin, then Referer; requests
-// carrying none of them are not from a browser page and pass), which
-// refuses a cross-site form with 403 and changes no page bytes (no token).
-// DECKO_ORIGIN_CHECK=off restores Ruby's behaviour. What Ruby does, for the
-// record: live decko arms no forgery protection.
+// CSRF — none, deliberately: live decko arms no forgery protection.
 // decko-0.20.0 / card-1.110.0 contain no `protect_from_forgery` call
 // anywhere (the ONLY forgery reference in the whole generation is
 // decko-0.20.0/config/environments/cucumber.rb:27, which DISABLES
 // allow_forgery_protection), and the decko application sets no
 // load_defaults that would arm Rails' default_protect_from_forgery. The
-// recorded result is the captured real session (2026-09-28): every token-less form
+// receipt is the captured real session (2026-09-28): every token-less form
 // post — the sign-in POST, both saves, the anonymous denial — went straight
 // through to the action gates (303/200/403; no csrf meta tags in any
 // captured page). Rails' origin check (valid_request_origin?) lives inside
 // verify_authenticity_token (request_forgery_protection.rb), so it is
 // equally unarmed: a cross-origin form post is not a live failure either.
-// The port's origin check needs no token, so same-origin token-less posts
-// (every captured shape) still go straight through to the action gates.
+// This reverses the earlier TS posture (HMAC csrfTokenFor + 422), which
+// modeled "the Rails default" instead of the live app; the save-path pins
+// that enforced it were updated to the live shapes.
 //
 // Error shapes — card-1.110.0 lib/card/error.rb status codes:
 //   Card::Error::PermissionDenied -> 403 (view :denial, error.rb:104);
@@ -112,6 +112,7 @@ import {
 } from "../card/auth/account-verify-reset-flows.js";
 import { createCardActionEngineForSession } from "../card/actions/engine-for-session.js";
 import { CardActionError, type ActionResult, type AttachmentInput, type SubcardInput } from "../card/actions/types.js";
+import type { CardActionEngine } from "../card/actions/card-action-engine.js";
 import type { CardActionRecaptchaConfig } from "../card/actions/card-action-engine.js";
 import type { ModEventRuntime, ModEventStageReport } from "../card/mod-loader/mod-event-dispatch.js";
 import type { ModEngineHost } from "../card/mod-loader/mod-manifest.js";
@@ -122,12 +123,6 @@ import { DeckoName } from "../card/name.js";
 import { parseMultipartForm, type MultipartFilePart } from "./multipart-form.js";
 import { decodeUriComponentSafe } from "./decode-uri-component-safe.js";
 import {
-  checkRequestOrigin,
-  CROSS_ORIGIN_MESSAGE,
-  defaultOriginPolicy,
-  type OriginPolicy,
-} from "./request-origin.js";
-import {
   discardLocationsFor,
   previousLocation,
   readVisitorSession,
@@ -136,6 +131,12 @@ import {
   visitorSessionCookie,
   type VisitorSession,
 } from "../card/session/visitor-session.js";
+import {
+  CROSS_ORIGIN_MESSAGE,
+  checkRequestOrigin,
+  defaultOriginPolicy,
+  type OriginPolicy,
+} from "./request-origin.js";
 
 /** One inbound write request, normalized off the node request. Header keys
  *  are lower-cased (node's convention). The body is the RAW bytes read by
@@ -155,7 +156,7 @@ export interface WriteRouteRequest {
    *  hardcoded behavior, preserved for every caller that does not derive
    *  the field (engine-level tests, scheme-less hosts). This is card_url's
    *  scheme half (env/serializable.rb:19-21: "scheme+host_with_port").
-   *  (fold-10 union: the scheme downgrade's field the edge-signin-form-fix
+   *  (fold-10 union: the scheme-downgrade lane's field the edge-signin-form-fix
    *  pick consumes — the deploy lineage landed it in b0f8252.) */
   scheme?: "http" | "https";
   /** The URL query string as received ("?a=1&b=2", or "" / absent). Rails
@@ -190,7 +191,54 @@ export interface WriteRouteContext {
    *  re-renders through `show`). Absent -> ajax saves fall back to the
    *  hard redirect (documented TS deviation for host surfaces with no
    *  renderer; the staging server always provides it). */
-  renderSlot?: (name: string, view?: string) => Promise<string>;
+  /** The third parameter carries the POSTED subcards' full names (the
+   *  same list the response's expiryNames stamp): the director's
+   *  set_stamper assigns their updater at instantiation, so the slot
+   *  re-render must read their POST-save state — expiring only the mark
+   *  left a changed +*email rendering its pre-save value inside the slot
+   *  bytes themselves. */
+  renderSlot?: (name: string, view?: string, subcardNames?: string[]) => Promise<string>;
+  /** Renders one card's page through the host's page lane (the full layout
+   *  html) for the named view — the explicit-GET update alternative's
+   *  non-ajax denial surface: Ruby's card#update rescue renders the target
+   *  card's denial view INSIDE the deck layout (format/error.rb's
+   *  view_for_denial page, status 403), and only the host has the page
+   *  machinery. Absent -> the plain quiet-text error body (the historical
+   *  shape; the staging server is the only implementor today). */
+  renderErrorPage?: (name: string, view: string) => Promise<string>;
+  /** Renders one card's preview_editor view — the host's render machinery
+   *  for the two-step upload's success response (00_upload_cache.rb:18-24:
+   *  the preliminary abort's success target rendered on view
+   *  :preview_editor, answered as the fileupload AJAX's 200 html —
+   *  response.rb soft_redirect show). `opts` are the view's render opts:
+   *  attachment_upload (the hidden-input name source), original_filename,
+   *  attachment_size, and the preliminary round trip's selected_action_id /
+   *  cached_upload_identifier. The response body is the BARE view (the
+   *  decko.js doneFile handler replaces .chosen-file with it verbatim —
+   *  upload.js.coffee:48-51). Absent -> the preliminary upload arm refuses
+   *  with a named error (no silent fallthrough into the direct-save
+   *  grammar). */
+  renderPreviewEditor?: (input: {
+    name: string;
+    opts: Record<string, unknown>;
+  }) => Promise<string>;
+  /** The deck origin and bot address the follower notification's nest
+   *  views render with (Cardio.config.deck_origin port + the Decko Bot
+   *  account's email for safe_from_and_reply_to!, email_config.rb:52-79).
+   *  Absent = the computed default (the request origin + the Decko Bot
+   *  account's email looked up from the deck). */
+  followMail?: { origin: string; deckoBotEmail: string };
+  /** The visitor session's previous location — `session[:history]`'s last
+   *  entry (card/lib/card/env/location_history.rb:29-31 previous_location),
+   *  the `*previous` success-mark resolution (mark.rb:12-14 hard_redirects
+   *  it; the Success target resolves the same way) and the delete's
+   *  configure_successful_deletion redirect (mod/session
+   *  set/all/location_history.rb:9-17). Absent or returning undefined
+   *  leaves the literal-name arms (documented remainder). */
+  previousLocation?: () => string | undefined;
+  /** The same-origin policy for writes and sign-in (request-origin.ts).
+   *  Absent: from process.env, else enabled with no extra origins. */
+  originPolicy?: OriginPolicy;
   /** The attachment storage seam (E4.4.a's LocalAttachmentStore), passed
    *  through to every write engine this module builds — the multipart
    *  upload surface stores bytes through it. Absent = attachment saves
@@ -226,9 +274,6 @@ export interface WriteRouteContext {
    *  Card::Rule.toggle(rule(:captcha)) candidate walk); verify defaults
    *  to the real siteverify GET (recaptcha.rb:41-44). */
   recaptcha?: CardActionRecaptchaConfig;
-  /** The same-origin policy for writes and sign-in (request-origin.ts).
-   *  Absent: from process.env, else enabled with no extra origins. */
-  originPolicy?: OriginPolicy;
   /** Observer for every mod-event stage walk a save performs (the
    *  dispatcher's onReport: fired and skipped event names, in walk order).
    *  Diagnostics and the side-effects parity harness read event order
@@ -242,8 +287,8 @@ export interface WriteRouteContext {
   accountMail?: Omit<AccountFlowContext, "driver" | "fetcher" | "sessions">;
   /** Where save-path notifications go: the follower notification emails
    *  card-mod-follow sends after a signed-in save (notify.rb:13-16, the
-   *  engine's default follow-notify hook). Absent = the engine's
-   *  default transport. */
+   *  engine's default follow-notify hook). Absent = the notify module's
+   *  no-op transport, which drops them. */
   notifyTransport?: NotifyTransport;
 }
 
@@ -260,11 +305,17 @@ export interface WriteRouteResponse {
    *  HTML one. Error responses leave it unset (no commit, no expire —
    *  phases.rb:19-21). */
   expiryName?: string;
+  /** Every card the save persisted — the mark plus each posted subcard
+   *  (subcards.rb: the director saves each as its own card, each with its
+   *  own post-commit expire). The host's render-map expiry walks this list:
+   *  the per-engine enriched render-card entries of a saved SUBCARD are
+   *  TS-only structures (post-save-cache-expiry.ts header), and expiring
+   *  only the mark left a changed +*email rendering its pre-save value. */
+  expiryNames?: string[];
   /** The visitor-session cookie (card/session/visitor-session.ts) to set
    *  alongside any Set-Cookie header: the location history and Session-card
-   *  content Ruby keeps in its Rails session — the visitor session the
-   *  write routes mint, appended after any session cookie by the host.
-   *  Present only when the request changed that state. */
+   *  content Ruby keeps in its Rails session. Present only when the request
+   *  changed that state. */
   visitorCookie?: string;
 }
 
@@ -336,6 +387,12 @@ interface ParsedBody {
   subcardTree: Record<string, ParsedSubcard>;
   /** params[:success] — the success hash (success[redirect], success[mark]). */
   success: Record<string, string>;
+  /** params[:slot] — the ajax slot context (slot[view], slot[main],
+   *  slot[layout], slot[show][], slot[hide][]) the decko.js slotter appends
+   *  to its write requests; show_layout? reads slot[layout] (html/show.rb:
+   *  an ajax request with a layout param renders the full page, not the
+   *  bare slot). */
+  slotParams: Record<string, string>;
   /** The multipart FILE parts under the card hash, by mount name — the
    *  card[<mount>] file part is Rack's UploadedFile (parser.rb:138-146),
    *  CardMount's file=/image= argument (card_mount.rb:41-44). */
@@ -346,6 +403,11 @@ interface ParsedBody {
   methodOverride?: string;
   /** params[:simulate_xhr] (env/serializable.rb:24 — the ajax half). */
   simulateXhr?: boolean;
+  /** params[:is_main] — configure_successful_deletion's modal-arm fork
+   *  (mod/session set/all/location_history.rb:11): present on an ajax delete
+   *  whose success target is the deleted card = the hard redirect to
+   *  :previous; absent = the unknown-view modal slot. */
+  isMain?: string;
   /** params[:comment] / params[:comment_author] — the add_comment event's
    *  inputs (card-mod-comment set/all/comment.rb:4-12). */
   comment?: string;
@@ -403,9 +465,16 @@ function applyParam(
     parsed.success[successMatch[1]] = value;
     return;
   }
+  const slotMatch = /^slot\[([^\]]+)\]$/.exec(key);
+  if (slotMatch !== null) {
+    parsed.slotParams[slotMatch[1]] = value;
+    return;
+  }
+  if (key === "is_main") parsed.isMain = value;
   if (key === "token") parsed.token = value;
   else if (key === "_method") parsed.methodOverride = value;
   else if (key === "simulate_xhr") parsed.simulateXhr = value !== "";
+  else if (key === "is_main") parsed.isMain = value;
   else if (key === "comment") parsed.comment = value;
   else if (key === "comment_author") parsed.commentAuthor = value;
   else if (key === "draft") parsed.draft = value;
@@ -478,7 +547,7 @@ function subcardTreeFromJson(raw: unknown): Record<string, ParsedSubcard> {
 }
 
 function emptyParsedBody(): ParsedBody {
-  return { card: {}, subcards: {}, subcardTree: {}, success: {}, cardFiles: {} };
+  return { card: {}, subcards: {}, subcardTree: {}, success: {}, slotParams: {}, cardFiles: {} };
 }
 
 function parseBody(req: WriteRouteRequest): ParsedBody {
@@ -558,6 +627,7 @@ function parseBody(req: WriteRouteRequest): ParsedBody {
       subcards,
       subcardTree,
       success,
+      slotParams: {},
       cardFiles: {},
       token: typeof obj["token"] === "string" ? obj["token"] : undefined,
       methodOverride: typeof obj["_method"] === "string" ? obj["_method"] : undefined,
@@ -616,6 +686,22 @@ function matchRoute(method: string, pathname: string): RouteMatch | null {
   const post = method === "POST";
   const put = method === "PUT" || method === "PATCH";
   const del = method === "DELETE";
+  // engine_routes.rb:41-44 — the explicit GET alternatives:
+  //   %w[create read update delete asset].each { get "(card)/#{action}(/:mark)" => "card", action: action }
+  // GET /update/<mark> is a FIRST-CLASS route to card#update (rest.rb:14-16:
+  // `card.new_card? ? create : handle { card.update! params[:card] }` — the
+  // save runs with whatever card params the query carries, exactly like the
+  // POST verb; the follow-family follow-links are anchor hrefs, and
+  // data-remote anchors follow the href with GET). The read and asset
+  // actions stay on the page branch; the create/delete GET alternatives are
+  // the recorded remainder (no graded surface reaches them; the page
+  // fallback serves them today).
+  if (method === "GET") {
+    const explicit = /^\/(?:card\/)?update(?:\/([^/]+))?$/.exec(pathname);
+    if (explicit !== null && (pathname.startsWith("/card/update") || explicit[1] !== undefined)) {
+      return { verb: "update", mark: explicit[1], json: false };
+    }
+  }
   if (!post && !put && !del) return null;
   if (pathname === "/" || pathname === "") {
     if (post) return { verb: "create", json: false };
@@ -710,6 +796,16 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/** A write or sign-in refused by the same-origin check: 403, the class Ruby
+ *  uses for a forbidden action (error.rb:103-105). The reason is logged by
+ *  hosts that log responses; the visitor sees a plain explanation. */
+function crossOriginResponse(json: boolean, reason: string): WriteRouteResponse {
+  const message = `${CROSS_ORIGIN_MESSAGE} (${reason})`;
+  return json
+    ? jsonResponse(403, { error: { code: "cross-origin", message } })
+    : htmlResponse(403, "Error (cross-origin)", `<pre>${escapeHtml(message)}</pre>`);
+}
+
 /** card-1.110.0 lib/card/error.rb status codes: PermissionDenied 403
  *  (:104), NotFound 404 (:83,89), UserError (validation) 422 (:21).
  *  anonymous-actor is Ruby's permission denial in engine terms (module
@@ -719,16 +815,6 @@ function errorStatus(code: CardActionError["code"]): number {
   if (code === "server-error") return 500;
   if (code === "anonymous-actor" || code === "permission-denied") return 403;
   return 422;
-}
-
-/** A write or sign-in refused by the same-origin check: 403, the class Ruby
- *  uses for a forbidden action (error.rb:103-105). The reason is logged by
- *  hosts that log responses; the visitor sees a plain explanation. */
-function crossOriginResponse(json: boolean, reason: string): WriteRouteResponse {
-  const message = `${CROSS_ORIGIN_MESSAGE} (${reason})`;
-  return json
-    ? jsonResponse(403, { error: { code: "cross-origin", message } })
-    : htmlResponse(403, "Error (cross-origin)", `<pre>${escapeHtml(message)}</pre>`);
 }
 
 /** The loud denial's text (card-mod-format set/all/html/error.rb:191-216,
@@ -767,8 +853,7 @@ async function signedInFor(ctx: WriteRouteContext, sessionToken: string | null):
  *  a later message for the same attribute replacing an earlier one). The
  *  throw site's explicit attribute map wins; otherwise the shown
  *  "KEY: message" lines are read back (Ruby upcases the attribute symbol
- *  for display; attributes are lower-case symbols). Exported for the
- *  harness adapter's error payload mapping (same shape, same reading). */
+ *  for display; attributes are lower-case symbols). */
 export function rubyErrorsHash(error: CardActionError, signedIn: boolean): Record<string, string> {
   if (error.errorsByAttribute !== undefined) return { ...error.errorsByAttribute };
   // A denial without the rule walk's wording (the host write hook, a deck
@@ -801,6 +886,7 @@ function errorResponse(
   error: CardActionError,
   signedIn = false,
   meta?: { url: string; now: Date },
+  opts?: { ajax?: boolean; getAlternative?: boolean },
 ): WriteRouteResponse {
   const status = errorStatus(error.code);
   if (json) {
@@ -820,10 +906,60 @@ function errorResponse(
       body: JSON.stringify(payload, null, 2),
     };
   }
+  // card-mod-format set/all/html/error.rb: the errors view's standard_errors
+  // alert (layout/set/all/alert.rb:7-25's dismissible warning alert, one
+  // "<p><strong>KEY:</strong> message</p>" per error) is the body Ruby's
+  // VALIDATION failures render (422 UserError) — the ajax save's 422 lands
+  // in the form's card-notice (the slotter JS), so these bytes are the
+  // whole observable difference. The compound-create side-walk fold arrives
+  // with the same class: its act.errors carry only the part-named attribute
+  // (subcards/all.rb:65-80), so error.rb:177-182 invalid_card_error_class
+  // bottoms out at base Card::Error — 422 + this alert, and the deck
+  // script's notify arm swaps it into the closest card-slot. (The ajax arm
+  // below kept the same bytes when the fold still rode the 403 class; the
+  // classification now rides the error code itself.) The other families
+  // keep the audited bodies below (the 403 denial's quiet text and its
+  // diagnostic comment).
+  if (status === errorStatus("user-error")) {
+    return htmlResponse(status, `Error (${error.code})`, cardErrorAlertHtml(error));
+  }
+  if (opts?.ajax === true && error.cardName !== undefined) {
+    return htmlResponse(status, `Error (${error.code})`, cardErrorAlertHtml(error));
+  }
   return htmlResponse(
     status,
     `Error (${error.code})`,
     `<pre>${escapeHtml(userFacingMessage(error, signedIn))}</pre>${diagnosticComment(error, signedIn)}`,
+  );
+}
+
+/** The errors view's alert bytes (card-mod-format set/all/html/error.rb:54-66
+ *  view :errors + :120-127 standard_errors + layout/set/all/alert.rb:7-25):
+ *  `alert "warning", true` = the dismissible bootstrap warning alert with
+ *  the card-error-msg class_up, the btn-close button, the
+ *  "Problems with <card name>" h4 heading (t :format_problems_name) and one
+ *  `<p><strong>KEY:</strong> message</p>` per error (:132-133
+ *  standard_error_message). */
+function cardErrorAlertHtml(error: CardActionError): string {
+  // standard_error_message splits the shown key from the message at the
+  // first ": " — but ONLY for the throw sites that compose "<KEY>:
+  // <message>" deliberately (userMessage). A bare message renders whole
+  // (splitting an arbitrary message at its first colon would eat half of
+  // it into the strong tag).
+  const shown = error.userMessage ?? error.message;
+  const sep = error.userMessage !== undefined ? shown.indexOf(": ") : -1;
+  const key = sep > 0 ? shown.slice(0, sep) : undefined;
+  const message = sep > 0 ? shown.slice(sep + 2) : shown;
+  const heading =
+    error.cardName !== undefined ? `Problems with ${escapeHtml(error.cardName)}` : undefined;
+  return (
+    `<div class="alert alert-warning alert-dismissible card-error-msg" role="alert">` +
+    `<button type="button" data-bs-dismiss="alert" class="btn-close" aria-label="Close"></button>` +
+    (heading !== undefined ? `<h4 class="alert-heading error">${heading}</h4>` : "") +
+    (key !== undefined
+      ? `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(message)}</p>`
+      : `<p>${escapeHtml(message)}</p>`) +
+    `</div>`
   );
 }
 
@@ -839,9 +975,7 @@ function diagnosticComment(error: CardActionError, signedIn: boolean): string {
 /** The Decko Bot account's email (Decko Bot+*account+*email), or the
  *  address the account mod seeds for it (card-mod-account data/real.yml,
  *  decko_bot+account email) when the deck has no such row. Follower mail
- *  is sent from it (safe_from_and_reply_to!). Exported for the harness
- *  adapter, whose direct CardActionEngine construction needs the same
- *  followMail wiring the serving engine gets below. */
+ *  is sent from it (safe_from_and_reply_to!). */
 export async function deckoBotAccountEmail(driver: SQLDatabaseDriver): Promise<string> {
   try {
     const r = await driver.query<{ email: string }>(
@@ -872,8 +1006,27 @@ export async function deckoBotAccountEmail(driver: SQLDatabaseDriver): Promise<s
  *  headers are absolute (captured: "http://localhost:3011/..."). */
 function cardUrl(req: WriteRouteRequest, path: string): string {
   if (req.host === undefined || req.host === "") return path; // no Host: relative (documented degenerate case)
-  // The client's own scheme, so an https deck never redirects to http.
+  // The client's own scheme, so an https deck never redirects to http
+  // (the edge-signin-form-fix graft; the deploy lineage's scheme-aware
+  // card_url).
+  // Already absolute (the *previous history stores original_url's absolute
+  // shape): Env::Location passes an absolute URL through unchanged.
+  if (/^https?:\/\//i.test(path)) return path;
   return `${req.scheme ?? "http"}://${req.host}${path}`;
+}
+
+/** The errors view's alert bytes for the *signin failure
+ *  (set/self/signin.rb's authenticate_or_abort errors.add :signin — the
+ *  recorded page shows the attribute key upcased, "SIGNIN:", ahead of the
+ *  message): the same standard_errors shape cardErrorAlertHtml emits. */
+function signinErrorAlertHtml(message: string): string {
+  return (
+    `<div class="alert alert-warning alert-dismissible card-error-msg" role="alert">` +
+    `<button type="button" data-bs-dismiss="alert" class="btn-close" aria-label="Close"></button>` +
+    `<h4 class="alert-heading error">Problems with *signin</h4>` +
+    `<p><strong>SIGNIN:</strong> ${escapeHtml(message)}</p>` +
+    `</div>`
+  );
 }
 
 /** Ruby's cud_success for the PLAIN-form flavor (response.rb:25-33): the
@@ -885,6 +1038,7 @@ function successResponse(
   name: string,
   saved: { cardId: number; actId: number; actionId: number; verb: WriteVerb },
   redirectPath: string = `/${locationName(name)}`,
+  subcardNames?: string[],
 ): WriteRouteResponse {
   if (json) {
     return {
@@ -895,6 +1049,7 @@ function successResponse(
         act_id: saved.actId,
         action_id: saved.actionId,
       }),
+      ...(subcardNames !== undefined && subcardNames.length > 0 ? { expiryNames: subcardNames } : {}),
       expiryName: name,
     };
   }
@@ -902,6 +1057,7 @@ function successResponse(
     status: 303,
     headers: { Location: absoluteTarget(req, redirectPath), "Cache-Control": "no-store" },
     body: "",
+    ...(subcardNames !== undefined && subcardNames.length > 0 ? { expiryNames: subcardNames } : {}),
     expiryName: name,
   };
 }
@@ -970,7 +1126,7 @@ async function handleSigninUpdate(
           url: requestUrl(req),
           now: ctx.now?.() ?? new Date(),
         })
-      : htmlResponse(422, "Error (signin-failure)", `<pre>${escapeHtml(shown)}</pre>`);
+      : htmlResponse(422, "Error (signin-failure)", signinErrorAlertHtml(shown));
   // The send_reset_password_token trigger (signin.rb:62-84): the forgot-
   // password form posts the email with card[trigger]; the :signin event
   // does not run.
@@ -988,8 +1144,11 @@ async function handleSigninUpdate(
   const outcome = await signinAccount(ctx.driver, sessions, email, password);
   if (!outcome.ok) {
     // authenticate_or_abort adds the ladder message under :signin
-    // (signin.rb:50-58 errors.add :signin, ...): "SIGNIN: <message>".
-    return fail(outcome.message, `SIGNIN: ${outcome.message}`);
+    // (signin.rb:50-58 errors.add :signin, ...): the errors view renders the
+    // attribute name upcased ("SIGNIN:") ahead of the message — the alert
+    // template below owns that prefix, so the shown bytes are the ladder
+    // message itself, unprefixed.
+    return fail(outcome.message, outcome.message);
   }
   // The success target (env/success/target.rb): the form's
   // success[mark]=*previous (signin.rb:171) -> previous_location; without a
@@ -1155,17 +1314,10 @@ export function servingModEventRuntime(): Promise<ModEventRuntime> {
   return servingModEventRuntimeSeat;
 }
 
-/** The serving runtime, with the type-set resolver and the host's
- *  stage-report observer attached. The shared runtime object is never
- *  mutated: an observed request gets a shallow copy carrying its own
- *  setMember/onReport. Exported (driver-scoped) so the harness adapter's
- *  direct engine construction composes the SAME runtime the serving write
- *  path builds — without the resolver, every type-scoped deck event (the
- *  Number cardtype's validate_number among them) skips "set-not-applicable"
- *  (mod-event-dispatch.ts set_condition_applies). */
-export async function observedModEventRuntime(
-  ctx: Pick<WriteRouteContext, "driver" | "onModEventReport">,
-): Promise<ModEventRuntime> {
+/** The serving runtime, with the host's stage-report observer attached when
+ *  one is given. The shared runtime object is never mutated: an observed
+ *  request gets a shallow copy carrying its own onReport. */
+async function observedModEventRuntime(ctx: WriteRouteContext): Promise<ModEventRuntime> {
   const runtime = await servingModEventRuntime();
   const codenameOfType = await typeCodenames(ctx.driver);
   return {
@@ -1276,7 +1428,7 @@ async function dispatchWriteRequest(
       return handleSigninUpdate(ctx, req, json, parsed, visit);
     }
   }
-  // The AUTH-ONLY arm (the edge signin form fix, 2026-10-03): everything
+  // The AUTH-ONLY arm (edge-signin-form-fix lane, 2026-10-03): everything
   // below this line is CARD CREATE/UPDATE/DELETE — the surface a deployment
   // flag may lawfully switch off. Sign-in is not a card write (the :signin
   // event aborts the save — no card/act rows — and only mints an
@@ -1324,7 +1476,6 @@ async function dispatchWriteRequest(
       deckoBotEmail: ctx.accountMail?.deckoBotEmail ?? (await deckoBotAccountEmail(ctx.driver)),
     },
     ...(ctx.recaptcha === undefined ? {} : { recaptcha: ctx.recaptcha }),
-    ...(ctx.notifyTransport === undefined ? {} : { notifyTransport: ctx.notifyTransport }),
   });
 
   // CardMount's mount argument: the card[<mount>] file part is the
@@ -1333,8 +1484,13 @@ async function dispatchWriteRequest(
   // (set/type/file.rb:1) / `attachment :image` (set/type/image.rb:1). A
   // file part under any other card-hash key is Ruby's unknown-attribute
   // error class; this surface reads only the two mounts (documented).
-  const attachmentInput =
-    parsed.cardFiles["file"] ?? parsed.cardFiles["image"] ?? undefined;
+  const mount: "file" | "image" | undefined =
+    parsed.cardFiles["file"] !== undefined
+      ? "file"
+      : parsed.cardFiles["image"] !== undefined
+      ? "image"
+      : undefined;
+  const attachmentInput = mount !== undefined ? parsed.cardFiles[mount] : undefined;
   const attachment: AttachmentInput | undefined = attachmentInput === undefined
     ? undefined
     : {
@@ -1347,38 +1503,32 @@ async function dispatchWriteRequest(
   try {
     let result: ActionResult | null;
     let name: string;
-    if (route.verb === "create" && parsed.attachmentUpload !== undefined && attachment !== undefined) {
-      // The first step of a two-step upload for a new card
-      // (00_upload_cache.rb prepare_attachment): the file is cached and the
-      // response sends the uploader to the cache card's preview_editor view
-      // for that draft (success target: upload_cache_card, rev_id).
-      const typeName = parsed.card["type"] ?? route.typeShortcut ?? "";
-      const typeRaw = parsed.card["type_id"];
-      const typeId = typeRaw !== undefined && /^\d+$/.test(typeRaw)
-        ? Number(typeRaw)
-        : (await ctx.fetcher.fetchByKey(DeckoName.parse(typeName).key))?.id;
-      if (typeId === undefined) throw new CardActionError("not-found", `no such cardtype: ${typeName}`);
-      const mount = parsed.cardFiles["image"] !== undefined ? "image" : "file";
-      const cached = await engine.recordPreliminaryUpload({ typeId, mount, attachment });
-      const target = cached.cacheCardName ?? `*new ${mount}`;
-      return successResponse(
-        req,
-        json,
-        target,
-        { cardId: 0, actId: 0, actionId: cached.actionId, verb: "create" },
-        `/${locationName(target)}/preview_editor?rev_id=${cached.actionId}`,
-      );
+    // THE TWO-STEP UPLOAD's preliminary arm (00_upload_cache.rb:8-25
+    // prepare_attachment, when preliminary_upload?): a card save whose
+    // request carries params[:attachment_upload] beside a file part stores
+    // the file + one draft action and ABORTS :success with the
+    // preview_editor view of the cache card (new card) or the card itself
+    // (update) — the ajax response decko.js's doneFile swaps into
+    // .chosen-file. The abort happens at :prepare_to_validate, so no full
+    // save runs: this arm answers before the create/update dispatch below.
+    if (
+      parsed.attachmentUpload !== undefined &&
+      parsed.attachmentUpload !== "" &&
+      attachment !== undefined &&
+      (route.verb === "create" || route.verb === "update")
+    ) {
+      return await handlePreliminaryUpload(ctx, engine, route, parsed, attachment, mount);
     }
     if (route.verb === "create") {
-      const cachedUpload = parsed.card["action_id_of_cached_upload"] !== undefined
-        ? await engine.cachedUploadAttachment(parsed.card["action_id_of_cached_upload"], {
-            mount: (await ctx.fetcher.fetchByKey(DeckoName.parse(parsed.card["type"] ?? "").key))?.codename === "image"
-              ? "image"
-              : "file",
-          })
-        : undefined;
       const input = {
-        ...createInputFromParams(route, parsed, cachedUpload?.attachment ?? attachment),
+        ...createInputFromParams(route, parsed, attachment),
+        // the preview's hidden input (00_upload_cache.rb:2's
+        // attr_accessor, reached through Rails assign_attributes): the
+        // final save's cached-upload action id (00_upload_cache.rb:27-34
+        // assign_attachment_on_create, when save_preliminary_upload?).
+        ...(cachedUploadActionParam(parsed) !== undefined
+          ? { actionIdOfCachedUpload: cachedUploadActionParam(parsed) }
+          : {}),
         comment: parsed.comment,
         commentAuthor: parsed.commentAuthor,
         recaptchaToken: parsed.recaptchaToken,
@@ -1400,7 +1550,6 @@ async function dispatchWriteRequest(
       }
       result = await engine.createCard(input);
       name = result.name?.s ?? input.name;
-      await cachedUpload?.release();
       await requestSignupVerification(ctx, name, input.subcards);
     } else if (route.verb === "update") {
       const card = parsed.card;
@@ -1471,39 +1620,12 @@ async function dispatchWriteRequest(
         });
         name = created.name?.s ?? updateName;
         result = created;
-      } else if (parsed.attachmentUpload !== undefined && attachment !== undefined) {
-        // The first step of a two-step upload for an existing card: a draft
-        // action holds the new file; the card itself is unchanged.
-        name = existing.name?.s ?? updateName;
-        const mount = parsed.cardFiles["image"] !== undefined ? "image" : "file";
-        const cached = await engine.recordPreliminaryUpload({
-          cardId: existing.id,
-          typeId: existing.typeId ?? 0,
-          mount,
-          attachment,
-        });
-        return successResponse(
-          req,
-          json,
-          name,
-          { cardId: existing.id, actId: 0, actionId: cached.actionId, verb: "update" },
-          `/${locationName(name)}/preview_editor?rev_id=${cached.actionId}`,
-        );
       } else {
         const typeIdRaw = card["type_id"];
-        const cachedUpload = card["action_id_of_cached_upload"] !== undefined
-          ? await engine.cachedUploadAttachment(card["action_id_of_cached_upload"], {
-              cardId: existing.id,
-              mount: (await typeCodenameOf(ctx.fetcher, existing.typeId)) === "image" ? "image" : "file",
-            })
-          : undefined;
         result = await engine.updateCard({
           cardId: existing.id,
           ...(existing.trash ? { lookInTrash: true } : {}),
           ...(card["skip"] === "validate_renaming" ? { skipValidateRenaming: true } : {}),
-          // card[skip] names an event the act skips (skip_and_trigger.rb);
-          // the rename form's box sends update_referer_content.
-          ...(card["skip"] !== undefined && card["skip"] !== "" ? { skip: [card["skip"]] } : {}),
           // card-hash name WINS over the URL mark (uri_fetch_opts) — a
           // card[name] on an update is the RENAME arg (name_events.rb).
           name: hashName !== undefined && hashName !== markName ? hashName : undefined,
@@ -1511,7 +1633,16 @@ async function dispatchWriteRequest(
           typeName: card["type"],
           typeId:
             typeIdRaw !== undefined && /^\d+$/.test(typeIdRaw) ? Number(typeIdRaw) : undefined,
-          attachment: cachedUpload?.attachment ?? attachment,
+          attachment,
+          ...(cachedUploadActionParam(parsed) !== undefined
+            ? { actionIdOfCachedUpload: cachedUploadActionParam(parsed) }
+            : {}),
+          // the structured form's field subcards
+          // (card[subcards][+summary][content], subcards.rb) save in this
+          // act: missing subcards created, existing ones updated.
+          ...(Object.keys(subcardInputs(parsed.subcardTree)).length > 0
+            ? { subcards: subcardInputs(parsed.subcardTree) }
+            : {}),
           comment: parsed.comment,
           commentAuthor: parsed.commentAuthor,
           recaptchaToken: parsed.recaptchaToken,
@@ -1524,7 +1655,6 @@ async function dispatchWriteRequest(
           // the autosave POST (assets/script/autosave.js.coffee:20).
           draft: parsed.draft === "true",
         });
-        await cachedUpload?.release();
         name = result?.name?.s ?? updateName;
       }
     } else {
@@ -1580,22 +1710,108 @@ async function dispatchWriteRequest(
     // titled slot). JSON requests keep the API shape.
     // The success target (Card::Env::Success): success[mark] names another
     // card ("_self", the default, is the saved card), success[view] the view.
+    // "*previous" is the session's previous location (mark.rb:12-14 resolves
+    // the mark through Card::Env.previous_location — the edit modal's Delete
+    // link carries success[mark]=*previous, and the delete's own response is
+    // the hard redirect's JSON, which the client follows to the previous
+    // page; the deleted card's URL then serves the create form through the
+    // unknown-card page branch).
     const successMark = parsed.success["mark"];
+    const previousRedirect =
+      successMark === "*previous" && ctx.previousLocation !== undefined ? ctx.previousLocation() : undefined;
     const successName =
-      successMark !== undefined && successMark !== "" && !successMark.startsWith("_") ? successMark : name;
+      previousRedirect !== undefined
+        ? undefined
+        : successMark !== undefined && successMark !== "" && !successMark.startsWith("_")
+          ? successMark
+          : name;
     // redirect_cud_success: success[redirect] other than "soft" is the hard
     // redirect, which an ajax request receives as {redirect: url} so the
     // page itself navigates (response.rb hard_redirect) — the new-card
     // form's data-main-success path.
-    const redirect = parsed.success["redirect"];
-    if (!json && isAjax(req, parsed) && redirect !== undefined && redirect !== "" && redirect !== "soft") {
+    // Every card the save persisted: the mark (name) plus each posted
+    // subcard's full name (subcards.rb — each saves as its own card with
+    // its own post-commit expire). The host render-map expiry walks this
+    // list so a changed subcard (the account form's +*email) never
+    // renders its pre-save value. A RENAME also carries the card's
+    // BEFORE name: Ruby's expire_names (cache/all.rb:104-108) expires
+    // BOTH key versions via name_before_act, and the render engines'
+    // maps hold the pre-rename entry under the old key (the edit_name
+    // form's page seated it) — without it the renamed card's old name
+    // keeps answering known off a map entry the model-layer expire
+    // cannot reach.
+    const subcardExpiryNames = [
+      ...Object.keys(parsed.subcards)
+        .filter((slot) => slot.startsWith("+"))
+        .map((slot) => `${name}${slot}`),
+      ...(result?.nameBeforeAct !== undefined ? [result.nameBeforeAct.s] : []),
+    ];
+    // configure_successful_deletion (mod/session set/all/location_history.rb:9-17,
+    // inside event :discard_deleted_locations, :finalize on :delete): an ajax
+    // delete whose success target is the deleted card itself (no mark = self)
+    // with is_main in the params rewrites the success — redirect=true,
+    // target=:previous. The hard-redirect JSON then carries the session's
+    // previous location, resolved BEFORE the delete's discard drops the
+    // card's own entries; the browser reloads that address and the trashed
+    // card's page renders the create form through the unknown-card branch
+    // (card-mod-format html/error.rb:81-86 page_view_for_unknown).
+    const deleteConfigureRedirect =
+      saved.verb === "delete" &&
+      !json && isAjax(req, parsed) &&
+      (parsed.success["mark"] === undefined || parsed.success["mark"] === "" || parsed.success["mark"] === "_self") &&
+      parsed.isMain !== undefined;
+    if (deleteConfigureRedirect && ctx.previousLocation !== undefined) {
+      const previous = ctx.previousLocation();
+      if (previous !== undefined) {
+        return {
+          ...jsonResponse(200, { redirect: cardUrl(req, previous) }),
+          expiryName: name,
+          expiryNames: subcardExpiryNames,
+        };
+      }
+    }
+    const successRedirect = parsed.success["redirect"];
+    // configure_successful_deletion (mod/session set/all/location_history.rb:9-17,
+    // inside event :discard_deleted_locations, :finalize on :delete): an ajax
+    // delete whose success target is the deleted card itself (no mark = self)
+    // with is_main in the params rewrites the success — redirect=true,
+    // target=:previous. The hard-redirect JSON then carries the session's
+    // previous location (resolved before the discard below), and the browser
+    // reloads that address: the trashed card's page renders the create form
+    // through the unknown-card branch (card-mod-format html/error.rb:81-86
+    // page_view_for_unknown).
+    if (
+      saved.verb === "delete" &&
+      !json && isAjax(req, parsed) &&
+      (parsed.success["mark"] === undefined || parsed.success["mark"] === "" || parsed.success["mark"] === "_self") &&
+      parsed.isMain !== undefined
+    ) {
       return {
-        ...jsonResponse(200, { redirect: cardUrl(req, `/${locationName(successName)}`) }),
+        ...jsonResponse(200, { redirect: absoluteTarget(req, previousLocation(visit)) }),
         expiryName: name,
+        expiryNames: subcardExpiryNames,
+      };
+    }
+    if (!json && isAjax(req, parsed) && successRedirect !== undefined && successRedirect !== "" && successRedirect !== "soft") {
+      return {
+        ...jsonResponse(200, {
+          redirect:
+            previousRedirect !== undefined
+              ? cardUrl(req, previousRedirect)
+              : cardUrl(req, `/${locationName(successName!)}`),
+        }),
+        expiryName: name,
+        expiryNames: subcardExpiryNames,
       };
     }
     if (!json && isAjax(req, parsed) && ctx.renderSlot !== undefined) {
-      const slotHtml = await ctx.renderSlot(successName, parsed.success["view"] || undefined);
+      // The *previous resolution answers through the redirect arm above, so
+      // the slot arm only fires for a card-name success target.
+      const slotHtml = await ctx.renderSlot(
+        successName ?? name,
+        parsed.success["view"] || undefined,
+        subcardExpiryNames,
+      );
       return {
         status: 200,
         headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
@@ -1606,6 +1822,7 @@ async function dispatchWriteRequest(
         // (actor engine only) cannot — the save's cache expiry cannot
         // depend on the response shape (WriteRouteResponse module header).
         expiryName: name,
+        expiryNames: subcardExpiryNames,
       };
     }
     // discard_deleted_locations (card-mod-session
@@ -1617,7 +1834,7 @@ async function dispatchWriteRequest(
     const redirectPath = saved.verb === "delete" && parsed.success["mark"] === undefined
       ? previousLocation(visit)
       : successTargetPath(parsed, name, visit);
-    const response = successResponse(req, json, name, saved, redirectPath);
+    const response = successResponse(req, json, name, saved, redirectPath, subcardExpiryNames);
     if (signOutAfterDelete !== undefined) {
       await signOutAfterDelete.sessions.revokeSession(signOutAfterDelete.token);
       delete visit.history;
@@ -1635,16 +1852,153 @@ async function dispatchWriteRequest(
         const shown = await lookupLiveCard(ctx.fetcher, markToName(route.mark));
         if (shown !== undefined && shown.codename !== "signin") saveLocation(visit, requestUrl(req));
       }
+      // The explicit-GET update alternative's non-ajax denial is a PAGE:
+      // card#update's PermissionDenied rescue renders the target card's
+      // denial view through the full layout (the plain-href follow links
+      // navigate; Ruby's 403 body is the denial page, not the quiet text).
+      if (
+        !json &&
+        !isAjax(req, parsed) &&
+        req.method === "GET" &&
+        route.mark !== undefined &&
+        errorStatus(error.code) === 403 &&
+        ctx.renderErrorPage !== undefined
+      ) {
+        try {
+          const pageHtml = await ctx.renderErrorPage(markToName(route.mark), "unknown");
+          return {
+            status: 403,
+            headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+            body: pageHtml,
+          };
+        } catch {
+          // a page-render miss keeps the audited quiet-text body
+        }
+      }
       return errorResponse(json, error, await signedInFor(ctx, sessionToken), {
         url: requestUrl(req),
         now: ctx.now?.() ?? new Date(),
-      });
+      }, { ajax: isAjax(req, parsed), getAlternative: req.method === "GET" });
     }
     throw error;
   }
 }
 
-/** The AUTH-ONLY dispatch (the edge signin form fix, 2026-10-03): the
+/** card[action_id_of_cached_upload] — the preview_editor hidden input the
+ *  swapped-in preview posts back with the final save
+ *  (00_upload_cache.rb:2's attr_accessor; save_preliminary_upload? reads
+ *  it, :84-86). A subcard-scoped variant
+ *  (card[subcards][+x][action_id_of_cached_upload]) stays unported with the
+ *  rest of the general subcard grammar (the module header's documented
+ *  remainder; the journeys' forms post the top-level name only). */
+function cachedUploadActionParam(parsed: ParsedBody): string | undefined {
+  const value = parsed.card["action_id_of_cached_upload"];
+  return value !== undefined && value !== "" ? value : undefined;
+}
+
+/** The preliminary upload arm (00_upload_cache.rb:8-25 prepare_attachment):
+ *  store the uploaded bytes, file the draft action, and answer the
+ *  preview_editor html the JS editor swaps into .chosen-file
+ *  (upload.js.coffee:48-51). Ruby's abort :success skips the rest of the
+ *  save — no cards row, no finalize, and the draft's ACT stays card_id
+ *  NULL (the oracle rows pin it: upload-remove-preview-admin carries one
+ *  act beside the draft action filed on the cache card). */
+async function handlePreliminaryUpload(
+  ctx: WriteRouteContext,
+  engine: CardActionEngine,
+  route: RouteMatch,
+  parsed: ParsedBody,
+  attachment: AttachmentInput,
+  mount: "file" | "image" | undefined,
+): Promise<WriteRouteResponse> {
+  if (mount === undefined) {
+    // validate_file_exist's shape: a mount-typed save without an upload is
+    // the "<mount> is missing" 422 (attachment.rb:26-34) — but this arm is
+    // only entered WITH a file part (the caller's guard); unreachable.
+    throw new CardActionError("field-required", `${route.verb} requires an upload`);
+  }
+  if (ctx.renderPreviewEditor === undefined) {
+    // Loud, per the dual-path rule: a hosting surface without the render
+    // seam must not silently fall through into the direct-save grammar.
+    throw new Error(
+      "the preliminary upload arm requires WriteRouteContext.renderPreviewEditor (the host's preview_editor render seam)",
+    );
+  }
+  let cardId: number | undefined;
+  let typeId: number;
+  if (route.verb === "update") {
+    if (route.mark === undefined) {
+      throw new CardActionError("not-found", "no card name in request (no mark)");
+    }
+    const existing = await lookupLiveCard(ctx.fetcher, markToName(route.mark));
+    if (existing === undefined) {
+      throw new CardActionError("not-found", `no such card: ${markToName(route.mark)}`);
+    }
+    cardId = existing.id;
+    if (existing.typeId === undefined) {
+      throw new CardActionError("not-found", `card ${existing.id} carries no type`);
+    }
+    typeId = existing.typeId;
+  } else {
+    const typeIdRaw = parsed.card["type_id"];
+    if (typeIdRaw === undefined || !/^\d+$/.test(typeIdRaw)) {
+      // the editor's fileupload formData always posts card[type_id]
+      // (upload.js.coffee:13, the #attachment_type_id value); without it
+      // the save has no type — Ruby's Card.new(type_id: nil) would fail
+      // validation, and no oracle shape reaches here.
+      throw new CardActionError("type-unknown", "a preliminary upload requires card[type_id]");
+    }
+    typeId = Number(typeIdRaw);
+  }
+  const { actionId, cacheCardName, identifier, size, originalFilename } =
+    await engine.recordPreliminaryUpload({
+      ...(cardId !== undefined ? { cardId } : {}),
+      typeId,
+      mount,
+      attachment,
+    });
+  // The success target (00_upload_cache.rb:19): the cache card (*new file /
+  // *new image) for a new card's upload, the card itself for an update.
+  const renderName = cardId !== undefined
+    ? await lookupLiveCardName(ctx, cardId)
+    : cacheCardName;
+  if (renderName === undefined) {
+    throw new CardActionError("not-found", "no *new cache card for the preliminary upload");
+  }
+  // The response renders the save's OWN post-draft state (Ruby renders the
+  // in-memory success target: selected_action_id = the draft just filed —
+  // the success hash's rev_id through select_action_by_params — and the
+  // draft identifier as the selected content). The host hook expires the
+  // name so its render engines see the draft rows this request wrote.
+  const html = await ctx.renderPreviewEditor({
+    name: renderName,
+    opts: {
+      // cached_upload_card_name (file.rb:144-146): the posted
+      // attachment_upload value gsubbed to the hidden-input name.
+      attachment_upload: parsed.attachmentUpload,
+      original_filename: originalFilename,
+      attachment_size: size,
+      selected_action_id: actionId,
+      cached_upload_identifier: identifier,
+    },
+  });
+  return {
+    status: 200,
+    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+    body: html,
+  };
+}
+
+/** The render target's name by id (the update arm renders the card
+ *  itself). */
+async function lookupLiveCardName(ctx: WriteRouteContext, cardId: number): Promise<string> {
+  const record = await ctx.fetcher.fetchById(cardId);
+  const name = record?.name?.s;
+  if (name === undefined) throw new CardActionError("not-found", `no such card: ${cardId}`);
+  return name;
+}
+
+/** The AUTH-ONLY dispatch (edge-signin-form-fix lane, 2026-10-03): the
  *  login action and NOTHING else. Resolves to handleSigninUpdate for
  *  POST /update/*signin (both the HTML 303 flavor and the .json/ajax
  *  flavor), null for every other method/path — including a card-hash update

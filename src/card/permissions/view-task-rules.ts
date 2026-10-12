@@ -62,6 +62,7 @@ import type { FetchEngine } from "../fetch.js";
 import { DeckoName } from "../name.js";
 import { CodenameNotFoundError, NameNotFoundError } from "../name/errors.js";
 import { ruleNamesForCard } from "../set-patterns/rule-names.js";
+import { parseSetName } from "../set-patterns/set-name.js";
 import type { PatternCardInput } from "../set-patterns/types.js";
 import type { ReadPermissionState } from "./read-rules.js";
 import { resolveRuleIdsByRuleKeys } from "./read-rules.js";
@@ -334,6 +335,80 @@ async function isSessionTyped(fetcher: FetchEngine, card: PatternCardInput): Pro
   if (card.typeId === undefined || card.typeId === null) return false;
   const sessionId = await fetcher.codenames.id("session");
   return sessionId !== undefined && card.typeId === sessionId;
+}
+
+/**
+ * Whether this compound create is a *follow-right act whose own permit
+ * PASSES — the only shape whose denied missing side surfaces purely as the
+ * folded subcard error. Ruby: the Right::Follow set (card-mod-follow
+ * set/right/follow.rb:27-33) matches EVERY card whose right part is the
+ * *follow Setting card, and its ok_to_create? override is
+ * `permit :create` ALONE — Set::All's sides walk never runs for it — so a
+ * denied side reaches the act only through the side subcard's own
+ * check_permissions, folded onto the act under the part's name
+ * (subcards/all.rb:65-80 handle_subcard_errors). The act's surviving
+ * errors then carry ONLY the part-named attribute, and error.rb:177-182
+ * invalid_card_error_class finds neither :permission_denied nor :conflict
+ * keyed: base Card::Error, status 422, view :errors — the standard_errors
+ * alert. The override's permit is allowed_to_change_follow_status? first,
+ * then the standard rule walk (permit's super arm); when the permit itself
+ * denies, the act carries its OWN :permission_denied and the class is
+ * PermissionDenied (403, view :denial). EVERY non-*follow-right act runs
+ * Set::All#ok_to_create? — permit, then the sides walk inside its own
+ * track_permission_errors block — so a denied side lands the act's own
+ * :permission_denied beside any fold: 403 as well.
+ * Live-oracle probes on a deck copy (tmp/int/ruby-probe-ep/ at the
+ * deck-script-errorpath worktree): "Topic 009+*self+Mira Member+*follow"
+ * as Mira Member — ok?(:create) TRUE (permit-probe 4), save! cardified 422
+ * :errors with errors exactly ["Topic 009+*self+Mira Member =>
+ * permission_denied You don't have permission to create Topic 009+*self+
+ * Mira Member"] (probe 1); "Mira Member+*follow" — the override's permit
+ * denied, cardified 403 :denial (probe 2).
+ */
+export async function followRightPermitPassedForCard(
+  fetcher: FetchEngine,
+  card: PatternCardInput,
+  state: ViewTaskState,
+): Promise<boolean> {
+  if (state.alwaysOk) return false; // everything passes; the fold arm never fires
+  const name = card.name instanceof DeckoName ? card.name : DeckoName.parse(String(card.name));
+  const parts = name.parts;
+  if (parts.length < 2) return false;
+  // The Right::Follow set matches by the *follow codename card (memoized
+  // lookups first, so non-follow cards cost no type reads).
+  const followId = await fetcher.codenames.id("follow");
+  if (followId === undefined) return false;
+  const followName = await fetcher.lexicon.name(followId);
+  if (followName === undefined || DeckoName.parse(parts[parts.length - 1]!).key !== followName.key) {
+    return false;
+  }
+  const right = await fetcher.fetchById(followId);
+  if (right === undefined) return false;
+  const settingTypeId = await fetcher.codenames.id("setting");
+  if (right.typeId !== settingTypeId) return false;
+  // The override's permit: allowed_to_change_follow_status? — the
+  // card-level preference? (rule/all.rb:42-47) resolves the set part
+  // VIRTUALLY through the pattern registry — "Topic 009+*self" is a Set
+  // by the *self pattern with no cards row (live-oracle probe 5:
+  // preference? TRUE, rule_user = Mira Member, allowed TRUE, ok?(:create)
+  // TRUE) — then the preferer (part -2) is the signed-in actor.
+  if (state.signedInActorId !== undefined && parts.length > 2) {
+    const setParsed = parseSetName(parts.slice(0, -2).join("+"));
+    if (setParsed.spec !== undefined) {
+      const preferer = await fetcher.fetchByName(parts[parts.length - 2]!);
+      if (preferer !== undefined && !preferer.trash) {
+        const userTypeId = await fetcher.codenames.id("user");
+        if (
+          (preferer.typeId === userTypeId || preferer.codename === "all") &&
+          preferer.id === state.signedInActorId
+        ) {
+          return true;
+        }
+      }
+    }
+  }
+  // The override's permit's super arm: the standard permit(:create) walk.
+  return (await permitVerdict(fetcher, card, "create", state)) === true;
 }
 
 /**

@@ -192,13 +192,17 @@ function renderLinkChunk(fmt: RenderFormat, rawSyntax: string): string {
     return explicitLinkBytes(target, label);
   }
   // render_name_link (link.rb:71-75): nest referee_name with view :link;
-  // options = {title: link_text || fully_stripped} (link.rb:31-33) - a label
-  // rides the nest's title option, no label leaves the title view on the
-  // card name (identical bytes for simple names, the entire corpus surface).
+  // options = {title: link_text || fully_stripped} (link.rb:31-33) - the
+  // title is ALWAYS present: the pipe label, else the AUTHORED reference
+  // name fully stripped - and the :link view's anchor text/title render
+  // it (the corpus's sidebar help link: [[Layouts]] resolves to the
+  // Layout card - href /Layout - while the text stays the authored
+  // Layouts).
+  const title = label ?? (DeckoName.parse(target).fullyStripped?.s ?? target);
   return fmt.nest({
     syntax: `{{${rawSyntax}}}`,
     name: target,
-    options: { view: "link", ...(label !== undefined ? { title: label } : {}), extra: {} },
+    options: { view: "link", title, extra: {} },
     comment: undefined,
   });
 }

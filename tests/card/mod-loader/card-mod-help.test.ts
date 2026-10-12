@@ -55,6 +55,8 @@ import {
   type RenderTestStorage,
 } from "../render/render-test-storage.js";
 import { UnsupportedViewError } from "../../../src/card/render/format.js";
+import { RenderEngine } from "../../../src/card/render.js";
+import { FetchEngine } from "../../../src/card/fetch.js";
 import {
   ModLoader,
   cardModHelp,
@@ -84,6 +86,13 @@ beforeAll(async () => {
 
   // codename cards (the codename registry reads cards.codename; their
   // type ids matter to the rule-cache join: set-typed vs setting-typed).
+  // The DeckoBot actor card: the :guide capture behind the edit-link pin
+  // was taken by an update-allowed (always-ok) viewer, and the auth seam
+  // recognizes always-ok by the deck_bot codename (read-rules.ts
+  // DECKOBOT_CODENAME "decko_bot" — the alternate "deckobot" spelling
+  // silently loses the always_ok short-circuit) — the :guide probe renders
+  // as that viewer.
+  await seedCard(s, { id: 1, name: "Decko Bot", codename: "decko_bot" });
   await seedCard(s, { id: 2, name: "RichText" }); // cardtypes' type card
   await seedCard(s, { id: 10, name: "*all", codename: "all", typeId: 13 });
   await seedCard(s, { id: 11, name: "*self", codename: "self", typeId: 14 });
@@ -328,7 +337,21 @@ describe("card-mod-help through the mod loader (A/B)", () => {
 
   it("WITH the mod: :guide on a ruled card wraps the guide text in <div class='guide-text'> (set/all/guide.rb:6-16)", async () => {
     const s = storage!;
-    const html = await s.engine.render("Oracle Help Probe", "guide");
+    // The capture behind the edit-link pin was taken by an UPDATE-ALLOWED
+    // viewer (guide.rb:27-32 `return guide_text unless guide_card.ok?(:update)`)
+    // — the engine's task-verdict seam is deny-by-default, so the probe
+    // renders as the always-ok bot stand-in (actorId 1, the DeckoBot actor
+    // the auth seam recognizes), the same posture the edit-views fixture's
+    // bot arms pin. The anonymous arm's no-link bytes are the edit-views
+    // fixture's own pins.
+    const guideEngine = new RenderEngine(new FetchEngine(s.counting));
+    guideEngine.viewer = { signedIn: true, actorId: 1 };
+    guideEngine.pageSession = { signedIn: true, actorId: 1 };
+    loader = new ModLoader([{ manifest: cardModHelp }]);
+    loader.load();
+    bindModLoaderToEngine(s, loader!);
+    await loader!.installInto(modEngineHost(guideEngine, s.fetcher));
+    const html = await guideEngine.render("Oracle Help Probe", "guide");
     // wrap: :slot -> outer slot div with guide-view id (render.rb:96-97).
     // The inner guide-text div carries the guide's dbContent via the
     // nest(guide_card, view: :core) call (guide.rb:34-40 + markdown :core).

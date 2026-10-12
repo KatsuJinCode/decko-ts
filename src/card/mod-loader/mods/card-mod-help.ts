@@ -1,3 +1,4 @@
+import { str } from "../../render/format.js";
 // The card-mod-help gem (card-mod-help-0.20.0), ported through the mod
 // loader - the reference port proving the mechanism end to end.
 //
@@ -137,7 +138,12 @@ export const helpView: ViewFn = (ctx) => {
   const help = helpText(ctx);
   const body = /^\s*$/.test(help)
     ? ""
-    : `<div class="help-text">${wrapHelpText(ctx, help)}</div>`;
+    // classy("help-text") — the class_ups ride the voo chain (frame.rb's
+    // with_class_up "help-text", "alert alert-info" lands on the OWNING
+    // voo; the child voo the delegated :help render builds reads it
+    // through deepExtraClasses — the graded setup row pins
+    // "help-text alert alert-info").
+    : `<div class="${ctx.voo.classy("help-text")}">${wrapHelpText(ctx, help)}</div>`;
   return modSlotWrap(ctx, "help", body);
 };
 
@@ -187,7 +193,7 @@ export const helpTextView: ViewFn = (ctx) => wrapHelpText(ctx, helpText(ctx));
  *  wins the chain walk) and the mod-less harness cannot drift. */
 export const leadView: ViewFn = (ctx) => {
   ctx.voo.classUp("card-slot", "lead");
-  return modSlotWrap(ctx, "lead", ctx.fmt.renderView("core"));
+  return modSlotWrap(ctx, "lead", str(ctx.fmt.renderView("core")));
 };
 
 // ---------------------------------------------------------------------------
@@ -223,7 +229,7 @@ const popoverView: ViewFn = (ctx) => {
   // text. The renderView dispatch goes through the format's standard
   // view pipeline (render/format.ts:275-284) and returns the :core view
   // bytes - the same string popover_link receives as text.
-  return popoverLink(ctx.fmt.renderView("core"));
+  return popoverLink(str(ctx.fmt.renderView("core")));
 };
 
 // ---------------------------------------------------------------------------
@@ -282,15 +288,19 @@ function guideText(ctx: ViewContext): string {
  *  guide_card.ok?(:update)`. The TS port consults taskAllowed on the
  *  engine (the same seam viewPermissionDenial uses for :read, format.ts
  *  via view-permissions); update permission here is checked through the
- *  engine's optional taskAllowed hook (unified :update gate). When the
- *  update task is denied, the d-none span wrapping is skipped, exactly
+ *  engine's optional taskAllowed hook (unified :update gate). The seam is
+ *  deny-by-default (render-seam.ts: a verdict the engine has not
+ *  established denies), so the d-none span wraps only on an AFFIRMATIVE
+ *  update verdict — the captured fixture pins the link for the always-ok
+ *  bot and its absence for the sara/anonymous arms
+ *  (fixtures/captured/edit-views.json, guide_tab/overlay_guide) — exactly
  *  like help.rb's `card.help_rule_card&.ok?(:read)` gate on
  *  wrap_help_text. */
 function prependGuideEditLink(ctx: ViewContext, text: string): string {
   const guideCard = guideRuleCard(ctx);
   if (guideCard === undefined) return text;
   const taskAllowed = ctx.fmt.engine.taskAllowed?.(guideCard, "update");
-  if (taskAllowed !== undefined && taskAllowed === false) return text;
+  if (taskAllowed !== true) return text;
   // guide.rb:30 nests the guide card with view: :edit_link; the guide card
   // is a Rule-typed card and the Rule set overrides edit_link_view to
   // :rule_edit (card-mod-rules-0.20.0 set/rule/editor.rb:60-61), so the

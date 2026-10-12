@@ -65,3 +65,8 @@ export const CARD_GEM_INITIALIZER_INFLECTIONS: DeckInflectionConfig = {
     [/(ss)$/i, "$1"],
   ],
 };
+
+/** The same config under the edge lineage's export name (the Bunny deck
+ *  boot and the persistence probe import it by this name). */
+export const ORACLE_DECK_INFLECTIONS: DeckInflectionConfig =
+  CARD_GEM_INITIALIZER_INFLECTIONS;

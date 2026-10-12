@@ -184,7 +184,7 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
     const counts = new Map<string, number>();
     for (const e of entries) counts.set(e.formatKey, (counts.get(e.formatKey) ?? 0) + 1);
     expect([...counts.entries()].sort()).toEqual([
-      ["base", 7],
+      ["base", 9],
       ["email_html", 2],
       ["email_text", 3],
       // fold-10 union measurement: the signin fix pick (4d7b008) landed its
@@ -216,18 +216,31 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // Error's production :server_error (4b7b1338's error-page ruling,
       // debug_server_error's renderer twin), measured on the merged tree;
       // still no new format key and no css/scss row.
-      // 355 -> 356 (round-9 Cloudflare-security fix, 2026-10-11): one more
-      // html-keyed registration, card-mod-account right/password :input -
-      // the valueless password field (set/all/password_input.haml). Ruby
-      // reaches the same bytes through the `input_type :password` method
-      // override (right/password.rb:86-88) rather than a view registration,
-      // and the port carries the override by registering the view it routes
-      // to, so the census counts one row the gem files express as a method.
-      // No new format key, still zero css/scss rows.
-      ["html", 356],
+      // 355 -> 356 (composed-mod view gaps, 2026-10-09): All::Error's html
+      // table registers :mini_unknown (html/error.rb:21-23, the icon-only
+      // createable link) explicitly alongside :unknown's html arm, so the
+      // composed deck serves the same bytes the flat base table serves.
+      // 356 -> 358 on the combined tree: THREE single-step registrations
+      // landed here — this line's composed-mod-view-gaps :mini_unknown
+      // (html/error.rb:21-23), the journeys lane's Right::Password :input
+      // (the account form's password editor, probe-password-input.rb), and
+      // the mod-view-gaps wave-2 slice's FOLLOW_TABS :core (user/follow.rb:
+      // 39-43, card-mod-tabs over the static hash); still no new format key
+      // and no css/scss row. Measured on the merged tree.
+      // 358 -> 359 (the search cluster, 2026-10-11): the search mod's SELF
+      // set registers view :core explicitly (search.rb:45 — the *search
+      // page's own renders dispatch the keyword header composed with the
+      // card list); still no new format key and no css/scss row. Measured
+      // on the merged tree.
+      // 359 -> 360 html unchanged, json 3 -> 4 (the typeahead-edge lane,
+      // 2026-10-11): the search mod's SELF set registers view
+      // :search_box_complete on the JSON arm (search.rb:70-72 — the
+      // navbox typeahead's JSON the engine now serves); no new format key
+      // and no css/scss row. Measured on this tree.
+      ["html", 361],
 
       ["js", 2],
-      ["json", 3],
+      ["json", 4],
     ]);
   });
 
@@ -260,13 +273,15 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
     ]);
   });
 
-  it("composed-deck census: the base-kind base-keyed rows are exactly follow's three notify views", () => {
+  it("composed-deck census: the base-kind base-keyed rows are exactly follow's five notify views", () => {
     // The email-text-remainders port's tail row, re-measured (the four
     // OTHER base-keyed rows are abstract-kind search rows, a different
     // dispatch arm). Shared by html and css/js chains alike — the
     // both-ways-green rows. Wave-1's follow family added :subedit_notice
     // + :follower to the same base-keyed all/notify/base_views module
-    // (all/notify/base_views.rb's bare `format do` block).
+    // (all/notify/base_views.rb's bare `format do` block); the miscpins
+    // lane's notification-views round adds :list_of_changes + :subedits
+    // on the same module. Measured on the merged tree.
     const entries = censusEntries();
     expect(
       entries
@@ -276,7 +291,9 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
     ).toEqual([
       "follow all/notify/base_views :follower",
       "follow all/notify/base_views :last_action_verb",
+      "follow all/notify/base_views :list_of_changes",
       "follow all/notify/base_views :subedit_notice",
+      "follow all/notify/base_views :subedits",
     ]);
   });
 });
