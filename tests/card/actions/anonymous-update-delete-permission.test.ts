@@ -1,5 +1,5 @@
-// The anonymous-update / anonymous-delete arms (the anon-create lane's
-// documented remainder): Ruby's permission chain rules ALL THREE write
+// The anonymous-update / anonymous-delete arms (the documented remainder of
+// the anonymous-create arm): the permission chain rules ALL THREE write
 // tasks identically — no signed-in clause anywhere. ok_to_update?
 // (card-mod-permissions set/all/permissions.rb:148-153) is permit(:update)
 // plus the type-change create clause; ok_to_delete? (:155-157) is bare
@@ -9,16 +9,15 @@
 // lib/card/auth/proxy.rb:33-35), so the rule verdict governs exactly as
 // for any other actor.
 //
-// The arms are corpus-proven, not hypothetical (bench-corpus-v2 probes run
-// this lane): 1,808 LIVE cards carry updater_id = the anonymous codename
-// card (id 15), and 8 TRASHED cards do too — the trash save is an update
-// save and re-stamps updater_id (set_stamper, card-mod-account set/all/
-// account.rb:20-23), so those 8 rows are anonymous-actor writes on
-// end-trashed cards. This suite's deck mirrors the same rule shape the
-// create lane's recorded signup arm used (a *type-scoped rule granting
+// The arms are not hypothetical: a real deck's history carries thousands of
+// live cards whose updater is the anonymous codename card, and trashed
+// cards whose final save stamped it too — the trash save is an update save
+// and re-stamps updater_id (set_stamper, card-mod-account set/all/
+// account.rb:20-23). This suite's deck mirrors the same rule shape the
+// create suite's open-signup arm used (a *type-scoped rule granting
 // Anyone over an *all fallback granting Editor).
 //
-// Deck layout (ids arbitrary; shape mirrors the recorded signup family):
+// Deck layout (ids arbitrary; shape mirrors that signup family):
 //    1 *all      codename all    typeId 2 (Set)
 //    2 Set       codename set
 //    4 *update   codename update
@@ -113,8 +112,8 @@ describe("anonymous update rides the update RULE check (Ruby has no signed-in cl
     const card = await s.selectOne<{ updater_id: number; db_content: string | null }>(
       "SELECT updater_id, db_content FROM cards WHERE id = 20",
     );
-    // set_stamper on the update save: updater_id = Auth.as_id — the corpus's
-    // 1,808 live updater_id=15 rows are exactly this shape
+    // set_stamper on the update save: updater_id = Auth.as_id — a real deck's
+    // anonymous-stamped updater rows are exactly this shape
     expect(card?.updater_id).toBe(11);
     expect(card?.db_content).toBe("anonymous edit");
     const act = await s.selectOne<{ actor_id: number }>(
@@ -139,9 +138,9 @@ describe("anonymous update rides the update RULE check (Ruby has no signed-in cl
   });
 
   it("keys the session by ID, not by name: an actor NAMED *anonymous with an account id acts as THAT account", async () => {
-    // LOW-1 fix (verdict-semantics lane 2026-10-01): the prior pin asserted
-    // the name-keyed behavior — any actor named "*anonymous" wrote as the
-    // Anonymous card. Ruby's identity is the id (`@as_id = Card.id
+    // Identity is the ID, not the name: the earlier pin asserted the
+    // name-keyed behavior — any actor named "*anonymous" wrote as the
+    // Anonymous card. The engine's identity is the id (`@as_id = Card.id
     // given_user`, auth/proxy.rb:11; signed_in? = current_id !=
     // AnonymousID, auth/current.rb:43-47); only the real Anonymous card
     // (id 11) is the anonymous session.
@@ -182,7 +181,7 @@ describe("anonymous update rides the update RULE check (Ruby has no signed-in cl
 });
 
 describe("anonymous delete rides the delete RULE check (ok_to_delete? :155-157)", () => {
-  it("allows the rule-granted arm: the trash flip records under the Anonymous card (the corpus's 8 trashed updater_id=15 rows)", async () => {
+  it("allows the rule-granted arm: the trash flip records under the Anonymous card (a trashed card's updater is anonymous too)", async () => {
     const s = await seedRuleDeck(ANYONE);
     const engine = anonEngine(s);
     const result = await engine.deleteCard({ cardId: 20 });
@@ -192,7 +191,7 @@ describe("anonymous delete rides the delete RULE check (ok_to_delete? :155-157)"
     );
     expect(card?.trash).toBe(1);
     // the trash save is an update save and re-stamps updater_id
-    // (set_stamper) — the corpus's trashed-updater_id-15 shape
+    // (set_stamper) — exactly the anonymous-stamped shape
     expect(card?.updater_id).toBe(11);
     const act = await s.selectOne<{ actor_id: number }>(
       "SELECT actor_id FROM card_acts WHERE card_id = 20",
