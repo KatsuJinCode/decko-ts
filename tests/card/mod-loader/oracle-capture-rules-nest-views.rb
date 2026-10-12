@@ -1,6 +1,6 @@
-# oracle-capture-rules-nest-views.rb - oracle capture for the rules-cap
-# lane: the two views the rules-views-port-3 lane could only pin by
-# COMPOSITION (no captured bytes existed for them): set/type/set/
+# oracle-capture-rules-nest-views.rb - renders the two set/type/set/
+# html_views/filtered_rule_lists.rb views whose earlier pins were composed
+# rather than rendered: set/type/set/
 # html_views/filtered_rule_lists.rb :nest_rules + :modal_nest_rules,
 # rendered on the Set card "*all" - the exact card+view combo the ported
 # TS dispatch entries carry (card-mod-rules.ts assertSetCard(ctx, ...)).
@@ -9,8 +9,8 @@
 #   RAILS_ENV=development bundle exec decko runner \
 #     <repo>/tests/card/mod-loader/oracle-capture-rules-nest-views.rb
 #
-# Records to <lane-worktree>/fixtures/captured/rules-nest-views.json:
-# 1. set_card.views.nest_rules / modal_nest_rules: the captured bytes.
+# Records to fixtures/captured/rules-nest-views.json:
+# 1. set_card.views.nest_rules / modal_nest_rules: the rendered bytes.
 # 2. set_card.views.quick_edit_setting_list: re-rendered in the SAME run
 #    as the cross-check reference (the nest_rules body IS this view's
 #    output; the modal body renders it after the filter form).
@@ -18,11 +18,11 @@
 #    EXISTING rule card "*all+*default" - *default's setting_opts carries
 #    rule_type_editable: true (card-mod-content set/self/default.rb:1),
 #    so this surface triggers the rules_type_formgroup TYPE-EDITABLE
-#    branch (editor.rb:93-105) the rules-views-port-3 lane could only
-#    cite (the captured *read setting is not rule_type_editable).
-# 4. The no-write proof: card_actions count before and after. The capture
+#    branch (editor.rb:93-105) that the composed pins could only cite
+#    (the rendered *read setting is not rule_type_editable).
+# 4. The no-write proof: card_actions count before and after. The script
 #    performs ZERO card writes (render only) - the same discipline as the
-#    rules-views capture (its proof was 4945 -> 4945).
+#    rules-views capture.
 #
 # Determinism contract (mirrors oracle-capture-rules-views.rb): pretty
 # JSON with deeply sorted keys + trailing newline; data-slot-id normalized
