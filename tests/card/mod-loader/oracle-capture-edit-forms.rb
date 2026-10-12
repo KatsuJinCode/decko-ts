@@ -1,5 +1,5 @@
-# oracle-capture-edit-forms.rb - oracle capture for the card-mod-edit CORE
-# EDIT-FORM PATH (write-path slice 3): the signed-in edit view for a standard
+# oracle-capture-edit-forms.rb - renders the card-mod-edit CORE EDIT-FORM
+# PATH: the signed-in edit view for a standard
 # card — the modal wrap, the frame/help slots, the card_form update form
 # (name editor, type row, content input, conflict tracker hidden field,
 # save/cancel/delete buttons) — plus the anonymous denial behavior.
@@ -8,10 +8,10 @@
 #   RAILS_ENV=development bundle exec decko runner \
 #     <repo>/tests/card/mod-loader/oracle-capture-edit-forms.rb
 #
-# Records to <script-repo>/fixtures/captured/edit-forms.json:
+# Records to fixtures/captured/edit-forms.json:
 # 1. For each target card (an existing basic RichText content card and the
-#    deck-level Home card) and each actor (Decko Bot = signed-in admin,
-#    Tova = signed-in non-admin member, Anonymous): the rendered :edit view
+#    deck-level Home card) and each actor (Decko Bot = signed-in admin, a
+#    signed-in non-admin member account, Anonymous): the rendered :edit view
 #    bytes (modal-wrapped frame + form) and the inner :edit_form bytes.
 #    Anonymous renders raise Card::Error::PermissionDenied - recorded as
 #    {denied: true, class:, message:} (what Ruby gives anonymous at the
@@ -23,8 +23,8 @@
 #    written (validation failure = no act); the script asserts the
 #    card_actions count is unchanged and records that proof.
 #
-# Targets are EXISTING cards ("Oracle Basics" id 605, "Home" id 521 - both
-# seeded by the oracle smoke seed). The capture performs ZERO card writes:
+# Targets are EXISTING cards on the deck the script runs against (see
+# TARGETS). The script performs ZERO card writes:
 # no Card.create/update on any target; the only update! is the conflict
 # probe whose validation failure prevents persistence (proven by the
 # action-count assertion below).
@@ -36,8 +36,7 @@
 #   data-card-id  (row ids are seed-state, not form semantics)
 #   data-select2-id ("<unique_id>-<epoch seconds>" - Time.now based)
 # The TS test applies the same normalization to its own renders before
-# comparing. A re-run must produce byte-identical JSON (verified: the two
-# runs recorded in an internal work log).
+# comparing. A re-run must produce byte-identical JSON.
 
 require "json"
 
@@ -124,13 +123,13 @@ TARGETS.each do |target|
   results["targets"][target[:label]] = entry
 end
 
-# ---- conflict probe (Oracle Basics, basic_note target) ----------------------
+# ---- conflict probe (the basic_note target) ---------------------------------
 # VALIDATION-ONLY by construction: `valid?` runs the validate-phase events
-# (detect_conflict) but never persists. The prior save-based probe wrote an
-# action row (incident recorded in forms-lane.md) - this shape cannot.
-# edit_conflict? needs: stale last_action_id_before_edit AND a last action
-# by a DIFFERENT actor - so the probe signs in as Tova while the card's
-# last action belongs to Decko Bot.
+# (detect_conflict) but never persists, so this shape cannot write an
+# action row. edit_conflict? needs: stale last_action_id_before_edit AND a
+# last action by a DIFFERENT actor - so the probe signs in as the
+# non-admin member account while the card's last action belongs to
+# Decko Bot.
 basic = Card["Oracle Basics"]
 before_count = action_count
 conflict = {}
@@ -155,7 +154,7 @@ results["conflict_probe"] = conflict
 FileUtils.mkdir_p(File.dirname(OUT_PATH))
 File.write(OUT_PATH, JSON.pretty_generate(deep_sort(results)) + "\n")
 
-# Pin the oracle bytes beside the receipt (raw captures for reference).
+# Write the same bytes to CAPTURE_DIR when it exists (raw copies for reference).
 if File.directory?(PIN_DIR)
   File.write(File.join(PIN_DIR, "edit-forms-oracle.json"),
              JSON.pretty_generate(deep_sort(results)) + "\n")
