@@ -2,11 +2,9 @@
 // (deploy/bunny-worker-src/bunny-edge-error-page.ts, wired through
 // bunny-edge-engine-request.ts's error surfaces).
 //
-// WHAT THIS PIN exists for (p2-error-shell lane, 2026-10-03 — named residual
-// #2 of the edge-site-shell lane): the edge's 404/500 pages rendered the
-// bare worker.ts layoutPage shell (measured at the deploy-lineage tip
-// 12bd523: card 404 = 749 B, 0 <link>, 0 <script>, no <nav>, no footer;
-// render 500 = 736 B) while the live deck serves Decko's full-chrome error
+// WHAT THIS PIN exists for: the edge's 404/500 pages rendered the
+// bare worker.ts layoutPage shell (no <link>, no <script>, no <nav>, no
+// footer) while a real deck serves Decko's full-chrome error
 // pages. The staging host's error builder (vm-staging-server.mjs:1339-1549
 // and its helper chain) is the Ruby-faithful ground truth this port pins:
 //
@@ -21,16 +19,16 @@
 //   - budget timeout  -> the same chrome around the edge's own Slow-render
 //     body region (no staging shape exists for an infra 503; the body text
 //     and the Retry-After/X-Decko-Edge-Budget/no-store contract are the
-//     cold-render lane's, preserved).
+//     cold-render surface's, preserved).
 //   - no-route path   -> the staging ROUTER's minimal stub (vm-staging-server
 //     .mjs:2203 serves a bare `<pre>No route for <path></pre>` for paths that
 //     are not card names — a different route class from the full-chrome card
-//     not_found; live's Rails router 404s the same class bare).
+//     not_found; the Rails router 404s the same class bare).
 //   - builder failure -> the staging builder's own fallback contract
 //     (vm-staging-server.mjs:1494-1497 "falls back to the previous minimal
 //     stubs so the server's error path can never 500 a second time"): the
 //     minimal htmlResponse stubs for not_found/server_error, and the bare
-//     pre-lane Slow-render page for the 503.
+//     Slow-render page for the 503.
 //
 // Every error response keeps `Cache-Control: no-store` (the escape pins'
 // contract — error pages are never cacheable).
@@ -66,8 +64,8 @@ function edgeGet(pathname: string): Request {
 
 /** The seeded shell deck, CONFIGURED as the production migration
  *  deployment. The chrome pins below assert that deployment's bytes (its
- *  corpus card ids, its asset URLs, its footer version pin), so this suite
- *  states that configuration explicitly — the same values its runbook sets
+ *  card type ids, its asset URLs, its footer version pin), so this suite
+ *  states that configuration explicitly — the same values an operator sets
  *  through the environment — rather than relying on the engine's source
  *  carrying one deck's identity by default. */
 function realDeck(storage: RenderTestStorage) {
@@ -137,7 +135,8 @@ describe("bunny edge — full-chrome not_found page (staging builder shape)", ()
       expect(res.headers.get("Content-Type")).toContain("text/html");
       expect(res.headers.get("Cache-Control")).toBe("no-store");
       const body = await res.text();
-      // The indented live document form (vm-staging-server.mjs:1244-1246),
+      // The indented document form the reference builder emits
+      // (vm-staging-server.mjs:1244-1246),
       // not the bare `<!doctype html>` layoutPage shell.
       expect(body.startsWith(`      <!DOCTYPE HTML>\n      <html class="h-100">\n        <head>\n`)).toBe(true);
       // URL display form name + the deck's *title (not_found pageOpts).
@@ -145,13 +144,13 @@ describe("bunny edge — full-chrome not_found page (staging builder shape)", ()
       // The noindex head line is the not_found shape's only head delta
       // (vm-staging-server.mjs:1508-1511).
       expect(body).toContain(`<meta content='noindex' name='robots'>`);
-      // Live favicon + live CSS revision, baked by the chrome head.
+      // Favicon + CSS revision from the configured asset host, baked by the chrome head.
       expect(body).toContain(`<link rel="shortcut icon" href="${SPACES}/files/61003/1610000005-small.jpg" />`);
       expect(body).toContain(`files/51201/1610000002.css`);
       // The *header nest substituted verbatim into the layout body.
       expect(body).toContain(`<header><nav class="navbar navbar-expand-lg"><a class="navbar-brand" href="/">Site</a></nav></header>`);
       // The not_found slot (buildNotFoundSlotHtml): type constants pinned
-      // from the live bytes (NOT_FOUND_DEFAULT_TYPE), the DeckoName key
+      // from the reference bytes (NOT_FOUND_DEFAULT_TYPE), the DeckoName key
       // ("NoSuchCard".key = "no_such_card" — this engine's key splits
       // camelCase words; staging imports the same DeckoName module) and the
       // URL-display link name (urlKey keeps case, underscores only for
@@ -166,7 +165,7 @@ describe("bunny edge — full-chrome not_found page (staging builder shape)", ()
       // The *footer nest: the Xfooter content-view wrapper + the version pin.
       expect(body).toContain(`<div id="Xfooter-content-view" class="card-slot content-view ALL TYPE-html STAR SELF-Xfooter d0-card-content"`);
       expect(body).toContain(`Decko v0.19.1</a>`);
-      // The live trailing newline.
+      // The trailing newline the reference bytes carry.
       expect(body.endsWith(`</html>\n`)).toBe(true);
     } finally {
       storage.close();
@@ -221,9 +220,9 @@ describe("bunny edge — full-chrome not_found page (staging builder shape)", ()
 describe("bunny edge — the error chrome carries NO deck identity when none is configured", () => {
   // The chrome above pins the PRODUCTION deck's
   // bytes because it states that deck's configuration. This suite pins the
-  // other half: with no configuration, the same seeded deck serves no corpus
-  // card ids, no private asset URLs and no version pin belonging to any other
-  // deck.
+  // other half: with no configuration, the same seeded deck serves no other
+  // deck's card ids, no private asset URLs and no version pin belonging to
+  // any other deck.
   it("an UNCONFIGURED deck's 404 falls back to the minimal stub (no corpus ids to look up)", async () => {
     const storage = await createRenderTestStorage();
     try {
@@ -316,7 +315,7 @@ describe("bunny edge — full-chrome server_error page (staging builder shape)",
       // and NO noindex line — that is the not_found shape's delta.
       expect(body).toContain(`<title>Home - Test Site</title>`);
       expect(body).not.toContain(`<meta content='noindex' name='robots'>`);
-      // The deck error block, byte-verbatim from live_Introduction.html
+      // The deck error block, byte-verbatim from the reference bytes
       // (buildServerErrorSlotHtml). The error message itself appears
       // nowhere — the requested name only rides the <title>.
       expect(body).toContain(
@@ -429,7 +428,7 @@ describe("bunny edge — budget-exceeded 503 in the full chrome", () => {
       expect(res.headers.get("Retry-After")).toBe("5");
       expect(res.headers.get("Cache-Control")).toBe("no-store");
       const body = await res.text();
-      // The pre-lane bytes (layoutPage shell) — the fallback contract.
+      // The bare layoutPage bytes — the fallback contract.
       expect(body.startsWith(`<!doctype html>`)).toBe(true);
       expect(body).toContain(`<title>Slow render</title>`);
       expect(body).toContain(`retrying in a few seconds`);
