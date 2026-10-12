@@ -75,8 +75,8 @@ export interface Deck {
   fetcher: FetchEngine;
   render: RenderEngine;
   /** The deployment's served-environment deltas.
-   *  The carrier for every value that used to be one private deck's
-   *  hard-coded identity: its footer version, asset host and revisions, the
+   *  The carrier for every value that used to be one deck's hard-coded
+   *  identity: its footer version, asset host and revisions, the
    *  error chrome's card ids and asset URLs, and the phantom item type.
    *  Absent = the stock deck, whose every delta pass is a no-op. The field
    *  rides the deck rather than the request options because the ERROR pages

@@ -265,5 +265,5 @@ CREATE TABLE `transform_migrations` (
 --   consumes sessions; the card gem's stale site dump additionally showed
 --   a legacy `users` table (dropped in production by the 2014
 --   user-data-to-cards transform) and site-custom library_* tables that
---   belong to a different (dev) database, not to the reference deck production.
+--   belong to a different (dev) database, not to the source dump.
 -- ============================================================================
