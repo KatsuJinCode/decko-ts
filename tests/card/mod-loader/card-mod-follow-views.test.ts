@@ -1,12 +1,11 @@
-// The follow-mod view tests: the follow views whose bodies the lane-follow
-// port renders through the follow-rule walk + the form shapes + the actor
-// session seam. A/B through the mod loader, per the established suite shape.
+// The follow-mod view tests: the follow views whose bodies render through
+// the follow-rule walk + the form shapes + the actor session seam. A/B
+// through the mod loader, per the established suite shape.
 //
-// All bytes are RENDERED-UNPINNED: the capture corpus carries NO Ruby-oracle
-// bytes for any follow view name (verified: 0 hits for follow_status/
-// follow_button/follow_item/follow_tab/ignore_tab/rule_editor/edit_buttons
-// across tmp/raw-ground-truth/expected/recapture-raw-shard-*.jsonl), so the
-// expectations pin the gem-source shape and claim no byte verification.
+// All bytes are RENDERED-UNPINNED: no rendered body exists to check any
+// follow view name against (follow_status/follow_button/follow_item/
+// follow_tab/ignore_tab/rule_editor/edit_buttons), so the expectations pin
+// the gem-source shape and claim no byte verification.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -47,8 +46,8 @@ beforeAll(async () => {
   // the User cardtype card (the preference SQL's users.type_id join key)
   await seedCard(s, { id: 3, name: "User", codename: "user", typeId: 13 });
   // users
-  await seedCard(s, { id: 300, name: "Riley", typeId: 3 });
-  await seedCard(s, { id: 301, name: "Tova", typeId: 3 });
+  await seedCard(s, { id: 300, name: "Probe Member", typeId: 3 });
+  await seedCard(s, { id: 301, name: "Second User", typeId: 3 });
 
   // followed card + set
   await seedCard(s, { id: 200, name: "Make Contact", dbContent: "contact body" });
@@ -56,16 +55,17 @@ beforeAll(async () => {
     id: 210, name: "Make Contact+*self", leftId: 200, rightId: 11, typeId: 13,
   });
   await seedCard(s, {
-    id: 215, name: "Make Contact+*self+Riley", leftId: 210, rightId: 300, typeId: 14,
+    id: 215, name: "Make Contact+*self+Probe Member", leftId: 210, rightId: 300, typeId: 14,
   });
   await seedCard(s, {
-    id: 220, name: "Make Contact+*self+Riley+*follow",
+    id: 220, name: "Make Contact+*self+Probe Member+*follow",
     leftId: 215, rightId: 110, typeId: 14, dbContent: "*always",
   });
 
-  // Riley's User+*follow dashboard pointer content (virtual; the items
-  // walk reads preference cards, the dbContent stands in for the seeded state)
-  await seedCard(s, { id: 310, name: "Riley+*follow", leftId: 300, rightId: 110, typeId: 14 });
+  // the Probe Member user's User+*follow dashboard pointer content (virtual;
+  // the items walk reads preference cards, the dbContent stands in for the
+  // seeded state)
+  await seedCard(s, { id: 310, name: "Probe Member+*follow", leftId: 300, rightId: 110, typeId: 14 });
 
   // *follow defaults (the deprecated editor's host card)
   await seedCard(s, {
@@ -89,19 +89,19 @@ async function loadMod(): Promise<RenderEngine> {
   // only the EVENT host — the render dispatch reads the loader off the engine
   // (render.ts:581 `this.modLoader = getDefaultModLoader()`) and the
   // process-wide default (render.ts:1296). Without the bind the mod's view
-  // table never reaches the dispatch, so every ported follow view raised
-  // UnsupportedViewError (the five standing reds this bind closes).
+  // table never reaches the dispatch, so every ported follow view would
+  // raise UnsupportedViewError.
   bindModLoaderToEngine(storage!, loader!);
   await loader.installInto(modEngineHost(s.engine, s.fetcher));
   engine = s.engine;
   return engine;
 }
 
-describe("card-mod-follow views through the loader (lane-follow)", () => {
+describe("card-mod-follow views through the loader", () => {
   it("WITHOUT the mod: the follow views are unsupported", async () => {
     const s = storage!;
     await expect(
-      s.engine.render("Make Contact+*self+Riley+*follow", "follow_status"),
+      s.engine.render("Make Contact+*self+Probe Member+*follow", "follow_status"),
     ).rejects.toThrow(UnsupportedViewError);
     await expect(
       s.engine.render("Make Contact", "follow_button"),
@@ -112,7 +112,7 @@ describe("card-mod-follow views through the loader (lane-follow)", () => {
     await loadMod();
     const s = storage!;
     const html = await s.engine.render(
-      "Make Contact+*self+Riley+*follow", "follow_item",
+      "Make Contact+*self+Probe Member+*follow", "follow_item",
     );
     // follow_item(Env.params[:condition] -> nil -> "*always", button=true);
     // add_follow_item? is false (the rule's items include *always), so the
@@ -136,7 +136,7 @@ describe("card-mod-follow views through the loader (lane-follow)", () => {
     await loadMod();
     const s = storage!;
     const html = await s.engine.render(
-      "Make Contact+*self+Riley+*follow", "follow_status",
+      "Make Contact+*self+Probe Member+*follow", "follow_status",
     );
     expect(html).toContain(`<h4>Get notified about changes</h4>`);
     expect(html).toContain(`<ul class="delete-list list-group">`);
@@ -159,7 +159,7 @@ describe("card-mod-follow views through the loader (lane-follow)", () => {
     expect(out).toContain(
       `href="/update/Make_Contact+*self+Anonymous+*follow?card%5Bcontent%5D=%5B%5B%2Aalways%5D%5D`,
     );
-    // signed IN as Riley, who follows *always -> StopFollowLink
+    // signed IN as the Probe Member user, who follows *always -> StopFollowLink
     e.pageSession = { signedIn: true, actorId: 300 };
     const inn = await e.render("Make Contact", "follow_button");
     expect(inn).toContain(`<span class="follow-verb">following</span>`);
@@ -172,7 +172,7 @@ describe("card-mod-follow views through the loader (lane-follow)", () => {
     const s = storage!;
     const e = await loadMod();
     e.pageSession = { signedIn: true, actorId: 300 };
-    const html = await e.render("Riley+*follow", "follow_tab");
+    const html = await e.render("Probe Member+*follow", "follow_tab");
     expect(html).toContain(`<div class="pointer-list-editor">`);
     expect(html).toContain(`<ul class="delete-list list-group">`);
     expect(html).toContain(`<li class="list-group-item">`);
@@ -184,8 +184,8 @@ describe("card-mod-follow views through the loader (lane-follow)", () => {
     const s = storage!;
     const e = await loadMod();
     e.pageSession = { signedIn: true, actorId: 300 };
-    const html = await e.render("Riley+*follow", "ignore_tab");
-    // Riley holds only *always -> the walk yields no rows -> the
+    const html = await e.render("Probe Member+*follow", "ignore_tab");
+    // the Follower user holds only *always -> the walk yields no rows -> the
     // haml's empty arm ("no entries")
     expect(html).toContain(`no entries`);
     e.pageSession = undefined;
@@ -194,7 +194,7 @@ describe("card-mod-follow views through the loader (lane-follow)", () => {
   it(":edit_buttons on *follow defaults is UNREACHABLE in Ruby too (self/follow_defaults.rb:49-55 — the module constant vs the singularized self-anchor token)", async () => {
     await loadMod();
     const s = storage!;
-    // mm-I-R: this pin was RED and is now a NEGATIVE pin, because
+    // This pin is a NEGATIVE pin, because
     // Ruby cannot reach the view either — the set module's constant and
     // the card's self-anchor token never meet.
     //
@@ -204,15 +204,10 @@ describe("card-mod-follow views through the loader (lane-follow)", () => {
     // (cardname-0.20.0 lib/cardname/variants.rb:19) over the SINGULARIZED
     // key. So the card "*follow defaults" produces the token
     // SELF-Xfollow_default, while set/self/follow_defaults.rb declares the
-    // constant FollowDefaults. Live capture (benchmarks/
-    // capture-readonly-follow-defaults-and-core-shape.rb → fixtures/
-    // captured/readonly-follow-defaults-and-core-shape.json, card_actions
-    // 5018 == 5018 around every render, the oracle app's development deck
-    // with the real card at id 467):
-    //   safe_set_keys                 = "ALL TYPE-list STAR SELF-Xfollow_default"
-    //   ancestors grep(/FollowDefault/) = []
-    //   :core / :confirm_update_all / :edit_buttons all render the
-    //     anonymous-denial span, not the buttons.
+    // constant FollowDefaults. Both sides confirm the mismatch: the card's
+    // safe_set_keys carry SELF-Xfollow_default, the loaded ancestors grep
+    // for FollowDefault find nothing, and :core / :confirm_update_all /
+    // :edit_buttons all render the anonymous-denial span, not the buttons.
     // The port matches that: the module is registered (the basket pin
     // covers set/self/follow_defaults), it is simply unreachable for its
     // own card, so the dispatch raises UnsupportedViewError.
