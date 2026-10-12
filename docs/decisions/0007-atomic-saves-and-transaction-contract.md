@@ -10,7 +10,7 @@ card `mod/core/set/all/result.rb`) and runs the integration phase — follower
 mail, integrate-stage events — only after the commit (`after_commit
 :integration_phase`, `lib/card/director/phases.rb`).
 
-The port had no transaction at all. The SQL interface offered only `query` and
+The engine had no transaction at all. The SQL interface offered only `query` and
 `batch`, and the save path wrote row by row, so a failure part-way through a
 save left whatever it had already written. The clearest case: creating a card
 with a subcard of an unknown type threw, but the parent card stayed in the
@@ -137,7 +137,7 @@ orphan's id, its `create_action` was the orphan action, and its own create
 action stored four change rows (name, type, content, trash), where a plain
 create stores none. On Decko's MySQL production database the
 AUTO_INCREMENT counter is past every id ever used, so a new card never meets
-old history there. This port keeps that outcome on copies that lost the
+old history there. This engine keeps that outcome on copies that lost the
 counter: a new card takes the AUTOINCREMENT id unless history rows name that
 id or a later one, and then the first id past every id they name
 (`NEW_CARD_ID_SQL` in `src/card/history/write-path.ts`; part of the INSERT,
