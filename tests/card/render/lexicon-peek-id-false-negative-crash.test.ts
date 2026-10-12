@@ -1,12 +1,8 @@
 // A synchronous lexicon peek must not persist a false negative - the
-// page-20595 crash class ("CoffeeScript+*type+*delete", the engine-crash
-// singleton of the 2026-09-29 mechanism census, receipt
-// WORK_DIR/page-mechanism-census.md: our
-// renderPage raised "card not found" where the Ruby oracle rendered the
-// full 16,819-byte titled page, data-card-id 20595).
+// crash class where rendering "CoffeeScript+*type+*delete" raised
+// "card not found" where Ruby rendered the card's full titled page.
 //
-// Mechanism (traced 2026-09-29, census-order reproduction in the
-//  worktree, tmp/census-tail/crash-order.log):
+// Mechanism:
 // DbLexicon.peekId is the warm-cache-only SYNC mirror of id() that the CQL
 // parser reaches mid-render (render.ts resolveCardId -> peekId, the
 // idFromVal path). Its lookup went through CardCache.read, which is Ruby's
@@ -41,11 +37,11 @@ import {
   type RenderTestStorage,
 } from "./render-test-storage.js";
 
-/** Miniature of the census corpus shape: a cardtype anchor card
+/** Miniature of the crash shape: a cardtype anchor card
  * ("CoffeeScript"), its *type set junction, the *delete rule tag, and the
  * rule card "CoffeeScript+*type+*delete" stored as a NULL-name junction
  * row (left_id/right_id only), plus the layout trio every page render
- * needs. Mirrors corpus ids 20586/266/20592/6549/20595. */
+ * needs. */
 async function seedRuleJunctionDeck(): Promise<RenderTestStorage> {
   const storage = await createRenderTestStorage();
   await seedCard(storage, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
@@ -92,8 +88,7 @@ describe("lexicon peekId must not persist a false negative (page 20595 crash cla
     await storage.fetcher.warmLexicon(ALL_IDS);
 
     // temporary.rb#within_key_counts: a real overage resets the WHOLE
-    // store mid-walk (the census walk crossed this boundary before the
-    // crash page rendered).
+    // store mid-walk — the boundary the crash's page walk crossed.
     (
       storage.fetcher as unknown as { lexiconCache: { temp: { reset(): void } } }
     ).lexiconCache.temp.reset();
@@ -117,8 +112,8 @@ describe("lexicon peekId must not persist a false negative (page 20595 crash cla
     await expect(storage.fetcher.lexicon.id("CoffeeScript")).resolves.toBe(20586);
 
     // The crash: renderPage("CoffeeScript+*type+*delete") raised
-    // "card not found" once the negative sat in the store; the oracle
-    // renders the rule card's page.
+    // "card not found" once the negative sat in the store; Ruby renders
+    // the rule card's page.
     const page = await renderPageBytes(storage.engine, "CoffeeScript+*type+*delete");
     expect(page).toContain("rule-body-bytes");
   });
