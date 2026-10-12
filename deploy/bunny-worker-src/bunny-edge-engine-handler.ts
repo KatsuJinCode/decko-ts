@@ -11,43 +11,35 @@
 // Platform contract unchanged: web-standard Request/Response, credentials
 // via the passed env bag (process.env on the edge), read-only surface.
 //
-// THE deploy-surface-union LANE (2026-10-03): this handler USED TO carry its
-// own bare dispatch (parsePath -> engine.render -> layoutPage wrap, bare
-// error pages) while the p2 lanes' tested serving surface rode alongside it
-// UNWIRED (the fold-11 host carry + shim). This lane WIRES it: every
-// non-/_status read request now dispatches through the carried request core
+// DISPATCH OWNERSHIP: this handler used to carry its own bare dispatch
+// (parsePath -> engine.render -> layoutPage wrap, bare error pages). It now
+// delegates every non-/_status read request to the request core
 // (bunny-edge-engine-request.ts handleEngineRequest — the full page shell,
 // the full-chrome error surfaces, the history seam with its wire-key
 // translation, the /files attachment route, the /api/card read gate, the
-// render budget) over the carried lineage URL grammar
-// (bunny-edge-lineage-worker-surface.ts, now the union grammar — see that
-// file's header). The boot is the union boot (below). The bare dispatch this
-// replaces is superseded wholesale; its capabilities that the carried core
-// lacked were PORTED INTO the carried core (the hardened /api/card decode,
-// the ?view= query arm, the mapRenderError 404 family) — recorded per
-// resolution in an internal work log
+// render budget) over the URL grammar in bunny-edge-lineage-worker-surface.ts.
+// The boot is the union boot (below). The bare dispatch is superseded
+// wholesale; the capabilities it had that the core lacked were PORTED INTO
+// the core (the hardened /api/card decode, the ?view= query arm, the
+// mapRenderError 404 family).
 //
-// THE edge-session-cache-stack CARRY LANE (2026-10-03, the operator-named
-// strict-superset add at THIS call site): the deploy lineage's cache/session
-// stack now rides here, carried VERBATIM from 12bd5236 (bunny-edge-
-// content-cache.ts, bunny-edge-cache-headers.ts, bunny-edge-session-viewer.ts
-// — commit a6a8cff2) and wired in the lineage entry's own dispatch order
+// The cache/session stack rides here too — the content cache, the cache
+// headers and the session viewer — wired in the entry's own dispatch order
 // (bunny-edge-engine-entry.ts:288-442):
 //   /_status -> /_signout mount (ABOVE the write surface — mount-order fact:
 //   matchRoute claims a bare POST /_signout as create-card "signout",
-//   write-routes.ts:491-493, the measured union-2 incident) -> the armed
-//   write surface (DECKO_WRITE_PATH/DECKO_FIRST_RUN via
-//   bunnyEdgeWriteArmed; the AUTH routes — POST /update/*signin, GET|POST
-//   /_signout — dispatch at every flag state, edge-signin-form-fix lane:
-//   auth is not a card write) -> the read-only 403 -> the session-aware,
-//   cache-wrapped engine path. The union boot, budget and request core are
-//   unchanged underneath the wrap. OFF-default independence: DECKO_EDGE_CACHE
-//   (cache layers, strict "1") and the write gates are separate switches from
-//   the one-trip config gate (fold-12, also OFF-default) — three independent
-//   postures, none implies another. Unarmed + cookieless + read-verb is the
-//   byte-identical union path: a Cookie header scan finds nothing,
-//   serveWithEdgeCache calls render() directly, no cache contact, no extra
-//   headers. Receipt: an internal work log
+//   write-routes.ts:491-493) -> the armed write surface
+//   (DECKO_WRITE_PATH/DECKO_FIRST_RUN via bunnyEdgeWriteArmed; the AUTH
+//   routes — POST /update/*signin, GET|POST /_signout — dispatch at every
+//   flag state: auth is not a card write) -> the read-only 403 -> the
+//   session-aware, cache-wrapped engine path. The union boot, budget and
+//   request core are unchanged underneath the wrap. OFF-default
+//   independence: DECKO_EDGE_CACHE (cache layers, strict "1") and the write
+//   gates are separate switches from the one-trip config gate — three
+//   independent postures, none implies another. Unarmed + cookieless +
+//   read-verb is the byte-identical path: a Cookie header scan finds
+//   nothing, serveWithEdgeCache calls render() directly, no cache contact,
+//   no extra headers.
 
 import { BunnyDbDriver } from "../../src/card/drivers/bunny-db.js";
 import {
@@ -176,7 +168,7 @@ function getActorEngines(): ActorRenderEngines {
  *  (This comment documents the DISPATCH ORDER of routeBunnyEngineRequest —
  *  the body the exported PROFILER WRAPPER below wraps and labels.) */
 
-/** THE PROFILER WRAPPER (edge-profiler lane, 2026-10-05): the route body
+/** THE PROFILER WRAPPER: the route body
  *  runs unchanged behind this one wrapper — a profile starts at entry, and
  *  the finished response gains ONE header, `Server-Timing: auth;dur=X,
  *  seat;dur=Y, db;dur=Z;stmt=N, render;dur=W, total;dur=T` (the standard
@@ -239,7 +231,7 @@ async function routeBunnyEngineRequest(
   // had exactly one caller repo-wide, and it was on the staging host).
   // GET|POST /_signout -> revoke the row + clear the cookie.
   //
-  // UNgated (edge-signin-form-fix lane, 2026-10-03): a session this edge's
+  // UNgated: a session this edge's
   // own sign-in minted must be revocable on the same terms — auth is not a
   // card write, and gating sign-out behind DECKO_WRITE_PATH while sign-in
   // runs ungated would strand live sessions. The handler itself is
@@ -251,11 +243,11 @@ async function routeBunnyEngineRequest(
   // requests) — a cross-site GET/POST is refused 403 before the session
   // row is touched; same-origin and address-bar navigations pass.
   //
-  // MOUNT ORDER — fixed live 2026-10-03 (union-2 lane proof): this mount
+  // MOUNT ORDER — fixed on the first combined release: this mount
   // sits ABOVE the write surface because matchRoute claims a bare
   // `POST /_signout` as create-card "signout" (write-routes.ts:491-493:
   // single-segment POST path, no create/update/delete prefix). Measured on
-  // the first union-2 release: POST /_signout 303'd, CREATED the card, the
+  // that release: POST /_signout 303'd, CREATED the card, the
   // session stayed live, and the second POST 422'd "name is already taken:
   // signout". The path test below is one string compare and runs before any
   // driver work, so a non-sign-out request still boots no deck here and the
@@ -324,7 +316,7 @@ async function routeBunnyEngineRequest(
   // Unarmed, serveWithEdgeCache just calls render(): byte-identical behavior
   // to the previous release, no cache contact, no extra headers.
   //
-  // SESSION (edge-session-viewer lane): the cache key is the request URL
+  // SESSION: the cache key is the request URL
   // alone, with no actor in it, so a signed-in render must bypass this
   // cache in both directions — see EdgeCacheOptions.perViewer. Anonymous
   // requests reach the identical call as before.
@@ -335,8 +327,7 @@ async function routeBunnyEngineRequest(
   // query, no extra allocation. Everything below the `token === null` test
   // only runs for a request that actually carries a cookie.
   //
-  // RENDER BUDGET (cold-render reliability, 2026-10-03, the union's own
-  // posture): the budget is resolved ONCE here, off env, and handed to every
+  // RENDER BUDGET (cold-render reliability): the budget is resolved ONCE here, off env, and handed to every
   // handleEngineRequest call below. A cold render is a ~1,000-hop serial
   // database chain whose wall time had no upper bound in code; the deadline
   // bounds it and answers a slow request with a retry-able 503 + Retry-After
@@ -345,7 +336,7 @@ async function routeBunnyEngineRequest(
   // the number and DECKO_EDGE_RENDER_BUDGET_MS for the no-republish retune.
   const renderBudgetMs = resolveEdgeRenderBudgetMs(env);
 
-  // AUTH PHASE (profiler, 2026-10-05): the session-resolution wall.
+  // AUTH PHASE (profiler): the session-resolution wall.
   // Cookieless that is the Cookie scan alone (sub-ms); a cookie resolves
   // through the SessionStore lookup SQL, timed at its own call below (the
   // one-time deck boot between them is isolate setup — it lands in total,
