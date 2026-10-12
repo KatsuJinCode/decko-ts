@@ -88,8 +88,18 @@ export interface HistoryRenderParams {
    *  the paging window — offset from `Env.params[:offset]`, focal-only per
    *  paging.rb:37-45). Read by the search warm's statement merge and the
    *  search views' keyword header; undefined = the headless shape (no vars,
-   *  offset 0). */
-  search?: { vars?: Record<string, string>; offset?: number };
+   *  offset 0). `term` is params[:term] and `main` params["main"] — the
+   *  term_param seam (search_params.rb:19-23 base + search.rb:130-137 json
+   *  override): search_keyword = present?(term with the "+" main-concat) ||
+   *  vars.keyword. The navbox typeahead's autocomplete request sends the
+   *  typed text as `?term=` (data-completepath on the *search box). */
+  search?: { vars?: Record<string, string>; offset?: number; term?: string; main?: string };
+
+  /** The request's response format (the route's `(.:format)` suffix —
+   *  engine_routes.rb:19,24,51 — Rails' request.format; "json" renders the
+   *  view through the json format's view table, Ruby's JsonFormat#show
+   *  serialization). Undefined = html (every pre-existing caller). */
+  format?: string;
 }
 
 /** One action's card as the views need it (name algebra + type + the

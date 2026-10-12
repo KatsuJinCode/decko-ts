@@ -45,7 +45,9 @@ import type { ViewResult } from "../../render/format.js";
 //   molecule/paging_urls machinery
 // - name_complete / name_match (0_search/views.rb:38-44) - request-term: they
 //   run ad-hoc CQL against params[:term] at view time
-// - complete / search_box_complete (self/search.rb:74-78,70-72) - request-term
+// - complete (self/search.rb:74-78) - request-term (the sibling
+//   search_box_complete IS ported: the self/search setModule's json arm
+//   below, its request-term data riding the render.ts search seat)
 // - search_box (self/search.rb:37 + haml) - request-dependent form bytes
 //   (form_tag path, query params)
 // - method-only set modules (no manifest surface - the DeckoModManifest
@@ -82,8 +84,9 @@ import type { ViewResult } from "../../render/format.js";
 // `title` among the heir keys that stay un-ported), so the port would have
 // to invent Voo API to exist at all. Documented, not faked.
 
-import type { RenderCard, RenderFormat, ViewContext, ViewFn } from "../../render/format.js";
-import { rubyBacktraceError, str, UnsupportedViewError } from "../../render/format.js";
+import type { RenderCard, ViewContext, ViewFn } from "../../render/format.js";
+import { RenderFormat, rubyBacktraceError, str, UnsupportedViewError } from "../../render/format.js";
+import { formEscape } from "../../follow/follow-form-shapes.js";
 import { DeckoName } from "../../name.js";
 import { emitAttrs, h, newSlotId, slotOptionsJson } from "../../render/slot-html.js";
 import { CqlBadQuery } from "../../../cql/ast.js";
@@ -668,6 +671,156 @@ const select2OptionView: ViewFn = ({ fmt }) => {
 };
 
 // ---------------------------------------------------------------------------
+// set/self/search.rb:70-72 - view :search_box_complete, cache: :never,
+// perms: :none (`search_box_items :search_item, :add_item, :goto_items`)
+//
+// The navbox typeahead's JSON: the navbar search box's data-completepath
+// (search.rb:30-33 complete_path = path mark: :search, view:
+// :search_box_complete, format: :json — the codename mark resolves to the
+// *search name, so the pinned navbar bytes read /*search/
+// search_box_complete.json) is the deck script's jQuery UI autocomplete
+// source, fetched on every page for signed-in and anonymous visitors alike.
+//
+//   def search_box_items *methods
+//     [].tap do |items|
+//       each_search_box_item methods do |action, value, label, data|
+//         items << data.merge(action: action, value: value, label: label)
+//       end
+//     end
+//   end
+//
+// Three item families in order (:104-126), each hash {url, action, value,
+// label} (data = {url: ...} merges under the three keys):
+//   - :search  (:104-106) ALWAYS - url = card_url(results_path(term))
+//              (:38-40 path mark: :search, query: {keyword: term}; to_param
+//              Rack-escapes the nested key, empty term -> no query string),
+//              value = term (nil -> JSON null), label = the *search card's
+//              html search_item (:47-49 autocomplete_item :search,
+//              icon_tag(:search), term).
+//   - :add     (:108-115) only when exact.add_autocomplete_ok?
+//              (autocomplete.rb:39 new_card? && name.valid? && !virtual?
+//              && ok?(:create)) - url = card_url(exact's own path), value =
+//              term, label = the exact card's html :add_autocomplete_item.
+//   - :goto    (:117-126) one per complete-search name - url =
+//              card_url(path(mark: name)) (:36-37 - the json format's
+//              contextualize_path is card_url, path.rb:52-55, so BOTH url
+//              arms are ABSOLUTE; the html format's relative arm never
+//              runs here), value = the name, label = the item card's html
+//              :goto_autocomplete_item (autocomplete.rb:6-8).
+// map_goto_items (:118-126): the names are complete_or_match_search
+// start_only: match_start_only? (railtie default TRUE - the match half
+// never fires), unshift exact.name when go_to_exact_match? (exact.known?),
+// uniq. The search seat (render.ts #prepareSearchBoxComplete) carries the
+// term, the exact card, and the read-filtered goto cards; this fn does the
+// Ruby assembly. Serialization: JsonFormat#show's string_with_page_details
+// (:37-44) - the Array result is not a String, so page_details (a no-op on
+// arrays) passes through and stringify runs JSON.pretty_generate (the
+// params[:compress] default) - folded into this fn exactly the way
+// select2_option folds its Hash serialization above (the view fns' byte
+// contract in this engine).
+// ---------------------------------------------------------------------------
+
+const searchBoxCompleteView: ViewFn = (ctx) => {
+  const { fmt } = ctx;
+  // set/self/search.rb is the SELF set (Card::Set::Self::Search) - the
+  // resultsForKeywordView gate's own shape: every other card raises the
+  // unsupported-view UserError.
+  if (fmt.card.key !== "*search") {
+    throw new UnsupportedViewError("search_box_complete", fmt.card.name.s);
+  }
+  const seat = fmt.engine.searchBoxCompleteSeat?.(fmt.card);
+  if (seat === undefined) {
+    throw new Error(
+      "search_box_complete rendered without its prepare seat (the engine's view-keyed prepare hook never ran for this render)",
+    );
+  }
+  // The raise site is the VIEW body in Ruby (each_search_box_item ->
+  // map_goto_items -> complete_or_match_search -> card.search ->
+  // parse_json_cql), so the BadQuery lands inside wrap_and_render's rescue
+  // - the quiet render-error span on the bare view lane.
+  if (seat.failure !== undefined) throw new CqlBadQuery(seat.failure);
+  // goto_item_label / the add item's label render through the item card's
+  // OWN format (search.rb:52-54 `item.card.format.render_goto_autocomplete_item`,
+  // :113 `fmt.render_add_autocomplete_item`) — `card.format` is the card's
+  // DEFAULT format (html), a FRESH format regardless of the json context
+  // this view runs in, so the subformat pins formatName "html" (the
+  // card-mod-account subformat seam's shape; the json format's chain walk
+  // would never resolve the html-format autocomplete views).
+  const renderHtmlView = (card: RenderCard, view: string): string => {
+    const sub = new RenderFormat(card, fmt.engine, {
+      parent: fmt,
+      maxDepth: fmt.maxDepth,
+      nestQuietErrors: fmt.nestQuietErrors,
+      formatName: "html",
+    });
+    return str(sub.renderView(view, {}));
+  };
+  const term = seat.term;
+  interface CompleteItem {
+    url: string;
+    action: string;
+    value: string | null;
+    label: string;
+  }
+  const items: CompleteItem[] = [];
+  // :search_item (:104-106) - always. results_path (:38-40): the query
+  // pair rides to_param's Rack escape (follow-form-shapes formEscape;
+  // space -> "+"), and an absent/empty term leaves NO query string
+  // (Rails String#to_query answers nil for "" - the pair drops).
+  items.push({
+    url: fmt.cardUrl(
+      term === undefined || term === ""
+        ? "*search"
+        : `*search?query%5Bkeyword%5D=${formEscape(term)}`,
+    ),
+    action: "search",
+    value: term ?? null,
+    label: autocompleteItem("search", materialIconTag("search"), term ?? ""),
+  });
+  // :add_item (:108-115) - exact.add_autocomplete_ok?; the seat's exact is
+  // the fabricated new card only when the term names NO row and NO virtual
+  // card (the !virtual? guard), so presence + !exactKnown is new_card?.
+  if (seat.exact !== undefined && !seat.exactKnown) {
+    const creatable =
+      fmt.engine.unknownCardCreatable?.(seat.exact) ??
+      fmt.engine.taskAllowed?.(seat.exact, "create") === true;
+    if (seat.exact.name.isValid && creatable) {
+      items.push({
+        // add_autocomplete_item_path (:42-44) = the new card's own path;
+        // card_url makes it absolute in the json format.
+        url: fmt.cardUrl(seat.exact.name.urlKey),
+        action: "add",
+        value: term ?? null,
+        label: renderHtmlView(seat.exact, "add_autocomplete_item"),
+      });
+    }
+  }
+  // :goto_items (:117-126) - map_goto_items: unshift the exact name when
+  // the card is known (:120-121 — position 0, BEFORE the completes), uniq
+  // keeps first occurrences (:122), and each name renders its own card's
+  // :goto_autocomplete_item label (:52-54 goto_item_label =
+  // item.card.format.render_goto_autocomplete_item — the item's own FRESH
+  // html format, renderHtmlView above).
+  const emitted = new Set<string>();
+  const pushGoto = (card: RenderCard): void => {
+    if (emitted.has(card.name.key)) return;
+    emitted.add(card.name.key);
+    items.push({
+      url: fmt.cardUrl(card.name.urlKey),
+      action: "goto",
+      value: card.name.s,
+      label: renderHtmlView(card, "goto_autocomplete_item"),
+    });
+  };
+  if (seat.exactKnown && seat.exact !== undefined) pushGoto(seat.exact);
+  for (const card of seat.goto) pushGoto(card);
+  // JsonFormat#show's stringify (JSON.pretty_generate) - 2-space indent,
+  // no trailing newline, exactly JSON.stringify(, null, 2) for the ASCII
+  // deck names and escaped-label strings this surface carries.
+  return JSON.stringify(items, null, 2);
+};
+
+// ---------------------------------------------------------------------------
 // set/abstract/0_search/views.rb:118-124 - view :checkbox_list, cache: :never
 //
 //   view :checkbox_list, cache: :never do
@@ -964,6 +1117,17 @@ const cardModSearch: DeckoModManifest = {
               view: "core",
               viewFn: (ctx) => str(resultsForKeywordView(ctx)) + str(ctx.fmt.renderView("card_list")),
               config: { cache: "never" },
+            },
+          ],
+        },
+        json: {
+          views: [
+            // search.rb:70-72 view :search_box_complete, cache: :never,
+            // perms: :none — the navbox typeahead's JSON.
+            {
+              view: "search_box_complete",
+              viewFn: searchBoxCompleteView,
+              config: { cache: "never", perms: "none" },
             },
           ],
         },

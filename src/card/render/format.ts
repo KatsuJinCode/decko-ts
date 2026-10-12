@@ -3678,6 +3678,26 @@ function settingDisplayTitle(
   return SETTING_DISPLAY_TITLES[codename];
 }
 
+/** The :search_box_complete view's prepared data (card-mod-search
+ *  set/self/search.rb:70-72; the seat half lives in render.ts
+ *  #prepareSearchBoxComplete, which cites the gem line-by-line). */
+export interface SearchBoxCompleteSeat {
+  /** search_keyword (search_params.rb:32-34) — undefined when the request
+   *  carries neither term nor query[keyword]. */
+  readonly term: string | undefined;
+  /** Card.fetch(term, new: {}) (:102) — the real row or the fabricated new
+   *  card; undefined only when term is. */
+  readonly exact: RenderCard | undefined;
+  /** exact.known? — a real row exists (the exact-name unshift's gate). */
+  readonly exactKnown: boolean;
+  /** The goto-item cards in complete-search order (read-filtered; the
+   *  exact-name unshift the ViewFn applies on exactKnown). */
+  readonly goto: readonly RenderCard[];
+  /** The *search cql's failure message (the BadQuery shapes) — the ViewFn
+   *  raises it inside the dispatch's own rescue scope, Ruby's raise site. */
+  readonly failure: string | undefined;
+}
+
 export interface RenderEngineLike {
   views: Record<string, ViewFn>;
   /** The render viewer (render.ts RenderEngine#viewer - the read-verdict
@@ -3780,6 +3800,17 @@ export interface RenderEngineLike {
    *  the :results_for_keyword view (search.rb:48), whose haml guards on
    *  `search_keyword.present?` and therefore renders the empty string. */
   searchKeyword?(card: RenderCard): string | undefined;
+  /** The :search_box_complete view's prepared data (card-mod-search
+   *  set/self/search.rb:70-72) — the async prepare phase's seat for the
+   *  sync ViewFn: the request term (search_keyword), the exact card
+   *  (Card.fetch(term, new: {}) — the real row or the fabricated new card),
+   *  whether that card is KNOWN (a real row — the exact-name unshift), the
+   *  goto-item cards (complete_search, read-filtered), and the cql failure
+   *  message the view raises inside its own rescue scope (Ruby's raise site
+   *  is the view body). Undefined = this render never prepared the view
+   *  (the mod's view dispatch on a seatless render is a port defect — the
+   *  seam stays optional so stub engines fail LOUDLY, not silently). */
+  searchBoxCompleteSeat?(card: RenderCard): SearchBoxCompleteSeat | undefined;
   /** Ruby's Auth.always_ok? for the render session's viewer
    *  (auth/permissions.rb:7-13 — the DeckoBot actor or an Administrator-
    *  role member; the engine's ReadPermissionState.alwaysOk, settled in
