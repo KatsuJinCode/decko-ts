@@ -1,13 +1,13 @@
 // probe-staging-db-missing-content-reference-rows.mjs -- is the zero-row
-// `refer_to` CQL a PORT defect or a STAGING-DB gap? (lane-negdelta-zero, M5)
+// `refer_to` CQL a PORT defect or a STAGING-DB gap?
 //
 // WHAT THIS IS
-//   The Family / Archetypal pages nest `{{_self+*referred_to_by}}`, whose cql
-//   is `{"refer_to":"_left","sort":"name"}`. The bound referee id is CORRECT
-//   (568 = Family) and the generated SQL is correct, yet the query returns zero
-//   rows -- see probe-search-cql-throws-instead-of-returning-rows.mjs output.
-//   The corpus (`bench-corpus-raw.sqlite3`) holds 21 card_references rows with
-//   referee_id = 568, so the rows exist at the source.
+//   Pages that nest `{{_self+*referred_to_by}}` run the cql
+//   `{"refer_to":"_left","sort":"name"}`. The bound referee id is CORRECT and
+//   the generated SQL is correct, yet the query returns zero rows -- see
+//   probe-search-cql-throws-instead-of-returning-rows.mjs output. The corpus
+//   database holds card_references rows for that referee, so the rows exist
+//   at the source.
 //
 //   The engine does NOT query the corpus file. `createRawStructureSeededStorage`
 //   builds a per-worktree STAGING database and copies into it a chosen subset
@@ -19,25 +19,22 @@
 //   deck.
 //
 //   That distinction decides where the fix belongs. If the staging DB is
-//   missing the rows, the defect is in the MEASUREMENT HARNESS
-//   (tmp/raw-ground-truth/scripts/raw-corpus-seeding.ts), not in the port, and
-//   no change under src/ can close it. This probe answers it by counting the
-//   same row set in BOTH databases through each database's own reader.
+//   missing the rows, the defect is in the MEASUREMENT HARNESS (the corpus
+//   seeding module at tests/card/render/raw-corpus-seeding.ts), not in the
+//   port, and no change under src/ can close it. This probe answers it by
+//   counting the same row set in BOTH databases through each database's own
+//   reader.
 //
 // USAGE (from the worktree root)
 //   node tools/oracle/probe-staging-db-missing-content-reference-rows.mjs \
-//     [--referee-id 568] [--out tmp/negdelta-zero/m5-staging-refs.json]
+//     [--referee-id CORPUS_CARD_ID] [--out OUT_JSON]
 //
-// EXIT SEMANTICS (re-scoped by the harness-corpus-repair lane, 2026-10-02)
-//   Originally the probe confirmed the M5 harness gap, so it exited 0 on the
-//   GAP (corpus holds rows, staging does not) and 1 on agreement — an
-//   instrument whose healthy state reads as failure. Re-scoped to
-//   graded-truth semantics: exit 0 when staging holds the rows the corpus
-//   holds (parity — the M5 gap is closed), 1 when the gap is present. The
-//   2026-10-02 pre-repair run against the stale fixture copy exited the old
-//   gap-confirmed 0 with staging at 0 of 21 rows; the same run through the
-//   committed home (or this worktree's propagated fixture shim) stages all
-//   21 rows and the exact-CQL join returns 19 in both databases.
+// EXIT SEMANTICS
+//   The probe originally exited 0 on the GAP (corpus holds rows, staging
+//   does not) and 1 on agreement -- an instrument whose healthy state reads
+//   as failure. It was re-scoped to graded-truth semantics: exit 0 when
+//   staging holds the rows the corpus holds (parity -- the staging gap is
+//   closed), 1 when the gap is present.
 
 import { register } from "node:module";
 import { writeFileSync } from "node:fs";
