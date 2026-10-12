@@ -17,8 +17,8 @@
 //   is
 // - mod-registered PATTERNS extend the frozen PATTERN_TABLE via an overlay
 //   here; patternTable() returns the combined concrete table in Ruby's
-//   registration order. The core-only case is byte-identical to the
-//   frozen table's order (oracle: help-mod-loader.json pattern_codes).
+//   registration order. With no mods loaded the result is byte-identical to
+//   the frozen table's own order.
 
 import type { ViewFn } from "../render/format.js";
 import type { PatternSpec } from "../set-patterns/registry.js";
@@ -213,8 +213,9 @@ export interface RegisteredSetting {
 /**
  * The Card::Setting groups/preferences registry. Group arrays keep Ruby's
  * exact shape INCLUDING the nil holes `grp[pos - 1] = self` leaves behind
- * (setting.rb#set_position:101-110) - the oracle capture pins them
- * (help-mod-loader.json setting_groups.editing[1] === null).
+ * (setting.rb#set_position:101-110): a registration at a position leaves
+ * every skipped slot null rather than compacted away, and a consumer that
+ * indexes by position can tell the difference.
  */
 export class SettingRegistry {
   /** group -> slot array; null = a Ruby nil hole. */
