@@ -166,8 +166,18 @@ end
 
 HANDLERS = { "render" => :op_render, "ask" => :op_ask, "write" => :op_write, "signin" => :op_signin }.freeze
 
+# The ready line names the Ruby this oracle IS, not only the gems: Ruby's own
+# environment decides some output bytes (the class-token order of a `class`
+# attribute differs between stock Windows and stock Linux Ruby at the same
+# version), so a recorded answer is only interpretable next to the interpreter
+# and platform that produced it. run.mjs copies this line into run-meta.json
+# under runs.<kind>.engine, so every capture records its own environment.
 emit("ready" => true, "protocol" => PROTOCOL, "engine" => "decko-ruby",
-     "version" => { "decko" => Gem.loaded_specs["decko"]&.version.to_s, "card" => Gem.loaded_specs["card"]&.version.to_s })
+     "version" => { "decko" => Gem.loaded_specs["decko"]&.version.to_s,
+                    "card" => Gem.loaded_specs["card"]&.version.to_s,
+                    "ruby" => RUBY_VERSION,
+                    "ruby_platform" => RUBY_PLATFORM,
+                    "ruby_engine" => RUBY_ENGINE })
 
 $stdin.each_line do |line|
   line = line.strip
