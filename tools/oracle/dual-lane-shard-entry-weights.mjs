@@ -1,14 +1,12 @@
-// dual-lane-shard-entry-weights.mjs -- 2026-10-01 measured per-shard entry
-// counts, the weight signal the direct driver's queues are balanced on
-// (w8-weight-fix lane).
+// dual-lane-shard-entry-weights.mjs -- measured per-shard entry
+// counts, the weight signal the direct driver's queues are balanced on.
 //
 // WHY THIS EXISTS
 //   The driver used to balance its W queues on PASS19_PHASE_WEIGHTS_S via
 //   buildShardWeights(). That is a STATED ASSUMPTION, not a measurement:
 //   tools/dual-lane-verifier-fast.mjs:216-223 splits each recorded phase's
 //   seconds EVENLY across that phase's two shards because the profiler could
-//   not split them. The W=8 probe (an internal work log)
-//   measured the consequence: Pearson r = -0.21 between those weights and the
+//   not split them. The W=8 probe measured the consequence: Pearson r = -0.21 between those weights and the
 //   actual per-shard entry counts across all 48 shards -- the weight signal is
 //   weakly ANTI-correlated with the work. Shard 4 carries the canvas's most
 //   entries (1161) at a recorded weight of 72.55 s; shard 47 carries 93 at
@@ -29,7 +27,7 @@
 //   across the probe's 8 measured workers, r(queue entries, render seconds) =
 //   0.290, r^2 = 0.084. Byte volume -- the obvious alternative proxy --
 //   measured worse (r = 0.12), as did view bytes (r = 0.11) and page bytes
-//   (r = 0.15). See the lane receipt. The weight is a measure of how much work
+//   (r = 0.15). The weight is a measure of how much work
 //   a queue is HANDED, not a prediction of how long that work will take.
 //
 // THE SECOND-ORDER SIGNAL, ADDED LATER IN THIS FILE
@@ -279,20 +277,19 @@ export function discoverShardNames(expectedV2Dir) {
 //   Only a PRIOR run knows them. They are read out of that run's per-worker
 //   artifacts, by two exact routes, never by estimation:
 //
-//   A. `attribution.byShard` -- written by the runner-instrument-attribution
-//      lane (d7e66af) as a sibling key on each `<label>-view.json` /
-//      `<label>-page.json`. `attribution.lane` says which lane the file covers,
+//   A. `attribution.byShard` -- written as a sibling key on each
+//      `<label>-view.json` / `<label>-page.json`. `attribution.lane` says
+//      which lane the file covers,
 //      so the two lanes of one shard never read as two sources for it.
 //   B. A single-shard aggregate -- a `<label>-aggregate.json` whose `coverage`
 //      table names exactly ONE shard. One worker, one shard, so every failure
 //      in that file belongs to that shard. This is arithmetic, not inference,
-//      and it is what makes the pre-attribution runs (the W=8 probe's
-//      worst-fail probe, the weight-fix lane's W=3 probe) usable at all.
+//      and it is what makes the pre-attribution W=8 and W=3 probes usable at all.
 //
 //   A per-worker artifact with NO attribution and a multi-shard coverage table
 //   contributes NOTHING, because its totals cannot be split between shards. The
 //   W=8 probe's own artifact directory is exactly that case and yields zero
-//   shards -- see the lane receipt; its 48-shard totals are per-WORKER, and no
+//   shards; its 48-shard totals are per-WORKER, and no
 //   amount of reading turns 8 equations into 48 unknowns.
 //
 // NEVER THROWS, NEVER GUESSES
@@ -347,7 +344,7 @@ function contributionsFromFile(obj) {
  *
  * Several directories are merged, because a real repository does not keep one
  * run's artifacts in one place: the W=8 probe's worst-fail shards, the
- * weight-fix lane's W=3 probe and a current run's own output are three
+ * weight-fix W=3 probe and a current run's own output are three
  * directories. A shard attributed more than once is CORROBORATED when every
  * attribution of it agrees exactly -- which is the normal shape of a current
  * run, where the per-lane sibling and the single-shard aggregate both describe
