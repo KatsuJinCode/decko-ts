@@ -3,16 +3,12 @@
 // them for the whole round budget, and must never pad its key IN-lists with
 // an empty member.
 //
-// THE MECHANISM (measured on the trial-deck mirror 2026-10-05; the corpus
-// numbers and both measured ends are in
-// WORK_DIR/fold-closure-prefetch-lane.md):
+// THE MECHANISM:
 //
-// 1. DeckoName.parse("+Organizer(s)") yields left.key === "" -- the name
-//    algebra's empty side before the plus. Probe-verified against
-//    src/card/name.ts at this tree.
-// 2. `cards` carries NO row with key = '' (measured on the restore-deck-synthetic
-//    snapshot: `SELECT COUNT(*) FROM cards WHERE key = ''` = 0; the
-//    15,727 `key IS NULL` rows are the side-less junctions, which an
+// 1. DeckoName.parse of a leading-plus name yields left.key === "" — the
+//    name algebra's empty side before the plus.
+// 2. `cards` carries NO row with key = '' (the `key IS NULL` rows are the
+//    side-less junctions, which an
 //    `IN (...)` list never matches anyway). So an empty key is a PROVABLE
 //    NON-MATCH through every statement the closure builds.
 // 3. driveClosure's round builder therefore spends its statement slots on
@@ -25,9 +21,6 @@
 //    never admits an empty key (prefetch.ts:735-741), so an empty-sided
 //    name can NEVER leave `pending` -- the loop re-issued byte-identical
 //    statements until MAX_CLOSURE_ROUNDS (prefetch.ts:825) ran out.
-//    On /Aikido_in_Education trips 33-49 (17 rounds x 3 statements) carried
-//    IDENTICAL sql AND IDENTICAL params, each returning the same 12
-//    already-composed junction rows.
 //
 // THE PIN: the deck below is the minimal reproduction of that shape -- two
 // unresolvable cross pairs whose junctions DO exist (so the cross-product
