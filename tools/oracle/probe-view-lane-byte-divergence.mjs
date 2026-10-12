@@ -1,17 +1,17 @@
 // probe-view-lane-byte-divergence.mjs -- reproduce a VIEW-LANE byte divergence
-// for named cards and dump every divergent region (lane-negdelta-zero).
+// for named cards and dump every divergent region.
 //
 // WHAT THIS IS
-//   The view-lane sibling of probe-negdelta-page-bytes.mjs. That probe boots
-//   the engine, renders whole PAGES and byte-diffs them against the shard's
+//   The view-lane sibling of the page-lane byte-divergence probes. Those boot
+//   the engine, render whole PAGES and byte-diff them against the shard's
 //   `page_html`. This one does the same for the VIEW lane: the expected-v2
 //   view-lane shard stores `views: { <view>: <html> }` per card, and the
 //   runner's lane-V handler is exactly `storage.engine.render(cardName, view)`
-//   (tools/oracle/dual-lane-direct-runner-core.ts:765). Same boot, same
+//   (tools/oracle/dual-lane-direct-runner-core.ts). Same boot, same
 //   comparator (src/testing/diff.ts compareNormalized) so the verdict matches
 //   the grade byte for byte.
 //
-//   Why a second probe rather than widening the page probe: a view-lane
+//   Why a separate view probe rather than widening the page probe: a view-lane
 //   failure is usually a SINGLE slot wrapper inside one card, and the grade
 //   records only the FIRST difference. When the byte-count gap is much larger
 //   than the first-diff hunk there is a SECOND divergence further in, and the
@@ -19,17 +19,15 @@
 //   first hunk alone. This probe reports EVERY non-overlapping divergence
 //   region so the size of the gap can be accounted for.
 //
-//   Boot is the runner's exact sequence: the tmp/raw-ground-truth staging
-//   seeding module, installNameEnvironment, warmLexicon over every live id.
-//   Using a different seeding module changes the byte counts (the older
-//   tests/card/render copy renders *all+*all+*follow closed at 3112 bytes
-//   where the graded run produced 3102), so the boot here must not drift.
+//   Boot is the runner's exact sequence: the configured seeding module,
+//   installNameEnvironment, warmLexicon over every live id. Using a different
+//   seeding module changes the byte counts, so the boot here must not drift.
 //
 // USAGE (from the worktree root)
 //   node tools/oracle/probe-view-lane-byte-divergence.mjs \
-//     --shard recapture-raw-shard-000017.jsonl \
+//     --shard SHARD_FILE.jsonl \
 //     --names "*all+*all+*follow" [--views closed,open] \
-//     [--out tmp/negdelta-zero/probe-view]
+//     [--out tmp/probe-view]
 //
 //   With no --names the probe grades EVERY view of EVERY card in the shard
 //   and prints only the failing entries (the "is this card still broken?"
@@ -64,17 +62,15 @@ if (SHARD === "") {
   process.exit(2);
 }
 
-//   `--seeding <path-under-repo>` OVERRIDES the staging seeding module. The
-//   GRADE does not use the staging copy: tools/oracle/dual-lane-direct-runner-
-//   core.ts:522 imports the committed home tests/card/render/raw-corpus-seeding.js
-//   because the staging copy predates the full reference-graph pass and stages
-//   3,184 card_references rows where the home stages 556,526. Running against
-//   the staging copy makes every reference-resolved slot (uploaded images, for
-//   one) render empty and can flip a graded pass into an instrument-only fail —
-//   measured on `journal skin customized+parent 1:open`, which reports -86 under
-//   the staging copy at BOTH cf7dc5c and 29ef88f while the grade passes it at
-//   cf7dc5c. Pass `--seeding tests/card/render/raw-corpus-seeding.js` to
-//   reproduce a grade verdict. The default is unchanged.
+//   `--seeding <path-under-repo>` OVERRIDES the seeding module. The GRADE
+//   does not use the staging copy: tools/oracle/dual-lane-direct-runner-core.ts
+//   imports the committed home tests/card/render/raw-corpus-seeding.js,
+//   because staging copies taken before the full reference-graph pass stage
+//   only a small fraction of the card_references rows. Running against such
+//   a copy makes every reference-resolved slot (uploaded images, for one)
+//   render empty and can flip a graded pass into an instrument-only fail.
+//   Pass `--seeding tests/card/render/raw-corpus-seeding.js` to reproduce a
+//   grade verdict. The default is unchanged.
 
 const SEEDING = argValue(
   "--seeding",

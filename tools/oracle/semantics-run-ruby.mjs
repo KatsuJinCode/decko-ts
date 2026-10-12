@@ -1,5 +1,5 @@
 // semantics-run-ruby.mjs -- run one Ruby probe under `decko runner` in the
-// private oracle app copy, against the private copy of the capture deck.
+// local oracle app copy, against the local copy of the capture deck.
 // The child runs hidden; stdout/stderr go to <log>.
 //
 // usage: node semantics-run-ruby.mjs <probe.rb> <log> [KEY=VALUE ...]

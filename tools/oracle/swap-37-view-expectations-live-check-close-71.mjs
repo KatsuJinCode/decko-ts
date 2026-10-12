@@ -1,16 +1,13 @@
-// swap-37-view-expectations-live-check-close-71.mjs -- the close-71-with-live
-// lane's 37 SHOW-KEY VIEW swap-ins: every W3 view-lane entry whose residual
-// is the conditional data-slot show key gets TODAY'S live response body as
-// its expectation, with per-entry provenance (fetched 2026-10-03T19:43Z,
-// sha-bound), following the recapture lane's swap-manifest pattern.
+// swap-37-view-expectations-live-check-close-71.mjs -- swap the conditional
+// data-slot show key's expectation for 37 view-lane entries to the freshly
+// fetched response body, with per-entry provenance (sha-bound), following the
+// swap-manifest pattern.
 //
-// WHY (live-check-71 verdicts, 71/71 LIVE-CONFIRMS-RECAPTURED): live carries
-// show on exactly the 11 discussion opens (every one show:["comment_box"])
-// and OMITS it on the 26 plain roots; the frozen corpus carries show on
-// 37/37 (stale era). Per the standing ruling (live is the only benchmark)
-// the expectation becomes today's live bytes; the ENGINE serializer fix is
-// the upstreamable spec the lane ships separately (no engine serializer
-// change in this lane).
+// WHY: the freshly fetched bodies carry the show key on exactly the
+// discussion opens and OMIT it on the plain roots; the frozen corpus carries
+// show on all 37 (a stale era). The fetched bytes are the benchmark, so the
+// expectation becomes them; the engine serializer change that would produce
+// them is specced separately (this tool changes no engine code).
 //
 // BINDING + REVERSIBILITY
 //   - Refuses unless the staging is exactly at the asset-host transform's

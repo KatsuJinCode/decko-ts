@@ -1,4 +1,4 @@
-# THE RUBY ORACLE, semantics lane.
+# THE RUBY ORACLE for the semantics questions.
 #
 # Reads the shared question set (tools/oracle/semantics-questions.rb wrote it
 # from this same deck) and answers every question id. The TypeScript probe

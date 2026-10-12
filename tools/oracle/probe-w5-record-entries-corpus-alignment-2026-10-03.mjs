@@ -1,8 +1,8 @@
-// probe-w5-record-entries-corpus-alignment-2026-10-03.mjs -- the W5
-// record-alignment lane's probe leg.
+// probe-w5-record-entries-corpus-alignment-2026-10-03.mjs -- the
+// record-alignment probe leg.
 //
 // WHAT THIS IS
-//   The 5 W5 record entries (dual-lane-view:<name>:record) have no leg in
+//   The five record entries (dual-lane-view:<name>:record) have no leg in
 //   first-diff-named-entries-probe.mjs: that harness reads line.views[view]
 //   and the record expectation is the line's `record` field, not a view.
 //   This probe is the record leg.
@@ -17,12 +17,11 @@
 //   dual-lane-direct-runner-core.ts:598-607).
 //
 //   Per target it also prints the corpus mirror row (bench-corpus-raw.sqlite3,
-//   independent read) so the probe output itself carries the row provenance
-//   the lane's swap manifest is bound to.
+//   independent read) so the probe output itself carries the row's provenance.
 //
 // USAGE (from the worktree root)
 //   node tools/oracle/probe-w5-record-entries-corpus-alignment-2026-10-03.mjs \
-//     [--out tmp/w5-record-alignment/probe]
+//     [--out tmp/record-alignment-probe]
 //
 //   Exit 0 always when the run could start (a measuring instrument, not a gate).
 
@@ -59,7 +58,7 @@ const { structureRuleUniverseStatement, structureUniverseFromResults, structured
   await import(pathToFileURL(path.join(REPO, "src", "card", "rules", "structure.js")).href);
 const { jsonValue } = await import(pathToFileURL(path.join(REPO, "src", "testing", "replay.js")).href);
 
-// The five W5 record entries: lane, shard, card name (the shard line whose
+// The five record entries: lane, shard, card name (the shard line whose
 // `record` field is the entry's expected value).
 const TARGETS = [
   { lane: "view", shard: "recapture-raw-shard-000007.jsonl", name: "*input type+*right+*content options" },

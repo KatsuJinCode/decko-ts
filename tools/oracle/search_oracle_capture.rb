@@ -1,17 +1,15 @@
-# search_oracle_capture.rb — the VALID-JSON SEARCH ORACLE (row8-parity-gaps
-# lane, 2026-10-03). Closes the semantics-parity hole named in
-# deliverables/four-parity-proof-inventory-and-plan-2026-10-03.md §B:
-# "the corpus capture records rendered views and card records, but no
-# valid-JSON search result sets". This capture records, for a FIXED
-# 11-query battery, the result sets the REAL Ruby CQL engine
+# search_oracle_capture.rb — the VALID-JSON SEARCH ORACLE. Closes the
+# semantics-parity hole where the corpus capture records rendered views and
+# card records but no valid-JSON search result sets. This capture records,
+# for a FIXED 11-query battery, the result sets the REAL Ruby CQL engine
 # (Card.search) returns over a seeded corpus — plus the corpus rows
 # themselves, so the TS pin can rebuild the same deck and compare.
 #
 # Run (from the oracle app):
 #   RAILS_ENV=development bundle exec decko runner \
-#     C:/localProjects/decko-ts-lane-row8-parity/tools/oracle/search_oracle_capture.rb
+#     REPO_ROOT/tools/oracle/search_oracle_capture.rb
 #
-# Output: fixtures/captured/search-oracle-battery.json
+# Output: the fixture JSON at OUT_PATH
 # (deep-sorted keys, 2-space pretty, trailing newline, LF — the harness
 # contract; binwrite keeps re-runs byte-stable).
 #
@@ -23,9 +21,9 @@
 #     replay uses; ORDER-BY byte order is the sql-generation tests' pin).
 #   - Seeding is create-if-missing with FIXED bytes; re-runs converge.
 #   - `match` is EXCLUDED: card 1.110 routes it through ConnectionAdapters
-#     (MySQL REGEXP / PG ~*); SQLite raises. The sentinel lives in
-#     fixtures/captured/cql-basic.json (match_sentinel) and the
-#     cql-mysql-match rung — not duplicated here.
+#     (MySQL REGEXP / PG ~*); SQLite raises. The sentinel lives in the
+#     cql-basic fixture (match_sentinel) and the cql-mysql-match rung —
+#     not duplicated here.
 #   - The reference/plus CQL caveat: plain left/right/plus ties compile to
 #     cards-table joins and run; the right_plus-with-array shape used by
 #     Auth.find_account_by_email returns [] app-wide in this scratch app

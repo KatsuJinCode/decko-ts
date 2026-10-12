@@ -1,11 +1,11 @@
 // probe-set-override-record-entries-2026-10-03.mjs
 //
-// Targeted record-leg probe of the set-override-fidelity lane (RELAUNCH #4).
-// Boots the committed corpus seeding (the same boot the graded direct runner
+// Targeted record-leg probe for set-module override fidelity. Boots the
+// committed corpus seeding (the same boot the graded direct runner
 // performs), replicates the graded card-engine record handler FIELD-FOR-FIELD
-// (tools/oracle/dual-lane-direct-runner-core.ts:723-830, including the lane's
-// set-module content override), and computes for every census override-hit
-// card's record expectation:
+// (tools/oracle/dual-lane-direct-runner-core.ts:723-830, including the
+// set-module content override), and computes for every enumerated
+// override-hit card's record expectation:
 //
 //   pre  = structuredCardContent(ctx, dbContent, universe, undefined)
 //   post = structuredCardContent(ctx, dbContent, universe, resolveSetModuleContent(ctx))
@@ -13,7 +13,7 @@
 // compared against the staging expectation's record.content bytes. Verdicts:
 //
 //   RED->GREEN   expected != pre AND expected == post  (the port flips a
-//                baseline-failing entry to byte parity — the lane's proof)
+//                baseline-failing entry to byte parity -- the probe's proof)
 //   UNMOVED-PASS expected == pre (and post == pre)     (blast-radius guard: a
 //                previously-passing entry the port must not move)
 //   LOUD-DIVERGENCE expected != pre AND expected != post BUT the post bytes
@@ -58,12 +58,12 @@ const {
 );
 const Database = (await import("better-sqlite3")).default;
 
-// The capture-deck wall clock — the runner pins it at module scope; the probe
-// replicates that so post bytes equal the graded handler's bytes.
+// The oracle deck's pinned wall clock — the runner pins it at module scope;
+// the probe replicates that so post bytes equal the graded handler's bytes.
 setCaptureWallClock(CAPTURE_WALL_CLOCK_CAPTURE_INSTANT);
 
-// The census universe (census-set-module-content-overrides-2026-10-03.mjs,
-// reproduced by this session's census run). id -> { module, wired }.
+// The enumerated override-hit card set (derived by
+// census-set-module-content-overrides-2026-10-03.mjs). id -> { module, wired }.
 const CENSUS = [
   { id: 4032, module: "Self::alerts", wired: true },
   { id: 33852, module: "Self::bootstrap_core", wired: true },
@@ -236,11 +236,11 @@ function modLoudShapeMatch(expected, port) {
   const eLines = expected.split("\n");
   const pLines = port.split("\n");
   if (eLines.length !== pLines.length) return { match: false, why: "line-count" };
-  // The captured bytes carry NO mod names: Ruby's "#{mod}_mod" interpolation
-  // stringified the Cardio::Mod OBJECT (no #to_s), so every expected line is
-  // Object#to_s = "#<Cardio::Mod:0xADDR>_mod". The derivable invariants are
-  // the line count and the inspect shape; the port's "<mod>_mod" name lines
-  // are the documented loud divergence (receipt t1/t3).
+  // The oracle's expected bytes carry NO mod names: Ruby's "#{mod}_mod"
+  // interpolation stringified the Cardio::Mod OBJECT (no #to_s), so every
+  // expected line is Object#to_s = "#<Cardio::Mod:0xADDR>_mod". The
+  // derivable invariants are the line count and the inspect shape; the
+  // port's "<mod>_mod" name lines are the documented loud divergence.
   if (!eLines.every((l) => LOUD_MOD_LINE.test(l))) return { match: false, why: "expected-shape" };
   if (!pLines.every((l) => l.endsWith("_mod"))) return { match: false, why: "port-shape" };
   return { match: true, lineCount: eLines.length };

@@ -1,5 +1,5 @@
-# Generates the semantics question set from the REAL deck (all cards in the
-# corpus of record's capture deck) plus targeted edge cases.
+# Generates the semantics question set from the REAL deck (every card in the
+# captured corpus) plus targeted edge cases.
 #
 # The output is engine-neutral JSON: every probe (Ruby and TypeScript) reads
 # the SAME questions file and answers the SAME ids, so the comparison is a

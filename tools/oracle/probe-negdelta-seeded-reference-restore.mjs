@@ -1,21 +1,20 @@
 // probe-negdelta-seeded-reference-restore.mjs -- the falsification test for
-// the negative-delta page family's root cause (lane-negdelta, attempt 3).
+// the negative-delta page family's root cause.
 //
 // WHAT THIS IS
-//   The negative-delta page family (145 page-lane failures where the TS port
-//   renders FEWER bytes than the Ruby oracle; 99 of them, 967,642 of the
-//   family's 1,084,985 missing bytes, carry one dominant dropped list block)
-//   was localized to ONE cause: the search content views on those pages
-//   resolve to `search-no-results` on our side because the seeded staging
-//   deck's `card_references` table carries no rows for ordinary content-card
-//   referers. tmp/raw-ground-truth/scripts/raw-corpus-seeding.ts:163-172
-//   seeds reference rows ONLY for referers in the read-rule universe
-//   (`refs`), plus the set-card (`setRefs`, :215-239) and set-child
-//   (`childRefs`, :261-298) walks; the three insertion loops are :435-450.
+//   The negative-delta page family (page-lane failures where the TS port
+//   renders FEWER bytes than the Ruby oracle, dominated by one dropped list
+//   block) was localized to ONE cause: the search content views on those
+//   pages resolve to `search-no-results` on our side because the seeded
+//   staging deck's `card_references` table carries no rows for ordinary
+//   content-card referers. tests/card/render/raw-corpus-seeding.ts seeds
+//   reference rows ONLY for referers in the read-rule universe (`refs`),
+//   plus the set-card (`setRefs`) and set-child (`childRefs`) walks -- those
+//   are the only three insertion loops it runs.
 //
-//   probe-negdelta-search-mechanism.mjs shows the engine's own generated SQL
-//   is CORRECT and returns 0 rows ONLY because the staging table is empty
-//   for the referer. This probe closes the loop in the other direction: it
+//   Earlier probes in this family showed the engine's own generated SQL is
+//   CORRECT and returns 0 rows ONLY because the staging table is empty for
+//   the referer. This probe closes the loop in the other direction: it
 //   runs the SAME page render twice against two fresh storage boots --
 //
 //     PHASE A  the stock seeding (the graded configuration)
@@ -33,8 +32,8 @@
 //
 // USAGE (from the worktree root)
 //   node tools/oracle/probe-negdelta-seeded-reference-restore.mjs \
-//     --shard recapture-raw-shard-000000.jsonl \
-//     --names "somatic|Archetypal" [--out tmp/negdelta-restore-probe]
+//     --shard SHARD_FILE.jsonl \
+//     --names "PAGE_A|PAGE_B" [--out tmp/negdelta-restore-probe]
 //
 //   The shard is a single argument; every name in --names must live in it.
 
@@ -82,7 +81,7 @@ const entries = WANT_NAMES.map((n) => {
 const rawCorpus = new Database(RAW_CORPUS_DB, { readonly: true });
 const everyLiveId = rawCorpus.prepare("SELECT id FROM cards WHERE trash = 0").all().map((r) => r.id);
 
-/** Fresh engine boot, the exact sequence probe-negdelta-page-bytes.mjs uses. */
+/** Fresh engine boot: the standard boot sequence this probe family uses. */
 async function boot() {
   const storage = await createRawStructureSeededStorage(new Set(everyLiveId));
   storage.fetcher.installNameEnvironment();
@@ -133,8 +132,7 @@ storageA.close();
 // The referer set is derived, not hardcoded: for each page, the raw corpus's
 // own card_references rows where the page card is EITHER side. Both directions
 // matter -- `referred_to_by` is a referee-side join, `refer_to` is a
-// referer-side join, and the two probes above showed both shapes in this
-// family (somatic/Archetypal reverse, media+HBQ+youtube videos forward).
+// referer-side join, and both shapes occur in this family.
 
 const pageIds = new Map();
 for (const line of entries) {
@@ -161,9 +159,9 @@ console.log(`  extra card_references rows the raw corpus holds for these pages: 
 console.log("PROBE phase B: stock seeding + those rows inserted into the staging deck");
 const storageB = await boot();
 for (const r of extraRows) {
-  // ref_type is carried this time -- the stock seeding's three loops
-  // (raw-corpus-seeding.ts:435-450) never select it, so seedReference's
-  // default "L" (render-test-storage.ts:306) labels every seeded row 'L'.
+  // ref_type is carried this time -- the stock seeding's three insertion
+  // loops never select it, so seeded rows all carry the storage layer's
+  // default "L" ref_type.
   await storageB.fetcher.driver.query(
     `INSERT INTO card_references (referer_id, referee_key, referee_id, ref_type, is_present) VALUES (?, ?, ?, ?, NULL)`,
     [r.referer_id, r.referee_key, r.referee_id, r.ref_type],

@@ -12,22 +12,22 @@
 // THE RESTORE MECHANISM (what "capture deck state" is, measured by this
 // instrument's identity stage):
 //   - The capture manifest (expected-v2/capture-manifest.json) binds the
-//     expected-v2 photograph to the deck-recapture corpus copy
-//     (tmp/raw-ground-truth/deck-recapture/corpus-v2.sqlite3), with
-//     change-counter 4 before AND after — the file the capture left in place.
-//   - That file is a SCRUBBED REBUILD: content names and bodies are
-//     randomized in place — its verdicts are NOT ground truth — but the
-//     scrub is not a sqlite transaction (change counter still 4).
-//   - This instrument MEASURED the scrub's blast radius: across
-//     all 49,829 card rows the capture deck is EXACTLY equal to
-//     bench-corpus-raw.sqlite3 (the raw dump) on every
-//     structural column (id, type_id, trash, left_id, right_id, codename) and
-//     on the full card_references graph (556,526 rows); it differs on names,
-//     contents (randomized) and timestamps (rebuild clocks). The dump is
-//     therefore the ONLY real-name/real-content witness of capture-time row
-//     state, and the capture deck independently witnesses capture-time
-//     STRUCTURE. RESTORE = dump rows (real names/content), cross-witnessed by
-//     the capture deck on structure+graph.
+//     expected-v2 photograph to the capture-time corpus copy on disk, with
+//     the sqlite change-counter unchanged — the file the capture left in
+//     place.
+//   - That copy is a SCRUBBED REBUILD: names and bodies are randomized in
+//     place, so its content fields are NOT ground truth (and the scrub was
+//     not a sqlite transaction, so the change counter does not reveal it).
+//   - This instrument MEASURED the scrub's blast radius: across every card
+//     row the capture deck is EXACTLY equal to bench-corpus-raw.sqlite3
+//     (the raw dump) on every structural column (id, type_id, trash,
+//     left_id, right_id, codename) and on the full card_references graph;
+//     it differs on names, contents (randomized) and timestamps (rebuild
+//     clocks). The dump is therefore the ONLY real-name/real-content
+//     witness of capture-time row state, and the capture deck
+//     independently witnesses capture-time STRUCTURE. RESTORE = dump rows
+//     (real names/content), cross-witnessed by the capture deck on
+//     structure+graph.
 //
 // STAGES
 //   identity  provenance hash gate (capture deck MUST match the manifest;
@@ -78,13 +78,10 @@ const OUT_DIR = path.join(REPO_ROOT, "tmp", "re-photograph");
 const RECORDED_DUMP_SHA256 =
   "6a44dfdc20ca941e66da6ba08add7f1a5cf35ec1a3ba75cc43a70920e609440e";
 
-/** The 11 unmeasured falsification rows — rows that appear in NO capture
- *  shard — minus one correction this instrument verified: Task+Log Entry
- *  (21907) is NOT unmeasured — it IS a captured
- *  entry (view-lane shard 000016, content+open), so it moved to the measured
- *  entry table below. Remaining unmeasured: Conversation+attachments (22006
- *  junction -> 22007 set) and Units+01..10 (37915/18/...42 junctions ->
- *  37916/19/...43 sets). */
+/** The unmeasured falsification rows — rows that appear in NO capture
+ *  shard — as corrected by this instrument's verification: one row first
+ *  listed here turned out to BE a captured entry with its own oracle
+ *  bytes and moved to the measured entry table below. */
 const UNMEASURED_TPR_SET_IDS = [
   22007, 37916, 37919, 37922, 37925, 37928, 37931, 37934, 37937, 37940, 37943,
 ];
@@ -136,11 +133,9 @@ const ENTRIES = [
     signatureNeedles: ["/14547/1.doc", "61887.abr.1.doc"],
   },
   {
-    // This instrument corrected the unmeasured list: 21907 was listed among
-    // the falsification rows that appear in NO capture shard, but it IS a
-    // captured entry (view-lane
-    // shard 000016, content+open) — a measured sibling of the falsification
-    // pair with its own oracle bytes.
+    // Once listed among the falsification rows that appear in NO capture
+    // shard; this instrument verified it IS a measured entry with its own
+    // oracle bytes, so it belongs in the entry table.
     key: "task-log-entry-tpr-content",
     finding: "message-tpr",
     name: "Task+Log Entry+*type plus right",

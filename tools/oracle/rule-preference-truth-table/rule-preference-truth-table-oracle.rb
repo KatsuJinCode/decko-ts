@@ -1,5 +1,5 @@
 # rule-preference-truth-table-oracle.rb -- static-ruby oracle for the
-# `rule?` predicate (restore-w1-helppopover lane, 2026-10-03).
+# `rule?` predicate.
 #
 # WHAT RUNS: the gem's own source lines, extracted VERBATIM from
 # prototype/lib/card/rule/all.rb (the tree's copy of card's
@@ -29,8 +29,8 @@
 #   Card.fetch_type_id - all.rb's fetch is DB-backed (fetch/card_class.rb:92:
 #                     fetch(mark, skip_modules: true)&.type_id). Stubbed over
 #                     the corpus facts table produced by
-#                     generate-facts-from-corpus.mjs (read-only
-#                     bench-corpus-raw.sqlite3 walk). A miss returns nil --
+#                     generate-facts-from-corpus.mjs (read-only corpus walk).
+#                     A miss returns nil --
 #                     Ruby's fetch-returns-nil path.
 #   CardDouble#[]    - valid_preferer?'s `self[-2, skip_modules: true]`
 #                     (all.rb:52): a fetch of the second-to-last name part.
@@ -39,8 +39,7 @@
 #   CardDouble#codename - returns the corpus codename as a SYMBOL (decko
 #                     codenames are symbols; all.rb:53 compares == :all).
 #   SettingID/SetID/UserID - the corpus's own codename-card ids
-#                     (typeConstantIds in the facts file: set=259,
-#                     setting=278, user=4), never hardcoded.
+#                     (typeConstantIds in the facts file), never hardcoded.
 #
 # Each JSONL line on stdout carries the gemSource line range so the
 # provenance discipline can cite exactly which verbatim bytes produced it.

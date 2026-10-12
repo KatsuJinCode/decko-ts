@@ -3,18 +3,18 @@
 // resulting mini_bar body class.
 //
 // WHY
-//   M2: the oracle renders the FULL bar body inside a `mini_bar-view` slot for
-//   `mytho-psychology` (Project/398); the port renders the two-span denied
-//   body. The slot JSON is byte-identical on both sides, so the decision is
-//   the body, and the body is chosen by `verdict?.read === true` in
+//   The oracle renders the FULL bar body inside a `mini_bar-view` slot for a
+//   phantom pointer item; the port renders the two-span denied body. The
+//   slot JSON is byte-identical on both sides, so the decision is the body,
+//   and the body is chosen by `verdict?.read === true` in
 //   views.ts#renderUnknownPointerListItem. This probe shows what verdict the
-//   engine actually holds for that (host, item) pair at render time, which is
-//   what decides it — a direct read of the branch input rather than a
+//   engine actually holds for that (host, item) pair at render time, which
+//   is what decides it -- a direct read of the branch input rather than a
 //   re-derivation.
 //
 // USAGE
 //   node tools/oracle/probe-trace-phantom-item-verdict.mjs \
-//     --name "Quicksilver+Core Project" --view open [--trace]
+//     --name "HOST_CARD+ITEM_CARD" --view open [--trace]
 
 import { register } from "node:module";
 import path from "node:path";

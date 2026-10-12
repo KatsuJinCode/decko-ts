@@ -1,13 +1,13 @@
 // probe-negdelta-search-ref-rows-are-the-gap.mjs -- the falsification test for
-// the negative-delta page family's root cause (lane-negdelta, attempt 3).
+// the negative-delta page family's root cause.
 //
 // WHAT THIS IS
-//   The negative-delta page family (145 page-lane failures where the TS port
-//   renders FEWER bytes than the Ruby oracle; 100 of them carrying 1,040,713
-//   of the family's 1,084,985 missing bytes, all in one dropped search-result
-//   list block) is caused by MISSING STAGED DATA, not by a wrong query.
+//   The negative-delta page family (page-lane failures where the TS port
+//   renders FEWER bytes than the Ruby oracle, the bulk of the missing bytes
+//   sitting in one dropped search-result list block) is caused by MISSING
+//   STAGED DATA, not by a wrong query.
 //
-//   Measured already (probe-negdelta-search-mechanism.mjs):
+//   Already established by earlier probes in this family:
 //     - the engine's own generated SQL is CORRECT;
 //     - run against the RAW corpus it returns the exact decks the Ruby
 //       oracle renders;
@@ -34,8 +34,8 @@
 //
 // USAGE (from the worktree root)
 //   node tools/oracle/probe-negdelta-search-ref-rows-are-the-gap.mjs \
-//     --shard recapture-raw-shard-000008.jsonl \
-//     --names "media+HBQ+YouTube Browser" [--out tmp/negdelta-refrows-probe]
+//     --shard SHARD_FILE.jsonl \
+//     --names "CARD_NAME" [--out tmp/negdelta-refrows-probe]
 
 import { register } from "node:module";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
@@ -126,9 +126,8 @@ storageA.close();
 //
 // Derived, not hardcoded: every card in the deck whose content names a
 // `referred_to_by` target, resolved through the raw corpus, plus the
-// referee_id its own reference rows point at. For the HBQ family this is
-// card 12195 (media+HBQ+youtube videos), the plain content list card the
-// two search cards query.
+// referee_id its own reference rows point at. That yields the plain
+// content list card the page's search cards actually query.
 
 console.log("PROBE: referers the search cards query, and the rows the corpus holds");
 const refererIds = new Set();

@@ -1,15 +1,15 @@
 // probe-search-cql-throws-instead-of-returning-rows.mjs -- show the throw
-// runSearch hides (lane-negdelta-zero, M5).
+// runSearch hides.
 //
 // WHAT THIS IS
 //   `RenderEngine#runSearch` wraps its whole read in `try { ... } catch { return
 //   [] }` (src/card/render.ts:5588). Every failure mode therefore presents to
 //   the grade as the SAME symptom -- a `card_list` view that renders
-//   `search-no-results` -- with no record of why. The two census pages
-//   (Family, Archetypal) nest `{{_self+*referred_to_by}}`, whose cql is
-//   `{"refer_to":"_left","sort":"name"}`; the corpus holds 21 rows in
-//   card_references pointing at id 568 (Family), so the query has rows to
-//   return and returns none.
+//   `search-no-results` -- with no record of why. Pages nesting a
+//   `{{_self+*referred_to_by}}` Search card run the cql
+//   `{"refer_to":"_left","sort":"name"}`; the corpus holds card_references
+//   rows pointing at the referenced card, so the query has rows to return
+//   and returns none.
 //
 //   This probe re-issues the host's OWN cql through `executeQuery` with the
 //   SAME query options runSearch builds, WITHOUT the catch, so the actual
@@ -20,7 +20,7 @@
 //
 // USAGE (from the worktree root)
 //   node tools/oracle/probe-search-cql-throws-instead-of-returning-rows.mjs \
-//     --page Family [--host-key "family+*referred_to_by"] [--out tmp/negdelta-zero/m5-throw.json]
+//     --page PAGE_NAME [--host-key "page_key+*referred_to_by"] [--out OUT_JSON]
 //
 //   Exit 0 when the unguarded query reproduces a throw or a zero-row result
 //   where the corpus holds reference rows, 1 when it returns rows.
@@ -123,9 +123,10 @@ for (const key of keys) {
 
       // The first three bound params of the reference-tie subquery are the
       // reftype pair and the referee id. -999 is the parser's
-      // unresolvable-name sentinel; the corpus holds 21 card_references rows
-      // with referee_id = 568 (Family), so anything but 568 there is the
-      // defect, and naming the wrong id is the whole diagnosis.
+      // unresolvable-name sentinel; the corpus holds card_references rows
+      // for the referenced card, so anything but that card's corpus id in
+      // the referee param is the defect, and naming the wrong id is the
+      // whole diagnosis.
       if (Array.isArray(params)) {
         const tail = params.slice(0, 3);
         entry.attempts[label].refereeTailParams = tail;

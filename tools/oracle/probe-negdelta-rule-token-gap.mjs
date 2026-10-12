@@ -1,11 +1,9 @@
 // probe-negdelta-rule-token-gap.mjs -- why `*all+*all+*follow` renders its
-// slot class list WITHOUT the bare `RULE` token (3 negative entries:
-// dual-lane-view:*all+*all+*follow:render:closed/-open, and the page lane's
-// titled-view).
+// slot class list WITHOUT the bare `RULE` token that the oracle's list
+// carries for the same card.
 //
 // WHAT THIS IS
-//   The newest post-b8760ad grade (artifacts-affected-rerun) shows for
-//   `*all+*all+*follow`:
+//   For `*all+*all+*follow` the two slot class lists differ by one token:
 //     expected  ALL ALL_PLUS TYPE-list RSTAR RULE RIGHT-Xfollow
 //               TYPE_PLUS_RIGHT-rich_text-Xfollow SET
 //     actual    ALL ALL_PLUS TYPE-list RSTAR       RIGHT-Xfollow

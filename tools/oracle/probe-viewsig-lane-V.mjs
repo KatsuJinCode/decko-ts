@@ -3,7 +3,7 @@
 // WHAT THIS IS
 //   One engine boot, then `engine.render(cardName, view)` for an explicit
 //   list of (name, shard, view) triples, compared byte-for-byte against the
-//   captured Ruby oracle HTML in tmp/raw-ground-truth/expected-v2/view-lane/.
+//   Ruby oracle HTML stored in the expected-v2 view-lane shards.
 //   For each target it reports the same fields the grade's failure record
 //   carries -- id, area, signature, first-difference code-unit offset,
 //   expected/actual bytes -- plus the HTML context around the first
@@ -16,11 +16,11 @@
 //
 // USAGE (from the worktree root)
 //   node tools/oracle/probe-viewsig-lane-V.mjs \
-//     --entries "*input type+*right+*content options::recapture-raw-shard-000007.jsonl::open" \
+//     --entries "*input type+*right+*content options::SHARD_FILE.jsonl::open" \
 //     [--out tmp/viewsig-probe] [--context 240]
 //
 //   --entries entries are separated by "|", each "name::shard::view".
-//   With no --entries the probe uses the 29 census target ids.
+//   With no --entries the probe uses its built-in target list.
 
 import { register } from "node:module";
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
@@ -43,9 +43,9 @@ const CONTEXT = Number(argValue("--context", "240"));
 const RAW_ENTRIES = argValue("--entries", "");
 const QUIET = argValue("--quiet", "") === "1";
 
-// The 29 view-lane failures the census names for shards 000000-000011, as
-// (name, shard, view). "record" entries are lane-V card-engine records and
-// have no view; the caller handles those through --card-engine instead.
+// The built-in probe targets, as (name, shard, view). "record" entries are
+// lane-V card-engine records and have no view; the caller handles those
+// through --card-engine instead.
 const CENSUS_TARGETS = [
   ["Klickstein continues+discussion", "recapture-raw-shard-000005.jsonl", "open"],
   ["*input type+*right", "recapture-raw-shard-000000.jsonl", "content"],
@@ -82,9 +82,9 @@ const ENTRIES = RAW_ENTRIES
   : CENSUS_TARGETS.map(([name, shard, view]) => ({ name, shard, view }));
 
 // Seeding rides the COMMITTED home (tests/card/render/raw-corpus-seeding.ts),
-// whose relative ../../../src imports resolve to THIS repo's engine — the
-// tmp/raw-ground-truth junction copy would import the negdelta worktree's
-// src instead and silently render another tree's code.
+// whose relative ../../../src imports resolve to THIS repo's engine — a
+// junctioned copy of that module from another worktree would import that
+// worktree's src instead and silently render another tree's code.
 const { createRawStructureSeededStorage, RAW_CORPUS_DB } = await import(
   pathToFileURL(path.join(REPO, "tests", "card", "render", "raw-corpus-seeding.js")).href
 );

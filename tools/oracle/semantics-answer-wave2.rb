@@ -1,4 +1,4 @@
-# THE RUBY ORACLE, semantics lane, second wave.
+# THE RUBY ORACLE for the semantics questions, second wave.
 #
 # Re-answers the first-wave questions whose Ruby probe was wrong, and answers
 # the second-wave questions (tools/oracle/semantics-extend-questions.mjs):

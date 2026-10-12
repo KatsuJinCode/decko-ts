@@ -1,32 +1,28 @@
-# read-rule-union-and-codename-reset-probe.rb - P1.4.b + E4.2.a oracle probe
+# read-rule-union-and-codename-reset-probe.rb - Ruby truth probe for the
+# read-rule derivation and the codename cache reset.
 #
 # Ruby truth pinned (runs on a DISPOSABLE COPY of the oracle deck's
 # db/development.sqlite3 via the DATABASE_URL override; the copy is mutated
 # BY DESIGN - every write is enumerated in the fixture's provenance block;
 # the canonical oracle deck is never opened for write):
 #
-#   P1.4.b (card-mod-permissions set/all/permissions.rb:139-144 ok_to_read?):
-#     `self.read_rule_id ||= permission_rule_id :read` - a card row with
-#     read_rule_id NULL does NOT mean "public"; Ruby DERIVES the rule live
-#     and the verdict equals the stored-rule twin. The corpus has zero
-#     trash=0 rows with read_rule_id NULL, which is why this arm was
-#     pinned-synthetic; this probe manufactures the rows on the copy.
-#   E4.2.a (card-1.110.0 lib/card/codename.rb:80-84 reset_cache +
-#     mod/core/set/all/codename.rb:9-13 event :reset_codename_cache,
-#     :integrate, changed: :codename): the codehash is an in-process memo
-#     (@codehash ||= load_codehash, codename.rb:118-120) with NO db
-#     fallthrough in []/id, so a raw-SQL codename change stays STALE until a
-#     real save fires the event and reset_cache nils the memo and rebuilds.
+#   read-rule derive arm:
+#     a card row with read_rule_id NULL does NOT mean "public"; Ruby DERIVES
+#     the rule live and the verdict equals the stored-rule twin. The corpus
+#     has zero trash=0 rows with read_rule_id NULL, which is why this arm is
+#     exercised on manufactured rows created on the copy.
+#   codename cache reset arm (prototype/lib/card/codename.rb, reset_cache):
+#     the codehash is an in-process memo (@codehash ||= load_codehash) with
+#     NO db fallthrough in []/id, so a raw-SQL codename change stays STALE
+#     until a real save fires the reset event, nils the memo and rebuilds.
 #
 # Run (Git Bash, from the oracle app dir):
-#   cd REPO_ROOT/tools/oracle/decko-oracle-app
 #   RAILS_ENV=development \
 #   DATABASE_URL=sqlite3:REPO_ROOT/tmp/read-rule-union-and-codename-reset-ruby-probe/deck-copy.sqlite3 \
 #   bundle exec decko runner \
 #     REPO_ROOT/tools/oracle/read-rule-union-and-codename-reset-probe.rb
 #
-# Output: fixtures/captured/codename-reset-and-read-rule-union-oracle.json
-# (in this repo).
+# Output: the fixture JSON named by OUT_PATH below.
 
 require "json"
 
@@ -36,7 +32,7 @@ OUT_PATH = File.join(REPO_ROOT, "fixtures", "captured",
 SLOT_ID_RE = /data-slot-id=(["'])\h+\1/.freeze
 
 # Slot ids are stored exactly as Ruby wrote them (value and quote style);
-# graders mask the random value at compare time (reference-harness N1).
+# graders mask the random value at compare time.
 def normalize(html)
   html
 end
@@ -67,7 +63,7 @@ fixture = {
 
 # ---- P1.4.b: the read-rule derive arm ---------------------------------------
 
-TARGET_ID = 605 # "Oracle Basics" - Anonymous read-DENIED (stored rule)
+TARGET_ID = 605 # governed card, Anonymous read-DENIED under the stored rule
 
 p14b = {}
 stored = raw_sql("SELECT read_rule_id FROM cards WHERE id = #{TARGET_ID}")

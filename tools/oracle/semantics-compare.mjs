@@ -1,8 +1,9 @@
 // semantics-compare.mjs -- diff the Ruby and TypeScript semantics answers.
 //
 // Scoring is at ITEM level, not question level: a question whose answer is a
-// list of 47,235 cards scores as 47,235 items, so a single naming or
-// permission difference cannot hide inside a bulk question's pass mark.
+// list of tens of thousands of cards scores as one item per card, so a single
+// naming or permission difference cannot hide inside a bulk question's pass
+// mark.
 //
 // A list of records is compared record by record (deep equality per index);
 // a list of scalars is compared for membership and for order separately,

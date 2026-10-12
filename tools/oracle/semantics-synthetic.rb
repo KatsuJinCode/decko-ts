@@ -4,7 +4,7 @@
 # type_code?, content}]}) as Decko Bot, answers the question file through
 # semantics-answer-wave2.rb, and rolls every write back. Used for mods no card
 # in the deck exercises: the cards exist only inside this transaction, on a
-# private deck copy.
+# local deck copy.
 #
 # Run: decko runner semantics-synthetic.rb
 #   SEMANTICS_SYNTHETIC=<cards.json> SEMANTICS_QUESTIONS=<questions.json>
