@@ -12,16 +12,21 @@
 // meaningful change still fails.
 
 /**
- * N1's token shape: the `data-slot-id` attribute holding exactly 20 lowercase
- * hex digits, in attribute position, quote style kept. Ruby Decko draws it at
- * random for every render, so two oracle runs of one fixture differ in it and
- * nowhere else (REFERENCE-HARNESS evidence: 9,056 slot ids in 1,350 renders).
+ * N1's token shape: a `data-slot-id` attribute carrying exactly 20 lowercase
+ * hex digits, preceded by whitespace and quoted. The opening quote is captured
+ * and backreferenced, so a value wrapped in mismatched quotes does not match.
+ * Ruby Decko draws that value afresh for every render, so two oracle runs of
+ * one fixture differ here and nowhere else — a measured run counted 9,056 slot
+ * ids across 1,350 renders.
  *
- * This regex is the token's shape for evidence counting (compare-runs.mjs
- * matches it against raw recorded strings). The mask itself is applied only
- * where the HTML grammar puts an attribute — see normalizeHtml — because a
- * preceding space alone also matches text like `<p>Example data-slot-id=…</p>`,
- * and masking that would erase a visible difference (finding 6).
+ * This regex defines the token's shape and nothing more: compare-runs.mjs
+ * matches it against raw recorded strings to count how many paired values
+ * actually differ. It is deliberately not the mask. Matching here requires
+ * only a preceding space, which ordinary text supplies as well — in
+ * `<p>Example data-slot-id=…</p>` the characters are visible prose, and
+ * masking them would erase a real difference. The mask is applied only where
+ * the tokenizer has established a true attribute, in
+ * normalizeTagAttributes.
  */
 export const SLOT_ID = /(?<=\s)data-slot-id=(["'])[0-9a-f]{20}\1/g;
 
@@ -32,9 +37,9 @@ export const SLOT_ID = /(?<=\s)data-slot-id=(["'])[0-9a-f]{20}\1/g;
 // tokenizer never leaves the plaintext state, so everything from `<plaintext>`
 // to EOF is displayed text (a `</plaintext>` look-alike is text too, as is a
 // self-closing slash). Everything between the open tag and the end of the
-// body is compared byte for byte. (Review round 3, finding 6: inside xmp and
-// plaintext, a `data-slot-id="…"` look-alike is VISIBLE text, never an
-// attribute, so it must not be masked.)
+// body is compared byte for byte. Inside xmp and plaintext the tokenizer is
+// still in its raw text state, so a `data-slot-id="…"` look-alike is displayed
+// characters rather than an attribute, and no mask site is ever offered.
 const RAW_TEXT_ELEMENTS = new Set(["script", "style", "textarea", "title", "xmp"]);
 const RAW_TEXT_NEVER_CLOSES = "plaintext";
 
