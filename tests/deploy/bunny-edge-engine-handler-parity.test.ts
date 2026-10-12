@@ -190,8 +190,8 @@ describe("bunny edge engine handler — the shared read surface", () => {
     // THE UNCONFIGURED CASE, and the regression
     // guard for the defect itself: with no deltas in the environment the
     // builder has no layout-rule anchors to resolve this deck's Default
-    // Layout with, so its documented fallback answers — and no corpus card
-    // id, private asset URL or version pin from another deck reaches it.
+    // Layout with, so its documented fallback answers — and no other deck's
+    // card id, private asset URL or version pin reaches it.
     //
     // This runs FIRST in the suite on purpose. The handler memoizes ONE deck
     // per isolate (`deckPromise` in bunny-edge-engine-handler.ts), and the
