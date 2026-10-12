@@ -8427,7 +8427,7 @@ export class RenderEngine implements RenderEngineLike {
    *  `*captcha+*right+*autoname` are both rule cards). Gates the rule-bar
    *  behaviors: bar_view.rb:10's `_rule-item` class_up + category classes,
    *  bar_view.rb:2-3's three-column bar_cols (5,4,3) with bar_middle kept,
-   *  and the bar_menu's new-card create/edit label split. The corpus's
+   *  and the bar_menu's new-card create/edit label split. A
    *  `mod: format+*style` (left "mod: format" is Mod-typed, NOT a Set) is
    *  NOT a rule card — its bar renders WITHOUT `_rule-item`. */
   cardMatchesRuleSet(card: RenderCard): boolean {
@@ -8534,7 +8534,7 @@ export class RenderEngine implements RenderEngineLike {
    * queries (this is what makes warm re-renders free).
    *
    * Template references recorded in structureRefMisses are skipped: they
-   * name cards that do not exist (the corpus's {{xxxx}} nest targets), so
+   * name cards that do not exist (placeholder {{xxxx}} nest targets), so
    * waiting for them would keep structured cards permanently cold — Ruby
    * renders those nests as unknown-card views, and so does the port's nest
    * path.
@@ -8618,8 +8618,8 @@ export class RenderEngine implements RenderEngineLike {
         if (!seen.has(ref)) queue.push(ref);
       }
       // Same typeCode gate as prepareSearches (see SEARCH_TYPE_CODE comment):
-      // the corpus's search cards have type cards whose NAME is random,
-      // so matching on typeName silently skips them and warm-closure never
+      // the search card's type card can carry a NAME with no semantic
+      // hint, so matching on typeName silently skips it and warm-closure never
       // reports ready.
       if (card.typeCode === SEARCH_TYPE_CODE && !this.searchResults.has(card.key)) {
         return false;
@@ -8756,10 +8756,10 @@ export class RenderEngine implements RenderEngineLike {
    * and Date.parse fire INSIDE the dispatched view method
    * (cql_search.rb:29-38; view/permission.rb:46-50 wraps the denial BEFORE
    * view_method, so only readable cards ever parse), and only on the
-   * result-rendering views — the capture census pins search :open/:content
-   * as CAPTURE_ERROR (24 each) while :closed/:title carry real bytes
-   * (105/105 each; date likewise, corpus:1135). The eager throw here both
-   * over-raised (date :closed/:title — 1,066 corpus views where Ruby
+   * result-rendering views — the census pins search :open/:content
+   * as raising on a subset while :closed/:title carry real bytes
+   * (date likewise). The eager throw here both
+   * over-raised (date :closed/:title, thousands of views where Ruby
    * rendered) and, via the prewarm driver's catch arm, poisoned the seat so
    * dispatched views never raised at all. Now a parse failure is RECORDED
    * (searchFailures, with the exact error object the dispatched view
@@ -8791,8 +8791,8 @@ export class RenderEngine implements RenderEngineLike {
       // RELATIVE reference to its search card, so the search never joined
       // the walk, never pre-executed, and the dispatched card_list read
       // searchResults.get(key) ?? [] - the search-no-results bytes on the
-      // graded children:open entry (probe-green3: -6186) where live renders
-      // the two referer bars (corpus 30315 + 31591). Ruby has no such gap
+      // graded children:open entry where live renders
+      // the two referer bars. Ruby has no such gap
       // to close: set/abstract/0_search/views.rb view :card_list calls
       // search_with_params INSIDE the view dispatch (see the
       // prepareNestClosureSearches doc's Ruby-parity note), so every
