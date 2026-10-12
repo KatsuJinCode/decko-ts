@@ -1,15 +1,14 @@
 // Test storage for the fetch/cache-layer tests: an in-memory better-sqlite3
 // database (via the REAL LocalSqliteDriver) loaded with db/schema.sqlite.sql,
-// plus plain-INSERT seed helpers. Lives INSIDE tests/card/fetch per the
-// stream boundaries; seeded cards are written DIRECTLY as rows because the
-// write path is another stream - this mirrors how the capture's oracle DB
-// was seeded upstream.
+// plus plain-INSERT seed helpers. Lives INSIDE tests/card/fetch next to its
+// consumers; seeded cards are written DIRECTLY as rows because the write path
+// is exercised by a different suite.
 //
 // Why the DDL goes through driver.query one statement at a time:
 // LocalSqliteDriver owns its connection and exposes no exec(), and
 // better-sqlite3's prepare() rejects multi-statement strings. The schema
-// file is machine-generated DDL (no ";" inside literals - verified by scan),
-// so a quote-aware comment-stripping splitter is sufficient.
+// file is machine-generated DDL (no ";" inside literals), so a
+// quote-aware comment-stripping splitter is sufficient.
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -21,14 +20,13 @@ import { FetchEngine } from "../../../src/card/fetch.js";
 
 /** Split a DDL file into executable statements: strip `--` comments
  *  (quote-aware - the DDL carries no "--" inside literals) and split on ";".
- *  TRIGGER-AWARE (both the freshness lane's deck_data_version stamp and the
- *  plan-invalidation lane's render-plan drop triggers): a CREATE TRIGGER body
+ *  TRIGGER-AWARE (the deck_data_version freshness stamp and the
+ *  render-plan invalidation drop triggers): a CREATE TRIGGER body
  *  carries its own ";" before its closing "END;" — while inside a body, ";"
  *  does not terminate the statement and the body ends at the bare word END.
- *  This is what lets one test deck install the freshness lane's REAL trigger
- *  text (deck_data_version, d19ec179) alongside the plan-invalidation
- *  triggers (41cc939c) instead of re-typed copies that could drift. Kept in
- *  lockstep with the render stream's copy
+ *  This is what lets one test deck install those triggers' REAL text
+ *  instead of re-typed copies that could drift. Kept in
+ *  lockstep with the render suite's copy
  *  (tests/card/render/render-test-storage.ts). */
 export function splitSqlStatements(ddl: string): string[] {
   const statements: string[] = [];
@@ -147,7 +145,7 @@ const DEFAULT_ACTOR_ID = 1;
 export interface SeedCardOptions {
   id?: number;
   name: string;
-  /** Defaults to DeckoName.parse(name).key (what the Ruby write path stores). */
+  /** Defaults to DeckoName.parse(name).key (what the write path stores). */
   key?: string;
   codename?: string | null;
   leftId?: number;
@@ -166,10 +164,11 @@ export interface SeedCardOptions {
 }
 
 /**
- * Insert one card row DIRECTLY (plain INSERT - the write path is another
- * stream). Column conventions follow the Ruby write path as the schema
- * records them (db/schema.sqlite.sql comments + lib/card/name/all.rb#name= /
- * #key=): simple cards store name + key columns; compound cards store NULL
+ * Insert one card row DIRECTLY (plain INSERT — these suites exercise the read
+ * path). Column conventions follow the write path as the schema
+ * records them (db/schema.sqlite.sql comments +
+ * prototype/lib/card/name/all.rb#name= / #key=): simple cards store
+ * name + key columns; compound cards store NULL
  * name/key columns with left_id/right_id (the 2020 migration convention).
  * Side ids default to a lookup of already-seeded part rows by key - the
  * seed order must declare parts before junctions, like Lexicon.id would.
