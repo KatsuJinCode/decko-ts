@@ -1,29 +1,28 @@
 // deploy/bunny-worker-src/bunny-edge-served-deltas.ts — the deployment
-// configuration that carries ONE deck's private identity into the edge's
-// served bytes, EMPTY by default.
+// configuration that carries ONE deck's identity into the edge's served
+// bytes, EMPTY by default.
 //
-// WHY THIS EXISTS: the edge path used to
-// hard-code a single private deck's identity as module constants, so EVERY
-// deployment of the engine served that deck's version string, asset
-// revisions, SRI hashes, corpus card ids and phantom type:
+// WHY THIS EXISTS: the edge path used to hard-code a single deck's identity
+// as module constants, so EVERY deployment of the engine served that deck's
+// version string, asset revisions, SRI hashes, card ids and phantom type:
 //
-//   - bunny-edge-page-shell.ts rewrote `>Decko v0.20.0</a>` to
-//     `>Decko v0.19.1</a>`, rewrote one deck's stylesheet revision, and
-//     injected that site's SRI attributes on every page of every deck;
-//   - bunny-edge-error-page.ts pinned corpus card ids, a `files/…js` path
-//     and FOOTER_VERSION_PIN "0.19.1";
-//   - src/card/render/pointer-list.ts fell back to PHANTOM_TYPE_ID 22281 /
+//   - bunny-edge-page-shell.ts rewrote `>Decko v0.20.0</a>` to a fixed other
+//     string, rewrote one deck's stylesheet revision, and injected that
+//     site's SRI attributes on every page of every deck;
+//   - bunny-edge-error-page.ts pinned card ids, a `files/…js` path and a
+//     fixed FOOTER_VERSION_PIN;
+//   - src/card/render/pointer-list.ts fell back to a fixed PHANTOM_TYPE_ID /
 //     "BasicCs" for every deck's unknown pointer items.
 //
 // A deck is not identified by the engine's source. It is identified by what
 // its operator configures. So every one of those values is a DEPLOYMENT
 // CONFIGURATION value here, and the default is EMPTY: a deployment that
-// configures nothing is a stock 0.20.0 deck with no private identity, and
-// every delta pass becomes a no-op.
+// configures nothing is a stock 0.20.0 deck, and every delta pass becomes a
+// no-op.
 //
 // HOW A DEPLOYMENT SETS THEM (two equivalent forms, this module reads both):
 //
-//   1. One JSON blob: DECKO_SERVED_DELTAS='{"footerVersionPin":"0.19.1",…}'
+//   1. One JSON blob: DECKO_SERVED_DELTAS='{"footerVersionPin":"…",…}'
 //   2. Individual plain variables, one per value:
 //        DECKO_TIME_ZONE
 //        DECKO_DECK_ORIGIN
@@ -48,9 +47,9 @@
 // WHAT THIS IS NOT: this is not a Ruby's config/application.rb port. Ruby
 // reads those values from the deck's own environment; this engine has no
 // Rails initializer at the edge, so the operator supplies them out of band,
-// exactly like DECKO_DB_URL beside it. The production migration deployment
-// sets them explicitly in its own environment (the DECKO_SERVED_* variables
-// above), which is why the shipped code carries no deck's identity.
+// exactly like DECKO_DB_URL beside it. A deployment sets them explicitly in
+// its own environment (the DECKO_SERVED_* variables above), which is why the
+// shipped code carries no deck's identity.
 //
 // SDK-free by construction (plain object/string handling), so vitest loads
 // it directly — the same testability pattern as bunny-edge-page-shell.ts.
@@ -91,7 +90,7 @@ export interface ServedEnvironmentDeltas {
    *  render path formats — Ruby's `Time.zone`.
    *  undefined = the engine's default, which is the GRADED deck's zone so an
    *  unconfigured deployment keeps its graded bytes; it is not a claim about
-   *  the host machine, which is what the hard-coded capture-host zone was. */
+   *  the host machine, which is what a hard-coded host zone would have been. */
   timeZone?: string;
   /** The deck's configured origin — Ruby's `Cardio.config.deck_origin`,
    *  WITHOUT a trailing slash. This is the
@@ -110,7 +109,7 @@ export interface ServedEnvironmentDeltas {
   /** The version string the footer credits. undefined = no rewrite; the
    *  deck's own stored credit bytes stand. */
   footerVersionPin?: string;
-  /** The stylesheet revision rewrite: the corpus-stored revision the engine
+  /** The stylesheet revision rewrite: the deck-stored revision the engine
    *  resolves -> the revision this deployment actually serves. undefined =
    *  no rewrite. */
   stylesheetRevision?: { from: string; to: string };
@@ -157,7 +156,7 @@ export interface ServedEnvironmentDeltas {
 }
 
 /** THE DEFAULT: a stock deck. Every delta pass this drives is a no-op, and
- *  no served byte carries any deck's private identity. */
+ *  no served byte carries any deck's identity. */
 export const EMPTY_SERVED_DELTAS: ServedEnvironmentDeltas = Object.freeze({});
 
 function trimmed(value: string | undefined): string | undefined {
@@ -175,7 +174,7 @@ function positiveInt(value: string | undefined): number | undefined {
 
 /** Parse the DECKO_SERVED_DELTAS JSON blob. A malformed blob yields no
  *  fields rather than throwing: a deployment whose config is malformed must
- *  still serve its pages, and serving them WITHOUT private identity is the
+ *  still serve its pages, and serving them WITHOUT deck identity is the
  *  safe reading of a config we could not parse. Named so the behavior is
  *  greppable if a deployment needs to diagnose it. */
 function parseDeltasBlob(raw: string | undefined): ServedEnvironmentDeltas {
