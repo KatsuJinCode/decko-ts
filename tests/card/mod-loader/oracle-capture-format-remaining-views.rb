@@ -1,7 +1,5 @@
-# oracle-capture-format-remaining-views.rb - oracle capture for the
-# card-mod-format views the format-views-port lane ports (the 2026-09-29
-# coverage recount's remaining missing views minus :smart_label, which
-# lane-follow2 9b980a5 already landed).
+# oracle-capture-format-remaining-views.rb - renders the card-mod-format
+# views this fixture pins.
 #
 # Run (from tools/oracle/decko-oracle-app):
 #   RAILS_ENV=development bundle exec decko runner \
@@ -10,7 +8,7 @@
 # Records to fixtures/captured/format-remaining-views.json:
 # 1. registered_views - the set-module view registrations (method defined?
 #    + source_location into the card-mod-format gem tree), the pin that
-#    links each live render to its gem file
+#    links each render to its gem file
 # 2. rendered - the probe cards' rendered bytes for: edit_link, edit_button,
 #    full_page_link, board_link, help_link, menu_block, content_panel,
 #    content_with_title, flash, view_list, text_without_nests,
@@ -19,13 +17,13 @@
 #
 # Determinism contract (mirrors oracle-capture-smart-label.rb): output JSON
 # is pretty-printed with deeply sorted keys + trailing newline; probe seed
-# cards are created-if-missing and DELETED (trashed) after capture so the
-# shared oracle DB returns to its prior state (a re-run stays byte-stable).
+# cards are created-if-missing and DELETED (trashed) after the run so the
+# shared DB returns to its prior state (a re-run stays byte-stable).
 #
 # No-write proof: Card::Action.count is snapshotted after seeding and again
 # after every render; renders are read-only and the count must not move
-# (the seed/trash phases are create/revert cleanup around the capture, not
-# part of it).
+# (the seed/trash phases are create/revert cleanup around the render phase,
+# not part of it).
 
 require "json"
 
@@ -229,9 +227,8 @@ Card::Auth.as_bot do
     end
   end
 end
-# NO card_count field: the oracle DB is shared with other streams'
-# benchmarks, so a card count is racy harness telemetry, not mod-mechanism
-# oracle data.
+# NO card_count field: the DB is shared with other concurrent runs, so a
+# card count is racy harness telemetry, not mod-mechanism data.
 
 # ---- write ------------------------------------------------------------------
 File.write(OUT_PATH, JSON.pretty_generate(deep_sort(payload)) + "\n")
