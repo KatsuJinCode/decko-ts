@@ -1,27 +1,26 @@
-// RED-first pin, PART 1 of the inline materialized-store lane (2026-10-04):
+// RED-first pin (the inline materialized store):
 // DECKO_ONE_TRIP_STORE === "inline" (the materialized shape — the one_trip_*
-// tables live IN the serving database; 98,915 rows were loaded server-side on
-// 2026-10-05, see cold-latency-rig-lane.md MATERIALIZED-STORE §1) must SKIP
+// tables live IN the serving database) must SKIP
 // the ATTACH statement entirely and query the one_trip_* tables on the SAME
 // connection.
 //
-// THE WALL THIS PIN STANDS ON (observed verbatim, cold-latency-rig-lane.md
-// MATERIALIZED-STORE §6.1): the serving DB's SQL parser rejects ATTACH for
+// THE WALL THIS PIN STANDS ON: the serving DB's SQL parser rejects ATTACH for
 // ANY value — `SQL string could not be parsed: unsupported statement: ATTACH
-// DATABASE '...' AS one_trip`, code SQL_PARSE_ERROR — and the deployed seat
-// hardwires ATTACH-then-swallow, so no config value can make the deployed
+// DATABASE '...' AS one_trip`, code SQL_PARSE_ERROR — and the serving seat
+// hardwires ATTACH-then-swallow, so no config value can make the serving
 // seat fetch. The inline posture is the seam note's own answer
 // (one-trip-fetch.ts:27-32): "drops the prefix and the ATTACH call; nothing
 // else changes".
 //
 // The fake driver below reproduces the serving posture: ATTACH raises the
 // parser-level rejection, every other statement passes through to the real
-// corpus. RED at base: the seat attempts the ATTACH (recorded before the
+// deck. RED at base: the seat attempts the ATTACH (recorded before the
 // throw) and swallows the failure, so NO one_trip_* statement is ever issued.
 // GREEN when the inline posture fetches one_trip_* on the same connection
 // without ever issuing an ATTACH.
 //
-// The corpus test skips when the mirror copy is absent (fresh clones).
+// These tests skip when the shared deck database copy is absent (fresh
+// clones).
 
 import { describe, expect, it } from "vitest";
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../../src/server/driver.js";
@@ -41,9 +40,9 @@ const ONE_TRIP_TABLE_REFERENCE =
   /\bone_trip_(edges|page_closure|page_rules|search_results|search_nests|meta)\b/;
 
 /** Serving-DB posture: ATTACH is rejected at the parser (SQL_PARSE_ERROR,
- *  probed live 2026-10-05 against restore-deck-synthetic with the seat's own statement
- *  shape, both config values — MATERIALIZED-STORE §6.1); everything else
- *  passes through to the corpus. Every statement is recorded BEFORE the
+ *  probed against the synthetic restore deck with the seat's own statement
+ *  shape, both config values); everything else
+ *  passes through to the deck. Every statement is recorded BEFORE the
  *  decision so the pin can see an attempted ATTACH. */
 class AttachRejectingDriver implements SQLDatabaseDriver {
   readonly statements: { sql: string; params: unknown[] }[] = [];
@@ -91,7 +90,7 @@ describeOrSkipLoud(!hasMirror, "tests/card/one-trip/inline-store-seat.test.ts", 
 
       // PIN 1: the inline posture must not issue ATTACH at all — the serving
       // DB rejects it at the parser for ANY value, and the swallow is exactly
-      // the deployed failure this lane exists to remove.
+      // the deployed failure the inline posture removes.
       expect(
         attemptedAttaches,
         "the inline posture must issue NO ATTACH statement (observed serving-DB " +
