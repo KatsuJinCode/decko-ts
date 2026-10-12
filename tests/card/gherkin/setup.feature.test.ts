@@ -1,23 +1,23 @@
-// Gherkin port — setup.feature (decko-commons/decko
-// decko/features/setup.feature, Scenario: Shark visits site for first time;
-// @simulate-setup — the tag forces the setup window open, which the port's
-// census computes from the deck itself).
+// The setup feature (Scenario: Shark visits site for first time;
+// the upstream @simulate-setup tag forces the setup window open, which the
+// census here computes from the deck itself).
 //
-// The upstream scenario is a browser flow; this port executes the same
-// business behavior against the setup engine surface (first-run-setup.ts's
+// The upstream scenario is a browser flow; this suite executes the same
+// business behaviour against the setup engine surface (first-run-setup.ts's
 // createOwnerAccount — which carries the submitted card name
-// (user.rb:14) and the setup_first_user role writes (user.rb:59-64)) plus
+// and the setup_first_user role writes) plus
 // signin.ts.
 //
-// NAMED DEVIATIONS (test setup, not engine behavior):
+// NAMED DEVIATIONS (test setup, not engine behaviour):
 //  1. The upstream password literal "newb_pass" does not satisfy the
-//     mod-default policy the engine ports verbatim (see
+//     default policy the engine implements verbatim (see
 //     reset-password.feature.test.ts's header note); the submitted password
 //     keeps the shape and adds the missing character classes.
 //  2. The "The Newber+*roles should see Administrator" assertion reads the
-//     ported WRITE (setup_first_user's role-membership subcards), not the
+//     WRITE (setup_first_user's role-membership subcards), not the
 //     right/roles VIEW render: the roles view is the render layer's surface
-//     and is not ported. Ruby's own assertion is the same fact rendered
+//     and is not covered here. The reference's own assertion is the same
+//     fact rendered
 //     ("Administrator" appears because the Administrators role's members
 //     list holds the user).
 //  3. The env gates the setup route requires (DECKO_FIRST_RUN=1 +
@@ -38,7 +38,7 @@ import {
 
 const ENV_KEYS = ["DECKO_FIRST_RUN", "DECKO_WRITE_PATH"] as const;
 
-describe("Gherkin port: setup.feature / Shark visits site for first time", () => {
+describe("setup.feature / Shark visits site for first time", () => {
   let flow: AccountFlowWorld;
   const priorEnv = new Map<string, string | undefined>();
 
@@ -66,7 +66,7 @@ describe("Gherkin port: setup.feature / Shark visits site for first time", () =>
 
     // upstream: When I go to the homepage / Then I should see "Your deck is
     // ready" — the setup window (needs_setup?) is what renders that page
-    // (user.rb:12 voo.title "Your deck is ready to go!").
+    // (voo.title "Your deck is ready to go!").
     const window = await setupWindowState({ driver: flow.ctx.driver });
     expect(window.open).toBe(true);
     expect(window.reason).toBe("needs_setup");
@@ -74,8 +74,7 @@ describe("Gherkin port: setup.feature / Shark visits site for first time", () =>
     // upstream: When I fill in "card_name" with "The Newber" / And I enter
     // "newb@decko.org" into "*email" / And I enter "newb_pass" into
     // "*password" / And I press "Set up" — the setup create carries the
-    // submitted name and grants the first user the basket roles
-    // (user.rb:59-64).
+    // submitted name and grants the first user the basket roles.
     const outcome = await whenRunSetup(flow, {
       name: "The Newber",
       email: "newb@decko.org",
@@ -88,7 +87,7 @@ describe("Gherkin port: setup.feature / Shark visits site for first time", () =>
     expect(owner).toBeDefined();
 
     // upstream: When I go to card "The Newber+*roles" / Then I should see
-    // "Administrator" — the ported setup_first_user write: the
+    // "Administrator" — the setup_first_user write: the
     // Administrators role's members list holds the new owner (see header
     // note 2 for the roles-view boundary).
     const members = await flow.world.storage.fetcher.fetchByName("Administrators+*members");
@@ -97,7 +96,7 @@ describe("Gherkin port: setup.feature / Shark visits site for first time", () =>
     // upstream: When I follow "Sign out" / And I follow "Sign in" / And I
     // enter "newb@decko.org" into "*email" / And I enter "newb_pass" into
     // "*password" / And I press "Sign in" / Then I should see "The Newber".
-    // (The setup flow's auto-session — signin_after_setup, user.rb:66-68 —
+    // (The setup flow's auto-session — signin_after_setup —
     // is the host's session binding; the flow's own assertion path is the
     // sign-in.)
     const fresh = await whenSignIn(flow, "newb@decko.org", "Newb_pass1!");
