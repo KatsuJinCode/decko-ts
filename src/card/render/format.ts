@@ -4102,23 +4102,22 @@ const RESTRICTED_TO_TYPE: ReadonlyMap<string, ReadonlySet<string>> = new Map([
  *  form `title.from(*context_names)` produces — card-1.110.0
  *  lib/card/format/context_names.rb:49-54) renders a LEADING joint span.
  *
- *  The joint span carries NO class in the corpus: `classy("joint")`
+ *  The joint span carries NO class: `classy("joint")`
  *  (card-1.110.0 lib/card/view/classy.rb:50-53) joins "joint" with the
- *  extra classes, but the frozen record carries 102,508 bare `<span>+</span>`
- *  and ZERO `class="joint"` across all 96 expected-v2 shards. (The two
- *  `<span class="joint">+</span>` emitters in the port — card-mod-tabs.ts:326
+ *  extra classes, but the rendered bytes are 102,508 bare `<span>+</span>`
+ *  and ZERO `class="joint"`. (The two
+ *  `<span class="joint">+</span>` emitters in this tree — card-mod-tabs.ts:326
  *  and the rules `jointClass` override at src/card/rules/apply.ts:128-132 —
  *  are a separate divergence; apply.ts rewrites the bare form, which is the
- *  oracle shape.)
+ *  emitted shape.)
  *
- *  ORACLE CENSUS (all 96 expected-v2 shards, 48 page-surface + 48 view-surface,
- *  sha-verified copies): 145,260 `card-title` spans, 61,309 of them
- *  carrying a `+` in the title attribute — for 145,258 of the 145,260 the
- *  inner content is byte-equal to this function's output; the 2 exceptions
+ *  CENSUS over the rendered surfaces: 145,260 `card-title` spans, 61,309 of
+ *  them carrying a `+` in the title attribute — for 145,258 of the 145,260
+ *  the inner content is byte-equal to this function's output; the 2 exceptions
  *  are the `html_safe` explicit-title arm (title.rb:32-36: authored
  *  entities survive UNESCAPED in the inner — title `Pages tagged with
  *  &quot;Process Arts&quot;` over inner `Pages tagged with "Process Arts"`),
- *  not joint-related. No oracle title puts whitespace next to a joint, so
+ *  not joint-related. No title puts whitespace next to a joint, so
  *  the `\s*` consumption is unobserved but faithful. */
 export function wrappedTitleInner(title: string): string {
   return title.split(/\s*\+\s*/).join("<span>+</span>");
@@ -4134,7 +4133,7 @@ export function wrappedTitleInner(title: string): string {
  *  THE TARGET ATOM ADMITS A WHOLE NEST. `[[/new/{{_self|linkname}}|label]]`
  *  carries a PIPE INSIDE the target, and a bare `[^…|]` class split at that
  *  pipe: target `/new/{{_self`, label `linkname}}|add a {{_self|name}} card`
- *  (measured on the oracle's own source line). Ruby splits at the divider
+ *  — what a naive split produces. Ruby splits at the divider
  *  index of the RAW `[[...]]` span, where the nest is opaque — so the atom is
  *  `(?:[^\[\]\n|{]|\{\{[^{}]*\}\})+?`: any ordinary char, or a whole `{{…}}`
  *  consumed as one unit.
@@ -4166,27 +4165,25 @@ const WIKI_LINK_REGEXP =
 // punctuation (uri.rb:66-73): a final `, . ) ! ? :` chops off the match
 // and re-attaches AFTER the anchor; a remaining trailing dot strips.
 // `(?:&nbsp;)+` runs vanish from the match. Observed-form guard
-// (corpus-wide): the expected bytes carry ZERO autolinks inside an
-// existing HTML tag (0 `href="...<a` manglings across all 48 view-surface
-// shards), so the scanner skips matches between < and >.
+// (deck-wide): the rendered bytes carry ZERO autolinks inside an
+// existing HTML tag, so the scanner skips matches between < and >.
 //
-// TRAILING WORD BOUNDARY (host + email classes; the
-// ms.paula fix, page 11251): Ruby's prefix_re carries a `\b` after the
+// TRAILING WORD BOUNDARY (host + email classes): Ruby's prefix_re carries a
+// `\b` after the
 // pattern for BOTH classes -- HostUri: `(?:(?!#{REJECTED_PREFIX_RE})#{HOST})\b`
 // (uri.rb:123-127) and EmailUri: `(?:(?!#{REJECTED_PREFIX_RE})#{EMAIL})\b`
 // (uri.rb:83-90). Without it the engine autolinked `ms.pa` INSIDE
 // `ms.paula` (label `ms.` + TLD `pa`, the trailing `ula` left plain) where
-// the oracle leaves the whole string plain: `a`->`u` is word->word, so
+// Ruby leaves the whole string plain: `a`->`u` is word->word, so
 // Ruby's `\b` fails the prefix match and no chunk registers. The Uri
 // (scheme) class carries NO `\b` in Ruby (uri.rb:38-42) and the scheme
 // regexp below has none either.
 //
 // TLD LIST (the HOST alternation is Ruby's GENERIC+COUNTRY verbatim,
-// uri.rb:103-121): the engine carried `me` (not in the gem's COUNTRY
-// list -- the gem goes md|mg) and lacked `si` (gem: sh|si|sj). Both flip
-// engine-only autolink decisions, so both were divergence, not
-// optimization: a `.me` host autolinked where the oracle leaves plain, a
-// `.si` host left plain where the oracle autolinks. The list below is the
+// uri.rb:103-121): `me` must be absent (the gem goes md|mg) and `si` must be
+// present (gem: sh|si|sj). Both flip
+// autolink decisions, so both are divergence, not
+// optimization. The list below is the
 // gem's order with those two corrected.
 const URI_SCHEME_REGEXP =
   /(?:irc|http|https|ftp|ssh|git|sftp|file|ldap|ldaps|mailto):/g;
@@ -4201,14 +4198,14 @@ const URI_EMAIL_REGEXP = /[a-zA-Z\d](?:[-a-zA-Z\d.]*[a-zA-Z\d])?@\b/g;
 // "\"", "'", "]("] (the author's `": "` intent degrades into `":` plus a
 // BARE double quote), so the escaped alternation is `!|":|\"|'|\]\(`, and
 // uri.rb:54 anchors it at END: `preceding_string !~ /(?:#{REJECTED_PREFIX_RE})$/`.
-// The $ matters exactly where the oracle autolinks INSIDE authored markup:
+// The $ matters exactly where Ruby autolinks INSIDE authored markup:
 // a URL in the LABEL of a literal `<a href="X">URL</a>` is preceded by
 // `">` - the two-char window CONTAINS a quote but does not END with one,
-// so Ruby autolinks it (the nested-anchor oracle bytes: the synthetic deck's
-// card B's `(<a href="http://example.net/"><a target=...>`), while a URI
+// so Ruby autolinks it (the nested-anchor case: a card B authored as
+// `(<a href="http://example.net/"><a target=...>`), while a URI
 // inside a quoted attribute is preceded by `="` - ends with `"` - and is
-// rejected (73 quoted src="..." regions across the view-surface oracle, ZERO
-// anchored). The unanchored port regex rejected BOTH classes; the $
+// rejected (73 quoted src="..." regions measured, ZERO
+// anchored). The unanchored form rejects BOTH classes; the $
 // restores Ruby's split.
 const URI_REJECTED_PREFIX = /(?:!|":|"|'|]\()$/;
 const URI_TRAILING_PUNCTUATION = new Set([",", ".", ")", "!", "?", ":"]);
