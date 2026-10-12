@@ -1,9 +1,9 @@
-# account-census-views.rb — static-ruby oracle capture for card-mod-account's
-# census-missing views :new + :content_formgroups-source + :new_buttons
-# (set/type/signup/views.rb), :edit (set/self/signin.rb:154-157, the
-# FORGOT-PASSWORD form) and :account_tab (set/abstract/account_holder.rb:
-# 132-137), plus the pill-item composition :account_tab's bytes ride
-# (card-mod-edit set/all/board/board_pills.rb + board.rb's board_link_opts).
+# account-census-views.rb — static-ruby oracle for card-mod-account's
+# census-missing views: :new + :new_buttons (set/type/signup/views.rb),
+# :edit (set/self/signin.rb:154-157, the FORGOT-PASSWORD form),
+# :account_tab (set/abstract/account_holder.rb:132-137), and the pill-item
+# composition :account_tab's bytes ride (card-mod-edit
+# set/all/board/board_pills.rb + board.rb's board_link_opts).
 #
 # WHAT RUNS: the gems' own source lines extracted VERBATIM by line range.
 # Stubs, each documented:
@@ -12,19 +12,19 @@
 #                      defaults current_id to AnonymousID): signed_in? false.
 #                      The invitation? arm (views.rb:2-4: Auth.signed_in? &&
 #                      card.can_approve?) needs the admin-approval verdict
-#                      machinery the headless engine does not model - the SAME
-#                      disclosed basis the ported signup :core's approve links
-#                      carry (card-mod-account.ts signupAccountLines) - so the
+#                      machinery the headless engine does not model - the same
+#                      basis the ported signup :core's approve links document
+#                      (card-mod-account.ts signupAccountLines) - so the
 #                      signed-out title arm is the pinned arm and the
 #                      invitation title is emitted as a DOCUMENTED contract
 #                      line (t(:account_invite)).
 #   card.can_approve? - unreachable signed-out (see Auth).
-#   super()          - the base :new / base :edit bodies are the edit mod's
-#                      live TS registrations (card-mod-edit.ts newView /
+#   super()          - the base :new / base :edit bodies live in the edit
+#                      mod's TS registrations (card-mod-edit.ts newView /
 #                      editView); the oracle pins the voo composition the
 #                      super() dispatch rides (title / edit_structure /
-#                      hide), not the parent bytes (those are the edit mod's
-#                      own pinned surface).
+#                      hide), not the parent bytes (those belong to the edit
+#                      mod's own pinned surface).
 #   voo              - the render's voo (title= / hide / edit_structure
 #                      storage, the edit_structure BEFORE-hook contract).
 #   board pills      - board_pills.rb's composition helpers extracted
@@ -34,8 +34,8 @@
 #                      breadcrumb_data (board.rb:68-71): the class falls
 #                      back to title.underscore.
 #
-# The capture corpus carries no live bytes for any of these five view
-# names (no signup/setup/forgot form bytes in fixtures/captured - swept).
+# No committed oracle bytes exist for these five view names; this script
+# is their only source.
 #
 # Each JSONL line carries behaviorId "view:<name>" + gemSource ranges.
 #
