@@ -40,8 +40,8 @@
 // registering this override would replace :core for EVERY card, and a viewFn
 // cannot delegate to the displaced base view (the loader's undo record is
 // not reachable from the viewFn). The body is ported and exported as
-// permissionCoreView with its full citation so the coordinator's set-scoped
-// dispatch pass can register it verbatim; the tests pin its bytes directly.
+// permissionCoreView with its full citation so a set-scoped dispatch
+// layer can register it verbatim; the tests pin its bytes directly.
 //
 // NOT ported (honest remainder):
 // - the EVENT BODIES of the gem (set/all/permissions.rb:1-26 bodies of
@@ -110,8 +110,8 @@
 // `:update_rule_cache` body calls Card::Rule.clear_rule_cache, line 5;
 // `:expire_related` resets patterns + pushes structurees to Director.
 // expirees, line 8-11). All are DB-write / class-side state with no TS
-// write-path surface; the registry pins the DECLARATIONS so the coordinator
-// knows which event names land at which stages, the same surface
+// write-path surface; the registry pins the DECLARATIONS, recording which
+// event names land at which stages, the same surface
 // card-mod-integrate pins as OBSERVER_EVENT_DECLARATIONS for the same
 // reason.
 
@@ -297,9 +297,9 @@ function checkBoxTag(
  *  "close_fullscreen", reorder -> "reorder", remove -> "close";
  *  the literal "add" name passes through). */
 function iconTag(materialName: string, extraClass?: string): string {
-  // the captured icon_tag bytes carry the extra class FIRST
-  // ("text-muted notranslate material-icons" - rules-views.json
-  // rule_form_card_editor)
+  // the oracle's icon_tag output carries the extra class FIRST
+  // ("text-muted notranslate material-icons" in the rule-form
+  // card editor)
   const cls = extraClass === undefined
     ? "notranslate material-icons"
     : `${extraClass} notranslate material-icons`;
@@ -369,7 +369,7 @@ const oneLineContentView: ViewFn = (ctx) => {
  *  the inherit span; anything else renders :pointer_core (render! - the
  *  full pipeline re-dispatch, format.ts#renderView). The items opt rides
  *  into the pointer core (the :one_line_content path). NOT registered -
- *  the coordinator's set-scoped dispatch pass registers this fn with
+ *  a set-scoped dispatch layer would register this fn with
  *  config { cache: "never" }. */
 export const permissionCoreView: ViewFn = (ctx) => {
   assertPermissionRule(ctx, "core");
@@ -412,9 +412,8 @@ export function resetPermissionRolesForTests(): void {
  *  grouped names. Returns the rows AND the consumed list's remainder
  *  (Ruby mutates item_names in place).
  *
- *  BYTE SHAPE (the oracle correction - pinned by
- *  fixtures/captured/rules-views.json rule_form_card_editor, the *all+*read
- *  rule form's perm editor): each row is the groups helper's <<-HTML heredoc
+ *  BYTE SHAPE (corrected against the oracle - the *all+*read
+ *  rule form's perm editor output): each row is the groups helper's <<-HTML heredoc
  *  VERBATIM - the source indentation rides the emitted bytes (8/10/12
  *  leading spaces; the box, the role name and the option link share ONE
  *  line, permission.rb:55), the rows join "\n" (`* "\n"`), and the
@@ -455,8 +454,8 @@ function groupRowsAndRemainingItems(
  *  add-another button. placeholder_text is "" (card-mod-edit
  *  set/all/editor.rb:60-62).
  *
- *  BYTE SHAPE (the oracle correction - pinned by
- *  fixtures/captured/rules-views.json rule_form_card_editor): the haml
+ *  BYTE SHAPE (corrected against the oracle - the rule-form editor
+ *  output): the haml
  *  template's single-quoted attributes, one template line per emitted line;
  *  `ul_classes = classy "pointer-list-editor", extra_class` where
  *  extra_class is list_input's OWN "pointer-list-ul" literal (html_views.rb:
@@ -513,8 +512,8 @@ function inheritanceCheckbox(ctx: ViewContext): string {
  *  checkboxes, the Individuals list_input). item_names is EMPTY when
  *  inheriting (the rule inherits; nothing to list).
  *
- *  BYTE SHAPE (the oracle correction - pinned by
- *  fixtures/captured/rules-views.json rule_form_card_editor): the view body
+ *  BYTE SHAPE (corrected against the oracle - the rule-form editor
+ *  output): the view body
  *  is the %( ... ) literal VERBATIM - the source indentation rides the
  *  bytes (6-space content lines, 8-space interpolation lines, the blank
  *  line between the Groups and Individuals sections), the literal opens
