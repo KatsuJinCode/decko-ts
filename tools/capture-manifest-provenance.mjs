@@ -90,7 +90,7 @@ export function sqliteHeaderChangeCounter(file) {
   }
 }
 
-// ---------- staging (M5: checksum-verified, presence never trusted) ----------
+// ---------- staging (checksum-verified, presence never trusted) ----------
 
 // Copy src -> dst. If dst already exists, its sha256 is verified against the
 // source: equal bytes pass (the copy is proven, not assumed), different bytes
@@ -134,11 +134,10 @@ export function stageFile(src, dst, label, log = (m) => console.log(m)) {
   return { action: "copied", sha256: srcSha };
 }
 
-// ---------- the refusal gate (M1: no provenance, no grade) ----------
+// ---------- the refusal gate (no provenance, no grade) ----------
 
 // Returns an array of refusal reasons; empty means the manifest binds this
-// grading run to the corpus currently on disk. Gates, verbatim from the fix
-// recipe:
+// grading run to the corpus currently on disk. Gates:
 //   1. the manifest file must exist;
 //   2. manifest.corpusSha256.before === manifest.corpusSha256.after
 //      (the capture must not have photographed a moving deck);
@@ -188,7 +187,7 @@ export function verifyManifestForGrading({ manifestPath, corpusFile, liveCorpusS
   return { ok: refusals.length === 0, refusals, manifest };
 }
 
-// ---------- M6: content-addressed photograph locations ----------
+// ---------- content-addressed photograph locations ----------
 
 // Photographs live as <root>/<corpusSha8>/<runId>/ so a photograph's location
 // names the corpus bytes it photographed and the run that took it. Existing
