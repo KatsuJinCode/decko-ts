@@ -17,7 +17,7 @@
 // run_ruby_bench.rb name formats), so both engines measure the same decks.
 // Ruby-side truth lives in benchmarks/results/deep-nesting-fixtures-ruby.json
 // (live rerun of these fixtures) and benchmarks/results/ruby-nesting-r1-r2.json
-// (the 2026-09-19 parity recording: chains depth+3 queries open / depth+2
+// (the parity recording: chains depth+3 queries open / depth+2
 // content, fans fanout+4, warm 0 queries everywhere, depth 32 recorded the
 // Card::Error::UserError "Man, you're too deep" cap).
 //
@@ -30,8 +30,8 @@
 //   npx vitest run tests/card/render/deep-nesting-fixture-sweep.test.ts
 //
 // Reported numbers populate benchmarks/results/deep-nesting-fixtures-ts.json
-// per the METHODOLOGY iron rule (full environment block or it is not a
-// benchmark result). A test run writes its copy outside the checkout
+// (a benchmark result carries a full environment block or it is not
+// quotable). A test run writes its copy outside the checkout
 // (tests/support/report-output.ts); refresh the committed copy with
 // DECKO_TEST_REPORT_DIR set to the repository root.
 
@@ -69,7 +69,7 @@ interface Measure {
   cpuMs: number;
   htmlBytes: number | null;
   renderError: string | null;
-  /** fold-9 (2026-10-03): first embedded quiet render-error span when the
+  /** First embedded quiet render-error span when the
    *  render RETURNS a page carrying one (this line's quiet nested-error
    *  semantics, error.rb rescue_view quiet branch) — null when the render
    *  throws or returns clean bytes. Lets the past-cap assertion pin the
@@ -202,17 +202,13 @@ describe("Deep-nesting fixture sweep (#1282 scaling proof: TS engine vs fixture 
       //    cost is the root fetch + the prelude batch + the two wave seating
       //    rounds; each inclusion level costs exactly one batched round trip,
       //    independent of deck size.
-      //    fold-10 re-pin 2 -> 4 (measured on the union tip, queue
-      //    job-1791064772233-7fdd9359): the db-roundtrip waves' batched
-      //    priming adds wave seating round 1 (the W2b type-card prime folded
-      //    in as the batch preamble by the net-reds W4 fold) + wave round 2
-      //    (junction candidates whose sides round 1 seated - "a junction's
-      //    ids are the previous round's ANSWERS", the receipt's
-      //    justification class 3) on every cold render, tiny fixtures
-      //    included. Same measured law the net-reds-fixforward lane pinned
-      //    into depth-sweep.test.ts (base 2 -> 4, slope exactly 1 per level,
-      //    warm 0) - that lane's own net could not catch THIS file (not in
-      //    the deploy-side 71-file manifest); the fold-10 union net did.
+      //    The base is 4, not 2: the db-roundtrip waves' batched priming adds
+      //    wave seating round 1 (the type-card prime folded in as the batch
+      //    preamble) + wave round 2 (junction candidates whose sides round 1
+      //    seated - "a junction's ids are the previous round's ANSWERS") on
+      //    every cold render, tiny fixtures included. Same measured law
+      //    depth-sweep.test.ts pins (base 4, slope exactly 1 per level,
+      //    warm 0).
       for (const depth of [...PARITY_CHAIN_DEPTHS, ...DEEP_RENDERABLE_CHAIN_DEPTHS]) {
         const row = byRoot.get(chainName(depth, 1))!;
         expect(row.cold.renderError).toBeNull();
@@ -220,48 +216,42 @@ describe("Deep-nesting fixture sweep (#1282 scaling proof: TS engine vs fixture 
       }
 
       // 2. Past the cap the response is the too-deep rejection, and its query
-      //    cost is BOUNDED and depth-independent. Measured composition (the
-      //    d50 diagnostic, statement log + lastRenderStats attribution):
+      //    cost is BOUNDED and depth-independent. Composition (statement log
+      //    + lastRenderStats attribution):
       //    1 root fetch + 1 prelude batch + 25 closure rounds (the prefetch's
       //    MAX_CLOSURE_ROUNDS cap, prefetch.ts:68) + 8 rounds of
       //    applyStructureContent pass #1 (render.ts:460, loop cap
       //    render.ts:1094) + 8 rounds of pass #2 (render.ts:489) + the two
-      //    wave seating rounds (the db-roundtrip waves' priming machinery,
-      //    fold-10 re-pin 43 -> 45, measured on the union tip - the same
-      //    fixed +2 every cold render pays, see invariant 1) = 45 round
-      //    trips. On a chain each chase round's batched IN-query degenerates
-      //    to one key, so each round is one round trip; the walk itself
-      //    renders cached rows only and throws the guard at nest depth 21
-      //    (format.ts:859). Depth 50, 100, and 200 all pay exactly this.
-      //    Late-seat structure sweep, 2026-10-06 (commit 504a74db, 45 -> 53):
-      //    applyLateSeatStructureContent runs one more applyStructureContent
-      //    pass right before the sync dispatch, so cards seated by the render
-      //    tail's late paths get their structure processed (before it, they
-      //    rendered without it). On a past-cap chain that pass also runs to
-      //    its 8-round loop cap, so the bound is 45 + 8 = 53. It stays
-      //    depth-independent, which is the claim this invariant protects.
+      //    wave seating rounds (the db-roundtrip waves' priming machinery -
+      //    the same fixed +2 every cold render pays, see invariant 1) = 45
+      //    round trips. On a chain each chase round's batched IN-query
+      //    degenerates to one key, so each round is one round trip; the walk
+      //    itself renders cached rows only and throws the guard at nest depth
+      //    21 (format.ts:859). Depth 50, 100, and 200 all pay exactly this.
+      //    Late-seat structure sweep: applyLateSeatStructureContent runs one
+      //    more applyStructureContent pass right before the sync dispatch, so
+      //    cards seated by the render tail's late paths get their structure
+      //    processed (before it, they rendered without it). On a past-cap
+      //    chain that pass also runs to its 8-round loop cap, so the bound is
+      //    45 + 8 = 53. It stays depth-independent, which is the claim this
+      //    invariant protects.
       for (const depth of DEEP_REJECTED_CHAIN_DEPTHS) {
         const row = byRoot.get(chainName(depth, 1))!;
         expect(row.cold.roundTrips).toBe(53);
         expect(depth).toBeGreaterThan(RUBY_MAX_DEPTH);
-        // fold-9 superset note (2026-10-03): this suite was written on the
-        // main@7c5cd26 lineage, where the too-deep rejection propagated out
-        // of render() as a thrown Error("nest depth exceeded ..."). This
-        // integration line carries the corpus-verified quiet nested-error
-        // semantics (error.rb rescue_view quiet branch: format.ts nest()
-        // catches the depth guard's throw and embeds quietRenderError's
-        // capture-exact span), so the rejection arrives INSIDE the returned
-        // page. Both response forms are accepted; the embedded form is
-        // pinned HARDER than the old message match — the span must name the
-        // exact cap position (the RUBY_MAX_DEPTH+1 card) with the capture's
-        // "(core view)" label (observed bytes: d50 probe, this fold). The
-        // bounded-cost claim (43 round trips, depth-independent) is
-        // unchanged and asserted above.
+        // Response-form note: an earlier lineage propagated the too-deep
+        // rejection out of render() as a thrown Error("nest depth exceeded
+        // ..."). This line carries the quiet nested-error semantics
+        // (error.rb rescue_view quiet branch: format.ts nest() catches the
+        // depth guard's throw and embeds quietRenderError's span), so the
+        // rejection arrives INSIDE the returned page. Both response forms
+        // are accepted; the embedded form is pinned HARDER than the old
+        // message match — the span must name the exact cap position (the
+        // RUBY_MAX_DEPTH+1 card) with the "(core view)" label.
         // Ruby's rejection is monitor_depth's UserError (format/error.rb:
         // 33-40, format_too_deep): the subformat at max_depth raises out of
         // its own render and the core of the RUBY_MAX_DEPTH-th card rescues
-        // it, so the span carries the locale line verbatim (the reference
-        // harness pins the position: synthetic-v1 core:*:Chain 01).
+        // it, so the span carries the locale line verbatim.
         if (row.cold.renderError !== null) {
           // main-lineage form: the rejection propagated out of render()
           expect(row.cold.renderError).toMatch(/too deep/);
@@ -289,8 +279,8 @@ describe("Deep-nesting fixture sweep (#1282 scaling proof: TS engine vs fixture 
 
       // 4. Whole trees: round trips = 4 + tree DEPTH - the closure costs one
       //    round per LEVEL (not per card) + the two fixed wave seating rounds
-      //    (fold-10 re-pin 2 -> 4, same fixed cost as invariant 1): d4xf4
-      //    serves 342 cards in 8 round trips; d3xf10 serves 1112 cards in 7.
+      //    (same fixed cost as invariant 1): d4xf4 serves 342 cards in 8
+      //    round trips; d3xf10 serves 1112 cards in 7.
       const treeRows = TREES.map(({ depth, fanout }) => byRoot.get(treeRootName(depth, fanout))!);
       for (const row of treeRows) {
         expect(row.cold.renderError).toBeNull();
@@ -300,23 +290,18 @@ describe("Deep-nesting fixture sweep (#1282 scaling proof: TS engine vs fixture 
       expect(treeRows[1]!.liveCards).toBe(1112);
 
       // 5. Warm steady state: zero queries on every renderable shape.
-      //    fold-9 superset note (2026-10-03): on the source lineage the
-      //    past-cap rejection chains threw, so renderError !== null excluded
-      //    them here by construction. On this line the rejection arrives as
-      //    the embedded quiet span (renderError null), so the exclusion must
-      //    key on the rejection itself, not on the throw. The warm re-pay on
-      //    the unclosed past-cap chains is the source lane's own recorded
-      //    honest exception ("TS warm re-pays 34/42/42 RT on the unclosed
-      //    past-cap chains"); it stays covered by a bounded assertion (the
-      //    cold bound) instead of being skipped silently.
-      //    2026-10-06 a1-mods-validation lane: the warm bound was 0/0.
-      //    d19ec179 (2026-10-05) landed the deck_data_version freshness
-      //    gate — one PK point SELECT at every render entry (render.ts
-      //    DECK_DATA_VERSION_STATEMENT; the schema header's own words: the
-      //    warm-render cost is "ONE statement, not zero"). The gate is the
-      //    documented design, so the renderable-shape warm bound is now
-      //    exactly 1 statement / 1 round trip: anything more would be a
-      //    real cache regression, which is what this pin exists to catch.
+      //    Response-form note: when the past-cap rejection arrives as the
+      //    embedded quiet span (renderError null), the exclusion must key on
+      //    the rejection itself, not on the throw. The warm re-pay on the
+      //    unclosed past-cap chains stays covered by a bounded assertion
+      //    (the cold bound) instead of being skipped silently.
+      //    The renderable-shape warm bound is exactly 1 statement / 1 round
+      //    trip: the deck_data_version freshness gate (render.ts
+      //    DECK_DATA_VERSION_STATEMENT) runs one PK point SELECT at every
+      //    render entry — the schema header's own words: the warm-render
+      //    cost is "ONE statement, not zero". The gate is the documented
+      //    design, so anything more would be a real cache regression, which
+      //    is what this pin exists to catch.
       for (const row of rows) {
         const isTooDeepRejection =
           row.cold.renderError !== null || row.cold.quietErrorSpan !== null;
@@ -331,8 +316,8 @@ describe("Deep-nesting fixture sweep (#1282 scaling proof: TS engine vs fixture 
         }
       }
 
-      // ---- results artifact (the METHODOLOGY iron rule: environment block
-      //      or the numbers are not quotable) --------------------------------
+      // ---- results artifact (a benchmark result carries a full environment
+      //      block or the numbers are not quotable) ------------------------
 
       let engineCommit = "unknown";
       let engineBranch = "unknown";
