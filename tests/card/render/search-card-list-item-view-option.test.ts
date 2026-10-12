@@ -1,23 +1,19 @@
-// R18 regression pin: the nest `item:<view>` opt reaches the search
+// Regression pin: the nest `item:<view>` opt reaches the search
 // card_list. Mechanism under test (two seams):
 //   1. format.ts Voo constructor — `:items` is an heir key
 //      (view/options/key_lists.rb keymap[:both]); inherit_options_from_parent!
 //      flows the nest's folded items hash down to the internally-dispatched
 //      :card_list voo (coreView's renderView("card_list")).
 //   2. format.ts nestOptionEntries — the folded hash rides the voo opts, so
-//      the slot JSON carries it (live blog receipt:
-//      "items":{"view":"titled"} after home_view — audit A-25).
+//      the slot JSON carries it ("items":{"view":"titled"}).
 // Consumer: views.ts cardListView — item_view_options[:view]
 // (item.rb:157-162) names the item view; html default_item_view :bar when
 // absent; wrapper classes parameterize on the same view
 // (0_search/views.rb:110 "card-list card-list-#{item_view_options[:view]}
 // search-result-list"; views.rb:130-136 "item-#{item_view}").
 //
-// Wire receipt: blog/Latest_News nest `Latest news item|item:titled`; live
-// serves card-list-titled + search-result-item item-titled x9
-// (an internal work log captures). Before the fix the engine rendered bar
-// items for every item:view — the origin's postProcessSearchCards bridge
-// masked it (retired in r18).
+// Before the fix the engine rendered bar items for every item:view — the
+// nest origin's postProcessSearchCards bridge masked it.
 
 import { describe, expect, it } from "vitest";
 import { createRenderTestStorage, seedCard } from "./render-test-storage.js";
@@ -74,7 +70,7 @@ describe("search card_list item view — the nest item:<view> opt (R18)", () => 
       // item-#{item_view}).
       expect(html.match(/<div class="search-result-item item-titled">/g)?.length).toBe(2);
       expect(html).toContain('-titled-view"');
-      // the slot JSON carries the folded items hash (audit A-25 shape).
+      // the slot JSON carries the folded items hash.
       expect(html).toContain("&quot;items&quot;:{&quot;view&quot;:&quot;titled&quot;}");
       // the result content is present (titled view renders the body).
       expect(html).toContain("first child");

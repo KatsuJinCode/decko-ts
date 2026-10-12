@@ -1,7 +1,6 @@
 // Signed-in rendering parity: the shapes a signed-in, non-admin actor sees
-// that the anonymous corpus never exercised (recovery/parity-team/
-// signed-in.md). Each case pins Ruby's bytes for the signed-in actor and the
-// anonymous counterpart where both exist.
+// that anonymous rendering never exercises. Each case pins Ruby's bytes for
+// the signed-in actor and the anonymous counterpart where both exist.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import {
@@ -110,7 +109,7 @@ describe("unknown_link keeps a name its url key would lose (Card::Path#handle_un
 
 describe("the interactive roles dropdown (account_links.rb :my_card, can_disable_roles?)", () => {
   const KNOWN = { actor: true, accountSettings: true, signin: true };
-  // Ruby's bytes for an Advisory member (capture deck, actor 2303), with the
+  // Ruby's bytes for a signed-in member with two enabled roles, with the
   // actor's name generalised.
   const EXPECTED =
     `<div id="pat_member-Xenabled_role-edit_inline-view" class="card-slot edit_inline-view ALL ALL_PLUS TYPE-session RSTAR RIGHT-Xenabled_role TYPE_PLUS_RIGHT-person-Xenabled_role" ` +
@@ -341,8 +340,8 @@ describe("the page head's edit link uses the card's url key (head.rb universal_e
     expect(await universalEditButtonTag(engine, card("ZQRglobal+Organizer(s)"))).toBe(
       '<link rel="alternate" type="application/x-wiki" title="Edit this page!" href="/ZQRglobal+Organizer_s/edit" />',
     );
-    expect(await universalEditButtonTag(engine, card("Kirsten Cadwell - Joseph Campbell"))).toBe(
-      '<link rel="alternate" type="application/x-wiki" title="Edit this page!" href="/Kirsten_Cadwell_Joseph_Campbell/edit" />',
+    expect(await universalEditButtonTag(engine, card("Robin Lane - Lou Shore"))).toBe(
+      '<link rel="alternate" type="application/x-wiki" title="Edit this page!" href="/Robin_Lane_Lou_Shore/edit" />',
     );
   });
 });

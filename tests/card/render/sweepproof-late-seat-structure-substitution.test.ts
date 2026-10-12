@@ -1,8 +1,8 @@
-// T1-1 sweepproof pin: a card seated AFTER the last applyStructureContent
+// Sweepproof pin: a card seated AFTER the last applyStructureContent
 // pass of its seat render must still get its *structure substitution before
 // any later render reads its content.
 //
-// Mechanism under test (adversarial-review-tonights-work-lane.md T1-1, HIGH):
+// Mechanism under test (a HIGH-severity adversarial review finding):
 // the sweep cut bounded applyStructureContent to the per-render renderSeats
 // set (render.ts:2755). The pointer/list item closure
 // (enrichPointerListItemsClosure, render.ts:1451/1587) seats a pointer's

@@ -1,23 +1,21 @@
-// Pin for the deployment follow-live configuration (serializer-follow-live
-// lane) — the graded environment emits the LIVE example.com deployment's
-// serializer forms + head constants when it sets this config, and the
-// UNSET default stays byte-identical to the frozen-corpus engine.
+// Pin for the deployment follow-live configuration — when this config is
+// set, the serializer + head constants follow the live deployment's forms;
+// the UNSET default stays byte-identical to the pre-config engine output.
 //
 // WHAT IT LOCKS
 //   1. DEFAULT (unset): the data-slot `show` key is emitted whenever the
-//      show list is non-empty INCLUDING the requested view (the frozen-era
-//      always-enroll form 3,693 corpus slots pin); the head constants are
-//      untouched (no SRI, corpus attachment digits, card-gem version).
-//   2. LIVE (serializerEra: "live"): the conditional show-key rule
+//      show list is non-empty INCLUDING the requested view; the head
+//      constants are untouched (no SRI, no attachment revision digits, no
+//      card-gem version).
+//   2. FOLLOW-LIVE (serializerEra: "live"): the conditional show-key rule
 //       — a plain
 //      closed root whose show list names only the requested view OMITS the
 //      key; a discussion open whose list also carries comment_box emits
 //      show minus the requested view (["comment_box"]).
-//   3. LIVE head constants: the SRI integrity attributes land on the CDN
-//      remote script tags (after crossorigin, before referrerpolicy — live
-//      head 12/12 pages); the compiled-CSS revision digits rewrite on
-//      main-stylesheet attachment URLs only (the .js asset revision is NOT
-//      touched — live serves 0000000002.js unchanged).
+//   3. FOLLOW-LIVE head constants: the SRI integrity attributes land on the
+//      CDN remote script tags (after crossorigin, before referrerpolicy);
+//      the compiled-CSS revision digits rewrite on main-stylesheet
+//      attachment URLs only (the .js asset revision is NOT touched).
 //   4. IDENTITY: unset again, every form returns exactly (afterEach
 //      restores, so no other suite ever sees the config).
 import { describe, expect, it, afterEach } from "vitest";
@@ -33,15 +31,15 @@ import {
   serializerFollowsLive,
 } from "../../../src/card/render/deployment-follow-live-config.js";
 
-// The frozen capture-era remote script tags (page.ts REMOTE_SCRIPT_TAGS
-// bytes, the form the corpus pins).
+// The default remote script tags (page.ts REMOTE_SCRIPT_TAGS bytes, the
+// unset-config form).
 const FROZEN_JQUERY =
   `<script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous"></script>`;
 const FROZEN_RAILS =
   `<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-ujs/1.2.3/rails.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>`;
 
-// The live head's byte-verbatim tags (live-check-71 12/12 pages;
-// vm-staging-server.mjs derived constants).
+// The live-deployment head's byte-verbatim SRI tags (the follow-live
+// config's constants).
 const LIVE_INTEGRITY = {
   "https://code.jquery.com/jquery-3.5.1.min.js":
     "sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=",
@@ -119,15 +117,13 @@ describe("deployment follow-live config: live serializer era", () => {
   });
 
   it("a page-lane layout nest (parentless voo, not the view-lane root) KEEPS its own requested-view enrollment", () => {
-    // The live *footer slot on every graded page carries
-    // show:["content"] (the {{:footer|content}} nest's own optional
-    // enrollment): the card-layout body's nests render parentless in the
-    // port (processLayoutContent runs on the root format after renderView
-    // restored this.voo) but they are NOT the view-lane root — Ruby's
-    // layout nests render with a seated voo and the live serializer keeps
-    // their enrollment. Same shape on the mod bar slots (show:["bar"]) and
-    // Anyone Signed In (+description show:["lead"], +Dashboard
-    // show:["content"], _user+*created/_user+*edited show:["bar"]).
+    // The live serializer keeps a layout-body nest's own optional
+    // show enrollment (e.g. the {{:footer|content}} nest's
+    // show:["content"]): the card-layout body's nests render parentless
+    // in the port (processLayoutContent runs on the root format after
+    // renderView restored this.voo) but they are NOT the view-lane root
+    // — Ruby's layout nests render with a seated voo and the serializer
+    // keeps their enrollment.
     setDeploymentFollowLiveConfig({ serializerEra: "live" });
     const footerNest = new Voo(undefined, "content", {});
     footerNest.processVisibility("show");
@@ -156,8 +152,9 @@ describe("deployment follow-live config: live serializer era", () => {
     const parent = new Voo(undefined, "open", {}, true);
     parent.processVisibility("show");
     // bar_bottom rides the render opts' show list (processed in
-    // processVisibility, before the optional enrollment) - the Guns:open
-    // content sub-render pins the emitted order ["bar_bottom","content"].
+    // processVisibility, before the optional enrollment) - the opts' show
+    // list lands BEFORE the requested view in the emitted order
+    // ["bar_bottom","content"].
     const child = new Voo(parent, "content", { show: "bar_bottom" });
     child.processVisibility("show");
     expect(child.slotOptions()).toEqual({
@@ -238,10 +235,9 @@ describe("deployment follow-live config: live head constants", () => {
   });
 
   it("the deployment default_html_view answers implicit-nest view resolution", () => {
-    // The live deck configures default_html_view :content on both lanes;
-    // the graded corpus's view lane carries it (children:open renders the
-    // implicit {{_self+*referred_to_by}} nest as content-view). Unset = the
-    // railtie default (r17-nest-default-view-probe.rb pinned :titled).
+    // The follow-live deployment configures default_html_view :content;
+    // with it set, an implicit {{_self+*referred_to_by}}-style nest renders
+    // as content-view. Unset = the railtie default (:titled).
     setDeploymentFollowLiveConfig({ defaultHtmlViewNest: "content" });
     expect(deploymentDefaultHtmlViewNest()).toBe("content");
     setDeploymentFollowLiveConfig(undefined);

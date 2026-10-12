@@ -1,18 +1,17 @@
 /**
- * Test environment mirroring the deck facts of the live oracle app
- * (tools/oracle/decko-oracle-app), as captured in
+ * Test environment mirroring the deck facts captured in
  * set-pattern-oracle-capture.json / set-pattern-oracle-capture2.json.
  *
- * Every id below is a CAPTURED id from the oracle deck (deck-specific; the
- * production port resolves them through the DB-backed lexicon and codename
- * registries from src/card/fetch).
+ * Every id below is a captured id from the reference deck (deck-specific;
+ * the production port resolves them through the DB-backed lexicon and
+ * codename registries from src/card/fetch).
  *
- * Note the RichText cardtype: the oracle deck's "RichText" card carries the
- * codename "basic" (the historical Basic cardtype was renamed RichText while
- * keeping its codename). Oracle evidence: the type pattern's module key for a
- * RichText card is "Type::Basic" (capture2, cards["Oracle Junction"]
- * .module_keys[1]) while its safe key is "TYPE-rich_text" (safe keys use the
- * NAME).
+ * Note the RichText cardtype: the reference deck's "RichText" card carries
+ * the codename "basic" (the historical Basic cardtype was renamed RichText
+ * while keeping its codename). Reference evidence: the type pattern's
+ * module key for a RichText card is "Type::Basic" (capture2,
+ * cards["Oracle Junction"].module_keys[1]) while its safe key is
+ * "TYPE-rich_text" (safe keys use the NAME).
  */
 
 import { afterEach, beforeEach } from "vitest";

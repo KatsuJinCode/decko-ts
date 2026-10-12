@@ -1,4 +1,4 @@
-// wanted-href-query lane: the wanted-card href carries Ruby's
+// The wanted-card href carries Ruby's
 // ?card%5Bname%5D=<name> create-prefill query.
 //
 // Mechanism (card-mod-format-0.20.0/lib/card/path.rb): Card::Path#handle_unknown
@@ -7,17 +7,15 @@
 // opts[:card][:name] = name, and #query (:84-87) renders it via Hash#to_param
 // as `?card%5Bname%5D=<name>`. url_key (cardname-0.20.0 variants.rb:8-13)
 // strips every non-OK4KEY byte ('\p{Word}\*', cardname.rb:37) — dashes
-// included — so "mytho-psychology" is NOT standardish (url_key
-// "mytho_psychology" != "mytho-psychology") while space-named wanted cards
-// ("People Green" -> "People_Green") ARE. Known cards never carry the query
-// (known_name? :98-100 is an OR: Card.known? short-circuits standardish).
+// included — so a dash-named wanted card is NOT standardish (its url_key
+// differs from its name) while space-named wanted cards ARE. Known cards
+// never carry the query (known_name? :98-100 is an OR: Card.known?
+// short-circuits standardish).
 //
-// Oracle bytes (VERBATIM, page-lane recapture-raw-shard-000022.jsonl entry
-// 28173 "mindfulness", first diff @12,123 per family-a-census-lane.md):
-//   <a class="wanted-card" href="/mytho_psychology?card%5Bname%5D=mytho-psychology"><span
-//     class="card-title" title="mytho-psychology">mytho-psychology</span></a>
-// The engine emitted the bare /mytho_psychology href (28,485 vs 28,407 oracle
-// bytes; the query alone is 32 bytes).
+// The wanted anchor must therefore carry the query:
+//   <a class="wanted-card" href="/<url_key>?card%5Bname%5D=<name>">...
+// The engine used to emit the bare /<url_key> href (the query alone is the
+// difference).
 
 import { describe, expect, it } from "vitest";
 import { renderPageBytes } from "../../../src/card/render/page.js";
@@ -56,7 +54,7 @@ describe("wanted-card hrefs carry the card[name] create-prefill query for non-st
     );
     storage.fetcher.installNameEnvironment();
     const page = await renderPageBytes(storage.engine, "Href Query Probe");
-    // The oracle's exact anchor bytes (entry 28173 @12,123).
+    // The exact anchor bytes: query present on a non-standardish name.
     expect(page).toContain(
       '<a class="wanted-card" href="/mytho_psychology?card%5Bname%5D=mytho-psychology">' +
         '<span class="card-title" title="mytho-psychology">mytho-psychology</span></a>',
@@ -64,9 +62,7 @@ describe("wanted-card hrefs carry the card[name] create-prefill query for non-st
   });
 
   it("space-named wanted cards stay bare (standardish: People Green shape)", async () => {
-    // url_key "People_Green" == "People Green".tr(" ", "_") -> no query.
-    // This is the R17 wanted pin shape; the census's 21 identical hosts hang
-    // on it staying bare.
+    // "A B".tr(" ", "_") equals the url_key -> standardish -> no query.
     const storage = await seedWantedHrefDeck("a footnote on [[People Green]] here");
     storage.fetcher.installNameEnvironment();
     const page = await renderPageBytes(storage.engine, "Href Query Probe");

@@ -1,5 +1,5 @@
-// setting-page-rule-help-alert.test.ts -- the p20-help-content suite's pins
-// for the Setting-type card pages' rule_help alert.
+// setting-page-rule-help-alert.test.ts -- pins for the Setting-type card
+// pages' rule_help alert.
 //
 // Ruby chain: card-mod-rules set/type/setting.rb:59-61 view :rule_help
 // nests `[:all, card.name]` at view :rule_help; the nested Rule arm
@@ -10,11 +10,10 @@
 // Right-set registry text (setting-help-text.ts). The engine's Setting-type
 // core (views.ts settingCoreHtml, porting set/type/setting.rb + core.haml
 // :1-12) computed the alert through the registered mod view, which the
-// loader-less graded path never resolves, so the page rendered the bare
-// "All X rules that apply to" h3 where the oracle opens with the alert.
+// loader-less path never resolves, so the page rendered the bare
+// "All X rules that apply to" h3 instead of opening with the alert.
 //
-// Expected bytes are the ORACLE page bytes (page-lane shard 000012 page
-// 17450 *style): the alert body is the registry's style text with the
+// Expected bytes: the alert body is the registry's style text with the
 // [[http://decko.org/skins|more]] link processed, followed by the h3.
 
 import { describe, expect, it } from "vitest";
@@ -39,7 +38,7 @@ async function seedDeck(storage: Parameters<typeof seedCard>[0]): Promise<void> 
   await seedCard(storage, { id: 11, name: "Setting", codename: "setting", typeId: CARDTYPE_TYPE_ID });
   await seedCard(storage, { id: 250, name: "*all", codename: "all", typeId: SET_TYPE_ID });
   await seedCard(storage, { id: 210, name: "*style", codename: "style", typeId: SETTING_TYPE_ID });
-  // the broadest *style rule (corpus row 17467, List-typed; the type is
+  // the broadest *style rule (List-typed; the type is
   // irrelevant to the help chain)
   await seedCard(storage, { id: 251, leftId: 250, rightId: 210, typeId: SETTING_TYPE_ID });
   // a setting with NO registry entry and no *help rule card: the alert
@@ -59,8 +58,8 @@ describe("p20-help-content: the setting card page's rule_help alert", () => {
       const resolver = installHelpRules(storage.engine, storage.fetcher);
       await resolver.prepare();
       const core = await storage.engine.render("*style", "core");
-      // the oracle row shape (core.haml HAML bytes): alert, h3, then the
-      // per-class row `<p>\n<h5>\nall cards\n</h5>\n` + the *all+*style bar
+      // the core.haml row shape: alert, h3, then the per-class row
+      // `<p>\n<h5>\nall cards\n</h5>\n` + the *all+*style bar
       // (anchorless: show records Ruby's opt order ["full_name","bar"])
       // + `\n</p>\n`
       expect(core.startsWith(
@@ -108,8 +107,8 @@ describe("p20-help-content: the setting card page's rule_help alert", () => {
   });
 
   it("*on create with NO junction row renders the registry text over the VIRTUAL rule card (oracle 21757)", async () => {
-    // the corpus holds NO *all+*on create row, yet the oracle page opens
-    // with "Configure events to be executed when card is created" —
+    // There is no stored *all+*on create row, yet the page opens with
+    // "Configure events to be executed when card is created" —
     // rule_help is unknown: true (editor.rb:24), so the nest renders the
     // virtual rule card Ruby builds on the fly and its Right-set registry
     // text serves the body
@@ -150,9 +149,9 @@ describe("p20-help-content: the setting card page's rule_help alert", () => {
   });
 
   it("a setting with no junction row still renders the blank alert when the *all set card exists", async () => {
-    // the corpus's *on create page pins this shape: the nest of an absent
-    // junction does NOT fall to the unknown-view blank — rule_help is
-    // unknown: true, so the virtual rule card renders (blank help here)
+    // the nest of an absent junction does NOT fall to the unknown-view
+    // blank — rule_help is unknown: true, so the virtual rule card
+    // renders (blank help here)
     const storage = await createRenderTestStorage();
     try {
       await seedDeck(storage);

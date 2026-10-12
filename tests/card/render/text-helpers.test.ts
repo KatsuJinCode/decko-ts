@@ -109,8 +109,8 @@ describe("truncate - String#truncate (active_support/core_ext/string/filters.rb:
   });
 
   it("ONE_LINE_CHARACTER_LIMIT (60) truncation - the card-mod-format one_line_content shape", () => {
-    // 80-char input: 60-char head + '...' (the captured oracle's
-    // one_line_content length contract).
+    // 80-char input: 60-char head + '...' (the one_line_content length
+    // contract).
     const input = "a".repeat(80);
     expect(truncate(input, ONE_LINE_CHARACTER_LIMIT))
       .toBe("a".repeat(ONE_LINE_CHARACTER_LIMIT - 3) + "...");

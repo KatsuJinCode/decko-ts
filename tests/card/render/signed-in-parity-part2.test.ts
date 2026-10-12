@@ -1,6 +1,5 @@
-// Signed-in rendering parity, second part (recovery/parity-team/signed-in.md):
-// the causes the first signed-in grade left open. Each case pins the bytes
-// Ruby Decko renders for a signed-in actor on the capture deck.
+// Signed-in rendering parity, second part: each case pins the bytes
+// Ruby Decko renders for a signed-in actor.
 //
 //  * Pointer items typed by their list's item type (card-mod-collection
 //    item.rb determine_item_view_options_type / new_unknown_item_args): a
@@ -92,7 +91,7 @@ describe("signed-in shapes: typed list items, trashed members, field types, imag
     await seedCard(s, { id: 66, name: "Log Entry", typeId: 3 });
     s.fetcher.installNameEnvironment();
     await s.fetcher.codenames.ensureLoaded();
-    // The graded deck boot warms the lexicon, which keeps trashed names.
+    // Deck boot warms the lexicon, which keeps trashed names.
     await s.fetcher.warmLexicon([61]);
   });
 

@@ -1,17 +1,17 @@
 /**
- * Regression: the "+Project(s) Participating" search shape — the CQL
+ * Regression: the participating-sections search shape — the CQL
  * `{"type":"Project","plus":["Participant(s)",{"refer_to":"_left"}]}` that
- * serves the Person participating sections (2026-09-25 staging defect: both
- * the Riley_Ellery and Jamie_Zimron sections rendered "0 results").
+ * serves person-participating sections (both sections once rendered
+ * "0 results").
  *
  * Two stacked engine defects, both pinned here:
  *
  * 1. DECK-TABLE KEYING. The plus clause names the junction right
- *    "Participant(s)"; the corpus stores its live-Ruby key `participant_s`
- *    while the default English inflections compute `participant_` (the lone
- *    "s" segment singularizes to ""). The deck's inflection table
- *    (CARD_GEM_INITIALIZER_INFLECTIONS) must be applied at boot BEFORE the engine
- *    parses/keys names, so the CQL name resolver's
+ *    "Participant(s)"; deck data written by Ruby stores the Ruby-keyed
+ *    `participant_s` while the default English inflections compute
+ *    `participant_` (the lone "s" segment singularizes to ""). The deck's
+ *    inflection table (CARD_GEM_INITIALIZER_INFLECTIONS) must be applied at
+ *    boot BEFORE the engine parses/keys names, so the CQL name resolver's
  *    `idsByKey.get(DeckoName.parse(name).key)` hits the stored row instead
  *    of falling back to Ruby's -999 sentinel.
  *
@@ -22,9 +22,9 @@
  *    without it root.context is "" and the relative reference resolves to
  *    the sentinel even with every key resolvable.
  *
- * The seeded deck mirrors the corpus shape (Jane Doe stands in for Riley /
- * Jamie; explicit STORED keys so seeding is independent of the engine's
- * current inflection state, exactly like a corpus written by live Ruby).
+ * The seeded deck mirrors the deck-data shape (Jane Doe stands in for the
+ * host person; explicit STORED keys so seeding is independent of the
+ * engine's current inflection state, exactly like data written by Ruby).
  */
 
 import { afterEach, describe, expect, it } from "vitest";
@@ -46,17 +46,17 @@ afterEach(() => {
   resetDeckInflections();
 });
 
-/** The Riley/Jamie participating-section statement (card 422's *query). */
+/** The participating-section statement the seeded search card carries. */
 const PARTICIPATING_CQL = JSON.stringify({
   type: "Project",
   plus: ["Participant(s)", { refer_to: "_left" }],
 });
 
-/** The corpus-shaped deck: person 500, the junction-right card 400 (stored
+/** The seeded deck: person 500, the junction-right card 400 (stored
  *  key participant_s), two projects, their +Participant(s) junctions with
- *  live-written reference rows, and the person-scoped Search junction card.
+ *  reference rows, and the person-scoped Search junction card.
  *  Keys are EXPLICIT so seeding never depends on the engine's inflection
- *  state — the corpus keys were written by live Ruby, not by us. */
+ *  state — deck keys are written by Ruby, not by this engine. */
 async function seedParticipatingDeck(storage: RenderTestStorage): Promise<void> {
   await seedCard(storage, { id: 2, name: "RichText", codename: "basic", typeId: 2 });
   await seedCard(storage, { id: 98, name: "Search", codename: "search_type", typeId: 2 });
@@ -91,8 +91,9 @@ async function seedParticipatingDeck(storage: RenderTestStorage): Promise<void> 
     typeId: 98,
     dbContent: PARTICIPATING_CQL,
   });
-  // card_references rows the refer_to tie reads (live writes them on save:
-  // referer = the +Participant(s) junction, referee = the person, ref_type L).
+  // card_references rows the refer_to tie reads (Ruby writes them on
+  // save: referer = the +Participant(s) junction, referee = the person,
+  // ref_type L).
   await seedReference(storage, 610, 500, "jane_doe");
   await seedReference(storage, 611, 500, "jane_doe");
 }
@@ -124,9 +125,9 @@ describe("participating-section search: deck-table keying + host-context _left",
     // The statement's own name arguments ("Participant(s)", "Project") are
     // not nest references, so the page walk never enriches them and
     // idsByKey misses — Ruby answers through Card::Lexicon, the port through
-    // runSearch's lexicon.peekId fallback. Prime ONLY the lexicon (what
-    // origins do at boot: vm-staging-server primeEngine step 3) and render
-    // the search card cold: no warm renders, no idsByKey entries.
+    // runSearch's lexicon.peekId fallback. Prime ONLY the lexicon (what the
+    // server bootstrap primes at startup) and render the search card cold:
+    // no warm renders, no idsByKey entries.
     applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
     const storage = await createRenderTestStorage();
     try {

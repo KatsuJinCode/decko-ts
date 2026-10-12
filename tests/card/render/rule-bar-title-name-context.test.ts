@@ -1,16 +1,14 @@
-// Mechanism 2 of the live-wire page-render defect verdict
-// (REPO_DIR an internal work log, 2026-09-28):
-// the engine does not APPLY name-context title shortening on rule bars whose
-// context has MORE THAN ONE part. Probe evidence (pos600
-// `ASCSR2010gallery02+*self`, identical on pos6/827/1030/1240):
+// The engine must APPLY name-context title shortening on rule bars whose
+// context has MORE THAN ONE part. The bug this pins: on a compound
+// context the bar title carried the FULL name while the slot-JSON
+// name_context declared the context —
 //
-//   SNAP: <span class="card-title" title="+*default"><span>+</span>*default</span>
-//   ENG : <span class="card-title" title="ASCSR2010gallery02+*self+*default">...
-//   LIVE: <span class="card-title" title="+*default">...
+//   buggy:  <span class="card-title" title="*home+*self+*default">...
+//   right:  <span class="card-title" title="+*default">...
 //
-// with all three sides DECLARING the same slot-JSON name_context
-// ("ascsr2010gallery02,*self") — the engine declares the context and then
-// renders the full name anyway.
+// with both sides DECLARING the same slot-JSON name_context
+// ("*home,*self") — the engine declared the context and then rendered the
+// full name anyway.
 //
 // Ruby mechanism (context_names.rb:49-54 title_in_context):
 //   newtitle = title.from(*context_names)  # -> Cardname#name_from
@@ -20,23 +18,23 @@
 // array with the joint (cardname class_methods.rb:52-58 stringify:
 // `obj.map(&:to_s) * joint`, via Object#to_name in core_ext.rb). The
 // compressed "+*default" absolutizes back to
-// "ASCSR2010gallery02+*self+*default" and the shortened form wins.
+// "*home+*self+*default" and the shortened form wins.
 //
 // Engine defect: DeckoName#nameFrom (src/card/name.ts) called
 // `compressed.absoluteName(...compactFrom)` — spreading the context into
 // SEPARATE arguments while absoluteName(context?) reads only the FIRST — so
-// the round-trip key was "ascsr2010gallery02+*default" != the title's key and
+// the round-trip key was "*home+*default" != the title's key and
 // nameFrom fell back to the full name. Single-part contexts (the *all page's
 // `title="+*create"`) survived, which is why only the compound-context pages
 // diverged.
 //
-// Test surface: the oracle bytes are PAGE bytes (q1 renders full pages; the
+// Test surface: the assertion runs over PAGE bytes (renderPageBytes; the
 // context accumulates through the titled view's `naming { render_header }` —
 // views.ts titledView runs the header, then addNameContext, then the body).
-// The probe layout from page-layout-nest-warmup-referencing-context.test.ts
-// keeps the render to the main slot. The virtual `*home+*self+*default` rule
-// bar (context [*home, *self] — the same two-part shape as the sampled
-// pages) must render `title="+*default"`.
+// The layout from page-layout-nest-warmup-referencing-context.test.ts
+// keeps the render to the main slot. The virtual `*home+*self+*default`
+// rule bar (context [*home, *self] — a two-part context) must render
+// `title="+*default"`.
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { renderPageBytes } from "../../../src/card/render/page.js";
@@ -80,7 +78,7 @@ async function seedDeck(): Promise<void> {
   // The deck's readable grant: *all+*read -> [[Anyone]].
   await seedCard(s, { id: 50, leftId: 10, rightId: 20, typeId: LIST_TYPE_ID, dbContent: "[[Anyone]]" });
   await seedReference(s, 50, 6, "anyone");
-  // The self-set family from r16: *home is HTML-typed; the stored
+  // The self-set family: *home is HTML-typed; the stored
   // `HTML+*type+*default` rule (RichText-typed, empty content) is the
   // prototype's winning *default rule — the bar-right's nested one-line.
   await seedCard(s, { id: 70, name: "*home", codename: "home", typeId: HTML_TYPE_ID });
@@ -119,8 +117,8 @@ describe("rule bar title shortening: name_context (live-wire mechanism 2)", () =
     const html = await renderPageBytes(storage!.engine, "*home+*self");
     const at = html.indexOf("Xhome-Xself-Xdefault-bar-view");
     expect(at).toBeGreaterThan(-1); // the bar renders at all
-    // The oracle window (pos600 shape): the bar-left title carries the
-    // CONTEXT-SHORTENED name with the leading joint span:
+    // The bar-left title carries the CONTEXT-SHORTENED name with the
+    // leading joint span:
     //   <span class="card-title" title="+*default"><span>+</span>*default</span>
     expect(html).toContain(
       '<span class="card-title" title="+*default"><span>+</span>*default</span>',

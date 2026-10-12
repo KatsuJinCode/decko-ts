@@ -1,7 +1,7 @@
-// Structured/missing-child typed-view regression (the structchild lane, worktree
-// ). The class: a nest whose target has NO row but
-// whose field template exists renders the oracle's typed new-card view; the
-// engine denied it instead. Two stacked mechanisms, both ported from Ruby:
+// Structured/missing-child typed-view regression. The class: a nest whose
+// target has NO row but whose field template exists renders the typed
+// new-card view; the engine denied it instead. Two stacked mechanisms, both
+// ported from Ruby:
 //
 // 1. THE DENIAL (permissions.rb:52-58 + 66-72 permission_rule_id): a compound
 //    card whose winning live read rule's content is the `_left` reference
@@ -9,27 +9,20 @@
 //    (left_permission_rule_id, left_or_new(skip_virtual: true)). Without the
 //    delegation the walk evaluated viewer membership in the DELEGATING rule's
 //    grants — `_left` names no party, so every id-less compound child under
-//    the deck's `*all plus+*read -> _left` rule denied (the corpus's
-//    ZQVT+legacy class: 1,835 oracle pages carry such child slots, all
-//    failing before this port).
+//    the deck's `*all plus+*read -> _left` rule denied.
 //
 // 2. THE TYPE + SET KEYS (new_card_template via the structure universe +
 //    pattern/all.rb#patterns): the virtual child takes the *structure rule
 //    card's TYPE (type.rb:78-80 type_id_from_template) and its safe_set_keys
 //    drop the SELF token (a NEW card's pattern list starts at
-//    concrete_patterns[1..]). Oracle pin (expected-v2 page-lane
-//    recapture-raw-shard-000001.jsonl, ZQVT): `class="card-slot closed-view
-//    ALL ALL_PLUS TYPE-rich_text RIGHT-legacy
-//    TYPE_PLUS_RIGHT-project-legacy" data-card-name="ZQVT+legacy"
-//    data-card-type-id="3" data-card-type-name="RichText"` — no SELF, no
-//    data-card-id.
+//    concrete_patterns[1..]). The pinned slot shape: `class="card-slot
+//    closed-view ALL ALL_PLUS TYPE-rich_text RIGHT-legacy
+//    TYPE_PLUS_RIGHT-project-legacy"` — no SELF, no data-card-id.
 //
-// Ruby probes that pinned the mechanism (structured-child-type-probe.rb /
-// structured-child-render-probe.rb against the corpus deck):
-//   Card.new(name: "ZQVT+legacy").type_id => 3 (RichText, from
-//   `Project+legacy+*type plus right+*structure` id 22060);
-//   ok?(:read) => true; state => :virtual; safe_set_keys => "ALL ALL_PLUS
-//   TYPE-rich_text RIGHT-legacy TYPE_PLUS_RIGHT-project-legacy".
+// Ruby semantics the pins rest on: Card.new(name: "<host>+legacy").type_id
+// comes from the field template
+// (`<type>+legacy+*type plus right+*structure`); ok?(:read) delegates
+// through `_left`; state => :virtual; safe_set_keys omit SELF.
 
 import { describe, expect, it } from "vitest";
 import {
@@ -57,15 +50,16 @@ const SETTING_TYPE_ID = 4;
 
 /** The deck: HostA (type ProjectT) nests {{+legacy|closed}}; the field
  *  template `ProjectT+legacy+*type plus right+*structure` (typed RichText)
- *  exists; the deck's compound read rule `*all plus+*read` is the corpus's
- *  `_left` delegation; `*all+*read` grants anyone. NO row for HostA+legacy. */
+ *  exists; the deck's compound read rule `*all plus+*read` is the
+ *  `_left` delegation shape; `*all+*read` grants anyone. NO row for
+ *  HostA+legacy. */
 async function seedStructuredChildDeck(): Promise<RenderTestStorage> {
   const storage = await createRenderTestStorage();
   const seed = (opts: SeedOptions): void => void seedCard(storage, opts);
 
   // Codename cards the permission math / pattern registry / type codes read.
-  // (cards.codename is UNIQUE — the deck's RichText card carries the basic
-  // codename exactly like the corpus rows.)
+  // (cards.codename is UNIQUE — the RichText card carries the basic
+  // codename.)
   seed({ id: 1, name: "*all", codename: "all", typeId: SET_TYPE_ID });
   seed({ id: 2, name: "*read", codename: "read", typeId: SET_TYPE_ID });
   seed({ id: 3, name: "Set", codename: "set", typeId: TYPE_TYPE_ID });
@@ -79,13 +73,13 @@ async function seedStructuredChildDeck(): Promise<RenderTestStorage> {
   // The bootstrap read rule: *all+*read -> anyone.
   seed({ id: 30, name: "*all+*read", leftId: 1, rightId: 2, typeId: SET_TYPE_ID, dbContent: "anyone" });
   await seedReference(storage, 30, 9, "anyone");
-  // The compound-card read rule the corpus deck carries: *all plus+*read ->
+  // The compound-card read rule: *all plus+*read ->
   // `_left` — the DELEGATING rule (names no party; the verdict must come
   // from the left card's own walk).
   seed({ id: 31, name: "*all plus+*read", rightId: 2, typeId: SET_TYPE_ID, dbContent: "_left" });
 
   // The host: type ProjectT (type card id 20), structured content nests the
-  // missing +legacy child (closed view, the ZQVT template's shape).
+  // missing +legacy child (closed view, the field template's shape).
   seed({ id: 20, name: "ProjectT", typeId: TYPE_TYPE_ID }); // a cardtype row
   seed({ id: 40, name: "HostA", typeId: 20, dbContent: "<p>{{+legacy|closed}}</p>" });
 

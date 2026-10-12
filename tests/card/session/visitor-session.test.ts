@@ -1,7 +1,6 @@
 // The visitor session (location history and Session-card content), pinned
 // to Ruby Decko's card-1.110.0 lib/card/env/location_history.rb and
-// card-mod-session set/type/session.rb as the side-effects probe measured
-// them.
+// card-mod-session set/type/session.rb.
 import { describe, expect, it } from "vitest";
 import {
   discardLocationsFor,

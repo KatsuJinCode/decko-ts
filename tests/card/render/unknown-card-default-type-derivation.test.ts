@@ -1,35 +1,23 @@
 // THE UNKNOWN-CARD DEFAULT TYPE IS DERIVED FROM THE DECK'S *all+*default
 // RULE CARD, NEVER CONSTANT.
 //
-// THE DEFECT (page-114 census, 2026-10-04): for a pointer/list item whose
-// name is ABSENT from the deck and whose host resolves no item type, the
-// captured Ruby deck rendered the quiet-denial mini_bar carrying the
-// DEFAULT-TYPE TOKENS of the deck's own `*all+*default` rule card —
-// `TYPE-basic_c` / `data-card-type-id="22281"` / `data-card-type-name=
-// "BasicCs"` (rule 28: `*all+*default`, left `*all` 274, right `*default`
-// 318, type_id 22281, read_rule `*type`/22283 "Anyone Signed In"). The port
-// emitted its own fallback: `TYPE-rich_text` / `3` / `RichText`. Three
-// tokens, two sites per card, ZERO net bytes — 113 of the 173 probed
-// page-lane entries become byte-identical under that substitution alone
-// (tmp/lane-page114/phantom-type-token-substitution-check.json).
+// THE DEFECT: for a pointer/list item whose name is ABSENT from the deck
+// and whose host resolves no item type, the deck rendered the
+// quiet-denial mini_bar carrying the DEFAULT-TYPE TOKENS of the deck's own
+// `*all+*default` rule card (its TYPE token, data-card-type-id and
+// data-card-type-name). The port emitted its own fallback — the RichText
+// type's tokens at both sites — wrong type identity on every phantom.
 //
-// WHY THE CONSTANT WAS WRONG — THE PREMISE, FALSIFIED BY MEASUREMENT.
-// views.ts#phantomIdentity carried this comment (now corrected there):
-// "The corpus carries NO *all+*default rule row at all (verified 2026-10-03
-// against bench-corpus-raw.sqlite3: select * from cards where
-// name='*all+*default' -> [])". The row EXISTS. The verification query
-// could not see it because the raw capture stores every JUNCTION row with
-// `name IS NULL` (the junction name is composed from left_id/right_id by
-// the name walk). Measured on the graded corpus
-// (sha256 6a44dfdc20ca941e66da6ba08add7f1a5cf35ec1a3ba75cc43a70920e609440e):
-//   SELECT * FROM cards WHERE name = '*all+*default'          -> 0 rows
-//   SELECT * FROM cards WHERE left_id = 274 AND right_id = 318 -> id 28,
-//     type_id 22281, trash 0, read_rule_class '*type', read_rule_id 22283
-// The engine's own recursive name-walk universe statement
-// (rules/structure.ts#ruleUniverseStatementBySetting) composes it as
-// `*all+*default` -> 22281, and `newCardDefaultType("mytho-psychology")`
-// answers `{typeId: 22281, typeName: "BasicCs"}` once the universe has
-// loaded (measured this lane, probe-default-type-universe.mjs).
+// WHY THE CONSTANT WAS WRONG — THE PREMISE, FALSIFIED. views.ts#
+// phantomIdentity carried this comment (now corrected there): "the deck
+// carries NO *all+*default rule row at all". The row EXISTS. The
+// verification query could not see it because a raw capture stores every
+// JUNCTION row with `name IS NULL` (the junction name is composed from
+// left_id/right_id by the name walk) — a SELECT by name finds nothing
+// while a SELECT by left_id + right_id finds the rule. The engine's own
+// recursive name-walk universe statement
+// (rules/structure.ts#ruleUniverseStatementBySetting) composes the rule,
+// and newCardDefaultType answers its type once the universe has loaded.
 //
 // DERIVE, DO NOT HARDCODE. The pin below therefore asserts the DERIVATION
 // resolves (the deck's own rule row decides) and that a deck whose
@@ -40,10 +28,10 @@
 //
 // SECOND PIN (the known-card guard): the derivation is reachable ONLY from
 // the unknown-phantom arm. Every KNOWN card keeps its OWN stored type in
-// its slot attrs and its `data-card-id`. The capture's known cards
-// (Narrative 629 — a stored Pattern-typed card; *footer 22749 — a stored
-// Cardtype) are asserted by id, name and type tokens, so a derivation that
-// leaked into the known arms would fail here.
+// its slot attrs and its `data-card-id`. The fixture's two known cards —
+// a stored custom-typed card and a stored Cardtype — are asserted by id,
+// name and type tokens, so a derivation that leaked into the known arms
+// would fail here.
 
 import { describe, it, expect, afterAll } from "vitest";
 import {
@@ -88,9 +76,9 @@ async function seedDeckWithDefaultRule(
   await seedCard(s, { id: 22281, name: "BasicCs", codename: "basic_c", typeId: 5 });
   await seedCard(s, { id: 2979, name: "consideration", typeId: 5 });
   // A SECOND type card, so the varied-rule test can point the rule row at
-  // something that is not the corpus's BasicCs.
+  // a type other than the deck's default.
   await seedCard(s, { id: 444, name: "Practice", typeId: 5 });
-  // Narrative's stored type card (corpus id 423) — the known-card guard
+  // The known card's stored type card — the known-card guard
   // asserts the card's OWN type name survives.
   await seedCard(s, { id: 423, name: "Pattern", typeId: 5 });
   // Permission parties.
@@ -101,13 +89,13 @@ async function seedDeckWithDefaultRule(
   await seedCard(s, { id: 800, name: "*all+*read", leftId: 274, rightId: 704, typeId: 2, dbContent: "Anyone" });
   await seedReference(s, 800, 10, "anyone", "L");
   // <defaultType>+*type (rule 22282) and <defaultType>+*type+*read (rule
-  // 22283) = "Anyone Signed In" — the Anonymous denial the corpus's
-  // denied phantom body rides.
+  // 22283) = "Anyone Signed In" — the Anonymous denial the denied phantom
+  // body rides.
   await seedCard(s, { id: 22282, name: `${defaultRuleTypeName}+*type`, leftId: defaultRuleTypeId, rightId: 259, typeId: 259 });
   await seedCard(s, { id: 22283, name: `${defaultRuleTypeName}+*type+*read`, leftId: 22282, rightId: 704, typeId: 2, dbContent: "Anyone Signed In" });
   await seedReference(s, 22283, 11, "anyone_signed_in", "L");
-  // THE DECK'S DEFAULT-TYPE RULE — corpus rule 28. `name` is left to the
-  // seeder's junction handling (name IS NULL in the raw capture).
+  // THE DECK'S DEFAULT-TYPE RULE. `name` is left to the
+  // seeder's junction handling (junction name IS NULL in a raw capture).
   if (opts.withDefaultRule) {
     await seedCard(s, { id: 28, name: "*all+*default", leftId: 274, rightId: 318, typeId: defaultRuleTypeId, dbContent: "" });
   }
@@ -121,14 +109,13 @@ async function seedDeckWithDefaultRule(
   await seedCard(s, { id: 22749, name: "*footer", typeId: 5, dbContent: "known footer" });
 }
 
-/** The graded run warms the WHOLE live deck before the first page render
- *  (tools/oracle/dual-lane-direct-runner-core.ts:695-700 seeds every live
- *  card id, then warmLexicon(everyLiveId)). The RichText type card is
- *  therefore in the engine's render-card map by the time a pointer item's
- *  phantom is built — which is why the old literal in phantomIdentity
- *  fired on the corpus. A synthetic deck that left RichText cold would let
- *  a build that DELETED the fallback pass by accident, so the fixture
- *  warms it explicitly. */
+/** The full rendering environment warms the WHOLE deck (every card id,
+ *  then warmLexicon over all of them) before the first page render. The
+ *  RichText type card is therefore in the engine's render-card map by the
+ *  time a pointer item's phantom is built — which is why the old literal in
+ *  phantomIdentity fired there. A synthetic deck that left RichText cold
+ *  would let a build that DELETED the fallback pass by accident, so the
+ *  fixture warms it explicitly. */
 async function warmDeckLikeTheGradedRun(s: RenderTestStorage): Promise<void> {
   await s.engine.prepareItemForRender("RichText");
 }
@@ -213,8 +200,8 @@ describe("unknown pointer/list item: the default type is DERIVED from the deck's
       const narrative = await storage.engine.render("Narrative", "content");
       const footer = await storage.engine.render("*footer", "content");
 
-      // id + name + STORED type tokens survive (Narrative is Pattern-typed
-      // in the capture; *footer is a Cardtype).
+      // id + name + STORED type tokens survive (the seeded stored types:
+      // one custom-typed card, one Cardtype).
       expect(narrative).toContain('data-card-id="629"');
       expect(narrative).toContain('data-card-name="Narrative"');
       expect(narrative).toContain('data-card-type-id="423"');

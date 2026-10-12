@@ -1,25 +1,22 @@
-// URI scanner trailing word boundary + TLD list parity (the p20-autolink
-// pass's page 11251 "IT'S ALL ABOUT ANGELS by Daniel Ferreira" fix).
+// URI scanner trailing word boundary + TLD list parity.
 //
 // Ruby truth (card-mod-content-0.20.0 lib/card/content/chunk/uri.rb, the gem
-// the oracle app runs):
+// the reference app runs):
 //   * HostUri's prefix_re carries a `\b` AFTER the host pattern:
 //     `(?:(?!#{REJECTED_PREFIX_RE})#{HOST})\b` (uri.rb:123-127, HOST
 //     built at :118-122 from GENERIC + COUNTRY). EmailUri carries the same
 //     `\b` (:83-90). The Uri (scheme) class carries NO `\b` (:38-42).
-//   * The `\b` is what keeps `ms.paula` plain: the host body matches
-//     `ms.` + TLD `pa`, then `a`->`u` is word->word — no boundary — so the
+//   * The `\b` is what keeps `ms.dena` plain: the host body matches
+//     `ms.` + TLD `de`, then `e`->`n` is word->word — no boundary — so the
 //     prefix match fails and no URI chunk registers. The engine's
-//     URI_HOST_REGEXP lacked it and autolinked `ms.pa` inside `ms.paula`
-//     (`<a target="_blank" class="external-link" href="http://ms.pa">
-//     ms.pa</a>ula`), the page's entire first difference (oracle
-//     `---Love, ms.paula</p>` at byte 29342, zero external-link anchors
-//     on the page).
+//     URI_HOST_REGEXP lacked it and autolinked `ms.de` inside `ms.dena`
+//     (`<a target="_blank" class="external-link" href="http://ms.de">
+//     ms.de</a>na`).
 //   * The TLD alternation is the gem's GENERIC + COUNTRY lists verbatim.
 //     The engine carried `me` (absent from the gem's COUNTRY — it goes
 //     md|mg) and lacked `si` (gem: sh|si|sj), so `.me` hosts autolinked
-//     where the oracle leaves plain and `.si` hosts stayed plain where the
-//     oracle autolinks. Both directions are pinned here.
+//     where the reference leaves plain and `.si` hosts stayed plain where the
+//     reference autolinks. Both directions are pinned here.
 //
 // JS `\b` and Ruby's Onigmo `\b` agree on this pattern's ASCII alphabet
 // (letters, digits, underscore are word chars on both).
@@ -28,15 +25,15 @@ import { describe, expect, it } from "vitest";
 import { expandContentLinks } from "../../../src/card/render/format.js";
 
 describe("URI scanner: HostUri/EmailUri trailing word boundary (uri.rb prefix_re \\b)", () => {
-  it("leaves ms.paula plain — the page 11251 oracle bytes (---Love, ms.paula)", () => {
-    const out = expandContentLinks("---Love, ms.paula");
-    expect(out).toBe("---Love, ms.paula");
+  it("leaves ms.dena plain (trailing word chars block the boundary)", () => {
+    const out = expandContentLinks("---Love, ms.dena");
+    expect(out).toBe("---Love, ms.dena");
     expect(out).not.toContain("<a ");
   });
 
-  it("still autolinks a bare ms.pa host (the boundary holds at a non-word char)", () => {
-    expect(expandContentLinks("love, ms.pa.")).toBe(
-      'love, <a target="_blank" class="external-link" href="http://ms.pa">ms.pa</a>.',
+  it("still autolinks a bare ms.de host (the boundary holds at a non-word char)", () => {
+    expect(expandContentLinks("love, ms.de.")).toBe(
+      'love, <a target="_blank" class="external-link" href="http://ms.de">ms.de</a>.',
     );
   });
 
@@ -45,7 +42,7 @@ describe("URI scanner: HostUri/EmailUri trailing word boundary (uri.rb prefix_re
     // admin@example.comX matches through the X and the boundary holds at
     // the following space — the same consumption Ruby's prefix + full_re
     // performs. The `\b` only rejects matches whose LAST char abuts
-    // another word char (the ms.paula case).
+    // another word char (the ms.dena case).
     expect(expandContentLinks("mail admin@example.comX now")).toBe(
       'mail <a class="email-link" href="mailto:admin@example.comX">admin@example.comX</a> now',
     );

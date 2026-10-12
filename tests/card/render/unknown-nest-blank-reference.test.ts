@@ -2,48 +2,37 @@
 // backslash-escaped relative `{{\_|board_link}}` (name `\_` keys to "" —
 // cardname.rb:107-118 simple_key drops `\` outside OK4KEY_RE).
 //
-// Ruby mechanism (live-truth-superseded reading, 2026-10-03): a blank-key
+// Ruby mechanism: a blank-key
 // nest fetches a NEW card (fetch.rb#retrieve_existing skips the blank mark
 // but fetch/store.rb#new_for_cache + fetch/results.rb#new_result_card still
 // return a `Card.new name: ""`-shaped card for the `new:` fetch), typed by
-// the *default template chain (type.rb:78-80 type_id_from_template ->
-// BasicCs on the captured deck, rule 28), whose read walk lands on
-// BasicCs+*type+*read (rule 22283, "Anyone Signed In") — Anonymous is
-// read-DENIED. Which BYTES render is decided by the VIEW's `unknown:`
-// config (view/permission.rb:19-23 `alter_unknown || denial`):
+// the *default template chain (type.rb:78-80 type_id_from_template -> the
+// deck's default type via the rule 28 shape), whose read walk can leave
+// Anonymous read-DENIED. Which BYTES render is decided by the VIEW's
+// `unknown:` config (view/permission.rb:19-23 `alter_unknown || denial`):
 //
 //   - view WITHOUT `unknown: true` (the implicit nest view on a plain
 //     card): alter_unknown substitutes :unknown (format/error.rb:23),
-//     whose createable gate renders "" for Anonymous — corpus 10488
-//     `June Pemberton+Menu`, blank `{{}}` -> empty on content/open.
-//     RE-PROVEN LIVE 2026-10-03: example.com/June_Pemberton+Menu
-//     ?view=content|open carry zero denial spans and the stored raw
-//     content still embeds the blank nest (fetch tmp/live-10488/ logs,
-//     live-truth-application-lane.md).
+//     whose createable gate renders "" for Anonymous — the blank `{{}}`
+//     renders empty on content/open.
 //   - view WITH `unknown: true`: alter_unknown answers nil and the denial
-//     check runs — the 76-byte quiet span renders. Two corpus shapes:
-//     636 `Menu+*right+*default` (is_template? wraps :core in nest_mode
+//     check runs — the quiet span renders. Two shapes: a `Menu+*right+
+//     *default` rule card (is_template? wraps :core in nest_mode
 //     :template; modal_nest_view substitutes :template_nest,
-//     template_nest.rb:2 `unknown: true`) and 38250
-//     `Cardtype+*type+*guide` (explicit `{{\_|board_link}}` nest;
-//     menu.rb:29 `view :board_link, unknown: true`). BOTH RE-PROVEN LIVE
-//     2026-10-03: example.com serves the span at the nest position
-//     on ?view=content for both pages, same session as the 10488 fetch.
+//     template_nest.rb:2 `unknown: true`) and an explicit
+//     `{{\_|board_link}}` nest (menu.rb:29
+//     `view :board_link, unknown: true`).
 //
-// This supersedes the wave-20 reading (an internal work log
-// fix-denied-nest-bare-dot-lane.md) that 636 was "the anomalous capture":
-// the live site renders the span for 636 and 38250 and nothing for 10488,
-// and one machinery (unknown-capable view + denied new-card read verdict)
-// produces all three. The earlier 2-for-2 swap measurement traded the two
-// shapes because it moved the blank branch between two hardcoded arms
-// instead of routing the nest through the view machinery.
+// One machinery (unknown-capable view + denied new-card read verdict)
+// produces all the byte shapes; an implementation that special-cases the
+// blank branch between two hardcoded arms gets exactly these shapes wrong.
 //
-// Seed discipline: the rule universe mirrors the captured deck's
-// load-bearing rows (corpus ids cited from read-rule-left-climb-corpus-
-// shapes.test.ts): `*all+*default` (rule 28 shape) is TYPED BasicCs — a
+// Seed discipline: the rule universe mirrors a real deck's load-bearing
+// rows (corpus ids cited from read-rule-left-climb-corpus-shapes.test.ts):
+// `*all+*default` (rule 28 shape) is TYPED with the default type — a
 // *default rule card carries the type it assigns, and the *default
 // universe maps rule key -> the rule card's own type_id — and
-// `*all+*read` (rule 6568 shape, "[[Anyone]]") must exist: the read walk's
+// `*all+*read` (the "[[Anyone]]" catch-all) must exist: the read walk's
 // hasCatchAllReadRule gate treats a catch-all-less deck as unverifiable.
 // The junction rows seed their full side chains (lexicon composition
 // recurses left-deep: "Probe+*right+*default" = sides

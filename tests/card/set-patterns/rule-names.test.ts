@@ -2,7 +2,7 @@
  * Rule-name algebra tests. Sources: lib/card/rule/all.rb,
  * lib/card/rule/cache.rb, card-mod-rules-0.20.0 set/rule/rules.rb,
  * card-mod-permissions-0.20.0 set/all/permissions.rb. ORACLE-marked
- * expectations cite set-pattern-oracle-capture.json (probe 1).
+ * expectations cite the committed set-pattern-oracle-capture.json fixture.
  */
 
 import { describe, expect, it } from "vitest";

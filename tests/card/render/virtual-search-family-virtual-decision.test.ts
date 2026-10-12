@@ -1,7 +1,7 @@
-// virtual-search-family-virtual-decision.test.ts -- the gem-anchored-closure
-// port's regression net for the VirtualSearch family (FIX A): a nest whose
-// target compound name has NO row still renders when the right part is one
-// of the 16 card-mod-search virtual-search rights.
+// virtual-search-family-virtual-decision.test.ts -- regression net for the
+// VirtualSearch family: a nest whose target compound name has NO row still
+// renders when the right part is one of the 16 card-mod-search virtual-search
+// rights.
 //
 // MECHANISM (gem-cited): card-mod-search-0.20.0 set/abstract/virtual_search.rb
 // :11-12 overrides the states machine for every set that includes it --
@@ -17,15 +17,15 @@
 // card_list, whose zero-result branch is the no_search_results bytes
 // (`<div class="search-no-results"></div>`).
 //
-// ORACLE the corpus pins (expected-v2 page-lane, GIV-the god of intimate
-// violence): the engine used to substitute the nest to the :unknown view
-// (renders ""), dropping the slot entirely; the fixed render is
-// BYTE-IDENTICAL to the oracle page (the env-gated corpus suite
+// On a fetch miss the engine used to substitute the nest to the :unknown
+// view (renders ""), dropping the slot entirely; the fixed render is
+// byte-identical to the reference page (the env-gated suite
 // gem-anchored-residual-pages-byte-parity.test.ts pins the whole page).
 //
-// The fixture-less blocks here run in the ordinary net (no corpus, no env
-// gate): the family table against the gem files' own cql_content literals,
-// and the live nest-render mechanism on a seeded mini-deck.
+// The fixture-less blocks here run in the ordinary suite (no corpus
+// dependency, no env gate): the family table against the gem files' own
+// cql_content literals, and the live nest-render mechanism on a seeded
+// mini-deck.
 
 import { describe, expect, it } from "vitest";
 import {
@@ -63,7 +63,7 @@ describe("VirtualSearch family table (card-mod-search-0.20.0 set/right/*.rb)", (
   });
 
   it("decides virtual? per virtual_search.rb:11-12 (compound + family right only)", () => {
-    // The GIV corpus nest: compound, family right -> the cql serialization.
+    // A compound name with a family right -> the cql serialization.
     expect(
       virtualSearchCqlFor(
         DeckoName.parse("GIV_the_god_of_intimate_violence+*referred_to_by"),
@@ -83,8 +83,8 @@ describe("VirtualSearch family nest render (seeded mini-deck)", () => {
     const storage = await createRenderTestStorage();
     try {
       // The type card (codename search_type -> peekIdByCodename) and the
-      // setting card (codename referred_to_by) - the corpus seeds both from
-      // card-mod-search data/real.yml; the fixture deck mirrors the shape.
+      // setting card (codename referred_to_by); the fixture deck mirrors
+      // the mod's seed shape.
       await seedCard(storage, {
         id: 901,
         name: "Search",
@@ -98,8 +98,7 @@ describe("VirtualSearch family nest render (seeded mini-deck)", () => {
         typeId: 2,
       });
       // The left card the nest relativizes against + the host whose content
-      // carries the nest (the GIV page shape: "Used as a tag for:" then the
-      // bare `{{_self+*referred to by}}`).
+      // carries the nest ("Used as a tag for:" then the nest).
       await seedCard(storage, {
         id: 903,
         name: "tag target",
@@ -110,10 +109,11 @@ describe("VirtualSearch family nest render (seeded mini-deck)", () => {
         id: 904,
         name: "tag host",
         typeId: 2,
-        // The GIV page's authored form is the bare `{{_self+*referred to by}}`
-        // (the corpus's default_html_view :content then names the slot
-        // content-view); the fixture deck's default nest view is :titled, so
-        // the pin uses the explicit |content opt — the same view, named.
+        // The reference page's authored form is the bare
+        // `{{_self+*referred to by}}` (its default_html_view :content names
+        // the slot content-view); this fixture deck's default nest view is
+        // :titled, so the pin uses the explicit |content opt — the same
+        // view, named.
         dbContent: "Used as a tag for:\n{{_self+*referred to by|content}}",
       });
       const html = await storage.engine.render("tag host", "content");

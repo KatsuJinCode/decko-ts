@@ -10,11 +10,9 @@
 // The gate (src/card/render.ts:469-505) ports this chain via the existing
 // itemOptionsParseFailure / findRule helpers (no fork).
 //
-// Gate census (recapture + original corpus, both capture keys; model
-// tmp/recapture-deck/enumeration/set-host-options-gate-model.json,
-// oracle probes 7-9): set hosts on :open AND :content. :closed renders
-// the compact view (one_line_content) which never raised in either
-// capture. Abstract::Permission hosts already short-circuited at the
+// Gate coverage: set hosts on :open AND :content. :closed renders
+// the compact view (one_line_content) which never enters this chain.
+// Abstract::Permission hosts already short-circuited at the
 // *open pointer/list gate above; read-denied hosts render the denial
 // span (view/permission.rb:46-50 altered_view wraps the view BEFORE
 // view_method dispatches).
@@ -63,7 +61,7 @@ async function captureError(run: () => Promise<unknown>): Promise<Error> {
 
 describe("set-host rules-editor options-chain boundary", () => {
   it(":open of a set host raises via the *content options rule walk with the rule's content", async () => {
-    // Corpus pin: a SET host X+*self whose *content_options rule_card
+    // The pin: a SET host X+*self whose *content_options rule_card
     // resolves (via the *right pattern, anchor = tag = *self) to a
     // search-type rule "*self+*right+*content options" hanging off the
     // *self+*right SET, with garbage content -> raises with that
@@ -87,7 +85,7 @@ describe("set-host rules-editor options-chain boundary", () => {
   });
 
   it(":content of a set host fires the same gate (both views delegate to :core)", async () => {
-    // Gate census: both :open AND :content render the rules-editor
+    // Coverage: both :open AND :content render the rules-editor
     // accordion via :core delegation (html/views.rb -> set/type/set/
     // html_views.rb:6-11). The :content view passes through the same
     // chain.
@@ -107,9 +105,8 @@ describe("set-host rules-editor options-chain boundary", () => {
   });
 
   it(":closed of a set host never consults the rules-editor chain", async () => {
-    // Gate census: 0 set|closed sentinels in either capture. :closed
-    // renders the compact one_line_content which never enters the
-    // rules-editor walk.
+    // :closed renders the compact one_line_content which never enters
+    // the rules-editor walk.
     const s = await createRenderTestStorage();
     try {
       await seedCardtypes(s);
