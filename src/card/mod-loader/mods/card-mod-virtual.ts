@@ -452,7 +452,7 @@ export async function virtualUpdatedAt(
 /** virtual_cache.rb:21-24 event :save_virtual_content, :prepare_to_store,
  *  on: :save - body: `Virtual.save self; abort :success`. The Virtual side
  *  effect runs for real; the abort marker is returned for the caller to
- *  play (the save-unwind pipeline is a later wave - see the header). */
+ *  play (the save-unwind pipeline is a later change - see the header). */
 export async function saveVirtualContent(
   driver: SQLDatabaseDriver,
   card: CardRecord,
