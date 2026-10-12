@@ -6,7 +6,7 @@
 //   node tools/bundle-cf-edge-engine.mjs
 //
 // Output: deploy/dist/cf-edge-engine.bundle.js, uploaded unchanged by
-// `wrangler deploy` (deploy/cf-riley/wrangler.toml sets no_bundle).
+// `wrangler deploy` (the deploying wrangler.toml sets no_bundle).
 
 import { build } from "esbuild";
 import { statSync, mkdirSync, readFileSync } from "node:fs";
