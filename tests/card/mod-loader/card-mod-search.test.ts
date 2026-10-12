@@ -274,8 +274,7 @@ describe("card-mod-search through the mod loader (A/B)", () => {
   });
 
   // ---------------------------------------------------------------------
-  // mod-views-b, 2026-09-28. NO ORACLE CAPTURE of either view exists
-  // (the capture script never requested them), so these are SHAPE
+  // No rendered bytes exist for either view, so these are SHAPE
   // assertions derived from the Ruby source, NOT byte-pins, and are not
   // reported as byte-verified anywhere.
   // ---------------------------------------------------------------------
@@ -286,11 +285,9 @@ describe("card-mod-search through the mod loader (A/B)", () => {
     // with_results yields; wrap_with :div, class: klass is a PLAIN div
     // (card-mod-format set/all/html/wrap.rb:117-120 block form - no slot
     // attributes), and Content#output joins the three items with "\n"
-    // (card-1.110.0 lib/card/format/content.rb:70-73). The captured oracle
-    // (search-list-views.json target 275, b1069e5) pins the wrapper's tail
-    // bytes as "</div></div>\n" - the block-form wrap_with newline lands
-    // AFTER the wrapper's close (the first shape assertion, endsWith
-    // "</div>", predated the capture and was falsified by it).
+    // (card-1.110.0 lib/card/format/content.rb:70-73). The block-form
+    // wrap_with newline lands AFTER the wrapper's close, so the tail bytes
+    // are "</div></div>\n".
     expect(html.startsWith('<div class="_search-checkbox-list pe-2">')).toBe(true);
     expect(html.endsWith("</div>\n")).toBe(true);
     // three checkbox_item haml blocks, in cql result order
@@ -324,16 +321,10 @@ describe("card-mod-search through the mod loader (A/B)", () => {
     const s = storage!;
     // self/search.rb:48 defines the view on Card::Set::Self::Search - the
     // set of the card literally named "*search" - NOT on the search TYPE
-    // set. The oracle capture pins the truth (fixtures/captured/
-    // search-list-views.json, commit b1069e5): on the Search-typed cards
-    // "*roles+*right+*content options" (275) and "*script+*right+*content
-    // options" (304) Ruby raises Card::Error::UserError "view
-    // (results_for_keyword) not supported for ..." for all three actors;
-    // only *search itself renders ("" - the search_keyword request-param
+    // set. On Search-typed cards Ruby raises Card::Error::UserError "view
+    // (results_for_keyword) not supported for ..."; only *search itself
+    // renders ("" - the search_keyword request-param
     // guard, search_params.rb:32-34, is false in every headless render).
-    // This test's original shape assertion ("" on "A Search") predates the
-    // capture and was falsified by it - expectation updated to the oracle,
-    // never the reverse.
     await expect(s.engine.render("A Search", "results_for_keyword")).rejects.toThrow(
       UnsupportedViewError,
     );
