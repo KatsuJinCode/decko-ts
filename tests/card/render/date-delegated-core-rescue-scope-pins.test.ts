@@ -2,7 +2,7 @@
 // from inside a view body is its OWN rescue scope, so a raising delegated
 // render still lets the enclosing view's `wrap` emit its card-slot div.
 //
-// MECHANISM (gem source, REPO_ROOT/archive/decko-fork-study/decko/):
+// MECHANISM (gem source):
 //
 //   1. Every `render!` in Ruby is independently rescued.
 //      card/lib/card/format/render.rb:7-14
@@ -54,10 +54,7 @@
 // the {open, content} views (the old src/card/render.ts PARSE_DISPATCH_VIEWS
 // gate) — one level too high, so the `:content` view body never ran, its
 // `wrap` never fired, the card-slot div was never emitted, and nest()'s
-// catch produced the unwrapped span labelled "(content view)". Corpus bytes
-// it did not match: card 34322 `Maturana ...+Date` (-938), 27918 `Jamie
-// McHugh ...+Date` (-908), 35469 `White Fragility ...+Date` (-606),
-// 9788 `Klickstein continues+Date` (-1727).
+// catch produced the unwrapped span labelled "(content view)".
 //
 // THE LOUD HALF IS NOT WEAKENED. format/error.rb:65-67
 //   `loud_error?` = `focal? || Card.config.raise_all_rendering_errors`;
@@ -73,12 +70,10 @@ import { createRenderTestStorage, seedCard } from "./render-test-storage.js";
 
 const DATE_CARD = "broken date card";
 const HOST_CARD = "host nests the broken date";
-/** The corpus's own content for card 34322 `Maturana ...+Date` is "1980"
- *  (verified against tmp/raw-ground-truth/bench-corpus-raw.sqlite3), which
- *  Ruby's Date.parse rejects — `parseRubyDateContent` returns null for
- *  every all-digit string by design (src/card/render/errors.ts:227-230,
- *  "2016", "1980" both verified). "1980" is used here so the pin exercises
- *  the same rejection the corpus does. */
+/** The pinned content is "1980": an all-digit string Ruby's Date.parse
+ *  rejects, and `parseRubyDateContent` returns null for every all-digit
+ *  string by design (src/card/render/errors.ts:227-230). "1980" is used
+ *  here so the pin exercises that rejection class. */
 const BAD_DATE_CONTENT = "1980";
 
 async function seed(): Promise<ReturnType<typeof createRenderTestStorage>> {
@@ -145,9 +140,9 @@ describe("a delegated render_core is its own rescue scope (render.rb:7-14, :96-1
     try {
       // Ruby: `focal?` is `depth.zero?` and raise_all_rendering_errors is
       // false, so a bare `format.render(:content)` of this card is
-      // `loud_error` -> `raise e`. The corpus pins that surface as
-      // CAPTURE_ERROR, and this pin keeps it that way — moving the raise
-      // down a level must not turn a capture_error into a rendered page.
+      // `loud_error` -> `raise e`. The recorded surface for that call is an
+      // error, not a page, and this pin keeps it that way — moving the
+      // raise down a level must not turn a raise into a rendered page.
       let captured: unknown;
       try {
         await storage.engine.render(DATE_CARD, "content");
