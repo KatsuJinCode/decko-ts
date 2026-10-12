@@ -232,10 +232,15 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // page's own renders dispatch the keyword header composed with the
       // card list); still no new format key and no css/scss row. Measured
       // on the merged tree.
+      // 359 -> 360 html unchanged, json 3 -> 4 (the typeahead-edge lane,
+      // 2026-10-11): the search mod's SELF set registers view
+      // :search_box_complete on the JSON arm (search.rb:70-72 — the
+      // navbox typeahead's JSON the engine now serves); no new format key
+      // and no css/scss row. Measured on this tree.
       ["html", 361],
 
       ["js", 2],
-      ["json", 3],
+      ["json", 4],
     ]);
   });
 
