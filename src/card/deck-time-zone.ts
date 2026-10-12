@@ -30,17 +30,35 @@
 // is COMPUTED from the zone and the instant's offset, so a PDT instant says
 // "PDT" and a PST instant says "PST" — which is what Ruby's `%Z` does.
 //
-// THE DEFAULT IS THE GRADED DECK'S ZONE, not a guess: America/Los_Angeles is
-// what the corpus was captured in, so leaving it unset keeps every graded
-// byte identical while removing the hard-coded dependency on the host. A
-// deployment or a fixture that configures a different zone gets that zone.
-// The graded arithmetic is unchanged by this change; only the LABEL changes,
-// and it changes to what Ruby would have printed.
+// THE DEFAULT IS "UTC" — the zone the captured deck was actually CONFIGURED
+// for. `fixtures/captured/date-overrides.json` records the capture host's own
+// two readings side by side: `time_zone_name: "UTC"` (Ruby's `Time.zone.name`
+// — the DECK's setting) against `time_now_zone: "Pacific Standard Time"`
+// (`Time.now.zone` — the OS-local zone of the machine that took the
+// photographs). So a Pacific default was never the deck's zone; it was the
+// capture host's, hard-coded into the engine's default. Naming a US West
+// Coast zone as the out-of-the-box default is also a location hint about the
+// capture, which a published package should not carry.
+//
+// WHAT THE DEFAULT DOES NOT CHANGE. The corpus's captured bytes still read
+// "03:12 PM PDT" because that is what the host rendered, and GRADED tests
+// reproduce the host's reading by SETTING this zone explicitly — through
+// `setDeckTimeZone(CORPUS_CAPTURE_TIME_ZONE)` or the fixtures that already
+// do. Reproducing a capture is an explicit act; it is not what an
+// unconfigured engine should do. A deployment or a fixture that configures a
+// different zone gets that zone.
 
-// The graded deck's zone — the corpus capture's. See the header: this is the
-// default so an unconfigured engine keeps its graded bytes, not a claim
-// about any deck.
-export const DEFAULT_DECK_TIME_ZONE = "America/Los_Angeles";
+/** The zone the captured deck was configured for — the default. UTC is
+ *  location-neutral and is what the capture recorded as `Time.zone.name`
+ *  (fixtures/captured/date-overrides.json). */
+export const DEFAULT_DECK_TIME_ZONE = "UTC";
+
+/** The zone the CORPUS CAPTURE HOST rendered in — `Time.now.zone`, which
+ *  `fixtures/captured/date-overrides.json` records as "Pacific Standard
+ *  Time". This is NOT a deck setting and NOT a default: it is named here so
+ *  the tests that reproduce captured bytes can say so explicitly instead of
+ *  inheriting a host's geography from the engine's default. */
+export const CORPUS_CAPTURE_TIME_ZONE = "America/Los_Angeles";
 
 let deckTimeZone: string = DEFAULT_DECK_TIME_ZONE;
 

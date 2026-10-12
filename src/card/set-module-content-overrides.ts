@@ -80,7 +80,7 @@
 import { randomBytes } from "node:crypto";
 import { cardWallClockNow, setCaptureWallClock } from "./wall-clock.js";
 import {
-  DEFAULT_DECK_TIME_ZONE,
+  CORPUS_CAPTURE_TIME_ZONE,
   formatCardDayofwkMinTz,
 } from "./deck-time-zone.js";
 
@@ -121,12 +121,13 @@ export const CAPTURE_WALL_CLOCK_CAPTURE_INSTANT: Date = new Date(
  *  too (see src/card/deck-time-zone.ts). */
 export const ORACLE_CAPTURE_NOW_BYTES = "Monday, September 28, 2026 03:12 PM PDT";
 
-/** The GRADED deck's configured time zone. The default, so an unconfigured
- *  engine keeps the corpus's arithmetic byte-for-byte; a deck or fixture
- *  that configures a different zone renders in that zone. */
+/** The zone the CORPUS CAPTURE HOST rendered in — the zone its recorded
+ *  bytes are in. Not the engine default (that is UTC, the deck's own setting)
+ *  and not a claim about any deck: it is what reproducing the captured bytes
+ *  requires, so a fixture or test that reproduces them sets it explicitly. */
 export const ORACLE_DECK_TIME_ZONE = {
   /** The IANA zone the instant arithmetic uses. */
-  ianaTimeZone: DEFAULT_DECK_TIME_ZONE,
+  ianaTimeZone: CORPUS_CAPTURE_TIME_ZONE,
   /** The abbreviation %Z renders for a September (PDT) instant in it — what
    *  Ruby's %Z produces, and what ORACLE_CAPTURE_NOW_BYTES carries. */
   zoneName: "PDT",
