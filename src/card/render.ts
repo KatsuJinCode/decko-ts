@@ -7953,10 +7953,10 @@ export class RenderEngine implements RenderEngineLike {
    *  card carries one of the four permission setting codenames
    *  (card-mod-permissions set/right/{read,create,update,delete}.rb all
    *  `include Abstract::Permission`, whose options_card override returns
-   *  Card[:cards_with_account]). The gate excludes these hosts: both
-   *  captures recorded REAL :open bytes for them (original corpus
-   *  1,537/1,537) despite today's Ruby raising — the fixtures pin bytes,
-   *  so the parse boundary must stay closed for this class. */
+   *  Card[:cards_with_account]). The gate excludes these hosts: they
+   *  rendered REAL :open bytes despite newer Ruby raising — the expected
+   *  bytes pin that, so the parse boundary must stay closed for this
+   *  class. */
   private isPermissionRightHost(card: RenderCard): boolean {
     if (!card.name.isCompound) return false;
     const rightKey = card.name.rightName?.key;
@@ -7973,10 +7973,10 @@ export class RenderEngine implements RenderEngineLike {
    *  - right_type_options (layout options_api.rb:57-59): the right part is
    *    a cardtype -> Card.fetch [right.name, :type, :by_name] — a VIRTUAL
    *    card whose Ruby content is a CQL Hash, so cql_content never parses
-   *    and item_type_id returns nil (probe 5, cixvol+jzuqht). The port has
+   *    and item_type_id returns nil. The port has
    *    no such virtual card -> stop, no raise.
    *  - Card[:all] fallback (options_api.rb:48); *all is set-typed, so the
-   *    terminal parse fires on its db_content ("fr" corpus-wide).
+   *    terminal parse fires on its db_content (a shared options spec).
    *  - `seen` carries the visited keys — `opt != self` recursion guard.
    *  All fetches ride the fetch engine's cache-first ladder; the resolution
    *  memoizes per host key so warm re-renders stay zero-query. */
@@ -8149,8 +8149,8 @@ export class RenderEngine implements RenderEngineLike {
     // No fall-through to the host's OWN options_card chain: with the C1
     // fix restored above, the right walk stops at right_type_options for
     // compound hosts whose right's TYPE is a cardtype. The *all "fr"
-    // fallback would falsely raise for set-card-views corpus parity pins
-    // (those hosts render real bytes in the corpus).
+    // fallback would falsely raise for set-card views that
+    // render real bytes.
     this.setHostChainCache.set(host.key, undefined);
     return undefined;
   }
@@ -8217,7 +8217,7 @@ export class RenderEngine implements RenderEngineLike {
    *  the seed lacks the codename cards — the pattern cannot apply either
    *  way (same degradation as a rule-less deck).
    *
-   *  ORDER PARITY (corpus:253): Ruby evaluates `standard_rule? ||
+   *  ORDER PARITY: Ruby evaluates `standard_rule? ||
    *  preference?` (all.rb:33) — standard_rule? runs FIRST for EVERY name
    *  shape (all.rb:37-40: name.right type == SettingID && name.left type
    *  == SetID, where name.left of a 3-part name is its first two parts).
