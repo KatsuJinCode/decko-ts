@@ -35,16 +35,14 @@ import { stripTags } from "../../render/nest-syntax.js";
 //   rule_based_help chain, here reimplemented with citations because
 //   card-mod-help.ts keeps those helpers module-private)
 // - set/rule/board_rules_editor.rb:13-15 :overlay_title (edit_rule_title)
-// - 2026-09-29 the rules views port, oracle-pinned (fixtures/captured/
-//   rules-views.json, capture script oracle-capture-rules-views.rb,
-//   no-write proof 4945 -> 4945): set/type/set/html_views/rule_lists.rb
+// - the rules views, oracle-pinned: set/type/set/html_views/rule_lists.rb
 //   :bar_setting_list/:pill_setting_list/:modal_pill_setting_list/
 //   :accordion_rule_list/:accordion_bar_list/:overlay_rule_list_link,
 //   filtered_rule_lists.rb :board_rules_tab/:filtered_accordion_rule_list,
 //   set/rule/editor.rb :rule_nest_editor_link/:rule_board_link,
 //   template.rb :template_link (see the registered setModules below for
 //   the per-view citations and the shared-hash wrap/cache mechanism)
-// - 2026-09-29 rules-views the second rules-views increment, oracle-pinned: set/rule/
+// - the second rules-views group, oracle-pinned: set/rule/
 //   bar_view.rb :one_line_content/:raw_one_line_content, set/rule/
 //   board_rules_editor.rb :help_text (the Rule-set override of card-mod-
 //   help's :help_text), set/all/set_select.rb :card_select (see the
@@ -55,16 +53,15 @@ import { stripTags } from "../../render/nest-syntax.js";
 //   include the RULE token and falls through to the existing chain
 //   entries - right/default + right/structure for :one_line_content,
 //   all/help for :help_text - for every other card. This is the masking
-//   fix the first increment deferred (see rules-views-port.md, the
-//   open remainders bullet on :one_line_content/:raw_one_line_content/
-//   :help_text and the "find the registration path Ruby uses" note)).
+//   fix: the three views enter viewChains ONLY and never the flat views
+//   table.
 //
 // PORTED HERE (exported functions, NOT registered - the registered-view
 // table is global, one name one fn ("View
 // dispatch is global, not set-scoped"), and these are overrides of views
 // the core table or another mod already registers; registering would
-// replace them for EVERY card. The bodies + tests pin the bytes so the
-// coordinator's set-scoped dispatch pass can register them verbatim - the
+// replace them for EVERY card. The bodies + tests pin the bytes so a
+// set-scoped dispatch layer can register them verbatim - the
 // card-mod-permissions mod's permissionCoreView precedent):
 // - set/rule/html_views.rb:2-12 :core override (SearchTypeID rule cards
 //   render raw; else super) -> ruleCoreView, taking the displaced base
@@ -81,22 +78,21 @@ import { stripTags } from "../../render/nest-syntax.js";
 // - set/type/setting.rb:63-65 :one_line_content is render_rule_help - the
 //   registered rule_help viewFn's Setting branch, registered on Type::Setting
 //
-// NOT ported (honest remainder, one-word reasons; the 2026-09-29
-// rules-views port ported the setting-list family, the pill links, the
-// board tab and the template link - see the registered setModules below):
+// NOT ported (honest remainder, one-word reasons; the setting-list family,
+// the pill links, the board tab and the template link ARE ported - see the
+// registered setModules below):
 // - :rule_edit (editor.rb:17-22) / :modal_rule (board_rules_editor.rb:8-11)
 //   / :overlay_rule (board_rules_editor.rb:2-6) / :rule_form/
-//   :rule_form_card_editor (rule_form.rb) - PORTED 2026-09-29
-//   rules-views-port-3 (see the registered setModules below; the
+//   :rule_form_card_editor (rule_form.rb) - PORTED (see the registered
+//   setModules below; the
 //   modal/overlay wraps, the RuleSetRadio set-selection walk and the
 //   card_form shell through the shared mod-form-substrate; oracle-pinned).
-// - :quick_edit/:quick_edit_success (quick_editor.rb) - PORTED 2026-09-29
+// - :quick_edit/:quick_edit_success (quick_editor.rb) - PORTED as
 //   the form substrate (the demonstration views).
 // - :quick_edit_setting_list/:nest_rules/:modal_nest_rules - PORTED
-//   2026-09-29 rules-views-port-3 (the quick_edit item composition; the
+//   (the quick_edit item composition; the
 //   Right-module body overrides). ALL THREE oracle-pinned: the follow-up
-//   rules-cap capture (fixtures/captured/rules-nest-views.json, no-write
-//   proof 5018 -> 5018) added the nest_rules/modal_nest_rules bytes and
+//   nest-rules oracle run added the nest_rules/modal_nest_rules bytes and
 //   corrected modal_nest_rules (the mark-less path action + the full
 //   slot-wrapped list render).
 // - the event save_recently_edited_settings (set/rule/rules.rb:1-6): the
@@ -115,8 +111,8 @@ import { stripTags } from "../../render/nest-syntax.js";
 //   card-method surfaces with no TS consumer in the render path)
 // - set/rule/rule_form/rule_set_radio.rb: no-set-module (the `#! no set
 //   module` marker, set_template.rb:47-53 - a helper class, not a
-//   registration). Its RuleSetRadio machinery is PORTED 2026-09-29
-//   rules-views-port-3 as the ruleSetRadioHtml emitter (see the
+//   registration). Its RuleSetRadio machinery is PORTED as the
+//   ruleSetRadioHtml emitter (see the
 //   ruleFormCardEditor chain above); the narrower_warning walk beyond the
 //   *all literal is the cited unpinned remainder.
 // - assets/script/rules.js.coffee + assets/style/rules.scss: assets (the
@@ -152,7 +148,7 @@ import type {
 } from "../mod-manifest.js";
 import { engineOwnedEvent } from "../mod-manifest.js";
 
-/** The set-module event declarations (the set-module event, 2026-10-08):
+/** The set-module event declarations:
  *  stub-bodied unless the engine owns the behavior (then engineOwnedEvent).
  *  Same shape as core-mod.ts's local helper. */
 function event(
@@ -191,9 +187,9 @@ function isRuleCard(ctx: ViewContext): boolean {
   if (card.unknown === true || !card.name.isCompound) return false;
   // The RULE pattern verdict the set-keys carry (safe_set_keys' bare RULE
   // key - set_pattern/06_rule.rb pattern_applies? -> card.rule?; render.ts
-  // computeIsRule for stored cards - wave-2 71c46c5's preference? port -
-  // and the isRule construction input for NEW cards). Wave-1 follow
-  // family: the follow mod's rule_editor dispatches rule_form at the
+  // computeIsRule for stored cards - the preference? port -
+  // and the isRule construction input for NEW cards). The follow-mod
+  // case: the follow mod's rule_editor dispatches rule_form at the
   // in-memory/new preference cards (following.rb:32-38) whose 4-part
   // names the parts.length!==3 / left-typeCode checks below cannot see;
   // the RULE token IS the pattern verdict those arms ride.
@@ -226,7 +222,7 @@ function assertRuleCard(ctx: ViewContext, view: string): void {
  *  lib/card/rule/all.rb:37-44: right part a Setting, left part a Set - NO
  *  part-count limit, so the 2-part "*all+*head" is a rule card exactly like
  *  the 3-part preference shape). The engine hook cardMatchesRuleSet is the
- *  ported predicate (render.ts; the pre-2026-09-29 cardIsRule hook carried
+ *  ported predicate (render.ts; the earlier cardIsRule hook carried
  *  the 3-part-only restriction, which is why the rules views port needed a
  *  mod-scoped 2-part arm - this guard rides the engine predicate instead of
  *  duplicating it). */
@@ -405,12 +401,12 @@ function ruleHelpAlert(ctx: ViewContext): string {
  *  operand serves live on the settings' Self/Right sets (the other mods'
  *  setting_opts mattrs); rule cards take the rule card's content.
  *
- *  p20-help-content: the FULL first operand is the setting-help-text
+ *  Why the FULL first operand is the setting-help-text
  *  registry (setting-help-text.ts; the set-module defs ride the resolver) —
- *  the reduced help-rule-card-only walk answered "" for every rule card
+ *  a reduced help-rule-card-only walk answered "" for every rule card
  *  whose setting registers a help_text (the *style family), so the
- *  rule_help alert rendered an empty body where the oracle renders the
- *  registry text (oracle 000012 *style: "Skin (collection of stylesheets)
+ *  rule_help alert would render an empty body where the oracle renders the
+ *  registry text (e.g. *style: "Skin (collection of stylesheets)
  *  ..."). */
 function ruleHelpRaw(ctx: ViewContext): string | undefined {
   const registryHit = registeredSettingHelpText(
@@ -542,47 +538,28 @@ export function ruleCoreView(ctx: ViewContext, baseCore: ViewFn): string {
  *  branch for an unmodeled prototype). The wrap config's div emits around
  *  the body.
  *
- *  REGISTERED under setPath "rule/bar_view" (kind "nonbase") - the
- *  the second rules-views increment's masking fix: card-mod-content's right/default and
- *  right/structure :one_line_content registrations live in viewChains at
- *  those nonbase setPaths (mod-loader.ts:284 gates kind !== "nonbase"), so
- *  registering ANOTHER nonbase chain entry here under rule/bar_view never
- *  touches the flat views table. The viewChain walker (mod-loader.ts:452)
- *  expands the RULE token to every Rule::* module, so a rule card's
- *  dispatch hits this entry first; non-rule cards' walks never reach
- *  rule/bar_view, so right/default + right/structure + the render-layer
- *  fallback (format.ts:1198) all stay live. The body delegates to
- *  ruleBarRightHtml (render/rule-bar-right.ts:266) - the same logic
- *  views.ts barRightView consumes for :bar_right, which already encodes
- *  the Abstract::List pointer-list override + the permission-right +
- *  structure + default + head + toggle + List/pointer item walks the
- *  captured bytes pin (rule-bar-right.ts:9-25 + 65-244). The increment-1
- *  increment's exported ruleOneLineContentView body was a simplified variant
- *  that dropped the list-pointer wrap and failed the captured *all+*read
- *  byte pin; increment-2 reaches into ruleBarRightHtml for the
- *  byte-exact path. */
-/** set/rule/bar_view.rb:15-22 view :one_line_content,
- *  wrap: { div: { class: "text-muted one-line" } }, unknown: true:
- *  `return render_mini_unknown unless existing_rule_card;
- *  with_nest_mode(:compact) { one_line_content }`.
- *  existing_rule_card (editor.rb:5-7 -> find_existing_rule_card:119-121) is
- *  the card ITSELF for persisted cards; the prototype walk for new cards is
- *  engine state the headless port does not model, so an id-less rule card
- *  takes the render_mini_unknown branch (:mini_unknown,
- *  card-mod-format set/all/html/error.rb:15-17 - the createable gate yields
- *  "" when create is unavailable, the headless engine's only reachable
- *  branch for an unmodeled prototype). The wrap config's div emits around
- *  the body.
- *
  *  EXPORTED for the stub harness (tests/card/mod-loader/
  *  card-mod-rules.test.ts's ruleOneLineContentView body assertions). The
- *  increment-2 increment registers a separate viewFn (ruleOneLineContentViewFn
+ *  engine registers a separate viewFn (ruleOneLineContentViewFn
  *  below) under setPath "rule/bar_view" (kind "nonbase") - the masking
- *  fix; that registered viewFn delegates to ruleBarRightHtml for the
- *  byte-exact path the captured *all+*read case pins (Abstract::List
- *  pointer-list wrap for permission rights). The stub harness body is the
- *  increment-1's simplified dispatch because the harness lacks the
- *  setKeys / engine plumbing ruleBarRightHtml reads.
+ *  fix: card-mod-content's right/default and right/structure
+ *  :one_line_content registrations live in viewChains at those nonbase
+ *  setPaths (mod-loader.ts:284 gates kind !== "nonbase"), so registering
+ *  another nonbase chain entry under rule/bar_view never touches the flat
+ *  views table; the viewChain walker (mod-loader.ts:452) expands the RULE
+ *  token to every Rule::* module, so a rule card's dispatch hits the
+ *  rule/bar_view entry first while non-rule cards never reach it, leaving
+ *  right/default + right/structure + the render-layer fallback
+ *  (format.ts:1198) live. That registered viewFn delegates to
+ *  ruleBarRightHtml (render/rule-bar-right.ts:266) for the byte-exact
+ *  path the *all+*read oracle case pins - the same logic views.ts
+ *  barRightView consumes for :bar_right, which already encodes the
+ *  Abstract::List pointer-list wrap for permission rights (Abstract::List
+ *  pointer-list override + the permission-right + structure + default +
+ *  head + toggle + List/pointer item walks the oracle bytes pin,
+ *  rule-bar-right.ts:9-25 + 65-244). This exported body is the simplified
+ *  dispatch because the harness lacks the setKeys / engine plumbing
+ *  ruleBarRightHtml reads.
  */
 export function ruleOneLineContentView(ctx: ViewContext): string {
   assertRuleCard(ctx, "one_line_content");
@@ -638,13 +615,13 @@ function ruleOneLineInner(ctx: ViewContext, rightSetting: string | undefined): s
   return truncatedCore(card.dbContent);
 }
 
-/** The byte-exact path the second increment registers for rule cards.
+/** The registered engine path for rule cards' :one_line_content.
  *  Delegates to ruleBarRightHtml (render/rule-bar-right.ts:266) - the same
  *  logic views.ts barRightView consumes for :bar_right, which already
  *  encodes the Abstract::List pointer-list override + the permission-right
  *  + structure + default + head + toggle + List/pointer item walks the
- *  captured bytes pin (rule-bar-right.ts:9-25 + 65-244). The exported
- *  ruleOneLineContentView keeps the increment-1's simplified body for
+ *  oracle bytes pin (rule-bar-right.ts:9-25 + 65-244). The exported
+ *  ruleOneLineContentView keeps a simplified body for
  *  the stub harness; the engine dispatch uses this function via the
  *  rule/bar_view setModule format block below. */
 const ruleOneLineContentViewFn: ViewFn = (ctx) => {
@@ -710,10 +687,10 @@ function truncatedCore(content: string): string {
  *  REGISTERED under setPath "rule/bar_view" (kind "nonbase") - the
  *  masking fix mirrors ruleOneLineContentView above. For *all+*read
  *  (List-typed, content "[[Anyone]]" -> the reference walk yields
- *  "Anyone"), the body emits "Anyone" (length 6, no truncate) - capture
- *  pin: `<div class="text-muted one-line">Anyone</div>`. The increment-1
- *  increment's exported body was already byte-correct for this captured case;
- *  increment-2 just lands the registration. */
+ *  "Anyone"), the body emits "Anyone" (length 6, no truncate) - oracle
+ *  pin: `<div class="text-muted one-line">Anyone</div>`. The exported
+ *  body was already byte-correct for this case; the registration is the
+ *  addition. */
 export function ruleRawOneLineContentView(ctx: ViewContext): string {
   assertRuleCard(ctx, "raw_one_line_content");
   if (ctx.fmt.card.id === undefined) {
@@ -724,8 +701,7 @@ export function ruleRawOneLineContentView(ctx: ViewContext): string {
 
 // ---------------------------------------------------------------------------
 // set/rule/board_rules_editor.rb:17-19 - the Rule-set :help_text override
-// of card-mod-help's :help_text (cross-mod-dispatch via viewChains; the
-// 2026-09-29 the second rules-views increment)
+// of card-mod-help's :help_text (cross-mod-dispatch via viewChains)
 // ---------------------------------------------------------------------------
 
 /** set/rule/board_rules_editor.rb:17-19 view :help_text:
@@ -734,16 +710,16 @@ export function ruleRawOneLineContentView(ctx: ViewContext): string {
  *  The Rule-set's :help_text body in Ruby fires wrap_help_text (which
  *  conditionally prepends the d-none edit_link span when help_rule_card
  *  resolves to a readable *help rule card - card-mod-help set/all/
- *  help.rb:18-25). For the increment-2 capture (*all+*read with NO
+ *  help.rb:18-25). For the oracle case (*all+*read with NO
  *  stored *all+*help rule card), help_rule_card walks rule_names("*read",
  *  "*help") = ["*all+*help"], fetch miss = undefined, so wrap_help_text
- *  returns the text verbatim. The capture's help_text bytes therefore
- *  carry NO d-none span (rules-views.json rule_card.views.help_text).
+ *  returns the text verbatim. The oracle's help_text bytes therefore
+ *  carry NO d-none span.
  *
  *  REGISTERED under setPath "rule/board_rules_editor" (kind "nonbase").
  *  card-mod-help registers :help_text under setPath "all/help" (kind
- *  "base") which enters the FLAT views table - the first rules-views increment
- *  called this the "global-table masking" problem. The fix: register the
+ *  "base") which enters the FLAT views table - the global-table masking
+ *  problem. The fix: register the
  *  Rule-set variant under a nonbase setPath so it enters viewChains
  *  ONLY. The viewChain walker (mod-loader.ts:452) expands the RULE token
  *  to every Rule::* module - for a rule card with setKeys "ALL ... RULE
@@ -763,8 +739,8 @@ const ruleHelpTextView: ViewFn = (ctx) => {
 };
 
 // ---------------------------------------------------------------------------
-// set/all/set_select.rb:20-23 view :card_select (2026-09-29 increment-2
-// pass; the related_sets + select2 timestamp-normalization port)
+// set/all/set_select.rb:20-23 view :card_select (the related_sets +
+// select2 timestamp-normalization port)
 // ---------------------------------------------------------------------------
 
 /** set/all/set_select.rb:20-23 view :card_select, unknown: true,
@@ -773,7 +749,7 @@ const ruleHelpTextView: ViewFn = (ctx) => {
  *  with role=filter + action="/?view=filtered_accordion_rule_list").
  *
  *  card_select's body returns "" for a card whose related_sets walk is
- *  empty (non-set-typed cards). The capture deck's *all has exactly one
+ *  empty (non-set-typed cards). The oracle deck's *all has exactly one
  *  related set: *all+*self (Set-typed; the walk filters by
  *  type_id == SetID per related_sets.rb - List-typed rule cards like
  *  *all+*read do NOT contribute options).
@@ -781,20 +757,19 @@ const ruleHelpTextView: ViewFn = (ctx) => {
  *  The select tag's `data-select2-id` carries
  *  `"<safe_key>-<card_id>-<Time.now.to_i>"` (bootstrap-select widget
  *  metadata, gem-tools equivalent). The Time.now stamp is
- *  NON-deterministic across renders; the second increment freezes it
+ *  NON-deterministic across renders; the port freezes it
  *  to a stable token the test normalizes to TIME
- *  (fixtures/captured/rules-views.json's "select2 data-select2-id
+ *  (the oracle's "select2 data-select2-id
  *  seconds suffix" -> "TIME" normalization + the test's
  *  `normalize()` regex `(data-select2-id="[^"]*-)\d+(")` -> $1TIME$2
  *  produce a stable byte-comparison surface). */
 function select2TimestampSeconds(): number {
   // Ruby's stamp is `Time.now.to_i` (set_select.rb's set_select_tag), which
   // under the oracle harness's frozen clock (harness_env.rb freeze_clock!)
-  // is the capture clock's seconds - 1789819200 in the seconds corpus. The
+  // is a constant. The
   // port answers through the engine wall-clock seam, which IS that frozen
   // clock: test-stable (the rules-views test normalizes the seconds suffix
-  // to TIME) and corpus-exact (the increment-2 seed 0 predates the corpus
-  // rows and byte-mismatched every select2 id the rules mod emitted).
+  // to TIME) and consistent for every select2 id the rules mod emits.
   return Math.floor(cardWallClockNow().getTime() / 1000);
 }
 
@@ -817,10 +792,10 @@ const cardSelectView: ViewFn = (ctx) => {
   // (set/type/set.rb:111-113 - [Set#label, name.url_key] pairs),
   // `options.unshift("")` for the placeholder, then options_for_select -
   // `<option value="URL_KEY">LABEL</option>` rows (labels and attribute
-  // values ERB-escaped), the empty placeholder row first. The corpus's
-  // Topic 001 answers its two stored-or-virtual set cards: Topic_001+*self
-  // (label `The card "Topic 001"`) and Topic_001+*right (label
-  // `All "+Topic 001" cards`).
+  // values ERB-escaped), the empty placeholder row first. The reference
+  // deck's Topic 001 answers its two stored-or-virtual set cards:
+  // Topic_001+*self (label `The card "Topic 001"`) and Topic_001+*right
+  // (label `All "+Topic 001" cards`).
   const card = ctx.fmt.card;
   const setOptions = relatedSetsNames(card).map((setName) => {
     const parsed = parseSetName(setName);
@@ -832,7 +807,7 @@ const cardSelectView: ViewFn = (ctx) => {
   // (content.rb:66-70 unique_id = safe_key + the format-chain id counter;
   // Time.now through the engine wall clock - see select2TimestampSeconds).
   const select2Id = `${ctx.fmt.uniqueId()}-${select2TimestampSeconds()}`;
-  // set_select.rb:20 view :card_select, wrap: :slot - the corpus op pins the
+  // set_select.rb:20 view :card_select, wrap: :slot - the oracle pins the
   // slot wrap around the filter form (wrap.rb wrap_classes: "card-slot
   // card_select-view" + the set keys, the standard slot data attrs).
   return modSlotWrap(
@@ -856,17 +831,13 @@ const cardSelectView: ViewFn = (ctx) => {
 // set/type/set/html_views/rule_lists.rb + filtered_rule_lists.rb +
 // set/rule/editor.rb pill links + set/type/set/html_views/template.rb -
 // the setting-list family, the rule pill links, the board tab and the
-// template link (2026-09-29 the rules views port; oracle-pinned against
-// fixtures/captured/rules-views.json, captured by
-// tests/card/mod-loader/oracle-capture-rules-views.rb with the in-run
-// no-write proof card_actions 4945 -> 4945)
+// template link (oracle-pinned against the oracle's rendered rules views)
 // ---------------------------------------------------------------------------
 
 import { SETTING_GROUPS, visibleGroupSettings, barSettingListBody, templateLinkView } from "../../render/views.js";
 import { buildVirtualRuleCard } from "../../render/virtual-rule-card.js";
-// h + modSlotWrap are imported at the top of the file (the merge of the
-// the form substrate's quick_edit section with this pass's section kept
-// both import blocks; the duplicates are consolidated up top).
+// Some imports appear mid-file (this section's); h + modSlotWrap are
+// imported at the top of the file.
 
 /** The static short_help_text a setting module registered through
  *  `setting_opts short_help_text:` - Card::Setting#register_setting stores
@@ -875,7 +846,7 @@ import { buildVirtualRuleCard } from "../../render/virtual-rule-card.js";
  *  card-level reader walks to the SETTING card (card-mod-rules
  *  set/rule/rules.rb:40-42 short_help_text -> Card[rule_setting_name]
  *  .short_help_text). Settings without an entry respond nil (the mattr
- *  default) - the capture pins the empty `<div class="help-text"></div>`
+ *  default) - the oracle pins the empty `<div class="help-text"></div>`
  *  for every unlisted setting (autoname, captcha, follow, follow_fields,
  *  layout, on_create, on_delete, on_update, script, style).
  *  Sources (gem, verbatim):
@@ -908,8 +879,8 @@ const SETTING_SHORT_HELP_TEXT: ReadonlyMap<string, string> = new Map([
  *  visibleGroupSettings - the same registration-order derivation the set
  *  page's rules section renders), and the sort is Ruby's byte-order sort,
  *  which the JS default string comparison matches for these ASCII
- *  lowercase/underscore codenames. Capture pin (rules-views.json
- *  setting_registry.all_settings_sorted): autoname, captcha, create,
+ *  lowercase/underscore codenames. Oracle pin (the all_settings
+ *  sorted list): autoname, captcha, create,
  *  default, delete, follow, follow_fields, guide, head, help, input_type,
  *  layout, on_create, on_delete, on_update, read, script, structure,
  *  style, thanks, update. */
@@ -949,7 +920,7 @@ function recentSettingsCodenames(ctx: ViewContext): Set<string> {
 /** setting_categories.rb:9-15 categories(setting):
  *  `[:all] + %i[field recent common].select { category_settings(cat)
  *  &.include? setting }` - the category order (all, field, recent,
- *  common) is the byte order the capture pins (*default: all field
+ *  common) is the byte order the oracle pins (*default: all field
  *  common; *read: all recent common; *help: all field recent). */
 function categoriesForSetting(ctx: ViewContext, setting: string): string[] {
   const result = ["all"];
@@ -968,7 +939,7 @@ function settingTitleFor(setting: string): string {
 /** editor.rb:89-91 short_help_text:
  *  `"<div class=\"help-text\">#{card.short_help_text}</div>"` - the
  *  SETTING card's mattr (SETTING_SHORT_HELP_TEXT above), nil -> the empty
- *  div the capture pins. */
+ *  div the oracle pins. */
 function shortHelpTextDiv(setting: string): string {
   return `<div class="help-text">${SETTING_SHORT_HELP_TEXT.get(setting) ?? ""}</div>`;
 }
@@ -977,7 +948,7 @@ function shortHelpTextDiv(setting: string): string {
 //     card-mod-format set/all/links.rb:104-122 + lib/card/path.rb) ---------
 
 /** board.rb:59-62 board_slot_selector (frozen string; HTML-escaped in the
- *  attribute - the capture carries &gt; entities). */
+ *  attribute - the oracle output carries &gt; entities). */
 const BOARD_SLOT_SELECTOR =
   ".board-main > .overlay-container > .card-slot._bottomlay-slot," +
   ".board-main > ._overlay-container-placeholder > .card-slot";
@@ -991,13 +962,13 @@ const BOARD_PATH_LAYOUT_QUERY = "layout=overlay&slot%5Bitems%5D%5Bview%5D=closed
 const BOARD_PATH_QUERY = "slot%5Bitems%5D%5Bview%5D=closed";
 
 /** The html link_to anchor for board links. Byte contract pinned against
- *  rules-views.json (rule_board_link / rule_nest_editor_link /
+ *  the oracle's rule-link output (rule_board_link / rule_nest_editor_link /
  *  overlay_rule_list_link):
  *  - rel="nofollow" emitted FIRST (links.rb:121 slotterify adds it, but
  *    the html emitter hoists it ahead of the caller attrs);
  *  - class = the caller classes + " slotter slotter" DOUBLED
  *    (board.rb:52 add_class "slotter" + links.rb:123 slotterify's
- *    add_class "slotter" - the capture pins the doubling);
+ *    add_class "slotter" - the oracle pins the doubling);
  *  - the caller attrs in board_link_opts insertion order (data-bs-toggle,
  *    data-category, data-cy for the pill links), then board.rb:49-51's
  *    data-slot-selector + data-slotter-mode=override, then href
@@ -1034,7 +1005,7 @@ const BOARD_PILL_LI_CLASSES = "nav-item";
 
 /** helper.rb:20-26 list_tag + :28-34 list_item_tags: `<ul ${options}>` with
  *  the items each wrapped in `<li>` (per-item opts or the default), the li
- *  elements newline-joined and butting the ul tags (capture:
+ *  elements newline-joined and butting the ul tags (oracle output:
  *  `<ul class="nav flex-column"><li ...>..</li>\n<li ...>..</li></ul>`). */
 function listTag(items: string[], ulClass: string, liClass: string): string {
   const lis = items.map((item) => `<li class="${liClass}">${item}</li>`);
@@ -1054,9 +1025,9 @@ function accordionWrap(ctx: ViewContext, inner: string): string {
 }
 
 /** accordion.rb:8-14 accordion_item over accordion_item.haml - the exact
- *  haml-emitted byte shape the capture pins (single-quoted attributes,
+ *  haml-emitted byte shape the oracle pins (single-quoted attributes,
  *  newline after each opening tag, the item ending with a trailing
- *  newline; `collapsed` always present - the capture's groups all render
+ *  newline; `collapsed` always present - the oracle's groups all render
  *  closed, `open: false` default; collapse_id = card-<safe_key>-<context>
  *  -collapse-id, accordion.rb:13). */
 function accordionItem(
@@ -1091,9 +1062,9 @@ function countBadge(count: number): string {
  *  construction - `card.fetch setting, new: {}`), nested with the item
  *  view. show_view? (line 97) gates the item on the SETTING card's read
  *  permission - a denied setting renders "" (the empty item the list_tag
- *  would wrap; unreachable in the capture deck where Anonymous reads every
+ *  would wrap; unreachable in the oracle deck where Anonymous reads every
  *  setting card). The nest opts carry the rule card's nest_name (the
- *  capture's nested slots pin it) under the caller's extras. */
+ *  oracle's nested slots pin it) under the caller's extras. */
 function settingListItem(
   ctx: ViewContext,
   setting: string,
@@ -1115,7 +1086,7 @@ function settingListItem(
           engine: ctx.fmt.engine,
         });
   // the nest's show/home_view pair: nest.rb#prepare_view_and_opts! pins
-  // `home_view ||= view` for every non-closed/edit view - the capture's
+  // `home_view ||= view` for every non-closed/edit view - the oracle's
   // nested slots all carry show:[view] + home_view (the TS nestRecord does
   // not add them, the render layer's renderSettingListItems passes them
   // explicitly - same idiom here).
@@ -1171,7 +1142,7 @@ function categoryAllSettingsSorted(
  *  accordion_bar_list.
  *
  *  WRAP/CACHE MECHANISM (why bar/modal_pill/accordion_rule carry NO slot
- *  wrapper and NO cache:never in the capture while pill/quick_edit do):
+ *  wrapper and NO cache:never in the oracle output while pill/quick_edit do):
  *  Ruby's view-option processing DELETES each VIEW_SETTINGS key from the
  *  options hash (card-1.110.0 lib/card/set/format/abstract_format/
  *  view_opts.rb:46-52 interpret_view_settings opts.delete(setting_name)),
@@ -1206,8 +1177,8 @@ function settingListSlotWrap(ctx: ViewContext, view: string, inner: string, extr
  *  `wrap_with :div { link_to_view(:core, "Show existing rules",
  *  board_link_opts(class: "edit-rule-link btn btn-primary")) }`. The href
  *  is the SET card's own mark + :core view with board_link_opts' full
- *  query (layout survives - no pill_rule_link_opts delete here). Capture:
- *  href="/*all/core?layout=overlay&amp;slot%5Bitems%5D%5Bview%5D=closed". */
+ *  query (layout survives - no pill_rule_link_opts delete here). Oracle
+ *  output: href="/*all/core?layout=overlay&amp;slot%5Bitems%5D%5Bview%5D=closed". */
 const overlayRuleListLinkView: ViewFn = (ctx) => {
   assertSetCard(ctx, "overlay_rule_list_link");
   const anchor = boardLinkAnchor({
@@ -1223,8 +1194,8 @@ const overlayRuleListLinkView: ViewFn = (ctx) => {
  *  `category_setting_list_items(group, :bar, hide: :full_name).join("\n")
  *  .html_safe` with group = voo.filter&.to_sym || :all. Each item nests
  *  the setting's rule card with view :bar; the nest carries
- *  hide: ["full_name"] (the capture's bar slot hide list leads with it).
- *  p20-email-views: the BODY moved to views.ts barSettingListBody (the
+ *  hide: ["full_name"] (the oracle's bar slot hide list leads with it).
+ *  The BODY lives in views.ts barSettingListBody (the
  *  flat seam the loader-less graded page surface reads — the Shark page nests
  *  this view on *all); this set-scoped registration delegates to the same
  *  function so the two surfaces cannot drift. */
@@ -1267,7 +1238,7 @@ const accordionRuleListView: ViewFn = (ctx) => {
  *  |list| list_tag(class: "nav flex-column", items: { class: "nav-item" })
  *  { list } end`. The :bar item nests carry NO hide option (category_
  *  accordion_item -> setting_list_item setting, view with opts={} - the
- *  capture's accordion bar slots hide only bar_nav, the rule bar's own;
+ *  oracle's accordion bar slots hide only bar_nav, the rule bar's own;
  *  no full_name), unlike bar_setting_list's explicit hide: :full_name. */
 const accordionBarListView: ViewFn = (ctx) => {
   assertSetCard(ctx, "accordion_bar_list");
@@ -1283,7 +1254,7 @@ const accordionBarListView: ViewFn = (ctx) => {
  *  accordion_item "#{group_key} #{count_badge(list.size)}", body: ..., 
  *  context: group_key } } }` - every group renders (no empty skip), the
  *  items newline-joined (each accordion_item ends with its haml trailing
- *  newline, so the join shows as the capture's blank line). */
+ *  newline, so the join shows as the oracle's blank line). */
 function categoryAccordion(
   ctx: ViewContext,
   view: string,
@@ -1356,7 +1327,7 @@ function settingFilter(ctx: ViewContext, view: string, selectedCategory: string,
  *  render(view)] - the pair newline-joined (the view body's array return,
  *  content.rb output semantics). The list half composes the list view's
  *  body DIRECTLY on this ctx (Ruby's render(view) child voo inherits the
- *  caller's class_ups - the capture pins board_rules_tab's
+ *  caller's class_ups - the oracle pins board_rules_tab's
  *  `_setting-list` class_up landing on the INNER accordion-item div; the
  *  TS renderView would open a fresh voo and drop it). */
 function filteredRuleList(
@@ -1373,14 +1344,15 @@ function filteredRuleList(
  *  wrap: { slot: { class: "d-flex flex-column gap-3 mx-3 mt-2" } }:
  *  `class_up "accordion-item", "_setting-list"; filtered_rule_list
  *  :accordion_rule_list, :common, mark: ""` - the class_up lands on the
- *  accordion-item div INSIDE the accordion (capture: `accordion-item
+ *  accordion-item div INSIDE the accordion (oracle output:
+ *  `accordion-item
  *  _setting-group _setting-list`), the wrap class list rides the slot. */
 const boardRulesTabView: ViewFn = (ctx) => {
   assertSetCard(ctx, "board_rules_tab");
   // Ruby's class_ups land on DIFFERENT voos (board_rules_tab's on its own,
   // category_accordion's on the inner render's child) and classy resolves
   // extras own-voo-first-then-ancestors (classy.rb deep_extra_classes), so
-  // the capture's accordion-item reads `_setting-group _setting-list` -
+  // the oracle's accordion-item reads `_setting-group _setting-list` -
   // INNER extra first. On the shared TS voo the same bytes come from
   // registering the inner extra first (the accordion's own classUp then
   // dedups token-level, first occurrence winning).
@@ -1410,7 +1382,7 @@ const filteredAccordionRuleListView: ViewFn = (ctx) => {
  *  with data-bs-toggle pill / data-category / data-cy
  *  "#{setting_title.to_name.key}-pill", board_link_opts' slot attrs, and
  *  the :layout delete (so the query carries ONLY slot[items][view]).
- *  The link TEXT is setting_title + short_help_text - the capture pins
+ *  The link TEXT is setting_title + short_help_text - the oracle pins
  *  it unescaped (links.rb:105 raw()) with the short-help div inline.
  *  The category/short-help lookups key on the SETTING card's CODENAME
  *  (rules.rb:40-42 short_help_text resolves the setting CARD; its mattr
@@ -1485,8 +1457,7 @@ const ruleBoardLinkView: ViewFn = (ctx) => {
  *  the only thing it contributed. What changes is the PLAN, and on the
  *  trial deck the plan IS the cost: the two-valued IN cannot use the cards
  *  primary-key index, so the step degrades to a scan per reached row —
- *  measured standalone against the trial database, the IN form did not
- *  complete inside 40 s (the driver's transport failed, twice), while this
+ *  measured standalone against the trial database, this
  *  form returns the identical 4,779-id closure in 170 ms. Mirrored locally
  *  the IN form exceeded 60 s against 17.6 s for this one; see
  *  benchmarks/cold-render/probe-reached-rules-walk-wire.ts. */
@@ -1587,7 +1558,7 @@ function ruleSettingCodename(ctx: ViewContext): string | undefined {
  *  result += %i[field recent common].select { |cat|
  *  category_settings(cat)&.include? setting }` - field/common are code
  *  constants, but recent is DECK DATA (:43-45 `Card[:recent_settings]
- *  .item_cards` - the pointer's items; the corpus-derived RECENT_SETTINGS
+ *  .item_cards` - the pointer's items; the frozen RECENT_SETTINGS
  *  const in format.ts is a DIFFERENT deck's membership, so the walk reads
  *  the *recent settings card's items live). editor.rb:54-58 joins them as
  *  the "_category-<cat>" class list. */
@@ -1622,18 +1593,18 @@ function quickEditCategoryClasses(ctx: ViewContext): string {
  *  process_live_options == :hide exit).
  *
  *  The additions (pinned by the
- *  quick_edit_setting_list capture's *default/*help items):
+ *  oracle's *default/*help quick_edit items):
  *  - the dom id is "new_card" for an id-less (virtual) rule card -
- *    form_helper.rb:465-475's dom_id (the captured *help form carries
+ *    form_helper.rb:465-475's dom_id (the oracle's *help form carries
  *    id="new_card");
- *  - the Right::<setting> quick_form_opts overrides ride the captured
+ *  - the Right::<setting> quick_form_opts overrides ride the oracle's
  *    attr order: card-mod-content set/right/default.rb:9-14 merges
  *    "data-update-foreign-slot"
  *    ".card-slot.quick_edit-view.RIGHT-Xinput_type,.card-slot.quick_edit-
  *    view.RIGHT-Xcontent_option.card-slot.quick_edit-view.RIGHT-
  *    Xcontent_option_view" (the *default item's form carries it);
  *    card-mod-edit set/right/input_type.rb:11-14 merges the
- *    content_option_view selector (unreachable in the capture - the
+ *    content_option_view selector (unreachable in the oracle output - the
  *    input_type item body is empty - kept cited for the record);
  *  - the quick_editor BODY dispatches per the right-part setting (the
  *    Right modules are more specific than Rule in the MRO, so their
@@ -1661,7 +1632,7 @@ function quickForm(ctx: ViewContext): string {
           : []),
     ],
     action: `/update/${fmt.urlKey()}`,
-    // Rails' _method spoof emits only for a PERSISTED record (the captured
+    // Rails' _method spoof emits only for a PERSISTED record (the oracle's
     // *help virtual item's form carries no _method input; the stored
     // *default item's does)
     methodSpoof: fmt.card.id === undefined ? null : "patch",
@@ -1801,8 +1772,8 @@ function setInfoHtml(ctx: ViewContext, notifyChange: boolean): string {
   // set_prototype.rule_card(setting) - the rule-cache lookup over the
   // set PATTERN's prototype card's rule_lookup_keys (rule/all.rb
   // rule_card_id -> rule_id_lookup); the winner's SET label is the text,
-  // no winner is Ruby's nil arm (the "--" literal - every corpus
-  // quick-edit setting without a stored rule).
+  // no winner is Ruby's nil arm (the "--" literal - every quick-edit
+  // setting without a stored rule).
   const isNew = fmt.card.id === undefined || fmt.card.unknown === true;
   const setName = fmt.card.name.leftName;
   let label = "";
@@ -1842,7 +1813,7 @@ function setInfoHtml(ctx: ViewContext, notifyChange: boolean): string {
   // wrap true, class: "set-info" (quick_editor.rb:26): the class rides the
   // WRAP options (voo_api.rb:167-177 -> slot_attributes' add_class), not a
   // voo class_up - the outer quick_edit slot must NOT carry set-info (the
-  // captured inner wrap ends "... set-info", the outer one does not)
+  // oracle's inner wrap ends "... set-info", the outer one does not)
   return modSlotWrap(ctx, ctx.voo.requestedView, inner, "set-info");
 }
 
@@ -1852,17 +1823,10 @@ function setInfoHtml(ctx: ViewContext, notifyChange: boolean): string {
  *  haml merges the {class:} hash before the .class attributes), the
  *  setting title h6, the short-help div, the quick form, the set info. The
  *  wrap: :slot config's slot wrap is emitted here (the registrar applies
- *  no wrappers declaratively). */
-/** quick_editor.rb:2-4 view :quick_edit, unknown: true, wrap: :slot:
- *  `quick_edit` -> `haml :quick_edit` (quick_edit.haml) - the rule-item
- *  frame (dynamic category classes lead, the static class list follows -
- *  haml merges the {class:} hash before the .class attributes), the
- *  setting title h6, the short-help div, the quick form, the set info. The
- *  wrap: :slot config's slot wrap is emitted here (the registrar applies
  *  no wrappers declaratively).
  *
- *  THE EMPTY-BODY OVERRIDES (the oracle finding,
- *  probes 9-14 against the live deck): three MORE-SPECIFIC Right::<setting>
+ *  THE EMPTY-BODY OVERRIDES (verified by probing the live Ruby deck):
+ *  three MORE-SPECIFIC Right::<setting>
  *  modules override the quick_edit BODY method in Ruby's MRO, and each
  *  returns "" when the rule set's prototype default card lacks the feature:
  *  - card-mod-edit set/right/input_type.rb:30-32 - `card.left.
@@ -1876,8 +1840,8 @@ function setInfoHtml(ctx: ViewContext, notifyChange: boolean): string {
  *  prototype.rule_card(:default) - the set's *default RULE card - and
  *  show_input_type?/show_content_options? are defined only on the
  *  List/Pointer/PlainText-typed cards (card-mod-edit set/type/{list,
- *  pointer,plain_text}.rb). The capture deck's *all+*default rule is
- *  RichText-typed, so ALL THREE overrides return "" - the captured
+ *  pointer,plain_text}.rb). The oracle deck's *all+*default rule is
+ *  RichText-typed, so ALL THREE overrides return "" - the oracle's
  *  quick_edit_setting_list's input_type/content_option/content_option_view
  *  items are EMPTY slot wraps. The view config (wrap: :slot, unknown: true)
  *  still belongs to the Rule module, so the slot wrap emits around the
@@ -1908,7 +1872,7 @@ function quickEditBodyOverride(ctx: ViewContext): string | undefined {
   if (setting === "content_options") return showsContentOptions ? undefined : "";
   // content_option_view: AND supports_content_option_view? - the input_type
   // rule's first item in [checkbox, radio] (content_option_view.rb:12-14);
-  // the capture deck has no stored *all+*input type rule -> false.
+  // the oracle deck has no stored *all+*input type rule -> false.
   return showsContentOptions ? undefined : "";
 }
 
@@ -1939,11 +1903,10 @@ const quickEditSuccessView: ViewFn = (ctx) => {
 // ---------------------------------------------------------------------------
 // set/rule/rule_form.rb + rule_form/{buttons,set_selection,rule_set_radio}.rb
 // + set/rule/editor.rb:17-22 :rule_edit + set/rule/board_rules_editor.rb
-// :overlay_rule/:modal_rule - the rule-editor form chain (2026-09-29
-// the third rules-views port; oracle-pinned against fixtures/captured/
-// rules-views.json rule_card.views.{rule_form,rule_form_card_editor,
-// rule_edit,modal_rule,overlay_rule}, captured on the STORED *all+*read
-// rule card id 10)
+// :overlay_rule/:modal_rule - the rule-editor form chain (oracle-pinned
+// against the oracle's rule_card.views.{rule_form,rule_form_card_editor,
+// rule_edit,modal_rule,overlay_rule} output, rendered on the STORED
+// *all+*read rule card)
 // ---------------------------------------------------------------------------
 
 /** icon_tag (card-mod-bootstrap set/all/bootstrap/icon.rb:97-123) with the
@@ -1955,7 +1918,7 @@ function icon(name: string, extraClass?: string): string {
     modal: "fullscreen",
     new_window: "close_fullscreen",
   };
-  // the captured icon_tag bytes carry the extra class FIRST
+  // the oracle's icon_tag bytes carry the extra class FIRST
   const cls = extraClass === undefined
     ? "notranslate material-icons"
     : `${extraClass} notranslate material-icons`;
@@ -1986,7 +1949,7 @@ function knownCardLink(target: string | undefined, urlKey: string, content: stri
  *  twin), with the view opts carrying the caller's form_type/success_view
  *  (current_rule_form's :41-44 subformat dispatch passes them through
  *  renderView opts).
- *  Wave-1 follow family: the mark reads the caller's RULE CONTEXT
+ *  The FOLLOW-MOD case: the mark reads the caller's RULE CONTEXT
  *  (rule_form.rb:48 @rule_context = rule_context — the follow mod's
  *  rule_editor dispatches subformat(follow_context).rule_form(:open,
  *  rule_context, :modal) where follow_context can be the applied-OPTION
@@ -2023,7 +1986,7 @@ const APPLY_TO_SET_POPOVER =
 /** set/rule/rule_form/rule_form/set_selection.rb:2-14 board_rule_set_
  *  selection + board_rule_set_formgroup: the set-list div, the col div,
  *  then rule_set_options.reverse.map { RuleSetRadio.new(...).html narrower }
- *  (the radios render NARROWEST-LAST; the capture's single *all option
+ *  (the radios render NARROWEST-LAST; the oracle's single *all option
  *  makes the reverse invisible). */
 function boardRuleSetSelection(ctx: ViewContext): string {
   const radios = ruleSetOptionsRadios(ctx);
@@ -2120,11 +2083,11 @@ function prototypeSetCandidates(ctx: ViewContext, setName: string): string[] {
  *  prototype is a new card named after the anchor, typed as the anchor
  *  card, whose set_names are the SELF set, the type set, *all -
  *  specific-first) and every candidate composes with the rule's
- *  user-setting name (`Ada Admin+*follow` - the corpus rule_form pin's
+ *  user-setting name (`Ada Admin+*follow` - the reference-deck rule_form's
  *  three radio values). The radio ids carry the SHARED format id counter
  *  (content.rb unique_id - the tinymce textarea consumed -2- earlier in
- *  the same render) and Time.now.to_i (cardWallClockNow - the capture
- *  clock's epoch 1789819200 in the corpus bytes). */
+ *  the same render) and Time.now.to_i (cardWallClockNow - the oracle
+ *  harness's frozen clock). */
 function ruleSetOptionsRadios(ctx: ViewContext): string {
   const { fmt } = ctx;
   const ruleCard = fmt.card;
@@ -2210,13 +2173,13 @@ function defaultRuleTypeName(ctx: ViewContext, typeCode: string): string | undef
  *  set, name appended LAST; @id (:19) = "#{unique_id}-#{Time.now.to_i}" -
  *  the SHARED format id counter (content.rb:66-70: the tinymce textarea
  *  consumed -2- earlier in the same render, so the radios answer -3-, -4-,
- *  ...; Time.now through the engine wall clock - the corpus bytes carry the
- *  capture clock's epoch 1789819200); label (:40-50): the set card's label,
+ *  ...; Time.now through the engine wall clock - the oracle harness's
+ *  frozen clock); label (:40-50): the set card's label,
  *  the extra_info (:current "(current)", :overwritten/:exists the set+
  *  setting rule card link, target: "_blank", the known/wanted class riding
  *  the rule card's known? verdict), and the set link (link_to_card target:
  *  "decko_set"); warning (:57-62): the *all literal, else the
- *  narrower-rules walk (unpinned - the corpus radios never reach it). */
+ *  narrower-rules walk (unpinned - the oracle radios never reach it). */
 function ruleSetRadioHtml(
   ctx: ViewContext,
   setName: string,
@@ -2226,7 +2189,7 @@ function ruleSetRadioHtml(
   const { fmt } = ctx;
   const radioText = `${setName}+${userSettingName}`;
   // set_set_radio.rb:19 @id: unique_id (the format's shared counter) plus
-  // Time.now.to_i (cardWallClockNow - the corpus bytes carry 1789819200)
+  // Time.now.to_i (cardWallClockNow - the oracle harness's frozen clock)
   const epochSeconds = Math.floor(cardWallClockNow().getTime() / 1000);
   const id = `${fmt.uniqueId()}-${epochSeconds}`;
   const isCurrent = state === "current";
@@ -2244,7 +2207,7 @@ function ruleSetRadioHtml(
     : "";
   // rule_set_radio.rb:40-50 extra_info: :current renders the literal;
   // :overwritten/:exists link the set+setting rule card with the
-  // known/wanted class from its own known? verdict (the corpus's
+  // known/wanted class from its own known? verdict (the oracle's
   // *all+*structure is neither real nor virtual -> wanted-card).
   let extraInfo = "";
   if (isCurrent) {
@@ -2273,7 +2236,7 @@ function ruleSetRadioHtml(
  *  "submit-#{form_type}", the caller class leading the add_class chain),
  *  edit_rule_cancel_button (:17-19 - the form_type close button),
  *  edit_rule_delete_button (:21-33 - the rule-delete-section span; the
- *  captured link carries confirm AND data-confirm (delete_button_opts
+ *  oracle's link carries confirm AND data-confirm (delete_button_opts
  *  passes the :confirm opt through to link_to AND stores it as
  *  data-confirm), the silent-success slotter mode, the /delete/ path with
  *  the empty-success "?" query, data-remote last). The delete confirm text:
@@ -2301,7 +2264,7 @@ function editRuleButtons(ctx: ViewContext, formType: string): string {
   // (editor.rb:93-95 card.rule_set.follow_label): Set#follow_label
   // (mod/follow set/type/set.rb:9-15) is the pattern's short_label of the
   // set anchor - the Type pattern's is `all "#{anchor}s"` (03_type.rb:7-9,
-  // the corpus's all &quot;Topics&quot;), *all's short_label "everything"
+  // e.g. all &quot;Topics&quot;), *all's short_label "everything"
   // (01_all.rb:6-8).
   const ruleSetName = fmt.card.name.leftName;
   const ruleSetParsed = ruleSetName !== undefined ? parseSetName(ruleSetName.s) : undefined;
@@ -2316,7 +2279,7 @@ function editRuleButtons(ctx: ViewContext, formType: string): string {
     ` data-confirm="${h(confirmMsg)}" href="/delete/${h(fmt.urlKey())}?" data-remote="true">Delete</a></span>`
   );
   // buttons.rb:23 edit_rule_delete_button - `return if card.new_card?`: a
-  // NEW rule has nothing to delete (the corpus follow rule_form pin's
+  // NEW rule has nothing to delete (the oracle's follow rule_form
   // button area ends at Cancel)
   const parts2 = fmt.card.id === undefined ? [save, saveAndClose, cancel] : [save, saveAndClose, cancel, del];
   return `<div class="button-area">${outputJoin(parts2)}</div>`;
@@ -2329,7 +2292,7 @@ function editRuleButtons(ctx: ViewContext, formType: string): string {
  *  the substrate's cardFormShell is the card_form port. The body is the
  *  rule_form.haml walk (:2-13 render :rule_form_card_editor inline - the
  *  SAME voo, so the child slot's show list accumulates
- *  ["rule_form","rule_form_card_editor"], the captured pair). The dom id
+ *  ["rule_form","rule_form_card_editor"], the oracle's pair). The dom id
  *  is form_for's (new_card for an id-less card). The
  *  data-update-foreign-slot render opt carries the follow mod's
  *  rule_form_args override (right/follow.rb:119-121 - the follow rule's
@@ -2359,7 +2322,7 @@ function editRuleForm(ctx: ViewContext): string {
     action: "/card/update",
     // Rails form_for infers PATCH from the record's persistence: a persisted
     // rule card emits the _method patch spoof, a new one posts plain (the
-    // corpus follow rule_form pin: the new-card form carries no spoof - the
+    // oracle's follow rule_form: the new-card form carries no spoof - the
     // same semantics the quick_editor's shell applies)
     methodSpoof: fmt.card.id === undefined ? null : "patch",
     success: success,
@@ -2388,7 +2351,7 @@ const ruleFormView: ViewFn = (ctx) => {
  *  the extra classes (voo_api.rb:167-177's wrap-options class list), the
  *  parts output-joined. rules_type_formgroup (editor.rb:93-105) renders
  *  nothing unless the setting registry marks the rule's setting
- *  rule_type_editable (the captured *read is not - the nil first part
+ *  rule_type_editable (the oracle's *read is not - the nil first part
  *  compacts away); rule_content_formgroup (editor.rb:107-109) is the
  *  content_formgroup dispatch with the conflict_tracker hide (the same
  *  call the substrate's quick_edit chain pins) - the perm-editor input
@@ -2405,16 +2368,15 @@ const ruleFormCardEditorView: ViewFn = (ctx) => {
   );
 };
 
-/** editor.rb:93-105 rules_type_formgroup (oracle-pinned 2026-09-29
- *  the rules capability: fixtures/captured/rules-nest-views.json
- *  type_editable_rule_card.views.rule_form_card_editor, no-write proof
- *  5018 -> 5018, rendered on the *all+*default rule card whose *default
+/** editor.rb:93-105 rules_type_formgroup (oracle-pinned: the
+ *  type-editable rule card's rule_form_card_editor output,
+ *  rendered on the *all+*default rule card whose *default
  *  setting_opts carries rule_type_editable: true - card-mod-content
  *  set/self/default.rb:1): the wrap_type_formgroup + type_field shape
  *  (editor.rb:96-104) through the shared edit_type port (typeFormgroup).
  *  The href reads success[:id] - edit_rule_success (rule_form.rb:69-71)
  *  carries ONLY :mark/:view, so the :id read is nil on EVERY surface and
- *  the captured query is the constant "assign=true&mark=" after the
+ *  the oracle query is the constant "assign=true&mark=" after the
  *  path-segment view. select_tag attr order: name, id, then the opts
  *  hash - href, class (bootstrap appends " form-control"), data-remote,
  *  and type_field's merged data-select2-id LAST (edit_type.rb:46-47);
@@ -2422,10 +2384,9 @@ const ruleFormCardEditorView: ViewFn = (ctx) => {
  *  card's right-set visible_cardtype_groups override (Right::Default for
  *  *default rules, Right::Structure for *structure rules,
  *  Right::ContentOptions for *content_options rules, the base table
- *  otherwise) - the corpus's rule-form ops render the multi-group
- *  optgroup lists there (2026-10-10), the rules-cap capture's
- *  single-option select is the same code's simple arm at its capture
- *  deck's createable state. */
+ *  otherwise) - the reference deck's rule-form renders the multi-group
+ *  optgroup lists there, while the single-option select is the same
+ *  code's simple arm at a narrower createable state. */
 function rulesTypeFormgroup(ctx: ViewContext): string | undefined {
   const setting = ruleSettingCodename(ctx);
   const registry = setting === undefined
@@ -2482,10 +2443,10 @@ const ruleEditView: ViewFn = (ctx) => {
 
 /** rule_form.rb:41-44 current_rule_form: `subformat(current_rule).
  *  rule_form(success_view, card, form_type)` - the SUBFORMAT render
- *  (format/nesting/subformat.rb) isolates the voo: the captured
+ *  (format/nesting/subformat.rb) isolates the voo: the oracle's
  *  overlay_rule/modal_rule/rule_edit slots' hide lists do NOT leak into
  *  the inner rule_form slot's show list. success_view defaults
- *  :overlay_rule (the captured rule_edit/modal_rule/overlay_rule forms'
+ *  :overlay_rule (the oracle's rule_edit/modal_rule/overlay_rule forms'
  *  success[view]). */
 function currentRuleForm(ctx: ViewContext, formTypeArg: string): string {
   return ctx.fmt.subformatView("rule_form", {
@@ -2509,7 +2470,7 @@ function modalMenuHtml(ctx: ViewContext): string {
 /** board_rules_editor.rb:8-11 view :modal_rule, cache: :never, unknown:
  *  true, wrap: { modal: { title: ->(format) { format.render_title } } }:
  *  current_rule_form with the DEFAULT form_type (:overlay); the title is
- *  the :title view (the captured card-title span); the footer is ABSENT
+ *  the :title view (the oracle's card-title span); the footer is ABSENT
  *  from the wrap config -> normalize_modal_option renders modal_footer -
  *  the default Close button (modal.rb:30-34). */
 const modalRuleView: ViewFn = (ctx) => {
@@ -2535,12 +2496,12 @@ const modalRuleView: ViewFn = (ctx) => {
  *  true: `wrap_with_overlay slot: breadcrumb_data("Rule editing", "rules")`
  *  - the :overlay WRAPPER (card-mod-layout set/all/overlay.rb:6-14):
  *  class_up card-slot "_overlay d0-card-overlay bg-body" (single_use) +
- *  the framer's own class_up "_overlay" (overlay.rb:98-100 - the captured
+ *  the framer's own class_up "_overlay" (overlay.rb:98-100 - the oracle's
  *  DOUBLED _overlay), voo.hide! :menu, the slot opts' data-breadcrumb pair
  *  (board.rb:68-72 breadcrumb_data), then the frame machinery: d0-card-
  *  frame > d0-card-header (bg-body class_up; title = the RULE set's
  *  :overlay_title -> edit_rule_title; menu = :overlay_menu) + the
- *  with_frame help/flash arms EMPTY (the captured single blank line
+ *  with_frame help/flash arms EMPTY (the oracle's single blank line
  *  between the header and the d0-card-body) > d0-card-body with the
  *  current_rule_form subformat render inside. */
 const overlayRuleView: ViewFn = (ctx) => {
@@ -2584,13 +2545,13 @@ const overlayRuleView: ViewFn = (ctx) => {
 
 /** overlay.rb:23-27 view :overlay_menu: the help/new-window/close links.
  *  overlay_help_link (:29-44) takes the GUIDE branch when card.guide_card
- *  resolves (the capture deck's *all+*guide rule): help_popover_opts
+ *  resolves (the oracle deck's *all+*guide rule): help_popover_opts
  *  (menu.rb:103-107 + bootstrap helper.rb:46-57) + add_open_guide_opts
- *  (:35-44, the slotter + overlay attrs; the captured link's `path="#"`
+ *  (:35-44, the slotter + overlay attrs; the oracle's link `path="#"`
  *  attr is help_popover_opts' reverse_merge'd path default that the guide
  *  branch does NOT delete - the live deck's bytes); the data-bs-content is
  *  the RULE's :help_text bytes (rule_based_help + setting_link - the
- *  increment-2 ruleHelpTextView registration) h-escaped in the attribute.
+ *  ruleHelpTextView registration) h-escaped in the attribute.
  *  slotify_overlay_link (:47-49) + close_overlay_link (:51-53) close the
  *  menu. */
 function overlayMenuHtml(ctx: ViewContext): string {
@@ -2613,11 +2574,8 @@ function overlayMenuHtml(ctx: ViewContext): string {
 // ---------------------------------------------------------------------------
 // set/type/set/html_views/filtered_rule_lists.rb :nest_rules/:modal_nest_
 // rules + set/type/set/html_views/rule_lists.rb :quick_edit_setting_list -
-// the quick-edit list family (2026-09-29 the third rules-views port; ALL
-// THREE oracle-pinned: quick_edit_setting_list/nest_rules against
-// fixtures/captured/rules-views.json + rules-nest-views.json, and
-// modal_nest_rules against rules-nest-views.json - the rules-cap capture,
-// no-write proof 5018 -> 5018, whose diff corrected this view's filter
+// the quick-edit list family (ALL THREE oracle-pinned; the follow-up
+// nest-rules oracle run corrected modal_nest_rules' filter
 // action and its slot-wrapped list body)
 // ---------------------------------------------------------------------------
 
@@ -2628,7 +2586,7 @@ function overlayMenuHtml(ctx: ViewContext): string {
  *  - setting_categories.rb:37-39 field_settings = [:default, :help,
  *  :input_type, :content_options, :content_option_view] - the RAW list:
  *  show_view? (:97) gates each item on the SETTING card's read permission,
- *  NOT on the visible-settings list (the capture's five items include the
+ *  NOT on the visible-settings list (the oracle's five items include the
  *  two hidden settings). helper.rb:20-34 list_tag: bare <li> wrappers (no
  *  per-item opts), the items newline-joined butting the ul tags. */
 function quickEditSettingListBody(ctx: ViewContext): string {
@@ -2650,11 +2608,11 @@ const quickEditSettingListView: ViewFn = (ctx) => {
 
 /** rule_lists.rb:96-101 setting_list_item for the quick_edit items:
  *  `rule_card = card.fetch setting, new: {}` - the fetch composes the
- *  codename LITERAL ("*all+*input_type", the underscore form the captured
+ *  codename LITERAL ("*all+*input_type", the underscore form the oracle's
  *  data-card-name carries; the STORED *all+*default/*all+*content option
  *  view cards resolve by their real names) and nest(rule_card, view:
  *  :quick_edit) - nest_name is the RESOLVED reference's display form (the
- *  setting card's stored display name, the captured "*all+*input type"
+ *  setting card's stored display name, the oracle's "*all+*input type"
  *  space form). */
 function quickEditSettingListItem(ctx: ViewContext, setting: string): string {
   const settingCard = ctx.fmt.engine.findSettingCard?.(setting);
@@ -2673,10 +2631,11 @@ function quickEditSettingListItem(ctx: ViewContext, setting: string): string {
         });
   if (stored === undefined || stored.unknown === true) {
     // Ruby's `card.fetch setting, new: {}` composes the codename LITERAL -
-    // the new card's name carries the underscore form the captured
+    // the new card's name carries the underscore form the oracle's
     // data-card-name pins ("*all+*input_type"), while the NEST's nest_name
     // resolves to the setting card's display form (the space form). The
-    // builder joins the display form (the corpus bar pins); the quick_edit
+    // builder joins the display form (the oracle bar bytes pin); the
+    // quick_edit
     // items' slot carries the codename form, so the fresh virtual card's
     // name is rewritten here.
     const codenameName = DeckoName.parse(`${setCard.name.s}+*${setting}`);
@@ -2688,7 +2647,7 @@ function quickEditSettingListItem(ctx: ViewContext, setting: string): string {
     };
   }
   // nest_name is the RESOLVED reference's DISPLAY form (the setting card's
-  // stored display name - the captured "*all+*input type" space form next
+  // stored display name - the oracle's "*all+*input type" space form next
   // to the rule card's own codename-form data-card-name)
   const nestName = `${setCard.name.s}+${settingCard.name.s}`;
   return ctx.fmt.nestRecord(ruleCard, "quick_edit", {
@@ -2713,13 +2672,13 @@ const nestRulesView: ViewFn = (ctx) => {
  *  `filtered_rule_list :quick_edit_setting_list, :field_related` - the
  *  filter form with the FIELD radio checked (setting_filter.rb:16-24 maps
  *  the :field_related category onto the "field" radio; no mark opt ->
- *  path(view:) resolves against the format's OWN card, the captured
+ *  path(view:) resolves against the format's OWN card, the oracle's
  *  action "/*all/quick_edit_setting_list" - the mark: "" arm
  *  ("/?view=...") is board_rules_tab's, not this one) + render(view) -
  *  the FULL quick_edit_setting_list view render with its own _setting-list
  *  slot wrap, the show list accumulating ["modal_nest_rules",
- *  "quick_edit_setting_list"] through the shared voo (both captured in
- *  fixtures/captured/rules-nest-views.json, no-write proof 5018 -> 5018) -
+ *  "quick_edit_setting_list"] through the shared voo (both pinned by the
+ *  oracle output) -
  *  inside the modal wrap (default size, the LITERAL string title -
  *  cast_modal_option's String branch passes it through raw,
  *  modal.rb:110-118 - and the default footer). */
@@ -2771,12 +2730,11 @@ const setModules: ModSetModuleFile[] = [
   {
     // set/all/set_select.rb:20-46 format :html (view :card_select +
     // set_select/card_select/set_select_tag/set_alert) + :49-57 card-level
-    // set_list. :card_select (PORTED 2026-09-29 increment-2 - registered
-    // below; the related_sets walk + select2 tag, oracle-pinned in
-    // fixtures/captured/rules-views.json set_card.views.card_select).
+    // set_list. :card_select (PORTED - registered
+    // below; the related_sets walk + select2 tag, oracle-pinned).
     // set_select.rb is an ALL set module (kind "base") and the global
     // view name has no other mod registration, so the flat-table
-    // registration is safe - this is NOT the first rules-views increment's
+    // registration is safe - this is NOT the
     // global-table masking problem (that applies to the rule
     // one_line_content / help_text names whose base registrations
     // belong to other mods).
@@ -2826,7 +2784,7 @@ const setModules: ModSetModuleFile[] = [
     // src/card/set-patterns/rule-names.ts ruleSetCardName (rules.rb:12-18)
     // and ruleSettingCardName (rules.rb:36-38).
     //
-    // Event (set-module event 2026-10-08) — ENGINE-OWNED: the save path
+    // Event — ENGINE-OWNED: the save path
     // moves the saved rule's setting to the top of the *recent settings
     // list (card-action-engine.ts saveRecentlyEditedSettings, citing
     // rules.rb:1-6; run on the create/update paths at :1347/:2012).
@@ -2855,10 +2813,10 @@ const setModules: ModSetModuleFile[] = [
     // barRightView -> rule-bar-right.ts, and format.ts:366-382's before(:bar)
     // class_up citing bar_view.rb:10) - the compat report counts bar,
     // bar_bottom, bar_middle, bar_right as covered. :one_line_content
-    // (PORTED 2026-09-29 increment-2 - registered below; the rule set's
+    // (PORTED - registered below; the rule set's
     // one-line content with the Abstract::List pointer-list wrap,
-    // oracle-pinned in fixtures/captured/rules-views.json) +
-    // :raw_one_line_content (PORTED increment-2 - registered below; the
+    // oracle-pinned) +
+    // :raw_one_line_content (PORTED - registered below; the
     // bare truncate-strip-tags body, oracle-pinned). Both register under
     // kind "nonbase" so they enter viewChains ONLY (mod-loader.ts:284's
     // `if (kind !== "nonbase") this.views.register(...)` gate) - the
@@ -2877,14 +2835,13 @@ const setModules: ModSetModuleFile[] = [
     },
   },
   {
-    // set/rule/board_rules_editor.rb:2-27 - views :overlay_rule (PORTED
-    // 2026-09-29 rules-views-port-3 - registered below; the overlay wrap +
+    // set/rule/board_rules_editor.rb:2-27 - views :overlay_rule (PORTED -
+    // registered below; the overlay wrap +
     // the current_rule_form subformat render), :modal_rule (PORTED - the
     // default-size modal, title = render_title, default footer),
-    // :overlay_title (PORTED - registered below), :help_text (PORTED
-    // 2026-09-29 increment-2 - registered below; the Rule-set override
-    // of card-mod-help's :help_text, oracle-pinned in
-    // fixtures/captured/rules-views.json; the registration enters
+    // :overlay_title (PORTED - registered below), :help_text (PORTED -
+    // registered below; the Rule-set override
+    // of card-mod-help's :help_text, oracle-pinned; the registration enters
     // viewChains at this nonbase setPath so the chain walker dispatches
     // it for RULE-token cards while the base all/help registration
     // stays on the flat views table for every other card).
@@ -2904,13 +2861,13 @@ const setModules: ModSetModuleFile[] = [
     // set/rule/editor.rb:1-130 - card-level left_type_for_nest_editor_set_
     // selection (template machinery) + find_existing_rule_card:119-130
     // (the rule-resolution walk rule-bar-right.ts cites) + format :html:
-    // :rule_edit (PORTED 2026-09-29 rules-views-port-3 - registered below;
+    // :rule_edit (PORTED - registered below;
     // the large modal wrap around the current_rule_form subformat render,
     // oracle-pinned), :rule_help (PORTED - registered below; the
     // Setting-type half of the dispatch carries set/type/setting.rb:59-61's
-    // body), :rule_nest_editor_link/:rule_board_link (PORTED 2026-09-29 -
-    // registered below; the pill_rule_link pair, oracle-pinned in
-    // fixtures/captured/rules-views.json), pill_rule_link/category_classes/
+    // body), :rule_nest_editor_link/:rule_board_link (PORTED -
+    // registered below; the pill_rule_link pair, oracle-pinned),
+    // pill_rule_link/category_classes/
     // edit_rule_title/current_rule/setting_title/short_help_text/
     // rules_type_formgroup (methods feeding the ported + unported views).
     setPath: "rule/editor",
@@ -2943,7 +2900,7 @@ const setModules: ModSetModuleFile[] = [
   },
   {
     // set/rule/rule_form.rb:2-71 - views :rule_form/:rule_form_card_editor
-    // (PORTED 2026-09-29 rules-views-port-3 - registered below; the
+    // (PORTED - registered below; the
     // card_form shell through the shared mod-form-substrate + the
     // RuleSetRadio set-selection walk, oracle-pinned) + the rule-form
     // composition methods (edit_rule_form/rule_form_args/edit_rule_success
@@ -3020,14 +2977,13 @@ const setModules: ModSetModuleFile[] = [
   },
   {
     // set/type/set/html_views/filtered_rule_lists.rb:2-22 - views
-    // :board_rules_tab (PORTED 2026-09-29 - registered below) +
+    // :board_rules_tab (PORTED - registered below) +
     // :filtered_accordion_rule_list (PORTED - registered below) +
-    // :nest_rules/:modal_nest_rules (PORTED 2026-09-29 rules-views-port-3 -
+    // :nest_rules/:modal_nest_rules (PORTED -
     // registered below; nest_rules = the slot-wrapped quick_edit_setting_
     // list render, modal_nest_rules = filtered_rule_list
     // :quick_edit_setting_list :field_related in the modal wrap - both
-    // ORACLE-PINNED by the rules-cap follow-up capture,
-    // fixtures/captured/rules-nest-views.json) +
+    // ORACLE-PINNED by the follow-up nest-rules oracle run) +
     // filtered_rule_list/setting_filter/filter_buttons/filter_radio
     // (PORTED - the helpers the registered views compose; the bytes are
     // the setting_filter.rb heredocs).
@@ -3045,8 +3001,7 @@ const setModules: ModSetModuleFile[] = [
   },
   {
     // set/type/set/html_views/rule_lists.rb:2-101 - the setting-list
-    // family. PORTED 2026-09-29 (registered below; oracle-pinned in
-    // fixtures/captured/rules-views.json): :bar_setting_list,
+    // family. PORTED (registered below; oracle-pinned): :bar_setting_list,
     // :pill_setting_list (the effective SECOND definition at :86-88 -
     // cache: :never + the _setting-list slot wrap), :modal_pill_setting_
     // list, :accordion_rule_list, :accordion_bar_list,
@@ -3056,13 +3011,9 @@ const setModules: ModSetModuleFile[] = [
     // interpret_view_settings opts.delete - the oracle probe shows
     // _view_bar_setting_list__wrap does not respond), so those views carry
     // no wrap and no cache override in Ruby. :quick_edit_setting_list
-    // (still unported - its :quick_edit items need the quick_editor form
+    // (registered below - its :quick_edit items ride the quick_editor form
     // machinery) + category_accordion/setting_list_item helpers (ported -
     // the emitters above).
-    // 2026-09-29 rules-views-port-3: :quick_edit_setting_list IS ported
-    // now (registered below) - the quick_editor form machinery landed with
-    // the form-substrate pass and the Right-module body overrides closed
-    // the empty-item question.
     setPath: "type/set/html_views/rule_lists",
     formats: {
       html: {
@@ -3086,8 +3037,8 @@ const setModules: ModSetModuleFile[] = [
   },
   {
     // set/type/set/html_views/template.rb:2-11 - view :template_link
-    // (PORTED 2026-09-29 - registered below; the wrap() body emits the
-    // slot wrapper, oracle-pinned in fixtures/captured/rules-views.json;
+    // (PORTED - registered below; the wrap() body emits the
+    // slot wrapper, oracle-pinned;
     // the parent-voo nest_syntax title is a nest-context value the
     // headless engine's direct render never carries - link_to_view's
     // `text || view` default emits the view name).
@@ -3117,14 +3068,14 @@ const setModules: ModSetModuleFile[] = [
     // (render_rule_help - the same dispatch's bytes, tested through the
     // registered view), format :json items_for_export (no json format).
     //
-    // 2026-09-29::rule_help is REGISTERED on this module
-    // now, not merely "carried". Ruby defines view :rule_help in BOTH gem
-    // files (rule/editor.rb:24-28 on the Rule set and type/setting.rb:59-61
-    // on the Type::Setting set); the old single registration on
-    // rule/editor only answered for rule cards once the chainFor narrowing
-    // (26ef575) stopped the flat record from answering for
-    // Setting-type cards. The viewFn keeps the two-set dispatch and still
-    // raises for cards that are neither rule nor Setting-typed.
+    // :rule_help is REGISTERED on this module, not merely "carried". Ruby
+    // defines view :rule_help in BOTH gem files (rule/editor.rb:24-28 on
+    // the Rule set and type/setting.rb:59-61 on the Type::Setting set); a
+    // single registration on rule/editor alone would answer only for rule
+    // cards once the chainFor narrowing stops the flat record from
+    // answering for Setting-type cards. The viewFn keeps the two-set
+    // dispatch and still raises for cards that are neither rule nor
+    // Setting-typed.
     setPath: "type/setting",
     formats: {
       html: {
