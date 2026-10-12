@@ -1,18 +1,16 @@
 // The render-format view-permission gate end to end: RenderFormat.renderView
 // routing through viewPermissionDenial (src/card/permissions/view-perms.ts)
-// with a stub engine supplying the verdict maps — the exact contract the
-// real RenderEngine implements via isDenied + the isTaskDenied hook (the
-// render.ts wiring is the coordinator patch documented in
-// ).
+// with a stub engine supplying the verdict maps — the contract the real
+// RenderEngine implements via isDenied + the isTaskDenied hook.
 //
 // Byte contracts proven here:
 // - a denied read view is REPLACED by the quiet span (no slot wrapper) —
-//   the corpus shape (fixtures/corpus/*: 124,632 "(read)" spans);
+//   the reference byte shape;
 // - a denied view configured denial: :blank renders "" (menu, html/menu.rb:8);
 // - a perms-:none view renders unchanged on a denied card (title);
 // - a denied NON-read task labels the span with its task ("(update)") —
-//   the corpus never captures a non-read label (its four views are
-//   read/none), so this half is gem-proven, not corpus-proven;
+//   page captures never exercise a non-read label, so this half is
+//   gem-proven;
 // - the skip_perms render option skips the check (permission.rb:26).
 
 import { describe, it, expect } from "vitest";
@@ -177,17 +175,16 @@ describe("render-format view-permission gate", () => {
     expect(fmt.renderView("content")).not.toContain("denied");
   });
 
-  // R3.4.d's isMain arm (html/error.rb:75-77 focal? ? loud_denial :
+  // The isMain arm (html/error.rb:75-77 focal? ? loud_denial :
   // quiet_denial): the PAGE path constructs the format with main:true
   // (page.ts:252-255, Ruby's show-path main!), so the denial renders the
-  // LOUD frame as the main content instead of the quiet span. The corpus
-  // pins the anonymous branch's full page bytes
-  // (focal-denial-page-corpus-replay.test.ts, 4 exemplars byte-exact);
-  // these units pin the branch ROUTING and the signed-in message bytes the
-  // corpus cannot capture (its viewer is always Anonymous) — the same bytes
-  // the live-Ruby probe an internal work log
-  // signed-in-loud-denial-probe.rb extracts (loud_denial_message
-  // `when Auth.signed_in?` -> format_need_permission_task + format_denied_task
+  // LOUD frame as the main content instead of the quiet span. The anonymous
+  // branch's full page bytes are pinned in
+  // focal-denial-page-corpus-replay.test.ts; these units pin the branch
+  // ROUTING and the signed-in message bytes a page capture cannot produce
+  // (its viewer is always Anonymous) — the same bytes Ruby's
+  // loud_denial_message `when Auth.signed_in?` branch renders
+  // (format_need_permission_task + format_denied_task
   // = "You need permission to read this.").
   it("renders the loud denial frame on a denied MAIN (page-focal) card", () => {
     const fmt = new RenderFormat(card(1, "Secret Thing", "body"), stubEngine({ readDenied: true }), {
